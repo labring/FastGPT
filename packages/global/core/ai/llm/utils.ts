@@ -1,5 +1,8 @@
 import type { LLMSystemModelDataType } from '../model/schema';
 import { ChatCompletionRequestMessageRoleEnum } from '../constants';
+import { imageFileType } from '../../../common/file/constants';
+import { isHttpUrl } from '../../../common/string/url';
+import type { ChatCompletionToolMessageContentPart } from './type';
 
 export const removeDatasetCiteText = (text: string, retainDatasetCite: boolean) => {
   return retainDatasetCite
@@ -15,6 +18,37 @@ export const removeDatasetCiteText = (text: string, retainDatasetCite: boolean) 
  */
 export const normalizeToolResponseContent = (response?: string) =>
   response === '' || response === undefined ? 'none' : response;
+
+/**
+ * 判断字符串是否恰好是一个图片链接（http/https，扩展名命中图片白名单）。
+ * 只在“整串就是一个链接”时返回 true，避免从 HTML 等普通文本里误提取图片。
+ */
+export const isExactImageUrl = (url: string) => {
+  if (!isHttpUrl(url)) return false;
+  const pathname = url.trim().split('?')[0].split('#')[0];
+  const extension = `.${pathname.split('/').pop()?.split('.').pop()?.toLowerCase() || ''}`;
+  return (
+    extension !== '.' &&
+    imageFileType.split(',').some((item) => item.trim().toLowerCase() === extension)
+  );
+};
+
+/**
+ * 构造写入 LLM tool message 的 content：
+ * - 工具主动返回 content parts 时，调用方直接使用 parts；
+ * - 否则当整个响应字符串恰好是一个图片链接时，转成 image_url part 兜底；
+ * - 其余情况保持纯文本字符串。
+ */
+export const getToolResponseContent = (
+  response?: string
+): string | ChatCompletionToolMessageContentPart[] => {
+  const normalized = normalizeToolResponseContent(response);
+  const trimmed = normalized.trim();
+  if (trimmed && isExactImageUrl(trimmed)) {
+    return [{ type: 'image_url', image_url: { url: trimmed } }];
+  }
+  return normalized;
+};
 
 /**
  * 构造 OpenAI Chat Completions 风格的流式 delta 响应片段。

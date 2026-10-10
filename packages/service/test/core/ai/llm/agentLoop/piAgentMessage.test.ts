@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   convertChatMessagesToPiAgentMessages,
   convertPiAgentMessagesToChatMessages,
+  convertToolResponseContentToPiContent,
   mapStopReason,
   normalizePiAgentMessages,
   replaceInteractiveToolResult,
@@ -321,6 +322,32 @@ describe('piAgent message conversion', () => {
         isError: false
       })
     ]);
+  });
+
+  it('converts tool response parts to pi content and degrades images when vision is disabled', async () => {
+    const parts = [
+      { type: 'text', text: 'ok' },
+      { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } }
+    ];
+
+    const withVision = await convertToolResponseContentToPiContent(parts as any);
+    expect(withVision).toEqual([
+      { type: 'text', text: 'ok' },
+      { type: 'image', mimeType: 'image/png', data: 'aW1hZ2U=' }
+    ]);
+
+    const withoutVision = await convertToolResponseContentToPiContent(parts as any, {
+      useVision: false
+    });
+    expect(withoutVision).toEqual([
+      { type: 'text', text: 'ok' },
+      { type: 'text', text: '[Image: data:image/png;base64,aW1hZ2U=]' }
+    ]);
+  });
+
+  it('converts string tool responses to a single text part', async () => {
+    const result = await convertToolResponseContentToPiContent('plain');
+    expect(result).toEqual([{ type: 'text', text: 'plain' }]);
   });
 
   it('maps pi stop reasons to the shared agent-loop finish reasons', () => {

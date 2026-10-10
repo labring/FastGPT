@@ -56,9 +56,25 @@ export const promptToolCallMessageRewrite = (
         delete message.tool_calls;
       }
     } else if (message.role === 'tool') {
+      // 工具消息可能是字符串、text/image_url parts 或空值；纯图片时保留占位文本，避免响应静默丢失。
+      const toolContent =
+        typeof message.content === 'string'
+          ? message.content
+          : Array.isArray(message.content)
+            ? message.content
+                .map((part) => {
+                  if (part.type === 'text' && part.text) return part.text;
+                  if (part.type === 'image_url' && part.image_url?.url) {
+                    return `[Image: ${part.image_url.url}]`;
+                  }
+                  return '';
+                })
+                .filter(Boolean)
+                .join('\n')
+            : String(message.content ?? '');
       cloneMessages.splice(i, 1, {
         role: 'user',
-        content: `<ToolResponse>\n${message.content}\n</ToolResponse>`
+        content: `<ToolResponse>\n${toolContent}\n</ToolResponse>`
       });
     }
   }

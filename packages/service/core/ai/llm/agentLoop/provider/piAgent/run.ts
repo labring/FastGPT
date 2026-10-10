@@ -2,12 +2,14 @@ import { Agent, type AgentEvent } from '@mariozechner/pi-agent-core';
 import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
+  ChatCompletionToolMessageContentPart,
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
+  getToolResponseContent,
   normalizeToolResponseContent,
   removeDatasetCiteText
 } from '@fastgpt/global/core/ai/llm/utils';
@@ -36,6 +38,7 @@ import { compressRequestMessages } from '../../../compress';
 import {
   convertChatMessagesToPiAgentMessages,
   convertPiAgentMessagesToChatMessages,
+  convertToolResponseContentToPiContent,
   getPiAgentPrompt,
   isAssistantMessage,
   mapStopReason,
@@ -68,6 +71,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
 }): Promise<AgentLoopResult<TChildrenResponse>> => {
   const state = readPiAgentProviderState(input.providerState);
   const modelData = runtime.llmParams.model;
+  const useVision = runtime.llmParams.useVision && modelData.config.vision;
   const piModel = buildPiModel(
     modelData,
     runtime.llmParams.useVision,
@@ -76,7 +80,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   );
   const requestMessages = await loadRequestMessages({
     messages: input.messages,
-    useVision: runtime.llmParams.useVision && modelData.config.vision,
+    useVision,
     useAudio: runtime.llmParams.useAudio && modelData.config.audio,
     useVideo: runtime.llmParams.useVideo && modelData.config.video,
     extractFiles: runtime.llmParams.extractFiles,
@@ -172,17 +176,20 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     call,
     response,
     childAssistantMessages = [],
-    appendToAssistantMessages = true
+    appendToAssistantMessages = true,
+    content
   }: {
     call: ChatCompletionMessageToolCall;
     response: string;
     childAssistantMessages?: ChatCompletionMessageParam[];
     appendToAssistantMessages?: boolean;
+    /** 工具返回的结构化 content（text / image_url parts），缺省时回退 response 字符串。 */
+    content?: string | ChatCompletionToolMessageContentPart[];
   }) => {
     const toolMessage: ChatCompletionMessageParam = {
       role: ChatCompletionRequestMessageRoleEnum.Tool,
       tool_call_id: call.id,
-      content: response
+      content: content ?? response
     };
     const existingToolIndex = completeMessages.findIndex(
       (message) => message.role === 'tool' && message.tool_call_id === call.id
@@ -316,11 +323,14 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       metadata: result.metadata,
       seconds: +((Date.now() - startedAt) / 1000).toFixed(2)
     });
+    const toolContent = result.content ?? getToolResponseContent(result.response);
+    const piToolContent = await convertToolResponseContentToPiContent(toolContent, { useVision });
     initialPiMessages = replaceInteractiveToolResult({
       messages: initialPiMessages,
       call,
       response: normalizedResponse,
-      isError: !!result.errorMessage
+      isError: !!result.errorMessage,
+      content: piToolContent
     });
 
     const providerState: PiAgentProviderState = {
@@ -331,7 +341,8 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     recordToolResult({
       call,
       response: normalizedResponse,
-      childAssistantMessages: result.assistantMessages
+      childAssistantMessages: result.assistantMessages,
+      content: toolContent
     });
     if (result.interactive) {
       return {
@@ -395,11 +406,12 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     },
     getMessages: () => completeMessages,
     onToolCall: emitOrdinaryToolExecution,
-    onToolResult: ({ call, response, assistantMessages }) => {
+    onToolResult: ({ call, response, assistantMessages, content }) => {
       recordToolResult({
         call,
         response,
-        childAssistantMessages: assistantMessages
+        childAssistantMessages: assistantMessages,
+        content
       });
     }
   });

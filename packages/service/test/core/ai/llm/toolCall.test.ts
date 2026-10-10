@@ -703,6 +703,61 @@ describe('promptToolCallMessageRewrite function tests', () => {
         '<ToolResponse>\n{"result":"success","data":[1,2,3]}\n</ToolResponse>'
       );
     });
+
+    it('should handle tool message with null content without throwing', () => {
+      const messages: ChatCompletionMessageParam[] = [
+        { role: 'user', content: 'Test' },
+        { role: 'tool', tool_call_id: 'call_123', content: null }
+      ];
+      const tools: ChatCompletionTool[] = [];
+
+      const result = promptToolCallMessageRewrite(messages, tools);
+
+      expect(result[2].role).toBe('user');
+      expect(result[2].content).toBe('<ToolResponse>\n\n</ToolResponse>');
+    });
+
+    it('should preserve image-only tool content as placeholder text', () => {
+      const messages: ChatCompletionMessageParam[] = [
+        { role: 'user', content: 'Test' },
+        {
+          role: 'tool',
+          tool_call_id: 'call_123',
+          content: [
+            { type: 'image_url', image_url: { url: 'https://files.example.com/plot.png' } }
+          ]
+        }
+      ];
+      const tools: ChatCompletionTool[] = [];
+
+      const result = promptToolCallMessageRewrite(messages, tools);
+
+      expect(result[2].role).toBe('user');
+      expect(result[2].content).toBe(
+        '<ToolResponse>\n[Image: https://files.example.com/plot.png]\n</ToolResponse>'
+      );
+    });
+
+    it('should join text and image parts in tool content', () => {
+      const messages: ChatCompletionMessageParam[] = [
+        { role: 'user', content: 'Test' },
+        {
+          role: 'tool',
+          tool_call_id: 'call_123',
+          content: [
+            { type: 'text', text: 'Generated plot:' },
+            { type: 'image_url', image_url: { url: 'https://files.example.com/plot.png' } }
+          ]
+        }
+      ];
+      const tools: ChatCompletionTool[] = [];
+
+      const result = promptToolCallMessageRewrite(messages, tools);
+
+      expect(result[2].content).toBe(
+        '<ToolResponse>\nGenerated plot:\n[Image: https://files.example.com/plot.png]\n</ToolResponse>'
+      );
+    });
   });
 
   describe('Message immutability', () => {

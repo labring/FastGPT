@@ -1,7 +1,8 @@
 import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
-  ChatCompletionTool
+  ChatCompletionTool,
+  ChatCompletionToolMessageContentPart
 } from '@fastgpt/global/core/ai/llm/type';
 import type { SandboxClient } from '../../../sandbox/interface/runtime';
 import type { AgentLoopDatasetSearchExecutor } from './systemTool/datasetSearch';
@@ -49,6 +50,11 @@ export type AgentLoopToolExecutionResult<TChildrenResponse = unknown> = {
   errorMessage?: string;
   /** 由调用方透传并在 agent-loop 外部解释的工具运行元数据。 */
   metadata?: unknown;
+  /**
+   * 写入 LLM tool message 的结构化 content（text / image_url parts）。
+   * 工具取到图片时可返回 image_url part，作为下一轮模型的视觉输入；缺省时按 response 字符串兜底。
+   */
+  content?: ChatCompletionToolMessageContentPart[];
 };
 
 export type AgentLoopReadFileExecutionResult = {
