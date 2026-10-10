@@ -69,7 +69,8 @@ export const BatchUpdateDomainConfigItemSchema = z.object({
 export type BatchUpdateDomainConfigItem = z.infer<typeof BatchUpdateDomainConfigItemSchema>;
 
 export const BatchUpdateDomainConfigBodySchema = z.object({
-  items: z.array(BatchUpdateDomainConfigItemSchema).min(1).max(20)
+  items: z.array(BatchUpdateDomainConfigItemSchema).min(1).max(20),
+  subPlans: z.record(z.string(), z.unknown()).optional()
 });
 export type BatchUpdateDomainConfigBody = z.infer<typeof BatchUpdateDomainConfigBodySchema>;
 

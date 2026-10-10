@@ -1,8 +1,9 @@
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Input, Textarea, SimpleGrid, Text } from '@chakra-ui/react';
 import { useForm, Controller } from 'react-hook-form';
-import { useDomainConfig } from '@/web/common/system/useDomainConfig';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useDomainConfig, batchUpdateDomainConfigApi } from '@/web/common/system/useDomainConfig';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
@@ -28,9 +29,9 @@ const CommercialSettingComponent = () => {
     [t]
   );
 
-  const { effectiveConfig, isLoading, isUpdating, updateConfig } = useDomainConfig('commercial');
+  const { revision, effectiveConfig, isLoading, isUpdating, refetch } =
+    useDomainConfig('commercial');
   const plansRef = useRef<PlansSettingSectionHandle>(null);
-  const [plansSaving, setPlansSaving] = useState(false);
 
   const { control, handleSubmit, reset, register } = useForm<CommercialConfigForm>({
     defaultValues: effectiveConfig
@@ -42,44 +43,56 @@ const CommercialSettingComponent = () => {
     }
   }, [effectiveConfig, reset]);
 
-  const savePlans = useCallback(async () => {
-    // 套餐保存失败必须向外冒泡中断整个保存流程，不能静默吞掉异常导致半成功状态
-    await plansRef.current?.save();
-  }, []);
-
-  const saveAll = useCallback(
+  const { runAsync: onSaveBatch, loading: isBatchSaving } = useRequest(
     async (formData: CommercialConfigForm) => {
-      // 先保存套餐：若套餐校验或保存失败直接中断，不触发生效商业配置保存
-      await savePlans();
+      // 1. 先做套餐表单校验并拿到数据：若校验失败（返回 undefined）直接中断，不提交任何请求
+      const subPlansData = await plansRef.current?.getSubPlansData();
+      if (subPlansData === undefined) return;
 
-      await updateConfig({
-        showCoupon: Boolean(formData.showCoupon),
-        showDiscountCoupon: Boolean(formData.showDiscountCoupon),
-        payFormUrl: formData.payFormUrl || '',
-        agentSandboxFreeTip: Boolean(formData.agentSandboxFreeTip),
-        payment: formData.payment,
-        billingNotify: formData.billingNotify
+      // 2. 商业配置与套餐合并为单个批量事务请求原子提交：
+      // 任一校验失败、revision 冲突或写入异常，整体回滚，杜绝半生效状态。
+      await batchUpdateDomainConfigApi({
+        items: [
+          {
+            domain: 'commercial',
+            expectedRevision: revision,
+            overrides: {
+              showCoupon: Boolean(formData.showCoupon),
+              showDiscountCoupon: Boolean(formData.showDiscountCoupon),
+              payFormUrl: formData.payFormUrl || '',
+              agentSandboxFreeTip: Boolean(formData.agentSandboxFreeTip),
+              payment: formData.payment,
+              billingNotify: formData.billingNotify
+            }
+          }
+        ],
+        subPlans: subPlansData
       });
+
+      await Promise.all([refetch(), plansRef.current?.reload()]);
     },
-    [savePlans, updateConfig]
+    {
+      successToast: t('admin:save_success'),
+      errorToast: t('admin:save_failed')
+    }
   );
 
   // 在点击时再包装，避免 render 期创建会读取 ref 的提交闭包
   const onSave = useCallback(() => {
-    void handleSubmit(saveAll)();
-  }, [handleSubmit, saveAll]);
+    void handleSubmit(onSaveBatch)();
+  }, [handleSubmit, onSaveBatch]);
 
   return (
     <AdminSettingPage
       headerTitle={t('admin:page_title_pay')}
       tocItems={tocItems}
       isLoading={isLoading}
-      isSaving={isUpdating || plansSaving}
+      isSaving={isUpdating || isBatchSaving}
       onSave={onSave}
     >
       {/* 1. 订阅套餐：套餐等级、积分包与活动配置 */}
       <AdminSettingSection id="plans" title={t('admin:pay_section_plans')}>
-        <PlansSettingSection ref={plansRef} onSavingChange={setPlansSaving} />
+        <PlansSettingSection ref={plansRef} />
       </AdminSettingSection>
 
       {/* 2. 功能展示：优惠券策略与提示展示策略合并 */}
