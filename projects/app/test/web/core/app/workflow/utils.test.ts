@@ -324,6 +324,21 @@ describe('auto-fill input variables after connecting from workflow start', () =>
     ).toBe(true);
   });
 
+  it('允许文件链接引用转换为用户问题字符串', () => {
+    expect(
+      workflowReferenceValueIsSelectable({
+        value: ['start', NodeOutputKeyEnum.userFiles] as any,
+        sourceNodes: [
+          {
+            nodeId: startNodeWithFiles.data.nodeId,
+            outputs: startNodeWithFiles.data.outputs
+          }
+        ],
+        valueType: WorkflowIOValueTypeEnum.string
+      })
+    ).toBe(true);
+  });
+
   it('收集自动填充补丁时，同一个节点的文件链接和用户问题应同时返回', () => {
     const targetNode = makeFreshConnectedNode('ai-chat', AiChatModule);
 
@@ -1085,7 +1100,7 @@ describe('storeNode2FlowNode', () => {
 });
 
 describe('filterWorkflowNodeOutputsByType', () => {
-  it('should filter outputs by type', () => {
+  it('should include outputs that can be formatted as strings', () => {
     const outputs: FlowNodeOutputItemType[] = [
       {
         id: '1',
@@ -1112,8 +1127,7 @@ describe('filterWorkflowNodeOutputsByType', () => {
 
     const result = filterWorkflowNodeOutputsByType(outputs, WorkflowIOValueTypeEnum.string);
 
-    expect(result).toHaveLength(1);
-    expect(result[0].id).toBe('1');
+    expect(result.map((output) => output.id)).toEqual(['1', '2', '3']);
   });
 
   it('should return all outputs for any type', () => {
@@ -1180,6 +1194,7 @@ describe('filterSelectableWorkflowNodeOutputs', () => {
     const outputs: FlowNodeOutputItemType[] = [
       makeOutput('text', WorkflowIOValueTypeEnum.string),
       makeOutput('count', WorkflowIOValueTypeEnum.number),
+      makeOutput('object', WorkflowIOValueTypeEnum.object),
       makeOutput(NodeOutputKeyEnum.addOutputParam, WorkflowIOValueTypeEnum.string),
       makeOutput('invalid', WorkflowIOValueTypeEnum.string, { invalid: true }),
       makeOutput('error', WorkflowIOValueTypeEnum.string, { type: FlowNodeOutputTypeEnum.error })
@@ -1187,11 +1202,11 @@ describe('filterSelectableWorkflowNodeOutputs', () => {
 
     const result = filterSelectableWorkflowNodeOutputs({
       outputs,
-      valueType: WorkflowIOValueTypeEnum.string,
+      valueType: WorkflowIOValueTypeEnum.arrayObject,
       catchError: false
     });
 
-    expect(result.map((output) => output.id)).toEqual(['text']);
+    expect(result.map((output) => output.id)).toEqual(['object']);
   });
 
   it('keeps error output only when source node can catch error', () => {
@@ -1263,12 +1278,12 @@ describe('workflowReferenceValueIsSelectable', () => {
     ).toBe(false);
   });
 
-  it('returns false when referenced output type is not selectable for current value type', () => {
+  it('returns false when referenced output type cannot be converted for current value type', () => {
     expect(
       workflowReferenceValueIsSelectable({
         value: ['source', 'count'],
         sourceNodes,
-        valueType: WorkflowIOValueTypeEnum.string
+        valueType: WorkflowIOValueTypeEnum.arrayString
       })
     ).toBe(false);
   });

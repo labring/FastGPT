@@ -22,7 +22,23 @@ import { getWorkflowGlobalVariables } from './variables';
 // region valueCompatibility Workflow value compatibility rules
 
 const workflowValueTypeCompatMap: Record<WorkflowIOValueTypeEnum, WorkflowIOValueTypeEnum[]> = {
-  [WorkflowIOValueTypeEnum.string]: [WorkflowIOValueTypeEnum.string],
+  // Runtime formats every non-null source value as a string when the target is string.
+  [WorkflowIOValueTypeEnum.string]: [
+    WorkflowIOValueTypeEnum.string,
+    WorkflowIOValueTypeEnum.number,
+    WorkflowIOValueTypeEnum.boolean,
+    WorkflowIOValueTypeEnum.object,
+    WorkflowIOValueTypeEnum.arrayString,
+    WorkflowIOValueTypeEnum.arrayNumber,
+    WorkflowIOValueTypeEnum.arrayBoolean,
+    WorkflowIOValueTypeEnum.arrayObject,
+    WorkflowIOValueTypeEnum.arrayAny,
+    WorkflowIOValueTypeEnum.chatHistory,
+    WorkflowIOValueTypeEnum.datasetQuote,
+    WorkflowIOValueTypeEnum.dynamic,
+    WorkflowIOValueTypeEnum.selectDataset,
+    WorkflowIOValueTypeEnum.selectApp
+  ],
   [WorkflowIOValueTypeEnum.number]: [WorkflowIOValueTypeEnum.number],
   [WorkflowIOValueTypeEnum.boolean]: [WorkflowIOValueTypeEnum.boolean],
   [WorkflowIOValueTypeEnum.object]: [WorkflowIOValueTypeEnum.object],

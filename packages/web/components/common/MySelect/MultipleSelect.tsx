@@ -140,6 +140,225 @@ export const resolveMultipleSelectItems = <T,>({
   });
 };
 
+type MultipleSelectMenuProps = {
+  triggerContent: React.ReactNode;
+  triggerProps: ButtonProps;
+  list: SelectProps<any>['list'];
+  formatValue: any[];
+  isAllSelected: boolean;
+  onclickItem: (val: any) => void;
+  onSelectAll: () => void;
+  setIsSelectAll?: React.Dispatch<React.SetStateAction<boolean>>;
+  ScrollData?: SelectProps<any>['ScrollData'];
+  canSearch: boolean;
+  searchValue: string;
+  setSearchValue: (val: string) => void;
+  searchPlaceholder?: string;
+  shouldFilterLocal: boolean;
+  virtualScroll: boolean;
+  virtualListHeight: number;
+  emptyText?: React.ReactNode;
+  menuBottomSlot?: React.ReactNode;
+  isLoading?: boolean;
+  onClose: () => void;
+};
+
+const MultipleSelectMenu = React.memo(function MultipleSelectMenu({
+  triggerContent,
+  triggerProps,
+  list,
+  formatValue,
+  isAllSelected,
+  onclickItem,
+  onSelectAll,
+  setIsSelectAll,
+  ScrollData,
+  canSearch,
+  searchValue,
+  setSearchValue,
+  searchPlaceholder,
+  shouldFilterLocal,
+  virtualScroll,
+  virtualListHeight,
+  emptyText,
+  menuBottomSlot,
+  isLoading,
+  onClose
+}: MultipleSelectMenuProps) {
+  const { t } = useTranslation();
+  const triggerOnClick = triggerProps.onClick;
+  const visibleList = useMemo(
+    () => (canSearch && shouldFilterLocal ? filterSelectOptionsBySearch(list, searchValue) : list),
+    [canSearch, list, searchValue, shouldFilterLocal]
+  );
+  const shouldUseVirtualList = virtualScroll && !ScrollData;
+  const {
+    containerRef: virtualListRef,
+    virtualDataList,
+    topPlaceholderHeight,
+    bottomPlaceholderHeight,
+    scrollToTop
+  } = useStaticVirtualList({
+    data: visibleList,
+    itemHeight: 40,
+    overscan: 6
+  });
+
+  useEffect(() => {
+    if (shouldUseVirtualList) scrollToTop();
+  }, [scrollToTop, searchValue, shouldUseVirtualList]);
+
+  const onMenuButtonClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      triggerOnClick?.(e);
+      if (!e.isPropagationStopped()) onClose();
+    },
+    [onClose, triggerOnClick]
+  );
+
+  const renderListItem = useCallback(
+    (item: (typeof list)[number], index: number, virtual = false) => {
+      const isSelected = isAllSelected || formatValue.includes(item.value);
+      return (
+        <MenuItem
+          key={index}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            onclickItem(item.value);
+          }}
+          whiteSpace={'pre-wrap'}
+          fontSize={'sm'}
+          gap={2}
+          {...menuItemStyles}
+          {...(virtual
+            ? {
+                h: '40px',
+                minH: '40px',
+                py: 0,
+                mb: 0,
+                _notLast: { mb: 0 }
+              }
+            : {})}
+          color={isSelected ? 'primary.600' : 'myGray.900'}
+        >
+          <Checkbox isChecked={isSelected} />
+          {item.icon && <MyAvatar src={item.icon} w={'1rem'} borderRadius={'0'} />}
+          <Box flex={'1 0 0'}>{item.label}</Box>
+        </MenuItem>
+      );
+    },
+    [formatValue, isAllSelected, onclickItem]
+  );
+
+  const ListRender = useMemo(() => {
+    if (shouldUseVirtualList) {
+      return <>{virtualDataList.map((item) => renderListItem(item.data, item.index, true))}</>;
+    }
+
+    return <>{visibleList.map((item, index) => renderListItem(item, index))}</>;
+  }, [renderListItem, shouldUseVirtualList, virtualDataList, visibleList]);
+
+  return (
+    <Menu
+      autoSelect={false}
+      isOpen
+      onClose={onClose}
+      strategy={'fixed'}
+      matchWidth
+      closeOnSelect={false}
+    >
+      <MenuButton
+        as={Flex}
+        {...triggerProps}
+        role={'button'}
+        tabIndex={0}
+        onClick={onMenuButtonClick}
+      >
+        {triggerContent}
+      </MenuButton>
+
+      <MenuList
+        className={triggerProps.className}
+        px={'6px'}
+        py={'6px'}
+        border={'1px solid #fff'}
+        boxShadow={
+          '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10);'
+        }
+        zIndex={99}
+        maxH={'40vh'}
+        overflowY={shouldUseVirtualList ? 'hidden' : 'auto'}
+        position={'relative'}
+      >
+        {canSearch && (
+          <Box mb={1}>
+            <FilterSearchInput
+              value={searchValue}
+              placeholder={searchPlaceholder ?? t('common:Search')}
+              onChange={setSearchValue}
+            />
+          </Box>
+        )}
+
+        {setIsSelectAll && (
+          <>
+            <MenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onSelectAll();
+              }}
+              whiteSpace={'pre-wrap'}
+              fontSize={'sm'}
+              gap={2}
+              mb={1}
+              {...menuItemStyles}
+              color={isAllSelected ? 'primary.600' : 'myGray.900'}
+            >
+              <Checkbox isChecked={isAllSelected} />
+              <Box flex={'1 0 0'}>{t('common:All')}</Box>
+            </MenuItem>
+
+            <MyDivider my={1} />
+          </>
+        )}
+
+        {ScrollData ? (
+          <ScrollData minH={20}>{ListRender}</ScrollData>
+        ) : visibleList.length === 0 && !isLoading ? (
+          <EmptyTip py={8} text={emptyText} />
+        ) : shouldUseVirtualList ? (
+          <Box
+            ref={virtualListRef}
+            h={`min(${Math.min(visibleList.length * 40, virtualListHeight)}px, calc(40vh - ${
+              canSearch ? 44 : 12
+            }px))`}
+            overflowY={'auto'}
+          >
+            {topPlaceholderHeight > 0 && <Box h={`${topPlaceholderHeight}px`} />}
+            {ListRender}
+            {bottomPlaceholderHeight > 0 && <Box h={`${bottomPlaceholderHeight}px`} />}
+          </Box>
+        ) : (
+          ListRender
+        )}
+
+        {menuBottomSlot && (
+          <>
+            <MyDivider my={1} />
+            <Box px={1} py={1}>
+              {menuBottomSlot}
+            </Box>
+          </>
+        )}
+
+        {isLoading && <MyLoading fixed={false} />}
+      </MenuList>
+    </Menu>
+  );
+});
+
 /**
  * 通用多选器：默认以单行 +N 展示选中项，也可完整换行展示。
  * 搜索位于展开菜单内；静态大列表可启用虚拟滚动，远程分页由调用方管理。
@@ -177,6 +396,7 @@ const MultipleSelect = <T = any,>({
   ...props
 }: SelectProps<T>) => {
   const tagsContainerRef = useRef<HTMLDivElement>(null);
+  const staticTriggerRef = useRef<HTMLDivElement>(null);
 
   const { t } = useTranslation();
   const { isOpen, onOpen: originalOnOpen, onClose } = useDisclosure();
@@ -191,6 +411,7 @@ const MultipleSelect = <T = any,>({
   const searchValue = inputValue ?? innerInputValue;
   const setSearchValue = setInputValue ?? setInnerInputValue;
   const shouldFilterLocal = filterLocal ?? setInputValue === undefined;
+  const isMenuOpen = isOpen && !isDisabled;
 
   const [visibleItems, setVisibleItems] = useState<SelectedItemType<T>[]>([]);
   const [overflowItems, setOverflowItems] = useState<SelectedItemType<T>[]>([]);
@@ -215,20 +436,19 @@ const MultipleSelect = <T = any,>({
     return list.every((item) => formatValue.includes(item.value));
   }, [formatValue, list]);
   const isAllSelected = !!isSelectAll || (canInferSelectAll && isFullSelected);
-  const openedMenuButtonStyle: Pick<ButtonProps, 'bg' | 'borderColor' | 'boxShadow'> =
-    isOpen && !isDisabled
-      ? {
-          boxShadow: shadowLight,
-          borderColor: 'primary.600 !important',
-          bg: 'white'
-        }
-      : {};
+  const openedMenuButtonStyle: Pick<ButtonProps, 'bg' | 'borderColor' | 'boxShadow'> = isMenuOpen
+    ? {
+        boxShadow: shadowLight,
+        borderColor: 'primary.600 !important',
+        bg: 'white'
+      }
+    : {};
 
   useEffect(() => {
-    if (!isOpen) {
+    if (!isMenuOpen) {
       setSearchValue('');
     }
-  }, [isOpen, setSearchValue]);
+  }, [isMenuOpen, setSearchValue]);
 
   const onclickItem = useCallback(
     (val: T) => {
@@ -339,313 +559,235 @@ const MultipleSelect = <T = any,>({
     setOverflowItems(selectedItems.slice(visibleCount));
   }, [closeable, formLabel, itemWrap, selectedItems, size, tagWidth]);
 
-  // 动态监听容器宽度变化并重新计算布局
+  // 动态监听容器宽度变化并重新计算
   useEffect(() => {
-    if (itemWrap || !tagsContainerRef.current) return;
+    if (itemWrap || selectedItems.length <= 1 || !tagsContainerRef.current) return;
 
-    // 创建 ResizeObserver 监听容器宽度变化
     const resizeObserver = new ResizeObserver(() => {
-      // 当容器宽度发生变化时，触发重新计算
       requestAnimationFrame(() => {
         calculateLayout();
       });
     });
 
-    // 开始监听容器
     resizeObserver.observe(tagsContainerRef.current);
 
-    // 初始计算
     requestAnimationFrame(() => {
       calculateLayout();
     });
 
-    // 清理监听器
     return () => {
       resizeObserver.disconnect();
     };
-  }, [calculateLayout, itemWrap]);
+  }, [calculateLayout, itemWrap, selectedItems.length]);
 
-  // 当选中项目、样式等发生变化时重新计算
   useEffect(() => {
+    if (itemWrap || selectedItems.length <= 1) return;
+
     requestAnimationFrame(() => {
       calculateLayout();
     });
-  }, [calculateLayout]);
+  }, [calculateLayout, itemWrap, selectedItems.length]);
 
-  const visibleList = useMemo(
-    () => (canSearch && shouldFilterLocal ? filterSelectOptionsBySearch(list, searchValue) : list),
-    [canSearch, list, searchValue, shouldFilterLocal]
-  );
-  const shouldUseVirtualList = virtualScroll && !ScrollData;
-  const {
-    containerRef: virtualListRef,
-    virtualDataList,
-    topPlaceholderHeight,
-    bottomPlaceholderHeight,
-    scrollToTop
-  } = useStaticVirtualList({
-    data: visibleList,
-    itemHeight: 40,
-    overscan: 6
-  });
+  const customOnClick = props.onClick;
+  const customOnKeyDown = props.onKeyDown;
+  const renderedVisibleItems =
+    selectedItems.length <= 1
+      ? selectedItems
+      : visibleItems.length > 0
+        ? visibleItems
+        : selectedItems;
+  const onCloseSelect = useCallback(() => {
+    onClose();
+    window.requestAnimationFrame(() => {
+      staticTriggerRef.current?.focus();
+    });
+  }, [onClose]);
+  const onStaticTriggerClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (isDisabled) return;
 
-  useEffect(() => {
-    if (shouldUseVirtualList) scrollToTop();
-  }, [scrollToTop, searchValue, shouldUseVirtualList]);
-
-  const renderListItem = useCallback(
-    (item: (typeof list)[number], index: number, virtual = false) => {
-      const isSelected = isAllSelected || formatValue.includes(item.value);
-      return (
-        <MenuItem
-          key={index}
-          onClick={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            onclickItem(item.value);
-          }}
-          whiteSpace={'pre-wrap'}
-          fontSize={'sm'}
-          gap={2}
-          {...menuItemStyles}
-          {...(virtual
-            ? {
-                h: '40px',
-                minH: '40px',
-                py: 0,
-                mb: 0,
-                _notLast: { mb: 0 }
-              }
-            : {})}
-          color={isSelected ? 'primary.600' : 'myGray.900'}
-        >
-          <Checkbox isChecked={isSelected} />
-          {item.icon && <MyAvatar src={item.icon} w={'1rem'} borderRadius={'0'} />}
-          <Box flex={'1 0 0'}>{item.label}</Box>
-        </MenuItem>
-      );
+      customOnClick?.(e as unknown as React.MouseEvent<HTMLButtonElement>);
+      if (!e.isPropagationStopped()) {
+        onOpen();
+      }
     },
-    [formatValue, isAllSelected, onclickItem]
+    [customOnClick, isDisabled, onOpen]
+  );
+  const onStaticTriggerKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (isDisabled) return;
+
+      customOnKeyDown?.(e as unknown as React.KeyboardEvent<HTMLButtonElement>);
+      if (e.isPropagationStopped() || (e.key !== 'Enter' && e.key !== ' ')) {
+        return;
+      }
+
+      e.preventDefault();
+      onOpen();
+    },
+    [customOnKeyDown, isDisabled, onOpen]
   );
 
-  const ListRender = useMemo(() => {
-    if (shouldUseVirtualList) {
-      return <>{virtualDataList.map((item) => renderListItem(item.data, item.index, true))}</>;
-    }
+  const triggerProps: ButtonProps = {
+    px: 3,
+    alignItems: 'center',
+    ...selectSizeStyleMap[size],
+    border: '1px solid',
+    borderColor: 'borderColor.low',
+    userSelect: 'none',
+    cursor: isDisabled ? 'not-allowed' : 'pointer',
+    _active: {
+      transform: 'none'
+    },
+    _hover: {
+      borderColor: isDisabled ? 'myGray.200' : 'primary.300'
+    },
+    opacity: isDisabled ? 0.6 : 1,
+    ...props,
+    minH: selectSizeStyleMap[size].h,
+    h: itemWrap ? 'auto' : selectSizeStyleMap[size].h,
+    ...openedMenuButtonStyle
+  };
 
-    return <>{visibleList.map((item, index) => renderListItem(item, index))}</>;
-  }, [renderListItem, shouldUseVirtualList, virtualDataList, visibleList]);
+  const triggerContent = (
+    <Flex alignItems={'center'} w={'100%'} minH={'100%'} py={1.5}>
+      {formLabel && (
+        <Flex alignItems={'center'}>
+          <Box color={'myGray.600'} fontSize={formLabelFontSize} whiteSpace={'nowrap'}>
+            {formLabel}
+          </Box>
+          <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
+        </Flex>
+      )}
+      {formatValue.length === 0 && placeholder ? (
+        <Box color={'myGray.500'} fontSize={formLabelFontSize} flex={1}>
+          {placeholder}
+        </Box>
+      ) : (
+        <Flex
+          ref={tagsContainerRef}
+          flex={'1 0 0'}
+          gap={1}
+          flexWrap={itemWrap ? 'wrap' : 'nowrap'}
+          overflow={'hidden'}
+          alignItems={'center'}
+        >
+          {isAllSelected ? (
+            <Box fontSize={formLabelFontSize} color={'myGray.900'}>
+              {t('common:All')}
+            </Box>
+          ) : (
+            <>
+              {(itemWrap ? selectedItems : renderedVisibleItems).map((item, i) => {
+                const showCloseButton = closeable || item.isInvalid;
+
+                return (
+                  <MyTag
+                    className="tag-icon"
+                    key={i}
+                    bg={'primary.100'}
+                    color={'primary.700'}
+                    type={'fill'}
+                    borderRadius={'sm'}
+                    {...selectedTagSizeStyle}
+                    flexShrink={0}
+                    {...selectedTagStyle}
+                    pr={showCloseButton ? 1 : undefined}
+                    {...tagStyle}
+                    {...(item.isInvalid
+                      ? {
+                          bg: 'red.50',
+                          borderColor: 'red.200',
+                          color: 'red.600'
+                        }
+                      : {})}
+                  >
+                    {item.label}
+                    {showCloseButton && (
+                      <MyIconButton
+                        icon={'common/closeLight'}
+                        tip={t('common:Remove')}
+                        ml={1}
+                        p={1}
+                        size={'0.8rem'}
+                        position={'relative'}
+                        zIndex={2}
+                        pointerEvents={'auto'}
+                        hoverColor={'red.500'}
+                        hoverBg={'red.50'}
+                        onPointerDown={(e) => {
+                          // 在外层触发器处理 click 前完成删除，并阻止其抢占事件。
+                          e.stopPropagation();
+                          e.preventDefault();
+                          onclickItem(item.value);
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                        }}
+                      />
+                    )}
+                  </MyTag>
+                );
+              })}
+              {!itemWrap && selectedItems.length > 1 && overflowItems.length > 0 && (
+                <Box
+                  {...selectedTagSizeStyle}
+                  display={'flex'}
+                  alignItems={'center'}
+                  flexShrink={0}
+                  borderRadius={'lg'}
+                  bg={'myGray.100'}
+                >
+                  +{overflowItems.length}
+                </Box>
+              )}
+            </>
+          )}
+        </Flex>
+      )}
+      <MyIcon name={'core/chat/chevronDown'} color={'myGray.600'} w={4} h={4} />
+    </Flex>
+  );
 
   return (
     <Box h={'100%'} w={'100%'}>
-      <Menu
-        autoSelect={false}
-        isOpen={isOpen && !isDisabled}
-        onOpen={isDisabled ? undefined : onOpen}
-        onClose={onClose}
-        strategy={'fixed'}
-        matchWidth
-        closeOnSelect={false}
-      >
-        <MenuButton
-          as={Flex}
-          px={3}
-          alignItems={'center'}
-          {...selectSizeStyleMap[size]}
-          border={'1px solid'}
-          borderColor={'borderColor.low'}
-          userSelect={'none'}
-          cursor={isDisabled ? 'not-allowed' : 'pointer'}
-          _active={{
-            transform: 'none'
-          }}
-          _hover={{
-            borderColor: isDisabled ? 'myGray.200' : 'primary.300'
-          }}
-          opacity={isDisabled ? 0.6 : 1}
-          {...props}
-          minH={selectSizeStyleMap[size].h}
-          h={itemWrap ? 'auto' : selectSizeStyleMap[size].h}
-          {...openedMenuButtonStyle}
+      {isMenuOpen ? (
+        <MultipleSelectMenu
+          triggerContent={triggerContent}
+          triggerProps={triggerProps}
+          list={list}
+          formatValue={formatValue}
+          isAllSelected={isAllSelected}
+          onclickItem={onclickItem}
+          onSelectAll={onSelectAll}
+          setIsSelectAll={setIsSelectAll}
+          ScrollData={ScrollData}
+          canSearch={canSearch}
+          searchValue={searchValue}
+          setSearchValue={setSearchValue}
+          searchPlaceholder={searchPlaceholder}
+          shouldFilterLocal={shouldFilterLocal}
+          virtualScroll={virtualScroll}
+          virtualListHeight={virtualListHeight}
+          emptyText={emptyText}
+          menuBottomSlot={menuBottomSlot}
+          isLoading={isLoading}
+          onClose={onCloseSelect}
+        />
+      ) : (
+        <Flex
+          ref={staticTriggerRef}
+          {...triggerProps}
+          role={'button'}
+          tabIndex={isDisabled ? -1 : 0}
+          aria-disabled={isDisabled || undefined}
+          onClick={onStaticTriggerClick}
+          onKeyDown={onStaticTriggerKeyDown}
         >
-          <Flex alignItems={'center'} w={'100%'} minH={'100%'} py={1.5}>
-            {formLabel && (
-              <Flex alignItems={'center'}>
-                <Box color={'myGray.600'} fontSize={formLabelFontSize} whiteSpace={'nowrap'}>
-                  {formLabel}
-                </Box>
-                <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
-              </Flex>
-            )}
-            {formatValue.length === 0 && placeholder ? (
-              <Box color={'myGray.500'} fontSize={formLabelFontSize} flex={1}>
-                {placeholder}
-              </Box>
-            ) : (
-              <Flex
-                ref={tagsContainerRef}
-                flex={'1 0 0'}
-                gap={1}
-                flexWrap={itemWrap ? 'wrap' : 'nowrap'}
-                overflow={'hidden'}
-                alignItems={'center'}
-              >
-                {isAllSelected ? (
-                  <Box fontSize={formLabelFontSize} color={'myGray.900'}>
-                    {t('common:All')}
-                  </Box>
-                ) : (
-                  <>
-                    {(itemWrap ? selectedItems : visibleItems).map((item, i) => {
-                      const showCloseButton = closeable || item.isInvalid;
-
-                      return (
-                        <MyTag
-                          className="tag-icon"
-                          key={i}
-                          bg={'primary.100'}
-                          color={'primary.700'}
-                          type={'fill'}
-                          borderRadius={'sm'}
-                          {...selectedTagSizeStyle}
-                          flexShrink={0}
-                          {...selectedTagStyle}
-                          pr={showCloseButton ? 1 : undefined}
-                          {...tagStyle}
-                          {...(item.isInvalid
-                            ? {
-                                bg: 'red.50',
-                                borderColor: 'red.200',
-                                color: 'red.600'
-                              }
-                            : {})}
-                        >
-                          {item.label}
-                          {showCloseButton && (
-                            <MyIconButton
-                              icon={'common/closeLight'}
-                              tip={t('common:Remove')}
-                              ml={1}
-                              p={1}
-                              size={'0.8rem'}
-                              position={'relative'}
-                              zIndex={2}
-                              pointerEvents={'auto'}
-                              hoverColor={'red.500'}
-                              hoverBg={'red.50'}
-                              onPointerDown={(e) => {
-                                // 在外层 MenuButton 处理 click 前完成删除，并阻止其抢占事件。
-                                e.stopPropagation();
-                                e.preventDefault();
-                                onclickItem(item.value);
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                              }}
-                            />
-                          )}
-                        </MyTag>
-                      );
-                    })}
-                    {!itemWrap && overflowItems.length > 0 && (
-                      <Box
-                        {...selectedTagSizeStyle}
-                        display={'flex'}
-                        alignItems={'center'}
-                        flexShrink={0}
-                        borderRadius={'lg'}
-                        bg={'myGray.100'}
-                      >
-                        +{overflowItems.length}
-                      </Box>
-                    )}
-                  </>
-                )}
-              </Flex>
-            )}
-            <MyIcon name={'core/chat/chevronDown'} color={'myGray.600'} w={4} h={4} />
-          </Flex>
-        </MenuButton>
-
-        <MenuList
-          className={props.className}
-          px={'6px'}
-          py={'6px'}
-          border={'1px solid #fff'}
-          boxShadow={
-            '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10);'
-          }
-          zIndex={99}
-          maxH={'40vh'}
-          overflowY={shouldUseVirtualList ? 'hidden' : 'auto'}
-          position={'relative'}
-        >
-          {canSearch && (
-            <Box mb={1}>
-              <FilterSearchInput
-                value={searchValue}
-                placeholder={searchPlaceholder ?? t('common:Search')}
-                onChange={setSearchValue}
-              />
-            </Box>
-          )}
-
-          {setIsSelectAll && (
-            <>
-              <MenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  onSelectAll();
-                }}
-                whiteSpace={'pre-wrap'}
-                fontSize={'sm'}
-                gap={2}
-                mb={1}
-                {...menuItemStyles}
-                color={isAllSelected ? 'primary.600' : 'myGray.900'}
-              >
-                <Checkbox isChecked={isAllSelected} />
-                <Box flex={'1 0 0'}>{t('common:All')}</Box>
-              </MenuItem>
-
-              <MyDivider my={1} />
-            </>
-          )}
-
-          {ScrollData ? (
-            <ScrollData minH={20}>{ListRender}</ScrollData>
-          ) : visibleList.length === 0 && !isLoading ? (
-            <EmptyTip py={8} text={emptyText} />
-          ) : shouldUseVirtualList ? (
-            <Box
-              ref={virtualListRef}
-              h={`min(${Math.min(visibleList.length * 40, virtualListHeight)}px, calc(40vh - ${
-                canSearch ? 44 : 12
-              }px))`}
-              overflowY={'auto'}
-            >
-              {topPlaceholderHeight > 0 && <Box h={`${topPlaceholderHeight}px`} />}
-              {ListRender}
-              {bottomPlaceholderHeight > 0 && <Box h={`${bottomPlaceholderHeight}px`} />}
-            </Box>
-          ) : (
-            ListRender
-          )}
-
-          {menuBottomSlot && (
-            <>
-              <MyDivider my={1} />
-              <Box px={1} py={1}>
-                {menuBottomSlot}
-              </Box>
-            </>
-          )}
-
-          {isLoading && <MyLoading fixed={false} />}
-        </MenuList>
-      </Menu>
+          {triggerContent}
+        </Flex>
+      )}
     </Box>
   );
 };

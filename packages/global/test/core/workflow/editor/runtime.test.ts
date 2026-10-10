@@ -4,7 +4,11 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { createWorkflowEditor } from '@fastgpt/global/core/workflow/editor/runtime/runtime';
 import {
   hydrateWorkflowEditor,
@@ -380,6 +384,43 @@ describe('workflow editor runtime modules', () => {
     expect(editor.getNode('answer')?.issues.map((issue) => issue.code)).toEqual([
       'invalid_reference'
     ]);
+  });
+
+  it('accepts array string references in string inputs after runtime formatting', () => {
+    const editor = createRuntime();
+    const start = editor.getNode('start');
+    expect(start).toBeDefined();
+
+    expect(
+      editor.dispatch({
+        type: 'replaceNode',
+        nodeId: 'start',
+        node: {
+          ...start,
+          outputs: [
+            ...(start?.outputs ?? []),
+            {
+              id: NodeOutputKeyEnum.userFiles,
+              key: NodeOutputKeyEnum.userFiles,
+              type: FlowNodeOutputTypeEnum.source,
+              valueType: WorkflowIOValueTypeEnum.arrayString
+            }
+          ]
+        } as never
+      }).ok
+    ).toBe(true);
+
+    const query = { nodeId: 'answer', fieldKey: NodeInputKeyEnum.answerText };
+    editor.dispatch({
+      type: 'updateField',
+      ...query,
+      value: [['start', NodeOutputKeyEnum.userFiles]]
+    });
+
+    expect(editor.getField(query)?.references).toEqual([
+      expect.objectContaining({ code: 'valid', sourceType: WorkflowIOValueTypeEnum.arrayString })
+    ]);
+    expect(editor.getNode('answer')?.issues).toEqual([]);
   });
 
   it('keeps malformed reference arrays consistent between field status and issue rules', () => {
