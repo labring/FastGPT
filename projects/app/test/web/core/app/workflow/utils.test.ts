@@ -330,6 +330,74 @@ describe('checkWorkflowNodeIssues', () => {
     );
   });
 
+  it('rejects invalid dynamic user-select option references', () => {
+    const userSelectNode = makeNode('user-select', FlowNodeTypeEnum.userSelect, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userSelectOptions,
+          label: 'Options',
+          valueType: WorkflowIOValueTypeEnum.any,
+          renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          value: [['start', 'deleted-output']]
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, userSelectNode],
+      edges: [{ id: 'e1', source: 'start', target: 'user-select', type: EDGE_TYPE }]
+    });
+
+    expect(result['user-select']?.map((issue) => issue.code) ?? []).toContain('invalid_reference');
+  });
+
+  it('rejects invalid global-variable dynamic options in user select and form input', () => {
+    const userSelectNode = makeNode('user-select', FlowNodeTypeEnum.userSelect, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userSelectOptions,
+          label: 'Options',
+          valueType: WorkflowIOValueTypeEnum.any,
+          renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          value: [[VARIABLE_NODE_ID, 'number-options']]
+        }
+      ]
+    });
+    const formNode = makeNode('form', FlowNodeTypeEnum.formInput, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userInputForms,
+          value: [
+            {
+              key: 'role',
+              label: 'Role',
+              listInputType: FlowNodeInputTypeEnum.reference,
+              listReference: [[VARIABLE_NODE_ID, 'deleted-options']]
+            }
+          ]
+        }
+      ]
+    });
+
+    const result = checkWorkflowBeforeRunOrPublish({
+      nodes: [startNode, userSelectNode, formNode],
+      edges: [
+        { id: 'e1', source: 'start', target: 'user-select', type: EDGE_TYPE },
+        { id: 'e2', source: 'start', target: 'form', type: EDGE_TYPE }
+      ],
+      chatConfig: {
+        variables: [{ key: 'number-options', valueType: WorkflowIOValueTypeEnum.arrayNumber }]
+      } as any
+    });
+
+    expect(result.issueMap['user-select']?.map((issue) => issue.code) ?? []).toContain(
+      'invalid_reference'
+    );
+    expect(result.issueMap.form?.map((issue) => issue.code) ?? []).toContain('invalid_reference');
+  });
+
   it('reports nodes without upstream connections', () => {
     const node = makeNode('orphan', FlowNodeTypeEnum.answerNode);
 

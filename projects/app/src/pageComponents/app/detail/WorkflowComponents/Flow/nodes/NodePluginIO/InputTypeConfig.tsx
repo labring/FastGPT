@@ -51,6 +51,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
 import { FileTypeSelectorPanel } from '@fastgpt/web/components/core/app/FileTypeSelector';
+import { ReferSelector, useReference } from '../render/RenderInput/templates/Reference';
 
 const inputFormGridTemplateColumns = 'max-content minmax(0, 1fr)';
 
@@ -61,6 +62,7 @@ const InputTypeConfig = ({
   type,
   inputType,
   defaultValueType,
+  nodeId,
   onSubmitSuccess,
   onSubmitError
 }: {
@@ -73,6 +75,9 @@ const InputTypeConfig = ({
 
   // Plugin-specific fields
   defaultValueType?: WorkflowIOValueTypeEnum;
+
+  // FormInput-specific fields
+  nodeId?: string;
 
   // Update methods
   onSubmitSuccess: (data: any, action: 'confirm' | 'continue') => void;
@@ -154,6 +159,11 @@ const InputTypeConfig = ({
     useMultipleSelect(selectValueTypeList, false);
 
   const listValue = watch('list') ?? [];
+  const listInputType = watch('listInputType') as
+    | FlowNodeInputTypeEnum.reference
+    | FlowNodeInputTypeEnum.custom
+    | undefined;
+  const listReference = watch('listReference');
   const {
     fields: selectEnums,
     append: appendEnums,
@@ -169,6 +179,17 @@ const InputTypeConfig = ({
     inputType === FlowNodeInputTypeEnum.multipleSelect ||
     inputType === VariableInputEnum.multipleSelect;
   const isOptionInput = isSelectInput || isMultipleSelectInput;
+  const isFormInputReferenceOptions =
+    type === 'formInput' && isOptionInput && listInputType === FlowNodeInputTypeEnum.reference;
+  const { referenceList } = useReference({
+    nodeId: nodeId ?? '',
+    allowedValueTypes: [
+      WorkflowIOValueTypeEnum.string,
+      WorkflowIOValueTypeEnum.arrayString,
+      WorkflowIOValueTypeEnum.arrayAny,
+      WorkflowIOValueTypeEnum.any
+    ]
+  });
   const optionFields = (listValue.length ? listValue : selectEnums) as {
     id?: string;
     label?: string;
@@ -297,6 +318,10 @@ const InputTypeConfig = ({
           (item: { label?: string; value?: string }) => !!item?.label
         );
         commonData.list = cleanList;
+        if (type === 'formInput') {
+          commonData.listInputType = data.listInputType;
+          commonData.listReference = data.listReference;
+        }
         const validValues = new Set(cleanList.map((item: { value: string }) => item.value));
         if (isMultipleSelectInput) {
           commonData.defaultValue = Array.isArray(commonData.defaultValue)
@@ -304,6 +329,9 @@ const InputTypeConfig = ({
             : commonData.defaultValue;
         } else if (commonData.defaultValue && !validValues.has(commonData.defaultValue)) {
           commonData.defaultValue = '';
+        }
+        if (type === 'formInput' && data.listInputType === FlowNodeInputTypeEnum.reference) {
+          commonData.defaultValue = isMultipleSelectInput ? [] : '';
         }
       }
 
@@ -576,7 +604,7 @@ const InputTypeConfig = ({
           </>
         )}
 
-        {showDefaultValue && (
+        {showDefaultValue && !isFormInputReferenceOptions && (
           <Grid display={'contents'}>
             <FormLabel whiteSpace={'nowrap'} fontWeight={'medium'}>
               {t('common:core.module.Default Value')}
@@ -818,128 +846,182 @@ const InputTypeConfig = ({
 
         {isOptionInput && (
           <Stack gridColumn={'1 / -1'} gap={4}>
-            <DndDrag<{ id: string; label: string; value: string }>
-              onDragEndCb={(list) => {
-                removeEnums();
-                list.forEach((item) =>
-                  appendEnums({ label: item.label || item.value, value: item.value || item.label })
-                );
+            {type === 'formInput' && (
+              <Grid
+                gridTemplateColumns={inputFormGridTemplateColumns}
+                gap={4}
+                alignItems={'center'}
+              >
+                <FormLabel whiteSpace={'nowrap'} fontWeight={'medium'}>
+                  {t('workflow:list_options')}
+                </FormLabel>
+                <MySelect<FlowNodeInputTypeEnum.reference | FlowNodeInputTypeEnum.custom>
+                  list={[
+                    {
+                      label: t('workflow:list_options_mode_reference'),
+                      value: FlowNodeInputTypeEnum.reference
+                    },
+                    {
+                      label: t('workflow:list_options_mode_manual'),
+                      value: FlowNodeInputTypeEnum.custom
+                    }
+                  ]}
+                  value={listInputType ?? FlowNodeInputTypeEnum.custom}
+                  onChange={(nextType) => {
+                    setValue('listInputType', nextType);
+                    setValue('listReference', undefined);
+                    setValue('defaultValue', isMultipleSelectInput ? [] : '');
+                  }}
+                />
+              </Grid>
+            )}
+            {isFormInputReferenceOptions && (
+              <Grid
+                gridTemplateColumns={inputFormGridTemplateColumns}
+                gap={4}
+                alignItems={'center'}
+              >
+                <FormLabel whiteSpace={'nowrap'} fontWeight={'medium'}>
+                  {t('workflow:list_options_variable')}
+                </FormLabel>
+                <ReferSelector
+                  isArray={true}
+                  list={referenceList}
+                  value={listReference}
+                  onSelect={(value) => setValue('listReference', value)}
+                  clearInvalid
+                />
+              </Grid>
+            )}
+            {!isFormInputReferenceOptions && (
+              <>
+                <DndDrag<{ id: string; label: string; value: string }>
+                  onDragEndCb={(list) => {
+                    removeEnums();
+                    list.forEach((item) =>
+                      appendEnums({
+                        label: item.label || item.value,
+                        value: item.value || item.label
+                      })
+                    );
 
-                // 防止最后一个元素被focus
-                setTimeout(() => {
-                  if (document.activeElement instanceof HTMLElement) {
-                    document.activeElement.blur();
-                  }
-                }, 0);
-              }}
-              dataList={optionDragList}
-              renderClone={(provided, snapshot, rubric) => {
-                return (
-                  <Box
-                    bg={'myGray.50'}
-                    border={'1px solid'}
-                    borderColor={'myGray.200'}
-                    p={2}
-                    borderRadius="md"
-                    boxShadow="md"
-                    {...provided.draggableProps}
-                    {...provided.dragHandleProps}
-                  >
-                    {optionDragList[rubric.source.index]?.value}
-                  </Box>
-                );
-              }}
-            >
-              {({ provided }) => (
-                <Box
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
-                  display={'flex'}
-                  flexDirection={'column'}
-                  gap={4}
+                    // 防止最后一个元素被focus
+                    setTimeout(() => {
+                      if (document.activeElement instanceof HTMLElement) {
+                        document.activeElement.blur();
+                      }
+                    }, 0);
+                  }}
+                  dataList={optionDragList}
+                  renderClone={(provided, snapshot, rubric) => {
+                    return (
+                      <Box
+                        bg={'myGray.50'}
+                        border={'1px solid'}
+                        borderColor={'myGray.200'}
+                        p={2}
+                        borderRadius="md"
+                        boxShadow="md"
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps}
+                      >
+                        {optionDragList[rubric.source.index]?.value}
+                      </Box>
+                    );
+                  }}
                 >
-                  {optionFields.map((item, i) => (
-                    <Draggable key={i} draggableId={i.toString()} index={i}>
-                      {(provided, snapshot) => (
-                        <Box
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          style={{
-                            ...provided.draggableProps.style,
-                            opacity: snapshot.isDragging ? 0.8 : 1
-                          }}
-                        >
-                          <Grid
-                            gridTemplateColumns={'max-content minmax(0, 1fr) auto'}
-                            gap={4}
-                            alignItems={'center'}
-                            position={'relative'}
-                            transform={snapshot.isDragging ? `scale(0.5)` : ''}
-                            transformOrigin={'top left'}
-                          >
-                            <FormLabel whiteSpace={'nowrap'} fontWeight={'medium'}>
-                              {`${t('common:core.module.variable.variable options')} ${i + 1}`}
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                fontSize={'12px'}
-                                bg={'myGray.50'}
-                                placeholder={`${t('common:core.module.variable.variable options')} ${i + 1}`}
-                                {...register(`list.${i}.label`, {
-                                  required: true,
-                                  onChange: (e: any) => {
-                                    setValue(`list.${i}.value`, e.target.value);
-                                  }
-                                })}
-                              />
-                            </FormControl>
-                            {selectEnums.length > 1 && (
-                              <Flex>
-                                <MyIcon
-                                  ml={3}
-                                  name={'delete'}
-                                  w={'16px'}
-                                  cursor={'pointer'}
-                                  p={2}
-                                  borderRadius={'md'}
-                                  _hover={{ bg: 'red.100' }}
-                                  onClick={() => handleRemoveEnum(i)}
-                                />
-                                <Box {...provided.dragHandleProps}>
-                                  <MyIcon
-                                    name={'drag'}
-                                    cursor={'pointer'}
-                                    p={2}
-                                    borderRadius={'md'}
-                                    _hover={{ color: 'primary.600' }}
-                                    w={'16px'}
+                  {({ provided }) => (
+                    <Box
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                      display={'flex'}
+                      flexDirection={'column'}
+                      gap={4}
+                    >
+                      {optionFields.map((item, i) => (
+                        <Draggable key={i} draggableId={i.toString()} index={i}>
+                          {(provided, snapshot) => (
+                            <Box
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              style={{
+                                ...provided.draggableProps.style,
+                                opacity: snapshot.isDragging ? 0.8 : 1
+                              }}
+                            >
+                              <Grid
+                                gridTemplateColumns={'max-content minmax(0, 1fr) auto'}
+                                gap={4}
+                                alignItems={'center'}
+                                position={'relative'}
+                                transform={snapshot.isDragging ? `scale(0.5)` : ''}
+                                transformOrigin={'top left'}
+                              >
+                                <FormLabel whiteSpace={'nowrap'} fontWeight={'medium'}>
+                                  {`${t('common:core.module.variable.variable options')} ${i + 1}`}
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    fontSize={'12px'}
+                                    bg={'myGray.50'}
+                                    placeholder={`${t('common:core.module.variable.variable options')} ${i + 1}`}
+                                    {...register(`list.${i}.label`, {
+                                      required: true,
+                                      onChange: (e: any) => {
+                                        setValue(`list.${i}.value`, e.target.value);
+                                      }
+                                    })}
                                   />
-                                </Box>
-                              </Flex>
-                            )}
-                          </Grid>
-                        </Box>
-                      )}
-                    </Draggable>
-                  ))}
-                </Box>
-              )}
-            </DndDrag>
-            <Button
-              variant={'whiteBase'}
-              leftIcon={<MyIcon name={'common/addLight'} w={'16px'} />}
-              onClick={() => {
-                if (isOptionLimitReached) return;
-                appendEnums({ label: '', value: '' });
-              }}
-              isDisabled={isOptionLimitReached}
-              fontWeight={'medium'}
-              fontSize={'12px'}
-              w={'24'}
-              py={2}
-            >
-              {t('common:core.module.variable add option')}
-            </Button>
+                                </FormControl>
+                                {selectEnums.length > 1 && (
+                                  <Flex>
+                                    <MyIcon
+                                      ml={3}
+                                      name={'delete'}
+                                      w={'16px'}
+                                      cursor={'pointer'}
+                                      p={2}
+                                      borderRadius={'md'}
+                                      _hover={{ bg: 'red.100' }}
+                                      onClick={() => handleRemoveEnum(i)}
+                                    />
+                                    <Box {...provided.dragHandleProps}>
+                                      <MyIcon
+                                        name={'drag'}
+                                        cursor={'pointer'}
+                                        p={2}
+                                        borderRadius={'md'}
+                                        _hover={{ color: 'primary.600' }}
+                                        w={'16px'}
+                                      />
+                                    </Box>
+                                  </Flex>
+                                )}
+                              </Grid>
+                            </Box>
+                          )}
+                        </Draggable>
+                      ))}
+                    </Box>
+                  )}
+                </DndDrag>
+                <Button
+                  variant={'whiteBase'}
+                  leftIcon={<MyIcon name={'common/addLight'} w={'16px'} />}
+                  onClick={() => {
+                    if (isOptionLimitReached) return;
+                    appendEnums({ label: '', value: '' });
+                  }}
+                  isDisabled={isOptionLimitReached}
+                  fontWeight={'medium'}
+                  fontSize={'12px'}
+                  w={'24'}
+                  py={2}
+                >
+                  {t('common:core.module.variable add option')}
+                </Button>
+              </>
+            )}
           </Stack>
         )}
         {(inputType === FlowNodeInputTypeEnum.fileSelect ||
