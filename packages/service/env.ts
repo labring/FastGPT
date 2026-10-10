@@ -11,7 +11,8 @@ import {
   getAgentSandboxMissingRequiredEnvKeys,
   getRuntimeEnv,
   isAgentSandboxProvider,
-  validateS3Env
+  validateS3Env,
+  validateAgentUsersEnv
 } from './env.util';
 import {
   LogLevelSchema,
@@ -497,14 +498,7 @@ if (serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY > serviceEnv.WORKFLOW_MAX_LOOP_
 }
 
 if (!isPhaseProductionBuild) {
-  const agentUsernames = serviceEnv.AGENT_USERS?.split(',')
-    .map((username) => username.trim())
-    .filter(Boolean);
-  if (agentUsernames?.length && !serviceEnv.DEFAULT_AGENT_PSW) {
-    throw new Error(
-      'Invalid environment configuration: DEFAULT_AGENT_PSW is required when AGENT_USERS is configured.'
-    );
-  }
+  validateAgentUsersEnv(serviceEnv);
 
   validateS3Env(serviceEnv);
 

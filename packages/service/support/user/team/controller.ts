@@ -212,9 +212,13 @@ export async function createDefaultTeam({
   session: ClientSession;
 }) {
   // auth default team
-  const tmb = await MongoTeamMember.findOne({
-    userId: new Types.ObjectId(userId)
-  });
+  const tmb = await MongoTeamMember.findOne(
+    {
+      userId: new Types.ObjectId(userId)
+    },
+    undefined,
+    { session }
+  );
 
   if (!tmb) {
     // create team
@@ -230,7 +234,7 @@ export async function createDefaultTeam({
       { session }
     );
     // create team member
-    const [tmb] = await MongoTeamMember.create(
+    const [newMember] = await MongoTeamMember.create(
       [
         {
           teamId: insertedId,
@@ -245,12 +249,13 @@ export async function createDefaultTeam({
       ],
       { session }
     );
-    await createTeamDefaultGroup({ teamId: tmb.teamId, avatar, session });
-    await createRootOrg({ teamId: tmb.teamId, session });
-    logger.info('Default team created', { userId, teamId: tmb.teamId, tmbId: tmb._id });
-    return tmb;
+    await createTeamDefaultGroup({ teamId: newMember.teamId, avatar, session });
+    await createRootOrg({ teamId: newMember.teamId, session });
+    logger.info('Default team created', { userId, teamId: newMember.teamId, tmbId: newMember._id });
+    return newMember;
   } else {
     logger.info('Default team exists', { userId });
+    return tmb;
   }
 }
 

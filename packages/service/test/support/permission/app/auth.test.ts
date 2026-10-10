@@ -11,12 +11,12 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { describe, expect, it, vi } from 'vitest';
 
-const { mockFindOne, mockGetTmbInfoByTmbId, mockGetTmbPermission, mockGetAgentUserTmbIds } =
+const { mockFindOne, mockGetTmbInfoByTmbId, mockGetTmbPermission, mockCheckIsAgentUser } =
   vi.hoisted(() => ({
     mockFindOne: vi.fn(),
     mockGetTmbInfoByTmbId: vi.fn(),
     mockGetTmbPermission: vi.fn(),
-    mockGetAgentUserTmbIds: vi.fn()
+    mockCheckIsAgentUser: vi.fn()
   }));
 
 vi.mock('@fastgpt/service/core/app/schema', () => ({
@@ -31,8 +31,8 @@ vi.mock('@fastgpt/service/support/permission/controller', () => ({
   getTmbPermission: mockGetTmbPermission
 }));
 
-vi.mock('@fastgpt/service/support/user/agentUser', () => ({
-  getAgentUserTmbIds: mockGetAgentUserTmbIds
+vi.mock('@fastgpt/service/support/user/systemUser', () => ({
+  checkIsAgentUser: mockCheckIsAgentUser
 }));
 
 import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
@@ -49,7 +49,7 @@ const setup = () => {
     teamId: 'team-a',
     permission: { isOwner: false, hasManagePer: false }
   });
-  mockGetAgentUserTmbIds.mockReturnValue(new Set<string>());
+  mockCheckIsAgentUser.mockReturnValue(false);
   mockGetTmbPermission.mockResolvedValue(ReadPermissionVal);
   mockAppQuery({
     _id: appId,
@@ -169,7 +169,7 @@ describe('authAppByTmbId', () => {
 
   it('checks normal permissions for apps created by agent users', async () => {
     setup();
-    mockGetAgentUserTmbIds.mockReturnValue(new Set(['owner-tmb']));
+    mockCheckIsAgentUser.mockReturnValue(true);
 
     await expect(
       authAppByTmbId({ tmbId: 'root-tmb', appId, per: WritePermissionVal, isRoot: true })
@@ -183,7 +183,7 @@ describe('authAppByTmbId', () => {
 
   it('does not grant team owners implicit ownership of agent-created apps', async () => {
     setup();
-    mockGetAgentUserTmbIds.mockReturnValue(new Set(['owner-tmb']));
+    mockCheckIsAgentUser.mockReturnValue(true);
     mockGetTmbInfoByTmbId.mockResolvedValue({
       teamId: 'team-a',
       permission: { isOwner: true, hasManagePer: true }
