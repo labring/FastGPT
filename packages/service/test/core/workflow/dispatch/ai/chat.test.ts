@@ -11,6 +11,7 @@ import { rewriteChatMessagesWithFileContext } from '../../../../../core/chat/fil
 import { runWithContext } from '../../../../../core/workflow/utils/context';
 import { loadRequestMessages } from '../../../../../core/ai/llm/utils';
 import { serviceEnv } from '../../../../../env';
+import { axios } from '../../../../../common/api/axios';
 
 const createHumanMessage = ({
   text,
@@ -83,11 +84,12 @@ describe('getAIChatFileContextConfig', () => {
 describe('getInputFiles', () => {
   it('keeps the original audio filename when the first-round url has no extension', async () => {
     const url = 'https://files.example.com/opaque-short-token';
-    let userFiles = [] as ReturnType<typeof getInputFiles>;
+    let userFiles = [] as Awaited<ReturnType<typeof getInputFiles>>;
 
-    runWithContext(
+    await runWithContext(
       {
         fileContext: {
+          limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
           resolveChatFile: (target: string) =>
             target === url
               ? {
@@ -100,8 +102,8 @@ describe('getInputFiles', () => {
         } as any,
         mcpClientMemory: {}
       },
-      () => {
-        userFiles = getInputFiles({ fileLinks: [url] });
+      async () => {
+        userFiles = await getInputFiles({ fileLinks: [url] });
       }
     );
 
@@ -137,6 +139,43 @@ describe('getInputFiles', () => {
         }
       }
     ]);
+  });
+
+  it('classifies extensionless image URL as image via probe and adapts to image_url', async () => {
+    const url = 'https://external-service.com/get-image?id=999';
+    const headSpy = vi.spyOn(axios, 'head').mockResolvedValueOnce({
+      headers: { 'content-type': 'image/jpeg' }
+    } as any);
+
+    const userFiles = await getInputFiles({ fileLinks: [url] });
+
+    expect(userFiles).toEqual([
+      {
+        type: ChatFileTypeEnum.image,
+        name: url,
+        url
+      }
+    ]);
+
+    const messages = chats2GPTMessages({
+      messages: [
+        {
+          obj: ChatRoleEnum.Human,
+          value: runtimePrompt2ChatsValue({ files: userFiles })
+        }
+      ]
+    });
+
+    expect(messages[0]?.content).toEqual([
+      {
+        type: 'image_url',
+        image_url: {
+          url
+        }
+      }
+    ]);
+
+    headSpy.mockRestore();
   });
 });
 

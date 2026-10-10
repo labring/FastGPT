@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { normalizeDatasetSearchInput } from '../../../../../core/workflow/dispatch/dataset/utils';
 
 describe('normalizeDatasetSearchInput', () => {
-  it('should split text queries and image urls', () => {
-    const result = normalizeDatasetSearchInput([
+  it('should split text queries and image urls', async () => {
+    const result = await normalizeDatasetSearchInput([
       ' black high heels ',
       'temp/team-1/search-image.png',
       'chat/team-1/manual.pdf',
@@ -26,8 +26,8 @@ describe('normalizeDatasetSearchInput', () => {
     ]);
   });
 
-  it('should classify image Data URLs and discard other Data URLs', () => {
-    const result = normalizeDatasetSearchInput([
+  it('should classify image Data URLs and discard other Data URLs', async () => {
+    const result = await normalizeDatasetSearchInput([
       'data:IMAGE/JPEG;base64,/9j/4AAQ',
       'data:IMAGE/JPEG;base64,/9j/4AAQ',
       'data:application/pdf;base64,JVBERi0xLjQK',
@@ -38,8 +38,8 @@ describe('normalizeDatasetSearchInput', () => {
     expect(result.imageQueries).toEqual(['data:IMAGE/JPEG;base64,/9j/4AAQ']);
   });
 
-  it('should only classify http image urls by parsed file type', () => {
-    const result = normalizeDatasetSearchInput([
+  it('should only classify http image urls by parsed file type', async () => {
+    const result = await normalizeDatasetSearchInput([
       '/api/file/read?filename=current.png',
       '/api/file/read?filename=manual.pdf',
       'https://cdn.example.com/download?filename=current.png',
@@ -53,8 +53,8 @@ describe('normalizeDatasetSearchInput', () => {
     expect(result.imageQueries).toEqual(['https://cdn.example.com/download?filename=current.png']);
   });
 
-  it('should remove duplicated text queries and images', () => {
-    const result = normalizeDatasetSearchInput([
+  it('should remove duplicated text queries and images', async () => {
+    const result = await normalizeDatasetSearchInput([
       'same query',
       'same query',
       'https://example.com/a.png',

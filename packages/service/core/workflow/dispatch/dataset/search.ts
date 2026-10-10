@@ -121,7 +121,7 @@ export const dispatchDatasetSearch = async (
 
   const searchQueries = userChatInput ? [userChatInput] : datasetSearchInput;
 
-  const { textQueries, imageQueries } = normalizeDatasetSearchInput(searchQueries);
+  const { textQueries, imageQueries } = await normalizeDatasetSearchInput(searchQueries);
   if (textQueries.length === 0 && imageQueries.length === 0) {
     return emptyResult;
   }

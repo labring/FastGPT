@@ -1,7 +1,6 @@
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { isHttpUrl } from '@fastgpt/global/common/string/url';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type {
   ChatFileStoreValue,
   ChatItemMiniType,
@@ -18,7 +17,9 @@ import { createChatFilePreviewUrlGetter } from '../../../common/s3/sources/chat'
 import { isAuthorizedChatFileS3Key } from '../../../common/s3/sources/chat/key';
 import type { ChatS3SourceType } from '../../../common/s3/sources/chat/type';
 import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator';
-import { normalizeChatFileStoreValue, type RawChatFileValue } from '../../chat/fileStoreValue';
+import type { RawChatFileValue } from '../../chat/fileStoreValue';
+import { parseUrlToChatFileType } from '../../chat/fileContext';
+import { filterWorkflowQueryFiles } from './fileLimits';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 const WORKFLOW_FILE_URL_EXPIRED_HOURS = 2;
@@ -58,7 +59,12 @@ export type WorkflowFileContext = {
   getIdentity: (url: string) => string | undefined;
   resolveInputFile: (file: RawChatFileValue) => WorkflowFileRef | undefined;
   getSource: (target: string | WorkflowFileRef) => Promise<WorkflowFileSourceResult>;
-  derive: (files: WorkflowFileInput[]) => WorkflowFileContext;
+  registerExternalFile: (file: {
+    url: string;
+    name?: string;
+    type?: ChatFileTypeEnum;
+  }) => Promise<WorkflowFileRef>;
+  derive: (files: WorkflowFileInput[]) => Promise<WorkflowFileContext>;
 };
 
 export type WorkflowFileInput = string | RawChatFileValue;
@@ -119,6 +125,51 @@ const getExternalIdentity = (url: string) => {
   return `external:${parsedUrl.toString()}`;
 };
 
+/**
+ * 外链先校验域名，再推断类型并登记；并发及后续调用共享同一探测结果（包括兜底 file）。
+ * 缓存仅属于当前 Context，不把动态外链加入父 Context，也不授予任何私有对象权限。
+ */
+const createExternalFileRegistrar = ({
+  resolve,
+  register
+}: {
+  resolve: WorkflowFileContext['resolve'];
+  register: (params: { ref: WorkflowFileRef; identity: string; alias: string }) => WorkflowFileRef;
+}): WorkflowFileContext['registerExternalFile'] => {
+  const pending = new Map<string, Promise<WorkflowFileRef>>();
+
+  return async (file) => {
+    if (!isAbsoluteHttpUrl(file.url) || !validateFileUrlDomain(file.url)) {
+      throw new UserError('Invalid workflow file URL');
+    }
+    const existing = resolve(file.url);
+    if (existing) return existing;
+
+    const identity = getExternalIdentity(file.url);
+    let registration = pending.get(identity);
+    if (!registration) {
+      registration = (async () => {
+        const parsed = await parseUrlToChatFileType({
+          url: file.url,
+          urlTypeMap:
+            file.type && file.type !== ChatFileTypeEnum.file ? { [file.url]: file.type } : {}
+        });
+        if (!parsed) throw new UserError('Invalid workflow external file');
+        return {
+          name: file.name || parsed.name || getFileNameFromUrl(file.url),
+          type: parsed.type,
+          modelUrl: file.url,
+          source: { type: 'externalHttp' as const, url: file.url }
+        };
+      })();
+      pending.set(identity, registration);
+      // 意外失败允许重试；正常探测失败会返回 file，并在本 Context 内复用。
+      void registration.catch(() => pending.delete(identity));
+    }
+    return register({ ref: await registration, identity, alias: file.url });
+  };
+};
+
 const getFileNameFromUrl = (url: string) => {
   try {
     return path.basename(decodeURIComponent(new URL(url).pathname)) || 'file';
@@ -147,13 +198,13 @@ const getChatImageParsePrefix = (objectKey: string) => {
  * 父 Context 命中的文件继承其可信 Ref；未命中的绝对外链在 Child 内单独登记。
  * 私有 key 只能从父 Context 继承，禁止通过 URL 结构或未知 key 推断内部对象权限。
  */
-const createDerivedWorkflowFileContext = ({
+const createDerivedWorkflowFileContext = async ({
   parent,
   files
 }: {
   parent: WorkflowFileContext;
   files: WorkflowFileInput[];
-}): WorkflowFileContext => {
+}): Promise<WorkflowFileContext> => {
   const byRuntimeUrl = new Map<string, WorkflowFileRef>();
   const byIdentity = new Map<string, WorkflowFileRef>();
   const refIdentity = new WeakMap<WorkflowFileRef, string>();
@@ -183,6 +234,12 @@ const createDerivedWorkflowFileContext = ({
     if (inherited) inheritedRefs.add(ref);
     return ref;
   };
+
+  const registerExternalFile = createExternalFileRegistrar({
+    resolve: (url) => byRuntimeUrl.get(url),
+    register: ({ ref, identity, alias }) =>
+      addRef({ ref, identity, aliases: [alias], inherited: false })
+  });
 
   for (const file of files) {
     const inputUrl = typeof file === 'string' ? file : 'url' in file ? file.url : undefined;
@@ -217,32 +274,9 @@ const createDerivedWorkflowFileContext = ({
       throw new UserError('Invalid child workflow file URL');
     }
 
-    const storeValue = normalizeChatFileStoreValue(
-      typeof file === 'string'
-        ? { url: file }
-        : {
-            url: inputUrl,
-            name: file.name,
-            type: file.type
-          }
-    );
-    if (!storeValue || !('url' in storeValue)) {
-      throw new UserError('Invalid child workflow external file');
-    }
-
-    const identity = getExternalIdentity(storeValue.url);
-    addRef({
-      ref: {
-        name: storeValue.name,
-        type: storeValue.type,
-        modelUrl: storeValue.url,
-        source: {
-          type: 'externalHttp',
-          url: storeValue.url
-        }
-      },
-      identity,
-      inherited: false
+    await registerExternalFile({
+      url: inputUrl,
+      ...(typeof file !== 'string' ? { name: file.name, type: file.type } : {})
     });
   }
 
@@ -255,6 +289,7 @@ const createDerivedWorkflowFileContext = ({
 
   const fileContext: WorkflowFileContext = {
     limits: parent.limits,
+    registerExternalFile,
     resolve,
     resolveInputFile,
     resolveChatFile: (url) => {
@@ -343,6 +378,18 @@ export const prepareWorkflowFileContext = async ({
     return previewUrlPromise;
   };
 
+  const registerExternalFile = createExternalFileRegistrar({
+    resolve: (url) => byRuntimeUrl.get(url),
+    register: ({ ref, identity, alias }) => {
+      const registered = byIdentity.get(identity) ?? ref;
+      byIdentity.set(identity, registered);
+      refIdentity.set(registered, identity);
+      byRuntimeUrl.set(registered.modelUrl, registered);
+      byRuntimeUrl.set(alias, registered);
+      return registered;
+    }
+  });
+
   const registerInputFile: WorkflowFileRegistrar['registerInputFile'] = async ({
     file,
     source
@@ -403,13 +450,25 @@ export const prepareWorkflowFileContext = async ({
       return existingRef;
     }
 
+    if (fileSource.type === 'externalHttp') {
+      return registerExternalFile({ url: modelUrl, name: file.name, type: file.type });
+    }
+
+    // 私有文件按可信 key 推断，不对签名下载链接发起外部 HEAD 请求。
+    const parsedFile = await parseUrlToChatFileType({
+      url: fileSource.objectKey,
+      urlTypeMap: file.type !== ChatFileTypeEnum.file ? { [fileSource.objectKey]: file.type } : {}
+    });
+    // 同 key 的并发登记可能在类型推断期间完成，继续复用唯一 Ref。
+    const registeredRef = byIdentity.get(identity);
+    if (registeredRef) {
+      if (originalUrl && isAbsoluteHttpUrl(originalUrl))
+        byRuntimeUrl.set(originalUrl, registeredRef);
+      return registeredRef;
+    }
     const ref: WorkflowFileRef = {
-      name:
-        file.name ||
-        (fileSource.type === 'chatObject'
-          ? path.basename(fileSource.objectKey) || 'file'
-          : getFileNameFromUrl(modelUrl)),
-      type: file.type,
+      name: file.name || path.basename(fileSource.objectKey) || 'file',
+      type: parsedFile?.type ?? file.type,
       modelUrl,
       source: fileSource
     };
@@ -426,11 +485,17 @@ export const prepareWorkflowFileContext = async ({
     source: 'query' | 'history'
   ): Promise<UserChatItemFileItemType | undefined> => {
     const ref = await registerInputFile({ file, source });
-    if (ref) return { ...file, ...('url' in file ? { url: ref.modelUrl } : {}) };
+    if (ref)
+      return {
+        ...file,
+        name: ref.name,
+        type: ref.type,
+        ...('url' in file ? { url: ref.modelUrl } : {})
+      };
   };
 
   const preparedQuery: UserChatItemValueItemType[] = await Promise.all(
-    query.map(async (item) => {
+    filterWorkflowQueryFiles({ query, maxFileAmount }).map(async (item) => {
       if (!item.file) return { ...item };
 
       const file = await prepareFile(item.file, 'query');
@@ -440,9 +505,14 @@ export const prepareWorkflowFileContext = async ({
   );
   const preparedHistories: ChatItemMiniType[] = await Promise.all(
     histories.map(async (history) => {
+      if (history.obj !== ChatRoleEnum.Human) return { ...history };
+      const selectedValues = filterWorkflowQueryFiles({
+        query: history.value,
+        maxFileAmount
+      });
       const value = await Promise.all(
-        history.value.map(async (value) => {
-          if (history.obj !== ChatRoleEnum.Human || !('file' in value) || !value.file) {
+        selectedValues.map(async (value) => {
+          if (!value.file) {
             return { ...value };
           }
 
@@ -527,6 +597,7 @@ export const prepareWorkflowFileContext = async ({
 
   const fileContext: WorkflowFileContext = {
     limits,
+    registerExternalFile,
     resolve,
     resolveInputFile,
     resolveChatFile: (url) => {

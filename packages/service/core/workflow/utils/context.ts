@@ -1,4 +1,5 @@
 import { parseUrlToChatFileType } from '../../chat/fileContext';
+import { batchRun } from '@fastgpt/global/common/system/utils';
 
 import { AsyncLocalStorage } from 'async_hooks';
 import type { MCPClient } from '../../app/mcp';
@@ -14,7 +15,8 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type {
   ChatFileStoreValue,
   ChatItemMiniType,
-  UserChatItemValueItemType
+  UserChatItemValueItemType,
+  UserChatItemFileItemType
 } from '@fastgpt/global/core/chat/type';
 import type { WorkflowResourceContext } from './resource';
 
@@ -37,7 +39,7 @@ export const getWorkflowContext = (): ContextType => {
   return WorkflowContext.getStore()!;
 };
 
-/** 获取当前 Workflow 调用链在入口创建的只读文件上下文。 */
+/** 获取当前 Workflow 的文件上下文，供读取已登记文件或登记新外链。 */
 export const getWorkflowFileContext = () => WorkflowContext.getStore()?.fileContext;
 
 /** 获取 Workflow 内部无独立配置的统一文件数量上限。 */
@@ -204,7 +206,7 @@ export const runWithDerivedWorkflowFileContext = async <T>({
   const filterFiles = <File extends WorkflowFileInput>(inputFiles: File[]) =>
     cloneChildFiles(inputFiles.filter(isSelectedFile));
 
-  let childFileContext = parentFileContext.derive(selectedFiles);
+  let childFileContext = await parentFileContext.derive(selectedFiles);
   const childStore: ContextType = {
     ...parentStore,
     fileContext: childFileContext,
@@ -235,7 +237,7 @@ export const runWithDerivedWorkflowFileContext = async <T>({
             const identity = parentFileContext.getIdentity(ref.modelUrl);
             if (identity) acceptedFileIdentities.add(identity);
             const currentParentFileContext = parentStore.fileContext ?? parentFileContext;
-            childFileContext = currentParentFileContext.derive(selectedFiles);
+            childFileContext = await currentParentFileContext.derive(selectedFiles);
             childStore.fileContext = childFileContext;
             return ref;
           });
@@ -250,11 +252,29 @@ export const runWithDerivedWorkflowFileContext = async <T>({
 
   childStore.fileRegistrar = childRegistrar;
 
+  /** 子流程消息同步使用登记后的类型，避免历史消息仍携带兜底 file。 */
+  const resolveMessageFile = (file: UserChatItemFileItemType) => {
+    const ref = childFileContext.resolveInputFile(file);
+    return ref ? { ...file, name: ref.name, type: ref.type, url: ref.modelUrl } : file;
+  };
+  const preparedQuery = filteredQuery.map((item) =>
+    item.file ? { ...item, file: resolveMessageFile(item.file) } : item
+  );
+  const preparedHistories = filteredHistories.map((message): ChatItemMiniType => {
+    if (message.obj !== ChatRoleEnum.Human) return message;
+    return {
+      ...message,
+      value: message.value.map((item) =>
+        item.file ? { ...item, file: resolveMessageFile(item.file) } : item
+      )
+    };
+  });
+
   return runWithContext(childStore, () =>
     fn({
       resolveInputFile,
-      query: filteredQuery,
-      histories: filteredHistories,
+      query: preparedQuery,
+      histories: preparedHistories,
       filterFiles
     })
   );
@@ -293,11 +313,23 @@ export const updateWorkflowContextVal = (val: Partial<ContextType>) => {
 };
 
 /** 结合 workflow 运行态文件元数据，将 URL 解析成 ChatBox 文件结构。 */
-export const parseUrlToFileType = (url: string) => {
+export const parseUrlToFileType = async (url: string) => {
   const fileContext = getWorkflowFileContext();
   const workflowFile = fileContext?.resolveChatFile(url);
   if (workflowFile) return workflowFile;
   if (fileContext && !isAbsoluteHttpUrl(url)) return;
+  if (fileContext?.registerExternalFile) {
+    const ref = await fileContext.registerExternalFile({ url });
+    return { name: ref.name, type: ref.type, url: ref.modelUrl };
+  }
 
-  return parseUrlToChatFileType({ url });
+  return await parseUrlToChatFileType({ url });
+};
+
+/** 节点文件列表先去重、截断，再并发分类；避免超限输入触发探测或登记。 */
+export const parseUrlsToFileTypes = async (urls: string[]) => {
+  const maxFiles = getWorkflowFileContext()?.limits.maxFileAmount ?? urls.length;
+  const selectedUrls = Array.from(new Set(urls)).slice(0, Math.max(0, maxFiles));
+  const files = await batchRun(selectedUrls, (url) => parseUrlToFileType(url), 5);
+  return files.filter((file): file is NonNullable<typeof file> => Boolean(file));
 };
