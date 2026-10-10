@@ -213,7 +213,7 @@ const MermaidBlock = ({ code }: { code: string }) => {
   }
 
   // 流式已结束且确实存在语法错误：复用统一错误卡片展示，不展示下载和全屏
-  if (hasError && !showAnimation && !svg) {
+  if (hasError && !showAnimation) {
     return <CodeBlockErrorCard title={t('common:mermaid_syntax_error')} code={code} />;
   }
 
