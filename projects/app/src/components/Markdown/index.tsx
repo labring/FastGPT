@@ -1,210 +1,76 @@
 /* eslint-disable react-hooks/refs -- 流式分段时间线必须在 render 中幂等扩展，rehype 才能同步读取本次 commit。 */
-import React, { useContext, useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
-import type { PluggableList } from 'unified';
+import { Box } from '@chakra-ui/react';
 import 'katex/dist/katex.min.css';
-import RemarkMath from 'remark-math'; // Math syntax
-import RemarkBreaks from 'remark-breaks'; // Line break
-import RehypeKatex from 'rehype-katex'; // Math render
-import RemarkGfm from 'remark-gfm'; // Special markdown syntax
-import RehypeExternalLinks from 'rehype-external-links';
 
 import styles from './index.module.scss';
-import dynamic from 'next/dynamic';
-
-import { Box } from '@chakra-ui/react';
-import { CodeClassNameEnum, mdTextFormat, prepareStreamingMarkdown } from './utils';
-import type { AProps } from './A';
-import MarkdownTable from '@fastgpt/web/components/common/Markdown/MarkdownTable';
-import { MarkdownRendererRuntimeContext } from './runtimeContext';
-import { mapMarkdownBlockSources, splitMarkdownBlocks } from './streamMarkdownBlocks';
-import { CachedMarkdown } from './CachedMarkdown';
-import { isSafeImgSrc } from '@fastgpt/global/common/string/url';
+import type { MarkdownProps } from './type';
 import {
+  mdTextFormat,
+  prepareStreamingMarkdown,
+  markdownRemarkPlugins,
+  markdownBaseRehypePlugins,
+  markdownUrlTransform,
+  MarkdownRendererRuntimeContext
+} from './utils';
+import {
+  mapMarkdownBlockSources,
+  splitMarkdownBlocks,
   getStreamAnimationNow,
   resolveStreamRenderMode,
   resolveStreamBlockPlugins,
   updateStreamBlockAnimations,
-  type StreamBlockRuntime
-} from './streamAnimationRuntime';
-import { rehypeImageCitations } from './rehypeImageCitations';
+  type StreamBlockRuntime,
+  MarkdownStreamBlock,
+  getMarkdownDebugInstanceId,
+  getSourceDebugInfo,
+  logMarkdownStreamDebug
+} from './stream';
+import { markdownComponents } from './components';
 
-const CodeLight = dynamic(() => import('./codeBlock/CodeLight'), { ssr: false });
-const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'), { ssr: false });
-const MdImage = dynamic(() => import('./img/Image'), { ssr: false });
-const EChartsCodeBlock = dynamic(() => import('./img/EChartsCodeBlock'), { ssr: false });
-const IframeCodeBlock = dynamic(() => import('./codeBlock/Iframe'), { ssr: false });
-const IframeHtmlCodeBlock = dynamic(() => import('./codeBlock/iframe-html'), { ssr: false });
-const VideoBlock = dynamic(() => import('./codeBlock/Video'), { ssr: false });
-const AudioBlock = dynamic(() => import('./codeBlock/Audio'), { ssr: false });
-const markdownRemarkPlugins: PluggableList = [
-  RemarkMath,
-  [RemarkGfm, { singleTilde: false }],
-  RemarkBreaks
-];
-const markdownBaseRehypePlugins: PluggableList = [
-  RehypeKatex,
-  [RehypeExternalLinks, { target: '_blank' }],
-  rehypeImageCitations
-];
-const markdownUrlTransform = (val: string, key?: string) => {
-  if (key === 'src') {
-    return isSafeImgSrc(val) ? val : '';
+/**
+ * 文本渲染长度安全阈值。
+ *
+ * 当单个回答内容极端异常超过 200,000 字符时，Unified/AST 解析器与庞大的 DOM 树
+ * 会导致主线程严重阻塞卡死甚至标签页崩溃。此时降级为白空间保留的纯文本展示。
+ */
+const MAX_MARKDOWN_RENDER_LENGTH = 200000;
+
+/**
+ * FastGPT 核心 Markdown 渲染组件。
+ *
+ * 职责：
+ * 1. 负责超长文本的安全降级拦截；
+ * 2. 对常规内容分发至核心调度器 MarkdownRender；
+ * 3. 采用 React.memo 避免非必要外层重绘。
+ */
+const Markdown = (props: MarkdownProps) => {
+  const source = props.source || '';
+
+  if (source.length >= MAX_MARKDOWN_RENDER_LENGTH) {
+    return <Box whiteSpace={'pre-wrap'}>{source}</Box>;
   }
-  return val;
-};
 
-const isMarkdownStreamDebugEnabled = process.env.NODE_ENV !== 'production';
-let markdownDebugInstanceId = 0;
-
-/** 输出可直接复制的流式 Markdown 生命周期日志，不在生产环境产生额外开销。 */
-const logMarkdownStreamDebug = (event: string, payload: Record<string, unknown>) => {
-  if (!isMarkdownStreamDebugEnabled) return;
-  console.log(`[MarkdownStreamDebug] ${event}`, JSON.stringify(payload));
-};
-
-const getMarkdownDebugInstanceId = () => ++markdownDebugInstanceId;
-
-/** 保留 source 尾部即可判断流式追加关系，避免调试日志输出整段对话。 */
-const getSourceDebugInfo = (source: string) => ({
-  sourceLength: source.length,
-  sourceTail: source.slice(-80)
-});
-
-const ChatGuide = dynamic(() => import('./chat/Guide'), { ssr: false });
-const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false });
-const QuickReplies = dynamic(() => import('./chat/QuickReplies'), { ssr: false });
-const A = dynamic(() => import('./A'), { ssr: false });
-
-function MarkdownImgRenderer(props: any) {
-  const { chatAuthData } = useContext(MarkdownRendererRuntimeContext);
-  return <Image {...props} alt={props.alt} chatAuthData={chatAuthData} />;
-}
-
-function MarkdownCodeRenderer(props: any) {
-  const { showAnimation, autoPreviewHtmlCodeBlock, markdownClassName } = useContext(
-    MarkdownRendererRuntimeContext
-  );
-
-  return (
-    <Code
-      {...props}
-      showAnimation={showAnimation}
-      autoPreviewHtmlCodeBlock={autoPreviewHtmlCodeBlock}
-      markdownClassName={markdownClassName}
-    />
-  );
-}
-
-function MarkdownLinkRenderer(props: any) {
-  const { showAnimation, chatAuthData, allowedCitationIds, onOpenCiteModal } = useContext(
-    MarkdownRendererRuntimeContext
-  );
-
-  return (
-    <A
-      {...props}
-      showAnimation={showAnimation}
-      chatAuthData={chatAuthData}
-      allowedCitationIds={allowedCitationIds}
-      onOpenCiteModal={onOpenCiteModal}
-    />
-  );
-}
-
-const markdownComponents = {
-  img: MarkdownImgRenderer,
-  pre: RewritePre,
-  code: MarkdownCodeRenderer,
-  table: MarkdownTable as any,
-  a: MarkdownLinkRenderer
-};
-
-type MarkdownStreamBlockProps = {
-  animated: boolean;
-  blockId: string;
-  blockOffset: number;
-  rehypePlugins: PluggableList;
-  source: string;
+  return <MarkdownRender {...props} />;
 };
 
 /**
- * 缓存已完成 Markdown block 的 React 子树。
+ * Markdown 核心流式调度与渲染器。
  *
- * source 和 rehypePlugins 都保持不变时，父级流式内容更新不会重新解析该 block。
- * blockId 在一次追加流中按顺序保持稳定，格式化导致源码 offset 改变时不会重新挂载。
+ * 【核心设计与推理链路】：
+ * 1. 上下文透传：通过 MarkdownRendererRuntimeContext 向下层深层自定义组件
+ *    传递引用弹窗、沙箱预览、鉴权状态等参数，避免深层 prop-drilling。
+ * 2. 流式模式平滑保持 (hasStreamedRef)：
+ *    消息在流式生成期间采用分块渲染；当流式彻底结束时，为避免“整棵分块 DOM”被
+ *    突然替换为“单个全局 ReactMarkdown”，继续保持 block 渲染结构，杜绝闪烁。
+ * 3. 块级缓存与动画隔离 (updateStreamBlockAnimations)：
+ *    大模型打字时，只有末尾正在生长的 Block 会被动态注入打字淡入插件；
+ *    已完成的历史 Block 插件引用与源码完全保持恒定，从而 100% 命中 React.memo 冻结。
+ * 4. 源码中英文与格式化 (mdTextFormat)：
+ *    在分块后仅对各 Block 内部进行标点格式化，防止全局替换导致前面字符数改变，
+ *    进而破坏后续 Block 的稳定身份标识。
  */
-const MarkdownStreamBlock = React.memo(
-  ({ animated, blockId, blockOffset, source, rehypePlugins }: MarkdownStreamBlockProps) => {
-    const instanceIdRef = useRef<number>();
-    if (instanceIdRef.current === undefined) {
-      instanceIdRef.current = getMarkdownDebugInstanceId();
-    }
-
-    useEffect(() => {
-      const instanceId = instanceIdRef.current;
-      logMarkdownStreamDebug('block-mount', {
-        at: Date.now(),
-        animated,
-        blockId,
-        blockOffset,
-        instanceId,
-        ...getSourceDebugInfo(source)
-      });
-
-      return () => {
-        logMarkdownStreamDebug('block-unmount', {
-          at: Date.now(),
-          blockId,
-          blockOffset,
-          instanceId
-        });
-      };
-      // 只记录真实挂载和卸载；source 变化由下面的 commit effect 单独记录。
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    useEffect(() => {
-      logMarkdownStreamDebug('block-commit', {
-        at: Date.now(),
-        animated,
-        blockId,
-        blockOffset,
-        instanceId: instanceIdRef.current,
-        ...getSourceDebugInfo(source)
-      });
-    }, [animated, blockId, blockOffset, source]);
-
-    return (
-      <CachedMarkdown
-        source={source}
-        remarkPlugins={markdownRemarkPlugins as any}
-        rehypePlugins={rehypePlugins as any}
-        components={markdownComponents as any}
-      />
-    );
-  }
-);
-MarkdownStreamBlock.displayName = 'MarkdownStreamBlock';
-
-type Props = {
-  source?: string;
-  showAnimation?: boolean;
-  isDisabled?: boolean;
-  forbidZhFormat?: boolean;
-  className?: string;
-  autoPreviewHtmlCodeBlock?: boolean;
-} & AProps;
-
-const Markdown = (props: Props) => {
-  const source = props.source || '';
-
-  if (source.length < 200000) {
-    return <MarkdownRender {...props} />;
-  }
-
-  return <Box whiteSpace={'pre-wrap'}>{source}</Box>;
-};
 const MarkdownRender = ({
   source = '',
   showAnimation,
@@ -216,12 +82,13 @@ const MarkdownRender = ({
   chatAuthData,
   allowedCitationIds,
   onOpenCiteModal
-}: Props) => {
+}: MarkdownProps) => {
   const instanceIdRef = useRef<number>();
   if (instanceIdRef.current === undefined) {
     instanceIdRef.current = getMarkdownDebugInstanceId();
   }
 
+  // 组装下发给自定义组件（A, Image, Code 等）的运行时上下文
   const renderContextValue = useMemo(
     () => ({
       showAnimation,
@@ -241,6 +108,7 @@ const MarkdownRender = ({
     ]
   );
 
+  // 判断是否走增量流式分块模式（一旦流式过，后续保持分块以维持 DOM 稳定）
   const hasStreamedRef = useRef(false);
   const renderStreamBlocks = resolveStreamRenderMode({
     hasStreamed: hasStreamedRef.current,
@@ -248,29 +116,38 @@ const MarkdownRender = ({
   });
   hasStreamedRef.current = renderStreamBlocks;
 
+  // 流式阶段预修齐尾部未闭合语法，防止半截语法提前请求或 AST 断裂
   const sourceForBlocks = useMemo(
     () => (showAnimation ? prepareStreamingMarkdown(source) : source),
     [showAnimation, source]
   );
+
+  // 将全量文本根据 marked lexer 切分为独立的根级 Block
   const markdownBlocks = useMemo(() => {
     if (!renderStreamBlocks) return [];
 
     const blocks = splitMarkdownBlocks(sourceForBlocks);
     if (showAnimation || forbidZhFormat) return blocks;
 
-    // 完成态在分块后格式化，避免前面插入字符导致后续 block key 整体偏移。
+    // 非流式完成态在分块后格式化，保证各块 key 与 offset 保持稳定
     return mapMarkdownBlockSources(blocks, mdTextFormat);
   }, [forbidZhFormat, renderStreamBlocks, showAnimation, sourceForBlocks]);
+
+  // 维护动画 runtime 与流式版本号
   const streamRuntimesRef = useRef<Map<number, StreamBlockRuntime>>(new Map());
   const streamVersionRef = useRef(0);
   const previousStreamingSourceRef = useRef('');
+
   if (showAnimation) {
+    // 若当前输入不是在上一次追加流的基础上继续增长（如重新生成或切换对话），则重置版本与 runtime
     if (!source.startsWith(previousStreamingSourceRef.current)) {
       streamVersionRef.current += 1;
       streamRuntimesRef.current.clear();
     }
     previousStreamingSourceRef.current = source;
   }
+
+  // 计算每个 Block 是否需要执行动画及对应的 runtime
   const streamAnimationMeta = showAnimation
     ? updateStreamBlockAnimations({
         blocks: markdownBlocks,
@@ -278,10 +155,13 @@ const MarkdownRender = ({
         runtimes: streamRuntimesRef.current
       })
     : new Map();
+
+  // 静态全量渲染时的格式化文本
   const formatSource = useMemo(
     () => (forbidZhFormat ? source : mdTextFormat(source)),
     [forbidZhFormat, source]
   );
+
   const markdownClassName = `markdown ${styles.markdown}
       ${className || ''}
       ${showAnimation ? `${sourceForBlocks ? styles.waitingAnimation : styles.animation}` : ''}
@@ -320,6 +200,8 @@ const MarkdownRender = ({
             const blockId = `${streamVersionRef.current}:${blockIndex}`;
             const meta = streamAnimationMeta.get(blockIndex);
             const animated = !!showAnimation && !!meta?.shouldAnimate;
+
+            // 仅对当前正在打字动画的分块挂载包含动画计算的插件，其余已完成分块复用基础插件
             const rehypePlugins =
               animated && meta
                 ? resolveStreamBlockPlugins({
@@ -340,6 +222,7 @@ const MarkdownRender = ({
             );
           })
         ) : (
+          /* 非流式一次性静态内容渲染分支 */
           <ReactMarkdown
             className={markdownClassName}
             remarkPlugins={markdownRemarkPlugins as any}
@@ -359,83 +242,3 @@ const MarkdownRender = ({
 };
 
 export default React.memo(Markdown);
-
-/* Custom dom */
-function Code(e: any) {
-  const {
-    className,
-    codeBlock,
-    children,
-    showAnimation,
-    autoPreviewHtmlCodeBlock,
-    markdownClassName
-  } = e;
-  const match = /language-([\w-]+)/.exec(className || '');
-  const codeType = match?.[1]?.toLowerCase();
-
-  const strChildren = String(children);
-
-  if (codeType === CodeClassNameEnum.mermaid) {
-    return <MermaidCodeBlock code={strChildren} />;
-  }
-  if (codeType === CodeClassNameEnum.guide) {
-    return <ChatGuide text={strChildren} className={markdownClassName} />;
-  }
-  if (codeType === CodeClassNameEnum.questionguide) {
-    return <QuestionGuide text={strChildren} />;
-  }
-  if (codeType === CodeClassNameEnum.echarts) {
-    return <EChartsCodeBlock code={strChildren} />;
-  }
-  if (codeType === CodeClassNameEnum.iframe) {
-    return <IframeCodeBlock code={strChildren} />;
-  }
-  if (
-    codeType === CodeClassNameEnum.html ||
-    codeType === CodeClassNameEnum.htm ||
-    codeType === CodeClassNameEnum.svg
-  ) {
-    return (
-      <IframeHtmlCodeBlock
-        className={className}
-        codeBlock={codeBlock}
-        match={match}
-        showAnimation={showAnimation}
-        autoPreviewHtmlCodeBlock={autoPreviewHtmlCodeBlock}
-      >
-        {children}
-      </IframeHtmlCodeBlock>
-    );
-  }
-  if (codeType === CodeClassNameEnum.video) {
-    return <VideoBlock code={strChildren} />;
-  }
-  if (codeType === CodeClassNameEnum.audio) {
-    return <AudioBlock code={strChildren} />;
-  }
-  if (codeType === CodeClassNameEnum.quickReplies) {
-    return <QuickReplies text={strChildren} />;
-  }
-
-  return (
-    <CodeLight className={className} codeBlock={codeBlock} match={match}>
-      {children}
-    </CodeLight>
-  );
-}
-
-function Image({ src, chatAuthData }: { src?: string; chatAuthData?: AProps['chatAuthData'] }) {
-  return <MdImage src={src} chatAuthData={chatAuthData} />;
-}
-
-function RewritePre({ children }: any) {
-  const modifiedChildren = React.Children.map(children, (child) => {
-    if (React.isValidElement(child)) {
-      // @ts-ignore
-      return React.cloneElement(child, { codeBlock: true });
-    }
-    return child;
-  });
-
-  return <>{modifiedChildren}</>;
-}

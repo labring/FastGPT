@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
 
 export const useScreen = () => {
-  const [screenWidth, setScreenWidth] = useState(window?.innerWidth || 0);
-  const [screenHeight, setScreenHeight] = useState(window?.innerHeight || 0);
+  const [screenWidth, setScreenWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 0
+  );
+  const [screenHeight, setScreenHeight] = useState(
+    typeof window !== 'undefined' ? window.innerHeight : 0
+  );
 
   useEffect(() => {
     function handleResize() {

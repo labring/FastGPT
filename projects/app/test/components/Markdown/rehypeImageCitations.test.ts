@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import {
   imageCitationParagraphClassName,
   rehypeImageCitations
-} from '@/components/Markdown/rehypeImageCitations';
+} from '@/components/Markdown/utils/rehypeImageCitations';
 
 const renderMarkdown = (source: string) =>
   renderToStaticMarkup(
