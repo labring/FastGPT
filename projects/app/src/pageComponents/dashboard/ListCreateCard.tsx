@@ -24,7 +24,8 @@ const ListCreateCard = ({
 
   return (
     <MyBox
-      py={4}
+      pt={5}
+      pb={3}
       px={5}
       cursor={'pointer'}
       border={'base'}

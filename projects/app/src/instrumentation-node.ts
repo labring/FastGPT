@@ -66,7 +66,8 @@ export async function registerNodeInstrumentation() {
       import('@fastgpt/service/common/system/constants'),
       import('@fastgpt/service/env.util'),
       import('@fastgpt/service/common/system/resource'),
-      import('@/migration/runner')
+      import('@/migration/runner'),
+      import('@/env')
     ]);
 
     console.log('System resources detected', getReadableSystemResourceInfo());
