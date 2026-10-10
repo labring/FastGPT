@@ -2,7 +2,9 @@ import z from 'zod';
 import {
   ChunkSettingsSchema,
   CollectionTagLabelSchema,
-  InheritPermissionSchema
+  InheritPermissionInputSchema,
+  InheritPermissionSchema,
+  type WithOptionalInheritPermission
 } from '../../../../core/dataset/type';
 import { DatasetCollectionTypeEnum } from '../../../../core/dataset/constants';
 import { ParentIdSchema } from '../../../../common/parentFolder/type';
@@ -14,7 +16,7 @@ import { APIFileItemSchema } from '../../../../core/dataset/apiDataset/type';
  * ============================================================================ */
 
 // 集合创建端点的接口视角补充：独立态创建还要求所属 dataset 已启用文件级权限。
-const InheritPermissionInputSchema = InheritPermissionSchema.meta({
+const CreateCollectionInheritPermissionSchema = InheritPermissionInputSchema.meta({
   description:
     '是否继承父级权限（默认 true），仅对文件夹（type=folder）生效，仅供 sangfor 使用（FastGPT UI 未使用）：true = 继承父级（根 folder 继承 dataset）；false = 独立创建，仅写 owner 权限快照、不合并父级权限，父级后续权限变更也不再传播到该节点；传 false 时所属知识库必须已启用文件级权限，否则返回 collectionPermissionDisabled'
 });
@@ -24,7 +26,7 @@ const DatasetCollectionStoreDataSchema = ChunkSettingsSchema.extend({
   parentId: ParentIdSchema.optional().meta({ description: '父级目录 ID' }),
   metadata: z.record(z.string(), z.any()).optional().meta({ description: '元数据' }),
   customPdfParse: z.boolean().optional().meta({ description: '自定义 PDF 解析' }),
-  inheritPermission: InheritPermissionInputSchema
+  inheritPermission: InheritPermissionSchema
 });
 
 const CollectionTagsInputSchema = z.array(CollectionTagLabelSchema).optional().meta({
@@ -74,9 +76,11 @@ export const CreateCollectionBodySchema = z.object({
     .enum([DatasetCollectionTypeEnum.folder, DatasetCollectionTypeEnum.virtual])
     .meta({ description: '集合类型（folder: 文件夹，virtual: 手动集合）' }),
   tags: CollectionTagsInputSchema,
-  inheritPermission: InheritPermissionInputSchema
+  inheritPermission: CreateCollectionInheritPermissionSchema
 });
-export type CreateCollectionBodyType = z.infer<typeof CreateCollectionBodySchema>;
+export type CreateCollectionBodyType = WithOptionalInheritPermission<
+  z.infer<typeof CreateCollectionBodySchema>
+>;
 
 export const CreateCollectionResponseSchema = ObjectIdSchema.meta({
   description: '新创建的集合 ID'

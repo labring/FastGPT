@@ -9,8 +9,9 @@ import {
   DatasetSchema,
   DatasetListItemSchema,
   sangforFileParseConfigSchema,
-  InheritPermissionSchema,
-  SearchDataResponseItemSchema
+  InheritPermissionInputSchema,
+  SearchDataResponseItemSchema,
+  type WithOptionalInheritPermission
 } from '../../../core/dataset/type';
 import { BoolSchema } from '../../../common/zod';
 import { AppListSortEnum } from '../../../core/app/constants';
@@ -79,10 +80,12 @@ export const CreateDatasetBodySchema = z.object({
   sangforFileParseConfig: sangforFileParseConfigSchema.optional().meta({
     description: '外部文档解析开关(页眉页脚/附录/图片识别/图转表),仅对 customPdfParse 解析路径生效'
   }),
-  inheritPermission: InheritPermissionSchema
+  inheritPermission: InheritPermissionInputSchema
 });
 
-export type CreateDatasetBody = z.infer<typeof CreateDatasetBodySchema>;
+export type CreateDatasetBody = WithOptionalInheritPermission<
+  z.infer<typeof CreateDatasetBodySchema>
+>;
 
 // 出参 Schema
 export const CreateDatasetResponseSchema = ObjectIdSchema.meta({
@@ -534,9 +537,11 @@ export const CreateDatasetFolderBodySchema = z.object({
     example: '存放产品相关知识库',
     description: '文件夹简介'
   }),
-  inheritPermission: InheritPermissionSchema
+  inheritPermission: InheritPermissionInputSchema
 });
-export type CreateDatasetFolderBody = z.infer<typeof CreateDatasetFolderBodySchema>;
+export type CreateDatasetFolderBody = WithOptionalInheritPermission<
+  z.infer<typeof CreateDatasetFolderBodySchema>
+>;
 
 /* ============================================================================
  * API: 搜索测试

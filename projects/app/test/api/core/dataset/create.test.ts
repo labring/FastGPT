@@ -1,8 +1,9 @@
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 import createHandler from '@/pages/api/core/dataset/create';
-import type {
-  CreateDatasetBody,
-  CreateDatasetResponse
+import {
+  CreateDatasetBodySchema,
+  type CreateDatasetBody,
+  type CreateDatasetResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
@@ -138,6 +139,16 @@ describe('create dataset', () => {
 });
 
 describe('create dataset inheritPermission', () => {
+  it('parses an omitted inheritPermission as true', () => {
+    expect(
+      CreateDatasetBodySchema.parse({
+        name: 'folder',
+        intro: '',
+        type: DatasetTypeEnum.folder
+      }).inheritPermission
+    ).toBe(true);
+  });
+
   /** 父级 folder + 一个 read 协作者：子级是否合并父级快照可以直接观察。 */
   const setupParentFolder = async () => {
     const users = await getFakeUsers(2);
@@ -210,6 +221,25 @@ describe('create dataset inheritPermission', () => {
     );
     return { res, dataset: await MongoDataset.findById(res.data).lean() };
   };
+
+  it('inherits the parent snapshot when inheritPermission is omitted', async () => {
+    const { owner, collaborator, teamId, parent } = await setupParentFolder();
+
+    const { res, dataset } = await createChild({
+      owner,
+      parentId: String(parent._id),
+      type: DatasetTypeEnum.folder
+    });
+
+    expect(res.code).toBe(200);
+    expect(dataset?.inheritPermission).toBe(true);
+    await expect(datasetPermissions({ teamId, datasetId: String(dataset?._id) })).resolves.toEqual(
+      [
+        `${String(owner.tmbId)}:${OwnerRoleVal}`,
+        `${String(collaborator.tmbId)}:${ReadRoleVal}`
+      ].sort()
+    );
+  });
 
   it('writes only the owner snapshot for an independent folder', async () => {
     const { owner, teamId, parent } = await setupParentFolder();

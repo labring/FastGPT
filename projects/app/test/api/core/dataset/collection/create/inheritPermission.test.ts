@@ -3,6 +3,7 @@ import {
   ApiCreateCollectionBaseSchema,
   CreateApiCollectionBodySchema,
   CreateApiCollectionV2BodySchema,
+  CreateCollectionBodySchema,
   CreateCollectionByFileIdBodySchema,
   CreateCollectionByLocalFileBodySchema,
   CreateExternalFileCollectionBodySchema,
@@ -90,6 +91,16 @@ const createCollection = async ({
 };
 
 describe('create collection inheritPermission', () => {
+  it('parses an omitted inheritPermission as true', () => {
+    expect(
+      CreateCollectionBodySchema.parse({
+        datasetId: 'dataset-id',
+        name: 'folder',
+        type: DatasetCollectionTypeEnum.folder
+      }).inheritPermission
+    ).toBe(true);
+  });
+
   it('writes only the owner snapshot for an independent folder', async () => {
     const { owner, teamId, dataset } = await setupDataset();
 

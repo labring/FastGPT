@@ -1,5 +1,8 @@
 import folderCreateHandler from '@/pages/api/core/dataset/folder/create';
-import type { CreateDatasetFolderBody } from '@fastgpt/global/openapi/core/dataset/api';
+import {
+  CreateDatasetFolderBodySchema,
+  type CreateDatasetFolderBody
+} from '@fastgpt/global/openapi/core/dataset/api';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   OwnerRoleVal,
@@ -14,6 +17,15 @@ import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
 
 describe('create dataset folder inheritPermission', () => {
+  it('parses an omitted inheritPermission as true', () => {
+    expect(
+      CreateDatasetFolderBodySchema.parse({
+        name: 'folder',
+        intro: ''
+      }).inheritPermission
+    ).toBe(true);
+  });
+
   /** 父级 folder + 一个 read 协作者：子级是否合并父级快照可以直接观察。 */
   const setupParentFolder = async () => {
     const users = await getFakeUsers(2);

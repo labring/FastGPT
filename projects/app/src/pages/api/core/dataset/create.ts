@@ -42,7 +42,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
     vlmModel,
     apiDatasetServer,
     sangforFileParseConfig,
-    inheritPermission = true
+    inheritPermission
   } = parseApiInput({ req, bodySchema: CreateDatasetBodySchema }).body;
 
   // auth
