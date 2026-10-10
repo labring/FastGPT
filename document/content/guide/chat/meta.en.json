@@ -2,6 +2,7 @@
   "title": "Chat Box",
   "root": false,
   "pages": [
+    "html",
     "htmlRendering",
     "quoteList"
   ]
