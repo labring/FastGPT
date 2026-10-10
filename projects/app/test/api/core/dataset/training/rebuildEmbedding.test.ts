@@ -100,7 +100,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     });
   });
 
-  it('should keep image index and enqueue image mode when the new embedding model supports images', async () => {
+  it('should keep image index and enqueue only rebuild mode when the new embedding model supports images', async () => {
     const { root, dataset, collection } = await createDatasetContext();
     const data = await MongoDatasetData.create({
       teamId: root.teamId,
@@ -142,20 +142,15 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     expect(updatedCollection?.imageIndex).toBe(true);
     expect(training).toEqual(
       expect.objectContaining({
-        mode: TrainingModeEnum.image,
-        q: 'question with ![cat](dataset/team/cat.png)',
-        retryCount: 50
+        mode: TrainingModeEnum.rebuildIndex,
+        q: '',
+        retryCount: 3
       })
     );
-    expect(training?.indexes).toEqual([
-      expect.objectContaining({
-        type: DatasetDataIndexTypeEnum.custom,
-        text: 'manual index'
-      })
-    ]);
+    expect(training?.indexes).toEqual([]);
   });
 
-  it('should disable image index and enqueue chunk mode when the new embedding model has no image capability', async () => {
+  it('should disable image index and enqueue rebuild mode when the new embedding model has no image capability', async () => {
     const { root, dataset, collection } = await createDatasetContext({
       currentVectorModel: visionEmbeddingModel
     });
@@ -185,14 +180,14 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     expect(updatedCollection?.imageIndex).toBe(false);
     expect(training).toEqual(
       expect.objectContaining({
-        mode: TrainingModeEnum.chunk,
-        retryCount: 50
+        mode: TrainingModeEnum.rebuildIndex,
+        retryCount: 3
       })
     );
     expect(training?.q).toBe('');
   });
 
-  it('should enqueue imageParse mode with VLM model for image data when VLM is configured', async () => {
+  it('should enqueue only rebuild mode for image data when VLM is configured', async () => {
     const { root, dataset, collection } = await createDatasetContext({
       currentVectorModel: visionEmbeddingModel,
       vlmModel: datasetVlmModel
@@ -223,9 +218,8 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     expect(res.code).toBe(200);
     expect(training).toEqual(
       expect.objectContaining({
-        mode: TrainingModeEnum.imageParse,
-        imageId: 'dataset/team/main.png',
-        retryCount: 50
+        mode: TrainingModeEnum.rebuildIndex,
+        retryCount: 3
       })
     );
   });
@@ -239,7 +233,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       collectionId: collection._id,
       q: 'pending',
       indexes: [],
-      rebuilding: true
+      indexStatus: 'rebuildIndexPending'
     });
 
     const res = await Call(handler, {
@@ -301,7 +295,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       vectorModelId: visionEmbeddingModel.modelId
     });
     await expect(MongoDatasetData.findById(data._id).lean()).resolves.toMatchObject({
-      rebuilding: true
+      indexStatus: 'rebuildIndexPending'
     });
     await expect(MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).resolves.toBe(0);
   });

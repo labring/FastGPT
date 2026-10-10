@@ -10,6 +10,7 @@ export const mockVectorInsert = vi.fn().mockResolvedValue({
 });
 
 export const mockVectorDelete = vi.fn().mockResolvedValue(undefined);
+export const mockVectorRefreshCreateTime = vi.fn().mockResolvedValue(undefined);
 
 export const mockVectorEmbRecall = vi.fn().mockResolvedValue({
   results: [
@@ -34,6 +35,7 @@ const MockVectorCtrl = vi.fn().mockImplementation(function () {
     init: mockVectorInit,
     insert: mockVectorInsert,
     delete: mockVectorDelete,
+    refreshCreateTime: mockVectorRefreshCreateTime,
     embRecall: mockVectorEmbRecall,
     getVectorDataByTime: mockGetVectorDataByTime,
     getVectorCountByTeamId: mockGetVectorCountByTeamId,
@@ -75,6 +77,7 @@ vi.mock('@fastgpt/service/common/vectorDB/constants', () => ({
 export const resetVectorMocks = () => {
   mockVectorInsert.mockClear();
   mockVectorDelete.mockClear();
+  mockVectorRefreshCreateTime.mockClear();
   mockVectorEmbRecall.mockClear();
   mockVectorInit.mockClear();
   mockGetVectorDataByTime.mockClear();

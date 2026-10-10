@@ -6,14 +6,23 @@ import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { retryFailedTrainingTasks } from '@fastgpt/service/core/dataset/training/service';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import {
   MongoDatasetSynonym,
   MongoDatasetSynonymMapping
 } from '@fastgpt/service/core/dataset/synonym/schema';
 import { DatasetSynonymSchemaVersion } from '@fastgpt/global/core/dataset/synonym';
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetDataIndexStatusEnum,
+  DatasetDataIndexTypeEnum
+} from '@fastgpt/global/core/dataset/data/constants';
+import {
+  DatasetCollectionTypeEnum,
+  DatasetTypeEnum,
+  TrainingModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import type {
   DatasetDataIndexItemType,
   DatasetDataItemType
@@ -25,10 +34,13 @@ import {
   createDatasetData,
   deleteDatasetData,
   updateDatasetDataByIndexes,
+  rebuildDatasetDataIndexes,
   updateDatasetDataSystemIndexes
 } from '@/service/core/dataset/data/data';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { serviceEnv } from '@fastgpt/service/env';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { DatasetDataIndexOperation } from '@/service/core/dataset/data/dataIndex';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
@@ -184,6 +196,229 @@ describe('Dataset data service', () => {
 
   afterAll(() => {
     serviceEnv.DATASET_SYNONYM_ENABLED = originalDatasetSynonymEnabled;
+  });
+
+  describe('manual repair of failed data', () => {
+    const cases = [
+      {
+        failed: DatasetDataIndexStatusEnum.error,
+        running: DatasetDataIndexStatusEnum.indexing,
+        mode: TrainingModeEnum.index
+      },
+      {
+        failed: DatasetDataIndexStatusEnum.rebuildIndexFailed,
+        running: DatasetDataIndexStatusEnum.rebuildIndexRunning,
+        mode: TrainingModeEnum.rebuildIndex
+      },
+      {
+        failed: DatasetDataIndexStatusEnum.rebuildSynonymFailed,
+        running: DatasetDataIndexStatusEnum.rebuildSynonymRunning,
+        mode: TrainingModeEnum.rebuildSynonym
+      }
+    ];
+    /** 失败任务与旧向量同时保留，使用真实 Mongo 事务验证修复和重试的状态边界。 */
+    const createFailedData = async (item: (typeof cases)[number]) => {
+      const context = await createMongoData({ q: 'old question', a: 'old answer' });
+      const { data, root, dataset, collection } = context;
+      await MongoDatasetData.updateOne(
+        { _id: data._id },
+        {
+          $set: {
+            indexStatus: item.failed,
+            indexErrorMsg: 'rebuild failed',
+            synonymVersion: 1,
+            synonymRebuildingVersion: 2
+          }
+        }
+      );
+      const training = await MongoDatasetTraining.create({
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id,
+        collectionId: collection._id,
+        dataId: data._id,
+        billId: 'repair',
+        mode: item.mode,
+        retryCount: 0,
+        errorMsg: 'rebuild failed',
+        expireAt: null
+      });
+      return { ...context, training };
+    };
+
+    it.each(
+      cases.flatMap((item) =>
+        [true, false].flatMap((synonymEnabled) =>
+          (['full', 'system'] as const).map((kind) => ({ ...item, synonymEnabled, kind }))
+        )
+      )
+    )('fully repairs $failed on $kind save (synonym enabled: $synonymEnabled)', async (item) => {
+      Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: item.synonymEnabled });
+      const { data, training, root, dataset } = await createFailedData(item);
+      if (item.synonymEnabled) {
+        await MongoDatasetSynonym.create({
+          teamId: root.teamId,
+          datasetId: dataset._id,
+          version: 3,
+          enabled: true,
+          schemaVersion: DatasetSynonymSchemaVersion
+        });
+      }
+      const props = { dataId: String(data._id), q: data.q, a: '', model: embeddingModel };
+      await (item.kind === 'full'
+        ? updateDatasetDataByIndexes({
+            ...props,
+            indexes: data.indexes.map(({ type, text, dataId }) => ({ type, text, dataId }))
+          })
+        : updateDatasetDataSystemIndexes(props));
+      const repaired = await MongoDatasetData.findById(data._id).lean();
+      expect(repaired).toMatchObject({
+        q: 'old question',
+        a: '',
+        indexStatus: DatasetDataIndexStatusEnum.indexed,
+        synonymVersion: item.synonymEnabled ? 3 : 0,
+        indexes: [
+          expect.objectContaining({
+            type: DatasetDataIndexTypeEnum.custom,
+            text: 'old custom index'
+          }),
+          expect.objectContaining({ type: DatasetDataIndexTypeEnum.default, text: 'old question' })
+        ],
+        history: [expect.objectContaining({ q: 'old question', a: 'old answer' })]
+      });
+      expect(repaired?.indexErrorMsg).toBeUndefined();
+      expect(repaired?.synonymRebuildingVersion).toBeUndefined();
+      expect(
+        repaired?.indexes.every(({ dataId }) => !['custom_old', 'default_old'].includes(dataId))
+      ).toBe(true);
+      expect(mockGetVectors).toHaveBeenCalledWith(
+        expect.objectContaining({
+          inputs: [
+            { type: 'text', input: 'old custom index' },
+            { type: 'text', input: 'old question' }
+          ]
+        })
+      );
+      expect(mockVectorDelete).toHaveBeenCalledWith({
+        teamId: data.teamId,
+        idList: ['custom_old', 'default_old']
+      });
+      expect(await MongoDatasetTraining.findById(training._id)).toBeNull();
+      expect(await MongoDatasetDataText.findOne({ dataId: data._id }).lean()).toMatchObject({
+        fullTextToken: await jiebaSplit({ text: 'old question' })
+      });
+      // 已清理的失败任务不会再恢复旧答案或重新进入训练。
+      await retryFailedTrainingTasks({ teamId: data.teamId, datasetId: data.datasetId });
+      expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+        a: '',
+        indexStatus: DatasetDataIndexStatusEnum.indexed
+      });
+    });
+
+    it.each(['full', 'system'] as const)(
+      'rolls back %s repair if task removal fails',
+      async (kind) => {
+        const { data, training } = await createFailedData(cases[0]);
+        const deleteTaskSpy = vi
+          .spyOn(MongoDatasetTraining, 'deleteMany')
+          .mockRejectedValueOnce(new Error('task removal failed'));
+        try {
+          await expect(
+            kind === 'full'
+              ? updateDatasetDataByIndexes({
+                  dataId: String(data._id),
+                  indexes: [],
+                  a: '',
+                  model: embeddingModel
+                })
+              : updateDatasetDataSystemIndexes({
+                  dataId: String(data._id),
+                  a: '',
+                  model: embeddingModel
+                })
+          ).rejects.toThrow('task removal failed');
+          expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+            indexStatus: cases[0].failed,
+            indexErrorMsg: 'rebuild failed',
+            indexes: expect.arrayContaining([
+              expect.objectContaining({ dataId: 'custom_old' }),
+              expect.objectContaining({ dataId: 'default_old' })
+            ])
+          });
+          expect(await MongoDatasetTraining.findById(training._id).lean()).toMatchObject({
+            retryCount: 0
+          });
+          expect(mockVectorDelete).toHaveBeenCalledWith({
+            teamId: data.teamId,
+            idList: kind === 'full' ? ['id_1'] : ['id_1', 'id_2']
+          });
+        } finally {
+          deleteTaskSpy.mockRestore();
+        }
+      }
+    );
+
+    it.each(
+      cases.flatMap((item) => (['full', 'system'] as const).map((kind) => ({ ...item, kind })))
+    )('rejects $kind save when $failed was already retried', async (item) => {
+      const { data, training } = await createFailedData(item);
+      await retryFailedTrainingTasks({ teamId: data.teamId, datasetId: data.datasetId });
+      const props = {
+        dataId: String(data._id),
+        q: 'edited question',
+        a: '',
+        model: embeddingModel
+      };
+      await expect(
+        item.kind === 'full'
+          ? updateDatasetDataByIndexes({ ...props, indexes: [] })
+          : updateDatasetDataSystemIndexes(props)
+      ).rejects.toBe(DatasetErrEnum.dataNotIndexed);
+      expect(mockGetVectors).not.toHaveBeenCalled();
+      expect(mockVectorDelete).not.toHaveBeenCalled();
+      expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+        q: 'old question',
+        a: 'old answer',
+        indexStatus: item.running
+      });
+      expect(await MongoDatasetTraining.findById(training._id).lean()).toMatchObject({
+        retryCount: 3
+      });
+    });
+
+    it.each(
+      cases.flatMap((item) => (['full', 'system'] as const).map((kind) => ({ ...item, kind })))
+    )('does not overwrite a concurrent retry of $failed during $kind repair', async (item) => {
+      const { kind } = item;
+      Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: false });
+      const { data, training } = await createFailedData(item);
+      mockGetVectors.mockImplementationOnce(async ({ inputs }) => {
+        await retryFailedTrainingTasks({ teamId: data.teamId, datasetId: data.datasetId });
+        return createMockVectorsResponse(inputs.map((input) => input.input));
+      });
+      const props = {
+        dataId: String(data._id),
+        q: 'edited question',
+        a: '',
+        model: embeddingModel
+      };
+      const repair =
+        kind === 'full'
+          ? updateDatasetDataByIndexes({ ...props, indexes: [] })
+          : updateDatasetDataSystemIndexes(props);
+      await expect(repair).rejects.toThrow('数据已变化');
+      expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+        indexStatus: item.running,
+        q: 'old question'
+      });
+      expect(await MongoDatasetTraining.findById(training._id).lean()).toMatchObject({
+        retryCount: 3
+      });
+      expect(mockVectorDelete).toHaveBeenCalledWith({
+        teamId: data.teamId,
+        idList: kind === 'full' ? ['id_1'] : ['id_1', 'id_2']
+      });
+    });
   });
 
   describe('createDatasetData', () => {
@@ -806,6 +1041,381 @@ describe('Dataset data service', () => {
       );
       expect(mockVectorDelete.mock.calls[0]?.[0].idList).toEqual(
         expect.arrayContaining(['custom_old', 'default_old', 'old_markdown_image'])
+      );
+    });
+  });
+
+  describe('rebuildDatasetDataIndexes', () => {
+    /** 同时覆盖受词表影响、不受影响的文本和图片，验证差量清理不会误删复用向量。 */
+    const createSynonymRebuildData = async ({
+      previousVersion,
+      hasHistory = true,
+      currentTerm = '退款',
+      enabled = true
+    }: {
+      previousVersion?: number;
+      hasHistory?: boolean;
+      currentTerm?: string;
+      enabled?: boolean;
+    }) => {
+      const context = await createMongoData({
+        indexes: [
+          { type: DatasetDataIndexTypeEnum.custom, text: '退钱', dataId: 'old_alias' },
+          { type: DatasetDataIndexTypeEnum.default, text: '稳定文本', dataId: 'old_stable' },
+          {
+            type: DatasetDataIndexTypeEnum.imageEmbedding,
+            text: 'https://example.com/image.png',
+            dataId: 'old_image'
+          }
+        ]
+      });
+      const { root, dataset, data } = context;
+      const synonym = await MongoDatasetSynonym.create({
+        teamId: root.teamId,
+        datasetId: dataset._id,
+        version: 2,
+        enabled,
+        schemaVersion: DatasetSynonymSchemaVersion
+      });
+      for (const [fileVersion, term] of [
+        [1, '返款'],
+        [2, currentTerm]
+      ] as const) {
+        if ((fileVersion === 1 && !hasHistory) || (fileVersion === 2 && !enabled)) continue;
+        await MongoDatasetSynonymMapping.create({
+          logicalMappingId: new Types.ObjectId(),
+          teamId: root.teamId,
+          datasetId: dataset._id,
+          synonymFileId: synonym._id,
+          fileVersion,
+          standardizedTerm: term,
+          normalizedStandardizedTerm: term,
+          synonymTerms: ['退钱'],
+          normalizedSynonymTerms: ['退钱'],
+          allTerms: `${term} 退钱`,
+          fingerprint: `${term}:退钱`
+        });
+      }
+      await MongoDatasetData.updateOne(
+        { _id: data._id },
+        {
+          $set: {
+            ...(previousVersion !== undefined && { synonymVersion: previousVersion }),
+            synonymRebuildingVersion: 2,
+            indexStatus: DatasetDataIndexStatusEnum.rebuildSynonymRunning,
+            indexErrorMsg: 'previous failure'
+          }
+        }
+      );
+      return context;
+    };
+
+    it.each([
+      { name: 'unchanged inputs', previousVersion: 1, currentTerm: '返款', expected: [] },
+      { name: 'changed mapping', previousVersion: 1, expected: ['退款'] },
+      { name: 'deleted dictionary', previousVersion: 1, enabled: false, expected: ['退钱'] },
+      { name: 'first dictionary', previousVersion: 0, expected: ['退款'] },
+      {
+        name: 'missing snapshot',
+        previousVersion: 1,
+        hasHistory: false,
+        expected: ['退款', '稳定文本']
+      },
+      { name: 'unrecorded version', previousVersion: undefined, expected: ['退款', '稳定文本'] }
+    ])('diffs synonym rebuilds with $name', async ({ expected, ...options }) => {
+      const { data } = await createSynonymRebuildData(options);
+      const result = await rebuildDatasetDataIndexes({
+        dataId: String(data._id),
+        model: visionEmbeddingModel,
+        diffSynonym: true
+      });
+      expect(
+        mockGetVectors.mock.calls.flatMap(([props]) => props.inputs.map((input) => input.input))
+      ).toEqual(expected);
+      const updated = await MongoDatasetData.findById(data._id).lean();
+      expect(updated).toMatchObject({
+        indexStatus: DatasetDataIndexStatusEnum.indexed,
+        synonymVersion: 2,
+        q: data.q,
+        a: data.a
+      });
+      expect(updated).not.toHaveProperty('synonymRebuildingVersion');
+      expect(updated).not.toHaveProperty('indexErrorMsg');
+      expect(updated?.indexes.map(({ text }) => text)).toEqual(
+        data.indexes.map(({ text }) => text)
+      );
+      expect(updated?.indexes[2].dataId).toBe('old_image');
+      expect((await MongoDatasetDataText.findOne({ dataId: data._id }).lean())?.fullTextToken).toBe(
+        await jiebaSplit({
+          text: `${options.enabled === false ? '退钱' : (options.currentTerm ?? '退款')}\n稳定文本`
+        })
+      );
+      if (expected.length === 0) {
+        expect(result.tokens).toBe(0);
+        expect(updated?.indexes.map(({ dataId }) => dataId)).toEqual([
+          'old_alias',
+          'old_stable',
+          'old_image'
+        ]);
+        expect(mockVectorInsert).not.toHaveBeenCalled();
+        expect(mockVectorDelete).not.toHaveBeenCalled();
+      } else {
+        expect(updated?.indexes[0].dataId).toBe('id_1');
+        expect(updated?.indexes[1].dataId).toBe(expected.length === 1 ? 'old_stable' : 'id_2');
+        expect(mockVectorDelete).toHaveBeenCalledExactlyOnceWith(
+          expect.objectContaining({
+            idList: expected.length === 1 ? ['old_alias'] : ['old_alias', 'old_stable']
+          })
+        );
+      }
+    });
+
+    it.each([true, false])(
+      'fully rebuilds without diff when switching models or synonyms are disabled (enabled=%s)',
+      async (enabled) => {
+        const { data } = await createSynonymRebuildData({
+          previousVersion: 1,
+          currentTerm: '返款'
+        });
+        serviceEnv.DATASET_SYNONYM_ENABLED = enabled;
+        const buildPatch = vi.spyOn(DatasetDataIndexOperation.prototype, 'buildPatch');
+        const findConfig = vi.spyOn(MongoDatasetSynonym, 'findOne');
+        const findMappings = vi.spyOn(MongoDatasetSynonymMapping, 'find');
+        try {
+          await rebuildDatasetDataIndexes({
+            dataId: String(data._id),
+            model: embeddingModel,
+            diffSynonym: !enabled
+          });
+          expect(buildPatch).not.toHaveBeenCalled();
+          if (!enabled) {
+            expect(findConfig).not.toHaveBeenCalled();
+            expect(findMappings).not.toHaveBeenCalled();
+          }
+        } finally {
+          buildPatch.mockRestore();
+          findConfig.mockRestore();
+          findMappings.mockRestore();
+        }
+        expect(
+          mockGetVectors.mock.calls.flatMap(([props]) => props.inputs.map((input) => input.input))
+        ).toEqual([enabled ? '返款' : '退钱', '稳定文本']);
+        expect(mockVectorDelete).toHaveBeenCalledExactlyOnceWith(
+          expect.objectContaining({ idList: ['old_alias', 'old_stable', 'old_image'] })
+        );
+      }
+    );
+
+    it('rolls back only newly generated vectors when a differential rebuild cannot commit', async () => {
+      const { data } = await createSynonymRebuildData({ previousVersion: 1 });
+      await expect(
+        rebuildDatasetDataIndexes({
+          dataId: String(data._id),
+          model: visionEmbeddingModel,
+          diffSynonym: true,
+          commit: (write) =>
+            mongoSessionRun(async (session) => {
+              await write(session);
+              throw new Error('lease lost');
+            })
+        })
+      ).rejects.toThrow('lease lost');
+      expect(mockVectorDelete).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ idList: ['id_1'] })
+      );
+      const updated = await MongoDatasetData.findById(data._id).lean();
+      expect(updated).toMatchObject({
+        synonymVersion: 1,
+        indexStatus: DatasetDataIndexStatusEnum.rebuildSynonymRunning
+      });
+      expect(updated?.indexes.map(({ dataId }) => dataId)).toEqual([
+        'old_alias',
+        'old_stable',
+        'old_image'
+      ]);
+      expect((await MongoDatasetDataText.findOne({ dataId: data._id }).lean())?.fullTextToken).toBe(
+        'old token'
+      );
+    });
+
+    it.each([true, false])('uses only the stored image index with vision=%s', async (vision) => {
+      const previousBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
+      Object.assign(serviceEnv, { MULTIPLE_DATA_TO_BASE64: false });
+      try {
+        const source = 'https://example.com/saved.png';
+        const { data } = await createMongoData({
+          q: '![other](https://example.com/body.png)',
+          imageId: 'https://example.com/main.png',
+          indexes: [
+            { type: DatasetDataIndexTypeEnum.imageEmbedding, text: source, dataId: 'old_image' }
+          ]
+        });
+        await rebuildDatasetDataIndexes({
+          dataId: String(data._id),
+          model: vision ? visionEmbeddingModel : embeddingModel
+        });
+        const updated = await MongoDatasetData.findById(data._id).lean();
+        expect(updated?.q).toBe(data.q);
+        expect(updated?.imageId).toBe(data.imageId);
+        if (vision) {
+          expect(updated?.indexes).toMatchObject([
+            { type: DatasetDataIndexTypeEnum.imageEmbedding, text: source }
+          ]);
+          expect(
+            mockGetVectors.mock.calls.flatMap(([props]) => props.inputs.map((input) => input.input))
+          ).toEqual([source]);
+        } else {
+          expect(updated?.indexes).toEqual([]);
+          expect(mockGetVectors).not.toHaveBeenCalled();
+        }
+        expect(
+          (await MongoDatasetDataText.findOne({ dataId: data._id }).lean())?.fullTextToken
+        ).toBe('');
+      } finally {
+        Object.assign(serviceEnv, { MULTIPLE_DATA_TO_BASE64: previousBase64 });
+      }
+    });
+
+    it('uses only saved index text and keeps body, metadata and history unchanged', async () => {
+      Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: false });
+      const storedIndexes = [
+        { type: DatasetDataIndexTypeEnum.default, text: 'saved text', dataId: 'old_default' },
+        { type: DatasetDataIndexTypeEnum.custom, text: 'saved custom', dataId: 'old_custom' }
+      ];
+      const { data } = await createMongoData({
+        q: 'body is not an index',
+        a: 'answer is not an index',
+        indexes: storedIndexes,
+        history: [{ q: 'previous', a: 'previous answer', updateTime: new Date(0) }]
+      });
+      await rebuildDatasetDataIndexes({ dataId: String(data._id), model: embeddingModel });
+      const updated = await MongoDatasetData.findById(data._id).lean();
+      expect(updated).toMatchObject({
+        q: data.q,
+        a: data.a,
+        history: [{ q: 'previous', a: 'previous answer' }]
+      });
+      expect(updated!.indexes.map(({ type, text }) => ({ type, text }))).toEqual(
+        storedIndexes.map(({ type, text }) => ({ type, text }))
+      );
+      expect(
+        mockGetVectors.mock.calls.flatMap(([props]) => props.inputs.map((input) => input.input))
+      ).toEqual(storedIndexes.map((index) => index.text));
+      expect(mockCountPromptTokens).not.toHaveBeenCalled();
+      const fullText = await MongoDatasetDataText.findOne({ dataId: data._id }).lean();
+      expect(fullText?.fullTextToken).toBe(await jiebaSplit({ text: 'saved text\nsaved custom' }));
+    });
+
+    it('does not generate indexes from a body when the stored indexes are empty', async () => {
+      const { data } = await createMongoData({ indexes: [] });
+      const result = await rebuildDatasetDataIndexes({
+        dataId: String(data._id),
+        model: embeddingModel
+      });
+      expect(result.tokens).toBe(0);
+      expect(mockGetVectors).not.toHaveBeenCalled();
+      expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+        q: data.q,
+        a: data.a,
+        indexes: []
+      });
+    });
+
+    it('preserves concurrent edits and cleans new vectors when the index snapshot changes', async () => {
+      Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: false });
+      const { data } = await createMongoData();
+      const replacement = [
+        { type: DatasetDataIndexTypeEnum.custom, text: 'concurrent', dataId: 'concurrent_vector' }
+      ];
+      mockGetVectors.mockImplementationOnce(async ({ inputs }) => {
+        await MongoDatasetData.updateOne(
+          { _id: data._id },
+          {
+            $set: { indexes: replacement, updateTime: new Date(Date.now() + 10_000) }
+          }
+        );
+        return createMockVectorsResponse(inputs.map((input) => input.input));
+      });
+      await expect(
+        rebuildDatasetDataIndexes({ dataId: String(data._id), model: embeddingModel })
+      ).rejects.toThrow('数据已变化');
+      const updated = await MongoDatasetData.findById(data._id).lean();
+      expect(updated?.indexes).toMatchObject(replacement);
+      expect(mockVectorDelete).toHaveBeenCalledWith(
+        expect.objectContaining({ idList: ['id_1', 'id_2'] })
+      );
+      expect(mockVectorDelete).not.toHaveBeenCalledWith(
+        expect.objectContaining({ idList: ['custom_old', 'default_old'] })
+      );
+    });
+
+    it('transforms saved index text for synonyms without changing its stored text', async () => {
+      const { root, dataset, data } = await createMongoData({
+        q: 'unrelated body',
+        indexes: [{ type: DatasetDataIndexTypeEnum.custom, text: '退钱', dataId: 'old_vector' }]
+      });
+      const synonym = await MongoDatasetSynonym.create({
+        teamId: root.teamId,
+        datasetId: dataset._id,
+        version: 1,
+        enabled: true,
+        schemaVersion: DatasetSynonymSchemaVersion
+      });
+      await MongoDatasetSynonymMapping.create({
+        logicalMappingId: new Types.ObjectId(),
+        teamId: root.teamId,
+        datasetId: dataset._id,
+        synonymFileId: synonym._id,
+        fileVersion: 1,
+        standardizedTerm: '退款',
+        normalizedStandardizedTerm: '退款',
+        synonymTerms: ['退钱'],
+        normalizedSynonymTerms: ['退钱'],
+        allTerms: '退款 退钱',
+        fingerprint: '退款:退钱'
+      });
+      await MongoDatasetData.updateOne(
+        { _id: data._id },
+        { $set: { synonymRebuildingVersion: 1 } }
+      );
+      await rebuildDatasetDataIndexes({ dataId: String(data._id), model: embeddingModel });
+      expect(
+        mockGetVectors.mock.calls.flatMap(([props]) => props.inputs.map((input) => input.input))
+      ).toEqual(['退款']);
+      expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+        q: 'unrelated body',
+        indexes: [{ text: '退钱' }],
+        synonymVersion: 1
+      });
+      expect(await MongoDatasetData.findById(data._id).lean()).not.toHaveProperty(
+        'synonymRebuildingVersion'
+      );
+      expect((await MongoDatasetDataText.findOne({ dataId: data._id }).lean())?.fullTextToken).toBe(
+        await jiebaSplit({ text: '退款' })
+      );
+    });
+
+    it('rolls back rebuilt indexes when the synonym snapshot changes during embedding', async () => {
+      const { root, dataset, data } = await createMongoData();
+      const synonym = await MongoDatasetSynonym.create({
+        teamId: root.teamId,
+        datasetId: dataset._id,
+        version: 1,
+        enabled: true,
+        schemaVersion: DatasetSynonymSchemaVersion
+      });
+      mockGetVectors.mockImplementationOnce(async ({ inputs }) => {
+        await MongoDatasetSynonym.updateOne({ _id: synonym._id }, { $set: { version: 2 } });
+        return createMockVectorsResponse(inputs.map((input) => input.input));
+      });
+      await expect(
+        rebuildDatasetDataIndexes({ dataId: String(data._id), model: embeddingModel })
+      ).rejects.toThrow('同义词配置已变化');
+      expect((await MongoDatasetData.findById(data._id).lean())?.indexes).toMatchObject(
+        data.indexes.map(({ type, text, dataId }) => ({ type, text, dataId }))
+      );
+      expect(mockVectorDelete).toHaveBeenCalledWith(
+        expect.objectContaining({ idList: ['id_1', 'id_2'] })
       );
     });
   });

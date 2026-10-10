@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   getTrainingModeByCollection: vi.fn(),
   getDatasetImageIndexCapability: vi.fn(),
   pushDataListToTrainingQueue: vi.fn(),
+  preCreateDatasetDataAndPushToTrainingQueue: vi.fn(),
   createTrainingUsage: vi.fn(),
   mongoSessionRun: vi.fn((fn: any) => fn({}))
 }));
@@ -43,7 +44,8 @@ vi.mock('@fastgpt/service/core/dataset/utils', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/dataset/training/controller', () => ({
-  pushDataListToTrainingQueue: mocks.pushDataListToTrainingQueue
+  pushDataListToTrainingQueue: mocks.pushDataListToTrainingQueue,
+  preCreateDatasetDataAndPushToTrainingQueue: mocks.preCreateDatasetDataAndPushToTrainingQueue
 }));
 
 vi.mock('@fastgpt/service/support/wallet/usage/controller', () => ({
@@ -80,9 +82,16 @@ describe('pushData imageId authorization', () => {
     mocks.getDatasetImageIndexCapability.mockReturnValue({
       supportImageIndex: false
     });
-    mocks.getTrainingModeByCollection.mockReturnValue('chunk');
+    mocks.getTrainingModeByCollection.mockReturnValue('index');
     mocks.createTrainingUsage.mockResolvedValue({ usageId: 'usage-1' });
-    mocks.pushDataListToTrainingQueue.mockResolvedValue({ insertLen: 1 });
+    mocks.pushDataListToTrainingQueue.mockResolvedValue({
+      insertLen: 1,
+      dataIds: ['507f1f77bcf86cd799439031']
+    });
+    mocks.preCreateDatasetDataAndPushToTrainingQueue.mockResolvedValue({
+      insertLen: 1,
+      dataIds: ['507f1f77bcf86cd799439031']
+    });
   });
 
   it('accepts data with valid imageId belonging to collection dataset', async () => {
@@ -94,8 +103,8 @@ describe('pushData imageId authorization', () => {
     });
 
     const res = await (handler as any)({} as any);
-    expect(res).toEqual({ insertLen: 1 });
-    expect(mocks.pushDataListToTrainingQueue).toHaveBeenCalled();
+    expect(res).toEqual({ insertLen: 1, dataIds: ['507f1f77bcf86cd799439031'] });
+    expect(mocks.preCreateDatasetDataAndPushToTrainingQueue).toHaveBeenCalled();
   });
 
   it('accepts data without imageId', async () => {
@@ -107,8 +116,8 @@ describe('pushData imageId authorization', () => {
     });
 
     const res = await (handler as any)({} as any);
-    expect(res).toEqual({ insertLen: 1 });
-    expect(mocks.pushDataListToTrainingQueue).toHaveBeenCalled();
+    expect(res).toEqual({ insertLen: 1, dataIds: ['507f1f77bcf86cd799439031'] });
+    expect(mocks.preCreateDatasetDataAndPushToTrainingQueue).toHaveBeenCalled();
   });
 
   it('rejects data with imageId belonging to another dataset', async () => {
@@ -121,6 +130,7 @@ describe('pushData imageId authorization', () => {
 
     await expect((handler as any)({} as any)).rejects.toBe(CommonErrEnum.unAuthFileKey);
     expect(mocks.pushDataListToTrainingQueue).not.toHaveBeenCalled();
+    expect(mocks.preCreateDatasetDataAndPushToTrainingQueue).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -138,5 +148,21 @@ describe('pushData imageId authorization', () => {
 
     await expect((handler as any)({} as any)).rejects.toBe(CommonErrEnum.unAuthFileKey);
     expect(mocks.pushDataListToTrainingQueue).not.toHaveBeenCalled();
+    expect(mocks.preCreateDatasetDataAndPushToTrainingQueue).not.toHaveBeenCalled();
+  });
+
+  it('routes to pushDataListToTrainingQueue when collection mode is qa', async () => {
+    mocks.getTrainingModeByCollection.mockReturnValue('qa');
+    mocks.parseApiInput.mockReturnValue({
+      body: {
+        collectionId,
+        data: [{ q: 'q', a: 'a' }]
+      }
+    });
+
+    const res = await (handler as any)({} as any);
+    expect(res).toEqual({ insertLen: 1, dataIds: ['507f1f77bcf86cd799439031'] });
+    expect(mocks.pushDataListToTrainingQueue).toHaveBeenCalled();
+    expect(mocks.preCreateDatasetDataAndPushToTrainingQueue).not.toHaveBeenCalled();
   });
 });

@@ -40,7 +40,7 @@ describe('dataset training error existence test', () => {
         datasetId: dataset._id,
         collectionId: collection._id,
         billId: 'test',
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.rebuildIndex,
         retryCount: 3,
         errorMsg: 'temporary failed',
         chunkIndex: 0

@@ -2,7 +2,8 @@ import { getModelHandle } from '../../ai/model';
 import { getDatasetModelReference } from '../model';
 import {
   DatasetCollectionDataProcessModeEnum,
-  DatasetCollectionTypeEnum
+  DatasetCollectionTypeEnum,
+  TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { MongoDatasetCollection } from './schema';
 import type {
@@ -22,7 +23,11 @@ import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { createTrainingUsage } from '../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 
-import { pushDataListToTrainingQueue, pushDatasetToParseQueue } from '../training/controller';
+import {
+  preCreateDatasetDataAndPushToTrainingQueue,
+  pushDataListToTrainingQueue,
+  pushDatasetToParseQueue
+} from '../training/controller';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { getFullTextStore } from '../data/textStore';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -199,7 +204,6 @@ export const createCollectionAndInsertData = async ({
     insertLen: predictDataLimitLength(trainingMode, chunks)
   });
 
-  // 审计旁路：来源推断、任务创建与收口都封装在 dataset 审计模块，业务层只持有返回对象
   const importAudit = await startCollectionImportAudit({
     enabled: audit,
     taskId: auditTaskId,
@@ -251,8 +255,9 @@ export const createCollectionAndInsertData = async ({
 
     // 5. insert to training queue
     const insertResults = await (async () => {
-      if (rawText || imageIds) {
-        return pushDataListToTrainingQueue({
+      if (imageIds) {
+        // 图片先落库为 indexing 数据，再由 ImageParse/向量处理接力更新同一条数据。
+        return preCreateDatasetDataAndPushToTrainingQueue({
           teamId,
           tmbId,
           datasetId: dataset._id,
@@ -274,20 +279,65 @@ export const createCollectionAndInsertData = async ({
           })),
           session
         });
-      } else {
-        await pushDatasetToParseQueue({
+      }
+      if (rawText) {
+        const formattedData = chunks.map((item, index) => ({
+          ...item,
+          indexes: item.indexes?.map((text) => ({
+            type: DatasetDataIndexTypeEnum.custom,
+            text
+          })),
+          chunkIndex: index
+        }));
+
+        // QA 模式在生成前不预落库，由 downstream generateQA 拆分叶子分块后批量落库
+        if (trainingMode === TrainingModeEnum.qa) {
+          return pushDataListToTrainingQueue({
+            teamId,
+            tmbId,
+            datasetId: dataset._id,
+            collectionId,
+            agentModel: agentModelData,
+            vectorModel: embeddingModelData,
+            vlmModel: vlmModelData,
+            indexSize,
+            mode: trainingMode,
+            billId: traingUsageId,
+            auditTaskId: importAudit.taskId,
+            data: formattedData,
+            session
+          });
+        }
+
+        // rawText（手动输入文本、备份、模板、集合同步等）均先落库为 indexing 数据，再派发索引任务
+        return preCreateDatasetDataAndPushToTrainingQueue({
           teamId,
           tmbId,
           datasetId: dataset._id,
           collectionId,
+          agentModel: agentModelData,
+          vectorModel: embeddingModelData,
+          vlmModel: vlmModelData,
+          indexSize,
+          mode: trainingMode,
           billId: traingUsageId,
           auditTaskId: importAudit.taskId,
+          data: formattedData,
           session
         });
-        return {
-          insertLen: 0
-        };
       }
+      await pushDatasetToParseQueue({
+        teamId,
+        tmbId,
+        datasetId: dataset._id,
+        collectionId,
+        billId: traingUsageId,
+        auditTaskId: importAudit.taskId,
+        session
+      });
+      return {
+        insertLen: 0
+      };
     })();
 
     return {
@@ -299,14 +349,11 @@ export const createCollectionAndInsertData = async ({
   };
 
   const result = await (session ? fn(session) : mongoSessionRun(fn)).catch(async (error) => {
-    // fail 内部吞掉审计异常，业务错误仍按原样外抛
     await importAudit.fail(error);
     throw error;
   });
 
-  // 回填真实 collectionId 并尝试收口一次；未创建审计时为 no-op
   await importAudit.bindCollection(result.collectionId);
-
   return result;
 };
 

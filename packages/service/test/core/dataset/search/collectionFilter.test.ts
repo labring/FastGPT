@@ -4,6 +4,7 @@ const collectionFindMock = vi.hoisted(() => vi.fn());
 const tagFindMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/core/dataset/collection/schema', () => ({
+  DatasetColCollectionName: 'dataset_collections',
   MongoDatasetCollection: { find: collectionFindMock }
 }));
 vi.mock('@fastgpt/service/core/dataset/tag/schemaV2', () => ({

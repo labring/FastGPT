@@ -12,7 +12,8 @@ import {
   Switch,
   Checkbox,
   HStack,
-  Button
+  Button,
+  Skeleton
 } from '@chakra-ui/react';
 import {
   delDatasetCollectionById,
@@ -30,6 +31,10 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import {
+  createDatasetStatusRequest,
+  useDatasetStatusPolling
+} from '@/web/core/dataset/hooks/useDatasetStatusPolling';
 import { useRouter } from 'next/router';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
@@ -60,6 +65,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import TrainingStates from './TrainingStates';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 import {
+  canOpenCollectionTrainingStates,
   getCollectionTrainingStatusColorSchema,
   getCollectionTrainingStatusText
 } from '@/web/core/dataset/trainingStatus';
@@ -91,7 +97,12 @@ const CollectionCard = () => {
     permission: DatasetCollectionsListItemType['permission'];
   }>();
   const [isTrainingErrorModalOpen, setIsTrainingErrorModalOpen] = useState(false);
-  const [hasDatasetTrainingError, setHasDatasetTrainingError] = useState(false);
+  const [datasetTrainingError, setDatasetTrainingError] = useState({
+    datasetId: '',
+    hasError: false
+  });
+  const hasDatasetTrainingError =
+    datasetTrainingError.datasetId === datasetDetail._id && datasetTrainingError.hasError;
   const [tagSetCollection, setTagSetCollection] = useState<DatasetCollectionsListItemType>();
   const [isBatchTagModalOpen, setIsBatchTagModalOpen] = useState(false);
   const [editPerCollection, setEditPerCollection] = useState<DatasetCollectionItemType>();
@@ -110,7 +121,7 @@ const CollectionCard = () => {
     Pagination,
     total,
     getData,
-    isGetting,
+    isInitialLoading,
     pageNum,
     pageSize,
     scrollContainerRef
@@ -127,6 +138,7 @@ const CollectionCard = () => {
         return {
           ...collection,
           icon,
+          canOpenTrainingStates: canOpenCollectionTrainingStates(collection),
           statusText,
           statusColorSchema
         };
@@ -154,20 +166,25 @@ const CollectionCard = () => {
     title: t('common:Rename')
   });
 
-  const { runAsync: refreshDatasetTrainingError } = useRequest(
-    async () => {
-      const res = await checkDatasetTrainingError(datasetDetail._id);
-      return res.hasError;
-    },
-    {
-      manual: false,
-      refreshDeps: [datasetDetail._id],
-      errorToast: '',
-      onSuccess(hasError) {
-        setHasDatasetTrainingError(hasError);
-      }
-    }
+  const trainingErrorRequest = useMemo(
+    () =>
+      createDatasetStatusRequest(
+        async () => {
+          const id = datasetDetail._id;
+          if (!id) return false;
+          const { hasError } = await checkDatasetTrainingError(id);
+          return hasError;
+        },
+        (hasError) => setDatasetTrainingError({ datasetId: datasetDetail._id, hasError })
+      ),
+    [datasetDetail._id]
   );
+  const refreshDatasetTrainingError = trainingErrorRequest.refresh;
+  useEffect(() => {
+    trainingErrorRequest.activate();
+    trainingErrorRequest.refresh().catch(() => undefined);
+    return trainingErrorRequest.deactivate;
+  }, [trainingErrorRequest]);
 
   const { runAsync: onUpdateCollection, loading: isUpdating } = useRequest(
     putDatasetCollectionById,
@@ -283,25 +300,18 @@ const CollectionCard = () => {
   );
   const hasFilteredUnDeletableItems = ownedSelectedItems.length < selectedItems.length;
 
-  useRequest(
+  useDatasetStatusPolling(
     async () => {
-      const shouldRefreshTrainingError =
-        hasTrainingData || datasetDetail.status !== DatasetStatusEnum.active;
-
-      if (datasetDetail.status !== DatasetStatusEnum.active) {
-        loadDatasetDetail(datasetDetail._id);
-      }
-      if (hasTrainingData) {
-        getData(pageNum);
-      }
-      if (shouldRefreshTrainingError) {
-        await refreshDatasetTrainingError().catch(() => undefined);
-      }
+      const isDatasetProcessing = datasetDetail.status !== DatasetStatusEnum.active;
+      // 列表独立轮询，不依赖知识库任务状态或旧列表；其它页面启动的训练也能被发现。
+      // 所有子请求都结束后，才能开始下一轮的等待；单个失败不能提前结束本轮。
+      await Promise.allSettled([
+        ...(isDatasetProcessing ? [loadDatasetDetail(datasetDetail._id)] : []),
+        getData(pageNum),
+        ...(hasTrainingData || isDatasetProcessing ? [refreshDatasetTrainingError()] : [])
+      ]);
     },
-    {
-      pollingInterval: 6000,
-      manual: false
-    }
+    { ready: !!datasetDetail._id, refreshDeps: [datasetDetail._id] }
   );
 
   const { getBoxProps, isDropping } = useFolderDrag({
@@ -321,7 +331,7 @@ const CollectionCard = () => {
     }
   });
 
-  const isLoading = isUpdating || isSyncing || isGetting || isDropping || isEnablingCollectionPer;
+  const isLoading = isUpdating || isSyncing || isDropping || isEnablingCollectionPer;
 
   const onBatchDownload = () => {
     batchDownloadSubmitterRef.current.submit({
@@ -339,19 +349,22 @@ const CollectionCard = () => {
 
   return (
     <MyBox isLoading={isLoading} h={'100%'} py={[2, 4]} overflow={'hidden'}>
-      <Flex ref={BoxRef} flexDirection={'column'} py={[1, 0]} h={'100%'} px={[2, 6]}>
+      <Flex ref={BoxRef} flexDirection={'column'} py={[1, 0]} h={'100%'}>
         {/* header */}
-        <Header
-          hasTrainingData={hasTrainingData}
-          hasTrainingError={hasDatasetTrainingError}
-          onOpenTrainingErrorModal={() => setIsTrainingErrorModalOpen(true)}
-        />
+        <Box px={[2, 6]} minH={'36px'} flexShrink={0}>
+          <Header
+            hasTrainingData={hasTrainingData}
+            hasTrainingError={hasDatasetTrainingError}
+            onOpenTrainingErrorModal={() => setIsTrainingErrorModalOpen(true)}
+          />
+        </Box>
 
         {/* collection table */}
         <FixedTableContainer
           maxH="none"
           ref={scrollContainerRef}
           mt={3}
+          px={[2, 6]}
           fontSize={'sm'}
           flex={'1 0 0'}
           h={0}
@@ -433,6 +446,23 @@ const CollectionCard = () => {
             </Thead>
             <Tbody>
               <Tr h={'5px'} />
+              {isInitialLoading &&
+                Array.from({ length: 3 }, (_, index) => (
+                  <Tr key={index} aria-hidden="true">
+                    <Td py={4}>
+                      <HStack>
+                        <Skeleton boxSize={4} borderRadius="sm" />
+                        <Skeleton boxSize={5} borderRadius="sm" />
+                        <Skeleton h={4} w="60%" minW="100px" borderRadius="sm" />
+                      </HStack>
+                    </Td>
+                    {[16, 12, 28, 20, 8, 4].map((width, column) => (
+                      <Td key={column} py={4}>
+                        <Skeleton h={4} w={width} borderRadius="sm" />
+                      </Td>
+                    ))}
+                  </Tr>
+                ))}
               {formatCollections.map((collection) => (
                 <Tr
                   key={collection._id}
@@ -511,15 +541,21 @@ const CollectionCard = () => {
                     <Box>{formatTime2YMDHM(collection.updateTime)}</Box>
                   </Td>
                   <Td py={2}>
-                    <MyTooltip label={t('common:Click_to_expand')}>
+                    <MyTooltip
+                      label={
+                        !collection.canOpenTrainingStates ? undefined : t('common:Click_to_expand')
+                      }
+                    >
                       <MyTag
                         showDot
                         colorSchema={collection.statusColorSchema}
                         type={'fill'}
                         fontSize={'mini'}
                         letterSpacing={'0.5px'}
+                        cursor={!collection.canOpenTrainingStates ? 'default' : 'pointer'}
                         onClick={(e) => {
                           e.stopPropagation();
+                          if (!collection.canOpenTrainingStates) return;
                           setTrainingStatesCollection({
                             collectionId: collection._id,
                             permission: collection.permission
@@ -528,7 +564,9 @@ const CollectionCard = () => {
                       >
                         <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
                           {t(collection.statusText as any)}
-                          <MyIcon name={'common/maximize'} w={'10px'} h={'10px'} />
+                          {collection.canOpenTrainingStates && (
+                            <MyIcon name={'common/maximize'} w={'10px'} h={'10px'} />
+                          )}
                         </Flex>
                       </MyTag>
                     </MyTooltip>
@@ -665,7 +703,7 @@ const CollectionCard = () => {
             </Tbody>
           </Table>
 
-          {total === 0 && <EmptyCollectionTip />}
+          {!isInitialLoading && total === 0 && <EmptyCollectionTip />}
         </FixedTableContainer>
 
         <ConfirmDeleteModal />

@@ -1,4 +1,5 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { getModelHandle, isImageEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { NextAPI } from '@/service/middleware/entry';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -9,11 +10,7 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 
-import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { addAuditLog, failAuditLogByTaskId } from '@fastgpt/service/support/user/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { randomUUID } from 'node:crypto';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
@@ -22,8 +19,15 @@ import {
   type RebuildEmbeddingResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { seedDatasetRebuildTasks } from '@/service/core/dataset/queues/rebuild';
+import {
+  rebuildableDatasetDataMatch,
+  rebuildingDatasetDataMatch
+} from '@fastgpt/global/core/dataset/data/utils';
+import { addAuditLog, failAuditLogByTaskId } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { refreshTrainingAuditTask } from '@fastgpt/service/core/dataset/training/audit';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { randomUUID } from 'node:crypto';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
@@ -51,7 +55,7 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
 
   // check rebuilding or training
   const [rebuilding, training] = await Promise.all([
-    MongoDatasetData.findOne({ teamId, datasetId, rebuilding: true }),
+    MongoDatasetData.findOne({ teamId, datasetId, ...rebuildingDatasetDataMatch }),
     MongoDatasetTraining.findOne({ teamId, datasetId })
   ]);
 
@@ -59,105 +63,93 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     return Promise.reject('数据集正在训练或者重建中，请稍后再试');
   }
 
-  const vlmModelData = modelHandle.getVlmModelData(
-    {
-      modelId: dataset.vlmModelId ? String(dataset.vlmModelId) : undefined,
-      model: dataset.vlmModel
-    },
-    { optional: true }
-  );
-  const { availableVlmModel, supportImageIndex } = getDatasetImageIndexCapability({
-    vectorModel: vectorModelData,
-    vlmModel: vlmModelData
-  });
+  // 此处只维护后续导入的图片索引开关；重建本身不解析图片或查询 VLM 模型。
+  const supportImageIndex =
+    isImageEmbeddingModel(vectorModelData) || !!(dataset.vlmModelId || dataset.vlmModel);
 
   const { usageId } = await createTrainingUsage({
     teamId,
     tmbId,
     appName: '切换索引模型',
     billSource: UsageSourceEnum.training,
-    vectorModelId: vectorModelData.modelId!,
-    agentModelId: modelHandle.getLLMModelData({
-      modelId: dataset.agentModelId ? String(dataset.agentModelId) : undefined,
-      model: dataset.agentModel
-    }).modelId,
-    vllmModelId: availableVlmModel?.modelId
+    vectorModelId: vectorModelData.modelId!
   });
 
-  const auditTaskId = randomUUID();
-  // 只统计重建范围，不把全量数据块物化到内存；失败项由收口逻辑按需追加到 details
-  const rebuildCount = await MongoDatasetData.countDocuments({ teamId, datasetId });
-
-  // 事务先完成模型切换和 rebuilding 标记，避免留下没有对应业务状态的处理中事件。
-  let auditCreated = false;
-  try {
-    await mongoSessionRun(async (session) => {
-      await MongoDataset.findByIdAndUpdate(
-        datasetId,
-        {
-          $set: {
-            vectorModelId: vectorModelData.modelId,
-            ...(!supportImageIndex && { 'chunkSettings.imageIndex': false })
-          }
-        },
-        { session }
-      );
-      if (!supportImageIndex) {
-        await MongoDatasetCollection.updateMany(
-          {
-            teamId,
-            datasetId
-          },
-          {
-            $set: {
-              imageIndex: false
-            }
-          },
-          { session }
-        );
-      }
-      await MongoDatasetData.updateMany(
+  // update vector model and dataset.data rebuild field
+  await mongoSessionRun(async (session) => {
+    await MongoDataset.findByIdAndUpdate(
+      datasetId,
+      {
+        $set: {
+          vectorModelId: vectorModelData.modelId,
+          ...(!supportImageIndex && { 'chunkSettings.imageIndex': false })
+        }
+      },
+      { session }
+    );
+    if (!supportImageIndex) {
+      await MongoDatasetCollection.updateMany(
         {
           teamId,
           datasetId
         },
         {
           $set: {
-            rebuilding: true
+            imageIndex: false
           }
         },
-        {
-          session
-        }
+        { session }
       );
-    });
-
-    try {
-      await addAuditLog({
-        teamId,
-        tmbId,
-        event: AuditEventEnum.REBUILD_DATASET_INDEX,
-        params: {
-          datasetId,
-          datasetName: dataset.name,
-          oldModel: String(dataset.vectorModelId ?? ''),
-          newModel: vectorModelData.modelId,
-          count: String(rebuildCount),
-          taskId: auditTaskId,
-          result: 'processing'
-        }
-      });
-      auditCreated = true;
-    } catch (error) {
-      logger.error('Dataset rebuild audit write failed', { error, datasetId, auditTaskId });
     }
+    await MongoDatasetData.updateMany(
+      {
+        teamId,
+        datasetId,
+        // 只标记已完成索引的数据：待索引数据还没有向量，向量必然按处理时刻的模型生成，
+        // 无需重建；该过滤同时避免同一 dataId 出现原链路任务与重建任务双写。
+        ...rebuildableDatasetDataMatch
+      },
+      {
+        $set: {
+          indexStatus: DatasetDataIndexStatusEnum.rebuildIndexPending
+        }
+      },
+      {
+        session
+      }
+    );
+  });
+
+  const auditTaskId = randomUUID();
+  const rebuildCount = await MongoDatasetData.countDocuments({
+    teamId,
+    datasetId,
+    ...rebuildableDatasetDataMatch
+  });
+  let auditCreated = false;
+
+  try {
+    await addAuditLog({
+      teamId,
+      tmbId,
+      event: AuditEventEnum.REBUILD_DATASET_INDEX,
+      params: {
+        datasetId,
+        datasetName: dataset.name,
+        oldModel: String(dataset.vectorModelId ?? ''),
+        newModel: vectorModelData.modelId,
+        count: String(rebuildCount),
+        taskId: auditTaskId,
+        result: 'processing'
+      }
+    });
+    auditCreated = true;
+
     const seededCount = await seedDatasetRebuildTasks({
       teamId,
       tmbId,
       datasetId,
       billId: String(usageId),
-      vectorModel: vectorModelData,
-      vlmModel: vlmModelData,
       auditTaskId
     });
     if (seededCount === 0) {
@@ -165,7 +157,6 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     }
   } catch (error) {
     if (auditCreated) {
-      // 审计收口失败不能掩盖重建本身的异常
       await failAuditLogByTaskId({
         teamId,
         taskId: auditTaskId,

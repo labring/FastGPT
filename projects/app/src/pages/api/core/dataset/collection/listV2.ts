@@ -13,7 +13,9 @@ import {
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
+import { getDescendantFolderIds } from '@fastgpt/global/common/parentFolder/subtree';
 import { buildCollectionListTagMatch } from '@fastgpt/service/core/dataset/collection/tagFilter';
 import {
   type DatasetCollectionSchemaType,
@@ -25,16 +27,14 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
-  activeTrainingExpr,
-  finalErrorTrainingExpr,
-  getSlowestTrainingStatus,
-  remainingTrainingMatch,
-  trainingModeRanks
+  getCollectionTrainingStatusFromCounts,
+  getCollectionTrainingModeCountsPipeline,
+  type CollectionTrainingModeCount
 } from '@fastgpt/service/core/dataset/training/query';
 import {
-  CollectionTrainingStatusEnum,
-  type TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constants';
+  datasetDataRebuildStatusCountFields,
+  type DatasetDataRebuildStatusCounts
+} from '@fastgpt/service/core/dataset/data/query';
 import {
   ListCollectionV2BodySchema,
   ListCollectionV2ResponseSchema,
@@ -51,46 +51,105 @@ import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permissio
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { CollectionPermission } from '@fastgpt/global/support/permission/collection/controller';
 
-const defaultCollectionTrainingStatus = {
-  trainingAmount: 0,
-  activeTrainingAmount: 0,
-  finalErrorAmount: 0,
-  hasError: false,
-  slowestTrainingStatus: CollectionTrainingStatusEnum.ready
-};
+const defaultCollectionTrainingStatus = getCollectionTrainingStatusFromCounts({});
 
 type TrainingAmountAggregateItem = {
   _id: string;
-  trainingAmount: number;
-  activeTrainingAmount: number;
-  finalErrorAmount: number;
-  modeCounts: {
-    mode: TrainingModeEnum;
-    activeCount: number;
-    finalErrorCount: number;
-  }[];
+  modeCounts: CollectionTrainingModeCount[];
 };
 
-const formatTrainingStatus = (item?: TrainingAmountAggregateItem) => {
-  if (!item) return defaultCollectionTrainingStatus;
+/**
+ * 列表范围谓词。
+ * - 浏览（无搜索词）：只看直接子级，逐层导航。
+ * - 搜索：当前路径自身 + 其下整个子树内的文件夹（不含祖先、不含路径外内容）；根目录即全库。
+ * 权限候选集查询与主查询共用本函数，避免两处谓词再次分叉。
+ */
+const parseCollectionScopeMatch = ({
+  parentId,
+  searchText,
+  subtreeFolderIds
+}: {
+  parentId?: string | null;
+  searchText?: string;
+  subtreeFolderIds: string[];
+}) => {
+  if (!searchText) {
+    return { parentId: parentId ? new Types.ObjectId(parentId) : null };
+  }
 
-  const { slowestTrainingMode, slowestTrainingStatus } = getSlowestTrainingStatus(
-    Object.fromEntries(
-      item.modeCounts.map(({ mode, activeCount, finalErrorCount }) => [
-        mode,
-        { activeCount, finalErrorCount }
-      ])
-    )
-  );
+  const nameMatch = { name: new RegExp(`${replaceRegChars(searchText)}`, 'i') };
+
+  // 根目录：范围就是整个 dataset，不需要枚举子树
+  if (!parentId) return nameMatch;
 
   return {
-    trainingAmount: item.trainingAmount,
-    activeTrainingAmount: item.activeTrainingAmount,
-    finalErrorAmount: item.finalErrorAmount,
-    hasError: item.finalErrorAmount > 0,
-    slowestTrainingMode,
-    slowestTrainingStatus
+    ...nameMatch,
+    parentId: {
+      $in: [new Types.ObjectId(parentId), ...subtreeFolderIds.map((id) => new Types.ObjectId(id))]
+    }
   };
+};
+
+/** 层序遍历的安全上限：脏树（环 / 超深）不得拖垮请求。 */
+const maxSubtreeDepth = 20;
+/** 层序遍历累计访问的文件夹数上限，用于约束搜索谓词里 `$in` 数组的长度。 */
+const maxSubtreeNodes = 20000;
+const subtreeLogger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
+
+/**
+ * 收集 collectionId 子树内全部**文件夹** ID（不含自身）。
+ *
+ * 一次性把该知识库的全部文件夹读进内存（只投影 `_id parentId`），按 parentId 分桶后层序下行，
+ * 因此恒定 1 次查询、延迟不随子树规模变化；代价是无论搜在哪都要扫全库文件夹。
+ * 与 findCollectionAndChild 的区别：后者是逐节点串行递归（每节点一次查询、不区分文件与文件夹），
+ * 服务删除这类低 QPS 场景没问题；本函数服务搜索范围这类交互热路径。
+ * 通用遍历见 global/common/parentFolder/subtree.ts。
+ *
+ * 触达上限时返回已收集的部分（调用方须接受搜索范围可能不完整）。
+ */
+const findSubtreeFolderIds = async ({
+  teamId,
+  datasetId,
+  collectionId
+}: {
+  teamId: string;
+  datasetId: string;
+  collectionId: string;
+}): Promise<string[]> => {
+  const folders = await MongoDatasetCollection.find(
+    {
+      teamId: new Types.ObjectId(teamId),
+      datasetId: new Types.ObjectId(datasetId),
+      type: DatasetCollectionTypeEnum.folder
+    },
+    '_id parentId',
+    { ...readFromSecondary }
+  ).lean();
+
+  // 按 parentId 分桶。根级文件夹（parentId 为空）不会成为「谁的子级」的查询键，跳过。
+  const childrenByParent = new Map<string, string[]>();
+  for (const folder of folders) {
+    const parentKey = folder.parentId ? String(folder.parentId) : '';
+    if (!parentKey) continue;
+    const children = childrenByParent.get(parentKey);
+    if (children) children.push(String(folder._id));
+    else childrenByParent.set(parentKey, [String(folder._id)]);
+  }
+
+  const { ids, truncated } = await getDescendantFolderIds({
+    rootIds: [collectionId],
+    maxDepth: maxSubtreeDepth,
+    maxNodes: maxSubtreeNodes,
+    findChildFolders: async (folderIds) => folderIds.flatMap((id) => childrenByParent.get(id) ?? [])
+  });
+
+  if (truncated) {
+    subtreeLogger.warn(
+      `[findSubtreeFolderIds] traversal truncated, search scope may miss deeper folders: datasetId=${datasetId} collectionId=${collectionId} collected=${ids.length}`
+    );
+  }
+
+  return ids;
 };
 
 async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseType> {
@@ -119,7 +178,15 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     per: ReadPermissionVal
   });
 
-  // 浏览具体目录前先校验目录本身可读；搜索模式（searchText）忽略 parentId 过滤，无需校验。
+  // 搜索范围限定在当前路径及其子树，先枚举子树内的文件夹 ID（根目录搜索无需枚举）。
+  const subtreeFolderIds =
+    searchText && parentId
+      ? await findSubtreeFolderIds({ teamId, datasetId, collectionId: parentId })
+      : [];
+  const scopeMatch = parseCollectionScopeMatch({ parentId, searchText, subtreeFolderIds });
+
+  // 浏览具体目录前先校验目录本身可读；搜索模式不校验 —— 范围由 parentId 子树决定，
+  // 命中项各自还要过权限过滤，父目录本身是否可读不影响结果正确性。
   if (parentId && !searchText) {
     const { collection: parentCollection } = await authDatasetCollection({
       req,
@@ -153,13 +220,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
         teamId: new Types.ObjectId(teamId),
         datasetId: new Types.ObjectId(datasetId),
         ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
-        ...(searchText
-          ? {
-              name: new RegExp(`${replaceRegChars(searchText)}`, 'i')
-            }
-          : {
-              parentId: parentId ? new Types.ObjectId(parentId) : null
-            }),
+        ...scopeMatch,
         ...buildCollectionListTagMatch(tagFilters)
       },
       '_id type parentId tmbId inheritPermission datasetId',
@@ -189,13 +250,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     teamId: new Types.ObjectId(teamId),
     datasetId: new Types.ObjectId(datasetId),
     ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
-    ...(searchText
-      ? {
-          name: new RegExp(`${replaceRegChars(searchText)}`, 'i')
-        }
-      : {
-          parentId: parentId ? new Types.ObjectId(parentId) : null
-        }),
+    ...scopeMatch,
     ...buildCollectionListTagMatch(tagFilters),
     ...collectionIdFilter
   };
@@ -299,91 +354,17 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
   // Compute data amount
   const [trainingAmount, dataAmount, collectionPermissionMap, tags]: [
     TrainingAmountAggregateItem[],
-    { _id: string; count: number }[],
+    (DatasetDataRebuildStatusCounts & { _id: string; count: number })[],
     Map<string, CollectionPermission> | undefined,
     (CollectionTagLabelType[] | undefined)[]
   ] = await Promise.all([
     MongoDatasetTraining.aggregate(
-      [
-        {
-          $match: {
-            teamId: new Types.ObjectId(teamId),
-            datasetId: new Types.ObjectId(datasetId),
-            collectionId: { $in: collectionIds },
-            ...remainingTrainingMatch
-          }
-        },
-        {
-          $addFields: {
-            modeRank: {
-              $switch: {
-                branches: trainingModeRanks.map(({ mode, rank }) => ({
-                  case: { $eq: ['$mode', mode] },
-                  then: rank
-                })),
-                default: 999
-              }
-            },
-            isActiveTraining: activeTrainingExpr,
-            isFinalErrorTraining: finalErrorTrainingExpr
-          }
-        },
-        {
-          $group: {
-            _id: '$collectionId',
-            trainingAmount: { $sum: 1 },
-            activeTrainingAmount: { $sum: { $cond: ['$isActiveTraining', 1, 0] } },
-            finalErrorAmount: { $sum: { $cond: ['$isFinalErrorTraining', 1, 0] } },
-            modeCounts: {
-              $push: {
-                mode: '$mode',
-                modeRank: '$modeRank',
-                activeCount: { $cond: ['$isActiveTraining', 1, 0] },
-                finalErrorCount: { $cond: ['$isFinalErrorTraining', 1, 0] }
-              }
-            }
-          }
-        },
-        { $unwind: '$modeCounts' },
-        {
-          $group: {
-            _id: {
-              collectionId: '$_id',
-              mode: '$modeCounts.mode',
-              modeRank: '$modeCounts.modeRank'
-            },
-            trainingAmount: { $first: '$trainingAmount' },
-            activeTrainingAmount: { $first: '$activeTrainingAmount' },
-            finalErrorAmount: { $first: '$finalErrorAmount' },
-            activeCount: { $sum: '$modeCounts.activeCount' },
-            finalErrorCount: { $sum: '$modeCounts.finalErrorCount' }
-          }
-        },
-        {
-          $sort: {
-            '_id.collectionId': 1,
-            '_id.modeRank': 1
-          }
-        },
-        {
-          $group: {
-            _id: '$_id.collectionId',
-            trainingAmount: { $first: '$trainingAmount' },
-            activeTrainingAmount: { $first: '$activeTrainingAmount' },
-            finalErrorAmount: { $first: '$finalErrorAmount' },
-            modeCounts: {
-              $push: {
-                mode: '$_id.mode',
-                activeCount: '$activeCount',
-                finalErrorCount: '$finalErrorCount'
-              }
-            }
-          }
-        }
-      ],
-      {
-        ...readFromSecondary
-      }
+      getCollectionTrainingModeCountsPipeline({
+        teamId: new Types.ObjectId(teamId),
+        datasetId: new Types.ObjectId(datasetId),
+        collectionId: { $in: collectionIds }
+      }),
+      readFromSecondary
     ),
     MongoDatasetData.aggregate(
       [
@@ -397,7 +378,8 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
         {
           $group: {
             _id: '$collectionId',
-            count: { $sum: 1 }
+            count: { $sum: 1 },
+            ...datasetDataRebuildStatusCountFields
           }
         }
       ],
@@ -409,15 +391,22 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     Promise.all(collections.map((item) => collectionTagsToTagLabel({ datasetId, tags: item.tags })))
   ]);
 
-  const list = collections.map((item, index) => ({
-    ...item,
-    tags: tags[index],
-    dataAmount: dataAmount.find((amount) => String(amount._id) === String(item._id))?.count || 0,
-    ...formatTrainingStatus(
-      trainingAmount.find((amount) => String(amount._id) === String(item._id))
-    ),
-    permission: getCollectionPermission(item, collectionPermissionMap)
-  }));
+  const trainingAmountMap = new Map(trainingAmount.map((item) => [String(item._id), item]));
+  const dataAmountMap = new Map(dataAmount.map((item) => [String(item._id), item]));
+  const list = collections.map((item, index) => {
+    const collectionId = String(item._id);
+    const dataCounts = dataAmountMap.get(collectionId);
+    return {
+      ...item,
+      tags: tags[index],
+      dataAmount: dataCounts?.count ?? 0,
+      ...getCollectionTrainingStatusFromCounts({
+        modeCounts: trainingAmountMap.get(collectionId)?.modeCounts,
+        rebuildCounts: dataCounts
+      }),
+      permission: getCollectionPermission(item, collectionPermissionMap)
+    };
+  });
 
   // count collections
   return ListCollectionV2ResponseSchema.parse({ list, total });

@@ -191,3 +191,9 @@ export const RetrySystemMigrationBodySchema = z.object({
 });
 
 export type RetrySystemMigrationBody = z.infer<typeof RetrySystemMigrationBodySchema>;
+
+/** 首次手动执行只提交任务 ID；服务端校验注册模式和 waiting 状态。 */
+export const StartSystemMigrationBodySchema = z.object({
+  migrationId: SystemMigrationIdSchema
+});
+export type StartSystemMigrationBody = z.infer<typeof StartSystemMigrationBodySchema>;

@@ -431,7 +431,7 @@ export const syncCollection = async (
 
 /*
   QA: 独立进程
-  Chunk: Image Index -> Auto index -> chunk index
+  Chunk: Image Index -> Auto index -> index
 */
 export const getTrainingModeByCollection = ({
   trainingType,
@@ -469,5 +469,5 @@ export const getTrainingModeByCollection = ({
   ) {
     return TrainingModeEnum.auto;
   }
-  return TrainingModeEnum.chunk;
+  return TrainingModeEnum.index;
 };

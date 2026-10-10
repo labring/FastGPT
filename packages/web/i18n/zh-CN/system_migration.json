@@ -103,5 +103,19 @@
   "migrations.20260928_backfill_member_name_set.description": "为历史团队成员回填 isSetMemberName 标记；owner 始终标记为已设置，非 owner 中与登录用户名相同的成员名标记为需要补充。",
   "migrations.20260928_backfill_member_name_set.members": "回填成员名标记",
   "migrations.20260928_backfill_member_name_set.validation": "校验成员名回填结果",
-  "migrations.20260928_backfill_member_name_set.result": "已扫描 {{scannedCount}} 个成员，标记 owner {{ownerCount}} 个、用户名回落名 {{usernameMatchCount}} 个、已设置成员名 {{setTrueCount}} 个。"
+  "migrations.20260928_backfill_member_name_set.result": "已扫描 {{scannedCount}} 个成员，标记 owner {{ownerCount}} 个、用户名回落名 {{usernameMatchCount}} 个、已设置成员名 {{setTrueCount}} 个。",
+  "status_waiting": "待手动执行",
+  "start_migration": "执行迁移",
+  "migration_start_requested": "升级脚本已加入执行队列",
+  "migrations.20261008_migrate_chunk_training.name": "迁移旧版知识库训练任务",
+  "migrations.20261008_migrate_chunk_training.description": "请确认所有 App/Pro 节点已升级、旧训练 worker 已停止且租约已过期，再手动执行。转换旧 chunk 任务并为旧增强任务预建数据，保留索引草稿和账单，成功后清除旧错误、恢复重试次数并释放任务锁。",
+  "migrations.20261008_migrate_chunk_training.result": "旧版训练任务迁移完成",
+  "migrations.20261008_migrate_chunk_training.trainings": "迁移训练任务",
+  "migrations.20261008_migrate_chunk_training.validation": "校验旧任务已全部迁移",
+  "migrations.20261009_migrate_dataset_rebuild_status.name": "迁移索引重建状态",
+  "migrations.20261009_migrate_dataset_rebuild_status.description": "请先完成 chunk 训练迁移，并确认所有旧 App/Pro 已升级、旧 worker 已停止且租约过期，再执行。将 rebuilding 标记和已有重建任务迁入 indexStatus，保留正文、索引及训练进度。",
+  "migrations.20261009_migrate_dataset_rebuild_status.result": "迁移完成，剩余旧状态 {{remainingCount}} 条。",
+  "migrations.20261009_migrate_dataset_rebuild_status.datas": "迁移旧重建标记",
+  "migrations.20261009_migrate_dataset_rebuild_status.trainings": "恢复重建任务状态",
+  "migrations.20261009_migrate_dataset_rebuild_status.validation": "校验迁移结果"
 }

@@ -395,8 +395,12 @@ export enum ImportDataSourceEnum {
 }
 
 export enum TrainingModeEnum {
-  parse = 'parse',
+  /** @deprecated 仅兼容历史训练记录；新任务使用 index/rebuildIndex/rebuildSynonym，旧任务须迁移，已无消费者。 */
   chunk = 'chunk',
+  parse = 'parse',
+  rebuildIndex = 'rebuildIndex', // 从已存 indexes 重建索引
+  rebuildSynonym = 'rebuildSynonym', // 按最新词表重建派生索引
+  index = 'index', // 为预先创建的数据生成并写回索引
   qa = 'qa',
   auto = 'auto',
   image = 'image',

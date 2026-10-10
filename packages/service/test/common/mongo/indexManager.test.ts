@@ -8,6 +8,7 @@ import {
 } from '@fastgpt/service/common/mongo';
 import type { DeprecatedMongoIndexDefinition } from '@fastgpt/service/common/mongo/schemaIndexes';
 import { MongoIndexManager } from '@fastgpt/service/common/mongo/indexManager';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import {
   MongoDatasetSynonym,
@@ -590,5 +591,24 @@ describe('dataset training TTL index migration', () => {
       })
     ]);
     expect(getSchemaDeprecatedMongoIndexes(MongoDatasetTraining.schema)).toEqual([]);
+  });
+});
+
+describe('dataset rebuild status index migration', () => {
+  it('drops the old rebuilding index and retains the replacement and customer indexes', async () => {
+    const schema = new Schema(
+      { rebuilding: Boolean, indexStatus: String, teamId: String, datasetId: String },
+      { autoIndex: false }
+    );
+    defineIndex(schema, { key: { indexStatus: 1, teamId: 1, datasetId: 1 } });
+    defineDeprecatedTestIndexes(schema, getSchemaDeprecatedMongoIndexes(MongoDatasetData.schema));
+    const model = createModel({ schema, prefix: 'DatasetRebuildIndex' });
+    await model.collection.createIndex({ rebuilding: 1, teamId: 1, datasetId: 1 });
+    await model.collection.createIndex({ rebuilding: 1 }, { name: 'customer_rebuild_status' });
+    await MongoIndexManager.syncModelIndexes({ model, logger });
+    const names = await getIndexNames(model);
+    expect(names.has('rebuilding_1_teamId_1_datasetId_1')).toBe(false);
+    expect(names.has('indexStatus_1_teamId_1_datasetId_1')).toBe(true);
+    expect(names.has('customer_rebuild_status')).toBe(true);
   });
 });

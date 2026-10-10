@@ -6,13 +6,24 @@ import {
 } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  getDatasetIndexTrainingMode,
+  retryFailedTrainingTasks
+} from '@fastgpt/service/core/dataset/training/service';
 import {
   UpdateTrainingDataBodySchema,
   UpdateTrainingDataResponseSchema,
   type UpdateTrainingDataResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  getTrainingDataIndexStatuses,
+  getTrainingTaskReadyUpdate
+} from '@fastgpt/service/core/dataset/training/utils';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { finalErrorTrainingMatch } from '@fastgpt/service/core/dataset/training/query';
 import { addAuditLog, failAuditLogByTaskId } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -23,6 +34,7 @@ import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
 const logger = getLogger(LogCategories.MODULE.DATASET);
 
+/** 重试训练任务；首次训练允许编辑正文，rebuild 只重试已存索引。 */
 async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse> {
   const body = parseApiInput({ req, bodySchema: UpdateTrainingDataBodySchema }).body;
 
@@ -58,24 +70,21 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
 
       return {
         teamId,
-        datasetId: dataset._id,
         tmbId,
+        datasetId: dataset._id,
         datasetName: dataset.name,
         collectionName: undefined
       };
     })();
 
-    const trainingMatch = {
+    const auditTaskId = randomUUID();
+    const retryCount = await MongoDatasetTraining.countDocuments({
       teamId: retryMatch.teamId,
       datasetId: retryMatch.datasetId,
       ...(retryMatch.collectionId ? { collectionId: retryMatch.collectionId } : {}),
       ...finalErrorTrainingMatch
-    };
-    const auditTaskId = randomUUID();
-    // 只统计重试范围，不把全量失败训练记录物化到内存；失败项由收口逻辑按需追加到 details
-    const retryCount = await MongoDatasetTraining.countDocuments(trainingMatch);
+    });
 
-    // 先建立主审计记录，再释放训练任务；worker 可能在释放后立即完成并收口。
     await addAuditLog({
       teamId: retryMatch.teamId,
       tmbId: retryMatch.tmbId,
@@ -88,27 +97,17 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
         taskId: auditTaskId,
         result: retryCount === 0 ? 'success' : 'processing'
       }
-    }).catch((error) => {
-      logger.warn('Batch training retry audit create failed', {
-        error,
-        teamId: retryMatch.teamId,
-        auditTaskId
-      });
     });
 
     try {
-      await MongoDatasetTraining.updateMany(trainingMatch, {
-        $unset: { errorMsg: '' },
-        $set: { auditTaskId },
-        retryCount: 3,
-        lockTime: new Date('2000')
+      await retryFailedTrainingTasks({
+        teamId: retryMatch.teamId,
+        datasetId: retryMatch.datasetId,
+        ...(retryMatch.collectionId ? { collectionId: retryMatch.collectionId } : {}),
+        auditTaskId
       });
-
-      if (retryCount > 0) {
-        await refreshTrainingAuditTask(auditTaskId);
-      }
+      await refreshTrainingAuditTask(auditTaskId);
     } catch (error) {
-      // 训练任务释放失败时，收口已创建的审计，避免零条重试的 success 或 processing 悬挂。
       await failAuditLogByTaskId({
         teamId: retryMatch.teamId,
         taskId: auditTaskId,
@@ -152,6 +151,13 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
     return Promise.reject('data not found');
   }
 
+  if (
+    [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym].includes(data.mode) &&
+    (q !== undefined || a !== undefined || chunkIndex !== undefined)
+  ) {
+    return Promise.reject('重建任务不支持编辑正文');
+  }
+
   const trainingMatch = {
     teamId: collection.teamId,
     datasetId: collection.datasetId,
@@ -159,9 +165,14 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
     _id: data._id
   };
 
+  // 只有补充图片解析结果才跳过当前阶段；重试 index 必须保留其原阶段。
+  const nextMode =
+    data.mode === TrainingModeEnum.imageParse && data.imageId && q
+      ? await getDatasetIndexTrainingMode(data)
+      : undefined;
+
   const auditTaskId = randomUUID();
 
-  // 先建立主审计记录，再释放训练任务；worker 可能在释放后立即完成并收口。
   await addAuditLog({
     teamId: String(collection.teamId),
     tmbId,
@@ -183,42 +194,48 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
         }
       ]
     }
-  }).catch((error) => {
-    logger.warn('Training retry audit create failed', {
-      error,
-      teamId: String(collection.teamId),
-      auditTaskId
-    });
   });
 
+  const readyUpdate = getTrainingTaskReadyUpdate();
   try {
-    // Add to chunk
-    if (data.imageId && q) {
-      await MongoDatasetTraining.updateOne(trainingMatch, {
-        $unset: { errorMsg: '' },
-        retryCount: 3,
-        mode: TrainingModeEnum.chunk,
-        ...(q !== undefined && { q }),
-        ...(a !== undefined && { a }),
-        ...(chunkIndex !== undefined && { chunkIndex }),
-        lockTime: new Date('2000'),
-        auditTaskId
-      });
-    } else {
-      await MongoDatasetTraining.updateOne(trainingMatch, {
-        $unset: { errorMsg: '' },
-        retryCount: 3,
-        ...(q !== undefined && { q }),
-        ...(a !== undefined && { a }),
-        ...(chunkIndex !== undefined && { chunkIndex }),
-        lockTime: new Date('2000'),
-        auditTaskId
-      });
-    }
+    await mongoSessionRun(async (session) => {
+      if (data.dataId) {
+        await MongoDatasetData.updateOne(
+          {
+            _id: data.dataId,
+            teamId: data.teamId,
+            datasetId: data.datasetId,
+            collectionId: data.collectionId,
+            indexStatus: getTrainingDataIndexStatuses(data.mode).failed
+          },
+          {
+            $set: {
+              indexStatus: getTrainingDataIndexStatuses(data.mode).running
+            },
+            $unset: { indexErrorMsg: '' }
+          },
+          { session }
+        );
+      }
 
+      await MongoDatasetTraining.updateOne(
+        trainingMatch,
+        {
+          ...readyUpdate,
+          $set: {
+            ...readyUpdate.$set,
+            ...(nextMode && { mode: nextMode }),
+            ...(q !== undefined && { q }),
+            ...(a !== undefined && { a }),
+            ...(chunkIndex !== undefined && { chunkIndex }),
+            auditTaskId
+          }
+        },
+        { session }
+      );
+    });
     await refreshTrainingAuditTask(auditTaskId);
   } catch (error) {
-    // 训练任务释放失败时，收口已创建的审计，避免单条 processing 悬挂。
     await failAuditLogByTaskId({
       teamId: String(collection.teamId),
       taskId: auditTaskId,

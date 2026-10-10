@@ -22,6 +22,7 @@ export const defaultDatasetDetail: DatasetItemType = {
   name: '',
   intro: '',
   status: DatasetStatusEnum.active,
+  hasTrainingTask: false,
   permission: new DatasetPermission(),
   vectorModel: defaultVectorModels[0],
   agentModel: defaultQAModels[0],

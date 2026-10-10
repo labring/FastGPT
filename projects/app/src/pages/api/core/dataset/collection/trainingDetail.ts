@@ -1,5 +1,6 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { type TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
@@ -13,29 +14,26 @@ import {
   type GetCollectionTrainingDetailResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import {
-  BLOCKED_LOCK_TIME,
-  finalErrorTrainingMatch
+  activeTrainingExpr,
+  finalErrorTrainingExpr,
+  remainingTrainingMatch
 } from '@fastgpt/service/core/dataset/training/query';
-import { subMinutes } from 'date-fns';
+import { datasetDataStatusCountFields } from '@fastgpt/service/core/dataset/data/query';
+import { TRAINING_LEASE_TIMEOUT_MS } from '@fastgpt/global/core/dataset/training/constant';
 
 const defaultCounts: Record<TrainingModeEnum, number> = {
+  chunk: 0, // 兼容尚未迁移的历史任务统计
   parse: 0,
   qa: 0,
-  chunk: 0,
+  rebuildIndex: 0,
+  rebuildSynonym: 0,
+  index: 0,
   image: 0,
   auto: 0,
   imageParse: 0
 };
 
-const MODE_LOCK_TIMEOUT_MINUTES: Record<TrainingModeEnum, number> = {
-  parse: 10,
-  qa: 10,
-  chunk: 3,
-  image: 10,
-  auto: 10,
-  imageParse: 10
-};
-
+/** 汇总普通训练阶段；重建按 data 状态区分待重建、重建中和失败，一次聚合获取。 */
 async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetailResponseType> {
   const { collectionId } = parseApiInput({
     req,
@@ -56,90 +54,84 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
     collectionId: new Types.ObjectId(collection._id)
   };
 
-  const now = new Date();
-  const activeTrainingExpr = Object.entries(MODE_LOCK_TIMEOUT_MINUTES).map(
-    ([mode, timeoutMinutes]) => ({
-      mode,
-      lockTime: { $gt: subMinutes(now, timeoutMinutes), $lt: BLOCKED_LOCK_TIME }
-    })
-  );
+  const leaseExpiredAt = new Date(Date.now() - TRAINING_LEASE_TIMEOUT_MS);
+  const [modeCounts, [dataStatus]] = await Promise.all([
+    MongoDatasetTraining.aggregate<{
+      _id: TrainingModeEnum;
+      queuedCount: number;
+      trainingCount: number;
+      errorCount: number;
+    }>([
+      {
+        $match: {
+          ...match,
+          ...remainingTrainingMatch,
+          mode: { $nin: [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym] }
+        }
+      },
+      {
+        $group: {
+          _id: '$mode',
+          queuedCount: {
+            $sum: {
+              $cond: [{ $and: [activeTrainingExpr, { $lte: ['$lockTime', leaseExpiredAt] }] }, 1, 0]
+            }
+          },
+          trainingCount: {
+            $sum: {
+              $cond: [{ $and: [activeTrainingExpr, { $gt: ['$lockTime', leaseExpiredAt] }] }, 1, 0]
+            }
+          },
+          errorCount: { $sum: { $cond: [finalErrorTrainingExpr, 1, 0] } }
+        }
+      }
+    ]),
+    MongoDatasetData.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          ...datasetDataStatusCountFields,
+          rebuildIndexPendingCount: {
+            $sum: {
+              $cond: [
+                { $eq: ['$indexStatus', DatasetDataIndexStatusEnum.rebuildIndexPending] },
+                1,
+                0
+              ]
+            }
+          },
+          rebuildSynonymPendingCount: {
+            $sum: {
+              $cond: [
+                { $eq: ['$indexStatus', DatasetDataIndexStatusEnum.rebuildSynonymPending] },
+                1,
+                0
+              ]
+            }
+          }
+        }
+      }
+    ])
+  ]);
 
-  const [ququedCountData, trainingCountData, errorCountData, trainedCount] = (await Promise.all([
-    MongoDatasetTraining.aggregate([
-      {
-        $match: {
-          ...match,
-          retryCount: { $gt: 0 },
-          lockTime: { $lt: BLOCKED_LOCK_TIME },
-          // 只统计当前集合里未被 worker 领取或锁超时后可重试的任务，避免跨知识库队列污染状态展示。
-          $nor: activeTrainingExpr
-        }
-      },
-      {
-        $group: {
-          _id: '$mode',
-          count: { $sum: 1 }
-        }
-      }
-    ]),
-    MongoDatasetTraining.aggregate([
-      {
-        $match: {
-          ...match,
-          retryCount: { $gt: 0 },
-          $or: activeTrainingExpr
-        }
-      },
-      {
-        $group: {
-          _id: '$mode',
-          count: { $sum: 1 }
-        }
-      }
-    ]),
-    MongoDatasetTraining.aggregate([
-      {
-        $match: {
-          ...match,
-          ...finalErrorTrainingMatch
-        }
-      },
-      {
-        $group: {
-          _id: '$mode',
-          count: { $sum: 1 }
-        }
-      }
-    ]),
-    MongoDatasetData.countDocuments(match)
-  ])) as [
-    { _id: TrainingModeEnum; count: number }[],
-    { _id: TrainingModeEnum; count: number }[],
-    { _id: TrainingModeEnum; count: number }[],
-    number
-  ];
+  const queuedCounts = { ...defaultCounts };
+  const trainingCounts = { ...defaultCounts };
+  const errorCounts = { ...defaultCounts };
+  for (const item of modeCounts) {
+    queuedCounts[item._id] = item.queuedCount;
+    trainingCounts[item._id] = item.trainingCount;
+    errorCounts[item._id] = item.errorCount;
+  }
 
-  const queuedCounts = ququedCountData.reduce(
-    (acc, item) => {
-      acc[item._id] = item.count;
-      return acc;
-    },
-    { ...defaultCounts }
-  );
-  const trainingCounts = trainingCountData.reduce(
-    (acc, item) => {
-      acc[item._id] = item.count;
-      return acc;
-    },
-    { ...defaultCounts }
-  );
-  const errorCounts = errorCountData.reduce(
-    (acc, item) => {
-      acc[item._id] = item.count;
-      return acc;
-    },
-    { ...defaultCounts }
-  );
+  queuedCounts.rebuildIndex = dataStatus?.rebuildIndexPendingCount ?? 0;
+  trainingCounts.rebuildIndex =
+    (dataStatus?.rebuildIndexActiveCount ?? 0) - queuedCounts.rebuildIndex;
+  errorCounts.rebuildIndex = dataStatus?.rebuildIndexFailedCount ?? 0;
+  queuedCounts.rebuildSynonym = dataStatus?.rebuildSynonymPendingCount ?? 0;
+  trainingCounts.rebuildSynonym =
+    (dataStatus?.rebuildSynonymActiveCount ?? 0) - queuedCounts.rebuildSynonym;
+  errorCounts.rebuildSynonym = dataStatus?.rebuildSynonymFailedCount ?? 0;
 
   return GetCollectionTrainingDetailResponseSchema.parse({
     trainingType: collection.trainingType,
@@ -151,7 +143,7 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
     queuedCounts,
     trainingCounts,
     errorCounts,
-    trainedCount
+    trainedCount: dataStatus?.trainedCount ?? 0
   });
 }
 

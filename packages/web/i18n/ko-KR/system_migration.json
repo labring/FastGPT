@@ -103,5 +103,19 @@
   "migrations.20260928_backfill_member_name_set.description": "기존 팀 멤버의 isSetMemberName 플래그를 백필합니다. owner는 항상 설정 완료로 표시하고, 로그인 사용자 이름과 동일한 비-owner 멤버 이름은 이름 입력이 필요하도록 표시합니다.",
   "migrations.20260928_backfill_member_name_set.members": "멤버 이름 플래그 백필",
   "migrations.20260928_backfill_member_name_set.validation": "멤버 이름 백필 검증",
-  "migrations.20260928_backfill_member_name_set.result": "멤버 {{scannedCount}}명 검사, owner {{ownerCount}}명, 사용자 이름 폴백 {{usernameMatchCount}}명, 설정 완료 {{setTrueCount}}명을 표시했습니다."
+  "migrations.20260928_backfill_member_name_set.result": "멤버 {{scannedCount}}명 검사, owner {{ownerCount}}명, 사용자 이름 폴백 {{usernameMatchCount}}명, 설정 완료 {{setTrueCount}}명을 표시했습니다.",
+  "status_waiting": "수동 실행 대기",
+  "start_migration": "마이그레이션 실행",
+  "migration_start_requested": "마이그레이션이 대기열에 추가되었습니다",
+  "migrations.20261008_migrate_chunk_training.name": "이전 데이터셋 학습 작업 마이그레이션",
+  "migrations.20261008_migrate_chunk_training.description": "모든 App/Pro 노드의 업그레이드, 이전 학습 워커 종료 및 임대 만료를 확인한 후 수동으로 실행하세요. 이전 chunk 작업을 변환하고 강화 작업용 데이터를 미리 생성하며 인덱스 초안과 청구 정보를 유지합니다. 변환에 성공하면 이전 오류를 지우고 재시도 횟수를 초기화하며 작업 잠금을 해제합니다.",
+  "migrations.20261008_migrate_chunk_training.result": "이전 학습 작업 마이그레이션 완료",
+  "migrations.20261008_migrate_chunk_training.trainings": "학습 작업 마이그레이션",
+  "migrations.20261008_migrate_chunk_training.validation": "이전 작업이 남아 있지 않은지 확인",
+  "migrations.20261009_migrate_dataset_rebuild_status.name": "재색인 상태 마이그레이션",
+  "migrations.20261009_migrate_dataset_rebuild_status.description": "먼저 chunk 학습 마이그레이션을 완료하세요. 모든 이전 App/Pro 노드를 업그레이드하고 이전 worker를 중지한 후 임대가 만료되면 실행하세요. 콘텐츠, 색인 및 학습 진행 상황을 유지하면서 rebuilding 필드와 기존 재색인 작업을 indexStatus로 변환합니다.",
+  "migrations.20261009_migrate_dataset_rebuild_status.result": "마이그레이션 완료. 이전 상태 {{remainingCount}}개가 남아 있습니다.",
+  "migrations.20261009_migrate_dataset_rebuild_status.datas": "이전 재색인 필드 변환",
+  "migrations.20261009_migrate_dataset_rebuild_status.trainings": "재색인 작업 상태 복원",
+  "migrations.20261009_migrate_dataset_rebuild_status.validation": "마이그레이션 검증"
 }

@@ -346,7 +346,8 @@ export const DatasetCollectionPath: OpenAPIPath = {
   '/core/dataset/collection/trainingDetail': {
     get: {
       summary: '获取集合训练详情',
-      description: '获取集合的训练状态，包括排队中、训练中、错误数量及已完成的数据量',
+      description:
+        '获取集合的训练状态，包括各阶段排队、训练、错误数量及已完成的数据量。索引重建和同义词重建按 data.indexStatus 分别统计待重建、重建中和失败数量。',
       tags: [DevApiTagsMap.datasetCollection],
       requestParams: {
         query: GetCollectionTrainingDetailQuerySchema

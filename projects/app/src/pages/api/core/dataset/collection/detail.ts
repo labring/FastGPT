@@ -22,21 +22,20 @@ import {
   GetCollectionDetailResponseSchema
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import {
-  activeTrainingExpr,
-  finalErrorTrainingExpr,
-  getSlowestTrainingStatus,
-  remainingTrainingMatch,
-  trainingModeRanks
+  getCollectionTrainingStatusFromCounts,
+  getCollectionTrainingModeCountsPipeline,
+  type CollectionTrainingModeCount
 } from '@fastgpt/service/core/dataset/training/query';
-import { CollectionTrainingStatusEnum } from '@fastgpt/global/core/dataset/constants';
-
-const defaultCollectionTrainingStatus = {
-  trainingAmount: 0,
-  activeTrainingAmount: 0,
-  finalErrorAmount: 0,
-  hasError: false,
-  slowestTrainingStatus: CollectionTrainingStatusEnum.ready
-};
+import {
+  datasetDataRebuildStatusCountFields,
+  type DatasetDataRebuildStatusCounts
+} from '@fastgpt/service/core/dataset/data/query';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import {
+  datasetDataRebuildIndexProcessingStatuses,
+  datasetDataRebuildSynonymProcessingStatuses,
+  datasetDataRebuildFailedStatuses
+} from '@fastgpt/global/core/dataset/data/utils';
 
 /**
  * 获取数据集集合的训练状态统计信息
@@ -54,90 +53,37 @@ const getCollectionTrainingStatus = async ({
   datasetId: Types.ObjectId;
   collectionId: Types.ObjectId;
 }) => {
-  const [trainingStatus] = await MongoDatasetTraining.aggregate(
-    [
-      {
-        $match: {
-          teamId,
-          datasetId,
-          collectionId,
-          ...remainingTrainingMatch
-        }
-      },
-      {
-        $addFields: {
-          modeRank: {
-            $switch: {
-              branches: trainingModeRanks.map(({ mode, rank }) => ({
-                case: { $eq: ['$mode', mode] },
-                then: rank
-              })),
-              default: 999
-            }
-          },
-          isActiveTraining: activeTrainingExpr,
-          isFinalErrorTraining: finalErrorTrainingExpr
-        }
-      },
-      {
-        $group: {
-          _id: '$mode',
-          modeRank: { $first: '$modeRank' },
-          activeCount: { $sum: { $cond: ['$isActiveTraining', 1, 0] } },
-          finalErrorCount: { $sum: { $cond: ['$isFinalErrorTraining', 1, 0] } },
-          trainingAmount: { $sum: 1 }
-        }
-      },
-      {
-        $sort: {
-          modeRank: 1
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          trainingAmount: { $sum: '$trainingAmount' },
-          activeTrainingAmount: { $sum: '$activeCount' },
-          finalErrorAmount: { $sum: '$finalErrorCount' },
-          modeCounts: {
-            $push: {
-              mode: '$_id',
-              activeCount: '$activeCount',
-              finalErrorCount: '$finalErrorCount'
+  const [[trainingStatus], [dataStatus]] = await Promise.all([
+    MongoDatasetTraining.aggregate<{ modeCounts: CollectionTrainingModeCount[] }>(
+      getCollectionTrainingModeCountsPipeline({ teamId, datasetId, collectionId }),
+      readFromSecondary
+    ),
+    MongoDatasetData.aggregate<DatasetDataRebuildStatusCounts>(
+      [
+        {
+          $match: {
+            teamId,
+            datasetId,
+            collectionId,
+            indexStatus: {
+              $in: [
+                ...datasetDataRebuildIndexProcessingStatuses,
+                ...datasetDataRebuildSynonymProcessingStatuses,
+                ...datasetDataRebuildFailedStatuses
+              ]
             }
           }
-        }
-      }
-    ],
-    readFromSecondary
-  );
-
-  if (!trainingStatus) return defaultCollectionTrainingStatus;
-
-  const { slowestTrainingMode, slowestTrainingStatus } = getSlowestTrainingStatus(
-    Object.fromEntries(
-      trainingStatus.modeCounts.map(
-        ({
-          mode,
-          activeCount,
-          finalErrorCount
-        }: {
-          mode: any;
-          activeCount: number;
-          finalErrorCount: number;
-        }) => [mode, { activeCount, finalErrorCount }]
-      )
+        },
+        { $group: { _id: null, ...datasetDataRebuildStatusCountFields } }
+      ],
+      readFromSecondary
     )
-  );
+  ]);
 
-  return {
-    trainingAmount: trainingStatus.trainingAmount,
-    activeTrainingAmount: trainingStatus.activeTrainingAmount,
-    finalErrorAmount: trainingStatus.finalErrorAmount,
-    hasError: trainingStatus.finalErrorAmount > 0,
-    slowestTrainingMode,
-    slowestTrainingStatus
-  };
+  return getCollectionTrainingStatusFromCounts({
+    modeCounts: trainingStatus?.modeCounts,
+    rebuildCounts: dataStatus
+  });
 };
 
 async function handler(req: ApiRequestProps): Promise<GetCollectionDetailResponseType> {

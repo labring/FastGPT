@@ -188,7 +188,7 @@ const ToolProvider = () => {
                       ? [
                           {
                             label: t('app:install_from_marketplace'),
-                            onClick: () => router.push('/dashboard/tool/marketplace')
+                            onClick: () => router.push('/config/tool/marketplace')
                           }
                         ]
                       : []),

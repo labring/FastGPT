@@ -1,6 +1,12 @@
 import updateHandler from '@/pages/api/core/dataset/update';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { Types } from 'mongoose';
 import type { UpdateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api';
-import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTypeEnum,
+  DatasetTypeEnum,
+  TrainingModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import {
   OwnerRoleVal,
@@ -592,5 +598,43 @@ describe('update dataset', () => {
         { tmbId: String(owner.tmbId), permission: OwnerRoleVal }
       ])
     );
+  });
+
+  it('does not touch training jobs when updating dataset models', async () => {
+    const owner = (await getFakeUsers(1)).members[0];
+    const llm = getModelTestDefaults().llm!;
+    const dataset = await MongoDataset.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      name: 'model-update-dataset',
+      type: DatasetTypeEnum.dataset,
+      agentModelId: 'original-agent'
+    });
+
+    const fixedLockTime = new Date('2026-05-01T12:00:00Z');
+    const trainingJob = await MongoDatasetTraining.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      datasetId: dataset._id,
+      collectionId: new Types.ObjectId(),
+      billId: 'bill-1',
+      mode: TrainingModeEnum.qa,
+      retryCount: 1,
+      lockTime: fixedLockTime
+    });
+
+    const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+      auth: owner,
+      body: { id: String(dataset._id), agentModelId: llm.modelId }
+    });
+
+    expect(res.code).toBe(200);
+
+    const savedDataset = await MongoDataset.findById(dataset._id).lean();
+    expect(savedDataset?.agentModelId).toBe(llm.modelId);
+
+    const afterJob = await MongoDatasetTraining.findById(trainingJob._id).lean();
+    expect(afterJob?.retryCount).toBe(1);
+    expect(afterJob?.lockTime.toISOString()).toBe(fixedLockTime.toISOString());
   });
 });

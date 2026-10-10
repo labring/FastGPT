@@ -13,12 +13,16 @@ import type { ColorSchemaType } from '@fastgpt/web/components/common/Tag';
  */
 export const getTrainingStageText = (mode?: TrainingModeEnum) => {
   const textMap = {
+    // 旧任务在迁移前仍需展示；该映射不代表存在 chunk 消费者。
+    [TrainingModeEnum.chunk]: i18nT('dataset:process.Vectorizing'),
     [TrainingModeEnum.parse]: i18nT('dataset:process.Parsing'),
     [TrainingModeEnum.imageParse]: i18nT('dataset:process.Parse_Image'),
     [TrainingModeEnum.qa]: i18nT('dataset:process.Get QA'),
     [TrainingModeEnum.image]: i18nT('dataset:process.Image_Index'),
     [TrainingModeEnum.auto]: i18nT('dataset:process.Auto_Index'),
-    [TrainingModeEnum.chunk]: i18nT('dataset:process.Vectorizing')
+    [TrainingModeEnum.rebuildIndex]: i18nT('dataset:process.Index_Rebuild'),
+    [TrainingModeEnum.rebuildSynonym]: i18nT('dataset:process.Synonym_Rebuild'),
+    [TrainingModeEnum.index]: i18nT('dataset:process.Vectorizing')
   };
 
   return mode ? textMap[mode] : i18nT('dataset:process.Waiting');
@@ -92,8 +96,20 @@ export const getCollectionTrainingStatusColorSchema = ({
     case TrainingModeEnum.auto:
       return 'cyan';
     case TrainingModeEnum.chunk:
+    case TrainingModeEnum.rebuildIndex:
+    case TrainingModeEnum.rebuildSynonym:
+    case TrainingModeEnum.index:
       return 'adora';
     default:
       return 'lightGray';
   }
 };
+
+/** 仅处理中或异常的集合允许打开进度弹窗；已就绪及尚未加载状态时不提供入口。 */
+export const canOpenCollectionTrainingStates = ({
+  slowestTrainingStatus
+}: {
+  slowestTrainingStatus?: CollectionTrainingStatusEnum;
+}) =>
+  slowestTrainingStatus === CollectionTrainingStatusEnum.running ||
+  slowestTrainingStatus === CollectionTrainingStatusEnum.error;

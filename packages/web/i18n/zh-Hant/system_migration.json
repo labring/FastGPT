@@ -103,5 +103,19 @@
   "migrations.20260928_backfill_member_name_set.description": "為歷史團隊成員回填 isSetMemberName 標記；owner 始終標記為已設定，非 owner 中與登入用戶名相同的成員名標記為需要補充。",
   "migrations.20260928_backfill_member_name_set.members": "回填成員名標記",
   "migrations.20260928_backfill_member_name_set.validation": "校驗成員名回填結果",
-  "migrations.20260928_backfill_member_name_set.result": "已掃描 {{scannedCount}} 個成員，標記 owner {{ownerCount}} 個、用戶名回落名 {{usernameMatchCount}} 個、已設定成員名 {{setTrueCount}} 個。"
+  "migrations.20260928_backfill_member_name_set.result": "已掃描 {{scannedCount}} 個成員，標記 owner {{ownerCount}} 個、用戶名回落名 {{usernameMatchCount}} 個、已設定成員名 {{setTrueCount}} 個。",
+  "status_waiting": "待手動執行",
+  "start_migration": "執行遷移",
+  "migration_start_requested": "升級腳本已加入執行佇列",
+  "migrations.20261008_migrate_chunk_training.name": "遷移舊版知識庫訓練任務",
+  "migrations.20261008_migrate_chunk_training.description": "請確認所有 App/Pro 節點已升級、舊訓練 worker 已停止且租約已過期，再手動執行。轉換舊 chunk 任務並為舊增強任務預建資料，保留索引草稿和帳單，成功後清除舊錯誤、恢復重試次數並釋放任務鎖。",
+  "migrations.20261008_migrate_chunk_training.result": "舊版訓練任務遷移完成",
+  "migrations.20261008_migrate_chunk_training.trainings": "遷移訓練任務",
+  "migrations.20261008_migrate_chunk_training.validation": "確認舊任務已全部遷移",
+  "migrations.20261009_migrate_dataset_rebuild_status.name": "遷移索引重建狀態",
+  "migrations.20261009_migrate_dataset_rebuild_status.description": "請先完成 chunk 訓練遷移，並確認所有舊 App/Pro 已升級、舊 worker 已停止且租約過期，再執行。將 rebuilding 標記及既有重建任務遷入 indexStatus，保留正文、索引及訓練進度。",
+  "migrations.20261009_migrate_dataset_rebuild_status.result": "遷移完成，剩餘舊狀態 {{remainingCount}} 筆。",
+  "migrations.20261009_migrate_dataset_rebuild_status.datas": "遷移舊重建標記",
+  "migrations.20261009_migrate_dataset_rebuild_status.trainings": "恢復重建任務狀態",
+  "migrations.20261009_migrate_dataset_rebuild_status.validation": "驗證遷移結果"
 }

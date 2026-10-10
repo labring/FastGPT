@@ -42,7 +42,8 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
     authToken: true,
     authApiKey: true,
     dataId,
-    per: WritePermissionVal
+    per: WritePermissionVal,
+    assertWritable: true
   });
 
   const dataset = collection.dataset;
@@ -91,7 +92,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
         model: vectorModel
       });
     }
-  } else if (!!nextQ || !!datasetData.imageId) {
+  } else {
     const { tokens } = await updateDatasetDataSystemIndexes({
       dataId,
       q: nextQ,

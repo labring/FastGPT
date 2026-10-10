@@ -36,13 +36,13 @@ describe('system migration entity lease', () => {
 
   it('creates missing states without overwriting existing status', async () => {
     const migrationId = '20260903_entity_state';
-    await ensureMigrationStates([migrationId]);
+    await ensureMigrationStates([{ id: migrationId }]);
     await MongoSystemMigrationState.updateOne(
       { _id: migrationId },
       { $set: { status: SystemMigrationStatusEnum.failed } }
     );
 
-    await ensureMigrationStates([migrationId]);
+    await ensureMigrationStates([{ id: migrationId }]);
 
     const [state] = await getMigrationStates([migrationId]);
     expect(state).toMatchObject({
@@ -53,7 +53,7 @@ describe('system migration entity lease', () => {
 
   it('allows only one concurrent lease winner', async () => {
     const migrationId = '20260903_entity_atomic_claim';
-    await ensureMigrationStates([migrationId]);
+    await ensureMigrationStates([{ id: migrationId }]);
 
     const claims = await Promise.all(
       Array.from({ length: 8 }, () =>
@@ -71,7 +71,7 @@ describe('system migration entity lease', () => {
   describe('claimMigrationLease', () => {
     it.each([1, 90_123])('adds %i milliseconds to Mongo server time', async (leaseDurationMs) => {
       const migrationId = '20260903_entity_claim_server_time';
-      await ensureMigrationStates([migrationId]);
+      await ensureMigrationStates([{ id: migrationId }]);
       // 只观察真实数据库调用，固定兼容表达式，避免高版本测试 Mongo 掩盖兼容性回退。
       const claim = vi.spyOn(MongoSystemMigrationState, 'findOneAndUpdate');
 
@@ -106,7 +106,7 @@ describe('system migration entity lease', () => {
         const migrationId = '20260903_entity_renew_server_time';
         const runId = randomUUID();
         const leaseDurationMs = 90_123;
-        await ensureMigrationStates([migrationId]);
+        await ensureMigrationStates([{ id: migrationId }]);
         const claimed = await claimMigrationLease({ migrationId, runId, leaseDurationMs: 60_000 });
         await MongoSystemMigrationState.updateOne({ _id: migrationId }, { $set: { status } });
         const renew = vi.spyOn(MongoSystemMigrationState, 'updateOne');
@@ -139,7 +139,7 @@ describe('system migration entity lease', () => {
     it('does not revive an expired lease', async () => {
       const migrationId = '20260903_entity_expired_renew';
       const runId = randomUUID();
-      await ensureMigrationStates([migrationId]);
+      await ensureMigrationStates([{ id: migrationId }]);
       await claimMigrationLease({ migrationId, runId, leaseDurationMs: 60_000 });
       await MongoSystemMigrationState.updateOne(
         { _id: migrationId },
@@ -211,7 +211,7 @@ describe('system migration entity lease', () => {
     const migrationId = '20260903_entity_expired_takeover';
     const oldRunId = randomUUID();
     const newRunId = randomUUID();
-    await ensureMigrationStates([migrationId]);
+    await ensureMigrationStates([{ id: migrationId }]);
 
     const firstClaim = await claimMigrationLease({
       migrationId,
@@ -268,7 +268,7 @@ describe('system migration entity lease', () => {
   it('updates one progress stage by key without overwriting other stages', async () => {
     const migrationId = '20260903_entity_progress_stages';
     const runId = randomUUID();
-    await ensureMigrationStates([migrationId]);
+    await ensureMigrationStates([{ id: migrationId }]);
     await claimMigrationLease({ migrationId, runId, leaseDurationMs: 10_000 });
 
     await expect(
@@ -313,7 +313,7 @@ describe('system migration entity lease', () => {
   it('replaces the running task failed-record snapshot with lease fencing', async () => {
     const migrationId = '20260903_entity_live_failed_records';
     const runId = randomUUID();
-    await ensureMigrationStates([migrationId]);
+    await ensureMigrationStates([{ id: migrationId }]);
     await claimMigrationLease({ migrationId, runId, leaseDurationMs: 10_000 });
     await saveMigrationProgress({
       migrationId,
@@ -382,7 +382,7 @@ describe('system migration entity lease', () => {
   it('preserves an immediately reported failed-record snapshot after an unexpected error', async () => {
     const migrationId = '20260903_entity_preserve_live_failed_records';
     const runId = randomUUID();
-    await ensureMigrationStates([migrationId]);
+    await ensureMigrationStates([{ id: migrationId }]);
     await claimMigrationLease({ migrationId, runId, leaseDurationMs: 10_000 });
     await saveMigrationProgress({
       migrationId,
@@ -446,7 +446,7 @@ describe('system migration entity lease', () => {
   it('records failed data against each stage even when a stage has not reported progress', async () => {
     const migrationId = '20260903_entity_failed_stages';
     const runId = randomUUID();
-    await ensureMigrationStates([migrationId]);
+    await ensureMigrationStates([{ id: migrationId }]);
     await claimMigrationLease({ migrationId, runId, leaseDurationMs: 10_000 });
     await saveMigrationProgress({
       migrationId,
@@ -502,7 +502,7 @@ describe('system migration entity lease', () => {
   it('stores failed record details and resets a failed task for checkpoint retry', async () => {
     const migrationId = '20260903_entity_failed_records';
     const runId = randomUUID();
-    await ensureMigrationStates([migrationId]);
+    await ensureMigrationStates([{ id: migrationId }]);
     await claimMigrationLease({
       migrationId,
       runId,
