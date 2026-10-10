@@ -187,8 +187,17 @@ services:
       # MODE分为MINI和NORMAL， 后者会最大程度使用主机资源
       - MODE=MINI
     volumes:
-      - fastgpt-seekdb-data:/var/lib/mysql
-      - fastgpt-seekdb-config:/etc/mysql/conf.d
+      # 两个数据目录挂载同一个卷，适配不同版本的 SeekDB 镜像。
+      - type: volume
+        source: fastgpt-seekdb-data
+        target: /var/lib/oceanbase
+        volume:
+          nocopy: true
+      - type: volume
+        source: fastgpt-seekdb-data
+        target: /var/lib/seekdb
+        volume:
+          nocopy: true
     healthcheck:
       test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-P2881', '-uroot', '-pseekdbpassword']
       interval: 30s
@@ -585,7 +594,6 @@ volumes:
   fastgpt-ob-data:
   fastgpt-ob-config:
   fastgpt-seekdb-data:
-  fastgpt-seekdb-config:
   fastgpt-aiproxy_pg:
 
 configs:
