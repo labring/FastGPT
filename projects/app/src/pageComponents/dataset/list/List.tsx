@@ -195,8 +195,7 @@ function List() {
         flexDirection={'column'}
         lineHeight={1.5}
         h="100%"
-        pt={5}
-        pb={3}
+        py={3}
         px={5}
         cursor={isBatchMode ? (canBatchOperate ? 'pointer' : 'not-allowed') : 'pointer'}
         borderWidth={1.5}

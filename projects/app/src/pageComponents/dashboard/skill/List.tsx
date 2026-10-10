@@ -311,7 +311,7 @@ const List = ({
       <MyBox
         key={skill._id}
         data-virtual-item=""
-        py={4}
+        py={3}
         px={5}
         cursor={'pointer'}
         border={'base'}
@@ -612,7 +612,7 @@ const ForbiddenCreateButton = () => {
   const { t } = useTranslation();
   return (
     <MyBox
-      py={4}
+      py={3}
       px={5}
       cursor={'not-allowed'}
       border={'base'}
