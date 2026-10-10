@@ -28,6 +28,7 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
   const eChart = useRef<ECharts>();
   const { isPc } = useSystem();
   const [width, setWidth] = useState(400);
+  const [hasRenderError, setHasRenderError] = useState(false);
 
   const findMarkdownDom = useCallback(() => {
     if (!chartRef.current) return;
@@ -77,21 +78,44 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
   useLayoutEffect(() => {
     if (!parsedOption || !chartRef.current) return;
 
-    try {
-      import('echarts').then((module) => {
-        if (!chartRef.current) return;
-        eChart.current = module.init(chartRef.current);
-        eChart.current.setOption(parsedOption);
+    let isMounted = true;
+
+    import('echarts')
+      .then((module) => {
+        if (!isMounted || !chartRef.current) return;
+
+        try {
+          // 重新初始化前先销毁旧实例
+          if (eChart.current) {
+            eChart.current.dispose();
+          }
+          eChart.current = module.init(chartRef.current);
+          eChart.current.setOption(parsedOption);
+          setHasRenderError(false);
+        } catch {
+          // 捕获 ECharts 内部因非法配置（如 legend: true 等）抛出的运行时错误，杜绝未捕获异常击穿触发 Dev Overlay
+          if (eChart.current) {
+            eChart.current.dispose();
+            eChart.current = undefined;
+          }
+          if (isMounted) {
+            setHasRenderError(true);
+          }
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setHasRenderError(true);
+        }
       });
-    } catch {
-      // 图表内部渲染异常静默处理
-    }
 
     findMarkdownDom();
 
     return () => {
+      isMounted = false;
       if (eChart.current) {
         eChart.current.dispose();
+        eChart.current = undefined;
       }
     };
   }, [parsedOption, findMarkdownDom]);
@@ -133,8 +157,8 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
     }
   }, []);
 
-  // 1. 流式打字生成中且图表未闭合就绪：骨架屏完全拉满卡片，静默防抖，杜绝红框报错和尺寸抖动
-  if (showAnimation && !parsedOption) {
+  // 1. 流式打字生成中且图表未就绪：骨架屏完全拉满卡片，静默防抖，杜绝红框报错和尺寸抖动
+  if (showAnimation && (!parsedOption || hasRenderError)) {
     return (
       <Box
         my={3}
@@ -151,8 +175,8 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
     );
   }
 
-  // 2. 流式已结束且配置 JSON 依然存在语法错误：展示统一错误卡片（此时无下载图片，仅提供复制代码按钮）
-  if (!showAnimation && !parsedOption) {
+  // 2. 流式已结束且配置 JSON 语法错误或 ECharts 内部渲染抛错：展示统一错误卡片（此时无下载图片，仅提供复制代码按钮）
+  if (!showAnimation && (!parsedOption || hasRenderError)) {
     return <CodeBlockErrorCard title={t('common:echarts_syntax_error')} code={code} />;
   }
 
