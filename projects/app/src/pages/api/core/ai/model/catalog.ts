@@ -1,18 +1,19 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
-import { getModelProviderMetadata } from '@fastgpt/service/core/app/provider/controller';
 import { authModelViewer } from '@/service/core/ai/model/auth';
-import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { getMemberModelCatalogPermission } from '@fastgpt/service/support/permission/model/controller';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 import {
   GetModelCatalogQuerySchema,
   GetModelCatalogResponseSchema,
   type GetModelCatalogQuery,
   type GetModelCatalogResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { desensitizeSystemModel } from '@fastgpt/service/core/ai/config/utils';
-import { resolveEffectiveDefaultModelIds } from '@fastgpt/service/core/ai/catalog';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import { resolveEffectiveDefaultModelIds } from '@fastgpt/service/core/ai/model/default/resolve';
+import { getModelProviderMetadata } from '@fastgpt/service/core/ai/model/provider/controller';
+import { desensitizeModel } from '@fastgpt/service/core/ai/model/transform';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 
 /** 返回当前成员完整模型目录；命中内容版本时只返回 version。 */
 export async function handler(
@@ -24,28 +25,29 @@ export async function handler(
   }).query;
 
   const catalogIdentity = await authModelViewer({ req, outLinkAuthData });
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getTeamModelHandle({ teamId: catalogIdentity.teamId });
   const activeModels = modelHandle.getActiveModels();
   const configuredDefaults = modelHandle.configuredDefaultModelIds;
   const providers = getModelProviderMetadata().providers;
-  const permission = await getMemberModelCatalogPermission({
-    ...catalogIdentity,
-    catalogSnapshot: { models: activeModels, revision: modelHandle.revision }
+  // 复用同一目录快照计算使用权，保证目录内容与 version 对应同一快照。
+  const authorizedIds = await getAuthorizedModelIds({
+    actor: catalogIdentity,
+    handle: modelHandle
   });
-  const version = `3:${modelHandle.version}:${permission.version}`;
+  const models = activeModels.filter((model) => authorizedIds.has(model.modelId));
+  const permissionVersion = hashStr(
+    [modelHandle.version, ...models.map((model) => model.modelId).toSorted()].join('\n')
+  );
+  const version = `3:${modelHandle.version}:${permissionVersion}`;
 
   if (clientVersion === version) {
     return GetModelCatalogResponseSchema.parse({ version });
   }
 
-  const permittedModelIds = new Set(permission.modelIds);
-  // 权限结果只决定可见性，目录顺序始终继承 plugin 排好的 active 模型列表。
-  const models = activeModels.filter((model) => permittedModelIds.has(model.modelId));
-
   return GetModelCatalogResponseSchema.parse({
     version,
     data: {
-      models: models.map(desensitizeSystemModel),
+      models: models.map(desensitizeModel),
       providers,
       defaultModelIds: resolveEffectiveDefaultModelIds({
         models,

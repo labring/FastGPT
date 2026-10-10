@@ -1,21 +1,21 @@
-import { getModelHandle } from '../../../../ai/model';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getQuoteTemplate } from '@fastgpt/global/core/ai/prompt/AIChat';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { getTeamModelHandle } from '../../../../ai/model/catalog/service';
 
+import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 import { createLLMResponse } from '../../../../ai/llm/request';
 import { computedMaxToken } from '../../../../ai/utils';
 import { postTextCensor } from '../../../../chat/postTextCensor';
-import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
+import { getWorkflowFileMaxAmount } from '../../../utils/context';
 import { checkQuoteQAValue, getHistories, getNodeErrResponse } from '../../utils';
 import { getChatMessages } from './chatMessages';
 import { getDatasetCiteData } from './datasetCite';
 import { getAIChatFileContextConfig, getInputFiles } from './fileContext';
 import type { ChatProps, ChatResponse } from './type';
-import { getWorkflowFileMaxAmount } from '../../../utils/context';
 
 /**
  * 调度 AI Chat 节点：整理引用、历史和文件上下文，调用 LLM，并写入节点响应与用量。
@@ -30,6 +30,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     histories,
     node: { name, version, inputs },
     runningUserInfo,
+    runningAppInfo,
     workflowStreamResponse,
     chatConfig,
     usageId,
@@ -66,7 +67,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   let aiChatVideo = rawAiChatVideo;
   let fileLinks = rawFileLinks;
   let userChatInput = rawUserChatInput;
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getTeamModelHandle({ teamId: runningAppInfo.teamId });
   const modelConstantsData = modelHandle.getLLMModelData({ modelId, model });
 
   try {

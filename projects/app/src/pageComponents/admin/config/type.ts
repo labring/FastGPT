@@ -166,6 +166,7 @@ export type ConfigFormType = {
       show_publish_offiaccount: boolean;
       show_publish_wechat: boolean;
       enable_team_plugin_upload: boolean;
+      enable_team_model: boolean;
       favicon: string;
       docUrl: string;
       loginGuideDocUrl: string;

@@ -10,7 +10,7 @@ import { splitCombineToolId, splitToolsetToolPluginId } from '@fastgpt/global/co
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
@@ -56,7 +56,7 @@ const getStringValue = (value: unknown) => {
 export const resolveSystemModelId = (
   value: unknown,
   modelType?: AppResourceModelType,
-  models: readonly SystemModelDataType[] = []
+  models: readonly AIModelDataType[] = []
 ) => {
   const rawValue =
     getStringValue(value) ??
@@ -235,7 +235,7 @@ export const extractAppResources = ({
   nodes?: Array<StoreNodeItemType | RuntimeNodeItemType>;
   chatConfig?: AppChatConfigType;
   /** 调用方持有的同一模型目录快照，仅用于把 legacy 名称投影为稳定 modelId。 */
-  models?: readonly SystemModelDataType[];
+  models?: readonly AIModelDataType[];
 }): AppResourcesType => {
   const resources: AppResource[] = [];
   const addResource = (resource: AppResource) => resources.push(resource);
@@ -368,7 +368,7 @@ export const resolveStoredAppResources = ({
   nodes?: Array<StoreNodeItemType | RuntimeNodeItemType>;
   chatConfig?: AppChatConfigType;
   resourceRefs?: unknown;
-  models?: readonly SystemModelDataType[];
+  models?: readonly AIModelDataType[];
 }): AppResourcesType => {
   if (Array.isArray(resources)) {
     const parsed = AppResourcesSchema.safeParse(resources);

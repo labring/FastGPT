@@ -1,7 +1,7 @@
-import { MongoDataset } from '../schema';
+import type { ModelHandle } from '../../ai/model/catalog/handle';
+import { getTeamModelHandle } from '../../ai/model/catalog/service';
 import { getDatasetModelReference } from '../model';
-import { getModelHandle } from '../../ai/model';
-import type { ModelHandle } from '../../ai/config/handle';
+import { MongoDataset } from '../schema';
 
 /**
  * 搜索的视觉能力是可选增强：按知识库顺序选择第一个启用且支持视觉的模型。
@@ -43,6 +43,6 @@ export const getDatasetSearchVlmModel = async ({
       const dataset = datasetMap.get(id);
       return dataset ? [dataset] : [];
     }),
-    modelHandle ?? (await getModelHandle())
+    modelHandle ?? (await getTeamModelHandle({ teamId }))
   );
 };

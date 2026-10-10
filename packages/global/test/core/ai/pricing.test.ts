@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   calculateModelPrice,
   getRuntimeResolvedPriceTiers,
   MAX_MODEL_PRICE_TIERS,
+  normalizeModelPricingForRead,
+  normalizeModelPricingForSave,
   sanitizeModelPriceTiers
 } from '@fastgpt/global/core/ai/model/pricing';
 
@@ -559,4 +562,84 @@ describe('calculateModelPrice', () => {
     expect(matchedTier?.minInputTokens).toBe(100);
     expect(totalPoints).toBeGreaterThan(0);
   });
+});
+
+describe('normalizeModelPricingForRead', () => {
+  const modelData = {
+    type: ModelTypeEnum.llm,
+    provider: 'OpenAI',
+    model: 'test-model',
+    name: 'Test Model',
+    scope: 'system' as const,
+    isActive: false,
+    config: { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000 }
+  };
+
+  it.each([
+    { inputPrice: 1, outputPrice: 3 },
+    { inputPrice: 0, outputPrice: 3 },
+    { charsPointsPrice: 2 }
+  ])('converts legacy LLM pricing without retaining old fields: %j', (pricing) => {
+    const original = { ...modelData, ...pricing };
+    const result = normalizeModelPricingForRead(original);
+    expect(result.priceTiers).toEqual([
+      {
+        minInputTokens: 0,
+        inputPrice: 'charsPointsPrice' in pricing ? pricing.charsPointsPrice : pricing.inputPrice,
+        outputPrice: 'charsPointsPrice' in pricing ? pricing.charsPointsPrice : pricing.outputPrice
+      }
+    ]);
+    for (const key of ['inputPrice', 'outputPrice', 'charsPointsPrice']) {
+      expect(result).not.toHaveProperty(key);
+    }
+  });
+
+  it('keeps current tiers ahead of legacy fields', () => {
+    const priceTiers = [{ minInputTokens: 0, inputPrice: 2, outputPrice: 4 }];
+    expect(
+      normalizeModelPricingForRead({ ...modelData, priceTiers, inputPrice: 10, outputPrice: 20 })
+        .priceTiers
+    ).toEqual(priceTiers);
+  });
+});
+
+describe('normalizeModelPricingForSave', () => {
+  const modelData = {
+    type: ModelTypeEnum.llm,
+    provider: 'OpenAI',
+    model: 'test-model',
+    name: 'Test Model',
+    scope: 'system' as const,
+    isActive: false,
+    config: { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000 }
+  };
+
+  it('persists a free edit without falling back to the legacy prices', () => {
+    const form = normalizeModelPricingForRead({ ...modelData, inputPrice: 1, outputPrice: 3 });
+    form.priceTiers = [{ minInputTokens: 0, inputPrice: 0, outputPrice: 0 }];
+    const saved = normalizeModelPricingForSave(form);
+    expect(saved.priceTiers).toEqual([]);
+    expect(saved).not.toHaveProperty('inputPrice');
+    expect(saved).not.toHaveProperty('outputPrice');
+  });
+
+  it('ignores stale legacy fields even if caller still includes them in save input', () => {
+    const result = normalizeModelPricingForSave({
+      ...modelData,
+      charsPointsPrice: 9,
+      inputPrice: 1,
+      outputPrice: 3,
+      priceTiers: []
+    });
+    expect(result).toEqual({ ...modelData, priceTiers: [] });
+  });
+
+  it.each([ModelTypeEnum.embedding, ModelTypeEnum.tts, ModelTypeEnum.stt, ModelTypeEnum.rerank])(
+    'preserves current non-LLM pricing for %s',
+    (type) => {
+      const model = { ...modelData, type, charsPointsPrice: 5, config: {} } as any;
+      expect(normalizeModelPricingForRead(model)).toBe(model);
+      expect(normalizeModelPricingForSave(model)).toBe(model);
+    }
+  );
 });

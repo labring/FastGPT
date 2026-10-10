@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatFormData2ConfigStore } from '@/web/admin/config/adapt';
+import { formatConfigStore2FormSchema, formatFormData2ConfigStore } from '@/web/admin/config/adapt';
 import type { DeepPartial } from '@fastgpt/global/common/type/utils';
 
 type ConfigFormInput = Parameters<typeof formatFormData2ConfigStore>[0];
@@ -89,5 +89,32 @@ describe('formatFormData2ConfigStore', () => {
       LOGIN: 'SMS_LOGIN',
       LOGIN_EN: 'SMS_LOGIN_EN'
     });
+  });
+
+  it('adapts enable_team_model between form schema and config store', () => {
+    // 1. Config store to form schema: defaults to false when missing
+    const defaultSchema = formatConfigStore2FormSchema({
+      fastgpt: { feConfigs: {} } as any,
+      fastgptPro: {} as any
+    });
+    expect(defaultSchema.siteSettings.feConfigs.enable_team_model).toBe(false);
+
+    // 2. Config store to form schema: reads true when set
+    const enabledSchema = formatConfigStore2FormSchema({
+      fastgpt: { feConfigs: { enable_team_model: true } } as any,
+      fastgptPro: {} as any
+    });
+    expect(enabledSchema.siteSettings.feConfigs.enable_team_model).toBe(true);
+
+    // 3. Form schema to config store: persists enable_team_model into fastgpt.feConfigs
+    const result = formatFormData2ConfigStore(
+      createFormInput({
+        siteSettings: {
+          feConfigs: { enable_team_model: true } as any,
+          systemEnv: {}
+        }
+      })
+    );
+    expect(result.fastgpt.feConfigs.enable_team_model).toBe(true);
   });
 });

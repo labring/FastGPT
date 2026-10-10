@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DatasetSearchModeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { DatasetSearchModeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mockGetDefaultModelData = vi.hoisted(() => vi.fn());
 
 const mockAuthDataset = vi.hoisted(() => vi.fn());
@@ -18,6 +18,11 @@ const mockAddAuditLog = vi.hoisted(() => vi.fn());
 const mockCreateExternalUrl = vi.hoisted(() => vi.fn());
 const mockTeamFrequencyLimit = vi.hoisted(() => vi.fn());
 const mockResolveReadableCollectionIds = vi.hoisted(() => vi.fn());
+const mockAssertAuthModels = vi.hoisted(() => vi.fn());
+
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  assertAuthModels: mockAssertAuthModels
+}));
 
 vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDataset: mockAuthDataset
@@ -44,8 +49,20 @@ vi.mock('@fastgpt/service/support/openapi/tools', () => ({
   updateApiKeyUsage: mockUpdateApiKeyUsage
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
+  getSystemModelHandle: async () => ({
+    getAllModels: () => [],
+    version: 'test',
+    getDefaultModelData: mockGetDefaultModelData,
+    getRerankModelData: mockGetRerankModelData,
+    getEmbeddingModelData: mockGetEmbeddingModelData,
+    getLLMModelData: mockGetLLMModelData,
+    findModelData: mockGetOptionalVlmModelData,
+    getOptionalVlmModelData: mockGetOptionalVlmModelData
+  }),
+  getTeamModelHandle: async () => ({
+    getAllModels: () => [],
+    version: 'test',
     getDefaultModelData: mockGetDefaultModelData,
     getRerankModelData: mockGetRerankModelData,
     getEmbeddingModelData: mockGetEmbeddingModelData,
@@ -114,6 +131,7 @@ describe('searchTest query image auth', () => {
   });
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAssertAuthModels.mockResolvedValue({ models: [] });
 
     mockAuthDataset.mockResolvedValue({
       dataset: {
@@ -162,6 +180,15 @@ describe('searchTest query image auth', () => {
       totalPoints: 0
     });
     mockDefaultSearchDatasetData.mockResolvedValue({
+      searchRes: [],
+      embeddingTokens: 0,
+      reRankInputTokens: 0,
+      usingReRank: false,
+      limit: 5000,
+      searchMode: DatasetSearchModeEnum.embedding,
+      similarity: 0
+    });
+    mockDeepRagSearch.mockResolvedValue({
       searchRes: [],
       embeddingTokens: 0,
       reRankInputTokens: 0,
@@ -260,6 +287,77 @@ describe('searchTest query image auth', () => {
     ).resolves.toBeUndefined();
 
     expect(mockCheckTeamAIPoints).not.toHaveBeenCalled();
+    expect(mockDefaultSearchDatasetData).not.toHaveBeenCalled();
+    expect(mockDeepRagSearch).not.toHaveBeenCalled();
+  });
+
+  it('should validate auxiliary models with assertAuthModels', async () => {
+    mockGetRerankModelData.mockReturnValue({
+      modelId: 'rerank-id',
+      model: 'rerank-model',
+      name: 'Rerank model',
+      type: 'rerank',
+      config: {}
+    });
+    mockGetLLMModelData.mockImplementation(({ modelId }) => ({
+      modelId: modelId || 'llm-id',
+      model: 'llm-model',
+      name: 'LLM model',
+      type: 'llm',
+      config: {}
+    }));
+
+    await handler(
+      {
+        body: {
+          datasetId,
+          text: 'question',
+          usingReRank: true,
+          rerankModelId: 'rerank-id',
+          datasetSearchUsingExtensionQuery: true,
+          datasetSearchExtensionModelId: 'extension-id',
+          datasetDeepSearch: true,
+          datasetDeepSearchModelId: 'deepsearch-id'
+        }
+      } as any,
+      {} as any
+    );
+
+    expect(mockAssertAuthModels).toHaveBeenCalledOnce();
+    expect(mockAssertAuthModels).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor: expect.objectContaining({ teamId: 'team-1', tmbId: 'tmb-1' }),
+        modelIds: expect.arrayContaining(['rerank-id', 'extension-id', 'deepsearch-id']),
+        action: 'use',
+        handle: expect.anything()
+      })
+    );
+  });
+
+  it('should reject search when auxiliary model is unauthorized', async () => {
+    mockGetLLMModelData.mockReturnValue({
+      modelId: 'unauthorized-deepsearch-id',
+      model: 'foreign-team-model',
+      name: 'Foreign Model',
+      type: 'llm',
+      config: {}
+    });
+    mockAssertAuthModels.mockRejectedValueOnce(new UserError(ModelErrEnum.unAuthModel));
+
+    await expect(
+      handler(
+        {
+          body: {
+            datasetId,
+            text: 'question',
+            datasetDeepSearch: true,
+            datasetDeepSearchModelId: 'unauthorized-deepsearch-id'
+          }
+        } as any,
+        {} as any
+      )
+    ).rejects.toEqual(new UserError(ModelErrEnum.unAuthModel));
+
     expect(mockDefaultSearchDatasetData).not.toHaveBeenCalled();
     expect(mockDeepRagSearch).not.toHaveBeenCalled();
   });

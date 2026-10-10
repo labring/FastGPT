@@ -1,30 +1,30 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 /* push data to training queue */
-import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
-import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
-import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
-import {
-  preCreateDatasetDataAndPushToTrainingQueue,
-  pushDataListToTrainingQueue
-} from '@fastgpt/service/core/dataset/training/controller';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
-import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
-import type { ApiRequestProps } from '@fastgpt/next/type';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import {
   PushDataBodySchema,
   type PushDataResponseType
 } from '@fastgpt/global/openapi/core/dataset/data/api';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
+import {
+  preCreateDatasetDataAndPushToTrainingQueue,
+  pushDataListToTrainingQueue
+} from '@fastgpt/service/core/dataset/training/controller';
+import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
+import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 
-import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 
 async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
   const body = parseApiInput({ req, bodySchema: PushDataBodySchema }).body;
@@ -41,7 +41,7 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
     collectionId,
     per: WritePermissionVal
   });
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getTeamModelHandle({ teamId });
   const vectorModelData = modelHandle.getEmbeddingModelData(
     getDatasetModelReference(collection.dataset, 'embedding')
   );

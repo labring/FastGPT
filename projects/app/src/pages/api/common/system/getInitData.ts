@@ -1,4 +1,4 @@
-import { getModelProviderMetadata } from '@fastgpt/service/core/app/provider/controller';
+import { getModelProviderMetadata } from '@fastgpt/service/core/ai/model/provider/controller';
 import type { NextApiResponse } from 'next';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';

@@ -256,6 +256,8 @@
   "permission_datasetCreate_Tip": "可以在根目录创建知识库，（文件夹下的创建权限由文件夹控制）",
   "permission_skillCreate": "创建技能",
   "permission_skillCreate_Tip": "可以在根目录创建技能，（文件夹下的创建权限由文件夹控制）",
+  "permission_modelCreate": "安装模型",
+  "permission_modelCreate_Tip": "可以安装和配置私有模型及渠道",
   "permission_manage": "管理员",
   "permission_manage_tip": "可以管理成员、创建群组、管理所有群组、为群组和成员分配权限",
   "please_bind_contact": "请绑定联系方式",

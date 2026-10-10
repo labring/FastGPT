@@ -1,4 +1,4 @@
-import { getTestModel } from '@/web/core/ai/config';
+import { testModel } from '@/web/core/ai/model/api';
 import { Table, Thead, Tbody, Tr, Th, Td, Box, Flex, Button, HStack } from '@chakra-ui/react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import React, { useEffect, useRef, useState } from 'react';
@@ -11,8 +11,9 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
+import { useModelConfig } from '@/web/core/ai/model/useModelConfig';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 
 type ModelTestItem = {
   label: React.ReactNode;
@@ -27,14 +28,20 @@ type ModelTestItem = {
 const ModelTest = ({
   channelId,
   models,
+  channelType,
   onClose
 }: {
   channelId: number;
   models: string[];
+  channelType: ChannelType;
   onClose: () => void;
 }) => {
   const { t, i18n } = useSafeTranslation();
-  const { getModelProvider, systemModelList, loading: loadingModels } = useAdminModelConfig();
+  const {
+    getModelProvider,
+    models: availableModels,
+    loading: loadingModels
+  } = useModelConfig({ channelType, language: i18n.language });
   const { toast } = useToast();
   const [testModelList, setTestModelList] = useState<ModelTestItem[]>([]);
 
@@ -59,7 +66,7 @@ const ModelTest = ({
 
   useEffect(() => {
     const list = models.flatMap((model) => {
-      const modelData = systemModelList.find((item) => item.model === model);
+      const modelData = availableModels.find((item) => item.model === model);
       if (!modelData) return [];
       const provider = getModelProvider(modelData.provider, i18n.language);
 
@@ -79,26 +86,26 @@ const ModelTest = ({
       ];
     });
     setTestModelList(list);
-  }, [getModelProvider, i18n.language, models, systemModelList, t]);
+  }, [availableModels, getModelProvider, i18n.language, models, t]);
 
   const { runAsync: onStartTest, loading: isAnyModelLoading } = useRequest(
     async () => {
       let errorNum = 0;
       setTestModelList((prev) => prev.map((item) => ({ ...item, loading: true })));
 
-      const testModel = async (modelId: string) => {
+      const runTestItem = async (testItem: ModelTestItem) => {
         setTestModelList((prev) =>
           prev.map((item) =>
-            item.modelId === modelId ? { ...item, status: 'running', message: '' } : item
+            item.modelId === testItem.modelId ? { ...item, status: 'running', message: '' } : item
           )
         );
         const start = Date.now();
         try {
-          await getTestModel({ modelId, channelId });
+          await testModel({ modelId: testItem.modelId, channelId, channelType });
           const duration = Date.now() - start;
           setTestModelList((prev) =>
             prev.map((item) =>
-              item.modelId === modelId
+              item.modelId === testItem.modelId
                 ? { ...item, status: 'success', duration: duration / 1000, loading: false }
                 : item
             )
@@ -106,7 +113,7 @@ const ModelTest = ({
         } catch (error) {
           setTestModelList((prev) =>
             prev.map((item) =>
-              item.modelId === modelId
+              item.modelId === testItem.modelId
                 ? { ...item, status: 'error', message: getErrText(error), loading: false }
                 : item
             )
@@ -115,11 +122,7 @@ const ModelTest = ({
         }
       };
 
-      await batchRun(
-        testModelList.map((item) => item.modelId),
-        testModel,
-        5
-      );
+      await batchRun(testModelList, runTestItem, 5);
 
       if (errorNum > 0) {
         toast({
@@ -135,6 +138,9 @@ const ModelTest = ({
 
   const { runAsync: onTestOneModel, loading: testingOneModel } = useRequest(
     async (modelId: string) => {
+      const target = testModelList.find((item) => item.modelId === modelId);
+      if (!target) return;
+
       const start = Date.now();
 
       setTestModelList((prev) =>
@@ -146,7 +152,7 @@ const ModelTest = ({
       );
 
       try {
-        await getTestModel({ modelId, channelId });
+        await testModel({ modelId, channelId, channelType });
         const duration = Date.now() - start;
 
         setTestModelList((prev) =>

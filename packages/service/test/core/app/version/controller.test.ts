@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   findOneMock,
@@ -13,7 +13,7 @@ const {
   findAppByIdMock,
   updateVersionMock,
   updateAppMock,
-  getModelHandleMock
+  getSystemModelHandleMock
 } = vi.hoisted(() => ({
   findOneMock: vi.fn(),
   findMock: vi.fn(),
@@ -22,11 +22,12 @@ const {
   findAppByIdMock: vi.fn(),
   updateVersionMock: vi.fn(),
   updateAppMock: vi.fn(),
-  getModelHandleMock: vi.fn()
+  getSystemModelHandleMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: getModelHandleMock
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
+  getSystemModelHandle: getSystemModelHandleMock,
+  getTeamModelHandle: getSystemModelHandleMock
 }));
 
 vi.mock('@fastgpt/service/core/app/version/schema', () => ({
@@ -50,16 +51,16 @@ vi.mock('@fastgpt/service/common/mongo/sessionRun', async (importOriginal) => {
   return importOriginal();
 });
 
+import type { ClientSession } from '@fastgpt/service/common/mongo';
+import { MongoTransactionConflictError } from '@fastgpt/service/common/mongo/sessionRun';
 import {
   getAppDraftVersion,
   getAppDraftWorkflow,
   getAppLatestVersion,
-  getAppVersionById,
   getAppPublishedWorkflowMap,
+  getAppVersionById,
   updateAppPublishedVersion
 } from '@fastgpt/service/core/app/version/controller';
-import type { ClientSession } from '@fastgpt/service/common/mongo';
-import { MongoTransactionConflictError } from '@fastgpt/service/common/mongo/sessionRun';
 
 const createAgentVersion = (resources?: unknown) => ({
   _id: '507f1f77bcf86cd799439011',
@@ -83,7 +84,7 @@ describe('getAppLatestVersion', () => {
     vi.clearAllMocks();
     existsMock.mockResolvedValue(null);
     findAppByIdMock.mockReturnValue({ lean: vi.fn().mockResolvedValue(undefined) });
-    getModelHandleMock.mockResolvedValue({ getAllModels: () => [] });
+    getSystemModelHandleMock.mockResolvedValue({ getAllModels: () => [] });
   });
 
   it('normalizes a legacy published version before returning it', async () => {
@@ -186,17 +187,19 @@ describe('getAppLatestVersion', () => {
         }
       ]
     };
-    getModelHandleMock.mockResolvedValue({
+    getSystemModelHandleMock.mockResolvedValue({
       getAllModels: () => [{ model: 'legacy-llm', modelId: 'resolved-model-id', type: 'llm' }]
     });
     findOneMock.mockReturnValue({
       sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(version) })
     });
 
-    const result = await getAppLatestVersion('app-id');
+    const result = await getAppLatestVersion('app-id', {
+      teamId: '68ad85a7463006c963799a06'
+    } as any);
 
     expect(result.resources).toContainEqual({ type: 'model', id: 'resolved-model-id' });
-    expect(getModelHandleMock).toHaveBeenCalledOnce();
+    expect(getSystemModelHandleMock).toHaveBeenCalledOnce();
   });
 
   it('returns an empty workflow when neither a Version nor legacy workflow exists', async () => {

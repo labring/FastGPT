@@ -299,30 +299,31 @@ global.systemModelMap
 global.systemDefaultModel
 ```
 
-成员权限继续使用 `TmpDataEnum.MyModels`，数据扩展为：
+成员使用权缓存使用 `TmpDataEnum.MemberModels`（存储值沿用 `my_models`），由 `getAuthorizedModelIds` 读写，详见 [模型鉴权收敛设计](./model-permission-auth.md)：
 
 ```ts
 {
   teamId: string;
   tmbId: string;
   modelIds: string[];
-  version: string;
+  catalogVersion: string;
+  hasManagePer: boolean;
 }
 ```
 
-不增加一份完整成员模型列表后端缓存。接口只组合成员 modelIds 与进程内 canonical 模型缓存。
+不增加一份完整成员模型列表后端缓存。接口只组合成员 modelIds 与进程内 canonical 模型缓存。外链身份不读写该缓存。
 
 ### 7.2 权限 version
 
 `tmpData._id` 不能作为 version：updateOne 和过期文档原地更新都会保留 `_id`，owner 和开源版路径也可能没有 tmpData。
 
-生成 MyModels 缓存时计算：
+catalog 接口用同一目录快照计算可用模型后，现场生成权限 version，不在缓存中额外保存：
 
 ```ts
-const permissionVersion = hash([...modelIds].sort().join(','));
+const permissionVersion = hashStr([handle.version, ...modelIds.toSorted()].join('\n'));
 ```
 
-该 version 与 modelIds 同时写入 tmpData。模型权限、组织、用户组、团队成员和角色变更必须继续清理对应团队缓存；active 模型集合变化清理全部成员缓存。
+模型权限、组织、用户组、团队成员和角色变更调用 `clearMemberModelsCache` 清理对应团队缓存；模型目录变化通过缓存中的 `catalogVersion` 自动失效。
 
 ### 7.3 系统模型目录 version
 

@@ -1,32 +1,32 @@
+import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { AppResourcesSchema } from '@fastgpt/global/core/app/type';
 import {
-  migrateWorkflowToCurrent,
-  isLegacyV1Workflow
+  isLegacyV1Workflow,
+  migrateWorkflowToCurrent
 } from '@fastgpt/global/core/workflow/migration';
-import pLimit from 'p-limit';
 import { Types } from '@fastgpt/service/common/mongo';
 import {
   MongoTransactionConflictError,
   mongoSessionRun
 } from '@fastgpt/service/common/mongo/sessionRun';
+import { getSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import {
   decodeToolSetNodesFromStorage,
   encodeMcpToolSetNodesForStorage
 } from '@fastgpt/service/core/app/jsonSchemaStorage';
+import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
+import { parseLegacyMcpChildApps } from '@fastgpt/service/core/app/mcp';
 import { resolveStoredAppResources } from '@fastgpt/service/core/app/resources';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
-import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
+import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatInputGuide } from '@fastgpt/service/core/chat/inputGuide/schema';
-import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
+import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { filterAuthorizedAppResources } from '@fastgpt/service/support/permission/app/resource';
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
-import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import { parseLegacyMcpChildApps } from '@fastgpt/service/core/app/mcp';
-import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+import pLimit from 'p-limit';
 
 type LegacyResourceRefs = {
   skillIds?: unknown;
@@ -99,7 +99,7 @@ const isFolderApp = (type: unknown) =>
 /** 从历史工作流字段确定性生成资源快照。 */
 export const buildAppResourceSnapshot = (
   record: AppResourceMigrationRecord,
-  models: readonly SystemModelDataType[] = []
+  models: readonly AIModelDataType[] = []
 ) => {
   const storedNodes = Array.isArray(record.nodes)
     ? record.nodes
@@ -311,7 +311,7 @@ export const backfillAppVersionResourceRecords = async (
 
   if (recordsToProcess.length === 0) return result;
 
-  const models = (await getModelHandle()).getAllModels();
+  const models = (await getSystemModelHandle()).getAllModels();
 
   const appIds = recordsToProcess.map((record) => record.appId).filter(Boolean);
   const apps =
@@ -503,9 +503,9 @@ const updatePublishedVersionPointer = async ({
  */
 const createMissingPublishedVersion = async (
   record: AppResourceMigrationRecord,
-  models?: readonly SystemModelDataType[]
+  models?: readonly AIModelDataType[]
 ) => {
-  const loadedModels = models ?? (await getModelHandle()).getAllModels();
+  const loadedModels = models ?? (await getSystemModelHandle()).getAllModels();
   return mongoSessionRun(async (session) => {
     const currentApp = (await MongoApp.collection.findOne(
       { _id: record._id as never },
@@ -650,7 +650,7 @@ export const backfillAppResourceRecords = async (
   if (actionableRecords.length === 0) return result;
 
   const models = actionableRecords.some((item) => item.action === 'create_version')
-    ? (await getModelHandle()).getAllModels()
+    ? (await getSystemModelHandle()).getAllModels()
     : [];
 
   const processResults = await runWithConcurrency({

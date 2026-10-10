@@ -5,7 +5,6 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { serviceEnv } from '@fastgpt/service/env';
 
 const mockGetVectors = vi.hoisted(() => vi.fn());
-const mockIsImageEmbeddingModel = vi.hoisted(() => vi.fn());
 const mockRecallFromVectorStore = vi.hoisted(() => vi.fn());
 const mockCreateLLMResponse = vi.hoisted(() => vi.fn());
 const mockReRankRecall = vi.hoisted(() => vi.fn());
@@ -40,7 +39,8 @@ const embeddingModel = {
   config: {
     defaultToken: 100,
     maxToken: 100,
-    weight: 0
+    weight: 0,
+    vision: false
   }
 };
 
@@ -62,10 +62,6 @@ const vlmModel = {
 
 vi.mock('@fastgpt/service/core/ai/embedding', () => ({
   getVectors: mockGetVectors
-}));
-
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  isImageEmbeddingModel: mockIsImageEmbeddingModel
 }));
 
 vi.mock('@fastgpt/service/common/vectorDB/controller', () => ({
@@ -168,7 +164,7 @@ describe('default recall dataset search', () => {
     );
     mockCountPromptTokens.mockImplementation(async (prompt: string) => prompt.length);
 
-    mockIsImageEmbeddingModel.mockReturnValue(false);
+    embeddingModel.config.vision = false;
     mockGetVectors.mockResolvedValue({
       tokens: 10,
       vectors: [
@@ -253,7 +249,7 @@ describe('default recall dataset search', () => {
   });
 
   it('should request text and image embeddings in one getVectors call', async () => {
-    mockIsImageEmbeddingModel.mockReturnValue(true);
+    embeddingModel.config.vision = true;
     mockGetVectors.mockResolvedValueOnce({
       tokens: 12,
       vectors: [
@@ -295,7 +291,7 @@ describe('default recall dataset search', () => {
   });
 
   it('should skip blank embedding recall inputs while preserving valid task order', async () => {
-    mockIsImageEmbeddingModel.mockReturnValue(true);
+    embeddingModel.config.vision = true;
     mockGetVectors.mockResolvedValueOnce({
       tokens: 12,
       vectors: [
@@ -335,7 +331,7 @@ describe('default recall dataset search', () => {
   });
 
   it('should pass overlong text queries to centralized embedding fallback without creating extra queries', async () => {
-    mockIsImageEmbeddingModel.mockReturnValue(false);
+    embeddingModel.config.vision = false;
     const smallEmbeddingModel = {
       ...embeddingModel,
       config: { ...embeddingModel.config, maxToken: 12 }
@@ -372,7 +368,7 @@ describe('default recall dataset search', () => {
   });
 
   it('should ignore failed image embedding normalization and keep text recall', async () => {
-    mockIsImageEmbeddingModel.mockReturnValue(true);
+    embeddingModel.config.vision = true;
     serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
     mockGetImageBase64.mockRejectedValueOnce(new Error('expired image'));
     mockGetVectors.mockResolvedValueOnce({
@@ -417,7 +413,7 @@ describe('default recall dataset search', () => {
   });
 
   it('should skip blank full-text queries before Mongo text search', async () => {
-    mockIsImageEmbeddingModel.mockReturnValue(false);
+    embeddingModel.config.vision = false;
 
     const result = await searchDatasetData({
       histories: [],
@@ -439,7 +435,7 @@ describe('default recall dataset search', () => {
   });
 
   it('should only batch-sign authorized dataset S3 keys from results that survive score filtering', async () => {
-    mockIsImageEmbeddingModel.mockReturnValue(false);
+    embeddingModel.config.vision = false;
     mockGetVectors.mockResolvedValueOnce({
       tokens: 5,
       vectors: [[0.1, 0.2]]
@@ -521,7 +517,7 @@ describe('default recall dataset search', () => {
     // 一条 text query 对应一个向量，向量召回返回两条候选，rerank 命中其中一条，
     // 制造「候选集 != 最终结果」的场景。
     const arrangeTwoCandidates = () => {
-      mockIsImageEmbeddingModel.mockReturnValue(false);
+      embeddingModel.config.vision = false;
       mockGetVectors.mockResolvedValue({
         tokens: 5,
         vectors: [[0.1, 0.2]]

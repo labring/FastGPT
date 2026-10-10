@@ -1,34 +1,34 @@
 import { rebuildingDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
-import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
-import type { ApiRequestProps } from '@fastgpt/next/type';
-import path from 'node:path';
-import { Types } from '@fastgpt/service/common/mongo';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import type { NormalizedSynonymMappingType } from '@fastgpt/global/core/dataset/synonym';
 import {
   DatasetSynonymMutationTypeEnum,
   DatasetSynonymSchemaVersion
 } from '@fastgpt/global/core/dataset/synonym';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { Types } from '@fastgpt/service/common/mongo';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import {
   MongoDatasetSynonym,
   MongoDatasetSynonymMapping
 } from '@fastgpt/service/core/dataset/synonym/schema';
+import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import path from 'node:path';
 
-import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { rebuildableDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { cleanupUnusedDatasetSynonymMappings } from '@fastgpt/service/core/dataset/synonym/controller';
 import {
   assertDatasetSynonymEnabled,
   invalidateDatasetSynonymMatcherCache
 } from '@fastgpt/service/core/dataset/synonym/entity';
-import { cleanupUnusedDatasetSynonymMappings } from '@fastgpt/service/core/dataset/synonym/controller';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { seedDatasetSynonymRebuildTasks } from '../queues/rebuildSynonym';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { rebuildableDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
 
 const SYNONYM_MAPPING_BATCH_SIZE = 1000;
 
@@ -100,7 +100,7 @@ export const createDatasetSynonymMutation = async ({
   const fileVersion = (current?.version ?? 0) + 1;
   const now = new Date();
   const normalizedFileName = path.basename(fileName) || 'synonyms.csv';
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getTeamModelHandle({ teamId });
   const vectorModelData = modelHandle.getEmbeddingModelData(
     getDatasetModelReference(dataset, 'embedding')
   );

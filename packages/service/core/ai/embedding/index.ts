@@ -1,5 +1,6 @@
-import { type EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import { getAIApi } from '../config';
+import { type EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { getAIApi, getModelOpenAIOptions } from '../config';
+import { normalizeRelayNoChannelError } from '../../../thirdProvider/aiproxy/error';
 import { countPromptTokens, countPromptTokensBatch } from '../../../common/string/tiktoken/index';
 import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -10,7 +11,7 @@ import { truncateTextByFormattedTokenLimit } from './tokenLimit';
 const logger = getLogger(LogCategories.MODULE.AI.EMBEDDING);
 
 type GetVectorsBaseProps = {
-  model: EmbeddingSystemModelDataType;
+  model: EmbeddingModelDataType;
   type?: `${EmbeddingTypeEnm}`;
   headers?: Record<string, string>;
   timeoutMs?: number;
@@ -99,7 +100,9 @@ export async function getVectors({
     });
   }
 
-  const { ai } = getAIApi(timeoutMs === undefined ? undefined : { timeout: timeoutMs });
+  const { ai, requestMeta } = getAIApi(
+    timeoutMs === undefined ? undefined : { timeout: timeoutMs }
+  );
 
   let chunkSize = Number(model.config.batchSize || 1);
   chunkSize = isNaN(chunkSize) ? 1 : chunkSize;
@@ -131,19 +134,14 @@ export async function getVectors({
                 ...(type === EmbeddingTypeEnm.db && model.config.dbConfig),
                 ...(type === EmbeddingTypeEnm.query && model.config.queryConfig)
               } as any,
-              model.requestUrl
-                ? {
-                    path: model.requestUrl,
-                    headers: {
-                      ...(model.requestAuth
-                        ? { Authorization: `Bearer ${model.requestAuth}` }
-                        : {}),
-                      ...headers
-                    },
-                    signal,
-                    maxRetries: timeoutMs === undefined ? undefined : 0
-                  }
-                : { headers, signal, maxRetries: timeoutMs === undefined ? undefined : 0 }
+              getModelOpenAIOptions({
+                model,
+                baseUrl: requestMeta?.baseUrl,
+                headers,
+                signal,
+                maxRetries: timeoutMs === undefined ? undefined : 0,
+                omitEmptyHeaders: true
+              })
             )
             .then(async (res) => {
               if (!res.data) {
@@ -206,7 +204,7 @@ export async function getVectors({
       error
     });
 
-    return Promise.reject(error);
+    return Promise.reject(normalizeRelayNoChannelError(error));
   }
 }
 

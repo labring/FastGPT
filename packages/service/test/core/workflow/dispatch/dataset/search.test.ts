@@ -1,11 +1,11 @@
-import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { UserError } from '@fastgpt/global/common/error/utils';
-import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
-import * as modelGetters from '../../../../../core/ai/model';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import * as modelGetters from '../../../../../core/ai/model/catalog/service';
 
 const {
   defaultSearchDatasetDataMock,
@@ -49,7 +49,7 @@ vi.mock('@fastgpt/service/core/dataset/utils', () => ({
   filterDatasetsByTmbId: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => {
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => {
   const handle = {
     getDefaultModelData: vi.fn(),
     getEmbeddingModelData: vi.fn(() => ({
@@ -86,7 +86,7 @@ vi.mock('@fastgpt/service/core/ai/model', () => {
         : undefined
     )
   };
-  return { getModelHandle: async () => handle };
+  return { getSystemModelHandle: async () => handle, getTeamModelHandle: async () => handle };
 });
 
 vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
@@ -109,15 +109,17 @@ describe('dispatchDatasetSearch', () => {
     } as any);
 
   it('executes and bills the fallback auxiliary models when configured models are unavailable', async () => {
-    vi.mocked((await modelGetters.getModelHandle()).getLLMModelData).mockImplementationOnce(() => {
-      throw new UserError(ModelErrEnum.unExist);
-    });
-    vi.mocked((await modelGetters.getModelHandle()).getRerankModelData).mockImplementationOnce(
+    vi.mocked((await modelGetters.getSystemModelHandle()).getLLMModelData).mockImplementationOnce(
       () => {
-        throw new UserError(ModelErrEnum.unConfigured);
+        throw new UserError(ModelErrEnum.unExist);
       }
     );
-    vi.mocked((await modelGetters.getModelHandle()).getDefaultModelData).mockImplementation(
+    vi.mocked(
+      (await modelGetters.getSystemModelHandle()).getRerankModelData
+    ).mockImplementationOnce(() => {
+      throw new UserError(ModelErrEnum.unConfigured);
+    });
+    vi.mocked((await modelGetters.getSystemModelHandle()).getDefaultModelData).mockImplementation(
       (slot) =>
         ({
           modelId: `fallback-${slot}`,
@@ -167,15 +169,15 @@ describe('dispatchDatasetSearch', () => {
   });
 
   it('still fails immediately when the embedding model is unavailable', async () => {
-    vi.mocked((await modelGetters.getModelHandle()).getEmbeddingModelData).mockImplementationOnce(
-      () => {
-        throw new UserError(ModelErrEnum.unExist);
-      }
-    );
+    vi.mocked(
+      (await modelGetters.getSystemModelHandle()).getEmbeddingModelData
+    ).mockImplementationOnce(() => {
+      throw new UserError(ModelErrEnum.unExist);
+    });
     const result = await runSearch({ usingReRank: true, datasetSearchUsingExtensionQuery: true });
     expect(result.error).toBeDefined();
     expect(defaultSearchDatasetDataMock).not.toHaveBeenCalled();
-    expect((await modelGetters.getModelHandle()).getDefaultModelData).not.toHaveBeenCalled();
+    expect((await modelGetters.getSystemModelHandle()).getDefaultModelData).not.toHaveBeenCalled();
   });
   beforeEach(() => {
     vi.clearAllMocks();
@@ -230,7 +232,7 @@ describe('dispatchDatasetSearch', () => {
     expect(getDatasetSearchVlmModelMock).toHaveBeenCalledWith({
       teamId: 'team_1',
       datasetIds: ['first', 'second'],
-      modelHandle: await modelGetters.getModelHandle()
+      modelHandle: await modelGetters.getSystemModelHandle()
     });
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
       expect.objectContaining({ vlmModel: undefined })
@@ -548,7 +550,7 @@ describe('dispatchDatasetSearch', () => {
 
     // searchUsingReRank 为 true 时计费分支会读取 rerankModelData，必须配置。
     const useRerankModel = async () => {
-      vi.mocked((await modelGetters.getModelHandle()).getRerankModelData).mockReturnValue({
+      vi.mocked((await modelGetters.getSystemModelHandle()).getRerankModelData).mockReturnValue({
         modelId: 'rerank-model',
         model: 'rerank-model',
         name: 'Rerank Model',

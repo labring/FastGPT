@@ -1,4 +1,4 @@
-import { getUserModelSummaries } from '@/web/common/system/api';
+import { getUserModelSummaries } from './catalogApi';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';

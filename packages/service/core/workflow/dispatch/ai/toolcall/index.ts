@@ -1,16 +1,9 @@
-import { getModelHandle } from '../../../../ai/model';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { getTeamModelHandle } from '../../../../ai/model/catalog/service';
 import type { DispatchNodeResultType } from '../../../types/runtime';
 
-import { getAgentLoopHistories, getNodeErrResponse } from '../../utils';
-import { runToolCall } from './toolCall';
-import { type DispatchToolModuleProps } from './type';
-import { postTextCensor } from '../../../../chat/postTextCensor';
-import { useToolNodeList } from './hooks/useToolNodeList';
-import { useToolMessages } from './hooks/useToolMessages';
-import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/interface/toolCall';
-import { readWorkflowFileBuffer } from '../../../utils/context';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   assertSandboxAvailable,
   getRunningSandboxId,
@@ -19,16 +12,23 @@ import {
   runAgentSandboxEntrypoint,
   withAgentSandboxInitLease
 } from '../../../../ai/sandbox/interface/runtime';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
+import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/interface/toolCall';
+import { postTextCensor } from '../../../../chat/postTextCensor';
+import { readWorkflowFileBuffer } from '../../../utils/context';
+import { getAgentLoopHistories, getNodeErrResponse } from '../../utils';
 import {
   buildAgentLoopCoreRequestMessages,
-  createAgentLoopCoreToolCallNodeResponse,
   createAgentLoopCoreChildInteractiveParams,
+  createAgentLoopCoreToolCallNodeResponse,
   filterAgentLoopCoreToolResponseToPreview,
   getAgentLoopCorePersistedTextOutput,
   summarizeAgentLoopCoreToolRunFlowResponses
 } from '../agentLoopCore/interface';
+import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
+import { useToolMessages } from './hooks/useToolMessages';
+import { useToolNodeList } from './hooks/useToolNodeList';
+import { runToolCall } from './toolCall';
+import { type DispatchToolModuleProps } from './type';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -76,7 +76,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   const useSandbox = isAppChat ? appSandboxAvailability?.available === true : !!useAgentSandbox;
 
   try {
-    const modelHandle = await getModelHandle();
+    const modelHandle = await getTeamModelHandle({ teamId: runningAppInfo.teamId });
     const toolModel = modelHandle.getLLMModelData({ modelId, model });
     const useVision = aiChatVision && toolModel.config.vision;
     const useAudio = aiChatAudio && toolModel.config.audio;

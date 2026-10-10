@@ -1,16 +1,8 @@
-import { LazyCollaboratorProvider } from '@/components/support/permission/MemberManager/context';
-import {
-  getModelCollaborators,
-  getPublicModelCatalog,
-  updateModelCollaborators
-} from '@/web/common/system/api';
+import { getPublicModelCatalog } from '@/web/core/ai/model/catalogApi';
 import { useModelList } from '@/web/core/ai/model/useModelList';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
-  Box,
-  Button,
-  Checkbox,
   Flex,
   HStack,
   ModalBody,
@@ -23,38 +15,44 @@ import {
   useDisclosure,
   type FlexProps
 } from '@chakra-ui/react';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   formatModelProviders,
   getModelProviderFromCache,
   getModelProviderListFromCache
 } from '@fastgpt/global/core/ai/model/provider';
-import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import { useStaticVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import type {
+  MyModelItemType,
+  PublicPriceSystemModel
+} from '@fastgpt/global/openapi/core/ai/model/api';
 import dynamic from 'next/dynamic';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import ModelListFilters from '../ModelListFilters';
 import ModelCapabilityTags from '../ModelCapabilityTags';
-import PriceTiersLabel from '../PriceTiersLabel';
 import TestModeBetaTag from '../TestModeBetaTag';
+import ModelTabHeader from '@/components/core/ai/ModelTabHeader';
+import ModelScopeCell from '../ModelScopeCell';
+import { useModelTableFormat } from '../hooks/useModelTableFormat';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 const modelRowHeight = 80;
 
 const ModelTable = ({
   permissionConfig = false,
-  contentPx
+  contentPx,
+  Tab
 }: {
   permissionConfig?: boolean;
   contentPx?: FlexProps['px'];
+  Tab?: React.ReactNode;
 }) => {
   const { t, i18n } = useSafeTranslation();
   const { modelProviders: memberModelProviders, getModelProvider: getMemberModelProvider } =
@@ -82,10 +80,6 @@ const ModelTable = ({
   const modelPermissionConfigHint = permissionConfig
     ? t('common:model.permission_config_hint')
     : '';
-  const getPermissionModelId = (modelId?: string) => {
-    if (!modelId) throw new Error('Permission model ID is missing');
-    return modelId;
-  };
 
   const [provider, setProvider] = useState<string | ''>('');
   const providers = useMemo(
@@ -101,154 +95,20 @@ const ModelTable = ({
 
   const [search, setSearch] = useState('');
 
-  const remoteModels = permissionConfig ? availableModels : (publicCatalog?.models ?? []);
-  const llmModelList = remoteModels.filter((model) => model.type === ModelTypeEnum.llm);
-  const embeddingModelList = remoteModels.filter((model) => model.type === ModelTypeEnum.embedding);
-  const ttsModelList = remoteModels.filter((model) => model.type === ModelTypeEnum.tts);
-  const sttModelList = remoteModels.filter((model) => model.type === ModelTypeEnum.stt);
-  const reRankModelList = remoteModels.filter((model) => model.type === ModelTypeEnum.rerank);
+  type TableSourceModel = MyModelItemType | PublicPriceSystemModel;
+  const remoteModels: TableSourceModel[] = permissionConfig
+    ? availableModels
+    : (publicCatalog?.models ?? []);
 
-  const modelList = useMemo(() => {
-    const formatLLMModelList = llmModelList.map((item) => ({
-      ...item,
-      typeLabel: t('common:model.type.chat'),
-      priceLabel: (
-        <PriceTiersLabel
-          config={item}
-          unitLabel={`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-        />
-      ),
-      tagColor: 'blue'
-    }));
-    const formatVectorModelList = embeddingModelList.map((item) => ({
-      ...item,
-      typeLabel: t('common:model.type.embedding'),
-      priceLabel: (
-        <Flex color={'myGray.700'}>
-          {`${t('common:Input')}: `}
-          <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-            {item.charsPointsPrice || 0}
-          </Box>
-          {` ${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-        </Flex>
-      ),
-      tagColor: 'yellow'
-    }));
-    const formatAudioSpeechModelList = ttsModelList.map((item) => ({
-      ...item,
-      typeLabel: t('common:model.type.tts'),
-      priceLabel: (
-        <Flex color={'myGray.700'}>
-          <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-            {item.charsPointsPrice || 0}
-          </Box>
-          {` ${t('common:support.wallet.subscription.point')} / 1K ${t('common:unit.character')}`}
-        </Flex>
-      ),
-      tagColor: 'green'
-    }));
-    const formatWhisperModelList = sttModelList.map((item) => ({
-      ...item,
-      typeLabel: t('common:model.type.stt'),
-      priceLabel: (
-        <Flex color={'myGray.700'}>
-          <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-            {item.charsPointsPrice}
-          </Box>
-          {` ${t('common:support.wallet.subscription.point')} / 60${t('common:unit.seconds')}`}
-        </Flex>
-      ),
-      tagColor: 'purple'
-    }));
-    const formatRerankModelList = reRankModelList.map((item) => ({
-      ...item,
-      typeLabel: t('common:model.type.reRank'),
-      priceLabel: item.charsPointsPrice ? (
-        <Flex color={'myGray.700'}>
-          {`${t('common:Input')}: `}
-          <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-            {item.charsPointsPrice}
-          </Box>
-          {` ${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-        </Flex>
-      ) : (
-        '-'
-      ),
-      tagColor: 'red'
-    }));
-
-    const list = (() => {
-      if (modelType === ModelTypeEnum.llm) return formatLLMModelList;
-      if (modelType === ModelTypeEnum.embedding) return formatVectorModelList;
-      if (modelType === ModelTypeEnum.tts) return formatAudioSpeechModelList;
-      if (modelType === ModelTypeEnum.stt) return formatWhisperModelList;
-      if (modelType === ModelTypeEnum.rerank) return formatRerankModelList;
-
-      return [
-        ...formatLLMModelList,
-        ...formatVectorModelList,
-        ...formatAudioSpeechModelList,
-        ...formatWhisperModelList,
-        ...formatRerankModelList
-      ];
-    })();
-    const formatList = list.map((item) => {
-      const provider = getModelProvider(item.provider, i18n.language);
-      return {
-        modelId: 'modelId' in item ? item.modelId : undefined,
-        name: item.name,
-        testMode: item.testMode,
-        contextToken:
-          item.type === ModelTypeEnum.llm
-            ? item.config.maxContext
-            : item.type === ModelTypeEnum.embedding || item.type === ModelTypeEnum.rerank
-              ? item.config.maxToken
-              : undefined,
-        vision:
-          (item.type === ModelTypeEnum.llm || item.type === ModelTypeEnum.embedding) &&
-          'vision' in item.config
-            ? item.config.vision
-            : undefined,
-        audio: item.type === ModelTypeEnum.llm ? item.config.audio : undefined,
-        video: item.type === ModelTypeEnum.llm ? item.config.video : undefined,
-        reasoning: item.type === ModelTypeEnum.llm ? item.config.reasoning : undefined,
-        toolChoice:
-          item.type === ModelTypeEnum.llm && 'toolChoice' in item.config
-            ? item.config.toolChoice
-            : undefined,
-        avatar: provider.avatar,
-        providerId: provider.id,
-        providerName: provider.name,
-        typeLabel: item.typeLabel,
-        priceLabel: item.priceLabel,
-        order: provider.order,
-        tagColor: item.tagColor
-      };
-    });
-    formatList.sort((a, b) => a.order - b.order);
-
-    const filterList = formatList.filter((item) => {
-      const providerFilter = provider ? item.providerId === provider : true;
-
-      const nameFilter = item.name.toLowerCase().includes(search.trim().toLowerCase());
-
-      return providerFilter && nameFilter;
-    });
-
-    return filterList;
-  }, [
-    llmModelList,
-    embeddingModelList,
-    ttsModelList,
-    sttModelList,
-    reRankModelList,
-    t,
+  const { formattedList: modelList } = useModelTableFormat({
+    models: remoteModels,
     modelType,
-    getModelProvider,
-    i18n.language,
     provider,
-    search
-  ]);
+    search,
+    sortByOrder: true,
+    getModelProvider,
+    language: i18n.language
+  });
 
   const {
     containerRef,
@@ -260,23 +120,11 @@ const ModelTable = ({
   useEffect(() => {
     scrollToTop();
   }, [modelType, provider, search, scrollToTop]);
-  const tableColumnCount = permissionConfig && userInfo?.team.permission.hasManagePer ? 4 : 3;
-
-  const {
-    selectedItems,
-    toggleSelect,
-    isSelected,
-    getRowSelectionProps,
-    FloatingActionBar,
-    isSelecteAll,
-    selectAllTrigger
-  } = useTableMultipleSelect({
-    list: modelList,
-    getItemId: (e) => e.name
-  });
+  const tableColumnCount = permissionConfig ? 4 : 3;
 
   return (
     <Flex flexDirection={'column'} h={contentPx === undefined ? '100%' : ['auto', '100%']} minW={0}>
+      {Tab && <ModelTabHeader Tab={Tab} px={contentPx} mb={4} />}
       <ModelListFilters
         px={contentPx}
         providers={providers}
@@ -307,36 +155,21 @@ const ModelTable = ({
         renderHeader={({ headerTableWidth }) => (
           <Table
             w={'100%'}
-            minW={permissionConfig ? '950px' : '790px'}
+            minW={permissionConfig ? '980px' : '790px'}
             sx={{ tableLayout: 'fixed', width: `${headerTableWidth} !important` }}
           >
             <colgroup>
-              <col style={{ width: '360px' }} />
+              <col style={{ width: '320px' }} />
               <col style={{ width: '160px' }} />
+              {permissionConfig && <col style={{ width: '200px' }} />}
               <col style={{ width: '300px' }} />
-              {permissionConfig && userInfo?.team.permission.hasManagePer && (
-                <col style={{ width: '160px' }} />
-              )}
             </colgroup>
             <Thead>
               <Tr color={'myGray.600'}>
-                <Th fontSize={'xs'}>
-                  <HStack>
-                    {permissionConfig && userInfo?.team.permission.hasManagePer && (
-                      <Checkbox
-                        mr={1}
-                        isChecked={isSelecteAll}
-                        onChange={selectAllTrigger}
-                      ></Checkbox>
-                    )}
-                    <Box>{t('common:model.name')}</Box>
-                  </HStack>
-                </Th>
+                <Th fontSize={'xs'}>{t('common:model.name')}</Th>
                 <Th fontSize={'xs'}>{t('common:model.model_type')}</Th>
+                {permissionConfig && <Th fontSize={'xs'}>{t('config_model:available_range')}</Th>}
                 <Th fontSize={'xs'}>{t('common:model.billing')}</Th>
-                {permissionConfig && userInfo?.team.permission.hasManagePer && (
-                  <Th fontSize={'xs'}>{t('common:permission.Permission config')}</Th>
-                )}
               </Tr>
             </Thead>
           </Table>
@@ -344,16 +177,14 @@ const ModelTable = ({
         renderBody={() => (
           <Table
             w={'100%'}
-            minW={permissionConfig ? '950px' : '790px'}
+            minW={permissionConfig ? '980px' : '790px'}
             sx={{ tableLayout: 'fixed' }}
           >
             <colgroup>
-              <col style={{ width: '360px' }} />
+              <col style={{ width: '320px' }} />
               <col style={{ width: '160px' }} />
+              {permissionConfig && <col style={{ width: '200px' }} />}
               <col style={{ width: '300px' }} />
-              {permissionConfig && userInfo?.team.permission.hasManagePer && (
-                <col style={{ width: '160px' }} />
-              )}
             </colgroup>
             <Tbody>
               {topPlaceholderHeight > 0 && (
@@ -363,28 +194,27 @@ const ModelTable = ({
               )}
               {virtualDataList.map(({ data: item }) => (
                 <Tr
-                  key={`${item.providerId}-${item.typeLabel}-${item.name}`}
+                  key={
+                    item.modelId
+                      ? `model-${item.modelId}`
+                      : `${item.providerId}-${item.typeLabel}-${item.name}`
+                  }
                   h={`${modelRowHeight}px`}
                   sx={{ '& > td': { py: 2, whiteSpace: 'nowrap' } }}
                   _hover={{ bg: 'myGray.50' }}
-                  {...getRowSelectionProps(item, {
-                    isDisabled: !permissionConfig || !userInfo?.team.permission.hasManagePer
-                  })}
                 >
                   <Td fontSize={'sm'}>
                     <HStack>
-                      {permissionConfig && userInfo?.team.permission.hasManagePer && (
-                        <Checkbox
-                          mr={1}
-                          isChecked={isSelected(item)}
-                          onChange={() => toggleSelect(item)}
-                        ></Checkbox>
-                      )}
                       <Avatar src={item.avatar} w={'1.2rem'} />
                       <Flex alignItems={'center'} gap={1} minW={0}>
                         <CopyBox value={item.name} data-row-action color={'myGray.900'}>
                           {item.name}
                         </CopyBox>
+                        {item.scope === ModelScopeEnum.system && (
+                          <MyTag type={'borderFill'} colorSchema={'gray'}>
+                            {t('config_model:system_model_tag')}
+                          </MyTag>
+                        )}
                         {item.testMode && <TestModeBetaTag />}
                       </Flex>
                     </HStack>
@@ -398,38 +228,20 @@ const ModelTable = ({
                     />
                   </Td>
                   <Td>
-                    <MyTag colorSchema={item.tagColor as any}>{item.typeLabel}</MyTag>
+                    <MyTag colorSchema={item.tagColor}>{item.typeLabel}</MyTag>
                   </Td>
-                  <Td fontSize={'sm'}>{item.priceLabel}</Td>
-                  {permissionConfig && userInfo?.team.permission.hasManagePer && (
+                  {permissionConfig && (
                     <Td fontSize={'sm'}>
-                      <LazyCollaboratorProvider
+                      <ModelScopeCell
+                        modelId={item.modelId}
+                        scope={item.scope}
+                        ownerTmbId={'tmbId' in item ? item.tmbId : undefined}
+                        hasManagePer={userInfo?.team.permission.hasManagePer}
                         selectedHint={modelPermissionConfigHint}
-                        defaultRole={ReadRoleVal}
-                        onGetCollaboratorList={() =>
-                          getModelCollaborators(getPermissionModelId(item.modelId))
-                        }
-                        onUpdateCollaborators={({ collaborators }) =>
-                          updateModelCollaborators({
-                            collaborators,
-                            modelIds: [getPermissionModelId(item.modelId)]
-                          })
-                        }
-                        permission={userInfo?.team.permission!}
-                      >
-                        {({ onOpenManageModal }) => (
-                          <MyIconButton
-                            icon={'edit'}
-                            size="1rem"
-                            hoverColor={'blue.500'}
-                            w="min-content"
-                            data-row-action
-                            onClick={onOpenManageModal}
-                          />
-                        )}
-                      </LazyCollaboratorProvider>
+                      />
                     </Td>
                   )}
+                  <Td fontSize={'sm'}>{item.priceLabel}</Td>
                 </Tr>
               ))}
               {bottomPlaceholderHeight > 0 && (
@@ -445,38 +257,6 @@ const ModelTable = ({
             </Tbody>
           </Table>
         )}
-        footer={
-          <FloatingActionBar
-            activedStyles={{
-              borderRadius: 'md',
-              boxShadow: 'md'
-            }}
-            Controler={
-              <LazyCollaboratorProvider
-                selectedHint={modelPermissionConfigHint}
-                defaultRole={ReadRoleVal}
-                onGetCollaboratorList={() =>
-                  Promise.resolve({
-                    clbs: []
-                  })
-                }
-                onUpdateCollaborators={({ collaborators }) =>
-                  updateModelCollaborators({
-                    collaborators,
-                    modelIds: selectedItems.map((item) => getPermissionModelId(item.modelId))
-                  })
-                }
-                permission={userInfo?.team.permission!}
-              >
-                {({ onOpenManageModal }) => (
-                  <Button variant={'whiteBase'} onClick={onOpenManageModal}>
-                    {t('common:permission.Permission config')}
-                  </Button>
-                )}
-              </LazyCollaboratorProvider>
-            }
-          ></FloatingActionBar>
-        }
       />
     </Flex>
   );

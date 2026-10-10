@@ -3,6 +3,7 @@ import z from 'zod';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { getErrorResponse } from '../../type';
 import { OpenApiTagSchema, OpenApiTagsInputSchema } from './tag';
+import { queryArrayParam } from '../../../common/zod';
 
 const OptionalDateSchema = z.preprocess((value) => {
   if (value === undefined || value === null || value === '') return undefined;
@@ -104,14 +105,7 @@ export type CreateApiKeyResponseType = z.infer<typeof CreateApiKeyResponseSchema
  * Tags: ['API Key 管理']
  * ============================================================================ */
 
-const ApiKeyListTagsQuerySchema = z.preprocess((value) => {
-  if (value === undefined || value === null || value === '') return undefined;
-  if (Array.isArray(value)) return value;
-  if (typeof value === 'string' && value.includes(',')) {
-    return value.split(',').filter(Boolean);
-  }
-  return [value];
-}, OpenApiTagsInputSchema.optional());
+const ApiKeyListTagsQuerySchema = queryArrayParam(OpenApiTagsInputSchema.optional());
 
 export const GetApiKeyListQuerySchema = z.object({
   keyword: z.string().trim().max(100).optional().meta({

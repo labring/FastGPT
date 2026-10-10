@@ -1,12 +1,15 @@
-import { describe, expect, it, vi } from 'vitest';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { dispatchChatCompletion } from '@fastgpt/service/core/workflow/dispatch/ai/chat/dispatchChatCompletion';
+import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
+import { describe, expect, it, vi } from 'vitest';
 
 const { requestMock } = vi.hoisted(() => ({ requestMock: vi.fn() }));
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({ createLLMResponse: requestMock }));
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
+  getSystemModelHandle: async () => ({
+    getLLMModelData: () => ({ modelId: 'model', name: 'model', config: { maxResponse: 4096 } })
+  }),
+  getTeamModelHandle: async () => ({
     getLLMModelData: () => ({ modelId: 'model', name: 'model', config: { maxResponse: 4096 } })
   })
 }));
@@ -47,6 +50,7 @@ describe('dispatchChatCompletion token summary', () => {
         node: { name: 'Chat', inputs: [] },
         histories: [],
         runningUserInfo: { teamId: 'team' },
+        runningAppInfo: { teamId: 'team' },
         externalProvider: {},
         params: { userChatInput: 'question' },
         nodeSummary,
@@ -73,6 +77,7 @@ describe('dispatchChatCompletion token summary', () => {
       node: { name: 'Chat', inputs: [] },
       histories: [],
       runningUserInfo: { teamId: 'team' },
+      runningAppInfo: { teamId: 'team' },
       externalProvider: {},
       params: { userChatInput: 'question' },
       nodeSummary,

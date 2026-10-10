@@ -1,30 +1,30 @@
-import { getModelHandle } from '../../../ai/model';
-import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
-import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
-import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search';
-import { getDatasetSearchVlmModel } from '../../../dataset/search/vlm';
-import { getDatasetSearchAuxiliaryModels } from '../../../dataset/search/auxiliaryModels';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { filterDatasetsByTmbId } from '../../../dataset/utils';
-import { resolveReadableCollectionIds } from '../../../../support/permission/collection/auth';
 import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
-import { getNodeErrResponse } from '../utils';
-import { getLogger, LogCategories } from '../../../../common/logger';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
+import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { getLogger, LogCategories } from '../../../../common/logger';
+import { resolveReadableCollectionIds } from '../../../../support/permission/collection/auth';
+import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
+import { getTeamModelHandle } from '../../../ai/model/catalog/service';
+import { nodeHasDynamicInput } from '../../../app/resources';
+import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search';
+import { getDatasetSearchAuxiliaryModels } from '../../../dataset/search/auxiliaryModels';
+import { getDatasetSearchVlmModel } from '../../../dataset/search/vlm';
+import { filterDatasetsByTmbId } from '../../../dataset/utils';
+import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
+import { loadWorkflowDatasetResource } from '../../utils/resource';
+import { getNodeErrResponse } from '../utils';
 import {
   createImageCaptionChildNodeResponse,
   createQueryExtensionChildNodeResponse
 } from './nodeResponse';
 import { normalizeDatasetSearchInput } from './utils';
-import { loadWorkflowDatasetResource } from '../../utils/resource';
-import { nodeHasDynamicInput } from '../../../app/resources';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DATASET);
 
@@ -161,7 +161,7 @@ export const dispatchDatasetSearch = async (
       dynamic: dynamicDataset,
       tmbId
     });
-    const modelHandle = await getModelHandle();
+    const modelHandle = await getTeamModelHandle({ teamId });
     const vectorModel = modelHandle.getEmbeddingModelData({
       modelId: dataset?.vectorModelId,
       model: dataset?.vectorModel

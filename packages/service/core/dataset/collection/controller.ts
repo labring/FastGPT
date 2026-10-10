@@ -1,54 +1,54 @@
-import { getModelHandle } from '../../ai/model';
-import { getDatasetModelReference } from '../model';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { MongoDatasetCollection } from './schema';
 import type {
   DatasetCollectionSchemaType,
   DatasetSchemaType
 } from '@fastgpt/global/core/dataset/type';
-import { MongoDatasetTraining } from '../training/schema';
-import { MongoDatasetData } from '../data/schema';
-import { delImgByRelatedId } from '../../../common/file/image/controller';
-import { deleteDatasetDataVector } from '../../../common/vectorDB/controller';
-import type { ClientSession } from '../../../common/mongo';
-import { createOrGetCollectionTags } from './utils';
-import { rawText2Chunks } from '../read';
-import { checkDatasetIndexLimit } from '../../../support/permission/teamLimit';
-import { predictDataLimitLength } from '../../../../global/core/dataset/utils';
-import { mongoSessionRun } from '../../../common/mongo/sessionRun';
-import { createTrainingUsage } from '../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { predictDataLimitLength } from '../../../../global/core/dataset/utils';
+import { delImgByRelatedId } from '../../../common/file/image/controller';
+import type { ClientSession } from '../../../common/mongo';
+import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { deleteDatasetDataVector } from '../../../common/vectorDB/controller';
+import { checkDatasetIndexLimit } from '../../../support/permission/teamLimit';
+import { createTrainingUsage } from '../../../support/wallet/usage/controller';
+import { getTeamModelHandle } from '../../ai/model/catalog/service';
+import { MongoDatasetData } from '../data/schema';
+import { getDatasetModelReference } from '../model';
+import { rawText2Chunks } from '../read';
+import { MongoDatasetTraining } from '../training/schema';
+import { MongoDatasetCollection } from './schema';
+import { createOrGetCollectionTags } from './utils';
 
+import { hashStr } from '@fastgpt/global/common/string/tools';
+import { retryFn } from '@fastgpt/global/common/system/utils';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import {
+  computedCollectionChunkSettings,
+  getLLMMaxChunkSize
+} from '@fastgpt/global/core/dataset/training/utils';
+import type {
+  ApiCreateDatasetCollectionParams,
+  CreateCollectionWithResultResponseType
+} from '@fastgpt/global/openapi/core/dataset/collection/createApi';
+import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
+import { isAuthorizedDatasetFileS3Key } from '../../../common/s3/sources/dataset/key';
+import { isS3ObjectKey, removeS3TTL } from '../../../common/s3/utils';
+import {
+  createCollectionPermission,
+  deleteCollectionPermissions
+} from '../../../support/permission/collection/controller';
+import { getFullTextStore } from '../data/textStore';
 import {
   preCreateDatasetDataAndPushToTrainingQueue,
   pushDataListToTrainingQueue,
   pushDatasetToParseQueue
 } from '../training/controller';
-import { hashStr } from '@fastgpt/global/common/string/tools';
-import { getFullTextStore } from '../data/textStore';
-import { retryFn } from '@fastgpt/global/common/system/utils';
-import { getTrainingModeByCollection } from './utils';
 import { getDatasetImageIndexCapability } from '../utils';
-import {
-  computedCollectionChunkSettings,
-  getLLMMaxChunkSize
-} from '@fastgpt/global/core/dataset/training/utils';
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
-import { isAuthorizedDatasetFileS3Key } from '../../../common/s3/sources/dataset/key';
-import { removeS3TTL, isS3ObjectKey } from '../../../common/s3/utils';
-import {
-  createCollectionPermission,
-  deleteCollectionPermissions
-} from '../../../support/permission/collection/controller';
-import type {
-  CreateCollectionWithResultResponseType,
-  ApiCreateDatasetCollectionParams
-} from '@fastgpt/global/openapi/core/dataset/collection/createApi';
+import { getTrainingModeByCollection } from './utils';
 
 export const createCollectionAndInsertData = async ({
   dataset,
@@ -69,7 +69,7 @@ export const createCollectionAndInsertData = async ({
   billId?: string;
   session?: ClientSession;
 }): Promise<CreateCollectionWithResultResponseType> => {
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getTeamModelHandle({ teamId: String(dataset.teamId) });
   const agentModelData = modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent'));
   const embeddingModelData = modelHandle.getEmbeddingModelData(
     getDatasetModelReference(dataset, 'embedding')

@@ -13,7 +13,7 @@ export const migrateLegacySystemModels = async (context: SystemMigrationContext)
   });
 
   const [{ loadInstalledModels }, migrationService] = await Promise.all([
-    import('@fastgpt/service/core/ai/config/utils'),
+    import('@fastgpt/service/core/ai/model/catalog/service'),
     import('./service')
   ]);
 
@@ -23,14 +23,14 @@ export const migrateLegacySystemModels = async (context: SystemMigrationContext)
       return [];
     }
 
-    const [{ preloadModelProviders }, { getPluginSystemModelDocuments }] = await Promise.all([
+    const [{ preloadModelProviders }, { getPluginModelDocuments }] = await Promise.all([
       // 动态导入避免 migration 基础设施加载时反向拉入整套 AI 模型初始化依赖。
-      import('@fastgpt/service/core/app/provider/controller'),
-      import('@fastgpt/service/core/ai/config/utils')
+      import('@fastgpt/service/core/ai/model/provider/controller'),
+      import('@fastgpt/service/core/ai/model/template')
     ]);
     await preloadModelProviders();
     // Plugin 只参与损坏旧字段修复，不产生任何预装模型。
-    return getPluginSystemModelDocuments();
+    return getPluginModelDocuments();
   })();
 
   await context.reportProgress({

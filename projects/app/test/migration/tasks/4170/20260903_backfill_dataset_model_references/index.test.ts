@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
-import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
-import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
+import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
+import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import type { SystemMigrationContext } from '@/migration/registry';
 import type { SystemMigrationFailedRecord } from '@fastgpt/global/migration/schema';
@@ -41,7 +41,7 @@ describe('backfillDatasetModelReferences', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
     await MongoAIModel.deleteMany({});
-    await MongoAIDefaultModel.deleteMany({});
+    await MongoAIModelCatalog.deleteMany({});
     await MongoDataset.deleteMany({});
     await MongoAIModel.collection.insertMany([
       { _id: textId, scope: 'system', model: 'text', type: 'llm', isActive: true, config: {} },
@@ -137,7 +137,7 @@ describe('backfillDatasetModelReferences', () => {
       isActive: true,
       config: {}
     });
-    await MongoAIDefaultModel.collection.insertOne({
+    await MongoAIModelCatalog.collection.insertOne({
       scope: 'system',
       defaultModelIds: { embedding: String(embeddingId) }
     });

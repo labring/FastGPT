@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   authChatTargetCrud: vi.fn(),
@@ -16,8 +16,9 @@ vi.mock('@/service/support/permission/auth/chat', () => ({
 vi.mock('@fastgpt/service/support/permission/app/resource', () => ({
   authTargetModelResource: mocks.authTargetModelResource
 }));
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({ getTTSModelData: mocks.getTTSModelData })
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
+  getSystemModelHandle: async () => ({ getTTSModelData: mocks.getTTSModelData }),
+  getTeamModelHandle: async () => ({ getTTSModelData: mocks.getTTSModelData })
 }));
 vi.mock('@fastgpt/service/core/ai/audio/speech', () => ({ text2Speech: mocks.text2Speech }));
 vi.mock('@fastgpt/service/common/response', () => ({ jsonRes: mocks.jsonRes }));
@@ -31,6 +32,7 @@ describe('getSpeech model resource permission', () => {
     mocks.authChatTargetCrud.mockResolvedValue({
       teamId: 'team-id',
       tmbId: 'tmb-id',
+      isRoot: false,
       authType: 'token',
       sourceType: ChatSourceTypeEnum.app,
       sourceId: '65f000000000000000000071'
@@ -57,6 +59,16 @@ describe('getSpeech model resource permission', () => {
     expect(mocks.jsonRes).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ error: ERROR_ENUM.unAuthModel })
+    );
+    expect(mocks.authTargetModelResource).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetType: ChatSourceTypeEnum.app,
+        modelId: 'model-id',
+        teamId: 'team-id',
+        tmbId: 'tmb-id',
+        isRoot: false,
+        handle: expect.anything()
+      })
     );
     expect(mocks.text2Speech).not.toHaveBeenCalled();
   });

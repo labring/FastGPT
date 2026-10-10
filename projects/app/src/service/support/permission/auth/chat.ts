@@ -65,6 +65,8 @@ export async function authChatCrud({
   showSkillReferences: boolean;
   showFullText: boolean;
   canDownloadSource: boolean;
+  /** 外链身份固定为 false。 */
+  isRoot: boolean;
   authType?: `${AuthUserTypeEnum}`;
 }> {
   if (shareId && outLinkUid) {
@@ -89,7 +91,8 @@ export async function authChatCrud({
         showSkillReferences: outLinkConfig.showSkillReferences ?? false,
         showFullText: outLinkConfig.showFullText ?? false,
         canDownloadSource: outLinkConfig.canDownloadSource ?? false,
-        authType: AuthUserTypeEnum.outLink
+        authType: AuthUserTypeEnum.outLink,
+        isRoot: false
       };
     }
 
@@ -109,7 +112,8 @@ export async function authChatCrud({
         showSkillReferences: outLinkConfig.showSkillReferences ?? false,
         showFullText: outLinkConfig.showFullText ?? false,
         canDownloadSource: outLinkConfig.canDownloadSource ?? false,
-        authType: AuthUserTypeEnum.outLink
+        authType: AuthUserTypeEnum.outLink,
+        isRoot: false
       };
     }
     if (chat.outLinkUid !== uid) return Promise.reject(ChatErrEnum.unAuthChat);
@@ -124,14 +128,15 @@ export async function authChatCrud({
       showSkillReferences: outLinkConfig.showSkillReferences ?? false,
       showFullText: outLinkConfig.showFullText ?? false,
       canDownloadSource: outLinkConfig.canDownloadSource ?? false,
-      authType: AuthUserTypeEnum.outLink
+      authType: AuthUserTypeEnum.outLink,
+      isRoot: false
     };
   }
 
   // Cookie
   if (!appId) return Promise.reject(ChatErrEnum.unAuthChat);
 
-  const { teamId, tmbId, permission, authType } = await authApp({
+  const { teamId, tmbId, isRoot, permission, authType } = await authApp({
     req: props.req,
     authToken: true,
     authApiKey: true,
@@ -146,7 +151,9 @@ export async function authChatCrud({
       uid: tmbId,
       ...defaultResponseShow,
 
-      authType
+      authType,
+
+      isRoot
     };
   }
 
@@ -157,7 +164,8 @@ export async function authChatCrud({
       tmbId,
       uid: tmbId,
       ...defaultResponseShow,
-      authType
+      authType,
+      isRoot
     };
   }
 
@@ -169,7 +177,8 @@ export async function authChatCrud({
       chat,
       uid: chat.outLinkUid ?? chat.tmbId,
       ...defaultResponseShow,
-      authType
+      authType,
+      isRoot
     };
   }
 
@@ -180,7 +189,8 @@ export async function authChatCrud({
       chat,
       uid: chat.outLinkUid ?? chat.tmbId,
       ...defaultResponseShow,
-      authType
+      authType,
+      isRoot
     };
   }
 
@@ -209,6 +219,8 @@ type AuthChatTargetCrudResult = {
   showSkillReferences: boolean;
   showFullText: boolean;
   canDownloadSource: boolean;
+  /** 外链身份固定为 false。 */
+  isRoot: boolean;
   authType?: `${AuthUserTypeEnum}`;
 };
 
@@ -277,7 +289,8 @@ export async function authChatTargetCrud({
       canDownloadSource: true,
       sourceType,
       sourceId,
-      authType: authRes.authType
+      authType: authRes.authType,
+      isRoot: authRes.isRoot
     };
   }
 
@@ -321,7 +334,8 @@ export async function authChatTargetCrud({
       canDownloadSource: false,
       sourceType,
       sourceId,
-      authType: authRes.authType
+      authType: authRes.authType,
+      isRoot: authRes.isRoot
     };
   }
 

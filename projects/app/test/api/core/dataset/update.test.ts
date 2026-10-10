@@ -1,34 +1,34 @@
 import updateHandler from '@/pages/api/core/dataset/update';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { Types } from 'mongoose';
-import type { UpdateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api';
 import {
   DatasetCollectionTypeEnum,
   DatasetTypeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import type { UpdateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api';
+import { RebuildEmbeddingBodySchema } from '@fastgpt/global/openapi/core/dataset/training/api';
 import {
   OwnerRoleVal,
   PerResourceTypeEnum,
   ReadRoleVal
 } from '@fastgpt/global/support/permission/constant';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { enableDatasetCollectionPermissions } from '@fastgpt/service/support/permission/collection/enable';
 import {
   createResourceDefaultCollaborators,
   getResourceOwnedClbs
 } from '@fastgpt/service/support/permission/controller';
 import { updateResourceCollaborators } from '@fastgpt/service/support/permission/resourcePermissionService';
-import { enableDatasetCollectionPermissions } from '@fastgpt/service/support/permission/collection/enable';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getFakeUsers } from '@test/datas/users';
-import { Call } from '@test/utils/request';
-import { describe, it, expect, beforeEach } from 'vitest';
-import { RebuildEmbeddingBodySchema } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
-import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
+import { Call } from '@test/utils/request';
+import { Types } from 'mongoose';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 /** Snapshot ACL rows in a stable order so assertions compare exact permission sets. */
 const toPermissionRows = (collaborators: { tmbId?: unknown; permission: number }[]) =>
@@ -101,7 +101,7 @@ describe('update dataset', () => {
     'resolves legacy model updates without overriding canonical selections (%s)',
     async (mode) => {
       const owner = (await getFakeUsers(1)).members[0];
-      const previousModels = getCachedModelHandle()!.getAllModels();
+      const previousModels = getCachedSystemModelHandle()!.getAllModels();
       const llm = getModelTestDefaults().llm!;
       setModelTestSnapshot({
         models: previousModels.map((model) =>

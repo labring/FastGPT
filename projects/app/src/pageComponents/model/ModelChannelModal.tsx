@@ -1,8 +1,9 @@
 import { useModelChannelTest } from './useModelChannelTest';
-import { ChannelStautsMap } from '@/global/aiproxy/constants';
+import ChannelStatusTag from './ChannelStatusTag';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
-import type { AdminModelChannel } from '@fastgpt/global/openapi/admin/system/model/api';
+import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { ModelChannelSummary } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import {
   Box,
   Button,
@@ -20,7 +21,6 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import MyTag, { type ColorSchemaType } from '@fastgpt/web/components/common/Tag';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -40,11 +40,11 @@ const channelCheckboxStyles = {
   }
 };
 
-export type ModelChannelModalModel = {
+type ModelChannelModalModel = {
   model: string;
   modelId?: string;
-  modelData?: SystemModelDocumentDataType;
-  getModelData?: () => SystemModelDocumentDataType | undefined;
+  modelData?: AIModelDocumentDataType;
+  getModelData?: () => AIModelDocumentDataType | undefined;
   avatar?: string;
 };
 
@@ -57,6 +57,7 @@ export type ModelChannelModalModel = {
 export const ModelChannelSelector = ({
   models,
   channels,
+  channelType,
   selectedChannelIds,
   onChange,
   onCreate,
@@ -65,7 +66,8 @@ export const ModelChannelSelector = ({
   showTest = true
 }: {
   models: ModelChannelModalModel[];
-  channels: AdminModelChannel[];
+  channels: ModelChannelSummary[];
+  channelType: ChannelType;
   selectedChannelIds: number[];
   onChange: (channelIds: number[]) => void;
   onCreate?: () => void;
@@ -91,7 +93,8 @@ export const ModelChannelSelector = ({
         return { source: 'installed' as const, modelId: testModel.modelId, model: testModel.model };
       }
     })(),
-    channels
+    channels,
+    channelType
   });
 
   const toggleChannel = (channelId: number) => {
@@ -147,7 +150,9 @@ export const ModelChannelSelector = ({
       <FixedTableLayout
         scrollMode="normal"
         rootProps={{
-          px: 0,
+          p: 2,
+          border: '1px solid',
+          borderColor: 'myGray.200',
           borderRadius: '12px',
           flex: '1 1 0',
           gap: 2,
@@ -168,8 +173,8 @@ export const ModelChannelSelector = ({
               {testModel && <col style={{ width: '80px' }} />}
             </colgroup>
             <Thead>
-              <Tr h="40px" bg="myGray.100">
-                <Th px={6} border={0}>
+              <Tr h="40px">
+                <Th px={6}>
                   <HStack spacing={2}>
                     <Checkbox
                       sx={channelCheckboxStyles}
@@ -182,20 +187,10 @@ export const ModelChannelSelector = ({
                     <Box>{t('common:Select_all')}</Box>
                   </HStack>
                 </Th>
-                <Th px={6} border={0}>
-                  {t('config_model:channel_name')}
-                </Th>
-                <Th px={6} border={0}>
-                  {t('config_model:channel_type')}
-                </Th>
-                <Th px={6} border={0}>
-                  {t('config_model:channel_status')}
-                </Th>
-                {testModel && (
-                  <Th px={6} border={0}>
-                    {t('config_model:test')}
-                  </Th>
-                )}
+                <Th px={6}>{t('config_model:channel_name')}</Th>
+                <Th px={6}>{t('config_model:channel_type')}</Th>
+                <Th px={6}>{t('config_model:channel_status')}</Th>
+                {testModel && <Th px={6}>{t('config_model:test')}</Th>}
               </Tr>
             </Thead>
           </Table>
@@ -211,68 +206,60 @@ export const ModelChannelSelector = ({
               {testModel && <col style={{ width: '80px' }} />}
             </colgroup>
             <Tbody color="myGray.600">
-              {channels.map((channel) => {
-                const status = ChannelStautsMap[channel.status as keyof typeof ChannelStautsMap];
-                return (
-                  <Tr
-                    key={channel.id}
-                    h="80px"
-                    cursor="pointer"
-                    _hover={{ bg: 'myGray.25' }}
-                    onClick={() => toggleChannel(channel.id)}
-                  >
+              {channels.map((channel) => (
+                <Tr
+                  key={channel.id}
+                  h="80px"
+                  cursor="pointer"
+                  _hover={{ bg: 'myGray.25' }}
+                  onClick={() => toggleChannel(channel.id)}
+                >
+                  <Td px={6}>
+                    {/* 仅复选框区域拦截冒泡，单元格空白仍由行处理点击。 */}
+                    <Box
+                      display="inline-flex"
+                      verticalAlign="middle"
+                      alignItems="center"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <Checkbox
+                        sx={channelCheckboxStyles}
+                        isChecked={selectedIds.has(channel.id)}
+                        onChange={() => toggleChannel(channel.id)}
+                      />
+                    </Box>
+                  </Td>
+                  <Td px={6} fontWeight="500">
+                    <Box noOfLines={1}>{channel.name}</Box>
+                  </Td>
+                  <Td px={6}>
+                    <HStack spacing={2} minW={0}>
+                      <Avatar src={channel.protocol.avatar} w="16px" flexShrink={0} />
+                      <Box noOfLines={1}>
+                        {parseI18nString(channel.protocol.name, i18n.language)}
+                      </Box>
+                    </HStack>
+                  </Td>
+                  <Td px={6}>
+                    <ChannelStatusTag status={channel.status} />
+                  </Td>
+                  {testModel && (
                     <Td px={6}>
-                      {/* 仅复选框区域拦截冒泡，单元格空白仍由行处理点击。 */}
-                      <Box
-                        display="inline-flex"
-                        verticalAlign="middle"
-                        alignItems="center"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <Checkbox
-                          sx={channelCheckboxStyles}
-                          isChecked={selectedIds.has(channel.id)}
-                          onChange={() => toggleChannel(channel.id)}
+                      <Box display="inline-flex">
+                        <MyIconButton
+                          icon="core/chat/sendLight"
+                          tip={t('config_model:model.test_model')}
+                          isLoading={testingChannelIds.has(channel.id)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void testModelChannel(channel.id);
+                          }}
                         />
                       </Box>
                     </Td>
-                    <Td px={6} fontWeight="500">
-                      <Box noOfLines={1}>{channel.name}</Box>
-                    </Td>
-                    <Td px={6}>
-                      <HStack spacing={2} minW={0}>
-                        <Avatar src={channel.protocol.avatar} w="16px" flexShrink={0} />
-                        <Box noOfLines={1}>
-                          {parseI18nString(channel.protocol.name, i18n.language)}
-                        </Box>
-                      </HStack>
-                    </Td>
-                    <Td px={6}>
-                      <MyTag
-                        type="borderFill"
-                        colorSchema={(status?.colorSchema ?? 'gray') as ColorSchemaType}
-                      >
-                        {status ? t(status.label) : t('config_model:channel_status_unknown')}
-                      </MyTag>
-                    </Td>
-                    {testModel && (
-                      <Td px={6}>
-                        <Box display="inline-flex">
-                          <MyIconButton
-                            icon="core/chat/sendLight"
-                            tip={t('config_model:model.test_model')}
-                            isLoading={testingChannelIds.has(channel.id)}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              void testModelChannel(channel.id);
-                            }}
-                          />
-                        </Box>
-                      </Td>
-                    )}
-                  </Tr>
-                );
-              })}
+                  )}
+                </Tr>
+              ))}
               {channels.length === 0 && (
                 <Tr>
                   <Td colSpan={testModel ? 5 : 4} border={0}>
@@ -292,6 +279,7 @@ export const ModelChannelSelector = ({
 const ModelChannelModal = ({
   models,
   channels,
+  channelType,
   selectedChannelIds,
   onConfirm,
   onClose,
@@ -299,7 +287,8 @@ const ModelChannelModal = ({
   showTest = true
 }: {
   models: ModelChannelModalModel[];
-  channels: AdminModelChannel[];
+  channels: ModelChannelSummary[];
+  channelType: ChannelType;
   selectedChannelIds: number[];
   onConfirm: (channelIds: number[]) => unknown | Promise<unknown>;
   onClose: () => void;
@@ -336,6 +325,7 @@ const ModelChannelModal = ({
       <ModelChannelSelector
         models={models}
         channels={channels}
+        channelType={channelType}
         selectedChannelIds={selection}
         onChange={setSelection}
         showCurrentModel={showCurrentModel}

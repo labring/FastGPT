@@ -1,15 +1,15 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
-import type { NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import type { NextApiResponse } from 'next';
 
-import { text2Speech } from '@fastgpt/service/core/ai/audio/speech';
-import { pushAudioSpeechUsage } from '@/service/support/wallet/usage/push';
 import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { pushAudioSpeechUsage } from '@/service/support/wallet/usage/push';
 import { authType2UsageSource } from '@/service/support/wallet/usage/utils';
+import { text2Speech } from '@fastgpt/service/core/ai/audio/speech';
 
-import { MongoTTSBuffer } from '@fastgpt/service/common/buffer/tts/schema';
-import { type ApiRequestProps } from '@fastgpt/next/type';
 import { GetChatSpeechBodySchema } from '@fastgpt/global/openapi/core/chat/record/api';
+import { type ApiRequestProps } from '@fastgpt/next/type';
+import { MongoTTSBuffer } from '@fastgpt/service/common/buffer/tts/schema';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { authTargetModelResource } from '@fastgpt/service/support/permission/app/resource';
 
@@ -32,6 +32,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     const {
       teamId,
       tmbId,
+      isRoot,
       authType,
       sourceType: resolvedSourceType,
       sourceId: resolvedSourceId
@@ -43,7 +44,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       sourceId,
       outLinkAuthData
     });
-    const modelHandle = await getModelHandle();
+    const modelHandle = await getTeamModelHandle({ teamId });
     const ttsModel = modelHandle.getTTSModelData({
       modelId: ttsConfig.modelId,
       model: ttsConfig.model
@@ -52,7 +53,10 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       targetType: resolvedSourceType,
       targetId: resolvedSourceId,
       modelId: ttsModel.modelId,
-      tmbId
+      teamId,
+      tmbId,
+      isRoot,
+      handle: modelHandle
     });
     const voiceData = ttsModel.config.voices.find((item) => item.value === ttsConfig.voice);
 
@@ -94,21 +98,11 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
           });
 
           /* create buffer */
-          await MongoTTSBuffer.create(
-            {
-              bufferId,
-              text: JSON.stringify({ text: input, speed: ttsConfig.speed }),
-              buffer
-            },
-            ttsModel.requestUrl && ttsModel.requestAuth
-              ? {
-                  path: ttsModel.requestUrl,
-                  headers: {
-                    Authorization: `Bearer ${ttsModel.requestAuth}`
-                  }
-                }
-              : {}
-          );
+          await MongoTTSBuffer.create({
+            bufferId,
+            text: JSON.stringify({ text: input, speed: ttsConfig.speed }),
+            buffer
+          });
         } catch {}
       },
       onError: (err) => {

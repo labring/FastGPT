@@ -1,9 +1,11 @@
 import type { DispatchSubAppResponse } from '../../type';
 import { getAppVersionById } from '../../../../../../../core/app/version/controller';
 import {
+  createSystemToolResourceContext,
   createWorkflowChildResourceContext,
   loadChildWorkflowWithResource,
-  loadWorkflowAppResource
+  loadWorkflowAppResource,
+  type WorkflowResourceContext
 } from '../../../../../../../core/workflow/utils/resource';
 import { getUserChatInfo } from '../../../../../../../support/user/team/utils';
 import { runWorkflow } from '../../../../../../../core/workflow/dispatch';
@@ -225,7 +227,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
   // plugin 子应用不接收普通 userChatInput；这里解构只为了避免透传给 runWorkflow。
   void userChatInput;
 
-  let resourceContext: Awaited<ReturnType<typeof createWorkflowChildResourceContext>> | null = null;
+  let resourceContext: WorkflowResourceContext | null = null;
   const { nodes, edges, chatConfig, childAppInfo, externalProviderTmbId, billingTool } =
     await (async () => {
       if (app.systemToolId) {
@@ -233,6 +235,8 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
           pluginId: app.systemToolId,
           version: app.version
         });
+        // 系统工具由管理员发布：内部静态资源直接使用，动态引用仍按运行人鉴权。
+        resourceContext = createSystemToolResourceContext();
 
         return {
           nodes: systemToolRuntime.nodes,

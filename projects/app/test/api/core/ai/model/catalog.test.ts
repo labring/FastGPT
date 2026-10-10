@@ -1,28 +1,30 @@
-import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
-import type { getModelTestMap } from '@test/modelCache';
-import { setModelTestSnapshot, setModelTestMap } from '@test/modelCache';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
+import type { getModelTestMap } from '@test/modelCache';
+import { setModelTestMap, setModelTestSnapshot } from '@test/modelCache';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()),
+  getTeamModelHandle: async () =>
+    (await import('@fastgpt/service/core/ai/model/catalog/cache')).getCachedSystemModelHandle()!
+}));
 
 const mocks = vi.hoisted(() => ({
   authUserPer: vi.fn(),
   authOutLink: vi.fn(),
-  findTeamMember: vi.fn(),
-  getMemberModelCatalogPermission: vi.fn()
+  getAuthorizedModelIds: vi.fn()
 }));
 
 vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => handler }));
 vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
   authUserPer: mocks.authUserPer
 }));
-vi.mock('@fastgpt/service/support/permission/model/controller', () => ({
-  getMemberModelCatalogPermission: mocks.getMemberModelCatalogPermission
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  getAuthorizedModelIds: mocks.getAuthorizedModelIds
 }));
 vi.mock('@/service/support/permission/auth/outLink', () => ({
   authOutLink: mocks.authOutLink
-}));
-vi.mock('@fastgpt/service/support/user/team/teamMemberSchema', () => ({
-  MongoTeamMember: { findOne: mocks.findTeamMember }
 }));
 
 import { handler } from '@/pages/api/core/ai/model/catalog';
@@ -46,17 +48,15 @@ describe('GET /api/core/ai/model/catalog', () => {
       teamId: 'team',
       tmbId: 'member',
       isRoot: false,
-      tmb: { role: 'member' }
+      tmb: { permission: { hasManagePer: false } }
     });
-    mocks.getMemberModelCatalogPermission.mockResolvedValue({
-      modelIds: [model.modelId],
-      version: 'permission-version'
-    });
+    // 默认授权快照内全部模型。
+    mocks.getAuthorizedModelIds.mockImplementation(
+      async ({ handle }: { handle: { getAllModels: () => { modelId: string }[] } }) =>
+        new Set(handle.getAllModels().map((item) => item.modelId))
+    );
     mocks.authOutLink.mockResolvedValue({
       outLinkConfig: { teamId: 'outlink-team', tmbId: 'outlink-member' }
-    });
-    mocks.findTeamMember.mockReturnValue({
-      lean: vi.fn().mockResolvedValue({ role: 'member' })
     });
     setModelTestSnapshot({ version: 'catalog-version' });
     setModelTestMap(
@@ -64,7 +64,7 @@ describe('GET /api/core/ai/model/catalog', () => {
     );
     setModelTestSnapshot({
       models: [model] as ReturnType<
-        NonNullable<ReturnType<typeof getCachedModelHandle>>['getActiveModels']
+        NonNullable<ReturnType<typeof getCachedSystemModelHandle>>['getActiveModels']
       >
     });
     setModelTestSnapshot({ configuredDefaultModelIds: { llm: model.modelId } });
@@ -86,22 +86,26 @@ describe('GET /api/core/ai/model/catalog', () => {
         authApiKey: true
       })
     );
-    expect(result.version).toBe('3:catalog-version:permission-version');
+    expect(result.version).toBe(
+      `3:catalog-version:${hashStr(['catalog-version', model.modelId].join('\n'))}`
+    );
     expect(result.data?.models[0]).not.toHaveProperty('requestAuth');
     expect(result.data?.defaultModelIds.llm).toBe(model.modelId);
     expect(result.data?.providers[0].provider).toBe('provider');
   });
 
   it('keeps one snapshot when the catalog is published during permission resolution', async () => {
-    mocks.getMemberModelCatalogPermission.mockImplementationOnce(async () => {
+    mocks.getAuthorizedModelIds.mockImplementationOnce(async () => {
       setModelTestSnapshot({ version: 'new-catalog' });
       setModelTestSnapshot({ models: [] });
       setModelTestSnapshot({ configuredDefaultModelIds: {} });
       global.ModelProviderRawCache = [];
-      return { modelIds: [model.modelId], version: 'permission-version' };
+      return new Set([model.modelId]);
     });
     const result = await handler({ query: {} } as any);
-    expect(result.version).toBe('3:catalog-version:permission-version');
+    expect(result.version).toBe(
+      `3:catalog-version:${hashStr(['catalog-version', model.modelId].join('\n'))}`
+    );
     expect(result.data?.models.map((item) => item.modelId)).toEqual([model.modelId]);
     expect(result.data?.defaultModelIds.llm).toBe(model.modelId);
     expect(result.data?.providers[0].provider).toBe('provider');
@@ -114,25 +118,33 @@ describe('GET /api/core/ai/model/catalog', () => {
       if (stage === 'authentication') {
         mocks.authUserPer.mockRejectedValueOnce(failure);
       } else {
-        mocks.getMemberModelCatalogPermission.mockRejectedValueOnce(failure);
+        mocks.getAuthorizedModelIds.mockRejectedValueOnce(failure);
       }
 
       await expect(
-        handler({ query: { version: '3:catalog-version:permission-version' } } as any)
+        handler({
+          query: {
+            version: `3:catalog-version:${hashStr(['catalog-version', model.modelId].join('\n'))}`
+          }
+        } as any)
       ).rejects.toBe(failure);
-      expect(getCachedModelHandle()?.getActiveModels()).toHaveLength(1);
+      expect(getCachedSystemModelHandle()?.getActiveModels()).toHaveLength(1);
       if (stage === 'authentication') {
-        expect(mocks.getMemberModelCatalogPermission).not.toHaveBeenCalled();
+        expect(mocks.getAuthorizedModelIds).not.toHaveBeenCalled();
       }
     }
   );
 
   it('returns only the version when the client cache is current', async () => {
     const result = await handler({
-      query: { version: '3:catalog-version:permission-version' }
+      query: {
+        version: `3:catalog-version:${hashStr(['catalog-version', model.modelId].join('\n'))}`
+      }
     } as any);
 
-    expect(result).toEqual({ version: '3:catalog-version:permission-version' });
+    expect(result).toEqual({
+      version: `3:catalog-version:${hashStr(['catalog-version', model.modelId].join('\n'))}`
+    });
   });
 
   it('uses the server-side outlink member identity instead of login auth', async () => {
@@ -142,19 +154,11 @@ describe('GET /api/core/ai/model/catalog', () => {
 
     expect(mocks.authOutLink).toHaveBeenCalledWith({ ...outLinkAuthData, req });
     expect(mocks.authUserPer).not.toHaveBeenCalled();
-    expect(mocks.findTeamMember).toHaveBeenCalledWith(
-      { _id: 'outlink-member', teamId: 'outlink-team' },
-      'role'
+    expect(mocks.getAuthorizedModelIds).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor: { source: 'outLink', teamId: 'outlink-team', tmbId: 'outlink-member' }
+      })
     );
-    expect(mocks.getMemberModelCatalogPermission).toHaveBeenCalledWith({
-      teamId: 'outlink-team',
-      tmbId: 'outlink-member',
-      isTeamOwner: false,
-      catalogSnapshot: {
-        models: getCachedModelHandle()?.getActiveModels(),
-        revision: getCachedModelHandle()?.revision ?? 0
-      }
-    });
   });
 
   it('keeps plugin catalog order when permission IDs use a different order', async () => {
@@ -166,13 +170,10 @@ describe('GET /api/core/ai/model/catalog', () => {
     };
     setModelTestSnapshot({
       models: [model, secondModel] as ReturnType<
-        NonNullable<ReturnType<typeof getCachedModelHandle>>['getActiveModels']
+        NonNullable<ReturnType<typeof getCachedSystemModelHandle>>['getActiveModels']
       >
     });
-    mocks.getMemberModelCatalogPermission.mockResolvedValue({
-      modelIds: [secondModel.modelId, model.modelId],
-      version: 'permission-version'
-    });
+    mocks.getAuthorizedModelIds.mockResolvedValue(new Set([secondModel.modelId, model.modelId]));
 
     const result = await handler({ query: {} } as any);
 
@@ -188,14 +189,53 @@ describe('GET /api/core/ai/model/catalog', () => {
         model,
         { ...model, modelId: 'inactive', isActive: false },
         { ...model, modelId: 'hidden', isActive: false }
-      ] as ReturnType<NonNullable<ReturnType<typeof getCachedModelHandle>>['getAllModels']>
-    });
-    mocks.getMemberModelCatalogPermission.mockResolvedValue({
-      modelIds: [model.modelId, 'inactive'],
-      version: 'p'
+      ] as ReturnType<NonNullable<ReturnType<typeof getCachedSystemModelHandle>>['getAllModels']>
     });
     const result = await handler({ query: {} } as any);
     expect(result.data?.models.map((m) => m.modelId)).toEqual([model.modelId]);
     expect(result.data?.defaultModelIds.llm).toBe(model.modelId);
+  });
+
+  it('filters the models outside the authorized set', async () => {
+    const otherTeamModel = {
+      ...model,
+      modelId: 'other-team-model-id',
+      scope: 'team',
+      teamId: 'other-team-id',
+      tmbId: 'other-tmb-id'
+    };
+    setModelTestSnapshot({
+      models: [model, otherTeamModel] as any
+    });
+    mocks.getAuthorizedModelIds.mockResolvedValue(new Set([model.modelId]));
+    mocks.authUserPer.mockResolvedValue({
+      teamId: 'my-team-id',
+      tmbId: 'my-tmb-id',
+      isRoot: false,
+      tmb: { permission: { hasManagePer: false } }
+    });
+    const result = await handler({ query: {} } as any);
+    expect(result.data?.models.map((m) => m.modelId)).toEqual([model.modelId]);
+  });
+
+  it('forwards the authenticated actor to getAuthorizedModelIds', async () => {
+    mocks.authUserPer.mockResolvedValueOnce({
+      teamId: 'admin-team',
+      tmbId: 'admin-tmb',
+      isRoot: true,
+      tmb: { permission: { hasManagePer: true } }
+    });
+    await handler({ query: {} } as any);
+
+    expect(mocks.getAuthorizedModelIds).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor: {
+          teamId: 'admin-team',
+          tmbId: 'admin-tmb',
+          isRoot: true,
+          teamPermission: { hasManagePer: true }
+        }
+      })
+    );
   });
 });

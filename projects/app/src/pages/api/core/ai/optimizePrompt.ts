@@ -1,22 +1,21 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { responseWrite } from '@fastgpt/service/common/response';
-import { sseErrRes } from '@fastgpt/service/common/response';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
-import { createUsage } from '@fastgpt/service/support/wallet/usage/controller';
-import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   OptimizePromptBodySchema,
   OptimizePromptResponseSchema,
   type OptimizePromptBody
 } from '@fastgpt/global/openapi/core/ai/api';
+import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
+import { responseWrite, sseErrRes } from '@fastgpt/service/common/response';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { assertAuthModels } from '@fastgpt/service/support/permission/model/auth';
+import { createUsage } from '@fastgpt/service/support/wallet/usage/controller';
+import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 
 const getPromptOptimizerSystemPrompt = () => {
   return `# Role
@@ -78,12 +77,16 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
   }).body;
 
   try {
-    const { teamId, tmbId } = await authCert({
+    const { teamId, tmbId, isRoot } = await authCert({
       req,
       authToken: true,
       authApiKey: true
     });
-    const modelHandle = await getModelHandle();
+    const { handle: modelHandle } = await assertAuthModels({
+      actor: { teamId, tmbId, isRoot },
+      modelIds: [modelId],
+      action: 'use'
+    });
     const modelData = modelHandle.getLLMModelData({ modelId });
 
     res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');

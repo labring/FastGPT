@@ -1,15 +1,16 @@
-import { getTestModel, postTestDraftModel } from '@/web/core/ai/config';
+import { testModel, testDraftModel } from '@/web/core/ai/model/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
-import type { AdminModelChannel } from '@fastgpt/global/openapi/admin/system/model/api';
+import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { ModelChannelSummary } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useRef, useState } from 'react';
-import { prepareDraftSystemModelForTest } from './submit';
+import { prepareDraftModelForTest } from './submit';
 
-export type ModelChannelTestTarget =
-  | { source: 'draft'; getModelData: () => SystemModelDocumentDataType | undefined }
+type ModelChannelTestTarget =
+  | { source: 'draft'; getModelData: () => AIModelDocumentDataType | undefined }
   | { source: 'installed'; modelId: string; model: string };
 
 /**
@@ -18,10 +19,12 @@ export type ModelChannelTestTarget =
  */
 export const useModelChannelTest = ({
   target,
-  channels
+  channels,
+  channelType
 }: {
   target?: ModelChannelTestTarget;
-  channels: Pick<AdminModelChannel, 'id' | 'name'>[];
+  channels: Pick<ModelChannelSummary, 'id' | 'name'>[];
+  channelType: ChannelType;
 }) => {
   const { t } = useSafeTranslation();
   const { toast } = useToast();
@@ -31,7 +34,7 @@ export const useModelChannelTest = ({
   const testModelChannel = async (channelId: number) => {
     if (!target || inFlight.current.has(channelId)) return;
     const draft = target.source === 'draft' ? target.getModelData() : undefined;
-    const modelData = draft ? prepareDraftSystemModelForTest(draft) : undefined;
+    const modelData = draft ? prepareDraftModelForTest(draft) : undefined;
     const model = target.source === 'installed' ? target.model : modelData?.model;
     if (!model) {
       toast({ status: 'warning', title: t('config_model:fill_model_id_before_test') });
@@ -50,9 +53,9 @@ export const useModelChannelTest = ({
     setTestingChannelIds(new Set(inFlight.current));
     try {
       if (target.source === 'installed') {
-        await getTestModel({ modelId: target.modelId, channelId });
+        await testModel({ modelId: target.modelId, channelId, channelType });
       } else if (modelData) {
-        await postTestDraftModel({ modelData, channelId });
+        await testDraftModel({ modelData, channelId, channelType });
       }
       toast({
         status: 'success',
