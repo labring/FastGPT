@@ -49,7 +49,7 @@ import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { resolveMcpEffectiveTmbId } from './auth';
 import { assertCancellation } from '@fastgpt/service/support/user/account/cancellation/guard';
-import { loadWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
 
 const assertMcpTeamUsable = async (mcp: { teamId?: string; tmbId?: string }) => {
   if (!mcp.teamId || !mcp.tmbId) return;
@@ -301,7 +301,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
         uid: effectiveTmbId,
         runtimeNodes,
         runtimeEdges: storeEdges2RuntimeEdges(edges),
-        resourceContext: await loadWorkflowResourceContext({
+        resourceContext: createWorkflowResourceContext({
           resources,
           teamId: app.teamId
         }),

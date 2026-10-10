@@ -120,7 +120,7 @@ API 契约向后兼容：
 - 系统 Skill 放行；MCP/HTTP 用父工具集 id + 可选 `toolNames`。
 - `authTmbId` 仍是终端用户数据过滤，和发布快照是两层。
 - 无 `resourceContext` 仅保留非 App 场景：Skill 调试、商业工具主动清空父快照。App 正式运行（含 Pro 评测 / Home Chat）必须带快照。不能裸 `findById`。
-- **纯 JIT 实时查库，入口零 DB 查询**：入口 `loadWorkflowResourceContext` 仅在内存中把快照转为白名单字典 `resourceMap`（耗时 ~0ms），彻底移除开局批量查库逻辑（不再生成 `appMap`、`workflowMap`、`datasetMap`、`skillMap` 等内存实体大字典）；root Test/Debug 请求保留跨团队标识向下传递 `isRoot`。
+- **纯 JIT 实时查库，入口零 DB 查询**：入口 `createWorkflowResourceContext`（原 `loadWorkflowResourceContext`，已改为同步） 仅在内存中把快照转为白名单字典 `resourceMap`（耗时 ~0ms），彻底移除开局批量查库逻辑（不再生成 `appMap`、`workflowMap`、`datasetMap`、`skillMap` 等内存实体大字典）；root Test/Debug 请求保留跨团队标识向下传递 `isRoot`。
 - **现场核验与单点按需查库**：实体不在入口预取，只有流转到实际使用节点时，才现场调用 `assertWorkflowResource` / `assertWorkflowDatasetResources` 核对白名单，通过后再现场实时查询 MongoDB 单条记录（`loadWorkflowAppResource` / `loadWorkflowDatasetResource` / `loadWorkflowAppWorkflow`）。未命中的分支和未调用的工具整个运行周期零 DB 查询、零开销。
 - 缺失/软删/跨团队**在命中节点按需抛错**：查库未找到实体或软删时，抛出 `WorkflowResourceError` 或领域异常，其余未执行的分支不受影响。任何资源加载器都不得把“已声明但实体缺失”降级为静默跳过。编辑器通过 workflow check 标出失效引用并定位到节点（`resource_missing`）。
 
@@ -491,9 +491,9 @@ export type WorkflowResourceContext = {
 };
 ```
 
-入口初始化函数 `loadWorkflowResourceContext` 退化为纯内存转换操作（耗时 ~0ms，零 DB 批量查询）：
+入口初始化函数 `createWorkflowResourceContext`（原 `loadWorkflowResourceContext`，已改为同步） 退化为纯内存转换操作（耗时 ~0ms，零 DB 批量查询）：
 ```ts
-export const loadWorkflowResourceContext = async ({
+export const createWorkflowResourceContext = ({
   resources,
   teamId,
   isRoot = false
@@ -524,7 +524,7 @@ flowchart TD
     end
 
     subgraph 纯粹 JIT 架构 (只留 resourceMap, 纯实时查库)
-        A2[API 入口] --> B2["loadWorkflowResourceContext (纯内存构造 resourceMap, 0ms, 零 DB 查询)"]
+        A2[API 入口] --> B2["createWorkflowResourceContext (纯内存构造 resourceMap, 0ms, 零 DB 查询)"]
         B2 --> C2[启动工作流引擎 dispatchWorkFlow]
         C2 --> D2[流转到具体节点]
         D2 --> E2{"节点命中? (如 runApp / dataset)"}

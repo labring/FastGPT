@@ -1,9 +1,7 @@
 import type { DispatchSubAppResponse } from '../../type';
-import { getAppVersionById } from '../../../../../../../core/app/version/controller';
 import {
-  createWorkflowChildResourceContext,
-  loadChildWorkflowWithResource,
-  loadWorkflowAppResource
+  createSystemToolResourceContext,
+  loadChildWorkflowWithResource
 } from '../../../../../../../core/workflow/utils/resource';
 import { getUserChatInfo } from '../../../../../../../support/user/team/utils';
 import { runWorkflow } from '../../../../../../../core/workflow/dispatch';
@@ -77,7 +75,6 @@ type Props = Pick<
   userChatInput: string;
   customAppVariables: Record<string, any>;
   dynamic?: boolean;
-  useResourceSnapshot?: boolean;
 };
 
 export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse> => {
@@ -219,70 +216,68 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     customAppVariables,
     userChatInput,
     dynamic = false,
-    useResourceSnapshot = true,
     ...data
   } = props;
   // plugin 子应用不接收普通 userChatInput；这里解构只为了避免透传给 runWorkflow。
   void userChatInput;
 
-  let resourceContext: Awaited<ReturnType<typeof createWorkflowChildResourceContext>> | null = null;
-  const { nodes, edges, chatConfig, childAppInfo, externalProviderTmbId, billingTool } =
-    await (async () => {
-      if (app.systemToolId) {
-        const systemToolRuntime = await SystemToolRepo.getInstance().getSystemToolWorkflowRuntime({
-          pluginId: app.systemToolId,
-          version: app.version
-        });
-
-        return {
-          nodes: systemToolRuntime.nodes,
-          edges: systemToolRuntime.edges,
-          chatConfig: systemToolRuntime.chatConfig ?? {},
-          childAppInfo: {
-            sourceId: systemToolRuntime.id,
-            teamId: systemToolRuntime.teamId,
-            tmbId: systemToolRuntime.tmbId,
-            name: systemToolRuntime.name
-          },
-          // 系统 Workflow 没有调用者可访问的 App 记录，沿用当前工作流的用户上下文。
-          externalProviderTmbId: systemToolRuntime.tmbId ?? runningAppInfo.tmbId,
-          billingTool: systemToolRuntime
-        };
-      }
-
-      // Personal plugin 必须以当前 workflow user 做 App 权限校验，并在需要时切换资源快照。
-      const appData = await loadWorkflowAppResource({
-        appId: app.id,
-        tmbId: runningUserInfo.tmbId,
-        type: 'tool',
-        dynamic: dynamic || !useResourceSnapshot
+  const {
+    nodes,
+    edges,
+    chatConfig,
+    childAppInfo,
+    externalProviderTmbId,
+    billingTool,
+    resourceContext
+  } = await (async () => {
+    if (app.systemToolId) {
+      const systemToolRuntime = await SystemToolRepo.getInstance().getSystemToolWorkflowRuntime({
+        pluginId: app.systemToolId,
+        version: app.version
       });
-      const appVersion = await getAppVersionById({
-        appId: app.id,
-        versionId: app.version,
-        app: appData
-      });
-      if (useResourceSnapshot) {
-        resourceContext = await createWorkflowChildResourceContext(
-          appVersion.resources,
-          String(appData.teamId || runningAppInfo.teamId)
-        );
-      }
 
       return {
-        nodes: appVersion.nodes,
-        edges: appVersion.edges,
-        chatConfig: appVersion.chatConfig,
+        nodes: systemToolRuntime.nodes,
+        edges: systemToolRuntime.edges,
+        chatConfig: systemToolRuntime.chatConfig ?? {},
         childAppInfo: {
-          sourceId: String(appData._id),
-          teamId: appData.teamId,
-          tmbId: appData.tmbId,
-          name: appData.name
+          sourceId: systemToolRuntime.id,
+          teamId: systemToolRuntime.teamId,
+          tmbId: systemToolRuntime.tmbId,
+          name: systemToolRuntime.name
         },
-        externalProviderTmbId: appData.tmbId,
-        billingTool: undefined
+        // 系统 Workflow 没有调用者可访问的 App 记录，沿用当前工作流的用户上下文。
+        externalProviderTmbId: systemToolRuntime.tmbId ?? runningAppInfo.tmbId,
+        billingTool: systemToolRuntime,
+        // 系统工具由管理员发布：内部静态资源直接使用，动态引用仍按运行人鉴权。
+        resourceContext: createSystemToolResourceContext()
       };
-    })();
+    }
+
+    // 个人工具按运行人校验 App 权限，并切换到工具自身的 Version 快照。
+    const { appData, childVersion, resourceContext } = await loadChildWorkflowWithResource({
+      appId: app.id,
+      versionId: app.version,
+      tmbId: runningUserInfo.tmbId,
+      type: 'tool',
+      dynamic
+    });
+
+    return {
+      nodes: childVersion.nodes,
+      edges: childVersion.edges,
+      chatConfig: childVersion.chatConfig,
+      childAppInfo: {
+        sourceId: String(appData._id),
+        teamId: appData.teamId,
+        tmbId: appData.tmbId,
+        name: appData.name
+      },
+      externalProviderTmbId: appData.tmbId,
+      billingTool: undefined,
+      resourceContext
+    };
+  })();
   const pluginInputs = getWorkflowToolInputsFromStoreNodes(nodes);
   const workflowToolVariables = filterWorkflowToolInputVariables({
     inputs: pluginInputs,

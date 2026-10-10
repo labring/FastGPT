@@ -25,7 +25,7 @@ import {
 } from '@fastgpt/global/core/chat/utils';
 import type { OutlinkAppType, OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import { getAppLatestVersion } from '../../../core/app/version/controller';
-import { loadWorkflowResourceContext } from '../../../core/workflow/utils/resource';
+import { createWorkflowResourceContext } from '../../../core/workflow/utils/resource';
 import { MongoApp } from '../../../core/app/schema';
 import { getChatItems } from '../../../core/chat/controller';
 import {
@@ -409,7 +409,7 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       uid: chatUserId || outLinkConfig.tmbId,
       chatId: preparedRound.chatId,
       responseChatItemId: preparedRound.responseChatItemId,
-      resourceContext: await loadWorkflowResourceContext({
+      resourceContext: createWorkflowResourceContext({
         resources,
         teamId: app.teamId
       }),

@@ -11,7 +11,7 @@ import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
-import { loadWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
 import { getUser } from '@test/datas/users';
 import {
   PerResourceTypeEnum,
@@ -513,7 +513,7 @@ description: Latest current skill
       readFiles: vi.fn()
     };
 
-    const resourceContext = await loadWorkflowResourceContext({
+    const resourceContext = createWorkflowResourceContext({
       resources: [{ type: 'skill', id: String(skill._id) }],
       teamId
     });

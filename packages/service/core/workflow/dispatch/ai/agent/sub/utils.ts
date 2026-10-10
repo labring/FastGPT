@@ -300,8 +300,7 @@ export const getExecuteTool = ({
             nodeResponseParentId: callId,
             variableState,
             lastInteractive,
-            query,
-            useResourceSnapshot: true
+            query
           });
 
           return {
@@ -377,8 +376,7 @@ export const getExecuteTool = ({
             nodeResponseParentId: callId,
             variableState,
             lastInteractive,
-            query,
-            useResourceSnapshot: tool.type !== 'commercialTool'
+            query
           });
 
           return {

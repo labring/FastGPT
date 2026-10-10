@@ -47,6 +47,7 @@ import { WORKFLOW_MAX_RUN_TIMES } from '../../../workflow/constants';
 import { dispatchWorkFlow } from '../../../workflow/dispatch';
 import type { AgentSandboxPrepareAction } from '../../../workflow/dispatch/ai/agent/sub/sandbox';
 import { prepareWorkflowFileQuery } from '../../../workflow/utils/fileLimits';
+import { createWorkflowResourceContext } from '../../../workflow/utils/resource';
 import {
   createWorkflowStreamResponseContext,
   type WorkflowStreamResponseContext
@@ -256,7 +257,13 @@ export async function handleSkillDebugChat(
         persistToDb: true,
         retainInMemory: true
       },
-      // Skill 调试不是 App 运行，不带 Version 快照；静态资源按运行人 tmbId 鉴权。
+      // 入口已鉴权的资源即本次调试的完整快照：固定节点只在内存核对，不再重复鉴权；
+      // 快照外的静态资源一律视为未声明，动态引用仍按运行人鉴权。
+      resourceContext: createWorkflowResourceContext({
+        resources: [{ type: 'model', id: modelData.modelId }],
+        teamId,
+        isRoot
+      }),
       agentSandboxPrepareActions: options.agentSandboxPrepareActions
     });
 

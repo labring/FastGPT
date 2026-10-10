@@ -63,7 +63,14 @@ getAuthorizedModelIds({ actor, handle }): Promise<Set<string>>
 
 - `authTargetModelResource`（TTS、问题引导）：App 目标仍只认正式版本资源快照；非 App 目标（skillEdit、chatAgentHelper，仅登录成员可进入）改为 `assertAuthModels(use)`，必须传入 `teamId`、`isRoot` 和调用方读取模型时的 `handle`。两个分支统一抛 `UserError(unAuthModel)`。
 - `authChatCrud` / `authChatTargetCrud` 返回 `isRoot`（外链固定 `false`），供上述调用方构造身份。
-- `assertWorkflowNodeModelResources`：动态引用改为 `assertAuthModels(use)`，`teamId` 取自 `runningUserInfo`，`isRoot` 取自工作流资源上下文。调度入口的调用目前仍为注释状态。
+- `assertWorkflowNodeModelResources`：在节点调度的 `try` 内、节点本体执行前调用，失败按节点错误处理（支持 `catchError`），不会中断整个工作流。规则：
+  - 静态模型只核对资源快照（纯内存），不做权限校验；
+  - 动态引用按运行人 `assertAuthModels(use)` 校验，`teamId/tmbId` 取自 `runningUserInfo`，`isRoot` 取自工作流资源上下文；
+  - 免登录外链的 `runningUserInfo` 为发布者，按成员身份计算（已确认可接受）；
+  - 系统工具（commercial）内部使用 `createSystemToolResourceContext()`（`trusted`）：静态模型、知识库、应用、Skill、工具集子工具直接使用，不做声明校验与用户态鉴权；动态引用仍按运行人鉴权。个人工具仍切换到自身 Version 快照。
+  - `dispatchWorkFlow` 的 `resourceContext` 改为必填，每个顶层运行都必须声明资源快照。Skill 调试把入口 `assertAuthModels(use)` 已授权的模型构造为快照传入，固定节点只做内存核对，不再重复鉴权，也不使用 `trusted`。
+  - `createWorkflowResourceContext`（原 `loadWorkflowResourceContext`）为纯内存构造，改为同步；`runWithDerivedWorkflowFileContext` 不再支持传 `null` 清空快照（省略即继承父级）；Agent 子应用删除恒为真的 `useResourceSnapshot` 参数。
+- Pro ChatAgentHelper：接口在 `preChatRound` 之前调用 `resolveChatAgentHelperModel` 完成模型选择（含默认回退）、`use` 鉴权与可用性检查，processor 只接收已授权的 `model` 对象，不再读取模型目录。
 - `getUnauthorizedAppResources` 保留模型分支，用于应用保存、发布、调试时的混合资源批量过滤；其中停用模型返回 `unExist` 是既有行为，未改动。
 
 ## 缓存
@@ -85,3 +92,7 @@ getAuthorizedModelIds({ actor, handle }): Promise<Set<string>>
 - [x] 修正 ModelConfigTable 过期注释，同步 client-model-catalog 与 model-id-reference-migration 文档
 - [x] 更新受影响测试并运行局部测试（update.test 直接写库的模型补齐目录修订号；集成测试兼容 UserError）
 - [x] 收敛间接路径：`authTargetModelResource` 非 App 分支、`assertWorkflowNodeModelResources` 动态引用改用 `assertAuthModels`；chat 鉴权返回 `isRoot`
+- [x] 恢复工作流节点模型校验：放入节点 `try`，失败转为节点错误；补调度测试
+- [x] 系统工具运行改用 `trusted` 上下文，静态资源免鉴权、动态引用仍鉴权；补单测
+- [x] Skill 调试传入已授权模型快照，消除重复鉴权；`dispatchWorkFlow.resourceContext` 必填，清理 `null` 清空语义与 `useResourceSnapshot`
+- [x] Pro ChatAgentHelper 模型解析与鉴权前移到 `preChatRound` 之前，processor 只消费模型对象
