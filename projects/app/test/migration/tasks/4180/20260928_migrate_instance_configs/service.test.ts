@@ -76,7 +76,7 @@ describe('applyInstanceConfigMigration (per-domain idempotency)', () => {
 
     // 模拟管理员在首次迁移后修改了 site 配置
     await MongoSystemInstanceConfig.updateOne(
-      { _id: 'site' },
+      { domain: 'site' },
       { $set: { 'overrides.name': 'Admin Edited' }, $inc: { revision: 1 } }
     );
 
@@ -85,7 +85,7 @@ describe('applyInstanceConfigMigration (per-domain idempotency)', () => {
     expect(rerun.migratedCount).toBe(0);
     expect(rerun.domains).toEqual([]);
 
-    const siteDoc = await MongoSystemInstanceConfig.findById('site').lean();
+    const siteDoc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
     expect(siteDoc?.overrides.name).toBe('Admin Edited');
     expect(siteDoc?.revision).toBe(2);
   });
@@ -98,7 +98,7 @@ describe('applyInstanceConfigMigration (per-domain idempotency)', () => {
 
     // 模拟部分写入失败：仅 site 落库
     await MongoSystemInstanceConfig.create({
-      _id: 'site',
+      domain: 'site',
       schemaVersion: 1,
       revision: 1,
       overrides: overrides.site,
@@ -112,7 +112,7 @@ describe('applyInstanceConfigMigration (per-domain idempotency)', () => {
     const result = await applyInstanceConfigMigration({ overrides, logger });
     expect(result.domains).toEqual(['auth']);
 
-    const authDoc = await MongoSystemInstanceConfig.findById('auth').lean();
+    const authDoc = await MongoSystemInstanceConfig.findOne({ domain: 'auth' }).lean();
     expect(authDoc?.overrides.teamMode).toBe('multi');
     expect(authDoc?.updatedBy?.actor).toBe('migration');
   });
@@ -143,7 +143,7 @@ describe('applyInstanceConfigMigration (per-domain idempotency)', () => {
 
     // 该域已落库但 overrides 为空：客户已配置的环境变量还没进库
     await MongoSystemInstanceConfig.create({
-      _id: domain,
+      domain,
       schemaVersion: 1,
       revision: 1,
       overrides: {}
@@ -167,7 +167,7 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
 
   it('backfills only missing fields into an existing domain and keeps existing values', async () => {
     await MongoSystemInstanceConfig.create({
-      _id: 'site',
+      domain: 'site',
       schemaVersion: 1,
       revision: 1,
       overrides: { name: 'Admin Site', favicon: '/admin.ico' },
@@ -187,7 +187,7 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
     expect(result.backfilledDomains).toEqual(['site']);
     expect(result.backfilledPaths).toEqual(['site.docUrl']);
 
-    const siteDoc = await MongoSystemInstanceConfig.findById('site').lean();
+    const siteDoc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
     expect(siteDoc?.overrides).toEqual({
       name: 'Admin Site',
       favicon: '/admin.ico',
@@ -200,7 +200,7 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
 
   it('backfills nested missing leaves and treats arrays as atomic values', async () => {
     await MongoSystemInstanceConfig.create({
-      _id: 'security',
+      domain: 'security',
       schemaVersion: 1,
       revision: 1,
       overrides: { censor: { baiduClientId: 'admin-id' }, fileUrlWhitelist: [] }
@@ -217,7 +217,7 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
       logger
     });
 
-    const doc = await MongoSystemInstanceConfig.findById('security').lean();
+    const doc = await MongoSystemInstanceConfig.findOne({ domain: 'security' }).lean();
     // 嵌套对象逐叶子补缺：已有叶子保持原值，缺失叶子补写
     expect(doc?.overrides.censor).toEqual({
       baiduClientId: 'admin-id',
@@ -230,7 +230,7 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
 
   it('does not touch a domain when nothing is missing (no revision bump)', async () => {
     await MongoSystemInstanceConfig.create({
-      _id: 'site',
+      domain: 'site',
       schemaVersion: 1,
       revision: 7,
       overrides: { name: 'Keep', docUrl: 'https://keep.example.com' }
@@ -244,7 +244,7 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
     expect(result.domains).toEqual([]);
     expect(result.backfilledPaths).toEqual([]);
 
-    const doc = await MongoSystemInstanceConfig.findById('site').lean();
+    const doc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
     // 无写入就不递增 revision，避免无意义地打断管理员的乐观锁
     expect(doc?.revision).toBe(7);
     expect(doc?.overrides).toEqual({ name: 'Keep', docUrl: 'https://keep.example.com' });
@@ -254,7 +254,7 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
     // 管理员既有 parallelMaxConcurrency=100（自身合法：默认 maxLoopTimes=100），
     // 待补的 maxLoopTimes=20 合并后违反 superRefine（100 > 20）
     await MongoSystemInstanceConfig.create({
-      _id: 'performance',
+      domain: 'performance',
       schemaVersion: 1,
       revision: 1,
       overrides: { workflow: { parallelMaxConcurrency: 100 } }
@@ -273,13 +273,13 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
       expect.objectContaining({ domain: 'performance' })
     );
 
-    const doc = await MongoSystemInstanceConfig.findById('performance').lean();
+    const doc = await MongoSystemInstanceConfig.findOne({ domain: 'performance' }).lean();
     expect(doc?.overrides.workflow).toEqual({ parallelMaxConcurrency: 100 });
   });
 
   it('is idempotent: rerunning after a backfill writes nothing', async () => {
     await MongoSystemInstanceConfig.create({
-      _id: 'site',
+      domain: 'site',
       schemaVersion: 1,
       revision: 1,
       overrides: { name: 'Admin' }
@@ -291,14 +291,14 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
     });
     expect(first.backfilledDomains).toEqual(['site']);
 
-    const afterFirst = await MongoSystemInstanceConfig.findById('site').lean();
+    const afterFirst = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
     const second = await applyInstanceConfigMigration({
       overrides: { site: { name: 'Env', docUrl: 'https://env.example.com' } },
       logger
     });
 
     expect(second.domains).toEqual([]);
-    const afterSecond = await MongoSystemInstanceConfig.findById('site').lean();
+    const afterSecond = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
     expect(afterSecond?.revision).toBe(afterFirst?.revision);
     expect(afterSecond?.overrides).toEqual(afterFirst?.overrides);
   });

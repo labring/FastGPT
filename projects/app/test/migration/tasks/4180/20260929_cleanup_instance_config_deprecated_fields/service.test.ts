@@ -133,19 +133,21 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
   // 集合 schema validator 会拒绝含废弃字段的写入，测试必须走原生驱动插入脏数据，
   // 模拟旧版本遗留记录。
   const seedDirtyDoc = async (doc: {
-    _id: string;
+    _id?: string;
+    domain?: string;
     revision: number;
     overrides: Record<string, unknown>;
   }) => {
+    const domain = doc.domain ?? doc._id;
     await MongoSystemInstanceConfig.collection.insertOne({
-      _id: doc._id,
+      domain,
       schemaVersion: 1,
       revision: doc.revision,
       overrides: doc.overrides,
       updatedBy: { actor: 'system' },
       createdAt: new Date(),
       updatedAt: new Date()
-    });
+    } as any);
   };
 
   beforeEach(async () => {
@@ -154,7 +156,7 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
 
   it('cleans deprecated fields and passes verification', async () => {
     await seedDirtyDoc({
-      _id: 'vector',
+      domain: 'vector',
       revision: 1,
       overrides: { vqLevel: 32, hnswEfSearch: 200 }
     });
@@ -163,7 +165,7 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
     expect(result.updatedDomains).toEqual(['vector']);
     expect(result.removedFieldCount).toBe(1);
 
-    const doc = await MongoSystemInstanceConfig.findById('vector').lean();
+    const doc = await MongoSystemInstanceConfig.findOne({ domain: 'vector' }).lean();
     expect(doc?.overrides).toEqual({ hnswEfSearch: 200 });
 
     const verification = await verifyInstanceConfigDeprecatedFields();
@@ -175,7 +177,7 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
     // logUrl 属废弃字段会被剔除，但残留的 maxRunTimes=0 违反 positiveInteger；
     // blockStartup 下终审错误必须能定位到具体域。
     await seedDirtyDoc({
-      _id: 'performance',
+      domain: 'performance',
       revision: 1,
       overrides: { workflow: { maxRunTimes: 0 }, chat: { logUrl: 'http://legacy' } }
     });
@@ -187,7 +189,7 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
 
   it('retries cleanup against the latest doc after a concurrent revision bump', async () => {
     await seedDirtyDoc({
-      _id: 'vector',
+      domain: 'vector',
       revision: 1,
       overrides: { vqLevel: 32, hnswEfSearch: 200 }
     });
@@ -215,7 +217,7 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
     expect(result.updatedDomains).toEqual(['vector']);
     expect(result.removedFieldCount).toBe(1);
 
-    const doc = await MongoSystemInstanceConfig.findById('vector').lean();
+    const doc = await MongoSystemInstanceConfig.findOne({ domain: 'vector' }).lean();
     expect(doc?.overrides).toEqual({ hnswEfSearch: 200 });
 
     const verification = await verifyInstanceConfigDeprecatedFields();

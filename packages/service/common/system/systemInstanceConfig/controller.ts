@@ -201,7 +201,7 @@ export const getDomainConfig = async <T extends SystemInstanceConfigDomainKey>(
   domain: T,
   options?: { maskSecrets?: boolean }
 ): Promise<GetDomainConfigResult<T>> => {
-  const doc = await MongoSystemInstanceConfig.findById(domain).lean();
+  const doc = await MongoSystemInstanceConfig.findOne({ domain }).lean();
 
   const revision = doc?.revision ?? 0;
   const overrides = (doc?.overrides ?? {}) as DeepPartial<SystemInstanceConfigDomainMap[T]>;
@@ -261,7 +261,7 @@ export const updateDomainConfig = async <T extends SystemInstanceConfigDomainKey
   actor
 }: UpdateDomainConfigParams<T>): Promise<GetDomainConfigResult<T>> => {
   // 1. 查询当前已有文档，检查版本并用于恢复敏感字段
-  const existing = await MongoSystemInstanceConfig.findById(domain).lean();
+  const existing = await MongoSystemInstanceConfig.findOne({ domain }).lean();
   const currentRevision = existing?.revision ?? 0;
 
   if (currentRevision !== expectedRevision) {
@@ -298,7 +298,7 @@ export const updateDomainConfig = async <T extends SystemInstanceConfigDomainKey
     // 首次插入，revision 初始化为 1
     try {
       const newDoc = new MongoSystemInstanceConfig({
-        _id: domain,
+        domain,
         revision: 1,
         overrides: cleanOverrides,
         explicitDefaultPaths,
@@ -314,7 +314,7 @@ export const updateDomainConfig = async <T extends SystemInstanceConfigDomainKey
     }
   } else {
     updatedDoc = await MongoSystemInstanceConfig.findOneAndUpdate(
-      { _id: domain, revision: expectedRevision },
+      { domain, revision: expectedRevision },
       {
         $set: {
           overrides: cleanOverrides,
@@ -373,7 +373,7 @@ export const batchUpdateDomainConfigs = async ({
   // 1. 预校验与准备阶段：对所有域执行敏感字段恢复、形态校验、终审校验和默认值剪枝
   const preparedItems = await Promise.all(
     items.map(async ({ domain, expectedRevision, overrides: submittedOverrides }) => {
-      const existing = await MongoSystemInstanceConfig.findById(domain).lean();
+      const existing = await MongoSystemInstanceConfig.findOne({ domain }).lean();
       const currentRevision = existing?.revision ?? 0;
       if (currentRevision !== expectedRevision) {
         throw new Error(
@@ -429,7 +429,7 @@ export const batchUpdateDomainConfigs = async ({
     for (const item of preparedItems) {
       if (!item.existing) {
         const newDoc = new MongoSystemInstanceConfig({
-          _id: item.domain,
+          domain: item.domain,
           revision: 1,
           overrides: item.cleanOverrides,
           explicitDefaultPaths: item.explicitDefaultPaths,
@@ -438,7 +438,7 @@ export const batchUpdateDomainConfigs = async ({
         await newDoc.save({ session });
       } else {
         const updatedDoc = await MongoSystemInstanceConfig.findOneAndUpdate(
-          { _id: item.domain, revision: item.expectedRevision },
+          { domain: item.domain, revision: item.expectedRevision },
           {
             $set: {
               overrides: item.cleanOverrides,
@@ -501,14 +501,15 @@ export const getSystemInstanceConfigSnapshot = async (): Promise<SystemInstanceC
   const docs = await MongoSystemInstanceConfig.find({}).lean();
 
   const versionSig = docs
-    .map((d) => `${d._id}:${d.revision ?? 0}`)
+    .map((d) => `${(d as any).domain ?? d._id}:${d.revision ?? 0}`)
     .sort()
     .join(';');
   currentInstanceVersionTag = versionSig || '0';
 
   const domainOverridesMap: Partial<Record<SystemInstanceConfigDomainKey, unknown>> = {};
   for (const doc of docs) {
-    domainOverridesMap[doc._id as SystemInstanceConfigDomainKey] = doc.overrides;
+    const domainKey = ((doc as any).domain ?? doc._id) as SystemInstanceConfigDomainKey;
+    domainOverridesMap[domainKey] = doc.overrides;
   }
 
   const snapshot = resolveSystemInstanceConfig(domainOverridesMap);

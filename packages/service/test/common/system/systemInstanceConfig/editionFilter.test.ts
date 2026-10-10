@@ -103,7 +103,7 @@ describe('service edition gating for Admin config APIs', () => {
   it('hides pro-only commercial fields pre-seeded in DB from community reads', async () => {
     // 模拟历史上由商业版写入的文档：社区版部署读取时必须过滤
     await MongoSystemInstanceConfig.create({
-      _id: 'commercial',
+      domain: 'commercial',
       schemaVersion: 1,
       revision: 1,
       overrides: { showCoupon: true },
@@ -121,7 +121,7 @@ describe('service edition gating for Admin config APIs', () => {
 
   it('defaults the edition argument to the server-side authoritative detection', async () => {
     await MongoSystemInstanceConfig.create({
-      _id: 'commercial',
+      domain: 'commercial',
       schemaVersion: 1,
       revision: 1,
       overrides: { showCoupon: true },
