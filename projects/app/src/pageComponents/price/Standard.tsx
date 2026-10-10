@@ -77,7 +77,7 @@ export const BillingModeSwitch = ({
           alignItems={'center'}
           flexShrink={0}
           borderRadius={'full'}
-          bg={'#E8EBF0'}
+          bg={isYear ? 'blue.600' : 'myGray.200'}
           cursor={'pointer'}
           justifyContent={isYear ? 'flex-end' : 'flex-start'}
           onClick={() => onChange(isYear ? SubModeEnum.month : SubModeEnum.year)}
