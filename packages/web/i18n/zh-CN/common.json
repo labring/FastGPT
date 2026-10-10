@@ -1337,5 +1337,6 @@
   "open_in_new_tab": "新标签页打开",
   "html_preview": "HTML 预览",
   "mermaid_syntax_error": "Mermaid 语法错误，请复制检查",
-  "diagram_preparing": "图表生成中..."
+  "diagram_preparing": "图表生成中...",
+  "echarts_syntax_error": "ECharts 配置语法错误，请复制检查"
 }

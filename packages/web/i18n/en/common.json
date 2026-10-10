@@ -1337,5 +1337,6 @@
   "open_in_new_tab": "Open in new tab",
   "html_preview": "HTML Preview",
   "mermaid_syntax_error": "Mermaid syntax error, please copy and check",
-  "diagram_preparing": "Generating diagram..."
+  "diagram_preparing": "Generating diagram...",
+  "echarts_syntax_error": "ECharts configuration syntax error, please copy and check"
 }

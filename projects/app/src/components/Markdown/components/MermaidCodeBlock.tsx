@@ -1,11 +1,12 @@
 import React, { useEffect, useCallback, useState, useMemo, useContext } from 'react';
-import { Box, HStack, IconButton, Flex, Text, Button, Spinner } from '@chakra-ui/react';
+import { Box, HStack, IconButton, Spinner, Text } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyPhotoView, { MyPhotoSlider } from '@fastgpt/web/components/common/Image/PhotoView';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useTranslation } from 'next-i18next';
 import { MarkdownRendererRuntimeContext } from '../utils/runtimeContext';
+import CodeBlockErrorCard from './CodeBlockErrorCard';
 
 const punctuationMap: Record<string, string> = {
   '，': ',',
@@ -53,7 +54,7 @@ const prepareMermaidSvgForView = (rawSvg: string) => {
 /**
  * 增强型 Mermaid 图表组件：
  * 1. 流式输出防抖与静默：打字流式阶段半截未闭合语法不显示红色错误框，已有有效图则保持展示，无图展示就绪占位；
- * 2. 结束态错误提示：仅在整句流式输出结束后依然报错时，才展示“Mermaid 语法错误，请复制检查”，此时不显示下载与全屏；
+ * 2. 结束态错误提示：仅在整句流式输出结束后依然报错时，才展示统一错误卡片（此时不显示下载与全屏）；
  * 3. 正常完成态：展示全功能悬浮操作栏（复制代码、导出 SVG、导出 PNG、全屏图片级缩放灯箱）。
  */
 const MermaidBlock = ({ code }: { code: string }) => {
@@ -211,35 +212,9 @@ const MermaidBlock = ({ code }: { code: string }) => {
     );
   }
 
-  // 流式已结束且确实存在语法错误：仅提示“Mermaid 语法错误，请复制检查”，不展示下载和全屏
+  // 流式已结束且确实存在语法错误：复用统一错误卡片展示，不展示下载和全屏
   if (hasError && !showAnimation && !svg) {
-    return (
-      <Box
-        my={3}
-        p={3}
-        borderRadius={'md'}
-        bg={'myGray.50'}
-        border={'1px solid'}
-        borderColor={'myGray.200'}
-      >
-        <Flex alignItems={'center'} justifyContent={'space-between'} gap={2}>
-          <HStack spacing={2} color={'myGray.700'}>
-            <MyIcon name={'common/errorFill'} w={'16px'} color={'red.500'} />
-            <Text fontSize={'xs'} fontWeight={500}>
-              {t('common:mermaid_syntax_error')}
-            </Text>
-          </HStack>
-          <Button
-            size={'xs'}
-            variant={'whiteBase'}
-            leftIcon={<MyIcon name={'copy'} w={'12px'} />}
-            onClick={handleCopyCode}
-          >
-            {t('common:Copy')}
-          </Button>
-        </Flex>
-      </Box>
-    );
+    return <CodeBlockErrorCard title={t('common:mermaid_syntax_error')} code={code} />;
   }
 
   // 流式打字期间且尚未生成出首个完整 SVG：展示轻量就绪占位，杜绝红框报错和剧烈抖动

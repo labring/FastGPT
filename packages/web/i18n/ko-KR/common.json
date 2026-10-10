@@ -1328,5 +1328,6 @@
   "open_in_new_tab": "새 탭에서 열기",
   "html_preview": "HTML 미리보기",
   "mermaid_syntax_error": "Mermaid 문법 오류입니다. 복사하여 확인해 주세요",
-  "diagram_preparing": "다이어그램 생성 중..."
+  "diagram_preparing": "다이어그램 생성 중...",
+  "echarts_syntax_error": "ECharts 설정 문법 오류입니다. 복사하여 확인해 주세요"
 }

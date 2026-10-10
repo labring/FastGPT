@@ -1,4 +1,12 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useContext
+} from 'react';
 import type { ECharts } from 'echarts';
 import { Box, HStack, IconButton, Skeleton } from '@chakra-ui/react';
 import json5 from 'json5';
@@ -9,10 +17,13 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useScreen } from '@fastgpt/web/hooks/useScreen';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { MarkdownRendererRuntimeContext } from '../utils/runtimeContext';
+import CodeBlockErrorCard from './CodeBlockErrorCard';
 
 const EChartsCodeBlock = ({ code }: { code: string }) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
+  const { showAnimation } = useContext(MarkdownRendererRuntimeContext);
   const chartRef = useRef<HTMLDivElement>(null);
   const eChart = useRef<ECharts>();
   const { isPc } = useSystem();
@@ -122,8 +133,8 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
     }
   }, []);
 
-  // 图表未就绪或流式打字阶段：骨架屏完全填满外层卡片容器，杜绝局部或尺寸跳动
-  if (!parsedOption) {
+  // 1. 流式打字生成中且图表未闭合就绪：骨架屏完全拉满卡片，静默防抖，杜绝红框报错和尺寸抖动
+  if (showAnimation && !parsedOption) {
     return (
       <Box
         my={3}
@@ -140,6 +151,12 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
     );
   }
 
+  // 2. 流式已结束且配置 JSON 依然存在语法错误：展示统一错误卡片（此时无下载图片，仅提供复制代码按钮）
+  if (!showAnimation && !parsedOption) {
+    return <CodeBlockErrorCard title={t('common:echarts_syntax_error')} code={code} />;
+  }
+
+  // 3. 正常完成态：展示图表与全功能悬浮操作栏
   return (
     <Box
       position={'relative'}
