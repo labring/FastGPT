@@ -63,7 +63,11 @@ getAuthorizedModelIds({ actor, handle }): Promise<Set<string>>
 
 - `authTargetModelResource`（TTS、问题引导）：App 目标仍只认正式版本资源快照；非 App 目标（skillEdit、chatAgentHelper，仅登录成员可进入）改为 `assertAuthModels(use)`，必须传入 `teamId`、`isRoot` 和调用方读取模型时的 `handle`。两个分支统一抛 `UserError(unAuthModel)`。
 - `authChatCrud` / `authChatTargetCrud` 返回 `isRoot`（外链固定 `false`），供上述调用方构造身份。
-- `assertWorkflowNodeModelResources`：动态引用改为 `assertAuthModels(use)`，`teamId` 取自 `runningUserInfo`，`isRoot` 取自工作流资源上下文。调度入口的调用目前仍为注释状态。
+- `assertWorkflowNodeModelResources`：在节点调度的 `try` 内、节点本体执行前调用，失败按节点错误处理（支持 `catchError`），不会中断整个工作流。规则：
+  - 静态模型只核对资源快照（纯内存），不做权限校验；
+  - 动态引用按运行人 `assertAuthModels(use)` 校验，`teamId/tmbId` 取自 `runningUserInfo`，`isRoot` 取自工作流资源上下文；
+  - 免登录外链的 `runningUserInfo` 为发布者，按成员身份计算（已确认可接受）；
+  - 系统工具（commercial）内部使用 `createSystemToolResourceContext()`（`trusted`）：静态模型、知识库、应用、Skill、工具集子工具直接使用，不做声明校验与用户态鉴权；动态引用仍按运行人鉴权。个人工具仍切换到自身 Version 快照。
 - `getUnauthorizedAppResources` 保留模型分支，用于应用保存、发布、调试时的混合资源批量过滤；其中停用模型返回 `unExist` 是既有行为，未改动。
 
 ## 缓存
@@ -85,3 +89,5 @@ getAuthorizedModelIds({ actor, handle }): Promise<Set<string>>
 - [x] 修正 ModelConfigTable 过期注释，同步 client-model-catalog 与 model-id-reference-migration 文档
 - [x] 更新受影响测试并运行局部测试（update.test 直接写库的模型补齐目录修订号；集成测试兼容 UserError）
 - [x] 收敛间接路径：`authTargetModelResource` 非 App 分支、`assertWorkflowNodeModelResources` 动态引用改用 `assertAuthModels`；chat 鉴权返回 `isRoot`
+- [x] 恢复工作流节点模型校验：放入节点 `try`，失败转为节点错误；补调度测试
+- [x] 系统工具运行改用 `trusted` 上下文，静态资源免鉴权、动态引用仍鉴权；补单测

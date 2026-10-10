@@ -42,7 +42,9 @@ vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import {
   assertWorkflowNodeModelResources,
+  createSystemToolResourceContext,
   createWorkflowChildResourceContext,
+  filterWorkflowToolList,
   loadWorkflowAppResource,
   loadWorkflowDatasetResource,
   loadWorkflowResourceContext,
@@ -142,6 +144,65 @@ describe('workflow resource context', () => {
     expect(mocks.assertAuthModels).toHaveBeenCalledExactlyOnceWith({
       actor: { teamId: 'team-1', tmbId: 'tmb-1', isRoot: false },
       modelIds: ['model-1'],
+      action: 'use'
+    });
+  });
+
+  it('system tool context skips static checks but still authorizes dynamic models', async () => {
+    const rootContext = await loadWorkflowResourceContext({ resources: [], isRoot: true });
+    const context = await runWithContext(
+      { mcpClientMemory: {}, resourceContext: rootContext },
+      () => createSystemToolResourceContext()
+    );
+    expect(context).toMatchObject({ trusted: true, isRoot: true });
+    expect(context.teamId).toBeUndefined();
+
+    const createNode = (renderType: FlowNodeInputTypeEnum) => ({
+      flowNodeType: FlowNodeTypeEnum.chatNode,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.aiModelId,
+          value:
+            renderType === FlowNodeInputTypeEnum.reference ? ['source', 'model'] : 'undeclared',
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [renderType]
+        }
+      ]
+    });
+
+    await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
+      // 静态模型未在任何快照声明，也不鉴权。
+      await assertWorkflowNodeModelResources({
+        node: createNode(FlowNodeInputTypeEnum.selectLLMModel),
+        params: { [NodeInputKeyEnum.aiModelId]: 'undeclared' },
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      });
+      expect(mocks.assertAuthModels).not.toHaveBeenCalled();
+
+      // 静态知识库按 ID 直接读取，不限制团队。
+      await loadWorkflowDatasetResource({ datasetId: 'dataset-2' });
+      expect(mocks.mongoDatasetFindOne).toHaveBeenCalledWith({
+        _id: 'dataset-2',
+        deleteTime: null
+      });
+
+      // 工具集不按快照裁剪子工具。
+      const tools = [{ name: 'a' }, { name: 'b' }];
+      expect(filterWorkflowToolList({ context, appId: 'tool-1', tools })).toBe(tools);
+
+      // 动态模型来自调用方输入，仍按运行人鉴权。
+      await assertWorkflowNodeModelResources({
+        node: createNode(FlowNodeInputTypeEnum.reference),
+        params: { [NodeInputKeyEnum.aiModelId]: 'dynamic-model' },
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      });
+    });
+
+    expect(mocks.assertAuthModels).toHaveBeenCalledExactlyOnceWith({
+      actor: { teamId: 'team-1', tmbId: 'tmb-1', isRoot: true },
+      modelIds: ['dynamic-model'],
       action: 'use'
     });
   });

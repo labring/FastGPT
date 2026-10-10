@@ -42,6 +42,11 @@ export type WorkflowResourceContext = {
   teamId?: string;
   /** root Test/Debug 请求允许子工作流沿用跨团队资源权限。 */
   isRoot: boolean;
+  /**
+   * 系统工具（commercial）内部运行：静态资源由管理员发布，直接使用，不做声明校验和用户态鉴权；
+   * 动态引用来自调用方输入，仍按运行人权限校验。进入个人工具时会被其自身快照替换，不会向下扩散。
+   */
+  trusted?: boolean;
   resourceMap: Map<string, AppResource>;
 };
 
@@ -76,6 +81,16 @@ export const loadWorkflowResourceContext = async ({
   };
 };
 
+/**
+ * 系统工具运行上下文：不携带 teamId（静态资源按 ID 直接读取，不限制团队），
+ * 并继承父级 root 标记，供动态引用鉴权使用。
+ */
+export const createSystemToolResourceContext = (): WorkflowResourceContext => ({
+  isRoot: getWorkflowResourceContext()?.isRoot ?? false,
+  trusted: true,
+  resourceMap: new Map()
+});
+
 /** 校验当前工作流版本声明了指定资源；没有上下文时保留非 App 调试场景的旧权限语义。 */
 export const assertWorkflowResource = ({
   context,
@@ -88,7 +103,7 @@ export const assertWorkflowResource = ({
   id: string;
   toolName?: string;
 }) => {
-  if (!context) return;
+  if (!context || context.trusted) return;
 
   const resource = context.resourceMap.get(getResourceKey(type, id));
   if (!resource) throw new WorkflowResourceError(`App resource is not declared: ${type}:${id}`);
@@ -182,7 +197,7 @@ export const filterWorkflowToolList = <Tool extends { name: string }>({
   appId: string;
   tools: Tool[];
 }) => {
-  if (!context) return tools;
+  if (!context || context.trusted) return tools;
 
   const resource = context.resourceMap.get(getResourceKey('tool', appId));
   if (!resource || resource.type !== 'tool') {
