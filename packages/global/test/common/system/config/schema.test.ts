@@ -225,21 +225,30 @@ describe('resolveSystemInstanceConfig', () => {
 describe('SystemInstanceDomainDocumentSchema', () => {
   it('validates a domain document structure', () => {
     const doc = parseSystemInstanceDomainDocument({
-      _id: 'site',
+      domain: 'site',
       overrides: { name: 'Custom Name' }
     });
 
-    expect(doc._id).toBe('site');
+    expect(doc.domain).toBe('site');
     expect(doc.schemaVersion).toBe(1);
     expect(doc.revision).toBe(0);
     expect(doc.overrides).toEqual({ name: 'Custom Name' });
     expect(doc.createdAt).toBeInstanceOf(Date);
   });
 
-  it('rejects an invalid domain key as _id', () => {
+  it('rejects an invalid domain key', () => {
     expect(() =>
       parseSystemInstanceDomainDocument({
-        _id: 'non-existing-domain',
+        domain: 'non-existing-domain',
+        overrides: {}
+      })
+    ).toThrow();
+  });
+
+  it('rejects a document missing the domain field', () => {
+    // _id 由 MongoDB 自动生成，domain 是唯一寻址键，缺失必须拒绝
+    expect(() =>
+      parseSystemInstanceDomainDocument({
         overrides: {}
       })
     ).toThrow();
