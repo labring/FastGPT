@@ -1,6 +1,12 @@
-import { audioFileType, imageFileType, videoFileType } from '@fastgpt/global/common/file/constants';
+import {
+  audioFileType,
+  imageFileType,
+  videoFileType,
+  documentFileExtensions
+} from '@fastgpt/global/common/file/constants';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { isHttpUrl } from '@fastgpt/global/common/string/url';
+import { getAxiosContentType } from '@fastgpt/global/common/axios/utils';
 import type {
   ChatItemMiniType,
   UserChatItemFileItemType,
@@ -29,6 +35,7 @@ import {
 import { getFileMaxSize } from '../../common/file/utils';
 import { validateFileUrlDomain } from '../../common/security/fileUrlValidator';
 import { batchRun } from '@fastgpt/global/common/system/utils';
+import { axios, type SafeAxiosRequestConfig } from '../../common/api/axios';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { FileSource } from '../../common/file/read/source';
 import { createExternalHttpFileSource, createS3FileSource } from '../../common/file/read/source';
@@ -46,6 +53,16 @@ export type FileReadContext = {
       }
     | undefined;
   resolveChatFile: (url: string) => UserChatItemFileItemType | undefined;
+  /** 校验并登记动态外链，后续分类和文档读取复用同一运行态结果。 */
+  registerExternalFile?: (file: {
+    url: string;
+    name?: string;
+    type?: ChatFileTypeEnum;
+  }) => Promise<{
+    name: string;
+    type: ChatFileTypeEnum;
+    modelUrl: string;
+  }>;
   getIdentity: (url: string) => string | undefined;
   getSource: (url: string) => Promise<{
     source: FileSource;
@@ -182,14 +199,15 @@ const resolveShortLinkMediaFilesInUserQuery = async (userQuery: UserChatItemValu
  * 将 URL 解析成 ChatBox 文件结构。
  *
  * `urlTypeMap` 用于 workflow 运行态传入显式文件类型；普通聊天/辅助生成场景则按文件名后缀推断。
+ * 对无明确扩展名的外部 HTTP(S) 链接发起轻量 HEAD 请求探测 Content-Type。
  */
-export const parseUrlToChatFileType = ({
+export const parseUrlToChatFileType = async ({
   url,
   urlTypeMap = {}
 }: {
   url: string;
   urlTypeMap?: Record<string, ChatFileTypeEnum>;
-}): UserChatItemFileItemType | undefined => {
+}): Promise<UserChatItemFileItemType | undefined> => {
   if (typeof url !== 'string') return;
 
   if (url.startsWith('data:')) {
@@ -234,26 +252,49 @@ export const parseUrlToChatFileType = ({
 
     const extension = filename?.split('.').pop()?.toLowerCase() || '';
 
-    if (extension && imageFileType.includes(extension)) {
+    if (fileTypeIncludesExtension(imageFileType, `.${extension}`)) {
       return {
         type: ChatFileTypeEnum.image,
         name: filename ? decodeURIComponent(filename) : url,
         url
       };
     }
-    if (extension && audioFileType.includes(extension)) {
+    if (fileTypeIncludesExtension(audioFileType, `.${extension}`)) {
       return {
         type: ChatFileTypeEnum.audio,
         name: filename ? decodeURIComponent(filename) : url,
         url
       };
     }
-    if (extension && videoFileType.includes(extension)) {
+    if (fileTypeIncludesExtension(videoFileType, `.${extension}`)) {
       return {
         type: ChatFileTypeEnum.video,
         name: filename ? decodeURIComponent(filename) : url,
         url
       };
+    }
+
+    // 已知文档和多模态后缀无需探测；只有未知类型才请求响应头。
+    const isDocument = documentFileExtensions.some((item) => item === `.${extension}`);
+    if (!isDocument && isHttpUrl(url) && validateFileUrlDomain(url)) {
+      try {
+        const requestConfig: SafeAxiosRequestConfig = {
+          timeout: 3000,
+          __safeAxios: { validateUrl: validateFileUrlDomain }
+        };
+        const res = await axios.head(url, requestConfig);
+        const contentType = getAxiosContentType(res.headers?.['content-type']);
+        const detectedType = resolveMediaChatFileTypeFromContentType(contentType);
+        if (detectedType) {
+          return {
+            type: detectedType,
+            name: filename ? decodeURIComponent(filename) : url,
+            url
+          };
+        }
+      } catch {
+        // 探测失败或超时，降级为普通文件
+      }
     }
 
     return {
@@ -425,13 +466,13 @@ export const rewriteChatMessagesWithFileContext = async ({
 };
 
 /** 将已授权引用或绝对 HTTP(S) URL 归一化为可解析的文档 URL。 */
-export const normalizeReadableFileUrl = ({
+export const normalizeReadableFileUrl = async ({
   url,
   fileContext
 }: {
   url?: string;
   fileContext?: FileReadContext;
-}) => {
+}): Promise<string> => {
   if (typeof url !== 'string') return '';
 
   const normalizedUrl = url.trim();
@@ -443,7 +484,13 @@ export const normalizeReadableFileUrl = ({
   }
 
   if (!isHttpUrl(normalizedUrl)) return '';
-  if (parseUrlToChatFileType({ url: normalizedUrl })?.type !== ChatFileTypeEnum.file) {
+  if (fileContext?.registerExternalFile) {
+    const ref = await fileContext.registerExternalFile({ url: normalizedUrl });
+    return ref.type === ChatFileTypeEnum.file ? ref.modelUrl : '';
+  }
+
+  const parsedFile = await parseUrlToChatFileType({ url: normalizedUrl });
+  if (parsedFile?.type !== ChatFileTypeEnum.file) {
     return '';
   }
 
@@ -718,10 +765,14 @@ export const parseFileContentFromUrls = async ({
     content: string;
   }[]
 > => {
-  const parseUrlList = urls
-    .map((url) => normalizeReadableFileUrl({ url, fileContext }))
-    .filter(Boolean)
-    .slice(0, maxFiles);
+  // 数量上限同时约束探测和正文读取，超限文件不产生任何网络请求。
+  const candidateUrls = Array.from(new Set(urls)).slice(0, Math.max(0, maxFiles));
+  const normalizedUrls = await batchRun(
+    candidateUrls,
+    (url) => normalizeReadableFileUrl({ url, fileContext }),
+    5
+  );
+  const parseUrlList = normalizedUrls.filter(Boolean);
 
   const readFilesResult = await batchRun(
     parseUrlList,

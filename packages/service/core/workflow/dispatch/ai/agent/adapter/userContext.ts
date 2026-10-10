@@ -90,10 +90,10 @@ export type UseUserContextResult = {
   getCurrentMessages: (params?: {
     skillInfos?: DeployedSkillInfo[];
     currentWorkingDirectory?: string;
-  }) => {
+  }) => Promise<{
     rewrittenHistories: ChatItemMiniType[];
     currentUserMessage: ChatItemMiniType;
-  };
+  }>;
 };
 
 /**
@@ -134,13 +134,15 @@ export const useUserContext = async ({
 }): Promise<UseUserContextResult> => {
   const chatHistories = getAgentLoopHistories(history, histories);
 
-  const rewrittenHistories = chatHistories.map(
-    (message) =>
-      rewriteWorkflowAIHistoryMessageWithFiles({
+  const rewrittenHistories = await Promise.all(
+    chatHistories.map(async (message) => {
+      const res = await rewriteWorkflowAIHistoryMessageWithFiles({
         message,
         maxFileAmount,
         parseHistoryFiles
-      }).message
+      });
+      return res.message;
+    })
   );
 
   // 获取本轮的文件输入
@@ -155,7 +157,7 @@ export const useUserContext = async ({
       files: queryFiles
     })
   };
-  const currentInputFiles = buildWorkflowAICurrentInputFiles({
+  const currentInputFiles = await buildWorkflowAICurrentInputFiles({
     currentFiles,
     currentQuery,
     maxFileAmount
@@ -173,9 +175,9 @@ export const useUserContext = async ({
     chatHistories,
     currentFiles: currentInputFiles,
     queryInput,
-    getCurrentMessages: ({ skillInfos, currentWorkingDirectory } = {}) => {
+    getCurrentMessages: async ({ skillInfos, currentWorkingDirectory } = {}) => {
       // 当前 Human 才注入 sandbox、skill、知识库和当前时间，历史只保留稳定文件上下文。
-      const { message: currentUserMessage } = rewriteWorkflowAIUserMessageWithFiles({
+      const { message: currentUserMessage } = await rewriteWorkflowAIUserMessageWithFiles({
         message: currentMessage,
         maxFileAmount,
         files: currentInputFiles,

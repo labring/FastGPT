@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import {
   parseUrlToFileType,
   runWithContext,
@@ -13,7 +13,7 @@ const createWorkflowContext = () => ({
 
 describe('WorkflowContext', () => {
   describe('runWithContext / getWorkflowContext', () => {
-    it('should provide context inside callback', () => {
+    it('should provide context inside callback', async () => {
       const ctx = createWorkflowContext();
 
       runWithContext(ctx, () => {
@@ -22,11 +22,11 @@ describe('WorkflowContext', () => {
       });
     });
 
-    it('should return undefined outside of context', () => {
+    it('should return undefined outside of context', async () => {
       expect(getWorkflowContext()).toBeUndefined();
     });
 
-    it('should isolate nested contexts', () => {
+    it('should isolate nested contexts', async () => {
       const outer = createWorkflowContext();
       const inner = createWorkflowContext();
 
@@ -56,7 +56,7 @@ describe('WorkflowContext', () => {
   });
 
   describe('updateWorkflowContextVal', () => {
-    it('should update existing context values', () => {
+    it('should update existing context values', async () => {
       const ctx = createWorkflowContext();
       const mcpClientMemory = {};
 
@@ -68,14 +68,14 @@ describe('WorkflowContext', () => {
       });
     });
 
-    it('should do nothing when called outside context', () => {
+    it('should do nothing when called outside context', async () => {
       // Should not throw
       expect(() => {
         updateWorkflowContextVal({});
       }).not.toThrow();
     });
 
-    it('should support partial updates', () => {
+    it('should support partial updates', async () => {
       const ctx = createWorkflowContext();
 
       runWithContext(ctx, () => {
@@ -89,9 +89,9 @@ describe('WorkflowContext', () => {
 
 describe('parseUrlToFileType', () => {
   describe('base64 images', () => {
-    it('should parse base64 PNG image', () => {
+    it('should parse base64 PNG image', async () => {
       const url = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toEqual({
         type: ChatFileTypeEnum.image,
@@ -100,9 +100,9 @@ describe('parseUrlToFileType', () => {
       });
     });
 
-    it('should parse base64 JPEG image', () => {
+    it('should parse base64 JPEG image', async () => {
       const url = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toEqual({
         type: ChatFileTypeEnum.image,
@@ -111,9 +111,9 @@ describe('parseUrlToFileType', () => {
       });
     });
 
-    it('should parse base64 GIF image', () => {
+    it('should parse base64 GIF image', async () => {
       const url = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toEqual({
         type: ChatFileTypeEnum.image,
@@ -122,10 +122,10 @@ describe('parseUrlToFileType', () => {
       });
     });
 
-    it('should parse base64 WebP image', () => {
+    it('should parse base64 WebP image', async () => {
       const url =
         'data:image/webp;base64,UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAwA0JaQAA3AA/vuUAAA=';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toEqual({
         type: ChatFileTypeEnum.image,
@@ -134,9 +134,9 @@ describe('parseUrlToFileType', () => {
       });
     });
 
-    it('should handle base64 with uppercase MIME type', () => {
+    it('should handle base64 with uppercase MIME type', async () => {
       const url = 'data:IMAGE/PNG;base64,ABC123';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toEqual({
         type: ChatFileTypeEnum.image,
@@ -145,25 +145,25 @@ describe('parseUrlToFileType', () => {
       });
     });
 
-    it('should return undefined for non-image base64', () => {
+    it('should return undefined for non-image base64', async () => {
       const url = 'data:application/pdf;base64,JVBERi0xLjQK';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toBeUndefined();
     });
 
-    it('should return undefined for malformed base64 data URL', () => {
+    it('should return undefined for malformed base64 data URL', async () => {
       const url = 'data:invalid';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toBeUndefined();
     });
   });
 
   describe('S3 Object Key URLs', () => {
-    it('should parse S3 chat image URL', () => {
+    it('should parse S3 chat image URL', async () => {
       const url = 'chat/image.png';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toEqual({
         type: ChatFileTypeEnum.image,
@@ -172,9 +172,9 @@ describe('parseUrlToFileType', () => {
       });
     });
 
-    it('should parse S3 chat file URL', () => {
+    it('should parse S3 chat file URL', async () => {
       const url = 'chat/document.pdf';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toEqual({
         type: ChatFileTypeEnum.file,
@@ -183,9 +183,9 @@ describe('parseUrlToFileType', () => {
       });
     });
 
-    it('should parse S3 nested path', () => {
+    it('should parse S3 nested path', async () => {
       const url = 'chat/subfolder/image.jpg';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toEqual({
         type: ChatFileTypeEnum.image,
@@ -196,9 +196,9 @@ describe('parseUrlToFileType', () => {
   });
 
   describe('HTTP/HTTPS URLs', () => {
-    it('should parse HTTP image URL with extension', () => {
+    it('should parse HTTP image URL with extension', async () => {
       const url = 'http://example.com/images/photo.jpg';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toEqual({
         type: ChatFileTypeEnum.image,
@@ -207,9 +207,9 @@ describe('parseUrlToFileType', () => {
       });
     });
 
-    it('should parse HTTPS image URL with extension', () => {
+    it('should parse HTTPS image URL with extension', async () => {
       const url = 'https://cdn.example.com/image.png';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toEqual({
         type: ChatFileTypeEnum.image,
@@ -218,9 +218,9 @@ describe('parseUrlToFileType', () => {
       });
     });
 
-    it('should parse URL with filename query parameter', () => {
+    it('should parse URL with filename query parameter', async () => {
       const url = 'https://example.com/download?filename=photo.jpg&token=abc';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toEqual({
         type: ChatFileTypeEnum.image,
@@ -229,9 +229,9 @@ describe('parseUrlToFileType', () => {
       });
     });
 
-    it('should parse URL without extension as file', () => {
+    it('should parse URL without extension as file', async () => {
       const url = 'https://example.com/download/file';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toEqual({
         type: ChatFileTypeEnum.file,
@@ -240,9 +240,50 @@ describe('parseUrlToFileType', () => {
       });
     });
 
-    it('should handle URL with no filename', () => {
+    it('should detect image type for extensionless URL via axios.head', async () => {
+      const url = 'https://example.com/avatar/user123';
+      const axiosModule = await import('../../../../common/api/axios');
+      const headSpy = vi.spyOn(axiosModule.axios, 'head').mockResolvedValueOnce({
+        headers: { 'content-type': 'image/png' }
+      } as any);
+
+      const result = await parseUrlToFileType(url);
+
+      expect(headSpy).toHaveBeenCalledWith(
+        url,
+        expect.objectContaining({
+          timeout: 3000,
+          __safeAxios: { validateUrl: expect.any(Function) }
+        })
+      );
+      expect(result).toEqual({
+        type: ChatFileTypeEnum.image,
+        name: url,
+        url
+      });
+      headSpy.mockRestore();
+    });
+
+    it('should fall back to file when axios.head fails or times out', async () => {
+      const url = 'https://example.com/dynamic/unknown';
+      const axiosModule = await import('../../../../common/api/axios');
+      const headSpy = vi
+        .spyOn(axiosModule.axios, 'head')
+        .mockRejectedValueOnce(new Error('timeout'));
+
+      const result = await parseUrlToFileType(url);
+
+      expect(result).toEqual({
+        type: ChatFileTypeEnum.file,
+        name: url,
+        url
+      });
+      headSpy.mockRestore();
+    });
+
+    it('should handle URL with no filename', async () => {
       const url = 'https://example.com/';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toEqual({
         type: ChatFileTypeEnum.file,
@@ -251,9 +292,9 @@ describe('parseUrlToFileType', () => {
       });
     });
 
-    it('should handle URL with empty filename', () => {
+    it('should handle URL with empty filename', async () => {
       const url = 'https://example.com/path/';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toEqual({
         type: ChatFileTypeEnum.file,
@@ -262,9 +303,9 @@ describe('parseUrlToFileType', () => {
       });
     });
 
-    it('should parse document file URL', () => {
+    it('should parse document file URL', async () => {
       const url = 'https://example.com/document.pdf';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toEqual({
         type: ChatFileTypeEnum.file,
@@ -289,17 +330,17 @@ describe('parseUrlToFileType', () => {
     ];
 
     imageExtensions.forEach((ext) => {
-      it(`should detect .${ext} as image type`, () => {
+      it(`should detect .${ext} as image type`, async () => {
         const url = `https://example.com/file.${ext}`;
-        const result = parseUrlToFileType(url);
+        const result = await parseUrlToFileType(url);
 
         expect(result?.type).toBe(ChatFileTypeEnum.image);
         expect(result?.name).toBe(`file.${ext}`);
       });
 
-      it(`should detect .${ext.toUpperCase()} as image type (case insensitive)`, () => {
+      it(`should detect .${ext.toUpperCase()} as image type (case insensitive)`, async () => {
         const url = `https://example.com/file.${ext.toUpperCase()}`;
-        const result = parseUrlToFileType(url);
+        const result = await parseUrlToFileType(url);
 
         expect(result?.type).toBe(ChatFileTypeEnum.image);
       });
@@ -307,30 +348,30 @@ describe('parseUrlToFileType', () => {
   });
 
   describe('edge cases', () => {
-    it('should return undefined for non-string input', () => {
+    it('should return undefined for non-string input', async () => {
       // @ts-expect-error testing runtime behavior
-      const result = parseUrlToFileType(123);
+      const result = await parseUrlToFileType(123);
 
       expect(result).toBeUndefined();
     });
 
-    it('should return undefined for null', () => {
+    it('should return undefined for null', async () => {
       // @ts-expect-error testing runtime behavior
-      const result = parseUrlToFileType(null);
+      const result = await parseUrlToFileType(null);
 
       expect(result).toBeUndefined();
     });
 
-    it('should return undefined for undefined', () => {
+    it('should return undefined for undefined', async () => {
       // @ts-expect-error testing runtime behavior
-      const result = parseUrlToFileType(undefined);
+      const result = await parseUrlToFileType(undefined);
 
       expect(result).toBeUndefined();
     });
 
-    it('should handle malformed URL', () => {
+    it('should handle malformed URL', async () => {
       const url = 'not-a-valid-url';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toEqual({
         type: ChatFileTypeEnum.file,
@@ -339,9 +380,9 @@ describe('parseUrlToFileType', () => {
       });
     });
 
-    it('should fall back when decodeURIComponent throws', () => {
+    it('should fall back when decodeURIComponent throws', async () => {
       const url = 'https://example.com/download?filename=%E0%A4%A';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toEqual({
         type: ChatFileTypeEnum.file,
@@ -350,17 +391,17 @@ describe('parseUrlToFileType', () => {
       });
     });
 
-    it('should handle URL with special characters in filename', () => {
+    it('should handle URL with special characters in filename', async () => {
       const url = 'https://example.com/file%20name.jpg';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result?.type).toBe(ChatFileTypeEnum.image);
       expect(result?.name).toBe('file name.jpg');
     });
 
-    it('should detect audio URL by extension', () => {
+    it('should detect audio URL by extension', async () => {
       const url = 'https://example.com/chat-audio.mp3';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toEqual({
         type: ChatFileTypeEnum.audio,
@@ -369,9 +410,9 @@ describe('parseUrlToFileType', () => {
       });
     });
 
-    it('should detect video URL by extension', () => {
+    it('should detect video URL by extension', async () => {
       const url = 'https://example.com/chat-video.mp4';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toEqual({
         type: ChatFileTypeEnum.video,
@@ -380,9 +421,9 @@ describe('parseUrlToFileType', () => {
       });
     });
 
-    it('should handle URL with multiple dots in filename', () => {
+    it('should handle URL with multiple dots in filename', async () => {
       const url = 'https://example.com/my.file.name.png';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toEqual({
         type: ChatFileTypeEnum.image,
@@ -391,17 +432,17 @@ describe('parseUrlToFileType', () => {
       });
     });
 
-    it('should handle URL with query parameters and hash', () => {
+    it('should handle URL with query parameters and hash', async () => {
       const url = 'https://example.com/image.jpg?size=large&quality=high#section';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result?.type).toBe(ChatFileTypeEnum.image);
       expect(result?.name).toBe('image.jpg');
     });
 
-    it('should handle relative URL paths', () => {
+    it('should handle relative URL paths', async () => {
       const url = '/static/images/logo.png';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toEqual({
         type: ChatFileTypeEnum.image,
@@ -410,9 +451,9 @@ describe('parseUrlToFileType', () => {
       });
     });
 
-    it('should handle filename with no extension', () => {
+    it('should handle filename with no extension', async () => {
       const url = 'https://example.com/download/myfile';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result).toEqual({
         type: ChatFileTypeEnum.file,
@@ -423,29 +464,29 @@ describe('parseUrlToFileType', () => {
   });
 
   describe('filename extraction priority', () => {
-    it('should prefer filename query parameter over pathname', () => {
+    it('should prefer filename query parameter over pathname', async () => {
       const url = 'https://example.com/download/abc123?filename=document.pdf';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result?.name).toBe('document.pdf');
     });
 
-    it('should use pathname when filename parameter is missing', () => {
+    it('should use pathname when filename parameter is missing', async () => {
       const url = 'https://example.com/files/report.xlsx';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       expect(result?.name).toBe('report.xlsx');
     });
 
-    it('should handle empty filename parameter', () => {
+    it('should handle empty filename parameter', async () => {
       const url = 'https://example.com/download?filename=';
-      const result = parseUrlToFileType(url);
+      const result = await parseUrlToFileType(url);
 
       // Empty filename parameter should fall back to pathname
       expect(result?.name).toBeDefined();
     });
   });
-  it('should handle URL parsing for various sources', () => {
+  it('should handle URL parsing for various sources', async () => {
     const urls = [
       'data:image/png;base64,ABC123',
       'chat/image.jpg',
@@ -453,10 +494,19 @@ describe('parseUrlToFileType', () => {
       'http://example.com/download?filename=file.gif'
     ];
 
-    urls.forEach((url) => {
-      const result = parseUrlToFileType(url);
+    for (const url of urls) {
+      const result = await parseUrlToFileType(url);
       expect(result).toBeDefined();
       expect(result?.url).toBe(url);
-    });
+    }
   });
 });
+
+// 分类测试隔离外部服务，避免无后缀样例发出真实网络请求。
+beforeEach(async () => {
+  const { axios } = await import('@fastgpt/service/common/api/axios');
+  vi.spyOn(axios, 'head').mockResolvedValue({
+    headers: { 'content-type': 'application/octet-stream' }
+  } as any);
+});
+afterEach(() => vi.restoreAllMocks());
