@@ -99,8 +99,6 @@ export const saveWorkflowLocalDraft = ({
   tmbId: string;
   data: WorkflowLocalDraft['data'];
 }) => {
-  removeWorkflowLocalDraftByApp({ appId });
-
   if (!isBrowser() || !appId || !tmbId || data.nodes.length === 0) {
     return false;
   }

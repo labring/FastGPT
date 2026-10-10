@@ -32,7 +32,7 @@ import { getEditorVariables } from '../../../utils';
 import { extractCodeFromMarkdown } from './parser';
 import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
 import { useNodeWorkflowDocument } from '../render/useWorkflowDocument';
-import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 export type OnOptimizeCodeProps = {
@@ -58,7 +58,8 @@ const NodeCopilot = ({
   const { toast } = useToast();
   // 变量列表只读本节点与其上游来源闭包：窄订阅让无关字段的提交不重算也不重渲染。
   const { workflow, getNodeById, graph } = useNodeWorkflowDocument({ nodeId });
-  const node = useNode(nodeId);
+  const nodeData = useNode(nodeId, (node) => node?.data);
+  const nodeActions = useNodeActions(nodeId);
   // 边集合只在应用生成代码的回调里读，走非订阅 getter：点击时取当前值，组件不订阅结构变更。
   const { getEdges } = useWorkflowActions();
 
@@ -208,8 +209,8 @@ const NodeCopilot = ({
     try {
       const extractedResult = extractCodeFromMarkdown(codeResult);
       const { code, inputs, outputs } = extractedResult;
-      const documentInputs = node?.data.inputs;
-      const documentOutputs = node?.data.outputs;
+      const documentInputs = nodeData?.inputs;
+      const documentOutputs = nodeData?.outputs;
       if (!documentInputs || !documentOutputs) return;
 
       // 动态入参整体重建：先剔除旧的动态入参，再按生成结果追加，保留固定字段的位置。
@@ -286,7 +287,9 @@ const NodeCopilot = ({
         )
         .sort((a, b) => b.index - a.index);
 
-      node?.updateNode(() => ({ inputs: nextInputs, outputs: nextOutputs }), { disconnectEdges });
+      nodeActions?.updateNode(() => ({ inputs: nextInputs, outputs: nextOutputs }), {
+        disconnectEdges
+      });
       setOptimizerInput('');
 
       toast({

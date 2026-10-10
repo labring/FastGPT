@@ -1,11 +1,16 @@
-import {
+import React, {
   type Dispatch,
+  type MutableRefObject,
   type ReactNode,
   type SetStateAction,
   useCallback,
+  useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState
 } from 'react';
+import { useMemoizedFn } from 'ahooks';
 import { createContext } from 'use-context-selector';
 import { defaultApp } from '@/web/core/app/constants';
 import { delAppById, getAppDetailById, putAppById } from '@/web/core/app/api';
@@ -26,8 +31,10 @@ import { AppTypeList } from '@fastgpt/global/core/app/constants';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { hasDebugToolInNodes } from '@fastgpt/global/core/app/tool/utils';
 import { ToastHandledError } from '@fastgpt/global/common/error/utils';
+import type { WorkflowSaveRequest } from '@/web/core/workflow/editor/session/workflowPersistence';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
+const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 export enum TabEnum {
   'appEdit' = 'appEdit',
@@ -45,7 +52,7 @@ type AppContextType = {
   updateAppDetail: (data: UpdateAppBodyType) => Promise<void>;
   onOpenInfoEdit: () => void;
   onDelApp: () => void;
-  onSaveApp: (data: PostPublishAppProps) => Promise<void>;
+  onSaveApp: AppSaveHandler;
   appLatestVersion:
     | {
         nodes: StoreNodeItemType[];
@@ -57,18 +64,73 @@ type AppContextType = {
   reloadApp: () => void;
 };
 
+type SaveAppParams = {
+  data: PostPublishAppProps;
+  request?: WorkflowSaveRequest;
+  saveToken: number;
+};
+
+type QueuedSaveApp = SaveAppParams & {
+  appId: string;
+  resolve: (saved: boolean) => void;
+  reject: (error: unknown) => void;
+};
+
+/** 保存单飞：在飞请求结束后只启动当前 pending，旧 pending 立即返回 false。 */
+const runQueuedSave = ({
+  save,
+  saveApp,
+  currentAppIdRef,
+  saveInFlightRef,
+  pendingSaveRef
+}: {
+  save: QueuedSaveApp;
+  saveApp: (params: SaveAppParams) => Promise<boolean>;
+  currentAppIdRef: MutableRefObject<string>;
+  saveInFlightRef: MutableRefObject<boolean>;
+  pendingSaveRef: MutableRefObject<QueuedSaveApp | undefined>;
+}) => {
+  saveInFlightRef.current = true;
+  let savePromise: Promise<boolean>;
+  try {
+    savePromise = save.appId === currentAppIdRef.current ? saveApp(save) : Promise.resolve(false);
+  } catch (error) {
+    savePromise = Promise.reject(error);
+  }
+
+  void savePromise.then(save.resolve, save.reject).finally(() => {
+    saveInFlightRef.current = false;
+    const nextSave = pendingSaveRef.current;
+    pendingSaveRef.current = undefined;
+    if (nextSave) {
+      runQueuedSave({
+        save: nextSave,
+        saveApp,
+        currentAppIdRef,
+        saveInFlightRef,
+        pendingSaveRef
+      });
+    }
+  });
+};
+
+export type AppSaveHandler = (
+  data: PostPublishAppProps,
+  request?: WorkflowSaveRequest
+) => Promise<boolean>;
+
 export const AppContext = createContext<AppContextType>({
   appId: '',
   currentTab: TabEnum.appEdit,
-  route2Tab: function (currentTab: TabEnum): void {
+  route2Tab: function (_currentTab: TabEnum): void {
     throw new Error('Function not implemented.');
   },
   appDetail: defaultApp,
   loadingApp: false,
-  updateAppDetail: function (data: UpdateAppBodyType): Promise<void> {
+  updateAppDetail: function (_data: UpdateAppBodyType): Promise<void> {
     throw new Error('Function not implemented.');
   },
-  setAppDetail: function (value: SetStateAction<AppDetailType>): void {
+  setAppDetail: function (_value: SetStateAction<AppDetailType>): void {
     throw new Error('Function not implemented.');
   },
   onOpenInfoEdit: function (): void {
@@ -77,7 +139,7 @@ export const AppContext = createContext<AppContextType>({
   onDelApp: function (): void {
     throw new Error('Function not implemented.');
   },
-  onSaveApp: function (data: PostPublishAppProps): Promise<void> {
+  onSaveApp: (_data: PostPublishAppProps, _request?: WorkflowSaveRequest) => {
     throw new Error('Function not implemented.');
   },
   appLatestVersion: undefined,
@@ -97,6 +159,32 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     appId: string;
     currentTab: TabEnum;
   };
+  const currentAppIdRef = useRef(appId);
+  const saveTokenRef = useRef(0);
+  const latestSaveRequestRef = useRef<WorkflowSaveRequest>();
+  const saveInFlightRef = useRef(false);
+  const pendingSaveRef = useRef<QueuedSaveApp>();
+
+  // layout effect 在客户端提交后立即切换身份，旧 app 响应无法穿过该窗口回写。
+  useBrowserLayoutEffect(() => {
+    const previousAppId = currentAppIdRef.current;
+    currentAppIdRef.current = appId;
+    if (previousAppId === appId) return;
+
+    saveTokenRef.current += 1;
+    latestSaveRequestRef.current = undefined;
+    pendingSaveRef.current?.resolve(false);
+    pendingSaveRef.current = undefined;
+  }, [appId]);
+
+  useEffect(() => {
+    return () => {
+      saveTokenRef.current += 1;
+      latestSaveRequestRef.current = undefined;
+      pendingSaveRef.current?.resolve(false);
+      pendingSaveRef.current = undefined;
+    };
+  }, []);
 
   const {
     isOpen: isOpenInfoEdit,
@@ -127,7 +215,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       manual: false,
       refreshDeps: [appId],
       errorToast: t('common:core.app.error.Get app failed'),
-      onError(err: any) {
+      onError(_err: any) {
         router.replace('/dashboard/agent');
       },
       onSuccess(res) {
@@ -155,10 +243,17 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     }));
   });
 
-  const { runAsync: onSaveApp } = useRequest(
-    async (data: PostPublishAppProps) => {
+  const { runAsync: saveApp } = useRequest(
+    async ({ data, request, saveToken }: SaveAppParams) => {
+      const isCurrentSave = () =>
+        saveToken === saveTokenRef.current &&
+        currentAppIdRef.current === appId &&
+        (!request || latestSaveRequestRef.current === request);
+
+      if (request && request.appId !== appId) return false;
+      if (!appDetail.permission.hasWritePer) return false;
+
       try {
-        if (!appDetail.permission.hasWritePer) return;
         if (data.isPublish && hasDebugToolInNodes(data.nodes)) {
           toast({
             title: t('app:publish_remove_debug_tool_tip'),
@@ -167,15 +262,19 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
           return Promise.reject(new ToastHandledError('Debug tool cannot be published'));
         }
         await postPublishApp(appId, data);
+        if (!isCurrentSave()) return false;
         setAppDetail((state) => ({
           ...state,
           ...data,
           modules: data.nodes || state.modules
         }));
         reloadAppLatestVersion();
+        return true;
       } catch (error: any) {
-        if (error.statusText == AppErrEnum.unExist) {
-          return;
+        if (!isCurrentSave()) return false;
+        if (error.statusText === AppErrEnum.unExist) {
+          router.replace('/dashboard/agent');
+          return false;
         }
         return Promise.reject(error);
       }
@@ -186,6 +285,31 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       errorToast: '',
       refreshDeps: [appDetail.permission.hasWritePer, appId]
     }
+  );
+
+  const saveAppFn = useMemoizedFn(saveApp);
+
+  const onSaveApp = useCallback(
+    (data: PostPublishAppProps, request?: WorkflowSaveRequest) => {
+      const saveToken = ++saveTokenRef.current;
+      latestSaveRequestRef.current = request;
+      return new Promise<boolean>((resolve, reject) => {
+        const save = { appId, data, request, saveToken, resolve, reject };
+        if (saveInFlightRef.current) {
+          pendingSaveRef.current?.resolve(false);
+          pendingSaveRef.current = save;
+          return;
+        }
+        runQueuedSave({
+          save,
+          saveApp: saveAppFn,
+          currentAppIdRef,
+          saveInFlightRef,
+          pendingSaveRef
+        });
+      });
+    },
+    [appId, saveAppFn]
   );
 
   const isAgent = AppTypeList.includes(appDetail.type);

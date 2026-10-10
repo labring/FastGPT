@@ -9,7 +9,7 @@ export const WorkflowFieldScope = ({
   kind = 'input',
   children
 }: WorkflowFieldQuery & { children: ReactNode }) => {
-  const field = useField({ nodeId, fieldKey, kind });
+  const references = useField({ nodeId, fieldKey, kind }, (field) => field?.reference);
 
-  return <WorkflowReferenceScope references={field?.reference}>{children}</WorkflowReferenceScope>;
+  return <WorkflowReferenceScope references={references}>{children}</WorkflowReferenceScope>;
 };

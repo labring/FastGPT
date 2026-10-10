@@ -3,8 +3,20 @@ import { omit } from 'lodash-es';
 import type { Node } from 'reactflow';
 import { StoreNodeItemTypeSchema } from '@fastgpt/global/core/workflow/type/node';
 import type { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { DeepReadonly } from '@fastgpt/global/core/workflow/editor/types';
 
-export type CanvasNode = Node<FlowNodeItemType, string | undefined>;
+export type ViewDataKey = 'debugResult' | 'searchedText' | 'courseUrl' | 'readmeUrl' | 'userGuide';
+
+/** ReactFlow 投影数据：节点字段与问题、输入输出值由 scoped reader 提供。 */
+export type CanvasNodeData = DeepReadonly<
+  Omit<FlowNodeItemType, 'inputs' | 'outputs' | 'catchError' | 'issues'>
+>;
+
+export type CanvasNode = Node<CanvasNodeData, string | undefined> & {
+  measured?: { width: number; height: number };
+};
+
+export type ViewOverlayData = Pick<CanvasNodeData, ViewDataKey>;
 
 /**
  * 只属于画布视图的数据字段：不进文档，由 host overlay 持有并在投影时合并。
@@ -12,12 +24,11 @@ export type CanvasNode = Node<FlowNodeItemType, string | undefined>;
  * 归入视图字段避免 updateNode 时被 store schema 丢弃。
  * isError 不在此列：标红焦点由 host 持有、投影时合并；问题文案由节点组件读 Runtime snapshot。
  */
-export type ViewDataKey = 'debugResult' | 'searchedText' | 'courseUrl' | 'readmeUrl' | 'userGuide';
 
 /** 单个节点的视图 overlay 变更。 */
 export type ViewOverlayPatch = {
   nodeId: string;
-  values: Partial<Record<ViewDataKey, unknown>>;
+  values: Partial<ViewOverlayData>;
 };
 
 /** 画布节点 -> 严格 store 节点：剥离视图字段与模板专用字段，保留 position/isFolded。 */

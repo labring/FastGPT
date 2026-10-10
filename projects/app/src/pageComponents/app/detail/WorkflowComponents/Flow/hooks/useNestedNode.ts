@@ -11,8 +11,8 @@ import { type ReferenceArrayValueType } from '@fastgpt/global/core/workflow/type
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
-import { useNode } from '@/web/core/workflow/editor/react/useNode';
-import { useWorkflowValue } from '@/web/core/workflow/editor/react/useWorkflow';
+import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflow } from '@/web/core/workflow/editor/react/useWorkflow';
 import { useDocumentGetNodeById } from '../nodes/render/useWorkflowDocument';
 import { AppContext } from '../../../context';
 import { useWorkflowCanvasValue } from '../canvas/workflowCanvasContext';
@@ -39,9 +39,9 @@ export const useNestedNode = ({
 }: UseNestedNodeParams): UseNestedNodeResult => {
   // 这里只用到「全量节点 id」与「按 id 查一个节点的 outputs」：
   // id 列表属结构通道（单字段提交不通知），查节点走非订阅 getter，两者都不需要整份语义快照。
-  const structureNodes = useWorkflowValue((structure) => structure.nodes);
+  const structureNodes = useWorkflow((structure) => structure.nodes);
   const getNodeById = useDocumentGetNodeById();
-  const node = useNode(nodeId);
+  const nodeActions = useNodeActions(nodeId);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const containerLayout = useWorkflowCanvasValue((value) => value.containerLayouts.get(nodeId));
   const isMeasurement = useContext(WorkflowNodeOffscreenMeasurementContext);
@@ -81,12 +81,12 @@ export const useNestedNode = ({
   useEffect(() => {
     if (!nestedInputArray || !arrayInputKey || nestedInputArray.valueType === newValueType) return;
     // 记录级替换：基准取派发瞬间的文档 inputs（不是 props 里过滤后的子集），只换命中 key 的那一条。
-    node?.updateNode((current) => ({
+    nodeActions?.updateNode((current) => ({
       inputs: current.inputs.map((input) =>
         input.key === arrayInputKey ? { ...input, valueType: newValueType } : input
       )
     }));
-  }, [nestedInputArray, newValueType, node, arrayInputKey]);
+  }, [nestedInputArray, newValueType, nodeActions, arrayInputKey]);
 
   // 容器子区域只消费 renderer 派生尺寸；离屏测量跳过该尺寸，才能得到可收缩的自身内容基线。
   const inputBoxRef = useRef<HTMLDivElement>(null);

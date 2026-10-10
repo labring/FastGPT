@@ -2,7 +2,6 @@
 // Runtime 拥有唯一的 Workflow Document / Node View；派生索引直接读 Runtime 结构快照与
 // 节点视图，画布数组只承载 reactflow 交互状态（拖拽帧、测量尺寸、层级）。
 // 结构、几何与边写入由调用点直接使用 editor adapter 提交。
-import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import { createContext, useContextSelector } from 'use-context-selector';
 
@@ -11,7 +10,6 @@ import React, { type ReactNode, useEffect, useMemo, useRef, useState } from 'rea
 import {
   type Edge,
   type EdgeChange,
-  type Node,
   type NodeChange,
   applyEdgeChanges as applyReactFlowEdgeChanges,
   applyNodeChanges as applyReactFlowNodeChanges,
@@ -28,7 +26,7 @@ import {
   createProjectionCache,
   projectRuntimeCanvas
 } from '@/web/core/workflow/editor/canvas/projectWorkflowCanvas';
-import type { CanvasNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
+import type { CanvasNode, CanvasNodeData } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import {
   classifyRenderableGraph,
   createMeasurementQueue,
@@ -54,15 +52,11 @@ import { getNodeShellHandleModel } from '../utils/nodeHandle';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
+type WorkflowRenderMode = 'full' | 'shell' | 'measurement';
+
 // region publicApi Canvas selector contract
 
 type WorkflowCanvasContextType = {
-  nodes: Node<FlowNodeItemType, string | undefined>[];
-  renderedNodes: Node<FlowNodeItemType, string | undefined>[];
-  replaceNodes: (nodes: CanvasNode[]) => void;
-  applyNodeChanges: OnChange<NodeChange>;
-  selectNodes: (nodeIds: readonly string[]) => void;
-  getNodes: () => Node<FlowNodeItemType, string | undefined>[];
   fitNodes: (nodeIds?: readonly string[], options?: ViewportFitOptions) => boolean;
   nodeDimensions: ReadonlyMap<string, NodeDimensions>;
   containerLayouts: ReadonlyMap<string, ParentNodeLayout>;
@@ -73,27 +67,8 @@ type WorkflowCanvasContextType = {
   unpinNodeFocus: (nodeId: string) => void;
   renderModes: ReadonlyMap<string, WorkflowRenderMode>;
   measurementNodeIds: readonly string[];
-  onViewportChange: (viewport: CanvasViewport) => void;
-  edges: Edge<any>[];
-  renderedEdges: Edge<any>[];
-  replaceEdges: (edges: Edge<any>[]) => void;
-  applyEdgeChanges: OnChange<EdgeChange>;
 };
 const WorkflowCanvasContext = createContext<WorkflowCanvasContextType>({
-  nodes: [],
-  renderedNodes: [],
-  replaceNodes: function () {
-    throw new Error('Function not implemented.');
-  },
-  applyNodeChanges: function () {
-    throw new Error('Function not implemented.');
-  },
-  selectNodes: function () {
-    throw new Error('Function not implemented.');
-  },
-  getNodes: function () {
-    throw new Error('Function not implemented.');
-  },
   fitNodes: function () {
     throw new Error('Function not implemented.');
   },
@@ -115,8 +90,40 @@ const WorkflowCanvasContext = createContext<WorkflowCanvasContextType>({
     throw new Error('Function not implemented.');
   },
   renderModes: new Map(),
-  measurementNodeIds: [],
-  onViewportChange: function () {
+  measurementNodeIds: []
+});
+
+export const useWorkflowCanvasValue = <T,>(selector: (value: WorkflowCanvasContextType) => T): T =>
+  useContextSelector(WorkflowCanvasContext, selector);
+
+/** ReactFlow 本地数组与 change handler，只供 Canvas renderer / interaction 使用。 */
+type WorkflowCanvasRendererContextType = {
+  nodes: CanvasNode[];
+  renderedNodes: CanvasNode[];
+  replaceNodes: (nodes: CanvasNode[]) => void;
+  applyNodeChanges: OnChange<NodeChange>;
+  selectNodes: (nodeIds: readonly string[]) => void;
+  getNodes: () => CanvasNode[];
+  edges: Edge<any>[];
+  renderedEdges: Edge<any>[];
+  replaceEdges: (edges: Edge<any>[]) => void;
+  applyEdgeChanges: OnChange<EdgeChange>;
+  onViewportChange: (viewport: CanvasViewport) => void;
+};
+
+const WorkflowCanvasRendererContext = createContext<WorkflowCanvasRendererContextType>({
+  nodes: [],
+  renderedNodes: [],
+  replaceNodes: function () {
+    throw new Error('Function not implemented.');
+  },
+  applyNodeChanges: function () {
+    throw new Error('Function not implemented.');
+  },
+  selectNodes: function () {
+    throw new Error('Function not implemented.');
+  },
+  getNodes: function () {
     throw new Error('Function not implemented.');
   },
   edges: [],
@@ -126,11 +133,15 @@ const WorkflowCanvasContext = createContext<WorkflowCanvasContextType>({
   },
   applyEdgeChanges: function () {
     throw new Error('Function not implemented.');
+  },
+  onViewportChange: function () {
+    throw new Error('Function not implemented.');
   }
 });
 
-export const useWorkflowCanvasValue = <T,>(selector: (value: WorkflowCanvasContextType) => T): T =>
-  useContextSelector(WorkflowCanvasContext, selector);
+export const useWorkflowCanvasRendererValue = <T,>(
+  selector: (value: WorkflowCanvasRendererContextType) => T
+): T => useContextSelector(WorkflowCanvasRendererContext, selector);
 
 // endregion
 
@@ -140,8 +151,6 @@ type PendingFitRequest = {
   nodeIds?: readonly string[];
   options?: ViewportFitOptions;
 };
-
-type WorkflowRenderMode = 'full' | 'shell' | 'measurement';
 
 const defaultViewport: CanvasViewport = {
   x: 0,
@@ -227,7 +236,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   const pendingViewportRef = useRef<CanvasViewport>();
   const renderStateFrameRef = useRef<number>();
   const measurementFrameRef = useRef<number>();
-  const nodeMeasurementKeysRef = useRef(new Map<string, { data: FlowNodeItemType; key: string }>());
+  const nodeMeasurementKeysRef = useRef(new Map<string, { data: CanvasNodeData; key: string }>());
   const nodeDataGenerationsRef = useRef(new Map<string, number>());
   const measurementGenerationsRef = useRef(new Map<string, number>());
   const nextMeasurementGenerationRef = useRef(0);
@@ -312,6 +321,9 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     sourceNodes: CanvasNode[],
     dimensions: ReadonlyMap<string, NodeDimensions>
   ) => {
+    // 布局函数只读 Node 的位置与父子字段；语义字段已从 CanvasNodeData 移除，在边界保留只读类型。
+    const toLayoutNodes = (nodes: CanvasNode[]) =>
+      nodes as unknown as Parameters<typeof getParentNodeSizeAndPosition>[0]['nodes'];
     const nodeById = new Map(sourceNodes.map((node) => [node.id, node]));
     const parentIds = new Set(
       sourceNodes
@@ -387,7 +399,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
         previousLayout?.contentOffset?.x === contentOffset?.x &&
         previousLayout?.contentOffset?.y === contentOffset?.y;
       let layout = getParentNodeSizeAndPosition({
-        nodes: nextNodes,
+        nodes: toLayoutNodes(nextNodes),
         parentId,
         getNodeDimension: getDimension,
         previousChildBounds: hasMatchingContentOffset ? previousLayout?.childBounds : undefined,
@@ -403,7 +415,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
         if (children.length > 1) {
           children.forEach((child) => getWritableNode(child.id));
           normalizeContainerChildPositions({
-            nodes: nextNodes,
+            nodes: toLayoutNodes(nextNodes),
             parentId,
             bounds: layout.childBounds,
             targetOrigin: initialChildBounds ?? {
@@ -412,7 +424,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
             }
           });
           layout = getParentNodeSizeAndPosition({
-            nodes: nextNodes,
+            nodes: toLayoutNodes(nextNodes),
             parentId,
             getNodeDimension: getDimension,
             previousChildBounds: undefined,
@@ -541,14 +553,20 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       )
     );
     const nodeById = new Map(nextNodes.map((node) => [node.id, node]));
-    const isDimensionReady = (node: CanvasNode) =>
-      !staleDimensionNodeIdsRef.current.has(node.id) &&
-      hasValidSourceHandleMeasurement({
-        expectedHandleIds: getNodeShellHandleModel(node.data).sourceHandles.map(
+    const isDimensionReady = (node: CanvasNode) => {
+      if (staleDimensionNodeIdsRef.current.has(node.id)) return false;
+
+      // CanvasNode 不再携带语义字段；shell 句柄拓扑按 nodeId 从 Runtime 取 scoped snapshot。
+      const snapshot = runtime?.getNode(node.id);
+      if (!snapshot) return false;
+
+      return hasValidSourceHandleMeasurement({
+        expectedHandleIds: getNodeShellHandleModel(snapshot).sourceHandles.map(
           (handle) => handle.handleId
         ),
         dimension: nodeDimensionsRef.current.get(node.id)
       });
+    };
     const viewportNodes = nextNodes.map((node) => ({
       id: node.id,
       position: node.position,
@@ -745,7 +763,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
 
   /** 仅在影响卡片布局的 data identity 变化时失效尺寸；位置和 overlay 不清空尺寸。 */
   const syncNodeIdentities = (nextNodes: CanvasNode[]) => {
-    const nextKeys = new Map<string, { data: FlowNodeItemType; key: string }>();
+    const nextKeys = new Map<string, { data: CanvasNodeData; key: string }>();
     const invalidated = new Set<string>();
     const isInitialCanvas = !initializedCanvasRef.current;
 
@@ -1055,12 +1073,6 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
 
   const contextValue = useMemo(
     () => ({
-      nodes,
-      renderedNodes,
-      replaceNodes,
-      applyNodeChanges,
-      selectNodes,
-      getNodes,
       fitNodes,
       nodeDimensions,
       containerLayouts,
@@ -1070,12 +1082,35 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       pinNodeFocus,
       unpinNodeFocus,
       renderModes,
-      measurementNodeIds,
-      onViewportChange,
+      measurementNodeIds
+    }),
+    [
+      fitNodes,
+      nodeDimensions,
+      containerLayouts,
+      getNodeDimension,
+      getNodeDimensions,
+      registerNodeMeasurement,
+      pinNodeFocus,
+      unpinNodeFocus,
+      renderModes,
+      measurementNodeIds
+    ]
+  );
+
+  const rendererContextValue = useMemo(
+    () => ({
+      nodes,
+      renderedNodes,
+      replaceNodes,
+      applyNodeChanges,
+      selectNodes,
+      getNodes,
       edges,
       renderedEdges,
       replaceEdges,
-      applyEdgeChanges
+      applyEdgeChanges,
+      onViewportChange
     }),
     [
       nodes,
@@ -1084,26 +1119,20 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       applyNodeChanges,
       selectNodes,
       getNodes,
-      fitNodes,
-      nodeDimensions,
-      containerLayouts,
-      getNodeDimension,
-      getNodeDimensions,
-      registerNodeMeasurement,
-      pinNodeFocus,
-      unpinNodeFocus,
-      renderModes,
-      measurementNodeIds,
-      onViewportChange,
       edges,
       renderedEdges,
       replaceEdges,
-      applyEdgeChanges
+      applyEdgeChanges,
+      onViewportChange
     ]
   );
 
   return (
-    <WorkflowCanvasContext.Provider value={contextValue}>{children}</WorkflowCanvasContext.Provider>
+    <WorkflowCanvasContext.Provider value={contextValue}>
+      <WorkflowCanvasRendererContext.Provider value={rendererContextValue}>
+        {children}
+      </WorkflowCanvasRendererContext.Provider>
+    </WorkflowCanvasContext.Provider>
   );
 
   // endregion

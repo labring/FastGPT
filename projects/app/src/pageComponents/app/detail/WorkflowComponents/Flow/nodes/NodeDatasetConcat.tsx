@@ -7,6 +7,7 @@ import {
   type ReferenceItemValueType
 } from '@fastgpt/global/core/workflow/type/io';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -23,17 +24,23 @@ import RenderInput from './render/RenderInput';
 import { ReferSelector, useReference } from './render/RenderInput/templates/Reference';
 import RenderOutput from './render/RenderOutput';
 import ValueTypeLabel from './render/ValueTypeLabel';
-import { useField } from '@/web/core/workflow/editor/react/useField';
-import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
 const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs } = data;
+  const { nodeId } = data;
+  const { inputs = [], outputs = [] } =
+    useNode<WorkflowNodeData>(nodeId, (node) => node?.data) ?? {};
   const llmMaxQuoteContext = useWorkflowQuoteLimit();
-  const node = useNode(nodeId);
+  const nodeActions = useNodeActions(nodeId);
   // CustomComponent 是被 RenderInput 直接调用的普通函数，字段句柄必须在组件顶层取。
-  const maxTokensField = useField(nodeId, NodeInputKeyEnum.datasetMaxTokens, 'input');
+  const maxTokensField = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.datasetMaxTokens,
+    kind: 'input'
+  });
 
   const quoteList = useMemoEnhance(() => inputs.filter((item) => item.canEdit), [inputs]);
 
@@ -53,7 +60,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               step={maxTokenStep}
               value={item.value}
               onChange={(e) => {
-                maxTokensField?.setValue(e);
+                maxTokensField.setValue(e);
               }}
             />
           </Box>
@@ -67,7 +74,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             name={NodeInputKeyEnum.datasetMaxTokens}
             inputFieldProps={{ bg: 'white' }}
             onChange={(e) => {
-              maxTokensField?.setValue(e);
+              maxTokensField.setValue(e);
             }}
           />
         ),
@@ -86,7 +93,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 size={'sm'}
                 onClick={() => {
                   // 新增引用记录属于记录级变更：以派发瞬间的 inputs 为基线拼完整数组。
-                  node?.updateNode((current) => ({
+                  nodeActions?.updateNode((current) => ({
                     inputs: [
                       ...current.inputs,
                       getOneQuoteInputTemplate({ index: quoteList.length + 1 })
@@ -108,7 +115,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         );
       }
     };
-  }, [maxTokenStep, llmMaxQuoteContext, maxTokensField, node, nodeId, quoteList, t]);
+  }, [maxTokenStep, llmMaxQuoteContext, maxTokensField, nodeActions, nodeId, quoteList, t]);
 
   const Render = useMemo(() => {
     return (
@@ -137,8 +144,12 @@ const VariableSelector = ({
   inputChildren: FlowNodeInputItemType;
 }) => {
   const { t } = useTranslation();
-  const node = useNode(nodeId);
-  const quoteField = useField(nodeId, inputChildren.key, 'input');
+  const nodeActions = useNodeActions(nodeId);
+  const quoteField = useFieldActions({
+    nodeId,
+    fieldKey: inputChildren.key,
+    kind: 'input'
+  });
 
   const { referenceList } = useReference({
     nodeId,
@@ -149,17 +160,17 @@ const VariableSelector = ({
     (e?: ReferenceItemValueType) => {
       if (!e) return;
 
-      quoteField?.setValue(e);
+      quoteField.setValue(e);
     },
     [quoteField]
   );
 
   const onDel = useCallback(() => {
     // 删除引用记录属于记录级变更：以派发瞬间的 inputs 为基线过滤后整份提交。
-    node?.updateNode((current) => ({
+    nodeActions?.updateNode((current) => ({
       inputs: current.inputs.filter((input) => input.key !== inputChildren.key)
     }));
-  }, [inputChildren.key, node]);
+  }, [inputChildren.key, nodeActions]);
 
   return (
     <>

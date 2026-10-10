@@ -18,7 +18,7 @@ import { z } from 'zod';
 import { toolParamKeyReg } from './utils';
 import { defaultToolParamFormData } from './constants';
 import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
-import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 const customValueType = 'custom' as const;
@@ -47,7 +47,7 @@ const ToolParamsEditModal = ({
 }: ToolParamsEditModalProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const node = useNode(nodeId);
+  const nodeActions = useNodeActions(nodeId);
   // 边集合只在提交参数改名的回调里读，走非订阅 getter：点击时取当前值，组件不订阅结构变更。
   const { getEdges } = useWorkflowActions();
 
@@ -122,7 +122,7 @@ const ToolParamsEditModal = ({
         customJsonSchema: customParam?.schema
       };
       const { customJsonSchema: _customJsonSchema, ...outputConfig } = inputConfig;
-      if (!node) return;
+      if (!nodeActions) return;
       const outputValue = {
         ...outputConfig,
         id: key,
@@ -134,7 +134,7 @@ const ToolParamsEditModal = ({
       if (defaultValue.key) {
         // edit：output 记录被替换，旧 handle 上的连线随本次提交一起断开（与旧 replaceOutput 一致）。
         const originalKey = defaultValue.key;
-        node.updateNode(
+        nodeActions.updateNode(
           (current) => ({
             inputs: current.inputs.map((input) =>
               input.key === originalKey ? inputConfig : input
@@ -159,7 +159,7 @@ const ToolParamsEditModal = ({
         );
       } else {
         // create
-        node.updateNode((current) => ({
+        nodeActions.updateNode((current) => ({
           inputs: [...current.inputs, inputConfig],
           ...(syncOutput ? { outputs: [...current.outputs, outputValue] } : {})
         }));

@@ -2,6 +2,7 @@ import React from 'react';
 import { type NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import Divider from '../components/Divider';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
@@ -21,16 +22,29 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { splitNodeOutputs, splitToolInputsByMode } from '@/web/core/workflow/utils';
 import { useIsToolNode } from './render/useWorkflowDocument';
-import { useField } from '@/web/core/workflow/editor/react/useField';
-import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 
 const NodeToolCall = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs, catchError } = data;
+  const { nodeId } = data;
   const { toast } = useToast();
-  const node = useNode(nodeId);
-  const sandboxField = useField(nodeId, NodeInputKeyEnum.useAgentSandbox, 'input');
-  const entrypointField = useField(nodeId, NodeInputKeyEnum.sandboxEntrypoint, 'input');
+  const nodeActions = useNodeActions(nodeId);
+  const {
+    inputs = [],
+    outputs = [],
+    catchError = false
+  } = useNode<WorkflowNodeData>(nodeId, (node) => node?.data) ?? {};
+  const sandboxFieldActions = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.useAgentSandbox,
+    kind: 'input'
+  });
+  const entrypointFieldActions = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.sandboxEntrypoint,
+    kind: 'input'
+  });
   const { feConfigs } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
@@ -79,7 +93,7 @@ const NodeToolCall = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   }, [commonInputs]);
   const onChangeSandbox = React.useCallback(
     (checked: boolean) => {
-      if (!sandboxField) return;
+      if (!sandboxInput) return;
       if (checked) {
         if (!showSandbox) {
           toast({
@@ -97,9 +111,9 @@ const NodeToolCall = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         }
       }
 
-      sandboxField.setValue(checked);
+      sandboxFieldActions.setValue(checked);
     },
-    [enableSandbox, sandboxField, showSandbox, t, toast]
+    [enableSandbox, sandboxFieldActions, sandboxInput, showSandbox, t, toast]
   );
 
   return (
@@ -117,11 +131,11 @@ const NodeToolCall = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           onChangeSandbox={onChangeSandbox}
           onChangeEntrypoint={(value) => {
             // 已有入口字段只改值；字段缺失时按模板补一条记录（记录级变更走 updateNode）。
-            if (entrypointField) {
-              entrypointField.setValue(value);
+            if (sandboxEntrypointInput) {
+              entrypointFieldActions.setValue(value);
               return;
             }
-            node?.updateNode((current) => ({
+            nodeActions?.updateNode((current) => ({
               inputs: [...current.inputs, createSandboxEntrypointInput(value)]
             }));
           }}

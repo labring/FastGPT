@@ -6,85 +6,41 @@ import { useTranslation } from 'next-i18next';
 import React, { useMemo } from 'react';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { useField } from '@/web/core/workflow/editor/react/useField';
-import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
-import type { WorkflowFieldHandle } from '@/web/core/workflow/editor/react/workflowEditorAdapter';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowQuoteLimit } from '../../../../hooks/useWorkflowQuoteLimit';
 import type { RenderInputProps } from '../type';
 import { getDatasetSearchParamInputs, getDatasetSearchParams } from './SelectDatasetParams.utils';
 
-const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
+const emptyInputs: FlowNodeInputItemType[] = [];
+
+const SelectDatasetParam = ({ nodeId }: RenderInputProps) => {
   const nodeActions = useNodeActions(nodeId);
-  const searchModeField = useField(nodeId, NodeInputKeyEnum.datasetSearchMode, 'input');
-  const embeddingWeightField = useField(
-    nodeId,
-    NodeInputKeyEnum.datasetSearchEmbeddingWeight,
-    'input'
-  );
-  const limitField = useField(nodeId, NodeInputKeyEnum.datasetMaxTokens, 'input');
-  const similarityField = useField(nodeId, NodeInputKeyEnum.datasetSimilarity, 'input');
-  const usingReRankField = useField(nodeId, NodeInputKeyEnum.datasetSearchUsingReRank, 'input');
-  const rerankModelIdField = useField(nodeId, NodeInputKeyEnum.datasetSearchRerankModelId, 'input');
-  const rerankModelField = useField(nodeId, NodeInputKeyEnum.datasetSearchRerankModel, 'input');
-  const rerankWeightField = useField(nodeId, NodeInputKeyEnum.datasetSearchRerankWeight, 'input');
-  const usingExtensionQueryField = useField(
-    nodeId,
-    NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
-    'input'
-  );
-  const extensionModelIdField = useField(
-    nodeId,
-    NodeInputKeyEnum.datasetSearchExtensionModelId,
-    'input'
-  );
-  const extensionModelField = useField(
-    nodeId,
-    NodeInputKeyEnum.datasetSearchExtensionModel,
-    'input'
-  );
-  const extensionBgField = useField(nodeId, NodeInputKeyEnum.datasetSearchExtensionBg, 'input');
+  const currentInputs =
+    useNode<FlowNodeInputItemType[]>(nodeId, (node) => node?.data.inputs) ?? emptyInputs;
   const llmMaxQuoteContext = useWorkflowQuoteLimit();
   const { t } = useTranslation();
   const data = useMemo(() => {
-    const getValue = (key: string, field: WorkflowFieldHandle | undefined) =>
-      (field?.data.input ?? inputs.find((input) => input.key === key))?.value;
-
-    const fields: Array<[string, WorkflowFieldHandle | undefined]> = [
-      [NodeInputKeyEnum.datasetSearchMode, searchModeField],
-      [NodeInputKeyEnum.datasetSearchEmbeddingWeight, embeddingWeightField],
-      [NodeInputKeyEnum.datasetMaxTokens, limitField],
-      [NodeInputKeyEnum.datasetSimilarity, similarityField],
-      [NodeInputKeyEnum.datasetSearchUsingReRank, usingReRankField],
-      [NodeInputKeyEnum.datasetSearchRerankModelId, rerankModelIdField],
-      [NodeInputKeyEnum.datasetSearchRerankModel, rerankModelField],
-      [NodeInputKeyEnum.datasetSearchRerankWeight, rerankWeightField],
-      [NodeInputKeyEnum.datasetSearchUsingExtensionQuery, usingExtensionQueryField],
-      [NodeInputKeyEnum.datasetSearchExtensionModelId, extensionModelIdField],
-      [NodeInputKeyEnum.datasetSearchExtensionModel, extensionModelField],
-      [NodeInputKeyEnum.datasetSearchExtensionBg, extensionBgField]
-    ];
-
+    const getValue = (key: string) => currentInputs.find((input) => input.key === key)?.value;
     return getDatasetSearchParams(
-      fields.map(([key, field]) => ({ key, value: getValue(key, field) })) as Pick<
+      [
+        NodeInputKeyEnum.datasetSearchMode,
+        NodeInputKeyEnum.datasetSearchEmbeddingWeight,
+        NodeInputKeyEnum.datasetMaxTokens,
+        NodeInputKeyEnum.datasetSimilarity,
+        NodeInputKeyEnum.datasetSearchUsingReRank,
+        NodeInputKeyEnum.datasetSearchRerankModelId,
+        NodeInputKeyEnum.datasetSearchRerankModel,
+        NodeInputKeyEnum.datasetSearchRerankWeight,
+        NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
+        NodeInputKeyEnum.datasetSearchExtensionModelId,
+        NodeInputKeyEnum.datasetSearchExtensionModel,
+        NodeInputKeyEnum.datasetSearchExtensionBg
+      ].map((key) => ({ key, value: getValue(key) })) as Pick<
         FlowNodeInputItemType,
         'key' | 'value'
       >[]
     );
-  }, [
-    embeddingWeightField,
-    extensionBgField,
-    extensionModelField,
-    extensionModelIdField,
-    inputs,
-    limitField,
-    rerankModelField,
-    rerankModelIdField,
-    rerankWeightField,
-    searchModeField,
-    similarityField,
-    usingExtensionQueryField,
-    usingReRankField
-  ]);
+  }, [currentInputs]);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 

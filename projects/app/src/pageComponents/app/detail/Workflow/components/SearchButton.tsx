@@ -9,7 +9,10 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useWorkflowOverlayActions } from '@/web/core/workflow/editor/session/workflowSession';
 import type { ViewOverlayPatch } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import { useWorkflowSnapshotGetter } from '../../WorkflowComponents/Flow/nodes/render/useWorkflowDocument';
-import { useWorkflowCanvasValue } from '../../WorkflowComponents/Flow/canvas/workflowCanvasContext';
+import {
+  useWorkflowCanvasRendererValue,
+  useWorkflowCanvasValue
+} from '../../WorkflowComponents/Flow/canvas/workflowCanvasContext';
 import { getDimensionedNodes } from '../../WorkflowComponents/Flow/canvas/nodeDimensions';
 
 const SearchButton = (props: ButtonProps) => {
@@ -18,9 +21,9 @@ const SearchButton = (props: ButtonProps) => {
   const getWorkflow = useWorkflowSnapshotGetter();
   const patchViewData = useWorkflowOverlayActions();
   const { fitView } = useReactFlow();
-  const getNodes = useWorkflowCanvasValue((v) => v.getNodes);
+  const getNodes = useWorkflowCanvasRendererValue((v) => v.getNodes);
   const getNodeDimension = useWorkflowCanvasValue((v) => v.getNodeDimension);
-  const selectNodes = useWorkflowCanvasValue((v) => v.selectNodes);
+  const selectNodes = useWorkflowCanvasRendererValue((v) => v.selectNodes);
   const { isMac } = useSystem();
 
   const [keyword, setKeyword] = useState<string>();

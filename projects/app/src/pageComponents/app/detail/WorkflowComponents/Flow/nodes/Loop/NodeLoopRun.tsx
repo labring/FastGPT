@@ -1,8 +1,4 @@
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import {
-  type FlowNodeInputItemType,
-  type FlowNodeOutputItemType
-} from '@fastgpt/global/core/workflow/type/io';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
@@ -33,20 +29,25 @@ import {
 } from '@/web/core/workflow/utils';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { useNode } from '@/web/core/workflow/editor/react/useNode';
-import { useWorkflowActions, useWorkflowValue } from '@/web/core/workflow/editor/react/useWorkflow';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflow, useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import { useDocumentGetNodeById } from '../render/useWorkflowDocument';
 import isEqual from 'lodash-es/isEqual';
+
+const emptyInputs: WorkflowNodeData['inputs'] = [];
+const emptyOutputs: WorkflowNodeData['outputs'] = [];
 
 const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId } = data;
-  const node = useNode(nodeId);
-  const inputs = (node?.data.inputs ?? data.inputs) as FlowNodeInputItemType[];
-  const outputs = (node?.data.outputs ?? data.outputs) as FlowNodeOutputItemType[];
-  const isFolded = node?.view.isFolded ?? data.isFolded;
-  const catchError = node?.data.catchError ?? data.catchError;
+  const node = useNode<WorkflowNodeData>(nodeId, { raw: true });
+  const inputs = node?.data.inputs ?? emptyInputs;
+  const outputs = node?.data.outputs ?? emptyOutputs;
+  const catchError = node?.data.catchError ?? false;
+  const isFolded = node?.view.isFolded ?? false;
+  const nodeActions = useNodeActions(nodeId);
   /**
    * 容器要按类型找子节点（起始/中断）：结构快照没有 flowNodeType，按 id 查节点走 port 的
    * getNode（非订阅），子节点列表走 Runtime 图查询的 byParent 索引。
@@ -54,7 +55,7 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
    * 下面的 memo 与 mode 同步 effect 重跑。
    */
   const getNodeById = useDocumentGetNodeById();
-  const childNodeIds = useWorkflowValue((_structure, graph) => graph.getChildNodeIds(nodeId));
+  const childNodeIds = useWorkflow((_structure, graph) => graph.getChildNodeIds(nodeId));
   // 建中断节点是写命令，边集合只在两个回调/effect 里按点击时的当前值读：
   // 都走稳定 action 句柄，容器不订阅结构通道（06a-5 A 类 + B 类）。
   const { addNode, getEdges } = useWorkflowActions();
@@ -65,7 +66,13 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     [childNodeIds, getNodeById]
   );
   // 起始节点的输出集合与位置都由容器代管：位置读 node view，不再取画布原始节点。
-  const startChildNode = useNode(startChildId ?? '');
+  const startChildIdOrEmpty = startChildId ?? '';
+  const startChildPosition = useNode(startChildIdOrEmpty, (current) => current?.view.position);
+  const startChildActions = useNodeActions(startChildIdOrEmpty);
+  const startOutputs = useNode<FlowNodeItemType['outputs']>(
+    startChildIdOrEmpty,
+    (current) => current?.data.outputs
+  );
 
   const mode =
     (inputs.find((i) => i.key === NodeInputKeyEnum.loopRunMode)?.value as
@@ -108,7 +115,6 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     const prevMode = prevModeRef.current;
     prevModeRef.current = mode;
 
-    const startOutputs = startChildNode?.data.outputs;
     if (startChildId && startOutputs) {
       const hasKey = (key: NodeOutputKeyEnum) => startOutputs.some((o) => o.key === key);
 
@@ -160,7 +166,7 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         const removedKeys = startOutputs
           .map((o) => o.key)
           .filter((key) => !nextOutputs.some((o) => o.key === key));
-        startChildNode?.updateNode(() => ({ outputs: nextOutputs }), {
+        startChildActions?.updateNode(() => ({ outputs: nextOutputs }), {
           disconnectEdges: removedKeys
             .flatMap((outputKey) =>
               getOutputDisconnectCommands({
@@ -180,7 +186,7 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         (id) => getNodeById(id)?.flowNodeType === FlowNodeTypeEnum.loopRunBreak
       );
       if (!hasBreak) {
-        const startPosition = startChildNode?.view.position;
+        const startPosition = startChildPosition;
         const position = startPosition
           ? { x: startPosition.x + 500, y: startPosition.y + 150 }
           : { x: 500, y: 400 };
@@ -193,13 +199,24 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         addNode(canvasNodeToStoreNode(breakNode));
       }
     }
-  }, [addNode, childNodeIds, getEdges, getNodeById, mode, nodeId, startChildId, startChildNode, t]);
+  }, [
+    addNode,
+    childNodeIds,
+    getEdges,
+    getNodeById,
+    mode,
+    nodeId,
+    startChildId,
+    startChildActions,
+    startChildPosition,
+    startOutputs,
+    t
+  ]);
 
   useEffect(() => {
     // 声明的动态出参要与 outputs 对齐：一次算出目标数组单事务提交，被删出参的连线一起断开。
-    const documentInputs = node?.data.inputs;
-    const documentOutputs = node?.data.outputs;
-    if (!documentInputs || !documentOutputs) return;
+    const documentInputs = inputs;
+    const documentOutputs = outputs;
 
     const declared = documentInputs.filter((i) => i.canEdit === true);
     const declaredKeys = new Set(declared.map((i) => i.key));
@@ -233,14 +250,14 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       updatedOutputs.some((o, index) => o !== keptOutputs[index]);
     if (!changed) return;
 
-    node?.updateNode(() => ({ outputs: [...updatedOutputs, ...addedOutputs] }), {
+    nodeActions?.updateNode(() => ({ outputs: [...updatedOutputs, ...addedOutputs] }), {
       disconnectEdges: removedKeys
         .flatMap((outputKey) =>
           getOutputDisconnectCommands({ edges: getEdges(), nodeId, outputKey })
         )
         .sort((a, b) => b.index - a.index)
     });
-  }, [getEdges, node, nodeId]);
+  }, [getEdges, inputs, nodeActions, nodeId, outputs]);
 
   return (
     <NodeCard selected={selected} maxW="full" menuForbid={{ copy: true }} {...data}>

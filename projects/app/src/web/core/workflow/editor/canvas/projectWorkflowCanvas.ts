@@ -14,10 +14,7 @@ import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/cons
 import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNode';
 import { getIfElseBranchHandleKey } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
-import type {
-  FlowNodeItemType,
-  FlowNodeTemplateType
-} from '@fastgpt/global/core/workflow/type/node';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import type {
   WorkflowNodeSnapshot,
   WorkflowNodeViewSnapshot,
@@ -26,6 +23,8 @@ import type {
 import {
   normalizeEdgeHandles,
   type CanvasNode,
+  type CanvasNodeData,
+  type ViewOverlayData,
   type ViewDataKey
 } from '@/web/core/workflow/editor/canvas/canvasTypes';
 
@@ -33,7 +32,7 @@ import {
 
 /** host 持有的按节点视图数据（不进文档）。 */
 
-export type ViewDataOverlayMap = Record<string, Partial<Record<ViewDataKey, unknown>>>;
+export type ViewDataOverlayMap = Record<string, Partial<ViewOverlayData>>;
 
 /**
  * 模板展示字段目录：showSourceHandle / unique / forbidDelete / hasToolInput 等只属于模板，
@@ -52,7 +51,7 @@ type NodeCacheEntry = {
   snapshot: WorkflowNodeSnapshot;
   structureKey: string;
   view: WorkflowNodeViewSnapshot | undefined;
-  overlay: Partial<Record<ViewDataKey, unknown>> | undefined;
+  overlay: Partial<ViewOverlayData> | undefined;
   isError: boolean;
   selected: boolean | undefined;
   dragging: boolean | undefined;
@@ -61,6 +60,7 @@ type NodeCacheEntry = {
   zIndex: number | undefined;
   posX: number;
   posY: number;
+  measured: CanvasNode['measured'];
   node: CanvasNode;
 };
 
@@ -174,6 +174,7 @@ export const projectRuntimeCanvas = ({
     const zIndex = snapshot.parentNodeId ? 1001 : undefined;
     const width = local?.width;
     const height = local?.height;
+    const measured = local?.measured;
     const structureKey = getNodeStructureKey(snapshot);
 
     const cached = cache.nodes.get(nodeId);
@@ -187,6 +188,7 @@ export const projectRuntimeCanvas = ({
       cached.dragging === dragging &&
       cached.width === width &&
       cached.height === height &&
+      cached.measured === measured &&
       cached.zIndex === zIndex &&
       cached.posX === position.x &&
       cached.posY === position.y
@@ -196,21 +198,25 @@ export const projectRuntimeCanvas = ({
       return cached.node;
     }
 
-    // Issue View 只留在 Runtime snapshot 上：节点组件直接读文档，画布数组不承载问题状态。
-    const nodeData = omit(snapshot, 'issues');
+    // CanvasNode.data 只承载结构/视图字段；普通语义字段必须从 scoped reader 读取。
+    const nodeData = omit(snapshot, ['issues', 'inputs', 'outputs', 'catchError']);
+    const templateData = omit(templateByNodeType.get(snapshot.flowNodeType) ?? EmptyNode, [
+      'inputs',
+      'outputs',
+      'catchError'
+    ]);
+    const data: CanvasNodeData = {
+      ...templateData,
+      ...nodeData,
+      // isFolded 存在 Node View 上（语义快照不含），投影时合并，否则折叠状态在画布上丢失。
+      isFolded: view?.isFolded,
+      ...overlay,
+      ...(isError ? { isError: true } : {})
+    };
     const node: CanvasNode = {
       id: nodeId,
       type: snapshot.flowNodeType,
-      // 文档节点在入站边界已物化，语义字段形状与画布 data 一致；
-      // 只读快照与模板展示字段浅合并后整体断言回画布形状。
-      data: {
-        ...(templateByNodeType.get(snapshot.flowNodeType) ?? EmptyNode),
-        ...nodeData,
-        // isFolded 存在 Node View 上（语义快照不含），投影时合并，否则折叠状态在画布上丢失。
-        isFolded: view?.isFolded,
-        ...overlay,
-        ...(isError ? { isError: true } : {})
-      } as unknown as FlowNodeItemType,
+      data,
       position,
       selected,
       zIndex,
@@ -229,6 +235,7 @@ export const projectRuntimeCanvas = ({
       dragging,
       width,
       height,
+      measured,
       zIndex,
       posX: position.x,
       posY: position.y,

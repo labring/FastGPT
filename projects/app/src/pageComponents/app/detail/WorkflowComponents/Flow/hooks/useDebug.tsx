@@ -66,8 +66,8 @@ export const useDebug = () => {
   const onStartNodeDebug = useWorkflowDebugValue((v) => v.onStartNodeDebug);
   const setDebugChatId = useWorkflowDebugValue((v) => v.setDebugChatId);
   const onOpenNodeDebug = useWorkflowDebugValue((v) => v.onOpenNodeDebug);
-  // 调试输入改读 host 出站边界（与保存发布同一个 codec）。
-  const { serializeWorkflowAndCheck } = useWorkflowPersistence();
+  // 调试直接读取 Runtime canonical 序列化；发布校验不应阻止调试输入打开。
+  const { serializeWorkflow } = useWorkflowPersistence();
 
   const [defaultGlobalVariables, setDefaultGlobalVariables] = useState<Record<string, any>>(() =>
     (getWorkflow()?.chatConfig?.variables ?? []).reduce(
@@ -90,7 +90,7 @@ export const useDebug = () => {
 
       // 只清上一轮 debug session 写过 overlay 的节点，不再对整份画布做全量清除
       onOpenNodeDebug();
-      const serialized = await serializeWorkflowAndCheck();
+      const serialized = serializeWorkflow();
       if (!serialized) return;
       const { nodes, edges }: { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] } =
         serialized;
@@ -112,7 +112,7 @@ export const useDebug = () => {
       setRuntimeNodes(runtimeNodes);
       setRuntimeEdges(runtimeEdges);
     },
-    [serializeWorkflowAndCheck, onOpenNodeDebug, setDebugChatId]
+    [serializeWorkflow, onOpenNodeDebug, setDebugChatId]
   );
 
   const DebugInputModal = useCallback(() => {
@@ -353,7 +353,7 @@ export const useDebug = () => {
     getWorkflow,
     getNodeById,
     graph,
-    serializeWorkflowAndCheck
+    serializeWorkflow
   ]);
 
   return {

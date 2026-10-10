@@ -3,11 +3,11 @@ import { useTranslation } from 'next-i18next';
 import { useUnmount } from 'ahooks';
 import type { StoreWorkflow } from '@fastgpt/global/core/workflow/editor/protocol';
 import { AppContext } from '@/pageComponents/app/detail/context';
-import { postPublishApp } from '@/web/core/app/api/version';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useContextSelector } from 'use-context-selector';
 import { removeWorkflowLocalDraftByApp, saveWorkflowLocalDraft } from './storage';
 import { useWorkflowAuthExpiredDraft } from './useWorkflowAuthExpiredDraft';
+import type { WorkflowSaveRequest } from '@/web/core/workflow/editor/session/workflowPersistence';
 
 const enableWorkflowLeaveConfirm = process.env.NEXT_PUBLIC_WORKFLOW_LEAVE_CONFIRM !== 'false';
 
@@ -18,6 +18,10 @@ type UseWorkflowDraftLifecycleProps = {
   serializeWorkflow: () => StoreWorkflow | undefined;
   /** 置 false 表示主动离开，跳过离开保护与自动保存。 */
   leaveSaveSign: MutableRefObject<boolean>;
+  /** 创建带当前 Runtime/session/app/revision 的自动保存请求。 */
+  createSaveRequest: (appId: string) => WorkflowSaveRequest | undefined;
+  /** 只有当前 Session 的最新请求才能清理本地草稿。 */
+  isCurrentSaveRequest: (request: WorkflowSaveRequest) => boolean;
 };
 
 /**
@@ -29,10 +33,13 @@ type UseWorkflowDraftLifecycleProps = {
 export const useWorkflowDraftLifecycle = ({
   isSaved,
   serializeWorkflow,
-  leaveSaveSign
+  leaveSaveSign,
+  createSaveRequest,
+  isCurrentSaveRequest
 }: UseWorkflowDraftLifecycleProps) => {
   const { t } = useTranslation();
   const appId = useContextSelector(AppContext, (v) => v.appDetail._id);
+  const onSaveApp = useContextSelector(AppContext, (v) => v.onSaveApp);
   const hasWritePermission = useContextSelector(
     AppContext,
     (v) => v.appDetail.permission.hasWritePer
@@ -85,23 +92,27 @@ export const useWorkflowDraftLifecycle = ({
     async ({ fromBeforeUnload = false } = {}) => {
       if (isSaved || !leaveSaveSign.current) return;
       console.log('Leave auto save');
-      const data = serializeWorkflow();
-      if (!data || data.nodes.length === 0) return;
+      if (!hasWritePermission) return;
+
+      const request = createSaveRequest(appId);
+      if (!request || request.data.nodes.length === 0) return;
 
       if (fromBeforeUnload) {
         setBeforeUnloadAutoSaving(true);
       }
 
       try {
-        if (!hasWritePermission) {
-          return;
+        const saved = await onSaveApp(
+          {
+            ...request.data,
+            isPublish: false,
+            autoSave: true
+          },
+          request
+        );
+        if (saved && isCurrentSaveRequest(request)) {
+          removeCurrentLocalDraft();
         }
-        await postPublishApp(appId, {
-          ...data,
-          isPublish: false,
-          autoSave: true
-        });
-        removeCurrentLocalDraft();
       } catch (error) {
         console.warn('[Workflow auto save] Failed to save workflow before leaving:', error);
       } finally {
@@ -112,10 +123,12 @@ export const useWorkflowDraftLifecycle = ({
     },
     [
       appId,
+      createSaveRequest,
       hasWritePermission,
-      serializeWorkflow,
       isSaved,
+      isCurrentSaveRequest,
       leaveSaveSign,
+      onSaveApp,
       removeCurrentLocalDraft,
       setBeforeUnloadAutoSaving
     ]

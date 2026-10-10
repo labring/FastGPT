@@ -8,6 +8,7 @@ import {
   isLegacyV1Workflow,
   migrateWorkflowToCurrent
 } from '@fastgpt/global/core/workflow/migration/migrate';
+import { migrateStoreWorkflow } from '@fastgpt/global/core/workflow/editor/protocol';
 import { migrateLegacyWorkflowStructureData } from '@fastgpt/global/core/workflow/migration/legacy/structure';
 
 describe('workflow migration V1 detection', () => {
@@ -100,5 +101,21 @@ describe('legacy workflow structure migration', () => {
       inputs: [],
       outputs: []
     });
+  });
+});
+
+describe('workflow reference snapshot migration', () => {
+  const referenceSnapshots = [
+    {
+      reference: ['deleted-node', 'output'] as [string, string],
+      sourceLabel: 'Deleted node'
+    }
+  ];
+
+  it('round-trips snapshots and defaults missing snapshots for legacy input', () => {
+    expect(
+      migrateStoreWorkflow({ nodes: [], edges: [], referenceSnapshots }).referenceSnapshots
+    ).toEqual(referenceSnapshots);
+    expect(migrateStoreWorkflow({ nodes: [], edges: [] }).referenceSnapshots).toEqual([]);
   });
 });

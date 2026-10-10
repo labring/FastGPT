@@ -5,7 +5,7 @@ import ToolParamConfig from './ToolParamConfig';
 import { useTranslation } from 'next-i18next';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { Position } from 'reactflow';
-import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 const IOTitle = ({
@@ -24,7 +24,7 @@ const IOTitle = ({
   // 边集合只在切开关的回调里读，走非订阅 getter：点击时取当前值，组件不订阅结构变更。
   const { getEdges } = useWorkflowActions();
   // nodeId 是可选 prop：hook 必须无条件调用，空 id 时 useNode 返回 undefined。
-  const node = useNode(nodeId ?? '');
+  const nodeActions = useNodeActions(nodeId ?? '');
 
   /**
    * 切换异常捕获开关：catchError 与 catch 输出上的连线必须一起消失。
@@ -32,10 +32,10 @@ const IOTitle = ({
    * 断连按端点值匹配，不依赖投影边 id。
    */
   const handleCatchErrorChange = (checked: boolean) => {
-    if (!nodeId || !node) return;
+    if (!nodeId || !nodeActions) return;
 
     const catchHandle = getHandleId(nodeId, 'source_catch', Position.Right);
-    node.updateNode(() => ({ catchError: checked }), {
+    nodeActions.updateNode(() => ({ catchError: checked }), {
       disconnectEdges: getEdges()
         .filter((edge) => edge.sourceHandle === catchHandle)
         .map((edge) => ({

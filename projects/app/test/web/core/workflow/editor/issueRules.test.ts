@@ -412,6 +412,7 @@ const EXPECTED_ISSUES: Record<string, { nodes: string[]; config: string[] }> = {
   'code:tool_offline': { nodes: ['http|tool_offline|'], config: [] },
   'code:tool_no_permission': { nodes: ['http|tool_no_permission|'], config: [] },
   'code:tool_missing': { nodes: ['http|tool_missing|'], config: [] },
+  'code:plugin_missing': { nodes: ['http|tool_missing|'], config: [] },
   'code:tool_load_failed': { nodes: ['http|tool_load_failed|'], config: [] },
   'code:resource_state': {
     nodes: [
@@ -764,6 +765,16 @@ const codeFixtures: Fixture[] = [
     mutate: (canonical) => {
       setValue(canonical, 'http', NodeInputKeyEnum.httpReqUrl, 'https://example.com');
       nodeOf(canonical, 'http').pluginData = { error: AppErrEnum.unExist } as any;
+    },
+    expectCodes: [WorkflowIssueCode.toolMissing]
+  },
+  {
+    name: 'code:plugin_missing',
+    nodes: [startNode(), named(HttpNode468, 'http')],
+    edges: [edge('start', 'http', 0)],
+    mutate: (canonical) => {
+      setValue(canonical, 'http', NodeInputKeyEnum.httpReqUrl, 'https://example.com');
+      nodeOf(canonical, 'http').pluginData = { error: PluginErrEnum.unExist } as any;
     },
     expectCodes: [WorkflowIssueCode.toolMissing]
   },

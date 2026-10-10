@@ -245,7 +245,7 @@ describe('login redirect helpers', () => {
     expect(route).toBe('/app/detail?appId=app-1');
   });
 
-  it('should retry 3 times and continue redirect when auto-save keeps failing', async () => {
+  it('should retry 3 times and keep the draft when auto-save keeps failing', async () => {
     saveDraftToStorage();
     const restoreError = new Error('network error');
     const saveDraft = vi.fn().mockRejectedValue(restoreError);
@@ -256,7 +256,7 @@ describe('login redirect helpers', () => {
     });
 
     expect(saveDraft).toHaveBeenCalledTimes(3);
-    expect(readWorkflowLocalDraft()).toBeNull();
+    expect(readWorkflowLocalDraft()?.data.nodes[0]?.nodeId).toBe('node-1');
     expect(route).toBe('/app/detail?appId=app-1');
   });
 

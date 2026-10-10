@@ -22,6 +22,7 @@ import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { childrenResponseFields } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { filterWorkflowEdges, valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+import { isWorkflowEdgeSourceHandleValid } from '@fastgpt/global/core/workflow/editor/utils';
 import type {
   InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
@@ -492,7 +493,10 @@ export class WorkflowQueue {
       this.addSkipNode(node, new Set(skippedNodeIdList));
     });
 
-    this.edgeIndex = WorkflowQueue.buildEdgeIndex({ runtimeEdges: data.runtimeEdges });
+    this.edgeIndex = WorkflowQueue.buildEdgeIndex({
+      runtimeEdges: data.runtimeEdges,
+      nodesMap: this.runtimeNodesMap
+    });
     // 🆕 预构建节点边分组 Map（一次性计算，后续直接查询）
     this.nodeEdgeGroupsMap = WorkflowQueue.buildNodeEdgeGroupsMap({
       nodesMap: this.runtimeNodesMap,
@@ -503,12 +507,21 @@ export class WorkflowQueue {
 
   /* ===== utils ===== */
   // 一次性构建edge索引 - O(m)
-  static buildEdgeIndex({ runtimeEdges }: { runtimeEdges: RuntimeEdgeItemType[] }) {
+  static buildEdgeIndex({
+    runtimeEdges,
+    nodesMap
+  }: {
+    runtimeEdges: RuntimeEdgeItemType[];
+    nodesMap?: Map<string, RuntimeNodeItemType>;
+  }) {
     const edgeIndex = {
       bySource: new Map<string, RuntimeEdgeItemType[]>(),
       byTarget: new Map<string, RuntimeEdgeItemType[]>()
     };
-    const filteredEdges = filterWorkflowEdges(runtimeEdges);
+    const filteredEdges = filterWorkflowEdges(runtimeEdges).filter(
+      (edge) =>
+        !nodesMap || isWorkflowEdgeSourceHandleValid(nodesMap.get(edge.source), edge.sourceHandle)
+    );
     filteredEdges.forEach((edge) => {
       if (!edgeIndex.bySource.has(edge.source)) {
         edgeIndex.bySource.set(edge.source, []);
@@ -889,30 +902,6 @@ export class WorkflowQueue {
         this.data.workflowStreamResponse?.(workflowSseEvent.flowNodeStatus(node.name));
       }
       const startTime = Date.now();
-      // get node running params
-      const params = getWorkflowNodeRunParams({
-        node,
-        runtimeNodesMap: this.runtimeNodesMap,
-        variableState: this.data.variableState
-      });
-
-      const dispatchData: ModuleDispatchProps<Record<string, any>> = {
-        ...this.data,
-        usagePush: this.usagePush.bind(this),
-        lastInteractive: this.data.lastInteractive?.entryNodeIds?.includes(node.nodeId)
-          ? this.data.lastInteractive
-          : undefined,
-        histories: this.data.histories,
-        retainDatasetCite: this.data.retainDatasetCite,
-        node,
-        runtimeNodes: this.data.runtimeNodes,
-        runtimeNodesMap: this.runtimeNodesMap,
-        runtimeEdges: this.data.runtimeEdges,
-        params,
-        mode,
-        nodeResponseParentId: nodeResponseId
-      };
-
       // run module
       const dispatchRes: NodeResponseType = await (async () => {
         if (callbackMap[node.flowNodeType]) {
@@ -920,6 +909,30 @@ export class WorkflowQueue {
           const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
 
           try {
+            // 参数解析和模块执行共用同一错误边界，失效引用才能按 catchError 路由。
+            const params = getWorkflowNodeRunParams({
+              node,
+              runtimeNodesMap: this.runtimeNodesMap,
+              variableState: this.data.variableState,
+              runtimeEdges: this.data.runtimeEdges,
+              runtimeEdgeIndex: this.edgeIndex
+            });
+            const dispatchData: ModuleDispatchProps<Record<string, any>> = {
+              ...this.data,
+              usagePush: this.usagePush.bind(this),
+              lastInteractive: this.data.lastInteractive?.entryNodeIds?.includes(node.nodeId)
+                ? this.data.lastInteractive
+                : undefined,
+              histories: this.data.histories,
+              retainDatasetCite: this.data.retainDatasetCite,
+              node,
+              runtimeNodes: this.data.runtimeNodes,
+              runtimeNodesMap: this.runtimeNodesMap,
+              runtimeEdges: this.data.runtimeEdges,
+              params,
+              mode,
+              nodeResponseParentId: nodeResponseId
+            };
             const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
 
             if (result.error) {

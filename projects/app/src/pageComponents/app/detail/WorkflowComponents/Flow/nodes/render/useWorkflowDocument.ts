@@ -5,7 +5,7 @@ import type {
   WorkflowGraphQueries,
   WorkflowRuntimePort
 } from '@fastgpt/global/core/workflow/editor/types';
-import { useWorkflowValue } from '@/web/core/workflow/editor/react/useWorkflow';
+import { useWorkflow } from '@/web/core/workflow/editor/react/useWorkflow';
 import {
   useWorkflowRuntime,
   useWorkflowSnapshot
@@ -28,7 +28,7 @@ export const useWorkflowSnapshotGetter = () => {
  * Runtime 图查询对象：按已提交的图索引查容器子节点与连线，避免 app 侧重复维护节点和子节点索引。
  *
  * 非订阅读取：对象身份在 runtime 生命周期内不变，可直接当 memo 依赖；
- * 重算时机由调用方的语义快照（`useWorkflowDocument().workflow`）或 `useWorkflowValue` 决定。
+ * 重算时机由调用方的语义快照（`useWorkflowDocument().workflow`）或 `useWorkflow(selector)` 决定。
  */
 export const useGraphQueries = (): WorkflowGraphQueries | undefined => {
   const runtime = useWorkflowRuntime();
@@ -247,4 +247,4 @@ export const useNodeWorkflowDocument = ({
  * 所以别处连线/断线不会让每个调用它的节点组件重渲染；字段编辑与几何提交本来就不通知结构通道。
  */
 export const useIsToolNode = (nodeId: string) =>
-  useWorkflowValue((_structure, graph) => graph.isMountedTool(nodeId));
+  useWorkflow((_structure, graph) => graph.isMountedTool(nodeId));

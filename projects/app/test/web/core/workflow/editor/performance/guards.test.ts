@@ -66,7 +66,7 @@ describe('workflow editor subscription guards', () => {
 
   it('Handle 目录与 ButtonEdge 内零 adapter 结构订阅', () => {
     // 这两处是按节点数 / 边数线性增长的实例，结构句柄随结构变化重建，订阅它等于全画布刷新。
-    // 连通判定走 useWorkflowValue + Runtime 图查询，写命令走 useWorkflowActions()。
+    // 连通判定走 useWorkflow(selector) + Runtime 图查询，写命令走 useWorkflowActions()。
     const targets = [
       join(flowRoot, 'nodes/render/Handle'),
       join(flowRoot, 'components/ButtonEdge.tsx')
@@ -120,6 +120,18 @@ describe('workflow editor subscription guards', () => {
     expect(canvasSource).not.toMatch(/runtime\.subscribe\(syncFromRuntime\)/);
     expect(canvasSource).toMatch(/change\.affectedRecords\.structure/);
     expect(adapterSource).toMatch(/change\.changedRecords\.edgeIds\.length > 0/);
+  });
+
+  it('public Canvas context 不暴露 ReactFlow 原语', () => {
+    const canvasSource = readFileSync(join(flowRoot, 'canvas/workflowCanvasContext.tsx'), 'utf8');
+    const publicContract = canvasSource.match(
+      /type WorkflowCanvasContextType = \{([\s\S]*?)\n\};/
+    )?.[1];
+
+    expect(publicContract).toBeDefined();
+    expect(publicContract).not.toMatch(
+      /\b(nodes|edges|renderedNodes|renderedEdges|getNodes|replaceNodes|replaceEdges|applyNodeChanges|applyEdgeChanges|selectNodes|onViewportChange)\b/
+    );
   });
 
   it('画布节点组件零 useWorkflowDocument()', () => {

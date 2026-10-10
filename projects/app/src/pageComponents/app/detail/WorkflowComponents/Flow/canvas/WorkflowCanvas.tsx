@@ -9,7 +9,7 @@ import NodeTemplatesPopover from '../NodeTemplatesPopover';
 import SearchButton from '../../../Workflow/components/SearchButton';
 import SystemConfigDrawer from '../SystemConfigDrawer';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useWorkflowCanvasValue } from './workflowCanvasContext';
+import { useWorkflowCanvasRendererValue, useWorkflowCanvasValue } from './workflowCanvasContext';
 import ContextMenu from '../components/ContextMenu';
 import FlowController from '../components/FlowController';
 import HelperLines, { type HelperLinesController } from '../components/HelperLines';
@@ -50,7 +50,7 @@ import {
 } from '../nodes/render/Handle/handleRenderContext';
 import { ToolSourceHandle, ToolTargetHandle } from '../nodes/render/Handle/ToolHandle';
 import { useIsToolNode } from '../nodes/render/useWorkflowDocument';
-import { getNodeShellHandleModel } from '../utils/nodeHandle';
+import { getNodeShellHandleModel, type NodeShellHandleModel } from '../utils/nodeHandle';
 
 // region nodeTypes Canvas node type registration
 
@@ -110,11 +110,13 @@ const baseNodeTypes: Record<FlowNodeTypeEnum, CanvasNodeComponent> = {
 const MeasuredNode = React.memo(
   ({
     nodeComponent,
+    handleModel,
     renderHandles = true,
     offscreenMeasurement = false,
     ...props
   }: NodeProps<FlowNodeItemType> & {
     nodeComponent: CanvasNodeComponent;
+    handleModel: NodeShellHandleModel;
     renderHandles?: boolean;
     offscreenMeasurement?: boolean;
   }) => {
@@ -123,8 +125,8 @@ const MeasuredNode = React.memo(
     const nodeId = props.id;
     const measurementIdentity = props.data;
     const expectedDynamicHandleIds = useMemo(
-      () => getNodeShellHandleModel(props.data).sourceHandles.map((handle) => handle.handleId),
-      [props.data]
+      () => handleModel.sourceHandles.map((handle) => handle.handleId),
+      [handleModel]
     );
 
     useEffect(() => {
@@ -223,10 +225,15 @@ MeasuredNode.displayName = 'MeasuredNode';
 
 const NodeShell = React.memo(
   ({
+    handleModel,
     overlay = false,
     renderHandles = true,
     ...props
-  }: NodeProps<FlowNodeItemType> & { overlay?: boolean; renderHandles?: boolean }) => {
+  }: NodeProps<FlowNodeItemType> & {
+    handleModel: NodeShellHandleModel;
+    overlay?: boolean;
+    renderHandles?: boolean;
+  }) => {
     // 按节点订阅尺寸：getter 身份稳定，单独订阅 getter 不会在测量结果更新时重渲染 shell。
     const dimensions =
       useWorkflowCanvasValue((v) => v.nodeDimensions.get(props.id)) ??
@@ -234,9 +241,7 @@ const NodeShell = React.memo(
     const updateNodeInternals = useUpdateNodeInternals();
     const isToolNode = useIsToolNode(props.id);
     const showToolSource = props.data.flowNodeType === FlowNodeTypeEnum.toolCall;
-    const { sourceHandles, hasCatchSource, replacesDefaultSource } = getNodeShellHandleModel(
-      props.data
-    );
+    const { sourceHandles, hasCatchSource, replacesDefaultSource } = handleModel;
     const sourceHandleCenters = dimensions.sourceHandleCenters;
 
     useEffect(() => {
@@ -310,9 +315,12 @@ const VirtualizedNode = React.memo(
   }) => {
     const mode = useWorkflowCanvasValue((v) => v.renderModes.get(props.id) ?? 'shell');
     const dimension = useWorkflowCanvasValue((v) => v.nodeDimensions.get(props.id));
+    const runtime = useWorkflowRuntime();
+    const node = runtime?.getNode(props.id);
+    const handleModel = useMemo(() => (node ? getNodeShellHandleModel(node) : undefined), [node]);
     const expectedDynamicHandleIds = useMemo(
-      () => getNodeShellHandleModel(props.data).sourceHandles.map((handle) => handle.handleId),
-      [props.data]
+      () => handleModel?.sourceHandles.map((handle) => handle.handleId) ?? [],
+      [handleModel]
     );
     const hasMeasuredDynamicHandles = hasValidSourceHandleMeasurement({
       expectedHandleIds: expectedDynamicHandleIds,
@@ -339,6 +347,8 @@ const VirtualizedNode = React.memo(
     );
     const handleMouseLeave = useCallback(() => setHoverNodeId(undefined), [setHoverNodeId]);
 
+    if (!handleModel) return null;
+
     return (
       <div
         ref={wrapperRef}
@@ -355,12 +365,14 @@ const VirtualizedNode = React.memo(
       >
         <NodeShell
           {...props}
+          handleModel={handleModel}
           overlay={renderFull}
           renderHandles={!renderFull || (hasMeasuredDynamicHandles && !isMeasurement)}
         />
         {renderFull && (
           <MeasuredNode
             nodeComponent={nodeComponent}
+            handleModel={handleModel}
             renderHandles={isMeasurement || !hasMeasuredDynamicHandles}
             offscreenMeasurement={isMeasurement}
             {...props}
@@ -391,7 +403,7 @@ const edgeTypes = {
 // region canvasView ReactFlow canvas and overlays
 
 const ViewportObserver = () => {
-  const onViewportChange = useWorkflowCanvasValue((v) => v.onViewportChange);
+  const onViewportChange = useWorkflowCanvasRendererValue((v) => v.onViewportChange);
   const { x, y, zoom } = useViewport();
   const width = useStore((state) => state.width);
   const height = useStore((state) => state.height);
@@ -453,11 +465,11 @@ const CanvasOverlays = React.memo(
 CanvasOverlays.displayName = 'CanvasOverlays';
 
 const WorkflowCanvas = () => {
-  const nodes = useWorkflowCanvasValue((v) => v.nodes);
-  const renderedNodes = useWorkflowCanvasValue((v) => v.renderedNodes);
+  const nodes = useWorkflowCanvasRendererValue((v) => v.nodes);
+  const renderedNodes = useWorkflowCanvasRendererValue((v) => v.renderedNodes);
   const nodeDimensions = useWorkflowCanvasValue((v) => v.nodeDimensions);
   const fitNodes = useWorkflowCanvasValue((v) => v.fitNodes);
-  const renderedEdges = useWorkflowCanvasValue((v) => v.renderedEdges);
+  const renderedEdges = useWorkflowCanvasRendererValue((v) => v.renderedEdges);
   const runtime = useWorkflowRuntime();
   const helperLinesRef = useRef<HelperLinesController>(null);
   // 按字段订阅：整体订阅会让 hover / 鼠标进出画布带动整个画布组件重渲染，

@@ -10,7 +10,10 @@ import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { cloneDeep } from 'lodash-es';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useWorkflowUIValue } from '../canvas/canvasState';
-import { useWorkflowCanvasValue } from '../canvas/workflowCanvasContext';
+import {
+  useWorkflowCanvasRendererValue,
+  useWorkflowCanvasValue
+} from '../canvas/workflowCanvasContext';
 import { getHandleIndex } from '../utils/edge';
 import { getParentNodeSizeAndPosition } from '../utils/layout';
 import { useCanvas } from '@/web/core/workflow/editor/react/useWorkflowQueries';
@@ -67,11 +70,11 @@ const ContextMenu = () => {
   // 自动对齐只读 renderer 交互状态（位置、测量尺寸）；写入走画布本地数组，
   // 受控模式下 useReactFlow().setNodes 会被转成整份 reset 变更。
   const { screenToFlowPosition } = useReactFlow();
-  const getNodes = useWorkflowCanvasValue((v) => v.getNodes);
+  const getNodes = useWorkflowCanvasRendererValue((v) => v.getNodes);
   const fitNodes = useWorkflowCanvasValue((v) => v.fitNodes);
-  const edges = useWorkflowCanvasValue((v) => v.edges);
+  const edges = useWorkflowCanvasRendererValue((v) => v.edges);
   const getNodeDimension = useWorkflowCanvasValue((v) => v.getNodeDimension);
-  const replaceNodes = useWorkflowCanvasValue((v) => v.replaceNodes);
+  const replaceNodes = useWorkflowCanvasRendererValue((v) => v.replaceNodes);
   const runtime = useWorkflowRuntime();
   // 语义通道：快照只在语义版本变化时换身份，节点增删会带动下面的折叠判定重算。
   const workflow = useWorkflowSnapshot();

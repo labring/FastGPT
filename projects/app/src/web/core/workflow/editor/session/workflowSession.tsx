@@ -55,9 +55,10 @@ import {
   type WorkflowVersionEntry
 } from './workflowHistory';
 import {
-  markWorkflowSaved,
+  createWorkflowSaveCoordinator,
   serializeWorkflowAndCheckData,
-  serializeWorkflowData
+  serializeWorkflowData,
+  type WorkflowSaveRequest
 } from './workflowPersistence';
 
 // region sessionContracts Session state and public hook contracts
@@ -98,12 +99,16 @@ type WorkflowSessionValue = {
   isSaved: boolean;
   /** 置 false 表示主动离开，跳过离开保护与自动保存。 */
   leaveSaveSign: MutableRefObject<boolean>;
-  /** 出站序列化（保存、发布、草稿、调试共用）；同时捕获内容版本供 markSaved 回填。 */
+  /** 出站序列化（保存、草稿、调试共用）；同时捕获内容版本供 markSaved 回填。 */
   serializeWorkflow: () => StoreWorkflow | undefined;
-  /** 保存、发布、调试共用的 host 校验与序列化 gate。 */
+  /** 发布专用的 host 校验与序列化 gate；普通保存和调试直接序列化。 */
   serializeWorkflowAndCheck: (hideTip?: boolean) => Promise<StoreWorkflow | undefined>;
   /** 保存成功后回填 Savepoint；失败不调用即不回填，请求期间的新编辑仍算未保存。 */
-  markSaved: () => void;
+  markSaved: (request: WorkflowSaveRequest) => boolean;
+  /** 为当前 Runtime 创建带内容版本与 payload 的保存请求。 */
+  createSaveRequest: (appId: string) => WorkflowSaveRequest | undefined;
+  /** 判断响应是否仍属于当前 Session 的最新保存请求。 */
+  isCurrentSaveRequest: (request: WorkflowSaveRequest) => boolean;
 
   /** 问题焦点节点 id：投影据此标红并选中该节点；undefined 表示无焦点。 */
   issueFocusNodeId?: string;
@@ -122,7 +127,13 @@ export type WorkflowSessionActions = Pick<WorkflowSessionValue, 'initRuntime' | 
 
 export type WorkflowPersistenceState = Pick<
   WorkflowSessionValue,
-  'isSaved' | 'serializeWorkflow' | 'serializeWorkflowAndCheck' | 'markSaved' | 'leaveSaveSign'
+  | 'isSaved'
+  | 'serializeWorkflow'
+  | 'serializeWorkflowAndCheck'
+  | 'markSaved'
+  | 'createSaveRequest'
+  | 'isCurrentSaveRequest'
+  | 'leaveSaveSign'
 >;
 
 export type WorkflowHistoryState = Pick<
@@ -175,6 +186,8 @@ const WorkflowSessionContext = createContext<WorkflowSessionValue>({
   serializeWorkflow: notImplemented,
   serializeWorkflowAndCheck: notImplemented,
   markSaved: notImplemented,
+  createSaveRequest: notImplemented,
+  isCurrentSaveRequest: notImplemented,
   issueFocusNodeId: undefined,
   issueFocusRef: { current: undefined },
   focusIssueNode: notImplemented,
@@ -189,6 +202,8 @@ const WorkflowSessionContext = createContext<WorkflowSessionValue>({
     serializeWorkflow: notImplemented,
     serializeWorkflowAndCheck: notImplemented,
     markSaved: notImplemented,
+    createSaveRequest: notImplemented,
+    isCurrentSaveRequest: notImplemented,
     leaveSaveSign: { current: true }
   },
   historyState: {
@@ -338,6 +353,7 @@ export const WorkflowSessionProvider = ({
   const versionsRef = useRef<WorkflowVersionEntry[]>([]);
   const suppressVersionHistoryRef = useRef(false);
   const pendingSaveRevision = useRef<number | undefined>(undefined);
+  const saveCoordinator = useMemo(() => createWorkflowSaveCoordinator(), []);
   const unsubscribeRef = useRef<(() => void) | undefined>(undefined);
   const leaveSaveSign = useRef(true);
   const [issueFocusNodeId, setIssueFocusNodeId] = useState<string>();
@@ -387,6 +403,7 @@ export const WorkflowSessionProvider = ({
   });
 
   const teardownRuntime = useMemoizedFn(() => {
+    saveCoordinator.invalidate();
     unsubscribeRef.current?.();
     unsubscribeRef.current = undefined;
     if (runtimeRef.current && !runtimeRef.current.isDisposed()) {
@@ -399,6 +416,7 @@ export const WorkflowSessionProvider = ({
     overlaysRef.current = {};
     updateIssueFocusNode(undefined);
     pendingSaveRevision.current = undefined;
+    saveCoordinator.invalidate();
     leaveSaveSign.current = true;
     setVersions(nextVersions);
     bumpView();
@@ -493,6 +511,34 @@ export const WorkflowSessionProvider = ({
     })
   );
 
+  const createSaveRequest = useMemoizedFn((requestAppId: string) => {
+    const current = runtimeRef.current;
+    if (!current || current.isDisposed() || !requestAppId) return undefined;
+
+    const data = serializeWorkflowData({
+      runtimeRef,
+      pendingSaveRevisionRef: pendingSaveRevision
+    });
+    const contentRevision = pendingSaveRevision.current;
+    if (!data || contentRevision === undefined) return undefined;
+
+    return saveCoordinator.begin({
+      runtime: current,
+      sessionId: editorSessionId,
+      appId: requestAppId,
+      contentRevision,
+      data
+    });
+  });
+
+  const isCurrentSaveRequest = useMemoizedFn((request: WorkflowSaveRequest) =>
+    saveCoordinator.isCurrent(request, {
+      runtime: runtimeRef.current,
+      sessionId: editorSessionId,
+      appId
+    })
+  );
+
   const serializeWorkflowAndCheck = useMemoizedFn((hideTip = false) =>
     serializeWorkflowAndCheckData({
       runtimeRef,
@@ -504,13 +550,17 @@ export const WorkflowSessionProvider = ({
     })
   );
 
-  const markSaved = useMemoizedFn(() =>
-    markWorkflowSaved({
-      runtimeRef,
-      pendingSaveRevisionRef: pendingSaveRevision,
-      notifyHost
-    })
-  );
+  const markSaved = useMemoizedFn((request: WorkflowSaveRequest) => {
+    if (!isCurrentSaveRequest(request)) return false;
+
+    request.runtime.markSaved(request.contentRevision);
+    if (pendingSaveRevision.current === request.contentRevision) {
+      pendingSaveRevision.current = undefined;
+    }
+    notifyHost();
+    saveCoordinator.invalidate();
+    return true;
+  });
 
   const initRuntime = useMemoizedFn((content: CanonicalWorkflowData) => {
     // Issue View 由 Runtime 按文档规则与环境事实算出；Workflow 与 Plugin host 共用这一份接线。
@@ -679,7 +729,9 @@ export const WorkflowSessionProvider = ({
   const { authExpiredModal } = useWorkflowDraftLifecycle({
     isSaved,
     serializeWorkflow,
-    leaveSaveSign
+    leaveSaveSign,
+    createSaveRequest,
+    isCurrentSaveRequest
   });
 
   // 必须声明在草稿生命周期之后：卸载清理按声明顺序执行，自动保存要先于 Runtime 释放。
@@ -702,9 +754,18 @@ export const WorkflowSessionProvider = ({
       serializeWorkflow,
       serializeWorkflowAndCheck,
       markSaved,
+      createSaveRequest,
+      isCurrentSaveRequest,
       leaveSaveSign
     }),
-    [isSaved, serializeWorkflow, serializeWorkflowAndCheck, markSaved]
+    [
+      isSaved,
+      serializeWorkflow,
+      serializeWorkflowAndCheck,
+      markSaved,
+      createSaveRequest,
+      isCurrentSaveRequest
+    ]
   );
   const historyState = useMemo<WorkflowHistoryState>(
     () => ({
@@ -739,6 +800,8 @@ export const WorkflowSessionProvider = ({
       serializeWorkflow,
       serializeWorkflowAndCheck,
       markSaved,
+      createSaveRequest,
+      isCurrentSaveRequest,
       issueFocusNodeId,
       issueFocusRef,
       focusIssueNode,
@@ -765,6 +828,8 @@ export const WorkflowSessionProvider = ({
       serializeWorkflow,
       serializeWorkflowAndCheck,
       markSaved,
+      createSaveRequest,
+      isCurrentSaveRequest,
       issueFocusNodeId,
       focusIssueNode,
       initRuntime,

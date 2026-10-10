@@ -6,16 +6,16 @@ import Container from '../components/Container';
 import IOTitle from '../components/IOTitle';
 import ToolSetList, { getNodeToolSetList } from './components/ToolSetList';
 import { useTranslation } from 'next-i18next';
-import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 
 const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const toolList = getNodeToolSetList(data);
-  const node = useNode(data.nodeId);
+  const nodeActions = useNodeActions(data.nodeId);
   const onSaveDescription = useCallback(
     (index: number, description: string) => {
       // 工具集描述是节点语义数据（toolConfig）：基于派发瞬间的记录整块替换后走 updateNode。
-      node?.updateNode((current) => {
+      nodeActions?.updateNode((current) => {
         const toolConfig = current.toolConfig;
         const toolSetKey = (['mcpToolSet', 'httpToolSet', 'systemToolSet'] as const).find(
           (key) => toolConfig?.[key]
@@ -36,7 +36,7 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         };
       });
     },
-    [node]
+    [nodeActions]
   );
 
   return (

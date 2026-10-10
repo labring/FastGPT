@@ -11,5 +11,10 @@ export const peekWorkflowEnvironmentModels = () => {
   // 与 peekModelDetail 共用同一份过滤规则，避免可选列表和可用性校验出现两套口径。
   return catalog.modelList
     .filter((model) => matchesModelFilter(model, {}))
-    .map((model) => ({ modelId: model.modelId, model: model.model, type: model.type }));
+    .map((model) => ({
+      modelId: model.modelId,
+      model: model.model,
+      type: model.type,
+      config: model.config
+    }));
 };

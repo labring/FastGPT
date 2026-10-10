@@ -355,6 +355,26 @@ const getReferenceSource = ({
 };
 
 /** 把来源节点的下游消费字段并入 affected records；graph 可以是 committed 或 staged 版本。 */
+const getConsumerNodeIds = ({
+  graph,
+  sourceNodeIds
+}: {
+  graph: ReferenceGraph;
+  sourceNodeIds: Iterable<string>;
+}): Set<string> => {
+  const consumerNodeIds = new Set<string>();
+  for (const nodeId of sourceNodeIds) {
+    const sourceKeys = getReferenceGraphSet(graph, 'sourceKeysByNode', nodeId);
+    sourceKeys?.forEach((sourceKey) => {
+      getReferenceGraphSet(graph, 'consumersBySource', sourceKey)?.forEach((consumerKey) => {
+        const field = parseFieldIdentityKey(consumerKey);
+        if (field) consumerNodeIds.add(field.nodeId);
+      });
+    });
+  }
+  return consumerNodeIds;
+};
+
 const addAffectedConsumerFields = ({
   meta,
   graph,
@@ -457,9 +477,16 @@ export const createReferenceModule = (document: DocumentReadApi) => {
   // region referenceTransactions Reference graph transaction updates
 
   const getGraph = () => referenceGraph;
+  const getAffectedConsumerNodeIds = (sourceNodeIds: Iterable<string>) =>
+    getConsumerNodeIds({ graph: referenceGraph, sourceNodeIds });
   const forkGraph = () => forkReferenceGraph(referenceGraph);
   const commitStagedGraph = (graph: ReferenceGraph) => {
     referenceGraph = compactReferenceGraph(graph);
+  };
+  /** 语义事务失败时恢复引用图；缓存全部作废，避免残留 staged 派生。 */
+  const restoreGraph = (graph: ReferenceGraph) => {
+    referenceGraph = graph;
+    clearFieldStatusCache();
   };
   const rebuildGraph = () => {
     referenceGraph = buildReferenceGraph(document.getDocument().nodes);
@@ -1069,7 +1096,9 @@ export const createReferenceModule = (document: DocumentReadApi) => {
 
   return {
     getGraph,
+    getConsumerNodeIds: getAffectedConsumerNodeIds,
     forkGraph,
+    restoreGraph,
     rebuildGraph,
     commitTransaction,
     captureSnapshots,

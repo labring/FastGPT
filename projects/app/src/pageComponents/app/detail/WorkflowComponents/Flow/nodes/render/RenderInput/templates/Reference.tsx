@@ -6,7 +6,6 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type {
-  FlowNodeInputItemType,
   ReferenceArrayValueType,
   ReferenceItemValueType,
   ReferenceValueType
@@ -24,7 +23,7 @@ import type { TFunction } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import { useWorkflowReferenceScope } from '@fastgpt/web/components/common/Textarea/PromptEditor/context';
-import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useField, useFieldActions } from '@/web/core/workflow/editor/react/useField';
 import { useReferenceOptions } from '@/web/core/workflow/editor/react/useWorkflowQueries';
 import { useWorkflowEditorAdapter } from '@/web/core/workflow/editor/react/workflowEditorProvider';
 import { useNode } from '@/web/core/workflow/editor/react/useNode';
@@ -157,33 +156,34 @@ export const useLazyReferenceList = ({
  */
 const Reference = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useSafeTranslation();
-  const field = useField(nodeId, item.key, 'input');
-  const currentInput = (field?.data.input ?? item) as FlowNodeInputItemType;
-  const node = useNode(nodeId);
+  const fieldData = useField(nodeId, item.key, 'input', (field) => field?.data);
+  const fieldActions = useFieldActions({ nodeId, fieldKey: item.key, kind: 'input' });
+  const flowNodeType = useNode(nodeId, (node) => node?.data.flowNodeType);
   const referenceList = useMemo(
     () =>
       referenceOptionsToList({
-        options: field?.data.referenceOptions ?? [],
+        options: fieldData?.referenceOptions ?? [],
         t
       }),
-    [field?.data.referenceOptions, t]
+    [fieldData?.referenceOptions, t]
   );
 
-  const isArray = currentInput.valueType?.includes('array') ?? false;
+  const currentInput = fieldData?.input;
+  const isArray = currentInput?.valueType?.includes('array') ?? false;
 
   const onSelect = useCallback(
     (e?: ReferenceValueType) => {
-      field?.setValue(e);
+      fieldActions.setValue(e);
     },
-    [field]
+    [fieldActions]
   );
-
-  const flowNodeType = node?.data.flowNodeType;
   // 嵌套容器节点（loop/parallelRun/loopRun）里的下拉向上展开，避免被子节点覆盖。
   const popDirection = useMemo(
     () => (flowNodeType && isNestedParentNodeType(flowNodeType) ? 'top' : 'bottom'),
     [flowNodeType]
   );
+
+  if (!currentInput) return null;
 
   return (
     <WorkflowFieldScope nodeId={nodeId} fieldKey={currentInput.key}>

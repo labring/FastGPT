@@ -29,6 +29,9 @@ describe('workflow local draft', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
+    localStorageMock.setItem.mockImplementation((key: string, value: string) => {
+      storageMap.set(key, value);
+    });
     storageMap.clear();
     vi.stubGlobal('window', {
       localStorage: localStorageMock,
@@ -136,7 +139,30 @@ describe('workflow local draft', () => {
     });
 
     expect(saved).toBe(false);
-    expect(readWorkflowLocalDraft()).toBeNull();
+    expect(readWorkflowLocalDraft()?.data.nodes[0]?.nodeId).toBe('node-1');
+  });
+
+  it('should keep the previous draft when replacing storage fails', () => {
+    saveWorkflowLocalDraft({
+      appId: 'app-1',
+      tmbId: 'tmb-a',
+      data: draftData
+    });
+    localStorageMock.setItem.mockImplementationOnce(() => {
+      throw new Error('quota exceeded');
+    });
+
+    const saved = saveWorkflowLocalDraft({
+      appId: 'app-1',
+      tmbId: 'tmb-a',
+      data: {
+        ...draftData,
+        nodes: [{ nodeId: 'node-latest' }] as any
+      }
+    });
+
+    expect(saved).toBe(false);
+    expect(readWorkflowLocalDraft()?.data.nodes[0]?.nodeId).toBe('node-1');
   });
 
   it('should keep another app draft when an invalid write belongs to a different app', () => {

@@ -465,14 +465,14 @@ export const replaceJsonBodyString = (
           if (output) return formatVariableValByType(output.value, output.valueType);
 
           const input = node.inputs.find((input) => input.key === id);
-          if (input) {
+          if (input && nodeInputIsReference(input)) {
             return getReferenceVariableValue({
               value: input.value,
               nodesMap: runtimeNodesMap,
-              variables: allVariables,
-              isReferenceVal: nodeInputIsReference(input)
+              variables: allVariables
             });
           }
+          return input?.value;
         })();
 
         // Check for direct circular reference

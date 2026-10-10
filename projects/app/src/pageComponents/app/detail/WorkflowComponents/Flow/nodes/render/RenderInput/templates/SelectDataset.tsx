@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useField, useFieldActions } from '@/web/core/workflow/editor/react/useField';
 import DatasetCard from '@/components/core/app/DatasetCard';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
@@ -18,8 +18,8 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
   nodeId
 }: RenderInputProps) {
   const { t } = useTranslation();
-  const field = useField(nodeId, item.key, 'input');
-  const currentInput = field?.data.input ?? item;
+  const currentInput = useField(nodeId, item.key, 'input', (field) => field?.data.input);
+  const fieldActions = useFieldActions({ nodeId, fieldKey: item.key, kind: 'input' });
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -28,15 +28,15 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
   } = useDisclosure();
 
   const selectedDatasets = useMemo(() => {
-    if (Array.isArray(currentInput.value)) return currentInput.value as SelectedDatasetType[];
+    if (Array.isArray(currentInput?.value)) return currentInput.value as SelectedDatasetType[];
     return [] as SelectedDatasetType[];
-  }, [currentInput.value]);
+  }, [currentInput?.value]);
 
   const onDeleteDataset = useCallback(
     (datasetId: string) => {
-      field?.setValue(selectedDatasets.filter((dataset) => dataset.datasetId !== datasetId));
+      fieldActions.setValue(selectedDatasets.filter((dataset) => dataset.datasetId !== datasetId));
     },
-    [field, selectedDatasets]
+    [fieldActions, selectedDatasets]
   );
 
   const Render = useMemo(() => {
@@ -69,7 +69,7 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
               isDeleted: item.isDeleted
             }))}
             onChange={(e) => {
-              field?.setValue(e);
+              fieldActions.setValue(e);
             }}
             onClose={onCloseDatasetSelect}
           />
@@ -77,7 +77,7 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
       </>
     );
   }, [
-    field,
+    fieldActions,
     isOpenDatasetSelect,
     onCloseDatasetSelect,
     onOpenDatasetSelect,
@@ -86,24 +86,27 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
     t
   ]);
 
+  if (!currentInput) return null;
+
   return Render;
 });
 
-export const SwitchAuthTmb = React.memo(function SwitchAuthTmb({
-  inputs = [],
-  item,
-  nodeId
-}: RenderInputProps) {
+export const SwitchAuthTmb = React.memo(function SwitchAuthTmb({ nodeId }: RenderInputProps) {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-  // 权限开关写的是同节点的 authTmbId 字段，不是当前渲染字段，因此单独取句柄。
-  const authTmbField = useField(nodeId, NodeInputKeyEnum.authTmbId, 'input');
-
-  const authTmbIdInput = useMemo(
-    () => inputs.find((v) => v.key === NodeInputKeyEnum.authTmbId),
-    [inputs]
+  const authTmbIdInput = useField(
+    nodeId,
+    NodeInputKeyEnum.authTmbId,
+    'input',
+    (field) => field?.data.input
   );
-  const authTmbIdValue = authTmbField?.data.input?.value ?? authTmbIdInput?.value;
+  const authTmbFieldActions = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.authTmbId,
+    kind: 'input'
+  });
+
+  const authTmbIdValue = authTmbIdInput?.value;
 
   return feConfigs?.isPlus && authTmbIdInput ? (
     <Flex alignItems={'center'}>
@@ -114,7 +117,7 @@ export const SwitchAuthTmb = React.memo(function SwitchAuthTmb({
         size={'sm'}
         isChecked={!!authTmbIdValue}
         onChange={(e) => {
-          authTmbField?.setValue(e.target.checked);
+          authTmbFieldActions.setValue(e.target.checked);
         }}
       />
     </Flex>

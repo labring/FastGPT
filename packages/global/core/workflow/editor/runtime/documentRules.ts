@@ -35,6 +35,7 @@ import {
   valuesEqual
 } from './kernel';
 import { updateReferenceGraphNode } from './referenceModule';
+import { updateWorkflowNodeOutputValidity, type WorkflowLLMModelMap } from '../utils';
 import type {
   CanonicalResult,
   EdgeRecord,
@@ -110,6 +111,14 @@ export const recordNodeChange = ({
   afterIndex?: number;
 }) => {
   const previous = meta.nodeChanges.get(nodeId);
+  if (previous && !previous.before && !after) {
+    meta.nodeChanges.delete(nodeId);
+    meta.changedNodeIds.delete(nodeId);
+    [...meta.changedFieldIds].forEach(([key, field]) => {
+      if (field.nodeId === nodeId) meta.changedFieldIds.delete(key);
+    });
+    return;
+  }
   if (!before && !after && !previous?.before) {
     meta.nodeChanges.delete(nodeId);
     meta.changedNodeIds.delete(nodeId);
@@ -296,6 +305,10 @@ export const documentToCanonical = ({
     const view = views.get(data.nodeId);
     return {
       ...cloneValue(data),
+      // invalid/invalidCondition 只属于 Runtime 环境派生，不参与 canonical/history 比较或持久化。
+      outputs: cloneValue(data.outputs).map(
+        ({ invalid: _, invalidCondition: __, ...output }) => output
+      ),
       ...(view?.position ? { position: cloneValue(view.position) } : {}),
       ...(view?.isFolded !== undefined ? { isFolded: view.isFolded } : {})
     };
@@ -702,6 +715,36 @@ export const applyPersistedDerivedFields = ({
     const inputs = deriveNodeInputs({ node, nodes, nodeIds, chatConfig, childrenByParent });
     if (inputs === node.data.inputs) return;
     const after: NodeRecord = { ...node, data: { ...node.data, inputs } };
+    if (nextNodes === nodes) nextNodes = nodes.slice();
+    nextNodes[index] = after;
+    changes.push({ index, before: node, after });
+  });
+  return { nodes: nextNodes, changes };
+};
+
+/** 按 Runtime 环境更新输出 invalid；模型目录未就绪时保留当前 Runtime 标记。 */
+export const applyWorkflowNodeOutputValidity = ({
+  nodes,
+  llmModelMap
+}: {
+  nodes: NodeRecord[];
+  llmModelMap?: WorkflowLLMModelMap;
+}): {
+  nodes: NodeRecord[];
+  changes: Array<{ index: number; before: NodeRecord; after: NodeRecord }>;
+} => {
+  if (!llmModelMap) return { nodes, changes: [] };
+
+  const changes: Array<{ index: number; before: NodeRecord; after: NodeRecord }> = [];
+  let nextNodes = nodes;
+  nodes.forEach((node, index) => {
+    const outputs = updateWorkflowNodeOutputValidity({
+      inputs: node.data.inputs,
+      outputs: node.data.outputs,
+      llmModelMap
+    });
+    if (outputs === node.data.outputs) return;
+    const after: NodeRecord = { ...node, data: { ...node.data, outputs } };
     if (nextNodes === nodes) nextNodes = nodes.slice();
     nextNodes[index] = after;
     changes.push({ index, before: node, after });

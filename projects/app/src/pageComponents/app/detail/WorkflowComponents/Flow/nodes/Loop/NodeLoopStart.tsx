@@ -16,7 +16,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
-import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 const typeMap = {
@@ -27,26 +27,31 @@ const typeMap = {
   [WorkflowIOValueTypeEnum.arrayAny]: WorkflowIOValueTypeEnum.any
 };
 
+const emptyOutputs: FlowNodeItemType['outputs'] = [];
+
 const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId, outputs, parentNodeId } = data;
+  const { nodeId, parentNodeId } = data;
   // 数组元素类型来自父容器的 nestedInputArray：直接订阅父节点文档数据。
-  const node = useNode(nodeId);
-  const parentNode = useNode(parentNodeId ?? '');
+  const outputs =
+    useNode<FlowNodeItemType['outputs']>(nodeId, (current) => current?.data.outputs) ??
+    emptyOutputs;
+  const parentInputs = useNode(parentNodeId ?? '', (current) => current?.data.inputs);
+  const nodeActions = useNodeActions(nodeId);
   // 边集合只在删除 nestedStartInput 输出时读，走非订阅 getter：effect 不再随边增删重跑。
   const { getEdges } = useWorkflowActions();
 
   // According to the variable referenced by parentInput, find the output of the corresponding node and take its output valueType
   const loopItemInputType = useMemo(() => {
-    const parentArrayInput = parentNode?.data.inputs.find(
+    const parentArrayInput = parentInputs?.find(
       (input) => input.key === NodeInputKeyEnum.nestedInputArray
     );
     return typeMap[parentArrayInput?.valueType as keyof typeof typeMap];
-  }, [parentNode]);
+  }, [parentInputs]);
 
   // Auth update loopStartInput output
   useEffect(() => {
-    const documentOutputs = node?.data.outputs;
+    const documentOutputs = outputs;
     if (!documentOutputs) return;
 
     const loopArrayOutput = documentOutputs.find(
@@ -76,7 +81,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     }
     if (!nextOutputs) return;
 
-    node?.updateNode(
+    nodeActions?.updateNode(
       () => ({ outputs: nextOutputs }),
       // 删除该输出时，旧 handle 上的连线同事务断开。
       !loopItemInputType
@@ -89,7 +94,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           }
         : undefined
     );
-  }, [getEdges, loopItemInputType, node, nodeId, t]);
+  }, [getEdges, loopItemInputType, nodeActions, nodeId, outputs, t]);
 
   const Render = useMemo(() => {
     return (

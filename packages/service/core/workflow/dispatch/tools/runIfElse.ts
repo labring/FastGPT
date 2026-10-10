@@ -117,8 +117,7 @@ function getResult(
     const conditionLeftValue = getReferenceVariableValue({
       value: variable,
       variables: runtimeVariables,
-      nodesMap: runtimeNodesMap,
-      isReferenceVal: true
+      nodesMap: runtimeNodesMap
     });
 
     const conditionRightValue =
@@ -126,8 +125,7 @@ function getResult(
         ? getReferenceVariableValue({
             value: value as ReferenceItemValueType,
             variables: runtimeVariables,
-            nodesMap: runtimeNodesMap,
-            isReferenceVal: true
+            nodesMap: runtimeNodesMap
           })
         : value;
 

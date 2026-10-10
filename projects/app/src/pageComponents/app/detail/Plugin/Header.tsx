@@ -45,6 +45,7 @@ const Header = () => {
   });
 
   const onSaveApp = useContextSelector(AppContext, (v) => v.onSaveApp);
+  const appId = useContextSelector(AppContext, (v) => v.appId);
   const currentTab = useContextSelector(AppContext, (v) => v.currentTab);
   const parentId = useContextSelector(AppContext, (v) => v.appDetail.parentId);
   const {
@@ -53,11 +54,15 @@ const Header = () => {
     onClose: onCloseBackConfirm
   } = useDisclosure();
 
-  const { serializeWorkflowAndCheck: flowData2StoreDataAndCheck } = useWorkflowPersistence();
+  const {
+    serializeWorkflow: flowData2StoreData,
+    serializeWorkflowAndCheck: flowData2StoreDataAndCheck
+  } = useWorkflowPersistence();
 
   const openWorkflowTest = useWorkflowModalValue((v) => v.openWorkflowTest);
   const { versions, switchVersion, switchCloudVersion } = useWorkflowHistory();
-  const { isSaved, leaveSaveSign, serializeWorkflow, markSaved } = useWorkflowPersistence();
+  const { isSaved, leaveSaveSign, createSaveRequest, isCurrentSaveRequest, markSaved } =
+    useWorkflowPersistence();
   const leaveSaveSignRef = leaveSaveSign;
 
   const activePanel = useWorkflowModalValue((v) => v.activePanel);
@@ -75,23 +80,33 @@ const Header = () => {
       isPublish?: boolean;
       versionName?: string;
     }) => {
-      // 序列化时捕获内容版本；只有保存成功才回填，请求期间的新编辑仍算未保存。
-      const data = serializeWorkflow();
-      if (data) {
-        await onSaveApp({
-          ...data,
+      const request = createSaveRequest(appId);
+      if (!request) return false;
+
+      const saved = await onSaveApp(
+        {
+          ...request.data,
           isPublish,
           versionName,
           //@ts-ignore
           version: 'v2'
-        });
-        markSaved();
-      }
+        },
+        request
+      );
+      if (!saved || !isCurrentSaveRequest(request)) return false;
+
+      return markSaved(request);
     },
     {
       manual: true,
-      refreshDeps: [onSaveApp, markSaved, serializeWorkflow]
+      refreshDeps: [appId, onSaveApp, createSaveRequest, isCurrentSaveRequest, markSaved]
     }
+  );
+  const onClickSaveForButton = useCallback(
+    async (options: { isPublish?: boolean; versionName?: string }) => {
+      await onClickSave(options);
+    },
+    [onClickSave]
   );
 
   const onBack = useCallback(async () => {
@@ -169,7 +184,7 @@ const Header = () => {
                 variant={'whitePrimary'}
                 flexShrink={0}
                 onClick={async () => {
-                  const data = await flowData2StoreDataAndCheck();
+                  const data = flowData2StoreData();
                   if (data) {
                     openWorkflowTest(data);
                   }
@@ -181,7 +196,7 @@ const Header = () => {
                 colorSchema={'black'}
                 isLoading={loading}
                 isDisabled={showHistoryModal}
-                onClickSave={onClickSave}
+                onClickSave={onClickSaveForButton}
                 checkData={async () => !!(await flowData2StoreDataAndCheck())}
               />
             </HStack>
@@ -198,10 +213,11 @@ const Header = () => {
     showHistoryModal,
     t,
     loading,
-    onClickSave,
+    onClickSaveForButton,
     openPanel,
     closePanel,
     flowData2StoreDataAndCheck,
+    flowData2StoreData,
     openWorkflowTest
   ]);
 
@@ -239,7 +255,8 @@ const Header = () => {
             isLoading={loading}
             onClick={async () => {
               try {
-                await onClickSave({});
+                const saved = await onClickSave({});
+                if (!saved) return;
                 onCloseBackConfirm();
                 onBack();
                 backSaveToast({

@@ -14,6 +14,7 @@ import {
   collectSelectionConflictIds,
   collectGeometryUpdates,
   collectCommittedGeometryNodeIds,
+  getPositionDelta,
   computeHelperLines as computeHelperLinesWithNode,
   dropEdgeDisconnectsOfRemovedNodes,
   popoverWidth,
@@ -104,6 +105,20 @@ describe('collectGeometryUpdates', () => {
         getPreviousPosition: (nodeId) => previousPositions.get(nodeId)
       })
     ).toEqual([{ nodeId: 'moved', position: { x: 11, y: 20 } }]);
+  });
+});
+
+describe('getPositionDelta', () => {
+  it('moves child nodes when parent moves from (10, 20) to (0, 0)', () => {
+    expect(getPositionDelta({ x: 10, y: 20 }, { x: 0, y: 0 })).toEqual({ x: -10, y: -20 });
+  });
+
+  it('keeps an explicit x coordinate of 0', () => {
+    expect(getPositionDelta({ x: 10, y: 20 }, { x: 0 })).toEqual({ x: -10, y: 0 });
+  });
+
+  it('keeps an explicit y coordinate of 0', () => {
+    expect(getPositionDelta({ x: 10, y: 20 }, { y: 0 })).toEqual({ x: 0, y: -20 });
   });
 });
 

@@ -53,7 +53,7 @@ export const usePlacementContext = ({
   isSidebar
 }: PlacementRequest): NodeTemplateContext | null => {
   const adapter = useWorkflowEditorAdapter();
-  const structure = useWorkflow();
+  const structure = useWorkflow((snapshot) => snapshot);
   const sourceNodeId = node?.nodeId;
   const sourceHandleId = node?.handleId ?? null;
 

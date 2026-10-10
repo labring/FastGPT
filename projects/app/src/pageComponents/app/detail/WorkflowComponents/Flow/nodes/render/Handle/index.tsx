@@ -7,7 +7,7 @@ import { useTranslation } from 'next-i18next';
 import { Box, Flex } from '@chakra-ui/react';
 import { useWorkflowUIValue } from '../../../canvas/canvasState';
 import { useWorkflowSelectionValue } from '../../../context/workflowSelectionContext';
-import { useWorkflowValue } from '@/web/core/workflow/editor/react/useWorkflow';
+import { useWorkflow } from '@/web/core/workflow/editor/react/useWorkflow';
 import { WorkflowHandleRenderContext } from './handleRenderContext';
 
 const handleSizeConnected = 24;
@@ -58,7 +58,7 @@ export const MySourceHandle = React.memo(function MySourceHandle({
 
   // 连通判定走 Runtime 图查询（bySource 索引，O(出度)），selector 只返回 boolean，
   // 别处连线/断线不会让这个 handle 重渲染。
-  const connected = useWorkflowValue((_structure, graph) =>
+  const connected = useWorkflow((_structure, graph) =>
     graph.isHandleConnected({ nodeId, handleId, direction: 'source' })
   );
   const selected = useWorkflowSelectionValue((v) => v.selectedNodesMap[nodeId]);
@@ -160,7 +160,7 @@ export const MyTargetHandle = React.memo(function MyTargetHandle({
 }) {
   const renderHandle = useContext(WorkflowHandleRenderContext);
   // 同 MySourceHandle：图查询按 byTarget 索引算连通，只返回 boolean。
-  const connected = useWorkflowValue((_structure, graph) =>
+  const connected = useWorkflow((_structure, graph) =>
     graph.isHandleConnected({ nodeId, handleId, direction: 'target' })
   );
   // 这里只需要「有没有在拖拽连线」这一个事实，不需要 connectingEdge 对象本身。

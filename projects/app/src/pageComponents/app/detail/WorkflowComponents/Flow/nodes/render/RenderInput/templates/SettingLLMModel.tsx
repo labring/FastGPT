@@ -3,9 +3,7 @@ import type { RenderInputProps } from '../type';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { useField } from '@/web/core/workflow/editor/react/useField';
-import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
-import type { WorkflowFieldHandle } from '@/web/core/workflow/editor/react/workflowEditorAdapter';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useLocalStorageState } from 'ahooks';
 import { Input_Template_SettingAiModel } from '@fastgpt/global/core/workflow/template/input';
@@ -15,53 +13,25 @@ import { Input_Template_SettingAiModel } from '@fastgpt/global/core/workflow/tem
  * 因此按记录级变更处理——读文档当前 inputs、合并全部改动后一次 updateNode 提交，
  * 保证一次交互只产生一条可撤销历史。
  */
-const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: RenderInputProps) => {
+const SelectAiModelRender = ({ nodeId, settingLLMModelProps }: RenderInputProps) => {
   const nodeActions = useNodeActions(nodeId);
-  const aiModelIdField = useField(nodeId, NodeInputKeyEnum.aiModelId, 'input');
-  const aiModelField = useField(nodeId, NodeInputKeyEnum.aiModel, 'input');
-  const maxTokenField = useField(nodeId, NodeInputKeyEnum.aiChatMaxToken, 'input');
-  const temperatureField = useField(nodeId, NodeInputKeyEnum.aiChatTemperature, 'input');
-  const responseTextField = useField(nodeId, NodeInputKeyEnum.aiChatIsResponseText, 'input');
-  const visionField = useField(nodeId, NodeInputKeyEnum.aiChatVision, 'input');
-  const audioField = useField(nodeId, NodeInputKeyEnum.aiChatAudio, 'input');
-  const videoField = useField(nodeId, NodeInputKeyEnum.aiChatVideo, 'input');
-  const extractFilesField = useField(nodeId, NodeInputKeyEnum.aiChatExtractFiles, 'input');
-  const reasoningField = useField(nodeId, NodeInputKeyEnum.aiChatReasoning, 'input');
-  const reasoningEffortField = useField(nodeId, NodeInputKeyEnum.aiChatReasoningEffort, 'input');
-  const topPField = useField(nodeId, NodeInputKeyEnum.aiChatTopP, 'input');
-  const stopSignField = useField(nodeId, NodeInputKeyEnum.aiChatStopSign, 'input');
-  const responseFormatField = useField(nodeId, NodeInputKeyEnum.aiChatResponseFormat, 'input');
-  const jsonSchemaField = useField(nodeId, NodeInputKeyEnum.aiChatJsonSchema, 'input');
-
-  const getCurrentInput = useCallback(
-    (key: string, field: WorkflowFieldHandle | undefined) =>
-      field?.data.input ?? inputs.find((input) => input.key === key),
-    [inputs]
-  );
-  const aiModelIdInput = getCurrentInput(NodeInputKeyEnum.aiModelId, aiModelIdField);
-  const aiModelInput = getCurrentInput(NodeInputKeyEnum.aiModel, aiModelField);
-  const maxTokenInput = getCurrentInput(NodeInputKeyEnum.aiChatMaxToken, maxTokenField);
-  const temperatureInput = getCurrentInput(NodeInputKeyEnum.aiChatTemperature, temperatureField);
-  const responseTextInput = getCurrentInput(
-    NodeInputKeyEnum.aiChatIsResponseText,
-    responseTextField
-  );
-  const visionInput = getCurrentInput(NodeInputKeyEnum.aiChatVision, visionField);
-  const audioInput = getCurrentInput(NodeInputKeyEnum.aiChatAudio, audioField);
-  const videoInput = getCurrentInput(NodeInputKeyEnum.aiChatVideo, videoField);
-  const extractFilesInput = getCurrentInput(NodeInputKeyEnum.aiChatExtractFiles, extractFilesField);
-  const reasoningInput = getCurrentInput(NodeInputKeyEnum.aiChatReasoning, reasoningField);
-  const reasoningEffortInput = getCurrentInput(
-    NodeInputKeyEnum.aiChatReasoningEffort,
-    reasoningEffortField
-  );
-  const topPInput = getCurrentInput(NodeInputKeyEnum.aiChatTopP, topPField);
-  const stopSignInput = getCurrentInput(NodeInputKeyEnum.aiChatStopSign, stopSignField);
-  const responseFormatInput = getCurrentInput(
-    NodeInputKeyEnum.aiChatResponseFormat,
-    responseFormatField
-  );
-  const jsonSchemaInput = getCurrentInput(NodeInputKeyEnum.aiChatJsonSchema, jsonSchemaField);
+  const currentInputs = useNode(nodeId, (node) => node?.data.inputs) ?? [];
+  const getCurrentInput = (key: string) => currentInputs.find((input) => input.key === key);
+  const aiModelIdInput = getCurrentInput(NodeInputKeyEnum.aiModelId);
+  const aiModelInput = getCurrentInput(NodeInputKeyEnum.aiModel);
+  const maxTokenInput = getCurrentInput(NodeInputKeyEnum.aiChatMaxToken);
+  const temperatureInput = getCurrentInput(NodeInputKeyEnum.aiChatTemperature);
+  const responseTextInput = getCurrentInput(NodeInputKeyEnum.aiChatIsResponseText);
+  const visionInput = getCurrentInput(NodeInputKeyEnum.aiChatVision);
+  const audioInput = getCurrentInput(NodeInputKeyEnum.aiChatAudio);
+  const videoInput = getCurrentInput(NodeInputKeyEnum.aiChatVideo);
+  const extractFilesInput = getCurrentInput(NodeInputKeyEnum.aiChatExtractFiles);
+  const reasoningInput = getCurrentInput(NodeInputKeyEnum.aiChatReasoning);
+  const reasoningEffortInput = getCurrentInput(NodeInputKeyEnum.aiChatReasoningEffort);
+  const topPInput = getCurrentInput(NodeInputKeyEnum.aiChatTopP);
+  const stopSignInput = getCurrentInput(NodeInputKeyEnum.aiChatStopSign);
+  const responseFormatInput = getCurrentInput(NodeInputKeyEnum.aiChatResponseFormat);
+  const jsonSchemaInput = getCurrentInput(NodeInputKeyEnum.aiChatJsonSchema);
   const [, setDefaultModel] = useLocalStorageState<string>('workflow_default_llm_model', {
     defaultValue: ''
   });

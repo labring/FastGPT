@@ -1,9 +1,10 @@
 // adapter handle 行为测试：节点句柄的 updateNode 提交语义与失败路径。
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type { WorkflowRuntimePort } from '@fastgpt/global/core/workflow/editor/types';
 import { hydrateRuntime } from '@/web/core/workflow/editor/codec';
 import { createWorkflowEditorAdapter } from '@/web/core/workflow/editor/react/workflowEditorAdapter';
 
@@ -149,5 +150,39 @@ describe('WorkflowNodeHandle.updateNode', () => {
 
     adapter.dispose();
     runtime.dispose();
+  });
+});
+
+describe('WorkflowEditorAdapter issue updates', () => {
+  it('notifies field and reference consumers when issue-only state changes', () => {
+    let issueListener: ((update: { nodeIds: string[] }) => void) | undefined;
+    let field = { nodeId: 'consumer', key: 'input', kind: 'input', data: { references: [] } };
+    const runtime = {
+      getWorkflow: () => ({ nodes: [], edges: [], chatConfig: {} }),
+      getGraphQueries: () => ({}),
+      subscribe: () => () => undefined,
+      subscribeIssues: (listener: (update: { nodeIds: string[] }) => void) => {
+        issueListener = listener;
+        return () => undefined;
+      },
+      getField: () => field,
+      getReferenceOptions: () => []
+    } as unknown as WorkflowRuntimePort;
+    const adapter = createWorkflowEditorAdapter(runtime);
+    const fieldListener = vi.fn();
+    const referenceListener = vi.fn();
+
+    adapter.subscribeField({ nodeId: 'consumer', fieldKey: 'input', kind: 'input' }, fieldListener);
+    adapter.subscribeReferenceOptions(referenceListener);
+
+    field = {
+      ...field,
+      data: { references: [{ code: 'valid' }] }
+    };
+    issueListener?.({ nodeIds: ['source'] });
+
+    expect(fieldListener).toHaveBeenCalledTimes(1);
+    expect(referenceListener).toHaveBeenCalledTimes(1);
+    adapter.dispose();
   });
 });

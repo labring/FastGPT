@@ -8,16 +8,15 @@ import { SystemToolSecretInputTypeMap } from '@fastgpt/global/core/app/tool/syst
 import SecretInputModal, {
   type ToolParamsFormType
 } from '@/pageComponents/app/tool/SecretInputModal';
-import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
 import { useNode } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowOverlayValue } from '@/web/core/workflow/editor/session/workflowSession';
 
 const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInputItemType[] }) => {
   const { t } = useTranslation();
   // nodeId 是可选 prop：hook 必须无条件调用，空 id 时 useNode / useField 返回 undefined。
-  const node = useNode(nodeId ?? '');
-  const nodeData = node?.data;
-  const inputField = useField({
+  const nodeData = useNode(nodeId ?? '', (node) => node?.data);
+  const inputFieldActions = useFieldActions({
     nodeId: nodeId ?? '',
     fieldKey: NodeInputKeyEnum.systemInputConfig,
     kind: 'input'
@@ -46,9 +45,13 @@ const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInpu
 
   /** 提交密钥配置：只改这一个输入记录的值，走字段句柄而不是整节点 patch。 */
   const onSubmit = (data: ToolParamsFormType) => {
-    if (!inputConfig || !inputField) return;
+    if (
+      !inputConfig ||
+      !nodeData?.inputs.some((input) => input.key === NodeInputKeyEnum.systemInputConfig)
+    )
+      return;
 
-    inputField.setValue(data);
+    inputFieldActions.setValue(data);
     setFalse();
   };
 

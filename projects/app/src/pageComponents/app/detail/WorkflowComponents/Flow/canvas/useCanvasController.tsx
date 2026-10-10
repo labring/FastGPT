@@ -32,7 +32,7 @@ import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useMemoizedFn } from 'ahooks';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { useWorkflowCanvasValue } from './workflowCanvasContext';
+import { useWorkflowCanvasRendererValue, useWorkflowCanvasValue } from './workflowCanvasContext';
 import { useWorkflowUIValue } from './canvasState';
 import { useWorkflowModalValue } from '../panels/workflowPanelState';
 import { type HelperLinesController } from '../components/HelperLines';
@@ -76,6 +76,12 @@ export const collectCommittedGeometryNodeIds = (changes: readonly NodeChange[]) 
       )
       .map((change) => change.id)
   );
+
+/** 读取父节点拖拽位移；显式区分合法的 0 坐标与缺失坐标。 */
+export const getPositionDelta = (initialPosition: XYPosition, nextPosition?: XYPosition) => ({
+  x: typeof nextPosition?.x === 'number' ? nextPosition.x - initialPosition.x : 0,
+  y: typeof nextPosition?.y === 'number' ? nextPosition.y - initialPosition.y : 0
+});
 
 /*
   限定容量的最大堆,根为当前最大距离。保留为通用最近邻筛选工具,
@@ -469,8 +475,8 @@ const deselectChanges = (nodeIds: readonly string[]): NodeSelectionChange[] =>
  * 清空画布选中态：只对当前真的选中的节点发 `select` 变更，未选中节点保持对象身份。
  */
 export const useClearCanvasSelection = () => {
-  const applyNodeChanges = useWorkflowCanvasValue((v) => v.applyNodeChanges);
-  const getNodes = useWorkflowCanvasValue((v) => v.getNodes);
+  const applyNodeChanges = useWorkflowCanvasRendererValue((v) => v.applyNodeChanges);
+  const getNodes = useWorkflowCanvasRendererValue((v) => v.getNodes);
   const issueFocusRef = useWorkflowIssueFocusRef();
 
   return useMemoizedFn(() => {
@@ -487,9 +493,9 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
   // 画布本地交互数组（拖拽帧、选中、测量尺寸）仍读 renderer 数组：handleNodesChange 要在
   // 应用变更后同步读回最终位置提交几何，reactflow store 得等下一次 commit 才刷新。
   // 这四个都是 useMemoizedFn，身份恒定；整体订阅会让每次投影（含拖拽帧）都刷新本 hook 的消费方。
-  const applyNodeChanges = useWorkflowCanvasValue((v) => v.applyNodeChanges);
-  const applyEdgeChanges = useWorkflowCanvasValue((v) => v.applyEdgeChanges);
-  const getNodes = useWorkflowCanvasValue((v) => v.getNodes);
+  const applyNodeChanges = useWorkflowCanvasRendererValue((v) => v.applyNodeChanges);
+  const applyEdgeChanges = useWorkflowCanvasRendererValue((v) => v.applyEdgeChanges);
+  const getNodes = useWorkflowCanvasRendererValue((v) => v.getNodes);
   // 只用写能力与事件期读取：稳定 action 句柄订阅数为零，画布组件不再随结构变化重渲染。
   const actions = useWorkflowActions();
   const canvas = useCanvas();
@@ -722,8 +728,7 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
         // 计算子节点的位置变化 (此处 change.position 已是吸附后值)
         if (childNodes.length > 0) {
           const initPosition = node.position;
-          const deltaX = change.position?.x ? change.position.x - initPosition.x : 0;
-          const deltaY = change.position?.y ? change.position.y - initPosition.y : 0;
+          const { x: deltaX, y: deltaY } = getPositionDelta(initPosition, change.position);
 
           const childNodesChange: NodePositionChange[] = childNodes.map((childNode) => {
             if (change.dragging) {
@@ -800,8 +805,11 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
         ) {
           // store 返回的画布节点 data 是 any，显式收窄以便读取父容器的 loopRunMode 输入。
           const parent = getNode(node.data.parentNodeId) as Node<FlowNodeItemType> | undefined;
-          const parentMode = parent?.data.inputs.find((i) => i.key === NodeInputKeyEnum.loopRunMode)
-            ?.value as LoopRunModeEnum | undefined;
+          const parentMode = runtime
+            ?.getNode(parent?.id ?? '')
+            ?.inputs.find((i) => i.key === NodeInputKeyEnum.loopRunMode)?.value as
+            | LoopRunModeEnum
+            | undefined;
           if (
             parent?.data.flowNodeType === FlowNodeTypeEnum.loopRun &&
             parentMode === LoopRunModeEnum.conditional

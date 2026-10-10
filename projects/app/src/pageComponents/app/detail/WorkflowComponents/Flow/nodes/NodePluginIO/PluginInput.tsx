@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import { Box, Button, HStack } from '@chakra-ui/react';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import {
@@ -22,7 +23,7 @@ import dynamic from 'next/dynamic';
 import { defaultInput } from './InputEditModal';
 import RenderOutput from '../render/RenderOutput';
 import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
-import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 const FieldEditModal = dynamic(() => import('./InputEditModal'));
@@ -35,9 +36,10 @@ const FieldEditModal = dynamic(() => import('./InputEditModal'));
 
 const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useSafeTranslation();
-  const { nodeId, inputs = [], outputs } = data;
-
-  const node = useNode(nodeId);
+  const { nodeId } = data;
+  const { inputs = [], outputs = [] } =
+    useNode<WorkflowNodeData>(nodeId, (node) => node?.data) ?? {};
+  const nodeActions = useNodeActions(nodeId);
   // 边集合只在提交/删除自定义输入的回调里读，走非订阅 getter：点击时取当前值，组件不订阅结构变更。
   const { getEdges } = useWorkflowActions();
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
@@ -52,7 +54,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
       const editKey = editField.key;
 
-      node?.updateNode(
+      nodeActions?.updateNode(
         (current) => {
           const newOutput: FlowNodeOutputItemType = editKey
             ? {
@@ -91,7 +93,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           : undefined
       );
     },
-    [editField, getEdges, node, nodeId]
+    [editField, getEdges, nodeActions, nodeId]
   );
 
   const Render = useMemo(() => {
@@ -136,7 +138,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             }}
             onDelete={(key) => {
               // 删除字段时其对称 output 与 handle 连线同事务消失，撤销一步恢复。
-              node?.updateNode(
+              nodeActions?.updateNode(
                 (current) => ({
                   inputs: current.inputs.filter((input) => input.key !== key),
                   outputs: current.outputs.filter((output) => output.key !== key)
@@ -160,7 +162,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         )}
       </NodeCard>
     );
-  }, [data, getEdges, inputs, node, nodeId, outputs, selected, t]);
+  }, [data, getEdges, inputs, nodeActions, nodeId, outputs, selected, t]);
 
   return (
     <>

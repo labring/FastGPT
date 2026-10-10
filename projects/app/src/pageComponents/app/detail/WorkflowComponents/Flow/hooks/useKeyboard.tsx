@@ -9,7 +9,7 @@ import { useTranslation } from 'next-i18next';
 import { useCallback } from 'react';
 import { type Node, useKeyPress, useReactFlow } from 'reactflow';
 import { useWorkflowUIValue } from '../canvas/canvasState';
-import { useWorkflowCanvasValue } from '../canvas/workflowCanvasContext';
+import { useWorkflowCanvasRendererValue } from '../canvas/workflowCanvasContext';
 import { isWorkflowShortcutInputtingTarget } from './keyboard';
 import { useClearCanvasSelection } from '../canvas/useCanvasController';
 import { useWorkflowUtils } from './useUtils';
@@ -22,7 +22,7 @@ export const useKeyboard = () => {
   const { t } = useTranslation();
   const mouseInCanvas = useWorkflowUIValue((v) => v.mouseInCanvas);
   const getMousePosition = useWorkflowUIValue((v) => v.getMousePosition);
-  const selectNodes = useWorkflowCanvasValue((v) => v.selectNodes);
+  const selectNodes = useWorkflowCanvasRendererValue((v) => v.selectNodes);
 
   const { copyData } = useCopyData();
   const { computedNewNodeName } = useWorkflowUtils();

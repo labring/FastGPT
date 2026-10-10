@@ -12,13 +12,9 @@ import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import type { WorkflowRuntimePort } from '@fastgpt/global/core/workflow/editor/types';
 import { hydrateRuntime } from '@/web/core/workflow/editor/codec';
 import { WorkflowEditorProvider } from '@/web/core/workflow/editor/react/workflowEditorProvider';
-import { useFieldValue } from '@/web/core/workflow/editor/react/useField';
-import { useNode, useNodeValue } from '@/web/core/workflow/editor/react/useNode';
-import {
-  useWorkflow,
-  useWorkflowActions,
-  useWorkflowValue
-} from '@/web/core/workflow/editor/react/useWorkflow';
+import { useField, useFieldActions } from '@/web/core/workflow/editor/react/useField';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflow, useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 import type { WorkflowActionsHandle } from '@/web/core/workflow/editor/react/workflowEditorAdapter';
 
 const t = ((key: string) => key) as never;
@@ -137,7 +133,7 @@ describe('workflow editor subscription API', () => {
     const Leaf = () => {
       renders += 1;
       counts.push(
-        useWorkflowValue((structure, graph) => {
+        useWorkflow((structure, graph) => {
           graphs.push(graph);
           return structure.nodes.length;
         })
@@ -181,7 +177,7 @@ describe('workflow editor subscription API', () => {
     let renders = 0;
     const Leaf = () => {
       renders += 1;
-      snapshots.push(useWorkflow());
+      snapshots.push(useWorkflow({ raw: true }));
       return null;
     };
     await mount(Leaf);
@@ -213,7 +209,7 @@ describe('workflow editor subscription API', () => {
       renders += 1;
       if (renders >= 3) allowFresh = false;
       seen.push(
-        useWorkflowValue((structure) => {
+        useWorkflow((structure) => {
           const cached = seen.at(-1);
           if (!allowFresh && cached) return cached;
           return { nodeCount: structure.nodes.length };
@@ -234,7 +230,7 @@ describe('workflow editor subscription API', () => {
     let renders = 0;
     const Leaf = () => {
       renders += 1;
-      names.push(useNodeValue('answer', (node) => node?.data.name));
+      names.push(useNode('answer', (node) => node?.data.name));
       return null;
     };
     await mount(Leaf);
@@ -276,7 +272,7 @@ describe('workflow editor subscription API', () => {
   it('reads the current node fields after a canvas node keeps its identity', async () => {
     const values: unknown[] = [];
     const Leaf = () => {
-      const node = useNode('answer');
+      const node = useNode('answer', { raw: true });
       values.push(node?.data.inputs.find((input) => input.key === 'extraText')?.value);
       return null;
     };
@@ -297,6 +293,70 @@ describe('workflow editor subscription API', () => {
     expect(values.at(-1)).toBe('after');
   });
 
+  it('combines same-node semantic reads into one stable data selector', async () => {
+    const seen: Array<{ input: unknown; output: unknown; catchError: unknown }> = [];
+    const Leaf = () => {
+      const answerData = useNode('answer', (node) => node?.data);
+      const startData = useNode('start', (node) => node?.data);
+      seen.push({
+        input: answerData?.inputs.find((input) => input.key === 'extraText')?.value,
+        output: startData?.outputs.find((output) => output.key === NodeOutputKeyEnum.userChatInput)
+          ?.value,
+        catchError: answerData?.catchError
+      });
+      return null;
+    };
+    await mount(Leaf);
+
+    act(() => {
+      runtime.dispatch([
+        {
+          type: 'updateField',
+          nodeId: 'answer',
+          fieldKey: 'extraText',
+          kind: 'input',
+          value: 'after'
+        },
+        {
+          type: 'updateField',
+          nodeId: 'start',
+          fieldKey: NodeOutputKeyEnum.userChatInput,
+          kind: 'output',
+          value: 'user input'
+        },
+        {
+          type: 'updateNode',
+          nodeId: 'answer',
+          patch: { catchError: true }
+        }
+      ] satisfies readonly WorkflowCommand[]);
+    });
+
+    expect(seen.at(-1)).toMatchObject({
+      input: 'after',
+      output: 'user input',
+      catchError: true
+    });
+
+    act(() => {
+      runtime.undo();
+    });
+    expect(seen.at(-1)).toMatchObject({
+      input: 'before',
+      output: undefined,
+      catchError: undefined
+    });
+
+    act(() => {
+      runtime.redo();
+    });
+    expect(seen.at(-1)).toMatchObject({
+      input: 'after',
+      output: 'user input',
+      catchError: true
+    });
+  });
+
   it('scopes field subscriptions, tolerates a fresh query object and a deleted field', async () => {
     const values: unknown[] = [];
     const kinds: unknown[] = [];
@@ -306,7 +366,7 @@ describe('workflow editor subscription API', () => {
       valueRenders += 1;
       // 每次渲染传新的 query 字面量：hook 内部归一，不应该重复订阅或额外重渲染。
       values.push(
-        useFieldValue({ nodeId: 'answer', fieldKey: 'extraText', kind: 'input' }, (field) =>
+        useField({ nodeId: 'answer', fieldKey: 'extraText', kind: 'input' }, (field) =>
           field ? field.data.input?.value : undefined
         )
       );
@@ -315,7 +375,7 @@ describe('workflow editor subscription API', () => {
     const KindLeaf = () => {
       kindRenders += 1;
       kinds.push(
-        useFieldValue(
+        useField(
           { nodeId: 'answer', fieldKey: 'extraText', kind: 'input' },
           (field) => field?.data.kind
         )

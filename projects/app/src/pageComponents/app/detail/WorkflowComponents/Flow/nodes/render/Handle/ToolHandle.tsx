@@ -7,7 +7,7 @@ import { useCallback, useContext, useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { isConnectionTargetAllowed } from '@fastgpt/global/core/workflow/editor/utils';
 import { useWorkflowUIValue } from '../../../canvas/canvasState';
-import { useWorkflowActions, useWorkflowValue } from '@/web/core/workflow/editor/react/useWorkflow';
+import { useWorkflowActions, useWorkflow } from '@/web/core/workflow/editor/react/useWorkflow';
 import { useWorkflowRuntime } from '@/web/core/workflow/editor/session/workflowSession';
 import { WorkflowHandleRenderContext } from './handleRenderContext';
 
@@ -25,7 +25,7 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
   const runtime = useWorkflowRuntime();
   const connectingEdge = useWorkflowUIValue((ctx) => ctx.connectingEdge);
   // 「本节点已被挂成工具」= 存在 targetHandle 为 selectedTools 的入边，走图索引 O(入度)。
-  const connected = useWorkflowValue((_structure, graph) => graph.isMountedTool(nodeId));
+  const connected = useWorkflow((_structure, graph) => graph.isMountedTool(nodeId));
 
   const active = useMemo(() => {
     if (!show || !runtime || connectingEdge?.handleId !== handleId) return false;

@@ -309,19 +309,16 @@ export const filterWorkflowEdges = (edges: RuntimeEdgeItemType[]) => {
 export const getReferenceVariableValue = ({
   value,
   nodesMap,
-  variables,
-  isReferenceVal
+  variables
 }: {
   value?: ReferenceValueType;
   nodesMap: Record<string, RuntimeNodeItemType> | Map<string, RuntimeNodeItemType>;
   variables: Record<string, unknown>;
-  /** 明确告诉解析器数组值就是引用数组；未指定时保留无法证明为引用的普通多选数据。 */
-  isReferenceVal?: boolean;
 }) => {
-  if (!value || isReferenceVal === false) return value;
+  if (!value) return value;
 
   /** 解析单个引用：全局变量走 variables，节点输出走 nodesMap；来源缺失一律 undefined。 */
-  const resoleValue = (value: [string, string | undefined]) => {
+  const resolveValue = (value: [string, string | undefined]) => {
     const sourceNodeId = value[0];
     const outputId = value[1];
 
@@ -338,23 +335,15 @@ export const getReferenceVariableValue = ({
 
   // handle single reference value
   if (isValidReferenceValueFormat(value)) {
-    return resoleValue(value as [string, string | undefined]);
+    return resolveValue(value as [string, string | undefined]);
   }
 
-  // handle reference array
-  // 两列表格（string[][] 字面量）与引用数组在结构上无法区分：自动模式只有发现实时来源
-  // 才解析；明确的引用字段即使所有来源都失效也必须返回 undefined，不能把 ID 数组透传到执行层。
-  const isReferenceArray =
-    Array.isArray(value) &&
-    value.length > 0 &&
-    value.every((item) => isValidReferenceValueFormat(item));
-  const hasResolvableReference =
-    isReferenceArray && value.some((item) => isValidReferenceValueFormat(item, nodesMap));
-  if (isReferenceArray && (isReferenceVal === true || hasResolvableReference)) {
-    const resolved = value
-      .map<any>((val) => {
-        return resoleValue(val as [string, string | undefined]);
-      })
+  // 引用数组只保留形状正确的项；来源缺失或输出缺失由 resolveValue 转成 undefined 后过滤。
+  if (Array.isArray(value) && value.some(Array.isArray)) {
+    const references = value.filter((item) => isValidReferenceValueFormat(item));
+    if (references.length === 0) return undefined;
+    const resolved = references
+      .map((val) => resolveValue(val as [string, string | undefined]))
       .flat()
       .filter((item) => item !== undefined);
     return resolved.length > 0 ? resolved : undefined;

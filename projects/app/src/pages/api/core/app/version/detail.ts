@@ -39,7 +39,8 @@ async function handler(req: NextApiRequest): Promise<GetAppVersionDetailResponse
   const normalizedWorkflow = migrateWorkflowToCurrent({
     nodes: decodedNodes,
     edges: result.edges,
-    chatConfig: result.chatConfig
+    chatConfig: result.chatConfig,
+    referenceSnapshots: result.referenceSnapshots
   });
   await rewriteAppWorkflowToDetail({
     nodes: normalizedWorkflow.nodes,

@@ -43,9 +43,14 @@ const IfElseEditor = ({ nodeId }: { nodeId: string }) => {
   // 边集合只在删除分支的回调里读，走非订阅 getter：点击时取当前值，组件不订阅结构变更。
   const { getEdges } = useWorkflowActions();
   const getWorkflow = useWorkflowSnapshotGetter();
-  const ifElseListField = useField(nodeId, NodeInputKeyEnum.ifElseList, 'input');
+  const ifElseListInput = useField(
+    nodeId,
+    NodeInputKeyEnum.ifElseList,
+    'input',
+    (field) => field?.data.input
+  );
   const elseHandleId = getHandleId(nodeId, 'source', IfElseResultEnum.ELSE);
-  const ifElseList = (ifElseListField?.data.input?.value as IfElseListItemType[] | undefined) ?? [];
+  const ifElseList = (ifElseListInput?.value as IfElseListItemType[] | undefined) ?? [];
 
   // 单分支时 ListItem 不渲染拖拽手柄，必须显式禁用拖拽，否则 rbd 会抛 "Unable to find drag handle"。
   const canDrag = ifElseList.length > 1;

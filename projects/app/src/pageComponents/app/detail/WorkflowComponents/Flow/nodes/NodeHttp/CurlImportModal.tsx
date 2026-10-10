@@ -6,11 +6,11 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useForm } from 'react-hook-form';
 import { parseCurl } from '@fastgpt/global/common/string/http';
-import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 
 const CurlImportModal = ({ nodeId, onClose }: { nodeId: string; onClose: () => void }) => {
   const { t } = useTranslation();
-  const node = useNode(nodeId);
+  const nodeActions = useNodeActions(nodeId);
 
   const { register, handleSubmit } = useForm({
     defaultValues: {
@@ -22,7 +22,7 @@ const CurlImportModal = ({ nodeId, onClose }: { nodeId: string; onClose: () => v
 
   const handleFileProcessing = async (content: string) => {
     try {
-      if (!node) return;
+      if (!nodeActions) return;
       const parsed = parseCurl(content);
 
       // 一次导入覆盖五个字段：同一事务提交，撤销一次回到导入前。
@@ -33,7 +33,7 @@ const CurlImportModal = ({ nodeId, onClose }: { nodeId: string; onClose: () => v
         [NodeInputKeyEnum.httpHeaders]: parsed.headers,
         [NodeInputKeyEnum.httpJsonBody]: parsed.body
       };
-      node.updateNode((current) => ({
+      nodeActions.updateNode((current) => ({
         inputs: current.inputs.map((input) =>
           input.key in parsedValues ? { ...input, value: parsedValues[input.key] } : input
         )

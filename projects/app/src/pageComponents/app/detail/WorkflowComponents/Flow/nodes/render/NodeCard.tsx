@@ -29,7 +29,11 @@ import {
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
 import { formatToolError } from '@fastgpt/global/core/app/utils';
-import type { DeepReadonly, WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
+import type {
+  DeepReadonly,
+  WorkflowNodeData,
+  WorkflowNodeSnapshot
+} from '@fastgpt/global/core/workflow/editor/types';
 import {
   PluginStatusEnum,
   PluginStatusMap,
@@ -72,8 +76,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useReactFlow } from 'reactflow';
 import { omit } from 'lodash-es';
 import { migrateToolInputConfig } from '@fastgpt/global/core/app/formEdit/utils';
-import { useField } from '@/web/core/workflow/editor/react/useField';
-import { useNodeActions, useNodeValue } from '@/web/core/workflow/editor/react/useNode';
+import { useField, useFieldActions } from '@/web/core/workflow/editor/react/useField';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
 
@@ -121,7 +125,7 @@ type Props = {
   rtDoms?: React.ReactNode[];
 };
 
-const getCurrentSystemToolTemplate = async (node?: FlowNodeItemType) => {
+const getCurrentSystemToolTemplate = async (node?: WorkflowNodeData) => {
   if (!node?.pluginId || node.pluginData?.error || isDebugToolSource(node.source)) return;
 
   try {
@@ -157,11 +161,14 @@ const NodeCard = (props: Props) => {
     rtDoms
   } = props;
 
-  // 投影节点只承载结构/元数据；字段值由叶子订阅，避免卡片跟随普通输入变化。
-  const node = props as unknown as FlowNodeItemType;
-  const isFolded = useNodeValue(nodeId, (handle) => !!handle?.view.isFolded);
+  // 投影节点只承载结构/元数据；普通语义字段从 scoped snapshot 读取。
+  const node = useNode<WorkflowNodeData & Pick<WorkflowNodeSnapshot, 'issues'>>(
+    nodeId,
+    (handle) => handle?.data
+  );
+  const isFolded = useNode(nodeId, (handle) => !!handle?.view.isFolded);
   // 容器折叠时子节点整体隐藏：折叠状态存在父容器的 Node View 上。
-  const hidden = useNodeValue(node?.parentNodeId ?? '', (handle) => !!handle?.view.isFolded);
+  const hidden = useNode(node?.parentNodeId ?? '', (handle) => !!handle?.view.isFolded);
   // 工具子流程节点：结构快照里指向本节点的 selectedTools 入边即可判定；
   // 该入边必然来自工具调用节点，不必再额外确认画布上存在工具调用节点。
   const isTool = useIsToolNode(nodeId);
@@ -173,10 +180,9 @@ const NodeCard = (props: Props) => {
   const pluginId = node?.pluginId;
   const flowNodeType = node?.flowNodeType;
   const colorSchema = node?.colorSchema;
-  const inputs = node?.inputs;
 
   // 问题文案归 Runtime：直接读节点 snapshot 的 Issue View，标红焦点仍由 host 单点持有。
-  const nodeIssues = useNodeValue(nodeId, (handle) => handle?.data.issues);
+  const nodeIssues = node?.issues;
   const isError = useWorkflowIssueFocusNodeId() === nodeId;
   // 教程元信息是画布视图数据（不进文档），由下面的工具详情请求写进 host overlay。
   const viewData = useWorkflowOverlayValue(nodeId);
@@ -192,10 +198,12 @@ const NodeCard = (props: Props) => {
   const setPresentationMode = useWorkflowUIValue((v) => v.setPresentationMode);
 
   const nodeActions = useNodeActions(nodeId);
-  const inputConfigField = useField(nodeId, NodeInputKeyEnum.systemInputConfig, 'input');
-  const inputConfig =
-    inputConfigField?.data.input ??
-    inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig);
+  const inputConfig = useField(
+    nodeId,
+    NodeInputKeyEnum.systemInputConfig,
+    'input',
+    (field) => field?.data.input
+  );
 
   const handleDoubleClick = useCallback(() => {
     nodeActions?.setFolded(false);
@@ -772,7 +780,7 @@ const NodeIntro = React.memo(function NodeIntro({
   );
 });
 
-const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeItemType }) {
+const NodeVersion = React.memo(function NodeVersion({ node }: { node: WorkflowNodeData }) {
   const { t } = useTranslation();
 
   const nodeActions = useNodeActions(node.nodeId);
@@ -947,7 +955,7 @@ const MenuRender = React.memo(function MenuRender({
 
   const { computedNewNodeName } = useWorkflowUtils();
 
-  const isFolded = useNodeValue(nodeId, (handle) => !!handle?.view.isFolded);
+  const isFolded = useNode(nodeId, (handle) => !!handle?.view.isFolded);
 
   /**
    * 复制当前节点：从文档快照取字段、Node View 取坐标，生成新 nodeId 后走 adapter 写入文档。
@@ -1238,7 +1246,7 @@ const NodeSecret = React.memo(function NodeSecret({
 }) {
   const { t } = useTranslation();
   // 密钥配置只会落在 systemInputConfig 记录上：提交走字段句柄，等价旧 onChangeNode updateInput。
-  const inputField = useField({
+  const inputFieldActions = useFieldActions({
     nodeId,
     fieldKey: NodeInputKeyEnum.systemInputConfig,
     kind: 'input'
@@ -1272,7 +1280,7 @@ const NodeSecret = React.memo(function NodeSecret({
           isFolder={isFolder}
           onClose={onCloseToolParamConfigModal}
           onSubmit={(data) => {
-            inputField?.setValue(data);
+            inputFieldActions.setValue(data);
             onCloseToolParamConfigModal();
           }}
           courseUrl={courseUrl}

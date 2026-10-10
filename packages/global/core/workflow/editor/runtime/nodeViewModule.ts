@@ -52,7 +52,12 @@ const recordNodeViewChange = ({
 }) => {
   if (valuesEqual(before, after)) return;
   const previous = meta.nodeViewChanges.get(nodeId);
-  meta.nodeViewChanges.set(nodeId, { before: previous ? previous.before : before, after });
+  const initialBefore = previous ? previous.before : before;
+  if (!initialBefore && !after) {
+    meta.nodeViewChanges.delete(nodeId);
+    return;
+  }
+  meta.nodeViewChanges.set(nodeId, { before: initialBefore, after });
 };
 
 /** 事务内写入一个节点视图；值相等时保留原对象，维持 scoped snapshot 的身份稳定。 */
@@ -219,12 +224,22 @@ export const createNodeViewModule = ({
   };
 
   /** undo/redo 时按 history 记录恢复视图；delta 与 checkpoint 共用同一条路径。 */
-  const applyHistoryViews = (changes: readonly NodeViewChange[], direction: 'undo' | 'redo') => {
+  const applyHistoryViews = (
+    changes: readonly NodeViewChange[],
+    direction: 'undo' | 'redo',
+    targetViews: NodeViewStore = views
+  ) => {
     changes.forEach(({ nodeId, before, after }) => {
       const view = direction === 'undo' ? before : after;
-      if (view) views.set(nodeId, view);
-      else views.delete(nodeId);
+      if (view) targetViews.set(nodeId, view);
+      else targetViews.delete(nodeId);
     });
+  };
+
+  /** 恢复事务前的视图存储；失败回滚与 history 预演共用。 */
+  const restoreViews = (nextViews: NodeViewStore) => {
+    views = nextViews;
+    pruneSnapshotCache();
   };
 
   /** 返回 Node View State scoped snapshot；同一视图记录保持对象身份稳定。 */
@@ -250,9 +265,23 @@ export const createNodeViewModule = ({
     nodeViewSnapshotCache.clear();
   };
 
+  const getState = () => ({
+    views: new Map(views),
+    snapshotCache: new Map(nodeViewSnapshotCache)
+  });
+
+  const restoreState = (state: ReturnType<typeof getState>) => {
+    views = new Map(state.views);
+    nodeViewSnapshotCache.clear();
+    state.snapshotCache.forEach((value, nodeId) => nodeViewSnapshotCache.set(nodeId, value));
+  };
+
   return {
     getViews,
+    getState,
+    restoreState,
     commitViews,
+    restoreViews,
     applyHistoryViews,
     reduceGeometryCommand,
     stageGeometryBatch,

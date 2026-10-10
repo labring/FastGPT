@@ -54,7 +54,10 @@ import { useReactFlow } from 'reactflow';
 import type { WorkflowDispatchResult } from '@fastgpt/global/core/workflow/editor/types';
 import { useDocumentGetNodeById } from '../../nodes/render/useWorkflowDocument';
 import { useWorkflowModalValue } from '../../panels/workflowPanelState';
-import { useWorkflowCanvasValue } from '../../canvas/workflowCanvasContext';
+import {
+  useWorkflowCanvasRendererValue,
+  useWorkflowCanvasValue
+} from '../../canvas/workflowCanvasContext';
 import { areNodeRectsIntersecting, getNodeRect } from '../../canvas/nodeDimensions';
 import { useWorkflowUtils } from '../../hooks/useUtils';
 import { sliderWidth } from '../../NodeTemplatesModal';
@@ -256,7 +259,7 @@ const NodeTemplateList = ({
   const { computedNewNodeName } = useWorkflowUtils();
   const handleParams = useWorkflowModalValue((v) => v.handleParams);
   const isToolSelector = handleParams?.handleId === NodeOutputKeyEnum.selectedTools;
-  const getCanvasNodes = useWorkflowCanvasValue((v) => v.getNodes);
+  const getCanvasNodes = useWorkflowCanvasRendererValue((v) => v.getNodes);
   const getNodeDimension = useWorkflowCanvasValue((v) => v.getNodeDimension);
   // 落点归属读文档：只用来解析来源节点的父容器，容器合法性由 runtime 判定。
   const getNodeById = useDocumentGetNodeById();

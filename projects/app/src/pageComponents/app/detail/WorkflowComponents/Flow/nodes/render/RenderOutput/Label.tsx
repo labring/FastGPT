@@ -10,7 +10,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import ValueTypeLabel from '../ValueTypeLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
 
@@ -21,7 +21,7 @@ const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutpu
   const { t } = useSafeTranslation();
   const { label = '', description, valueType, valueDesc } = output;
 
-  const node = useNode(nodeId);
+  const nodeActions = useNodeActions(nodeId);
   // 边集合只在删除废弃输出字段的回调里读，走非订阅 getter：点击时取当前值，组件不订阅结构变更。
   const { getEdges } = useWorkflowActions();
 
@@ -66,7 +66,7 @@ const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutpu
                 }}
                 onClick={() => {
                   // 输出字段删除是记录级变更；其 source handle 上的连线必须同事务断开。
-                  node?.updateNode(
+                  nodeActions?.updateNode(
                     (current) => ({
                       outputs: current.outputs.filter((item) => item.key !== output.key)
                     }),

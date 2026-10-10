@@ -496,11 +496,12 @@ const EditForm = ({
                           }
                         };
                         const workflow = form2AppWorkflow(nextForm, t);
-                        await onSaveApp({
+                        const saved = await onSaveApp({
                           ...workflow,
                           isPublish: false,
                           chatConfig: nextForm.chatConfig
                         });
+                        if (!saved) return;
                         setAppForm(nextForm);
                       }}
                     />

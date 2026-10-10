@@ -13,9 +13,53 @@ import {
 type WorkflowRuntimeRef = MutableRefObject<WorkflowRuntimePort | null>;
 type PendingSaveRevisionRef = MutableRefObject<number | undefined>;
 
+export type WorkflowSaveRequest = {
+  runtime: WorkflowRuntimePort;
+  sessionId: string;
+  appId: string;
+  contentRevision: number;
+  requestToken: number;
+  data: StoreWorkflow;
+};
+
+type WorkflowSaveRequestInput = Omit<WorkflowSaveRequest, 'requestToken'>;
+type WorkflowSaveRequestScope = {
+  runtime: WorkflowRuntimePort | null;
+  sessionId: string;
+  appId: string;
+};
+
 type WorkflowPersistenceArgs = {
   runtimeRef: WorkflowRuntimeRef;
   pendingSaveRevisionRef: PendingSaveRevisionRef;
+};
+
+/** 只接受当前 Session、Runtime、应用与请求 token 的保存响应。 */
+export const createWorkflowSaveCoordinator = () => {
+  let requestToken = 0;
+  let activeRequest: WorkflowSaveRequest | undefined;
+
+  return {
+    begin: (input: WorkflowSaveRequestInput): WorkflowSaveRequest => {
+      const request = {
+        ...input,
+        requestToken: ++requestToken
+      };
+      activeRequest = request;
+      return request;
+    },
+    invalidate: () => {
+      requestToken += 1;
+      activeRequest = undefined;
+    },
+    isCurrent: (request: WorkflowSaveRequest, scope: WorkflowSaveRequestScope) =>
+      activeRequest === request &&
+      request.requestToken === requestToken &&
+      scope.runtime === request.runtime &&
+      scope.sessionId === request.sessionId &&
+      scope.appId === request.appId &&
+      !request.runtime.isDisposed()
+  };
 };
 
 /** 序列化当前 Runtime，并记住本次请求对应的内容版本供保存成功后回填。 */
@@ -30,8 +74,9 @@ export const serializeWorkflowData = ({
 };
 
 /**
- * 保存、发布与调试共用校验 gate：等待模型目录、按环境事实刷新 Issue View，再决定是否出站序列化。
- * 校验失败只写焦点与提示，不返回不完整文档；hideTip 只抑制提示和焦点定位。
+ * 发布校验 gate：等待模型目录、按环境事实刷新 Issue View，再决定是否出站序列化。
+ * 普通保存和调试直接使用 serializeWorkflowData；校验失败只写焦点与提示，不返回不完整文档。
+ * hideTip 只抑制提示和焦点定位。
  */
 export const serializeWorkflowAndCheckData = async ({
   runtimeRef,
@@ -74,18 +119,4 @@ export const serializeWorkflowAndCheckData = async ({
     });
   }
   return undefined;
-};
-
-/** 保存成功后将本次序列化捕获的 revision 标记为已保存，并通知 Host 更新派生状态。 */
-export const markWorkflowSaved = ({
-  runtimeRef,
-  pendingSaveRevisionRef,
-  notifyHost
-}: WorkflowPersistenceArgs & { notifyHost: () => void }): void => {
-  const current = runtimeRef.current;
-  if (!current || current.isDisposed()) return;
-  const revision = pendingSaveRevisionRef.current ?? current.getSavepoint().contentRevision;
-  pendingSaveRevisionRef.current = undefined;
-  current.markSaved(revision);
-  notifyHost();
 };

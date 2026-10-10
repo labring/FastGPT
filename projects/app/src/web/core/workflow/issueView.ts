@@ -34,7 +34,7 @@ export const getWorkflowIssueUIStatus = (code: WorkflowIssueCode): WorkflowIssue
   PENDING_HANDLE_CODES.has(code) ? 'pending_handle' : 'pending_improve';
 
 /**
- * 保存/发布/调试 gate 的判定入口：按当前环境事实重算整份 Issue View，返回全部 error。
+ * 发布 gate 的判定入口：按当前环境事实重算整份 Issue View，返回全部 error。
  * chatConfig 桶不属于任何画布节点，排在节点问题之后。
  * Issue View 的数组顺序在增量刷新后不保证是文档顺序，标红节点由调用方按文档顺序另取。
  */

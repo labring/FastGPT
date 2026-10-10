@@ -4,7 +4,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
-import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
 
 /**
  * Adapts the ChatAgent's useSkillManager to work in the workflow node context.
@@ -19,7 +19,11 @@ export const useAgentSkillManager = ({
   inputs: FlowNodeInputItemType[];
   onClickDatasetSearch?: () => void;
 }) => {
-  const toolsField = useField(nodeId, NodeInputKeyEnum.selectedTools, 'input');
+  const toolsFieldActions = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.selectedTools,
+    kind: 'input'
+  });
 
   const toolsInput = useMemo(
     () => inputs.find((i) => i.key === NodeInputKeyEnum.selectedTools),
@@ -56,9 +60,9 @@ export const useAgentSkillManager = ({
           )
         : [...selectedTools, tool];
 
-      toolsField?.setValue(newTools);
+      toolsFieldActions.setValue(newTools);
     },
-    [selectedTools, toolsField]
+    [selectedTools, toolsFieldActions]
   );
 
   const onDeleteTool = useCallback(
@@ -67,9 +71,9 @@ export const useAgentSkillManager = ({
       const newTools = selectedTools.filter(
         (t) => getToolIdentityKey(t.pluginId, t.source) !== toolKey
       );
-      toolsField?.setValue(newTools);
+      toolsFieldActions.setValue(newTools);
     },
-    [selectedTools, toolsField]
+    [selectedTools, toolsFieldActions]
   );
 
   const { skillOption, selectedSkills, onClickSkill, onRemoveSkill, SkillModal } = useSkillManager({

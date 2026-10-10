@@ -103,8 +103,20 @@ const project = (
   });
 
 /** 本地交互数组只需要 id 与被保留的交互字段。 */
-const localNode = (id: string, fields: Record<string, unknown>) =>
-  ({ id, data: { nodeId: id }, position: { x: 0, y: 0 }, ...fields }) as unknown as CanvasNode;
+const localNode = (
+  id: string,
+  fields: Pick<CanvasNode, 'selected' | 'dragging' | 'position' | 'width' | 'height' | 'measured'>
+): CanvasNode => ({
+  id,
+  data: {
+    id,
+    nodeId: id,
+    flowNodeType: FlowNodeTypeEnum.emptyNode,
+    name: ''
+  },
+  position: { x: 0, y: 0 },
+  ...fields
+});
 
 const nodeById = (nodes: CanvasNode[], id: string) => {
   const node = nodes.find((item) => item.id === id);
@@ -126,6 +138,9 @@ describe('workflow editor projection', () => {
       forbidDelete: true,
       showSourceHandle: true
     });
+    expect(nodeById(nodes, 'start').data).not.toHaveProperty('inputs');
+    expect(nodeById(nodes, 'start').data).not.toHaveProperty('outputs');
+    expect(nodeById(nodes, 'http').data).not.toHaveProperty('catchError');
     expect(nodeById(nodes, 'start').type).toBe(FlowNodeTypeEnum.workflowStart);
     // hasToolInput 决定节点内是否渲染工具参数面板。
     expect(nodeById(nodes, 'http').data.hasToolInput).toBe(true);
@@ -195,6 +210,31 @@ describe('workflow editor projection', () => {
     });
   });
 
+  it('compares measured identity when reusing projected nodes', () => {
+    const runtime = createRuntime();
+    const cache = createProjectionCache();
+    const measured = { width: 300, height: 120 };
+    const first = project(runtime, {
+      cache,
+      localNodes: [localNode('http', { measured })]
+    });
+    const second = project(runtime, {
+      cache,
+      localNodes: [localNode('http', { measured })]
+    });
+
+    expect(second.nodes[1]).toBe(first.nodes[1]);
+
+    const nextMeasured = { width: 320, height: 120 };
+    const third = project(runtime, {
+      cache,
+      localNodes: [localNode('http', { measured: nextMeasured })]
+    });
+
+    expect(third.nodes[1]).not.toBe(first.nodes[1]);
+    expect(third.nodes[1].measured).toBe(nextMeasured);
+  });
+
   it('reuses node and edge objects until their structure changes', () => {
     const runtime = createRuntime();
     const cache = createProjectionCache();
@@ -239,6 +279,8 @@ describe('workflow editor projection', () => {
 
     expect(second.nodes[0]).toBe(first.nodes[0]);
     expect(second.nodes[2]).toBe(first.nodes[2]);
+    expect(nodeById(second.nodes, 'answer').data).not.toHaveProperty('inputs');
+    expect(nodeById(second.nodes, 'start').data).not.toHaveProperty('outputs');
   });
 
   it('refreshes node identity when dynamic handle topology changes', () => {

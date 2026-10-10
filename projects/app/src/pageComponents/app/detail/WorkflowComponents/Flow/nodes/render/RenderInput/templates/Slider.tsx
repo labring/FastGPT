@@ -2,29 +2,31 @@ import React, { useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Box } from '@chakra-ui/react';
 import MySlider from '@/components/Slider';
-import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useField, useFieldActions } from '@/web/core/workflow/editor/react/useField';
 
 const SliderRender = ({ item, nodeId }: RenderInputProps) => {
-  const field = useField(nodeId, item.key, 'input');
-  const currentInput = field?.data.input ?? item;
+  const fieldInput = useField(nodeId, item.key, 'input', (field) => field?.data.input);
+  const fieldActions = useFieldActions({ nodeId, fieldKey: item.key, kind: 'input' });
 
   const Render = useMemo(() => {
+    if (!fieldInput) return null;
+
     return (
       <Box px={2}>
         <MySlider
-          markList={currentInput.markList?.map(({ label, value }) => ({ label, value }))}
+          markList={fieldInput.markList?.map(({ label, value }) => ({ label, value }))}
           width={'100%'}
-          min={currentInput.min || 0}
-          max={currentInput.max}
-          step={currentInput.step || 1}
-          value={currentInput.value}
+          min={fieldInput.min || 0}
+          max={fieldInput.max}
+          step={fieldInput.step || 1}
+          value={fieldInput.value}
           onChange={(e) => {
-            field?.setValue(e);
+            fieldActions.setValue(e);
           }}
         />
       </Box>
     );
-  }, [currentInput, field]);
+  }, [fieldInput, fieldActions]);
 
   return Render;
 };

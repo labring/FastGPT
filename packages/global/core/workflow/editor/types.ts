@@ -5,6 +5,7 @@ import type { StoreEdgeItemType } from '../type/edge';
 import type { NodeTemplateContext, StoreNodeItemType, WorkflowCheckIssue } from '../type/node';
 import type { WorkflowIOValueTypeEnum } from '../constants';
 import type { ModelTypeEnum } from '../../ai/constants';
+import type { SystemModelDataType } from '../../ai/model.schema';
 import type { NodeContainerCheckError } from '../template/context';
 
 // region snapshotTypes Workflow snapshot contracts
@@ -176,7 +177,12 @@ export type WorkflowConfigIssue = DeepReadonly<Omit<WorkflowCheckIssue, 'nodeId'
  * 等 host 订阅到目录变化后调用 refreshIssues 补上。
  */
 export type WorkflowEnvironment = {
-  models?: { modelId: string; model: string; type: ModelTypeEnum }[];
+  models?: Array<
+    Omit<Pick<SystemModelDataType, 'modelId' | 'model' | 'type' | 'config'>, 'config'> & {
+      /** 目录快照通常带完整 config；旧测试/调用方可暂时省略。 */
+      config?: SystemModelDataType['config'];
+    }
+  >;
   sandbox: { configured: boolean; planSupported: boolean };
 };
 

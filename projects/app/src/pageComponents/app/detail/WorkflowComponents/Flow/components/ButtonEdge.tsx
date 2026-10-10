@@ -15,7 +15,7 @@ import { useWorkflowUIValue } from '../canvas/canvasState';
 import { useWorkflowSelectionValue } from '../context/workflowSelectionContext';
 import { getCustomStepPath } from '../utils/edge';
 import { useNode } from '@/web/core/workflow/editor/react/useNode';
-import { useWorkflowActions, useWorkflowValue } from '@/web/core/workflow/editor/react/useWorkflow';
+import { useWorkflowActions, useWorkflow } from '@/web/core/workflow/editor/react/useWorkflow';
 
 export const CustomConnectionLine = ({
   fromX,
@@ -79,17 +79,17 @@ const ButtonEdge = (props: EdgeProps) => {
   );
   const isHover = useWorkflowUIValue((v) => v.hoverEdgeId === id);
   // 结构订阅只剩一个用途：结构变了要重算同源边偏移。写命令走稳定 action 句柄，订阅数为零。
-  const structureEdges = useWorkflowValue((structure) => structure.edges);
+  const structureEdges = useWorkflow((structure) => structure.edges);
   const { disconnectEdge } = useWorkflowActions();
   // 同源边的横向错开与断连都按端点值工作，画布边数组只从 reactflow store 取，
   // 投影边 id 不进 adapter；structureEdges 只作为「结构变了要重算」的依赖。
   const { getNode, getEdges, getEdge } = useReactFlow();
 
   // 端点所在容器折叠时隐藏整条边；容器 id 优先取 source，与旧实现一致。
-  const sourceParentId = useNode(source)?.data.parentNodeId;
-  const targetParentId = useNode(target)?.data.parentNodeId;
+  const sourceParentId = useNode(source, (node) => node?.data.parentNodeId);
+  const targetParentId = useNode(target, (node) => node?.data.parentNodeId);
   const foldParentId = sourceParentId ?? targetParentId;
-  const isFolded = !!useNode(foldParentId ?? '')?.view.isFolded;
+  const isFolded = !!useNode(foldParentId ?? '', (node) => node?.view.isFolded);
 
   const defaultZIndex = sourceParentId ? 2002 : 0;
 

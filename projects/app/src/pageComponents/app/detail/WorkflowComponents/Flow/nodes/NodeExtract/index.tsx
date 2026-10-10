@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { Box, Button, Table, Thead, Tbody, Tr, Th, Td, Flex } from '@chakra-ui/react';
 import { type NodeProps } from 'reactflow';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import { useTranslation } from 'next-i18next';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
@@ -15,7 +16,7 @@ import ExtractFieldModal, { defaultField } from './ExtractFieldModal';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import RenderToolInput, { hasDynamicToolInput } from '../render/RenderToolInput';
+import RenderToolInput, { useHasDynamicToolInput } from '../render/RenderToolInput';
 import {
   type FlowNodeInputItemType,
   type FlowNodeOutputItemType
@@ -31,18 +32,24 @@ import {
   splitToolInputsByMode
 } from '@/web/core/workflow/utils';
 import { useIsToolNode } from '../render/useWorkflowDocument';
-import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
-  const { inputs, outputs, nodeId, catchError } = data;
+  const { nodeId } = data;
+  const {
+    inputs = [],
+    outputs = [],
+    catchError = false
+  } = useNode<WorkflowNodeData>(nodeId, (node) => node?.data) ?? {};
 
   const { t } = useTranslation();
-  const node = useNode(nodeId);
+  const nodeActions = useNodeActions(nodeId);
   // 边集合只在删除/改名字段的回调里读，走非订阅 getter：点击时取当前值，组件不订阅结构变更。
   const { getEdges } = useWorkflowActions();
 
   const isTool = useIsToolNode(nodeId);
+  const hasDynamicInput = useHasDynamicToolInput(nodeId);
   const { commonInputs } = useMemoEnhance(
     () => splitToolInputsByMode(inputs, isTool),
     [inputs, isTool]
@@ -134,7 +141,7 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                           hoverColor={'red.500'}
                           onClick={() => {
                             // 抽取字段与其结果 output 一起删除，旧 handle 连线同事务断开。
-                            node?.updateNode(
+                            nodeActions?.updateNode(
                               (current) => ({
                                 inputs: current.inputs.map((input) =>
                                   input.key === NodeInputKeyEnum.extractKeys
@@ -168,12 +175,12 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         </Box>
       )
     }),
-    [getEdges, node, nodeId, t]
+    [getEdges, nodeActions, nodeId, t]
   );
 
   return (
     <NodeCard minW={'400px'} selected={selected} {...data}>
-      {isTool && hasDynamicToolInput(data) && (
+      {isTool && hasDynamicInput && (
         <>
           <Container>
             <RenderToolInput nodeId={nodeId} inputs={inputs} />
@@ -200,8 +207,7 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           defaultField={editExtractFiled}
           onClose={() => setEditExtractField(undefined)}
           onSubmit={(data) => {
-            const documentInputs = node?.data.inputs;
-            if (!documentInputs) return;
+            const documentInputs = inputs;
 
             const input = documentInputs.find(
               (item) => item.key === NodeInputKeyEnum.extractKeys
@@ -221,7 +227,7 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             const replacedKey =
               exists && editExtractFiled.key !== data.key ? editExtractFiled.key : undefined;
 
-            node?.updateNode(
+            nodeActions?.updateNode(
               (current) => ({
                 inputs: current.inputs.map((item) =>
                   item.key === NodeInputKeyEnum.extractKeys

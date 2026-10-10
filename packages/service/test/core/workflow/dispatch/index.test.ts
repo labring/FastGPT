@@ -618,7 +618,7 @@ describe('getWorkflowNodeRunParams', () => {
     expect(variableState.getToRuntimeRecordCount()).toBe(1);
   });
 
-  it('全部来源失效时在 dispatch 参数边界拒绝执行', () => {
+  it('全部来源失效时在 dispatch 参数边界忽略引用', () => {
     const variableState = createVariableState();
     const node = createNode('target', FlowNodeTypeEnum.textEditor);
     node.inputs = [
@@ -634,16 +634,38 @@ describe('getWorkflowNodeRunParams', () => {
       }
     ];
 
-    expect(() =>
+    expect(
       getWorkflowNodeRunParams({
         node,
         runtimeNodesMap: new Map(),
         variableState: variableState.state
-      })
-    ).toThrow('Workflow reference source is unavailable');
+      }).payload
+    ).toBeUndefined();
   });
 
-  it('部分来源失效时只向执行层传递仍可解析的值', () => {
+  it('空引用占位不应进入失效引用错误分支', () => {
+    const variableState = createVariableState();
+    const node = createNode('target', FlowNodeTypeEnum.textEditor);
+    node.inputs = [
+      {
+        key: 'payload',
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.reference],
+        value: ['', ''] as any,
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+
+    expect(
+      getWorkflowNodeRunParams({
+        node,
+        runtimeNodesMap: new Map(),
+        variableState: variableState.state
+      }).payload
+    ).toBeUndefined();
+  });
+
+  it('部分来源失效时保留有效引用', () => {
     const variableState = createVariableState({ liveVariable: 'live' });
     const node = createNode('target', FlowNodeTypeEnum.textEditor);
     const sourceNode = createNode('source', FlowNodeTypeEnum.textEditor);
@@ -669,16 +691,16 @@ describe('getWorkflowNodeRunParams', () => {
       }
     ];
 
-    const params = getWorkflowNodeRunParams({
-      node,
-      runtimeNodesMap: new Map([['source', sourceNode]]),
-      variableState: variableState.state
-    });
-
-    expect(params.payload).toEqual(['source-value', 'live']);
+    expect(
+      getWorkflowNodeRunParams({
+        node,
+        runtimeNodesMap: new Map([['source', sourceNode]]),
+        variableState: variableState.state
+      }).payload
+    ).toEqual(['source-value', 'live']);
   });
 
-  it('变量引用失效时不允许继续执行', () => {
+  it('变量引用失效时忽略引用', () => {
     const variableState = createVariableState();
     const node = createNode('target', FlowNodeTypeEnum.textEditor);
     node.inputs = [
@@ -691,13 +713,115 @@ describe('getWorkflowNodeRunParams', () => {
       }
     ];
 
-    expect(() =>
+    expect(
       getWorkflowNodeRunParams({
         node,
         runtimeNodesMap: new Map(),
         variableState: variableState.state
-      })
-    ).toThrow('Workflow reference source is unavailable');
+      }).payload
+    ).toBeUndefined();
+  });
+
+  it('引用 invalid output 时忽略引用', () => {
+    const variableState = createVariableState();
+    const node = createNode('target', FlowNodeTypeEnum.textEditor);
+    const sourceNode = createNode('source', FlowNodeTypeEnum.textEditor);
+    sourceNode.outputs = [
+      {
+        id: 'output',
+        key: 'output',
+        type: FlowNodeOutputTypeEnum.static,
+        valueType: WorkflowIOValueTypeEnum.string,
+        invalid: true
+      }
+    ];
+    node.inputs = [
+      {
+        key: 'payload',
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.reference],
+        value: ['source', 'output'],
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+
+    expect(
+      getWorkflowNodeRunParams({
+        node,
+        runtimeNodesMap: new Map([
+          ['source', sourceNode],
+          ['target', node]
+        ]),
+        runtimeEdges: [createEdge('source', 'target')],
+        variableState: variableState.state
+      }).payload
+    ).toBeUndefined();
+  });
+
+  it('引用存在但不可达来源时忽略引用', () => {
+    const variableState = createVariableState();
+    const node = createNode('target', FlowNodeTypeEnum.textEditor);
+    const sourceNode = createNode('source', FlowNodeTypeEnum.textEditor);
+    sourceNode.outputs = [
+      {
+        id: 'output',
+        key: 'output',
+        type: FlowNodeOutputTypeEnum.static,
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+    node.inputs = [
+      {
+        key: 'payload',
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.reference],
+        value: ['source', 'output'],
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+
+    expect(
+      getWorkflowNodeRunParams({
+        node,
+        runtimeNodesMap: new Map([
+          ['source', sourceNode],
+          ['target', node]
+        ]),
+        runtimeEdges: [createEdge('other', 'target')],
+        variableState: variableState.state
+      }).payload
+    ).toBeUndefined();
+  });
+
+  it('混合 malformed 引用时忽略畸形项', () => {
+    const variableState = createVariableState();
+    const node = createNode('target', FlowNodeTypeEnum.textEditor);
+    const sourceNode = createNode('source', FlowNodeTypeEnum.textEditor);
+    sourceNode.outputs = [
+      {
+        id: 'output',
+        key: 'output',
+        type: FlowNodeOutputTypeEnum.static,
+        value: 'source-value'
+      }
+    ];
+    node.inputs = [
+      {
+        key: 'payload',
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.reference],
+        value: [['source', 'output'], 'malformed'] as any,
+        valueType: WorkflowIOValueTypeEnum.arrayAny
+      }
+    ];
+
+    expect(
+      getWorkflowNodeRunParams({
+        node,
+        runtimeNodesMap: new Map([['source', sourceNode]]),
+        variableState: variableState.state
+      }).payload
+    ).toEqual(['source-value']);
   });
 
   it('同节点引用工具参数时不读取 input value', () => {
@@ -993,6 +1117,179 @@ describe('runWorkflow catchError', () => {
       callbackMap[FlowNodeTypeEnum.textEditor] = originalTextEditorDispatch;
     }
   });
+
+  it.each([
+    {
+      name: 'invalid output',
+      catchError: true,
+      sourceCatchError: false,
+      sourceOutput: { type: FlowNodeOutputTypeEnum.static, invalid: true },
+      inputValue: ['source', 'output'],
+      expectedTarget: true,
+      expectedLeaf: undefined,
+      expectedNormal: true
+    },
+    {
+      name: 'invalid output',
+      catchError: false,
+      sourceCatchError: false,
+      sourceOutput: { type: FlowNodeOutputTypeEnum.static, invalid: true },
+      inputValue: ['source', 'output'],
+      expectedTarget: true,
+      expectedLeaf: undefined,
+      expectedNormal: true
+    },
+    {
+      name: 'error output with source catchError=true',
+      catchError: true,
+      sourceCatchError: true,
+      sourceOutput: { type: FlowNodeOutputTypeEnum.error },
+      inputValue: ['source', 'output'],
+      expectedTarget: true,
+      expectedLeaf: undefined,
+      expectedNormal: true
+    },
+    {
+      name: 'error output with source catchError=false',
+      catchError: false,
+      sourceCatchError: false,
+      sourceOutput: { type: FlowNodeOutputTypeEnum.error },
+      inputValue: ['source', 'output'],
+      expectedTarget: true,
+      expectedLeaf: undefined,
+      expectedNormal: true
+    },
+    {
+      name: 'mixed malformed reference',
+      catchError: true,
+      sourceCatchError: true,
+      sourceOutput: { type: FlowNodeOutputTypeEnum.static },
+      inputValue: [['source', 'output'], 'malformed'],
+      expectedTarget: true,
+      expectedLeaf: undefined,
+      expectedNormal: true
+    },
+    {
+      name: 'mixed malformed reference',
+      catchError: false,
+      sourceCatchError: true,
+      sourceOutput: { type: FlowNodeOutputTypeEnum.static },
+      inputValue: [['source', 'output'], 'malformed'],
+      expectedTarget: true,
+      expectedLeaf: undefined,
+      expectedNormal: true
+    }
+  ])(
+    '$name, target catchError=$catchError 失效引用不阻断执行',
+    async ({
+      catchError,
+      sourceCatchError,
+      sourceOutput,
+      inputValue,
+      expectedTarget,
+      expectedLeaf,
+      expectedNormal
+    }) => {
+      const originalTextEditorDispatch = callbackMap[FlowNodeTypeEnum.textEditor];
+      const calls: string[] = [];
+      callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn().mockImplementation(async ({ node }) => {
+        calls.push(node.nodeId);
+        return {};
+      });
+
+      const sourceNode = createNode('source', FlowNodeTypeEnum.textEditor);
+      sourceNode.isEntry = true;
+      sourceNode.catchError = sourceCatchError;
+      sourceNode.outputs = [
+        {
+          id: 'output',
+          key: 'output',
+          ...sourceOutput,
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: 'source-value'
+        }
+      ];
+
+      const targetNode = createNode('target', FlowNodeTypeEnum.textEditor);
+      targetNode.catchError = catchError;
+      targetNode.inputs = [
+        {
+          key: NodeInputKeyEnum.textareaInput,
+          label: '',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          value: inputValue as any,
+          valueType: WorkflowIOValueTypeEnum.string
+        }
+      ];
+      targetNode.outputs = [
+        {
+          id: NodeOutputKeyEnum.errorText,
+          key: NodeOutputKeyEnum.errorText,
+          type: FlowNodeOutputTypeEnum.error,
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string
+        }
+      ];
+
+      const normalNode = createNode('normal', FlowNodeTypeEnum.textEditor);
+      const catchNode = createNode('catch', FlowNodeTypeEnum.textEditor);
+
+      try {
+        await runWorkflow({
+          apiVersion: 'v2',
+          mode: 'chat',
+          runningAppInfo: {
+            id: '67e0d5535c02d1d5cdede721',
+            name: 'invalid output catch test',
+            teamId: '654a4107c32f3bf5f998452f',
+            tmbId: '65ab7007462ada7dbb899948'
+          },
+          runningUserInfo: {
+            teamId: '654a4107c32f3bf5f998452f',
+            tmbId: '65ab7007462ada7dbb899948',
+            teamName: 'team',
+            memberName: 'member',
+            contact: '',
+            username: 'user'
+          },
+          uid: 'invalid-output-catch-test',
+          lang: 'zh-CN',
+          histories: [],
+          query: [],
+          variables: {},
+          chatConfig: {},
+          runtimeNodes: [sourceNode, targetNode, normalNode, catchNode],
+          runtimeEdges: [
+            createEdge('source', 'target', 'waiting'),
+            createEdge('target', 'normal', 'waiting', 'target-source-right'),
+            createEdge('target', 'catch', 'waiting', 'target-source_catch-right')
+          ],
+          variableState: createWorkflowVariableState(),
+          externalProvider: {},
+          workflowDispatchDeep: 0,
+          maxRunTimes: 10,
+          stream: false,
+          responseDetail: true,
+          responseAllData: true,
+          checkIsStopping: () => false
+        } as any);
+
+        expect(calls).toContain('source');
+        if (expectedTarget) expect(calls).toContain('target');
+        else expect(calls).not.toContain('target');
+        if (expectedLeaf) {
+          expect(calls).toContain(expectedLeaf);
+        } else {
+          if (expectedNormal) expect(calls).toContain('normal');
+          else expect(calls).not.toContain('normal');
+          expect(calls).not.toContain('catch');
+        }
+      } finally {
+        callbackMap[FlowNodeTypeEnum.textEditor] = originalTextEditorDispatch;
+      }
+    }
+  );
 });
 
 describe('runWorkflow assistant response aggregation', () => {

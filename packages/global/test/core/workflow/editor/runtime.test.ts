@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
@@ -10,6 +10,8 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { createWorkflowEditor } from '@fastgpt/global/core/workflow/editor/runtime/runtime';
+import * as documentRules from '@fastgpt/global/core/workflow/editor/runtime/documentRules';
+import * as issueRules from '@fastgpt/global/core/workflow/editor/runtime/issueRules';
 import {
   hydrateWorkflowEditor,
   migrateStoreWorkflow
@@ -134,6 +136,134 @@ describe('workflow editor runtime modules', () => {
     expect(editor.getHistory()).toEqual(beforeHistory);
   });
 
+  it('rolls back semantic derivation failure across runtime state', () => {
+    const editor = createRuntime();
+    const beforeWorkflow = editor.getWorkflow();
+    const beforeNode = editor.getNode('answer');
+    const beforeNodeView = editor.getNodeView('answer');
+    const beforeField = editor.getField({
+      nodeId: 'answer',
+      fieldKey: NodeInputKeyEnum.answerText
+    });
+    const beforeIssues = editor.getWorkflowIssues();
+    const beforeHistory = editor.getHistory();
+    const beforeSavepoint = editor.getSavepoint();
+    const beforeChangeLog = editor.getChangeLog();
+    const changes: WorkflowChange[] = [];
+    editor.subscribe((change) => changes.push(change));
+
+    const derivedFailure = vi
+      .spyOn(documentRules, 'applyPersistedDerivedFields')
+      .mockImplementation(() => {
+        throw new Error('injected semantic derivation failure');
+      });
+
+    let result: WorkflowDispatchResult;
+    try {
+      result = editor.dispatch([
+        {
+          type: 'addNode',
+          node: {
+            nodeId: 'answer2',
+            flowNodeType: FlowNodeTypeEnum.answerNode,
+            name: 'Answer 2',
+            inputs: [],
+            outputs: []
+          } as never
+        },
+        {
+          type: 'connectEdge',
+          edge: {
+            source: 'start',
+            target: 'answer2',
+            sourceHandle: 'source',
+            targetHandle: 'target'
+          }
+        }
+      ] satisfies readonly WorkflowCommand[]);
+    } finally {
+      derivedFailure.mockRestore();
+    }
+
+    expect(result!.ok).toBe(false);
+    expect(editor.getWorkflow()).toBe(beforeWorkflow);
+    expect(editor.getNode('answer')).toBe(beforeNode);
+    expect(editor.getNodeView('answer')).toBe(beforeNodeView);
+    expect(editor.getField({ nodeId: 'answer', fieldKey: NodeInputKeyEnum.answerText })).toBe(
+      beforeField
+    );
+    expect(editor.getWorkflowIssues()).toBe(beforeIssues);
+    expect(editor.getHistory()).toEqual(beforeHistory);
+    expect(editor.getSavepoint()).toEqual(beforeSavepoint);
+    expect(editor.getChangeLog()).toEqual(beforeChangeLog);
+    expect(changes).toEqual([]);
+
+    editor.dispatch({
+      type: 'addNode',
+      node: {
+        nodeId: 'answer2',
+        flowNodeType: FlowNodeTypeEnum.answerNode,
+        name: 'Answer 2',
+        inputs: [],
+        outputs: []
+      } as never
+    });
+    const connected = editor.dispatch({
+      type: 'connectEdge',
+      edge: {
+        source: 'start',
+        target: 'answer2',
+        sourceHandle: 'source',
+        targetHandle: 'target'
+      }
+    });
+    expect(connected.change?.changedRecords.edgeIds).toEqual(['edge-1']);
+  });
+
+  it('keeps semantic commit when Issue derivation fails', () => {
+    const editor = createRuntime();
+    const beforeHistory = editor.getHistory();
+    const beforeSavepoint = editor.getSavepoint();
+    const changes: WorkflowChange[] = [];
+    editor.subscribe((change) => changes.push(change));
+    const issueFailure = vi.spyOn(issueRules, 'collectNodeIssues').mockImplementation(() => {
+      throw new Error('injected issue derivation failure');
+    });
+
+    let result: WorkflowDispatchResult;
+    try {
+      result = editor.dispatch({
+        type: 'updateNode',
+        nodeId: 'answer',
+        patch: { name: 'Committed despite Issue failure' }
+      });
+    } finally {
+      issueFailure.mockRestore();
+    }
+
+    expect(result!.ok).toBe(true);
+    expect(editor.getNode('answer')?.name).toBe('Committed despite Issue failure');
+    expect(editor.getHistory().undoCount).toBe(beforeHistory.undoCount + 1);
+    expect(editor.getSavepoint().contentRevision).toBeGreaterThan(beforeSavepoint.contentRevision);
+    expect(changes).toHaveLength(1);
+  });
+
+  it('keeps the trusted Issue view and throws when refresh derivation fails', () => {
+    const editor = createRuntime();
+    const beforeIssues = editor.getWorkflowIssues();
+    const issueFailure = vi.spyOn(issueRules, 'collectNodeIssues').mockImplementation(() => {
+      throw new Error('injected issue refresh failure');
+    });
+
+    try {
+      expect(() => editor.refreshIssues('all')).toThrow('injected issue refresh failure');
+    } finally {
+      issueFailure.mockRestore();
+    }
+
+    expect(editor.getWorkflowIssues()).toBe(beforeIssues);
+  });
+
   it('treats an unchanged command as a no-op', () => {
     const editor = createRuntime();
     const beforeHistory = editor.getHistory();
@@ -255,6 +385,78 @@ describe('workflow editor runtime modules', () => {
     expect(editor.getNode('break')).toBeDefined();
     expect(editor.dispatch({ type: 'removeNodes', nodeIds: ['loop'] }).ok).toBe(true);
     expect(editor.getNode('break')).toBeUndefined();
+  });
+
+  it('handles add parent, add child, then remove parent in one staged batch', () => {
+    const editor = createWorkflowEditor({ nodes: [], edges: [], chatConfig: {} });
+    const result = editor.dispatch([
+      {
+        type: 'addNode',
+        node: {
+          nodeId: 'parent',
+          flowNodeType: FlowNodeTypeEnum.loopRun,
+          name: 'Parent',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.loopRunMode,
+              label: 'Mode',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              value: 'conditional'
+            }
+          ],
+          outputs: []
+        }
+      },
+      {
+        type: 'addNode',
+        node: {
+          nodeId: 'child',
+          flowNodeType: FlowNodeTypeEnum.answerNode,
+          name: 'Child',
+          parentNodeId: 'parent',
+          inputs: [],
+          outputs: []
+        }
+      },
+      { type: 'removeNodes', nodeIds: ['parent'] }
+    ] satisfies readonly WorkflowCommand[]);
+
+    expect(result).toEqual({ ok: true });
+    expect(editor.getWorkflowData().nodes).toEqual([]);
+    expect(editor.getHistory()).toMatchObject({ undoCount: 0, redoCount: 0 });
+  });
+
+  it('uses current staged node order after deleting a preceding node', () => {
+    const editor = createWorkflowEditor({
+      nodes: [
+        {
+          nodeId: 'first',
+          flowNodeType: FlowNodeTypeEnum.answerNode,
+          name: 'First',
+          inputs: [],
+          outputs: []
+        },
+        {
+          nodeId: 'second',
+          flowNodeType: FlowNodeTypeEnum.answerNode,
+          name: 'Second',
+          inputs: [],
+          outputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: {}
+    });
+
+    const result = editor.dispatch([
+      { type: 'removeNodes', nodeIds: ['first'] },
+      { type: 'updateNode', nodeId: 'second', patch: { name: 'Updated second' } }
+    ] satisfies readonly WorkflowCommand[]);
+
+    expect(result.ok).toBe(true);
+    expect(editor.getWorkflowData().nodes).toEqual([
+      expect.objectContaining({ nodeId: 'second', name: 'Updated second' })
+    ]);
   });
 
   it('records only the touched field for a single field update', () => {
@@ -872,6 +1074,30 @@ describe('workflow editor runtime modules', () => {
     expect(editor.getSavepoint()).toEqual({ contentRevision: 0, isDirty: false });
   });
 
+  it('skips revision, history, and change when a batch returns to the canonical state', () => {
+    const editor = createRuntime();
+    const workflow = editor.getWorkflow();
+    const node = editor.getNode('answer');
+    const history = editor.getHistory();
+    const savepoint = editor.getSavepoint();
+    const changeLog = editor.getChangeLog();
+    const changes: WorkflowChange[] = [];
+    editor.subscribe((change) => changes.push(change));
+
+    const result = editor.dispatch([
+      { type: 'updateNode', nodeId: 'answer', patch: { name: 'Temporary' } },
+      { type: 'updateNode', nodeId: 'answer', patch: { name: 'Answer' } }
+    ] satisfies readonly WorkflowCommand[]);
+
+    expect(result).toEqual({ ok: true });
+    expect(editor.getWorkflow()).toBe(workflow);
+    expect(editor.getNode('answer')).toBe(node);
+    expect(editor.getHistory()).toEqual(history);
+    expect(editor.getSavepoint()).toEqual(savepoint);
+    expect(editor.getChangeLog()).toEqual(changeLog);
+    expect(changes).toEqual([]);
+  });
+
   it('restores the content revision through undo and redo', () => {
     const editor = createRuntime();
     const beforeEdit = editor.getSavepoint();
@@ -917,6 +1143,35 @@ describe('workflow editor runtime modules', () => {
     expect(editor.getNode('answer')?.name).toBe('Answer');
     expect(changes).toHaveLength(1);
     expect(changes[0]?.origin).toBe('undo');
+  });
+
+  it('keeps history and content state when replay reconstruction fails', () => {
+    const editor = createRuntime();
+    editor.dispatch({ type: 'updateNode', nodeId: 'answer', patch: { name: 'Renamed' } });
+    const workflow = editor.getWorkflow();
+    const history = editor.getHistory();
+    const savepoint = editor.getSavepoint();
+    const changeLog = editor.getChangeLog();
+    const changes: WorkflowChange[] = [];
+    editor.subscribe((change) => changes.push(change));
+    const replayFailure = vi.spyOn(documentRules, 'buildGraphIndex').mockImplementationOnce(() => {
+      throw new Error('injected replay reconstruction failure');
+    });
+
+    let result: WorkflowDispatchResult;
+    try {
+      result = editor.undo();
+    } finally {
+      replayFailure.mockRestore();
+    }
+
+    expect(result!.ok).toBe(false);
+    expect(editor.getWorkflow()).toBe(workflow);
+    expect(editor.getNode('answer')?.name).toBe('Renamed');
+    expect(editor.getHistory()).toEqual(history);
+    expect(editor.getSavepoint()).toEqual(savepoint);
+    expect(editor.getChangeLog()).toEqual(changeLog);
+    expect(changes).toEqual([]);
   });
 
   it('keeps edits made during a save request unsaved', () => {
@@ -1293,7 +1548,217 @@ const createEnvironmentFixture = (chatConfig: Record<string, unknown> = {}) => (
 
 const LLM_MODELS = [{ modelId: 'llm-1', model: 'llm-1', type: ModelTypeEnum.llm }];
 
+const createReasoningRuntime = ({
+  modelValue,
+  reasoning
+}: {
+  modelValue?: string;
+  reasoning: boolean;
+}) => {
+  const environment: WorkflowEnvironment = {
+    models: [
+      {
+        modelId: 'reasoning-model',
+        model: 'reasoning-model',
+        type: ModelTypeEnum.llm,
+        config: {
+          maxContext: 1,
+          maxResponse: 1,
+          quoteMaxToken: 1,
+          reasoning
+        }
+      }
+    ],
+    sandbox: { configured: true, planSupported: true }
+  };
+  const editor = createWorkflowEditor(
+    {
+      nodes: [
+        {
+          nodeId: 'start',
+          flowNodeType: FlowNodeTypeEnum.workflowStart,
+          name: 'Start',
+          inputs: [],
+          outputs: [
+            {
+              id: 'source',
+              key: 'source',
+              type: FlowNodeOutputTypeEnum.source,
+              valueType: WorkflowIOValueTypeEnum.string
+            }
+          ]
+        },
+        {
+          nodeId: 'source',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          name: 'Source',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModelId,
+              label: 'Model',
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+              valueType: WorkflowIOValueTypeEnum.string,
+              value: modelValue
+            }
+          ],
+          outputs: [
+            {
+              id: NodeOutputKeyEnum.reasoningText,
+              key: NodeOutputKeyEnum.reasoningText,
+              type: FlowNodeOutputTypeEnum.static,
+              label: 'Reasoning',
+              valueType: WorkflowIOValueTypeEnum.string,
+              invalid: true,
+              invalidCondition: ({ inputs, llmModelMap }) => {
+                const model =
+                  inputs.find((item) => item.key === NodeInputKeyEnum.aiModelId)?.value ||
+                  inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value;
+                return llmModelMap[model]?.config.reasoning !== true;
+              }
+            }
+          ]
+        },
+        {
+          nodeId: 'consumer',
+          flowNodeType: FlowNodeTypeEnum.textEditor,
+          name: 'Consumer',
+          inputs: [
+            {
+              key: 'reasoning',
+              label: 'Reasoning',
+              renderTypeList: [FlowNodeInputTypeEnum.reference],
+              selectedType: FlowNodeInputTypeEnum.reference,
+              valueType: WorkflowIOValueTypeEnum.string,
+              value: ['source', NodeOutputKeyEnum.reasoningText]
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [
+        {
+          source: 'start',
+          target: 'source',
+          sourceHandle: 'source',
+          targetHandle: 'target'
+        },
+        {
+          source: 'source',
+          target: 'consumer',
+          sourceHandle: NodeOutputKeyEnum.reasoningText,
+          targetHandle: 'target'
+        }
+      ],
+      chatConfig: {}
+    },
+    { getEnvironment: () => environment }
+  );
+  return { editor, environment };
+};
+
 describe('workflow environment facts', () => {
+  it.each([
+    { name: 'supported', modelValue: 'reasoning-model', reasoning: true, invalid: false },
+    { name: 'unsupported', modelValue: 'reasoning-model', reasoning: false, invalid: true },
+    { name: 'empty model', modelValue: undefined, reasoning: true, invalid: true }
+  ])('$name reasoning output has one Runtime validity result', (fixture) => {
+    const { editor } = createReasoningRuntime(fixture);
+    const output = editor
+      .getNode('source')
+      ?.outputs.find((item) => item.key === NodeOutputKeyEnum.reasoningText);
+    const field = editor.getField({ nodeId: 'consumer', fieldKey: 'reasoning' });
+    const options = editor.getReferenceOptions({
+      nodeId: 'consumer',
+      valueType: WorkflowIOValueTypeEnum.string
+    });
+
+    expect(output?.invalid).toBe(fixture.invalid);
+    expect(field?.references).toEqual([
+      expect.objectContaining({ code: fixture.invalid ? 'invalid_reference' : 'valid' })
+    ]);
+    expect(
+      options.some(
+        (option) =>
+          option.reference[0] === 'source' &&
+          option.reference[1] === NodeOutputKeyEnum.reasoningText
+      )
+    ).toBe(!fixture.invalid);
+    expect(editor.getNode('consumer')?.issues.map((issue) => issue.code)).toEqual(
+      fixture.invalid ? ['invalid_reference'] : []
+    );
+  });
+
+  it('updates Runtime invalid and all readers when the model catalog changes', () => {
+    const { editor, environment } = createReasoningRuntime({
+      modelValue: 'reasoning-model',
+      reasoning: false
+    });
+    const beforeHistory = editor.getHistory();
+    const beforeSavepoint = editor.getSavepoint();
+    const beforeWorkflow = editor.getWorkflow();
+
+    environment.models![0].config = {
+      ...environment.models![0].config!,
+      reasoning: true
+    };
+    const update = editor.refreshIssues(['source']);
+    const output = editor
+      .getNode('source')
+      ?.outputs.find((item) => item.key === NodeOutputKeyEnum.reasoningText);
+
+    expect(update.nodeIds).toEqual(['source', 'consumer']);
+    expect(output?.invalid).toBe(false);
+    expect(editor.getField({ nodeId: 'consumer', fieldKey: 'reasoning' })?.references).toEqual([
+      expect.objectContaining({ code: 'valid' })
+    ]);
+    expect(
+      editor.getReferenceOptions({
+        nodeId: 'consumer',
+        valueType: WorkflowIOValueTypeEnum.string
+      })
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ reference: ['source', NodeOutputKeyEnum.reasoningText] })
+      ])
+    );
+    expect(editor.getWorkflow()).not.toBe(beforeWorkflow);
+    expect(editor.getHistory()).toEqual(beforeHistory);
+    expect(editor.getSavepoint()).toEqual(beforeSavepoint);
+  });
+
+  it('recomputes Runtime invalid after semantic history replay', () => {
+    const { editor, environment } = createReasoningRuntime({
+      modelValue: 'reasoning-model',
+      reasoning: false
+    });
+
+    editor.dispatch({ type: 'updateNode', nodeId: 'source', patch: { name: 'Renamed' } });
+    environment.models![0].config = {
+      ...environment.models![0].config!,
+      reasoning: true
+    };
+    editor.refreshIssues('all');
+    expect(
+      editor
+        .getNode('source')
+        ?.outputs.find((output) => output.id === NodeOutputKeyEnum.reasoningText)?.invalid
+    ).toBe(false);
+
+    expect(editor.undo().ok).toBe(true);
+    expect(editor.getNode('source')?.name).toBe('Source');
+    expect(
+      editor
+        .getNode('source')
+        ?.outputs.find((output) => output.id === NodeOutputKeyEnum.reasoningText)?.invalid
+    ).toBe(false);
+    expect(editor.redo().ok).toBe(true);
+    expect(
+      editor
+        .getNode('source')
+        ?.outputs.find((output) => output.id === NodeOutputKeyEnum.reasoningText)?.invalid
+    ).toBe(false);
+  });
+
   it('skips model rules until the catalog is ready, then refreshes without a workflow change', () => {
     // 用对象承载目录：模拟“先未就绪、后就绪”，getEnvironment 每轮读当前值。
     const environment: { models?: WorkflowEnvironment['models'] } = {};
@@ -1323,7 +1788,11 @@ describe('workflow environment facts', () => {
     expect(update.nodeIds).toEqual(['chat', 'tool']);
     expect(updates).toEqual([update]);
     expect(editor.getNode('chat')?.issues.map((issue) => issue.code)).toContain('model_required');
-    expect(editor.getWorkflow()).toBe(workflowBeforeRefresh);
+    const workflowAfterRefresh = editor.getWorkflow();
+    expect(workflowAfterRefresh).not.toBe(workflowBeforeRefresh);
+    expect(workflowAfterRefresh.nodes.find((node) => node.nodeId === 'chat')?.issues).toEqual(
+      editor.getNode('chat')?.issues
+    );
     expect(editor.getWorkflowIssues()).not.toBe(issuesBeforeRefresh);
     // 环境刷新不是 Workflow Change，也不改 Content Revision、History 与 dirty。
     expect(changes).toHaveLength(0);
@@ -1375,5 +1844,24 @@ describe('workflow environment facts', () => {
     expect(Object.isFrozen(issues)).toBe(true);
     expect(Object.isFrozen(issues.issues)).toBe(true);
     expect(Object.isFrozen(issues.chatConfigIssues)).toBe(true);
+  });
+
+  it('invalidates workflow snapshot when only config issues change', () => {
+    const environment: { models: WorkflowEnvironment['models'] } = { models: LLM_MODELS };
+    const editor = createWorkflowEditor(
+      createEnvironmentFixture({ questionGuide: { open: true, modelId: 'gone' } }),
+      {
+        getEnvironment: () => ({
+          models: environment.models,
+          sandbox: { configured: true, planSupported: true }
+        })
+      }
+    );
+    const before = editor.getWorkflow();
+    environment.models = [{ modelId: 'gone', model: 'gone', type: ModelTypeEnum.llm }];
+
+    expect(editor.refreshIssues('all').nodeIds).toEqual([]);
+    expect(editor.getWorkflow()).not.toBe(before);
+    expect(editor.getWorkflowIssues().chatConfigIssues).toEqual([]);
   });
 });

@@ -120,8 +120,7 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
       return getReferenceVariableValue({
         value: item.value!,
         variables: runtimeVariables,
-        nodesMap: runtimeNodesMap,
-        isReferenceVal: true
+        nodesMap: runtimeNodesMap
       });
     })();
 

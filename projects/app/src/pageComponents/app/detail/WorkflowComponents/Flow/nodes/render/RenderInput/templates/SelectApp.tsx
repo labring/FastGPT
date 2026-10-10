@@ -10,7 +10,7 @@ import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { useQuery } from '@tanstack/react-query';
 import { getAppDetailById } from '@/web/core/app/api';
-import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useField, useFieldActions } from '@/web/core/workflow/editor/react/useField';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useWorkflowCanvasValue } from '../../../../canvas/workflowCanvasContext';
 
@@ -19,8 +19,8 @@ const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
   const { toast } = useToast();
   const currentAppId = useContextSelector(AppContext, (ctx) => ctx.appDetail._id);
   const isMeasuring = useWorkflowCanvasValue((ctx) => ctx.measurementNodeIds.includes(nodeId));
-  const field = useField(nodeId, item.key, 'input');
-  const currentInput = field?.data.input ?? item;
+  const currentInput = useField(nodeId, item.key, 'input', (field) => field?.data.input);
+  const fieldActions = useFieldActions({ nodeId, fieldKey: item.key, kind: 'input' });
 
   const {
     isOpen: isOpenSelectApp,
@@ -28,7 +28,7 @@ const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
     onClose: onCloseSelectApp
   } = useDisclosure();
 
-  const value = currentInput.value as SelectAppItemType | undefined;
+  const value = currentInput?.value as SelectAppItemType | undefined;
   const { data: appDetail, isLoading } = useQuery({
     queryKey: ['workflow', 'app-detail', value?.id],
     queryFn: () => (value?.id ? getAppDetailById(value.id) : Promise.resolve(null)),
@@ -36,7 +36,7 @@ const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
     staleTime: 5 * 60 * 1000,
     cacheTime: 5 * 60 * 1000,
     onError(error: any) {
-      field?.setValue(undefined);
+      fieldActions.setValue(undefined);
       if (error instanceof ToastHandledError) return;
       const errorText = t(getErrText(error, 'Error') as any);
       if (errorText) toast({ title: errorText, status: 'error' });
@@ -67,11 +67,11 @@ const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
 
         {isOpenSelectApp && (
           <SelectAppModal
-            value={currentInput.value}
+            value={value}
             filterAppIds={[currentAppId]}
             onClose={onCloseSelectApp}
             onSuccess={(e) => {
-              field?.setValue(e);
+              fieldActions.setValue(e);
             }}
           />
         )}
@@ -81,16 +81,16 @@ const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
     appDetail?.avatar,
     appDetail?.name,
     currentAppId,
-    field,
+    fieldActions,
     isOpenSelectApp,
-    item,
     loading,
     onCloseSelectApp,
     onOpenSelectApp,
     t,
-    value,
-    currentInput.value
+    value
   ]);
+
+  if (!currentInput) return null;
 
   return Render;
 };

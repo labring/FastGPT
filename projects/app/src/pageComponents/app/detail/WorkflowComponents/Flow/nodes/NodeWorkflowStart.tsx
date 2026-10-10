@@ -18,10 +18,12 @@ import {
 } from '@fastgpt/global/core/workflow/utils';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
 
 const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useSafeTranslation();
-  const { nodeId, outputs } = data;
+  const { nodeId } = data;
+  const outputs = useNode<FlowNodeItemType['outputs']>(nodeId, (node) => node?.data.outputs) ?? [];
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const customGlobalVariables = useMemoEnhance(() => {
     const globalVariables = formatEditorVariablePickerIcon(

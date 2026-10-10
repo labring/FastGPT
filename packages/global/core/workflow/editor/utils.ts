@@ -6,10 +6,12 @@ import {
   WorkflowIOValueTypeEnum
 } from '../constants';
 import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../node/constant';
+import { ModelTypeEnum } from '../../ai/constants';
 import { getHandleId } from '../utils';
 import { moduleTemplatesFlat } from '../template/constants';
 import { isNodeConnectionAllowed } from '../template/context';
 import type {
+  FlowNodeInputItemType,
   FlowNodeOutputItemType,
   ReferenceItemValueType,
   ReferenceValueType
@@ -18,6 +20,56 @@ import type { FlowNodeItemType, NodeTemplateContext } from '../type/node';
 import type { AppChatConfigType } from '../../app/type';
 import type { WorkflowReferenceStatus } from './types';
 import { getWorkflowGlobalVariables } from './variables';
+import type { LLMSystemModelDataType, SystemModelDataType } from '../../ai/model.schema';
+
+export type WorkflowLLMModelMap = Record<
+  string,
+  Pick<LLMSystemModelDataType, 'model' | 'modelId' | 'config'>
+>;
+
+/** 将 Runtime 环境目录整理成 invalidCondition 复用的模型索引。 */
+export const buildWorkflowLLMModelMap = (
+  models?: readonly (Omit<
+    Pick<SystemModelDataType, 'modelId' | 'model' | 'type' | 'config'>,
+    'config'
+  > & {
+    config?: SystemModelDataType['config'];
+  })[]
+): WorkflowLLMModelMap | undefined => {
+  if (!models) return undefined;
+
+  const modelMap: WorkflowLLMModelMap = {};
+  models.forEach((model) => {
+    if (model.type !== ModelTypeEnum.llm || !model.config) return;
+    const llmModel = model as Pick<LLMSystemModelDataType, 'model' | 'modelId' | 'config'>;
+    modelMap[model.modelId] = llmModel;
+    modelMap[model.model] = llmModel;
+  });
+  return modelMap;
+};
+
+/** 复用输出 invalidCondition，返回只替换 invalid 字段的输出数组。 */
+export const updateWorkflowNodeOutputValidity = ({
+  inputs,
+  outputs,
+  llmModelMap
+}: {
+  inputs: FlowNodeInputItemType[];
+  outputs: FlowNodeOutputItemType[];
+  llmModelMap?: WorkflowLLMModelMap;
+}): FlowNodeOutputItemType[] => {
+  if (!llmModelMap) return outputs;
+
+  let nextOutputs = outputs;
+  outputs.forEach((output, index) => {
+    if (!output.invalidCondition) return;
+    const invalid = output.invalidCondition({ inputs, llmModelMap });
+    if (output.invalid === invalid) return;
+    if (nextOutputs === outputs) nextOutputs = outputs.slice();
+    nextOutputs[index] = { ...output, invalid };
+  });
+  return nextOutputs;
+};
 
 // region valueCompatibility Workflow value compatibility rules
 

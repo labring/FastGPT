@@ -84,6 +84,11 @@ import {
 const EMPTY_EDGE_ENDPOINTS = freezeValue([]) as readonly WorkflowEdgeEndpoint[];
 const EMPTY_NODE_IDS = freezeValue([]) as readonly string[];
 
+type StagedIndexes = {
+  nodeIndex: Map<string, number>;
+  childrenByParent: Map<string, string[]>;
+};
+
 /** Create the Workflow Document module；入参是入站边界已经组装好的初始文档与视图。 */
 export const createDocumentModule = (initial: CanonicalResult) => {
   // region documentState Document state and graph index maintenance
@@ -99,6 +104,7 @@ export const createDocumentModule = (initial: CanonicalResult) => {
     edgeById: new Map()
   };
   let workflowStartIds = new Set<string>();
+  const stagedIndexes = new WeakMap<MutationMeta, StagedIndexes>();
 
   const getDocument = () => document;
   const setDocument = (next: RuntimeDocument) => {
@@ -154,6 +160,29 @@ export const createDocumentModule = (initial: CanonicalResult) => {
     return nodeIndex.get(nodeId)?.record;
   };
 
+  const getStagedIndexes = (working: RuntimeDocument, meta: MutationMeta): StagedIndexes => {
+    const cached = stagedIndexes.get(meta);
+    if (cached) return cached;
+
+    const indexes: StagedIndexes = {
+      nodeIndex: new Map(),
+      childrenByParent: new Map()
+    };
+    working.nodes.forEach(({ data }, index) => {
+      indexes.nodeIndex.set(data.nodeId, index);
+      const parentKey = data.parentNodeId ?? ROOT_PARENT_KEY;
+      const children = indexes.childrenByParent.get(parentKey) ?? [];
+      children.push(data.nodeId);
+      indexes.childrenByParent.set(parentKey, children);
+    });
+    stagedIndexes.set(meta, indexes);
+    return indexes;
+  };
+
+  const invalidateStagedIndexes = (meta: MutationMeta) => {
+    stagedIndexes.delete(meta);
+  };
+
   const getWorkingNodeIndex = ({
     working,
     nodeId,
@@ -163,10 +192,8 @@ export const createDocumentModule = (initial: CanonicalResult) => {
     nodeId: string;
     meta?: MutationMeta;
   }) => {
-    const change = meta?.nodeChanges.get(nodeId);
-    if (change)
-      return change.after ? (change.afterIndex ?? working.nodes.indexOf(change.after)) : -1;
-    return nodeIndex.get(nodeId)?.index ?? -1;
+    if (meta) return getStagedIndexes(working, meta).nodeIndex.get(nodeId) ?? -1;
+    return working.nodes.findIndex(({ data }) => data.nodeId === nodeId);
   };
 
   const getFlowNodeById = ({
@@ -190,8 +217,25 @@ export const createDocumentModule = (initial: CanonicalResult) => {
     return isWorkflowEdgeSourceHandleValid(sourceData, edge.data.sourceHandle);
   };
 
-  const getDescendantNodeIds = (rootIds: ReadonlySet<string>) =>
-    collectDescendantNodeIds(graphIndex.childrenByParent, rootIds);
+  /** staged 命令期间复用事务内父子索引，避免每次删除/挂载都扫描全部节点。 */
+  const getWorkingDescendantNodeIds = (
+    working: RuntimeDocument,
+    rootIds: ReadonlySet<string>,
+    meta?: MutationMeta
+  ) => {
+    const childrenByParent = meta
+      ? getStagedIndexes(working, meta).childrenByParent
+      : new Map<string, string[]>();
+    if (!meta) {
+      working.nodes.forEach(({ data }) => {
+        const parentKey = data.parentNodeId ?? ROOT_PARENT_KEY;
+        const children = childrenByParent.get(parentKey) ?? [];
+        children.push(data.nodeId);
+        childrenByParent.set(parentKey, children);
+      });
+    }
+    return collectDescendantNodeIds(childrenByParent, rootIds);
+  };
 
   /**
    * 图查询的集合缓存：记住产出当前结果的那个索引桶。
@@ -363,17 +407,14 @@ export const createDocumentModule = (initial: CanonicalResult) => {
 
     const scopeParentId =
       parentNodeId !== undefined ? parentNodeId : (source?.parentNodeId ?? null);
-    // 已提交状态直接读图索引（O(直接子节点)，root 作用域读 ROOT_PARENT_KEY 桶）；
-    // 事务内有 staged 节点变化时索引还没更新，回落扫描 working。
-    const scopeNodes: WorkflowNodeData[] = !meta?.nodeChanges.size
+    // 已提交状态直接读图索引；事务内复用 staged children map，避免每次 placement 校验扫描全部节点。
+    const scopeNodeIds = !meta?.nodeChanges.size
       ? (graphIndex.childrenByParent.get(scopeParentId || ROOT_PARENT_KEY) ?? [])
-          .map((nodeId) => nodeIndex.get(nodeId)?.record.data)
-          .filter((data): data is WorkflowNodeData => !!data)
-      : working.nodes
-          .filter(({ data }) =>
-            scopeParentId === null ? !data.parentNodeId : data.parentNodeId === scopeParentId
-          )
-          .map(({ data }) => data);
+      : (getStagedIndexes(working, meta).childrenByParent.get(scopeParentId || ROOT_PARENT_KEY) ??
+        []);
+    const scopeNodes: WorkflowNodeData[] = scopeNodeIds
+      .map((nodeId) => getWorkingNode(nodeId, meta)?.data)
+      .filter((data): data is WorkflowNodeData => !!data);
     const isScopeUniqueType = (flowNodeType: FlowNodeTypeEnum) =>
       scopeParentId === null
         ? isUniqueRootNodeType(flowNodeType)
@@ -620,6 +661,7 @@ export const createDocumentModule = (initial: CanonicalResult) => {
           context: getContainerPlacementContext(record.data.parentNodeId, working, meta)
         });
         working.nodes = [...working.nodes, record];
+        invalidateStagedIndexes(meta);
         setStagedNodeView({ meta, views, nodeId: record.data.nodeId, view });
         updateReferenceGraphNode({ graph: referenceGraph, after: record.data });
         recordNodeChange({
@@ -760,7 +802,7 @@ export const createDocumentModule = (initial: CanonicalResult) => {
         const rootIds = new Set(command.nodeIds);
         const missing = command.nodeIds.find((nodeId) => !getWorkingNode(nodeId, meta));
         if (missing) throw getError('not_found', `Node not found: ${missing}`);
-        const descendantIds = getDescendantNodeIds(rootIds);
+        const descendantIds = getWorkingDescendantNodeIds(working, rootIds, meta);
         const deletedIds = new Set([...rootIds, ...descendantIds]);
         validateNodeDeletion({ nodes: working.nodes, deletedIds });
 
@@ -780,6 +822,7 @@ export const createDocumentModule = (initial: CanonicalResult) => {
         });
         deletedIds.forEach((nodeId) => deleteStagedNodeView({ meta, views, nodeId }));
         working.nodes = working.nodes.filter((node) => !deletedIds.has(node.data.nodeId));
+        invalidateStagedIndexes(meta);
         const removedEdges = working.edges.filter(
           (edge) => deletedIds.has(edge.data.source) || deletedIds.has(edge.data.target)
         );
@@ -842,7 +885,9 @@ export const createDocumentModule = (initial: CanonicalResult) => {
         }
         if (
           command.nodeId === command.containerId ||
-          getDescendantNodeIds(new Set([command.nodeId])).has(command.containerId)
+          getWorkingDescendantNodeIds(working, new Set([command.nodeId]), meta).has(
+            command.containerId
+          )
         ) {
           throw getError(
             'invalid_placement',
@@ -867,6 +912,7 @@ export const createDocumentModule = (initial: CanonicalResult) => {
         working.nodes = working.nodes.slice();
         const nextData = { ...node.data, parentNodeId: command.containerId };
         working.nodes[nodeIndex] = { ...node, data: nextData };
+        invalidateStagedIndexes(meta);
         recordNodeChange({
           meta,
           nodeId: command.nodeId,
@@ -921,6 +967,7 @@ export const createDocumentModule = (initial: CanonicalResult) => {
           rebuilt.document.chatConfig.variables
         );
         working.nodes = rebuilt.document.nodes;
+        invalidateStagedIndexes(meta);
         working.edges = rebuilt.document.edges;
         working.chatConfig = rebuilt.document.chatConfig;
         // 整文档替换自带一份快照；不能沿用替换前的，否则会把无关文档的历史元数据带进来。
@@ -943,23 +990,22 @@ export const createDocumentModule = (initial: CanonicalResult) => {
     const arrayInputChanged = [...meta.changedFieldIds.values()].some(
       (field) => field.kind === 'input' && isContainerArrayInputKey(field.key)
     );
-    if (!meta.structureChanged && !meta.chatConfigChanged && !arrayInputChanged) return;
-
-    const derived = applyPersistedDerivedFields({
-      nodes: working.nodes,
-      chatConfig: working.chatConfig
-    });
-    if (derived.changes.length === 0) return;
-    working.nodes = derived.nodes;
-    derived.changes.forEach(({ index, before, after }) => {
-      updateReferenceGraphNode({ graph: referenceGraph, before: before.data, after: after.data });
-      recordNodeChange({ meta, nodeId: after.data.nodeId, before, after, afterIndex: index });
-      collectNodeFieldChanges({
-        changedFieldIds: meta.changedFieldIds,
-        before: before.data,
-        after: after.data
+    if (meta.structureChanged || meta.chatConfigChanged || arrayInputChanged) {
+      const derived = applyPersistedDerivedFields({
+        nodes: working.nodes,
+        chatConfig: working.chatConfig
       });
-    });
+      working.nodes = derived.nodes;
+      derived.changes.forEach(({ index, before, after }) => {
+        updateReferenceGraphNode({ graph: referenceGraph, before: before.data, after: after.data });
+        recordNodeChange({ meta, nodeId: after.data.nodeId, before, after, afterIndex: index });
+        collectNodeFieldChanges({
+          changedFieldIds: meta.changedFieldIds,
+          before: before.data,
+          after: after.data
+        });
+      });
+    }
   };
 
   // endregion

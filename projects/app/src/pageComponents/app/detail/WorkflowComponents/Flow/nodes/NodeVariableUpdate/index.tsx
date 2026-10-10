@@ -37,7 +37,7 @@ import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSele
 import VariableSelector from './VariableSelector';
 import ValueRenderer from './ValueRenderer';
 import { useNodeWorkflowDocument } from '../render/useWorkflowDocument';
-import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useField, useFieldActions } from '@/web/core/workflow/editor/react/useField';
 import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
 // 切换目标变量时按新类型生成默认操作字段与初值，
@@ -57,12 +57,22 @@ const getDefaultsForValueType = (valueType?: WorkflowIOValueTypeEnum): Partial<T
 };
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
-  const { inputs = [], nodeId } = data;
+  const { nodeId } = data;
   const { t } = useTranslation();
 
   // 变量列表只读本节点与其上游来源闭包：窄订阅让无关字段的提交不重算也不重渲染。
   const { workflow, getNodeById, graph } = useNodeWorkflowDocument({ nodeId });
-  const updateListField = useField(nodeId, NodeInputKeyEnum.updateList, 'input');
+  const updateListInput = useField(
+    nodeId,
+    NodeInputKeyEnum.updateList,
+    'input',
+    (field) => field?.data.input
+  );
+  const updateListFieldActions = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.updateList,
+    kind: 'input'
+  });
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const variables = useMemoEnhance(() => {
@@ -85,19 +95,15 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
     );
   }, [feConfigs?.externalProviderWorkflowVariables]);
 
-  const updateList = useMemo(
-    () =>
-      (inputs.find((input) => input.key === NodeInputKeyEnum.updateList)
-        ?.value as TUpdateListItem[]) || [],
-    [inputs]
-  );
+  const updateListValue = updateListInput?.value;
+  const updateList = useMemo(() => (updateListValue as TUpdateListItem[]) || [], [updateListValue]);
 
   /** 更新列表整体就是 updateList 字段的值：增删改都按完整数组提交，一次交互一条历史。 */
   const onUpdateList = useCallback(
     (value: TUpdateListItem[]) => {
-      updateListField?.setValue(value);
+      updateListFieldActions.setValue(value);
     },
-    [updateListField]
+    [updateListFieldActions]
   );
 
   const ValueRow = useMemoizedFn(

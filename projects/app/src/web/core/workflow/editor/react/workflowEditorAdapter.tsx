@@ -479,6 +479,11 @@ export const createWorkflowEditorAdapter = (
   const onIssueUpdate = (update: WorkflowIssueUpdate) => {
     if (disposed) return;
     notify(collectRegistryListeners(nodeDataListeners, update.nodeIds));
+    if (update.nodeIds.length === 0) return;
+
+    // invalid 变化会让任意引用消费者的 field/reference view 失效，不能只通知来源节点。
+    notify(collectRegistryListeners(fieldListeners, [...fieldListeners.keys()]));
+    notify(new Set(referenceListeners));
   };
 
   const connect = () => {

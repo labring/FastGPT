@@ -10,7 +10,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { getIfElseBranchHandleKey } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
 import { useNode } from '@/web/core/workflow/editor/react/useNode';
-import { useWorkflowValue } from '@/web/core/workflow/editor/react/useWorkflow';
+import { useWorkflow } from '@/web/core/workflow/editor/react/useWorkflow';
 import { useWorkflowRuntime } from '@/web/core/workflow/editor/session/workflowSession';
 import { useWorkflowUIValue } from '../../../canvas/canvasState';
 import { WorkflowHandleRenderContext } from './handleRenderContext';
@@ -27,13 +27,13 @@ export const ConnectionSourceHandle = ({
   sourceType?: 'source' | 'source_catch';
 }) => {
   const renderHandle = useContext(WorkflowHandleRenderContext);
-  const nodeHandle = useNode(nodeId);
+  const nodeHandle = useNode(nodeId, { raw: true });
   // 只关心「是不是别的节点在拖拽连线」这一个事实，不取回整个 connectingEdge 对象。
   const isConnectingOther = useWorkflowUIValue(
     (v) => !!v.connectingEdge && v.connectingEdge.nodeId !== nodeId
   );
   // 右侧 target 柄已被占用时不再显示 source 柄：走图查询的 byTarget 索引，O(入度)。
-  const rightTargetConnected = useWorkflowValue((_structure, graph) =>
+  const rightTargetConnected = useWorkflow((_structure, graph) =>
     graph.isHandleConnected({
       nodeId,
       handleId: getHandleId(nodeId, 'target', Position.Right),
@@ -135,7 +135,7 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
    * 禁止连接的图判定：本节点已被挂成工具，或本次拖拽的 source handle 已经连到本节点。
    * 两个条件都走图索引（byTarget），复杂度从每条边全量扫 O(E) 降到 O(入度)。
    */
-  const forbidConnectByGraph = useWorkflowValue(
+  const forbidConnectByGraph = useWorkflow(
     (_structure, graph) =>
       graph.isMountedTool(nodeId) ||
       (!!connectingEdge &&

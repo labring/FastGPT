@@ -80,14 +80,14 @@ export function replaceEditorVariable({
 
         // Use the node's input as the variable value(Example: HTTP data will reference its own dynamic input)
         const input = node.inputs.find((input) => input.key === id);
-        if (input) {
+        if (input && nodeInputIsReference(input)) {
           return getReferenceVariableValue({
             value: input.value,
             nodesMap,
-            variables,
-            isReferenceVal: nodeInputIsReference(input)
+            variables
           });
         }
+        return input?.value;
       })();
 
       // 直接自引用保持原占位符，交给最大深度保护兜底更复杂的环。

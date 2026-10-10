@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
-import { useWorkflowCanvasValue } from '../Flow/canvas/workflowCanvasContext';
+import { useWorkflowCanvasRendererValue } from '../Flow/canvas/workflowCanvasContext';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useWorkflowRuntime } from '@/web/core/workflow/editor/session/workflowSession';
 import { postWorkflowDebug } from '@/web/core/workflow/api';
@@ -174,7 +174,7 @@ const WorkflowDebugContext = createContext<WorkflowDebugContextValue>({
 
 export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode }) => {
   // 获取依赖的 context
-  const selectNodes = useWorkflowCanvasValue((v) => v.selectNodes);
+  const selectNodes = useWorkflowCanvasRendererValue((v) => v.selectNodes);
   const runtime = useWorkflowRuntime();
   const patchViewData = useWorkflowOverlayActions();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);

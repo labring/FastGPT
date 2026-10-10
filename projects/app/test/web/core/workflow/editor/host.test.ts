@@ -21,6 +21,7 @@ import {
   type WorkflowPersistenceState,
   type WorkflowSessionActions
 } from '@/web/core/workflow/editor/session/workflowSession';
+import { createWorkflowSaveCoordinator } from '@/web/core/workflow/editor/session/workflowPersistence';
 import type { WorkflowRuntimePort } from '@fastgpt/global/core/workflow/editor/types';
 
 vi.mock('next-i18next', () => ({
@@ -71,6 +72,42 @@ describe('workflow renderer overlays', () => {
   });
 });
 
+describe('workflow save request coordination', () => {
+  it('accepts only the newest response and rejects app/session/runtime changes', () => {
+    const runtime = {
+      isDisposed: vi.fn(() => false)
+    } as unknown as WorkflowRuntimePort;
+    const coordinator = createWorkflowSaveCoordinator();
+    const scope = {
+      runtime,
+      sessionId: 'session-a',
+      appId: 'app-a'
+    };
+    const requestA = coordinator.begin({
+      ...scope,
+      contentRevision: 1,
+      data: {} as never
+    });
+    const requestB = coordinator.begin({
+      ...scope,
+      contentRevision: 2,
+      data: { nodes: [{ nodeId: 'latest' }] } as never
+    });
+
+    expect(requestA.data).toEqual({});
+    expect(coordinator.isCurrent(requestA, scope)).toBe(false);
+    expect(coordinator.isCurrent(requestB, scope)).toBe(true);
+    expect(coordinator.isCurrent(requestB, { ...scope, appId: 'app-b' })).toBe(false);
+    expect(coordinator.isCurrent(requestB, { ...scope, sessionId: 'session-b' })).toBe(false);
+
+    coordinator.invalidate();
+    expect(coordinator.isCurrent(requestB, scope)).toBe(false);
+
+    runtime.isDisposed.mockReturnValue(true);
+    expect(coordinator.isCurrent(requestB, scope)).toBe(false);
+  });
+});
+
 /**
  * 挂真实 Provider 树（AppContext -> ReactFlowProvider -> host）+ 计数型观察者。
  * host 在 ReactFlowProvider 内（问题焦点要 fitView），测试同样需要这层 Provider。
@@ -113,6 +150,7 @@ const renderHost = async (
             WorkflowSessionProvider,
             {
               runtime,
+              appId: 'app-a',
               appDetailChatConfig: chatConfig,
               onChatConfigChange: (nextChatConfig: Record<string, unknown>) => {
                 appDetail.current.chatConfig = nextChatConfig;
@@ -276,6 +314,42 @@ describe('WorkflowSessionProvider version history', () => {
     act(() => root.unmount());
   });
 
+  it('marks only the newest save request and keeps its captured revision', async () => {
+    const initial = answerDocument();
+    const { root, readHost } = await renderHost(initial.chatConfig);
+    act(() => readHost().initRuntime(initial));
+
+    act(() => {
+      readHost().runtime!.dispatch({
+        type: 'updateChatConfig',
+        chatConfig: { welcomeText: 'first edit' }
+      });
+    });
+    const requestA = readHost().createSaveRequest('app-a')!;
+
+    act(() => {
+      readHost().runtime!.dispatch({
+        type: 'updateChatConfig',
+        chatConfig: { welcomeText: 'second edit' }
+      });
+    });
+    const requestB = readHost().createSaveRequest('app-a')!;
+
+    expect(requestA.contentRevision).toBeLessThan(requestB.contentRevision);
+    let markResult = false;
+    act(() => {
+      markResult = readHost().markSaved(requestB);
+    });
+    expect(markResult).toBe(true);
+    expect(readHost().runtime!.getSavepoint().isDirty).toBe(false);
+    act(() => {
+      markResult = readHost().markSaved(requestA);
+    });
+    expect(markResult).toBe(false);
+
+    act(() => root.unmount());
+  });
+
   it('switches to a cloud version without adding a local entry', async () => {
     const initial = answerDocument();
     const { root, appDetail, readHost } = await renderHost(initial.chatConfig);
@@ -355,11 +429,18 @@ describe('WorkflowSessionProvider version history', () => {
     const { root, readHost, render } = await renderHost(initial.chatConfig, runtime);
 
     expect(readHost().runtime).toBe(runtime);
+    const request = readHost().createSaveRequest('app-a')!;
     act(() => render(undefined));
 
     expect(runtime.isDisposed()).toBe(true);
     expect(readHost().runtime).toBeNull();
     expect(readHost().versions).toEqual([]);
+    expect(readHost().isCurrentSaveRequest(request)).toBe(false);
+    let markResult = false;
+    act(() => {
+      markResult = readHost().markSaved(request);
+    });
+    expect(markResult).toBe(false);
 
     act(() => {
       expect(() => readHost().initRuntime(null as never)).toThrow();

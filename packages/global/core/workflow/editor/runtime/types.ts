@@ -154,7 +154,7 @@ export type DocumentReadApi = {
   readonly getNodeIndex: () => ReadonlyMap<string, IndexedNode>;
   readonly getGraphIndex: () => GraphIndex;
   readonly isSourceEdgeValid: (edge: EdgeRecord) => boolean;
-  /** 读取 staged 事务中的节点下标；未进入 meta 时回落到已提交索引。 */
+  /** 读取 staged 事务中的节点下标；始终以 working.nodes 当前顺序为准。 */
   readonly getWorkingNodeIndex: (args: {
     working: RuntimeDocument;
     nodeId: string;

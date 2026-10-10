@@ -1349,22 +1349,6 @@ describe('getReferenceVariableValue', () => {
     expect(result).toBe('plain string');
   });
 
-  it('should keep two-column table data as a two-dimensional array', () => {
-    const tableData = [
-      ['指标', '金额（元）'],
-      ['资产总额（期末余额）', '22,701,764,055.63'],
-      ['负债总额（期末余额）', '4,809,415,705.17']
-    ];
-
-    const result = getReferenceVariableValue({
-      value: tableData,
-      nodesMap: {},
-      variables: {}
-    });
-
-    expect(result).toEqual(tableData);
-  });
-
   it('should handle array with single reference', () => {
     const nodesMap: Record<string, RuntimeNodeItemType> = {
       node1: {
@@ -1457,27 +1441,10 @@ describe('getReferenceVariableValue', () => {
         [VARIABLE_NODE_ID, 'missingVariable']
       ],
       nodesMap: {},
-      variables: {},
-      isReferenceVal: true
+      variables: {}
     });
 
     expect(result).toBeUndefined();
-  });
-
-  it('should preserve an ordinary multi-select array when no source proves it is a reference', () => {
-    const selectedOptions: ReferenceValueType = [
-      ['option-a', 'Option A'],
-      ['option-b', 'Option B']
-    ];
-
-    expect(
-      getReferenceVariableValue({
-        value: selectedOptions,
-        nodesMap: {},
-        variables: {},
-        isReferenceVal: false
-      })
-    ).toEqual(selectedOptions);
   });
 
   it('should drop dead references and keep resolving the rest of an array', () => {

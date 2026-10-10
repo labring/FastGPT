@@ -102,7 +102,7 @@ const Header = ({
       autoSave?: boolean;
     }) => {
       const { nodes, edges } = form2WorkflowFn(appForm, t);
-      await onSaveApp({
+      const saved = await onSaveApp({
         nodes,
         edges,
         chatConfig: appForm.chatConfig,
@@ -110,6 +110,7 @@ const Header = ({
         versionName,
         autoSave
       });
+      if (!saved) return;
       setPast((prevPast) =>
         prevPast.map((item, index) =>
           index === 0

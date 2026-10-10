@@ -33,8 +33,7 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import LightTip from '@fastgpt/web/components/common/LightTip';
-import { useField } from '@/web/core/workflow/editor/react/useField';
-import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useNodeWorkflowDocument } from '../../useWorkflowDocument';
 
@@ -47,24 +46,22 @@ const selectTemplateBtn: BoxProps = {
 };
 
 const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => void }) => {
-  const { inputs = [], nodeId } = props;
+  const { nodeId } = props;
   const { t } = useSafeTranslation();
   const nodeActions = useNodeActions(nodeId);
-  const quoteTemplateField = useField(nodeId, NodeInputKeyEnum.aiChatQuoteTemplate, 'input');
-  const quotePromptField = useField(nodeId, NodeInputKeyEnum.aiChatQuotePrompt, 'input');
-  const quoteRoleField = useField(nodeId, NodeInputKeyEnum.aiChatQuoteRole, 'input');
+  const currentInputs = useNode(nodeId, (node) => node?.data.inputs) ?? [];
   const { workflow } = useNodeWorkflowDocument({ nodeId });
   const nodeVersion = workflow?.nodes.find((node) => node.nodeId === nodeId)?.version;
 
-  const quoteTemplateInput =
-    quoteTemplateField?.data.input ??
-    inputs.find((input) => input.key === NodeInputKeyEnum.aiChatQuoteTemplate);
-  const quotePromptInput =
-    quotePromptField?.data.input ??
-    inputs.find((input) => input.key === NodeInputKeyEnum.aiChatQuotePrompt);
-  const quoteRoleInput =
-    quoteRoleField?.data.input ??
-    inputs.find((input) => input.key === NodeInputKeyEnum.aiChatQuoteRole);
+  const quoteTemplateInput = currentInputs.find(
+    (input) => input.key === NodeInputKeyEnum.aiChatQuoteTemplate
+  );
+  const quotePromptInput = currentInputs.find(
+    (input) => input.key === NodeInputKeyEnum.aiChatQuotePrompt
+  );
+  const quoteRoleInput = currentInputs.find(
+    (input) => input.key === NodeInputKeyEnum.aiChatQuoteRole
+  );
 
   const { watch, setValue, handleSubmit } = useForm({
     defaultValues: {

@@ -1,4 +1,5 @@
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import Reference from '../render/RenderInput/templates/Reference';
@@ -16,7 +17,7 @@ import { useTranslation } from 'next-i18next';
 import { getGlobalVariableNode } from '@/web/core/workflow/adapt';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useDocumentGetNodeById } from '../render/useWorkflowDocument';
-import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 
 const typeMap = {
   [WorkflowIOValueTypeEnum.string]: WorkflowIOValueTypeEnum.arrayString,
@@ -27,10 +28,15 @@ const typeMap = {
 };
 
 const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
-  const { nodeId, inputs, parentNodeId } = data;
+  const { nodeId, parentNodeId } = data;
+  const inputs = useNode<FlowNodeItemType['inputs']>(nodeId, (node) => node?.data.inputs) ?? [];
   // 引用目标的输出类型要跨节点查询：读走文档图查询面，父容器输出用 adapter 句柄写。
   const getNodeById = useDocumentGetNodeById();
-  const parentNode = useNode(parentNodeId ?? '');
+  const parentId = parentNodeId ?? '';
+  const parentData = useNode<WorkflowNodeData>(parentId, (node) => node?.data);
+  const parentNodeActions = useNodeActions(parentId);
+  const parentFlowNodeType = parentData?.flowNodeType;
+  const parentOutputs = parentData?.outputs;
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const { t } = useTranslation();
 
@@ -40,10 +46,10 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   );
 
   const parallelRunIntro = useMemoEnhance(() => {
-    return parentNode?.data.flowNodeType === FlowNodeTypeEnum.parallelRun
+    return parentFlowNodeType === FlowNodeTypeEnum.parallelRun
       ? t('workflow:parallel_run_end_intro')
       : undefined;
-  }, [parentNode, t]);
+  }, [parentFlowNodeType, t]);
 
   // Get loopEnd input value type
   const valueType = useMemo(() => {
@@ -67,24 +73,23 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   useEffect(() => {
     if (!valueType) return;
 
-    const parentOutputs = parentNode?.data.outputs;
     if (!parentOutputs) return;
 
     // 父容器是并行运行还是循环，决定同步哪一个聚合输出的类型。
     const outputKey =
-      parentNode?.data.flowNodeType === FlowNodeTypeEnum.parallelRun
+      parentFlowNodeType === FlowNodeTypeEnum.parallelRun
         ? NodeOutputKeyEnum.parallelSuccessResults
         : NodeOutputKeyEnum.nestedArrayResult;
     const targetOutput = parentOutputs.find((output) => output.key === outputKey);
     const newArrayType = typeMap[valueType] ?? WorkflowIOValueTypeEnum.arrayAny;
     if (!targetOutput || targetOutput.valueType === newArrayType) return;
 
-    parentNode?.updateNode((current) => ({
+    parentNodeActions?.updateNode((current) => ({
       outputs: current.outputs.map((output) =>
         output.key === outputKey ? { ...output, valueType: newArrayType } : output
       )
     }));
-  }, [parentNode, valueType]);
+  }, [parentFlowNodeType, parentNodeActions, parentOutputs, valueType]);
 
   return (
     <NodeCard

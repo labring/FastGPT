@@ -1,4 +1,5 @@
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import React from 'react';
 import { type NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
@@ -7,16 +8,20 @@ import Container from '../components/Container';
 import { useTranslation } from 'next-i18next';
 import RenderOutput from './render/RenderOutput';
 import RenderInput from './render/RenderInput';
-import RenderToolInput, { hasDynamicToolInput } from './render/RenderToolInput';
+import RenderToolInput, { useHasDynamicToolInput } from './render/RenderToolInput';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { splitToolInputsByMode } from '@/web/core/workflow/utils';
 import { useIsToolNode } from './render/useWorkflowDocument';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
 
 const NodeTool = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
 
-  const { nodeId, inputs, outputs } = data;
+  const { nodeId } = data;
+  const { inputs = [], outputs = [] } =
+    useNode<WorkflowNodeData>(nodeId, (node) => node?.data) ?? {};
   const isTool = useIsToolNode(nodeId);
+  const hasDynamicInput = useHasDynamicToolInput(nodeId);
   const { commonInputs } = useMemoEnhance(
     () => splitToolInputsByMode(inputs, isTool),
     [inputs, isTool]
@@ -24,7 +29,7 @@ const NodeTool = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>
-      {isTool && hasDynamicToolInput(data) && (
+      {isTool && hasDynamicInput && (
         <>
           <Container>
             <RenderToolInput nodeId={nodeId} inputs={inputs} />

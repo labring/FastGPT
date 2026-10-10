@@ -17,7 +17,10 @@ import {
   type NodeRect,
   type ViewportNode
 } from '../canvas/nodeDimensions';
-import { useWorkflowCanvasValue } from '../canvas/workflowCanvasContext';
+import {
+  useWorkflowCanvasRendererValue,
+  useWorkflowCanvasValue
+} from '../canvas/workflowCanvasContext';
 
 type WorkflowMiniMapProps = {
   ariaLabel: string;
@@ -203,7 +206,7 @@ const WorkflowMiniMap = React.memo(function WorkflowMiniMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const pointerIdRef = useRef<number>();
   const [canvasSize, setCanvasSize] = useState(DEFAULT_SIZE);
-  const nodes = useWorkflowCanvasValue((value) => value.nodes);
+  const nodes = useWorkflowCanvasRendererValue((value) => value.nodes);
   const dimensions = useWorkflowCanvasValue((value) => value.nodeDimensions);
   const { setViewport } = useReactFlow();
   const viewport = useViewport();

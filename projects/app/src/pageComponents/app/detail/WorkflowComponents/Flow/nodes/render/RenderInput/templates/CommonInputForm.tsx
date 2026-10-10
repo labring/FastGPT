@@ -5,9 +5,8 @@ import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useField, useFieldActions } from '@/web/core/workflow/editor/react/useField';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import {
   getSelectedInputRenderType,
@@ -37,8 +36,8 @@ import { useContextSelector } from 'use-context-selector';
 const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const nodeActions = useNodeActions(nodeId);
-  const field = useField(nodeId, item.key, 'input');
-  const currentInput = (field?.data.input ?? item) as FlowNodeInputItemType;
+  const value = useField(nodeId, item.key, 'input', (field) => field?.data.input?.value);
+  const fieldActions = useFieldActions({ nodeId, fieldKey: item.key, kind: 'input' });
   const appId = useContextSelector(AppContext, (v) => v.appId);
   const editorSessionId = useWorkflowEditorSessionId();
   // 变量列表只读本节点与其上游来源闭包：窄订阅让无关字段的提交不重算也不重渲染。
@@ -49,9 +48,9 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
     defaultValue: ''
   });
 
-  const selectedRenderType = getSelectedInputRenderType(currentInput);
+  const selectedRenderType = getSelectedInputRenderType(item);
   const inputType = nodeInputTypeToInputType(
-    selectedRenderType ? [selectedRenderType] : currentInput.renderTypeList
+    selectedRenderType ? [selectedRenderType] : item.renderTypeList
   );
   const offscreenMeasurement = useContext(WorkflowNodeOffscreenMeasurementContext);
 
@@ -62,7 +61,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
           sessionId: editorSessionId,
           editorKind: 'json',
           nodeId,
-          fieldKey: currentInput.key
+          fieldKey: item.key
         })
       : undefined;
 
@@ -95,29 +94,26 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
           value = value.slice(0, 1000000);
         }
       }
-      if (
-        currentInput.key === NodeInputKeyEnum.aiModel ||
-        currentInput.key === NodeInputKeyEnum.aiModelId
-      ) {
+      if (item.key === NodeInputKeyEnum.aiModel || item.key === NodeInputKeyEnum.aiModelId) {
         setDefaultModel(value);
       }
 
       const modelIdKey = workflowModelKeyMappings.find(
-        ([legacyKey]) => legacyKey === currentInput.key
+        ([legacyKey]) => legacyKey === item.key
       )?.[1];
       if (inputType === InputTypeEnum.selectLLMModel && modelIdKey) {
         // 记录级改名：以派发瞬间的 inputs 为基准整份替换，避免用 props 里的过滤后数组覆盖文档。
         nodeActions?.updateNode((current) => ({
           inputs: current.inputs.map((input) =>
-            input.key === currentInput.key ? { ...input, key: modelIdKey, value } : input
+            input.key === item.key ? { ...input, key: modelIdKey, value } : input
           )
         }));
         return;
       }
 
-      field?.setValue(value);
+      fieldActions.setValue(value);
     },
-    [currentInput.key, field, inputType, nodeActions, setDefaultModel]
+    [fieldActions, inputType, item.key, nodeActions, setDefaultModel]
   );
 
   // 嵌套容器节点（loop/parallelRun/loopRun）里的 select 下拉向上展开，避免被子节点覆盖。
@@ -127,28 +123,27 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
     return isNestedParentNodeType(flowNodeType) ? ('top-start' as const) : undefined;
   }, [flowNodeType]);
 
-  const canOptimizePrompt = currentInput.key === NodeInputKeyEnum.aiSystemPrompt;
+  const canOptimizePrompt = item.key === NodeInputKeyEnum.aiSystemPrompt;
   const OptimizerPopverComponent = useCallback(
     ({ iconButtonStyle }: { iconButtonStyle: Record<string, any> }) => {
       return (
         <OptimizerPopover
           iconButtonStyle={iconButtonStyle}
-          defaultPrompt={currentInput.value}
+          defaultPrompt={value}
           onChangeText={(e) => {
             handleChange(e);
           }}
         />
       );
     },
-    [currentInput.value, handleChange]
+    [value, handleChange]
   );
 
-  // item.key 是字段名，直接展开会被 React 当成元素 key：既触发 key-spread 警告，
-  // 也会在 aiModel → aiModelId 记录级改名时把输入框整个 remount 掉。
-  const { key: _itemKey, ...inputProps } = currentInput;
+  // item.key 是字段名，直接展开会被 React 当成元素 key；field value 始终来自 Runtime。
+  const { key: _itemKey, value: _itemValue, ...inputProps } = item;
 
   return (
-    <WorkflowFieldScope nodeId={nodeId} fieldKey={currentInput.key}>
+    <WorkflowFieldScope nodeId={nodeId} fieldKey={item.key}>
       {/* 字段撤销由 Runtime 统一托管：打上标记后画布快捷键在捕获阶段接管，
           不再让编辑器本地历史（Lexical 按秒合并连续输入）与逐条记录的工作流历史互相覆盖。 */}
       <Box data-workflow-history="external">
@@ -157,7 +152,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
         ) : (
           <InputRender
             inputType={inputType}
-            value={currentInput.value}
+            value={value}
             onChange={handleChange}
             variables={[...(editorVariables || []), ...(externalVariables || [])]}
             variableLabels={editorVariables}

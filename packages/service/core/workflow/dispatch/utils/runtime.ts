@@ -1,18 +1,26 @@
-import { NodeInputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VARIABLE_NODE_ID
+} from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { WorkflowVariableStateLike } from '../../types/runtime';
 import {
   getReferenceVariableValue,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import {
-  isValidReferenceValueFormat,
-  nodeInputIsReference
-} from '@fastgpt/global/core/workflow/utils';
+  filterSelectableWorkflowNodeOutputs,
+  getWorkflowReferenceItems,
+  isWorkflowEdgeSourceHandleValid,
+  isWorkflowReferenceItem
+} from '@fastgpt/global/core/workflow/editor/utils';
 import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/workflowTagFilter';
 import { replaceEditorVariable } from './replaceEditorVariable';
 
@@ -25,11 +33,17 @@ import { replaceEditorVariable } from './replaceEditorVariable';
 export const getWorkflowNodeRunParams = ({
   node,
   runtimeNodesMap,
-  variableState
+  variableState,
+  runtimeEdges,
+  runtimeEdgeIndex
 }: {
   node: RuntimeNodeItemType;
   runtimeNodesMap: Map<string, RuntimeNodeItemType>;
   variableState: WorkflowVariableStateLike;
+  runtimeEdges?: readonly RuntimeEdgeItemType[];
+  runtimeEdgeIndex?: {
+    byTarget: ReadonlyMap<string, readonly RuntimeEdgeItemType[]>;
+  };
 }) => {
   if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
     // Format plugin input to object
@@ -56,41 +70,81 @@ export const getWorkflowNodeRunParams = ({
     return runtimeVariables;
   };
 
-  /** 引用输入在执行前必须至少命中一个现存来源；部分失效由解析器裁剪，全部失效直接拒绝执行。 */
+  const reverseEdges = runtimeEdgeIndex
+    ? undefined
+    : runtimeEdges
+      ? runtimeEdges.reduce<Map<string, string[]>>((map, edge) => {
+          if (
+            edge.sourceHandle === NodeOutputKeyEnum.selectedTools ||
+            edge.targetHandle === NodeOutputKeyEnum.selectedTools ||
+            !isWorkflowEdgeSourceHandleValid(runtimeNodesMap.get(edge.source), edge.sourceHandle)
+          ) {
+            return map;
+          }
+          const sources = map.get(edge.target) ?? [];
+          sources.push(edge.source);
+          map.set(edge.target, sources);
+          return map;
+        }, new Map())
+      : undefined;
+
+  /** 引用输入只保留可执行来源；无效项按 main 行为过滤，不升级为参数异常。 */
   const resolveReferenceInputValue = (value: unknown) => {
-    const isExecutableReference = (item: unknown): item is [string, string] =>
-      isValidReferenceValueFormat(item) &&
-      item[0].length > 0 &&
-      typeof item[1] === 'string' &&
-      item[1].length > 0;
-    const references = isExecutableReference(value)
-      ? [value]
-      : Array.isArray(value) && value.length > 0 && value.every(isExecutableReference)
-        ? (value as [string, string][])
-        : [];
+    const references = getWorkflowReferenceItems(value);
+    const isReferenceArray = Array.isArray(value) && !isWorkflowReferenceItem(value);
+    if (references.length === 0) return undefined;
     const variables = getRuntimeVariables();
-    const hasLiveSource = references.some(([sourceNodeId, outputId]) => {
+    const isReachableSource = (sourceNodeId: string) => {
+      const byTarget = runtimeEdgeIndex?.byTarget;
+      if (!reverseEdges && !byTarget) return true;
+      const pending = [node.nodeId];
+      const visited = new Set<string>();
+      while (pending.length > 0) {
+        const targetNodeId = pending.pop()!;
+        if (targetNodeId === sourceNodeId) return true;
+        if (visited.has(targetNodeId)) continue;
+        visited.add(targetNodeId);
+        if (byTarget) {
+          pending.push(...(byTarget.get(targetNodeId) ?? []).map((edge) => edge.source));
+        } else {
+          pending.push(...(reverseEdges?.get(targetNodeId) ?? []));
+        }
+      }
+      return false;
+    };
+
+    const validReferences = references.filter(([sourceNodeId, outputId]) => {
+      if (!outputId) return false;
       if (sourceNodeId === VARIABLE_NODE_ID) {
         return Object.prototype.hasOwnProperty.call(variables, outputId);
       }
       const sourceNode = runtimeNodesMap.get(sourceNodeId);
       // Agent 生成参数引用节点 input；它不是可执行 output，但仍需保留旧的 undefined 语义。
-      return (
-        sourceNode?.outputs.some((output) => output.id === outputId) === true ||
+      const isAgentGeneratedInput =
         sourceNode?.inputs.some(
           (input) => input.key === outputId && input.defaultToAgentGenerated === true
-        ) === true
-      );
+        ) === true;
+      if (isAgentGeneratedInput) return true;
+      const output = sourceNode?.outputs.find((item) => item.id === outputId);
+      if (!sourceNode || !output) return false;
+      if (
+        filterSelectableWorkflowNodeOutputs({
+          outputs: [output],
+          catchError: sourceNode.catchError
+        }).length === 0
+      ) {
+        return false;
+      }
+      return isReachableSource(sourceNodeId);
     });
-    if (references.length > 0 && !hasLiveSource) {
-      throw new Error('Workflow reference source is unavailable');
-    }
+    if (validReferences.length === 0) return undefined;
 
     return getReferenceVariableValue({
-      value: value as Parameters<typeof getReferenceVariableValue>[0]['value'],
+      value: (isReferenceArray ? validReferences : validReferences[0]) as Parameters<
+        typeof getReferenceVariableValue
+      >[0]['value'],
       nodesMap: runtimeNodesMap,
-      variables,
-      isReferenceVal: true
+      variables
     });
   };
 

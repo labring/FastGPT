@@ -13,7 +13,7 @@ import React, { useEffect, useMemo } from 'react';
 import { FlowValueTypeMap } from '@fastgpt/global/core/workflow/node/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
-import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 
 const arrayItemTypeMap: Partial<Record<WorkflowIOValueTypeEnum, WorkflowIOValueTypeEnum>> = {
   [WorkflowIOValueTypeEnum.arrayString]: WorkflowIOValueTypeEnum.string,
@@ -23,13 +23,17 @@ const arrayItemTypeMap: Partial<Record<WorkflowIOValueTypeEnum, WorkflowIOValueT
   [WorkflowIOValueTypeEnum.arrayAny]: WorkflowIOValueTypeEnum.any
 };
 
+const emptyOutputs: FlowNodeItemType['outputs'] = [];
+
 const NodeLoopRunStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId, outputs, parentNodeId } = data;
+  const { nodeId, parentNodeId } = data;
   // 父容器的模式与数组类型决定 currentItem 类型：直接订阅父节点文档数据。
-  const node = useNode(nodeId);
-  const parentNode = useNode(parentNodeId ?? '');
-  const parentInputs = parentNode?.data.inputs;
+  const outputs =
+    useNode<FlowNodeItemType['outputs']>(nodeId, (current) => current?.data.outputs) ??
+    emptyOutputs;
+  const parentInputs = useNode(parentNodeId ?? '', (current) => current?.data.inputs);
+  const nodeActions = useNodeActions(nodeId);
 
   const parentMode =
     (parentInputs?.find((i) => i.key === NodeInputKeyEnum.loopRunMode)?.value as
@@ -49,18 +53,18 @@ const NodeLoopRunStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   useEffect(() => {
     if (parentMode !== LoopRunModeEnum.array || !currentItemType) return;
 
-    const documentOutputs = node?.data.outputs;
+    const documentOutputs = outputs;
     const currentItem = documentOutputs?.find((o) => o.key === NodeOutputKeyEnum.currentItem);
     if (!documentOutputs || !currentItem || currentItem.valueType === currentItemType) return;
 
-    node?.updateNode((current) => ({
+    nodeActions?.updateNode((current) => ({
       outputs: current.outputs.map((output) =>
         output.key === NodeOutputKeyEnum.currentItem
           ? { ...output, valueType: currentItemType }
           : output
       )
     }));
-  }, [currentItemType, node, parentMode]);
+  }, [currentItemType, nodeActions, outputs, parentMode]);
 
   return (
     <NodeCard

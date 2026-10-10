@@ -132,8 +132,10 @@ const Reference = ({
   const { toast } = useToast();
   const nodeActions = useNodeActions(nodeId);
   // 已选内容的展示读字段引用状态，因此可选列表可以等到打开选择器时再计算。
-  const field = useField(nodeId, inputChildren.key, 'input');
-  const currentInput = (field?.data.input ?? inputChildren) as FlowNodeInputItemType;
+  const currentInput =
+    (useField(nodeId, inputChildren.key, 'input', (field) => field?.data.input) as
+      | FlowNodeInputItemType
+      | undefined) ?? inputChildren;
 
   const isEmptyItem = !currentInput.key;
 

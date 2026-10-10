@@ -32,10 +32,17 @@ import {
   freezeValue,
   getError,
   getFieldIdentityKey,
-  isObject
+  isObject,
+  valuesEqual
 } from './kernel';
 import { createDocumentModule } from './documentModule';
-import { buildDocument, documentToCanonical, resolveStructureChanged } from './documentRules';
+import {
+  applyWorkflowNodeOutputValidity,
+  buildDocument,
+  documentToCanonical,
+  resolveStructureChanged
+} from './documentRules';
+import { buildWorkflowLLMModelMap } from '../utils';
 import { createNodeViewModule } from './nodeViewModule';
 import { createReferenceModule } from './referenceModule';
 import { createIssueModule } from './issueModule';
@@ -119,8 +126,38 @@ export const createWorkflowEditor = (
   strictCanonicalData: CanonicalWorkflowData,
   options: WorkflowRuntimeOptions = {}
 ): WorkflowRuntimePort => {
+  const getRuntimeEnvironment = () => {
+    try {
+      return options.getEnvironment?.();
+    } catch {
+      // 环境目录是外围派生数据；目录读取失败时保留模板 invalid 默认值。
+      return undefined;
+    }
+  };
+  const getRuntimeLLMModelMap = () =>
+    (() => {
+      try {
+        return buildWorkflowLLMModelMap(getRuntimeEnvironment()?.models);
+      } catch {
+        // 环境目录只影响 Runtime invalid 派生；异常时沿用默认输出状态。
+        return undefined;
+      }
+    })();
+  /** 环境派生只负责 Runtime invalid；普通编辑事务失败时保留现有输出状态。 */
+  const applyRuntimeOutputValidity = (nodes: NodeRecord[]) => {
+    try {
+      return applyWorkflowNodeOutputValidity({
+        nodes,
+        llmModelMap: getRuntimeLLMModelMap()
+      });
+    } catch {
+      return { nodes, changes: [] };
+    }
+  };
+
   // 入站边界只组装一次：语义记录归 Document，位置与折叠归 Node View。
   const initial = buildDocument(strictCanonicalData);
+  initial.document.nodes = applyRuntimeOutputValidity(initial.document.nodes).nodes;
   // 固定依赖顺序：Document -> NodeView -> Reference -> Issue -> History。
   const document = createDocumentModule(initial);
   const nodeView = createNodeViewModule({ document, views: initial.views });
@@ -128,7 +165,7 @@ export const createWorkflowEditor = (
   const issue = createIssueModule({
     document,
     reference,
-    getEnvironment: options.getEnvironment
+    getEnvironment: getRuntimeEnvironment
   });
   const history = createHistoryModule();
 
@@ -178,6 +215,58 @@ export const createWorkflowEditor = (
   let chatConfigSnapshotCache:
     | { record: AppChatConfigType; snapshot: AppChatConfigType }
     | undefined;
+
+  /** 事务失败恢复所有已提交模块；索引从恢复后的 Document 重建，避免保留 staged 桶。 */
+  const captureTransactionState = () => ({
+    document: document.getDocument(),
+    nextEdgeId: document.getNextEdgeId(),
+    views: new Map(nodeView.getViews()),
+    referenceGraph: reference.getGraph(),
+    issue: issue.getState(),
+    workflowVersion,
+    semanticVersion,
+    contentRevision,
+    contentRevisionCounter,
+    fieldSnapshotCache: new Map(fieldSnapshotCache)
+  });
+
+  const restoreTransactionState = (state: ReturnType<typeof captureTransactionState>) => {
+    document.setDocument(state.document);
+    document.setNextEdgeId(state.nextEdgeId);
+    document.rebuildNodeIndex();
+    document.rebuildGraphIndex();
+    document.rebuildWorkflowStartIds();
+    nodeView.restoreViews(state.views);
+    reference.restoreGraph(state.referenceGraph);
+    issue.restoreState(state.issue);
+    workflowVersion = state.workflowVersion;
+    semanticVersion = state.semanticVersion;
+    contentRevision = state.contentRevision;
+    contentRevisionCounter = state.contentRevisionCounter;
+    fieldSnapshotCache.clear();
+    state.fieldSnapshotCache.forEach((value, key) => fieldSnapshotCache.set(key, value));
+  };
+
+  /** 环境目录变化只更新 Runtime 输出与相关只读缓存，不生成内容历史或 dirty。 */
+  const refreshRuntimeOutputValidity = (): string[] => {
+    const current = document.getDocument();
+    const validity = applyWorkflowNodeOutputValidity({
+      nodes: current.nodes,
+      llmModelMap: getRuntimeLLMModelMap()
+    });
+    if (validity.changes.length === 0) return [];
+
+    document.setDocument({ ...current, nodes: validity.nodes });
+    document.rebuildNodeIndex();
+    reference.clearFieldStatusCache();
+    referenceOptionsCache.clear();
+    fieldSnapshotCache.clear();
+    workflowIssuesCache = undefined;
+    workflowVersion++;
+    semanticVersion++;
+    pruneSnapshotCaches();
+    return validity.changes.map(({ after }) => after.data.nodeId);
+  };
 
   // endregion
 
@@ -454,9 +543,10 @@ export const createWorkflowEditor = (
     if (list.every((command) => command.type === 'commitGeometry')) {
       return dispatchGeometry(list as readonly GeometryCommand[]);
     }
-    const before = document.getDocument();
-    const beforeNextEdgeId = document.getNextEdgeId();
-    const beforeReferenceGraph = reference.getGraph();
+    const transactionState = captureTransactionState();
+    const before = transactionState.document;
+    const beforeNextEdgeId = transactionState.nextEdgeId;
+    const beforeReferenceGraph = transactionState.referenceGraph;
     const workingReferenceGraph = reference.forkGraph();
     const working: RuntimeDocument = {
       nodes: before.nodes.slice(),
@@ -480,64 +570,100 @@ export const createWorkflowEditor = (
         : getError('invalid_command', error instanceof Error ? error.message : String(error));
       return { ok: false, error: commandError };
     }
-    const hasChanges =
+    const hasPotentialChanges =
       meta.kind === 'replace' ||
       meta.changedNodeIds.size > 0 ||
       meta.nodeViewChanges.size > 0 ||
       meta.changedEdgeIds.size > 0 ||
       meta.chatConfigChanged;
-    if (!hasChanges) {
+    if (!hasPotentialChanges) {
       document.setNextEdgeId(beforeNextEdgeId);
       return { ok: true };
     }
 
-    // 整文档替换是全量失效分支，结构信号必须发布，不能被增量判定覆盖。
     meta.structureChanged = meta.kind === 'replace' || resolveStructureChanged(meta);
-    document.applyDerivedFields(ctx);
-    const beforeContentRevision = contentRevision;
-    document.setDocument(working);
-    nodeView.commitViews(views);
-    workflowVersion++;
-    contentRevision = ++contentRevisionCounter;
-    if (meta.kind !== 'geometry') semanticVersion++;
-    if (meta.kind === 'replace') {
-      document.rebuildNodeIndex();
-      document.rebuildGraphIndex();
-      document.rebuildWorkflowStartIds();
-      reference.rebuildGraph();
-      // 整文档替换是全量失效分支：Issue View 按替换后的文档与环境事实整体重算。
-      issue.rebuildIssues();
-      reference.pruneFieldStatusCache();
-      fieldSnapshotCache.clear();
-      workflowIssuesCache = undefined;
-    } else {
-      document.updateNodeIndexIncrementally(meta);
-      document.updateGraphIndexIncrementally(meta);
-      document.updateWorkflowStartIndex(meta);
-      // 单次派生按 Document -> Reference -> Issue 顺序执行；issue 候选集合必须在引用派生
-      // 之前收集，才能保证 affected records 的排列与派生顺序一致。
-      const issueNodeIds = issue.collectTransactionNodeIds(meta);
-      const cacheOnlyFieldIds = reference.commitTransaction({
-        meta,
-        stagedGraph: workingReferenceGraph,
-        beforeGraph: beforeReferenceGraph
-      });
-      // working 已经通过 setDocument 成为当前文档，这里补齐它的快照字段。
-      // 必须早于下面的 Issue 重算，历史展示字段才能进 Issue View 与字段状态。
-      working.referenceSnapshots = reference.captureSnapshots({
-        previous: before,
-        beforeGraph: beforeReferenceGraph,
-        afterGraph: workingReferenceGraph,
-        meta
-      });
-      document.addAffectedStructure(meta);
-      invalidateFieldCaches([
-        ...meta.changedFieldIds.values(),
-        ...cacheOnlyFieldIds.values(),
-        ...reference.getStructureInvalidationFields(meta)
-      ]);
-      issue.rebuildForTransaction({ meta, candidateNodeIds: issueNodeIds });
+    const beforeCanonical = documentToCanonical({
+      document: before,
+      views: transactionState.views
+    });
+    let beforeContentRevision = contentRevision;
+    let issueNodeIds: Set<string> | undefined;
+    let runtimeValidityNodeIds: string[] = [];
+    try {
+      document.applyDerivedFields(ctx);
+      const validity = applyRuntimeOutputValidity(working.nodes);
+      working.nodes = validity.nodes;
+      runtimeValidityNodeIds = validity.changes.map(({ after }) => after.data.nodeId);
+
+      // 事务内多次修改回到同一 canonical state 时，连 revision/history/change 都省略。
+      const afterCanonical = documentToCanonical({ document: working, views });
+      if (valuesEqual(beforeCanonical, afterCanonical)) {
+        document.setNextEdgeId(beforeNextEdgeId);
+        return { ok: true };
+      }
+
+      beforeContentRevision = contentRevision;
+      if (meta.kind !== 'replace') {
+        issueNodeIds = issue.collectTransactionNodeIds(meta);
+      }
+      document.setDocument(working);
+      nodeView.commitViews(views);
+      workflowVersion++;
+      contentRevision = ++contentRevisionCounter;
+      if (meta.kind !== 'geometry') semanticVersion++;
+      if (meta.kind === 'replace') {
+        document.rebuildNodeIndex();
+        document.rebuildGraphIndex();
+        document.rebuildWorkflowStartIds();
+        reference.rebuildGraph();
+        reference.pruneFieldStatusCache();
+        fieldSnapshotCache.clear();
+      } else {
+        document.updateNodeIndexIncrementally(meta);
+        document.updateGraphIndexIncrementally(meta);
+        document.updateWorkflowStartIndex(meta);
+        const cacheOnlyFieldIds = reference.commitTransaction({
+          meta,
+          stagedGraph: workingReferenceGraph,
+          beforeGraph: beforeReferenceGraph
+        });
+        // working 已经通过 setDocument 成为当前文档，这里补齐它的快照字段。
+        // 必须早于下面的 Issue 重算，历史展示字段才能进 Issue View 与字段状态。
+        working.referenceSnapshots = reference.captureSnapshots({
+          previous: before,
+          beforeGraph: beforeReferenceGraph,
+          afterGraph: workingReferenceGraph,
+          meta
+        });
+        document.addAffectedStructure(meta);
+        if (issueNodeIds && runtimeValidityNodeIds.length > 0) {
+          runtimeValidityNodeIds.forEach((nodeId) => issueNodeIds!.add(nodeId));
+          reference.getConsumerNodeIds(runtimeValidityNodeIds).forEach((nodeId) => {
+            issueNodeIds!.add(nodeId);
+          });
+        }
+        invalidateFieldCaches([
+          ...meta.changedFieldIds.values(),
+          ...cacheOnlyFieldIds.values(),
+          ...reference.getStructureInvalidationFields(meta)
+        ]);
+      }
+    } catch (error) {
+      restoreTransactionState(transactionState);
+      const commandError = isWorkflowCommandError(error)
+        ? error
+        : getError('invalid_command', error instanceof Error ? error.message : String(error));
+      return { ok: false, error: commandError };
     }
+
+    // Issue/environment 派生属于外围读模型；失败时保留上一份 Issue state，语义提交继续完成。
+    try {
+      if (meta.kind === 'replace') issue.rebuildIssues();
+      else issue.rebuildForTransaction({ meta, candidateNodeIds: issueNodeIds! });
+    } catch {
+      issue.restoreState(transactionState.issue);
+    }
+    workflowIssuesCache = undefined;
     const change = makeChange(meta, 'command');
     history.push(
       createHistoryEntry({
@@ -565,10 +691,18 @@ export const createWorkflowEditor = (
     if (disposed)
       return { ok: false, error: getError('disposed', 'Workflow editor has been disposed') };
     const steps = Number.isFinite(count) ? Math.max(1, Math.trunc(count)) : 1;
-    // Issue 差异按整批计算：批量回放对订阅者是一次变化，中间态的 issue 抖动没有意义。
-    const previousIssues = issue.getIssuesByNode();
+    const transactionState = captureTransactionState();
+    const entries = history.getEntries(direction, steps);
+    if (entries.length === 0)
+      return { ok: false, error: getError('invalid_command', `Nothing to ${direction}`) };
+
+    // 先在 staged views/document 上完成整批重建，成功后才移动 history 栈。
+    const previousIssues = transactionState.issue.issuesByNode;
+    const stagedViews = new Map(transactionState.views);
+    let stagedDocument = transactionState.document;
+    let hasSemanticReplay = false;
+    let issuesRebuilt = false;
     const meta = createMutationMeta('geometry');
-    let applied = 0;
 
     /** 把一条 history 记录携带的变更集合并入整批 meta；replay 只借 meta 组装事件，视图值已由记录恢复。 */
     const mergeReplayedChange = (originalChange: WorkflowChange) => {
@@ -590,45 +724,68 @@ export const createWorkflowEditor = (
       meta.structureChanged = meta.structureChanged || originalChange.affectedRecords.structure;
     };
 
-    for (let step = 0; step < steps; step++) {
-      const entry = history.take(direction);
-      if (!entry) break;
-      applied++;
-      workflowVersion++;
-      // Content Revision 由 history 记录恢复，因此撤销回已保存内容会自然回到干净状态。
-      contentRevision =
-        direction === 'undo' ? entry.beforeContentRevision : entry.afterContentRevision;
-      nodeView.applyHistoryViews(entry.viewChanges, direction);
+    entries.forEach((entry) => {
+      nodeView.applyHistoryViews(entry.viewChanges, direction, stagedViews);
       if (entry.kind === 'checkpoint') {
-        document.setDocument(direction === 'undo' ? entry.before : entry.after);
-        document.rebuildNodeIndex();
-        semanticVersion++;
-        document.rebuildGraphIndex();
-        document.rebuildWorkflowStartIds();
-        reference.clearFieldStatusCache();
-        issue.rebuildIssues();
-        reference.rebuildGraph();
-        fieldSnapshotCache.clear();
-        workflowIssuesCache = undefined;
+        stagedDocument = direction === 'undo' ? entry.before : entry.after;
+        hasSemanticReplay = true;
       }
       // 事件粒度取最宽的一条：混入语义记录后不能再按 geometry 通知，否则数据订阅者收不到刷新。
       if (entry.change.kind === 'replace') meta.kind = 'replace';
       else if (meta.kind !== 'replace' && entry.change.kind === 'semantic') meta.kind = 'semantic';
       mergeReplayedChange(entry.change);
+    });
+
+    try {
+      if (hasSemanticReplay) {
+        const validity = applyRuntimeOutputValidity(stagedDocument.nodes);
+        if (validity.changes.length > 0) {
+          stagedDocument = { ...stagedDocument, nodes: validity.nodes };
+        }
+        document.setDocument(stagedDocument);
+        document.rebuildNodeIndex();
+        document.rebuildGraphIndex();
+        document.rebuildWorkflowStartIds();
+        reference.rebuildGraph();
+        reference.clearFieldStatusCache();
+      }
+    } catch (error) {
+      restoreTransactionState(transactionState);
+      const commandError = isWorkflowCommandError(error)
+        ? error
+        : getError('invalid_command', error instanceof Error ? error.message : String(error));
+      return { ok: false, error: commandError };
     }
 
-    if (applied === 0)
-      return { ok: false, error: getError('invalid_command', `Nothing to ${direction}`) };
+    if (hasSemanticReplay) {
+      try {
+        issue.rebuildIssues();
+        issuesRebuilt = true;
+      } catch {
+        issue.restoreState(transactionState.issue);
+      }
+    }
 
+    nodeView.restoreViews(stagedViews);
+    workflowVersion++;
+    const finalEntry = entries[entries.length - 1];
+    contentRevision =
+      direction === 'undo' ? finalEntry.beforeContentRevision : finalEntry.afterContentRevision;
+    if (hasSemanticReplay) {
+      semanticVersion++;
+      fieldSnapshotCache.clear();
+      workflowIssuesCache = undefined;
+    }
     if (meta.kind === 'replace') {
       meta.structureChanged = true;
-    } else {
+    } else if (issuesRebuilt) {
       issue.addChangedIssueRecords(
         meta,
         previousIssues,
         new Set([...meta.affectedNodeIds, ...meta.changedNodeIds])
       );
     }
+    history.commitEntries(direction, entries.length);
     const change = makeChange(meta, direction);
     pruneSnapshotCaches();
     publish(change);
@@ -637,7 +794,12 @@ export const createWorkflowEditor = (
 
   // endregion
 
-  issue.rebuildIssues();
+  try {
+    issue.rebuildIssues();
+  } catch {
+    // 环境派生失败时保留空 Issue View，工作流本体仍可编辑。
+    issue.clear();
+  }
 
   // region runtimePort Runtime public port assembly
 
@@ -688,14 +850,38 @@ export const createWorkflowEditor = (
     /**
      * Issue-only 刷新：按当前环境事实重算 Issue View。
      * Content Revision、History、Savepoint 与 dirty 一律不动，也不发布 Workflow Change；
-     * Issue View 通过独立 gate 读取；普通 workflow snapshot identity 保持不变。
+     * Issue View 和 Runtime 派生的 output invalid 通过独立通知与版本失效同步给消费者。
      */
     refreshIssues: (scope: WorkflowIssueScope = 'all') => {
       // 刷新可能由 host effect 在 runtime 释放后触发：此时没有可刷新的状态，静默返回空结果。
       if (disposed) return EMPTY_ISSUE_UPDATE;
-      const { nodeIds, configChanged } = issue.refreshIssues(scope);
-      if (nodeIds.length === 0 && !configChanged) return EMPTY_ISSUE_UPDATE;
-      const update = freezeValue({ nodeIds }) as WorkflowIssueUpdate;
+      const issueState = issue.getState();
+      let validityNodeIds: string[] = [];
+      let nodeIds: string[] = [];
+      let configChanged = false;
+      try {
+        validityNodeIds = refreshRuntimeOutputValidity();
+        const expandedScope =
+          scope === 'all'
+            ? scope
+            : [
+                ...new Set([
+                  ...scope,
+                  ...validityNodeIds,
+                  // validityNodeIds 已包含本轮所有变更来源；逐个补直接 consumer 即可覆盖本轮引用诊断。
+                  ...reference.getConsumerNodeIds(validityNodeIds)
+                ])
+              ];
+        ({ nodeIds, configChanged } = issue.refreshIssues(expandedScope));
+      } catch (error) {
+        issue.restoreState(issueState);
+        throw error;
+      }
+      const changedNodeIds = [...new Set([...validityNodeIds, ...nodeIds])];
+      if (changedNodeIds.length === 0 && !configChanged) return EMPTY_ISSUE_UPDATE;
+      // WorkflowSnapshot 携带节点 issues；Issue-only 刷新不改 revision，但必须让 getWorkflow 与 getNode 同步。
+      if (changedNodeIds.length > 0 || configChanged) workflowSnapshotCache = undefined;
+      const update = freezeValue({ nodeIds: changedNodeIds }) as WorkflowIssueUpdate;
       issueListeners.forEach((listener) => {
         try {
           listener(update);

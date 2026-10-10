@@ -4,6 +4,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
@@ -21,12 +22,12 @@ import RenderInput from '../render/RenderInput';
 import InputLabel from '../render/RenderInput/Label';
 import RenderOutput from '../render/RenderOutput';
 import CatchError from '../render/RenderOutput/CatchError';
-import RenderToolInput, { hasDynamicToolInput } from '../render/RenderToolInput';
+import RenderToolInput, { useHasDynamicToolInput } from '../render/RenderToolInput';
 
 import { splitNodeOutputs, splitToolInputsByMode } from '@/web/core/workflow/utils';
 import { useIsToolNode, useNodeWorkflowDocument } from '../render/useWorkflowDocument';
-import { useField } from '@/web/core/workflow/editor/react/useField';
-import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
@@ -95,19 +96,40 @@ const ManualInputLabel = React.memo(function ManualInputLabel({
 
 // TODO: 待优化，不一定需要重写，用模板渲染也可以
 const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
-  const { nodeId, catchError, inputs, outputs } = data;
+  const { nodeId } = data;
+  const {
+    inputs = [],
+    outputs = [],
+    catchError = false
+  } = useNode<WorkflowNodeData>(nodeId, (node) => node?.data) ?? {};
   const { t } = useTranslation();
   const { toast } = useToast();
 
   // 变量列表只读本节点与其上游来源闭包：窄订阅让无关字段的提交不重算也不重渲染；
   // 写入统一走 adapter 的 scoped hooks。
   const { workflow, getNodeById, graph } = useNodeWorkflowDocument({ nodeId });
-  const node = useNode(nodeId);
-  const promptField = useField(nodeId, NodeInputKeyEnum.aiSystemPrompt, 'input');
-  const skillsField = useField(nodeId, NodeInputKeyEnum.skills, 'input');
-  const sandboxField = useField(nodeId, NodeInputKeyEnum.useAgentSandbox, 'input');
-  const authTmbIdField = useField(nodeId, NodeInputKeyEnum.authTmbId, 'input');
-  const datasetSelectField = useField(nodeId, NodeInputKeyEnum.datasetSelectList, 'input');
+  const nodeActions = useNodeActions(nodeId);
+  const promptField = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.aiSystemPrompt,
+    kind: 'input'
+  });
+  const skillsField = useFieldActions({ nodeId, fieldKey: NodeInputKeyEnum.skills, kind: 'input' });
+  const sandboxField = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.useAgentSandbox,
+    kind: 'input'
+  });
+  const authTmbIdField = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.authTmbId,
+    kind: 'input'
+  });
+  const datasetSelectField = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.datasetSelectList,
+    kind: 'input'
+  });
   const { feConfigs } = useSystemStore();
   const llmMaxQuoteContext = useWorkflowQuoteLimit();
   const externalProviderWorkflowVariables = feConfigs?.externalProviderWorkflowVariables;
@@ -118,6 +140,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   // Split tool/common inputs and outputs
   const isTool = useIsToolNode(nodeId);
+  const hasDynamicInput = useHasDynamicToolInput(nodeId);
   const { commonInputs } = useMemoEnhance(
     () => splitToolInputsByMode(inputs, isTool),
     [inputs, isTool]
@@ -419,7 +442,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   return (
     <NodeCard minW={'524px'} selected={selected} {...data}>
-      {isTool && hasDynamicToolInput(data) && (
+      {isTool && hasDynamicInput && (
         <Container>
           <RenderToolInput nodeId={nodeId} inputs={inputs} />
         </Container>
@@ -482,7 +505,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           onChangeSandbox={onChangeAgentSandbox}
           onChangeEntrypoint={(value) => {
             // 入口字段可能尚未创建：存在则改值，不存在则整条追加。
-            node?.updateNode((current) => ({
+            nodeActions?.updateNode((current) => ({
               inputs: sandboxEntrypointInput
                 ? current.inputs.map((input) =>
                     input.key === NodeInputKeyEnum.sandboxEntrypoint ? { ...input, value } : input
@@ -581,7 +604,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   selectedSkills={selectedAgentSkills}
                   onAddSkill={(skill: SelectedAgentSkillItemType) => {
                     // 添加技能会顺带打开沙箱：两个字段同一事务提交，撤销一次回到添加前。
-                    node?.updateNode((current) => ({
+                    nodeActions?.updateNode((current) => ({
                       inputs: current.inputs.map((input) => {
                         if (input.key === NodeInputKeyEnum.skills) {
                           return { ...input, value: [skill, ...selectedAgentSkills] };
@@ -803,7 +826,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           onSuccess={(e) => {
             // 参数弹窗一次提交多个字段：整表写入，撤销一步回到旧参数。
             const nextValues = e as Record<string, unknown>;
-            node?.updateNode((current) => ({
+            nodeActions?.updateNode((current) => ({
               inputs: current.inputs.map((input) =>
                 input.key in nextValues ? { ...input, value: nextValues[input.key] } : input
               )

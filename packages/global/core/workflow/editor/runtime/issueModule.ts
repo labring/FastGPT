@@ -28,7 +28,7 @@ export const createIssueModule = ({
    * editor 注入的同步环境事实来源。每轮派生调用一次且不做缓存，
    * 因此实现必须同步且便宜；缺省时本轮不判定任何环境规则。
    */
-  getEnvironment?: () => WorkflowEnvironment;
+  getEnvironment?: () => WorkflowEnvironment | undefined;
 }) => {
   // region issueState Issue state and reachability tracking
 
@@ -41,6 +41,16 @@ export const createIssueModule = ({
   const getIssuesByNode = () => issuesByNode;
   const getNodeIssues = (nodeId: string) => issuesByNode.get(nodeId) ?? [];
   const getConfigIssues = () => configIssues;
+  const getState = () => ({
+    issuesByNode,
+    configIssues,
+    reachableNodeIds
+  });
+  const restoreState = (state: ReturnType<typeof getState>) => {
+    issuesByNode = state.issuesByNode;
+    configIssues = state.configIssues;
+    reachableNodeIds = state.reachableNodeIds;
+  };
   const readEnvironment = () => getEnvironment?.() ?? UNKNOWN_ENVIRONMENT;
 
   const calculateReachableNodeIds = () => {
@@ -240,6 +250,8 @@ export const createIssueModule = ({
     getIssuesByNode,
     getNodeIssues,
     getConfigIssues,
+    getState,
+    restoreState,
     rebuildIssues,
     refreshIssues,
     addChangedIssueRecords,

@@ -2,7 +2,7 @@
 import React, { useMemo, type PropsWithChildren } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { useWorkflowCanvasValue } from '../canvas/workflowCanvasContext';
+import { useWorkflowCanvasRendererValue } from '../canvas/workflowCanvasContext';
 
 type WorkflowSelectionContextValue = {
   /** 按节点 id 标记选中；只有选中的节点在 map 内。 */
@@ -23,7 +23,7 @@ export const useWorkflowSelectionValue = <T,>(
  * 选中集合没变时消费者（边、Handle）不会重渲染。
  */
 export const WorkflowSelectionProvider: React.FC<PropsWithChildren> = ({ children }) => {
-  const nodes = useWorkflowCanvasValue((v) => v.nodes);
+  const nodes = useWorkflowCanvasRendererValue((v) => v.nodes);
 
   const collected = useMemo(() => {
     const map: Record<string, boolean> = {};

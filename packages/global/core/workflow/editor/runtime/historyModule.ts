@@ -82,14 +82,21 @@ export const createHistoryModule = () => {
     future.length = 0;
   };
 
-  /** 取出一条记录并搬到对侧栈；无记录时返回 undefined，由 Core 转成失败结果。 */
-  const take = (direction: 'undo' | 'redo'): HistoryEntry | undefined => {
+  /** 读取待回放记录，保持 history 栈不变，供 Core 先完成状态重建。 */
+  const getEntries = (direction: 'undo' | 'redo', count: number): HistoryEntry[] => {
+    const source = direction === 'undo' ? past : future;
+    return source.slice(Math.max(0, source.length - count)).reverse();
+  };
+
+  /** 状态重建成功后再搬移记录，避免失败回放破坏 undo/redo 栈。 */
+  const commitEntries = (direction: 'undo' | 'redo', count: number) => {
     const source = direction === 'undo' ? past : future;
     const target = direction === 'undo' ? future : past;
-    const entry = source.pop();
-    if (!entry) return undefined;
-    target.push(entry);
-    return entry;
+    for (let index = 0; index < count; index++) {
+      const entry = source.pop();
+      if (!entry) return;
+      target.push(entry);
+    }
   };
 
   /** 读取 history 的可观察计数，不暴露可逆操作记录。 */
@@ -106,7 +113,7 @@ export const createHistoryModule = () => {
     future.length = 0;
   };
 
-  return { push, take, getSnapshot, clear };
+  return { push, getEntries, commitEntries, getSnapshot, clear };
 };
 
 // endregion

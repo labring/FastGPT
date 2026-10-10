@@ -1,5 +1,6 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 /* eslint-disable react-hooks/refs -- react-beautiful-dnd requires render-time drag props. */
 import React, { useMemo, useState } from 'react';
 import { type NodeProps } from 'reactflow';
@@ -32,13 +33,15 @@ import DndDrag, {
   type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag';
 import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
-import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
-  const { nodeId, inputs, outputs } = data;
+  const { nodeId } = data;
+  const { inputs = [], outputs = [] } =
+    useNode<WorkflowNodeData>(nodeId, (node) => node?.data) ?? {};
   const { t } = useTranslation();
-  const node = useNode(nodeId);
+  const nodeActions = useNodeActions(nodeId);
   // 边集合只在改名/删除表单字段的回调里读，走非订阅 getter：点击时取当前值，组件不订阅结构变更。
   const { getEdges } = useWorkflowActions();
 
@@ -56,7 +59,7 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         const onSubmit = (data: UserInputFormItemType) => {
           const editKey = editField?.key;
 
-          node?.updateNode(
+          nodeActions?.updateNode(
             (current) => {
               const nextOutput: FlowNodeOutputItemType = editKey
                 ? {
@@ -106,7 +109,7 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
         const onDelete = (valueKey: string) => {
           // 删除字段时其 output 与 handle 连线同事务消失，撤销一步恢复。
-          node?.updateNode(
+          nodeActions?.updateNode(
             (current) => ({
               inputs: current.inputs.map((input) =>
                 input.key === key
@@ -175,7 +178,7 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 <DndDrag<UserInputFormItemType>
                   onDragEndCb={(list) => {
                     // 拖拽排序：字段顺序与 output 顺序同事务写入，撤销一步回到旧顺序。
-                    node?.updateNode((current) => ({
+                    nodeActions?.updateNode((current) => ({
                       inputs: current.inputs.map((input) =>
                         input.key === key ? { ...input, value: list } : input
                       ),
@@ -235,7 +238,7 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         );
       }
     }),
-    [t, editField, node, getEdges, nodeId]
+    [t, editField, nodeActions, getEdges, nodeId]
   );
 
   return (

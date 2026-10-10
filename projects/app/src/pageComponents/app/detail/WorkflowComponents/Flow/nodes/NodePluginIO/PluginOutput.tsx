@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import Container from '../../components/Container';
@@ -21,8 +22,8 @@ import PluginOutputEditModal, { defaultOutput } from './PluginOutputEditModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { useField } from '@/web/core/workflow/editor/react/useField';
-import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
 const customOutputConfig = {
@@ -33,8 +34,9 @@ const customOutputConfig = {
 
 const NodePluginOutput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId, inputs } = data;
-  const node = useNode(nodeId);
+  const { nodeId } = data;
+  const { inputs = [] } = useNode<WorkflowNodeData>(nodeId, (node) => node?.data) ?? {};
+  const nodeActions = useNodeActions(nodeId);
 
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
 
@@ -81,7 +83,7 @@ const NodePluginOutput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           onClose={() => setEditField(undefined)}
           onSubmit={({ data }) => {
             // 新增插件输出等于追加一条 input 记录，整表提交保持单条历史。
-            node?.updateNode((current) => ({ inputs: current.inputs.concat(data) }));
+            nodeActions?.updateNode((current) => ({ inputs: current.inputs.concat(data) }));
           }}
         />
       )}
@@ -102,17 +104,17 @@ function Reference({
 }) {
   const { t } = useTranslation();
 
-  const node = useNode(nodeId);
-  const field = useField(nodeId, input.key, 'input');
+  const nodeActions = useNodeActions(nodeId);
+  const fieldActions = useFieldActions({ nodeId, fieldKey: input.key, kind: 'input' });
 
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
 
   const onSelect = useCallback(
     (e?: ReferenceValueType) => {
       if (!e) return;
-      field?.setValue(e);
+      fieldActions.setValue(e);
     },
-    [field]
+    [fieldActions]
   );
 
   const { referenceList } = useReference({
@@ -125,17 +127,17 @@ function Reference({
       if (!data.key) return;
 
       // 改名等结构性编辑整条替换记录，仍按旧 key 定位。
-      node?.updateNode((current) => ({
+      nodeActions?.updateNode((current) => ({
         inputs: current.inputs.map((item) => (item.key === input.key ? data : item))
       }));
     },
-    [input.key, node]
+    [input.key, nodeActions]
   );
   const onDel = useCallback(() => {
-    node?.updateNode((current) => ({
+    nodeActions?.updateNode((current) => ({
       inputs: current.inputs.filter((item) => item.key !== input.key)
     }));
-  }, [input.key, node]);
+  }, [input.key, nodeActions]);
 
   return (
     <>

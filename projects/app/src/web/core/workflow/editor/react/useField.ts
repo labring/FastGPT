@@ -4,6 +4,9 @@ import type { WorkflowFieldHandle } from './workflowEditorAdapter';
 import { useWorkflowEditorAdapter } from './workflowEditorProvider';
 
 type Listener = () => void;
+type FieldSelector<T> = (field: WorkflowFieldHandle | undefined) => T;
+type RawMode = { raw: true };
+type FieldReadMode<T> = FieldSelector<T> | RawMode;
 
 /**
  * 把字段查询压成稳定对象：`subscribe` / `getSnapshot` 的 memo key 依赖它的身份，
@@ -16,59 +19,65 @@ const useStableFieldQuery = ({ nodeId, fieldKey, kind }: WorkflowFieldQuery): Wo
     [nodeId, fieldKey, kind]
   );
 
-/** 读取单字段的 committed snapshot、引用状态，并提供稳定的字段提交 action。 */
-export function useField(query: WorkflowFieldQuery): WorkflowFieldHandle | undefined;
+/** 订阅单字段并返回所选值；完整句柄仅用于确需同时访问字段数据、引用和写 action 的场景。 */
+export function useField<T>(query: WorkflowFieldQuery, selector: FieldSelector<T>): T;
+export function useField(
+  query: WorkflowFieldQuery,
+  options: RawMode
+): WorkflowFieldHandle | undefined;
 export function useField(
   nodeId: string,
   fieldKey: string,
-  kind?: WorkflowFieldQuery['kind']
+  kind: WorkflowFieldQuery['kind'],
+  options: RawMode
 ): WorkflowFieldHandle | undefined;
-export function useField(
+export function useField<T>(
+  nodeId: string,
+  fieldKey: string,
+  kind: WorkflowFieldQuery['kind'],
+  selector: FieldSelector<T>
+): T;
+export function useField<T>(
   queryOrNodeId: WorkflowFieldQuery | string,
-  fieldKey?: string,
-  kind?: WorkflowFieldQuery['kind']
-): WorkflowFieldHandle | undefined {
+  fieldKeyOrMode: string | FieldReadMode<T>,
+  kind?: WorkflowFieldQuery['kind'],
+  positionalMode?: FieldReadMode<T>
+): T | WorkflowFieldHandle | undefined {
   const adapter = useWorkflowEditorAdapter();
   const queryNodeId = typeof queryOrNodeId === 'string' ? queryOrNodeId : queryOrNodeId.nodeId;
-  const queryFieldKey = typeof queryOrNodeId === 'string' ? fieldKey : queryOrNodeId.fieldKey;
+  const queryFieldKey = typeof queryOrNodeId === 'string' ? fieldKeyOrMode : queryOrNodeId.fieldKey;
   const queryKind = typeof queryOrNodeId === 'string' ? kind : queryOrNodeId.kind;
+  const mode = typeof queryOrNodeId === 'string' ? positionalMode : fieldKeyOrMode;
+  if (!mode || typeof queryFieldKey !== 'string') {
+    throw new Error('useField requires a field selector or { raw: true } mode');
+  }
   const query = useStableFieldQuery({
     nodeId: queryNodeId,
-    fieldKey: queryFieldKey!,
+    fieldKey: queryFieldKey,
     kind: queryKind
   });
   const subscribe = useMemo(
     () => (listener: Listener) => adapter.subscribeField(query, listener),
     [adapter, query]
   );
-  const getSnapshot = useMemo(() => () => adapter.getFieldSnapshot(query), [adapter, query]);
+  const getSnapshot = () => {
+    const field = adapter.getFieldSnapshot(query);
+    return typeof mode === 'function' ? mode(field) : field;
+  };
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
 /**
- * 从单字段的 scoped 快照派生一个值，只在该字段变化且派生结果变化时重渲染。
- *
- * 订阅什么：`query` 命中的字段（不传 `kind` 时同名 input/output 都算）。
- * 什么时候重渲染：该字段被通知后，selector 返回值与上一次不满足 `Object.is` 时。
- * 同一节点其它字段的写入、结构变更与几何提交都不通知。
- *
- * selector 入参是 `WorkflowFieldHandle | undefined`：字段或所属节点被删除时为 `undefined`，
- * selector 必须容忍。返回值约束与 `useWorkflowValue` 相同：原始值或稳定引用，不能新建对象。
- * `query` 可以每次渲染传新对象，hook 内部按 nodeId/fieldKey/kind 归一成稳定引用，不会重复订阅。
- *
- * 与 `useField` 的分工：需要 `setValue` 提交，或需要把整份 `data` / `reference` 传给下游时用
- * `useField`；只要一个派生的原始值（例如「当前是否有值」）时用本 hook。
+ * 返回稳定的字段写能力，不订阅字段变化；`setValue` 在调用时读取最新字段句柄。
  */
-export const useFieldValue = <T>(
-  query: WorkflowFieldQuery,
-  selector: (field: WorkflowFieldHandle | undefined) => T
-): T => {
+export const useFieldActions = (query: WorkflowFieldQuery) => {
   const adapter = useWorkflowEditorAdapter();
   const stableQuery = useStableFieldQuery(query);
-  const subscribe = useMemo(
-    () => (listener: Listener) => adapter.subscribeField(stableQuery, listener),
+
+  return useMemo(
+    () => ({
+      setValue: (value: unknown) => adapter.getFieldSnapshot(stableQuery)?.setValue(value)
+    }),
     [adapter, stableQuery]
   );
-  const getSnapshot = () => selector(adapter.getFieldSnapshot(stableQuery));
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 };

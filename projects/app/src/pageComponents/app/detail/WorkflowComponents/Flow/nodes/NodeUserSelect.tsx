@@ -3,14 +3,12 @@ import { type NodeProps, Position } from 'reactflow';
 import { Box } from '@chakra-ui/react';
 import NodeCard from './render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
-import {
-  type FlowNodeInputItemType,
-  type FlowNodeOutputItemType
-} from '@fastgpt/global/core/workflow/type/io';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MySourceHandle } from './render/Handle';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
@@ -19,8 +17,8 @@ import IOTitle from '../components/IOTitle';
 import RenderOutput from './render/RenderOutput';
 import DraggableInputList from '@/components/core/app/DraggableInputList';
 import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
-import { useField } from '@/web/core/workflow/editor/react/useField';
-import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 /** 选项源柄的平移量：模块级常量，避免每次渲染换数组身份打穿 MySourceHandle 的 React.memo。 */
@@ -29,13 +27,17 @@ const optionHandleTranslate = [58, 0] as [number, number];
 const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId } = data;
-  const node = useNode(nodeId);
-  const inputs = (node?.data.inputs ?? data.inputs) as FlowNodeInputItemType[];
-  const outputs = (node?.data.outputs ?? data.outputs) as FlowNodeOutputItemType[];
+  const { inputs = [], outputs = [] } =
+    useNode<WorkflowNodeData>(nodeId, (node) => node?.data) ?? {};
+  const nodeActions = useNodeActions(nodeId);
   // 边集合只在删除选项的回调里读，走非订阅 getter：点击时取当前值，组件不订阅结构变更。
   const { getEdges } = useWorkflowActions();
   // CustomComponent 是被 RenderInput 直接调用的普通函数，字段句柄必须在组件顶层取。
-  const optionsField = useField(nodeId, NodeInputKeyEnum.userSelectOptions, 'input');
+  const optionsField = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.userSelectOptions,
+    kind: 'input'
+  });
   const CustomComponent = useMemo(
     () => ({
       [NodeInputKeyEnum.userSelectOptions]: (v: FlowNodeInputItemType) => {
@@ -48,7 +50,7 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               items={options}
               addText={t('common:core.module.Add_option')}
               onDragEnd={(list) => {
-                optionsField?.setValue(list);
+                optionsField.setValue(list);
               }}
               onChange={(key, value) => {
                 const newVal = options.map((val) =>
@@ -59,14 +61,14 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       }
                     : val
                 );
-                optionsField?.setValue(newVal);
+                optionsField.setValue(newVal);
               }}
               onAdd={() => {
-                optionsField?.setValue(options.concat({ value: '', key: getNanoid() }));
+                optionsField.setValue(options.concat({ value: '', key: getNanoid() }));
               }}
               onDelete={(key) => {
                 // 删除选项要同时断开该分支 handle 上的连线：同一事务提交，撤销只需一步。
-                node?.updateNode(
+                nodeActions?.updateNode(
                   (current) => ({
                     inputs: current.inputs.map((input) =>
                       input.key === optionKey
@@ -100,7 +102,7 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         );
       }
     }),
-    [getEdges, node, nodeId, optionsField, t]
+    [getEdges, nodeActions, nodeId, optionsField, t]
   );
 
   return (

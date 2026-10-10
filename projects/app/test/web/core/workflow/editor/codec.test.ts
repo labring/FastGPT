@@ -15,6 +15,7 @@ import {
 import { storeEdge2RenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 const t = ((key: string) => key) as never;
 
@@ -172,6 +173,66 @@ describe('workflow editor codec', () => {
     expect(output.nodes.flatMap((item) => item.outputs).every((item) => !('invalid' in item))).toBe(
       true
     );
+  });
+
+  it('recomputes runtime-owned output invalid state after save and reload', () => {
+    const input = {
+      nodes: [
+        {
+          nodeId: 'chat',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          name: 'Chat',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModelId,
+              label: 'Model',
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+              valueType: WorkflowIOValueTypeEnum.string,
+              value: 'reasoning-model'
+            }
+          ],
+          outputs: [
+            {
+              id: NodeOutputKeyEnum.reasoningText,
+              key: NodeOutputKeyEnum.reasoningText,
+              type: FlowNodeOutputTypeEnum.static,
+              valueType: WorkflowIOValueTypeEnum.string,
+              invalid: true
+            }
+          ]
+        }
+      ],
+      edges: [],
+      chatConfig: {}
+    };
+    const getEnvironment = () => ({
+      models: [
+        {
+          modelId: 'reasoning-model',
+          model: 'reasoning-model',
+          type: ModelTypeEnum.llm,
+          config: {
+            maxContext: 1,
+            maxResponse: 1,
+            quoteMaxToken: 1,
+            reasoning: true
+          }
+        }
+      ],
+      sandbox: { configured: true, planSupported: true }
+    });
+
+    const saved = serializeRuntime(hydrateRuntime({ input, t, getEnvironment }));
+    expect(
+      saved.nodes.flatMap((node) => node.outputs).every((output) => !('invalid' in output))
+    ).toBe(true);
+
+    const reloaded = hydrateRuntime({ input: saved, t, getEnvironment });
+    expect(
+      reloaded
+        .getNode('chat')
+        ?.outputs.find((output) => output.id === NodeOutputKeyEnum.reasoningText)?.invalid
+    ).toBe(false);
   });
 
   it('materializes templates and preserves persistence semantics', () => {
