@@ -5,7 +5,7 @@ import {
   resolveDomainEffectiveConfig
 } from '@fastgpt/global/common/system/config/schema';
 import type { SystemInstanceDomainDocumentType } from '@fastgpt/global/common/system/config/type';
-import { connectionMongo, getMongoModel } from '../../mongo';
+import { connectionMongo, getMongoModel, defineIndex } from '../../mongo';
 
 const { Schema } = connectionMongo;
 
@@ -29,12 +29,12 @@ const systemInstanceConfigUpdatedBySchema = new Schema(
 );
 
 /**
- * 实例级运行配置持久化模型：按 Domain 存储为独立文档，_id 为 domainKey。
- * overrides 字段仅存储相对于代码内置默认值的稀疏增量。
+ * 实例级运行配置持久化模型：按 Domain 存储为独立文档，通过 domain 唯一索引定位。
+ * _id 由 MongoDB 自动生成 ObjectId，overrides 字段仅存储相对于代码内置默认值的稀疏增量。
  */
 const systemInstanceConfigSchema = new Schema(
   {
-    _id: {
+    domain: {
       type: String,
       required: true,
       immutable: true,
@@ -62,12 +62,17 @@ const systemInstanceConfigSchema = new Schema(
       validate: {
         validator: function (this: any, value: unknown) {
           const domain: SystemInstanceConfigDomainKey | undefined =
-            (typeof this?._id === 'string' ? this._id : undefined) ??
-            (typeof this?.getFilter === 'function' && typeof this.getFilter()?._id === 'string'
-              ? this.getFilter()?._id
+            (typeof this?.domain === 'string' ? this.domain : undefined) ??
+            (typeof this?.getFilter === 'function' && typeof this.getFilter()?.domain === 'string'
+              ? this.getFilter()?.domain
               : undefined) ??
-            (typeof this?.get === 'function' && typeof this.get('_id') === 'string'
-              ? this.get('_id')
+            (typeof this?.get === 'function' && typeof this.get('domain') === 'string'
+              ? this.get('domain')
+              : undefined) ??
+            // 兼容可能存在的旧文档
+            (typeof this?._id === 'string' &&
+            SYSTEM_INSTANCE_CONFIG_DOMAINS.includes(this._id as any)
+              ? this._id
               : undefined);
 
           if (!domain || !SYSTEM_INSTANCE_CONFIG_DOMAINS.includes(domain)) {
@@ -103,6 +108,11 @@ const systemInstanceConfigSchema = new Schema(
     versionKey: false
   }
 );
+
+defineIndex(systemInstanceConfigSchema, {
+  key: { domain: 1 },
+  options: { unique: true }
+});
 
 export const MongoSystemInstanceConfig = getMongoModel<SystemInstanceDomainDocumentType>(
   systemInstanceConfigCollectionName,

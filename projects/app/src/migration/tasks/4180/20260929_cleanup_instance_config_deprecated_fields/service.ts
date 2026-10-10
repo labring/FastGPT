@@ -129,7 +129,7 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
   let removedFieldCount = 0;
 
   for (const doc of docs) {
-    const domain = doc._id as SystemInstanceConfigDomainKey;
+    const domain = ((doc as any).domain ?? doc._id) as SystemInstanceConfigDomainKey;
     if (!SYSTEM_INSTANCE_CONFIG_DOMAINS.includes(domain)) continue;
 
     const { overrides, removedFieldCount: removed } = stripDeprecatedOverrides(
@@ -151,7 +151,7 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
     }
 
     const updated = await MongoSystemInstanceConfig.findOneAndUpdate(
-      { _id: domain, revision: doc.revision },
+      { domain, revision: doc.revision },
       { $set: { overrides, updatedAt: new Date() }, $inc: { revision: 1 } },
       { new: true, runValidators: true }
     ).lean();
@@ -163,7 +163,7 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
         domain,
         revision: doc.revision
       });
-      const latest = await MongoSystemInstanceConfig.findById(domain).lean();
+      const latest = await MongoSystemInstanceConfig.findOne({ domain }).lean();
       const retry = latest
         ? stripDeprecatedOverrides(domain, latest.overrides)
         : { overrides: undefined, removedFieldCount: 0 };
@@ -179,7 +179,7 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
           );
         }
         const retried = await MongoSystemInstanceConfig.findOneAndUpdate(
-          { _id: domain, revision: latest!.revision },
+          { domain, revision: latest!.revision },
           { $set: { overrides: retry.overrides, updatedAt: new Date() }, $inc: { revision: 1 } },
           { new: true, runValidators: true }
         ).lean();
@@ -218,7 +218,7 @@ export const verifyInstanceConfigDeprecatedFields = async () => {
   const invalidDomains: SystemInstanceConfigDomainKey[] = [];
 
   for (const doc of docs) {
-    const domain = doc._id as SystemInstanceConfigDomainKey;
+    const domain = ((doc as any).domain ?? doc._id) as SystemInstanceConfigDomainKey;
     if (!SYSTEM_INSTANCE_CONFIG_DOMAINS.includes(domain)) continue;
 
     if (hasDeprecatedOverrides(domain, doc.overrides)) {

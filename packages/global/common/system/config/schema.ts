@@ -216,7 +216,8 @@ export const SystemInstanceConfigUpdatedBySchema = z.strictObject({
  * MongoDB 中 system_instance_configs 的单个 Domain 文档结构。
  */
 export const SystemInstanceDomainDocumentSchema = z.strictObject({
-  _id: SystemInstanceConfigDomainKeySchema,
+  _id: z.string().optional(),
+  domain: SystemInstanceConfigDomainKeySchema,
   schemaVersion: z
     .literal(SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION)
     .default(SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION),

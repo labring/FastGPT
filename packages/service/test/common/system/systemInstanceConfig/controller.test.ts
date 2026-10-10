@@ -27,7 +27,7 @@ describe('systemInstanceConfig controller', () => {
     it('returns masked secrets when maskSecrets option is true', async () => {
       // 先写入一个带 Key 的提供商配置
       await MongoSystemInstanceConfig.create({
-        _id: 'providers',
+        domain: 'providers',
         revision: 1,
         overrides: {
           documentParse: {
@@ -193,8 +193,8 @@ describe('systemInstanceConfig controller', () => {
 
       expect(updated).toEqual(['site', 'auth']);
 
-      const siteDoc = await MongoSystemInstanceConfig.findById('site').lean();
-      const authDoc = await MongoSystemInstanceConfig.findById('auth').lean();
+      const siteDoc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
+      const authDoc = await MongoSystemInstanceConfig.findOne({ domain: 'auth' }).lean();
 
       expect(siteDoc?.overrides.name).toBe('Batch Site');
       expect(siteDoc?.revision).toBe(1);
@@ -205,7 +205,7 @@ describe('systemInstanceConfig controller', () => {
     it('rolls back completely if any domain in the batch encounters a revision conflict', async () => {
       // 预先建立 site 文档 revision=1
       await MongoSystemInstanceConfig.create({
-        _id: 'site',
+        domain: 'site',
         revision: 1,
         overrides: { name: 'Existing Site' },
         updatedBy: { actor: 'system' }
@@ -231,10 +231,10 @@ describe('systemInstanceConfig controller', () => {
       ).rejects.toThrow(/Revision conflict/);
 
       // 确认事务全部回滚：auth 没有被创建，site 没有被修改
-      const authDoc = await MongoSystemInstanceConfig.findById('auth').lean();
+      const authDoc = await MongoSystemInstanceConfig.findOne({ domain: 'auth' }).lean();
       expect(authDoc).toBeNull();
 
-      const siteDoc = await MongoSystemInstanceConfig.findById('site').lean();
+      const siteDoc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
       expect(siteDoc?.overrides.name).toBe('Existing Site');
       expect(siteDoc?.revision).toBe(1);
     });

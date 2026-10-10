@@ -41,7 +41,8 @@ export type SystemInstanceDomainOverridesType<
 export type SystemInstanceDomainDocument<
   T extends SystemInstanceConfigDomainKey = SystemInstanceConfigDomainKey
 > = {
-  _id: T;
+  _id?: string;
+  domain: T;
   schemaVersion: number;
   revision: number;
   overrides: SystemInstanceDomainOverridesType<T>;
