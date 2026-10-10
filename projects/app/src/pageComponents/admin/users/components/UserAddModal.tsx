@@ -1,3 +1,4 @@
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, FormControl, Input, useDisclosure } from '@chakra-ui/react';
 import React from 'react';
 import { useForm, useWatch } from 'react-hook-form';
@@ -21,6 +22,7 @@ type TFormData = {
 };
 
 export default function UserAddModal(props: { data: any; updateData: any }) {
+  const { t } = useSafeTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { data, updateData } = props;
   const { toast } = useToast();
@@ -82,32 +84,32 @@ export default function UserAddModal(props: { data: any; updateData: any }) {
           reset(data);
         }}
       >
-        添加用户
+        {t('admin:add_user')}
       </Button>
 
       <MyModal
         isOpen={isOpen}
         onClose={onClose}
-        title={'添加用户'}
+        title={t('admin:add_user')}
         maxW={['90vw', '700px']}
         footer={
           <>
             <Button variant="whiteBase" onClick={onClose}>
-              关闭
+              {t('admin:close')}
             </Button>
             <Button
               variant="primary"
               onClick={handleSubmit(onSubmit, onSubmitErr)}
               isLoading={isLoading}
             >
-              确定
+              {t('admin:ok')}
             </Button>
           </>
         }
       >
         <FormControl>
           <FormLabel fontWeight="bold" required>
-            用户名
+            {t('admin:username')}
           </FormLabel>
           <Input
             {...register('username', {
@@ -115,15 +117,15 @@ export default function UserAddModal(props: { data: any; updateData: any }) {
             })}
             id="username"
             variant="outline"
-            placeholder="用户唯一标识"
+            placeholder={t('admin:user_unique_identifier')}
           />
         </FormControl>
         <FormControl mt={4}>
           <FormLabel fontWeight="bold" required={passwordAvailable}>
-            密码
+            {t('admin:password')}
             {passwordAvailable && errors && !!errors?.password && (
               <Box as="span" ml={2} fontSize="12px" color="red.500">
-                必填
+                {t('admin:required')}
               </Box>
             )}
           </FormLabel>
@@ -140,19 +142,19 @@ export default function UserAddModal(props: { data: any; updateData: any }) {
                 }
               })}
               variant="outline"
-              placeholder="密码至少 8 位，且至少包含两种组合：数字、字母或特殊字符"
+              placeholder={t('admin:password_must_be_at_least_8_characters_with_at_least_two_of')}
             />
           ) : (
             <SsoPasswordUnavailableTip />
           )}
         </FormControl>
         <FormControl mt={4}>
-          <FormLabel fontWeight="bold">成员名</FormLabel>
+          <FormLabel fontWeight="bold">{t('admin:member_name')}</FormLabel>
           <Input
             {...register('memberName')}
             id="memberName"
             variant="outline"
-            placeholder="团队内仅做展示的名称"
+            placeholder={t('admin:member_name_display_only_placeholder')}
           />
         </FormControl>
       </MyModal>

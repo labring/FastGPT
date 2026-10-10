@@ -66,9 +66,9 @@ const LICENSE_STATUS_DISPLAY: Record<
   }
 };
 
-/** 管理员首页的 License 概览，按设计稿展示租户信息、额度和授权能力。 */
+/** 管理员首页的 License 概览，按设计稿展示版本信息、租户信息、额度和授权能力。 */
 const AdminHome = () => {
-  const { licenseData, licenseLoading, feConfigs } = useSystemStore();
+  const { licenseData, licenseLoading, feConfigs, systemVersion } = useSystemStore();
   const { t } = useSafeTranslation();
   const [showLicenseInput, setShowLicenseInput] = useState(false);
   // 未接入 pro 服务 = 社区版部署，没有授权概念：不展示租户名、额度与激活状态，只保留功能能力清单。
@@ -131,21 +131,38 @@ const AdminHome = () => {
         <Box fontSize="16px" fontWeight="600" lineHeight="1.2" whiteSpace="nowrap">
           {t('admin:license_admin_home')}
         </Box>
-        <Box color="myGray.500" fontSize="12px">
-          {isCommunityEdition
-            ? t('admin:license_admin_home_community_description')
-            : t('admin:license_admin_home_description')}
-        </Box>
       </Flex>
 
       <Box p={6}>
+        {/* 版本信息：只展示 app 自身版本，来源为 app package.json 的 version（getInitData 下发） */}
+        <Box mb={4}>
+          <Box fontSize="16px" fontWeight="600" color="myGray.700" mb={2}>
+            {t('admin:license_version_info')}
+          </Box>
+          <Box border="1px solid" borderColor="myGray.200" borderRadius="8px" px={6} py={5}>
+            <Flex alignItems="center" gap={4} flexWrap="wrap">
+              <Box color="myGray.500" fontSize="12px">
+                {t('admin:license_current_version')}
+              </Box>
+              <Box fontSize="24px" fontWeight="600" lineHeight="1.2">
+                V{systemVersion}
+              </Box>
+            </Flex>
+          </Box>
+        </Box>
+
+        {/* 商业版信息：租户、License 状态、资源额度与授权能力 */}
+        <Box fontSize="16px" fontWeight="600" color="myGray.700" mb={2}>
+          {t('admin:license_commercial_info')}
+        </Box>
+
         <Box border="1px solid" h="104px" borderColor="myGray.200" borderRadius="8px" p={6}>
           {isCommunityEdition ? (
-            /* 社区版：没有授权概念，只展示版本标识与商业版引导 */
+            /* 社区版：没有授权概念，只展示版本类型标识与商业版引导 */
             <Flex alignItems="center" justifyContent="space-between" h="100%" gap={4}>
               <Flex minW={0} gap={2} alignItems={'center'}>
                 <Box color="myGray.500" fontWeight={500} fontSize="12px" mb={0.5}>
-                  {t('admin:license_current_version')}
+                  {t('admin:license_edition')}
                 </Box>
                 <Box
                   as="span"
@@ -237,58 +254,81 @@ const AdminHome = () => {
                 display={{ base: 'none', md: 'block' }}
               />
               <Box flex="1 1 360px">
-                <Box color={statusDisplay.color} fontSize="11px" mb={4} h={'16px'}>
-                  <Box
-                    as="span"
-                    display="inline-block"
-                    w="6px"
-                    h="6px"
-                    mr={2}
-                    borderRadius="50%"
-                    bg={statusDisplay.dot}
-                  />
-                  {t(`admin:${statusDisplay.labelKey}`)}
-                </Box>
-                <Flex alignItems="center" gap={4}>
-                  <Box color="myGray.500" fontSize="12px">
-                    {t('admin:license_expires_at')}
-                  </Box>
-                  <Box fontSize="24px" fontWeight="500" lineHeight="1">
-                    {formatDate(licenseData?.expiredTime)}
-                  </Box>
-                </Flex>
+                {licenseLoading ? (
+                  /* License 检测中：状态徽标与有效期数值用骨架占位，
+                     避免先渲染「尚未激活」/「--」再跳变为真实状态（与租户名骨架屏体验一致） */
+                  <>
+                    <Skeleton h="16px" w="110px" mb={4} />
+                    <Flex alignItems="center" gap={4}>
+                      <Box color="myGray.500" fontSize="12px">
+                        {t('admin:license_expires_at')}
+                      </Box>
+                      <Skeleton h="24px" w="150px" />
+                    </Flex>
+                  </>
+                ) : (
+                  <>
+                    <Box color={statusDisplay.color} fontSize="11px" mb={4} h={'16px'}>
+                      <Box
+                        as="span"
+                        display="inline-block"
+                        w="6px"
+                        h="6px"
+                        mr={2}
+                        borderRadius="50%"
+                        bg={statusDisplay.dot}
+                      />
+                      {t(`admin:${statusDisplay.labelKey}`)}
+                    </Box>
+                    <Flex alignItems="center" gap={4}>
+                      <Box color="myGray.500" fontSize="12px">
+                        {t('admin:license_expires_at')}
+                      </Box>
+                      <Box fontSize="24px" fontWeight="500" lineHeight="1">
+                        {formatDate(licenseData?.expiredTime)}
+                      </Box>
+                    </Flex>
+                  </>
+                )}
               </Box>
               <Flex alignItems="center" gap={3} justifyContent="flex-end">
-                {!isActivated && (
-                  <Link
-                    href={commercialDocUrl}
-                    isExternal
-                    color="myGray.500"
-                    fontSize="12px"
-                    textDecoration="underline"
-                    whiteSpace="nowrap"
-                    _hover={{ color: 'primary.600' }}
-                  >
-                    {t('admin:license_learn_commercial')}
-                  </Link>
+                {licenseLoading ? (
+                  /* 按钮文案依赖授权状态，检测中同样骨架占位，避免「激活」跳变为「变更 License」 */
+                  <Skeleton h="36px" w="130px" borderRadius="6px" />
+                ) : (
+                  <>
+                    {!isActivated && (
+                      <Link
+                        href={commercialDocUrl}
+                        isExternal
+                        color="myGray.500"
+                        fontSize="12px"
+                        textDecoration="underline"
+                        whiteSpace="nowrap"
+                        _hover={{ color: 'primary.600' }}
+                      >
+                        {t('admin:license_learn_commercial')}
+                      </Link>
+                    )}
+                    <Button
+                      variant={isLicenseActionPrimary ? 'primary' : 'outline'}
+                      color={isLicenseActionPrimary ? 'white' : 'primary.600'}
+                      borderColor={isLicenseActionPrimary ? 'primary.500' : 'primary.300'}
+                      borderRadius="6px"
+                      py={2}
+                      px={'14px'}
+                      fontSize="14px"
+                      leftIcon={<MyIcon name="common/settingLight" w="18px" />}
+                      onClick={onLicenseButtonClick}
+                    >
+                      {isExpired
+                        ? t('admin:license_renew')
+                        : isActivated
+                          ? t('admin:license_change')
+                          : t('admin:license_activate')}
+                    </Button>
+                  </>
                 )}
-                <Button
-                  variant={isLicenseActionPrimary ? 'primary' : 'outline'}
-                  color={isLicenseActionPrimary ? 'white' : 'primary.600'}
-                  borderColor={isLicenseActionPrimary ? 'primary.500' : 'primary.300'}
-                  borderRadius="6px"
-                  py={2}
-                  px={'14px'}
-                  fontSize="14px"
-                  leftIcon={<MyIcon name="common/settingLight" w="18px" />}
-                  onClick={onLicenseButtonClick}
-                >
-                  {isExpired
-                    ? t('admin:license_renew')
-                    : isActivated
-                      ? t('admin:license_change')
-                      : t('admin:license_activate')}
-                </Button>
               </Flex>
             </Grid>
           )}

@@ -1,4 +1,5 @@
 'use client';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { Table, Thead, Tbody, Tr, Th, Td, Flex, Box, FormLabel } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -6,7 +7,6 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { useMemo, useRef, useState, useCallback } from 'react';
-import { useTranslation } from 'next-i18next';
 import { getOperationLogs } from '@/web/admin/system/audit/api';
 import { adminAuditLogMap } from '@fastgpt/web/support/user/audit/constants';
 import { AdminAuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -26,7 +26,7 @@ import type { AdminAuditListItemType } from '@fastgpt/global/openapi/admin/syste
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const AuditTable = () => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const labels = useCommonFilterLabels();
   const [memberFilter, setMemberFilter] = useState(createMultiSelectFilter<string>());
   const [eventFilter, setEventFilter] =
@@ -105,11 +105,11 @@ const AuditTable = () => {
         wrap="wrap"
       >
         <Box as={'h1'} {...accountTitleTextStyles}>
-          审计日志
+          {t('admin:audit_log')}
         </Box>
         <Flex ml={'auto'} alignItems={'center'} gap={2} wrap="wrap">
           <MultiSelectFilter
-            title="操作人员"
+            title={t('admin:operator')}
             value={memberFilter}
             onChange={setMemberFilter}
             options={memberOptions}
@@ -117,7 +117,7 @@ const AuditTable = () => {
             showSearch
           />
           <MultiSelectFilter
-            title="操作类型"
+            title={t('admin:operation_type')}
             value={eventFilter}
             onChange={setEventFilter}
             options={eventOptions}
@@ -147,19 +147,19 @@ const AuditTable = () => {
               <Th>
                 <Flex direction="row" gap={2}>
                   <Box h="28px" lineHeight="28px" whiteSpace="nowrap">
-                    操作人员
+                    {t('admin:operator')}
                   </Box>
                 </Flex>
               </Th>
-              <Th>操作时间</Th>
+              <Th>{t('admin:operation_time')}</Th>
               <Th>
                 <Flex direction="row" gap={2}>
                   <Box h="28px" lineHeight="28px" whiteSpace="nowrap">
-                    操作类型
+                    {t('admin:operation_type')}
                   </Box>
                 </Flex>
               </Th>
-              <Th>操作内容</Th>
+              <Th>{t('admin:operation_content')}</Th>
             </Tr>
           </Thead>
           <Tbody fontSize={'sm'}>
@@ -194,7 +194,7 @@ const AuditTable = () => {
           >
             <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
             <Box mt={2} color={'myGray.500'}>
-              暂无审计记录～
+              {t('admin:no_audit_records')}
             </Box>
           </Flex>
         )}
@@ -207,7 +207,7 @@ const AuditTable = () => {
 };
 
 function AuditDetailModal({ log, onClose }: { log: AdminAuditListItemType; onClose: () => void }) {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const i18nData = adminAuditLogMap[log.event as AdminAuditEventEnum];
   const metadata = defaultMetadataProcessor(log.metadata, t);
 

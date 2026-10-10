@@ -23,6 +23,8 @@ import { enableChannelReasoningMapping } from './tasks/4171/20260923_enable_chan
 import { backfillMemberNameSet } from './tasks/4171/20260928_backfill_member_name_set';
 import { migrateDatasetRebuildStatus } from './tasks/4171/20261009_migrate_dataset_rebuild_status';
 import { migrateChunkTraining } from './tasks/4171/20261008_migrate_chunk_training';
+import { migrateInstanceConfigs } from './tasks/4180/20260928_migrate_instance_configs';
+import { cleanupInstanceConfigDeprecatedFieldsTask } from './tasks/4180/20260929_cleanup_instance_config_deprecated_fields';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -514,6 +516,64 @@ export const systemMigrations = [
     onFailure: SystemMigrationFailurePolicyEnum.continue,
     manual: true,
     run: migrateDatasetRebuildStatus
+  },
+  {
+    id: '20260928_migrate_instance_configs',
+    version: '4.18.0',
+    nameKey: i18nT('system_migration:migrations.20260928_migrate_instance_configs.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20260928_migrate_instance_configs.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20260928_migrate_instance_configs.result'),
+    progressSteps: [
+      {
+        key: 'inspect',
+        labelKey: i18nT('system_migration:migrations.20260928_migrate_instance_configs.inspect')
+      },
+      {
+        key: 'migrate',
+        labelKey: i18nT('system_migration:migrations.20260928_migrate_instance_configs.migrate')
+      },
+      {
+        key: 'validate',
+        labelKey: i18nT('system_migration:migrations.20260928_migrate_instance_configs.validate')
+      }
+    ],
+    // 阻塞启动：迁移成功前节点不进入 ready，避免运行时读到 Schema 默认值而导致配置被静默重置。
+    blockStartup: true,
+    onFailure: SystemMigrationFailurePolicyEnum.stop,
+    run: migrateInstanceConfigs
+  },
+  {
+    id: '20260929_cleanup_instance_config_deprecated_fields',
+    version: '4.18.0',
+    nameKey: i18nT(
+      'system_migration:migrations.20260929_cleanup_instance_config_deprecated_fields.name'
+    ),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20260929_cleanup_instance_config_deprecated_fields.description'
+    ),
+    resultKey: i18nT(
+      'system_migration:migrations.20260929_cleanup_instance_config_deprecated_fields.result'
+    ),
+    progressSteps: [
+      {
+        key: 'cleanup',
+        labelKey: i18nT(
+          'system_migration:migrations.20260929_cleanup_instance_config_deprecated_fields.cleanup'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20260929_cleanup_instance_config_deprecated_fields.validation'
+        )
+      }
+    ],
+    // 阻塞启动：残留字段会使 strictObject 校验失败，必须在节点 ready 前清理完成。
+    blockStartup: true,
+    onFailure: SystemMigrationFailurePolicyEnum.stop,
+    run: cleanupInstanceConfigDeprecatedFieldsTask
   }
 ] as const satisfies readonly SystemMigration[];
 

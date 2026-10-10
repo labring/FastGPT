@@ -1,3 +1,4 @@
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { putUpdateTemplate, type AdminUpdateTemplateBodyType } from '@/web/admin/app/templates/api';
 import { Box, Checkbox, Flex, Switch, Td, Tr } from '@chakra-ui/react';
 import { AppTemplateTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -32,7 +33,7 @@ const TemplateCard = ({
   property: string;
   refreshTemplates: () => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const isPluginSystemTemplate = template.templateId.startsWith(`${AppToolSourceEnum.community}-`);
   const isRecommend = isPluginSystemTemplate
     ? template.isPromoted === true
@@ -127,7 +128,7 @@ const TemplateCard = ({
                 borderRadius={'full'}
                 color={'myGray.900'}
               >
-                精选
+                {t('admin:featured_2')}
               </Box>
             </Box>
           )}
@@ -144,7 +145,7 @@ const TemplateCard = ({
               borderRadius={'sm'}
               flexShrink={0}
             >
-              系统
+              {t('admin:system')}
             </Box>
           )}
         </Flex>

@@ -1,13 +1,22 @@
-'use client';
+import { serviceSideProps } from '@/web/common/i18n/utils';
+import React from 'react';
 import AdminContainer from '@/pageComponents/admin/AdminContainer';
-import ModelSettings from '@/pageComponents/admin/config/pay';
+import CommercialSettingComponent from '@/pageComponents/admin/settings/commercial';
 
-const AdminPage = () => {
+const PaySettingPage = () => {
   return (
     <AdminContainer>
-      <ModelSettings />
+      <CommercialSettingComponent />
     </AdminContainer>
   );
 };
 
-export default AdminPage;
+export async function getServerSideProps(content: any) {
+  return {
+    props: {
+      ...(await serviceSideProps(content, ['admin']))
+    }
+  };
+}
+
+export default PaySettingPage;

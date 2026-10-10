@@ -247,9 +247,15 @@ export const serviceEnv = createEnv({
     STORAGE_PUBLIC_BUCKET: z.string().default('fastgpt-public'),
     STORAGE_PRIVATE_BUCKET: z.string().default('fastgpt-private'),
     STORAGE_REGION: z.string().default('us-east-1'),
-    STORAGE_EXTERNAL_ENDPOINT: UrlSchema.optional(),
+    STORAGE_EXTERNAL_ENDPOINT: UrlSchema.optional().meta({
+      description:
+        '客户端可直连的对象存储地址；首次部署时作为实例配置 storage.externalEndpoint 的初值，之后管理界面配置优先'
+    }),
     STORAGE_R2_PUBLIC_ENDPOINT: UrlSchema.optional(),
-    STORAGE_S3_CDN_ENDPOINT: UrlSchema.optional(),
+    STORAGE_S3_CDN_ENDPOINT: UrlSchema.optional().meta({
+      description:
+        'short-redirect 临时下载地址使用的 CDN 地址；首次部署时作为实例配置 storage.cdnEndpoint 的初值，之后管理界面配置优先'
+    }),
     STORAGE_DOWNLOAD_URL_MODE: z
       .enum(['short-proxy', 'short-redirect'])
       .default('short-proxy')

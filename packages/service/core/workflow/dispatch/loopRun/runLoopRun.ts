@@ -41,7 +41,9 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   const childrenNodeIdList = params[NodeInputKeyEnum.childrenNodeIdList] ?? [];
   const inputArray = params[NodeInputKeyEnum.loopRunInputArray] ?? [];
 
-  const maxLength = serviceEnv.WORKFLOW_MAX_LOOP_TIMES;
+  const maxLength =
+    global.systemInstanceConfig?.performance?.workflow?.maxLoopTimes ??
+    serviceEnv.WORKFLOW_MAX_LOOP_TIMES;
   const maxIterationsMessage = i18nT('workflow:loop_run_max_iterations_exceeded');
 
   // Surface precheck failures through `errorText` to match the max-iterations

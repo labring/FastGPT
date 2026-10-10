@@ -24,7 +24,7 @@ describe('validateSystemMigrationRegistry', () => {
       onFailure: SystemMigrationFailurePolicyEnum.stop,
       progressSteps: [{ key: 'members' }, { key: 'validation' }]
     });
-    expect(systemMigrations.slice(2, -6).map((migration) => migration.id)).toEqual([
+    expect(systemMigrations.slice(2, -8).map((migration) => migration.id)).toEqual([
       '20260903_backfill_model_permissions',
       '20260903_backfill_dataset_model_references',
       '20260903_backfill_evaluation_model_references',
@@ -34,10 +34,10 @@ describe('validateSystemMigrationRegistry', () => {
       '20260905_backfill_resource_owner_acl',
       '20260908_cleanup_legacy_invited_members'
     ]);
-    expect(systemMigrations.slice(2, -6).every((migration) => !migration.blockStartup)).toBe(true);
+    expect(systemMigrations.slice(2, -8).every((migration) => !migration.blockStartup)).toBe(true);
     expect(
       systemMigrations
-        .slice(2, -6)
+        .slice(2, -8)
         .every((migration) => migration.onFailure === SystemMigrationFailurePolicyEnum.continue)
     ).toBe(true);
     expect(systemMigrations[1]).toMatchObject({
@@ -46,14 +46,14 @@ describe('validateSystemMigrationRegistry', () => {
       blockStartup: true,
       onFailure: SystemMigrationFailurePolicyEnum.stop
     });
-    expect(systemMigrations.at(-6)).toMatchObject({
+    expect(systemMigrations.at(-8)).toMatchObject({
       id: '20260907_migrate_dataset_tags_v2',
       version: '4.17.1',
       blockStartup: false,
       onFailure: SystemMigrationFailurePolicyEnum.continue,
       progressSteps: [{ key: 'datasets' }, { key: 'collections' }, { key: 'validation' }]
     });
-    expect(systemMigrations.at(-5)).toMatchObject({
+    expect(systemMigrations.at(-7)).toMatchObject({
       id: '20260916_backfill_app_resource_snapshots',
       version: '4.17.1',
       blockStartup: false,
@@ -66,7 +66,7 @@ describe('validateSystemMigrationRegistry', () => {
         { key: 'validation' }
       ]
     });
-    expect(systemMigrations.at(-4)).toMatchObject({
+    expect(systemMigrations.at(-6)).toMatchObject({
       id: '20260923_enable_channel_reasoning_mapping',
       version: '4.17.1',
       blockStartup: false,
@@ -74,17 +74,31 @@ describe('validateSystemMigrationRegistry', () => {
       delay: true,
       progressSteps: [{ key: 'channels' }]
     });
-    expect(systemMigrations.at(-3)).toMatchObject({
+    expect(systemMigrations.at(-5)).toMatchObject({
       id: '20260928_backfill_member_name_set',
       version: '4.17.1',
       blockStartup: false,
       onFailure: SystemMigrationFailurePolicyEnum.continue,
       progressSteps: [{ key: 'members' }, { key: 'validation' }]
     });
+    expect(systemMigrations.at(-2)).toMatchObject({
+      id: '20260928_migrate_instance_configs',
+      version: '4.18.0',
+      blockStartup: true,
+      onFailure: SystemMigrationFailurePolicyEnum.stop,
+      progressSteps: [{ key: 'inspect' }, { key: 'migrate' }, { key: 'validate' }]
+    });
+    expect(systemMigrations.at(-1)).toMatchObject({
+      id: '20260929_cleanup_instance_config_deprecated_fields',
+      version: '4.18.0',
+      blockStartup: true,
+      onFailure: SystemMigrationFailurePolicyEnum.stop,
+      progressSteps: [{ key: 'cleanup' }, { key: 'validation' }]
+    });
   });
 
   it('appends the independent manual chunk migration', () => {
-    expect(systemMigrations.at(-2)).toMatchObject({
+    expect(systemMigrations.at(-4)).toMatchObject({
       id: '20261008_migrate_chunk_training',
       manual: true,
       blockStartup: false,
@@ -95,7 +109,7 @@ describe('validateSystemMigrationRegistry', () => {
   });
 
   it('appends the rebuild field migration without changing prior registration order', () => {
-    expect(systemMigrations.at(-1)).toMatchObject({
+    expect(systemMigrations.at(-3)).toMatchObject({
       id: '20261009_migrate_dataset_rebuild_status',
       dependsOn: ['20261008_migrate_chunk_training'],
       version: '4.17.1',

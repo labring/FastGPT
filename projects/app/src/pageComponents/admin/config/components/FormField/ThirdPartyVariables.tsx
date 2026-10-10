@@ -1,3 +1,4 @@
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, Flex, Input, Switch, Textarea } from '@chakra-ui/react';
 import type { ExternalProviderWorkflowVarType } from '@fastgpt/global/common/system/types';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -20,6 +21,7 @@ const ThirdPartyVariables = ({
   title: string;
   titleExtra?: ReactNode;
 }) => {
+  const { t } = useSafeTranslation();
   const { toast } = useToast();
 
   const [currentThirdPartyVariable, setCurrentThirdPartyVariable] =
@@ -59,7 +61,7 @@ const ThirdPartyVariables = ({
             })
           }
         >
-          新增
+          {t('admin:add')}
         </Button>
       </Flex>
 
@@ -73,13 +75,13 @@ const ThirdPartyVariables = ({
         fontSize={'mini'}
         fontWeight={'medium'}
       >
-        <Box w={2 / 10}>名称</Box>
+        <Box w={2 / 10}>{t('admin:name')}</Box>
         <Box w={3 / 10} pl={4}>
           key
         </Box>
-        <Box w={3 / 10}>说明</Box>
-        <Box w={1 / 10}>启用</Box>
-        <Box w={1 / 10}>操作</Box>
+        <Box w={3 / 10}>{t('admin:description_3')}</Box>
+        <Box w={1 / 10}>{t('admin:enable')}</Box>
+        <Box w={1 / 10}>{t('admin:actions')}</Box>
       </Flex>
 
       <Flex mt={2} gap={1} flexDirection={'column'}>
@@ -97,7 +99,7 @@ const ThirdPartyVariables = ({
                 navigator.clipboard.writeText(`{{${item.key}}}`);
                 toast({
                   status: 'success',
-                  title: '复制成功'
+                  title: t('admin:copied')
                 });
               }}
             >
@@ -189,6 +191,7 @@ const ThirdPartyVariableItemModal = ({
   onClose: () => void;
   onSubmit: (data: ExternalProviderWorkflowVarType) => void;
 }) => {
+  const { t } = useSafeTranslation();
   const { register, setValue, handleSubmit } = useForm({
     defaultValues: currentThirdPartyVariable
   });
@@ -199,29 +202,29 @@ const ThirdPartyVariableItemModal = ({
       footer={
         <>
           <Button onClick={onClose} variant={'whiteBase'}>
-            取消
+            {t('admin:cancel')}
           </Button>
-          <Button onClick={handleSubmit(onSubmit)}>确定</Button>
+          <Button onClick={handleSubmit(onSubmit)}>{t('admin:ok')}</Button>
         </>
       }
     >
       <>
         <Box color={'myGray.900'} mb={2} fontWeight={'medium'} fontSize={'14px'}>
-          变量名
+          {t('admin:variable_name')}
         </Box>
         <Input {...register('name', { required: true })} bg={'myGray.50'} placeholder={'变量名'} />
       </>
 
       <>
         <Box color={'myGray.900'} mt={6} mb={2} fontWeight={'medium'} fontSize={'14px'}>
-          说明
+          {t('admin:description_3')}
         </Box>
         <Textarea {...register('intro')} bg={'myGray.50'} placeholder={'说明'} />
       </>
 
       <Flex mt={6}>
         <Box display={'flex'} color={'myGray.900'} flex={1} fontWeight={'medium'} fontSize={'14px'}>
-          启用
+          {t('admin:enable')}
         </Box>
         <Switch
           {...register('isOpen')}
@@ -232,7 +235,7 @@ const ThirdPartyVariableItemModal = ({
 
       <>
         <Box color={'myGray.900'} mt={6} mb={2} fontWeight={'medium'} fontSize={'14px'}>
-          使用量查询地址
+          {t('admin:usage_query_url')}
         </Box>
         <Input {...register('url')} bg={'myGray.50'} placeholder={'使用量查询地址'} />
       </>

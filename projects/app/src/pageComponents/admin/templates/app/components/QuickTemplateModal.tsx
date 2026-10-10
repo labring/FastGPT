@@ -1,3 +1,4 @@
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Button, Checkbox, Flex, Grid, HStack } from '@chakra-ui/react';
 import { Box } from '@chakra-ui/react';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -21,6 +22,7 @@ const QuickTemplateModal = ({
   templates: AppTemplateSchemaType[];
   refreshTemplates: () => void;
 }) => {
+  const { t } = useSafeTranslation();
   const [currentAppType, setCurrentAppType] = useState<string>(AppTypeEnum.workflow);
   const [searchText, setSearchText] = useState<string>('');
 
@@ -71,7 +73,7 @@ const QuickTemplateModal = ({
       footer={
         <>
           <Button onClick={onClose} variant={'whiteBase'}>
-            取消
+            {t('admin:cancel')}
           </Button>
           <Button
             isLoading={loading}
@@ -79,7 +81,7 @@ const QuickTemplateModal = ({
               await updateQuickTemplate(Object.values(selectedTemplateIds).flat());
             }}
           >
-            保存
+            {t('admin:save')}
           </Button>
         </>
       }
@@ -87,9 +89,17 @@ const QuickTemplateModal = ({
       <FillRowTabs
         flexShrink={0}
         list={[
-          { label: '工作流', value: AppTypeEnum.workflow, icon: 'core/app/type/workflow' },
-          { label: '对话 Agent', value: AppTypeEnum.simple, icon: 'core/app/type/simple' },
-          { label: '工作流工具', value: AppTypeEnum.workflowTool, icon: 'core/app/type/plugin' }
+          {
+            label: t('admin:workflow_short'),
+            value: AppTypeEnum.workflow,
+            icon: 'core/app/type/workflow'
+          },
+          { label: t('admin:chat_agent'), value: AppTypeEnum.simple, icon: 'core/app/type/simple' },
+          {
+            label: t('admin:workflow_tool'),
+            value: AppTypeEnum.workflowTool,
+            icon: 'core/app/type/plugin'
+          }
         ]}
         value={currentAppType}
         onChange={setCurrentAppType}

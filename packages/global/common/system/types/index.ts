@@ -89,7 +89,7 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .optional()
     .meta({ description: '绑定通知联系方式列表' }),
   mcpServerProxyEndpoint: z.string().optional().meta({
-    description: 'MCP SSE 代理地址，运行时配置以环境变量 SSE_MCP_SERVER_PROXY_ENDPOINT 为准'
+    description: 'MCP SSE 代理地址，运行时以子服务配置 mcp.sseProxyUrl 为准'
   }),
 
   chineseRedirectUrl: z.string().optional().meta({ description: '中国大陆地区访问重定向跳转地址' }),
@@ -339,11 +339,6 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     })
     .optional()
     .meta({ description: '自定义独立域名绑定与 SSL 证书配置' }),
-
-  ip_whitelist: z
-    .string()
-    .optional()
-    .meta({ description: '系统访问限制的 IP 白名单列表（逗号分隔）' }),
 
   // tmp
   agentSandboxFree: z

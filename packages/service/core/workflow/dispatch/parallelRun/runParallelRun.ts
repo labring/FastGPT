@@ -48,15 +48,17 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
     return Promise.reject('Input value is not an array');
   }
 
-  const maxLength = serviceEnv.WORKFLOW_MAX_LOOP_TIMES;
+  const maxLength =
+    global.systemInstanceConfig?.performance?.workflow?.maxLoopTimes ??
+    serviceEnv.WORKFLOW_MAX_LOOP_TIMES;
   if (loopInputArray.length > maxLength) {
     return Promise.reject(`Input array length cannot be greater than ${maxLength}`);
   }
 
-  const concurrency = clampParallelConcurrency(
-    userConcurrency,
-    serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY
-  );
+  const maxConcurrency =
+    global.systemInstanceConfig?.performance?.workflow?.parallelMaxConcurrency ??
+    serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY;
+  const concurrency = clampParallelConcurrency(userConcurrency, maxConcurrency);
 
   const maxRetryAttempts = clampParallelRetryTimes(userRetryTimes);
   const attemptResults: ParallelTaskResult[] = [];

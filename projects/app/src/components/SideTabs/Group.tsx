@@ -11,7 +11,7 @@ import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 export type GroupTab<ValueType = string> = {
   value: ValueType;
   label: string;
-  icon: string;
+  icon?: string;
   children?: GroupTab<ValueType>[];
 };
 
@@ -161,7 +161,7 @@ const SideTabsGroup = <ValueType = string,>({
                 onChange(item.value);
               }}
             >
-              <MyIcon mr={2} name={item.icon as IconNameType} w={'20px'} />
+              {item.icon && <MyIcon mr={2} name={item.icon as IconNameType} w={'20px'} />}
               {item.label}
             </Flex>
           );
@@ -187,12 +187,14 @@ const SideTabsGroup = <ValueType = string,>({
               }}
               onClick={() => toggleExpand(item.value)}
             >
-              <MyIcon
-                mr={2}
-                name={item.icon as IconNameType}
-                w={'20px'}
-                color={isGroupActive ? 'primary.600' : undefined}
-              />
+              {item.icon && (
+                <MyIcon
+                  mr={2}
+                  name={item.icon as IconNameType}
+                  w={'20px'}
+                  color={isGroupActive ? 'primary.600' : undefined}
+                />
+              )}
               <Box flex={1}>{item.label}</Box>
               <MyIcon
                 name={isExpanded ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
@@ -207,7 +209,7 @@ const SideTabsGroup = <ValueType = string,>({
                     key={child.value as string}
                     py={1.5}
                     borderRadius={'md'}
-                    pl={6}
+                    pl={child.icon ? 6 : item.icon ? 10 : 3}
                     pr={3}
                     mb={0.5}
                     fontWeight={'medium'}
@@ -231,7 +233,7 @@ const SideTabsGroup = <ValueType = string,>({
                       onChange(child.value);
                     }}
                   >
-                    <MyIcon mr={2} name={child.icon as IconNameType} w={'18px'} />
+                    {child.icon && <MyIcon mr={2} name={child.icon as IconNameType} w={'18px'} />}
                     {child.label}
                   </Flex>
                 ))}

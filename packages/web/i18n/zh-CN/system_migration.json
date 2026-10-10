@@ -117,5 +117,16 @@
   "migrations.20261009_migrate_dataset_rebuild_status.result": "迁移完成，剩余旧状态 {{remainingCount}} 条。",
   "migrations.20261009_migrate_dataset_rebuild_status.datas": "迁移旧重建标记",
   "migrations.20261009_migrate_dataset_rebuild_status.trainings": "恢复重建任务状态",
-  "migrations.20261009_migrate_dataset_rebuild_status.validation": "校验迁移结果"
+  "migrations.20261009_migrate_dataset_rebuild_status.validation": "校验迁移结果",
+  "migrations.20260928_migrate_instance_configs.name": "迁移实例配置到新集合",
+  "migrations.20260928_migrate_instance_configs.description": "将旧 systemConfigs 集合与 DB 类环境变量迁移至 system_instance_configs 单文档模型，迁移成功前节点不进入就绪状态。",
+  "migrations.20260928_migrate_instance_configs.inspect": "检查旧配置来源",
+  "migrations.20260928_migrate_instance_configs.migrate": "写入实例配置",
+  "migrations.20260928_migrate_instance_configs.validate": "校验迁移结果",
+  "migrations.20260928_migrate_instance_configs.result": "已迁移 {{migratedDomainCount}} 个配置域到新集合。",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.name": "清理实例配置废弃字段",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.description": "移除已由环境变量承载或不再使用的实例配置字段，保证新 Schema 可以正常解析全部 Domain。",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.result": "已扫描 {{scannedDocuments}} 个配置文档，清理 {{updatedDomains}} 个 Domain 的 {{removedFieldCount}} 个废弃字段。",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.cleanup": "清理废弃字段",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.validation": "校验清理结果"
 }

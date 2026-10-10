@@ -5,7 +5,9 @@ import { FastGPTProUrl } from '../constants';
 
 export const getFastGPTConfigFromDB = async (): Promise<{
   fastgptConfig: FastGPTConfigFileType;
+  fastgptConfigTime?: number;
   licenseData?: LicenseDataType;
+  licenseUpdateTime?: number;
 }> => {
   if (!FastGPTProUrl) {
     return {
@@ -33,16 +35,18 @@ export const getFastGPTConfigFromDB = async (): Promise<{
   // 是否按商业版启用由调用方用 getLicenseStatus / isLicenseActive 判定。
   const licenseData = licenseConfig?.value?.data as LicenseDataType | undefined;
 
-  const fastgptConfigTime = fastgptConfig?.createTime.getTime().toString();
-  const licenseConfigTime = licenseConfig?.createTime.getTime().toString();
-  // 利用配置文件的创建时间（更新时间）来做缓存，如果前端命中缓存，则不需要再返回配置文件
-  global.systemInitBufferId = fastgptConfigTime
-    ? `${fastgptConfigTime}-${licenseConfigTime}`
+  const fastgptConfigTime = fastgptConfig?.createTime
+    ? new Date(fastgptConfig.createTime).getTime()
+    : undefined;
+  const licenseUpdateTime = licenseConfig?.createTime
+    ? new Date(licenseConfig.createTime).getTime()
     : undefined;
 
   return {
     fastgptConfig: config as FastGPTConfigFileType,
-    licenseData
+    fastgptConfigTime,
+    licenseData,
+    licenseUpdateTime
   };
 };
 
