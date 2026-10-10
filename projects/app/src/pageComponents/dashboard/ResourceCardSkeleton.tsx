@@ -15,31 +15,31 @@ const ResourceCardSkeleton = () => (
     display="flex"
     flexDirection="column"
     h="138px"
-    py="12px"
-    px="20px"
+    py={3}
+    px={5}
     border="1px solid"
     borderColor="myGray.200"
     borderRadius="10px"
     bg="white"
     overflow="hidden"
   >
-    <Flex align="center" gap="8px" h="32px">
-      <Skeleton {...skeletonProps} flexShrink={0} w="24px" h="24px" />
-      <Skeleton {...skeletonProps} flex="1" h="16px" minW={0} />
-      <Skeleton {...skeletonProps} flexShrink={0} w="55px" h="16px" />
+    <Flex align="center" gap={2} h={8}>
+      <Skeleton {...skeletonProps} flexShrink={0} w={6} h={6} />
+      <Skeleton {...skeletonProps} flex={1} h={4} minW={0} />
+      <Skeleton {...skeletonProps} flexShrink={0} w="55px" h={4} />
     </Flex>
-    <Skeleton {...skeletonProps} mt="12px" w="50%" h="16px" />
-    <Flex mt="auto" align="center" gap="12px" h="24px">
-      <Flex align="center" gap="6px" w="85px" flexShrink={0}>
+    <Skeleton {...skeletonProps} mt={3} w="50%" h={4} />
+    <Flex mt="auto" align="center" gap={3} h={6}>
+      <Flex align="center" gap={1.5} w="85px" flexShrink={0}>
         <SkeletonCircle
           size="20px"
           startColor={skeletonProps.startColor}
           endColor={skeletonProps.endColor}
         />
-        <Skeleton {...skeletonProps} flex="1" h="16px" minW={0} />
+        <Skeleton {...skeletonProps} flex={1} h={4} minW={0} />
       </Flex>
-      <Skeleton {...skeletonProps} flexShrink={0} w="59px" h="16px" />
-      <Skeleton {...skeletonProps} flex="1" h="16px" minW={0} />
+      <Skeleton {...skeletonProps} flexShrink={0} w="59px" h={4} />
+      <Skeleton {...skeletonProps} flex={1} h={4} minW={0} />
     </Flex>
   </Box>
 );
