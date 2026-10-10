@@ -39,8 +39,17 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
   });
 
   const parsedOption = useMemo(() => {
+    const trimmed = (code || '').trim();
+    // 快速边界检查：在大模型流式打字输出期间，如果首尾大括号尚未闭合，直接视为未就绪，避免抛出 JSON5 语法错误
+    if (!trimmed || !trimmed.startsWith('{') || !trimmed.endsWith('}')) {
+      return null;
+    }
+
     try {
-      const userOption = json5.parse(code.trim());
+      const userOption = json5.parse(trimmed);
+      if (!userOption || typeof userOption !== 'object') {
+        return null;
+      }
       // 关闭 ECharts 内部自带的 toolbox 工具栏，由外部统一 Chakra UI 操作栏接管
       return {
         ...userOption,
@@ -48,8 +57,8 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
           show: false
         }
       };
-    } catch (error) {
-      console.error('Failed to parse ECharts options:', error);
+    } catch {
+      // 流式输出期间中间语法不完整属于正常现象，静默返回 null 进入占位态，避免触发控制台或 Dev Overlay 报错
       return null;
     }
   }, [code]);
@@ -63,8 +72,8 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
         eChart.current = module.init(chartRef.current);
         eChart.current.setOption(parsedOption);
       });
-    } catch (error) {
-      console.error('ECharts render failed:', error);
+    } catch {
+      // 图表内部渲染异常静默处理
     }
 
     findMarkdownDom();
@@ -108,8 +117,8 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-    } catch (error) {
-      console.error('Failed to export ECharts image:', error);
+    } catch {
+      // 导出异常处理
     }
   }, []);
 
@@ -129,56 +138,65 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
         }
       }}
     >
-      {/* 与 Mermaid 组件风格一致的右上角悬浮操作栏 */}
-      <HStack
-        className="echarts-action-bar"
-        spacing={1}
-        position={'absolute'}
-        top={2}
-        right={2}
-        zIndex={2}
-        opacity={0}
-        pointerEvents={'none'}
-        transition={'opacity 0.2s'}
-        bg={'rgba(255, 255, 255, 0.9)'}
-        _dark={{
-          bg: 'rgba(30, 36, 46, 0.9)'
-        }}
-        backdropFilter={'blur(4px)'}
-        p={1}
-        borderRadius={'md'}
-        boxShadow={'0 1px 3px rgba(0, 0, 0, 0.1)'}
-        border={'1px solid'}
-        borderColor={'myGray.200'}
-      >
-        <MyTooltip label={t('common:Copy')} placement="top" hasArrow>
-          <IconButton
-            icon={<MyIcon name="copy" w={'13px'} />}
-            size={'xs'}
-            variant={'ghost'}
-            color={'myGray.600'}
-            _hover={{ color: 'primary.600', bg: 'myGray.100' }}
-            onClick={handleCopyCode}
-            aria-label={t('common:Copy')}
-          />
-        </MyTooltip>
-        <MyTooltip label={t('common:download_image')} placement="top" hasArrow>
-          <IconButton
-            icon={<MyIcon name="image" w={'14px'} h={'14px'} />}
-            size={'xs'}
-            variant={'ghost'}
-            color={'myGray.600'}
-            _hover={{ color: 'primary.600', bg: 'myGray.100' }}
-            onClick={handleExportPng}
-            aria-label={t('common:download_image')}
-          />
-        </MyTooltip>
-      </HStack>
+      {/* 仅在图表配置就绪时展示右上角悬浮操作栏 */}
+      {parsedOption && (
+        <HStack
+          className="echarts-action-bar"
+          spacing={1}
+          position={'absolute'}
+          top={2}
+          right={2}
+          zIndex={2}
+          opacity={0}
+          pointerEvents={'none'}
+          transition={'opacity 0.2s'}
+          bg={'rgba(255, 255, 255, 0.9)'}
+          _dark={{
+            bg: 'rgba(30, 36, 46, 0.9)'
+          }}
+          backdropFilter={'blur(4px)'}
+          p={1}
+          borderRadius={'md'}
+          boxShadow={'0 1px 3px rgba(0, 0, 0, 0.1)'}
+          border={'1px solid'}
+          borderColor={'myGray.200'}
+        >
+          <MyTooltip label={t('common:Copy')} placement="top" hasArrow>
+            <IconButton
+              icon={<MyIcon name="copy" w={'13px'} />}
+              size={'xs'}
+              variant={'ghost'}
+              color={'myGray.600'}
+              _hover={{ color: 'primary.600', bg: 'myGray.100' }}
+              onClick={handleCopyCode}
+              aria-label={t('common:Copy')}
+            />
+          </MyTooltip>
+          <MyTooltip label={t('common:download_image')} placement="top" hasArrow>
+            <IconButton
+              icon={<MyIcon name="image" w={'14px'} h={'14px'} />}
+              size={'xs'}
+              variant={'ghost'}
+              color={'myGray.600'}
+              _hover={{ color: 'primary.600', bg: 'myGray.100' }}
+              onClick={handleExportPng}
+              aria-label={t('common:download_image')}
+            />
+          </MyTooltip>
+        </HStack>
+      )}
 
       <Box overflowX={'auto'} p={2}>
-        <Box h={'400px'} w={`${width}px`} ref={chartRef} />
-        {!parsedOption && (
-          <Skeleton isLoaded={true} fadeDuration={2} h={'400px'} w={`${width}px`} />
+        {parsedOption ? (
+          <Box h={'400px'} w={`${width}px`} ref={chartRef} />
+        ) : (
+          <Skeleton
+            isLoaded={false}
+            fadeDuration={2}
+            h={'400px'}
+            w={`${width}px`}
+            borderRadius={'md'}
+          />
         )}
       </Box>
     </Box>
