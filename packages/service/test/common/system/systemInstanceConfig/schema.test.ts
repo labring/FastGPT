@@ -7,14 +7,14 @@ describe('MongoSystemInstanceConfig schema', () => {
   });
 
   it('uses domain-keyed documents with sparse overrides', () => {
-    expect(MongoSystemInstanceConfig.schema.path('_id')?.options.immutable).toBe(true);
+    expect(MongoSystemInstanceConfig.schema.path('domain')?.options.immutable).toBe(true);
     expect(MongoSystemInstanceConfig.schema.path('overrides')).toBeDefined();
     expect(MongoSystemInstanceConfig.schema.path('revision')).toBeDefined();
   });
 
   it('validates a valid sparse overrides payload for a domain', () => {
     const document = new MongoSystemInstanceConfig({
-      _id: 'site',
+      domain: 'site',
       overrides: {
         name: 'FastGPT'
       }
@@ -25,7 +25,7 @@ describe('MongoSystemInstanceConfig schema', () => {
 
   it('rejects overrides containing unknown fields for the domain', () => {
     const document = new MongoSystemInstanceConfig({
-      _id: 'site',
+      domain: 'site',
       overrides: {
         unknownSiteField: 'invalid'
       }
@@ -36,7 +36,7 @@ describe('MongoSystemInstanceConfig schema', () => {
 
   it('rejects overrides that violate cross-field constraints on effective config', () => {
     const document = new MongoSystemInstanceConfig({
-      _id: 'performance',
+      domain: 'performance',
       overrides: {
         workflow: {
           maxLoopTimes: 5 // parallelMaxConcurrency default is 10 > 5!
@@ -49,10 +49,10 @@ describe('MongoSystemInstanceConfig schema', () => {
 
   it('rejects a document with a non-domain identifier', () => {
     const document = new MongoSystemInstanceConfig({
-      _id: 'not-a-valid-domain',
+      domain: 'not-a-valid-domain',
       overrides: {}
     });
 
-    expect(document.validateSync()?.errors._id).toBeDefined();
+    expect(document.validateSync()?.errors.domain).toBeDefined();
   });
 });
