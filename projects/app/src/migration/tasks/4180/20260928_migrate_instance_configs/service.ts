@@ -736,7 +736,10 @@ const flattenOverridePaths = (value: Record<string, unknown>, prefix: string[] =
  */
 export const inspectInstanceConfigMigration = async () => {
   const [existingDocs, legacyFastgpt, legacyPro] = await Promise.all([
-    MongoSystemInstanceConfig.find({}, { _id: 1, overrides: 1, explicitDefaultPaths: 1 }).lean(),
+    MongoSystemInstanceConfig.find(
+      {},
+      { _id: 1, domain: 1, overrides: 1, explicitDefaultPaths: 1 }
+    ).lean(),
     MongoSystemConfigs.findOne({ type: SystemConfigsTypeEnum.fastgpt })
       .sort({ createTime: -1 })
       .lean(),
@@ -756,7 +759,9 @@ export const inspectInstanceConfigMigration = async () => {
     overrides: rawOverrides,
     warnings: schemaSanitizedWarnings
   });
-  const existingDomains = new Set<string>(existingDocs.map((doc) => String(doc._id)));
+  const existingDomains = new Set<string>(
+    existingDocs.map((doc) => String((doc as any).domain ?? doc._id))
+  );
   const missingDomainCount = SYSTEM_INSTANCE_CONFIG_DOMAINS.filter(
     (domain) => !!overrides[domain] && !existingDomains.has(domain)
   ).length;
@@ -767,7 +772,7 @@ export const inspectInstanceConfigMigration = async () => {
     { overrides: Record<string, unknown>; explicitDefaultPaths: Set<string> }
   >(
     existingDocs.map((doc) => [
-      String(doc._id),
+      String((doc as any).domain ?? doc._id),
       {
         overrides: (doc.overrides ?? {}) as Record<string, unknown>,
         explicitDefaultPaths: new Set(
@@ -868,7 +873,7 @@ export const applyInstanceConfigMigration = async ({
     targetOverrides: Record<string, unknown>
   ): Promise<string[]> => {
     for (let attempt = 0; attempt <= MAX_BACKFILL_CONFLICT_RETRIES; attempt++) {
-      const doc = await MongoSystemInstanceConfig.findById(domain).lean();
+      const doc = await MongoSystemInstanceConfig.findOne({ domain }).lean();
       // 文档被并发删除：本次不处理，交给下一轮迁移补齐
       if (!doc) return [];
 
@@ -914,7 +919,7 @@ export const applyInstanceConfigMigration = async ({
 
       const mergedOverrides = mergeMissingOverrides(existingOverrides, candidateMissing);
       const updated = await MongoSystemInstanceConfig.updateOne(
-        { _id: domain, revision: doc.revision },
+        { domain, revision: doc.revision },
         { $set: { overrides: mergedOverrides, updatedAt: new Date() }, $inc: { revision: 1 } },
         { runValidators: true }
       );
@@ -933,9 +938,10 @@ export const applyInstanceConfigMigration = async ({
     resolveDomainEffectiveConfig(domain, targetOverrides);
 
     const inserted = await MongoSystemInstanceConfig.updateOne(
-      { _id: domain },
+      { domain },
       {
         $setOnInsert: {
+          domain,
           schemaVersion: SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
           revision: 1,
           overrides: targetOverrides,
