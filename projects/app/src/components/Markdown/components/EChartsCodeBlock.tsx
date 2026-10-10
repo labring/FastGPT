@@ -122,6 +122,24 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
     }
   }, []);
 
+  // 图表未就绪或流式打字阶段：骨架屏完全填满外层卡片容器，杜绝局部或尺寸跳动
+  if (!parsedOption) {
+    return (
+      <Box
+        my={3}
+        h={'400px'}
+        w={'100%'}
+        borderRadius={'md'}
+        overflow={'hidden'}
+        border={'1px solid'}
+        borderColor={'myGray.200'}
+        bg={'white'}
+      >
+        <Skeleton isLoaded={false} h={'100%'} w={'100%'} borderRadius={'md'} />
+      </Box>
+    );
+  }
+
   return (
     <Box
       position={'relative'}
@@ -138,66 +156,54 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
         }
       }}
     >
-      {/* 仅在图表配置就绪时展示右上角悬浮操作栏 */}
-      {parsedOption && (
-        <HStack
-          className="echarts-action-bar"
-          spacing={1}
-          position={'absolute'}
-          top={2}
-          right={2}
-          zIndex={2}
-          opacity={0}
-          pointerEvents={'none'}
-          transition={'opacity 0.2s'}
-          bg={'rgba(255, 255, 255, 0.9)'}
-          _dark={{
-            bg: 'rgba(30, 36, 46, 0.9)'
-          }}
-          backdropFilter={'blur(4px)'}
-          p={1}
-          borderRadius={'md'}
-          boxShadow={'0 1px 3px rgba(0, 0, 0, 0.1)'}
-          border={'1px solid'}
-          borderColor={'myGray.200'}
-        >
-          <MyTooltip label={t('common:Copy')} placement="top" hasArrow>
-            <IconButton
-              icon={<MyIcon name="copy" w={'13px'} />}
-              size={'xs'}
-              variant={'ghost'}
-              color={'myGray.600'}
-              _hover={{ color: 'primary.600', bg: 'myGray.100' }}
-              onClick={handleCopyCode}
-              aria-label={t('common:Copy')}
-            />
-          </MyTooltip>
-          <MyTooltip label={t('common:download_image')} placement="top" hasArrow>
-            <IconButton
-              icon={<MyIcon name="image" w={'14px'} h={'14px'} />}
-              size={'xs'}
-              variant={'ghost'}
-              color={'myGray.600'}
-              _hover={{ color: 'primary.600', bg: 'myGray.100' }}
-              onClick={handleExportPng}
-              aria-label={t('common:download_image')}
-            />
-          </MyTooltip>
-        </HStack>
-      )}
+      {/* 悬浮操作栏 */}
+      <HStack
+        className="echarts-action-bar"
+        spacing={1}
+        position={'absolute'}
+        top={2}
+        right={2}
+        zIndex={2}
+        opacity={0}
+        pointerEvents={'none'}
+        transition={'opacity 0.2s'}
+        bg={'rgba(255, 255, 255, 0.9)'}
+        _dark={{
+          bg: 'rgba(30, 36, 46, 0.9)'
+        }}
+        backdropFilter={'blur(4px)'}
+        p={1}
+        borderRadius={'md'}
+        boxShadow={'0 1px 3px rgba(0, 0, 0, 0.1)'}
+        border={'1px solid'}
+        borderColor={'myGray.200'}
+      >
+        <MyTooltip label={t('common:Copy')} placement="top" hasArrow>
+          <IconButton
+            icon={<MyIcon name="copy" w={'13px'} />}
+            size={'xs'}
+            variant={'ghost'}
+            color={'myGray.600'}
+            _hover={{ color: 'primary.600', bg: 'myGray.100' }}
+            onClick={handleCopyCode}
+            aria-label={t('common:Copy')}
+          />
+        </MyTooltip>
+        <MyTooltip label={t('common:download_image')} placement="top" hasArrow>
+          <IconButton
+            icon={<MyIcon name="image" w={'14px'} h={'14px'} />}
+            size={'xs'}
+            variant={'ghost'}
+            color={'myGray.600'}
+            _hover={{ color: 'primary.600', bg: 'myGray.100' }}
+            onClick={handleExportPng}
+            aria-label={t('common:download_image')}
+          />
+        </MyTooltip>
+      </HStack>
 
       <Box overflowX={'auto'} p={2}>
-        {parsedOption ? (
-          <Box h={'400px'} w={`${width}px`} ref={chartRef} />
-        ) : (
-          <Skeleton
-            isLoaded={false}
-            fadeDuration={2}
-            h={'400px'}
-            w={`${width}px`}
-            borderRadius={'md'}
-          />
-        )}
+        <Box h={'400px'} w={`${width}px`} ref={chartRef} />
       </Box>
     </Box>
   );
