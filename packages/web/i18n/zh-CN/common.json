@@ -1317,6 +1317,6 @@
   "will_delete": "将删除",
   "confirm_delete": "确认删除",
   "batch_partial_failed": "部分选中项操作失败",
-  "related_count": "关联应用",
+  "related_count": "关联",
   "related_apps_hidden": "其余 {{count}} 个应用无权限查看"
 }
