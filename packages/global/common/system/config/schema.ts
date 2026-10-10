@@ -222,6 +222,9 @@ export const SystemInstanceDomainDocumentSchema = z.strictObject({
     .default(SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION),
   revision: nonNegativeInteger(0),
   overrides: z.record(z.string(), z.unknown()).default({}),
+  // 使用方明确保存为「内置默认值」而被剪枝的叶子路径（dotted）。
+  // 用于区分「从未配置」与「明确清空/回到默认值」：迁移回填只能补前者。
+  explicitDefaultPaths: z.array(z.string().min(1)).optional(),
   updatedBy: SystemInstanceConfigUpdatedBySchema.optional(),
   createdAt: z.date().default(() => new Date()),
   updatedAt: z.date().default(() => new Date())

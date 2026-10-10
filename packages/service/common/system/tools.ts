@@ -32,15 +32,17 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   config.feConfigs.show_agent_sandbox = hasAgentSandboxConfig();
   config.feConfigs.show_agent_sandbox_free_tip =
     serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP || !!config.feConfigs.agentSandboxFree;
-  config.feConfigs.uploadFileMaxSize = serviceEnv.UPLOAD_FILE_MAX_SIZE;
-  config.feConfigs.uploadFileMaxAmount = serviceEnv.UPLOAD_FILE_MAX_AMOUNT;
+  config.feConfigs.uploadFileMaxSize =
+    config.feConfigs.uploadFileMaxSize ?? serviceEnv.UPLOAD_FILE_MAX_SIZE;
+  config.feConfigs.uploadFileMaxAmount =
+    config.feConfigs.uploadFileMaxAmount ?? serviceEnv.UPLOAD_FILE_MAX_AMOUNT;
   config.feConfigs.limit = {
     ...config.feConfigs.limit,
     agentSandboxMaxEditDebug: serviceEnv.AGENT_SANDBOX_MAX_EDIT_DEBUG,
     agentSandboxArchiveMaxBytes: getAgentSandboxArchiveMaxBytes(),
     skillSandboxMaxBytes: getAgentSandboxSkillMaxBytes(),
     agentSandboxMaxFileBytes: getAgentSandboxMaxFileBytes(),
-    maxFolderDepth: serviceEnv.MAX_FOLDER_DEPTH
+    maxFolderDepth: config.feConfigs.limit?.maxFolderDepth ?? serviceEnv.MAX_FOLDER_DEPTH
   };
 
   const parseResult = FastGPTConfigFileSchema.safeParse(config);

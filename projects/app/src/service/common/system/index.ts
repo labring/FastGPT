@@ -43,27 +43,6 @@ import { buildAuthoritativeSystemEnv } from './buildAuthoritativeSystemEnv';
 
 const logger = getLogger(LogCategories.SYSTEM);
 const pluginFeaturesProbeTimeoutMs = 3000;
-const defaultOpenSourceLoginGuideDocUrl =
-  'https://doc.fastgpt.io/zh-CN/guide/version/cloud/faq#%E8%B4%A6%E5%8F%B7%E7%99%BB%E5%BD%95%E9%97%AE%E9%A2%98';
-
-/**
- * 解析环境变量注入的全站脚本列表（JSON 字符串）。
- * 格式非法时仅记录告警并返回空数组，避免一个配置错误导致全站不可用。
- */
-function parseEnvScripts(raw?: string): FastGPTFeConfigsType['scripts'] {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) throw new Error('SCRIPTS must be a JSON array');
-    return parsed.filter(
-      (item): item is Record<string, string> =>
-        typeof item === 'object' && item !== null && !Array.isArray(item)
-    );
-  } catch (error) {
-    logger.warn('Invalid SCRIPTS env: expected JSON array, ignored', { error });
-    return [];
-  }
-}
 
 /* Init global variables */
 export function initGlobalVariables() {
@@ -161,8 +140,24 @@ async function getPluginRemoteDebugEnabled() {
   }
 }
 
-export async function initSystemConfig() {
-  const [{ fastgptConfig, licenseData }, pluginRemoteDebug, instanceConfig] = await Promise.all([
+let initConfigQueue: Promise<void> = Promise.resolve();
+
+/**
+ * 重新加载并应用全站系统配置。
+ * 使用串行队列排队执行，确保并发重载按序完成，避免较早的重载在外部 I/O 慢时逆序覆写较新的运行时状态。
+ */
+export function initSystemConfig(): Promise<void> {
+  const current = initConfigQueue.then(() => doInitSystemConfig());
+  initConfigQueue = current.catch(() => {});
+  return current;
+}
+
+async function doInitSystemConfig() {
+  const [
+    { fastgptConfig, fastgptConfigTime, licenseData, licenseUpdateTime },
+    pluginRemoteDebug,
+    instanceConfig
+  ] = await Promise.all([
     getFastGPTConfigFromDB(),
     getPluginRemoteDebugEnabled(),
     reloadSystemInstanceConfig()
@@ -185,7 +180,7 @@ export async function initSystemConfig() {
       loginGuideDocUrl: instanceConfig.site.loginGuideDocUrl,
       concatMd: instanceConfig.site.concatMd,
       appTemplateCourse: instanceConfig.site.appTemplateCourse,
-      marketplaceUrl: instanceConfig.site.marketplaceUrl || appEnv.MARKETPLACE_URL,
+      marketplaceUrl: instanceConfig.site.marketplaceUrl,
       navbarItems: instanceConfig.site.navbarItems,
 
       wecomLoginAutoRedirect: instanceConfig.auth.wecomLoginAutoRedirect,
@@ -208,7 +203,7 @@ export async function initSystemConfig() {
 
       show_coupon: instanceConfig.commercial.showCoupon,
       show_discount_coupon: instanceConfig.commercial.showDiscountCoupon,
-      payFormUrl: instanceConfig.commercial.payFormUrl || appEnv.PAY_FORM_URL || '',
+      payFormUrl: instanceConfig.commercial.payFormUrl,
       agentSandboxFree: instanceConfig.commercial.agentSandboxFreeTip,
 
       uploadFileMaxSize: instanceConfig.resource.uploadFileMaxSize,
@@ -217,14 +212,10 @@ export async function initSystemConfig() {
       fileUrlWhitelist: instanceConfig.security.fileUrlWhitelist,
       externalProviderWorkflowVariables: instanceConfig.providers.externalProviderWorkflowVariables,
 
-      // 自定义域名与脚本：优先使用实例配置，未设置时回退环境变量
-      customApiDomain: instanceConfig.site.customApiDomain || appEnv.CUSTOM_API_DOMAIN || '',
-      customSharePageDomain:
-        instanceConfig.site.customSharePageDomain || appEnv.CUSTOM_SHARE_PAGE_DOMAIN || '',
-      scripts:
-        instanceConfig.site.scripts && instanceConfig.site.scripts.length > 0
-          ? instanceConfig.site.scripts
-          : parseEnvScripts(appEnv.SCRIPTS),
+      // 权威数据源：实例配置优先（含已迁入的 ENV 初值及管理员显式清空的空值）
+      customApiDomain: instanceConfig.site.customApiDomain,
+      customSharePageDomain: instanceConfig.site.customSharePageDomain,
+      scripts: instanceConfig.site.scripts,
       mcpServerProxyEndpoint: instanceConfig.subservice.mcp.sseProxyUrl,
       limit: {
         ...defaultFeConfigs.limit,
@@ -246,10 +237,7 @@ export async function initSystemConfig() {
       // 上游新增的强制展示免费标签开关：显式开启时盖过实例配置的免费期判定
       show_agent_sandbox_free_tip:
         appEnv.AGENT_SANDBOX_SHOW_FREE_TIP || instanceConfig.commercial.agentSandboxFreeTip,
-      agentSandboxProxyUrl:
-        instanceConfig.subservice.agentSandbox.proxy.wsUrl ||
-        serviceEnv.AGENT_SANDBOX_PROXY_URL ||
-        ''
+      agentSandboxProxyUrl: instanceConfig.subservice.agentSandbox.proxy.wsUrl
     },
     // 权威数据源：实例配置派生值盖过旧库 systemEnv，旧库仅保留 schema 外扩展键
     systemEnv: buildAuthoritativeSystemEnv({
@@ -272,12 +260,11 @@ export async function initSystemConfig() {
   const { refreshLangfuseTracing } = await import('@fastgpt/service/common/langfuse');
   await refreshLangfuseTracing();
 
-  // 全部加载完成后统一设置确定性全局缓存标记，结合实例配置多域版本和授权版本
+  // 全部加载完成后统一设置确定性全局缓存标记，结合实例配置多域版本、实际授权版本和套餐版本
   global.systemInitBufferId = computeSystemInitBufferId({
     instanceVersionTag: getInstanceConfigVersionTag(),
-    licenseUpdateTime: licenseData?.expiredTime
-      ? new Date(licenseData.expiredTime).getTime()
-      : undefined
+    licenseUpdateTime,
+    subPlansUpdateTime: fastgptConfigTime
   });
 
   logger.info('System config loaded', {

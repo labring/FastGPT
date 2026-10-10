@@ -84,6 +84,13 @@ const systemInstanceConfigSchema = new Schema(
         message: 'Invalid overrides payload for domain'
       }
     },
+    // 使用方明确保存为「内置默认值」而被剪枝的叶子路径（dotted）：
+    // overrides 里缺失既可能是"从未配置"，也可能是"明确清空"，回填只能补前者
+    explicitDefaultPaths: {
+      type: [String],
+      required: true,
+      default: () => []
+    },
     updatedBy: {
       type: systemInstanceConfigUpdatedBySchema
     }

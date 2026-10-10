@@ -2,6 +2,7 @@ import { checkCsrf } from '@fastgpt/next/middle/csrf';
 import { parseAllowedOrigins, withNextCors } from '@fastgpt/next/middle/cors';
 import type { NextApiRequest, NextApiResponse } from '@fastgpt/next/type';
 import { createApiEntry, type ApiHandler } from '@fastgpt/service/common/http/entry';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
 import { serviceEnv } from '@fastgpt/service/env';
 
 type NextAPIOptions = {
@@ -19,13 +20,23 @@ export const NextAPI = (
     NextApiRequest,
     NextApiResponse
   >[];
-  const allowedOrigins = parseAllowedOrigins(serviceEnv.ALLOWED_ORIGINS);
 
-  /** 按接口声明顺序执行 CORS 和 CSRF；CSRF 校验自身负责判断请求是否适用。 */
+  /**
+   * 按接口声明顺序执行 CORS 和 CSRF。
+   * 优先读取实例配置（动态可配），未配置时回退 serviceEnv 初值；
+   * 每请求动态解析，保证 Admin 修改跨域或 CSRF 后立即生效。
+   */
   const beforeRequest = async (req: NextApiRequest, res: NextApiResponse) => {
+    const security = getSystemInstanceConfig().security;
+    const allowedOrigins =
+      security.allowedOrigins && security.allowedOrigins.length > 0
+        ? security.allowedOrigins
+        : parseAllowedOrigins(serviceEnv.ALLOWED_ORIGINS);
+
     await withNextCors({ req, res, allowedOrigins });
 
-    if (options.csrf !== false && serviceEnv.CSRF_ENABLED) {
+    const csrfEnabled = security.csrfEnabled ?? serviceEnv.CSRF_ENABLED;
+    if (options.csrf !== false && csrfEnabled) {
       await checkCsrf({ req, res });
     }
   };

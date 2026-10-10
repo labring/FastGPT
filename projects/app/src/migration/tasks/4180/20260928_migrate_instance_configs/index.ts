@@ -96,6 +96,22 @@ export const migrateInstanceConfigs = async (context: SystemMigrationContext) =>
     key: 'validate',
     status: SystemMigrationStatusEnum.running
   });
+
+  // 终验：重新跑一次 inspect。必须满足「全域落库且无未迁入缺口」，
+  // 否则说明存在未消解的冲突或部分写入失败，明确抛错失败，不能用空 validate 冒充成功。
+  const postInspection = await inspectInstanceConfigMigration();
+  if (postInspection.missingDomainCount > 0 || postInspection.pendingBackfillDomainCount > 0) {
+    const remaining = [
+      ...postInspection.pendingBackfillPaths,
+      ...(postInspection.missingDomainCount > 0
+        ? [`${postInspection.missingDomainCount} domains missing`]
+        : [])
+    ];
+    throw new Error(
+      `Instance config migration incomplete: ${remaining.join(', ')} failed to migrate`
+    );
+  }
+
   await context.reportProgress({
     key: 'validate',
     status: SystemMigrationStatusEnum.succeeded

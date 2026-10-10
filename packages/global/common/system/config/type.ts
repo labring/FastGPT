@@ -45,6 +45,8 @@ export type SystemInstanceDomainDocument<
   schemaVersion: number;
   revision: number;
   overrides: SystemInstanceDomainOverridesType<T>;
+  /** 使用方明确保存为内置默认值而被剪枝的叶子路径 */
+  explicitDefaultPaths?: string[];
   updatedBy?: SystemInstanceConfigUpdatedByType;
   createdAt: Date;
   updatedAt: Date;
