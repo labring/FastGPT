@@ -67,14 +67,8 @@ async function handler(
   });
 
   // 配置保存后，同步刷新全站运行时配置与前端缓存失效标志。
-  // 刷新失败不影响本次保存结果（DB 已落库，Mongo change stream / 重启会补偿），
-  // 但必须记录，否则运行时配置与 DB 不一致且无痕可查。
-  await initSystemConfig().catch((error) => {
-    logger.error('Failed to refresh runtime config after instance config update', {
-      domain,
-      error
-    });
-  });
+  // 必须成功应用才返回，失败向外抛错，保证保存成功与实际生效契约一致。
+  await initSystemConfig();
 
   // 更新完成后获取按版本过滤、脱敏后的生效数据作为响应返回
   const result = await getDomainConfigForAdmin(domain, edition);
