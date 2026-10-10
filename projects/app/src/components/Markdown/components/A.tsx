@@ -20,7 +20,7 @@ import React, { useMemo } from 'react';
 import { getQuoteData } from '@/web/core/dataset/api/data';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
-import Markdown from '.';
+import Markdown from '..';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import { isObjectId } from '@fastgpt/global/common/string/utils';
 import { isSafeHref } from '@fastgpt/global/common/string/url';

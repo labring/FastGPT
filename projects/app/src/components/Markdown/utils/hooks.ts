@@ -25,7 +25,7 @@ export const useMarkdownWidth = () => {
 
   useEffect(() => {
     findMarkdownDom();
-  }, [findMarkdownDom, screenWidth, Ref.current]);
+  }, [findMarkdownDom, screenWidth]);
 
   return {
     Ref,

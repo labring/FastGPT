@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex, HStack, IconButton } from '@chakra-ui/react';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useTranslation } from 'next-i18next';
@@ -40,9 +41,9 @@ export const codeLight: { [key: string]: React.CSSProperties } = {
     msHyphens: 'none',
     hyphens: 'none',
     padding: '1em',
-    margin: '.5em 0',
+    margin: '0',
     overflow: 'auto',
-    background: '#1e1e1e'
+    background: '#171923'
   },
   'code[class*=language-] ::selection': {
     textShadow: 'none',
@@ -64,7 +65,7 @@ export const codeLight: { [key: string]: React.CSSProperties } = {
     padding: '.1em .3em',
     borderRadius: '.3em',
     color: '#db4c69',
-    background: '#1e1e1e'
+    background: '#171923'
   },
   '.namespace': {
     opacity: '0.7'
@@ -284,6 +285,38 @@ export const codeLight: { [key: string]: React.CSSProperties } = {
   }
 };
 
+/**
+ * 语言名称格式化（首字母大写规范）
+ */
+const formatLanguageName = (lang?: string): string => {
+  if (!lang) return '';
+  const lower = lang.toLowerCase();
+  const specialMap: Record<string, string> = {
+    js: 'JavaScript',
+    javascript: 'JavaScript',
+    ts: 'TypeScript',
+    typescript: 'TypeScript',
+    jsx: 'JSX',
+    tsx: 'TSX',
+    html: 'HTML',
+    htm: 'HTML',
+    css: 'CSS',
+    json: 'JSON',
+    md: 'Markdown',
+    markdown: 'Markdown',
+    sql: 'SQL',
+    py: 'Python',
+    python: 'Python',
+    go: 'Go',
+    rust: 'Rust',
+    rs: 'Rust',
+    sh: 'Shell',
+    bash: 'Bash',
+    zsh: 'Zsh'
+  };
+  return specialMap[lower] || lang.charAt(0).toUpperCase() + lang.slice(1);
+};
+
 const CodeLight = ({
   children,
   className,
@@ -297,44 +330,140 @@ const CodeLight = ({
 }) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
+  const [isWrap, setIsWrap] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   if (codeBlock) {
+    const rawLanguage = match?.[1] || '';
     const codeBoxName = useMemo(() => {
       const input = match?.['input'] || '';
-      if (!input) return match?.[1];
+      if (!input) return formatLanguageName(rawLanguage);
 
       const splitInput = input.split('#');
-      return splitInput[1] || match?.[1];
-    }, [match]);
+      return splitInput[1] || formatLanguageName(rawLanguage);
+    }, [match, rawLanguage]);
+
+    const codeString = useMemo(() => String(children).replace(/&nbsp;/g, ' '), [children]);
+
+    const handleCopy = () => {
+      copyData(codeString);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    };
 
     return (
       <Box
         className="code-block-wrapper"
         my={3}
+        position={'relative'}
         borderRadius={'md'}
-        overflow={'overlay'}
         boxShadow={
           '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 1px 2px 0px rgba(19, 51, 107, 0.05)'
         }
       >
+        {/* 吸顶头部：滚动时若代码块仍在可视区内，自动吸附在视口顶部 */}
         <Flex
           className="code-header"
+          position={'sticky'}
+          top={0}
+          zIndex={2}
           py={2}
-          px={5}
-          bg={'myGray.600'}
+          px={4}
+          bg={'#2d323b'}
           color={'white'}
           fontSize={'sm'}
           userSelect={'none'}
+          alignItems={'center'}
+          borderTopRadius={'md'}
+          borderBottom={'1px solid'}
+          borderColor={'rgba(255, 255, 255, 0.08)'}
         >
-          <Box flex={1}>{codeBoxName}</Box>
-          <Flex cursor={'pointer'} onClick={() => copyData(String(children))} alignItems={'center'}>
-            <Icon name={'copy'} width={15} height={15}></Icon>
-            <Box ml={1}>{t('common:Copy')}</Box>
+          {/* 左侧：代码图标与语言名称 */}
+          <Flex
+            flex={1}
+            alignItems={'center'}
+            fontWeight={500}
+            fontSize={'xs'}
+            color={'myGray.200'}
+          >
+            <Icon name={'code'} width={'14px'} height={'14px'} mr={2} color={'myGray.300'} />
+            <Box>{codeBoxName}</Box>
           </Flex>
+
+          {/* 右侧：自动换行切换与复制代码操作图标 */}
+          <HStack spacing={1}>
+            <MyTooltip
+              label={isWrap ? t('common:disable_word_wrap') : t('common:enable_word_wrap')}
+              placement="top"
+              hasArrow
+            >
+              <IconButton
+                icon={
+                  <Icon
+                    name={isWrap ? 'common/wrapText' : 'common/noWrapText'}
+                    width={'14px'}
+                    height={'14px'}
+                  />
+                }
+                size={'xs'}
+                variant={'ghost'}
+                color={'rgba(255, 255, 255, 0.75)'}
+                _hover={{
+                  color: 'white',
+                  bg: 'rgba(255, 255, 255, 0.15)'
+                }}
+                onClick={() => setIsWrap(!isWrap)}
+                aria-label={isWrap ? t('common:disable_word_wrap') : t('common:enable_word_wrap')}
+              />
+            </MyTooltip>
+
+            <MyTooltip
+              label={isCopied ? t('common:copied') : t('common:Copy')}
+              placement="top"
+              hasArrow
+            >
+              <IconButton
+                icon={<Icon name={'copy'} width={'14px'} height={'14px'} />}
+                size={'xs'}
+                variant={'ghost'}
+                color={'rgba(255, 255, 255, 0.75)'}
+                _hover={{
+                  color: 'white',
+                  bg: 'rgba(255, 255, 255, 0.15)'
+                }}
+                onClick={handleCopy}
+                aria-label={t('common:Copy')}
+              />
+            </MyTooltip>
+          </HStack>
         </Flex>
-        <SyntaxHighlighter style={codeLight as any} language={match?.[1]} PreTag="pre">
-          {String(children).replace(/&nbsp;/g, ' ')}
-        </SyntaxHighlighter>
+
+        {/* 代码内容区域，根据 isWrap 动态切换自动折行与横向滚动 */}
+        <Box borderBottomRadius={'md'} overflowX={isWrap ? 'hidden' : 'auto'} bg={'#171923'}>
+          <SyntaxHighlighter
+            style={codeLight as any}
+            language={rawLanguage}
+            PreTag="pre"
+            wrapLongLines={isWrap}
+            customStyle={{
+              margin: 0,
+              padding: '14px 16px',
+              borderBottomLeftRadius: '6px',
+              borderBottomRightRadius: '6px',
+              whiteSpace: isWrap ? 'pre-wrap' : 'pre',
+              wordBreak: isWrap ? 'break-all' : 'normal',
+              overflowX: isWrap ? 'hidden' : 'auto'
+            }}
+            codeTagProps={{
+              style: {
+                whiteSpace: isWrap ? 'pre-wrap' : 'pre',
+                wordBreak: isWrap ? 'break-all' : 'normal'
+              }
+            }}
+          >
+            {codeString}
+          </SyntaxHighlighter>
+        </Box>
       </Box>
     );
   }

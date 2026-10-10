@@ -17,7 +17,7 @@ const QuestionGuide = ({ text }: { text: string }) => {
         return json as string[];
       }
       return [];
-    } catch (error) {
+    } catch (_error) {
       return [];
     }
   }, [text]);

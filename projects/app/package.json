@@ -108,6 +108,8 @@
     "recharts": "catalog:",
     "rehype-external-links": "^3.0.0",
     "rehype-katex": "^7.0.0",
+    "rehype-raw": "catalog:",
+    "rehype-sanitize": "catalog:",
     "remark-breaks": "^4.0.0",
     "remark-gfm": "catalog:",
     "remark-math": "^6.0.0",

@@ -11,7 +11,7 @@ import { isSafeHref } from '@fastgpt/global/common/string/url';
 
 import 'katex/dist/katex.min.css';
 import styles from '../index.module.scss';
-import Image from '../img/Image';
+import Image from './Image';
 
 function MyLink(e: any) {
   const href = e.href;

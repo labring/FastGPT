@@ -363,8 +363,10 @@
   "content/self-host/upgrading/4-17/4170.mdx": "2026-09-14T21:46:53+08:00",
   "content/self-host/upgrading/4-17/4171.en.mdx": "2026-09-30T18:11:26+08:00",
   "content/self-host/upgrading/4-17/4171.mdx": "2026-09-30T18:11:26+08:00",
-  "content/self-host/upgrading/4-17/4172.en.mdx": "2026-10-09T21:55:22+08:00",
-  "content/self-host/upgrading/4-17/4172.mdx": "2026-10-09T21:55:22+08:00",
+  "content/self-host/upgrading/4-17/4172.en.mdx": "2026-10-09T22:04:39+08:00",
+  "content/self-host/upgrading/4-17/4172.mdx": "2026-10-09T22:04:39+08:00",
+  "content/self-host/upgrading/4-17/4173.en.mdx": "2026-10-10T14:19:30+08:00",
+  "content/self-host/upgrading/4-17/4173.mdx": "2026-10-10T14:19:30+08:00",
   "content/self-host/upgrading/outdated/40.en.mdx": "2026-08-16T23:16:43+08:00",
   "content/self-host/upgrading/outdated/40.mdx": "2026-08-16T23:16:43+08:00",
   "content/self-host/upgrading/outdated/41.en.mdx": "2026-08-16T23:16:43+08:00",
@@ -507,6 +509,6 @@
   "content/self-host/upgrading/upgrade-instruction.mdx": "2026-09-08T22:44:33+08:00",
   "content/self-host/upgrading/version-timeline.en.mdx": "2026-08-16T23:16:43+08:00",
   "content/self-host/upgrading/version-timeline.mdx": "2026-08-16T23:16:43+08:00",
-  "content/toc.en.mdx": "2026-10-09T20:00:57+08:00",
-  "content/toc.mdx": "2026-10-09T20:00:57+08:00"
+  "content/toc.en.mdx": "2026-10-10T14:19:30+08:00",
+  "content/toc.mdx": "2026-10-10T14:19:30+08:00"
 }

@@ -1,3 +1,8 @@
+export * from './plugins';
+export * from './hooks';
+export * from './runtimeContext';
+export * from './rehypeImageCitations';
+
 import remend, { type RemendOptions } from 'remend';
 
 export enum CodeClassNameEnum {
@@ -26,7 +31,8 @@ const streamingIncompleteMarkdownTailPatterns = [
   /\[[^\]\n]*\]\([^\s\n)]*$/,
   /\[[^\]\n]*\]$/,
   /\[[^\]\n]*$/,
-  /<(?:https?:\/\/|mailto:)[^\s>]*$/i
+  /<(?:https?:\/\/|mailto:)[^\s>]*$/i,
+  /<(?:\/?[a-zA-Z][\w-]*)(?:\s+[^>\n]*)?$/
 ];
 const streamingIncompleteTextMarkdownTailMarkers = ['**', '__', '~~'] as const;
 const streamingIncompleteItalicMarkdownTailMarkers = ['*', '_'] as const;
@@ -477,7 +483,7 @@ export const mdTextFormat = (text: string) => {
     return match.replace(/\\/g, '\\\\');
   });
 
-  // NextChat function - Format latex to $$
+  // Format latex to $$
   const pattern = /(```[\s\S]*?```|`.*?`)|\\\[([\s\S]*?[^\\])\\\]|\\\((.*?)\\\)/g;
   text = text.replace(pattern, (match, codeBlock, squareBracket, roundBracket) => {
     if (codeBlock) {
@@ -489,6 +495,14 @@ export const mdTextFormat = (text: string) => {
     }
     return match;
   });
+
+  // 规整独占一行的单行 $$...$$ 为标准前后空行的块级展示公式，确保其前后独立成段并渲染为居中块级节点，防止上下重叠
+  text = text.replace(
+    /(^|\n)[ \t]*\$\$(?!\$)([^\n$]+)\$\$(?!\$)[ \t]*(?=\n|$)/g,
+    (match, prefix, mathContent) => {
+      return `${prefix}\n\n$$\n${mathContent.trim()}\n$$\n\n`;
+    }
+  );
 
   // 处理 [quote:id] 格式引用，将 [quote:675934a198f46329dfc6d05a] 转换为 [675934a198f46329dfc6d05a](CITE)
   text = text
