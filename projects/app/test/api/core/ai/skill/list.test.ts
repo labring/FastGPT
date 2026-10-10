@@ -70,6 +70,7 @@ describe('POST /api/core/ai/skill/list', () => {
     });
 
     expect(result.data.list.every((item) => item.avatar === '/icon/logo.svg')).toBe(true);
+    expect(result.data.list.find((item) => item.name === 'Newer skill')?.private).toBe(true);
     expect(
       await MongoAgentSkills.countDocuments({ teamId: owner.teamId, avatar: { $exists: true } })
     ).toBe(0);
@@ -492,6 +493,7 @@ describe('POST /api/core/ai/skill/list', () => {
     expect(res.code).toBe(200);
     expect(res.data.list.map((item) => String(item._id))).toEqual([String(inheritedSkill._id)]);
     expect(res.data.list[0]?.appCount).toBeUndefined();
+    expect(res.data.list[0]?.private).toBe(false);
   });
 
   it('appCount 基于已发布版本的 resources，草稿保存不影响统计', async () => {

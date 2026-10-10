@@ -152,7 +152,7 @@ const ReferencedAppsPopover = ({
 
   if (count <= 0) {
     return (
-      <HStack spacing={1} onClick={(e) => e.stopPropagation()}>
+      <HStack spacing={1} fontSize={'mini'} onClick={(e) => e.stopPropagation()}>
         <Box color={'myGray.500'}>{t('common:related_count')}</Box>
         <Box color={'myGray.500'} fontWeight={'medium'}>
           0
@@ -175,6 +175,7 @@ const ReferencedAppsPopover = ({
       Trigger={
         <HStack
           spacing={1}
+          fontSize={'mini'}
           cursor={'pointer'}
           onClick={(e) => {
             e.stopPropagation();

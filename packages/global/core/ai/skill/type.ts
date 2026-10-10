@@ -1,5 +1,5 @@
 import z from 'zod';
-import { IntSchema } from '../../../common/zod';
+import { BoolSchema, IntSchema } from '../../../common/zod';
 import {
   AgentSkillSourceEnum,
   AgentSkillCategoryEnum,
@@ -74,6 +74,7 @@ export const AgentSkillListItemSchema = z.object({
     description: '被正式应用引用的 Skill 数量',
     example: 0
   }),
+  private: BoolSchema.optional().meta({ description: '是否私有' }),
   sourceMember: z
     .object({
       name: z.string(),
