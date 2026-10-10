@@ -18,7 +18,7 @@ export async function registerNodeInstrumentation() {
       { systemStartCb },
       { initGlobalVariables, getInitConfig, initSystemPluginTags, initAppTemplateTypes },
       { initVectorStore },
-      { initRootUser },
+      { initSystemUser },
       { startMongoWatch },
       { startCron },
       { startTrainingQueue },
@@ -38,14 +38,15 @@ export async function registerNodeInstrumentation() {
       { InitialErrorEnum },
       { validateAgentSandboxProxyEnv },
       { getReadableSystemResourceInfo },
-      { startSystemMigrationRunner }
+      { startSystemMigrationRunner },
+      { appEnv }
     ] = await Promise.all([
       import('@fastgpt/service/common/mongo/init'),
       import('@fastgpt/service/common/mongo/index'),
       import('@fastgpt/service/common/system/tools'),
       import('@/service/common/system'),
       import('@fastgpt/service/common/vectorDB/controller'),
-      import('@/service/mongo'),
+      import('@fastgpt/service/support/user/systemUser'),
       import('@/service/common/system/volumnMongoWatch'),
       import('@/service/common/system/cron'),
       import('@/service/core/dataset/training/utils'),
@@ -70,6 +71,7 @@ export async function registerNodeInstrumentation() {
 
     console.log('System resources detected', getReadableSystemResourceInfo());
 
+    // 初始化日志采集
     await Promise.all([
       runInitializationStep({ step: 'configure-tracing', action: () => configureTracing() }),
       runInitializationStep({ step: 'configure-metrics', action: () => configureMetrics() }),
@@ -78,25 +80,7 @@ export async function registerNodeInstrumentation() {
     const logger = getLogger(LogCategories.SYSTEM);
     logger.info('Starting system initialization...');
 
-    await runInitializationStep({
-      step: 'configure-redis-runtime',
-      action: () =>
-        configureRedisRuntime({
-          redisUrl: serviceEnv.REDIS_URL,
-          logger,
-          metrics: createRedisRuntimeMetrics()
-        }),
-      logger,
-      getErrText
-    });
-
-    await runInitializationStep({
-      step: 'register-redis-shutdown',
-      action: () => registerRedisRuntimeShutdown({ logger }),
-      logger,
-      getErrText
-    });
-
+    // 加载配置
     await runInitializationStep({
       step: 'system-start-callback',
       action: () => systemStartCb(),
@@ -113,7 +97,25 @@ export async function registerNodeInstrumentation() {
       logger
     });
 
+    // 初始化 REDIS/DB/S3
     await Promise.all([
+      runInitializationStep({
+        step: 'configure-redis-runtime',
+        action: () =>
+          configureRedisRuntime({
+            redisUrl: serviceEnv.REDIS_URL,
+            logger,
+            metrics: createRedisRuntimeMetrics()
+          }),
+        logger,
+        getErrText
+      }),
+      runInitializationStep({
+        step: 'register-redis-shutdown',
+        action: () => registerRedisRuntimeShutdown({ logger }),
+        logger,
+        getErrText
+      }),
       runInitializationStep({
         step: 'init-s3-buckets',
         stage: InitialErrorEnum.S3_ERROR,
@@ -158,6 +160,7 @@ export async function registerNodeInstrumentation() {
       })
     ]);
 
+    // 加载初始化配置
     await runInitializationStep({
       step: 'get-init-config',
       action: () => getInitConfig(),
@@ -165,6 +168,7 @@ export async function registerNodeInstrumentation() {
       getErrText
     });
 
+    // 系统可用性验证
     await runInitializationStep({
       step: 'instrumentation-check',
       action: () => instrumentationCheck(),
@@ -172,13 +176,15 @@ export async function registerNodeInstrumentation() {
       getErrText
     });
 
+    // 初始化系统用户
+    await runInitializationStep({
+      step: 'init-system-user',
+      action: () => initSystemUser({ defaultRootPassword: appEnv.DEFAULT_ROOT_PSW }),
+      logger,
+      getErrText
+    });
+
     await Promise.all([
-      runInitializationStep({
-        step: 'init-root-user',
-        action: () => initRootUser(),
-        logger,
-        getErrText
-      }),
       // runInitializationStep({
       //   step: 'load-system-tools',
       //   stage: InitialErrorEnum.PLUGIN_ERROR,

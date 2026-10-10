@@ -11,7 +11,8 @@ import {
   getAgentSandboxMissingRequiredEnvKeys,
   getRuntimeEnv,
   isAgentSandboxProvider,
-  validateS3Env
+  validateS3Env,
+  validateAgentUsersEnv
 } from './env.util';
 import {
   LogLevelSchema,
@@ -60,6 +61,8 @@ export const serviceEnv = createEnv({
 
     PRO_URL: UrlSchema.optional(),
     PRO_TOKEN: z.string().min(32, 'PRO_TOKEN must be at least 32 characters').optional(),
+    AGENT_USERS: z.string().optional(),
+    DEFAULT_AGENT_PSW: z.string().optional(),
 
     // 官网访客归因 CRM；未配置地址时不进行身份上报
     CRM_API_URL: UrlSchema.optional(),
@@ -495,6 +498,8 @@ if (serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY > serviceEnv.WORKFLOW_MAX_LOOP_
 }
 
 if (!isPhaseProductionBuild) {
+  validateAgentUsersEnv(serviceEnv);
+
   validateS3Env(serviceEnv);
 
   if (serviceEnv.PRO_URL && !serviceEnv.PRO_TOKEN) {

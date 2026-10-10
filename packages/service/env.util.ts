@@ -171,3 +171,22 @@ export const validateAgentSandboxPreviewProxyEnv = (): void => {
     `Invalid Agent Sandbox preview proxy environment variable: AGENT_SANDBOX_PREVIEW_PROXY_URL is required when AGENT_SANDBOX_PROVIDER is ${provider}.`
   );
 };
+
+/**
+ * 校验 Agent 用户初始化环境变量。
+ * 当配置了 AGENT_USERS 时，必须提供初始密码 DEFAULT_AGENT_PSW。
+ */
+export const validateAgentUsersEnv = (env: {
+  AGENT_USERS?: string;
+  DEFAULT_AGENT_PSW?: string;
+}): void => {
+  const agentUsernames = env.AGENT_USERS?.split(',')
+    .map((username) => username.trim())
+    .filter(Boolean);
+
+  if (agentUsernames?.length && !env.DEFAULT_AGENT_PSW) {
+    throw new Error(
+      'Invalid environment configuration: DEFAULT_AGENT_PSW is required when AGENT_USERS is configured.'
+    );
+  }
+};

@@ -11,11 +11,13 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { describe, expect, it, vi } from 'vitest';
 
-const { mockFindOne, mockGetTmbInfoByTmbId, mockGetTmbPermission } = vi.hoisted(() => ({
-  mockFindOne: vi.fn(),
-  mockGetTmbInfoByTmbId: vi.fn(),
-  mockGetTmbPermission: vi.fn()
-}));
+const { mockFindOne, mockGetTmbInfoByTmbId, mockGetTmbPermission, mockCheckIsAgentUser } =
+  vi.hoisted(() => ({
+    mockFindOne: vi.fn(),
+    mockGetTmbInfoByTmbId: vi.fn(),
+    mockGetTmbPermission: vi.fn(),
+    mockCheckIsAgentUser: vi.fn()
+  }));
 
 vi.mock('@fastgpt/service/core/app/schema', () => ({
   MongoApp: { findOne: mockFindOne }
@@ -27,6 +29,10 @@ vi.mock('@fastgpt/service/support/user/team/controller', () => ({
 
 vi.mock('@fastgpt/service/support/permission/controller', () => ({
   getTmbPermission: mockGetTmbPermission
+}));
+
+vi.mock('@fastgpt/service/support/user/systemUser', () => ({
+  checkIsAgentUser: mockCheckIsAgentUser
 }));
 
 import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
@@ -43,6 +49,7 @@ const setup = () => {
     teamId: 'team-a',
     permission: { isOwner: false, hasManagePer: false }
   });
+  mockCheckIsAgentUser.mockReturnValue(false);
   mockGetTmbPermission.mockResolvedValue(ReadPermissionVal);
   mockAppQuery({
     _id: appId,
@@ -169,6 +176,38 @@ describe('authAppByTmbId', () => {
     await expect(
       authAppByTmbId({ tmbId: 'member-tmb', appId, per: ReadPermissionVal })
     ).rejects.toBe(AppErrEnum.unAuthApp);
+  });
+
+  it('checks normal permissions for apps created by agent users', async () => {
+    setup();
+    mockCheckIsAgentUser.mockReturnValue(true);
+
+    await expect(
+      authAppByTmbId({ tmbId: 'root-tmb', appId, per: WritePermissionVal, isRoot: true })
+    ).rejects.toBe(AppErrEnum.unAuthApp);
+
+    mockGetTmbPermission.mockResolvedValue(WritePermissionVal);
+    await expect(
+      authAppByTmbId({ tmbId: 'root-tmb', appId, per: WritePermissionVal, isRoot: true })
+    ).resolves.toMatchObject({ app: { permission: { isOwner: false } } });
+  });
+
+  it('does not grant team owners implicit ownership of agent-created apps', async () => {
+    setup();
+    mockCheckIsAgentUser.mockReturnValue(true);
+    mockGetTmbInfoByTmbId.mockResolvedValue({
+      teamId: 'team-a',
+      permission: { isOwner: true, hasManagePer: true }
+    });
+
+    await expect(
+      authAppByTmbId({ tmbId: 'team-owner-tmb', appId, per: WritePermissionVal })
+    ).rejects.toBe(AppErrEnum.unAuthApp);
+
+    mockGetTmbPermission.mockResolvedValue(WritePermissionVal);
+    await expect(
+      authAppByTmbId({ tmbId: 'team-owner-tmb', appId, per: WritePermissionVal })
+    ).resolves.toMatchObject({ app: { permission: { isOwner: false } } });
   });
 
   it('rejects with unExist when app does not exist or is soft deleted', async () => {
