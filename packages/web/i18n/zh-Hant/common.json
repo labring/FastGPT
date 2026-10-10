@@ -1335,5 +1335,7 @@
   "copied": "已複製",
   "download_png": "下載 PNG",
   "open_in_new_tab": "新分頁開啟",
-  "html_preview": "HTML 預覽"
+  "html_preview": "HTML 預覽",
+  "mermaid_syntax_error": "Mermaid 語法錯誤，請複製檢查",
+  "diagram_preparing": "圖表產生中..."
 }
