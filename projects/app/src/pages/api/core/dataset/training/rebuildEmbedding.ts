@@ -23,6 +23,14 @@ import {
   rebuildableDatasetDataMatch,
   rebuildingDatasetDataMatch
 } from '@fastgpt/global/core/dataset/data/utils';
+import { addAuditLog, failAuditLogByTaskId } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { refreshTrainingAuditTask } from '@fastgpt/service/core/dataset/training/audit';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { randomUUID } from 'node:crypto';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
 async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> {
   const { datasetId, vectorModelId } = parseApiInput({
@@ -112,12 +120,59 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     );
   });
 
-  await seedDatasetRebuildTasks({
+  const auditTaskId = randomUUID();
+  const rebuildCount = await MongoDatasetData.countDocuments({
     teamId,
-    tmbId,
     datasetId,
-    billId: String(usageId)
+    ...rebuildableDatasetDataMatch
   });
+  let auditCreated = false;
+
+  try {
+    await addAuditLog({
+      teamId,
+      tmbId,
+      event: AuditEventEnum.REBUILD_DATASET_INDEX,
+      params: {
+        datasetId,
+        datasetName: dataset.name,
+        oldModel: String(dataset.vectorModelId ?? ''),
+        newModel: vectorModelData.modelId,
+        count: String(rebuildCount),
+        taskId: auditTaskId,
+        result: 'processing'
+      }
+    });
+    auditCreated = true;
+
+    const seededCount = await seedDatasetRebuildTasks({
+      teamId,
+      tmbId,
+      datasetId,
+      billId: String(usageId),
+      auditTaskId
+    });
+    if (seededCount === 0) {
+      await refreshTrainingAuditTask(auditTaskId);
+    }
+  } catch (error) {
+    if (auditCreated) {
+      await failAuditLogByTaskId({
+        teamId,
+        taskId: auditTaskId,
+        scope: 'member',
+        event: AuditEventEnum.REBUILD_DATASET_INDEX,
+        failureReason: getErrText(error)
+      }).catch((auditError) => {
+        logger.error('Dataset rebuild audit failure update failed', {
+          error: auditError,
+          datasetId,
+          auditTaskId
+        });
+      });
+    }
+    throw error;
+  }
 
   return RebuildEmbeddingResponseSchema.parse(undefined);
 }

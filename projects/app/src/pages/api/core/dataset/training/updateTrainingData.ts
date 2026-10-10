@@ -24,6 +24,15 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { finalErrorTrainingMatch } from '@fastgpt/service/core/dataset/training/query';
+import { addAuditLog, failAuditLogByTaskId } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { randomUUID } from 'node:crypto';
+import { refreshTrainingAuditTask } from '@fastgpt/service/core/dataset/training/audit';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+const logger = getLogger(LogCategories.MODULE.DATASET);
 
 /** 重试训练任务；首次训练允许编辑正文，rebuild 只重试已存索引。 */
 async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse> {
@@ -33,7 +42,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
   if (!body.dataId) {
     const retryMatch = await (async () => {
       if (body.collectionId) {
-        const { collection } = await authDatasetCollection({
+        const { collection, teamId, tmbId } = await authDatasetCollection({
           req,
           authToken: true,
           authApiKey: true,
@@ -42,13 +51,16 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
         });
 
         return {
-          teamId: collection.teamId,
+          teamId,
+          tmbId,
           datasetId: collection.datasetId,
-          collectionId: collection._id
+          collectionId: collection._id,
+          datasetName: collection.dataset.name,
+          collectionName: collection.name
         };
       }
 
-      const { teamId, dataset } = await authDataset({
+      const { teamId, tmbId, dataset } = await authDataset({
         req,
         authToken: true,
         authApiKey: true,
@@ -58,11 +70,59 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
 
       return {
         teamId,
-        datasetId: dataset._id
+        tmbId,
+        datasetId: dataset._id,
+        datasetName: dataset.name,
+        collectionName: undefined
       };
     })();
 
-    await retryFailedTrainingTasks(retryMatch);
+    const auditTaskId = randomUUID();
+    const retryCount = await MongoDatasetTraining.countDocuments({
+      teamId: retryMatch.teamId,
+      datasetId: retryMatch.datasetId,
+      ...(retryMatch.collectionId ? { collectionId: retryMatch.collectionId } : {}),
+      ...finalErrorTrainingMatch
+    });
+
+    await addAuditLog({
+      teamId: retryMatch.teamId,
+      tmbId: retryMatch.tmbId,
+      event: AuditEventEnum.RETRY_TRAINING,
+      params: {
+        datasetId: String(retryMatch.datasetId),
+        datasetName: retryMatch.datasetName,
+        ...(retryMatch.collectionName ? { collectionName: retryMatch.collectionName } : {}),
+        count: String(retryCount),
+        taskId: auditTaskId,
+        result: retryCount === 0 ? 'success' : 'processing'
+      }
+    });
+
+    try {
+      await retryFailedTrainingTasks({
+        teamId: retryMatch.teamId,
+        datasetId: retryMatch.datasetId,
+        ...(retryMatch.collectionId ? { collectionId: retryMatch.collectionId } : {}),
+        auditTaskId
+      });
+      await refreshTrainingAuditTask(auditTaskId);
+    } catch (error) {
+      await failAuditLogByTaskId({
+        teamId: retryMatch.teamId,
+        taskId: auditTaskId,
+        scope: 'member',
+        event: AuditEventEnum.RETRY_TRAINING,
+        failureReason: getErrText(error)
+      }).catch((auditError) => {
+        logger.error('Batch training retry audit failure update failed', {
+          error: auditError,
+          teamId: retryMatch.teamId,
+          auditTaskId
+        });
+      });
+      throw error;
+    }
 
     return UpdateTrainingDataResponseSchema.parse(undefined);
   }
@@ -75,7 +135,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
     return Promise.reject('data not found');
   }
 
-  const { collection } = await authDatasetCollection({
+  const { collection, tmbId } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
@@ -111,42 +171,86 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
       ? await getDatasetIndexTrainingMode(data)
       : undefined;
 
+  const auditTaskId = randomUUID();
+
+  await addAuditLog({
+    teamId: String(collection.teamId),
+    tmbId,
+    event: AuditEventEnum.RETRY_TRAINING,
+    params: {
+      datasetId: String(collection.datasetId),
+      datasetName: collection.dataset.name,
+      collectionName: collection.name,
+      count: '1',
+      taskId: auditTaskId,
+      result: 'processing',
+      details: [
+        {
+          resourceId: String(data._id),
+          resourceName: collection.name,
+          resourceType: 'training_record',
+          action: 'retry',
+          result: 'processing'
+        }
+      ]
+    }
+  });
+
   const readyUpdate = getTrainingTaskReadyUpdate();
-  await mongoSessionRun(async (session) => {
-    if (data.dataId) {
-      await MongoDatasetData.updateOne(
-        {
-          _id: data.dataId,
-          teamId: data.teamId,
-          datasetId: data.datasetId,
-          collectionId: data.collectionId,
-          indexStatus: getTrainingDataIndexStatuses(data.mode).failed
-        },
-        {
-          $set: {
-            indexStatus: getTrainingDataIndexStatuses(data.mode).running
+  try {
+    await mongoSessionRun(async (session) => {
+      if (data.dataId) {
+        await MongoDatasetData.updateOne(
+          {
+            _id: data.dataId,
+            teamId: data.teamId,
+            datasetId: data.datasetId,
+            collectionId: data.collectionId,
+            indexStatus: getTrainingDataIndexStatuses(data.mode).failed
           },
-          $unset: { indexErrorMsg: '' }
+          {
+            $set: {
+              indexStatus: getTrainingDataIndexStatuses(data.mode).running
+            },
+            $unset: { indexErrorMsg: '' }
+          },
+          { session }
+        );
+      }
+
+      await MongoDatasetTraining.updateOne(
+        trainingMatch,
+        {
+          ...readyUpdate,
+          $set: {
+            ...readyUpdate.$set,
+            ...(nextMode && { mode: nextMode }),
+            ...(q !== undefined && { q }),
+            ...(a !== undefined && { a }),
+            ...(chunkIndex !== undefined && { chunkIndex }),
+            auditTaskId
+          }
         },
         { session }
       );
-    }
-
-    await MongoDatasetTraining.updateOne(
-      trainingMatch,
-      {
-        ...readyUpdate,
-        $set: {
-          ...readyUpdate.$set,
-          ...(nextMode && { mode: nextMode }),
-          ...(q !== undefined && { q }),
-          ...(a !== undefined && { a }),
-          ...(chunkIndex !== undefined && { chunkIndex })
-        }
-      },
-      { session }
-    );
-  });
+    });
+    await refreshTrainingAuditTask(auditTaskId);
+  } catch (error) {
+    await failAuditLogByTaskId({
+      teamId: String(collection.teamId),
+      taskId: auditTaskId,
+      scope: 'member',
+      event: AuditEventEnum.RETRY_TRAINING,
+      failureReason: getErrText(error)
+    }).catch((auditError) => {
+      logger.error('Training retry audit failure update failed', {
+        error: auditError,
+        teamId: String(collection.teamId),
+        auditTaskId
+      });
+    });
+    throw error;
+  }
 
   return UpdateTrainingDataResponseSchema.parse(undefined);
 }

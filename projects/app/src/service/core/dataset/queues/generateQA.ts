@@ -25,6 +25,7 @@ import {
   claimTrainingTask,
   TrainingLeaseLostError
 } from '@fastgpt/service/core/dataset/training/service';
+import { refreshTrainingAuditTask } from '@fastgpt/service/core/dataset/training/audit';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.QA);
 
@@ -89,6 +90,7 @@ export async function generateQA(): Promise<any> {
           // Delete data
           // 关联对象缺失时仍使用同一租约删除，避免误删新任务。
           await lease.complete();
+          await refreshTrainingAuditTask(data.auditTaskId);
           continue;
         }
         // auth balance
@@ -160,6 +162,7 @@ export async function generateQA(): Promise<any> {
               vectorModel: embeddingModelData,
               agentModel: modelData,
               vlmModel: vlmModelData,
+              auditTaskId: data.auditTaskId,
               session
             });
 
@@ -169,6 +172,7 @@ export async function generateQA(): Promise<any> {
 
             return result;
           });
+          await refreshTrainingAuditTask(data.auditTaskId);
 
           // Push usage
           pushLLMTrainingUsage({
@@ -197,6 +201,7 @@ export async function generateQA(): Promise<any> {
           });
           if (!(err instanceof TrainingLeaseLostError)) {
             await lease.fail(err);
+            await refreshTrainingAuditTask(data.auditTaskId);
           }
 
           await delay(100);

@@ -20,6 +20,7 @@ import type { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/da
 import { isDatasetDataIndexed } from '@fastgpt/global/core/dataset/data/utils';
 import { updateDatasetDataByIndexes } from '@/service/core/dataset/data/data';
 import { getIndexTrainingUpdateInput } from './indexInput';
+import { refreshTrainingAuditTask } from '@fastgpt/service/core/dataset/training/audit';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
@@ -98,12 +99,14 @@ export async function generatePreCreatedData(): Promise<any> {
             dataId: data.dataId
           });
           await lease.complete();
+          await refreshTrainingAuditTask(data.auditTaskId);
           continue;
         }
 
         // 任务可能在 worker 崩溃后重试，此时数据已 indexed，直接清理残留任务即可。
         if (isDatasetDataIndexed(data.data.indexStatus)) {
           await lease.complete();
+          await refreshTrainingAuditTask(data.auditTaskId);
           continue;
         }
 
@@ -122,6 +125,7 @@ export async function generatePreCreatedData(): Promise<any> {
 
         try {
           const { tokens } = await updatePreCreatedData({ trainingData: data, lease });
+          await refreshTrainingAuditTask(data.auditTaskId);
 
           const modelHandle = await getModelHandle();
           pushGenerateVectorUsage({
@@ -149,7 +153,10 @@ export async function generatePreCreatedData(): Promise<any> {
             collectionId: data.collectionId,
             dataId: data.dataId
           });
-          if (!(err instanceof TrainingLeaseLostError)) await lease.fail(err);
+          if (!(err instanceof TrainingLeaseLostError)) {
+            await lease.fail(err);
+            await refreshTrainingAuditTask(data.auditTaskId);
+          }
           await delay(100);
         }
       } finally {

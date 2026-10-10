@@ -41,6 +41,7 @@ import {
   claimTrainingTask,
   TrainingLeaseLostError
 } from '@fastgpt/service/core/dataset/training/service';
+import { refreshTrainingAuditTask } from '@fastgpt/service/core/dataset/training/audit';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE_PARSE);
 
@@ -152,6 +153,7 @@ export const datasetParseQueue = async (): Promise<any> => {
             trainingId: data._id
           });
           await taskLease.complete();
+          await refreshTrainingAuditTask(data.auditTaskId);
           continue;
         }
         logger.info('Parse queue task started', {
@@ -235,6 +237,7 @@ export const datasetParseQueue = async (): Promise<any> => {
               collectionType: collection.type
             });
             await taskLease.complete();
+            await refreshTrainingAuditTask(data.auditTaskId);
             continue;
           }
 
@@ -332,6 +335,7 @@ export const datasetParseQueue = async (): Promise<any> => {
                 indexSize: collection.indexSize,
                 mode: TrainingModeEnum.qa,
                 billId: data.billId,
+                auditTaskId: data.auditTaskId,
                 data: trainingData,
                 session
               });
@@ -348,11 +352,13 @@ export const datasetParseQueue = async (): Promise<any> => {
                 indexSize: collection.indexSize,
                 mode: trainingMode,
                 billId: data.billId,
+                auditTaskId: data.auditTaskId,
                 data: trainingData,
                 session
               });
             }
           });
+          await refreshTrainingAuditTask(data.auditTaskId);
 
           logger.debug('Parse queue task finished', {
             durationMs: Date.now() - startTime,
@@ -371,6 +377,7 @@ export const datasetParseQueue = async (): Promise<any> => {
             await taskLease.fail(i18nT('common:code_error.team_error.dataset_size_not_enough'), {
               blocked: true
             });
+            await refreshTrainingAuditTask(data.auditTaskId);
 
             continue;
           }
@@ -383,6 +390,7 @@ export const datasetParseQueue = async (): Promise<any> => {
           });
 
           await taskLease.fail(err, { retryDelayMs: 0 });
+          await refreshTrainingAuditTask(data.auditTaskId);
 
           await delay(100);
         }

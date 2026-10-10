@@ -12,11 +12,18 @@ import {
   TrainingLeaseLostError
 } from '@fastgpt/service/core/dataset/training/service';
 import { cleanupUnusedDatasetSynonymMappings } from '@fastgpt/service/core/dataset/synonym/controller';
+import { refreshTrainingAuditTask } from '@fastgpt/service/core/dataset/training/audit';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
 type RebuildMode = TrainingModeEnum.rebuildIndex | TrainingModeEnum.rebuildSynonym;
-type RebuildContext = { teamId: string; tmbId: string; datasetId: string; billId: string };
+type RebuildContext = {
+  teamId: string;
+  tmbId: string;
+  datasetId: string;
+  billId: string;
+  auditTaskId?: string;
+};
 type PopulateType = {
   dataset: Pick<DatasetSchemaType, 'vectorModelId' | 'vectorModel'>;
   collection: { _id: string };
@@ -68,7 +75,8 @@ export const runDatasetRebuildQueue = async ({
         teamId: String(data.teamId),
         tmbId: String(data.tmbId),
         datasetId: String(data.datasetId),
-        billId: data.billId
+        billId: data.billId,
+        auditTaskId: data.auditTaskId
       };
       if (mode === TrainingModeEnum.rebuildSynonym) {
         synonymCleanupContexts.set(context.datasetId, context);
@@ -81,6 +89,7 @@ export const runDatasetRebuildQueue = async ({
           // 当前集合被删除时，仍续接数据集内其它集合的重建。
           if (data.dataset && data.dataId) await enqueueFollowing();
           await lease.complete();
+          await refreshTrainingAuditTask(data.auditTaskId);
           continue;
         }
         if (!(await checkTeamAiPointsAndLock(data.teamId, String(data._id)))) continue;
@@ -95,6 +104,7 @@ export const runDatasetRebuildQueue = async ({
           await enqueueFollowing();
           if (!data.data) {
             await lease.complete();
+            await refreshTrainingAuditTask(data.auditTaskId);
             continue;
           }
           const modelHandle = await getModelHandle();
@@ -107,6 +117,7 @@ export const runDatasetRebuildQueue = async ({
             diffSynonym: mode === TrainingModeEnum.rebuildSynonym,
             commit: lease.complete
           });
+          await refreshTrainingAuditTask(data.auditTaskId);
           pushGenerateVectorUsage({
             teamId: data.teamId,
             tmbId: data.tmbId,
@@ -129,7 +140,10 @@ export const runDatasetRebuildQueue = async ({
             datasetId: data.datasetId,
             dataId: data.dataId
           });
-          if (!(error instanceof TrainingLeaseLostError)) await lease.fail(error);
+          if (!(error instanceof TrainingLeaseLostError)) {
+            await lease.fail(error);
+            await refreshTrainingAuditTask(data.auditTaskId);
+          }
           await delay(100);
         }
       } finally {

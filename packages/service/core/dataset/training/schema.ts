@@ -98,7 +98,8 @@ const TrainingDataSchema = new Schema({
     default: []
   },
 
-  errorMsg: String
+  errorMsg: String,
+  auditTaskId: String
 });
 
 TrainingDataSchema.virtual('dataset', {
@@ -133,6 +134,13 @@ defineIndex(TrainingDataSchema, {
 // get training data and sort
 defineIndex(TrainingDataSchema, {
   key: { mode: 1, retryCount: 1, lockTime: 1, weight: -1 }
+});
+defineIndex(TrainingDataSchema, {
+  key: { auditTaskId: 1 },
+  options: {
+    name: 'auditTaskId_1_partial',
+    partialFilterExpression: { auditTaskId: { $exists: true } }
+  }
 });
 defineIndex(TrainingDataSchema, {
   key: { expireAt: 1 },

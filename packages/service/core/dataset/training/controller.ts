@@ -229,6 +229,7 @@ export const pushDataListToTrainingQueue = async ({
   billId,
   mode = TrainingModeEnum.index,
   indexSize,
+  auditTaskId,
   session
 }: {
   teamId: string;
@@ -246,6 +247,7 @@ export const pushDataListToTrainingQueue = async ({
   vlmModelConfigured?: boolean;
 
   indexSize?: number;
+  auditTaskId?: string;
 
   billId: string;
   session?: ClientSession;
@@ -296,7 +298,8 @@ export const pushDataListToTrainingQueue = async ({
           indexSize,
           weight: weight ?? 0,
           indexes: item.indexes,
-          retryCount: 3
+          retryCount: 3,
+          ...(auditTaskId && { auditTaskId })
         })),
         {
           session,
@@ -398,6 +401,7 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
   billId,
   mode = TrainingModeEnum.index,
   indexSize,
+  auditTaskId,
   session
 }: {
   teamId: string;
@@ -414,6 +418,7 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
   vlmModelConfigured?: boolean;
 
   indexSize?: number;
+  auditTaskId?: string;
 
   billId: string;
   session: ClientSession;
@@ -485,6 +490,7 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
     data: dataWithIds,
     mode,
     indexSize,
+    auditTaskId,
     billId,
     session
   });
@@ -501,6 +507,7 @@ export const pushDatasetToParseQueue = async ({
   datasetId,
   collectionId,
   billId,
+  auditTaskId,
   session
 }: {
   teamId: string;
@@ -508,6 +515,7 @@ export const pushDatasetToParseQueue = async ({
   datasetId: string;
   collectionId: string;
   billId: string;
+  auditTaskId?: string;
   session: ClientSession;
 }) => {
   await MongoDatasetTraining.create(
@@ -518,7 +526,8 @@ export const pushDatasetToParseQueue = async ({
         datasetId,
         collectionId,
         billId,
-        mode: TrainingModeEnum.parse
+        mode: TrainingModeEnum.parse,
+        ...(auditTaskId && { auditTaskId })
       }
     ],
     { session, ordered: true }
