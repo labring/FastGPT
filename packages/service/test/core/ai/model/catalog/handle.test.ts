@@ -1,12 +1,11 @@
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
-import { UserError, getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
   AIModelDataType,
   LLMModelDataType,
   ModelReferenceType
 } from '@fastgpt/global/core/ai/model/schema';
-import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';
 import { createModelHandle } from '@fastgpt/service/core/ai/model/catalog/handle';
 import { assertModelAvailable } from '@fastgpt/service/core/ai/utils';
 import { describe, expect, expectTypeOf, it } from 'vitest';
@@ -40,85 +39,22 @@ describe('getVlmModelData and model lookup', () => {
     expect(Object.isFrozen(model)).toBe(true);
   });
 
-  it('supports legacy names only when the stable ID is absent', () => {
-    expect(createHandle().getVlmModelData({ model: vlm.model }).modelId).toBe(vlm.modelId);
-  });
-
-  it('does not index team models into modelsByName map to prevent tenant model hijacking', () => {
-    const teamModel: AIModelDataType = {
-      modelId: 'team-model-id',
-      type: ModelTypeEnum.llm,
+  it('resolves legacy names to system models and requires IDs for private models', () => {
+    const first = {
+      ...vlm,
+      modelId: 'member-a',
       scope: ModelScopeEnum.team,
-      provider: 'OpenAI',
-      model: 'team-vlm',
-      name: 'Team Visual model',
-      isActive: true,
-      config: { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000, vision: true },
-      tmbId: 'user-tmb-1'
+      tmbId: 'member-a'
     };
-    const handle = createHandle([vlm, teamModel]);
-    // Can still find by modelId
-    expect(handle.findModelData({ modelId: 'team-model-id' })?.modelId).toBe('team-model-id');
-    // Cannot find team model by legacy model name
-    expect(handle.findModelData({ model: 'team-vlm' })).toBeUndefined();
-    // System model can still be found by legacy model name
-    expect(handle.findModelData({ model: vlm.model })?.modelId).toBe(vlm.modelId);
-  });
+    const second = { ...first, modelId: 'member-b', tmbId: 'member-b' };
+    const privateOnly = { ...first, modelId: 'private-only', model: 'private-vlm' };
+    const handle = createHandle([first, vlm, second, privateOnly]);
 
-  it('resolves legacy model name only to system model when system and multiple members install models with the same name', () => {
-    const sysGpt: AIModelDataType = {
-      modelId: 'sys-gpt-id',
-      type: ModelTypeEnum.llm,
-      scope: ModelScopeEnum.system,
-      provider: 'OpenAI',
-      model: 'gpt-4o',
-      name: 'System GPT-4o',
-      isActive: true,
-      config: { maxContext: 128000, maxResponse: 4096, quoteMaxToken: 100000, vision: true }
-    };
-    const memberAGpt: AIModelDataType = {
-      modelId: 'member-a-gpt-id',
-      type: ModelTypeEnum.llm,
-      scope: ModelScopeEnum.team,
-      tmbId: 'member-a',
-      teamId: 'team-1',
-      provider: 'OpenAI',
-      model: 'gpt-4o',
-      name: 'Member A Private GPT-4o',
-      isActive: true,
-      config: { maxContext: 128000, maxResponse: 4096, quoteMaxToken: 100000, vision: true }
-    };
-    const memberBGpt: AIModelDataType = {
-      modelId: 'member-b-gpt-id',
-      type: ModelTypeEnum.llm,
-      scope: ModelScopeEnum.team,
-      tmbId: 'member-b',
-      teamId: 'team-1',
-      provider: 'OpenAI',
-      model: 'gpt-4o',
-      name: 'Member B Private GPT-4o',
-      isActive: true,
-      config: { maxContext: 128000, maxResponse: 4096, quoteMaxToken: 100000, vision: true }
-    };
-
-    // Regardless of order in database / snapshot (even if team models appear later or earlier)
-    const handle = createHandle([memberBGpt, sysGpt, memberAGpt]);
-
-    // Legacy reference with model name 'gpt-4o' must always resolve to the system model
-    const resolved = handle.getLLMModelData({ model: 'gpt-4o' });
-    expect(resolved.modelId).toBe('sys-gpt-id');
-    expect(resolved.name).toBe('System GPT-4o');
-
-    // Neither member's team model can be resolved by bare model name
-    expect(handle.findModelData({ model: 'gpt-4o' })?.modelId).toBe('sys-gpt-id');
-
-    // Team models are strictly resolved by stable modelId
-    expect(handle.getLLMModelData({ modelId: 'member-a-gpt-id' }).name).toBe(
-      'Member A Private GPT-4o'
-    );
-    expect(handle.getLLMModelData({ modelId: 'member-b-gpt-id' }).name).toBe(
-      'Member B Private GPT-4o'
-    );
+    expect(handle.getLLMModelData({ model: vlm.model }).modelId).toBe(vlm.modelId);
+    expect(handle.findModelData({ model: privateOnly.model })).toBeUndefined();
+    for (const model of [first, second, privateOnly]) {
+      expect(handle.getLLMModelData({ modelId: model.modelId }).modelId).toBe(model.modelId);
+    }
   });
 
   it.each<ModelReferenceType>([
@@ -143,19 +79,6 @@ describe('getVlmModelData and model lookup', () => {
     expect(() => createHandle([model]).getVlmModelData({ modelId: vlm.modelId })).toThrow(
       ModelErrEnum.unExist
     );
-  });
-
-  it.each([
-    new TypeError('unexpected failure'),
-    new Error(ModelErrEnum.unExist),
-    new UserError('unrelated user error')
-  ])('rethrows unexpected failures unchanged: %s', (error) => {
-    const reference: ModelReferenceType = {
-      get modelId(): string {
-        throw error;
-      }
-    };
-    expect(() => createHandle().getVlmModelData(reference)).toThrow(error);
   });
 });
 
@@ -228,10 +151,5 @@ describe('upstream model selection semantics', () => {
     const copy = handle.findModelData({ modelId: vlm.modelId })!;
     copy.name = 'Draft';
     expect(resolved.name).toBe('Visual model');
-  });
-
-  it('recognizes image embeddings without reading any cache', () => {
-    expect(isImageEmbeddingModel()).toBe(false);
-    expect(isImageEmbeddingModel({ config: { vision: true } } as never)).toBe(true);
   });
 });

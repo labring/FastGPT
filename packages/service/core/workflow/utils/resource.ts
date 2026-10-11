@@ -435,7 +435,8 @@ export const prepareWorkflowDebugResourceContext = async ({
     tmbId,
     isRoot,
     blockOnUnauthorized: true,
-    allowRootCrossTeam: isRoot
+    allowRootCrossTeam: isRoot,
+    modelHandle
   });
   return resourceContext;
 };

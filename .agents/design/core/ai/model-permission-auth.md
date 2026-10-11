@@ -42,13 +42,13 @@ type ModelActor =
 
 authModels({ actor, modelIds, action, handle? }): Promise<string[]>
 assertAuthModels({ actor, modelIds, action, handle? }): Promise<{ handle; models }>
-getAuthorizedModelIds({ actor, handle }): Promise<Set<string>>
+getAuthorizedModelIds({ actor, handle, includeInactive? }): Promise<Set<string>>
 ```
 
 - `isRoot` 必填，避免调用方遗漏 root 身份；`teamPermission` 可选，缺省时内部读取一次团队成员。字段名区别于 `authApp` / `authDataset` 返回的资源权限 `permission`，防止误传。
 - `authModels` 只用于过滤场景（catalog、summary、协作者批量列表、应用资源鉴权），返回去重后保持输入顺序的无权限 ID，无则返回 `[]`。
 - `assertAuthModels` 用于其余所有场景：任一模型无权限即抛 `UserError`，`config` 抛 `unExist`（不暴露模型是否存在），`use` / `grant` 抛 `unAuthModel`；返回同一快照的 `handle` 与已解析模型，调用方不再重复读取目录。
-- `getAuthorizedModelIds` 返回成员完整可用集合，catalog 直接用它过滤，`authModels` 的 `use` 分支复用它。
+- `getAuthorizedModelIds` 默认只返回并缓存成员完整 active 可用集合，catalog 与 `authModels(use)` 复用它。摘要显式传入 `includeInactive: true`，返回包含停用模型的权限集合，不读写成员缓存，保持 `disabled` / `forbidden` 区分。
 - 调用方已有 handle 时必须传入，保证鉴权和后续读取使用同一目录快照。
 - 团队 handle 只包含系统模型和本团队模型，不再重复判断 `model.teamId === teamId`。
 
@@ -61,7 +61,7 @@ getAuthorizedModelIds({ actor, handle }): Promise<Set<string>>
 
 单模型的使用鉴权不再绕道应用资源流水线（`checkAppResourceReadPermissions → getUnauthorizedAppResources`）。该流水线会按 tmbId 反查成员、重新读取目录、丢失 `isRoot`、重复判断启用状态，并抛出原始字符串错误。
 
-- `authTargetModelResource`（TTS、问题引导）：App 目标仍只认正式版本资源快照；非 App 目标（skillEdit、chatAgentHelper，仅登录成员可进入）改为 `assertAuthModels(use)`，必须传入 `teamId`、`isRoot` 和调用方读取模型时的 `handle`。两个分支统一抛 `UserError(unAuthModel)`。
+- `authTargetModelResource`（TTS、问题引导）：App 目标与知识库等资源走同一条快照链路——先查正式版本快照（正式对话、外链、API Key 共用）；未命中且 `authType=token`（唯一能进入 Test/Debug 的身份）时，复用 `resolveAppResourcesByPermission(blockOnUnauthorized)`：草稿快照基线内放行，相对草稿新增的模型按成员 `use` 阻断；外链 / API Key 未命中直接拒绝。非 App 目标（skillEdit、chatAgentHelper，仅登录成员可进入）走 `assertAuthModels(use)`。调用方必须传入读取模型时的 `handle`，并通过 `modelHandle` 透传到 App 资源鉴权，避免重复读取目录。
 - `authChatCrud` / `authChatTargetCrud` 返回 `isRoot`（外链固定 `false`），供上述调用方构造身份。
 - `assertWorkflowNodeModelResources`：在节点调度的 `try` 内、节点本体执行前调用，失败按节点错误处理（支持 `catchError`），不会中断整个工作流。规则：
   - 静态模型只核对资源快照（纯内存），不做权限校验；
@@ -75,7 +75,7 @@ getAuthorizedModelIds({ actor, handle }): Promise<Set<string>>
 
 ## 缓存
 
-- 成员 `use` 集合继续缓存在 `TmpDataEnum.MemberModels`（存储值仍为 `my_models`，兼容已有记录）；命中条件为 catalogVersion 与 `hasManagePer` 一致。
+- 成员 `use` 集合只包含 active 模型，继续缓存在 `TmpDataEnum.MemberModels`（存储值仍为 `my_models`）；命中条件为 catalogVersion 与 `hasManagePer` 一致。
 - catalogVersion 已包含系统与团队修订号，模型写入后缓存自动失效，不需要主动清理；ACL、用户组、组织、成员变更仍调用 `clearMemberModelsCache` 清理团队缓存。
 - 删除只写不读的 `version` 字段；`hasManagePer` 改为必填；清理函数只按 dataId 前缀匹配（dataId 固定为 `my_models--{teamId}--{tmbId}`）。
 - 外链身份不读写缓存。

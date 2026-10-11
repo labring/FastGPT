@@ -24,7 +24,7 @@ export const clearMemberModelsCache = ({
 export const clearAllMemberModelsCache = ({ session }: { session?: ClientSession } = {}) =>
   MongoTmpData.deleteMany({ dataId: { $regex: getMemberModelsCachePrefix() } }, { session });
 
-/** 读取与当前模型目录和管理身份匹配的完整成员模型使用权缓存。 */
+/** 读取与当前模型目录和管理身份匹配的完整成员 active 模型使用权缓存。 */
 export const getMemberModelsCache = async ({
   teamId,
   tmbId,
@@ -41,7 +41,7 @@ export const getMemberModelsCache = async ({
     return cached.data;
 };
 
-/** 保存完整成员使用权集合；不接受单次待检查模型作为完整缓存范围。 */
+/** 保存完整成员 active 模型使用权集合；不接受单次待检查模型作为完整缓存范围。 */
 export const setMemberModelsCache = ({
   teamId,
   tmbId,

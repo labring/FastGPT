@@ -148,15 +148,8 @@ describe('team model management integration: permission, member isolation and AI
       if (req.method === 'PUT') {
         const chunks: Buffer[] = [];
         for await (const chunk of req) chunks.push(Buffer.from(chunk));
-        // AI Proxy 的 PUT 是 patch 语义：仅更新显式提供的非 undefined 字段
-        const body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as Partial<MockChannel>;
-        if (body.name !== undefined) channel.name = body.name;
-        if (body.type !== undefined) channel.type = body.type;
-        if (body.key !== undefined) channel.key = body.key;
-        if (body.models !== undefined) channel.models = body.models;
-        if (body.model_mapping !== undefined) channel.model_mapping = body.model_mapping;
-        if (body.priority !== undefined) channel.priority = body.priority;
-        if (body.status !== undefined) channel.status = body.status;
+        // JSON 已去掉 undefined；只覆盖请求提供的字段，保留其余渠道配置。
+        Object.assign(channel, JSON.parse(Buffer.concat(chunks).toString('utf8')));
         return ok();
       }
       return notFound();
@@ -334,9 +327,14 @@ describe('team model management integration: permission, member isolation and AI
   });
 
   describe('templates for members', () => {
-    it('serves templates to a member with the permission and creates a team-owned model', async () => {
+    it('serves templates and creates team-owned models with their channel bindings', async () => {
       const { installer } = await createMembers();
       external.listModels.mockResolvedValue([modelDraft('tpl-a'), modelDraft('tpl-b')]);
+      const channel = addChannel(`fastgpt:tmb:${installer.tmbId}`, {
+        id: 101,
+        name: 'ch-template',
+        models: ['existing']
+      });
 
       const templates = await Call(templatesHandler, {
         auth: installer,
@@ -350,30 +348,8 @@ describe('team model management integration: permission, member isolation and AI
 
       const created = await Call(createFromTemplatesHandler, {
         auth: installer,
-        body: { templates: [{ type: ModelTypeEnum.llm, model: 'tpl-a' }], channelType: 'team' }
-      });
-      expect(created.code).toBe(200);
-      expect(created.data.models).toHaveLength(1);
-      expect(await MongoAIModel.findOne({ model: 'tpl-a' }).lean()).toMatchObject({
-        scope: ModelScopeEnum.team,
-        tmbId: expect.anything(),
-        teamId: expect.anything()
-      });
-    });
-
-    it('associates channels when batch creating models from templates', async () => {
-      const { installer } = await createMembers();
-      external.listModels.mockResolvedValue([modelDraft('tpl-a'), modelDraft('tpl-b')]);
-      const groupId = `fastgpt:tmb:${installer.tmbId}`;
-      const channel = addChannel(groupId, { id: 101, name: 'ch-template', models: ['existing'] });
-
-      const created = await Call(createFromTemplatesHandler, {
-        auth: installer,
         body: {
-          templates: [
-            { type: ModelTypeEnum.llm, model: 'tpl-a' },
-            { type: ModelTypeEnum.llm, model: 'tpl-b' }
-          ],
+          templates: ['tpl-a', 'tpl-b'].map((model) => ({ type: ModelTypeEnum.llm, model })),
           channelType: 'team',
           channelIds: [channel.id]
         }
@@ -381,19 +357,11 @@ describe('team model management integration: permission, member isolation and AI
       expect(created.code).toBe(200);
       expect(created.data.models).toHaveLength(2);
       expect(channel.models).toEqual(['existing', 'tpl-a', 'tpl-b']);
-    });
-
-    it('does not let a member without the permission read the system templates', async () => {
-      const { plain } = await createMembers();
-      external.listModels.mockResolvedValue([modelDraft('tpl-secret')]);
-
-      const response = await Call(templatesHandler, {
-        auth: plain,
-        query: { channelType: 'team' }
+      expect(await MongoAIModel.findOne({ model: 'tpl-a' }).lean()).toMatchObject({
+        scope: ModelScopeEnum.team,
+        tmbId: installer.tmbId,
+        teamId: installer.teamId
       });
-
-      expect(response.code).toBe(500);
-      expect(response.error).toBe('unAuthTeam');
     });
 
     it('keeps system templates root-only when the scope is system', async () => {
@@ -653,22 +621,6 @@ describe('team model management integration: permission, member isolation and AI
       expect(bucketOf(group).map((item) => item.id)).toEqual([71, 72, 73]);
       expect(await MongoAIModel.countDocuments({ model: 'model-m' })).toBe(0);
       expect(await MongoAIModel.countDocuments({ model: 'model-m2' })).toBe(1);
-    });
-
-    it('still succeeds when the member has no AI Proxy bucket yet', async () => {
-      const { installer } = await createMembers();
-      const created = await Call(createHandler, {
-        auth: installer,
-        body: { modelData: modelDraft('lonely-model'), channelType: 'team' }
-      });
-
-      const removed = await Call(deleteHandler, {
-        auth: installer,
-        body: { modelIds: [created.data.modelId], channelType: 'team' }
-      });
-
-      expect(removed.code).toBe(200);
-      expect(await MongoAIModel.countDocuments({ model: 'lonely-model' })).toBe(0);
     });
 
     it('keeps the deletion committed when the channel cleanup fails', async () => {

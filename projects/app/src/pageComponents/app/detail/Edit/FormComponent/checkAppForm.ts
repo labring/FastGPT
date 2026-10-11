@@ -110,6 +110,7 @@ export const checkAppFormResourceIssues = ({
  * @returns 若校验失败返回具体的错误文案；全部校验通过返回 undefined。
  */
 export const checkAppFormBeforePublish = async ({
+  appId,
   appForm,
   form2WorkflowFn,
   showSandbox,
@@ -121,6 +122,7 @@ export const checkAppFormBeforePublish = async ({
   showSandbox?: boolean;
   enableSandbox?: boolean;
   t: TFunction;
+  appId?: string;
 }): Promise<string | undefined> => {
   // 1. 沙箱环境检查
   const sandboxError = checkAppFormSandboxIssues({
@@ -138,6 +140,7 @@ export const checkAppFormBeforePublish = async ({
   // 3. 工作流图级校验（模型可用性、节点输入完整性等）
   const workflow = form2WorkflowFn(appForm, t);
   const checkResults = await checkStoreWorkflowBeforeRunOrPublish({
+    appId,
     nodes: workflow.nodes,
     edges: workflow.edges,
     chatConfig: appForm.chatConfig,

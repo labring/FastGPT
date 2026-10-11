@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ReadStream } from 'node:fs';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
@@ -88,13 +89,8 @@ describe('testModelConnection request timeout', () => {
 
   it('passes one 60-second timeout and aborts the provider request at the deadline', async () => {
     vi.useFakeTimers();
-    mocks.createSpeech.mockImplementation(
-      (_body: unknown, options: { signal: AbortSignal }) =>
-        new Promise((_, reject) => {
-          options.signal.addEventListener('abort', () => reject(new Error('request aborted')), {
-            once: true
-          });
-        })
+    mocks.createSpeech.mockImplementation((_body: unknown, options: { signal: AbortSignal }) =>
+      waitForAbort(options.signal)
     );
 
     const onRequestStart = vi.fn();
@@ -118,10 +114,7 @@ describe('testModelConnection request timeout', () => {
     'passes an abort signal to the %s transport',
     async (type) => {
       vi.useFakeTimers();
-      const model = createModel(
-        type,
-        type === ModelTypeEnum.tts ? { voices: [{ label: 'Alloy', value: 'alloy' }] } : {}
-      );
+      const model = createModel(type);
 
       if (type === ModelTypeEnum.llm) {
         mocks.createLLMResponse.mockImplementation(({ signal }: { signal: AbortSignal }) =>
@@ -133,7 +126,7 @@ describe('testModelConnection request timeout', () => {
         );
       } else if (type === ModelTypeEnum.stt) {
         mocks.aiTranscriptions.mockImplementation(
-          ({ fileStream, signal }: { fileStream: NodeJS.ReadableStream; signal: AbortSignal }) =>
+          ({ fileStream, signal }: { fileStream: ReadStream; signal: AbortSignal }) =>
             waitForAbort(signal, () => fileStream.destroy())
         );
       } else {

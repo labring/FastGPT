@@ -195,7 +195,7 @@ export const AIModelPath: OpenAPIPath = {
   '/core/ai/model/summary': {
     post: {
       summary: '批量获取模型展示详情',
-      description: '返回模型名称、图标及当前身份的可用状态，不返回执行配置',
+      description: '返回模型名称、图标、类型及当前身份或应用基线内的可用状态，不返回执行配置',
       tags: [DevApiTagsMap.model, SystemOpenApiTagMap.model],
       requestBody: { content: { 'application/json': { schema: GetModelSummariesBodySchema } } },
       responses: {

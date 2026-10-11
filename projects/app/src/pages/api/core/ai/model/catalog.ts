@@ -26,17 +26,14 @@ export async function handler(
 
   const catalogIdentity = await authModelViewer({ req, outLinkAuthData });
   const modelHandle = await getTeamModelHandle({ teamId: catalogIdentity.teamId });
-  const activeModels = modelHandle.getActiveModels();
-  const configuredDefaults = modelHandle.configuredDefaultModelIds;
   const providers = getModelProviderMetadata().providers;
   // 复用同一目录快照计算使用权，保证目录内容与 version 对应同一快照。
   const authorizedIds = await getAuthorizedModelIds({
     actor: catalogIdentity,
     handle: modelHandle
   });
-  const models = activeModels.filter((model) => authorizedIds.has(model.modelId));
   const permissionVersion = hashStr(
-    [modelHandle.version, ...models.map((model) => model.modelId).toSorted()].join('\n')
+    [modelHandle.version, ...[...authorizedIds].toSorted()].join('\n')
   );
   const version = `3:${modelHandle.version}:${permissionVersion}`;
 
@@ -44,6 +41,7 @@ export async function handler(
     return GetModelCatalogResponseSchema.parse({ version });
   }
 
+  const models = modelHandle.getActiveModels().filter((model) => authorizedIds.has(model.modelId));
   return GetModelCatalogResponseSchema.parse({
     version,
     data: {
@@ -51,7 +49,7 @@ export async function handler(
       providers,
       defaultModelIds: resolveEffectiveDefaultModelIds({
         models,
-        configuredDefaults
+        configuredDefaults: modelHandle.configuredDefaultModelIds
       })
     }
   });

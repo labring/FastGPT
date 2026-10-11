@@ -124,27 +124,15 @@ describe('admin settings model create/update api', () => {
 
     expect(res.error).toBeUndefined();
     expect(res.data?.modelId).toBeTruthy();
-    await expect(MongoAIModel.findById(res.data?.modelId).lean()).resolves.toMatchObject({
+    const created = await MongoAIModel.findById(res.data?.modelId).lean();
+    expect(created).toMatchObject({
       model: 'test-llm',
       scope: 'system',
+      isActive: true,
       config: { maxContext: 16000 }
     });
-  });
-
-  it('accepts channelIds when creating a model', async () => {
-    const res = await callApi({
-      handler: createModelApi,
-      body: {
-        modelData: { ...buildLlmDocument(), model: 'channel-test-llm' },
-        channelIds: [1, 2]
-      }
-    });
-
-    expect(res.error).toBeUndefined();
-    expect(res.data?.modelId).toBeTruthy();
-    await expect(MongoAIModel.findById(res.data?.modelId).lean()).resolves.toMatchObject({
-      model: 'channel-test-llm'
-    });
+    expect(created).not.toHaveProperty('requestUrl');
+    expect(created).not.toHaveProperty('requestAuth');
   });
 
   it('defaults a newly created model to inactive', async () => {
@@ -185,19 +173,6 @@ describe('admin settings model create/update api', () => {
     expect(updated).not.toHaveProperty('outputPrice');
     expect(updated).not.toHaveProperty('charsPointsPrice');
     expect(updated?.priceTiers).toMatchObject([{ inputPrice: 0, outputPrice: 0 }]);
-  });
-
-  it('creates an active model with no channel or connection configuration', async () => {
-    const res = await callApi({
-      handler: createModelApi,
-      body: { modelData: buildLlmDocument() }
-    });
-
-    expect(res.error).toBeUndefined();
-    const created = await MongoAIModel.findById(res.data?.modelId).lean();
-    expect(created).toMatchObject({ isActive: true });
-    expect(created).not.toHaveProperty('requestUrl');
-    expect(created).not.toHaveProperty('requestAuth');
   });
 
   it('preserves requestUrl and requestAuth across create and update', async () => {
@@ -249,19 +224,6 @@ describe('admin settings model create/update api', () => {
     expect((await MongoAIModel.findById(existing._id).lean())?.name).toBe('Test LLM');
   });
 
-  it('submits edited model config successfully', async () => {
-    const existing = await insertSystemModel(buildLlmDocument());
-    const res = await callApi({
-      handler: updateModelApi,
-      body: {
-        modelId: String(existing._id),
-        modelData: { ...buildLlmUpdateData(), name: 'Updated alias' }
-      }
-    });
-    expect(res.error).toBeUndefined();
-    expect((await MongoAIModel.findById(existing._id).lean())?.name).toBe('Updated alias');
-  });
-
   it('updates an existing model only by modelId', async () => {
     const existing = await insertSystemModel(buildLlmDocument());
     const res = await callApi({
@@ -270,6 +232,7 @@ describe('admin settings model create/update api', () => {
         modelId: String(existing._id),
         modelData: {
           ...buildLlmUpdateData(),
+          name: 'Updated alias',
           config: { ...buildLlmDocument().config, maxTemperature: 1.2 }
         }
       }
@@ -277,6 +240,7 @@ describe('admin settings model create/update api', () => {
 
     expect(res.error).toBeUndefined();
     await expect(MongoAIModel.findById(existing._id).lean()).resolves.toMatchObject({
+      name: 'Updated alias',
       config: { maxContext: 16000, maxTemperature: 1.2 }
     });
   });

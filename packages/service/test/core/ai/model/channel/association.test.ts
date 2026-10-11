@@ -1,10 +1,8 @@
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import {
-  clearTeamModelCatalogCache,
-  publishSystemModelHandle
-} from '@fastgpt/service/core/ai/model/catalog/cache';
-import { createModelHandle } from '@fastgpt/service/core/ai/model/catalog/handle';
+import type { AIModelDataType, LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
+import { setModelTestSnapshot } from '@test/modelCache';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { axiosMock, getConfigMock, getTeamModelHandleMock } = vi.hoisted(() => ({
@@ -31,7 +29,6 @@ import {
   getChannelsAffectedModels,
   getSystemAssociableModels
 } from '@fastgpt/service/core/ai/model/channel/association';
-import { resetChannelCache } from '@fastgpt/service/core/ai/model/channel/cache';
 import {
   getMemberChannelList,
   getSystemChannelList
@@ -44,8 +41,7 @@ import type {
 
 const okEnvelope = (data: unknown) => ({ data: { success: true, data } });
 
-const makeModel = (id: string, overrides: Record<string, any> = {}): any => ({
-  _id: id,
+const makeModel = (id: string, overrides: Partial<LLMModelDataType> = {}): LLMModelDataType => ({
   modelId: id,
   type: ModelTypeEnum.llm,
   provider: 'test',
@@ -76,8 +72,6 @@ const makeGroupChannel = (
   ...overrides
 });
 
-/* ═══ Fixture ═══ */
-
 const TMB_A = '60000000000000000000000a';
 const TMB_B = '60000000000000000000000b';
 
@@ -100,28 +94,21 @@ const GROUP_A_CHANNELS: AiproxyGroupChannel[] = [
 const GROUP_B_CHANNELS: AiproxyGroupChannel[] = [
   makeGroupChannel(301, `fastgpt:tmb:${TMB_B}`, { name: 'B Qwen', models: ['qwen-plus'] })
 ];
-let testModels: Array<{
-  id: string;
-  model: string;
-  name: string;
-  isSystem: boolean;
-  tmbId?: string;
-}> = [];
+let testModels: AIModelDataType[] = [];
 
 const setupModels = () => {
-  const models = [
+  testModels = [
     makeModel('sys-llm-1', { model: 'gpt-4o', name: 'Sys GPT-4o', scope: ModelScopeEnum.system }),
     makeModel('sys-llm-2', {
       model: 'claude-3-5-sonnet',
       name: 'Sys Claude',
       scope: ModelScopeEnum.system
     }),
-    makeModel('sys-emb-1', {
-      model: 'text-embedding-3-small',
-      name: 'Sys Embedding',
-      scope: ModelScopeEnum.system,
-      type: ModelTypeEnum.embedding
-    }),
+    {
+      ...makeModel('sys-emb-1', { model: 'text-embedding-3-small', name: 'Sys Embedding' }),
+      type: ModelTypeEnum.embedding,
+      config: { defaultToken: 500, maxToken: 8000, weight: 0 }
+    },
     makeModel('own-a-1', {
       model: 'qwen-plus',
       name: 'A Qwen Plus',
@@ -144,40 +131,8 @@ const setupModels = () => {
       teamId: '6000000000000000000000bb'
     })
   ];
-  testModels = models.map((m) => ({
-    id: m.modelId,
-    model: m.model,
-    name: m.name,
-    isSystem: m.scope === ModelScopeEnum.system,
-    tmbId: m.tmbId
-  }));
-  publishSystemModelHandle(
-    createModelHandle({
-      models: models as any,
-      defaultModels: {} as any,
-      configuredDefaultModelIds: {} as any,
-      revision: 1,
-      version: '1'
-    })
-  );
-
-  getTeamModelHandleMock.mockImplementation(async () => ({
-    getTeamModels: (tmbId: string) =>
-      testModels
-        .filter((m) => !m.isSystem && m.tmbId === tmbId)
-        .map((m) => ({
-          modelId: m.id,
-          model: m.model,
-          name: m.name,
-          type: ModelTypeEnum.llm,
-          provider: 'test',
-          scope: ModelScopeEnum.team,
-          isSystem: false,
-          tmbId: m.tmbId,
-          isActive: true,
-          config: { maxContext: 16000, maxResponse: 4000, quoteMaxToken: 2000 }
-        }))
-  }));
+  setModelTestSnapshot({ models: testModels, defaultModels: {}, configuredDefaultModelIds: {} });
+  getTeamModelHandleMock.mockResolvedValue(getCachedSystemModelHandle());
 };
 
 const mockChannels = () => {
@@ -205,10 +160,8 @@ const mockChannels = () => {
 
 describe('channel controller — delete protection / refs', () => {
   beforeEach(() => {
-    clearTeamModelCatalogCache();
     setupModels();
     mockChannels();
-    resetChannelCache();
   });
 
   it('getChannelsAffectedModels keeps models served by exactly one channel of the bucket', async () => {
@@ -240,34 +193,12 @@ describe('channel controller — delete protection / refs', () => {
   });
 
   it('excludes self-contained system models with requestUrl from affected models', async () => {
-    // Add a system model that has its own requestUrl
-    const directModel = makeModel('sys-direct-1', {
-      model: 'text-embedding-3-small',
-      name: 'Sys Direct Embedding',
-      scope: ModelScopeEnum.system,
-      type: ModelTypeEnum.embedding
+    setModelTestSnapshot({
+      models: [
+        ...testModels,
+        { ...testModels[2], modelId: 'sys-direct-1', requestUrl: 'http://localhost:8000/v1' }
+      ]
     });
-    (directModel as any).requestUrl = 'http://localhost:8000/v1';
-
-    publishSystemModelHandle(
-      createModelHandle({
-        models: [
-          ...testModels.map((m) =>
-            makeModel(m.id, {
-              model: m.model,
-              name: m.name,
-              scope: m.isSystem ? ModelScopeEnum.system : ModelScopeEnum.team,
-              tmbId: m.tmbId
-            })
-          ),
-          directModel
-        ] as any,
-        defaultModels: {} as any,
-        configuredDefaultModelIds: {} as any,
-        revision: 2,
-        version: '2'
-      })
-    );
 
     // SYSTEM_CHANNELS[2] serves 'text-embedding-3-small'.
     // If deleted, normal sys-emb-1 is affected, but sys-direct-1 is NOT affected.
@@ -278,7 +209,6 @@ describe('channel controller — delete protection / refs', () => {
     expect(affected).toEqual([
       { modelId: 'sys-emb-1', name: 'Sys Embedding', model: 'text-embedding-3-small' }
     ]);
-    expect(affected.find((m) => m.modelId === 'sys-direct-1')).toBeUndefined();
   });
 
   it('group bucket counts ignore other members channels (route scope isolation)', async () => {
@@ -320,25 +250,7 @@ describe('channel controller — delete protection / refs', () => {
       tmbId: TMB_A,
       teamId: 'team-a'
     });
-    publishSystemModelHandle(
-      createModelHandle({
-        models: [
-          ...testModels.map((m) =>
-            makeModel(m.id, {
-              model: m.model,
-              name: m.name,
-              scope: m.isSystem ? ModelScopeEnum.system : ModelScopeEnum.team,
-              tmbId: m.tmbId
-            })
-          ),
-          teamGpt
-        ] as any,
-        defaultModels: {} as any,
-        configuredDefaultModelIds: {} as any,
-        revision: 3,
-        version: '3'
-      })
-    );
+    setModelTestSnapshot({ models: [...testModels, teamGpt] });
 
     const systemModels = await getSystemAssociableModels();
     expect(systemModels.some((m) => m.id === 'own-a-gpt4o')).toBe(false);
@@ -363,14 +275,12 @@ describe('channel controller — delete protection / refs', () => {
 
 describe('channel controller — 404 not found detection', () => {
   it('system channel list propagates underlying 404 error without translating to domain error', async () => {
-    resetChannelCache(); // drop any buckets warmed by earlier tests
     const err404 = { response: { status: 404 } };
     axiosMock.mockRejectedValue(err404);
     await expect(getSystemChannelList()).rejects.toBe(err404);
   });
 
   it('resolveChannelForOperation translates raw 404 into ModelErrEnum.channelNotExist', async () => {
-    resetChannelCache();
     axiosMock.mockRejectedValue({ response: { status: 404 } });
     await expect(
       resolveChannelForOperation({ id: 999, channelType: 'system', tmbId: 'test-tmb' })
@@ -378,7 +288,6 @@ describe('channel controller — 404 not found detection', () => {
   });
 
   it('member channel list tolerates 404 for uninitialized group and returns empty list', async () => {
-    resetChannelCache();
     axiosMock.mockRejectedValue({ response: { status: 404 } });
     await expect(
       getMemberChannelList({ teamId: '6000000000000000000000aa', tmbId: 'new-tmb' })
@@ -419,7 +328,6 @@ describe('channel controller — list views with relatedModelCount', () => {
     // Regression: aiproxy may return data.channels: null (Go nil slice → JSON
     // null) for an empty/degraded bucket — the list must fail open to an empty
     // page, not throw "X is not iterable" on the spread.
-    resetChannelCache();
     axiosMock.mockResolvedValue(okEnvelope({ channels: null, total: 0 }));
 
     const { list, total } = await getSystemChannelList();

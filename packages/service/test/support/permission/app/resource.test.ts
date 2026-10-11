@@ -10,7 +10,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   getAppLatestVersion: vi.fn(),
   getAppDraftResourceBaseline: vi.fn(),
-  checkAppResourceReadPermissions: vi.fn(),
   getTeamModelHandle: vi.fn(),
   authAppByTmbId: vi.fn(),
   authDatasetByTmbId: vi.fn(),
@@ -339,5 +338,55 @@ describe('team models in App resource permissions', () => {
     ).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
     expect(mocks.getTeamModelHandle).not.toHaveBeenCalled();
     expect(mocks.getAppLatestVersion).not.toHaveBeenCalled();
+  });
+
+  describe('App target follows the debug resource chain', () => {
+    const appId = '65f000000000000000000071';
+    const getArgs = async (authType?: 'token' | 'outLink') => {
+      const handle = await mocks.getTeamModelHandle();
+      mocks.getTeamModelHandle.mockClear();
+      return {
+        targetType: ChatSourceTypeEnum.app,
+        targetId: appId,
+        teamId,
+        tmbId,
+        isRoot: false,
+        authType,
+        handle,
+        resources: []
+      };
+    };
+
+    it('allows a token member to use a model declared by the draft snapshot baseline', async () => {
+      mocks.getAppDraftResourceBaseline.mockResolvedValue([{ type: 'model', id: privateId }]);
+
+      await expect(
+        authTargetModelResource({ ...(await getArgs('token')), modelId: privateId })
+      ).resolves.toBeUndefined();
+      expect(mocks.getAppDraftResourceBaseline).toHaveBeenCalledWith(
+        appId,
+        undefined,
+        expect.any(Function)
+      );
+    });
+
+    it('authorizes models added relative to the draft with the member use permission', async () => {
+      mocks.getAppDraftResourceBaseline.mockResolvedValue([]);
+      const args = await getArgs('token');
+
+      await expect(authTargetModelResource({ ...args, modelId: ownId })).resolves.toBeUndefined();
+      await expect(authTargetModelResource({ ...args, modelId: privateId })).rejects.toBe(
+        ERROR_ENUM.unAuthModel
+      );
+      // 复用调用方 handle，不重复读取模型目录。
+      expect(mocks.getTeamModelHandle).not.toHaveBeenCalled();
+    });
+
+    it('rejects non-token identities without falling back to the draft snapshot', async () => {
+      await expect(
+        authTargetModelResource({ ...(await getArgs('outLink')), modelId: ownId })
+      ).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
+      expect(mocks.getAppDraftResourceBaseline).not.toHaveBeenCalled();
+    });
   });
 });

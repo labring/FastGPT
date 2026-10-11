@@ -61,22 +61,25 @@ const getMemberAbility = async (actor: MemberModelActor) => {
 };
 
 /**
- * 计算身份在当前目录快照下可使用（`use`）的完整模型 ID 集合，包含停用模型；启用状态由 typed getter 判断。
+ * 计算身份在当前目录快照下可使用（`use`）的完整模型 ID 集合，默认仅含 active 模型。
+ * includeInactive 用于展示停用状态，实时计算且不读写成员缓存；启用状态由调用方判断。
  * 成员结果按 catalogVersion + hasManagePer 缓存；外链身份每次实时计算，避免与发布者本人互相覆盖缓存。
  * 存储异常正常抛出，不转换为无权限。
  */
 export const getAuthorizedModelIds = async ({
   actor,
-  handle
+  handle,
+  includeInactive = false
 }: {
   actor: ModelActor;
   handle: ModelHandle;
+  includeInactive?: boolean;
 }): Promise<Set<string>> => {
   const { teamId, tmbId } = actor;
   const isOutLink = actor.source === 'outLink';
   const hasManagePer = isOutLink ? false : (await getMemberAbility(actor)).hasManagePer;
 
-  if (!isOutLink) {
+  if (!isOutLink && !includeInactive) {
     const cached = await getMemberModelsCache({
       teamId,
       tmbId,
@@ -112,8 +115,8 @@ export const getAuthorizedModelIds = async ({
     })
   );
   // 团队 handle 只包含系统模型和本团队模型，无需再判断团队归属。
-  const authorizedIds = handle
-    .getAllModels()
+  const models = includeInactive ? handle.getAllModels() : handle.getActiveModels();
+  const authorizedIds = models
     .filter((model) => {
       if (isTeamModel(model)) return model.tmbId === tmbId || grantedIds.has(model.modelId);
       return (
@@ -122,7 +125,7 @@ export const getAuthorizedModelIds = async ({
     })
     .map((model) => model.modelId);
 
-  if (!isOutLink) {
+  if (!isOutLink && !includeInactive) {
     await setMemberModelsCache({
       teamId,
       tmbId,
@@ -136,8 +139,9 @@ export const getAuthorizedModelIds = async ({
 
 /**
  * 按 action 批量检查模型权限，返回去重后保持输入顺序的无权限 ID，全部通过返回 `[]`。
+ * `use` 仅接受 active 模型；展示停用状态使用 getAuthorizedModelIds({ includeInactive: true })。
  * 只用于需要按结果过滤的场景（目录、展示摘要、协作者批量列表、应用资源鉴权）；
- * 其他场景使用 `assertAuthModels`。不存在的 ID 视为无权限，类型和启用状态留给调用方判断。
+ * 其他场景使用 `assertAuthModels`。不存在的 ID 视为无权限，模型类型留给调用方判断。
  * 调用方已有 handle 时必须传入，保证鉴权与后续读取使用同一目录快照。
  */
 export const authModels = async ({

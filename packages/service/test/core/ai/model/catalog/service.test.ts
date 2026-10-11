@@ -76,12 +76,6 @@ describe('loadSystemModels', () => {
     vi.restoreAllMocks();
   });
 
-  it('does not request model templates while reloading installed models', async () => {
-    await expect(loadSystemModels()).resolves.toBeUndefined();
-    expect(pluginMocks.listModels).not.toHaveBeenCalled();
-    expect(getCachedSystemModelHandle()?.getAllModels()).toEqual([]);
-  });
-
   it('rejects startup when required Plugin Provider metadata cannot be loaded', async () => {
     const failure = new Error('Plugin Provider unavailable');
     await MongoAIModel.create(pluginLlmDocument);

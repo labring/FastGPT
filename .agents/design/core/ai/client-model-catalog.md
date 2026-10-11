@@ -299,7 +299,7 @@ global.systemModelMap
 global.systemDefaultModel
 ```
 
-成员使用权缓存使用 `TmpDataEnum.MemberModels`（存储值沿用 `my_models`），由 `getAuthorizedModelIds` 读写，详见 [模型鉴权收敛设计](./model-permission-auth.md)：
+成员使用权缓存仅包含 active 模型，使用 `TmpDataEnum.MemberModels`（存储值沿用 `my_models`），由 `getAuthorizedModelIds` 读写，详见 [模型鉴权收敛设计](./model-permission-auth.md)：
 
 ```ts
 {

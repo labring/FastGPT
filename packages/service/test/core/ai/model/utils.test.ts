@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { desensitizeModel, flatModelToDocumentData } from '../../../../core/ai/model/transform';
 
 describe('flatModelToDocumentData', () => {
@@ -30,8 +31,6 @@ describe('flatModelToDocumentData', () => {
         vision: true
       }
     });
-    expect(result).not.toHaveProperty('maxTokens');
-    expect(result).not.toHaveProperty('vision');
   });
 
   it('lets persisted config override flat plugin defaults without dropping false and zero', () => {
@@ -68,7 +67,7 @@ describe('flatModelToDocumentData', () => {
       maxTemperature: null
     });
 
-    expect(result.config.maxTemperature).toBeNull();
+    expect(result.config).toMatchObject({ maxTemperature: null });
   });
 });
 
@@ -80,7 +79,7 @@ describe('system model response filtering', () => {
       provider: 'OpenAI',
       model: 'gpt-test',
       name: 'GPT test',
-      scope: 'system' as const,
+      scope: ModelScopeEnum.system,
       requestUrl: 'https://provider.example/v1',
       requestAuth: 'model-secret',
       config: {
@@ -91,7 +90,7 @@ describe('system model response filtering', () => {
         defaultConfig: { secret: 'internal config' },
         fieldMap: { messages: 'prompt' }
       }
-    };
+    } satisfies LLMModelDataType;
 
     const result = desensitizeModel(model);
 

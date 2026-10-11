@@ -28,7 +28,13 @@ describe('AIProxyClient', () => {
   });
 
   describe('system.channels', () => {
-    it('list forwards query params to search endpoint when search is provided', async () => {
+    it.each([
+      {
+        search: 'test',
+        path: '/api/channels/search?page=2&per_page=20&keyword=test'
+      },
+      { search: undefined, path: '/api/channels/?page=2&per_page=20' }
+    ])('list forwards query params to $path', async ({ search, path }) => {
       mockAxiosWithoutSSRF.mockResolvedValueOnce({
         data: {
           success: true,
@@ -39,37 +45,12 @@ describe('AIProxyClient', () => {
         }
       });
 
-      const res = await client.system.channels.list({ page: 2, perPage: 20, search: 'test' });
+      const res = await client.system.channels.list({ page: 2, perPage: 20, search });
 
       expect(mockAxiosWithoutSSRF).toHaveBeenCalledWith(
         expect.objectContaining({
           method: 'get',
-          url: 'https://aiproxy.example.com/api/channels/search?page=2&per_page=20&keyword=test',
-          headers: { Authorization: 'Bearer test-admin-token' }
-        })
-      );
-      expect(res.channels).toHaveLength(1);
-      expect(res.channels[0].id).toBe(1);
-      expect(res.total).toBe(1);
-    });
-
-    it('list forwards query params to standard endpoint when search is absent', async () => {
-      mockAxiosWithoutSSRF.mockResolvedValueOnce({
-        data: {
-          success: true,
-          data: {
-            channels: [{ id: 1, name: 'ch-1', type: 1, models: ['gpt-4'] }],
-            total: 1
-          }
-        }
-      });
-
-      const res = await client.system.channels.list({ page: 2, perPage: 20 });
-
-      expect(mockAxiosWithoutSSRF).toHaveBeenCalledWith(
-        expect.objectContaining({
-          method: 'get',
-          url: 'https://aiproxy.example.com/api/channels/?page=2&per_page=20',
+          url: `${config.baseUrl}${path}`,
           headers: { Authorization: 'Bearer test-admin-token' }
         })
       );

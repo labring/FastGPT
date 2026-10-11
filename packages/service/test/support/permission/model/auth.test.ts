@@ -88,6 +88,14 @@ describe('authModels', () => {
     const modelIds = await getModelIds();
 
     expect(
+      await getAuthorizedModelIds({
+        actor,
+        handle: await getTeamModelHandle({ teamId }),
+        includeInactive: true
+      })
+    ).toEqual(new Set(modelIds.filter((modelId) => modelId !== foreign.modelId)));
+    expect(await MongoTmpData.countDocuments({})).toBe(0);
+    expect(
       await authModels({
         actor,
         modelIds: [...modelIds, foreign.modelId],
@@ -202,7 +210,7 @@ describe('authModels', () => {
     ]);
     expect(await authModels({ actor, modelIds: await getModelIds(), action: 'use' })).toEqual([]);
   });
-  it('does not confuse inactive state with missing authorization', async () => {
+  it('includes inactive permissions only when explicitly requested', async () => {
     const created = await createModel({ ...owner, modelData: draft });
     await updateModelStatus({
       modelIds: [created.modelId],
@@ -215,7 +223,14 @@ describe('authModels', () => {
     expect(models[0].isActive).toBe(false);
     expect(
       await authModels({ actor, modelIds: models.map((model) => model.modelId), action: 'use' })
-    ).toEqual([]);
+    ).toEqual([created.modelId]);
+    expect(
+      await getAuthorizedModelIds({
+        actor,
+        handle: await getTeamModelHandle({ teamId }),
+        includeInactive: true
+      })
+    ).toEqual(new Set([created.modelId]));
   });
   it.each(['use', 'config', 'grant'] as const)('denies unknown model IDs (%s)', async (action) => {
     const missingId = new Types.ObjectId().toString();
@@ -312,19 +327,55 @@ describe('assertAuthModels', () => {
 });
 
 describe('getAuthorizedModelIds', () => {
-  it('includes owned, granted and default-open models but excludes other members private models', async () => {
-    const system = await createModel({ channelType: 'system', modelData: draft });
-    const own = await createModel({ ...owner, modelData: draft });
-    const other = await createModel({ ...owner, tmbId: otherTmbId, modelData: draft });
+  it('keeps only active IDs cached and never caches includeInactive results', async () => {
+    const active = await createModel({ ...owner, modelData: draft });
+    const owned = await createModel({
+      ...owner,
+      modelData: { ...draft, model: 'owned-inactive', isActive: false }
+    });
+    const granted = await createModel({
+      ...owner,
+      tmbId: otherTmbId,
+      modelData: { ...draft, model: 'granted-inactive', isActive: false }
+    });
+    await createModel({
+      ...owner,
+      tmbId: otherTmbId,
+      modelData: { ...draft, model: 'forbidden-inactive', isActive: false }
+    });
+    await grant(granted.modelId, tmbId);
     const handle = await getTeamModelHandle({ teamId });
+    expect(await getAuthorizedModelIds({ actor, handle })).toEqual(new Set([active.modelId]));
+    const cached = await MongoTmpData.findOne({ 'data.teamId': teamId }).lean();
+    expect(cached?.data).toMatchObject({ modelIds: [active.modelId] });
+    const expected = new Set([active.modelId, owned.modelId, granted.modelId]);
+    expect(await getAuthorizedModelIds({ actor, handle, includeInactive: true })).toEqual(expected);
+    expect(await MongoTmpData.findOne({ 'data.teamId': teamId }).lean()).toEqual(cached);
 
-    expect(await getAuthorizedModelIds({ actor, handle })).toEqual(
-      new Set([system.modelId, own.modelId])
+    await MongoTmpData.deleteMany({});
+    expect(await getAuthorizedModelIds({ actor, handle, includeInactive: true })).toEqual(expected);
+    expect(await MongoTmpData.countDocuments({})).toBe(0);
+
+    await updateModelStatus({ modelIds: [owned.modelId], isActive: true, ...owner });
+    expect(
+      await getAuthorizedModelIds({ actor, handle: await getTeamModelHandle({ teamId }) })
+    ).toEqual(new Set([active.modelId, owned.modelId]));
+  });
+  it('does not reuse admin cache or write inactive model IDs for outlinks', async () => {
+    const { modelId } = await createModel({
+      channelType: 'system',
+      modelData: { ...draft, isActive: false }
+    });
+    await grant(modelId, otherTmbId);
+    const handle = await getTeamModelHandle({ teamId });
+    expect(await getAuthorizedModelIds({ actor: admin, handle })).toEqual(new Set());
+    const cached = await MongoTmpData.findOne({ 'data.teamId': teamId }).lean();
+    expect(await getAuthorizedModelIds({ actor: admin, handle, includeInactive: true })).toEqual(
+      new Set([modelId])
     );
-    await grant(other.modelId, tmbId);
-    await clearMemberModelsCache({ teamId });
-    expect(await getAuthorizedModelIds({ actor, handle })).toEqual(
-      new Set([system.modelId, own.modelId, other.modelId])
-    );
+    expect(
+      await getAuthorizedModelIds({ actor: outLinkActor, handle, includeInactive: true })
+    ).toEqual(new Set());
+    expect(await MongoTmpData.findOne({ 'data.teamId': teamId }).lean()).toEqual(cached);
   });
 });

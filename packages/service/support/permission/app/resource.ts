@@ -3,7 +3,7 @@ import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import type { AppResource, AppResourcesType } from '@fastgpt/global/core/app/type';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { Types, type ClientSession } from '../../../common/mongo';
 import type { ModelHandle } from '../../../core/ai/model/catalog/handle';
 import { getTeamModelHandle } from '../../../core/ai/model/catalog/service';
@@ -89,19 +89,22 @@ export const getUnauthorizedAppResources = async ({
   resources,
   tmbId,
   isRoot = false,
-  allowRootCrossTeam = false
+  allowRootCrossTeam = false,
+  modelHandle
 }: {
   resources: AppResource[];
   tmbId: string;
   isRoot?: boolean;
   allowRootCrossTeam?: boolean;
+  /** 调用方已读取的同团队模型目录；不传时按成员所属团队读取。 */
+  modelHandle?: ModelHandle;
 }) => {
   const normalizedResources = mergeAppResources(resources);
   const modelResources = normalizedResources.filter((resource) => resource.type === 'model');
   const modelCatalog = await (async () => {
     if (modelResources.length === 0) return;
     const { teamId, permission } = await getTmbInfoByTmbId({ tmbId });
-    const handle = await getTeamModelHandle({ teamId });
+    const handle = modelHandle ?? (await getTeamModelHandle({ teamId }));
     const denied = await authModels({
       actor: { teamId, tmbId, isRoot, teamPermission: permission },
       modelIds: modelResources.map(({ id }) => id),
@@ -191,12 +194,14 @@ export const filterAuthorizedAppResources = async ({
   resources,
   tmbId,
   isRoot = false,
-  allowRootCrossTeam = false
+  allowRootCrossTeam = false,
+  modelHandle
 }: {
   resources: AppResource[];
   tmbId: unknown;
   isRoot?: boolean;
   allowRootCrossTeam?: boolean;
+  modelHandle?: ModelHandle;
 }): Promise<AppResource[]> => {
   if (resources.length === 0) return [];
 
@@ -218,7 +223,8 @@ export const filterAuthorizedAppResources = async ({
     resources,
     tmbId: validTmbId,
     isRoot,
-    allowRootCrossTeam
+    allowRootCrossTeam,
+    modelHandle
   });
   if (unauthorized.length === 0) return resources;
 
@@ -238,6 +244,7 @@ export const resolveAppResourcesByPermission = async ({
   isRoot = false,
   blockOnUnauthorized,
   allowRootCrossTeam = false,
+  modelHandle,
   session
 }: {
   appId: string;
@@ -246,6 +253,8 @@ export const resolveAppResourcesByPermission = async ({
   isRoot?: boolean;
   blockOnUnauthorized: boolean;
   allowRootCrossTeam?: boolean;
+  /** 调用方已读取的团队模型目录；不传时按需读取。 */
+  modelHandle?: ModelHandle;
   session?: ClientSession;
 }) => {
   const baseline = await getAppDraftResourceBaseline(appId, session, async (rawResources) => {
@@ -261,7 +270,8 @@ export const resolveAppResourcesByPermission = async ({
       resources: rawResources,
       tmbId: appOwnerTmbId,
       isRoot,
-      allowRootCrossTeam
+      allowRootCrossTeam,
+      modelHandle
     });
   });
   const { kept, added } = splitExtractedAppResources({ extracted, baseline });
@@ -272,7 +282,8 @@ export const resolveAppResourcesByPermission = async ({
       resources: added,
       tmbId,
       isRoot,
-      allowRootCrossTeam
+      allowRootCrossTeam,
+      modelHandle
     });
     return mergeAppResources([...kept, ...added]);
   }
@@ -281,14 +292,20 @@ export const resolveAppResourcesByPermission = async ({
     resources: added,
     tmbId,
     isRoot,
-    allowRootCrossTeam
+    allowRootCrossTeam,
+    modelHandle
   });
   return mergeAppResources([...kept, ...authorizedAdded]);
 };
 
 /**
- * 校验独立辅助调用点（如问题引导、TTS 音频生成）使用的模型资源，失败抛 `UserError(unAuthModel)`。
- * - 目标为 App：只认当前正式 Version 的资源快照，与调用者身份无关（外链也走此分支）。
+ * 校验独立辅助调用点（如问题引导、TTS 音频生成）使用的模型资源。
+ * - 目标为 App：与工作流资源同一条链路，先查应用快照，再按身份决定是否允许成员鉴权兜底。
+ *   1. 命中当前正式 Version 快照直接放行（正式对话、外链、API Key 共用）；
+ *   2. 未命中时，只有登录成员（authType=token，唯一能进入 Test/Debug 的身份）继续走调试链路：
+ *      草稿快照基线内的模型放行，相对草稿新增的模型按成员 `use` 权限阻断校验，
+ *      与 chatTest/debug 中知识库等资源的 `resolveAppResourcesByPermission` 规则一致；
+ *   3. 外链 / API Key 只能使用正式版本，未命中直接拒绝。
  * - 非 App（skillEdit、chatAgentHelper）：只有登录成员能进入，直接按成员 `use` 权限校验。
  * 模型类型与启用状态由调用方的 typed getter 校验；调用方必须传入读取模型时使用的 handle，避免重复读取目录。
  */
@@ -299,6 +316,7 @@ export const authTargetModelResource = async ({
   teamId,
   tmbId,
   isRoot,
+  authType,
   handle,
   resources
 }: {
@@ -308,15 +326,29 @@ export const authTargetModelResource = async ({
   teamId: string;
   tmbId: string;
   isRoot: boolean;
+  /** 本次请求身份类型；只有 token 允许走草稿快照与成员鉴权兜底。 */
+  authType?: `${AuthUserTypeEnum}`;
   handle: ModelHandle;
   /** App 正式版本资源快照；调用方已读取版本时传入，避免重复查询。 */
   resources?: AppResourcesType;
 }) => {
   if (targetType === ChatSourceTypeEnum.app && targetId) {
-    const snapshot = resources ?? (await getAppLatestVersion(targetId)).resources;
-    if (!hasAppResource({ resources: snapshot, resource: { type: 'model', id: modelId } })) {
+    const modelResource: AppResource = { type: 'model', id: modelId };
+    const published = resources ?? (await getAppLatestVersion(targetId)).resources;
+    if (hasAppResource({ resources: published, resource: modelResource })) return;
+
+    if (authType !== AuthUserTypeEnum.token) {
       throw new UserError(ModelErrEnum.unAuthModel);
     }
+    await resolveAppResourcesByPermission({
+      appId: targetId,
+      extracted: [modelResource],
+      tmbId,
+      isRoot,
+      blockOnUnauthorized: true,
+      allowRootCrossTeam: isRoot,
+      modelHandle: handle
+    });
     return;
   }
   await assertAuthModels({

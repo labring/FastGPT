@@ -1,8 +1,8 @@
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
-import type { getModelTestMap } from '@test/modelCache';
-import { setModelTestMap, setModelTestSnapshot } from '@test/modelCache';
+import { setModelTestSnapshot } from '@test/modelCache';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()),
@@ -35,11 +35,11 @@ const model = {
   name: 'Model',
   provider: 'provider',
   type: ModelTypeEnum.llm,
-  scope: 'system' as const,
+  scope: ModelScopeEnum.system,
   isActive: true,
   requestAuth: 'secret',
   config: { maxContext: 4096, maxResponse: 1024, quoteMaxToken: 1024 }
-};
+} satisfies LLMModelDataType;
 
 describe('GET /api/core/ai/model/catalog', () => {
   beforeEach(() => {
@@ -50,24 +50,19 @@ describe('GET /api/core/ai/model/catalog', () => {
       isRoot: false,
       tmb: { permission: { hasManagePer: false } }
     });
-    // 默认授权快照内全部模型。
+    // 与真实鉴权保持一致：仅返回快照内的 active 模型。
     mocks.getAuthorizedModelIds.mockImplementation(
-      async ({ handle }: { handle: { getAllModels: () => { modelId: string }[] } }) =>
-        new Set(handle.getAllModels().map((item) => item.modelId))
+      async ({ handle }: { handle: { getActiveModels: () => { modelId: string }[] } }) =>
+        new Set(handle.getActiveModels().map((item) => item.modelId))
     );
     mocks.authOutLink.mockResolvedValue({
       outLinkConfig: { teamId: 'outlink-team', tmbId: 'outlink-member' }
     });
-    setModelTestSnapshot({ version: 'catalog-version' });
-    setModelTestMap(
-      new Map([[`id:${model.modelId}`, model]]) as ReturnType<typeof getModelTestMap>
-    );
     setModelTestSnapshot({
-      models: [model] as ReturnType<
-        NonNullable<ReturnType<typeof getCachedSystemModelHandle>>['getActiveModels']
-      >
+      version: 'catalog-version',
+      models: [model],
+      configuredDefaultModelIds: { llm: model.modelId }
     });
-    setModelTestSnapshot({ configuredDefaultModelIds: { llm: model.modelId } });
     global.ModelProviderRawCache = [
       {
         provider: 'provider',
@@ -96,9 +91,7 @@ describe('GET /api/core/ai/model/catalog', () => {
 
   it('keeps one snapshot when the catalog is published during permission resolution', async () => {
     mocks.getAuthorizedModelIds.mockImplementationOnce(async () => {
-      setModelTestSnapshot({ version: 'new-catalog' });
-      setModelTestSnapshot({ models: [] });
-      setModelTestSnapshot({ configuredDefaultModelIds: {} });
+      setModelTestSnapshot({ version: 'new-catalog', models: [], configuredDefaultModelIds: {} });
       global.ModelProviderRawCache = [];
       return new Set([model.modelId]);
     });
@@ -161,61 +154,24 @@ describe('GET /api/core/ai/model/catalog', () => {
     );
   });
 
-  it('keeps plugin catalog order when permission IDs use a different order', async () => {
-    const secondModel = {
-      ...model,
-      modelId: 'model-2',
-      model: 'provider-model-2',
-      name: 'Model 2'
-    };
-    setModelTestSnapshot({
-      models: [model, secondModel] as ReturnType<
-        NonNullable<ReturnType<typeof getCachedSystemModelHandle>>['getActiveModels']
-      >
-    });
-    mocks.getAuthorizedModelIds.mockResolvedValue(new Set([secondModel.modelId, model.modelId]));
-
-    const result = await handler({ query: {} } as any);
-
-    expect(result.data?.models.map((item) => item.modelId)).toEqual([
-      model.modelId,
-      secondModel.modelId
-    ]);
-  });
-
-  it('does not include inactive model metadata in the candidate catalog', async () => {
+  it('keeps catalog order while excluding inactive and unauthorized models', async () => {
+    const second = { ...model, modelId: 'model-2', model: 'provider-model-2' };
     setModelTestSnapshot({
       models: [
         model,
         { ...model, modelId: 'inactive', isActive: false },
-        { ...model, modelId: 'hidden', isActive: false }
-      ] as ReturnType<NonNullable<ReturnType<typeof getCachedSystemModelHandle>>['getAllModels']>
+        { ...model, modelId: 'private', scope: ModelScopeEnum.team, tmbId: 'other-member' },
+        second
+      ]
     });
-    const result = await handler({ query: {} } as any);
-    expect(result.data?.models.map((m) => m.modelId)).toEqual([model.modelId]);
-    expect(result.data?.defaultModelIds.llm).toBe(model.modelId);
-  });
+    mocks.getAuthorizedModelIds.mockResolvedValue(new Set([second.modelId, model.modelId]));
 
-  it('filters the models outside the authorized set', async () => {
-    const otherTeamModel = {
-      ...model,
-      modelId: 'other-team-model-id',
-      scope: 'team',
-      teamId: 'other-team-id',
-      tmbId: 'other-tmb-id'
-    };
-    setModelTestSnapshot({
-      models: [model, otherTeamModel] as any
-    });
-    mocks.getAuthorizedModelIds.mockResolvedValue(new Set([model.modelId]));
-    mocks.authUserPer.mockResolvedValue({
-      teamId: 'my-team-id',
-      tmbId: 'my-tmb-id',
-      isRoot: false,
-      tmb: { permission: { hasManagePer: false } }
-    });
     const result = await handler({ query: {} } as any);
-    expect(result.data?.models.map((m) => m.modelId)).toEqual([model.modelId]);
+    expect(result.data?.models.map((item) => item.modelId)).toEqual([
+      model.modelId,
+      second.modelId
+    ]);
+    expect(result.data?.defaultModelIds.llm).toBe(model.modelId);
   });
 
   it('forwards the authenticated actor to getAuthorizedModelIds', async () => {

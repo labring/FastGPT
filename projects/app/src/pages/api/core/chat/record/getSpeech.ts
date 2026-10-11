@@ -56,6 +56,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       teamId,
       tmbId,
       isRoot,
+      authType,
       handle: modelHandle
     });
     const voiceData = ttsModel.config.voices.find((item) => item.value === ttsConfig.voice);

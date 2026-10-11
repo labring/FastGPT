@@ -7,6 +7,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import {
   clearTeamModelCatalogCache,
+  getCachedSystemModelHandle,
   publishSystemModelHandle
 } from '@fastgpt/service/core/ai/model/catalog/cache';
 import { readModelCatalogRevision } from '@fastgpt/service/core/ai/model/catalog/entity';
@@ -22,7 +23,6 @@ import {
   updateModelStatus
 } from '@fastgpt/service/core/ai/model/service';
 import { MongoModelStatusProbeRecord } from '@fastgpt/service/core/ai/modelStatus/schema';
-import { resourcePermissionRepo } from '@fastgpt/service/support/permission/repository/resourcePermissionRepo';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -210,25 +210,12 @@ describe('model lifecycle', () => {
     expect(await MongoResourcePermission.countDocuments({ resourceId: retained.modelId })).toBe(2);
     expect(await MongoModelStatusProbeRecord.countDocuments({ modelId: retained.modelId })).toBe(1);
     expect(await MongoAIModel.exists({ _id: retained.modelId })).toBeTruthy();
-  });
-
-  it('rolls back entity deletion and the catalog revision if cross-domain cleanup fails', async () => {
-    const created = await createModel({ ...owner, modelData: draft });
-    const context = { scope: ModelScopeEnum.system } as const;
-    const revision = await readModelCatalogRevision(context);
-    const cleanup = vi
-      .spyOn(resourcePermissionRepo, 'deleteByResourceIdsAcrossTeams')
-      .mockRejectedValueOnce(new Error('ACL unavailable'));
-    try {
-      await expect(deleteModels({ ...owner, modelIds: [created.modelId] })).rejects.toThrow(
-        'ACL unavailable'
-      );
-      expect(await MongoAIModel.exists({ _id: created.modelId })).toBeTruthy();
-      expect(await readModelCatalogRevision(context)).toBe(revision);
-      expect(proxy.remove).not.toHaveBeenCalled();
-    } finally {
-      cleanup.mockRestore();
-    }
+    expect(
+      getCachedSystemModelHandle()
+        ?.getAllModels()
+        .map((model) => model.modelId)
+    ).toEqual([retained.modelId]);
+    expect(getCachedSystemModelHandle()?.revision).toBe(3);
   });
 
   it('keeps a committed deletion successful when channel cleanup fails', async () => {

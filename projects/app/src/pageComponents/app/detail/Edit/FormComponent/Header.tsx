@@ -244,6 +244,7 @@ const Header = ({
               onClickSave={onClickSave}
               checkData={async () => {
                 const error = await checkAppFormBeforePublish({
+                  appId,
                   appForm,
                   form2WorkflowFn,
                   showSandbox,

@@ -39,6 +39,7 @@ async function handler(
     tmbId,
     teamId,
     isRoot,
+    authType,
     sourceType: resolvedSourceType,
     sourceId: resolvedSourceId
   } = await authChatTargetCrud({
@@ -97,6 +98,7 @@ async function handler(
     teamId,
     tmbId,
     isRoot,
+    authType,
     handle: modelHandle,
     resources: appWorkflow?.resources
   });

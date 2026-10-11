@@ -10,8 +10,7 @@ const mocks = vi.hoisted(() => ({
   mongoDatasetFindOne: vi.fn(),
   assertAuthModels: vi.fn(),
   resolveAppResourcesByPermission: vi.fn(),
-  getSystemModelHandle: vi.fn(),
-  getTeamModelHandle: vi.fn()
+  getSystemModelHandle: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
@@ -57,6 +56,20 @@ const createFindResult = (documents: unknown = []) => ({
 });
 
 describe('workflow resource context', () => {
+  /** 构造静态选择或动态引用模型的节点，两个权限上下文复用相同输入结构。 */
+  const createModelNode = (renderType: FlowNodeInputTypeEnum) => ({
+    flowNodeType: FlowNodeTypeEnum.chatNode,
+    inputs: [
+      {
+        key: NodeInputKeyEnum.aiModelId,
+        value: renderType === FlowNodeInputTypeEnum.reference ? ['source', 'model'] : 'model-1',
+        label: '',
+        valueType: WorkflowIOValueTypeEnum.string,
+        renderTypeList: [renderType]
+      }
+    ]
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.mongoDatasetFind.mockReturnValue(
@@ -102,22 +115,11 @@ describe('workflow resource context', () => {
   it('uses the snapshot for static resources and member permissions for dynamic resources', async () => {
     const modelResource = { type: 'model' as const, id: 'model-1' };
     const context = createWorkflowResourceContext({ resources: [modelResource] });
-    const createNode = (renderType: FlowNodeInputTypeEnum) => ({
-      flowNodeType: FlowNodeTypeEnum.chatNode,
-      inputs: [
-        {
-          key: NodeInputKeyEnum.aiModelId,
-          value: renderType === FlowNodeInputTypeEnum.reference ? ['source', 'model'] : 'model-1',
-          valueType: WorkflowIOValueTypeEnum.string,
-          renderTypeList: [renderType]
-        }
-      ]
-    });
 
     await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
       await expect(
         assertWorkflowNodeModelResources({
-          node: createNode(FlowNodeInputTypeEnum.selectLLMModel),
+          node: createModelNode(FlowNodeInputTypeEnum.selectLLMModel),
           params: { [NodeInputKeyEnum.aiModelId]: 'model-1' },
           teamId: 'team-1',
           tmbId: 'tmb-1'
@@ -125,7 +127,7 @@ describe('workflow resource context', () => {
       ).resolves.toBeUndefined();
       await expect(
         assertWorkflowNodeModelResources({
-          node: createNode(FlowNodeInputTypeEnum.selectLLMModel),
+          node: createModelNode(FlowNodeInputTypeEnum.selectLLMModel),
           params: { [NodeInputKeyEnum.aiModelId]: 'missing-model' },
           teamId: 'team-1',
           tmbId: 'tmb-1'
@@ -133,7 +135,7 @@ describe('workflow resource context', () => {
       ).rejects.toBeInstanceOf(WorkflowResourceError);
       await expect(
         assertWorkflowNodeModelResources({
-          node: createNode(FlowNodeInputTypeEnum.reference),
+          node: createModelNode(FlowNodeInputTypeEnum.reference),
           params: { [NodeInputKeyEnum.aiModelId]: 'model-1' },
           teamId: 'team-1',
           tmbId: 'tmb-1'
@@ -157,23 +159,10 @@ describe('workflow resource context', () => {
     expect(context).toMatchObject({ trusted: true, isRoot: true });
     expect(context.teamId).toBeUndefined();
 
-    const createNode = (renderType: FlowNodeInputTypeEnum) => ({
-      flowNodeType: FlowNodeTypeEnum.chatNode,
-      inputs: [
-        {
-          key: NodeInputKeyEnum.aiModelId,
-          value:
-            renderType === FlowNodeInputTypeEnum.reference ? ['source', 'model'] : 'undeclared',
-          valueType: WorkflowIOValueTypeEnum.string,
-          renderTypeList: [renderType]
-        }
-      ]
-    });
-
     await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
       // 静态模型未在任何快照声明，也不鉴权。
       await assertWorkflowNodeModelResources({
-        node: createNode(FlowNodeInputTypeEnum.selectLLMModel),
+        node: createModelNode(FlowNodeInputTypeEnum.selectLLMModel),
         params: { [NodeInputKeyEnum.aiModelId]: 'undeclared' },
         teamId: 'team-1',
         tmbId: 'tmb-1'
@@ -193,7 +182,7 @@ describe('workflow resource context', () => {
 
       // 动态模型来自调用方输入，仍按运行人鉴权。
       await assertWorkflowNodeModelResources({
-        node: createNode(FlowNodeInputTypeEnum.reference),
+        node: createModelNode(FlowNodeInputTypeEnum.reference),
         params: { [NodeInputKeyEnum.aiModelId]: 'dynamic-model' },
         teamId: 'team-1',
         tmbId: 'tmb-1'
@@ -213,16 +202,19 @@ describe('workflow resource context', () => {
       inputs: [
         {
           key: NodeInputKeyEnum.datasetSelectList,
+          label: '',
           value: [],
           renderTypeList: [FlowNodeInputTypeEnum.selectDataset]
         },
         {
           key: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
+          label: '',
           value: true,
           renderTypeList: [FlowNodeInputTypeEnum.hidden]
         },
         {
           key: NodeInputKeyEnum.datasetSearchExtensionModelId,
+          label: '',
           value: 'missing-model',
           renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
         }
@@ -282,7 +274,8 @@ describe('workflow resource context', () => {
       tmbId: 'tmb-1',
       isRoot: false,
       blockOnUnauthorized: true,
-      allowRootCrossTeam: false
+      allowRootCrossTeam: false,
+      modelHandle: expect.anything()
     });
 
     await runWithContext({ mcpClientMemory: {}, resourceContext: context }, () =>
@@ -329,7 +322,7 @@ describe('workflow resource context', () => {
               {
                 key: NodeInputKeyEnum.datasetSelectList,
                 value: [{ datasetId: 'dataset-1' }],
-                valueType: WorkflowIOValueTypeEnum.datasetSelectList,
+                valueType: WorkflowIOValueTypeEnum.selectDataset,
                 renderTypeList: [FlowNodeInputTypeEnum.selectDataset]
               }
             ]
@@ -347,7 +340,8 @@ describe('workflow resource context', () => {
         tmbId: 'tmb-1',
         isRoot: true,
         blockOnUnauthorized: true,
-        allowRootCrossTeam: true
+        allowRootCrossTeam: true,
+        modelHandle: expect.anything()
       });
     });
 

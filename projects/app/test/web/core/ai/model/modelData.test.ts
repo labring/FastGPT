@@ -109,6 +109,10 @@ describe('catalog consumers', () => {
     expect(mocks.catalog).not.toHaveBeenCalled();
     expect(await getModelDetail({ modelId: 'missing', model: 'legacy-first' })).toBeUndefined();
     expect((await getModelDetail({ model: 'legacy-first' }))?.modelId).toBe('first');
+    expect(await getModelDetail({ modelId: 'legacy-first' })).toBeUndefined();
+    expect(
+      await getModelDetail({ modelId: 'legacy-first', model: 'legacy-first' })
+    ).toBeUndefined();
     expect(
       await getModelDetail({ modelId: 'first', modelType: ModelTypeEnum.tts })
     ).toBeUndefined();

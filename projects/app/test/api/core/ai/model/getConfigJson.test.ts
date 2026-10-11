@@ -41,7 +41,8 @@ describe('GET /api/core/ai/model/getConfigJson', () => {
     const response = await Call<string>(getConfigJsonApi, { auth: root });
 
     expect(response.code).toBe(200);
-    expect(JSON.parse(response.data)).toEqual([
+    const exported = JSON.parse(response.data);
+    expect(exported).toEqual([
       expect.objectContaining({
         modelId: String(model._id),
         model: 'exported-model',
@@ -52,11 +53,10 @@ describe('GET /api/core/ai/model/getConfigJson', () => {
         config: expect.objectContaining({ maxContext: 16000, toolChoice: true })
       })
     ]);
-    expect(JSON.parse(response.data)[0]).not.toHaveProperty('_id');
-    expect(JSON.parse(response.data)[0]).not.toHaveProperty('metadata');
-    expect(JSON.parse(response.data)[0]).not.toHaveProperty('unknownTopLevel');
-    expect(JSON.parse(response.data)[0]).toMatchObject({ inputPrice: 1, outputPrice: 2 });
-    expect(JSON.parse(response.data)[0].priceTiers).toEqual([]);
+    expect(exported[0]).not.toHaveProperty('_id');
+    expect(exported[0]).not.toHaveProperty('metadata');
+    expect(exported[0]).not.toHaveProperty('unknownTopLevel');
+    expect(exported[0]).toMatchObject({ inputPrice: 1, outputPrice: 2, priceTiers: [] });
     // 导出保留数据库中的旧价格，不触发格式转换或回写。
     expect(await MongoAIModel.findById(model._id).lean()).toMatchObject({
       inputPrice: 1,

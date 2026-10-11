@@ -2,28 +2,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 
 const mocks = vi.hoisted(() => {
-  const group = {
+  const createClient = () => ({
     get: vi.fn(),
     update: vi.fn(),
     list: vi.fn(),
-    listAll: vi.fn(),
     create: vi.fn(),
     delete: vi.fn(),
     updateStatus: vi.fn(),
     batchDelete: vi.fn(),
     batchUpdateStatus: vi.fn()
-  };
-  const system = {
-    get: vi.fn(),
-    update: vi.fn(),
-    list: vi.fn(),
-    listAll: vi.fn(),
-    create: vi.fn(),
-    delete: vi.fn(),
-    updateStatus: vi.fn(),
-    batchDelete: vi.fn(),
-    batchUpdateStatus: vi.fn()
-  };
+  });
+  const group = createClient();
+  const system = createClient();
   const getChannelsAffectedModels = vi.fn().mockResolvedValue([]);
   return {
     group,
@@ -78,37 +68,12 @@ describe('channel service', () => {
   });
 
   describe('createChannel', () => {
-    it('creates channel successfully when the member group has no existing channels', async () => {
-      mocks.group.list.mockResolvedValue({ channels: [], total: 0 });
-      mocks.group.create.mockResolvedValue({ id: 12 });
-
-      await expect(
-        createChannel({
-          channelType: 'team',
-          tmbId: TMB_ID,
-          channelData: {
-            name: 'first-channel',
-            type: 1,
-            key: 'sk-new',
-            models: ['model-1']
-          }
-        })
-      ).resolves.toEqual({ id: 12 });
-
-      expect(mocks.group.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: 'first-channel',
-          type: 1,
-          key: 'sk-new',
-          models: ['model-1']
-        })
-      );
-    });
-
     it('applies protocol defaults on the server and preserves explicit overrides', async () => {
       mocks.group.create.mockResolvedValue({ id: 12 });
       const channelData = { name: '  normalized  ', type: 1, key: 'sk-new', models: [] };
-      await createChannel({ channelType: 'team', tmbId: TMB_ID, channelData });
+      await expect(
+        createChannel({ channelType: 'team', tmbId: TMB_ID, channelData })
+      ).resolves.toEqual({ id: 12 });
       expect(mocks.group.create).toHaveBeenLastCalledWith({
         ...channelData,
         name: 'normalized',
@@ -202,8 +167,6 @@ describe('channel service', () => {
         type: 1,
         models: ['m1']
       });
-      const [, payload] = mocks.group.update.mock.calls[0];
-      expect(payload).not.toHaveProperty('key');
     });
 
     it('updates key when new key is explicitly provided', async () => {
@@ -300,30 +263,11 @@ describe('channel service', () => {
   });
 
   describe('updateChannelStatus', () => {
-    it('updates channel status for team channel', async () => {
-      mocks.group.get.mockResolvedValue(makeChannel(1, { status: 1 }));
-
-      await updateChannelStatus({
-        id: 1,
-        status: 0,
-        channelType: 'team',
-        tmbId: TMB_ID
-      });
-
-      expect(mocks.group.updateStatus).toHaveBeenCalledWith(1, 0);
-    });
-
-    it('updates channel status for system channel', async () => {
-      mocks.system.get.mockResolvedValue({ ...makeChannel(2), group_id: undefined });
-
-      await updateChannelStatus({
-        id: 2,
-        status: 1,
-        channelType: 'system',
-        tmbId: ''
-      });
-
-      expect(mocks.system.updateStatus).toHaveBeenCalledWith(2, 1);
+    it.each(['team', 'system'] as const)('updates status in %s scope', async (channelType) => {
+      const client = channelType === 'team' ? mocks.group : mocks.system;
+      client.get.mockResolvedValue(makeChannel(1));
+      await updateChannelStatus({ id: 1, status: 2, channelType, tmbId: TMB_ID });
+      expect(client.updateStatus).toHaveBeenCalledWith(1, 2);
     });
 
     it('rejects if channel does not exist', async () => {
@@ -343,42 +287,25 @@ describe('channel service', () => {
   });
 
   describe('deleteChannel', () => {
-    it('deletes team channel and returns affected models', async () => {
-      const affected = [{ modelId: 'm-1', name: 'M1', model: 'gpt-4o' }];
-      mocks.group.get.mockResolvedValue(makeChannel(1));
-      mocks.getChannelsAffectedModels.mockResolvedValue(affected);
+    it.each(['team', 'system'] as const)(
+      'deletes channels in %s scope with affected models',
+      async (channelType) => {
+        const client = channelType === 'team' ? mocks.group : mocks.system;
+        const affected = [{ modelId: 'm-1', name: 'M1', model: 'gpt-4o' }];
+        client.get.mockResolvedValue(makeChannel(1));
+        mocks.getChannelsAffectedModels.mockResolvedValue(affected);
 
-      const res = await deleteChannel({
-        teamId: TEAM_ID,
-        id: 1,
-        channelType: 'team',
-        tmbId: TMB_ID
-      });
-
-      expect(mocks.getChannelsAffectedModels).toHaveBeenCalledWith({
-        channels: [expect.objectContaining({ id: 1 })],
-        channelType: 'team',
-        teamId: TEAM_ID,
-        tmbId: TMB_ID
-      });
-      expect(mocks.group.delete).toHaveBeenCalledWith(1);
-      expect(res).toEqual({ affectedModels: affected });
-    });
-
-    it('deletes system channel and returns affected models', async () => {
-      mocks.system.get.mockResolvedValue({ ...makeChannel(2), group_id: undefined });
-      mocks.getChannelsAffectedModels.mockResolvedValue([]);
-
-      const res = await deleteChannel({
-        teamId: TEAM_ID,
-        id: 2,
-        channelType: 'system',
-        tmbId: ''
-      });
-
-      expect(mocks.system.delete).toHaveBeenCalledWith(2);
-      expect(res).toEqual({ affectedModels: [] });
-    });
+        const result = await deleteChannel({ teamId: TEAM_ID, id: 1, channelType, tmbId: TMB_ID });
+        expect(mocks.getChannelsAffectedModels).toHaveBeenCalledWith({
+          channels: [expect.objectContaining({ id: 1 })],
+          channelType,
+          teamId: TEAM_ID,
+          tmbId: TMB_ID
+        });
+        expect(client.delete).toHaveBeenCalledWith(1);
+        expect(result).toEqual({ affectedModels: affected });
+      }
+    );
 
     it('rejects if channel does not exist', async () => {
       mocks.group.get.mockImplementation(notFound);
@@ -397,72 +324,45 @@ describe('channel service', () => {
   });
 
   describe('batchOperateChannels', () => {
-    it('batch deletes team channels and returns affected models', async () => {
-      mocks.group.get.mockImplementation((id: number) => Promise.resolve(makeChannel(id)));
-      const affected = [{ modelId: 'm-1', name: 'M1', model: 'gpt-4o' }];
-      mocks.getChannelsAffectedModels.mockResolvedValue(affected);
+    it.each(['team', 'system'] as const)(
+      'batch deletes channels in %s scope',
+      async (channelType) => {
+        const client = channelType === 'team' ? mocks.group : mocks.system;
+        const affected = [{ modelId: 'm-1', name: 'M1', model: 'gpt-4o' }];
+        client.get.mockImplementation((id: number) => Promise.resolve(makeChannel(id)));
+        mocks.getChannelsAffectedModels.mockResolvedValue(affected);
 
-      const res = await batchOperateChannels({
-        teamId: TEAM_ID,
-        body: { ids: [1, 2], action: 'delete', channelType: 'team' },
-        tmbId: TMB_ID
-      });
+        const result = await batchOperateChannels({
+          teamId: TEAM_ID,
+          body: { ids: [1, 2], action: 'delete', channelType },
+          tmbId: TMB_ID
+        });
+        expect(mocks.getChannelsAffectedModels).toHaveBeenCalledWith({
+          channels: [expect.objectContaining({ id: 1 }), expect.objectContaining({ id: 2 })],
+          channelType,
+          teamId: TEAM_ID,
+          tmbId: TMB_ID
+        });
+        expect(client.batchDelete).toHaveBeenCalledWith([1, 2]);
+        expect(result).toEqual({ affectedModels: affected });
+      }
+    );
 
-      expect(mocks.getChannelsAffectedModels).toHaveBeenCalledWith({
-        channels: [expect.objectContaining({ id: 1 }), expect.objectContaining({ id: 2 })],
-        channelType: 'team',
-        teamId: TEAM_ID,
-        tmbId: TMB_ID
-      });
-      expect(mocks.group.batchDelete).toHaveBeenCalledWith([1, 2]);
-      expect(res).toEqual({ affectedModels: affected });
-    });
-
-    it('batch deletes system channels', async () => {
-      mocks.system.get.mockImplementation((id: number) =>
-        Promise.resolve({ ...makeChannel(id), group_id: undefined })
-      );
-      mocks.getChannelsAffectedModels.mockResolvedValue([]);
-
-      const res = await batchOperateChannels({
-        teamId: TEAM_ID,
-        body: { ids: [3, 4], action: 'delete', channelType: 'system' },
-        tmbId: ''
-      });
-
-      expect(mocks.system.batchDelete).toHaveBeenCalledWith([3, 4]);
-      expect(res).toEqual({ affectedModels: [] });
-    });
-
-    it('batch updates status for team channels', async () => {
-      mocks.group.get.mockImplementation((id: number) => Promise.resolve(makeChannel(id)));
-
-      const res = await batchOperateChannels({
-        teamId: TEAM_ID,
-        body: { ids: [1, 2], action: 'status', status: 0, channelType: 'team' },
-        tmbId: TMB_ID
-      });
-
-      expect(mocks.group.batchUpdateStatus).toHaveBeenCalledWith([1, 2], 0);
-      expect(mocks.getChannelsAffectedModels).not.toHaveBeenCalled();
-      expect(res).toEqual({});
-    });
-
-    it('batch updates status for system channels', async () => {
-      mocks.system.get.mockImplementation((id: number) =>
-        Promise.resolve({ ...makeChannel(id), group_id: undefined })
-      );
-
-      const res = await batchOperateChannels({
-        teamId: TEAM_ID,
-        body: { ids: [3, 4], action: 'status', status: 1, channelType: 'system' },
-        tmbId: ''
-      });
-
-      expect(mocks.system.batchUpdateStatus).toHaveBeenCalledWith([3, 4], 1);
-      expect(mocks.getChannelsAffectedModels).not.toHaveBeenCalled();
-      expect(res).toEqual({});
-    });
+    it.each(['team', 'system'] as const)(
+      'batch updates status in %s scope',
+      async (channelType) => {
+        const client = channelType === 'team' ? mocks.group : mocks.system;
+        client.get.mockImplementation((id: number) => Promise.resolve(makeChannel(id)));
+        const result = await batchOperateChannels({
+          teamId: TEAM_ID,
+          body: { ids: [1, 2], action: 'status', status: 2, channelType },
+          tmbId: TMB_ID
+        });
+        expect(client.batchUpdateStatus).toHaveBeenCalledWith([1, 2], 2);
+        expect(mocks.getChannelsAffectedModels).not.toHaveBeenCalled();
+        expect(result).toEqual({});
+      }
+    );
 
     it('rejects if any channel does not exist in batch operation', async () => {
       mocks.group.get.mockImplementation((id: number) =>

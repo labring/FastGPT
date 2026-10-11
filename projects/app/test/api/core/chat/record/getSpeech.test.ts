@@ -67,6 +67,7 @@ describe('getSpeech model resource permission', () => {
         teamId: 'team-id',
         tmbId: 'tmb-id',
         isRoot: false,
+        authType: 'token',
         handle: expect.anything()
       })
     );

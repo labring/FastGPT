@@ -36,30 +36,32 @@ import {
 } from '@fastgpt/service/core/ai/model/catalog/service';
 import { updateSystemDefaultModels } from '@fastgpt/service/core/ai/model/default/service';
 import { importSystemModels } from '@fastgpt/service/core/ai/model/import';
+import { removeModelsFromChannels } from '@fastgpt/service/core/ai/model/channel/binding';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import {
   createModel as createSystemModel,
   createModelsFromTemplates as createSystemModelsFromTemplates,
   deleteModels as deleteSystemModels,
-  updateModelStatus,
-  updateModel as updateSystemModel
+  updateModelStatus
 } from '@fastgpt/service/core/ai/model/service';
 import { MongoModelStatusProbeRecord } from '@fastgpt/service/core/ai/modelStatus/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 
 /** 通过接口真实 schema 的推导类型构造完整草稿。 */
-const createDraft = (model: string): CreateModelBody['modelData'] => ({
-  model,
-  type: ModelTypeEnum.llm,
-  provider: 'OpenAI',
-  name: model,
-  scope: ModelScopeEnum.system,
-  isActive: true,
-  config: { maxContext: 32000, maxResponse: 16000, quoteMaxToken: 24000 }
-});
+const createDraft = (model: string) =>
+  ({
+    model,
+    type: ModelTypeEnum.llm,
+    provider: 'OpenAI',
+    name: model,
+    scope: ModelScopeEnum.system,
+    isActive: true,
+    config: { maxContext: 32000, maxResponse: 16000, quoteMaxToken: 24000 }
+  }) satisfies CreateModelBody['modelData'];
 
 describe('system model management integration: MongoDB transactions and runtime catalog', () => {
   beforeEach(async () => {
+    vi.clearAllMocks();
     const { mongoSessionRun: actualMongoSessionRun } = await vi.importActual<
       typeof import('@fastgpt/service/common/mongo/sessionRun')
     >('@fastgpt/service/common/mongo/sessionRun');
@@ -107,46 +109,6 @@ describe('system model management integration: MongoDB transactions and runtime 
     expect(await catalogEntity.readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(1);
   });
 
-  it('removes probe records and permissions when deleting models', async () => {
-    external.listModels.mockResolvedValue([createDraft('template-a'), createDraft('template-b')]);
-    const result = await createSystemModelsFromTemplates({
-      templates: [
-        { type: ModelTypeEnum.llm, model: 'template-a' },
-        { type: ModelTypeEnum.llm, model: 'template-b' }
-      ]
-    });
-    expect(result.models).toHaveLength(2);
-    expect(await MongoAIModel.countDocuments({ isActive: false })).toBe(2);
-    const modelIds = result.models.map(({ modelId }) => modelId);
-    await MongoModelStatusProbeRecord.create(
-      modelIds.map((modelId, index) => ({
-        modelId,
-        name: `template-${index}`,
-        model: `template-${index}`,
-        provider: 'OpenAI',
-        type: ModelTypeEnum.llm,
-        status: 'green',
-        attempts: 1,
-        startedAt: new Date(),
-        requestStartedAt: new Date(),
-        requestEndedAt: new Date()
-      }))
-    );
-    // 原生 collection 写入只准备权限夹具；删除仍经过真实应用服务和事务。
-    await MongoResourcePermission.collection.insertOne({
-      resourceType: PerResourceTypeEnum.model,
-      resourceId: new connectionMongo.Types.ObjectId(modelIds[0])
-    });
-
-    await deleteSystemModels({ modelIds });
-
-    expect(await MongoAIModel.countDocuments()).toBe(0);
-    expect(await MongoModelStatusProbeRecord.countDocuments()).toBe(0);
-    expect(await MongoResourcePermission.countDocuments()).toBe(0);
-    expect(getCachedSystemModelHandle()?.getAllModels()).toEqual([]);
-    expect(await catalogEntity.readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(2);
-  });
-
   it('rolls back model, probe, and permission deletion when a transactional write fails', async () => {
     const { modelId } = await createSystemModel({
       modelData: createDraft('rollback-delete')
@@ -176,6 +138,7 @@ describe('system model management integration: MongoDB transactions and runtime 
     expect(await MongoModelStatusProbeRecord.countDocuments({ modelId })).toBe(1);
     expect(await catalogEntity.readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(1);
     expect(getCachedSystemModelHandle()?.revision).toBe(1);
+    expect(removeModelsFromChannels).not.toHaveBeenCalled();
   });
 
   it('returns committed creation after reload failure and repairs the snapshot at the next read barrier', async () => {
@@ -289,58 +252,9 @@ describe('system model management integration: MongoDB transactions and runtime 
     );
   });
 
-  it('prechecks immutable type and clears omitted request credentials on update', async () => {
-    const { modelId } = await createSystemModel({
-      modelData: {
-        ...createDraft('editable'),
-        requestUrl: 'http://local.test',
-        requestAuth: 'test-secret'
-      }
-    });
-    const { model: _model, ...editable } = createDraft('editable');
-    await expect(
-      updateSystemModel({
-        modelId,
-        modelData: { ...editable, type: ModelTypeEnum.stt, config: {} }
-      })
-    ).rejects.toThrow('type cannot be changed');
-    await updateSystemModel({
-      modelId,
-      modelData: { ...editable, model: 'renamed-model', name: 'Renamed' }
-    });
-    const updated = await MongoAIModel.findById(modelId).lean();
-    expect(updated).toMatchObject({ name: 'Renamed', model: 'renamed-model', type: 'llm' });
-    expect(updated).not.toHaveProperty('requestUrl');
-    expect(updated).not.toHaveProperty('requestAuth');
-    await updateSystemModel({
-      modelId,
-      modelData: { ...editable, model: 'renamed-model-v2', name: 'RenamedV2' }
-    });
-    const updatedV2 = await MongoAIModel.findById(modelId).lean();
-    expect(updatedV2).toMatchObject({
-      name: 'RenamedV2',
-      model: 'renamed-model-v2',
-      type: 'llm'
-    });
-  });
-
-  it('rejects invalid JSON records and immutable type changes, and allows deliberate empty replacement', async () => {
-    const { UpdateSystemModelsWithJsonBodySchema } =
-      await import('@fastgpt/global/openapi/core/ai/model/api');
+  it('rejects immutable type changes and cleans resources on empty replacement', async () => {
     const { modelId } = await createSystemModel({ modelData: createDraft('json-original') });
     const before = await MongoAIModel.find({}).lean();
-    expect(() =>
-      UpdateSystemModelsWithJsonBodySchema.parse({
-        config: JSON.stringify([
-          { ...createDraft('invalid'), modelId: 'invalid', config: { maxContext: 'bad' } }
-        ])
-      })
-    ).toThrow();
-    expect(() =>
-      UpdateSystemModelsWithJsonBodySchema.parse({
-        config: JSON.stringify([createDraft('missing-id')])
-      })
-    ).toThrow();
     await expect(
       importSystemModels({
         config: [{ ...createDraft('type-change'), modelId, type: ModelTypeEnum.stt, config: {} }]

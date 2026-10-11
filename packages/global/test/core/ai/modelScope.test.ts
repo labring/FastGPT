@@ -9,37 +9,17 @@ import {
 } from '@fastgpt/global/core/ai/model/utils';
 
 describe('model scope helpers', () => {
-  describe('isSystemModel / isTeamModel', () => {
-    it('treats an explicit isSystem flag as the highest priority', () => {
-      expect(isSystemModel({ isSystem: true, scope: ModelScopeEnum.team })).toBe(true);
-      expect(isSystemModel({ isSystem: false, scope: ModelScopeEnum.system })).toBe(false);
-    });
-
-    it('falls back to scope when isSystem is absent', () => {
-      expect(isSystemModel({ scope: ModelScopeEnum.system })).toBe(true);
-      expect(isSystemModel({ scope: ModelScopeEnum.team })).toBe(false);
-      expect(isSystemModel({ scope: 'team', tmbId: 'tmb-123' })).toBe(false);
-    });
-
-    it('treats legacy models without scope as system unless they have an owner', () => {
-      expect(isSystemModel({})).toBe(true);
-      expect(isSystemModel(undefined)).toBe(true);
-      expect(isSystemModel({ tmbId: 'tmb-123' })).toBe(false);
-    });
-
-    it('isTeamModel is the exact negation of isSystemModel', () => {
-      const samples = [
-        undefined,
-        {},
-        { scope: ModelScopeEnum.system },
-        { scope: ModelScopeEnum.team },
-        { tmbId: 'tmb-1' },
-        { isSystem: true }
-      ];
-      for (const sample of samples) {
-        expect(isTeamModel(sample)).toBe(!isSystemModel(sample));
-      }
-    });
+  it.each([
+    [{ isSystem: true, scope: ModelScopeEnum.team }, true],
+    [{ isSystem: false, scope: ModelScopeEnum.system }, false],
+    [{ scope: ModelScopeEnum.system }, true],
+    [{ scope: ModelScopeEnum.team }, false],
+    [{ tmbId: 'tmb-1' }, false],
+    [{}, true],
+    [undefined, true]
+  ] as const)('classifies legacy and scoped models: %j', (model, isSystem) => {
+    expect(isSystemModel(model)).toBe(isSystem);
+    expect(isTeamModel(model)).toBe(!isSystem);
   });
 
   describe('channelType <-> scope conversion', () => {
