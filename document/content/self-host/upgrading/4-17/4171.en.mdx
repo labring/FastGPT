@@ -13,6 +13,21 @@ releaseTime: '2026-09-30'
 - Update the fastgpt-plugin image tag to `v1.1.4`
 - Update the AI Proxy image tag to `v0.7.3`
 
+### AI Proxy environment configuration
+
+When upgrading the AI Proxy image, also add `ENABLE_ADMIN_BYPASS_CHANNEL_MODEL_CHECK=true` to the **AI Proxy service** environment. This variable is disabled by default. Enabling it lets administrators bypass the channel's model list check when testing a model through a specific channel. Without this setting, tests fail for models that have not yet been added to the channel's model list.
+
+For Docker Compose deployments, append the following entry to the `aiproxy` service's `environment` section, keeping the existing environment variables:
+
+```yaml
+services:
+  aiproxy:
+    environment:
+      - ENABLE_ADMIN_BYPASS_CHANNEL_MODEL_CHECK=true
+```
+
+Save the configuration and run `docker compose up -d aiproxy` to recreate the AI Proxy container with the new environment variable. Then test the model on the admin system models page.
+
 ### Upgrade scripts
 
 This upgrade includes the following automated scripts:

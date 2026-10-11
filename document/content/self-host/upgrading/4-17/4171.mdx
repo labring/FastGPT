@@ -13,6 +13,21 @@ releaseTime: '2026-09-30'
 - 更新 fastgpt-plugin 镜像 tag: v1.1.4
 - 更新 AI Proxy 镜像 tag: v0.7.3
 
+### AI Proxy 环境变量配置
+
+升级 AI Proxy 镜像时，还需在 **AI Proxy 服务**中添加环境变量 `ENABLE_ADMIN_BYPASS_CHANNEL_MODEL_CHECK=true`。该变量默认为 `false`，开启后允许管理员指定渠道测试时跳过渠道模型列表校验；未配置时，测试尚未加入渠道模型列表的模型会失败。
+
+使用 Docker Compose 部署时，在 `aiproxy` 服务的 `environment` 中追加以下配置，保留已有环境变量：
+
+```yaml
+services:
+  aiproxy:
+    environment:
+      - ENABLE_ADMIN_BYPASS_CHANNEL_MODEL_CHECK=true
+```
+
+保存配置后执行 `docker compose up -d aiproxy`，重新创建 AI Proxy 容器使环境变量生效，再到管理员的系统模型页面进行测试。
+
 ### 升级脚本
 
 本次升级包含以下自动化脚本
