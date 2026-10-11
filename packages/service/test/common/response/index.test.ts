@@ -152,7 +152,9 @@ describe('jsonRes HTTP status mapping', () => {
     [UserErrEnum.invalidVerificationCode, 400],
     [UserErrEnum.sendVerificationCodeTooFrequently, 429],
     [UserErrEnum.verifyCodeTooFrequently, 429],
-    [SandboxErrEnum.agentSandboxInitializing, 409]
+    [SandboxErrEnum.agentSandboxInitializing, 409],
+    [SandboxErrEnum.agentSandboxLimitReached, 409],
+    [SandboxErrEnum.agentSandboxTeamLimitReached, 409]
   ] as const)('uses the configured HTTP status for %s', (errorKey, httpStatus) => {
     const res = createResponse();
 

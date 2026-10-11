@@ -132,7 +132,13 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS: IntSchema.min(1).default(7).meta({
       description: '已暂停的 Agent sandbox 持续未活跃多少天后自动归档'
     }),
-    AGENT_SANDBOX_MAX_EDIT_DEBUG: NumSchema.default(100),
+    AGENT_SANDBOX_MAX: IntSchema.min(1).default(100).meta({
+      description:
+        'Agent sandbox 活跃实例系统总上限（app 会话与技能编辑共用同一计数池，超出即拒绝；替代原 AGENT_SANDBOX_MAX_EDIT_DEBUG）'
+    }),
+    AGENT_SANDBOX_MAX_PER_TEAM: IntSchema.min(1).optional().meta({
+      description: '单团队 Agent sandbox 活跃实例配额；不配置表示不限制'
+    }),
     AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS: IntSchema.min(1).max(600).default(30).meta({
       description: 'Agent sandbox entrypoint 执行超时时间（秒）'
     }),
@@ -483,7 +489,10 @@ export const serviceEnv = createEnv({
     YUQUE_DATASET_BASE_URL: UrlSchema.default('https://www.yuque.com')
   },
   emptyStringAsUndefined: true,
-  runtimeEnv: getRuntimeEnv(),
+  runtimeEnv: {
+    ...getRuntimeEnv(),
+    AGENT_SANDBOX_MAX: process.env.AGENT_SANDBOX_MAX || process.env.AGENT_SANDBOX_MAX_EDIT_DEBUG
+  },
   onValidationError(issues) {
     const paths = issues.map((issue) => issue.path).join(', ');
     throw new Error(`Invalid environment variables. Please check: ${paths}\n`);

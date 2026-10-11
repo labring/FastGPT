@@ -35,6 +35,7 @@ const mocks = vi.hoisted(() => ({
   assertSandboxSourceActive: vi.fn(),
   isRedisLeaseError: vi.fn(),
   createAgentSandboxInitializingError: vi.fn(),
+  checkSandboxQuota: vi.fn(),
   resolveSandboxRuntimeImage: vi.fn()
 }));
 
@@ -107,6 +108,10 @@ vi.mock('@fastgpt/dal/redis/caches', () => ({
 
 vi.mock('@fastgpt/service/core/ai/sandbox/error', () => ({
   createAgentSandboxInitializingError: mocks.createAgentSandboxInitializingError
+}));
+
+vi.mock('@fastgpt/service/core/ai/sandbox/application/quota', () => ({
+  checkSandboxQuota: mocks.checkSandboxQuota
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/image', () => ({
@@ -224,6 +229,7 @@ describe('sandbox runtime client lifecycle', () => {
     );
     mocks.isRedisLeaseError.mockReturnValue(false);
     mocks.createAgentSandboxInitializingError.mockReturnValue(new Error('Sandbox is initializing'));
+    mocks.checkSandboxQuota.mockResolvedValue(undefined);
     mocks.resolveSandboxRuntimeImage.mockReturnValue({
       repository: 'fastgpt/sandbox',
       tag: 'v2'
@@ -379,6 +385,9 @@ describe('sandbox runtime client lifecycle', () => {
     );
     expect(mocks.restoreArchivedSandboxBeforeUse).toHaveBeenCalledWith(
       expect.not.objectContaining({ vmConfig: expect.anything(), storage: expect.anything() })
+    );
+    expect(mocks.checkSandboxQuota.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.restoreArchivedSandboxBeforeUse.mock.invocationCallOrder[0]
     );
     expect(mocks.buildRuntimeSandboxAdapter).toHaveBeenCalledWith(
       'opensandbox',
@@ -617,6 +626,58 @@ describe('sandbox runtime client lifecycle', () => {
       'Sandbox is archived'
     );
     expect(mocks.migrateSandboxProviderBeforeUse).not.toHaveBeenCalled();
+    expect(mocks.createSandboxProvisioningInstance).not.toHaveBeenCalled();
+    expect(mocks.checkSandboxQuota).not.toHaveBeenCalled();
+  });
+
+  it('checks quota before provisioning and carries the resolved teamId', async () => {
+    mocks.checkSandboxQuota.mockResolvedValue({ teamId: 'team-1' });
+    mocks.touchRunningSandboxInstance.mockResolvedValue(null);
+    mocks.findSandboxInstanceBySource.mockResolvedValue(null);
+    mocks.createSandboxProvisioningInstance.mockResolvedValue({
+      instance: createInstance('provisioning', 'provision-1'),
+      created: true
+    });
+
+    await getSandboxClient(query);
+
+    expect(mocks.checkSandboxQuota.mock.calls[0][0]).toEqual({
+      provider: 'sealosdevbox',
+      sandboxId: 'sandbox-1',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app-1',
+      userId: 'user-1'
+    });
+    // Quota 检查先于 provider 迁移/恢复执行。
+    expect(mocks.checkSandboxQuota.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.migrateSandboxProviderBeforeUse.mock.invocationCallOrder[0]
+    );
+    // 新建记录携带守卫解析出的团队归属。
+    expect(mocks.createSandboxProvisioningInstance).toHaveBeenCalledWith(
+      expect.objectContaining({ teamId: 'team-1' })
+    );
+  });
+
+  it('checks quota before restarting a stopped instance', async () => {
+    const stopped = createInstance('stopped');
+    const provisioning = createInstance('provisioning', 'restart-1');
+    mocks.touchRunningSandboxInstance.mockResolvedValue(null);
+    mocks.findSandboxInstanceBySource.mockResolvedValue(stopped);
+    mocks.claimSandboxOperation.mockResolvedValueOnce(provisioning);
+    const client = new SandboxClient(query, { sourceGuard: mocks.assertSandboxSourceActive });
+    await client.ensureAvailable();
+    expect(mocks.checkSandboxQuota).toHaveBeenCalledTimes(1);
+    expect(mocks.checkSandboxQuota.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.claimSandboxOperation.mock.invocationCallOrder[0]
+    );
+  });
+
+  it('stops activation before provider migration when quota rejects', async () => {
+    const error = new Error('quota reached');
+    mocks.checkSandboxQuota.mockRejectedValueOnce(error);
+    await expect(getSandboxClient(query)).rejects.toBe(error);
+    expect(mocks.migrateSandboxProviderBeforeUse).not.toHaveBeenCalled();
+    expect(mocks.restoreArchivedSandboxBeforeUse).not.toHaveBeenCalled();
     expect(mocks.createSandboxProvisioningInstance).not.toHaveBeenCalled();
   });
 

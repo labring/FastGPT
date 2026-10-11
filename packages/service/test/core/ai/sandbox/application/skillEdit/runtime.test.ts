@@ -12,7 +12,6 @@ const mocks = vi.hoisted(() => ({
   getReadySandboxInfo: vi.fn(),
   getSandboxClient: vi.fn(),
   startSandboxRuntimeUpgradeArchive: vi.fn(),
-  countRunningSandboxInstancesBySourceType: vi.fn(),
   findSandboxInstanceBySandboxIdAndSource: vi.fn(),
   findSandboxResourcesBySource: vi.fn(),
   updateSandboxInstanceRecordBySandboxId: vi.fn(),
@@ -88,7 +87,6 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/archive', () => {
 });
 
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository', () => ({
-  countRunningSandboxInstancesBySourceType: mocks.countRunningSandboxInstancesBySourceType,
   findSandboxInstanceBySandboxIdAndSource: mocks.findSandboxInstanceBySandboxIdAndSource,
   findSandboxResourcesBySource: mocks.findSandboxResourcesBySource,
   updateSandboxInstanceRecordBySandboxId: mocks.updateSandboxInstanceRecordBySandboxId
@@ -116,8 +114,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/skill/prepare', ()
 
 vi.mock('@fastgpt/service/env', () => ({
   serviceEnv: {
-    AGENT_SANDBOX_STORAGE_SIZE_GI: 1,
-    AGENT_SANDBOX_MAX_EDIT_DEBUG: undefined
+    AGENT_SANDBOX_STORAGE_SIZE_GI: 1
   }
 }));
 
@@ -312,7 +309,6 @@ describe('skill edit runtime initialization', () => {
     mocks.emptyWorkDirectory.mockReturnValue({ step: 'empty' });
     mocks.deploySkillPackage.mockReturnValue({ step: 'deploy' });
     mocks.updateSandboxInstanceRecordBySandboxId.mockResolvedValue(createResource());
-    mocks.countRunningSandboxInstancesBySourceType.mockResolvedValue(0);
     mocks.disconnectSandbox.mockResolvedValue(undefined);
   });
 

@@ -117,5 +117,10 @@
   "migrations.20261009_migrate_dataset_rebuild_status.result": "迁移完成，剩余旧状态 {{remainingCount}} 条。",
   "migrations.20261009_migrate_dataset_rebuild_status.datas": "迁移旧重建标记",
   "migrations.20261009_migrate_dataset_rebuild_status.trainings": "恢复重建任务状态",
-  "migrations.20261009_migrate_dataset_rebuild_status.validation": "校验迁移结果"
+  "migrations.20261009_migrate_dataset_rebuild_status.validation": "校验迁移结果",
+  "migrations.20261009_backfill_agent_sandbox_team_id.name": "回填沙箱实例团队归属",
+  "migrations.20261009_backfill_agent_sandbox_team_id.description": "为历史 Agent 沙箱实例回填 teamId：从 App/Skill 源解析团队归属。源已删除的孤儿记录只跳过并计数；源存在但缺少 teamId 的记录进入失败明细，修复后可重试。",
+  "migrations.20261009_backfill_agent_sandbox_team_id.instances": "回填沙箱团队归属",
+  "migrations.20261009_backfill_agent_sandbox_team_id.validation": "校验沙箱团队归属回填结果",
+  "migrations.20261009_backfill_agent_sandbox_team_id.result": "已扫描 {{scannedCount}} 个沙箱实例，回填团队归属 {{backfilledCount}} 个，跳过孤儿记录 {{orphanCount}} 个。"
 }

@@ -108,7 +108,8 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   limit: {
     exportDatasetLimitMinutes: 0,
     websiteSyncLimitMinuted: 0,
-    agentSandboxMaxEditDebug: serviceEnv.AGENT_SANDBOX_MAX_EDIT_DEBUG,
+    agentSandboxMax: serviceEnv.AGENT_SANDBOX_MAX,
+    agentSandboxMaxPerTeam: serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM,
     agentSandboxArchiveMaxBytes: getAgentSandboxArchiveMaxBytes(),
     skillSandboxMaxBytes: getAgentSandboxSkillMaxBytes(),
     agentSandboxMaxFileBytes: getAgentSandboxMaxFileBytes(),

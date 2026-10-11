@@ -36,7 +36,6 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   config.feConfigs.uploadFileMaxAmount = serviceEnv.UPLOAD_FILE_MAX_AMOUNT;
   config.feConfigs.limit = {
     ...config.feConfigs.limit,
-    agentSandboxMaxEditDebug: serviceEnv.AGENT_SANDBOX_MAX_EDIT_DEBUG,
     agentSandboxArchiveMaxBytes: getAgentSandboxArchiveMaxBytes(),
     skillSandboxMaxBytes: getAgentSandboxSkillMaxBytes(),
     agentSandboxMaxFileBytes: getAgentSandboxMaxFileBytes(),

@@ -16,19 +16,36 @@ export async function assertSandboxSourceActive(params: {
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
 }) {
-  const active = await (async () => {
+  await resolveSandboxSourceTeamId(params);
+}
+
+/**
+ * 校验 source 存活并解析其团队归属：一次投影查询同时完成持久 fence 与 teamId 解析。
+ *
+ * source 缺失或软删除时抛 SandboxSourceMissingError；source 存在但缺少 teamId
+ * （历史脏数据）时返回 undefined，由调用方按“只计系统总量、不计入任何团队”处理。
+ */
+export async function resolveSandboxSourceTeamId(params: {
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
+}): Promise<string | undefined> {
+  const doc = await (async () => {
     if (params.sourceType === ChatSourceTypeEnum.app) {
-      return MongoApp.exists({ _id: params.sourceId, deleteTime: null });
+      return MongoApp.findOne({ _id: params.sourceId, deleteTime: null }, { teamId: 1 }).lean();
     }
     if (params.sourceType === ChatSourceTypeEnum.skillEdit) {
-      return MongoAgentSkills.exists({ _id: params.sourceId, deleteTime: null });
+      return MongoAgentSkills.findOne(
+        { _id: params.sourceId, deleteTime: null },
+        { teamId: 1 }
+      ).lean();
     }
     return null;
   })();
 
-  if (!active) {
+  if (!doc) {
     throw new SandboxSourceMissingError(params);
   }
+  return doc.teamId ? String(doc.teamId) : undefined;
 }
 
 /** Source 删除任务只能清理已经由主业务事务标记为删除的资源。 */

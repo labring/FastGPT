@@ -117,5 +117,10 @@
   "migrations.20261009_migrate_dataset_rebuild_status.result": "Migration complete. {{remainingCount}} legacy statuses remain.",
   "migrations.20261009_migrate_dataset_rebuild_status.datas": "Migrate legacy rebuild flags",
   "migrations.20261009_migrate_dataset_rebuild_status.trainings": "Restore rebuild task statuses",
-  "migrations.20261009_migrate_dataset_rebuild_status.validation": "Validate migration"
+  "migrations.20261009_migrate_dataset_rebuild_status.validation": "Validate migration",
+  "migrations.20261009_backfill_agent_sandbox_team_id.name": "Backfill sandbox instance team ownership",
+  "migrations.20261009_backfill_agent_sandbox_team_id.description": "Backfills teamId for legacy agent sandbox instances from their App/Skill source. Orphan records whose source was deleted are skipped and counted; records whose source exists without a teamId are reported as failed records for repair and retry.",
+  "migrations.20261009_backfill_agent_sandbox_team_id.instances": "Backfill sandbox team ownership",
+  "migrations.20261009_backfill_agent_sandbox_team_id.validation": "Validate sandbox team ownership backfill",
+  "migrations.20261009_backfill_agent_sandbox_team_id.result": "Scanned {{scannedCount}} sandbox instances, backfilled {{backfilledCount}} team bindings, skipped {{orphanCount}} orphan records."
 }

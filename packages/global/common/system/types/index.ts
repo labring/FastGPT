@@ -110,13 +110,10 @@ export const FastGPTFeConfigsSchema = z.looseObject({
   show_discount_coupon: z.boolean().optional().meta({ description: '是否展示优惠券/折扣券入口' }),
   show_enterprise_auth: z.boolean().optional().meta({ description: '是否展示企业实名认证入口' }),
   showWecomConfig: z.boolean().optional().meta({ description: '是否展示企业微信集成配置' }),
-  login2faEnabled: z
-    .boolean()
-    .optional()
-    .meta({
-      description:
-        '登录二次验证开关；由 Pro 的 LOGIN_2FA_ENABLED 下发，主服务据此决定是否要求二次验证'
-    }),
+  login2faEnabled: z.boolean().optional().meta({
+    description:
+      '登录二次验证开关；由 Pro 的 LOGIN_2FA_ENABLED 下发，主服务据此决定是否要求二次验证'
+  }),
   wecomLoginAutoRedirect: z
     .boolean()
     .optional()
@@ -267,8 +264,11 @@ export const FastGPTFeConfigsSchema = z.looseObject({
       websiteSyncLimitMinuted: NumSchema.optional().meta({
         description: '网页数据源自动同步时间间隔限制（分钟）'
       }),
-      agentSandboxMaxEditDebug: NumSchema.optional().meta({
-        description: '单团队 Agent 沙箱最大同时在线编辑调试数'
+      agentSandboxMax: NumSchema.optional().meta({
+        description: 'Agent 沙箱活跃实例系统总上限（app 会话与技能编辑共用计数池）'
+      }),
+      agentSandboxMaxPerTeam: NumSchema.optional().meta({
+        description: '单团队 Agent 沙箱活跃实例配额；不配置表示不限制'
       }),
       agentSandboxMaxSessionRuntime: NumSchema.optional().meta({
         description: 'Agent 沙箱最大会话运行时间（毫秒）'
