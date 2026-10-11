@@ -68,15 +68,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
     if (typeof err === 'string') {
       return Promise.reject({ message: err });
     }
-    if (typeof err.message === 'string') {
-      return Promise.reject({ message: err.message });
-    }
-    if (typeof err.data === 'string') {
-      return Promise.reject({ message: err.data });
-    }
-    if (err?.response?.data) {
-      return Promise.reject(err?.response?.data);
-    }
+    // 保留 HTTP 状态、网络错误码和响应体，详情层统一分类时不能丢失删除判断依据。
     return Promise.reject(err);
   };
 

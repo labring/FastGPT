@@ -20,8 +20,7 @@ async function handler(req: ApiRequestProps) {
     authToken: true,
     authApiKey: true,
     datasetId: body.datasetId,
-    // 保留 parentId：本路由是外部 API，不收紧要它的权限门槛。注意落位已与它无关
-    // （createApiDatasetCollection 忽略该字段），这里只多校验一次目录写权限
+    // V1 支持指定本地落位目录，写入前校验该目录权限。
     parentId: body.parentId
   });
 

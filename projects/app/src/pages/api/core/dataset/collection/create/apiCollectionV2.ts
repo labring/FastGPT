@@ -88,6 +88,8 @@ export const createApiDatasetCollection = async ({
   Pick<ApiCreateDatasetCollectionParams, 'inheritPermission'> & {
     teamId: string;
     tmbId: string;
+    /** 仅供 V1 内部调用指定落位，V2 HTTP 入参不开放此字段。 */
+    targetParentId?: CreateApiCollectionV2BodyType['parentId'];
     dataset: DatasetSchemaType & {
       permission: DatasetPermission;
     };

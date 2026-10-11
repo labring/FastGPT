@@ -17,8 +17,8 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { serviceEnv } from '../../../../env';
 
 type ResponseDataType = {
-  success: boolean;
-  message: string;
+  code: number;
+  msg?: string;
   data: any;
 };
 
@@ -74,6 +74,14 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
     if (data === undefined) {
       logger.warn('Feishu dataset response data is empty');
       return Promise.reject('服务器异常');
+    }
+    if (data.code !== 0) {
+      // 飞书业务失败可能仍返回 HTTP 200，不能让缺失 data 被解释为文件已删除。
+      return Promise.reject({
+        code: data.code,
+        message: data.msg ?? '飞书接口异常',
+        status: data.code === 1069701 ? 401 : data.code === 1069704 ? 503 : undefined
+      });
     }
     return data.data;
   };
@@ -193,74 +201,71 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
   };
 
   /**
-   * 飞书特殊：`/open-apis/docx/v1/documents/{token}` 只认云文档，传 folder token 必定报错，
-   * 而同步流程会对每个本地根节点都调一次 getFileDetail —— 于是「只同步一个子文件夹」会整轮失败。
-   * 改用 drive 的 metas 接口（doc_type 必须与 token 的真实类型一致），先按 docx 查，失败再按 folder 查。
+   * 元数据查询的 970005 同时表示类型不匹配或文件不存在，必须依次确认 docx 和 folder。
+   * failed_list 的权限错误、未知错误以及缺失结果都不能作为同步删除依据。
    */
   const getFileDetail = async ({
     apiFileId
   }: {
     apiFileId: string;
   }): Promise<ApiDatasetResult<ApiDatasetDetailResponse>> => {
-    try {
-      const queryMeta = async (docType: 'docx' | 'folder') => {
-        const { metas } = await request<{ metas: { title: string; doc_type: string }[] }>(
-          `/open-apis/drive/v1/metas/batch_query`,
-          {
-            request_docs: [
-              {
-                doc_token: apiFileId,
-                doc_type: docType
-              }
-            ]
-          },
+    /** 单次查询只把明确的类型不匹配/不存在转换为 NOT_FOUND，供外层继续探测。 */
+    const queryMeta = async (docType: 'docx' | 'folder') => {
+      try {
+        const { metas, failed_list } = await request<{
+          metas?: { title: string; doc_type: string }[];
+          failed_list?: { token: string; code: number }[];
+        }>(
+          '/open-apis/drive/v1/metas/batch_query',
+          { request_docs: [{ doc_token: apiFileId, doc_type: docType }] },
           'POST'
         );
-        return metas?.[0];
-      };
-
-      let meta: { title: string; doc_type: string } | undefined;
-      try {
-        meta = await queryMeta('docx');
-      } catch (err: any) {
-        const classified = classifyApiDatasetError(err);
-        if (classified.code !== 'NOT_FOUND') {
-          return classified;
+        const failure = failed_list?.find((item) => item.token === apiFileId);
+        if (failure) {
+          if (failure.code === 970005)
+            return toApiDatasetError('NOT_FOUND', '文件类型不匹配或不存在', 404);
+          if (failure.code === 970003)
+            return toApiDatasetError('UNAUTHORIZED', '无权限读取文件元数据', 403);
+          return toApiDatasetError('UNKNOWN_ERROR', `飞书文件元数据查询失败（${failure.code}）`);
         }
-        meta = undefined;
-      }
-
-      // batch_query 在类型不匹配时也可能正常返回、但 metas 为空；这种情况不会进入 catch，
-      // 仍需按 folder 再查一次，避免把真实文件夹误判成「文件不存在」。
-      if (!meta) {
-        try {
-          meta = await queryMeta('folder');
-        } catch (err: any) {
-          const classified = classifyApiDatasetError(err);
-          if (classified.code !== 'NOT_FOUND') {
-            return classified;
-          }
-          meta = undefined;
+        const meta = metas?.[0];
+        if (!meta || meta.doc_type !== docType || typeof meta.title !== 'string') {
+          return toApiDatasetError('UNKNOWN_ERROR', '飞书文件元数据响应缺失或格式错误');
         }
-      }
+        return toApiDatasetSuccess(meta);
+      } catch (error) {
+        const classified = classifyApiDatasetError(error);
+        if (classified.code !== 'NOT_FOUND') return classified;
 
-      if (!meta) {
-        return toApiDatasetError('NOT_FOUND', '文件不存在', 404);
+        // 通用分类器保留自定义 API 的旧文案协议；飞书必须提供明确 HTTP 404 才可继续探测。
+        const isRecord = (value: unknown): value is Record<string, unknown> =>
+          typeof value === 'object' && value !== null;
+        const original = isRecord(error) ? error : {};
+        const response = isRecord(original.response) ? original.response : {};
+        const status = response.status ?? original.status ?? original.statusCode;
+        return status === 404 ? classified : toApiDatasetError('UNKNOWN_ERROR', classified.message);
       }
+    };
 
+    for (const docType of ['docx', 'folder'] as const) {
+      const result = await queryMeta(docType);
+      if (!result.success) {
+        if (result.code === 'NOT_FOUND') continue;
+        return result;
+      }
+      const meta = result.data;
       return toApiDatasetSuccess({
         rawId: apiFileId,
         name: meta.title,
         parentId: null,
         id: apiFileId,
-        type: meta.doc_type === 'folder' ? ('folder' as const) : ('file' as const),
+        type: meta.doc_type === 'folder' ? 'folder' : 'file',
         hasChild: meta.doc_type === 'folder',
         updateTime: new Date(),
         createTime: new Date()
       });
-    } catch (err: any) {
-      return classifyApiDatasetError(err);
     }
+    return toApiDatasetError('NOT_FOUND', '文件不存在', 404);
   };
 
   const getFileRawId = (fileId: string) => {

@@ -81,7 +81,7 @@ describe('listFiles', () => {
   });
   it.each([
     [{ data: undefined }, { message: '服务器异常' }],
-    [{ data: { success: false, message: 'failed' } }, { message: 'failed' }]
+    [{ data: { success: false, message: 'failed' } }, { success: false, message: 'failed' }]
   ])('响应协议错误 %#', async (response, error) => {
     mocks.request.mockResolvedValueOnce(response);
     await expect(provider().listFiles({})).rejects.toEqual(error);
@@ -89,9 +89,9 @@ describe('listFiles', () => {
   it.each([
     [null, { message: '未知错误' }],
     ['failed', { message: 'failed' }],
-    [new Error('failed'), { message: 'failed' }],
-    [{ data: 'failed' }, { message: 'failed' }],
-    [{ response: { data: { reason: 'failed' } } }, { reason: 'failed' }],
+    [new Error('failed'), new Error('failed')],
+    [{ data: 'failed' }, { data: 'failed' }],
+    [{ response: { data: { reason: 'failed' } } }, { response: { data: { reason: 'failed' } } }],
     [{ code: 'ECONNRESET' }, { code: 'ECONNRESET' }]
   ])('转换请求异常 %#', async (error, expected) => {
     mocks.request.mockRejectedValueOnce(error);
@@ -154,12 +154,21 @@ describe('getFileDetail', () => {
       code: 'NETWORK_ERROR'
     });
   });
-  it.fails('HTTP 状态不能被响应错误转换丢弃（现有缺陷）', async () => {
-    mocks.request.mockRejectedValueOnce({ message: 'failed', response: { status: 503 } });
+  it.each([
+    [404, 'NOT_FOUND'],
+    [403, 'UNAUTHORIZED'],
+    [429, 'RATE_LIMIT'],
+    [503, 'SERVER_ERROR']
+  ])('真实 HTTP %s 状态穿过错误转换后仍可分类', async (status, code) => {
+    mocks.request.mockRejectedValueOnce({
+      message: 'Request failed',
+      response: { status, data: { message: 'upstream resource not found' } }
+    });
     expect(await provider().getFileDetail({ apiFileId: 'file' })).toMatchObject({
       success: false,
-      code: 'SERVER_ERROR',
-      status: 503
+      code,
+      status,
+      message: 'upstream resource not found'
     });
   });
 });

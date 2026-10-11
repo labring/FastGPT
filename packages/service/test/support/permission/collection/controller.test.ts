@@ -1,5 +1,6 @@
 import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
+  ManageRoleVal,
   OwnerRoleVal,
   PerResourceTypeEnum,
   ReadRoleVal,
@@ -23,6 +24,7 @@ import {
   createResourceDefaultCollaborators,
   getResourceOwnedClbs
 } from '@fastgpt/service/support/permission/controller';
+import { resourcePermissionRepo } from '@fastgpt/service/support/permission/repository/resourcePermissionRepo';
 import { updateResourceCollaborators } from '@fastgpt/service/support/permission/resourcePermissionService';
 import { getFakeUsers } from '@test/datas/users';
 import type { parseHeaderCertRet } from '@test/mocks/request';
@@ -448,10 +450,10 @@ describe.sequential('moveCollectionPermission', () => {
 describe.sequential(
   'moveCollectionPermissionsBatch / syncMovedCollectionPermissionDescendants',
   () => {
-    it.each(['none', 'inherited', 'independent'])(
+    it.each(['none', 'inherited', 'independent', 'two-level'])(
       '同批移动父子时使用新快照，中间祖先模式：%s',
       async (intermediateMode) => {
-        const users = await getFakeUsers(3);
+        const users = await getFakeUsers(4);
         const dataset = await createDataset({ user: users.owner });
         const datasetId = String(dataset._id);
         const teamId = String(users.owner.teamId);
@@ -466,8 +468,8 @@ describe.sequential(
           });
         const target = await folder('target');
         const oldParent = await folder('old-parent');
-        const movingParent = await folder('moving-parent');
-        const newParent =
+        const movingParent = await folder('moving-parent', String(oldParent._id));
+        const intermediate =
           intermediateMode === 'none'
             ? movingParent
             : await createCollection({
@@ -478,6 +480,10 @@ describe.sequential(
                 parentId: String(movingParent._id),
                 inheritPermission: intermediateMode !== 'independent'
               });
+        const newParent =
+          intermediateMode === 'two-level'
+            ? await folder('intermediate-child', String(intermediate._id))
+            : intermediate;
         const movingChild = await folder('moving-child', String(oldParent._id));
         const descendant = await createCollection({
           user: users.owner,
@@ -502,6 +508,21 @@ describe.sequential(
           });
         }
 
+        // 自定义授权放在中间节点；两层场景还验证批量 ACL 归并和完整旧父级快照。
+        if (intermediateMode !== 'none') {
+          await setCollaborators({
+            resource: { _id: String(intermediate._id), type: intermediate.type, teamId },
+            resourceModel: MongoDatasetCollection,
+            resourceType: PerResourceTypeEnum.collection,
+            collaborators: [
+              ...(await collectionClbs(teamId, String(intermediate._id))),
+              { tmbId: String(users.members[2].tmbId), permission: WriteRoleVal }
+            ].filter((collaborator): collaborator is { tmbId: string; permission: number } =>
+              Boolean(collaborator.tmbId)
+            )
+          });
+        }
+
         await mongoSessionRun((session) =>
           bulkMoveCollectionsParent({
             teamId,
@@ -521,7 +542,7 @@ describe.sequential(
                 datasetId,
                 type: movingParent.type,
                 inheritPermission: movingParent.inheritPermission,
-                oldParentId: null,
+                oldParentId: String(oldParent._id),
                 newParentId: target._id,
                 apiFileParentId: 'target'
               }
@@ -534,13 +555,21 @@ describe.sequential(
           [String(users.owner.tmbId), OwnerRoleVal],
           [String(users.members[0].tmbId), ReadRoleVal]
         ]);
+        const descendantExpected = new Map(
+          intermediateMode === 'independent'
+            ? [[String(users.owner.tmbId), OwnerRoleVal]]
+            : expected
+        );
+        if (intermediateMode !== 'none') {
+          descendantExpected.set(String(users.members[2].tmbId), WriteRoleVal);
+        }
         for (const id of new Set(
-          [movingParent._id, newParent._id, movingChild._id, descendant._id].map(String)
+          [movingParent._id, intermediate._id, newParent._id, movingChild._id, descendant._id].map(
+            String
+          )
         )) {
           await expect(collectionClbs(teamId, id).then(toPermissionMap)).resolves.toEqual(
-            intermediateMode === 'independent' && id !== String(movingParent._id)
-              ? new Map([[String(users.owner.tmbId), OwnerRoleVal]])
-              : expected
+            id === String(movingParent._id) ? expected : descendantExpected
           );
         }
         await expect(
@@ -633,6 +662,7 @@ describe.sequential('moveCollectionPermissionsBatch', () => {
     const right = await folder('right', String(shared._id));
     const movingLeft = await folder('moving-left');
     const movingRight = await folder('moving-right');
+    const movingSameParent = await folder('moving-same-parent');
     await setCollaborators({
       resource: { _id: String(target._id), type: target.type, teamId },
       resourceModel: MongoDatasetCollection,
@@ -647,6 +677,7 @@ describe.sequential('moveCollectionPermissionsBatch', () => {
     const moves = [
       [movingLeft, left],
       [movingRight, right],
+      [movingSameParent, left],
       [ancestor, target]
     ] as const;
     await mongoSessionRun((session) =>
@@ -669,7 +700,15 @@ describe.sequential('moveCollectionPermissionsBatch', () => {
       [String(users.owner.tmbId), OwnerRoleVal],
       [String(users.members[0].tmbId), ReadRoleVal]
     ]);
-    for (const collection of [ancestor, shared, left, right, movingLeft, movingRight]) {
+    for (const collection of [
+      ancestor,
+      shared,
+      left,
+      right,
+      movingLeft,
+      movingRight,
+      movingSameParent
+    ]) {
       await expect(
         collectionClbs(teamId, String(collection._id)).then(toPermissionMap)
       ).resolves.toEqual(expected);
@@ -681,49 +720,164 @@ describe.sequential('moveCollectionPermissionsBatch', () => {
     }
   });
 
-  it('目标父级构成循环时写入前失败，原快照与父级保持不变', async () => {
-    const users = await getFakeUsers(1);
+  it('旧节点缺少 ACL 快照时按空快照重建，移入空权限父级时撤销继承授权', async () => {
+    const users = await getFakeUsers(2);
     const dataset = await createDataset({ user: users.owner });
     const datasetId = String(dataset._id);
     const teamId = String(users.owner.teamId);
     await enableDatasetCollectionPermissions({ teamId, datasetId });
-    const folders = await Promise.all(
-      ['a', 'b'].map((name) =>
-        createCollection({
-          user: users.owner,
+    const folder = (name: string, parentId?: string) =>
+      createCollection({
+        user: users.owner,
+        datasetId,
+        name,
+        parentId,
+        type: DatasetCollectionTypeEnum.folder
+      });
+    const target = await folder('target');
+    const emptyParent = await folder('legacy-empty-parent');
+    const ancestor = await folder('legacy-ancestor', String(emptyParent._id));
+    const intermediate = await folder('legacy-intermediate', String(ancestor._id));
+    const movingChild = await folder('legacy-moving-child', String(emptyParent._id));
+    await setCollaborators({
+      resource: { _id: String(target._id), type: target.type, teamId },
+      resourceModel: MongoDatasetCollection,
+      resourceType: PerResourceTypeEnum.collection,
+      collaborators: [
+        { tmbId: String(users.owner.tmbId), permission: OwnerRoleVal },
+        { tmbId: String(users.members[0].tmbId), permission: ReadRoleVal }
+      ]
+    });
+    await resourcePermissionRepo.deleteByResources({
+      teamId,
+      resourceType: PerResourceTypeEnum.collection,
+      resourceIds: [emptyParent, ancestor, intermediate, movingChild].map((node) =>
+        String(node._id)
+      )
+    });
+
+    await mongoSessionRun((session) =>
+      bulkMoveCollectionsParent({
+        teamId,
+        items: [
+          [movingChild, intermediate],
+          [ancestor, target]
+        ].map(([collection, parent]) => ({
+          _id: String(collection._id),
           datasetId,
-          name,
-          type: DatasetCollectionTypeEnum.folder
-        })
-      )
+          type: collection.type,
+          oldParentId: String(emptyParent._id),
+          newParentId: parent._id,
+          apiFileParentId: parent.name
+        })),
+        session
+      })
     );
-    const before = await Promise.all(
-      folders.map((folder) => collectionClbs(teamId, String(folder._id)).then(toPermissionMap))
-    );
-    await expect(
-      mongoSessionRun((session) =>
-        moveCollectionPermissionsBatch({
-          teamId,
-          items: folders.map((folder, index) => ({
-            collectionId: String(folder._id),
-            datasetId,
-            type: folder.type,
-            oldParentId: null,
-            newParentId: String(folders[1 - index]._id)
-          })),
-          session
-        })
-      )
-    ).rejects.toThrow('Circular collection parent move');
-    for (const [index, folder] of folders.entries()) {
+    for (const collection of [ancestor, intermediate, movingChild]) {
       await expect(
-        collectionClbs(teamId, String(folder._id)).then(toPermissionMap)
-      ).resolves.toEqual(before[index]);
-      expect(
-        (await MongoDatasetCollection.findById(folder._id).lean())?.parentId ?? null
-      ).toBeNull();
+        collectionClbs(teamId, String(collection._id)).then(toPermissionMap)
+      ).resolves.toEqual(
+        new Map([
+          [String(users.owner.tmbId), ManageRoleVal],
+          [String(users.members[0].tmbId), ReadRoleVal]
+        ])
+      );
     }
+    await mongoSessionRun((session) =>
+      bulkMoveCollectionsParent({
+        teamId,
+        items: [
+          {
+            _id: String(movingChild._id),
+            datasetId,
+            type: movingChild.type,
+            oldParentId: String(intermediate._id),
+            newParentId: emptyParent._id,
+            apiFileParentId: emptyParent.name
+          }
+        ],
+        session
+      })
+    );
+    await expect(collectionClbs(teamId, String(movingChild._id))).resolves.toEqual([]);
   });
+
+  it.each(['moving', 'external-self', 'external-pair', 'mixed'])(
+    '目标父级循环在写入前失败，保留原快照和父级：%s',
+    async (mode) => {
+      const users = await getFakeUsers(1);
+      const dataset = await createDataset({ user: users.owner });
+      const datasetId = String(dataset._id);
+      const teamId = String(users.owner.teamId);
+      await enableDatasetCollectionPermissions({ teamId, datasetId });
+      const folders = await Promise.all(
+        ['a', 'b', 'moving'].map((name) =>
+          createCollection({
+            user: users.owner,
+            datasetId,
+            name,
+            type: DatasetCollectionTypeEnum.folder
+          })
+        )
+      );
+      const [a, b, moving] = folders;
+      // 直接写入历史脏树，避免通过业务移动接口构造时提前拒绝环。
+      if (mode === 'external-self' || mode === 'external-pair') {
+        await MongoDatasetCollection.updateOne(
+          { _id: a._id },
+          { $set: { parentId: String(mode === 'external-self' ? a._id : b._id) } }
+        );
+        if (mode === 'external-pair') {
+          await MongoDatasetCollection.updateOne(
+            { _id: b._id },
+            { $set: { parentId: String(a._id) } }
+          );
+        }
+      } else if (mode === 'mixed') {
+        await MongoDatasetCollection.updateOne(
+          { _id: a._id },
+          { $set: { parentId: String(moving._id) } }
+        );
+      }
+      const before = await Promise.all(
+        folders.map(async (folder) => ({
+          parentId: (await MongoDatasetCollection.findById(folder._id).lean())?.parentId,
+          permissions: toPermissionMap(await collectionClbs(teamId, String(folder._id)))
+        }))
+      );
+      const moves =
+        mode === 'moving'
+          ? [
+              [a, b],
+              [b, a]
+            ]
+          : [[moving, a]];
+      await expect(
+        mongoSessionRun((session) =>
+          bulkMoveCollectionsParent({
+            teamId,
+            items: moves.map(([collection, parent]) => ({
+              _id: String(collection._id),
+              datasetId,
+              type: collection.type,
+              oldParentId: null,
+              newParentId: parent._id,
+              apiFileParentId: parent.name
+            })),
+            session
+          })
+        )
+      ).rejects.toThrow('Circular collection parent move');
+      for (const [index, folder] of folders.entries()) {
+        await expect(
+          collectionClbs(teamId, String(folder._id)).then(toPermissionMap)
+        ).resolves.toEqual(before[index].permissions);
+        expect((await MongoDatasetCollection.findById(folder._id).lean())?.parentId).toBe(
+          before[index].parentId
+        );
+      }
+    }
+  );
 });
 
 describe('syncMovedCollectionPermissionDescendants', () => {

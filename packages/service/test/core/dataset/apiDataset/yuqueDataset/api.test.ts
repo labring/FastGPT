@@ -126,9 +126,9 @@ describe('listFiles', () => {
   it.each([
     [null, { message: '未知错误' }],
     ['failed', { message: 'failed' }],
-    [new Error('failed'), { message: 'failed' }],
-    [{ data: 'failed' }, { message: 'failed' }],
-    [{ response: { data: { reason: 'failed' } } }, { reason: 'failed' }],
+    [new Error('failed'), new Error('failed')],
+    [{ data: 'failed' }, { data: 'failed' }],
+    [{ response: { data: { reason: 'failed' } } }, { response: { data: { reason: 'failed' } } }],
     [{ code: 'ECONNRESET' }, { code: 'ECONNRESET' }]
   ])('规范化请求错误 %#', async (error, expected) => {
     request.mockRejectedValueOnce(error);
@@ -158,7 +158,7 @@ describe('getRepoToc（通过公开方法验证缓存）', () => {
   it('失败的 TOC Promise 不永久缓存，允许同实例重试', async () => {
     request.mockRejectedValueOnce(new Error('failed')).mockResolvedValueOnce(ok(toc));
     const api = provider();
-    await expect(api.listFiles({ parentId: '100' })).rejects.toEqual({ message: 'failed' });
+    await expect(api.listFiles({ parentId: '100' })).rejects.toThrow('failed');
     expect(await api.listFiles({ parentId: '100' })).toHaveLength(2);
     expect(request).toHaveBeenCalledTimes(2);
   });
@@ -216,12 +216,21 @@ describe('getFileDetail', () => {
     });
   });
 
-  it.fails('HTTP 状态不能被响应错误转换丢弃（现有缺陷）', async () => {
-    request.mockRejectedValueOnce({ message: 'failed', response: { status: 503 } });
+  it.each([
+    [404, 'NOT_FOUND'],
+    [403, 'UNAUTHORIZED'],
+    [429, 'RATE_LIMIT'],
+    [503, 'SERVER_ERROR']
+  ])('真实 HTTP %s 状态穿过错误转换后仍可分类', async (status, code) => {
+    request.mockRejectedValueOnce({
+      message: 'Request failed',
+      response: { status, data: { message: 'upstream resource not found' } }
+    });
     expect(await provider().getFileDetail({ apiFileId: '100' })).toMatchObject({
       success: false,
-      code: 'SERVER_ERROR',
-      status: 503
+      code,
+      status,
+      message: 'upstream resource not found'
     });
   });
 });

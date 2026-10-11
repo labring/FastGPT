@@ -753,46 +753,36 @@ export async function moveCollectionPermissionsBatch({
     const moving = datasetItems.filter((item) => item.inheritPermission !== false);
     if (moving.length === 0) continue;
 
-    const parentIds = Array.from(
+    const snapshotIds = Array.from(
       new Set(
         moving
-          .flatMap((item) => [item.oldParentId, item.newParentId])
+          .flatMap((item) => [item.collectionId, item.oldParentId, item.newParentId])
           .filter(Boolean)
           .map(String)
       )
     );
-    const [parentRows, datasetClbs, collectionRows] = await Promise.all([
-      parentIds.length
-        ? resourcePermissionRepo.findByResourceIds({
-            teamId,
-            resourceType: PerResourceTypeEnum.collection,
-            resourceIds: parentIds,
-            session
-          })
-        : [],
+    const [collectionRows, datasetClbs] = await Promise.all([
+      resourcePermissionRepo.findByResourceIds({
+        teamId,
+        resourceType: PerResourceTypeEnum.collection,
+        resourceIds: snapshotIds,
+        session
+      }),
       resourcePermissionRepo.findByResource({
         teamId,
         resourceType: PerResourceTypeEnum.dataset,
         resourceId: datasetId,
         session
-      }),
-      resourcePermissionRepo.findByResourceIds({
-        teamId,
-        resourceType: PerResourceTypeEnum.collection,
-        resourceIds: moving.map((item) => item.collectionId),
-        session
       })
     ]);
-    // 这两个 map 都是写入前的快照。旧父级必须始终使用它，才能准确剥离旧继承权限。
-    const parentClbsById = indexByResourceId(parentRows);
+    // 统一保留所有节点的旧快照；中间节点剥离旧继承时也需要移动祖先和外部父级的旧 ACL。
     const snapshotById = indexByResourceId(collectionRows);
     const oldParentClbsOf = (parentId: ParentIdType) =>
-      parentId ? (parentClbsById.get(String(parentId)) ?? []) : datasetClbs;
-    // 本轮已计算的「新 ACL」。只有新父级也是本轮移动节点时才会命中此 map。
+      parentId ? (snapshotById.get(String(parentId)) ?? []) : datasetClbs;
     const newSnapshotsById = new Map<string, CollaboratorItemType[]>();
     const newParentClbsOf = (parentId: ParentIdType) =>
       parentId
-        ? (newSnapshotsById.get(String(parentId)) ?? parentClbsById.get(String(parentId)) ?? [])
+        ? (newSnapshotsById.get(String(parentId)) ?? snapshotById.get(String(parentId)) ?? [])
         : datasetClbs;
 
     // 输入顺序不能假设为父→子。用 DFS 让「新父级也是移动节点」的父级先入 orderedMoving。
@@ -813,21 +803,16 @@ export async function moveCollectionPermissionsBatch({
       { _id: string; parentId: string | null; inheritPermission?: boolean }
     >();
     let currExtIds = externalParentIds;
+    const loadedExternalIds = new Set<string>();
     while (currExtIds.length > 0) {
-      const query = MongoDatasetCollection.find?.(
+      for (const id of currExtIds) loadedExternalIds.add(id);
+      const docs = await MongoDatasetCollection.find(
         { teamId, datasetId, _id: { $in: currExtIds } },
         '_id parentId inheritPermission'
-      );
-      let docs: any[] = [];
-      if (query) {
-        if (typeof query.session === 'function' && session) {
-          const s = query.session(session);
-          docs = typeof s?.lean === 'function' ? await s.lean() : [];
-        } else if (typeof query.lean === 'function') {
-          docs = await query.lean();
-        }
-      }
-      currExtIds = [];
+      )
+        .session(session)
+        .lean();
+      const nextIds = new Set<string>();
       for (const doc of docs) {
         const id = String(doc._id);
         const pId = doc.parentId ? String(doc.parentId) : null;
@@ -836,64 +821,72 @@ export async function moveCollectionPermissionsBatch({
           parentId: pId,
           inheritPermission: doc.inheritPermission
         });
-        if (pId && !movingById.has(pId) && !externalNodeMap.has(pId)) {
-          currExtIds.push(pId);
+        if (pId && !movingById.has(pId) && !loadedExternalIds.has(pId)) {
+          nextIds.add(pId);
         }
+      }
+      currExtIds = Array.from(nextIds);
+    }
+
+    // 外部节点 ACL 一次批量补齐，避免共享祖先重复查询；无 ACL 行也视为已读取的空快照。
+    const loadedSnapshotIds = new Set(snapshotIds);
+    const externalSnapshotIds = Array.from(externalNodeMap.keys()).filter(
+      (id) => !loadedSnapshotIds.has(id)
+    );
+    if (externalSnapshotIds.length > 0) {
+      const externalRows = await resourcePermissionRepo.findByResourceIds({
+        teamId,
+        resourceType: PerResourceTypeEnum.collection,
+        resourceIds: externalSnapshotIds,
+        session
+      });
+      for (const [id, collaborators] of indexByResourceId(externalRows)) {
+        snapshotById.set(id, collaborators);
       }
     }
 
+    const movingAncestorById = new Map<string, string | null>();
+    /** 检查外部旧树的环并缓存最近移动祖先；共享路径只遍历一次，避免深链重复扫描。 */
     const findMovingAncestorId = (startId: string): string | null => {
-      let curr = externalNodeMap.get(startId);
-      while (curr && curr.parentId) {
-        if (movingById.has(curr.parentId)) {
-          return curr.parentId;
+      const path = new Set<string>();
+      let currId: string | null = startId;
+      while (currId && !movingById.has(currId) && !movingAncestorById.has(currId)) {
+        if (path.has(currId)) {
+          throw new Error(`Circular collection parent move: ${currId}`);
         }
-        curr = externalNodeMap.get(curr.parentId);
+        path.add(currId);
+        currId = externalNodeMap.get(currId)?.parentId ?? null;
       }
-      return null;
+      const ancestorId = currId
+        ? movingById.has(currId)
+          ? currId
+          : (movingAncestorById.get(currId) ?? null)
+        : null;
+      for (const id of path) movingAncestorById.set(id, ancestorId);
+      return ancestorId;
     };
 
-    const resolveIntermediateSnapshots = async (targetId: string) => {
-      if (newSnapshotsById.has(targetId) || movingById.has(targetId)) return;
+    /** 用已验证无环的路径计算中间节点新快照，保留自身授权，并在独立权限节点停止继承。 */
+    const resolveIntermediateSnapshots = (targetId: string) => {
+      if (newSnapshotsById.has(targetId)) return;
+      if (!findMovingAncestorId(targetId)) return;
       const path: Array<{ _id: string; parentId: string | null; inheritPermission?: boolean }> = [];
       let curr = externalNodeMap.get(targetId);
-      while (curr) {
-        path.unshift(curr);
-        if (curr.parentId && movingById.has(curr.parentId)) {
-          break;
-        }
+      while (curr && !newSnapshotsById.has(curr._id)) {
+        path.push(curr);
         curr = curr.parentId ? externalNodeMap.get(curr.parentId) : undefined;
       }
-      if (path.length === 0 || !path[0].parentId || !movingById.has(path[0].parentId)) {
-        return;
-      }
-      const pathIds = path.map((n) => n._id).filter((id) => !snapshotById.has(id));
-      if (pathIds.length > 0) {
-        const pathRows = await resourcePermissionRepo.findByResourceIds({
-          teamId,
-          resourceType: PerResourceTypeEnum.collection,
-          resourceIds: pathIds,
-          session
-        });
-        for (const row of pathRows) {
-          snapshotById.set(String(row.resourceId), row.collaborators);
-        }
-      }
-      for (const node of path) {
-        if (newSnapshotsById.has(node._id)) continue;
-        const parentOldClbs = oldParentClbsOf(node.parentId);
-        const parentNewClbs = newParentClbsOf(node.parentId);
+      for (const node of path.reverse()) {
         const nodeOldSnapshot = snapshotById.get(node._id) ?? [];
-        if (node.inheritPermission === false) {
-          newSnapshotsById.set(node._id, nodeOldSnapshot);
-        } else {
-          const nodeNewSnapshot = calculateInheritedResourceCollaborators({
-            oldParentCollaborators: parentOldClbs,
-            newParentCollaborators: parentNewClbs,
-            childCollaborators: nodeOldSnapshot
-          });
-          newSnapshotsById.set(node._id, nodeNewSnapshot);
-        }
+        const nodeNewSnapshot =
+          node.inheritPermission === false
+            ? nodeOldSnapshot
+            : calculateInheritedResourceCollaborators({
+                oldParentCollaborators: oldParentClbsOf(node.parentId),
+                newParentCollaborators: newParentClbsOf(node.parentId),
+                childCollaborators: nodeOldSnapshot
+              });
+        newSnapshotsById.set(node._id, nodeNewSnapshot);
       }
     };
 
@@ -927,7 +920,7 @@ export async function moveCollectionPermissionsBatch({
 
     for (const item of orderedMoving) {
       if (item.newParentId && !movingById.has(String(item.newParentId))) {
-        await resolveIntermediateSnapshots(String(item.newParentId));
+        resolveIntermediateSnapshots(String(item.newParentId));
       }
       const oldSnapshot = snapshotById.get(item.collectionId) ?? [];
       const newSnapshot = calculateInheritedResourceCollaborators({

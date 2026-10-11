@@ -181,7 +181,7 @@ export type BulkUpdateCollectionParentItem = {
   apiFileParentId: string | null;
 };
 
-/** 批量校正已存在节点的层级；按目标值直接 $set，重复执行天然幂等。不抛异常。 */
+/** 批量校正已存在节点的层级；根节点清除远端父字段，重复执行幂等。不抛异常。 */
 export const bulkUpdateCollectionsParent = async ({
   teamId,
   updates,
@@ -218,8 +218,10 @@ export const bulkUpdateCollectionsParent = async ({
             // 模型类型侧 parentId 是 string（global DatasetCollectionSchemaType.ParentIdSchema），mongoose schema 侧是 Schema.Types.ObjectId，传 hex 串由驱动转回 ObjectId
             $set: {
               parentId: item.parentId ? String(item.parentId) : null,
-              apiFileParentId: item.apiFileParentId ?? null
-            }
+              ...(item.apiFileParentId != null ? { apiFileParentId: item.apiFileParentId } : {})
+            },
+            // 远端根节点没有父级；清除旧字段，避免存入接口 schema 不接受的 null。
+            ...(item.apiFileParentId == null ? { $unset: { apiFileParentId: 1 } } : {})
           }
         }
       })),

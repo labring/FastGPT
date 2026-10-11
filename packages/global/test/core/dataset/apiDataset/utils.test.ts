@@ -197,7 +197,7 @@ describe('classifyApiDatasetError', () => {
     expect(classifyApiDatasetError(error)).toEqual({ success: false, code, message, status });
   });
 
-  it.each(['ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'EAI_AGAIN'])(
+  it.each(['ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'EAI_AGAIN', 'ECONNABORTED', 'ERR_NETWORK'])(
     '网络错误 %s 不允许触发删除',
     (code) => {
       expect(classifyApiDatasetError({ code, message: '' })).toEqual({
@@ -209,11 +209,58 @@ describe('classifyApiDatasetError', () => {
     }
   );
 
-  // 已知生产缺陷：消息正则优先于明确 HTTP 状态，会令同步误删。
-  // 用 expected-failure 保留期望行为；修复分类器后必须移除 fails，不能固化错误分类。
-  it.fails.each([403, 429, 503])('明确状态 %s 不应被 not found 文案降级为已删除', (status) => {
+  it.each([
+    [403, 'UNAUTHORIZED'],
+    [429, 'RATE_LIMIT'],
+    [503, 'SERVER_ERROR'],
+    [400, 'UNKNOWN_ERROR']
+  ])('明确状态 %s 不被 not found 文案覆盖', (status, code) => {
     expect(
       classifyApiDatasetError({ status, message: 'upstream resource not found' })
-    ).not.toMatchObject({ code: 'NOT_FOUND' });
+    ).toMatchObject({ success: false, code, status });
+  });
+
+  it.each([
+    [{ code: 'ECONNRESET', message: 'not found' }, 'NETWORK_ERROR', 'not found'],
+    [{ code: 970003, message: 'not found' }, 'UNKNOWN_ERROR', 'not found'],
+    [{ code: 'ERR_BAD_REQUEST', message: 'not found' }, 'UNKNOWN_ERROR', 'not found'],
+    [
+      { code: 'ECONNRESET', response: { data: { code: 'NOT_FOUND', message: 'missing' } } },
+      'NETWORK_ERROR',
+      'missing'
+    ],
+    [{ code: 'UNAUTHORIZED', message: 'not found' }, 'UNAUTHORIZED', 'not found'],
+    [
+      { response: { status: 403, data: { code: 'NOT_FOUND', msg: 'denied' } }, message: 'failed' },
+      'UNAUTHORIZED',
+      'denied'
+    ],
+    [{ response: { data: { error: 'network timeout' } } }, 'NETWORK_ERROR', 'network timeout'],
+    [{ response: { data: '文件不存在' } }, 'NOT_FOUND', '文件不存在'],
+    [{ data: 'too many requests' }, 'RATE_LIMIT', 'too many requests'],
+    [{ message: 'forbidden: file not found' }, 'UNAUTHORIZED', 'forbidden: file not found'],
+    [
+      { message: 'network timeout: file not found' },
+      'NETWORK_ERROR',
+      'network timeout: file not found'
+    ],
+    [{ status: 200, message: '文件不存在' }, 'NOT_FOUND', '文件不存在'],
+    [{ status: '503', message: 'unexpected' }, 'UNKNOWN_ERROR', 'unexpected']
+  ])('保留结构化错误和旧协议文案 %#', (error, code, message) => {
+    expect(classifyApiDatasetError(error)).toMatchObject({ success: false, code, message });
+  });
+
+  it.each([
+    'NOT_FOUND',
+    'RATE_LIMIT',
+    'UNAUTHORIZED',
+    'NETWORK_ERROR',
+    'SERVER_ERROR',
+    'INVALID_PARAMS',
+    'UNKNOWN_ERROR'
+  ])('已归一化协议 %s 不依赖文案再次判断', (code) => {
+    expect(classifyApiDatasetError({ success: false, code, message: 'failed' })).toMatchObject({
+      code
+    });
   });
 });

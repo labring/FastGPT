@@ -15,6 +15,7 @@ vi.mock('@fastgpt/service/common/api/axios', () => ({
 const server = { appId: 'app', appSecret: 'secret', folderToken: 'root' };
 const provider = () => useFeishuDatasetRequest({ feishuServer: server });
 const ok = (data: unknown) => ({ data: { code: 0, data } });
+const failed = (code: number, token = 'token') => ok({ metas: [], failed_list: [{ token, code }] });
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.request.mockReset();
@@ -123,30 +124,54 @@ describe('getFileDetail', () => {
     ).toBe(true);
   });
 
-  it.each([{ metas: [] }, { metas: undefined }])(
-    '空 metas (%j) 仍尝试 folder',
-    async ({ metas }) => {
-      mocks.request
-        .mockResolvedValueOnce(ok({ metas }))
-        .mockResolvedValueOnce(ok({ metas: [{ title: 'Folder', doc_type: 'folder' }] }));
-      expect(await provider().getFileDetail({ apiFileId: 'token' })).toMatchObject({
-        success: true,
-        data: { type: 'folder' }
-      });
-      expect(mocks.request).toHaveBeenCalledTimes(2);
-    }
-  );
+  it('飞书 970005 类型不匹配时按 folder 重试并保留文件夹', async () => {
+    mocks.request
+      .mockResolvedValueOnce(failed(970005))
+      .mockResolvedValueOnce(ok({ metas: [{ title: 'Folder', doc_type: 'folder' }] }));
+    expect(await provider().getFileDetail({ apiFileId: 'token' })).toMatchObject({
+      success: true,
+      data: { type: 'folder' }
+    });
+    expect(mocks.request).toHaveBeenCalledTimes(2);
+  });
 
-  it.each(['empty', '404'])('两次探测都 %s 时返回明确 NOT_FOUND', async (failure) => {
-    if (failure === 'empty') mocks.request.mockResolvedValue(ok({ metas: [] }));
+  it.each(['970005', '404'])('两种类型都明确返回 %s 时才返回 NOT_FOUND', async (failure) => {
+    if (failure === '970005') mocks.request.mockResolvedValue(failed(970005));
     else mocks.request.mockRejectedValue({ status: 404 });
-    expect(await provider().getFileDetail({ apiFileId: 'gone' })).toEqual({
+    expect(await provider().getFileDetail({ apiFileId: 'token' })).toEqual({
       success: false,
       code: 'NOT_FOUND',
       message: '文件不存在',
       status: 404
     });
     expect(mocks.request).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    [failed(970003), 'UNAUTHORIZED'],
+    [failed(970002), 'UNKNOWN_ERROR'],
+    [failed(999999), 'UNKNOWN_ERROR'],
+    [failed(970005, 'another-token'), 'UNKNOWN_ERROR'],
+    [ok({ metas: [] }), 'UNKNOWN_ERROR'],
+    [ok({}), 'UNKNOWN_ERROR'],
+    [ok(undefined), 'UNKNOWN_ERROR'],
+    [ok({ metas: [{ title: 'wrong-type', doc_type: 'image' }] }), 'UNKNOWN_ERROR'],
+    [ok({ metas: [{ doc_type: 'folder' }] }), 'UNKNOWN_ERROR'],
+    [{ data: { code: 1069701, msg: 'not found' } }, 'UNAUTHORIZED'],
+    [{ data: { code: 1069704, msg: 'not found' } }, 'SERVER_ERROR'],
+    [{ data: { code: 1234, msg: 'not found' } }, 'UNKNOWN_ERROR'],
+    [{ data: { code: 1234 } }, 'UNKNOWN_ERROR']
+  ])('任一阶段的权限、未知业务错误或不完整结果 %# 都阻止删除', async (response, code) => {
+    for (const stage of [0, 1]) {
+      mocks.request.mockReset();
+      if (stage) mocks.request.mockResolvedValueOnce(failed(970005));
+      mocks.request.mockResolvedValueOnce(response);
+      expect(await provider().getFileDetail({ apiFileId: 'token' })).toMatchObject({
+        success: false,
+        code
+      });
+      expect(mocks.request).toHaveBeenCalledTimes(stage + 1);
+    }
   });
 
   it.each([
@@ -157,7 +182,7 @@ describe('getFileDetail', () => {
   ])('任意探测阶段的 HTTP %i 都 resolve 失败且停止继续探测', async (status, code) => {
     for (const stage of [0, 1]) {
       mocks.request.mockReset();
-      if (stage) mocks.request.mockResolvedValueOnce(ok({ metas: [] }));
+      if (stage) mocks.request.mockResolvedValueOnce(failed(970005));
       mocks.request.mockRejectedValueOnce({ response: { status } });
       expect(await provider().getFileDetail({ apiFileId: 'token' })).toMatchObject({
         success: false,
@@ -167,6 +192,18 @@ describe('getFileDetail', () => {
       expect(mocks.request).toHaveBeenCalledTimes(stage + 1);
     }
   });
+
+  it.each([new Error('not found'), '文件不存在', { code: 'NOT_FOUND', message: 'missing' }])(
+    '没有 HTTP 404 的错误 %j 不能作为飞书删除依据',
+    async (error) => {
+      mocks.request.mockRejectedValueOnce(error);
+      expect(await provider().getFileDetail({ apiFileId: 'token' })).toMatchObject({
+        success: false,
+        code: 'UNKNOWN_ERROR'
+      });
+      expect(mocks.request).toHaveBeenCalledTimes(1);
+    }
+  );
 
   it.each(['ECONNRESET', 'ETIMEDOUT'])('网络错误 %s 不判定为删除', async (code) => {
     mocks.request.mockRejectedValueOnce({ code });

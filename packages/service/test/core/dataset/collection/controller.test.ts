@@ -129,6 +129,7 @@ import {
   formatCollectionParamsByDataset
 } from '@fastgpt/service/core/dataset/collection/controller';
 import { chunkAutoChunkSize } from '@fastgpt/global/core/dataset/training/utils';
+import { DatasetCollectionSchema } from '@fastgpt/global/core/dataset/type';
 
 const teamId = 'team-1';
 const tmbId = 'tmb-1';
@@ -336,7 +337,8 @@ describe('bulkUpdateCollectionsParent', () => {
       $set: { parentId: String(updates[0].parentId), apiFileParentId: updates[0].apiFileParentId }
     });
     expect(mockBulkWrite.mock.calls[0][0][1].updateOne.update).toEqual({
-      $set: { parentId: null, apiFileParentId: null }
+      $set: { parentId: null },
+      $unset: { apiFileParentId: 1 }
     });
     expect(result.successIds).toEqual(updates.map((item) => item._id));
     expect(result.failedIds).toEqual([]);
@@ -389,6 +391,48 @@ describe('bulkUpdateCollectionsParent', () => {
     expect(result.failedIds).toEqual(['collection-1']);
   });
 
+  it.each(['previous-api-parent', null, undefined])(
+    '移到远端根目录时清除旧父字段，兼容详情 schema：%s',
+    async (previousApiFileParentId) => {
+      const { MongoDatasetCollection: RealMongoDatasetCollection } = await vi.importActual<
+        typeof import('@fastgpt/service/core/dataset/collection/schema')
+      >('@fastgpt/service/core/dataset/collection/schema');
+      const realTeamId = String(new Types.ObjectId());
+      const created = await RealMongoDatasetCollection.create({
+        teamId: realTeamId,
+        tmbId: String(new Types.ObjectId()),
+        datasetId: String(new Types.ObjectId()),
+        type: DatasetCollectionTypeEnum.apiFile,
+        name: 'move-to-root',
+        parentId: new Types.ObjectId(),
+        apiFileParentId: previousApiFileParentId ?? undefined
+      });
+      if (previousApiFileParentId === null) {
+        // 模拟早期层级校正写入的 null，验证再次同步可以恢复接口兼容性。
+        await RealMongoDatasetCollection.collection.updateOne(
+          { _id: new Types.ObjectId(created._id) },
+          { $set: { apiFileParentId: null } }
+        );
+      }
+      mockBulkWrite.mockImplementation((ops, options) =>
+        RealMongoDatasetCollection.bulkWrite(ops, options)
+      );
+
+      const result = await bulkUpdateCollectionsParent({
+        teamId: realTeamId,
+        updates: [{ _id: String(created._id), parentId: null, apiFileParentId: null }]
+      });
+      const saved = await RealMongoDatasetCollection.findById(created._id).lean();
+
+      expect(result).toEqual({ successIds: [String(created._id)], failedIds: [], matchedCount: 1 });
+      expect(saved?.parentId).toBeNull();
+      expect(saved).not.toHaveProperty('apiFileParentId');
+      expect(
+        DatasetCollectionSchema.shape.apiFileParentId.safeParse(saved?.apiFileParentId).success
+      ).toBe(true);
+    }
+  );
+
   it('整体抛错时全部计入失败且不抛异常', async () => {
     const updates = makeUpdates(3);
     const bulkError = new Error('mongo down');
@@ -429,6 +473,7 @@ describe('bulkMoveCollectionsParent', () => {
     mockFindByResource.mockResolvedValue([]);
     mockFindByResourceIds.mockResolvedValue([]);
     mockReplaceResources.mockResolvedValue(undefined);
+    mockFind.mockReturnValue({ session: () => ({ lean: async () => [] }) });
   });
 
   it('ACL 与 parentId 全部迁移成功时正常返回', async () => {

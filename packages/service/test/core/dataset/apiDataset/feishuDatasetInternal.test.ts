@@ -54,6 +54,7 @@ describe('useFeishuDatasetRequest 访问内网飞书服务', () => {
           req.url?.includes('/tenant_access_token/')
             ? { code: 0, tenant_access_token: 'tenant-token' }
             : {
+                code: 0,
                 data: {
                   files: [
                     {
