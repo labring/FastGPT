@@ -109,8 +109,8 @@ describe('parseUrlToChatFileType', () => {
     });
     expect(await parseUrlToChatFileType({ url, type: FileType.file })).toEqual({
       url,
-      name: filename,
-      filename,
+      name: url,
+      ...(filename ? { filename } : {}),
       type: expected
     });
     expect(axios.head).toHaveBeenCalledWith(
@@ -140,7 +140,7 @@ describe('parseUrlToChatFileType', () => {
       expect(results.map((file) => file?.filename)).toEqual([filename, filename]);
       expect(await parseUrlToChatFileType({ url, fileContext: context })).toEqual({
         url,
-        name: filename ?? url,
+        name: url,
         type: expected,
         ...(filename ? { filename } : {})
       });
@@ -254,10 +254,7 @@ describe('prepareChatFiles', () => {
         maxFiles: 2,
         fileContext: context
       })
-    ).toEqual([
-      { name: '最终名称', filename: 'download.png', type: FileType.video, url: `${url}/model` },
-      registered
-    ]);
+    ).toEqual([{ name: '最终名称', type: FileType.video, url: `${url}/model` }, registered]);
     expect(context.registerExternalFile).toHaveBeenCalledTimes(1);
   });
 
@@ -279,7 +276,7 @@ describe('prepareChatFiles', () => {
 
   it('不提供登记器也能准备文件', async () => {
     expect(await prepareChatFiles({ files: [{ url }], maxFiles: 1 })).toEqual([
-      { url, name: 'download.png', filename: 'download.png', type: FileType.image }
+      { url, name: url, type: FileType.image }
     ]);
   });
 

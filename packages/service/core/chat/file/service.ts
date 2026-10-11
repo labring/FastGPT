@@ -153,8 +153,9 @@ export const parseUrlToChatFileType = async ({
       })();
 
       return {
-        ...resolved,
-        name: name || resolved.filename || (filename ? decodeURIComponent(filename) : url),
+        type: resolved.type,
+        ...(resolved.filename ? { filename: resolved.filename } : {}),
+        name: name || (filename ? decodeURIComponent(filename) : url),
         url
       };
     } catch {
@@ -198,7 +199,7 @@ export const prepareChatFiles = async ({
   maxFiles: number;
   fileContext?: FilePreparationContext;
   allowDataUrl?: boolean;
-}): Promise<PreparedChatFile[]> => {
+}): Promise<UserChatItemFileItemType[]> => {
   const selected = selectFileInputs({
     files: files
       .filter((file) => typeof file.url === 'string' && file.url.trim())
@@ -220,11 +221,13 @@ export const prepareChatFiles = async ({
         isAbsoluteHttpUrl(result.url)
       ) {
         const ref = fileContext.registerExternalFile(result);
-        return { ...result, name: ref.name, type: ref.type, url: ref.modelUrl };
+        return { name: ref.name, type: ref.type, url: ref.modelUrl };
       }
-      return fileContext?.resolveChatFile(file.url) ?? result;
+      const registered = fileContext?.resolveChatFile(file.url);
+      if (registered) return registered;
+      return { name: result.name, type: result.type, url: result.url };
     },
     5
   );
-  return parsed.filter((file): file is PreparedChatFile => file !== undefined);
+  return parsed.filter((file): file is UserChatItemFileItemType => file !== undefined);
 };
