@@ -118,7 +118,11 @@ export const useDebug = () => {
       checkWorkflowBeforeRunOrPublish({
         nodes,
         edges,
-        models: await getWorkflowModelDetails(nodes, appDetail.chatConfig),
+        models: await getWorkflowModelDetails({
+          nodes,
+          chatConfig: appDetail.chatConfig,
+          appId: appDetail._id
+        }),
         chatConfig: appDetail.chatConfig,
         t: workflowT
       });
@@ -158,6 +162,7 @@ export const useDebug = () => {
     });
     return Promise.reject();
   }, [
+    appDetail._id,
     appDetail.chatConfig,
     edges,
     fitView,

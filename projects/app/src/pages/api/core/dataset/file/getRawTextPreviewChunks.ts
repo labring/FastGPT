@@ -1,26 +1,26 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
-import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps } from '@fastgpt/next/type';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { rawText2Chunks } from '@fastgpt/service/core/dataset/read';
 import {
   computedCollectionChunkSettings,
   getLLMMaxChunkSize,
   maxPreviewChunkCount
 } from '@fastgpt/global/core/dataset/training/utils';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
+import { rawText2Chunks } from '@fastgpt/service/core/dataset/read';
+import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 
-import { replaceS3KeysToPreviewUrls } from '@fastgpt/service/common/s3/utils/preview';
-import { createDatasetFileS3KeyFilter } from '@fastgpt/service/common/s3/sources/dataset/key';
-import { addDays } from 'date-fns';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
-  GetRawTextPreviewChunksBodySchema,
   GetPreviewChunksResponseSchema,
+  GetRawTextPreviewChunksBodySchema,
   type GetRawTextPreviewChunksBody,
   type GetRawTextPreviewChunksResponse
 } from '@fastgpt/global/openapi/core/dataset/file/api';
+import { createDatasetFileS3KeyFilter } from '@fastgpt/service/common/s3/sources/dataset/key';
+import { replaceS3KeysToPreviewUrls } from '@fastgpt/service/common/s3/utils/preview';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addDays } from 'date-fns';
 
 async function handler(
   req: ApiRequestProps<GetRawTextPreviewChunksBody>
@@ -37,7 +37,7 @@ async function handler(
     datasetId,
     per: WritePermissionVal
   });
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getTeamModelHandle({ teamId: dataset.teamId });
   const formatChunkSettings = computedCollectionChunkSettings({
     ...chunkSettings,
     llmModel: modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent')),

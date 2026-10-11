@@ -108,8 +108,11 @@ type Props = Omit<
   maxFileAmount: number;
   /** 已按团队配置优先、系统配置兜底计算完成的单文件读取上限。 */
   maxBytesPerFile: number;
-  /** App 入口选中 Version 的资源快照；Test/Debug 传入当前请求临时快照。Skill 调试和商业工具可以不传。 */
-  resourceContext?: WorkflowResourceContext;
+  /**
+   * 本次运行的资源快照，必填：App 入口传选中 Version 的快照；Test/Debug 传当前请求临时快照；
+   * Skill 调试传入口已鉴权的资源。静态资源只核对快照，动态引用按运行人鉴权。
+   */
+  resourceContext: WorkflowResourceContext;
 };
 type NodeResponseType = DispatchNodeResultType<{
   [key: string]: any;
@@ -846,11 +849,6 @@ export class WorkflowQueue {
         runtimeNodesMap: this.runtimeNodesMap,
         variableState: this.data.variableState
       });
-      // await assertWorkflowNodeModelResources({
-      //   node,
-      //   params,
-      //   tmbId: this.data.runningUserInfo.tmbId
-      // });
       const nodeSummary = createNodeSummary();
       const dispatchData: ModuleDispatchProps<Record<string, any>> = {
         ...this.data,
@@ -878,6 +876,14 @@ export class WorkflowQueue {
           const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
 
           try {
+            // 模型资源校验必须在 try 内：失败时走节点错误分支（支持 catchError），
+            // 否则异常会冲出调度循环，导致整个工作流无输出。
+            await assertWorkflowNodeModelResources({
+              node,
+              params,
+              teamId: this.data.runningUserInfo.teamId,
+              tmbId: this.data.runningUserInfo.tmbId
+            });
             const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
 
             if (result.error) {

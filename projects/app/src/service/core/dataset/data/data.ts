@@ -6,7 +6,7 @@ import type {
   DatasetDataItemType,
   CreateDatasetDataPropsType
 } from '@fastgpt/global/core/dataset/type';
-import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
@@ -58,7 +58,7 @@ type UpdateDatasetDataByIndexesProps = Omit<UpdateDatasetDataPropsType, 'indexes
   indexes?: NonNullable<UpdateDatasetDataPropsType['indexes']>;
   /** 首次训练产生的派生图片描述，与 indexes 在同一次 CAS 中写回。 */
   imageDescMap?: Record<string, string>;
-  model: EmbeddingSystemModelDataType;
+  model: EmbeddingModelDataType;
   indexSize?: number;
   imageIndex?: boolean;
   /** 重建索引时忽略文本相同判断，确保切换 embedding model 后重新生成向量。 */
@@ -76,7 +76,7 @@ type UpdateDatasetDataSystemIndexesProps = Omit<
 
 type RebuildDatasetDataIndexesProps = {
   dataId: string;
-  model: EmbeddingSystemModelDataType;
+  model: EmbeddingModelDataType;
   commit?: CommitDatasetData;
   /** 仅同义词重建允许复用输入未变化的向量；模型切换必须全量生成。 */
   diffSynonym?: boolean;
@@ -112,7 +112,7 @@ type RebuildDatasetDataIndexesProps = {
 export class DatasetDataOperation {
   private readonly indexOperation: DatasetDataIndexOperation;
 
-  constructor(model?: EmbeddingSystemModelDataType) {
+  constructor(model?: EmbeddingModelDataType) {
     this.indexOperation = new DatasetDataIndexOperation(model);
   }
 
@@ -191,7 +191,7 @@ export class DatasetDataOperation {
     commit
   }: CreateDatasetDataPropsType &
     DatasetDataWriteOptions & {
-      embeddingModel: EmbeddingSystemModelDataType;
+      embeddingModel: EmbeddingModelDataType;
       indexSize?: number;
       imageIndex?: boolean;
       imageDescMap?: Record<string, string>;
@@ -894,7 +894,7 @@ export class DatasetDataOperation {
 export const createDatasetData = async (
   props: CreateDatasetDataPropsType &
     DatasetDataWriteOptions & {
-      embeddingModel: EmbeddingSystemModelDataType;
+      embeddingModel: EmbeddingModelDataType;
       indexSize?: number;
       imageIndex?: boolean;
       imageDescMap?: Record<string, string>;

@@ -103,7 +103,7 @@ export type ToolDispatchContext = Pick<
   | 'stream'
   | 'nodeResponseSink'
 > & {
-  modelData: import('@fastgpt/global/core/ai/model/schema').LLMSystemModelDataType;
+  modelData: import('@fastgpt/global/core/ai/model/schema').LLMModelDataType;
   nodeResponseParentId?: string;
   systemPrompt?: string;
   getSubAppInfo: GetSubAppInfoFnType;
@@ -300,8 +300,7 @@ export const getExecuteTool = ({
             nodeResponseParentId: callId,
             variableState,
             lastInteractive,
-            query,
-            useResourceSnapshot: true
+            query
           });
 
           return {
@@ -377,8 +376,7 @@ export const getExecuteTool = ({
             nodeResponseParentId: callId,
             variableState,
             lastInteractive,
-            query,
-            useResourceSnapshot: tool.type !== 'commercialTool'
+            query
           });
 
           return {

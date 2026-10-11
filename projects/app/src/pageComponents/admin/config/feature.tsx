@@ -175,6 +175,16 @@ export const Settings = () => {
             <FormLabel title="用户可配置 OpenAI 账号" description="" minW={'240px'} />
             <Switch control={control} name="feConfigs.show_openai_account" />
           </Flex>
+          <Flex alignItems={'center'} my={3}>
+            <FormLabel
+              title="启用团队模型"
+              description={
+                '开启后，团队成员可自行配置和使用团队模型。\n关闭后，团队模型功能将被禁用。'
+              }
+              minW={'240px'}
+            />
+            <Switch control={control} name="feConfigs.enable_team_model" />
+          </Flex>
         </Grid>
       </>
 

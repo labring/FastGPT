@@ -7,8 +7,8 @@ import {
 } from '@fastgpt/global/core/ai/constants';
 import {
   ModelPriceTierSchema,
-  SystemModelDocumentDataSchema,
-  type SystemModelDocumentDataType
+  AIModelDocumentDataSchema,
+  type AIModelDocumentDataType
 } from '@fastgpt/global/core/ai/model/schema';
 
 const modelTypes = new Set(Object.values(ModelTypeEnum));
@@ -114,7 +114,7 @@ const parsePriceTiers = (value: unknown) => {
 };
 
 const getIssues = (record: unknown) => {
-  const parsed = SystemModelDocumentDataSchema.safeParse(record);
+  const parsed = AIModelDocumentDataSchema.safeParse(record);
   return parsed.success
     ? []
     : parsed.error.issues.map((issue) => ({
@@ -128,7 +128,7 @@ const getIssues = (record: unknown) => {
 export type RepairSystemModelResult =
   | {
       status: 'unchanged' | 'repaired';
-      document: SystemModelDocumentDataType;
+      document: AIModelDocumentDataType;
       issues: Array<{ path: Array<string | number>; message: string }>;
     }
   | {
@@ -145,10 +145,10 @@ export const repairSystemModelDocument = ({
   pluginDocument
 }: {
   record: unknown;
-  pluginDocument?: SystemModelDocumentDataType;
+  pluginDocument?: AIModelDocumentDataType;
 }): RepairSystemModelResult => {
   const raw = toRecord(record);
-  const canonical = SystemModelDocumentDataSchema.safeParse(record);
+  const canonical = AIModelDocumentDataSchema.safeParse(record);
   // scope 在领域 Schema 中有默认值，便于新建系统模型；但迁移判定必须检查真实持久化字段。
   // 否则仅有旧 isSystem 的 canonical 文档会被默认成 system，并错误地跳过 scope 写回。
   if (canonical.success && raw?.scope === ModelScopeEnum.system) {
@@ -282,7 +282,7 @@ export const repairSystemModelDocument = ({
     parsePriceTiers(pluginSource.priceTiers);
   if (priceTiers) document.priceTiers = priceTiers;
 
-  const repaired = SystemModelDocumentDataSchema.safeParse(document);
+  const repaired = AIModelDocumentDataSchema.safeParse(document);
   if (!repaired.success) return { status: 'invalid', issues: getIssues(document) };
 
   return {

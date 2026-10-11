@@ -1,22 +1,20 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  AUTO_EXECUTE_QUERY_SENTINEL,
+  CHAT_FIXED_TITLE_I18N,
   ChatFileTypeEnum,
   ChatRoleEnum,
   ChatSourceEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import {
-  AUTO_EXECUTE_QUERY_SENTINEL,
-  CHAT_FIXED_TITLE_I18N
-} from '@fastgpt/global/core/chat/constants';
 import {
   CHAT_TITLE_GENERATION_TIMEOUT_MS,
   CHAT_TITLE_SEND_WAIT_TIMEOUT_MS,
   createGeneratedChatTitleSender,
   syncGeneratedChatTitleFromUserContent
 } from '@fastgpt/service/core/chat/title';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const createLLMResponseMock = vi.hoisted(() => vi.fn());
 const getDefaultChatTitleModelDataMock = vi.hoisted(() => vi.fn());
@@ -25,8 +23,14 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
+  getSystemModelHandle: async () => ({
+    getDefaultModelData: (slot: string) =>
+      (({ chatTitleLLM: getDefaultChatTitleModelDataMock }) as Record<string, () => unknown>)[
+        slot
+      ]?.()
+  }),
+  getTeamModelHandle: async () => ({
     getDefaultModelData: (slot: string) =>
       (({ chatTitleLLM: getDefaultChatTitleModelDataMock }) as Record<string, () => unknown>)[
         slot

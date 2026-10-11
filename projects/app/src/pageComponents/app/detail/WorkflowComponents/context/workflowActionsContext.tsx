@@ -18,6 +18,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { OnConnectStartParams } from 'reactflow';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from './workflowInitContext';
+import { AppContext } from '../../context';
 
 type FlowNodeChangeProps = { nodeId: string } & (
   | {
@@ -146,6 +147,8 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
     getNodes
   } = useContextSelector(WorkflowBufferDataContext, (v) => v);
 
+  const appId = useContextSelector(AppContext, (v) => v.appId);
+
   const singleNodeCheckTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const edgeCheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstEdgesEffectRef = useRef(true);
@@ -238,9 +241,10 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
   const onRefreshSingleNodeWorkflowCheckIssues = useCallback(
     async (nodeId: string) => {
       const nodes = getNodes();
-      const models = await getWorkflowModelDetails(
-        nodes.filter((node) => node.id === nodeId)
-      ).catch(() => undefined);
+      const models = await getWorkflowModelDetails({
+        nodes: nodes.filter((node) => node.id === nodeId),
+        appId
+      }).catch(() => undefined);
       if (
         !models ||
         getNodes().find((node) => node.id === nodeId)?.data.inputs !==
@@ -276,7 +280,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         })
       );
     },
-    [edges, getNodes, setNodes, t]
+    [appId, edges, getNodes, setNodes, t]
   );
 
   /** 节点配置变更后防抖触发单节点重新校验，避免每次输入都同步扫描。 */
@@ -309,7 +313,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       const nodes = getNodes();
       if (nodes.length === 0) return;
 
-      const models = await getWorkflowModelDetails(nodes).catch(() => undefined);
+      const models = await getWorkflowModelDetails({ nodes, appId }).catch(() => undefined);
       if (
         !models ||
         nodes.some(
@@ -321,7 +325,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       const issueMap = checkWorkflowNodeIssues({ nodes, edges, models, t });
       onSyncWorkflowCheckIssues(issueMap);
     }, 400);
-  }, [edges, getNodes, onSyncWorkflowCheckIssues, t]);
+  }, [appId, edges, getNodes, onSyncWorkflowCheckIssues, t]);
 
   useEffect(() => {
     if (isFirstEdgesEffectRef.current) {

@@ -54,6 +54,7 @@ export const useChatTest = ({
       const histories = messages.slice(-1);
 
       const checkResult = await checkStoreWorkflowBeforeRunOrPublish({
+        appId,
         nodes,
         edges,
         chatConfig,

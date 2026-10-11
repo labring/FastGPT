@@ -2,6 +2,7 @@ import z from 'zod';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
+import { queryArrayParam } from '../../../../common/zod';
 import { DatasetCiteItemSchema } from '../../../../core/dataset/type';
 import { LinkedListResponseSchema, LinkedPaginationSchema, PaginationSchema } from '../../../api';
 import { ChatItemMiniSchema } from '../../../../core/chat/type';
@@ -15,15 +16,7 @@ const GetRecordTypeSchema = z.enum([
   GetChatTypeEnum.home
 ]);
 
-const QueryStringArraySchema = z
-  .union([z.string(), z.array(z.string())])
-  .optional()
-  .transform((val) => {
-    if (!val) return undefined;
-    const values = Array.isArray(val) ? val : val.split(',');
-
-    return values.map((item) => item.trim()).filter(Boolean);
-  });
+const QueryStringArraySchema = queryArrayParam(z.array(z.string().trim()).optional());
 
 /* ============================================================================
  * API: 获取对话响应详细数据

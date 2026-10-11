@@ -1,10 +1,8 @@
-import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
-import { getModelTestDefaults } from '@test/modelCache';
 import * as copyapi from '@/pages/api/core/app/copy';
 import * as createapi from '@/pages/api/core/app/create';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -19,12 +17,14 @@ import type {
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
 import { updateResourceCollaborators } from '@fastgpt/service/support/permission/resourcePermissionService';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getFakeUsers } from '@test/datas/users';
+import { getModelTestDefaults } from '@test/modelCache';
 import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
 
@@ -146,7 +146,7 @@ describe('Copy', () => {
     }).lean();
     const expectedFallbackModelId =
       getModelTestDefaults().llm?.modelId ??
-      getCachedModelHandle()
+      getCachedSystemModelHandle()
         ?.getActiveModels()
         .find((model) => model.type === ModelTypeEnum.llm)?.modelId;
     expect(copiedVersion?.nodes[0].inputs).toEqual([

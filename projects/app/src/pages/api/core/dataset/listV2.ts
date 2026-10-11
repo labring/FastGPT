@@ -1,40 +1,40 @@
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { NextAPI } from '@/service/middleware/entry';
-import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
-import {
-  PerResourceTypeEnum,
-  ReadPermissionVal
-} from '@fastgpt/global/support/permission/constant';
+import { getDescendantFolderIds } from '@fastgpt/global/common/parentFolder/subtree';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import type { ApiRequestProps } from '@fastgpt/next/type';
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
-import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
-import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
-import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import { desensitizeSystemModel } from '@fastgpt/service/core/ai/config/utils';
-import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
-import { isPrivateResourceByCollaborators, sumPer } from '@fastgpt/global/support/permission/utils';
-import {
-  findResourceKeysByCollaboratorsPermission,
-  getResourcePermissionsByResourceIds
-} from '@fastgpt/service/support/permission/resourcePermissionService';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   GetDatasetListV2BodySchema,
   GetDatasetListV2ResponseSchema,
   type GetDatasetListV2Body,
   type GetDatasetListV2Response
 } from '@fastgpt/global/openapi/core/dataset/api';
-import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
+import {
+  PerResourceTypeEnum,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
+import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
+import { isPrivateResourceByCollaborators, sumPer } from '@fastgpt/global/support/permission/utils';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { Types } from '@fastgpt/service/common/mongo';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { getDescendantFolderIds } from '@fastgpt/global/common/parentFolder/subtree';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import { desensitizeModel } from '@fastgpt/service/core/ai/model/transform';
 import { countTeamAppsByPublishedResourceGroups } from '@fastgpt/service/core/app/resourceLookup';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
+import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
+import {
+  findResourceKeysByCollaboratorsPermission,
+  getResourcePermissionsByResourceIds
+} from '@fastgpt/service/support/permission/resourcePermissionService';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { addSourceMember } from '@fastgpt/service/support/user/utils';
 
 /** 层序遍历的安全上限：脏树（环 / 超深）不得拖垮请求。 */
 const maxSubtreeDepth = 20;
@@ -210,7 +210,7 @@ async function handler(
     roleListMap.set(resourceId, list);
   });
 
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getTeamModelHandle({ teamId });
   const formatDatasets = myDatasets.map((dataset) => {
     const { Per, privateDataset } = (() => {
       const resourceClbs = roleListMap.get(String(dataset._id)) ?? [];
@@ -248,7 +248,7 @@ async function handler(
           getDatasetModelReference(dataset, 'embedding'),
           { type: 'embedding' }
         );
-        return vectorModel ? desensitizeSystemModel(vectorModel) : undefined;
+        return vectorModel ? desensitizeModel(vectorModel) : undefined;
       })(),
       inheritPermission: dataset.inheritPermission,
       tmbId: dataset.tmbId,

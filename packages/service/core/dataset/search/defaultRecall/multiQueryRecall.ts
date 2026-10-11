@@ -1,7 +1,7 @@
 import { getForbidCollectionIdList, filterCollectionByMetadata } from '../filter/collectionFilter';
 import { embeddingRecall } from './embeddingRecall';
 import { fullTextRecall } from './fullTextRecall';
-import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 /**
  * 默认召回的并行调度层。
@@ -22,7 +22,7 @@ export const multiQueryRecall = async ({
 }: {
   teamId: string;
   datasetIds: string[];
-  model: EmbeddingSystemModelDataType;
+  model: EmbeddingModelDataType;
   imageQueries: string[];
   collectionFilterMatch?: string;
   readableCollectionIdList?: string[];

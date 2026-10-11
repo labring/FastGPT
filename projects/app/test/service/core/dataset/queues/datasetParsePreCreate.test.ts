@@ -1,9 +1,4 @@
-import { TrainingLeaseLostError } from '@fastgpt/service/core/dataset/training/service';
-import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { BLOCKED_LOCK_TIME } from '@fastgpt/service/core/dataset/training/query';
-import { getModelTestDefaults } from '@test/modelCache';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
@@ -11,24 +6,29 @@ import {
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
-import { getRootUser } from '@test/datas/users';
 import { Types } from '@fastgpt/service/common/mongo';
-import { serviceEnv } from '@fastgpt/service/env';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
 import { preCreateDatasetDataAndPushToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
+import { BLOCKED_LOCK_TIME } from '@fastgpt/service/core/dataset/training/query';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { TrainingLeaseLostError } from '@fastgpt/service/core/dataset/training/service';
+import { serviceEnv } from '@fastgpt/service/env';
+import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { getRootUser } from '@test/datas/users';
+import { getModelTestDefaults } from '@test/modelCache';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
 const mocks = vi.hoisted(() => ({ read: vi.fn(), paragraph: vi.fn(), usage: vi.fn() }));
 
 // 本文件需要验证真实模型状态，不能使用全局测试环境里始终返回成功的向量模型 getter。
-vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) =>
-  importOriginal<typeof import('@fastgpt/service/core/ai/model')>()
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) =>
+  importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()
 );
 vi.mock('@fastgpt/service/core/dataset/read', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/dataset/read')>()),

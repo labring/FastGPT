@@ -1,31 +1,31 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
-import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
-import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission/dataset/auth';
+import { NextAPI } from '@/service/middleware/entry';
+import { datasetImageCollectionFileType } from '@fastgpt/global/common/file/constants';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import {
+  DatasetCollectionDataProcessModeEnum,
+  DatasetCollectionTypeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import {
   CreateImageCollectionFormSchema,
   type CreateCollectionWithResultResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
-import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
-import {
-  DatasetCollectionTypeEnum,
-  DatasetCollectionDataProcessModeEnum
-} from '@fastgpt/global/core/dataset/constants';
-import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { multer } from '@fastgpt/service/common/file/multer';
+import { decodeMultipartFilename } from '@fastgpt/service/common/s3/filename';
+import { getFileS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
+import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
+import { validateUploadFile } from '@fastgpt/service/common/s3/validation/upload';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
+import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission/dataset/auth';
+import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { addDays } from 'date-fns';
 import fs from 'node:fs';
 import path from 'node:path';
-import { getFileS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
-import { multer } from '@fastgpt/service/common/file/multer';
-import { decodeMultipartFilename } from '@fastgpt/service/common/s3/filename';
-import { validateUploadFile } from '@fastgpt/service/common/s3/validation/upload';
-import { datasetImageCollectionFileType } from '@fastgpt/global/common/file/constants';
-import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
-import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 
-import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
 import { assertUploadRateLimit } from '@fastgpt/service/common/rateLimit/interface/upload';
+import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
@@ -62,7 +62,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       limit: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
       increment: result.fileMetadata.length
     });
-    const modelHandle = await getModelHandle();
+    const modelHandle = await getTeamModelHandle({ teamId });
     const { supportVlm, supportImageEmbedding } = getDatasetImageIndexCapability({
       vectorModel: modelHandle.getEmbeddingModelData(
         getDatasetModelReference(dataset, 'embedding')

@@ -14,11 +14,11 @@ vi.mock('@fastgpt/service/core/dataset/search/utils', () => ({
 import { defaultSearchDatasetData } from '../../../../core/dataset/search';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
-  EmbeddingSystemModelDataType,
-  LLMSystemModelDataType
+  EmbeddingModelDataType,
+  LLMModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
 
-const embeddingModel: EmbeddingSystemModelDataType = {
+const embeddingModel: EmbeddingModelDataType = {
   provider: 'test',
   model: 'embedding-model',
   name: 'Embedding model',
@@ -31,7 +31,7 @@ const embeddingModel: EmbeddingSystemModelDataType = {
     weight: 0
   }
 };
-const extensionModel: LLMSystemModelDataType = {
+const extensionModel: LLMModelDataType = {
   provider: 'test',
   model: 'query-extension-model',
   name: 'Query extension model',

@@ -226,7 +226,8 @@ describe('authChatCrud', () => {
         showSkillReferences: false,
         showFullText: false,
         canDownloadSource: true,
-        authType: AuthUserTypeEnum.outLink
+        authType: AuthUserTypeEnum.outLink,
+        isRoot: false
       });
     });
 

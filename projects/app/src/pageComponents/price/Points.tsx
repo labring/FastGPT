@@ -3,7 +3,7 @@ import { Box, Flex, Grid, Link } from '@chakra-ui/react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import ModelTable from '@/components/core/ai/ModelTable';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getPublicModelList } from '@/web/common/system/api';
+import { getPublicModelList } from '@/web/core/ai/model/catalogApi';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import PriceTiersLabel from '@/components/core/ai/PriceTiersLabel';
 

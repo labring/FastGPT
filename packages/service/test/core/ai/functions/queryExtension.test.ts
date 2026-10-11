@@ -24,8 +24,8 @@ vi.mock('@fastgpt/service/core/ai/hooks/useTextCosine', () => ({
 
 import { queryExtension } from '../../../../core/ai/functions/queryExtension';
 import type {
-  EmbeddingSystemModelDataType,
-  LLMSystemModelDataType
+  EmbeddingModelDataType,
+  LLMModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
@@ -43,7 +43,7 @@ const llmModel = {
     quoteMaxToken: 2000,
     reasoning: true
   }
-} satisfies LLMSystemModelDataType;
+} satisfies LLMModelDataType;
 const embeddingModel = {
   modelId: '507f1f77bcf86cd799439015',
   provider: 'openai',
@@ -57,7 +57,7 @@ const embeddingModel = {
     maxToken: 8192,
     weight: 0
   }
-} satisfies EmbeddingSystemModelDataType;
+} satisfies EmbeddingModelDataType;
 
 describe('queryExtension', () => {
   beforeEach(() => {

@@ -1,24 +1,32 @@
-import * as modelService from '@fastgpt/service/core/ai/model';
-import * as synonymService from '@fastgpt/service/core/dataset/synonym/entity';
-import { getModelTestDefaults, addModelTestModel } from '@test/modelCache';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import updateTrainingData from '@/pages/api/core/dataset/training/updateTrainingData';
+import * as rebuildService from '@/service/core/dataset/queues/rebuild';
 import {
   DatasetCollectionTypeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import {
+  DatasetDataIndexStatusEnum,
+  DatasetDataIndexTypeEnum
+} from '@fastgpt/global/core/dataset/data/constants';
+import type {
+  UpdateTrainingDataBody,
+  UpdateTrainingDataResponse
+} from '@fastgpt/global/openapi/core/dataset/training/api';
+import { Types } from '@fastgpt/service/common/mongo';
+import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
+import * as modelService from '@fastgpt/service/core/ai/model/catalog/service';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import * as synonymService from '@fastgpt/service/core/dataset/synonym/entity';
 import {
   MongoDatasetSynonym,
   MongoDatasetSynonymMapping
 } from '@fastgpt/service/core/dataset/synonym/schema';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { serviceEnv } from '@fastgpt/service/env';
 import { getRootUser } from '@test/datas/users';
-import { Types } from '@fastgpt/service/common/mongo';
 import {
   mockVectorDelete,
   mockVectorInsert,
@@ -26,15 +34,9 @@ import {
   resetVectorMocks
 } from '@test/mocks/common/vector';
 import { createMockVectorsResponse, mockGetVectors } from '@test/mocks/core/ai/embedding';
-import { serviceEnv } from '@fastgpt/service/env';
-import * as rebuildService from '@/service/core/dataset/queues/rebuild';
-import updateTrainingData from '@/pages/api/core/dataset/training/updateTrainingData';
-import type {
-  UpdateTrainingDataBody,
-  UpdateTrainingDataResponse
-} from '@fastgpt/global/openapi/core/dataset/training/api';
+import { addModelTestModel, getModelTestDefaults } from '@test/modelCache';
 import { Call } from '@test/utils/request';
-import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 vi.mock('@fastgpt/service/common/string/tiktoken', () => ({
@@ -45,8 +47,8 @@ vi.mock('@/service/core/dataset/queues/utils', () => ({
   checkTeamAiPointsAndLock: vi.fn().mockResolvedValue(true)
 }));
 
-import { generateRebuildIndex } from '@/service/core/dataset/queues/generateRebuildIndex';
 import { generatePreCreatedData } from '@/service/core/dataset/queues/generatePreCreatedData';
+import { generateRebuildIndex } from '@/service/core/dataset/queues/generateRebuildIndex';
 import { generateRebuildSynonym } from '@/service/core/dataset/queues/generateRebuildSynonym';
 
 let embeddingModel: NonNullable<ReturnType<typeof getModelTestDefaults>['embedding']>;
@@ -584,7 +586,7 @@ describe('pre-created data queue routing', () => {
         dataId: 'old_image'
       }
     ];
-    const { data, task, dataset, collection } = await createContext({
+    const { root, data, task, dataset, collection } = await createContext({
       mode: TrainingModeEnum.rebuildIndex,
       indexes: storedIndexes
     });
@@ -617,15 +619,26 @@ describe('pre-created data queue routing', () => {
     mockVectorInsert.mockImplementation(async ({ vectors }: { vectors: number[][] }) => ({
       insertIds: vectors.map((_, index) => `rebuilt_${index}`)
     }));
-    const modelHandle = await modelService.getModelHandle();
-    const vlmLookup = vi.spyOn(modelHandle, 'getVlmModelData').mockImplementation(() => {
+    const getTeamModelHandle = modelService.getTeamModelHandle;
+    const vlmLookup = vi.fn(() => {
       throw new Error('rebuild must not look up VLM');
     });
+    const handleLookup = vi
+      .spyOn(modelService, 'getTeamModelHandle')
+      .mockImplementation(async (context) => {
+        const modelHandle = await getTeamModelHandle(context);
+        return new Proxy(modelHandle, {
+          get(target, property, receiver) {
+            if (property === 'getVlmModelData') return vlmLookup;
+            return Reflect.get(target, property, receiver);
+          }
+        });
+      });
     try {
       await generateRebuildIndex();
       expect(vlmLookup).not.toHaveBeenCalled();
     } finally {
-      vlmLookup.mockRestore();
+      handleLookup.mockRestore();
     }
     expect(
       mockGetVectors.mock.calls.flatMap(([props]) => props.inputs.map((input) => input.input))

@@ -556,6 +556,9 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 - 已有选中值通过 `getMyModel` 恢复，并与发现请求并行。若选中模型的 provider 不在可用 `providers` 中，保留异常 value 并显示“xxx 模型已停用”，候选列表使用第一个可用 Provider。
 - 不能先对全局模型列表切片再做权限过滤，否则会造成页大小不稳定、total 泄漏和空页。
 - 普通分页使用稳定排序，例如 provider order、`name`、`modelId`，保证翻页期间顺序确定；`pageSize` 设置合理上限，建议默认 20、最大 50。
+
+> 以下缓存与权限边界描述为本迁移版本的历史设计；当前缓存结构、失效方式和服务端模型鉴权以 [模型鉴权收敛设计](./model-permission-auth.md) 为准。
+
 - 移除客户端 `versionKey/isRefreshed` 握手。服务端通过 `TmpDataEnum.MyModels` 按 `{ teamId, tmbId }` 缓存成员可用的 `modelId` 集合，固定 TTL 为一小时；`getMyModels` 和 `getMyModel` 共用该缓存，客户端不维护账号级完整模型缓存。本版本不增加 `permissionVersion`。
 - 任意成功的模型新增、更新、启用、停用或删除，在 active 列表重载成功后删除全部 `TmpDataEnum.MyModels` 缓存。新模型在未配置协作者权限时默认可用，如果只清理当前团队或当前成员，其他成员的旧缓存将遗漏该模型；若插件失败导致重载失败，则保留旧 active 列表和旧缓存。
 - 模型协作者权限以及影响协作者身份的团队成员、组织、用户组发生变更时，删除对应团队的全部 `TmpDataEnum.MyModels` 缓存。权限写入与缓存删除使用同一 session；删除后由下一次读取惰性重建。

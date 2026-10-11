@@ -1,7 +1,4 @@
-import {
-  type EmbeddingSystemModelDataType,
-  type LLMSystemModelDataType
-} from '../../ai/model/schema';
+import { type EmbeddingModelDataType, type LLMModelDataType } from '../../ai/model/schema';
 import {
   ChunkSettingModeEnum,
   DataChunkSplitModeEnum,
@@ -14,8 +11,8 @@ import { cloneDeep } from 'lodash-es';
 export const minChunkSize = 64; // min index and chunk size
 export const maxPreviewChunkCount = 50_000;
 
-type ChunkLLMModelType = Pick<LLMSystemModelDataType, 'config'>;
-type IndexEmbeddingModelType = Pick<EmbeddingSystemModelDataType, 'config'>;
+type ChunkLLMModelType = Pick<LLMModelDataType, 'config'>;
+type IndexEmbeddingModelType = Pick<EmbeddingModelDataType, 'config'>;
 
 // Chunk size
 export const chunkAutoChunkSize = 1000;

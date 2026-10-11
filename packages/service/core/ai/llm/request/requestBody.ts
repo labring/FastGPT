@@ -6,7 +6,7 @@ import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
 import json5 from 'json5';
 import { computedMaxToken, computedTemperature } from '../../utils';
 import type { InferCompletionsBody, LLMRequestBodyType } from './types';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 const privateToolSchemaKeys = new Set([
   'toolDescription',
@@ -58,7 +58,7 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
   input: LLMRequestBodyType<T>
 ): Promise<{
   requestBody: InferCompletionsBody<T>;
-  modelData: LLMSystemModelDataType;
+  modelData: LLMModelDataType;
 }> => {
   // 内部模型对象只参与配置计算，不能进入后续请求字段映射的数据源。
   const {

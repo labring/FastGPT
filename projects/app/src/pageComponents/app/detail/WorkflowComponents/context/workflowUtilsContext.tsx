@@ -227,9 +227,11 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         return;
       }
 
-      const models = await getWorkflowModelDetails(nodes, appDetail.chatConfig).catch(
-        () => undefined
-      );
+      const models = await getWorkflowModelDetails({
+        nodes,
+        chatConfig: appDetail.chatConfig,
+        appId: appDetail._id
+      }).catch(() => undefined);
       if (!models) {
         if (!hideTip) toast({ status: 'error', title: t('common:model_catalog_load_failed') });
         return;
@@ -289,6 +291,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       onUpdateNodeError,
       showSandbox,
       enableSandbox,
+      appDetail._id,
       appDetail.chatConfig,
       toast
     ]
@@ -301,7 +304,9 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       const nodes = getNodes();
       if (nodes.length === 0) return;
 
-      const models = await getWorkflowModelDetails(nodes).catch(() => undefined);
+      const models = await getWorkflowModelDetails({ nodes, appId: appDetail._id }).catch(
+        () => undefined
+      );
       // 目录失败保留原校验结果；等待期间用户编辑或离开时不回写旧快照。
       if (
         !active ||
@@ -323,7 +328,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       active = false;
       window.clearInterval(timer);
     };
-  }, [edges, getNodes, onSyncWorkflowCheckIssues, t]);
+  }, [appDetail._id, edges, getNodes, onSyncWorkflowCheckIssues, t]);
 
   // 4. initData - 初始化工作流数据
   const initData = useCallback(

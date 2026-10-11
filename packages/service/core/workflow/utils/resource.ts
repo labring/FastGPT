@@ -1,3 +1,5 @@
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import type {
   AppChatConfigType,
   AppResource,
@@ -5,23 +7,21 @@ import type {
   AppResourceType,
   AppSchemaType
 } from '@fastgpt/global/core/app/type';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { UserError } from '@fastgpt/global/common/error/utils';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
   formatModels,
   isWorkflowSystemModelInput,
   nodeInputIsReference
 } from '@fastgpt/global/core/workflow/utils';
-import { MongoApp } from '../../app/schema';
-import { MongoDataset } from '../../dataset/schema';
-import { getModelHandle } from '../../ai/model';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authAppByTmbId } from '../../../support/permission/app/auth';
+import { resolveAppResourcesByPermission } from '../../../support/permission/app/resource';
 import { authDatasetByTmbId } from '../../../support/permission/dataset/auth';
+import { assertAuthModels } from '../../../support/permission/model/auth';
+import { getTeamModelHandle } from '../../ai/model/catalog/service';
 import {
   extractAppResources,
   extractDatasetModelsFromParams,
@@ -29,21 +29,24 @@ import {
   mergeAppResources,
   resolveSystemModelId
 } from '../../app/resources';
-import {
-  checkAppResourceReadPermissions,
-  resolveAppResourcesByPermission
-} from '../../../support/permission/app/resource';
-import { getWorkflowResourceContext } from './context';
+import { MongoApp } from '../../app/schema';
 import {
   getAppLatestVersion,
   getAppVersionById,
   type AppPublishedWorkflow
 } from '../../app/version/controller';
+import { MongoDataset } from '../../dataset/schema';
+import { getWorkflowResourceContext } from './context';
 
 export type WorkflowResourceContext = {
   teamId?: string;
   /** root Test/Debug 请求允许子工作流沿用跨团队资源权限。 */
   isRoot: boolean;
+  /**
+   * 系统工具（commercial）内部运行：静态资源由管理员发布，直接使用，不做声明校验和用户态鉴权；
+   * 动态引用来自调用方输入，仍按运行人权限校验。进入个人工具时会被其自身快照替换，不会向下扩散。
+   */
+  trusted?: boolean;
   resourceMap: Map<string, AppResource>;
 };
 
@@ -57,7 +60,7 @@ const getResourceKey = (type: AppResourceType, id: string) =>
   getAppResourceKey({ type, id } as AppResource);
 
 /** 按资源快照初始化内存白名单字典；纯内存操作，不执行数据库查询。 */
-export const loadWorkflowResourceContext = async ({
+export const createWorkflowResourceContext = ({
   resources,
   teamId,
   isRoot = false
@@ -65,7 +68,7 @@ export const loadWorkflowResourceContext = async ({
   resources: AppResourcesType;
   teamId?: string;
   isRoot?: boolean;
-}): Promise<WorkflowResourceContext> => {
+}): WorkflowResourceContext => {
   const normalizedResources = mergeAppResources(Array.isArray(resources) ? resources : []);
   const resourceMap = new Map(
     normalizedResources.map((resource) => [getResourceKey(resource.type, resource.id), resource])
@@ -78,7 +81,17 @@ export const loadWorkflowResourceContext = async ({
   };
 };
 
-/** 校验当前工作流版本声明了指定资源；没有上下文时保留非 App 调试场景的旧权限语义。 */
+/**
+ * 系统工具运行上下文：不携带 teamId（静态资源按 ID 直接读取，不限制团队），
+ * 并继承父级 root 标记，供动态引用鉴权使用。
+ */
+export const createSystemToolResourceContext = (): WorkflowResourceContext => ({
+  isRoot: getWorkflowResourceContext()?.isRoot ?? false,
+  trusted: true,
+  resourceMap: new Map()
+});
+
+/** 校验当前工作流版本声明了指定资源；没有上下文（调用方按动态引用处理）时不做快照校验，由调用方按运行人鉴权。 */
 export const assertWorkflowResource = ({
   context,
   type,
@@ -90,7 +103,7 @@ export const assertWorkflowResource = ({
   id: string;
   toolName?: string;
 }) => {
-  if (!context) return;
+  if (!context || context.trusted) return;
 
   const resource = context.resourceMap.get(getResourceKey(type, id));
   if (!resource) throw new WorkflowResourceError(`App resource is not declared: ${type}:${id}`);
@@ -114,16 +127,18 @@ const modelFeatureKeyMap = new Map<string, NodeInputKeyEnum>([
 /**
  * 在统一节点调度边界校验实际使用的模型资源。
  *
- * 静态输入只能使用当前 Version 快照声明的模型；引用输入和非 App 工作流按运行成员权限校验。
+ * 静态输入只能使用当前 Version 快照声明的模型；引用输入和非 App 工作流按运行成员的 `use` 权限校验。
  * 这里只判断资源身份和授权来源，模型类型、启用状态仍由具体调用点的 typed getter 校验。
  */
 export const assertWorkflowNodeModelResources = async ({
   node,
   params,
+  teamId,
   tmbId
 }: {
   node: Pick<RuntimeNodeItemType, 'flowNodeType' | 'inputs'>;
   params: Record<string, unknown>;
+  teamId: string;
   tmbId: string;
 }) => {
   const modelReferences: Array<{ value: unknown; dynamic: boolean }> = [];
@@ -152,7 +167,7 @@ export const assertWorkflowNodeModelResources = async ({
   }
 
   const context = getWorkflowResourceContext();
-  const permissionResources = new Map<string, AppResource>();
+  const permissionModelIds = new Set<string>();
   modelReferences.forEach(({ value, dynamic }) => {
     const id = resolveSystemModelId(value);
     if (!id) return;
@@ -160,15 +175,14 @@ export const assertWorkflowNodeModelResources = async ({
       assertWorkflowResource({ context, type: 'model', id });
       return;
     }
-    permissionResources.set(id, { type: 'model', id });
+    permissionModelIds.add(id);
   });
 
-  if (permissionResources.size > 0) {
-    await checkAppResourceReadPermissions({
-      resources: Array.from(permissionResources.values()),
-      tmbId,
-      isRoot: context?.isRoot,
-      allowRootCrossTeam: context?.isRoot
+  if (permissionModelIds.size > 0) {
+    await assertAuthModels({
+      actor: { teamId, tmbId, isRoot: context?.isRoot ?? false },
+      modelIds: Array.from(permissionModelIds),
+      action: 'use'
     });
   }
 };
@@ -183,7 +197,7 @@ export const filterWorkflowToolList = <Tool extends { name: string }>({
   appId: string;
   tools: Tool[];
 }) => {
-  if (!context) return tools;
+  if (!context || context.trusted) return tools;
 
   const resource = context.resourceMap.get(getResourceKey('tool', appId));
   if (!resource || resource.type !== 'tool') {
@@ -234,7 +248,7 @@ export const loadWorkflowAppWorkflow = async (
 /**
  * 读取工作流使用的知识库。
  * 静态引用必须命中当前 Version 快照并实时查询数据库；动态引用按运行人 tmbId 鉴权。
- * 没有 resourceContext 时（Skill 调试、商业工具清空父快照）也按运行人鉴权，不能裸 findById。
+ * 没有 resourceContext 时与动态引用一致按运行人鉴权，不能裸 findById。
  */
 export const loadWorkflowDatasetResource = async ({
   datasetId,
@@ -326,7 +340,7 @@ export const createWorkflowChildResourceContext = (
   resources: AppResourcesType,
   teamId?: string,
   isRoot = getWorkflowResourceContext()?.isRoot ?? false
-) => loadWorkflowResourceContext({ resources, teamId, isRoot });
+) => createWorkflowResourceContext({ resources, teamId, isRoot });
 
 /**
  * 加载子应用/插件工作流及其独立资源快照上下文。
@@ -361,7 +375,7 @@ export const loadChildWorkflowWithResource = async ({
     versionId,
     app: appData
   });
-  const resourceContext = await createWorkflowChildResourceContext(
+  const resourceContext = createWorkflowChildResourceContext(
     childVersion.resources,
     teamId || String(appData.teamId)
   );
@@ -377,7 +391,7 @@ export const loadChildWorkflowWithResource = async ({
  * 为工作流调试与测试（chatTest 与 debug）准备未发布工作流的资源上下文并校验权限。
  * 1. 规范化工作流模型引用与字段（formatModels）；
  * 2. 静态提取工作流节点与配置声明的资源快照（extractAppResources 带模型目录）；
- * 3. 按资源快照初始化白名单上下文（loadWorkflowResourceContext）；
+ * 3. 按资源快照初始化白名单上下文（createWorkflowResourceContext）；
  * 4. 相对应用当前草稿快照基线校验新增资源读取权限（阻断未授权操作，root 请求保留跨团队权限）。
  */
 export const prepareWorkflowDebugResourceContext = async ({
@@ -391,11 +405,11 @@ export const prepareWorkflowDebugResourceContext = async ({
   appId: string;
   nodes?: Array<StoreNodeItemType | RuntimeNodeItemType>;
   chatConfig?: AppChatConfigType;
-  teamId?: string;
+  teamId: string;
   tmbId: string;
   isRoot?: boolean;
 }) => {
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getTeamModelHandle({ teamId });
   if (nodes) {
     formatModels({
       nodes: nodes as StoreNodeItemType[],
@@ -410,7 +424,7 @@ export const prepareWorkflowDebugResourceContext = async ({
     chatConfig,
     models: modelHandle.getAllModels()
   });
-  const resourceContext = await loadWorkflowResourceContext({
+  const resourceContext = createWorkflowResourceContext({
     resources: extractedResources,
     teamId,
     isRoot
@@ -421,7 +435,8 @@ export const prepareWorkflowDebugResourceContext = async ({
     tmbId,
     isRoot,
     blockOnUnauthorized: true,
-    allowRootCrossTeam: isRoot
+    allowRootCrossTeam: isRoot,
+    modelHandle
   });
   return resourceContext;
 };

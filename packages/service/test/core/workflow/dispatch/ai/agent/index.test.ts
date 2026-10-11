@@ -1,20 +1,20 @@
-import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import {
   ChatFileTypeEnum,
   ChatRoleEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
-import { runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { runWithContext as runWithWorkflowContext } from '@fastgpt/service/core/workflow/utils/context';
 import {
   getRunningSandboxId,
   getSandboxRuntimeProfile
 } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
+import { runWithContext as runWithWorkflowContext } from '@fastgpt/service/core/workflow/utils/context';
 import { Readable } from 'node:stream';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const runWithContext: typeof runWithWorkflowContext = (value, fn) =>
   runWithWorkflowContext(
@@ -74,12 +74,18 @@ const {
   getLLMModelDataMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model')>()),
-  getModelHandle: async () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()),
+  getSystemModelHandle: async () => ({
     ...(await (
-      await importOriginal<typeof import('@fastgpt/service/core/ai/model')>()
-    ).getModelHandle()),
+      await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()
+    ).getSystemModelHandle()),
+    getLLMModelData: getLLMModelDataMock
+  }),
+  getTeamModelHandle: async () => ({
+    ...(await (
+      await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()
+    ).getSystemModelHandle()),
     getLLMModelData: getLLMModelDataMock
   })
 }));

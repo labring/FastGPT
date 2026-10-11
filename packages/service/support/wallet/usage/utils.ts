@@ -1,5 +1,5 @@
 import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
-import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 export const formatModelChars2Points = ({
   model,
@@ -7,7 +7,7 @@ export const formatModelChars2Points = ({
   outputTokens = 0,
   multiple = 1000
 }: {
-  model: SystemModelDataType;
+  model: AIModelDataType;
   inputTokens?: number;
   outputTokens?: number;
   multiple?: number;

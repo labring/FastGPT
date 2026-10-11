@@ -14,8 +14,8 @@ import { isAuthorizedDatasetFileS3Key } from '../../../common/s3/sources/dataset
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import type {
-  EmbeddingSystemModelDataType,
-  LLMSystemModelDataType
+  EmbeddingModelDataType,
+  LLMModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
 import { getDatasetSynonymRuntimeConfig, isDatasetSynonymEnabled } from '../synonym/entity';
 import {
@@ -240,8 +240,8 @@ export const datasetSearchQueryExtension = async ({
   datasetIds = []
 }: {
   query: string;
-  llmModel?: LLMSystemModelDataType;
-  embeddingModel?: EmbeddingSystemModelDataType;
+  llmModel?: LLMModelDataType;
+  embeddingModel?: EmbeddingModelDataType;
   userKey?: OpenaiAccountType;
   teamId: string;
   extensionBg?: string;

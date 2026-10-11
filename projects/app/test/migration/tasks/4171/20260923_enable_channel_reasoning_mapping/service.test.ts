@@ -86,16 +86,17 @@ describe('mergeAIProxyChannelConfigs', () => {
     expect(mocks.put).toHaveBeenNthCalledWith(
       1,
       'https://aiproxy.example.com/api/channel/1',
-      expect.objectContaining({
-        configs: { region: 'us-west', map_reasoning_to_reasoning_content: true },
-        models: ['existing-model']
-      }),
+      {
+        configs: { region: 'us-west', map_reasoning_to_reasoning_content: true }
+      },
       expect.objectContaining({ signal: expect.any(AbortSignal) })
     );
     expect(mocks.put).toHaveBeenNthCalledWith(
       2,
       'https://aiproxy.example.com/api/channel/2',
-      expect.objectContaining({ configs: { map_reasoning_to_reasoning_content: true } }),
+      {
+        configs: { map_reasoning_to_reasoning_content: true }
+      },
       expect.objectContaining({ signal: expect.any(AbortSignal) })
     );
     expect(beforeUpdate).toHaveBeenCalledTimes(2);
@@ -126,13 +127,26 @@ describe('mergeAIProxyChannelConfigs', () => {
     expect(mocks.put).not.toHaveBeenCalled();
   });
 
-  it('validates every target channel before writing any config', async () => {
-    mocks.get.mockResolvedValue({
-      data: {
-        success: true,
-        data: [channels[0], { ...channels[1], balance_threshold: 10 }]
-      }
-    });
+  it('does not send or overwrite other fields like models or balance_threshold', async () => {
+    const channelWithThreshold = {
+      ...channels[1],
+      type: 1,
+      balance_threshold: 10,
+      models: ['some-model']
+    };
+    mocks.get
+      .mockResolvedValueOnce({ data: { success: true, data: [channelWithThreshold] } })
+      .mockResolvedValueOnce({
+        data: {
+          success: true,
+          data: [
+            {
+              ...channelWithThreshold,
+              configs: { map_reasoning_to_reasoning_content: true }
+            }
+          ]
+        }
+      });
 
     await expect(
       mergeAIProxyChannelConfigs({
@@ -140,9 +154,15 @@ describe('mergeAIProxyChannelConfigs', () => {
         configPatch: { map_reasoning_to_reasoning_content: true },
         beforeUpdate: vi.fn(async () => undefined)
       })
-    ).rejects.toThrow('cannot preserve balance_threshold for channel: 2');
+    ).resolves.toEqual({ channelCount: 1, updatedCount: 1 });
 
-    expect(mocks.put).not.toHaveBeenCalled();
+    expect(mocks.put).toHaveBeenCalledWith(
+      'https://aiproxy.example.com/api/channel/2',
+      {
+        configs: { map_reasoning_to_reasoning_content: true }
+      },
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
   });
 
   it('fails completion validation when any matching channel remains unconfigured', async () => {

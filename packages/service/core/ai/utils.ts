@@ -1,9 +1,6 @@
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import type {
-  LLMSystemModelDataType,
-  SystemModelDataType
-} from '@fastgpt/global/core/ai/model/schema';
+import type { LLMModelDataType, AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { CompletionFinishReason, CompletionUsage } from '@fastgpt/global/core/ai/llm/type';
 import { getLLMDefaultUsage, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
@@ -20,7 +17,7 @@ export const computedMaxToken = ({
   min
 }: {
   maxToken?: number;
-  model: LLMSystemModelDataType;
+  model: LLMModelDataType;
   min?: number;
 }) => {
   if (maxToken === undefined) return;
@@ -34,7 +31,7 @@ export const computedTemperature = ({
   model,
   temperature
 }: {
-  model: LLMSystemModelDataType;
+  model: LLMModelDataType;
   temperature: number;
 }) => {
   const maxTemperature = model.config.maxTemperature;
@@ -390,7 +387,7 @@ export const assertModelAvailable = ({
   type,
   vision = false
 }: {
-  model?: Pick<SystemModelDataType, 'name' | 'model' | 'type' | 'isActive' | 'config'>;
+  model?: Pick<AIModelDataType, 'name' | 'model' | 'type' | 'isActive' | 'config'>;
   type: ModelTypeEnum;
   vision?: boolean;
 }) => {

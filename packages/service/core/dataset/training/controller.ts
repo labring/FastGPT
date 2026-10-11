@@ -6,10 +6,10 @@ import type {
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from '../../../common/mongo';
-import { isImageEmbeddingModel } from '../../ai/model';
+import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';
 import type {
-  EmbeddingSystemModelDataType,
-  LLMSystemModelDataType
+  EmbeddingModelDataType,
+  LLMModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
@@ -40,9 +40,9 @@ const getTrainingModeLimit = async ({
   vlmModelConfigured
 }: {
   mode: TrainingModeEnum;
-  agentModel?: LLMSystemModelDataType;
-  vectorModel: EmbeddingSystemModelDataType;
-  vlmModel?: LLMSystemModelDataType;
+  agentModel?: LLMModelDataType;
+  vectorModel: EmbeddingModelDataType;
+  vlmModel?: LLMModelDataType;
   vlmModelConfigured: boolean;
 }): Promise<{ maxToken: number; weight: number }> => {
   if (
@@ -239,9 +239,9 @@ export const pushDataListToTrainingQueue = async ({
   data: PushDataChunkWithDataIdType[];
   mode?: TrainingModeEnum;
 
-  agentModel?: LLMSystemModelDataType;
-  vectorModel: EmbeddingSystemModelDataType;
-  vlmModel?: LLMSystemModelDataType;
+  agentModel?: LLMModelDataType;
+  vectorModel: EmbeddingModelDataType;
+  vlmModel?: LLMModelDataType;
   /** 是否配置了 VLM 引用，不代表模型当前可用；未传时沿用模型对象是否存在的判断。 */
   vlmModelConfigured?: boolean;
 
@@ -408,9 +408,9 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
   data: PushDataChunkType[];
   mode?: TrainingModeEnum;
 
-  agentModel?: LLMSystemModelDataType;
-  vectorModel: EmbeddingSystemModelDataType;
-  vlmModel?: LLMSystemModelDataType;
+  agentModel?: LLMModelDataType;
+  vectorModel: EmbeddingModelDataType;
+  vlmModel?: LLMModelDataType;
   vlmModelConfigured?: boolean;
 
   indexSize?: number;

@@ -1,4 +1,4 @@
-import { EmbeddingSystemModelDataSchema, LLMSystemModelDataSchema } from '../ai/model/schema';
+import { EmbeddingModelDataSchema, LLMModelDataSchema } from '../ai/model/schema';
 import {
   DataChunkSplitModeEnum,
   DatasetCollectionDataProcessModeEnum,
@@ -425,7 +425,7 @@ export const DatasetSimpleItemSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '数据集 ID' }),
   avatar: DatasetSchema.shape.avatar,
   name: z.string().meta({ description: '名称' }),
-  vectorModel: EmbeddingSystemModelDataSchema.meta({ description: '向量模型' })
+  vectorModel: EmbeddingModelDataSchema.meta({ description: '向量模型' })
 });
 export type DatasetSimpleItemType = z.infer<typeof DatasetSimpleItemSchema>;
 export const DatasetListItemSchema = z.object({
@@ -442,7 +442,7 @@ export const DatasetListItemSchema = z.object({
     description: '被正式应用引用的数量，仅资源 Owner 且显式请求时返回',
     example: 0
   }),
-  vectorModel: EmbeddingSystemModelDataSchema.optional().meta({
+  vectorModel: EmbeddingModelDataSchema.optional().meta({
     description: '向量模型；目录或模型已删除时为空，已停用模型仍返回展示数据'
   }),
   inheritPermission: z.boolean().meta({ description: '继承权限' }),
@@ -464,13 +464,13 @@ export const DatasetItemSchema = DatasetSchema.omit({
     example: false
   }),
   errorMsg: z.string().optional().meta({ description: '错误信息' }),
-  vectorModel: EmbeddingSystemModelDataSchema.optional().meta({
+  vectorModel: EmbeddingModelDataSchema.optional().meta({
     description: '向量模型；模型已删除时为空，已停用模型仍返回展示数据'
   }),
-  agentModel: LLMSystemModelDataSchema.optional().meta({
+  agentModel: LLMModelDataSchema.optional().meta({
     description: 'AI 模型；模型已删除时为空，已停用模型仍返回展示数据'
   }),
-  vlmModel: LLMSystemModelDataSchema.optional().meta({ description: '视觉语言模型' }),
+  vlmModel: LLMModelDataSchema.optional().meta({ description: '视觉语言模型' }),
   permission: PermissionSchema
 });
 export type DatasetItemType = z.infer<typeof DatasetItemSchema>;

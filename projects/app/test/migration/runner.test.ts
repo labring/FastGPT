@@ -620,7 +620,8 @@ describe('system migration runner', () => {
       await vi.waitFor(async () => {
         const state = await MongoSystemMigrationState.findById(migration.id).lean();
         expect(state).toMatchObject({
-          status: SystemMigrationStatusEnum.running
+          status: SystemMigrationStatusEnum.running,
+          checkpoint: { firstBatchCompleted: true }
         });
       });
 

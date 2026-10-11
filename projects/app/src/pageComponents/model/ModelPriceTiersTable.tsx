@@ -1,5 +1,5 @@
 import { Box, Button, Flex, Input, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
-import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import { MAX_MODEL_PRICE_TIERS } from '@fastgpt/global/core/ai/model/pricing';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useCallback, useState } from 'react';
@@ -85,10 +85,10 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
   getValues,
   setValue
 }: {
-  control: Control<SystemModelDocumentDataType>;
-  register: UseFormRegister<SystemModelDocumentDataType>;
-  getValues: UseFormGetValues<SystemModelDocumentDataType>;
-  setValue: UseFormSetValue<SystemModelDocumentDataType>;
+  control: Control<AIModelDocumentDataType>;
+  register: UseFormRegister<AIModelDocumentDataType>;
+  getValues: UseFormGetValues<AIModelDocumentDataType>;
+  setValue: UseFormSetValue<AIModelDocumentDataType>;
 }) {
   const { t } = useSafeTranslation();
   const [invalidMaxInputMap, setInvalidMaxInputMap] = useState<Record<number, boolean>>({});

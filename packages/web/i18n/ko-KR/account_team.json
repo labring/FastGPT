@@ -248,6 +248,8 @@
   "permission_datasetCreate_Tip": "루트 디렉터리에서 데이터셋을 생성할 수 있습니다(폴더 내 생성 권한은 폴더에 의해 제어됩니다)",
   "permission_skillCreate": "스킬 생성",
   "permission_skillCreate_Tip": "루트 디렉터리에서 스킬을 생성할 수 있습니다(폴더 내 생성 권한은 폴더에 의해 제어됩니다)",
+  "permission_modelCreate": "모델 설치",
+  "permission_modelCreate_Tip": "개인 모델 및 채널을 설치하고 구성할 수 있습니다",
   "permission_manage": "관리자",
   "permission_manage_tip": "멤버를 관리하고, 그룹을 생성하고, 모든 그룹을 관리하며, 그룹과 멤버에게 권한을 부여할 수 있습니다",
   "please_bind_contact": "연락처 정보를 등록해 주세요",

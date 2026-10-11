@@ -1,5 +1,6 @@
 /* v8 ignore file */
 import { ModelScopeEnum, ModelTypeEnum } from '../constants';
+import { ObjectIdSchema } from '../../../common/type/mongo';
 import z from 'zod';
 
 export const ModelPriceTierSchema = z
@@ -88,77 +89,74 @@ export type TTSModelConfigType = z.infer<typeof TTSModelConfigSchema>;
 export const STTModelConfigSchema = z.object({});
 export type STTModelConfigType = z.infer<typeof STTModelConfigSchema>;
 
-const SystemModelDocumentBaseSchema = PriceTypeSchema.extend({
+const AIModelDocumentBaseSchema = PriceTypeSchema.extend({
   provider: z.string().trim().min(1),
   model: z.string().trim().min(1),
   name: z.string().trim().min(1),
-  scope: z.literal(ModelScopeEnum.system).default(ModelScopeEnum.system),
+  scope: z.nativeEnum(ModelScopeEnum).default(ModelScopeEnum.system),
+  tmbId: ObjectIdSchema.nullish(),
+  teamId: ObjectIdSchema.nullish(),
   isActive: z.boolean().optional(),
   requestUrl: z.string().optional(),
   requestAuth: z.string().optional(),
   testMode: z.boolean().optional()
 });
 
-export const LLMSystemModelDocumentSchema = SystemModelDocumentBaseSchema.extend({
+export const LLMModelDocumentSchema = AIModelDocumentBaseSchema.extend({
   type: z.literal(ModelTypeEnum.llm),
   config: LLMModelConfigSchema
 });
 
-export const EmbeddingSystemModelDocumentSchema = SystemModelDocumentBaseSchema.extend({
+export const EmbeddingModelDocumentSchema = AIModelDocumentBaseSchema.extend({
   type: z.literal(ModelTypeEnum.embedding),
   config: EmbeddingModelConfigSchema
 });
 
-export const RerankSystemModelDocumentSchema = SystemModelDocumentBaseSchema.extend({
+export const RerankModelDocumentSchema = AIModelDocumentBaseSchema.extend({
   type: z.literal(ModelTypeEnum.rerank),
   config: RerankModelConfigSchema
 });
 
-export const TTSSystemModelDocumentSchema = SystemModelDocumentBaseSchema.extend({
+export const TTSModelDocumentSchema = AIModelDocumentBaseSchema.extend({
   type: z.literal(ModelTypeEnum.tts),
   config: TTSModelConfigSchema
 });
 
-export const STTSystemModelDocumentSchema = SystemModelDocumentBaseSchema.extend({
+export const STTModelDocumentSchema = AIModelDocumentBaseSchema.extend({
   type: z.literal(ModelTypeEnum.stt),
   config: STTModelConfigSchema
 });
 
 /** ai_models 持久化后的标准形态；modelId 由 MongoDB `_id` 提供，不重复存储。 */
-export const SystemModelDocumentDataSchema = z.discriminatedUnion('type', [
-  LLMSystemModelDocumentSchema,
-  EmbeddingSystemModelDocumentSchema,
-  TTSSystemModelDocumentSchema,
-  STTSystemModelDocumentSchema,
-  RerankSystemModelDocumentSchema
+export const AIModelDocumentDataSchema = z.discriminatedUnion('type', [
+  LLMModelDocumentSchema,
+  EmbeddingModelDocumentSchema,
+  TTSModelDocumentSchema,
+  STTModelDocumentSchema,
+  RerankModelDocumentSchema
 ]);
-export type SystemModelDocumentDataType = z.infer<typeof SystemModelDocumentDataSchema>;
+export type AIModelDocumentDataType = z.infer<typeof AIModelDocumentDataSchema>;
 
 /** 运行时模型数据。modelId 来自 MongoDB `_id`，avatar 由 provider 派生。 */
-const RuntimeSystemModelFields = {
+const RuntimeModelFields = {
   modelId: z.string(),
   avatar: z.string().optional()
 };
 
-export const LLMSystemModelDataSchema =
-  LLMSystemModelDocumentSchema.extend(RuntimeSystemModelFields);
-export const EmbeddingSystemModelDataSchema =
-  EmbeddingSystemModelDocumentSchema.extend(RuntimeSystemModelFields);
-export const TTSSystemModelDataSchema =
-  TTSSystemModelDocumentSchema.extend(RuntimeSystemModelFields);
-export const STTSystemModelDataSchema =
-  STTSystemModelDocumentSchema.extend(RuntimeSystemModelFields);
-export const RerankSystemModelDataSchema =
-  RerankSystemModelDocumentSchema.extend(RuntimeSystemModelFields);
+export const LLMModelDataSchema = LLMModelDocumentSchema.extend(RuntimeModelFields);
+export const EmbeddingModelDataSchema = EmbeddingModelDocumentSchema.extend(RuntimeModelFields);
+export const TTSModelDataSchema = TTSModelDocumentSchema.extend(RuntimeModelFields);
+export const STTModelDataSchema = STTModelDocumentSchema.extend(RuntimeModelFields);
+export const RerankModelDataSchema = RerankModelDocumentSchema.extend(RuntimeModelFields);
 
-export const SystemModelDataSchema = z.discriminatedUnion('type', [
-  LLMSystemModelDataSchema,
-  EmbeddingSystemModelDataSchema,
-  TTSSystemModelDataSchema,
-  STTSystemModelDataSchema,
-  RerankSystemModelDataSchema
+export const AIModelDataSchema = z.discriminatedUnion('type', [
+  LLMModelDataSchema,
+  EmbeddingModelDataSchema,
+  TTSModelDataSchema,
+  STTModelDataSchema,
+  RerankModelDataSchema
 ]);
-export type SystemModelDataType = z.infer<typeof SystemModelDataSchema>;
+export type AIModelDataType = z.infer<typeof AIModelDataSchema>;
 
 /**
  * 模型引用只允许稳定 ID 与废弃的系统 model 标识。非空 modelId 必须优先解析，
@@ -170,14 +168,8 @@ export type ModelReferenceType = {
   model?: string | null;
 };
 
-export type LLMSystemModelDataType = Extract<SystemModelDataType, { type: ModelTypeEnum.llm }>;
-export type EmbeddingSystemModelDataType = Extract<
-  SystemModelDataType,
-  { type: ModelTypeEnum.embedding }
->;
-export type RerankSystemModelDataType = Extract<
-  SystemModelDataType,
-  { type: ModelTypeEnum.rerank }
->;
-export type TTSSystemModelDataType = Extract<SystemModelDataType, { type: ModelTypeEnum.tts }>;
-export type STTSystemModelDataType = Extract<SystemModelDataType, { type: ModelTypeEnum.stt }>;
+export type LLMModelDataType = Extract<AIModelDataType, { type: ModelTypeEnum.llm }>;
+export type EmbeddingModelDataType = Extract<AIModelDataType, { type: ModelTypeEnum.embedding }>;
+export type RerankModelDataType = Extract<AIModelDataType, { type: ModelTypeEnum.rerank }>;
+export type TTSModelDataType = Extract<AIModelDataType, { type: ModelTypeEnum.tts }>;
+export type STTModelDataType = Extract<AIModelDataType, { type: ModelTypeEnum.stt }>;

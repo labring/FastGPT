@@ -1,8 +1,6 @@
-import { getModelHandle } from '../../../ai/model';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/template/system/contextExtract/type';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   NodeOutputKeyEnum,
@@ -10,21 +8,23 @@ import {
   valueTypeJsonSchemaMap
 } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/template/system/contextExtract/type';
+import { getTeamModelHandle } from '../../../ai/model/catalog/service';
 
 import { sliceJsonStr } from '@fastgpt/global/common/string/tools';
-import { type LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import { getNodeErrResponse, getHistories } from '../utils';
+import { type LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { getHistories, getNodeErrResponse } from '../utils';
 
-import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
+import { getExtractJsonPrompt } from '@fastgpt/global/core/ai/prompt/agent';
+import type { JsonSchemaPropertiesItemType } from '@fastgpt/global/core/app/jsonschema';
 import json5 from 'json5';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
+import { createLLMResponse } from '../../../ai/llm/request';
+import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
+import { getWorkflowSourceNodeKey } from '../utils/source';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.AI);
-import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { getExtractJsonPrompt } from '@fastgpt/global/core/ai/prompt/agent';
-import { createLLMResponse } from '../../../ai/llm/request';
-import type { JsonSchemaPropertiesItemType } from '@fastgpt/global/core/app/jsonschema';
-import { getWorkflowSourceNodeKey } from '../utils/source';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[];
@@ -41,7 +41,7 @@ type Response = DispatchNodeResultType<{
 }>;
 
 type ActionProps = Props & {
-  extractModel: LLMSystemModelDataType;
+  extractModel: LLMModelDataType;
   lastMemory?: Record<string, any>;
 };
 
@@ -56,7 +56,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   if (!content) {
     return getNodeErrResponse({ error: 'Input is empty' });
   }
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getTeamModelHandle({ teamId: runningAppInfo.teamId });
   const extractModel = modelHandle.getLLMModelData({ modelId, model });
   const chatHistories = getHistories(history, histories);
 

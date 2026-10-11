@@ -35,7 +35,7 @@ import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { prepareWorkflowFileQuery } from '@fastgpt/service/core/workflow/utils/fileLimits';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { createChatUsageRecord } from '@fastgpt/service/support/wallet/usage/controller';
-import { loadWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
 
 const logger = getLogger();
 
@@ -191,7 +191,7 @@ export const getScheduleTriggerApp = async () => {
             uid: String(app.tmbId),
             runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
             runtimeEdges: storeEdges2RuntimeEdges(edges),
-            resourceContext: await loadWorkflowResourceContext({
+            resourceContext: createWorkflowResourceContext({
               resources,
               teamId: app.teamId
             }),

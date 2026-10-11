@@ -1,9 +1,9 @@
-import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { createLLMResponseMock, getLLMModelMock, formatModelChars2PointsMock } = vi.hoisted(() => ({
   createLLMResponseMock: vi.fn(),
@@ -15,8 +15,18 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
+  getSystemModelHandle: async () => ({
+    getLLMModelData: (...args: unknown[]) => {
+      const model = getLLMModelMock(...args);
+      return {
+        ...model,
+        modelId: '68ad85a7463006c963799a65',
+        config: model.config ?? model
+      };
+    }
+  }),
+  getTeamModelHandle: async () => ({
     getLLMModelData: (...args: unknown[]) => {
       const model = getLLMModelMock(...args);
       return {

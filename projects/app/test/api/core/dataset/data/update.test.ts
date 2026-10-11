@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   mockAuthDatasetData,
@@ -55,8 +55,9 @@ vi.mock('@fastgpt/service/common/s3/utils/preview', () => ({
   replaceS3KeysToPreviewUrls: mockReplaceS3KeysToPreviewUrls
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({ getEmbeddingModelData: vi.fn(() => mockEmbeddingModel) })
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
+  getSystemModelHandle: async () => ({ getEmbeddingModelData: vi.fn(() => mockEmbeddingModel) }),
+  getTeamModelHandle: async () => ({ getEmbeddingModelData: vi.fn(() => mockEmbeddingModel) })
 }));
 
 import handler from '@/pages/api/core/dataset/data/update';

@@ -57,7 +57,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     appId: app.id,
     app: appData
   });
-  const resourceContext = await createWorkflowChildResourceContext(
+  const resourceContext = createWorkflowChildResourceContext(
     childVersion.resources,
     String(appData.teamId)
   );

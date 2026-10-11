@@ -1,25 +1,22 @@
-import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { LLMModelDataType, RerankModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
 import {
-  getModelTestMap,
   getModelTestDefaults,
+  getModelTestMap,
   setModelTestMap,
   setModelTestSnapshot
 } from '@test/modelCache';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type {
-  LLMSystemModelDataType,
-  RerankSystemModelDataType
-} from '@fastgpt/global/core/ai/model/schema';
-import { UserError } from '@fastgpt/global/common/error/utils';
 
 import { getDatasetSearchAuxiliaryModels as resolveModels } from '../../../../core/dataset/search/auxiliaryModels';
 
 const getDatasetSearchAuxiliaryModels = (input: Parameters<typeof resolveModels>[0]) =>
-  resolveModels(input, getCachedModelHandle()!);
+  resolveModels(input, getCachedSystemModelHandle()!);
 
 describe('getDatasetSearchAuxiliaryModels', () => {
-  const llm: LLMSystemModelDataType = {
+  const llm: LLMModelDataType = {
     modelId: 'default-llm',
     model: 'default-llm',
     name: 'Default LLM',
@@ -30,7 +27,7 @@ describe('getDatasetSearchAuxiliaryModels', () => {
     isCustom: false,
     config: { maxContext: 4096, maxResponse: 1024, quoteMaxToken: 1024 }
   };
-  const rerank: RerankSystemModelDataType = {
+  const rerank: RerankModelDataType = {
     modelId: 'default-rerank',
     model: 'default-rerank',
     name: 'Default Rerank',
@@ -112,7 +109,7 @@ describe('getDatasetSearchAuxiliaryModels', () => {
           usingReRank: false,
           datasetSearchUsingExtensionQuery: false
         },
-        { ...getCachedModelHandle()!, getDefaultModelData }
+        { ...getCachedSystemModelHandle()!, getDefaultModelData }
       )
     ).toEqual({ rerankModelData: undefined, extensionModelData: undefined });
     expect(getDefaultModelData).not.toHaveBeenCalled();
@@ -143,7 +140,7 @@ describe('getDatasetSearchAuxiliaryModels', () => {
         resolveModels(
           { datasetSearchUsingExtensionQuery: true },
           {
-            ...getCachedModelHandle()!,
+            ...getCachedSystemModelHandle()!,
             getLLMModelData: () => {
               throw error;
             }

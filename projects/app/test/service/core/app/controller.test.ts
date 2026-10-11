@@ -1,37 +1,37 @@
-import { describe, expect, it, vi } from 'vitest';
-import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
-import { extractAppResources } from '@fastgpt/service/core/app/resources';
-import {
-  checkAppResourceReadPermissions,
-  resolveAppResourcesByPermission
-} from '@fastgpt/service/support/permission/app/resource';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { getUser } from '@test/datas/users';
-import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import {
   PerResourceTypeEnum,
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { Types } from '@fastgpt/service/common/mongo';
-import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
+import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
+import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
+import { extractAppResources } from '@fastgpt/service/core/app/resources';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import {
+  checkAppResourceReadPermissions,
+  resolveAppResourcesByPermission
+} from '@fastgpt/service/support/permission/app/resource';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { getUser } from '@test/datas/users';
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
+import { describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getClientToolPreviewNode: vi.fn()
@@ -587,7 +587,7 @@ describe('checkAppResourceReadPermissions', () => {
     const owner = await getUser(`model-resource-owner-${getNanoid(6)}`);
     const member = await getUser(`model-resource-member-${getNanoid(6)}`, owner.teamId);
     const modelId = String(new Types.ObjectId());
-    const previousHandle = getCachedModelHandle()!;
+    const previousHandle = getCachedSystemModelHandle()!;
     const previousModels = previousHandle.getAllModels();
     const previousDefaults = getModelTestDefaults();
     const model = {

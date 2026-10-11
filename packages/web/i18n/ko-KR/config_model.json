@@ -1,4 +1,5 @@
 {
+  "active_model": "사용 가능한 모델",
   "max_response_tokens": "최대 응답 Tokens",
   "voices_array_required": "음색은 각 항목에 label과 value가 있는 비어 있지 않은 배열이어야 합니다",
   "select_model_provider_placeholder": "공급자를 선택하세요",
@@ -119,6 +120,14 @@
   "model.batch_status_disabled": "모델 {{count}}개를 비활성화했습니다",
   "model.batch_delete": "선택 항목 삭제",
   "model.batch_delete_confirm": "선택한 모델 {{count}}개를 삭제하시겠습니까? 삭제 후에는 복구할 수 없습니다.",
+  "channel.batch_enable": "선택 항목 활성화",
+  "channel.batch_disable": "선택 항목 비활성화",
+  "channel.batch_status_enabled": "채널 {{count}}개를 활성화했습니다",
+  "channel.batch_status_disabled": "채널 {{count}}개를 비활성화했습니다",
+  "channel.batch_delete": "선택 항목 삭제",
+  "channel.batch_delete_confirm": "선택한 채널 {{count}}개를 삭제하시겠습니까? 삭제 후에는 복구할 수 없습니다.",
+  "channel.delete_affected_models_warning": "채널을 삭제하면 다음 모델에서 사용 가능한 채널이 모두 사라집니다: {{models}}. 계속하시겠습니까?",
+  "channel.search_placeholder": "채널 이름으로 검색",
   "model.alias": "별칭",
   "model.alias_tip": "시스템에 표시되는 모델 이름으로, 사용자가 이해하기 쉽습니다.",
   "model.basic_config_section": "기본 설정",
@@ -255,5 +264,15 @@
   "model_status_tip_checks_with_failed": "탐지 {{total}}회, 실패 {{failed}}회",
   "model_status_test_webhook": "Webhook 테스트",
   "model_status_test_webhook_success": "Webhook 테스트 성공, 오류 및 복구 알림 전송됨",
-  "model_status_webhook_url_empty": "경고 Webhook URL을 먼저 입력하세요"
+  "model_status_webhook_url_empty": "경고 Webhook URL을 먼저 입력하세요",
+  "confirm_remove_channel_association": "이 연결을 해제하시겠습니까? 해제하면 목록에서 제거됩니다.",
+  "channel_disassociate_success": "채널 연결을 해제했습니다",
+  "channel_max_five_tip": "채널은 최대 5개까지 표시됩니다. 전체 목록을 보려면 채널 수를 클릭하세요.",
+  "collaborators": "협업자",
+  "manage_collaborators": "협업자 관리",
+  "available_range": "사용 가능 범위",
+  "available_to_all": "모든 멤버가 사용 가능",
+  "only_available_to_self": "본인만 사용 가능",
+  "shared_with_me": "나와 공유됨",
+  "system_model_tag": "시스템"
 }

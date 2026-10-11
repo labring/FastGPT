@@ -256,6 +256,8 @@
   "permission_datasetCreate_Tip": "Create Datasets in the root directory. Folder-level creation permissions are configured separately.",
   "permission_skillCreate": "Create Skill",
   "permission_skillCreate_Tip": "Can create skills in the root directory (creation permissions in folders are controlled by the folder)",
+  "permission_modelCreate": "Install Model",
+  "permission_modelCreate_Tip": "Can install and configure private models and channels",
   "permission_manage": "Admin",
   "permission_manage_tip": "Can manage members, create groups, manage all groups, and assign permissions to groups and members",
   "please_bind_contact": "Please bind the contact information",

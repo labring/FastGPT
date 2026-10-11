@@ -61,11 +61,7 @@ type WorkflowCheckContext = {
   reachableNodeSet: Set<string>;
 };
 
-type WorkflowCheckModel = {
-  modelId: string;
-  model: string;
-  type: ModelTypeEnum;
-};
+type WorkflowCheckModel = Awaited<ReturnType<typeof getWorkflowModelDetails>>[number];
 
 const workflowCheckSkipConnectionTypes = new Set<FlowNodeTypeEnum>([
   FlowNodeTypeEnum.comment,
@@ -1211,7 +1207,7 @@ export const checkWorkflowNodeIssues = ({
 export const checkWorkflowHasError = (nodeIssueMap: WorkflowCheckNodeIssueMap) =>
   Object.values(nodeIssueMap).some((issues) => issues.some((issue) => issue.level === 'error'));
 
-/** 检查不属于画布节点的聊天配置模型，发布时也必须使用当前成员可用的模型目录。 */
+/** 检查聊天配置模型；沿用应用授权与模型类型约束，非空 ID 不允许按旧名称回退。 */
 export const checkWorkflowChatConfigModelIssues = ({
   chatConfig,
   models,
@@ -1248,11 +1244,12 @@ export const checkWorkflowChatConfigModelIssues = ({
       return;
     }
     if (Array.isArray(value) || typeof value !== 'string') return;
-    if (
-      models.some((item) => item.type === type && (item.modelId === value || item.model === value))
-    ) {
-      return;
-    }
+    const available = models.some(
+      (item) =>
+        item.type === type &&
+        (!isEmptyModelValue(config.modelId) ? item.modelId === value : item.model === value)
+    );
+    if (available) return;
     issues.push({
       nodeId: '__chat_config__',
       nodeType: FlowNodeTypeEnum.workflowStart,
@@ -1330,17 +1327,19 @@ export const checkWorkflowBeforeRunOrPublish = ({
 };
 
 /**
- * 将持久化工作流转换为发布校验使用的画布结构，并加载当前成员可用的模型详情。
+ * 将持久化工作流转换为发布校验使用的画布结构，并结合应用基线加载已引用模型的校验信息。
  * 表单发布与调试对话共用该入口，避免两条链路对同一模型配置给出不同结论。
  */
 export const checkStoreWorkflowBeforeRunOrPublish = async ({
   nodes: storeNodes,
   edges: storeEdges,
+  appId,
   chatConfig,
   t
 }: {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
+  appId?: string;
   chatConfig?: AppChatConfigType;
   t: TFunction;
 }) => {
@@ -1361,7 +1360,7 @@ export const checkStoreWorkflowBeforeRunOrPublish = async ({
   return checkWorkflowBeforeRunOrPublish({
     nodes,
     edges,
-    models: await getWorkflowModelDetails(nodes, chatConfig),
+    models: await getWorkflowModelDetails({ nodes, chatConfig, appId }),
     chatConfig,
     t
   });

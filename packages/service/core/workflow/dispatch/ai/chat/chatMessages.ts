@@ -6,7 +6,7 @@ import {
   runtimePrompt2ChatsValue
 } from '@fastgpt/global/core/chat/adapt';
 import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { ChatDispatchProps } from '../../../types/runtime';
 import {
   parseFileContentFromUrls,
@@ -31,7 +31,7 @@ export const getChatMessages = async ({
   usageId,
   runningUserInfo
 }: {
-  model: LLMSystemModelDataType;
+  model: LLMModelDataType;
   maxTokens?: number;
   histories: ChatItemMiniType[];
 

@@ -204,9 +204,14 @@ export const injectAgentSkillFilesToSandbox = async ({
       ? await MongoAgentSkills.find({
           _id: { $in: validSkillIds },
           deleteTime: null,
-          ...(resourceContext?.teamId && !resourceContext?.isRoot
-            ? { $or: [{ teamId: resourceContext.teamId }, { source: AgentSkillSourceEnum.system }] }
-            : { $or: [{ teamId }, { source: AgentSkillSourceEnum.system }] })
+          // 系统工具内静态 skill 由管理员发布，按 ID 直接读取，不限制团队。
+          ...(resourceContext?.trusted && !dynamic
+            ? {}
+            : resourceContext?.teamId && !resourceContext?.isRoot
+              ? {
+                  $or: [{ teamId: resourceContext.teamId }, { source: AgentSkillSourceEnum.system }]
+                }
+              : { $or: [{ teamId }, { source: AgentSkillSourceEnum.system }] })
         })
       : [];
   if (resourceContext && !dynamic && teamSkills.length !== skillIds.length) {

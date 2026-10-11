@@ -3,8 +3,8 @@ import { createUsage, concatUsage } from '@fastgpt/service/support/wallet/usage/
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
-import type { TTSSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { TTSModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 export const pushGenerateVectorUsage = ({
   usageId,
@@ -24,14 +24,14 @@ export const pushGenerateVectorUsage = ({
   teamId: string;
   tmbId: string;
   inputTokens: number;
-  model: SystemModelDataType;
+  model: AIModelDataType;
   source?: UsageSourceEnum;
 
-  extensionModel?: SystemModelDataType;
+  extensionModel?: AIModelDataType;
   extensionInputTokens?: number;
   extensionOutputTokens?: number;
 
-  deepSearchModel?: SystemModelDataType;
+  deepSearchModel?: AIModelDataType;
   deepSearchInputTokens?: number;
   deepSearchOutputTokens?: number;
 }) => {
@@ -133,7 +133,7 @@ export const pushQuestionGuideUsage = ({
   teamId,
   tmbId
 }: {
-  model: SystemModelDataType;
+  model: AIModelDataType;
   inputTokens: number;
   outputTokens: number;
   teamId: string;
@@ -172,7 +172,7 @@ export const pushAudioSpeechUsage = ({
   source = UsageSourceEnum.fastgpt
 }: {
   appName?: string;
-  model: TTSSystemModelDataType;
+  model: TTSModelDataType;
   charsLength: number;
   teamId: string;
   tmbId: string;
@@ -213,22 +213,22 @@ export const pushDatasetTestUsage = ({
   tmbId: string;
   source?: UsageSourceEnum;
   embUsage?: {
-    model: SystemModelDataType;
+    model: AIModelDataType;
     inputTokens: number;
   };
   rerankUsage?: {
-    model: SystemModelDataType;
+    model: AIModelDataType;
     inputTokens: number;
   };
   extensionUsage?: {
-    model: SystemModelDataType;
+    model: AIModelDataType;
     inputTokens: number;
     outputTokens: number;
     embeddingTokens: number;
-    embeddingModel: SystemModelDataType;
+    embeddingModel: AIModelDataType;
   };
   imageCaptionUsage?: {
-    model: SystemModelDataType;
+    model: AIModelDataType;
     inputTokens: number;
     outputTokens: number;
   };

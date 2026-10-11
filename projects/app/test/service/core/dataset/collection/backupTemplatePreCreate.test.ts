@@ -1,19 +1,19 @@
-import { getModelTestDefaults, addModelTestModel } from '@test/modelCache';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { serviceEnv } from '@fastgpt/service/env';
+import { countPromptTokensInWorker } from '@fastgpt/service/worker/countGptMessagesTokens/count';
 import { getRootUser } from '@test/datas/users';
 import { mockVectorInsert, resetVectorMocks } from '@test/mocks/common/vector';
 import { createMockVectorsResponse, mockGetVectors } from '@test/mocks/core/ai/embedding';
-import { countPromptTokensInWorker } from '@fastgpt/service/worker/countGptMessagesTokens/count';
-import { serviceEnv } from '@fastgpt/service/env';
+import { addModelTestModel, getModelTestDefaults } from '@test/modelCache';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
@@ -32,8 +32,8 @@ vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
 }));
 
 // 本文件需要真实模型状态，不能使用全局测试环境里始终返回成功的向量模型 getter。
-vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) =>
-  importOriginal<typeof import('@fastgpt/service/core/ai/model')>()
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) =>
+  importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()
 );
 vi.mock('@fastgpt/service/support/permission/teamLimit', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/support/permission/teamLimit')>()),
@@ -47,8 +47,8 @@ vi.mock('@/service/core/dataset/queues/utils', () => ({
   checkTeamAiPointsAndLock: vi.fn().mockResolvedValue(true)
 }));
 
-import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import { generatePreCreatedData } from '@/service/core/dataset/queues/generatePreCreatedData';
+import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 
 let embeddingModel: NonNullable<ReturnType<typeof getModelTestDefaults>['embedding']>;
 

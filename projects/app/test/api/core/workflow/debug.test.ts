@@ -67,7 +67,7 @@ const appId = '68ad85a7463006c963799a05';
 const app = {
   _id: appId,
   name: 'Workflow app',
-  teamId: 'team-id',
+  teamId: '68ad85a7463006c963799a06',
   tmbId: 'owner-id'
 };
 const savedChatConfig = { variables: [] };

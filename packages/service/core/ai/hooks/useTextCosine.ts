@@ -4,7 +4,7 @@
 */
 
 import { getVectors } from '../embedding';
-import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 class PriorityQueue<T> {
   private heap: Array<{ item: T; priority: number }> = [];
@@ -26,11 +26,7 @@ class PriorityQueue<T> {
     return this.heap.length;
   }
 }
-export const useTextCosine = ({
-  embeddingModel
-}: {
-  embeddingModel: EmbeddingSystemModelDataType;
-}) => {
+export const useTextCosine = ({ embeddingModel }: { embeddingModel: EmbeddingModelDataType }) => {
   // Calculate marginal gain
   const computeMarginalGain = (
     candidateEmbedding: number[],

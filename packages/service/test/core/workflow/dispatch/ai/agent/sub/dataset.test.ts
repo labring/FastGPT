@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetSearchModeEnum, SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   countPromptTokensMock,
@@ -38,8 +38,39 @@ vi.mock('@fastgpt/service/core/dataset/utils', () => ({
   filterDatasetsByTmbId: filterDatasetsByTmbIdMock
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
+  getSystemModelHandle: async () => ({
+    getDefaultLLMModelData: vi.fn(),
+    getDefaultRerankModelData: vi.fn(),
+    getEmbeddingModelData: vi.fn(() => ({
+      model: 'embedding-model',
+      name: 'Embedding Model',
+      config: {}
+    })),
+    getLLMModelData: vi.fn(({ model }: { model: string }) => ({
+      modelId: '68ad85a7463006c963799a43',
+      model,
+      name: `${model} name`,
+      config: { maxContext: 1000 }
+    })),
+    getRerankModelData: vi.fn(() => undefined),
+    getVlmModelData: vi.fn(({ model }: { model: string }) => ({
+      model,
+      name: `${model} name`,
+      config: { vision: true }
+    })),
+    getOptionalVlmModelData: vi.fn(({ modelId, model }: { modelId?: string; model?: string }) =>
+      modelId || model
+        ? {
+            modelId,
+            model,
+            name: `${model ?? modelId} name`,
+            config: { vision: true }
+          }
+        : undefined
+    )
+  }),
+  getTeamModelHandle: async () => ({
     getDefaultLLMModelData: vi.fn(),
     getDefaultRerankModelData: vi.fn(),
     getEmbeddingModelData: vi.fn(() => ({

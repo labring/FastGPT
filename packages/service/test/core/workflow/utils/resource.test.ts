@@ -1,20 +1,21 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   mongoDatasetFind: vi.fn(),
   mongoDatasetFindOne: vi.fn(),
-  checkAppResourceReadPermissions: vi.fn(),
+  assertAuthModels: vi.fn(),
   resolveAppResourcesByPermission: vi.fn(),
-  getModelHandle: vi.fn()
+  getSystemModelHandle: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: mocks.getModelHandle
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
+  getSystemModelHandle: mocks.getSystemModelHandle,
+  getTeamModelHandle: mocks.getSystemModelHandle
 }));
 
 vi.mock('@fastgpt/service/core/dataset/schema', async (importOriginal) => {
@@ -30,17 +31,22 @@ vi.mock('@fastgpt/service/core/dataset/schema', async (importOriginal) => {
 });
 
 vi.mock('@fastgpt/service/support/permission/app/resource', () => ({
-  checkAppResourceReadPermissions: mocks.checkAppResourceReadPermissions,
   resolveAppResourcesByPermission: mocks.resolveAppResourcesByPermission
+}));
+
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  assertAuthModels: mocks.assertAuthModels
 }));
 
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import {
   assertWorkflowNodeModelResources,
+  createSystemToolResourceContext,
   createWorkflowChildResourceContext,
+  filterWorkflowToolList,
   loadWorkflowAppResource,
   loadWorkflowDatasetResource,
-  loadWorkflowResourceContext,
+  createWorkflowResourceContext,
   prepareWorkflowDebugResourceContext,
   WorkflowResourceError
 } from '@fastgpt/service/core/workflow/utils/resource';
@@ -50,21 +56,35 @@ const createFindResult = (documents: unknown = []) => ({
 });
 
 describe('workflow resource context', () => {
+  /** 构造静态选择或动态引用模型的节点，两个权限上下文复用相同输入结构。 */
+  const createModelNode = (renderType: FlowNodeInputTypeEnum) => ({
+    flowNodeType: FlowNodeTypeEnum.chatNode,
+    inputs: [
+      {
+        key: NodeInputKeyEnum.aiModelId,
+        value: renderType === FlowNodeInputTypeEnum.reference ? ['source', 'model'] : 'model-1',
+        label: '',
+        valueType: WorkflowIOValueTypeEnum.string,
+        renderTypeList: [renderType]
+      }
+    ]
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.mongoDatasetFind.mockReturnValue(
       createFindResult([{ _id: 'dataset-1' }, { _id: 'dataset-2' }])
     );
     mocks.mongoDatasetFindOne.mockReturnValue(createFindResult({ _id: 'dataset-2' }));
-    mocks.checkAppResourceReadPermissions.mockResolvedValue(undefined);
-    mocks.getModelHandle.mockResolvedValue({
+    mocks.assertAuthModels.mockResolvedValue({ handle: {}, models: [] });
+    mocks.getSystemModelHandle.mockResolvedValue({
       getAllModels: () => [],
       getSystemDefaultModelIds: () => ({})
     });
   });
 
   it('inherits root cross-team permission when creating a child context', async () => {
-    const rootContext = await loadWorkflowResourceContext({
+    const rootContext = createWorkflowResourceContext({
       resources: [{ type: 'dataset', id: 'dataset-1' }],
       teamId: 'root-team',
       isRoot: true
@@ -94,44 +114,86 @@ describe('workflow resource context', () => {
 
   it('uses the snapshot for static resources and member permissions for dynamic resources', async () => {
     const modelResource = { type: 'model' as const, id: 'model-1' };
-    const context = await loadWorkflowResourceContext({ resources: [modelResource] });
-    const createNode = (renderType: FlowNodeInputTypeEnum) => ({
-      flowNodeType: FlowNodeTypeEnum.chatNode,
-      inputs: [
-        {
-          key: NodeInputKeyEnum.aiModelId,
-          value: renderType === FlowNodeInputTypeEnum.reference ? ['source', 'model'] : 'model-1',
-          valueType: WorkflowIOValueTypeEnum.string,
-          renderTypeList: [renderType]
-        }
-      ]
-    });
+    const context = createWorkflowResourceContext({ resources: [modelResource] });
 
     await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
       await expect(
         assertWorkflowNodeModelResources({
-          node: createNode(FlowNodeInputTypeEnum.selectLLMModel),
+          node: createModelNode(FlowNodeInputTypeEnum.selectLLMModel),
           params: { [NodeInputKeyEnum.aiModelId]: 'model-1' },
+          teamId: 'team-1',
           tmbId: 'tmb-1'
         })
       ).resolves.toBeUndefined();
       await expect(
         assertWorkflowNodeModelResources({
-          node: createNode(FlowNodeInputTypeEnum.selectLLMModel),
+          node: createModelNode(FlowNodeInputTypeEnum.selectLLMModel),
           params: { [NodeInputKeyEnum.aiModelId]: 'missing-model' },
+          teamId: 'team-1',
           tmbId: 'tmb-1'
         })
       ).rejects.toBeInstanceOf(WorkflowResourceError);
       await expect(
         assertWorkflowNodeModelResources({
-          node: createNode(FlowNodeInputTypeEnum.reference),
+          node: createModelNode(FlowNodeInputTypeEnum.reference),
           params: { [NodeInputKeyEnum.aiModelId]: 'model-1' },
+          teamId: 'team-1',
           tmbId: 'tmb-1'
         })
       ).resolves.toBeUndefined();
     });
 
-    expect(mocks.checkAppResourceReadPermissions).toHaveBeenCalledOnce();
+    expect(mocks.assertAuthModels).toHaveBeenCalledExactlyOnceWith({
+      actor: { teamId: 'team-1', tmbId: 'tmb-1', isRoot: false },
+      modelIds: ['model-1'],
+      action: 'use'
+    });
+  });
+
+  it('system tool context skips static checks but still authorizes dynamic models', async () => {
+    const rootContext = createWorkflowResourceContext({ resources: [], isRoot: true });
+    const context = await runWithContext(
+      { mcpClientMemory: {}, resourceContext: rootContext },
+      () => createSystemToolResourceContext()
+    );
+    expect(context).toMatchObject({ trusted: true, isRoot: true });
+    expect(context.teamId).toBeUndefined();
+
+    await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
+      // 静态模型未在任何快照声明，也不鉴权。
+      await assertWorkflowNodeModelResources({
+        node: createModelNode(FlowNodeInputTypeEnum.selectLLMModel),
+        params: { [NodeInputKeyEnum.aiModelId]: 'undeclared' },
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      });
+      expect(mocks.assertAuthModels).not.toHaveBeenCalled();
+
+      // 静态知识库按 ID 直接读取，不限制团队。
+      await loadWorkflowDatasetResource({ datasetId: 'dataset-2' });
+      expect(mocks.mongoDatasetFindOne).toHaveBeenCalledWith({
+        _id: 'dataset-2',
+        deleteTime: null
+      });
+
+      // 工具集不按快照裁剪子工具。
+      const tools = [{ name: 'a' }, { name: 'b' }];
+      expect(filterWorkflowToolList({ context, appId: 'tool-1', tools })).toBe(tools);
+
+      // 动态模型来自调用方输入，仍按运行人鉴权。
+      await assertWorkflowNodeModelResources({
+        node: createModelNode(FlowNodeInputTypeEnum.reference),
+        params: { [NodeInputKeyEnum.aiModelId]: 'dynamic-model' },
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      });
+    });
+
+    expect(mocks.assertAuthModels).toHaveBeenCalledExactlyOnceWith({
+      actor: { teamId: 'team-1', tmbId: 'tmb-1', isRoot: true },
+      modelIds: ['dynamic-model'],
+      action: 'use'
+    });
   });
 
   it('does not authorize dataset models when no dataset is selected', async () => {
@@ -140,16 +202,19 @@ describe('workflow resource context', () => {
       inputs: [
         {
           key: NodeInputKeyEnum.datasetSelectList,
+          label: '',
           value: [],
           renderTypeList: [FlowNodeInputTypeEnum.selectDataset]
         },
         {
           key: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
+          label: '',
           value: true,
           renderTypeList: [FlowNodeInputTypeEnum.hidden]
         },
         {
           key: NodeInputKeyEnum.datasetSearchExtensionModelId,
+          label: '',
           value: 'missing-model',
           renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
         }
@@ -164,14 +229,15 @@ describe('workflow resource context', () => {
           [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]: true,
           [NodeInputKeyEnum.datasetSearchExtensionModelId]: 'missing-model'
         },
+        teamId: 'team-1',
         tmbId: 'tmb-1'
       })
     ).resolves.toBeUndefined();
-    expect(mocks.checkAppResourceReadPermissions).not.toHaveBeenCalled();
+    expect(mocks.assertAuthModels).not.toHaveBeenCalled();
   });
 
   it('normalizes legacy model name and legacy keys when preparing debug context', async () => {
-    mocks.getModelHandle.mockResolvedValue({
+    mocks.getSystemModelHandle.mockResolvedValue({
       getAllModels: () => [{ model: 'legacy-llm', modelId: 'resolved-model-id', type: 'llm' }],
       getSystemDefaultModelIds: () => ({})
     });
@@ -208,13 +274,15 @@ describe('workflow resource context', () => {
       tmbId: 'tmb-1',
       isRoot: false,
       blockOnUnauthorized: true,
-      allowRootCrossTeam: false
+      allowRootCrossTeam: false,
+      modelHandle: expect.anything()
     });
 
     await runWithContext({ mcpClientMemory: {}, resourceContext: context }, () =>
       assertWorkflowNodeModelResources({
         node: nodes[0],
         params: { [NodeInputKeyEnum.aiModelId]: 'resolved-model-id' },
+        teamId: 'team-1',
         tmbId: 'tmb-1'
       })
     );
@@ -254,7 +322,7 @@ describe('workflow resource context', () => {
               {
                 key: NodeInputKeyEnum.datasetSelectList,
                 value: [{ datasetId: 'dataset-1' }],
-                valueType: WorkflowIOValueTypeEnum.datasetSelectList,
+                valueType: WorkflowIOValueTypeEnum.selectDataset,
                 renderTypeList: [FlowNodeInputTypeEnum.selectDataset]
               }
             ]
@@ -272,7 +340,8 @@ describe('workflow resource context', () => {
         tmbId: 'tmb-1',
         isRoot: true,
         blockOnUnauthorized: true,
-        allowRootCrossTeam: true
+        allowRootCrossTeam: true,
+        modelHandle: expect.anything()
       });
     });
 

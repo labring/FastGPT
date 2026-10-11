@@ -1,16 +1,18 @@
 import type {
-  SystemModelDataType,
-  SystemModelDocumentDataType
+  AIModelDataType,
+  AIModelDocumentDataType
 } from '@fastgpt/global/core/ai/model/schema';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { postSystemModel, putSystemModel } from '@/web/core/ai/config';
-import { UpdateSystemModelBodySchema } from '@fastgpt/global/openapi/admin/system/model/api';
+import { resolveChannelType } from '@fastgpt/global/core/ai/model/utils';
+import { postCreateModel, putUpdateModel } from '@/web/core/ai/model/api';
+import { UpdateModelBodySchema } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import { normalizeModelPricingForSave } from '@fastgpt/global/core/ai/model/pricing';
 
 /** 保留完整未保存草稿，仅规范测试接口要求的模型标识和回退别名。 */
-export const prepareDraftSystemModelForTest = (
-  modelData: SystemModelDocumentDataType
-): SystemModelDocumentDataType => {
+export const prepareDraftModelForTest = (
+  modelData: AIModelDocumentDataType
+): AIModelDocumentDataType => {
   const model = modelData.model.trim();
   const draft = { ...modelData, model, name: modelData.name?.trim() || model };
   if (draft.type === ModelTypeEnum.llm) {
@@ -25,34 +27,44 @@ export const prepareDraftSystemModelForTest = (
   return draft;
 };
 
-/** 新建模型只调用创建接口，入参类型从结构上排除 modelId。 */
-export const submitCreatedSystemModel = ({
+/** 新建模型只调用创建接口，若指定了关联渠道，由服务端直接处理。 */
+export const submitCreatedModel = async ({
   modelData,
+  channelType,
   channelIds
 }: {
-  modelData: SystemModelDocumentDataType;
-  channelIds: number[];
-}) => postSystemModel({ modelData: normalizeModelPricingForSave(modelData), channelIds });
+  modelData: AIModelDocumentDataType;
+  channelType?: ChannelType;
+  channelIds?: number[];
+}) => {
+  const resolvedChannelType = resolveChannelType({ channelType, scope: modelData.scope });
+  return postCreateModel({
+    modelData: normalizeModelPricingForSave(modelData),
+    channelType: resolvedChannelType,
+    channelIds: channelIds && channelIds.length > 0 ? channelIds : undefined
+  });
+};
 
-/** 编辑参数与渠道作为同一次请求预检，服务端统一编排外部绑定和模型写入。 */
-export const submitUpdatedSystemModel = async ({
+/** 编辑参数只按 modelId 更新已有模型的可编辑配置。 */
+export const submitUpdatedModel = async ({
   modelId,
   modelData,
-  channelIds
+  channelType
 }: {
-  modelId: SystemModelDataType['modelId'];
-  modelData: SystemModelDocumentDataType;
-  channelIds: number[];
+  modelId: AIModelDataType['modelId'];
+  modelData: AIModelDocumentDataType;
+  channelType?: ChannelType;
 }) => {
   const normalizedModelData = normalizeModelPricingForSave(modelData);
 
-  const input = UpdateSystemModelBodySchema.parse({
+  const resolvedChannelType = resolveChannelType({ channelType, scope: modelData.scope });
+  const input = UpdateModelBodySchema.parse({
     modelId,
     modelData: {
       ...normalizedModelData,
       model: normalizedModelData.model.trim()
     },
-    channelIds
+    channelType: resolvedChannelType
   });
-  await putSystemModel(input);
+  await putUpdateModel({ ...input, channelType: resolvedChannelType });
 };

@@ -11,10 +11,10 @@ import type {
   AgentLoopToolExecutionResult
 } from './tool';
 import type { AgentLoopUsage } from './usage';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 export type AgentLoopLLMParams = {
-  model: LLMSystemModelDataType;
+  model: LLMModelDataType;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   userKey?: OpenaiAccountType;
   stream?: boolean;

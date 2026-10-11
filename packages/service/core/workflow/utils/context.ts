@@ -105,7 +105,8 @@ export const runWithDerivedWorkflowFileContext = async <T>({
   query?: UserChatItemValueItemType[];
   histories?: ChatItemMiniType[];
   files: WorkflowFileInput[];
-  resourceContext?: WorkflowResourceContext | null;
+  /** 传入时子工作流切换到该资源上下文；省略时继承父级。 */
+  resourceContext?: WorkflowResourceContext;
   fn: (scope: {
     resolveInputFile?: (file: ChatFileStoreValue) => Promise<string | undefined>;
     query: UserChatItemValueItemType[];
@@ -122,12 +123,12 @@ export const runWithDerivedWorkflowFileContext = async <T>({
         ...childInputs,
         filterFiles: (files) => cloneChildFiles(files)
       });
-    if (resourceContext === undefined) return runChild();
+    if (!resourceContext) return runChild();
 
     return runWithContext(
       {
         mcpClientMemory: parentStore?.mcpClientMemory ?? {},
-        resourceContext: resourceContext ?? undefined
+        resourceContext
       },
       runChild
     );
@@ -209,8 +210,7 @@ export const runWithDerivedWorkflowFileContext = async <T>({
     ...parentStore,
     fileContext: childFileContext,
     fileRegistrar: undefined,
-    resourceContext:
-      resourceContext === undefined ? parentStore.resourceContext : (resourceContext ?? undefined)
+    resourceContext: resourceContext ?? parentStore.resourceContext
   };
 
   const resolveInputFile = async (file: ChatFileStoreValue) => {

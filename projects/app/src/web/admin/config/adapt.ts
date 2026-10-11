@@ -59,6 +59,7 @@ export function formatConfigStore2FormSchema({
     show_publish_offiaccount = true,
     show_publish_wechat = true,
     enable_team_plugin_upload = false,
+    enable_team_model = false,
     botIframeUrl = '',
     ...feConfigsProps
   } = normalizedFeConfigs;
@@ -90,6 +91,7 @@ export function formatConfigStore2FormSchema({
         show_publish_offiaccount,
         show_publish_wechat,
         enable_team_plugin_upload,
+        enable_team_model,
         favicon,
         docUrl,
         loginGuideDocUrl,

@@ -1,4 +1,4 @@
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { countGptMessagesTokens, countPromptTokens } from '../../../../common/string/tiktoken';
 import {
   ACTIVE_PLAN_END_TAG,
@@ -549,7 +549,7 @@ export const compressRequestMessages = async ({
   checkIsStopping?: CreateLLMResponseProps['isAborted'];
   messageTokens?: number;
   messages: ChatCompletionMessageParam[];
-  model: LLMSystemModelDataType;
+  model: LLMModelDataType;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   tools?: ChatCompletionTool[];
   userKey?: OpenaiAccountType;
@@ -789,7 +789,7 @@ export const compressLargeContent = async ({
   teamId
 }: {
   content: string;
-  model: LLMSystemModelDataType;
+  model: LLMModelDataType;
   compressedTokenLimit: number;
   moduleName?: string;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
@@ -811,14 +811,14 @@ export const compressLargeContent = async ({
   const chunkAndCompress = async (params: {
     content: string;
     compressedTokenLimit: number;
-    model: LLMSystemModelDataType;
+    model: LLMModelDataType;
   }): Promise<{
     compressed: string;
     usage: CompressUsageType;
   }> => {
     async function compressSingleChunk(params: {
       chunk: string;
-      model: LLMSystemModelDataType;
+      model: LLMModelDataType;
       chunkTokenLimit: number;
       chunkIndex?: number;
     }): Promise<{
@@ -1127,7 +1127,7 @@ export const compressToolResponse = async ({
   teamId
 }: {
   response: string;
-  model: LLMSystemModelDataType;
+  model: LLMModelDataType;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   userKey?: OpenaiAccountType;
   teamId: string;

@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
   EmbeddingModelConfigType,
-  EmbeddingSystemModelDataType,
+  EmbeddingModelDataType,
   LLMModelConfigType,
-  LLMSystemModelDataType
+  LLMModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
 import {
   ChunkSettingModeEnum,
@@ -28,9 +28,7 @@ import {
 import type { ChunkSettingsType } from '@fastgpt/global/core/dataset/type';
 
 // Helper: Create mock LLM model
-const createMockLLMModel = (
-  overrides: Partial<LLMModelConfigType> = {}
-): LLMSystemModelDataType => ({
+const createMockLLMModel = (overrides: Partial<LLMModelConfigType> = {}): LLMModelDataType => ({
   type: ModelTypeEnum.llm,
   provider: 'test-provider',
   model: 'test-model',
@@ -50,7 +48,7 @@ const createMockLLMModel = (
 // Helper: Create mock Embedding model
 const createMockEmbeddingModel = (
   overrides: Partial<EmbeddingModelConfigType> = {}
-): EmbeddingSystemModelDataType => ({
+): EmbeddingModelDataType => ({
   type: ModelTypeEnum.embedding,
   provider: 'test-provider',
   model: 'test-embedding',

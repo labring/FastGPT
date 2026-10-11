@@ -1,4 +1,4 @@
-import type { LLMSystemModelDataType } from '../model/schema';
+import type { LLMModelDataType } from '../model/schema';
 import { ChatCompletionRequestMessageRoleEnum } from '../constants';
 
 export const removeDatasetCiteText = (text: string, retainDatasetCite: boolean) => {
@@ -54,7 +54,7 @@ export const createChatCompletionDeltaResponse = ({
   };
 };
 
-export const getLLMSupportParams = (llm?: Pick<LLMSystemModelDataType, 'config'>) => {
+export const getLLMSupportParams = (llm?: Pick<LLMModelDataType, 'config'>) => {
   const config = llm?.config;
   return {
     vision: !!config?.vision,

@@ -1,26 +1,26 @@
 import {
-  getModelTestDefaults,
-  getModelTestMap,
-  setModelTestMap,
-  addModelTestModel
-} from '@test/modelCache';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
   ParagraphChunkAIModeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { getRootUser } from '@test/datas/users';
-import { Types } from '@fastgpt/service/common/mongo';
+import {
+  addModelTestModel,
+  getModelTestDefaults,
+  getModelTestMap,
+  setModelTestMap
+} from '@test/modelCache';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ read: vi.fn(), paragraph: vi.fn(), usage: vi.fn() }));
 // 本文件需要验证真实模型状态，不能使用全局测试环境里始终返回成功的向量模型 getter。
-vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) =>
-  importOriginal<typeof import('@fastgpt/service/core/ai/model')>()
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) =>
+  importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()
 );
 vi.mock('@fastgpt/service/core/dataset/read', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/dataset/read')>()),

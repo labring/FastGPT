@@ -51,7 +51,7 @@ import type { AuthResponseType } from '@fastgpt/global/openapi/core/chat/complet
 import { CompletionsPropsSchema } from '@fastgpt/global/openapi/core/chat/completion/api';
 import { NextAPI } from '@/service/middleware/entry';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
-import { loadWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   serverGetWorkflowToolRunUserQuery,
@@ -398,7 +398,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       maxBytesPerFile,
       lastInteractive: interactive,
       chatConfig,
-      resourceContext: await loadWorkflowResourceContext({
+      resourceContext: createWorkflowResourceContext({
         resources,
         teamId
       }),

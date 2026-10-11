@@ -1,18 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
-import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/config/constants';
+import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
+import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/model/constants';
 import {
   bootstrapAIModelsFromLegacy,
   inspectLegacySystemModelMigration
 } from '@/migration/tasks/4170/20260903_migrate_legacy_system_models/service';
-import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
-import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
+import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
+import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
 
 // 本文件验证首次模型体系初始化的事务原子性，不能使用全局的无事务测试替身。
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 
-const pluginLlm: SystemModelDocumentDataType = {
+const pluginLlm: AIModelDocumentDataType = {
   type: ModelTypeEnum.llm,
   provider: 'OpenAI',
   model: 'plugin-llm',
@@ -45,7 +45,7 @@ describe('bootstrapAIModelsFromLegacy', () => {
     vi.restoreAllMocks();
     await Promise.all([
       MongoAIModel.deleteMany({}),
-      MongoAIDefaultModel.deleteMany({}),
+      MongoAIModelCatalog.deleteMany({}),
       legacyCollection.deleteMany({})
     ]);
   });
@@ -58,7 +58,7 @@ describe('bootstrapAIModelsFromLegacy', () => {
       migratedCount: 0
     });
     await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
-    await expect(MongoAIDefaultModel.findOne({ scope: 'system' }).lean()).resolves.toMatchObject({
+    await expect(MongoAIModelCatalog.findOne({ scope: 'system' }).lean()).resolves.toMatchObject({
       scope: 'system',
       defaultModelIds: {}
     });
@@ -66,7 +66,7 @@ describe('bootstrapAIModelsFromLegacy', () => {
 
   it('preserves an existing valid default while merging a legacy model', async () => {
     const existingModel = await MongoAIModel.create(pluginLlm);
-    await MongoAIDefaultModel.create({
+    await MongoAIModelCatalog.create({
       scope: 'system',
       defaultModelIds: { llm: String(existingModel._id) }
     });
@@ -85,7 +85,7 @@ describe('bootstrapAIModelsFromLegacy', () => {
     await expect(MongoAIModel.findById(existingModel._id)).resolves.not.toBeNull();
     await expect(MongoAIModel.findById(legacy.insertedId)).resolves.not.toBeNull();
     await expect(MongoAIModel.countDocuments()).resolves.toBe(2);
-    await expect(MongoAIDefaultModel.findOne({ scope: 'system' }).lean()).resolves.toMatchObject({
+    await expect(MongoAIModelCatalog.findOne({ scope: 'system' }).lean()).resolves.toMatchObject({
       scope: 'system',
       defaultModelIds: { llm: String(existingModel._id) }
     });
@@ -117,7 +117,7 @@ describe('bootstrapAIModelsFromLegacy', () => {
 
     await bootstrapAIModelsFromLegacy({ pluginDocuments: [] });
 
-    await expect(MongoAIDefaultModel.findOne({ scope: 'system' }).lean()).resolves.toMatchObject({
+    await expect(MongoAIModelCatalog.findOne({ scope: 'system' }).lean()).resolves.toMatchObject({
       scope: 'system',
       defaultModelIds: {
         llm: String(result.insertedIds[0]),
@@ -147,7 +147,7 @@ describe('bootstrapAIModelsFromLegacy', () => {
     await expect(MongoAIModel.countDocuments()).resolves.toBe(2);
     await expect(MongoAIModel.findById(legacy.insertedId)).resolves.not.toBeNull();
     await expect(MongoAIModel.exists({ model: pluginLlm.model })).resolves.not.toBeNull();
-    await expect(MongoAIDefaultModel.exists({ scope: 'system' })).resolves.not.toBeNull();
+    await expect(MongoAIModelCatalog.exists({ scope: 'system' })).resolves.not.toBeNull();
   });
 
   it('keeps the later legacy record when model names are duplicated', async () => {
@@ -208,7 +208,7 @@ describe('bootstrapAIModelsFromLegacy', () => {
     await expect(bootstrapAIModelsFromLegacy({ pluginDocuments: [] })).rejects.toBe(writeError);
     await expect(MongoAIModel.countDocuments()).resolves.toBe(1);
     await expect(MongoAIModel.exists({ model: pluginLlm.model })).resolves.not.toBeNull();
-    await expect(MongoAIDefaultModel.exists({ scope: 'system' })).resolves.toBeNull();
+    await expect(MongoAIModelCatalog.exists({ scope: 'system' })).resolves.toBeNull();
   });
 
   it('repairs a damaged legacy model from its plugin template and preserves the old id', async () => {
@@ -341,7 +341,7 @@ describe('bootstrapAIModelsFromLegacy', () => {
       model: 'unrelated-model',
       name: 'Unrelated target'
     });
-    await MongoAIDefaultModel.create({
+    await MongoAIModelCatalog.create({
       scope: 'system',
       defaultModelIds: { llm: String(conflictingTarget._id) }
     });
@@ -366,7 +366,7 @@ describe('bootstrapAIModelsFromLegacy', () => {
     await expect(MongoAIModel.findById(legacy.insertedId)).resolves.toBeNull();
     await expect(MongoAIModel.findById(unrelatedTarget._id)).resolves.not.toBeNull();
     await expect(MongoAIModel.countDocuments()).resolves.toBe(2);
-    await expect(MongoAIDefaultModel.findOne({ scope: 'system' }).lean()).resolves.toMatchObject({
+    await expect(MongoAIModelCatalog.findOne({ scope: 'system' }).lean()).resolves.toMatchObject({
       defaultModelIds: { llm: String(conflictingTarget._id) }
     });
   });
@@ -442,7 +442,7 @@ describe('bootstrapAIModelsFromLegacy', () => {
       model: 'same-name-default',
       name: 'Existing model'
     });
-    await MongoAIDefaultModel.create({
+    await MongoAIModelCatalog.create({
       scope: 'system',
       defaultModelIds: { llm: 'missing-model-id' }
     });
@@ -455,7 +455,7 @@ describe('bootstrapAIModelsFromLegacy', () => {
 
     await bootstrapAIModelsFromLegacy({ pluginDocuments: [] });
 
-    await expect(MongoAIDefaultModel.findOne({ scope: 'system' }).lean()).resolves.toMatchObject({
+    await expect(MongoAIModelCatalog.findOne({ scope: 'system' }).lean()).resolves.toMatchObject({
       defaultModelIds: {
         llm: String(existingModel._id),
         datasetTextLLM: String(existingModel._id)
@@ -477,7 +477,7 @@ describe('bootstrapAIModelsFromLegacy', () => {
     await expect(MongoAIModel.findById(legacy.insertedId).lean()).resolves.toMatchObject({
       model: 'unrelated-target'
     });
-    await expect(MongoAIDefaultModel.exists({ scope: 'system' })).resolves.toBeNull();
+    await expect(MongoAIModelCatalog.exists({ scope: 'system' })).resolves.toBeNull();
   });
 
   it('rejects a legacy model whose type conflicts with its plugin template before writing', async () => {
@@ -497,7 +497,7 @@ describe('bootstrapAIModelsFromLegacy', () => {
       'System model type does not match plugin template'
     );
     await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
-    await expect(MongoAIDefaultModel.exists({ scope: 'system' })).resolves.toBeNull();
+    await expect(MongoAIModelCatalog.exists({ scope: 'system' })).resolves.toBeNull();
   });
 
   it('reports only system scope target models in the migration inspection', async () => {
@@ -542,6 +542,6 @@ describe('bootstrapAIModelsFromLegacy', () => {
       MongoAIModel.findOne({ model: 'concurrent-system-model' })
     ).resolves.not.toBeNull();
     await expect(MongoAIModel.findOne({ model: 'legacy-race-model' })).resolves.not.toBeNull();
-    await expect(MongoAIDefaultModel.exists({ scope: 'system' })).resolves.not.toBeNull();
+    await expect(MongoAIModelCatalog.exists({ scope: 'system' })).resolves.not.toBeNull();
   });
 });
