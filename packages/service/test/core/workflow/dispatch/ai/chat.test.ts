@@ -123,12 +123,13 @@ describe('getInputFiles', () => {
           obj: ChatRoleEnum.Human,
           value: runtimePrompt2ChatsValue({ files: userFiles })
         }
-      ]
+      ],
+      reserveId: true
     });
     const previousMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+    (serviceEnv as any).MULTIPLE_DATA_TO_BASE64 = false;
     const requestMessages = await loadRequestMessages({ messages, useAudio: true }).finally(() => {
-      serviceEnv.MULTIPLE_DATA_TO_BASE64 = previousMultipleDataToBase64;
+      (serviceEnv as any).MULTIPLE_DATA_TO_BASE64 = previousMultipleDataToBase64;
     });
 
     expect(requestMessages[0]?.content).toEqual([
@@ -164,7 +165,8 @@ describe('getInputFiles', () => {
           obj: ChatRoleEnum.Human,
           value: runtimePrompt2ChatsValue({ files: userFiles })
         }
-      ]
+      ],
+      reserveId: true
     });
 
     expect(messages[0]?.content).toEqual([

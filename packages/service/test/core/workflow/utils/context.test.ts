@@ -142,12 +142,12 @@ describe('runWithDerivedWorkflowFileContext', () => {
   });
   it.each([
     ['none', 'replace'],
-    ['none', 'clear'],
+    ['none', 'inherit'],
     ['store', 'replace'],
-    ['store', 'clear'],
+    ['store', 'inherit'],
     ['files', 'replace'],
-    ['files', 'clear']
-  ])('资源快照可独立于文件 Context 替换或清除（%s/%s）', async (parentKind, mode) => {
+    ['files', 'inherit']
+  ])('资源快照可独立于文件 Context 替换或继承（%s/%s）', async (parentKind, mode) => {
     const originalResource = { isRoot: true, resourceMap: new Map() };
     const childResource = { isRoot: false, resourceMap: new Map() };
     const { fileContext } = await prepare();
@@ -159,11 +159,17 @@ describe('runWithDerivedWorkflowFileContext', () => {
     const run = () =>
       runWithDerivedWorkflowFileContext({
         files: [],
-        resourceContext: mode === 'clear' ? null : childResource,
+        resourceContext: mode === 'inherit' ? undefined : childResource,
         query: [{ text: { content: 'query' } }],
         histories: [createHistory({ text: { content: 'history' } })],
         fn: async ({ query, histories, filterFiles }) => {
-          expect(getWorkflowResourceContext()).toBe(mode === 'clear' ? undefined : childResource);
+          expect(getWorkflowResourceContext()).toBe(
+            mode === 'inherit'
+              ? parentKind === 'none'
+                ? undefined
+                : originalResource
+              : childResource
+          );
           expect(query[0].text?.content).toBe('query');
           expect(histories[0].value[0]).toEqual({ text: { content: 'history' } });
           expect(filterFiles([{}])).toEqual(parentKind === 'files' ? [] : [{}]);
