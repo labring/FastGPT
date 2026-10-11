@@ -79,8 +79,8 @@ Workflow 输入适配器通过独立 `WorkflowFileRegistrar` 登记 query/histor
 和 Plugin Input 文件，私有对象必须校验根 scope。节点消费者通过 `prepareWorkflowFiles` 准备文件，
 底层统一由 `prepareChatFiles` 编排：身份去重与数量截断 → 输入校验 → 分类 → 登记。
 `registerExternalFile` 只同步写入已分类外链，不探测、不创建私有 key 权限。
-同一 Context 内并发和后续调用复用远端类型结果（包括失败降级），探测并发上限为 5，
-缓存随 Context 回收；文件名和显式类型提示不进入探测缓存。Child 动态外链不回写 Parent；在 Parent 进程提前准备的文件可以登记在 Parent，Child 只继承选中的输入。
+同一 Context 内并发和后续调用复用远端类型和文件名结果（包括失败降级），探测并发上限为 5，
+缓存随 Context 回收；调用方的显示名称和显式类型提示不进入探测缓存。Child 动态外链不回写 Parent；在 Parent 进程提前准备的文件可以登记在 Parent，Child 只继承选中的输入。
 
 `core/chat/file/service.ts` 的 `parseUrlToChatFileType` 是唯一链接分类实现，优先使用
 已登记元数据，其次为明确媒体类型、可信对象元数据、文件后缀、系统链接探测和普通文件降级。
@@ -101,7 +101,7 @@ URL 保留原始签名参数；文件名来自 Content-Disposition、filename �
 默认共享 3 秒请求预算，HEAD 超时为一半预算。网络、安全及读取错误抛给业务层处理；
 聊天层将失败降级为 file。SSRF 和业务传入的 URL 策略同样约束 GET 及其重定向。
 该方法仅推测元数据，不校验文件完整性，不登记 Context，不承担列表过滤或下载业务。
-聊天层目前只消费 contentType，保留原有显示文件名规则，远端推测的名称不会污染 Context 类型缓存。
+聊天层消费 contentType 和 filename；filename 已包含探测的 extension，随分类结果保存到 Context Ref 并在链接读取时传给文件源。显式 name 保留为显示名称，未提供时采用探测文件名。解析优先使用带有效后缀的显示名称，否则使用探测文件名；两者均无有效后缀时允许下载响应的 Content-Disposition 补充。
 
 ## 4. 数据模型
 

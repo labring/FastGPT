@@ -20,7 +20,8 @@ import type { RawChatFileValue } from '../../chat/fileStoreValue';
 import {
   parseUrlToChatFileType,
   prepareChatFiles,
-  type ChatFileInput
+  type ChatFileInput,
+  type PreparedChatFile
 } from '../../chat/file/service';
 import { isAbsoluteHttpUrl, getFileUrlIdentity } from '../../chat/file/utils';
 import { filterWorkflowQueryFiles } from './fileLimits';
@@ -40,6 +41,8 @@ export type WorkflowFileLocator =
 
 export type WorkflowFileRef = {
   name: string;
+  /** 探测文件名（包含识别出的后缀），供链接读取选择解析格式；不覆盖显式显示名称。 */
+  filename?: string;
   type: ChatFileTypeEnum;
   modelUrl: string;
   source: WorkflowFileLocator;
@@ -59,12 +62,12 @@ export type WorkflowFileSourceResult = {
 export type WorkflowFileContext = {
   limits: WorkflowFileLimits;
   resolve: (url: string) => WorkflowFileRef | undefined;
-  resolveChatFile: (url: string) => UserChatItemFileItemType | undefined;
+  resolveChatFile: (url: string) => PreparedChatFile | undefined;
   getIdentity: (url: string) => string | undefined;
   resolveInputFile: (file: RawChatFileValue) => WorkflowFileRef | undefined;
   getSource: (target: string | WorkflowFileRef) => Promise<WorkflowFileSourceResult>;
   /** 只登记已分类外链；输入准备通过 prepareChatFiles 完成。 */
-  registerExternalFile: (file: UserChatItemFileItemType) => WorkflowFileRef;
+  registerExternalFile: (file: PreparedChatFile) => WorkflowFileRef;
   derive: (files: WorkflowFileInput[]) => Promise<WorkflowFileContext>;
 };
 
@@ -141,12 +144,13 @@ const createWorkflowFileRegistry = () => {
     if (key) return byIdentity.get(`chat:${key}`);
     return typeof file.url === 'string' ? resolve(file.url) : undefined;
   };
-  const resolveChatFile = (url: string): UserChatItemFileItemType | undefined => {
+  const resolveChatFile = (url: string): PreparedChatFile | undefined => {
     const ref = resolve(url);
     if (!ref) return;
     return {
       type: ref.type,
       name: ref.name,
+      ...(ref.filename ? { filename: ref.filename } : {}),
       ...(ref.source.type === 'chatObject' ? { key: ref.source.objectKey } : {}),
       url: ref.modelUrl
     };
@@ -160,6 +164,7 @@ const createWorkflowFileRegistry = () => {
     register({
       ref: {
         name: file.name || getFileNameFromUrl(file.url),
+        ...(file.filename ? { filename: file.filename } : {}),
         type: file.type,
         modelUrl: file.url,
         source: { type: 'externalHttp', url: file.url }
@@ -184,19 +189,26 @@ const getFileNameFromUrl = (url: string) => {
   }
 };
 
-/** 外链显示名称可能是完整 URL；仅带有效后缀的文件名才优先于下载响应的文件名。 */
+/** 优先采用带有效后缀的显示名称，否则复用探测文件名；均无格式时允许下载响应补充。 */
 const createWorkflowExternalFileSource = ({
   url,
   name,
+  filename: inferredFilename,
   maxSizeBytes
 }: {
   url: string;
   name: string;
+  filename?: string;
   maxSizeBytes: number;
 }) => {
-  const filename = isAbsoluteHttpUrl(name)
+  const displayFilename = isAbsoluteHttpUrl(name)
     ? getFileNameFromUrl(name)
     : name || getFileNameFromUrl(url);
+  const displayExtension = path.extname(displayFilename);
+  const filename =
+    displayExtension && displayExtension !== '.'
+      ? displayFilename
+      : inferredFilename || displayFilename;
   const extension = path.extname(filename);
   return createExternalHttpFileSource({
     url,
@@ -256,7 +268,8 @@ const createDerivedWorkflowFileContext = async ({
         source: createWorkflowExternalFileSource({
           url: ref.source.url,
           maxSizeBytes: parent.limits.maxBytesPerFile,
-          name: ref.name
+          name: ref.name,
+          filename: ref.filename
         }),
         sourceKind: 'external'
       };
@@ -502,7 +515,8 @@ export const prepareWorkflowFileContext = async ({
       source: createWorkflowExternalFileSource({
         url: ref.source.url,
         maxSizeBytes: limits.maxBytesPerFile,
-        name: ref.name
+        name: ref.name,
+        filename: ref.filename
       }),
       sourceKind: 'external'
     };

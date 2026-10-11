@@ -1,23 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Readable } from 'node:stream';
 import { ChatFileTypeEnum as FileType } from '@fastgpt/global/core/chat/constants';
-import type { UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
 import { axios } from '@fastgpt/service/common/api/axios';
 import {
   parseUrlToChatFileType,
   prepareChatFiles,
-  validateChatFileInput
+  validateChatFileInput,
+  type PreparedChatFile
 } from '@fastgpt/service/core/chat/file/service';
 
 const url = 'https://files.example.com/download';
 
 /** 用内存登记表实现 Context 合约；只记录登记调用，不替换分类和身份计算。 */
 const createContext = () => {
-  const files = new Map<string, UserChatItemFileItemType>();
+  const files = new Map<string, PreparedChatFile>();
   const context = {
     resolveChatFile: (url: string) => files.get(url),
     getIdentity: (url: string) => (files.has(url) ? `registered:${url}` : undefined),
-    registerExternalFile: vi.fn((file: UserChatItemFileItemType) => {
+    registerExternalFile: vi.fn((file: PreparedChatFile) => {
       files.set(file.url, file);
       return { name: file.name || 'file', type: file.type, modelUrl: file.url };
     })
@@ -93,16 +93,24 @@ describe('parseUrlToChatFileType', () => {
   );
 
   it.each([
-    ['image/png', FileType.image],
-    ['audio/mpeg', FileType.audio],
-    ['video/mp4', FileType.video],
-    ['application/pdf', FileType.file],
-    [undefined, FileType.file]
-  ])('未知链接使用系统推测 MIME %s，普通 file 提示不阻止探测', async (mime, expected) => {
-    vi.mocked(axios.head).mockResolvedValueOnce({ headers: { 'content-type': mime } });
+    ['image/png', FileType.image, 'download.png'],
+    ['audio/mpeg', FileType.audio, 'download.mpga'],
+    ['video/mp4', FileType.video, 'download.mp4'],
+    ['application/pdf', FileType.file, 'report.pdf'],
+    [undefined, FileType.file, 'download']
+  ])('未知链接使用系统推测 MIME %s，普通 file 提示不阻止探测', async (mime, expected, filename) => {
+    vi.mocked(axios.head).mockResolvedValueOnce({
+      headers: {
+        'content-type': mime,
+        ...(mime === 'application/pdf'
+          ? { 'content-disposition': 'attachment; filename="report.pdf"' }
+          : {})
+      }
+    });
     expect(await parseUrlToChatFileType({ url, type: FileType.file })).toEqual({
       url,
-      name: url,
+      name: filename,
+      filename,
       type: expected
     });
     expect(axios.head).toHaveBeenCalledWith(
@@ -114,7 +122,7 @@ describe('parseUrlToChatFileType', () => {
   });
 
   it.each(['success', 'failure'] as const)(
-    '同 Context 复用并发及已完成的 %s 探测，名称和显式类型不缓存',
+    '同 Context 复用并发及已完成的 %s 探测，显示名称和显式类型不缓存，探测文件名可复用',
     async (outcome) => {
       if (outcome === 'failure') vi.mocked(axios.head).mockRejectedValue(new Error('offline'));
       const { context, files } = createContext();
@@ -128,7 +136,14 @@ describe('parseUrlToChatFileType', () => {
         ['first', expected],
         ['second', expected]
       ]);
-      expect((await parseUrlToChatFileType({ url, fileContext: context }))?.type).toBe(expected);
+      const filename = outcome === 'success' ? 'download.png' : undefined;
+      expect(results.map((file) => file?.filename)).toEqual([filename, filename]);
+      expect(await parseUrlToChatFileType({ url, fileContext: context })).toEqual({
+        url,
+        name: filename ?? url,
+        type: expected,
+        ...(filename ? { filename } : {})
+      });
       expect(
         (await parseUrlToChatFileType({ url, type: FileType.audio, fileContext: context }))?.type
       ).toBe(FileType.audio);
@@ -239,7 +254,10 @@ describe('prepareChatFiles', () => {
         maxFiles: 2,
         fileContext: context
       })
-    ).toEqual([{ name: '最终名称', type: FileType.video, url: `${url}/model` }, registered]);
+    ).toEqual([
+      { name: '最终名称', filename: 'download.png', type: FileType.video, url: `${url}/model` },
+      registered
+    ]);
     expect(context.registerExternalFile).toHaveBeenCalledTimes(1);
   });
 
@@ -261,7 +279,7 @@ describe('prepareChatFiles', () => {
 
   it('不提供登记器也能准备文件', async () => {
     expect(await prepareChatFiles({ files: [{ url }], maxFiles: 1 })).toEqual([
-      { url, name: url, type: FileType.image }
+      { url, name: 'download.png', filename: 'download.png', type: FileType.image }
     ]);
   });
 

@@ -56,6 +56,8 @@ describe('prepareWorkflowFileContext', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    axiosHeadMock.mockReset();
+    axiosGetMock.mockReset();
     originalSystemEnv = global.systemEnv;
     global.systemEnv = { fileUrlWhitelist: [] } as any;
   });
@@ -538,11 +540,14 @@ describe('prepareWorkflowFileContext', () => {
     ['root', 'https://cdn.example.com/download?token=signed.value', 'remote.pdf'],
     ['root', '', 'remote.pdf'],
     ['root', 'trusted.pdf', 'trusted.pdf'],
+    ['root', 'trusted.pdf', 'trusted.pdf', 'detected.docx'],
+    ['root', '报告', 'detected.pdf', 'detected.pdf'],
+    ['root', '报告', 'remote.pdf', 'detected'],
     ['inherited', 'https://cdn.example.com/download?token=signed.value', 'remote.pdf'],
     ['child', 'https://cdn.example.com/download?token=signed.value', 'remote.pdf']
   ])(
     '%s Context 的外链名称 %s 只在带有效后缀时覆盖响应文件名',
-    async (kind, name, expectedFilename) => {
+    async (kind, name, expectedFilename, filename?: string) => {
       const { fileContext } = await prepareWorkflowFileContext({
         query: [],
         histories: [],
@@ -553,7 +558,7 @@ describe('prepareWorkflowFileContext', () => {
       const rootRef =
         kind === 'child'
           ? undefined
-          : fileContext.registerExternalFile({ url, name, type: ChatFileTypeEnum.file });
+          : fileContext.registerExternalFile({ url, name, filename, type: ChatFileTypeEnum.file });
       const context = kind === 'root' ? fileContext : await fileContext.derive([url]);
       const ref = context.resolve(url)!;
       if (kind === 'inherited') expect(ref).toBe(rootRef);
@@ -573,6 +578,45 @@ describe('prepareWorkflowFileContext', () => {
         'pdf'
       );
       expect(ref.name).toBe(displayName);
+    }
+  );
+
+  it.each(['root', 'inherited', 'child'] as const)(
+    '%s Context 复用探测文件名，通用下载响应仍可选择 PDF 解析器',
+    async (kind) => {
+      const url = 'https://cdn.example.com/download';
+      axiosHeadMock.mockResolvedValue({ headers: { 'content-type': 'application/octet-stream' } });
+      axiosGetMock.mockImplementation(async () => ({
+        status: 200,
+        data: Readable.from([Buffer.from('%PDF-1.7\n')]),
+        headers: { 'content-type': 'application/octet-stream' }
+      }));
+      const file = createFile({ url, name: '报告' });
+      const { fileContext } = await prepareWorkflowFileContext({
+        query: kind === 'child' ? [] : [file],
+        histories: [],
+        scope,
+        maxFileAmount: 20
+      });
+      const context = kind === 'root' ? fileContext : await fileContext.derive([file.file!]);
+      const ref = context.resolve(url)!;
+      expect(ref).toMatchObject({ name: '报告', filename: 'download.pdf' });
+      if (kind === 'inherited') expect(ref).toBe(fileContext.resolve(url));
+      if (kind === 'child') expect(fileContext.resolve(url)).toBeUndefined();
+      expect(
+        await prepareChatFiles({ files: [{ url }], maxFiles: 1, fileContext: context })
+      ).toEqual([{ url, name: '报告', filename: 'download.pdf', type: ChatFileTypeEnum.file }]);
+      expect(axiosHeadMock).toHaveBeenCalledTimes(1);
+      expect(axiosGetMock).toHaveBeenCalledTimes(1);
+
+      const { source } = await context.getSource(url);
+      expect(source.metadata.filename).toBe('download.pdf');
+      const result = await source.materialize({ signal: new AbortController().signal });
+      expect(result.metadata.filename).toBe('download.pdf');
+      expect(resolveFileSourceExtension({ buffer: result.buffer, metadata: result.metadata })).toBe(
+        'pdf'
+      );
+      expect(axiosGetMock).toHaveBeenCalledTimes(2);
     }
   );
 

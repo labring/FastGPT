@@ -18,15 +18,20 @@ import { getFileUrlIdentity, isAbsoluteHttpUrl, selectFileInputs } from './utils
 export type ChatFileInput = Pick<UserChatItemFileItemType, 'url'> &
   Partial<Pick<UserChatItemFileItemType, 'name' | 'type'>>;
 
+/** filename 保存探测文件名（包含识别出的后缀），与调用方指定的显示名称 name 分离。 */
+export type PreparedChatFile = UserChatItemFileItemType & { filename?: string };
+
+type FileProbeResult = Pick<PreparedChatFile, 'type' | 'filename'>;
+
 /** 分类只依赖已登记元数据，不依赖工作流、权限校验或登记实现。 */
 export type FileClassificationContext = {
-  resolveChatFile: (url: string) => UserChatItemFileItemType | undefined;
+  resolveChatFile: (url: string) => PreparedChatFile | undefined;
   getIdentity: (url: string) => string | undefined;
 };
 
 /** 上层可提供登记能力；只接收已分类文件，禁止在登记方法中再次推测类型。 */
 export type FilePreparationContext = FileClassificationContext & {
-  registerExternalFile?: (file: UserChatItemFileItemType) => {
+  registerExternalFile?: (file: PreparedChatFile) => {
     name: string;
     type: ChatFileTypeEnum;
     modelUrl: string;
@@ -37,7 +42,7 @@ export type FilePreparationContext = FileClassificationContext & {
 const classificationStates = new WeakMap<
   FileClassificationContext,
   {
-    files: Map<string, Promise<ChatFileTypeEnum>>;
+    files: Map<string, Promise<FileProbeResult>>;
     probe: ReturnType<typeof pLimit>;
   }
 >();
@@ -58,7 +63,7 @@ export const parseUrlToChatFileType = async ({
   fileContext?: FileClassificationContext;
   /** 由上层验证过的对象元数据；短链使用真实 objectKey 和元数据，不探测签名 URL。 */
   metadata?: { filename?: string; contentType?: string };
-}): Promise<UserChatItemFileItemType | undefined> => {
+}): Promise<PreparedChatFile | undefined> => {
   if (typeof url !== 'string') return;
   const registered = fileContext?.resolveChatFile(url);
   if (registered) return registered;
@@ -71,14 +76,14 @@ export const parseUrlToChatFileType = async ({
     if (mime.startsWith('video/')) return ChatFileTypeEnum.video;
   };
 
-  /** 只缓存远端探测类型；调用方的文件名和显式类型不进入缓存，避免首次调用污染后续元数据。 */
-  const probeType = (): Promise<ChatFileTypeEnum> => {
+  /** 缓存远端类型和文件名；调用方的显示名称和显式类型不进入缓存，避免相互污染。 */
+  const probeFile = (): Promise<FileProbeResult> => {
     const state = (() => {
       if (!fileContext) return;
       const existing = classificationStates.get(fileContext);
       if (existing) return existing;
       const created = {
-        files: new Map<string, Promise<ChatFileTypeEnum>>(),
+        files: new Map<string, Promise<FileProbeResult>>(),
         probe: pLimit(5)
       };
       classificationStates.set(fileContext, created);
@@ -90,22 +95,22 @@ export const parseUrlToChatFileType = async ({
 
     const pending = (state?.probe ?? probeWithoutContext)(async () => {
       try {
-        const { contentType } = await inferFileTypeFromUrl({
+        const { contentType, filename } = await inferFileTypeFromUrl({
           url,
           validateUrl: validateFileUrlDomain
         });
-        return mediaTypeFromMime(contentType) ?? ChatFileTypeEnum.file;
+        return { type: mediaTypeFromMime(contentType) ?? ChatFileTypeEnum.file, filename };
       } catch {
         // 系统探测失败时只降级类型，不授予读取权限；业务读取仍需通过独立校验。
       }
-      return ChatFileTypeEnum.file;
+      return { type: ChatFileTypeEnum.file };
     });
     state?.files.set(identity, pending);
     return pending;
   };
 
-  /** 推测仅处理类型；请求层仍逐跳检查 SSRF 和域名白名单，避免重定向绕过输入校验。 */
-  const infer = async (): Promise<UserChatItemFileItemType | undefined> => {
+  /** 推测补充类型和文件名；请求层仍逐跳检查 SSRF 和域名白名单，避免重定向绕过输入校验。 */
+  const infer = async (): Promise<PreparedChatFile | undefined> => {
     if (url.startsWith('data:')) {
       const mime = url.match(/^data:([^;]+);base64,/)?.[1].toLowerCase();
       if (!mime?.startsWith('image/')) return;
@@ -133,23 +138,23 @@ export const parseUrlToChatFileType = async ({
         )
         .find((type) => type !== undefined);
 
-      const resolvedType = await (async () => {
-        if (type && type !== ChatFileTypeEnum.file) return type;
+      const resolved = await (async (): Promise<FileProbeResult> => {
+        if (type && type !== ChatFileTypeEnum.file) return { type };
         const metadataType = mediaTypeFromMime(metadata?.contentType);
-        if (metadataType) return metadataType;
-        if (filenameType) return filenameType;
+        if (metadataType) return { type: metadataType };
+        if (filenameType) return { type: filenameType };
         if (
           documentFileExtensions.some((item) => item === extension) ||
           !isAbsoluteHttpUrl(url) ||
           !validateFileUrlDomain(url)
         )
-          return ChatFileTypeEnum.file;
-        return probeType();
+          return { type: ChatFileTypeEnum.file };
+        return probeFile();
       })();
 
       return {
-        type: resolvedType,
-        name: name || (filename ? decodeURIComponent(filename) : url),
+        ...resolved,
+        name: name || resolved.filename || (filename ? decodeURIComponent(filename) : url),
         url
       };
     } catch {
@@ -193,7 +198,7 @@ export const prepareChatFiles = async ({
   maxFiles: number;
   fileContext?: FilePreparationContext;
   allowDataUrl?: boolean;
-}): Promise<UserChatItemFileItemType[]> => {
+}): Promise<PreparedChatFile[]> => {
   const selected = selectFileInputs({
     files: files
       .filter((file) => typeof file.url === 'string' && file.url.trim())
@@ -221,5 +226,5 @@ export const prepareChatFiles = async ({
     },
     5
   );
-  return parsed.filter((file): file is UserChatItemFileItemType => file !== undefined);
+  return parsed.filter((file): file is PreparedChatFile => file !== undefined);
 };
