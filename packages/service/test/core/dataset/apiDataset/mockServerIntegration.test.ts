@@ -75,7 +75,10 @@ describe('API Dataset Mock Server: 协议集成与压测套件', () => {
         expect(childFiles[0]).toMatchObject({ id: 'doc-child', type: 'file' });
 
         const detail = await request.getFileDetail({ apiFileId: 'fld-1' });
-        expect(detail).toMatchObject({ id: 'fld-1', type: 'folder', hasChild: true });
+        expect(detail).toMatchObject({
+          success: true,
+          data: { id: 'fld-1', type: 'folder', hasChild: true }
+        });
 
         const content = await request.getFileContent({
           apiFileId: 'doc-child',
@@ -101,45 +104,55 @@ describe('API Dataset Mock Server: 协议集成与压测套件', () => {
         const request = useFeishuDatasetRequest({ feishuServer });
 
         const folderDetail = await request.getFileDetail({ apiFileId: 'fld-sub' });
-        expect(folderDetail).toMatchObject({
-          id: 'fld-sub',
-          name: 'Feishu Sub Folder',
-          type: 'folder',
-          hasChild: true
-        });
+        expect(folderDetail.success).toBe(true);
+        if (folderDetail.success) {
+          expect(folderDetail.data).toMatchObject({
+            id: 'fld-sub',
+            name: 'Feishu Sub Folder',
+            type: 'folder',
+            hasChild: true
+          });
+        }
 
         const docDetail = await request.getFileDetail({ apiFileId: 'doc-1' });
-        expect(docDetail).toMatchObject({
-          id: 'doc-1',
-          name: 'Feishu Doc 1',
-          type: 'file',
-          hasChild: false
-        });
+        expect(docDetail.success).toBe(true);
+        if (docDetail.success) {
+          expect(docDetail.data).toMatchObject({
+            id: 'doc-1',
+            name: 'Feishu Doc 1',
+            type: 'file',
+            hasChild: false
+          });
+        }
       });
 
       it('真正删除场景：远端 token 不存在时返回文件不存在', async () => {
         mockServer.feishuNotFoundTokens.add('gone-token');
         const request = useFeishuDatasetRequest({ feishuServer });
 
-        await expect(request.getFileDetail({ apiFileId: 'gone-token' })).rejects.toBe('文件不存在');
+        const gone = await request.getFileDetail({ apiFileId: 'gone-token' });
+        expect(gone).toEqual({
+          success: false,
+          code: 'NOT_FOUND',
+          message: '文件不存在',
+          status: 404
+        });
       });
 
       it('I01 关键保护：飞书遇到 503 异常时抛错中止，绝不被误判为文件不存在', async () => {
         mockServer.feishu503 = true;
         const request = useFeishuDatasetRequest({ feishuServer });
 
-        await expect(request.getFileDetail({ apiFileId: 'fld-root' })).rejects.toMatchObject({
-          status: 503
-        });
+        const down = await request.getFileDetail({ apiFileId: 'fld-root' });
+        expect(down).toMatchObject({ success: false, code: 'SERVER_ERROR', status: 503 });
       });
 
       it('I01 关键保护：飞书遇到 429 限流时抛错中止，绝不被误判为文件不存在', async () => {
         mockServer.feishu429 = true;
         const request = useFeishuDatasetRequest({ feishuServer });
 
-        await expect(request.getFileDetail({ apiFileId: 'fld-root' })).rejects.toMatchObject({
-          status: 429
-        });
+        const limit = await request.getFileDetail({ apiFileId: 'fld-root' });
+        expect(limit).toMatchObject({ success: false, code: 'RATE_LIMIT', status: 429 });
       });
     });
 
@@ -219,10 +232,13 @@ describe('API Dataset Mock Server: 协议集成与压测套件', () => {
         });
 
         const repoDetail = await request.getFileDetail({ apiFileId: '1001' });
-        expect(repoDetail.id).toBe('1001');
-        expect(repoDetail.rawId).toBe('1001');
-        expect(repoDetail.type).toBe('folder');
-        expect(repoDetail.hasChild).toBe(true);
+        expect(repoDetail.success).toBe(true);
+        if (repoDetail.success) {
+          expect(repoDetail.data.id).toBe('1001');
+          expect(repoDetail.data.rawId).toBe('1001');
+          expect(repoDetail.data.type).toBe('folder');
+          expect(repoDetail.data.hasChild).toBe(true);
+        }
       });
 
       it('I11 关键保护：同一实例多次读取同一知识库子目录时复用 TOC 缓存', async () => {

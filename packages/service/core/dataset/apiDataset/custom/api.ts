@@ -2,8 +2,14 @@ import type {
   ApiFileReadContentResponseType,
   APIFileReadResponseType,
   ApiDatasetDetailResponse,
+  ApiDatasetResult,
   APIFileServerType
 } from '@fastgpt/global/core/dataset/apiDataset/type';
+import {
+  classifyApiDatasetError,
+  toApiDatasetError,
+  toApiDatasetSuccess
+} from '@fastgpt/global/core/dataset/apiDataset/utils';
 import type { IultmzhFileParseConfigType } from '@fastgpt/global/core/dataset/type';
 import { type Method } from 'axios';
 import { createProxyAxios } from '../../../../common/api/axios';
@@ -120,9 +126,9 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
     previewUrl: string;
   }) => {
     try {
-      const fileDetail = await getFileDetail({ apiFileId });
-      if (fileDetail.name) {
-        return fileDetail.name;
+      const fileDetailRes = await getFileDetail({ apiFileId });
+      if (fileDetailRes.success && fileDetailRes.data.name) {
+        return fileDetailRes.data.name;
       }
     } catch (error) {
       logger.warn('Get api dataset file detail for title fallback failed', {
@@ -267,31 +273,35 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
     apiFileId
   }: {
     apiFileId: string;
-  }): Promise<ApiDatasetDetailResponse> => {
-    const fileData = await request<ApiDatasetDetailResponse>(
-      `/v1/file/detail`,
-      {
-        id: apiFileId
-      },
-      'GET'
-    );
+  }): Promise<ApiDatasetResult<ApiDatasetDetailResponse>> => {
+    try {
+      const fileData = await request<ApiDatasetDetailResponse>(
+        `/v1/file/detail`,
+        {
+          id: apiFileId
+        },
+        'GET'
+      );
 
-    if (fileData) {
-      return {
-        id: fileData.id,
-        rawId: apiFileId,
-        name: fileData.name,
-        parentId: fileData.parentId === null ? '' : fileData.parentId,
-        type: fileData.type,
-        // 与 listFiles 同一口径。同步拿它当根种子：漏了 hasChild 会退化为 false，
-        // 子树不再被遍历 → 后代全部落入删除集，整棵删掉
-        hasChild: fileData.hasChild ?? fileData.type === 'folder',
-        updateTime: fileData.updateTime,
-        createTime: fileData.createTime
-      };
+      if (fileData) {
+        return toApiDatasetSuccess({
+          id: fileData.id,
+          rawId: apiFileId,
+          name: fileData.name,
+          parentId: fileData.parentId === null ? '' : fileData.parentId,
+          type: fileData.type,
+          // 与 listFiles 同一口径。同步拿它当根种子：漏了 hasChild 会退化为 false，
+          // 子树不再被遍历 → 后代全部落入删除集，整棵删掉
+          hasChild: fileData.hasChild ?? fileData.type === 'folder',
+          updateTime: fileData.updateTime,
+          createTime: fileData.createTime
+        });
+      }
+
+      return toApiDatasetError('NOT_FOUND', 'File not found', 404);
+    } catch (err: any) {
+      return classifyApiDatasetError(err);
     }
-
-    return Promise.reject('File not found');
   };
 
   const getFileRawId = (fileId: string) => {

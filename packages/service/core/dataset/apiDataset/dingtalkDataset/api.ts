@@ -1,9 +1,15 @@
 import type {
   APIFileItemType,
   ApiDatasetDetailResponse,
+  ApiDatasetResult,
   ApiFileReadContentResponseType,
   DingtalkServerType
 } from '@fastgpt/global/core/dataset/apiDataset/type';
+import {
+  classifyApiDatasetError,
+  toApiDatasetError,
+  toApiDatasetSuccess
+} from '@fastgpt/global/core/dataset/apiDataset/utils';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import type { Method } from 'axios';
 import { axiosWithoutSSRF, createProxyAxios } from '../../../../common/api/axios';
@@ -586,27 +592,31 @@ export const useDingtalkDatasetRequest = ({
     apiFileId
   }: {
     apiFileId: string;
-  }): Promise<ApiDatasetDetailResponse> => {
-    // 钉钉特殊：配置里填的根节点可能是「知识库（workspace）」本身，它不是真实 dentry，
-    // 查详情接口必然查不到，只能用配置里的名字合成，否则整库同步第一轮就因根节点失败而中止
-    if (apiFileId === dingtalkServer.rootNodeId && dingtalkServer.workspaceName) {
-      return {
-        id: apiFileId,
-        rawId: apiFileId,
-        parentId: null,
-        name: dingtalkServer.workspaceName,
-        type: 'folder',
-        hasChild: true,
-        updateTime: new Date(),
-        createTime: new Date()
-      };
+  }): Promise<ApiDatasetResult<ApiDatasetDetailResponse>> => {
+    try {
+      // 钉钉特殊：配置里填的根节点可能是「知识库（workspace）」本身，它不是真实 dentry，
+      // 查详情接口必然查不到，只能用配置里的名字合成，否则整库同步第一轮就因根节点失败而中止
+      if (apiFileId === dingtalkServer.rootNodeId && dingtalkServer.workspaceName) {
+        return toApiDatasetSuccess({
+          id: apiFileId,
+          rawId: apiFileId,
+          parentId: null,
+          name: dingtalkServer.workspaceName,
+          type: 'folder',
+          hasChild: true,
+          updateTime: new Date(),
+          createTime: new Date()
+        });
+      }
+
+      const { accessToken, operatorId } = await getTokenAndOperatorId();
+      const detail = await getDingtalkNodeDetail({ accessToken, operatorId, apiFileId });
+      if (!detail) return toApiDatasetError('NOT_FOUND', '文件不存在', 404);
+
+      return toApiDatasetSuccess(detail);
+    } catch (err: any) {
+      return classifyApiDatasetError(err);
     }
-
-    const { accessToken, operatorId } = await getTokenAndOperatorId();
-    const detail = await getDingtalkNodeDetail({ accessToken, operatorId, apiFileId });
-    if (!detail) return Promise.reject('文件不存在');
-
-    return detail;
   };
 
   const getFileRawId = (fileId: string) => {

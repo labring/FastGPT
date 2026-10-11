@@ -87,9 +87,11 @@ describe('useYuqueDatasetRequest', () => {
     expect(children.map((item) => item.id)).toEqual(['100-2001-uuid-child']);
 
     const detail = await request.getFileDetail({ apiFileId: '100-2000-uuid-doc' });
-    expect(detail.id).toBe('100-2000-uuid-doc');
-    // 同一节点的详情 id 必须能在列表里找到，否则同步会走「新增 + 删除」双重路径
-    expect(listed.some((item) => item.id === detail.id)).toBe(true);
+    expect(detail.success).toBe(true);
+    if (detail.success) {
+      expect(detail.data.id).toBe('100-2000-uuid-doc');
+      expect(listed.some((item) => item.id === detail.data.id)).toBe(true);
+    }
   });
 
   /**
@@ -102,14 +104,19 @@ describe('useYuqueDatasetRequest', () => {
     const request = useYuqueDatasetRequest({ yuqueServer: server });
 
     const parentDoc = await request.getFileDetail({ apiFileId: '100-2000-uuid-doc' });
-    expect(parentDoc.hasChild).toBe(true);
-    expect(parentDoc.type).toBe('file');
-    // parent_uuid 为空 ⇒ 挂在知识库根，parentId 是裸 repoId
-    expect(parentDoc.parentId).toBe('100');
+    expect(parentDoc.success).toBe(true);
+    if (parentDoc.success) {
+      expect(parentDoc.data.hasChild).toBe(true);
+      expect(parentDoc.data.type).toBe('file');
+      expect(parentDoc.data.parentId).toBe('100');
+    }
 
     const childDoc = await request.getFileDetail({ apiFileId: '100-2001-uuid-child' });
-    expect(childDoc.hasChild).toBe(false);
-    expect(childDoc.parentId).toBe('100-2000-uuid-doc');
+    expect(childDoc.success).toBe(true);
+    if (childDoc.success) {
+      expect(childDoc.data.hasChild).toBe(false);
+      expect(childDoc.data.parentId).toBe('100-2000-uuid-doc');
+    }
   });
 
   /**
@@ -120,9 +127,8 @@ describe('useYuqueDatasetRequest', () => {
     mockRequest.mockResolvedValue(ok(TOC));
     const request = useYuqueDatasetRequest({ yuqueServer: server });
 
-    await expect(request.getFileDetail({ apiFileId: '100-9999-uuid-missing' })).rejects.toBe(
-      '文件不存在'
-    );
+    const res = await request.getFileDetail({ apiFileId: '100-9999-uuid-missing' });
+    expect(res).toEqual({ success: false, code: 'NOT_FOUND', message: '文件不存在', status: 404 });
   });
 
   /**
@@ -174,20 +180,23 @@ describe('useYuqueDatasetRequest', () => {
 
     const request = useYuqueDatasetRequest({ yuqueServer: server });
     const detail = await request.getFileDetail({ apiFileId: '999' });
-
-    expect(detail).toMatchObject({
-      id: '999',
-      rawId: '999',
-      name: 'Knowledge Base',
-      type: 'folder',
-      hasChild: true
-    });
+    expect(detail.success).toBe(true);
+    if (detail.success) {
+      expect(detail.data).toMatchObject({
+        id: '999',
+        rawId: '999',
+        name: 'Knowledge Base',
+        type: 'folder',
+        hasChild: true
+      });
+    }
   });
 
   it('getFileDetail 对不存在的知识库 ID reject 文件不存在', async () => {
     mockRequest.mockResolvedValueOnce(ok([]));
     const request = useYuqueDatasetRequest({ yuqueServer: server });
-    await expect(request.getFileDetail({ apiFileId: '999' })).rejects.toBe('文件不存在');
+    const res = await request.getFileDetail({ apiFileId: '999' });
+    expect(res).toEqual({ success: false, code: 'NOT_FOUND', message: '文件不存在', status: 404 });
   });
 
   it('getFilePreviewUrl 生成正确的文档预览 URL', async () => {

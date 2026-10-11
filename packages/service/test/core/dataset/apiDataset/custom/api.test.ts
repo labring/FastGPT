@@ -108,23 +108,21 @@ describe('useApiDatasetRequest.getFileDetail', () => {
   it('对方没给 hasChild 时按 type 回退，folder 不退化', async () => {
     mockRequestByUrl({ '/v1/file/detail': detail({ type: 'folder' }) });
 
-    await expect(provider().getFileDetail({ apiFileId: 'root' })).resolves.toMatchObject({
-      id: 'root',
-      type: 'folder',
-      hasChild: true
+    const res = await provider().getFileDetail({ apiFileId: 'root' });
+    expect(res).toMatchObject({
+      success: true,
+      data: { id: 'root', type: 'folder', hasChild: true }
     });
   });
 
   it('对方给了 hasChild 时以对方为准：folder 可以无子级，file 可以挂子级', async () => {
     mockRequestByUrl({ '/v1/file/detail': detail({ type: 'folder', hasChild: false }) });
-    await expect(provider().getFileDetail({ apiFileId: 'root' })).resolves.toMatchObject({
-      hasChild: false
-    });
+    const res1 = await provider().getFileDetail({ apiFileId: 'root' });
+    expect(res1).toMatchObject({ success: true, data: { hasChild: false } });
 
     mockRequestByUrl({ '/v1/file/detail': detail({ type: 'file', hasChild: true }) });
-    await expect(provider().getFileDetail({ apiFileId: 'root' })).resolves.toMatchObject({
-      hasChild: true
-    });
+    const res2 = await provider().getFileDetail({ apiFileId: 'root' });
+    expect(res2).toMatchObject({ success: true, data: { hasChild: true } });
   });
 
   it('详情返回值直接当同步根种子时，子树被完整遍历', async () => {
@@ -143,9 +141,11 @@ describe('useApiDatasetRequest.getFileDetail', () => {
     });
 
     const api = provider();
+    const seedRes = await api.getFileDetail({ apiFileId: 'root' });
+    expect(seedRes.success).toBe(true);
     const nodes = await buildApiFileTree({
       request: api as any,
-      seeds: [await api.getFileDetail({ apiFileId: 'root' })]
+      seeds: [seedRes.data!]
     });
 
     expect(nodes.map((node) => node.serverId)).toEqual(['root', 'child']);
@@ -230,11 +230,15 @@ describe('useApiDatasetRequest other methods', () => {
     );
   });
 
-  it('getFileDetail 未找到文件时报错', async () => {
+  it('getFileDetail 未找到文件时返回 NOT_FOUND Result', async () => {
     mocks.request.mockResolvedValueOnce({ data: { success: true, data: null } });
-    await expect(provider().getFileDetail({ apiFileId: 'not-exist' })).rejects.toBe(
-      'File not found'
-    );
+    const res = await provider().getFileDetail({ apiFileId: 'not-exist' });
+    expect(res).toEqual({
+      success: false,
+      code: 'NOT_FOUND',
+      message: 'File not found',
+      status: 404
+    });
   });
 
   it('getFileContent 从 previewUrl 中解析 fallback 标题', async () => {

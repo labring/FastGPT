@@ -33,9 +33,12 @@ describe('POST /core/dataset/collection/create/apiCollection (V1)', () => {
       dataset: { _id: '6acb61a720031dde73883463', apiDatasetServer: {} }
     });
     mockGetFileDetail.mockResolvedValue({
-      id: 'f1',
-      name: 'File 1',
-      type: 'file'
+      success: true,
+      data: {
+        id: 'f1',
+        name: 'File 1',
+        type: 'file'
+      }
     });
     mockCreateApiDatasetCollection.mockResolvedValue({
       successCount: 1,

@@ -25,11 +25,16 @@ async function handler(req: ApiRequestProps) {
     parentId: body.parentId
   });
 
-  const fileDetail = await (
+  const fileDetailRes = await (
     await getApiDatasetRequest(dataset.apiDatasetServer)
   ).getFileDetail({
     apiFileId
   });
+
+  if (!fileDetailRes.success) {
+    return Promise.reject(fileDetailRes.message);
+  }
+  const fileDetail = fileDetailRes.data;
 
   return CreateApiCollectionResponseSchema.parse(
     await createApiDatasetCollection({

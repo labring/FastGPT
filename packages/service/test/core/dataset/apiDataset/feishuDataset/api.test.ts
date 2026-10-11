@@ -70,14 +70,16 @@ describe('useFeishuDatasetRequest.getFileDetail', () => {
     const request = useFeishuDatasetRequest({ feishuServer: server });
 
     const detail = await request.getFileDetail({ apiFileId: 'fld-sub' });
-
-    expect(detail).toMatchObject({
-      id: 'fld-sub',
-      rawId: 'fld-sub',
-      name: 'Sub Folder',
-      type: 'folder',
-      hasChild: true
-    });
+    expect(detail.success).toBe(true);
+    if (detail.success) {
+      expect(detail.data).toMatchObject({
+        id: 'fld-sub',
+        rawId: 'fld-sub',
+        name: 'Sub Folder',
+        type: 'folder',
+        hasChild: true
+      });
+    }
     const urls = mockRequest.mock.calls.map((call) => call[0].url);
     // docx 查不到才回退 folder，故是两次 metas 查询，且都不碰 docx 详情接口
     expect(urls).toEqual([
@@ -102,11 +104,15 @@ describe('useFeishuDatasetRequest.getFileDetail', () => {
       .mockResolvedValueOnce(ok({ metas: [{ title: 'Empty-result Folder', doc_type: 'folder' }] }));
     const request = useFeishuDatasetRequest({ feishuServer: server });
 
-    await expect(request.getFileDetail({ apiFileId: 'fld-empty-result' })).resolves.toMatchObject({
-      name: 'Empty-result Folder',
-      type: 'folder',
-      hasChild: true
-    });
+    const detail = await request.getFileDetail({ apiFileId: 'fld-empty-result' });
+    expect(detail.success).toBe(true);
+    if (detail.success) {
+      expect(detail.data).toMatchObject({
+        name: 'Empty-result Folder',
+        type: 'folder',
+        hasChild: true
+      });
+    }
     expect(mockRequest.mock.calls.map((call) => call[0].data.request_docs[0].doc_type)).toEqual([
       'docx',
       'folder'
@@ -122,8 +128,10 @@ describe('useFeishuDatasetRequest.getFileDetail', () => {
     const request = useFeishuDatasetRequest({ feishuServer: server });
 
     const detail = await request.getFileDetail({ apiFileId: 'doc-token' });
-
-    expect(detail).toMatchObject({ name: 'Doc', type: 'file', hasChild: false });
+    expect(detail.success).toBe(true);
+    if (detail.success) {
+      expect(detail.data).toMatchObject({ name: 'Doc', type: 'file', hasChild: false });
+    }
     expect(mockRequest).toHaveBeenCalledTimes(1);
     expect(mockRequest.mock.calls[0][0].data.request_docs[0].doc_type).toBe('docx');
   });
@@ -137,7 +145,8 @@ describe('useFeishuDatasetRequest.getFileDetail', () => {
     mockMetasByType({});
     const request = useFeishuDatasetRequest({ feishuServer: server });
 
-    await expect(request.getFileDetail({ apiFileId: 'gone' })).rejects.toBe('文件不存在');
+    const res = await request.getFileDetail({ apiFileId: 'gone' });
+    expect(res).toEqual({ success: false, code: 'NOT_FOUND', message: '文件不存在', status: 404 });
     expect(mockRequest).toHaveBeenCalledTimes(2);
   });
 
@@ -147,16 +156,13 @@ describe('useFeishuDatasetRequest.getFileDetail', () => {
     );
     const request = useFeishuDatasetRequest({ feishuServer: server });
 
-    await expect(request.getFileDetail({ apiFileId: 'server-down' })).rejects.toMatchObject({
-      status: 503
-    });
-    // 首次 docx 查询遇到 503 即抛错，不继续盲目查询 folder
+    const down = await request.getFileDetail({ apiFileId: 'server-down' });
+    expect(down).toMatchObject({ success: false, code: 'SERVER_ERROR', status: 503 });
     expect(mockRequest).toHaveBeenCalledTimes(1);
 
     mockRequest.mockRejectedValueOnce({ code: 'ECONNRESET' });
-    await expect(request.getFileDetail({ apiFileId: 'conn-reset' })).rejects.toMatchObject({
-      code: 'ECONNRESET'
-    });
+    const reset = await request.getFileDetail({ apiFileId: 'conn-reset' });
+    expect(reset).toMatchObject({ success: false, code: 'NETWORK_ERROR' });
   });
 
   describe('listFiles, getFileContent, getFilePreviewUrl, getFileRawId', () => {

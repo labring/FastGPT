@@ -396,12 +396,15 @@ describe('useDingtalkDatasetRequest', () => {
     const detail = await request.getFileDetail({ apiFileId: 'root-1' });
     const previewUrl = await request.getFilePreviewUrl({ apiFileId: 'doc-1' });
 
-    expect(detail).toMatchObject({
-      id: 'root-1',
-      rawId: 'root-1',
-      name: 'Workspace 1',
-      type: 'folder'
-    });
+    expect(detail.success).toBe(true);
+    if (detail.success) {
+      expect(detail.data).toMatchObject({
+        id: 'root-1',
+        rawId: 'root-1',
+        name: 'Workspace 1',
+        type: 'folder'
+      });
+    }
     expect(previewUrl).toBe('https://alidocs.dingtalk.com/i/nodes/doc-1');
     expect(request.getFileRawId('doc-1')).toBe('doc-1');
     expect(mockRequest).not.toHaveBeenCalled();
@@ -430,14 +433,16 @@ describe('useDingtalkDatasetRequest', () => {
     });
 
     const detail = await request.getFileDetail({ apiFileId: 'doc-1' });
-
-    expect(detail).toMatchObject({
-      id: 'doc-1',
-      rawId: 'doc-1',
-      parentId: 'root-1',
-      name: 'Doc',
-      type: 'file'
-    });
+    expect(detail.success).toBe(true);
+    if (detail.success) {
+      expect(detail.data).toMatchObject({
+        id: 'doc-1',
+        rawId: 'doc-1',
+        parentId: 'root-1',
+        name: 'Doc',
+        type: 'file'
+      });
+    }
   });
 
   it('should filter workspaces by searchKey and ignore invalid workspace payloads', async () => {
@@ -941,7 +946,8 @@ describe('useDingtalkDatasetRequest', () => {
       }
     });
 
-    await expect(request.getFileDetail({ apiFileId: 'unknown-1' })).rejects.toBe('文件不存在');
+    const res = await request.getFileDetail({ apiFileId: 'unknown-1' });
+    expect(res).toEqual({ success: false, code: 'NOT_FOUND', message: '文件不存在', status: 404 });
   });
 
   it('should use root node id as rawId when workspace id is empty', async () => {
@@ -955,8 +961,10 @@ describe('useDingtalkDatasetRequest', () => {
     });
 
     const detail = await request.getFileDetail({ apiFileId: 'root-1' });
-
-    expect(detail.rawId).toBe('root-1');
+    expect(detail.success).toBe(true);
+    if (detail.success) {
+      expect(detail.data.rawId).toBe('root-1');
+    }
   });
 
   it('should reject when operatorId cannot be resolved from userId', async () => {

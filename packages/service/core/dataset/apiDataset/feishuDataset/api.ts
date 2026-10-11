@@ -2,8 +2,14 @@ import type {
   APIFileItemType,
   ApiFileReadContentResponseType,
   ApiDatasetDetailResponse,
+  ApiDatasetResult,
   FeishuServerType
 } from '@fastgpt/global/core/dataset/apiDataset/type';
+import {
+  classifyApiDatasetError,
+  toApiDatasetError,
+  toApiDatasetSuccess
+} from '@fastgpt/global/core/dataset/apiDataset/utils';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type Method } from 'axios';
 import { createProxyAxios, axiosWithoutSSRF } from '../../../../common/api/axios';
@@ -195,81 +201,66 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
     apiFileId
   }: {
     apiFileId: string;
-  }): Promise<ApiDatasetDetailResponse> => {
-    const queryMeta = async (docType: 'docx' | 'folder') => {
-      const { metas } = await request<{ metas: { title: string; doc_type: string }[] }>(
-        `/open-apis/drive/v1/metas/batch_query`,
-        {
-          request_docs: [
-            {
-              doc_token: apiFileId,
-              doc_type: docType
-            }
-          ]
-        },
-        'POST'
-      );
-      return metas?.[0];
-    };
-
-    const isTemporaryError = (err: any): boolean => {
-      if (!err) return false;
-      const status = err?.status ?? err?.statusCode ?? err?.response?.status;
-      if (status === 404) return false;
-      if (status && (status >= 500 || status === 429 || status === 401 || status === 403)) {
-        return true;
-      }
-      const code = err?.code ?? err?.response?.data?.code;
-      if (
-        typeof code === 'string' &&
-        ['ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'EAI_AGAIN'].includes(code)
-      ) {
-        return true;
-      }
-      const msg = String(err?.message ?? err?.msg ?? err?.error ?? '');
-      if (
-        /timeout|503|502|500|429|401|403|network|rate limit|服务不可用|service unavailable|unavailable/i.test(
-          msg
-        )
-      ) {
-        return true;
-      }
-      return false;
-    };
-
-    let meta: { title: string; doc_type: string } | undefined;
+  }): Promise<ApiDatasetResult<ApiDatasetDetailResponse>> => {
     try {
-      meta = await queryMeta('docx');
-    } catch (err: any) {
-      if (isTemporaryError(err)) throw err;
-      meta = undefined;
-    }
+      const queryMeta = async (docType: 'docx' | 'folder') => {
+        const { metas } = await request<{ metas: { title: string; doc_type: string }[] }>(
+          `/open-apis/drive/v1/metas/batch_query`,
+          {
+            request_docs: [
+              {
+                doc_token: apiFileId,
+                doc_type: docType
+              }
+            ]
+          },
+          'POST'
+        );
+        return metas?.[0];
+      };
 
-    // batch_query 在类型不匹配时也可能正常返回、但 metas 为空；这种情况不会进入 catch，
-    // 仍需按 folder 再查一次，避免把真实文件夹误判成「文件不存在」。
-    if (!meta) {
+      let meta: { title: string; doc_type: string } | undefined;
       try {
-        meta = await queryMeta('folder');
+        meta = await queryMeta('docx');
       } catch (err: any) {
-        if (isTemporaryError(err)) throw err;
+        const classified = classifyApiDatasetError(err);
+        if (classified.code !== 'NOT_FOUND') {
+          return classified;
+        }
         meta = undefined;
       }
-    }
 
-    if (!meta) {
-      return Promise.reject('文件不存在');
-    }
+      // batch_query 在类型不匹配时也可能正常返回、但 metas 为空；这种情况不会进入 catch，
+      // 仍需按 folder 再查一次，避免把真实文件夹误判成「文件不存在」。
+      if (!meta) {
+        try {
+          meta = await queryMeta('folder');
+        } catch (err: any) {
+          const classified = classifyApiDatasetError(err);
+          if (classified.code !== 'NOT_FOUND') {
+            return classified;
+          }
+          meta = undefined;
+        }
+      }
 
-    return {
-      rawId: apiFileId,
-      name: meta.title,
-      parentId: null,
-      id: apiFileId,
-      type: meta.doc_type === 'folder' ? ('folder' as const) : ('file' as const),
-      hasChild: meta.doc_type === 'folder',
-      updateTime: new Date(),
-      createTime: new Date()
-    };
+      if (!meta) {
+        return toApiDatasetError('NOT_FOUND', '文件不存在', 404);
+      }
+
+      return toApiDatasetSuccess({
+        rawId: apiFileId,
+        name: meta.title,
+        parentId: null,
+        id: apiFileId,
+        type: meta.doc_type === 'folder' ? ('folder' as const) : ('file' as const),
+        hasChild: meta.doc_type === 'folder',
+        updateTime: new Date(),
+        createTime: new Date()
+      });
+    } catch (err: any) {
+      return classifyApiDatasetError(err);
+    }
   };
 
   const getFileRawId = (fileId: string) => {
