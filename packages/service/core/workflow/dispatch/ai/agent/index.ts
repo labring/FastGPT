@@ -238,7 +238,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     // 获取请求上下文
     const { chatHistories, queryInput } = userContext;
-    const { rewrittenHistories, currentUserMessage } = userContext.getCurrentMessages({
+    const { rewrittenHistories, currentUserMessage } = await userContext.getCurrentMessages({
       skillInfos,
       currentWorkingDirectory
     });

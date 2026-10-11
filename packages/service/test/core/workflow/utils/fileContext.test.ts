@@ -1,3 +1,8 @@
+import {
+  prepareChatFiles,
+  parseUrlToChatFileType,
+  type ChatFileInput
+} from '@fastgpt/service/core/chat/file/service';
 import { Readable } from 'node:stream';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -10,21 +15,20 @@ import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { getFileMaxSize } from '@fastgpt/service/common/file/utils';
 
 const axiosGetMock = vi.hoisted(() => vi.fn());
+const axiosHeadMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
   const mod = await importOriginal<typeof import('@fastgpt/service/common/api/axios')>();
   return {
     ...mod,
     axios: {
-      get: axiosGetMock
+      get: axiosGetMock,
+      head: axiosHeadMock
     }
   };
 });
 
-import {
-  isAbsoluteHttpUrl,
-  prepareWorkflowFileContext
-} from '@fastgpt/service/core/workflow/utils/fileContext';
+import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
 import {
   filterWorkflowQueryFiles,
   getWorkflowFileAmountLimits
@@ -61,21 +65,6 @@ const createFile = (
 const createHistory = (file: UserChatItemValueItemType): ChatItemMiniType => ({
   obj: ChatRoleEnum.Human,
   value: [file]
-});
-
-describe('isAbsoluteHttpUrl', () => {
-  it.each([
-    ['https://files.example.com/a.pdf', true],
-    ['http://files.example.com/a.pdf', true],
-    ['/api/system/file/d/token', false],
-    ['//files.example.com/a.pdf', false],
-    ['file:///tmp/a.pdf', false],
-    ['data:text/plain,a', false],
-    ['ws://files.example.com/a.pdf', false],
-    ['http://[invalid', false]
-  ])('validates %s', (url, expected) => {
-    expect(isAbsoluteHttpUrl(url)).toBe(expected);
-  });
 });
 
 describe('filterWorkflowQueryFiles', () => {
@@ -323,7 +312,7 @@ describe('prepareWorkflowFileContext', () => {
     const secondUrl = query[1].file!.url;
     const childExternalUrl = 'https://child.example.com/generated.pdf';
 
-    const childContext = fileContext.derive([firstUrl, childExternalUrl]);
+    const childContext = await fileContext.derive([firstUrl, childExternalUrl]);
 
     expect(childContext.resolve(firstUrl)).toBe(fileContext.resolve(firstUrl));
     expect(childContext.resolve(secondUrl)).toBeUndefined();
@@ -354,7 +343,7 @@ describe('prepareWorkflowFileContext', () => {
       getPreviewUrl: vi.fn().mockResolvedValue('https://files.example.com/selected')
     });
 
-    expect(() =>
+    await expect(
       fileContext.derive([
         {
           key: 'chat/app/app-1/user-1/other-chat/unknown.pdf',
@@ -363,7 +352,7 @@ describe('prepareWorkflowFileContext', () => {
           type: ChatFileTypeEnum.file
         }
       ])
-    ).toThrow('not registered in the parent context');
+    ).rejects.toThrow('not registered in the parent context');
   });
 
   it('propagates an invalid signer result as a system error for history files', async () => {
@@ -1161,5 +1150,245 @@ describe('prepareWorkflowFileContext', () => {
     expect((histories[0].value[0] as UserChatItemValueItemType).file?.url).toBe(
       '/uploading/report.pdf'
     );
+  });
+});
+
+describe('external file classification and registration', () => {
+  const prepareExternal = async (
+    fileContext: import('@fastgpt/service/core/workflow/utils/fileContext').WorkflowFileContext,
+    file: ChatFileInput
+  ) => {
+    const [result] = await prepareChatFiles({ files: [file], maxFiles: 1, fileContext });
+    return fileContext.resolve(result.url)!;
+  };
+  beforeEach(() => {
+    axiosHeadMock.mockReset().mockResolvedValue({ headers: { 'content-type': 'image/png' } });
+    global.systemEnv = { fileUrlWhitelist: [] } as any;
+  });
+
+  afterEach(() => {
+    global.systemEnv = { fileUrlWhitelist: [] } as any;
+  });
+
+  const prepare = (query: UserChatItemValueItemType[] = [], maxFileAmount = 20) =>
+    prepareWorkflowFileContext({
+      query,
+      histories: [],
+      scope,
+      maxFileAmount,
+      getPreviewUrl: vi.fn()
+    });
+
+  it('classifies query and history before registration and shares concurrent requests', async () => {
+    const url = 'https://files.example.com/opaque';
+    const file = createFile({ url, name: 'photo', type: ChatFileTypeEnum.file });
+    const result = await prepareWorkflowFileContext({
+      query: [file, file],
+      histories: [createHistory(file)],
+      scope,
+      maxFileAmount: 20
+    });
+    expect(axiosHeadMock).toHaveBeenCalledTimes(1);
+    expect(result.query.every((item) => item.file?.type === ChatFileTypeEnum.image)).toBe(true);
+    expect(result.histories[0].value[0]).toMatchObject({ file: { type: ChatFileTypeEnum.image } });
+    expect(file.file?.type).toBe(ChatFileTypeEnum.file);
+    expect(result.fileContext.resolve(url)?.type).toBe(ChatFileTypeEnum.image);
+  });
+
+  it('shares classification with document preparation and registers only during preparation', async () => {
+    const { normalizeReadableFileUrl } = await import('../../../../core/chat/fileContext');
+    axiosHeadMock.mockResolvedValue({ headers: { 'content-type': 'application/pdf' } });
+    const { fileContext } = await prepare();
+    const url = 'https://files.example.com/opaque';
+    await runWithContext({ fileContext, mcpClientMemory: {} }, async () => {
+      await Promise.all([
+        parseUrlToChatFileType({ url, fileContext }),
+        parseUrlToChatFileType({ url, fileContext })
+      ]);
+      expect(fileContext.resolve(url)).toBeUndefined();
+      expect(await normalizeReadableFileUrl({ url, fileContext })).toBe(url);
+    });
+    expect(axiosHeadMock).toHaveBeenCalledTimes(1);
+    expect(fileContext.resolve(url)?.source).toEqual({ type: 'externalHttp', url });
+  });
+
+  it('retains the fallback result after probe failure for the current context only', async () => {
+    axiosHeadMock.mockRejectedValue(new Error('timeout'));
+    const { fileContext } = await prepare();
+    const file = { url: 'https://files.example.com/opaque' };
+    const [first, second] = await Promise.all([
+      prepareExternal(fileContext, file),
+      prepareExternal(fileContext, file)
+    ]);
+    expect(first).toBe(second);
+    expect(first.type).toBe(ChatFileTypeEnum.file);
+    await prepareExternal(fileContext, file);
+    expect(axiosHeadMock).toHaveBeenCalledTimes(1);
+    const next = await prepare();
+    await prepareExternal(next.fileContext, file);
+    expect(axiosHeadMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects non-whitelisted files without probing or registering them', async () => {
+    global.systemEnv = { fileUrlWhitelist: ['allowed.example.com'] } as any;
+    const { fileContext } = await prepare();
+    const url = 'https://blocked.example.com/opaque';
+    await expect(prepareExternal(fileContext, { url })).rejects.toThrow('Invalid file URL domain');
+    expect(axiosHeadMock).not.toHaveBeenCalled();
+    expect(fileContext.resolve(url)).toBeUndefined();
+  });
+
+  it('inherits selected classifications and keeps new child registrations isolated', async () => {
+    const url = 'https://files.example.com/opaque';
+    const { fileContext } = await prepare([createFile({ url })]);
+    const child = await fileContext.derive([url]);
+    expect(child.resolve(url)).toBe(fileContext.resolve(url));
+    const childUrl = 'https://files.example.com/child-opaque';
+    await prepareExternal(child, { url: childUrl });
+    expect(child.resolve(childUrl)?.type).toBe(ChatFileTypeEnum.image);
+    expect(fileContext.resolve(childUrl)).toBeUndefined();
+    expect(axiosHeadMock).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([0, 1])('truncates query files before probing with limit %s', async (maxFileAmount) => {
+    const result = await prepare(
+      [
+        createFile({ url: 'https://files.example.com/first' }),
+        createFile({ url: 'https://files.example.com/second' })
+      ],
+      maxFileAmount
+    );
+    expect(result.query).toHaveLength(maxFileAmount);
+    expect(axiosHeadMock).toHaveBeenCalledTimes(maxFileAmount);
+  });
+
+  it('normalizes child query and history using its registered classifications', async () => {
+    const { fileContext } = await prepare();
+    const file = createFile({ url: 'https://files.example.com/child-opaque' });
+    await runWithContext({ fileContext, mcpClientMemory: {} }, () =>
+      runWithDerivedWorkflowFileContext({
+        query: [file],
+        histories: [createHistory(file)],
+        files: [],
+        fn: async ({ query, histories }) => {
+          expect(query[0].file?.type).toBe(ChatFileTypeEnum.image);
+          expect(histories[0].value[0]).toMatchObject({ file: { type: ChatFileTypeEnum.image } });
+        }
+      })
+    );
+    expect(axiosHeadMock).toHaveBeenCalledTimes(1);
+    expect(fileContext.resolve(file.file!.url)).toBeUndefined();
+  });
+
+  it.each([0, 1])(
+    'truncates dynamic node links before registration with limit %s',
+    async (maxFileAmount) => {
+      const { getInputFiles } =
+        await import('../../../../core/workflow/dispatch/ai/chat/fileContext');
+      const { fileContext } = await prepare([], maxFileAmount);
+      const urls = ['https://files.example.com/first', 'https://files.example.com/second'];
+      await runWithContext({ fileContext, mcpClientMemory: {} }, async () => {
+        expect(await getInputFiles({ fileLinks: urls })).toHaveLength(maxFileAmount);
+      });
+      expect(axiosHeadMock).toHaveBeenCalledTimes(maxFileAmount);
+      expect(fileContext.resolve(urls[1])).toBeUndefined();
+    }
+  );
+
+  it('keeps registered types consistent across AI, document and dataset consumers', async () => {
+    const { parseWorkflowAIInputFiles } =
+      await import('../../../../core/workflow/dispatch/ai/fileContext');
+    const { normalizeDatasetSearchInput } =
+      await import('../../../../core/workflow/dispatch/dataset/utils');
+    const { normalizeReadableFileUrl } = await import('../../../../core/chat/fileContext');
+    const url = 'https://files.example.com/opaque';
+    const { fileContext } = await prepare();
+    await runWithContext({ fileContext, mcpClientMemory: {} }, async () => {
+      const aiFiles = await parseWorkflowAIInputFiles({
+        files: [{ url, type: ChatFileTypeEnum.image, name: 'photo' }],
+        maxFileAmount: 2
+      });
+      expect(aiFiles[0].type).toBe(ChatFileTypeEnum.image);
+      expect(fileContext.resolve(url)?.type).toBe(ChatFileTypeEnum.image);
+      expect(await normalizeReadableFileUrl({ url, fileContext })).toBe('');
+      expect((await normalizeDatasetSearchInput([url])).imageQueries).toEqual([url]);
+      expect(
+        (
+          await parseWorkflowAIInputFiles({
+            files: [{ url, type: ChatFileTypeEnum.audio }],
+            maxFileAmount: 2
+          })
+        )[0].type
+      ).toBe(ChatFileTypeEnum.image);
+    });
+    expect(axiosHeadMock).not.toHaveBeenCalled();
+  });
+
+  it('prefers registration completed while an earlier HEAD was in flight', async () => {
+    const { fileContext } = await prepare();
+    const url = 'https://files.example.com/race';
+    let finish!: () => void;
+    const delayed = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    axiosHeadMock.mockImplementation(async () => {
+      await delayed;
+      return { headers: { 'content-type': 'image/png' } };
+    });
+    const pending = prepareChatFiles({ files: [{ url }], maxFiles: 1, fileContext });
+    await vi.waitFor(() => expect(axiosHeadMock).toHaveBeenCalledTimes(1));
+    const explicit = await prepareChatFiles({
+      files: [{ url, type: ChatFileTypeEnum.audio }],
+      maxFiles: 1,
+      fileContext
+    });
+    finish();
+    expect(await pending).toEqual(explicit);
+    expect(fileContext.resolve(url)?.type).toBe(ChatFileTypeEnum.audio);
+  });
+
+  it('counts fragment aliases once before applying child and AI file limits', async () => {
+    const { parseWorkflowAIInputFiles } =
+      await import('../../../../core/workflow/dispatch/ai/fileContext');
+    const { fileContext } = await prepare([], 2);
+    const urls = [
+      'https://files.example.com/first#one',
+      'https://files.example.com/first#two',
+      'https://files.example.com/second'
+    ];
+    await runWithContext({ fileContext, mcpClientMemory: {} }, () =>
+      runWithDerivedWorkflowFileContext({
+        query: [],
+        files: urls,
+        fn: async () => {
+          const child = getWorkflowFileContext()!;
+          expect(child.resolve(urls[0])).toBe(child.resolve(urls[1]));
+          expect(child.resolve(urls[2])).toBeDefined();
+          const files = await parseWorkflowAIInputFiles({
+            files: urls.map((url) => ({ url, type: ChatFileTypeEnum.file })),
+            maxFileAmount: 2
+          });
+          expect(files.map((file) => file.url)).toEqual([urls[0], urls[2]]);
+        }
+      })
+    );
+    expect(axiosHeadMock).toHaveBeenCalledTimes(2);
+    expect(fileContext.resolve(urls[0])).toBeUndefined();
+  });
+
+  it('skips HEAD for known document suffixes and explicit media types', async () => {
+    const { fileContext } = await prepare();
+    expect(
+      (await prepareExternal(fileContext, { url: 'https://files.example.com/report.pdf' })).type
+    ).toBe(ChatFileTypeEnum.file);
+    expect(
+      (
+        await prepareExternal(fileContext, {
+          url: 'https://files.example.com/audio',
+          type: ChatFileTypeEnum.audio
+        })
+      ).type
+    ).toBe(ChatFileTypeEnum.audio);
+    expect(axiosHeadMock).not.toHaveBeenCalled();
   });
 });

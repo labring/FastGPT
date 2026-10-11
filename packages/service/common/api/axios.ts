@@ -88,6 +88,8 @@ const SAFE_AXIOS_MAX_REDIRECTS = 5;
 const REDIRECT_STATUS_CODES = new Set([301, 302, 303, 307, 308]);
 
 export type SafeAxiosRequestOptions = {
+  /** 请求前及每次重定向时执行入口专属的 URL 策略。 */
+  validateUrl?: (url: string) => boolean;
   rejectUnauthorized?: boolean;
 };
 
@@ -144,6 +146,10 @@ const prepareSafeRequestConfig = async (
 ): Promise<SafeRedirectInternalConfig> => {
   const requestUrl = buildRequestUrl(config);
   if (!requestUrl) return config;
+
+  if (config.__safeAxios?.validateUrl && !config.__safeAxios.validateUrl(requestUrl)) {
+    throw new Error('Invalid file URL domain');
+  }
 
   if (await isInternalAddress(requestUrl)) {
     return Promise.reject(new Error(PRIVATE_URL_TEXT));

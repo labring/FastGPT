@@ -2,8 +2,7 @@ import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/consta
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
 import { getSafeSandboxInputFilename } from '../../../ai/sandbox/interface/runtime';
-import { getWorkflowFileContext, parseUrlToFileType } from '../../utils/context';
-import { isAbsoluteHttpUrl } from '../../utils/fileContext';
+import { prepareWorkflowFiles } from '../../utils/context';
 import {
   rewriteAgentLoopCoreUserMessageWithFiles,
   type AgentLoopCoreInputFile,
@@ -43,62 +42,31 @@ type RewriteWorkflowAIHistoryMessageWithFilesParams = Pick<
  * 已登记文件使用 WorkflowFileContext 提供的 modelUrl 和 identity；未登记外链仅接受绝对
  * HTTP(S) URL。返回结果按 identity 去重、按请求上限截断，并统一清洗文件名。
  */
-export const parseWorkflowAIInputFiles = ({
+export const parseWorkflowAIInputFiles = async ({
   files,
   maxFileAmount
-}: ParseWorkflowAIInputFilesParams): AgentLoopCoreInputFile[] => {
-  const workflowFileContext = getWorkflowFileContext();
-  const normalizedFiles = files
-    .map((file) => ({
-      file,
-      ref: workflowFileContext?.resolve(file.url)
-    }))
-    .map(({ file, ref }) => {
-      const url = ref?.modelUrl ?? file.url;
-      if (!isAbsoluteHttpUrl(url)) return;
+}: ParseWorkflowAIInputFilesParams): Promise<AgentLoopCoreInputFile[]> => {
+  const parsedFiles = await prepareWorkflowFiles({
+    files,
+    maxFiles: maxFileAmount,
+    allowDataUrl: false
+  });
 
-      return {
-        file,
-        url,
-        identity: workflowFileContext?.getIdentity(file.url) ?? url
-      };
-    })
-    .filter(Boolean) as { file: UserChatItemFileItemType; url: string; identity: string }[];
-
-  const uniqueFiles = Array.from(
-    normalizedFiles
-      .reduce((map, item) => {
-        if (!map.has(item.identity)) {
-          map.set(item.identity, item);
-        }
-        return map;
-      }, new Map<string, (typeof normalizedFiles)[number]>())
-      .values()
-  );
+  // 分类可以并发，但文件名必须按输入顺序分配，保持沙箱路径稳定。
   const usedNames = new Map<string, number>();
-
-  return uniqueFiles
-    .slice(0, maxFileAmount)
-    .map(({ file, url }, index) => {
-      const parsedFile = parseUrlToFileType(url);
-      if (!parsedFile) return;
-      const type = file.type && file.type !== ChatFileTypeEnum.file ? file.type : parsedFile.type;
-
-      return {
-        name: getSafeSandboxInputFilename(file.name || parsedFile.name || url, index, usedNames),
-        type,
-        url: parsedFile.url
-      };
-    })
-    .filter(Boolean) as AgentLoopCoreInputFile[];
+  return parsedFiles.map((file, index) => ({
+    name: getSafeSandboxInputFilename(file.name || file.url, index, usedNames),
+    type: file.type,
+    url: file.url
+  }));
 };
 
 /** 合并 query 文件和节点文件输入，并使用统一的 Workflow Context 规则生成本轮文件列表。 */
-export const buildWorkflowAICurrentInputFiles = ({
+export const buildWorkflowAICurrentInputFiles = async ({
   currentFiles = [],
   currentQuery,
   maxFileAmount
-}: BuildWorkflowAICurrentInputFilesParams): AgentLoopCoreInputFile[] => {
+}: BuildWorkflowAICurrentInputFilesParams): Promise<AgentLoopCoreInputFile[]> => {
   const { files: queryFiles = [] } = currentQuery
     ? chatValue2RuntimePrompt(currentQuery)
     : { files: [] };
@@ -107,7 +75,7 @@ export const buildWorkflowAICurrentInputFiles = ({
   );
   const queryFilesByUrl = new Map(queryFiles.map((file) => [file.url, file]));
 
-  return parseWorkflowAIInputFiles({
+  return await parseWorkflowAIInputFiles({
     files: inputUrls.map((url) => queryFilesByUrl.get(url) || { type: ChatFileTypeEnum.file, url }),
     maxFileAmount
   });
@@ -119,7 +87,7 @@ export const buildWorkflowAICurrentInputFiles = ({
  * 外层先完成 Context URL 解析和可选 Sandbox 路径补充，再交给纯 AgentLoop 消息逻辑完成
  * 文档 reminder 与多模态消息分流。
  */
-export const rewriteWorkflowAIUserMessageWithFiles = ({
+export const rewriteWorkflowAIUserMessageWithFiles = async ({
   message,
   maxFileAmount,
   files: inputFiles,
@@ -129,7 +97,7 @@ export const rewriteWorkflowAIUserMessageWithFiles = ({
 }: RewriteWorkflowAIUserMessageWithFilesParams) => {
   const { files: messageFiles = [] } = chatValue2RuntimePrompt(message.value);
   const parsedFiles =
-    inputFiles ?? parseWorkflowAIInputFiles({ files: messageFiles, maxFileAmount });
+    inputFiles ?? (await parseWorkflowAIInputFiles({ files: messageFiles, maxFileAmount }));
   const files = transformFiles?.(parsedFiles) ?? parsedFiles;
 
   return {
@@ -149,7 +117,7 @@ export const rewriteWorkflowAIUserMessageWithFiles = ({
  * 未启用历史文件时移除 Human 消息中的全部文件项；启用时复用当前消息的文件归一化、
  * 去重和文档/多模态分流规则。非 Human 消息保持原样。
  */
-export const rewriteWorkflowAIHistoryMessageWithFiles = ({
+export const rewriteWorkflowAIHistoryMessageWithFiles = async ({
   message,
   maxFileAmount,
   parseHistoryFiles,
@@ -168,7 +136,7 @@ export const rewriteWorkflowAIHistoryMessageWithFiles = ({
     };
   }
 
-  return rewriteWorkflowAIUserMessageWithFiles({
+  return await rewriteWorkflowAIUserMessageWithFiles({
     message,
     maxFileAmount,
     transformFiles

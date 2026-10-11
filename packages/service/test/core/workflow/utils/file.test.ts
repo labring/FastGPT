@@ -9,6 +9,7 @@ const mockGetRawTextBuffer = vi.hoisted(() => vi.fn());
 const mockAddRawTextBuffer = vi.hoisted(() => vi.fn());
 const mockIsInternalAddress = vi.hoisted(() => vi.fn());
 const mockAxiosGet = vi.hoisted(() => vi.fn());
+const mockAxiosHead = vi.hoisted(() => vi.fn());
 const mockReadFileContentByBuffer = vi.hoisted(() => vi.fn());
 const mockReadFileContentBySource = vi.hoisted(() => vi.fn());
 const mockVerifyS3DownloadAccess = vi.hoisted(() => vi.fn());
@@ -32,6 +33,7 @@ vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
   const mod = await importOriginal<typeof import('@fastgpt/service/common/api/axios')>();
   const mockClient = {
     get: mockAxiosGet,
+    head: mockAxiosHead,
     defaults: { baseURL: 'http://localhost:3000' }
   };
   return {
@@ -43,11 +45,13 @@ vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
 vi.mock('axios', () => {
   const internalClient = {
     get: mockAxiosGet,
+    head: mockAxiosHead,
     defaults: { baseURL: 'http://localhost:3000' }
   };
   return {
     default: {
       get: mockAxiosGet,
+      head: mockAxiosHead,
       create: vi.fn(() => internalClient)
     }
   };
@@ -100,15 +104,16 @@ import {
   resolveFileSourceExtension
 } from '@fastgpt/service/common/file/read/source';
 
-const createEmptyWorkflowFileContext = (): WorkflowFileContext => ({
-  limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
-  resolve: () => undefined,
-  resolveInputFile: () => undefined,
-  resolveChatFile: () => undefined,
-  getIdentity: () => undefined,
-  getSource: vi.fn(),
-  derive: () => createEmptyWorkflowFileContext()
-});
+const createEmptyWorkflowFileContext = () =>
+  ({
+    limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
+    resolve: () => undefined,
+    resolveInputFile: () => undefined,
+    resolveChatFile: () => undefined,
+    getIdentity: () => undefined,
+    getSource: vi.fn(),
+    derive: async () => createEmptyWorkflowFileContext()
+  }) as WorkflowFileContext;
 
 const createHumanMessage = (value: UserChatItemValueItemType[]): ChatItemMiniType => ({
   obj: ChatRoleEnum.Human,
@@ -161,33 +166,33 @@ const rewriteMessagesWithFileContent = async ({
   );
 
 describe('normalizeReadableFileUrl', () => {
-  it('标准化可读取的文档 URL，并过滤非文档 URL', () => {
+  it('标准化可读取的文档 URL，并过滤非文档 URL', async () => {
     expect(
-      normalizeReadableFileUrl({
+      await normalizeReadableFileUrl({
         url: ' http://localhost:3000/a.pdf '
       })
     ).toBe('http://localhost:3000/a.pdf');
-    expect(normalizeReadableFileUrl({ url: '/a.pdf' })).toBe('');
-    expect(normalizeReadableFileUrl({ url: '/image.png' })).toBe('');
-    expect(normalizeReadableFileUrl({ url: 'chat/a.pdf' })).toBe('');
-    expect(normalizeReadableFileUrl({ url: '' })).toBe('');
+    expect(await normalizeReadableFileUrl({ url: '/a.pdf' })).toBe('');
+    expect(await normalizeReadableFileUrl({ url: '/image.png' })).toBe('');
+    expect(await normalizeReadableFileUrl({ url: 'chat/a.pdf' })).toBe('');
+    expect(await normalizeReadableFileUrl({ url: '' })).toBe('');
   });
 
-  it('非字符串 url 返回空串', () => {
-    expect(normalizeReadableFileUrl({ url: undefined })).toBe('');
-    expect(normalizeReadableFileUrl({ url: null as unknown as string })).toBe('');
-    expect(normalizeReadableFileUrl({ url: 123 as unknown as string })).toBe('');
+  it('非字符串 url 返回空串', async () => {
+    expect(await normalizeReadableFileUrl({ url: undefined })).toBe('');
+    expect(await normalizeReadableFileUrl({ url: null as unknown as string })).toBe('');
+    expect(await normalizeReadableFileUrl({ url: 123 as unknown as string })).toBe('');
   });
 
-  it('保留绝对 URL', () => {
-    expect(normalizeReadableFileUrl({ url: 'http://example.com/a.pdf' })).toBe(
+  it('保留绝对 URL', async () => {
+    expect(await normalizeReadableFileUrl({ url: 'http://example.com/a.pdf' })).toBe(
       'http://example.com/a.pdf'
     );
   });
 
-  it('URL 解析失败时返回空串', () => {
-    // parseUrlToFileType catch fallback 会把 url 当作 file 类型，但第二个 new URL 仍会抛错
-    expect(normalizeReadableFileUrl({ url: 'http://[bad-host.pdf' })).toBe('');
+  it('URL 解析失败时返回空串', async () => {
+    // 输入校验排除无效 URL，不进入分类和读取。
+    expect(await normalizeReadableFileUrl({ url: 'http://[bad-host.pdf' })).toBe('');
   });
 });
 
@@ -313,14 +318,18 @@ describe('parseFileContentFromUrls (buffer hit)', () => {
 
     try {
       const result = await parseFileContentFromUrls({
-        urls: ['https://blocked.example.com/cached.pdf'],
+        urls: ['https://blocked.example.com/cached.pdf', 'https://allowed.example.com/cached.pdf'],
         maxFiles: 20,
         teamId: 'team-1',
         tmbId: 'tmb-1',
         fileContext: createEmptyWorkflowFileContext()
       });
 
-      expect(mockGetRawTextBuffer).not.toHaveBeenCalled();
+      expect(mockGetRawTextBuffer).toHaveBeenCalledTimes(1);
+      expect(result[1]).toMatchObject({
+        success: true,
+        url: 'https://allowed.example.com/cached.pdf'
+      });
       expect(result[0]).toMatchObject({
         success: false,
         url: 'https://blocked.example.com/cached.pdf',
@@ -443,7 +452,8 @@ describe('parseFileContentFromUrls (external fetch)', () => {
       }),
       getIdentity: (value) => (value === url ? 'chat:private' : undefined),
       getSource,
-      derive: () => fileContext
+      registerExternalFile: vi.fn(),
+      derive: async () => fileContext
     };
 
     const result = await parseFileContentFromUrls({
@@ -1328,5 +1338,21 @@ describe('formatAIChatUserQueryWithFiles', () => {
 
     expect(result[0].value.find((item) => item.text)?.text?.content).toContain('Alpha');
     expect(result[1].value.find((item) => item.text)?.text?.content).toContain('Beta');
+  });
+});
+
+describe('probe limits', () => {
+  it.each([0, 1])('only probes the first %s file candidates', async (maxFiles) => {
+    mockAxiosHead.mockReset().mockResolvedValue({ headers: { 'content-type': 'image/png' } });
+    const urls = Array.from({ length: 25 }, (_, i) => `https://files.example.com/opaque-${i}`);
+    const result = await parseFileContentFromUrls({
+      urls,
+      maxFiles,
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+    expect(result).toEqual([]);
+    expect(mockAxiosHead).toHaveBeenCalledTimes(maxFiles);
+    if (maxFiles) expect(mockAxiosHead).toHaveBeenCalledWith(urls[0], expect.any(Object));
   });
 });
