@@ -39,10 +39,10 @@ vi.mock('@fastgpt/service/common/logger', () => ({
   disposeLogger: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  // getModelHandle 要读模型目录（依赖全局配置），测量无关，直接给定句柄
-  getModelHandle: async () => ({
+  // getTeamModelHandle 要读模型目录（依赖全局配置），测量无关，直接给定句柄
+  getTeamModelHandle: async () => ({
     getLLMModelData: () => ({
       modelId: 'measure-agent-model',
       model: 'measure-agent-model',

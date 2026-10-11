@@ -101,9 +101,9 @@ vi.mock('@fastgpt/service/core/dataset/training/schema', async (importOriginal) 
   };
 });
 // 模型目录依赖全局配置，测试环境无；给定句柄不影响 chunkSize/indexSize 的计算分支
-vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  getModelHandle: async () => ({
+  getTeamModelHandle: vi.fn(async () => ({
     getLLMModelData: () => ({
       modelId: 'agent-model',
       config: { maxContext: 8000, maxResponse: 1000 }
@@ -113,7 +113,7 @@ vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) => ({
       config: { defaultToken: 100, maxToken: 100, weight: 0 }
     }),
     getVlmModelData: () => undefined
-  })
+  }))
 }));
 
 // 复用全局 logger mock，仅监听本文件需要断言的告警。
@@ -130,6 +130,7 @@ import {
 } from '@fastgpt/service/core/dataset/collection/controller';
 import { chunkAutoChunkSize } from '@fastgpt/global/core/dataset/training/utils';
 import { DatasetCollectionSchema } from '@fastgpt/global/core/dataset/type';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 
 const teamId = 'team-1';
 const tmbId = 'tmb-1';
@@ -647,6 +648,8 @@ describe('createApiFileCollectionsBatch', () => {
       session: {} as any
     });
 
+    // 模型目录按知识库所属团队读取，整批仅查询一次，防止回退到全局目录。
+    expect(getTeamModelHandle).toHaveBeenCalledExactlyOnceWith({ teamId });
     // 标签是请求级参数，整批只解析一次
     expect(mockCreateOrGetCollectionTags).toHaveBeenCalledTimes(1);
     expect(mockCreateOrGetCollectionTags.mock.calls[0][0]).toMatchObject({ tags: ['t-1'] });
