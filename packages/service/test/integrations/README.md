@@ -23,9 +23,12 @@ explicitly to test strict private-network blocking. Fake-IP DNS environments (fo
 resolved to `198.18.x.x`) can block public fixtures under that strict policy. Public tests also
 depend on Internet access and third-party availability and are therefore opt-in.
 
-Server-side request logs verify that classification uses HEAD without downloading the body, that
-deduplication and quotas happen before probing, and that concurrent consumers share probes.
-Known limits are asserted explicitly: rejected HEAD, generic MIME and timeouts fall back to `file`,
+Server-side request logs verify HEAD-first classification, bounded streaming GET fallback for
+unsupported HEAD or generic MIME, cancellation, a shared timeout budget, and redirect safety.
+Both HTTP 200 (Range ignored) and 206 fixtures verify that the client closes after 8 KiB,
+before the server sends the remaining 1 MiB. Deduplication and quotas happen before probing,
+and concurrent consumers share probes. The system helper is also exercised without a Context.
+Known limits are asserted explicitly: failed probes fall back to `file`,
 and recognized suffixes are trusted even if GET returns a different format. These suites execute
 file preparation and node message adapters, not a full workflow scheduler or a paid LLM response.
 

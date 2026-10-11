@@ -49,7 +49,8 @@ describe('公网真实外链（显式启用，受网络和第三方可用性影�
     await runWithContext({ mcpClientMemory: {}, fileContext: prepared.fileContext }, async () => {
       const files = await getInputFiles({ fileLinks: [url] });
       const messages = chats2GPTMessages({
-        messages: [{ obj: ChatRoleEnum.Human, value: files.map((file) => ({ file })) }]
+        messages: [{ obj: ChatRoleEnum.Human, value: files.map((file) => ({ file })) }],
+        reserveId: false
       });
       expect(messages[0]?.content).toEqual([{ type: 'image_url', image_url: { url } }]);
       expect((await normalizeDatasetSearchInput([url])).imageQueries).toEqual([url]);

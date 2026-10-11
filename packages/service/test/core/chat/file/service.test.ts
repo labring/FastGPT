@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Readable } from 'node:stream';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   parseUrlToChatFileType,
@@ -170,7 +171,7 @@ describe('parseUrlToChatFileType', () => {
       expect(headSpy).toHaveBeenCalledWith(
         url,
         expect.objectContaining({
-          timeout: 3000,
+          timeout: 1500,
           __safeAxios: { validateUrl: expect.any(Function) }
         })
       );
@@ -426,6 +427,14 @@ beforeEach(async () => {
   vi.spyOn(axios, 'head').mockResolvedValue({
     headers: { 'content-type': 'application/octet-stream' }
   } as any);
+  vi.spyOn(axios, 'get').mockImplementation(
+    async () =>
+      ({
+        headers: {},
+        data: Readable.from([]),
+        status: 200
+      }) as any
+  );
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -505,7 +514,7 @@ describe('Context classification and preparation boundaries', () => {
     expect(axios.head).toHaveBeenCalledWith(
       url,
       expect.objectContaining({
-        timeout: 3000,
+        timeout: 1500,
         __safeAxios: { validateUrl: expect.any(Function) }
       })
     );
