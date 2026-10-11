@@ -912,13 +912,15 @@ describe('useUserContext', () => {
   });
 
   it('uses url as the final defensive file name fallback when parser returns an empty name', async () => {
-    const parseUrlToFileTypeSpy = vi
-      .spyOn(workflowContext, 'parseUrlToFileType')
-      .mockResolvedValueOnce({
-        name: '',
-        type: ChatFileTypeEnum.file,
-        url: 'https://files.example.com/nameless'
-      });
+    const prepareFilesSpy = vi
+      .spyOn(workflowContext, 'prepareWorkflowFiles')
+      .mockResolvedValueOnce([
+        {
+          name: '',
+          type: ChatFileTypeEnum.file,
+          url: 'https://files.example.com/nameless'
+        }
+      ]);
 
     await runWithContextAsync(
       {
@@ -941,7 +943,7 @@ describe('useUserContext', () => {
       }
     );
 
-    parseUrlToFileTypeSpy.mockRestore();
+    prepareFilesSpy.mockRestore();
   });
 
   it('ignores non-string file urls defensively', async () => {

@@ -1,6 +1,6 @@
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { parseUrlsToFileTypes } from '../../../utils/context';
+import { prepareWorkflowFiles } from '../../../utils/context';
 
 /**
  * 根据 AI Chat 节点的文件链接输入计算文件上下文开关。
@@ -28,5 +28,5 @@ export const getAIChatFileContextConfig = ({
  * 把节点输入的文件链接转换成聊天消息文件结构；无法识别的链接会被过滤。
  */
 export const getInputFiles = async ({ fileLinks = [] }: { fileLinks?: string[] }) => {
-  return parseUrlsToFileTypes(fileLinks);
+  return prepareWorkflowFiles({ files: fileLinks.map((url) => ({ url })) });
 };
