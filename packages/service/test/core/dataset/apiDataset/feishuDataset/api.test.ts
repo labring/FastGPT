@@ -141,8 +141,10 @@ describe('useFeishuDatasetRequest.getFileDetail', () => {
     expect(mockRequest).toHaveBeenCalledTimes(2);
   });
 
-  it('遇到 503 等服务异常时不转成文件不存在，而是直接抛错中止', async () => {
-    mockRequest.mockRejectedValue(Object.assign(new Error('Service Unavailable'), { status: 503 }));
+  it('遇到 503 与 ECONNRESET 等服务/网络异常时不转成文件不存在，而是直接抛错中止', async () => {
+    mockRequest.mockRejectedValueOnce(
+      Object.assign(new Error('Service Unavailable'), { status: 503 })
+    );
     const request = useFeishuDatasetRequest({ feishuServer: server });
 
     await expect(request.getFileDetail({ apiFileId: 'server-down' })).rejects.toMatchObject({
@@ -150,6 +152,11 @@ describe('useFeishuDatasetRequest.getFileDetail', () => {
     });
     // 首次 docx 查询遇到 503 即抛错，不继续盲目查询 folder
     expect(mockRequest).toHaveBeenCalledTimes(1);
+
+    mockRequest.mockRejectedValueOnce({ code: 'ECONNRESET' });
+    await expect(request.getFileDetail({ apiFileId: 'conn-reset' })).rejects.toMatchObject({
+      code: 'ECONNRESET'
+    });
   });
 
   describe('listFiles, getFileContent, getFilePreviewUrl, getFileRawId', () => {
@@ -252,13 +259,6 @@ describe('useFeishuDatasetRequest.getFileDetail', () => {
       await expect(request.listFiles({})).rejects.toEqual({ data: 'error data string' });
     });
 
-    it('网络超时与连接重置错误被识别为可恢复异常', async () => {
-      mockRequest.mockRejectedValueOnce({ code: 'ECONNRESET' });
-      const request = useFeishuDatasetRequest({ feishuServer: server });
-      await expect(request.getFileDetail({ apiFileId: 'conn-reset' })).rejects.toMatchObject({
-        code: 'ECONNRESET'
-      });
-    });
     it('请求拦截器注入 tenant_access_token', async () => {
       let interceptorHook: any;
       const { createProxyAxios } = await import('../../../../../common/api/axios');
