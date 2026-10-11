@@ -15,7 +15,7 @@ releaseTime: '2026-09-30'
 
 ### AI Proxy environment configuration
 
-When upgrading the AI Proxy image, also add `ENABLE_ADMIN_BYPASS_CHANNEL_MODEL_CHECK=true` to the **AI Proxy service** environment. This variable is disabled by default. Enabling it lets administrators bypass the channel's model list check when testing a model through a specific channel. Without this setting, tests fail for models that have not yet been added to the channel's model list.
+When upgrading the AI Proxy image, also add `ENABLE_ADMIN_BYPASS_CHANNEL_MODEL_CHECK=true` to the **AI Proxy service** environment. This variable is disabled by default. Enabling it lets administrators test a channel that has no models assigned by specifying the channel and model identifier, without first adding the model to the channel's model list. Without this setting, the channel's model list check rejects these tests.
 
 For Docker Compose deployments, append the following entry to the `aiproxy` service's `environment` section, keeping the existing environment variables:
 

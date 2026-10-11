@@ -15,7 +15,7 @@ releaseTime: '2026-09-30'
 
 ### AI Proxy 环境变量配置
 
-升级 AI Proxy 镜像时，还需在 **AI Proxy 服务**中添加环境变量 `ENABLE_ADMIN_BYPASS_CHANNEL_MODEL_CHECK=true`。该变量默认为 `false`，开启后允许管理员指定渠道测试时跳过渠道模型列表校验；未配置时，测试尚未加入渠道模型列表的模型会失败。
+升级 AI Proxy 镜像时，还需在 **AI Proxy 服务**中添加环境变量 `ENABLE_ADMIN_BYPASS_CHANNEL_MODEL_CHECK=true`。该变量默认为 `false`，开启后允许管理员在渠道尚未绑定模型时，指定该渠道和模型标识符进行测试，无需先将模型加入渠道的模型列表；未配置时，此类测试会被渠道模型列表校验拒绝。
 
 使用 Docker Compose 部署时，在 `aiproxy` 服务的 `environment` 中追加以下配置，保留已有环境变量：
 
