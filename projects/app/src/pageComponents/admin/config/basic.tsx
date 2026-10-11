@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { Input, Textarea } from '@chakra-ui/react';
+import { Input, Textarea, FormControl, FormErrorMessage } from '@chakra-ui/react';
 import { formatConfigStore2FormSchema, formatFormData2ConfigStore } from '@/web/admin/config/adapt';
 import type { ConfigFormType, ConfigStoreType } from '@/pageComponents/admin/config/type';
 import { getInitFormData, postUpdateConfig } from '@/web/admin/system/api';
@@ -10,19 +10,25 @@ import FirstTitle from '@/pageComponents/admin/settings/FirstTitle';
 import SettingPage from '@/pageComponents/admin/settings/SettingPage';
 import FormItem from '@/pageComponents/admin/settings/FormItem';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import NavbarItems from './components/FormField/NavbarItems';
 import ImageInput from '@/pageComponents/admin/settings/ImageInput';
 
-interface titleType {
+type titleType = {
   mainTitle: string;
   subTitles: string[];
-}
+};
 
 export const Settings = () => {
   const [rawData, setRawData] = useState<ConfigFormType>();
-  const { setValue, reset, watch, register, handleSubmit, control } =
-    useForm<ConfigFormType['siteSettings']>();
+  const {
+    setValue,
+    reset,
+    watch,
+    register,
+    handleSubmit,
+    control,
+    formState: { errors }
+  } = useForm<ConfigFormType['siteSettings']>();
 
   const { loading: loadingConfig } = useRequest(getInitFormData, {
     onSuccess: (data: ConfigStoreType) => {
@@ -40,7 +46,7 @@ export const Settings = () => {
     errorToast: '保存失败'
   });
 
-  const submitConfig = (data: ConfigFormType['siteSettings']) => {
+  const onSubmit = handleSubmit((data) => {
     if (!rawData) {
       return;
     }
@@ -50,36 +56,6 @@ export const Settings = () => {
         siteSettings: data
       })
     );
-  };
-
-  const { ConfirmModal: ConfirmSandboxLimitModal, openConfirm: openSandboxLimitConfirm } =
-    useConfirm();
-
-  /**
-   * 单团队沙箱配额大于系统总上限时，团队维度不会先触发（系统总上限会先拦截所有团队），
-   * 属于典型的误配；保存前给出软性警告确认，不硬拦。
-   */
-  const onSubmit = handleSubmit((data) => {
-    const systemLimit = data.limit?.agentSandboxMax;
-    const teamLimit = data.limit?.agentSandboxMaxPerTeam;
-    if (
-      typeof systemLimit === 'number' &&
-      Number.isFinite(systemLimit) &&
-      systemLimit > 0 &&
-      typeof teamLimit === 'number' &&
-      Number.isFinite(teamLimit) &&
-      teamLimit > systemLimit
-    ) {
-      openSandboxLimitConfirm({
-        title: '单团队配额超过系统总上限',
-        customContent: `单团队配额（${teamLimit}）大于系统总上限（${systemLimit}），超出部分不会生效（系统总上限会先拦截所有团队）。是否仍要保存？`,
-        confirmText: '仍然保存',
-        cancelText: '返回修改',
-        onConfirm: () => submitConfig(data)
-      })();
-      return;
-    }
-    submitConfig(data);
   });
   const isLoading = loadingConfig || loadingSave;
 
@@ -282,25 +258,39 @@ export const Settings = () => {
         title="沙箱实例系统总上限"
         description="所有团队 Agent 沙箱活跃实例合计上限，留空表示使用环境变量配置；建议不低于单团队配额。"
       >
-        <Input
-          type="number"
-          {...register('limit.agentSandboxMax', {
-            valueAsNumber: true
-          })}
-          placeholder=""
-        />
+        <FormControl isInvalid={!!errors.limit?.agentSandboxMax}>
+          <Input
+            type="number"
+            min={1}
+            step={1}
+            {...register('limit.agentSandboxMax', {
+              setValueAs: (value) => (value === '' ? undefined : Number(value)),
+              validate: (value) =>
+                value === undefined || (Number.isInteger(value) && value > 0) || '请输入正整数'
+            })}
+            placeholder=""
+          />
+          <FormErrorMessage>{errors.limit?.agentSandboxMax?.message}</FormErrorMessage>
+        </FormControl>
       </FormItem>
       <FormItem
         title="单团队沙箱实例配额"
         description="单团队 Agent 沙箱活跃实例上限，留空表示使用环境变量配置，环境变量未配置时不限制；建议不超过系统总上限，超过时超出部分不会生效。"
       >
-        <Input
-          type="number"
-          {...register('limit.agentSandboxMaxPerTeam', {
-            valueAsNumber: true
-          })}
-          placeholder=""
-        />
+        <FormControl isInvalid={!!errors.limit?.agentSandboxMaxPerTeam}>
+          <Input
+            type="number"
+            min={1}
+            step={1}
+            {...register('limit.agentSandboxMaxPerTeam', {
+              setValueAs: (value) => (value === '' ? undefined : Number(value)),
+              validate: (value) =>
+                value === undefined || (Number.isInteger(value) && value > 0) || '请输入正整数'
+            })}
+            placeholder=""
+          />
+          <FormErrorMessage>{errors.limit?.agentSandboxMaxPerTeam?.message}</FormErrorMessage>
+        </FormControl>
       </FormItem>
       <FirstTitle title="小助手配置" />
       <FormItem title="小助手 iframe 地址" description="">
@@ -317,7 +307,6 @@ export const Settings = () => {
           description="移动端的侧边栏显示在账号 - 个人信息里"
         />
       </FormItem>
-      <ConfirmSandboxLimitModal />
     </SettingPage>
   );
 };

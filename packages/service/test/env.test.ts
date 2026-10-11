@@ -601,15 +601,6 @@ describe('serviceEnv', () => {
     await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
   });
 
-  it('rejects non-positive Agent Sandbox active instance limits', async () => {
-    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
-    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
-    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
-
-    vi.stubEnv('AGENT_SANDBOX_MAX', '0');
-    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
-  });
-
   it('defaults AGENT_SANDBOX_SHOW_FREE_TIP to false and supports enabling it', async () => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
     vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');

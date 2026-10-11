@@ -35,7 +35,8 @@ provider: opensandbox | sealosdevbox
 
 约束：
 
-- 外部业务从 `interface/*` 引用，不直接依赖 infrastructure。
+- 外部运行期业务从 `interface/*` 引用，不直接依赖 infrastructure。
+- 系统迁移专属数据访问放在对应迁移任务目录，可直接使用目标 Mongo Schema，不向运行期新增迁移接口或转导层。
 - `SandboxClient` 只用于运行态，可能创建或恢复实例。
 - 历史资源 stop/delete 使用 resource service，不能通过运行态 client 触发隐式恢复。
 - Mongo 读写集中在 instance repository。
@@ -220,8 +221,9 @@ Skill Edit 和 Skill 调试保持强依赖。文件 API 在服务端重新校验
 - 准入点为 `getSandboxClient` 与 `SandboxClient.ensureAvailable`，覆盖新建 / 停止后重启 / 归档恢复；
   记录已处于活跃态时跳过（运行态快路径与过渡态接管不重复占额）。
 - 检查与记录写入之间存在并发窗口，高并发下允许短暂超过限制；不引入排队、重试或分布式锁。
-- `teamId` 由 sandbox 域内从 source（App / Skill）解析并写入记录；历史缺失记录由 4.17.1 迁移
-  `20261009_backfill_agent_sandbox_team_id` 回填，运行期在激活前惰性补齐（只补不覆写）。
+- `teamId` 由 sandbox 域内从 source（App / Skill）解析并写入记录；历史缺失记录由 4.17.3 迁移
+  `20261009_backfill_agent_sandbox_team_id` 自动回填，运行期进入 Quota 检查时先惰性补齐缺失归属，再对活跃实例跳过准入检查（只补不覆写）。
+  自动迁移使用固定范围扫描、一次从头补扫和只读完成校验；校验快照内仍可回填或来源异常的记录会使任务失败，重试从头扫描。来源已删除的孤儿只统计并跳过；校验之后旧节点的新写入仍由后续访问补齐，因此团队用量允许暂时低估。
   缺失 `teamId` 的记录只计入系统总量、不计入任何团队。已知偏差：Sealos Devbox `stopped` 为 pause、
   远端实例仍存在，但不计入 Quota；app 会话超限按硬拒绝处理，「静默降级为无沙箱对话」为后续备选。
 
@@ -251,7 +253,7 @@ Sandbox 文件、ticket、preview、keepalive 等 API 位于 `projects/app/src/p
 | Tool 接口 | `packages/service/core/ai/sandbox/interface/toolCall` |
 | Resource 接口 | `packages/service/core/ai/sandbox/interface/resource` |
 | Preview 接口 | `packages/service/core/ai/sandbox/interface/preview` |
-| Migration 接口 | `packages/service/core/ai/sandbox/interface/migration` |
+| 团队归属回填迁移 | `projects/app/src/migration/tasks/4173/20261009_backfill_agent_sandbox_team_id` |
 | Runtime client | `packages/service/core/ai/sandbox/application/runtime/client.ts` |
 | 初始化 pipeline | `packages/service/core/ai/sandbox/application/runtime/prepare.ts` |
 | Skill runtime | `packages/service/core/ai/sandbox/application/runtime/skill` |

@@ -6,8 +6,6 @@
 import { randomUUID } from 'node:crypto';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { SANDBOX_WORKSPACE_VOLUME_NAME } from '@fastgpt/global/core/ai/sandbox/volume';
-import { Types } from '../../../../../common/mongo';
-import { mongoSessionRun } from '../../../../../common/mongo/sessionRun';
 import { MongoSandboxInstance } from './schema';
 import {
   sandboxActiveStatusList,
@@ -484,80 +482,6 @@ export async function backfillSandboxInstanceTeamId(params: {
       $or: [{ teamId: { $exists: false } }, { teamId: null }]
     },
     { $set: { teamId: params.teamId } }
-  );
-}
-
-// ---- 迁移维护：按「缺失 teamId」条件读写实例记录（经 interface/migration 暴露给系统迁移） ----
-
-/** 迁移扫描的最小文档形态。 */
-export type SandboxInstanceMissingTeamIdRecord = {
-  _id: Types.ObjectId;
-  sourceType: string;
-  sourceId: string;
-};
-
-const missingTeamIdFilter = { $or: [{ teamId: { $exists: false } }, { teamId: null }] };
-const missingTeamIdProjection = { projection: { _id: 1, sourceType: 1, sourceId: 1 } };
-
-/** 迁移用：仍缺失 teamId 的记录的最大 _id（无记录时为 null）。 */
-export async function getSandboxInstanceMissingTeamIdSnapshotEnd() {
-  const last = await MongoSandboxInstance.collection.findOne(missingTeamIdFilter, {
-    projection: { _id: 1 },
-    sort: { _id: -1 }
-  });
-  return last ? String(last._id) : null;
-}
-
-/** 迁移用：按 ObjectId 游标分批读取缺失 teamId 的实例记录。 */
-export function readSandboxInstancesMissingTeamId(params: {
-  lastId: string | null;
-  endId: string;
-  limit: number;
-}) {
-  return MongoSandboxInstance.collection
-    .find(
-      {
-        ...missingTeamIdFilter,
-        _id: {
-          ...(params.lastId ? { $gt: new Types.ObjectId(params.lastId) } : {}),
-          $lte: new Types.ObjectId(params.endId)
-        }
-      },
-      missingTeamIdProjection
-    )
-    .sort({ _id: 1 })
-    .limit(params.limit)
-    .toArray() as Promise<SandboxInstanceMissingTeamIdRecord[]>;
-}
-
-/** 迁移用：读取单条仍缺失 teamId 的实例；已被修复或删除时返回 null。 */
-export function findSandboxInstanceMissingTeamId(recordId: string) {
-  return MongoSandboxInstance.collection.findOne(
-    { _id: new Types.ObjectId(recordId), ...missingTeamIdFilter },
-    missingTeamIdProjection
-  ) as Promise<SandboxInstanceMissingTeamIdRecord | null>;
-}
-
-/** 迁移用：仍缺失 teamId 的实例总数（包含不可回填的孤儿记录）。 */
-export function countSandboxInstancesMissingTeamId() {
-  return MongoSandboxInstance.collection.countDocuments(missingTeamIdFilter);
-}
-
-/** 迁移用：批量 CAS 回填 teamId；过滤条件携带「仍缺失」状态，只补不覆写、重放幂等。 */
-export async function backfillSandboxInstanceTeamIdsBatch(
-  items: Array<{ _id: Types.ObjectId; teamId: string }>
-) {
-  if (items.length === 0) return;
-  await mongoSessionRun((session) =>
-    MongoSandboxInstance.collection.bulkWrite(
-      items.map((item) => ({
-        updateOne: {
-          filter: { _id: item._id, ...missingTeamIdFilter },
-          update: { $set: { teamId: item.teamId } }
-        }
-      })),
-      { session, ordered: false }
-    )
   );
 }
 

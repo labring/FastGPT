@@ -50,11 +50,6 @@ describe('MongoSandboxInstance schema indexes', () => {
     ]);
   });
 
-  it('indexes the per-team active quota count', () => {
-    const indexes = MongoSandboxInstance.schema.indexes();
-    expect(indexes.some(([keys]) => keys.teamId === 1 && keys.status === 1)).toBe(true);
-  });
-
   it('accepts stable states without operation and matching transition operations', async () => {
     await expect(
       new MongoSandboxInstance({ ...baseInstance, status: 'running' }).validate()

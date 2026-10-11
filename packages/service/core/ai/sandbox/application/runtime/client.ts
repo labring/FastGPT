@@ -234,7 +234,7 @@ export class SandboxClient {
       throw new SandboxRuntimeNotRunningError(this.sandboxId);
     }
 
-    // 新建、复活前检查 Mongo 活跃实例配额；并发窗口由业务接受短暂超额。
+    // 新建、复活前检查 Mongo 活跃实例配额；检查与写入之间允许并发超额。
     const quota = await checkSandboxQuota(instanceIdentity);
 
     const runProvisioning = async (lease: RedisLeaseContext, allowRecordCreate: boolean) => {

@@ -1,6 +1,6 @@
 import { SubPlanSchema } from '../../../support/wallet/sub/type';
 import { z } from 'zod';
-import { BoolSchema, NumSchema } from '../../zod';
+import { BoolSchema, IntSchema, NumSchema, optionalNullToUndefined } from '../../zod';
 import type {
   LicensePayload,
   LicenseSchemaVersionType,
@@ -265,10 +265,10 @@ export const FastGPTFeConfigsSchema = z.looseObject({
       websiteSyncLimitMinuted: NumSchema.optional().meta({
         description: '网页数据源自动同步时间间隔限制（分钟）'
       }),
-      agentSandboxMax: NumSchema.optional().meta({
+      agentSandboxMax: optionalNullToUndefined(IntSchema.min(1)).meta({
         description: 'Agent 沙箱活跃实例系统总上限（app 会话与技能编辑共用计数池）'
       }),
-      agentSandboxMaxPerTeam: NumSchema.optional().meta({
+      agentSandboxMaxPerTeam: optionalNullToUndefined(IntSchema.min(1)).meta({
         description: '单团队 Agent 沙箱活跃实例配额；不配置表示不限制'
       }),
       agentSandboxMaxSessionRuntime: NumSchema.optional().meta({

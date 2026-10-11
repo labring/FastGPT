@@ -20,7 +20,6 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/sourceGuard', () => mocks)
 vi.mock('@fastgpt/service/core/ai/sandbox/config', () => mocks);
 
 import { checkSandboxQuota } from '@fastgpt/service/core/ai/sandbox/application/quota';
-import { sandboxActiveStatusList } from '@fastgpt/service/core/ai/sandbox/type';
 
 const identity = {
   provider: 'opensandbox' as const,
@@ -41,11 +40,38 @@ describe('checkSandboxQuota', () => {
     mocks.getAgentSandboxMaxPerTeam.mockReturnValue(5);
   });
 
-  it.each(sandboxActiveStatusList)('skips active status %s', async (status) => {
-    mocks.findSandboxInstanceBySource.mockResolvedValue({ status });
+  it.each(['running', 'restoring'])('skips active status %s', async (status) => {
+    mocks.findSandboxInstanceBySource.mockResolvedValue({ status, teamId: 'team-1' });
     await expect(checkSandboxQuota(identity)).resolves.toBeUndefined();
     expect(mocks.countActiveSandboxInstances).not.toHaveBeenCalled();
     expect(mocks.resolveSandboxSourceTeamId).not.toHaveBeenCalled();
+  });
+
+  it.each(['running', 'restoring'])(
+    'backfills active status %s without checking quotas',
+    async (status) => {
+      mocks.findSandboxInstanceBySource.mockResolvedValue({ status });
+      mocks.countActiveSandboxInstances.mockResolvedValue(100);
+
+      await expect(checkSandboxQuota(identity)).resolves.toBeUndefined();
+
+      expect(mocks.backfillSandboxInstanceTeamId).toHaveBeenCalledWith({
+        provider: identity.provider,
+        sandboxId: identity.sandboxId,
+        teamId: 'team-1'
+      });
+      expect(mocks.countActiveSandboxInstances).not.toHaveBeenCalled();
+    }
+  );
+
+  it('allows an active instance without a source team to continue without writing', async () => {
+    mocks.findSandboxInstanceBySource.mockResolvedValue({ status: 'running' });
+    mocks.resolveSandboxSourceTeamId.mockResolvedValue(undefined);
+
+    await expect(checkSandboxQuota(identity)).resolves.toBeUndefined();
+
+    expect(mocks.backfillSandboxInstanceTeamId).not.toHaveBeenCalled();
+    expect(mocks.countActiveSandboxInstances).not.toHaveBeenCalled();
   });
 
   it('returns the source team after checking both quotas', async () => {
@@ -53,15 +79,21 @@ describe('checkSandboxQuota', () => {
     expect(mocks.countActiveSandboxInstances.mock.calls).toEqual([[], [{ teamId: 'team-1' }]]);
   });
 
-  it('rejects the system quota at its limit with 409', async () => {
+  it('backfills ownership even when the system quota rejects activation', async () => {
+    mocks.findSandboxInstanceBySource.mockResolvedValue({ status: 'stopped' });
     mocks.countActiveSandboxInstances.mockResolvedValueOnce(10);
     await expect(checkSandboxQuota(identity)).rejects.toMatchObject({
       message: SandboxErrEnum.agentSandboxLimitReached
     });
     expect(mocks.countActiveSandboxInstances).toHaveBeenCalledTimes(1);
+    expect(mocks.backfillSandboxInstanceTeamId).toHaveBeenCalledWith({
+      provider: identity.provider,
+      sandboxId: identity.sandboxId,
+      teamId: 'team-1'
+    });
   });
 
-  it('rejects the team quota at its limit with 409', async () => {
+  it('rejects the team quota at its limit', async () => {
     mocks.countActiveSandboxInstances.mockResolvedValueOnce(1).mockResolvedValueOnce(5);
     await expect(checkSandboxQuota(identity)).rejects.toMatchObject({
       message: SandboxErrEnum.agentSandboxTeamLimitReached
@@ -98,16 +130,15 @@ describe('checkSandboxQuota', () => {
     expect(mocks.backfillSandboxInstanceTeamId).not.toHaveBeenCalled();
   });
 
-  it('logs backfill failures without blocking activation', async () => {
-    mocks.findSandboxInstanceBySource.mockResolvedValue({ status: 'stopped' });
-    mocks.backfillSandboxInstanceTeamId.mockRejectedValue(new Error('write failed'));
-    await expect(checkSandboxQuota(identity)).resolves.toEqual({ teamId: 'team-1' });
-    expect(mocks.warn).toHaveBeenCalled();
-  });
-
-  it('propagates Mongo query failures unchanged', async () => {
-    const error = new Error('Mongo unavailable');
-    mocks.countActiveSandboxInstances.mockRejectedValue(error);
-    await expect(checkSandboxQuota(identity)).rejects.toBe(error);
-  });
+  it.each(['running', 'stopped'])(
+    'allows use of a %s instance when backfill fails',
+    async (status) => {
+      mocks.findSandboxInstanceBySource.mockResolvedValue({ status });
+      mocks.backfillSandboxInstanceTeamId.mockRejectedValue(new Error('write failed'));
+      await expect(checkSandboxQuota(identity)).resolves.toEqual(
+        status === 'running' ? undefined : { teamId: 'team-1' }
+      );
+      expect(mocks.warn).toHaveBeenCalled();
+    }
+  );
 });

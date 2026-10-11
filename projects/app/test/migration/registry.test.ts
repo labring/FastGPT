@@ -109,7 +109,7 @@ describe('validateSystemMigrationRegistry', () => {
   it('appends the sandbox team id backfill migration last', () => {
     expect(systemMigrations.at(-1)).toMatchObject({
       id: '20261009_backfill_agent_sandbox_team_id',
-      version: '4.17.1',
+      version: '4.17.3',
       blockStartup: false,
       onFailure: SystemMigrationFailurePolicyEnum.continue,
       progressSteps: [{ key: 'instances' }, { key: 'validation' }]

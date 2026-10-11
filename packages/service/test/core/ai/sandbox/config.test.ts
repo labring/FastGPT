@@ -59,15 +59,8 @@ describe('agent sandbox config', () => {
     global.feConfigs = {
       ...global.feConfigs,
       limit: { ...global.feConfigs?.limit, agentSandboxMax: 7 }
-    } as any;
+    };
     expect(getAgentSandboxMax()).toBe(7);
-
-    // 管理台误存 0 等非法值时不收紧配额，回退 env。
-    global.feConfigs = {
-      ...global.feConfigs,
-      limit: { ...global.feConfigs?.limit, agentSandboxMax: 0 }
-    } as any;
-    expect(getAgentSandboxMax()).toBe(42);
   });
 
   it('resolves the per-team active quota and defaults to unlimited', () => {
@@ -80,7 +73,24 @@ describe('agent sandbox config', () => {
     global.feConfigs = {
       ...global.feConfigs,
       limit: { ...global.feConfigs?.limit, agentSandboxMaxPerTeam: 3 }
-    } as any;
+    };
     expect(getAgentSandboxMaxPerTeam()).toBe(3);
+  });
+
+  it('falls back to env for non-positive or fractional stored quotas', () => {
+    for (const value of [0, 1.5]) {
+      serviceEnv.AGENT_SANDBOX_MAX = 42;
+      serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = 5;
+      global.feConfigs = {
+        ...global.feConfigs,
+        limit: {
+          ...global.feConfigs?.limit,
+          agentSandboxMax: value,
+          agentSandboxMaxPerTeam: value
+        }
+      };
+      expect(getAgentSandboxMax()).toBe(42);
+      expect(getAgentSandboxMaxPerTeam()).toBe(5);
+    }
   });
 });

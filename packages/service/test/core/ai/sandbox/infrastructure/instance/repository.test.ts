@@ -56,8 +56,7 @@ describe('sandbox instance lifecycle repository', () => {
     const first = await createSandboxProvisioningInstance({
       provider: 'opensandbox',
       sourceType: ChatSourceTypeEnum.app,
-      ...identity,
-      teamId: 'team-1'
+      ...identity
     });
     const duplicate = await createSandboxProvisioningInstance({
       provider: 'opensandbox',
@@ -358,9 +357,9 @@ describe('sandbox instance lifecycle repository', () => {
     );
   });
 
-  it('counts active instances for the system and per-team quota pools', async () => {
+  it('counts active instances across providers and sources, with optional team filtering', async () => {
     const teamId = `${prefix}team-${getNanoid()}`;
-    const activeFixtures = [
+    const fixtures = [
       {
         status: SandboxInstanceStatusEnum.provisioning,
         operationType: SandboxOperationTypeEnum.provision
@@ -378,21 +377,25 @@ describe('sandbox instance lifecycle repository', () => {
       {
         status: SandboxInstanceStatusEnum.restoring,
         operationType: SandboxOperationTypeEnum.restore
-      }
+      },
+      { status: SandboxInstanceStatusEnum.stopped },
+      { status: SandboxInstanceStatusEnum.archived },
+      {
+        status: SandboxInstanceStatusEnum.deleting,
+        operationType: SandboxOperationTypeEnum.delete
+      },
+      { status: SandboxInstanceStatusEnum.running, missingTeam: true }
     ] as const;
     const baseline = await countActiveSandboxInstances();
-
     await MongoSandboxInstance.create(
-      activeFixtures.map((fixture) => ({
-        provider: 'opensandbox',
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: `${prefix}src-${getNanoid()}`,
-        userId: `${prefix}user-${getNanoid()}`,
-        sandboxId: `${prefix}${getNanoid()}`,
+      fixtures.map((fixture, index) => ({
+        provider: index % 2 ? 'sealosdevbox' : 'opensandbox',
+        sourceType: index % 2 ? ChatSourceTypeEnum.skillEdit : ChatSourceTypeEnum.app,
+        ...createAppIdentity(),
         status: fixture.status,
         lastActiveAt: oldDate,
         createdAt: oldDate,
-        teamId,
+        ...('missingTeam' in fixture ? {} : { teamId }),
         ...('operationType' in fixture
           ? {
               operation: {
@@ -406,61 +409,8 @@ describe('sandbox instance lifecycle repository', () => {
           : {})
       }))
     );
-    // 缺 teamId 的历史记录只计入系统总量，不计入任何团队。
-    await MongoSandboxInstance.create({
-      provider: 'opensandbox',
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: `${prefix}src-${getNanoid()}`,
-      userId: `${prefix}user-${getNanoid()}`,
-      sandboxId: `${prefix}${getNanoid()}`,
-      status: SandboxInstanceStatusEnum.running,
-      lastActiveAt: oldDate,
-      createdAt: oldDate
-    });
-    // stopped/archived/deleting 不计入 Quota。
-    await MongoSandboxInstance.create([
-      {
-        provider: 'opensandbox',
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: `${prefix}src-${getNanoid()}`,
-        userId: `${prefix}user-${getNanoid()}`,
-        sandboxId: `${prefix}${getNanoid()}`,
-        status: SandboxInstanceStatusEnum.stopped,
-        lastActiveAt: oldDate,
-        createdAt: oldDate,
-        teamId
-      },
-      {
-        provider: 'opensandbox',
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: `${prefix}src-${getNanoid()}`,
-        userId: `${prefix}user-${getNanoid()}`,
-        sandboxId: `${prefix}${getNanoid()}`,
-        status: SandboxInstanceStatusEnum.archived,
-        lastActiveAt: oldDate,
-        createdAt: oldDate,
-        teamId
-      },
-      {
-        provider: 'opensandbox',
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: `${prefix}src-${getNanoid()}`,
-        userId: `${prefix}user-${getNanoid()}`,
-        sandboxId: `${prefix}${getNanoid()}`,
-        status: SandboxInstanceStatusEnum.deleting,
-        lastActiveAt: oldDate,
-        createdAt: oldDate,
-        teamId,
-        operation: {
-          id: getNanoid(),
-          type: SandboxOperationTypeEnum.delete,
-          phase: 'claimed',
-          startedAt: oldDate,
-          heartbeatAt: oldDate
-        }
-      }
-    ]);
 
+    // 六种活跃状态计入团队用量；缺归属的 running 只计系统总量，另三种状态不占额。
     expect(await countActiveSandboxInstances()).toBe(baseline + 7);
     expect(await countActiveSandboxInstances({ teamId })).toBe(6);
     expect(await countActiveSandboxInstances({ teamId: `${prefix}missing-team` })).toBe(0);

@@ -59,13 +59,9 @@ export const sandboxActiveStatusList = [
   'restoring'
 ] as const satisfies readonly SandboxInstanceStatusType[];
 
-const sandboxActiveStatusSet: ReadonlySet<SandboxInstanceStatusType> = new Set(
-  sandboxActiveStatusList
-);
-
 /** 判断实例是否处于计入 Quota 的活跃状态。 */
 export const isSandboxActiveStatus = (status: SandboxInstanceStatusType) =>
-  sandboxActiveStatusSet.has(status);
+  sandboxActiveStatusList.some((activeStatus) => activeStatus === status);
 
 export const sandboxOperationTypeList = [
   'provision',
