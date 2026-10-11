@@ -98,7 +98,7 @@ describe('sandbox architecture boundaries', () => {
     expect(forbidden).toEqual([]);
   });
 
-  it('exposes sandbox capabilities to production consumers through interface only', () => {
+  it('keeps runtime consumers behind interface and migration entities limited to the instance schema', () => {
     const forbidden: string[] = [];
     const productionFiles = [
       ...listTypeScriptFiles(serviceRoot).filter(
@@ -109,12 +109,23 @@ describe('sandbox architecture boundaries', () => {
       ...listTypeScriptFiles(appSourceRoot)
     ];
     for (const file of productionFiles) {
+      const isMigrationEntity = /^migration\/tasks\/\d+\/[^/]+\/entity\.ts$/.test(
+        relative(appSourceRoot, file).split(sep).join('/')
+      );
       for (const specifier of getModuleSpecifiers(file)) {
+        const target = resolveRelativeModule(file, specifier);
+        // 迁移专属数据访问放在任务 entity 中，仅允许直接引用实例 Schema。
+        if (
+          isMigrationEntity &&
+          (specifier === '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema' ||
+            target === resolve(sandboxRoot, 'infrastructure/instance/schema.ts'))
+        ) {
+          continue;
+        }
         if (/\/core\/ai\/sandbox\/(?:application|infrastructure)(?:\/|$)/.test(specifier)) {
           forbidden.push(`${relative(serviceRoot, file)} -> ${specifier}`);
           continue;
         }
-        const target = resolveRelativeModule(file, specifier);
         if (
           target &&
           (target.startsWith(resolve(sandboxRoot, 'application') + sep) ||
