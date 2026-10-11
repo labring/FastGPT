@@ -1,258 +1,263 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/custom/api';
 
 const mocks = vi.hoisted(() => ({
   request: vi.fn(),
-  readFileRawTextByUrl: vi.fn(),
-  getRawTextBuffer: vi.fn()
+  read: vi.fn(),
+  getBuffer: vi.fn(),
+  addBuffer: vi.fn()
 }));
-
 vi.mock('@fastgpt/service/common/api/axios', () => ({
-  createProxyAxios: () => ({
-    request: mocks.request
-  })
+  createProxyAxios: () => ({ request: mocks.request })
 }));
-
-vi.mock('@fastgpt/service/core/dataset/read', () => ({
-  readFileRawTextByUrl: mocks.readFileRawTextByUrl
-}));
-
+vi.mock('@fastgpt/service/core/dataset/read', () => ({ readFileRawTextByUrl: mocks.read }));
 vi.mock('@fastgpt/service/common/s3/sources/rawText', () => ({
   getS3RawTextSource: () => ({
-    getRawTextBuffer: mocks.getRawTextBuffer,
-    addRawTextBuffer: vi.fn()
+    getRawTextBuffer: mocks.getBuffer,
+    addRawTextBuffer: mocks.addBuffer
   })
 }));
-
-import { useApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/custom/api';
-import { buildApiFileTree } from '@fastgpt/service/core/dataset/apiDataset/tree';
-
-describe('useApiDatasetRequest.getFileContent', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.getRawTextBuffer.mockResolvedValue(undefined);
-    mocks.readFileRawTextByUrl.mockResolvedValue({ rawText: 'parsed content' });
-    mocks.request.mockResolvedValue({
-      data: {
-        success: true,
-        message: '',
-        data: {
-          title: 'report.pdf',
-          previewUrl: 'https://example.com/report.pdf'
-        }
-      }
-    });
+const provider = (basePath?: string) =>
+  useApiDatasetRequest({
+    apiServer: { baseUrl: 'https://api.example.com', authorization: 'token', basePath }
   });
-
-  it('passes training usageId to preview URL PDF parsing', async () => {
-    const request = useApiDatasetRequest({
-      apiServer: {
-        baseUrl: 'https://api.example.com',
-        authorization: 'token'
-      } as any
-    });
-
-    await request.getFileContent({
-      teamId: 'team-a',
-      tmbId: 'tmb-a',
-      apiFileId: 'file-a',
-      datasetId: 'dataset-a',
-      customPdfParse: true,
-      usageId: 'usage-a'
-    });
-
-    expect(mocks.readFileRawTextByUrl).toHaveBeenCalledWith(
-      expect.objectContaining({
-        customPdfParse: true,
-        usageId: 'usage-a'
-      })
-    );
-  });
+const ok = (data: unknown) => ({ data: { success: true, data } });
+const contentInput = { teamId: 'team', tmbId: 'member', apiFileId: 'file', datasetId: 'dataset' };
+const hierarchyCases = [
+  { type: 'folder', hasChild: undefined, expected: true },
+  { type: 'file', hasChild: undefined, expected: false },
+  { type: 'folder', hasChild: false, expected: false },
+  { type: 'file', hasChild: true, expected: true }
+];
+beforeEach(() => {
+  Object.values(mocks).forEach((mock) => mock.mockReset());
+  mocks.getBuffer.mockResolvedValue(undefined);
+  mocks.read.mockResolvedValue({ rawText: 'parsed' });
 });
 
-/**
- * 被测函数名: useApiDatasetRequest.getFileDetail  等级: 3-High
- * 思路（回归场景）: getFileDetail 曾丢弃 hasChild。同步在「局部导入」时拿它的返回值当根种子，
- * 而 buildApiFileTree 只在 seed.hasChild 为真时才调 listFiles 展开子级 —— 后代因此不再被遍历，
- * 全部留在删除候选集里，最后被 delCollection(delFile: true) 整棵删掉，且下一轮也重建不回来。
- * 本组用例钉住「详情 → 根种子 → 子树遍历」这条链。
- */
-describe('useApiDatasetRequest.getFileDetail', () => {
-  const apiServer = { baseUrl: 'https://api.example.com', authorization: 'token' };
-
-  const ok = (data: unknown) => ({ data: { success: true, message: '', data } });
-
-  const detail = (props: Record<string, unknown>) => ({
-    id: 'root',
-    name: 'Root',
-    parentId: null,
-    type: 'folder',
-    updateTime: new Date(),
-    createTime: new Date(),
-    ...props
-  });
-
-  /** 自定义接口一个 url 一个端点，按 url 分发响应 */
-  const mockRequestByUrl = (byUrl: Record<string, unknown>) => {
-    mocks.request.mockImplementation(async ({ url }: any) => {
-      if (!(url in byUrl)) throw new Error(`unexpected url ${url}`);
-      return ok(byUrl[url]);
-    });
-  };
-
-  const provider = () => useApiDatasetRequest({ apiServer } as any);
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('对方没给 hasChild 时按 type 回退，folder 不退化', async () => {
-    mockRequestByUrl({ '/v1/file/detail': detail({ type: 'folder' }) });
-
-    const res = await provider().getFileDetail({ apiFileId: 'root' });
-    expect(res).toMatchObject({
-      success: true,
-      data: { id: 'root', type: 'folder', hasChild: true }
+describe('listFiles', () => {
+  it.each([undefined, 'explicit'])('父级 %s 覆盖默认 basePath 并透传搜索词', async (parentId) => {
+    mocks.request.mockResolvedValueOnce(ok([]));
+    await expect(provider('base').listFiles({ parentId, searchKey: 'query' })).resolves.toEqual([]);
+    expect(mocks.request).toHaveBeenCalledWith({
+      url: '/v1/file/list',
+      method: 'POST',
+      data: { parentId: parentId ?? 'base', searchKey: 'query' },
+      params: undefined
     });
   });
-
-  it('对方给了 hasChild 时以对方为准：folder 可以无子级，file 可以挂子级', async () => {
-    mockRequestByUrl({ '/v1/file/detail': detail({ type: 'folder', hasChild: false }) });
-    const res1 = await provider().getFileDetail({ apiFileId: 'root' });
-    expect(res1).toMatchObject({ success: true, data: { hasChild: false } });
-
-    mockRequestByUrl({ '/v1/file/detail': detail({ type: 'file', hasChild: true }) });
-    const res2 = await provider().getFileDetail({ apiFileId: 'root' });
-    expect(res2).toMatchObject({ success: true, data: { hasChild: true } });
-  });
-
-  it('详情返回值直接当同步根种子时，子树被完整遍历', async () => {
-    mockRequestByUrl({
-      '/v1/file/detail': detail({ type: 'folder' }),
-      '/v1/file/list': [
-        {
-          id: 'child',
-          name: 'Child',
-          parentId: 'root',
-          type: 'file',
-          updateTime: new Date(),
-          createTime: new Date()
-        }
-      ]
-    });
-
-    const api = provider();
-    const seedRes = await api.getFileDetail({ apiFileId: 'root' });
-    expect(seedRes.success).toBe(true);
-    const nodes = await buildApiFileTree({
-      request: api as any,
-      seeds: [seedRes.data!]
-    });
-
-    expect(nodes.map((node) => node.serverId)).toEqual(['root', 'child']);
-  });
-});
-
-describe('useApiDatasetRequest other methods', () => {
-  const apiServer = { baseUrl: 'https://api.example.com', authorization: 'token' };
-  const ok = (data: unknown) => ({ data: { success: true, message: '', data } });
-  const provider = () => useApiDatasetRequest({ apiServer } as any);
-
-  it('getFileContent 直接返回 inline content', async () => {
+  it('删除未指定的请求字段，归一化 hasChild 且保留自定义字段', async () => {
     mocks.request.mockResolvedValueOnce(
-      ok({ title: 'Direct Doc', content: 'hello direct content' })
+      ok(
+        hierarchyCases.map(({ type, hasChild }, i) => ({
+          id: String(i),
+          name: `Node ${i}`,
+          type,
+          hasChild,
+          custom: i
+        }))
+      )
     );
-    const res = await provider().getFileContent({
-      teamId: 't',
-      tmbId: 'tmb',
-      apiFileId: 'f1',
-      datasetId: 'd1'
-    });
-    expect(res).toEqual({ title: 'Direct Doc', rawText: 'hello direct content' });
-  });
-
-  it('getFilePreviewUrl 获取只读 URL', async () => {
-    mocks.request.mockResolvedValueOnce(ok({ url: 'https://preview.example.com/file' }));
-    const url = await provider().getFilePreviewUrl({ apiFileId: 'f1' });
-    expect(url).toBe('https://preview.example.com/file');
-  });
-
-  it('getFileRawId 返回原始 ID', () => {
-    expect(provider().getFileRawId('raw-1')).toBe('raw-1');
-  });
-
-  it('listFiles 格式校验', async () => {
-    mocks.request.mockResolvedValueOnce(ok('not-array'));
-    await expect(provider().listFiles({})).rejects.toBe('Invalid file list format');
-
-    mocks.request.mockResolvedValueOnce(ok([{ id: '' }]));
-    await expect(provider().listFiles({})).rejects.toBe('Invalid file data format');
-  });
-
-  it('响应异常处理：空响应、失败标识与错误包装', async () => {
-    mocks.request.mockResolvedValueOnce({ data: undefined });
-    await expect(provider().listFiles({})).rejects.toEqual({ message: '服务器异常' });
-
-    mocks.request.mockResolvedValueOnce({ data: { success: false, message: 'fail' } });
-    await expect(provider().listFiles({})).rejects.toEqual({ message: 'fail' });
-
-    mocks.request.mockRejectedValueOnce('raw string error');
-    await expect(provider().listFiles({})).rejects.toEqual({ message: 'raw string error' });
-  });
-
-  it('getFileContent 命中 S3 缓存 buffer', async () => {
-    mocks.getRawTextBuffer.mockResolvedValueOnce({ text: 'buffered text', filename: 'cached.pdf' });
-    mocks.request.mockResolvedValueOnce(ok({ previewUrl: 'https://example.com/cached.pdf' }));
-    const res = await provider().getFileContent({
-      teamId: 't',
-      tmbId: 'tmb',
-      apiFileId: 'f1',
-      datasetId: 'd1'
-    });
-    expect(res).toEqual({ title: 'cached.pdf', rawText: 'buffered text' });
-  });
-
-  it('getFileContent 缺失 content 与 previewUrl 报错', async () => {
-    mocks.request.mockResolvedValueOnce(ok({}));
-    await expect(
-      provider().getFileContent({
-        teamId: 't',
-        tmbId: 'tmb',
-        apiFileId: 'f1',
-        datasetId: 'd1'
-      })
-    ).rejects.toBe('Invalid content type: content or previewUrl is required');
-  });
-
-  it('getFilePreviewUrl 校验无效 url 报错', async () => {
-    mocks.request.mockResolvedValueOnce(ok({ url: '' }));
-    await expect(provider().getFilePreviewUrl({ apiFileId: 'f1' })).rejects.toBe(
-      'Invalid response url'
+    expect(await provider().listFiles({})).toEqual(
+      hierarchyCases.map(({ type, expected }, i) => ({
+        id: String(i),
+        rawId: String(i),
+        name: `Node ${i}`,
+        type,
+        hasChild: expected,
+        custom: i
+      }))
     );
+    expect(mocks.request.mock.calls[0][0].data).toEqual({});
   });
+  it.each([
+    ['not-array', 'Invalid file list format'],
+    [[{ id: '', name: 'Doc', type: 'file' }], 'Invalid file data format'],
+    [[{ id: '1', name: '', type: 'file' }], 'Invalid file data format'],
+    [[{ id: '1', name: 'Doc' }], 'Invalid file data format']
+  ])('拒绝无效列表 %#', async (data, message) => {
+    mocks.request.mockResolvedValueOnce(ok(data));
+    await expect(provider().listFiles({})).rejects.toBe(message);
+  });
+  it.each([
+    [{ data: undefined }, { message: '服务器异常' }],
+    [{ data: { success: false, message: 'failed' } }, { message: 'failed' }]
+  ])('响应协议错误 %#', async (response, error) => {
+    mocks.request.mockResolvedValueOnce(response);
+    await expect(provider().listFiles({})).rejects.toEqual(error);
+  });
+  it.each([
+    [null, { message: '未知错误' }],
+    ['failed', { message: 'failed' }],
+    [new Error('failed'), { message: 'failed' }],
+    [{ data: 'failed' }, { message: 'failed' }],
+    [{ response: { data: { reason: 'failed' } } }, { reason: 'failed' }],
+    [{ code: 'ECONNRESET' }, { code: 'ECONNRESET' }]
+  ])('转换请求异常 %#', async (error, expected) => {
+    mocks.request.mockRejectedValueOnce(error);
+    await expect(provider().listFiles({})).rejects.toEqual(expected);
+  });
+});
 
-  it('getFileDetail 未找到文件时返回 NOT_FOUND Result', async () => {
-    mocks.request.mockResolvedValueOnce({ data: { success: true, data: null } });
-    const res = await provider().getFileDetail({ apiFileId: 'not-exist' });
-    expect(res).toEqual({
+describe('getFileDetail', () => {
+  it.each(hierarchyCases)(
+    '$type / hasChild=$hasChild 使用与列表一致的层级语义',
+    async ({ type, hasChild, expected }) => {
+      mocks.request.mockResolvedValueOnce(
+        ok({
+          id: 'remote',
+          name: 'Doc',
+          parentId: null,
+          type,
+          hasChild,
+          updateTime: 'updated',
+          createTime: 'created'
+        })
+      );
+      expect(await provider().getFileDetail({ apiFileId: 'file' })).toEqual({
+        success: true,
+        data: {
+          id: 'remote',
+          rawId: 'file',
+          name: 'Doc',
+          parentId: '',
+          type,
+          hasChild: expected,
+          updateTime: 'updated',
+          createTime: 'created'
+        }
+      });
+    }
+  );
+  it('保留有效父级 ID', async () => {
+    mocks.request.mockResolvedValueOnce(
+      ok({ id: 'file', name: 'Doc', parentId: 'parent', type: 'file' })
+    );
+    expect(await provider().getFileDetail({ apiFileId: 'file' })).toMatchObject({
+      success: true,
+      data: { parentId: 'parent' }
+    });
+  });
+  it.each([null, undefined])('空详情 %j resolve NOT_FOUND', async (data) => {
+    mocks.request.mockResolvedValueOnce(ok(data));
+    expect(await provider().getFileDetail({ apiFileId: 'file' })).toEqual({
       success: false,
       code: 'NOT_FOUND',
       message: 'File not found',
       status: 404
     });
   });
-
-  it('getFileContent 从 previewUrl 中解析 fallback 标题', async () => {
-    mocks.request
-      .mockResolvedValueOnce(
-        ok({ previewUrl: 'https://example.com/files/my-document.pdf?token=123' })
-      )
-      .mockRejectedValueOnce(new Error('no detail'));
-    const res = await provider().getFileContent({
-      teamId: 't',
-      tmbId: 'tmb',
-      apiFileId: 'f1',
-      datasetId: 'd1'
+  it('网络错误 resolve 失败', async () => {
+    mocks.request.mockRejectedValueOnce({ code: 'ECONNRESET' });
+    expect(await provider().getFileDetail({ apiFileId: 'file' })).toMatchObject({
+      success: false,
+      code: 'NETWORK_ERROR'
     });
-    expect(res.title).toBe('my-document.pdf');
   });
+  it.fails('HTTP 状态不能被响应错误转换丢弃（现有缺陷）', async () => {
+    mocks.request.mockRejectedValueOnce({ message: 'failed', response: { status: 503 } });
+    expect(await provider().getFileDetail({ apiFileId: 'file' })).toMatchObject({
+      success: false,
+      code: 'SERVER_ERROR',
+      status: 503
+    });
+  });
+});
+
+describe('getFileContent', () => {
+  it('内联正文直接返回，不访问缓存或下载', async () => {
+    mocks.request.mockResolvedValueOnce(ok({ title: 'Doc', content: 'inline' }));
+    await expect(provider().getFileContent(contentInput)).resolves.toEqual({
+      title: 'Doc',
+      rawText: 'inline'
+    });
+    expect(mocks.getBuffer).not.toHaveBeenCalled();
+    expect(mocks.read).not.toHaveBeenCalled();
+  });
+  it('下载透传计费与解析参数，并以最终标题写入缓存', async () => {
+    const previewUrl = 'https://example.com/report.pdf';
+    mocks.request.mockResolvedValueOnce(ok({ title: 'Report', previewUrl }));
+    await expect(
+      provider().getFileContent({ ...contentInput, customPdfParse: true, usageId: 'usage' })
+    ).resolves.toEqual({ title: 'Report', rawText: 'parsed' });
+    expect(mocks.read).toHaveBeenCalledWith({
+      teamId: 'team',
+      tmbId: 'member',
+      relatedId: 'file',
+      datasetId: 'dataset',
+      url: previewUrl,
+      customPdfParse: true,
+      sangforFileParseConfig: undefined,
+      usageId: 'usage',
+      getFormatText: true
+    });
+    expect(mocks.addBuffer).toHaveBeenCalledWith({
+      sourceId: previewUrl,
+      sourceName: 'Report',
+      text: 'parsed',
+      customPdfParse: true,
+      sangforFileParseConfig: undefined
+    });
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+  });
+  it.each([
+    { title: 'Response', filename: 'cached.pdf', expected: 'Response' },
+    { title: undefined, filename: 'cached.pdf', expected: 'cached.pdf' },
+    { title: undefined, filename: '', expected: 'Detail' }
+  ])('缓存命中标题优先级：$expected', async ({ title, filename, expected }) => {
+    mocks.request
+      .mockResolvedValueOnce(ok({ title, previewUrl: 'https://example.com/doc.pdf' }))
+      .mockResolvedValueOnce(ok({ name: 'Detail', type: 'file' }));
+    mocks.getBuffer.mockResolvedValueOnce({ filename, text: 'cached' });
+    await expect(provider().getFileContent(contentInput)).resolves.toEqual({
+      title: expected,
+      rawText: 'cached'
+    });
+    expect(mocks.read).not.toHaveBeenCalled();
+    expect(mocks.addBuffer).not.toHaveBeenCalled();
+  });
+  it.each([
+    ['https://example.com/a%20b.pdf?token=x#page=1', 'a b.pdf'],
+    ['relative/file.pdf?token=x#page=1', 'file.pdf'],
+    ['https://example.com/%ZZ.pdf', '%ZZ.pdf'],
+    ['https://example.com/', undefined]
+  ])('详情不可用时从 URL %s 回退标题', async (previewUrl, expected) => {
+    mocks.request
+      .mockResolvedValueOnce(ok({ previewUrl }))
+      .mockRejectedValueOnce(new Error('detail unavailable'));
+    const content = await provider().getFileContent(contentInput);
+    expect(content.rawText).toBe('parsed');
+    if (expected) expect(content.title).toBe(expected);
+    else expect(content.title).toEqual(expect.stringMatching(/\S+/));
+  });
+  it('拒绝缺少正文和下载地址的响应', async () => {
+    mocks.request.mockResolvedValueOnce(ok({}));
+    await expect(provider().getFileContent(contentInput)).rejects.toBe(
+      'Invalid content type: content or previewUrl is required'
+    );
+  });
+});
+
+describe('getFilePreviewUrl', () => {
+  it('返回预览 URL', async () => {
+    mocks.request.mockResolvedValueOnce(ok({ url: 'https://example.com/preview' }));
+    await expect(provider().getFilePreviewUrl({ apiFileId: 'file' })).resolves.toBe(
+      'https://example.com/preview'
+    );
+    expect(mocks.request.mock.calls[0][0]).toMatchObject({
+      url: '/v1/file/read',
+      method: 'GET',
+      params: { id: 'file' }
+    });
+  });
+  it.each(['', 123])('拒绝非法 URL %j', async (url) => {
+    mocks.request.mockResolvedValueOnce(ok({ url }));
+    await expect(provider().getFilePreviewUrl({ apiFileId: 'file' })).rejects.toBe(
+      'Invalid response url'
+    );
+  });
+});
+
+describe('getFileRawId', () => {
+  it('保留原始 ID', () => expect(provider().getFileRawId('file')).toBe('file'));
 });

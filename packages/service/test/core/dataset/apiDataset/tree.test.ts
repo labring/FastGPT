@@ -1,22 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
-import type { APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import {
   buildApiFileRecords,
   buildApiFileTree,
-  type ApiFileTreeNode
-} from '../../../../core/dataset/apiDataset/tree';
+  type ApiFileTreeNode,
+  toApiFileDirId,
+  type ApiFileTreeSeed
+} from '@fastgpt/service/core/dataset/apiDataset/tree';
+import { ApiDatasetMockServer } from '@test/mockserver/dataset/server';
 
 /** 造一个 listFiles 返回的 server 节点；name 刻意与 id 不同，用于断言 name 被原样透传 */
-const file = (id: string, type: 'file' | 'folder', hasChild = false): APIFileItemType => ({
+const file = (id: string, type: 'file' | 'folder', hasChild = false): ApiFileTreeSeed => ({
   id,
-  rawId: id,
-  parentId: '',
   name: `name-${id}`,
   type,
-  hasChild,
-  updateTime: new Date(),
-  createTime: new Date()
+  hasChild
 });
 
 /** 4 层树：l1(folder) > l2(folder) > l3(folder) > l4(file) */
@@ -31,16 +29,13 @@ const mockFourLevelTree = (listFiles: ReturnType<typeof vi.fn>) => {
 
 describe('buildApiFileTree', () => {
   const listFiles = vi.fn();
-  const request = { listFiles } as any;
+  // 遍历仅使用 listFiles；其余 provider 方法不参与本测试。
+  const request = { listFiles } as unknown as Parameters<typeof buildApiFileTree>[0]['request'];
 
   beforeEach(() => {
     listFiles.mockReset();
   });
 
-  /**
-   * 被测函数名: buildApiFileTree  等级: 3-High
-   * 思路（正常场景）: 4 层树 l1>l2>l3>l4(file)，父先子后返回，name / depth / serverParentId 逐层正确
-   */
   it('T1-1: 4 层树父先子后返回，depth 与 serverParentId 逐层正确', async () => {
     mockFourLevelTree(listFiles);
 
@@ -61,23 +56,6 @@ describe('buildApiFileTree', () => {
     ]);
   });
 
-  /**
-   * 被测函数名: buildApiFileTree  等级: 3-High
-   * 思路（回归场景）: 同 4 层树，folder 节点必须与 file 一并保留
-   */
-  it('T1-2: 4 层树中的 folder 节点一并保留', async () => {
-    mockFourLevelTree(listFiles);
-
-    const nodes = await buildApiFileTree({ request, seeds: [file('l1', 'folder', true)] });
-
-    expect(nodes.filter((node) => node.type === 'folder')).toHaveLength(3);
-    expect(nodes.filter((node) => node.type === 'file')).toHaveLength(1);
-  });
-
-  /**
-   * 被测函数名: buildApiFileTree  等级: 3-High
-   * 思路（正常场景）: 知识库根哨兵的 id 不是真实 server 节点，展开子级要用 seed.listId
-   */
   it('T1-3: seed.listId 覆盖 listFiles 的 parentId', async () => {
     listFiles.mockResolvedValue([]);
 
@@ -109,10 +87,6 @@ describe('buildApiFileTree', () => {
     expect(listFiles).toHaveBeenCalledWith({ parentId: undefined });
   });
 
-  /**
-   * 被测函数名: buildApiFileTree  等级: 3-High
-   * 思路（边界场景）: hasChild 为 false 的 folder 只产出节点，不发起 listFiles（ET-003）
-   */
   it('T1-4: hasChild 为 false 的 folder 不递归拉取子级', async () => {
     const nodes = await buildApiFileTree({
       request,
@@ -133,10 +107,6 @@ describe('buildApiFileTree', () => {
     ]);
   });
 
-  /**
-   * 被测函数名: buildApiFileTree  等级: 3-High
-   * 思路（正常场景）: 单 file seed 产出 1 个根节点，且不发起 listFiles（TC-004）
-   */
   it('T1-5: 单 file seed 产出 1 个根节点且不拉取子级', async () => {
     const nodes = await buildApiFileTree({ request, seeds: [file('f1', 'file', false)] });
 
@@ -151,10 +121,6 @@ describe('buildApiFileTree', () => {
     });
   });
 
-  /**
-   * 被测函数名: buildApiFileTree  等级: 3-High
-   * 思路（边界场景）: seeds 为空时返回空数组，且不发起任何 listFiles（ET-010）
-   */
   it('T1-6: seeds 为空返回空数组且不调用 listFiles', async () => {
     const nodes = await buildApiFileTree({ request, seeds: [] });
 
@@ -162,10 +128,6 @@ describe('buildApiFileTree', () => {
     expect(listFiles).not.toHaveBeenCalled();
   });
 
-  /**
-   * 被测函数名: buildApiFileTree  等级: 3-High
-   * 思路（边界场景）: 两个同 id 的 seed 只产出一个节点，visited 同时抵御重复/自引用死循环
-   */
   it('T1-7: 重复 id 的 seed 只产出一个节点', async () => {
     listFiles.mockResolvedValue([]);
 
@@ -180,25 +142,33 @@ describe('buildApiFileTree', () => {
 
   it('T1-7b: 子目录先于祖先传入时，以祖先遍历出的层级覆盖根级占位', async () => {
     listFiles.mockImplementation(async ({ parentId }: { parentId: string }) => {
+      if (parentId === 'other') return [file('other-file', 'file')];
       if (parentId === 'a') return [file('b', 'folder', true)];
-      if (parentId === 'b') return [file('c', 'file')];
+      if (parentId === 'b') return [file('c', 'folder', true), file('sibling', 'file')];
+      if (parentId === 'c') return [file('d', 'file')];
       return [];
     });
 
     const nodes = await buildApiFileTree({
       request,
-      seeds: [file('b', 'folder', true), file('a', 'folder', true)]
+      seeds: [file('other', 'folder', true), file('b', 'folder', true), file('a', 'folder', true)]
     });
 
     expect(
       nodes.map(({ serverId, serverParentId, depth }) => [serverId, serverParentId, depth])
     ).toEqual([
+      ['other', null, 0],
       ['a', null, 0],
+      ['other-file', 'other', 1],
       ['b', 'a', 1],
-      ['c', 'b', 2]
+      ['c', 'b', 2],
+      ['sibling', 'b', 2],
+      ['d', 'c', 3]
     ]);
     expect(listFiles.mock.calls.map((call) => call[0])).toEqual([
+      { parentId: 'other' },
       { parentId: 'b' },
+      { parentId: 'c' },
       { parentId: 'a' }
     ]);
   });
@@ -221,10 +191,6 @@ describe('buildApiFileTree', () => {
     expect(listFiles).toHaveBeenCalledTimes(2);
   });
 
-  /**
-   * 被测函数名: buildApiFileTree  等级: 3-High
-   * 思路（异常场景）: listFiles reject 时异常直接上抛，不吞异常（ET-004）
-   */
   it('T1-8: listFiles reject 时异常上抛', async () => {
     listFiles.mockRejectedValue(new Error('list files failed'));
 
@@ -232,38 +198,58 @@ describe('buildApiFileTree', () => {
       buildApiFileTree({ request, seeds: [file('l1', 'folder', true)] })
     ).rejects.toThrow('list files failed');
   });
+  it('4 万文件无遗漏、无重复，所有父目录都先于子记录生成', async () => {
+    const server = new ApiDatasetMockServer({
+      customTree: { l1: 4, l2: 10, l3: 10, filesPerLeaf: 100 }
+    });
+    listFiles.mockImplementation(async ({ parentId }) => server.customFiles.get(parentId) ?? []);
+    const nodes = await buildApiFileTree({ request, seeds: [file('root', 'folder', true)] });
+    const records = buildApiFileRecords(nodes);
+    expect(listFiles).toHaveBeenCalledTimes(445);
+    expect(records).toHaveLength(40445);
+    expect(records.filter(({ type }) => type === 'file')).toHaveLength(40000);
+    expect(new Set(records.map(({ apiFileId }) => apiFileId)).size).toBe(records.length);
+    const directories = new Set<string>();
+    for (const record of records) {
+      if (record.parentDirId !== null) expect(directories.has(record.parentDirId)).toBe(true);
+      if (record.type === 'folder') directories.add(record.apiFileId);
+    }
+  });
 });
 
 describe('buildApiFileRecords', () => {
-  const listFiles = vi.fn();
-  const request = { listFiles } as any;
-
-  /** server 树：dir(folder) > doc(file, 挂子文档) / plain(file)；doc 下还有 child(file) */
-  const mockTreeWithDocChildren = () => {
-    listFiles.mockImplementation(async ({ parentId }: { parentId: string }) => {
-      if (parentId === 'dir') return [file('doc', 'file', true), file('plain', 'file')];
-      if (parentId === 'doc') return [file('child', 'file')];
-      return [];
-    });
-  };
-
-  beforeEach(() => {
-    listFiles.mockReset();
-    mockTreeWithDocChildren();
+  const node = (overrides: Partial<ApiFileTreeNode> = {}): ApiFileTreeNode => ({
+    serverId: 'dir',
+    serverParentId: null,
+    dirId: 'dir',
+    type: 'folder',
+    name: 'Directory',
+    depth: 0,
+    hasChild: true,
+    ...overrides
   });
 
-  const buildRecords = async () => {
-    const nodes = await buildApiFileTree({ request, seeds: [file('dir', 'folder', true)] });
-    return { nodes, records: buildApiFileRecords(nodes) };
-  };
-
-  /**
-   * 被测函数名: buildApiFileRecords  等级: 3-High
-   * 思路（正常场景）: 三种节点各自的记录形态 —— folder 只出目录记录；带子文档的 file 出
-   * 「同名目录 + 正文」，正文挂在该目录下；普通 file 只出正文，与兄弟同级
-   */
-  it('T2-1: folder / 带子文档的 file / 普通 file 产出各自的记录', async () => {
-    const { records } = await buildRecords();
+  it('folder / 带子文档的 file / 普通 file 产出各自的记录', () => {
+    const records = buildApiFileRecords([
+      node(),
+      node({ serverId: 'doc', dirId: 'doc#dir', type: 'file', serverParentId: 'dir', depth: 1 }),
+      node({
+        serverId: 'plain',
+        dirId: 'plain#dir',
+        type: 'file',
+        hasChild: false,
+        serverParentId: 'dir',
+        depth: 1
+      }),
+      node({
+        serverId: 'child',
+        dirId: 'child#dir',
+        type: 'file',
+        hasChild: false,
+        serverParentId: 'doc',
+        depth: 2
+      })
+    ]);
 
     expect(
       records.map((record) => [
@@ -282,190 +268,32 @@ describe('buildApiFileRecords', () => {
     ]);
   });
 
-  /**
-   * 被测函数名: buildApiFileRecords  等级: 3-High
-   * 思路（回归场景）: 旧实现只给 `type === 'folder'` 预建目录，带子文档的 file 的子级无处可挂。
-   * 现在每个 hasChild 节点都必须有一条同名目录记录
-   */
-  it('T2-2: 每个 hasChild 节点都有对应的目录记录', async () => {
-    const { nodes, records } = await buildRecords();
-    const dirIds = new Set(
-      records.filter((record) => record.type === 'folder').map((record) => record.apiFileId)
-    );
-
-    for (const node of nodes.filter((item) => item.hasChild)) {
-      expect(dirIds.has(node.dirId), `${node.serverId} 的目录记录`).toBe(true);
-    }
+  it('派生目录 id 与 provider id 冲突时拒绝生成记录', () => {
+    expect(() =>
+      buildApiFileRecords([
+        node({ serverId: 'doc', dirId: 'doc#dir', type: 'file' }),
+        node({ serverId: 'doc#dir', dirId: 'doc#dir', hasChild: false })
+      ])
+    ).toThrow('Api file directory id conflicts with provider id: doc#dir');
   });
 
-  /**
-   * 被测函数名: buildApiFileRecords  等级: 3-High
-   * 思路（不变量）: 父先子后 —— 任何记录的父目录记录都排在它前面，且父目录一定是目录记录。
-   * 调用方据此「先按层写全部目录、再写全部文件」即可满足父子依赖
-   */
-  it('T2-3: 父先子后，且父级一律是目录记录', async () => {
-    const { records } = await buildRecords();
-    const indexOf = new Map(records.map((record, index) => [record.apiFileId, index]));
-    const dirIds = new Set(
-      records.filter((record) => record.type === 'folder').map((record) => record.apiFileId)
-    );
-
-    for (const [index, record] of records.entries()) {
-      if (record.parentDirId === null) {
-        expect(indexOf.get(record.apiFileId)).toBe(index);
-        continue;
+  it('空输入不生成记录，缺失父节点回退到根目录', () => {
+    expect(buildApiFileRecords([])).toEqual([]);
+    expect(buildApiFileRecords([node({ serverParentId: 'missing', hasChild: false })])).toEqual([
+      {
+        apiFileId: 'dir',
+        apiFileParentId: 'missing',
+        parentDirId: null,
+        type: 'folder',
+        name: 'Directory',
+        depth: 0
       }
-      expect(dirIds.has(record.parentDirId), `${record.apiFileId} 的父目录是目录记录`).toBe(true);
-      expect(indexOf.get(record.parentDirId)!, `${record.apiFileId} 的父目录在其之前`).toBeLessThan(
-        index
-      );
-    }
-  });
-
-  /**
-   * 安全边界：派生目录 `doc#dir` 不能和 provider 的真实节点 id 重名。
-   * 否则创建路径按 apiFileId 建 Map 时会静默覆盖其中一个节点，必须在任何写入前拒绝本轮导入。
-   */
-  it('T2-4: 派生目录 id 与 provider id 冲突时拒绝生成记录', async () => {
-    listFiles.mockImplementation(async ({ parentId }: { parentId: string }) => {
-      if (parentId === 'root') {
-        return [file('doc', 'file', true), file('doc#dir', 'folder')];
-      }
-      if (parentId === 'doc') return [file('child', 'file')];
-      return [];
-    });
-
-    const nodes = await buildApiFileTree({ request, seeds: [file('root', 'folder', true)] });
-
-    expect(() => buildApiFileRecords(nodes)).toThrow(
-      'Api file directory id conflicts with provider id: doc#dir'
-    );
+    ]);
   });
 });
 
-/**
- * INT-3：同一份 mock server 树分别喂给创建路径的 seeds 与同步路径的 seeds，断言两条路径
- * 对每个节点的本地父级解析结果一致。
- *
- * 两条路径的差异只有两处：
- *  1. seed 构造：创建路径在「全选」时只提交根哨兵（listId = basePath），展开后 server 根级节点
- *     的 serverParentId 是 RootCollectionId；同步路径在本地存在哨兵行时（isRoot）直接列举
- *     server 根，serverParentId 是 null。
- *  2. 父级解析：本地父级由各自内联的规则得出。
- * 遍历本身（buildApiFileTree）是两边共用的真实实现。
- *
- * 注意：解析规则在生产代码里是各自内联的闭包（apiCollectionV2.ts 的 resolveParentId /
- * sync.ts 的 resolveCreateParentId），本文件只是把规则逐行照抄成语义等价物，因此这里通过只能
- * 证明「规则应当如此」，不能证明生产实现没漂移。绑定生产实现的回归证据在两条真实路径的用例里：
- * projects/app 的 apiCollectionV2.test.ts（T3-*，创建路径）与 pro/admin 的 sync.test.ts
- * （T4-*，同步路径），两者都走真实的 buildApiFileTree / buildApiFileRecords 与层级解析。
- */
-describe('INT-3 创建路径与同步路径的层级对齐（纯函数）', () => {
-  const listFiles = vi.fn();
-  const request = { listFiles } as any;
-
-  /** 本地已有行的 _id；用可读串代替真实 ObjectId，等值比较与本测试目的无关 */
-  const SENTINEL_ROW_ID = 'sentinel-row-id';
-  const localRows = new Map<string, string>([
-    [RootCollectionId, SENTINEL_ROW_ID],
-    ['a', 'row-a'],
-    ['a1', 'row-a1']
-  ]);
-
-  /** server 根级节点 a(folder) / f0(file)，a 下有 a1(folder) / af(file)，a1 下有 a1f(file) */
-  const mockWholeKbTree = () => {
-    listFiles.mockImplementation(async ({ parentId }: { parentId: string | null }) => {
-      if (parentId === 'ROOT' || parentId === null)
-        return [file('a', 'folder', true), file('f0', 'file')];
-      if (parentId === 'a') return [file('a1', 'folder', true), file('af', 'file')];
-      if (parentId === 'a1') return [file('a1f', 'file')];
-      return [];
-    });
-  };
-
-  const buildCreateNodes = () =>
-    buildApiFileTree({
-      request,
-      // 创建路径：用户在导入弹窗选择「全选」→ 只提交根哨兵，展开子级走 basePath
-      seeds: [{ ...file(RootCollectionId, 'folder', true), listId: 'ROOT' }]
-    });
-
-  const buildSyncNodes = async () => {
-    // 同步路径：本地存在哨兵行 → isRoot，直接列举 server 根
-    const seeds = (await request.listFiles({ parentId: null })) as APIFileItemType[];
-    return buildApiFileTree({ request, seeds });
-  };
-
-  beforeEach(() => {
-    listFiles.mockReset();
-    mockWholeKbTree();
-  });
-
-  it('INT-3: 两条路径的节点三元组一致（创建路径剔除哨兵、depth 归零后）', async () => {
-    const createNodes = await buildCreateNodes();
-    const syncNodes = await buildSyncNodes();
-
-    const sentinel = createNodes.find((node) => node.serverId === RootCollectionId)!;
-    expect(sentinel).toBeTruthy();
-
-    const createTriples = createNodes
-      .filter((node) => node.serverId !== RootCollectionId)
-      .map((node) => [
-        node.serverId,
-        // 规范化：创建路径里 server 根级节点的父级是哨兵，语义上就是 server 根
-        node.serverParentId === RootCollectionId ? null : node.serverParentId,
-        node.depth - (sentinel.depth + 1)
-      ])
-      .sort();
-    const syncTriples = syncNodes
-      .map((node) => [node.serverId, node.serverParentId, node.depth])
-      .sort();
-
-    expect(createTriples).toEqual(syncTriples);
-  });
-
-  it('INT-3-b: 逐个节点解析本地父级，两条路径必须落到同一行', async () => {
-    const createNodes = await buildCreateNodes();
-    const syncNodes = await buildSyncNodes();
-
-    /** 创建路径：节点已有本地父级时直接查表；本次选中的最外层节点（serverParentId === null）用请求体父级 */
-    const createLocalParentOf = (node: ApiFileTreeNode) =>
-      node.serverParentId === null ? undefined : localRows.get(node.serverParentId);
-    /** 同步路径：全量导入（哨兵 scope）下 server 根级节点的本地父级是哨兵行，而不是 dataset 根 */
-    const syncLocalParentOf = (node: ApiFileTreeNode) =>
-      node.serverParentId === null ? SENTINEL_ROW_ID : localRows.get(node.serverParentId);
-
-    const createParents = new Map(
-      createNodes
-        .filter((node) => node.serverId !== RootCollectionId)
-        .map((node) => [node.serverId, createLocalParentOf(node)])
-    );
-    const syncParents = new Map(syncNodes.map((node) => [node.serverId, syncLocalParentOf(node)]));
-
-    for (const [serverId, createParent] of createParents) {
-      expect(syncParents.get(serverId), `${serverId} 的本地父级`).toBe(createParent);
-    }
-  });
-
-  it('T1-10: 深层后代多层上溯更新 depth（覆盖多级祖先链更新）', async () => {
-    const tree: Record<string, any[]> = {
-      A: [{ id: 'B', name: 'B', type: 'folder', hasChild: true }],
-      B: [{ id: 'C', name: 'C', type: 'folder', hasChild: true }],
-      C: [{ id: 'D', name: 'D', type: 'file', hasChild: false }]
-    };
-    const request = {
-      listFiles: vi.fn(async ({ parentId }: any) => tree[parentId] ?? []),
-      getFileContent: vi.fn(),
-      getFileRawId: (id: string) => id
-    } as any;
-
-    const nodes = await buildApiFileTree({
-      request,
-      seeds: [
-        { id: 'C', name: 'C', type: 'folder', hasChild: true },
-        { id: 'A', name: 'A', type: 'folder', hasChild: true }
-      ]
-    });
-    expect(nodes.find((n) => n.serverId === 'D')?.depth).toBe(3);
+describe('toApiFileDirId', () => {
+  it.each(['folder', 'file'] as const)('%s 保持旧数据目录 ID 约定', (type) => {
+    expect(toApiFileDirId('doc', type)).toBe(type === 'folder' ? 'doc' : 'doc#dir');
   });
 });

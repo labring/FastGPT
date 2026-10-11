@@ -1,268 +1,270 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-const { mockRequest } = vi.hoisted(() => ({
-  mockRequest: vi.fn()
-}));
-
-vi.mock('../../../../../common/api/axios', () => ({
-  createProxyAxios: vi.fn(() => ({
-    request: mockRequest
-  }))
-}));
-
-vi.mock('../../../../../common/logger', () => ({
-  getLogger: () => ({
-    warn: vi.fn(),
-    error: vi.fn()
-  }),
-  LogCategories: {
-    MODULE: {
-      DATASET: {
-        API_DATASET: 'dataset.apiDataset'
-      }
-    }
-  }
-}));
-
 import { useYuqueDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/yuqueDataset/api';
+import { createProxyAxios } from '@fastgpt/service/common/api/axios';
+import { serviceEnv } from '@fastgpt/service/env';
 
-/** 语雀响应体固定包一层 { success, message, data }，request 内部只取 data */
-const ok = (data: unknown) => ({ data: { success: true, message: 'ok', data } });
-
-const server = {
-  token: 'yuque-token',
-  userId: 'yuque-user'
-} as any;
-
-/** 一个 TOC：父文档 doc(2000) 下挂子文档 child(2001) */
-const TOC = [
+const { request } = vi.hoisted(() => ({ request: vi.fn() }));
+vi.mock('@fastgpt/service/common/api/axios', () => ({
+  createProxyAxios: vi.fn(() => ({ request }))
+}));
+const server = { token: 'token', userId: 'group' };
+const provider = (basePath?: string) =>
+  useYuqueDatasetRequest({ yuqueServer: { ...server, basePath } });
+const ok = (data: unknown) => ({ data: { data } });
+const toc = [
   {
-    uuid: 'uuid-doc',
+    id: 10,
+    uuid: 'parent-uuid',
+    title: 'Parent',
     type: 'DOC',
-    title: 'Doc',
-    url: 'doc',
-    slug: 'doc',
-    id: '2000',
-    doc_id: '2000',
-    prev_uuid: '',
-    sibling_uuid: '',
-    child_uuid: 'uuid-child',
-    parent_uuid: ''
+    parent_uuid: '',
+    child_uuid: 'child-uuid'
   },
   {
-    uuid: 'uuid-child',
-    type: 'DOC',
+    id: 11,
+    uuid: 'child-uuid',
     title: 'Child',
-    url: 'child',
-    slug: 'child',
-    id: '2001',
-    doc_id: '2001',
-    prev_uuid: '',
-    sibling_uuid: '',
-    child_uuid: '',
-    parent_uuid: 'uuid-doc'
-  }
+    type: 'DOC',
+    parent_uuid: 'parent-uuid',
+    child_uuid: ''
+  },
+  {
+    id: 12,
+    uuid: 'folder-uuid',
+    title: 'Folder',
+    type: 'TITLE',
+    parent_uuid: '',
+    child_uuid: 'nested-folder'
+  },
+  {
+    id: 13,
+    uuid: 'nested-folder',
+    title: 'Nested',
+    type: 'TITLE',
+    parent_uuid: 'folder-uuid',
+    child_uuid: ''
+  },
+  { id: 14, uuid: 'link-uuid', title: 'Link', type: 'LINK', parent_uuid: '' }
 ];
+const repoPage = Array.from({ length: 100 }, (_, i) => ({ id: i + 1, name: `Repo ${i + 1}` }));
+beforeEach(() => {
+  vi.clearAllMocks();
+  request.mockReset();
+});
 
 describe('useYuqueDatasetRequest', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  /**
-   * 被测函数名: useYuqueDatasetRequest.getFileDetail  等级: 3-High
-   * 思路（回归场景）: listFiles 用复合 id `repoId-docId-uuid`，getFileDetail 曾返回裸 docId。
-   * 同步流程把 listFiles 的 id 与本地 apiFileId 比对，两者不同源时每个文档都会被判为
-   * 「远端已删除」而删掉重建（每轮同步都重建一次），且被删行的 _id 会被删除集引用。
-   * 本用例钉住：两个方法对同一节点给出的 id 必须是同一个。
-   */
-  it('getFileDetail 返回的 id 与 listFiles 的 id 同源（复合形态）', async () => {
-    mockRequest.mockResolvedValue(ok(TOC));
-    const request = useYuqueDatasetRequest({ yuqueServer: server });
-
-    const listed = await request.listFiles({ parentId: '100' });
-    expect(listed.map((item) => item.id)).toEqual(['100-2000-uuid-doc']);
-    // 展开子级时 parentId 传的是父节点的复合 id，产出同样是复合 id
-    const children = await request.listFiles({ parentId: '100-2000-uuid-doc' });
-    expect(children.map((item) => item.id)).toEqual(['100-2001-uuid-child']);
-
-    const detail = await request.getFileDetail({ apiFileId: '100-2000-uuid-doc' });
-    expect(detail.success).toBe(true);
-    if (detail.success) {
-      expect(detail.data.id).toBe('100-2000-uuid-doc');
-      expect(listed.some((item) => item.id === detail.data.id)).toBe(true);
-    }
-  });
-
-  /**
-   * 被测函数名: useYuqueDatasetRequest.getFileDetail  等级: 3-High
-   * 思路（正常场景）: 带子文档的节点要回 hasChild=true、parentId 为父节点的复合 id，
-   * 子文档的 parent_uuid 为空时按知识库根处理（parentId 退化为 repoId）
-   */
-  it('getFileDetail 回传层级字段：hasChild 取 child_uuid，parentId 为父节点复合 id', async () => {
-    mockRequest.mockResolvedValue(ok(TOC));
-    const request = useYuqueDatasetRequest({ yuqueServer: server });
-
-    const parentDoc = await request.getFileDetail({ apiFileId: '100-2000-uuid-doc' });
-    expect(parentDoc.success).toBe(true);
-    if (parentDoc.success) {
-      expect(parentDoc.data.hasChild).toBe(true);
-      expect(parentDoc.data.type).toBe('file');
-      expect(parentDoc.data.parentId).toBe('100');
-    }
-
-    const childDoc = await request.getFileDetail({ apiFileId: '100-2001-uuid-child' });
-    expect(childDoc.success).toBe(true);
-    if (childDoc.success) {
-      expect(childDoc.data.hasChild).toBe(false);
-      expect(childDoc.data.parentId).toBe('100-2000-uuid-doc');
-    }
-  });
-
-  /**
-   * 被测函数名: useYuqueDatasetRequest.getFileDetail  等级: 3-High
-   * 思路（异常场景）: TOC 里找不到 uuid 时 reject，同步据此判定远端已删除
-   */
-  it('getFileDetail 在 TOC 中找不到节点时 reject', async () => {
-    mockRequest.mockResolvedValue(ok(TOC));
-    const request = useYuqueDatasetRequest({ yuqueServer: server });
-
-    const res = await request.getFileDetail({ apiFileId: '100-9999-uuid-missing' });
-    expect(res).toEqual({ success: false, code: 'NOT_FOUND', message: '文件不存在', status: 404 });
-  });
-
-  /**
-   * 被测函数名: useYuqueDatasetRequest.getFileContent  等级: 3-High
-   * 思路（回归场景）: 正文接口按 docId 取，必须仍能从复合 id 里解出 docId 与 repoId，
-   * 否则复合 id 化之后所有文档都取不到正文
-   */
-  it('getFileContent 从复合 id 中解出 repoId / docId', async () => {
-    mockRequest.mockResolvedValue(ok({ title: 'Doc', body: 'content' }));
-    const request = useYuqueDatasetRequest({ yuqueServer: server });
-
-    await expect(request.getFileContent({ apiFileId: '100-2000-uuid-doc' })).resolves.toEqual({
-      title: 'Doc',
-      rawText: 'content'
-    });
-    expect(mockRequest.mock.calls[0][0].url).toBe('/api/v2/repos/100/docs/2000');
-  });
-
-  it('listFiles 支持拉取知识库列表及分页处理', async () => {
-    const reposPage1 = Array.from({ length: 100 }, (_, i) => ({
-      id: 1000 + i,
-      name: `Repo ${i}`,
-      updated_at: new Date(),
-      created_at: new Date(),
-      slug: `repo-${i}`
-    }));
-    const reposPage2 = [
+  it('配置 token、部署方基址和私有服务访问选项', () => {
+    provider();
+    expect(createProxyAxios).toHaveBeenCalledWith(
       {
-        id: 2000,
-        name: 'Repo 2000',
-        updated_at: new Date(),
-        created_at: new Date(),
-        slug: 'repo-2000'
-      }
-    ];
-    mockRequest.mockResolvedValueOnce(ok(reposPage1)).mockResolvedValueOnce(ok(reposPage2));
+        baseURL: serviceEnv.YUQUE_DATASET_BASE_URL,
+        timeout: 60000,
+        headers: { 'X-Auth-Token': 'token' }
+      },
+      false
+    );
+  });
+});
 
-    const request = useYuqueDatasetRequest({ yuqueServer: server });
-    const repos = await request.listFiles({});
+describe('listFiles', () => {
+  it.each([{ lastPage: [] }, { lastPage: [{ id: 101, name: 'Repo 101' }] }])(
+    '知识库分页直到不足一页（末页 %j），ID 转成字符串',
+    async ({ lastPage }) => {
+      request.mockResolvedValueOnce(ok(repoPage)).mockResolvedValueOnce(ok(lastPage));
+      const files = await provider().listFiles({});
+      expect(files).toHaveLength(100 + lastPage.length);
+      expect(files[0]).toMatchObject({
+        id: '1',
+        rawId: '1',
+        type: 'folder',
+        hasChild: true,
+        parentId: null
+      });
+      expect(request.mock.calls.map(([args]) => args.params)).toEqual([
+        { offset: 0, limit: 100 },
+        { offset: 100, limit: 100 }
+      ]);
+    }
+  );
 
-    expect(repos).toHaveLength(101);
-    expect(repos[0]).toMatchObject({ id: '1000', type: 'folder', hasChild: true });
+  it('默认 basePath 与显式父级都按复合 ID 展开，保留文件夹和带子文档正文', async () => {
+    request.mockResolvedValue(ok(toc));
+    const api = provider('100');
+    expect(await api.listFiles({})).toEqual([
+      expect.objectContaining({
+        id: '100-10-parent-uuid',
+        rawId: 'parent-uuid',
+        type: 'file',
+        hasChild: true
+      }),
+      expect.objectContaining({ id: '100-12-folder-uuid', type: 'folder', hasChild: true })
+    ]);
+    expect(await api.listFiles({ parentId: '100-10-parent-uuid' })).toEqual([
+      expect.objectContaining({ id: '100-11-child-uuid', type: 'file', hasChild: false })
+    ]);
+    expect(await api.listFiles({ parentId: '100-12-folder-uuid' })).toEqual([
+      expect.objectContaining({ id: '100-13-nested-folder', type: 'folder', hasChild: false })
+    ]);
+    expect(request).toHaveBeenCalledTimes(1);
   });
 
-  it('getFileDetail 对知识库 ID 返回正确的知识库详情', async () => {
-    mockRequest.mockResolvedValueOnce(
-      ok([{ id: 999, name: 'Knowledge Base', updated_at: new Date(), created_at: new Date() }])
-    );
+  it.each([{ data: 'not-array' }, { data: [{ id: '' }] }, { data: [{ id: 1 }] }])(
+    '拒绝不合法知识库记录 %j',
+    async ({ data }) => {
+      request.mockResolvedValueOnce(ok(data));
+      await expect(provider().listFiles({})).rejects.toBe('Invalid file data format');
+    }
+  );
 
-    const request = useYuqueDatasetRequest({ yuqueServer: server });
-    const detail = await request.getFileDetail({ apiFileId: '999' });
-    expect(detail.success).toBe(true);
-    if (detail.success) {
-      expect(detail.data).toMatchObject({
-        id: '999',
-        rawId: '999',
-        name: 'Knowledge Base',
-        type: 'folder',
-        hasChild: true
+  it('空响应拒绝、空知识库正常返回空列表', async () => {
+    request.mockResolvedValueOnce({ data: undefined }).mockResolvedValueOnce(ok(undefined));
+    const api = provider();
+    await expect(api.listFiles({})).rejects.toEqual({ message: '服务器异常' });
+    await expect(api.listFiles({})).resolves.toEqual([]);
+  });
+
+  it.each([
+    [null, { message: '未知错误' }],
+    ['failed', { message: 'failed' }],
+    [new Error('failed'), { message: 'failed' }],
+    [{ data: 'failed' }, { message: 'failed' }],
+    [{ response: { data: { reason: 'failed' } } }, { reason: 'failed' }],
+    [{ code: 'ECONNRESET' }, { code: 'ECONNRESET' }]
+  ])('规范化请求错误 %#', async (error, expected) => {
+    request.mockRejectedValueOnce(error);
+    await expect(provider().listFiles({})).rejects.toEqual(expected);
+  });
+});
+
+describe('getRepoToc（通过公开方法验证缓存）', () => {
+  it('同实例并发和详情读取共享一次 TOC 请求，不同知识库与实例独立', async () => {
+    request.mockResolvedValue(ok(toc));
+    const api = provider();
+    await Promise.all([
+      api.listFiles({ parentId: '100' }),
+      api.getFileDetail({ apiFileId: '100-10-parent-uuid' }),
+      api.listFiles({ parentId: '100-10-parent-uuid' })
+    ]);
+    expect(request).toHaveBeenCalledTimes(1);
+    await api.listFiles({ parentId: '101' });
+    await provider().listFiles({ parentId: '100' });
+    expect(request.mock.calls.map(([args]) => args.url)).toEqual([
+      '/api/v2/repos/100/toc',
+      '/api/v2/repos/101/toc',
+      '/api/v2/repos/100/toc'
+    ]);
+  });
+
+  it('失败的 TOC Promise 不永久缓存，允许同实例重试', async () => {
+    request.mockRejectedValueOnce(new Error('failed')).mockResolvedValueOnce(ok(toc));
+    const api = provider();
+    await expect(api.listFiles({ parentId: '100' })).rejects.toEqual({ message: 'failed' });
+    expect(await api.listFiles({ parentId: '100' })).toHaveLength(2);
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('getFileDetail', () => {
+  it.each([
+    ['100-10-parent-uuid', '100', 'file', true],
+    ['100-11-child-uuid', '100-10-parent-uuid', 'file', false],
+    ['100-12-folder-uuid', '100', 'folder', true],
+    ['100-13-nested-folder', '100-12-folder-uuid', 'folder', false]
+  ])('详情 %s 的标识和层级与列表保持一致', async (id, parentId, type, hasChild) => {
+    request.mockResolvedValue(ok(toc));
+    const api = provider();
+    const listed = await api.listFiles({ parentId: String(parentId) });
+    expect(listed.some((item) => item.id === id)).toBe(true);
+    expect(await api.getFileDetail({ apiFileId: String(id) })).toMatchObject({
+      success: true,
+      data: { id, parentId, type, hasChild }
+    });
+  });
+
+  it.each(['101', 101])(
+    '知识库 ID %s 兼容历史数字，分页后返回 folder 与字符串 ID',
+    async (apiFileId) => {
+      request
+        .mockResolvedValueOnce(ok(repoPage))
+        .mockResolvedValueOnce(ok([{ id: 101, name: 'Repo' }]));
+      expect(await provider().getFileDetail({ apiFileId: apiFileId as string })).toMatchObject({
+        success: true,
+        data: { id: '101', rawId: '101', name: 'Repo', type: 'folder', hasChild: true }
+      });
+      expect(request.mock.calls[1][0].params.offset).toBe(100);
+    }
+  );
+
+  it.each(['100', '100-missing-uuid'])(
+    '不存在的知识库或 TOC 节点 %s resolve NOT_FOUND',
+    async (apiFileId) => {
+      request.mockResolvedValueOnce(ok([]));
+      expect(await provider().getFileDetail({ apiFileId })).toEqual({
+        success: false,
+        code: 'NOT_FOUND',
+        message: '文件不存在',
+        status: 404
       });
     }
+  );
+
+  it('TOC 网络失败 resolve 失败，不能解释为不存在', async () => {
+    request.mockRejectedValueOnce({ code: 'ECONNRESET' });
+    expect(await provider().getFileDetail({ apiFileId: '100-10-parent-uuid' })).toMatchObject({
+      success: false,
+      code: 'NETWORK_ERROR'
+    });
   });
 
-  it('getFileDetail 对不存在的知识库 ID reject 文件不存在', async () => {
-    mockRequest.mockResolvedValueOnce(ok([]));
-    const request = useYuqueDatasetRequest({ yuqueServer: server });
-    const res = await request.getFileDetail({ apiFileId: '999' });
-    expect(res).toEqual({ success: false, code: 'NOT_FOUND', message: '文件不存在', status: 404 });
+  it.fails('HTTP 状态不能被响应错误转换丢弃（现有缺陷）', async () => {
+    request.mockRejectedValueOnce({ message: 'failed', response: { status: 503 } });
+    expect(await provider().getFileDetail({ apiFileId: '100' })).toMatchObject({
+      success: false,
+      code: 'SERVER_ERROR',
+      status: 503
+    });
   });
+});
 
-  it('getFilePreviewUrl 生成正确的文档预览 URL', async () => {
-    mockRequest
-      .mockResolvedValueOnce(ok({ slug: 'my-repo' }))
-      .mockResolvedValueOnce(ok({ slug: 'my-doc' }));
-
-    const request = useYuqueDatasetRequest({ yuqueServer: server });
-    const url = await request.getFilePreviewUrl({ apiFileId: '100-2000-uuid-doc' });
-
-    expect(url).toContain('/yuque-user/my-repo/my-doc');
+describe('getFileContent', () => {
+  it('复合 ID 中的 UUID 可以包含横杠，正文接口只使用 repoId 与 docId', async () => {
+    request.mockResolvedValueOnce(ok({ title: 'Doc', body: 'body' }));
+    await expect(provider().getFileContent({ apiFileId: '100-10-parent-uuid' })).resolves.toEqual({
+      title: 'Doc',
+      rawText: 'body'
+    });
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({ url: '/api/v2/repos/100/docs/10', method: 'GET', params: {} })
+    );
   });
-
-  it('getFileRawId 返回原始 fileId', () => {
-    const request = useYuqueDatasetRequest({ yuqueServer: server });
-    expect(request.getFileRawId('test-id')).toBe('test-id');
-  });
-
-  it('getFileContent 校验非字符串 id 及空标题报错', async () => {
-    const request = useYuqueDatasetRequest({ yuqueServer: server });
-    await expect(request.getFileContent({ apiFileId: 123 as any })).rejects.toBe('Invalid file id');
-
-    mockRequest.mockResolvedValueOnce(ok({ title: '', body: 'content' }));
-    await expect(request.getFileContent({ apiFileId: '100-2000-uuid-doc' })).rejects.toBe(
+  it('拒绝非字符串 ID 与缺少标题的文档', async () => {
+    const api = provider();
+    await expect(api.getFileContent({ apiFileId: 123 as unknown as string })).rejects.toBe(
+      'Invalid file id'
+    );
+    expect(request).not.toHaveBeenCalled();
+    request.mockResolvedValueOnce(ok({ title: '', body: 'body' }));
+    await expect(api.getFileContent({ apiFileId: '100-10-uuid' })).rejects.toBe(
       'Cannot find the file'
     );
   });
+});
 
-  it('listFiles 校验无效数据格式', async () => {
-    mockRequest.mockResolvedValueOnce(ok('not-array'));
-    const request = useYuqueDatasetRequest({ yuqueServer: server });
-    await expect(request.listFiles({})).rejects.toBe('Invalid file data format');
-
-    mockRequest.mockResolvedValueOnce(ok([{ id: '' }]));
-    await expect(request.listFiles({})).rejects.toBe('Invalid file data format');
+describe('getFilePreviewUrl', () => {
+  it('使用知识库与文档 slug 生成预览 URL', async () => {
+    request.mockResolvedValueOnce(ok({ slug: 'repo' })).mockResolvedValueOnce(ok({ slug: 'doc' }));
+    await expect(provider().getFilePreviewUrl({ apiFileId: '100-10-parent-uuid' })).resolves.toBe(
+      `${serviceEnv.YUQUE_DATASET_BASE_URL}/group/repo/doc`
+    );
   });
+});
 
-  it('TOC 请求失败时清理缓存允许后续重试', async () => {
-    mockRequest.mockRejectedValueOnce(new Error('toc failed'));
-    const request = useYuqueDatasetRequest({ yuqueServer: server });
-    await expect(request.listFiles({ parentId: '100' })).rejects.toThrow('toc failed');
-
-    mockRequest.mockResolvedValueOnce(ok(TOC));
-    const files = await request.listFiles({ parentId: '100' });
-    expect(files).toHaveLength(1);
-  });
-
-  it('过滤 LINK 类型 TOC 节点并识别 TITLE 目录节点', async () => {
-    const mixedTOC = [
-      { id: '1', uuid: 'u1', type: 'LINK', title: 'Link', parent_uuid: '' },
-      { id: '2', uuid: 'u2', type: 'TITLE', title: 'Folder', parent_uuid: '', child_uuid: 'u3' }
-    ];
-    mockRequest.mockResolvedValueOnce(ok(mixedTOC));
-    const request = useYuqueDatasetRequest({ yuqueServer: server });
-    const files = await request.listFiles({ parentId: '100' });
-
-    expect(files).toHaveLength(1);
-    expect(files[0]).toMatchObject({ id: '100-2-u2', type: 'folder', hasChild: true });
-  });
-
-  it('响应异常处理：空数据与请求异常', async () => {
-    mockRequest.mockResolvedValueOnce({ data: undefined });
-    const request = useYuqueDatasetRequest({ yuqueServer: server });
-    await expect(request.listFiles({})).rejects.toEqual({ message: '服务器异常' });
-
-    mockRequest.mockRejectedValueOnce('raw string error');
-    await expect(request.listFiles({})).rejects.toEqual({ message: 'raw string error' });
+describe('getFileRawId', () => {
+  it.each([
+    ['100', '100'],
+    ['100-10-parent-uuid', 'parent-uuid'],
+    ['legacy', 'legacy']
+  ])('%s 提取为 %s', (input, expected) => {
+    expect(provider().getFileRawId(input)).toBe(expected);
   });
 });

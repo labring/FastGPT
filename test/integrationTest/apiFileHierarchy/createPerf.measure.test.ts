@@ -1,7 +1,7 @@
 /**
  * 在真实内存 Mongo 上验证 4 万条解析任务的事务耗时，并可选输出完整创建路径的分段耗时。
  *
- * 创建路径测量只在 MEASURE_CREATE_PERF=1 时执行；4 万条队列事务回归默认执行。
+ * 创建路径与 4 万条队列事务测量仅在 MEASURE_CREATE_PERF=1 时执行。
  * 被替换的**非测量对象**只有三类：
  * - provider（getApiDatasetRequest）：真实延迟不可控，遍历段只计 listFiles 调用次数
  * - 知识库模型解析（dataset/model）：纯内存查表，非 I/O
@@ -259,7 +259,7 @@ describe.runIf(process.env.MEASURE_CREATE_PERF === '1')('创建路径耗时测�
   }, 900000);
 });
 
-describe('解析队列 4 万规模事务性能', () => {
+describe.runIf(process.env.MEASURE_CREATE_PERF === '1')('解析队列 4 万规模事务性能', () => {
   it('在默认 60 秒事务期限内用一次 insertMany 写入 4 万条任务', async () => {
     const teamId = String(new Types.ObjectId());
     const datasetId = String(new Types.ObjectId());

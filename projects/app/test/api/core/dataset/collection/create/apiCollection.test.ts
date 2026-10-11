@@ -24,7 +24,7 @@ vi.mock('@/pages/api/core/dataset/collection/create/apiCollectionV2', () => ({
 
 import handler from '@/pages/api/core/dataset/collection/create/apiCollection';
 
-describe('POST /core/dataset/collection/create/apiCollection (V1)', () => {
+describe('handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAuthDatasetCollectionCreate.mockResolvedValue({
@@ -46,48 +46,43 @@ describe('POST /core/dataset/collection/create/apiCollection (V1)', () => {
     });
   });
 
-  it('当传入 parentId 时，鉴权传递该 parentId 并透传 targetParentId 保证写入与鉴权一致', async () => {
-    const res = await handler({
-      body: {
-        datasetId: '6acb61a720031dde73883463',
-        apiFileId: 'f1',
-        name: 'File 1',
-        parentId: '6acb61a720031dde73883464'
-      }
-    } as any);
+  it.each([undefined, '6acb61a720031dde73883464'])(
+    '鉴权与实际落位使用同一个 parentId：%s',
+    async (parentId) => {
+      const result = await handler(
+        {
+          body: { datasetId: '6acb61a720031dde73883463', apiFileId: 'f1', name: 'File 1', parentId }
+        } as any,
+        {} as Parameters<typeof handler>[1]
+      );
+      expect(mockAuthDatasetCollectionCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ parentId })
+      );
+      expect(mockGetFileDetail).toHaveBeenCalledWith({ apiFileId: 'f1' });
+      expect(mockCreateApiDatasetCollection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          targetParentId: parentId,
+          apiFiles: [expect.objectContaining({ id: 'f1' })]
+        })
+      );
+      expect(result).toEqual({ successCount: 1, failedCount: 0 });
+    }
+  );
 
-    expect(mockAuthDatasetCollectionCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        parentId: '6acb61a720031dde73883464'
-      })
-    );
-    expect(mockCreateApiDatasetCollection).toHaveBeenCalledWith(
-      expect.objectContaining({
-        targetParentId: '6acb61a720031dde73883464'
-      })
-    );
-    expect(res).toEqual({ successCount: 1, failedCount: 0 });
-  });
-
-  it('当不传 parentId 时，落知识库根且 targetParentId 为 undefined', async () => {
-    const res = await handler({
-      body: {
-        datasetId: '6acb61a720031dde73883463',
-        apiFileId: 'f1',
-        name: 'File 1'
-      }
-    } as any);
-
-    expect(mockAuthDatasetCollectionCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        parentId: undefined
-      })
-    );
-    expect(mockCreateApiDatasetCollection).toHaveBeenCalledWith(
-      expect.objectContaining({
-        targetParentId: undefined
-      })
-    );
-    expect(res).toEqual({ successCount: 1, failedCount: 0 });
+  it('详情失败时透传错误且不创建集合', async () => {
+    mockGetFileDetail.mockResolvedValue({
+      success: false,
+      code: 'NOT_FOUND',
+      message: 'detail unavailable'
+    });
+    await expect(
+      handler(
+        {
+          body: { datasetId: '6acb61a720031dde73883463', apiFileId: 'f1', name: 'File 1' }
+        } as any,
+        {} as Parameters<typeof handler>[1]
+      )
+    ).rejects.toBe('detail unavailable');
+    expect(mockCreateApiDatasetCollection).not.toHaveBeenCalled();
   });
 });
