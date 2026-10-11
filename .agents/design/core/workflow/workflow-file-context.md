@@ -76,9 +76,19 @@ signed URL 不参与权限判断。私有 key 校验通过后，每个 key 在�
 ### 3.4 登记边界
 
 Workflow 输入适配器通过独立 `WorkflowFileRegistrar` 登记 query/history/全局变量、交互恢复入口
-和 Plugin Input 文件，私有对象必须校验根 scope。节点消费者只通过 `registerExternalFile` 登记
-绝对 HTTP(S) 外链，先检查文件域名白名单，再推断类型并返回 Ref；该接口不能登记私有 key。
-同一 Context 内并发和后续调用复用已完成的分类，Child 动态外链不回写 Parent。
+和 Plugin Input 文件，私有对象必须校验根 scope。节点消费者通过 `prepareWorkflowFiles` 准备文件，
+底层统一由 `prepareChatFiles` 编排：身份去重与数量截断 → 输入校验 → 分类 → 登记。
+`registerExternalFile` 只同步写入已分类外链，不探测、不创建私有 key 权限。
+同一 Context 内并发和后续调用复用 HEAD 类型结果（包括失败降级），探测并发上限为 5，
+缓存随 Context 回收；文件名和显式类型提示不进入探测缓存。Child 动态外链不回写 Parent。
+
+`core/chat/file/service.ts` 的 `parseUrlToChatFileType` 是唯一链接分类实现，优先使用
+已登记元数据，其次为明确媒体类型、可信对象元数据、文件后缀、HEAD 和普通文件降级。
+分类不筛选数量、不校验业务准入、不登记文件；网络请求层保留逐跳安全检查。
+底层只接收窄 Context 接口，工作流包装层注入当前 Context，避免 chat 反向依赖 workflow。
+AI、文档读取、知识库和签名短链共用分类规则，消费者不得再次覆盖已登记类型。
+`core/chat/file/utils.ts` 提供纯身份计算和列表选择；外链身份忽略 fragment，保留签名参数。
+根 query 的消息条数上限和 Child 的跨输入额度仍由各自适配器决定。
 相对 URL 直接拒绝。模型 `read_files` 的公网读取策略保持独立，不借外链登记接口扩大私有权限。
 
 ## 4. 数据模型
@@ -112,11 +122,7 @@ export type WorkflowFileContext = {
   resolveChatFile: (url: string) => UserChatItemFileItemType | undefined;
   getIdentity: (url: string) => string | undefined;
   getSource: (target: string | WorkflowFileRef) => Promise<WorkflowFileSourceResult>;
-  registerExternalFile: (file: {
-    url: string;
-    name?: string;
-    type?: ChatFileTypeEnum;
-  }) => Promise<WorkflowFileRef>;
+  registerExternalFile: (file: UserChatItemFileItemType) => WorkflowFileRef;
   derive: (files: WorkflowFileInput[]) => Promise<WorkflowFileContext>;
   limits: WorkflowFileLimits;
 };
@@ -126,7 +132,7 @@ Context 不暴露通用私有文件登记、`clone` 或文件枚举接口。内�
 
 - `byRuntimeUrl`：本轮 `modelUrl` 到 Ref；
 - `byIdentity`：私有 key 或外部 URL（忽略 fragment）到 Ref，用于去重；
-- 外链登记 Promise：合并同一 URL 的并发类型探测，并在本次请求内复用兜底结果。
+- 分类模块以 Context 为 WeakMap 键保存探测 Promise 和并发队列，合并同一身份的 HEAD 请求，并在本次请求内复用降级结果；登记表只保存完成分类的 Ref。
 
 模型和节点之间只传递 URL。Context 不生成或解析 file id；`resolveInputFile` 仅供受控输入
 适配器根据原始文件对象中的 key 或 URL 查找已登记 Ref。
@@ -315,7 +321,11 @@ Loop 和 Parallel 共享当前 Context。Child 在父 Context 下先过滤实际
 - 外部绝对 HTTP(S) URL 可登记；
 - 相对 URL、protocol-relative、`file:`、`data:`、`ws:` 被拒绝或跳过；
 - 普通文件入口的 `fileUrlWhitelist` 继续生效，`read_files` 动态模型 URL 明确豁免；
-- `resolve` 不会自动登记未知绝对 URL。
+- `resolve` 和单文件分类不会自动登记未知绝对 URL；
+- 分类和登记分离后，相同链接在 AI 输入、文档读取、知识库查询中类型一致；
+- 探测期间出现明确类型登记时，较早发起的探测不能覆盖已登记结果；
+- 不同准备批次共享 Context 的探测并发上限，超限文件不校验、不探测、不登记；
+- 文档批量读取按文件报告校验失败，其他文件继续读取。
 - 全局文件变量只在初始化时登记，节点更新不会扩展 Context；
 - 节点更新文件变量时只接受绝对 HTTP(S) URL，已知内部文件 URL 保留私有 key，未知 URL 按外链存储；
 - 交互 `fileSelect` 的私有 key 和外链均可登记；
@@ -350,7 +360,7 @@ Loop 和 Parallel 共享当前 Context。Child 在父 Context 下先过滤实际
 
 - [x] 新增 `WorkflowFileContext` 和入口准备函数，外链登记支持请求内分类复用；
 - [x] 为 `dispatchWorkFlow` 增加 `maxBytesPerFile`，创建并挂载 Context；
-- [x] `parseUrlToFileType` 优先读取 Context 文件元数据；
+- [x] `parseUrlToChatFileType` 统一类型规则，`prepareWorkflowFiles` 组合筛选、校验与登记；
 - [x] 统一 `core/chat/fileContext.ts` 的 Workflow 文件读取；
 - [x] 保持 AI Chat 多模态 Base64 与 Workflow Context 解耦；
 - [x] 迁移 ToolCall、Agent 和 ReadFiles；

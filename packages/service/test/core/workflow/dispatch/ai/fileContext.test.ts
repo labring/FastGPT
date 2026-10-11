@@ -88,7 +88,7 @@ describe('parseWorkflowAIInputFiles', () => {
           : undefined
       ),
       resolveChatFile: vi.fn((url: string) =>
-        url === modelUrl
+        url === inputUrl || url === modelUrl
           ? {
               name: 'report.pdf',
               type: ChatFileTypeEnum.file,
@@ -177,23 +177,23 @@ describe('rewriteWorkflowAIUserMessageWithFiles', () => {
 
 describe('asynchronous classification ordering', () => {
   it('assigns duplicate filenames in input order even when the second probe finishes first', async () => {
-    const context = await import('../../../../../core/workflow/utils/context');
-    let releaseFirst!: (file: { name: string; url: string; type: ChatFileTypeEnum }) => void;
-    const first = new Promise<{ name: string; url: string; type: ChatFileTypeEnum }>((resolve) => {
+    const { axios } = await import('@fastgpt/service/common/api/axios');
+    let releaseFirst!: () => void;
+    const first = new Promise<void>((resolve) => {
       releaseFirst = resolve;
     });
     const urls = ['https://files.example.com/first', 'https://files.example.com/second'];
-    const spy = vi
-      .spyOn(context, 'parseUrlToFileType')
-      .mockReturnValueOnce(first)
-      .mockResolvedValueOnce({ name: 'report.pdf', type: ChatFileTypeEnum.file, url: urls[1] });
+    const spy = vi.spyOn(axios, 'head').mockImplementation(async (url) => {
+      if (url === urls[0]) await first;
+      return { headers: { 'content-type': 'application/pdf' } };
+    });
     try {
       const result = parseWorkflowAIInputFiles({
         files: urls.map((url) => ({ name: 'report.pdf', type: ChatFileTypeEnum.file, url })),
         maxFileAmount: 2
       });
       await Promise.resolve();
-      releaseFirst({ name: 'report.pdf', type: ChatFileTypeEnum.file, url: urls[0] });
+      releaseFirst();
       expect(await result).toEqual([
         { name: 'report.pdf', type: ChatFileTypeEnum.file, url: urls[0] },
         { name: 'report-1.pdf', type: ChatFileTypeEnum.file, url: urls[1] }

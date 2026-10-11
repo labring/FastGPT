@@ -1,9 +1,8 @@
-import { parseUrlToChatFileType } from '../../chat/fileContext';
-import { batchRun } from '@fastgpt/global/common/system/utils';
+import { prepareChatFiles, type ChatFileInput } from '../../chat/file/service';
 
 import { AsyncLocalStorage } from 'async_hooks';
 import type { MCPClient } from '../../app/mcp';
-import { isAbsoluteHttpUrl } from './fileContext';
+import { getFileUrlIdentity } from '../../chat/file/utils';
 import type { WorkflowFileContext, WorkflowFileInput, WorkflowFileRegistrar } from './fileContext';
 import {
   createExternalHttpFileSource,
@@ -148,9 +147,9 @@ export const runWithDerivedWorkflowFileContext = async <T>({
         : parentFileContext.resolveInputFile(file);
 
     if (parentRef) return parentFileContext.getIdentity(parentRef.modelUrl);
-    if (typeof file === 'string') return `url:${file}`;
+    if (typeof file === 'string') return getFileUrlIdentity(file.trim());
     if ('key' in file && typeof file.key === 'string') return `key:${file.key}`;
-    if (typeof file.url === 'string') return `url:${file.url}`;
+    if (typeof file.url === 'string') return getFileUrlIdentity(file.url.trim());
   };
 
   const selectFile = (file: WorkflowFileInput) => {
@@ -312,24 +311,21 @@ export const updateWorkflowContextVal = (val: Partial<ContextType>) => {
   }
 };
 
-/** 结合 workflow 运行态文件元数据，将 URL 解析成 ChatBox 文件结构。 */
-export const parseUrlToFileType = async (url: string) => {
+/** 节点输入准备：显式组合额度过滤、校验、分类和登记，保持单文件分类无登记副作用。 */
+export const prepareWorkflowFiles = ({
+  files,
+  maxFiles,
+  allowDataUrl
+}: {
+  files: ChatFileInput[];
+  maxFiles?: number;
+  allowDataUrl?: boolean;
+}) => {
   const fileContext = getWorkflowFileContext();
-  const workflowFile = fileContext?.resolveChatFile(url);
-  if (workflowFile) return workflowFile;
-  if (fileContext && !isAbsoluteHttpUrl(url)) return;
-  if (fileContext?.registerExternalFile) {
-    const ref = await fileContext.registerExternalFile({ url });
-    return { name: ref.name, type: ref.type, url: ref.modelUrl };
-  }
-
-  return await parseUrlToChatFileType({ url });
-};
-
-/** 节点文件列表先去重、截断，再并发分类；避免超限输入触发探测或登记。 */
-export const parseUrlsToFileTypes = async (urls: string[]) => {
-  const maxFiles = getWorkflowFileContext()?.limits.maxFileAmount ?? urls.length;
-  const selectedUrls = Array.from(new Set(urls)).slice(0, Math.max(0, maxFiles));
-  const files = await batchRun(selectedUrls, (url) => parseUrlToFileType(url), 5);
-  return files.filter((file): file is NonNullable<typeof file> => Boolean(file));
+  return prepareChatFiles({
+    files,
+    maxFiles: maxFiles ?? fileContext?.limits.maxFileAmount ?? files.length,
+    fileContext,
+    allowDataUrl: allowDataUrl ?? !fileContext
+  });
 };

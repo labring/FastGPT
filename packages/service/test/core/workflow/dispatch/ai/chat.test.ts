@@ -90,6 +90,7 @@ describe('getInputFiles', () => {
       {
         fileContext: {
           limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
+          getIdentity: (target: string) => (target === url ? 'chat:meeting.mp3' : undefined),
           resolveChatFile: (target: string) =>
             target === url
               ? {

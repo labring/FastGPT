@@ -191,7 +191,7 @@ describe('normalizeReadableFileUrl', () => {
   });
 
   it('URL 解析失败时返回空串', async () => {
-    // parseUrlToFileType catch fallback 会把 url 当作 file 类型，但第二个 new URL 仍会抛错
+    // 输入校验排除无效 URL，不进入分类和读取。
     expect(await normalizeReadableFileUrl({ url: 'http://[bad-host.pdf' })).toBe('');
   });
 });
@@ -318,14 +318,18 @@ describe('parseFileContentFromUrls (buffer hit)', () => {
 
     try {
       const result = await parseFileContentFromUrls({
-        urls: ['https://blocked.example.com/cached.pdf'],
+        urls: ['https://blocked.example.com/cached.pdf', 'https://allowed.example.com/cached.pdf'],
         maxFiles: 20,
         teamId: 'team-1',
         tmbId: 'tmb-1',
         fileContext: createEmptyWorkflowFileContext()
       });
 
-      expect(mockGetRawTextBuffer).not.toHaveBeenCalled();
+      expect(mockGetRawTextBuffer).toHaveBeenCalledTimes(1);
+      expect(result[1]).toMatchObject({
+        success: true,
+        url: 'https://allowed.example.com/cached.pdf'
+      });
       expect(result[0]).toMatchObject({
         success: false,
         url: 'https://blocked.example.com/cached.pdf',

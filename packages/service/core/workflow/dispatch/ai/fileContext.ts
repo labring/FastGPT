@@ -2,8 +2,7 @@ import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/consta
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
 import { getSafeSandboxInputFilename } from '../../../ai/sandbox/interface/runtime';
-import { getWorkflowFileContext, parseUrlToFileType } from '../../utils/context';
-import { isAbsoluteHttpUrl } from '../../utils/fileContext';
+import { prepareWorkflowFiles } from '../../utils/context';
 import {
   rewriteAgentLoopCoreUserMessageWithFiles,
   type AgentLoopCoreInputFile,
@@ -47,52 +46,19 @@ export const parseWorkflowAIInputFiles = async ({
   files,
   maxFileAmount
 }: ParseWorkflowAIInputFilesParams): Promise<AgentLoopCoreInputFile[]> => {
-  const workflowFileContext = getWorkflowFileContext();
-  const normalizedFiles = files
-    .map((file) => ({
-      file,
-      ref: workflowFileContext?.resolve(file.url)
-    }))
-    .map(({ file, ref }) => {
-      const url = ref?.modelUrl ?? file.url;
-      if (!isAbsoluteHttpUrl(url)) return;
-
-      return {
-        file,
-        url,
-        identity: workflowFileContext?.getIdentity(file.url) ?? url
-      };
-    })
-    .filter(Boolean) as { file: UserChatItemFileItemType; url: string; identity: string }[];
-
-  const uniqueFiles = Array.from(
-    normalizedFiles
-      .reduce((map, item) => {
-        if (!map.has(item.identity)) {
-          map.set(item.identity, item);
-        }
-        return map;
-      }, new Map<string, (typeof normalizedFiles)[number]>())
-      .values()
-  );
-  const selectedFiles = uniqueFiles.slice(0, Math.max(0, maxFileAmount));
-  const parsedFiles = await Promise.all(selectedFiles.map(({ url }) => parseUrlToFileType(url)));
+  const parsedFiles = await prepareWorkflowFiles({
+    files,
+    maxFiles: maxFileAmount,
+    allowDataUrl: false
+  });
 
   // 分类可以并发，但文件名必须按输入顺序分配，保持沙箱路径稳定。
   const usedNames = new Map<string, number>();
-  return selectedFiles.flatMap(({ file, url }, index) => {
-    const parsedFile = parsedFiles[index];
-    if (!parsedFile) return [];
-    const type = file.type && file.type !== ChatFileTypeEnum.file ? file.type : parsedFile.type;
-
-    return [
-      {
-        name: getSafeSandboxInputFilename(file.name || parsedFile.name || url, index, usedNames),
-        type,
-        url: parsedFile.url
-      }
-    ];
-  });
+  return parsedFiles.map((file, index) => ({
+    name: getSafeSandboxInputFilename(file.name || file.url, index, usedNames),
+    type: file.type,
+    url: file.url
+  }));
 };
 
 /** 合并 query 文件和节点文件输入，并使用统一的 Workflow Context 规则生成本轮文件列表。 */

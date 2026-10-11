@@ -5,7 +5,7 @@ import {
 } from '@fastgpt/global/core/chat/adapt';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
-import { getWorkflowFileMaxAmount, parseUrlsToFileTypes } from '../../../../utils/context';
+import { getWorkflowFileMaxAmount, prepareWorkflowFiles } from '../../../../utils/context';
 import {
   rewriteWorkflowAIHistoryMessageWithFiles,
   rewriteWorkflowAIUserMessageWithFiles
@@ -22,7 +22,6 @@ export const useToolMessages = async ({
   parseHistoryFiles,
   lastInteractive,
   isEntry,
-  chatConfig,
   useSandbox
 }: {
   defaultSystemPrompt?: string;
@@ -38,7 +37,9 @@ export const useToolMessages = async ({
   useSandbox: boolean;
 }) => {
   const currentInputFiles: FileInputType[] = [];
-  const userFiles = await parseUrlsToFileTypes(fileLinks ?? []);
+  const userFiles = await prepareWorkflowFiles({
+    files: (fileLinks ?? []).map((url) => ({ url }))
+  });
   const concatenateSystemPrompt = [defaultSystemPrompt, systemPrompt]
     .filter(Boolean)
     .join('\n\n-----\n\n');

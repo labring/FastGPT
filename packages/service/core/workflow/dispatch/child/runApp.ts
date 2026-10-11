@@ -16,7 +16,7 @@ import { getNodeErrResponse, getHistories } from '../utils';
 import { getWorkflowFileVariableInputs, WorkflowVariableState } from '../utils/variables';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { parseUrlsToFileTypes, runWithDerivedWorkflowFileContext } from '../../utils/context';
+import { prepareWorkflowFiles, runWithDerivedWorkflowFileContext } from '../../utils/context';
 import { loadChildWorkflowWithResource } from '../../utils/resource';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getWorkflowRuntimeSummary } from '../utils/summary';
@@ -60,7 +60,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
 
   const userInputFiles = await (async () => {
     if (fileUrlList) {
-      return parseUrlsToFileTypes(fileUrlList);
+      return prepareWorkflowFiles({ files: fileUrlList.map((url) => ({ url })) });
     }
     // Adapt version 4.8.13 upgrade
     return files;
