@@ -25,7 +25,8 @@ export const getAIChatFileContextConfig = ({
 };
 
 /**
- * 把节点输入的文件链接转换成聊天消息文件结构；无法识别的链接会被过滤。
+ * 按 Workflow 额度、准入和登记规则准备节点文件；类型未知时保留为普通文件。
+ * 不支持的地址会跳过，域名策略拒绝则抛错，避免将校验失败误当作类型未知。
  */
 export const getInputFiles = async ({ fileLinks = [] }: { fileLinks?: string[] }) => {
   return prepareWorkflowFiles({ files: fileLinks.map((url) => ({ url })) });

@@ -80,7 +80,7 @@ Workflow 输入适配器通过独立 `WorkflowFileRegistrar` 登记 query/histor
 底层统一由 `prepareChatFiles` 编排：身份去重与数量截断 → 输入校验 → 分类 → 登记。
 `registerExternalFile` 只同步写入已分类外链，不探测、不创建私有 key 权限。
 同一 Context 内并发和后续调用复用远端类型结果（包括失败降级），探测并发上限为 5，
-缓存随 Context 回收；文件名和显式类型提示不进入探测缓存。Child 动态外链不回写 Parent。
+缓存随 Context 回收；文件名和显式类型提示不进入探测缓存。Child 动态外链不回写 Parent；在 Parent 进程提前准备的文件可以登记在 Parent，Child 只继承选中的输入。
 
 `core/chat/file/service.ts` 的 `parseUrlToChatFileType` 是唯一链接分类实现，优先使用
 已登记元数据，其次为明确媒体类型、可信对象元数据、文件后缀、系统链接探测和普通文件降级。
@@ -144,6 +144,7 @@ Context 不暴露通用私有文件登记、`clone` 或文件枚举接口。内�
 
 - `byRuntimeUrl`：本轮 `modelUrl` 到 Ref；
 - `byIdentity`：私有 key 或外部 URL（忽略 fragment）到 Ref，用于去重；
+- 根和 Child 通过同一登记表封装维护索引、别名、Ref 去重和聊天文件转换，每次创建独立登记表；私有授权与继承规则由各自流程负责。
 - 分类模块以 Context 为 WeakMap 键保存探测 Promise 和并发队列，合并同一身份的远端探测，并在本次请求内复用降级结果；登记表只保存完成分类的 Ref。
 
 模型和节点之间只传递 URL。Context 不生成或解析 file id；`resolveInputFile` 仅供受控输入
@@ -318,7 +319,7 @@ Loop 和 Parallel 共享当前 Context。Child 在父 Context 下先过滤实际
 - 登记 query/history 时同步推断类型并返回新的消息文件对象。私有文件按可信 key 和显式类型推断，
   外链优先采用显式多模态类型和已知文件后缀，仅对未知后缀调用系统探测；HEAD、GET 及重定向均检查域名策略；
 - 文件列表在探测前去重、截断；同名沙箱文件在并发分类完成后按输入顺序命名；
-- Child 派生异步完成选中文件的登记，再将类型同步到其 query/history；Child 新外链只进入自身登记表；
+- Child 派生先完成父级 Ref 继承和新外链准入校验，再批量准备新外链（最多 5 并发），并将类型同步到其 query/history；Child 新外链只进入自身登记表；
 - keyless 历史相对 URL 不再通过内部 Axios 读取；
 - Agent 的 `normalizeAgentServerFileUrl` 和 `internalUrl` 过渡实现已删除；
 - Workflow 以外的普通聊天文件链路暂不纳入本期 Context，但共享读取函数不能再接受相对 URL。

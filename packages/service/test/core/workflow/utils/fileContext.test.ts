@@ -733,6 +733,60 @@ describe('prepareWorkflowFileContext — 外链登记与派生', () => {
     expect(axiosHeadMock).toHaveBeenCalledTimes(2);
   });
 
+  it('Child 新外链最多 5 并发，去重保留首个名称且不污染 Parent', async () => {
+    const { fileContext } = await prepare();
+    const urls = Array.from(
+      { length: 8 },
+      (_, index) => `https://files.example.com/child-${index}`
+    );
+    const pending = new Map<string, () => void>();
+    let active = 0;
+    let peak = 0;
+    axiosHeadMock.mockImplementation((url: string) => {
+      active += 1;
+      peak = Math.max(peak, active);
+      return new Promise((resolve) => {
+        pending.set(url, () => {
+          active -= 1;
+          resolve({ headers: { 'content-type': 'image/png' } });
+        });
+      });
+    });
+
+    const childPromise = fileContext.derive([
+      { url: urls[0], name: 'first', type: ChatFileTypeEnum.file },
+      { url: `${urls[0]}#duplicate`, name: 'duplicate', type: ChatFileTypeEnum.audio },
+      ...urls.slice(1)
+    ]);
+    try {
+      await vi.waitFor(() => expect(pending.size).toBe(5));
+      expect(active).toBe(5);
+      expect(axiosHeadMock).toHaveBeenCalledTimes(5);
+      // 先完成较后的请求，验证空出的槽位能继续准备剩余文件。
+      pending.get(urls[4])!();
+      await vi.waitFor(() => expect(pending.size).toBe(6));
+      expect(active).toBe(5);
+      for (const url of urls.slice(0, 4)) pending.get(url)!();
+      await vi.waitFor(() => expect(pending.size).toBe(8));
+      for (const url of urls.slice(5)) pending.get(url)!();
+
+      const child = await childPromise;
+      expect(peak).toBe(5);
+      expect(axiosHeadMock).toHaveBeenCalledTimes(8);
+      expect(child.resolve(urls[0])).toMatchObject({ name: 'first', type: ChatFileTypeEnum.image });
+      expect(child.resolve(`${urls[0]}#duplicate`)).toBe(child.resolve(urls[0]));
+      for (const url of urls) {
+        expect(child.resolveChatFile(url)?.type).toBe(ChatFileTypeEnum.image);
+        expect(fileContext.resolve(url)).toBeUndefined();
+      }
+    } finally {
+      // 断言失败时也释放 HTTP 替身，防止悬挂请求影响后续测例。
+      axiosHeadMock.mockResolvedValue({ headers: { 'content-type': 'image/png' } });
+      pending.forEach((release) => release());
+      await childPromise;
+    }
+  });
+
   it.each([0, 1])('truncates query files before probing with limit %s', async (maxFileAmount) => {
     const result = await prepare(
       [
