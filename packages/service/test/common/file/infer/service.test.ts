@@ -1,6 +1,7 @@
+import dns from 'node:dns/promises';
 import { Readable } from 'node:stream';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { axios } from '@fastgpt/service/common/api/axios';
+import { axios, createProxyAxios } from '@fastgpt/service/common/api/axios';
 import { inferFileTypeFromUrl } from '@fastgpt/service/common/file/infer/service';
 
 const png = Buffer.from(
@@ -8,7 +9,11 @@ const png = Buffer.from(
   'base64'
 );
 const url = 'https://example.com/download?token=original#fragment';
-const response = (headers: Record<string, string> = {}, body = Buffer.alloc(0), status = 200) => ({
+const response = (
+  headers: Record<string, string> = {},
+  body: Buffer | string = Buffer.alloc(0),
+  status = 200
+) => ({
   headers,
   data: Readable.from([body]),
   status
@@ -22,7 +27,11 @@ beforeEach(() => {
   vi.spyOn(axios, 'head').mockResolvedValue(response());
   vi.spyOn(axios, 'get').mockResolvedValue(response({}, png));
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllEnvs();
+  vi.restoreAllMocks();
+});
 
 describe('inferFileTypeFromUrl', () => {
   it('HEAD 明确 MIME 即返回元数据，不下载正文，原始 URL 完整保留', async () => {
@@ -216,17 +225,53 @@ describe('inferFileTypeFromUrl', () => {
     expect(axios.head).not.toHaveBeenCalled();
   });
 
-  it('总预算耗尽的 HEAD 不再回退 GET', async () => {
-    vi.mocked(axios.head).mockImplementationOnce(async (_url, config) => {
-      await new Promise<void>((resolve) =>
-        config?.signal?.addEventListener?.('abort', () => resolve())
-      );
-      throw { isAxiosError: true, code: 'ECONNABORTED' };
+  it('DNS 预检仍未返回时预算也能到期，迟到的 DNS 结果不触发 adapter', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    vi.stubEnv('NO_PROXY', '*');
+    vi.stubEnv('no_proxy', '*');
+    let releaseDns!: (addresses: { address: string; family: number }[]) => void;
+    const dnsResult = new Promise<{ address: string; family: number }[]>((resolve) => {
+      releaseDns = resolve;
     });
-    await expect(inferFileTypeFromUrl({ url, timeoutMs: 20 })).rejects.toMatchObject({
-      code: 'ECONNABORTED'
-    });
+    const allAddressDns: {
+      lookup: (hostname: string, options: { all: true; verbatim: true }) => typeof dnsResult;
+    } = dns;
+    const lookup = vi.spyOn(allAddressDns, 'lookup').mockReturnValueOnce(dnsResult);
+    const adapter = vi.fn();
+    const client = createProxyAxios({ adapter });
+    vi.mocked(axios.head).mockImplementationOnce(client.head);
+    const rejected = expect(inferFileTypeFromUrl({ url, timeoutMs: 1000 })).rejects.toThrow(
+      'File probe timed out'
+    );
+    await vi.waitFor(() => expect(lookup).toHaveBeenCalledTimes(1));
+    await vi.advanceTimersByTimeAsync(1000);
+    await rejected;
+    releaseDns([{ address: '93.184.216.34', family: 4 }]);
+    await vi.mocked(axios.head).mock.results[0].value.catch(() => undefined);
+    expect(adapter).not.toHaveBeenCalled();
     expect(axios.get).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('HEAD 与停滞的 GET 正文共用总预算，取消信号关闭真实流', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    let body!: Readable;
+    vi.mocked(axios.head).mockImplementationOnce(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      return response();
+    });
+    vi.mocked(axios.get).mockImplementationOnce(async (_url, config) => {
+      // HTTP 边界模拟 adapter 将 signal 绑定到响应流，正文一直不结束。
+      body = new Readable({ read() {}, signal: config?.signal as AbortSignal });
+      return { ...response(), data: body };
+    });
+    const rejected = expect(inferFileTypeFromUrl({ url, timeoutMs: 100 })).rejects.toThrow();
+    await vi.advanceTimersByTimeAsync(40);
+    expect(body.destroyed).toBe(false);
+    await vi.advanceTimersByTimeAsync(60);
+    await rejected;
+    expect(body.destroyed).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('GET 的 HTTP 错误抛出并关闭错误正文', async () => {
@@ -237,7 +282,40 @@ describe('inferFileTypeFromUrl', () => {
   });
 
   it.each([
-    [Buffer.from('%PDF-1.7\n'), 'application/pdf', '.pdf'],
+    ['head', 'resolve', 'cancel'],
+    ['head', 'reject', 'timeout'],
+    ['get', 'resolve', 'timeout'],
+    ['get', 'reject', 'cancel']
+  ] as const)('%s 迟到的 %s 响应不阻塞 %s 且仍关闭流', async (method, result, mode) => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    let resolveRequest!: (value: ReturnType<typeof response>) => void;
+    let rejectRequest!: (error: unknown) => void;
+    const request = new Promise<ReturnType<typeof response>>((resolve, reject) => {
+      resolveRequest = resolve;
+      rejectRequest = reject;
+    });
+    vi.mocked(axios[method]).mockReturnValueOnce(request);
+    const controller = new AbortController();
+    const reason = new Error('caller cancelled');
+    const pending = inferFileTypeFromUrl({ url, signal: controller.signal, timeoutMs: 1000 });
+    const rejected = expect(pending).rejects.toThrow(
+      mode === 'cancel' ? reason.message : 'File probe timed out'
+    );
+    await vi.waitFor(() => expect(axios[method]).toHaveBeenCalled());
+    if (mode === 'cancel') controller.abort(reason);
+    else await vi.advanceTimersByTimeAsync(1000);
+    await rejected;
+
+    const lateResponse = response({ 'content-type': 'application/pdf' });
+    if (result === 'resolve') resolveRequest(lateResponse);
+    else rejectRequest({ isAxiosError: true, response: lateResponse });
+    await request.catch(() => undefined);
+    expect(lateResponse.data.destroyed).toBe(true);
+    if (method === 'head') expect(axios.get).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['%PDF-1.7\n', 'application/pdf', '.pdf'],
     [Buffer.from('RIFF0000WAVEfmt 000000000000'), 'audio/wav', '.wav'],
     [Buffer.from('00000018667479706d703432000000006d70343269736f6d', 'hex'), 'video/mp4', '.mp4']
   ])('用真实文件头识别 %s', async (body, mime, extension) => {

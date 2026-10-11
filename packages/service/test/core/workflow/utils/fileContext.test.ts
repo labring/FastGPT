@@ -1,9 +1,6 @@
-import {
-  prepareChatFiles,
-  parseUrlToChatFileType,
-  type ChatFileInput
-} from '@fastgpt/service/core/chat/file/service';
+import { prepareChatFiles, type ChatFileInput } from '@fastgpt/service/core/chat/file/service';
 import { Readable } from 'node:stream';
+import { resolveFileSourceExtension } from '@fastgpt/service/common/file/read/source';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ChatFileTypeEnum,
@@ -29,20 +26,6 @@ vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
 });
 
 import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
-import {
-  filterWorkflowQueryFiles,
-  getWorkflowFileAmountLimits
-} from '@fastgpt/service/core/workflow/utils/fileLimits';
-import {
-  getWorkflowFileContext,
-  getWorkflowFileRegistrar,
-  readWorkflowFileBuffer,
-  runWithContext,
-  runWithDerivedWorkflowFileContext
-} from '@fastgpt/service/core/workflow/utils/context';
-import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
-import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
-
 const scope = {
   sourceType: ChatSourceTypeEnum.app,
   sourceId: 'app-1',
@@ -67,66 +50,175 @@ const createHistory = (file: UserChatItemValueItemType): ChatItemMiniType => ({
   value: [file]
 });
 
-describe('filterWorkflowQueryFiles', () => {
-  const textItem: UserChatItemValueItemType = { text: { content: 'question' } };
-  const firstFile = createFile({ name: 'first.pdf' });
-  const secondFile = createFile({ name: 'second.pdf' });
-
-  it('keeps non-file inputs and only the first files within the limit', () => {
-    expect(
-      filterWorkflowQueryFiles({
-        query: [firstFile, textItem, secondFile],
-        maxFileAmount: 1
-      })
-    ).toEqual([firstFile, textItem]);
-  });
-
-  it('removes all file inputs when the limit is zero', () => {
-    expect(
-      filterWorkflowQueryFiles({
-        query: [firstFile, textItem, secondFile],
-        maxFileAmount: 0
-      })
-    ).toEqual([textItem]);
-  });
-});
-
-describe('getWorkflowFileAmountLimits', () => {
-  it('uses the team plan for Context and the app config for query uploads', () => {
-    expect(
-      getWorkflowFileAmountLimits({
-        teamMaxFileAmount: 100,
-        systemMaxFileAmount: 1000,
-        queryMaxFileAmount: 3
-      })
-    ).toEqual({
-      maxFileAmount: 100,
-      queryMaxFileAmount: 3
-    });
-  });
-
-  it('falls back to the system limit and then uses it for an unconfigured query', () => {
-    expect(
-      getWorkflowFileAmountLimits({
-        systemMaxFileAmount: 1000
-      })
-    ).toEqual({
-      maxFileAmount: 1000,
-      queryMaxFileAmount: 1000
-    });
-  });
-});
-
 describe('prepareWorkflowFileContext', () => {
   const originalS3BucketMap = global.s3BucketMap;
+  let originalSystemEnv: typeof global.systemEnv;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    originalSystemEnv = global.systemEnv;
     global.systemEnv = { fileUrlWhitelist: [] } as any;
   });
 
   afterEach(() => {
     global.s3BucketMap = originalS3BucketMap;
+    global.systemEnv = originalSystemEnv;
+  });
+
+  it('保留文本和非 Human 历史，不共享可变消息对象', async () => {
+    const text = { text: { content: 'question' } };
+    const history = createHistory(text);
+    const ai = { obj: ChatRoleEnum.AI, value: [{ text: { content: 'answer' } }] };
+    const result = await prepareWorkflowFileContext({
+      query: [text],
+      histories: [history, ai],
+      scope,
+      maxFileAmount: 2
+    });
+    expect(result.query).toEqual([text]);
+    expect(result.query[0]).not.toBe(text);
+    expect(result.histories).toEqual([history, ai]);
+    expect(result.histories[0].value[0]).not.toBe(text);
+  });
+
+  it('同一私有 key 并发登记只生成一个 Ref，所有原始 URL 均可解析', async () => {
+    const urls = ['https://files.example.com/one', 'https://files.example.com/two'];
+    const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
+      query: [],
+      histories: [],
+      scope,
+      maxFileAmount: 3,
+      getPreviewUrl: async () => 'https://files.example.com/signed'
+    });
+    const refs = await Promise.all([
+      ...urls.map((url) =>
+        fileRegistrar.registerInputFile({
+          file: { key: privateKey, url, name: '', type: ChatFileTypeEnum.file },
+          source: 'variable'
+        })
+      ),
+      fileRegistrar.registerInputFile({
+        file: { key: privateKey, name: '', type: ChatFileTypeEnum.file },
+        source: 'interactive'
+      })
+    ]);
+    expect(refs.every((ref) => ref === refs[0])).toBe(true);
+    expect(refs[0]?.name).toBe('report.pdf');
+    for (const url of urls) expect(fileContext.resolve(url)).toBe(refs[0]);
+    const child = await fileContext.derive([{ key: privateKey }]);
+    expect(child.resolveChatFile('https://files.example.com/signed')).toMatchObject({
+      key: privateKey
+    });
+    expect(child.getIdentity('https://files.example.com/signed')).toBe(`chat:${privateKey}`);
+  });
+
+  it('派生 Context 去重继承别名，孙级只继承所选文件并拒绝越权读取', async () => {
+    const first = 'https://files.example.com/one.pdf';
+    const second = 'https://files.example.com/two.pdf';
+    const { fileContext } = await prepareWorkflowFileContext({
+      query: [createFile({ url: first }), createFile({ url: second })],
+      histories: [],
+      scope,
+      maxFileAmount: 3
+    });
+    const child = await fileContext.derive([first, `${first}#alias`]);
+    expect(child.resolve(`${first}#alias`)).toBe(fileContext.resolve(first));
+    const repeated = child.registerExternalFile({
+      url: first,
+      name: '重复',
+      type: ChatFileTypeEnum.audio
+    });
+    expect(repeated).toBe(fileContext.resolve(first));
+    const grandchild = await child.derive([first]);
+    expect((await grandchild.getSource(first)).sourceKind).toBe('external');
+    expect(grandchild.resolveChatFile(second)).toBeUndefined();
+    expect(grandchild.getIdentity(second)).toBeUndefined();
+    expect(grandchild.resolveInputFile({})).toBeUndefined();
+    expect(fileContext.resolveInputFile({})).toBeUndefined();
+    await expect(grandchild.getSource(second)).rejects.toThrow('not selected');
+    await expect(grandchild.getSource(fileContext.resolve(second)!)).rejects.toThrow(
+      'not selected'
+    );
+    await expect(fileContext.getSource('https://files.example.com/missing')).rejects.toThrow(
+      'not registered'
+    );
+    await expect(child.derive(['/relative.pdf'])).rejects.toThrow(
+      'Invalid child workflow file URL'
+    );
+    await expect(child.derive([{}])).rejects.toThrow('Invalid child workflow file URL');
+    global.systemEnv.fileUrlWhitelist = ['allowed.example.com'];
+    await expect(child.derive(['https://blocked.example.com/a.pdf'])).rejects.toThrow(
+      'Invalid child workflow file URL'
+    );
+  });
+
+  it.each(['variable', 'interactive'] as const)('%s 登记拒绝无效外链', async (source) => {
+    const { fileRegistrar } = await prepareWorkflowFileContext({
+      query: [],
+      histories: [],
+      scope,
+      maxFileAmount: 2
+    });
+    await expect(
+      fileRegistrar.registerInputFile({ file: { url: '', type: ChatFileTypeEnum.file }, source })
+    ).rejects.toThrow(`Invalid workflow ${source} file URL`);
+  });
+
+  it.each([undefined, -1, 0.5, Number.MAX_SAFE_INTEGER + 1])(
+    '私有来源拒绝非法大小 %s，获取正文前失败',
+    async (contentLength) => {
+      const { fileContext } = await prepareWorkflowFileContext({
+        query: [createFile({ key: privateKey })],
+        histories: [],
+        scope,
+        maxFileAmount: 2,
+        getPreviewUrl: async () => 'https://files.example.com/signed'
+      });
+      const downloadObject = vi.fn();
+      global.s3BucketMap = {
+        [S3Buckets.private]: {
+          client: { getObjectMetadata: async () => ({ contentLength }), downloadObject }
+        }
+      } as any;
+      await expect(fileContext.getSource('https://files.example.com/signed')).rejects.toThrow(
+        'invalid metadata'
+      );
+      expect(downloadObject).not.toHaveBeenCalled();
+    }
+  );
+
+  it('私有来源缺少 bucket 或正文时明确失败，损坏的编码名称原样保留', async () => {
+    const key = privateKey.replace('.pdf', '');
+    const { fileContext } = await prepareWorkflowFileContext({
+      query: [createFile({ key })],
+      histories: [],
+      scope,
+      maxFileAmount: 2,
+      getPreviewUrl: async () => 'https://files.example.com/signed'
+    });
+    global.s3BucketMap = {} as any;
+    await expect(fileContext.getSource('https://files.example.com/signed')).rejects.toThrow(
+      'not initialized'
+    );
+    global.s3BucketMap = {
+      [S3Buckets.private]: {
+        client: {
+          getObjectMetadata: async () => ({
+            contentLength: 0,
+            metadata: { originFilename: '%invalid' }
+          }),
+          downloadObject: async () => ({})
+        }
+      }
+    } as any;
+    const { source, imageParsePrefix } = await fileContext.getSource(
+      'https://files.example.com/signed'
+    );
+    expect(source.metadata.filename).toBe('%invalid');
+    expect(imageParsePrefix).toBe(`${key}-parsed`);
+    await expect(source.materialize({ signal: new AbortController().signal })).rejects.toThrow(
+      'no body'
+    );
   });
 
   it('uses the system file size limit by default', async () => {
@@ -367,190 +459,6 @@ describe('prepareWorkflowFileContext', () => {
     ).rejects.toThrow('signer must return an absolute HTTP(S) URL');
   });
 
-  it('keeps the parent model URL when a child variable restores its private key', async () => {
-    const getPreviewUrl = vi.fn().mockResolvedValue('https://files.example.com/parent-signed');
-    const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
-      query: [createFile({ key: privateKey })],
-      histories: [],
-      scope,
-      maxFileAmount: 20,
-      getPreviewUrl
-    });
-    const parentUrl = 'https://files.example.com/parent-signed';
-    const sourceVariableState = {
-      getFileStoreValueByRuntimeUrl: vi.fn(() => ({
-        key: privateKey,
-        name: 'report.pdf',
-        type: ChatFileTypeEnum.file
-      }))
-    } as any;
-
-    await runWithContext(
-      {
-        mcpClientMemory: {},
-        fileContext,
-        fileRegistrar
-      },
-      () =>
-        runWithDerivedWorkflowFileContext({
-          files: [parentUrl],
-          fn: async ({ resolveInputFile }) => {
-            const childState = await WorkflowVariableState.create({
-              timezone: 'Asia/Shanghai',
-              runningAppInfo: {
-                sourceType: ChatSourceTypeEnum.app,
-                sourceId: 'child-app',
-                teamId: 'team-1',
-                tmbId: 'tmb-1',
-                name: 'child'
-              },
-              uid: scope.uid,
-              chatId: scope.chatId,
-              variablesConfig: [{ key: 'files', type: VariableInputEnum.file } as any],
-              inputVariables: { files: [parentUrl] },
-              sourceVariableState,
-              resolveInputFile
-            });
-
-            expect(childState.get('files')).toEqual([parentUrl]);
-          }
-        })
-    );
-
-    expect(getPreviewUrl).toHaveBeenCalledTimes(1);
-  });
-
-  it('only suppresses child variable files explicitly truncated by the workflow limit', async () => {
-    const parentUrl = 'https://files.example.com/parent-signed';
-    const overflowUrl = 'https://external.example.com/overflow.pdf';
-    const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
-      query: [createFile({ key: privateKey })],
-      histories: [],
-      scope,
-      maxFileAmount: 1,
-      getPreviewUrl: vi.fn().mockResolvedValue(parentUrl)
-    });
-
-    await runWithContext(
-      {
-        mcpClientMemory: {},
-        fileContext,
-        fileRegistrar
-      },
-      () =>
-        runWithDerivedWorkflowFileContext({
-          files: [parentUrl, overflowUrl],
-          fn: async ({ resolveInputFile }) => {
-            await expect(
-              resolveInputFile?.({
-                url: overflowUrl,
-                name: 'overflow.pdf',
-                type: ChatFileTypeEnum.file
-              })
-            ).resolves.toBeUndefined();
-            await expect(
-              resolveInputFile?.({
-                url: 'https://external.example.com/unlisted.pdf',
-                name: 'unlisted.pdf',
-                type: ChatFileTypeEnum.file
-              })
-            ).rejects.toThrow('not selected in its file context');
-          }
-        })
-    );
-  });
-
-  it('adds child interactive files to the active derived context', async () => {
-    const interactiveKey = 'chat/app/app-1/user-1/chat-1/interactive.pdf';
-    const getPreviewUrl = vi.fn(async (key: string) => `https://files.example.com/${key}`);
-    const queryFile = createFile({ key: privateKey });
-    const { fileContext, fileRegistrar, query } = await prepareWorkflowFileContext({
-      query: [queryFile],
-      histories: [],
-      scope,
-      maxFileAmount: 20,
-      getPreviewUrl
-    });
-
-    await runWithContext(
-      {
-        mcpClientMemory: {},
-        fileContext,
-        fileRegistrar
-      },
-      () =>
-        runWithDerivedWorkflowFileContext({
-          files: [query[0].file!.url],
-          fn: async () => {
-            const ref = await getWorkflowFileRegistrar()?.registerInputFile({
-              file: {
-                key: interactiveKey,
-                name: 'interactive.pdf',
-                type: ChatFileTypeEnum.file
-              },
-              source: 'interactive'
-            });
-
-            expect(ref).toBeDefined();
-            expect(getWorkflowFileContext()?.resolve(ref!.modelUrl)).toBe(ref);
-          }
-        })
-    );
-  });
-
-  it('deduplicates child inputs before silently enforcing the workflow file limit', async () => {
-    const getPreviewUrl = vi.fn(async (key: string) => `https://files.example.com/${key}`);
-    const queryFile = createFile({ key: privateKey });
-    const { fileContext, fileRegistrar, query } = await prepareWorkflowFileContext({
-      query: [queryFile],
-      histories: [],
-      scope,
-      maxFileAmount: 2,
-      getPreviewUrl
-    });
-
-    await runWithContext(
-      {
-        mcpClientMemory: {},
-        fileContext,
-        fileRegistrar
-      },
-      () =>
-        runWithDerivedWorkflowFileContext({
-          files: [query[0].file!.url, query[0].file!.url],
-          fn: async () => {
-            const acceptedRef = await getWorkflowFileRegistrar()?.registerInputFile({
-              file: {
-                url: 'https://external.example.com/accepted.pdf',
-                name: 'accepted.pdf',
-                type: ChatFileTypeEnum.file
-              },
-              source: 'interactive'
-            });
-            const overflowRef = await getWorkflowFileRegistrar()?.registerInputFile({
-              file: {
-                url: 'https://external.example.com/overflow.pdf',
-                name: 'overflow.pdf',
-                type: ChatFileTypeEnum.file
-              },
-              source: 'interactive'
-            });
-
-            expect(acceptedRef).toBeDefined();
-            expect(overflowRef).toBeUndefined();
-            expect(
-              getWorkflowFileContext()?.resolve('https://external.example.com/accepted.pdf')
-            ).toBe(acceptedRef);
-            expect(
-              getWorkflowFileContext()?.resolve('https://external.example.com/overflow.pdf')
-            ).toBeUndefined();
-          }
-        })
-    );
-
-    expect(getPreviewUrl).toHaveBeenCalledTimes(1);
-  });
-
   it('rejects invalid query URLs and configured non-whitelisted domains', async () => {
     await expect(
       prepareWorkflowFileContext({
@@ -624,6 +532,50 @@ describe('prepareWorkflowFileContext', () => {
     });
   });
 
+  it.each([
+    ['root', '报告', 'remote.pdf'],
+    ['root', '报告.', 'remote.pdf'],
+    ['root', 'https://cdn.example.com/download?token=signed.value', 'remote.pdf'],
+    ['root', '', 'remote.pdf'],
+    ['root', 'trusted.pdf', 'trusted.pdf'],
+    ['inherited', 'https://cdn.example.com/download?token=signed.value', 'remote.pdf'],
+    ['child', 'https://cdn.example.com/download?token=signed.value', 'remote.pdf']
+  ])(
+    '%s Context 的外链名称 %s 只在带有效后缀时覆盖响应文件名',
+    async (kind, name, expectedFilename) => {
+      const { fileContext } = await prepareWorkflowFileContext({
+        query: [],
+        histories: [],
+        scope,
+        maxFileAmount: 20
+      });
+      const url = 'https://cdn.example.com/download?token=signed.value';
+      const rootRef =
+        kind === 'child'
+          ? undefined
+          : fileContext.registerExternalFile({ url, name, type: ChatFileTypeEnum.file });
+      const context = kind === 'root' ? fileContext : await fileContext.derive([url]);
+      const ref = context.resolve(url)!;
+      if (kind === 'inherited') expect(ref).toBe(rootRef);
+      if (kind === 'child') expect(fileContext.resolve(url)).toBeUndefined();
+      const displayName = ref.name;
+      axiosGetMock.mockResolvedValueOnce({
+        data: Readable.from([Buffer.from('%PDF-1.7\n')]),
+        headers: {
+          'content-type': 'application/octet-stream',
+          'content-disposition': 'attachment; filename="remote.pdf"'
+        }
+      });
+      const { source } = await context.getSource(ref);
+      const result = await source.materialize({ signal: new AbortController().signal });
+      expect(result.metadata.filename).toBe(expectedFilename);
+      expect(resolveFileSourceExtension({ buffer: result.buffer, metadata: result.metadata })).toBe(
+        'pdf'
+      );
+      expect(ref.name).toBe(displayName);
+    }
+  );
+
   it('returns a lazy External source and enforces the streamed business size when materialized', async () => {
     const { fileContext } = await prepareWorkflowFileContext({
       query: [createFile({ key: undefined, url: 'https://cdn.example.com/report.pdf' })],
@@ -695,440 +647,12 @@ describe('prepareWorkflowFileContext', () => {
 
     await expect(
       fileContext.getSource({
-        id: 'forged',
         name: 'forged.pdf',
         type: ChatFileTypeEnum.file,
         modelUrl: 'https://evil.example.com/a.pdf',
         source: { type: 'externalHttp', url: 'https://evil.example.com/a.pdf' }
       })
     ).rejects.toThrow('not registered');
-  });
-
-  it('keeps the readonly context across the workflow async call chain', async () => {
-    const { fileContext } = await prepareWorkflowFileContext({
-      query: [createFile({ key: undefined, url: 'https://cdn.example.com/report.pdf' })],
-      histories: [],
-      scope,
-      maxFileAmount: 20,
-      getPreviewUrl: vi.fn()
-    });
-
-    expect(getWorkflowFileContext()).toBeUndefined();
-    await runWithContext(
-      {
-        mcpClientMemory: {},
-        fileContext
-      },
-      async () => {
-        await Promise.resolve();
-        expect(getWorkflowFileContext()).toBe(fileContext);
-      }
-    );
-    expect(getWorkflowFileContext()).toBeUndefined();
-  });
-
-  it('uses the same workflow size limit for registered and unregistered URLs', async () => {
-    const contextGetSource = vi.fn().mockResolvedValue({
-      source: {
-        kind: 's3',
-        sizeBytes: 8,
-        metadata: { filename: 'internal.txt' },
-        materialize: vi.fn().mockResolvedValue({
-          buffer: Buffer.from('internal'),
-          metadata: { filename: 'internal.txt' }
-        })
-      },
-      sourceKind: 'internal'
-    });
-    axiosGetMock.mockResolvedValueOnce({
-      data: Readable.from([Buffer.from('outside')]),
-      headers: {}
-    });
-    const fileContext = {
-      limits: { maxFileAmount: 20, maxBytesPerFile: 7 },
-      resolve: vi.fn((url: string) =>
-        url === 'https://files.example.com/registered' ? ({ id: 'registered' } as any) : undefined
-      ),
-      getSource: contextGetSource
-    } as any;
-
-    await runWithContext(
-      {
-        mcpClientMemory: {},
-        fileContext
-      },
-      async () => {
-        await expect(
-          readWorkflowFileBuffer({
-            url: 'https://files.example.com/registered'
-          })
-        ).resolves.toEqual(Buffer.from('internal'));
-        await expect(
-          readWorkflowFileBuffer({
-            url: 'https://node.example.com/generated.pdf'
-          })
-        ).resolves.toEqual(Buffer.from('outside'));
-      }
-    );
-
-    expect(contextGetSource).toHaveBeenCalledTimes(1);
-    expect(axiosGetMock).toHaveBeenCalledWith(
-      'https://node.example.com/generated.pdf',
-      expect.objectContaining({ maxContentLength: 7, responseType: 'stream' })
-    );
-  });
-
-  it('filters child payload before deriving its file context', async () => {
-    const queryFile = createFile({ key: undefined, url: 'https://files.example.com/query.pdf' });
-    const explicitFile = 'https://files.example.com/variable.pdf';
-    const historyFile = createFile({
-      key: undefined,
-      url: 'https://files.example.com/history.pdf'
-    });
-    const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
-      query: [queryFile],
-      histories: [createHistory(historyFile)],
-      scope,
-      maxFileAmount: 2,
-      getPreviewUrl: vi.fn()
-    });
-
-    await runWithContext({ mcpClientMemory: {}, fileContext, fileRegistrar }, () =>
-      runWithDerivedWorkflowFileContext({
-        query: [queryFile],
-        histories: [createHistory(historyFile)],
-        files: [explicitFile],
-        fn: async ({ query, histories, filterFiles }) => {
-          expect(query).toEqual([queryFile]);
-          expect(histories[0].value).toEqual([]);
-          expect(filterFiles([explicitFile])).toEqual([explicitFile]);
-          expect(getWorkflowFileContext()?.resolve(explicitFile)).toBeDefined();
-          expect(
-            getWorkflowFileContext()?.resolve('https://files.example.com/history.pdf')
-          ).toBeUndefined();
-        }
-      })
-    );
-  });
-
-  it('serializes concurrent child registrations before checking capacity', async () => {
-    const queryFile = createFile({ key: undefined, url: 'https://files.example.com/query.pdf' });
-    const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
-      query: [queryFile],
-      histories: [],
-      scope,
-      maxFileAmount: 2,
-      getPreviewUrl: vi.fn()
-    });
-
-    await runWithContext({ mcpClientMemory: {}, fileContext, fileRegistrar }, () =>
-      runWithDerivedWorkflowFileContext({
-        query: [queryFile],
-        files: [],
-        fn: async () => {
-          const registrar = getWorkflowFileRegistrar()!;
-          const registrations = await Promise.all([
-            registrar.registerInputFile({
-              file: {
-                url: 'https://files.example.com/first.pdf',
-                type: ChatFileTypeEnum.file
-              },
-              source: 'interactive'
-            }),
-            registrar.registerInputFile({
-              file: {
-                url: 'https://files.example.com/second.pdf',
-                type: ChatFileTypeEnum.file
-              },
-              source: 'interactive'
-            })
-          ]);
-
-          expect(registrations.filter(Boolean)).toHaveLength(1);
-        }
-      })
-    );
-  });
-
-  it('isolates child inputs when no parent file context exists', async () => {
-    const query = [createFile({ url: 'https://files.example.com/query.pdf' })];
-    const histories = [createHistory(createFile({ url: 'https://files.example.com/history.pdf' }))];
-    const files = ['https://files.example.com/variable.pdf'];
-
-    await expect(
-      runWithDerivedWorkflowFileContext({
-        query,
-        histories,
-        files,
-        fn: async ({
-          resolveInputFile,
-          query: childQuery,
-          histories: childHistories,
-          filterFiles
-        }) => {
-          expect(resolveInputFile).toBeUndefined();
-          expect(childQuery).toEqual(query);
-          expect(childQuery).not.toBe(query);
-          expect(childQuery[0]).not.toBe(query[0]);
-          expect(childQuery[0].file).not.toBe(query[0].file);
-          expect(childHistories).toEqual(histories);
-          expect(childHistories).not.toBe(histories);
-          expect(childHistories[0]).not.toBe(histories[0]);
-          expect(childHistories[0].value[0]).not.toBe(histories[0].value[0]);
-          const childFiles = filterFiles(files);
-          expect(childFiles).toEqual(files);
-          expect(childFiles).not.toBe(files);
-          return 'completed';
-        }
-      })
-    ).resolves.toBe('completed');
-  });
-
-  it('selects recent history files first while preserving history order', async () => {
-    const oldFile = createFile({ url: 'https://files.example.com/old.pdf' });
-    const recentFile = createFile({ url: 'https://files.example.com/recent.pdf' });
-    const assistantHistory = {
-      obj: ChatRoleEnum.AI,
-      value: [{ text: { content: 'answer' } }]
-    } as ChatItemMiniType;
-    const histories = [createHistory(oldFile), assistantHistory, createHistory(recentFile)];
-    const { fileContext } = await prepareWorkflowFileContext({
-      query: [],
-      histories,
-      scope,
-      maxFileAmount: 1,
-      getPreviewUrl: vi.fn()
-    });
-
-    await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-      runWithDerivedWorkflowFileContext({
-        histories,
-        files: [],
-        fn: async ({ histories: childHistories }) => {
-          expect(childHistories).toHaveLength(3);
-          expect(childHistories[0].value).toEqual([]);
-          expect(childHistories[1]).not.toBe(assistantHistory);
-          expect(childHistories[1]).toEqual(assistantHistory);
-          expect(childHistories[2].value).toEqual([recentFile]);
-          expect(
-            getWorkflowFileContext()?.resolve('https://files.example.com/old.pdf')
-          ).toBeUndefined();
-          expect(
-            getWorkflowFileContext()?.resolve('https://files.example.com/recent.pdf')
-          ).toBeDefined();
-        }
-      })
-    );
-  });
-
-  it('does not expose parent chat or file object references to a child workflow', async () => {
-    const query = [createFile({ url: 'https://files.example.com/query.pdf' })];
-    const histories = [createHistory(createFile({ url: 'https://files.example.com/history.pdf' }))];
-    const files = [
-      {
-        url: 'https://files.example.com/variable.pdf',
-        name: 'variable.pdf',
-        type: ChatFileTypeEnum.file
-      }
-    ];
-    const { fileContext } = await prepareWorkflowFileContext({
-      query,
-      histories,
-      scope,
-      maxFileAmount: 3,
-      getPreviewUrl: vi.fn()
-    });
-
-    await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-      runWithDerivedWorkflowFileContext({
-        query,
-        histories,
-        files,
-        fn: async ({ query: childQuery, histories: childHistories, filterFiles }) => {
-          const childFiles = filterFiles(files);
-
-          expect(childQuery[0]).not.toBe(query[0]);
-          expect(childQuery[0].file).not.toBe(query[0].file);
-          expect(childHistories[0]).not.toBe(histories[0]);
-          expect(childHistories[0].value[0]).not.toBe(histories[0].value[0]);
-          expect(childFiles[0]).not.toBe(files[0]);
-
-          childQuery[0].file!.url = 'https://child.example.com/query.pdf';
-          (childHistories[0].value[0] as UserChatItemValueItemType).file!.url =
-            'https://child.example.com/history.pdf';
-          (childFiles[0] as (typeof files)[number]).url = 'https://child.example.com/variable.pdf';
-        }
-      })
-    );
-
-    expect(query[0].file?.url).toBe('https://files.example.com/query.pdf');
-    expect((histories[0].value[0] as UserChatItemValueItemType).file?.url).toBe(
-      'https://files.example.com/history.pdf'
-    );
-    expect(files[0].url).toBe('https://files.example.com/variable.pdf');
-  });
-
-  it('does not expose a child registrar when the parent has none', async () => {
-    const { fileContext } = await prepareWorkflowFileContext({
-      query: [],
-      histories: [],
-      scope,
-      maxFileAmount: 1,
-      getPreviewUrl: vi.fn()
-    });
-
-    await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-      runWithDerivedWorkflowFileContext({
-        files: [],
-        fn: async () => {
-          expect(getWorkflowFileRegistrar()).toBeUndefined();
-        }
-      })
-    );
-  });
-
-  it('keeps the child context unchanged when the parent registrar rejects a file', async () => {
-    const rejectedUrl = 'https://files.example.com/rejected.pdf';
-    const { fileContext } = await prepareWorkflowFileContext({
-      query: [],
-      histories: [],
-      scope,
-      maxFileAmount: 1,
-      getPreviewUrl: vi.fn()
-    });
-    const registerInputFile = vi.fn().mockResolvedValue(undefined);
-
-    await runWithContext(
-      {
-        mcpClientMemory: {},
-        fileContext,
-        fileRegistrar: { registerInputFile }
-      },
-      () =>
-        runWithDerivedWorkflowFileContext({
-          files: [],
-          fn: async () => {
-            await expect(
-              getWorkflowFileRegistrar()?.registerInputFile({
-                file: { url: rejectedUrl, type: ChatFileTypeEnum.file },
-                source: 'interactive'
-              })
-            ).resolves.toBeUndefined();
-            expect(getWorkflowFileContext()?.resolve(rejectedUrl)).toBeUndefined();
-          }
-        })
-    );
-
-    expect(registerInputFile).toHaveBeenCalledTimes(1);
-  });
-
-  it('identifies and suppresses an unregistered keyed file rejected by a zero limit', async () => {
-    const keyedFile = {
-      key: 'chat/app/app-1/user-1/chat-1/unregistered.pdf',
-      name: 'unregistered.pdf',
-      type: ChatFileTypeEnum.file
-    };
-    const { fileContext } = await prepareWorkflowFileContext({
-      query: [],
-      histories: [],
-      scope,
-      maxFileAmount: 0,
-      getPreviewUrl: vi.fn()
-    });
-
-    await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-      runWithDerivedWorkflowFileContext({
-        files: [keyedFile],
-        fn: async ({ resolveInputFile }) => {
-          await expect(resolveInputFile?.(keyedFile)).resolves.toBeUndefined();
-        }
-      })
-    );
-  });
-
-  it('continues processing registrations after the parent registrar throws', async () => {
-    const acceptedUrl = 'https://files.example.com/accepted-after-error.pdf';
-    const { fileContext } = await prepareWorkflowFileContext({
-      query: [],
-      histories: [],
-      scope,
-      maxFileAmount: 1,
-      getPreviewUrl: vi.fn()
-    });
-    const acceptedRef = {
-      name: 'accepted-after-error.pdf',
-      type: ChatFileTypeEnum.file,
-      modelUrl: acceptedUrl,
-      source: { type: 'externalHttp' as const, url: acceptedUrl }
-    };
-    const registerInputFile = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('registration failed'))
-      .mockResolvedValueOnce(acceptedRef);
-
-    await runWithContext(
-      {
-        mcpClientMemory: {},
-        fileContext,
-        fileRegistrar: { registerInputFile }
-      },
-      () =>
-        runWithDerivedWorkflowFileContext({
-          files: [],
-          fn: async () => {
-            const registrar = getWorkflowFileRegistrar()!;
-            await expect(
-              registrar.registerInputFile({
-                file: {
-                  url: 'https://files.example.com/failed.pdf',
-                  type: ChatFileTypeEnum.file
-                },
-                source: 'interactive'
-              })
-            ).rejects.toThrow('registration failed');
-
-            await expect(
-              registrar.registerInputFile({
-                file: { url: acceptedUrl, type: ChatFileTypeEnum.file },
-                source: 'interactive'
-              })
-            ).resolves.toBe(acceptedRef);
-            expect(getWorkflowFileContext()?.resolve(acceptedUrl)).toBeDefined();
-          }
-        })
-    );
-
-    expect(registerInputFile).toHaveBeenCalledTimes(2);
-  });
-
-  it('reuses an existing child ref without invoking the parent registrar', async () => {
-    const fileUrl = 'https://files.example.com/existing.pdf';
-    const queryFile = createFile({ url: fileUrl });
-    const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
-      query: [queryFile],
-      histories: [],
-      scope,
-      maxFileAmount: 2,
-      getPreviewUrl: vi.fn()
-    });
-    const parentRegisterSpy = vi.spyOn(fileRegistrar, 'registerInputFile');
-
-    await runWithContext({ mcpClientMemory: {}, fileContext, fileRegistrar }, () =>
-      runWithDerivedWorkflowFileContext({
-        query: [queryFile],
-        files: [],
-        fn: async () => {
-          const ref = await getWorkflowFileRegistrar()?.registerInputFile({
-            file: queryFile.file!,
-            source: 'interactive'
-          });
-
-          expect(ref).toBe(getWorkflowFileContext()?.resolve(fileUrl));
-        }
-      })
-    );
-
-    expect(parentRegisterSpy).not.toHaveBeenCalled();
   });
 
   it('returns signed runtime chat inputs without mutating caller data', async () => {
@@ -1153,7 +677,7 @@ describe('prepareWorkflowFileContext', () => {
   });
 });
 
-describe('external file classification and registration', () => {
+describe('prepareWorkflowFileContext — 外链登记与派生', () => {
   const prepareExternal = async (
     fileContext: import('@fastgpt/service/core/workflow/utils/fileContext').WorkflowFileContext,
     file: ChatFileInput
@@ -1161,13 +685,15 @@ describe('external file classification and registration', () => {
     const [result] = await prepareChatFiles({ files: [file], maxFiles: 1, fileContext });
     return fileContext.resolve(result.url)!;
   };
+  let savedEnv: typeof global.systemEnv;
   beforeEach(() => {
+    savedEnv = global.systemEnv;
     axiosHeadMock.mockReset().mockResolvedValue({ headers: { 'content-type': 'image/png' } });
     global.systemEnv = { fileUrlWhitelist: [] } as any;
   });
 
   afterEach(() => {
-    global.systemEnv = { fileUrlWhitelist: [] } as any;
+    global.systemEnv = savedEnv;
   });
 
   const prepare = (query: UserChatItemValueItemType[] = [], maxFileAmount = 20) =>
@@ -1195,49 +721,6 @@ describe('external file classification and registration', () => {
     expect(result.fileContext.resolve(url)?.type).toBe(ChatFileTypeEnum.image);
   });
 
-  it('shares classification with document preparation and registers only during preparation', async () => {
-    const { normalizeReadableFileUrl } = await import('../../../../core/chat/fileContext');
-    axiosHeadMock.mockResolvedValue({ headers: { 'content-type': 'application/pdf' } });
-    const { fileContext } = await prepare();
-    const url = 'https://files.example.com/opaque';
-    await runWithContext({ fileContext, mcpClientMemory: {} }, async () => {
-      await Promise.all([
-        parseUrlToChatFileType({ url, fileContext }),
-        parseUrlToChatFileType({ url, fileContext })
-      ]);
-      expect(fileContext.resolve(url)).toBeUndefined();
-      expect(await normalizeReadableFileUrl({ url, fileContext })).toBe(url);
-    });
-    expect(axiosHeadMock).toHaveBeenCalledTimes(1);
-    expect(fileContext.resolve(url)?.source).toEqual({ type: 'externalHttp', url });
-  });
-
-  it('retains the fallback result after probe failure for the current context only', async () => {
-    axiosHeadMock.mockRejectedValue(new Error('timeout'));
-    const { fileContext } = await prepare();
-    const file = { url: 'https://files.example.com/opaque' };
-    const [first, second] = await Promise.all([
-      prepareExternal(fileContext, file),
-      prepareExternal(fileContext, file)
-    ]);
-    expect(first).toBe(second);
-    expect(first.type).toBe(ChatFileTypeEnum.file);
-    await prepareExternal(fileContext, file);
-    expect(axiosHeadMock).toHaveBeenCalledTimes(1);
-    const next = await prepare();
-    await prepareExternal(next.fileContext, file);
-    expect(axiosHeadMock).toHaveBeenCalledTimes(2);
-  });
-
-  it('rejects non-whitelisted files without probing or registering them', async () => {
-    global.systemEnv = { fileUrlWhitelist: ['allowed.example.com'] } as any;
-    const { fileContext } = await prepare();
-    const url = 'https://blocked.example.com/opaque';
-    await expect(prepareExternal(fileContext, { url })).rejects.toThrow('Invalid file URL domain');
-    expect(axiosHeadMock).not.toHaveBeenCalled();
-    expect(fileContext.resolve(url)).toBeUndefined();
-  });
-
   it('inherits selected classifications and keeps new child registrations isolated', async () => {
     const url = 'https://files.example.com/opaque';
     const { fileContext } = await prepare([createFile({ url })]);
@@ -1260,135 +743,5 @@ describe('external file classification and registration', () => {
     );
     expect(result.query).toHaveLength(maxFileAmount);
     expect(axiosHeadMock).toHaveBeenCalledTimes(maxFileAmount);
-  });
-
-  it('normalizes child query and history using its registered classifications', async () => {
-    const { fileContext } = await prepare();
-    const file = createFile({ url: 'https://files.example.com/child-opaque' });
-    await runWithContext({ fileContext, mcpClientMemory: {} }, () =>
-      runWithDerivedWorkflowFileContext({
-        query: [file],
-        histories: [createHistory(file)],
-        files: [],
-        fn: async ({ query, histories }) => {
-          expect(query[0].file?.type).toBe(ChatFileTypeEnum.image);
-          expect(histories[0].value[0]).toMatchObject({ file: { type: ChatFileTypeEnum.image } });
-        }
-      })
-    );
-    expect(axiosHeadMock).toHaveBeenCalledTimes(1);
-    expect(fileContext.resolve(file.file!.url)).toBeUndefined();
-  });
-
-  it.each([0, 1])(
-    'truncates dynamic node links before registration with limit %s',
-    async (maxFileAmount) => {
-      const { getInputFiles } =
-        await import('../../../../core/workflow/dispatch/ai/chat/fileContext');
-      const { fileContext } = await prepare([], maxFileAmount);
-      const urls = ['https://files.example.com/first', 'https://files.example.com/second'];
-      await runWithContext({ fileContext, mcpClientMemory: {} }, async () => {
-        expect(await getInputFiles({ fileLinks: urls })).toHaveLength(maxFileAmount);
-      });
-      expect(axiosHeadMock).toHaveBeenCalledTimes(maxFileAmount);
-      expect(fileContext.resolve(urls[1])).toBeUndefined();
-    }
-  );
-
-  it('keeps registered types consistent across AI, document and dataset consumers', async () => {
-    const { parseWorkflowAIInputFiles } =
-      await import('../../../../core/workflow/dispatch/ai/fileContext');
-    const { normalizeDatasetSearchInput } =
-      await import('../../../../core/workflow/dispatch/dataset/utils');
-    const { normalizeReadableFileUrl } = await import('../../../../core/chat/fileContext');
-    const url = 'https://files.example.com/opaque';
-    const { fileContext } = await prepare();
-    await runWithContext({ fileContext, mcpClientMemory: {} }, async () => {
-      const aiFiles = await parseWorkflowAIInputFiles({
-        files: [{ url, type: ChatFileTypeEnum.image, name: 'photo' }],
-        maxFileAmount: 2
-      });
-      expect(aiFiles[0].type).toBe(ChatFileTypeEnum.image);
-      expect(fileContext.resolve(url)?.type).toBe(ChatFileTypeEnum.image);
-      expect(await normalizeReadableFileUrl({ url, fileContext })).toBe('');
-      expect((await normalizeDatasetSearchInput([url])).imageQueries).toEqual([url]);
-      expect(
-        (
-          await parseWorkflowAIInputFiles({
-            files: [{ url, type: ChatFileTypeEnum.audio }],
-            maxFileAmount: 2
-          })
-        )[0].type
-      ).toBe(ChatFileTypeEnum.image);
-    });
-    expect(axiosHeadMock).not.toHaveBeenCalled();
-  });
-
-  it('prefers registration completed while an earlier HEAD was in flight', async () => {
-    const { fileContext } = await prepare();
-    const url = 'https://files.example.com/race';
-    let finish!: () => void;
-    const delayed = new Promise<void>((resolve) => {
-      finish = resolve;
-    });
-    axiosHeadMock.mockImplementation(async () => {
-      await delayed;
-      return { headers: { 'content-type': 'image/png' } };
-    });
-    const pending = prepareChatFiles({ files: [{ url }], maxFiles: 1, fileContext });
-    await vi.waitFor(() => expect(axiosHeadMock).toHaveBeenCalledTimes(1));
-    const explicit = await prepareChatFiles({
-      files: [{ url, type: ChatFileTypeEnum.audio }],
-      maxFiles: 1,
-      fileContext
-    });
-    finish();
-    expect(await pending).toEqual(explicit);
-    expect(fileContext.resolve(url)?.type).toBe(ChatFileTypeEnum.audio);
-  });
-
-  it('counts fragment aliases once before applying child and AI file limits', async () => {
-    const { parseWorkflowAIInputFiles } =
-      await import('../../../../core/workflow/dispatch/ai/fileContext');
-    const { fileContext } = await prepare([], 2);
-    const urls = [
-      'https://files.example.com/first#one',
-      'https://files.example.com/first#two',
-      'https://files.example.com/second'
-    ];
-    await runWithContext({ fileContext, mcpClientMemory: {} }, () =>
-      runWithDerivedWorkflowFileContext({
-        query: [],
-        files: urls,
-        fn: async () => {
-          const child = getWorkflowFileContext()!;
-          expect(child.resolve(urls[0])).toBe(child.resolve(urls[1]));
-          expect(child.resolve(urls[2])).toBeDefined();
-          const files = await parseWorkflowAIInputFiles({
-            files: urls.map((url) => ({ url, type: ChatFileTypeEnum.file })),
-            maxFileAmount: 2
-          });
-          expect(files.map((file) => file.url)).toEqual([urls[0], urls[2]]);
-        }
-      })
-    );
-    expect(axiosHeadMock).toHaveBeenCalledTimes(2);
-    expect(fileContext.resolve(urls[0])).toBeUndefined();
-  });
-
-  it('skips HEAD for known document suffixes and explicit media types', async () => {
-    const { fileContext } = await prepare();
-    expect(
-      (await prepareExternal(fileContext, { url: 'https://files.example.com/report.pdf' })).type
-    ).toBe(ChatFileTypeEnum.file);
-    expect(
-      (
-        await prepareExternal(fileContext, {
-          url: 'https://files.example.com/audio',
-          type: ChatFileTypeEnum.audio
-        })
-      ).type
-    ).toBe(ChatFileTypeEnum.audio);
-    expect(axiosHeadMock).not.toHaveBeenCalled();
   });
 });

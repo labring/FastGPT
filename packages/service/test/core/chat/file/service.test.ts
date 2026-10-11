@@ -1,649 +1,290 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Readable } from 'node:stream';
-import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatFileTypeEnum as FileType } from '@fastgpt/global/core/chat/constants';
+import type { UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
+import { axios } from '@fastgpt/service/common/api/axios';
 import {
   parseUrlToChatFileType,
   prepareChatFiles,
   validateChatFileInput
 } from '@fastgpt/service/core/chat/file/service';
-describe('parseUrlToChatFileType', () => {
-  describe('base64 images', () => {
-    it('should parse base64 PNG image', async () => {
-      const url = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ';
-      const result = await parseUrlToChatFileType({ url: url });
 
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.image,
-        name: 'image.png',
-        url
-      });
-    });
-
-    it('should parse base64 JPEG image', async () => {
-      const url = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.image,
-        name: 'image.jpeg',
-        url
-      });
-    });
-
-    it('should parse base64 GIF image', async () => {
-      const url = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.image,
-        name: 'image.gif',
-        url
-      });
-    });
-
-    it('should parse base64 WebP image', async () => {
-      const url =
-        'data:image/webp;base64,UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAwA0JaQAA3AA/vuUAAA=';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.image,
-        name: 'image.webp',
-        url
-      });
-    });
-
-    it('should handle base64 with uppercase MIME type', async () => {
-      const url = 'data:IMAGE/PNG;base64,ABC123';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.image,
-        name: 'image.png',
-        url
-      });
-    });
-
-    it('should return undefined for non-image base64', async () => {
-      const url = 'data:application/pdf;base64,JVBERi0xLjQK';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toBeUndefined();
-    });
-
-    it('should return undefined for malformed base64 data URL', async () => {
-      const url = 'data:invalid';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toBeUndefined();
-    });
-  });
-
-  describe('S3 Object Key URLs', () => {
-    it('should parse S3 chat image URL', async () => {
-      const url = 'chat/image.png';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.image,
-        name: 'image.png',
-        url
-      });
-    });
-
-    it('should parse S3 chat file URL', async () => {
-      const url = 'chat/document.pdf';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.file,
-        name: 'document.pdf',
-        url
-      });
-    });
-
-    it('should parse S3 nested path', async () => {
-      const url = 'chat/subfolder/image.jpg';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.image,
-        name: 'image.jpg',
-        url
-      });
-    });
-  });
-
-  describe('HTTP/HTTPS URLs', () => {
-    it('should parse HTTP image URL with extension', async () => {
-      const url = 'http://example.com/images/photo.jpg';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.image,
-        name: 'photo.jpg',
-        url
-      });
-    });
-
-    it('should parse HTTPS image URL with extension', async () => {
-      const url = 'https://cdn.example.com/image.png';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.image,
-        name: 'image.png',
-        url
-      });
-    });
-
-    it('should parse URL with filename query parameter', async () => {
-      const url = 'https://example.com/download?filename=photo.jpg&token=abc';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.image,
-        name: 'photo.jpg',
-        url
-      });
-    });
-
-    it('should parse URL without extension as file', async () => {
-      const url = 'https://example.com/download/file';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.file,
-        name: url,
-        url
-      });
-    });
-
-    it('should detect image type for extensionless URL via axios.head', async () => {
-      const url = 'https://example.com/avatar/user123';
-      const axiosModule = await import('../../../../common/api/axios');
-      const headSpy = vi.spyOn(axiosModule.axios, 'head').mockResolvedValueOnce({
-        headers: { 'content-type': 'image/png' }
-      } as any);
-
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(headSpy).toHaveBeenCalledWith(
-        url,
-        expect.objectContaining({
-          timeout: 1500,
-          __safeAxios: { validateUrl: expect.any(Function) }
-        })
-      );
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.image,
-        name: url,
-        url
-      });
-      headSpy.mockRestore();
-    });
-
-    it('should fall back to file when axios.head fails or times out', async () => {
-      const url = 'https://example.com/dynamic/unknown';
-      const axiosModule = await import('../../../../common/api/axios');
-      const headSpy = vi
-        .spyOn(axiosModule.axios, 'head')
-        .mockRejectedValueOnce(new Error('timeout'));
-
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.file,
-        name: url,
-        url
-      });
-      headSpy.mockRestore();
-    });
-
-    it('should handle URL with no filename', async () => {
-      const url = 'https://example.com/';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.file,
-        name: url,
-        url
-      });
-    });
-
-    it('should handle URL with empty filename', async () => {
-      const url = 'https://example.com/path/';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.file,
-        name: url,
-        url
-      });
-    });
-
-    it('should parse document file URL', async () => {
-      const url = 'https://example.com/document.pdf';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.file,
-        name: 'document.pdf',
-        url
-      });
-    });
-  });
-
-  describe('image file type detection', () => {
-    const imageExtensions = [
-      'jpg',
-      'jpeg',
-      'png',
-      'gif',
-      'bmp',
-      'webp',
-      'svg',
-      'tiff',
-      'ico',
-      'heic'
-    ];
-
-    imageExtensions.forEach((ext) => {
-      it(`should detect .${ext} as image type`, async () => {
-        const url = `https://example.com/file.${ext}`;
-        const result = await parseUrlToChatFileType({ url: url });
-
-        expect(result?.type).toBe(ChatFileTypeEnum.image);
-        expect(result?.name).toBe(`file.${ext}`);
-      });
-
-      it(`should detect .${ext.toUpperCase()} as image type (case insensitive)`, async () => {
-        const url = `https://example.com/file.${ext.toUpperCase()}`;
-        const result = await parseUrlToChatFileType({ url: url });
-
-        expect(result?.type).toBe(ChatFileTypeEnum.image);
-      });
-    });
-  });
-
-  describe('edge cases', () => {
-    it('should return undefined for non-string input', async () => {
-      // @ts-expect-error testing runtime behavior
-      const result = await parseUrlToChatFileType({ url: 123 });
-
-      expect(result).toBeUndefined();
-    });
-
-    it('should return undefined for null', async () => {
-      // @ts-expect-error testing runtime behavior
-      const result = await parseUrlToChatFileType({ url: null });
-
-      expect(result).toBeUndefined();
-    });
-
-    it('should return undefined for undefined', async () => {
-      // @ts-expect-error testing runtime behavior
-      const result = await parseUrlToChatFileType({ url: undefined });
-
-      expect(result).toBeUndefined();
-    });
-
-    it('should handle malformed URL', async () => {
-      const url = 'not-a-valid-url';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.file,
-        name: url,
-        url
-      });
-    });
-
-    it('should fall back when decodeURIComponent throws', async () => {
-      const url = 'https://example.com/download?filename=%E0%A4%A';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.file,
-        name: url,
-        url
-      });
-    });
-
-    it('should handle URL with special characters in filename', async () => {
-      const url = 'https://example.com/file%20name.jpg';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result?.type).toBe(ChatFileTypeEnum.image);
-      expect(result?.name).toBe('file name.jpg');
-    });
-
-    it('should detect audio URL by extension', async () => {
-      const url = 'https://example.com/chat-audio.mp3';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.audio,
-        name: 'chat-audio.mp3',
-        url
-      });
-    });
-
-    it('should detect video URL by extension', async () => {
-      const url = 'https://example.com/chat-video.mp4';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.video,
-        name: 'chat-video.mp4',
-        url
-      });
-    });
-
-    it('should handle URL with multiple dots in filename', async () => {
-      const url = 'https://example.com/my.file.name.png';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.image,
-        name: 'my.file.name.png',
-        url
-      });
-    });
-
-    it('should handle URL with query parameters and hash', async () => {
-      const url = 'https://example.com/image.jpg?size=large&quality=high#section';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result?.type).toBe(ChatFileTypeEnum.image);
-      expect(result?.name).toBe('image.jpg');
-    });
-
-    it('should handle relative URL paths', async () => {
-      const url = '/static/images/logo.png';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.image,
-        name: 'logo.png',
-        url
-      });
-    });
-
-    it('should handle filename with no extension', async () => {
-      const url = 'https://example.com/download/myfile';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result).toEqual({
-        type: ChatFileTypeEnum.file,
-        name: url,
-        url
-      });
-    });
-  });
-
-  describe('filename extraction priority', () => {
-    it('should prefer filename query parameter over pathname', async () => {
-      const url = 'https://example.com/download/abc123?filename=document.pdf';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result?.name).toBe('document.pdf');
-    });
-
-    it('should use pathname when filename parameter is missing', async () => {
-      const url = 'https://example.com/files/report.xlsx';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      expect(result?.name).toBe('report.xlsx');
-    });
-
-    it('should handle empty filename parameter', async () => {
-      const url = 'https://example.com/download?filename=';
-      const result = await parseUrlToChatFileType({ url: url });
-
-      // Empty filename parameter should fall back to pathname
-      expect(result?.name).toBeDefined();
-    });
-  });
-  it('should handle URL parsing for various sources', async () => {
-    const urls = [
-      'data:image/png;base64,ABC123',
-      'chat/image.jpg',
-      'https://cdn.example.com/photo.png',
-      'http://example.com/download?filename=file.gif'
-    ];
-
-    for (const url of urls) {
-      const result = await parseUrlToChatFileType({ url: url });
-      expect(result).toBeDefined();
-      expect(result?.url).toBe(url);
-    }
-  });
-});
-
-// 分类测试隔离外部服务，避免无后缀样例发出真实网络请求。
-beforeEach(async () => {
-  const { axios } = await import('@fastgpt/service/common/api/axios');
-  vi.spyOn(axios, 'head').mockResolvedValue({
-    headers: { 'content-type': 'application/octet-stream' }
-  } as any);
-  vi.spyOn(axios, 'get').mockImplementation(
-    async () =>
-      ({
-        headers: {},
-        data: Readable.from([]),
-        status: 200
-      }) as any
-  );
-});
-afterEach(() => vi.restoreAllMocks());
-
-describe('Context classification and preparation boundaries', () => {
-  const createContext = () => {
-    const files = new Map<
-      string,
-      import('@fastgpt/global/core/chat/type').UserChatItemFileItemType
-    >();
-    const context = {
-      resolveChatFile: (url: string) => files.get(url),
-      getIdentity: (url: string) => (files.has(url) ? `registered:${url}` : undefined),
-      registerExternalFile: vi.fn(
-        (file: import('@fastgpt/global/core/chat/type').UserChatItemFileItemType) => {
-          files.set(file.url, file);
-          return { name: file.name || 'file', type: file.type, modelUrl: file.url };
-        }
-      )
-    };
-    return { context, files };
+const url = 'https://files.example.com/download';
+
+/** 用内存登记表实现 Context 合约；只记录登记调用，不替换分类和身份计算。 */
+const createContext = () => {
+  const files = new Map<string, UserChatItemFileItemType>();
+  const context = {
+    resolveChatFile: (url: string) => files.get(url),
+    getIdentity: (url: string) => (files.has(url) ? `registered:${url}` : undefined),
+    registerExternalFile: vi.fn((file: UserChatItemFileItemType) => {
+      files.set(file.url, file);
+      return { name: file.name || 'file', type: file.type, modelUrl: file.url };
+    })
   };
+  return { context, files };
+};
 
-  it('classifies without registering, then respects registered metadata over conflicting hints', async () => {
-    const { context, files } = createContext();
-    const url = 'https://files.example.com/opaque';
-    await parseUrlToChatFileType({ url, fileContext: context });
-    expect(files.size).toBe(0);
-    expect(context.registerExternalFile).not.toHaveBeenCalled();
-    const authoritative = { name: 'photo', type: ChatFileTypeEnum.image, url };
-    files.set(url, authoritative);
-    expect(
-      await parseUrlToChatFileType({ url, type: ChatFileTypeEnum.video, fileContext: context })
-    ).toBe(authoritative);
-    expect(
-      await prepareChatFiles({
-        files: [{ url, type: ChatFileTypeEnum.audio }],
-        maxFiles: 1,
-        fileContext: context
-      })
-    ).toEqual([authoritative]);
+let savedEnv: typeof global.systemEnv;
+beforeEach(() => {
+  savedEnv = global.systemEnv;
+  global.systemEnv = { ...savedEnv, fileUrlWhitelist: [] };
+  vi.spyOn(axios, 'head').mockResolvedValue({ headers: { 'content-type': 'image/png' } });
+  vi.spyOn(axios, 'get').mockImplementation(async () => ({
+    headers: {},
+    data: Readable.from([]),
+    status: 200
+  }));
+});
+afterEach(() => {
+  global.systemEnv = savedEnv;
+  vi.restoreAllMocks();
+});
+
+describe('parseUrlToChatFileType', () => {
+  it.each([
+    ['data:IMAGE/PNG;base64,abc', undefined, FileType.image, 'image.png'],
+    ['data:image/jpeg;base64,abc', '头像', FileType.image, '头像'],
+    ['chat/nested/photo.jpg', undefined, FileType.image, 'photo.jpg'],
+    ['chat/report.pdf', undefined, FileType.file, 'report.pdf'],
+    ['/static/my.file.PNG', undefined, FileType.image, 'my.file.PNG'],
+    ['http://files.example.com/a.mp3?token=1#part', undefined, FileType.audio, 'a.mp3'],
+    [`${url}.mp4`, undefined, FileType.video, 'download.mp4'],
+    [`${url}.pdf`, '报告', FileType.file, '报告'],
+    [`${url}.png?filename=report.pdf`, undefined, FileType.file, 'report.pdf'],
+    [`${url}.png?filename=`, undefined, FileType.image, 'download.png'],
+    ['https://files.example.com/file%20name.jpg', undefined, FileType.image, 'file name.jpg'],
+    ['relative', undefined, FileType.file, 'relative'],
+    ['http://[invalid', '保留名称', FileType.file, '保留名称'],
+    ['chat/%invalid.png', undefined, FileType.file, 'chat/%invalid.png']
+  ])('本地分类和名称规则：%s', async (url, name, type, expectedName) => {
+    expect(await parseUrlToChatFileType({ url, name })).toEqual({ url, name: expectedName, type });
+    expect(axios.head).not.toHaveBeenCalled();
   });
 
-  it('shares HEAD including fallback but does not cache caller names or explicit type hints', async () => {
-    const { axios } = await import('@fastgpt/service/common/api/axios');
-    vi.mocked(axios.head).mockRejectedValue(new Error('timeout'));
-    const { context } = createContext();
-    const url = 'https://files.example.com/opaque';
-    const [first, second] = await Promise.all([
-      parseUrlToChatFileType({ url, name: 'first', fileContext: context }),
-      parseUrlToChatFileType({ url: `${url}#section`, name: 'second', fileContext: context })
-    ]);
-    expect(first).toMatchObject({ name: 'first', type: ChatFileTypeEnum.file, url });
-    expect(second).toMatchObject({
-      name: 'second',
-      type: ChatFileTypeEnum.file,
-      url: `${url}#section`
-    });
-    expect(
-      await parseUrlToChatFileType({ url, type: ChatFileTypeEnum.audio, fileContext: context })
-    ).toMatchObject({ type: ChatFileTypeEnum.audio });
-    expect(axios.head).toHaveBeenCalledTimes(1);
-    await parseUrlToChatFileType({ url, fileContext: createContext().context });
-    expect(axios.head).toHaveBeenCalledTimes(2);
-  });
+  it.each([undefined, null, 123, 'data:invalid', 'data:application/pdf;base64,abc'])(
+    '忽略不可分类的输入 %s',
+    async (url) => {
+      // @ts-expect-error 验证未经过类型边界的运行时输入。
+      expect(await parseUrlToChatFileType({ url })).toBeUndefined();
+      expect(axios.head).not.toHaveBeenCalled();
+    }
+  );
 
   it.each([
-    ['IMAGE/PNG; charset=utf-8', ChatFileTypeEnum.image],
-    ['audio/mpeg', ChatFileTypeEnum.audio],
-    ['video/mp4', ChatFileTypeEnum.video],
-    ['application/pdf', ChatFileTypeEnum.file],
-    [undefined, ChatFileTypeEnum.file]
-  ])('classifies HEAD content type %s', async (mime, expected) => {
-    const { axios } = await import('@fastgpt/service/common/api/axios');
-    vi.mocked(axios.head).mockResolvedValue({ headers: { 'content-type': mime } });
-    const url = 'https://files.example.com/opaque';
-    expect((await parseUrlToChatFileType({ url }))?.type).toBe(expected);
+    [FileType.video, { contentType: 'audio/mpeg', filename: 'photo.png' }, FileType.video],
+    [
+      FileType.file,
+      { contentType: 'AUDIO/MPEG; charset=binary', filename: 'photo.png' },
+      FileType.audio
+    ],
+    [undefined, { contentType: 'video/mp4' }, FileType.video],
+    [undefined, { contentType: 'image/png' }, FileType.image],
+    [undefined, { filename: 'photo.PNG' }, FileType.image],
+    [undefined, { filename: 'unknown', contentType: 'application/octet-stream' }, FileType.video]
+  ])(
+    '类型优先级：显式媒体 > 对象 MIME > 对象名称 > URL 后缀（%s, %j）',
+    async (type, metadata, expected) => {
+      expect((await parseUrlToChatFileType({ url: 'chat/object.mp4', type, metadata }))?.type).toBe(
+        expected
+      );
+      expect(axios.head).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    ['image/png', FileType.image],
+    ['audio/mpeg', FileType.audio],
+    ['video/mp4', FileType.video],
+    ['application/pdf', FileType.file],
+    [undefined, FileType.file]
+  ])('未知链接使用系统推测 MIME %s，普通 file 提示不阻止探测', async (mime, expected) => {
+    vi.mocked(axios.head).mockResolvedValueOnce({ headers: { 'content-type': mime } });
+    expect(await parseUrlToChatFileType({ url, type: FileType.file })).toEqual({
+      url,
+      name: url,
+      type: expected
+    });
     expect(axios.head).toHaveBeenCalledWith(
       url,
       expect.objectContaining({
-        timeout: 1500,
         __safeAxios: { validateUrl: expect.any(Function) }
       })
     );
   });
 
+  it.each(['success', 'failure'] as const)(
+    '同 Context 复用并发及已完成的 %s 探测，名称和显式类型不缓存',
+    async (outcome) => {
+      if (outcome === 'failure') vi.mocked(axios.head).mockRejectedValue(new Error('offline'));
+      const { context, files } = createContext();
+      const expected = outcome === 'success' ? FileType.image : FileType.file;
+      const results = await Promise.all(
+        ['first', 'second'].map((name) =>
+          parseUrlToChatFileType({ url: `${url}#${name}`, name, fileContext: context })
+        )
+      );
+      expect(results.map((file) => [file?.name, file?.type])).toEqual([
+        ['first', expected],
+        ['second', expected]
+      ]);
+      expect((await parseUrlToChatFileType({ url, fileContext: context }))?.type).toBe(expected);
+      expect(
+        (await parseUrlToChatFileType({ url, type: FileType.audio, fileContext: context }))?.type
+      ).toBe(FileType.audio);
+      expect(axios.head).toHaveBeenCalledTimes(1);
+      expect(files.size).toBe(0);
+      expect(context.registerExternalFile).not.toHaveBeenCalled();
+      await parseUrlToChatFileType({ url: `${url}?signature=other`, fileContext: context });
+      await parseUrlToChatFileType({ url, fileContext: createContext().context });
+      expect(axios.head).toHaveBeenCalledTimes(3);
+    }
+  );
+
+  it('已登记结果优先于冲突提示，包括探测期间完成的登记', async () => {
+    const { context, files } = createContext();
+    let finish!: () => void;
+    vi.mocked(axios.head).mockImplementationOnce(async () => {
+      await new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      return { headers: { 'content-type': 'image/png' } };
+    });
+    const pending = parseUrlToChatFileType({ url, fileContext: context });
+    await vi.waitFor(() => expect(finish).toBeDefined());
+    const registered = { url, name: '录音', type: FileType.audio };
+    files.set(url, registered);
+    finish();
+    expect(await pending).toBe(registered);
+    expect(await parseUrlToChatFileType({ url, type: FileType.video, fileContext: context })).toBe(
+      registered
+    );
+    expect(axios.head).toHaveBeenCalledTimes(1);
+  });
+
+  it('分类被域名策略拒绝的未知链接时不探测', async () => {
+    global.systemEnv.fileUrlWhitelist = ['allowed.example.com'];
+    expect((await parseUrlToChatFileType({ url }))?.type).toBe(FileType.file);
+    expect(axios.head).not.toHaveBeenCalled();
+  });
+});
+
+describe('validateChatFileInput', () => {
   it.each([
-    [{ filename: 'cover.jpg', contentType: 'audio/mpeg' }, ChatFileTypeEnum.audio],
-    [{ filename: 'cover.jpg' }, ChatFileTypeEnum.image],
-    [{ filename: 'download', contentType: 'application/octet-stream' }, ChatFileTypeEnum.video]
-  ])('classifies verified object metadata with the same rules: %j', async (metadata, expected) => {
-    const { axios } = await import('@fastgpt/service/common/api/axios');
-    expect((await parseUrlToChatFileType({ url: 'chat/object.mp4', metadata }))?.type).toBe(
-      expected
+    [url, false, true],
+    ['/relative.pdf', false, false],
+    ['data:image/png;base64,abc', false, false],
+    ['data:image/png;base64,abc', true, true]
+  ])('准入 %s（allowDataUrl=%s）', (url, allowDataUrl, expected) => {
+    expect(validateChatFileInput({ url, allowDataUrl })).toBe(expected);
+  });
+
+  it('已登记签名域名可用，但不能放行其他被阻止的文件', () => {
+    global.systemEnv.fileUrlWhitelist = ['allowed.example.com'];
+    const { context, files } = createContext();
+    files.set(url, { url, name: '报告', type: FileType.file });
+    expect(validateChatFileInput({ url, fileContext: context })).toBe(true);
+    expect(() => validateChatFileInput({ url: `${url}/other`, fileContext: context })).toThrow(
+      'Invalid file URL domain'
     );
     expect(axios.head).not.toHaveBeenCalled();
   });
+});
 
-  it('limits concurrent HEAD across independent batches sharing a Context', async () => {
-    const { axios } = await import('@fastgpt/service/common/api/axios');
+describe('prepareChatFiles', () => {
+  it('清理空输入，按 Context 身份去重并在校验、探测、登记前截断', async () => {
+    global.systemEnv.fileUrlWhitelist = ['files.example.com'];
     const { context } = createContext();
+    context.getIdentity = (input) => (input.includes('/alias') ? 'same-object' : undefined);
+    const result = await prepareChatFiles({
+      files: [
+        { url: '' },
+        { url: '   ' },
+        // @ts-expect-error 验证非法运行时输入被过滤。
+        { url: 123 },
+        { url: `${url}/alias-one ` },
+        { url: `${url}/alias-two` },
+        { url: `${url}#one` },
+        { url: `${url}#two` },
+        { url: 'https://blocked.example.com/excess' }
+      ],
+      maxFiles: 2,
+      fileContext: context
+    });
+    expect(result.map((file) => file.url)).toEqual([`${url}/alias-one`, `${url}#one`]);
+    expect(axios.head).toHaveBeenCalledTimes(2);
+    expect(context.registerExternalFile).toHaveBeenCalledTimes(2);
+    await expect(
+      prepareChatFiles({
+        files: [{ url: 'https://blocked.example.com/rejected' }],
+        maxFiles: 1,
+        fileContext: context
+      })
+    ).rejects.toThrow('Invalid file URL domain');
+    expect(context.registerExternalFile).toHaveBeenCalledTimes(2);
+  });
+
+  it('使用登记器返回的最终名称、类型和模型 URL，已有 Ref 不重复登记', async () => {
+    const { context, files } = createContext();
+    const registered = { url: `${url}/signed`, name: '已授权', type: FileType.audio };
+    files.set(registered.url, registered);
+    context.registerExternalFile.mockReturnValueOnce({
+      name: '最终名称',
+      type: FileType.video,
+      modelUrl: `${url}/model`
+    });
+    expect(
+      await prepareChatFiles({
+        files: [{ url }, { url: registered.url, type: FileType.image }],
+        maxFiles: 2,
+        fileContext: context
+      })
+    ).toEqual([{ name: '最终名称', type: FileType.video, url: `${url}/model` }, registered]);
+    expect(context.registerExternalFile).toHaveBeenCalledTimes(1);
+  });
+
+  it('允许图片 Data URL 但不登记，跳过不支持的 Data URL 和相对地址', async () => {
+    const { context } = createContext();
+    const dataUrl = 'data:image/png;base64,abc';
+    const files = [
+      { url: dataUrl },
+      { url: 'data:text/plain;base64,abc' },
+      { url: '/relative.pdf' }
+    ];
+    expect(
+      await prepareChatFiles({ files, maxFiles: 3, allowDataUrl: true, fileContext: context })
+    ).toEqual([{ url: dataUrl, name: 'image.png', type: FileType.image }]);
+    expect(context.registerExternalFile).not.toHaveBeenCalled();
+    expect(await prepareChatFiles({ files, maxFiles: 3 })).toEqual([]);
+    expect(axios.head).not.toHaveBeenCalled();
+  });
+
+  it('不提供登记器也能准备文件', async () => {
+    expect(await prepareChatFiles({ files: [{ url }], maxFiles: 1 })).toEqual([
+      { url, name: url, type: FileType.image }
+    ]);
+  });
+
+  it.each([false, true])('多个独立调用共享最多 5 个探测槽（Context=%s）', async (withContext) => {
+    const fileContext = withContext ? createContext().context : undefined;
+    const releases: (() => void)[] = [];
     let active = 0;
     let peak = 0;
-    const releases: (() => void)[] = [];
     vi.mocked(axios.head).mockImplementation(async () => {
-      active++;
-      peak = Math.max(peak, active);
+      peak = Math.max(peak, ++active);
       await new Promise<void>((resolve) => releases.push(resolve));
       active--;
       return { headers: { 'content-type': 'image/png' } };
     });
+    const urls = Array.from({ length: 12 }, (_, index) => `${url}/${index}`);
     const pending = Promise.all(
-      Array.from({ length: 12 }, (_, index) =>
-        prepareChatFiles({
-          files: [{ url: `https://files.example.com/${index}` }],
-          maxFiles: 1,
-          fileContext: context
-        })
-      )
+      urls.map((url) => prepareChatFiles({ files: [{ url }], maxFiles: 1, fileContext }))
     );
-    await vi.waitFor(() => expect(releases).toHaveLength(5));
-    releases.splice(0).forEach((release) => release());
-    await vi.waitFor(() => expect(releases).toHaveLength(5));
-    releases.splice(0).forEach((release) => release());
-    await vi.waitFor(() => expect(releases).toHaveLength(2));
-    releases.splice(0).forEach((release) => release());
-    const result = await pending;
+    for (const count of [5, 5, 2]) {
+      await vi.waitFor(() => expect(releases).toHaveLength(count));
+      releases.splice(0).forEach((release) => release());
+    }
+    expect((await pending).flat().map((file) => file.url)).toEqual(urls);
     expect(peak).toBe(5);
-    expect(result.map(([file]) => file.url)).toEqual(
-      Array.from({ length: 12 }, (_, index) => `https://files.example.com/${index}`)
-    );
-  });
-
-  it('deduplicates aliases and truncates before validating or probing excess inputs', async () => {
-    const { axios } = await import('@fastgpt/service/common/api/axios');
-    const { context } = createContext();
-    const savedEnv = global.systemEnv;
-    global.systemEnv = { ...savedEnv, fileUrlWhitelist: ['files.example.com'] };
-    try {
-      const result = await prepareChatFiles({
-        files: [
-          { url: ' https://files.example.com/opaque#first ' },
-          { url: 'https://files.example.com/opaque#second' },
-          { url: 'https://files.example.com/other' },
-          { url: 'https://blocked.example.com/excess' }
-        ],
-        maxFiles: 2,
-        fileContext: context
-      });
-      expect(result.map((file) => file.url)).toEqual([
-        'https://files.example.com/opaque#first',
-        'https://files.example.com/other'
-      ]);
-      expect(axios.head).toHaveBeenCalledTimes(2);
-      expect(context.registerExternalFile).toHaveBeenCalledTimes(2);
-      await expect(
-        prepareChatFiles({
-          files: [{ url: 'https://blocked.example.com/rejected' }],
-          maxFiles: 1,
-          fileContext: context
-        })
-      ).rejects.toThrow('Invalid file URL domain');
-      expect(axios.head).toHaveBeenCalledTimes(2);
-      expect(context.registerExternalFile).toHaveBeenCalledTimes(2);
-    } finally {
-      global.systemEnv = savedEnv;
-    }
-  });
-
-  it('keeps Data URL acceptance in validation and excludes unsupported data from preparation', async () => {
-    const { axios } = await import('@fastgpt/service/common/api/axios');
-    const image = 'data:image/png;base64,abc';
-    expect(validateChatFileInput({ url: image })).toBe(false);
-    expect(validateChatFileInput({ url: image, allowDataUrl: true })).toBe(true);
-    expect(
-      await prepareChatFiles({
-        files: [{ url: image }, { url: 'data:text/plain;base64,abc' }],
-        maxFiles: 2,
-        allowDataUrl: true
-      })
-    ).toEqual([{ url: image, name: 'image.png', type: ChatFileTypeEnum.image }]);
-    expect(
-      await prepareChatFiles({
-        files: [{ url: '/relative.pdf' }, { url: '' }, { url: 123 as any }],
-        maxFiles: 10
-      })
-    ).toEqual([]);
-    expect(axios.head).not.toHaveBeenCalled();
-  });
-
-  it('accepts registered signed domains while refusing to probe unregistered blocked URLs', async () => {
-    const { axios } = await import('@fastgpt/service/common/api/axios');
-    const { context, files } = createContext();
-    const savedEnv = global.systemEnv;
-    global.systemEnv = { ...savedEnv, fileUrlWhitelist: ['allowed.example.com'] };
-    const url = 'https://signed.example.com/private';
-    files.set(url, { url, type: ChatFileTypeEnum.file, name: 'report.pdf' });
-    try {
-      expect(validateChatFileInput({ url, fileContext: context })).toBe(true);
-      expect(
-        (
-          await parseUrlToChatFileType({
-            url: 'https://blocked.example.com/opaque',
-            fileContext: context
-          })
-        )?.type
-      ).toBe(ChatFileTypeEnum.file);
-      expect(axios.head).not.toHaveBeenCalled();
-    } finally {
-      global.systemEnv = savedEnv;
-    }
   });
 });

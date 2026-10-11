@@ -55,6 +55,34 @@ export const inferFileTypeFromUrl = async ({
     __safeAxios: { validateUrl }
   };
 
+  /** DNS/重定向预检可能尚未进入 Axios adapter，必须独立响应总预算和调用方取消。 */
+  const requestWithAbort = async (request: Promise<AxiosResponse<Readable>>) => {
+    let onAbort: () => void = () => {};
+    try {
+      return await Promise.race([
+        request.then(
+          (response) => {
+            // 取消后才返回的响应也要释放；race 已结束仍会消费该 Promise，避免遗留流和拒绝。
+            if (controller.signal.aborted) response.data?.destroy();
+            controller.signal.throwIfAborted();
+            return response;
+          },
+          (error) => {
+            if (isAxiosError<Readable>(error)) error.response?.data?.destroy?.();
+            throw error;
+          }
+        ),
+        new Promise<never>((_, reject) => {
+          onAbort = () => reject(controller.signal.reason);
+          controller.signal.addEventListener('abort', onAbort, { once: true });
+          if (controller.signal.aborted) onAbort();
+        })
+      ]);
+    } finally {
+      controller.signal.removeEventListener('abort', onAbort);
+    }
+  };
+
   /** URL 路径只解码一次；query 和 Content-Disposition 的解析器已经完成解码。 */
   const urlFilename = (() => {
     const queryName = parsedUrl.searchParams.get('filename');
@@ -104,10 +132,12 @@ export const inferFileTypeFromUrl = async ({
   try {
     // 1. 优先只取响应头；仅对明确可回退的 HTTP/连接错误尝试 GET。
     try {
-      const response = await axios.head<Readable>(url, {
-        ...config,
-        timeout: Math.floor(timeoutMs / 2)
-      });
+      const response = await requestWithAbort(
+        axios.head<Readable>(url, {
+          ...config,
+          timeout: Math.floor(timeoutMs / 2)
+        })
+      );
       response.data?.destroy();
       const mime = readHeaders(response.headers);
       if (mime) return result(mime);
@@ -121,10 +151,12 @@ export const inferFileTypeFromUrl = async ({
     }
 
     // 2. Range 只是服务端提示，真正的内存上限由客户端截断保证。
-    const response = await axios.get<Readable>(url, {
-      ...config,
-      headers: { ...config.headers, Range: `bytes=0-${maxProbeBytes - 1}` }
-    });
+    const response = await requestWithAbort(
+      axios.get<Readable>(url, {
+        ...config,
+        headers: { ...config.headers, Range: `bytes=0-${maxProbeBytes - 1}` }
+      })
+    );
     try {
       const mime = readHeaders(response.headers);
       if (mime) return result(mime);

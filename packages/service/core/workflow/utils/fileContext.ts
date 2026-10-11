@@ -135,6 +135,29 @@ const getFileNameFromUrl = (url: string) => {
   }
 };
 
+/** 外链显示名称可能是完整 URL；仅带有效后缀的文件名才优先于下载响应的文件名。 */
+const createWorkflowExternalFileSource = ({
+  url,
+  name,
+  maxSizeBytes
+}: {
+  url: string;
+  name: string;
+  maxSizeBytes: number;
+}) => {
+  const filename = isAbsoluteHttpUrl(name)
+    ? getFileNameFromUrl(name)
+    : name || getFileNameFromUrl(url);
+  const extension = path.extname(filename);
+  return createExternalHttpFileSource({
+    url,
+    maxSizeBytes,
+    // 无后缀名称不提供解析格式，允许 Content-Disposition 补充；Ref 的显示名称保持不变。
+    trustMetadataFilename: Boolean(extension && extension !== '.'),
+    metadata: { filename }
+  });
+};
+
 const decodeMetadataFilename = (value?: string) => {
   if (!value) return '';
   try {
@@ -234,13 +257,10 @@ const createDerivedWorkflowFileContext = async ({
       }
 
       return {
-        source: createExternalHttpFileSource({
+        source: createWorkflowExternalFileSource({
           url: ref.source.url,
           maxSizeBytes: parent.limits.maxBytesPerFile,
-          trustMetadataFilename: true,
-          metadata: {
-            filename: ref.name || getFileNameFromUrl(ref.source.url)
-          }
+          name: ref.name
         }),
         sourceKind: 'external'
       };
@@ -514,13 +534,10 @@ export const prepareWorkflowFileContext = async ({
     }
 
     return {
-      source: createExternalHttpFileSource({
+      source: createWorkflowExternalFileSource({
         url: ref.source.url,
         maxSizeBytes: limits.maxBytesPerFile,
-        trustMetadataFilename: true,
-        metadata: {
-          filename: ref.name || getFileNameFromUrl(ref.source.url)
-        }
+        name: ref.name
       }),
       sourceKind: 'external'
     };
