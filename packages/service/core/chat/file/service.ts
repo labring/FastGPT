@@ -6,12 +6,11 @@ import {
   videoFileType,
   documentFileExtensions
 } from '@fastgpt/global/common/file/constants';
-import { getAxiosContentType } from '@fastgpt/global/common/axios/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import path from 'node:path';
 import pLimit from 'p-limit';
-import { axios, type SafeAxiosRequestConfig } from '../../../common/api/axios';
+import { inferFileTypeFromUrl } from '../../../common/file/infer/service';
 import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator';
 import { normalizeMimeType } from '../../../common/s3/utils/mime';
 import { getFileUrlIdentity, isAbsoluteHttpUrl, selectFileInputs } from './utils';
@@ -45,9 +44,9 @@ const classificationStates = new WeakMap<
 const probeWithoutContext = pLimit(5);
 
 /**
- * 唯一链接分类入口：已登记结果 > 明确媒体类型 > 可信对象元数据 > 后缀 > HEAD > 普通文件。
+ * 唯一链接分类入口：已登记结果 > 明确媒体类型 > 可信对象元数据 > 后缀 > 系统链接探测 > 普通文件。
  * 普通 file 提示仍允许探测；私有 key 只按后缀推测，不请求签名链接。
- * 分类不截断、不登记。Context 内相同身份复用探测和降级结果，HEAD 并发上限为 5。
+ * 分类不截断、不登记。Context 内相同身份复用探测和降级结果，远端探测并发上限为 5。
  */
 export const parseUrlToChatFileType = async ({
   url,
@@ -91,17 +90,13 @@ export const parseUrlToChatFileType = async ({
 
     const pending = (state?.probe ?? probeWithoutContext)(async () => {
       try {
-        const config: SafeAxiosRequestConfig = {
-          timeout: 3000,
-          __safeAxios: { validateUrl: validateFileUrlDomain }
-        };
-        const response = await axios.head(url, config);
-        return (
-          mediaTypeFromMime(getAxiosContentType(response.headers?.['content-type'])) ??
-          ChatFileTypeEnum.file
-        );
+        const { contentType } = await inferFileTypeFromUrl({
+          url,
+          validateUrl: validateFileUrlDomain
+        });
+        return mediaTypeFromMime(contentType) ?? ChatFileTypeEnum.file;
       } catch {
-        // 不支持 HEAD、超时或请求被安全策略拒绝时，只降级类型，不授予读取权限。
+        // 系统探测失败时只降级类型，不授予读取权限；业务读取仍需通过独立校验。
       }
       return ChatFileTypeEnum.file;
     });
