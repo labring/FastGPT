@@ -176,9 +176,9 @@ export const bulkInsertFolderCollections = async ({
 
 export type BulkUpdateCollectionParentItem = {
   _id: string;
-  parentId: Types.ObjectId;
-  /** server 侧父节点 id；挂到知识库根时是根哨兵 id，不会为空 */
-  apiFileParentId: string;
+  parentId: Types.ObjectId | null;
+  /** server 侧父节点 id；挂到知识库根时是根哨兵 id 或 null */
+  apiFileParentId: string | null;
 };
 
 /** 批量校正已存在节点的层级；按目标值直接 $set，重复执行天然幂等。不抛异常。 */
@@ -216,7 +216,10 @@ export const bulkUpdateCollectionsParent = async ({
           filter: { _id: item._id, teamId },
           update: {
             // 模型类型侧 parentId 是 string（global DatasetCollectionSchemaType.ParentIdSchema），mongoose schema 侧是 Schema.Types.ObjectId，传 hex 串由驱动转回 ObjectId
-            $set: { parentId: String(item.parentId), apiFileParentId: item.apiFileParentId }
+            $set: {
+              parentId: item.parentId ? String(item.parentId) : null,
+              apiFileParentId: item.apiFileParentId ?? null
+            }
           }
         }
       })),
@@ -248,10 +251,10 @@ export type BulkMoveCollectionParentItem = {
   inheritPermission?: boolean;
   /** 变更前的父级 collection _id；null = dataset 根 */
   oldParentId: string | null;
-  /** 变更后的父级 collection _id */
-  newParentId: Types.ObjectId;
-  /** server 侧父节点 id；挂到知识库根时是根哨兵 id，不会为空 */
-  apiFileParentId: string;
+  /** 变更后的父级 collection _id；null = dataset 根 */
+  newParentId: Types.ObjectId | null;
+  /** server 侧父节点 id */
+  apiFileParentId: string | null;
 };
 
 /**
@@ -279,7 +282,7 @@ export const bulkMoveCollectionsParent = async ({
       collectionId: item._id,
       datasetId: item.datasetId,
       oldParentId: item.oldParentId,
-      newParentId: String(item.newParentId),
+      newParentId: item.newParentId ? String(item.newParentId) : null,
       type: item.type,
       inheritPermission: item.inheritPermission
     })),

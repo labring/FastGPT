@@ -7,6 +7,7 @@ const { mockRequest, mockAxiosPost } = vi.hoisted(() => ({
 
 vi.mock('../../../../../common/api/axios', () => ({
   axios: { post: mockAxiosPost },
+  axiosWithoutSSRF: { post: mockAxiosPost },
   createProxyAxios: vi.fn(() => ({
     request: mockRequest,
     interceptors: { request: { use: vi.fn() } }
@@ -138,5 +139,144 @@ describe('useFeishuDatasetRequest.getFileDetail', () => {
 
     await expect(request.getFileDetail({ apiFileId: 'gone' })).rejects.toBe('文件不存在');
     expect(mockRequest).toHaveBeenCalledTimes(2);
+  });
+
+  it('遇到 503 等服务异常时不转成文件不存在，而是直接抛错中止', async () => {
+    mockRequest.mockRejectedValue(Object.assign(new Error('Service Unavailable'), { status: 503 }));
+    const request = useFeishuDatasetRequest({ feishuServer: server });
+
+    await expect(request.getFileDetail({ apiFileId: 'server-down' })).rejects.toMatchObject({
+      status: 503
+    });
+    // 首次 docx 查询遇到 503 即抛错，不继续盲目查询 folder
+    expect(mockRequest).toHaveBeenCalledTimes(1);
+  });
+
+  describe('listFiles, getFileContent, getFilePreviewUrl, getFileRawId', () => {
+    it('listFiles 支持多页分页递归拉取并过滤非 folder/docx 类型', async () => {
+      mockRequest
+        .mockResolvedValueOnce(
+          ok({
+            files: [
+              {
+                token: 'f1',
+                parent_token: 'root',
+                name: 'Folder 1',
+                type: 'folder',
+                modified_time: 1700000,
+                created_time: 1700000
+              },
+              {
+                token: 'img1',
+                parent_token: 'root',
+                name: 'image.png',
+                type: 'image',
+                modified_time: 1700000,
+                created_time: 1700000
+              }
+            ],
+            has_more: true,
+            next_page_token: 'page-2'
+          })
+        )
+        .mockResolvedValueOnce(
+          ok({
+            files: [
+              {
+                token: 'd1',
+                parent_token: 'root',
+                name: 'Doc 1',
+                type: 'docx',
+                modified_time: 1700000,
+                created_time: 1700000
+              }
+            ],
+            has_more: false
+          })
+        );
+
+      const request = useFeishuDatasetRequest({ feishuServer: server });
+      const files = await request.listFiles({});
+
+      expect(files).toHaveLength(2);
+      expect(files[0]).toMatchObject({ id: 'f1', type: 'folder', hasChild: true });
+      expect(files[1]).toMatchObject({ id: 'd1', type: 'file', hasChild: false });
+    });
+
+    it('getFileContent 读取文档正文与标题', async () => {
+      mockRequest
+        .mockResolvedValueOnce(ok({ content: 'Markdown document content' }))
+        .mockResolvedValueOnce(ok({ document: { title: 'Doc Title' } }));
+
+      const request = useFeishuDatasetRequest({ feishuServer: server });
+      const result = await request.getFileContent({ apiFileId: 'doc-token' });
+
+      expect(result).toEqual({
+        title: 'Doc Title',
+        rawText: 'Markdown document content'
+      });
+    });
+
+    it('getFilePreviewUrl 获取预览链接', async () => {
+      mockRequest.mockResolvedValueOnce(
+        ok({
+          metas: [{ url: 'https://feishu.cn/docx/doc-token' }]
+        })
+      );
+
+      const request = useFeishuDatasetRequest({ feishuServer: server });
+      const url = await request.getFilePreviewUrl({ apiFileId: 'doc-token' });
+
+      expect(url).toBe('https://feishu.cn/docx/doc-token');
+    });
+
+    it('getFileRawId 返回原始 token', () => {
+      const request = useFeishuDatasetRequest({ feishuServer: server });
+      expect(request.getFileRawId('raw-token')).toBe('raw-token');
+    });
+    it('空响应返回服务器异常', async () => {
+      mockRequest.mockResolvedValueOnce({ data: undefined });
+      const request = useFeishuDatasetRequest({ feishuServer: server });
+      await expect(request.listFiles({})).rejects.toEqual({ message: '服务器异常' });
+    });
+
+    it('处理不同形态的请求错误', async () => {
+      mockRequest.mockRejectedValueOnce('string error');
+      const request = useFeishuDatasetRequest({ feishuServer: server });
+      await expect(request.listFiles({})).rejects.toEqual({ message: 'string error' });
+
+      mockRequest.mockRejectedValueOnce(null);
+      await expect(request.listFiles({})).rejects.toEqual({ message: '未知错误' });
+
+      mockRequest.mockRejectedValueOnce({ data: 'error data string' });
+      await expect(request.listFiles({})).rejects.toEqual({ data: 'error data string' });
+    });
+
+    it('网络超时与连接重置错误被识别为可恢复异常', async () => {
+      mockRequest.mockRejectedValueOnce({ code: 'ECONNRESET' });
+      const request = useFeishuDatasetRequest({ feishuServer: server });
+      await expect(request.getFileDetail({ apiFileId: 'conn-reset' })).rejects.toMatchObject({
+        code: 'ECONNRESET'
+      });
+    });
+    it('请求拦截器注入 tenant_access_token', async () => {
+      let interceptorHook: any;
+      const { createProxyAxios } = await import('../../../../../common/api/axios');
+      (createProxyAxios as any).mockImplementationOnce(() => ({
+        request: mockRequest,
+        interceptors: {
+          request: {
+            use: (fn: any) => {
+              interceptorHook = fn;
+            }
+          }
+        }
+      }));
+      mockAxiosPost.mockResolvedValueOnce({ data: { tenant_access_token: 'fresh-token' } });
+      useFeishuDatasetRequest({ feishuServer: server });
+      expect(interceptorHook).toBeDefined();
+      const config = await interceptorHook({ headers: {} });
+      expect(config.headers['Authorization']).toBe('Bearer fresh-token');
+    });
   });
 });

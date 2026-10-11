@@ -151,3 +151,104 @@ describe('useApiDatasetRequest.getFileDetail', () => {
     expect(nodes.map((node) => node.serverId)).toEqual(['root', 'child']);
   });
 });
+
+describe('useApiDatasetRequest other methods', () => {
+  const apiServer = { baseUrl: 'https://api.example.com', authorization: 'token' };
+  const ok = (data: unknown) => ({ data: { success: true, message: '', data } });
+  const provider = () => useApiDatasetRequest({ apiServer } as any);
+
+  it('getFileContent 直接返回 inline content', async () => {
+    mocks.request.mockResolvedValueOnce(
+      ok({ title: 'Direct Doc', content: 'hello direct content' })
+    );
+    const res = await provider().getFileContent({
+      teamId: 't',
+      tmbId: 'tmb',
+      apiFileId: 'f1',
+      datasetId: 'd1'
+    });
+    expect(res).toEqual({ title: 'Direct Doc', rawText: 'hello direct content' });
+  });
+
+  it('getFilePreviewUrl 获取只读 URL', async () => {
+    mocks.request.mockResolvedValueOnce(ok({ url: 'https://preview.example.com/file' }));
+    const url = await provider().getFilePreviewUrl({ apiFileId: 'f1' });
+    expect(url).toBe('https://preview.example.com/file');
+  });
+
+  it('getFileRawId 返回原始 ID', () => {
+    expect(provider().getFileRawId('raw-1')).toBe('raw-1');
+  });
+
+  it('listFiles 格式校验', async () => {
+    mocks.request.mockResolvedValueOnce(ok('not-array'));
+    await expect(provider().listFiles({})).rejects.toBe('Invalid file list format');
+
+    mocks.request.mockResolvedValueOnce(ok([{ id: '' }]));
+    await expect(provider().listFiles({})).rejects.toBe('Invalid file data format');
+  });
+
+  it('响应异常处理：空响应、失败标识与错误包装', async () => {
+    mocks.request.mockResolvedValueOnce({ data: undefined });
+    await expect(provider().listFiles({})).rejects.toEqual({ message: '服务器异常' });
+
+    mocks.request.mockResolvedValueOnce({ data: { success: false, message: 'fail' } });
+    await expect(provider().listFiles({})).rejects.toEqual({ message: 'fail' });
+
+    mocks.request.mockRejectedValueOnce('raw string error');
+    await expect(provider().listFiles({})).rejects.toEqual({ message: 'raw string error' });
+  });
+
+  it('getFileContent 命中 S3 缓存 buffer', async () => {
+    mocks.getRawTextBuffer.mockResolvedValueOnce({ text: 'buffered text', filename: 'cached.pdf' });
+    mocks.request.mockResolvedValueOnce(ok({ previewUrl: 'https://example.com/cached.pdf' }));
+    const res = await provider().getFileContent({
+      teamId: 't',
+      tmbId: 'tmb',
+      apiFileId: 'f1',
+      datasetId: 'd1'
+    });
+    expect(res).toEqual({ title: 'cached.pdf', rawText: 'buffered text' });
+  });
+
+  it('getFileContent 缺失 content 与 previewUrl 报错', async () => {
+    mocks.request.mockResolvedValueOnce(ok({}));
+    await expect(
+      provider().getFileContent({
+        teamId: 't',
+        tmbId: 'tmb',
+        apiFileId: 'f1',
+        datasetId: 'd1'
+      })
+    ).rejects.toBe('Invalid content type: content or previewUrl is required');
+  });
+
+  it('getFilePreviewUrl 校验无效 url 报错', async () => {
+    mocks.request.mockResolvedValueOnce(ok({ url: '' }));
+    await expect(provider().getFilePreviewUrl({ apiFileId: 'f1' })).rejects.toBe(
+      'Invalid response url'
+    );
+  });
+
+  it('getFileDetail 未找到文件时报错', async () => {
+    mocks.request.mockResolvedValueOnce({ data: { success: true, data: null } });
+    await expect(provider().getFileDetail({ apiFileId: 'not-exist' })).rejects.toBe(
+      'File not found'
+    );
+  });
+
+  it('getFileContent 从 previewUrl 中解析 fallback 标题', async () => {
+    mocks.request
+      .mockResolvedValueOnce(
+        ok({ previewUrl: 'https://example.com/files/my-document.pdf?token=123' })
+      )
+      .mockRejectedValueOnce(new Error('no detail'));
+    const res = await provider().getFileContent({
+      teamId: 't',
+      tmbId: 'tmb',
+      apiFileId: 'f1',
+      datasetId: 'd1'
+    });
+    expect(res.title).toBe('my-document.pdf');
+  });
+});

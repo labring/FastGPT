@@ -140,4 +140,120 @@ describe('useYuqueDatasetRequest', () => {
     });
     expect(mockRequest.mock.calls[0][0].url).toBe('/api/v2/repos/100/docs/2000');
   });
+
+  it('listFiles 支持拉取知识库列表及分页处理', async () => {
+    const reposPage1 = Array.from({ length: 100 }, (_, i) => ({
+      id: 1000 + i,
+      name: `Repo ${i}`,
+      updated_at: new Date(),
+      created_at: new Date(),
+      slug: `repo-${i}`
+    }));
+    const reposPage2 = [
+      {
+        id: 2000,
+        name: 'Repo 2000',
+        updated_at: new Date(),
+        created_at: new Date(),
+        slug: 'repo-2000'
+      }
+    ];
+    mockRequest.mockResolvedValueOnce(ok(reposPage1)).mockResolvedValueOnce(ok(reposPage2));
+
+    const request = useYuqueDatasetRequest({ yuqueServer: server });
+    const repos = await request.listFiles({});
+
+    expect(repos).toHaveLength(101);
+    expect(repos[0]).toMatchObject({ id: '1000', type: 'folder', hasChild: true });
+  });
+
+  it('getFileDetail 对知识库 ID 返回正确的知识库详情', async () => {
+    mockRequest.mockResolvedValueOnce(
+      ok([{ id: 999, name: 'Knowledge Base', updated_at: new Date(), created_at: new Date() }])
+    );
+
+    const request = useYuqueDatasetRequest({ yuqueServer: server });
+    const detail = await request.getFileDetail({ apiFileId: '999' });
+
+    expect(detail).toMatchObject({
+      id: '999',
+      rawId: '999',
+      name: 'Knowledge Base',
+      type: 'folder',
+      hasChild: true
+    });
+  });
+
+  it('getFileDetail 对不存在的知识库 ID reject 文件不存在', async () => {
+    mockRequest.mockResolvedValueOnce(ok([]));
+    const request = useYuqueDatasetRequest({ yuqueServer: server });
+    await expect(request.getFileDetail({ apiFileId: '999' })).rejects.toBe('文件不存在');
+  });
+
+  it('getFilePreviewUrl 生成正确的文档预览 URL', async () => {
+    mockRequest
+      .mockResolvedValueOnce(ok({ slug: 'my-repo' }))
+      .mockResolvedValueOnce(ok({ slug: 'my-doc' }));
+
+    const request = useYuqueDatasetRequest({ yuqueServer: server });
+    const url = await request.getFilePreviewUrl({ apiFileId: '100-2000-uuid-doc' });
+
+    expect(url).toContain('/yuque-user/my-repo/my-doc');
+  });
+
+  it('getFileRawId 返回原始 fileId', () => {
+    const request = useYuqueDatasetRequest({ yuqueServer: server });
+    expect(request.getFileRawId('test-id')).toBe('test-id');
+  });
+
+  it('getFileContent 校验非字符串 id 及空标题报错', async () => {
+    const request = useYuqueDatasetRequest({ yuqueServer: server });
+    await expect(request.getFileContent({ apiFileId: 123 as any })).rejects.toBe('Invalid file id');
+
+    mockRequest.mockResolvedValueOnce(ok({ title: '', body: 'content' }));
+    await expect(request.getFileContent({ apiFileId: '100-2000-uuid-doc' })).rejects.toBe(
+      'Cannot find the file'
+    );
+  });
+
+  it('listFiles 校验无效数据格式', async () => {
+    mockRequest.mockResolvedValueOnce(ok('not-array'));
+    const request = useYuqueDatasetRequest({ yuqueServer: server });
+    await expect(request.listFiles({})).rejects.toBe('Invalid file data format');
+
+    mockRequest.mockResolvedValueOnce(ok([{ id: '' }]));
+    await expect(request.listFiles({})).rejects.toBe('Invalid file data format');
+  });
+
+  it('TOC 请求失败时清理缓存允许后续重试', async () => {
+    mockRequest.mockRejectedValueOnce(new Error('toc failed'));
+    const request = useYuqueDatasetRequest({ yuqueServer: server });
+    await expect(request.listFiles({ parentId: '100' })).rejects.toThrow('toc failed');
+
+    mockRequest.mockResolvedValueOnce(ok(TOC));
+    const files = await request.listFiles({ parentId: '100' });
+    expect(files).toHaveLength(1);
+  });
+
+  it('过滤 LINK 类型 TOC 节点并识别 TITLE 目录节点', async () => {
+    const mixedTOC = [
+      { id: '1', uuid: 'u1', type: 'LINK', title: 'Link', parent_uuid: '' },
+      { id: '2', uuid: 'u2', type: 'TITLE', title: 'Folder', parent_uuid: '', child_uuid: 'u3' }
+    ];
+    mockRequest.mockResolvedValueOnce(ok(mixedTOC));
+    const request = useYuqueDatasetRequest({ yuqueServer: server });
+    const files = await request.listFiles({ parentId: '100' });
+
+    expect(files).toHaveLength(1);
+    expect(files[0]).toMatchObject({ id: '100-2-u2', type: 'folder', hasChild: true });
+  });
+
+  it('响应异常处理：空数据与请求异常', async () => {
+    mockRequest.mockResolvedValueOnce({ data: undefined });
+    const request = useYuqueDatasetRequest({ yuqueServer: server });
+    await expect(request.listFiles({})).rejects.toEqual({ message: '服务器异常' });
+
+    mockRequest.mockRejectedValueOnce('raw string error');
+    await expect(request.listFiles({})).rejects.toEqual({ message: 'raw string error' });
+  });
 });

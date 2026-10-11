@@ -41,9 +41,8 @@ type YuqueTocListResponse = {
   parent_uuid: string;
 }[];
 
-const yuqueBaseUrl = serviceEnv.YUQUE_DATASET_BASE_URL;
-
 export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServerType }) => {
+  const yuqueBaseUrl = serviceEnv.YUQUE_DATASET_BASE_URL;
   const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
   // YUQUE_DATASET_BASE_URL 由部署方配置，可能指向内网代理，不使用 SSRF 拦截器。
   const instance = createProxyAxios(
@@ -86,6 +85,21 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
       return Promise.reject(err?.response?.data);
     }
     return Promise.reject(err);
+  };
+
+  const tocCache = new Map<string, Promise<YuqueTocListResponse>>();
+  const getRepoToc = (repoId: string | number) => {
+    const key = String(repoId);
+    if (!tocCache.has(key)) {
+      tocCache.set(
+        key,
+        request<YuqueTocListResponse>(`/api/v2/repos/${key}/toc`, {}, 'GET').catch((err) => {
+          tocCache.delete(key);
+          return Promise.reject(err);
+        })
+      );
+    }
+    return tocCache.get(key)!;
   };
 
   const request = <T>(url: string, data: any, method: Method): Promise<T> => {
@@ -156,11 +170,7 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
       const numParentId = Number(parentId);
       if (!isNaN(numParentId)) {
         // 获取目录树
-        const data = await request<YuqueTocListResponse>(
-          `/api/v2/repos/${parentId}/toc`,
-          {},
-          'GET'
-        );
+        const data = await getRepoToc(parentId);
 
         return data
           .filter((item) => !item.parent_uuid && item.type !== 'LINK')
@@ -178,7 +188,7 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
           }));
       } else {
         const [repoId, uuid, parentUuid] = parentId.split(/-(.*?)-(.*)/);
-        const data = await request<YuqueTocListResponse>(`/api/v2/repos/${repoId}/toc`, {}, 'GET');
+        const data = await getRepoToc(repoId);
         return data
           .filter((item) => item.parent_uuid === parentUuid)
           .map((item) => ({
@@ -282,11 +292,11 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
         return Promise.reject('文件不存在');
       }
       return {
-        id: file.id,
-        rawId: file.id,
+        id: String(file.id),
+        rawId: String(file.id),
         name: file.name,
         parentId: null,
-        type: file.type === 'TITLE' ? ('folder' as const) : ('file' as const),
+        type: 'folder' as const,
         updateTime: file.updated_at,
         createTime: file.created_at,
         hasChild: true
@@ -297,7 +307,7 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
       // 复合形态返回/解析 —— 否则 buildSeeds 拿到裸 docId 去比对本地 apiFileId 会全部落空，
       // 把本地已有 collection 误判为「远端已删除」后删掉重建。
       const [repoId, parentUuid, fileId] = apiFileId.split(/-(.*?)-(.*)/);
-      const data = await request<YuqueTocListResponse>(`/api/v2/repos/${repoId}/toc`, {}, 'GET');
+      const data = await getRepoToc(repoId);
       const file = data.find((item) => item.uuid === fileId);
       if (!file) {
         return Promise.reject('文件不存在');

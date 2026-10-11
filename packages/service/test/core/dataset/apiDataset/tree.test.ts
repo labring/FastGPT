@@ -446,4 +446,26 @@ describe('INT-3 创建路径与同步路径的层级对齐（纯函数）', () =
       expect(syncParents.get(serverId), `${serverId} 的本地父级`).toBe(createParent);
     }
   });
+
+  it('T1-10: 深层后代多层上溯更新 depth（覆盖多级祖先链更新）', async () => {
+    const tree: Record<string, any[]> = {
+      A: [{ id: 'B', name: 'B', type: 'folder', hasChild: true }],
+      B: [{ id: 'C', name: 'C', type: 'folder', hasChild: true }],
+      C: [{ id: 'D', name: 'D', type: 'file', hasChild: false }]
+    };
+    const request = {
+      listFiles: vi.fn(async ({ parentId }: any) => tree[parentId] ?? []),
+      getFileContent: vi.fn(),
+      getFileRawId: (id: string) => id
+    } as any;
+
+    const nodes = await buildApiFileTree({
+      request,
+      seeds: [
+        { id: 'C', name: 'C', type: 'folder', hasChild: true },
+        { id: 'A', name: 'A', type: 'folder', hasChild: true }
+      ]
+    });
+    expect(nodes.find((n) => n.serverId === 'D')?.depth).toBe(3);
+  });
 });

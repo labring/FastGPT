@@ -43,7 +43,12 @@ vi.mock('@/service/middleware/entry', () => ({
 }));
 
 vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
-  authDataset: vi.fn()
+  authDataset: vi.fn(),
+  authDatasetCollectionCreate: vi.fn(async () => ({
+    teamId: 'mock-team',
+    tmbId: 'mock-tmb',
+    dataset: { _id: 'mock-ds', teamId: 'mock-team' }
+  }))
 }));
 
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
@@ -82,7 +87,9 @@ vi.mock('@fastgpt/service/core/dataset/collection/controller', () => ({
   API_FILE_FILE_COMMIT_TIMEOUT_MS: 5 * 60 * 1000
 }));
 
-import { createApiDatasetCollection } from '@/pages/api/core/dataset/collection/create/apiCollectionV2';
+import defaultHandler, {
+  createApiDatasetCollection
+} from '@/pages/api/core/dataset/collection/create/apiCollectionV2';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 
 /** 构造 server 端节点（APIFileItemType 的最小可用形状） */
@@ -780,5 +787,37 @@ describe('createApiDatasetCollection', () => {
     );
     expect(mockBulkInsertFolderCollections).not.toHaveBeenCalled();
     expect(mockCreateApiFileCollectionsBatch).not.toHaveBeenCalled();
+  });
+
+  it('HTTP handler 端到端解析请求体并调用创建', async () => {
+    const res = await defaultHandler({
+      body: {
+        datasetId: 'mock-ds',
+        apiFiles: []
+      }
+    } as any);
+    expect(res).toEqual({ successCount: 0, failedCount: 0 });
+  });
+
+  it('当 matchedCount 小于 corrections 数量时触发未完全命中警告', async () => {
+    setServerTree({ root: [apiFile('doc', 'file')] });
+    mockCollectionFind.mockReturnValue({
+      lean: vi
+        .fn()
+        .mockResolvedValue([
+          { _id: 'DOC_1', apiFileId: 'doc', parentId: 'OLD', apiFileParentId: 'other' }
+        ])
+    });
+    mockBulkMoveCollectionsParent.mockResolvedValueOnce({
+      successIds: ['DOC_1'],
+      failedIds: [],
+      matchedCount: 0
+    });
+
+    await call({ apiFiles: [apiFile('root', 'folder', true)] });
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
+      'Create api file collection parent correction not fully matched',
+      expect.anything()
+    );
   });
 });

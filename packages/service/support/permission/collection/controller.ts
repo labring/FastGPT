@@ -797,6 +797,106 @@ export async function moveCollectionPermissionsBatch({
 
     // 输入顺序不能假设为父→子。用 DFS 让「新父级也是移动节点」的父级先入 orderedMoving。
     const movingById = new Map(moving.map((item) => [item.collectionId, item]));
+
+    // 找出所有外部父节点的祖先链，检查是否有祖先属于本轮 moving
+    const externalParentIds = Array.from(
+      new Set(
+        moving
+          .map((item) => (item.newParentId ? String(item.newParentId) : ''))
+          .filter(Boolean)
+          .filter((id) => !movingById.has(id))
+      )
+    );
+
+    const externalNodeMap = new Map<
+      string,
+      { _id: string; parentId: string | null; inheritPermission?: boolean }
+    >();
+    let currExtIds = externalParentIds;
+    while (currExtIds.length > 0) {
+      const query = MongoDatasetCollection.find?.(
+        { teamId, datasetId, _id: { $in: currExtIds } },
+        '_id parentId inheritPermission'
+      );
+      let docs: any[] = [];
+      if (query) {
+        if (typeof query.session === 'function' && session) {
+          const s = query.session(session);
+          docs = typeof s?.lean === 'function' ? await s.lean() : [];
+        } else if (typeof query.lean === 'function') {
+          docs = await query.lean();
+        }
+      }
+      currExtIds = [];
+      for (const doc of docs) {
+        const id = String(doc._id);
+        const pId = doc.parentId ? String(doc.parentId) : null;
+        externalNodeMap.set(id, {
+          _id: id,
+          parentId: pId,
+          inheritPermission: doc.inheritPermission
+        });
+        if (pId && !movingById.has(pId) && !externalNodeMap.has(pId)) {
+          currExtIds.push(pId);
+        }
+      }
+    }
+
+    const findMovingAncestorId = (startId: string): string | null => {
+      let curr = externalNodeMap.get(startId);
+      while (curr && curr.parentId) {
+        if (movingById.has(curr.parentId)) {
+          return curr.parentId;
+        }
+        curr = externalNodeMap.get(curr.parentId);
+      }
+      return null;
+    };
+
+    const resolveIntermediateSnapshots = async (targetId: string) => {
+      if (newSnapshotsById.has(targetId) || movingById.has(targetId)) return;
+      const path: Array<{ _id: string; parentId: string | null; inheritPermission?: boolean }> = [];
+      let curr = externalNodeMap.get(targetId);
+      while (curr) {
+        path.unshift(curr);
+        if (curr.parentId && movingById.has(curr.parentId)) {
+          break;
+        }
+        curr = curr.parentId ? externalNodeMap.get(curr.parentId) : undefined;
+      }
+      if (path.length === 0 || !path[0].parentId || !movingById.has(path[0].parentId)) {
+        return;
+      }
+      const pathIds = path.map((n) => n._id).filter((id) => !snapshotById.has(id));
+      if (pathIds.length > 0) {
+        const pathRows = await resourcePermissionRepo.findByResourceIds({
+          teamId,
+          resourceType: PerResourceTypeEnum.collection,
+          resourceIds: pathIds,
+          session
+        });
+        for (const row of pathRows) {
+          snapshotById.set(String(row.resourceId), row.collaborators);
+        }
+      }
+      for (const node of path) {
+        if (newSnapshotsById.has(node._id)) continue;
+        const parentOldClbs = oldParentClbsOf(node.parentId);
+        const parentNewClbs = newParentClbsOf(node.parentId);
+        const nodeOldSnapshot = snapshotById.get(node._id) ?? [];
+        if (node.inheritPermission === false) {
+          newSnapshotsById.set(node._id, nodeOldSnapshot);
+        } else {
+          const nodeNewSnapshot = calculateInheritedResourceCollaborators({
+            oldParentCollaborators: parentOldClbs,
+            newParentCollaborators: parentNewClbs,
+            childCollaborators: nodeOldSnapshot
+          });
+          newSnapshotsById.set(node._id, nodeNewSnapshot);
+        }
+      }
+    };
+
     const orderedMoving: CollectionPermissionMoveItem[] = [];
     const visitingIds = new Set<string>();
     const visitedIds = new Set<string>();
@@ -809,7 +909,14 @@ export async function moveCollectionPermissionsBatch({
 
       visitingIds.add(item.collectionId);
       const newParent = item.newParentId && movingById.get(String(item.newParentId));
-      if (newParent) visit(newParent);
+      if (newParent) {
+        visit(newParent);
+      } else if (item.newParentId) {
+        const movingAncestorId = findMovingAncestorId(String(item.newParentId));
+        if (movingAncestorId && movingById.has(movingAncestorId)) {
+          visit(movingById.get(movingAncestorId)!);
+        }
+      }
       visitingIds.delete(item.collectionId);
       visitedIds.add(item.collectionId);
       orderedMoving.push(item);
@@ -819,6 +926,9 @@ export async function moveCollectionPermissionsBatch({
     const snapshots: Array<{ resourceId: string; collaborators: CollaboratorItemType[] }> = [];
 
     for (const item of orderedMoving) {
+      if (item.newParentId && !movingById.has(String(item.newParentId))) {
+        await resolveIntermediateSnapshots(String(item.newParentId));
+      }
       const oldSnapshot = snapshotById.get(item.collectionId) ?? [];
       const newSnapshot = calculateInheritedResourceCollaborators({
         oldParentCollaborators: oldParentClbsOf(item.oldParentId),

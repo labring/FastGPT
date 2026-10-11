@@ -58,6 +58,7 @@ async function handler(req: ApiRequestProps<CreateApiCollectionV2BodyType>) {
   return CreateApiCollectionV2ResponseSchema.parse(
     await createApiDatasetCollection({
       ...body,
+      parentId: undefined,
       teamId,
       tmbId,
       dataset
@@ -77,10 +78,9 @@ export const createApiDatasetCollection = async ({
   teamId,
   tmbId,
   dataset,
-  // 请求体父级是兼容字段，服务端不读：api 文件库的本地树镜像 server 树，用户导入时所处的
-  // 浏览位置不参与落位。单独取出只为不让它漏进 body —— 否则会经 createCollectionParams
-  // 重新影响落位，与「忽略该字段」的语义冲突
+  // 请求体 parentId 被忽略（V2 本地树镜像 server 树），仅显式传入的 targetParentId 生效（供 V1 路由使用）
   parentId: _requestParentId,
+  targetParentId,
   // 内部调用的权限标记单独取出：它只作用于显式选中的节点，混进 ...body 会落到整棵展开树
   inheritPermission: requestInheritPermission,
   ...body
@@ -184,9 +184,12 @@ export const createApiDatasetCollection = async ({
 
   /** undefined 表示父目录尚未落库（其祖先写入失败），调用方须整棵跳过 */
   const resolveParentId = (record: ApiFileRecord): Types.ObjectId | null | undefined =>
-    // 顶层记录（本次选中的最外层节点）没有 server 父级 → 落知识库根。
-    // 不回退到请求体 parentId：浏览位置不参与落位，否则本地树会与 server 树分叉
-    record.parentDirId === null ? null : idMap.get(record.parentDirId);
+    // 顶层记录（本次选中的最外层节点）没有 server 父级 → 显式指定 targetParentId 则落其下，否则落知识库根
+    record.parentDirId === null
+      ? targetParentId
+        ? new Types.ObjectId(targetParentId)
+        : null
+      : idMap.get(record.parentDirId);
 
   // 校正条目：只跳过创建，不跳过校正 —— 否则「先导深层、再导祖先」必然错层。
   // 必须在本轮目录落库后调用，此时 idMap 才含新建目录的 _id
@@ -195,22 +198,23 @@ export const createApiDatasetCollection = async ({
 
     for (const record of records) {
       const existing = existByApiFileId.get(record.apiFileId);
-      // 本次选中的最外层节点保留其现有位置（用户显式选择优先于推导）
-      if (!existing || record.parentDirId === null) continue;
+      // 无 targetParentId 时顶层记录保留现有位置；若记录获得非空 parentDirId（如原根文档新增子节点），必须校正
+      if (!existing || (record.parentDirId === null && !targetParentId)) continue;
 
-      // parentDirId 非空 ⇒ serverParentId 非空 ⇒ apiFileParentId 非空
+      const resolvedTargetParentId =
+        record.parentDirId === null
+          ? targetParentId
+            ? new Types.ObjectId(targetParentId)
+            : null
+          : idMap.get(record.parentDirId);
+      if (resolvedTargetParentId === undefined) continue;
+
       const { apiFileParentId } = record;
-      if (apiFileParentId === null) continue;
-
-      const targetParentId = idMap.get(record.parentDirId);
-      // 未命中只可能是该父目录本轮写入失败，整棵跳过
-      if (!targetParentId) continue;
-
       const currentParentId = existing.parentId ? String(existing.parentId) : '';
+      const targetParentIdStr = resolvedTargetParentId ? String(resolvedTargetParentId) : '';
       if (
-        currentParentId === String(targetParentId) &&
-        // apiFileParentId 历史数据可能是 undefined，统一按 null 归一后比较
-        (existing.apiFileParentId ?? null) === apiFileParentId
+        currentParentId === targetParentIdStr &&
+        (existing.apiFileParentId ?? null) === (apiFileParentId ?? null)
       ) {
         continue;
       }
@@ -220,10 +224,9 @@ export const createApiDatasetCollection = async ({
         datasetId: String(dataset._id),
         type: existing.type,
         inheritPermission: existing.inheritPermission,
-        // 变更前的父级供 ACL 剥离旧继承位；必须是本次改动写入前的值
         oldParentId: existing.parentId ? String(existing.parentId) : null,
-        newParentId: targetParentId,
-        apiFileParentId
+        newParentId: resolvedTargetParentId,
+        apiFileParentId: apiFileParentId ?? null
       });
     }
 

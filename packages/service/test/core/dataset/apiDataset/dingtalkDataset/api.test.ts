@@ -160,6 +160,38 @@ describe('useDingtalkDatasetRequest', () => {
     );
   });
 
+  it('should format online doc with children as file with hasChild true', async () => {
+    mockGetRedisCache.mockResolvedValue('cached-token');
+    mockRequest.mockResolvedValueOnce({
+      data: {
+        nodes: [
+          {
+            nodeId: 'doc-with-children',
+            title: 'Doc With Children',
+            docType: 'wiki_doc',
+            hasChildren: true
+          }
+        ]
+      }
+    });
+
+    const request = useDingtalkDatasetRequest({
+      dingtalkServer: {
+        ...server,
+        operatorId: 'operator-id',
+        rootNodeId: 'root-1'
+      }
+    });
+    const result = await request.listFiles({});
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: 'doc-with-children',
+      type: 'file',
+      hasChild: true
+    });
+  });
+
   it('should list folder children with nextToken and filter unsupported nodes', async () => {
     mockGetRedisCache.mockResolvedValue('cached-token');
     mockRequest
@@ -1074,6 +1106,17 @@ describe('useDingtalkDatasetRequest', () => {
 
     await expect(request.listFiles({})).rejects.toBe(
       '获取钉钉用户 unionId 失败，请检查 UserId、通讯录可见范围和 qyapi_get_member 权限'
+    );
+  });
+
+  it('toSafeError 识别 message 属性', async () => {
+    mockGetRedisCache.mockResolvedValue('cached-token');
+    mockRequest.mockRejectedValueOnce({ message: 'custom error message' });
+    const request = useDingtalkDatasetRequest({
+      dingtalkServer: { ...server, operatorId: 'op', rootNodeId: 'root-1' }
+    });
+    await expect(request.listFiles({})).rejects.toBe(
+      '读取钉钉目录失败，请检查 rootNodeId、Wiki.Node.Read 权限和知识库访问权限'
     );
   });
 });

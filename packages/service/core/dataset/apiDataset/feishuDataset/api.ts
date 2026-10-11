@@ -31,10 +31,10 @@ type FeishuFileListResponse = {
   next_page_token: string;
 };
 
-const feishuBaseUrl = serviceEnv.FEISHU_BASE_URL;
 const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
 
 export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: FeishuServerType }) => {
+  const feishuBaseUrl = serviceEnv.FEISHU_BASE_URL;
   // FEISHU_BASE_URL / 飞书文档接口由部署方配置，可能指向内网代理，不使用 SSRF 拦截器。
   const instance = createProxyAxios(
     {
@@ -80,15 +80,7 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
     if (typeof err === 'string') {
       return Promise.reject({ message: err });
     }
-    if (typeof err.message === 'string') {
-      return Promise.reject({ message: err.message });
-    }
-    if (typeof err.data === 'string') {
-      return Promise.reject({ message: err.data });
-    }
-    if (err?.response?.data) {
-      return Promise.reject(err?.response?.data);
-    }
+    // 保留原始错误对象（含 status、code、response），避免下层无法识别真实 HTTP 状态
     return Promise.reject(err);
   };
 
@@ -220,13 +212,48 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
       return metas?.[0];
     };
 
-    let meta = await queryMeta('docx').catch(() => undefined);
+    const isTemporaryError = (err: any): boolean => {
+      if (!err) return false;
+      const status = err?.status ?? err?.statusCode ?? err?.response?.status;
+      if (status === 404) return false;
+      if (status && (status >= 500 || status === 429 || status === 401 || status === 403)) {
+        return true;
+      }
+      const code = err?.code ?? err?.response?.data?.code;
+      if (
+        typeof code === 'string' &&
+        ['ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'EAI_AGAIN'].includes(code)
+      ) {
+        return true;
+      }
+      const msg = String(err?.message ?? err?.msg ?? err?.error ?? '');
+      if (
+        /timeout|503|502|500|429|401|403|network|rate limit|服务不可用|service unavailable|unavailable/i.test(
+          msg
+        )
+      ) {
+        return true;
+      }
+      return false;
+    };
+
+    let meta: { title: string; doc_type: string } | undefined;
+    try {
+      meta = await queryMeta('docx');
+    } catch (err: any) {
+      if (isTemporaryError(err)) throw err;
+      meta = undefined;
+    }
 
     // batch_query 在类型不匹配时也可能正常返回、但 metas 为空；这种情况不会进入 catch，
     // 仍需按 folder 再查一次，避免把真实文件夹误判成「文件不存在」。
     if (!meta) {
-      // 两种类型都查不到时统一 reject，让调用方按「远端已删除」处理
-      meta = await queryMeta('folder').catch(() => undefined);
+      try {
+        meta = await queryMeta('folder');
+      } catch (err: any) {
+        if (isTemporaryError(err)) throw err;
+        meta = undefined;
+      }
     }
 
     if (!meta) {

@@ -37,6 +37,7 @@ async function handler(req: ApiRequestProps) {
       teamId,
       tmbId,
       dataset,
+      targetParentId: body.parentId,
       ...body
     })
   );

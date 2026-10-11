@@ -145,6 +145,7 @@ const request = async <T>({
 }): Promise<T> => {
   try {
     const response = await instance.request<T>({
+      baseURL: serviceEnv.DINGTALK_BASE_URL,
       url,
       method,
       headers: {
@@ -188,7 +189,7 @@ const getDingtalkOperatorId = async ({
 }) => {
   try {
     const { data } = await axiosWithoutSSRF.post<DingtalkUserResponse>(
-      `${dingtalkOapiBaseUrl}/topapi/v2/user/get`,
+      `${serviceEnv.DINGTALK_OAPI_BASE_URL}/topapi/v2/user/get`,
       {
         userid: dingtalkServer.userId
       },
@@ -248,23 +249,6 @@ const parseDingtalkDate = (value?: string | number) => {
   return new Date(value);
 };
 
-/** 钉钉特殊：节点类型的字段名不固定（type / nodeType / docType / fileType / extension 都可能带），
- *  拼串后按关键字判断，单一字段判断会漏 */
-const isDingtalkFolderNode = (node: DingtalkNode) => {
-  const typeText = [node.type, node.nodeType, node.docType, node.fileType, node.extension]
-    .filter(Boolean)
-    .join(',')
-    .toLowerCase();
-
-  return (
-    node.hasChild === true ||
-    node.hasChildren === true ||
-    typeText.includes('folder') ||
-    typeText.includes('directory') ||
-    typeText.includes('catalog')
-  );
-};
-
 const isDingtalkOnlineDocNode = (node: DingtalkNode) => {
   const typeText = [node.type, node.nodeType, node.docType, node.fileType, node.extension]
     .filter(Boolean)
@@ -313,18 +297,31 @@ const formatDingtalkNodeItem = (node: DingtalkNode): APIFileItemType | undefined
   const name = node.name || node.title;
   if (!id || !name) return undefined;
 
-  const isFolder = isDingtalkFolderNode(node);
+  const typeText = [node.type, node.nodeType, node.docType, node.fileType, node.extension]
+    .filter(Boolean)
+    .join(',')
+    .toLowerCase();
+
+  const isDoc = isDingtalkOnlineDocNode(node);
+  const isPureFolder =
+    typeText.includes('folder') || typeText.includes('directory') || typeText.includes('catalog');
+  const hasChildren = Boolean(node.hasChild || node.hasChildren || isPureFolder);
+
   // 钉钉特殊：只有 folder 与在线文档能取正文，其余类型（图片/压缩包/本地文件）直接丢弃，
   // 不导入也不参与层级 —— 否则会在本地留下永远解析不出来的空节点
-  if (!isFolder && !isDingtalkOnlineDocNode(node)) return undefined;
+  if (!isPureFolder && !isDoc) return undefined;
+
+  // 如果是在线文档，即使它有子节点（钉钉支持文档下挂子文档），也保留为 file 并标记 hasChild: true，
+  // 由上层派生目录承载子级，同时保留正文读取能力；纯目录才设为 folder
+  const type: 'folder' | 'file' = !isDoc && isPureFolder ? 'folder' : 'file';
 
   return {
     id,
     rawId: id,
     parentId: node.parentNodeId || node.parentId,
     name,
-    type: isFolder ? 'folder' : 'file',
-    hasChild: isFolder,
+    type,
+    hasChild: hasChildren,
     updateTime: parseDingtalkDate(node.updatedAt || node.modifiedTime),
     createTime: parseDingtalkDate(node.createdAt || node.createTime)
   };
