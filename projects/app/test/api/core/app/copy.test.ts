@@ -100,6 +100,31 @@ describe('Copy', () => {
         }
       }
     );
+    await MongoAppVersion.create({
+      appId,
+      tmbId: users.members[0].tmbId,
+      nodes: [
+        {
+          nodeId: 'autosave-chat-node',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          name: 'AutoSave Chat',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModel,
+              value: 'autosave-copy-model',
+              selectedType: FlowNodeInputTypeEnum.selectLLMModel,
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: {},
+      referenceSnapshots,
+      isAutoSave: true,
+      time: new Date('2020-01-01T00:00:00.000Z')
+    });
 
     const res3 = await Call<CopyAppBodyType, Record<string, never>, CopyAppResponseType>(
       copyapi.default,
@@ -158,6 +183,7 @@ describe('Copy', () => {
         ?.getActiveModels()
         .find((model) => model.type === ModelTypeEnum.llm)?.modelId;
     expect(copiedVersion?.referenceSnapshots).toEqual(referenceSnapshots);
+    expect(copiedVersion?.nodes[0].nodeId).toBe('autosave-chat-node');
     expect(copiedVersion?.nodes[0].inputs).toEqual([
       expect.objectContaining({
         key: NodeInputKeyEnum.aiModelId,

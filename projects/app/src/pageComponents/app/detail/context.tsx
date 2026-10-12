@@ -17,6 +17,7 @@ import { delAppById, getAppDetailById, putAppById } from '@/web/core/app/api';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
+import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { type PostPublishAppProps } from '@/global/core/app/api';
 import { type UpdateAppBodyType } from '@fastgpt/global/openapi/core/app/common/api';
 import { postPublishApp, getAppLatestVersion } from '@/web/core/app/api/version';
@@ -58,6 +59,7 @@ type AppContextType = {
         nodes: StoreNodeItemType[];
         edges: StoreEdgeItemType[];
         chatConfig: AppChatConfigType;
+        referenceSnapshots?: AppVersionSchemaType['referenceSnapshots'];
       }
     | undefined;
   reloadAppLatestVersion: () => void;
@@ -265,8 +267,12 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
         if (!isCurrentSave()) return false;
         setAppDetail((state) => ({
           ...state,
-          ...data,
-          modules: data.nodes || state.modules
+          nodes: data.nodes,
+          edges: data.edges,
+          chatConfig: data.chatConfig,
+          ...(data.referenceSnapshots !== undefined && {
+            referenceSnapshots: data.referenceSnapshots
+          })
         }));
         reloadAppLatestVersion();
         return true;

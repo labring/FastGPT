@@ -36,7 +36,16 @@ vi.mock('@/web/core/workflow/editor/react/useNode', () => ({
   useNodeActions: () => ({ updateNode: mocks.updateNode })
 }));
 vi.mock('@/web/core/workflow/editor/react/useField', () => ({
-  useField: () => ({ data: {}, reference: [], setValue: mocks.setValue })
+  useField: (
+    _nodeId: string,
+    fieldKey: string,
+    _kind: string,
+    selector: (field: { data: { input?: { value?: unknown } } }) => unknown
+  ) =>
+    selector({
+      data: { input: mocks.nodeInputs.find((input) => input.key === fieldKey) }
+    }),
+  useFieldActions: () => ({ setValue: mocks.setValue })
 }));
 vi.mock(
   '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/useWorkflowDocument',
@@ -71,6 +80,7 @@ describe('CommonInputForm model selection', () => {
   it.each([undefined, null, '', 'configured-id'])(
     'does not initialize or remember a model when mounted (%s)',
     (value) => {
+      mocks.nodeInputs = [{ key: Input_Template_SelectAIModel.key, value }];
       const element = (CommonInputForm as any).type({
         nodeId: 'node',
         item: { ...Input_Template_SelectAIModel, value }

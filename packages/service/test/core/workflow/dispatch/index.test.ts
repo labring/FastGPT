@@ -6,8 +6,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   dispatchWorkFlow,
   runWorkflow,
-  WorkflowQueue,
-  filterToolCallNodeResponses
+  WorkflowQueue
 } from '@fastgpt/service/core/workflow/dispatch/index';
 import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
 import { createClientAbortTracker } from '@fastgpt/service/core/workflow/dispatch/utils/clientAbort';
@@ -70,51 +69,6 @@ const createWorkflowVariableState = (
   toRuntimeRecord: () => ({ ...variables }),
   toStoreRecord: () => ({ ...variables }),
   clone: () => createWorkflowVariableState({ ...variables })
-});
-
-describe('filterToolCallNodeResponses', () => {
-  it('hides tool errors and their descendants while keeping successful responses', () => {
-    const responses = filterToolCallNodeResponses([
-      {
-        id: 'success',
-        nodeId: 'success',
-        moduleType: FlowNodeTypeEnum.tool,
-        moduleName: 'Success'
-      },
-      {
-        id: 'failed',
-        nodeId: 'failed',
-        moduleType: FlowNodeTypeEnum.tool,
-        moduleName: 'Failed',
-        errorText: 'tool failed'
-      },
-      {
-        id: 'failed-child',
-        nodeId: 'failed-child',
-        parentId: 'failed',
-        moduleType: FlowNodeTypeEnum.tool,
-        moduleName: 'Failed child'
-      },
-      {
-        id: 'nested',
-        nodeId: 'nested',
-        moduleType: FlowNodeTypeEnum.tool,
-        moduleName: 'Nested',
-        childrenResponses: [
-          {
-            id: 'nested-error',
-            nodeId: 'nested-error',
-            moduleType: FlowNodeTypeEnum.tool,
-            moduleName: 'Nested error',
-            error: 'nested failed'
-          }
-        ]
-      }
-    ] as any);
-
-    expect(responses.map((response) => response.id)).toEqual(['success', 'nested']);
-    expect(responses[1]).not.toHaveProperty('childrenResponses');
-  });
 });
 
 describe('dispatchWorkFlow SSE initialization guard', () => {
@@ -627,6 +581,28 @@ describe('getWorkflowNodeRunParams', () => {
 
     expect(params.payload).toBe(refValue);
     expect(variableState.getToRuntimeRecordCount()).toBe(1);
+  });
+
+  it('普通数组 input 不应因引用过滤被清空', () => {
+    const variableState = createVariableState();
+    const node = createNode('node1', FlowNodeTypeEnum.textEditor);
+    node.inputs = [
+      {
+        key: 'payload',
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.reference],
+        value: ['first', 'second', 'third'],
+        valueType: WorkflowIOValueTypeEnum.arrayAny
+      }
+    ];
+
+    expect(
+      getWorkflowNodeRunParams({
+        node,
+        runtimeNodesMap: new Map(),
+        variableState: variableState.state
+      }).payload
+    ).toEqual(['first', 'second', 'third']);
   });
 
   it('全部来源失效时在 dispatch 参数边界忽略引用', () => {

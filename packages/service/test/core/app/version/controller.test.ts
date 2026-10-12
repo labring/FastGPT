@@ -136,6 +136,7 @@ describe('getAppLatestVersion', () => {
         }
       ],
       chatConfig: {},
+      referenceSnapshots: [{ reference: ['deleted-node', 'output'], sourceLabel: 'Deleted node' }],
       resources: []
     };
     const leanMock = vi.fn().mockResolvedValue(version);
@@ -148,6 +149,7 @@ describe('getAppLatestVersion', () => {
     expect(result.nodes.map((node) => node.nodeId)).toEqual(['start']);
     expect(result.edges).toEqual([]);
     expect(result.chatConfig.scheduledTriggerConfig).toEqual(scheduledTriggerConfig);
+    expect(result.referenceSnapshots).toEqual(version.referenceSnapshots);
     expect(result.nodes[0].inputs[0].selectedType).toBe(FlowNodeInputTypeEnum.reference);
     expect(result.nodes[0].inputs[0].inputList?.[0]).not.toHaveProperty('value');
   });
@@ -159,12 +161,15 @@ describe('getAppLatestVersion', () => {
 
     const result = await getAppLatestVersion('app-id', {
       name: 'App without version',
+      pluginData: { nodeVersion: 'legacy-version-id' },
       modules: createAgentVersion().nodes,
       edges: [],
       chatConfig: {}
     } as any);
 
     expect(result.nodes.map((node) => node.nodeId)).toEqual(['agent-node']);
+    expect(result.versionId).toBe('legacy-version-id');
+    expect(result.versionName).toBe('App without version');
     expect(result.resources).toEqual([{ type: 'agent', id: 'legacy-agent-id' }]);
   });
 
@@ -315,7 +320,7 @@ describe('getAppDraftVersion', () => {
     const result = await getAppDraftVersion('app-id');
 
     expect(findOneMock).toHaveBeenCalledWith({ appId: 'app-id' });
-    expect(sortMock).toHaveBeenCalledWith({ time: -1, _id: -1 });
+    expect(sortMock).toHaveBeenCalledWith({ isAutoSave: -1, time: -1, _id: -1 });
     expect(findAppByIdMock).not.toHaveBeenCalled();
     expect(result).toBe(version);
   });

@@ -18,7 +18,8 @@ const mocks = vi.hoisted(() => ({
   authAppByTmbId: vi.fn(),
   getAppVersionById: vi.fn(),
   serverGetWorkflowToolRunUserQuery: vi.fn(),
-  getSystemToolWorkflowRuntime: vi.fn()
+  getSystemToolWorkflowRuntime: vi.fn(),
+  getUserChatInfo: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
@@ -35,7 +36,7 @@ vi.mock('@fastgpt/service/core/app/version/controller', () => ({
 }));
 
 vi.mock('@fastgpt/service/support/user/team/utils', () => ({
-  getUserChatInfo: vi.fn().mockResolvedValue({ externalProvider: undefined })
+  getUserChatInfo: (args: any) => mocks.getUserChatInfo(args)
 }));
 
 vi.mock('@fastgpt/service/core/app/tool/workflowTool/utils', () => ({
@@ -75,6 +76,7 @@ const createVariableState = () =>
 describe('agent sub app dispatchPlugin', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.getUserChatInfo.mockResolvedValue({ externalProvider: undefined });
     mocks.serverGetWorkflowToolRunUserQuery.mockReturnValue({ value: [] });
     mocks.runWorkflow.mockResolvedValue({
       flowUsages: [],
@@ -163,6 +165,50 @@ describe('agent sub app dispatchPlugin', () => {
     const result = await dispatchSystemWorkflow();
 
     expect(result.nodeSummary).toBeUndefined();
+  });
+
+  it('uses the parent running user for system workflow external variables', async () => {
+    mocks.getSystemToolWorkflowRuntime.mockResolvedValue({
+      id: 'commercial-system-workflow',
+      name: 'System Workflow',
+      nodes: [],
+      edges: [],
+      chatConfig: { variables: [] },
+      currentCost: 0
+    });
+
+    await dispatchPlugin({
+      app: {
+        id: 'associated-app',
+        name: 'System Workflow',
+        systemToolId: 'commercial-system-workflow'
+      },
+      runningAppInfo: {
+        sourceType: 'app',
+        sourceId: 'parent-app',
+        teamId: 'parent-team',
+        tmbId: 'parent-owner-tmb',
+        name: 'parent'
+      },
+      runningUserInfo: {
+        teamId: 'caller-team',
+        tmbId: 'caller-tmb'
+      },
+      customAppVariables: {},
+      userChatInput: '',
+      timezone: 'Asia/Shanghai',
+      uid: 'user',
+      chatId: 'chat',
+      responseChatItemId: 'response',
+      histories: [],
+      variableState: await createVariableState(),
+      checkIsStopping: vi.fn(() => false),
+      maxRunTimes: 20,
+      workflowDispatchDeep: 0,
+      stream: true
+    } as any);
+
+    expect(mocks.getUserChatInfo).toHaveBeenCalledWith('caller-tmb');
   });
 
   it('initializes workflow tool variables from child chatConfig', async () => {

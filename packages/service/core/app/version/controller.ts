@@ -58,12 +58,13 @@ const getFallbackResourceModels = async ({
 };
 
 const normalizeStoredVersionWorkflow = (
-  version: Pick<AppVersionSchemaType, 'nodes' | 'edges' | 'chatConfig'>
+  version: Pick<AppVersionSchemaType, 'nodes' | 'edges' | 'chatConfig' | 'referenceSnapshots'>
 ) =>
   migrateWorkflowToCurrent({
     nodes: decodeToolSetNodesFromStorage(version.nodes),
     edges: version.edges,
-    chatConfig: version.chatConfig
+    chatConfig: version.chatConfig,
+    referenceSnapshots: version.referenceSnapshots
   });
 
 /**
@@ -106,16 +107,15 @@ const emptyVersionWorkflow = (): AppVersionWorkflow => {
   };
 };
 
-export type AppVersionLookupApp = AppSchemaType & {
-  /** @deprecated 仅用于无正式 Version 历史应用的迁移窗口兼容。 */
-  modules?: unknown[];
-  /** @deprecated 仅用于无正式 Version 历史应用的迁移窗口兼容。 */
-  edges?: unknown;
-  /** @deprecated 仅用于无正式 Version 历史应用的迁移窗口兼容。 */
-  chatConfig?: unknown;
-  /** @deprecated 仅用于无正式 Version 历史应用的迁移窗口兼容。 */
-  resourceRefs?: unknown;
-};
+export type AppVersionLookupApp = AppSchemaType &
+  Partial<
+    Pick<AppVersionSchemaType, 'edges' | 'chatConfig' | 'referenceSnapshots' | 'resources'>
+  > & {
+    /** @deprecated 仅用于无正式 Version 历史应用的迁移窗口兼容。 */
+    modules?: AppVersionSchemaType['nodes'];
+    /** @deprecated 仅用于无正式 Version 历史应用的迁移窗口兼容。 */
+    resourceRefs?: unknown;
+  };
 
 const loadApp = async (appId: string, app?: AppVersionLookupApp) =>
   app ?? ((await MongoApp.findById(appId).lean()) as AppVersionLookupApp | null | undefined);
@@ -133,12 +133,14 @@ const normalizeLegacyAppWorkflow = (
   const normalizedWorkflow = migrateWorkflowToCurrent({
     nodes: decodeToolSetNodesFromStorage(Array.isArray(app.modules) ? app.modules : []),
     edges: Array.isArray(app.edges) ? app.edges : [],
-    chatConfig: app.chatConfig
+    chatConfig: app.chatConfig,
+    referenceSnapshots: app.referenceSnapshots
   });
   return {
-    versionId: undefined,
-    versionName: undefined,
+    versionId: app.pluginData?.nodeVersion,
+    versionName: app.name,
     resources: resolveStoredAppResources({
+      resources: app.resources,
       nodes: normalizedWorkflow.nodes,
       chatConfig: normalizedWorkflow.chatConfig,
       resourceRefs: app.resourceRefs,
@@ -208,10 +210,11 @@ export const getAppDraftWorkflow = async (appId: string, app?: AppVersionLookupA
 };
 
 /**
- * 读取当前最新 Version，作为保存增量鉴权的 baseline。
+ * 优先读取 AutoSave Version，保证编辑器详情/复制使用未发布草稿；没有 AutoSave 时回退到最新 Version。
+ * 返回值也作为保存增量鉴权的 baseline。
  */
 export const getAppDraftVersion = async (appId: string, session?: ClientSession) => {
-  const query = MongoAppVersion.findOne({ appId }).sort({ time: -1, _id: -1 });
+  const query = MongoAppVersion.findOne({ appId }).sort({ isAutoSave: -1, time: -1, _id: -1 });
   if (session) query.session(session);
   return query.lean();
 };

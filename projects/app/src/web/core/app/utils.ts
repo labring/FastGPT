@@ -89,5 +89,6 @@ export function addModelNamesToAppForm({
 export const workflowSystemVariables: EditorVariablePickerType[] = globalWorkflowSystemVariables;
 
 export const getAppQGuideCustomURL = (appDetail: AppDetailType | AppSchemaType): string => {
+  if (!('chatConfig' in appDetail)) return '';
   return appDetail.chatConfig?.chatInputGuide?.customUrl ?? '';
 };

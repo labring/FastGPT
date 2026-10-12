@@ -157,8 +157,11 @@ defineIndex(AppSchema, { key: { teamId: 1, parentId: 1 } });
 defineIndex(AppSchema, {
   key: { teamId: 1, deleteTime: 1, publishedVersionId: 1 }
 });
-// 旧版本回滚仍会按 resourceRefs.skillIds 反查，兼容窗口结束后再登记为 deprecated。
-defineIndex(AppSchema, { key: { teamId: 1, deleteTime: 1, 'resourceRefs.skillIds': 1 } });
+// 旧版本回滚仍会按 resourceRefs.skillIds 反查，登记为 deprecated 供历史索引清理。
+defineIndex(AppSchema, {
+  key: { teamId: 1, deleteTime: 1, 'resourceRefs.skillIds': 1 },
+  deprecated: true
+});
 
 // Schedule
 defineIndex(AppSchema, {

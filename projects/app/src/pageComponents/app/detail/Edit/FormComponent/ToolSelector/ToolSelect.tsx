@@ -23,7 +23,7 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
-import { getToolErrorMessage } from '@/web/core/workflow/workflowCheck';
+import { getToolErrorMessage } from '@/web/core/workflow/issueView';
 
 const ToolSelect = ({
   generatedSelectedTools,
@@ -90,8 +90,9 @@ const ToolSelect = ({
         gridGap={[2, 4]}
       >
         {selectedTools.map((item) => {
+          const status = item.pluginData?.status || item.status;
           const toolError = getToolErrorMessage({
-            status: item.pluginData?.status || item.status,
+            status,
             error: item.pluginData?.error,
             t
           });

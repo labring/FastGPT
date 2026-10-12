@@ -284,7 +284,11 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         throw new Error(`Invalid MCP tool id: ${toolConfig.mcpTool.toolId}`);
       }
       const app = await authRuntimeToolset(parentId, toolName);
-      const workflow = await getAppVersionById({ appId: parentId, app });
+      const workflow = await getAppVersionById({
+        appId: parentId,
+        versionId: version,
+        app
+      });
       const mcpToolSet = McpToolSetRuntimeConfigSchema.safeParse(
         workflow.nodes[0]?.toolConfig?.mcpToolSet
       ).data;

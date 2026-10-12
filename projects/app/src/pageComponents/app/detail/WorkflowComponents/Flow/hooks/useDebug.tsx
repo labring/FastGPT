@@ -7,13 +7,10 @@ import {
   type StoreEdgeItemType
 } from '@fastgpt/global/core/workflow/type/edge';
 import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
-import {
-  nodeInputTypeToInputType,
-  variableInputTypeToInputType
-} from '@/components/core/app/formRender/utils';
+import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -32,15 +29,20 @@ import {
   useWorkflowSnapshotGetter
 } from '../nodes/render/useWorkflowDocument';
 import { useWorkflowDebugValue } from '../../debug/workflowDebugSession';
+import { getUserFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import type { FileSelectorValueItemType } from '@/components/core/app/FileSelector/type';
 import {
   checkInputShouldRenderInDebug,
   debugNodeShouldShowAllInputs,
   getDebugGlobalVariableFormProps,
-  getDebugInputFormProps,
+  getDebugInputFormConfig,
   getDebugInputFormValue,
   getDebugRuntimeInputs,
   getWorkflowStartDebugFileInput,
-  getWorkflowStartDebugQuery
+  getWorkflowStartDebugQuery,
+  isDebugFileUrlInput
 } from './useDebugInput';
 
 const MyRightDrawer = dynamic(
@@ -55,6 +57,12 @@ enum TabEnum {
 export const useDebug = () => {
   const { t } = useSafeTranslation();
   const { t: workflowT } = useTranslation();
+  const { feConfigs } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
+  const debugFileMaxAmount = getUserFileAmountLimit({
+    teamMaxFileAmount: teamPlanStatus?.standard?.maxUploadFileCount,
+    systemMaxFileAmount: feConfigs?.uploadFileMaxAmount ?? 10
+  });
 
   // 可引用来源要按 id 查任意节点并展开容器子节点：语义快照提供 edges，
   // 节点查询走 port 的 getNode，子节点走 Runtime 图查询，app 侧不再自建索引。
@@ -119,6 +127,7 @@ export const useDebug = () => {
     if (!runtimeNodes || !runtimeEdges) return <></>;
 
     const [currentTab, setCurrentTab] = useState<TabEnum>(TabEnum.node);
+    const [hasFileError, setHasFileError] = useState(false);
     const fileUploading = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploading);
 
     const runtimeNode = runtimeNodes.find((node) => node.nodeId === runtimeNodeId);
@@ -208,6 +217,27 @@ export const useDebug = () => {
     };
 
     const onClickRun = (data: Record<string, any>) => {
+      if (fileUploading || hasFileError) return;
+      const fileUrlInputs = runtimeNode.inputs.filter((input) => isDebugFileUrlInput({ input }));
+      if (fileUrlInputs.length > 0) {
+        const nodeVariables = { ...data.nodeVariables };
+        fileUrlInputs.forEach((input) => {
+          if (!Object.prototype.hasOwnProperty.call(nodeVariables, input.key)) return;
+
+          const files: FileSelectorValueItemType[] = Array.isArray(nodeVariables[input.key])
+            ? nodeVariables[input.key]
+            : [];
+          nodeVariables[input.key] = files
+            .map((file) => (typeof file === 'string' ? file : file.url))
+            .filter((url): url is string => Boolean(url));
+        });
+
+        data = {
+          ...data,
+          nodeVariables
+        };
+      }
+
       onStartNodeDebug({
         entryNodeId: runtimeNode.nodeId,
         runtimeNodes: runtimeNodes.map((node) =>
@@ -276,7 +306,10 @@ export const useDebug = () => {
           )}
           <Box display={currentTab === TabEnum.node ? 'block' : 'none'}>
             {renderInputs.map((item) => {
-              const inputProps = getDebugInputFormProps(item);
+              const { inputProps, inputType } = getDebugInputFormConfig(item, {
+                maxFiles: debugFileMaxAmount
+              });
+              const isFileUrlInput = isDebugFileUrlInput({ input: item });
 
               return (
                 <LabelAndFormRender
@@ -285,10 +318,11 @@ export const useDebug = () => {
                   label={item.debugLabel || item.label}
                   required={item.required}
                   description={t(item.placeholder || item.description)}
-                  inputType={nodeInputTypeToInputType(item.renderTypeList)}
+                  inputType={inputType}
                   form={variablesForm}
                   fieldName={`nodeVariables.${item.key}`}
                   bg={'myGray.50'}
+                  onFileErrorChange={isFileUrlInput ? setHasFileError : undefined}
                 />
               );
             })}
@@ -336,7 +370,10 @@ export const useDebug = () => {
           </Box>
         </Box>
         <Flex py={2} justifyContent={'flex-end'} px={6}>
-          <Button isDisabled={fileUploading} onClick={handleSubmit(onClickRun, onCheckRunError)}>
+          <Button
+            isDisabled={fileUploading || hasFileError}
+            onClick={handleSubmit(onClickRun, onCheckRunError)}
+          >
             {t('common:Run')}
           </Button>
         </Flex>
@@ -353,7 +390,7 @@ export const useDebug = () => {
     getWorkflow,
     getNodeById,
     graph,
-    serializeWorkflow
+    debugFileMaxAmount
   ]);
 
   return {

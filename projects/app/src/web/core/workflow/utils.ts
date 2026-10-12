@@ -1,6 +1,6 @@
 import type { StoreNodeItemType, FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
-import type { Node, XYPosition } from 'reactflow';
+import type { Edge, Node, XYPosition } from 'reactflow';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import {
   EDGE_TYPE,
@@ -19,9 +19,14 @@ import {
   getAppChatConfig,
   getHandleId,
   getSelectedInputRenderType,
+  nodeInputIsReference,
   isWorkflowSystemModelInput,
   workflowModelKeyMappings
 } from '@fastgpt/global/core/workflow/utils';
+import {
+  getWorkflowReferenceItems,
+  isWorkflowEdgeSourceHandleValid
+} from '@fastgpt/global/core/workflow/editor/utils';
 import { type TFunction } from 'next-i18next';
 import {
   type FlowNodeInputItemType,
@@ -36,11 +41,11 @@ import {
   canInputBeAgentGenerated,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
-import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
-import {
-  DatasetTagFilterVersionEnum,
-  resolveDatasetTagFilterVersion
-} from '@fastgpt/global/core/dataset/workflowTagFilter';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
+import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/constants';
+import { resolveDatasetTagFilterVersion } from '@fastgpt/global/core/dataset/search/tagFilter';
+import { getGlobalVariableNode } from './adapt';
+import { cloneDeep, isEqual } from 'lodash-es';
 
 export {
   filterSelectableWorkflowNodeOutputs,
@@ -51,6 +56,7 @@ export {
   isWorkflowEdgeSourceHandleValid,
   isWorkflowReferenceItem,
   type WorkflowReferenceSourceNode,
+  workflowReferenceValueIsSelectable,
   workflowValueTypeIsCompatible
 } from '@fastgpt/global/core/workflow/editor/utils';
 
@@ -569,6 +575,135 @@ export const getOutputDisconnectCommands = ({
   return indexes.sort((a, b) => b - a).map((index) => ({ index }));
 };
 
+/**
+ * 获取当前节点可引用的普通来源 ID。
+ * Runtime 传入索引查询时按入度读取；旧画布调用方仍可传完整边数组和子节点映射。
+ */
+export const getNodeAllSourceIds = ({
+  nodeId,
+  getNodeById,
+  edges,
+  includeChildren,
+  childrenNodeIdListMap,
+  getChildNodeIds,
+  getIncomingEdges
+}: {
+  nodeId: string;
+  getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
+  edges: readonly WorkflowGraphEdge[];
+  includeChildren?: boolean;
+  childrenNodeIdListMap?: Record<string, string[]>;
+  /** Runtime 图查询提供的容器子节点索引。 */
+  getChildNodeIds?: (parentId: string) => readonly string[];
+  /** Runtime 图查询提供的目标入边索引。 */
+  getIncomingEdges?: (nodeId: string) => readonly WorkflowGraphEdge[];
+}): string[] => {
+  const node = getNodeById(nodeId);
+  if (!node) return [];
+
+  const sourceIds = new Set<string>();
+  const searchedTargetNodeIds = new Set<string>();
+  const collectIncoming = (targetNodeIds: string[]) => {
+    const queue = targetNodeIds.filter(Boolean);
+    while (queue.length > 0) {
+      const targetNodeId = queue.shift();
+      if (!targetNodeId || searchedTargetNodeIds.has(targetNodeId)) continue;
+      searchedTargetNodeIds.add(targetNodeId);
+
+      const incoming = getIncomingEdges
+        ? getIncomingEdges(targetNodeId)
+        : edges.filter((edge) => edge.target === targetNodeId);
+      incoming.forEach((edge) => {
+        if (edge.target !== targetNodeId) return;
+        if (!isWorkflowEdgeSourceHandleValid(getNodeById(edge.source), edge.sourceHandle)) return;
+        sourceIds.add(edge.source);
+        queue.push(edge.source);
+      });
+    }
+  };
+
+  const containerNodes = [node];
+  const visitedParentIds = new Set<string>([node.nodeId]);
+  let parentNode = node;
+  while (parentNode.parentNodeId && !visitedParentIds.has(parentNode.parentNodeId)) {
+    const nextParent = getNodeById(parentNode.parentNodeId);
+    if (!nextParent) break;
+    containerNodes.push(nextParent);
+    visitedParentIds.add(nextParent.nodeId);
+    parentNode = nextParent;
+  }
+
+  collectIncoming([node.nodeId]);
+  containerNodes.slice(1).forEach((container) => collectIncoming([container.nodeId]));
+
+  containerNodes.slice(1).forEach((container) => {
+    container.inputs.forEach((input) => {
+      if (!nodeInputIsReference(input)) return;
+      getWorkflowReferenceItems(input.value).forEach(([refNodeId]) => {
+        if (refNodeId === VARIABLE_NODE_ID || !getNodeById(refNodeId)) return;
+        sourceIds.add(refNodeId);
+        collectIncoming([refNodeId]);
+      });
+    });
+  });
+
+  if (includeChildren) {
+    const childIds = getChildNodeIds?.(nodeId) ?? childrenNodeIdListMap?.[nodeId] ?? [];
+    childIds.forEach((childId) => {
+      if (getNodeById(childId)) sourceIds.add(childId);
+    });
+  }
+
+  return [...sourceIds];
+};
+
+/**
+ * 获取当前节点可引用的来源节点，并追加 global variable 节点供 selector 展示。
+ */
+export const getNodeAllSource = ({
+  nodeId,
+  getNodeById,
+  edges,
+  chatConfig,
+  t,
+  includeChildren,
+  childrenNodeIdListMap,
+  getChildNodeIds,
+  getIncomingEdges
+}: {
+  nodeId: string;
+  getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
+  edges: readonly WorkflowGraphEdge[];
+  chatConfig: AppChatConfigType;
+  t: TFunction;
+  includeChildren?: boolean;
+  childrenNodeIdListMap?: Record<string, string[]>;
+  getChildNodeIds?: (parentId: string) => readonly string[];
+  getIncomingEdges?: (nodeId: string) => readonly WorkflowGraphEdge[];
+}): FlowNodeItemType[] => {
+  if (!getNodeById(nodeId)) return [];
+
+  const sourceNodes = getNodeAllSourceIds({
+    nodeId,
+    getNodeById,
+    edges,
+    includeChildren,
+    childrenNodeIdListMap,
+    getChildNodeIds,
+    getIncomingEdges
+  })
+    .map((sourceNodeId) => getNodeById(sourceNodeId))
+    .filter((sourceNode): sourceNode is FlowNodeItemType => !!sourceNode);
+
+  return [
+    ...sourceNodes,
+    getGlobalVariableNode({
+      t,
+      chatConfig
+    })
+  ];
+};
+
 /* ====== Variables ======= */
 /* get workflowStart output to global variables */
 export const getWorkflowGlobalVariables = ({
@@ -584,4 +719,93 @@ export const getWorkflowGlobalVariables = ({
   );
 
   return [...globalVariables, ...workflowSystemVariables];
+};
+
+type WorkflowSnapshot = {
+  nodes?: Node[];
+  edges?: Edge<any>[];
+  chatConfig?: AppChatConfigType;
+};
+
+/** 比较旧画布快照；快照形状独立于 AppVersionSchemaType，避免把 Version 主数据当成 UI snapshot。 */
+export const compareSnapshot = (snapshot1: WorkflowSnapshot, snapshot2: WorkflowSnapshot) => {
+  const clone1 = cloneDeep(snapshot1);
+  const clone2 = cloneDeep(snapshot2);
+
+  if (!clone1.nodes || !clone2.nodes || !clone1.edges || !clone2.edges) return false;
+
+  const formatEdge = (edges: Edge[]) =>
+    edges.map((edge) => ({
+      source: edge.source,
+      target: edge.target,
+      sourceHandle: edge.sourceHandle,
+      targetHandle: edge.targetHandle,
+      type: edge.type
+    }));
+
+  if (!isEqual(formatEdge(clone1.edges), formatEdge(clone2.edges))) return false;
+
+  if (
+    clone1.chatConfig &&
+    clone2.chatConfig &&
+    !isEqual(
+      {
+        welcomeText: clone1.chatConfig.welcomeText || '',
+        welcomeConfig: clone1.chatConfig.welcomeConfig || undefined,
+        variables: clone1.chatConfig.variables || [],
+        questionGuide: clone1.chatConfig.questionGuide || false,
+        ttsConfig: clone1.chatConfig.ttsConfig || undefined,
+        whisperConfig: clone1.chatConfig.whisperConfig || undefined,
+        scheduledTriggerConfig: clone1.chatConfig.scheduledTriggerConfig || undefined,
+        chatInputGuide: clone1.chatConfig.chatInputGuide || undefined,
+        fileSelectConfig: clone1.chatConfig.fileSelectConfig || undefined,
+        instruction: clone1.chatConfig.instruction || '',
+        autoExecute: clone1.chatConfig.autoExecute || undefined
+      },
+      {
+        welcomeText: clone2.chatConfig.welcomeText || '',
+        welcomeConfig: clone2.chatConfig.welcomeConfig || undefined,
+        variables: clone2.chatConfig.variables || [],
+        questionGuide: clone2.chatConfig.questionGuide || false,
+        ttsConfig: clone2.chatConfig.ttsConfig || undefined,
+        whisperConfig: clone2.chatConfig.whisperConfig || undefined,
+        scheduledTriggerConfig: clone2.chatConfig.scheduledTriggerConfig || undefined,
+        chatInputGuide: clone2.chatConfig.chatInputGuide || undefined,
+        fileSelectConfig: clone2.chatConfig.fileSelectConfig || undefined,
+        instruction: clone2.chatConfig.instruction || '',
+        autoExecute: clone2.chatConfig.autoExecute || undefined
+      }
+    )
+  ) {
+    return false;
+  }
+
+  const formatNodes = (nodes: Node[]) =>
+    nodes.map((node) => ({
+      id: node.id,
+      type: node.type,
+      position: node.position,
+      data: {
+        id: node.data.id,
+        flowNodeType: node.data.flowNodeType,
+        inputs: node.data.inputs.map((input: FlowNodeInputItemType) => ({
+          key: input.key,
+          selectedType: getSelectedInputRenderType(input),
+          renderTypeList: input.renderTypeList,
+          value: input.value ?? undefined
+        })),
+        outputs: node.data.outputs.map((item: FlowNodeOutputItemType) => ({
+          key: item.key,
+          type: item.type,
+          value: item.value ?? undefined
+        })),
+        name: node.data.name,
+        intro: node.data.intro,
+        avatar: node.data.avatar,
+        version: node.data.version,
+        isFolded: node.data.isFolded
+      }
+    }));
+
+  return isEqual(formatNodes(clone1.nodes), formatNodes(clone2.nodes));
 };

@@ -55,9 +55,10 @@ vi.mock('next/dynamic', () => ({
 }));
 
 const saveData = {
-  nodes: [{ nodeId: 'node-1' }],
-  edges: [],
-  chatConfig: {}
+  nodes: [{ nodeId: 'node-1', inputs: [] }],
+  edges: [{ source: 'node-1', target: 'node-1' }],
+  chatConfig: { welcomeText: 'hello' },
+  referenceSnapshots: [{ nodeId: 'node-1', name: 'Node 1' }]
 } as unknown as PostPublishAppProps;
 
 const createDeferred = <T>() => {
@@ -183,7 +184,10 @@ describe('AppContext save result', () => {
 
     const latestSave = getSaveApp()({
       ...saveData,
-      nodes: [{ nodeId: 'latest' }]
+      nodes: [{ nodeId: 'latest', inputs: [] }],
+      isPublish: true,
+      versionName: 'latest-version',
+      autoSave: true
     });
     await act(async () => {
       await Promise.resolve();
@@ -202,9 +206,17 @@ describe('AppContext save result', () => {
     expect(latestResult).toBe(true);
     expect(mocks.postPublishApp).toHaveBeenCalledTimes(2);
     expect(mocks.postPublishApp.mock.calls[1]?.[1]).toEqual(
-      expect.objectContaining({ nodes: [{ nodeId: 'latest' }] })
+      expect.objectContaining({ nodes: [{ nodeId: 'latest', inputs: [] }] })
     );
-    expect(getAppDetail().nodes).toEqual([{ nodeId: 'latest' }]);
+    expect(getAppDetail()).toMatchObject({
+      nodes: [{ nodeId: 'latest', inputs: [] }],
+      edges: saveData.edges,
+      chatConfig: saveData.chatConfig,
+      referenceSnapshots: saveData.referenceSnapshots
+    });
+    expect(getAppDetail()).not.toHaveProperty('isPublish');
+    expect(getAppDetail()).not.toHaveProperty('versionName');
+    expect(getAppDetail()).not.toHaveProperty('autoSave');
 
     act(() => root.unmount());
   });

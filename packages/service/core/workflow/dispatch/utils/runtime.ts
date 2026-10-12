@@ -92,7 +92,13 @@ export const getWorkflowNodeRunParams = ({
   const resolveReferenceInputValue = (value: unknown) => {
     const references = getWorkflowReferenceItems(value);
     const isReferenceArray = Array.isArray(value) && !isWorkflowReferenceItem(value);
-    if (references.length === 0) return undefined;
+    if (references.length === 0) {
+      const isPlainArray =
+        Array.isArray(value) &&
+        !value.some(Array.isArray) &&
+        !(value.length === 2 && value.every((item) => typeof item === 'string'));
+      return isPlainArray ? value : undefined;
+    }
     const variables = getRuntimeVariables();
     const isReachableSource = (sourceNodeId: string) => {
       const byTarget = runtimeEdgeIndex?.byTarget;

@@ -856,8 +856,33 @@ export class WorkflowQueue {
         this.data.workflowStreamResponse?.(workflowSseEvent.flowNodeStatus(node.name));
       }
       const startTime = Date.now();
+      // 参数解析保持在 catchError 边界外；只有模型校验和模块执行错误才走节点错误分支。
+      const params = getWorkflowNodeRunParams({
+        node,
+        runtimeNodesMap: this.runtimeNodesMap,
+        variableState: this.data.variableState,
+        runtimeEdges: this.data.runtimeEdges,
+        runtimeEdgeIndex: this.edgeIndex
+      });
       const nodeSummary = createNodeSummary();
-      let params = {} as Record<string, any>;
+      const dispatchData: ModuleDispatchProps<Record<string, any>> = {
+        ...this.data,
+        usagePush: this.usagePush.bind(this),
+        nodeSummary,
+        lastInteractive: this.data.lastInteractive?.entryNodeIds?.includes(node.nodeId)
+          ? this.data.lastInteractive
+          : undefined,
+        histories: this.data.histories,
+        retainDatasetCite: this.data.retainDatasetCite,
+        node,
+        runtimeNodes: this.data.runtimeNodes,
+        runtimeNodesMap: this.runtimeNodesMap,
+        runtimeEdges: this.data.runtimeEdges,
+        params,
+        mode,
+        nodeResponseParentId: nodeResponseId,
+        nodeResponseSink: this.data.nodeResponseSink
+      };
 
       // run module
       const dispatchRes: NodeResponseType = await (async () => {
@@ -866,33 +891,6 @@ export class WorkflowQueue {
           const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
 
           try {
-            // 参数解析和模块执行共用同一错误边界，失效引用才能按 catchError 路由。
-            params = getWorkflowNodeRunParams({
-              node,
-              runtimeNodesMap: this.runtimeNodesMap,
-              variableState: this.data.variableState,
-              runtimeEdges: this.data.runtimeEdges,
-              runtimeEdgeIndex: this.edgeIndex
-            });
-            const dispatchData: ModuleDispatchProps<Record<string, any>> = {
-              ...this.data,
-              usagePush: this.usagePush.bind(this),
-              nodeSummary,
-              lastInteractive: this.data.lastInteractive?.entryNodeIds?.includes(node.nodeId)
-                ? this.data.lastInteractive
-                : undefined,
-              histories: this.data.histories,
-              retainDatasetCite: this.data.retainDatasetCite,
-              node,
-              runtimeNodes: this.data.runtimeNodes,
-              runtimeNodesMap: this.runtimeNodesMap,
-              runtimeEdges: this.data.runtimeEdges,
-              params,
-              mode,
-              nodeResponseParentId: nodeResponseId,
-              nodeResponseSink: this.data.nodeResponseSink
-            };
-
             // 模型资源校验必须在 try 内：失败时走节点错误分支（支持 catchError），
             // 否则异常会冲出调度循环，导致整个工作流无输出。
             await assertWorkflowNodeModelResources({

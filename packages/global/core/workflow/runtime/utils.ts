@@ -336,23 +336,25 @@ export const getReferenceVariableValue = ({
     return node.outputs.find((output) => output.id === outputId)?.value;
   };
 
+  const isReferenceValue = (value: unknown): value is [string, string | undefined] =>
+    isValidReferenceValueFormat(value) && (value[1] === undefined || typeof value[1] === 'string');
+
   // handle single reference value
-  if (isValidReferenceValueFormat(value)) {
+  if (isReferenceValue(value)) {
     return resolveValue(value as [string, string | undefined]);
   }
 
-  // 引用数组只保留形状正确的项；来源缺失或输出缺失由 resolveValue 转成 undefined 后过滤。
-  if (Array.isArray(value) && value.some(Array.isArray)) {
-    const references = value.filter((item) => isValidReferenceValueFormat(item));
-    if (references.length === 0) return undefined;
-    const resolved = references
-      .map((val) => resolveValue(val as [string, string | undefined]))
-      .flat()
-      .filter((item) => item !== undefined);
-    return resolved.length > 0 ? resolved : undefined;
-  }
+  // 普通数组不是引用集合，不能因没有 reference 被清空。
+  if (!Array.isArray(value) || !value.some(Array.isArray)) return value;
 
-  return value;
+  // 引用数组只保留形状正确的项；来源缺失或输出缺失由 resolveValue 转成 undefined 后过滤。
+  const references = value.filter(isReferenceValue);
+  if (references.length === 0) return undefined;
+  const resolved = references
+    .map((val) => resolveValue(val as [string, string | undefined]))
+    .flat()
+    .filter((item) => item !== undefined);
+  return resolved.length > 0 ? resolved : undefined;
 };
 
 export const formatVariableValByType = (val: any, valueType?: WorkflowIOValueTypeEnum) => {

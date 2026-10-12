@@ -40,7 +40,10 @@ import { useWorkflowDraftLifecycle } from '@/web/core/workflow/localDraft/useWor
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { ensureModelCatalog } from '@/web/core/ai/model/modelData';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
-import { peekWorkflowEnvironmentModels } from '@/web/core/workflow/modelData';
+import {
+  getWorkflowModelDetails,
+  peekWorkflowEnvironmentModels
+} from '@/web/core/workflow/modelData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { materializeWorkflow } from '../codec';
@@ -358,6 +361,8 @@ export const WorkflowSessionProvider = ({
   const leaveSaveSign = useRef(true);
   const [issueFocusNodeId, setIssueFocusNodeId] = useState<string>();
   const issueFocusRef = useRef<string | undefined>(undefined);
+  const environmentModelsRef = useRef<WorkflowEnvironment['models']>();
+  const appEnvironmentModelsRef = useRef<NonNullable<WorkflowEnvironment['models']>>([]);
   const updateIssueFocusNode = useMemoizedFn((nodeId?: string) => {
     if (issueFocusRef.current === nodeId) return false;
     issueFocusRef.current = nodeId;
@@ -378,7 +383,7 @@ export const WorkflowSessionProvider = ({
    */
   const getEnvironment = useMemoizedFn(
     (): WorkflowEnvironment => ({
-      models: peekWorkflowEnvironmentModels(),
+      models: environmentModelsRef.current ?? peekWorkflowEnvironmentModels(),
       sandbox: { configured: !!showSandbox, planSupported: enableSandbox }
     })
   );
@@ -708,12 +713,40 @@ export const WorkflowSessionProvider = ({
   useEffect(() => {
     if (!runtime) return;
     let timer: number | undefined;
+    const updateEnvironmentModels = () => {
+      const catalogModels = peekWorkflowEnvironmentModels() ?? [];
+      const models = new Map<string, NonNullable<WorkflowEnvironment['models']>[number]>();
+      catalogModels.forEach((model) => models.set(model.modelId, model));
+      appEnvironmentModelsRef.current.forEach((model) => {
+        if (!models.has(model.modelId)) models.set(model.modelId, model);
+      });
+      environmentModelsRef.current = [...models.values()];
+    };
+    const loadAppEnvironmentModels = async () => {
+      if (!appId) return;
+      const current = runtimeRef.current;
+      if (!current || current.isDisposed()) return;
+      const workflow = current.getWorkflow();
+      const models = await getWorkflowModelDetails({
+        nodes: workflow.nodes,
+        chatConfig: workflow.chatConfig,
+        appId
+      });
+      if (runtimeRef.current !== current || current.isDisposed()) return;
+      appEnvironmentModelsRef.current = models;
+      updateEnvironmentModels();
+    };
+
+    appEnvironmentModelsRef.current = [];
+    updateEnvironmentModels();
     const unsubscribe = useUserModelStore.subscribe((state, prev) => {
       if (state.modelList === prev.modelList) return;
+      updateEnvironmentModels();
       window.clearTimeout(timer);
       timer = window.setTimeout(refreshIssues, 0);
     });
     void ensureModelCatalog()
+      .then(loadAppEnvironmentModels)
       .then(refreshIssues)
       .catch(() => undefined);
     // 挂载与 sandbox 开关变化都走到这里：环境事实已经不同，直接重算一轮。
@@ -723,7 +756,7 @@ export const WorkflowSessionProvider = ({
       window.clearTimeout(timer);
       unsubscribe();
     };
-  }, [runtime, refreshIssues, showSandbox, enableSandbox]);
+  }, [appId, runtime, refreshIssues, showSandbox, enableSandbox]);
 
   // 本地草稿、beforeunload 与卸载自动保存、鉴权过期草稿。
   const { authExpiredModal } = useWorkflowDraftLifecycle({

@@ -15,6 +15,7 @@ import {
   MongoDatasetSynonymMapping
 } from '@fastgpt/service/core/dataset/synonym/schema';
 import { MongoModelStatusProbeRecord } from '@fastgpt/service/core/ai/modelStatus/schema';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 
 const logger = {
   debug: vi.fn(),
@@ -71,6 +72,19 @@ describe('dataset synonym index declarations', () => {
     expect(logicalIdIndex?.[1].partialFilterExpression).toBeUndefined();
     expect(getSchemaDeprecatedMongoIndexes(MongoDatasetSynonym.schema)).toEqual([]);
     expect(getSchemaDeprecatedMongoIndexes(MongoDatasetSynonymMapping.schema)).toEqual([]);
+  });
+});
+
+describe('app index declarations', () => {
+  it('registers the legacy resourceRefs skill index as deprecated', () => {
+    const legacyKey = { teamId: 1, deleteTime: 1, 'resourceRefs.skillIds': 1 };
+
+    expect(MongoApp.schema.indexes()).not.toContainEqual([legacyKey, expect.anything()]);
+    expect(getSchemaDeprecatedMongoIndexes(MongoApp.schema)).toContainEqual({
+      indexName: 'teamId_1_deleteTime_1_resourceRefs.skillIds_1',
+      key: legacyKey,
+      options: undefined
+    });
   });
 });
 

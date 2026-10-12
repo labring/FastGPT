@@ -4,6 +4,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   isLegacyV1Workflow,
   migrateWorkflowToCurrent
@@ -117,5 +118,55 @@ describe('workflow reference snapshot migration', () => {
       migrateStoreWorkflow({ nodes: [], edges: [], referenceSnapshots }).referenceSnapshots
     ).toEqual(referenceSnapshots);
     expect(migrateStoreWorkflow({ nodes: [], edges: [] }).referenceSnapshots).toEqual([]);
+  });
+
+  it('preserves snapshots and removes canvas measurement inputs', () => {
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'answer-node',
+          flowNodeType: FlowNodeTypeEnum.answerNode,
+          name: 'Answer',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.nodeWidth,
+              label: '',
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              valueType: WorkflowIOValueTypeEnum.number,
+              value: 900
+            },
+            {
+              key: NodeInputKeyEnum.nodeHeight,
+              label: '',
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              valueType: WorkflowIOValueTypeEnum.number,
+              value: 600
+            },
+            {
+              key: NodeInputKeyEnum.nestedNodeInputHeight,
+              label: '',
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              valueType: WorkflowIOValueTypeEnum.number,
+              value: 120
+            },
+            {
+              key: NodeInputKeyEnum.forbidStream,
+              label: '',
+              renderTypeList: [FlowNodeInputTypeEnum.switch],
+              valueType: WorkflowIOValueTypeEnum.boolean,
+              value: false
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [],
+      referenceSnapshots
+    });
+
+    expect(result.referenceSnapshots).toEqual(referenceSnapshots);
+    expect(result.nodes[0].inputs.map((input) => input.key)).toEqual([
+      NodeInputKeyEnum.forbidStream
+    ]);
   });
 });

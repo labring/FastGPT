@@ -20,30 +20,31 @@ import type { FlowNodeItemType, NodeTemplateContext } from '../type/node';
 import type { AppChatConfigType } from '../../app/type';
 import type { WorkflowReferenceStatus } from './types';
 import { getWorkflowGlobalVariables } from './variables';
-import type { LLMSystemModelDataType, SystemModelDataType } from '../../ai/model.schema';
+import type { LLMModelDataType } from '../../ai/model/schema';
+import type { WorkflowEnvironmentModel } from './types';
 
-export type WorkflowLLMModelMap = Record<
-  string,
-  Pick<LLMSystemModelDataType, 'model' | 'modelId' | 'config'>
->;
+type WorkflowLLMModel = Pick<LLMModelDataType, 'modelId' | 'config'> & {
+  model?: LLMModelDataType['model'];
+};
+
+export type WorkflowLLMModelMap = Record<string, WorkflowLLMModel>;
 
 /** 将 Runtime 环境目录整理成 invalidCondition 复用的模型索引。 */
 export const buildWorkflowLLMModelMap = (
-  models?: readonly (Omit<
-    Pick<SystemModelDataType, 'modelId' | 'model' | 'type' | 'config'>,
-    'config'
-  > & {
-    config?: SystemModelDataType['config'];
-  })[]
+  models?: readonly WorkflowEnvironmentModel[]
 ): WorkflowLLMModelMap | undefined => {
   if (!models) return undefined;
 
   const modelMap: WorkflowLLMModelMap = {};
   models.forEach((model) => {
     if (model.type !== ModelTypeEnum.llm || !model.config) return;
-    const llmModel = model as Pick<LLMSystemModelDataType, 'model' | 'modelId' | 'config'>;
+    const llmModel = {
+      modelId: model.modelId,
+      model: model.model,
+      config: model.config
+    } as WorkflowLLMModel;
     modelMap[model.modelId] = llmModel;
-    modelMap[model.model] = llmModel;
+    if (model.model) modelMap[model.model] = llmModel;
   });
   return modelMap;
 };

@@ -113,7 +113,7 @@ describe('create api', () => {
       { upsert: true }
     );
 
-    const referenceSnapshots: NonNullable<AppSchemaType['referenceSnapshots']> = [
+    const referenceSnapshots: NonNullable<AppVersionSchemaType['referenceSnapshots']> = [
       {
         reference: ['deleted-node', 'output'],
         sourceLabel: 'Deleted node'
@@ -133,11 +133,7 @@ describe('create api', () => {
 
     expect(result.error).toBeUndefined();
     expect(result.code).toBe(200);
-    const [app, version] = await Promise.all([
-      MongoApp.findById(result.data).lean(),
-      MongoAppVersion.findOne({ appId: result.data }).lean()
-    ]);
-    expect(app?.referenceSnapshots).toEqual(referenceSnapshots);
+    const version = await MongoAppVersion.findOne({ appId: result.data }).lean();
     expect(version?.referenceSnapshots).toEqual(referenceSnapshots);
   });
 

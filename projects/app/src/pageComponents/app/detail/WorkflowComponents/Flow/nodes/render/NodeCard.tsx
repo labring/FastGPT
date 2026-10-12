@@ -13,6 +13,7 @@ import {
 } from '@/web/core/workflow/editor/session/workflowSession';
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import {
+  getToolErrorMessage,
   getWorkflowIssueUIStatus,
   renderWorkflowIssueMessage
 } from '@/web/core/workflow/issueView';
@@ -28,7 +29,7 @@ import {
   mergeToolSetChildDescriptions,
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
-import { formatToolError } from '@fastgpt/global/core/app/utils';
+
 import type {
   DeepReadonly,
   WorkflowNodeData,
@@ -381,7 +382,15 @@ const NodeCard = (props: Props) => {
   }, [isAppNode, node, toolStatus]);
 
   /* Node header - 重构后的版本,依赖项大幅减少 */
-  const error = useMemo(() => formatToolError(node?.pluginData?.error), [node?.pluginData?.error]);
+  const error = useMemo(
+    () =>
+      getToolErrorMessage({
+        status: toolStatus,
+        error: node?.pluginData?.error,
+        t
+      }),
+    [node?.pluginData?.error, t, toolStatus]
+  );
   const showHeader = node?.flowNodeType !== FlowNodeTypeEnum.comment;
 
   const RenderToolHandle = useMemo(
@@ -480,7 +489,10 @@ const NodeCard = (props: Props) => {
                       rtDoms={rtDoms}
                     />
 
-                    <NodeStatusBadge status={nodeTemplate?.status} error={error} />
+                    <NodeStatusBadge
+                      status={nodeTemplate?.status ?? node?.pluginData?.status}
+                      error={error}
+                    />
                   </Flex>
 
                   <NodeIntro nodeId={nodeId} intro={intro} flowNodeType={flowNodeType} />

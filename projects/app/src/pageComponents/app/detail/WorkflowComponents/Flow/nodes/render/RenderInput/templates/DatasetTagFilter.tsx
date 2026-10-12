@@ -7,7 +7,7 @@ import {
   isDatasetTagFilterValue,
   normalizeLegacyDatasetTagFilterValue,
   type DatasetTagFilterValue
-} from '@fastgpt/global/core/dataset/workflowTagFilter';
+} from '@fastgpt/global/core/dataset/search/tagFilter';
 import { useReference } from './Reference';
 import DatasetTagFilterRows, {
   DatasetTagFilterDeprecated,

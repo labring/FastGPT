@@ -224,6 +224,42 @@ describe('WorkflowNodeResponseSink', () => {
     });
   });
 
+  it('同一批次按 identity 去除已独立发布的 child', async () => {
+    const writer = createWriter();
+    const sink = new WorkflowNodeResponseSink({ writer: writer as any });
+
+    await sink.publish([
+      {
+        response: {
+          id: 'batch-child',
+          parentId: 'batch-parent',
+          nodeId: 'child-node',
+          moduleType: FlowNodeTypeEnum.agent
+        } as ChatHistoryItemResType
+      },
+      {
+        response: {
+          id: 'batch-parent',
+          nodeId: 'parent-node',
+          moduleType: FlowNodeTypeEnum.agent,
+          childrenResponses: [
+            {
+              id: 'batch-child',
+              nodeId: 'child-node',
+              moduleType: FlowNodeTypeEnum.agent
+            }
+          ]
+        } as ChatHistoryItemResType
+      }
+    ]);
+
+    expect(writer.record).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'batch-child', parentId: 'batch-parent' }),
+      expect.objectContaining({ id: 'batch-parent' })
+    ]);
+    expect(writer.record.mock.calls[0][0][1].childrenResponses).toBeUndefined();
+  });
+
   it('按 child id 和 parentId 共同去重，保留不同父节点下的同 id child', async () => {
     const writer = createWriter();
     const sink = new WorkflowNodeResponseSink({ writer: writer as any });

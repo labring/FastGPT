@@ -1361,6 +1361,17 @@ describe('getReferenceVariableValue', () => {
     expect(result).toBe('plain string');
   });
 
+  it('should keep an ordinary array when it has no references', () => {
+    const value = ['plain value', 1];
+    const result = getReferenceVariableValue({
+      value: value as any,
+      nodesMap: {},
+      variables: {}
+    });
+
+    expect(result).toBe(value);
+  });
+
   it('should handle array with single reference', () => {
     const nodesMap: Record<string, RuntimeNodeItemType> = {
       node1: {

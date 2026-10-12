@@ -19,6 +19,7 @@ import {
   OpenAPIStoreNodeItemTypeSchema
 } from '../../workflow/node';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
+import { WorkflowReferenceSnapshotSchema } from '../../../../core/workflow/type/io';
 import { BoolSchema, IntSchema, NumSchema, optionalNullToUndefined } from '../../../../common/zod';
 import { PaginationResponseSchema, PaginationSchema } from '../../../api';
 import { migrateWorkflowToCurrent } from '../../../../core/workflow/migration';
@@ -255,7 +256,7 @@ export const CreateAppBodySchema = z
     chatConfig: AppChatConfigInputSchema.strict().optional().meta({
       description: '聊天配置'
     }),
-    referenceSnapshots: AppSchemaTypeSchema.shape.referenceSnapshots.meta({
+    referenceSnapshots: z.array(WorkflowReferenceSnapshotSchema).optional().meta({
       description: '已删除引用来源的历史展示元数据'
     }),
     templateId: z.string().optional().meta({
@@ -453,6 +454,9 @@ export const GetAppDetailResponseSchema = AppSchemaTypeSchema.extend({
   pluginData: AppSchemaTypeSchema.shape.pluginData,
   chatConfig: OpenAPIAppChatConfigSchema.default({}).meta({
     description: '应用对话运行配置'
+  }),
+  referenceSnapshots: z.array(WorkflowReferenceSnapshotSchema).default([]).meta({
+    description: '已删除引用来源的历史展示元数据'
   }),
   scheduledTriggerConfig: OpenAPIAppScheduledTriggerConfigSchema.optional().meta({
     description: '应用级定时触发配置；发布后由定时任务使用'

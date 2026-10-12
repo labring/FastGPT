@@ -1,13 +1,6 @@
 import FolderPath from '@/components/common/folder/Path';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getAppFolderPath } from '@/web/core/app/api/app';
-import { ensureModelCatalog } from '@/web/core/ai/model/modelData';
-import { hydrateRuntime } from '@/web/core/workflow/editor/codec';
-import {
-  collectWorkflowErrorIssues,
-  renderWorkflowIssueMessage
-} from '@/web/core/workflow/issueView';
-import { peekWorkflowEnvironmentModels } from '@/web/core/workflow/modelData';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
@@ -31,7 +24,7 @@ import { AppContext, TabEnum } from '../../context';
 import PublishHistories from '../../PublishHistoriesSlider';
 import RouteTab from '../../RouteTab';
 import SaveButton from '../../Workflow/components/SaveButton';
-import { checkAgentSkillSandboxUnavailable } from '../ChatAgent/utils';
+import { checkAppFormBeforePublish } from './checkAppForm';
 import type { AppForm2WorkflowFnType, Form2WorkflowFnType } from './type';
 import {
   compareSimpleAppSnapshot,
@@ -251,67 +244,24 @@ const Header = ({
               isDisabled={isShowHistories}
               onClickSave={onClickSave}
               checkData={async () => {
-                if (
-                  checkAgentSkillSandboxUnavailable({
-                    appForm,
-                    showSandbox,
-                    enableSandbox
-                  })
-                ) {
-                  toast({
-                    title: t('skill:sandbox_skill_unavailable_toast'),
-                    status: 'warning'
-                  });
-                  return false;
-                }
-
-                if (appForm.aiSettings.useAgentSandbox) {
-                  if (!showSandbox) {
-                    toast({
-                      title: t('skill:sandbox_system_not_configured_toast'),
-                      status: 'warning'
-                    });
-                    return false;
-                  }
-                  if (!enableSandbox) {
-                    toast({
-                      title: t('app:sandbox_free_not_support'),
-                      status: 'warning'
-                    });
-                    return false;
-                  }
-                }
-
-                const { nodes: storeNodes, edges: storeEdges } = form2WorkflowFn(appForm, t);
-                // 目录未就绪时模型类问题会整体漏判，宁可挡住发布也不放过；先确认目录再建 Runtime。
-                const catalog = await ensureModelCatalog().catch(() => undefined);
-                if (!catalog) {
-                  toast({ status: 'error', title: t('common:model_catalog_load_failed') });
-                  return false;
-                }
-                // 简易应用编辑器没有常驻 Runtime：现场 hydrate 一份，走与工作流编辑器同一条 gate。
-                const runtime = hydrateRuntime({
-                  input: { nodes: storeNodes, edges: storeEdges },
-                  chatConfig: appForm.chatConfig,
-                  t,
-                  getEnvironment: () => ({
-                    models: peekWorkflowEnvironmentModels(),
-                    sandbox: { configured: !!showSandbox, planSupported: enableSandbox }
-                  })
+                const error = await checkAppFormBeforePublish({
+                  appId,
+                  appForm,
+                  form2WorkflowFn,
+                  showSandbox,
+                  enableSandbox,
+                  t
                 });
-                const errors = collectWorkflowErrorIssues(runtime);
-                runtime.dispose();
 
-                if (errors.length > 0) {
+                if (error) {
                   toast({
-                    title: t('app:app.error.publish_unExist_app'),
-                    description: errors
-                      .map((issue) => renderWorkflowIssueMessage(issue, t))
-                      .join('\n'),
+                    title: error,
                     status: 'warning'
                   });
+                  return false;
                 }
-                return errors.length === 0;
+
+                return true;
               }}
             />
           </Flex>

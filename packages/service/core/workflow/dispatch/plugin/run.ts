@@ -330,8 +330,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     const runtimeSummary = getWorkflowRuntimeSummary({
       workflowRuntimeSummary
     });
-    // 系统级 workflow tool 的内部模型调用对用户不可见，不计入当前用户 workflow/chat
-    // 的 token summary；普通 plugin workflow 仍按 child summary 归属一次。
+    // 输出隐藏只影响 child 详情，不影响 child summary 的 token、引用和积分归属。
     const pluginOutput = runtimeSummary.pluginOutput;
     const pluginOutputError = getAppToolOutputError({
       plugin: workflowTool,
@@ -348,16 +347,10 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       error: runtimeSummary.hasError || !pluginOutput || !!pluginOutputError
     });
     props.nodeSummary.mergeNodeSummary({
-      ...(shouldStoreChildNodeResponses
-        ? {
-            llmInputTokens: runtimeSummary.llmInputTokens,
-            llmOutputTokens: runtimeSummary.llmOutputTokens
-          }
-        : {}),
+      llmInputTokens: runtimeSummary.llmInputTokens,
+      llmOutputTokens: runtimeSummary.llmOutputTokens,
       totalPoints: Math.max(0, usagePoints - ownUsagePoints),
-      ...(shouldStoreChildNodeResponses
-        ? { citeCollectionIds: runtimeSummary.citeCollectionIds }
-        : {})
+      citeCollectionIds: runtimeSummary.citeCollectionIds
     });
     // Child run not push usage
     props.usagePush([

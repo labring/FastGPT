@@ -228,11 +228,13 @@ export const createAgentLoopCoreAssistantEventCollector = ({
 
   /** 子输出归属对应工具，保留子流程自己的展示字段；父模型后续输出另起一段。 */
   const appendToolAssistantResponses = (callId: string, values?: AIChatItemValueItemType[]) => {
-    if (!values?.length) return;
+    if (values?.length) {
+      const responseIndex = findToolResponseIndex(callId);
+      const insertIndex = responseIndex >= 0 ? responseIndex + 1 : assistantResponses.length;
+      assistantResponses.splice(insertIndex, 0, ...values);
+    }
 
-    const responseIndex = findToolResponseIndex(callId);
-    const insertIndex = responseIndex >= 0 ? responseIndex + 1 : assistantResponses.length;
-    assistantResponses.splice(insertIndex, 0, ...values);
+    // ToolCall 结束后，父模型输出必须从新文本段开始，即使子流程没有 assistantResponses。
     currentAssistantTextIndex = undefined;
   };
 

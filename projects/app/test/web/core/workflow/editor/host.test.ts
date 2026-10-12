@@ -6,7 +6,10 @@ import { ReactFlowProvider } from 'reactflow';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { materializeWorkflow } from '@/web/core/workflow/editor/codec';
 import { hydrateWorkflowEditor } from '@fastgpt/global/core/workflow/editor/protocol';
-import { peekWorkflowEnvironmentModels } from '@/web/core/workflow/modelData';
+import {
+  getWorkflowModelDetails,
+  peekWorkflowEnvironmentModels
+} from '@/web/core/workflow/modelData';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
@@ -41,6 +44,7 @@ vi.mock('@/web/core/workflow/localDraft/useWorkflowDraftLifecycle', () => ({
 }));
 vi.mock('@/web/core/workflow/modelData', () => ({
   // 目录未就绪：Runtime 跳过模型规则，host 版本历史行为不受影响。
+  getWorkflowModelDetails: vi.fn(async () => []),
   peekWorkflowEnvironmentModels: vi.fn(() => undefined)
 }));
 // gate 只等目录就绪；Issue 判定全在 Runtime，这里不再 mock 任何检查器。
@@ -205,6 +209,19 @@ describe('WorkflowSessionProvider version history', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it('loads app-scoped model details when the first runtime is attached', async () => {
+    const initial = materializeWorkflow({ input: { nodes: [], edges: [] }, chatConfig: {}, t });
+    const { root } = await renderHost(initial.chatConfig, hydrateWorkflowEditor(initial));
+
+    expect(getWorkflowModelDetails).toHaveBeenCalledWith({
+      nodes: [],
+      chatConfig: {},
+      appId: 'app-a'
+    });
+
+    act(() => root.unmount());
   });
 
   it('records every command immediately without adding entries when switching versions', async () => {

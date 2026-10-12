@@ -54,8 +54,19 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     req,
     bodySchema: CreateAppRequestBodySchema
   });
-  const { parentId, name, avatar, intro, type, nodes, edges, chatConfig, templateId, utmParams } =
-    body;
+  const {
+    parentId,
+    name,
+    avatar,
+    intro,
+    type,
+    nodes,
+    edges,
+    chatConfig,
+    referenceSnapshots,
+    templateId,
+    utmParams
+  } = body;
 
   // 凭证校验
   const { teamId, tmbId, userId, isRoot } = parentId
@@ -95,6 +106,7 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     nodes,
     edges,
     chatConfig,
+    referenceSnapshots,
     teamId,
     tmbId,
     userAvatar: tmb?.avatar,
@@ -134,6 +146,7 @@ export const onCreateApp = async ({
   storageNodes,
   edges,
   chatConfig,
+  referenceSnapshots,
   teamId,
   tmbId,
   pluginData,
@@ -151,6 +164,7 @@ export const onCreateApp = async ({
   storageNodes?: AppVersionSchemaType['nodes'];
   edges?: AppVersionSchemaType['edges'];
   chatConfig?: AppVersionSchemaType['chatConfig'];
+  referenceSnapshots?: AppVersionSchemaType['referenceSnapshots'];
   intro?: string;
   teamId: string;
   tmbId: string;
@@ -176,7 +190,8 @@ export const onCreateApp = async ({
   const normalizedWorkflow = migrateWorkflowToCurrent({
     nodes: nodes ?? [],
     edges: edges ?? [],
-    chatConfig
+    chatConfig,
+    referenceSnapshots
   });
   const modelHandle = await getTeamModelHandle({ teamId });
   formatModels({
@@ -256,6 +271,7 @@ export const onCreateApp = async ({
             nodes: sanitizedStorageNodes ?? normalizedWorkflow.nodes,
             edges: normalizedWorkflow.edges,
             chatConfig: normalizedWorkflow.chatConfig,
+            referenceSnapshots: normalizedWorkflow.referenceSnapshots,
             versionName: name,
             username,
             avatar: userAvatar,
@@ -324,6 +340,7 @@ export const onUpdateAppWorkflow = async ({
   nodes,
   edges,
   chatConfig,
+  referenceSnapshots,
   resources,
   teamId,
   tmbId,
@@ -333,6 +350,7 @@ export const onUpdateAppWorkflow = async ({
   nodes?: AppVersionSchemaType['nodes'];
   edges?: AppVersionSchemaType['edges'];
   chatConfig?: AppVersionSchemaType['chatConfig'];
+  referenceSnapshots?: AppVersionSchemaType['referenceSnapshots'];
   resources: AppResourcesType;
   teamId: string;
   tmbId: string;
@@ -341,7 +359,8 @@ export const onUpdateAppWorkflow = async ({
   const workflow = migrateWorkflowToCurrent({
     nodes: nodes ?? [],
     edges: edges ?? [],
-    chatConfig
+    chatConfig,
+    referenceSnapshots
   });
   const modelHandle = await getTeamModelHandle({ teamId });
   formatModels({
@@ -362,6 +381,7 @@ export const onUpdateAppWorkflow = async ({
       nodes: workflow.nodes,
       edges: workflow.edges,
       chatConfig: workflow.chatConfig,
+      referenceSnapshots: workflow.referenceSnapshots,
       time: new Date(),
       resources
     },

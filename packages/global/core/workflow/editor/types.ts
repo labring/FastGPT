@@ -5,7 +5,7 @@ import type { StoreEdgeItemType } from '../type/edge';
 import type { NodeTemplateContext, StoreNodeItemType, WorkflowCheckIssue } from '../type/node';
 import type { WorkflowIOValueTypeEnum } from '../constants';
 import type { ModelTypeEnum } from '../../ai/constants';
-import type { SystemModelDataType } from '../../ai/model.schema';
+import type { AIModelDataType } from '../../ai/model/schema';
 import type { NodeContainerCheckError } from '../template/context';
 
 // region snapshotTypes Workflow snapshot contracts
@@ -176,13 +176,17 @@ export type WorkflowConfigIssue = DeepReadonly<Omit<WorkflowCheckIssue, 'nodeId'
  * 不发请求、不做深拷贝）。`models` 为 undefined 表示目录尚未就绪，本轮跳过模型相关规则，
  * 等 host 订阅到目录变化后调用 refreshIssues 补上。
  */
+export type WorkflowEnvironmentModel = {
+  modelId: string;
+  /** 模型摘要只保证稳定 ID；完整目录详情才带兼容名称。 */
+  model?: string;
+  type: ModelTypeEnum;
+  /** 目录快照通常带完整 config；只含权限/状态的摘要可以省略。 */
+  config?: AIModelDataType['config'];
+};
+
 export type WorkflowEnvironment = {
-  models?: Array<
-    Omit<Pick<SystemModelDataType, 'modelId' | 'model' | 'type' | 'config'>, 'config'> & {
-      /** 目录快照通常带完整 config；旧测试/调用方可暂时省略。 */
-      config?: SystemModelDataType['config'];
-    }
-  >;
+  models?: WorkflowEnvironmentModel[];
   sandbox: { configured: boolean; planSupported: boolean };
 };
 

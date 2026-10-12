@@ -1,6 +1,11 @@
 import type { TFunction } from 'next-i18next';
 import { WORKFLOW_ISSUE_I18N_KEYS } from '@fastgpt/global/core/workflow/editor/issueCode';
 import type { WorkflowIssueCode } from '@fastgpt/global/core/workflow/editor/issueCode';
+import appErrList, { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import pluginErrList, { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
+import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
+import { isToolNotExistError } from '@fastgpt/global/core/app/utils';
+import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import type {
   WorkflowConfigIssue,
   WorkflowRuntimePort
@@ -32,6 +37,64 @@ const PENDING_HANDLE_CODES = new Set<WorkflowIssueCode>([
 /** 按 issue code 映射节点提示条的状态前缀，不直接使用 level 字段。 */
 export const getWorkflowIssueUIStatus = (code: WorkflowIssueCode): WorkflowIssueUIStatus =>
   PENDING_HANDLE_CODES.has(code) ? 'pending_handle' : 'pending_improve';
+
+const PLUGIN_DATA_PERMISSION_ERROR_CODES = new Set<string>([
+  AppErrEnum.unAuthApp,
+  PluginErrEnum.unAuth
+]);
+
+const PLUGIN_DATA_MISSING_ERROR_CODES = new Set<string>([
+  AppErrEnum.unExist,
+  PluginErrEnum.unExist
+]);
+
+const resolvePluginDataErrorIssueCode = (error: string): WorkflowIssueCode => {
+  if (
+    error === 'resource_no_permission' ||
+    PLUGIN_DATA_PERMISSION_ERROR_CODES.has(error) ||
+    error === ERROR_RESPONSE[AppErrEnum.unAuthApp]?.message ||
+    error === ERROR_RESPONSE[PluginErrEnum.unAuth]?.message
+  ) {
+    return 'resource_no_permission';
+  }
+
+  if (
+    error === 'tool_missing' ||
+    error === 'resource_missing' ||
+    PLUGIN_DATA_MISSING_ERROR_CODES.has(error) ||
+    error === ERROR_RESPONSE[AppErrEnum.unExist]?.message ||
+    error === ERROR_RESPONSE[PluginErrEnum.unExist]?.message ||
+    isToolNotExistError(error)
+  ) {
+    return 'tool_missing';
+  }
+
+  return 'tool_load_failed';
+};
+
+/** 将工具状态和插件错误转换成卡片与发布校验共用的 Issue 文案。 */
+export const getToolErrorMessage = ({
+  status,
+  error,
+  t
+}: {
+  status?: PluginStatusType;
+  error?: string | null;
+  t: TFunction;
+}): string | undefined => {
+  if (status === PluginStatusEnum.Offline) {
+    return renderWorkflowIssueMessage({ level: 'error', code: 'tool_offline' }, t);
+  }
+  if (!error) return undefined;
+
+  const issueCode = resolvePluginDataErrorIssueCode(error);
+  if (issueCode === 'resource_no_permission' || issueCode === 'tool_missing') {
+    return renderWorkflowIssueMessage({ level: 'error', code: issueCode }, t);
+  }
+
+  const errorText = appErrList[error]?.message || pluginErrList[error]?.message;
+  return errorText || error || renderWorkflowIssueMessage({ level: 'error', code: issueCode }, t);
+};
 
 /**
  * 发布 gate 的判定入口：按当前环境事实重算整份 Issue View，返回全部 error。

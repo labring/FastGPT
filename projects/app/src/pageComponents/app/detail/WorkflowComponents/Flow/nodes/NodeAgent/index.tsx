@@ -40,6 +40,7 @@ import { useAgentSkillManager } from './useAgentSkillManager';
 import { restoreDatasetParams } from './utils';
 
 import DatasetCard from '@/components/core/app/DatasetCard';
+import SkillCard from '@/components/core/app/SkillCard';
 import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
@@ -47,7 +48,6 @@ import { getToolIdentityKey, isDebugToolSource } from '@fastgpt/global/core/app/
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import MyTag from '@fastgpt/web/components/common/Tag/index';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -533,71 +533,24 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 >
                   {t('common:Choose')}
                 </Button>
-                {selectedAgentSkills.map((item) => {
-                  const isDeleted = !!item.isDeleted;
-
-                  return (
-                    <MyTooltip
-                      key={item.skillId}
-                      label={
-                        isDeleted ? t('skill:skill_deleted_click_remove_tip') : item.description
-                      }
-                    >
-                      <Flex
-                        alignItems={'center'}
-                        h={10}
-                        boxShadow={'sm'}
-                        bg={'white'}
-                        border={'base'}
-                        borderColor={isDeleted ? 'red.600' : undefined}
-                        px={2}
-                        borderRadius={'md'}
-                        _hover={{
-                          borderColor: isDeleted ? 'red.600' : 'primary.300',
-                          '& .delete-btn': { display: 'flex' },
-                          '& .unHoverStyle': { display: 'none' }
-                        }}
-                      >
-                        {item.avatar ? (
-                          <Avatar src={item.avatar} w={'18px'} borderRadius={'xs'} />
-                        ) : (
-                          <MyIcon name={'core/skill/default'} w={'18px'} />
-                        )}
-                        <Box
-                          ml={1.5}
-                          flex={'1 0 0'}
-                          w={0}
-                          className="textEllipsis"
-                          fontWeight={'bold'}
-                          fontSize={['sm', 'sm']}
-                        >
-                          {item.name}
-                        </Box>
-                        {isDeleted && (
-                          <MyTag colorSchema="red" type="fill" className="unHoverStyle">
-                            <MyIcon name={'common/error'} w={'14px'} mr={1} />
-                            <Box color={'red.600'} maxW={'100px'} className="textEllipsis">
-                              {t('skill:skill_deleted')}
-                            </Box>
-                          </MyTag>
-                        )}
-                        <Box className="delete-btn" display={'none'}>
-                          <MyIconButton
-                            icon="delete"
-                            hoverBg="red.50"
-                            hoverColor="red.600"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              skillsField?.setValue(
-                                selectedAgentSkills.filter((s) => s.skillId !== item.skillId)
-                              );
-                            }}
-                          />
-                        </Box>
-                      </Flex>
-                    </MyTooltip>
-                  );
-                })}
+                {selectedAgentSkills.map((item) => (
+                  <SkillCard
+                    key={item.skillId}
+                    skill={item}
+                    avatarSize={'18px'}
+                    nameFontWeight={'bold'}
+                    flexProps={{
+                      h: 10,
+                      px: 2,
+                      boxShadow: 'sm'
+                    }}
+                    onDelete={() => {
+                      skillsField?.setValue(
+                        selectedAgentSkills.filter((s) => s.skillId !== item.skillId)
+                      );
+                    }}
+                  />
+                ))}
               </Grid>
               {isOpenSkillSelect && (
                 <SkillSelectModal
@@ -781,7 +734,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                     name: d.name,
                     avatar: d.avatar,
                     vectorModel: d.vectorModel,
-                    isDeleted: d.isDeleted
+                    error: d.error
                   }))}
                   onChange={(e) => {
                     if (!datasetSelectInput) return;

@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { splitToolInputsByMode } from '@/web/core/workflow/utils';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { getNodeAllSource, splitToolInputsByMode } from '@/web/core/workflow/utils';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
 
 describe('splitToolInputsByMode', () => {
@@ -107,5 +110,47 @@ describe('splitToolInputsByMode', () => {
     expect(
       toolCallInputs.find((input) => input.key === NodeInputKeyEnum.userChatInput)?.selectedType
     ).toBe(FlowNodeInputTypeEnum.agentGenerated);
+  });
+});
+
+describe('getNodeAllSource', () => {
+  it('filters stale dynamic source handles and keeps global variables', () => {
+    const sourceNode = {
+      nodeId: 'source',
+      flowNodeType: FlowNodeTypeEnum.userSelect,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userSelectOptions,
+          value: [{ key: 'live' }]
+        }
+      ],
+      outputs: []
+    } as any;
+    const targetNode = {
+      nodeId: 'target',
+      flowNodeType: FlowNodeTypeEnum.formInput,
+      inputs: [],
+      outputs: []
+    } as any;
+    const nodes = new Map([
+      [sourceNode.nodeId, sourceNode],
+      [targetNode.nodeId, targetNode]
+    ]);
+
+    const result = getNodeAllSource({
+      nodeId: targetNode.nodeId,
+      getNodeById: (nodeId) => (nodeId ? nodes.get(nodeId) : undefined),
+      edges: [
+        {
+          source: sourceNode.nodeId,
+          target: targetNode.nodeId,
+          sourceHandle: 'source-source-stale'
+        }
+      ],
+      chatConfig: {},
+      t: (key: string) => key
+    });
+
+    expect(result.map((node) => node.nodeId)).toEqual([VARIABLE_NODE_ID]);
   });
 });

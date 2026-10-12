@@ -13,6 +13,7 @@ export const SelectedAgentSkillItemTypeSchema = z.object({
   name: z.string(),
   description: z.string().default(''),
   avatar: z.string().optional(),
+  isDeleted: z.boolean().optional().default(false),
   /** 资源异常状态码（如 resource_missing, resource_no_permission），正常时为 undefined */
   error: z.string().optional()
 });

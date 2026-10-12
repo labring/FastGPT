@@ -29,7 +29,7 @@ const WorkflowEdit = () => {
     initRuntime(
       materializeWorkflow({
         input: {
-          nodes: cloneDeep(appDetail.modules || []),
+          nodes: cloneDeep(appDetail.nodes || []),
           edges: cloneDeep(appDetail.edges || []),
           referenceSnapshots: cloneDeep(appDetail.referenceSnapshots)
         },

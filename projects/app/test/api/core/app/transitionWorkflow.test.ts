@@ -84,7 +84,6 @@ describe('Transition workflow', () => {
         resources: copiedResources
       }
     );
-    );
 
     const result = await Call<
       TransitionWorkflowBodyType,

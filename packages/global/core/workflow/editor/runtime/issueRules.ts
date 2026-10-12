@@ -22,7 +22,7 @@ import {
   isToolParamInput
 } from '../../../app/formEdit/utils';
 import { ModelTypeEnum } from '../../../ai/constants';
-import { getModelReferenceValue, isEmptyModelValue } from '../../../ai/modelReference';
+import { getModelReferenceValue, isEmptyModelValue } from '../../../ai/model/reference';
 import {
   getWorkflowReferenceItemsFromValue,
   isConfiguredReferenceValue,

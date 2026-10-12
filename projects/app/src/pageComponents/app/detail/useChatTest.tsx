@@ -21,7 +21,12 @@ import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/const
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getAppChatSourceKey } from '@/web/core/chat/utils';
 import { Box, type BoxProps } from '@chakra-ui/react';
-import { checkStoreWorkflowBeforeRunOrPublish } from '@/web/core/workflow/workflowCheck';
+import { hydrateRuntime } from '@/web/core/workflow/editor/codec';
+import {
+  collectWorkflowErrorIssues,
+  renderWorkflowIssueMessage
+} from '@/web/core/workflow/issueView';
+import { getWorkflowModelDetails } from '@/web/core/workflow/modelData';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 
@@ -53,17 +58,26 @@ export const useChatTest = ({
     }: StartChatFnProps) => {
       const histories = messages.slice(-1);
 
-      const checkResult = await checkStoreWorkflowBeforeRunOrPublish({
-        appId,
+      const models = await getWorkflowModelDetails({
         nodes,
-        edges,
         chatConfig,
-        t
+        appId
       });
-      if (checkResult.hasError) {
-        throw new Error(
-          checkResult.firstErrorIssue?.message ?? t('common:core.workflow.Check Failed')
-        );
+      const runtime = hydrateRuntime({
+        input: { nodes, edges, chatConfig },
+        t,
+        getEnvironment: () => ({
+          models,
+          sandbox: { configured: true, planSupported: true }
+        })
+      });
+      try {
+        const errors = collectWorkflowErrorIssues(runtime);
+        if (errors.length > 0) {
+          throw new Error(renderWorkflowIssueMessage(errors[0], t));
+        }
+      } finally {
+        runtime.dispose();
       }
 
       // 流请求，获取数据
