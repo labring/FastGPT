@@ -217,6 +217,7 @@ export function formatConfigStore2FormSchema({
       },
       fastLogin: JSON.stringify(fastgptPro.fastLogin || {}, null, 2),
       teamMode: fastgptPro.teamMode,
+      requireMemberNameOnLogin: normalizedFeConfigs.requireMemberNameOnLogin === true,
       accountCancellation: fastgptPro.accountCancellation,
       sso
     },
@@ -271,6 +272,7 @@ export function formatFormData2ConfigStore({
     sms,
     microsoft,
     teamMode,
+    requireMemberNameOnLogin,
     accountCancellation,
     sso,
     wecom
@@ -309,6 +311,7 @@ export function formatFormData2ConfigStore({
     },
     sso,
     teamMode,
+    requireMemberNameOnLogin: requireMemberNameOnLogin === true,
     accountCancellation,
     payConfig: {
       wx: !!wx?.WX_PRIVATE_KEY,

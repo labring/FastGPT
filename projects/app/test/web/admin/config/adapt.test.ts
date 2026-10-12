@@ -56,6 +56,31 @@ const createFormInput = (overrides: DeepPartial<ConfigFormInput> = {}): ConfigFo
   return { ...defaults, ...overrides } as ConfigFormInput;
 };
 
+describe('登录姓名补齐策略配置', () => {
+  it('存量部署默认关闭强制填写姓名', () => {
+    const form = formatConfigStore2FormSchema({
+      fastgpt: { feConfigs: {} } as any,
+      fastgptPro: {} as any
+    });
+    expect(form.loginSettings.requireMemberNameOnLogin).toBe(false);
+    const result = formatFormData2ConfigStore(createFormInput());
+    expect(result.fastgpt.feConfigs.requireMemberNameOnLogin).toBe(false);
+  });
+
+  it('管理员主动开启后正确保存并回显配置', () => {
+    const result = formatFormData2ConfigStore(
+      createFormInput({ loginSettings: { requireMemberNameOnLogin: true } })
+    );
+    expect(result.fastgpt.feConfigs.requireMemberNameOnLogin).toBe(true);
+
+    const form = formatConfigStore2FormSchema({
+      fastgpt: { feConfigs: { requireMemberNameOnLogin: true } } as any,
+      fastgptPro: {} as any
+    });
+    expect(form.loginSettings.requireMemberNameOnLogin).toBe(true);
+  });
+});
+
 describe('formatFormData2ConfigStore', () => {
   it('writes account cancellation to both fastgpt and fastgptPro configs', () => {
     const result = formatFormData2ConfigStore(createFormInput());

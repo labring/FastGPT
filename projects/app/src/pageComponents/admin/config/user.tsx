@@ -101,6 +101,16 @@ const UserSetting = () => {
         />
       </FormItem>
 
+      <FormItem
+        title="登录时强制补齐成员姓名"
+        description={
+          '默认关闭：登录后直接使用已有成员名（包括 SSO 同步的姓名），不会要求用户填写姓名。' +
+          '开启后，仅对尚未显式设置成员名的用户弹出必填窗口；已设置的成员名不会被清空或重置。'
+        }
+      >
+        <Switch control={control} name="requireMemberNameOnLogin" />
+      </FormItem>
+
       {teamMode === TeamModeEnum.multi && (
         <FormItem
           title="账号注销"

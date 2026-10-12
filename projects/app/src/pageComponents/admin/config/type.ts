@@ -234,6 +234,7 @@ export type ConfigFormType = {
     microsoft: NonNullable<SystemConfigType['auth']>['microsoft'];
     fastLogin: string;
     teamMode?: `${TeamModeEnum}`;
+    requireMemberNameOnLogin: boolean;
     accountCancellation?: SystemConfigType['accountCancellation'];
     sso?: {
       title?: string;

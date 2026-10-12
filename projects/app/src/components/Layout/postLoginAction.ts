@@ -26,6 +26,18 @@ export type PostLoginActionState = {
 };
 
 /**
+ * 成员名的必填弹窗是管理员显式开启的可选策略，不应在升级后自动启用。
+ * 关闭时保留数据库内已有的成员名和 SSO 同步行为，仅跳过强制输入。
+ */
+export const shouldPromptMemberNameOnLogin = ({
+  requireMemberNameOnLogin,
+  isSetMemberName
+}: {
+  requireMemberNameOnLogin?: boolean;
+  isSetMemberName?: boolean;
+}) => requireMemberNameOnLogin === true && isSetMemberName === false;
+
+/**
  * 可选通知类动作的路由排除表：/chat、/appStore 等专注使用的页面
  * 不应被系统通知、活动广告等可选弹窗打断。
  * 强制动作使用更窄的 MANDATORY_ACTION_EXCLUDED_ROUTES，两者不要混用。

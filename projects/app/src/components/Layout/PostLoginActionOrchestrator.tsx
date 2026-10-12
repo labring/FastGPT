@@ -20,6 +20,7 @@ import {
   isMandatoryPostLoginActionRoute,
   isPostLoginActionAdmitted,
   isPostLoginActionRoute,
+  shouldPromptMemberNameOnLogin,
   startPostLoginAction,
   type OneTimePostLoginAction,
   type PostLoginAction,
@@ -230,7 +231,10 @@ const PostLoginActionOrchestrator = ({
     currentAction,
     completed,
     inviteLinkId,
-    hasPendingMemberName: userInfo?.team?.isSetMemberName === false,
+    hasPendingMemberName: shouldPromptMemberNameOnLogin({
+      requireMemberNameOnLogin: feConfigs?.requireMemberNameOnLogin,
+      isSetMemberName: userInfo?.team?.isSetMemberName
+    }),
     shouldShowContact,
     contactHandled,
     isPlus,

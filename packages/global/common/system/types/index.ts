@@ -76,6 +76,10 @@ export const FastGPTFeConfigsSchema = z.looseObject({
   teamMode: FastGPTTeamModeSchema.optional().meta({
     description: '团队模式（单团队/多团队/账号同步）'
   }),
+  requireMemberNameOnLogin: z.boolean().optional().meta({
+    description:
+      '登录后是否强制未设置成员名的用户补齐姓名（默认关闭；关闭时保留现有成员名及 SSO 同步姓名）'
+  }),
   login_method: z
     .array(FastGPTRegisterMethodSchema)
     .optional()

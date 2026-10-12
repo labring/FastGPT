@@ -4,11 +4,31 @@ import {
   getNextPostLoginAction,
   isMandatoryPostLoginActionRoute,
   isPostLoginActionRoute,
+  shouldPromptMemberNameOnLogin,
   startPostLoginAction,
   type OneTimePostLoginAction,
   type PostLoginAction,
   type PostLoginActionState
 } from '@/components/Layout/postLoginAction';
+
+describe('登录强制补齐成员姓名开关', () => {
+  it('未配置或关闭时不会强制要求填写姓名', () => {
+    expect(shouldPromptMemberNameOnLogin({ isSetMemberName: false })).toBe(false);
+    expect(
+      shouldPromptMemberNameOnLogin({ requireMemberNameOnLogin: false, isSetMemberName: false })
+    ).toBe(false);
+  });
+
+  it('开启后仅对尚未设置成员姓名的用户弹窗', () => {
+    expect(
+      shouldPromptMemberNameOnLogin({ requireMemberNameOnLogin: true, isSetMemberName: false })
+    ).toBe(true);
+    expect(
+      shouldPromptMemberNameOnLogin({ requireMemberNameOnLogin: true, isSetMemberName: true })
+    ).toBe(false);
+    expect(shouldPromptMemberNameOnLogin({ requireMemberNameOnLogin: true })).toBe(false);
+  });
+});
 
 const getAction = (
   completed: OneTimePostLoginAction[] = [],
