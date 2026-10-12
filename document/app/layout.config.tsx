@@ -1,5 +1,5 @@
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
-import { i18n } from '@/lib/i18n';
+import { defaultHomePath, getLocalizedPath, i18n } from '@/lib/i18n';
 import Image from 'next/image';
 
 /**
@@ -16,6 +16,8 @@ export const baseOptions = (locale: string): BaseLayoutProps => {
       mode: 'light-dark'
     },
     nav: {
+      // Logo link stays in the current locale (default locale unprefixed)
+      url: getLocalizedPath(defaultHomePath, locale),
       title: (
         <div className="flex flex-row items-center gap-2">
           <Image src="/logo.svg" alt="FastGPT" width={30} height={30} />

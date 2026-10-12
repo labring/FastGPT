@@ -6,8 +6,8 @@ import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { getMDXComponents } from '@/mdx-components';
 import { i18n } from '@/lib/i18n';
 import { generateArticleSchema, generateBreadcrumbSchema } from '@/lib/schema';
-import { getFastGPTDocsOrigin } from '@/lib/fastgpt-home-url';
-import { getOgLocale, getOwnedDocUrl, X_DEFAULT_LOCALE } from '@/lib/site';
+import { getOgLocale, getOwnedDocUrl, localizeDocHref, X_DEFAULT_LOCALE } from '@/lib/site';
+import type { ComponentProps } from 'react';
 import { CalendarDays } from 'lucide-react';
 import {
   UpgradeVersionTimeline,
@@ -38,6 +38,10 @@ export default async function Page({
   }
 
   const MDXContent = page.data.body;
+  const RelativeLink = createRelativeLink(source, page);
+  const DocLink = (props: ComponentProps<'a'>) => (
+    <RelativeLink {...props} href={props.href ? localizeDocHref(props.href, lang) : props.href} />
+  );
   const releaseTime = page.data.releaseTime;
   const isUpgradeTimeline = page.path.includes('self-host/upgrading/version-timeline');
   const upgradeVersionTimeline: UpgradeVersionTimelineItem[] = isUpgradeTimeline
@@ -62,17 +66,16 @@ export default async function Page({
   const lastModifiedData = docLastModifiedData as Record<string, string>;
   const lastModified = lastModifiedData[filePath] ?? page.data.lastModified;
 
-  const domain = getFastGPTDocsOrigin();
-  const url = `${domain}${page.url}`;
+  const url = getOwnedDocUrl(lang, slug);
 
-  // 生成面包屑导航
+  // 生成面包屑导航（使用该语言归属域名的无前缀 URL）
   const breadcrumbItems = [
-    { name: 'FastGPT', url: domain },
-    { name: 'Docs', url: `${domain}/${lang}` }
+    { name: 'FastGPT', url: getOwnedDocUrl(lang) },
+    { name: 'Docs', url: getOwnedDocUrl(lang) }
   ];
   if (slug && slug.length > 0) {
     slug.forEach((segment, index) => {
-      const segmentUrl = `${domain}/${lang}/${slug.slice(0, index + 1).join('/')}`;
+      const segmentUrl = getOwnedDocUrl(lang, slug.slice(0, index + 1));
       breadcrumbItems.push({ name: segment, url: segmentUrl });
     });
   }
@@ -128,7 +131,7 @@ export default async function Page({
         <DocsBody>
           <MDXContent
             components={getMDXComponents({
-              a: createRelativeLink(source, page)
+              a: DocLink
             })}
           />
           {isUpgradeTimeline && (

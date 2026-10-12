@@ -14,7 +14,10 @@ export function LocalizedLink({ href, ...props }: ComponentProps<typeof Link>) {
 
   // Only localize internal links (starting with /)
   const finalHref =
-    typeof href === 'string' && href.startsWith('/') && !href.startsWith(`/${lang}`)
+    typeof href === 'string' &&
+    href.startsWith('/') &&
+    href !== `/${lang}` &&
+    !href.startsWith(`/${lang}/`)
       ? localizedPath(href)
       : href;
 
