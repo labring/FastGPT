@@ -105,7 +105,7 @@ URL 保留原始签名参数；文件名来自 Content-Disposition、filename �
 聊天层消费 contentType 和 filename；filename 已包含探测的 extension，随分类结果保存到 Context Ref 并在链接读取时传给文件源。显式 name 保留为显示名称，未提供时使用链接文件名或原始 URL。解析优先使用带非空后缀的显示名称，否则使用探测文件名；两者均无非空后缀时允许下载响应的 Content-Disposition 补充。
 AI Chat 按已识别的 fileType 转换音频，不再向运行态 file_url 注入来源文件名，也不按显示名称或文件名过滤音频。URL 有已知音频后缀时保留 input_audio.format；无已知格式时省略 format，由模型接口处理音频内容。关闭音频输入时仍过滤音频附件。
 音频附件是否进入模型由 AI 节点的 `aiChatAudio` 与模型的 `config.audio` 共同决定；工作流的 `fileSelectConfig.canSelectAudio` 只控制上传入口，不影响全局文件变量或节点文件链接的音频输入。
-客户端 FileSelector 对无文件名外链直接发起 HEAD，通过已有 MIME 库推断后缀或复用 Content-Disposition 文件名，再统一交给 getFileIcon 计算展示图标；filename 查询参数或带后缀的路径文件名不探测。请求使用 XMLHttpRequest，错误、3 秒超时和取消事件均返回空结果，避开部分浏览器扩展包装 fetch 时遗留的未处理 Promise 拒绝；图标更新 Promise 链也静默兜底。浏览器 CORS 限制、未知元数据和非成功响应均保留原图标，不阻塞输入；删除、更换链接和卸载时取消请求。探测结果不回写 name/type 或持久化值，后端文件分类与读取规则保持独立。
+客户端 FileSelector 对无文件名外链直接发起 HEAD，通过已有 MIME 库推断后缀或复用 Content-Disposition 文件名，再统一交给 getFileIcon 计算展示图标；filename 查询参数或带后缀的路径文件名不探测。请求使用 fetch，通过 AbortController 联动调用方取消和 3 秒超时；try/catch 静默处理请求与响应解析失败，finally 清理定时器和监听，取消后的迟到响应也被忽略；图标更新 Promise 链继续静默兜底。浏览器 CORS 限制、未知元数据和非成功响应均保留原图标，不阻塞输入；删除、更换链接和卸载时取消请求。探测结果不回写 name/type 或持久化值，后端文件分类与读取规则保持独立。
 
 ## 4. 数据模型
 

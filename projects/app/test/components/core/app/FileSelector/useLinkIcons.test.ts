@@ -6,44 +6,9 @@ import { useFileSelectorLinkIcons } from '@/components/core/app/FileSelector/use
 import type { FileSelectorRenderItemType } from '@/components/core/app/FileSelector/type';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 
-class MockXHR {
-  status = 200;
-  timeout = 0;
-  withCredentials = false;
-  onload: (() => void) | null = null;
-  onerror: (() => void) | null = null;
-  ontimeout: (() => void) | null = null;
-  onabort: (() => void) | null = null;
-  headers = new Map<string, string>();
-  static instances: MockXHR[] = [];
-  static onSend?: (xhr: MockXHR) => void;
-
-  constructor() {
-    MockXHR.instances.push(this);
-  }
-
-  open(_method: string, _url: string) {}
-
-  getResponseHeader(key: string) {
-    return this.headers.get(key.toLowerCase()) ?? null;
-  }
-
-  send() {
-    if (MockXHR.onSend) {
-      MockXHR.onSend(this);
-      return;
-    }
-    queueMicrotask(() => {
-      this.onload?.();
-    });
-  }
-
-  abort() {
-    this.onabort?.();
-  }
-}
-
 describe('useFileSelectorLinkIcons', () => {
+  const fetchMock = vi.fn<typeof fetch>();
+  let requests: { signal: AbortSignal; complete: (response: Response) => void }[];
   let root: Root;
   let dom: JSDOM;
   let container: HTMLDivElement;
@@ -64,9 +29,17 @@ describe('useFileSelectorLinkIcons', () => {
   };
 
   beforeEach(() => {
-    MockXHR.instances = [];
-    MockXHR.onSend = undefined;
-    vi.stubGlobal('XMLHttpRequest', MockXHR);
+    requests = [];
+    fetchMock.mockReset();
+    // 故意允许取消后的响应到达，验证真实 hook 和探测函数不会接纳旧结果。
+    fetchMock.mockImplementation(
+      (_url, options) =>
+        new Promise((resolve) => {
+          if (!options?.signal) throw new Error('Missing request signal');
+          requests.push({ signal: options.signal, complete: resolve });
+        })
+    );
+    vi.stubGlobal('fetch', fetchMock);
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     dom = new JSDOM('<!doctype html><html><body></body></html>');
     vi.stubGlobal('window', dom.window);
@@ -77,104 +50,74 @@ describe('useFileSelectorLinkIcons', () => {
   });
 
   afterEach(async () => {
-    await act(async () => root.unmount());
+    await act(async () => {
+      root.unmount();
+      requests.forEach(({ complete }) => complete(new Response(null)));
+    });
     container.remove();
     dom.window.close();
     vi.unstubAllGlobals();
   });
 
   it('外链只探测一次，结果仅在渲染态保存，不改变文件类型或清洗值', async () => {
-    let currentXhr: MockXHR | undefined;
-    MockXHR.onSend = (xhr) => {
-      currentXhr = xhr;
-      xhr.headers.set('content-type', 'audio/wav');
-    };
     await render([file]);
     await render([{ ...file }]);
-    expect(MockXHR.instances.length).toBe(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     await act(async () => {
-      currentXhr?.onload?.();
+      requests[0].complete(new Response(null, { headers: { 'Content-Type': 'audio/wav' } }));
     });
     expect(icons.get(file.id)).toEqual({ url: file.url, icon: 'file/fill/audio' });
     expect(file.type).toBe(ChatFileTypeEnum.file);
     expect(file).not.toHaveProperty('icon');
     await render([{ ...file }]);
-    expect(MockXHR.instances.length).toBe(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('删除条目中止请求，迟到响应不会恢复已删除图标', async () => {
-    let currentXhr: MockXHR | undefined;
-    let aborted = false;
-    MockXHR.onSend = (xhr) => {
-      currentXhr = xhr;
-      const orig = xhr.abort.bind(xhr);
-      xhr.abort = () => {
-        aborted = true;
-        orig();
-      };
-      xhr.headers.set('content-type', 'audio/wav');
-    };
     await render([file]);
     await render([]);
-    expect(aborted).toBe(true);
+    expect(requests[0].signal.aborted).toBe(true);
     await act(async () => {
-      currentXhr?.onload?.();
+      requests[0].complete(new Response(null, { headers: { 'Content-Type': 'audio/wav' } }));
     });
     expect(icons.size).toBe(0);
   });
 
   it('同一 id 更换 URL 时取消旧请求，旧响应不覆盖新图标', async () => {
-    const xhrs: MockXHR[] = [];
-    MockXHR.onSend = (xhr) => {
-      xhrs.push(xhr);
-    };
     await render([file]);
     const updated = { ...file, url: 'https://example.com/updated' };
     await render([updated]);
-    expect(xhrs.length).toBe(2);
-    xhrs[1].headers.set('content-type', 'video/mp4');
-    xhrs[0].headers.set('content-type', 'audio/wav');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(requests[0].signal.aborted).toBe(true);
     await act(async () => {
-      xhrs[1].onload?.();
-      xhrs[0].onload?.();
+      requests[1].complete(new Response(null, { headers: { 'Content-Type': 'video/mp4' } }));
+      requests[0].complete(new Response(null, { headers: { 'Content-Type': 'audio/wav' } }));
     });
     expect(icons.get(file.id)).toEqual({ url: updated.url, icon: 'file/fill/video' });
   });
 
   it('私有 key 文件不探测，卸载时中止外链请求', async () => {
     await render([{ ...file, key: 'chat/file.wav' }]);
-    expect(MockXHR.instances.length).toBe(0);
-    let aborted = false;
-    MockXHR.onSend = (xhr) => {
-      const orig = xhr.abort.bind(xhr);
-      xhr.abort = () => {
-        aborted = true;
-        orig();
-      };
-    };
+    expect(fetchMock).not.toHaveBeenCalled();
     await render([file]);
     await act(async () => root.unmount());
-    expect(aborted).toBe(true);
+    expect(requests[0].signal.aborted).toBe(true);
     root = createRoot(container);
   });
 
   it('已完成图标随条目删除清理，网络失败不触发重复探测', async () => {
-    MockXHR.onSend = (xhr) => {
-      xhr.headers.set('content-type', 'audio/wav');
-      queueMicrotask(() => xhr.onload?.());
-    };
+    fetchMock.mockResolvedValueOnce(
+      new Response(null, { headers: { 'Content-Type': 'audio/wav' } })
+    );
     await render([file]);
     expect(icons.get(file.id)?.icon).toBe('file/fill/audio');
     await render([]);
     expect(icons.size).toBe(0);
 
-    MockXHR.onSend = (xhr) => {
-      xhr.status = 405;
-      queueMicrotask(() => xhr.onerror?.());
-    };
+    fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
     await render([file]);
     await render([{ ...file }]);
-    expect(MockXHR.instances.length).toBe(2);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(icons.size).toBe(0);
   });
 });

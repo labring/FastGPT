@@ -150,7 +150,6 @@ export const getFileSelectorDisplayIcon = (
  * 浏览器直接探测无文件名外链的展示文件名；有 filename 参数或带后缀的路径时不请求远端。
  * 只读 HEAD：通过已有 MIME 库推断后缀，或复用 Content-Disposition 的文件名解析。
  * 跨域拒绝、超时及未知元数据返回 undefined；结果仅用于 getFileIcon，不改写文件类型。
- * 使用 XHR 事件处理失败，避开部分浏览器扩展包装 fetch 时遗留的未处理 Promise 拒绝。
  */
 export const probeFileSelectorLinkFilename = async ({
   url,
@@ -181,69 +180,35 @@ export const probeFileSelectorLinkFilename = async ({
   })();
   if (parsedUrl.searchParams.get('filename')?.trim() || filename.includes('.')) return filename;
 
-  return new Promise<string | undefined>((resolve) => {
-    let request: XMLHttpRequest | undefined;
-    let finished = false;
-
-    // 所有失败都 resolve 空值；解除事件监听，避免取消后的迟到响应再修改图标。
-    const finish = (filename?: string) => {
-      if (finished) return;
-      finished = true;
-      signal.removeEventListener('abort', abort);
-      if (request) {
-        request.onload = null;
-        request.onerror = null;
-        request.ontimeout = null;
-        request.onabort = null;
-      }
-      resolve(filename);
-    };
-    const abort = () => {
-      finish();
-      try {
-        request?.abort();
-      } catch {}
-    };
-
-    try {
-      request = new XMLHttpRequest();
-      request.open('HEAD', url, true);
-      request.timeout = 3000;
-      request.withCredentials = false;
-      const xhr = request;
-      xhr.onload = () => {
-        try {
-          if (signal.aborted || xhr.status < 200 || xhr.status >= 300) return finish();
-          const contentType = xhr
-            .getResponseHeader('Content-Type')
-            ?.split(';')[0]
-            .trim()
-            .toLowerCase();
-          const extension =
-            contentType && contentType !== 'application/octet-stream'
-              ? mime.getExtension(contentType)
-              : undefined;
-          finish(
-            extension
-              ? `file.${extension}`
-              : parseContentDispositionFilename(
-                  xhr.getResponseHeader('Content-Disposition') ?? undefined
-                ) || undefined
-          );
-        } catch {
-          finish();
-        }
-      };
-      xhr.onerror = () => finish();
-      xhr.ontimeout = () => finish();
-      xhr.onabort = () => finish();
-      signal.addEventListener('abort', abort, { once: true });
-      if (signal.aborted) return abort();
-      xhr.send();
-    } catch {
-      abort();
-    }
-  });
+  // 联动条目取消和请求超时；清理监听与定时器，不改写调用方的 signal。
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  signal.addEventListener('abort', abort, { once: true });
+  const timeout = setTimeout(abort, 3000);
+  try {
+    const response = await fetch(url, {
+      method: 'HEAD',
+      credentials: 'omit',
+      referrerPolicy: 'no-referrer',
+      signal: controller.signal
+    });
+    if (signal.aborted || controller.signal.aborted || !response.ok) return;
+    const contentType = response.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase();
+    const extension =
+      contentType && contentType !== 'application/octet-stream'
+        ? mime.getExtension(contentType)
+        : undefined;
+    return extension
+      ? `file.${extension}`
+      : parseContentDispositionFilename(response.headers.get('Content-Disposition') ?? undefined) ||
+          undefined;
+  } catch {
+    // 图标探测失败不影响表单和页面，包括 CORS 拒绝与取消请求。
+    return;
+  } finally {
+    clearTimeout(timeout);
+    signal.removeEventListener('abort', abort);
+  }
 };
 
 export const isFileSelectorCleanValueEcho = ({
