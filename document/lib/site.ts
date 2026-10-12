@@ -73,13 +73,61 @@ export function isDocLocale(value: string): value is DocLocale {
   return value in LOCALE_OWNER;
 }
 
-/** Absolute URL of a page on the domain that owns the locale (may be cross-domain). */
+function normalizeDocPath(path = ''): string {
+  if (!path || path === '/') return '/';
+  return path.startsWith('/') ? path : `/${path}`;
+}
+
+/**
+ * Same-host path for a locale: the domain's default locale is served WITHOUT a prefix
+ * (io: /guide/..., cn: /guide/...), the other locale keeps its prefix (/zh-CN/..., /en/...).
+ * Mirrors fastgpt-home `getHostLocalePath`.
+ */
+export function getHostLocalePath(
+  locale: string,
+  path = '',
+  variant: DocSiteVariant = getDocSiteVariant()
+): string {
+  const normalized = normalizeDocPath(path);
+  if (locale === VARIANT_DEFAULT_LOCALE[variant]) return normalized;
+  return `/${locale}${normalized === '/' ? '' : normalized}`;
+}
+
+/**
+ * Absolute URL of a page on the domain that owns the locale (may be cross-domain).
+ * Each locale is the default (unprefixed) locale of its owning domain, so owned URLs
+ * never carry a locale prefix: zh-CN -> https://doc.fastgpt.cn/<path>, en -> https://doc.fastgpt.io/<path>.
+ * Mirrors fastgpt-home `getOwnedLocaleUrl`.
+ */
 export function getOwnedDocUrl(locale: string, slug?: string[]): string {
   const owner = isDocLocale(locale) ? LOCALE_OWNER[locale] : 'io';
-  const path = slug && slug.length > 0 ? `/${slug.join('/')}` : '';
-  return `${VARIANT_ORIGINS[owner]}/${locale}${path}`;
+  const path = slug && slug.length > 0 ? `/${slug.join('/')}` : '/';
+  const hostPath = getHostLocalePath(locale, path, owner);
+  return `${VARIANT_ORIGINS[owner]}${hostPath === '/' ? '' : hostPath}`;
 }
 
 export function getOgLocale(locale: string): string {
   return isDocLocale(locale) ? OG_LOCALE[locale] : locale.replace('-', '_');
+}
+
+/**
+ * Normalize an absolute in-site href (from MDX content) to the current domain's URL scheme.
+ * - `/zh-CN/x`, `/en/x` -> host path of that locale (default locale loses its prefix)
+ * - `/x` (unprefixed) -> host path of the page's own locale, so a zh-CN page on io keeps
+ *   linking to zh-CN content instead of falling into the unprefixed English tree.
+ * Static assets (paths with a file extension) and external links are untouched.
+ */
+export function localizeDocHref(href: string, pageLocale: string): string {
+  if (!href.startsWith('/') || href.startsWith('//')) return href;
+  const match = /^([^?#]*)(.*)$/.exec(href);
+  const pathname = match?.[1] ?? href;
+  const suffix = match?.[2] ?? '';
+  if (/\.[a-z0-9]+$/i.test(pathname)) return href;
+
+  const segments = pathname.split('/');
+  const first = segments[1];
+  if (first && isDocLocale(first)) {
+    return `${getHostLocalePath(first, `/${segments.slice(2).join('/')}`)}${suffix}`;
+  }
+  return `${getHostLocalePath(pageLocale, pathname)}${suffix}`;
 }

@@ -1,8 +1,7 @@
 import '@/app/global.css';
-import { RootProvider } from 'fumadocs-ui/provider';
 import type { ReactNode } from 'react';
 import type { Translations } from 'fumadocs-ui/i18n';
-import CustomSearchDialog from '@/components/CustomSearchDialog';
+import DocsRootProvider from '@/components/DocsRootProvider';
 import Script from 'next/script';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
@@ -171,26 +170,18 @@ export default async function Layout({
         {trackSrc && siteId && (
           <Script src={trackSrc} data-site-id={siteId} defer strategy="afterInteractive" />
         )}
-        <RootProvider
-          i18n={{
-            locale: lang,
-            locales,
-            translations:
-              {
-                'zh-CN': zh_CN,
-                en
-              }[lang] ?? en
-          }}
-          search={{
-            enabled: true,
-            SearchDialog: CustomSearchDialog
-          }}
-          theme={{
-            enabled: true
-          }}
+        <DocsRootProvider
+          lang={lang}
+          locales={locales}
+          translations={
+            {
+              'zh-CN': zh_CN,
+              en
+            }[lang] ?? en
+          }
         >
           {children}
-        </RootProvider>
+        </DocsRootProvider>
       </body>
     </html>
   );
