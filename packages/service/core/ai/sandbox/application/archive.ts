@@ -537,15 +537,13 @@ async function createRestoreSandbox(params: {
   };
 }
 
-/** 在真实用户使用前恢复 archived Workspace。 */
+/** 在真实用户使用前恢复 archived Workspace；调用方须已校验并持久化团队归属。 */
 export async function restoreArchivedSandboxBeforeUse(params: {
   provider: SandboxProviderType;
   sandboxId: string;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   userId: string;
-  /** 必须显式传入 Quota 解析的归属；历史 source 缺失归属时传 undefined，仅补齐不覆盖。 */
-  teamId: string | undefined;
   resourceLimit?: Partial<NonNullable<SandboxInstanceSchemaType['limit']>>;
   createConfig?: SandboxCreateSpec;
 }) {
@@ -674,7 +672,6 @@ export async function restoreArchivedSandboxBeforeUse(params: {
               sourceType: params.sourceType,
               sourceId: params.sourceId,
               userId: params.userId,
-              ...(params.teamId && !current.teamId ? { teamId: params.teamId } : {}),
               ...(restoredStorage !== undefined ? { storage: restoredStorage } : {}),
               ...(params.resourceLimit ? { limit: params.resourceLimit } : {}),
               ...(runtimeImage ? { image: runtimeImage } : {})

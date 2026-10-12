@@ -56,12 +56,14 @@ describe('sandbox instance lifecycle repository', () => {
     const first = await createSandboxProvisioningInstance({
       provider: 'opensandbox',
       sourceType: ChatSourceTypeEnum.app,
-      ...identity
+      ...identity,
+      teamId: 'team-1'
     });
     const duplicate = await createSandboxProvisioningInstance({
       provider: 'opensandbox',
       sourceType: ChatSourceTypeEnum.app,
-      ...identity
+      ...identity,
+      teamId: 'team-1'
     });
 
     expect(first.created).toBe(true);
@@ -86,7 +88,8 @@ describe('sandbox instance lifecycle repository', () => {
     const { instance } = await createSandboxProvisioningInstance({
       provider: 'opensandbox',
       sourceType: ChatSourceTypeEnum.app,
-      ...identity
+      ...identity,
+      teamId: 'team-1'
     });
     const operationId = instance!.operation!.id;
 

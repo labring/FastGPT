@@ -272,7 +272,7 @@ export async function deleteClaimedSandboxRecord(params: {
   });
 }
 
-/** 创建首次 provisioning 占位；唯一键冲突时返回已经存在的逻辑记录。 */
+/** 创建带团队归属的首次 provisioning 占位；唯一键冲突时返回已经存在的逻辑记录。 */
 export async function createSandboxProvisioningInstance(
   params: {
     provider: SandboxProviderType;
@@ -280,6 +280,7 @@ export async function createSandboxProvisioningInstance(
     sourceType: ChatSourceTypeEnum;
     sourceId: string;
     userId: string;
+    teamId: string;
     storage?: SandboxInstanceSchemaType['storage'];
     limit?: Partial<NonNullable<SandboxInstanceSchemaType['limit']>>;
   } & SandboxStableFields

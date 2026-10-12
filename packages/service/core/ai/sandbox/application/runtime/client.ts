@@ -49,6 +49,7 @@ import {
 } from '../archive';
 import { migrateSandboxProviderBeforeUse } from '../providerMigration';
 import { checkSandboxQuota } from '../quota';
+import { ensureSandboxTeamOwnership } from '../ownership';
 import { withSandboxLifecycleLease, withSandboxSourceMutationLease } from '../lease';
 import { runSandboxLifecycleOperation, type SandboxLifecycleDefinition } from '../lifecycle/runner';
 import { assertSandboxSourceActive } from '../sourceGuard';
@@ -66,14 +67,6 @@ export type SandboxClientQuery = {
   chatId?: string;
 };
 
-type SandboxClientProps = {
-  sandboxId: string;
-  sourceType: ChatSourceTypeEnum;
-  sourceId: string;
-  userId: string;
-  chatId?: string;
-};
-
 type SandboxClientOptions = {
   providerName?: SandboxProviderType;
   resourceLimits?: ResourceLimits;
@@ -81,7 +74,6 @@ type SandboxClientOptions = {
   createConfig?: SandboxCreateSpec;
   restoreArchived?: boolean;
   allowCreate?: boolean;
-  sourceGuard?: typeof assertSandboxSourceActive;
 };
 
 /**
@@ -89,11 +81,13 @@ type SandboxClientOptions = {
  *
  * 它负责 ensureAvailable/exec 等“使用 sandbox”的语义；历史资源清理请使用
  * resource.ts 中的 stopSandboxResource/deleteSandboxResource，避免误触发 create/resume。
+ * teamId 由 getSandboxClient 在构造前确定并补齐，client 复用该归属，不重复执行历史回填。
  */
 export class SandboxClient {
   private sourceType: ChatSourceTypeEnum;
   private sourceId: string;
   private userId: string;
+  private readonly teamId: string;
   private chatId?: string;
   private sandboxId: string;
   private providerName: SandboxProviderType;
@@ -104,13 +98,14 @@ export class SandboxClient {
   private preparedWorkDirectory?: { provider: ISandbox; promise: Promise<void> };
 
   constructor(
-    private readonly props: SandboxClientProps,
+    props: SandboxClientQuery & { teamId: string },
     private readonly opts: SandboxClientOptions = {}
   ) {
     this.sandboxId = props.sandboxId;
     this.sourceType = props.sourceType;
     this.sourceId = props.sourceId;
     this.userId = props.userId;
+    this.teamId = props.teamId;
     this.chatId = props.chatId;
 
     this.providerName = opts.providerName ?? getConfiguredSandboxProvider();
@@ -178,8 +173,8 @@ export class SandboxClient {
   }
 
   private async ensureAvailableInternal() {
-    const sourceGuard = this.opts.sourceGuard ?? assertSandboxSourceActive;
-    await sourceGuard({ sourceType: this.sourceType, sourceId: this.sourceId });
+    // client 可跨多次工具调用复用；团队归属不变，但 source 可能已经被删除。
+    await assertSandboxSourceActive({ sourceType: this.sourceType, sourceId: this.sourceId });
     const runtimeImage = resolveSandboxRuntimeImage({
       provider: this.providerName,
       sandboxId: this.sandboxId,
@@ -201,6 +196,7 @@ export class SandboxClient {
       : undefined;
     const instanceParams = {
       ...instanceIdentity,
+      teamId: this.teamId,
       storage: this.opts.vmConfig?.storage,
       ...(instanceLimit ? { limit: instanceLimit } : {})
     };
@@ -235,10 +231,10 @@ export class SandboxClient {
     }
 
     // 新建、复活前检查 Mongo 活跃实例配额；检查与写入之间允许并发超额。
-    const quota = await checkSandboxQuota(instanceIdentity);
+    await checkSandboxQuota({ ...instanceIdentity, teamId: this.teamId });
 
     const runProvisioning = async (lease: RedisLeaseContext, allowRecordCreate: boolean) => {
-      await sourceGuard({ sourceType: this.sourceType, sourceId: this.sourceId });
+      await assertSandboxSourceActive({ sourceType: this.sourceType, sourceId: this.sourceId });
       lease.assertValid();
       let current = await findSandboxInstanceBySource({
         sourceType: this.sourceType,
@@ -252,13 +248,16 @@ export class SandboxClient {
         }
         const created = await createSandboxProvisioningInstance({
           ...instanceParams,
-          ...(quota?.teamId ? { teamId: quota.teamId } : {}),
           ...(runtimeImage ? { image: runtimeImage } : {})
         });
         current = created.instance;
         createdHere = created.created;
       }
       if (!current) throw new Error('Sandbox provisioning record was not created');
+      // 创建遇到唯一键冲突时可能拿到并发写入的记录，不能沿用初始化时对旧记录的判断。
+      if (current.teamId !== this.teamId) {
+        throw new Error(`Sandbox team ownership mismatch: ${this.sandboxId}`);
+      }
       if (current.provider !== this.providerName) {
         throw new Error(`Sandbox belongs to provider ${current.provider}`);
       }
@@ -307,7 +306,10 @@ export class SandboxClient {
             fromPhase: 'claimed',
             toPhase: 'providerEnsured',
             run: async () => {
-              await sourceGuard({ sourceType: this.sourceType, sourceId: this.sourceId });
+              await assertSandboxSourceActive({
+                sourceType: this.sourceType,
+                sourceId: this.sourceId
+              });
               if (workspaceClaimName) await getSessionVolumeConfig(workspaceClaimName);
               await ensureConnectedSandboxRunning(this.provider);
             }
@@ -343,7 +345,6 @@ export class SandboxClient {
         sourceId: this.sourceId,
         label: params.sourceLabel,
         fn: async (sourceLease) => {
-          await sourceGuard({ sourceType: this.sourceType, sourceId: this.sourceId });
           sourceLease.assertValid();
           await withSandboxLifecycleLease({
             sandboxId: this.sandboxId,
@@ -475,23 +476,6 @@ export class SandboxClient {
   }
 }
 
-const resolveSandboxClientProps = (props: SandboxClientQuery): SandboxClientProps => {
-  if (!props.sandboxId) {
-    throw new Error('sandboxId is required');
-  }
-  if (!props.sourceType || !props.sourceId) {
-    throw new Error('sourceType and sourceId are required');
-  }
-
-  return {
-    sandboxId: props.sandboxId,
-    sourceType: props.sourceType,
-    sourceId: props.sourceId,
-    userId: props.userId,
-    chatId: props.chatId
-  };
-};
-
 /**
  * 检查指定运行态 sandbox 是否已有本地实例记录。
  *
@@ -501,10 +485,6 @@ export async function checkSandboxRuntimeInstanceExists(
   props: Pick<SandboxClientQuery, 'sandboxId'>,
   opts: { providerName?: SandboxProviderType } = {}
 ) {
-  if (!props.sandboxId) {
-    throw new Error('sandboxId is required');
-  }
-
   const providerName = opts.providerName ?? getConfiguredSandboxProvider();
   return existsSandboxInstanceBySandboxId({
     provider: providerName,
@@ -524,16 +504,12 @@ export const getSandboxClient = async (
   opts: Omit<SandboxClientOptions, 'vmConfig'> = {}
 ) => {
   try {
-    const sandboxClientProps = resolveSandboxClientProps(props);
-    const { sandboxId, userId } = sandboxClientProps;
+    const { sandboxId, sourceType, sourceId, userId } = props;
     const providerName = opts.providerName ?? getConfiguredSandboxProvider();
-    const sourceGuard = opts.sourceGuard ?? assertSandboxSourceActive;
     let vmConfig: VolumeManagerResult | undefined;
 
-    await sourceGuard({
-      sourceType: sandboxClientProps.sourceType,
-      sourceId: sandboxClientProps.sourceId
-    });
+    // 归属准备必须先于配额及远端副作用，归档恢复不再承担历史回填。
+    const teamId = await ensureSandboxTeamOwnership({ sandboxId, sourceType, sourceId, userId });
 
     if (opts.restoreArchived === false) {
       await assertSandboxRuntimeUsableWithoutRestore({
@@ -541,27 +517,25 @@ export const getSandboxClient = async (
         sandboxId
       });
     } else {
-      const quota = await checkSandboxQuota({
-        provider: providerName,
-        sandboxId,
-        sourceType: sandboxClientProps.sourceType,
-        sourceId: sandboxClientProps.sourceId,
-        userId
+      await checkSandboxQuota({
+        sourceType,
+        sourceId,
+        userId,
+        teamId
       });
       await migrateSandboxProviderBeforeUse({
         provider: providerName,
         sandboxId,
-        sourceType: sandboxClientProps.sourceType,
-        sourceId: sandboxClientProps.sourceId,
+        sourceType,
+        sourceId,
         userId
       });
       vmConfig = await restoreArchivedSandboxBeforeUse({
         provider: providerName,
         sandboxId,
-        sourceType: sandboxClientProps.sourceType,
-        sourceId: sandboxClientProps.sourceId,
+        sourceType,
+        sourceId,
         userId,
-        teamId: quota?.teamId,
         resourceLimit: opts.resourceLimits
           ? {
               cpuCount: opts.resourceLimits.cpuCount,
@@ -574,8 +548,8 @@ export const getSandboxClient = async (
     }
     if (!vmConfig && providerName === 'opensandbox') {
       const instance = await findSandboxInstanceBySource({
-        sourceType: sandboxClientProps.sourceType,
-        sourceId: sandboxClientProps.sourceId,
+        sourceType,
+        sourceId,
         userId
       });
       const persistedClaimName = getSessionVolumeClaimName(instance?.storage);
@@ -586,13 +560,15 @@ export const getSandboxClient = async (
         persistedClaimName ?? createSessionVolumeClaimName({ sandboxId, generationId: '0' });
       vmConfig = buildVolumeConfig(claimName);
     }
-    const sandbox = new SandboxClient(sandboxClientProps, {
-      ...opts,
-      providerName,
-      vmConfig,
-      sourceGuard,
-      allowCreate: opts.allowCreate ?? opts.restoreArchived !== false
-    });
+    const sandbox = new SandboxClient(
+      { ...props, teamId },
+      {
+        ...opts,
+        providerName,
+        vmConfig,
+        allowCreate: opts.allowCreate ?? opts.restoreArchived !== false
+      }
+    );
     await sandbox.ensureAvailable();
     return sandbox;
   } catch (error) {

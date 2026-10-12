@@ -22,8 +22,8 @@ export async function assertSandboxSourceActive(params: {
 /**
  * 校验 source 存活并解析其团队归属：一次投影查询同时完成持久 fence 与 teamId 解析。
  *
- * source 缺失或软删除时抛 SandboxSourceMissingError；source 存在但缺少 teamId
- * （历史脏数据）时返回 undefined，由调用方按“只计系统总量、不计入任何团队”处理。
+ * source 缺失或软删除时抛 SandboxSourceMissingError；source 存在但缺少 teamId 时返回
+ * undefined，仅存活校验允许该结果。运行入口由 ensureSandboxTeamOwnership 拒绝无团队资源。
  */
 export async function resolveSandboxSourceTeamId(params: {
   sourceType: ChatSourceTypeEnum;

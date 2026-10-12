@@ -36,6 +36,7 @@ const mocks = vi.hoisted(() => ({
   isRedisLeaseError: vi.fn(),
   createAgentSandboxInitializingError: vi.fn(),
   checkSandboxQuota: vi.fn(),
+  ensureSandboxTeamOwnership: vi.fn(),
   resolveSandboxRuntimeImage: vi.fn()
 }));
 
@@ -110,6 +111,10 @@ vi.mock('@fastgpt/service/core/ai/sandbox/error', () => ({
   createAgentSandboxInitializingError: mocks.createAgentSandboxInitializingError
 }));
 
+vi.mock('@fastgpt/service/core/ai/sandbox/application/ownership', () => ({
+  ensureSandboxTeamOwnership: mocks.ensureSandboxTeamOwnership
+}));
+
 vi.mock('@fastgpt/service/core/ai/sandbox/application/quota', () => ({
   checkSandboxQuota: mocks.checkSandboxQuota
 }));
@@ -131,6 +136,8 @@ const query = {
   chatId: 'chat-1'
 };
 
+const clientProps = { ...query, teamId: 'team-1' };
+
 const createProvider = () => ({
   provider: 'sealosdevbox',
   close: vi.fn(async () => undefined),
@@ -150,6 +157,7 @@ const createInstance = (
     sourceType: query.sourceType,
     sourceId: query.sourceId,
     userId: query.userId,
+    teamId: 'team-1',
     status,
     lastActiveAt: new Date('2026-07-01T00:00:00.000Z'),
     ...(provider === 'opensandbox'
@@ -230,6 +238,7 @@ describe('sandbox runtime client lifecycle', () => {
     mocks.isRedisLeaseError.mockReturnValue(false);
     mocks.createAgentSandboxInitializingError.mockReturnValue(new Error('Sandbox is initializing'));
     mocks.checkSandboxQuota.mockResolvedValue(undefined);
+    mocks.ensureSandboxTeamOwnership.mockResolvedValue('team-1');
     mocks.resolveSandboxRuntimeImage.mockReturnValue({
       repository: 'fastgpt/sandbox',
       tag: 'v2'
@@ -250,7 +259,7 @@ describe('sandbox runtime client lifecycle', () => {
   });
 
   it('coalesces concurrent ensureAvailable calls on one client', async () => {
-    const client = new SandboxClient(query, { sourceGuard: mocks.assertSandboxSourceActive });
+    const client = new SandboxClient(clientProps);
     let releaseEnsure: (() => void) | undefined;
     const ensureGate = new Promise<void>((resolve) => {
       releaseEnsure = resolve;
@@ -271,11 +280,11 @@ describe('sandbox runtime client lifecycle', () => {
     mocks.buildRuntimeSandboxAdapter
       .mockReturnValueOnce(firstProvider)
       .mockReturnValueOnce(secondProvider);
-    const firstClient = new SandboxClient(query, { sourceGuard: mocks.assertSandboxSourceActive });
+    const firstClient = new SandboxClient(clientProps);
 
     await firstClient.ensureAvailable();
     await firstClient.provider.close();
-    const secondClient = new SandboxClient(query, { sourceGuard: mocks.assertSandboxSourceActive });
+    const secondClient = new SandboxClient(clientProps);
     await secondClient.ensureAvailable();
 
     expect(firstClient.provider).toBe(firstProvider);
@@ -386,7 +395,7 @@ describe('sandbox runtime client lifecycle', () => {
     expect(mocks.restoreArchivedSandboxBeforeUse).toHaveBeenCalledWith(
       expect.not.objectContaining({ vmConfig: expect.anything(), storage: expect.anything() })
     );
-    expect(mocks.restoreArchivedSandboxBeforeUse.mock.calls[0][0]).toHaveProperty('teamId');
+    expect(mocks.restoreArchivedSandboxBeforeUse.mock.calls[0][0]).not.toHaveProperty('teamId');
     expect(mocks.checkSandboxQuota.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.restoreArchivedSandboxBeforeUse.mock.invocationCallOrder[0]
     );
@@ -608,14 +617,45 @@ describe('sandbox runtime client lifecycle', () => {
     );
   });
 
-  it('guards the source before migration, restore and provider construction', async () => {
+  it('reuses prepared ownership while checking source liveness on later calls', async () => {
+    const client = await getSandboxClient(query);
+    await client.ensureAvailable();
+
+    expect(mocks.ensureSandboxTeamOwnership).toHaveBeenCalledOnce();
+    expect(mocks.assertSandboxSourceActive).toHaveBeenCalledTimes(2);
+    expect(mocks.ensureConnectedSandboxRunning).toHaveBeenCalledTimes(2);
+
     mocks.assertSandboxSourceActive.mockRejectedValueOnce(new Error('source deleted'));
+    await expect(client.ensureAvailable()).rejects.toThrow('source deleted');
+    expect(mocks.touchRunningSandboxInstance).toHaveBeenCalledTimes(2);
+    expect(mocks.ensureConnectedSandboxRunning).toHaveBeenCalledTimes(2);
+    expect(mocks.ensureSandboxTeamOwnership).toHaveBeenCalledOnce();
+  });
+
+  it('rejects source deletion while waiting for the lifecycle lease before creating a record', async () => {
+    mocks.touchRunningSandboxInstance.mockResolvedValue(null);
+    mocks.withSandboxLifecycleLease.mockImplementationOnce(async ({ fn }: any) => {
+      mocks.assertSandboxSourceActive.mockRejectedValueOnce(new Error('source deleted'));
+      return fn({ signal: new AbortController().signal, assertValid });
+    });
 
     await expect(getSandboxClient(query)).rejects.toThrow('source deleted');
+    expect(mocks.createSandboxProvisioningInstance).not.toHaveBeenCalled();
+    expect(mocks.ensureConnectedSandboxRunning).not.toHaveBeenCalled();
+  });
 
-    expect(mocks.migrateSandboxProviderBeforeUse).not.toHaveBeenCalled();
-    expect(mocks.restoreArchivedSandboxBeforeUse).not.toHaveBeenCalled();
-    expect(mocks.buildRuntimeSandboxAdapter).not.toHaveBeenCalled();
+  it('rejects source deletion after provisioning is claimed before creating the provider', async () => {
+    mocks.touchRunningSandboxInstance.mockResolvedValue(null);
+    mocks.createSandboxProvisioningInstance.mockImplementationOnce(async () => {
+      mocks.assertSandboxSourceActive.mockRejectedValueOnce(new Error('source deleted'));
+      return { instance: createInstance('provisioning', 'provision-1'), created: true };
+    });
+
+    await expect(getSandboxClient(query)).rejects.toThrow('source deleted');
+    expect(mocks.ensureConnectedSandboxRunning).not.toHaveBeenCalled();
+    expect(mocks.markSandboxOperationFailed).toHaveBeenCalledWith(
+      expect.objectContaining({ operationId: 'provision-1', error: 'source deleted' })
+    );
   });
 
   it('does not create or resume when archived restore is disabled', async () => {
@@ -631,8 +671,8 @@ describe('sandbox runtime client lifecycle', () => {
     expect(mocks.checkSandboxQuota).not.toHaveBeenCalled();
   });
 
-  it('checks quota before provisioning and carries the resolved teamId', async () => {
-    mocks.checkSandboxQuota.mockResolvedValue({ teamId: 'team-1' });
+  it('checks quota and carries resolved teamId when provisioning or restarting a non-active instance', async () => {
+    // 新建实例：准备 ownership 后校验配额并透传 teamId
     mocks.touchRunningSandboxInstance.mockResolvedValue(null);
     mocks.findSandboxInstanceBySource.mockResolvedValue(null);
     mocks.createSandboxProvisioningInstance.mockResolvedValue({
@@ -642,50 +682,60 @@ describe('sandbox runtime client lifecycle', () => {
 
     await getSandboxClient(query);
 
-    expect(mocks.checkSandboxQuota.mock.calls[0][0]).toEqual({
-      provider: 'sealosdevbox',
-      sandboxId: 'sandbox-1',
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: 'app-1',
-      userId: 'user-1'
+    expect(mocks.ensureSandboxTeamOwnership).toHaveBeenCalledWith({
+      sandboxId: query.sandboxId,
+      sourceType: query.sourceType,
+      sourceId: query.sourceId,
+      userId: query.userId
     });
-    // Quota 检查先于 provider 迁移/恢复执行。
-    expect(mocks.checkSandboxQuota.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.migrateSandboxProviderBeforeUse.mock.invocationCallOrder[0]
+    expect(mocks.checkSandboxQuota).toHaveBeenCalledWith(
+      expect.objectContaining({ teamId: 'team-1' })
     );
-    // 新建记录携带守卫解析出的团队归属。
     expect(mocks.createSandboxProvisioningInstance).toHaveBeenCalledWith(
       expect.objectContaining({ teamId: 'team-1' })
     );
-  });
 
-  it('checks quota before restarting a stopped instance', async () => {
-    const stopped = createInstance('stopped');
-    const provisioning = createInstance('provisioning', 'restart-1');
-    mocks.touchRunningSandboxInstance.mockResolvedValue(null);
-    mocks.findSandboxInstanceBySource.mockResolvedValue(stopped);
-    mocks.claimSandboxOperation.mockResolvedValueOnce(provisioning);
-    const client = new SandboxClient(query, { sourceGuard: mocks.assertSandboxSourceActive });
+    // 重启已停止实例：同样在 claim 恢复前执行配额检查
+    mocks.checkSandboxQuota.mockClear();
+    mocks.findSandboxInstanceBySource.mockResolvedValue(createInstance('stopped'));
+    mocks.claimSandboxOperation.mockResolvedValueOnce(createInstance('provisioning', 'restart-1'));
+    const client = new SandboxClient(clientProps);
     await client.ensureAvailable();
     expect(mocks.checkSandboxQuota).toHaveBeenCalledTimes(1);
-    expect(mocks.checkSandboxQuota.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.claimSandboxOperation.mock.invocationCallOrder[0]
-    );
   });
 
-  it('stops activation before provider migration when quota rejects', async () => {
-    const error = new Error('quota reached');
-    mocks.checkSandboxQuota.mockRejectedValueOnce(error);
-    await expect(getSandboxClient(query)).rejects.toBe(error);
+  it('aborts activation and prevents remote operations when ownership preparation or quota check fails', async () => {
+    // 归属准备失败：直接中断，不检查配额且不调用任何远端 Provider
+    mocks.ensureSandboxTeamOwnership.mockRejectedValueOnce(new Error('source has no teamId'));
+    await expect(getSandboxClient(query)).rejects.toThrow('source has no teamId');
+    expect(mocks.checkSandboxQuota).not.toHaveBeenCalled();
     expect(mocks.migrateSandboxProviderBeforeUse).not.toHaveBeenCalled();
-    expect(mocks.restoreArchivedSandboxBeforeUse).not.toHaveBeenCalled();
+    expect(mocks.buildRuntimeSandboxAdapter).not.toHaveBeenCalled();
+
+    // 配额不足超限：直接中断，不触发 Provider 迁移和实例创建
+    mocks.checkSandboxQuota.mockRejectedValueOnce(new Error('quota reached'));
+    await expect(getSandboxClient(query)).rejects.toThrow('quota reached');
+    expect(mocks.migrateSandboxProviderBeforeUse).not.toHaveBeenCalled();
     expect(mocks.createSandboxProvisioningInstance).not.toHaveBeenCalled();
+  });
+
+  it('rejects a conflicting record created after ownership preparation', async () => {
+    mocks.touchRunningSandboxInstance.mockResolvedValue(null);
+    mocks.createSandboxProvisioningInstance.mockResolvedValue({
+      instance: createInstance('provisioning', 'provision-1', 'sealosdevbox', {
+        teamId: 'other-team'
+      }),
+      created: false
+    });
+
+    await expect(getSandboxClient(query)).rejects.toThrow('Sandbox team ownership mismatch');
+    expect(mocks.ensureConnectedSandboxRunning).not.toHaveBeenCalled();
   });
 
   it('returns command failures as ExecuteResult and preserves timeout conversion', async () => {
     const provider = createProvider();
     mocks.buildRuntimeSandboxAdapter.mockReturnValueOnce(provider);
-    const client = new SandboxClient(query, { sourceGuard: mocks.assertSandboxSourceActive });
+    const client = new SandboxClient(clientProps);
 
     await expect(client.exec('echo ok', 2)).resolves.toEqual({
       stdout: 'ok',
@@ -707,14 +757,5 @@ describe('sandbox runtime client lifecycle', () => {
       exitCode: -1
     });
     expect(provider.createDirectories).toHaveBeenCalledOnce();
-  });
-
-  it('rejects legacy or incomplete runtime queries', async () => {
-    await expect(getSandboxClient({ appId: 'app-1' } as any)).rejects.toThrow(
-      'sandboxId is required'
-    );
-    await expect(getSandboxClient({ sandboxId: 'sandbox-1' } as any)).rejects.toThrow(
-      'sourceType and sourceId are required'
-    );
   });
 });

@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { Input, Textarea, FormControl, FormErrorMessage } from '@chakra-ui/react';
+import { Input, Textarea } from '@chakra-ui/react';
 import { formatConfigStore2FormSchema, formatFormData2ConfigStore } from '@/web/admin/config/adapt';
 import type { ConfigFormType, ConfigStoreType } from '@/pageComponents/admin/config/type';
 import { getInitFormData, postUpdateConfig } from '@/web/admin/system/api';
@@ -12,6 +12,7 @@ import FormItem from '@/pageComponents/admin/settings/FormItem';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import NavbarItems from './components/FormField/NavbarItems';
 import ImageInput from '@/pageComponents/admin/settings/ImageInput';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 
 type titleType = {
   mainTitle: string;
@@ -20,15 +21,8 @@ type titleType = {
 
 export const Settings = () => {
   const [rawData, setRawData] = useState<ConfigFormType>();
-  const {
-    setValue,
-    reset,
-    watch,
-    register,
-    handleSubmit,
-    control,
-    formState: { errors }
-  } = useForm<ConfigFormType['siteSettings']>();
+  const { setValue, reset, watch, register, handleSubmit, control } =
+    useForm<ConfigFormType['siteSettings']>();
 
   const { loading: loadingConfig } = useRequest(getInitFormData, {
     onSuccess: (data: ConfigStoreType) => {
@@ -258,39 +252,41 @@ export const Settings = () => {
         title="沙箱实例系统总上限"
         description="所有团队 Agent 沙箱活跃实例合计上限，留空表示使用环境变量配置；建议不低于单团队配额。"
       >
-        <FormControl isInvalid={!!errors.systemEnv?.agentSandboxMax}>
-          <Input
-            type="number"
-            min={1}
-            step={1}
-            {...register('systemEnv.agentSandboxMax', {
-              setValueAs: (value) => (value === '' ? undefined : Number(value)),
-              validate: (value) =>
-                value === undefined || (Number.isInteger(value) && value > 0) || '请输入正整数'
-            })}
-            placeholder=""
-          />
-          <FormErrorMessage>{errors.systemEnv?.agentSandboxMax?.message}</FormErrorMessage>
-        </FormControl>
+        <MyNumberInput
+          min={1}
+          step={1}
+          precision={0}
+          bg={'white'}
+          inputFieldProps={{ bg: 'white' }}
+          value={watch('systemEnv.agentSandboxMax') ?? ''}
+          onChange={(val) => {
+            setValue(
+              'systemEnv.agentSandboxMax',
+              val === '' || val === undefined ? undefined : Number(val)
+            );
+          }}
+          placeholder=""
+        />
       </FormItem>
       <FormItem
         title="单团队沙箱实例配额"
         description="单团队 Agent 沙箱活跃实例上限，留空表示使用环境变量配置，环境变量未配置时不限制；建议不超过系统总上限，超过时超出部分不会生效。"
       >
-        <FormControl isInvalid={!!errors.systemEnv?.agentSandboxMaxPerTeam}>
-          <Input
-            type="number"
-            min={1}
-            step={1}
-            {...register('systemEnv.agentSandboxMaxPerTeam', {
-              setValueAs: (value) => (value === '' ? undefined : Number(value)),
-              validate: (value) =>
-                value === undefined || (Number.isInteger(value) && value > 0) || '请输入正整数'
-            })}
-            placeholder=""
-          />
-          <FormErrorMessage>{errors.systemEnv?.agentSandboxMaxPerTeam?.message}</FormErrorMessage>
-        </FormControl>
+        <MyNumberInput
+          min={1}
+          step={1}
+          precision={0}
+          bg={'white'}
+          inputFieldProps={{ bg: 'white' }}
+          value={watch('systemEnv.agentSandboxMaxPerTeam') ?? ''}
+          onChange={(val) => {
+            setValue(
+              'systemEnv.agentSandboxMaxPerTeam',
+              val === '' || val === undefined ? undefined : Number(val)
+            );
+          }}
+          placeholder=""
+        />
       </FormItem>
       <FirstTitle title="小助手配置" />
       <FormItem title="小助手 iframe 地址" description="">

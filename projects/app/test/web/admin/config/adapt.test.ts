@@ -133,3 +133,25 @@ describe('formatFormData2ConfigStore', () => {
     expect(result.fastgpt.feConfigs.enable_team_model).toBe(true);
   });
 });
+
+describe('sandbox quota config round trip', () => {
+  it('reads and saves sandbox quotas under systemEnv during config round trip, supporting empty values and preserving other limits', () => {
+    const input = createFormInput();
+    input.siteSettings.systemEnv.agentSandboxMax = 12;
+    input.siteSettings.systemEnv.agentSandboxMaxPerTeam = undefined;
+    input.siteSettings.limit = { exportDatasetLimitMinutes: 20, websiteSyncLimitMinuted: 60 };
+    const stored = formatFormData2ConfigStore(input);
+    const form = formatConfigStore2FormSchema(stored);
+
+    expect(form.siteSettings.systemEnv).toMatchObject({
+      agentSandboxMax: 12,
+      agentSandboxMaxPerTeam: undefined
+    });
+    const saved = formatFormData2ConfigStore(form);
+    expect(saved.fastgpt.systemEnv).toMatchObject(stored.fastgpt.systemEnv);
+    expect(saved.fastgpt.feConfigs.limit).toEqual({
+      exportDatasetLimitMinutes: 20,
+      websiteSyncLimitMinuted: 60
+    });
+  });
+});

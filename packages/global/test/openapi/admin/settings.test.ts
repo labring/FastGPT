@@ -68,20 +68,6 @@ describe('UpdateConfigBodySchema', () => {
     ).toThrow();
   });
 
-  it.each(['agentSandboxMax', 'agentSandboxMaxPerTeam'] as const)(
-    'rejects invalid %s overrides',
-    (field) => {
-      for (const value of [0, 1.5, 'bad']) {
-        expect(
-          UpdateConfigBodySchema.safeParse({
-            fastgpt: { feConfigs: {}, systemEnv: { [field]: value } },
-            fastgptPro: {}
-          }).success
-        ).toBe(false);
-      }
-    }
-  );
-
   it('normalizes quota overrides and preserves unrelated dynamic settings', () => {
     const result = UpdateConfigBodySchema.parse({
       fastgpt: {

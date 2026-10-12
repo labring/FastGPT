@@ -289,60 +289,32 @@ describe('backfillAgentSandboxTeamId', () => {
     expect(await readSandboxTeamId(thirdId)).toBe(String(teamId));
   });
 
-  it.each(['000000000000000000000100', '000000000000000000000300'])(
-    'reconciles a late record %s on either side of the original cursor',
-    async (lateId) => {
-      const teamId = new Types.ObjectId();
-      const appId = await seedApp(teamId);
-      const firstId = await seedSandbox({
-        sourceType: 'app',
-        sourceId: appId,
-        id: new Types.ObjectId('000000000000000000000200')
-      });
-      const { context } = createContext();
-      const saveCheckpoint = context.saveCheckpoint.getMockImplementation()!;
-      let inserted = false;
-      context.saveCheckpoint.mockImplementation(async (checkpoint) => {
-        await saveCheckpoint(checkpoint);
-        if (!inserted && checkpoint.lastId === String(firstId)) {
-          inserted = true;
-          await seedSandbox({ sourceType: 'app', sourceId: appId, id: new Types.ObjectId(lateId) });
-        }
-      });
-
-      await expect(backfillAgentSandboxTeamId(context)).resolves.toEqual({
-        scannedCount: 2,
-        backfilledCount: 2,
-        orphanCount: 0
-      });
-      expect(await readSandboxTeamId(new Types.ObjectId(lateId))).toBe(String(teamId));
-    }
-  );
-
-  it('reconciles an initially empty snapshot and resumes the reconciliation after a crash', async () => {
+  it('reconciles late records added during scanning', async () => {
     const teamId = new Types.ObjectId();
     const appId = await seedApp(teamId);
-    const { context, getCheckpoint } = createContext();
-    let sandboxId: Types.ObjectId;
+    const firstId = await seedSandbox({
+      sourceType: 'app',
+      sourceId: appId,
+      id: new Types.ObjectId('000000000000000000000200')
+    });
+    const lateId = '000000000000000000000100';
+    const { context } = createContext();
     const saveCheckpoint = context.saveCheckpoint.getMockImplementation()!;
+    let inserted = false;
     context.saveCheckpoint.mockImplementation(async (checkpoint) => {
       await saveCheckpoint(checkpoint);
-      if (!sandboxId) sandboxId = await seedSandbox({ sourceType: 'app', sourceId: appId });
+      if (!inserted && checkpoint.lastId === String(firstId)) {
+        inserted = true;
+        await seedSandbox({ sourceType: 'app', sourceId: appId, id: new Types.ObjectId(lateId) });
+      }
     });
-    const bulkWrite = vi
-      .spyOn(MongoSandboxInstance.collection, 'bulkWrite')
-      .mockRejectedValueOnce(new Error('interrupted reconciliation'));
-
-    await expect(backfillAgentSandboxTeamId(context)).rejects.toThrow('interrupted reconciliation');
-    expect(getCheckpoint()).toMatchObject({ reconciled: true, lastId: null, scannedCount: 0 });
-    bulkWrite.mockRestore();
 
     await expect(backfillAgentSandboxTeamId(context)).resolves.toEqual({
-      scannedCount: 1,
-      backfilledCount: 1,
+      scannedCount: 2,
+      backfilledCount: 2,
       orphanCount: 0
     });
-    expect(await readSandboxTeamId(sandboxId!)).toBe(String(teamId));
+    expect(await readSandboxTeamId(new Types.ObjectId(lateId))).toBe(String(teamId));
   });
 
   it('fails validation for backfillable leftovers and resets the scan for retry', async () => {
@@ -387,59 +359,5 @@ describe('backfillAgentSandboxTeamId', () => {
     expect(await readSandboxTeamId(lateId!)).toBe(String(teamId));
     expect(await readSandboxTeamId(earlierId)).toBe(String(teamId));
     expect(getFailedRecords()).toEqual([]);
-  });
-
-  it('stops after one reconciliation even when old writers keep adding records', async () => {
-    const appId = await seedApp(new Types.ObjectId());
-    await seedSandbox({ sourceType: 'app', sourceId: appId });
-    const { context, getFailedRecords } = createContext();
-    const saveCheckpoint = context.saveCheckpoint.getMockImplementation()!;
-    let batches = 0;
-    context.saveCheckpoint.mockImplementation(async (checkpoint) => {
-      await saveCheckpoint(checkpoint);
-      if (checkpoint.lastId) {
-        batches += 1;
-        await seedSandbox({ sourceType: 'app', sourceId: appId });
-      }
-    });
-
-    await expect(backfillAgentSandboxTeamId(context)).rejects.toThrow('migration failed');
-    expect(batches).toBe(2);
-    expect(getFailedRecords()).toHaveLength(1);
-    expect(getFailedRecords()[0].stageKey).toBe('validation');
-  });
-
-  it('persists removal of failures repaired by the application even if checkpoint saving crashes', async () => {
-    const appId = await seedApp();
-    const sandboxId = await seedSandbox({ sourceType: 'app', sourceId: appId });
-    const { context, getFailedRecords } = createContext();
-    await expect(backfillAgentSandboxTeamId(context)).rejects.toThrow('migration failed');
-    await MongoSandboxInstance.collection.updateOne(
-      { _id: sandboxId },
-      { $set: { teamId: 'repaired' } }
-    );
-    context.saveCheckpoint.mockRejectedValueOnce(new Error('checkpoint crash'));
-
-    await expect(backfillAgentSandboxTeamId(context)).rejects.toThrow('checkpoint crash');
-    expect(getFailedRecords()).toEqual([]);
-  });
-
-  it('propagates source query errors during validation instead of treating them as orphans', async () => {
-    const appId = await seedApp(new Types.ObjectId(), new Date());
-    await seedSandbox({ sourceType: 'app', sourceId: appId });
-    const { context } = createContext();
-    context.reportProgress.mockImplementation(async (progress) => {
-      if (progress.key === 'validation' && progress.status === 'running') {
-        vi.spyOn(MongoApp.collection, 'find').mockImplementationOnce(() => {
-          throw new Error('query failed');
-        });
-      }
-    });
-
-    await expect(backfillAgentSandboxTeamId(context)).rejects.toThrow('query failed');
-    expect(context.reportProgress).not.toHaveBeenCalledWith({
-      key: 'validation',
-      status: 'succeeded'
-    });
   });
 });

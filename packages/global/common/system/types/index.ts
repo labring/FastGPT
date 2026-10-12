@@ -1,6 +1,6 @@
 import { SubPlanSchema } from '../../../support/wallet/sub/type';
 import { z } from 'zod';
-import { BoolSchema, IntSchema, NumSchema, optionalNullToUndefined } from '../../zod';
+import { BoolSchema, NumSchema, optionalNullToUndefined } from '../../zod';
 import type {
   LicensePayload,
   LicenseSchemaVersionType,
@@ -403,13 +403,14 @@ export const CustomDomainSchema = z.looseObject({
 export type customDomainType = z.infer<typeof CustomDomainSchema>;
 
 export const SystemEnvSchema = z.looseObject({
+  agentSandboxMax: optionalNullToUndefined(NumSchema).meta({
+    description:
+      'Agent 沙箱活跃实例系统总上限（app 会话与技能编辑共用计数池）；未配置时使用环境变量'
+  }),
+  agentSandboxMaxPerTeam: optionalNullToUndefined(NumSchema).meta({
+    description: '单团队 Agent 沙箱活跃实例配额；未配置时使用环境变量，环境变量未配置时不限制'
+  }),
   openapiPrefix: z.string().optional(),
-  agentSandboxMax: optionalNullToUndefined(IntSchema.min(1)).meta({
-    description: 'Agent 沙箱活跃实例系统总上限（app 会话与技能编辑共用计数池）'
-  }),
-  agentSandboxMaxPerTeam: optionalNullToUndefined(IntSchema.min(1)).meta({
-    description: '单团队 Agent 沙箱活跃实例配额；不配置表示不限制'
-  }),
 
   datasetParseMaxProcess: NumSchema.default(10).meta({
     description: '知识库解析最大并发处理进程数'

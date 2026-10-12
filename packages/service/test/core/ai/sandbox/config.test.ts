@@ -52,31 +52,32 @@ describe('agent sandbox config', () => {
     expect(getAgentSandboxArchiveInactiveDays()).toBe(14);
   });
 
-  it('resolves the system active limit with systemEnv priority and env fallback', () => {
+  it('resolves system and per-team quotas with systemEnv priority, positive integer validation, and env fallback', () => {
     serviceEnv.AGENT_SANDBOX_MAX = 42;
-    expect(getAgentSandboxMax()).toBe(42);
-
-    global.systemEnv = {
-      ...global.systemEnv,
-      agentSandboxMax: 7
-    };
-    expect(getAgentSandboxMax()).toBe(7);
-  });
-
-  it('resolves the per-team active quota and defaults to unlimited', () => {
     serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = undefined;
+    expect(getAgentSandboxMax()).toBe(42);
     expect(getAgentSandboxMaxPerTeam()).toBeUndefined();
 
-    serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = 5;
-    expect(getAgentSandboxMaxPerTeam()).toBe(5);
-
+    // systemEnv 正整数配置优先于 env
     global.systemEnv = {
       ...global.systemEnv,
+      agentSandboxMax: 7,
       agentSandboxMaxPerTeam: 3
     };
+    expect(getAgentSandboxMax()).toBe(7);
     expect(getAgentSandboxMaxPerTeam()).toBe(3);
-  });
 
+    // 非正整数或浮点配置回退至 env
+    for (const value of [0, -1, 1.5]) {
+      global.systemEnv = {
+        ...global.systemEnv,
+        agentSandboxMax: value,
+        agentSandboxMaxPerTeam: value
+      };
+      expect(getAgentSandboxMax()).toBe(42);
+      expect(getAgentSandboxMaxPerTeam()).toBeUndefined();
+    }
+  });
   it('does not read sandbox quotas from frontend configuration', () => {
     const originalFeConfigs = global.feConfigs;
     try {
@@ -95,20 +96,6 @@ describe('agent sandbox config', () => {
       expect(getAgentSandboxMaxPerTeam()).toBe(5);
     } finally {
       global.feConfigs = originalFeConfigs;
-    }
-  });
-
-  it('falls back to env for non-positive or fractional stored quotas', () => {
-    for (const value of [0, 1.5]) {
-      serviceEnv.AGENT_SANDBOX_MAX = 42;
-      serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = 5;
-      global.systemEnv = {
-        ...global.systemEnv,
-        agentSandboxMax: value,
-        agentSandboxMaxPerTeam: value
-      };
-      expect(getAgentSandboxMax()).toBe(42);
-      expect(getAgentSandboxMaxPerTeam()).toBe(5);
     }
   });
 });
