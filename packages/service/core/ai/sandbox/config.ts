@@ -45,16 +45,16 @@ const resolveConfiguredLimit = (configured: number | undefined, envLimit: number
 
 /**
  * 获取 Agent sandbox 活跃实例系统总上限（app 会话与技能编辑共用同一计数池）。
- * 系统配置（管理台 feConfigs.limit）优先，env 兜底；undefined 表示不限制。
+ * 服务端系统配置（管理台 systemEnv）优先，env 兜底；undefined 表示不限制。
  */
 export const getAgentSandboxMax = (): number | undefined =>
-  resolveConfiguredLimit(global.feConfigs?.limit?.agentSandboxMax, serviceEnv.AGENT_SANDBOX_MAX);
+  resolveConfiguredLimit(global.systemEnv?.agentSandboxMax, serviceEnv.AGENT_SANDBOX_MAX);
 
 /**
  * 获取单团队 Agent sandbox 活跃实例配额；系统配置优先、env 兜底，undefined 表示不限制。
  */
 export const getAgentSandboxMaxPerTeam = (): number | undefined =>
   resolveConfiguredLimit(
-    global.feConfigs?.limit?.agentSandboxMaxPerTeam,
+    global.systemEnv?.agentSandboxMaxPerTeam,
     serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM
   );

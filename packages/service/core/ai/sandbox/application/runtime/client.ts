@@ -561,7 +561,7 @@ export const getSandboxClient = async (
         sourceType: sandboxClientProps.sourceType,
         sourceId: sandboxClientProps.sourceId,
         userId,
-        ...(quota?.teamId ? { teamId: quota.teamId } : {}),
+        teamId: quota?.teamId,
         resourceLimit: opts.resourceLimits
           ? {
               cpuCount: opts.resourceLimits.cpuCount,

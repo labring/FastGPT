@@ -74,7 +74,7 @@ describe('UpdateConfigBodySchema', () => {
       for (const value of [0, 1.5, 'bad']) {
         expect(
           UpdateConfigBodySchema.safeParse({
-            fastgpt: { feConfigs: { limit: { [field]: value } }, systemEnv: {} },
+            fastgpt: { feConfigs: {}, systemEnv: { [field]: value } },
             fastgptPro: {}
           }).success
         ).toBe(false);
@@ -87,16 +87,21 @@ describe('UpdateConfigBodySchema', () => {
       fastgpt: {
         feConfigs: {
           customFeature: { enabled: true },
-          limit: { agentSandboxMax: '12', agentSandboxMaxPerTeam: null, customLimit: 7 }
+          limit: { customLimit: 7 }
         },
-        systemEnv: {}
+        systemEnv: { agentSandboxMax: '12', agentSandboxMaxPerTeam: null, customSetting: 7 }
       },
       fastgptPro: {}
     });
 
     expect(result.fastgpt.feConfigs).toEqual({
       customFeature: { enabled: true },
-      limit: { agentSandboxMax: 12, agentSandboxMaxPerTeam: undefined, customLimit: 7 }
+      limit: { customLimit: 7 }
+    });
+    expect(result.fastgpt.systemEnv).toEqual({
+      agentSandboxMax: 12,
+      agentSandboxMaxPerTeam: undefined,
+      customSetting: 7
     });
     // 保存归一化后的配置必须能通过读取接口校验，避免保存成功后配置页打不开。
     expect(GetConfigResponseSchema.parse(result)).toMatchObject(result);

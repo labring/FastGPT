@@ -39,19 +39,13 @@ export type GetConfigResponse = z.infer<typeof GetConfigResponseSchema>;
 export const UpdateConfigBodySchema = z.object({
   fastgpt: z
     .looseObject({
-      // 配额复用业务定义；其余动态配置保持原有透传语义，避免收紧历史配置兼容性。
-      feConfigs: z
+      feConfigs: z.looseObject({}).meta({ example: {}, description: '前端功能和展示配置' }),
+      // 配额复用服务端定义；其余动态配置保持原有透传语义。
+      systemEnv: z
         .looseObject({
-          limit: FastGPTFeConfigsSchema.shape.limit
-            .unwrap()
-            .pick({ agentSandboxMax: true, agentSandboxMaxPerTeam: true })
-            .optional()
+          ...SystemEnvSchema.pick({ agentSandboxMax: true, agentSandboxMaxPerTeam: true }).shape
         })
-        .meta({ example: {}, description: '前端功能和展示配置' }),
-      systemEnv: z.looseObject({}).meta({
-        example: {},
-        description: '服务端系统运行配置'
-      }),
+        .meta({ example: {}, description: '服务端系统运行配置' }),
       subPlans: SubPlanInputSchema.optional().meta({
         example: {},
         description: '订阅套餐配置'

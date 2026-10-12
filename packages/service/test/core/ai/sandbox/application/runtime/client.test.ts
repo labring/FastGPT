@@ -386,6 +386,7 @@ describe('sandbox runtime client lifecycle', () => {
     expect(mocks.restoreArchivedSandboxBeforeUse).toHaveBeenCalledWith(
       expect.not.objectContaining({ vmConfig: expect.anything(), storage: expect.anything() })
     );
+    expect(mocks.restoreArchivedSandboxBeforeUse.mock.calls[0][0]).toHaveProperty('teamId');
     expect(mocks.checkSandboxQuota.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.restoreArchivedSandboxBeforeUse.mock.invocationCallOrder[0]
     );

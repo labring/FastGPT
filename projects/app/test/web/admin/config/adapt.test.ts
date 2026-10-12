@@ -57,6 +57,21 @@ const createFormInput = (overrides: DeepPartial<ConfigFormInput> = {}): ConfigFo
 };
 
 describe('formatFormData2ConfigStore', () => {
+  it('persists sandbox quotas in server configuration', () => {
+    const form = createFormInput();
+    form.siteSettings.systemEnv.agentSandboxMax = 12;
+    form.siteSettings.systemEnv.agentSandboxMaxPerTeam = 3;
+
+    const result = formatFormData2ConfigStore(form);
+
+    expect(result.fastgpt.systemEnv).toMatchObject({
+      agentSandboxMax: 12,
+      agentSandboxMaxPerTeam: 3
+    });
+    expect(result.fastgpt.feConfigs.limit).not.toHaveProperty('agentSandboxMax');
+    expect(result.fastgpt.feConfigs.limit).not.toHaveProperty('agentSandboxMaxPerTeam');
+  });
+
   it('writes account cancellation to both fastgpt and fastgptPro configs', () => {
     const result = formatFormData2ConfigStore(createFormInput());
 

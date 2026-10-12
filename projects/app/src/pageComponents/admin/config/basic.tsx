@@ -258,38 +258,38 @@ export const Settings = () => {
         title="沙箱实例系统总上限"
         description="所有团队 Agent 沙箱活跃实例合计上限，留空表示使用环境变量配置；建议不低于单团队配额。"
       >
-        <FormControl isInvalid={!!errors.limit?.agentSandboxMax}>
+        <FormControl isInvalid={!!errors.systemEnv?.agentSandboxMax}>
           <Input
             type="number"
             min={1}
             step={1}
-            {...register('limit.agentSandboxMax', {
+            {...register('systemEnv.agentSandboxMax', {
               setValueAs: (value) => (value === '' ? undefined : Number(value)),
               validate: (value) =>
                 value === undefined || (Number.isInteger(value) && value > 0) || '请输入正整数'
             })}
             placeholder=""
           />
-          <FormErrorMessage>{errors.limit?.agentSandboxMax?.message}</FormErrorMessage>
+          <FormErrorMessage>{errors.systemEnv?.agentSandboxMax?.message}</FormErrorMessage>
         </FormControl>
       </FormItem>
       <FormItem
         title="单团队沙箱实例配额"
         description="单团队 Agent 沙箱活跃实例上限，留空表示使用环境变量配置，环境变量未配置时不限制；建议不超过系统总上限，超过时超出部分不会生效。"
       >
-        <FormControl isInvalid={!!errors.limit?.agentSandboxMaxPerTeam}>
+        <FormControl isInvalid={!!errors.systemEnv?.agentSandboxMaxPerTeam}>
           <Input
             type="number"
             min={1}
             step={1}
-            {...register('limit.agentSandboxMaxPerTeam', {
+            {...register('systemEnv.agentSandboxMaxPerTeam', {
               setValueAs: (value) => (value === '' ? undefined : Number(value)),
               validate: (value) =>
                 value === undefined || (Number.isInteger(value) && value > 0) || '请输入正整数'
             })}
             placeholder=""
           />
-          <FormErrorMessage>{errors.limit?.agentSandboxMaxPerTeam?.message}</FormErrorMessage>
+          <FormErrorMessage>{errors.systemEnv?.agentSandboxMaxPerTeam?.message}</FormErrorMessage>
         </FormControl>
       </FormItem>
       <FirstTitle title="小助手配置" />

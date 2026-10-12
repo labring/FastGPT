@@ -17,7 +17,7 @@ describe('agent sandbox config', () => {
   const originalAgentSandboxArchiveInactiveDays = serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS;
   const originalAgentSandboxMax = serviceEnv.AGENT_SANDBOX_MAX;
   const originalAgentSandboxMaxPerTeam = serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM;
-  const originalFeConfigs = global.feConfigs;
+  const originalSystemEnv = global.systemEnv;
 
   afterEach(() => {
     serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = originalAgentSandboxStorageSize;
@@ -25,7 +25,7 @@ describe('agent sandbox config', () => {
     serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS = originalAgentSandboxArchiveInactiveDays;
     serviceEnv.AGENT_SANDBOX_MAX = originalAgentSandboxMax;
     serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = originalAgentSandboxMaxPerTeam;
-    global.feConfigs = originalFeConfigs;
+    global.systemEnv = originalSystemEnv;
   });
 
   it('derives all size limits from AGENT_SANDBOX_STORAGE_SIZE_GI', () => {
@@ -52,13 +52,13 @@ describe('agent sandbox config', () => {
     expect(getAgentSandboxArchiveInactiveDays()).toBe(14);
   });
 
-  it('resolves the system active limit with feConfigs priority and env fallback', () => {
+  it('resolves the system active limit with systemEnv priority and env fallback', () => {
     serviceEnv.AGENT_SANDBOX_MAX = 42;
     expect(getAgentSandboxMax()).toBe(42);
 
-    global.feConfigs = {
-      ...global.feConfigs,
-      limit: { ...global.feConfigs?.limit, agentSandboxMax: 7 }
+    global.systemEnv = {
+      ...global.systemEnv,
+      agentSandboxMax: 7
     };
     expect(getAgentSandboxMax()).toBe(7);
   });
@@ -70,24 +70,42 @@ describe('agent sandbox config', () => {
     serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = 5;
     expect(getAgentSandboxMaxPerTeam()).toBe(5);
 
-    global.feConfigs = {
-      ...global.feConfigs,
-      limit: { ...global.feConfigs?.limit, agentSandboxMaxPerTeam: 3 }
+    global.systemEnv = {
+      ...global.systemEnv,
+      agentSandboxMaxPerTeam: 3
     };
     expect(getAgentSandboxMaxPerTeam()).toBe(3);
+  });
+
+  it('does not read sandbox quotas from frontend configuration', () => {
+    const originalFeConfigs = global.feConfigs;
+    try {
+      global.systemEnv = {
+        ...global.systemEnv,
+        agentSandboxMax: undefined,
+        agentSandboxMaxPerTeam: undefined
+      };
+      global.feConfigs = {
+        ...global.feConfigs,
+        limit: { ...global.feConfigs?.limit, agentSandboxMax: 1, agentSandboxMaxPerTeam: 1 }
+      };
+      serviceEnv.AGENT_SANDBOX_MAX = 42;
+      serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = 5;
+      expect(getAgentSandboxMax()).toBe(42);
+      expect(getAgentSandboxMaxPerTeam()).toBe(5);
+    } finally {
+      global.feConfigs = originalFeConfigs;
+    }
   });
 
   it('falls back to env for non-positive or fractional stored quotas', () => {
     for (const value of [0, 1.5]) {
       serviceEnv.AGENT_SANDBOX_MAX = 42;
       serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = 5;
-      global.feConfigs = {
-        ...global.feConfigs,
-        limit: {
-          ...global.feConfigs?.limit,
-          agentSandboxMax: value,
-          agentSandboxMaxPerTeam: value
-        }
+      global.systemEnv = {
+        ...global.systemEnv,
+        agentSandboxMax: value,
+        agentSandboxMaxPerTeam: value
       };
       expect(getAgentSandboxMax()).toBe(42);
       expect(getAgentSandboxMaxPerTeam()).toBe(5);

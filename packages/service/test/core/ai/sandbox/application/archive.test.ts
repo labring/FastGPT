@@ -95,6 +95,7 @@ import {
 
 const EMPTY_ZIP_BUFFER = Buffer.from('504b0506000000000000000000000000000000000000', 'hex');
 const restoreParams = {
+  teamId: 'team-1',
   provider: 'opensandbox' as const,
   sandboxId: 'sandbox-1',
   sourceType: ChatSourceTypeEnum.app,
