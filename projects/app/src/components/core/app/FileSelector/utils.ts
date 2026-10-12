@@ -39,7 +39,8 @@ export const inferFileSelectorType = (filename?: string): ChatFileTypeEnum => {
  * 对外只允许传递后端可存储的 key/url + name/type，避免 base64 被写入变量或表单值。
  */
 export const sanitizeFileSelectValue = (
-  value: FileSelectorInputValueType = []
+  value: FileSelectorInputValueType = [],
+  retainPreviewUrl = false
 ): FileSelectorValueItemType[] => {
   if (!Array.isArray(value)) return [];
 
@@ -71,7 +72,8 @@ export const sanitizeFileSelectValue = (
       if (key) {
         return {
           ...baseFile,
-          key
+          key,
+          ...(retainPreviewUrl && url ? { url } : {})
         };
       }
 
@@ -168,7 +170,7 @@ export const markFileSelectorUploading = (files: FileSelectorRenderItemType[]) =
 };
 
 /**
- * 上传成功后补齐后端 key 和临时预览 URL。后续 emit 时会由 sanitizeFileSelectValue 去掉预览 URL。
+ * 上传成功后补齐后端 key 和临时预览 URL。默认 emit 只保留 key，临时调试可保留预览 URL。
  */
 export const markFileSelectorUploadSuccess = ({
   files,

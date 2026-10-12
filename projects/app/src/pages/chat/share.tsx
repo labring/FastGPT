@@ -10,7 +10,7 @@ import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type
 import PageContainer from '@/components/PageContainer';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { LANG_KEY, SHARE_LANG_KEY } from '@fastgpt/web/i18n/utils';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { getInitOutLinkChatInfo } from '@/web/core/chat/api';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
@@ -73,7 +73,7 @@ type Props = {
 };
 
 const OutLink = (props: Props) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const router = useRouter();
   const {
     shareId = '',
@@ -488,7 +488,7 @@ const OutLink = (props: Props) => {
 };
 
 const Render = (props: Props) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { toast } = useToast();
   const { shareId, authToken, customUid, appId } = props;
   const { localUId, setLocalUId, loaded } = useShareChatStore();
@@ -635,7 +635,8 @@ export async function getServerSideProps(context: any) {
       shareId: shareId ?? '',
       authToken: authToken ?? '',
       customUid,
-      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow'], {
+      // 分享页同样挂载全局 Layout，预加载强制成员名弹窗所需的 namespace。
+      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow', 'account_team'], {
         langCookieKey: SHARE_LANG_KEY,
         fallbackLangCookieKey: LANG_KEY
       }))

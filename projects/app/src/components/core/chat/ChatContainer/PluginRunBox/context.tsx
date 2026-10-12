@@ -20,6 +20,7 @@ import {
 } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
+import { safeAbortController } from '../ChatBox/utils/generate';
 
 type PluginRunContextType = PluginRunBoxProps & {
   isChatting: boolean;
@@ -58,7 +59,7 @@ const PluginRunContextProvider = ({
   const { t } = useTranslation();
   /* Abort chat completions, questionGuide */
   const abortRequest = useCallback(() => {
-    chatController.current?.abort('stop');
+    safeAbortController(chatController.current, 'stop');
   }, []);
 
   const generatingMessage = useCallback(

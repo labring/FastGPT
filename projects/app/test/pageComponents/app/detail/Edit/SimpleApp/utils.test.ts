@@ -234,4 +234,41 @@ describe('form2AppWorkflow model reference', () => {
       [NodeInputKeyEnum.collectionFilterVersion]: 'structured'
     });
   });
+
+  it('prioritizes pluginData name and avatar in appWorkflow2Form and falls back to node snapshot', () => {
+    const nodes = [
+      {
+        nodeId: 'tool-node-1',
+        pluginId: 'plugin-1',
+        name: 'Snapshot Name 1',
+        avatar: 'snapshot/avatar/1',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        inputs: [],
+        outputs: [],
+        pluginData: {
+          name: 'Updated Live Name 1',
+          avatar: 'live/avatar/1'
+        }
+      },
+      {
+        nodeId: 'tool-node-2',
+        pluginId: 'plugin-2',
+        name: 'Snapshot Name 2',
+        avatar: 'snapshot/avatar/2',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        inputs: [],
+        outputs: [],
+        pluginData: {
+          error: 'resource_no_permission'
+        }
+      }
+    ];
+
+    const form = appWorkflow2Form({ nodes: nodes as any, chatConfig: {} });
+    expect(form.selectedTools).toHaveLength(2);
+    expect(form.selectedTools[0].name).toBe('Updated Live Name 1');
+    expect(form.selectedTools[0].avatar).toBe('live/avatar/1');
+    expect(form.selectedTools[1].name).toBe('Snapshot Name 2');
+    expect(form.selectedTools[1].avatar).toBe('snapshot/avatar/2');
+  });
 });

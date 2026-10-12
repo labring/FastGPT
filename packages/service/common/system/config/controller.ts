@@ -1,8 +1,7 @@
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import { MongoSystemConfigs } from './schema';
-import { type FastGPTConfigFileType } from '@fastgpt/global/common/system/types';
+import type { FastGPTConfigFileType, LicenseDataType } from '@fastgpt/global/common/system/types';
 import { FastGPTProUrl } from '../constants';
-import { type LicenseDataType } from '@fastgpt/global/common/system/types';
 
 export const getFastGPTConfigFromDB = async (): Promise<{
   fastgptConfig: FastGPTConfigFileType;
@@ -29,6 +28,9 @@ export const getFastGPTConfigFromDB = async (): Promise<{
   ]);
 
   const config = fastgptConfig?.value || {};
+  // 快照原样返回（含已到期的）：过期属于「状态」而非「数据不存在」，
+  // 过滤掉会让界面无法区分「从未激活」与「已到期」。
+  // 是否按商业版启用由调用方用 getLicenseStatus / isLicenseActive 判定。
   const licenseData = licenseConfig?.value?.data as LicenseDataType | undefined;
 
   const fastgptConfigTime = fastgptConfig?.createTime.getTime().toString();

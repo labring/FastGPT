@@ -12,7 +12,11 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { DispatchFlowResponse } from '@fastgpt/service/core/workflow/dispatch/type';
-import { summarizeRuntimeNodeResponses } from '@fastgpt/service/core/workflow/dispatch/utils';
+import {
+  createNodeSummary,
+  createWorkflowRuntimeSummary,
+  summarizeRuntimeNodeResponses
+} from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 
 const runWorkflowMock = vi.fn();
 
@@ -80,7 +84,7 @@ const makeDispatchFlowResponse = (
     [DispatchNodeResponseKeyEnum.assistantResponses]: [],
     [DispatchNodeResponseKeyEnum.runTimes]: 1,
     [DispatchNodeResponseKeyEnum.newVariables]: {},
-    runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, nodeResponses),
+    workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, nodeResponses),
     durationSeconds: 0,
     ...rest
   } as DispatchFlowResponse;
@@ -117,6 +121,7 @@ const makeProps = (override: Record<string, any> = {}) => {
     runtimeEdges: [],
     variableState: makeVariableState(),
     usagePush: vi.fn(),
+    nodeSummary: createNodeSummary(),
     checkIsStopping: () => false,
     ...override
   } as any;
@@ -147,12 +152,11 @@ describe('dispatchParallelRun', () => {
       })
     );
 
-    const result: any = await dispatchParallelRun(
-      makeProps({
-        nodeResponseSink,
-        nodeResponseParentId: 'parallel-parent-response'
-      })
-    );
+    const props = makeProps({
+      nodeResponseSink,
+      nodeResponseParentId: 'parallel-parent-response'
+    });
+    const result: any = await dispatchParallelRun(props);
 
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
     expect(result.data[NodeOutputKeyEnum.parallelSuccessResults]).toEqual(['done']);
@@ -171,7 +175,9 @@ describe('dispatchParallelRun', () => {
       childrenResponses: undefined
     });
     expect(nodeResponseSink.publish.mock.calls[0][0][0].response.childTotalPoints).toBeUndefined();
-    expect(nodeResponse.totalPoints).toBe(3);
+    expect(nodeResponseSink.publish.mock.calls[0][0][0].response.totalPoints).toBeUndefined();
+    expect(nodeResponse.totalPoints).toBeUndefined();
+    expect(props.nodeSummary.totalPoints).toBe(3);
     expect(nodeResponse.childTotalPoints).toBeUndefined();
     expect(nodeResponse.parallelDetail).toBeUndefined();
   });
@@ -207,6 +213,12 @@ describe('dispatchParallelRun', () => {
     runWorkflowMock
       .mockResolvedValueOnce(
         makeDispatchFlowResponse({
+          workflowRuntimeSummary: {
+            ...createWorkflowRuntimeSummary(),
+            hasError: true,
+            llmInputTokens: 11,
+            llmOutputTokens: 2
+          },
           nodeResponses: [
             makeResponseItem('failed-node', {
               id: 'failed-node-response',
@@ -218,6 +230,13 @@ describe('dispatchParallelRun', () => {
       )
       .mockResolvedValueOnce(
         makeDispatchFlowResponse({
+          workflowRuntimeSummary: {
+            ...createWorkflowRuntimeSummary(),
+            hasNestedEnd: true,
+            nestedEndOutput: 'done',
+            llmInputTokens: 23,
+            llmOutputTokens: 5
+          },
           nodeResponses: [
             makeResponseItem('chatNode', { totalPoints: 2 }),
             makeResponseItem('nestedEnd', {
@@ -229,18 +248,17 @@ describe('dispatchParallelRun', () => {
         })
       );
 
-    const result: any = await dispatchParallelRun(
-      makeProps({
-        params: {
-          loopInputArray: ['a'],
-          [NodeInputKeyEnum.childrenNodeIdList]: [],
-          [NodeInputKeyEnum.parallelRunMaxConcurrency]: 1,
-          [NodeInputKeyEnum.parallelRunMaxRetryTimes]: 1
-        },
-        nodeResponseSink,
-        nodeResponseParentId: 'parallel-parent-response'
-      })
-    );
+    const props = makeProps({
+      params: {
+        loopInputArray: ['a'],
+        [NodeInputKeyEnum.childrenNodeIdList]: [],
+        [NodeInputKeyEnum.parallelRunMaxConcurrency]: 1,
+        [NodeInputKeyEnum.parallelRunMaxRetryTimes]: 1
+      },
+      nodeResponseSink,
+      nodeResponseParentId: 'parallel-parent-response'
+    });
+    const result: any = await dispatchParallelRun(props);
 
     expect(runWorkflowMock.mock.calls.map((call) => call[0].nodeResponseParentId)).toEqual([
       'parallel-parent-response_task_0_attempt_0',
@@ -260,6 +278,12 @@ describe('dispatchParallelRun', () => {
       loopOutputValue: 'done'
     });
     expect(result.data[NodeOutputKeyEnum.parallelSuccessResults]).toEqual(['done']);
+    expect(props.nodeSummary).toMatchObject({
+      llmInputTokens: 34,
+      llmOutputTokens: 7,
+      hasError: false,
+      hasNestedEnd: false
+    });
   });
 
   it('无父 nodeResponseId 时保持旧的 nodeId 前缀', async () => {

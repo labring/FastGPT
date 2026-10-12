@@ -1,7 +1,7 @@
 import { getEmptyAgentConfig } from '@/pageComponents/app/detail/Edit/ChatAgent/utils';
 import { parseCurl } from '@fastgpt/global/common/string/http';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { type AppSchemaType } from '@fastgpt/global/core/app/type';
+import { type AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -310,9 +310,9 @@ export const getEmptyAppsTemplate = (t: any) => {
 export const parsePluginFromCurlString = (
   curl: string
 ): {
-  nodes: AppSchemaType['modules'];
-  edges: AppSchemaType['edges'];
-  chatConfig: AppSchemaType['chatConfig'];
+  nodes: AppVersionSchemaType['nodes'];
+  edges: AppVersionSchemaType['edges'];
+  chatConfig: AppVersionSchemaType['chatConfig'];
 } => {
   const { url, method, headers, body, params, bodyArray } = parseCurl(curl);
 

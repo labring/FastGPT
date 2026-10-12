@@ -7,11 +7,12 @@ import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { Box, Flex } from '@chakra-ui/react';
 import type { ResponsiveValue } from '@chakra-ui/system';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import MyTag from '@fastgpt/web/components/common/Tag';
 import type { SelectProps } from '@fastgpt/web/components/common/MySelect';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 import type { ListItemType } from '@fastgpt/web/components/common/MySelect/type';
@@ -25,6 +26,8 @@ import {
   resolveModelSelectorSelection,
   sortModelSelectorModels
 } from './AIModelSelector.utils';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/pageComponents/app/detail/context';
 import { ModelStatusLabel } from './ModelStatusLabel';
 
 type Props = Omit<SelectProps, 'list'> & {
@@ -39,6 +42,7 @@ type Props = Omit<SelectProps, 'list'> & {
   /** 只展示具备视觉能力的候选，不要求父组件预加载模型列表。 */
   vision?: boolean;
   excludeHidden?: boolean;
+  appId?: string;
 };
 
 const UNSET_MODEL_VALUE = '';
@@ -59,7 +63,9 @@ const ModelLabel = ({
   noOfLines?: ResponsiveValue<number>;
   showTags?: boolean;
 }) => {
+  const { t } = useTranslation();
   const multimodalEmbedding = model.type === ModelTypeEnum.embedding && !!model.config.vision;
+  const isSystem = model.scope === ModelScopeEnum.system;
   return (
     <Flex
       data-preserve-width
@@ -89,8 +95,13 @@ const ModelLabel = ({
           </Box>
         </MyTooltip>
       </Flex>
-      {showTags && (model.testMode || multimodalEmbedding) && (
+      {showTags && (
         <Flex alignItems={'center'} gap={1} ml={2} flexShrink={0}>
+          {isSystem && (
+            <MyTag type={'borderFill'} colorSchema={'gray'} fontSize={'xs'} px={1.5} py={0.5}>
+              {t('common:model.system_model_tag')}
+            </MyTag>
+          )}
           {model.testMode && <TestModeBetaTag />}
           {multimodalEmbedding && <MultimodalTag />}
         </Flex>
@@ -112,17 +123,25 @@ const AIModelSelector = ({
   outLinkAuthData,
   vision,
   excludeHidden,
-  // Chakra Button 不消费 isInvalid，留在兜底 props 里只会经 ButtonProps 泄漏成 DOM 非法属性。
-  isInvalid: _isInvalid,
+  appId,
   ...props
 }: Props) => {
   const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+  const contextAppId = useContextSelector(AppContext, (e) => e?.appId);
+  const effectiveAppId = appId ?? (contextAppId || undefined);
+
   const {
     modelList,
     loading,
     error: catalogError
-  } = useModelList({ outLinkAuthData, enabled: isOpen, modelType, vision, excludeHidden });
+  } = useModelList({
+    outLinkAuthData,
+    enabled: isOpen,
+    modelType,
+    vision,
+    excludeHidden
+  });
   const getModelProvider = useUserModelStore((state) => state.getModelProvider);
   const getModelProviders = useUserModelStore((state) => state.getModelProviders);
   const catalogVersion = useUserModelStore((state) => state.version);
@@ -134,6 +153,13 @@ const AIModelSelector = ({
         : new Set(restrictedList.map((item) => String(item.value))),
     [restrictedList]
   );
+  const currentValue = isEmptyModelValue(props.value) ? '' : String(props.value);
+  const detailState = useModelSummary({
+    modelId: currentValue,
+    appId: effectiveAppId,
+    outLinkAuthData
+  });
+
   const models = useMemo(
     () =>
       sortModelSelectorModels(
@@ -145,7 +171,6 @@ const AIModelSelector = ({
       ),
     [allowedValues, modelList, modelType]
   );
-  const currentValue = isEmptyModelValue(props.value) ? '' : String(props.value);
   const selection = useMemo(
     () =>
       resolveModelSelectorSelection({
@@ -155,7 +180,6 @@ const AIModelSelector = ({
     [currentValue, models]
   );
   const selectedModel = selection?.model;
-  const detailState = useModelSummary({ modelId: currentValue, outLinkAuthData });
   const { setFromCatalog } = detailState;
   const normalizedSelectionRef = useRef<string>();
   const checkedCatalogRef = useRef<string>();
@@ -167,12 +191,21 @@ const AIModelSelector = ({
       return;
     }
     if (!currentValue) return;
-    const key = JSON.stringify([catalogVersion, currentValue]);
+    const key = JSON.stringify([catalogVersion, currentValue, effectiveAppId]);
     if (checkedCatalogRef.current === key) return;
     checkedCatalogRef.current = key;
     const currentModel = modelList.find((model) => model.modelId === currentValue);
     if (currentModel) setFromCatalog(currentModel);
-  }, [catalogError, catalogVersion, currentValue, setFromCatalog, isOpen, loading, modelList]);
+  }, [
+    catalogError,
+    catalogVersion,
+    currentValue,
+    effectiveAppId,
+    setFromCatalog,
+    isOpen,
+    loading,
+    modelList
+  ]);
 
   // 完整目录加载后自动把旧 model 值写回 modelId，选择器对外只输出稳定 ID。
   useEffect(() => {

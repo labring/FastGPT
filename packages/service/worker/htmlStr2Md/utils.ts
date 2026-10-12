@@ -67,6 +67,21 @@ const processBase64Images = async (
   return result + htmlContent.slice(lastIndex);
 };
 
+/** A markdown table's second line, `| --- |` with optional alignment colons. */
+const isDivider = (line?: string) => !!line && /^\|(?:\s*:?-{3,}:?\s*\|)+$/.test(line);
+
+/** The cells a converted row holds, colspan padding included: its unescaped pipes, less one. */
+const cellCount = (line: string) => Math.max((line.match(/(?<!\\)\|/g) || []).length - 1, 0);
+
+/**
+ * The conditions under which joplin-turndown-plugin-gfm lays a table out as
+ * plain paragraphs instead of rows: no rows, a single cell, or a nested table.
+ */
+const tableIsSkipped = (table: HTMLTableElement) =>
+  !table.rows ||
+  (table.rows.length === 1 && table.rows[0].childNodes.length <= 1) ||
+  !!table.querySelector('table');
+
 export const html2md = async (
   html: string,
   options: {
@@ -89,6 +104,47 @@ export const html2md = async (
   try {
     turndownService.remove(['i', 'script', 'iframe', 'style']);
     turndownService.use(gfm);
+
+    // The plugin has no caption rule, so a caption's text landed among the
+    // rows, where it breaks the table. Turndown converts a table's children
+    // first, so the caption is held here and written above the table instead.
+    const captions = new WeakMap<Node, string>();
+    turndownService.addRule('tableCaption', {
+      filter: 'caption',
+      replacement: function (content, node) {
+        if (node.parentNode) captions.set(node.parentNode, content.trim());
+        return '';
+      }
+    });
+
+    // joplin-turndown-plugin-gfm only treats a row as the header when every
+    // cell is a <th>. A table written with <td> throughout therefore gets an
+    // empty header row, and its column names drop into the first body row --
+    // where the header is what gives every value in the table its meaning.
+    // A later rule wins in turndown, so this one replaces the plugin's.
+    turndownService.addRule('tableHeader', {
+      filter: (node) => node.nodeName === 'TABLE',
+      replacement: function (content, node) {
+        const caption = captions.get(node);
+        const title = caption ? `${caption}\n\n` : '';
+        // Leave a table the plugin lays out as paragraphs exactly as it is.
+        if (tableIsSkipped(node as HTMLTableElement)) return `${title}${content}`;
+
+        const lines = content.replace(/\n+/g, '\n').trim().split('\n');
+        // GFM drops every cell past the header's width, so the header has to
+        // be as wide as the widest row, not only as wide as the first one.
+        const columns = lines.reduce((widest, line) => Math.max(widest, cellCount(line)), 0);
+        if (columns < 1) return `\n\n${title}${lines.join('\n')}\n\n`;
+
+        const hasHeader = isDivider(lines[1]);
+        const header = lines[0] + '     |'.repeat(Math.max(columns - cellCount(lines[0]), 0));
+        const divider = hasHeader
+          ? lines[1] + ' --- |'.repeat(Math.max(columns - cellCount(lines[1]), 0))
+          : `|${' --- |'.repeat(columns)}`;
+        const body = lines.slice(hasHeader ? 2 : 1);
+        return `\n\n${title}${[header, divider, ...body].join('\n')}\n\n`;
+      }
+    });
 
     // add custom handling for media tag
     turndownService.addRule('media', {

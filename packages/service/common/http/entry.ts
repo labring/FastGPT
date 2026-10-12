@@ -47,6 +47,27 @@ function getRequestRoute(url: string) {
     .join('/');
 }
 
+/** 将声明为敏感信息的 query 参数值替换后再用于日志和错误上下文。 */
+export function redactRequestUrl(url: string, redactQueryParams: string[]) {
+  if (!url || redactQueryParams.length === 0) return url;
+
+  const queryStart = url.indexOf('?');
+  if (queryStart < 0) return url;
+
+  const path = url.slice(0, queryStart);
+  const query = url.slice(queryStart + 1);
+  if (!query) return url;
+
+  const params = new URLSearchParams(query);
+  for (const name of redactQueryParams) {
+    if (!params.has(name)) continue;
+    params.delete(name);
+    params.append(name, 'REDACTED');
+  }
+
+  return `${path}?${params.toString()}`;
+}
+
 /**
  * 创建与 Web 框架无关的 API handler 管线，统一处理日志、追踪、错误和默认 JSON 响应。
  * 框架适配器通过 beforeCallback 注入 CORS 等运行时能力。
@@ -55,9 +76,11 @@ export const createApiEntry = <
   Request extends NodeApiRequest = NodeApiRequest,
   Response extends NodeApiResponse = NodeApiResponse
 >({
-  beforeCallback = []
+  beforeCallback = [],
+  redactQueryParams = []
 }: {
   beforeCallback?: ((req: Request, res: Response) => Promise<unknown>)[];
+  redactQueryParams?: string[];
 }) => {
   return (...args: ApiHandler<any, Request, Response>[]): ApiHandler<any, Request, Response> => {
     return async function api(
@@ -72,6 +95,7 @@ export const createApiEntry = <
       const responseLogger = getLogger(LogCategories.HTTP.RESPONSE);
 
       const url = req.url || '';
+      const logUrl = redactRequestUrl(url, redactQueryParams);
       const route = getRequestRoute(url);
       const method = req.method?.toUpperCase() || '';
       const ip = getClientIpFromRequest(req);
@@ -91,11 +115,11 @@ export const createApiEntry = <
             }
           },
           async (span) => {
-            requestLogger.info(`[${method}] ${url}`, {
+            requestLogger.info(`[${method}] ${logUrl}`, {
               verbose: false,
               requestId,
               method,
-              url,
+              url: logUrl,
               ip,
               userAgent,
               contentLength
@@ -108,7 +132,7 @@ export const createApiEntry = <
               const durationMs = Date.now() - start;
               const httpStatusCode = res.statusCode;
 
-              responseLogger.info(`[${method}] ${url} - ${httpStatusCode} in ${durationMs}ms`, {
+              responseLogger.info(`[${method}] ${logUrl} - ${httpStatusCode} in ${durationMs}ms`, {
                 verbose: false,
                 requestId,
                 method,
@@ -157,7 +181,7 @@ export const createApiEntry = <
                   return jsonRes(res, {
                     code: 500,
                     error,
-                    url: req.url
+                    url: logUrl
                   });
                 }
 
@@ -166,14 +190,14 @@ export const createApiEntry = <
                   code: 400,
                   message: 'Data validation error',
                   error,
-                  url: req.url
+                  url: logUrl
                 });
               }
 
               const response = jsonRes(res, {
                 code: 500,
                 error,
-                url: req.url
+                url: logUrl
               });
               span.setAttribute('http.response.status_code', res.statusCode);
               if (res.statusCode >= 500) {

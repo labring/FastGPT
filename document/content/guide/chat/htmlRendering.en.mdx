@@ -1,7 +1,16 @@
 ---
-title: Dialog Boxes & HTML Rendering
+title: Dialog Boxes & HTML Rendering (Legacy)
 description: How to embed HTML code blocks in FastGPT via Markdown, with fullscreen, source code toggle, and other interactive features
 ---
+
+import { Alert } from '@/components/docs/Alert';
+
+<Alert icon="💡" context="info">
+  **Note**: In FastGPT **v4.17.3** and above, chat dialog HTML rendering has been significantly
+  optimized and upgraded to a native controlled HTML pipeline (supporting rich typography, native
+  multimedia, and interactive charts without fixed-height iframes). For the latest documentation and
+  usage, please see [Chat Dialog HTML Rendering](/en/guide/chat/html).
+</Alert>
 
 | Source Mode                   | Preview Mode                  | Fullscreen Mode               |
 | ----------------------------- | ----------------------------- | ----------------------------- |
@@ -50,7 +59,3 @@ Simply use a Markdown code block with the language set to `html`. For example:
 </html>
 ```
 ````
-
-```
-
-```

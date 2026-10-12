@@ -7,6 +7,10 @@ import {
 import { restoreWorkflowLocalDraftAfterLogin } from '../../../../src/web/core/workflow/localDraft/useWorkflowLocalDraftRestore';
 import { setCurrentAuthTmbId } from '../../../../src/web/support/user/currentAuthTmbId';
 import { getAuthLoginRedirectPath } from '../../../../src/web/support/user/loginRedirect/url';
+import {
+  clearInviteLinkFromRoute,
+  getInviteLinkIdFromRoute
+} from '../../../../src/web/support/user/loginRedirect/invitation';
 import type { UserType } from '@fastgpt/global/support/user/type';
 
 vi.mock('@/web/core/app/api/version', () => ({
@@ -120,12 +124,12 @@ describe('login redirect helpers', () => {
     vi.setSystemTime(new Date('2026-05-11T00:00:00.000Z'));
   });
 
-  it('redirects a cancelling team to the account cancellation page before restoring drafts', async () => {
+  it('redirects a cancelling team to the account cancellation page before invitations and drafts', async () => {
     const restoreWorkflowLocalDraft = vi.fn();
 
     const route = await resolveLoginRedirectAfterLogin({
       user: cancellingUser,
-      fallbackRoute: '/account/team',
+      fallbackRoute: '/account/team?invitelinkid=invite-1',
       restoreWorkflowLocalDraft
     });
 
@@ -203,6 +207,50 @@ describe('login redirect helpers', () => {
     );
     expect(readWorkflowLocalDraft()).toBeNull();
     expect(route).toBe('/app/detail?appId=app-1');
+  });
+
+  it('should parse both invitation query spellings and clear only invitation context', () => {
+    const route = '/account/team?foo=bar&inviteLinkId=invite-1#members';
+
+    expect(getInviteLinkIdFromRoute(route)).toBe('invite-1');
+    expect(clearInviteLinkFromRoute(route)).toBe('/account/team?foo=bar#members');
+    expect(getInviteLinkIdFromRoute('/account/team?invitelinkid=invite-2')).toBe('invite-2');
+    expect(
+      getInviteLinkIdFromRoute('https://fastgpt.example.com/account/team?inviteLinkId=invite-3')
+    ).toBe('invite-3');
+    expect(
+      clearInviteLinkFromRoute('/account/team?invitelinkid=invite-2&inviteLinkId=invite-3')
+    ).toBe('/account/team');
+  });
+
+  it('should keep invitation route ahead of a matched workflow draft', async () => {
+    saveDraftToStorage();
+    const saveDraft = vi.fn();
+    const invitationRoute = '/account/team?invitelinkid=invite-1';
+
+    const route = await resolveLoginRoute({
+      fallbackRoute: invitationRoute,
+      saveDraft: saveDraft as any
+    });
+
+    expect(route).toBe(invitationRoute);
+    expect(saveDraft).not.toHaveBeenCalled();
+    expect(readWorkflowLocalDraft()).not.toBeNull();
+  });
+
+  it('should keep invitation route ahead of a mismatched-team workflow draft', async () => {
+    saveDraftToStorage({ tmbId: 'tmb-b' });
+    const saveDraft = vi.fn();
+    const invitationRoute = '/account/team?inviteLinkId=invite-2';
+
+    const route = await resolveLoginRoute({
+      fallbackRoute: invitationRoute,
+      saveDraft: saveDraft as any
+    });
+
+    expect(route).toBe(invitationRoute);
+    expect(saveDraft).not.toHaveBeenCalled();
+    expect(readWorkflowLocalDraft()).not.toBeNull();
   });
 
   it('should restore draft even when login fallback route is not the workflow detail page', async () => {

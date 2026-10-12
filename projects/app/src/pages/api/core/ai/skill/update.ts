@@ -1,27 +1,13 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { updateSkill, updateParentFoldersUpdateTime } from '@fastgpt/service/core/ai/skill/manage';
-import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import {
-  ManagePermissionVal,
-  PerResourceTypeEnum,
-  ReadPermissionVal
-} from '@fastgpt/global/support/permission/constant';
-import { TeamSkillCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
-import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import {
-  AgentSkillTypeEnum,
   AgentSkillCategoryEnum,
   AgentSkillCreationStatusEnum
 } from '@fastgpt/global/core/ai/skill/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
-import {
-  syncChildrenPermission,
-  syncCollaborators
-} from '@fastgpt/service/support/permission/inheritPermission';
-import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
 import {
   UpdateSkillBodySchema,
   type UpdateSkillBody
@@ -32,25 +18,40 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { isValidObjectId } from 'mongoose';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
-import { checkMoveFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
+import { moveSkill } from '@/service/core/ai/skill/move';
 
+/**
+ * 更新技能接口
+ * 1. 若包含 parentId，则复用 moveSkill 服务完成鉴权、层级检查、权限继承与移动操作；
+ * 2. 若包含基础信息（名称、介绍、分类、头像），则校验写权限并更新。
+ */
 async function handler(req: ApiRequestProps<UpdateSkillBody>) {
   const { skillId, name, description, category, avatar, parentId } = parseApiInput({
     req,
     bodySchema: UpdateSkillBodySchema
   }).body;
 
-  if (!skillId) {
+  if (!skillId || !isValidObjectId(skillId)) {
     return Promise.reject(SkillErrEnum.invalidSkillId);
   }
 
-  if (!isValidObjectId(skillId)) {
-    return Promise.reject(SkillErrEnum.invalidSkillId);
+  // 1. 移动分支：直接调用 moveSkill 统一服务
+  if (parentId !== undefined) {
+    await moveSkill({ req, skillId, parentId });
   }
 
-  const isMove = parentId !== undefined;
+  const hasUpdateFields =
+    name !== undefined ||
+    description !== undefined ||
+    category !== undefined ||
+    avatar !== undefined;
 
-  // Fetch skill with basic read permission; finer-grained checks follow based on operation type
+  // 纯移动操作，无需执行后续属性更新
+  if (!hasUpdateFields) {
+    return;
+  }
+
+  // 2. 基础属性更新
   const { teamId, tmbId, skill, permission } = await authSkill({
     req,
     skillId,
@@ -63,181 +64,48 @@ async function handler(req: ApiRequestProps<UpdateSkillBody>) {
     return Promise.reject(skill.creationError || SkillErrEnum.noStorage);
   }
 
-  if (isMove) {
-    // Move operation: check source folder, target folder, and root-level permissions
-    if (parentId) {
-      // Moving into a target folder: require manage permission on the destination folder
-      await authSkill({
-        req,
-        skillId: parentId,
-        per: ManagePermissionVal,
-        authToken: true,
-        authApiKey: true
-      });
-    }
+  if (!permission.hasWritePer) {
+    return Promise.reject(SkillErrEnum.unAuthSkill);
+  }
 
-    if (skill.parentId) {
-      // Moving out of the source folder: require manage permission on the source folder
-      await authSkill({
-        req,
-        skillId: String(skill.parentId),
-        per: ManagePermissionVal,
-        authToken: true,
-        authApiKey: true
-      });
-    }
-
-    if (parentId === null || !skill.parentId) {
-      // Involves root directory (moving into or out of root): require team-level skill create permission
-      await authUserPer({
-        req,
-        authToken: true,
-        authApiKey: true,
-        per: TeamSkillCreatePermissionVal
-      });
-    }
-  } else {
-    // Non-move operation: require write permission
-    if (!permission.hasWritePer) {
-      return Promise.reject(SkillErrEnum.unAuthSkill);
+  if (name !== undefined) {
+    if (typeof name !== 'string' || name.trim().length === 0 || name.length > 50) {
+      return Promise.reject(SkillErrEnum.invalidSkillName);
     }
   }
 
-  if (isMove) {
-    await checkMoveFolderDepth({
-      resourceId: skillId,
-      targetParentId: parentId,
+  if (description !== undefined && description.length > 500) {
+    return Promise.reject(SkillErrEnum.invalidDescription);
+  }
+
+  if (category !== undefined) {
+    const validCategories = Object.values(AgentSkillCategoryEnum) as string[];
+    if (category.some((c) => !validCategories.includes(c))) {
+      return Promise.reject(SkillErrEnum.invalidCategory);
+    }
+  }
+
+  const updateData: Record<string, any> = {};
+  if (name !== undefined) updateData.name = name.trim();
+  if (description !== undefined) updateData.description = description.trim();
+  if (category !== undefined) updateData.category = category;
+  if (avatar !== undefined) updateData.avatar = avatar;
+
+  await mongoSessionRun(async (session) => {
+    await updateSkill(skillId, updateData, session);
+    await getS3AvatarSource().refreshAvatar(avatar, skill.avatar, session);
+  });
+
+  updateParentFoldersUpdateTime({ parentId: skill.parentId ?? null });
+
+  (async () => {
+    addAuditLog({
+      tmbId,
       teamId,
-      model: MongoAgentSkills,
-      isFolderType: (type) => type === AgentSkillTypeEnum.folder
+      event: AuditEventEnum.UPDATE_SKILL,
+      params: { skillName: skill.name, skillType: getI18nSkillType(skill.type) }
     });
-  }
-
-  if (!isMove) {
-    // Field validation for normal update
-    if (name !== undefined) {
-      if (typeof name !== 'string' || name.trim().length === 0) {
-        return Promise.reject(SkillErrEnum.invalidSkillName);
-      }
-      if (name.length > 50) {
-        return Promise.reject(SkillErrEnum.invalidSkillName);
-      }
-    }
-
-    if (description !== undefined && description.length > 500) {
-      return Promise.reject(SkillErrEnum.invalidDescription);
-    }
-
-    if (category !== undefined) {
-      const validCategories = Object.values(AgentSkillCategoryEnum) as string[];
-      if (category.some((c) => !validCategories.includes(c))) {
-        return Promise.reject(SkillErrEnum.invalidCategory);
-      }
-    }
-
-    const updateData: Record<string, any> = {};
-    if (name !== undefined) updateData.name = name.trim();
-    if (description !== undefined) updateData.description = description.trim();
-    if (category !== undefined) updateData.category = category;
-    if (avatar !== undefined) updateData.avatar = avatar;
-
-    if (Object.keys(updateData).length === 0) {
-      return Promise.reject(SkillErrEnum.noFieldsToUpdate);
-    }
-
-    await mongoSessionRun(async (session) => {
-      await updateSkill(skillId, updateData, session);
-      await getS3AvatarSource().refreshAvatar(avatar, skill.avatar, session);
-    });
-
-    updateParentFoldersUpdateTime({ parentId: skill.parentId ?? null });
-
-    (async () => {
-      addAuditLog({
-        tmbId,
-        teamId,
-        event: AuditEventEnum.UPDATE_SKILL,
-        params: { skillName: skill.name, skillType: getI18nSkillType(skill.type) }
-      });
-    })();
-  } else {
-    // Move operation: sync permissions and update parentId
-    let targetFolderName = 'root';
-    if (parentId) {
-      const targetFolder = await MongoAgentSkills.findById(parentId, 'name').lean();
-      if (targetFolder) targetFolderName = targetFolder.name;
-    }
-
-    await mongoSessionRun(async (session) => {
-      const [parentClbs, oldParentClbs, oldResourceClbs] = await Promise.all([
-        getResourceOwnedClbs({
-          teamId,
-          resourceId: parentId,
-          resourceType: PerResourceTypeEnum.agentSkill,
-          session
-        }),
-        skill.parentId
-          ? getResourceOwnedClbs({
-              teamId,
-              resourceId: skill.parentId,
-              resourceType: PerResourceTypeEnum.agentSkill,
-              session
-            })
-          : Promise.resolve([]),
-        getResourceOwnedClbs({
-          teamId,
-          resourceId: skillId,
-          resourceType: PerResourceTypeEnum.agentSkill,
-          session
-        })
-      ]);
-
-      // Sync permission records for the skill itself
-      const newResourceClbs = await syncCollaborators({
-        resourceId: skillId,
-        resourceType: PerResourceTypeEnum.agentSkill,
-        collaborators: parentClbs,
-        oldParentCollaborators: oldParentClbs,
-        session,
-        teamId
-      });
-
-      // Sync subtree permissions (only effective when the skill is a folder)
-      await syncChildrenPermission({
-        resource: skill,
-        resourceType: PerResourceTypeEnum.agentSkill,
-        resourceModel: MongoAgentSkills,
-        folderTypeList: [AgentSkillTypeEnum.folder],
-        oldParentCollaborators: oldResourceClbs,
-        newParentCollaborators: newResourceClbs,
-        session
-      });
-
-      // Update parentId and mark permission as inherited
-      await MongoAgentSkills.findByIdAndUpdate(
-        skillId,
-        {
-          ...parseParentIdInMongo(parentId),
-          inheritPermission: true,
-          updateTime: new Date()
-        },
-        { session }
-      );
-    });
-
-    // Update updateTime on both old and new parent folders
-    updateParentFoldersUpdateTime({ parentId: skill.parentId ?? null });
-    updateParentFoldersUpdateTime({ parentId });
-
-    (async () => {
-      addAuditLog({
-        tmbId,
-        teamId,
-        event: AuditEventEnum.MOVE_SKILL,
-        params: { skillName: skill.name, skillType: getI18nSkillType(skill.type), targetFolderName }
-      });
-    })();
-  }
+  })();
 }
 
 export default NextAPI(handler);

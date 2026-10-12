@@ -210,7 +210,7 @@ const ChatContent = (props: ChatPageProps) => {
 
   // show main chat interface
   return (
-    <ChatContextProvider params={chatHistoryProviderParams}>
+    <ChatContextProvider params={chatHistoryProviderParams} disabled={!currentAppId}>
       <ChatItemContextProvider
         showRouteToDatasetDetail={isStandalone !== '1'}
         showRunningStatus={props.showRunningStatus}
@@ -330,7 +330,16 @@ export async function getServerSideProps(context: any) {
       showFullText: chatQuoteReaderConfig?.showFullText ?? true,
       canDownloadSource: chatQuoteReaderConfig?.canDownloadSource ?? true,
       showWholeResponse: chatQuoteReaderConfig?.showWholeResponse ?? true,
-      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow', 'login', 'user']))
+      // Layout 的强制成员名弹窗也会在聊天页打开，SSR 必须一并注入其翻译资源。
+      ...(await serviceSideProps(context, [
+        'file',
+        'app',
+        'chat',
+        'workflow',
+        'login',
+        'user',
+        'account_team'
+      ]))
     }
   };
 }

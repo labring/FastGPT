@@ -1,32 +1,34 @@
 import {
-  getModelTestDefaults,
-  getModelTestMap,
-  setModelTestMap,
-  addModelTestModel
-} from '@test/modelCache';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
   ParagraphChunkAIModeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { getRootUser } from '@test/datas/users';
-import { Types } from '@fastgpt/service/common/mongo';
+import {
+  addModelTestModel,
+  getModelTestDefaults,
+  getModelTestMap,
+  setModelTestMap
+} from '@test/modelCache';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ read: vi.fn(), paragraph: vi.fn(), usage: vi.fn() }));
 // 本文件需要验证真实模型状态，不能使用全局测试环境里始终返回成功的向量模型 getter。
-vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) =>
-  importOriginal<typeof import('@fastgpt/service/core/ai/model')>()
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) =>
+  importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()
 );
 vi.mock('@fastgpt/service/core/dataset/read', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/dataset/read')>()),
   readDatasetSourceRawText: mocks.read
 }));
-vi.mock('@fastgpt/service/common/api/plusRequest', () => ({ POST: mocks.paragraph }));
+vi.mock('@fastgpt/service/thirdProvider/fastgptPro/api', () => ({
+  postCreateParagraphTitle: mocks.paragraph
+}));
 vi.mock('@/service/core/dataset/queues/utils', () => ({
   checkTeamAiPointsAndLock: vi.fn().mockResolvedValue(true)
 }));
@@ -128,7 +130,7 @@ describe('datasetParseQueue model validation', () => {
           await MongoDatasetTraining.findOne({ collectionId: collection._id }).lean()
         ).toMatchObject({
           q: 'Original source text.',
-          mode: state === 'unconfigured' ? TrainingModeEnum.chunk : TrainingModeEnum.image
+          mode: state === 'unconfigured' ? TrainingModeEnum.index : TrainingModeEnum.image
         });
         expect(mocks.paragraph).not.toHaveBeenCalled();
         expect(mocks.usage).not.toHaveBeenCalled();
@@ -156,9 +158,7 @@ describe('datasetParseQueue model validation', () => {
     await datasetParseQueue();
     expect(mocks.paragraph).toHaveBeenCalledTimes(5);
     expect(mocks.paragraph).toHaveBeenCalledWith(
-      '/core/dataset/training/llmPargraph',
-      expect.objectContaining({ modelId: 'missing-agent' }),
-      expect.anything()
+      expect.objectContaining({ modelId: 'missing-agent' })
     );
     expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
       mode: TrainingModeEnum.parse,
@@ -183,7 +183,7 @@ describe('datasetParseQueue model validation', () => {
     expect(await MongoDatasetTraining.findById(task._id)).toBeNull();
     expect(
       await MongoDatasetTraining.findOne({ collectionId: collection._id }).lean()
-    ).toMatchObject({ q: 'AI paragraph text.', mode: TrainingModeEnum.chunk });
+    ).toMatchObject({ q: 'AI paragraph text.', mode: TrainingModeEnum.index });
     expect(mocks.usage).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ inputTokens: 2, outputTokens: 1 })
     );

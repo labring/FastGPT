@@ -226,6 +226,16 @@ export const createAgentLoopCoreAssistantEventCollector = ({
     };
   };
 
+  /** 子输出归属对应工具，保留子流程自己的展示字段；父模型后续输出另起一段。 */
+  const appendToolAssistantResponses = (callId: string, values?: AIChatItemValueItemType[]) => {
+    if (!values?.length) return;
+
+    const responseIndex = findToolResponseIndex(callId);
+    const insertIndex = responseIndex >= 0 ? responseIndex + 1 : assistantResponses.length;
+    assistantResponses.splice(insertIndex, 0, ...values);
+    currentAssistantTextIndex = undefined;
+  };
+
   const appendMetaAssistantResponse = (
     event: Extract<
       AgentLoopEvent,
@@ -364,6 +374,13 @@ export const createAgentLoopCoreAssistantEventCollector = ({
             response: appendUniqueDelta(tool.response, event.response)
           }));
         }
+
+        // The low-level loop intentionally keeps these values opaque. This
+        // adapter is the boundary that owns the concrete persisted chat type.
+        appendToolAssistantResponses(
+          event.call.id,
+          event.assistantResponses as AIChatItemValueItemType[] | undefined
+        );
 
         return;
       }

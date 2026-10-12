@@ -63,8 +63,8 @@ async function handler(
       teamId,
       tmbId,
       type: AppTypeEnum.mcpToolSet,
-      modules: [toolSetRuntimeNode],
-      storageModules: encodeMcpToolSetNodesForStorage([toolSetRuntimeNode]),
+      nodes: [toolSetRuntimeNode],
+      storageNodes: encodeMcpToolSetNodesForStorage([toolSetRuntimeNode]),
       session
     });
 

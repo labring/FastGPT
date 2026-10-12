@@ -1,5 +1,5 @@
 import { DingtalkAccessTokenCache } from '@fastgpt/dal/redis/caches';
-import { axios } from '../api/axios';
+import { axiosWithoutSSRF } from '../api/axios';
 import { getLogger, LogCategories } from '../logger';
 import { serviceEnv } from '../../env';
 
@@ -45,7 +45,8 @@ export const getDingtalkAppAccessToken = async ({
     return await dingtalkAccessTokenCache.getOrRefresh({
       server: { appKey, appSecret },
       fetchToken: async () => {
-        const { data } = await axios.post<DingtalkAccessTokenResponse>(
+        // DINGTALK_BASE_URL 由部署方配置，可能指向内网代理，不使用 SSRF 拦截器。
+        const { data } = await axiosWithoutSSRF.post<DingtalkAccessTokenResponse>(
           `${serviceEnv.DINGTALK_BASE_URL}/v1.0/oauth2/accessToken`,
           { appKey, appSecret }
         );

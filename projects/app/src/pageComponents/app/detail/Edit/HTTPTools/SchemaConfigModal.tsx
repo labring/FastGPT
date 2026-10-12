@@ -57,22 +57,23 @@ const SchemaConfigModal = ({ onClose }: { onClose: () => void }) => {
   const reloadApp = useContextSelector(AppContext, (v) => v.reloadApp);
 
   const toolSetData = useMemo(() => {
-    const toolSetNode = appDetail.modules.find(
+    const toolSetNode = appDetail.nodes.find(
       (item) => item.flowNodeType === FlowNodeTypeEnum.toolSet
     );
-    const toolSet = toolSetNode?.toolConfig?.httpToolSet;
-    return toolSet && !('toolId' in toolSet) ? toolSet : undefined;
-  }, [appDetail.modules]);
+    return toolSetNode?.toolConfig?.httpToolSet;
+  }, [appDetail.nodes]);
+
+  const editableToolSetData = toolSetData && 'toolId' in toolSetData ? undefined : toolSetData;
 
   const { register, setValue, handleSubmit, watch } = useForm<HttpToolsType>({
     defaultValues: {
       avatar: '',
       name: appDetail?.name || '',
       intro: '',
-      baseUrl: toolSetData?.baseUrl || '',
-      apiSchemaStr: toolSetData?.apiSchemaStr || '',
-      customHeaders: toolSetData?.customHeaders || '{"Authorization":"Bearer"}',
-      headerSecret: toolSetData?.headerSecret || {}
+      baseUrl: editableToolSetData?.baseUrl || '',
+      apiSchemaStr: editableToolSetData?.apiSchemaStr || '',
+      customHeaders: editableToolSetData?.customHeaders || '{"Authorization":"Bearer"}',
+      headerSecret: editableToolSetData?.headerSecret || {}
     }
   });
 

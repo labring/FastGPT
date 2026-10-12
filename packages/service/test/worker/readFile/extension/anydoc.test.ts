@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { anydocTestExtensions } from '../anydocFixtures';
 
 const { mockFormatFromExtension, mockToMarkdownBytes } = vi.hoisted(() => ({
@@ -206,12 +207,27 @@ describe('readAnydocRawText', () => {
     expect(mockToMarkdownBytes).not.toHaveBeenCalled();
   });
 
-  it('透传 anydoc 的解析错误', async () => {
-    const error = Object.assign(new Error('encrypted document'), { code: 'encrypted' });
+  it.each([
+    ['encrypted', 'invalidParseFile'],
+    ['malformed', 'invalidParseFile'],
+    ['missingPart', 'invalidParseFile'],
+    ['unsupported', 'unsupportedParseFileType'],
+    ['resourceLimit', 'officeConversionFailed'],
+    ['needsOcr', 'pdfParseFailed']
+  ])('anydoc 错误码 %s 映射为诊断码 %s', async (code, statusText) => {
+    mockFormatFromExtension.mockReturnValue('doc');
+    mockToMarkdownBytes.mockRejectedValue(Object.assign(new Error('anydoc failure'), { code }));
+    await expect(
+      readAnydocRawText({ buffer: Buffer.alloc(0), extension: 'doc', encoding: 'utf-8' })
+    ).rejects.toThrow(statusText);
+  });
+
+  it('未映射的 anydoc 错误码落通用文档解析失败兜底', async () => {
+    const error = Object.assign(new Error('unknown failure'), { code: 'totallyUnknown' });
     mockFormatFromExtension.mockReturnValue('doc');
     mockToMarkdownBytes.mockRejectedValue(error);
     await expect(
       readAnydocRawText({ buffer: Buffer.alloc(0), extension: 'doc', encoding: 'utf-8' })
-    ).rejects.toBe(error);
+    ).rejects.toThrow(CommonErrEnum.pdfParseFailed);
   });
 });

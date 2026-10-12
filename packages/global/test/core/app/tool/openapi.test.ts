@@ -83,4 +83,21 @@ describe('GetPreviewNodeQuerySchema', () => {
       '对话管理'
     ]);
   });
+
+  it('includes model APIs under 基础功能 in System OpenAPI document', () => {
+    expect(apiDocOpenAPIDocument.paths['/core/ai/model/list']?.get).toBeDefined();
+    expect(apiDocOpenAPIDocument.paths['/core/ai/model/catalog']?.get).toBeDefined();
+    expect(apiDocOpenAPIDocument.paths['/core/ai/model/summary']?.post).toBeDefined();
+
+    expect(apiDocOpenAPIDocument.paths['/core/ai/model/list']?.get?.tags).toEqual(['模型管理']);
+    expect(apiDocOpenAPIDocument.paths['/core/ai/model/catalog']?.get?.tags).toEqual(['模型管理']);
+    expect(apiDocOpenAPIDocument.paths['/core/ai/model/summary']?.post?.tags).toEqual(['模型管理']);
+
+    const tagGroups =
+      (apiDocOpenAPIDocument as { 'x-tagGroups'?: Array<{ name: string; tags: string[] }> })[
+        'x-tagGroups'
+      ] ?? [];
+    const basicGroup = tagGroups.find((group) => group.name === '基础功能');
+    expect(basicGroup?.tags).toContain('模型管理');
+  });
 });

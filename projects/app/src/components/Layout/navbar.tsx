@@ -104,13 +104,9 @@ const Navbar = ({ unread }: { unread: number }) => {
               label: t('common:navbar.Config'),
               icon: 'support/config/configLight',
               activeIcon: 'support/config/configFill',
-              link: '/config/plugin/tool',
-              activeLink: [
-                '/config/plugin/tool',
-                '/config/plugin/marketplace',
-                '/config/model',
-                '/config/system/migrations'
-              ]
+              link: '/admin/dashboard',
+              activePrefix: ['/admin'],
+              activeLink: [] as string[]
             }
           ]
         : [])
@@ -143,7 +139,9 @@ const Navbar = ({ unread }: { unread: number }) => {
       {/* 导航列表 */}
       <Box flex={1}>
         {navbarList.map((item) => {
-          const isActive = item.activeLink.includes(router.pathname);
+          const isActive =
+            (item.activePrefix?.some((prefix) => router.pathname.startsWith(prefix)) ?? false) ||
+            item.activeLink.includes(router.pathname);
 
           return (
             <Box

@@ -18,6 +18,8 @@
   "chat.waiting_for_response": "열심히 생각하는 중",
   "chat_history": "대화 기록",
   "chat_test_app": "디버그-{{name}}",
+  "chat_title_auto_execute": "자동 실행",
+  "chat_title_upload_file": "파일 업로드",
   "citation_card_prefix": "",
   "citation_card_suffix": " 개 인용",
   "citation_card_title": "인용 {{num}}개",

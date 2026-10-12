@@ -20,7 +20,7 @@ export const safeDecodeURIComponent = (
 
 /**
  * 安全的 URI 编码函数
- * @param string 需要编码的字符串
+ * @param str 需要编码的字符串
  * @returns 编码后的字符串
  */
 export const safeEncodeURIComponent = (str: string): string => {

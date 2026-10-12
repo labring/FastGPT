@@ -20,9 +20,9 @@ import {
   type ReferenceItemValueType
 } from './type/io';
 import type { NodeToolConfigType, StoreNodeItemType } from './type/node';
-import { getModelReferenceValue, isEmptyModelValue } from '../ai/modelReference';
+import { getModelReferenceValue, isEmptyModelValue } from '../ai/model/reference';
 import { ToolSetToolSummarySchema } from '../app/tool/toolSet/type';
-import type { AppChatConfigType, AppSchemaType, AppWelcomeConfigType } from '../app/type';
+import type { AppChatConfigType, AppWelcomeConfigType } from '../app/type';
 import type { VariableItemType } from '../app/variable/type';
 import { normalizeAndParseVariableList } from '../app/variable/utils';
 import { type EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
@@ -642,7 +642,7 @@ export const formatModels = ({
   modelReferencePolicy
 }: {
   nodes: StoreNodeItemType[] | undefined;
-  chatConfig?: AppSchemaType['chatConfig'];
+  chatConfig?: AppChatConfigType;
   models?: Array<{ modelId: string; model: string; type: ModelTypeEnum }>;
   defaultModelIds?: Partial<Record<ModelTypeEnum, string>>;
   modelReferencePolicy: 'preserve' | 'fallback' | 'validate' | 'import';
@@ -845,6 +845,14 @@ export const formatModels = ({
   };
 
   nodes.forEach((node) => {
+    const datasetSelectInput = node.inputs.find(
+      (input) => input.key === NodeInputKeyEnum.datasetSelectList
+    );
+    const hasSelectedDataset =
+      !datasetSelectInput ||
+      nodeInputIsReference(datasetSelectInput) ||
+      (Array.isArray(datasetSelectInput.value) && datasetSelectInput.value.length > 0);
+
     for (const [legacyKey, modelIdKey] of workflowModelKeyMappings) {
       const legacyInput = node.inputs.find((input) => input.key === legacyKey);
       const modelIdInput = node.inputs.find((input) => input.key === modelIdKey);
@@ -877,7 +885,10 @@ export const formatModels = ({
           }
         })();
         if (!featureKey) return true;
-        return Boolean(node.inputs.find((input) => input.key === featureKey)?.value);
+        return (
+          hasSelectedDataset &&
+          Boolean(node.inputs.find((input) => input.key === featureKey)?.value)
+        );
       })();
 
       if (modelReferencePolicy === 'validate' && !featureEnabled) continue;
@@ -946,12 +957,15 @@ export const formatModels = ({
       !Array.isArray(datasetParamsInput.value)
     ) {
       const datasetParams = datasetParamsInput.value as Record<string, unknown>;
+      const hasSelectedDataset =
+        Array.isArray(datasetParams.datasets) && datasetParams.datasets.length > 0;
       formatNestedModelReference({
         config: datasetParams,
         legacyKey: NodeInputKeyEnum.datasetSearchRerankModel,
         modelIdKey: NodeInputKeyEnum.datasetSearchRerankModelId,
         type: ModelTypeEnum.rerank,
-        featureEnabled: Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingReRank]),
+        featureEnabled:
+          hasSelectedDataset && Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingReRank]),
         feature: 'rerank'
       });
       formatNestedModelReference({
@@ -959,7 +973,9 @@ export const formatModels = ({
         legacyKey: NodeInputKeyEnum.datasetSearchExtensionModel,
         modelIdKey: NodeInputKeyEnum.datasetSearchExtensionModelId,
         type: ModelTypeEnum.llm,
-        featureEnabled: Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingExtensionQuery]),
+        featureEnabled:
+          hasSelectedDataset &&
+          Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingExtensionQuery]),
         feature: 'query_extension'
       });
     }
@@ -982,7 +998,7 @@ export const addModelNamesToWorkflow = ({
   models = []
 }: {
   nodes?: StoreNodeItemType[];
-  chatConfig?: AppSchemaType['chatConfig'];
+  chatConfig?: AppChatConfigType;
   models?: Array<{ modelId: string; model: string; type: ModelTypeEnum }>;
 }) => {
   const findModelName = ({ modelId, type }: { modelId: unknown; type: ModelTypeEnum }) => {

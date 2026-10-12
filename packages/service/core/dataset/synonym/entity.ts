@@ -11,8 +11,10 @@ import {
 import { MongoDatasetSynonym, MongoDatasetSynonymMapping } from './schema';
 import { serviceEnv } from '../../../env';
 
+type DatasetSynonymMatcherSnapshot = DatasetSynonymMatcher & { hasMappings: boolean };
+
 const matcherCacheMaxWeight = DatasetSynonymLimits.maxTotalTermCodePoints * 2;
-const matcherCache = new Map<string, { matcher: DatasetSynonymMatcher; weight: number }>();
+const matcherCache = new Map<string, { matcher: DatasetSynonymMatcherSnapshot; weight: number }>();
 let matcherCacheWeight = 0;
 const transformConfigCacheTtl = 5000;
 const transformConfigCacheMaxSize = 1000;
@@ -127,7 +129,7 @@ export const getDatasetSynonymMatcher = async ({
   teamId: string;
   datasetId: string;
   fileVersion: number;
-}): Promise<DatasetSynonymMatcher> => {
+}): Promise<DatasetSynonymMatcherSnapshot> => {
   const cacheKey = getMatcherCacheKey({ teamId, datasetId, fileVersion });
   const cached = matcherCache.get(cacheKey);
   if (cached) {
@@ -137,7 +139,11 @@ export const getDatasetSynonymMatcher = async ({
   }
 
   const mappings = await getDatasetSynonymMappings({ teamId, datasetId, fileVersion });
-  const matcher = buildSynonymMatcher(mappings.map(toMatcherMapping));
+  const matcher = {
+    ...buildSynonymMatcher(mappings.map(toMatcherMapping)),
+    // 空版本可能是禁用词表，也可能已被旧代码清理；历史比较不能将它视为可靠快照。
+    hasMappings: mappings.length > 0
+  };
   const weight = mappings.reduce(
     (sum, mapping) =>
       sum +

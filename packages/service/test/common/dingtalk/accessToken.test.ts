@@ -5,7 +5,7 @@ const { mockAxiosPost, mockGetOrRefresh } = vi.hoisted(() => ({
   mockGetOrRefresh: vi.fn()
 }));
 
-vi.mock('../../../common/api/axios', () => ({ axios: { post: mockAxiosPost } }));
+vi.mock('../../../common/api/axios', () => ({ axiosWithoutSSRF: { post: mockAxiosPost } }));
 vi.mock('@fastgpt/dal/redis/caches', () => ({
   DingtalkAccessTokenCache: class {
     getOrRefresh = mockGetOrRefresh;

@@ -145,6 +145,15 @@ export const getStreamTypingQueueConsumeCount = ({
   return finished ? queueLength : Math.min(queueLength, STREAM_TYPING_QUEUE_COUNT_WHILE_STREAMING);
 };
 
+/** 收到回答文本时，只消费队首积压的 reasoning，保留回答文本原有的打字节奏。 */
+export const getStreamReasoningQueueConsumeCount = (queue: AnswerQueueItem[]) => {
+  let reasoningCount = 0;
+  while (reasoningCount < queue.length && queue[reasoningCount].reasoningText) {
+    reasoningCount += 1;
+  }
+  return reasoningCount;
+};
+
 type HandleEventSourceDataParams = {
   event: string;
   data: string;
@@ -181,7 +190,9 @@ export function handleEventSourceData(params: HandleEventSourceDataParams) {
 
       case SseResponseEventEnum.answer: {
         const reasoningText = obj.choices?.[0]?.delta?.reasoning_content || '';
-        enqueue({ responseValueId, event, reasoningText });
+        if (reasoningText) {
+          enqueue({ responseValueId, event, reasoningText });
+        }
 
         const content = obj.choices?.[0]?.delta?.content || '';
 
@@ -198,7 +209,9 @@ export function handleEventSourceData(params: HandleEventSourceDataParams) {
 
       case SseResponseEventEnum.fastAnswer: {
         const reasoningText = obj.choices?.[0]?.delta?.reasoning_content || '';
-        enqueue({ responseValueId, event, reasoningText });
+        if (reasoningText) {
+          enqueue({ responseValueId, event, reasoningText });
+        }
 
         const text = obj.choices?.[0]?.delta?.content || '';
         enqueue({ responseValueId, event, text });
@@ -306,6 +319,14 @@ function $ssefetch(params: SSEFetchParams) {
       responseQueue.forEach(applyAnswerItem);
       responseQueue = [];
     };
+    const flushReasoningQueue = () => {
+      const reasoningCount = getStreamReasoningQueueConsumeCount(responseQueue);
+
+      if (reasoningCount === 0) return;
+
+      responseQueue.slice(0, reasoningCount).forEach(applyAnswerItem);
+      responseQueue = responseQueue.slice(reasoningCount);
+    };
     const dispatchNonAnswerMessage: StartChatFnProps['generatingMessage'] = (message) => {
       // 控制事件是顺序屏障：先补齐此前收到的文本，再立即更新工具或状态。
       flushAnswerQueue();
@@ -360,6 +381,10 @@ function $ssefetch(params: SSEFetchParams) {
     animateResponseLoop();
 
     const enqueue = (data: AnswerQueueItem) => {
+      // 一旦收到回答文本，先补齐此前积压的 reasoning，避免回答一直等思考动画。
+      if (data.text) {
+        flushReasoningQueue();
+      }
       responseQueue.push(data);
 
       if (document.hidden) {
@@ -497,6 +522,14 @@ function $resumefetch({
       responseQueue.forEach(applyAnswerItem);
       responseQueue = [];
     };
+    const flushReasoningQueue = () => {
+      const reasoningCount = getStreamReasoningQueueConsumeCount(responseQueue);
+
+      if (reasoningCount === 0) return;
+
+      responseQueue.slice(0, reasoningCount).forEach(applyAnswerItem);
+      responseQueue = responseQueue.slice(reasoningCount);
+    };
     const dispatchNonAnswerMessage: StartChatFnProps['generatingMessage'] = (message) => {
       // 恢复直播同样以控制事件为屏障，避免工具状态越过尚未展示的回答。
       flushAnswerQueue();
@@ -538,6 +571,10 @@ function $resumefetch({
         return;
       }
 
+      // 直播阶段收到回答文本时，先补齐此前积压的 reasoning。
+      if (data.text) {
+        flushReasoningQueue();
+      }
       responseQueue.push(data);
 
       if (document.hidden) {

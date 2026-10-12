@@ -1,6 +1,5 @@
 'use client';
 
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import {
   getTeamSystemPluginList,
   getTeamToolDetail,
@@ -9,7 +8,7 @@ import {
 import { deleteTeamPlugin } from '@/web/core/plugin/team/api';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import {
   Box,
   Button,
@@ -56,7 +55,7 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import dynamic from 'next/dynamic';
 
-const ImportPluginModal = dynamic(() => import('@/pageComponents/config/ImportPluginModal'));
+const ImportPluginModal = dynamic(() => import('@/pageComponents/admin/config/ImportPluginModal'));
 
 type PluginDebugSessionState = Pick<
   GetPluginDebugChannelResponseType,
@@ -66,7 +65,7 @@ type PluginDebugSessionState = Pick<
 
 const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const router = useRouter();
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useSafeTranslation();
   const { feConfigs, initd, setShowProModal } = useSystemStore();
   const { isPc } = useSystem();
   const { userInfo } = useUserStore();
@@ -274,10 +273,14 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                       menuList={[
                         {
                           children: [
-                            {
-                              label: t('app:install_from_marketplace'),
-                              onClick: () => router.push('/dashboard/tool/marketplace')
-                            },
+                            ...(!feConfigs?.disableMarketplace
+                              ? [
+                                  {
+                                    label: t('app:install_from_marketplace'),
+                                    onClick: () => router.push('/dashboard/tool/marketplace')
+                                  }
+                                ]
+                              : []),
                             {
                               label: t('app:install_from_file'),
                               onClick: onOpenImportModal
@@ -425,7 +428,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     {userInfo?.username === 'root' && (
                       <Button
                         onClick={() => {
-                          router.push('/config/plugin/tool');
+                          router.push('/admin/resources/tool');
                         }}
                         w={'160px'}
                       >
@@ -542,7 +545,7 @@ function PluginDebugModal({
   onRefreshTools: () => Promise<GetTeamPluginListResponseType>;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { copyData } = useCopyData();
   const connectionKey = session?.connectionKey ?? '';
   const connectionUrl = useMemo(
@@ -790,11 +793,3 @@ function ContextRender() {
 }
 
 export default ContextRender;
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['app', 'file']))
-    }
-  };
-}

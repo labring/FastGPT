@@ -177,12 +177,15 @@ const FileSelector = ({
   canLocalUpload,
   canUrlUpload,
   onFileErrorChange,
+  retainPreviewUrl = false,
   isDisabled = false,
   isInvalid = false
 }: AppFileSelectConfigType & {
   value: FileSelectorInputValueType;
   onChange?: (e: FileSelectorValueItemType[]) => void;
   onFileErrorChange?: (hasError: boolean) => void;
+  /** 仅临时调试表单保留上传预览地址，持久化场景仍只输出 key。 */
+  retainPreviewUrl?: boolean;
   canLocalUpload?: boolean;
   canUrlUpload?: boolean;
   isDisabled?: boolean;
@@ -234,7 +237,7 @@ const FileSelector = ({
   }, [hasFileError]);
 
   useEffect(() => {
-    const cleanedValue = sanitizeFileSelectValue(value);
+    const cleanedValue = sanitizeFileSelectValue(value, retainPreviewUrl);
     if (
       skipNextCleanEcho.current &&
       isFileSelectorCleanValueEcho({
@@ -259,20 +262,20 @@ const FileSelector = ({
     if (!isEqual(cleanedValue, value)) {
       onChangeRef.current?.(cleanedValue);
     }
-  }, [value]);
+  }, [value, retainPreviewUrl]);
 
   const handleChangeFiles = useCallback(
     (files: FileSelectorRenderItemType[], emitChange = true) => {
       setFileList([...files]);
 
       if (emitChange) {
-        const cleanedFiles = sanitizeFileSelectValue(files);
+        const cleanedFiles = sanitizeFileSelectValue(files, retainPreviewUrl);
         lastEmittedValue.current = cleanedFiles;
         skipNextCleanEcho.current = true;
         onChangeRef.current?.(cleanedFiles);
       }
     },
-    []
+    [retainPreviewUrl]
   );
 
   // 后端存储值只保留 key；组件渲染时再为 key-only 文件补临时预览 URL。

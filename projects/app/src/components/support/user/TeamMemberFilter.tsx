@@ -23,6 +23,9 @@ type Props = {
   selectedSelf?: string;
   /** 是否让后端将当前登录成员放在分页结果首位。 */
   currentFirst?: boolean;
+  maxW?: string | number;
+  /** 下拉浮层最大宽度，默认 260px。 */
+  menuMaxW?: string | number;
 };
 
 /**
@@ -36,7 +39,9 @@ const TeamMemberFilter = ({
   value,
   onChange,
   selectedSelf,
-  currentFirst = false
+  currentFirst = false,
+  maxW,
+  menuMaxW
 }: Props) => {
   const { t } = useTranslation();
   const labels = useCommonFilterLabels();
@@ -151,6 +156,8 @@ const TeamMemberFilter = ({
       filterLocal={false}
       ListContainer={ScrollData}
       listSize={'lg'}
+      maxW={maxW}
+      menuMaxW={menuMaxW}
     />
   );
 };

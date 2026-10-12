@@ -1,6 +1,6 @@
 import type { DispatchFlowResponse } from '../type';
-import { getRuntimeNodeResponseSummary } from '../utils';
+import { getWorkflowRuntimeSummary } from '../utils/summary';
 
 // Returns undefined if nestedEnd was never reached (sub-workflow errored early).
 export const getNestedEndOutputValue = (response: DispatchFlowResponse): any =>
-  getRuntimeNodeResponseSummary(response).nestedEndOutput;
+  getWorkflowRuntimeSummary(response).nestedEndOutput;

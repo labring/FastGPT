@@ -15,12 +15,16 @@ export type ScrollListType = ({
   ScrollContainerRef,
   isLoading,
   showLoadingOverlay,
+  showNoMoreTip,
+  showPaginationTip,
   ...props
 }: {
   children: ReactNode;
   ScrollContainerRef?: RefObject<HTMLDivElement>;
   isLoading?: boolean;
   showLoadingOverlay?: boolean;
+  showNoMoreTip?: boolean;
+  showPaginationTip?: boolean;
 } & BoxProps) => React.JSX.Element;
 
 export function useScrollPagination<
@@ -195,13 +199,19 @@ export function useScrollPagination<
       ScrollContainerRef,
       isLoading: isLoadingProp,
       showLoadingOverlay = true,
+      showNoMoreTip: showNoMoreTipProp,
+      showPaginationTip: showPaginationTipProp,
       ...props
     }: {
       isLoading?: boolean;
       showLoadingOverlay?: boolean;
+      showNoMoreTip?: boolean;
+      showPaginationTip?: boolean;
       children: ReactNode;
       ScrollContainerRef?: RefObject<HTMLDivElement>;
     } & BoxProps) => {
+      const finalShowNoMoreTip = showNoMoreTipProp ?? showNoMoreTip;
+      const finalShowPaginationTip = showPaginationTipProp ?? showPaginationTip;
       const ref = ScrollContainerRef || ScrollRef;
       const loadText = (() => {
         if (isLoading || isLoadingProp) return t('common:is_requesting');
@@ -246,10 +256,10 @@ export function useScrollPagination<
           )}
           {children}
           {scrollLoadType === 'bottom' &&
-            showPaginationTip &&
+            finalShowPaginationTip &&
             !isEmpty &&
             !(isLoading && data.length === 0) &&
-            (showNoMoreTip || !noMore) && (
+            (finalShowNoMoreTip || !noMore) && (
               <Box
                 mt={'auto'}
                 pt={2}

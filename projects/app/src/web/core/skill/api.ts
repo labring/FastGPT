@@ -22,7 +22,6 @@ import type {
   GetSkillFolderPathResponse,
   CreateSkillFolderBody,
   SkillDebugChatBody,
-  ListAppsBySkillIdResponse,
   ListSkillVersionsBody,
   ListSkillVersionsResponse,
   SkillRuntimeBody,
@@ -39,6 +38,11 @@ import type {
   ChangeSkillOwnerResponse,
   ListSkillsV2Query
 } from '@fastgpt/global/openapi/core/ai/skill/api';
+import type {
+  BatchResourceActionResponse,
+  BatchResourceDeleteBody,
+  BatchResourceMoveBody
+} from '@fastgpt/global/openapi/common/batch/api';
 
 /** 获取 Skill 列表（支持分页、搜索、分类、文件夹过滤） */
 export const getSkillList = (data: ListSkillsQuery) =>
@@ -80,6 +84,12 @@ export const postCopySkill = (data: CopySkillBody) =>
 
 /** 删除 Skill */
 export const deleteSkill = (skillId: string) => DELETE('/core/ai/skill/delete', { skillId });
+
+export const batchMoveSkills = (data: BatchResourceMoveBody) =>
+  POST<BatchResourceActionResponse>('/core/ai/skill/batch/move', data);
+
+export const batchDeleteSkills = (data: BatchResourceDeleteBody) =>
+  POST<BatchResourceActionResponse>('/core/ai/skill/batch/delete', data);
 
 /** 以原始请求体导入 Skill，文件流不落 FastGPT 本地临时目录。 */
 export const importSkill = ({
@@ -209,10 +219,6 @@ export const exportSkill = (skillId: string, skillName: string) => {
     setLoading(false);
   });
 };
-
-/** 获取引用了某个 Skill 的应用列表 */
-export const getAppsBySkillId = (skillId: string) =>
-  GET<ListAppsBySkillIdResponse>('/core/ai/skill/apps', { skillId });
 
 /** 获取 Skill 历史版本列表（支持分页滚动加载） */
 export const getSkillVersionList = (data: ListSkillVersionsBody) =>

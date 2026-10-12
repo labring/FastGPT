@@ -19,8 +19,12 @@ vi.mock('@fastgpt/service/core/dataset/read', () => ({
   rawText2Chunks: mocks.rawText2Chunks
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
+  getSystemModelHandle: async () => ({
+    getEmbeddingModelData: vi.fn(() => ({ modelId: 'embedding-id', config: {} })),
+    getLLMModelData: vi.fn(() => ({ modelId: 'llm-id', config: {} }))
+  }),
+  getTeamModelHandle: async () => ({
     getEmbeddingModelData: vi.fn(() => ({ modelId: 'embedding-id', config: {} })),
     getLLMModelData: vi.fn(() => ({ modelId: 'llm-id', config: {} }))
   })
@@ -106,7 +110,11 @@ describe('getRawTextPreviewChunks', () => {
         maxChunks: 50_000
       })
     );
-    expect(mocks.replaceS3KeysToPreviewUrls).toHaveBeenCalledWith(['hello', ''], expect.any(Date));
+    expect(mocks.replaceS3KeysToPreviewUrls).toHaveBeenCalledWith(
+      ['hello', ''],
+      expect.any(Date),
+      expect.objectContaining({ filter: expect.any(Function) })
+    );
   });
 
   // 预览必须和导入走同一条分块路径，否则智能分块的预览结果与实际入库结果不一致。

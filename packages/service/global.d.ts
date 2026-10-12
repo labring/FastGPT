@@ -13,6 +13,7 @@ declare global {
   var systemVersion: string;
   var feConfigs: FastGPTFeConfigsType;
   var systemEnv: SystemEnvType;
+  var agentUserTmbIds: ReadonlySet<string> | undefined;
   var subPlans: SubPlanType | undefined;
   var licenseData: LicenseDataType | undefined;
 

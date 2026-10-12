@@ -2,6 +2,7 @@ import type openai from 'openai';
 import type { Stream } from 'openai/streaming';
 import { audioFileType } from '../../../common/file/constants';
 import z from 'zod';
+import { OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
 
 /* 通用类型 */
 export const ChatCompletionContentPartTextSchema = z.object({
@@ -184,9 +185,13 @@ export const ChatCompletionAssistantMessageParamSchema = z.object({
   }),
   // FastGPT 自定义扩展。为避免与 workflow/interactive 形成循环依赖，此处用 z.any() 占位，
   // 真实类型见 packages/global/core/workflow/template/system/interactive/type.ts:WorkflowInteractiveResponseType
-  interactive: z.any().optional().meta({
-    description: '交互式响应（FastGPT 自定义扩展）'
-  }),
+  interactive: z
+    .any()
+    .optional()
+    .meta({
+      ...OpenObjectOpenApiMeta,
+      description: '交互式响应（FastGPT 自定义扩展）'
+    }),
   // 下面的几个，目前系统没用到
   audio: z.object({ id: z.string() }).nullish(),
   function_call: ChatCompletionMessageToolCallFunctionSchema.nullish().meta({

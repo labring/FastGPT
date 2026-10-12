@@ -13,14 +13,17 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
-import type { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
+import type {
+  DatasetDataIndexItemType,
+  DatasetDataItemType
+} from '@fastgpt/global/core/dataset/type';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 
-export type InputDataType = {
+export type InputDataType = Pick<DatasetDataItemType, 'indexStatus' | 'indexErrorMsg'> & {
   q: string;
   a: string;
   imagePreivewUrl?: string;
@@ -92,7 +95,9 @@ const formatIndexesForRequest = (indexes: InputDataType['indexes'] = []) =>
     }));
 
 const formatDataForForm = (
-  data: Partial<Pick<InputDataType, 'q' | 'a' | 'imagePreivewUrl'>> & {
+  data: Partial<
+    Pick<InputDataType, 'q' | 'a' | 'imagePreivewUrl' | 'indexStatus' | 'indexErrorMsg'>
+  > & {
     indexes?: DatasetDataIndexItemType[];
   } = {},
   dataId?: string,
@@ -102,6 +107,9 @@ const formatDataForForm = (
   q: data.q || '',
   a: data.a || '',
   imagePreivewUrl: data.imagePreivewUrl,
+  // 保存后的详情状态需随回调同步到卡片；显式 undefined 可清除旧错误信息。
+  indexStatus: data.indexStatus,
+  indexErrorMsg: data.indexErrorMsg,
   indexes: formatIndexesForForm(data.indexes, previousIndexes)
 });
 
@@ -318,11 +326,11 @@ export const useInputDataModal = ({
         indexes: formatIndexesForRequest(e.indexes)
       };
 
-      const dataId = await postInsertData2Dataset(postData);
+      const { dataIds } = await postInsertData2Dataset(postData);
 
       return {
         ...data,
-        dataId
+        dataId: dataIds[0]
       };
     },
     {

@@ -1,10 +1,8 @@
-import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
-import { getModelTestDefaults } from '@test/modelCache';
 import * as copyapi from '@/pages/api/core/app/copy';
 import * as createapi from '@/pages/api/core/app/create';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -19,11 +17,14 @@ import type {
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
 import { updateResourceCollaborators } from '@fastgpt/service/support/permission/resourcePermissionService';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getFakeUsers } from '@test/datas/users';
+import { getModelTestDefaults } from '@test/modelCache';
 import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
 
@@ -43,7 +44,7 @@ describe('Copy', () => {
       {
         auth: users.members[0],
         body: {
-          modules: [],
+          nodes: [],
           name: 'testfolder',
           type: AppTypeEnum.folder
         }
@@ -58,7 +59,7 @@ describe('Copy', () => {
       {
         auth: users.members[0],
         body: {
-          modules: [],
+          nodes: [],
           parentId: folderId,
           name: 'simple app',
           type: AppTypeEnum.simple
@@ -74,26 +75,31 @@ describe('Copy', () => {
         sourceLabel: 'Deleted node'
       }
     ];
-    await MongoApp.findByIdAndUpdate(appId, {
-      type: AppTypeEnum.workflow,
-      modules: [
-        {
-          nodeId: 'chat-node',
-          flowNodeType: FlowNodeTypeEnum.chatNode,
-          name: 'Chat',
-          inputs: [
+    await MongoApp.updateOne({ _id: appId }, { type: AppTypeEnum.workflow });
+    await MongoAppVersion.updateOne(
+      { appId, isPublish: true },
+      {
+        $set: {
+          nodes: [
             {
-              key: NodeInputKeyEnum.aiModel,
-              value: 'disabled-copy-model',
-              selectedType: FlowNodeInputTypeEnum.selectLLMModel,
-              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+              nodeId: 'chat-node',
+              flowNodeType: FlowNodeTypeEnum.chatNode,
+              name: 'Chat',
+              inputs: [
+                {
+                  key: NodeInputKeyEnum.aiModel,
+                  value: 'disabled-copy-model',
+                  selectedType: FlowNodeInputTypeEnum.selectLLMModel,
+                  renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+                }
+              ],
+              outputs: []
             }
           ],
-          outputs: []
+          referenceSnapshots
         }
-      ],
-      referenceSnapshots
-    });
+      }
+    );
 
     const res3 = await Call<CopyAppBodyType, Record<string, never>, CopyAppResponseType>(
       copyapi.default,
@@ -142,14 +148,17 @@ describe('Copy', () => {
     );
     expect(res4.error).toBeUndefined();
     expect(res4.code).toBe(200);
-    const copiedApp = await MongoApp.findById(res4.data?.appId).lean();
+    const copiedVersion = await MongoAppVersion.findOne({
+      appId: res4.data?.appId,
+      isPublish: true
+    }).lean();
     const expectedFallbackModelId =
       getModelTestDefaults().llm?.modelId ??
-      getCachedModelHandle()
+      getCachedSystemModelHandle()
         ?.getActiveModels()
         .find((model) => model.type === ModelTypeEnum.llm)?.modelId;
-    expect(copiedApp?.referenceSnapshots).toEqual(referenceSnapshots);
-    expect(copiedApp?.modules[0].inputs).toEqual([
+    expect(copiedVersion?.referenceSnapshots).toEqual(referenceSnapshots);
+    expect(copiedVersion?.nodes[0].inputs).toEqual([
       expect.objectContaining({
         key: NodeInputKeyEnum.aiModelId,
         value: expectedFallbackModelId

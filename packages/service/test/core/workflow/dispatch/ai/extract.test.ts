@@ -1,7 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { createLLMResponseMock, getLLMModelMock, formatModelChars2PointsMock } = vi.hoisted(() => ({
   createLLMResponseMock: vi.fn(),
@@ -13,8 +15,18 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
+  getSystemModelHandle: async () => ({
+    getLLMModelData: (...args: unknown[]) => {
+      const model = getLLMModelMock(...args);
+      return {
+        ...model,
+        modelId: '68ad85a7463006c963799a65',
+        config: model.config ?? model
+      };
+    }
+  }),
+  getTeamModelHandle: async () => ({
     getLLMModelData: (...args: unknown[]) => {
       const model = getLLMModelMock(...args);
       return {
@@ -58,6 +70,7 @@ const createProps = () =>
     runningUserInfo: {
       teamId: 'team_1'
     },
+    nodeSummary: createNodeSummary(),
     usagePush: vi.fn(),
     params: {
       content: '张三来自杭州',
@@ -136,7 +149,13 @@ describe('dispatchContentExtract', () => {
     });
     createLLMResponseMock.mockResolvedValue(mockLLMResponse('{"name":"张三"}'));
 
-    const result = await dispatchContentExtract(createProps());
+    const props = createProps();
+    const result = await dispatchContentExtract(props);
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
+      inputTokens: 10,
+      outputTokens: 5
+    });
+    expect(props.nodeSummary).toMatchObject({ llmInputTokens: 0, llmOutputTokens: 0 });
 
     expect(createLLMResponseMock.mock.calls[0][0].body).toMatchObject({
       model: expect.objectContaining({ model: 'deepseek-r1' }),

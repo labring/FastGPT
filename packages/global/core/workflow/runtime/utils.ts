@@ -117,7 +117,10 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
   if (valueType?.startsWith('array')) {
     if (isObjectString(value)) {
       try {
-        return json5.parse(value);
+        const parsed = json5.parse(value);
+        // 单个对象的 JSON 字符串与其他非数组值一样包成单元素数组，
+        // 否则数组类型的输入拿到的是对象，循环/并行节点会报「不是数组」
+        return Array.isArray(parsed) ? parsed : [parsed];
       } catch {}
     }
     return [value];

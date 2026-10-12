@@ -55,6 +55,7 @@ const buildOutLinkConfig = (
     showFullText: false,
     canDownloadSource: false,
     showWholeResponse: false,
+    allowAnonymous: true,
     app: undefined,
     ...overrides
   };
@@ -225,7 +226,8 @@ describe('authChatCrud', () => {
         showSkillReferences: false,
         showFullText: false,
         canDownloadSource: true,
-        authType: AuthUserTypeEnum.outLink
+        authType: AuthUserTypeEnum.outLink,
+        isRoot: false
       });
     });
 

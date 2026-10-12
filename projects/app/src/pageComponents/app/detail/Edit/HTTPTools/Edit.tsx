@@ -16,21 +16,22 @@ const Edit = () => {
   const { isPc } = useSystem();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const toolSetData = useMemo(() => {
-    const toolSetNode = appDetail.modules.find(
+    const toolSetNode = appDetail.nodes.find(
       (item) => item.flowNodeType === FlowNodeTypeEnum.toolSet
     );
-    const toolSet = toolSetNode?.toolConfig?.httpToolSet;
-    return toolSet && !('toolId' in toolSet) ? toolSet : undefined;
-  }, [appDetail.modules]);
+    return toolSetNode?.toolConfig?.httpToolSet;
+  }, [appDetail.nodes]);
+
+  const editableToolSetData = toolSetData && 'toolId' in toolSetData ? undefined : toolSetData;
 
   const [currentTool, setCurrentTool] = useState<HttpToolConfigType | undefined>(
-    toolSetData?.toolList?.[0]
+    editableToolSetData?.toolList?.[0]
   );
-  const baseUrl = toolSetData?.baseUrl ?? '';
-  const toolList = toolSetData?.toolList ?? [];
-  const apiSchemaStr = toolSetData?.apiSchemaStr;
-  const headerSecret = toolSetData?.headerSecret ?? {};
-  const customHeaders = toolSetData?.customHeaders;
+  const baseUrl = editableToolSetData?.baseUrl ?? '';
+  const toolList = editableToolSetData?.toolList ?? [];
+  const apiSchemaStr = editableToolSetData?.apiSchemaStr;
+  const headerSecret = editableToolSetData?.headerSecret ?? {};
+  const customHeaders = editableToolSetData?.customHeaders;
   const parsedCustomHeaders = useMemo(() => {
     try {
       return JSON.parse(customHeaders || '{}') || {};
@@ -41,6 +42,8 @@ const Edit = () => {
 
   useEffect(() => {
     if (!currentTool || toolList.length === 0) {
+      // 组件加载或工具集更新后，将当前选择同步到可用工具列表。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentTool(toolList[0]);
       return;
     }

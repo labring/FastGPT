@@ -1,6 +1,7 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { UnStreamResponseType } from '@fastgpt/global/core/ai/llm/type';
-import { getAIApi } from '../../config';
+import { getAIApi, getModelOpenAIOptions } from '../../config';
+import { normalizeRelayNoChannelError } from '../../../../thirdProvider/aiproxy/error';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { isStreamCompletionResponse } from './response/normalize';
 import type { CreateChatCompletionProps, CreateChatCompletionResult } from './types';
@@ -19,6 +20,7 @@ export const createChatCompletion = async ({
   body,
   userKey,
   timeout,
+  onRequestStart,
   options
 }: CreateChatCompletionProps): Promise<CreateChatCompletionResult> => {
   const formatTimeout = timeout ? timeout : 600000;
@@ -35,19 +37,18 @@ export const createChatCompletion = async ({
     body.model = modelData.model;
 
     logger.debug('Start create chat completion', { model: body.model });
+    onRequestStart?.();
 
-    // requestUrl/requestAuth 只属于系统模型配置。用户 key 请求由 getAIApi 内部完成 baseUrl/key 选择。
+    const modelOptions = getModelOpenAIOptions({
+      model: modelData,
+      userKey,
+      baseUrl: requestMeta.baseUrl,
+      headers: options?.headers as Record<string, string> | undefined
+    });
+
     const response = await ai.chat.completions.create(body, {
       ...options,
-      ...(modelData.requestUrl && !requestMeta.usedUserOpenAIKey
-        ? { path: modelData.requestUrl }
-        : {}),
-      headers: {
-        ...options?.headers,
-        ...(modelData.requestAuth && !requestMeta.usedUserOpenAIKey
-          ? { Authorization: `Bearer ${modelData.requestAuth}` }
-          : {})
-      }
+      ...modelOptions
     });
 
     // OpenAI SDK 的 stream 响应没有稳定的普通 JSON 结构，统一通过迭代器/controller 特征识别。
@@ -76,6 +77,6 @@ export const createChatCompletion = async ({
     }
 
     logger.error('LLM response error', { request: body, error });
-    return Promise.reject(error);
+    return Promise.reject(normalizeRelayNoChannelError(error));
   }
 };

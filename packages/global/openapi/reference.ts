@@ -1,3 +1,8 @@
+import {
+  FASTGPT_WEB_REQUEST_HEADER,
+  FASTGPT_WEB_REQUEST_VALUE
+} from '../common/system/constants';
+
 const scalarApiReferenceCss = `
 .light-mode {
   --fastgpt-api-sidebar-title-color: #111824;
@@ -135,6 +140,13 @@ export const getScalarOpenApiReferenceConfig = (
     hideClientButton: true,
     localization: {
       locale: 'zh-CN'
+    },
+    onRequestBuilt: ({ request }: { request: Request }) => {
+      const url = new URL(request.url);
+      // 在线调试与主站同源时会携带登录 Cookie，需使用与主站请求相同的 Web 标记。
+      if (url.origin === window.location.origin && url.pathname.startsWith('/api/')) {
+        request.headers.set(FASTGPT_WEB_REQUEST_HEADER, FASTGPT_WEB_REQUEST_VALUE);
+      }
     },
     onLoaded: options?.onLoaded,
     showToolbar: 'never',

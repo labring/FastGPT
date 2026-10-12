@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   authApp: vi.fn(),
   getLocale: vi.fn(),
+  getTeamModelHandle: vi.fn(),
   rewriteAppWorkflowToDetail: vi.fn(),
   findOne: vi.fn()
 }));
@@ -17,6 +18,10 @@ vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
 
 vi.mock('@fastgpt/service/common/middle/i18n', () => ({
   getLocale: mocks.getLocale
+}));
+
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
+  getTeamModelHandle: mocks.getTeamModelHandle
 }));
 
 vi.mock('@fastgpt/service/core/app/utils', () => ({
@@ -49,6 +54,7 @@ describe('GET /api/core/app/version/detail', () => {
       isRoot: false
     });
     mocks.getLocale.mockReturnValue('zh-CN');
+    mocks.getTeamModelHandle.mockResolvedValue({ getAllModels: () => [] });
     mocks.rewriteAppWorkflowToDetail.mockResolvedValue(undefined);
   });
 
@@ -82,5 +88,20 @@ describe('GET /api/core/app/version/detail', () => {
     const result = await handler({ query: { versionId, appId } } as any);
 
     expect(result.referenceSnapshots).toEqual([]);
+  });
+
+  it('extracts canonical model resources when a legacy version has no snapshot', async () => {
+    setVersion({
+      chatConfig: {
+        questionGuide: {
+          open: true,
+          modelId: 'guide-model-id'
+        }
+      }
+    });
+
+    const result = await handler({ query: { versionId, appId } } as any);
+
+    expect(result.resources).toEqual([{ type: 'model', id: 'guide-model-id' }]);
   });
 });

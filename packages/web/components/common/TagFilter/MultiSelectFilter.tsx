@@ -6,6 +6,7 @@ import MyPopover from '../MyPopover';
 import MyIcon from '../Icon';
 import Avatar from '../Avatar';
 import MyTooltip from '../MyTooltip';
+import MyBox from '../MyBox';
 import FilterButton, { FilterSummaryValue, useFilterTriggerWidth } from './FilterButton';
 import FilterSearchInput, {
   FILTER_SEARCH_THRESHOLD,
@@ -13,6 +14,7 @@ import FilterSearchInput, {
 } from './FilterSearchInput';
 import {
   DEFAULT_FILTER_LIST_SIZE,
+  DEFAULT_FILTER_MENU_MAX_W,
   getFilterListBoxProps,
   filterPopoverProps,
   type FilterListSize
@@ -59,9 +61,12 @@ export type MultiSelectFilterProps<T extends string = string> = {
   footer?: ReactNode;
   onOpen?: () => void;
   maxW?: string | number;
+  /** 下拉浮层最大宽度，默认 260px。 */
+  menuMaxW?: string | number;
   placement?: PlacementWithLogical;
   /** 下拉列表高度档位，选项较多时使用 md 或 lg。 */
   listSize?: FilterListSize;
+  isLoading?: boolean;
 };
 
 /**
@@ -84,8 +89,10 @@ function MultiSelectFilter<T extends string>({
   footer,
   onOpen,
   maxW = '200px',
+  menuMaxW,
   placement = 'bottom-start',
-  listSize = DEFAULT_FILTER_LIST_SIZE
+  listSize = DEFAULT_FILTER_LIST_SIZE,
+  isLoading = false
 }: MultiSelectFilterProps<T>) {
   const { t } = useTranslation();
   const [innerSearch, setInnerSearch] = useState('');
@@ -129,18 +136,21 @@ function MultiSelectFilter<T extends string>({
         _hover={{ bg: 'myGray.05' }}
         onClick={() => onChange(toggleMultiSelectFilterValue(value, item.value))}
       >
-        <Flex alignItems={'center'} gap={2} minW={0} overflow={'hidden'}>
+        <Flex alignItems={'center'} gap={2} minW={0} flex={1}>
           <Checkbox
             isChecked={checked}
             pointerEvents={'none'}
             size={'sm'}
+            flexShrink={0}
             icon={<MyIcon name={'common/check'} w={'12px'} />}
             sx={{
               // 自定义勾图标不会走 Chakra 未选中时的隐藏，悬浮会露出白勾
               '.chakra-checkbox__control:not([data-checked]) svg': { opacity: 0 }
             }}
           />
-          {item.avatar && <Avatar src={item.avatar} w={'16px'} h={'16px'} borderRadius={'full'} />}
+          {item.avatar && (
+            <Avatar src={item.avatar} w={'16px'} h={'16px'} borderRadius={'full'} flexShrink={0} />
+          )}
           <MyTooltip label={item.label} showOnlyWhenOverflow shouldWrapChildren={false}>
             <Box
               minW={0}
@@ -168,6 +178,7 @@ function MultiSelectFilter<T extends string>({
       {...filterPopoverProps}
       placement={placement}
       w={'max-content'}
+      maxW={menuMaxW ?? DEFAULT_FILTER_MENU_MAX_W}
       minW={triggerWidth ? `${triggerWidth}px` : undefined}
       onOpenFunc={onOpen}
       Trigger={
@@ -180,8 +191,15 @@ function MultiSelectFilter<T extends string>({
       }
     >
       {() => (
-        <Box p={'6px'} minW={'100%'} onClick={(e) => e.stopPropagation()}>
-          <Flex direction={'column'} gap={'4px'}>
+        <MyBox
+          isLoading={isLoading}
+          p={'6px'}
+          minW={'100%'}
+          maxW={'100%'}
+          overflow={'hidden'}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Flex direction={'column'} gap={'4px'} minW={0} maxW={'100%'}>
             <Flex
               alignItems={'center'}
               px={1}
@@ -220,7 +238,7 @@ function MultiSelectFilter<T extends string>({
               </>
             )}
           </Flex>
-        </Box>
+        </MyBox>
       )}
     </MyPopover>
   );

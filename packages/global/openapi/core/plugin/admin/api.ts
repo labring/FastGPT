@@ -10,7 +10,8 @@ import { I18nStringSchema } from '../../../../common/i18n/type';
  * ============================================================================ */
 
 export const UploadPkgPluginBodySchema = z.object({
-  file: z.any().meta({
+  file: z.string().meta({
+    format: 'binary',
     description:
       'multipart/form-data file 字段，可重复传入，支持 .pkg 文件或包含多个 .pkg 的 .zip 文件'
   })
@@ -49,7 +50,7 @@ export type UploadPkgPluginResponseType = z.infer<typeof UploadPkgPluginResponse
  * Route: POST /api/core/plugin/admin/pkg/confirm
  * Method: POST
  * Description: 确认已上传的系统插件包，并将插件同步到插件服务
- * Tags: ['管理员插件管理', 'Write']
+ * Tags: ['插件管理', 'Write']
  * ============================================================================ */
 
 export const ConfirmUploadPkgPluginBodySchema = z.object({

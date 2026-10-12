@@ -1,7 +1,7 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { getInvoiceRecords } from '@/web/support/wallet/bill/invoice/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useRef, useState } from 'react';
 import { Box, Button, Flex, FormLabel, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
@@ -15,7 +15,7 @@ import { downloadFetch } from '@/web/common/system/utils';
 import { accountContentScrollStyles, accountPageRootStyles } from '@/pageComponents/account/styles';
 
 const InvoiceTable = () => {
-  const { t } = useClientTranslation('account_bill');
+  const { t } = useSafeTranslation();
   const [invoiceDetailData, setInvoiceDetailData] = useState<InvoiceSchemaType | ''>('');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const {
@@ -149,7 +149,7 @@ function InvoiceDetailModal({
   invoice: InvoiceSchemaType;
   onClose: () => void;
 }) {
-  const { t } = useClientTranslation('account_bill');
+  const { t } = useSafeTranslation();
 
   const { runAsync: handleDownloadInvoice } = useRequest(async (id: string) => {
     await downloadFetch({

@@ -6,12 +6,14 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import { useEffect, useState } from 'react';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import React, { useState } from 'react';
 import { type OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import MemberItemCard from '@/components/support/permission/MemberManager/MemberItemCard';
+import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import TeamMemberEditLoader from '../TeamMemberEditLoader';
 
 export type GroupFormType = {
   members: {
@@ -20,16 +22,26 @@ export type GroupFormType = {
   }[];
 };
 
-function OrgMemberManageModal({
-  currentOrg,
-  refetchOrgs,
-  onClose
-}: {
+type SelectedOrgMemberType = {
+  name: string;
+  tmbId: string;
+  avatar: string;
+};
+
+type OrgMemberManageContentProps = {
   currentOrg: OrgListItemType;
+  initialMembers: TeamMemberItemType[];
   refetchOrgs: () => void;
   onClose: () => void;
-}) {
-  const { t } = useClientTranslation('user');
+};
+
+function OrgMemberManageContent({
+  currentOrg,
+  initialMembers,
+  refetchOrgs,
+  onClose
+}: OrgMemberManageContentProps) {
+  const { t } = useSafeTranslation();
   const [searchKey, setSearchKey] = useState('');
 
   const { data: allMembers, ScrollData: MemberScrollData } = useScrollPagination(getTeamMembers, {
@@ -45,29 +57,13 @@ function OrgMemberManageModal({
     refreshDeps: [searchKey]
   });
 
-  const { data: orgMembers, ScrollData: OrgMemberScrollData } = useScrollPagination(
-    getTeamMembers,
-    {
-      pageSize: 100000,
-      params: {
-        orgId: currentOrg._id,
-        withOrgs: false,
-        withPermission: false
-      }
-    }
+  const [selected, setSelected] = useState<SelectedOrgMemberType[]>(() =>
+    initialMembers.map((item) => ({
+      name: item.memberName,
+      tmbId: item.tmbId,
+      avatar: item.avatar
+    }))
   );
-
-  const [selected, setSelected] = useState<{ name: string; tmbId: string; avatar: string }[]>([]);
-
-  useEffect(() => {
-    setSelected(
-      orgMembers.map((item) => ({
-        name: item.memberName,
-        tmbId: item.tmbId,
-        avatar: item.avatar
-      }))
-    );
-  }, [orgMembers]);
 
   const { run: onUpdate, loading: isLoadingUpdate } = useRequest(
     () => {
@@ -94,10 +90,9 @@ function OrgMemberManageModal({
   const handleToggleSelect = (tmbId: string) => {
     if (isSelected(tmbId)) {
       setSelected((state) => state.filter((tmb) => tmb.tmbId !== tmbId));
-      // setSelectedTmbIds((state) => state.filter((tmbId) => tmbId !== memberId));
     } else {
-      // setSelectedTmbIds((state) => [...state, memberId]);
-      const member = allMembers.find((item) => item.tmbId === tmbId)!;
+      const member = allMembers.find((item) => item.tmbId === tmbId);
+      if (!member) return;
       setSelected((state) => [
         ...state,
         {
@@ -109,17 +104,8 @@ function OrgMemberManageModal({
     }
   };
 
-  const isLoading = isLoadingUpdate;
-
   return (
-    <MyModal
-      isOpen
-      title={t('user:team.group.manage_member')}
-      iconSrc={currentOrg?.avatar}
-      minW="800px"
-      h={'100%'}
-      isCentered
-    >
+    <>
       <ModalBody flex={1}>
         <Grid
           border="1px solid"
@@ -160,8 +146,8 @@ function OrgMemberManageModal({
             </MemberScrollData>
           </Flex>
           <Flex flexDirection="column" p="4" overflowY="auto" overflowX="hidden">
-            <OrgMemberScrollData flexGrow="1" overflow={'auto'}>
-              <Box mt={2} mb={3}>{`${t('common:chosen')}:${selected.length}`}</Box>
+            <Box mt={2} mb={3}>{`${t('common:chosen')}:${selected.length}`}</Box>
+            <Box flexGrow="1" overflow={'auto'}>
               {selected.map((member) => {
                 return (
                   <HStack
@@ -187,7 +173,7 @@ function OrgMemberManageModal({
                   </HStack>
                 );
               })}
-            </OrgMemberScrollData>
+            </Box>
           </Flex>
         </Grid>
       </ModalBody>
@@ -195,10 +181,46 @@ function OrgMemberManageModal({
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('common:Close')}
         </Button>
-        <Button isLoading={isLoading} onClick={onUpdate}>
+        <Button isLoading={isLoadingUpdate} onClick={onUpdate}>
           {t('common:Save')}
         </Button>
       </ModalFooter>
+    </>
+  );
+}
+
+function OrgMemberManageModal({
+  currentOrg,
+  refetchOrgs,
+  onClose
+}: {
+  currentOrg: OrgListItemType;
+  refetchOrgs: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useSafeTranslation();
+  const orgId = currentOrg._id;
+
+  return (
+    <MyModal
+      isOpen
+      onClose={onClose}
+      title={t('user:team.group.manage_member')}
+      iconSrc={currentOrg?.avatar}
+      minW="800px"
+      h={'100%'}
+      isCentered
+    >
+      <TeamMemberEditLoader key={orgId} params={{ orgId, withOrgs: false, withPermission: false }}>
+        {(orgMembers) => (
+          <OrgMemberManageContent
+            currentOrg={currentOrg}
+            initialMembers={orgMembers}
+            refetchOrgs={refetchOrgs}
+            onClose={onClose}
+          />
+        )}
+      </TeamMemberEditLoader>
     </MyModal>
   );
 }

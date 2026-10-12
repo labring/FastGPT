@@ -31,8 +31,10 @@ describe('tmp data verification wrapper', () => {
         data: { preLoginCode: 'wrong-material' },
         ttlPreset: 'medium'
       });
-      // @ts-expect-error login is not a valid scene for code materials
+      // 登录二次验证在 login 场景下读写验证码材料，因此 login + code 是合法组合
       verification.get({ scene: 'login', type: 'code', key: 'user@example.com' });
+      // @ts-expect-error loginChallenge 材料只在 login 场景有效
+      verification.get({ scene: 'register', type: 'loginChallenge', key: 'user@example.com' });
       verification.get({
         scene: 'register',
         type: 'code',
@@ -294,6 +296,136 @@ describe('tmp data verification wrapper', () => {
         dataId: getDataId({ scene: 'login', type: 'oauth', key })
       }).lean()
     ).resolves.toBeNull();
+  });
+
+  it('consumes multiple bound materials in one transaction', async () => {
+    const challengeKey = 'login-challenge-key';
+    const codeKey = getCodeVerificationKey({ account: challengeKey, code: '123456' });
+
+    await verification.upsert({
+      scene: 'login',
+      type: 'loginChallenge',
+      key: challengeKey,
+      data: {
+        userId: 'user-id',
+        username: 'user@example.com',
+        method: 'code',
+        channel: 'email',
+        target: 'user@example.com',
+        language: 'zh-CN'
+      },
+      ttlPreset: 'medium'
+    });
+    await verification.upsert({
+      scene: 'login',
+      type: 'code',
+      key: codeKey,
+      data: { code: '123456', issueId: 'issue-id' },
+      ttlPreset: 'medium'
+    });
+
+    const handler = vi.fn(async ({ materials }: { materials: unknown[] }) => {
+      expect(materials).toHaveLength(2);
+      return 'completed';
+    });
+
+    await expect(
+      verification.consumeManyInTransaction(
+        [
+          { scene: 'login', type: 'loginChallenge', key: challengeKey },
+          {
+            scene: 'login',
+            type: 'code',
+            key: codeKey,
+            match: { code: '123456' }
+          }
+        ],
+        handler
+      )
+    ).resolves.toBe('completed');
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    await expect(MongoTmpData.countDocuments({})).resolves.toBe(0);
+  });
+
+  it('keeps every material when one bound material is invalid', async () => {
+    const challengeKey = 'invalid-code-challenge-key';
+    const codeKey = getCodeVerificationKey({ account: challengeKey, code: '123456' });
+
+    await verification.upsert({
+      scene: 'login',
+      type: 'loginChallenge',
+      key: challengeKey,
+      data: {
+        userId: 'user-id',
+        username: 'user@example.com',
+        method: 'code',
+        channel: 'email',
+        target: 'user@example.com',
+        language: 'zh-CN'
+      },
+      ttlPreset: 'medium'
+    });
+    await verification.upsert({
+      scene: 'login',
+      type: 'code',
+      key: codeKey,
+      data: { code: '123456', issueId: 'issue-id' },
+      ttlPreset: 'medium'
+    });
+
+    const handler = vi.fn();
+    await expect(
+      verification.consumeManyInTransaction(
+        [
+          { scene: 'login', type: 'loginChallenge', key: challengeKey },
+          {
+            scene: 'login',
+            type: 'code',
+            key: codeKey,
+            match: { code: '654321' }
+          }
+        ],
+        handler
+      )
+    ).rejects.toBeInstanceOf(VerificationMaterialError);
+
+    expect(handler).not.toHaveBeenCalled();
+    await expect(MongoTmpData.countDocuments({})).resolves.toBe(2);
+  });
+
+  it('rolls back when the storage layer returns material bound to another data id', async () => {
+    // dataId 逐位比对是批量消费对存储层的信任边界：返回的记录若不属于请求的 scene/type/key，
+    // 就不能按位置把材料交给回调，否则回调会拿到类型错位的材料。
+    type FakeTmpDataQuery = {
+      session: () => FakeTmpDataQuery;
+      lean: () => Promise<{ dataId: string; data: unknown }>;
+    };
+
+    const handler = vi.fn();
+    const foreignDataId = getDataId({ scene: 'login', type: 'code', key: 'another-key' });
+    const findOneSpy = vi.spyOn(MongoTmpData, 'findOne').mockImplementation(() => {
+      // mongoose 的 query.session() 返回自身，这里保持同样的链式调用语义
+      const query: FakeTmpDataQuery = {
+        session: () => query,
+        lean: async () => ({ dataId: foreignDataId, data: { code: '123456' } })
+      };
+
+      return query as never;
+    });
+
+    try {
+      await expect(
+        verification.consumeManyInTransaction(
+          [{ scene: 'login', type: 'loginChallenge', key: 'challenge-key' }],
+          handler
+        )
+      ).rejects.toBeInstanceOf(VerificationMaterialError);
+
+      expect(handler).not.toHaveBeenCalled();
+    } finally {
+      findOneSpy.mockRestore();
+    }
   });
 
   it('rejects expired material that is still waiting for TTL cleanup', async () => {

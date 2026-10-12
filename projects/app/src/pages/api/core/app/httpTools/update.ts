@@ -4,12 +4,11 @@ import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
-import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
 import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { updateAppPublishedVersion } from '@fastgpt/service/core/app/version/controller';
 import {
   UpdateHttpToolsBodySchema,
   UpdateHttpToolsResponseSchema,
@@ -49,23 +48,12 @@ async function handler(
   await beforeUpdateAppFormat({ nodes: [toolSetRuntimeNode], teamId });
 
   await mongoSessionRun(async (session) => {
-    await MongoApp.findByIdAndUpdate(
+    await updateAppPublishedVersion({
       appId,
-      {
-        modules: storageNodes
-      },
-      { session }
-    );
-
-    await MongoAppVersion.updateOne(
-      { appId },
-      {
-        $set: {
-          nodes: storageNodes
-        }
-      },
-      { session }
-    );
+      nodes: storageNodes,
+      resources: [],
+      session
+    });
   });
   updateParentFoldersUpdateTime({
     parentId: app.parentId

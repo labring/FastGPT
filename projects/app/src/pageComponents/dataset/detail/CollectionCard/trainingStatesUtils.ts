@@ -1,4 +1,4 @@
-import type { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { GetCollectionTrainingDetailResponseType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 
 export enum TrainingStatus {
@@ -16,12 +16,18 @@ export const isTrainingStepHighlighted = (status: TrainingStatus) =>
   status !== TrainingStatus.NotStart;
 
 /**
- * 判断当前集合是否已经没有任何剩余训练或最终异常。
+ * 判断指定模式的链路是否已无剩余训练或最终异常；默认检查整个集合。
  */
-export const isTrainingDetailReady = (trainingDetail: GetCollectionTrainingDetailResponseType) =>
-  Object.values(trainingDetail.queuedCounts).every((count) => count === 0) &&
-  Object.values(trainingDetail.trainingCounts).every((count) => count === 0) &&
-  Object.values(trainingDetail.errorCounts).every((count) => count === 0);
+export const isTrainingDetailReady = (
+  trainingDetail: GetCollectionTrainingDetailResponseType,
+  modes = Object.values(TrainingModeEnum)
+) =>
+  modes.every(
+    (mode) =>
+      trainingDetail.queuedCounts[mode] === 0 &&
+      trainingDetail.trainingCounts[mode] === 0 &&
+      trainingDetail.errorCounts[mode] === 0
+  );
 
 /**
  * 根据当前集合各训练阶段的计数计算单个阶段的展示状态。
@@ -36,7 +42,7 @@ export const getTrainingStepStatus = ({
   mode: TrainingModeEnum;
   modeOrder: TrainingModeEnum[];
 }) => {
-  if (isTrainingDetailReady(trainingDetail)) return TrainingStatus.Ready;
+  if (isTrainingDetailReady(trainingDetail, modeOrder)) return TrainingStatus.Ready;
   if (trainingDetail.errorCounts[mode] > 0) return TrainingStatus.Error;
   if (trainingDetail.trainingCounts[mode] > 0) return TrainingStatus.Running;
   if (trainingDetail.queuedCounts[mode] > 0) return TrainingStatus.Queued;

@@ -1,5 +1,5 @@
 import { Box, Flex, Grid, Button, VStack, HStack, type BoxProps } from '@chakra-ui/react';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -33,7 +33,7 @@ const ExtraPlan = ({
   resumePurchaseIntent?: PricePurchaseIntent;
   onResumePurchaseIntentHandled?: () => void;
 }) => {
-  const { t, i18n } = useClientTranslation('price');
+  const { t, i18n } = useSafeTranslation();
   const { toast } = useToast();
   const { subPlans } = useSystemStore();
   const [qrPayData, setQRPayData] = useState<QRPayProps>();

@@ -4,6 +4,7 @@
   "agree": "agree",
   "cookies_tip": " This website uses cookies to provide a better service experience. By continuing to use the site, you agree to our Cookie Policy.",
   "forget_password": "Find Password",
+  "login_redirect_failed": "You are signed in, but the redirect failed. Please refresh the page.",
   "login_success": "Login successful",
   "no_remind": "Don't remind again",
   "password_condition": "Password must be 4–60 characters",

@@ -433,6 +433,47 @@
 }
 
 .markdown {
+  // 块级 KaTeX 数学公式容器：上下留白充足、水平居中、支持超长公式自适应横向滚动
+  :global(.katex-display) {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    margin: 18px 0 !important;
+    padding: 8px 12px !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    text-align: center !important;
+    line-height: normal !important;
+
+    > :global(.katex) {
+      display: inline-block !important;
+      text-align: center !important;
+      line-height: normal !important;
+    }
+  }
+
+  // 针对包含公式的段落：自动拉大垂直行高，杜绝复杂分式与积分号穿透重叠
+  p:has(:global(.katex)) {
+    line-height: 2.2 !important;
+  }
+
+  // 针对段落内独占公式的情况：居中并赋予充足的上下留白
+  p:has(> :global(.katex):only-child) {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    margin: 18px 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+  }
+
+  // 行内 KaTeX 公式：重置行高与文字基线，防止与上下段落文字发生高度穿透与重叠
+  :global(.katex) {
+    text-indent: 0;
+    text-rendering: auto;
+    line-height: normal;
+  }
   tab-size: 4;
   word-spacing: normal;
   width: 100%;

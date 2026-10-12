@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { clientInitData } from '@/web/common/system/staticData';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -48,26 +48,13 @@ const MARKETING_PARAMS: (keyof MarketingQueryParams)[] = [
 
 export const useInitApp = () => {
   const router = useRouter();
-  const {
-    bd_vid,
-    msclkid,
-    k,
-    search,
-    visitor_id,
-    sourceDomain,
-    utm_source,
-    utm_medium,
-    utm_content,
-    utm_workflow,
-    couponCode
-  } = router.query as MarketingQueryParams;
 
   const { loadGitStar, setInitd, feConfigs } = useSystemStore();
   const { userInfo } = useUserStore();
   const [scripts, setScripts] = useState<FastGPTFeConfigsType['scripts']>([]);
   const [title, setTitle] = useState(appClientEnv.systemName);
 
-  const getPathWithoutMarketingParams = () => {
+  const getPathWithoutMarketingParams = useMemoizedFn(() => {
     const filteredQuery = { ...router.query };
     const hasMarketingParams = MARKETING_PARAMS.some((param) =>
       Object.prototype.hasOwnProperty.call(filteredQuery, param)
@@ -95,7 +82,7 @@ export const useInitApp = () => {
     return `${router.pathname}${newQuery.toString() ? `?${newQuery.toString()}` : ''}${
       window.location.hash
     }`;
-  };
+  });
 
   const initFetch = useMemoizedFn(async () => {
     const {
@@ -146,10 +133,32 @@ export const useInitApp = () => {
   });
 
   // Marketing data track
-  useMount(() => {
-    setBdVId(bd_vid);
-    setMsclkid(msclkid);
-    setUtmWorkflow(utm_workflow);
+  const hasInitedMarketingRef = useRef(false);
+
+  useEffect(() => {
+    // CSR 挂载前由应用壳恢复 query；SSR 聊天页由 getServerSideProps 提供 query。
+    if (hasInitedMarketingRef.current) return;
+    hasInitedMarketingRef.current = true;
+
+    const query = router.query as MarketingQueryParams;
+    const {
+      bd_vid,
+      msclkid,
+      k,
+      search,
+      visitor_id,
+      sourceDomain,
+      utm_source,
+      utm_medium,
+      utm_content,
+      utm_workflow,
+      couponCode
+    } = query;
+
+    if (bd_vid) setBdVId(bd_vid);
+    if (msclkid) setMsclkid(msclkid);
+    if (utm_workflow) setUtmWorkflow(utm_workflow);
+    // 未显式携带来源时仍读取 document.referrer，并锁定本次首次归因。
     initFastGPTSemSourceDomain(sourceDomain);
 
     const utmParams: ShortUrlParams = {
@@ -176,7 +185,7 @@ export const useInitApp = () => {
     if (newPath) {
       router.replace(newPath);
     }
-  });
+  }, [router, getPathWithoutMarketingParams]);
 
   return {
     feConfigs,

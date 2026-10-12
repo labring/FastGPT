@@ -113,6 +113,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name ||
             github.repository }}
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v4
 
@@ -149,6 +150,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name ||
             github.repository }}
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v4
 
@@ -185,6 +187,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name ||
             github.repository }}
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v4
 
@@ -220,6 +223,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name ||
             github.repository }}
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v4
 

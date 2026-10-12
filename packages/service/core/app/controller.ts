@@ -1,6 +1,6 @@
 import { type AppSchemaType } from '@fastgpt/global/core/app/type';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { MongoApp } from './schema';
@@ -16,10 +16,7 @@ import { MongoChatInputGuide } from '../chat/inputGuide/schema';
 import { MongoChatFavouriteApp } from '../chat/favouriteApp/schema';
 import { MongoChatSetting } from '../chat/setting/schema';
 import { resourcePermissionRepo } from '../../support/permission/repository/resourcePermissionRepo';
-import {
-  PerResourceTypeEnum,
-  ReadPermissionVal
-} from '@fastgpt/global/support/permission/constant';
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { removeImageByPath } from '../../common/file/image/controller';
 import { MongoAppLogKeys } from './logs/logkeysSchema';
 import { MongoAppChatLog } from './logs/chatLogsSchema';
@@ -31,13 +28,13 @@ import { type ClientSession } from '../../common/mongo';
 import { getLogger, LogCategories } from '../../common/logger';
 import { deleteAppSandboxes } from '../ai/sandbox/interface/resource/sourceCleanup';
 import { MongoSystemTool } from '../plugin/tool/systemToolSchema';
+import { StoredSelectedDatasetSchema } from '@fastgpt/global/core/workflow/type/io';
 import {
   StoredSelectedAgentSkillItemTypeSchema,
   type AppFormEditFormType
 } from '@fastgpt/global/core/app/formEdit/type';
 import z from 'zod';
 import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
-import { authSkillByTmbId } from '../../support/permission/skill/auth';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { deleteChatResourcesBySource } from '../chat/delete';
 
@@ -46,25 +43,21 @@ const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
 /**
  * 在更新应用前，对工作流节点数据进行格式化和安全处理。
  * 主要职责：
- * 1. 知识库：统一数据结构为 { datasetId: string }[]。
- * 2. Skill: 统一数据结构为 { skillId: string }[]。
- * 2. 敏感信息（如 Header Secret、密码类型输入、系统工具手动配置的密钥）进行加密存储。
+ * 1. 知识库：移除编辑态状态并保留展示快照（datasetId, avatar, name, vectorModel）。
+ * 2. Skill: 移除编辑态状态并保留展示快照（skillId, avatar, name, description）。
+ * 3. 密钥输入：清理敏感信息。
  */
 export const beforeUpdateAppFormat = async ({
   nodes,
   teamId
 }: {
   nodes?: StoreNodeItemType[];
-  teamId: string;
+  teamId?: string;
 }) => {
   if (!nodes) return;
 
-  const StoredSelectedDatasetSchema = z.object({
-    datasetId: z.string()
-  });
-
   /**
-   * 格式化数据集选择值，保存阶段只保留 datasetId，移除编辑态快照字段。
+   * 格式化数据集选择值，保存阶段保留展示快照（datasetId, avatar, name, vectorModel），移除编辑态临时字段。
    * 引用模式由调用处判断并跳过，避免把 [nodeId, key] 误压缩成空数组。
    * 未配置的草稿节点按空数组保存，仍由发布/运行前的工作流校验提示必填。
    * 兼容历史单选格式 { datasetId }，避免旧应用再次保存时丢失知识库配置。
@@ -77,7 +70,12 @@ export const beforeUpdateAppFormat = async ({
       .parse(value);
 
     const datasetList = Array.isArray(datasets) ? datasets : [datasets];
-    return datasetList.map(({ datasetId }) => ({ datasetId }));
+    return datasetList.map(({ datasetId, avatar, name, vectorModel }) => ({
+      datasetId,
+      ...(avatar ? { avatar } : {}),
+      ...(name ? { name } : {}),
+      ...(vectorModel ? { vectorModel } : {})
+    }));
   };
 
   nodes.forEach((node) => {
@@ -161,45 +159,6 @@ export const beforeUpdateAppFormat = async ({
         })
       );
     })
-  );
-};
-
-/**
- * 发布应用前校验静态绑定的 Agent Skill 对当前成员可读。
- * 引用输入在发布阶段没有确定值，运行时会按实际值再次过滤。
- */
-export const validatePublishAppAgentSkillReadPermissions = async ({
-  nodes,
-  tmbId,
-  isRoot = false
-}: {
-  nodes?: StoreNodeItemType[];
-  tmbId: string;
-  isRoot?: boolean;
-}) => {
-  if (!nodes) return;
-
-  const skillIds = new Set<string>();
-  for (const node of nodes) {
-    for (const input of node.inputs) {
-      if (input.key !== NodeInputKeyEnum.skills || nodeInputIsReference(input)) continue;
-
-      const skills = z.array(StoredSelectedAgentSkillItemTypeSchema).parse(input.value);
-      for (const skill of skills) {
-        skillIds.add(skill.skillId);
-      }
-    }
-  }
-
-  await Promise.all(
-    Array.from(skillIds).map((skillId) =>
-      authSkillByTmbId({
-        tmbId,
-        skillId,
-        per: ReadPermissionVal,
-        isRoot
-      })
-    )
   );
 };
 
@@ -289,20 +248,16 @@ export const deleteAppDataProcessor = async ({
   });
   await MongoAppChatLog.deleteMany({ teamId, appId });
 
-  // 3. 删除应用相关数据（使用事务）
+  // 3. 清理外部引用与快捷入口（分享链接、精选应用、快捷应用、MCP Key 关联，兼容旧 MQ 或补偿执行）
+  await cleanupAppDirectRefs({ teamId, appIds: [appId] });
+
   {
-    // 删除分享链接
-    await MongoOutLink.deleteMany({ appId });
     // 旧应用 APIKey 保留为系统 APIKey，仅移除 deprecated appId 兼容字段。
     await MongoOpenApi.updateMany({ appId }, { $unset: { appId: '' } });
     // 删除应用版本
     await MongoAppVersion.deleteMany({ appId });
     // 删除聊天输入引导
     await MongoChatInputGuide.deleteMany({ appId });
-    // 删除精选应用记录
-    await MongoChatFavouriteApp.deleteMany({ teamId, appId });
-    // 从快捷应用中移除对应应用
-    await MongoChatSetting.updateMany({ teamId }, { $pull: { quickAppIds: { $in: [appId] } } });
     // 删除权限记录
     await resourcePermissionRepo.deleteByResource({
       resourceType: PerResourceTypeEnum.app,
@@ -311,47 +266,88 @@ export const deleteAppDataProcessor = async ({
     });
     // 删除日志密钥
     await MongoAppLogKeys.deleteMany({ appId });
-
     // 删除应用注册记录
     await MongoAppRegistration.deleteMany({ appId });
-    // 删除应用从MCP key apps数组中移除
-    await MongoMcpKey.updateMany({ teamId, 'apps.appId': appId }, { $pull: { apps: { appId } } });
 
     // 删除应用本身
     await MongoApp.deleteOne({ _id: appId });
   }
 };
 
-export const deleteAppsImmediate = async ({
+/**
+ * 清理应用的外部引用与快捷入口（分享链接、精选应用、快捷应用、MCP Key 关联）。
+ * 在应用删除时立即执行，并在 MQ 异步清理中幂等兜底执行。
+ */
+export const cleanupAppDirectRefs = async ({
   teamId,
-  appIds
+  appIds,
+  session
 }: {
   teamId: string;
   appIds: string[];
+  session?: ClientSession;
 }) => {
+  if (appIds.length === 0) return;
+
+  // 删除分享链接
+  await MongoOutLink.deleteMany({ teamId, appId: { $in: appIds } }, { session });
+  // 删除精选应用记录
+  await MongoChatFavouriteApp.deleteMany({ teamId, appId: { $in: appIds } }, { session });
+  // 从快捷应用中移除对应应用
+  await MongoChatSetting.updateMany(
+    { teamId },
+    { $pull: { quickAppIds: { $in: appIds } } },
+    { session }
+  );
+  // 从 MCP key apps 数组中移除对应应用
+  await MongoMcpKey.updateMany(
+    { teamId, 'apps.appId': { $in: appIds } },
+    { $pull: { apps: { appId: { $in: appIds } } } },
+    { session }
+  );
+};
+
+/**
+ * 立即移除一些重要的 app 资源
+ */
+export const deleteAppsImmediate = async ({
+  teamId,
+  appIds,
+  session
+}: {
+  teamId: string;
+  appIds: string[];
+  session?: ClientSession;
+}) => {
+  // 解除工作流插件与系统工具的关联
   const workflowToolApps = await MongoApp.find(
     {
       teamId,
       _id: { $in: appIds },
       type: AppTypeEnum.workflowTool
     },
-    '_id'
+    '_id',
+    { session }
   ).lean();
 
   await cleanupWorkflowToolSystemToolAssociation(workflowToolApps.map((app) => String(app._id)));
 
-  // Remove eval job
+  // 立即清理应用访问记录
+  await MongoAppRecord.deleteMany({ teamId, appId: { $in: appIds } }, { session });
+
+  // 立即清理外部引用与快捷入口（分享链接、精选应用、快捷应用、MCP Key 关联，避免 MQ 异步延迟导致仍可访问）
+  await cleanupAppDirectRefs({ teamId, appIds, session });
+
+  // 终止运行中的评测任务
   const evalJobs = await MongoEvaluation.find(
     {
       teamId,
       appId: { $in: appIds }
     },
-    '_id'
+    '_id',
+    { session }
   ).lean();
   await Promise.all(evalJobs.map((evalJob) => removeEvaluationJob(evalJob._id)));
-
-  // Remove app record
-  await MongoAppRecord.deleteMany({ teamId, appId: { $in: appIds } });
 };
 
 export const updateParentFoldersUpdateTime = ({ parentId }: { parentId?: string | null }) => {

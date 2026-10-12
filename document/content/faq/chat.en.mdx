@@ -12,3 +12,17 @@ You need to publish the app first. Chat only picks up changes after publishing.
 1. Make sure microphone permissions are enabled in both your browser and OS settings.
 2. Confirm the browser has permission to use the microphone for this site, and that the correct microphone source is selected.
 3. The site must have an SSL certificate for microphone access to work.
+
+## The model has thinking enabled, but the chat doesn't show the thinking process (before 4.15)
+
+Applies to: 4.9.1–4.14.x. FastGPT only recognizes the `reasoning_content` field returned by the upstream, or content wrapped in `<think></think>` in the response body (this requires turning on "Supports thinking output" in the model config). An `enable_thinking` written at the top level of the model config is not sent to the model.
+
+What to do: in the model's "Additional Body parameters", enter the thinking switch your relay expects, for example `{"enable_thinking": true}`; if the relay expects the `chat_template_kwargs` form, enter `{"chat_template_kwargs": {"enable_thinking": true}}` instead. Save and chat again. Note: this parameter is attached to every call made with this model (Classify, Text Extract, and so on), so those features may become slower and use more tokens.
+
+If it still doesn't show, the relay's response contains neither `reasoning_content` nor `<think>`, and the relay side needs to be changed.
+
+## Tapping "Open the original text" in a citation does nothing on iOS
+
+Applies to: up to 4.17.0; the fix will ship in a later release. One confirmed cause: iOS Safari (including WeCom's built-in browser) blocks a new window that is opened only after the source URL has been requested, and gives no error. Android and desktop are usually fine.
+
+Workaround: tap "…" in the upper-right corner and open the page in the system browser. If that still fails, allow pop-ups in the browser settings.

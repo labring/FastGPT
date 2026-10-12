@@ -62,6 +62,7 @@ import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
 import { validateToolInputValue } from '@fastgpt/global/core/app/tool/runtime';
 
 const inputTypeFormKey = (key: string) => `__input_type__${key}`;
+// developerInputType 即全局的 manualRenderType：Agent 配置里“手动输入”实际使用的那个控件。
 const developerInputTypeFormKey = (key: string) => `__developer_input_type__${key}`;
 
 /** 工具配置中的 JSON Editor 保留编辑文本，校验时解析，运行边界再转换为原生 JSON 值。 */

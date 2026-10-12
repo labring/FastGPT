@@ -39,6 +39,15 @@ describe('formatMarkdownTableCell', () => {
     );
     expect(formatMarkdownTableCell(null)).toBe('');
   });
+
+  it('should keep a backslash in front of a pipe from eating the escape', () => {
+    // 单元格里本来就有的反斜杠会把转义符吃掉，管道符重新变成列分隔符，
+    // 所以要先把反斜杠串成对转义。
+    expect(formatMarkdownTableCell('a\\|b')).toBe('a\\\\\\|b');
+    expect(formatMarkdownTableCell('a\\\\|b')).toBe('a\\\\\\\\\\|b');
+    // 不带管道符的反斜杠保持原样。
+    expect(formatMarkdownTableCell('C:\\path')).toBe('C:\\path');
+  });
 });
 
 describe('formatMarkdownTableRow', () => {

@@ -1,19 +1,20 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import {
   ChatFileTypeEnum,
   ChatRoleEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
-import { runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { runWithContext as runWithWorkflowContext } from '@fastgpt/service/core/workflow/utils/context';
 import {
   getRunningSandboxId,
   getSandboxRuntimeProfile
 } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
+import { runWithContext as runWithWorkflowContext } from '@fastgpt/service/core/workflow/utils/context';
 import { Readable } from 'node:stream';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const runWithContext: typeof runWithWorkflowContext = (value, fn) =>
   runWithWorkflowContext(
@@ -73,12 +74,18 @@ const {
   getLLMModelDataMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model')>()),
-  getModelHandle: async () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()),
+  getSystemModelHandle: async () => ({
     ...(await (
-      await importOriginal<typeof import('@fastgpt/service/core/ai/model')>()
-    ).getModelHandle()),
+      await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()
+    ).getSystemModelHandle()),
+    getLLMModelData: getLLMModelDataMock
+  }),
+  getTeamModelHandle: async () => ({
+    ...(await (
+      await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()
+    ).getSystemModelHandle()),
     getLLMModelData: getLLMModelDataMock
   })
 }));
@@ -244,6 +251,7 @@ const createProps = () =>
     },
     uid: 'user_1',
     externalProvider: {},
+    nodeSummary: createNodeSummary(),
     usagePush: vi.fn(),
     mode: 'chat',
     chatId: 'chat_1',
@@ -565,7 +573,7 @@ describe('dispatchRunAgent user context', () => {
     expect(getSandboxClientMock).toHaveBeenCalledTimes(1);
   });
 
-  it('authenticates skill injection with the app owner tmbId for published apps', async () => {
+  it('uses the runtime member for skill injection without an App resource context', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.params.useAgentSandbox = true;
@@ -588,7 +596,7 @@ describe('dispatchRunAgent user context', () => {
     expect(injectAgentSkillFilesToSandboxMock).toHaveBeenCalledWith(
       expect.objectContaining({
         teamId: 'team_1',
-        tmbId: 'app_owner_tmb',
+        tmbId: 'external_user_tmb',
         skillIds: ['skill_1']
       })
     );
@@ -776,6 +784,50 @@ describe('dispatchRunAgent user context', () => {
         }
       }
     ]);
+  });
+
+  it('publishes Agent internal responses as current-layer top-level rows', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const publishedResponses: any[] = [];
+    const props = createProps();
+    props.nodeResponseSink = {
+      publish: vi.fn(async (inputs: Array<{ response: any }>) => {
+        publishedResponses.push(...inputs.map((input) => input.response));
+        return inputs.map((input) => input.response);
+      })
+    };
+    runAgentLoopMock.mockImplementationOnce(async ({ runtime }) => {
+      runtime.emitEvent({
+        type: 'llm_request_end',
+        requestIndex: 1,
+        modelName: 'GPT-4',
+        requestId: 'req_agent',
+        finishReason: 'stop',
+        answerText: 'answer',
+        usages: [],
+        seconds: 0.1
+      });
+      return {
+        status: 'done',
+        completeMessages: [],
+        assistantMessages: [],
+        requestIds: []
+      };
+    });
+
+    let resultPromise: Promise<any>;
+    runWithContext(
+      {
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchRunAgent(props);
+      }
+    );
+    await resultPromise!;
+
+    expect(publishedResponses).toHaveLength(1);
+    expect(publishedResponses[0]).not.toHaveProperty('parentId');
   });
 
   it('routes pi engine through the unified runAgentLoop provider entry', async () => {

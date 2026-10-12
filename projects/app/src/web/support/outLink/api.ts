@@ -20,11 +20,18 @@ import type {
   OutLinkUpdateBodyType,
   OutLinkUpdateResponseType
 } from '@fastgpt/global/openapi/support/outLink/api';
+import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 
-// create a shareChat
-export function createShareChat(data: OutLinkCreateBodyType) {
-  return POST<OutLinkCreateResponseType>(`/support/outLink/create`, data);
+type LegacyOutLinkCreateBodyType =
+  | Omit<Extract<OutLinkCreateBodyType, { type: PublishChannelEnum.share }>, 'allowAnonymous'>
+  | Exclude<OutLinkCreateBodyType, { type: PublishChannelEnum.share }>;
+
+export function createShareChat(data: LegacyOutLinkCreateBodyType) {
+  return POST<OutLinkCreateResponseType>(`/support/outLink/create`, {
+    ...data,
+    allowAnonymous: true
+  });
 }
 
 export const putShareChat = (data: OutLinkUpdateBodyType) =>

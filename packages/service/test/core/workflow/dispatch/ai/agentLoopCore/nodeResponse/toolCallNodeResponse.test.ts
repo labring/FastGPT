@@ -9,7 +9,6 @@ describe('createAgentLoopCoreToolCallNodeResponse', () => {
         totalPoints: 3,
         toolCallInputTokens: 10,
         toolCallOutputTokens: 5,
-        toolTotalPoints: 1,
         modelName: 'GPT-5',
         query: 'hello',
         completeMessages: [
@@ -20,7 +19,6 @@ describe('createAgentLoopCoreToolCallNodeResponse', () => {
         ],
         useVision: false,
         toolDetail: [{ moduleName: 'Tool' } as any],
-        nodeId: 'toolcall_node',
         finishReason: 'stop',
         requestIds: ['req_1']
       })
@@ -29,14 +27,24 @@ describe('createAgentLoopCoreToolCallNodeResponse', () => {
         totalPoints: 3,
         toolCallInputTokens: 10,
         toolCallOutputTokens: 5,
-        childTotalPoints: 1,
         model: 'GPT-5',
         query: 'hello',
         toolDetail: [{ moduleName: 'Tool' }],
-        mergeSignId: 'toolcall_node',
         finishReason: 'stop',
         llmRequestIds: ['req_1']
       })
     );
+    expect(
+      createAgentLoopCoreToolCallNodeResponse({
+        totalPoints: 3,
+        toolCallInputTokens: 10,
+        toolCallOutputTokens: 5,
+        modelName: 'GPT-5',
+        query: 'hello',
+        completeMessages: [],
+        finishReason: 'stop',
+        requestIds: []
+      })
+    ).not.toHaveProperty('childTotalPoints');
   });
 });

@@ -1,5 +1,5 @@
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import type { AppSchemaType } from '@fastgpt/global/core/app/type';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
 import type { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
 import type {
@@ -10,7 +10,6 @@ import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edg
 import type {
   AIChatItemValueItemType,
   ChatFileStoreValue,
-  ChatHistoryItemResType,
   ChatItemMiniType,
   ToolRunResponseItemType,
   UserChatItemValueItemType
@@ -27,6 +26,7 @@ import type {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { WorkflowNodeResponseSinkLike } from '../dispatch/nodeResponseSink';
+import type { WorkflowRuntimeSummaryFields } from './summary';
 
 /*
   1. 输入线分类：普通线(实际上就是从 start 直接过来的分支）和递归线（可以追溯到自身的分支）
@@ -90,7 +90,7 @@ export type ChatDispatchProps = {
   histories: ChatItemMiniType[];
   variableState: WorkflowVariableStateLike; // global variable state
   query: UserChatItemValueItemType[]; // trigger query
-  chatConfig: AppSchemaType['chatConfig'];
+  chatConfig?: AppChatConfigType;
   lastInteractive?: WorkflowInteractiveResponseType; // last interactive response
   stream: boolean;
   retainDatasetCite?: boolean;
@@ -102,10 +102,13 @@ export type ChatDispatchProps = {
 
   workflowDispatchDeep: number;
 
+  /** 当前节点的资源输入是否来自工作流引用，动态资源回退到运行人权限。 */
+  dynamicDataset?: boolean;
+
   responseAllData?: boolean;
   responseDetail?: boolean;
   nodeResponseParentId?: string; // 传递给 child，用于设置 nodeResponse 的 parentId
-  /** 请求级 nodeResponse 接收器；child runtime 共享，节点 adapter 不直接操作数据库。 */
+  /** 当前 workflow 的 response scope；child 创建独立 scope 并共享底层 output。 */
   nodeResponseSink?: WorkflowNodeResponseSinkLike;
 
   // TODO: 移除
@@ -120,6 +123,7 @@ export type ModuleDispatchProps<T> = ChatDispatchProps & {
   params: T;
 
   usagePush: (usages: ChatNodeUsageType[]) => void;
+  nodeSummary: NodeSummaryCollector;
 };
 
 export type SystemVariablesType = {
@@ -129,6 +133,16 @@ export type SystemVariablesType = {
   responseChatItemId?: string;
   histories: ChatItemMiniType[];
   cTime: string;
+};
+
+/** 当前节点 callback 可向 queue 贡献的运行摘要增量。 */
+export type NodeSummary = Partial<WorkflowRuntimeSummaryFields>;
+
+/** 当前节点执行单元的摘要及其统一增量合并入口。 */
+export type NodeSummaryCollector = Omit<NodeSummary, 'llmInputTokens' | 'llmOutputTokens'> & {
+  llmInputTokens: number;
+  llmOutputTokens: number;
+  mergeNodeSummary: (summary?: NodeSummary) => void;
 };
 
 export type DispatchNodeResultType<
@@ -141,8 +155,6 @@ export type DispatchNodeResultType<
   [DispatchNodeResponseKeyEnum.reasoningText]?: string;
   [DispatchNodeResponseKeyEnum.skipHandleId]?: string[]; // skip some edge handle id
   [DispatchNodeResponseKeyEnum.nodeResponse]?: DispatchNodeResponseType; // The node response detail
-  [DispatchNodeResponseKeyEnum.nodeResponses]?: ChatHistoryItemResType[]; // 内部 n 个节点平铺；dispatch/index 不会把自身节点混入这里
-  [DispatchNodeResponseKeyEnum.childrenResponses]?: DispatchNodeResultType[]; // Children node response
   [DispatchNodeResponseKeyEnum.toolResponse]?: ToolRunResponseItemType; // Tool response
   [DispatchNodeResponseKeyEnum.assistantResponses]?: AIChatItemValueItemType[]; // Assistant response(Store to db)
   [DispatchNodeResponseKeyEnum.rewriteHistories]?: ChatItemMiniType[];

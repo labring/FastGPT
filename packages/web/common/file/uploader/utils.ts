@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { MAX_MULTIPART_PART_COUNT } from '@fastgpt/global/common/file/constants';
+import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
 
 /** 创建统一的上传取消错误，兼容没有 DOMException 的运行环境。 */
 export const createMultipartAbortError = () => {
@@ -35,7 +36,7 @@ export const throwIfAborted = (signal?: AbortSignal) => {
 /** 校验文件和分片大小，并返回 Multipart 分片数量。 */
 export const getMultipartPartCount = (fileSize: number, partSize: number) => {
   if (!Number.isInteger(fileSize) || fileSize <= 0) {
-    throw new Error('Multipart file size must be a positive integer');
+    throw new Error(S3ErrEnum.emptyUploadFile);
   }
   if (!Number.isInteger(partSize) || partSize <= 0) {
     throw new Error('Multipart part size must be a positive integer');

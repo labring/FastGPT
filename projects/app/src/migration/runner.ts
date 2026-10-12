@@ -42,7 +42,7 @@ type SystemMigrationTiming = {
 type SystemMigrationExecutionOutcome = 'succeeded' | 'failed' | 'interrupted';
 
 export type SystemMigrationRunnerStore = {
-  ensureStates: (migrationIds: string[]) => Promise<void>;
+  ensureStates: typeof ensureMigrationStates;
   getStates: (migrationIds: string[]) => Promise<SystemMigrationStateSchemaType[]>;
   getFailedRecords: typeof getMigrationFailedRecords;
   claimLease: typeof claimMigrationLease;
@@ -414,10 +414,19 @@ export const createSystemMigrationRunner = ({
       return 'interrupted';
     };
 
-    const executionStartedAt = Date.now();
-    migrationLogger.info('System migration execution started');
+    let executionStartedAt = Date.now();
 
     try {
+      if (migration.delay && resolvedTiming.delayMs > 0) {
+        migrationLogger.info('System migration execution delayed by configuration', {
+          delayMs: resolvedTiming.delayMs
+        });
+        await delay(resolvedTiming.delayMs, abortController.signal);
+      }
+
+      executionStartedAt = Date.now();
+      migrationLogger.info('System migration execution started');
+
       // 先校验任务返回值，再与 succeeded 一起提交，避免提前暴露尚未成功的结果。
       const result = SystemMigrationResultDataSchema.optional().parse(await migration.run(context));
       const incompleteProgressStep = migration.progressSteps.find(
@@ -538,6 +547,17 @@ export const createSystemMigrationRunner = ({
       for (const item of migrations) {
         const state = stateMap.get(item.id);
         if (state?.status === SystemMigrationStatusEnum.succeeded) continue;
+        // waiting 只接受管理员显式入队；已触发的手动任务仍使用正常 lease 接管机制。
+        if (state?.status === SystemMigrationStatusEnum.waiting || (!state && item.manual))
+          continue;
+
+        // 执行前再次校验依赖，覆盖旧节点已入队和绕过启动入口的任务；失败前置不会被 continue 绕过。
+        if (
+          item.dependsOn?.some(
+            (id) => stateMap.get(id)?.status !== SystemMigrationStatusEnum.succeeded
+          )
+        )
+          continue;
 
         if (state?.status === SystemMigrationStatusEnum.failed) {
           logObservedFailure(item, state);
@@ -631,7 +651,7 @@ export const createSystemMigrationRunner = ({
       if (started) return;
       started = true;
       stopped = false;
-      await store.ensureStates(migrationIds);
+      await store.ensureStates(migrations);
       void wake();
     },
     /**
@@ -683,18 +703,20 @@ export const createSystemMigrationRunner = ({
 
 export type SystemMigrationRunner = ReturnType<typeof createSystemMigrationRunner>;
 
-let systemMigrationRunner: SystemMigrationRunner | undefined;
+declare global {
+  var systemMigrationRunner: SystemMigrationRunner | undefined;
+}
 
 /** 启动当前进程唯一的生产迁移执行器。 */
 export const startSystemMigrationRunner = async (): Promise<SystemMigrationRunner> => {
-  if (!systemMigrationRunner) {
-    systemMigrationRunner = createSystemMigrationRunner();
-    await systemMigrationRunner.start();
+  if (!global.systemMigrationRunner) {
+    global.systemMigrationRunner = createSystemMigrationRunner();
+    await global.systemMigrationRunner.start();
   }
-  return systemMigrationRunner;
+  return global.systemMigrationRunner;
 };
 
 /** 管理员重置失败任务后唤醒当前 API 节点；实际执行仍需正常竞争 Mongo lease。 */
 export const wakeSystemMigrationRunner = (): void => {
-  void systemMigrationRunner?.wake();
+  void global.systemMigrationRunner?.wake();
 };

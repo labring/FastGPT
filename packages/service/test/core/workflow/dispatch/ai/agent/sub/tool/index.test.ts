@@ -93,19 +93,18 @@ const createDispatchToolProps = (
     },
     params,
     runningAppInfo: {
-      id: 'attacker-app',
+      id: 'app-id',
       teamId: 'attacker-team',
-      tmbId: 'attacker-tmb',
-      name: 'Attacker workflow'
+      tmbId: 'app-creator-tmb',
+      name: 'Agent workflow'
     },
     runningUserInfo: {
-      username: 'attacker',
-      teamName: 'Attacker team',
-      memberName: 'Attacker member',
+      username: 'caller',
+      teamName: 'Caller team',
+      memberName: 'Caller member',
       contact: '',
       teamId: 'attacker-team',
-      // 工具加载和执行都必须使用应用创建者，而不是当前调用者。
-      tmbId: 'caller-without-toolset-permission'
+      tmbId: 'caller-tmb'
     },
     chatId: 'chat',
     uid: 'uid',
@@ -150,6 +149,19 @@ describe('dispatchTool runtime toolset auth', () => {
         ]
       }
     });
+    getAppVersionByIdMock.mockResolvedValue({
+      nodes: [
+        {
+          toolConfig: {
+            httpToolSet: {
+              baseUrl: 'https://example.com',
+              toolList: [tool],
+              apiSchemaStr: '{"openapi":"3.0.0","paths":{}}'
+            }
+          }
+        }
+      ]
+    });
     getHTTPToolListMock.mockResolvedValue([tool]);
     runHTTPToolMock.mockResolvedValue({ data: { ok: true } });
     const toolConfig = { httpTool: { toolId: 'http-victim-toolset/legacy_search' } };
@@ -171,7 +183,7 @@ describe('dispatchTool runtime toolset auth', () => {
       expect(rejected.errorMessage).toContain('validation failed');
     }
     expect(runHTTPToolMock).not.toHaveBeenCalled();
-    expect(getAppVersionByIdMock).not.toHaveBeenCalled();
+    expect(getAppVersionByIdMock).toHaveBeenCalled();
     expect(tool).toEqual(original);
   });
 
@@ -209,6 +221,19 @@ describe('dispatchTool runtime toolset auth', () => {
           ]
         }
       });
+      getAppVersionByIdMock.mockResolvedValue({
+        nodes: [
+          {
+            toolConfig: {
+              [key]: {
+                url: 'https://latest.example.com/mcp',
+                baseUrl: 'https://latest.example.com',
+                toolList: [tool]
+              }
+            }
+          }
+        ]
+      });
       getMCPChildrenMock.mockResolvedValue([tool]);
       getHTTPToolListMock.mockResolvedValue([tool]);
       mcpToolCallMock.mockResolvedValue({ ok: true });
@@ -243,9 +268,9 @@ describe('dispatchTool runtime toolset auth', () => {
           params: { query: 'latest' }
         });
       }
-      expect(getAppVersionByIdMock).not.toHaveBeenCalled();
+      expect(getAppVersionByIdMock).toHaveBeenCalled();
       expect(authAppByTmbIdMock).toHaveBeenCalledWith({
-        tmbId: 'attacker-tmb',
+        tmbId: 'caller-tmb',
         appId: 'victim-toolset',
         per: ReadPermissionVal
       });
@@ -320,7 +345,7 @@ describe('dispatchTool runtime toolset auth', () => {
     }
   );
 
-  it('should reject HTTP agent tool execution when running app tmb has no parent toolset permission', async () => {
+  it('should reject HTTP agent tool execution when caller tmb has no parent toolset permission', async () => {
     authAppByTmbIdMock.mockRejectedValueOnce(new Error('unAuthApp'));
 
     const result = await dispatchTool(
@@ -332,7 +357,7 @@ describe('dispatchTool runtime toolset auth', () => {
     );
 
     expect(authAppByTmbIdMock).toHaveBeenCalledWith({
-      tmbId: 'attacker-tmb',
+      tmbId: 'caller-tmb',
       appId: 'victim-toolset',
       per: ReadPermissionVal
     });
@@ -371,6 +396,25 @@ describe('dispatchTool runtime toolset auth', () => {
         method: 'post'
       }
     ]);
+    getAppVersionByIdMock.mockResolvedValueOnce({
+      nodes: [
+        {
+          toolConfig: {
+            httpToolSet: {
+              baseUrl: 'https://example.com',
+              toolList: [
+                {
+                  name: 'sandbox_echo',
+                  description: 'Sandbox echo',
+                  path: '/echo',
+                  method: 'post'
+                }
+              ]
+            }
+          }
+        }
+      ]
+    });
     runHTTPToolMock.mockResolvedValueOnce({
       data: {
         ok: true
@@ -386,11 +430,11 @@ describe('dispatchTool runtime toolset auth', () => {
     );
 
     expect(authAppByTmbIdMock).toHaveBeenCalledWith({
-      tmbId: 'attacker-tmb',
+      tmbId: 'caller-tmb',
       appId: 'victim-toolset',
       per: ReadPermissionVal
     });
-    expect(getAppVersionByIdMock).not.toHaveBeenCalled();
+    expect(getAppVersionByIdMock).toHaveBeenCalled();
     expect(runHTTPToolMock).toHaveBeenCalledWith(
       expect.objectContaining({
         baseUrl: 'https://example.com',
@@ -401,7 +445,7 @@ describe('dispatchTool runtime toolset auth', () => {
     expect(result.response).toBe(JSON.stringify({ ok: true }));
   });
 
-  it('should reject MCP agent tool execution when running app tmb has no parent toolset permission', async () => {
+  it('should reject MCP agent tool execution when caller tmb has no parent toolset permission', async () => {
     authAppByTmbIdMock.mockRejectedValueOnce(new Error('unAuthApp'));
 
     const result = await dispatchTool(
@@ -413,7 +457,7 @@ describe('dispatchTool runtime toolset auth', () => {
     );
 
     expect(authAppByTmbIdMock).toHaveBeenCalledWith({
-      tmbId: 'attacker-tmb',
+      tmbId: 'caller-tmb',
       appId: 'victim-toolset',
       per: ReadPermissionVal
     });

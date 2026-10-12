@@ -13,15 +13,25 @@ import {
   toggleMultiSelectFilterValue,
   toMultiSelectFilterQuery
 } from '../../../../components/common/TagFilter/multiSelectFilterUtils';
-import { getFilterListBoxProps } from '../../../../components/common/TagFilter/styles';
+import {
+  DEFAULT_FILTER_MENU_MAX_W,
+  filterPopoverProps,
+  getFilterListBoxProps
+} from '../../../../components/common/TagFilter/styles';
 
 describe('filter list sizes', () => {
   it('uses preset heights only when the list is scrollable', () => {
     expect(getFilterListBoxProps(true).maxH).toBe('240px');
+    expect(getFilterListBoxProps(true).overflowX).toBe('hidden');
     expect(getFilterListBoxProps(true, 'sm').maxH).toBe('168px');
     expect(getFilterListBoxProps(true, 'md').maxH).toBe('240px');
     expect(getFilterListBoxProps(true, 'lg').maxH).toBe('320px');
     expect(getFilterListBoxProps(false, 'lg').maxH).toBeUndefined();
+  });
+
+  it('provides default popover max width', () => {
+    expect(DEFAULT_FILTER_MENU_MAX_W).toBe('260px');
+    expect(filterPopoverProps.maxW).toBe('260px');
   });
 });
 

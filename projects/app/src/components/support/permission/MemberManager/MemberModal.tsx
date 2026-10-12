@@ -17,7 +17,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { CollaboratorContext } from './context';
@@ -47,7 +47,7 @@ function MemberModal({
   onClose: () => void;
   SelectedTip?: React.ReactNode;
 }) {
-  const { t } = useClientTranslation(['user']);
+  const { t } = useSafeTranslation();
   const { userInfo } = useUserStore();
   const collaboratorDetailList = useContextSelector(CollaboratorContext, (v) => v.collaboratorList);
   const isInheritPermission = useContextSelector(CollaboratorContext, (v) => v.isInheritPermission);
@@ -103,7 +103,7 @@ function MemberModal({
   );
 
   const parentClbs = useContextSelector(CollaboratorContext, (v) => v.parentClbList);
-  const myRole = useContextSelector(CollaboratorContext, (v) => v.myRole);
+  const myPermission = useContextSelector(CollaboratorContext, (v) => v.permission);
 
   const { runAsync: _onConfirm, loading: isUpdating } = useRequest(
     () =>
@@ -468,7 +468,7 @@ function MemberModal({
                     disabled={
                       clb.permission.role === OwnerRoleVal ||
                       clb.tmbId === userInfo?.team.tmbId ||
-                      (clb.permission.hasManagePer && !myRole.isOwner)
+                      (clb.permission.hasManagePer && !myPermission.isOwner)
                     }
                   />
                 );
@@ -496,7 +496,7 @@ const RenderMemberList = ({
   defaultRole: RoleValueType;
 }) => {
   const { userInfo } = useUserStore();
-  const myRole = useContextSelector(CollaboratorContext, (v) => v.myRole);
+  const myPermission = useContextSelector(CollaboratorContext, (v) => v.permission);
 
   return (
     <>
@@ -531,7 +531,7 @@ const RenderMemberList = ({
             disabled={
               member.permission.role === OwnerRoleVal ||
               member.tmbId === userInfo?.team.tmbId ||
-              (member.permission.hasManagePer && !myRole.isOwner)
+              (member.permission.hasManagePer && !myPermission.isOwner)
             }
           />
         );

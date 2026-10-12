@@ -4,7 +4,6 @@ import { AppListSortEnum, AppTypeEnum } from '../../../../core/app/constants';
 import {
   AppChatConfigTypeSchema,
   AppTTSConfigTypeSchema,
-  AppResourceRefsSchema,
   AppScheduledTriggerConfigTypeSchema,
   AppSchemaTypeSchema,
   type AppDetailType,
@@ -20,7 +19,7 @@ import {
   OpenAPIStoreNodeItemTypeSchema
 } from '../../workflow/node';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
-import { BoolSchema, NumSchema, optionalNullToUndefined } from '../../../../common/zod';
+import { BoolSchema, IntSchema, NumSchema, optionalNullToUndefined } from '../../../../common/zod';
 import { PaginationResponseSchema, PaginationSchema } from '../../../api';
 import { migrateWorkflowToCurrent } from '../../../../core/workflow/migration';
 import z from 'zod';
@@ -195,15 +194,17 @@ const migrateCreateAppBodyWorkflow = (value: unknown) => {
       referenceSnapshots: body.referenceSnapshots
     });
 
-    return {
+    const migratedBody: Record<string, unknown> = {
       ...body,
-      modules: workflow.nodes,
+      nodes: workflow.nodes,
       edges: workflow.edges,
       chatConfig: workflow.chatConfig,
       ...(body.referenceSnapshots !== undefined
         ? { referenceSnapshots: workflow.referenceSnapshots }
         : {})
     };
+    delete migratedBody.modules;
+    return migratedBody;
   } catch {
     return value;
   }
@@ -238,9 +239,14 @@ export const CreateAppBodySchema = z
       example: AppTypeEnum.workflow,
       description: '应用类型'
     }),
-    modules: z.array(CreateAppNodeSchema).optional().meta({
+    nodes: z.array(CreateAppNodeSchema).optional().meta({
       example: [],
       description: '应用节点配置'
+    }),
+    // 旧 modules 只能在 preprocess 成功后被删除；残留时必须拒绝，避免静默创建空应用。
+    modules: z.never().optional().meta({
+      description: '已废弃：旧版节点配置，建议使用 nodes',
+      deprecated: true
     }),
     edges: CreateAppEdgesSchema.optional().meta({
       example: [],
@@ -264,7 +270,7 @@ export const CreateAppBodySchema = z
     example: {
       name: '新应用',
       type: AppTypeEnum.simple,
-      modules: [],
+      nodes: [],
       edges: [],
       parentId: '68ad85a7463006c963799a05'
     }
@@ -348,6 +354,10 @@ export type ListAppBodyType = z.infer<typeof ListAppBodySchema>;
 export const ListAppV2BodySchema = ListAppBodySchema.extend({
   excludeAppId: ObjectIdSchema.optional().meta({
     description: '排除指定应用，适用于不允许选择当前编辑应用的场景'
+  }),
+  withRelatedAppCount: BoolSchema.optional().meta({
+    example: true,
+    description: '是否返回非文件夹 App 和工具被正式应用引用的数量'
   })
 }).extend(PaginationSchema.shape);
 export type ListAppV2BodyType = z.infer<typeof ListAppV2BodySchema>;
@@ -369,6 +379,10 @@ export const AppListItemSchema = z
     private: BoolSchema.optional().meta({ description: '是否仅自己可见' }),
     sourceMember: SourceMemberSchema.meta({ description: '创建者信息' }),
     hasInteractiveNode: BoolSchema.optional().meta({ description: '是否包含交互节点' }),
+    relatedAppCount: IntSchema.optional().meta({
+      example: 0,
+      description: '被正式应用引用的 App 或工具数量，仅非文件夹资源 Owner 且显式请求时返回'
+    }),
     isPinned: BoolSchema.optional().meta({
       description: '是否置顶。仅在请求启用置顶排序时返回'
     })
@@ -386,6 +400,17 @@ export const ListAppV2ResponseSchema = PaginationResponseSchema(AppListItemSchem
   description: '应用列表(分页)'
 });
 export type ListAppV2ResponseType = z.infer<typeof ListAppV2ResponseSchema>;
+
+export const GetReferencedAppsQuerySchema = z.object({
+  resourceType: z.enum(['agent', 'tool', 'dataset', 'skill']).meta({
+    description: '目标资源类型: agent (应用), tool (工具), dataset (知识库), skill (技能)'
+  }),
+  resourceId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '目标资源 ID 或包含该类资源的文件夹 ID'
+  })
+});
+export type GetReferencedAppsQuery = z.infer<typeof GetReferencedAppsQuerySchema>;
 
 /* ============================================================================
  * API: 获取应用详情
@@ -421,11 +446,8 @@ export const GetAppDetailResponseSchema = AppSchemaTypeSchema.extend({
     description: '创建应用时使用的模板 ID'
   }),
   updateTime: z.coerce.date().meta({ description: '最后更新时间' }),
-  modules: z
-    .array(OpenAPIStoreNodeItemTypeSchema)
-    .default([])
-    .meta({ description: '应用节点配置' }),
-  edges: AppSchemaTypeSchema.shape.edges.default([]).meta({
+  nodes: z.array(OpenAPIStoreNodeItemTypeSchema).default([]).meta({ description: '应用节点配置' }),
+  edges: z.array(StoreEdgeItemTypeSchema).default([]).meta({
     description: '应用连线'
   }),
   pluginData: AppSchemaTypeSchema.shape.pluginData,
@@ -438,8 +460,8 @@ export const GetAppDetailResponseSchema = AppSchemaTypeSchema.extend({
   scheduledTriggerNextTime: z.coerce.date().optional().meta({
     description: '下一次定时触发时间'
   }),
-  resourceRefs: AppResourceRefsSchema.optional().meta({
-    description: '应用发布后引用的外部资源集合'
+  publishedVersionId: ObjectIdSchema.optional().meta({
+    description: '当前最新正式发布 Version ID'
   }),
   inheritPermission: BoolSchema.optional().meta({
     description: '是否继承父级文件夹权限'
@@ -508,10 +530,7 @@ export const UpdateAppBodySchema = z
   });
 export type UpdateAppBodyType = z.infer<typeof UpdateAppBodySchema>;
 
-export const UpdateAppResponseSchema = z.unknown().nullable().optional().meta({
-  description: 'MongoDB 更新结果；移动应用时无返回数据'
-});
-export type UpdateAppResponseType = z.infer<typeof UpdateAppResponseSchema>;
+export type UpdateAppResponseType = void;
 
 /* ============================================================================
  * API: 置顶应用

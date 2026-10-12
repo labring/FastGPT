@@ -312,7 +312,8 @@ describe('callMcpServerTool', () => {
         }
       ],
       edges: [],
-      chatConfig: {}
+      chatConfig: {},
+      resources: []
     } as any);
     vi.mocked(getRunningUserInfoByTmbId).mockResolvedValue({
       username: 'user',
@@ -327,7 +328,7 @@ describe('callMcpServerTool', () => {
       newVariables: {},
       toolResponse: { result: 'tool response should not be the plugin source' },
       durationSeconds: 1,
-      runtimeNodeResponseSummary: {
+      workflowRuntimeSummary: {
         responseIds: ['plugin-output-response-id'],
         finishedNodeIds: [],
         hasError: false,

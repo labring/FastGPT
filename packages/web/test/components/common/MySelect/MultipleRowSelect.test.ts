@@ -161,5 +161,41 @@ describe('MultipleRowSelect', () => {
 
     expect(host.textContent).not.toContain('Source');
     root.unmount();
+  it('handles null or non-array value gracefully without throwing TypeError', () => {
+    expect(() => {
+      renderToStaticMarkup(
+        React.createElement(
+          ChakraProvider,
+          null,
+          React.createElement(MultipleRowSelect, {
+            list: [
+              {
+                label: 'Group A',
+                value: 'groupA',
+                children: [{ label: 'Item 1', value: 'item1' }]
+              }
+            ],
+            value: null as any,
+            onSelect: () => {}
+          })
+        )
+      );
+    }).not.toThrow();
+  });
+
+  it('handles undefined value gracefully', () => {
+    expect(() => {
+      renderToStaticMarkup(
+        React.createElement(
+          ChakraProvider,
+          null,
+          React.createElement(MultipleRowSelect, {
+            list: [{ label: 'Item 1', value: 'item1' }],
+            value: undefined,
+            onSelect: () => {}
+          })
+        )
+      );
+    }).not.toThrow();
   });
 });

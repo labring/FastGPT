@@ -570,6 +570,21 @@ export const resourcePermissionRepo = {
       withSession(session)
     ),
 
+  /** 资源本体删除后的全团队清理；仅用于全局唯一资源 ID，不能用于普通团队权限操作。 */
+  deleteByResourceIdsAcrossTeams: ({
+    resourceType,
+    resourceIds,
+    session
+  }: {
+    resourceType: PerResourceTypeEnum;
+    resourceIds: string[];
+    session?: ClientSession;
+  }) =>
+    MongoResourcePermission.deleteMany(
+      { resourceType, resourceId: { $in: resourceIds } },
+      withSession(session)
+    ),
+
   deleteByTeam: (teamId: string, session?: ClientSession) =>
     MongoResourcePermission.deleteMany({ teamId }, withSession(session)),
 

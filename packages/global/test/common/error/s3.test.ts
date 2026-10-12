@@ -70,6 +70,23 @@ describe('parseS3UploadError', () => {
     expect(t).toHaveBeenCalledWith('common:error.s3_upload_invalid_file_type');
   });
 
+  it('should handle empty upload file errors', () => {
+    const t = createTranslator();
+    const result = parseS3UploadError({
+      t,
+      error: {
+        response: {
+          data: {
+            message: 'EmptyUploadFile'
+          }
+        }
+      }
+    });
+
+    expect(result).toBe('common:empty_file');
+    expect(t).toHaveBeenCalledWith('common:empty_file');
+  });
+
   it('should handle AccessDenied error', () => {
     const t = createTranslator();
     const result = parseS3UploadError({

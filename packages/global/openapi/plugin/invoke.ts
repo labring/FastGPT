@@ -8,10 +8,6 @@ import { ChatFileTypeEnum } from '../../core/chat/constants';
  * Description: 通过 invoke token 获取当前运行上下文的用户信息
  * Tags: ['通用-反向调用', '插件']
  * ============================================================================ */
-export const InvokeUserInfoBodySchema = z.object({});
-
-export const InvokeUserInfoQuerySchema = z.object({});
-
 export const InvokeUserInfoResponseSchema = z.object({
   username: z.string().meta({ description: '账号', example: 'user@example.com' }),
   contact: z.string().nullish().meta({ description: '联系方式', example: '13800138000' }),
@@ -27,8 +23,6 @@ export const InvokeUserInfoResponseSchema = z.object({
   )
 });
 
-export type InvokeUserInfoBodyType = z.infer<typeof InvokeUserInfoBodySchema>;
-export type InvokeUserInfoQueryType = z.infer<typeof InvokeUserInfoQuerySchema>;
 export type InvokeUserInfoResponseType = z.infer<typeof InvokeUserInfoResponseSchema>;
 
 /* ============================================================================
@@ -38,8 +32,9 @@ export type InvokeUserInfoResponseType = z.infer<typeof InvokeUserInfoResponseSc
  * Description: 通过 invoke token 获取当前运行团队的企微企业短期访问凭证
  * Tags: ['Plugin', 'Invoke', 'Wecom', 'Read']
  * ============================================================================ */
+/** @deprecated 仅供当前 Pro 子模块过渡使用；该接口没有请求体。 */
 export const InvokeWecomCorpTokenBodySchema = z.object({});
-
+/** @deprecated 仅供当前 Pro 子模块过渡使用；该接口没有查询参数。 */
 export const InvokeWecomCorpTokenQuerySchema = z.object({});
 
 export const InvokeWecomCorpTokenResponseSchema = z.object({
@@ -47,7 +42,9 @@ export const InvokeWecomCorpTokenResponseSchema = z.object({
   expiresIn: z.number().describe('凭证有效期，单位秒')
 });
 
+/** @deprecated 仅供当前 Pro 子模块过渡使用。 */
 export type InvokeWecomCorpTokenBodyType = z.infer<typeof InvokeWecomCorpTokenBodySchema>;
+/** @deprecated 仅供当前 Pro 子模块过渡使用。 */
 export type InvokeWecomCorpTokenQueryType = z.infer<typeof InvokeWecomCorpTokenQuerySchema>;
 export type InvokeWecomCorpTokenResponseType = z.infer<typeof InvokeWecomCorpTokenResponseSchema>;
 
@@ -66,7 +63,7 @@ export const InvokeFileUploadBodySchema = z.object({
 });
 
 export const InvokeFileUploadFormSchema = InvokeFileUploadBodySchema.extend({
-  file: z.any().meta({
+  file: z.string().meta({
     format: 'binary',
     description: '待上传的文件（二进制）'
   })
@@ -78,8 +75,6 @@ export const InvokeAuthorizationHeaderSchema = z.object({
     example: 'Bearer invoke-token'
   })
 });
-
-export const InvokeFileUploadQuerySchema = z.object({});
 
 export const InvokeFileUploadResponseSchema = z.object({
   url: z.string().meta({
@@ -105,5 +100,4 @@ export const InvokeFileUploadResponseSchema = z.object({
 });
 
 export type InvokeFileUploadBodyType = z.infer<typeof InvokeFileUploadBodySchema>;
-export type InvokeFileUploadQueryType = z.infer<typeof InvokeFileUploadQuerySchema>;
 export type InvokeFileUploadResponseType = z.infer<typeof InvokeFileUploadResponseSchema>;

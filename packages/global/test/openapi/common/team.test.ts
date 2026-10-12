@@ -12,7 +12,7 @@ import {
   DatasetSizeLimitQuerySchema,
   type DatasetSizeLimitQuery
 } from '../../../openapi/support/user/team/limit/api';
-import { GetPlansResponseSchema as GetAdminPlansResponseSchema } from '../../../openapi/admin/routes/plans/api';
+import { GetPlansResponseSchema as GetAdminPlansResponseSchema } from '../../../openapi/admin/wallet/plan/api';
 import {
   GetTeamPlansResponseSchema,
   GetTeamPlanStatusResponseSchema

@@ -241,18 +241,17 @@ describe('parsePromptToolCall function tests', () => {
       });
     });
 
-    it('should handle input with multiple 1: occurrences - fails to parse when extra text interferes', () => {
+    it('should handle input with multiple 1: occurrences - extracts the first tool call', () => {
       const input =
         'Text 1: {"name": "tool1", "arguments": {"param": "value"}} more text 1: {"name": "tool2", "arguments": {}}';
       const result = parsePromptToolCall(input);
 
-      // The sliceJsonStr function can't properly extract JSON when there's extra text after
-      expect(result.answer).toEqual(
-        'Tool call error: Text 1: {"name": "tool1", "arguments": {"param": "value"}} more text 1: {"name": "tool2", "arguments": {}}'
-      );
-      expect(result.streamAnswer).toEqual(
-        'Tool call error: Text 1: {"name": "tool1", "arguments": {"param": "value"}} more text 1: {"name": "tool2", "arguments": {}}'
-      );
+      // sliceJsonStr closes the first value and leaves the rest out, so the
+      // first tool call is parsed instead of the whole answer failing.
+      expect(result.answer).toBe('');
+      expect(result.toolCalls).toHaveLength(1);
+      expect(result.toolCalls![0].function.name).toBe('tool1');
+      expect(JSON.parse(result.toolCalls![0].function.arguments)).toEqual({ param: 'value' });
     });
 
     it('should handle tool name with underscores and numbers', () => {

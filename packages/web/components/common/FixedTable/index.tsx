@@ -20,7 +20,7 @@ export type FixedTableRenderContext = {
 type FixedTableLayoutProps = {
   /** virtual 模式由调用方渲染虚拟 Body，normal 模式由调用方渲染普通 Body。 */
   scrollMode: FixedTableScrollMode;
-  /** 默认按容器宽度分配列；仅显式开启时允许内容自由撑宽。 */
+  /** 默认允许内容自由撑宽并横向滚动；显式设为 false 时按容器宽度分配列。 */
   horizontalScroll?: boolean;
   renderHeader?: (context: FixedTableRenderContext) => ReactNode;
   renderBody: (context: FixedTableRenderContext) => ReactNode;
@@ -150,7 +150,7 @@ const splitHorizontalPadding = (props: BoxProps = {}) => {
 /** 固定表头与单一表体滚动区；横向留白只由各自的内容外层 Box 承担。 */
 export const FixedTableLayout = ({
   scrollMode,
-  horizontalScroll = false,
+  horizontalScroll = true,
   renderHeader,
   renderBody,
   footer,
@@ -164,7 +164,7 @@ export const FixedTableLayout = ({
   const { headerContainerRef, bodyContainerRef, headerTableWidth } = useFixedTableLayout(bodyRef);
   const renderContext = { bodyContainerRef, headerTableWidth };
   const { paddingProps, layoutProps } = splitHorizontalPadding(rootProps);
-  const contentPadding = { px: 4, ...paddingProps };
+  const contentPadding = { px: 0, ...paddingProps };
   const { paddingProps: headerPadding, layoutProps: headerStyles } =
     splitHorizontalPadding(headerProps);
   const { paddingProps: bodyPadding, layoutProps: bodyStyles } = splitHorizontalPadding(bodyProps);
@@ -267,6 +267,8 @@ export const FixedTableLayout = ({
 type FixedTableContainerProps = BoxProps & {
   /** 带边框的内嵌表：不留外侧 padding，最后一列表头延伸覆盖滚动条上方。 */
   flush?: boolean;
+  /** 统一应用到固定表头和表体的 Table 视觉变体。 */
+  tableVariant?: TableProps['variant'];
   /** 滚动 body 的背景色；仅需要覆盖滚动条留白时设置。 */
   bodyBg?: BoxProps['bg'];
   horizontalScroll?: boolean;
@@ -409,8 +411,9 @@ export const FixedTableContainer = React.forwardRef<HTMLDivElement, FixedTableCo
       children,
       footer,
       scrollContainer,
-      horizontalScroll = false,
+      horizontalScroll = true,
       flush = false,
+      tableVariant,
       bodyBg,
       ...rootProps
     },
@@ -427,6 +430,7 @@ export const FixedTableContainer = React.forwardRef<HTMLDivElement, FixedTableCo
         React.isValidElement(child) && (child.type === Table || child.type === 'table')
     );
     const tableChildren = React.Children.toArray(table?.props.children);
+    const tableVariantProps = tableVariant ? { variant: tableVariant } : {};
     const isHead = (child: ReactNode) =>
       React.isValidElement(child) && (child.type === Thead || child.type === 'thead');
     const head = tableChildren.filter(isHead);
@@ -435,6 +439,7 @@ export const FixedTableContainer = React.forwardRef<HTMLDivElement, FixedTableCo
         ? React.cloneElement(table, {
             id: undefined,
             ref: null,
+            ...tableVariantProps,
             children: head
           })
         : undefined;
@@ -442,6 +447,7 @@ export const FixedTableContainer = React.forwardRef<HTMLDivElement, FixedTableCo
       ? content.map((child) =>
           child === table
             ? React.cloneElement(table!, {
+                ...tableVariantProps,
                 children: tableChildren.filter((child) => !isHead(child))
               })
             : child

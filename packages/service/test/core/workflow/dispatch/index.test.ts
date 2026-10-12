@@ -26,6 +26,17 @@ import {
 import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/types/runtime';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
+import { assertWorkflowNodeModelResources } from '@fastgpt/service/core/workflow/utils/resource';
+
+// 默认走真实实现，只有模型校验相关用例按需注入失败。
+vi.mock('@fastgpt/service/core/workflow/utils/resource', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/core/workflow/utils/resource')>();
+  return {
+    ...actual,
+    assertWorkflowNodeModelResources: vi.fn(actual.assertWorkflowNodeModelResources)
+  };
+});
 
 const waitWithTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: string) => {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -1290,6 +1301,113 @@ describe('runWorkflow catchError', () => {
       }
     }
   );
+  describe('模型资源校验失败', () => {
+    const teamId = '654a4107c32f3bf5f998452f';
+    const tmbId = '65ab7007462ada7dbb899948';
+    const errorText = 'model auth failed';
+    const createRunProps = (runtimeNodes: any[], runtimeEdges: any[] = []) =>
+      ({
+        apiVersion: 'v2',
+        mode: 'chat',
+        runningAppInfo: { id: '67e0d5535c02d1d5cdede721', name: 'model auth', teamId, tmbId },
+        runningUserInfo: {
+          teamId,
+          tmbId,
+          teamName: 'team',
+          memberName: 'member',
+          contact: '',
+          username: 'user'
+        },
+        uid: 'user-model-auth-test',
+        lang: 'zh-CN',
+        histories: [],
+        query: [],
+        variables: {},
+        chatConfig: {},
+        runtimeNodes,
+        runtimeEdges,
+        variableState: createWorkflowVariableState(),
+        externalProvider: {},
+        workflowDispatchDeep: 0,
+        maxRunTimes: 10,
+        stream: false,
+        responseDetail: true,
+        responseAllData: true,
+        checkIsStopping: () => false
+      }) as any;
+
+    it('开启 catchError 时转为节点错误输出，且不执行节点本体', async () => {
+      const originalTextEditorDispatch = callbackMap[FlowNodeTypeEnum.textEditor];
+      vi.mocked(assertWorkflowNodeModelResources).mockRejectedValueOnce(new Error(errorText));
+      callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn(async ({ params }) => ({
+        data: { [NodeOutputKeyEnum.text]: params[NodeInputKeyEnum.textareaInput] }
+      }));
+
+      const sourceNode = createNode('source', FlowNodeTypeEnum.textEditor);
+      sourceNode.isEntry = true;
+      sourceNode.catchError = true;
+      sourceNode.outputs = [
+        {
+          id: NodeOutputKeyEnum.errorText,
+          key: NodeOutputKeyEnum.errorText,
+          type: FlowNodeOutputTypeEnum.error,
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string
+        }
+      ];
+      const targetNode = createNode('target', FlowNodeTypeEnum.textEditor);
+      targetNode.inputs = [
+        {
+          key: NodeInputKeyEnum.textareaInput,
+          label: '',
+          renderTypeList: [FlowNodeInputTypeEnum.textarea],
+          value: `caught: {{$source.${NodeOutputKeyEnum.errorText}$}}`,
+          valueType: WorkflowIOValueTypeEnum.string
+        }
+      ];
+
+      try {
+        await runWorkflow(
+          createRunProps(
+            [sourceNode, targetNode],
+            [
+              {
+                source: 'source',
+                target: 'target',
+                sourceHandle: 'source-source_catch-right',
+                targetHandle: 'target-target-left',
+                status: 'waiting'
+              }
+            ]
+          )
+        );
+
+        // 校验失败的节点本体不执行，错误分支下游拿到 errorText。
+        expect(callbackMap[FlowNodeTypeEnum.textEditor]).toHaveBeenCalledTimes(1);
+        expect(vi.mocked(callbackMap[FlowNodeTypeEnum.textEditor]).mock.calls[0][0].params).toEqual(
+          expect.objectContaining({ [NodeInputKeyEnum.textareaInput]: `caught: ${errorText}` })
+        );
+      } finally {
+        callbackMap[FlowNodeTypeEnum.textEditor] = originalTextEditorDispatch;
+      }
+    });
+
+    it('未开启 catchError 时工作流正常结束，不向外抛出', async () => {
+      const originalTextEditorDispatch = callbackMap[FlowNodeTypeEnum.textEditor];
+      vi.mocked(assertWorkflowNodeModelResources).mockRejectedValueOnce(new Error(errorText));
+      callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn(async () => ({ data: {} }));
+
+      const sourceNode = createNode('source', FlowNodeTypeEnum.textEditor);
+      sourceNode.isEntry = true;
+
+      try {
+        await expect(runWorkflow(createRunProps([sourceNode]))).resolves.toBeDefined();
+        expect(callbackMap[FlowNodeTypeEnum.textEditor]).not.toHaveBeenCalled();
+      } finally {
+        callbackMap[FlowNodeTypeEnum.textEditor] = originalTextEditorDispatch;
+      }
+    });
+  });
 });
 
 describe('runWorkflow assistant response aggregation', () => {
@@ -1625,4 +1743,75 @@ describe('WorkflowQueue', () => {
       });
     });
   });
+});
+
+describe('Workflow runtime LLM token summary', () => {
+  it.each(['return', 'throw', 'hidden'])(
+    '保留 %s 节点的 token，并使用请求级 sink 统计 AppLog token',
+    async (mode) => {
+      const original = callbackMap[FlowNodeTypeEnum.textEditor];
+      const publish = vi.fn(async (items: any[]) => items.map((item) => item.response));
+      const node = createNode('summary-node', FlowNodeTypeEnum.textEditor);
+      node.isEntry = true;
+      callbackMap[FlowNodeTypeEnum.textEditor] = async ({ nodeSummary }) => {
+        nodeSummary.mergeNodeSummary({
+          llmInputTokens: mode === 'throw' ? 10 : 30,
+          llmOutputTokens: mode === 'throw' ? 3 : 7
+        });
+        if (mode === 'throw') throw new Error('after LLM');
+        return {
+          ...(mode === 'hidden' ? {} : { responseData: { inputTokens: 900, outputTokens: 800 } })
+        };
+      };
+      try {
+        const result = await runWorkflow({
+          apiVersion: 'v2',
+          mode: 'chat',
+          runningAppInfo: {
+            id: '67e0d5535c02d1d5cdede721',
+            name: 'summary',
+            teamId: '654a4107c32f3bf5f998452f',
+            tmbId: '65ab7007462ada7dbb899948'
+          },
+          runningUserInfo: {
+            teamId: '654a4107c32f3bf5f998452f',
+            tmbId: '65ab7007462ada7dbb899948'
+          },
+          histories: [],
+          query: [],
+          chatConfig: {},
+          runtimeNodes: [node],
+          runtimeEdges: [],
+          variableState: createWorkflowVariableState(),
+          externalProvider: {},
+          workflowDispatchDeep: 0,
+          maxRunTimes: 10,
+          checkIsStopping: () => false,
+          isToolCall: mode === 'throw',
+          nodeResponseSink: {
+            publish
+          }
+        } as any);
+        const inputTokens = mode === 'throw' ? 10 : 30;
+        const outputTokens = mode === 'throw' ? 3 : 7;
+        expect(result.workflowRuntimeSummary).toMatchObject({
+          llmInputTokens: mode === 'return' ? 930 : inputTokens,
+          llmOutputTokens: mode === 'return' ? 807 : outputTokens
+        });
+        if (mode === 'throw') {
+          expect(publish).toHaveBeenCalledWith([
+            expect.objectContaining({
+              response: expect.objectContaining({
+                nodeId: 'summary-node',
+                error: 'after LLM'
+              }),
+              emit: true
+            })
+          ]);
+        }
+      } finally {
+        callbackMap[FlowNodeTypeEnum.textEditor] = original;
+      }
+    }
+  );
 });

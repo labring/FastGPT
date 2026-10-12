@@ -1,36 +1,37 @@
-import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
+import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
 
-import { describe, expect, it } from 'vitest';
 import handler from '@/pages/api/core/ai/skill/list';
 import handlerV2 from '@/pages/api/core/ai/skill/listV2';
+import { onCreateApp } from '@/pages/api/core/app/create';
 import publishHandler from '@/pages/api/core/app/version/publish';
-import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { getUser } from '@test/datas/users';
-import { Call } from '@test/utils/request';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
   ListSkillsQuery,
   ListSkillsResponse,
   ListSkillsV2Query
 } from '@fastgpt/global/core/ai/skill/api';
-import { onCreateApp } from '@/pages/api/core/app/create';
+import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { AppListSortEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
   OwnerRoleVal,
   PerResourceTypeEnum,
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { Types } from '@fastgpt/service/common/mongo';
+import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { getUser } from '@test/datas/users';
+import { Call } from '@test/utils/request';
+import { describe, expect, it } from 'vitest';
 
 describe('POST /api/core/ai/skill/list', () => {
   it('文件夹和 Skill 统一按修改时间混排', async () => {
@@ -69,6 +70,7 @@ describe('POST /api/core/ai/skill/list', () => {
     });
 
     expect(result.data.list.every((item) => item.avatar === '/icon/logo.svg')).toBe(true);
+    expect(result.data.list.find((item) => item.name === 'Newer skill')?.private).toBe(true);
     expect(
       await MongoAgentSkills.countDocuments({ teamId: owner.teamId, avatar: { $exists: true } })
     ).toBe(0);
@@ -77,6 +79,7 @@ describe('POST /api/core/ai/skill/list', () => {
       'Newer skill',
       'Older folder'
     ]);
+    expect(result.data.list.every((item) => item.appCount === undefined)).toBe(true);
   });
 
   it('按创建者筛选并支持创建时间排序和空选择', async () => {
@@ -195,6 +198,71 @@ describe('POST /api/core/ai/skill/list', () => {
       'Recently Updated Folder',
       'Older Skill'
     ]);
+  });
+  it('omits skill folder counts and counts direct references for child skills', async () => {
+    const user = await getUser(`agent-skill-folder-count-${getNanoid(6)}`);
+    const folderId = new Types.ObjectId();
+    const skillId = new Types.ObjectId();
+    const appId = new Types.ObjectId();
+    const publishedVersionId = new Types.ObjectId();
+
+    await MongoAgentSkills.create([
+      {
+        _id: folderId,
+        name: 'Skill folder',
+        type: AgentSkillTypeEnum.folder,
+        source: AgentSkillSourceEnum.personal,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        parentId: null
+      },
+      {
+        _id: skillId,
+        name: 'Referenced skill',
+        type: AgentSkillTypeEnum.skill,
+        source: AgentSkillSourceEnum.personal,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        parentId: folderId
+      }
+    ]);
+    await MongoApp.create({
+      _id: appId,
+      name: 'App referencing skill',
+      type: AppTypeEnum.workflow,
+      teamId: user.teamId,
+      tmbId: user.tmbId,
+      parentId: null,
+      publishedVersionId,
+      deleteTime: null
+    });
+    await MongoAppVersion.collection.insertOne({
+      _id: publishedVersionId,
+      appId,
+      tmbId: new Types.ObjectId(user.tmbId),
+      time: new Date(),
+      isPublish: true,
+      resources: [{ type: 'skill', id: String(skillId) }]
+    });
+
+    const folderResponse = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
+      handlerV2,
+      { auth: user, body: { source: 'mine', parentId: null, withAppCount: true } }
+    );
+    const folder = folderResponse.data.list.find((item) => String(item._id) === String(folderId));
+    expect(folder).toBeDefined();
+    expect(folder).not.toHaveProperty('appCount');
+
+    const childResponse = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
+      handlerV2,
+      {
+        auth: user,
+        body: { source: 'mine', parentId: String(folderId), withAppCount: true }
+      }
+    );
+    expect(
+      childResponse.data.list.find((item) => String(item._id) === String(skillId))
+    ).toMatchObject({ appCount: 1 });
   });
 
   it('V2 applies creator and sort filters', async () => {
@@ -418,15 +486,17 @@ describe('POST /api/core/ai/skill/list', () => {
         source: 'mine',
         skillIds: [String(inheritedSkill._id)],
         parentId: null,
-        withAppCount: false
+        withAppCount: true
       }
     });
 
     expect(res.code).toBe(200);
     expect(res.data.list.map((item) => String(item._id))).toEqual([String(inheritedSkill._id)]);
+    expect(res.data.list[0]?.appCount).toBeUndefined();
+    expect(res.data.list[0]?.private).toBe(false);
   });
 
-  it('appCount 基于已发布版本的 resourceRefs，草稿保存不影响统计', async () => {
+  it('appCount 基于已发布版本的 resources，草稿保存不影响统计', async () => {
     const user = await getUser(`agent-skill-list-published-refs-${getNanoid(6)}`);
 
     const [publishedSkill, draftSkill] = await MongoAgentSkills.create([
@@ -471,17 +541,14 @@ describe('POST /api/core/ai/skill/list', () => {
     const appId = await onCreateApp({
       name: 'Skill Ref App',
       type: AppTypeEnum.chatAgent,
-      modules: [createSkillNode(publishedSkill)],
+      nodes: [createSkillNode(publishedSkill)],
       edges: [],
       chatConfig: {},
       teamId: user.teamId,
       tmbId: user.tmbId
     });
-    await expect(MongoApp.findById(appId).lean()).resolves.toMatchObject({
-      resourceRefs: { skillIds: [String(publishedSkill._id)] }
-    });
 
-    const legacyModel = getCachedModelHandle()
+    const legacyModel = getCachedSystemModelHandle()
       ?.getActiveModels()
       .find((model) => model.type === ModelTypeEnum.llm)!;
     const draftNode = createSkillNode(draftSkill);
@@ -505,11 +572,8 @@ describe('POST /api/core/ai/skill/list', () => {
       }
     });
     expect(draftSaveRes.code).toBe(200);
-    const draftApp = await MongoApp.findById(appId).lean();
-    expect(draftApp).toMatchObject({
-      resourceRefs: { skillIds: [String(publishedSkill._id)] }
-    });
-    expect(draftApp?.modules[0].inputs).toEqual(
+    const draftVersion = await MongoAppVersion.findOne({ appId, versionName: 'draft' }).lean();
+    expect(draftVersion?.nodes[0].inputs).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           key: NodeInputKeyEnum.aiModelId,
@@ -518,7 +582,7 @@ describe('POST /api/core/ai/skill/list', () => {
       ])
     );
     expect(
-      draftApp?.modules[0].inputs.some((input) => input.key === NodeInputKeyEnum.aiModel)
+      draftVersion?.nodes[0].inputs.some((input) => input.key === NodeInputKeyEnum.aiModel)
     ).toBe(false);
 
     const invalidDraftNode = createSkillNode(draftSkill);
@@ -550,8 +614,11 @@ describe('POST /api/core/ai/skill/list', () => {
       }
     });
     expect(invalidDraftSaveRes.code).toBe(200);
-    const invalidDraftApp = await MongoApp.findById(appId).lean();
-    expect(invalidDraftApp?.modules[0].inputs).toEqual(
+    const invalidDraftVersion = await MongoAppVersion.findOne({
+      appId,
+      versionName: 'invalid model draft'
+    }).lean();
+    expect(invalidDraftVersion?.nodes[0].inputs).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           key: NodeInputKeyEnum.aiModelId,
@@ -560,7 +627,7 @@ describe('POST /api/core/ai/skill/list', () => {
       ])
     );
     expect(
-      invalidDraftApp?.modules[0].inputs.some((input) => input.key === NodeInputKeyEnum.aiModel)
+      invalidDraftVersion?.nodes[0].inputs.some((input) => input.key === NodeInputKeyEnum.aiModel)
     ).toBe(false);
 
     const invalidPublishRes = await Call(publishHandler, {
@@ -605,9 +672,6 @@ describe('POST /api/core/ai/skill/list', () => {
       }
     });
     expect(publishRes.code).toBe(200);
-    await expect(MongoApp.findById(appId).lean()).resolves.toMatchObject({
-      resourceRefs: { skillIds: [String(draftSkill._id)] }
-    });
 
     const publishedRes = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(
       handler,
@@ -624,29 +688,5 @@ describe('POST /api/core/ai/skill/list', () => {
       publishedRes.data.list.find((item) => String(item._id) === skillId)?.appCount;
     expect(getPublishedCount(String(publishedSkill._id))).toBe(0);
     expect(getPublishedCount(String(draftSkill._id))).toBe(1);
-
-    const latestPublishedVersion = await MongoAppVersion.findOne({
-      appId,
-      isPublish: true
-    })
-      .sort({ time: -1, _id: -1 })
-      .lean();
-    expect(latestPublishedVersion?.resourceRefs?.skillIds).toEqual([String(draftSkill._id)]);
-    await MongoApp.updateOne({ _id: appId }, { $set: { resourceRefs: { skillIds: [] } } });
-    const clearedAppRefsRes = await Call<
-      ListSkillsQuery,
-      Record<string, never>,
-      ListSkillsResponse
-    >(handler, {
-      auth: user,
-      body: {
-        source: 'mine',
-        parentId: null
-      }
-    });
-    const getClearedAppRefsCount = (skillId: string) =>
-      clearedAppRefsRes.data.list.find((item) => String(item._id) === skillId)?.appCount;
-    expect(getClearedAppRefsCount(String(publishedSkill._id))).toBe(0);
-    expect(getClearedAppRefsCount(String(draftSkill._id))).toBe(0);
   });
 });

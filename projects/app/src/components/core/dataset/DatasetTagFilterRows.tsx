@@ -10,9 +10,6 @@ import { DatasetCollectionTagTypeEnum } from '@fastgpt/global/core/dataset/const
 import {
   createEmptyTagFilterCondition,
   createEmptyTagFilterValue,
-  DatasetTagFilterLogicEnum,
-  DatasetTagFilterValueModeEnum,
-  DatasetTagFilterFieldEnum,
   getTagFilterOpsByCondition,
   intersectWorkflowTagOptions,
   isDatasetTagFilterValue,
@@ -22,7 +19,12 @@ import {
   type DatasetTagFilterCondition,
   type DatasetTagFilterValue,
   type WorkflowTagFilterOption
-} from '@fastgpt/global/core/dataset/workflowTagFilter';
+} from '@fastgpt/global/core/dataset/search/tagFilter';
+import {
+  DatasetTagFilterFieldEnum,
+  DatasetTagFilterLogicEnum,
+  DatasetTagFilterValueModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import type { ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { getAllTags } from '@/web/core/dataset/api/collection';

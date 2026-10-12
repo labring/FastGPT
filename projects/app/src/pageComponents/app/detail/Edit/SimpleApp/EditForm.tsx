@@ -46,14 +46,14 @@ import SandboxConfigButton from '../../components/SandboxConfigButton';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import { useInitializeQueryExtensionModel } from '../FormComponent/useInitializeQueryExtensionModel';
 import { NodeInputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   createEmptyTagFilterValue,
-  DatasetTagFilterVersionEnum,
   isDatasetTagFilterValue,
   normalizeLegacyDatasetTagFilterValue,
   resolveDatasetTagFilterVersion,
   type DatasetTagFilterValue
-} from '@fastgpt/global/core/dataset/workflowTagFilter';
+} from '@fastgpt/global/core/dataset/search/tagFilter';
 import { form2AppWorkflow } from './utils';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
@@ -666,7 +666,7 @@ const EditForm = ({
             name: item.name,
             avatar: item.avatar,
             vectorModel: item.vectorModel,
-            isDeleted: item.isDeleted
+            error: item.error
           }))}
           onClose={onCloseDatasetSelect}
           onChange={(e) => {

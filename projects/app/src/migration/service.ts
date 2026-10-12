@@ -8,6 +8,7 @@ import {
 } from '@fastgpt/global/migration/schema';
 import {
   ensureMigrationStates,
+  enqueueManualMigration,
   getMigrationFailedRecordCounts,
   getMigrationFailedRecords,
   getMigrationServerTime,
@@ -19,6 +20,19 @@ import type { SystemMigrationStateSchemaType } from './mongoSchema';
 
 const getStateMap = (states: SystemMigrationStateSchemaType[]) =>
   new Map(states.map((state) => [state._id, state]));
+
+/** 启动和重试均要求前置任务成功；缺失、等待、执行中和失败状态都不能作为完成依据。 */
+const assertMigrationDependenciesComplete = async (migration: SystemMigration): Promise<void> => {
+  const dependencyIds = migration.dependsOn ?? [];
+  if (!dependencyIds.length) return;
+  const stateMap = getStateMap(await getMigrationStates([...dependencyIds]));
+  const incompleteId = dependencyIds.find(
+    (id) => stateMap.get(id)?.status !== SystemMigrationStatusEnum.succeeded
+  );
+  if (incompleteId) {
+    throw new UserError(`Prerequisite system migration has not succeeded: ${incompleteId}`);
+  }
+};
 
 /** 静态阶段保证未执行项也可见，Mongo 只补充已经上报过的可变状态。 */
 const getProgressList = (
@@ -45,10 +59,10 @@ export const getSystemMigrationList = async (
   const migrationIds = migrations.map((migration) => migration.id);
   let states = await getMigrationStates(migrationIds);
   const existingIds = new Set(states.map((state) => state._id));
-  const missingIds = migrationIds.filter((migrationId) => !existingIds.has(migrationId));
-  if (missingIds.length > 0) {
-    // 页面可能先于某个 runner 请求列表；此处只补 pending 文档，不会触发任务执行。
-    await ensureMigrationStates(missingIds);
+  const missingMigrations = migrations.filter((migration) => !existingIds.has(migration.id));
+  if (missingMigrations.length > 0) {
+    // 页面可能先于 runner 请求列表；按注册模式原子初始化，手动任务不能短暂暴露为 pending。
+    await ensureMigrationStates(missingMigrations);
     states = await getMigrationStates(migrationIds);
   }
   const stateMap = getStateMap(states);
@@ -80,7 +94,11 @@ export const getSystemMigrationList = async (
         descriptionKey: migration.descriptionKey,
         blockStartup: migration.blockStartup,
         onFailure: migration.onFailure,
-        status: state?.status ?? SystemMigrationStatusEnum.pending,
+        status:
+          state?.status ??
+          (migration.manual
+            ? SystemMigrationStatusEnum.waiting
+            : SystemMigrationStatusEnum.pending),
         heartbeatAt: state?.heartbeatAt,
         leaseExpireAt: state?.leaseExpireAt,
         progress: getProgressList(migration, state, stageFailedRecordCounts),
@@ -139,6 +157,7 @@ export const retryNonBlockingSystemMigration = async (
   if (migration.blockStartup) {
     throw new UserError('Blocking system migration must be recovered by restarting the App node');
   }
+  await assertMigrationDependenciesComplete(migration);
   if (!(await resetFailedMigration(migrationId))) {
     // 条件更新把重复点击、执行中和已成功任务统一挡在状态边界外。
     throw new UserError('Only a failed system migration can be retried');
@@ -160,4 +179,21 @@ export const areBlockingMigrationsComplete = async (
   return blockingIds.every(
     (migrationId) => stateMap.get(migrationId)?.status === SystemMigrationStatusEnum.succeeded
   );
+};
+
+/** 管理员确认环境已满足迁移前提后，将等待中的手动任务交给 runner；请求内不执行脚本。 */
+export const startManualSystemMigration = async (
+  migrationId: string,
+  migrations: readonly SystemMigration[] = systemMigrations
+): Promise<void> => {
+  const migration = migrations.find((item) => item.id === migrationId);
+  if (!migration) throw new UserError('System migration not found');
+  if (!migration.manual || migration.blockStartup) {
+    throw new UserError('Only a manual non-blocking system migration can be started');
+  }
+  await assertMigrationDependenciesComplete(migration);
+  await ensureMigrationStates([migration]);
+  if (!(await enqueueManualMigration(migrationId))) {
+    throw new UserError('Only a waiting system migration can be started');
+  }
 };

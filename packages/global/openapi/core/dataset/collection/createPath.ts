@@ -8,6 +8,7 @@ import {
   CreateCollectionBodySchema,
   CreateCollectionByFileIdBodySchema,
   CreateCollectionByLocalFileFormSchema,
+  CreateCollectionWithResultResponseSchema,
   CreateImageCollectionMultipartSchema,
   CreateLinkCollectionBodySchema,
   CreateTemplateCollectionMultipartSchema,
@@ -253,7 +254,12 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功导入备份数据'
+          description: '成功返回集合 ID 及数据插入结果',
+          content: {
+            'application/json': {
+              schema: CreateCollectionWithResultResponseSchema
+            }
+          }
         }
       }
     }
@@ -280,7 +286,12 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功导入模板数据'
+          description: '成功返回集合 ID 及数据插入结果',
+          content: {
+            'application/json': {
+              schema: CreateCollectionWithResultResponseSchema
+            }
+          }
         }
       }
     }

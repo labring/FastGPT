@@ -93,6 +93,25 @@ The table below shows the manageable permissions for different resources.
       <td>Can Manage</td>
       <td>Add or remove collaborators</td>
     </tr>
+    <tr>
+      <td rowSpan="3">
+        File / Folder
+        <br />
+        (Collection)
+      </td>
+      <td>Can View</td>
+      <td>
+        Can view this file/folder's content. Requires collection permission enabled on the Dataset
+      </td>
+    </tr>
+    <tr>
+      <td>Can Edit</td>
+      <td>Modify content, update, sync, adjust training parameters</td>
+    </tr>
+    <tr>
+      <td>Can Manage</td>
+      <td>Add or remove collaborators; deletion is Owner-only</td>
+    </tr>
   </tbody>
 </table>
 
@@ -158,7 +177,7 @@ Permission information is stored in MongoDB's resource_permissions collection, w
 
 - teamId: Team identifier
 - tmbId/groupId/orgId: Permission subject (one of three)
-- resourceType: Resource type (team/app/dataset)
+- resourceType: Resource type (team/app/dataset/agentSkill/collection)
 - permission: Permission value (number)
 - resourceId: Resource ID (null for team resources)
 

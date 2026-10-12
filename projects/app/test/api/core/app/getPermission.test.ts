@@ -17,8 +17,6 @@ describe('get app permission api', () => {
     const app = await MongoApp.create({
       name: 'test-app',
       type: AppTypeEnum.simple,
-      modules: [],
-      edges: [],
       teamId: user.teamId,
       tmbId: user.tmbId
     });
@@ -69,8 +67,6 @@ describe('get app permission api', () => {
     const app = await MongoApp.create({
       name: 'test-app',
       type: AppTypeEnum.simple,
-      modules: [],
-      edges: [],
       teamId: user1.teamId,
       tmbId: user1.tmbId
     });

@@ -32,6 +32,7 @@ beforeAll(async () => {
   await connectMongo({ db: connectionLogMongo, url: inject('MONGODB_URI') });
 
   initGlobalVariables();
+  global.agentUserTmbIds = new Set();
   global.systemEnv = {} as any;
 
   global.feConfigs = {
@@ -48,6 +49,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  global.agentUserTmbIds = global.agentUserTmbIds ?? new Set();
   // await connectMongo({ db: connectionMongo, url: inject('MONGODB_URI') });
   // await connectMongo({ db: connectionLogMongo, url: inject('MONGODB_URI') });
 

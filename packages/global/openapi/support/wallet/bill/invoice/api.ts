@@ -45,9 +45,13 @@ export const InvoiceSubmitBodySchema = z
     needSpecialInvoice: z.boolean().meta({ example: false, description: '是否需要增值税专用发票' }),
     contactPhone: z
       .string()
-      .trim()
-      .min(1)
-      .meta({ example: '13800138000', description: '联系人电话' }),
+      .nullish()
+      .transform((val) => (val?.trim() ? val.trim() : undefined))
+      .meta({
+        type: 'string',
+        example: '13800138000',
+        description: '联系人电话'
+      }),
     emailAddress: z
       .string()
       .email()
@@ -94,7 +98,12 @@ export const InvoiceRecordSchema = z
       .string()
       .nullish()
       .transform((value) => value ?? '-')
-      .meta({ example: '13800138000', description: '联系人电话；历史记录缺失时返回 -' }),
+      // transform 后一定是字符串；zod-openapi 在出参位置只能读到 .meta()，必须显式声明类型。
+      .meta({
+        type: 'string',
+        example: '13800138000',
+        description: '联系人电话；历史记录缺失时返回 -'
+      }),
     emailAddress: z.string().meta({ example: 'billing@example.com', description: '发票接收邮箱' })
   })
   .meta({ description: '发票记录；文件内容不在列表接口中返回' });

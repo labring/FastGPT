@@ -16,6 +16,21 @@ import {
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 describe('sanitizeFileSelectValue', () => {
+  it('retains uploaded preview URLs only for temporary debug values', () => {
+    const files = [
+      {
+        key: 'file-key',
+        url: 'https://example.com/preview.pdf',
+        name: 'file.pdf',
+        type: ChatFileTypeEnum.file
+      }
+    ];
+    expect(sanitizeFileSelectValue(files, true)).toEqual(files);
+    expect(sanitizeFileSelectValue(files)[0]).not.toHaveProperty('url');
+    expect(
+      sanitizeFileSelectValue([{ ...files[0], url: 'data:application/pdf;base64,abc' }], true)[0]
+    ).not.toHaveProperty('url');
+  });
   it('清洗 S3 文件对象，移除 base64 预览和上传态字段', () => {
     expect(
       sanitizeFileSelectValue([

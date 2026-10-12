@@ -1,44 +1,54 @@
-import { getModelHandle } from '../../ai/model';
-import { getDatasetModelReference } from '../model';
 import {
   DatasetCollectionDataProcessModeEnum,
-  DatasetCollectionTypeEnum
+  DatasetCollectionTypeEnum,
+  TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { MongoDatasetCollection } from './schema';
 import type {
   DatasetCollectionSchemaType,
   DatasetSchemaType
 } from '@fastgpt/global/core/dataset/type';
-import { MongoDatasetTraining } from '../training/schema';
-import { MongoDatasetData } from '../data/schema';
-import { delImgByRelatedId } from '../../../common/file/image/controller';
-import { deleteDatasetDataVector } from '../../../common/vectorDB/controller';
-import type { ClientSession } from '../../../common/mongo';
-import { createOrGetCollectionTags } from './utils';
-import { rawText2Chunks } from '../read';
-import { checkDatasetIndexLimit } from '../../../support/permission/teamLimit';
-import { predictDataLimitLength } from '../../../../global/core/dataset/utils';
-import { mongoSessionRun } from '../../../common/mongo/sessionRun';
-import { createTrainingUsage } from '../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { predictDataLimitLength } from '../../../../global/core/dataset/utils';
+import { delImgByRelatedId } from '../../../common/file/image/controller';
+import type { ClientSession } from '../../../common/mongo';
+import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { deleteDatasetDataVector } from '../../../common/vectorDB/controller';
+import { checkDatasetIndexLimit } from '../../../support/permission/teamLimit';
+import { createTrainingUsage } from '../../../support/wallet/usage/controller';
+import { getTeamModelHandle } from '../../ai/model/catalog/service';
+import { MongoDatasetData } from '../data/schema';
+import { getDatasetModelReference } from '../model';
+import { rawText2Chunks } from '../read';
+import { MongoDatasetTraining } from '../training/schema';
+import { MongoDatasetCollection } from './schema';
+import { createOrGetCollectionTags } from './utils';
 
-import { pushDataListToTrainingQueue, pushDatasetToParseQueue } from '../training/controller';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { getFullTextStore } from '../data/textStore';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import { getTrainingModeByCollection } from './utils';
-import { getDatasetImageIndexCapability } from '../utils';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import {
   computedCollectionChunkSettings,
   getLLMMaxChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
-import { removeS3TTL, isS3ObjectKey } from '../../../common/s3/utils';
 import type {
-  CreateCollectionWithResultResponseType,
-  ApiCreateDatasetCollectionParams
+  ApiCreateDatasetCollectionParams,
+  CreateCollectionWithResultResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
+import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
+import { isAuthorizedDatasetFileS3Key } from '../../../common/s3/sources/dataset/key';
+import { isS3ObjectKey, removeS3TTL } from '../../../common/s3/utils';
+import {
+  createCollectionPermission,
+  deleteCollectionPermissions
+} from '../../../support/permission/collection/controller';
+import { getFullTextStore } from '../data/textStore';
+import {
+  preCreateDatasetDataAndPushToTrainingQueue,
+  pushDataListToTrainingQueue,
+  pushDatasetToParseQueue
+} from '../training/controller';
+import { getDatasetImageIndexCapability } from '../utils';
+import { getTrainingModeByCollection } from './utils';
 
 export const createCollectionAndInsertData = async ({
   dataset,
@@ -59,7 +69,7 @@ export const createCollectionAndInsertData = async ({
   billId?: string;
   session?: ClientSession;
 }): Promise<CreateCollectionWithResultResponseType> => {
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getTeamModelHandle({ teamId: String(dataset.teamId) });
   const agentModelData = modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent'));
   const embeddingModelData = modelHandle.getEmbeddingModelData(
     getDatasetModelReference(dataset, 'embedding')
@@ -218,8 +228,9 @@ export const createCollectionAndInsertData = async ({
 
     // 5. insert to training queue
     const insertResults = await (async () => {
-      if (rawText || imageIds) {
-        return pushDataListToTrainingQueue({
+      if (imageIds) {
+        // 图片先落库为 indexing 数据，再由 ImageParse/向量处理接力更新同一条数据。
+        return preCreateDatasetDataAndPushToTrainingQueue({
           teamId,
           tmbId,
           datasetId: dataset._id,
@@ -240,19 +251,62 @@ export const createCollectionAndInsertData = async ({
           })),
           session
         });
-      } else {
-        await pushDatasetToParseQueue({
+      }
+      if (rawText) {
+        const formattedData = chunks.map((item, index) => ({
+          ...item,
+          indexes: item.indexes?.map((text) => ({
+            type: DatasetDataIndexTypeEnum.custom,
+            text
+          })),
+          chunkIndex: index
+        }));
+
+        // QA 模式在生成前不预落库，由 downstream generateQA 拆分叶子分块后批量落库
+        if (trainingMode === TrainingModeEnum.qa) {
+          return pushDataListToTrainingQueue({
+            teamId,
+            tmbId,
+            datasetId: dataset._id,
+            collectionId,
+            agentModel: agentModelData,
+            vectorModel: embeddingModelData,
+            vlmModel: vlmModelData,
+            indexSize,
+            mode: trainingMode,
+            billId: traingUsageId,
+            data: formattedData,
+            session
+          });
+        }
+
+        // rawText（手动输入文本、备份、模板、集合同步等）均先落库为 indexing 数据，再派发索引任务
+        return preCreateDatasetDataAndPushToTrainingQueue({
           teamId,
           tmbId,
           datasetId: dataset._id,
           collectionId,
+          agentModel: agentModelData,
+          vectorModel: embeddingModelData,
+          vlmModel: vlmModelData,
+          indexSize,
+          mode: trainingMode,
           billId: traingUsageId,
+          data: formattedData,
           session
         });
-        return {
-          insertLen: 0
-        };
       }
+      await pushDatasetToParseQueue({
+        teamId,
+        tmbId,
+        datasetId: dataset._id,
+        collectionId,
+        billId: traingUsageId,
+        session
+      });
+      return {
+        insertLen: 0
+      };
     })();
 
     return {
@@ -287,55 +341,83 @@ export type CreateOneCollectionParams = ApiCreateDatasetCollectionParams & {
   session?: ClientSession;
 };
 export async function createOneCollection({ session, ...props }: CreateOneCollectionParams) {
-  const {
-    teamId,
-    parentId,
-    datasetId,
-    tags,
+  const fn = async (s: ClientSession) => {
+    const {
+      teamId,
+      parentId,
+      datasetId,
+      tags,
 
-    fileId,
-    rawLink,
-    externalFileId,
-    externalFileUrl,
-    apiFileId,
-    apiFileParentId
-  } = props;
+      fileId,
+      rawLink,
+      externalFileId,
+      externalFileUrl,
+      apiFileId,
+      apiFileParentId
+    } = props;
 
-  // Resolve tags: string names → ObjectId, {tag, value} → {tagId, value}
-  const collectionTags = await createOrGetCollectionTags({
-    tags,
-    teamId,
-    datasetId,
-    session
-  });
+    // Resolve tags: string names → ObjectId, {tag, value} → {tagId, value}
+    const collectionTags = await createOrGetCollectionTags({
+      tags,
+      teamId,
+      datasetId,
+      session: s
+    });
 
-  // Create collection
-  const [collection] = await MongoDatasetCollection.create(
-    [
-      {
-        ...props,
-        _id: undefined,
+    // Create collection
+    const [collection] = await MongoDatasetCollection.create(
+      [
+        {
+          ...props,
+          _id: undefined,
 
-        parentId: parentId || null,
+          parentId: parentId || null,
 
-        tags: collectionTags,
+          tags: collectionTags,
 
-        ...(fileId ? { fileId } : {}),
-        ...(rawLink ? { rawLink } : {}),
-        ...(externalFileId ? { externalFileId } : {}),
-        ...(externalFileUrl ? { externalFileUrl } : {}),
-        ...(apiFileId ? { apiFileId } : {}),
-        ...(apiFileParentId ? { apiFileParentId } : {})
+          ...(fileId ? { fileId } : {}),
+          ...(rawLink ? { rawLink } : {}),
+          ...(externalFileId ? { externalFileId } : {}),
+          ...(externalFileUrl ? { externalFileUrl } : {}),
+          ...(apiFileId ? { apiFileId } : {}),
+          ...(apiFileParentId ? { apiFileParentId } : {})
+        }
+      ],
+      { session: s, ordered: true }
+    );
+
+    if (isS3ObjectKey(fileId, 'dataset')) {
+      // fileId 由入口层绑定到已鉴权 dataset 后才允许创建集合；这里再次校验归属，防止外库 key
+      // 借创建入口移除 TTL 而被意外提升为永久对象。
+      if (isAuthorizedDatasetFileS3Key({ key: fileId, datasetId })) {
+        await removeS3TTL({ key: fileId, bucketName: 'private', session: s });
       }
-    ],
-    { session, ordered: true }
-  );
+    }
 
-  if (isS3ObjectKey(fileId, 'dataset')) {
-    await removeS3TTL({ key: fileId, bucketName: 'private', session });
+    // 创建 Collection 权限初始化（与文档创建同一事务）：
+    // 继承态写 merge(父级有效 clbs, [owner]) 完整快照（根 collection 父级 = dataset）；
+    // 独立态仅 owner 记录，并标记所属 dataset 已配置 collection 权限。
+    await createCollectionPermission({
+      resource: {
+        _id: String(collection._id),
+        teamId: String(collection.teamId),
+        type: collection.type,
+        parentId: collection.parentId ? String(collection.parentId) : null,
+        datasetId: String(collection.datasetId),
+        tmbId: String(collection.tmbId),
+        inheritPermission: props.inheritPermission
+      },
+      tmbId: String(collection.tmbId),
+      session: s
+    });
+
+    return collection;
+  };
+
+  if (session) {
+    return fn(session);
   }
-
-  return collection;
+  return mongoSessionRun(fn);
 }
 
 /* delete collection related images/files */
@@ -406,11 +488,19 @@ export async function delCollection({
       datasetId: { $in: datasetIds },
       collectionId: { $in: imageCollectionIds }
     },
-    { imageId: 1 }
+    { imageId: 1, datasetId: 1 }
   ).lean();
+  // 只删除归属于该图片集合 dataset 的 key，避免脏数据里的外库 key 被跨库物理删除。
   const imageIds = imageDatas
-    .map((item) => item.imageId)
-    .filter((key) => isS3ObjectKey(key, 'dataset'));
+    .filter(
+      (item) =>
+        !!item.imageId &&
+        isAuthorizedDatasetFileS3Key({
+          key: item.imageId,
+          datasetId: String(item.datasetId)
+        })
+    )
+    .map((item) => item.imageId!);
 
   await retryFn(async () => {
     await Promise.all([
@@ -443,7 +533,17 @@ export async function delCollection({
       ...(delFile
         ? [
             getS3DatasetSource().deleteDatasetFilesByKeys(
-              collections.map((item) => item?.fileId || '').filter(Boolean)
+              // 同样只删除归属于各自 dataset 的 fileId，避免误删外库文件。
+              collections
+                .filter(
+                  (item) =>
+                    !!item.fileId &&
+                    isAuthorizedDatasetFileS3Key({
+                      key: item.fileId,
+                      datasetId: String(item.datasetId)
+                    })
+                )
+                .map((item) => item.fileId!)
             )
           ]
         : []),
@@ -460,7 +560,38 @@ export async function delCollection({
       { session }
     ).lean();
 
+    // delete collection permission snapshots (same transaction)
+    await deleteCollectionPermissions({ teamId, collectionIds, session });
+
     // delete s3 images which are uploaded by users
     await s3DatasetSource.deleteDatasetFilesByKeys(imageIds);
   });
+}
+
+/** 查找 collection 及其全部子节点（parentId 子树）；返回 [根, ...子孙]。 */
+export async function findCollectionAndAllChildren({
+  teamId,
+  collectionId,
+  fields = '_id datasetId'
+}: {
+  teamId: string;
+  collectionId: string;
+  fields?: string;
+}) {
+  const find = async (id: string): Promise<any[]> => {
+    const children = await MongoDatasetCollection.find({ teamId, parentId: id }, fields).lean();
+    let list = children;
+    for (const child of children) {
+      list = list.concat(await find(String(child._id)));
+    }
+    return list;
+  };
+  const [root, children] = await Promise.all([
+    MongoDatasetCollection.findById(collectionId).lean(),
+    find(collectionId)
+  ]);
+  if (!root) {
+    throw new Error('Collection not found');
+  }
+  return [root, ...children];
 }

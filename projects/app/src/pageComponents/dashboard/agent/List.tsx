@@ -1,7 +1,13 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Box, Grid, IconButton, HStack, Flex, VStack } from '@chakra-ui/react';
+import { Box, Grid, IconButton, HStack, Flex, VStack, Checkbox } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { delAppById, putAppById, resumeInheritPer, changeOwner } from '@/web/core/app/api';
+import {
+  batchMoveApps,
+  delAppById,
+  putAppById,
+  resumeInheritPer,
+  changeOwner
+} from '@/web/core/app/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -26,6 +32,7 @@ import { getCollaboratorList, postUpdateAppCollaborators } from '@/web/core/app/
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import AppTypeTag from './TypeTag';
 import { postCopyApp } from '@/web/core/app/api/app';
+import ReferencedAppsPopover from '@/pageComponents/dashboard/ReferencedAppsPopover';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
@@ -86,7 +93,10 @@ const List = () => {
     setSearchKey,
     listFilters,
     columnCount,
-    pageSize
+    pageSize,
+    isBatchMode,
+    selectedAppIds,
+    onToggleSelectApp
   } = useContextSelector(AppListContext, (v) => v);
 
   const hasCreatePer = folderDetail
@@ -105,9 +115,9 @@ const List = () => {
   const isInitialLoading = !isEmpty && myApps.length === 0 && isFetchingApps;
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: myApps,
-    listKey: `${router.pathname}-${appType}-${parentId || ''}-${searchKey}-${listFilters.type}-${listFilters.creator.mode}-${listFilters.creator.tmbIds.join(',')}-${listFilters.sort}-${columnCount}-${pageSize}-${isInitialLoading}`,
+    listKey: `${router.pathname}-${appType}-${parentId || ''}-${searchKey}-${listFilters.type}-${listFilters.creator.mode}-${listFilters.creator.tmbIds.join(',')}-${listFilters.sort}-${columnCount}-${pageSize}-${isInitialLoading}-${isBatchMode}`,
     scrollContainerRef,
-    reservedSlotCount: isInitialLoading ? 0 : 1,
+    reservedSlotCount: isInitialLoading || isBatchMode ? 0 : 1,
     estimatedRowHeight: 160,
     estimatedRowGap: 20,
     loadingItemCount: isFetchingApps
@@ -139,7 +149,12 @@ const List = () => {
       borderColor: 'primary.600'
     },
     onDrop: (dragId: string, targetId: string) => {
-      openMoveConfirm({ onConfirm: async () => onPutAppById(dragId, { parentId: targetId }) })();
+      openMoveConfirm({
+        onConfirm: async () => {
+          await batchMoveApps({ ids: [dragId], parentId: targetId });
+          await loadMyApps();
+        }
+      })();
     }
   });
 
@@ -199,30 +214,58 @@ const List = () => {
     const isAgent = AppTypeList.includes(app.type);
     const isTool = ToolTypeList.includes(app.type);
     const isFolder = AppFolderTypeList.includes(app.type);
+    const isSelected = selectedAppIds.includes(app._id);
+    const canBatchOperate = Boolean(app.permission?.hasManagePer || app.permission?.isOwner);
+
     return (
       <MyBox
         key={app._id}
         data-virtual-item=""
-        py={4}
+        pt={5}
+        pb={3}
         px={5}
-        cursor={'pointer'}
-        border={'base'}
-        bg={'white'}
+        cursor={isBatchMode ? (canBatchOperate ? 'pointer' : 'not-allowed') : 'pointer'}
+        border={'1px solid'}
+        borderColor={isBatchMode && isSelected ? 'primary.600 !important' : 'myGray.200'}
+        bg={isBatchMode && isSelected ? 'primary.50' : 'white'}
         borderRadius={'10px'}
         position={'relative'}
         display={'flex'}
         flexDirection={'column'}
-        _hover={{
-          borderColor: 'primary.300',
-          boxShadow: '1.5',
-          '& .more': {
-            display: 'flex'
-          },
-          '& .time': {
-            display: ['flex', 'none']
-          }
-        }}
+        _hover={
+          isBatchMode
+            ? {
+                borderColor: canBatchOperate
+                  ? isSelected
+                    ? 'primary.600'
+                    : 'primary.300'
+                  : 'myGray.200',
+                boxShadow: canBatchOperate ? '1.5' : undefined,
+                '& .time': {
+                  display: 'flex !important'
+                },
+                '& .more': {
+                  display: 'none !important'
+                }
+              }
+            : {
+                borderColor: 'primary.300',
+                boxShadow: '1.5',
+                '& .more': {
+                  display: 'flex'
+                },
+                '& .time': {
+                  display: ['flex', 'none']
+                }
+              }
+        }
         onClick={() => {
+          if (isBatchMode) {
+            if (canBatchOperate) {
+              onToggleSelectApp(app._id);
+            }
+            return;
+          }
           if (AppFolderTypeList.includes(app.type)) {
             setSearchKey('');
             router.push({
@@ -240,10 +283,11 @@ const List = () => {
             );
           }
         }}
-        {...getBoxProps({
-          dataId: app._id,
-          isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.toolFolder
-        })}
+        {...(!isBatchMode &&
+          getBoxProps({
+            dataId: app._id,
+            isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.toolFolder
+          }))}
       >
         <Grid templateColumns="auto 1fr auto" alignItems="center" width="100%" gap={2}>
           <Avatar src={app.avatar} borderRadius={'sm'} w={'1.5rem'} />
@@ -252,8 +296,28 @@ const List = () => {
               <Box className={'textEllipsis'}>{app.name}</Box>
             </MyTooltip>
           </Box>
-          <Box justifySelf="end" mr={-5}>
-            <AppTypeTag type={app.type} />
+          <Box justifySelf="end">
+            {isBatchMode ? (
+              canBatchOperate ? (
+                <Checkbox size={'sm'} isChecked={isSelected} pointerEvents={'none'} />
+              ) : (
+                <MyTooltip label={t('common:read_only_no_batch_permission')}>
+                  <Box
+                    w={'16px'}
+                    h={'16px'}
+                    borderRadius={'xs'}
+                    border={'1px solid'}
+                    borderColor={'#CECECE'}
+                    bg={'#F9F9F9'}
+                    cursor={'not-allowed'}
+                  />
+                </MyTooltip>
+              )
+            ) : (
+              <Box mr={-5}>
+                <AppTypeTag type={app.type} />
+              </Box>
+            )}
           </Box>
         </Grid>
         <Box
@@ -282,6 +346,16 @@ const List = () => {
               iconColor={'myGray.400'}
               w={'0.875rem'}
             />
+            {typeof app.relatedAppCount === 'number' && (
+              <ReferencedAppsPopover
+                resourceId={app._id}
+                resourceType={
+                  getDashboardAppListScene(router.pathname) === 'tool' ? 'tool' : 'agent'
+                }
+                count={app.relatedAppCount}
+                trigger={'hover'}
+              />
+            )}
           </HStack>
           <HStack>
             {isPc && (
@@ -473,7 +547,7 @@ const List = () => {
             {renderVirtualGridItems(renderAppCard)}
           </Grid>
         ) : isEmpty && !folderDetail ? (
-          hasActiveFilter ? (
+          hasActiveFilter || isBatchMode ? (
             <EmptyTip />
           ) : isPc && hasCreatePer ? (
             <CreateButton appType={appType} />
@@ -488,7 +562,8 @@ const List = () => {
               gridGap={5}
               alignItems={'stretch'}
             >
-              {hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />}
+              {!isBatchMode &&
+                (hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />)}
             </Grid>
           )
         ) : (
@@ -504,7 +579,8 @@ const List = () => {
               gridGap={5}
               alignItems={'stretch'}
             >
-              {hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />}
+              {!isBatchMode &&
+                (hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />)}
               {renderVirtualGridItems(renderAppCard)}
             </Grid>
           </>
@@ -647,7 +723,8 @@ const ForbiddenCreateButton = () => {
   const { t } = useTranslation();
   return (
     <MyBox
-      py={4}
+      pt={5}
+      pb={3}
       px={5}
       cursor={'not-allowed'}
       border={'base'}

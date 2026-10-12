@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FASTGPT_WEB_REQUEST_HEADER } from '@fastgpt/global/common/system/constants';
+import { getScalarOpenApiReferenceConfig } from '@fastgpt/global/openapi/reference';
 import { isValidWebRequest, shouldValidateWebRequest, checkCsrf } from '@fastgpt/next/middle/csrf';
 
 const request = (headers: Record<string, string>) => ({
@@ -91,5 +92,37 @@ describe('web request CSRF guard', () => {
 
     headers.set(FASTGPT_WEB_REQUEST_HEADER, '1');
     expect(isValidWebRequest({ headers })).toBe(true);
+  });
+
+  it('allows same-origin Scalar test requests with a login Cookie', async () => {
+    vi.stubGlobal('window', { location: { origin: 'https://fastgpt.example.com' } });
+
+    try {
+      const request = new Request(
+        'https://fastgpt.example.com/api/support/user/account/preLogin?username=root',
+        { headers: { cookie: 'fastgpt_token=session-1' } }
+      );
+      const { onRequestBuilt } = getScalarOpenApiReferenceConfig('/api/apidoc/devapi.json');
+      await onRequestBuilt({ request });
+
+      const res = {
+        writableEnded: false,
+        writableFinished: false,
+        status: vi.fn(() => ({ json: vi.fn() }))
+      };
+      await checkCsrf({
+        req: { method: 'GET', headers: Object.fromEntries(request.headers) } as any,
+        res: res as any
+      });
+
+      expect(request.headers.get(FASTGPT_WEB_REQUEST_HEADER)).toBe('1');
+      expect(res.status).not.toHaveBeenCalled();
+
+      const externalRequest = new Request('https://other.example.com/api/test');
+      await onRequestBuilt({ request: externalRequest });
+      expect(externalRequest.headers.has(FASTGPT_WEB_REQUEST_HEADER)).toBe(false);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

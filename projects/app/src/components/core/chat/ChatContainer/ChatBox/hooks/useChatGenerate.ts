@@ -48,7 +48,11 @@ import { cloneDeep } from 'lodash-es';
 import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 import { getChatItemErrorText } from '@/global/core/chat/utils';
-import { isChatGeneratingError, shouldRestoreSubmittedChatInput } from '../utils/generate';
+import {
+  isChatGeneratingError,
+  safeAbortController,
+  shouldRestoreSubmittedChatInput
+} from '../utils/generate';
 import { getLastAiDataId } from '../utils/resume';
 import type { ChatGeneratingConflictRecovery } from '../type';
 
@@ -641,10 +645,11 @@ export const useChatGenerate = ({
     if (reason === 'leave') {
       cancelGeneratingMessageQueue();
     }
-    chatControllerRef.current?.abort(new Error(reason));
-    questionGuideControllerRef.current?.abort(new Error(reason));
-    pluginControllerRef.current?.abort(new Error(reason));
-    resumeControllerRef.current?.abort(new Error(reason));
+    const abortReason = new Error(reason);
+    safeAbortController(chatControllerRef.current, abortReason);
+    safeAbortController(questionGuideControllerRef.current, abortReason);
+    safeAbortController(pluginControllerRef.current, abortReason);
+    safeAbortController(resumeControllerRef.current, abortReason);
   });
 
   const sendPrompt = useMemoizedFn<SendPromptFnType>(
@@ -670,7 +675,7 @@ export const useChatGenerate = ({
             return;
           }
 
-          questionGuideControllerRef.current?.abort(new Error('stop'));
+          safeAbortController(questionGuideControllerRef.current, new Error('stop'));
 
           text = text.trim();
 

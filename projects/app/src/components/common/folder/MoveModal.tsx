@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Button } from '@chakra-ui/react';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import LightTip from '@fastgpt/web/components/common/LightTip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import SelectOneResource, {
   type SelectOneResourceItemType,
   type SelectOneResourceServer
@@ -13,7 +14,8 @@ import SelectOneResource, {
 const rootId = 'root';
 
 type Props = {
-  moveResourceId: string;
+  moveResourceId?: string;
+  moveResourceIds?: string[];
   title: string;
   server: SelectOneResourceServer;
   onConfirm: (id: ParentIdType) => Promise<any>;
@@ -21,11 +23,26 @@ type Props = {
   moveHint?: string;
 };
 
-const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose, moveHint }: Props) => {
+const MoveModal = ({
+  moveResourceId,
+  moveResourceIds,
+  title,
+  server,
+  onConfirm,
+  onClose,
+  moveHint
+}: Props) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [selectedId, setSelectedId] = useState<ParentIdType>();
   const [isAtRoot, setIsAtRoot] = useState(true);
   const hasSelection = selectedId !== undefined;
+
+  const disabledIds = useMemo(() => {
+    if (moveResourceIds && moveResourceIds.length > 0) return moveResourceIds;
+    if (moveResourceId) return [moveResourceId];
+    return [];
+  }, [moveResourceId, moveResourceIds]);
 
   const onSelect = (item?: SelectOneResourceItemType) => {
     if (!item) {
@@ -41,8 +58,30 @@ const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose, moveHint
       return onConfirm(parentId);
     },
     {
-      onSuccess: onClose,
-      successToast: t('common:move_success')
+      onSuccess(result) {
+        const hasFailedItems =
+          result && Array.isArray(result.failedIds) && result.failedIds.length > 0;
+        const hasSuccessItems =
+          result && Array.isArray(result.successIds) && result.successIds.length > 0;
+
+        if (!hasSuccessItems && hasFailedItems) {
+          toast({
+            title: t('common:move_failed'),
+            status: 'error'
+          });
+        } else if (hasFailedItems) {
+          toast({
+            title: t('common:batch_partial_failed'),
+            status: 'warning'
+          });
+        } else {
+          toast({
+            title: t('common:move_success'),
+            status: 'success'
+          });
+        }
+        onClose();
+      }
     }
   );
 
@@ -98,7 +137,7 @@ const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose, moveHint
           onSelect={onSelect}
           onCurrentParentIdChange={(parentId) => setIsAtRoot(parentId === null)}
           selectFolder
-          disabledIds={[moveResourceId]}
+          disabledIds={disabledIds}
           maxH={'100%'}
         />
       </Box>

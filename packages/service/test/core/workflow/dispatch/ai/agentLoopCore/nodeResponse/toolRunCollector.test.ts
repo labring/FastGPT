@@ -21,7 +21,7 @@ const createCall = ({
   }) as any;
 
 describe('createAgentLoopCoreToolRunResponseCollector', () => {
-  it('caches completed tool flow response and attaches compression child', () => {
+  it('caches completed tool flow response and appends a flat compression row', () => {
     const collector = createAgentLoopCoreToolRunResponseCollector({
       moduleType: FlowNodeTypeEnum.toolCall,
       getToolInfo: () => ({
@@ -91,22 +91,19 @@ describe('createAgentLoopCoreToolRunResponseCollector', () => {
           }),
           expect.objectContaining({
             id: 'search',
-            childrenResponses: [
-              expect.objectContaining({
-                id: 'existing_child'
-              }),
-              expect.objectContaining({
-                id: 'req_compress',
-                moduleName: 'chat:tool_response_compress',
-                moduleType: FlowNodeTypeEnum.toolCall,
-                moduleLogo: 'core/app/agent/child/contextCompress',
-                runningTime: 0.4,
-                model: 'GPT-4',
-                textOutput: 'compressed response',
-                llmRequestIds: ['req_compress'],
-                totalPoints: 0.3
-              })
-            ]
+            childrenResponses: [expect.objectContaining({ id: 'existing_child' })]
+          }),
+          expect.objectContaining({
+            id: 'req_compress',
+            parentId: 'search',
+            moduleName: 'chat:tool_response_compress',
+            moduleType: FlowNodeTypeEnum.toolCall,
+            moduleLogo: 'core/app/agent/child/contextCompress',
+            runningTime: 0.4,
+            model: 'GPT-4',
+            textOutput: 'compressed response',
+            llmRequestIds: ['req_compress'],
+            totalPoints: 0.3
           })
         ],
         flowUsages: [

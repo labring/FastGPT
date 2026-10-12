@@ -66,7 +66,7 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
               name: item.name,
               avatar: item.avatar,
               vectorModel: item.vectorModel,
-              isDeleted: item.isDeleted
+              error: item.error
             }))}
             onChange={(e) => {
               fieldActions.setValue(e);

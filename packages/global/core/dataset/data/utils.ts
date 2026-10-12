@@ -1,4 +1,4 @@
-import { DatasetDataIndexTypeEnum } from './constants';
+import { DatasetDataIndexStatusEnum, DatasetDataIndexTypeEnum } from './constants';
 
 export const datasetDataSystemIndexTypes = [
   DatasetDataIndexTypeEnum.default,
@@ -17,3 +17,67 @@ const datasetDataSystemIndexTypeSet = new Set<DatasetDataIndexTypeEnum>(
  */
 export const isDatasetDataSystemIndexType = (type?: DatasetDataIndexTypeEnum) =>
   datasetDataSystemIndexTypeSet.has(type || DatasetDataIndexTypeEnum.custom);
+
+/**
+ * 数据是否已完成索引。
+ *
+ * 字段缺失代表变更前创建的历史数据：其创建路径先写向量再写主数据，业务语义上已完成
+ * 索引，因此运行时一律按 indexed 处理，且不回填字段。
+ */
+export const isDatasetDataIndexed = (indexStatus?: DatasetDataIndexStatusEnum) =>
+  indexStatus === undefined || indexStatus === DatasetDataIndexStatusEnum.indexed;
+
+/** 两类重建的处理中状态；Mongo 统计与页面判断共用，pending 和 running 合并计数。 */
+export const datasetDataRebuildIndexProcessingStatuses = [
+  DatasetDataIndexStatusEnum.rebuildIndexPending,
+  DatasetDataIndexStatusEnum.rebuildIndexRunning
+];
+export const datasetDataRebuildSynonymProcessingStatuses = [
+  DatasetDataIndexStatusEnum.rebuildSynonymPending,
+  DatasetDataIndexStatusEnum.rebuildSynonymRunning
+];
+export const datasetDataRebuildFailedStatuses = [
+  DatasetDataIndexStatusEnum.rebuildIndexFailed,
+  DatasetDataIndexStatusEnum.rebuildSynonymFailed
+];
+
+/** 正在重建或等待入队的数据；失败任务由 training 队列继续管理。 */
+export const rebuildingDatasetDataMatch = {
+  indexStatus: {
+    $in: [
+      ...datasetDataRebuildIndexProcessingStatuses,
+      ...datasetDataRebuildSynonymProcessingStatuses
+    ]
+  }
+};
+
+/** 首次索引及两类重建的待处理/处理中状态；轮询与数据写保护使用相同边界。 */
+export const isDatasetDataProcessing = (indexStatus?: DatasetDataIndexStatusEnum) =>
+  indexStatus !== undefined &&
+  (indexStatus === DatasetDataIndexStatusEnum.indexing ||
+    rebuildingDatasetDataMatch.indexStatus.$in.includes(indexStatus));
+
+/** 首次训练及两类重建失败；手动保存时必须完整重算索引，才能结束失败任务。 */
+export const isDatasetDataFailed = (indexStatus?: DatasetDataIndexStatusEnum) =>
+  indexStatus === DatasetDataIndexStatusEnum.error ||
+  (indexStatus !== undefined && datasetDataRebuildFailedStatuses.includes(indexStatus));
+
+/**
+ * 已完成索引（或字段缺失）的 Mongo 查询条件。
+ * 用于 trainedCount 统计、重建选择和写入保护等需要区分待索引数据的场景。
+ */
+export const indexedDatasetDataMatch = {
+  $or: [{ indexStatus: DatasetDataIndexStatusEnum.indexed }, { indexStatus: { $exists: false } }]
+};
+
+/** 重建失败的数据仍保有旧索引；取消旧任务后，后续模型/同义词重建必须仍能选中它。 */
+export const rebuildableDatasetDataMatch = {
+  $or: [
+    {
+      indexStatus: {
+        $in: [DatasetDataIndexStatusEnum.indexed, ...datasetDataRebuildFailedStatuses]
+      }
+    },
+    { indexStatus: { $exists: false } }
+  ]
+};

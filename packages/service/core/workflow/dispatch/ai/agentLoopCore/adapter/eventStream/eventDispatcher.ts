@@ -91,6 +91,11 @@ export const createAgentLoopCoreEventDispatcher = ({
             response: event.response
           });
         }
+        // 子工作流的多个 assistant value 已经在执行期间流出，父层下一段回答必须
+        // 使用新的 response id，否则前端会把它们拼成同一个 Markdown 段落。
+        if (event.assistantResponses?.length) {
+          eventStream.startNewAnswerBlock();
+        }
         toolRunCollector?.appendToolNodeResponse({
           call: event.call,
           response: event.response,

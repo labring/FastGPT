@@ -11,7 +11,7 @@ type FileSelectorBaseItemType = {
 export type FileSelectorValueItemType = {
   type: ChatFileTypeEnum;
   name: string;
-} & ({ key: string; url?: never } | { key?: never; url: string });
+} & ({ key: string; url?: string } | { key?: never; url: string });
 
 export type FileSelectorRenderItemType = FileSelectorBaseItemType & {
   id: string;

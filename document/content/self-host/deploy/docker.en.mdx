@@ -145,11 +145,13 @@ FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.cn bash <(curl -fsSL https://doc.fas
 
 <CurrentOriginCodeBlockUpdater />
 
-Non-interactive mode also requires `FASTGPT_FE_DOMAIN`, the full URL users use to access FastGPT, such as `https://fastgpt.example.com`. Versions with Agent/Skill Sandbox also require `FASTGPT_SANDBOX_PROXY_URL`, the Sandbox WebSocket URL, such as `wss://sandbox-proxy.example.com`; version 4.16 additionally requires `FASTGPT_SANDBOX_PREVIEW_PROXY_URL` for the HTTP preview URL. Version 4.14 does not include this service. In interactive mode, the script prompts for the addresses required by each version; 4.15 prompts only for the WebSocket URL.
+Non-interactive mode also requires `FASTGPT_FE_DOMAIN`, the full URL users use to access FastGPT, such as `https://fastgpt.example.com`.  
+Versions with Agent/Skill Sandbox also require `FASTGPT_SANDBOX_PROXY_URL`, the Sandbox WebSocket URL, such as `wss://sandbox-proxy.example.com`;  
+Versions 4.16 and later also require `FASTGPT_SANDBOX_PREVIEW_PROXY_URL` for the HTTP preview URL.
 
 Access URLs and host ports are configured independently. For direct access, set `FASTGPT_PORT` for the FastGPT host port (default `3000`) and `FASTGPT_SANDBOX_PROXY_PORT` for the Sandbox Proxy host port (default `3006`); the container ports remain `3000` and `1006`. With a reverse proxy, public ports in `FASTGPT_FE_DOMAIN`, `FASTGPT_SANDBOX_PROXY_URL`, and the preview URL (for example, `443`) are not treated as host ports, so the script keeps the default Compose mappings.
 
-The script automatically:
+**The script automatically performs the following actions**:
 
 - Downloads `docker-compose.yml`.
 - Guides you through selecting externally accessible S3 and MCP addresses, then writes them into the config files.
@@ -173,7 +175,7 @@ If you need to pin deployment to a specific `docker-compose.yml` file, we recomm
 1. Download the required `docker-compose.yml` file to the server, for example:
 
 ```bash
-curl -fsSL https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.pg.yml -o docker-compose.source.yml
+curl -fsSL https://doc.fastgpt.cn/deploy/docker/main/cn/docker-compose.pg.yml -o docker-compose.source.yml
 ```
 
 <CurrentOriginCodeBlockUpdater />
@@ -182,20 +184,20 @@ curl -fsSL https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.pg.yml -
 <summary>Click to view docker-compose config file download links for different databases</summary>
 
 - **Pgvector**
-  - China mirror (Alibaba Cloud): [docker-compose.pg.yml](/deploy/docker/v4.15/cn/docker-compose.pg.yml)
-  - Global mirror (dockerhub, ghcr): [docker-compose.pg.yml](/deploy/docker/v4.15/global/docker-compose.pg.yml)
+  - China mirror (Alibaba Cloud): [docker-compose.pg.yml](/deploy/docker/main/cn/docker-compose.pg.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.pg.yml](/deploy/docker/main/global/docker-compose.pg.yml)
 - **Oceanbase**
-  - China mirror (Alibaba Cloud): [docker-compose.oceanbase.yml](/deploy/docker/v4.15/cn/docker-compose.oceanbase.yml)
-  - Global mirror (dockerhub, ghcr): [docker-compose.oceanbase.yml](/deploy/docker/v4.15/global/docker-compose.oceanbase.yml)
+  - China mirror (Alibaba Cloud): [docker-compose.oceanbase.yml](/deploy/docker/main/cn/docker-compose.oceanbase.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.oceanbase.yml](/deploy/docker/main/global/docker-compose.oceanbase.yml)
 - **Milvus**
   - China mirror (Alibaba Cloud): [docker-compose.milvus.yml](/deploy/docker/main/cn/docker-compose.milvus.yml)
   - Global mirror (dockerhub, ghcr): [docker-compose.milvus.yml](/deploy/docker/main/global/docker-compose.milvus.yml)
 - **Zilliz**
-  - China mirror (Alibaba Cloud): [docker-compose.zilliz.yml](/deploy/docker/v4.15/cn/docker-compose.zilliz.yml)
-  - Global mirror (dockerhub, ghcr): [docker-compose.zilliz.yml](/deploy/docker/v4.15/global/docker-compose.zilliz.yml)
+  - China mirror (Alibaba Cloud): [docker-compose.zilliz.yml](/deploy/docker/main/cn/docker-compose.zilliz.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.zilliz.yml](/deploy/docker/main/global/docker-compose.zilliz.yml)
 - **SeekDB**
-  - China mirror (Alibaba Cloud): [docker-compose.seekdb.yml](/deploy/docker/v4.15/cn/docker-compose.seekdb.yml)
-  - Global mirror (dockerhub, ghcr): [docker-compose.seekdb.yml](/deploy/docker/v4.15/global/docker-compose.seekdb.yml)
+  - China mirror (Alibaba Cloud): [docker-compose.seekdb.yml](/deploy/docker/main/cn/docker-compose.seekdb.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.seekdb.yml](/deploy/docker/main/global/docker-compose.seekdb.yml)
 
 </details>
 

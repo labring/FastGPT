@@ -1,4 +1,7 @@
-import { type FastGPTConfigFileType } from '@fastgpt/global/common/system/types';
+import {
+  FastGPTConfigFileSchema,
+  type FastGPTConfigFileType
+} from '@fastgpt/global/common/system/types';
 import { isIPv6 } from 'net';
 import { getLogger, LogCategories } from '../logger';
 import {
@@ -17,7 +20,7 @@ export const SERVICE_LOCAL_HOST =
     : `${process.env.HOSTNAME || 'localhost'}:${SERVICE_LOCAL_PORT}`;
 
 export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
-  if (!config) return;
+  if (!config?.feConfigs || !config?.systemEnv) return;
 
   // Special config computed
   config.feConfigs.showCustomPdfParse =
@@ -27,6 +30,8 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
     !!config.systemEnv.customPdfParse?.doc2xKey;
   config.feConfigs.customPdfParsePrice = config.systemEnv.customPdfParse?.price || 0;
   config.feConfigs.show_agent_sandbox = hasAgentSandboxConfig();
+  config.feConfigs.show_agent_sandbox_free_tip =
+    serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP || !!config.feConfigs.agentSandboxFree;
   config.feConfigs.uploadFileMaxSize = serviceEnv.UPLOAD_FILE_MAX_SIZE;
   config.feConfigs.uploadFileMaxAmount = serviceEnv.UPLOAD_FILE_MAX_AMOUNT;
   config.feConfigs.limit = {
@@ -38,9 +43,18 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
     maxFolderDepth: serviceEnv.MAX_FOLDER_DEPTH
   };
 
-  global.feConfigs = config.feConfigs;
-  global.systemEnv = config.systemEnv;
-  global.subPlans = config.subPlans;
+  const parseResult = FastGPTConfigFileSchema.safeParse(config);
+  if (!parseResult.success) {
+    logger.error('FastGPT system config validation failed', {
+      error: parseResult.error
+    });
+  }
+
+  const safeConfig = parseResult.success ? parseResult.data : config;
+
+  global.feConfigs = safeConfig.feConfigs || config.feConfigs;
+  global.systemEnv = safeConfig.systemEnv || config.systemEnv;
+  global.subPlans = safeConfig.subPlans ?? config.subPlans;
 };
 
 export const systemStartCb = () => {

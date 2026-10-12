@@ -20,9 +20,9 @@ import { MongoChatSetting } from '@fastgpt/service/core/chat/setting/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoAppLogKeys } from '@fastgpt/service/core/app/logs/logkeysSchema';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
+import { MongoMcpKey } from '@fastgpt/service/support/mcp/schema';
 
 // Mock dependencies for queue functionality
 vi.mock('@fastgpt/dal/redis/bullmq', () => {
@@ -44,7 +44,7 @@ vi.mock('@fastgpt/dal/redis/bullmq', () => {
                 delay: 5000
               },
               removeOnComplete: true,
-              removeOnFail: { age: 30 * 24 * 60 * 60 }
+              removeOnFail: { count: 10000 }
             }
           })
           .add('delete_app', data, {
@@ -105,7 +105,7 @@ describe('App Delete Queue', () => {
             delay: 5000
           },
           removeOnComplete: true,
-          removeOnFail: { age: 30 * 24 * 60 * 60 }
+          removeOnFail: { count: 10000 }
         }
       });
 
@@ -155,9 +155,58 @@ describe('App Delete API Integration', () => {
       name: 'Test App for Deletion',
       teamId: rootUser.teamId,
       tmbId: rootUser.tmbId,
-      type: AppTypeEnum.simple,
-      modules: []
+      type: AppTypeEnum.simple
     });
+
+    // Create a share link for this app
+    await MongoOutLink.create({
+      appId: testApp._id,
+      teamId: rootUser.teamId,
+      tmbId: rootUser.tmbId,
+      name: 'Test Share Link',
+      shareId: `test_share_${Date.now()}`,
+      type: 'share',
+      allowAnonymous: true
+    });
+    expect(await MongoOutLink.countDocuments({ appId: testApp._id })).toBe(1);
+
+    // Create favourite app
+    await MongoChatFavouriteApp.create({
+      teamId: rootUser.teamId,
+      tmbId: rootUser.tmbId,
+      appId: testApp._id,
+      name: 'Test Favourite App'
+    });
+    expect(
+      await MongoChatFavouriteApp.countDocuments({ teamId: rootUser.teamId, appId: testApp._id })
+    ).toBe(1);
+
+    // Add to quick apps
+    await MongoChatSetting.findOneAndUpdate(
+      { teamId: rootUser.teamId },
+      { $addToSet: { quickAppIds: String(testApp._id) } },
+      { upsert: true }
+    );
+    const settingBefore = await MongoChatSetting.findOne({ teamId: rootUser.teamId });
+    expect(settingBefore?.quickAppIds).toContain(String(testApp._id));
+
+    // Add to MCP key apps
+    const mcpKey = await MongoMcpKey.create({
+      name: 'Test MCP Key',
+      teamId: rootUser.teamId,
+      tmbId: rootUser.tmbId,
+      apps: [
+        {
+          appId: testApp._id,
+          appName: 'Test App',
+          toolName: 'testTool',
+          description: 'Test Tool'
+        }
+      ]
+    });
+    expect(
+      await MongoMcpKey.countDocuments({ teamId: rootUser.teamId, 'apps.appId': testApp._id })
+    ).toBe(1);
 
     // Mock the queue to avoid actual background deletion
     const mockQueue = {
@@ -178,6 +227,17 @@ describe('App Delete API Integration', () => {
     const deletedApp = await MongoApp.findOne({ _id: testApp._id });
     expect(deletedApp?.deleteTime).not.toBeNull();
 
+    // Verify external/quick refs are removed immediately without waiting for queue processing
+    expect(await MongoOutLink.countDocuments({ appId: testApp._id })).toBe(0);
+    expect(
+      await MongoChatFavouriteApp.countDocuments({ teamId: rootUser.teamId, appId: testApp._id })
+    ).toBe(0);
+    const settingAfter = await MongoChatSetting.findOne({ teamId: rootUser.teamId });
+    expect(settingAfter?.quickAppIds).not.toContain(String(testApp._id));
+    expect(
+      await MongoMcpKey.countDocuments({ teamId: rootUser.teamId, 'apps.appId': testApp._id })
+    ).toBe(0);
+
     // Verify queue job was added
     expect(mockQueue.add).toHaveBeenCalledWith(
       'delete_app',
@@ -193,6 +253,7 @@ describe('App Delete API Integration', () => {
 
     // Cleanup
     await MongoApp.deleteOne({ _id: testApp._id });
+    await MongoMcpKey.deleteOne({ _id: mcpKey._id });
   });
 
   it('should handle folder deletion correctly', async () => {
@@ -211,8 +272,7 @@ describe('App Delete API Integration', () => {
       teamId: rootUser.teamId,
       tmbId: rootUser.tmbId,
       type: AppTypeEnum.simple,
-      parentId: testFolder._id,
-      modules: []
+      parentId: testFolder._id
     });
 
     // Mock the queue
@@ -247,8 +307,7 @@ describe('App Delete API Integration', () => {
       name: 'Workflow Tool App for API Delete',
       teamId: rootUser.teamId,
       tmbId: rootUser.tmbId,
-      type: AppTypeEnum.workflowTool,
-      modules: []
+      type: AppTypeEnum.workflowTool
     });
     const pluginId = `commercial-api-delete-test-${Date.now()}`;
 
@@ -310,18 +369,6 @@ describe('App Delete Data Cleanup Verification', () => {
       teamId: teamId,
       tmbId: rootUser.tmbId,
       type: AppTypeEnum.simple,
-      modules: [
-        {
-          flowPosition: { x: 100, y: 100 },
-          inputs: [],
-          outputs: [],
-          avatar: '/test/avatar.png',
-          name: 'Test Module',
-          intro: 'Test module intro',
-          flowType: FlowNodeTypeEnum.chatNode,
-          version: '1.0'
-        }
-      ],
       avatar: '/test/app-avatar.png'
     });
     appId = String(testApp._id);
@@ -365,8 +412,7 @@ describe('App Delete Data Cleanup Verification', () => {
         name: 'Parent App',
         teamId: teamId,
         tmbId: rootUser.tmbId,
-        type: AppTypeEnum.simple,
-        modules: []
+        type: AppTypeEnum.simple
       });
 
       const childApp = await MongoApp.create({
@@ -374,8 +420,7 @@ describe('App Delete Data Cleanup Verification', () => {
         teamId: teamId,
         tmbId: rootUser.tmbId,
         type: AppTypeEnum.simple,
-        parentId: parentApp._id,
-        modules: []
+        parentId: parentApp._id
       });
 
       // 为子应用创建相关数据
@@ -414,16 +459,14 @@ describe('App Delete Data Cleanup Verification', () => {
         name: 'Safety Parent App',
         teamId,
         tmbId: rootUser.tmbId,
-        type: AppTypeEnum.simple,
-        modules: []
+        type: AppTypeEnum.simple
       });
       const childApp = await MongoApp.create({
         name: 'Safety Child App',
         teamId,
         tmbId: rootUser.tmbId,
         type: AppTypeEnum.simple,
-        parentId: parentApp._id,
-        modules: []
+        parentId: parentApp._id
       });
       await MongoApp.updateOne({ _id: parentApp._id }, { deleteTime: new Date() });
 
@@ -445,8 +488,7 @@ describe('App Delete Data Cleanup Verification', () => {
         name: 'Test App 2',
         teamId: teamId,
         tmbId: rootUser.tmbId,
-        type: AppTypeEnum.simple,
-        modules: []
+        type: AppTypeEnum.simple
       });
 
       const app2Id = String(app2._id);
@@ -480,8 +522,7 @@ describe('App Delete Data Cleanup Verification', () => {
         name: 'Workflow Tool App',
         teamId,
         tmbId: rootUser.tmbId,
-        type: AppTypeEnum.workflowTool,
-        modules: []
+        type: AppTypeEnum.workflowTool
       });
       const workflowToolAppId = String(workflowToolApp._id);
       const pluginId = `commercial-delete-test-${Date.now()}`;
@@ -566,6 +607,7 @@ describe('App Delete Data Cleanup Verification', () => {
       name: 'Test Share Link',
       shareId: `test_share_${timestamp}`,
       type: 'share',
+      allowAnonymous: true,
       limit: 100,
       immediateReturn: false
     });

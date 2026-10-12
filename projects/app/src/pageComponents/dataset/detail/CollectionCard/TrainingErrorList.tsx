@@ -1,6 +1,7 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { Box, Button, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import type { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type {
   GetDatasetTrainingErrorBody,
   GetTrainingDataDetailResponse,
@@ -12,15 +13,16 @@ import type {
 import type { Permission } from '@fastgpt/global/support/permission/controller';
 import type { PaginationResponseType } from '@fastgpt/global/openapi/api';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useMemoizedFn, useScroll, useThrottleEffect } from 'ahooks';
-import { forwardRef, type MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import RawSourceBox from '@/components/core/dataset/RawSourceBox';
 import {
   deleteTrainingData,
@@ -43,45 +45,6 @@ type TrainingErrorRequestParams =
   | Omit<GetTrainingErrorBody, 'pageNum' | 'offset' | 'pageSize'>
   | Omit<GetDatasetTrainingErrorBody, 'pageNum' | 'offset' | 'pageSize'>;
 const datasetGroupItemPageSize = 5;
-
-const ErrorActionButton = forwardRef<
-  HTMLButtonElement,
-  {
-    icon: string;
-    children: React.ReactNode;
-    onClick?: () => void;
-    isLoading?: boolean;
-  }
->(({ icon, children, onClick, isLoading }, ref) => (
-  <Button
-    ref={ref}
-    variant={'unstyled'}
-    color={'myGray.600'}
-    display={'inline-flex'}
-    alignItems={'center'}
-    justifyContent={'center'}
-    gap={'6px'}
-    px={2}
-    py={'6px'}
-    h={'28px'}
-    minW={0}
-    borderRadius={'6px'}
-    fontSize={'12px'}
-    lineHeight={'16px'}
-    fontWeight={500}
-    letterSpacing={'0.5px'}
-    bg={'transparent'}
-    _hover={{ bg: 'transparent', color: 'myGray.600' }}
-    _active={{ bg: 'transparent' }}
-    _disabled={{ opacity: 0.6, cursor: 'not-allowed' }}
-    isLoading={isLoading}
-    onClick={onClick}
-  >
-    <MyIcon name={icon as any} w={4} flexShrink={0} />
-    {children}
-  </Button>
-));
-ErrorActionButton.displayName = 'ErrorActionButton';
 
 const ErrorMessage = ({ errorMsg }: { errorMsg?: string }) => {
   const { t } = useTranslation();
@@ -142,22 +105,46 @@ const ActionButtons = ({
   const { t } = useTranslation();
 
   return (
-    <Flex alignItems={'center'} justifyContent={'flex-end'}>
-      <ErrorActionButton
+    <Flex alignItems={'center'} justifyContent={'center'} w={'100px'} gap={1}>
+      <MyIconButton
+        as="button"
+        aria-label={t('dataset:dataset.ReTrain')}
+        tip={t('dataset:dataset.ReTrain')}
         icon={'common/confirm/restoreTip'}
+        w={7}
+        h={7}
+        hoverBg="primary.50"
         isLoading={isRetryLoading}
+        aria-disabled={isRetryLoading}
         onClick={() => onRetry(item)}
-      >
-        {t('dataset:dataset.ReTrain')}
-      </ErrorActionButton>
-      <Box w={'1px'} height={'16px'} bg={'#E8EBF0'} />
-      <ErrorActionButton icon={'edit'} isLoading={isEditLoading} onClick={() => onEdit(item)}>
-        {t('dataset:dataset.Edit_Chunk')}
-      </ErrorActionButton>
-      <Box w={'1px'} height={'16px'} bg={'#E8EBF0'} />
-      <ErrorActionButton icon={'delete'} isLoading={isDeleteLoading} onClick={() => onDelete(item)}>
-        {t('dataset:dataset.Delete_Chunk')}
-      </ErrorActionButton>
+      />
+      {![TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym].includes(item.mode) && (
+        <MyIconButton
+          as="button"
+          aria-label={t('dataset:dataset.Edit_Chunk')}
+          tip={t('dataset:dataset.Edit_Chunk')}
+          icon={'edit'}
+          w={7}
+          h={7}
+          hoverBg="primary.50"
+          isLoading={isEditLoading}
+          aria-disabled={isEditLoading}
+          onClick={() => onEdit(item)}
+        />
+      )}
+      <MyIconButton
+        as="button"
+        aria-label={t('dataset:dataset.Delete_Chunk')}
+        tip={t('dataset:dataset.Delete_Chunk')}
+        icon={'delete'}
+        w={7}
+        h={7}
+        hoverBg="red.50"
+        hoverColor="red.600"
+        isLoading={isDeleteLoading}
+        aria-disabled={isDeleteLoading}
+        onClick={() => onDelete(item)}
+      />
     </Flex>
   );
 };
@@ -177,6 +164,12 @@ const TrainingErrorList = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { openConfirm: openRebuildDeleteConfirm, ConfirmModal: RebuildDeleteConfirmModal } =
+    useConfirm({
+      type: 'delete',
+      title: t('dataset:training.delete_rebuild_data_title'),
+      content: t('dataset:training.delete_rebuild_data_content')
+    });
   const [editChunk, setEditChunk] = useState<GetTrainingDataDetailResponse>();
   const collectionScrollRef = useRef<HTMLDivElement>(null);
   const collectionAutoFillOffsetRef = useRef<number>();
@@ -420,6 +413,8 @@ const TrainingErrorList = ({
     });
   };
   const handleEditItem = (item: TrainingErrorItemType) => {
+    if ([TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym].includes(item.mode))
+      return;
     if (!checkPermission(permission.hasWritePer)) return;
 
     const collectionId = getItemCollectionId(item);
@@ -429,7 +424,11 @@ const TrainingErrorList = ({
     if (!checkPermission(permission.hasManagePer)) return;
 
     const collectionId = getItemCollectionId(item);
-    return deleteData({ collectionId, dataId: String(item._id) });
+    const onDelete = () => deleteData({ collectionId, dataId: String(item._id) });
+    if ([TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym].includes(item.mode)) {
+      return openRebuildDeleteConfirm({ onConfirm: onDelete })();
+    }
+    return onDelete();
   };
   const handleRetryAll = async () => {
     if (!checkPermission(permission.hasWritePer)) return;
@@ -586,28 +585,36 @@ const TrainingErrorList = ({
   return (
     <>
       {scope.type === 'collection' ? (
-        <MyBox h={'400px'} overflow={'hidden'} isLoading={listLoading}>
-          <FixedTableContainer ref={collectionScrollRef} h="100%" maxH="none" fontSize={'12px'}>
+        <MyBox flex={'1 1 0'} minH={0} overflow={'hidden'} isLoading={listLoading}>
+          <FixedTableContainer
+            ref={collectionScrollRef}
+            h="100%"
+            maxH="none"
+            fontSize={'12px'}
+            horizontalScroll={false}
+          >
             <Table variant={'simple'}>
               <Thead>
                 <Tr>
-                  <Th pr={0}>{t('dataset:dataset.Chunk_Number')}</Th>
-                  <Th pr={0}>{t('dataset:dataset.Training_Status')}</Th>
-                  <Th>{t('dataset:dataset.Error_Message')}</Th>
-                  <Th w={'220px'}>{t('dataset:dataset.Operation')}</Th>
+                  <Th p={3}>{t('dataset:dataset.Chunk_Number')}</Th>
+                  <Th p={3}>{t('dataset:dataset.Training_Status')}</Th>
+                  <Th p={3}>{t('dataset:dataset.Error_Message')}</Th>
+                  <Th w={'124px'} p={3} textAlign={'center'}>
+                    {t('dataset:dataset.Operation')}
+                  </Th>
                 </Tr>
               </Thead>
               <Tbody>
                 {collectionItems.map((item) => (
                   <Tr key={String(item._id)}>
-                    <Td>{item.chunkIndex + 1}</Td>
-                    <Td>
+                    <Td p={3}>{item.chunkIndex + 1}</Td>
+                    <Td p={3}>
                       <TrainingStageText item={item} />
                     </Td>
-                    <Td maxW={50}>
+                    <Td maxW={50} p={3}>
                       <ErrorMessage errorMsg={item.errorMsg} />
                     </Td>
-                    <Td w={'220px'} px={3}>
+                    <Td w={'124px'} p={3}>
                       <ActionButtons
                         item={item}
                         isRetryLoading={updateLoading}
@@ -716,6 +723,7 @@ const TrainingErrorList = ({
         </ScrollData>
       )}
 
+      <RebuildDeleteConfirmModal />
       {showFooter && (
         <Flex justifyContent={'flex-end'} gap={3} mt={6} flexShrink={0}>
           <Button variant={'whiteBase'} onClick={onClose}>

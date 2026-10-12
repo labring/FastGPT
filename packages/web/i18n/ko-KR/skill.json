@@ -39,9 +39,6 @@
   "permission.des.manage": "에이전트 스킬 및 협업자를 관리할 수 있습니다",
   "permission.des.read": "에이전트 스킬을 볼 수 있습니다",
   "permission.des.write": "에이전트 스킬을 편집할 수 있습니다",
-  "permission_settings": "권한 설정",
-  "related_apps_hidden": "권한으로 인해 {{count}}개 앱이 더 숨겨져 있습니다",
-  "related_count": "연관 앱",
   "sandbox_auto_enabled_for_skill": "스킬은 가상 머신 런타임에 의존합니다. 가상 머신이 자동으로 활성화되었습니다.",
   "sandbox_checking": "기존 샌드박스 확인 중...",
   "sandbox_connecting": "샌드박스에 연결 중...",
@@ -86,5 +83,16 @@
   "skill_name_placeholder": "스킬 이름을 입력하세요",
   "skill_select_limit_tip": "앱당 연결 가능한 스킬의 최대 개수(100개)에 도달했습니다",
   "unnamed_skill": "이름 없음",
-  "unsupported_file_format": "{{ext}} 파일 형식은 지원되지 않습니다"
+  "unsupported_file_format": "{{ext}} 파일 형식은 지원되지 않습니다",
+  "filtered_no_delete_permission_tip": "삭제 권한이 없는 스킬은 제외되었습니다",
+  "confirm_delete_skills_tip": "다음 스킬을 삭제하시겠습니까?",
+  "confirm_delete_folders_tip": "다음 폴더를 삭제하시겠습니까? 삭제 후 이 폴더와 포함된 모든 스킬이 함께 삭제됩니다.",
+  "confirm_delete_mixed_tip": "다음 스킬과 폴더를 삭제하시겠습니까? 삭제 후 해당 스킬과 폴더 내의 모든 콘텐츠가 함께 삭제됩니다.",
+  "skill_count": "{{count}}개 스킬",
+  "folder_count": "{{count}}개 폴더",
+  "delete_skills_and_folders_confirm_title": "{{skills}}과 {{folders}} 삭제 확인",
+  "delete_skills_confirm_title": "{{count}}개 스킬 삭제 확인",
+  "delete_folders_confirm_title": "{{count}}개 폴더 삭제 확인",
+  "delete_following_skills_tip": "다음 스킬을 삭제하면 복구할 수 없습니다.",
+  "delete_following_folders_tip": "삭제 후 해당 폴더와 내부의 모든 스킬이 함께 삭제됩니다."
 }

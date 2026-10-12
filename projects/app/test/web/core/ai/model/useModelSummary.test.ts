@@ -26,7 +26,7 @@ vi.mock('react', async (importOriginal) => ({
     mocks.effect = fn;
   }
 }));
-vi.mock('@/web/common/system/api', () => ({ getUserModelSummaries: mocks.request }));
+vi.mock('@/web/core/ai/model/catalogApi', () => ({ getUserModelSummaries: mocks.request }));
 vi.mock('@/web/support/user/useUserStore', () => {
   const getState = () => ({ userInfo: { team: { teamId: 'team', tmbId: mocks.member } } });
   return {
@@ -171,5 +171,29 @@ describe('useModelSummary request lifecycle', () => {
     reject(new Error('late failure'));
     await flush();
     expect(render('a').error).toBe(false);
+  });
+  it('passes appId to request and isolates cache between different apps', async () => {
+    const renderWithApp = (modelId?: string, appId?: string) => {
+      mocks.index = 0;
+      return useModelSummary({ modelId, appId });
+    };
+    renderWithApp('a', 'app-1');
+    mocks.effect?.();
+    await flush();
+    expect(mocks.request).toHaveBeenLastCalledWith({
+      modelIds: ['a'],
+      appId: 'app-1',
+      outLinkAuthData: undefined
+    });
+
+    // 切换到 app-2 时，不复用 app-1 的缓存
+    expect(renderWithApp('a', 'app-2').detail).toBeUndefined();
+    mocks.effect?.();
+    await flush();
+    expect(mocks.request).toHaveBeenLastCalledWith({
+      modelIds: ['a'],
+      appId: 'app-2',
+      outLinkAuthData: undefined
+    });
   });
 });

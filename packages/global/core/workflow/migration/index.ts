@@ -20,6 +20,6 @@ export {
   type StoreWorkflowInput
 } from './legacy/schema';
 
-export { migrateWorkflowToCurrent } from './migrate';
+export { migrateWorkflowToCurrent, isLegacyV1Workflow } from './migrate';
 
 // [TODO] add an explicit version field and dispatch migrations by version.

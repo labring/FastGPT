@@ -3,6 +3,7 @@ import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { Box, type FlexProps } from '@chakra-ui/react';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
+import { isOfficeLockFilename } from '@fastgpt/global/common/file/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import React, { type DragEvent, useCallback, useMemo, useState } from 'react';
@@ -68,6 +69,23 @@ const FileSelector = ({
 
   const onSelectFile = useCallback(
     async (files: File[]) => {
+      const hasEmptyFile = files.some((file) => file.size <= 0);
+      const hasLockFile = files.some((file) => isOfficeLockFilename(file.name));
+      files = files.filter((file) => file.size > 0 && !isOfficeLockFilename(file.name));
+      if (hasEmptyFile) {
+        toast({
+          status: 'warning',
+          title: t('common:empty_file')
+        });
+      }
+      if (hasLockFile) {
+        toast({
+          status: 'warning',
+          title: t('common:error.s3_upload_invalid_file_type')
+        });
+      }
+      if (files.length === 0) return;
+
       const fileList = files.map((file) => ({
         file,
         icon: getFileIcon(file.name),

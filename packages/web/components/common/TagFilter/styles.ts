@@ -26,14 +26,21 @@ export const filterListScrollSx: SystemStyleObject = {
 
 export const stopFilterListWheel = (e: WheelEvent) => e.stopPropagation();
 
+export const DEFAULT_FILTER_MENU_MAX_W = '260px';
+
 /** 选项超过阈值才按预设尺寸锁定最大高度并滚动，短列表跟随内容撑开。 */
 export const getFilterListBoxProps = (
   scrollable: boolean,
   listSize: FilterListSize = DEFAULT_FILTER_LIST_SIZE
 ) => ({
+  display: 'flex' as const,
+  flexDirection: 'column' as const,
+  gap: '4px',
+  minW: 0,
   h: 'auto' as const,
   maxH: scrollable ? FILTER_LIST_HEIGHTS[listSize] : undefined,
   overflowY: scrollable ? ('auto' as const) : undefined,
+  overflowX: scrollable ? ('hidden' as const) : undefined,
   sx: scrollable ? filterListScrollSx : undefined,
   onWheel: scrollable ? stopFilterListWheel : undefined
 });
@@ -43,5 +50,6 @@ export const filterPopoverProps = {
   hasArrow: false,
   offset: [0, 4] as [number, number],
   closeOnBlur: true,
-  trigger: 'click' as const
+  trigger: 'click' as const,
+  maxW: DEFAULT_FILTER_MENU_MAX_W
 };

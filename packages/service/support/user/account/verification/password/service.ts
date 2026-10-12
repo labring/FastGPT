@@ -97,6 +97,11 @@ export class PasswordVerificationService {
           match: { preLoginCode: params.code }
         },
         async ({ session }) => {
+          await params.beforeFindUserByCredentials?.({
+            username: params.username,
+            session
+          });
+
           const user = await this.dependencies.findUserByCredentials({
             username: params.username,
             password: params.password,

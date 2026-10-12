@@ -266,7 +266,8 @@ describe('updateHistory api test', () => {
       tmbId: testUser.tmbId,
       appId,
       type: PublishChannelEnum.share,
-      name: 'Share Link'
+      name: 'Share Link',
+      allowAnonymous: true
     });
     await MongoChat.updateOne(
       { appId, chatId },

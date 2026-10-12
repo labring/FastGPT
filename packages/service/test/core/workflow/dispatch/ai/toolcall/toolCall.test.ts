@@ -6,6 +6,10 @@ import { AgentUsageModuleName } from '@fastgpt/service/core/ai/llm/agentLoop/int
 import { createToolSchema } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolCatalog';
 import { runToolCall as runToolCallWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/toolCall';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import {
+  createNodeSummary,
+  createWorkflowRuntimeSummary
+} from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { dispatchWorkflowReadFilesMock, getSandboxToolInfoMock, runAgentLoopMock, runWorkflowMock } =
@@ -56,6 +60,7 @@ const createProps = (overrides = {}) =>
     externalProvider: {},
     workflowStreamResponse: vi.fn(),
     usagePush: vi.fn(),
+    nodeSummary: createNodeSummary(),
     node: {
       nodeId: 'toolcall_node',
       flowNodeType: FlowNodeTypeEnum.toolCall
@@ -202,7 +207,7 @@ describe('runToolCall compression node responses', () => {
           moduleName: 'Search'
         }
       ],
-      runtimeNodeResponseSummary: { hasToolStop: false, runningTime: 0 },
+      workflowRuntimeSummary: { hasToolStop: false, runningTime: 0 },
       workflowInteractiveResponse: undefined
     });
   });
@@ -246,7 +251,283 @@ describe('runToolCall compression node responses', () => {
     );
   });
 
-  it('records context compression as ToolCall child node response and tool-response compression under the tool node', async () => {
+  it('persists original child responses through tool_run_end', async () => {
+    runAgentLoopMock.mockImplementation(async (options) => {
+      const call = {
+        id: 'call_child',
+        type: 'function' as const,
+        function: { name: 'nested_search', arguments: '{"query":"FastGPT"}' }
+      };
+      options.runtime.emitEvent({ type: 'tool_call', call });
+      options.runtime.emitEvent({
+        type: 'tool_run_end',
+        call,
+        rawResponse: 'child result',
+        response: 'child result',
+        seconds: 0.1,
+        assistantResponses: [
+          { text: { content: 'child answer' } },
+          {
+            id: 'call_child_nested',
+            tools: [
+              {
+                id: 'call_child_nested',
+                toolName: 'Nested search',
+                toolAvatar: '',
+                functionName: 'nested_search',
+                params: '{}',
+                response: 'nested result'
+              }
+            ]
+          }
+        ]
+      });
+      return createLoopResult({ usages: [] });
+    });
+
+    const result = await runToolCall(createProps());
+
+    expect(result.assistantResponses).toEqual([
+      expect.objectContaining({
+        tools: [expect.objectContaining({ id: 'call_child', response: 'child result' })]
+      }),
+      expect.objectContaining({ text: { content: 'child answer' } }),
+      expect.objectContaining({
+        tools: [expect.objectContaining({ id: 'call_child_nested', response: 'nested result' })]
+      })
+    ]);
+  });
+
+  it('does not synthesize tool cards from assistant messages', async () => {
+    runAgentLoopMock.mockImplementation(async (options) => {
+      options.runtime.emitEvent({
+        type: 'llm_request_end',
+        requestIndex: 0,
+        modelName: 'GPT-4',
+        requestId: 'req_main',
+        finishReason: 'stop',
+        answerText: 'before child workflowfinal answer',
+        seconds: 0.1
+      });
+      return {
+        ...createLoopResult({ usages: [] }),
+        assistantMessages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: 'call_child',
+            content: 'child result'
+          }
+        ]
+      };
+    });
+
+    const result = await runToolCall(createProps());
+
+    expect(result.assistantResponses).toEqual([
+      expect.objectContaining({
+        text: { content: 'before child workflowfinal answer' }
+      })
+    ]);
+    expect(result.assistantResponses).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          tools: [expect.objectContaining({ id: 'call_child', toolName: '' })]
+        })
+      ])
+    );
+  });
+
+  it('streams child workflow output and persists its direct and nested tool messages', async () => {
+    const workflowStreamResponse = vi.fn();
+    const childAssistantResponses = [
+      { text: { content: 'direct child answer' } },
+      {
+        tools: [
+          {
+            id: 'call_nested',
+            toolName: 'Nested search',
+            toolAvatar: 'nested-avatar',
+            functionName: 'nested_search',
+            params: '{"q":"nested"}',
+            response: 'nested result'
+          }
+        ]
+      }
+    ];
+
+    runWorkflowMock.mockImplementation(async ({ workflowStreamResponse }) => {
+      workflowStreamResponse?.({ event: 'answer', data: 'child answer delta' });
+      return {
+        toolResponse: { result: 'child tool result' },
+        assistantResponses: childAssistantResponses,
+        flowUsages: [],
+        flatNodeResponses: [],
+        workflowRuntimeSummary: { hasToolStop: false, runningTime: 0 },
+        workflowInteractiveResponse: undefined
+      };
+    });
+    runAgentLoopMock.mockImplementation(async (options) => {
+      const call = {
+        id: 'call_child',
+        type: 'function',
+        function: { name: 'search', arguments: '{"q":"FastGPT"}' }
+      };
+      const childResult = await options.runtime.executeTool({ call, messages: [] });
+      options.runtime.emitEvent({
+        type: 'tool_run_end',
+        call,
+        rawResponse: childResult.response,
+        response: childResult.response,
+        seconds: 0.1,
+        assistantMessages: childResult.assistantMessages,
+        assistantResponses: childResult.assistantResponses
+      });
+
+      return {
+        ...createLoopResult({ usages: [] }),
+        assistantMessages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Assistant,
+            content: '',
+            tool_calls: [call]
+          },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: call.id,
+            content: childResult.response
+          },
+          ...childResult.assistantMessages
+        ]
+      };
+    });
+
+    const result = await runToolCall(
+      createProps({
+        stream: true,
+        workflowStreamResponse,
+        toolNodes: [
+          {
+            nodeId: 'search',
+            name: 'Search',
+            flowNodeType: FlowNodeTypeEnum.tool,
+            inputs: []
+          }
+        ]
+      })
+    );
+
+    expect(runWorkflowMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isToolCall: true,
+        stream: true,
+        workflowStreamResponse
+      })
+    );
+    expect(workflowStreamResponse).toHaveBeenCalledWith({
+      event: 'answer',
+      data: 'child answer delta'
+    });
+    expect(workflowStreamResponse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'call_child',
+        event: 'toolResponse'
+      })
+    );
+    expect(result.assistantResponses).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ text: { content: 'direct child answer' } }),
+        expect.objectContaining({
+          tools: [expect.objectContaining({ id: 'call_nested', response: 'nested result' })]
+        })
+      ])
+    );
+  });
+
+  it('keeps partial responses when a child workflow pauses', async () => {
+    const childrenResponse = {
+      type: 'userSelect',
+      entryNodeIds: ['search']
+    };
+    runAgentLoopMock.mockImplementationOnce(async (options) => {
+      const call = {
+        id: 'call_child',
+        type: 'function' as const,
+        function: { name: 'search', arguments: '{"q":"FastGPT"}' }
+      };
+      options.runtime.emitEvent({
+        type: 'llm_request_end',
+        requestIndex: 0,
+        modelName: 'GPT-4',
+        requestId: 'req_main',
+        finishReason: 'tool_calls',
+        answerText: 'before pause',
+        toolCalls: [call],
+        seconds: 0.1
+      });
+      options.runtime.emitEvent({ type: 'tool_call', call });
+      options.runtime.emitEvent({
+        type: 'tool_run_end',
+        call,
+        rawResponse: 'partial child output',
+        response: 'partial child output',
+        seconds: 0.1,
+        assistantResponses: []
+      });
+      return {
+        ...createLoopResult({ usages: [] }),
+        status: 'paused',
+        pause: { type: 'tool_child', childrenResponse, toolCallId: 'call_child' }
+      };
+    });
+
+    const result = await runToolCall(createProps());
+
+    expect(result.toolWorkflowInteractiveResponse).toEqual({
+      type: 'toolChildrenInteractive',
+      params: {
+        childrenResponse,
+        toolParams: {
+          toolCallId: 'call_child'
+        }
+      }
+    });
+    expect(result.assistantResponses).toEqual([
+      expect.objectContaining({ text: { content: 'before pause' } }),
+      expect.objectContaining({
+        tools: [expect.objectContaining({ id: 'call_child', response: 'partial child output' })]
+      })
+    ]);
+  });
+
+  it('preserves the order of multiple tool responses from events', async () => {
+    runAgentLoopMock.mockImplementationOnce(async (options) => {
+      for (const [id, name, response] of [
+        ['call_first', 'first_tool', 'first result'],
+        ['call_second', 'second_tool', 'second result']
+      ] as const) {
+        const call = { id, type: 'function' as const, function: { name, arguments: '{}' } };
+        options.runtime.emitEvent({ type: 'tool_call', call });
+        options.runtime.emitEvent({
+          type: 'tool_run_end',
+          call,
+          rawResponse: response,
+          response,
+          seconds: 0.1
+        });
+      }
+      return createLoopResult({ usages: [] });
+    });
+
+    const result = await runToolCall(createProps());
+    const tools = result.assistantResponses.flatMap((response) => response.tools ?? []);
+
+    expect(tools.map((tool) => ({ id: tool.id, response: tool.response }))).toEqual([
+      { id: 'call_first', response: 'first result' },
+      { id: 'call_second', response: 'second result' }
+    ]);
+  });
+
+  it('records context and tool-response compression as separate ToolCall detail rows', async () => {
     const contextCompressUsage = {
       moduleName: 'account_usage:compress_llm_messages',
       modelId: '507f1f77bcf86cd799439011',
@@ -349,11 +630,9 @@ describe('runToolCall compression node responses', () => {
     );
     expect(flowResponses[0].id).toBe('req_context_compress');
     expect(flowResponses[0].nodeId).toBe(flowResponses[0].id);
-    expect(flowResponses[1].childrenResponses?.[0].id).toBe('req_tool_response_compress');
-    expect(flowResponses[1].childrenResponses?.[0].nodeId).toBe(
-      flowResponses[1].childrenResponses?.[0].id
-    );
-    expect(flowResponses[1].childrenResponses?.[0].compressTextAgent).toBeUndefined();
+    expect(flowResponses[2].id).toBe('req_tool_response_compress');
+    expect(flowResponses[2].parentId).toBe('search');
+    expect(flowResponses[2].compressTextAgent).toBeUndefined();
     expect(flowResponses).toEqual([
       expect.objectContaining({
         moduleName: 'chat:compress_llm_messages',
@@ -373,20 +652,21 @@ describe('runToolCall compression node responses', () => {
       }),
       expect.objectContaining({
         nodeId: 'search',
-        childrenResponses: [
-          expect.objectContaining({
-            moduleName: 'chat:tool_response_compress',
-            moduleType: FlowNodeTypeEnum.toolCall,
-            moduleLogo: 'core/app/agent/child/contextCompress',
-            runningTime: 0.34,
-            model: 'GPT-4',
-            llmRequestIds: ['req_tool_response_compress'],
-            inputTokens: 30,
-            outputTokens: 6,
-            totalPoints: 0.3,
-            textOutput: 'compressed tool response'
-          })
-        ]
+        moduleName: 'Search'
+      }),
+      expect.objectContaining({
+        id: 'req_tool_response_compress',
+        parentId: 'search',
+        moduleName: 'chat:tool_response_compress',
+        moduleType: FlowNodeTypeEnum.toolCall,
+        moduleLogo: 'core/app/agent/child/contextCompress',
+        runningTime: 0.34,
+        model: 'GPT-4',
+        llmRequestIds: ['req_tool_response_compress'],
+        inputTokens: 30,
+        outputTokens: 6,
+        totalPoints: 0.3,
+        textOutput: 'compressed tool response'
       })
     ]);
     expect(result.toolDispatchFlowResponses.map((item) => item.flowUsages)).toEqual([
@@ -414,6 +694,95 @@ describe('runToolCall compression node responses', () => {
         })
       ]
     ]);
+  });
+
+  it('transfers each child workflow summary when its tool completes', async () => {
+    const props = createProps({
+      toolNodes: [
+        {
+          nodeId: 'search',
+          name: 'Search',
+          flowNodeType: FlowNodeTypeEnum.tool,
+          inputs: []
+        }
+      ]
+    });
+    runWorkflowMock.mockResolvedValue({
+      toolResponse: { result: 'search result' },
+      assistantResponses: [],
+      flowUsages: [],
+      flatNodeResponses: [],
+      workflowRuntimeSummary: {
+        ...createWorkflowRuntimeSummary(),
+        llmInputTokens: 11,
+        llmOutputTokens: 7
+      },
+      workflowInteractiveResponse: undefined
+    });
+    runAgentLoopMock.mockImplementation(async (options) => {
+      const call = {
+        id: 'call_search',
+        type: 'function',
+        function: { name: 'search', arguments: '{}' }
+      };
+      await options.runtime.executeTool({ call, messages: [] });
+      options.runtime.emitEvent({
+        type: 'tool_run_end',
+        call,
+        rawResponse: 'search result',
+        response: 'search result',
+        seconds: 0.1
+      });
+      return createLoopResult({ usages: [] });
+    });
+
+    await runToolCall(props);
+
+    expect(props.nodeSummary).toMatchObject({
+      llmInputTokens: 11,
+      llmOutputTokens: 7
+    });
+  });
+
+  it('does not publish a generic tool wrapper response', async () => {
+    const nodeResponseSink = {
+      hasOutput: true,
+      publish: vi.fn(async (inputs: any[]) => inputs.map((item) => item.response))
+    };
+    runAgentLoopMock.mockImplementation(async (options) => {
+      options.runtime.emitEvent({
+        type: 'tool_run_end',
+        call: {
+          id: 'call_search',
+          type: 'function',
+          function: {
+            name: 'search',
+            arguments: '{"query":"FastGPT"}'
+          }
+        },
+        rawResponse: 'tool response',
+        response: 'tool response',
+        seconds: 0.1
+      });
+
+      return createLoopResult({ usages: [] });
+    });
+
+    await runToolCall(
+      createProps({
+        nodeResponseSink,
+        toolNodes: [
+          {
+            nodeId: 'search',
+            name: 'Search',
+            flowNodeType: FlowNodeTypeEnum.tool,
+            inputs: []
+          }
+        ]
+      })
+    );
+
+    expect(nodeResponseSink.publish).not.toHaveBeenCalled();
   });
 
   it('keeps compression child node responses when compression has no requestId', async () => {
@@ -498,7 +867,7 @@ describe('runToolCall compression node responses', () => {
     expect(result.toolCallTotalPoints).toBe(1);
   });
 
-  it('records the completed tool flow response after onToolRunEnd with compression child response', async () => {
+  it('records the completed tool flow response after onToolRunEnd with a flat compression row', async () => {
     const toolResponseCompressUsage = {
       moduleName: 'account_usage:tool_response_compress',
       modelId: '507f1f77bcf86cd799439011',
@@ -550,16 +919,15 @@ describe('runToolCall compression node responses', () => {
       })
     );
     const [toolFlowResponse] = result.toolDispatchFlowResponses;
-    const [toolNodeResponse] = toolFlowResponse.flowResponses;
-
-    expect(toolNodeResponse.childrenResponses).toEqual([
+    expect(toolFlowResponse.flowResponses).toEqual([
+      expect.objectContaining({ id: 'search' }),
       expect.objectContaining({
+        parentId: 'search',
         moduleName: 'chat:tool_response_compress',
         textOutput: 'compressed tool response',
         llmRequestIds: ['req_tool_response_compress']
       })
     ]);
-    expect(toolNodeResponse.childrenResponses?.[0].compressTextAgent).toBeUndefined();
     expect(toolFlowResponse.flowUsages).toContain(toolResponseCompressUsage);
   });
 
@@ -729,7 +1097,7 @@ describe('runToolCall compression node responses', () => {
           moduleName: 'Dataset search'
         }
       ],
-      runtimeNodeResponseSummary: { hasToolStop: false, runningTime: 0 },
+      workflowRuntimeSummary: { hasToolStop: false, runningTime: 0 },
       workflowInteractiveResponse: undefined
     });
     runAgentLoopMock.mockImplementation(async (options) => {

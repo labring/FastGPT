@@ -121,10 +121,10 @@ class PgClass {
       .join(',');
   }
 
-  async query<T extends QueryResultRow = any>(sql: string) {
+  async query<T extends QueryResultRow = any>(sql: string, values?: unknown[]) {
     const pg = await connectPg();
     const start = Date.now();
-    return pg.query<T>(sql).then((res) => {
+    return pg.query<T>(sql, values).then((res) => {
       const time = Date.now() - start;
 
       if (time > 1000) {

@@ -1,6 +1,6 @@
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
-import { axios } from '../../common/api/axios';
+import { axiosWithoutSSRF } from '../../common/api/axios';
 import {
   type AIChatItemType,
   type ChatItemDBSchemaType,
@@ -194,7 +194,8 @@ ${JSON.stringify(item.interactive, null, 2)}
       createdAt: new Date(chatItemAi.time).getTime(),
       sourceId: `${sourceIdPrefix}${appId}`
     };
-    await axios.post(`${url}/api/chat/push`, chatLog);
+    // CHAT_LOG_URL 由部署方配置，可能指向内网日志服务，不使用 SSRF 拦截器。
+    await axiosWithoutSSRF.post(`${url}/api/chat/push`, chatLog);
   } catch (e) {
     logger.error('Chat log push failed', { chatId, error: e });
   }

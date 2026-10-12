@@ -25,7 +25,7 @@ export const I18N_NAMESPACES = [
   'marketplace',
   'dashboard_mcp',
   'dashboard_evaluation',
-  'admin_plugin',
+  'admin',
   'skill',
   'price'
 ];

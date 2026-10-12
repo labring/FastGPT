@@ -1,13 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { dispatchRunTools } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall';
-import { checkTeamSandboxPermission } from '@fastgpt/service/support/permission/teamLimit';
-import { createRuntimeNodeResponseSummary } from '@fastgpt/service/core/workflow/dispatch/utils';
-import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { dispatchRunTools } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall';
+import {
+  createNodeSummary,
+  createWorkflowRuntimeSummary
+} from '@fastgpt/service/core/workflow/dispatch/utils/summary';
+import { checkTeamSandboxPermission } from '@fastgpt/service/support/permission/teamLimit';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   getLLMModelDataMock,
@@ -25,8 +28,9 @@ const {
   ensureAppSandboxRuntimeReadyMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({ getLLMModelData: getLLMModelDataMock })
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
+  getSystemModelHandle: async () => ({ getLLMModelData: getLLMModelDataMock }),
+  getTeamModelHandle: async () => ({ getLLMModelData: getLLMModelDataMock })
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/toolcall/toolCall', () => ({
@@ -61,6 +65,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', async (importOrigi
 
 const createProps = (overrides: Record<string, any> = {}) =>
   ({
+    nodeSummary: createNodeSummary(),
     node: {
       nodeId: 'toolcall_node',
       flowNodeType: FlowNodeTypeEnum.toolCall,
@@ -151,9 +156,10 @@ describe('dispatchRunTools file context', () => {
     runToolCallMock.mockResolvedValue({
       toolWorkflowInteractiveResponse: undefined,
       toolDispatchFlowResponses: [],
-      runtimeNodeResponseSummary: createRuntimeNodeResponseSummary(),
+      workflowRuntimeSummary: createWorkflowRuntimeSummary(),
       runTimes: 0,
       toolTotalPoints: 0,
+      nodeSummary: { llmInputTokens: 0, llmOutputTokens: 0 },
       toolCallInputTokens: 0,
       toolCallOutputTokens: 0,
       toolCallTotalPoints: 0,

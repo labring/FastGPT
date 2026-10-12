@@ -1,8 +1,14 @@
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import { filterNodeResponseTreeData } from '@fastgpt/global/core/chat/utils';
+import {
+  filterNodeResponseTreeData,
+  findFailedResponseNode
+} from '@fastgpt/global/core/chat/utils';
 import { getChildrenResponses } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { composeNodeResponseDetail } from '@fastgpt/service/core/chat/nodeResponseStorage';
-import type { WorkflowDebugResponse } from '@fastgpt/service/core/workflow/dispatch/type';
+import type {
+  WorkflowDebugResponse,
+  WorkflowRuntimeSummaryType
+} from '@fastgpt/service/core/workflow/dispatch/type';
 
 /**
  * 拆分 workflow 内部引用保留策略和当前请求的公开返回策略。
@@ -123,4 +129,26 @@ export const composeDebugNodeResponseMap = ({
   detailTree.forEach(visit);
 
   return nodeResponses;
+};
+
+/**
+ * 获取 workflow 执行的最终错误。
+ *
+ * 优先读取已剔除工具执行错误的 workflowRuntimeSummary.errorText。若 summary 不存在或未记录
+ * 根错误，在从 finalResponseData 兜底回退时，统一复用 findFailedResponseNode 提取失败节点，
+ * 避免工具执行详情被提升为 API 错误，同时在容器崩溃导致孤儿错误时能够正常兜底暴露。
+ */
+export const getWorkflowFinalResponseError = ({
+  workflowRuntimeSummary,
+  finalResponseData = []
+}: {
+  workflowRuntimeSummary?: WorkflowRuntimeSummaryType;
+  finalResponseData?: ChatHistoryItemResType[];
+}) => {
+  if (workflowRuntimeSummary?.errorText) {
+    return workflowRuntimeSummary.errorText;
+  }
+
+  const failedNode = findFailedResponseNode(finalResponseData);
+  return failedNode?.error || failedNode?.errorText;
 };

@@ -4,6 +4,12 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
+const fixedCostAppToolSources = new Set([
+  AppToolSourceEnum.commercial,
+  AppToolSourceEnum.community,
+  AppToolSourceEnum.systemTool
+]);
+
 /**
  * 计算代码型系统工具的单次费用。
  * 调用费与密钥来源无关；只有实际使用平台系统密钥时，才额外收取系统密钥费。
@@ -33,6 +39,25 @@ export const getAppToolOutputError = ({
   return getErrText(pluginOutput.error, 'Run workflow tool failed');
 };
 
+/**
+ * 计算 workflow tool 外层节点自身的固定费用。
+ *
+ * 子流程费用由 child runtime summary 单独向上归属，不能再次写入父 nodeResponse；
+ * personal plugin 没有外层固定费用，失败的公共工具也不收取固定费用。
+ */
+export const getAppToolOwnUsage = ({
+  plugin,
+  error
+}: {
+  plugin: AppToolRuntimeType;
+  error?: boolean;
+}) => {
+  const { source } = splitCombineToolId(plugin.id);
+
+  if (!fixedCostAppToolSources.has(source as AppToolSourceEnum) || error) return 0;
+  return plugin.currentCost ?? 0;
+};
+
 /*
   Tool points calculation:
   1. 系统插件/商业版插件：
@@ -53,12 +78,7 @@ export const computedAppToolUsage = async ({
   const { source } = splitCombineToolId(plugin.id);
   const childrenUsages = childrenUsage.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
 
-  const set = new Set([
-    AppToolSourceEnum.commercial,
-    AppToolSourceEnum.community,
-    AppToolSourceEnum.systemTool
-  ]);
-  if (set.has(source as AppToolSourceEnum)) {
+  if (fixedCostAppToolSources.has(source as AppToolSourceEnum)) {
     if (error) return 0;
 
     const pluginCurrentCost = plugin.currentCost ?? 0;

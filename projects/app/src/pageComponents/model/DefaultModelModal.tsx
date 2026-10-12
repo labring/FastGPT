@@ -1,21 +1,18 @@
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { putUpdateDefaultModels } from '@/web/core/ai/config';
+import { putUpdateDefaultModels } from '@/web/core/ai/model/api';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { ModelDefaultIds } from '@fastgpt/global/core/ai/defaultModel';
-import type {
-  LLMSystemModelDataType,
-  SystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+import type { ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
+import type { LLMModelDataType, AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 
-type DefaultModelState = Record<keyof ModelDefaultIds, SystemModelDataType | undefined>;
+type DefaultModelState = Record<keyof ModelDefaultIds, AIModelDataType | undefined>;
 
 const labelStyles = {
   fontSize: 'sm',
@@ -37,7 +34,7 @@ const DefaultModelField = ({
   label: ReactNode;
   tip?: string;
   modelType: ModelTypeEnum;
-  models: SystemModelDataType[];
+  models: AIModelDataType[];
   value?: string;
   mt?: number;
   canBeUnset?: boolean;
@@ -68,12 +65,12 @@ const DefaultModelModal = ({
   onSuccess,
   onClose
 }: {
-  models: SystemModelDataType[];
+  models: AIModelDataType[];
   defaultModelIds: ModelDefaultIds;
   onSuccess: () => void | Promise<void>;
   onClose: () => void;
 }) => {
-  const { t } = useClientTranslation('config_model');
+  const { t } = useSafeTranslation();
   const activeModels = useMemo(() => models.filter((model) => model.isActive), [models]);
   const modelsByType = useMemo(
     () =>
@@ -86,7 +83,7 @@ const DefaultModelModal = ({
     [activeModels]
   );
   const llmModels = activeModels.filter(
-    (model): model is LLMSystemModelDataType => model.type === ModelTypeEnum.llm
+    (model): model is LLMModelDataType => model.type === ModelTypeEnum.llm
   );
   const visionModels = llmModels.filter((model) => !!model.config.vision);
   const [defaultData, setDefaultData] = useState<DefaultModelState>(
@@ -105,7 +102,7 @@ const DefaultModelModal = ({
     modelId
   }: {
     slot: keyof ModelDefaultIds;
-    candidates: SystemModelDataType[];
+    candidates: AIModelDataType[];
     modelId: string;
   }) => {
     setDefaultData((state) => ({
@@ -117,7 +114,7 @@ const DefaultModelModal = ({
   const { runAsync, loading } = useRequest(putUpdateDefaultModels, {
     onSuccess: () => {
       onClose();
-      void Promise.resolve(onSuccess()).catch(() => {});
+      onSuccess();
     },
     successToast: t('common:update_success')
   });
@@ -193,6 +190,8 @@ const DefaultModelModal = ({
           modelType={ModelTypeEnum.llm}
           models={visionModels}
           value={defaultData.datasetImageLLM?.modelId}
+          canBeUnset
+          unsetLabel={t('common:not_set')}
           onChange={(modelId) =>
             setDefaultModel({ slot: 'datasetImageLLM', candidates: visionModels, modelId })
           }

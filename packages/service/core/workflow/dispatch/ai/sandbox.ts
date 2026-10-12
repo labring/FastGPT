@@ -5,7 +5,7 @@ import {
   ensureAppSandboxRuntimeReady,
   getRunningSandboxId
 } from '../../../ai/sandbox/interface/runtime';
-import type { WorkflowResponseType } from '../type';
+import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
 
 /**
  * 在 Workflow AI 节点创建 SandboxClient 前收敛 App runtime 配置并发送准备状态。

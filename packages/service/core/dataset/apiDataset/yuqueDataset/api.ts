@@ -45,13 +45,17 @@ const yuqueBaseUrl = serviceEnv.YUQUE_DATASET_BASE_URL;
 
 export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServerType }) => {
   const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
-  const instance = createProxyAxios({
-    baseURL: yuqueBaseUrl,
-    timeout: 60000, // 超时时间
-    headers: {
-      'X-Auth-Token': yuqueServer.token
-    }
-  });
+  // YUQUE_DATASET_BASE_URL 由部署方配置，可能指向内网代理，不使用 SSRF 拦截器。
+  const instance = createProxyAxios(
+    {
+      baseURL: yuqueBaseUrl,
+      timeout: 60000, // 超时时间
+      headers: {
+        'X-Auth-Token': yuqueServer.token
+      }
+    },
+    false
+  );
 
   /**
    * 响应数据检查

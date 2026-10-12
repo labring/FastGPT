@@ -109,6 +109,7 @@ const FieldEditModal = ({
         selectedRenderType !== FlowNodeInputTypeEnum.reference &&
         selectedRenderType !== FlowNodeInputTypeEnum.customVariable &&
         selectedRenderType !== FlowNodeInputTypeEnum.hidden &&
+        selectedRenderType !== FlowNodeInputTypeEnum.off &&
         selectedRenderType !== FlowNodeInputTypeEnum.agentGenerated
       ) {
         data.valueType = defaultValueType;

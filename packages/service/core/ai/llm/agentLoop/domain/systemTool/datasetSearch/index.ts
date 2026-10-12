@@ -3,6 +3,7 @@ import type {
   ChatCompletionMessageToolCall,
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
+import { isHttpUrl } from '@fastgpt/global/common/string/url';
 import { parseJsonArgs } from '../../../../../utils';
 import type { AgentLoopUsage } from '../../usage';
 
@@ -31,8 +32,6 @@ const normalizeStringList = (value: unknown): string[] => {
     .map((item) => (typeof item === 'string' ? item.trim() : ''))
     .filter((item) => item.length > 0);
 };
-
-const isHttpUrl = (value: string) => /^https?:\/\//i.test(value);
 
 /**
  * 创建知识库搜索 system tool。

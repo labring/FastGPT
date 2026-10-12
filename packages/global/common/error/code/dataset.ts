@@ -19,6 +19,7 @@ export enum DatasetErrEnum {
   externalChunkFailed = 'externalChunkFailed',
   externalChunkInvalidResponse = 'externalChunkInvalidResponse',
   externalChunkNotConfigured = 'externalChunkNotConfigured',
+  dataNotIndexed = 'dataNotIndexed',
 
   // Tag errors (501013+)
   tagNameDuplicate = 'tagNameDuplicate',
@@ -26,7 +27,18 @@ export enum DatasetErrEnum {
   tagNotExist = 'tagNotExist',
   tagValueInvalid = 'tagValueInvalid',
   tagValueDatetimeInvalid = 'tagValueDatetimeInvalid',
-  arrayTagValueInvalid = 'arrayTagValueInvalid'
+  arrayTagValueInvalid = 'arrayTagValueInvalid',
+
+  // Collection 级权限（501026+）
+  collectionPermissionDisabled = 'collectionPermissionDisabled',
+
+  archiveNoDownloadableFile = 'archiveNoDownloadableFile',
+  archiveLimitExceeded = 'archiveLimitExceeded',
+  archiveMemberBusy = 'archiveMemberBusy',
+  archiveUnavailable = 'archiveUnavailable',
+  archiveInvalidFile = 'archiveInvalidFile',
+  archiveUnsupportedDataset = 'archiveUnsupportedDataset',
+  archiveInvalidTicket = 'archiveInvalidTicket'
 }
 const datasetErr = [
   {
@@ -93,6 +105,10 @@ const datasetErr = [
     statusText: DatasetErrEnum.externalChunkNotConfigured,
     message: i18nT('dataset:chunk_error.not_configured')
   },
+  {
+    statusText: DatasetErrEnum.dataNotIndexed,
+    message: i18nT('common:core.dataset.error.dataNotIndexed')
+  },
 
   // Tag errors
   {
@@ -118,6 +134,44 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.arrayTagValueInvalid,
     message: i18nT('common:core.dataset.error.arrayTagValueInvalid')
+  },
+  {
+    statusText: DatasetErrEnum.collectionPermissionDisabled,
+    message: i18nT('common:core.dataset.error.collectionPermissionDisabled')
+  },
+  {
+    statusText: DatasetErrEnum.archiveNoDownloadableFile,
+    message: i18nT('dataset:archive.no_downloadable_file'),
+    httpStatus: 422
+  },
+  {
+    statusText: DatasetErrEnum.archiveLimitExceeded,
+    message: i18nT('dataset:archive.limit_exceeded'),
+    httpStatus: 413
+  },
+  {
+    statusText: DatasetErrEnum.archiveMemberBusy,
+    message: i18nT('dataset:archive.member_busy'),
+    httpStatus: 409
+  },
+  {
+    statusText: DatasetErrEnum.archiveUnavailable,
+    message: i18nT('dataset:archive.unavailable'),
+    httpStatus: 503
+  },
+  {
+    statusText: DatasetErrEnum.archiveInvalidFile,
+    message: i18nT('dataset:archive.invalid_file')
+  },
+  {
+    statusText: DatasetErrEnum.archiveUnsupportedDataset,
+    message: i18nT('dataset:archive.unsupported_dataset'),
+    httpStatus: 422
+  },
+  {
+    statusText: DatasetErrEnum.archiveInvalidTicket,
+    message: i18nT('dataset:archive.invalid_ticket'),
+    httpStatus: 410
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {
@@ -127,7 +181,8 @@ export default datasetErr.reduce((acc, cur, index) => {
       code: 501000 + index,
       statusText: cur.statusText,
       message: cur.message,
-      data: null
+      data: null,
+      ...('httpStatus' in cur ? { httpStatus: cur.httpStatus } : {})
     }
   };
 }, {} as ErrType<`${DatasetErrEnum}`>);

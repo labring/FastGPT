@@ -1,4 +1,5 @@
 import type { ChatCompletionMessageToolCall } from '@fastgpt/global/core/ai/llm/type';
+import { isHttpUrl } from '@fastgpt/global/common/string/url';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -151,7 +152,7 @@ export const buildAgentLoopCoreSystemToolFileUrl = ({
   url: string;
   requestOrigin?: string;
 }) => {
-  if (/^https?:\/\//i.test(url)) return url;
+  if (isHttpUrl(url)) return url;
   if (requestOrigin && url.startsWith('/')) return `${requestOrigin}${url}`;
   return url;
 };
@@ -169,7 +170,8 @@ export const sumAgentLoopCoreUsagePoints = (usages?: ChatNodeUsageType[]) =>
  * 为 system tool 执行结果补齐 workflow 运行详情字段。
  *
  * readFile/datasetSearch/sandbox 都是 agent-loop system tool，但对 workflow 前端来说仍是
- * 普通工具卡片。这里统一补 callId、耗时和积分；业务侧可按工具类型额外传 moduleName/logo。
+ * 普通工具卡片。这里统一补 callId、耗时和缺省积分；业务侧显式给出的自身积分必须保留，
+ * 避免把已经拆成 child response 的用量重新汇总到父节点。
  */
 export const mergeAgentLoopCoreSystemToolNodeResponse = ({
   nodeResponse,
@@ -194,6 +196,6 @@ export const mergeAgentLoopCoreSystemToolNodeResponse = ({
     id: callId,
     nodeId: callId,
     runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
-    totalPoints: sumAgentLoopCoreUsagePoints(usages)
+    totalPoints: nodeResponse.totalPoints ?? sumAgentLoopCoreUsagePoints(usages)
   };
 };

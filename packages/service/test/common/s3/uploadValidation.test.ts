@@ -542,4 +542,40 @@ describe('validateUploadFile', () => {
       contentType: 'audio/x-m4a'
     });
   });
+
+  it('rejects empty files instead of treating them as text', async () => {
+    await expect(
+      validateUploadFile({
+        buffer: Buffer.alloc(0),
+        filename: 'notes.pdf',
+        uploadConstraints: {
+          allowedExtensions: datasetAllowedExtensions
+        }
+      })
+    ).rejects.toThrow('EmptyUploadFile');
+  });
+
+  it('does not rename an empty extensionless file to txt', async () => {
+    await expect(
+      validateUploadFile({
+        buffer: Buffer.alloc(0),
+        filename: 'README',
+        uploadConstraints: {
+          allowedExtensions: ['.txt']
+        }
+      })
+    ).rejects.toThrow('EmptyUploadFile');
+  });
+
+  it('rejects Office lock files before content inspection', async () => {
+    await expect(
+      validateUploadFile({
+        buffer: cfbBuffer,
+        filename: '~$report.docx',
+        uploadConstraints: {
+          allowedExtensions: datasetAllowedExtensions
+        }
+      })
+    ).rejects.toThrow('InvalidUploadFileType');
+  });
 });

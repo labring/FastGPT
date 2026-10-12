@@ -4,6 +4,7 @@ import {
   agentForm2AppWorkflow,
   appWorkflow2AgentForm
 } from '@/pageComponents/app/detail/Edit/ChatAgent/utils';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { describe, expect, it } from 'vitest';
 import type { AppTTSConfigType } from '@fastgpt/global/core/app/type';
 
@@ -194,5 +195,32 @@ describe('agentForm2AppWorkflow model reference', () => {
       appWorkflow2AgentForm({ nodes: workflow.nodes, chatConfig: workflow.chatConfig }).dataset
         .collectionFilterMatch
     ).toEqual(form.dataset.collectionFilterMatch);
+  });
+
+  it('preserves name and avatar when converting selectedTools in agentForm2AppWorkflow', () => {
+    const form = getDefaultAppForm();
+    form.selectedTools = [
+      {
+        id: 'tool-node-1',
+        pluginId: 'plugin-app-1',
+        name: 'My Custom Tool',
+        avatar: 'custom-avatar.svg',
+        inputs: [],
+        outputs: []
+      } as any
+    ];
+
+    const workflow = agentForm2AppWorkflow(form, (key: string) => key);
+    const agentNode = workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.agent);
+    const selectedToolsInput = agentNode?.inputs.find(
+      (input) => input.key === NodeInputKeyEnum.selectedTools
+    );
+    expect(selectedToolsInput?.value).toEqual([
+      expect.objectContaining({
+        id: 'plugin-app-1',
+        name: 'My Custom Tool',
+        avatar: 'custom-avatar.svg'
+      })
+    ]);
   });
 });

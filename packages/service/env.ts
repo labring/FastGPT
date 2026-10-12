@@ -11,7 +11,8 @@ import {
   getAgentSandboxMissingRequiredEnvKeys,
   getRuntimeEnv,
   isAgentSandboxProvider,
-  validateS3Env
+  validateS3Env,
+  validateAgentUsersEnv
 } from './env.util';
 import {
   LogLevelSchema,
@@ -44,6 +45,7 @@ export const serviceEnv = createEnv({
 
     // Invoke 反向调用相关。该密钥用于签发/校验插件反向调用 JWT，必须显式配置，避免未配置时落到公开默认值。
     INVOKE_TOKEN_SECRET: z.string().min(32, 'INVOKE_TOKEN_SECRET must be at least 32 characters'),
+
     // ==================== 服务地址与集成 ====================
     // 插件
     PLUGIN_BASE_URL: UrlSchema.default('http://localhost:3004'),
@@ -59,6 +61,8 @@ export const serviceEnv = createEnv({
 
     PRO_URL: UrlSchema.optional(),
     PRO_TOKEN: z.string().min(32, 'PRO_TOKEN must be at least 32 characters').optional(),
+    AGENT_USERS: z.string().optional(),
+    DEFAULT_AGENT_PSW: z.string().optional(),
 
     // 官网访客归因 CRM；未配置地址时不进行身份上报
     CRM_API_URL: UrlSchema.optional(),
@@ -83,6 +87,9 @@ export const serviceEnv = createEnv({
     // Agent sandbox
     AGENT_SANDBOX_PROVIDER: z.enum(agentSandboxProviderList).optional().meta({
       description: 'Agent 沙箱提供方，可选 sealosdevbox 或 opensandbox；为空时不启用沙箱'
+    }),
+    AGENT_SANDBOX_SHOW_FREE_TIP: BoolSchema.default(false).meta({
+      description: '是否展示虚拟机“限时免费”标签；默认为 false，为空或未配置时不展示'
     }),
     // Sealos配置
     AGENT_SANDBOX_SEALOS_BASEURL: UrlSchema.optional().meta({
@@ -256,6 +263,18 @@ export const serviceEnv = createEnv({
     STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS: IntSchema.min(1).default(300).meta({
       description: 'short-redirect 模式下临时 S3 预签名下载链接 TTL（秒）'
     }),
+    DATASET_ARCHIVE_MAX_FILES: IntSchema.min(1).default(2000).meta({
+      description: '知识库批量下载单个 ZIP 最多包含的原始文件数'
+    }),
+    DATASET_ARCHIVE_MAX_SOURCE_SIZE_MB: IntSchema.min(1).default(2048).meta({
+      description: '知识库批量下载归档前原始文件逻辑总大小上限（MiB）'
+    }),
+    DATASET_ARCHIVE_MAX_CONCURRENCY: IntSchema.min(1).default(4).meta({
+      description: '知识库批量下载在 Redis 集群中的同时归档数'
+    }),
+    DATASET_ARCHIVE_PREPARE_TIMEOUT_SECONDS: IntSchema.min(1).default(300).meta({
+      description: '知识库批量下载发送响应头前的最长准备时间（秒）'
+    }),
     // 聊天记录中持久化文件访问短链的有效期。
     FILE_URL_EXPIRED_DAYS: NumSchema.positive().default(90).meta({
       description: '聊天记录中文件访问短链有效期（天），支持小数'
@@ -293,6 +312,10 @@ export const serviceEnv = createEnv({
     TRACING_OTEL_SERVICE_NAME: z.string().default('fastgpt-client'),
     TRACING_OTEL_URL: UrlSchema.optional(),
     TRACING_OTEL_SAMPLE_RATIO: NumSchema.min(0).max(1).optional(),
+
+    LANGFUSE_SECRET_KEY: z.string().optional(),
+    LANGFUSE_PUBLIC_KEY: z.string().optional(),
+    LANGFUSE_BASE_URL: UrlSchema.optional(),
 
     // ==================== 域名与前端 ====================
     FE_DOMAIN: UrlSchema.meta({
@@ -362,6 +385,9 @@ export const serviceEnv = createEnv({
     SYSTEM_MIGRATION_BATCH_SIZE: IntSchema.min(50).max(1000).default(100).meta({
       description: '系统迁移任务每批处理的记录数'
     }),
+    SYSTEM_MIGRATION_DELAY_SECONDS: IntSchema.min(0).default(0).meta({
+      description: '配置了 delay 的系统迁移任务延迟执行时间（秒），默认 0 为不延迟'
+    }),
     XLSX_PARSE_MAX_ROWS: IntSchema.min(1).max(1_048_576).default(100_000).meta({
       description: 'XLSX 单个工作表允许的最大行数'
     }),
@@ -382,6 +408,9 @@ export const serviceEnv = createEnv({
     }),
     WORKFLOW_MAX_RUN_TIMES: IntSchema.default(500).meta({
       description: '工作流最大运行次数，避免极端死循环'
+    }),
+    RETRIEVAL_RESULTS_LIMIT: IntSchema.default(0).meta({
+      description: '知识库检索节点日志详情记录的召回候选集上限，默认 0 表示不记录'
     }),
     WORKFLOW_MAX_LOOP_TIMES: IntSchema.default(100).meta({
       description: '循环/并行节点最大输入数组长度（默认 100）'
@@ -469,6 +498,8 @@ if (serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY > serviceEnv.WORKFLOW_MAX_LOOP_
 }
 
 if (!isPhaseProductionBuild) {
+  validateAgentUsersEnv(serviceEnv);
+
   validateS3Env(serviceEnv);
 
   if (serviceEnv.PRO_URL && !serviceEnv.PRO_TOKEN) {

@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
-import { getDefaultAppForm, getAppType, formatToolError } from '@fastgpt/global/core/app/utils';
+import { describe, expect, it } from 'vitest';
+import { getDefaultAppForm, getAppType } from '@fastgpt/global/core/app/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -134,54 +134,5 @@ describe('getAppType', () => {
     };
     const result = getAppType(config as any);
     expect(result).toBe(AppTypeEnum.workflow);
-  });
-});
-
-describe('formatToolError', () => {
-  it('should return undefined when error is undefined', () => {
-    const result = formatToolError(undefined);
-    expect(result).toBeUndefined();
-  });
-
-  it('should return undefined when error is null', () => {
-    const result = formatToolError(null);
-    expect(result).toBeUndefined();
-  });
-
-  it('should return undefined when error is not a string', () => {
-    const result = formatToolError({ message: 'error' });
-    expect(result).toBeUndefined();
-  });
-
-  it('should return undefined when error is a number', () => {
-    const result = formatToolError(123);
-    expect(result).toBeUndefined();
-  });
-
-  it('should return the original error string when not found in error lists', () => {
-    const result = formatToolError('unknownError');
-    expect(result).toBe('unknownError');
-  });
-
-  it('should return formatted message for known app error', () => {
-    const result = formatToolError('appUnExist');
-    expect(result).toBeDefined();
-    expect(typeof result).toBe('string');
-  });
-
-  it('should return formatted message for known plugin error', () => {
-    const result = formatToolError('pluginUnExist');
-    expect(result).toBeDefined();
-    expect(typeof result).toBe('string');
-  });
-
-  it.each([
-    'plugin.team_not_installed',
-    'plugin.team_source_forbidden',
-    'plugin.team_id_required',
-    'plugin.team_source_install_failed',
-    'plugin.version_required'
-  ])('should format team plugin error %s as a deleted tool error', (error) => {
-    expect(formatToolError(error)).toBe('common:error.tool_not_exist');
   });
 });

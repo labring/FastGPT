@@ -1,48 +1,50 @@
-import { getModelHandle } from '../../../../../../ai/model';
-import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/search/tagFilter';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { createLLMResponse } from '../../../../../../ai/llm/request';
+import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import { countPromptTokens } from '../../../../../../../common/string/tiktoken/index';
-import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
+import { resolveReadableCollectionIds } from '../../../../../../../support/permission/collection/auth';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
-import { MongoDataset } from '../../../../../../dataset/schema';
-import { getDatasetSearchVlmModel } from '../../../../../../dataset/search/vlm';
-import { getDatasetSearchAuxiliaryModels } from '../../../../../../dataset/search/auxiliaryModels';
+import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
+import { createLLMResponse } from '../../../../../../ai/llm/request';
+import { getTeamModelHandle } from '../../../../../../ai/model/catalog/service';
+import { parseJsonArgs } from '../../../../../../ai/utils';
 import {
   defaultSearchDatasetData,
   type DefaultSearchDatasetDataProps
 } from '../../../../../../dataset/search';
-import { getErrText } from '@fastgpt/global/common/error/utils';
-import { getLogger, LogCategories } from '../../../../../../../common/logger';
-import type { DispatchSubAppResponse } from '../../type';
-import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { DatasetSearchToolSchema } from './utils';
-import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/workflowTagFilter';
-import { parseJsonArgs } from '../../../../../../ai/utils';
-import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { getDatasetSearchAuxiliaryModels } from '../../../../../../dataset/search/auxiliaryModels';
+import { getDatasetSearchVlmModel } from '../../../../../../dataset/search/vlm';
+import { filterDatasetsByTmbId } from '../../../../../../dataset/utils';
+import { loadWorkflowDatasetResource } from '../../../../../utils/resource';
 import {
-  createImageCaptionChildNodeResponse,
   createChunkSelectionChildNodeResponse,
+  createImageCaptionChildNodeResponse,
   createQueryExtensionChildNodeResponse
 } from '../../../../dataset/nodeResponse';
-import { filterDatasetsByTmbId } from '../../../../../../dataset/utils';
 import { normalizeDatasetSearchInput } from '../../../../dataset/utils';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
-import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/workflowTagFilter';
+import { createNodeSummary, getNodeSummaryData } from '../../../../utils/summary';
+import type { DispatchSubAppResponse } from '../../type';
+import { DatasetSearchToolSchema } from './utils';
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 
 type DatasetSearchParams = {
   teamId: string;
   tmbId: string;
   args: string;
-  llmModel: LLMSystemModelDataType;
+  llmModel: LLMModelDataType;
   userKey?: OpenaiAccountType;
   datasetParams?: AppFormEditFormType['dataset'];
+  dynamicDataset?: boolean;
 };
 
 /**
@@ -84,7 +86,7 @@ const selectRelevantChunksByLLM = async ({
 }: {
   query: string;
   chunks: SearchDataResponseItemType[];
-  model: LLMSystemModelDataType;
+  model: LLMModelDataType;
   userKey?: OpenaiAccountType;
   teamId: string;
 }): Promise<
@@ -181,7 +183,8 @@ export const dispatchAgentDatasetSearch = async ({
   teamId,
   tmbId,
   llmModel,
-  userKey
+  userKey,
+  dynamicDataset = false
 }: DatasetSearchParams): Promise<DispatchSubAppResponse> => {
   if (!datasetParams || datasetParams.datasets.length === 0) {
     return {
@@ -210,13 +213,16 @@ export const dispatchAgentDatasetSearch = async ({
     datasetParams
   });
 
+  const nodeSummary = createNodeSummary();
   try {
-    const datasetIds = datasetParams.authTmbId
-      ? await filterDatasetsByTmbId({
-          datasetIds: datasetParams.datasets.map((item) => item.datasetId),
-          tmbId
-        })
-      : datasetParams.datasets.map((item) => item.datasetId);
+    const requestedDatasetIds = datasetParams.datasets.map((item) => item.datasetId);
+    const datasetIds =
+      datasetParams.authTmbId || dynamicDataset
+        ? await filterDatasetsByTmbId({
+            datasetIds: requestedDatasetIds,
+            tmbId
+          })
+        : requestedDatasetIds;
 
     if (datasetIds.length === 0) {
       return {
@@ -224,12 +230,23 @@ export const dispatchAgentDatasetSearch = async ({
       };
     }
 
+    // Collection 级权限可读集合仅对真实成员鉴权生效；authTmbId 未设置时不做 collection 级过滤。
+    const readableCollectionIdList = datasetParams.authTmbId
+      ? await resolveReadableCollectionIds({
+          teamId,
+          datasetIds,
+          tmbId
+        })
+      : undefined;
+
     // Get vector model
-    const dataset = await MongoDataset.findById(
-      datasetIds[0],
-      'vectorModelId vectorModel vlmModelId vlmModel'
-    ).lean();
-    const modelHandle = await getModelHandle();
+    const dataset = await loadWorkflowDatasetResource({
+      datasetId: datasetIds[0],
+      datasetIds: requestedDatasetIds,
+      dynamic: dynamicDataset,
+      tmbId
+    });
+    const modelHandle = await getTeamModelHandle({ teamId });
     const vectorModel = modelHandle.getEmbeddingModelData({
       modelId: dataset?.vectorModelId,
       model: dataset?.vectorModel
@@ -261,7 +278,7 @@ export const dispatchAgentDatasetSearch = async ({
       collectionFilterMatch: formatCollectionFilterMatchParam({
         value: datasetParams.collectionFilterMatch
       }),
-      collectionFilterMode: DatasetTagFilterVersionEnum.structured,
+      readableCollectionIdList,
       userKey
     };
     const {
@@ -277,6 +294,7 @@ export const dispatchAgentDatasetSearch = async ({
     // count bill results
     const usages: ChatNodeUsageType[] = [];
     const childrenResponses: ChatHistoryItemResType[] = [];
+    let childrenResponsePoints = 0;
     let searchResults = searchRes;
 
     // 合并其他的 usages
@@ -296,13 +314,15 @@ export const dispatchAgentDatasetSearch = async ({
           outputTokens: queryExtensionResult.outputTokens
         };
         usages.push(queryExtensionUsage);
+        childrenResponsePoints += queryExtensionUsage.totalPoints;
         childrenResponses.push(
           createQueryExtensionChildNodeResponse({
             requestIds: [queryExtensionResult.requestId],
             usage: queryExtensionUsage,
             modelName: extensionModelData!.name,
             seconds: queryExtensionResult.seconds,
-            query: queryExtensionResult.query
+            query: queryExtensionResult.query,
+            embeddingTokens: queryExtensionResult.embeddingTokens
           })
         );
 
@@ -333,6 +353,7 @@ export const dispatchAgentDatasetSearch = async ({
           outputTokens: imageCaptionResult.outputTokens
         };
         usages.push(imageCaptionUsage);
+        childrenResponsePoints += imageCaptionUsage.totalPoints;
         childrenResponses.push(
           createImageCaptionChildNodeResponse({
             requestIds: imageCaptionResult.requestIds,
@@ -390,6 +411,7 @@ export const dispatchAgentDatasetSearch = async ({
       // 将 AI 分块选择记录为知识库搜索子调用，requestId 跟随 child nodeResponse 展示。
       if (pickResults.usage) {
         usages.push(pickResults.usage);
+        childrenResponsePoints += pickResults.usage.totalPoints;
         childrenResponses.push(
           createChunkSelectionChildNodeResponse({
             requestIds: [pickResults.requestId],
@@ -406,6 +428,8 @@ export const dispatchAgentDatasetSearch = async ({
     const nodeResponse: DispatchSubAppResponse['nodeResponse'] = {
       moduleType: FlowNodeTypeEnum.datasetSearchNode,
       moduleName: i18nT('chat:dataset_search'),
+      totalPoints:
+        usages.reduce((sum, usage) => sum + usage.totalPoints, 0) - childrenResponsePoints,
       datasetQueries: [...textQueries, ...imageQueries],
       embeddingModel: vectorModel.name,
       embeddingTokens,
@@ -431,6 +455,7 @@ export const dispatchAgentDatasetSearch = async ({
     return {
       response: formattedResponse,
       usages: usages,
+      nodeSummary: getNodeSummaryData(nodeSummary),
       nodeResponse
     };
   } catch (error) {
@@ -438,6 +463,7 @@ export const dispatchAgentDatasetSearch = async ({
     const response = `Failed to search dataset: ${getErrText(error)}`;
     return {
       response,
+      nodeSummary: getNodeSummaryData(nodeSummary),
       errorMessage: response
     };
   }

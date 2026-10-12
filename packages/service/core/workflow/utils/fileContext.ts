@@ -1,4 +1,5 @@
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { isHttpUrl } from '@fastgpt/global/common/string/url';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type {
@@ -102,7 +103,7 @@ export type PreparedWorkflowFileContext = {
 
 /** 只接受带显式协议的绝对 HTTP(S) URL，拒绝相对路径和 protocol-relative URL。 */
 export const isAbsoluteHttpUrl = (value: unknown): value is string => {
-  if (typeof value !== 'string' || !/^https?:\/\//i.test(value)) return false;
+  if (typeof value !== 'string' || !isHttpUrl(value)) return false;
 
   try {
     const parsedUrl = new URL(value);

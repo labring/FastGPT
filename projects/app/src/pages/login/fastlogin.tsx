@@ -1,13 +1,12 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { clearToken } from '@/web/support/user/auth';
 import { postFastLogin } from '@/web/support/user/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import Loading from '@fastgpt/web/components/common/MyLoading';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { validateRedirectUrl } from '@/web/common/utils/uri';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import { useLoginRedirectAfterLogin } from '@/web/support/user/loginRedirect';
@@ -15,22 +14,26 @@ import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { getFastGPTSem, onFastGPTLoginSuccess } from '@/web/support/marketing/utils';
 import { resetUserModelCatalogAfterLogin } from '@/web/core/ai/model/useUserModelStore';
 
-const FastLogin = ({
-  code,
-  token,
-  callbackUrl,
-  lastTmbId
-}: {
-  code: string;
-  token: string;
-  callbackUrl: string;
-  lastTmbId?: string;
-}) => {
-  const { setUserInfo } = useUserStore();
+/** 使用 CSR 门禁恢复后的凭据完成登录；相同 code/token 在本次挂载中只消费一次。 */
+const FastLogin = () => {
   const router = useRouter();
+  const {
+    code = '',
+    token = '',
+    callbackUrl = '/dashboard/agent',
+    lastTmbId = ''
+  } = router.query as {
+    code?: string;
+    token?: string;
+    callbackUrl?: string;
+    lastTmbId?: string;
+  };
+
+  const { setUserInfo } = useUserStore();
   const { toast } = useToast();
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useSafeTranslation();
   const resolveLoginRedirect = useLoginRedirectAfterLogin();
+  const handledCredentialsRef = useRef<{ code: string; token: string }>();
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
       const safeCallbackUrl = validateRedirectUrl(callbackUrl);
@@ -85,6 +88,11 @@ const FastLogin = ({
   );
 
   useEffect(() => {
+    // code 为一次性凭据；路由对象或翻译函数更新不能重复消费，同页新凭据仍允许登录。
+    const handledCredentials = handledCredentialsRef.current;
+    if (handledCredentials?.code === code && handledCredentials.token === token) return;
+    handledCredentialsRef.current = { code, token };
+
     clearToken();
     const safeCallbackUrl = validateRedirectUrl(callbackUrl);
     router.prefetch(safeCallbackUrl);
@@ -93,17 +101,5 @@ const FastLogin = ({
 
   return <Loading />;
 };
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      code: content?.query?.code || '',
-      token: content?.query?.token || '',
-      callbackUrl: content?.query?.callbackUrl || '/dashboard/agent',
-      lastTmbId: content?.query?.lastTmbId || '',
-      ...(await serviceSideProps(content, ['login']))
-    }
-  };
-}
 
 export default FastLogin;

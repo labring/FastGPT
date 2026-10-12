@@ -18,6 +18,8 @@
   "chat.waiting_for_response": "Thinking hard",
   "chat_history": "Chat history",
   "chat_test_app": "Debug-{{name}}",
+  "chat_title_auto_execute": "AUTO EXECUTE",
+  "chat_title_upload_file": "File Upload",
   "citation_card_prefix": "",
   "citation_card_suffix": " Citations",
   "citation_card_title": "{{num}} Citations",

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   getWorkflowDatasetCiteRetention,
+  getWorkflowFinalResponseError,
   shouldRetainWorkflowNodeResponses
 } from '@/service/core/workflow/nodeResponse';
 
@@ -67,5 +69,63 @@ describe('shouldRetainWorkflowNodeResponses', () => {
     }
   ] as const)('$name', ({ input, expected }) => {
     expect(shouldRetainWorkflowNodeResponses(input)).toBe(expected);
+  });
+});
+
+describe('getWorkflowFinalResponseError', () => {
+  it('returns workflowRuntimeSummary.errorText directly when present', () => {
+    expect(
+      getWorkflowFinalResponseError({
+        workflowRuntimeSummary: {
+          responseIds: [],
+          finishedNodeIds: [],
+          hasError: true,
+          errorText: 'Root node failed',
+          errorCount: 1,
+          hasLoopRunBreak: false,
+          hasToolStop: false,
+          hasNestedEnd: false,
+          citeCollectionIds: [],
+          llmInputTokens: 0,
+          llmOutputTokens: 0,
+          totalPoints: 10
+        },
+        finalResponseData: [
+          {
+            id: 'node-1',
+            moduleType: FlowNodeTypeEnum.chatNode,
+            errorText: 'Different error'
+          }
+        ]
+      })
+    ).toBe('Root node failed');
+  });
+
+  it('delegates to findFailedResponseNode when summary has no errorText', () => {
+    expect(
+      getWorkflowFinalResponseError({
+        finalResponseData: [
+          {
+            id: 'llm-node',
+            moduleType: FlowNodeTypeEnum.chatNode,
+            error: { message: 'OpenAI API key expired' }
+          }
+        ]
+      })
+    ).toEqual({ message: 'OpenAI API key expired' });
+  });
+
+  it('returns undefined when finalResponseData has no failure', () => {
+    expect(
+      getWorkflowFinalResponseError({
+        finalResponseData: [
+          {
+            id: 'sandbox-tool-node',
+            moduleType: FlowNodeTypeEnum.tool,
+            errorText: 'Tool error: file not found'
+          }
+        ]
+      })
+    ).toBeUndefined();
   });
 });

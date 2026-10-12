@@ -5,13 +5,16 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import { AgentNodeResponseDisplay } from '../../domain/constants';
 import { parseJsonArgs } from '../../../../../../ai/utils';
 import type { DispatchFlowResponse } from '../../../../type';
-import { withAgentLoopCoreChildTotalPoints } from './children';
 import { createAgentLoopCoreCompressNodeResponse } from './compress';
 import type { AgentLoopCoreToolDisplayInfo } from '../../domain/toolInfo';
+import {
+  createWorkflowRuntimeSummary,
+  mergeWorkflowRuntimeSummary
+} from '../../../../utils/summary';
 
 export type AgentLoopCoreToolRunFlowResponse = {
   flowResponses: NonNullable<DispatchFlowResponse['flatNodeResponses']>;
-  runtimeNodeResponseSummary?: DispatchFlowResponse['runtimeNodeResponseSummary'];
+  workflowRuntimeSummary?: DispatchFlowResponse['workflowRuntimeSummary'];
   runTimes: DispatchFlowResponse['runTimes'];
   flowUsages: DispatchFlowResponse['flowUsages'];
 };
@@ -20,6 +23,7 @@ export type AgentLoopCoreToolRunFlowResponsesSummary = {
   runTimes: number;
   toolDetail: NonNullable<DispatchFlowResponse['flatNodeResponses']>;
   toolTotalPoints: number;
+  workflowRuntimeSummary: DispatchFlowResponse['workflowRuntimeSummary'];
 };
 
 type ToolResponseCompress = {
@@ -48,7 +52,15 @@ export const summarizeAgentLoopCoreToolRunFlowResponses = (
   toolDetail: responses.flatMap((item) => item.flowResponses),
   toolTotalPoints: responses
     .flatMap((item) => item.flowUsages)
-    .reduce((sum, item) => sum + item.totalPoints, 0)
+    .reduce((sum, item) => sum + item.totalPoints, 0),
+  workflowRuntimeSummary: responses.reduce(
+    (currentSummary, response) =>
+      mergeWorkflowRuntimeSummary({
+        currentSummary,
+        workflowRuntimeSummary: response.workflowRuntimeSummary
+      }),
+    createWorkflowRuntimeSummary()
+  )
 });
 
 /**
@@ -78,10 +90,7 @@ const getContextCompressNodeResponse = ({
     includeCompressTextAgent: true
   });
 
-/**
- * 生成 tool response compress 的 child 记录。
- * 它只归属某次工具调用，不作为平级 nodeResponse 展示。
- */
+/** 生成 tool response compress 的兼容详情记录，供无 sink 的调试路径保留。 */
 const getToolResponseCompressRecord = ({
   moduleType,
   response,
@@ -151,8 +160,8 @@ const getFallbackToolFlowResponse = ({
 });
 
 /**
- * 把 tool response compress 挂到工具 flowResponse 的最后一个 nodeResponse 上。
- * 子 workflow 可能包含多个内部节点，最后一个节点代表最终工具响应，更适合作为压缩 child 的父节点。
+ * 把 tool response compress 作为工具 response 的平级详情记录。
+ * parentId 只表达展示层级，不再让 summary 通过 childrenResponses 递归读取 token。
  */
 const appendToolResponseCompressRecord = ({
   flowResponse,
@@ -164,16 +173,16 @@ const appendToolResponseCompressRecord = ({
   const targetIndex = flowResponse.flowResponses.length - 1;
   if (targetIndex < 0) return flowResponse;
 
+  const targetResponse = flowResponse.flowResponses[targetIndex];
   return {
     ...flowResponse,
-    flowResponses: flowResponse.flowResponses.map((item, index) => {
-      if (index !== targetIndex) return item;
-
-      return withAgentLoopCoreChildTotalPoints({
-        ...item,
-        childrenResponses: [...(item.childrenResponses || []), compressRecord.nodeResponse]
-      });
-    }),
+    flowResponses: [
+      ...flowResponse.flowResponses,
+      {
+        ...compressRecord.nodeResponse,
+        parentId: targetResponse.id
+      }
+    ],
     flowUsages: [...flowResponse.flowUsages, compressRecord.usage]
   };
 };

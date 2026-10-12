@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const {
   mockResolveFormData,
   mockClearDiskTempFiles,
-  mockAuthDataset,
+  mockAuthDatasetCollectionCreate,
   mockCheckDatasetIndexLimit,
   mockUpload,
   mockGetDatasetFileSource,
@@ -13,7 +13,7 @@ const {
 } = vi.hoisted(() => ({
   mockResolveFormData: vi.fn(),
   mockClearDiskTempFiles: vi.fn(),
-  mockAuthDataset: vi.fn(),
+  mockAuthDatasetCollectionCreate: vi.fn(),
   mockCheckDatasetIndexLimit: vi.fn(),
   mockUpload: vi.fn(),
   mockGetDatasetFileSource: vi.fn(),
@@ -34,7 +34,7 @@ vi.mock('@fastgpt/service/common/file/multer', () => ({
 }));
 
 vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
-  authDataset: mockAuthDataset
+  authDatasetCollectionCreate: mockAuthDatasetCollectionCreate
 }));
 
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
@@ -99,7 +99,7 @@ describe('dataset multipart file source lifecycle', () => {
       },
       getReadStream: vi.fn(() => 'local-upload-stream')
     });
-    mockAuthDataset.mockResolvedValue({
+    mockAuthDatasetCollectionCreate.mockResolvedValue({
       teamId: 'team-id',
       tmbId: 'tmb-id',
       dataset: { _id: datasetId }

@@ -36,6 +36,8 @@ export type AgentToolInputConfigType = z.infer<typeof AgentToolInputConfigSchema
 
 const AgentToolBaseSchema = z.object({
   id: z.string(),
+  name: z.string().optional(),
+  avatar: z.string().optional(),
   // 空字符串表示保持最新版本，不能在序列化时被 truthy 判断过滤。
   version: z.string().optional(),
   source: z.string().optional(),

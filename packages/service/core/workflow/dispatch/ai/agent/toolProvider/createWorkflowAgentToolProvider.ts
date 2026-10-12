@@ -22,10 +22,12 @@ import { getWorkflowFileMaxAmount } from '../../../../utils/context';
  */
 export const createWorkflowAgentToolProvider = ({
   context,
+  onToolResult,
   executeToolFactory = getExecuteTool
 }: {
   context: WorkflowAgentToolProviderContext;
   executeToolFactory?: typeof getExecuteTool;
+  onToolResult?: (result: AgentLoopCoreToolRunResult<WorkflowInteractiveResponseType>) => void;
 }): WorkflowAgentToolProvider => {
   const executeTool = executeToolFactory(context);
   const datasetParams = getAgentDatasetParams(context.params);
@@ -39,8 +41,10 @@ export const createWorkflowAgentToolProvider = ({
           teamId: context.runningUserInfo.teamId,
           tmbId: context.runningUserInfo.tmbId,
           llmModel: context.modelData,
-          userKey: context.externalProvider.openaiAccount
+          userKey: context.externalProvider.openaiAccount,
+          dynamicDataset: context.dynamicDataset
         });
+        onToolResult?.({ response: result.response, nodeSummary: result.nodeSummary });
         const usages = result.usages ?? [];
         const datasetSearchInfo = context.getSubAppInfo(SubAppIds.datasetSearch);
 

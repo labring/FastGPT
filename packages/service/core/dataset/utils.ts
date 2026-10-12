@@ -1,12 +1,12 @@
 import { authDatasetByTmbId } from '../../support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getLogger, LogCategories } from '../../common/logger';
-import { isImageEmbeddingModel } from '../ai/model';
+import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type {
-  EmbeddingSystemModelDataType,
-  LLMSystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+  EmbeddingModelDataType,
+  LLMModelDataType
+} from '@fastgpt/global/core/ai/model/schema';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
@@ -42,8 +42,8 @@ export const getDatasetImageIndexCapability = ({
   vectorModel,
   vlmModel
 }: {
-  vectorModel?: EmbeddingSystemModelDataType;
-  vlmModel?: LLMSystemModelDataType;
+  vectorModel?: EmbeddingModelDataType;
+  vlmModel?: LLMModelDataType;
 }) => {
   const availableVlmModel = vlmModel;
   const supportVlm = !!availableVlmModel;
@@ -70,5 +70,5 @@ export const getDatasetImageTrainingMode = ({
 }) => {
   if (supportVlm && imageId) return TrainingModeEnum.imageParse;
   if (supportImageIndex && hasMarkdownImages) return TrainingModeEnum.image;
-  return TrainingModeEnum.chunk;
+  return TrainingModeEnum.index;
 };

@@ -1,0 +1,74 @@
+---
+title: 'V4.17.2'
+description: 'FastGPT V4.17.2 release notes'
+releaseTime: '2026-10-09'
+---
+
+## 📦 Upgrade Guide
+
+### Image updates
+
+- Update the fastgpt-app (FastGPT main service) image tag to `v4.17.2`
+- Update the fastgpt-pro (FastGPT commercial edition) image tag to `v4.17.2`
+
+### Upgrade scripts
+
+This upgrade includes two **manual** system migration scripts. After upgrading, administrators can inspect and run them under **Admin > Version Upgrades**. Both tasks support batched transactional commits and checkpoint resumption without blocking FastGPT startup or everyday operations.
+
+#### 1. Migrate legacy chunk training tasks (`20261008_migrate_chunk_training`)
+
+- **Purpose**: Supporting the dataset pre-persistence refactoring, this script smoothly converts legacy chunk training tasks into the new pattern associated with persisted data rows (`dataId`), ensuring historical training tasks can correctly write back vector indexes after the upgrade.
+- **Prerequisites**: This is a manual task (does not block startup). Ensure all older FastGPT App and Pro instances are stopped and worker leases (approximately 2 hours) have expired before executing, preventing concurrent queue processing between old and new versions.
+
+#### 2. Migrate Dataset rebuild statuses (`20261009_migrate_dataset_rebuild_status`)
+
+- **Purpose**: Converts legacy `rebuilding` boolean flags and transitional states on dataset data chunks into the unified `indexStatus` rebuild lifecycle, recovering active index states for unfinalized tasks.
+- **Execution Order**: This task depends on the chunk training migration and can only run after the first migration has succeeded.
+- **Timeout handling (large dataset scenarios)**:
+  - This script scans `dataset_datas` to clean legacy fields. In environments with very large chunk volumes (millions to tens of millions), scanning without a dedicated index on `rebuilding` can take a long time.
+  - If the migration times out, you can try creating a supplementary partial index on `dataset_datas` in MongoDB to speed up the scan (it can be removed after the migration completes):
+
+```javascript
+// Run in mongo shell (mongosh) to accelerate migration scanning:
+db.dataset_datas.createIndex(
+  { rebuilding: 1, _id: 1 },
+  { partialFilterExpression: { rebuilding: { $exists: true } }, background: true }
+);
+```
+
+## 🚀 New Features
+
+1. **Dataset data pre-persistence and training pipeline refactor**:
+   - Chunk parsing, image imports, and backup/template imports now immediately persist visible data rows with unique `dataId`s before training begins. Vectors and indexes are written back to the same row upon completion, preventing data absence during long training periods and orphaned records when training is interrupted.
+   - Introduced a three-stage index lifecycle (`parsed` -> `indexing` -> `indexed`): Pre-persisted data without indexes is naturally isolated from search recalls, visible as read-only in the UI, and protected by backend write guards; failed index records support direct editing and deletion.
+   - Refactored QA one-to-many splitting: The original record is reused as the first child item, while remaining items are pre-persisted within a single database transaction.
+   - Optimized model switching and synonym rebuilds: Only indexed records participate in rebuilds, avoiding conflicts with pending tasks; unchanged vectors are reused during synonym rebuilds to minimize computing costs.
+   - Granular training progress dashboard: Displays training progress broken down by processing mode (Vector, QA, etc.) with enhanced error inspection and retry workflows.
+2. **Scope Dataset and Collection searches to current folder and subtrees**: When searching inside a specific folder in the Dataset or Collection list, the search scope is automatically constrained to the current path and all its descendant folders, returning matched items flattened; searching in the root folder continues to search across the entire Dataset. Powered by memory-bucketed breadth-first traversal with cycle protection and maximum depth/node thresholds.
+
+## ⚙️ Optimizations
+
+1. Migrated core console and admin pages to client-side rendering (CSR) and enabled shallow routing: Console pages (Agents, Skills, MCP, System Tools, Template Marketplace, Evaluation), Account modules, Admin settings, and Pricing pages are now client-rendered, eliminating redundant SSR round-trips and blank screen re-renders during navigation to significantly improve interaction responsiveness.
+2. Optimized internationalization (i18n) loading performance: Bundled client language packs into single preloaded chunks, unified usage with `useSafeTranslation`, removed redundant async namespace requests, reduced initialization overhead, and eliminated hydration flickers.
+3. Optimized BullMQ failed job retention policy: Extracted shared BullMQ queue and worker default options, updating all background tasks (App deletion, Dataset deletion, Dataset sync, Evaluation, S3 file cleanup, Skill creation/deletion, Team deletion, and commercial Account cancellation) to retain the latest 10,000 failed jobs by count (`removeOnFail: { count: 10000 }`) rather than expiring by age, and unified exponential backoff retry at 5000ms to preserve failure history for troubleshooting and job replay.
+4. Enhanced system model health probe error reporting: Prefixed model probe failure messages with the model name when all retries fail, allowing immediate identification of faulty models in alert notifications and monitoring platforms.
+5. Optimized number unit formatting rollover: Fixed `formatNumberWithUnit` where rounding to two decimals reached the next threshold (such as 99,999,999 displaying as 10000万 or 999,999 displaying as 1000K), rolling over to the next higher unit (such as 1亿 or 1M).
+6. Preserved distinct images during multi-recall Dataset search deduplication: Combined normalized text with the original image `imageId` during recall fusion deduplication to ensure distinct images with identical or empty captions are preserved.
+7. Enhanced file download header parsing: Safely fall back to the standard `filename` parameter in `parseContentDispositionFilename` when `filename*` contains invalid encodings, preventing download filenames from being lost.
+
+## 🐛 Bug Fixes
+
+1. Fixed incorrect evaluation for "contains / does not contain" conditions in the Workflow If/Else Node with non-string values: Converted runtime values of any-typed variables (such as numbers and booleans) to strings before matching, preventing non-string inputs from always returning false and causing "does not contain" to evaluate as always true.
+2. Fixed errors when using the "regex" condition with non-string values in the Workflow If/Else Node: Automatically converted non-string inputs to text before regex evaluation; fixed a `TypeError` when reference variables were used as non-string regex patterns by stringifying them and trimming enclosing slashes, rejecting empty patterns; and corrected missing backslash escapes in the editor's sample phone number regex to prevent invalid regex errors.
+3. Fixed admin menu display in open source and unlicensed editions (#7929): Strictly filtered admin navigation items using a whitelist to prevent unlicensed sub-items (such as App Templates) from appearing without an active License.
+4. Fixed incorrect navigation path when installing tools from the marketplace: Restored the correct admin tool marketplace route `/config/tool/marketplace` and completed the layout.
+5. Fixed duplicate loading triggered by initial skeleton display during Dataset list scrolling: Switched to `isInitialLoading` on list scroll, and provided fallback member details in `addSourceMember` when associated members have left or are missing to maintain list length consistency with pagination.
+6. Fixed missing read permission check on the input guide count endpoint: Added application read permission validation to `/core/chat/inputGuide/countTotal`, preventing unauthorized members from querying guide data.
+7. Tightened permission boundaries for hidden applications among team members: Regular team members now only receive read and chat permissions for hidden applications without chat log access, restricting log inspection to team administrators.
+8. Fixed Markdown image parsing ambiguity between destination URLs and optional titles: Strictly separated image destination and title according to the CommonMark specification, supporting angle-bracketed URLs and multiline titles; preserved original destination formats and titles during Dataset image transfer and alt text population to prevent corrupted or truncated image links.
+9. Fixed pagination position loss when `pageSize` is omitted: Preserved `offset` (including 0) and `pageNum` in `parsePaginationRequest` when `pageSize` is not provided, and prioritized group parsing from body or query.
+
+## 🛠️ Code Refactoring
+
+1. Added `ClientRouteReadyGate` and `useRequiredQueryParam` route guards: Centralized route parameter readiness checks and modal initialization order on client-rendered pages to eliminate race conditions.
+2. Refactored team member management workflow: Loaded complete member data before opening the edit member modal, avoiding data overwrites caused by partial records.

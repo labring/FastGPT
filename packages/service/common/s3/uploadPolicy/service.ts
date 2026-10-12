@@ -1,5 +1,6 @@
 import { fileTypeFromBuffer } from 'file-type';
 import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
+import { isOfficeLockFilename } from '@fastgpt/global/common/file/utils';
 import { serviceEnv } from '../../../env';
 import type { UploadConstraintsInput } from '../contracts/type';
 import { DEFAULT_CONTENT_TYPE, normalizeMimeType, resolveMimeType } from '../utils/mime';
@@ -145,6 +146,10 @@ export const createUploadPolicy = ({
   const declaredExtension = resolveDeclaredExtension(normalizedHint);
   const explicitExtension = filenameExtension || declaredExtension;
   const allowedExtensions = normalizeAllowedExtensions(uploadConstraints?.allowedExtensions);
+
+  if (isOfficeLockFilename(filename) || isOfficeLockFilename(normalizedHint.declaredFilename)) {
+    throw new Error(S3ErrEnum.invalidUploadFileType);
+  }
 
   if (
     allowedExtensions.length > 0 &&
@@ -311,6 +316,10 @@ export const resolveUploadFile = ({
   const declaredExtension = resolveDeclaredExtension(normalizedHint);
   const explicitExtension = filenameExtension || declaredExtension;
   const allowedExtensions = normalizeAllowedExtensions(policy.allowedExtensions);
+
+  if (isOfficeLockFilename(filename) || isOfficeLockFilename(normalizedHint.declaredFilename)) {
+    throw new Error(S3ErrEnum.invalidUploadFileType);
+  }
 
   if (
     allowedExtensions.length > 0 &&

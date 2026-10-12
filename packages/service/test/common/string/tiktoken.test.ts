@@ -71,4 +71,58 @@ describe('token counter', () => {
 
     expect(tokens).toBeGreaterThan(40);
   });
+
+  it('should replace media payloads with bounded placeholders before tokenizing', () => {
+    const largeBase64 = 'A'.repeat(1024 * 1024);
+    const mediaMessages = [
+      {
+        role: 'user' as const,
+        content: [
+          {
+            type: 'image_url' as const,
+            image_url: { url: `data:image/png;base64,${largeBase64}`, detail: 'high' as const }
+          },
+          {
+            type: 'input_audio' as const,
+            input_audio: { format: 'wav' as const, data: largeBase64 }
+          },
+          {
+            type: 'video_url' as const,
+            video_url: { url: `data:video/mp4;base64,${largeBase64}` }
+          },
+          {
+            type: 'file' as const,
+            file: { filename: 'example.pdf', file_data: largeBase64 }
+          }
+        ]
+      }
+    ];
+    const shortMediaMessages = [
+      {
+        role: 'user' as const,
+        content: [
+          {
+            type: 'image_url' as const,
+            image_url: { url: 'data:image/png;base64,short', detail: 'high' as const }
+          },
+          {
+            type: 'input_audio' as const,
+            input_audio: { format: 'wav' as const, data: 'short' }
+          },
+          {
+            type: 'video_url' as const,
+            video_url: { url: 'data:video/mp4;base64,short' }
+          },
+          {
+            type: 'file' as const,
+            file: { filename: 'example.pdf', file_data: 'short' }
+          }
+        ]
+      }
+    ];
+
+    expect(countGptMessagesTokensInWorker({ messages: mediaMessages })).toBe(
+      countGptMessagesTokensInWorker({ messages: shortMediaMessages })
+    );
+  });
 });

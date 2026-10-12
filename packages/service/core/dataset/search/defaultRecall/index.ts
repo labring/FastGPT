@@ -14,6 +14,7 @@ import {
   removeDuplicateSearchResults
 } from './result';
 import { countRecallLimit, filterDatasetDataByMaxTokens } from './utils';
+import { serviceEnv } from '../../../../env';
 
 /**
  * 执行默认知识库召回主流程。
@@ -50,7 +51,7 @@ export async function searchDatasetData(
     rerankWeight = 0.5,
     datasetIds = [],
     collectionFilterMatch,
-    collectionFilterMode
+    readableCollectionIdList
   } = props;
 
   const searchMode = DatasetSearchModeMap[inputSearchMode]
@@ -99,7 +100,7 @@ export async function searchDatasetData(
     model,
     imageQueries,
     collectionFilterMatch,
-    collectionFilterMode,
+    readableCollectionIdList,
     embeddingLimit,
     fullTextLimit,
     textQueries,
@@ -117,6 +118,14 @@ export async function searchDatasetData(
     { weight: embeddingWeight, list: imageCaptionEmbeddingRecallResults },
     { weight: 1 - embeddingWeight, list: imageCaptionFullTextRecallResults }
   ]);
+
+  // 重排前取快照：保存 textRecallResults，即重排前的文本召回候选集，
+  // 仅用于日志详情对比召回与重排。仅重排开启时产出，避免未开启重排时切了切片又没人用。
+  // 上限由 RETRIEVAL_RESULTS_LIMIT 控制，0 表示不产出。
+  const retrievalResults =
+    usingReRank && serviceEnv.RETRIEVAL_RESULTS_LIMIT > 0
+      ? textRecallResults.slice(0, serviceEnv.RETRIEVAL_RESULTS_LIMIT)
+      : undefined;
 
   // Step 4: rerank 只处理文本召回。
   // 图片向量结果和 caption 结果仍按 RRF 融合，避免用文本 rerank 把视觉相似结果误杀。
@@ -169,10 +178,13 @@ export async function searchDatasetData(
   });
 
   const filterMaxTokensResult = await filterDatasetDataByMaxTokens(scoreFilter, maxTokens);
-  // Step 8: 返回前一次收集最终结果中的 q、a、imageId，并批量签发唯一对象 key。
+  // Step 8: 返回前一次收集最终结果中的 q、a、imageId，并批量签发唯一 dataset 对象 key。
   // 被前面过滤掉的候选不会产生 alias 查询；最终输出也不暴露仅供格式化使用的 imageId。
+  // 白名单绑定本次召回授权的 datasetIds：结果里内嵌的外库图片 key 不签发短链，
+  // 避免检索输出成为跨库预览签名的旁路。
   const formattedValues = await formatDatasetDataValues(
-    filterMaxTokensResult.map(({ q, a, imageId }) => ({ q, a, imageId }))
+    filterMaxTokensResult.map(({ q, a, imageId }) => ({ q, a, imageId })),
+    { datasetIds }
   );
   const finalResult = filterMaxTokensResult.map((item, index) => {
     const result = { ...item };
@@ -194,6 +206,7 @@ export async function searchDatasetData(
     similarity,
     usingReRank: finalUsingReRank,
     usingSimilarityFilter,
-    imageCaptionResult
+    imageCaptionResult,
+    retrievalResults
   };
 }

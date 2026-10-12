@@ -21,7 +21,7 @@ import {
   isWorkflowEdgeSourceHandleValid,
   isWorkflowReferenceItem
 } from '@fastgpt/global/core/workflow/editor/utils';
-import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/workflowTagFilter';
+import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/search/tagFilter';
 import { replaceEditorVariable } from './replaceEditorVariable';
 
 /**

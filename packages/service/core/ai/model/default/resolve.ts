@@ -1,0 +1,75 @@
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
+
+/**
+ * 按成员实际可用模型计算有效默认 ID。管理员配置不可用时仅在同类型内回退；图片数据集
+ * 与 chatTitle 是可选增强能力，只校验已配置模型，不做隐式回退。
+ */
+export const resolveEffectiveDefaultModelIds = ({
+  models,
+  configuredDefaults
+}: {
+  models: AIModelDataType[];
+  configuredDefaults: ModelDefaultIds;
+}): ModelDefaultIds => {
+  models = models.filter((model) => model.isActive);
+  const modelMap = new Map(models.map((model) => [model.modelId, model]));
+  const resolve = ({
+    configuredId,
+    type,
+    predicate
+  }: {
+    configuredId?: string;
+    type: ModelTypeEnum;
+    predicate?: (model: AIModelDataType) => boolean;
+  }) => {
+    const isCandidate = (model?: AIModelDataType) =>
+      !!model && model.type === type && (!predicate || predicate(model));
+    const configuredModel = configuredId ? modelMap.get(configuredId) : undefined;
+    return isCandidate(configuredModel)
+      ? configuredModel?.modelId
+      : models.find((model) => isCandidate(model))?.modelId;
+  };
+
+  const configuredChatTitle = configuredDefaults.chatTitleLLM
+    ? modelMap.get(configuredDefaults.chatTitleLLM)
+    : undefined;
+  const configuredDatasetImage = configuredDefaults.datasetImageLLM
+    ? modelMap.get(configuredDefaults.datasetImageLLM)
+    : undefined;
+
+  const llm = resolve({ configuredId: configuredDefaults.llm, type: ModelTypeEnum.llm });
+  return {
+    [ModelTypeEnum.llm]: llm,
+    [ModelTypeEnum.embedding]: resolve({
+      configuredId: configuredDefaults.embedding,
+      type: ModelTypeEnum.embedding
+    }),
+    [ModelTypeEnum.tts]: resolve({
+      configuredId: configuredDefaults.tts,
+      type: ModelTypeEnum.tts
+    }),
+    [ModelTypeEnum.stt]: resolve({
+      configuredId: configuredDefaults.stt,
+      type: ModelTypeEnum.stt
+    }),
+    [ModelTypeEnum.rerank]: resolve({
+      configuredId: configuredDefaults.rerank,
+      type: ModelTypeEnum.rerank
+    }),
+    datasetTextLLM: resolve({
+      configuredId:
+        modelMap.get(configuredDefaults.datasetTextLLM ?? '')?.type === ModelTypeEnum.llm
+          ? configuredDefaults.datasetTextLLM
+          : llm,
+      type: ModelTypeEnum.llm
+    }),
+    datasetImageLLM:
+      configuredDatasetImage?.type === ModelTypeEnum.llm && configuredDatasetImage.config.vision
+        ? configuredDatasetImage.modelId
+        : undefined,
+    chatTitleLLM:
+      configuredChatTitle?.type === ModelTypeEnum.llm ? configuredChatTitle.modelId : undefined
+  };
+};

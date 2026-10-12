@@ -21,6 +21,7 @@ import {
   AgentPlanStatusSchema
 } from '../ai/agent/type';
 import { ObjectIdSchema } from '../../common/type/mongo';
+import { NumSchema } from '../../common/zod';
 
 export const ChatHistoryItemResSchema = DispatchNodeResponseSchema.extend({
   nodeId: z.string(),
@@ -86,6 +87,14 @@ export const SkillModuleResponseItemSchema = z.object({
 export type SkillModuleResponseItemType = z.infer<typeof SkillModuleResponseItemSchema>;
 
 /* --------- chat ---------- */
+export const ChatSummarySchema = z
+  .object({
+    llmInputTokens: NumSchema.default(0).meta({ description: '会话累计 LLM 输入 token 数' }),
+    llmOutputTokens: NumSchema.default(0).meta({ description: '会话累计 LLM 输出 token 数' })
+  })
+  .default({ llmInputTokens: 0, llmOutputTokens: 0 });
+export type ChatSummaryType = z.infer<typeof ChatSummarySchema>;
+
 export const ChatSchema = z.object({
   _id: ObjectIdSchema,
   chatId: z.string(),
@@ -123,6 +132,8 @@ export const ChatSchema = z.object({
   hasUnreadBadFeedback: z.boolean().optional(),
   // Error count (redundant field for performance)
   errorCount: z.number().optional(),
+  /** 会话累计的 LLM token 摘要，不包含 embedding/rerank 等非 LLM token。 */
+  summary: ChatSummarySchema,
 
   /** 旧数据可能无此字段；业务上按 done 处理 */
   chatGenerateStatus: z

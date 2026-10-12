@@ -30,7 +30,7 @@ import type { OpenApiTagType } from '@fastgpt/global/openapi/support/openapi/tag
 import dayjs from 'dayjs';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModalV2 from '@fastgpt/web/components/v2/common/MyModal';
 import { Controller, useForm } from 'react-hook-form';
@@ -188,7 +188,7 @@ const ApiKeyTagEditor = ({
 };
 
 const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
-  const { t } = useClientTranslation(['apikey', 'account']);
+  const { t } = useSafeTranslation();
   const { copyData } = useCopyData();
   const { feConfigs } = useSystemStore();
   const isPublishMode = mode === 'publish';
@@ -727,7 +727,7 @@ function EditKeyModal({
   onCreate: (id: string) => void;
   onEdit: () => void;
 }) {
-  const { t } = useClientTranslation('apikey');
+  const { t } = useSafeTranslation();
   const isEdit = useMemo(() => !!defaultData._id, [defaultData]);
   const { feConfigs } = useSystemStore();
 

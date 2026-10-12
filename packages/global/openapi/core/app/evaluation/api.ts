@@ -51,7 +51,7 @@ export const CreateEvaluationBodySchema = z
 export type CreateEvaluationBodyType = z.infer<typeof CreateEvaluationBodySchema>;
 
 export const CreateEvaluationFormSchema = z.object({
-  file: z.any().meta({
+  file: z.string().meta({
     format: 'binary',
     description: 'CSV 评测文件，包含 *q 问题列和 *a 期望答案列'
   }),

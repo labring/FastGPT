@@ -1,7 +1,7 @@
 import z from 'zod';
 
 export const ObjectIdSchema = z.preprocess(
-  (value) => (typeof value === 'object' ? String(value) : value),
+  (value) => (value && typeof value === 'object' ? String(value) : value),
   z
     .string()
     .regex(/^[0-9a-fA-F]{24}$/)

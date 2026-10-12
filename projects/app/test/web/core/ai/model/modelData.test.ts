@@ -3,10 +3,14 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 
 const mocks = vi.hoisted(() => ({ catalog: vi.fn(), summary: vi.fn(), member: 'member' }));
-vi.mock('@/web/common/system/api', () => ({
-  getUserModelCatalog: mocks.catalog,
-  getUserModelSummaries: mocks.summary
-}));
+vi.mock('@/web/core/ai/model/catalogApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/web/core/ai/model/catalogApi')>();
+  return {
+    ...actual,
+    getUserModelCatalog: mocks.catalog,
+    getUserModelSummaries: mocks.summary
+  };
+});
 vi.mock('@/web/support/user/useUserStore', () => ({
   useUserStore: Object.assign(vi.fn(), {
     getState: () => ({ userInfo: { team: { teamId: 'team', tmbId: mocks.member } } })
@@ -105,6 +109,10 @@ describe('catalog consumers', () => {
     expect(mocks.catalog).not.toHaveBeenCalled();
     expect(await getModelDetail({ modelId: 'missing', model: 'legacy-first' })).toBeUndefined();
     expect((await getModelDetail({ model: 'legacy-first' }))?.modelId).toBe('first');
+    expect(await getModelDetail({ modelId: 'legacy-first' })).toBeUndefined();
+    expect(
+      await getModelDetail({ modelId: 'legacy-first', model: 'legacy-first' })
+    ).toBeUndefined();
     expect(
       await getModelDetail({ modelId: 'first', modelType: ModelTypeEnum.tts })
     ).toBeUndefined();
@@ -131,6 +139,25 @@ describe('catalog consumers', () => {
     expect(await getModelDefault({ modelType: ModelTypeEnum.tts })).toBeUndefined();
     expect(
       await getModelDefault({ modelType: ModelTypeEnum.llm, defaultKey: 'chatTitleLLM' })
+    ).toBeUndefined();
+  });
+
+  it('does not fall back to a vision model when no dataset image default is configured', async () => {
+    mocks.catalog.mockResolvedValueOnce({
+      version: 'v2',
+      data: {
+        models,
+        providers: [],
+        defaultModelIds: {}
+      }
+    });
+
+    expect(
+      await getModelDefault({
+        modelType: ModelTypeEnum.llm,
+        defaultKey: 'datasetImageLLM',
+        vision: true
+      })
     ).toBeUndefined();
   });
 

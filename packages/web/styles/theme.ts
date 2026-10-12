@@ -427,6 +427,13 @@ const NumberInput = numInputMultiStyle({
         fontSize: 'sm'
       }
     }),
+    md: defineStyle({
+      field: {
+        h: '36px',
+        borderRadius: 'sm',
+        fontSize: 'sm'
+      }
+    }),
     lg: defineStyle({
       field: {
         h: '40px',
@@ -532,6 +539,7 @@ const NumberInput = numInputMultiStyle({
     })
   },
   defaultProps: {
+    size: 'md',
     variant: 'outline'
   }
 });
@@ -737,6 +745,43 @@ const Modal = modalMultiStyle({
   }
 });
 
+const flatTableVariant = defineStyle({
+  table: {
+    bg: 'white'
+  },
+  thead: {
+    tr: {
+      th: {
+        p: '0',
+        px: 8,
+        bg: 'myGray.50',
+        borderRadius: 'none !important',
+        borderBottom: 'none',
+        height: '32px',
+        fontSize: 'mini',
+        fontWeight: 'medium'
+      }
+    }
+  },
+  tbody: {
+    tr: {
+      td: {
+        p: '0',
+        px: 8,
+        fontSize: 'xs',
+        borderBottom: 'base',
+        height: '32px',
+        borderRadius: 'none !important'
+      },
+      '&:last-child': {
+        td: {
+          borderBottom: 'none'
+        }
+      }
+    }
+  }
+});
+
 const Table = tableMultiStyle({
   baseStyle: {
     table: {
@@ -783,41 +828,8 @@ const Table = tableMultiStyle({
     })
   },
   variants: {
-    workflow: {
-      table: {
-        bg: 'white'
-      },
-      thead: {
-        tr: {
-          th: {
-            p: '0',
-            px: 8,
-            bg: 'myGray.50',
-            borderRadius: 'none !important',
-            borderBottom: 'none',
-            height: '32px',
-            fontSize: 'mini',
-            fontWeight: 'medium'
-          }
-        }
-      },
-      tbody: {
-        tr: {
-          td: {
-            p: '0',
-            px: 8,
-            fontSize: 'xs',
-            borderBottom: 'base',
-            height: '32px'
-          },
-          '&:last-child': {
-            td: {
-              borderBottom: 'none'
-            }
-          }
-        }
-      }
-    },
+    flat: flatTableVariant,
+    workflow: flatTableVariant,
     bordered: {
       table: {
         bg: 'white'
@@ -1031,7 +1043,7 @@ export const theme = extendTheme({
     }
   },
   fonts: {
-    body: 'PingFang,Noto Sans,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol"'
+    body: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"'
   },
   fontSizes: {
     mini: '0.75rem',

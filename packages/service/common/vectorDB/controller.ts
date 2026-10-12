@@ -7,7 +7,7 @@ import { OpenGaussVectorCtrl } from './opengauss';
 import { getVectors } from '../../core/ai/embedding';
 import type { GetVectorsProps } from '../../core/ai/embedding';
 import type { VectorControllerType, InsertVectorControllerPropsType } from './type';
-import { type EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import { type EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { getVectorType } from './constants';
 import { MilvusCtrl } from './milvus';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -53,7 +53,7 @@ export const insertDatasetDataVector = async ({
   ...props
 }: Omit<InsertVectorControllerPropsType, 'vectors'> & {
   inputs: DatasetVectorInput[];
-  model: EmbeddingSystemModelDataType;
+  model: EmbeddingModelDataType;
 }) => {
   if (inputs.length === 0) {
     return {
@@ -95,6 +95,16 @@ export const deleteDatasetDataVector: VectorControllerType['delete'] = async (pr
   await teamVectorCountCache.invalidate(props.teamId);
   return result;
 };
+
+/** 替换前分批刷新旧向量时间；任一批重试耗尽则中止，调用方不能继续生成或提交新索引。 */
+export const refreshDatasetDataVectorCreateTime: VectorControllerType['refreshCreateTime'] =
+  async ({ teamId, idList }) => {
+    const ids = [...new Set(idList)];
+    for (let offset = 0; offset < ids.length; offset += 100) {
+      const batch = ids.slice(offset, offset + 100);
+      await retryFn(() => Vector.refreshCreateTime({ teamId, idList: batch }));
+    }
+  };
 
 export const getVectorDataByTime = Vector.getVectorDataByTime;
 

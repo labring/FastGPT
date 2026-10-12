@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   appendAgentLoopCoreChildNodeResponses,
-  withAgentLoopCoreChildTotalPoints
+  stripAgentLoopCoreChildTotalPoints
 } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/nodeResponse/children';
 import { createAgentLoopCoreCompressNodeResponse } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/nodeResponse/compress';
 
@@ -71,8 +71,8 @@ describe('createAgentLoopCoreCompressNodeResponse', () => {
 });
 
 describe('agentLoopCore child node responses', () => {
-  it('recomputes childTotalPoints from childrenResponses', () => {
-    const response = withAgentLoopCoreChildTotalPoints({
+  it('removes cached childTotalPoints and keeps child responses', () => {
+    const response = stripAgentLoopCoreChildTotalPoints({
       id: 'parent',
       nodeId: 'parent',
       moduleName: 'Parent',
@@ -96,7 +96,8 @@ describe('agentLoopCore child node responses', () => {
       ]
     });
 
-    expect(response.childTotalPoints).toBeCloseTo(0.3);
+    expect(response).not.toHaveProperty('childTotalPoints');
+    expect(response.childrenResponses).toHaveLength(2);
   });
 
   it('appends children and removes childTotalPoints when there is no child usage', () => {
@@ -128,7 +129,6 @@ describe('agentLoopCore child node responses', () => {
       })
     ).toEqual(
       expect.objectContaining({
-        childTotalPoints: 0.5,
         childrenResponses: [
           expect.objectContaining({
             id: 'child'
@@ -136,5 +136,11 @@ describe('agentLoopCore child node responses', () => {
         ]
       })
     );
+    expect(
+      appendAgentLoopCoreChildNodeResponses({
+        nodeResponse: response,
+        childrenResponses: []
+      })
+    ).not.toHaveProperty('childTotalPoints');
   });
 });

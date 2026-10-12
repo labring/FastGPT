@@ -11,7 +11,7 @@ import RehypeKatex from 'rehype-katex';
 import {
   mapMarkdownBlockSources,
   splitMarkdownBlocks
-} from '@/components/Markdown/streamMarkdownBlocks';
+} from '@/components/Markdown/stream/streamMarkdownBlocks';
 import { mdTextFormat, prepareStreamingMarkdown } from '@/components/Markdown/utils';
 
 describe('splitMarkdownBlocks', () => {

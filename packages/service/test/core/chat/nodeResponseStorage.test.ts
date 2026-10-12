@@ -106,7 +106,7 @@ describe('createChatItemResponseRows', () => {
     });
   });
 
-  it('does not generate childTotalPoints in response rows', () => {
+  it('does not persist childTotalPoints on parent or nested response rows', () => {
     const rows = createChatItemResponseRows({
       ...base,
       nodeResponses: [
@@ -114,18 +114,23 @@ describe('createChatItemResponseRows', () => {
           id: 'loop',
           moduleType: FlowNodeTypeEnum.loopRun,
           totalPoints: 1,
-          childrenResponses: [makeResponse({ id: 'loop-child', totalPoints: 2 })]
+          childTotalPoints: 2,
+          childrenResponses: [
+            makeResponse({ id: 'loop-child', totalPoints: 2, childTotalPoints: 3 })
+          ]
         }),
         makeResponse({
           id: 'batch',
           moduleType: FlowNodeTypeEnum.parallelRun,
           totalPoints: 3,
+          childTotalPoints: 4,
           childrenResponses: [makeResponse({ id: 'batch-child', totalPoints: 4 })]
         })
       ]
     });
 
     expect(rows[0].data.childTotalPoints).toBeUndefined();
+    expect(rows[0].data.childrenResponses?.[0].childTotalPoints).toBeUndefined();
     expect(rows[0].data.childResponseCount).toBe(1);
     expect(rows[1].data.childTotalPoints).toBeUndefined();
     expect(rows[1].data.childResponseCount).toBe(1);
@@ -685,6 +690,94 @@ describe('WorkflowNodeResponseWriter', () => {
     });
   });
 
+  it('slims dataset retrievalResults alongside quoteList before persisting', async () => {
+    const create = vi.fn().mockResolvedValue(undefined);
+    const writer = new WorkflowNodeResponseWriter({
+      ...base,
+      batchSize: 1,
+      retainInMemory: true,
+      model: { create }
+    });
+
+    const [returnedResponse] = await writer.record([
+      makeResponse({
+        id: 'dataset-root',
+        moduleType: FlowNodeTypeEnum.datasetSearchNode,
+        quoteList: [
+          {
+            id: 'quote-1',
+            q: 'reranked question',
+            a: 'reranked answer',
+            datasetId: 'dataset-1',
+            collectionId: 'collection-1',
+            sourceId: 'source-1',
+            sourceName: 'source',
+            chunkIndex: 0,
+            score: []
+          } as any
+        ],
+        retrievalResults: [
+          {
+            id: 'recall-1',
+            q: 'full question',
+            a: 'full answer',
+            indexes: [{ type: 'qa', dataId: 'data-1', text: 'full question' }],
+            datasetId: 'dataset-1',
+            collectionId: 'collection-1',
+            sourceId: 'source-1',
+            sourceName: 'source',
+            chunkIndex: 1,
+            score: []
+          } as any
+        ]
+      })
+    ]);
+
+    // 内存中保留完整 q/a，供当前请求的日志详情使用
+    expect(returnedResponse.retrievalResults?.[0]).toMatchObject({
+      id: 'recall-1',
+      q: 'full question',
+      a: 'full answer',
+      indexes: [{ type: 'qa', dataId: 'data-1', text: 'full question' }]
+    });
+    // 入库前瘦身，避免重排开启时单行体积翻倍
+    const persisted = create.mock.calls[0][0][0].data.retrievalResults?.[0];
+    expect(persisted).toEqual({
+      id: 'recall-1',
+      chunkIndex: 1,
+      datasetId: 'dataset-1',
+      collectionId: 'collection-1',
+      sourceId: 'source-1',
+      sourceName: 'source',
+      score: []
+    });
+    expect(persisted).not.toHaveProperty('q');
+    expect(persisted).not.toHaveProperty('a');
+    expect(persisted).not.toHaveProperty('indexes');
+  });
+
+  it('slims dataset retrievalResults even when quoteList is absent', async () => {
+    const create = vi.fn().mockResolvedValue(undefined);
+    const writer = new WorkflowNodeResponseWriter({
+      ...base,
+      batchSize: 1,
+      retainInMemory: true,
+      model: { create }
+    });
+
+    await writer.record([
+      makeResponse({
+        id: 'dataset-root',
+        moduleType: FlowNodeTypeEnum.datasetSearchNode,
+        retrievalResults: [
+          { id: 'recall-1', q: 'full question', a: 'full answer', chunkIndex: 0 } as any
+        ]
+      })
+    ]);
+
+    expect(create.mock.calls[0][0][0].data.retrievalResults?.[0]).not.toHaveProperty('q');
+  });
+
   it('retains all flat nodeResponse increments and folds them for composition', async () => {
     const writer = new WorkflowNodeResponseWriter({
       ...base,
@@ -782,9 +875,6 @@ describe('WorkflowNodeResponseWriter', () => {
         moduleName: 'Latest',
         totalPoints: 3
       }
-    });
-    expect(writer.getSummary()).toMatchObject({
-      totalPoints: 3
     });
   });
 
@@ -925,97 +1015,6 @@ describe('WorkflowNodeResponseWriter', () => {
 
     expect(create).toHaveBeenCalledTimes(4);
     expect(writer.isFullyFlushed).toBe(true);
-    expect(writer.getSummary()).toMatchObject({
-      errorCount: 0,
-      totalPoints: 0
-    });
-  });
-
-  it('keeps summary contributions when detail rows are dropped after fallback failure', async () => {
-    const create = vi.fn().mockRejectedValue(new Error('db rejects every payload'));
-    const writer = new WorkflowNodeResponseWriter({
-      ...base,
-      batchSize: 1,
-      model: {
-        create
-      }
-    });
-
-    await writer.record([
-      makeResponse({
-        id: 'root',
-        totalPoints: 8,
-        errorText: 'root failed',
-        childrenResponses: [
-          makeResponse({
-            id: 'dataset-child',
-            moduleType: FlowNodeTypeEnum.datasetSearchNode,
-            quoteList: [
-              {
-                id: 'quote',
-                collectionId: 'collection-from-dropped-row',
-                datasetId: 'dataset',
-                sourceId: 'source',
-                sourceName: 'source',
-                chunkIndex: 0,
-                score: []
-              }
-            ]
-          })
-        ]
-      })
-    ]);
-
-    expect(writer.isFullyFlushed).toBe(true);
-    expect(writer.getSummary()).toEqual({
-      citeCollectionIds: ['collection-from-dropped-row'],
-      errorCount: 1,
-      lastError: 'root failed',
-      totalPoints: 8
-    });
-  });
-
-  it('collects write summary for save metadata while rows are released', async () => {
-    const writer = new WorkflowNodeResponseWriter({
-      ...base,
-      batchSize: 10,
-      model: {
-        create: vi.fn().mockResolvedValue(undefined)
-      }
-    });
-
-    await writer.record([
-      makeResponse({
-        id: 'root-error',
-        totalPoints: 10,
-        errorText: 'failed',
-        childrenResponses: [
-          makeResponse({
-            id: 'dataset-child',
-            moduleType: FlowNodeTypeEnum.datasetSearchNode,
-            totalPoints: 3,
-            quoteList: [
-              {
-                id: 'quote',
-                collectionId: 'collection-1',
-                datasetId: 'dataset-1',
-                sourceId: 'source-1',
-                sourceName: 'source',
-                chunkIndex: 0,
-                score: []
-              }
-            ]
-          })
-        ]
-      })
-    ]);
-
-    expect(writer.getSummary()).toEqual({
-      citeCollectionIds: ['collection-1'],
-      errorCount: 1,
-      lastError: 'failed',
-      totalPoints: 10
-    });
   });
 
   it('creates a writer through factory and writes rows with default options', async () => {
@@ -1037,57 +1036,5 @@ describe('WorkflowNodeResponseWriter', () => {
         id: 'factory-root'
       })
     });
-  });
-
-  it('keeps separate summary contributions for same id under different parentId', async () => {
-    const writer = new WorkflowNodeResponseWriter({
-      ...base,
-      batchSize: 10,
-      model: {
-        create: vi.fn().mockResolvedValue(undefined)
-      }
-    });
-
-    await writer.record([
-      makeResponse({ id: 'parent-1' }),
-      makeResponse({ id: 'parent-2' }),
-      makeResponse({
-        id: 'shared-child',
-        parentId: 'parent-1',
-        moduleType: FlowNodeTypeEnum.datasetSearchNode,
-        quoteList: [
-          {
-            id: 'quote-1',
-            collectionId: 'collection-parent-1',
-            datasetId: 'dataset',
-            sourceId: 'source',
-            sourceName: 'source',
-            chunkIndex: 0,
-            score: []
-          }
-        ]
-      }),
-      makeResponse({
-        id: 'shared-child',
-        parentId: 'parent-2',
-        moduleType: FlowNodeTypeEnum.datasetSearchNode,
-        quoteList: [
-          {
-            id: 'quote-2',
-            collectionId: 'collection-parent-2',
-            datasetId: 'dataset',
-            sourceId: 'source',
-            sourceName: 'source',
-            chunkIndex: 0,
-            score: []
-          }
-        ]
-      })
-    ]);
-
-    expect(writer.getSummary().citeCollectionIds).toEqual([
-      'collection-parent-1',
-      'collection-parent-2'
-    ]);
   });
 });

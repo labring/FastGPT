@@ -16,9 +16,9 @@ export const createModelSummaryLoader = (
     expiresAt: number;
     detail?: ModelSummary;
   };
-  type Key = { identity: string; modelId: string };
+  type Key = { identity: string; modelId: string; appId?: string };
   const cache = new Map<string, Entry>();
-  const getKey = ({ identity, modelId }: Key) => JSON.stringify([identity, modelId]);
+  const getKey = ({ identity, modelId, appId }: Key) => JSON.stringify([identity, modelId, appId]);
   const save = (key: string, entry: Entry) => {
     cache.set(key, entry);
     if (cache.size > 256) cache.delete(cache.keys().next().value!);
@@ -26,22 +26,24 @@ export const createModelSummaryLoader = (
   const load = ({
     identity,
     modelId,
+    appId,
     outLinkAuthData,
     force = false
   }: {
     identity: string;
     modelId: string;
+    appId?: string;
     outLinkAuthData?: GetModelSummariesBody['outLinkAuthData'];
     force?: boolean;
   }) => {
-    const key = getKey({ identity, modelId });
+    const key = getKey({ identity, modelId, appId });
     const cached = cache.get(key);
     if (cached && (cached.expiresAt === Infinity || (!force && cached.expiresAt > Date.now()))) {
       return cached.promise;
     }
     const entry: Entry = {
       expiresAt: Infinity,
-      promise: request({ modelIds: [modelId], outLinkAuthData })
+      promise: request({ modelIds: [modelId], appId, outLinkAuthData })
         .then((response) => {
           // 请求发出后可能已通过新 catalog 确认状态，旧响应不能覆盖新选择。
           const newer = cache.get(key);
@@ -69,8 +71,16 @@ export const createModelSummaryLoader = (
       return entry && entry.expiresAt > Date.now() ? entry.detail : undefined;
     },
     /** 将刚校验的 catalog 展示数据写入同身份详情缓存，不发请求。 */
-    prime: ({ identity, detail }: { identity: string; detail: ModelSummary }) => {
-      save(getKey({ identity, modelId: detail.modelId }), {
+    prime: ({
+      identity,
+      detail,
+      appId
+    }: {
+      identity: string;
+      detail: ModelSummary;
+      appId?: string;
+    }) => {
+      save(getKey({ identity, modelId: detail.modelId, appId }), {
         promise: Promise.resolve(detail),
         detail,
         expiresAt: Date.now() + 30_000

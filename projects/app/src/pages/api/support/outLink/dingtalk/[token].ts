@@ -1,5 +1,5 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
-import { POST } from '@fastgpt/service/common/api/plusRequest';
+import { postForwardDingtalk } from '@fastgpt/service/thirdProvider/fastgptPro/api';
 import { NextAPI } from '@/service/middleware/entry';
 
 export type OutLinkDingtalkQuery = any;
@@ -15,7 +15,9 @@ async function handler(
   }
   // send to pro
   const { token } = req.query;
-  const result = await POST<any>(`support/outLink/dingtalk/${token}`, req.body, {
+  const result = await postForwardDingtalk({
+    token,
+    data: req.body,
     headers: {
       timestamp: (req.headers.timestamp as string) ?? '',
       sign: (req.headers.sign as string) ?? ''

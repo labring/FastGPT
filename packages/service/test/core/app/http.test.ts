@@ -147,30 +147,31 @@ describe('SSRF Vulnerability Fix Tests', () => {
   });
 
   describe('getHTTPToolList', () => {
+    const createHttpWorkflow = (toolSet: Record<string, unknown>) => ({
+      nodes: [{ toolConfig: { httpToolSet: toolSet } }]
+    });
+
     it('preserves stored schemas when legacy OpenAPI text cannot be parsed', async () => {
       const requestSchema = { type: 'object', properties: { q: { type: 'string' } } };
-      const [tool] = await getHTTPToolList({
-        _id: 'http-toolset',
-        type: AppTypeEnum.httpToolSet,
-        modules: [
+      const toolSet = {
+        apiSchemaStr: '{"openapi":"3.1.0"}',
+        toolList: [
           {
-            toolConfig: {
-              httpToolSet: {
-                apiSchemaStr: '{"openapi":"3.1.0"}',
-                toolList: [
-                  {
-                    name: 'search',
-                    description: 'Search',
-                    path: '/search',
-                    method: 'GET',
-                    requestSchema
-                  }
-                ]
-              }
-            }
+            name: 'search',
+            description: 'Search',
+            path: '/search',
+            method: 'GET',
+            requestSchema
           }
         ]
-      } as any);
+      };
+      const [tool] = await getHTTPToolList(
+        {
+          _id: '507f1f77bcf86cd799439011',
+          type: AppTypeEnum.httpToolSet
+        } as any,
+        createHttpWorkflow(toolSet) as any
+      );
       expect(tool.requestSchema).toEqual(requestSchema);
       expect(tool.requestSchema).not.toHaveProperty('required');
     });
@@ -203,81 +204,64 @@ describe('SSRF Vulnerability Fix Tests', () => {
         }
       });
       const app = {
-        _id: 'http-toolset',
+        _id: '507f1f77bcf86cd799439011',
         type: AppTypeEnum.httpToolSet,
-        modules: [
+        name: 'HTTP tools'
+      };
+      const toolSet = {
+        apiSchemaStr,
+        toolList: [
           {
-            toolConfig: {
-              httpToolSet: {
-                apiSchemaStr,
-                toolList: [
-                  {
-                    name: 'echo',
-                    description: 'Echo',
-                    path: '/echo/{id}',
-                    method: 'POST',
-                    inputSchema,
-                    requestSchema
-                  }
-                ]
-              }
-            }
+            name: 'echo',
+            description: 'Echo',
+            path: '/echo/{id}',
+            method: 'POST',
+            inputSchema,
+            requestSchema
           }
         ]
       };
-      const [tool] = await getHTTPToolList(app as any);
+      const [tool] = await getHTTPToolList(app as any, createHttpWorkflow(toolSet) as any);
       expect(tool.requestSchema).toEqual({
         ...requestSchema,
         properties: { q: { type: 'string' }, id: { type: 'string' }, ...requestSchema.properties },
         required: ['body', 'id']
       });
       expect(tool.inputSchema).toEqual(inputSchema);
-      expect(app.modules[0].toolConfig.httpToolSet.toolList[0].requestSchema).toEqual(
-        requestSchema
-      );
+      expect(toolSet.toolList[0].requestSchema).toEqual(requestSchema);
       expect(
         (
-          await getHTTPToolList({
-            ...app,
-            modules: [
-              {
-                toolConfig: {
-                  httpToolSet: { ...app.modules[0].toolConfig.httpToolSet, apiSchemaStr: undefined }
-                }
-              }
-            ]
-          } as any)
+          await getHTTPToolList(
+            app as any,
+            createHttpWorkflow({ ...toolSet, apiSchemaStr: undefined }) as any
+          )
         )[0].requestSchema
       ).toEqual(requestSchema);
     });
 
     it('should read tools when legacy customHeaders has a non-string value', async () => {
-      const result = await getHTTPToolList({
-        _id: 'http-toolset',
-        type: AppTypeEnum.httpToolSet,
-        modules: [
-          {
-            toolConfig: {
-              httpToolSet: {
-                customHeaders: false,
-                toolList: [
-                  {
-                    name: 'search',
-                    description: 'Search',
-                    path: '/search',
-                    method: 'GET'
-                  }
-                ]
-              }
+      const result = await getHTTPToolList(
+        {
+          _id: '507f1f77bcf86cd799439011',
+          type: AppTypeEnum.httpToolSet
+        } as any,
+        createHttpWorkflow({
+          customHeaders: false,
+          toolList: [
+            {
+              name: 'search',
+              description: 'Search',
+              path: '/search',
+              method: 'GET'
             }
-          }
-        ]
-      } as any);
+          ]
+        }) as any
+      );
 
       expect(result).toMatchObject([
         {
           name: 'search',
-          id: 'http-http-toolset/search'
+            id: 'http-507f1f77bcf86cd799439011/search'
         }
       ]);
     });

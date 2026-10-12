@@ -1,6 +1,6 @@
 import { type PostPublishAppProps } from '@/global/core/app/api';
-import { authModelViewer } from '@/service/core/ai/model/auth';
 import { NextAPI } from '@/service/middleware/entry';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
@@ -15,32 +15,22 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import {
   beforeUpdateAppFormat,
-  updateParentFoldersUpdateTime,
-  validatePublishAppAgentSkillReadPermissions
+  updateParentFoldersUpdateTime
 } from '@fastgpt/service/core/app/controller';
-import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
+import { extractAppResources } from '@fastgpt/service/core/app/resources';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { getMemberModelIds } from '@fastgpt/service/support/permission/model/controller';
+import { resolveAppResourcesByPermission } from '@fastgpt/service/support/permission/app/resource';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 
-/** 发布仅校验当前成员可用模型，默认回填也限于该范围；草稿保留原引用供继续编辑。 */
 async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   const {
     query: { appId },
-    body: {
-      nodes = [],
-      edges = [],
-      chatConfig,
-      referenceSnapshots,
-      isPublish,
-      versionName,
-      autoSave
-    }
+    body: { nodes = [], edges = [], chatConfig, isPublish, versionName, autoSave }
   } = parseApiInput({
     req,
     querySchema: PublishAppQuerySchema,
@@ -54,24 +44,12 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     authToken: true
   });
 
-  const normalizedWorkflow = migrateWorkflowToCurrent({
-    nodes,
-    edges,
-    chatConfig,
-    referenceSnapshots
-  });
-  const modelHandle = await getModelHandle();
-  const models = await (async () => {
-    if (!isPublish) return modelHandle.getActiveModels();
-    // 与客户端 catalog 使用相同身份和权限规则，不能用应用所有者替代当前发布者。
-    const identity = await authModelViewer({ req });
-    const permittedIds = new Set(await getMemberModelIds(identity));
-    return modelHandle.getActiveModels().filter((model) => permittedIds.has(model.modelId));
-  })();
+  const normalizedWorkflow = migrateWorkflowToCurrent({ nodes, edges, chatConfig });
+  const modelHandle = await getTeamModelHandle({ teamId });
   formatModels({
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig,
-    models,
+    models: modelHandle.getActiveModels(),
     defaultModelIds: modelHandle.getSystemDefaultModelIds(),
     modelReferencePolicy: isPublish ? 'validate' : 'preserve'
   });
@@ -79,21 +57,23 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     nodes: normalizedWorkflow.nodes,
     teamId
   });
-  if (isPublish) {
-    await validatePublishAppAgentSkillReadPermissions({
-      nodes: normalizedWorkflow.nodes,
-      tmbId,
-      isRoot
-    });
-  }
-  const resourceRefs = extractAppResourceRefsFromNodes(normalizedWorkflow.nodes);
-  updateParentFoldersUpdateTime({
-    parentId: app.parentId
+  const extracted = extractAppResources({
+    nodes: normalizedWorkflow.nodes,
+    chatConfig: normalizedWorkflow.chatConfig,
+    models: modelHandle.getAllModels()
   });
-
   if (autoSave) {
     await mongoSessionRun(async (session) => {
-      await MongoAppVersion.updateOne(
+      // baseline 必须在事务内读取，事务重试时才能按最新草稿重新计算资源快照。
+      const resources = await resolveAppResourcesByPermission({
+        appId,
+        extracted,
+        tmbId,
+        isRoot,
+        blockOnUnauthorized: false,
+        session
+      });
+      await MongoAppVersion.findOneAndUpdate(
         {
           appId,
           isAutoSave: true
@@ -101,31 +81,28 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
         {
           tmbId,
           appId,
+          isAutoSave: true,
           nodes: normalizedWorkflow.nodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
-          referenceSnapshots: normalizedWorkflow.referenceSnapshots,
           versionName: i18nT('app:auto_save'),
           time: new Date(),
-          resourceRefs
+          resources
         },
 
-        { session, upsert: true }
+        { session, upsert: true, new: true }
       );
 
-      await MongoApp.updateOne(
+      const updateResult = await MongoApp.updateOne(
         { _id: appId },
-        {
-          modules: normalizedWorkflow.nodes,
-          edges: normalizedWorkflow.edges,
-          chatConfig: normalizedWorkflow.chatConfig,
-          referenceSnapshots: normalizedWorkflow.referenceSnapshots,
-          updateTime: new Date()
-        },
-        {
-          session
-        }
+        { $set: { updateTime: new Date() } },
+        { session }
       );
+      if (updateResult.matchedCount !== 1) throw AppErrEnum.unExist;
+    });
+
+    updateParentFoldersUpdateTime({
+      parentId: app.parentId
     });
 
     addAuditLog({
@@ -144,6 +121,16 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   }
 
   await mongoSessionRun(async (session) => {
+    // baseline 必须在事务内读取，事务重试时才能按最新草稿重新计算资源快照。
+    const resources = await resolveAppResourcesByPermission({
+      appId,
+      extracted,
+      tmbId,
+      isRoot,
+      blockOnUnauthorized: !!isPublish,
+      session
+    });
+
     // create version histories
     const [{ _id }] = await MongoAppVersion.create(
       [
@@ -152,11 +139,10 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
           nodes: normalizedWorkflow.nodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
-          referenceSnapshots: normalizedWorkflow.referenceSnapshots,
           isPublish,
           versionName,
           tmbId,
-          resourceRefs
+          resources
         }
       ],
       { session, ordered: true }
@@ -164,13 +150,9 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
 
     // update app
     const setUpdate = {
-      modules: normalizedWorkflow.nodes,
-      edges: normalizedWorkflow.edges,
-      chatConfig: normalizedWorkflow.chatConfig,
-      referenceSnapshots: normalizedWorkflow.referenceSnapshots,
       updateTime: new Date(),
       version: 'v2',
-      ...(isPublish && { resourceRefs }),
+      ...(isPublish && { publishedVersionId: _id }),
       ...(isPublish && normalizedWorkflow.chatConfig.scheduledTriggerConfig?.cronString
         ? {
             scheduledTriggerConfig: normalizedWorkflow.chatConfig.scheduledTriggerConfig,
@@ -181,7 +163,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
         : {}),
       'pluginData.nodeVersion': _id
     };
-    await MongoApp.updateOne(
+    const updateResult = await MongoApp.updateOne(
       { _id: appId },
       {
         $set: setUpdate,
@@ -193,6 +175,11 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
         session
       }
     );
+    if (updateResult.matchedCount !== 1) throw AppErrEnum.unExist;
+  });
+
+  updateParentFoldersUpdateTime({
+    parentId: app.parentId
   });
 
   (async () => {

@@ -60,6 +60,17 @@ const Wechat = ({
     }
   );
 
+  const { runAsync: onDelShareChat, loading: isDeleting } = useRequest(
+    async (id: string) => {
+      await delShareChatById(id);
+      void Promise.all([refetch(), onRefreshOutLinkCounts()]);
+    },
+    {
+      successToast: t('common:delete_success'),
+      errorToast: t('common:delete_failed')
+    }
+  );
+
   const statusBadge = (status?: string) => {
     const map: Record<string, { colorSchema: ColorSchemaType; label: string }> = {
       online: { colorSchema: 'green', label: t('publish:wechat.status.online') },
@@ -212,15 +223,7 @@ const Wechat = ({
                           {
                             label: t('common:Delete'),
                             icon: 'delete',
-                            onClick: async () => {
-                              setIsLoading(true);
-                              try {
-                                await delShareChatById(item._id);
-                                void Promise.all([refetch(), onRefreshOutLinkCounts()]);
-                              } finally {
-                                setIsLoading(false);
-                              }
-                            }
+                            onClick: () => onDelShareChat(item._id)
                           }
                         ]
                       }
@@ -261,7 +264,7 @@ const Wechat = ({
         />
       )}
 
-      <Loading loading={isFetching} fixed={false} />
+      <Loading loading={isFetching || isDeleting} fixed={false} />
     </Box>
   );
 };

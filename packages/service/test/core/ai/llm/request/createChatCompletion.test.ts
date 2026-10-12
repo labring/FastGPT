@@ -3,9 +3,14 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import { createChatCompletion } from '@fastgpt/service/core/ai/llm/request/createChatCompletion';
 
-vi.mock('@fastgpt/service/core/ai/config', () => ({
-  getAIApi: vi.fn()
-}));
+vi.mock('@fastgpt/service/core/ai/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/core/ai/config')>();
+  return {
+    ...actual,
+    getAIApi: vi.fn(),
+    getAiproxyScopeHeaders: vi.fn(() => ({}))
+  };
+});
 
 const mockGetAIApi = vi.mocked(getAIApi);
 

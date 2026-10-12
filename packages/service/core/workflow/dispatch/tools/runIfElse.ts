@@ -48,14 +48,22 @@ function isEmpty(value: any) {
 function isInclude(value: any, target: any) {
   if (Array.isArray(value)) {
     return value.map((item: any) => String(item)).includes(target);
-  } else if (typeof value === 'string') {
-    return value.includes(target);
+  } else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    // any 类型的变量也提供「包含/不包含」，运行时可能拿到数字、布尔等非字符串值；
+    // 与 startWith/endWith 一样先转成字符串再匹配，直接返回 false 会让「不包含」恒真。
+    return String(value).includes(target);
   } else {
     return false;
   }
 }
 
 function checkCondition(condition: VariableConditionEnum, inputValue: any, value: any) {
+  // any 类型的变量也提供「开始为/结束为」，运行时可能拿到数字、布尔等非字符串值；
+  // 与 equalTo 一样先转成字符串，直接调用 trim 会抛 TypeError 导致整个判断器报错。
+  // null/undefined 仍视为不匹配。
+  const getInputText = () =>
+    inputValue === undefined || inputValue === null ? undefined : String(inputValue).trim();
+
   const operations: Record<VariableConditionEnum, () => boolean> = {
     [VariableConditionEnum.isEmpty]: () => isEmpty(inputValue),
     [VariableConditionEnum.isNotEmpty]: () => !isEmpty(inputValue),
@@ -74,21 +82,30 @@ function checkCondition(condition: VariableConditionEnum, inputValue: any, value
     [VariableConditionEnum.notInclude]: () => !isInclude(inputValue, value),
 
     // string
-    [VariableConditionEnum.startWith]: () => inputValue?.trim()?.startsWith(value),
-    [VariableConditionEnum.endWith]: () => inputValue?.trim()?.endsWith(value),
+    [VariableConditionEnum.startWith]: () => getInputText()?.startsWith(value) ?? false,
+    [VariableConditionEnum.endWith]: () => getInputText()?.endsWith(value) ?? false,
     [VariableConditionEnum.reg]: () => {
-      if (typeof inputValue !== 'string' || !value) return false;
-      if (value.startsWith('/')) {
-        value = value.slice(1);
+      // 与「开始为/结束为」一致：any 类型变量运行时可能是数字、布尔等非字符串值，按文本匹配；
+      // 右侧选择引用变量时，正则本身也可能不是字符串，直接调用 startsWith 会抛 TypeError。
+      const inputText = getInputText();
+      if (inputText === undefined || value === undefined || value === null || value === '') {
+        return false;
       }
-      if (value.endsWith('/')) {
-        value = value.slice(0, -1);
+      let pattern = String(value);
+      if (pattern.startsWith('/')) {
+        pattern = pattern.slice(1);
+      }
+      if (pattern.endsWith('/')) {
+        pattern = pattern.slice(0, -1);
+      }
+      // 空数组等引用值字符串化后为空模式；空模式会匹配任意输入，
+      // 不能把缺失模式当成成功条件。
+      if (pattern === '') {
+        return false;
       }
 
-      const reg = new RegExp(value, 'g');
-      const result = reg.test(inputValue.trim());
-
-      return result;
+      const reg = new RegExp(pattern, 'g');
+      return reg.test(inputText);
     },
 
     // array

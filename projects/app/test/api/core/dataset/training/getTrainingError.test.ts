@@ -40,7 +40,7 @@ describe('training error list test', () => {
         datasetId: dataset._id,
         collectionId: collection._id,
         billId: 'test',
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.rebuildIndex,
         retryCount: 0,
         errorMsg: 'chunk first in insert order',
         chunkIndex: 0
@@ -63,7 +63,7 @@ describe('training error list test', () => {
         datasetId: dataset._id,
         collectionId: collection._id,
         billId: 'test',
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.rebuildIndex,
         retryCount: 0,
         errorMsg: 'test',
         chunkIndex: i
@@ -104,7 +104,7 @@ describe('training error list test', () => {
     expect(res.data.list.length).toBe(10);
     expect(
       res.data.list.map((item) => ('mode' in item ? item.mode : undefined)).slice(0, 2)
-    ).toEqual([TrainingModeEnum.parse, TrainingModeEnum.chunk]);
+    ).toEqual([TrainingModeEnum.parse, TrainingModeEnum.rebuildIndex]);
     expect(res.data.list.every((item) => 'mode' in item)).toBe(true);
     expect(typeof res.data.list[0].dataId).toBe('string');
   });

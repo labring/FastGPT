@@ -1,7 +1,7 @@
 import CostTooltip from '@/components/core/app/tool/CostTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getModelDefault } from '@/web/core/ai/model/modelData';
-import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
+import { getNewToolPreviewNode } from '@/web/core/app/api/tool';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { applyWorkflowStartInputAutoFill } from '@/web/core/workflow/workflowStartAutoFill';
 import {
@@ -19,7 +19,7 @@ import {
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { getToolIdentityKey, isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -286,9 +286,8 @@ const NodeTemplateList = ({
             ].includes(template.flowNodeType);
 
             if (shouldLoadPreviewNode) {
-              const node = await getClientToolPreviewNode({
+              const node = await getNewToolPreviewNode({
                 appId: template.id,
-                getLatestVersion: true,
                 source: template.source
               });
               return {

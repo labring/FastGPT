@@ -23,6 +23,8 @@ import {
   getWorkflowFinalResponseData
 } from '@/service/core/workflow/nodeResponse';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { prepareWorkflowDebugResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
+import { getAppDraftWorkflow } from '@fastgpt/service/core/app/version/controller';
 
 async function handler(req: NextApiRequest, res: NextApiResponse): Promise<WorkflowDebugResponse> {
   const {
@@ -39,13 +41,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
   } = parseApiInput({ req, bodySchema: WorkflowDebugBodySchema }).body;
 
   /* user auth */
-  const [{ tmbId }, { app }] = await Promise.all([
+  const [{ tmbId, isRoot }, { app }] = await Promise.all([
     authCert({
       req,
       authToken: true
     }),
     authApp({ req, authToken: true, appId, per: ReadPermissionVal })
   ]);
+  // 兼容未传 chatConfig 的旧客户端；App 主表不再保存工作流配置，默认值从草稿 Version 读取。
+  const workflowChatConfig = chatConfig ?? (await getAppDraftWorkflow(appId)).chatConfig;
 
   const interactive = getLastInteractiveValue(history);
   const newUsageId = usageId
@@ -58,7 +62,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
         source: UsageSourceEnum.fastgpt
       });
   const responseChatItemId = getNanoid();
-  const workflowChatConfig = chatConfig ?? app.chatConfig;
+  const resourceContext = await prepareWorkflowDebugResourceContext({
+    appId,
+    nodes,
+    chatConfig: workflowChatConfig,
+    teamId: String(app.teamId),
+    tmbId,
+    isRoot
+  });
   const {
     query: workflowQuery,
     maxFileAmount,
@@ -102,7 +113,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
     nodeResponseWriteConfig: {
       persistToDb: false,
       retainInMemory: true
-    }
+    },
+    resourceContext
   });
   const nodeResponses = composeDebugNodeResponseMap({
     detailTree: getWorkflowFinalResponseData({

@@ -22,12 +22,16 @@ const mocks = vi.hoisted(() => ({
   getNextTimeByCronStringAndTimezone: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/common/logger', () => ({
-  getLogger: () => ({
-    info: vi.fn(),
-    error: vi.fn()
-  })
-}));
+vi.mock('@fastgpt/service/common/logger', () => {
+  const logCategory = new Proxy({}, { get: () => logCategory });
+  return {
+    LogCategories: logCategory,
+    getLogger: () => ({
+      info: vi.fn(),
+      error: vi.fn()
+    })
+  };
+});
 
 vi.mock('@fastgpt/service/support/wallet/sub/utils', () => ({
   getTeamPlanStatus: vi.fn(async () => ({ standard: { maxUploadFileCount: 20 } }))
@@ -105,7 +109,8 @@ describe('getScheduleTriggerApp', () => {
       versionId: 'version-id',
       nodes: [{ nodeId: 'start' }],
       edges: [],
-      chatConfig: { variables: [] }
+      chatConfig: { variables: [] },
+      resources: []
     });
     mocks.getWorkflowEntryNodeIds.mockReturnValue(['start']);
     mocks.storeNodes2RuntimeNodes.mockReturnValue([{ nodeId: 'runtime-start' }]);
@@ -117,10 +122,18 @@ describe('getScheduleTriggerApp', () => {
       durationSeconds: 1.2,
       system_memories: { memory: 'value' },
       customFeedbacks: ['feedback-id'],
-      nodeResponseSummary: {
+      workflowRuntimeSummary: {
+        responseIds: [],
+        finishedNodeIds: [],
+        hasError: false,
         citeCollectionIds: [],
         errorCount: 0,
-        totalPoints: 0
+        totalPoints: 0,
+        hasLoopRunBreak: false,
+        hasToolStop: false,
+        hasNestedEnd: false,
+        llmInputTokens: 0,
+        llmOutputTokens: 0
       }
     });
     mocks.preChatRound.mockResolvedValue({
@@ -159,10 +172,18 @@ describe('getScheduleTriggerApp', () => {
     expect(saveInput).toMatchObject({
       chatId: dispatchInput.chatId,
       source: ChatSourceEnum.cronJob,
-      nodeResponseSummary: {
+      workflowRuntimeSummary: {
+        responseIds: [],
+        finishedNodeIds: [],
+        hasError: false,
         citeCollectionIds: [],
         errorCount: 0,
-        totalPoints: 0
+        totalPoints: 0,
+        hasLoopRunBreak: false,
+        hasToolStop: false,
+        hasNestedEnd: false,
+        llmInputTokens: 0,
+        llmOutputTokens: 0
       }
     });
   });

@@ -4,7 +4,9 @@ export enum SystemConfigsTypeEnum {
   systemMsgModal = 'systemMsgModal',
   license = 'license',
   operationalAd = 'operationalAd',
-  activityAd = 'activityAd'
+  activityAd = 'activityAd',
+  instanceId = 'instanceId',
+  modelStatusProbe = 'modelStatusProbe'
 }
 
 export const SystemConfigsTypeMap = {
@@ -25,5 +27,11 @@ export const SystemConfigsTypeMap = {
   },
   [SystemConfigsTypeEnum.activityAd]: {
     label: 'activityAd'
+  },
+  [SystemConfigsTypeEnum.instanceId]: {
+    label: '部署实例 ID'
+  },
+  [SystemConfigsTypeEnum.modelStatusProbe]: {
+    label: '模型状态探测'
   }
 };

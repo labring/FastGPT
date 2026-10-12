@@ -24,7 +24,7 @@ import type {
 } from '@fastgpt/global/core/app/formEdit/type';
 import {
   getAppToolTemplates,
-  getClientToolPreviewNode,
+  getNewToolPreviewNode,
   getTeamAppTemplatesV2
 } from '@/web/core/app/api/tool';
 import { AppTypeEnum, AppTypeList, ToolTypeList } from '@fastgpt/global/core/app/constants';
@@ -64,7 +64,7 @@ const toSkillLabelItem = (
   ...tool,
   id: getSkillId(tool.pluginId, tool.source),
   name: tool.name,
-  configStatus
+  configStatus: tool.pluginData?.error ? 'invalid' : configStatus
 });
 
 const toSystemToolItem = (item: NodeTemplateListItemType, parentId?: string): SkillItemType => {
@@ -116,7 +116,7 @@ const toAgentSkillLabelItem = (skill: SelectedAgentSkillItemType): SkillLabelIte
   avatar: skill.avatar || 'core/skill/default',
   intro: skill.description,
   flowNodeType: FlowNodeTypeEnum.tool,
-  configStatus: skill.isDeleted ? 'invalid' : 'noConfig'
+  configStatus: skill.error ? 'invalid' : 'noConfig'
 });
 
 export const useSkillManager = ({
@@ -325,8 +325,7 @@ export const useSkillManager = ({
         skillId: targetSkill._id,
         name: targetSkill.name,
         description: targetSkill.description,
-        avatar: targetSkill.avatar,
-        isDeleted: false
+        avatar: targetSkill.avatar
       };
       if (!onAddAgentSkill?.(selectedSkill)) return;
       const skill = toAgentSkillLabelItem(selectedSkill);
@@ -399,9 +398,8 @@ export const useSkillManager = ({
         };
       }
 
-      const toolTemplate = await getClientToolPreviewNode({
+      const toolTemplate = await getNewToolPreviewNode({
         appId: toolId,
-        getLatestVersion: true,
         source
       });
 

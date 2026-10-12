@@ -194,10 +194,8 @@ const ToolkitMarketplace = () => {
 
   // 处理搜索框失焦,更新 URL
   const handleSearchBlur = useCallback(() => {
-    if (router.isReady) {
-      updateUrlParams(searchText, selectedTagIds);
-    }
-  }, [router.isReady, searchText, selectedTagIds, updateUrlParams]);
+    updateUrlParams(searchText, selectedTagIds);
+  }, [searchText, selectedTagIds, updateUrlParams]);
 
   const handleSourceSelect = useCallback(
     (nextSource?: MarketplaceSourceFilterValue) => {
@@ -266,7 +264,7 @@ const ToolkitMarketplace = () => {
 
   useEffect(() => {
     const currentDetailQuery = getCurrentDetailQuery();
-    if (!router.isReady || !currentDetailQuery.pluginId) return;
+    if (!currentDetailQuery.pluginId) return;
 
     const queryDetail = {
       pluginId: currentDetailQuery.pluginId,
@@ -297,14 +295,12 @@ const ToolkitMarketplace = () => {
 
       return queryTool;
     });
-  }, [displayTools, getCurrentDetailQuery, router.isReady]);
+  }, [displayTools, getCurrentDetailQuery]);
 
   // 监听 selectedTagIds 变化,更新 URL
   useEffect(() => {
-    if (router.isReady) {
-      updateUrlParams(searchText, selectedTagIds);
-    }
-  }, [router.isReady, searchText, selectedTagIds, selectedSource, updateUrlParams]);
+    updateUrlParams(searchText, selectedTagIds);
+  }, [searchText, selectedTagIds, selectedSource, updateUrlParams]);
 
   const onDownload = useCallback(async (toolId: string, version?: string) => {
     try {

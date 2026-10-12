@@ -11,7 +11,10 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
-import { summarizeRuntimeNodeResponses } from '@fastgpt/service/core/workflow/dispatch/utils';
+import {
+  createNodeSummary,
+  summarizeRuntimeNodeResponses
+} from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
 import {
@@ -82,6 +85,7 @@ describe('dispatchRunPlugin', () => {
     'honors parent stream=$stream and child forbidStream=$forbidStream',
     async ({ stream, forbidStream, expectedStream }) => {
       const workflowStreamResponse = vi.fn();
+      const nodeSummary = createNodeSummary();
       const event = workflowSseEvent.answerDelta('child chunk');
       getSystemToolWorkflowRuntimeMock.mockResolvedValue({
         id: 'commercial-system-workflow',
@@ -98,10 +102,14 @@ describe('dispatchRunPlugin', () => {
           flowUsages: [],
           assistantResponses: [{ text: { content: 'child chunk' } }],
           runTimes: 1,
-          runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [])
+          workflowRuntimeSummary: {
+            ...summarizeRuntimeNodeResponses(undefined, []),
+            llmInputTokens: 23,
+            llmOutputTokens: 8
+          }
         };
       });
-      await dispatchRunPlugin({
+      const result = await dispatchRunPlugin({
         node: {
           nodeId: 'toolNode',
           name: 'Tool',
@@ -124,9 +132,15 @@ describe('dispatchRunPlugin', () => {
         runtimeNodes: [],
         runtimeNodesMap: new Map(),
         runtimeEdges: [],
+        nodeSummary,
         stream,
         workflowStreamResponse: stream ? workflowStreamResponse : undefined
       } as any);
+      expect(nodeSummary).toMatchObject({
+        llmInputTokens: 23,
+        llmOutputTokens: 8
+      });
+      expect(result.responseData).not.toHaveProperty('inputTokens');
       expect(runWorkflowMock).toHaveBeenCalledWith(
         expect.objectContaining({
           stream: expectedStream,
@@ -151,7 +165,7 @@ describe('dispatchRunPlugin', () => {
     });
     runWorkflowMock.mockResolvedValue({
       flowUsages: [{ moduleName: 'Failed child usage', totalPoints: 3 }],
-      runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [
+      workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, [
         {
           id: 'failedResponse',
           nodeId: 'failedNode',
@@ -189,7 +203,8 @@ describe('dispatchRunPlugin', () => {
       usagePush: vi.fn(),
       runtimeNodes: [],
       runtimeNodesMap: new Map(),
-      runtimeEdges: []
+      runtimeEdges: [],
+      nodeSummary: createNodeSummary()
     } as any);
 
     expect(computedAppToolUsageMock).toHaveBeenCalledWith(
@@ -212,7 +227,7 @@ describe('dispatchRunPlugin', () => {
     });
     runWorkflowMock.mockResolvedValue({
       flowUsages: [{ moduleName: 'Child usage', totalPoints: 3 }],
-      runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [
+      workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, [
         {
           id: 'pluginOutputResponse',
           nodeId: 'pluginOutput',
@@ -250,7 +265,8 @@ describe('dispatchRunPlugin', () => {
       usagePush: vi.fn(),
       runtimeNodes: [],
       runtimeNodesMap: new Map(),
-      runtimeEdges: []
+      runtimeEdges: [],
+      nodeSummary: createNodeSummary()
     } as any);
 
     expect(computedAppToolUsageMock).toHaveBeenCalledWith(expect.objectContaining({ error: true }));
@@ -327,7 +343,7 @@ describe('dispatchRunPlugin', () => {
       [DispatchNodeResponseKeyEnum.runTimes]: 1,
       [DispatchNodeResponseKeyEnum.toolResponse]: {},
       [DispatchNodeResponseKeyEnum.newVariables]: {},
-      runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [
+      workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, [
         {
           id: 'pluginOutputResponse',
           nodeId: 'pluginOutput',
@@ -338,6 +354,7 @@ describe('dispatchRunPlugin', () => {
       ])
     });
     const nodeResponseSink = { publish: vi.fn() } as any;
+    const nodeSummary = createNodeSummary();
 
     const result = await dispatchRunPlugin({
       node: {
@@ -367,12 +384,16 @@ describe('dispatchRunPlugin', () => {
       usagePush: vi.fn(),
       runtimeNodes: [],
       runtimeNodesMap: new Map(),
-      runtimeEdges: []
+      runtimeEdges: [],
+      nodeSummary
     } as any);
 
     expect(runWorkflowMock).toHaveBeenCalledTimes(1);
     const childWorkflowProps = runWorkflowMock.mock.calls[0][0];
-    expect(childWorkflowProps.nodeResponseSink).toBeUndefined();
+    expect(childWorkflowProps.nodeResponseSink).toEqual(
+      expect.objectContaining({ publish: expect.any(Function) })
+    );
+    expect(childWorkflowProps.nodeResponseSink).not.toBe(nodeResponseSink);
     expect(childWorkflowProps.runtimeNodes[0].inputs).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ key: 'internal', value: 'internal default' })
@@ -384,6 +405,7 @@ describe('dispatchRunPlugin', () => {
       moduleLogo: 'system-avatar',
       childResponseCount: 1
     });
+    expect(nodeSummary).toMatchObject({ llmInputTokens: 0, llmOutputTokens: 0 });
     expect(result.data?.[NodeOutputKeyEnum.errorText]).toBeUndefined();
   });
 
@@ -510,7 +532,7 @@ describe('dispatchRunPlugin', () => {
         assistantResponses: [],
         runTimes: 1,
         system_memories: undefined,
-        runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [
+        workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, [
           {
             id: 'pluginOutputResponse',
             nodeId: 'pluginOutput',

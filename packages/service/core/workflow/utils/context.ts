@@ -16,11 +16,13 @@ import type {
   ChatItemMiniType,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type';
+import type { WorkflowResourceContext } from './resource';
 
 type ContextType = {
   mcpClientMemory: Record<string, MCPClient>;
   fileContext?: WorkflowFileContext;
   fileRegistrar?: WorkflowFileRegistrar;
+  resourceContext?: WorkflowResourceContext;
 };
 
 export const WorkflowContext = new AsyncLocalStorage<ContextType>();
@@ -49,6 +51,9 @@ export const getWorkflowFileMaxAmount = () => {
 
 /** 获取只供 Workflow 输入适配器使用的文件登记能力。 */
 export const getWorkflowFileRegistrar = () => WorkflowContext.getStore()?.fileRegistrar;
+
+/** 获取当前 App 运行时的只读资源快照。非 App 来源返回 undefined。 */
+export const getWorkflowResourceContext = () => WorkflowContext.getStore()?.resourceContext;
 
 /**
  * 为 Child 运行创建独立的聊天输入引用。
@@ -94,11 +99,14 @@ export const runWithDerivedWorkflowFileContext = async <T>({
   query = [],
   histories = [],
   files,
+  resourceContext,
   fn
 }: {
   query?: UserChatItemValueItemType[];
   histories?: ChatItemMiniType[];
   files: WorkflowFileInput[];
+  /** 传入时子工作流切换到该资源上下文；省略时继承父级。 */
+  resourceContext?: WorkflowResourceContext;
   fn: (scope: {
     resolveInputFile?: (file: ChatFileStoreValue) => Promise<string | undefined>;
     query: UserChatItemValueItemType[];
@@ -110,10 +118,20 @@ export const runWithDerivedWorkflowFileContext = async <T>({
   const parentFileContext = parentStore?.fileContext;
   if (!parentStore || !parentFileContext) {
     const childInputs = cloneChildChatInputs({ query, histories });
-    return fn({
-      ...childInputs,
-      filterFiles: (files) => cloneChildFiles(files)
-    });
+    const runChild = () =>
+      fn({
+        ...childInputs,
+        filterFiles: (files) => cloneChildFiles(files)
+      });
+    if (!resourceContext) return runChild();
+
+    return runWithContext(
+      {
+        mcpClientMemory: parentStore?.mcpClientMemory ?? {},
+        resourceContext
+      },
+      runChild
+    );
   }
 
   const maxFileAmount = Math.max(parentFileContext.limits.maxFileAmount, 0);
@@ -191,7 +209,8 @@ export const runWithDerivedWorkflowFileContext = async <T>({
   const childStore: ContextType = {
     ...parentStore,
     fileContext: childFileContext,
-    fileRegistrar: undefined
+    fileRegistrar: undefined,
+    resourceContext: resourceContext ?? parentStore.resourceContext
   };
 
   const resolveInputFile = async (file: ChatFileStoreValue) => {

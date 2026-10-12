@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Grid, IconButton, HStack, Flex } from '@chakra-ui/react';
+import { Box, Grid, IconButton, HStack, Flex, Checkbox } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -7,6 +7,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { Trans, useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import UserBox from '@fastgpt/web/components/common/UserBox';
+import PermissionIconText from '@/components/support/permission/IconText';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
@@ -20,11 +21,10 @@ import {
   AgentSkillTypeEnum
 } from '@fastgpt/global/core/ai/skill/constants';
 import {
+  batchMoveSkills,
   deleteSkill,
   postUpdateSkill,
   postCopySkill,
-  getAppsBySkillId,
-  getSkillListV2,
   resumeInheritPer,
   postChangeSkillOwner
 } from '@/web/core/skill/api';
@@ -34,13 +34,10 @@ import {
 } from '@/web/core/skill/collaborator';
 import { SkillRoleList } from '@fastgpt/global/support/permission/skill/constant';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
-import MyPopover from '@fastgpt/web/components/common/MyPopover';
-import type { ListAppsBySkillIdResponse } from '@fastgpt/global/core/ai/skill/api';
+import ReferencedAppsPopover from '@/pageComponents/dashboard/ReferencedAppsPopover';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import type { SelectOneResourceServer } from '@/components/common/folder/SelectOneResource';
-import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
 import SkillDashboardEmptyHero from '@/pageComponents/dashboard/skill/SkillDashboardEmptyHero';
@@ -58,133 +55,6 @@ import ResourceCardSkeleton from '@/pageComponents/dashboard/ResourceCardSkeleto
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
-
-// 5 行 × 48px = 240px
-const RELATED_APPS_MAX_H = '240px';
-
-const RelatedAppsContent = ({ skillId }: { skillId: string }) => {
-  const { t } = useTranslation();
-  const [data, setData] = useState<ListAppsBySkillIdResponse>({ list: [], hiddenCount: 0 });
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    getAppsBySkillId(skillId)
-      .then(setData)
-      .catch(() => {})
-      .finally(() => setIsLoading(false));
-  }, [skillId]);
-
-  const { list, hiddenCount } = data;
-
-  return (
-    <MyBox isLoading={isLoading} minH={isLoading ? '80px' : 'auto'} px={'12px'} py={'8px'}>
-      <Box maxH={RELATED_APPS_MAX_H} overflowY={'auto'}>
-        <Flex>
-          <Flex flex={'1 0 0'} minW={0} direction={'column'}>
-            {list.map((app) => (
-              <Flex
-                key={app._id}
-                h={'48px'}
-                align={'center'}
-                gap={'8px'}
-                px={'12px'}
-                borderBottom={'sm'}
-                _last={{ borderBottom: 'none' }}
-                overflow={'hidden'}
-              >
-                <Avatar src={app.avatar} w={'20px'} h={'20px'} borderRadius={'sm'} flexShrink={0} />
-                <Box
-                  flex={'1 1 0'}
-                  minW={0}
-                  fontSize={'14px'}
-                  lineHeight={'20px'}
-                  color={'myGray.900'}
-                  overflow={'hidden'}
-                  textOverflow={'ellipsis'}
-                  whiteSpace={'nowrap'}
-                >
-                  {app.name}
-                </Box>
-              </Flex>
-            ))}
-          </Flex>
-          <Flex w={'120px'} flexShrink={0} direction={'column'}>
-            {list.map((app) => (
-              <Flex
-                key={app._id}
-                h={'48px'}
-                align={'center'}
-                gap={'4px'}
-                px={'12px'}
-                borderBottom={'sm'}
-                _last={{ borderBottom: 'none' }}
-                overflow={'hidden'}
-              >
-                <MyIcon
-                  name={'common/lineUser'}
-                  w={'13px'}
-                  h={'14px'}
-                  color={'myGray.400'}
-                  flexShrink={0}
-                />
-                <Box
-                  flex={'1 1 0'}
-                  minW={0}
-                  fontSize={'14px'}
-                  lineHeight={'20px'}
-                  color={'myGray.500'}
-                  overflow={'hidden'}
-                  textOverflow={'ellipsis'}
-                  whiteSpace={'nowrap'}
-                >
-                  {app.sourceMember?.name || '-'}
-                </Box>
-              </Flex>
-            ))}
-          </Flex>
-        </Flex>
-      </Box>
-      {hiddenCount > 0 && (
-        <Box
-          mt={'8px'}
-          fontSize={'12px'}
-          lineHeight={'16px'}
-          color={'myGray.500'}
-          letterSpacing={'0.4px'}
-        >
-          {t('skill:related_apps_hidden', { count: hiddenCount })}
-        </Box>
-      )}
-    </MyBox>
-  );
-};
-
-const RelatedAppsPopover = ({ skillId, count }: { skillId: string; count: number }) => {
-  const { t } = useTranslation();
-
-  return (
-    <MyPopover
-      trigger={'hover'}
-      placement={'bottom'}
-      hasArrow
-      w={'320px'}
-      p={0}
-      borderRadius={'6px'}
-      boxShadow={'3.5'}
-      border={'none'}
-      Trigger={
-        <HStack spacing={1} cursor={'pointer'}>
-          <Box color={'myGray.500'}>{t('skill:related_count')}</Box>
-          <Box color={'myGray.500'} fontWeight={'medium'}>
-            {count}
-          </Box>
-        </HStack>
-      }
-    >
-      {() => <RelatedAppsContent skillId={skillId} />}
-    </MyPopover>
-  );
-};
 
 const List = ({
   onClickCreate,
@@ -211,7 +81,11 @@ const List = ({
     listFilters,
     columnCount,
     pageSize,
-    parentId
+    parentId,
+    isBatchMode,
+    selectedSkillIds,
+    onToggleSelectSkill,
+    getSkillFolderList
   } = useContextSelector(SkillListContext, (v) => ({
     skills: v.skills,
     refreshSkills: v.refreshSkills,
@@ -224,7 +98,11 @@ const List = ({
     listFilters: v.listFilters,
     columnCount: v.columnCount,
     pageSize: v.pageSize,
-    parentId: v.parentId
+    parentId: v.parentId,
+    isBatchMode: v.isBatchMode,
+    selectedSkillIds: v.selectedSkillIds,
+    onToggleSelectSkill: v.onToggleSelectSkill,
+    getSkillFolderList: v.getSkillFolderList
   }));
 
   const [editedSkill, setEditedSkill] = useState<EditResourceInfoFormType>();
@@ -239,9 +117,9 @@ const List = ({
   const isInitialLoading = !isEmpty && skills.length === 0 && isFetchingSkills;
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: skills,
-    listKey: `${router.pathname}-${parentId || ''}-${searchKey}-${listFilters.creator.mode}-${listFilters.creator.tmbIds.join(',')}-${listFilters.sort}-${columnCount}-${pageSize}-${isInitialLoading}`,
+    listKey: `${router.pathname}-${parentId || ''}-${searchKey}-${listFilters.creator.mode}-${listFilters.creator.tmbIds.join(',')}-${listFilters.sort}-${columnCount}-${pageSize}-${isInitialLoading}-${isBatchMode}`,
     scrollContainerRef,
-    reservedSlotCount: isInitialLoading ? 0 : 1,
+    reservedSlotCount: isInitialLoading || isBatchMode ? 0 : 1,
     estimatedRowHeight: 160,
     estimatedRowGap: 20,
     loadingItemCount: isFetchingSkills
@@ -308,8 +186,8 @@ const List = ({
   const { runAsync: onMoveSkill } = useRequest(
     async (targetId: ParentIdType) => {
       if (!moveSkillId) return;
-      return postUpdateSkill({
-        skillId: moveSkillId,
+      return batchMoveSkills({
+        ids: [moveSkillId],
         parentId: targetId === 'root' ? null : (targetId as string)
       });
     },
@@ -322,32 +200,6 @@ const List = ({
     }
   );
 
-  // 获取技能文件夹列表
-  const getSkillFolderListForMove = useMemo<SelectOneResourceServer>(
-    () =>
-      ({ parentId, offset, pageSize }, cancelToken) =>
-        getSkillListV2(
-          {
-            source: 'mine',
-            type: AgentSkillTypeEnum.folder,
-            parentId,
-            offset,
-            pageSize
-          },
-          cancelToken
-        ).then(({ list, total }) => ({
-          total,
-          list: list.map((item) => ({
-            id: item._id,
-            name: item.name,
-            avatar: FolderImgUrl,
-            isFolder: true,
-            disabled: item._id === moveSkillId || !item.permission.hasWritePer
-          }))
-        })),
-    [moveSkillId]
-  );
-
   const renderSkillCard = (skill: (typeof skills)[number]) => {
     const displayTime = getResourceListDisplayTime({
       sort: listFilters.sort,
@@ -356,7 +208,6 @@ const List = ({
     });
     const isFolder = skill.type === AgentSkillTypeEnum.folder;
     const isPersonal = skill.source === AgentSkillSourceEnum.personal;
-    const relatedAppsCount = skill.appCount ?? 0;
     const isSkillReady =
       isFolder ||
       (skill.creationStatus === AgentSkillCreationStatusEnum.ready && !!skill.currentVersionId);
@@ -384,23 +235,27 @@ const List = ({
                     });
                   }
                 },
-                {
-                  icon: 'common/file/move',
-                  type: 'grayBg' as const,
-                  label: t('common:move_to'),
-                  onClick: () => setMoveSkillId(skill._id)
-                },
-                {
-                  icon: 'key',
-                  type: 'grayBg' as const,
-                  label: t('skill:permission_settings'),
-                  onClick: () => {
-                    setEditPerSkillId(skill._id);
-                  }
-                }
+                ...(skill.permission?.hasManagePer
+                  ? [
+                      {
+                        icon: 'common/file/move',
+                        type: 'grayBg' as const,
+                        label: t('common:move_to'),
+                        onClick: () => setMoveSkillId(skill._id)
+                      },
+                      {
+                        icon: 'key',
+                        type: 'grayBg' as const,
+                        label: t('common:permission.Permission'),
+                        onClick: () => {
+                          setEditPerSkillId(skill._id);
+                        }
+                      }
+                    ]
+                  : [])
               ]
             },
-            ...(!isFolder
+            ...(!isFolder && skill.permission?.hasWritePer
               ? [
                   {
                     children: [
@@ -419,37 +274,45 @@ const List = ({
               : [])
           ]
         : []),
-      {
-        children: [
-          {
-            type: 'danger' as const,
-            icon: 'delete',
-            label: t('common:Delete'),
-            onClick: () =>
-              openConfirmDelete({
-                customContent:
-                  !isFolder && relatedAppsCount > 0 ? (
-                    <Trans
-                      i18nKey={i18nT('skill:confirm_delete_with_refs')}
-                      values={{ count: relatedAppsCount }}
-                      components={{ bold: <Box as={'span'} fontWeight={'600'} /> }}
-                    />
-                  ) : null,
-                onConfirm: () => onClickDeleteSkill(skill._id),
-                confirmText: t('skill:confirm_delete_action'),
-                confirmButtonVariant: 'dangerFill',
-                inputConfirmText: skill.name
-              })()
-          }
-        ]
-      }
+      ...(skill.permission?.isOwner
+        ? [
+            {
+              children: [
+                {
+                  type: 'danger' as const,
+                  icon: 'delete',
+                  label: t('common:Delete'),
+                  onClick: () =>
+                    openConfirmDelete({
+                      customContent:
+                        !isFolder && skill.appCount !== undefined && skill.appCount > 0 ? (
+                          <Trans
+                            i18nKey={i18nT('skill:confirm_delete_with_refs')}
+                            values={{ count: skill.appCount }}
+                            components={{ bold: <Box as={'span'} fontWeight={'600'} /> }}
+                          />
+                        ) : null,
+                      onConfirm: () => onClickDeleteSkill(skill._id),
+                      confirmText: t('skill:confirm_delete_action'),
+                      confirmButtonVariant: 'dangerFill',
+                      inputConfirmText: skill.name
+                    })()
+                }
+              ]
+            }
+          ]
+        : [])
     ];
+
+    const isSelected = selectedSkillIds.includes(skill._id);
+    const hasBatchPer = Boolean(skill.permission?.hasManagePer || skill.permission?.isOwner);
 
     return (
       <MyBox
         key={skill._id}
         data-virtual-item=""
-        py={4}
+        pt={5}
+        pb={3}
         px={5}
         cursor={'pointer'}
         border={'base'}
@@ -459,25 +322,46 @@ const List = ({
         display={'flex'}
         flexDirection={'column'}
         minW={0}
-        _hover={{
-          borderColor: 'primary.300',
-          boxShadow: '1.5',
-          '& .more': {
-            display: 'flex'
+        _hover={
+          isBatchMode
+            ? {
+                borderColor: isSelected ? 'primary.600' : 'primary.300',
+                boxShadow: '1.5'
+              }
+            : {
+                borderColor: 'primary.300',
+                boxShadow: '1.5',
+                '& .more': {
+                  display: 'flex'
+                },
+                '& .time': {
+                  display: ['flex', 'none']
+                }
+              }
+        }
+        {...(isBatchMode && {
+          onClick: (e: React.MouseEvent) => {
+            e.stopPropagation();
+            if (hasBatchPer) {
+              onToggleSelectSkill(skill._id);
+            }
           },
-          '& .time': {
-            display: ['flex', 'none']
+          ...(isSelected && {
+            borderColor: 'primary.600',
+            bg: 'primary.50'
+          })
+        })}
+        {...(!isBatchMode && {
+          onClick: () => {
+            if (isFolder) {
+              setSearchKey('');
+              router.push({ query: { ...router.query, parentId: skill._id } });
+            } else {
+              if (isSkillReady && !guardSkillSandboxOperation()) return;
+              router.push(`/skill/detail?skillId=${skill._id}`);
+            }
           }
-        }}
-        onClick={() => {
-          if (isFolder) {
-            setSearchKey('');
-            router.push({ query: { ...router.query, parentId: skill._id } });
-          } else {
-            if (isSkillReady && !guardSkillSandboxOperation()) return;
-            router.push(`/skill/detail?skillId=${skill._id}`);
-          }
-        }}
+        })}
       >
         <Grid templateColumns={'auto minmax(0, 1fr) auto'} alignItems={'center'} gap={2}>
           {isFolder ? (
@@ -497,18 +381,36 @@ const List = ({
               </Box>
             </MyTooltip>
           </Box>
-          {(isSkillCreating || isSkillCreateFailed) && (
-            <Box
-              px={2}
-              py={0.5}
-              borderRadius={'sm'}
-              fontSize={'10px'}
-              color={isSkillCreateFailed ? 'red.600' : 'primary.600'}
-              bg={isSkillCreateFailed ? 'red.50' : 'primary.50'}
-              flexShrink={0}
-            >
-              {isSkillCreateFailed ? t('common:failed') : t('skill:generating')}
-            </Box>
+          {isBatchMode ? (
+            hasBatchPer ? (
+              <Checkbox size={'sm'} isChecked={isSelected} pointerEvents={'none'} />
+            ) : (
+              <MyTooltip label={t('common:read_only_no_batch_permission')}>
+                <Box
+                  w={'16px'}
+                  h={'16px'}
+                  borderRadius={'xs'}
+                  border={'1px solid'}
+                  borderColor={'#CECECE'}
+                  bg={'#F9F9F9'}
+                  cursor={'not-allowed'}
+                />
+              </MyTooltip>
+            )
+          ) : (
+            (isSkillCreating || isSkillCreateFailed) && (
+              <Box
+                px={2}
+                py={0.5}
+                borderRadius={'sm'}
+                fontSize={'10px'}
+                color={isSkillCreateFailed ? 'red.600' : 'primary.600'}
+                bg={isSkillCreateFailed ? 'red.50' : 'primary.50'}
+                flexShrink={0}
+              >
+                {isSkillCreateFailed ? t('common:failed') : t('skill:generating')}
+              </Box>
+            )
           )}
         </Grid>
 
@@ -526,24 +428,29 @@ const List = ({
         </Box>
 
         <HStack h={'24px'} fontSize={'mini'} color={'myGray.500'} w="full">
-          <HStack flex={'1 0 0'} spacing={3}>
+          <HStack flex={'1 0 0'} minW={0} spacing={3.5}>
             <UserBox
               sourceMember={skill.sourceMember}
               fontSize="xs"
               avatarSize="1rem"
-              spacing={1}
+              spacing={0.5}
+              minW={0}
+            />
+            <PermissionIconText
+              flexShrink={0}
+              private={skill.private}
+              color={'myGray.500'}
+              iconColor={'myGray.400'}
             />
             {!isFolder && isSkillReady && (
               <>
-                {relatedAppsCount > 0 ? (
-                  <RelatedAppsPopover skillId={skill._id} count={relatedAppsCount} />
-                ) : (
-                  <HStack spacing={1}>
-                    <Box color={'myGray.500'}>{t('skill:related_count')}</Box>
-                    <Box color={'myGray.500'} fontWeight={'medium'}>
-                      0
-                    </Box>
-                  </HStack>
+                {typeof skill.appCount === 'number' && (
+                  <ReferencedAppsPopover
+                    resourceId={skill._id}
+                    resourceType="skill"
+                    count={skill.appCount}
+                    trigger={'hover'}
+                  />
                 )}
               </>
             )}
@@ -555,21 +462,23 @@ const List = ({
                 <Box color={'myGray.500'}>{t(formatTimeToChatTime(displayTime))}</Box>
               </HStack>
             )}
-            {isPersonal && (
-              <Box className="more" display={['', 'none']} onClick={(e) => e.stopPropagation()}>
-                <MyMenu
-                  Button={
-                    <IconButton
-                      size={'xsSquare'}
-                      variant={'transparentBase'}
-                      icon={<MyIcon name={'more'} w={'0.875rem'} color={'myGray.500'} />}
-                      aria-label={''}
-                    />
-                  }
-                  menuList={menuList}
-                />
-              </Box>
-            )}
+            {!isBatchMode &&
+              isPersonal &&
+              (isFolder ? skill.permission?.hasManagePer : skill.permission?.hasWritePer) && (
+                <Box className="more" display={['', 'none']} onClick={(e) => e.stopPropagation()}>
+                  <MyMenu
+                    Button={
+                      <IconButton
+                        size={'xsSquare'}
+                        variant={'transparentBase'}
+                        icon={<MyIcon name={'more'} w={'0.875rem'} color={'myGray.500'} />}
+                        aria-label={''}
+                      />
+                    }
+                    menuList={menuList}
+                  />
+                </Box>
+              )}
           </HStack>
         </HStack>
       </MyBox>
@@ -633,7 +542,12 @@ const List = ({
             gridGap={5}
             alignItems={'stretch'}
           >
-            {onClickCreate ? <ListCreateCard onClick={onClickCreate} /> : <ForbiddenCreateButton />}
+            {!isBatchMode &&
+              (onClickCreate ? (
+                <ListCreateCard onClick={onClickCreate} />
+              ) : (
+                <ForbiddenCreateButton />
+              ))}
             {renderVirtualGridItems(renderSkillCard)}
           </Grid>
         )}
@@ -652,7 +566,7 @@ const List = ({
         {!!moveSkillId && (
           <MoveModal
             moveResourceId={moveSkillId}
-            server={getSkillFolderListForMove}
+            server={getSkillFolderList}
             title={t('skill:move_skill')}
             onClose={() => setMoveSkillId(undefined)}
             onConfirm={onMoveSkill}
@@ -699,7 +613,8 @@ const ForbiddenCreateButton = () => {
   const { t } = useTranslation();
   return (
     <MyBox
-      py={4}
+      pt={5}
+      pb={3}
       px={5}
       cursor={'not-allowed'}
       border={'base'}

@@ -50,6 +50,7 @@ export const createAgentLoopCoreToolRuntime = <TChildrenResponse = unknown>({
       ? {
           executeInteractiveTool: async (params) => {
             const result = await toolProvider.executeInteractiveTool!(params);
+            onToolResult?.({ callId: params.call.id, result });
 
             return normalizeAgentLoopCoreToolRunResult({
               ...result,

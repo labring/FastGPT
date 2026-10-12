@@ -29,7 +29,7 @@ import {
   AiChatQuoteTemplate
 } from '@fastgpt/global/core/workflow/template/system/aiChat/index';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
-import { resolveDatasetTagFilterVersion } from '@fastgpt/global/core/dataset/workflowTagFilter';
+import { resolveDatasetTagFilterVersion } from '@fastgpt/global/core/dataset/search/tagFilter';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   Input_Template_File_Link,
@@ -201,8 +201,8 @@ export const appWorkflow2Form = ({
         pluginId: node.pluginId,
         source: node.source,
         isFolder: node.isFolder,
-        name: node.name,
-        avatar: node.avatar,
+        name: node.pluginData?.name ?? node.name,
+        avatar: node.pluginData?.avatar ?? node.avatar,
         intro: node.intro || '',
         flowNodeType: node.flowNodeType,
         showStatus: node.showStatus,
