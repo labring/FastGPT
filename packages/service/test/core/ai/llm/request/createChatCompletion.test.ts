@@ -1,7 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import OpenAI from '@fastgpt/global/core/ai';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import { createChatCompletion } from '@fastgpt/service/core/ai/llm/request/createChatCompletion';
+
+const mockLogger = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/common/logger', () => ({
+  getLogger: () => mockLogger,
+  LogCategories: {
+    MODULE: {
+      AI: { LLM: 'ai.llm' }
+    }
+  }
+}));
 
 vi.mock('@fastgpt/service/core/ai/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@fastgpt/service/core/ai/config')>();
@@ -177,5 +194,59 @@ describe('createChatCompletion', () => {
       })
     ).rejects.toBe('alias-model not found');
     expect(create).not.toHaveBeenCalled();
+  });
+
+  it('should log aborted requests as warn instead of error', async () => {
+    const create = vi.fn().mockRejectedValue(new OpenAI.APIUserAbortError());
+    mockApi({ create });
+
+    await expect(
+      createChatCompletion({ modelData: createModel(), body: createBody() })
+    ).rejects.toBeTruthy();
+
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'LLM request aborted',
+      expect.objectContaining({ model: 'gpt-4o' })
+    );
+    expect(mockLogger.error).not.toHaveBeenCalled();
+  });
+
+  it('should treat the SDK abort message as aborted even if instanceof fails', async () => {
+    // SDK 的 APIUserAbortError 不设置 name（仍是 'Error'），跨副本时 instanceof 也可能失效
+    const create = vi.fn().mockRejectedValue(new Error('Request was aborted.'));
+    mockApi({ create });
+
+    await expect(
+      createChatCompletion({ modelData: createModel(), body: createBody() })
+    ).rejects.toBeTruthy();
+
+    expect(mockLogger.warn).toHaveBeenCalledWith('LLM request aborted', expect.anything());
+    expect(mockLogger.error).not.toHaveBeenCalled();
+  });
+
+  it('should still log real upstream errors as error', async () => {
+    const create = vi.fn().mockRejectedValue(new Error('upstream 500'));
+    mockApi({ create });
+
+    await expect(
+      createChatCompletion({ modelData: createModel(), body: createBody() })
+    ).rejects.toBeTruthy();
+
+    expect(mockLogger.error).toHaveBeenCalledWith('LLM response error', expect.anything());
+    expect(mockLogger.warn).not.toHaveBeenCalled();
+  });
+
+  it('should not report an aborted user-key request as a key error', async () => {
+    const create = vi.fn().mockRejectedValue(new OpenAI.APIUserAbortError());
+    mockApi({ create, usedUserOpenAIKey: true, baseUrl: 'https://api.openai.com/v1' });
+
+    // 用户 key 分支会 reject 字符串；中断路径应原样透传 Error 对象
+    await expect(
+      createChatCompletion({
+        modelData: createModel(),
+        body: createBody(),
+        userKey: { key: 'user-key' } as any
+      })
+    ).rejects.toBeInstanceOf(Error);
   });
 });

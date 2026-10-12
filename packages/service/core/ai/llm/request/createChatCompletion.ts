@@ -1,5 +1,6 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { UnStreamResponseType } from '@fastgpt/global/core/ai/llm/type';
+import OpenAI from '@fastgpt/global/core/ai';
 import { getAIApi, getModelOpenAIOptions } from '../../config';
 import { normalizeRelayNoChannelError } from '../../../../thirdProvider/aiproxy/error';
 import { getLogger, LogCategories } from '../../../../common/logger';
@@ -7,6 +8,16 @@ import { isStreamCompletionResponse } from './response/normalize';
 import type { CreateChatCompletionProps, CreateChatCompletionResult } from './types';
 
 const logger = getLogger(LogCategories.MODULE.AI.LLM);
+
+/**
+ * 判断错误是否为请求被中断（用户取消、探活请求提前结束等）。
+ *
+ * OpenAI SDK 的 APIUserAbortError 没有设置 name（仍是 'Error'），不能用 error.name 判断；
+ * 跨 SDK 副本时 instanceof 也可能失效，因此再以 SDK 的固定文案兜底。
+ */
+const isAbortedRequestError = (error: unknown): boolean =>
+  error instanceof OpenAI.APIUserAbortError ||
+  (error instanceof Error && error.message === 'Request was aborted.');
 
 /**
  * 执行一次真实的 chat.completions.create 请求。
@@ -66,6 +77,16 @@ export const createChatCompletion = async ({
       requestMeta
     };
   } catch (error) {
+    // 请求被中断不是真实的上游故障，降级 warn，避免持续污染 ai/llm 的 error 指标。
+    // 需要先于用户 key 分支判断：中断并不代表用户 key 有问题。
+    if (isAbortedRequestError(error)) {
+      logger.warn('LLM request aborted', {
+        baseUrl: requestMeta.baseUrl,
+        model: body.model
+      });
+      return Promise.reject(normalizeRelayNoChannelError(error));
+    }
+
     if (requestMeta.usedUserOpenAIKey) {
       // 用户 key 错误需要转成面向用户的提示，避免直接暴露底层 SDK 错误结构。
       logger.warn('User AI API error', {
