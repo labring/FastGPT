@@ -491,6 +491,11 @@ export class MCPClient {
                 // Deep clone to avoid dereference() mutating the original object
                 const schemaClone = JSON.parse(JSON.stringify(tool.inputSchema));
                 return await $RefParser.dereference(schemaClone, {
+                  // 递归 $ref 展开后会形成循环引用对象，接口返回时 res.json 序列化会抛
+                  // "Converting circular structure to JSON"；保留为 $ref 指针即可保证结果无环。
+                  dereference: {
+                    circular: 'ignore'
+                  },
                   resolve: {
                     // Disable file and HTTP $ref resolution to prevent SSRF
                     file: false,
