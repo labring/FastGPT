@@ -7,7 +7,7 @@ import { MongoDataset } from '../../../../../dataset/schema';
 import { filterDatasetsByTmbId } from '../../../../../dataset/utils';
 import { assertWorkflowDatasetResources } from '../../../../utils/resource';
 import { getWorkflowResourceContext } from '../../../../utils/context';
-import type { DeployedSkillInfo } from '../../../../../ai/sandbox/interface/runtime';
+import type { DeployedSkillInfo } from '../../../../../ai/sandbox/application/runtime/skill/types';
 import {
   buildWorkflowAICurrentInputFiles,
   rewriteWorkflowAIHistoryMessageWithFiles,

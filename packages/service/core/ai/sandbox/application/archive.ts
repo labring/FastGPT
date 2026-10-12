@@ -3,11 +3,17 @@
  *
  * 远端副作用始终在 Lifecycle Lease 内、Mongo operation 抢占之后执行。
  */
+import {
+  SANDBOX_ARCHIVE_BATCH_SIZE,
+  SandboxInstanceStatusEnum,
+  SANDBOX_OPERATION_ISOLATION_MS,
+  SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS,
+  SANDBOX_ARCHIVE_DIRECTORY_TIMEOUT_MS
+} from '../constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
-import { subDays, subMinutes } from 'date-fns';
-import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { subDays } from 'date-fns';
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
 import type { RedisLeaseContext } from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../../common/logger';
@@ -26,29 +32,22 @@ import { connectToSandbox, disconnectSandbox } from '../infrastructure/provider/
 import { getSandboxRuntimeProfile } from '../infrastructure/provider/runtimeProfile';
 import {
   buildVolumeConfig,
-  createLegacySessionVolumeClaimName,
   createSessionVolumeClaimName,
   deleteSessionVolume,
   getSessionVolumeClaimName,
-  getSessionVolumeConfig,
-  type VolumeManagerResult
+  getSessionVolumeConfig
 } from '../infrastructure/volume/service';
-import {
-  SandboxInstanceStatusEnum,
-  SandboxOperationTypeEnum,
-  type SandboxInstanceSchemaType,
-  type SandboxProviderType
-} from '../type';
+import { type SandboxInstanceSchemaType, type SandboxProviderType } from '../type';
+
 import { joinSandboxPath } from '../utils';
 import { withSandboxLifecycleLease } from './lease';
 import { runSandboxLifecycleOperation, type SandboxLifecycleDefinition } from './lifecycle/runner';
 
-const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
+import { SandboxOperationSettledError, SandboxOperationConflictError } from './lifecycle/error';
+import { canResumeSandboxOperation } from './lifecycle/utils';
+import type { OwnedSandboxResource } from './runtime/type';
 
-const SANDBOX_ARCHIVE_BATCH_SIZE = 5;
-const SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS = 10 * 60 * 1000;
-// 单次归档可能包含安装工具、扫描、压缩和上传；隔离窗口必须覆盖整条确定性命令链。
-export const SANDBOX_STALE_ARCHIVING_MINUTES = 45;
+const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 const TEMP_ARCHIVE_FILE = '.fastgpt-sandbox-archive.zip';
 const RESTORE_ARCHIVE_FILE = '.fastgpt-sandbox-restore.zip';
@@ -62,38 +61,31 @@ type SandboxPhysicalResource = Pick<
   metadata?: unknown;
 };
 
-export class SandboxLifecycleStateError extends Error {
-  constructor(
-    readonly state: string,
-    message = `Sandbox is ${state}`
-  ) {
-    super(message);
-    this.name = 'SandboxLifecycleStateError';
-  }
-}
-
 type SandboxArchiveSingleResult =
-  | { status: 'success' }
+  | { status: 'success'; resource: SandboxResourceDoc }
   | { status: 'skipped'; reason: string }
   | { status: 'failed'; error: string };
 
 const runSandboxCommand = async (
   sandbox: ISandbox,
   command: string,
-  options: { timeoutMs?: number; maxOutputBytes?: number } = {}
+  options: { timeoutMs?: number; maxOutputBytes?: number; signal?: AbortSignal } = {}
 ) => {
   const result = await sandbox.execute(command, {
+    signal: options.signal,
     timeoutMs: options.timeoutMs,
     maxOutputBytes: options.maxOutputBytes
   });
   if (result.exitCode !== 0) {
-    throw new Error(result.stderr || result.stdout || `Sandbox command failed: ${command}`);
+    const message = result.stderr || result.stdout || `Sandbox command failed: ${command}`;
+    if (result.exitCode !== null) throw new SandboxOperationSettledError(message);
+    throw new Error(message);
   }
   return result;
 };
 
 /** 归档前确保历史镜像中存在 zip。 */
-const ensureZipAvailableInSandbox = async (sandbox: ISandbox) => {
+const ensureZipAvailableInSandbox = async (sandbox: ISandbox, signal: AbortSignal) => {
   const command = [
     'if command -v zip >/dev/null 2>&1; then exit 0; fi',
     'if command -v apt-get >/dev/null 2>&1; then',
@@ -105,13 +97,14 @@ const ensureZipAvailableInSandbox = async (sandbox: ISandbox) => {
     'command -v zip >/dev/null 2>&1'
   ].join('\n');
   await runSandboxCommand(sandbox, command, {
+    signal,
     timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS,
     maxOutputBytes: 8 * 1024
   });
 };
 
 /** 恢复前确保镜像中存在 unzip。 */
-const ensureUnzipAvailableInSandbox = async (sandbox: ISandbox) => {
+const ensureUnzipAvailableInSandbox = async (sandbox: ISandbox, signal: AbortSignal) => {
   const command = [
     'if command -v unzip >/dev/null 2>&1; then exit 0; fi',
     'if command -v apt-get >/dev/null 2>&1; then',
@@ -123,6 +116,7 @@ const ensureUnzipAvailableInSandbox = async (sandbox: ISandbox) => {
     'command -v unzip >/dev/null 2>&1'
   ].join('\n');
   await runSandboxCommand(sandbox, command, {
+    signal,
     timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS,
     maxOutputBytes: 8 * 1024
   });
@@ -149,8 +143,12 @@ async function buildArchiveRuntimeConfig(resource: SandboxPhysicalResource) {
 }
 
 /** 归档临时连接不经过运行态 client，避免刷新 lastActiveAt。 */
-async function connectSandboxForArchive(resource: SandboxPhysicalResource) {
+async function connectSandboxForArchive(
+  resource: SandboxPhysicalResource,
+  assertValid: () => void
+) {
   const { profile, providerConfig, createConfig } = await buildArchiveRuntimeConfig(resource);
+  assertValid();
   return {
     sandbox: await connectToSandbox(providerConfig, resource.sandboxId, createConfig),
     profile
@@ -162,37 +160,24 @@ async function deleteSandboxProviderResource(resource: SandboxResourceDoc) {
   await buildSandboxResourceAdapter(resource).delete();
 }
 
-/** 删除并等待 OpenSandbox volume 完成；兼容旧记录缺少持久化 claimName。 */
-async function deleteSandboxVolumeResource(
-  resource: SandboxResourceDoc,
-  options: { useLegacyClaimNameFallback?: boolean } = {}
-) {
-  if (resource.provider === 'opensandbox') {
-    const persistedClaimName = getSessionVolumeClaimName(resource.storage);
-    const claimName =
-      persistedClaimName ??
-      (options.useLegacyClaimNameFallback
-        ? createLegacySessionVolumeClaimName(resource.sandboxId)
-        : undefined);
-    if (!claimName) {
-      throw new Error(`OpenSandbox ${resource.sandboxId} has no persisted workspace claimName`);
-    }
-    if (!persistedClaimName) {
-      logger.warn('Deleting legacy deterministic Sandbox volume without persisted claimName', {
-        sandboxId: resource.sandboxId,
-        claimName
-      });
-    }
-    await deleteSessionVolume(claimName);
+/** 删除 Mongo 中明确记录的 workspace volume，不推测其他 generation 的名称。 */
+async function deleteSandboxVolumeResource(resource: SandboxResourceDoc) {
+  if (resource.provider !== 'opensandbox') return;
+  const claimName = getSessionVolumeClaimName(resource.storage);
+  if (!claimName) {
+    throw new Error(`OpenSandbox ${resource.sandboxId} has no persisted workspace claimName`);
   }
+  await deleteSessionVolume(claimName);
 }
 
 async function createWorkspaceArchive(params: {
   sandbox: ISandbox;
   workDirectory: string;
   sandboxId: string;
+  assertValid: () => void;
+  signal: AbortSignal;
 }) {
-  const { sandbox, workDirectory, sandboxId } = params;
+  const { signal, sandbox, workDirectory, sandboxId } = params;
   const maxArchiveBytes = getAgentSandboxArchiveMaxBytes();
   const archivePath = joinSandboxPath(workDirectory, TEMP_ARCHIVE_FILE);
   const quotedWorkDirectory = shellQuote(workDirectory);
@@ -205,18 +190,22 @@ async function createWorkspaceArchive(params: {
     `-x ${shellQuote(`*/${fileName}`)}`
   ]).join(' ');
 
-  await runSandboxCommand(sandbox, `mkdir -p ${quotedWorkDirectory}`, { timeoutMs: 60 * 1000 });
+  await runSandboxCommand(sandbox, `mkdir -p ${quotedWorkDirectory}`, {
+    signal,
+    timeoutMs: SANDBOX_ARCHIVE_DIRECTORY_TIMEOUT_MS
+  });
+  params.assertValid();
   await sandbox.deleteFiles([archivePath]).catch(() => undefined);
   const [sizeResult, entryCountResult] = await Promise.all([
     runSandboxCommand(
       sandbox,
       `cd ${quotedWorkDirectory} && find . -type f ${findExcludes} -ls 2>/dev/null | awk '{s+=$7} END {print s+0}'`,
-      { timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS, maxOutputBytes: 8 * 1024 }
+      { signal, timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS, maxOutputBytes: 8 * 1024 }
     ),
     runSandboxCommand(
       sandbox,
       `cd ${quotedWorkDirectory} && find . -mindepth 1 ${findExcludes} 2>/dev/null | wc -l`,
-      { timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS, maxOutputBytes: 8 * 1024 }
+      { signal, timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS, maxOutputBytes: 8 * 1024 }
     )
   ]);
   const workspaceBytes = Number.parseInt(sizeResult.stdout.trim(), 10);
@@ -226,15 +215,17 @@ async function createWorkspaceArchive(params: {
     throw new Error('Sandbox workspace is too large');
   }
 
+  params.assertValid();
   await runSandboxCommand(
     sandbox,
     `cd ${quotedWorkDirectory} && zip -r -y -q ${quotedArchiveFile} . ${zipExcludes}`,
-    { timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS, maxOutputBytes: 8 * 1024 }
+    { signal, timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS, maxOutputBytes: 8 * 1024 }
   );
   const [archive] = await sandbox.readFiles([archivePath]);
   if (archive.error) throw new Error(`Failed to read sandbox archive: ${archive.error.message}`);
   const archiveBuffer = Buffer.from(archive.content);
   if (archiveBuffer.byteLength > maxArchiveBytes) throw new Error('Sandbox archive is too large');
+  params.assertValid();
   await sandbox.deleteFiles([archivePath]).catch((error) => {
     logger.warn('Failed to cleanup sandbox archive temp file', { sandboxId, error });
   });
@@ -246,16 +237,23 @@ async function restoreWorkspaceArchive(params: {
   workDirectory: string;
   sandboxId: string;
   archiveBody: Buffer;
+  assertValid: () => void;
+  signal: AbortSignal;
 }) {
-  const { sandbox, workDirectory, sandboxId, archiveBody } = params;
+  const { signal, sandbox, workDirectory, sandboxId, archiveBody } = params;
   const archivePath = joinSandboxPath(workDirectory, RESTORE_ARCHIVE_FILE);
   const quotedWorkDirectory = shellQuote(workDirectory);
   const quotedArchiveFile = shellQuote(RESTORE_ARCHIVE_FILE);
-  await runSandboxCommand(sandbox, `mkdir -p ${quotedWorkDirectory}`, { timeoutMs: 60 * 1000 });
+  await runSandboxCommand(sandbox, `mkdir -p ${quotedWorkDirectory}`, {
+    signal,
+    timeoutMs: SANDBOX_ARCHIVE_DIRECTORY_TIMEOUT_MS
+  });
+  params.assertValid();
   const [writeResult] = await sandbox.writeFiles([{ path: archivePath, data: archiveBody }]);
   if (writeResult.error) {
     throw new Error(`Failed to write sandbox archive: ${writeResult.error.message}`);
   }
+  params.assertValid();
   const command = archiveBody.equals(EMPTY_ZIP_BUFFER)
     ? `cd ${quotedWorkDirectory} && find . -mindepth 1 -maxdepth 1 ! -name ${quotedArchiveFile} -exec rm -rf -- {} + && rm -f ${quotedArchiveFile}`
     : [
@@ -267,9 +265,11 @@ async function restoreWorkspaceArchive(params: {
         `rm -f ${quotedArchiveFile}`
       ].join(' && ');
   await runSandboxCommand(sandbox, command, {
+    signal,
     timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS,
     maxOutputBytes: 8 * 1024
   }).catch(async (error) => {
+    params.assertValid();
     await sandbox.deleteFiles([archivePath]).catch(() => undefined);
     throw error;
   });
@@ -283,14 +283,10 @@ async function archiveSandboxWithinLease(params: {
   onClaim?: (resource: SandboxResourceDoc | null) => void;
 }): Promise<SandboxArchiveSingleResult> {
   const { lease } = params;
-  const current = await findSandboxInstanceBySandboxId({ sandboxId: params.resource.sandboxId });
-  if (!current) {
-    params.onClaim?.(null);
-    return { status: 'skipped', reason: 'Sandbox record no longer exists' };
-  }
+  const current = params.resource;
   if (current.status === SandboxInstanceStatusEnum.archived) {
     params.onClaim?.(null);
-    return { status: 'success' };
+    return { status: 'success', resource: current };
   }
   if (
     params.inactiveBefore &&
@@ -309,10 +305,8 @@ async function archiveSandboxWithinLease(params: {
     return { status: 'skipped', reason: `Sandbox is ${current.status}` };
   }
   if (current.status === SandboxInstanceStatusEnum.archiving) {
-    const operation = current.operation;
-    const staleBefore = subMinutes(new Date(), SANDBOX_STALE_ARCHIVING_MINUTES);
     // Lease 过期不代表旧 Provider 请求已经终止，隔离窗口内禁止新执行者换 token 接管。
-    if (!operation?.error && (!operation?.heartbeatAt || operation.heartbeatAt >= staleBefore)) {
+    if (!canResumeSandboxOperation(current)) {
       params.onClaim?.(null);
       return { status: 'skipped', reason: 'Sandbox archive operation is still active' };
     }
@@ -321,21 +315,25 @@ async function archiveSandboxWithinLease(params: {
 
   try {
     const definition: SandboxLifecycleDefinition = {
-      operationType: SandboxOperationTypeEnum.archive,
       status: SandboxInstanceStatusEnum.archiving,
       steps: [
         {
           fromPhase: 'claimed',
           toPhase: 'archiveUploaded',
-          run: async ({ resource: claimed }) => {
-            const connected = await connectSandboxForArchive(claimed);
+          run: async ({ resource: claimed, assertValid }) => {
+            const connected = await connectSandboxForArchive(claimed, assertValid);
             sandbox = connected.sandbox;
-            await ensureZipAvailableInSandbox(sandbox);
+            assertValid();
+            await ensureZipAvailableInSandbox(sandbox, lease.signal);
+            assertValid();
             const body = await createWorkspaceArchive({
               sandbox,
               workDirectory: connected.profile.workDirectory,
-              sandboxId: claimed.sandboxId
+              sandboxId: claimed.sandboxId,
+              signal: lease.signal,
+              assertValid
             });
+            assertValid();
             await getS3SandboxSource().uploadWorkspaceArchive({
               sandboxId: claimed.sandboxId,
               body
@@ -370,13 +368,15 @@ async function archiveSandboxWithinLease(params: {
       resource: current,
       lease,
       definition,
-      matchLastActiveAt: Boolean(params.inactiveBefore),
-      onClaim: params.onClaim,
-      allowClaimConflict: true
+      claim: { type: 'claim', matchLastActiveAt: Boolean(params.inactiveBefore) },
+      onClaim: params.onClaim
     });
-    if (!completed) return { status: 'skipped', reason: 'Resource was modified or occupied' };
-    return { status: 'success' };
+    return { status: 'success', resource: completed };
   } catch (error) {
+    if (error instanceof SandboxOperationConflictError) {
+      params.onClaim?.(null);
+      return { status: 'skipped', reason: 'Resource was modified or occupied' };
+    }
     const errorText = getErrText(error);
     logger.error('Failed to archive sandbox', {
       sandboxId: current.sandboxId,
@@ -389,6 +389,21 @@ async function archiveSandboxWithinLease(params: {
   }
 }
 
+/** 公开入口取得锁后重读；锁内编排直接消费当前快照，避免重复查询。 */
+async function readAndArchiveSandbox(params: {
+  resource: SandboxResourceDoc;
+  lease: RedisLeaseContext;
+  inactiveBefore?: Date;
+  onClaim?: (resource: SandboxResourceDoc | null) => void;
+}): Promise<SandboxArchiveSingleResult> {
+  const resource = await findSandboxInstanceBySandboxId({ sandboxId: params.resource.sandboxId });
+  if (!resource) {
+    params.onClaim?.(null);
+    return { status: 'skipped', reason: 'Sandbox record no longer exists' };
+  }
+  return archiveSandboxWithinLease({ ...params, resource });
+}
+
 /** 归档单个 inactive sandbox。 */
 export async function archiveSandboxResource(
   resource: SandboxResourceDoc,
@@ -397,7 +412,7 @@ export async function archiveSandboxResource(
   return withSandboxLifecycleLease({
     sandboxId: resource.sandboxId,
     label: `archive-sandbox:${resource.sandboxId}`,
-    fn: (lease) => archiveSandboxWithinLease({ resource, lease, inactiveBefore })
+    fn: (lease) => readAndArchiveSandbox({ resource, lease, inactiveBefore })
   });
 }
 
@@ -414,7 +429,7 @@ export async function archiveSandboxResourceNow(resource: SandboxResourceDoc) {
   return withSandboxLifecycleLease({
     sandboxId: resource.sandboxId,
     label: `archive-sandbox-now:${resource.sandboxId}`,
-    fn: (context) => archiveSandboxWithinLease({ resource, lease: context })
+    fn: (context) => readAndArchiveSandbox({ resource, lease: context })
   });
 }
 
@@ -433,7 +448,7 @@ export async function startSandboxRuntimeUpgradeArchive(
     sandboxId: resource.sandboxId,
     label: `archive-runtime-upgrade:${resource.sandboxId}`,
     fn: async (lease) => {
-      await archiveSandboxWithinLease({
+      await readAndArchiveSandbox({
         resource,
         lease,
         onClaim: (claimed) => {
@@ -499,7 +514,8 @@ export async function archiveInactiveSandboxes(now = new Date()) {
 export async function retryStaleArchivingSandboxes(now = new Date()) {
   const stale = await findStaleSandboxOperations({
     statuses: [SandboxInstanceStatusEnum.archiving],
-    heartbeatBefore: subMinutes(now, SANDBOX_STALE_ARCHIVING_MINUTES)
+    now,
+    heartbeatBefore: new Date(now.getTime() - SANDBOX_OPERATION_ISOLATION_MS.archive)
   });
   return batchRun(
     stale,
@@ -514,6 +530,7 @@ async function createRestoreSandbox(params: {
   sandboxId: string;
   claimName?: string;
   createConfig?: SandboxCreateSpec;
+  assertValid: () => void;
 }) {
   const vmConfig = await (async () => {
     if (params.provider !== 'opensandbox') return;
@@ -522,6 +539,7 @@ async function createRestoreSandbox(params: {
     }
     return getSessionVolumeConfig(params.claimName);
   })();
+  params.assertValid();
   const profile = getSandboxRuntimeProfile(params.provider);
   const { providerConfig, createConfig } = getSandboxAdapterConfig({
     provider: params.provider,
@@ -537,176 +555,82 @@ async function createRestoreSandbox(params: {
   };
 }
 
-/** 在真实用户使用前恢复 archived Workspace；调用方须已校验并持久化团队归属。 */
-export async function restoreArchivedSandboxBeforeUse(params: {
-  provider: SandboxProviderType;
-  sandboxId: string;
-  sourceType: ChatSourceTypeEnum;
-  sourceId: string;
-  userId: string;
+/**
+ * 在运行编排已有的 lifecycle lease 内恢复归档。
+ * resource 是锁内读取并确认 Provider/归属后的真值；新 generation 先 checkpoint 后创建。
+ * 返回最新实例记录，调用方按其 storage 构造运行连接。
+ */
+export async function restoreArchivedSandboxWithinLease(params: {
+  resource: OwnedSandboxResource;
+  lease: RedisLeaseContext;
   resourceLimit?: Partial<NonNullable<SandboxInstanceSchemaType['limit']>>;
   createConfig?: SandboxCreateSpec;
 }) {
-  const initial = await findSandboxInstanceBySandboxId({ sandboxId: params.sandboxId });
-  if (
-    !initial ||
-    initial.status === SandboxInstanceStatusEnum.running ||
-    initial.status === SandboxInstanceStatusEnum.stopped ||
-    initial.status === SandboxInstanceStatusEnum.provisioning
-  ) {
-    return;
-  }
-  if (
-    initial.status !== SandboxInstanceStatusEnum.archived &&
-    initial.status !== SandboxInstanceStatusEnum.restoring
-  ) {
-    throw new SandboxLifecycleStateError(initial.status);
-  }
+  const { resource, lease } = params;
   const runtimeImage = resolveSandboxRuntimeImage({
-    provider: params.provider,
-    sandboxId: params.sandboxId,
+    provider: resource.provider,
+    sandboxId: resource.sandboxId,
     createConfig: params.createConfig
   });
-
-  return withSandboxLifecycleLease({
-    sandboxId: params.sandboxId,
-    label: `restore-sandbox:${params.sandboxId}`,
-    fn: async (lease) => {
-      const current = await findSandboxInstanceBySandboxId({ sandboxId: params.sandboxId });
-      if (!current || current.status === SandboxInstanceStatusEnum.running) return;
-      if (
-        current.status !== SandboxInstanceStatusEnum.archived &&
-        current.status !== SandboxInstanceStatusEnum.restoring
-      ) {
-        throw new SandboxLifecycleStateError(current.status);
-      }
-      if (
-        current.status === SandboxInstanceStatusEnum.restoring &&
-        !current.operation?.error &&
-        current.operation?.heartbeatAt &&
-        current.operation.heartbeatAt >= subMinutes(new Date(), SANDBOX_STALE_ARCHIVING_MINUTES)
-      ) {
-        throw new SandboxLifecycleStateError(current.status);
-      }
-      let sandbox: ISandbox | undefined;
-      let restoredVmConfig: VolumeManagerResult | undefined;
-      let restoredStorage = current.storage;
-      let assignedClaimName = getSessionVolumeClaimName(current.storage);
-      const cleanupPreviousRestoreResources =
-        current.status === SandboxInstanceStatusEnum.restoring &&
-        ['claimed', 'previousProviderDeleted', 'previousVolumeDeleted'].includes(
-          current.operation?.phase ?? 'claimed'
-        );
-
-      try {
-        const cleanupSteps: SandboxLifecycleDefinition['steps'] = cleanupPreviousRestoreResources
-          ? [
-              {
-                fromPhase: 'claimed',
-                toPhase: 'previousProviderDeleted',
-                run: async ({ resource: claimed }) => {
-                  await deleteSandboxProviderResource(claimed);
-                }
-              },
-              {
-                fromPhase: 'previousProviderDeleted',
-                toPhase: 'previousVolumeDeleted',
-                run: async ({ resource: claimed }) => {
-                  await deleteSandboxVolumeResource(claimed, {
-                    useLegacyClaimNameFallback: true
-                  });
-                }
-              }
-            ]
-          : [];
-        const restoreSteps: SandboxLifecycleDefinition['steps'] = [
-          ...cleanupSteps,
+  let sandbox: ISandbox | undefined;
+  try {
+    return await runSandboxLifecycleOperation({
+      resource,
+      lease,
+      claim: { type: 'claim', previousStatus: 'archived' },
+      definition: {
+        status: 'restoring',
+        steps: [
           {
-            fromPhase: cleanupPreviousRestoreResources ? 'previousVolumeDeleted' : 'claimed',
+            fromPhase: 'claimed',
             toPhase: 'volumeAssigned',
-            run: async ({ resource: claimed }) => {
-              if (claimed.provider !== 'opensandbox') return;
-              assignedClaimName = createSessionVolumeClaimName({
-                sandboxId: claimed.sandboxId
-              });
-              restoredStorage = buildVolumeConfig(assignedClaimName).storage;
-            },
-            set: () => (restoredStorage !== undefined ? { storage: restoredStorage } : {})
+            run: async ({ resource: claimed }) => ({
+              ...(claimed.provider === 'opensandbox'
+                ? {
+                    storage: buildVolumeConfig(
+                      createSessionVolumeClaimName({ sandboxId: claimed.sandboxId })
+                    ).storage
+                  }
+                : {}),
+              ...(runtimeImage ? { image: runtimeImage } : {}),
+              ...(params.resourceLimit ? { limit: params.resourceLimit } : {})
+            })
           },
           {
             fromPhase: 'volumeAssigned',
             toPhase: 'archiveInstalled',
-            run: async () => {
-              assignedClaimName ??= getSessionVolumeClaimName(restoredStorage);
+            run: async ({ resource: claimed, assertValid }) => {
               const target = await createRestoreSandbox({
-                ...params,
-                claimName: assignedClaimName
+                provider: claimed.provider,
+                sandboxId: claimed.sandboxId,
+                claimName: getSessionVolumeClaimName(claimed.storage),
+                createConfig: params.createConfig,
+                assertValid
               });
               sandbox = target.sandbox;
-              restoredVmConfig = target.vmConfig;
-              restoredStorage = target.vmConfig?.storage ?? restoredStorage;
-              await ensureUnzipAvailableInSandbox(target.sandbox);
+              assertValid();
+              await ensureUnzipAvailableInSandbox(sandbox, lease.signal);
+              assertValid();
               const body = await getS3SandboxSource().downloadWorkspaceArchive({
-                sandboxId: params.sandboxId,
+                sandboxId: claimed.sandboxId,
                 maxBytes: getAgentSandboxArchiveMaxBytes()
               });
+              assertValid();
               await restoreWorkspaceArchive({
-                sandbox: target.sandbox,
+                sandbox,
                 workDirectory: target.profile.workDirectory,
-                sandboxId: params.sandboxId,
-                archiveBody: body
+                sandboxId: claimed.sandboxId,
+                archiveBody: body,
+                signal: lease.signal,
+                assertValid
               });
             }
           }
-        ];
-        const definition: SandboxLifecycleDefinition = {
-          operationType: SandboxOperationTypeEnum.restore,
-          status: SandboxInstanceStatusEnum.restoring,
-          steps: restoreSteps,
-          finish: {
-            type: 'complete',
-            status: SandboxInstanceStatusEnum.running,
-            touchActive: true,
-            set: () => ({
-              provider: params.provider,
-              sourceType: params.sourceType,
-              sourceId: params.sourceId,
-              userId: params.userId,
-              ...(restoredStorage !== undefined ? { storage: restoredStorage } : {}),
-              ...(params.resourceLimit ? { limit: params.resourceLimit } : {}),
-              ...(runtimeImage ? { image: runtimeImage } : {})
-            })
-          }
-        };
-        await runSandboxLifecycleOperation({
-          resource: current,
-          lease,
-          definition,
-          previousStatus: SandboxInstanceStatusEnum.archived,
-          claimConflictError: new SandboxLifecycleStateError(current.status)
-        });
-        return restoredVmConfig;
-      } catch (error) {
-        if (sandbox) await sandbox.stop().catch(() => undefined);
-        throw error;
-      } finally {
-        if (sandbox) await disconnectSandbox(sandbox).catch(() => undefined);
+        ],
+        finish: { type: 'complete', status: 'running', touchActive: true }
       }
-    }
-  });
-}
-
-/** keepalive 等后台路径只检查状态，不能触发恢复或首次创建。 */
-export async function assertSandboxRuntimeUsableWithoutRestore(params: {
-  provider: SandboxProviderType;
-  sandboxId: string;
-}) {
-  const instance = await findSandboxInstanceBySandboxId({ sandboxId: params.sandboxId });
-  if (
-    instance &&
-    instance.status !== SandboxInstanceStatusEnum.running &&
-    instance.status !== SandboxInstanceStatusEnum.stopped
-  ) {
-    throw new SandboxLifecycleStateError(instance.status);
+    });
+  } finally {
+    if (sandbox) await disconnectSandbox(sandbox).catch(() => undefined);
   }
 }

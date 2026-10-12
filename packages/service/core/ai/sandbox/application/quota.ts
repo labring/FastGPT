@@ -2,11 +2,10 @@
  * 检查 Sandbox 激活配额。
  * Mongo 活跃实例数是唯一计数来源；检查与后续写入之间允许存在并发窗口。
  */
-import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getAgentSandboxMax, getAgentSandboxMaxPerTeam } from '../config';
 import {
   countActiveSandboxInstances,
-  findSandboxInstanceBySource
+  type SandboxResourceDoc
 } from '../infrastructure/instance/repository';
 import { isSandboxActiveStatus } from '../type';
 import {
@@ -20,16 +19,10 @@ import {
  * Mongo 查询错误原样传播；检查与后续写入不是原子操作，允许并发超额。
  */
 export async function checkSandboxQuota(identity: {
-  sourceType: ChatSourceTypeEnum;
-  sourceId: string;
-  userId: string;
   teamId: string;
+  current: SandboxResourceDoc | null;
 }): Promise<void> {
-  const current = await findSandboxInstanceBySource({
-    sourceType: identity.sourceType,
-    sourceId: identity.sourceId,
-    userId: identity.userId
-  });
+  const current = identity.current;
   // 已占用配额的实例继续使用，不因当前配额已满而中断。
   if (current && isSandboxActiveStatus(current.status)) return;
 

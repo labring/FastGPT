@@ -87,6 +87,11 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
     return this.lifecycle.status;
   }
 
+  /** 连接已有 Running 实例，不改变远端生命周期。 */
+  async connectRunning(): Promise<void> {
+    await this.lifecycle.connectRunning();
+  }
+
   async ensureRunning(options?: SandboxEnsureRunningOptions): Promise<void> {
     await this.lifecycle.ensureRunning(options);
   }

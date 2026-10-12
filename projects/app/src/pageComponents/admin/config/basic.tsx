@@ -259,12 +259,9 @@ export const Settings = () => {
           bg={'white'}
           inputFieldProps={{ bg: 'white' }}
           value={watch('systemEnv.agentSandboxMax') ?? ''}
-          onChange={(val) => {
-            setValue(
-              'systemEnv.agentSandboxMax',
-              val === '' || val === undefined ? undefined : Number(val)
-            );
-          }}
+          onChange={(val) =>
+            setValue('systemEnv.agentSandboxMax', typeof val === 'number' ? val : undefined)
+          }
           placeholder=""
         />
       </FormItem>
@@ -279,12 +276,9 @@ export const Settings = () => {
           bg={'white'}
           inputFieldProps={{ bg: 'white' }}
           value={watch('systemEnv.agentSandboxMaxPerTeam') ?? ''}
-          onChange={(val) => {
-            setValue(
-              'systemEnv.agentSandboxMaxPerTeam',
-              val === '' || val === undefined ? undefined : Number(val)
-            );
-          }}
+          onChange={(val) =>
+            setValue('systemEnv.agentSandboxMaxPerTeam', typeof val === 'number' ? val : undefined)
+          }
           placeholder=""
         />
       </FormItem>

@@ -7,7 +7,6 @@ import { describe, expect, it } from 'vitest';
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const sandboxRoot = resolve(testDirectory, '../../../../core/ai/sandbox');
 const serviceRoot = resolve(sandboxRoot, '../../..');
-const appSourceRoot = resolve(serviceRoot, '../../projects/app/src');
 const ignoredDirectories = new Set(['node_modules', 'coverage', '.next', '.turbo']);
 
 const listTypeScriptFiles = (root: string): string[] =>
@@ -21,8 +20,6 @@ const listTypeScriptFiles = (root: string): string[] =>
   });
 
 const getModuleSpecifiers = (path: string): string[] => {
-  // 这里只需要模块引用，无需为数千个生产文件构建完整 AST。预解析器仍覆盖
-  // import/export、动态 import() 和 require()，可保持边界检查语义并避免 CI 超时。
   return ts
     .preProcessFile(readFileSync(path, 'utf8'), true, true)
     .importedFiles.map(({ fileName }) => fileName);
@@ -77,64 +74,5 @@ describe('sandbox architecture boundaries', () => {
     for (const file of files) visit(file);
 
     expect(cycles).toEqual([]);
-  });
-
-  it('does not let application or infrastructure depend on interface', () => {
-    const forbidden: string[] = [];
-    for (const layer of ['application', 'infrastructure']) {
-      for (const file of listTypeScriptFiles(resolve(sandboxRoot, layer))) {
-        for (const specifier of getModuleSpecifiers(file)) {
-          if (/\/core\/ai\/sandbox\/interface(?:\/|$)/.test(specifier)) {
-            forbidden.push(`${displayPath(file)} -> ${specifier}`);
-            continue;
-          }
-          const target = resolveRelativeModule(file, specifier);
-          if (target?.startsWith(resolve(sandboxRoot, 'interface') + sep)) {
-            forbidden.push(`${displayPath(file)} -> ${displayPath(target)}`);
-          }
-        }
-      }
-    }
-    expect(forbidden).toEqual([]);
-  });
-
-  it('keeps runtime consumers behind interface and migration entities limited to the instance schema', () => {
-    const forbidden: string[] = [];
-    const productionFiles = [
-      ...listTypeScriptFiles(serviceRoot).filter(
-        (file) =>
-          !file.startsWith(sandboxRoot + sep) &&
-          !file.startsWith(resolve(serviceRoot, 'test') + sep)
-      ),
-      ...listTypeScriptFiles(appSourceRoot)
-    ];
-    for (const file of productionFiles) {
-      const isMigrationEntity = /^migration\/tasks\/\d+\/[^/]+\/entity\.ts$/.test(
-        relative(appSourceRoot, file).split(sep).join('/')
-      );
-      for (const specifier of getModuleSpecifiers(file)) {
-        const target = resolveRelativeModule(file, specifier);
-        // 迁移专属数据访问放在任务 entity 中，仅允许直接引用实例 Schema。
-        if (
-          isMigrationEntity &&
-          (specifier === '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema' ||
-            target === resolve(sandboxRoot, 'infrastructure/instance/schema.ts'))
-        ) {
-          continue;
-        }
-        if (/\/core\/ai\/sandbox\/(?:application|infrastructure)(?:\/|$)/.test(specifier)) {
-          forbidden.push(`${relative(serviceRoot, file)} -> ${specifier}`);
-          continue;
-        }
-        if (
-          target &&
-          (target.startsWith(resolve(sandboxRoot, 'application') + sep) ||
-            target.startsWith(resolve(sandboxRoot, 'infrastructure') + sep))
-        ) {
-          forbidden.push(`${relative(serviceRoot, file)} -> ${displayPath(target)}`);
-        }
-      }
-    }
-    expect(forbidden).toEqual([]);
   });
 });

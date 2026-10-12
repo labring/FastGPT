@@ -1,9 +1,10 @@
 /**
  * 沙盒业务层：编排 Skill Edit runtime 的状态解释、初始化、升级和工作区打包。
  *
- * 本文件统一处理镜像版本、归档状态和运行态实例的业务判断；外部 Skill 业务应通过
- * sandbox/interface/skillEdit 调用，不直接依赖 provider、repository 或 archive 原子能力。
+ * 本文件统一处理镜像版本、归档状态和运行态实例的业务判断；外部 Skill 业务直接引用
+ * 本模块的业务能力，不直接依赖 provider、repository 或 archive 原子能力。
  */
+import { SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR } from '../../constants';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
@@ -38,7 +39,7 @@ import {
 } from '../../infrastructure/provider/lifecycle';
 import type { SandboxClient } from '../runtime/client';
 import { getSandboxClient } from '../runtime/client';
-import { SandboxLifecycleStateError } from '../archive';
+import { SandboxLifecycleStateError } from '../lifecycle/error';
 import {
   findSandboxInstanceBySandboxIdAndSource,
   findSandboxResourcesBySource,
@@ -67,7 +68,6 @@ import type { SandboxRuntimeStatusResponse } from '@fastgpt/global/core/ai/sandb
 
 const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
 const RUNTIME_UPGRADE_IN_PROGRESS_MESSAGE = SandboxErrEnum.runtimeUpgradeInProgress;
-export const SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR = 'Edit sandbox not found or not running';
 const EDIT_DEBUG_SANDBOX_SCENARIO = 'edit-debug';
 
 export type SkillEditRuntimeContext = {

@@ -3,10 +3,10 @@ import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/co
 import { isAppSandboxEnabledInNodes } from '@fastgpt/global/core/workflow/utils';
 import {
   assertSandboxAvailable,
-  createAgentSandboxPermissionDeniedError,
   resolveAppSandboxAvailability,
   type AppSandboxAvailability
-} from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+} from '@fastgpt/service/core/ai/sandbox/application/availability';
+import { createAgentSandboxPermissionDeniedError } from '@fastgpt/service/core/ai/sandbox/error';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import {
   getAppLatestVersion,

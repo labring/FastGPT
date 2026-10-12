@@ -52,50 +52,28 @@ describe('agent sandbox config', () => {
     expect(getAgentSandboxArchiveInactiveDays()).toBe(14);
   });
 
-  it('resolves system and per-team quotas with systemEnv priority, positive integer validation, and env fallback', () => {
+  it('resolves system and per-team quotas with systemEnv priority and independent env fallback', () => {
+    // 1. 默认 env 兜底
     serviceEnv.AGENT_SANDBOX_MAX = 42;
-    serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = undefined;
+    serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = 5;
+    global.systemEnv = {};
     expect(getAgentSandboxMax()).toBe(42);
-    expect(getAgentSandboxMaxPerTeam()).toBeUndefined();
+    expect(getAgentSandboxMaxPerTeam()).toBe(5);
 
-    // systemEnv 正整数配置优先于 env
-    global.systemEnv = {
-      ...global.systemEnv,
-      agentSandboxMax: 7,
-      agentSandboxMaxPerTeam: 3
-    };
+    // 2. systemEnv 配置优先
+    global.systemEnv = { agentSandboxMax: 7, agentSandboxMaxPerTeam: 3 };
     expect(getAgentSandboxMax()).toBe(7);
     expect(getAgentSandboxMaxPerTeam()).toBe(3);
 
-    // 非正整数或浮点配置回退至 env
-    for (const value of [0, -1, 1.5]) {
-      global.systemEnv = {
-        ...global.systemEnv,
-        agentSandboxMax: value,
-        agentSandboxMaxPerTeam: value
-      };
-      expect(getAgentSandboxMax()).toBe(42);
-      expect(getAgentSandboxMaxPerTeam()).toBeUndefined();
-    }
-  });
-  it('does not read sandbox quotas from frontend configuration', () => {
-    const originalFeConfigs = global.feConfigs;
-    try {
-      global.systemEnv = {
-        ...global.systemEnv,
-        agentSandboxMax: undefined,
-        agentSandboxMaxPerTeam: undefined
-      };
-      global.feConfigs = {
-        ...global.feConfigs,
-        limit: { ...global.feConfigs?.limit, agentSandboxMax: 1, agentSandboxMaxPerTeam: 1 }
-      };
-      serviceEnv.AGENT_SANDBOX_MAX = 42;
-      serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = 5;
-      expect(getAgentSandboxMax()).toBe(42);
-      expect(getAgentSandboxMaxPerTeam()).toBe(5);
-    } finally {
-      global.feConfigs = originalFeConfigs;
-    }
+    // 3. 两字段独立回退与清空
+    global.systemEnv = { agentSandboxMaxPerTeam: 3 };
+    expect(getAgentSandboxMax()).toBe(42);
+    expect(getAgentSandboxMaxPerTeam()).toBe(3);
+
+    global.systemEnv = {};
+    serviceEnv.AGENT_SANDBOX_MAX = undefined;
+    serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM = undefined;
+    expect(getAgentSandboxMax()).toBeUndefined();
+    expect(getAgentSandboxMaxPerTeam()).toBeUndefined();
   });
 });

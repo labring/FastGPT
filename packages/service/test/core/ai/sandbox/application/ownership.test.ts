@@ -28,20 +28,20 @@ describe('ensureSandboxTeamOwnership', () => {
   });
 
   it('resolves ownership for a new instance without persisting a record', async () => {
-    await expect(ensureSandboxTeamOwnership(identity)).resolves.toBe('team-1');
+    await expect(ensureSandboxTeamOwnership(identity)).resolves.toMatchObject({ teamId: 'team-1' });
     expect(mocks.resolveSandboxSourceTeamId).toHaveBeenCalledWith(identity);
     expect(mocks.backfillSandboxInstanceTeamId).not.toHaveBeenCalled();
   });
 
   it('preserves matching existing ownership', async () => {
     mocks.findSandboxInstanceBySource.mockResolvedValue({ ...instance, teamId: 'team-1' });
-    await expect(ensureSandboxTeamOwnership(identity)).resolves.toBe('team-1');
+    await expect(ensureSandboxTeamOwnership(identity)).resolves.toMatchObject({ teamId: 'team-1' });
     expect(mocks.backfillSandboxInstanceTeamId).not.toHaveBeenCalled();
   });
 
   it('backfills missing ownership using persisted provider', async () => {
     mocks.findSandboxInstanceBySource.mockResolvedValue(instance);
-    await expect(ensureSandboxTeamOwnership(identity)).resolves.toBe('team-1');
+    await expect(ensureSandboxTeamOwnership(identity)).resolves.toMatchObject({ teamId: 'team-1' });
     expect(mocks.backfillSandboxInstanceTeamId).toHaveBeenCalledWith({
       provider: 'sealosdevbox',
       sandboxId: identity.sandboxId,
@@ -78,7 +78,7 @@ describe('ensureSandboxTeamOwnership', () => {
       .mockResolvedValueOnce(instance)
       .mockResolvedValueOnce({ ...instance, teamId: 'team-1' });
     mocks.backfillSandboxInstanceTeamId.mockResolvedValueOnce({ matchedCount: 0 });
-    await expect(ensureSandboxTeamOwnership(identity)).resolves.toBe('team-1');
+    await expect(ensureSandboxTeamOwnership(identity)).resolves.toMatchObject({ teamId: 'team-1' });
 
     // 并发未确认或归属不符：拒绝激活
     mocks.findSandboxInstanceBySource

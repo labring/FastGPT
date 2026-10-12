@@ -15,14 +15,14 @@ export async function ensureSandboxTeamOwnership(params: {
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   userId: string;
-}): Promise<string> {
+}) {
   const teamId = await resolveSandboxSourceTeamId(params);
   if (!teamId) {
     throw new Error(`Sandbox source has no teamId: ${params.sourceType}/${params.sourceId}`);
   }
 
   const current = await findSandboxInstanceBySource(params);
-  if (!current) return teamId;
+  if (!current) return { teamId, resource: null };
   if (current.sandboxId !== params.sandboxId) {
     throw new Error(`Sandbox identity does not match source: ${params.sandboxId}`);
   }
@@ -30,7 +30,7 @@ export async function ensureSandboxTeamOwnership(params: {
     if (current.teamId !== teamId) {
       throw new Error(`Sandbox team ownership mismatch: ${params.sandboxId}`);
     }
-    return teamId;
+    return { teamId, resource: { ...current, teamId } };
   }
 
   const result = await backfillSandboxInstanceTeamId({
@@ -38,12 +38,12 @@ export async function ensureSandboxTeamOwnership(params: {
     sandboxId: current.sandboxId,
     teamId
   });
-  if (result.matchedCount === 1) return teamId;
+  if (result.matchedCount === 1) return { teamId, resource: { ...current, teamId } };
 
   // 并发回填可能已先完成；重新确认持久化结果，不能把未命中更新当成补齐成功。
   const updated = await findSandboxInstanceBySource(params);
   if (updated?.sandboxId !== params.sandboxId || updated.teamId !== teamId) {
     throw new Error(`Sandbox team ownership was not persisted: ${params.sandboxId}`);
   }
-  return teamId;
+  return { teamId, resource: updated };
 }

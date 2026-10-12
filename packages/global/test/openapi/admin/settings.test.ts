@@ -97,6 +97,19 @@ describe('UpdateConfigBodySchema', () => {
     expect(UpdateConfigResponseSchema.parse(undefined)).toBeUndefined();
   });
 
+  it.each(['agentSandboxMax', 'agentSandboxMaxPerTeam'])(
+    'rejects invalid quota values for %s at the update boundary',
+    (field) => {
+      for (const value of [0, -1, 1.5, '1.5', '', 'invalid']) {
+        const body = {
+          fastgpt: { feConfigs: {}, systemEnv: { [field]: value } },
+          fastgptPro: {}
+        };
+        expect(UpdateConfigBodySchema.safeParse(body).success).toBe(false);
+      }
+    }
+  );
+
   it('declares open object schemas for dynamic system configurations', () => {
     const parsed = GetConfigResponseSchema.parse({
       fastgpt: {

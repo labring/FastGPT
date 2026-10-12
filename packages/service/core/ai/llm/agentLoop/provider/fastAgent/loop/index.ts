@@ -26,7 +26,7 @@ import type {
   FastAgentLoopResult,
   PendingMainContext
 } from './type';
-import { runSandboxTools } from '../../../../../sandbox/interface/toolCall';
+import { runSandboxTools } from '../../../../../sandbox/application/toolCall';
 import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
 
 /**

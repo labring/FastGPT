@@ -12,6 +12,7 @@ import {
   createSandboxResourcesToArchiveCursor,
   deleteClaimedSandboxRecord,
   findInactiveRunningSandboxResources,
+  findStaleSandboxOperations,
   markSandboxOperationFailed,
   switchArchivedSandboxProvider,
   touchRunningSandboxInstance,
@@ -20,7 +21,7 @@ import {
 import {
   SandboxInstanceStatusEnum,
   SandboxOperationTypeEnum
-} from '@fastgpt/service/core/ai/sandbox/type';
+} from '@fastgpt/service/core/ai/sandbox/constants';
 
 const prefix = 'lifecycle-repository-';
 const oldDate = new Date('2025-01-01T00:00:00.000Z');
@@ -51,6 +52,47 @@ describe('sandbox instance lifecycle repository', () => {
     await MongoSandboxInstance.deleteMany({ sandboxId: new RegExp(`^${prefix}`) });
   });
 
+  it('selects recent rollback phases without admitting recent forward operations or other statuses', async () => {
+    const resources = [];
+    for (let index = 0; index < 3; index++) {
+      const { instance } = await createSandboxProvisioningInstance({
+        provider: 'opensandbox',
+        sourceType: ChatSourceTypeEnum.app,
+        ...createAppIdentity(),
+        teamId: 'recovery-query-team'
+      });
+      resources.push(instance!);
+    }
+    await MongoSandboxInstance.updateOne(
+      { _id: resources[0]._id },
+      { $set: { 'operation.heartbeatAt': oldDate } }
+    );
+    await claimSandboxOperation({
+      resource: resources[1],
+      status: 'provisioning',
+      type: 'provision',
+      phase: 'rollbackClaimed'
+    });
+    const params = { statuses: ['provisioning'] as const, heartbeatBefore: new Date('2026-01-01') };
+    const stale = await findStaleSandboxOperations({ ...params, statuses: [...params.statuses] });
+    expect(stale.map((resource) => resource.sandboxId)).toEqual([resources[0].sandboxId]);
+    const recoverable = await findStaleSandboxOperations({
+      ...params,
+      statuses: [...params.statuses],
+      retryPhases: ['rollbackClaimed']
+    });
+    expect(recoverable.map((resource) => resource.sandboxId).sort()).toEqual(
+      [resources[0].sandboxId, resources[1].sandboxId].sort()
+    );
+    expect(
+      await findStaleSandboxOperations({
+        statuses: ['restoring'],
+        heartbeatBefore: new Date(),
+        retryPhases: ['rollbackClaimed']
+      })
+    ).toEqual([]);
+  });
+
   it('creates one provisioning claim and never upserts a running record', async () => {
     const identity = createAppIdentity();
     const first = await createSandboxProvisioningInstance({
@@ -72,7 +114,7 @@ describe('sandbox instance lifecycle repository', () => {
       operation: { type: SandboxOperationTypeEnum.provision, phase: 'claimed' }
     });
     expect(duplicate.created).toBe(false);
-    expect(duplicate.instance?._id.toString()).toBe(first.instance?._id.toString());
+    expect(String(duplicate.instance?._id)).toBe(String(first.instance?._id));
     await expect(
       touchRunningSandboxInstance({
         provider: 'opensandbox',
@@ -227,6 +269,7 @@ describe('sandbox instance lifecycle repository', () => {
       resource: claimed!,
       operationId,
       status: SandboxInstanceStatusEnum.stopping,
+      retryAfter: new Date(Date.now() + 5 * 60 * 1000),
       error: 'provider timeout'
     });
     await expect(MongoSandboxInstance.findById(claimed!._id).lean()).resolves.toMatchObject({

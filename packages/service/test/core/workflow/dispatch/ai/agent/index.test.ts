@@ -7,10 +7,8 @@ import {
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import {
-  getRunningSandboxId,
-  getSandboxRuntimeProfile
-} from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
+import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/application/runtime';
 import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { runWithContext as runWithWorkflowContext } from '@fastgpt/service/core/workflow/utils/context';
 import { Readable } from 'node:stream';
@@ -115,9 +113,9 @@ vi.mock('@fastgpt/service/core/ai/skill/runtime', async (importOriginal) => {
   };
 });
 
-vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', async (importOriginal) => {
+vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime', async (importOriginal) => {
   const original =
-    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/interface/runtime')>();
+    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/application/runtime')>();
 
   return {
     ...original,
@@ -125,12 +123,32 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', async (importOrigi
       sandboxClient: await getSandboxClientMock(params),
       workspaceRoot: original.getSandboxRuntimeProfile().workDirectory,
       workDirectory: original.getSandboxRuntimeProfile().workDirectory
-    })),
-    ensureAppSandboxRuntimeReady: ensureAppSandboxRuntimeReadyMock,
-    getAgentSkillInfos: getAgentSkillInfosMock,
-    injectAgentSkillFilesToSandbox: injectAgentSkillFilesToSandboxMock
+    }))
   };
 });
+vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/upgrade', async (importOriginal) => {
+  const original =
+    await importOriginal<
+      typeof import('@fastgpt/service/core/ai/sandbox/application/runtime/upgrade')
+    >();
+
+  return { ...original, ensureAppSandboxRuntimeReady: ensureAppSandboxRuntimeReadyMock };
+});
+vi.mock(
+  '@fastgpt/service/core/ai/sandbox/application/runtime/skill/core',
+  async (importOriginal) => {
+    const original =
+      await importOriginal<
+        typeof import('@fastgpt/service/core/ai/sandbox/application/runtime/skill/core')
+      >();
+
+    return {
+      ...original,
+      getAgentSkillInfos: getAgentSkillInfosMock,
+      injectAgentSkillFilesToSandbox: injectAgentSkillFilesToSandboxMock
+    };
+  }
+);
 
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
   checkTeamSandboxPermission: checkTeamSandboxPermissionMock

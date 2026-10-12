@@ -178,18 +178,31 @@ export class OpenSandboxLifecycle {
     }
   }
 
+  /** 同一稳定 session 的可见资源全部属于清理目标，避免只删除一个就发布释放终态。 */
+  private async listSandboxesBySessionId(manager: SandboxManager): Promise<ResolvedSandboxInfo[]> {
+    const items: ResolvedSandboxInfo[] = [];
+    let page = 1;
+    while (true) {
+      const result = await manager.listSandboxInfos({
+        metadata: { sessionId: this.connectionConfig.sessionId },
+        pageSize: 100,
+        page
+      });
+      items.push(
+        ...result.items
+          .filter((item) => this.mapStatus(item.status).state !== 'UnExist')
+          .map((item) => this.resolveSandboxInfo(item))
+      );
+      if (!result.pagination?.hasNextPage) return items;
+      page++;
+    }
+  }
+
   private async getSandboxBySessionId(
     manager: SandboxManager
   ): Promise<ResolvedSandboxInfo | undefined> {
-    const result = await manager.listSandboxInfos({
-      metadata: { sessionId: this.connectionConfig.sessionId },
-      pageSize: 100
-    });
-    const activeItems = result.items.filter(
-      (item) => this.mapStatus(item.status).state !== 'UnExist'
-    );
-    const info = activeItems.find((item) => item.id === this.boundSandbox?.id) ?? activeItems[0];
-    return info ? this.resolveSandboxInfo(info) : undefined;
+    const items = await this.listSandboxesBySessionId(manager);
+    return items.find((item) => item.info.id === this.boundSandbox?.id) ?? items[0];
   }
 
   private async getSandboxById(props: {
@@ -311,6 +324,41 @@ export class OpenSandboxLifecycle {
           this.connectionConfig.baseUrl
         );
     }
+  }
+
+  /** 只绑定 Running 实例；停止和过渡态交给持有生命周期锁的激活入口。 */
+  async connectRunning(): Promise<void> {
+    const bindRunning = async (resolved: ResolvedSandboxInfo) => {
+      if (resolved.status.state !== 'Running') {
+        throw new SandboxStateError(
+          'Cannot connect to an inactive sandbox',
+          resolved.status.state,
+          'Running'
+        );
+      }
+      if (this.boundSandbox?.id !== resolved.info.id) await this.connect(resolved.info.id);
+      else this.setStatus({ state: 'Running' });
+    };
+    if (this.boundSandbox) {
+      try {
+        await bindRunning(this.resolveSandboxInfo(await this.boundSandbox.getInfo()));
+        return;
+      } catch (error) {
+        if (!this.isNotFoundError(error)) throw error;
+        await this.releaseSandbox();
+        throw new SandboxNotFoundError(
+          `Sandbox session ${this.connectionConfig.sessionId} does not exist`
+        );
+      }
+    }
+    await this.withSandboxManager(async (manager) => {
+      const resolved = await this.getSandboxBySessionId(manager);
+      if (!resolved)
+        throw new SandboxNotFoundError(
+          `Sandbox session ${this.connectionConfig.sessionId} does not exist`
+        );
+      await bindRunning(resolved);
+    });
   }
 
   /** Ensure the reusable session resource exists and is running. */
@@ -453,18 +501,24 @@ export class OpenSandboxLifecycle {
       }
 
       await this.withSandboxManager(async (manager) => {
-        const resolved = targetId
-          ? await this.getSandboxById({ manager, sandboxId: targetId })
-          : await this.getSandboxBySessionId(manager);
-        if (!resolved) return;
-
-        await manager.killSandbox(resolved.info.id);
-        await this.waitUntilSandboxState({
-          sandboxId: resolved.info.id,
-          expectedStates: ['UnExist'],
-          readInfo: async () =>
-            (await this.getSandboxById({ manager, sandboxId: resolved.info.id }))?.info
-        });
+        const targets = targetId
+          ? [await this.getSandboxById({ manager, sandboxId: targetId })].filter(
+              (item): item is ResolvedSandboxInfo => Boolean(item)
+            )
+          : await this.listSandboxesBySessionId(manager);
+        for (const resolved of targets) {
+          try {
+            await manager.killSandbox(resolved.info.id);
+            await this.waitUntilSandboxState({
+              sandboxId: resolved.info.id,
+              expectedStates: ['UnExist'],
+              readInfo: async () =>
+                (await this.getSandboxById({ manager, sandboxId: resolved.info.id }))?.info
+            });
+          } catch (error) {
+            if (!this.isNotFoundError(error)) throw error;
+          }
+        }
       });
       if (affectsBoundSandbox) this.setStatus({ state: 'UnExist' });
     } catch (error) {

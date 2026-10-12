@@ -4,20 +4,22 @@ import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { getRootUser } from '@test/datas/users';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR } from '@fastgpt/service/core/ai/sandbox/interface/skillEdit';
+import { SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR } from '@fastgpt/service/core/ai/sandbox/constants';
 
 const skillExportMocks = vi.hoisted(() => ({
   packageSkillEditWorkspaceMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/interface/skillEdit', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/interface/skillEdit')>();
-  return {
-    ...actual,
-    packageSkillEditWorkspace: skillExportMocks.packageSkillEditWorkspaceMock
-  };
-});
+vi.mock(
+  '@fastgpt/service/core/ai/sandbox/application/skillEdit/runtime',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@fastgpt/service/core/ai/sandbox/application/skillEdit/runtime')
+      >();
+    return { ...actual, packageSkillEditWorkspace: skillExportMocks.packageSkillEditWorkspaceMock };
+  }
+);
 
 const mockJsonRes = vi.mocked(jsonRes);
 

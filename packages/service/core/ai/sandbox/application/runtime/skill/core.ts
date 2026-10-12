@@ -22,8 +22,6 @@ import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { Types } from '../../../../../../common/mongo';
 import { Readable } from 'node:stream';
 
-export type { DeployedSkillInfo, DeployedSkillVersion } from './types';
-
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 const parseCommandOutputNulls = (stdout: string) => stdout.split('\0').filter(Boolean);
 const SKILL_INFO_SCAN_PRUNE_DIRS = ['node_modules', '.venv', 'venv'];

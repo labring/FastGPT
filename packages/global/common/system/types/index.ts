@@ -1,6 +1,6 @@
 import { SubPlanSchema } from '../../../support/wallet/sub/type';
 import { z } from 'zod';
-import { BoolSchema, NumSchema, optionalNullToUndefined } from '../../zod';
+import { BoolSchema, IntSchema, NumSchema, optionalNullToUndefined } from '../../zod';
 import type {
   LicensePayload,
   LicenseSchemaVersionType,
@@ -403,12 +403,15 @@ export const CustomDomainSchema = z.looseObject({
 export type customDomainType = z.infer<typeof CustomDomainSchema>;
 
 export const SystemEnvSchema = z.looseObject({
-  agentSandboxMax: optionalNullToUndefined(NumSchema).meta({
+  agentSandboxMax: optionalNullToUndefined(IntSchema.min(1)).meta({
     description:
-      'Agent 沙箱活跃实例系统总上限（app 会话与技能编辑共用计数池）；未配置时使用环境变量'
+      'Agent 沙箱活跃实例系统总上限，须为正整数（app 会话与技能编辑共用计数池）；未配置时使用环境变量',
+    example: 100
   }),
-  agentSandboxMaxPerTeam: optionalNullToUndefined(NumSchema).meta({
-    description: '单团队 Agent 沙箱活跃实例配额；未配置时使用环境变量，环境变量未配置时不限制'
+  agentSandboxMaxPerTeam: optionalNullToUndefined(IntSchema.min(1)).meta({
+    description:
+      '单团队 Agent 沙箱活跃实例配额，须为正整数；未配置时使用环境变量，环境变量未配置时不限制',
+    example: 10
   }),
   openapiPrefix: z.string().optional(),
 

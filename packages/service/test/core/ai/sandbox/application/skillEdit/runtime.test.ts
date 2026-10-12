@@ -73,15 +73,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/client', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/archive', () => {
-  class SandboxLifecycleStateError extends Error {
-    constructor(readonly state: string) {
-      super(`Sandbox is ${state}`);
-      this.name = 'SandboxLifecycleStateError';
-    }
-  }
   return {
-    SANDBOX_STALE_ARCHIVING_MINUTES: 15,
-    SandboxLifecycleStateError,
     startSandboxRuntimeUpgradeArchive: mocks.startSandboxRuntimeUpgradeArchive
   };
 });
@@ -362,7 +354,7 @@ describe('skill edit runtime initialization', () => {
 
   it('maps lifecycle transition contention to the runtime-upgrade user error', async () => {
     const { SandboxLifecycleStateError } =
-      await import('@fastgpt/service/core/ai/sandbox/application/archive');
+      await import('@fastgpt/service/core/ai/sandbox/application/lifecycle/error');
     mocks.getSandboxClient.mockRejectedValueOnce(new SandboxLifecycleStateError('archiving'));
 
     await expect(initSkillEditRuntimeSandbox({ context: createContext() })).rejects.toMatchObject({

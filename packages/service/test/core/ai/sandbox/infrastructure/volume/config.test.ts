@@ -24,11 +24,17 @@ describe('sandbox volume config', () => {
     const { getVolumeManagerEnvConfig } = await loadVolumeConfigModule();
 
     expect(getVolumeManagerEnvConfig()).toEqual({
-      enable: true,
       url: 'http://volume-manager.local',
       token: 'volume-token',
       volumeNamePrefix: 'custom-volume',
       storageSize: '5Gi'
     });
+  });
+  it('requires the volume-manager URL at the configuration boundary', async () => {
+    vi.doMock('@fastgpt/service/env', () => ({ serviceEnv: {} }));
+    const { getVolumeManagerEnvConfig } = await loadVolumeConfigModule();
+    expect(getVolumeManagerEnvConfig).toThrow(
+      'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL is required'
+    );
   });
 });

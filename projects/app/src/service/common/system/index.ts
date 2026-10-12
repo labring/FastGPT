@@ -26,7 +26,7 @@ import {
   getAgentSandboxArchiveMaxBytes,
   getAgentSandboxMaxFileBytes,
   getAgentSandboxSkillMaxBytes
-} from '@fastgpt/service/core/ai/sandbox/interface/config';
+} from '@fastgpt/service/core/ai/sandbox/config';
 import { serviceEnv } from '@fastgpt/service/env';
 import { appEnv } from '@/env';
 import { pluginTagList } from '@fastgpt/global/sdk/fastgpt-plugin';

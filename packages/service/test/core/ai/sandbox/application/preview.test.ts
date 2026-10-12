@@ -18,10 +18,12 @@ import {
   createSandboxPreviewSession,
   resolveSandboxPreviewPath,
   resolveSandboxPreviewSession,
-  SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX,
-  SANDBOX_PREVIEW_SESSION_TTL_SECONDS,
   SandboxPreviewSessionLimitError
 } from '@fastgpt/service/core/ai/sandbox/application/preview';
+import {
+  SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX,
+  SANDBOX_PREVIEW_SESSION_TTL_SECONDS
+} from '@fastgpt/service/core/ai/sandbox/constants';
 
 const originalProxyUrl = serviceEnv.AGENT_SANDBOX_PROXY_URL;
 const originalPreviewProxyUrl = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;

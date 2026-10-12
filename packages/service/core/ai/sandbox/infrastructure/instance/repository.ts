@@ -3,14 +3,19 @@
  *
  * Repository 只负责 v2 记录查询和 `status + operation.id` CAS，不执行任何远端副作用。
  */
+import {
+  SANDBOX_ARCHIVE_CURSOR_BATCH_SIZE,
+  sandboxActiveStatusList,
+  sandboxStableStatusList,
+  expectedOperationByStatus,
+  SandboxInstanceStatusEnum,
+  SandboxOperationTypeEnum
+} from '../../constants';
 import { randomUUID } from 'node:crypto';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { SANDBOX_WORKSPACE_VOLUME_NAME } from '@fastgpt/global/core/ai/sandbox/volume';
 import { MongoSandboxInstance } from './schema';
 import {
-  sandboxActiveStatusList,
-  SandboxInstanceStatusEnum,
-  SandboxOperationTypeEnum,
   type SandboxInstanceSchemaType,
   type SandboxInstanceStatusType,
   type SandboxOperationType,
@@ -18,12 +23,7 @@ import {
   type SandboxStableStatusType
 } from '../../type';
 
-const SANDBOX_ARCHIVE_CURSOR_BATCH_SIZE = 100;
-const stableStatuses = new Set<SandboxInstanceStatusType>([
-  SandboxInstanceStatusEnum.running,
-  SandboxInstanceStatusEnum.stopped,
-  SandboxInstanceStatusEnum.archived
-]);
+const stableStatuses = new Set<SandboxInstanceStatusType>(sandboxStableStatusList);
 
 export type SandboxResourceDoc = Pick<
   SandboxInstanceSchemaType,
@@ -75,6 +75,7 @@ export type ClaimSandboxOperationParams = {
   status: Exclude<SandboxInstanceStatusType, SandboxStableStatusType>;
   type: SandboxOperationType;
   phase?: string;
+  set?: Record<string, unknown>;
   previousStatus?: SandboxStableStatusType;
   matchLastActiveAt?: boolean;
 };
@@ -115,18 +116,6 @@ const buildSandboxStableFieldsSet = (fields: SandboxStableFields) => ({
   ...(fields.versionId !== undefined ? { versionId: fields.versionId } : {})
 });
 
-const expectedOperationByStatus: Record<
-  Exclude<SandboxInstanceStatusType, SandboxStableStatusType>,
-  SandboxOperationType
-> = {
-  provisioning: SandboxOperationTypeEnum.provision,
-  legacyMigrating: SandboxOperationTypeEnum.legacyMigration,
-  stopping: SandboxOperationTypeEnum.stop,
-  archiving: SandboxOperationTypeEnum.archive,
-  restoring: SandboxOperationTypeEnum.restore,
-  deleting: SandboxOperationTypeEnum.delete
-};
-
 const assertOperationMatchesStatus = (
   status: Exclude<SandboxInstanceStatusType, SandboxStableStatusType>,
   type: SandboxOperationType
@@ -138,7 +127,7 @@ const assertOperationMatchesStatus = (
 
 /** 原子抢占一条记录进入过渡态，并为本轮操作生成唯一 fencing token。 */
 export async function claimSandboxOperation(params: ClaimSandboxOperationParams) {
-  const { resource, status, type, phase, previousStatus, matchLastActiveAt = false } = params;
+  const { resource, status, type, phase, set, previousStatus, matchLastActiveAt = false } = params;
   assertOperationMatchesStatus(status, type);
   const now = new Date();
   const operationId = randomUUID();
@@ -162,6 +151,7 @@ export async function claimSandboxOperation(params: ClaimSandboxOperationParams)
     },
     {
       $set: {
+        ...(set ?? {}),
         status,
         operation: {
           id: operationId,
@@ -199,6 +189,7 @@ export async function advanceSandboxOperation(params: {
       },
       $unset: {
         'operation.failedAt': '',
+        'operation.retryAfter': '',
         'operation.error': ''
       }
     },
@@ -212,6 +203,7 @@ export async function markSandboxOperationFailed(params: {
   operationId: string;
   status: Exclude<SandboxInstanceStatusType, SandboxStableStatusType>;
   error: string;
+  retryAfter: Date;
 }) {
   return MongoSandboxInstance.updateOne(
     {
@@ -223,6 +215,7 @@ export async function markSandboxOperationFailed(params: {
       $set: {
         'operation.failedAt': new Date(),
         'operation.error': params.error,
+        'operation.retryAfter': params.retryAfter,
         'operation.heartbeatAt': new Date()
       }
     }
@@ -238,10 +231,6 @@ export async function completeSandboxOperation(params: {
   set?: Record<string, unknown>;
   touchActive?: boolean;
 }) {
-  if (!stableStatuses.has(params.status)) {
-    throw new Error(`Cannot complete sandbox operation to non-stable status ${params.status}`);
-  }
-
   return MongoSandboxInstance.findOneAndUpdate(
     {
       ...buildSandboxResourceRecordFilter(params.resource),
@@ -392,10 +381,18 @@ export function createSandboxResourcesToArchiveCursor(inactiveBefore: Date) {
 export async function findStaleSandboxOperations(params: {
   statuses: Exclude<SandboxInstanceStatusType, SandboxStableStatusType>[];
   heartbeatBefore: Date;
+  /** 已进入幂等回滚的阶段可以每轮重试；调用方仍须取得租约并重新读取记录。 */
+  retryPhases?: readonly string[];
+  now?: Date;
 }) {
+  const heartbeatFilter = { 'operation.heartbeatAt': { $lte: params.heartbeatBefore } };
   return MongoSandboxInstance.find({
     status: { $in: params.statuses },
-    'operation.heartbeatAt': { $lt: params.heartbeatBefore }
+    $or: [
+      heartbeatFilter,
+      { 'operation.retryAfter': { $lte: params.now ?? new Date() } },
+      ...(params.retryPhases?.length ? [{ 'operation.phase': { $in: params.retryPhases } }] : [])
+    ]
   }).lean<SandboxResourceDoc[]>();
 }
 

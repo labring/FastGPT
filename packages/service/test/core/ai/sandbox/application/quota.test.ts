@@ -17,7 +17,8 @@ const identity = {
   sourceType: ChatSourceTypeEnum.app,
   sourceId: 'app-1',
   userId: 'user-1',
-  teamId: 'team-1'
+  teamId: 'team-1',
+  current: null
 };
 
 describe('checkSandboxQuota', () => {
@@ -35,7 +36,12 @@ describe('checkSandboxQuota', () => {
       teamId: identity.teamId
     });
     mocks.countActiveSandboxInstances.mockResolvedValue(100);
-    await expect(checkSandboxQuota(identity)).resolves.toBeUndefined();
+    await expect(
+      checkSandboxQuota({
+        ...identity,
+        current: { status: 'running', teamId: identity.teamId } as any
+      })
+    ).resolves.toBeUndefined();
     expect(mocks.countActiveSandboxInstances).not.toHaveBeenCalled();
   });
 

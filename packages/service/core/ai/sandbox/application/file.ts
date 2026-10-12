@@ -3,6 +3,7 @@
  *
  * 只操作调用方传入的 sandbox/client，不创建、恢复或清理 sandbox 实例。
  */
+import { MAX_ARCHIVE_DEPTH } from '../constants';
 import type { FileWriteEntry, ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import mime from 'mime';
 import { posix } from 'node:path';
@@ -34,8 +35,6 @@ type ResolveSandboxWorkspacePathOptions = {
 type SandboxDirectoryArchive = {
   append: (source: Readable, data: { name: string }) => unknown;
 };
-
-const MAX_ARCHIVE_DEPTH = 20;
 
 const getSandboxWorkDirectory = () => getSandboxRuntimeProfile().workDirectory;
 
