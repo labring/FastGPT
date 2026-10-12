@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FileSelectorRenderItemType } from '@/components/core/app/FileSelector/type';
 import {
   getFileSelectorDisplayIcon,
@@ -11,9 +11,83 @@ import {
   markFileSelectorUploading,
   markFileSelectorUploadSuccess,
   mergeFileSelectorExternalValue,
+  probeFileSelectorLinkFilename,
   sanitizeFileSelectValue
 } from '@/components/core/app/FileSelector/utils';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getFileIcon } from '@fastgpt/global/common/file/icon';
+
+class MockXMLHttpRequest {
+  method = '';
+  url = '';
+  aborted = false;
+  timer?: ReturnType<typeof setTimeout>;
+  status = 200;
+  timeout = 0;
+  withCredentials = false;
+  onload: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  ontimeout: (() => void) | null = null;
+  onabort: (() => void) | null = null;
+  headers = new Map<string, string>();
+  static instances: MockXMLHttpRequest[] = [];
+  static onSend?: (xhr: MockXMLHttpRequest) => void;
+
+  constructor() {
+    MockXMLHttpRequest.instances.push(this);
+  }
+
+  open(method: string, url: string) {
+    this.method = method;
+    this.url = url;
+  }
+
+  getResponseHeader(key: string) {
+    return this.headers.get(key.toLowerCase()) ?? null;
+  }
+
+  send() {
+    if (MockXMLHttpRequest.onSend) {
+      MockXMLHttpRequest.onSend(this);
+      return;
+    }
+    queueMicrotask(() => {
+      if (this.status >= 200 && this.status < 300) {
+        this.onload?.();
+      } else {
+        this.onerror?.();
+      }
+    });
+  }
+
+  abort() {
+    clearTimeout(this.timer);
+    this.aborted = true;
+    this.onabort?.();
+  }
+
+  complete(response: Response) {
+    clearTimeout(this.timer);
+    this.status = response.status;
+    this.headers = new Map(response.headers.entries());
+    this.onload?.();
+  }
+
+  fail() {
+    clearTimeout(this.timer);
+    this.onerror?.();
+  }
+}
+
+/** 配置真实响应/失败事件，供探测测试复用现有 XHR 夹具。 */
+const createFileSelectorXHRMock = (onSend?: (request: MockXMLHttpRequest) => void) => {
+  MockXMLHttpRequest.instances = [];
+  MockXMLHttpRequest.onSend = (request) => {
+    request.timer = setTimeout(() => request.ontimeout?.(), request.timeout);
+    onSend?.(request);
+  };
+  return { requests: MockXMLHttpRequest.instances, Request: MockXMLHttpRequest };
+};
 
 describe('sanitizeFileSelectValue', () => {
   it('retains uploaded preview URLs only for temporary debug values', () => {
@@ -146,6 +220,192 @@ describe('inferFileSelectorType', () => {
       ChatFileTypeEnum.image
     );
     expect(inferFileSelectorType('report.unknown')).toBe(ChatFileTypeEnum.file);
+  });
+});
+
+describe('probeFileSelectorLinkFilename', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it.each([
+    ['https://example.com/audio.mp3?token=1', 'audio.mp3'],
+    ['https://example.com/encoded%2Epdf', 'encoded.pdf'],
+    ['https://example.com/download?filename=video.mp4', 'video.mp4'],
+    ['https://example.com/report.unknown', 'report.unknown'],
+    ['https://example.com/download?filename=opaque', 'opaque']
+  ])('链接有文件名时不请求远端：%s', async (url, filename) => {
+    const xhr = createFileSelectorXHRMock();
+    vi.stubGlobal('XMLHttpRequest', xhr.Request);
+    expect(await probeFileSelectorLinkFilename({ url, signal: new AbortController().signal })).toBe(
+      filename
+    );
+    expect(xhr.requests).toHaveLength(0);
+  });
+
+  it.each([
+    ['audio/mpeg', 'file.mpga'],
+    [' VIDEO/MP4 ; charset=utf-8', 'file.mp4'],
+    ['image/png', 'file.png'],
+    ['application/pdf', 'file.pdf'],
+    ['text/plain', 'file.txt'],
+    ['application/octet-stream', undefined],
+    ['', undefined]
+  ])('HEAD 复用 MIME 库推断文件后缀：%s', async (contentType, filename) => {
+    const xhr = createFileSelectorXHRMock((request) =>
+      request.complete(new Response(null, { headers: { 'Content-Type': contentType } }))
+    );
+    vi.stubGlobal('XMLHttpRequest', xhr.Request);
+    const url = 'https://example.com/directory.pdf/opaque?filename=';
+    expect(await probeFileSelectorLinkFilename({ url, signal: new AbortController().signal })).toBe(
+      filename
+    );
+    expect(xhr.requests[0]).toMatchObject({
+      method: 'HEAD',
+      url,
+      timeout: 3000,
+      withCredentials: false
+    });
+  });
+
+  it.each(['', '/relative', 'not a URL', 'data:audio/wav;base64,abc', 'ftp://example.com/audio'])(
+    '非 HTTP(S) 链接不探测：%s',
+    async (url) => {
+      const xhr = createFileSelectorXHRMock();
+      vi.stubGlobal('XMLHttpRequest', xhr.Request);
+      expect(
+        await probeFileSelectorLinkFilename({ url, signal: new AbortController().signal })
+      ).toBeUndefined();
+      expect(xhr.requests).toHaveLength(0);
+    }
+  );
+
+  it.each([
+    ['', 'attachment; filename="report.pdf"', 'report.pdf'],
+    ['application/octet-stream', 'attachment; filename="report.docx"', 'report.docx'],
+    ['application/pdf', 'attachment; filename="recording.mp3"', 'file.pdf']
+  ])('复用响应文件名解析，明确 MIME 优先：%s / %s', async (contentType, disposition, filename) => {
+    const xhr = createFileSelectorXHRMock((request) =>
+      request.complete(
+        new Response(null, {
+          headers: { 'Content-Type': contentType, 'Content-Disposition': disposition }
+        })
+      )
+    );
+    vi.stubGlobal('XMLHttpRequest', xhr.Request);
+    expect(
+      await probeFileSelectorLinkFilename({
+        url: 'https://example.com/opaque',
+        signal: new AbortController().signal
+      })
+    ).toBe(filename);
+  });
+
+  it.each([
+    ['audio/ogg', 'file/fill/audio'],
+    ['audio/aac', 'file/fill/audio'],
+    ['video/quicktime', 'file/fill/video'],
+    ['image/avif', 'image'],
+    ['image/heic', 'image']
+  ])('HEAD 后缀交给公共图标函数，媒体别名不降级：%s', async (contentType, icon) => {
+    const xhr = createFileSelectorXHRMock((request) =>
+      request.complete(
+        new Response(null, {
+          headers: { 'Content-Type': contentType }
+        })
+      )
+    );
+    vi.stubGlobal('XMLHttpRequest', xhr.Request);
+    const filename = await probeFileSelectorLinkFilename({
+      url: 'https://example.com/opaque',
+      signal: new AbortController().signal
+    });
+    expect(getFileIcon(filename)).toBe(icon);
+  });
+
+  it.each(['cors', 'http', 'abort'] as const)(
+    '%s 失败静默返回，不调用可能被扩展包装的 fetch',
+    async (mode) => {
+      const xhr = createFileSelectorXHRMock((request) => {
+        if (mode === 'cors') request.fail();
+        else if (mode === 'abort') request.abort();
+        else request.complete(new Response(null, { status: 405 }));
+      });
+      vi.stubGlobal('XMLHttpRequest', xhr.Request);
+      const fetchMock = vi.fn(() => {
+        throw new Error('Wrapped fetch must not be called');
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      expect(
+        await probeFileSelectorLinkFilename({
+          url: 'https://example.com/opaque',
+          signal: new AbortController().signal
+        })
+      ).toBeUndefined();
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(xhr.requests[0].onerror).toBeNull();
+    }
+  );
+
+  it.each(['timeout', 'cancel'] as const)('%s 会中止 HEAD 并保留原图标', async (mode) => {
+    vi.useFakeTimers();
+    const xhr = createFileSelectorXHRMock();
+    vi.stubGlobal('XMLHttpRequest', xhr.Request);
+    const controller = new AbortController();
+    const pending = probeFileSelectorLinkFilename({
+      url: 'https://example.com/opaque',
+      signal: controller.signal
+    });
+    if (mode === 'timeout') await vi.advanceTimersByTimeAsync(3000);
+    else controller.abort();
+    expect(await pending).toBeUndefined();
+    expect(xhr.requests[0].onload).toBeNull();
+    if (mode === 'cancel') expect(xhr.requests[0].aborted).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('已取消的请求不发起网络访问', async () => {
+    const xhr = createFileSelectorXHRMock();
+    vi.stubGlobal('XMLHttpRequest', xhr.Request);
+    const controller = new AbortController();
+    controller.abort();
+    expect(
+      await probeFileSelectorLinkFilename({
+        url: 'https://example.com/opaque',
+        signal: controller.signal
+      })
+    ).toBeUndefined();
+    expect(xhr.requests).toHaveLength(0);
+  });
+
+  it('XHR 初始化或响应头读取抛错时仍静默返回', async () => {
+    vi.stubGlobal(
+      'XMLHttpRequest',
+      class {
+        constructor() {
+          throw new Error('Blocked XHR');
+        }
+      }
+    );
+    expect(
+      await probeFileSelectorLinkFilename({
+        url: 'https://example.com/opaque',
+        signal: new AbortController().signal
+      })
+    ).toBeUndefined();
+    const xhr = createFileSelectorXHRMock((request) => request.complete(new Response(null)));
+    vi.spyOn(xhr.Request.prototype, 'getResponseHeader').mockImplementation(() => {
+      throw new Error('Unreadable headers');
+    });
+    vi.stubGlobal('XMLHttpRequest', xhr.Request);
+    expect(
+      await probeFileSelectorLinkFilename({
+        url: 'https://example.com/opaque',
+        signal: new AbortController().signal
+      })
+    ).toBeUndefined();
   });
 });
 

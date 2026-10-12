@@ -1,11 +1,6 @@
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
-import {
-  audioFileType,
-  imageFileType,
-  videoFileType,
-  documentFileExtensions
-} from '@fastgpt/global/common/file/constants';
+import { audioFileType, imageFileType, videoFileType } from '@fastgpt/global/common/file/constants';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import path from 'node:path';
@@ -13,7 +8,12 @@ import pLimit from 'p-limit';
 import { inferFileTypeFromUrl } from '../../../common/file/infer/service';
 import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator';
 import { normalizeMimeType } from '../../../common/s3/utils/mime';
-import { getFileUrlIdentity, isAbsoluteHttpUrl, selectFileInputs } from './utils';
+import {
+  getFileNameFromUrl,
+  getFileUrlIdentity,
+  isAbsoluteHttpUrl,
+  selectFileInputs
+} from './utils';
 
 export type ChatFileInput = Pick<UserChatItemFileItemType, 'url'> &
   Partial<Pick<UserChatItemFileItemType, 'name' | 'type'>>;
@@ -49,8 +49,9 @@ const classificationStates = new WeakMap<
 const probeWithoutContext = pLimit(5);
 
 /**
- * 唯一链接分类入口：已登记结果 > 明确媒体类型 > 可信对象元数据 > 后缀 > 系统链接探测 > 普通文件。
- * 普通 file 提示仍允许探测；私有 key 只按后缀推测，不请求签名链接。
+ * 唯一链接分类入口：已登记结果 > 明确媒体类型 > 可信对象元数据 > 链接文件名 > 系统链接探测 > 普通文件。
+ * 链接包含 filename 参数或带后缀的路径文件名时不探测，未知后缀保留为普通文件。
+ * 普通 file 提示仍允许探测无文件名链接；私有 key 只按后缀推测，不请求签名链接。
  * 分类不截断、不登记。Context 内相同身份复用探测和降级结果，远端探测并发上限为 5。
  */
 export const parseUrlToChatFileType = async ({
@@ -119,9 +120,11 @@ export const parseUrlToChatFileType = async ({
 
     try {
       const parsedUrl = new URL(url, 'http://localhost:3000');
-      const basename = path.basename(url.startsWith('chat/') ? url : parsedUrl.pathname);
+      const basename = url.startsWith('chat/')
+        ? path.basename(url)
+        : (getFileNameFromUrl(url) ?? path.basename(parsedUrl.pathname));
       const filename =
-        (url.startsWith('chat/') ? undefined : parsedUrl.searchParams.get('filename')) ||
+        (url.startsWith('chat/') ? undefined : parsedUrl.searchParams.get('filename')?.trim()) ||
         (basename.includes('.') ? basename : '');
       const extension = `.${filename.slice(filename.lastIndexOf('.') + 1).toLowerCase()}`;
       const mediaExtensions: [string, ChatFileTypeEnum][] = [
@@ -143,11 +146,7 @@ export const parseUrlToChatFileType = async ({
         const metadataType = mediaTypeFromMime(metadata?.contentType);
         if (metadataType) return { type: metadataType };
         if (filenameType) return { type: filenameType };
-        if (
-          documentFileExtensions.some((item) => item === extension) ||
-          !isAbsoluteHttpUrl(url) ||
-          !validateFileUrlDomain(url)
-        )
+        if (filename || !isAbsoluteHttpUrl(url) || !validateFileUrlDomain(url))
           return { type: ChatFileTypeEnum.file };
         return probeFile();
       })();
@@ -155,7 +154,11 @@ export const parseUrlToChatFileType = async ({
       return {
         type: resolved.type,
         ...(resolved.filename ? { filename: resolved.filename } : {}),
-        name: name || (filename ? decodeURIComponent(filename) : url),
+        // URL 路径和 query 已各自解码一次，避免把文件名中的字面量百分号再次解码。
+        // 私有 key 保留原有显示名称兼容行为。
+        name:
+          name ||
+          (filename ? (url.startsWith('chat/') ? decodeURIComponent(filename) : filename) : url),
         url
       };
     } catch {

@@ -54,6 +54,14 @@ describe('parseUrlToChatFileType', () => {
     [`${url}.png?filename=report.pdf`, undefined, FileType.file, 'report.pdf'],
     [`${url}.png?filename=`, undefined, FileType.image, 'download.png'],
     ['https://files.example.com/file%20name.jpg', undefined, FileType.image, 'file name.jpg'],
+    ['https://files.example.com/record%2Emp3?token=1', undefined, FileType.audio, 'record.mp3'],
+    [
+      'https://files.example.com/literal%2520name.pdf',
+      undefined,
+      FileType.file,
+      'literal%20name.pdf'
+    ],
+    [`${url}?filename=literal%2520name.pdf`, undefined, FileType.file, 'literal%20name.pdf'],
     ['relative', undefined, FileType.file, 'relative'],
     ['http://[invalid', '保留名称', FileType.file, '保留名称'],
     ['chat/%invalid.png', undefined, FileType.file, 'chat/%invalid.png']
@@ -70,6 +78,47 @@ describe('parseUrlToChatFileType', () => {
       expect(axios.head).not.toHaveBeenCalled();
     }
   );
+
+  it.each([
+    [`${url}.php?id=42`, 'download.php'],
+    [`${url}.BIN#fragment`, 'download.BIN'],
+    [`${url}.?token=signed`, 'download.'],
+    [`${url}?filename=LICENSE`, 'LICENSE'],
+    [`${url}?filename=report.unknown`, 'report.unknown'],
+    [`${url}.png?filename=unknown`, 'unknown']
+  ])('链接已有文件名时未知后缀也不探测：%s', async (url, name) => {
+    expect(await parseUrlToChatFileType({ url, type: FileType.file })).toEqual({
+      url,
+      name,
+      type: FileType.file
+    });
+    expect(axios.head).not.toHaveBeenCalled();
+    expect(axios.get).not.toHaveBeenCalled();
+  });
+
+  it('目录和显式显示名称的后缀不能替代链接自身的文件名', async () => {
+    const inputUrl = 'https://files.example.com/path.with.dots/download';
+    expect(
+      await parseUrlToChatFileType({ url: inputUrl, name: 'display.php', type: FileType.file })
+    ).toEqual({
+      url: inputUrl,
+      name: 'display.php',
+      type: FileType.image,
+      filename: 'download.png'
+    });
+    expect(axios.head).toHaveBeenCalledTimes(1);
+  });
+
+  it('空白 filename 参数不阻止无文件名链接探测', async () => {
+    const inputUrl = `${url}?filename=%20%20`;
+    expect(await parseUrlToChatFileType({ url: inputUrl })).toEqual({
+      url: inputUrl,
+      name: inputUrl,
+      type: FileType.image,
+      filename: 'file.png'
+    });
+    expect(axios.head).toHaveBeenCalledTimes(1);
+  });
 
   it.each([
     [FileType.video, { contentType: 'audio/mpeg', filename: 'photo.png' }, FileType.video],

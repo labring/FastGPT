@@ -180,6 +180,30 @@ describe('parseFileContentFromUrls (buffer hit)', () => {
     expect(result.every((item) => item.success)).toBe(true);
   });
 
+  it.each([0, 1])('空链接在读取额度 %s 裁剪之前过滤，有效链接仍按原顺序选择', async (maxFiles) => {
+    const result = await parseFileContentFromUrls({
+      urls: [
+        '',
+        ' \n\t ',
+        ' http://localhost:3000/a.pdf ',
+        'http://localhost:3000/a.pdf',
+        'https://files.example.com/b.pdf'
+      ],
+      maxFiles,
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+
+    expect(result).toEqual(
+      maxFiles
+        ? [{ success: true, name: 'a.pdf', url: 'http://localhost:3000/a.pdf', content: 'Alpha' }]
+        : []
+    );
+    expect(mockGetRawTextBuffer).toHaveBeenCalledTimes(maxFiles);
+    expect(mockAxiosHead).not.toHaveBeenCalled();
+    expect(mockAxiosGet).not.toHaveBeenCalled();
+  });
+
   it('最多并发读取 5 个文件并保持结果顺序', async () => {
     const urls = Array.from({ length: 6 }, (_, index) => `https://files.example.com/${index}.pdf`);
     let releaseFirstBatch = () => {};

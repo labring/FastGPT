@@ -23,7 +23,12 @@ import {
   type ChatFileInput,
   type PreparedChatFile
 } from '../../chat/file/service';
-import { isAbsoluteHttpUrl, getFileUrlIdentity, getFileNameFromUrl } from '../../chat/file/utils';
+import {
+  isAbsoluteHttpUrl,
+  getFileUrlIdentity,
+  getFileNameFromUrl,
+  selectFileInputs
+} from '../../chat/file/utils';
 import { filterWorkflowQueryFiles, type WorkflowFileLimits } from './fileLimits';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
@@ -528,10 +533,21 @@ export const prepareWorkflowFileContext = async ({
   const preparedHistories: ChatItemMiniType[] = await Promise.all(
     histories.map(async (history) => {
       if (history.obj !== ChatRoleEnum.Human) return { ...history };
-      const selectedValues = filterWorkflowQueryFiles({
-        query: history.value,
-        maxFileAmount
+      // 历史按文件身份去重后计额度，避免重复 key 或 URL 别名挤掉其它文件；保留文本原始顺序。
+      const selectedFiles = selectFileInputs({
+        files: history.value.flatMap((item, index) =>
+          item.file ? [{ file: item.file, index }] : []
+        ),
+        maxFiles: maxFileAmount,
+        getIdentity: ({ file }) =>
+          file.key
+            ? `chat:${file.key}`
+            : (fileContext.getIdentity(file.url) ?? getFileUrlIdentity(file.url))
       });
+      const selectedFileIndexes = new Set(selectedFiles.map(({ index }) => index));
+      const selectedValues = history.value.filter(
+        (item, index) => !item.file || selectedFileIndexes.has(index)
+      );
       const value = await Promise.all(
         selectedValues.map(async (value) => {
           if (!value.file) {

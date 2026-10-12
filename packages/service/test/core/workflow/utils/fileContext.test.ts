@@ -114,6 +114,95 @@ describe('prepareWorkflowFileContext', () => {
     expect(child.getIdentity('https://files.example.com/signed')).toBe(`chat:${privateKey}`);
   });
 
+  it.each(['external', 'private', 'registered-alias'] as const)(
+    '历史 %s 文件先按身份去重再裁剪，保留首个文件元数据和文本顺序',
+    async (kind) => {
+      const firstUrl = 'https://files.example.com/first.pdf';
+      const signedUrl = 'https://files.example.com/signed';
+      const secondUrl = 'https://files.example.com/second.png';
+      const excessUrl = 'https://files.example.com/excess.png';
+      const firstFile = createFile({
+        url: firstUrl,
+        name: 'first.pdf',
+        ...(kind !== 'external' ? { key: privateKey } : {})
+      });
+      const duplicateFile = createFile({
+        url: kind === 'registered-alias' ? signedUrl : `${firstUrl}#alias`,
+        name: 'duplicate.pdf',
+        ...(kind === 'private' ? { key: privateKey } : {})
+      });
+      const histories: ChatItemMiniType[] = [
+        {
+          obj: ChatRoleEnum.Human,
+          value: [
+            { text: { content: 'before' } },
+            firstFile,
+            { text: { content: 'middle' } },
+            duplicateFile,
+            createFile({ url: secondUrl, name: 'second.png' }),
+            createFile({ url: excessUrl }),
+            { text: { content: 'after' } }
+          ]
+        }
+      ];
+      const snapshot = structuredClone(histories);
+      const getPreviewUrl = vi.fn(async () => signedUrl);
+      const result = await prepareWorkflowFileContext({
+        query: kind === 'registered-alias' ? [firstFile] : [],
+        histories,
+        scope,
+        maxFileAmount: 2,
+        getPreviewUrl
+      });
+
+      expect(
+        result.histories[0].value.map(
+          (item) => ('file' in item ? item.file?.url : undefined) ?? item.text?.content
+        )
+      ).toEqual([
+        'before',
+        kind === 'external' ? firstUrl : signedUrl,
+        'middle',
+        secondUrl,
+        'after'
+      ]);
+      expect(result.histories[0].value[1]).toMatchObject({ file: { name: 'first.pdf' } });
+      expect(result.histories[0].value[3]).toMatchObject({
+        file: { type: ChatFileTypeEnum.image }
+      });
+      expect(result.fileContext.resolve(excessUrl)).toBeUndefined();
+      expect(getPreviewUrl).toHaveBeenCalledTimes(kind === 'external' ? 0 : 1);
+      expect(axiosHeadMock).not.toHaveBeenCalled();
+      expect(histories).toEqual(snapshot);
+    }
+  );
+
+  it.each([0, 1.9])('历史文件按取整后的额度 %s 裁剪，文本始终保留', async (maxFileAmount) => {
+    const { histories, fileContext } = await prepareWorkflowFileContext({
+      query: [],
+      histories: [
+        {
+          obj: ChatRoleEnum.Human,
+          value: [
+            createFile({ url: 'https://files.example.com/first.pdf' }),
+            { text: { content: 'history' } },
+            createFile({ url: 'https://files.example.com/second.pdf' })
+          ]
+        }
+      ],
+      scope,
+      maxFileAmount
+    });
+    expect(histories[0].value.filter((item) => 'file' in item && item.file)).toHaveLength(
+      Math.floor(maxFileAmount)
+    );
+    expect(histories[0].value.filter((item) => item.text)).toEqual([
+      { text: { content: 'history' } }
+    ]);
+    expect(fileContext.resolve('https://files.example.com/second.pdf')).toBeUndefined();
+    expect(axiosHeadMock).not.toHaveBeenCalled();
+  });
+
   it('派生 Context 去重继承别名，孙级只继承所选文件并拒绝越权读取', async () => {
     const first = 'https://files.example.com/one.pdf';
     const second = 'https://files.example.com/two.pdf';

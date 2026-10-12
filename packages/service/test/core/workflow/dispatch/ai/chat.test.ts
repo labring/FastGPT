@@ -82,7 +82,7 @@ describe('getAIChatFileContextConfig', () => {
 });
 
 describe('getInputFiles', () => {
-  it('keeps the original audio filename when the first-round url has no extension', async () => {
+  it('保留音频显示名称，无后缀 URL 仍发送音频且不按名称猜 format', async () => {
     const url = 'https://files.example.com/opaque-short-token';
     let userFiles = [] as Awaited<ReturnType<typeof getInputFiles>>;
 
@@ -136,8 +136,7 @@ describe('getInputFiles', () => {
       {
         type: 'input_audio',
         input_audio: {
-          data: url,
-          format: 'mp3'
+          data: url
         }
       }
     ]);

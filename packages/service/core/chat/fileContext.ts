@@ -589,9 +589,9 @@ export const parseFileContentFromUrls = async ({
     content: string;
   }[]
 > => {
-  // 数量上限同时约束探测和正文读取，超限文件不产生任何网络请求。
+  // 空链接不占额度；数量上限同时约束探测和正文读取，超限文件不产生任何网络请求。
   const candidateUrls = selectFileInputs({
-    files: urls,
+    files: urls.filter((url) => url.trim()),
     maxFiles,
     getIdentity: (url) => fileContext?.getIdentity(url.trim()) ?? getFileUrlIdentity(url.trim())
   });

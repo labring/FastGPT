@@ -88,7 +88,7 @@ Workflow 输入适配器通过独立 `WorkflowFileRegistrar` 登记 query/histor
 底层只接收窄 Context 接口，工作流包装层注入当前 Context，避免 chat 反向依赖 workflow。
 AI、文档读取、知识库和签名短链共用分类规则，消费者不得再次覆盖已登记类型。
 `core/chat/file/utils.ts` 提供纯身份计算和列表选择；外链身份忽略 fragment，保留签名参数。
-根 query 的消息条数上限和 Child 的跨输入额度仍由各自适配器决定。
+根 query 的消息条数上限和 Child 的跨输入额度仍由各自适配器决定。根 Human 历史按私有 key、已登记身份或外链身份去重后，对每条消息独立裁剪；保留首个文件元数据和非文件项的原始顺序。文档读取先过滤空链接，再按身份去重和截断，空链接不占用额度。
 相对 URL 直接拒绝。模型 `read_files` 的公网读取策略保持独立，不借外链登记接口扩大私有权限。
 
 系统级 `common/file/infer/service.ts` 的 `inferFileTypeFromUrl` 不依赖聊天和工作流，
@@ -101,7 +101,11 @@ URL 保留原始签名参数；文件名来自 Content-Disposition、filename �
 默认共享 3 秒请求预算，HEAD 超时为一半预算。网络、安全及读取错误抛给业务层处理；
 聊天层将失败降级为 file。SSRF 和业务传入的 URL 策略同样约束 GET 及其重定向。
 该方法仅推测元数据，不校验文件完整性，不登记 Context，不承担列表过滤或下载业务。
-聊天层消费 contentType 和 filename；filename 已包含探测的 extension，随分类结果保存到 Context Ref 并在链接读取时传给文件源。显式 name 保留为显示名称，未提供时采用探测文件名。解析优先使用带有效后缀的显示名称，否则使用探测文件名；两者均无有效后缀时允许下载响应的 Content-Disposition 补充。
+聊天分类入口遇到非空 filename 查询参数或带后缀的 URL 路径文件名时不发起远端探测；已知媒体后缀按媒体分类，其它后缀保留为普通文件。目录中的后缀和显式显示名称不代表链接自身有文件名，不能阻止无文件名链接探测。
+聊天层消费 contentType 和 filename；filename 已包含探测的 extension，随分类结果保存到 Context Ref 并在链接读取时传给文件源。显式 name 保留为显示名称，未提供时使用链接文件名或原始 URL。解析优先使用带非空后缀的显示名称，否则使用探测文件名；两者均无非空后缀时允许下载响应的 Content-Disposition 补充。
+AI Chat 按已识别的 fileType 转换音频，不再向运行态 file_url 注入来源文件名，也不按显示名称或文件名过滤音频。URL 有已知音频后缀时保留 input_audio.format；无已知格式时省略 format，由模型接口处理音频内容。关闭音频输入时仍过滤音频附件。
+音频附件是否进入模型由 AI 节点的 `aiChatAudio` 与模型的 `config.audio` 共同决定；工作流的 `fileSelectConfig.canSelectAudio` 只控制上传入口，不影响全局文件变量或节点文件链接的音频输入。
+客户端 FileSelector 对无文件名外链直接发起 HEAD，通过已有 MIME 库推断后缀或复用 Content-Disposition 文件名，再统一交给 getFileIcon 计算展示图标；filename 查询参数或带后缀的路径文件名不探测。请求使用 XMLHttpRequest，错误、3 秒超时和取消事件均返回空结果，避开部分浏览器扩展包装 fetch 时遗留的未处理 Promise 拒绝；图标更新 Promise 链也静默兜底。浏览器 CORS 限制、未知元数据和非成功响应均保留原图标，不阻塞输入；删除、更换链接和卸载时取消请求。探测结果不回写 name/type 或持久化值，后端文件分类与读取规则保持独立。
 
 ## 4. 数据模型
 
@@ -317,7 +321,7 @@ Loop 和 Parallel 共享当前 Context。Child 在父 Context 下先过滤实际
 - Context 未命中的绝对 HTTP(S) URL 在通过文件域名白名单后推断类型并登记，后续节点和文档读取
   复用该 Ref；并发的同一外链共享探测 Promise，探测失败的普通文件兜底结果也在本次运行内复用；
 - 登记 query/history 时同步推断类型并返回新的消息文件对象。私有文件按可信 key 和显式类型推断，
-  外链优先采用显式多模态类型和已知文件后缀，仅对未知后缀调用系统探测；HEAD、GET 及重定向均检查域名策略；
+  外链优先采用显式多模态类型和链接文件名，仅对无文件名链接调用系统探测；HEAD、GET 及重定向均检查域名策略；
 - 文件列表在探测前去重、截断；同名沙箱文件在并发分类完成后按输入顺序命名；
 - Child 派生先完成父级 Ref 继承和新外链准入校验，再批量准备新外链（最多 5 并发），并将类型同步到其 query/history；Child 新外链只进入自身登记表；
 - keyless 历史相对 URL 不再通过内部 Axios 读取；
