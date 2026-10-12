@@ -236,6 +236,24 @@ describe('createChatCompletion', () => {
     expect(mockLogger.warn).not.toHaveBeenCalled();
   });
 
+  it('should not treat an upstream error carrying the abort text as an abort', async () => {
+    // SDK 的 makeMessage 会给带 status 的错误加上状态码前缀（如 '500 {...}'），
+    // 所以真实上游错误的 message 不可能等于 abort 的固定文案；此处显式锁住该前提，
+    // 避免日后有人「补一个 status 守卫」而掩盖了真正需要防的情况。
+    const upstream = new OpenAI.APIError(500, { error: {} }, 'Request was aborted.', new Headers());
+    expect(upstream.message).not.toBe('Request was aborted.');
+
+    const create = vi.fn().mockRejectedValue(upstream);
+    mockApi({ create });
+
+    await expect(
+      createChatCompletion({ modelData: createModel(), body: createBody() })
+    ).rejects.toBeTruthy();
+
+    expect(mockLogger.error).toHaveBeenCalledWith('LLM response error', expect.anything());
+    expect(mockLogger.warn).not.toHaveBeenCalled();
+  });
+
   it('should not report an aborted user-key request as a key error', async () => {
     const create = vi.fn().mockRejectedValue(new OpenAI.APIUserAbortError());
     mockApi({ create, usedUserOpenAIKey: true, baseUrl: 'https://api.openai.com/v1' });

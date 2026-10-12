@@ -82,9 +82,13 @@ export const createChatCompletion = async ({
     if (isAbortedRequestError(error)) {
       logger.warn('LLM request aborted', {
         baseUrl: requestMeta.baseUrl,
-        model: body.model
+        model: body.model,
+        // 探活/自身超时与用户主动取消在日志里同形，带上超时配置便于区分
+        timeout: formatTimeout,
+        reason: getErrText(error)
       });
-      return Promise.reject(normalizeRelayNoChannelError(error));
+      // abort 无 HTTP status，normalizeRelayNoChannelError 必然原样返回，直接 reject 更直白
+      return Promise.reject(error);
     }
 
     if (requestMeta.usedUserOpenAIKey) {
