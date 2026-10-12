@@ -21,7 +21,8 @@ vi.mock('@fastgpt/web/hooks/useMemoEnhance', () => ({
 }));
 vi.mock('ahooks', () => ({ useLocalStorageState: () => [mocks.remembered, mocks.remember] }));
 vi.mock('@/web/core/workflow/editor/react/useNode', () => ({
-  useNode: () => ({ data: { inputs: mocks.nodeInputs }, updateNode: mocks.updateNode }),
+  useNode: (_nodeId: string, selector: (node: unknown) => unknown) =>
+    selector({ data: { inputs: mocks.nodeInputs } }),
   useNodeActions: () => ({ updateNode: mocks.updateNode })
 }));
 vi.mock('@/web/core/workflow/editor/react/useField', () => ({

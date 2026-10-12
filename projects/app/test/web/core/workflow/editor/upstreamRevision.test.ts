@@ -41,7 +41,8 @@ vi.mock('@/web/core/ai/model/useUserModelStore', () => ({
   useUserModelStore: { subscribe: () => () => undefined }
 }));
 vi.mock('@/web/core/ai/model/modelData', () => ({
-  ensureModelCatalog: vi.fn(async () => ({}))
+  ensureModelCatalog: vi.fn(async () => ({})),
+  peekModelCatalog: vi.fn(() => undefined)
 }));
 
 const t = ((key: string) => key) as never;

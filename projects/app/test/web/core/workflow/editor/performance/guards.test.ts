@@ -64,9 +64,9 @@ describe('workflow editor subscription guards', () => {
     expect(scan(editorRoots, wholeContextSelector('AppContext'))).toEqual([]);
   });
 
-  it('Handle 目录与 ButtonEdge 内零 adapter 结构订阅', () => {
+  it('Handle 目录与 ButtonEdge 内零未收窄的 adapter 结构订阅', () => {
     // 这两处是按节点数 / 边数线性增长的实例，结构句柄随结构变化重建，订阅它等于全画布刷新。
-    // 连通判定走 useWorkflow(selector) + Runtime 图查询，写命令走 useWorkflowActions()。
+    // 选择器订阅只返回稳定的布尔值或边引用；完整结构句柄和 useWorkflowDocument 仍禁止使用。
     const targets = [
       join(flowRoot, 'nodes/render/Handle'),
       join(flowRoot, 'components/ButtonEdge.tsx')
@@ -74,7 +74,7 @@ describe('workflow editor subscription guards', () => {
     expect(
       scan(
         targets,
-        /\buseWorkflow\s*\(|\buseWorkflowDocument\s*\(|useWorkflow as useWorkflowAdapter/
+        /\buseWorkflow\s*\(\s*(?:\{\s*raw\s*:\s*true\s*\})?\s*\)|\buseWorkflowDocument\s*\(|useWorkflow as useWorkflowAdapter/
       )
     ).toEqual([]);
   });

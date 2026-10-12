@@ -776,9 +776,10 @@ const MultipleSelect = <T = any,>({
           onClose={onCloseSelect}
         />
       ) : (
+        // 关闭态刻意使用 div；ButtonProps 的样式属性可复用，但 DOM 事件类型仍指向 button。
         <Flex
           ref={staticTriggerRef}
-          {...triggerProps}
+          {...(triggerProps as unknown as FlexProps)}
           role={'button'}
           tabIndex={isDisabled ? -1 : 0}
           aria-disabled={isDisabled || undefined}

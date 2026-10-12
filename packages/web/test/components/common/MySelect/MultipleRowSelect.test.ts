@@ -161,6 +161,8 @@ describe('MultipleRowSelect', () => {
 
     expect(host.textContent).not.toContain('Source');
     root.unmount();
+  });
+
   it('handles null or non-array value gracefully without throwing TypeError', () => {
     expect(() => {
       renderToStaticMarkup(
