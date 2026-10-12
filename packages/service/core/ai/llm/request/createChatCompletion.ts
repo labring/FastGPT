@@ -80,13 +80,7 @@ export const createChatCompletion = async ({
     // 请求被中断不是真实的上游故障，降级 warn，避免持续污染 ai/llm 的 error 指标。
     // 需要先于用户 key 分支判断：中断并不代表用户 key 有问题。
     if (isAbortedRequestError(error)) {
-      logger.warn('LLM request aborted', {
-        baseUrl: requestMeta.baseUrl,
-        model: body.model,
-        // 探活/自身超时与用户主动取消在日志里同形，带上超时配置便于区分
-        timeout: formatTimeout,
-        reason: getErrText(error)
-      });
+      logger.warn('LLM request aborted');
       // abort 无 HTTP status，normalizeRelayNoChannelError 必然原样返回，直接 reject 更直白
       return Promise.reject(error);
     }

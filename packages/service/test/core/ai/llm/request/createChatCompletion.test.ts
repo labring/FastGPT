@@ -204,10 +204,7 @@ describe('createChatCompletion', () => {
       createChatCompletion({ modelData: createModel(), body: createBody() })
     ).rejects.toBeTruthy();
 
-    expect(mockLogger.warn).toHaveBeenCalledWith(
-      'LLM request aborted',
-      expect.objectContaining({ model: 'gpt-4o' })
-    );
+    expect(mockLogger.warn).toHaveBeenCalledWith('LLM request aborted');
     expect(mockLogger.error).not.toHaveBeenCalled();
   });
 
@@ -220,7 +217,7 @@ describe('createChatCompletion', () => {
       createChatCompletion({ modelData: createModel(), body: createBody() })
     ).rejects.toBeTruthy();
 
-    expect(mockLogger.warn).toHaveBeenCalledWith('LLM request aborted', expect.anything());
+    expect(mockLogger.warn).toHaveBeenCalledWith('LLM request aborted');
     expect(mockLogger.error).not.toHaveBeenCalled();
   });
 
