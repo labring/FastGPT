@@ -11,6 +11,7 @@ import { rewriteChatMessagesWithFileContext } from '../../../../../core/chat/fil
 import { runWithContext } from '../../../../../core/workflow/utils/context';
 import { loadRequestMessages } from '../../../../../core/ai/llm/utils';
 import { serviceEnv } from '../../../../../env';
+import { axios } from '../../../../../common/api/axios';
 
 const createHumanMessage = ({
   text,
@@ -81,13 +82,15 @@ describe('getAIChatFileContextConfig', () => {
 });
 
 describe('getInputFiles', () => {
-  it('keeps the original audio filename when the first-round url has no extension', async () => {
+  it('保留音频显示名称，无后缀 URL 仍发送音频且不按名称猜 format', async () => {
     const url = 'https://files.example.com/opaque-short-token';
-    let userFiles = [] as ReturnType<typeof getInputFiles>;
+    let userFiles = [] as Awaited<ReturnType<typeof getInputFiles>>;
 
-    runWithContext(
+    await runWithContext(
       {
         fileContext: {
+          limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
+          getIdentity: (target: string) => (target === url ? 'chat:meeting.mp3' : undefined),
           resolveChatFile: (target: string) =>
             target === url
               ? {
@@ -100,8 +103,8 @@ describe('getInputFiles', () => {
         } as any,
         mcpClientMemory: {}
       },
-      () => {
-        userFiles = getInputFiles({ fileLinks: [url] });
+      async () => {
+        userFiles = await getInputFiles({ fileLinks: [url] });
       }
     );
 
@@ -120,23 +123,61 @@ describe('getInputFiles', () => {
           obj: ChatRoleEnum.Human,
           value: runtimePrompt2ChatsValue({ files: userFiles })
         }
-      ]
+      ],
+      reserveId: true
     });
     const previousMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+    (serviceEnv as any).MULTIPLE_DATA_TO_BASE64 = false;
     const requestMessages = await loadRequestMessages({ messages, useAudio: true }).finally(() => {
-      serviceEnv.MULTIPLE_DATA_TO_BASE64 = previousMultipleDataToBase64;
+      (serviceEnv as any).MULTIPLE_DATA_TO_BASE64 = previousMultipleDataToBase64;
     });
 
     expect(requestMessages[0]?.content).toEqual([
       {
         type: 'input_audio',
         input_audio: {
-          data: url,
-          format: 'mp3'
+          data: url
         }
       }
     ]);
+  });
+
+  it('classifies extensionless image URL as image via probe and adapts to image_url', async () => {
+    const url = 'https://external-service.com/get-image?id=999';
+    const headSpy = vi.spyOn(axios, 'head').mockResolvedValueOnce({
+      headers: { 'content-type': 'image/jpeg' }
+    } as any);
+
+    const userFiles = await getInputFiles({ fileLinks: [url] });
+
+    expect(userFiles).toEqual([
+      {
+        type: ChatFileTypeEnum.image,
+        name: url,
+        url
+      }
+    ]);
+
+    const messages = chats2GPTMessages({
+      messages: [
+        {
+          obj: ChatRoleEnum.Human,
+          value: runtimePrompt2ChatsValue({ files: userFiles })
+        }
+      ],
+      reserveId: true
+    });
+
+    expect(messages[0]?.content).toEqual([
+      {
+        type: 'image_url',
+        image_url: {
+          url
+        }
+      }
+    ]);
+
+    headSpy.mockRestore();
   });
 });
 

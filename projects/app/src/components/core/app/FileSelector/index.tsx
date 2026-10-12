@@ -60,6 +60,8 @@ import {
   useChatApiTarget
 } from '@/web/core/chat/utils';
 import { getFileAmountLimit, getFileSizeLimitBytes } from '@fastgpt/global/core/workflow/fileLimit';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { useFileSelectorLinkIcons } from './useLinkIcons';
 
 type WebkitFileSystemFileEntry = {
   isFile: true;
@@ -218,6 +220,7 @@ const FileSelector = ({
   const [fileList, setFileList] = useState<FileSelectorRenderItemType[]>(() =>
     formatFileSelectorInternalValue(value)
   );
+  const linkIcons = useFileSelectorLinkIcons(fileList);
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -798,23 +801,28 @@ const FileSelector = ({
           <MyDivider />
           <VStack>
             {fileList.map((file) => {
-              const fileIcon = getFileSelectorDisplayIcon(file);
+              const linkIcon = linkIcons.get(file.id);
+              const fileIcon = getFileSelectorDisplayIcon({
+                ...file,
+                icon: !file.key && linkIcon && linkIcon.url === file.url ? linkIcon.icon : file.icon
+              });
               const isUploadingFile = isFileSelectorUploading(file);
               return (
                 <Box key={file?.id} w={'full'}>
                   <HStack py={1} px={3} bg={'white'} borderRadius={'md'} border={'sm'}>
                     <MyAvatar src={fileIcon} w={'1.2rem'} />
-                    <Box
-                      fontSize={'sm'}
-                      flex={'1 0 0'}
-                      className="textEllipsis"
-                      title={file?.name}
-                      {...(file?.error && {
-                        color: 'red.600'
-                      })}
-                    >
-                      {file?.name}
-                    </Box>
+                    <MyTooltip label={file?.name} showOnlyWhenOverflow>
+                      <Box
+                        fontSize={'sm'}
+                        flex={'1 0 0'}
+                        className="textEllipsis"
+                        {...(file?.error && {
+                          color: 'red.600'
+                        })}
+                      >
+                        {file?.name}
+                      </Box>
+                    </MyTooltip>
 
                     {/* Status icon */}
                     {!isUploadingFile ? (

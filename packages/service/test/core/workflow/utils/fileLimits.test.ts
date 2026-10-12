@@ -9,6 +9,7 @@ vi.mock('@fastgpt/service/support/wallet/sub/utils', () => ({
 }));
 
 import {
+  filterWorkflowQueryFiles,
   getWorkflowFileAmountLimits,
   prepareWorkflowFileQuery
 } from '@fastgpt/service/core/workflow/utils/fileLimits';
@@ -125,5 +126,55 @@ describe('prepareWorkflowFileQuery', () => {
 
     expect(result.query).toEqual(files.slice(0, 2));
     expect(result.maxFileAmount).toBe(2);
+  });
+});
+
+describe('filterWorkflowQueryFiles', () => {
+  const textItem: UserChatItemValueItemType = { text: { content: 'question' } };
+  const firstFile = createFile('first.pdf');
+  const secondFile = createFile('second.pdf');
+
+  it('keeps non-file inputs and only the first files within the limit', () => {
+    expect(
+      filterWorkflowQueryFiles({
+        query: [firstFile, textItem, secondFile],
+        maxFileAmount: 1
+      })
+    ).toEqual([firstFile, textItem]);
+  });
+
+  it('removes all file inputs when the limit is zero', () => {
+    expect(
+      filterWorkflowQueryFiles({
+        query: [firstFile, textItem, secondFile],
+        maxFileAmount: 0
+      })
+    ).toEqual([textItem]);
+  });
+});
+
+describe('getWorkflowFileAmountLimits', () => {
+  it('uses the team plan for Context and the app config for query uploads', () => {
+    expect(
+      getWorkflowFileAmountLimits({
+        teamMaxFileAmount: 100,
+        systemMaxFileAmount: 1000,
+        queryMaxFileAmount: 3
+      })
+    ).toEqual({
+      maxFileAmount: 100,
+      queryMaxFileAmount: 3
+    });
+  });
+
+  it('falls back to the system limit and then uses it for an unconfigured query', () => {
+    expect(
+      getWorkflowFileAmountLimits({
+        systemMaxFileAmount: 1000
+      })
+    ).toEqual({
+      maxFileAmount: 1000,
+      queryMaxFileAmount: 1000
+    });
   });
 });

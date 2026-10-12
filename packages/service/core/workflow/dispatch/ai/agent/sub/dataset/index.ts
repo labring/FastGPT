@@ -200,7 +200,7 @@ export const dispatchAgentDatasetSearch = async ({
   }
 
   const queries = toolParams.data.query;
-  const { textQueries, imageQueries } = normalizeDatasetSearchInput(queries);
+  const { textQueries, imageQueries } = await normalizeDatasetSearchInput(queries);
   if (textQueries.length === 0 && imageQueries.length === 0) {
     return {
       response: 'Query is empty'
