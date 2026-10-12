@@ -1,6 +1,7 @@
 import { createI18nMiddleware } from 'fumadocs-core/i18n';
 import { defaultHomePath, i18n } from '@/lib/i18n';
 import { type NextRequest, NextResponse } from 'next/server';
+import { getSiteDefaultLocale } from '@/lib/site';
 
 // Old path redirects mapping. Keys/values are POST-strip (no /docs prefix).
 // Old links like /docs/foo are first stripped to /foo, then matched here.
@@ -91,7 +92,9 @@ const prefixMap: Record<string, string> = {
   '/introduction': '/guide'
 };
 
-const i18nMiddleware = createI18nMiddleware(i18n);
+// Per-domain default locale (io -> en, cn -> zh-CN), fixed at build time.
+const siteDefaultLocale = getSiteDefaultLocale();
+const i18nMiddleware = createI18nMiddleware({ ...i18n, defaultLanguage: siteDefaultLocale });
 const documentCacheControl = 'public, max-age=0, must-revalidate';
 
 function normalizePath(path: string) {
@@ -119,8 +122,16 @@ function createRedirectUrl(target: string, request: NextRequest, lang: string) {
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Root path: permanent redirect to the domain's default locale. No cookie /
+  // Accept-Language sniffing here, so crawlers always see a stable target.
+  if (pathname === '/') {
+    const target = new URL(`/${siteDefaultLocale}${defaultHomePath}`, request.url);
+    target.search = request.nextUrl.search;
+    return NextResponse.redirect(target, 301);
+  }
+
   // Extract language from pathname
-  let lang = i18n.defaultLanguage;
+  let lang: string = siteDefaultLocale;
   let pathWithoutLang = pathname;
 
   for (const language of i18n.languages) {

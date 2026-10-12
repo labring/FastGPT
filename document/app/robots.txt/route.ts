@@ -1,35 +1,20 @@
 import { NextResponse } from 'next/server';
-import { getFastGPTHomeOrigin, getFastGPTDocsOrigin } from '@/lib/fastgpt-home-url';
+import { getFastGPTDocsOrigin } from '@/lib/fastgpt-home-url';
+import { getDocSiteVariant } from '@/lib/site';
 
 export const dynamic = 'force-static';
 
+// Allow all crawlers on both domains; duplicate content is handled by
+// canonical + hreflang (locale ownership), not by blocking crawlers.
 export function GET() {
-  const homeDomain = getFastGPTHomeOrigin();
   const domain = getFastGPTDocsOrigin();
-  const isCN = homeDomain.includes('.cn');
+  const isCN = getDocSiteVariant() === 'cn';
 
-  let content: string;
-
-  if (isCN) {
-    content = `User-Agent: Googlebot
-Disallow: /
-
-User-Agent: *
+  const content = `User-Agent: *
 Allow: /
-
-Host: ${domain}
+${isCN ? `\nHost: ${domain}` : ''}
 Sitemap: ${domain}/sitemap.xml
 `;
-  } else {
-    content = `User-Agent: bingbot
-Disallow: /
-
-User-Agent: *
-Allow: /
-
-Sitemap: ${domain}/sitemap.xml
-`;
-  }
 
   return new NextResponse(content, {
     headers: { 'Content-Type': 'text/plain; charset=utf-8' }
