@@ -1,4 +1,17 @@
 import { isHttpUrl } from '@fastgpt/global/common/string/url';
+import path from 'node:path';
+
+/**
+ * 从 URL 路径解码并提取文件名，不读取 filename 查询参数或探测远端元数据。
+ * 非法 URL、路径解码失败或没有文件名时返回 undefined，由调用方决定展示名的兜底策略。
+ */
+export const getFileNameFromUrl = (url: string): string | undefined => {
+  try {
+    return path.basename(decodeURIComponent(new URL(url).pathname)) || undefined;
+  } catch {
+    return;
+  }
+};
 
 /** 只接受显式 HTTP(S) 协议的绝对链接，排除相对路径和不完整的 URL。 */
 export const isAbsoluteHttpUrl = (value: unknown): value is string => {

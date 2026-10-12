@@ -1,9 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getFileNameFromUrl,
   getFileUrlIdentity,
   isAbsoluteHttpUrl,
   selectFileInputs
 } from '@fastgpt/service/core/chat/file/utils';
+
+describe('getFileNameFromUrl', () => {
+  it.each<[string, string | undefined]>([
+    ['https://files.example.com/report.pdf?filename=other.docx#part', 'report.pdf'],
+    ['https://files.example.com/%E6%B5%8B%E8%AF%95%20%E6%8A%A5%E5%91%8A.pdf', '测试 报告.pdf'],
+    ['https://files.example.com/%252Freport.pdf', '%2Freport.pdf'],
+    ['https://files.example.com/', undefined],
+    ['https://files.example.com/%invalid', undefined],
+    ['not a standard url.wav', undefined]
+  ])('提取 %s 的路径文件名，失败时交给调用方兜底', (url, expected) => {
+    expect(getFileNameFromUrl(url)).toBe(expected);
+  });
+});
 
 describe('isAbsoluteHttpUrl', () => {
   it.each([

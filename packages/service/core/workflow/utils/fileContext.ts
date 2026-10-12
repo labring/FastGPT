@@ -23,8 +23,8 @@ import {
   type ChatFileInput,
   type PreparedChatFile
 } from '../../chat/file/service';
-import { isAbsoluteHttpUrl, getFileUrlIdentity } from '../../chat/file/utils';
-import { filterWorkflowQueryFiles } from './fileLimits';
+import { isAbsoluteHttpUrl, getFileUrlIdentity, getFileNameFromUrl } from '../../chat/file/utils';
+import { filterWorkflowQueryFiles, type WorkflowFileLimits } from './fileLimits';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 const WORKFLOW_FILE_URL_EXPIRED_HOURS = 2;
@@ -46,11 +46,6 @@ export type WorkflowFileRef = {
   type: ChatFileTypeEnum;
   modelUrl: string;
   source: WorkflowFileLocator;
-};
-
-export type WorkflowFileLimits = {
-  maxFileAmount: number;
-  maxBytesPerFile: number;
 };
 
 export type WorkflowFileSourceResult = {
@@ -163,7 +158,7 @@ const createWorkflowFileRegistry = () => {
   const registerExternalFile: WorkflowFileContext['registerExternalFile'] = (file) =>
     register({
       ref: {
-        name: file.name || getFileNameFromUrl(file.url),
+        name: file.name || getFileNameFromUrl(file.url) || 'file',
         ...(file.filename ? { filename: file.filename } : {}),
         type: file.type,
         modelUrl: file.url,
@@ -181,14 +176,6 @@ const createWorkflowFileRegistry = () => {
   };
 };
 
-const getFileNameFromUrl = (url: string) => {
-  try {
-    return path.basename(decodeURIComponent(new URL(url).pathname)) || 'file';
-  } catch {
-    return 'file';
-  }
-};
-
 /** 优先采用带有效后缀的显示名称，否则复用探测文件名；均无格式时允许下载响应补充。 */
 const createWorkflowExternalFileSource = ({
   url,
@@ -202,8 +189,8 @@ const createWorkflowExternalFileSource = ({
   maxSizeBytes: number;
 }) => {
   const displayFilename = isAbsoluteHttpUrl(name)
-    ? getFileNameFromUrl(name)
-    : name || getFileNameFromUrl(url);
+    ? (getFileNameFromUrl(name) ?? 'file')
+    : name || getFileNameFromUrl(url) || 'file';
   const displayExtension = path.extname(displayFilename);
   const filename =
     displayExtension && displayExtension !== '.'
