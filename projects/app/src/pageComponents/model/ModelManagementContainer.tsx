@@ -1,5 +1,4 @@
-import { useEffect, useMemo } from 'react';
-import type React from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
@@ -24,7 +23,7 @@ type ModelManagementContainerProps = {
   scrollPositionKey?: string;
   defaultTab?: ModelTabType;
   customTabs?: { label: string; value: ModelTabType }[];
-  renderCustomTab?: (tab: ModelTabType, TabNode: React.ReactNode) => React.ReactNode;
+  renderCustomTab?: (tab: ModelTabType, TabNode: ReactNode) => ReactNode;
   onBeforeTabChange?: (targetTab: ModelTabType, options?: { silent?: boolean }) => boolean;
 };
 

@@ -293,7 +293,6 @@ const ChannelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType:
         <HStack spacing={2} w={['100%', 'auto']}>
           <SearchInput
             w={['100%', '240px']}
-            size={'sm'}
             placeholder={t('config_model:channel.search_placeholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -301,7 +300,7 @@ const ChannelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType:
           {canCreateChannel && (
             <Button
               variant={'primary'}
-              size={'sm'}
+              flexShrink={0}
               isDisabled={channelMutationLoading}
               onClick={() => setEditChannel(defaultChannel)}
             >
