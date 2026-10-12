@@ -5,6 +5,12 @@ upgradeTags:
   - IN PROGRESS
 ---
 
+## Upgrade Guide
+
+### Image updates
+
+- AI Proxy: v0.7.5
+
 ### Upgrade scripts
 
 This upgrade does not include new system migration scripts. Simply update the image tags and restart the services.
@@ -13,10 +19,17 @@ This upgrade does not include new system migration scripts. Simply update the im
 
 1. Added support for limited HTML rendering in the Markdown component and optimized interactions across components.
 2. Supported choosing whether to inherit permissions by default when creating Dataset folders.
+3. Supported configuring dedicated AI models and channels for workspace members, improving multi-tenant and member-level model resource isolation and authorization with deep AI Proxy integration.
 
 ## ⚙️ Optimizations
+
+1. Unified padding and spacing for App, Skill, Dataset, and Tool cards to enhance visual consistency.
+2. Aligned permission metadata and added related App display in the Skill management dashboard.
 
 ## 🐛 Bug Fixes
 
 1. Fixed SeekDB data loss when containers are restarted or recreated.
 2. Fixed an incorrect active background color for the billing cycle toggle (monthly/annual) on the pricing page.
+3. Fixed JSON serialization errors when MCP tool input schemas contain recursive circular references (such as `{ $ref: '#' }`).
+4. Fixed a maximum call stack size exceeded error caused by self-recursion in the `InvokeProcessor` session getter.
+5. Fixed batch creation failures for Agent team members caused by unordered concurrency.
