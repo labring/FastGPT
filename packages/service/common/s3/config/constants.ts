@@ -6,6 +6,7 @@ import type {
   IStorageOptions
 } from '@fastgpt-sdk/storage';
 import { serviceEnv } from '../../../env';
+import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/controller';
 import { StorageDownloadUrlModeSchema } from '../contracts/type';
 
 export const S3Buckets = {
@@ -14,6 +15,9 @@ export const S3Buckets = {
 } as const;
 
 export const getSystemMaxFileSize = () => global.feConfigs.uploadFileMaxSize || 1024; // MB, 默认 1024MB;
+
+export const getStorageFileUrlExpiredDays = () =>
+  getSystemInstanceConfig().storage.fileUrlExpiredDays ?? serviceEnv.FILE_URL_EXPIRED_DAYS;
 
 export const S3_KEY_PATH_INVALID_CHARS = /[|\\/]/;
 

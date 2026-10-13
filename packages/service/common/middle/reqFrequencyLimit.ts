@@ -1,4 +1,5 @@
 import { jsonRes } from '../response';
+import { getSystemInstanceConfig } from '../system/systemInstanceConfig/controller';
 import { serviceEnv } from '../../env';
 import { getClientIpFromRequest } from '../security/clientIp';
 import type { NodeApiResponse, NodeHttpRequest } from '../../types/http';
@@ -19,7 +20,8 @@ export function useIPFrequencyLimit({
   force?: boolean;
 }) {
   return async (req: NodeHttpRequest, res: NodeApiResponse) => {
-    if (!serviceEnv.USE_IP_LIMIT && !force) {
+    const useIpLimit = getSystemInstanceConfig().security.useIpLimit ?? serviceEnv.USE_IP_LIMIT;
+    if (!useIpLimit && !force) {
       return;
     }
 

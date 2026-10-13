@@ -17,6 +17,7 @@ import { addMonths, addDays } from 'date-fns';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import { TeamPointCache, teamQpmCache } from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/controller';
 import { serviceEnv } from '../../../env';
 import { getRuntimeStandardPlanConfig } from '@fastgpt/global/support/wallet/sub/utils';
 
@@ -357,7 +358,7 @@ export const teamQPM = {
     const limit = teamPlanStatus[SubTypeEnum.standard]?.requestsPerMinute;
 
     if (!limit) {
-      return serviceEnv.CHAT_MAX_QPM;
+      return getSystemInstanceConfig().performance.chat.maxQpm ?? serviceEnv.CHAT_MAX_QPM;
     }
 
     // 3. Set cache

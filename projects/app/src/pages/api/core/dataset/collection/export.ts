@@ -17,6 +17,7 @@ import { type NextApiResponse } from 'next';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { replaceS3KeysToPreviewUrls } from '@fastgpt/service/common/s3/utils/preview';
 import { createDatasetFileS3KeyFilter } from '@fastgpt/service/common/s3/sources/dataset/key';
+import { getStorageFileUrlExpiredDays } from '@fastgpt/service/common/s3/config/constants';
 import { serviceEnv } from '@fastgpt/service/env';
 import { addDays } from 'date-fns';
 import { ExportCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
@@ -128,7 +129,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     try {
       const [sanitizedQ, sanitizedA] = await replaceS3KeysToPreviewUrls(
         [sanitizeCsvField(doc.q || ''), sanitizeCsvField(doc.a || '')],
-        addDays(new Date(), serviceEnv.FILE_URL_EXPIRED_DAYS),
+        addDays(new Date(), getStorageFileUrlExpiredDays()),
         {
           filter: createDatasetFileS3KeyFilter(collection.datasetId)
         }

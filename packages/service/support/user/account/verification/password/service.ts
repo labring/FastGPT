@@ -3,6 +3,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { verification, VerificationMaterialError } from '../../../../tmpData/verification';
 import { MongoUser } from '../../../schema';
+import { getSystemInstanceConfig } from '../../../../../common/system/systemInstanceConfig/controller';
 import { serviceEnv } from '../../../../../env';
 import {
   assertPasswordVerificationConsumeRateLimit,
@@ -22,13 +23,17 @@ const defaultDependencies: PasswordVerificationDependencies = {
     assertPasswordVerificationCreateRateLimit({
       account,
       scene,
-      limit: serviceEnv.PASSWORD_LOGIN_MINUTE_LIMIT_COUNT
+      limit:
+        getSystemInstanceConfig().security.passwordLoginMinuteLimitCount ??
+        serviceEnv.PASSWORD_LOGIN_MINUTE_LIMIT_COUNT
     }),
   assertConsumeFrequency: ({ account, scene }) =>
     assertPasswordVerificationConsumeRateLimit({
       account,
       scene,
-      limit: serviceEnv.PASSWORD_LOGIN_MINUTE_LIMIT_COUNT
+      limit:
+        getSystemInstanceConfig().security.passwordLoginMinuteLimitCount ??
+        serviceEnv.PASSWORD_LOGIN_MINUTE_LIMIT_COUNT
     }),
   savePreLoginCode: ({ purpose, username, code, ttlPreset }) =>
     verification.upsert({

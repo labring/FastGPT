@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from './systemInstanceConfig/controller';
 import { serviceEnv } from '../../env';
 
 export const FastGPTProUrl = serviceEnv.PRO_URL ? `${serviceEnv.PRO_URL}/api` : '';
@@ -8,6 +9,12 @@ export const isFastGPTProService = () => !!global.systemConfig;
 export const isProVersion = () => {
   return !!global.feConfigs?.isPlus;
 };
+
+export const getServiceRequestMaxContentLength = () =>
+  (getSystemInstanceConfig().resource.serviceRequestMaxContentLength ??
+    serviceEnv.SERVICE_REQUEST_MAX_CONTENT_LENGTH) *
+  1024 *
+  1024;
 
 export const serviceRequestMaxContentLength =
   serviceEnv.SERVICE_REQUEST_MAX_CONTENT_LENGTH * 1024 * 1024;

@@ -8,6 +8,7 @@ import { type Method } from 'axios';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { createProxyAxios } from '../../../../common/api/axios';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/controller';
 import { serviceEnv } from '../../../../env';
 
 type ResponseDataType = {
@@ -41,14 +42,16 @@ type YuqueTocListResponse = {
   parent_uuid: string;
 }[];
 
-const yuqueBaseUrl = serviceEnv.YUQUE_DATASET_BASE_URL;
+const getYuqueBaseUrl = () =>
+  getSystemInstanceConfig().providers.dataSource.yuqueDatasetBaseUrl ||
+  serviceEnv.YUQUE_DATASET_BASE_URL;
 
 export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServerType }) => {
   const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
   // YUQUE_DATASET_BASE_URL 由部署方配置，可能指向内网代理，不使用 SSRF 拦截器。
   const instance = createProxyAxios(
     {
-      baseURL: yuqueBaseUrl,
+      baseURL: getYuqueBaseUrl(),
       timeout: 60000, // 超时时间
       headers: {
         'X-Auth-Token': yuqueServer.token
@@ -243,7 +246,7 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
       'GET'
     );
 
-    return `${yuqueBaseUrl}/${yuqueServer.userId}/${parentSlug}/${fileSlug}`;
+    return `${getYuqueBaseUrl()}/${yuqueServer.userId}/${parentSlug}/${fileSlug}`;
   };
 
   const getFileDetail = async ({

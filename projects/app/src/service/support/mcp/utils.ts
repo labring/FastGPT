@@ -32,7 +32,7 @@ import {
   storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
+import { getWorkflowMaxRunTimes } from '@fastgpt/service/core/workflow/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { prepareWorkflowFileQuery } from '@fastgpt/service/core/workflow/utils/fileLimits';
 import { removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
@@ -313,7 +313,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
         chatConfig,
         histories: [],
         stream: false,
-        maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+        maxRunTimes: getWorkflowMaxRunTimes(),
         nodeResponseWriteConfig: {
           persistToDb: true,
           retainInMemory: false

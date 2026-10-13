@@ -17,6 +17,7 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getImageBase64 } from '../../../common/file/image/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/controller';
 import { serviceEnv } from '../../../env';
 import {
   ACTIVE_PLAN_END_TAG,
@@ -294,8 +295,11 @@ export const loadRequestMessages = async ({
    * 判断媒体是否需要在服务端转 base64。
    * 本地路径只有服务端能读取；MULTIPLE_DATA_TO_BASE64 用于兼容不支持远程 URL 的模型。
    */
-  const shouldLoadMediaAsBase64 = (url: string) =>
-    url.startsWith('/') || serviceEnv.MULTIPLE_DATA_TO_BASE64;
+  const shouldLoadMediaAsBase64 = (url: string) => {
+    const multipleDataToBase64 =
+      getSystemInstanceConfig().feature.multipleDataToBase64 ?? serviceEnv.MULTIPLE_DATA_TO_BASE64;
+    return url.startsWith('/') || multipleDataToBase64;
+  };
 
   /**
    * 仅从短文本中识别媒体 URL。普通文档 URL 仍作为文本保留，不在这里转成 LLM 媒体输入。

@@ -1,6 +1,7 @@
 import { fileTypeFromBuffer } from 'file-type';
 import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
 import { isOfficeLockFilename } from '@fastgpt/global/common/file/utils';
+import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/controller';
 import { serviceEnv } from '../../../env';
 import type { UploadConstraintsInput } from '../contracts/type';
 import { DEFAULT_CONTENT_TYPE, normalizeMimeType, resolveMimeType } from '../utils/mime';
@@ -303,7 +304,8 @@ export const resolveUploadFile = ({
   hint,
   policy,
   evidence,
-  skipFileTypeCheck = serviceEnv.SKIP_FILE_TYPE_CHECK
+  skipFileTypeCheck = getSystemInstanceConfig().security.skipFileTypeCheck ??
+    serviceEnv.SKIP_FILE_TYPE_CHECK
 }: {
   hint: UploadFileHint;
   policy: UploadPolicy;
