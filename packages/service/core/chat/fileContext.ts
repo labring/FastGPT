@@ -42,13 +42,6 @@ import {
 } from './file/service';
 import { getFileUrlIdentity, selectFileInputs } from './file/utils';
 
-import {
-  prepareChatFiles,
-  parseUrlToChatFileType,
-  type FilePreparationContext
-} from './file/service';
-import { getFileUrlIdentity, selectFileInputs } from './file/utils';
-
 /** Workflow 等上层业务可显式注入的已授权文件读取能力。 */
 export type FileReadContext = FilePreparationContext & {
   limits?: {

@@ -375,6 +375,7 @@ export async function authChatTargetCrud({
       teamId: authRes.teamId,
       tmbId: authRes.tmbId,
       uid: authRes.tmbId,
+      isRoot: authRes.isRoot,
       chat,
       showCite: false,
       showRunningStatus: true,
