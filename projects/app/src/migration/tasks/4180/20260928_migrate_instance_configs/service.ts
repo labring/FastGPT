@@ -413,6 +413,28 @@ export const buildSparseLegacyOverrides = ({
 };
 
 /**
+ * 将旧 fastLogin 配置规范化为新 schema 的数组形状。
+ * 历史来源有两种：
+ * - 对象形状 `Record<key, { authUrl }>`：旧商业版 Admin 的实际存储形状（textarea JSON.parse 产物）；
+ * - 数组形状 `[{ key, authUrl }]`：新版表单形状。
+ * 对象按 entries 展开为数组，缺 authUrl 的条目丢弃（无法生成有效跳转地址），
+ * 其余交给 compactDeep 清理 undefined；两种形状都不合法或为空时返回 undefined 不写覆盖项。
+ */
+const normalizeFastLogin = (raw: unknown): Record<string, unknown>[] | undefined => {
+  if (Array.isArray(raw)) {
+    const list = compactDeep(raw) as Record<string, unknown>[] | undefined;
+    return list && list.length > 0 ? list : undefined;
+  }
+  if (raw !== null && typeof raw === 'object') {
+    const list = Object.entries(raw as Record<string, { authUrl?: string }>)
+      .filter(([, value]) => isNonEmpty(value?.authUrl))
+      .map(([key, value]) => ({ key, authUrl: String(value.authUrl).trim() }));
+    return list.length > 0 ? list : undefined;
+  }
+  return undefined;
+};
+
+/**
  * 将旧 fastgptPro 配置（登录提供商与支付凭据）映射为新 Domain overrides。
  * pro 侧当前仅剩 API 与持久化层，本函数为其改造提供数据迁移基础。
  */
@@ -497,9 +519,7 @@ export const buildLegacyProOverrides = (pro: LegacyProConfig): DomainOverrides =
         secret: optionalText(dingtalk.secret)
       })
     }),
-    fastLogin: Array.isArray(pro.fastLogin)
-      ? (compactDeep(pro.fastLogin) as Record<string, unknown>[])
-      : undefined,
+    fastLogin: normalizeFastLogin(pro.fastLogin),
     accountCancellation: compact({
       enabled: optionalBool(cancellation.enabled),
       cancellationSm: pair(sms.ACCOUNT_CANCELLATION, sms.ACCOUNT_CANCELLATION_EN),
