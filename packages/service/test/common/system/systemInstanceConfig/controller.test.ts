@@ -6,6 +6,8 @@ import {
   getSystemInstanceConfigSnapshot
 } from '../../../../common/system/systemInstanceConfig/controller';
 import { MongoSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/schema';
+import { MongoSystemConfigs } from '../../../../common/system/config/schema';
+import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import { getDomainDefaultConfig } from '@fastgpt/global/common/system/config/schema';
 import { SECRET_MASK } from '@fastgpt/global/common/system/config/permission';
 
@@ -237,6 +239,74 @@ describe('systemInstanceConfig controller', () => {
       const siteDoc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
       expect(siteDoc?.overrides.name).toBe('Existing Site');
       expect(siteDoc?.revision).toBe(1);
+    });
+
+    describe('subPlans 归一化', () => {
+      beforeEach(async () => {
+        await MongoSystemConfigs.deleteMany({});
+      });
+
+      it('normalizes flat form keys into nested storage shape before persisting', async () => {
+        await batchUpdateDomainConfigs({
+          items: [],
+          subPlans: {
+            planDescriptionUrl: 'https://docs.example.com/plans',
+            activityExpirationTime: '2030-01-01T00:00:00.000Z',
+            extraDatasetSizePrice: 5,
+            extraPointsPackages: [{ points: 1000, month: 12, price: 10 }]
+          },
+          actor: { actor: 'admin' }
+        });
+
+        const doc = await MongoSystemConfigs.findOne({
+          type: SystemConfigsTypeEnum.fastgpt
+        }).lean();
+        const subPlans = (doc?.value as Record<string, any>)?.subPlans;
+
+        // 扁平键不应残留，计费字段必须是嵌套存储形状
+        expect(subPlans.extraDatasetSizePrice).toBeUndefined();
+        expect(subPlans.extraPointsPackages).toBeUndefined();
+        expect(subPlans.extraDatasetSize).toEqual({ price: 5 });
+        expect(subPlans.extraPoints).toEqual({
+          packages: [{ points: 1000, month: 12, price: 10 }]
+        });
+        // 字符串日期应被强转为 Date，供 Pro 与 FastGPTConfigFileSchema 消费
+        expect(subPlans.activityExpirationTime).toBeInstanceOf(Date);
+        expect(subPlans.planDescriptionUrl).toBe('https://docs.example.com/plans');
+      });
+
+      it('keeps already-nested keys authoritative over flat duplicates', async () => {
+        await batchUpdateDomainConfigs({
+          items: [],
+          subPlans: {
+            extraDatasetSize: { price: 9 },
+            extraDatasetSizePrice: 1
+          },
+          actor: { actor: 'admin' }
+        });
+
+        const doc = await MongoSystemConfigs.findOne({
+          type: SystemConfigsTypeEnum.fastgpt
+        }).lean();
+        const subPlans = (doc?.value as Record<string, any>)?.subPlans;
+        expect(subPlans.extraDatasetSize).toEqual({ price: 9 });
+      });
+
+      it('rejects malformed subPlans before opening the transaction', async () => {
+        // 非法积分包字段应在预校验阶段抛错，域配置完全不落库
+        await expect(
+          batchUpdateDomainConfigs({
+            items: [{ domain: 'site', expectedRevision: 0, overrides: { name: 'X' } }],
+            subPlans: {
+              extraPointsPackages: [{ points: 'not-a-number', month: 1, price: 1 }]
+            },
+            actor: { actor: 'admin' }
+          })
+        ).rejects.toThrow();
+
+        const siteDoc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
+        expect(siteDoc).toBeNull();
+      });
     });
   });
 });
