@@ -226,11 +226,16 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     });
 
     if (error) {
-      return getNodeErrResponse({
-        error,
-        [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
-        [DispatchNodeResponseKeyEnum.runTimes]: runTimes
-      });
+      return {
+        ...getNodeErrResponse({
+          error,
+          [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
+          [DispatchNodeResponseKeyEnum.runTimes]: runTimes
+        }),
+        [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
+          ? previewAssistantResponses
+          : undefined
+      };
     }
 
     if (toolWorkflowInteractiveResponse) {

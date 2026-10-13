@@ -849,7 +849,7 @@ describe('isToolExecutionResponse', () => {
     ).toBe(false);
   });
 
-  it('returns true when moduleType is tool, toolSet or toolCall', () => {
+  it('returns true when moduleType is tool or toolSet', () => {
     expect(
       isToolExecutionResponse({
         id: 'tool-1',
@@ -865,15 +865,6 @@ describe('isToolExecutionResponse', () => {
         nodeId: 'tool-set-node',
         moduleName: 'Tool Set',
         moduleType: FlowNodeTypeEnum.toolSet
-      })
-    ).toBe(true);
-
-    expect(
-      isToolExecutionResponse({
-        id: 'tool-call-1',
-        nodeId: 'tool-call-node',
-        moduleName: 'Tool Call',
-        moduleType: FlowNodeTypeEnum.toolCall
       })
     ).toBe(true);
   });
@@ -929,6 +920,15 @@ describe('isToolExecutionResponse', () => {
         nodeId: 'agent-node',
         moduleName: '主模型',
         moduleType: FlowNodeTypeEnum.agent
+      })
+    ).toBe(false);
+
+    expect(
+      isToolExecutionResponse({
+        id: 'tool-call-1',
+        nodeId: 'tool-call-node',
+        moduleName: 'Tool Call',
+        moduleType: FlowNodeTypeEnum.toolCall
       })
     ).toBe(false);
 
@@ -993,6 +993,17 @@ describe('findFailedResponseNode', () => {
     };
 
     expect(findFailedResponseNode([rootNode])).toEqual(rootNode);
+  });
+
+  it('returns root toolCall node error when toolCall failed', () => {
+    const toolCallNode: ChatHistoryItemResType = {
+      id: 'root-tool-call',
+      moduleName: '工具调用',
+      moduleType: FlowNodeTypeEnum.toolCall,
+      errorText: 'Sandbox capacity exceeded'
+    };
+
+    expect(findFailedResponseNode([toolCallNode])).toEqual(toolCallNode);
   });
 
   it('prefers root node error over child node error', () => {
