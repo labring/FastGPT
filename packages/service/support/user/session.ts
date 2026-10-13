@@ -1,6 +1,7 @@
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../common/logger';
+import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/controller';
 import { serviceEnv } from '../../env';
 import { SessionCache, type SessionData } from '@fastgpt/dal/redis/caches';
 
@@ -26,8 +27,9 @@ export const getUserSessionCount = async (userId: string) => {
 
 // 会根据创建时间，删除超出客户端登录限制的 session
 const delRedundantSession = async (userId: string) => {
-  // 至少为 1，默认为 10
-  let maxSession = serviceEnv.MAX_LOGIN_SESSION;
+  // 优先取实例配置，未初始化时回退环境变量，至少为 1
+  let maxSession =
+    getSystemInstanceConfig().security.maxLoginSession ?? serviceEnv.MAX_LOGIN_SESSION;
   if (maxSession < 1) {
     maxSession = 1;
   }

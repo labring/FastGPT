@@ -1,9 +1,11 @@
 import { appEnv } from '@/env';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
 
 export const checkPswExpired = ({ updateTime }: { updateTime?: Date }) => {
-  const expiredMonth = appEnv.PASSWORD_EXPIRED_MONTH;
+  const expiredMonth =
+    getSystemInstanceConfig().auth.passwordExpiredMonth ?? appEnv.PASSWORD_EXPIRED_MONTH;
 
-  if (expiredMonth === undefined) {
+  if (expiredMonth === undefined || expiredMonth === null) {
     return false;
   }
 

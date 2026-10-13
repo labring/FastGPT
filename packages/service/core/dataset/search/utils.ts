@@ -6,6 +6,7 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../../common/logger';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import { getImageBase64 } from '../../../common/file/image/utils';
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/controller';
 import { serviceEnv } from '../../../env';
 import { isS3ObjectKey } from '../../../common/s3/utils';
 import { S3Buckets } from '../../../common/s3/config/constants';
@@ -180,7 +181,10 @@ export const normalizeImageToBase64 = async (imageUrl: string) => {
     return imageUrl;
   }
 
-  if (!serviceEnv.MULTIPLE_DATA_TO_BASE64) {
+  const multipleDataToBase64 =
+    getSystemInstanceConfig().feature.multipleDataToBase64 ?? serviceEnv.MULTIPLE_DATA_TO_BASE64;
+
+  if (!multipleDataToBase64) {
     return imageUrl;
   }
 

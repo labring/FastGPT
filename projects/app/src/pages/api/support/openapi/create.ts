@@ -9,6 +9,7 @@ import { TeamApikeyCreatePermissionVal } from '@fastgpt/global/support/permissio
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
 import { appEnv } from '@/env';
 import { validateOpenApiTags } from '@fastgpt/service/support/openapi/tag/service';
 import {
@@ -41,8 +42,10 @@ async function handler(
   }
 
   const count = await MongoOpenApi.find({ tmbId }).countDocuments();
+  const maxCount =
+    getSystemInstanceConfig().auth.openApiKeyMaxCount ?? appEnv.OPENAPI_KEY_MAX_COUNT;
 
-  if (count >= appEnv.OPENAPI_KEY_MAX_COUNT) {
+  if (count >= maxCount) {
     return Promise.reject(OpenApiErrEnum.exceedLimit);
   }
 

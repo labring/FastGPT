@@ -3,6 +3,7 @@ import { systemVersionCache } from '@fastgpt/dal/redis/caches';
 import type { SystemCacheKeyEnum } from './type';
 import { initCache } from './init';
 import { isProduction } from '@fastgpt/global/common/system/constants';
+import { getSystemInstanceConfig } from '../system/systemInstanceConfig/controller';
 import { serviceEnv } from '../../env';
 
 /**
@@ -23,7 +24,7 @@ export const getCachedData = async <T extends SystemCacheKeyEnum>(key: T, id?: s
   if (!global.systemCache) initCache();
 
   const versionKey = await getVersionKey(key, id);
-  const isDisableCache = serviceEnv.DISABLE_CACHE;
+  const isDisableCache = getSystemInstanceConfig().feature.disableCache ?? serviceEnv.DISABLE_CACHE;
 
   const item = global.systemCache[key];
 

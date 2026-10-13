@@ -1,10 +1,16 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { SYSTEM_MAX_STRING_LENGTH } from '../../env';
+import { getSystemInstanceConfig } from '../system/systemInstanceConfig/controller';
+import { serviceEnv, SYSTEM_MAX_STRING_LENGTH } from '../../env';
+import { SYSTEM_STRING_LENGTH_UNIT } from '../../env.const';
 import { getLogger, LogCategories } from '../logger';
 
 const VARIABLE_PLACEHOLDER_PATTERN = /\{\{([^}]+)\}\}/g;
 const MAX_REPLACEMENT_DEPTH = 10;
 const logger = getLogger(LogCategories.SYSTEM);
+
+export const getSystemMaxStringLength = () =>
+  (getSystemInstanceConfig().resource.systemMaxStringLengthM ??
+    serviceEnv.SYSTEM_MAX_STRING_LENGTH_M) * SYSTEM_STRING_LENGTH_UNIT;
 
 /**
  * 将变量值按变量替换的历史语义转成字符串。
@@ -38,7 +44,7 @@ export const valToStr = (val: any) => {
   return String(val);
 };
 
-export const checkStrOversize = (str: string) => str.length > SYSTEM_MAX_STRING_LENGTH;
+export const checkStrOversize = (str: string) => str.length > getSystemMaxStringLength();
 
 /**
  * 记录同步字符串处理遇到超长文本的情况。日志只包含长度和上下文，不输出正文，
@@ -57,7 +63,7 @@ export const logOversizeString = ({
     source,
     reason,
     length,
-    maxLength: SYSTEM_MAX_STRING_LENGTH
+    maxLength: getSystemMaxStringLength()
   });
 };
 
