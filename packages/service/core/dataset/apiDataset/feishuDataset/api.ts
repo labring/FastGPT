@@ -223,14 +223,28 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
         const failure = failed_list?.find((item) => item.token === apiFileId);
         if (failure) {
           if (failure.code === 970005)
-            return toApiDatasetError('NOT_FOUND', '文件类型不匹配或不存在', 404);
+            return toApiDatasetError({
+              code: 'NOT_FOUND',
+              message: '文件类型不匹配或不存在',
+              status: 404
+            });
           if (failure.code === 970003)
-            return toApiDatasetError('UNAUTHORIZED', '无权限读取文件元数据', 403);
-          return toApiDatasetError('UNKNOWN_ERROR', `飞书文件元数据查询失败（${failure.code}）`);
+            return toApiDatasetError({
+              code: 'UNAUTHORIZED',
+              message: '无权限读取文件元数据',
+              status: 403
+            });
+          return toApiDatasetError({
+            code: 'UNKNOWN_ERROR',
+            message: `飞书文件元数据查询失败（${failure.code}）`
+          });
         }
         const meta = metas?.[0];
         if (!meta || meta.doc_type !== docType || typeof meta.title !== 'string') {
-          return toApiDatasetError('UNKNOWN_ERROR', '飞书文件元数据响应缺失或格式错误');
+          return toApiDatasetError({
+            code: 'UNKNOWN_ERROR',
+            message: '飞书文件元数据响应缺失或格式错误'
+          });
         }
         return toApiDatasetSuccess(meta);
       } catch (error) {
@@ -243,7 +257,9 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
         const original = isRecord(error) ? error : {};
         const response = isRecord(original.response) ? original.response : {};
         const status = response.status ?? original.status ?? original.statusCode;
-        return status === 404 ? classified : toApiDatasetError('UNKNOWN_ERROR', classified.message);
+        return status === 404
+          ? classified
+          : toApiDatasetError({ code: 'UNKNOWN_ERROR', message: classified.message });
       }
     };
 
@@ -265,7 +281,7 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
         createTime: new Date()
       });
     }
-    return toApiDatasetError('NOT_FOUND', '文件不存在', 404);
+    return toApiDatasetError({ code: 'NOT_FOUND', message: '文件不存在', status: 404 });
   };
 
   const getFileRawId = (fileId: string) => {

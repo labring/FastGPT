@@ -1,3 +1,4 @@
+import { assertCollectionParentPlanAcyclic } from '../apiDataset/utils';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
@@ -75,6 +76,7 @@ export type BulkInsertCollectionDoc = {
   /** 调用方预生成的 ObjectId，以便同轮后续节点直接引用 */
   _id: Types.ObjectId;
   name: string;
+  metadata?: Record<string, unknown>;
   type: DatasetCollectionTypeEnum;
   apiFileId: string;
   apiFileParentId?: string | null;
@@ -276,6 +278,21 @@ export const bulkMoveCollectionsParent = async ({
   session: ClientSession;
 }) => {
   if (items.length === 0) return { successIds: [], failedIds: [], matchedCount: 0 };
+
+  // 树结构校验独立于 ACL：关闭态和独立态也不能成环。同一事务读取最终计划涉及的本地树。
+  const collections = await MongoDatasetCollection.find(
+    { teamId, datasetId: { $in: [...new Set(items.map((item) => item.datasetId))] } },
+    '_id parentId'
+  )
+    .session(session)
+    .lean();
+  assertCollectionParentPlanAcyclic({
+    collections,
+    updates: items.map((item) => ({
+      _id: item._id,
+      newParentId: item.newParentId ? String(item.newParentId) : null
+    }))
+  });
 
   // 第一阶段：parentId 仍是旧值，因此 ACL 可以从旧父级剥离继承位；函数同时按新拓扑算出移动节点的新快照。
   const movedFolders = await moveCollectionPermissionsBatch({

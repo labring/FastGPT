@@ -611,7 +611,8 @@ export const useDingtalkDatasetRequest = ({
 
       const { accessToken, operatorId } = await getTokenAndOperatorId();
       const detail = await getDingtalkNodeDetail({ accessToken, operatorId, apiFileId });
-      if (!detail) return toApiDatasetError('NOT_FOUND', '文件不存在', 404);
+      if (!detail)
+        return toApiDatasetError({ code: 'NOT_FOUND', message: '文件不存在', status: 404 });
 
       return toApiDatasetSuccess(detail);
     } catch (err: any) {

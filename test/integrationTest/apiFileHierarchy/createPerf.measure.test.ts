@@ -82,7 +82,7 @@ import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/consta
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoTeamSub } from '@fastgpt/service/support/wallet/sub/schema';
-import { createApiDatasetCollection } from '@/pages/api/core/dataset/collection/create/apiCollectionV2';
+import { createApiDatasetCollection } from '@fastgpt/service/core/dataset/apiDataset/service';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { pushDatasetToParseQueue } from '@fastgpt/service/core/dataset/training/controller';
 

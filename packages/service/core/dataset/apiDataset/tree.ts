@@ -29,6 +29,8 @@ export type ApiFileTreeSeed = Pick<APIFileItemType, 'id' | 'name' | 'type' | 'ha
  * folder 节点只产出目录记录；file 节点产出正文记录，带子文档时再额外产出一条目录记录。
  */
 export type ApiFileRecord = {
+  /** 真实远端节点 ID，派生目录不得使用自身 apiFileId 查询 provider。 */
+  sourceId: string;
   /** 落库的 `apiFileId`；目录记录用派生目录 id，正文记录用 serverId */
   apiFileId: string;
   /** 落库的 `apiFileParentId`，始终是 server 侧的父节点 id */
@@ -167,6 +169,7 @@ export const buildApiFileRecords = (nodes: ApiFileTreeNode[]): ApiFileRecord[] =
 
     if (node.type === 'folder' || node.hasChild) {
       records.push({
+        sourceId: node.serverId,
         apiFileId: node.dirId,
         apiFileParentId: node.serverParentId,
         parentDirId,
@@ -178,6 +181,7 @@ export const buildApiFileRecords = (nodes: ApiFileTreeNode[]): ApiFileRecord[] =
 
     if (node.type === 'file') {
       records.push({
+        sourceId: node.serverId,
         apiFileId: node.serverId,
         apiFileParentId: node.serverParentId,
         // 带子文档时正文挂在自己的同名目录下，否则与兄弟同级

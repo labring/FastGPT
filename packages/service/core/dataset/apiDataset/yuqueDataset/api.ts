@@ -288,7 +288,7 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
 
         const file = allData.find((item) => Number(item.id) === Number(apiFileId));
         if (!file) {
-          return toApiDatasetError('NOT_FOUND', '文件不存在', 404);
+          return toApiDatasetError({ code: 'NOT_FOUND', message: '文件不存在', status: 404 });
         }
         return toApiDatasetSuccess({
           id: String(file.id),
@@ -309,7 +309,7 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
         const data = await getRepoToc(repoId);
         const file = data.find((item) => item.uuid === fileId);
         if (!file) {
-          return toApiDatasetError('NOT_FOUND', '文件不存在', 404);
+          return toApiDatasetError({ code: 'NOT_FOUND', message: '文件不存在', status: 404 });
         }
         const parentfile = data.find((item) => item.uuid === file.parent_uuid);
         const parentId = `${repoId}-${parentfile?.id}-${parentfile?.uuid}`;

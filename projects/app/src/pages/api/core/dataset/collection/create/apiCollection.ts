@@ -2,10 +2,11 @@ import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
-import { createApiDatasetCollection } from './apiCollectionV2';
+import { createApiDatasetCollection } from '@fastgpt/service/core/dataset/apiDataset/service';
+import { authApiFileImportChanges } from '@fastgpt/service/core/dataset/apiDataset/auth';
 import {
   CreateApiCollectionBodySchema,
-  CreateApiCollectionResponseSchema
+  CreateApiCollectionV2ResponseSchema
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
@@ -35,13 +36,21 @@ async function handler(req: ApiRequestProps) {
   }
   const fileDetail = fileDetailRes.data;
 
-  return CreateApiCollectionResponseSchema.parse(
+  return CreateApiCollectionV2ResponseSchema.parse(
     await createApiDatasetCollection({
       apiFiles: [fileDetail],
       teamId,
       tmbId,
       dataset,
       targetParentId: body.parentId,
+      authorizeChanges: (changes) =>
+        authApiFileImportChanges({
+          req,
+          authToken: true,
+          authApiKey: true,
+          datasetId: body.datasetId,
+          ...changes
+        }),
       ...body
     })
   );

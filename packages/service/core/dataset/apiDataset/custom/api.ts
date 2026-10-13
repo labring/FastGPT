@@ -290,7 +290,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
         });
       }
 
-      return toApiDatasetError('NOT_FOUND', 'File not found', 404);
+      return toApiDatasetError({ code: 'NOT_FOUND', message: 'File not found', status: 404 });
     } catch (err: any) {
       return classifyApiDatasetError(err);
     }

@@ -281,6 +281,7 @@ describe('buildApiFileRecords', () => {
     expect(buildApiFileRecords([])).toEqual([]);
     expect(buildApiFileRecords([node({ serverParentId: 'missing', hasChild: false })])).toEqual([
       {
+        sourceId: 'dir',
         apiFileId: 'dir',
         apiFileParentId: 'missing',
         parentDirId: null,

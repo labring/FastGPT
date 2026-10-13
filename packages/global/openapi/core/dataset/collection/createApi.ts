@@ -170,6 +170,7 @@ export const CreateApiCollectionV2BodySchema = ApiCreateCollectionRequestBaseSch
   // 覆盖基础 schema 的描述：api 文件库的落位一律由 server 层级推导（本地树镜像 server 树），
   // 该字段服务端不读，仅为兼容保留
   parentId: ParentIdSchema.optional().meta({
+    deprecated: true,
     description: '已忽略：api 文件库的层级以 server 文件树为准，导入时所处目录不影响落位'
   }),
   apiFiles: z.array(APIFileItemSchema).meta({ description: 'API 文件列表（支持文件夹递归导入）' })
@@ -182,10 +183,6 @@ export const CreateApiCollectionV2ResponseSchema = z.object({
   failedCount: z.number().meta({ description: '写入失败或被级联跳过的节点数' })
 });
 export type CreateApiCollectionV2ResponseType = z.infer<typeof CreateApiCollectionV2ResponseSchema>;
-
-// V1 单文件路径复用 createApiDatasetCollection，响应结构与 V2 相同
-export const CreateApiCollectionResponseSchema = CreateApiCollectionV2ResponseSchema;
-export type CreateApiCollectionResponseType = CreateApiCollectionV2ResponseType;
 
 /* ============================================================================
  * API: 上传图片集创建集合

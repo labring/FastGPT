@@ -9,11 +9,15 @@ export const toApiDatasetSuccess = <T>(
 });
 
 /** 构造失败结果；失败分支没有 data，也不会作为异常抛出。 */
-export const toApiDatasetError = (
-  code: ApiDatasetErrorCode,
-  message: string,
-  status?: number
-): Extract<ApiDatasetResult<never>, { success: false }> => ({
+export const toApiDatasetError = ({
+  code,
+  message,
+  status
+}: {
+  code: ApiDatasetErrorCode;
+  message: string;
+  status?: number;
+}): Extract<ApiDatasetResult<never>, { success: false }> => ({
   success: false,
   code,
   message,
@@ -27,7 +31,7 @@ export const toApiDatasetError = (
 export const classifyApiDatasetError = (
   err: unknown
 ): Extract<ApiDatasetResult<never>, { success: false }> => {
-  if (!err) return toApiDatasetError('UNKNOWN_ERROR', '未知错误');
+  if (!err) return toApiDatasetError({ code: 'UNKNOWN_ERROR', message: '未知错误' });
 
   const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null;
@@ -50,13 +54,28 @@ export const classifyApiDatasetError = (
   );
 
   if (status !== undefined && status >= 400) {
-    if (status === 404) return toApiDatasetError('NOT_FOUND', msg || '文件不存在', status);
-    if (status === 429) return toApiDatasetError('RATE_LIMIT', msg || '请求过于频繁', status);
+    if (status === 404)
+      return toApiDatasetError({ code: 'NOT_FOUND', message: msg || '文件不存在', status });
+    if (status === 429)
+      return toApiDatasetError({
+        code: 'RATE_LIMIT',
+        message: msg || '请求过于频繁',
+        status
+      });
     if (status === 401 || status === 403) {
-      return toApiDatasetError('UNAUTHORIZED', msg || '鉴权失败或无权限', status);
+      return toApiDatasetError({
+        code: 'UNAUTHORIZED',
+        message: msg || '鉴权失败或无权限',
+        status
+      });
     }
-    if (status >= 500) return toApiDatasetError('SERVER_ERROR', msg || '服务或网络异常', status);
-    return toApiDatasetError('UNKNOWN_ERROR', msg, status);
+    if (status >= 500)
+      return toApiDatasetError({
+        code: 'SERVER_ERROR',
+        message: msg || '服务或网络异常',
+        status
+      });
+    return toApiDatasetError({ code: 'UNKNOWN_ERROR', message: msg, status });
   }
 
   if (
@@ -70,11 +89,16 @@ export const classifyApiDatasetError = (
       'ERR_NETWORK'
     ].includes(error.code)
   ) {
-    return toApiDatasetError('NETWORK_ERROR', msg || '服务或网络异常', status);
+    return toApiDatasetError({
+      code: 'NETWORK_ERROR',
+      message: msg || '服务或网络异常',
+      status
+    });
   }
   // 接受已归一化的失败协议；未知 provider 业务码不能仅凭文案升级为 NOT_FOUND。
   if (code !== undefined) {
-    if (typeof code !== 'string') return toApiDatasetError('UNKNOWN_ERROR', msg, status);
+    if (typeof code !== 'string')
+      return toApiDatasetError({ code: 'UNKNOWN_ERROR', message: msg, status });
     switch (code) {
       case 'NOT_FOUND':
       case 'RATE_LIMIT':
@@ -83,25 +107,25 @@ export const classifyApiDatasetError = (
       case 'SERVER_ERROR':
       case 'INVALID_PARAMS':
       case 'UNKNOWN_ERROR':
-        return toApiDatasetError(code, msg, status);
+        return toApiDatasetError({ code, message: msg, status });
       default:
-        return toApiDatasetError('UNKNOWN_ERROR', msg, status);
+        return toApiDatasetError({ code: 'UNKNOWN_ERROR', message: msg, status });
     }
   }
 
   if (/unauthorized|forbidden|no permission|无权限/i.test(msg)) {
-    return toApiDatasetError('UNAUTHORIZED', msg, status ?? 403);
+    return toApiDatasetError({ code: 'UNAUTHORIZED', message: msg, status: status ?? 403 });
   }
   if (/rate|limit|too many|频繁|限流/i.test(msg)) {
-    return toApiDatasetError('RATE_LIMIT', msg, status ?? 429);
+    return toApiDatasetError({ code: 'RATE_LIMIT', message: msg, status: status ?? 429 });
   }
   if (/timeout|network|econnreset|service unavailable/i.test(msg)) {
-    return toApiDatasetError('NETWORK_ERROR', msg, status);
+    return toApiDatasetError({ code: 'NETWORK_ERROR', message: msg, status });
   }
   if (/not found|文件不存在|不存在/i.test(msg)) {
-    return toApiDatasetError('NOT_FOUND', msg, status ?? 404);
+    return toApiDatasetError({ code: 'NOT_FOUND', message: msg, status: status ?? 404 });
   }
-  return toApiDatasetError('UNKNOWN_ERROR', msg, status);
+  return toApiDatasetError({ code: 'UNKNOWN_ERROR', message: msg, status });
 };
 
 export const filterApiDatasetServerPublicData = (apiDatasetServer?: ApiDatasetServerType) => {

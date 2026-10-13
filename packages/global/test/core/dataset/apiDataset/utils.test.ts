@@ -168,7 +168,7 @@ describe('toApiDatasetSuccess', () => {
 
 describe('toApiDatasetError', () => {
   it.each([undefined, 404])('错误状态 %s 以 resolve 数据表达', (status) => {
-    expect(toApiDatasetError('NOT_FOUND', '文件不存在', status)).toEqual({
+    expect(toApiDatasetError({ code: 'NOT_FOUND', message: '文件不存在', status })).toEqual({
       success: false,
       code: 'NOT_FOUND',
       message: '文件不存在',

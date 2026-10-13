@@ -3,7 +3,6 @@ import { SystemOpenApiTagMap } from '../../../tag';
 import type { OpenAPIPath } from '../../../type';
 import {
   CreateApiCollectionBodySchema,
-  CreateApiCollectionResponseSchema,
   CreateApiCollectionV2BodySchema,
   CreateApiCollectionV2ResponseSchema,
   CreateBackupCollectionMultipartSchema,
@@ -182,7 +181,7 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
           description: '成功创建集合',
           content: {
             'application/json': {
-              schema: CreateApiCollectionResponseSchema
+              schema: CreateApiCollectionV2ResponseSchema
             }
           }
         }

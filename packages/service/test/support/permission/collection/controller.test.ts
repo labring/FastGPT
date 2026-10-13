@@ -802,6 +802,51 @@ describe.sequential('moveCollectionPermissionsBatch', () => {
     await expect(collectionClbs(teamId, String(movingChild._id))).resolves.toEqual([]);
   });
 
+  it.each(['disabled', 'independent'])('权限模式 %s 仍拒绝将目录移入自身后代', async (mode) => {
+    const users = await getFakeUsers(1);
+    const dataset = await createDataset({ user: users.owner });
+    const datasetId = String(dataset._id);
+    const teamId = String(users.owner.teamId);
+    if (mode === 'independent') await enableDatasetCollectionPermissions({ teamId, datasetId });
+    const parent = await createCollection({
+      user: users.owner,
+      datasetId,
+      name: 'parent',
+      type: DatasetCollectionTypeEnum.folder,
+      inheritPermission: mode !== 'independent'
+    });
+    const child = await createCollection({
+      user: users.owner,
+      datasetId,
+      name: 'child',
+      type: DatasetCollectionTypeEnum.folder,
+      parentId: String(parent._id)
+    });
+    await expect(
+      mongoSessionRun((session) =>
+        bulkMoveCollectionsParent({
+          teamId,
+          session,
+          items: [
+            {
+              _id: String(parent._id),
+              datasetId,
+              type: parent.type,
+              inheritPermission: parent.inheritPermission,
+              oldParentId: null,
+              newParentId: child._id,
+              apiFileParentId: 'child'
+            }
+          ]
+        })
+      )
+    ).rejects.toThrow('Circular collection parent move');
+    expect((await MongoDatasetCollection.findById(parent._id).lean())?.parentId).toBeNull();
+    expect(String((await MongoDatasetCollection.findById(child._id).lean())?.parentId)).toBe(
+      String(parent._id)
+    );
+  });
+
   it.each(['moving', 'external-self', 'external-pair', 'mixed'])(
     '目标父级循环在写入前失败，保留原快照和父级：%s',
     async (mode) => {
