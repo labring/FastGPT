@@ -1,9 +1,8 @@
 import { checkCsrf } from '@fastgpt/next/middle/csrf';
-import { parseAllowedOrigins, withNextCors } from '@fastgpt/next/middle/cors';
+import { withNextCors } from '@fastgpt/next/middle/cors';
 import type { NextApiRequest, NextApiResponse } from '@fastgpt/next/type';
 import { createApiEntry, type ApiHandler } from '@fastgpt/service/common/http/entry';
 import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
-import { serviceEnv } from '@fastgpt/service/env';
 
 type NextAPIOptions = {
   csrf?: boolean;
@@ -23,20 +22,19 @@ export const NextAPI = (
 
   /**
    * 按接口声明顺序执行 CORS 和 CSRF。
-   * 优先读取实例配置（动态可配），未配置时回退 serviceEnv 初值；
-   * 每请求动态解析，保证 Admin 修改跨域或 CSRF 后立即生效。
+   * 跨域白名单与 CSRF 开关以实例配置为唯一权威来源：blockStartup 迁移已把
+   * ALLOWED_ORIGINS / CSRF_ENABLED 回填进 security 域，请求期不再回落 env，
+   * 否则管理员清空白名单/关闭 CSRF 会被 env 初值静默复活（写了不接管）。
+   * 空白名单沿用历史"允许所有来源"语义（withNextCors 回显请求 origin）。
    */
   const beforeRequest = async (req: NextApiRequest, res: NextApiResponse) => {
     const security = getSystemInstanceConfig().security;
     const allowedOrigins =
-      security.allowedOrigins && security.allowedOrigins.length > 0
-        ? security.allowedOrigins
-        : parseAllowedOrigins(serviceEnv.ALLOWED_ORIGINS);
+      security.allowedOrigins.length > 0 ? security.allowedOrigins : undefined;
 
     await withNextCors({ req, res, allowedOrigins });
 
-    const csrfEnabled = security.csrfEnabled ?? serviceEnv.CSRF_ENABLED;
-    if (options.csrf !== false && csrfEnabled) {
+    if (options.csrf !== false && security.csrfEnabled) {
       await checkCsrf({ req, res });
     }
   };
