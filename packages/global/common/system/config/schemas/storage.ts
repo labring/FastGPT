@@ -1,5 +1,5 @@
 import z from 'zod';
-import { positiveNumber, urlWithDefault } from './primitives';
+import { positiveInteger, positiveNumber, urlWithDefault } from './primitives';
 
 export const StorageConfigSchema = z.strictObject({
   downloadMode: z.enum(['short-proxy', 'short-redirect']).default('short-proxy'),
@@ -7,5 +7,7 @@ export const StorageConfigSchema = z.strictObject({
   externalEndpoint: urlWithDefault(),
   // 可选 CDN 地址，用于重写 pre-signed URL 的 host；空值时回落到 STORAGE_S3_CDN_ENDPOINT
   cdnEndpoint: urlWithDefault(),
-  fileUrlExpiredDays: positiveNumber(90)
+  fileUrlExpiredDays: positiveNumber(90),
+  // short-redirect 302 预签名地址的临时有效期（秒），对应旧 STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS
+  redirectTtlSeconds: positiveInteger(300)
 });

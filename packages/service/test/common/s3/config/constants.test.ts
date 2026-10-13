@@ -18,6 +18,21 @@ const loadConstants = async () => {
 describe('s3 storage constants', () => {
   beforeEach(() => {
     vi.resetModules();
+    // getStorageRedirectTtlSeconds 已接管实例配置：种子"叶子缺省"快照
+    // 让 ?? serviceEnv 兜底生效，保持本文件通过 stubEnv 驱动行为的测试意图
+    (global as any).systemInstanceConfig = {
+      site: {},
+      auth: {},
+      security: {},
+      feature: {},
+      commercial: {},
+      resource: {},
+      performance: { workflow: {}, parse: {}, dataset: {}, chat: {}, streamResume: {}, tracking: {}, task: {}, channel: {} },
+      storage: {},
+      vector: {},
+      providers: { documentParse: { customPdf: {}, sangfor: {} }, dataSource: {} },
+      subservice: {}
+    };
     vi.stubEnv('STORAGE_VENDOR', undefined);
     vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', undefined);
     vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', undefined);
@@ -40,13 +55,13 @@ describe('s3 storage constants', () => {
   it('defaults to short proxy download mode when no explicit mode is configured', async () => {
     const {
       getStorageDownloadUrlMode,
-      storageDownloadRedirectTtlSeconds,
+      getStorageRedirectTtlSeconds,
       canUseStorageDownloadRedirect,
       replaceS3UrlWithCdnEndpoint
     } = await loadConstants();
 
     expect(getStorageDownloadUrlMode()).toBe('short-proxy');
-    expect(storageDownloadRedirectTtlSeconds).toBe(300);
+    expect(getStorageRedirectTtlSeconds()).toBe(300);
     expect(canUseStorageDownloadRedirect()).toBe(false);
     expect(replaceS3UrlWithCdnEndpoint('https://s3.example.com/bucket/file.png')).toBe(
       'https://s3.example.com/bucket/file.png'
@@ -97,7 +112,7 @@ describe('s3 storage constants', () => {
     const {
       applyRuntimeStorageConfig,
       getStorageDownloadUrlMode,
-      storageDownloadRedirectTtlSeconds,
+      getStorageRedirectTtlSeconds,
       canUseStorageDownloadRedirect
     } = await loadConstants();
 
@@ -107,7 +122,7 @@ describe('s3 storage constants', () => {
     });
 
     expect(getStorageDownloadUrlMode()).toBe('short-redirect');
-    expect(storageDownloadRedirectTtlSeconds).toBe(120);
+    expect(getStorageRedirectTtlSeconds()).toBe(120);
     expect(canUseStorageDownloadRedirect()).toBe(true);
   });
 
@@ -262,6 +277,18 @@ describe('s3 storage constants', () => {
     expect(getStorageExternalEndpoint()).toBe('https://db.example.com');
     expect(getStorageS3CdnEndpoint()).toBe('https://cdn.db.example.com');
     expect(canUseStorageDownloadRedirect()).toBe(true);
+  });
+
+  it('prefers instance config redirectTtlSeconds over env when snapshot carries the value', async () => {
+    // 迁移回填/管理员保存后快照叶子存在，getter 以实例配置为权威，不再读 env 初值
+    (global as any).systemInstanceConfig = {
+      ...((global as any).systemInstanceConfig ?? {}),
+      storage: { redirectTtlSeconds: 60 }
+    };
+    vi.stubEnv('STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS', '120');
+
+    const { getStorageRedirectTtlSeconds } = await loadConstants();
+    expect(getStorageRedirectTtlSeconds()).toBe(60);
   });
 
   it('reports whether injected storage config changed', async () => {

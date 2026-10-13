@@ -251,7 +251,8 @@ export const buildLegacyDomainOverrides = ({
     downloadMode: optionalText(serviceEnv.STORAGE_DOWNLOAD_URL_MODE),
     externalEndpoint: optionalText(serviceEnv.STORAGE_EXTERNAL_ENDPOINT),
     cdnEndpoint: optionalText(serviceEnv.STORAGE_S3_CDN_ENDPOINT),
-    fileUrlExpiredDays: optionalNumber(serviceEnv.FILE_URL_EXPIRED_DAYS)
+    fileUrlExpiredDays: optionalNumber(serviceEnv.FILE_URL_EXPIRED_DAYS),
+    redirectTtlSeconds: optionalNumber(serviceEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS)
   }) as DomainOverrides['storage'];
 
   // ---------- vector ----------

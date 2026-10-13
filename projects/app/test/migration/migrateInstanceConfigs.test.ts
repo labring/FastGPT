@@ -426,6 +426,7 @@ describe('migration env wiring', () => {
       ['storage.externalEndpoint', serviceEnv.STORAGE_EXTERNAL_ENDPOINT],
       ['storage.cdnEndpoint', serviceEnv.STORAGE_S3_CDN_ENDPOINT],
       ['storage.fileUrlExpiredDays', serviceEnv.FILE_URL_EXPIRED_DAYS],
+      ['storage.redirectTtlSeconds', serviceEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS],
       // vector
       ['vector.hnswEfSearch', serviceEnv.HNSW_EF_SEARCH],
       ['vector.hnswMaxScanTuples', serviceEnv.HNSW_MAX_SCAN_TUPLES],

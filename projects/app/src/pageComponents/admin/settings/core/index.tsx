@@ -29,6 +29,7 @@ type CoreConfigForm = {
   downloadMode: SystemInstanceConfigDomainMap['storage']['downloadMode'];
   externalEndpoint: SystemInstanceConfigDomainMap['storage']['externalEndpoint'];
   cdnEndpoint: SystemInstanceConfigDomainMap['storage']['cdnEndpoint'];
+  redirectTtlSeconds: SystemInstanceConfigDomainMap['storage']['redirectTtlSeconds'];
   openApiPrefix: SystemInstanceConfigDomainMap['site']['openApiPrefix'];
   email: SystemInstanceConfigDomainMap['auth']['loginProviders']['email'];
   phone: SystemInstanceConfigDomainMap['auth']['loginProviders']['phone'];
@@ -76,6 +77,7 @@ const CoreSettingComponent = () => {
       downloadMode: 'short-proxy',
       externalEndpoint: '',
       cdnEndpoint: '',
+      redirectTtlSeconds: 300,
       openApiPrefix: 'fastgpt',
       email: {
         smtp: '',
@@ -102,6 +104,7 @@ const CoreSettingComponent = () => {
       downloadMode: storage.effectiveConfig?.downloadMode ?? 'short-proxy',
       externalEndpoint: storage.effectiveConfig?.externalEndpoint ?? '',
       cdnEndpoint: storage.effectiveConfig?.cdnEndpoint ?? '',
+      redirectTtlSeconds: storage.effectiveConfig?.redirectTtlSeconds ?? 300,
       openApiPrefix: site.effectiveConfig?.openApiPrefix ?? 'fastgpt',
       email: auth.effectiveConfig?.loginProviders?.email ?? {
         smtp: '',
@@ -161,7 +164,8 @@ const CoreSettingComponent = () => {
               ...(storage.overrides as Record<string, unknown>),
               downloadMode: formData.downloadMode,
               externalEndpoint: formData.externalEndpoint || '',
-              cdnEndpoint: formData.cdnEndpoint || ''
+              cdnEndpoint: formData.cdnEndpoint || '',
+              redirectTtlSeconds: Number(formData.redirectTtlSeconds) || 300
             }
           },
           {
@@ -332,7 +336,7 @@ const CoreSettingComponent = () => {
         </AdminFormItem>
 
         {downloadMode === 'short-redirect' && (
-          <SimpleGrid columns={[1, 2]} spacing={5} mt={4}>
+          <SimpleGrid columns={[1, 3]} spacing={5} mt={4}>
             <AdminFormItem
               label={t('admin:storage_external_endpoint')}
               tooltip={t('admin:storage_external_endpoint_tip')}
@@ -346,6 +350,31 @@ const CoreSettingComponent = () => {
               mb={0}
             >
               <Input {...register('cdnEndpoint')} placeholder="https://cdn.example.com" />
+            </AdminFormItem>
+            <AdminFormItem
+              label={t('admin:storage_redirect_ttl_seconds')}
+              tooltip={t('admin:storage_redirect_ttl_seconds_tip')}
+              mb={0}
+            >
+              <Controller
+                name="redirectTtlSeconds"
+                control={control}
+                render={({ field }) => (
+                  <NumberInput
+                    {...numberInputProps}
+                    min={1}
+                    max={3600}
+                    value={field.value ?? 300}
+                    onChange={(_, val) => field.onChange(val || 300)}
+                  >
+                    <NumberInputField />
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
+                )}
+              />
             </AdminFormItem>
           </SimpleGrid>
         )}
