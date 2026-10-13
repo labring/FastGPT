@@ -650,6 +650,8 @@ Administrators should configure the source of `memberName` in the **SSO adapter 
 
 **Troubleshooting:** If a user has a directory name but still sees the mandatory prompt, verify that the actual interactive SSO login response contains a valid `memberName` (1–20 characters after trimming), then compare it with `/user/list`. Do not expose authorization codes, tokens, or sensitive user data in logs.
 
+**Frontend prefill behavior:** When an existing team member display name is valid and differs from the login ID, prefer that stored display name as the prompt's initial value, and do not allow users to edit it in synchronization mode. If no usable candidate exists, leave the field empty rather than substituting an employee/login ID. This is only a safe display fallback, **not proof that SSO synchronization succeeded or permission to ignore the member-name-set flag**. The Pro SSO login path should set the name and `isSetMemberName` from a valid upstream `memberName`, so the prompt does not appear in the normal SSO case.
+
 **Enterprise upgrade advisory:** If a name prompt appears despite externally synchronized names, users should not simply confirm their login IDs or employee numbers. The mandatory prompt provides a sign-out option so users can contact their administrator before changing the name. Administrators should check the effective SSO `memberName` mapping (for example `OAUTH2_MEMBER_NAME_MAP`) and compare the actual `getUserInfo` result with `/user/list`. A frontend prompt fix does not restore already overwritten names or replace verification of the server-side synchronization path.
 
 ### Get SSO Login Redirect URL
