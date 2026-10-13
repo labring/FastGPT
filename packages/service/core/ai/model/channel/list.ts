@@ -17,13 +17,14 @@ const buildChannelListItem = (
   type: channel.type,
   status: channel.status,
   models: channel.models ?? [],
-  model_mapping: channel.model_mapping,
-  base_url: channel.base_url,
-  priority: channel.priority,
-  sets: channel.sets,
-  used_amount: channel.used_amount,
-  request_count: channel.request_count,
-  created_at: channel.created_at,
+  // AI Proxy 对未配置字段可能返回 null（Go nil 序列化），统一归一化为 undefined 以符合 FastGPT 契约
+  model_mapping: channel.model_mapping ?? undefined,
+  base_url: channel.base_url ?? undefined,
+  priority: channel.priority ?? undefined,
+  sets: channel.sets ?? undefined,
+  used_amount: channel.used_amount ?? undefined,
+  request_count: channel.request_count ?? undefined,
+  created_at: channel.created_at ?? undefined,
   ...((channel as AiproxyGroupChannel).group_id !== undefined
     ? { group_id: (channel as AiproxyGroupChannel).group_id }
     : {}),

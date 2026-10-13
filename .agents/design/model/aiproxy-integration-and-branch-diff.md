@@ -134,8 +134,8 @@ flowchart TD
 - `logs.ts` / `logDetail.ts` / `dashboard.ts`：当前成员私有作用域下的日志与时序数据。
 
 ### 4. 前端交互层改造 (`projects/app/src/pageComponents/model/`)
-- **常驻 Tabs**：在模型管理中常驻提供「活跃模型」、「模型配置」、「模型渠道」、「调用日志」、「监控分析」标签页；
-- **统一 Tab 容器**：使用 `ModelManagementContainer` 统揽系统管理员视图与团队成员个人视图；
+- **Tabs 联动与自适应展示**：当系统未开启团队模型（`enable_team_model: false`）时，团队成员视图隐藏顶部切换 Tab 并直接渲染生效模型列表，开启后使用统一 Tab 容器 `ModelManagementContainer` 提供「活跃模型」、「模型配置」、「模型渠道」、「调用日志」、「监控分析」标签页切换；
+- **统一 Tab 容器**：使用 `ModelManagementContainer` 统揽系统管理员视图与团队模型开启后的成员个人视图；
 - **数据驱动与防抖**：表格多选直接对接 `batch.ts`，操作回调依靠 `useRequest` 原生机制进行 Toast 反馈；
 - **安全渲染兜底**：消费层对模型与渠道列表默认采用 `?? []` 兜底，确保网络请求失败时仅弹 Toast，不会触发 React 渲染崩溃。
 
