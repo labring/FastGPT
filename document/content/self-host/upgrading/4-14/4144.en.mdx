@@ -56,7 +56,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4144' \
 7. Added detection for invalid S3 keys.
 8. Deleting apps and datasets now requires entering the name for confirmation.
 9. Mongo slow operation logs now accurately print the collection name and operation details.
-10. Share link custom authentication: the returned uid is now limited to 200 characters max (longer values affected file uploads).
+10. Share link custom authentication: the returned uid must now be shorter than 200 characters (longer values affected file uploads).
 
 ## Bug Fixes
 

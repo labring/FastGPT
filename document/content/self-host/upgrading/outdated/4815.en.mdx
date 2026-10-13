@@ -10,15 +10,19 @@ upgradeTags:
 
 ### API Dataset
 
+Create an API Dataset by entering a name, choosing the embedding and text-understanding models, and supplying the API endpoint and authorization value. FastGPT automatically adds the `Bearer` prefix to the authorization header. After creation, select files from the connected source and proceed to data processing.
+
 |                                                   |                                                   |
 | ------------------------------------------------- | ------------------------------------------------- |
-| ![alt text](../../../../public/imgs/image-20.png) | ![alt text](../../../../public/imgs/image-21.png) |
+| ![API Dataset creation form with name, model selectors, API endpoint and authorization fields](../../../../public/imgs/image-20.png) | ![File selection from the connected API source before data processing](../../../../public/imgs/image-21.png) |
 
 ### HTML Rendering
 
+Use **Source** to inspect an HTML code block, **Preview** to view the rendered page inside the chat, and **Fullscreen** to expand the preview. Script execution is blocked in this release’s preview mode.
+
 | Source Mode                                       | Preview Mode                                      | Fullscreen Mode                                   |
 | ------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------- |
-| ![alt text](../../../../public/imgs/image-22.png) | ![alt text](../../../../public/imgs/image-23.png) | ![alt text](../../../../public/imgs/image-24.png) |
+| ![HTML code block with Source, Preview and Fullscreen controls](../../../../public/imgs/image-22.png) | ![Rendered HTML preview embedded in the chat](../../../../public/imgs/image-23.png) | ![Expanded HTML preview in fullscreen mode](../../../../public/imgs/image-24.png) |
 
 ## Upgrade Guide
 
@@ -52,10 +56,10 @@ This recalculates free-tier user durations. A previous version upgrade did not r
 
 ## Full Release Notes
 
-1. New - API Dataset. See [API Dataset Introduction](../../../guide/dataset/third-party/api_dataset.en.mdx). The external file library will be deprecated.
+1. New - API Dataset. See [API Dataset Introduction](/en/guide/dataset/third-party/api_dataset). The external file library will be deprecated.
 2. New - Toolbox page displaying all available system resources. The commercial edition admin panel now offers easier configuration of system plugins and custom categories.
 3. New - HTML code in Markdown is now rendered separately. You can choose preview mode, which blocks all scripts and only displays content.
-4. New - Custom system-level file parsing service. See [Integrating Marker PDF Document Parsing](../../custom-models/marker.en.mdx).
+4. New - Custom system-level file parsing service. See [Integrating Marker PDF Document Parsing](/en/self-host/custom-models/marker).
 5. New - Collections can be reconfigured directly without deleting and re-importing.
 6. New - Commercial edition admin panel supports configuring sidebar navigation links.
 7. Improved - Base64 image truncation detection.

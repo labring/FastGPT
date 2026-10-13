@@ -8,7 +8,7 @@ upgradeTags:
 
 ## 1. Update Configuration File
 
-Added Boolean values to control which models are available for different features, and added model logos. The legacy `config.json` guide is no longer maintained. For current versions, see [Model Configuration](../../config/model/intro.en.mdx).
+Added Boolean values to control which models are available for different features, and added model logos. The legacy `config.json` guide is no longer maintained. For current versions, see [Model Configuration](/en/self-host/config/model/intro).
 
 ## 2. Initialization Script
 
@@ -28,7 +28,7 @@ Script functions:
 
 V4.7 changed the ReRank model format to be compatible with Cohere's format, allowing direct use of Cohere's API. If you're using a local ReRank model, update the image to: `registry.cn-hangzhou.aliyuncs.com/fastgpt/bge-rerank-base:v0.1`.
 
-Cohere's Rerank model doesn't perform as well with Chinese text compared to BGE. To integrate Cohere:
+For Chinese text, these release notes recommend BGE. To integrate Cohere:
 
 1. Apply for a Cohere API key: https://dashboard.cohere.com/api-keys
 2. Update the FastGPT configuration file:
@@ -61,7 +61,7 @@ Cohere's Rerank model doesn't perform as well with Chinese text compared to BGE.
 11. Improved - Docker deployment now auto-initializes replica sets.
 12. Improved - Browser file reading now auto-detects encoding to reduce garbled text.
 13. Fixed - Community edition rerank model selection not working.
-14. Fixed - HTTP request body sending `undefined` when not in use (caused some GET requests to fail).
+14. Fixed - Unused HTTP request bodies are now set to `undefined`, preventing failures in some GET requests.
 15. New - HTTP URL now supports variables.
 16. Fixed - V4.6.9 extraction prompts prone to hallucination.
 17. Fixed - PG HNSW index not actually taking effect. After this update, search speed is significantly improved (though there may be some precision loss — refer to the PgVector documentation for index tuning). Details: https://github.com/pgvector/pgvector?tab=readme-ov-file#troubleshooting

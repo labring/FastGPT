@@ -6,7 +6,20 @@ upgradeTags:
   - CONFIG
 ---
 
+## Version Naming Changes
+
+Starting with 4.14.11, FastGPT uses separate version names for stable releases and rapid-development releases:
+
+1. Two stable release lines are maintained. For example, while new features are developed in 4.16.x, fixes are maintained for 4.14.x and 4.15.x.
+2. Stable releases have no suffix, such as 4.14.11, 4.14.12, 4.15.0, and 4.15.1. A fix for 4.14.11 is released as 4.14.12 and applied to the 4.15.x stable line. These maintenance releases contain fixes and preserve the existing feature set.
+3. Rapid-development releases use a beta suffix, such as 4.16.0-beta.1, 4.16.0-beta.2, and 4.16.0-beta.3.
+4. A development line becomes a stable release approximately every 2 months. A consolidated upgrade script applies all migrations from that development cycle with one request.
+
+For stable deployments, choose releases without a beta suffix. Dedicated maintenance releases provide fixes while preserving the existing feature set.
+
 ## Upgrade Guide
+
+Stable maintenance releases after 4.14.11 support direct upgrades while preserving the existing features and data structure.
 
 ### 1. Update image tags
 
