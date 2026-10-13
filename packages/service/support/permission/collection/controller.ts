@@ -1,6 +1,7 @@
 import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import type { ClientSession } from '../../../common/mongo';
 import { MongoDatasetCollection } from '../../../core/dataset/collection/schema';
@@ -9,12 +10,12 @@ import { MongoResourcePermission } from '../schema';
 import { getCollaboratorId } from '@fastgpt/global/support/permission/utils';
 import {
   assertDatasetCollectionPermissionEnabled,
-  getDatasetCollectionPermissionEnabled
+  getDatasetCollectionPermissionEnabled,
+  lockDatasetCollectionPermissionState
 } from './datasetSwitch';
 import type { SyncChildrenPermissionResourceType } from '../inheritPermission';
 import type { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
-  createResourcePermissions,
   moveResourcePermissions,
   resumeResourcePermissionInheritance,
   syncResourceTreePermissions
@@ -76,25 +77,19 @@ export async function createCollectionPermission({
   tmbId: string;
   session: ClientSession;
 }): Promise<void> {
-  await createResourcePermissions({
-    resource,
-    resourceType: PerResourceTypeEnum.collection,
-    parentResourceType: resource.parentId
-      ? PerResourceTypeEnum.collection
-      : PerResourceTypeEnum.dataset,
-    parentResourceId: resource.parentId ? String(resource.parentId) : resource.datasetId,
-    tmbId,
+  await createCollectionPermissionsBatch({
+    teamId: resource.teamId,
+    resources: [
+      {
+        collectionId: String(resource._id),
+        datasetId: resource.datasetId,
+        parentId: resource.parentId,
+        tmbId,
+        inheritPermission: resource.inheritPermission
+      }
+    ],
     session
   });
-
-  if (resource.inheritPermission === false) {
-    // 关闭态不允许创建独立态 collection，否则会破坏「关闭态无自定义权限」不变量。
-    await assertDatasetCollectionPermissionEnabled({
-      teamId: resource.teamId,
-      datasetId: resource.datasetId,
-      session
-    });
-  }
 }
 
 /**
@@ -579,10 +574,10 @@ export type CollectionPermissionCreateItem = {
 /**
  * 批量初始化新建 Collection 的 ACL 快照，语义与 `createCollectionPermission` 等价。
  *
- * 与单条路径的唯一差异：**关闭态 dataset 跳过写入**。关闭态读路径不走 collection 快照
+ * 单条创建也复用此实现：**关闭态 dataset 跳过写入**。关闭态读路径不走 collection 快照
  * （`canShortCircuitCollectionPermission`），重新启用又会清空重建
  * （`enableDatasetCollectionPermissions`），此间写入的行注定被覆盖；ApiDataset 单次导入
- * 可达 4w 行，这条短路决定事务量级。独立态在关闭态非法，仍逐条断言以复用同一错误语义。
+ * 可达 4w 行，这条短路决定事务量级。独立态在关闭态非法，直接使用本次开关结果拒绝。
  */
 export async function createCollectionPermissionsBatch({
   teamId,
@@ -603,53 +598,68 @@ export async function createCollectionPermissionsBatch({
   }
 
   for (const [datasetId, items] of byDataset) {
-    const enabled = await getDatasetCollectionPermissionEnabled({ teamId, datasetId, session });
+    const enabled = await lockDatasetCollectionPermissionState({ teamId, datasetId, session });
     if (!enabled) {
-      for (const item of items) {
-        if (item.inheritPermission !== false) continue;
-        await assertDatasetCollectionPermissionEnabled({ teamId, datasetId, session });
-      }
+      if (items.some((item) => item.inheritPermission === false))
+        throw DatasetErrEnum.collectionPermissionDisabled;
       continue;
     }
 
     // 同父级的快照只读一次：40k 行下逐行回查父级是主要开销
+    const inheritingItems = items.filter((item) => item.inheritPermission !== false);
     const parentIds = Array.from(
-      new Set(items.filter((item) => item.parentId).map((item) => String(item.parentId)))
+      new Set(inheritingItems.filter((item) => item.parentId).map((item) => String(item.parentId)))
     );
-    const [parentRows, datasetClbs] = await Promise.all([
-      parentIds.length
-        ? resourcePermissionRepo.findByResourceIds({
-            teamId,
-            resourceType: PerResourceTypeEnum.collection,
-            resourceIds: parentIds,
-            session
-          })
-        : [],
-      resourcePermissionRepo.findByResource({
+    const parentRows: ResourcePermissionRow[] = [];
+    for (const resourceIds of chunked(parentIds, COLLECTION_PERMISSION_WRITE_CHUNK_SIZE)) {
+      const rows = await resourcePermissionRepo.findByResourceIds({
         teamId,
-        resourceType: PerResourceTypeEnum.dataset,
-        resourceId: datasetId,
+        resourceType: PerResourceTypeEnum.collection,
+        resourceIds,
         session
-      })
-    ]);
+      });
+      // 父级协作者总数可能远大于父节点数，不能将无界查询结果展开为 push 的函数参数。
+      for (const row of rows) parentRows.push(row);
+    }
+    // 独立态不继承任何父级；非根节点也不需要读取 dataset 快照。
+    const datasetClbs = inheritingItems.some((item) => !item.parentId)
+      ? await resourcePermissionRepo.findByResource({
+          teamId,
+          resourceType: PerResourceTypeEnum.dataset,
+          resourceId: datasetId,
+          session
+        })
+      : [];
     const parentClbsById = indexByResourceId(parentRows);
-
-    const snapshots = items.map((item) => ({
-      resourceId: item.collectionId,
-      collaborators:
-        item.inheritPermission === false
-          ? // 独立态只写 owner，父级贡献不参与（createResourcePermissions 的父级读空等价物）
-            [{ tmbId: item.tmbId, permission: OwnerRoleVal }]
-          : mergeResourceCollaborators({
-              parentCollaborators: item.parentId
-                ? (parentClbsById.get(String(item.parentId)) ?? [])
-                : datasetClbs,
-              childCollaborators: [{ tmbId: item.tmbId, permission: OwnerRoleVal }]
-            })
-    }));
+    const collaboratorsByKey = new Map<string, CollaboratorItemType[]>();
+    const snapshots = items.map((item) => {
+      // 同父级、同 owner 的新节点快照相同，计算一次即可；不同 owner 不得混用。
+      const key = JSON.stringify([
+        item.inheritPermission !== false,
+        item.parentId ?? null,
+        item.tmbId
+      ]);
+      if (!collaboratorsByKey.has(key)) {
+        collaboratorsByKey.set(
+          key,
+          item.inheritPermission === false
+            ? [{ tmbId: item.tmbId, permission: OwnerRoleVal }]
+            : mergeResourceCollaborators({
+                parentCollaborators: item.parentId
+                  ? (parentClbsById.get(String(item.parentId)) ?? [])
+                  : datasetClbs,
+                childCollaborators: [{ tmbId: item.tmbId, permission: OwnerRoleVal }]
+              })
+        );
+      }
+      return {
+        resourceId: item.collectionId,
+        collaborators: collaboratorsByKey.get(key)!
+      };
+    });
 
     for (const chunk of chunked(snapshots, COLLECTION_PERMISSION_WRITE_CHUNK_SIZE)) {
-      await resourcePermissionRepo.replaceResources({
+      await resourcePermissionRepo.insertResources({
         teamId,
         resourceType: PerResourceTypeEnum.collection,
         resources: chunk,

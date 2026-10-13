@@ -6,11 +6,23 @@ import {
   ReadRoleVal,
   WriteRoleVal
 } from '@fastgpt/global/support/permission/constant';
-import type { Model } from '@fastgpt/service/common/mongo';
+import { Types, type Model } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { bulkMoveCollectionsParent } from '@fastgpt/service/core/dataset/collection/controller';
+import {
+  bulkMoveCollectionsParent,
+  createCollections,
+  createOneCollection,
+  createApiFileCollectionsBatch
+} from '@fastgpt/service/core/dataset/collection/controller';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { MongoUsage } from '@fastgpt/service/support/wallet/usage/schema';
+import { MongoUsageItem } from '@fastgpt/service/support/wallet/usage/usageItemSchema';
+import * as modelCatalog from '@fastgpt/service/core/ai/model/catalog/service';
+import * as datasetPermissionState from '@fastgpt/service/support/permission/collection/datasetSwitch';
 import {
   createCollectionPermission,
   moveCollectionPermission,
@@ -19,16 +31,22 @@ import {
   syncDatasetToCollections,
   syncRootCollections
 } from '@fastgpt/service/support/permission/collection/controller';
-import { enableDatasetCollectionPermissions } from '@fastgpt/service/support/permission/collection/enable';
+import {
+  enableDatasetCollectionPermissions,
+  disableDatasetCollectionPermissions
+} from '@fastgpt/service/support/permission/collection/enable';
 import {
   createResourceDefaultCollaborators,
   getResourceOwnedClbs
 } from '@fastgpt/service/support/permission/controller';
 import { resourcePermissionRepo } from '@fastgpt/service/support/permission/repository/resourcePermissionRepo';
-import { updateResourceCollaborators } from '@fastgpt/service/support/permission/resourcePermissionService';
+import {
+  createResourcePermissions,
+  updateResourceCollaborators
+} from '@fastgpt/service/support/permission/resourcePermissionService';
 import { getFakeUsers } from '@test/datas/users';
 import type { parseHeaderCertRet } from '@test/mocks/request';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 const toPermissionMap = (collaborators: { tmbId?: string; permission: number }[]) =>
   new Map(collaborators.map((collaborator) => [collaborator.tmbId, collaborator.permission]));
@@ -64,7 +82,8 @@ const createCollection = async ({
   name,
   type = DatasetCollectionTypeEnum.file,
   parentId,
-  inheritPermission = true
+  inheritPermission = true,
+  legacySnapshot = false
 }: {
   user: User;
   datasetId: string;
@@ -72,6 +91,8 @@ const createCollection = async ({
   type?: DatasetCollectionTypeEnum;
   parentId?: string;
   inheritPermission?: boolean;
+  /** 模拟旧版本在权限关闭时仍写完整快照，验证存量 ACL 的移动兼容。 */
+  legacySnapshot?: boolean;
 }) =>
   mongoSessionRun(async (session) => {
     const collection = await MongoDatasetCollection.create({
@@ -83,19 +104,27 @@ const createCollection = async ({
       ...(parentId ? { parentId } : {}),
       inheritPermission
     });
-    await createCollectionPermission({
-      resource: {
-        _id: String(collection._id),
-        type: collection.type,
-        teamId: String(collection.teamId),
-        parentId: collection.parentId ? String(collection.parentId) : undefined,
-        datasetId: String(collection.datasetId),
-        tmbId: String(collection.tmbId),
-        inheritPermission: collection.inheritPermission
-      },
-      tmbId: String(user.tmbId),
-      session
-    });
+    const resource = {
+      _id: String(collection._id),
+      type: collection.type,
+      teamId: String(collection.teamId),
+      parentId: collection.parentId ? String(collection.parentId) : undefined,
+      datasetId: String(collection.datasetId),
+      tmbId: String(collection.tmbId),
+      inheritPermission: collection.inheritPermission
+    };
+    if (legacySnapshot) {
+      await createResourcePermissions({
+        resource,
+        resourceType: PerResourceTypeEnum.collection,
+        parentResourceType: parentId ? PerResourceTypeEnum.collection : PerResourceTypeEnum.dataset,
+        parentResourceId: parentId ?? datasetId,
+        tmbId: String(user.tmbId),
+        session
+      });
+    } else {
+      await createCollectionPermission({ resource, tmbId: String(user.tmbId), session });
+    }
     return collection;
   });
 
@@ -166,23 +195,295 @@ const collectionClbs = (teamId: string, collectionId: string) =>
 const datasetSwitchState = async (datasetId: string) =>
   (await MongoDataset.findById(datasetId).lean())?.collectionPermissionEnabled;
 
+describe.sequential('createCollections / createCollectionPermission', () => {
+  it.each(['enable', 'disable'])(
+    '批量创建与权限 %s 并发时，新节点遵守提交后的权限状态',
+    async (mode) => {
+      const users = await getFakeUsers(1);
+      const dataset = await createDataset({ user: users.owner });
+      const teamId = String(users.owner.teamId);
+      const datasetId = String(dataset._id);
+      if (mode === 'disable') await enableDatasetCollectionPermissions({ teamId, datasetId });
+      const { mongoSessionRun: runRealTransaction } = await vi.importActual<
+        typeof import('@fastgpt/service/common/mongo/sessionRun')
+      >('@fastgpt/service/common/mongo/sessionRun');
+      const runner = vi.mocked(mongoSessionRun);
+      const defaultRunner = runner.getMockImplementation()!;
+      runner.mockImplementation(runRealTransaction);
+      let flagRead!: () => void;
+      let resumeCreate!: () => void;
+      let enableWrite!: () => void;
+      const flagReadBarrier = new Promise<void>((resolve) => {
+        flagRead = resolve;
+      });
+      const resumeBarrier = new Promise<void>((resolve) => {
+        resumeCreate = resolve;
+      });
+      const enableWriteBarrier = new Promise<void>((resolve) => {
+        enableWrite = resolve;
+      });
+      const readFlag = datasetPermissionState.lockDatasetCollectionPermissionState;
+      const writeFlag = datasetPermissionState.setDatasetCollectionPermissionEnabled;
+      const reads = vi
+        .spyOn(datasetPermissionState, 'lockDatasetCollectionPermissionState')
+        .mockImplementationOnce(async (props) => {
+          const enabled = await readFlag(props);
+          flagRead();
+          await resumeBarrier;
+          return enabled;
+        });
+      const writes = vi
+        .spyOn(datasetPermissionState, 'setDatasetCollectionPermissionEnabled')
+        .mockImplementation((props) => {
+          enableWrite();
+          return writeFlag(props);
+        });
+      try {
+        const creation = runRealTransaction((session) =>
+          createCollections({
+            collections: [
+              {
+                teamId,
+                datasetId,
+                tmbId: String(users.owner.tmbId),
+                name: 'concurrent',
+                type: DatasetCollectionTypeEnum.apiFile,
+                inheritPermission: mode === 'disable' ? false : undefined
+              }
+            ],
+            session
+          })
+        );
+        await flagReadBarrier;
+        const switching =
+          mode === 'enable'
+            ? enableDatasetCollectionPermissions({ teamId, datasetId })
+            : disableDatasetCollectionPermissions({ teamId, datasetId });
+        // 开启事务已读取旧集合列表，但尚未提交开关；让创建事务继续完成。
+        await enableWriteBarrier;
+        resumeCreate();
+        const [collections] = await Promise.all([creation, switching]);
+        expect(await datasetSwitchState(datasetId)).toBe(mode === 'enable');
+        const roles = await collectionClbs(teamId, String(collections[0]._id)).then(
+          toPermissionMap
+        );
+        expect(roles).toEqual(
+          mode === 'enable' ? new Map([[String(users.owner.tmbId), OwnerRoleVal]]) : new Map()
+        );
+        expect(
+          (await MongoDatasetCollection.findById(collections[0]._id).lean())?.inheritPermission
+        ).toBe(true);
+      } finally {
+        resumeCreate();
+        reads.mockRestore();
+        writes.mockRestore();
+        runner.mockImplementation(defaultRunner);
+      }
+    }
+  );
+
+  it('关闭态单条和批量均不写 ACL，启用后为所有新集合物化完整快照', async () => {
+    const users = await getFakeUsers(1);
+    const dataset = await createDataset({ user: users.owner });
+    const props = {
+      teamId: String(users.owner.teamId),
+      tmbId: String(users.owner.tmbId),
+      datasetId: String(dataset._id),
+      type: DatasetCollectionTypeEnum.apiFile
+    };
+    const single = await createOneCollection({ ...props, name: 'single', apiFileId: 'single' });
+    const batch = await createCollections({
+      collections: Array.from({ length: 200 }, (_, index) => ({
+        ...props,
+        name: `batch-${index}`,
+        apiFileId: `batch-${index}`
+      }))
+    });
+    expect(
+      await MongoResourcePermission.countDocuments({
+        teamId: props.teamId,
+        resourceType: PerResourceTypeEnum.collection
+      })
+    ).toBe(0);
+    await enableDatasetCollectionPermissions({ teamId: props.teamId, datasetId: props.datasetId });
+    for (const collection of [single, ...batch]) {
+      expect(
+        await collectionClbs(props.teamId, String(collection._id)).then(toPermissionMap)
+      ).toEqual(new Map([[props.tmbId, OwnerRoleVal]]));
+    }
+  });
+
+  it('开启态 200 个同父级集合只读取一次父级 ACL，且每个集合保留 owner 和 reader', async () => {
+    const users = await getFakeUsers(2);
+    const dataset = await createDataset({ user: users.owner });
+    const teamId = String(users.owner.teamId);
+    const datasetId = String(dataset._id);
+    await enableDatasetCollectionPermissions({ teamId, datasetId });
+    const parent = await createCollection({
+      user: users.owner,
+      datasetId,
+      name: 'parent',
+      type: DatasetCollectionTypeEnum.folder
+    });
+    await setCollaborators({
+      resource: { _id: String(parent._id), type: parent.type, teamId },
+      resourceModel: MongoDatasetCollection,
+      resourceType: PerResourceTypeEnum.collection,
+      collaborators: [
+        { tmbId: String(users.owner.tmbId), permission: OwnerRoleVal },
+        { tmbId: String(users.members[0].tmbId), permission: ReadRoleVal }
+      ]
+    });
+    const parentReads = vi.spyOn(resourcePermissionRepo, 'findByResourceIds');
+    const rootReads = vi.spyOn(resourcePermissionRepo, 'findByResource');
+    const writes = vi.spyOn(resourcePermissionRepo, 'insertResources');
+    const deletes = vi.spyOn(MongoResourcePermission, 'deleteMany');
+    try {
+      const collections = await createCollections({
+        collections: Array.from({ length: 200 }, (_, index) => ({
+          teamId,
+          datasetId,
+          tmbId: String(users.owner.tmbId),
+          parentId: String(parent._id),
+          type: DatasetCollectionTypeEnum.apiFile,
+          name: String(index),
+          apiFileId: String(index)
+        }))
+      });
+      expect(parentReads).toHaveBeenCalledTimes(1);
+      expect(rootReads).not.toHaveBeenCalled();
+      expect(writes).toHaveBeenCalledTimes(1);
+      expect(deletes).not.toHaveBeenCalled();
+      const rows = await MongoResourcePermission.find({
+        teamId,
+        resourceType: PerResourceTypeEnum.collection,
+        resourceId: { $in: collections.map((collection) => String(collection._id)) }
+      }).lean();
+      for (const collection of collections) {
+        expect(
+          toPermissionMap(rows.filter((row) => String(row.resourceId) === String(collection._id)))
+        ).toEqual(
+          new Map([
+            [String(users.owner.tmbId), OwnerRoleVal],
+            [String(users.members[0].tmbId), ReadRoleVal]
+          ])
+        );
+      }
+    } finally {
+      parentReads.mockRestore();
+      rootReads.mockRestore();
+      writes.mockRestore();
+      deletes.mockRestore();
+    }
+  });
+
+  it('关闭态创建独立权限集合被拒绝，真实事务回滚已创建集合', async () => {
+    const users = await getFakeUsers(1);
+    const dataset = await createDataset({ user: users.owner });
+    const { mongoSessionRun: runRealTransaction } = await vi.importActual<
+      typeof import('@fastgpt/service/common/mongo/sessionRun')
+    >('@fastgpt/service/common/mongo/sessionRun');
+    await expect(
+      runRealTransaction((session) =>
+        createCollections({
+          collections: [
+            {
+              teamId: String(users.owner.teamId),
+              tmbId: String(users.owner.tmbId),
+              datasetId: String(dataset._id),
+              type: DatasetCollectionTypeEnum.apiFile,
+              name: 'independent',
+              inheritPermission: false
+            }
+          ],
+          session
+        })
+      )
+    ).rejects.toBe(DatasetErrEnum.collectionPermissionDisabled);
+    expect(await MongoDatasetCollection.countDocuments({ datasetId: dataset._id })).toBe(0);
+    expect(
+      await MongoResourcePermission.countDocuments({ resourceType: PerResourceTypeEnum.collection })
+    ).toBe(0);
+  });
+
+  it('解析队列写入失败时真实事务回滚集合、ACL 和逐文件账单', async () => {
+    const users = await getFakeUsers(1);
+    const dataset = await createDataset({ user: users.owner });
+    const teamId = String(users.owner.teamId);
+    const datasetId = String(dataset._id);
+    await enableDatasetCollectionPermissions({ teamId, datasetId });
+    const modelHandle = vi.spyOn(modelCatalog, 'getTeamModelHandle').mockResolvedValue({
+      getLLMModelData: () => ({
+        modelId: 'agent',
+        config: { maxContext: 8000, maxResponse: 1000 }
+      }),
+      getEmbeddingModelData: () => ({
+        modelId: 'embedding',
+        config: { defaultToken: 100, maxToken: 100, weight: 0 }
+      }),
+      getVlmModelData: () => undefined
+    } as unknown as Awaited<ReturnType<typeof modelCatalog.getTeamModelHandle>>);
+    const error = new Error('queue unavailable');
+    const queueWrite = vi.spyOn(MongoDatasetTraining, 'insertMany').mockRejectedValueOnce(error);
+    const { mongoSessionRun: runRealTransaction } = await vi.importActual<
+      typeof import('@fastgpt/service/common/mongo/sessionRun')
+    >('@fastgpt/service/common/mongo/sessionRun');
+    try {
+      await expect(
+        runRealTransaction((session) =>
+          createApiFileCollectionsBatch({
+            dataset: dataset.toObject(),
+            files: [
+              { name: 'first', apiFileId: 'first' },
+              { name: 'second', apiFileId: 'second' }
+            ],
+            createCollectionParams: {
+              teamId,
+              tmbId: String(users.owner.tmbId),
+              datasetId,
+              type: DatasetCollectionTypeEnum.apiFile
+            },
+            billing: { mode: 'perFile' },
+            session
+          })
+        )
+      ).rejects.toBe(error);
+      expect(await MongoDatasetCollection.countDocuments({ datasetId })).toBe(0);
+      expect(
+        await MongoResourcePermission.countDocuments({
+          teamId,
+          resourceType: PerResourceTypeEnum.collection
+        })
+      ).toBe(0);
+      expect(await MongoUsage.countDocuments({ teamId })).toBe(0);
+      expect(await MongoUsageItem.countDocuments({ teamId })).toBe(0);
+    } finally {
+      modelHandle.mockRestore();
+      queueWrite.mockRestore();
+    }
+  });
+});
+
 describe.sequential('moveCollectionPermission', () => {
   it('recalculates an inheriting collection moved between folders', async () => {
     const users = await getFakeUsers(3);
     const dataset = await createDataset({ user: users.owner });
     const folderA = await createCollection({
+      legacySnapshot: true,
       user: users.owner,
       datasetId: String(dataset._id),
       name: 'folder-a',
       type: DatasetCollectionTypeEnum.folder
     });
     const folderB = await createCollection({
+      legacySnapshot: true,
       user: users.owner,
       datasetId: String(dataset._id),
       name: 'folder-b',
       type: DatasetCollectionTypeEnum.folder
     });
     const child = await createCollection({
+      legacySnapshot: true,
       user: users.owner,
       datasetId: String(dataset._id),
       name: 'child',
@@ -242,12 +543,14 @@ describe.sequential('moveCollectionPermission', () => {
     const users = await getFakeUsers(2);
     const dataset = await createDataset({ user: users.owner });
     const folder = await createCollection({
+      legacySnapshot: true,
       user: users.owner,
       datasetId: String(dataset._id),
       name: 'folder',
       type: DatasetCollectionTypeEnum.folder
     });
     const child = await createCollection({
+      legacySnapshot: true,
       user: users.owner,
       datasetId: String(dataset._id),
       name: 'child',
@@ -299,11 +602,13 @@ describe.sequential('moveCollectionPermission', () => {
       ]
     });
     const rootCollection = await createCollection({
+      legacySnapshot: true,
       user: users.owner,
       datasetId: String(dataset._id),
       name: 'root-collection'
     });
     const folder = await createCollection({
+      legacySnapshot: true,
       user: users.owner,
       datasetId: String(dataset._id),
       name: 'folder',
@@ -391,18 +696,21 @@ describe.sequential('moveCollectionPermission', () => {
     const users = await getFakeUsers(2);
     const dataset = await createDataset({ user: users.owner });
     const folderA = await createCollection({
+      legacySnapshot: true,
       user: users.owner,
       datasetId: String(dataset._id),
       name: 'folder-a',
       type: DatasetCollectionTypeEnum.folder
     });
     const child = await createCollection({
+      legacySnapshot: true,
       user: users.owner,
       datasetId: String(dataset._id),
       name: 'child',
       parentId: String(folderA._id)
     });
     const folderB = await createCollection({
+      legacySnapshot: true,
       user: users.owner,
       datasetId: String(dataset._id),
       name: 'folder-b',
@@ -534,7 +842,7 @@ describe.sequential(
                 type: movingChild.type,
                 inheritPermission: movingChild.inheritPermission,
                 oldParentId: String(oldParent._id),
-                newParentId: newParent._id,
+                newParentId: new Types.ObjectId(String(newParent._id)),
                 apiFileParentId: 'new-parent'
               },
               {
@@ -543,7 +851,7 @@ describe.sequential(
                 type: movingParent.type,
                 inheritPermission: movingParent.inheritPermission,
                 oldParentId: String(oldParent._id),
-                newParentId: target._id,
+                newParentId: new Types.ObjectId(String(target._id)),
                 apiFileParentId: 'target'
               }
             ],
@@ -689,7 +997,7 @@ describe.sequential('moveCollectionPermissionsBatch', () => {
           type: collection.type,
           inheritPermission: collection.inheritPermission,
           oldParentId: null,
-          newParentId: parent._id,
+          newParentId: new Types.ObjectId(String(parent._id)),
           apiFileParentId: parent.name
         })),
         session
@@ -767,7 +1075,7 @@ describe.sequential('moveCollectionPermissionsBatch', () => {
           datasetId,
           type: collection.type,
           oldParentId: String(emptyParent._id),
-          newParentId: parent._id,
+          newParentId: new Types.ObjectId(String(parent._id)),
           apiFileParentId: parent.name
         })),
         session
@@ -792,7 +1100,7 @@ describe.sequential('moveCollectionPermissionsBatch', () => {
             datasetId,
             type: movingChild.type,
             oldParentId: String(intermediate._id),
-            newParentId: emptyParent._id,
+            newParentId: new Types.ObjectId(String(emptyParent._id)),
             apiFileParentId: emptyParent.name
           }
         ],
@@ -834,7 +1142,7 @@ describe.sequential('moveCollectionPermissionsBatch', () => {
               type: parent.type,
               inheritPermission: parent.inheritPermission,
               oldParentId: null,
-              newParentId: child._id,
+              newParentId: new Types.ObjectId(String(child._id)),
               apiFileParentId: 'child'
             }
           ]
@@ -906,7 +1214,7 @@ describe.sequential('moveCollectionPermissionsBatch', () => {
               datasetId,
               type: collection.type,
               oldParentId: null,
-              newParentId: parent._id,
+              newParentId: new Types.ObjectId(String(parent._id)),
               apiFileParentId: parent.name
             })),
             session
@@ -971,6 +1279,7 @@ describe.sequential('syncDatasetToCollections', () => {
       collaborators: oldChildClbs
     });
     const collection = await createCollection({
+      legacySnapshot: true,
       user: users.owner,
       datasetId: String(childDataset._id),
       name: 'child-root-collection'
@@ -1026,17 +1335,20 @@ describe.sequential('syncRootCollections', () => {
     });
 
     const rootFile = await createCollection({
+      legacySnapshot: true,
       user: users.owner,
       datasetId: String(dataset._id),
       name: 'root-file'
     });
     const rootFolder = await createCollection({
+      legacySnapshot: true,
       user: users.owner,
       datasetId: String(dataset._id),
       name: 'root-folder',
       type: DatasetCollectionTypeEnum.folder
     });
     const child = await createCollection({
+      legacySnapshot: true,
       user: users.owner,
       datasetId: String(dataset._id),
       name: 'child',

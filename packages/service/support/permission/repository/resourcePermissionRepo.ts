@@ -80,6 +80,40 @@ const resourceIdFilter = (resourceId?: string) =>
   // 历史团队 ACL 既可能存储 null，也可能没有 resourceId 字段。
   resourceId == null || resourceId === '' ? { resourceId: null } : { resourceId };
 
+/** 批量插入快照行；新建资源无需先删除 ACL，重复资源 ID 按最后一份快照归一。 */
+const insertResourcePermissionSnapshots = async ({
+  teamId,
+  resourceType,
+  resources,
+  session
+}: ResourcePermissionQuery & {
+  resources: ResourcePermissionSnapshot[];
+  session?: ClientSession;
+}) => {
+  const snapshots = new Map(
+    resources.map((resource) => [String(resource.resourceId), resource.collaborators])
+  );
+  const documents = Array.from(snapshots).flatMap(([resourceId, collaborators]) =>
+    collaborators.map(
+      (collaborator) =>
+        ({
+          teamId,
+          resourceType,
+          resourceId,
+          permission: collaborator.permission,
+          ...pickCollaboratorIdFields(collaborator)
+        }) as ResourcePermissionType
+    )
+  );
+  const insertBatchSize = 100000;
+  for (let index = 0; index < documents.length; index += insertBatchSize) {
+    await MongoResourcePermission.insertMany(documents.slice(index, index + insertBatchSize), {
+      ...(session ? { session } : {}),
+      ordered: true
+    });
+  }
+};
+
 /**
  * resource_permissions 的唯一数据访问入口。
  * 该模块只处理查询、写入和删除，不包含父子资源权限语义。
@@ -670,6 +704,9 @@ export const resourcePermissionRepo = {
     );
   },
 
+  /** 仅用于新建资源的 ACL 初始化；已有资源更新仍使用 replaceResources。 */
+  insertResources: insertResourcePermissionSnapshots,
+
   /** 批量替换多个资源 ACL，避免继承同步按资源串行执行删除和插入。 */
   replaceResources: async ({
     teamId,
@@ -692,26 +729,15 @@ export const resourcePermissionRepo = {
       withSession(session)
     );
 
-    const documents = Array.from(snapshots).flatMap(([resourceId, collaborators]) =>
-      collaborators.map(
-        (collaborator) =>
-          ({
-            teamId,
-            resourceType,
-            resourceId,
-            permission: collaborator.permission,
-            ...pickCollaboratorIdFields(collaborator)
-          }) as ResourcePermissionType
-      )
-    );
-
-    const insertBatchSize = 100000;
-    for (let index = 0; index < documents.length; index += insertBatchSize) {
-      await MongoResourcePermission.insertMany(documents.slice(index, index + insertBatchSize), {
-        ...(session ? { session } : {}),
-        ordered: true
-      });
-    }
+    await insertResourcePermissionSnapshots({
+      teamId,
+      resourceType,
+      resources: Array.from(snapshots, ([resourceId, collaborators]) => ({
+        resourceId,
+        collaborators
+      })),
+      session
+    });
   },
 
   /** 批量增量更新资源 ACL，只触碰受影响的协作者行。 */

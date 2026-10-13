@@ -41,7 +41,6 @@ import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { isAuthorizedDatasetFileS3Key } from '../../../common/s3/sources/dataset/key';
 import { isS3ObjectKey, removeS3TTL } from '../../../common/s3/utils';
 import {
-  createCollectionPermission,
   createCollectionPermissionsBatch,
   deleteCollectionPermissions,
   moveCollectionPermissionsBatch,
@@ -115,25 +114,14 @@ export const bulkInsertFolderCollections = async ({
 
     try {
       await mongoSessionRun(async (session) => {
-        // 不写 tags：folder 沿用旧行为不带标签（走 createOneCollection 的旧代码也没传），schema default 为 []
-        await MongoDatasetCollection.insertMany(
-          batch.map((doc) => ({
+        await createCollections({
+          collections: batch.map((doc) => ({
             ...doc,
             teamId,
             tmbId,
-            datasetId
-          })),
-          { ordered: false, session }
-        );
-
-        await createCollectionPermissionsBatch({
-          teamId,
-          resources: batch.map((doc) => ({
-            collectionId: String(doc._id),
             datasetId,
             parentId: doc.parentId ? String(doc.parentId) : null,
-            tmbId,
-            inheritPermission: doc.inheritPermission
+            apiFileParentId: doc.apiFileParentId ?? undefined
           })),
           session
         });
@@ -662,84 +650,98 @@ export type CreateOneCollectionParams = ApiCreateDatasetCollectionParams & {
   updateTime?: Date;
   session?: ClientSession;
 };
-export async function createOneCollection({ session, ...props }: CreateOneCollectionParams) {
+/**
+ * 批量创建集合，统一标签解析、文档构造、文件 TTL 和 ACL 初始化。
+ * 同一团队/知识库/标签组合只解析一次；父目录须已完成创建，目录树由上层按层提交。
+ * 单条与批量均使用此入口；集合、ACL 和文件状态共享事务，任一失败整体回滚。
+ */
+export async function createCollections({
+  collections,
+  session
+}: {
+  collections: (Omit<CreateOneCollectionParams, 'session'> & { _id?: Types.ObjectId })[];
+  session?: ClientSession;
+}) {
+  if (collections.length === 0) return [];
+
   const fn = async (s: ClientSession) => {
-    const {
-      teamId,
-      parentId,
-      datasetId,
-      tags,
-
-      fileId,
-      rawLink,
-      externalFileId,
-      externalFileUrl,
-      apiFileId,
-      apiFileParentId
-    } = props;
-
-    // Resolve tags: string names → ObjectId, {tag, value} → {tagId, value}
-    const collectionTags = await createOrGetCollectionTags({
-      tags,
-      teamId,
-      datasetId,
-      session: s
-    });
-
-    // Create collection
-    const [collection] = await MongoDatasetCollection.create(
-      [
-        {
-          ...props,
-          _id: undefined,
-
-          parentId: parentId || null,
-
-          tags: collectionTags,
-
-          ...(fileId ? { fileId } : {}),
-          ...(rawLink ? { rawLink } : {}),
-          ...(externalFileId ? { externalFileId } : {}),
-          ...(externalFileUrl ? { externalFileUrl } : {}),
-          ...(apiFileId ? { apiFileId } : {}),
-          ...(apiFileParentId ? { apiFileParentId } : {})
-        }
-      ],
-      { session: s, ordered: true }
-    );
-
-    if (isS3ObjectKey(fileId, 'dataset')) {
-      // fileId 由入口层绑定到已鉴权 dataset 后才允许创建集合；这里再次校验归属，防止外库 key
-      // 借创建入口移除 TTL 而被意外提升为永久对象。
-      if (isAuthorizedDatasetFileS3Key({ key: fileId, datasetId })) {
-        await removeS3TTL({ key: fileId, bucketName: 'private', session: s });
+    // 1. 标签可能新增文档，必须在当前事务内解析，不能随模型参数提前计算。
+    const tagsByKey = new Map<string, Awaited<ReturnType<typeof createOrGetCollectionTags>>>();
+    const docs = [];
+    for (const props of collections) {
+      const key = JSON.stringify([props.teamId, props.datasetId, props.tags]);
+      if (!tagsByKey.has(key)) {
+        tagsByKey.set(
+          key,
+          await createOrGetCollectionTags({
+            tags: props.tags,
+            teamId: props.teamId,
+            datasetId: props.datasetId,
+            session: s
+          })
+        );
       }
+      docs.push({
+        ...props,
+        _id: props._id ?? new Types.ObjectId(),
+        parentId: props.parentId ? String(props.parentId) : null,
+        tags: tagsByKey.get(key)
+      });
     }
 
-    // 创建 Collection 权限初始化（与文档创建同一事务）：
-    // 继承态写 merge(父级有效 clbs, [owner]) 完整快照（根 collection 父级 = dataset）；
-    // 独立态仅 owner 记录，并标记所属 dataset 已配置 collection 权限。
-    await createCollectionPermission({
-      resource: {
-        _id: String(collection._id),
-        teamId: String(collection.teamId),
-        type: collection.type,
-        parentId: collection.parentId ? String(collection.parentId) : null,
-        datasetId: String(collection.datasetId),
-        tmbId: String(collection.tmbId),
-        inheritPermission: props.inheritPermission
-      },
-      tmbId: String(collection.tmbId),
-      session: s
-    });
+    // 同批目录尚无父级快照，必须由调用方按层建树，不能把子级快照误算成仅 owner。
+    const newIds = new Set(docs.map((doc) => String(doc._id)));
+    if (docs.some((doc) => doc.parentId && newIds.has(String(doc.parentId)))) {
+      throw new Error('Collection batch parents must already exist');
+    }
 
-    return collection;
+    // 2. 创建集合并按父级去重初始化快照。关闭态不需要 collection ACL；独立态仍须拒绝。
+    const created = await MongoDatasetCollection.insertMany(docs, { session: s, ordered: true });
+    const byTeam = new Map<string, typeof docs>();
+    for (const doc of docs) {
+      const items = byTeam.get(doc.teamId) ?? [];
+      items.push(doc);
+      byTeam.set(doc.teamId, items);
+    }
+    for (const [teamId, items] of byTeam) {
+      await createCollectionPermissionsBatch({
+        teamId,
+        resources: items.map((doc) => ({
+          collectionId: String(doc._id),
+          datasetId: doc.datasetId,
+          parentId: doc.parentId,
+          tmbId: doc.tmbId,
+          inheritPermission: doc.inheritPermission
+        })),
+        session: s
+      });
+    }
+
+    // 3. 自有文件才去掉 TTL；按 key 去重，集合与文件状态必须一起提交。
+    const fileKeys = new Set<string>();
+    for (const { fileId, datasetId } of docs) {
+      if (
+        isS3ObjectKey(fileId, 'dataset') &&
+        isAuthorizedDatasetFileS3Key({ key: fileId, datasetId }) &&
+        !fileKeys.has(fileId)
+      ) {
+        await removeS3TTL({ key: fileId, bucketName: 'private', session: s });
+        fileKeys.add(fileId);
+      }
+    }
+    return created;
   };
 
-  if (session) {
-    return fn(session);
-  }
-  return mongoSessionRun(fn);
+  return session ? fn(session) : mongoSessionRun(fn);
+}
+
+/** 单条创建复用批量持久化，返回原有集合文档；外部传入的 _id 不得用于普通创建。 */
+export async function createOneCollection({ session, ...props }: CreateOneCollectionParams) {
+  const [collection] = await createCollections({
+    collections: [{ ...props, _id: undefined }],
+    session
+  });
+  return collection;
 }
 
 export type CreateApiFileCollectionItem = {
@@ -762,30 +764,33 @@ export type CreateApiFileCollectionItem = {
 };
 
 /**
- * 批量创建 apiFile 类型 collection：模型/chunk 设置整批算一次、训练账单建一次、
- * 解析队列插一次、collection 一次 insertMany。
- *
- * 全部写入共用调用方传入的 session：任一失败整批回滚，调用方按「整批失败」计数 ——
- * 不做部分成功，避免超时后无法判断哪些文件已落库。
- * 仅适用于走解析队列的路径（无 rawText/imageIds），与 createCollectionAndInsertData 的该分支等价。
+ * 批量创建进入解析队列的 API 文件；模型参数只计算一次，集合、ACL 和队列批量写入。
+ * 首次导入默认整批共用账单；同步通过 perFile 保留逐文件账单，且可保留原额度估算。
+ * 全部写入共享事务，任一失败整体回滚；文件正文由解析队列处理，不在这里切块。
  */
 export const createApiFileCollectionsBatch = async ({
   dataset,
   files,
   createCollectionParams,
+  billing = { mode: 'shared' },
+  indexLimitEstimate,
   session
 }: {
   dataset: DatasetSchemaType;
   files: CreateApiFileCollectionItem[];
-  /** inheritPermission 逐文件取自 files：不在此处接收，避免整批被同一个请求级值覆盖 */
+  /** 逐文件身份、位置和继承设置由 files 提供，不得被请求公共参数覆盖。 */
   createCollectionParams: Omit<
     CreateOneCollectionParams,
     'name' | 'apiFileId' | 'apiFileParentId' | 'parentId' | 'session' | 'inheritPermission'
   >;
-  session: ClientSession;
+  billing?: { mode: 'shared'; billId?: string } | { mode: 'perFile' };
+  /** 缺省按文件数预估；同步的旧解析路径没有已知分块，传 0 保留其原估算契约。 */
+  indexLimitEstimate?: number;
+  session?: ClientSession;
 }): Promise<{ collectionIds: string[] }> => {
   if (files.length === 0) return { collectionIds: [] };
 
+  // 1. 模型和训练参数整批计算；额度估算由上层业务策略决定。
   const {
     agentModelData,
     embeddingModelData,
@@ -793,98 +798,73 @@ export const createApiFileCollectionsBatch = async ({
     formatCreateCollectionParams,
     trainingType
   } = await formatCollectionParamsByDataset({ dataset, createCollectionParams });
-
   const teamId = formatCreateCollectionParams.teamId;
   const tmbId = formatCreateCollectionParams.tmbId;
+  await checkDatasetIndexLimit({ teamId, insertLen: indexLimitEstimate ?? files.length });
 
-  // tags 是请求级参数，整批相同：解析一次即可，避免逐文件重复创建标签文档
-  const collectionTags = await createOrGetCollectionTags({
-    tags: formatCreateCollectionParams.tags,
-    teamId,
-    datasetId: String(dataset._id),
-    session
-  });
+  const create = async (s: ClientSession) => {
+    // 2. 复用通用持久化：标签、字段与 ACL 初始化不再维护单独的 API 文件实现。
+    const collections = await createCollections({
+      collections: files.map((file) => ({
+        ...formatCreateCollectionParams,
+        name: file.name,
+        type: DatasetCollectionTypeEnum.apiFile,
+        datasetId: String(dataset._id),
+        parentId: file.parentId,
+        apiFileId: file.apiFileId,
+        apiFileParentId: file.apiFileParentId,
+        inheritPermission: file.inheritPermission,
+        metadata: file.metadata,
+        trainingType,
+        chunkSize: formatCreateCollectionParams.chunkSize,
+        indexSize: formatCreateCollectionParams.indexSize,
+        hashRawText: undefined,
+        rawTextLength: undefined
+      })),
+      session: s
+    });
 
-  // 解析队列路径不在此处切块（切块在 datasetParse 里按 collection 的 chunkSize 做），
-  // 但**必须把计算好的 chunkSize / indexSize 落库**：collection 是这两个值的唯一载体，
-  // 置空会让解析阶段回退到 rawText2Chunks 的默认 512、向量阶段回退到模型最大索引长度，
-  // 而不是本次请求算出来的自动值（chunkAutoChunkSize = 1000）。
-  const chunkSize = formatCreateCollectionParams.chunkSize;
-  const indexSize = formatCreateCollectionParams.indexSize;
+    // 3. 账单归属独立于批量写入：同步仍是一文件一账单，首次导入可整批共用。
+    const createBill = async (appName: string) =>
+      (
+        await createTrainingUsage({
+          teamId,
+          tmbId,
+          appName,
+          billSource: UsageSourceEnum.training,
+          vectorModelId: embeddingModelData.modelId!,
+          agentModelId: agentModelData.modelId,
+          vllmModelId: vlmModelData?.modelId,
+          session: s
+        })
+      ).usageId;
+    const billIds = await (async () => {
+      if (billing.mode === 'shared') {
+        const billId =
+          billing.billId ??
+          (await createBill(
+            files.length > 1 ? `${files[0].name} +${files.length - 1}` : files[0].name
+          ));
+        return files.map(() => billId);
+      }
+      // 保留既有账单条数与名称；同一 Mongo 事务内顺序执行写入。
+      const ids: string[] = [];
+      for (const file of files) ids.push(await createBill(file.name));
+      return ids;
+    })();
 
-  // 配额检查一次覆盖整批：解析队列路径尚无 chunk，predictDataLimitLength 恒为 0，
-  // 用「待创建 collection 数」近似预测增量 —— 每个文件最终至少产生 1 个索引，逐文件检查等价但要多 4w 次查询。
-  // 放在写入之前：超限直接抛出，事务整体回滚，调用方按「整批失败」计数
-  await checkDatasetIndexLimit({
-    teamId,
-    insertLen: files.length
-  });
-
-  // 整个请求共用一份训练账单：appName 取首个文件名，其余数量收敛为后缀
-  const { usageId: billId } = await createTrainingUsage({
-    teamId,
-    tmbId,
-    appName: files.length > 1 ? `${files[0].name} +${files.length - 1}` : files[0].name,
-    billSource: UsageSourceEnum.training,
-    vectorModelId: embeddingModelData.modelId!,
-    agentModelId: agentModelData.modelId,
-    vllmModelId: vlmModelData?.modelId,
-    session
-  });
-
-  // 预生成 _id：解析队列行要引用 collectionId，必须在 insertMany 之前就确定
-  const objectIds = files.map(() => new Types.ObjectId());
-
-  await MongoDatasetCollection.insertMany(
-    files.map((file, index) => ({
-      ...formatCreateCollectionParams,
-      _id: objectIds[index],
-      // 逐文件字段必须写在 ...formatCreateCollectionParams 之后，覆盖请求级同名字段
-      name: file.name,
-      type: DatasetCollectionTypeEnum.apiFile,
-      datasetId: String(dataset._id),
-      parentId: file.parentId ?? null,
-      apiFileId: file.apiFileId,
-      apiFileParentId: file.apiFileParentId,
-      // 逐文件字段必须写在 ...formatCreateCollectionParams 之后：请求级同名值不能覆盖它
-      inheritPermission: file.inheritPermission,
-      metadata: file.metadata,
-      // 展开的 formatCreateCollectionParams 里是原始 tags，须用解析后的标签文档覆盖
-      tags: collectionTags,
-      trainingType,
-      // 与 createCollectionAndInsertData 的无 rawText/imageIds 分支一致：
-      // 有计算值就写计算值，只有没算出来时才是 undefined
-      chunkSize,
-      indexSize,
-      hashRawText: undefined,
-      rawTextLength: undefined
-    })),
-    { session, ordered: true }
-  );
-
-  // ACL 快照与 collection 同一事务：启用态下缺快照的 collection 对所有非 owner 不可见
-  await createCollectionPermissionsBatch({
-    teamId,
-    resources: files.map((file, index) => ({
-      collectionId: String(objectIds[index]),
-      datasetId: String(dataset._id),
-      parentId: file.parentId ?? null,
+    // 4. 即使逐文件账单不同，解析队列仍可一次写入，避免逐文件往返数据库。
+    const collectionIds = collections.map((collection) => String(collection._id));
+    await pushDatasetToParseQueue({
+      teamId,
       tmbId,
-      inheritPermission: file.inheritPermission
-    })),
-    session
-  });
-
-  await pushDatasetToParseQueue({
-    teamId,
-    tmbId,
-    datasetId: String(dataset._id),
-    collectionId: objectIds.map((id) => String(id)),
-    billId,
-    session
-  });
-
-  return { collectionIds: objectIds.map((id) => String(id)) };
+      datasetId: String(dataset._id),
+      items: collectionIds.map((collectionId, index) => ({ collectionId, billId: billIds[index] })),
+      session: s
+    });
+    return { collectionIds };
+  };
+  return session ? create(session) : mongoSessionRun(create);
 };
 
 /* delete collection related images/files */

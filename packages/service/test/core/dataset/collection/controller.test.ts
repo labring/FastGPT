@@ -6,6 +6,8 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { Types, type ClientSession } from '@fastgpt/service/common/mongo';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import * as s3Utils from '@fastgpt/service/common/s3/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import type {
   BulkInsertCollectionDoc,
@@ -23,7 +25,7 @@ const {
   mockPermissionEnabled,
   mockFindByResource,
   mockFindByResourceIds,
-  mockReplaceResources
+  mockWriteResources
 } = vi.hoisted(() => ({
   mockInsertMany: vi.fn(),
   mockFind: vi.fn(),
@@ -34,7 +36,7 @@ const {
   mockPermissionEnabled: vi.fn(),
   mockFindByResource: vi.fn(),
   mockFindByResourceIds: vi.fn(),
-  mockReplaceResources: vi.fn()
+  mockWriteResources: vi.fn()
 }));
 
 // 开关要回查 dataset 文档、ACL 快照要读写 MongoResourcePermission：都是真库读写，且集合权限
@@ -42,7 +44,8 @@ const {
 // 初始化 ACL」，故替换掉这两处 IO。
 vi.mock('@fastgpt/service/support/permission/collection/datasetSwitch', async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  getDatasetCollectionPermissionEnabled: mockPermissionEnabled
+  getDatasetCollectionPermissionEnabled: mockPermissionEnabled,
+  lockDatasetCollectionPermissionState: mockPermissionEnabled
 }));
 vi.mock(
   '@fastgpt/service/support/permission/repository/resourcePermissionRepo',
@@ -51,7 +54,8 @@ vi.mock(
     resourcePermissionRepo: {
       findByResource: mockFindByResource,
       findByResourceIds: mockFindByResourceIds,
-      replaceResources: mockReplaceResources
+      replaceResources: mockWriteResources,
+      insertResources: mockWriteResources
     }
   })
 );
@@ -125,12 +129,15 @@ import {
   bulkInsertFolderCollections,
   bulkMoveCollectionsParent,
   bulkUpdateCollectionsParent,
+  createCollections,
+  createOneCollection,
   createApiFileCollectionsBatch,
   formatCollectionParamsByDataset
 } from '@fastgpt/service/core/dataset/collection/controller';
 import { chunkAutoChunkSize } from '@fastgpt/global/core/dataset/training/utils';
 import { DatasetCollectionSchema } from '@fastgpt/global/core/dataset/type';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import { createCollectionPermissionsBatch } from '@fastgpt/service/support/permission/collection/controller';
 
 const teamId = 'team-1';
 const tmbId = 'tmb-1';
@@ -202,8 +209,8 @@ describe('bulkInsertFolderCollections', () => {
     expect(mockInsertMany).toHaveBeenCalledTimes(2);
     expect(mockInsertMany.mock.calls[0][0]).toHaveLength(500);
     expect(mockInsertMany.mock.calls[1][0]).toHaveLength(100);
-    // ordered:false 才会逐条落库，是回查语义的前提；session 是 ACL 与 collection 同事务的载体
-    expect(mockInsertMany.mock.calls[0][1]).toMatchObject({ ordered: false });
+    // 集合与 ACL 共享事务；恢复查询用于处理不确定提交结果，写入使用有序批次。
+    expect(mockInsertMany.mock.calls[0][1]).toMatchObject({ ordered: true });
     expect(mockInsertMany.mock.calls[0][1]).toHaveProperty('session');
     expect(mockInsertMany.mock.calls[0][0][0]).toMatchObject({ teamId, tmbId, datasetId });
     expect(result.successApiFileIds).toHaveLength(600);
@@ -291,8 +298,8 @@ describe('bulkInsertFolderCollections', () => {
     // 未指定时保持 schema default（继承），不能顺手改成独立态
     expect(inserted[0].inheritPermission).not.toBe(false);
 
-    expect(mockReplaceResources).toHaveBeenCalledTimes(1);
-    const call = mockReplaceResources.mock.calls[0][0];
+    expect(mockWriteResources).toHaveBeenCalledTimes(1);
+    const call = mockWriteResources.mock.calls[0][0];
     expect(call.resourceType).toBe(PerResourceTypeEnum.collection);
     expect(call.session).toBe(mockInsertMany.mock.calls[0][1].session);
     const collaboratorsOf = (id: Types.ObjectId) =>
@@ -465,7 +472,7 @@ describe('bulkMoveCollectionsParent', () => {
       bulkMoveCollectionsParent({ teamId, items: [], session: {} as ClientSession })
     ).resolves.toEqual({ successIds: [], failedIds: [], matchedCount: 0 });
     expect(mockBulkWrite).not.toHaveBeenCalled();
-    expect(mockReplaceResources).not.toHaveBeenCalled();
+    expect(mockWriteResources).not.toHaveBeenCalled();
   });
 
   beforeEach(() => {
@@ -473,7 +480,7 @@ describe('bulkMoveCollectionsParent', () => {
     mockPermissionEnabled.mockResolvedValue(true);
     mockFindByResource.mockResolvedValue([]);
     mockFindByResourceIds.mockResolvedValue([]);
-    mockReplaceResources.mockResolvedValue(undefined);
+    mockWriteResources.mockResolvedValue(undefined);
     mockFind.mockReturnValue({ session: () => ({ lean: async () => [] }) });
   });
 
@@ -489,7 +496,7 @@ describe('bulkMoveCollectionsParent', () => {
       failedIds: [],
       matchedCount: 2
     });
-    expect(mockReplaceResources).toHaveBeenCalledTimes(1);
+    expect(mockWriteResources).toHaveBeenCalledTimes(1);
   });
 
   it('任一 parentId 写入失败时抛错触发事务回滚', async () => {
@@ -502,7 +509,7 @@ describe('bulkMoveCollectionsParent', () => {
     await expect(
       bulkMoveCollectionsParent({ teamId, items, session: {} as ClientSession })
     ).rejects.toThrow('Bulk move collection parent failed: expected=2, matched=1, failed=1');
-    expect(mockReplaceResources).toHaveBeenCalledTimes(1);
+    expect(mockWriteResources).toHaveBeenCalledTimes(1);
   });
 
   it('parentId 写入未完全命中时抛错触发事务回滚', async () => {
@@ -512,7 +519,7 @@ describe('bulkMoveCollectionsParent', () => {
     await expect(
       bulkMoveCollectionsParent({ teamId, items, session: {} as ClientSession })
     ).rejects.toThrow('Bulk move collection parent failed: expected=2, matched=1, failed=0');
-    expect(mockReplaceResources).toHaveBeenCalledTimes(1);
+    expect(mockWriteResources).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -581,6 +588,101 @@ describe('formatCollectionParamsByDataset', () => {
 });
 
 describe('createApiFileCollectionsBatch', () => {
+  it('200 个同父级文件只计算一次模型参数、解析一次标签、读取一次父级 ACL 和写入一次队列', async () => {
+    mockPermissionEnabled.mockResolvedValue(true);
+    mockFindByResourceIds.mockResolvedValue([
+      { resourceId: 'parent', tmbId: 'parent-owner', permission: OwnerRoleVal }
+    ]);
+    const files = Array.from({ length: 200 }, (_, index) => ({
+      ...makeFile(`file-${index}`),
+      parentId: 'parent'
+    }));
+    const result = await createApiFileCollectionsBatch({
+      dataset: makeDataset(),
+      files,
+      createCollectionParams: collectionParams,
+      session: {} as ClientSession
+    });
+    expect(result.collectionIds).toHaveLength(200);
+    expect(getTeamModelHandle).toHaveBeenCalledTimes(1);
+    expect(mockCreateOrGetCollectionTags).toHaveBeenCalledTimes(1);
+    expect(mockInsertMany).toHaveBeenCalledTimes(1);
+    expect(mockPermissionEnabled).toHaveBeenCalledTimes(1);
+    expect(mockFindByResourceIds).toHaveBeenCalledExactlyOnceWith({
+      teamId,
+      resourceType: PerResourceTypeEnum.collection,
+      resourceIds: ['parent'],
+      session: {}
+    });
+    expect(mockFindByResource).not.toHaveBeenCalled();
+    expect(mockWriteResources).toHaveBeenCalledTimes(1);
+    expect(mockWriteResources.mock.calls[0][0].resources).toHaveLength(200);
+    expect(mockTrainingInsertMany).toHaveBeenCalledTimes(1);
+    expect(mockCreateTrainingUsage).toHaveBeenCalledTimes(1);
+  });
+
+  it('逐文件账单保持名称和队列对应关系，同时仍批量创建集合和 ACL', async () => {
+    mockPermissionEnabled.mockResolvedValue(true);
+    mockFindByResource.mockResolvedValue([]);
+    mockCreateTrainingUsage
+      .mockResolvedValueOnce({ usageId: 'first-bill' })
+      .mockResolvedValueOnce({ usageId: 'second-bill' });
+    const result = await createApiFileCollectionsBatch({
+      dataset: makeDataset(),
+      files: [makeFile('first'), makeFile('second')],
+      createCollectionParams: collectionParams,
+      billing: { mode: 'perFile' },
+      indexLimitEstimate: 0,
+      session: {} as ClientSession
+    });
+    expect(mockCreateTrainingUsage.mock.calls.map(([args]) => args.appName)).toEqual([
+      'first',
+      'second'
+    ]);
+    expect(mockInsertMany).toHaveBeenCalledTimes(1);
+    expect(mockWriteResources).toHaveBeenCalledTimes(1);
+    expect(mockTrainingInsertMany).toHaveBeenCalledExactlyOnceWith(
+      [
+        expect.objectContaining({ collectionId: result.collectionIds[0], billId: 'first-bill' }),
+        expect.objectContaining({ collectionId: result.collectionIds[1], billId: 'second-bill' })
+      ],
+      { session: {}, ordered: true }
+    );
+  });
+
+  it('整批复用已有账单，不重复创建训练账单', async () => {
+    await createApiFileCollectionsBatch({
+      dataset: makeDataset(),
+      files: [makeFile('first'), makeFile('second')],
+      createCollectionParams: collectionParams,
+      billing: { mode: 'shared', billId: 'existing' },
+      session: {} as ClientSession
+    });
+    expect(mockCreateTrainingUsage).not.toHaveBeenCalled();
+    expect(
+      mockTrainingInsertMany.mock.calls[0][0].map((item: { billId: string }) => item.billId)
+    ).toEqual(['existing', 'existing']);
+  });
+
+  it.each(['acl', 'queue', 'bill'])('%s 写入失败必须向事务调用方抛错', async (stage) => {
+    const error = new Error(`${stage} failed`);
+    if (stage === 'acl') {
+      mockPermissionEnabled.mockResolvedValue(true);
+      mockFindByResource.mockResolvedValue([]);
+      mockWriteResources.mockRejectedValueOnce(error);
+    } else if (stage === 'queue') mockTrainingInsertMany.mockRejectedValueOnce(error);
+    else mockCreateTrainingUsage.mockRejectedValueOnce(error);
+    await expect(
+      createApiFileCollectionsBatch({
+        dataset: makeDataset(),
+        files: [makeFile('f')],
+        createCollectionParams: collectionParams,
+        session: {} as ClientSession
+      })
+    ).rejects.toBe(error);
+    if (stage !== 'queue') expect(mockTrainingInsertMany).not.toHaveBeenCalled();
+  });
+
   it('空文件不解析标签、不创建账单或队列', async () => {
     await expect(
       createApiFileCollectionsBatch({
@@ -607,14 +709,14 @@ describe('createApiFileCollectionsBatch', () => {
         session: {} as ClientSession
       })
     ).rejects.toBe(error);
-    expect(mockReplaceResources).not.toHaveBeenCalled();
+    expect(mockWriteResources).not.toHaveBeenCalled();
     expect(mockTrainingInsertMany).not.toHaveBeenCalled();
   });
 
   beforeEach(() => {
     vi.resetAllMocks();
     mockCreateTrainingUsage.mockResolvedValue({ usageId: 'usage-1' });
-    mockInsertMany.mockResolvedValue({});
+    mockInsertMany.mockImplementation(async (docs) => docs);
     mockTrainingInsertMany.mockResolvedValue([]);
     // 默认关闭态：本组用例断言的是落库文档内容，ACL 由 T2-13 单独覆盖
     mockPermissionEnabled.mockResolvedValue(false);
@@ -680,8 +782,8 @@ describe('createApiFileCollectionsBatch', () => {
     expect(docs[0]).toMatchObject({ inheritPermission: false });
     expect(docs[1].inheritPermission).not.toBe(false);
 
-    expect(mockReplaceResources).toHaveBeenCalledTimes(1);
-    const call = mockReplaceResources.mock.calls[0][0];
+    expect(mockWriteResources).toHaveBeenCalledTimes(1);
+    const call = mockWriteResources.mock.calls[0][0];
     expect(call.session).toBe(mockInsertMany.mock.calls[0][1].session);
     expect(call.resources.map((item: { resourceId: string }) => item.resourceId)).toEqual(
       docs.map((doc: { _id: Types.ObjectId }) => String(doc._id))
@@ -695,5 +797,253 @@ describe('createApiFileCollectionsBatch', () => {
     ]);
     // 继承态：合并父级快照
     expect(collaboratorsOf(docs[1]._id)).toHaveLength(2);
+  });
+});
+
+describe('createCollections / createOneCollection', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mockInsertMany.mockImplementation(async (docs) => docs);
+    mockPermissionEnabled.mockResolvedValue(false);
+  });
+
+  it('空批次不解析标签、不读写 ACL 或创建集合', async () => {
+    expect(await createCollections({ collections: [] })).toEqual([]);
+    expect(mockCreateOrGetCollectionTags).not.toHaveBeenCalled();
+    expect(mockPermissionEnabled).not.toHaveBeenCalled();
+    expect(mockInsertMany).not.toHaveBeenCalled();
+  });
+
+  it('未提供 session 时整批使用同一事务，解析队列仍只写一次', async () => {
+    mockCreateTrainingUsage.mockResolvedValue({ usageId: 'bill' });
+    mockTrainingInsertMany.mockResolvedValue([]);
+    const result = await createApiFileCollectionsBatch({
+      dataset: makeDataset(),
+      files: [makeFile('first'), makeFile('second')],
+      createCollectionParams: collectionParams
+    });
+    expect(result.collectionIds).toHaveLength(2);
+    expect(mockTrainingInsertMany).toHaveBeenCalledTimes(1);
+    expect(mockTrainingInsertMany.mock.calls[0][1].session).toBe(
+      mockInsertMany.mock.calls[0][1].session
+    );
+    expect(mockCreateTrainingUsage.mock.calls[0][0].session).toBe(
+      mockInsertMany.mock.calls[0][1].session
+    );
+  });
+
+  it('标签解析失败时不创建集合、ACL 或队列', async () => {
+    const error = new Error('invalid tag');
+    mockCreateOrGetCollectionTags.mockRejectedValueOnce(error);
+    await expect(
+      createCollections({
+        collections: [{ ...collectionParams, name: 'tagged', tags: ['invalid'] }],
+        session: {} as ClientSession
+      })
+    ).rejects.toBe(error);
+    expect(mockInsertMany).not.toHaveBeenCalled();
+    expect(mockPermissionEnabled).not.toHaveBeenCalled();
+  });
+
+  it('不同团队的集合分别处理权限开关，避免混用快照', async () => {
+    await createCollections({
+      collections: [
+        { ...collectionParams, name: 'one' },
+        { ...collectionParams, name: 'two', teamId: 'other-team', datasetId: 'other-dataset' }
+      ],
+      session: {} as ClientSession
+    });
+    expect(mockPermissionEnabled.mock.calls.map(([args]) => [args.teamId, args.datasetId])).toEqual(
+      [
+        [teamId, datasetId],
+        ['other-team', 'other-dataset']
+      ]
+    );
+  });
+
+  it('单条创建共用批量落库，规范化根父级并忽略外部 _id，关闭态不读写 ACL', async () => {
+    const injectedId = new Types.ObjectId();
+    const input = { ...collectionParams, name: 'single', parentId: '', _id: injectedId };
+    const collection = await createOneCollection(input);
+    expect(String(collection._id)).not.toBe(String(injectedId));
+    expect(collection).toMatchObject({ name: 'single', parentId: null });
+    expect(mockPermissionEnabled).toHaveBeenCalledTimes(1);
+    expect(mockFindByResource).not.toHaveBeenCalled();
+    expect(mockFindByResourceIds).not.toHaveBeenCalled();
+    expect(mockWriteResources).not.toHaveBeenCalled();
+  });
+
+  it('不同标签分组独立解析，相同标签只解析一次且不修改输入', async () => {
+    mockCreateOrGetCollectionTags
+      .mockResolvedValueOnce([{ tagId: 'first', value: ['a'] }])
+      .mockResolvedValueOnce([{ tagId: 'second', value: ['b'] }]);
+    const inputs = ['a', 'a', 'b'].map((tag, index) => ({
+      ...collectionParams,
+      name: String(index),
+      tags: [tag]
+    }));
+    const result = await createCollections({ collections: inputs, session: {} as ClientSession });
+    expect(mockCreateOrGetCollectionTags).toHaveBeenCalledTimes(2);
+    expect(result.map((item) => item.tags)).toEqual([
+      [{ tagId: 'first', value: ['a'] }],
+      [{ tagId: 'first', value: ['a'] }],
+      [{ tagId: 'second', value: ['b'] }]
+    ]);
+    expect(inputs.map((item) => item.tags)).toEqual([['a'], ['a'], ['b']]);
+  });
+
+  it('同批父子节点在写入前拒绝，避免创建尚不存在的父级 ACL 快照', async () => {
+    const parentId = new Types.ObjectId();
+    await expect(
+      createCollections({
+        collections: [
+          {
+            ...collectionParams,
+            name: 'parent',
+            _id: parentId,
+            type: DatasetCollectionTypeEnum.folder
+          },
+          { ...collectionParams, name: 'child', parentId: String(parentId) }
+        ],
+        session: {} as ClientSession
+      })
+    ).rejects.toThrow('Collection batch parents must already exist');
+    expect(mockInsertMany).not.toHaveBeenCalled();
+  });
+
+  it('权限关闭时独立态拒绝，只检查一次开关且不写 ACL', async () => {
+    await expect(
+      createCollections({
+        collections: [{ ...collectionParams, name: 'independent', inheritPermission: false }],
+        session: {} as ClientSession
+      })
+    ).rejects.toBe(DatasetErrEnum.collectionPermissionDisabled);
+    expect(mockPermissionEnabled).toHaveBeenCalledTimes(1);
+    expect(mockWriteResources).not.toHaveBeenCalled();
+  });
+
+  it('自有文件 TTL 去重处理，外库 key 保持原状', async () => {
+    const removeTTL = vi.spyOn(s3Utils, 'removeS3TTL').mockResolvedValue(undefined);
+    const ownKey = `dataset/${datasetId}/file.pdf`;
+    await createCollections({
+      collections: [
+        { ...collectionParams, name: 'first', fileId: ownKey },
+        { ...collectionParams, name: 'second', fileId: ownKey },
+        { ...collectionParams, name: 'foreign', fileId: 'dataset/another/file.pdf' }
+      ],
+      session: {} as ClientSession
+    });
+    expect(removeTTL).toHaveBeenCalledExactlyOnceWith({
+      key: ownKey,
+      bucketName: 'private',
+      session: {}
+    });
+    removeTTL.mockRestore();
+  });
+});
+
+describe('createCollectionPermissionsBatch', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mockPermissionEnabled.mockResolvedValue(true);
+    mockFindByResourceIds.mockResolvedValue([]);
+    mockFindByResource.mockResolvedValue([]);
+  });
+
+  it('空资源列表无需读取开关或写入 ACL', async () => {
+    await createCollectionPermissionsBatch({ teamId, resources: [], session: {} as ClientSession });
+    expect(mockPermissionEnabled).not.toHaveBeenCalled();
+    expect(mockWriteResources).not.toHaveBeenCalled();
+  });
+
+  it('全部为独立态时不读取父目录或知识库 ACL，不同 owner 的快照保持隔离', async () => {
+    await createCollectionPermissionsBatch({
+      teamId,
+      resources: [
+        { collectionId: 'first', datasetId, parentId: 'parent', tmbId, inheritPermission: false },
+        {
+          collectionId: 'second',
+          datasetId,
+          parentId: 'parent',
+          tmbId: 'other-owner',
+          inheritPermission: false
+        }
+      ],
+      session: {} as ClientSession
+    });
+    expect(mockFindByResourceIds).not.toHaveBeenCalled();
+    expect(mockFindByResource).not.toHaveBeenCalled();
+    expect(mockWriteResources.mock.calls[0][0].resources).toEqual([
+      { resourceId: 'first', collaborators: [{ tmbId, permission: OwnerRoleVal }] },
+      { resourceId: 'second', collaborators: [{ tmbId: 'other-owner', permission: OwnerRoleVal }] }
+    ]);
+  });
+
+  it('同父级下不同 owner 保留自身 owner 与父级继承贡献，不互相成为 owner', async () => {
+    mockFindByResourceIds.mockResolvedValue([
+      { resourceId: 'parent', tmbId: 'parent-owner', permission: OwnerRoleVal }
+    ]);
+    await createCollectionPermissionsBatch({
+      teamId,
+      resources: [
+        { collectionId: 'first', datasetId, parentId: 'parent', tmbId },
+        { collectionId: 'second', datasetId, parentId: 'parent', tmbId: 'other-owner' }
+      ],
+      session: {} as ClientSession
+    });
+    const snapshots = mockWriteResources.mock.calls[0][0].resources;
+    expect(snapshots[0].collaborators).toContainEqual({ tmbId, permission: OwnerRoleVal });
+    expect(snapshots[0].collaborators).not.toContainEqual({
+      tmbId: 'other-owner',
+      permission: OwnerRoleVal
+    });
+    expect(snapshots[1].collaborators).toContainEqual({
+      tmbId: 'other-owner',
+      permission: OwnerRoleVal
+    });
+    expect(snapshots[1].collaborators).not.toContainEqual({ tmbId, permission: OwnerRoleVal });
+    expect(mockFindByResourceIds).toHaveBeenCalledTimes(1);
+  });
+
+  it('2100 个不同父级分三片读取，ACL 也分三片写入', async () => {
+    const resources = Array.from({ length: 2100 }, (_, index) => ({
+      collectionId: `file-${index}`,
+      datasetId,
+      parentId: `parent-${index}`,
+      tmbId
+    }));
+    await createCollectionPermissionsBatch({ teamId, resources, session: {} as ClientSession });
+    expect(mockPermissionEnabled).toHaveBeenCalledTimes(1);
+    expect(mockFindByResource).not.toHaveBeenCalled();
+    expect(mockFindByResourceIds.mock.calls.map(([args]) => args.resourceIds.length)).toEqual([
+      1000, 1000, 100
+    ]);
+    expect(mockWriteResources.mock.calls.map(([args]) => args.resources.length)).toEqual([
+      1000, 1000, 100
+    ]);
+  });
+
+  it('混合知识库按开关分别处理，关闭态不写 ACL', async () => {
+    mockPermissionEnabled.mockImplementation(async ({ datasetId }) => datasetId === 'enabled');
+    await createCollectionPermissionsBatch({
+      teamId,
+      resources: [
+        { collectionId: 'first', datasetId: 'enabled', parentId: null, tmbId },
+        { collectionId: 'second', datasetId: 'disabled', parentId: null, tmbId }
+      ],
+      session: {} as ClientSession
+    });
+    expect(mockPermissionEnabled).toHaveBeenCalledTimes(2);
+    expect(mockFindByResource).toHaveBeenCalledExactlyOnceWith({
+      teamId,
+      resourceType: PerResourceTypeEnum.dataset,
+      resourceId: 'enabled',
+      session: {}
+    });
+    expect(
+      mockWriteResources.mock.calls[0][0].resources.map(
+        (item: { resourceId: string }) => item.resourceId
+      )
+    ).toEqual(['first']);
   });
 });
