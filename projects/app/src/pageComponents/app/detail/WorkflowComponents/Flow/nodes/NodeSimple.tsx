@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from './render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
@@ -20,7 +20,7 @@ const NodeSimple = ({
   selected,
   minW = '524px',
   maxW
-}: NodeProps<FlowNodeItemType> & { minW?: string | number; maxW?: string | number }) => {
+}: CanvasNodeProps & { minW?: string | number; maxW?: string | number }) => {
   const { t } = useTranslation();
   const { nodeId } = data;
   const {

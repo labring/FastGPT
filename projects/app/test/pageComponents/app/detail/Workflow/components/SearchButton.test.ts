@@ -44,7 +44,7 @@ vi.mock('next-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key })
 }));
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useReactFlow: () => ({ fitView: mocks.fitView })
 }));
 

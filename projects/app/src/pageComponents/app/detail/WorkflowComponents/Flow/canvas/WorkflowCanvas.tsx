@@ -1,10 +1,8 @@
 import dynamic from 'next/dynamic';
 import ButtonEdge, { CustomConnectionLine } from '../components/ButtonEdge';
 import NodeTemplatesModal from '../NodeTemplatesModal';
-import 'reactflow/dist/style.css';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import '@xyflow/react/dist/style.css';
 import { defaultEdgeOptions, maxZoom, minZoom } from '../../constants';
-import 'reactflow/dist/style.css';
 import NodeTemplatesPopover from '../NodeTemplatesPopover';
 import SearchButton from '../../../Workflow/components/SearchButton';
 import SystemConfigDrawer from '../SystemConfigDrawer';
@@ -15,14 +13,15 @@ import FlowController from '../components/FlowController';
 import HelperLines, { type HelperLinesController } from '../components/HelperLines';
 import { useCanvasController } from './useCanvasController';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import type { NodeProps } from 'reactflow';
-import ReactFlow, {
+import {
   Position,
+  ReactFlow,
   SelectionMode,
+  type NodeTypes,
   useStore,
   useUpdateNodeInternals,
   useViewport
-} from 'reactflow';
+} from '@xyflow/react';
 import { Box, IconButton, useDisclosure } from '@chakra-ui/react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWorkflowUIValue } from './canvasState';
@@ -51,18 +50,23 @@ import {
 import { ToolSourceHandle, ToolTargetHandle } from '../nodes/render/Handle/ToolHandle';
 import { useIsToolNode } from '../nodes/render/useWorkflowDocument';
 import { getNodeShellHandleModel, type NodeShellHandleModel } from '../utils/nodeHandle';
+import { type CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 
 // region nodeTypes Canvas node type registration
 
 const NodeSimple = dynamic(() => import('../nodes/NodeSimple'));
-const NodeStopTool = React.memo((props: NodeProps<FlowNodeItemType>) => (
+const NodeStopTool = React.memo((props: CanvasNodeProps) => (
   <NodeSimple {...props} minW={'100px'} maxW={'300px'} />
 ));
 NodeStopTool.displayName = 'NodeStopTool';
 
-type CanvasNodeComponent = React.ElementType<NodeProps<FlowNodeItemType>>;
+type CanvasNodeComponent = React.ComponentType<CanvasNodeProps>;
 
-const baseNodeTypes: Record<FlowNodeTypeEnum, CanvasNodeComponent> = {
+type WorkflowNodeRenderers = {
+  [T in FlowNodeTypeEnum]: CanvasNodeComponent;
+};
+
+const baseNodeTypes = {
   [FlowNodeTypeEnum.emptyNode]: NodeSimple,
   [FlowNodeTypeEnum.globalVariable]: NodeSimple,
   [FlowNodeTypeEnum.textEditor]: NodeSimple,
@@ -101,7 +105,7 @@ const baseNodeTypes: Record<FlowNodeTypeEnum, CanvasNodeComponent> = {
   [FlowNodeTypeEnum.nestedEnd]: dynamic(() => import('../nodes/Loop/NodeLoopEnd')),
   [FlowNodeTypeEnum.formInput]: dynamic(() => import('../nodes/NodeFormInput')),
   [FlowNodeTypeEnum.comment]: dynamic(() => import('../nodes/NodeComment'))
-};
+} satisfies WorkflowNodeRenderers;
 
 // endregion
 
@@ -114,7 +118,7 @@ const MeasuredNode = React.memo(
     renderHandles = true,
     offscreenMeasurement = false,
     ...props
-  }: NodeProps<FlowNodeItemType> & {
+  }: CanvasNodeProps & {
     nodeComponent: CanvasNodeComponent;
     handleModel: NodeShellHandleModel;
     renderHandles?: boolean;
@@ -229,7 +233,7 @@ const NodeShell = React.memo(
     overlay = false,
     renderHandles = true,
     ...props
-  }: NodeProps<FlowNodeItemType> & {
+  }: CanvasNodeProps & {
     handleModel: NodeShellHandleModel;
     overlay?: boolean;
     renderHandles?: boolean;
@@ -310,7 +314,7 @@ const VirtualizedNode = React.memo(
   ({
     nodeComponent,
     ...props
-  }: NodeProps<FlowNodeItemType> & {
+  }: CanvasNodeProps & {
     nodeComponent: CanvasNodeComponent;
   }) => {
     const mode = useWorkflowCanvasValue((v) => v.renderModes.get(props.id) ?? 'shell');
@@ -386,13 +390,13 @@ VirtualizedNode.displayName = 'VirtualizedNode';
 
 const nodeTypes = Object.fromEntries(
   Object.entries(baseNodeTypes).map(([type, nodeComponent]) => {
-    const VirtualizedNodeType = React.memo((props: NodeProps<FlowNodeItemType>) => (
+    const VirtualizedNodeType = React.memo((props: CanvasNodeProps) => (
       <VirtualizedNode nodeComponent={nodeComponent} {...props} />
     ));
     VirtualizedNodeType.displayName = `VirtualizedNodeType(${type})`;
     return [type, VirtualizedNodeType];
   })
-);
+) satisfies NodeTypes;
 
 const edgeTypes = {
   [EDGE_TYPE]: ButtonEdge

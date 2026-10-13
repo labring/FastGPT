@@ -15,7 +15,7 @@ import type {
 } from '@fastgpt/global/core/workflow/editor/types';
 import { hydrateRuntime } from '@/web/core/workflow/editor/codec';
 import type { CanvasNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
-import type { Edge } from 'reactflow';
+import type { Edge } from '@xyflow/react';
 import {
   createProjectionCache,
   projectRuntimeCanvas,

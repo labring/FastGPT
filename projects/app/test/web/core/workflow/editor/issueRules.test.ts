@@ -6,7 +6,7 @@
  * 这里是规则行为的唯一回归防线，任何判定变化都必须显式改期望表。
  */
 import { describe, expect, it } from 'vitest';
-import type { Edge, Node } from 'reactflow';
+import type { Edge, Node } from '@xyflow/react';
 import type {
   FlowNodeItemType,
   FlowNodeTemplateType

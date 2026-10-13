@@ -1,6 +1,6 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from '../render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
@@ -864,7 +864,7 @@ const RenderPropsItem = ({ text, num }: { text: string; num: number }) => {
   );
 };
 
-const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeHttp = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
   const { nodeId } = data;
   const {

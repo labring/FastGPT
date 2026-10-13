@@ -74,7 +74,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useBoolean, useCreation } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useReactFlow } from 'reactflow';
+import { useReactFlow } from '@xyflow/react';
 import { omit } from 'lodash-es';
 import { migrateToolInputConfig } from '@fastgpt/global/core/app/formEdit/utils';
 import { useField, useFieldActions } from '@/web/core/workflow/editor/react/useField';

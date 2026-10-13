@@ -1,5 +1,5 @@
 import React, { useContext, useMemo } from 'react';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position } from '@xyflow/react';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';

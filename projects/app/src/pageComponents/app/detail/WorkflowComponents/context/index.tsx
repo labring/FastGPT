@@ -1,5 +1,5 @@
 import React from 'react';
-import { ReactFlowProvider } from 'reactflow';
+import { ReactFlowProvider } from '@xyflow/react';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { WorkflowSessionProvider } from '@/web/core/workflow/editor/session/workflowSession';
 import WorkflowCanvasProvider from '../Flow/canvas/workflowCanvasContext';

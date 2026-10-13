@@ -30,7 +30,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyInput from '@/components/MyInput';
 import { getElseIFLabel, getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { MySourceHandle } from '../render/Handle';
-import { Position, useReactFlow } from 'reactflow';
+import { Position, useReactFlow } from '@xyflow/react';
 import { getRefData, getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import DragIcon from '@fastgpt/web/components/common/DndDrag/DragIcon';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';

@@ -2,7 +2,7 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ReactFlowProvider } from 'reactflow';
+import { ReactFlowProvider } from '@xyflow/react';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { materializeWorkflow } from '@/web/core/workflow/editor/codec';
 import { hydrateWorkflowEditor } from '@fastgpt/global/core/workflow/editor/protocol';

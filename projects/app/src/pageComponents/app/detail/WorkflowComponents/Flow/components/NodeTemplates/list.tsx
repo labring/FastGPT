@@ -49,8 +49,8 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useLocalStorageState, useMemoizedFn } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo } from 'react';
-import type { Node } from 'reactflow';
-import { useReactFlow } from 'reactflow';
+import type { Node } from '@xyflow/react';
+import { useReactFlow } from '@xyflow/react';
 import type { WorkflowDispatchResult } from '@fastgpt/global/core/workflow/editor/types';
 import { useDocumentGetNodeById } from '../../nodes/render/useWorkflowDocument';
 import { useWorkflowModalValue } from '../../panels/workflowPanelState';
@@ -70,7 +70,7 @@ export type TemplateListProps = {
   onAddNode: ({
     newNodes
   }: {
-    newNodes: Node<FlowNodeItemType>[];
+    newNodes: Node<FlowNodeItemType, FlowNodeTypeEnum>[];
   }) => Promise<WorkflowDispatchResult | undefined>;
   isPopover?: boolean;
   templates: NodeTemplateListItemType[];

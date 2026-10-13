@@ -1,5 +1,6 @@
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { type Node } from 'reactflow';
+import type { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { type Node } from '@xyflow/react';
 import NodeTemplateListHeader from './components/NodeTemplates/header';
 import NodeTemplateList from './components/NodeTemplates/list';
 import { useNodeTemplates } from './components/NodeTemplates/useNodeTemplates';
@@ -42,11 +43,13 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
     toolTags
   } = useNodeTemplates(templateContext);
 
-  const onAddNode = useMemoizedFn(async ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => {
-    clearCanvasSelection();
-    // 新增节点的问题由 Runtime 在 addNode 事务后自行刷新，画布不需要额外触发。
-    return actions.addNodes(newNodes.map(canvasNodeToStoreNode));
-  });
+  const onAddNode = useMemoizedFn(
+    async ({ newNodes }: { newNodes: Node<FlowNodeItemType, FlowNodeTypeEnum>[] }) => {
+      clearCanvasSelection();
+      // 新增节点的问题由 Runtime 在 addNode 事务后自行刷新，画布不需要额外触发。
+      return actions.addNodes(newNodes.map(canvasNodeToStoreNode));
+    }
+  );
 
   return (
     <AppDetailPanelModal

@@ -3,7 +3,7 @@ import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 /* eslint-disable react-hooks/refs -- react-beautiful-dnd requires render-time drag props. */
 import React, { useMemo, useState } from 'react';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
 import RenderInput from '../render/RenderInput';
@@ -36,7 +36,7 @@ import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
 import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
-const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeFormInput = ({ data, selected }: CanvasNodeProps) => {
   const { nodeId } = data;
   const { inputs = [], outputs = [] } =
     useNode<WorkflowNodeData>(nodeId, (node) => node?.data) ?? {};

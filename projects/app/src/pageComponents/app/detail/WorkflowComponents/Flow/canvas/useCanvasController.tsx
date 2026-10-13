@@ -11,13 +11,13 @@ import {
   useReactFlow,
   type NodeRemoveChange,
   type NodeSelectionChange
-} from 'reactflow';
+} from '@xyflow/react';
 import {
   FlowNodeTypeEnum,
   isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
-import 'reactflow/dist/style.css';
+import '@xyflow/react/dist/style.css';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useKeyboard } from '../hooks/useKeyboard';
@@ -31,13 +31,13 @@ import { useCanvas } from '@/web/core/workflow/editor/react/useWorkflowQueries';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useMemoizedFn } from 'ahooks';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useWorkflowCanvasRendererValue, useWorkflowCanvasValue } from './workflowCanvasContext';
 import { useWorkflowUIValue } from './canvasState';
 import { useWorkflowModalValue } from '../panels/workflowPanelState';
 import { type HelperLinesController } from '../components/HelperLines';
 import { translateNodeContainerCheckError } from '@fastgpt/global/core/workflow/template/context';
 import { areNodeRectsIntersecting, getNodeRect, type DimensionReader } from './nodeDimensions';
+import type { CanvasNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
 
 // region geometryHelpers Canvas geometry and helper-line calculations
 
@@ -162,7 +162,7 @@ export type GetHelperLinesResult = {
 
 type CreateHelperLineScannerParams = {
   change: NodePositionChange;
-  node?: Node;
+  node?: CanvasNode;
   distance?: number;
   getNodeDimension: DimensionReader;
 };
@@ -180,7 +180,7 @@ export const createHelperLineScanner = ({
 
   if (!nodeA || !change.position) {
     return {
-      scanNode: (_node: Node) => {},
+      scanNode: (_node: CanvasNode) => {},
       getResult: () => result
     };
   }
@@ -191,7 +191,7 @@ export const createHelperLineScanner = ({
   );
   if (!nodeABounds) {
     return {
-      scanNode: (_node: Node) => {},
+      scanNode: (_node: CanvasNode) => {},
       getResult: () => result
     };
   }
@@ -199,7 +199,7 @@ export const createHelperLineScanner = ({
   let horizontalDistance = distance;
   let verticalDistance = distance;
 
-  const scanNode = (nodeB: Node) => {
+  const scanNode = (nodeB: CanvasNode) => {
     if (nodeB.id === nodeA.id) return;
 
     if (!result.vertical) {
@@ -389,8 +389,8 @@ export const createHelperLineScanner = ({
 };
 
 type ComputeHelperLinesParams = CreateHelperLineScannerParams & {
-  nodes: Node[];
-  isCandidate?: (node: Node) => boolean;
+  nodes: CanvasNode[];
+  isCandidate?: (node: CanvasNode) => boolean;
 };
 
 /** 单次遍历候选节点并计算吸附位置及辅助线。 */
@@ -456,8 +456,8 @@ export const collectSelectionConflictIds = ({
   nodes,
   node
 }: {
-  nodes: readonly Node[];
-  node: Node;
+  nodes: readonly CanvasNode[];
+  node: CanvasNode;
 }): string[] => {
   if (isNestedParentNodeType(node.data.flowNodeType)) {
     return collectClearSelectionIds(nodes.filter((item) => item.data.parentNodeId === node.id));
@@ -511,7 +511,7 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
   const setConnectingEdge = useWorkflowUIValue((v) => v.setConnectingEdge);
   const openNodeTemplates = useWorkflowModalValue((v) => v.openNodeTemplates);
 
-  const { flowToScreenPosition, getZoom, getNode, getEdge } = useReactFlow();
+  const { flowToScreenPosition, getZoom, getNode, getEdge } = useReactFlow<CanvasNode, Edge>();
   const { isDowningCtrl } = useKeyboard();
   const getNodeDimension = useWorkflowCanvasValue((v) => v.getNodeDimension);
 
@@ -546,7 +546,7 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
   );
 
   // Check if a node is placed on top of a nested parent node (loop / parallelRun / loopRun)
-  const checkNodeOverLoopNode = useMemoizedFn((node: Node) => {
+  const checkNodeOverLoopNode = useMemoizedFn((node: CanvasNode) => {
     if (!node || node.data.parentNodeId) return;
 
     const nodeRect = getNodeRect(node, getNodeDimension(node.id));
@@ -677,90 +677,19 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
 
     deselect(collectSelectionConflictIds({ nodes: getNodes(), node }));
   });
-  const handlePositionNode = useMemoizedFn(
-    (change: NodePositionChange, node: Node<FlowNodeItemType>) => {
-      // 拖拽热路径按帧读画布数组：吸附候选与容器子节点都属于 renderer 交互状态。
-      const nodes = getNodes();
+  const handlePositionNode = useMemoizedFn((change: NodePositionChange, node: CanvasNode) => {
+    // 拖拽热路径按帧读画布数组：吸附候选与容器子节点都属于 renderer 交互状态。
+    const nodes = getNodes();
 
-      // 场景1: 子节点拖拽 - 在父节点内移动
-      if (node.data.parentNodeId) {
-        const parentId = node.data.parentNodeId;
-        if (change.dragging && change.position) {
-          const helperLines = computeHelperLines({
-            change,
-            node,
-            nodes,
-            isCandidate: (candidate) => candidate.data.parentNodeId === parentId,
-            getNodeDimension
-          });
-          applyHelperLineResult(change, helperLines);
-        } else {
-          helperLinesRef.current?.clear();
-        }
-
-        return [];
-      }
-
-      // 场景2: Loop 父节点拖拽 - 联动子节点
-      if (isNestedParentNodeType(node.data.flowNodeType)) {
-        const parentId = node.id;
-        const helperLineScanner =
-          change.dragging && change.position
-            ? createHelperLineScanner({ change, node, getNodeDimension })
-            : undefined;
-
-        // 一次遍历同时收集子节点并扫描顶层吸附候选。
-        const childNodes: Node[] = [];
-        for (const n of nodes) {
-          if (n.data.parentNodeId === parentId) {
-            childNodes.push(n);
-          } else if (!n.data.parentNodeId) {
-            helperLineScanner?.scanNode(n);
-          }
-        }
-
-        if (helperLineScanner) {
-          applyHelperLineResult(change, helperLineScanner.getResult());
-        } else {
-          helperLinesRef.current?.clear();
-        }
-
-        // 计算子节点的位置变化 (此处 change.position 已是吸附后值)
-        if (childNodes.length > 0) {
-          const initPosition = node.position;
-          const { x: deltaX, y: deltaY } = getPositionDelta(initPosition, change.position);
-
-          const childNodesChange: NodePositionChange[] = childNodes.map((childNode) => {
-            if (change.dragging) {
-              const position = {
-                x: childNode.position.x + deltaX,
-                y: childNode.position.y + deltaY
-              };
-              return {
-                ...change,
-                id: childNode.id,
-                position,
-                positionAbsolute: position
-              };
-            }
-            return {
-              ...change,
-              id: childNode.id
-            };
-          });
-
-          return childNodesChange;
-        }
-        return [];
-      }
-
-      // 场景3: 普通节点拖拽 - 显示对齐辅助线
+    // 场景1: 子节点拖拽 - 在父节点内移动
+    if (node.data.parentNodeId) {
+      const parentId = node.data.parentNodeId;
       if (change.dragging && change.position) {
         const helperLines = computeHelperLines({
           change,
           node,
           nodes,
-          isCandidate: (candidate) => !candidate.data.parentNodeId,
+          isCandidate: (candidate) => candidate.data.parentNodeId === parentId,
           getNodeDimension
         });
         applyHelperLineResult(change, helperLines);
@@ -770,9 +699,78 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
 
       return [];
     }
-  );
-  const handleNodesChange = useMemoizedFn((changes: NodeChange[]) => {
-    const childChanges: NodeChange[] = [];
+
+    // 场景2: Loop 父节点拖拽 - 联动子节点
+    if (isNestedParentNodeType(node.data.flowNodeType)) {
+      const parentId = node.id;
+      const helperLineScanner =
+        change.dragging && change.position
+          ? createHelperLineScanner({ change, node, getNodeDimension })
+          : undefined;
+
+      // 一次遍历同时收集子节点并扫描顶层吸附候选。
+      const childNodes: CanvasNode[] = [];
+      for (const n of nodes) {
+        if (n.data.parentNodeId === parentId) {
+          childNodes.push(n);
+        } else if (!n.data.parentNodeId) {
+          helperLineScanner?.scanNode(n);
+        }
+      }
+
+      if (helperLineScanner) {
+        applyHelperLineResult(change, helperLineScanner.getResult());
+      } else {
+        helperLinesRef.current?.clear();
+      }
+
+      // 计算子节点的位置变化 (此处 change.position 已是吸附后值)
+      if (childNodes.length > 0) {
+        const initPosition = node.position;
+        const { x: deltaX, y: deltaY } = getPositionDelta(initPosition, change.position);
+
+        const childNodesChange: NodePositionChange[] = childNodes.map((childNode) => {
+          if (change.dragging) {
+            const position = {
+              x: childNode.position.x + deltaX,
+              y: childNode.position.y + deltaY
+            };
+            return {
+              ...change,
+              id: childNode.id,
+              position,
+              positionAbsolute: position
+            };
+          }
+          return {
+            ...change,
+            id: childNode.id
+          };
+        });
+
+        return childNodesChange;
+      }
+      return [];
+    }
+
+    // 场景3: 普通节点拖拽 - 显示对齐辅助线
+    if (change.dragging && change.position) {
+      const helperLines = computeHelperLines({
+        change,
+        node,
+        nodes,
+        isCandidate: (candidate) => !candidate.data.parentNodeId,
+        getNodeDimension
+      });
+      applyHelperLineResult(change, helperLines);
+    } else {
+      helperLinesRef.current?.clear();
+    }
+
+    return [];
+  });
+  const handleNodesChange = useMemoizedFn((changes: NodeChange<CanvasNode>[]) => {
+    const childChanges: NodeChange<CanvasNode>[] = [];
     const removableNodeIds: string[] = [];
     const removedIds = new Set(
       changes.filter((c): c is NodeRemoveChange => c.type === 'remove').map((c) => c.id)
@@ -804,7 +802,7 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
           !parentNodeDeleted
         ) {
           // store 返回的画布节点 data 是 any，显式收窄以便读取父容器的 loopRunMode 输入。
-          const parent = getNode(node.data.parentNodeId) as Node<FlowNodeItemType> | undefined;
+          const parent = getNode(node.data.parentNodeId);
           const parentMode = runtime
             ?.getNode(parent?.id ?? '')
             ?.inputs.find((i) => i.key === NodeInputKeyEnum.loopRunMode)?.value as
@@ -841,7 +839,7 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
       }
     }
 
-    const localChanges: NodeChange[] = [
+    const localChanges: NodeChange<CanvasNode>[] = [
       ...changes.filter((c) => c.type !== 'remove'),
       ...childChanges
     ];
@@ -893,7 +891,7 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
   });
 
   const onNodeDragStop = useCallback(
-    (_: any, node: Node) => {
+    (_: any, node: CanvasNode) => {
       helperLinesRef.current?.clear();
       checkNodeOverLoopNode(node);
     },

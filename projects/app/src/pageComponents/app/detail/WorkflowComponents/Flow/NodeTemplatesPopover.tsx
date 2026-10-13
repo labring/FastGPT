@@ -8,7 +8,7 @@ import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useMemoizedFn } from 'ahooks';
 import React from 'react';
-import { type Node } from 'reactflow';
+import { type Node } from '@xyflow/react';
 import { usePlacementContext } from '@/web/core/workflow/editor/react/useWorkflowQueries';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
@@ -48,47 +48,49 @@ const NodeTemplatesPopover = () => {
     setSelectedTagIds
   } = useNodeTemplates(nodeTemplateContext);
 
-  const onAddNode = useMemoizedFn(async ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => {
-    const isToolHandle = handleParams?.handleId === NodeOutputKeyEnum.selectedTools;
-    // 容器（循环/并行）自带的开始/结束系统子节点随父节点一起添加，不参与工具可用性过滤。
-    const batchNodeIds = new Set(newNodes.map((node) => node.id));
-    const validNewNodes = newNodes.filter((node) => {
-      if (node.data.parentNodeId && batchNodeIds.has(node.data.parentNodeId)) return true;
-      if (!isToolHandle && node.data.flowNodeType === FlowNodeTypeEnum.toolSet) return false;
-      if (isToolHandle && !node.data.isTool) return false;
-      return true;
-    });
+  const onAddNode = useMemoizedFn(
+    async ({ newNodes }: { newNodes: Node<FlowNodeItemType, FlowNodeTypeEnum>[] }) => {
+      const isToolHandle = handleParams?.handleId === NodeOutputKeyEnum.selectedTools;
+      // 容器（循环/并行）自带的开始/结束系统子节点随父节点一起添加，不参与工具可用性过滤。
+      const batchNodeIds = new Set(newNodes.map((node) => node.id));
+      const validNewNodes = newNodes.filter((node) => {
+        if (node.data.parentNodeId && batchNodeIds.has(node.data.parentNodeId)) return true;
+        if (!isToolHandle && node.data.flowNodeType === FlowNodeTypeEnum.toolSet) return false;
+        if (isToolHandle && !node.data.isTool) return false;
+        return true;
+      });
 
-    if (validNewNodes.length === 0) {
-      closeNodeTemplates();
-      return;
-    }
+      if (validNewNodes.length === 0) {
+        closeNodeTemplates();
+        return;
+      }
 
-    const storeNodes = validNewNodes.map(canvasNodeToStoreNode);
-    const connectedNode = validNewNodes.find(
-      (node) => !isNestedChildSystemNodeType(node.data.flowNodeType)
-    );
-    const newEdge =
-      handleParams && connectedNode
-        ? {
-            source: handleParams.nodeId as string,
-            sourceHandle: handleParams.handleId || '',
-            target: connectedNode.id,
-            targetHandle: isToolHandle ? 'selectedTools' : `${connectedNode.id}-target-left`
-          }
-        : undefined;
+      const storeNodes = validNewNodes.map(canvasNodeToStoreNode);
+      const connectedNode = validNewNodes.find(
+        (node) => !isNestedChildSystemNodeType(node.data.flowNodeType)
+      );
+      const newEdge =
+        handleParams && connectedNode
+          ? {
+              source: handleParams.nodeId as string,
+              sourceHandle: handleParams.handleId || '',
+              target: connectedNode.id,
+              targetHandle: isToolHandle ? 'selectedTools' : `${connectedNode.id}-target-left`
+            }
+          : undefined;
 
-    clearCanvasSelection();
-    const result = actions.addNodes(storeNodes, newEdge);
-    // 节点与首条连线在同一事务内提交，撤销只需一步。
-    if (!result.ok) {
+      clearCanvasSelection();
+      const result = actions.addNodes(storeNodes, newEdge);
+      // 节点与首条连线在同一事务内提交，撤销只需一步。
+      if (!result.ok) {
+        closeNodeTemplates();
+        return result;
+      }
+
       closeNodeTemplates();
       return result;
     }
-
-    closeNodeTemplates();
-    return result;
-  });
+  );
 
   if (!handleParams) return null;
 

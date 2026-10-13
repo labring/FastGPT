@@ -15,7 +15,7 @@ import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo } from 'react';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import Container from '../components/Container';
 import IOTitle from '../components/IOTitle';
 import { useWorkflowQuoteLimit } from '../hooks/useWorkflowQuoteLimit';
@@ -28,7 +28,7 @@ import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
 import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
-const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeDatasetConcat = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
   const { nodeId } = data;
   const { inputs = [], outputs = [] } =

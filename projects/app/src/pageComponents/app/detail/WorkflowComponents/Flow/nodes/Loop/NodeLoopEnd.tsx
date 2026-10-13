@@ -1,6 +1,6 @@
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from '../render/NodeCard';
 import Reference from '../render/RenderInput/templates/Reference';
 import { Box } from '@chakra-ui/react';
@@ -27,7 +27,7 @@ const typeMap = {
   [WorkflowIOValueTypeEnum.any]: WorkflowIOValueTypeEnum.arrayAny
 };
 
-const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeLoopEnd = ({ data, selected }: CanvasNodeProps) => {
   const { nodeId, parentNodeId } = data;
   const inputs = useNode<FlowNodeItemType['inputs']>(nodeId, (node) => node?.data.inputs) ?? [];
   // 引用目标的输出类型要跨节点查询：读走文档图查询面，父容器输出用 adapter 句柄写。

@@ -6,7 +6,7 @@ import React, {
   useRef,
   useState
 } from 'react';
-import { Panel, useReactFlow, useStore, useViewport } from 'reactflow';
+import { Panel, useReactFlow, useStore, useViewport } from '@xyflow/react';
 import {
   WORKFLOW_NODE_MEASUREMENT_ESTIMATE,
   getAbsoluteNodePositions,

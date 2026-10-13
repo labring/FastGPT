@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { Box, Flex, Button, IconButton, type ButtonProps, Input } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useReactFlow } from 'reactflow';
+import { useReactFlow } from '@xyflow/react';
 import { useKeyPress, useThrottleEffect } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { type NodeProps, Position } from 'reactflow';
+import { Position } from '@xyflow/react';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import { Box, Button, Flex, Textarea } from '@chakra-ui/react';
 import NodeCard from './render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -23,7 +24,7 @@ import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow
 
 /** 分类源柄的平移量：模块级常量，避免每次渲染换数组身份打穿 MySourceHandle 的 React.memo。 */
 const sourceTranslate = [34, 0] as [number, number];
-const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeCQNode = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
   const { nodeId } = data;
   const inputs = useNode<FlowNodeItemType['inputs']>(nodeId, (node) => node?.data.inputs) ?? [];

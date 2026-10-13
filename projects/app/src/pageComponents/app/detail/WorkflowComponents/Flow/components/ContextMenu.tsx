@@ -4,7 +4,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { CommentNode } from '@fastgpt/global/core/workflow/template/system/comment';
-import { type Node, useReactFlow } from 'reactflow';
+import { type Node, useReactFlow } from '@xyflow/react';
 import dagre from '@dagrejs/dagre';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { cloneDeep } from 'lodash-es';
@@ -18,7 +18,10 @@ import { getHandleIndex } from '../utils/edge';
 import { getParentNodeSizeAndPosition } from '../utils/layout';
 import { useCanvas } from '@/web/core/workflow/editor/react/useWorkflowQueries';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
-import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
+import {
+  canvasNodeToStoreNode,
+  type CanvasNode
+} from '@/web/core/workflow/editor/canvas/canvasTypes';
 import {
   useWorkflowRuntime,
   useWorkflowSnapshot
@@ -99,8 +102,8 @@ const ContextMenu = () => {
       edges,
       getDimension
     }: {
-      startNode: Node<FlowNodeItemType>;
-      nodes: Node<FlowNodeItemType>[];
+      startNode: Node<FlowNodeItemType, FlowNodeTypeEnum>;
+      nodes: Node<FlowNodeItemType, FlowNodeTypeEnum>[];
       edges: any[];
       getDimension: DimensionReader;
     }) => {
@@ -137,7 +140,7 @@ const ContextMenu = () => {
       // Group nodes by rank (horizontal position in LR layout)
       const nodesByRank: Map<
         number,
-        Array<{ node: Node<FlowNodeItemType>; dagreNode: any }>
+        Array<{ node: Node<FlowNodeItemType, FlowNodeTypeEnum>; dagreNode: any }>
       > = new Map();
 
       nodes.forEach((node) => {
@@ -216,8 +219,8 @@ const ContextMenu = () => {
       edges,
       getDimension
     }: {
-      startNode: Node<FlowNodeItemType>;
-      nodes: Node<FlowNodeItemType>[];
+      startNode: Node<FlowNodeItemType, FlowNodeTypeEnum>;
+      nodes: Node<FlowNodeItemType, FlowNodeTypeEnum>[];
       edges: any[];
       getDimension: DimensionReader;
     }) => {
@@ -261,7 +264,7 @@ const ContextMenu = () => {
       // Group nodes by rank (horizontal position in LR layout)
       const nodesByRank: Map<
         number,
-        Array<{ node: Node<FlowNodeItemType>; dagreNode: any }>
+        Array<{ node: Node<FlowNodeItemType, FlowNodeTypeEnum>; dagreNode: any }>
       > = new Map();
 
       nodes.forEach((node) => {
@@ -358,14 +361,14 @@ const ContextMenu = () => {
     if (layoutDimensions.size !== sourceNodes.length) return;
 
     const getLayoutDimension: DimensionReader = (nodeId) => layoutDimensions.get(nodeId);
-    const newNodes = cloneDeep(sourceNodes) as Node<FlowNodeItemType>[];
+    const newNodes = cloneDeep(sourceNodes) as Node<FlowNodeItemType, FlowNodeTypeEnum>[];
     const previousPositions = new Map(
       newNodes.map((node) => [node.id, { x: node.position.x, y: node.position.y }])
     );
     const childNodesIdSet = new Set<string>();
 
     // 1. Layout child nodes
-    const childNodesMap: Record<string, Node<FlowNodeItemType>[]> = {};
+    const childNodesMap: Record<string, Node<FlowNodeItemType, FlowNodeTypeEnum>[]> = {};
     newNodes.forEach((node) => {
       const parentId = node.data.parentNodeId;
       if (parentId) {
@@ -415,7 +418,7 @@ const ContextMenu = () => {
       const dimension = getLayoutDimension(node.id);
       return dimension ? { ...node, ...dimension } : node;
     });
-    replaceNodes(renderNodes);
+    replaceNodes(renderNodes as CanvasNode[]);
     canvas.commitGeometry(
       renderNodes.flatMap((node) => {
         const previous = previousPositions.get(node.id);

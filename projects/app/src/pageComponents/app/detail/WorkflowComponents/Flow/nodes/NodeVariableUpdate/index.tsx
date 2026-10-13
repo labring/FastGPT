@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import NodeCard from '../render/NodeCard';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex } from '@chakra-ui/react';
@@ -56,7 +56,7 @@ const getDefaultsForValueType = (valueType?: WorkflowIOValueTypeEnum): Partial<T
   };
 };
 
-const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeVariableUpdate = ({ data, selected }: CanvasNodeProps) => {
   const { nodeId } = data;
   const { t } = useTranslation();
 

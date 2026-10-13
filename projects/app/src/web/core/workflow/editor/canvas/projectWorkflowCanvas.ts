@@ -7,7 +7,7 @@
 // + renderer 交互状态（选中、拖拽、测量尺寸、层级，从本地数组保留）。
 // 问题文案不进画布数组：节点组件直接读 Runtime snapshot 的 issues。
 import { omit, pick } from 'lodash-es';
-import type { Edge } from 'reactflow';
+import type { Edge } from '@xyflow/react';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';

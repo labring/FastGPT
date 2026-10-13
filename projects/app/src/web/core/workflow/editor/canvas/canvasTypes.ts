@@ -1,6 +1,7 @@
 // ReactFlow projection helpers shared by the renderer and adapter boundaries.
 import { omit } from 'lodash-es';
-import type { Node } from 'reactflow';
+import type { Node, NodeProps } from '@xyflow/react';
+import type { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { StoreNodeItemTypeSchema } from '@fastgpt/global/core/workflow/type/node';
 import type { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { DeepReadonly } from '@fastgpt/global/core/workflow/editor/types';
@@ -8,12 +9,38 @@ import type { DeepReadonly } from '@fastgpt/global/core/workflow/editor/types';
 export type ViewDataKey = 'debugResult' | 'searchedText' | 'courseUrl' | 'readmeUrl' | 'userGuide';
 
 /** ReactFlow 投影数据：节点字段与问题、输入输出值由 scoped reader 提供。 */
-export type CanvasNodeData = DeepReadonly<
-  Omit<FlowNodeItemType, 'inputs' | 'outputs' | 'catchError' | 'issues'>
+export type CanvasNodeData<T extends FlowNodeTypeEnum = FlowNodeTypeEnum> = DeepReadonly<
+  Omit<FlowNodeItemType, 'inputs' | 'outputs' | 'catchError' | 'issues' | 'flowNodeType'> & {
+    flowNodeType: T;
+  }
 >;
 
-export type CanvasNode = Node<CanvasNodeData, string | undefined> & {
-  measured?: { width: number; height: number };
+type CanvasNodeMeasurement = {
+  measured?: { width?: number; height?: number };
+};
+
+/** 画布状态边界使用宽类型，renderer 注册使用下面的按 type 辨识联合。 */
+export type CanvasNode = Node<CanvasNodeData, FlowNodeTypeEnum> & CanvasNodeMeasurement;
+
+export type CanvasNodeByType = {
+  [T in FlowNodeTypeEnum]: Node<CanvasNodeData<T>, T> & CanvasNodeMeasurement;
+};
+
+export type CanvasNodeOf<T extends FlowNodeTypeEnum> = CanvasNodeByType[T];
+export type WorkflowCanvasNode = CanvasNodeByType[keyof CanvasNodeByType];
+
+type Mutable<T> = T extends readonly (infer U)[]
+  ? Mutable<U>[]
+  : T extends object
+    ? { -readonly [K in keyof T]: Mutable<T[K]> }
+    : T;
+
+/** v12 props 保留完整 Node 泛型；旧节点卡片仍接收可变 data 视图。 */
+export type CanvasNodeProps<T extends WorkflowCanvasNode = WorkflowCanvasNode> = Omit<
+  NodeProps<T>,
+  'data'
+> & {
+  data: Mutable<T['data']>;
 };
 
 export type ViewOverlayData = Pick<CanvasNodeData, ViewDataKey>;
@@ -32,7 +59,9 @@ export type ViewOverlayPatch = {
 };
 
 /** 画布节点 -> 严格 store 节点：剥离视图字段与模板专用字段，保留 position/isFolded。 */
-export const canvasNodeToStoreNode = (node: CanvasNode): StoreNodeItemType =>
+export const canvasNodeToStoreNode = (
+  node: Node<FlowNodeItemType, FlowNodeTypeEnum>
+): StoreNodeItemType =>
   StoreNodeItemTypeSchema.parse({
     ...omit(node.data, ['debugResult', 'searchedText', 'courseUrl', 'readmeUrl', 'userGuide']),
     position: node.position

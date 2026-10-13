@@ -1,5 +1,5 @@
 import React from 'react';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from './render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
@@ -25,7 +25,7 @@ import { useIsToolNode } from './render/useWorkflowDocument';
 import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
 import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 
-const NodeToolCall = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeToolCall = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
   const { nodeId } = data;
   const { toast } = useToast();

@@ -6,7 +6,7 @@ import { createContext, useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useWorkflowSnapshot } from '@/web/core/workflow/editor/session/workflowSession';
 import { useWorkflowDemoTrack } from '@/web/common/middle/tracks/workflowDemoTrack';
-import type { OnConnectStartParams } from 'reactflow';
+import type { OnConnectStartParams } from '@xyflow/react';
 import type { NodeTemplateContext } from '@fastgpt/global/core/workflow/type/node';
 
 // region canvasContext Canvas interaction context contract

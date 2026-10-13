@@ -15,7 +15,7 @@ import {
   applyNodeChanges as applyReactFlowNodeChanges,
   useReactFlow,
   useStore
-} from 'reactflow';
+} from '@xyflow/react';
 import {
   useWorkflowIssueFocusRef,
   useWorkflowOverlayRef,
@@ -101,13 +101,13 @@ type WorkflowCanvasRendererContextType = {
   nodes: CanvasNode[];
   renderedNodes: CanvasNode[];
   replaceNodes: (nodes: CanvasNode[]) => void;
-  applyNodeChanges: OnChange<NodeChange>;
+  applyNodeChanges: OnChange<NodeChange<CanvasNode>>;
   selectNodes: (nodeIds: readonly string[]) => void;
   getNodes: () => CanvasNode[];
   edges: Edge<any>[];
   renderedEdges: Edge<any>[];
   replaceEdges: (edges: Edge<any>[]) => void;
-  applyEdgeChanges: OnChange<EdgeChange>;
+  applyEdgeChanges: OnChange<EdgeChange<Edge<any>>>;
   onViewportChange: (viewport: CanvasViewport) => void;
 };
 
@@ -880,7 +880,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     reconcileRenderState(nodesRef.current);
   });
 
-  const applyNodeChanges = useMemoizedFn((changes: NodeChange[]) => {
+  const applyNodeChanges = useMemoizedFn((changes: NodeChange<CanvasNode>[]) => {
     const prev = nodesRef.current;
 
     // Runtime 删除节点会级联删除后代；本地同步补全 remove 变更，避免重投影前残留一帧。
@@ -933,7 +933,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     }
   });
 
-  const applyEdgeChanges = useMemoizedFn((changes: EdgeChange[]) => {
+  const applyEdgeChanges = useMemoizedFn((changes: EdgeChange<Edge<any>>[]) => {
     const prev = edgesRef.current;
     const next = applyReactFlowEdgeChanges(changes, prev);
     if (next !== prev) {

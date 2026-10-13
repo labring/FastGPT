@@ -1,7 +1,7 @@
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import React from 'react';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from './render/NodeCard';
 import IOTitle from '../components/IOTitle';
 import Container from '../components/Container';
@@ -14,7 +14,7 @@ import { splitToolInputsByMode } from '@/web/core/workflow/utils';
 import { useIsToolNode } from './render/useWorkflowDocument';
 import { useNode } from '@/web/core/workflow/editor/react/useNode';
 
-const NodeTool = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeTool = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
 
   const { nodeId } = data;

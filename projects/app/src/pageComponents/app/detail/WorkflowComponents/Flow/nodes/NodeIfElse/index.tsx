@@ -3,7 +3,8 @@ import NodeCard from '../render/NodeCard';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { type NodeProps, Position } from 'reactflow';
+import { Position } from '@xyflow/react';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import {
@@ -27,7 +28,7 @@ import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScop
 /** ELSE 分支源柄的平移量：模块级常量，避免每次渲染换数组身份打穿 MySourceHandle 的 React.memo。 */
 const elseHandleTranslate = [18, 0] as [number, number];
 
-const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeIfElse = ({ data, selected }: CanvasNodeProps) => {
   const { nodeId } = data;
 
   return (

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { Background, ControlButton, Panel, useReactFlow } from 'reactflow';
+import { Background, ControlButton, Panel, useReactFlow } from '@xyflow/react';
 import { useContextSelector } from 'use-context-selector';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';

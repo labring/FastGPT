@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { type NodeProps, Position } from 'reactflow';
+import { Position } from '@xyflow/react';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import { Box } from '@chakra-ui/react';
 import NodeCard from './render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -24,7 +25,7 @@ import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow
 /** 选项源柄的平移量：模块级常量，避免每次渲染换数组身份打穿 MySourceHandle 的 React.memo。 */
 const optionHandleTranslate = [58, 0] as [number, number];
 
-const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeUserSelect = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
   const { nodeId } = data;
   const { inputs = [], outputs = [] } =

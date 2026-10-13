@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from '../render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
@@ -32,7 +32,7 @@ const customOutputConfig = {
   showDefaultValue: true
 };
 
-const NodePluginOutput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodePluginOutput = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
   const { nodeId } = data;
   const { inputs = [] } = useNode<WorkflowNodeData>(nodeId, (node) => node?.data) ?? {};

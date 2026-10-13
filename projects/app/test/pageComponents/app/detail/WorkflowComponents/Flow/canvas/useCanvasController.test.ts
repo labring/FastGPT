@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Node, NodePositionChange, XYPosition } from 'reactflow';
+import type { Node, NodePositionChange, XYPosition } from '@xyflow/react';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 // Mock Markdown component: its CSS imports (katex) cannot be resolved under vitest.

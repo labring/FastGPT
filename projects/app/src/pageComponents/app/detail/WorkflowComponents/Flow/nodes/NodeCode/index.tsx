@@ -1,6 +1,6 @@
 import React, { useContext, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from '../render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
@@ -40,7 +40,7 @@ import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
 import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { getSandboxPackages } from '@/web/core/workflow/api';
 
-const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeCode = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
   const { nodeId } = data;
   const {

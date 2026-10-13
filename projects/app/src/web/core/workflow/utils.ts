@@ -1,6 +1,6 @@
 import type { StoreNodeItemType, FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
-import type { Edge, Node, XYPosition } from 'reactflow';
+import type { Edge, Node, XYPosition } from '@xyflow/react';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import {
   EDGE_TYPE,
@@ -83,7 +83,7 @@ export const nodeTemplate2FlowNode = ({
   formatName?: (name: string) => string;
   /** 新建业务显式解析后的默认 ID；恢复和复制不传。 */
   initialModelId?: string;
-}): Node<FlowNodeItemType> => {
+}): Node<FlowNodeItemType, FlowNodeTypeEnum> => {
   const name = t(template.name as any);
 
   // 用持久化节点数据覆盖模板默认值。
@@ -155,7 +155,7 @@ export const storeNode2FlowNode = ({
   parentNodeId,
   isTool = false,
   t
-}: StoreNode2FlowNodeProps): Node<FlowNodeItemType> => {
+}: StoreNode2FlowNodeProps): Node<FlowNodeItemType, FlowNodeTypeEnum> => {
   // init some static data
   const nodeTemplate =
     moduleTemplatesFlat.find((template) => template.flowNodeType === storeNode.flowNodeType) ||
@@ -722,8 +722,8 @@ export const getWorkflowGlobalVariables = ({
 };
 
 type WorkflowSnapshot = {
-  nodes?: Node[];
-  edges?: Edge<any>[];
+  nodes?: Node<FlowNodeItemType>[];
+  edges?: Edge[];
   chatConfig?: AppChatConfigType;
 };
 
@@ -780,7 +780,7 @@ export const compareSnapshot = (snapshot1: WorkflowSnapshot, snapshot2: Workflow
     return false;
   }
 
-  const formatNodes = (nodes: Node[]) =>
+  const formatNodes = (nodes: Node<FlowNodeItemType>[]) =>
     nodes.map((node) => ({
       id: node.id,
       type: node.type,

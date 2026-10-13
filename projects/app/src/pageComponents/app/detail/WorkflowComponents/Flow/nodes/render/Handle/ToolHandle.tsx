@@ -2,7 +2,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Box, type BoxProps } from '@chakra-ui/react';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
-import { type Connection, Handle, Position } from 'reactflow';
+import { type Connection, Handle, Position } from '@xyflow/react';
 import { useCallback, useContext, useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { isConnectionTargetAllowed } from '@fastgpt/global/core/workflow/editor/utils';

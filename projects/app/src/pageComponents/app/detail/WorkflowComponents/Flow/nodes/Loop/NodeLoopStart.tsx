@@ -1,7 +1,7 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from '../render/NodeCard';
 import {
   NodeInputKeyEnum,
@@ -29,7 +29,7 @@ const typeMap = {
 
 const emptyOutputs: FlowNodeItemType['outputs'] = [];
 
-const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeLoopStart = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
   const { nodeId, parentNodeId } = data;
   // 数组元素类型来自父容器的 nestedInputArray：直接订阅父节点文档数据。

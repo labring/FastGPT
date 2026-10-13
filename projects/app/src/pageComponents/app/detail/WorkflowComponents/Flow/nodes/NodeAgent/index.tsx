@@ -13,7 +13,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import React, { useCallback, useMemo } from 'react';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 
 import Container from '../../components/Container';
 import IOTitle from '../../components/IOTitle';
@@ -95,7 +95,7 @@ const ManualInputLabel = React.memo(function ManualInputLabel({
 });
 
 // TODO: 待优化，不一定需要重写，用模板渲染也可以
-const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeAgent = ({ data, selected }: CanvasNodeProps) => {
   const { nodeId } = data;
   const {
     inputs = [],

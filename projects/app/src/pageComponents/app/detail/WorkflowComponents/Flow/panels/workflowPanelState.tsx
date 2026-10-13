@@ -1,6 +1,6 @@
 // renderer 层：功能性弹窗状态（历史版本 / 运行预览 / 添加节点 Popover）
 import React, { useCallback, useState } from 'react';
-import type { OnConnectStartParams } from 'reactflow';
+import type { OnConnectStartParams } from '@xyflow/react';
 import { createContext, useContextSelector } from 'use-context-selector';
 import ChatTest from '../ChatTest';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';

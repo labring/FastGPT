@@ -1,4 +1,4 @@
-import type { Node } from 'reactflow';
+import type { Node } from '@xyflow/react';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getNodeRect, type DimensionReader } from '../canvas/nodeDimensions';
 

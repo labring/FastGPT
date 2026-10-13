@@ -1,6 +1,6 @@
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React, { useEffect, useMemo, useRef } from 'react';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
 import IOTitle from '../../components/IOTitle';
@@ -39,7 +39,7 @@ import isEqual from 'lodash-es/isEqual';
 const emptyInputs: WorkflowNodeData['inputs'] = [];
 const emptyOutputs: WorkflowNodeData['outputs'] = [];
 
-const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeLoopRun = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
   const { nodeId } = data;
   const node = useNode<WorkflowNodeData>(nodeId, { raw: true });

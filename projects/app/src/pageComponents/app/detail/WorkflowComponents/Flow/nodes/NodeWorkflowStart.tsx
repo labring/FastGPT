@@ -1,5 +1,5 @@
 import React from 'react';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from './render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import Container from '../components/Container';
@@ -20,7 +20,7 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useNode } from '@/web/core/workflow/editor/react/useNode';
 
-const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeStart = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useSafeTranslation();
   const { nodeId } = data;
   const outputs = useNode<FlowNodeItemType['outputs']>(nodeId, (node) => node?.data.outputs) ?? [];

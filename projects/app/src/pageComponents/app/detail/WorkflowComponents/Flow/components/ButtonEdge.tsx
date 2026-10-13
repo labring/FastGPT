@@ -5,7 +5,7 @@ import {
   useReactFlow,
   type EdgeProps,
   type ConnectionLineComponentProps
-} from 'reactflow';
+} from '@xyflow/react';
 import { Box, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';

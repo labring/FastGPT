@@ -1,5 +1,5 @@
 import React, { useContext, useMemo } from 'react';
-import { Position } from 'reactflow';
+import { Position } from '@xyflow/react';
 import { MySourceHandle, MyTargetHandle } from '.';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { isConnectionTargetAllowed } from '@fastgpt/global/core/workflow/editor/utils';

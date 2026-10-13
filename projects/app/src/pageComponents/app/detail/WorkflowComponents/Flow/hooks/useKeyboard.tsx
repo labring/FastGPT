@@ -1,5 +1,8 @@
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  isNestedParentNodeType,
+  type FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
@@ -7,7 +10,7 @@ import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas/canvasT
 import { useKeyPress as useKeyPressEffect } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import { useCallback } from 'react';
-import { type Node, useKeyPress, useReactFlow } from 'reactflow';
+import { type Node, useKeyPress, useReactFlow } from '@xyflow/react';
 import { useWorkflowUIValue } from '../canvas/canvasState';
 import { useWorkflowCanvasRendererValue } from '../canvas/workflowCanvasContext';
 import { isWorkflowShortcutInputtingTarget } from './keyboard';
@@ -78,7 +81,7 @@ export const useKeyboard = () => {
 
     const copyResult = await navigator.clipboard.readText();
     try {
-      const parseData = JSON.parse(copyResult) as Node<FlowNodeItemType, string | undefined>[];
+      const parseData = JSON.parse(copyResult) as Node<FlowNodeItemType, FlowNodeTypeEnum>[];
       // check is array
       if (!Array.isArray(parseData)) return;
       // filter workflow data

@@ -4,7 +4,7 @@ import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import ToolParamConfig from './ToolParamConfig';
 import { useTranslation } from 'next-i18next';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import { Position } from 'reactflow';
+import { Position } from '@xyflow/react';
 import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 

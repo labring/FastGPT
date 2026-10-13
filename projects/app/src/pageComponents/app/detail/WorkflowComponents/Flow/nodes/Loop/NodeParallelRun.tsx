@@ -7,7 +7,7 @@
 */
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React, { useMemo } from 'react';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
 import IOTitle from '../../components/IOTitle';
@@ -24,7 +24,7 @@ import { useNode } from '@/web/core/workflow/editor/react/useNode';
 
 const emptyInputs: WorkflowNodeData['inputs'] = [];
 
-const NodeParallelRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeParallelRun = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
   const { nodeId } = data;
   const node = useNode<WorkflowNodeData>(nodeId, { raw: true });

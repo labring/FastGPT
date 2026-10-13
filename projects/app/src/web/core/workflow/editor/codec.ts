@@ -22,7 +22,7 @@ import {
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { SelectedToolItemTypeSchema } from '@fastgpt/global/core/app/formEdit/type';
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
-import type { Edge, Node } from 'reactflow';
+import type { Edge, Node } from '@xyflow/react';
 import {
   StoreNodeItemTypeSchema,
   type FlowNodeItemType,
@@ -60,7 +60,7 @@ export const uiWorkflow2StoreWorkflow = ({
   edges
 }: {
   nodes: Node<FlowNodeItemType, string | undefined>[];
-  edges: Edge<any>[];
+  edges: Edge[];
 }): { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] } => {
   const toolNodeIds = new Set(
     edges
