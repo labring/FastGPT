@@ -26,6 +26,7 @@ import MyDivider from '../MyDivider';
 import type { useScrollPagination } from '../../../hooks/useScrollPagination';
 import Avatar from '../Avatar';
 import EmptyTip from '../EmptyTip';
+import { useMenuListPresence } from './useMenuListPresence';
 
 /** 选择组件 Props 类型
  * value: 选中的值
@@ -253,6 +254,7 @@ const SelectButton = React.memo(
 );
 
 type SelectMenuProps = SelectProps & {
+  isOpen: boolean;
   selectItem?: SelectButtonContentProps['selectItem'];
   isSelecting: boolean;
   onClickChange: (value: any) => Promise<any>;
@@ -260,8 +262,9 @@ type SelectMenuProps = SelectProps & {
   onClose: () => void;
 };
 
-/** 打开态菜单子树；关闭时整个组件卸载，使列表、监听器和 Popper 生命周期一致。 */
+/** 管理菜单列表的挂载状态，退出动画完成后再卸载 Popper 根节点。 */
 const SelectMenu = React.memo(function SelectMenu({
+  isOpen,
   bg = '#fff',
   placeholder,
   value,
@@ -269,7 +272,7 @@ const SelectMenu = React.memo(function SelectMenu({
   isSearch = false,
   width = '100%',
   list = [],
-  isLoading = false,
+  isLoading: _isLoading = false,
   ScrollData,
   menuPlacement,
   isInvalid,
@@ -285,7 +288,35 @@ const SelectMenu = React.memo(function SelectMenu({
   const MenuListRef = useRef<HTMLDivElement>(null);
   const SelectedItemRef = useRef<HTMLDivElement>(null);
   const SearchInputRef = useRef<HTMLInputElement>(null);
+  const [menuWidth, setMenuWidth] = useState<number>();
   const ignoreNextSearchSpaceClickRef = useRef(false);
+  const { isMounted, mount, onAnimationComplete } = useMenuListPresence(isOpen);
+  const menuListAnimationProps = { onAnimationComplete } as {
+    onAnimationComplete: () => void;
+  };
+
+  const handleOpen = useCallback(() => {
+    const width =
+      ButtonRef.current?.offsetWidth ||
+      ButtonRef.current?.clientWidth ||
+      ButtonRef.current?.getBoundingClientRect().width;
+    if (width) {
+      setMenuWidth(width);
+    }
+    mount();
+    onOpen();
+  }, [mount, onOpen]);
+
+  const customOnClick = props.onClick;
+  const handleStaticButtonClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      customOnClick?.(e);
+      if (!e.isPropagationStopped() && !isDisabled) {
+        handleOpen();
+      }
+    },
+    [customOnClick, handleOpen, isDisabled]
+  );
 
   const [search, setSearch] = useState('');
   const isComposingSearch = (e: React.KeyboardEvent<HTMLInputElement>) =>
@@ -375,10 +406,10 @@ const SelectMenu = React.memo(function SelectMenu({
   }, [isSearch]);
 
   useEffect(() => {
-    if (!isSearch) {
+    if (isOpen && !isSearch) {
       ButtonRef.current?.focus();
     }
-  }, [isSearch]);
+  }, [isOpen, isSearch]);
 
   const ListRender = useMemo(() => {
     return (
@@ -430,83 +461,107 @@ const SelectMenu = React.memo(function SelectMenu({
     );
   }, [filterList, onClickChange, value]);
 
+  const selectButtonProps = {
+    ref: ButtonRef,
+    bg,
+    width,
+    selectOpen: isOpen,
+    isSelecting,
+    valueLabel,
+    selectItem,
+    placeholder,
+    isSearch,
+    search,
+    searchInputRef: SearchInputRef,
+    onSearchChange: handleSearchChange,
+    onSearchKeyDown: handleSearchSpaceKeyDown,
+    onSearchKeyUp: handleSearchSpaceKeyUp,
+    onSearchBlur: handleSearchBlur,
+    isInvalid,
+    isDisabled,
+    ...props
+  };
+
+  const buttonContent = (
+    <SelectButtonContent
+      isOpen={isOpen}
+      isSelecting={isSelecting}
+      valueLabel={valueLabel}
+      selectItem={selectItem}
+      placeholder={placeholder}
+      isSearch={isSearch}
+      search={search}
+      searchInputRef={SearchInputRef}
+      onSearchChange={handleSearchChange}
+      onSearchKeyDown={handleSearchSpaceKeyDown}
+      onSearchKeyUp={handleSearchSpaceKeyUp}
+      onSearchBlur={handleSearchBlur}
+    />
+  );
+
   return (
     <Box>
-      <Menu
-        autoSelect={false}
-        isOpen={!isSelecting}
-        onOpen={onOpen}
-        onClose={onClose}
-        strategy="fixed"
-        placement={menuPlacement}
-      >
-        <MenuButton
-          as={SelectButton}
-          ref={ButtonRef}
-          bg={bg}
-          width={width}
-          selectOpen
-          isSelecting={isLoading}
-          valueLabel={valueLabel}
-          selectItem={selectItem}
-          placeholder={placeholder}
-          isSearch={isSearch}
-          search={search}
-          searchInputRef={SearchInputRef}
-          onSearchChange={handleSearchChange}
-          onSearchKeyDown={handleSearchSpaceKeyDown}
-          onSearchKeyUp={handleSearchSpaceKeyUp}
-          onSearchBlur={handleSearchBlur}
-          isInvalid={isInvalid}
-          isDisabled={isDisabled}
-          {...props}
-          onClickCapture={handleMenuButtonClickCapture}
+      {isMounted ? (
+        <Menu
+          autoSelect={false}
+          isOpen={isOpen}
+          onOpen={handleOpen}
+          onClose={onClose}
+          strategy="fixed"
+          placement={menuPlacement}
+          matchWidth
         >
-          <SelectButtonContent
-            isOpen
-            isSelecting={isLoading}
-            valueLabel={valueLabel}
-            selectItem={selectItem}
-            placeholder={placeholder}
-            isSearch={isSearch}
-            search={search}
-            searchInputRef={SearchInputRef}
-            onSearchChange={handleSearchChange}
-            onSearchKeyDown={handleSearchSpaceKeyDown}
-            onSearchKeyUp={handleSearchSpaceKeyUp}
-            onSearchBlur={handleSearchBlur}
-          />
-        </MenuButton>
+          <MenuButton
+            {...selectButtonProps}
+            as={SelectButton}
+            pointerEvents={isOpen ? undefined : 'none'}
+            onClickCapture={handleMenuButtonClickCapture}
+          >
+            {buttonContent}
+          </MenuButton>
 
-        <MenuList
-          ref={MenuListRef}
-          className={props.className}
-          minW={(() => {
-            /* eslint-disable react-hooks/refs */
-            const w = ButtonRef.current?.clientWidth;
-            if (w) {
-              return `${w}px !important`;
+          <MenuList
+            ref={MenuListRef}
+            className={props.className}
+            w="100%"
+            minW={menuWidth ? `${menuWidth}px` : undefined}
+            px="6px"
+            py="6px"
+            border="1px solid #fff"
+            boxShadow="0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);"
+            zIndex={99}
+            maxH="45vh"
+            overflowX="hidden"
+            overflowY="auto"
+            rootProps={
+              {
+                'data-preserve-width': true,
+                style: {
+                  width: menuWidth ? `${menuWidth}px` : undefined,
+                  visibility: 'visible',
+                  pointerEvents: isOpen ? undefined : 'none'
+                }
+              } as any
             }
-            /* eslint-enable react-hooks/refs */
-            return Array.isArray(width)
-              ? width.map((item) => `${item} !important`)
-              : `${width} !important`;
-          })()}
-          w="max-content"
-          px="6px"
-          py="6px"
-          border="1px solid #fff"
-          boxShadow="0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);"
-          zIndex={99}
-          maxH="45vh"
-          overflowY="auto"
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
+            motionProps={{ initial: 'exit' }}
+            {...menuListAnimationProps}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            {ScrollData ? <ScrollData>{ListRender}</ScrollData> : ListRender}
+          </MenuList>
+        </Menu>
+      ) : (
+        <SelectButton
+          {...selectButtonProps}
+          selectOpen={false}
+          aria-expanded={isOpen}
+          onClick={handleStaticButtonClick}
         >
-          {ScrollData ? <ScrollData>{ListRender}</ScrollData> : ListRender}
-        </MenuList>
-      </Menu>
+          {buttonContent}
+        </SelectButton>
+      )}
     </Box>
   );
 });
@@ -539,8 +594,6 @@ const MySelect = <T = any,>(
   const { runAsync: onClickChange, loading } = useRequest((val: T) => onChange?.(val));
   const isSelecting = loading || isLoading;
 
-  const StaticButtonRef = useRef<HTMLButtonElement>(null);
-
   const onOpen = useCallback(() => {
     defaultOnOpen();
     customOnOpen?.();
@@ -549,9 +602,6 @@ const MySelect = <T = any,>(
   const onClose = useCallback(() => {
     defaultOnClose();
     customOnClose?.();
-    window.requestAnimationFrame(() => {
-      StaticButtonRef.current?.focus();
-    });
   }, [customOnClose, defaultOnClose]);
 
   useImperativeHandle(
@@ -564,59 +614,29 @@ const MySelect = <T = any,>(
     [onOpen]
   );
 
-  const customOnClick = props.onClick;
-
-  const handleStaticButtonClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      customOnClick?.(e);
-      if (!e.isPropagationStopped()) {
-        onOpen();
-      }
-    },
-    [customOnClick, onOpen]
-  );
-
   return (
     <Box>
-      {/* 关闭态保持纯按钮，避免构造菜单项和挂载 Popper。 */}
-      {isOpen && !isSelecting ? (
-        <SelectMenu
-          bg={bg}
-          placeholder={placeholder}
-          value={value}
-          valueLabel={valueLabel}
-          isSearch={isSearch}
-          width={width}
-          list={list}
-          isLoading={isLoading}
-          ScrollData={ScrollData}
-          menuPlacement={menuPlacement}
-          isInvalid={isInvalid}
-          isDisabled={isDisabled}
-          selectItem={selectItem}
-          isSelecting={isSelecting}
-          onClickChange={onClickChange}
-          onOpen={onOpen}
-          onClose={onClose}
-          {...props}
-        />
-      ) : (
-        <SelectButton
-          ref={StaticButtonRef}
-          bg={bg}
-          width={width}
-          selectOpen={isOpen && !isSelecting}
-          isSelecting={isSelecting}
-          valueLabel={valueLabel}
-          selectItem={selectItem}
-          placeholder={placeholder}
-          isSearch={false}
-          isInvalid={isInvalid}
-          isDisabled={isDisabled}
-          {...props}
-          onClick={handleStaticButtonClick}
-        />
-      )}
+      <SelectMenu
+        isOpen={isOpen && !isSelecting}
+        bg={bg}
+        placeholder={placeholder}
+        value={value}
+        valueLabel={valueLabel}
+        isSearch={isSearch}
+        width={width}
+        list={list}
+        isLoading={isLoading}
+        ScrollData={ScrollData}
+        menuPlacement={menuPlacement}
+        isInvalid={isInvalid}
+        isDisabled={isDisabled}
+        selectItem={selectItem}
+        isSelecting={isSelecting}
+        onClickChange={onClickChange}
+        onOpen={onOpen}
+        onClose={onClose}
+        {...props}
+      />
     </Box>
   );
 };

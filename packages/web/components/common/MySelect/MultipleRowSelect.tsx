@@ -1,15 +1,16 @@
-import React, { useRef, useCallback, useState, useMemo, useEffect } from 'react';
+import React, { useRef, useCallback, useState, useMemo, useEffect, useLayoutEffect } from 'react';
 import {
   Button,
   useDisclosure,
   Box,
   Flex,
-  useOutsideClick,
   Checkbox,
   css,
   Menu,
   MenuButton,
   MenuList,
+  ScaleFade,
+  useOutsideClick,
   type ButtonProps as ChakraButtonProps
 } from '@chakra-ui/react';
 import { type ListItemType, type MultipleArraySelectProps, type MultipleSelectProps } from './type';
@@ -17,6 +18,9 @@ import EmptyTip from '../EmptyTip';
 import MyLoading from '../MyLoading';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../../common/Icon';
+import { useMenuListPresence } from './useMenuListPresence';
+
+const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 type RenderListProps = {
   index: number;
@@ -282,12 +286,26 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
 
   const MenuRef = useRef<(HTMLDivElement | null)[]>([]);
   const SelectedItemRef = useRef<(HTMLDivElement | null)[]>([]);
+  const MenuListRef = useRef<HTMLDivElement>(null);
+  const [menuWidth, setMenuWidth] = useState<number>();
+  const [columnMinWidth, setColumnMinWidth] = useState<number>();
 
   // 异步列表从单列切换为分组时，使用外部 value 恢复完整路径；有效的手动路径保持不变。
   const safeValue = Array.isArray(value) ? value : [];
   const safeCloneValue = Array.isArray(cloneValue) ? cloneValue : [];
   const resolvedCloneValue =
     isOpen && !list.some((item) => item.value === safeCloneValue[0]) ? safeValue : safeCloneValue;
+  const { isMounted, mount, onAnimationComplete } = useMenuListPresence(isOpen);
+
+  // 首次打开时先锁定首列宽度，避免后续列在首帧按内容宽度收缩，点击节点后才跳宽。
+  useBrowserLayoutEffect(() => {
+    if (!isMounted || isLoading) return;
+
+    const width = MenuRef.current[0]?.offsetWidth;
+    if (width && width !== columnMinWidth) {
+      setColumnMinWidth(width);
+    }
+  }, [columnMinWidth, isLoading, isMounted, list, resolvedCloneValue]);
 
   useEffect(() => {
     if (isOpen) {
@@ -299,7 +317,7 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
         }
       }
     }
-  }, [isOpen]);
+  }, [isOpen, list]);
 
   const onOpenSelect = useCallback(() => {
     setCloneValue(Array.isArray(value) ? value : []);
@@ -307,23 +325,38 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
     onOpenFunc?.();
   }, [value, onOpen, onOpenFunc]);
 
-  const onCloseSelect = useCallback(() => {
-    onClose();
-    window.requestAnimationFrame(() => {
-      ButtonRef.current?.focus();
-    });
-  }, [onClose]);
+  const handleOpen = useCallback(() => {
+    setMenuWidth(undefined);
+    mount();
+    onOpenSelect();
+  }, [mount, onOpenSelect]);
 
   const buttonOnClick = ButtonProps?.onClick;
   const onStaticButtonClick = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
       buttonOnClick?.(e);
       if (!e.isPropagationStopped()) {
-        onOpenSelect();
+        handleOpen();
       }
     },
-    [buttonOnClick, onOpenSelect]
+    [buttonOnClick, handleOpen]
   );
+
+  const onCloseSelect = useCallback(() => {
+    const width = MenuListRef.current?.scrollWidth;
+    if (width) {
+      setMenuWidth(width);
+    }
+    onClose();
+    window.requestAnimationFrame(() => {
+      ButtonRef.current?.focus();
+    });
+  }, [onClose]);
+
+  const menuListAnimationProps = { onAnimationComplete } as {
+    onAnimationComplete: () => void;
+  };
+  const lockedMenuWidth = menuWidth;
 
   const triggerProps: ChakraButtonProps = {
     width: '100%',
@@ -363,29 +396,34 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
     </Flex>
   );
 
-  const menuList = isOpen ? (
+  const menuList = isMounted ? (
     <MenuList
+      ref={MenuListRef}
       className={ButtonProps?.className}
-      minW={(() => {
-        const w = ButtonRef.current?.clientWidth;
-        if (w) {
-          return `${w}px !important`;
-        }
-
-        const width = ButtonProps?.width;
-        return Array.isArray(width)
-          ? width.map((item) => `${item} !important`)
-          : `${width} !important`;
-      })()}
-      w={'auto'}
+      w={'max-content'}
+      maxW={'none'}
       py={'6px'}
       border={'1px solid #fff'}
       boxShadow={'0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'}
       zIndex={99}
       maxH={'40vh'}
+      overflowX={'hidden'}
       overflowY={'auto'}
       display={'flex'}
       userSelect={'none'}
+      minW={lockedMenuWidth ? `${lockedMenuWidth}px` : 'max-content'}
+      rootProps={
+        {
+          'data-preserve-width': true,
+          style: {
+            width: lockedMenuWidth ? `${lockedMenuWidth}px` : 'max-content',
+            visibility: 'visible',
+            pointerEvents: isOpen ? undefined : 'none'
+          }
+        } as any
+      }
+      motionProps={{ initial: 'exit' }}
+      {...menuListAnimationProps}
     >
       {isLoading ? (
         <Box
@@ -409,7 +447,7 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
           changeOnEverySelect={changeOnEverySelect}
           emptyTip={emptyTip}
           maxH={maxH}
-          minWidth={`${MenuRef.current?.[0]?.offsetWidth || 0}px`}
+          minWidth={`${columnMinWidth ?? MenuRef.current?.[0]?.offsetWidth ?? 0}px`}
           rowMinWidth={rowMinWidth}
           MenuRef={MenuRef}
           SelectedItemRef={SelectedItemRef}
@@ -426,9 +464,20 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
         }
       })}
     >
-      {isOpen ? (
-        <Menu autoSelect={false} isOpen onClose={onCloseSelect} strategy={'fixed'} matchWidth>
-          <MenuButton as={Button} ref={ButtonRef} {...triggerProps}>
+      {isMounted ? (
+        <Menu
+          autoSelect={false}
+          isOpen={isOpen}
+          onOpen={handleOpen}
+          onClose={onCloseSelect}
+          strategy={'fixed'}
+        >
+          <MenuButton
+            as={Button}
+            ref={ButtonRef}
+            {...triggerProps}
+            pointerEvents={isOpen ? undefined : 'none'}
+          >
             {buttonContent}
           </MenuButton>
           {menuList}
@@ -457,6 +506,12 @@ const MultipleRowArraySelect = React.memo(function MultipleRowArraySelect({
   const ref = useRef<HTMLDivElement>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
 
+  useOutsideClick({
+    enabled: isOpen,
+    ref,
+    handler: onClose
+  });
+
   const [navigationPath, setNavigationPath] = useState<string[]>([]);
 
   // Make sure the value is an array of arrays
@@ -464,12 +519,6 @@ const MultipleRowArraySelect = React.memo(function MultipleRowArraySelect({
     return isOpen && Array.isArray(value) ? value.filter((v) => Array.isArray(v)) : [];
   }, [isOpen, value]);
 
-  // Close when clicking outside
-  useOutsideClick({
-    enabled: isOpen,
-    ref: ref,
-    handler: onClose
-  });
   const onChange = useCallback(
     (val: any[][]) => {
       // Filter invalid value
@@ -526,7 +575,16 @@ const MultipleRowArraySelect = React.memo(function MultipleRowArraySelect({
           {label ?? placeholder}
         </Box>
       </Button>
-      {isOpen && (
+      <ScaleFade
+        in={isOpen}
+        unmountOnExit
+        initialScale={0.95}
+        style={{
+          position: 'relative',
+          zIndex: 1001,
+          pointerEvents: isOpen ? 'auto' : 'none'
+        }}
+      >
         <Box
           position={'absolute'}
           {...(popDirection === 'top'
@@ -544,8 +602,8 @@ const MultipleRowArraySelect = React.memo(function MultipleRowArraySelect({
           boxShadow={'5'}
           borderRadius={'md'}
           zIndex={1000}
-          minW={'100%'}
-          w={'max-content'}
+          minW={'max-content'}
+          w={'100%'}
         >
           <Flex>
             <ArrayRenderList
@@ -560,7 +618,7 @@ const MultipleRowArraySelect = React.memo(function MultipleRowArraySelect({
             />
           </Flex>
         </Box>
-      )}
+      </ScaleFade>
     </Box>
   );
 });
