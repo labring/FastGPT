@@ -152,6 +152,36 @@ describe('sandbox provider adapter', () => {
     });
   });
 
+  it('passes resource requests through the opensandbox create config whitelist', () => {
+    buildSandboxAdapter(
+      {
+        provider: 'opensandbox',
+        baseUrl: 'http://opensandbox.local',
+        apiKey: 'api-key',
+        runtime: 'kubernetes'
+      },
+      {
+        sandboxId: 'opensandbox-session-1',
+        createConfig: {
+          image: { repository: 'runtime-image', tag: 'test' },
+          resourceLimits: { cpuCount: 2, memoryMiB: 4096 },
+          resourceRequests: { cpuCount: 0.2, memoryMiB: 409 }
+        }
+      }
+    );
+
+    expect(mocks.createSandbox).toHaveBeenCalledWith({
+      provider: 'opensandbox',
+      connectionConfig: expect.objectContaining({
+        sessionId: 'opensandbox-session-1'
+      }),
+      createConfig: expect.objectContaining({
+        resourceLimits: { cpuCount: 2, memoryMiB: 4096 },
+        resourceRequests: { cpuCount: 0.2, memoryMiB: 409 }
+      })
+    });
+  });
+
   it('builds resource adapter without runtime create config', () => {
     buildSandboxResourceAdapter({
       provider: 'opensandbox',

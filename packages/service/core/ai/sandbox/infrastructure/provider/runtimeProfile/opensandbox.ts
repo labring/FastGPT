@@ -6,7 +6,11 @@
 import { serviceEnv } from '../../../../../../env';
 import type { SandboxRuntimeCreateConfigInput, SandboxRuntimeProfile } from './types';
 import { getSandboxSkillsRootPath, mergeStringRecord, normalizeEntrypoint } from './utils';
-import { OPEN_SANDBOX_DEFAULT_ROOT_PATH, parseImageSpec } from '@fastgpt-sdk/sandbox-adapter';
+import {
+  OPEN_SANDBOX_DEFAULT_ROOT_PATH,
+  parseImageSpec,
+  type ResourceLimits
+} from '@fastgpt-sdk/sandbox-adapter';
 
 const OPEN_SANDBOX_ENTRYPOINT = '/home/sandbox/entrypoint.sh';
 const OPEN_SANDBOX_PROTECTED_NETWORK_DENY_RULES = [
@@ -58,6 +62,35 @@ function buildOpenSandboxNetworkPolicy(
 }
 
 /**
+ * Derive Kubernetes resource requests from the final limits, per-dimension overcommit.
+ *
+ * Each dimension is scaled by its own factor: requests = limits / factor when the
+ * factor > 1, otherwise the limit is mirrored so the dimension keeps requests == limits.
+ * When both factors are off (<= 1 or non-finite) nothing is derived and the server
+ * keeps requests == limits (Guaranteed QoS). CPU is floored to millicores and memory
+ * to MiB, both clamped to at least one unit; disk/gpu are never derived.
+ */
+function deriveResourceRequests(limits: {
+  cpuCount: number;
+  memoryMiB: number;
+}): ResourceLimits | undefined {
+  const cpuFactor = serviceEnv.AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR;
+  const memoryFactor = serviceEnv.AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR;
+  const isOvercommitted = (factor: number) => Number.isFinite(factor) && factor > 1;
+
+  if (!isOvercommitted(cpuFactor) && !isOvercommitted(memoryFactor)) return undefined;
+
+  return {
+    cpuCount: isOvercommitted(cpuFactor)
+      ? Math.max(1, Math.floor((limits.cpuCount * 1000) / cpuFactor)) / 1000
+      : limits.cpuCount,
+    memoryMiB: isOvercommitted(memoryFactor)
+      ? Math.max(1, Math.floor(limits.memoryMiB / memoryFactor))
+      : limits.memoryMiB
+  };
+}
+
+/**
  * 构建 OpenSandbox 的 FastGPT 运行态 profile。
  *
  * OpenSandbox 需要在 createConfig 中显式注入镜像、入口脚本、资源限制和 volume。
@@ -76,8 +109,11 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
       // OpenSandbox create 必须带镜像；调用方显式传入的镜像优先，其次才使用运行态默认镜像。
       const createConfig = input.createConfig ?? {};
       const isKubernetesRuntime = serviceEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME === 'kubernetes';
-      const { networkPolicy: requestedNetworkPolicy, ...createConfigWithoutNetworkPolicy } =
-        createConfig;
+      const {
+        networkPolicy: requestedNetworkPolicy,
+        resourceRequests: requestedResourceRequests,
+        ...createConfigWithoutNetworkPolicy
+      } = createConfig;
       const image = input.image ?? createConfig.image ?? defaultImage;
       if (!image?.repository) {
         throw new Error('AGENT_SANDBOX_OPENSANDBOX_IMAGE is required for opensandbox provider');
@@ -104,6 +140,10 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
           serviceEnv.AGENT_SANDBOX_MEMORY_MIB,
         ...storageLimit
       };
+      // 仅 Kubernetes 运行态下发 requests（按 CPU/内存独立倍率派生）；Docker 运行态不下发该字段。
+      const resourceRequests = isKubernetesRuntime
+        ? (requestedResourceRequests ?? deriveResourceRequests(resourceLimits))
+        : undefined;
       const env = mergeStringRecord(createConfig.env, input.env);
       const metadata = mergeStringRecord(createConfig.metadata, input.metadata);
       // volume 既可能来自 volume manager，也可能来自调用方透传的 createConfig；运行态 VM 配置优先。
@@ -118,6 +158,7 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
         ...createConfigWithoutNetworkPolicy,
         image,
         resourceLimits,
+        ...(resourceRequests ? { resourceRequests } : {}),
         readyTimeoutSeconds: createConfig.readyTimeoutSeconds ?? 120,
         ...(entrypoint ? { entrypoint } : {}),
         ...(env ? { env } : {}),

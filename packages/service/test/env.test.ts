@@ -14,6 +14,8 @@ const originalEnv = {
   AGENT_SANDBOX_CPU_COUNT: process.env.AGENT_SANDBOX_CPU_COUNT,
   AGENT_SANDBOX_MEMORY_MIB: process.env.AGENT_SANDBOX_MEMORY_MIB,
   AGENT_SANDBOX_STORAGE_SIZE_GI: process.env.AGENT_SANDBOX_STORAGE_SIZE_GI,
+  AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR: process.env.AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR,
+  AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR: process.env.AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR,
   FE_DOMAIN: process.env.FE_DOMAIN,
   AGENT_SANDBOX_SUSPEND_MINUTES: process.env.AGENT_SANDBOX_SUSPEND_MINUTES,
   AGENT_SANDBOX_SHOW_FREE_TIP: process.env.AGENT_SANDBOX_SHOW_FREE_TIP,
@@ -68,6 +70,11 @@ describe('serviceEnv', () => {
     vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', originalEnv.AGENT_SANDBOX_CPU_COUNT);
     vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', originalEnv.AGENT_SANDBOX_MEMORY_MIB);
     vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', originalEnv.AGENT_SANDBOX_STORAGE_SIZE_GI);
+    vi.stubEnv('AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR', originalEnv.AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR);
+    vi.stubEnv(
+      'AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR',
+      originalEnv.AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR
+    );
     vi.stubEnv('FE_DOMAIN', originalEnv.FE_DOMAIN);
     vi.stubEnv('AGENT_SANDBOX_SUSPEND_MINUTES', originalEnv.AGENT_SANDBOX_SUSPEND_MINUTES);
     vi.stubEnv('AGENT_SANDBOX_SHOW_FREE_TIP', originalEnv.AGENT_SANDBOX_SHOW_FREE_TIP);
@@ -541,11 +548,15 @@ describe('serviceEnv', () => {
     vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', undefined);
     vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', undefined);
     vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', undefined);
+    vi.stubEnv('AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR', undefined);
+    vi.stubEnv('AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR', undefined);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX', undefined);
     const defaultEnv = await importServiceEnv();
     expect(defaultEnv.serviceEnv.AGENT_SANDBOX_CPU_COUNT).toBe(1);
     expect(defaultEnv.serviceEnv.AGENT_SANDBOX_MEMORY_MIB).toBe(2048);
     expect(defaultEnv.serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI).toBe(1);
+    expect(defaultEnv.serviceEnv.AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR).toBe(1);
+    expect(defaultEnv.serviceEnv.AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR).toBe(1);
     expect(defaultEnv.serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX).toBe(
       'fastgpt-session'
     );
@@ -553,12 +564,20 @@ describe('serviceEnv', () => {
     vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', '2.5');
     vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', '4096');
     vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', '5');
+    vi.stubEnv('AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR', '5');
+    vi.stubEnv('AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR', '2');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX', 'custom-volume');
     const customEnv = await importServiceEnv();
     expect(customEnv.serviceEnv.AGENT_SANDBOX_CPU_COUNT).toBe(2.5);
     expect(customEnv.serviceEnv.AGENT_SANDBOX_MEMORY_MIB).toBe(4096);
     expect(customEnv.serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI).toBe(5);
+    expect(customEnv.serviceEnv.AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR).toBe(5);
+    expect(customEnv.serviceEnv.AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR).toBe(2);
     expect(customEnv.serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX).toBe('custom-volume');
+
+    // 超卖倍数必须 >= 1，0 直接拒绝。
+    vi.stubEnv('AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR', '0');
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
   });
 
   it('defaults AGENT_SANDBOX_SHOW_FREE_TIP to false and supports enabling it', async () => {
