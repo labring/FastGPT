@@ -133,7 +133,9 @@ export const buildLegacyDomainOverrides = ({
   }) as DomainOverrides['auth'];
 
   // ---------- security ----------
-  const legacyCensor = systemEnv.censor as LegacyFeConfigs | undefined;
+  // censor（敏感词审核凭据）的权威来源是 legacyPro 文档而非 systemEnv：
+  // 旧版 SystemEnvSchema 从未定义过 censor 字段，真实配置一直由商业版 Admin 写入
+  // fastgptPro.censor，因此这里不读取 systemEnv.censor，改由 buildLegacyProOverrides 迁移。
   const legacyWorkflowHttpNode = systemEnv.workflowHttpNode as LegacyFeConfigs | undefined;
   overrides.security = compact({
     useIpLimit: optionalBool(serviceEnv.USE_IP_LIMIT),
@@ -143,11 +145,6 @@ export const buildLegacyDomainOverrides = ({
     maxLoginSession: optionalNumber(serviceEnv.MAX_LOGIN_SESSION),
     allowedOrigins: splitList(serviceEnv.ALLOWED_ORIGINS),
     skipFileTypeCheck: optionalBool(serviceEnv.SKIP_FILE_TYPE_CHECK),
-    censor: compact({
-      baiduClientId: optionalText(legacyCensor?.BAIDU_TEXT_CENSOR_CLIENTID),
-      baiduClientSecret: optionalText(legacyCensor?.BAIDU_TEXT_CENSOR_CLIENTSECRET),
-      customCensorUrl: optionalText(legacyCensor?.customCensorURL)
-    }),
     workflowHttpNode: compact({
       ignoreHttpsCertificate: optionalBool(legacyWorkflowHttpNode?.ignoreHttpsCertificate)
     }),
@@ -514,6 +511,17 @@ export const buildLegacyProOverrides = (pro: LegacyProConfig): DomainOverrides =
   const wx = (pay.wx ?? {}) as LegacyProConfig;
   const alipay = (pay.alipay ?? {}) as LegacyProConfig;
   const bank = (pay.bank ?? {}) as LegacyProConfig;
+
+  // censor 是商业版 Admin 写入 fastgptPro 文档的审核凭据（百度 AppID/Secret、
+  // 自定义审核 URL），开源侧 systemEnv 从未承载过该字段，只能从这里迁移。
+  const censor = (pro.censor ?? {}) as LegacyProConfig;
+  overrides.security = compact({
+    censor: compact({
+      baiduClientId: optionalText(censor.BAIDU_TEXT_CENSOR_CLIENTID),
+      baiduClientSecret: optionalText(censor.BAIDU_TEXT_CENSOR_CLIENTSECRET),
+      customCensorUrl: optionalText(censor.customCensorURL)
+    })
+  }) as DomainOverrides['security'];
 
   overrides.commercial = compact({
     payment: compact({
