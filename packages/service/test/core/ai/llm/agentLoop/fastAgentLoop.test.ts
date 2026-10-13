@@ -3,7 +3,10 @@ import {
   ChatCompletionRequestMessageRoleEnum,
   ModelTypeEnum
 } from '@fastgpt/global/core/ai/constants';
-import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
+import type {
+  ChatCompletionTool,
+  ChatCompletionToolMessageContentPart
+} from '@fastgpt/global/core/ai/llm/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockCreateLLMResponseQueue, text, toolCall } from './_mocks/llmQueue';
 
@@ -61,6 +64,7 @@ import {
   runFastAgentMainLoop,
   type AgentLoopRuntime
 } from '@fastgpt/service/core/ai/llm/agentLoop/provider/fastAgent/loop';
+import { buildToolMessageContent } from '@fastgpt/service/core/ai/llm/agentLoop/provider/fastAgent/loop/base';
 
 const getFinalAssistantText = (result: { assistantMessages: any[] }) =>
   result.assistantMessages
@@ -863,5 +867,35 @@ describe('runFastAgentMainLoop', () => {
         })
       })
     );
+  });
+});
+
+describe('buildToolMessageContent', () => {
+  it('returns the final text when no content parts are provided', () => {
+    expect(buildToolMessageContent({ text: 'summary' })).toBe('summary');
+    expect(buildToolMessageContent({ content: [], text: 'summary' })).toBe('summary');
+  });
+
+  it('prepends the final text and keeps image parts', () => {
+    const content: ChatCompletionToolMessageContentPart[] = [
+      { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } }
+    ];
+
+    expect(buildToolMessageContent({ content, text: 'summary' })).toEqual([
+      { type: 'text', text: 'summary' },
+      { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } }
+    ]);
+  });
+
+  it('replaces raw text parts with the final text', () => {
+    const content: ChatCompletionToolMessageContentPart[] = [
+      { type: 'text', text: 'raw uncompressed output' },
+      { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } }
+    ];
+
+    expect(buildToolMessageContent({ content, text: 'summary' })).toEqual([
+      { type: 'text', text: 'summary' },
+      { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } }
+    ]);
   });
 });
