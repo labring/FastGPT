@@ -250,9 +250,10 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
     expect(doc?.overrides).toEqual({ name: 'Keep', docUrl: 'https://keep.example.com' });
   });
 
-  it('skips backfill and warns when merged values break a cross-field constraint', async () => {
+  it('drops conflicting leaves, backfills valid siblings, and marks skipped paths in explicitDefaultPaths', async () => {
     // 管理员既有 parallelMaxConcurrency=100（自身合法：默认 maxLoopTimes=100），
-    // 待补的 maxLoopTimes=20 合并后违反 superRefine（100 > 20）
+    // 待补的 maxLoopTimes=20 合并后违反 superRefine（100 > 20）；
+    // 但合法的独立字段 parseMaxProcess=12 应正常迁入，冲突项记入 explicitDefaultPaths 防死锁
     await MongoSystemInstanceConfig.create({
       domain: 'performance',
       schemaVersion: 1,
@@ -262,19 +263,33 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
 
     const warn = vi.fn();
     const result = await applyInstanceConfigMigration({
-      overrides: { performance: { workflow: { maxLoopTimes: 20 } } },
+      overrides: {
+        performance: {
+          workflow: { maxLoopTimes: 20 },
+          dataset: { parseMaxProcess: 12 }
+        }
+      },
       logger: { ...logger, warn }
     });
 
-    // 无法在不改管理员值的前提下消解冲突：跳过该域回填、告警，但不抛错阻塞启动
-    expect(result.backfilledDomains).toEqual([]);
+    // 冲突项 maxLoopTimes 被剔除，独立项 parseMaxProcess 成功回填
+    expect(result.backfilledDomains).toEqual(['performance']);
+    expect(result.backfilledPaths).toEqual(['performance.dataset.parseMaxProcess']);
     expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining('conflict with existing values'),
-      expect.objectContaining({ domain: 'performance' })
+      expect.stringContaining('conflicts with existing values'),
+      expect.objectContaining({ domain: 'performance', field: 'workflow.maxLoopTimes' })
     );
 
     const doc = await MongoSystemInstanceConfig.findOne({ domain: 'performance' }).lean();
     expect(doc?.overrides.workflow).toEqual({ parallelMaxConcurrency: 100 });
+    expect((doc?.overrides as any).dataset?.parseMaxProcess).toBe(12);
+    // 冲突项被登记入 explicitDefaultPaths，使后置 inspect 判定已完工，不引发无限崩溃死锁
+    expect(doc?.explicitDefaultPaths).toContain('workflow.maxLoopTimes');
+
+    // 终验：inspect 不再认为该字段缺失
+    const inspect = await inspectInstanceConfigMigration();
+    expect(inspect.pendingBackfillDomainCount).toBe(0);
+    expect(inspect.pendingBackfillPaths).toEqual([]);
   });
 
   it('is idempotent: rerunning after a backfill writes nothing', async () => {
