@@ -23,7 +23,7 @@ import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { formatHttpError, getNodeErrResponse } from '../utils';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../../../common/system/utils';
-import { serviceRequestMaxContentLength } from '../../../../common/system/constants';
+import { getServiceRequestMaxContentLength } from '../../../../common/system/constants';
 import { axios, type SafeAxiosRequestConfig } from '../../../../common/api/axios';
 import { replaceEditorVariable } from '../utils/replaceEditorVariable';
 import { checkStrOversize, logOversizeString } from '../../../../common/string/replaceVariable';
@@ -555,7 +555,7 @@ async function fetchData({
   // 都认为是用户的请求，强制 SSRF 检查
   const { data: response } = await axios({
     method,
-    maxContentLength: serviceRequestMaxContentLength,
+    maxContentLength: getServiceRequestMaxContentLength(),
     url,
     headers: {
       ...headers

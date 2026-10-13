@@ -63,8 +63,7 @@ import {
   updateWorkflowToolInputByVariables
 } from '@fastgpt/service/core/app/tool/workflowTool/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-
-import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
+import { getWorkflowMaxRunTimes } from '@fastgpt/service/core/workflow/constants';
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
@@ -411,7 +410,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       stream,
       retainDatasetCite: workflowRetainDatasetCite,
       showSkillReferences: finalShowSkillReferences,
-      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+      maxRunTimes: getWorkflowMaxRunTimes(),
       workflowStreamResponse: workflowResponseWrite,
       nodeResponseWriteConfig: {
         persistToDb: preparedRound.shouldPersistChatRound,

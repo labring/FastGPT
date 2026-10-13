@@ -18,6 +18,12 @@ export const buildAuthoritativeSystemEnv = ({
   instanceConfig: SystemInstanceConfig;
 }): SystemEnvType => ({
   ...(legacySystemEnv || {}),
+  openapiPrefix: instanceConfig.site.openApiPrefix,
+  fileUrlWhitelist: instanceConfig.security.fileUrlWhitelist,
+  workflowHttpNode: {
+    ...(legacySystemEnv?.workflowHttpNode || {}),
+    ignoreHttpsCertificate: instanceConfig.security.workflowHttpNode.ignoreHttpsCertificate
+  },
   datasetParseMaxProcess: instanceConfig.performance.dataset.parseMaxProcess,
   vectorMaxProcess: instanceConfig.performance.dataset.vectorMaxProcess,
   qaMaxProcess: instanceConfig.performance.dataset.qaMaxProcess,
