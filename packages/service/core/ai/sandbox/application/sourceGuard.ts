@@ -30,7 +30,10 @@ export async function resolveSandboxSourceTeamId(params: {
   sourceId: string;
 }): Promise<string | undefined> {
   const doc = await (async () => {
-    if (params.sourceType === ChatSourceTypeEnum.app) {
+    if (
+      params.sourceType === ChatSourceTypeEnum.app ||
+      params.sourceType === ChatSourceTypeEnum.workflowBuilder
+    ) {
       return MongoApp.findOne({ _id: params.sourceId, deleteTime: null }, { teamId: 1 }).lean();
     }
     if (params.sourceType === ChatSourceTypeEnum.skillEdit) {
@@ -54,7 +57,10 @@ export async function assertSandboxSourceDeleted(params: {
   sourceId: string;
 }) {
   const deleted = await (async () => {
-    if (params.sourceType === ChatSourceTypeEnum.app) {
+    if (
+      params.sourceType === ChatSourceTypeEnum.app ||
+      params.sourceType === ChatSourceTypeEnum.workflowBuilder
+    ) {
       return MongoApp.exists({ _id: params.sourceId, deleteTime: { $ne: null } });
     }
     if (params.sourceType === ChatSourceTypeEnum.skillEdit) {

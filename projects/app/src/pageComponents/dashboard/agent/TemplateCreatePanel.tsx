@@ -106,7 +106,7 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
         router.push(
           getAppDetailRoute({
             appId,
-            openSystemConfig: isWorkflowAppType(appType)
+            openWorkflowBuilder: isWorkflowAppType(appType)
           })
         );
       },

@@ -57,7 +57,7 @@ export const getSandboxRuntimePaths = ({
   const workspaceRoot = trimSandboxPathRight(workDirectory);
   const runtimeSkillsRoot = joinSandboxPath(workspaceRoot, 'projects');
 
-  if (sourceType === ChatSourceTypeEnum.app) {
+  if (sourceType === ChatSourceTypeEnum.app || sourceType === ChatSourceTypeEnum.workflowBuilder) {
     return {
       workspaceRoot,
       runtimeSkillsRoot,

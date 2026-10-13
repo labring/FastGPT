@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, CloseButton, Flex, IconButton, Portal, Text, useDisclosure } from '@chakra-ui/react';
+import { Box, CloseButton, Flex, IconButton, Portal, Text } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -12,27 +12,57 @@ import AppDetailPanelModal, {
   APP_DETAIL_PANEL_WIDTH_PX
 } from '../../components/AppDetailPanelModal';
 import { useAppEditorUIState } from '@/components/core/app/useAppEditorUIState';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useSystemConfigAutoOpen } from './hooks/useSystemConfigAutoOpen';
+import WorkflowBuilderGuidePopover from '../WorkflowBuilder/GuidePopover';
+import { useWorkflowBuilderUI } from '../WorkflowBuilder/context';
+import WorkflowToolbarTooltip from '../WorkflowBuilder/WorkflowToolbarTooltip';
+
+/** 画布左侧工具栏中的系统配置入口，同时承载首次引导的第一步。 */
+export const SystemConfigButton = React.memo(() => {
+  const { t } = useTranslation();
+  const { guideStep, toggleLeftPanel, completeGuideStep } = useWorkflowBuilderUI();
+
+  return (
+    <WorkflowBuilderGuidePopover
+      isOpen={guideStep === 'systemConfig'}
+      title={t('workflow:workflow_builder_guide_system_title')}
+      description={t('workflow:workflow_builder_guide_system_description')}
+      onConfirm={() => completeGuideStep('systemConfig')}
+    >
+      <Box>
+        <WorkflowToolbarTooltip
+          isDisabled={guideStep === 'systemConfig'}
+          label={t('workflow:template.system_config')}
+        >
+          <IconButton
+            icon={
+              <MyIcon name={'core/app/configDrawerSetting'} boxSize={'18px'} color={'#485264'} />
+            }
+            w={8}
+            minW={8}
+            h={8}
+            p={'7px'}
+            borderRadius={'6px'}
+            aria-label={t('workflow:template.system_config')}
+            variant={'unstyled'}
+            _hover={{ bg: 'myGray.50' }}
+            onClick={() => toggleLeftPanel('systemConfig')}
+          />
+        </WorkflowToolbarTooltip>
+      </Box>
+    </WorkflowBuilderGuidePopover>
+  );
+});
+SystemConfigButton.displayName = 'SystemConfigButton';
 
 const SystemConfigDrawer = () => {
   const { t } = useTranslation();
-  const { isOpen, onOpen, onToggle, onClose } = useDisclosure();
+  const { activeLeftPanel, closeLeftPanel } = useWorkflowBuilderUI();
+  const isOpen = activeLeftPanel === 'systemConfig';
+  const onClose = () => closeLeftPanel('systemConfig');
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const isWorkflowTool = appDetail.type === AppTypeEnum.workflowTool;
   const setAppDetail = useContextSelector(AppContext, (v) => v.setAppDetail);
-  const {
-    isWelcomeTextFolded,
-    toggleWelcomeTextFold,
-    hasCompletedSystemConfigFirstEntryGuide,
-    completeSystemConfigFirstEntryGuide
-  } = useAppEditorUIState(appDetail._id);
-  useSystemConfigAutoOpen({
-    appId: appDetail._id,
-    hasCompletedFirstEntryGuide: hasCompletedSystemConfigFirstEntryGuide,
-    onCompleteFirstEntryGuide: completeSystemConfigFirstEntryGuide,
-    onOpen
-  });
+  const { isWelcomeTextFolded, toggleWelcomeTextFold } = useAppEditorUIState(appDetail._id);
 
   const chatConfig = useMemo(
     () =>
@@ -45,25 +75,6 @@ const SystemConfigDrawer = () => {
 
   return (
     <>
-      <Box position={'absolute'} top={'130px'} left={6} zIndex={1}>
-        <MyTooltip shouldWrapChildren={false} label={t('workflow:template.system_config')}>
-          <IconButton
-            icon={<MyIcon name={'core/app/configDrawerSetting'} boxSize={5} color={'myGray.400'} />}
-            w={9}
-            minW={9}
-            h={9}
-            p={1.5}
-            borderRadius={'50%'}
-            aria-label={t('workflow:template.system_config')}
-            variant={'whitePrimary'}
-            _hover={{ bg: 'myGray.50' }}
-            border={'none'}
-            boxShadow={'0 4px 5px rgba(19, 51, 107, 0.20), 0 0 0.5px rgba(19, 51, 107, 0.50)'}
-            onClick={onToggle}
-          />
-        </MyTooltip>
-      </Box>
-
       <Portal>
         <AppDetailPanelModal
           isOpen={isOpen}
@@ -73,6 +84,7 @@ const SystemConfigDrawer = () => {
           top={[0, '67px']}
           position={'fixed'}
           placement={'left'}
+          animationMode={'slideFromLeft'}
           showMask={false}
           header={
             <Flex w={'100%'} justifyContent={'space-between'} alignItems={'center'}>

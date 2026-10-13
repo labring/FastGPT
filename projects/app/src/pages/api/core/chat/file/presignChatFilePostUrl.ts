@@ -20,6 +20,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
+import { WORKFLOW_BUILDER_CHAT_CONFIG } from '@fastgpt/global/core/workflow/builder/constants';
 
 /**
  * 合并应用级文件上传配置和文件变量配置。
@@ -144,6 +145,10 @@ async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResp
 
     if (authRes.sourceType === ChatSourceTypeEnum.skillEdit) {
       return undefined;
+    }
+
+    if (authRes.sourceType === ChatSourceTypeEnum.workflowBuilder) {
+      return WORKFLOW_BUILDER_CHAT_CONFIG.fileSelectConfig;
     }
 
     const exhaustiveCheck: never = authRes.sourceType;

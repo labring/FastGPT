@@ -80,6 +80,9 @@ describe('runAuxiliaryGenerationAgentLoop', () => {
     expect(runAgentLoopMock).toHaveBeenCalledWith(
       expect.objectContaining({
         runtime: expect.objectContaining({
+          llmParams: expect.objectContaining({
+            forceMediaToBase64: true
+          }),
           systemTools: {
             ask: { enabled: true }
           },
