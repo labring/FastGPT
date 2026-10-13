@@ -1,6 +1,16 @@
 import http from 'http';
 import os from 'os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
+
+// 94ae033d7 起 accessToken 改为 `getSystemInstanceConfig().providers.dataSource.dingtalkBaseUrl || serviceEnv.DINGTALK_BASE_URL`，
+// 真实快照的 providers.dataSource.dingtalkBaseUrl 已被 schema 默认值填满（'https://api.dingtalk.com'），`|| serviceEnv` 兜底不触发；
+// 本文件通过 vi.stubEnv + vi.resetModules 改写 serviceEnv 来指向本机私网代理，
+// 因此预置一个"域对象存在、叶子字段全部缺省"的种子快照，让 getSystemInstanceConfig 首次调用时采纳它，
+// 从而走回 `|| serviceEnv` 兜底分支，保持"env 驱动"的测试意图。
+// 注意：getSystemInstanceConfig 只在模块首次调用时读 global.systemInstanceConfig，
+// vi.resetModules 会重置 controller 模块缓存，因此每次动态 import 都会重新采纳该种子。
+(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
 
 const { mockGetOrRefresh } = vi.hoisted(() => ({ mockGetOrRefresh: vi.fn() }));
 

@@ -4,6 +4,14 @@ import {
   TeamDatasetCreateRoleVal,
   TeamSkillCreateRoleVal
 } from '@fastgpt/global/support/permission/user/constant';
+import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
+
+// commit 94ae033d7 起 createTeamDefaultGroup 改为 `getSystemInstanceConfig().auth.defaultTeamBasicPermissionsEnabled ?? serviceEnv.DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED`：
+// 生产快照的叶子字段被 schema 默认值填满，`?? serviceEnv` 兜底分支永不触发。
+// 本文件通过改写 serviceEnv 驱动被测行为，因此预置"域对象存在、叶子字段全部缺省"的种子快照，
+// 使 getSystemInstanceConfig 首次调用采纳它、读取回落到 serviceEnv，保持原 env 驱动的测试意图。
+(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { Types } from '@fastgpt/service/common/mongo';

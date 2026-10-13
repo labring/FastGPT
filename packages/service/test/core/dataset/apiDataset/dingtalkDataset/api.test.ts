@@ -1,20 +1,42 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockAxiosPost, mockRequest, mockGetRedisCache, mockSetRedisCache, mockDelRedisCache } =
-  vi.hoisted(() => ({
-    mockAxiosPost: vi.fn(),
-    mockRequest: vi.fn(),
-    mockGetRedisCache: vi.fn(),
-    mockSetRedisCache: vi.fn(),
-    mockDelRedisCache: vi.fn()
-  }));
+const {
+  mockAxiosPost,
+  mockRequest,
+  mockGetRedisCache,
+  mockSetRedisCache,
+  mockDelRedisCache,
+  mockRequestInterceptors
+} = vi.hoisted(() => ({
+  mockAxiosPost: vi.fn(),
+  mockRequest: vi.fn(),
+  mockGetRedisCache: vi.fn(),
+  mockSetRedisCache: vi.fn(),
+  mockDelRedisCache: vi.fn(),
+  // 记录生产在实例上注册的请求拦截器（动态改写 baseURL），并在 mock request 中回放，
+  // 以验证 dingtalkBaseUrl 从实例配置惰性读取、不再被模块级常量固化
+  mockRequestInterceptors: { handlers: [] as ((config: any) => any)[] }
+}));
 
 vi.mock('../../../../../common/api/axios', () => ({
   axiosWithoutSSRF: {
     post: mockAxiosPost
   },
   createProxyAxios: vi.fn(() => ({
-    request: mockRequest
+    interceptors: {
+      request: {
+        use: (handler: (config: any) => any) => {
+          mockRequestInterceptors.handlers.push(handler);
+        }
+      }
+    },
+    request: (config: any) => {
+      const applied = mockRequestInterceptors.handlers.reduce(
+        (acc, handler) => handler(acc),
+        config
+      );
+      return mockRequest(applied);
+    }
   }))
 }));
 
