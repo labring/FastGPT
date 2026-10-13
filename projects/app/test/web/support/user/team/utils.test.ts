@@ -34,12 +34,12 @@ describe('getAllTeamMembers', () => {
     expect(vi.mocked(POST).mock.calls).toEqual([
       [
         '/proApi/support/user/team/member/list',
-        { groupId: 'group', pageSize: 1000, offset: 0 },
+        { groupId: 'group', pageSize: 500, offset: 0 },
         { cancelToken: controller }
       ],
       [
         '/proApi/support/user/team/member/list',
-        { groupId: 'group', pageSize: 1000, offset: 2 },
+        { groupId: 'group', pageSize: 500, offset: 2 },
         { cancelToken: controller }
       ]
     ]);
