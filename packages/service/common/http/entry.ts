@@ -71,6 +71,7 @@ export function redactRequestUrl(url: string, redactQueryParams: string[]) {
 /**
  * 创建与 Web 框架无关的 API handler 管线，统一处理日志、追踪、错误和默认 JSON 响应。
  * 框架适配器通过 beforeCallback 注入 CORS 等运行时能力。
+ * handler 自行写回包时，以响应生命周期为准，不向已开始或已关闭的响应追加 JSON。
  */
 export const createApiEntry = <
   Request extends NodeApiRequest = NodeApiRequest,
@@ -88,6 +89,8 @@ export const createApiEntry = <
       res: Response
     ) {
       const start = Date.now();
+      /** end() 后可能尚未 finish，断开的连接也不能再写默认响应或错误响应。 */
+      const isResponseClosed = () => res.writableEnded || res.writableFinished || res.destroyed;
       const requestId = randomUUID();
       res.setHeader('x-request-id', requestId);
 
@@ -146,20 +149,24 @@ export const createApiEntry = <
 
             try {
               await Promise.all(beforeCallback.map((item) => item(req as Request, res)));
-              if (res.writableEnded || res.writableFinished) {
+              if (isResponseClosed()) {
                 return;
               }
 
               let response = null;
               for await (const handler of args) {
                 response = await handler(req, res);
-                if (res.writableFinished) {
+                if (isResponseClosed()) {
                   break;
                 }
               }
 
               const contentType = res.getHeader('Content-Type');
-              if ((!contentType || contentType === 'application/json') && !res.writableFinished) {
+              if (
+                (!contentType || contentType === 'application/json') &&
+                !res.headersSent &&
+                !isResponseClosed()
+              ) {
                 const jsonResponse = await jsonRes(res, {
                   code: 200,
                   data: response
@@ -171,6 +178,18 @@ export const createApiEntry = <
 
               span.setAttribute('http.response.status_code', res.statusCode);
             } catch (error) {
+              // 响应一旦开始就不能改成 JSON 错误；保留已发送内容并结束失效连接。
+              if (res.headersSent || isResponseClosed()) {
+                span.setAttribute('http.response.status_code', res.statusCode);
+                setSpanError(span, error);
+                getLogger(LogCategories.HTTP.ERROR).error('API response stream failed', {
+                  url: logUrl,
+                  error
+                });
+                if (!isResponseClosed()) res.destroy();
+                return;
+              }
+
               // Handle Zod validation errors. Only explicit API input parse errors can be downgraded.
               if (error instanceof ZodError || error instanceof ApiRequestInputParseError) {
                 const requestInputErrorContext = getZodParseErrorInputSource(error);
