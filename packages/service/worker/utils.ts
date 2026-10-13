@@ -190,6 +190,8 @@ const WORKER_NETWORK_ERROR_CODES = [
   'ERR_NAME_NOT_RESOLVED'
 ];
 
+const WORKER_PLACEHOLDER_DOMAIN_PATTERN = /(?:^|[^a-zA-Z0-9-])example\.com(?=$|[^a-zA-Z0-9-])/i;
+
 /**
  * 校验 Worker 任务执行错误是否属于预期的外部网络/DNS 故障或用户业务异常。
  * 针对用户提供的外部链接失效（如 ENOTFOUND、ECONNREFUSED 等）降级为 warn，避免污染系统 error 指标；
@@ -202,31 +204,29 @@ export const isExpectedWorkerTaskError = (error: unknown): boolean => {
     code?: string;
     message?: string;
     name?: string;
-    cause?: { code?: string; message?: string };
+    cause?: unknown;
   };
 
   const message = typeof error === 'string' ? error : errObj.message || '';
 
   // 配置类占位符错误（如 example.com / seedream.example.com 未替换）仍属于系统配置缺陷，保留 error
-  if (message.includes('example.com')) {
+  if (WORKER_PLACEHOLDER_DOMAIN_PATTERN.test(message)) {
     return false;
   }
 
   if (error instanceof UserError || errObj.name === 'UserError') return true;
 
-  const code = errObj.code || errObj.cause?.code;
+  const causeCode =
+    typeof errObj.cause === 'object' && errObj.cause !== null
+      ? (errObj.cause as { code?: string }).code
+      : undefined;
+  const code = errObj.code || causeCode;
   if (typeof code === 'string' && WORKER_NETWORK_ERROR_CODES.includes(code)) {
     return true;
   }
 
   if (
-    message.includes('ENOTFOUND') ||
-    message.includes('ECONNREFUSED') ||
-    message.includes('ETIMEDOUT') ||
-    message.includes('ECONNRESET') ||
-    message.includes('EAI_AGAIN') ||
-    message.includes('EHOSTUNREACH') ||
-    message.includes('ENETUNREACH') ||
+    WORKER_NETWORK_ERROR_CODES.some((networkCode) => message.includes(networkCode)) ||
     message.includes('getaddrinfo') ||
     message.includes('maximum allowed size')
   ) {
@@ -844,15 +844,6 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     return item;
   }
 
-  /**
-   * 校验 Worker 任务执行错误是否属于预期的外部网络/DNS 故障或用户业务异常。
-   * 针对用户提供的外部链接失效（如 ENOTFOUND、ECONNREFUSED 等）降级为 warn，避免污染系统 error 指标；
-   * 但如果涉及 example.com 等未替换的配置占位符，仍保留为 error 便于定位系统配置缺陷。
-   */
-  private isExpectedTaskError(error: unknown): boolean {
-    return isExpectedWorkerTaskError(error);
-  }
-
   private completeTask(
     item: WorkerQueueItem<Props>,
     result: { type: 'success' | 'error'; data: unknown }
@@ -872,7 +863,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     const resourceSnapshot = this.resourcePolicy?.getResourceSnapshot();
 
     if (result.type === 'error') {
-      const isExpected = this.isExpectedTaskError(result.data);
+      const isExpected = isExpectedWorkerTaskError(result.data);
       const logFn = isExpected
         ? this.logger.warn.bind(this.logger)
         : this.logger.error.bind(this.logger);

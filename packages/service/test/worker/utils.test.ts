@@ -788,6 +788,11 @@ describe('worker/utils isExpectedWorkerTaskError', () => {
     );
     expect(isExpectedWorkerTaskError(new Error('connect ECONNREFUSED 127.0.0.1:80'))).toBe(true);
     expect(isExpectedWorkerTaskError(new Error('file exceeded maximum allowed size'))).toBe(true);
+    expect(
+      isExpectedWorkerTaskError(new Error('fetch failed', { cause: { code: 'ENOTFOUND' } }))
+    ).toBe(true);
+    // notexample.com 是正常的外部域名，不应被占位符规则误杀
+    expect(isExpectedWorkerTaskError(new Error('getaddrinfo ENOTFOUND notexample.com'))).toBe(true);
   });
 
   it('占位符域名 example.com 不降级，保留为非预期错误', () => {
