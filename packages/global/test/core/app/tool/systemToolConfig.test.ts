@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SystemToolCodec } from '@fastgpt/global/core/app/tool/systemTool/codec';
 import { UpdateSystemToolBodySchema } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
-import type { SystemPluginToolCollectionType } from '@fastgpt/global/core/plugin/tool/type';
+import { type SystemPluginToolCollectionType } from '@fastgpt/global/core/plugin/tool/type';
 
 describe('system tool config', () => {
   it('allows null secretsVal to explicitly disable system secret', () => {

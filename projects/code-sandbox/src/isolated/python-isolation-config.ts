@@ -14,8 +14,9 @@ export function shouldEnablePythonNativeIsolation(): boolean {
 /**
  * Python native 隔离是 Linux 多租户安全边界的一部分。
  *
- * Linux 环境固定启用 seccomp/chroot/setuid，缺失 native 库或 chroot 根目录时
- * 直接 fail-closed；macOS/Windows 仅保留本地开发兼容路径，不声明具备 OS 隔离。
+ * Linux 环境固定启用 chroot/no_new_privs/setuid，seccomp 默认启用且失败时
+ * fail-closed；只有部署者显式配置后才跳过 seccomp。macOS/Windows 仅保留
+ * 本地开发兼容路径，不声明具备 OS 隔离。
  */
 export function assertPythonNativeIsolationReady(libraryPath: string) {
   if (!shouldEnablePythonNativeIsolation()) return;

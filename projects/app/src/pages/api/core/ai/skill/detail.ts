@@ -5,14 +5,15 @@ import type {
   GetSkillDetailQuery,
   GetSkillDetailResponse
 } from '@fastgpt/global/core/ai/skill/api';
-import { GetSkillDetailQuerySchema } from '@fastgpt/global/core/ai/skill/api';
+import {
+  GetSkillDetailQuerySchema,
+  GetSkillDetailResponseSchema
+} from '@fastgpt/global/openapi/core/ai/skill/api';
 import { isValidObjectId } from 'mongoose';
 import type { ApiRequestProps } from '@fastgpt/next/type';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { Types } from '@fastgpt/service/common/mongo';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { buildAppSkillRefMongoQuery } from '@fastgpt/service/core/app/resourceRefs';
+import { findTeamAppsByPublishedResource } from '@fastgpt/service/core/app/resourceLookup';
 
 async function handler(
   req: ApiRequestProps<Record<string, never>, GetSkillDetailQuery>
@@ -31,13 +32,17 @@ async function handler(
     per: ReadPermissionVal
   });
 
-  const appCount = await MongoApp.countDocuments({
-    teamId: new Types.ObjectId(String(teamId)),
-    deleteTime: null,
-    ...buildAppSkillRefMongoQuery(skill._id.toString())
-  });
+  const appCount = permission.isOwner
+    ? ((
+        await findTeamAppsByPublishedResource({
+          teamId,
+          type: 'skill',
+          ids: skill._id.toString()
+        })
+      ).counts.get(skill._id.toString()) ?? 0)
+    : undefined;
 
-  return {
+  return GetSkillDetailResponseSchema.parse({
     _id: skill._id,
     source: skill.source,
     type: skill.type,
@@ -55,8 +60,8 @@ async function handler(
     createTime: skill.createTime?.toISOString() || new Date().toISOString(),
     updateTime: skill.updateTime?.toISOString() || new Date().toISOString(),
     permission,
-    appCount
-  };
+    ...(appCount !== undefined ? { appCount } : {})
+  });
 }
 
 export default NextAPI(handler);

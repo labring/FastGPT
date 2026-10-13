@@ -1,3 +1,4 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { deleteCustomDomain, listCustomDomain } from '@/web/support/customDomain/api';
 import {
@@ -5,7 +6,6 @@ import {
   Button,
   Flex,
   Table,
-  TableContainer,
   Tbody,
   Td,
   Th,
@@ -14,7 +14,7 @@ import {
   useDisclosure
 } from '@chakra-ui/react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import dynamic from 'next/dynamic';
 import { providerMap, customDomainStatusMap } from '@/web/support/customDomain/const';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -42,7 +42,7 @@ const CreateCustomDomainModal = dynamic(
 // );
 
 const CustomDomain = () => {
-  const { t } = useClientTranslation(['account_custom_domain']);
+  const { t } = useSafeTranslation();
   const router = useRouter();
   const { teamPlanStatus } = useUserStore();
 
@@ -108,12 +108,14 @@ const CustomDomain = () => {
               </Button>
             )}
           </Flex>
-          <TableContainer
+          <FixedTableContainer
+            maxH="none"
             {...accountContentScrollStyles}
             display="flex"
             flexDirection="column"
             position="relative"
             p={[4, 6]}
+            h={['60dvh', 0]}
           >
             {loadingCustomDomainList ? <MyLoading fixed={false} /> : null}
             <Table>
@@ -202,7 +204,7 @@ const CustomDomain = () => {
                 />
               </Flex>
             )}
-          </TableContainer>
+          </FixedTableContainer>
         </Flex>
       </AccountContainer>
       <ConfirmModal />

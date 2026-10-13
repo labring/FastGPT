@@ -12,7 +12,8 @@ type AccountVerificationRateLimitAction =
   | 'captcha-create'
   | 'captcha-consume'
   | 'password-create'
-  | 'password-consume';
+  | 'password-consume'
+  | 'password-update';
 
 type AccountVerificationRateLimitParams = {
   account: string;
@@ -65,3 +66,11 @@ export const assertPasswordVerificationConsumeRateLimit = (params: {
   scene: PasswordRateLimitScene;
   limit: number;
 }) => accountVerificationRateLimit.assert({ ...params, action: 'password-consume' });
+
+/** 按账号限制每分钟实际提交新密码的次数。 */
+export const assertPasswordUpdateRateLimit = (params: { account: string; limit: number }) =>
+  accountVerificationRateLimit.assert({
+    ...params,
+    scene: 'changePassword',
+    action: 'password-update'
+  });

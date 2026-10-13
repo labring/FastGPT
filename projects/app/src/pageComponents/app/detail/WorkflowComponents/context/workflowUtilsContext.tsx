@@ -1,38 +1,39 @@
-// 工作流工具函数层
 import React, { type ReactNode, useCallback, useEffect, useMemo } from 'react';
+// 工作流工具函数层
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getWorkflowModelDetails } from '@/web/core/workflow/modelData';
+import { storeEdge2RenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { useReactFlow } from 'reactflow';
+import type { Node, Edge } from 'reactflow';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { storeNode2FlowNode, storeEdge2RenderEdge } from '@/web/core/workflow/utils';
 import {
   checkWorkflowBeforeRunOrPublish,
   checkWorkflowNodeIssues
 } from '@/web/core/workflow/workflowCheck';
-import { uiWorkflow2StoreWorkflow } from '../utils';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import {
+  canInputBeAgentGenerated,
+  normalizeFlowNodeInputType
+} from '@fastgpt/global/core/app/formEdit/utils';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { WorkflowBufferDataContext } from './workflowInitContext';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
-import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { AppContext } from '../../context';
-import { WorkflowSnapshotContext } from './workflowSnapshotContext';
+import { uiWorkflow2StoreWorkflow } from '../utils';
 import { WorkflowActionsContext } from './workflowActionsContext';
-import {
-  canInputBeAgentGenerated,
-  isAgentGeneratedToolInput,
-  normalizeFlowNodeInputType
-} from '@fastgpt/global/core/app/formEdit/utils';
+import { WorkflowBufferDataContext } from './workflowInitContext';
+import { WorkflowSnapshotContext } from './workflowSnapshotContext';
 
 // 创建 Context
 type WorkflowUtilsContextValue = {
@@ -50,12 +51,13 @@ type WorkflowUtilsContextValue = {
         edges: StoreEdgeItemType[];
       }
     | undefined;
-  flowData2StoreDataAndCheck: (hideTip?: boolean) =>
+  flowData2StoreDataAndCheck: (hideTip?: boolean) => Promise<
     | {
         nodes: StoreNodeItemType[];
         edges: StoreEdgeItemType[];
       }
-    | undefined;
+    | undefined
+  >;
   splitToolInputs: (
     inputs: FlowNodeInputItemType[],
     nodeId: string
@@ -78,10 +80,13 @@ export const splitToolInputsByMode = (inputs: FlowNodeInputItemType[], isTool: b
 
   inputs.forEach((item) => {
     const normalizedInput = normalizeFlowNodeInputType(item, { isTool });
-    const isAgentGeneratedInput =
-      isAgentGeneratedToolInput(normalizedInput) && canInputBeAgentGenerated(normalizedInput);
+    // canEdit 仅表示该字段可在节点内编辑；代码变量不应自动成为工具参数。
+    const isToolParamInput =
+      item.canEdit === true &&
+      item.defaultToAgentGenerated === true &&
+      canInputBeAgentGenerated(item);
 
-    if (isTool && isAgentGeneratedInput && item.canEdit) {
+    if (isTool && isToolParamInput) {
       toolInputs.push(item);
       return;
     }
@@ -188,7 +193,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
 
   // 转换并验证工作流数据
   const flowData2StoreDataAndCheck = useCallback(
-    (hideTip = false) => {
+    async (hideTip = false) => {
       const nodes = getNodes();
 
       // Sandbox unavailable check
@@ -222,11 +227,23 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         return;
       }
 
-      const { issueMap, hasError, firstErrorNodeId } = checkWorkflowBeforeRunOrPublish({
+      const models = await getWorkflowModelDetails({
         nodes,
-        edges,
-        t
-      });
+        chatConfig: appDetail.chatConfig,
+        appId: appDetail._id
+      }).catch(() => undefined);
+      if (!models) {
+        if (!hideTip) toast({ status: 'error', title: t('common:model_catalog_load_failed') });
+        return;
+      }
+      const { issueMap, hasError, firstErrorNodeId, chatConfigIssues } =
+        checkWorkflowBeforeRunOrPublish({
+          nodes,
+          edges,
+          models,
+          chatConfig: appDetail.chatConfig,
+          t
+        });
 
       if (!hasError) {
         onRemoveError();
@@ -255,7 +272,12 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
 
         toast({
           status: 'warning',
-          title: t('common:core.workflow.Check Failed')
+          title: t('common:core.workflow.Check Failed'),
+          description: [...Object.values(issueMap).flat(), ...chatConfigIssues]
+            .filter((issue) => issue.level === 'error')
+            .map((issue) => issue.message)
+            .filter(Boolean)
+            .join('\n')
         });
       }
     },
@@ -269,6 +291,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       onUpdateNodeError,
       showSandbox,
       enableSandbox,
+      appDetail._id,
       appDetail.chatConfig,
       toast
     ]
@@ -276,20 +299,36 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
 
   /** 编辑页定时全量扫描，主动发现新增/已修复的节点错误。 */
   useEffect(() => {
-    const runScheduledCheck = () => {
+    let active = true;
+    const runScheduledCheck = async () => {
       const nodes = getNodes();
       if (nodes.length === 0) return;
 
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, t });
+      const models = await getWorkflowModelDetails({ nodes, appId: appDetail._id }).catch(
+        () => undefined
+      );
+      // 目录失败保留原校验结果；等待期间用户编辑或离开时不回写旧快照。
+      if (
+        !active ||
+        !models ||
+        nodes.some(
+          (node) =>
+            getNodes().find((current) => current.id === node.id)?.data.inputs !== node.data.inputs
+        )
+      )
+        return;
+      const issueMap = checkWorkflowNodeIssues({ nodes, edges, models, t });
       onSyncWorkflowCheckIssues(issueMap);
     };
 
+    runScheduledCheck();
     const timer = window.setInterval(runScheduledCheck, 10_000);
 
     return () => {
+      active = false;
       window.clearInterval(timer);
     };
-  }, [edges, getNodes, onSyncWorkflowCheckIssues, t]);
+  }, [appDetail._id, edges, getNodes, onSyncWorkflowCheckIssues, t]);
 
   // 4. initData - 初始化工作流数据
   const initData = useCallback(
@@ -315,9 +354,33 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       );
       const nodes =
         storeNodes?.map((item) =>
-          storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
+          storeNode2FlowNode({
+            item,
+            t,
+            isTool: toolNodeIds.has(item.nodeId)
+          })
         ) || [];
       const edges = workflow.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
+
+      // 进入编辑器后延迟校验并定位到第一个错误节点；ReactFlow 渲染后再 fitView 才有效。
+      const scheduleEntryCheck = (checkNodes: Node[], checkEdges: Edge[]) => {
+        if (!isInit) return;
+        window.setTimeout(() => {
+          const { issueMap, hasError, firstErrorNodeId } = checkWorkflowBeforeRunOrPublish({
+            nodes: checkNodes,
+            edges: checkEdges,
+            t
+          });
+          onSyncWorkflowCheckIssues(issueMap);
+          if (hasError && firstErrorNodeId) {
+            const errorNode = checkNodes.find((node) => node.data.nodeId === firstErrorNodeId);
+            onUpdateNodeError(firstErrorNodeId, true);
+            if (errorNode) {
+              fitView({ nodes: [errorNode], padding: 0.3 });
+            }
+          }
+        }, 300);
+      };
 
       // 有历史记录，直接用历史记录覆盖
       if (isInit && past.length > 0) {
@@ -325,6 +388,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         setNodes(firstPast.nodes);
         setEdges(firstPast.edges);
         setAppDetail((state) => ({ ...state, chatConfig: firstPast.chatConfig }));
+        scheduleEntryCheck(firstPast.nodes, firstPast.edges);
         return;
       }
       // 初始化一个历史记录
@@ -344,8 +408,20 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       setNodes(nodes);
       setEdges(edges);
       setAppDetail((state) => ({ ...state, chatConfig: workflow.chatConfig }));
+      scheduleEntryCheck(nodes, edges);
     },
-    [appDetail.chatConfig, past, setAppDetail, setEdges, setNodes, setPast, t]
+    [
+      appDetail.chatConfig,
+      past,
+      setAppDetail,
+      setEdges,
+      setNodes,
+      setPast,
+      t,
+      fitView,
+      onSyncWorkflowCheckIssues,
+      onUpdateNodeError
+    ]
   );
 
   const contextValue = useMemo(() => {

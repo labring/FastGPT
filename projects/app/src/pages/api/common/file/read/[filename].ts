@@ -97,7 +97,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   }
 }
 
-export default NextAPI(handler);
+export default NextAPI(handler, {
+  csrf: false
+});
 
 export const config = {
   api: {

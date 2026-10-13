@@ -4,7 +4,7 @@ import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type'
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useState } from 'react';
 import { type MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
 import { type Omit } from '@fastgpt/web/components/common/DndDrag';
@@ -21,7 +21,7 @@ export function ChangeOwnerModal({
   onSuccess: () => void;
   onClose: () => void;
 }) {
-  const { t } = useClientTranslation('account_team');
+  const { t } = useSafeTranslation();
 
   const [searchKey, setSearchKey] = React.useState('');
 

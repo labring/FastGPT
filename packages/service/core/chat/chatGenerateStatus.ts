@@ -3,7 +3,7 @@
  * Used by stream resume, sidebar polling, and stale-generating correction paths.
  */
 import { MongoChat } from './chatSchema';
-import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { buildChatSourceQuery, buildChatSourceWriteFields, type ChatSourceParams } from './source';
 
 type EnsureGenerateChatParams = ChatSourceParams & {
@@ -35,7 +35,11 @@ const buildGeneratingChatUpdate = (params: EnsureGenerateChatParams) => {
       chatGenerateStatus: ChatGenerateStatusEnum.generating
     },
     $setOnInsert: {
-      createTime: now
+      createTime: now,
+      summary: {
+        llmInputTokens: 0,
+        llmOutputTokens: 0
+      }
     }
   };
 };

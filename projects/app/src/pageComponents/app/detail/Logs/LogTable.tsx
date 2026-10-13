@@ -1,11 +1,10 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import {
   Box,
   Button,
   Flex,
   HStack,
-  Input,
   Table,
-  TableContainer,
   Tbody,
   Td,
   Th,
@@ -15,10 +14,16 @@ import {
 } from '@chakra-ui/react';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
-import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import DateRangePicker from '@fastgpt/web/components/common/DateRangePicker';
+import {
+  FilterInput,
+  MultiSelectFilter,
+  createMultiSelectFilter,
+  toMultiSelectFilterQuery,
+  useCommonFilterLabels
+} from '@fastgpt/web/components/common/TagFilter';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import DateRangePicker from '@fastgpt/web/components/common/DateRangePicker';
 import { useLocalStorageState } from 'ahooks';
 import { getLogKeys } from '@/web/core/app/api/log';
 import type { AppLogKeysType } from '@fastgpt/global/core/app/logs/type';
@@ -46,7 +51,7 @@ import type { HeaderControlProps } from './LogChart';
 import FeedbackTypeFilter from './FeedbackTypeFilter';
 import UserIpTypeFilter, { type UserIpTypeValue } from './UserIpTypeFilter';
 import ErrorCountFilter from './ErrorCountFilter';
-import UserFilter, { type SelectedUserType } from './UserFilter';
+import UserFilter, { parseUserKey } from './UserFilter';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
@@ -65,10 +70,8 @@ type LogTableProps = HeaderControlProps & {
 
 const LogTable = ({
   appId,
-  chatSources,
-  setChatSources,
-  isSelectAllSource,
-  setIsSelectAllSource,
+  sourceFilter,
+  setSourceFilter,
   dateRange,
   setDateRange,
   pageSizeCacheKey,
@@ -76,6 +79,7 @@ const LogTable = ({
   px = [4, 8]
 }: LogTableProps) => {
   const { t } = useTranslation();
+  const labels = useCommonFilterLabels();
   const { feConfigs } = useSystemStore();
 
   const [detailLogData, setDetailLogData] = useState<{
@@ -89,8 +93,7 @@ const LogTable = ({
   const [errorFilter, setErrorFilter] = useState<'all' | 'has_error'>('all');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // source
-  const sourceList = useMemo(
+  const sourceOptions = useMemo(
     () =>
       Object.entries(ChatSourceMap).map(([key, value]) => ({
         label: t(value.name as any),
@@ -100,8 +103,7 @@ const LogTable = ({
   );
 
   // user filter
-  const [selectedUsers, setSelectedUsers] = useState<SelectedUserType[]>([]);
-  const [isSelectAllUser, setIsSelectAllUser] = useState(true);
+  const [userFilter, setUserFilter] = useState(createMultiSelectFilter());
 
   // chat
   const [chatSearch, setChatSearch] = useState('');
@@ -136,14 +138,15 @@ const LogTable = ({
   }, [teamLogKeys, logKeys]);
 
   const { tmbIds, outLinkUids } = useMemo(() => {
-    if (isSelectAllUser || selectedUsers.length === 0) {
+    if (userFilter.mode !== 'selected') {
       return { tmbIds: undefined, outLinkUids: undefined };
     }
+    const selectedUsers = userFilter.values.map(parseUserKey);
     return {
       tmbIds: selectedUsers.filter((u) => u.tmbId && !u.outLinkUid).map((u) => u.tmbId!),
       outLinkUids: selectedUsers.filter((u) => u.outLinkUid).map((u) => u.outLinkUid!)
     };
-  }, [selectedUsers, isSelectAllUser]);
+  }, [userFilter]);
 
   const { runAsync: exportLogs } = useRequest(async () => {
     const enabledKeys = logKeys.filter((item) => item.enable).map((item) => item.key);
@@ -155,9 +158,9 @@ const LogTable = ({
         appId,
         dateStart: dayjs(dateRange.from || new Date()).format(),
         dateEnd: dayjs(dateRange.to || new Date()).format(),
-        sources: isSelectAllSource ? undefined : chatSources,
-        tmbIds: tmbIds?.length ? tmbIds : undefined,
-        outLinkUids: outLinkUids?.length ? outLinkUids : undefined,
+        sources: toMultiSelectFilterQuery(sourceFilter),
+        tmbIds,
+        outLinkUids,
         chatSearch,
         title: `${headerTitle},${t('app:logs_keys_chatDetails')}`,
         logKeys: enabledKeys,
@@ -180,9 +183,9 @@ const LogTable = ({
       appId,
       dateStart: dateRange.from!,
       dateEnd: dateRange.to!,
-      sources: isSelectAllSource ? undefined : chatSources,
-      tmbIds: tmbIds?.length ? tmbIds : undefined,
-      outLinkUids: outLinkUids?.length ? outLinkUids : undefined,
+      sources: toMultiSelectFilterQuery(sourceFilter),
+      tmbIds,
+      outLinkUids,
       chatSearch,
       feedbackType,
       unreadOnly: feedbackType === 'all' ? undefined : unreadOnly,
@@ -190,10 +193,9 @@ const LogTable = ({
     }),
     [
       appId,
-      chatSources,
+      sourceFilter,
       dateRange.from,
       dateRange.to,
-      isSelectAllSource,
       tmbIds,
       outLinkUids,
       chatSearch,
@@ -223,6 +225,7 @@ const LogTable = ({
     selectedItems,
     toggleSelect,
     isSelected,
+    getRowSelectionProps,
     FloatingActionBar,
     isSelecteAll,
     selectAllTrigger
@@ -362,10 +365,10 @@ const LogTable = ({
       [AppLogKeysEnum.USER]: (
         <Td key={AppLogKeysEnum.USER}>
           <Box>
-            {!!item.outLinkUid ? (
-              item.outLinkUid
-            ) : item.sourceMember ? (
+            {item.sourceMember ? (
               <UserBox sourceMember={item.sourceMember} />
+            ) : !!item.outLinkUid ? (
+              item.outLinkUid
             ) : (
               '-'
             )}
@@ -387,7 +390,7 @@ const LogTable = ({
       ),
       [AppLogKeysEnum.TITLE]: (
         <Td key={AppLogKeysEnum.TITLE} className="textEllipsis" maxW={'250px'}>
-          {item.customTitle || item.title}
+          {item.title || '-'}
         </Td>
       ),
       [AppLogKeysEnum.SESSION_ID]: (
@@ -445,93 +448,37 @@ const LogTable = ({
 
   return (
     <MyBox isLoading={isLoading} display={'flex'} flexDir={'column'} h={'full'} px={px}>
-      <Flex alignItems={'center'} gap={3} flexWrap={'wrap'}>
+      <Flex alignItems={'flex-start'} gap={3} flexWrap={'wrap'}>
+        <DateRangePicker
+          defaultDate={dateRange}
+          onSuccess={setDateRange}
+          formLabel={t('app:logs_date')}
+        />
         {showSourceSelector && (
-          <Flex>
-            <MultipleSelect<ChatSourceEnum>
-              list={sourceList}
-              value={chatSources}
-              onSelect={setChatSources}
-              isSelectAll={isSelectAllSource}
-              setIsSelectAll={setIsSelectAllSource}
-              h={10}
-              w={'200px'}
-              rounded={'8px'}
-              tagStyle={{
-                px: 1,
-                py: 1,
-                borderRadius: 'sm',
-                bg: 'myGray.100',
-                color: 'myGray.900'
-              }}
-              borderColor={'myGray.200'}
-              formLabel={t('app:logs_source')}
-              formLabelFontSize={'sm'}
-            />
-          </Flex>
-        )}
-        <Flex>
-          <DateRangePicker
-            defaultDate={dateRange}
-            onSuccess={(date) => {
-              setDateRange(date);
-            }}
-            bg={'white'}
-            h={10}
-            flex={'0 1 250px'}
-            rounded={'8px'}
-            borderColor={'myGray.200'}
-            formLabel={t('app:logs_date')}
-            _hover={{
-              borderColor: 'primary.300'
-            }}
+          <MultiSelectFilter
+            title={t('app:logs_source')}
+            value={sourceFilter}
+            onChange={setSourceFilter}
+            options={sourceOptions}
+            labels={labels}
           />
-        </Flex>
+        )}
         {feConfigs?.isPlus && (
-          <Flex>
-            <UserFilter
-              appId={appId}
-              dateRange={dateRange}
-              sources={isSelectAllSource ? undefined : chatSources}
-              selectedUsers={selectedUsers}
-              setSelectedUsers={setSelectedUsers}
-              isSelectAll={isSelectAllUser}
-              setIsSelectAll={setIsSelectAllUser}
-            />
-          </Flex>
-        )}
-        <Flex
-          flex={'0 1 230px'}
-          h={10}
-          alignItems={'center'}
-          rounded={'8px'}
-          border={'1px solid'}
-          borderColor={'myGray.200'}
-          _focusWithin={{
-            borderColor: 'primary.600',
-            boxShadow: '0 0 0 2.4px rgba(51, 112, 255, 0.15)'
-          }}
-          pl={3}
-        >
-          <Box rounded={'8px'} bg={'white'} fontSize={'sm'} border={'none'} whiteSpace={'nowrap'}>
-            {t('common:Search')}
-          </Box>
-          <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
-          <Input
-            placeholder={t('app:logs_search_placeholder')}
-            value={chatSearch}
-            onChange={(e) => setChatSearch(e.target.value)}
-            fontSize={'sm'}
-            border={'none'}
-            pl={0}
-            _focus={{
-              boxShadow: 'none'
-            }}
-            _placeholder={{
-              fontSize: 'sm'
-            }}
+          <UserFilter
+            appId={appId}
+            dateRange={dateRange}
+            sources={toMultiSelectFilterQuery(sourceFilter)}
+            value={userFilter}
+            onChange={setUserFilter}
           />
-        </Flex>
+        )}
+        <FilterInput
+          flex={'0 1 230px'}
+          label={t('common:Search')}
+          placeholder={t('app:logs_search_placeholder')}
+          value={chatSearch}
+          onChange={(e) => setChatSearch(e.target.value)}
+        />
 
         <Box flex={'1'} />
         {showSyncPopover && (
@@ -559,7 +506,42 @@ const LogTable = ({
         />
       </Flex>
 
-      <TableContainer ref={scrollContainerRef} mt={[2, 4]} flex={'1 0 0'} overflowY={'auto'}>
+      <FixedTableContainer
+        maxH="none"
+        ref={scrollContainerRef}
+        mt={[2, 4]}
+        flex={'1 0 0'}
+        footer={
+          <>
+            <FloatingActionBar
+              pb={0}
+              Controler={
+                <HStack>
+                  <Button
+                    variant={'whiteDanger'}
+                    onClick={() =>
+                      openConfirmDelete({
+                        onConfirm: () => handleDelete(chatIds),
+                        customContent: t('app:confirm_delete_chats', {
+                          n: chatIds.length
+                        })
+                      })()
+                    }
+                  >
+                    {t('common:Delete')} ({chatIds.length})
+                  </Button>
+                </HStack>
+              }
+            >
+              {total > pageSize && (
+                <Flex justifyContent={'center'}>
+                  <Pagination />
+                </Flex>
+              )}
+            </FloatingActionBar>
+          </>
+        }
+      >
         <Table variant={'simple'} fontSize={'sm'}>
           <Thead>
             <Tr>
@@ -579,14 +561,14 @@ const LogTable = ({
                 <Tr
                   key={item._id}
                   _hover={{ bg: 'myWhite.600' }}
-                  cursor={'pointer'}
-                  onClick={() =>
-                    setDetailLogData({
-                      chatId: item.chatId,
-                      feedbackUserName:
-                        item.outLinkUid || item.sourceMember?.name || item.tmbId || undefined
-                    })
-                  }
+                  {...getRowSelectionProps(item, {
+                    onClick: () =>
+                      setDetailLogData({
+                        chatId: item.chatId,
+                        feedbackUserName:
+                          item.outLinkUid || item.sourceMember?.name || item.tmbId || undefined
+                      })
+                  })}
                 >
                   <Td>
                     <HStack onClick={(e) => e.stopPropagation()}>
@@ -614,34 +596,7 @@ const LogTable = ({
           </Tbody>
         </Table>
         {logs.length === 0 && !isLoading && <EmptyTip text={t('app:logs_empty')}></EmptyTip>}
-      </TableContainer>
-
-      <FloatingActionBar
-        pb={0}
-        Controler={
-          <HStack>
-            <Button
-              variant={'whiteDanger'}
-              onClick={() =>
-                openConfirmDelete({
-                  onConfirm: () => handleDelete(chatIds),
-                  customContent: t('app:confirm_delete_chats', {
-                    n: chatIds.length
-                  })
-                })()
-              }
-            >
-              {t('common:Delete')} ({chatIds.length})
-            </Button>
-          </HStack>
-        }
-      >
-        {total > pageSize && (
-          <Flex justifyContent={'center'}>
-            <Pagination />
-          </Flex>
-        )}
-      </FloatingActionBar>
+      </FixedTableContainer>
 
       {!!detailLogData && (
         <DetailLogsModal

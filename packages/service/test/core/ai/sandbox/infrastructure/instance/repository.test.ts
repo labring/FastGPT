@@ -4,15 +4,12 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
 import {
   advanceSandboxOperation,
-  claimAppSandboxMigrationTarget,
-  claimSkillSandboxMigrationTarget,
   claimSandboxOperation,
   completeSandboxOperation,
   createSandboxProvisioningInstance,
   createSandboxResourcesToArchiveCursor,
   deleteClaimedSandboxRecord,
   findInactiveRunningSandboxResources,
-  findSandboxInstanceBySource,
   markSandboxOperationFailed,
   switchArchivedSandboxProvider,
   touchRunningSandboxInstance,
@@ -262,39 +259,6 @@ describe('sandbox instance lifecycle repository', () => {
     ).resolves.toMatchObject({ status: SandboxInstanceStatusEnum.stopped });
   });
 
-  it('claims a migration target, replaces its old token and publishes it', async () => {
-    const identity = createAppIdentity();
-    const first = await claimAppSandboxMigrationTarget({
-      provider: 'opensandbox',
-      ...identity,
-      teamId: 'team-1'
-    });
-    const second = await claimAppSandboxMigrationTarget({
-      provider: 'opensandbox',
-      ...identity
-    });
-
-    expect(first).toMatchObject({ status: SandboxInstanceStatusEnum.legacyMigrating });
-    expect(second?.operation?.id).not.toBe(first?.operation?.id);
-
-    await expect(
-      completeSandboxOperation({
-        resource: second!,
-        operationId: first!.operation!.id,
-        fromStatus: SandboxInstanceStatusEnum.legacyMigrating,
-        status: SandboxInstanceStatusEnum.running
-      })
-    ).resolves.toBeNull();
-    await expect(
-      completeSandboxOperation({
-        resource: second!,
-        operationId: second!.operation!.id,
-        fromStatus: SandboxInstanceStatusEnum.legacyMigrating,
-        status: SandboxInstanceStatusEnum.running
-      })
-    ).resolves.toMatchObject({ status: SandboxInstanceStatusEnum.running });
-  });
-
   it('switches provider only while the record remains archived and operation-free', async () => {
     const identity = createAppIdentity();
     const archived = await MongoSandboxInstance.create({
@@ -327,30 +291,24 @@ describe('sandbox instance lifecycle repository', () => {
     ).resolves.toBeNull();
   });
 
-  it('does not reclaim a fresh migration operation before the isolation window', async () => {
-    const identity = createAppIdentity();
-    await claimAppSandboxMigrationTarget({
-      provider: 'opensandbox',
-      ...identity
-    });
-
-    await expect(
-      claimAppSandboxMigrationTarget({
-        provider: 'opensandbox',
-        ...identity,
-        reclaimHeartbeatBefore: new Date(0)
-      })
-    ).resolves.toBeNull();
-  });
-
   it('fences any previous operation before deleting its record', async () => {
     const identity = createAppIdentity();
-    const migrating = await claimAppSandboxMigrationTarget({
+    const stable = await MongoSandboxInstance.create({
       provider: 'opensandbox',
-      ...identity
+      sourceType: ChatSourceTypeEnum.app,
+      ...identity,
+      status: SandboxInstanceStatusEnum.running,
+      lastActiveAt: oldDate,
+      createdAt: oldDate
+    });
+    const resource = stable.toObject() as SandboxResourceDoc;
+    const stopping = await claimSandboxOperation({
+      resource,
+      status: SandboxInstanceStatusEnum.stopping,
+      type: SandboxOperationTypeEnum.stop
     });
     const deleting = await claimSandboxOperation({
-      resource: migrating!,
+      resource: stopping!,
       status: SandboxInstanceStatusEnum.deleting,
       type: SandboxOperationTypeEnum.delete
     });
@@ -358,7 +316,7 @@ describe('sandbox instance lifecycle repository', () => {
     await expect(
       deleteClaimedSandboxRecord({
         resource: deleting!,
-        operationId: migrating!.operation!.id
+        operationId: stopping!.operation!.id
       })
     ).resolves.toMatchObject({ deletedCount: 0 });
     await expect(
@@ -372,7 +330,6 @@ describe('sandbox instance lifecycle repository', () => {
   it('only returns stable running and stopped records to automatic jobs', async () => {
     const runningIdentity = createAppIdentity();
     const stoppedIdentity = createAppIdentity();
-    const migratingIdentity = createAppIdentity();
     await MongoSandboxInstance.create([
       {
         provider: 'opensandbox',
@@ -391,52 +348,11 @@ describe('sandbox instance lifecycle repository', () => {
         createdAt: oldDate
       }
     ]);
-    await claimAppSandboxMigrationTarget({ provider: 'opensandbox', ...migratingIdentity });
-
     expect(
       (await findInactiveRunningSandboxResources(new Date())).map((item) => item.sandboxId)
     ).toContain(runningIdentity.sandboxId);
     expect((await collectArchiveCursor(new Date())).map((item) => item.sandboxId)).toContain(
       stoppedIdentity.sandboxId
     );
-    expect(
-      (await findInactiveRunningSandboxResources(new Date())).map((item) => item.sandboxId)
-    ).not.toContain(migratingIdentity.sandboxId);
-  });
-
-  it('claims and publishes a Skill migration target with the fixed logical user', async () => {
-    const sourceId = `${prefix}skill-${getNanoid()}`;
-    const sandboxId = `${prefix}${getNanoid()}`;
-    const claimed = await claimSkillSandboxMigrationTarget({
-      provider: 'opensandbox',
-      sandboxId,
-      sourceId,
-      teamId: 'team-1'
-    });
-
-    expect(claimed).toMatchObject({
-      sandboxId,
-      sourceType: ChatSourceTypeEnum.skillEdit,
-      sourceId,
-      userId: ChatSourceTypeEnum.skillEdit,
-      status: SandboxInstanceStatusEnum.legacyMigrating
-    });
-    await completeSandboxOperation({
-      resource: claimed!,
-      operationId: claimed!.operation!.id,
-      fromStatus: SandboxInstanceStatusEnum.legacyMigrating,
-      status: SandboxInstanceStatusEnum.running
-    });
-    await expect(
-      findSandboxInstanceBySource({
-        sourceType: ChatSourceTypeEnum.skillEdit,
-        sourceId,
-        userId: ChatSourceTypeEnum.skillEdit
-      })
-    ).resolves.toMatchObject({
-      sandboxId,
-      userId: ChatSourceTypeEnum.skillEdit,
-      status: SandboxInstanceStatusEnum.running
-    });
   });
 });

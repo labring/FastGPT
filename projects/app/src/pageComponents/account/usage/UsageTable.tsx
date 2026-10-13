@@ -1,15 +1,5 @@
-import {
-  Box,
-  Button,
-  Flex,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr
-} from '@chakra-ui/react';
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
+import { Box, Button, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
 import { type UsageListItemType } from '@fastgpt/global/support/wallet/usage/type';
@@ -22,10 +12,11 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getUserUsages } from '@/web/support/wallet/usage/api';
 import dynamic from 'next/dynamic';
 import { type UsageFilterParams } from './type';
+import { toMultiSelectFilterQuery } from '@fastgpt/web/components/common/TagFilter';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { accountContentScrollStyles, accountPageRootStyles } from '@/pageComponents/account/styles';
 
@@ -40,28 +31,19 @@ const UsageTableList = ({
   Selectors: React.ReactNode;
   filterParams: UsageFilterParams;
 }) => {
-  const { t } = useClientTranslation('account_usage');
+  const { t } = useSafeTranslation();
 
-  const { dateRange, selectTmbIds, isSelectAllTmb, usageSources, isSelectAllSource, projectName } =
-    filterParams;
+  const { dateRange, memberFilter, sourceFilter, projectName } = filterParams;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const requestParams = useMemo(() => {
     return {
       dateStart: dayjs(dateRange.from || new Date()).format(),
       dateEnd: dayjs(dateRange.to || new Date()).format(),
-      sources: isSelectAllSource ? undefined : usageSources,
-      teamMemberIds: isSelectAllTmb ? undefined : selectTmbIds,
+      sources: toMultiSelectFilterQuery(sourceFilter),
+      teamMemberIds: toMultiSelectFilterQuery(memberFilter),
       projectName
     };
-  }, [
-    dateRange.from,
-    dateRange.to,
-    isSelectAllSource,
-    isSelectAllTmb,
-    projectName,
-    selectTmbIds,
-    usageSources
-  ]);
+  }, [dateRange.from, dateRange.to, memberFilter, projectName, sourceFilter]);
 
   const {
     data: usages,
@@ -164,7 +146,21 @@ const UsageTableList = ({
           onConfirm={exportUsage}
         />
       </Flex>
-      <TableContainer ref={scrollContainerRef} {...accountContentScrollStyles} mt={3} px={[3, 6]}>
+      <FixedTableContainer
+        maxH="none"
+        ref={scrollContainerRef}
+        {...accountContentScrollStyles}
+        mt={3}
+        px={[3, 4]}
+        footer={
+          <>
+            <Flex mt={3} justifyContent={'center'}>
+              <Pagination />
+            </Flex>
+          </>
+        }
+        h={['60dvh', 0]}
+      >
         <Table>
           <Thead>
             <Tr>
@@ -203,10 +199,7 @@ const UsageTableList = ({
         {!isLoading && usages.length === 0 && (
           <EmptyTip text={t('account_usage:no_usage_records')}></EmptyTip>
         )}
-      </TableContainer>
-      <Flex mt={3} justifyContent={'center'}>
-        <Pagination />
-      </Flex>
+      </FixedTableContainer>
 
       {!!usageDetail && (
         <UsageDetail usage={usageDetail} onClose={() => setUsageDetail(undefined)} />

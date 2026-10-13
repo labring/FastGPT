@@ -3,15 +3,31 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
-import { ListSkillsQuerySchema, type ListSkillsQuery } from '@fastgpt/global/core/ai/skill/api';
+import {
+  ListSkillsQuerySchema,
+  ListSkillsResponseSchema,
+  type ListSkillsQuery
+} from '@fastgpt/global/openapi/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { listReadableAgentSkills } from '@fastgpt/service/core/ai/skill/manage';
 
 export type GetSkillListBody = ListSkillsQuery;
 
 async function handler(req: ApiRequestProps<GetSkillListBody>) {
-  const { parentId, source, searchKey, category, type, skillIds, page, pageSize, withAppCount } =
-    parseApiInput({ req, bodySchema: ListSkillsQuerySchema }).body;
+  const {
+    parentId,
+    source,
+    searchKey,
+    category,
+    type,
+    skillIds,
+    page,
+    pageSize,
+    withAppCount,
+    sort,
+    tmbIds,
+    offset
+  } = parseApiInput({ req, bodySchema: ListSkillsQuerySchema }).body;
   const selectedSkillIds = skillIds?.filter(Boolean) ?? [];
   const isSkillIdsQuery = selectedSkillIds.length > 0;
 
@@ -36,7 +52,7 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
       : [])
   ]);
 
-  return listReadableAgentSkills({
+  const response = await listReadableAgentSkills({
     teamId,
     tmbId,
     teamPer,
@@ -46,9 +62,20 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
     category,
     type,
     skillIds: selectedSkillIds,
-    page,
-    pageSize,
-    withAppCount
+    offset: isSkillIdsQuery ? undefined : offset,
+    page: isSkillIdsQuery ? undefined : page,
+    pageSize: isSkillIdsQuery ? undefined : pageSize,
+    withAppCount,
+    sort,
+    tmbIds
+  });
+  return ListSkillsResponseSchema.parse({
+    ...response,
+    list: response.list.map((skill) => ({
+      ...skill,
+      createTime: new Date(skill.createTime).toISOString(),
+      updateTime: new Date(skill.updateTime).toISOString()
+    }))
   });
 }
 

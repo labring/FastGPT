@@ -1,3 +1,4 @@
+import { AccountCancellationSummarySchema } from './account/cancellation/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { LanguageSchema, type LangEnum } from '../../common/i18n/type';
@@ -18,7 +19,7 @@ export type UserMetaType = {
 export type UserModelSchema = {
   _id: string;
   username: string;
-  password: string;
+  password?: string;
   openaiKey: string;
   createTime: number;
   timezone: string;
@@ -38,10 +39,13 @@ export const UserSchema = z.object({
   avatar: z.string().nullish(),
   timezone: z.string(),
   language: LanguageSchema.optional(),
+  accountCancellation: AccountCancellationSummarySchema.optional(),
   team: TeamTmbItemSchema,
   permission: z.instanceof(TeamPermission),
   contact: z.string().nullish(),
-  tags: z.array(UserTagsSchema).optional()
+  tags: z.array(UserTagsSchema).optional(),
+  hasPassword: z.boolean(),
+  passwordAvailable: z.boolean().optional()
 });
 export type UserType = z.infer<typeof UserSchema>;
 

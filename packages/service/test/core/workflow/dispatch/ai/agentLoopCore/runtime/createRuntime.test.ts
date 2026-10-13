@@ -97,7 +97,7 @@ describe('createAgentLoopCoreRuntime', () => {
       {
         moduleName: 'tool',
         totalPoints: 2,
-        model: 'gpt-4',
+        modelId: '507f1f77bcf86cd799439011',
         inputTokens: 10,
         outputTokens: 5
       }
@@ -106,7 +106,7 @@ describe('createAgentLoopCoreRuntime', () => {
       {
         moduleName: 'tool',
         totalPoints: 2,
-        model: 'gpt-4',
+        modelId: '507f1f77bcf86cd799439011',
         inputTokens: 10,
         outputTokens: 5
       }

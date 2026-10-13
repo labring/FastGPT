@@ -4,7 +4,7 @@
 
 ## 项目概述
 
-FastGPT 是一个 AI Agent 构建平台,通过 Flow 提供开箱即用的数据处理、模型调用能力和可视化工作流编排。这是一个基于 NextJS 构建的全栈 TypeScript 应用,后端使用 MongoDB/PostgreSQL。
+FastGPT 是一个 AI Agent 构建平台,提供开箱即用的数据处理、模型调用能力和可视化工作流编排。这是一个基于 NextJS 构建的全栈 TypeScript 应用,后端使用 MongoDB/PostgreSQL。
 
 **技术栈**: NextJS + TypeScript + ChakraUI + MongoDB + VectorDB(PG, Milvus, Zilliz, OceanBase, SeekDB, OpenGauss......)
 
@@ -40,9 +40,17 @@ FastGPT 是一个 AI Agent 构建平台,通过 Flow 提供开箱即用的数据�
 
 项目使用 Vitest 进行测试并生成覆盖率报告。主要测试命令:
 - `pnpm test` - 运行所有测试
-- `pnpm test {file-path}` - 使用 Vitest 运行指定测试文件的指定测试
+- `pnpm test <file-path...>` - 顺序运行跨 workspace 的局部测试，关闭覆盖率并限制为单 worker，避免多个 Vitest/Mongo 实例争抢本地资源
+- `FASTGPT_TEST_SCOPE=app pnpm test` - 只运行指定 workspace；支持逗号分隔多个 scope，以及 `workspace`、`repo`
+- `FASTGPT_TEST_MODE=integration pnpm test` - 运行 service 集成测试；`sandbox` 运行沙箱集成测试，`all` 运行 workspace 单测和 service 集成测试
 - 测试文件位于 `test/` 目录和 `projects/{{name}}/test/`，代表这`packages`和`单个 project`的测试文件目录。
 - 覆盖率报告生成在 `coverage/` 目录
+
+测试范围要求：
+
+- 默认只测试本次改动的代码及可能受影响的代码，根据依赖关系选择最小且足以验证改动的测试范围。
+- 在开发和交付过程中不主动运行全量测试。
+- 只有用户完成最终验收后，才运行完整测试。
 
 ## 代码组织模式
 
@@ -70,6 +78,7 @@ FastGPT 是一个 AI Agent 构建平台,通过 Flow 提供开箱即用的数据�
 - **数据库**: 支持 MongoDB、带 pgvector 的 PostgreSQL 或 Milvus 向量存储
 - **AI 集成**: 通过统一接口支持多个 AI 提供商
 - **国际化**: 完整支持中文、英文和日文
+- **部署配置保护**: 修改代码过程中不得修改任何部署相关的 `.yml` 或 `.yaml` 文件；如果需求确实需要调整部署配置，必须先获得用户明确确认。
 
 ## 关键文件模式
 
@@ -78,12 +87,6 @@ FastGPT 是一个 AI Agent 构建平台,通过 Flow 提供开箱即用的数据�
 - API 路由遵循 NextJS 约定
 - 组件文件使用 React 函数式组件和 hooks
 - 共享类型定义在 `packages/global/`中
-
-## 环境配置
-
-- 配置文件在 `projects/app/data/config.json`
-- 支持特定环境配置
-- 模型配置在 `packages/service/core/ai/config/`
 
 ## 代码规范
 
@@ -129,44 +132,10 @@ const { body, query } = parseApiInput({
 
 ## 运行要求
 
-### 性格
+### 基础要求
 
 1. 保持怀疑态度，要深入思考和分析现有代码，提出问题，并让用户确认。
-2. 编写单个需求时，运行测试命令，中途不要运行全量测试，只需局部测试即可，只需最后运行全量测试，确保没有问题。
-
-### 工作流程
-
-对于简单任务，可以直接进行编写实现，对于复杂任务，遵循以下流程：
-
-function agent_loop(用户需求){
-   // 1. 需求文档编写
-   while(需求文档编写未完成){
-      用户需求分析
-      编写需求分析文档;
-      提出问题，让用户提供答案;
-      调整需求文档;
-   }
-
-   // 2. 开发文档编写
-   while(开发文档编写未完成){
-      编写开发文档;
-      提出问题，让用户提供答案;
-      调整开发文档;
-   }
-
-   // 3. 列出 TODO
-   while(TODO 列表编写未完成){
-      编写 TODO 列表; // 包含写代码，运行测试等，需要与开发文档对应
-      提出问题，让用户提供答案;
-      调整 TODO 列表;
-   }
-
-   // 4. 执行 TODO List
-   while(TODO List 执行未完成){
-      执行 TODO List;
-      更新 TODO List 状态;
-   }
-}
+2. 编写单个需求时，只运行覆盖改动代码和可能受影响代码的局部测试；用户完成最终验收前，不主动运行全量测试。
 
 ### 输出规范
 

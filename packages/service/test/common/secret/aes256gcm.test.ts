@@ -117,3 +117,27 @@ describe('encrypt + decrypt round-trip', () => {
     });
   });
 });
+
+describe('getDerivedKey and caching', () => {
+  it('should memoize derived keys for the same secret', async () => {
+    const { getDerivedKey } = await import('@fastgpt/service/common/secret/aes256gcm');
+    getDerivedKey.cache.clear?.();
+
+    const key1 = getDerivedKey('test-secret-1');
+    const key2 = getDerivedKey('test-secret-1');
+    expect(key1).toBe(key2); // identical buffer reference (hit cache)
+
+    const key3 = getDerivedKey('test-secret-2');
+    expect(key3).not.toBe(key1);
+
+    // Default parameter and explicit serviceEnv secret hit the same cache entry
+    const defaultKey1 = getDerivedKey();
+    const defaultKey2 = getDerivedKey();
+    expect(defaultKey1).toBe(defaultKey2);
+
+    getDerivedKey.cache.clear?.();
+    const defaultKey3 = getDerivedKey();
+    expect(defaultKey3).toEqual(defaultKey1);
+    expect(defaultKey3).not.toBe(defaultKey1);
+  });
+});

@@ -1,0 +1,61 @@
+import z from 'zod';
+import { SubPlanInputSchema, SubPlanSchema } from '../../../support/wallet/sub/type';
+import { FastGPTFeConfigsSchema, SystemEnvSchema } from '../../../common/system/types';
+
+/* ============================================================================
+ * API: 获取系统配置
+ * Route: GET /api/proApi/admin/system/getConfig
+ * Method: GET
+ * Description: 获取 FastGPT 和 FastGPT Pro 的当前系统配置
+ * Tags: ['Admin', 'Settings', 'Read']
+ * ============================================================================ */
+
+export const FastGPTConfigSchema = z
+  .looseObject({
+    feConfigs: FastGPTFeConfigsSchema.optional().meta({ description: '前端功能和展示配置' }),
+    systemEnv: SystemEnvSchema.optional().meta({ description: '服务端系统运行配置' }),
+    subPlans: SubPlanSchema.optional().meta({ description: '订阅套餐配置' })
+  })
+  .meta({ example: { feConfigs: {}, systemEnv: {} }, description: '系统 FastGPT 配置' });
+
+export const FastGPTProConfigSchema = z
+  .looseObject({})
+  .meta({ example: {}, description: '系统 FastGPT Pro 商业版配置（不含 license）' });
+
+export const GetConfigResponseSchema = z.object({
+  fastgpt: FastGPTConfigSchema.optional(),
+  fastgptPro: FastGPTProConfigSchema.optional()
+});
+export type GetConfigResponse = z.infer<typeof GetConfigResponseSchema>;
+
+/* ============================================================================
+ * API: 更新系统配置
+ * Route: POST /api/proApi/admin/system/updateConfig
+ * Method: POST
+ * Description: 校验、归一化并更新 FastGPT 和 FastGPT Pro 的系统配置
+ * Tags: ['Admin', 'Settings', 'Write']
+ * ============================================================================ */
+
+export const UpdateConfigBodySchema = z.object({
+  fastgpt: z
+    .looseObject({
+      feConfigs: z.looseObject({}).meta({
+        example: {},
+        description: '前端功能和展示配置'
+      }),
+      systemEnv: z.looseObject({}).meta({
+        example: {},
+        description: '服务端系统运行配置'
+      }),
+      subPlans: SubPlanInputSchema.optional().meta({
+        example: {},
+        description: '订阅套餐配置'
+      })
+    })
+    .meta({ example: { feConfigs: {}, systemEnv: {} }, description: 'FastGPT 系统配置对象' }),
+  fastgptPro: z.looseObject({}).meta({ example: {}, description: 'FastGPT Pro 商业版配置对象' })
+});
+export type UpdateConfigBody = z.infer<typeof UpdateConfigBodySchema>;
+
+export const UpdateConfigResponseSchema = z.undefined().meta({ description: '更新成功' });
+export type UpdateConfigResponse = z.infer<typeof UpdateConfigResponseSchema>;

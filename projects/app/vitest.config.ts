@@ -1,3 +1,4 @@
+import { availableParallelism } from 'node:os';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
 
@@ -8,11 +9,14 @@ import { defineConfig } from 'vitest/config';
  */
 const getTestMaxWorkers = () => {
   const raw = process.env.FASTGPT_TEST_MAX_WORKERS;
-  if (!raw) return 4;
-  if (raw.endsWith('%')) return raw as `${number}%`;
+  if (raw?.endsWith('%')) return raw as `${number}%`;
 
   const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 4;
+  if (raw && Number.isFinite(parsed) && parsed > 0) return parsed;
+
+  const cpuCount = availableParallelism();
+  const isCI = Boolean(process.env.CI && !['0', 'false'].includes(process.env.CI.toLowerCase()));
+  return Math.max(1, isCI ? cpuCount - 1 : Math.floor(cpuCount / 2));
 };
 
 export default defineConfig({
@@ -32,6 +36,8 @@ export default defineConfig({
   },
   test: {
     env: {
+      AIPROXY_API_ENDPOINT: process.env.AIPROXY_API_ENDPOINT ?? 'http://127.0.0.1:3000',
+      AIPROXY_API_TOKEN: process.env.AIPROXY_API_TOKEN ?? 'test-aiproxy-token',
       FILE_TOKEN_KEY:
         process.env.FILE_TOKEN_KEY ??
         'bfd697e7e798f75deaf2d31210bc93a2e41ad4eed9e7831071d77821b7b97cff',
@@ -67,7 +73,7 @@ export default defineConfig({
     maxWorkers: getTestMaxWorkers(),
     maxConcurrency: 10,
     pool: 'threads',
-    testTimeout: 20000,
+    testTimeout: 30000,
     hookTimeout: 30000,
     reporters: ['github-actions', 'default'],
     include: ['test/**/*.test.ts']

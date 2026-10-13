@@ -1,150 +1,82 @@
-import type { ApiRequestProps } from '@fastgpt/next/type';
+import { authModelConfig, authModelScope } from '@/service/core/ai/model/auth';
 import { NextAPI } from '@/service/middleware/entry';
-import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+
+import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { channelTypeToScope } from '@fastgpt/global/core/ai/model/utils';
 import {
-  type EmbeddingModelItemType,
-  type LLMModelItemType,
-  type RerankModelItemType,
-  type STTModelType,
-  type TTSModelType
-} from '@fastgpt/global/core/ai/model.schema';
-import { getAIApi } from '@fastgpt/service/core/ai/config';
+  TestDraftModelBodySchema,
+  TestModelQuerySchema,
+  type TestDraftModelBody,
+  type TestModelQuery
+} from '@fastgpt/global/openapi/core/ai/model/api';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { getVectors } from '@fastgpt/service/core/ai/embedding';
-import { reRankRecall } from '@fastgpt/service/core/ai/rerank';
-import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions';
-import { isProduction } from '@fastgpt/global/common/system/constants';
-import * as fs from 'fs';
-import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { testModelConnection } from '@fastgpt/service/core/ai/model/test';
+
 const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
-export type testQuery = { model: string; channelId?: number };
+/**
+ * 测试新增或编辑中的模型草稿（从 Request Body 解析当前未落库的表单配置）
+ */
+async function handleDraftTest(req: ApiRequestProps<TestDraftModelBody>): Promise<void> {
+  const {
+    modelData: draftModelData,
+    channelId,
+    channelType
+  } = parseApiInput({
+    req,
+    bodySchema: TestDraftModelBodySchema
+  }).body;
 
-export type testBody = Record<string, never>;
+  const actor = await authModelScope({ req, channelType });
+  const draftModel = {
+    ...draftModelData,
+    modelId: 'draft-model-test',
+    requestUrl: undefined,
+    requestAuth: undefined,
+    scope: channelTypeToScope(channelType),
+    // 草稿尚未成为模型资源，按入口能力鉴权；团队草稿归属固定使用当前身份。
+    ...(channelType === 'team' && { teamId: actor.teamId, tmbId: actor.tmbId })
+  } as AIModelDataType;
 
-export type testResponse = any;
+  logger.debug('Test draft model', { model: draftModel.model, type: draftModel.type, channelId });
+  return testModelConnection({ model: draftModel, teamId: actor.teamId, channelId });
+}
 
-async function handler(req: ApiRequestProps<testBody, testQuery>): Promise<testResponse> {
-  const { teamId } = await authSystemAdmin({ req });
+/**
+ * 测试已持久化的模型实例（从 Query Params 检索模型与校验权限）
+ */
+async function handleInstalledTest(
+  req: ApiRequestProps<Record<string, never>, TestModelQuery>
+): Promise<void> {
+  const { modelId, channelId, channelType } = parseApiInput({
+    req,
+    querySchema: TestModelQuerySchema
+  }).query;
 
-  const { model, channelId } = req.query;
-  const modelData = findModelFromAlldata(model);
+  const {
+    actor: { teamId },
+    models: [installedModel]
+  } = await authModelConfig({ req, modelIds: [modelId], channelType });
 
-  if (!modelData) return Promise.reject('Model not found');
+  // 显式渠道只覆盖本次测试的连接配置，不能修改全局运行时模型缓存
+  const modelData = channelId
+    ? { ...installedModel, requestUrl: undefined, requestAuth: undefined }
+    : installedModel;
 
-  if (channelId) {
-    delete modelData.requestUrl;
-    delete modelData.requestAuth;
+  logger.debug('Test installed model', { model: modelData.model, type: modelData.type, channelId });
+  return testModelConnection({ model: modelData, teamId, channelId });
+}
+
+/** 统一分发模型连通性测试：POST 对应草稿预览测试，GET 对应已安装模型测试。 */
+async function handler(req: ApiRequestProps<TestDraftModelBody, TestModelQuery>): Promise<void> {
+  if (req.method === 'POST') {
+    return handleDraftTest(req as ApiRequestProps<TestDraftModelBody>);
   }
-
-  const headers: Record<string, string> = channelId
-    ? {
-        'Aiproxy-Channel': String(channelId)
-      }
-    : {};
-  logger.debug(`Test model`, modelData);
-
-  if (modelData.type === 'llm') {
-    return testLLMModel(modelData, headers, teamId);
-  }
-  if (modelData.type === 'embedding') {
-    return testEmbeddingModel(modelData, headers);
-  }
-  if (modelData.type === 'tts') {
-    return testTTSModel(modelData, headers);
-  }
-  if (modelData.type === 'stt') {
-    return testSTTModel(modelData, headers);
-  }
-  if (modelData.type === 'rerank') {
-    return testReRankModel(modelData, headers);
-  }
-
-  return Promise.reject('Model type not supported');
+  return handleInstalledTest(
+    req as unknown as ApiRequestProps<Record<string, never>, TestModelQuery>
+  );
 }
 
 export default NextAPI(handler);
-
-const testLLMModel = async (
-  model: LLMModelItemType,
-  headers: Record<string, string>,
-  teamId: string
-) => {
-  const { answerText } = await createLLMResponse({
-    teamId,
-    saveLLMResponseRecord: false,
-    body: {
-      model, // 传递实体 model 进去，保障底层不会去拿内存里的实体。
-      messages: [{ role: 'user', content: 'hi' }],
-      stream: true
-    },
-    custonHeaders: headers
-  });
-
-  if (answerText) {
-    return answerText;
-  }
-
-  return Promise.reject('Model response empty');
-};
-
-const testEmbeddingModel = async (
-  model: EmbeddingModelItemType,
-  headers: Record<string, string>
-) => {
-  return getVectors({
-    model,
-    inputs: [
-      {
-        type: 'text',
-        input: 'Hi'
-      }
-    ],
-    headers
-  });
-};
-
-const testTTSModel = async (model: TTSModelType, headers: Record<string, string>) => {
-  const { ai } = getAIApi({
-    timeout: 10000
-  });
-  await ai.audio.speech.create(
-    {
-      model: model.model,
-      voice: model.voices[0]?.value as any,
-      input: 'Hi',
-      response_format: 'mp3',
-      speed: 1
-    },
-    model.requestUrl
-      ? {
-          path: model.requestUrl,
-          headers: {
-            ...(model.requestAuth ? { Authorization: `Bearer ${model.requestAuth}` } : {}),
-            ...headers
-          }
-        }
-      : { headers }
-  );
-};
-
-const testSTTModel = async (model: STTModelType, headers: Record<string, string>) => {
-  const path = isProduction ? '/app/data/test.mp3' : 'data/test.mp3';
-  const { text } = await aiTranscriptions({
-    model,
-    fileStream: fs.createReadStream(path),
-    filename: 'test.mp3',
-    headers
-  });
-  logger.info(`STT result: ${text}`);
-};
-
-const testReRankModel = async (model: RerankModelItemType, headers: Record<string, string>) => {
-  await reRankRecall({
-    model,
-    query: 'Hi',
-    documents: [{ id: '1', text: 'Hi' }],
-    headers
-  });
-};

@@ -11,16 +11,6 @@ export const accountCancellationActiveStatuses = [
   AccountCancellationStatus.finalizing
 ] as const;
 
-export const accountCancellationAllowedMethods = [
-  'code',
-  'wechat',
-  'oauth/github',
-  'oauth/google',
-  'oauth/microsoft',
-  'oauth/wecom',
-  'oauth/sso'
-] as const;
-
 export const AccountCancellationReminder = {
   sevenDays: '7d',
   oneDay: '1d',

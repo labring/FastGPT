@@ -1,5 +1,6 @@
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import z from 'zod';
+import { OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
 import {
   ChatGenerateStatusSchema,
   createOutLinkChatTargetInputSchema,
@@ -24,9 +25,8 @@ export const OptimizePromptBodySchema = z.object({
     example: '增强角色约束，并补充清晰的输出格式。',
     description: '用户对 Prompt 的优化要求'
   }),
-  model: z.string().meta({
-    example: 'gpt-4.1-mini',
-    description: '执行 Prompt 优化的模型名称'
+  modelId: z.string().meta({
+    description: '执行 Prompt 优化的模型 ID'
   })
 });
 export type OptimizePromptBody = z.infer<typeof OptimizePromptBodySchema>;
@@ -113,6 +113,7 @@ export type ResumeStreamRuntimeParams = z.infer<typeof ResumeStreamParamsSchema>
 
 export const StreamResumeCompletedRecordsSchema = z.object({
   list: z.array(z.any()).meta({
+    items: OpenObjectOpenApiMeta,
     description: '最新已落库的聊天记录'
   }),
   total: z.number().int().nonnegative().meta({

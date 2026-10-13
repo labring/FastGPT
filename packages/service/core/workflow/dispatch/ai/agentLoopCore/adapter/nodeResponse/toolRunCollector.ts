@@ -5,13 +5,16 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import { AgentNodeResponseDisplay } from '../../domain/constants';
 import { parseJsonArgs } from '../../../../../../ai/utils';
 import type { DispatchFlowResponse } from '../../../../type';
-import { withAgentLoopCoreChildTotalPoints } from './children';
 import { createAgentLoopCoreCompressNodeResponse } from './compress';
 import type { AgentLoopCoreToolDisplayInfo } from '../../domain/toolInfo';
+import {
+  createWorkflowRuntimeSummary,
+  mergeWorkflowRuntimeSummary
+} from '../../../../utils/summary';
 
 export type AgentLoopCoreToolRunFlowResponse = {
   flowResponses: NonNullable<DispatchFlowResponse['flatNodeResponses']>;
-  runtimeNodeResponseSummary?: DispatchFlowResponse['runtimeNodeResponseSummary'];
+  workflowRuntimeSummary?: DispatchFlowResponse['workflowRuntimeSummary'];
   runTimes: DispatchFlowResponse['runTimes'];
   flowUsages: DispatchFlowResponse['flowUsages'];
 };
@@ -20,10 +23,12 @@ export type AgentLoopCoreToolRunFlowResponsesSummary = {
   runTimes: number;
   toolDetail: NonNullable<DispatchFlowResponse['flatNodeResponses']>;
   toolTotalPoints: number;
+  workflowRuntimeSummary: DispatchFlowResponse['workflowRuntimeSummary'];
 };
 
 type ToolResponseCompress = {
   response: string;
+  modelName: string;
   usage: ChatNodeUsageType;
   requestIds: string[];
   seconds: number;
@@ -47,7 +52,15 @@ export const summarizeAgentLoopCoreToolRunFlowResponses = (
   toolDetail: responses.flatMap((item) => item.flowResponses),
   toolTotalPoints: responses
     .flatMap((item) => item.flowUsages)
-    .reduce((sum, item) => sum + item.totalPoints, 0)
+    .reduce((sum, item) => sum + item.totalPoints, 0),
+  workflowRuntimeSummary: responses.reduce(
+    (currentSummary, response) =>
+      mergeWorkflowRuntimeSummary({
+        currentSummary,
+        workflowRuntimeSummary: response.workflowRuntimeSummary
+      }),
+    createWorkflowRuntimeSummary()
+  )
 });
 
 /**
@@ -56,11 +69,13 @@ export const summarizeAgentLoopCoreToolRunFlowResponses = (
  */
 const getContextCompressNodeResponse = ({
   moduleType,
+  modelName,
   usage,
   requestIds,
   seconds
 }: {
   moduleType: FlowNodeTypeEnum;
+  modelName: string;
   usage: ChatNodeUsageType;
   requestIds: string[];
   seconds: number;
@@ -68,25 +83,25 @@ const getContextCompressNodeResponse = ({
   createAgentLoopCoreCompressNodeResponse({
     moduleName: AgentNodeResponseDisplay.contextCompress.moduleName,
     moduleType,
+    modelName,
     usage,
     requestIds,
     seconds,
     includeCompressTextAgent: true
   });
 
-/**
- * 生成 tool response compress 的 child 记录。
- * 它只归属某次工具调用，不作为平级 nodeResponse 展示。
- */
+/** 生成 tool response compress 的兼容详情记录，供无 sink 的调试路径保留。 */
 const getToolResponseCompressRecord = ({
   moduleType,
   response,
+  modelName,
   usage,
   requestIds,
   seconds
 }: {
   moduleType: FlowNodeTypeEnum;
   response: string;
+  modelName: string;
   usage: ChatNodeUsageType;
   requestIds: string[];
   seconds: number;
@@ -94,6 +109,7 @@ const getToolResponseCompressRecord = ({
   nodeResponse: createAgentLoopCoreCompressNodeResponse({
     moduleName: AgentNodeResponseDisplay.toolResponseCompress.moduleName,
     moduleType,
+    modelName,
     usage,
     requestIds,
     seconds,
@@ -113,7 +129,8 @@ const getFallbackToolFlowResponse = ({
   toolAvatar,
   response,
   errorMessage,
-  seconds
+  seconds,
+  usages = []
 }: {
   call: ChatCompletionMessageToolCall;
   toolName?: string;
@@ -121,6 +138,7 @@ const getFallbackToolFlowResponse = ({
   response: string;
   errorMessage?: string;
   seconds: number;
+  usages?: ChatNodeUsageType[];
 }): AgentLoopCoreToolRunFlowResponse => ({
   flowResponses: [
     {
@@ -133,17 +151,17 @@ const getFallbackToolFlowResponse = ({
       toolInput: parseJsonArgs(call.function.arguments) || undefined,
       toolRes: response,
       runningTime: seconds,
-      totalPoints: 0,
+      totalPoints: usages.reduce((sum, usage) => sum + (usage.totalPoints || 0), 0),
       ...(errorMessage ? { errorText: errorMessage } : {})
     }
   ],
-  flowUsages: [],
+  flowUsages: usages,
   runTimes: 0
 });
 
 /**
- * 把 tool response compress 挂到工具 flowResponse 的最后一个 nodeResponse 上。
- * 子 workflow 可能包含多个内部节点，最后一个节点代表最终工具响应，更适合作为压缩 child 的父节点。
+ * 把 tool response compress 作为工具 response 的平级详情记录。
+ * parentId 只表达展示层级，不再让 summary 通过 childrenResponses 递归读取 token。
  */
 const appendToolResponseCompressRecord = ({
   flowResponse,
@@ -155,16 +173,16 @@ const appendToolResponseCompressRecord = ({
   const targetIndex = flowResponse.flowResponses.length - 1;
   if (targetIndex < 0) return flowResponse;
 
+  const targetResponse = flowResponse.flowResponses[targetIndex];
   return {
     ...flowResponse,
-    flowResponses: flowResponse.flowResponses.map((item, index) => {
-      if (index !== targetIndex) return item;
-
-      return withAgentLoopCoreChildTotalPoints({
-        ...item,
-        childrenResponses: [...(item.childrenResponses || []), compressRecord.nodeResponse]
-      });
-    }),
+    flowResponses: [
+      ...flowResponse.flowResponses,
+      {
+        ...compressRecord.nodeResponse,
+        parentId: targetResponse.id
+      }
+    ],
     flowUsages: [...flowResponse.flowUsages, compressRecord.usage]
   };
 };
@@ -218,34 +236,66 @@ export const createAgentLoopCoreToolRunResponseCollector = ({
     if (completedToolCallIds.has(call.id)) return;
     completedToolCallIds.add(call.id);
 
-    // ToolCall 的错误只用于终止/继续 agent-loop，隐藏工具自身及其子流程详情。
-    if (errorMessage) {
-      pendingToolFlowResponseMap.delete(call.id);
-      return;
-    }
-
     const pendingFlowResponse = pendingToolFlowResponseMap.get(call.id);
+    const toolNode = getToolInfo(call.function.name);
+    const fallbackFlowResponse = getFallbackToolFlowResponse({
+      call,
+      toolName: toolNode?.name,
+      toolAvatar: toolNode?.avatar,
+      response: response || '',
+      errorMessage,
+      seconds,
+      usages
+    });
+    const normalizedNodeResponse = nodeResponse
+      ? {
+          ...nodeResponse,
+          runningTime: nodeResponse.runningTime ?? seconds,
+          toolRes: nodeResponse.toolRes ?? response,
+          totalPoints:
+            nodeResponse.totalPoints ??
+            (usages || []).reduce((sum, usage) => sum + (usage.totalPoints || 0), 0),
+          ...(errorMessage ? { errorText: errorMessage } : {})
+        }
+      : fallbackFlowResponse.flowResponses[0];
+    const completedPendingFlowResponse = (() => {
+      if (!pendingFlowResponse || !errorMessage) return pendingFlowResponse;
+      if (pendingFlowResponse.flowResponses.some((item) => item.errorText)) {
+        return pendingFlowResponse;
+      }
+
+      const failedNodeIndex = pendingFlowResponse.flowResponses.length - 1;
+      if (failedNodeIndex < 0) {
+        return {
+          ...pendingFlowResponse,
+          flowResponses: [normalizedNodeResponse]
+        };
+      }
+
+      // 子流程已产生节点但未标记错误时，将失败结果落到最终节点，避免额外造一条重复计费记录。
+      return {
+        ...pendingFlowResponse,
+        flowResponses: pendingFlowResponse.flowResponses.map((item, index) =>
+          index === failedNodeIndex
+            ? {
+                ...item,
+                toolRes: item.toolRes ?? response,
+                errorText: errorMessage
+              }
+            : item
+        )
+      };
+    })();
     const baseFlowResponse =
-      pendingFlowResponse ||
-      (nodeResponse
+      completedPendingFlowResponse ||
+      (normalizedNodeResponse
         ? {
-            flowResponses: [nodeResponse],
+            flowResponses: [normalizedNodeResponse],
             flowUsages: usages || [],
             runTimes: 0
           }
         : undefined) ||
-      (() => {
-        const toolNode = getToolInfo(call.function.name);
-
-        return getFallbackToolFlowResponse({
-          call,
-          toolName: toolNode?.name,
-          toolAvatar: toolNode?.avatar,
-          response: response || '',
-          errorMessage,
-          seconds
-        });
-      })();
+      fallbackFlowResponse;
 
     const completedFlowResponse = toolResponseCompress
       ? appendToolResponseCompressRecord({
@@ -253,6 +303,7 @@ export const createAgentLoopCoreToolRunResponseCollector = ({
           compressRecord: getToolResponseCompressRecord({
             moduleType,
             response: toolResponseCompress.response,
+            modelName: toolResponseCompress.modelName,
             usage: toolResponseCompress.usage,
             requestIds: toolResponseCompress.requestIds,
             seconds: toolResponseCompress.seconds
@@ -265,11 +316,13 @@ export const createAgentLoopCoreToolRunResponseCollector = ({
   };
 
   const appendContextCompressNodeResponse = ({
+    modelName,
     usage,
     requestIds,
     contextCheckpoint,
     seconds
   }: {
+    modelName: string;
     usage: ChatNodeUsageType;
     requestIds: string[];
     contextCheckpoint?: string;
@@ -283,6 +336,7 @@ export const createAgentLoopCoreToolRunResponseCollector = ({
       flowResponses: [
         getContextCompressNodeResponse({
           moduleType,
+          modelName,
           usage,
           requestIds,
           seconds

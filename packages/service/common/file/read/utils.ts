@@ -1,51 +1,33 @@
 import FormData from 'form-data';
-import fs from 'fs';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import type { IultmzhFileParseConfigType } from '@fastgpt/global/core/dataset/type';
 import { axios } from '../../api/axios';
 import { parseMarkdownBase64Images } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
 import { useDoc2xServer } from '../../../thirdProvider/doc2x';
 import { useTextinServer } from '../../../thirdProvider/textin';
 import { useSomarkServer } from '../../../thirdProvider/somark';
-import { readRawContentFromBuffer } from '../../../worker/function';
+import { parseFromSangfor, useSangforParse } from '../../../thirdProvider/sangfor';
+import { appendIultmzhFileParseFields } from '../../../thirdProvider/sangfor/parseConfig';
+import { readRawContentFromBuffer, readRawContentFromSource } from '../../../worker/function';
 import { getLogger, LogCategories } from '../../logger';
 import { getImageBuffer } from '../image/utils';
 import { uploadParsedPdfImage } from './image';
 import { getBackendFileOperationTimeoutMs } from '../parseTimeout';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import type { FileSource } from './source';
+import type { FileSourceMetadata } from './source';
+import {
+  materializeFileSource,
+  resolveFileSourceDeclaredExtension,
+  resolveFileSourceEncoding,
+  resolveFileSourceExtension
+} from './source';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
-
-export type readRawTextByLocalFileParams = {
-  teamId: string;
-  tmbId: string;
-  path: string;
-  encoding: string;
-  customPdfParse?: boolean;
-  getFormatText?: boolean;
-  fileParsedPrefix?: string;
-  metadata?: Record<string, any>;
-};
-export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParams) => {
-  const { path } = params;
-
-  const extension = path?.split('.')?.pop()?.toLowerCase() || '';
-  const buffer = await fs.promises.readFile(path);
-
-  return readFileContentByBuffer({
-    extension,
-    customPdfParse: params.customPdfParse,
-    getFormatText: params.getFormatText,
-    teamId: params.teamId,
-    tmbId: params.tmbId,
-    encoding: params.encoding,
-    buffer,
-    imageKeyOptions: params.fileParsedPrefix
-      ? {
-          prefix: params.fileParsedPrefix
-        }
-      : undefined
-  });
-};
 
 export const readFileContentByBuffer = async ({
   teamId,
@@ -55,9 +37,11 @@ export const readFileContentByBuffer = async ({
   buffer,
   encoding,
   customPdfParse = false,
+  sangforFileParseConfig,
   usageId,
   getFormatText = true,
-  imageKeyOptions
+  imageKeyOptions,
+  onPdfParseUsage
 }: {
   teamId: string;
   tmbId: string;
@@ -67,15 +51,137 @@ export const readFileContentByBuffer = async ({
   encoding: string;
 
   customPdfParse?: boolean;
+  sangforFileParseConfig?: IultmzhFileParseConfigType;
   usageId?: string;
   getFormatText?: boolean;
   imageKeyOptions?: {
     prefix: string;
     expiredTime?: Date;
   };
-}): Promise<Pick<ReadFileResponse, 'rawText' | 'tableInfo'>> => {
+  /** 注入后由上层工作流归集增强解析费用；未注入时保持原有的独立落账行为。 */
+  onPdfParseUsage?: (usage: ChatNodeUsageType) => void;
+}): Promise<Pick<ReadFileResponse, 'rawText' | 'tableInfo' | 'sourceMetadata'>> =>
+  readFileContent({
+    teamId,
+    tmbId,
+    extension: rawExtension,
+    buffer,
+    encoding,
+    customPdfParse,
+    sangforFileParseConfig,
+    usageId,
+    getFormatText,
+    imageKeyOptions,
+    onPdfParseUsage
+  });
+
+/**
+ * 从轻量文件来源解析内容。系统解析会把 source 直接交给 worker pool，只有已确认启用的自定义 PDF
+ * Provider 才在调用 Provider 前于主线程物化。
+ */
+export const readFileContentBySource = async ({
+  teamId,
+  tmbId,
+  source,
+  customPdfParse = false,
+  sangforFileParseConfig,
+  usageId,
+  getFormatText = true,
+  imageKeyOptions,
+  onPdfParseUsage,
+  forceSystemParse
+}: {
+  teamId: string;
+  tmbId: string;
+  source: FileSource;
+  customPdfParse?: boolean;
+  sangforFileParseConfig?: IultmzhFileParseConfigType;
+  usageId?: string;
+  getFormatText?: boolean;
+  imageKeyOptions?: {
+    prefix: string;
+    expiredTime?: Date;
+  };
+  onPdfParseUsage?: (usage: ChatNodeUsageType) => void;
+  /** 置 true 时忽略 sangfor 外部解析路由（结构化导入等需要内置解析产物的链路使用）。 */
+  forceSystemParse?: boolean;
+}): Promise<Pick<ReadFileResponse, 'rawText' | 'tableInfo' | 'sourceMetadata'>> =>
+  readFileContent({
+    teamId,
+    tmbId,
+    extension: resolveFileSourceDeclaredExtension(source.metadata),
+    source,
+    encoding: source.metadata.encoding ?? '',
+    customPdfParse,
+    sangforFileParseConfig,
+    usageId,
+    getFormatText,
+    imageKeyOptions,
+    onPdfParseUsage,
+    forceSystemParse
+  });
+
+const readFileContent = async ({
+  teamId,
+  tmbId,
+  extension: rawExtension,
+  buffer: initialBuffer,
+  source,
+  encoding: initialEncoding,
+  customPdfParse,
+  sangforFileParseConfig,
+  usageId,
+  getFormatText,
+  imageKeyOptions,
+  onPdfParseUsage,
+  forceSystemParse
+}: {
+  teamId: string;
+  tmbId: string;
+  extension: string;
+  buffer?: Buffer;
+  source?: FileSource;
+  encoding: string;
+  customPdfParse: boolean;
+  sangforFileParseConfig?: IultmzhFileParseConfigType;
+  usageId?: string;
+  getFormatText: boolean;
+  imageKeyOptions?: {
+    prefix: string;
+    expiredTime?: Date;
+  };
+  onPdfParseUsage?: (usage: ChatNodeUsageType) => void;
+  forceSystemParse?: boolean;
+}): Promise<Pick<ReadFileResponse, 'rawText' | 'tableInfo' | 'sourceMetadata'>> => {
+  if (!initialBuffer && !source) {
+    throw new Error('File content or source is required');
+  }
+
   // 归一化扩展名为小写，避免大写/混合大小写后缀（如 .PDF）无法匹配解析器（#6996）
   const extension = rawExtension.toLowerCase();
+  let materializedPromise:
+    | Promise<{
+        buffer: Buffer;
+        extension: string;
+        encoding: string;
+        metadata?: FileSourceMetadata;
+      }>
+    | undefined;
+  const getMaterializedFile = () => {
+    if (!materializedPromise) {
+      materializedPromise = initialBuffer
+        ? Promise.resolve({ buffer: initialBuffer, extension, encoding: initialEncoding })
+        : materializeFileSource(source!, { signal: new AbortController().signal }).then(
+            (materialized) => ({
+              buffer: materialized.buffer,
+              extension: resolveFileSourceExtension(materialized),
+              encoding: resolveFileSourceEncoding(materialized),
+              metadata: materialized.metadata
+            })
+          );
+    }
+    return materializedPromise;
+  };
 
   const parseMarkdownImages = (rawText: string) =>
     parseMarkdownBase64Images(rawText, {
@@ -108,24 +214,46 @@ export const readFileContentByBuffer = async ({
     });
 
   const systemParse = () =>
-    readRawContentFromBuffer({
-      extension,
-      encoding,
-      buffer,
-      imageKeyOptions
+    source
+      ? readRawContentFromSource({ source, imageKeyOptions })
+      : readRawContentFromBuffer({
+          extension,
+          encoding: initialEncoding,
+          buffer: initialBuffer!,
+          imageKeyOptions
+        });
+
+  const reportPdfParseUsage = (pages: number) => {
+    if (onPdfParseUsage) {
+      onPdfParseUsage({
+        moduleName: i18nT('account_usage:pdf_enhanced_parse'),
+        totalPoints: pages * (global.systemEnv?.customPdfParse?.price || 0),
+        pages
+      });
+      return;
+    }
+
+    createPdfParseUsage({
+      teamId,
+      tmbId,
+      pages,
+      usageId
     });
+  };
   const parsePdfFromCustomService = async (): Promise<ReadFileResponse> => {
     const url = global.systemEnv.customPdfParse?.url;
     const token = global.systemEnv.customPdfParse?.key;
     if (!url) return systemParse();
 
+    const { buffer, extension: materializedExtension } = await getMaterializedFile();
     const start = Date.now();
     logger.info('Start parsing file via external service', { extension });
 
     const data = new FormData();
     data.append('file', buffer, {
-      filename: `file.${extension}`
+      filename: `file.${materializedExtension}`
     });
+    appendIultmzhFileParseFields(data, sangforFileParseConfig);
     const { data: response } = await axios.post<{
       pages: number;
       markdown: string;
@@ -149,12 +277,7 @@ export const readFileContentByBuffer = async ({
 
     const text = await parseMarkdownImages(response.markdown);
 
-    createPdfParseUsage({
-      teamId,
-      tmbId,
-      pages: response.pages,
-      usageId
-    });
+    reportPdfParseUsage(response.pages);
 
     return {
       rawText: text,
@@ -165,15 +288,11 @@ export const readFileContentByBuffer = async ({
     const apiKey = global.systemEnv.customPdfParse?.somarkApiKey;
     if (!apiKey) return systemParse();
 
+    const { buffer } = await getMaterializedFile();
     const { pages, text: rawText } = await useSomarkServer({ apiKey }).parsePDF(buffer);
     const text = await parseMarkdownImages(rawText);
 
-    createPdfParseUsage({
-      teamId,
-      tmbId,
-      pages,
-      usageId
-    });
+    reportPdfParseUsage(pages);
 
     return {
       rawText: text,
@@ -186,6 +305,7 @@ export const readFileContentByBuffer = async ({
     const secretCode = global.systemEnv.customPdfParse?.textinSecretCode;
     if (!appId || !secretCode) return systemParse();
 
+    const { buffer } = await getMaterializedFile();
     const { pages, text } = await useTextinServer({
       appId,
       secretCode
@@ -209,12 +329,7 @@ export const readFileContentByBuffer = async ({
         : undefined
     });
 
-    createPdfParseUsage({
-      teamId,
-      tmbId,
-      pages,
-      usageId
-    });
+    reportPdfParseUsage(pages);
 
     return {
       rawText: text,
@@ -226,6 +341,7 @@ export const readFileContentByBuffer = async ({
     const doc2xKey = global.systemEnv.customPdfParse?.doc2xKey;
     if (!doc2xKey) return systemParse();
 
+    const { buffer } = await getMaterializedFile();
     const { pages, text } = await useDoc2xServer({ apiKey: doc2xKey }).parsePDF(buffer, {
       uploadImage: imageKeyOptions?.prefix
         ? async (image) =>
@@ -246,12 +362,24 @@ export const readFileContentByBuffer = async ({
         : undefined
     });
 
-    createPdfParseUsage({
-      teamId,
-      tmbId,
-      pages,
-      usageId
+    reportPdfParseUsage(pages);
+
+    return {
+      rawText: text,
+      formatText: text
+    };
+  };
+  // Sangfor service
+  const parseDocumentFromSangfor = async (): Promise<ReadFileResponse> => {
+    const { buffer, extension: materializedExtension } = await getMaterializedFile();
+    const { text, pages } = await parseFromSangfor({
+      fileBuffer: buffer,
+      extension: materializedExtension,
+      imageKeyOptions,
+      sangforFileParseConfig
     });
+
+    reportPdfParseUsage(pages);
 
     return {
       rawText: text,
@@ -272,17 +400,36 @@ export const readFileContentByBuffer = async ({
   const start = Date.now();
   logger.debug('Start parsing file', { extension });
 
-  const { rawText, formatText, tableInfo } = await (async () => {
+  const shouldUseIultmzH = !forceSystemParse && useSangforParse(extension);
+
+  const parseResult = await (async () => {
+    if (shouldUseIultmzH) return await parseDocumentFromSangfor();
+
     if (extension === 'pdf') {
       return await pdfParseFn();
     }
     return await systemParse();
-  })();
+  })().catch((error) => {
+    // 统一兜底（未知失败落通用「文档解析失败」诊断码）仅覆盖 sangfor 路径。
+    // 其余格式（含 OFD）保持错误原样透出，避免抹掉 docx「请转 PDF」等原有提示；
+    // 映射为诊断码的错误（message = statusText）在响应层经 ERROR_RESPONSE[message]
+    // 还原为正确的 code 与 i18n 文案。
+    if (!shouldUseIultmzH) throw error;
+
+    if (error instanceof UserError) throw error;
+
+    throw new UserError(CommonErrEnum.pdfParseFailed);
+  });
+  const { rawText, formatText, tableInfo } = parseResult;
+  const sourceMetadata =
+    parseResult.sourceMetadata ??
+    (materializedPromise ? (await materializedPromise).metadata : undefined);
 
   logger.debug('File parsing completed', { extension, durationMs: Date.now() - start });
 
   return {
     rawText: getFormatText ? formatText || rawText : rawText,
-    tableInfo
+    tableInfo,
+    ...(sourceMetadata ? { sourceMetadata } : {})
   };
 };

@@ -8,21 +8,24 @@ import type {
   DatasetDataIndexItemType,
   DatasetDataItemType
 } from '@fastgpt/global/core/dataset/type';
-import { getEmbeddingModel, isImageEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
 import { text2Chunks } from '@fastgpt/service/worker/function';
-import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import {
+  isImageEmbeddingIndex,
   isValidImageEmbeddingSource,
-  normalizeImageToBase64
+  normalizeDatasetIndexImageToModelInput
 } from '@fastgpt/service/core/dataset/search/utils';
-import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
-import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { uniqueDatasetDataMarkdownImageUrls } from '@fastgpt/service/core/dataset/data/utils';
 import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
 import { minChunkSize } from '@fastgpt/global/core/dataset/training/utils';
+import {
+  getDatasetSynonymTransformContext,
+  isDatasetSynonymEnabled
+} from '@fastgpt/service/core/dataset/synonym/entity';
 
 export type DatasetDataIndexDraft = Omit<DatasetDataIndexItemType, 'dataId'> & {
   dataId?: string;
@@ -147,21 +150,6 @@ const buildEmbeddingSafeIndexTexts = async ({
   });
 };
 
-const isImageEmbeddingIndex = (index: DatasetDataIndexDraft) =>
-  index.type === DatasetDataIndexTypeEnum.imageEmbedding;
-
-const normalizeDatasetIndexImageToModelInput = async (imageUrl: string) => {
-  if (
-    isS3ObjectKey(imageUrl, 'dataset') ||
-    isS3ObjectKey(imageUrl, 'temp') ||
-    isS3ObjectKey(imageUrl, 'chat')
-  ) {
-    return getS3DatasetSource().getDatasetBase64Image(imageUrl);
-  }
-
-  return normalizeImageToBase64(imageUrl);
-};
-
 /**
  * 数据索引变更的共享操作类。
  *
@@ -175,18 +163,18 @@ const normalizeDatasetIndexImageToModelInput = async (imageUrl: string) => {
  * 这些步骤需要放在一起维护，因为 Mongo 索引里的 `dataId` 必须和向量库 id 保持一致。
  */
 export class DatasetDataIndexOperation {
-  private readonly model?: string | EmbeddingModelItemType;
+  private readonly model?: EmbeddingModelDataType;
 
-  constructor(model?: string | EmbeddingModelItemType) {
+  constructor(model?: EmbeddingModelDataType) {
     this.model = model;
   }
 
   get maxToken() {
-    return this.getEmbeddingModel().maxToken;
+    return this.getEmbeddingModel().config.maxToken;
   }
 
-  private getEmbeddingModel(): EmbeddingModelItemType {
-    return (typeof this.model === 'string' ? getEmbeddingModel(this.model) : this.model)!;
+  private getEmbeddingModel(): EmbeddingModelDataType {
+    return this.model!;
   }
 
   /**
@@ -522,12 +510,14 @@ export class DatasetDataIndexOperation {
     indexes,
     teamId,
     datasetId,
-    collectionId
+    collectionId,
+    transformText
   }: {
     indexes: DatasetDataIndexDraft[];
     teamId: string;
     datasetId: string;
     collectionId: string;
+    transformText?: (text: string) => string;
   }) {
     const embModel = this.getEmbeddingModel();
     const vectorInputItems = (
@@ -536,7 +526,7 @@ export class DatasetDataIndexOperation {
           if (!isImageEmbeddingIndex(index)) {
             return {
               item: index,
-              input: index.text
+              input: transformText?.(index.text) ?? index.text
             };
           }
 
@@ -549,7 +539,7 @@ export class DatasetDataIndexOperation {
               item: index,
               input: {
                 type: 'image' as const,
-                input: await normalizeDatasetIndexImageToModelInput(index.text)
+                input: await normalizeDatasetIndexImageToModelInput(index.text, datasetId)
               }
             };
           } catch {
@@ -565,6 +555,9 @@ export class DatasetDataIndexOperation {
     const insertResult = vectorInputItems.length
       ? await insertDatasetDataVector({
           inputs: vectorInputItems.map((item) => item.input),
+          // 全文文本与向量一一对应(provider=milvus 时写 modeldata_v2 的 text)。
+          // imageEmbedding 只写稠密向量,BM25 文本必须为空串(不写图片 URL/S3 key),与迁移行为保持一致。
+          texts: vectorInputItems.map((item) => (typeof item.input === 'string' ? item.input : '')),
           model: embModel,
           teamId,
           datasetId,
@@ -595,12 +588,14 @@ export class DatasetDataIndexOperation {
     patchResult,
     teamId,
     datasetId,
-    collectionId
+    collectionId,
+    transformText
   }: {
     patchResult: DatasetDataIndexPatch[];
     teamId: string;
     datasetId: string;
     collectionId: string;
+    transformText?: (text: string) => string;
   }) {
     const insertItems = patchResult.filter(
       (item) => item.type === 'create' || item.type === 'update'
@@ -611,7 +606,8 @@ export class DatasetDataIndexOperation {
       indexes: insertItems.map((item) => item.index),
       teamId,
       datasetId,
-      collectionId
+      collectionId,
+      transformText
     });
 
     insertItems.forEach((item) => {
@@ -634,18 +630,21 @@ export class DatasetDataIndexOperation {
     indexes,
     teamId,
     datasetId,
-    collectionId
+    collectionId,
+    transformText
   }: {
     indexes: DatasetDataIndexDraft[];
     teamId: string;
     datasetId: string;
     collectionId: string;
+    transformText?: (text: string) => string;
   }) {
     const { tokens, insertedIndexIdMap } = await this.insertIndexVectorIds({
       indexes,
       teamId,
       datasetId,
-      collectionId
+      collectionId,
+      transformText
     });
 
     return {
@@ -706,8 +705,23 @@ export class DatasetDataIndexOperation {
       return Promise.reject('Dataset data index text is too long');
     }
 
+    const synonymEnabled = isDatasetSynonymEnabled();
+    const currentData = synonymEnabled ? await MongoDatasetData.findById(data.id) : undefined;
+    if (synonymEnabled && !currentData) {
+      return Promise.reject('Dataset data not found');
+    }
+    const sourceData = currentData
+      ? {
+          id: String(currentData._id),
+          teamId: String(currentData.teamId),
+          datasetId: String(currentData.datasetId),
+          collectionId: String(currentData.collectionId),
+          updateTime: currentData.updateTime,
+          indexes: currentData.indexes
+        }
+      : data;
     const targetIndex = indexDataId
-      ? data.indexes.find((item) => item.dataId === indexDataId)
+      ? sourceData.indexes.find((item) => item.dataId === indexDataId)
       : undefined;
 
     // 有 indexDataId 但是找不到对应的 index，认为是错误的数据
@@ -718,66 +732,107 @@ export class DatasetDataIndexOperation {
     // 内容和类型都没变时直接复用旧索引，避免重复消耗 embedding tokens。
     if (targetIndex && targetIndex.text === trimText && targetIndex.type === type) {
       return {
-        index: targetIndex,
+        index: {
+          type: targetIndex.type,
+          text: targetIndex.text,
+          dataId: targetIndex.dataId
+        },
         tokens: 0
       };
     }
 
-    const { indexes, tokens } = await this.insertVectors({
-      indexes: [
-        {
-          type,
-          text: trimText
-        }
-      ],
-      teamId: data.teamId,
-      datasetId: data.datasetId,
-      collectionId: data.collectionId
-    });
-    const newIndex = indexes[0];
+    const synonymContext = synonymEnabled
+      ? await getDatasetSynonymTransformContext({
+          teamId: sourceData.teamId,
+          datasetId: sourceData.datasetId
+        })
+      : undefined;
 
-    await mongoSessionRun(async (session) => {
-      if (targetIndex) {
-        // 先把 Mongo 索引替换成新的向量 id，再删除旧向量，避免检索指向不存在的向量记录。
-        await MongoDatasetData.updateOne(
-          { _id: data.id, 'indexes.dataId': targetIndex.dataId },
+    let newIndex: DatasetDataIndexItemType | undefined;
+    let tokens = 0;
+    try {
+      const insertResult = await this.insertVectors({
+        indexes: [
           {
-            $set: {
-              'indexes.$': newIndex,
-              updateTime: new Date()
-            }
-          },
-          { session }
-        );
-
-        await this.deleteVectors({
-          teamId: data.teamId,
-          idList: [targetIndex.dataId]
-        });
-      } else {
-        // 人工添加的索引放在前面，后续读取时优先展示用户创建的检索提示。
-        await MongoDatasetData.updateOne(
-          { _id: data.id },
-          {
-            $push: {
-              indexes: {
-                $each: [newIndex],
-                $position: 0
-              }
-            },
-            $set: {
-              updateTime: new Date()
-            }
-          },
-          { session }
-        );
+            type,
+            text: trimText
+          }
+        ],
+        teamId: sourceData.teamId,
+        datasetId: sourceData.datasetId,
+        collectionId: sourceData.collectionId,
+        transformText: synonymContext?.transformText
+      });
+      newIndex = insertResult.indexes[0];
+      tokens = insertResult.tokens;
+      if (!newIndex) {
+        throw new Error('Dataset data index vector was not created');
       }
-    });
+      if (synonymContext?.isCurrent && !(await synonymContext.isCurrent())) {
+        throw new Error('同义词配置已变化，请重试索引更新');
+      }
+
+      await mongoSessionRun(async (session) => {
+        const updateResult = targetIndex
+          ? await MongoDatasetData.updateOne(
+              {
+                _id: sourceData.id,
+                ...(synonymContext && { updateTime: sourceData.updateTime }),
+                'indexes.dataId': targetIndex.dataId
+              },
+              {
+                $set: {
+                  'indexes.$': newIndex,
+                  updateTime: new Date()
+                }
+              },
+              { session }
+            )
+          : await MongoDatasetData.updateOne(
+              {
+                _id: sourceData.id,
+                ...(synonymContext && { updateTime: sourceData.updateTime })
+              },
+              {
+                // 人工添加的索引放在前面，后续读取时优先展示用户创建的检索提示。
+                $push: {
+                  indexes: {
+                    $each: [newIndex],
+                    $position: 0
+                  }
+                },
+                $set: {
+                  updateTime: new Date()
+                }
+              },
+              { session }
+            );
+        if (synonymContext && updateResult.modifiedCount !== 1) {
+          throw new Error('数据已变化，请重试索引更新');
+        }
+
+        if (targetIndex) {
+          // 先把 Mongo 索引替换成新的向量 id，再删除旧向量，避免检索指向不存在的向量记录。
+          await this.deleteVectors({
+            teamId: sourceData.teamId,
+            idList: [targetIndex.dataId]
+          });
+        }
+      });
+    } catch (error) {
+      if (synonymContext && newIndex) {
+        await this.deleteVectors({
+          teamId: sourceData.teamId,
+          idList: [newIndex.dataId]
+        }).catch(() => {});
+      }
+      throw error;
+    }
 
     pushCollectionUpdateJob({
-      collectionId: String(data.collectionId),
-      datasetId: String(data.datasetId),
-      teamId: String(data.teamId)
+      collectionId: sourceData.collectionId,
+      datasetId: sourceData.datasetId,
+      teamId: sourceData.teamId
     });
 
     return {
@@ -847,7 +902,7 @@ export const createDatasetDataIndex = async ({
   data: DatasetDataItemType;
   type: DatasetDataIndexTypeEnum;
   text: string;
-  model: string;
+  model: EmbeddingModelDataType;
 }) => {
   return new DatasetDataIndexOperation(model).writeDatasetDataIndex({
     data,
@@ -873,7 +928,7 @@ export const updateDatasetDataIndex = async ({
   indexDataId: string;
   type: DatasetDataIndexTypeEnum;
   text: string;
-  model: string;
+  model: EmbeddingModelDataType;
 }) => {
   return new DatasetDataIndexOperation(model).writeDatasetDataIndex({
     data,

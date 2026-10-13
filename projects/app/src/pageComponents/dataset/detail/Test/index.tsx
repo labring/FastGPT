@@ -1,23 +1,23 @@
-import React from 'react';
-import dynamic from 'next/dynamic';
-import { Box, useDisclosure } from '@chakra-ui/react';
-import { useContextSelector } from 'use-context-selector';
-import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { SEARCH_TEST_IMAGE_UPLOAD_ENABLED } from './constants';
-import TestInputPanel from './components/TestInputPanel';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { Box, useDisclosure } from '@chakra-ui/react';
+import dynamic from 'next/dynamic';
+import React from 'react';
+import { useContextSelector } from 'use-context-selector';
 import TestHistories from './components/TestHistories';
+import TestInputPanel from './components/TestInputPanel';
 import TestResults from './components/TestResults';
+import { SEARCH_TEST_IMAGE_UPLOAD_ENABLED } from './constants';
 import { useDatasetSearchTest } from './hooks/useDatasetSearchTest';
 import { useSearchTestImages } from './hooks/useSearchTestImages';
 
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
 
 const Test = ({ datasetId }: { datasetId: string }) => {
-  const { defaultModels, feConfigs } = useSystemStore();
+  const { feConfigs } = useSystemStore();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   // Image search is only meaningful when the dataset has a vision vector model or VLM configured.
-  const canUseImageSearch = !!datasetDetail.vectorModel?.vision || !!datasetDetail.vlmModel;
+  const canUseImageSearch = !!datasetDetail.vectorModel?.config.vision || !!datasetDetail.vlmModel;
 
   const {
     ImageFileSelector,
@@ -44,8 +44,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
     setDatasetTestItem
   } = useDatasetSearchTest({
     datasetId,
-    queryImageRefs: showSearchTestImageEntry ? queryImageRefs : [],
-    defaultModels
+    queryImageRefs: showSearchTestImageEntry ? queryImageRefs : []
   });
 
   const {
@@ -74,7 +73,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         <TestInputPanel
           canSubmit={canSubmit}
           canUseImageSearch={canUseImageSearch}
-          datasetMaxToken={datasetDetail.vectorModel?.maxToken}
+          datasetMaxToken={datasetDetail.vectorModel?.config.maxToken}
           isLoading={textTestIsLoading}
           onOpenImageSelector={onOpenImageSelector}
           onOpenSelectMode={onOpenSelectMode}

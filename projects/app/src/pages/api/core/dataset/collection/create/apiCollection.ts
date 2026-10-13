@@ -1,6 +1,5 @@
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import { createApiDatasetCollection } from './apiCollectionV2';
@@ -13,12 +12,12 @@ async function handler(req: ApiRequestProps) {
     bodySchema: CreateApiCollectionBodySchema
   }).body;
 
-  const { teamId, tmbId, dataset } = await authDataset({
+  const { teamId, tmbId, dataset } = await authDatasetCollectionCreate({
     req,
     authToken: true,
     authApiKey: true,
     datasetId: body.datasetId,
-    per: WritePermissionVal
+    parentId: body.parentId
   });
 
   const fileDetail = await (

@@ -53,7 +53,7 @@ const AgentSkillsSchema = new Schema({
     enum: Object.values(AgentSkillTypeEnum),
     default: AgentSkillTypeEnum.skill
   },
-  // 权限继承：文件夹节点可向下继承，skill 节点读取权限时会结合权限模块处理。
+  // 权限继承：每个节点都持有完整有效 ACL，关闭后形成独立子树。
   inheritPermission: {
     type: Boolean,
     default: true
@@ -126,12 +126,21 @@ defineIndex(AgentSkillsSchema, {
 });
 // 列表页按来源、团队、删除状态和创建时间过滤排序。
 defineIndex(AgentSkillsSchema, {
-  key: { source: 1, teamId: 1, deleteTime: 1, createTime: -1 }
+  key: { source: 1, teamId: 1, createTime: 1 }
+});
+defineIndex(AgentSkillsSchema, {
+  key: { source: 1, teamId: 1, updateTime: -1 }
 });
 // 分类筛选。
 defineIndex(AgentSkillsSchema, { key: { category: 1 } });
-// 文件夹树查询：findSkillAndAllChildren 按 teamId + parentId + deleteTime 逐层查子节点。
-defineIndex(AgentSkillsSchema, { key: { teamId: 1, parentId: 1, deleteTime: 1 } });
+defineIndex(AgentSkillsSchema, {
+  key: { teamId: 1, parentId: 1, deleteTime: 1 }
+});
+
+defineIndex(AgentSkillsSchema, {
+  key: { source: 1, teamId: 1, deleteTime: 1, createTime: -1 },
+  deprecated: true
+});
 
 export const MongoAgentSkills = getMongoModel<MongoAgentSkillSchemaType>(
   agentSkillsCollectionName,

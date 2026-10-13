@@ -6,7 +6,11 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { SystemToolRepo } from '../../app/tool/systemTool/systemTool.repo';
 import { jsonSchema2NodeInput, jsonSchema2NodeOutput } from '@fastgpt/global/core/app/jsonschema';
-import { isDebugToolSource, isTeamPluginSource } from '@fastgpt/global/core/app/tool/utils';
+import {
+  getToolSetChildDescription,
+  isDebugToolSource,
+  isTeamPluginSource
+} from '@fastgpt/global/core/app/tool/utils';
 import {
   assertTeamPluginSourceAccess,
   getRawPluginIdFromSystemToolId
@@ -98,8 +102,7 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
     if (!child) return [];
 
     const pluginId = `${systemToolId}/${child.id}`;
-    const intro = selectedTool.description || child.description;
-    const toolDescription = selectedTool.description || child.toolDescription || child.description;
+    const intro = getToolSetChildDescription(selectedTool.description, child.description);
     const childInputs = jsonSchema2NodeInput({
       jsonSchema: child.inputSchema,
       schemaType: 'systemTool'
@@ -116,7 +119,6 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
       nodeId: `${toolSetNode.nodeId}${child.id}`,
       version: runtimeVersion,
       jsonSchema: child.inputSchema,
-      toolDescription,
       toolConfig: {
         systemTool: {
           toolId: pluginId,

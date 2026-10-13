@@ -64,7 +64,7 @@ services:
       retries: 3
   milvus-test:
     container_name: milvus-test-standalone
-    image: milvusdb/milvus:v2.4.3
+    image: milvusdb/milvus:v2.5.16
     command: ['milvus', 'run', 'standalone']
     ports:
       - 6002:19530

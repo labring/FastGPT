@@ -1,6 +1,11 @@
 import { getNodeAllSource, workflowReferenceValueIsSelectable } from '@/web/core/workflow/utils';
+import { workflowSystemVariables } from '@/web/core/app/utils';
 import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VARIABLE_NODE_ID
+} from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
@@ -26,7 +31,6 @@ import {
 import { SelectedToolItemTypeSchema } from '@fastgpt/global/core/app/formEdit/type';
 import { type TFunction } from 'i18next';
 import { type Edge, type Node } from 'reactflow';
-import { createSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const normalizeStoreNodeInput = (input: StoreNodeItemType['inputs'][number], isTool: boolean) => {
   const inputWithSelectedType = normalizeFlowNodeInputType(input, { isTool });
@@ -89,7 +93,6 @@ export const uiWorkflow2StoreWorkflow = ({
       parentNodeId: item.data.parentNodeId,
       name: item.data.name,
       intro: item.data.intro,
-      toolDescription: item.data.toolDescription,
       avatar: item.data.avatar,
       flowNodeType: item.data.flowNodeType,
       showStatus: item.data.showStatus,
@@ -103,8 +106,8 @@ export const uiWorkflow2StoreWorkflow = ({
         getNodeById,
         childrenNodeIdListMap
       }),
-      outputs: item.data.outputs,
-      isFolded: item.data.isFolded,
+      // 仅用于画布的函数不能持久化，也不属于严格 API Schema。
+      outputs: item.data.outputs.map(({ invalidCondition: _, ...output }) => output),
       pluginId: item.data.pluginId,
       toolConfig: item.data.toolConfig,
       catchError: item.data.catchError
@@ -232,13 +235,12 @@ export const getEditorVariables = ({
 }) => {
   const currentNode = getNodeById(nodeId);
   if (!currentNode) return [];
-  const safeT = createSafeTranslation(t);
 
   const nodeVariables = currentNode.inputs
     .filter((input) => input.canEdit)
     .map((item) => ({
       key: item.key,
-      label: item.label,
+      label: item.label ?? item.key,
       parent: {
         id: currentNode.nodeId,
         label: currentNode.name,
@@ -251,7 +253,7 @@ export const getEditorVariables = ({
     getNodeById,
     edges,
     chatConfig: appDetail.chatConfig,
-    t: safeT
+    t
   });
 
   const sourceNodeVariables = !sourceNodes
@@ -271,7 +273,11 @@ export const getEditorVariables = ({
             })
             .map((output) => {
               return {
-                label: safeT((output.label as any) || ''),
+                label:
+                  node.nodeId === VARIABLE_NODE_ID &&
+                  !workflowSystemVariables.some((item) => item.key === output.id)
+                    ? (output.label ?? output.id)
+                    : t((output.label as any) || ''),
                 key: output.id,
                 parent: {
                   id: node.nodeId,

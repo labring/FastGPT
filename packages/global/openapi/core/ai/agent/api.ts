@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
-import { AppQGConfigTypeSchema } from '../../../../core/app/type';
+import { AppQuestionGuideInputSchema } from '../../app/common/api';
 import { ChatMessageSchema } from '../api';
 import { createOutLinkChatTargetInputSchema, transformChatAuthTargetInput } from '../../chat/api';
 
@@ -43,7 +43,7 @@ export const CreateQuestionGuideV2BodyRawSchema = createOutLinkChatTargetInputSc
     example: 'chat-1',
     description: '会话 ID'
   }),
-  questionGuide: AppQGConfigTypeSchema.optional().meta({
+  questionGuide: AppQuestionGuideInputSchema.optional().meta({
     description: '问题引导配置；App 会话未传时使用应用最新版本中的问题引导配置'
   }),
   outLinkAuthData: OutLinkChatAuthSchema.optional().meta({
@@ -54,7 +54,7 @@ export const CreateQuestionGuideV2BodyRawSchema = createOutLinkChatTargetInputSc
     chatId: 'chat-1',
     questionGuide: {
       open: true,
-      model: 'gpt-4o-mini'
+      modelId: '68ad85a7463006c963799a05'
     },
     outLinkAuthData: {
       shareId: 'share-1',

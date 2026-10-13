@@ -11,14 +11,20 @@ import {
   GetAppBasicInfoResponseSchema,
   GetAppDetailQuerySchema,
   GetAppDetailResponseSchema,
+  GetReferencedAppsQuerySchema,
   ListAppBodySchema,
   ListAppResponseSchema,
+  ListAppV2BodySchema,
+  ListAppV2ResponseSchema,
+  PinAppBodySchema,
+  PinAppQuerySchema,
+  PinAppResponseSchema,
   TransitionWorkflowBodySchema,
   TransitionWorkflowResponseSchema,
   UpdateAppBodySchema,
-  UpdateAppQuerySchema,
-  UpdateAppResponseSchema
+  UpdateAppQuerySchema
 } from './api';
+import { ReferencedAppsResponseSchema } from '../../../../core/app/type';
 
 export const AppCommonPath: OpenAPIPath = {
   '/core/app/list': {
@@ -40,6 +46,46 @@ export const AppCommonPath: OpenAPIPath = {
             'application/json': {
               schema: ListAppResponseSchema
             }
+          }
+        }
+      }
+    }
+  },
+  '/core/app/listV2': {
+    post: {
+      summary: '分页获取应用列表',
+      description: '分页获取当前团队下当前用户可读的应用或文件夹列表',
+      tags: [DevApiTagsMap.appCommon],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: ListAppV2BodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功获取分页应用列表',
+          content: {
+            'application/json': {
+              schema: ListAppV2ResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/app/referencedApps': {
+    get: {
+      summary: '获取引用指定资源的应用',
+      description: '列出当前请求者可读的、已发布版本引用指定资源或其文件夹内资源的应用',
+      tags: [DevApiTagsMap.appCommon],
+      requestParams: { query: GetReferencedAppsQuerySchema },
+      responses: {
+        200: {
+          description: '成功获取引用应用',
+          content: {
+            'application/json': { schema: ReferencedAppsResponseSchema }
           }
         }
       }
@@ -106,10 +152,32 @@ export const AppCommonPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功更新应用',
+          description: '成功更新应用'
+        }
+      }
+    }
+  },
+  '/core/app/pin': {
+    put: {
+      summary: '置顶应用',
+      description: '置顶或取消置顶应用、文件夹',
+      tags: [DevApiTagsMap.appCommon],
+      requestParams: {
+        query: PinAppQuerySchema
+      },
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: PinAppBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功更新置顶状态',
           content: {
             'application/json': {
-              schema: UpdateAppResponseSchema
+              schema: PinAppResponseSchema
             }
           }
         }

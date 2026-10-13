@@ -19,12 +19,25 @@ import { getAIApi } from '../../../core/ai/config';
 import { createRootOrg } from '../../permission/org/controllers';
 import { getS3AvatarSource } from '../../../common/s3/sources/avatar';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
+import { TeamDefaultPermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { initTeamFreePlan } from '../../wallet/sub/utils';
+import { getUserFallbackTeam } from './fallback';
 import {
+  assertAccountCancellationUserCanOwnTeam,
   formatTeamAccountCancellationSummary,
   getActiveAccountCancellationsByTeamIds
 } from '../account/cancellation';
+import { createTeamDefaultGroup } from '../../permission/memberGroup/teamDefaultGroup';
 
 const logger = getLogger(LogCategories.MODULE.USER.TEAM);
+
+/** 根据登录用户名生成与多团队默认团队一致的团队名称。 */
+export const getUserDefaultTeamName = (username: string) => {
+  const splitUsername = username.split('-');
+  const formatUsername = splitUsername.length > 1 ? splitUsername.slice(1).join('-') : username;
+  return `${formatUsername.slice(0, 10)} Team`;
+};
 
 async function getTeamMember(
   match: Record<string, any>,
@@ -52,6 +65,7 @@ async function getTeamMember(
     teamAvatar: tmb.team.avatar,
     teamName: tmb.team.name,
     memberName: tmb.name,
+    isSetMemberName: tmb.isSetMemberName ?? false,
     avatar: tmb.avatar,
     balance: tmb.team.balance,
     tmbId: String(tmb._id),
@@ -120,6 +134,72 @@ export async function getUserDefaultTeam({
   );
 }
 
+/**
+ * 在登录事务中为没有任何可用团队的用户创建个人团队。
+ * 调用方必须在覆盖完整登录事务生命周期的用户锁中调用；函数内部再次检查团队，
+ * 避免已提交的团队被重复创建。
+ */
+export async function createUserLoginTeam({
+  userId,
+  username,
+  memberName,
+  memberAvatar,
+  session
+}: {
+  userId: string;
+  username: string;
+  memberName?: string;
+  memberAvatar?: string;
+  session: ClientSession;
+}) {
+  await assertAccountCancellationUserCanOwnTeam(userId);
+
+  const fallback = await getUserFallbackTeam({ userId, session });
+  if (fallback) return fallback.tmbId;
+
+  const [team] = await MongoTeam.create(
+    [
+      {
+        ownerId: userId,
+        name: getUserDefaultTeamName(username),
+        avatar: LOGO_ICON,
+        defaultPermission: TeamDefaultPermissionVal
+      }
+    ],
+    { session, ordered: true }
+  );
+  const [tmb] = await MongoTeamMember.create(
+    [
+      {
+        teamId: team._id,
+        userId,
+        name: memberName ?? username,
+        // 登录兜底建队创建的是 owner，owner 不强制补齐成员名，回落写也记为已设置
+        isSetMemberName: true,
+        role: TeamMemberRoleEnum.owner,
+        status: TeamMemberStatusEnum.active,
+        avatar: memberAvatar ?? LOGO_ICON
+      }
+    ],
+    { session, ordered: true }
+  );
+
+  await MongoMemberGroupModel.create(
+    [{ teamId: team._id, name: DefaultGroupName, avatar: LOGO_ICON }],
+    { session, ordered: true }
+  );
+  await initTeamFreePlan({ teamId: String(team._id), session });
+  await createRootOrg({ teamId: String(team._id), session });
+
+  logger.info('Login fallback team created', {
+    userId,
+    teamId: team._id,
+    tmbId: tmb._id
+  });
+
+  return String(tmb._id);
+}
+
 export async function createDefaultTeam({
   userId,
   teamName = 'My Team',
@@ -132,9 +212,13 @@ export async function createDefaultTeam({
   session: ClientSession;
 }) {
   // auth default team
-  const tmb = await MongoTeamMember.findOne({
-    userId: new Types.ObjectId(userId)
-  });
+  const tmb = await MongoTeamMember.findOne(
+    {
+      userId: new Types.ObjectId(userId)
+    },
+    undefined,
+    { session }
+  );
 
   if (!tmb) {
     // create team
@@ -150,12 +234,14 @@ export async function createDefaultTeam({
       { session }
     );
     // create team member
-    const [tmb] = await MongoTeamMember.create(
+    const [newMember] = await MongoTeamMember.create(
       [
         {
           teamId: insertedId,
           userId,
           name: 'Owner',
+          // root/默认团队初始化规则不变：系统常量名视为已设置
+          isSetMemberName: true,
           role: TeamMemberRoleEnum.owner,
           status: TeamMemberStatusEnum.active,
           createTime: new Date()
@@ -163,22 +249,13 @@ export async function createDefaultTeam({
       ],
       { session }
     );
-    // create default group
-    await MongoMemberGroupModel.create(
-      [
-        {
-          teamId: tmb.teamId,
-          name: DefaultGroupName,
-          avatar
-        }
-      ],
-      { session }
-    );
-    await createRootOrg({ teamId: tmb.teamId, session });
-    logger.info('Default team created', { userId, teamId: tmb.teamId, tmbId: tmb._id });
-    return tmb;
+    await createTeamDefaultGroup({ teamId: newMember.teamId, avatar, session });
+    await createRootOrg({ teamId: newMember.teamId, session });
+    logger.info('Default team created', { userId, teamId: newMember.teamId, tmbId: newMember._id });
+    return newMember;
   } else {
     logger.info('Default team exists', { userId });
+    return tmb;
   }
 }
 

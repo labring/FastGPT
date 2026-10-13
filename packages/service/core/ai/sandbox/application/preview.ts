@@ -134,7 +134,8 @@ export function resolveSandboxPreviewPath(filePath: string): {
 
   const workDirectory = trimSandboxPathRight(getSandboxRuntimeProfile().workDirectory);
   const providerPath = resolveSandboxWorkspacePath(filePath, workDirectory || '/', {
-    allowAbsolutePath: true
+    allowAbsolutePath: true,
+    allowOutsideWorkspace: false
   });
   const relativePath = providerPath.slice(workDirectory.length).replace(/^\/+/, '');
   const segments = relativePath.split('/');

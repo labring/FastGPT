@@ -1,6 +1,6 @@
 import { evaluationFileErrors } from '@fastgpt/global/core/app/evaluation/constants';
 import { getEvaluationFileHeader } from '@fastgpt/global/core/app/evaluation/utils';
-import type { VariableItemType } from '@fastgpt/global/core/app/type';
+import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import Papa from 'papaparse';
 import { getLogger, LogCategories } from '../../../common/logger';

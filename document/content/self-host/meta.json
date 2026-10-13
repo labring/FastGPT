@@ -13,6 +13,7 @@
     "---版本升级---",
     "...upgrading",
     "---其他---",
+    "milvus-bm25",
     "migration",
     "custom-models",
     "design"

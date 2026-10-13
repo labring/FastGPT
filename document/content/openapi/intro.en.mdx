@@ -3,7 +3,7 @@ title: API Documentation Introduction
 description: Introduction to FastGPT API Documentation
 ---
 
-Starting with `4.15.0`, FastGPT API documentation is generated automatically with `zod-openapi` (some legacy endpoints have not been migrated, so they are not shown). You can view the latest endpoint status by opening the API documentation URL. The manually edited endpoint descriptions in the left sidebar of this documentation are no longer updated.
+Starting with `4.15.0`, FastGPT API documentation is generated automatically with `zod-openapi`. You can view the latest endpoint status by opening the API documentation URL. The manually edited endpoint descriptions in the left sidebar of this documentation are no longer updated.
 
 FastGPT API documentation is split into two sets:
 
@@ -44,13 +44,27 @@ You can find API Keys in two places:
 
 An API Key carries the current account's permissions within its team. Use it to operate on resources that the account can access in that team.
 
-### How to Find the BaseURL
+### API key usage
 
-**BaseURL is the shared root URL for API requests. Append the endpoint path before sending a request.**
+- Authenticate with an API Key. When calling `chat/completions`, pass `appId` in the request body whenever possible.
+- For OpenAI SDK compatibility, you can also use `Authorization: Bearer <apiKey>-<appId>`. In this case, you can omit `body.appId`.
+- The `appId` precedence is: `body.appId` > the `appId` in `<apiKey>-<appId>` > the `appId` associated with the API Key (legacy compatibility).
+- Some SDKs require adding `v1` to the `BaseURL`. If you get a 404 error, try adding `v1` and retry.
+- To proxy a team member's identity through `authProxy`, the team owner must enable `authProxy` when creating or editing the key. The proxied member must still have permission to access the target app and session. (FastGPT >= v4.15.0)
 
-Open your app's **API Access** page and copy the API root address displayed beside the API key list. The screenshot highlights this address. For a local deployment, the example below uses `http://localhost:3000/api`.
+**BaseURL is the shared root URL for API requests. Append the endpoint path before sending a request.** For a local deployment, the example below uses `http://localhost:3000/api`.
 
-![](../../public/imgs/fastgpt-api-baseurl.png)
+### How to find the app ID (appId)
+
+Open the app details page and find `appId` in the URL in your browser's address bar.
+
+![](../../public/imgs/appid.png)
+
+### How to find Dataset and Collection IDs
+
+| Dataset ID (datasetId)                  | Collection ID (collectionId)               |
+| --------------------------------------- | ------------------------------------------ |
+| ![](../../public/imgs/getDatasetId.png) | ![](../../public/imgs/getCollectionId.png) |
 
 ### Basic Configuration
 

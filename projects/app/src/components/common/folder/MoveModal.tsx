@@ -1,170 +1,92 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Flex } from '@chakra-ui/react';
-import {
-  type GetResourceFolderListProps,
-  type GetResourceFolderListItemResponse,
-  type ParentIdType
-} from '@fastgpt/global/common/parentFolder/type';
-import { useMemoizedFn, useMount } from 'ahooks';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import { FolderIcon } from '@fastgpt/global/common/file/image/constants';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { Box, Button } from '@chakra-ui/react';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import LightTip from '@fastgpt/web/components/common/LightTip';
-
-type FolderItemType = {
-  id: string;
-  name: string;
-  open: boolean;
-  children?: FolderItemType[];
-};
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import SelectOneResource, {
+  type SelectOneResourceItemType,
+  type SelectOneResourceServer
+} from './SelectOneResource';
 
 const rootId = 'root';
 
 type Props = {
-  moveResourceId: string;
+  moveResourceId?: string;
+  moveResourceIds?: string[];
   title: string;
-  server: (e: GetResourceFolderListProps) => Promise<GetResourceFolderListItemResponse[]>;
+  server: SelectOneResourceServer;
   onConfirm: (id: ParentIdType) => Promise<any>;
   onClose: () => void;
   moveHint?: string;
 };
 
-const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose, moveHint }: Props) => {
+const MoveModal = ({
+  moveResourceId,
+  moveResourceIds,
+  title,
+  server,
+  onConfirm,
+  onClose,
+  moveHint
+}: Props) => {
   const { t } = useTranslation();
-  const [selectedId, setSelectedId] = React.useState<string>();
-  const [requestingIdList, setRequestingIdList] = useState<ParentIdType[]>([]);
-  const [folderList, setFolderList] = useState<FolderItemType[]>([]);
+  const { toast } = useToast();
+  const [selectedId, setSelectedId] = useState<ParentIdType>();
+  const [isAtRoot, setIsAtRoot] = useState(true);
+  const hasSelection = selectedId !== undefined;
 
-  const { runAsync: requestServer } = useRequest((e: GetResourceFolderListProps) => {
-    if (requestingIdList.includes(e.parentId)) return Promise.reject(null);
+  const disabledIds = useMemo(() => {
+    if (moveResourceIds && moveResourceIds.length > 0) return moveResourceIds;
+    if (moveResourceId) return [moveResourceId];
+    return [];
+  }, [moveResourceId, moveResourceIds]);
 
-    setRequestingIdList((state) => [...state, e.parentId]);
-    return server(e).finally(() =>
-      setRequestingIdList((state) => state.filter((id) => id !== e.parentId))
-    );
-  }, {});
-
-  useMount(async () => {
-    const data = await requestServer({ parentId: null });
-    setFolderList([
-      {
-        id: rootId,
-        name: t('common:root_folder'),
-        open: true,
-        children: data.map((item) => ({
-          id: item.id,
-          name: item.name,
-          open: false
-        }))
-      }
-    ]);
-  });
-
-  const RenderList = useMemoizedFn(
-    ({ list, index = 0 }: { list: FolderItemType[]; index?: number }) => {
-      return (
-        <>
-          {list
-            // can not move to itself
-            .filter((item) => moveResourceId !== item.id)
-            .map((item) => (
-              <Box key={item.id} _notLast={{ mb: 0.5 }} userSelect={'none'}>
-                <Flex
-                  alignItems={'center'}
-                  cursor={'pointer'}
-                  py={1}
-                  pl={index === 0 ? '0.5rem' : `${1.75 * (index - 1) + 0.5}rem`}
-                  pr={2}
-                  borderRadius={'md'}
-                  _hover={{
-                    bg: 'myGray.100'
-                  }}
-                  {...(item.id === selectedId
-                    ? {
-                        bg: 'primary.50 !important',
-                        onClick: () => setSelectedId(undefined)
-                      }
-                    : {
-                        onClick: () => setSelectedId(item.id)
-                      })}
-                >
-                  {index !== 0 && (
-                    <Flex
-                      alignItems={'center'}
-                      justifyContent={'center'}
-                      visibility={!item.children || item.children.length > 0 ? 'visible' : 'hidden'}
-                      w={'1.25rem'}
-                      h={'1.25rem'}
-                      cursor={'pointer'}
-                      borderRadius={'xs'}
-                      _hover={{
-                        bg: 'rgba(31, 35, 41, 0.08)'
-                      }}
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        if (requestingIdList.includes(item.id)) return;
-
-                        if (!item.children) {
-                          const data = await requestServer({ parentId: item.id });
-                          item.children = data.map((item) => ({
-                            id: item.id,
-                            name: item.name,
-                            open: false
-                          }));
-                        }
-                        item.open = !item.open;
-                        setFolderList([...folderList]);
-                      }}
-                    >
-                      <MyIcon
-                        name={
-                          requestingIdList.includes(item.id)
-                            ? 'common/loading'
-                            : 'common/rightArrowFill'
-                        }
-                        w={'1.25rem'}
-                        color={'myGray.500'}
-                        transform={item.open ? 'rotate(90deg)' : 'none'}
-                      />
-                    </Flex>
-                  )}
-                  <MyIcon ml={index !== 0 ? '0.5rem' : 0} name={FolderIcon} w={'1.25rem'} />
-                  <Box fontSize={'sm'} ml={2}>
-                    {item.name}
-                  </Box>
-                </Flex>
-                {item.children && item.open && (
-                  <Box mt={0.5}>
-                    <RenderList list={item.children} index={index + 1} />
-                  </Box>
-                )}
-              </Box>
-            ))}
-        </>
-      );
+  const onSelect = (item?: SelectOneResourceItemType) => {
+    if (!item) {
+      setSelectedId(undefined);
+      return;
     }
-  );
+    setSelectedId(item.id === rootId ? null : item.id);
+  };
 
-  const { runAsync: onConfirmSelect, loading: confirming } = useRequest(
-    () => {
-      if (selectedId) {
-        return onConfirm(selectedId === rootId ? null : selectedId);
-      }
-      return Promise.reject('');
+  const { runAsync: onConfirmMove, loading: confirming } = useRequest(
+    (parentId: ParentIdType) => {
+      if (parentId === undefined) return Promise.reject('');
+      return onConfirm(parentId);
     },
     {
-      onSuccess: () => {
+      onSuccess(result) {
+        const hasFailedItems =
+          result && Array.isArray(result.failedIds) && result.failedIds.length > 0;
+        const hasSuccessItems =
+          result && Array.isArray(result.successIds) && result.successIds.length > 0;
+
+        if (!hasSuccessItems && hasFailedItems) {
+          toast({
+            title: t('common:move_failed'),
+            status: 'error'
+          });
+        } else if (hasFailedItems) {
+          toast({
+            title: t('common:batch_partial_failed'),
+            status: 'warning'
+          });
+        } else {
+          toast({
+            title: t('common:move_success'),
+            status: 'success'
+          });
+        }
         onClose();
-      },
-      successToast: t('common:move_success')
+      }
     }
   );
 
   return (
     <MyModal
-      isLoading={folderList.length === 0}
       isOpen
       size={'md'}
       title={title}
@@ -176,10 +98,20 @@ const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose, moveHint
       }}
       footer={
         <>
+          {isAtRoot && (
+            <Button variant={'primary'} isLoading={confirming} onClick={() => onConfirmMove(null)}>
+              {t('common:move_to_root')}
+            </Button>
+          )}
+          <Box flex={1} />
           <Button variant={'whiteBase'} onClick={onClose}>
             {t('common:Cancel')}
           </Button>
-          <Button isLoading={confirming} isDisabled={!selectedId} onClick={onConfirmSelect}>
+          <Button
+            isLoading={confirming}
+            isDisabled={!hasSelection}
+            onClick={() => onConfirmMove(selectedId)}
+          >
             {t('common:Confirm')}
           </Button>
         </>
@@ -196,9 +128,18 @@ const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose, moveHint
         borderRadius={'md'}
         p={3}
         flex={'1 0 0'}
-        overflowY={'auto'}
+        minH={0}
+        overflow={'hidden'}
       >
-        <RenderList list={folderList} />
+        <SelectOneResource
+          server={server}
+          value={selectedId}
+          onSelect={onSelect}
+          onCurrentParentIdChange={(parentId) => setIsAtRoot(parentId === null)}
+          selectFolder
+          disabledIds={disabledIds}
+          maxH={'100%'}
+        />
       </Box>
     </MyModal>
   );

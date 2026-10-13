@@ -29,13 +29,14 @@ import {
   AiChatQuoteTemplate
 } from '@fastgpt/global/core/workflow/template/system/aiChat/index';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
+import { resolveDatasetTagFilterVersion } from '@fastgpt/global/core/dataset/search/tagFilter';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   Input_Template_File_Link,
+  Input_Template_Stream_MODE,
   Input_Template_UserChatInput
 } from '@fastgpt/global/core/workflow/template/input';
 import { workflowStartNodeId } from '@/web/core/app/constants';
-import { getWebLLMModel } from '@/web/common/system/utils';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
@@ -67,6 +68,10 @@ export const appWorkflow2Form = ({
       node.flowNodeType === FlowNodeTypeEnum.chatNode ||
       node.flowNodeType === FlowNodeTypeEnum.toolCall
     ) {
+      defaultAppForm.aiSettings.modelId = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.aiModelId
+      );
       defaultAppForm.aiSettings.model = findInputValueByKey(node.inputs, NodeInputKeyEnum.aiModel);
       defaultAppForm.aiSettings.systemPrompt = findInputValueByKey(
         node.inputs,
@@ -117,6 +122,11 @@ export const appWorkflow2Form = ({
         NodeInputKeyEnum.sandboxEntrypoint
       );
     } else if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
+      defaultAppForm.dataset[NodeInputKeyEnum.collectionFilterVersion] =
+        resolveDatasetTagFilterVersion({
+          version: findInputValueByKey(node.inputs, NodeInputKeyEnum.collectionFilterVersion),
+          filterValue: findInputValueByKey(node.inputs, NodeInputKeyEnum.collectionFilterMatch)
+        });
       defaultAppForm.dataset.datasets = findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.datasetSelectList
@@ -141,6 +151,10 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.datasetSearchUsingReRank
       );
+      defaultAppForm.dataset.rerankModelId = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.datasetSearchRerankModelId
+      );
       defaultAppForm.dataset.rerankModel = findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.datasetSearchRerankModel
@@ -154,6 +168,10 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.datasetSearchUsingExtensionQuery
       );
+      defaultAppForm.dataset.datasetSearchExtensionModelId = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.datasetSearchExtensionModelId
+      );
       defaultAppForm.dataset.datasetSearchExtensionModel = findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.datasetSearchExtensionModel
@@ -165,6 +183,10 @@ export const appWorkflow2Form = ({
       defaultAppForm.dataset.authTmbId = findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.authTmbId
+      );
+      defaultAppForm.dataset.collectionFilterMatch = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.collectionFilterMatch
       );
     } else if (
       node.flowNodeType === FlowNodeTypeEnum.pluginModule ||
@@ -179,8 +201,8 @@ export const appWorkflow2Form = ({
         pluginId: node.pluginId,
         source: node.source,
         isFolder: node.isFolder,
-        name: node.name,
-        avatar: node.avatar,
+        name: node.pluginData?.name ?? node.name,
+        avatar: node.pluginData?.avatar ?? node.avatar,
         intro: node.intro || '',
         flowNodeType: node.flowNodeType,
         showStatus: node.showStatus,
@@ -216,13 +238,44 @@ export function form2AppWorkflow(
   const datasetNodeId = 'iKBoX2vIzETU';
   const aiChatNodeId = '7BdojPlukIQw';
   const selectedDatasets = data.dataset.datasets;
-  const modelData = getWebLLMModel(data.aiSettings.model);
   const modelMultimodal = {
-    vision: !!modelData?.vision,
-    audio: !!modelData?.audio,
-    video: !!modelData?.video,
-    extractFiles: !!(modelData?.vision || modelData?.audio || modelData?.video)
+    // 表单只控制文件上传；媒体传递和链接提取统一放行，实际能力由运行时模型配置判断。
+    vision: true,
+    audio: true,
+    video: true,
+    extractFiles: true
   };
+
+  const getModelReferenceInputs = (formData: AppFormEditFormType): FlowNodeInputItemType[] => [
+    ...(formData.aiSettings.modelId !== undefined || !formData.aiSettings.model
+      ? [
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            renderTypeList: [
+              FlowNodeInputTypeEnum.settingLLMModel,
+              FlowNodeInputTypeEnum.reference
+            ],
+            label: '',
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: formData.aiSettings.modelId
+          }
+        ]
+      : []),
+    ...(formData.aiSettings.model
+      ? [
+          {
+            key: NodeInputKeyEnum.aiModel,
+            renderTypeList: [
+              FlowNodeInputTypeEnum.settingLLMModel,
+              FlowNodeInputTypeEnum.reference
+            ],
+            label: '',
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: formData.aiSettings.model
+          }
+        ]
+      : [])
+  ];
 
   function workflowStartTemplate(): StoreNodeItemType {
     return {
@@ -254,13 +307,7 @@ export function form2AppWorkflow(
       },
       version: AiChatModule.version,
       inputs: [
-        {
-          key: NodeInputKeyEnum.aiModel,
-          renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel, FlowNodeInputTypeEnum.reference],
-          label: '',
-          valueType: WorkflowIOValueTypeEnum.string,
-          value: formData.aiSettings.model
-        },
+        ...getModelReferenceInputs(formData),
         {
           key: NodeInputKeyEnum.aiChatTemperature,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
@@ -469,13 +516,28 @@ export function form2AppWorkflow(
           valueType: WorkflowIOValueTypeEnum.boolean,
           value: formData.dataset.usingReRank
         },
-        {
-          key: NodeInputKeyEnum.datasetSearchRerankModel,
-          renderTypeList: [FlowNodeInputTypeEnum.hidden],
-          label: '',
-          valueType: WorkflowIOValueTypeEnum.string,
-          value: formData.dataset.rerankModel
-        },
+        ...(formData.dataset.rerankModelId !== undefined || !formData.dataset.rerankModel
+          ? [
+              {
+                key: NodeInputKeyEnum.datasetSearchRerankModelId,
+                renderTypeList: [FlowNodeInputTypeEnum.hidden],
+                label: '',
+                valueType: WorkflowIOValueTypeEnum.string,
+                value: formData.dataset.rerankModelId
+              }
+            ]
+          : []),
+        ...(formData.dataset.rerankModel
+          ? [
+              {
+                key: NodeInputKeyEnum.datasetSearchRerankModel,
+                renderTypeList: [FlowNodeInputTypeEnum.hidden],
+                label: '',
+                valueType: WorkflowIOValueTypeEnum.string,
+                value: formData.dataset.rerankModel
+              }
+            ]
+          : []),
         {
           key: NodeInputKeyEnum.datasetSearchRerankWeight,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
@@ -490,13 +552,29 @@ export function form2AppWorkflow(
           valueType: WorkflowIOValueTypeEnum.boolean,
           value: formData.dataset.datasetSearchUsingExtensionQuery
         },
-        {
-          key: NodeInputKeyEnum.datasetSearchExtensionModel,
-          renderTypeList: [FlowNodeInputTypeEnum.hidden],
-          label: '',
-          valueType: WorkflowIOValueTypeEnum.string,
-          value: formData.dataset.datasetSearchExtensionModel
-        },
+        ...(formData.dataset.datasetSearchExtensionModelId !== undefined ||
+        !formData.dataset.datasetSearchExtensionModel
+          ? [
+              {
+                key: NodeInputKeyEnum.datasetSearchExtensionModelId,
+                renderTypeList: [FlowNodeInputTypeEnum.hidden],
+                label: '',
+                valueType: WorkflowIOValueTypeEnum.string,
+                value: formData.dataset.datasetSearchExtensionModelId
+              }
+            ]
+          : []),
+        ...(formData.dataset.datasetSearchExtensionModel
+          ? [
+              {
+                key: NodeInputKeyEnum.datasetSearchExtensionModel,
+                renderTypeList: [FlowNodeInputTypeEnum.hidden],
+                label: '',
+                valueType: WorkflowIOValueTypeEnum.string,
+                value: formData.dataset.datasetSearchExtensionModel
+              }
+            ]
+          : []),
         {
           key: NodeInputKeyEnum.datasetSearchExtensionBg,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
@@ -510,6 +588,25 @@ export function form2AppWorkflow(
           label: '',
           valueType: WorkflowIOValueTypeEnum.boolean,
           value: formData.dataset.authTmbId
+        },
+        {
+          key: NodeInputKeyEnum.collectionFilterVersion,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: resolveDatasetTagFilterVersion({
+            version: formData.dataset[NodeInputKeyEnum.collectionFilterVersion],
+            filterValue: formData.dataset.collectionFilterMatch
+          })
+        },
+        {
+          key: NodeInputKeyEnum.collectionFilterMatch,
+          renderTypeList: [FlowNodeInputTypeEnum.datasetTagFilter, FlowNodeInputTypeEnum.reference],
+          label: i18nT('workflow:tag_filter'),
+          valueType: WorkflowIOValueTypeEnum.string,
+          isPro: true,
+          description: i18nT('workflow:tag_filter_description'),
+          value: formData.dataset.collectionFilterMatch
         },
         {
           ...Input_Template_UserChatInput,
@@ -596,7 +693,6 @@ export function form2AppWorkflow(
             source: tool.source,
             name: tool.name,
             intro: tool.intro,
-            toolDescription: tool.toolDescription,
             avatar: tool.avatar,
             flowNodeType: tool.flowNodeType,
             showStatus: tool.showStatus,
@@ -609,26 +705,35 @@ export function form2AppWorkflow(
             courseUrl: tool.courseUrl,
             readmeUrl: tool.readmeUrl,
             userGuide: tool.userGuide,
-            inputs: tool.inputs.map((input) => {
-              // Special key value
-              if (input.key === NodeInputKeyEnum.forbidStream) {
-                input.value = true;
-              }
-              // Special tool
-              if (
-                tool.flowNodeType === FlowNodeTypeEnum.appModule &&
-                input.key === NodeInputKeyEnum.history
-              ) {
-                return stripToolInputDefaultMode({
-                  ...input,
-                  value: formData.aiSettings.maxHistories
-                });
-              }
-              if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
-                input.value = [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]];
-              }
-              return stripToolInputDefaultMode(input);
-            }),
+            inputs: [
+              // 历史或系统工作流工具可能没有显式开关；表单生成时补齐禁流配置。
+              ...([FlowNodeTypeEnum.appModule, FlowNodeTypeEnum.pluginModule].includes(
+                tool.flowNodeType
+              ) && !tool.inputs.some((input) => input.key === NodeInputKeyEnum.forbidStream)
+                ? [{ ...Input_Template_Stream_MODE, value: true }]
+                : []),
+              ...tool.inputs.map((input) => {
+                // Special key value
+                if (input.key === NodeInputKeyEnum.forbidStream) {
+                  // 只改生成结果，避免污染共享工具模板及工作流编辑器的原始开关。
+                  return { ...input, value: true };
+                }
+                // Special tool
+                if (
+                  tool.flowNodeType === FlowNodeTypeEnum.appModule &&
+                  input.key === NodeInputKeyEnum.history
+                ) {
+                  return stripToolInputDefaultMode({
+                    ...input,
+                    value: formData.aiSettings.maxHistories
+                  });
+                }
+                if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
+                  input.value = [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]];
+                }
+                return stripToolInputDefaultMode(input);
+              })
+            ],
             outputs: tool.outputs
           }
         ],
@@ -658,16 +763,10 @@ export function form2AppWorkflow(
           },
           version: ToolCallNode.version,
           inputs: [
-            {
-              key: NodeInputKeyEnum.aiModel,
-              renderTypeList: [
-                FlowNodeInputTypeEnum.settingLLMModel,
-                FlowNodeInputTypeEnum.reference
-              ],
-              label: t('common:core.module.input.label.aiModel'),
-              valueType: WorkflowIOValueTypeEnum.string,
-              value: formData.aiSettings.model
-            },
+            ...getModelReferenceInputs(formData).map((input) => ({
+              ...input,
+              label: t('common:core.module.input.label.aiModel')
+            })),
             {
               key: NodeInputKeyEnum.aiChatTemperature,
               renderTypeList: [FlowNodeInputTypeEnum.hidden],

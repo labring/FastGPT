@@ -14,8 +14,8 @@ const mocks = vi.hoisted(() => ({
   loggerError: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/support/user/account/cancellation', () => ({
-  withAccountCancellationTeamLock: mocks.withTeamLock
+vi.mock('@fastgpt/service/support/user/lock', () => ({
+  withTeamLock: mocks.withTeamLock
 }));
 
 vi.mock('@fastgpt/service/support/user/team/teamSchema', () => ({

@@ -1,8 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { serviceEnv } from '@fastgpt/service/env';
+import { Types } from '@fastgpt/service/common/mongo';
+import {
+  MongoDatasetSynonym,
+  MongoDatasetSynonymMapping
+} from '@fastgpt/service/core/dataset/synonym/schema';
 
 const mockQueryExtension = vi.hoisted(() => vi.fn());
 const mockGetImageBase64 = vi.hoisted(() => vi.fn());
+const mockGetDatasetBase64Image = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/core/ai/functions/queryExtension', () => ({
   queryExtension: mockQueryExtension
@@ -12,23 +18,134 @@ vi.mock('@fastgpt/service/common/file/image/utils', () => ({
   getImageBase64: mockGetImageBase64
 }));
 
+vi.mock('@fastgpt/service/common/s3/sources/dataset', () => ({
+  getS3DatasetSource: () => ({
+    getDatasetBase64Image: mockGetDatasetBase64Image
+  })
+}));
+
 import {
   computeFilterIntersection,
   datasetSearchQueryExtension,
   isValidImageEmbeddingSource,
-  normalizeImageToBase64
+  mergeDatasetSynonymQueryMatches,
+  normalizeImageToBase64,
+  normalizeDatasetIndexImageToModelInput,
+  standardizeDatasetSearchQueries
 } from '../../../../core/dataset/search/utils';
 
 const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
+const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
+
+beforeEach(() => {
+  serviceEnv.DATASET_SYNONYM_ENABLED = true;
+});
 
 afterEach(() => {
+  serviceEnv.DATASET_SYNONYM_ENABLED = originalDatasetSynonymEnabled;
   serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+});
+
+describe('mergeDatasetSynonymQueryMatches', () => {
+  const baseMatch = {
+    mappingId: '68ee0bd23d17260b7829b137',
+    datasetId: '68ee0bd23d17260b7829b138',
+    fileVersion: 1,
+    matchedTerm: '苹果手机',
+    standardizedTerm: 'iPhone',
+    preserveOriginal: false,
+    order: 0
+  };
+
+  it('replaces a unique standard term directly', () => {
+    expect(
+      mergeDatasetSynonymQueryMatches({
+        query: '苹果手机怎么退款',
+        matches: [baseMatch]
+      })
+    ).toBe('iPhone怎么退款');
+  });
+
+  it('preserves the source term and appends all cross-dataset standards', () => {
+    expect(
+      mergeDatasetSynonymQueryMatches({
+        query: '苹果手机怎么退款',
+        matches: [
+          { ...baseMatch, standardizedTerm: 'Apple Phone', order: 1 },
+          { ...baseMatch, standardizedTerm: 'iPhone', order: 0 }
+        ]
+      })
+    ).toBe('苹果手机 iPhone Apple Phone怎么退款');
+  });
+
+  it('preserves the source term when a match requests expansion', () => {
+    expect(
+      mergeDatasetSynonymQueryMatches({
+        query: 'Use AI',
+        matches: [
+          {
+            ...baseMatch,
+            matchedTerm: 'AI',
+            standardizedTerm: 'Artificial Intelligence',
+            preserveOriginal: true
+          }
+        ]
+      })
+    ).toBe('Use AI Artificial Intelligence');
+  });
+});
+
+describe('standardizeDatasetSearchQueries', () => {
+  it('returns original queries without reading synonym configs when disabled', async () => {
+    serviceEnv.DATASET_SYNONYM_ENABLED = false;
+    const findConfig = vi.spyOn(MongoDatasetSynonym, 'findOne');
+
+    await expect(
+      standardizeDatasetSearchQueries({
+        teamId: 'team-id',
+        datasetIds: ['dataset-id'],
+        queries: ['original query']
+      })
+    ).resolves.toEqual(['original query']);
+    expect(findConfig).not.toHaveBeenCalled();
+  });
+
+  it('always preserves the original query for eventual-consistency rebuilds', async () => {
+    const teamId = new Types.ObjectId();
+    const datasetId = new Types.ObjectId();
+    const synonym = await MongoDatasetSynonym.create({
+      teamId,
+      datasetId,
+      version: 1,
+      enabled: true
+    });
+    await MongoDatasetSynonymMapping.create({
+      logicalMappingId: new Types.ObjectId(),
+      teamId,
+      datasetId,
+      synonymFileId: synonym._id,
+      fileVersion: 1,
+      standardizedTerm: '退款',
+      normalizedStandardizedTerm: '退款',
+      synonymTerms: ['退钱'],
+      normalizedSynonymTerms: ['退钱'],
+      allTerms: '退款 退钱',
+      fingerprint: 'refund'
+    });
+
+    await expect(
+      standardizeDatasetSearchQueries({
+        teamId: String(teamId),
+        datasetIds: [String(datasetId)],
+        queries: ['怎么退钱']
+      })
+    ).resolves.toEqual(['怎么退钱 退款']);
+  });
 });
 
 describe('normalizeImageToBase64', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
   });
 
   it('should keep image url unchanged when base64 conversion is disabled', async () => {
@@ -87,16 +204,87 @@ describe('normalizeImageToBase64', () => {
   });
 });
 
+describe('normalizeDatasetIndexImageToModelInput', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetDatasetBase64Image.mockResolvedValue('data:image/png;base64,dataset_img');
+  });
+
+  it('should read S3 base64 image when datasetId matches key and MULTIPLE_DATA_TO_BASE64 is true', async () => {
+    serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
+    const key = 'dataset/507f1f77bcf86cd799439011/image.png';
+    const result = await normalizeDatasetIndexImageToModelInput(key, '507f1f77bcf86cd799439011');
+
+    expect(result).toBe('data:image/png;base64,dataset_img');
+    expect(mockGetDatasetBase64Image).toHaveBeenCalledWith(key);
+  });
+
+  it('should create signed S3 download URL when datasetId matches key and MULTIPLE_DATA_TO_BASE64 is false', async () => {
+    serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+    const key = 'dataset/507f1f77bcf86cd799439011/image.png';
+    const result = await normalizeDatasetIndexImageToModelInput(key, '507f1f77bcf86cd799439011');
+
+    expect(result).toMatch(/\/api\/system\/file\/d\//);
+    expect(mockGetDatasetBase64Image).not.toHaveBeenCalled();
+  });
+
+  it('should throw error when datasetId does not match key', async () => {
+    const key = 'dataset/507f1f77bcf86cd799439099/foreign.png';
+    await expect(
+      normalizeDatasetIndexImageToModelInput(key, '507f1f77bcf86cd799439011')
+    ).rejects.toThrow('Invalid dataset file key');
+    expect(mockGetDatasetBase64Image).not.toHaveBeenCalled();
+  });
+
+  it('should reject dataset S3 image when datasetId is omitted', async () => {
+    const key = 'dataset/507f1f77bcf86cd799439011/image.png';
+
+    await expect(normalizeDatasetIndexImageToModelInput(key)).rejects.toThrow(
+      'Invalid dataset file key'
+    );
+    expect(mockGetDatasetBase64Image).not.toHaveBeenCalled();
+  });
+
+  it.each(['temp/team/file.png', 'chat/app/user/chat/file.png'])(
+    'should reject %s without reading private S3 data',
+    async (key) => {
+      await expect(
+        normalizeDatasetIndexImageToModelInput(key, '507f1f77bcf86cd799439011')
+      ).rejects.toThrow('Invalid dataset file key');
+      expect(mockGetDatasetBase64Image).not.toHaveBeenCalled();
+    }
+  );
+
+  it('should accept data URL and external http image sources', async () => {
+    const dataUrl = 'data:image/png;base64,inline';
+    await expect(
+      normalizeDatasetIndexImageToModelInput(dataUrl, '507f1f77bcf86cd799439011')
+    ).resolves.toBe(dataUrl);
+
+    serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+    const httpUrl = 'https://example.com/pic.png';
+    await expect(
+      normalizeDatasetIndexImageToModelInput(httpUrl, '507f1f77bcf86cd799439011')
+    ).resolves.toBe(httpUrl);
+  });
+
+  it('should reject local or arbitrary non-url image paths', async () => {
+    await expect(
+      normalizeDatasetIndexImageToModelInput('/local/file.png', '507f1f77bcf86cd799439011')
+    ).rejects.toThrow('Invalid dataset file key');
+  });
+});
+
 describe('isValidImageEmbeddingSource', () => {
   it('should accept model-readable image sources', () => {
     expect(isValidImageEmbeddingSource('data:image/png;base64,input')).toBe(true);
     expect(isValidImageEmbeddingSource('dataset/team/file.png')).toBe(true);
-    expect(isValidImageEmbeddingSource('temp/team/file.png')).toBe(true);
-    expect(isValidImageEmbeddingSource('chat/app/user/file.png')).toBe(true);
     expect(isValidImageEmbeddingSource('https://example.com/file.png')).toBe(true);
   });
 
-  it('should reject empty or local non-url image sources', () => {
+  it('should reject non-dataset internal keys and non-url image sources', () => {
+    expect(isValidImageEmbeddingSource('temp/team/file.png')).toBe(false);
+    expect(isValidImageEmbeddingSource('chat/app/user/file.png')).toBe(false);
     expect(isValidImageEmbeddingSource('')).toBe(false);
     expect(isValidImageEmbeddingSource('/local/file.png')).toBe(false);
   });
@@ -206,5 +394,38 @@ describe('datasetSearchQueryExtension', () => {
 
     expect(result.searchQueries).toEqual(['first', 'first extension']);
     expect(result.reRankQuery).toBe('first\nfirst extension');
+  });
+
+  it('should apply synonyms to recall queries without changing the rerank query', async () => {
+    const teamId = new Types.ObjectId();
+    const datasetId = new Types.ObjectId();
+    const synonym = await MongoDatasetSynonym.create({
+      teamId,
+      datasetId,
+      version: 1,
+      enabled: true
+    });
+    await MongoDatasetSynonymMapping.create({
+      logicalMappingId: new Types.ObjectId(),
+      teamId,
+      datasetId,
+      synonymFileId: synonym._id,
+      fileVersion: 1,
+      standardizedTerm: '退款',
+      normalizedStandardizedTerm: '退款',
+      synonymTerms: ['退钱'],
+      normalizedSynonymTerms: ['退钱'],
+      allTerms: '退款 退钱',
+      fingerprint: 'refund'
+    });
+
+    const result = await datasetSearchQueryExtension({
+      query: '怎么退钱',
+      teamId: String(teamId),
+      datasetIds: [String(datasetId)]
+    });
+
+    expect(result.searchQueries).toEqual(['怎么退钱 退款']);
+    expect(result.reRankQuery).toBe('怎么退钱');
   });
 });

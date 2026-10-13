@@ -204,6 +204,16 @@ export const auditLogMap = {
     typeLabel: i18nT('account_team:assign_permission'),
     params: {} as { name?: string; objectName: string; permission: string }
   },
+  [AuditEventEnum.TRANSFER_TEAM_OWNERSHIP]: {
+    content: i18nT('account_team:log_transfer_team_ownership'),
+    typeLabel: i18nT('account_team:transfer_team_ownership'),
+    params: {} as {
+      name?: string;
+      teamName: string;
+      oldOwnerName: string;
+      newOwnerName: string;
+    }
+  },
   //APP
   [AuditEventEnum.CREATE_APP]: {
     content: i18nT('account_team:log_create_app'),

@@ -1,40 +1,36 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '../../context';
 import FolderPath from '@/components/common/folder/Path';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getAppFolderPath } from '@/web/core/app/api/app';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
-import { useRouter } from 'next/router';
-import RouteTab from '../../RouteTab';
-import { useTranslation } from 'next-i18next';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
+import { isProduction } from '@fastgpt/global/common/system/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { TabEnum } from '../../context';
+import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import { publishStatusStyle } from '../../constants';
+import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import SaveButton from '../../Workflow/components/SaveButton';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useBoolean, useDebounceEffect, useLockFn } from 'ahooks';
+import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useContextSelector } from 'use-context-selector';
+import { publishStatusStyle } from '../../constants';
+import { AppContext, TabEnum } from '../../context';
+import PublishHistories from '../../PublishHistoriesSlider';
+import RouteTab from '../../RouteTab';
+import SaveButton from '../../Workflow/components/SaveButton';
+import { checkAppFormBeforePublish } from './checkAppForm';
+import type { AppForm2WorkflowFnType, Form2WorkflowFnType } from './type';
 import {
   compareSimpleAppSnapshot,
   type onSaveSnapshotFnType,
   type SimpleAppSnapshotType
 } from './useSnapshots';
-import PublishHistories from '../../PublishHistoriesSlider';
-import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
-import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
-import { isProduction } from '@fastgpt/global/common/system/constants';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import { storeEdge2RenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
-import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/workflowCheck';
-import type { AppForm2WorkflowFnType, Form2WorkflowFnType } from './type';
-import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { checkAgentSkillSandboxUnavailable } from '../ChatAgent/utils';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 const Header = ({
   forbiddenSaveSnapshot: forbiddenSaveSnapshotRef,
@@ -246,59 +242,25 @@ const Header = ({
               isLoading={loading}
               isDisabled={isShowHistories}
               onClickSave={onClickSave}
-              checkData={() => {
-                if (
-                  checkAgentSkillSandboxUnavailable({
-                    appForm,
-                    showSandbox,
-                    enableSandbox
-                  })
-                ) {
+              checkData={async () => {
+                const error = await checkAppFormBeforePublish({
+                  appId,
+                  appForm,
+                  form2WorkflowFn,
+                  showSandbox,
+                  enableSandbox,
+                  t
+                });
+
+                if (error) {
                   toast({
-                    title: t('skill:sandbox_skill_unavailable_toast'),
+                    title: error,
                     status: 'warning'
                   });
                   return false;
                 }
 
-                if (appForm.aiSettings.useAgentSandbox) {
-                  if (!showSandbox) {
-                    toast({
-                      title: t('skill:sandbox_system_not_configured_toast'),
-                      status: 'warning'
-                    });
-                    return false;
-                  }
-                  if (!enableSandbox) {
-                    toast({
-                      title: t('app:sandbox_free_not_support'),
-                      status: 'warning'
-                    });
-                    return false;
-                  }
-                }
-
-                const { nodes: storeNodes, edges: storeEdges } = form2WorkflowFn(appForm, t);
-
-                const toolNodeIds = new Set(
-                  storeEdges
-                    .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
-                    .map((edge) => edge.target)
-                );
-                const nodes = storeNodes.map((item) =>
-                  storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
-                );
-                const edges = storeEdges.map((item) => storeEdge2RenderEdge({ edge: item }));
-
-                const checkResults = checkWorkflowBeforeRunOrPublish({ nodes, edges, t });
-
-                if (checkResults.hasError) {
-                  toast({
-                    title: t('app:app.error.publish_unExist_app'),
-                    status: 'warning'
-                  });
-                }
-                return !checkResults.hasError;
+                return true;
               }}
             />
           </Flex>

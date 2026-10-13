@@ -20,11 +20,12 @@ import type chat from './zh-CN/chat.json';
 import type login from './zh-CN/login.json';
 import type config from './zh-CN/config.json';
 import type config_model from './zh-CN/config_model.json';
+import type system_migration from './zh-CN/system_migration.json';
 import type marketplace from './zh-CN/marketplace.json';
 import type account_custom_domain from './zh-CN/account_custom_domain.json';
 import type dashboard_mcp from './zh-CN/dashboard_mcp.json';
 import type dashboard_evaluation from './zh-CN/dashboard_evaluation.json';
-import type admin_plugin from './zh-CN/admin_plugin.json';
+import type admin from './zh-CN/admin.json';
 import type skill from './zh-CN/skill.json';
 import type price from './zh-CN/price.json';
 import type { I18N_NAMESPACES } from './constants';
@@ -52,10 +53,11 @@ export interface I18nNamespaces {
   account_custom_domain: typeof account_custom_domain;
   config: typeof config;
   config_model: typeof config_model;
+  system_migration: typeof system_migration;
   marketplace: typeof marketplace;
   dashboard_mcp: typeof dashboard_mcp;
   dashboard_evaluation: typeof dashboard_evaluation;
-  admin_plugin: typeof admin_plugin;
+  admin: typeof admin;
   skill: typeof skill;
   price: typeof price;
 }

@@ -22,6 +22,7 @@ function SandboxEntrypointEditor({ value, onChange, ...props }: SandboxEntrypoin
       <CodeEditor
         value={value || ''}
         language={'sh'}
+        resize={false}
         bg={'myGray.50'}
         defaultHeight={180}
         options={{

@@ -31,6 +31,65 @@ describe('PythonIsolatedRunner 兼容性', () => {
     return undefined;
   }
 
+  it('错误诊断返回 traceback、异常链和失败前 print 输出', async () => {
+    const r = await createRunner(1);
+    const result = await r.execute({
+      code: `def main():
+    print("before failure")
+    try:
+        raise ValueError("root failure")
+    except ValueError as e:
+        raise RuntimeError("outer failure") from e`,
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('Traceback (most recent call last)');
+    expect(result.message).toContain('ValueError: root failure');
+    expect(result.message).toContain('RuntimeError: outer failure');
+    expect(result.message).toContain('line 6, in main');
+    expect(result.message).toContain('Console output:\nbefore failure');
+  });
+
+  it('错误诊断在语法错误时返回行号和具体原因', async () => {
+    const r = await createRunner(1);
+    const result = await r.execute({ code: 'def main(:\n    pass', variables: {} });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('SyntaxError');
+    expect(result.message).toContain('line 1');
+    expect(result.message).not.toContain('Console output:');
+  });
+
+  it('错误诊断截断过长输出并标记采集上限', async () => {
+    const r = await createRunner(1);
+    const result = await r.execute({
+      code: `def main():
+    print("x" * 20000)
+    print("last captured line")
+    print("x" * (1024 * 1024))
+    raise ValueError("original failure")`,
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('ValueError: original failure');
+    expect(result.message).toContain('[earlier logs truncated]');
+    expect(result.message).toContain('last captured line');
+    expect(result.message).toContain('[log capture limit reached]');
+    expect(result.message!.length).toBeLessThan(34000);
+  });
+
+  it('错误诊断截断超长异常仍保留异常类型和原因开头', async () => {
+    const r = await createRunner(1);
+    const result = await r.execute({
+      code: `def main():
+    raise ValueError("original failure " + "x" * 20000)`,
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('ValueError: original failure');
+    expect(result.message).toContain('[error truncated]');
+    expect(result.message!.length).toBeLessThan(17000);
+  });
+
   it('支持 main() 无参数、print log 和 JSON 返回', async () => {
     const r = await createRunner();
 

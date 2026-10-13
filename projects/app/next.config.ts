@@ -36,6 +36,7 @@ const optimizedPackageImports = [
 ];
 
 const nextConfig: NextConfig = {
+  agentRules: false,
   basePath: webEnv.NEXT_PUBLIC_BASE_URL || undefined,
   env: {
     SYSTEM_NAME: appEnv.SYSTEM_NAME,

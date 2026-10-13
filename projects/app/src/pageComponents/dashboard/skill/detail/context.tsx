@@ -353,7 +353,7 @@ const SkillDetailContextProviderInner = ({
           creationError: res.creationError,
           createTime: new Date(res.createTime),
           updateTime: new Date(res.updateTime),
-          appCount: res.appCount ?? 0,
+          appCount: res.appCount,
           permission: res.permission
         };
         return detail;

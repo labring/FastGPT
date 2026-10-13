@@ -92,7 +92,7 @@ async function handler(
 
     try {
       const { sourceType, sourceId, userId, chatId } = SandboxTicketClaimsSchema.parse(
-        jwt.verify(ticket, secret)
+        jwt.verify(ticket, secret, { algorithms: ['HS256'] })
       );
       return {
         sandboxQuery: buildSandboxClientQueryFromChatSource({
@@ -103,9 +103,8 @@ async function handler(
         }),
         ideAgentPort: IDE_AGENT_PORT
       };
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`Invalid ticket signature: ${message}`);
+    } catch {
+      throw new Error('Invalid ticket signature');
     }
   })();
 

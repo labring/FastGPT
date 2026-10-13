@@ -5,7 +5,7 @@ import { getInforms, readInform } from '@/web/support/user/inform/api';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -18,7 +18,7 @@ import {
 } from '@/pageComponents/account/styles';
 
 const InformTable = () => {
-  const { t } = useClientTranslation(['account_inform', 'account']);
+  const { t } = useSafeTranslation();
   const theme = useTheme();
   const { Loading } = useLoading();
   const [selectedInform, setSelectedInform] = useState<any>(null);
@@ -61,7 +61,6 @@ const InformTable = () => {
         minH={['100%', 0]}
         flexDirection="column"
         position="relative"
-        pb={[0, 6]}
       >
         <Flex
           display={['none', 'flex']}
@@ -78,8 +77,7 @@ const InformTable = () => {
         </Flex>
         <Box
           ref={scrollContainerRef}
-          px={[3, 6]}
-          pt={[4, 6]}
+          p={[4, 6]}
           position="relative"
           {...accountContentScrollStyles}
           display="flex"
@@ -116,9 +114,7 @@ const InformTable = () => {
                   {item.title}
                 </Box>
                 <Flex mt={[1, 0]} ml={[0, 3]} flex={1} alignItems="center">
-                  <Box {...textStyles.time}>
-                    {t(formatTimeToChatTime(item.time) as any).replace('#', ':')}
-                  </Box>
+                  <Box {...textStyles.time}>{t(formatTimeToChatTime(item.time))}</Box>
                   {!item.read && <Box w={2} h={2} borderRadius="full" bg="red.600" ml={3} />}
 
                   <MyTag

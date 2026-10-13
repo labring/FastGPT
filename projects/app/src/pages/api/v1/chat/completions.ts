@@ -51,6 +51,7 @@ import type { AuthResponseType } from '@fastgpt/global/openapi/core/chat/complet
 import { CompletionsPropsSchema } from '@fastgpt/global/openapi/core/chat/completion/api';
 import { NextAPI } from '@/service/middleware/entry';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   serverGetWorkflowToolRunUserQuery,
@@ -73,6 +74,7 @@ import {
   filterWorkflowFinalResponseData,
   getWorkflowDatasetCiteRetention,
   getWorkflowFinalResponseData,
+  getWorkflowFinalResponseError,
   shouldRetainWorkflowNodeResponses
 } from '@/service/core/workflow/nodeResponse';
 import { formatCompletionResponseContent } from '@/service/core/chat/utils';
@@ -155,6 +157,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         });
 
         return authShareChat({
+          req,
           shareId,
           outLinkUid,
           chatId,
@@ -216,11 +219,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
     }
 
+    const workflowVersion = await getAppLatestVersion(app._id, app);
+    const { versionId, nodes, edges, chatConfig, resources } = workflowVersion;
+
     // Get obj=Human history
     const userQuestion: UserChatItemType = (() => {
       if (isPlugin) {
         return serverGetWorkflowToolRunUserQuery({
-          pluginInputs: getWorkflowToolInputsFromStoreNodes(app.modules),
+          pluginInputs: getWorkflowToolInputsFromStoreNodes(nodes),
           variables,
           files: variables.files
         });
@@ -234,12 +240,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     })();
 
     // Get and concat history;
-    const limit = getMaxHistoryLimitFromNodes(app.modules);
+    const limit = getMaxHistoryLimitFromNodes(nodes);
     const chatSource = {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: String(app._id)
     };
-    const [{ histories }, { versionId, nodes, edges, chatConfig }, chatDetail] = await Promise.all([
+    const [{ histories }, chatDetail] = await Promise.all([
       getChatItems({
         ...chatSource,
         chatId,
@@ -247,7 +253,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         limit,
         field: `obj value memories nodeOutputs`
       }),
-      getAppLatestVersion(app._id, app),
       MongoChat.findOne(
         { ...buildChatSourceQuery(chatSource), chatId },
         'source variableList variables'
@@ -313,7 +318,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       userContent: workflowUserQuestion,
       responseChatItemId: roundState.responseChatItemId,
       interactive,
-      fixedTitle: pluginFixedTitle
+      fixedTitle: pluginFixedTitle,
+      locale: getLocale(req)
     });
     const saveChatId = preparedRound.chatId;
     const finalResponseChatItemId = preparedRound.responseChatItemId;
@@ -361,7 +367,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       durationSeconds,
       system_memories,
       customFeedbacks,
-      nodeResponseSummary,
+      workflowRuntimeSummary,
       flatNodeResponses
     } = await dispatchWorkFlow({
       apiVersion: 'v1',
@@ -392,6 +398,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       maxBytesPerFile,
       lastInteractive: interactive,
       chatConfig,
+      resourceContext: createWorkflowResourceContext({
+        resources,
+        teamId
+      }),
       histories: newHistories,
       stream,
       retainDatasetCite: workflowRetainDatasetCite,
@@ -432,7 +442,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         originIp
       },
       durationSeconds,
-      nodeResponseSummary
+      workflowRuntimeSummary
     };
     if (interactive) {
       await updateInteractiveChat({
@@ -499,10 +509,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         includeLegacyType: true
       });
 
-      const error =
-        nodeResponseSummary?.lastError ||
-        finalResponseData[finalResponseData.length - 1]?.error ||
-        finalResponseData[finalResponseData.length - 1]?.errorText;
+      const error = getWorkflowFinalResponseError({
+        workflowRuntimeSummary,
+        finalResponseData
+      });
 
       res.json({
         ...(detail ? { responseData: feResponseData, newVariables } : {}),
@@ -594,10 +604,12 @@ export default NextAPI(handler);
 
 const authShareChat = async ({
   chatId,
+  req,
   ...data
 }: AuthOutLinkChatProps & {
   shareId: string;
   chatId?: string;
+  req: NextApiRequest;
 }): Promise<AuthResponseType> => {
   const {
     teamId,
@@ -609,7 +621,7 @@ const authShareChat = async ({
     showSkillReferences,
     uid,
     sourceName
-  } = await authOutLinkChatStart(data);
+  } = await authOutLinkChatStart({ ...data, req });
   const app = await MongoApp.findById(appId).lean();
 
   if (!app) {

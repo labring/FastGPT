@@ -3,10 +3,13 @@ import { openAPIDocument } from '../../../../openapi/provider/devapi';
 import { openAPIPaths, openAPITagGroups } from '../../../../openapi/path';
 import { DevApiTagsMap } from '../../../../openapi/tag';
 import { BillItemSchema } from '../../../../openapi/support/wallet/bill/api';
-import { GetPaysResponseSchema } from '../../../../openapi/admin/routes/pays/api';
+import { GetPaysResponseSchema } from '../../../../openapi/admin/wallet/pay/api';
 import {
+  GetTeamHeaderResponseSchema,
+  InvoiceRecordsResponseSchema,
   InvoiceSubmitBodySchema,
-  UnInvoiceListResponseSchema
+  UnInvoiceListResponseSchema,
+  UpdateTeamHeaderBodySchema
 } from '../../../../openapi/support/wallet/bill/invoice/api';
 import {
   BillPayWayEnum,
@@ -14,6 +17,7 @@ import {
   BillTypeEnum
 } from '../../../../support/wallet/bill/constants';
 import { BillSchema } from '../../../../support/wallet/bill/type';
+import { InvoiceStatusEnum } from '../../../../support/wallet/bill/invoice/constants';
 
 describe('wallet OpenAPI contracts', () => {
   const routes = {
@@ -139,6 +143,71 @@ describe('wallet OpenAPI contracts', () => {
     expect(InvoiceSubmitBodySchema.shape.billIdList.parse(bills.map((bill) => bill._id))).toEqual([
       billId
     ]);
+  });
+
+  it('fills the legacy missing invoice contact phone with a placeholder', () => {
+    const response = InvoiceRecordsResponseSchema.parse({
+      list: [
+        {
+          _id: '68ad85a7463006c963799a01',
+          teamId: '68ad85a7463006c963799a02',
+          amount: 9900,
+          status: InvoiceStatusEnum.submitted,
+          createTime: '2026-01-01T00:00:00.000Z',
+          billIdList: ['68ad85a7463006c963799a03'],
+          teamName: 'Example Team',
+          unifiedCreditCode: '91110000MA1234567X',
+          needSpecialInvoice: false,
+          emailAddress: 'billing@example.com'
+        }
+      ],
+      total: 1
+    });
+
+    expect(response.list[0].contactPhone).toBe('-');
+  });
+
+  it('normalizes empty, null or whitespace invoice contact phone in team header to undefined', () => {
+    const cases = ['', '   ', null, undefined];
+    for (const phone of cases) {
+      const response = GetTeamHeaderResponseSchema.parse({
+        teamName: 'Example Team',
+        unifiedCreditCode: '91110000MA1234567X',
+        needSpecialInvoice: false,
+        emailAddress: 'billing@example.com',
+        contactPhone: phone
+      });
+      expect(response.contactPhone).toBeUndefined();
+    }
+
+    const validResponse = GetTeamHeaderResponseSchema.parse({
+      teamName: 'Example Team',
+      unifiedCreditCode: '91110000MA1234567X',
+      needSpecialInvoice: false,
+      emailAddress: 'billing@example.com',
+      contactPhone: ' 13800138000 '
+    });
+    expect(validResponse.contactPhone).toBe('13800138000');
+
+    const updateBody = UpdateTeamHeaderBodySchema.parse({
+      teamName: 'Example Team',
+      unifiedCreditCode: '91110000MA1234567X',
+      needSpecialInvoice: false,
+      emailAddress: 'billing@example.com',
+      contactPhone: ''
+    });
+    expect(updateBody.contactPhone).toBeUndefined();
+
+    const submitBody = InvoiceSubmitBodySchema.parse({
+      amount: 9900,
+      billIdList: ['68ee0bd23d17260b7829b137'],
+      teamName: 'Example Team',
+      unifiedCreditCode: '91110000MA1234567X',
+      needSpecialInvoice: false,
+      emailAddress: 'billing@example.com',
+      contactPhone: ''
+    });
+    expect(submitBody.contactPhone).toBeUndefined();
   });
 
   it('omits empty request and response placeholders', () => {

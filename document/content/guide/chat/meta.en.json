@@ -2,6 +2,7 @@
   "title": "Using Chat",
   "root": false,
   "pages": [
+    "html",
     "htmlRendering",
     "quoteList"
   ]

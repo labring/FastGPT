@@ -1,50 +1,23 @@
-import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
-import {
-  parsePersistedSystemModelConfig,
-  updatedReloadSystemModel
-} from '@fastgpt/service/core/ai/config/utils';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import {
   UpdateSystemModelsWithJsonBodySchema,
-  UpdateSystemModelsWithJsonResponseSchema,
-  type UpdateSystemModelsWithJsonBody,
-  type UpdateSystemModelsWithJsonResponse
-} from '@fastgpt/global/openapi/admin/core/ai/model/api';
+  type UpdateSystemModelsWithJsonBody
+} from '@fastgpt/global/openapi/core/ai/model/api';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { importSystemModels } from '@fastgpt/service/core/ai/model/service';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 
-export type updateWithJsonBody = UpdateSystemModelsWithJsonBody;
-
-async function handler(
-  req: ApiRequestProps<updateWithJsonBody>
-): Promise<UpdateSystemModelsWithJsonResponse> {
-  await authSystemAdmin({ req });
-
+async function handler(req: ApiRequestProps<UpdateSystemModelsWithJsonBody>): Promise<void> {
+  const actor = await authUserPer({ req, authToken: true });
+  if (!actor.isRoot) throw ModelErrEnum.rootOnlyPermit;
   const { config } = parseApiInput({
     req,
     bodySchema: UpdateSystemModelsWithJsonBodySchema
   }).body;
-  const data = config.map(({ model, metadata }) => ({
-    model,
-    metadata: parsePersistedSystemModelConfig({ model, metadata })
-  }));
 
-  await mongoSessionRun(async (session) => {
-    await MongoSystemModel.deleteMany({}, { session });
-    for await (const item of data) {
-      await MongoSystemModel.updateOne(
-        { model: item.model },
-        { $set: { model: item.model, metadata: item.metadata } },
-        { upsert: true, session }
-      );
-    }
-  });
-
-  await updatedReloadSystemModel();
-
-  return UpdateSystemModelsWithJsonResponseSchema.parse(undefined);
+  return importSystemModels({ config });
 }
 
 export default NextAPI(handler);

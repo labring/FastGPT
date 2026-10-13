@@ -8,15 +8,19 @@ const datasetSearchModuleLogo = 'core/workflow/template/datasetSearch';
 const createDatasetSearchChildNodeResponse = ({
   requestIds,
   usage,
+  modelName,
   moduleName,
   seconds,
-  textOutput
+  textOutput,
+  embeddingTokens
 }: {
   requestIds: string[];
   usage: ChatNodeUsageType;
+  modelName: string;
   moduleName: string;
   seconds?: number;
   textOutput?: string;
+  embeddingTokens?: number;
 }): ChatHistoryItemResType => {
   const [id] = requestIds;
   if (!id) {
@@ -30,10 +34,12 @@ const createDatasetSearchChildNodeResponse = ({
     moduleName,
     moduleLogo: datasetSearchModuleLogo,
     runningTime: seconds,
-    model: usage.model,
+    modelId: usage.modelId,
+    model: modelName,
     llmRequestIds: requestIds,
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens,
+    ...(embeddingTokens ? { embeddingTokens } : {}),
     totalPoints: usage.totalPoints,
     textOutput
   };
@@ -41,25 +47,34 @@ const createDatasetSearchChildNodeResponse = ({
 
 /**
  * 创建知识库搜索里的 query extension 子 nodeResponse。
- * 这里记录的是扩展查询的 LLM 请求本身，embedding 选词消耗仍走父知识库搜索 usage 汇总。
+ *
+ * 扩展查询的 LLM 消耗记在 usage 上；扩展选词还会额外做一次 embedding，那次 embedding
+ * 没有独立 row，只能挂在子 response 的 embeddingTokens 上，否则 app chat log 会少统计
+ * 这块 token（账单侧是有的，两页会对不上）。
  */
 export const createQueryExtensionChildNodeResponse = ({
   requestIds,
   usage,
+  modelName,
   seconds,
-  query
+  query,
+  embeddingTokens
 }: {
   requestIds: string[];
   usage: ChatNodeUsageType;
+  modelName: string;
   seconds?: number;
   query: string;
+  embeddingTokens?: number;
 }) =>
   createDatasetSearchChildNodeResponse({
     requestIds,
     usage,
+    modelName,
     seconds,
     moduleName: i18nT('common:core.module.template.Query extension'),
-    textOutput: query
+    textOutput: query,
+    embeddingTokens
   });
 
 /**
@@ -69,17 +84,20 @@ export const createQueryExtensionChildNodeResponse = ({
 export const createImageCaptionChildNodeResponse = ({
   requestIds,
   usage,
+  modelName,
   seconds,
   queries
 }: {
   requestIds: string[];
   usage: ChatNodeUsageType;
+  modelName: string;
   seconds?: number;
   queries: string[];
 }) =>
   createDatasetSearchChildNodeResponse({
     requestIds,
     usage,
+    modelName,
     seconds,
     moduleName: i18nT('chat:image_parse'),
     textOutput: queries.join('\n')
@@ -92,17 +110,20 @@ export const createImageCaptionChildNodeResponse = ({
 export const createChunkSelectionChildNodeResponse = ({
   requestIds,
   usage,
+  modelName,
   seconds,
   selectedChunkIds
 }: {
   requestIds: string[];
   usage: ChatNodeUsageType;
+  modelName: string;
   seconds?: number;
   selectedChunkIds: string[];
 }) =>
   createDatasetSearchChildNodeResponse({
     requestIds,
     usage,
+    modelName,
     seconds,
     moduleName: i18nT('account_usage:dataset_chunk_selection'),
     textOutput: selectedChunkIds.join('\n')

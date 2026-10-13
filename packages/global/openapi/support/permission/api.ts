@@ -1,8 +1,9 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import {
-  CollaboratorItemSchema,
-  CollaboratorListSchema
+  CollaboratorListSchema,
+  CollaboratorUpdateListSchema,
+  ShowUsernameQuerySchema
 } from '../../../support/permission/collaborator.schema';
 
 const AppIdSchema = ObjectIdSchema.meta({
@@ -26,7 +27,8 @@ export const EmptyPermissionResponseSchema = z.undefined().meta({
  * ============================================================================ */
 
 export const GetAppCollaboratorListQuerySchema = z.object({
-  appId: AppIdSchema
+  appId: AppIdSchema,
+  showUsername: ShowUsernameQuerySchema
 });
 export type GetAppCollaboratorListQueryType = z.infer<typeof GetAppCollaboratorListQuerySchema>;
 
@@ -46,10 +48,9 @@ export type GetAppCollaboratorListResponseType = z.infer<
 export const UpdateAppCollaboratorBodySchema = z
   .object({
     appId: AppIdSchema,
-    collaborators: z
-      .array(CollaboratorItemSchema)
-      .min(1)
-      .meta({ description: '更新后的协作者权限列表，至少包含一个协作者' })
+    collaborators: CollaboratorUpdateListSchema.meta({
+      description: '更新后的协作者权限列表，至少包含一个协作者且目标不可重复'
+    })
   })
   .meta({
     example: {

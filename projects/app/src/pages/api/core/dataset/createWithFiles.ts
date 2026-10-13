@@ -1,12 +1,13 @@
+import { authDatasetCreateModels } from '@/service/core/dataset/model';
 import { NextAPI } from '@/service/middleware/entry';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import {
-  DatasetTypeEnum,
-  DatasetCollectionTypeEnum,
-  DatasetCollectionDataProcessModeEnum,
-  ChunkTriggerConfigTypeEnum,
   ChunkSettingModeEnum,
-  DataChunkSplitModeEnum
+  ChunkTriggerConfigTypeEnum,
+  DataChunkSplitModeEnum,
+  DatasetCollectionDataProcessModeEnum,
+  DatasetCollectionTypeEnum,
+  DatasetTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import {
   CreateDatasetWithFilesBodySchema,
@@ -14,33 +15,29 @@ import {
   type CreateDatasetWithFilesResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
 import {
-  OwnerRoleVal,
   PerResourceTypeEnum,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import {
-  getDefaultEmbeddingModel,
-  getDefaultLLMModel,
-  getDefaultVLMModel,
-  getEmbeddingModel
-} from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
+import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
+import { isAuthorizedTempFileS3Key } from '@fastgpt/service/common/s3/sources/temp/key';
+import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import type { ApiRequestProps } from '@fastgpt/next/type';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
-import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
-import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
-import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 
 async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResponse> {
   const { datasetParams, files } = parseApiInput({
@@ -51,12 +48,13 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
     parentId,
     name,
     avatar,
-    vectorModel = getDefaultEmbeddingModel()?.model,
-    agentModel = getDefaultLLMModel()?.model,
-    vlmModel = getDefaultVLMModel()?.model
+    vectorModelId,
+    agentModelId,
+    vlmModelId,
+    sangforFileParseConfig
   } = datasetParams;
 
-  const { teamId, tmbId, userId } = parentId
+  const { teamId, tmbId, userId, isRoot } = parentId
     ? await authDataset({
         req,
         datasetId: parentId,
@@ -71,8 +69,38 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
         per: TeamDatasetCreatePermissionVal
       });
 
+  const modelHandle = await getTeamModelHandle({ teamId });
+  const vectorModelData =
+    modelHandle.getEmbeddingModelData({ modelId: vectorModelId }, { optional: true }) ??
+    modelHandle.getDefaultModelData('embedding');
+  const agentModelData =
+    modelHandle.getLLMModelData({ modelId: agentModelId }, { optional: true }) ??
+    modelHandle.getDefaultModelData('llm');
+  // 与普通创建入口一致：显式“不设置”必须保持禁用，只有省略参数才继承系统默认。
+  const explicitVlm = vlmModelId !== undefined;
+  const rawVlmModelData =
+    vlmModelId === undefined
+      ? modelHandle.getDefaultModelData('datasetImageLLM')
+      : modelHandle.getVlmModelData({ modelId: vlmModelId }, { optional: true });
+
+  const vlmModelData = await authDatasetCreateModels({
+    actor: { teamId, tmbId, isRoot },
+    handle: modelHandle,
+    vectorModel: vectorModelData,
+    agentModel: agentModelData,
+    vlmModel: rawVlmModelData,
+    explicitVlm
+  });
+
   // check limit
   await checkTeamDatasetLimit(teamId);
+
+  // fileId 由客户端传入，必须先绑定到当前团队，避免把其他团队的临时对象移入本团队。
+  for (const file of files) {
+    if (!isAuthorizedTempFileS3Key({ key: file.fileId, teamId })) {
+      return Promise.reject(CommonErrEnum.unAuthFileKey);
+    }
+  }
 
   try {
     const result = await mongoSessionRun(async (session) => {
@@ -84,24 +112,24 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
             name,
             teamId,
             tmbId,
-            vectorModel,
-            agentModel,
-            vlmModel,
+            vectorModelId: vectorModelData.modelId,
+            agentModelId: agentModelData.modelId,
+            ...(vlmModelData?.modelId && { vlmModelId: vlmModelData.modelId }),
             avatar,
             intro: '',
-            type: DatasetTypeEnum.dataset
+            type: DatasetTypeEnum.dataset,
+            ...(sangforFileParseConfig && { sangforFileParseConfig })
           }
         ],
         { session, ordered: true }
       );
 
       // 2. Create permission
-      await MongoResourcePermission.insertOne({
-        teamId,
+      await createResourceDefaultCollaborators({
+        resource: dataset,
+        resourceType: PerResourceTypeEnum.dataset,
         tmbId,
-        resourceId: dataset._id,
-        permission: OwnerRoleVal,
-        resourceType: PerResourceTypeEnum.dataset
+        session
       });
 
       // 3. Refresh avatar
@@ -111,10 +139,6 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
       const bucket = new S3PrivateBucket();
 
       for (const file of files) {
-        if (!file.fileId.startsWith('temp/')) {
-          return Promise.reject('Only temp files are supported');
-        }
-
         const { fileKey: newKey } = getFileS3Key.dataset({
           datasetId: String(dataset._id),
           filename: file.name
@@ -155,7 +179,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
         name: dataset.name,
         avatar: dataset.avatar,
         vectorModel: {
-          model: getEmbeddingModel(dataset.vectorModel)?.model || dataset.vectorModel
+          model: vectorModelData.model
         }
       };
     });

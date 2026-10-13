@@ -1,3 +1,4 @@
+import { authDatasetCreateModels } from '@/service/core/dataset/model';
 import { NextAPI } from '@/service/middleware/entry';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -7,31 +8,24 @@ import {
   type CreateDatasetResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
 import {
-  OwnerRoleVal,
   PerResourceTypeEnum,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import {
-  getDatasetModel,
-  getDefaultEmbeddingModel,
-  getDefaultVLMModel,
-  getEmbeddingModel,
-  getLLMModel
-} from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import type { ApiRequestProps } from '@fastgpt/next/type';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 
 async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
   const {
@@ -40,14 +34,19 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
     intro,
     type = DatasetTypeEnum.dataset,
     avatar,
-    vectorModel = getDefaultEmbeddingModel()?.model,
-    agentModel = getDatasetModel()?.model,
-    vlmModel = getDefaultVLMModel()?.model,
-    apiDatasetServer
+    vectorModelId,
+    vectorModel,
+    agentModelId,
+    agentModel,
+    vlmModelId,
+    vlmModel,
+    apiDatasetServer,
+    sangforFileParseConfig,
+    inheritPermission
   } = parseApiInput({ req, bodySchema: CreateDatasetBodySchema }).body;
 
   // auth
-  const { teamId, tmbId, userId } = parentId
+  const { teamId, tmbId, userId, isRoot } = parentId
     ? await authDataset({
         req,
         datasetId: parentId,
@@ -63,14 +62,33 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
       });
 
   // check model valid
-  const vectorModelStore = getEmbeddingModel(vectorModel);
-  const agentModelStore = getLLMModel(agentModel);
-  if (!vectorModelStore) {
-    return Promise.reject(`System not embedding model`);
-  }
-  if (!agentModelStore) {
-    return Promise.reject(`System not llm model`);
-  }
+  const modelHandle = await getTeamModelHandle({ teamId });
+  const vectorModelStore =
+    modelHandle.getEmbeddingModelData(
+      { modelId: vectorModelId, model: vectorModel },
+      { optional: true }
+    ) ?? modelHandle.getDefaultModelData('embedding');
+  const agentModelStore =
+    modelHandle.getLLMModelData({ modelId: agentModelId, model: agentModel }, { optional: true }) ??
+    modelHandle.getDefaultModelData('llm');
+  // 显式空值表示“不设置”，不能再补系统默认或按旧名称恢复；仅未传引用时沿用默认。
+  const explicitVlm = vlmModelId !== undefined || vlmModel !== undefined;
+  const rawVlmModel = (() => {
+    if (vlmModelId !== undefined)
+      return modelHandle.getVlmModelData({ modelId: vlmModelId }, { optional: true });
+    if (vlmModel !== undefined)
+      return modelHandle.getVlmModelData({ model: vlmModel }, { optional: true });
+    return modelHandle.getDefaultModelData('datasetImageLLM');
+  })();
+
+  const vlmModelStore = await authDatasetCreateModels({
+    actor: { teamId, tmbId, isRoot },
+    handle: modelHandle,
+    vectorModel: vectorModelStore,
+    agentModel: agentModelStore,
+    vlmModel: rawVlmModel,
+    explicitVlm
+  });
 
   // check limit
   await checkTeamDatasetLimit(teamId);
@@ -84,23 +102,25 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
           intro,
           teamId,
           tmbId,
-          vectorModel,
-          agentModel,
-          vlmModel,
+          vectorModelId: vectorModelStore.modelId,
+          agentModelId: agentModelStore.modelId,
+          ...(vlmModelStore?.modelId && { vlmModelId: vlmModelStore.modelId }),
           avatar,
           type,
-          apiDatasetServer
+          apiDatasetServer,
+          ...(sangforFileParseConfig && { sangforFileParseConfig }),
+          // 独立态创建（sangfor 专用）只对文件夹生效，其余类型固定按继承态创建
+          inheritPermission: type === DatasetTypeEnum.folder ? inheritPermission : true
         }
       ],
       { session, ordered: true }
     );
 
-    await MongoResourcePermission.insertOne({
-      teamId,
+    await createResourceDefaultCollaborators({
+      resource: dataset,
+      resourceType: PerResourceTypeEnum.dataset,
       tmbId,
-      resourceId: dataset._id,
-      permission: OwnerRoleVal,
-      resourceType: PerResourceTypeEnum.dataset
+      session
     });
 
     await getS3AvatarSource().refreshAvatar(avatar, undefined, session);

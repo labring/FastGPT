@@ -39,7 +39,7 @@ Deploy using docker-compose:
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16 # SSO service version used by this guide
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:latest
   container_name: fastgpt-sso
   restart: always
   networks:
@@ -86,6 +86,11 @@ Depending on the provider, you'll need different environment variables. Below ar
       <td>Yes</td>
       <td>No</td>
     </tr>
+    <tr>
+      <td>LDAP</td>
+      <td>No</td>
+      <td>Yes</td>
+    </tr>
   </tbody>
 </table>
 
@@ -101,7 +106,14 @@ env:
   - EXTERNAL_USER_SYSTEM_AUTH_TOKEN=xxxxx
 ```
 
-#### 2. Configure button text, icons, etc. in the commercial version admin panel.
+<Alert context="info">
+  This address is operator-configured and is a trusted internal endpoint rather than user-controlled
+  input. SSO authorization, the OAuth callback, and member sync all connect to it directly and are
+  unaffected by `CHECK_INTERNAL_IP`; enabling `CHECK_INTERNAL_IP=true` does not break SSO login or
+  member sync.
+</Alert>
+
+#### 2. In the FastGPT frontend, go to `Admin` -> `System Configuration` -> `User Configuration` to configure button text, icons, etc.
 
 In the admin panel's external user system settings, enter the **SSO login button title** and choose an **SSO login button icon**. Use a label that identifies your provider, such as "Sign in with Lark". The icons below are examples for the supported providers.
 
@@ -141,7 +153,7 @@ env:
   - 'SYNC_MEMBER_CRON=0 0 * * *' # Cron expression, runs daily at 00:00. Note: uses UTC (timezone 0). For example, to sync at 12:00 Beijing time, set this to "0 4 * * *" (UTC 04:00)
 ```
 
-## Built-in Protocol/IM Configuration Examples
+## Built-in Provider Configuration Examples
 
 ### Lark
 
@@ -264,6 +276,11 @@ fastgpt-sso:
 
 ### WeCom
 
+<Alert context="warning">
+  After the WeCom member sync logic is updated, redeploy the `fastgpt-sso-service` relay service
+  using the published `latest` image.
+</Alert>
+
 #### 1. Get Parameters
 
 1.  Enterprise CorpID
@@ -278,7 +295,7 @@ fastgpt-sso:
 
     a. Get the app's AgentID and Secret
 
-    b. Ensure the app's visibility scope is set to all (i.e., root department)
+    b. The app's visibility scope determines the WeCom member sync scope. Include at least the departments that should be synchronized; to synchronize the entire enterprise, select the root department (all visible).
 
     ![](/imgs/sso8.png)
 
@@ -316,11 +333,20 @@ fastgpt-sso:
 
     ![](/imgs/sso14.png)
 
-#### 2. yml Configuration Example
+#### 2. Use the latest image to deploy the fastgpt-sso relay service
+
+WeCom SSO login uses the app Secret, while member synchronization uses the Contact Sync Assistant Secret. Pull the published `latest` image and recreate the service:
+
+```bash
+docker compose pull fastgpt-sso
+docker compose up -d --force-recreate fastgpt-sso
+```
+
+#### 3. yml Configuration Example
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:latest
   container_name: fastgpt-sso
   restart: always
   networks:
@@ -351,6 +377,13 @@ fastgpt-sso:
     # Contact Sync Assistant Secret
     - WECOM_SYNC_SECRET=
 ```
+
+#### 4. WeCom member sync rules
+
+- `/org/list` returns departments visible to the WeCom app.
+- `/user/list` still retrieves members through the Contact Sync Assistant, but keeps only members who belong to at least one department visible to the app.
+- A member's department list is filtered to visible departments; a member who belongs only to invisible departments is not synchronized to FastGPT.
+- After changing the app visibility scope or image version, run member synchronization again. You can also call the endpoints below to verify the result first.
 
 ### Standard OAuth 2.0
 
@@ -434,6 +467,162 @@ fastgpt-sso:
     - OAUTH2_MEMBER_NAME_MAP=
     # OAuth2 contact field mapping (optional)
     - OAUTH2_CONTACT_MAP=
+```
+
+### LDAP User and Organization Sync
+
+The LDAP provider only synchronizes users and organizations. It does not provide login. The recommended setup is to use separate providers for login and synchronization:
+
+```yaml
+fastgpt-sso:
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
+  environment:
+    - SSO_PROVIDER=oauth2
+    - SSO_SYNC_PROVIDER=ldap
+    - AUTH_TOKEN=replace-with-a-sync-token
+    - LDAP_URL=ldap://ldap.example.com:389
+    - LDAP_BASE_DN=dc=example,dc=com
+    - LDAP_BIND_DN=cn=fastgpt-sync,dc=example,dc=com
+    - LDAP_BIND_PASSWORD=replace-with-readonly-password
+    - LDAP_USER_BASE_DN=ou=people,dc=example,dc=com
+    - LDAP_USER_FILTER=(&(objectClass=inetOrgPerson)(uid=*))
+    - LDAP_USER_USERNAME_ATTRIBUTE=uid
+    - LDAP_USER_MEMBER_NAME_ATTRIBUTE=displayName
+    - LDAP_USER_CONTACT_ATTRIBUTE=mail
+    - LDAP_USERNAME_PREFIX=ldap-
+    - LDAP_MEMBERSHIP_MODE=user_attribute
+    - LDAP_USER_ATTRIBUTE_ORG_BASE_DN=ou=company,dc=example,dc=com
+    - LDAP_USER_ATTRIBUTE_ORG_FILTER=(objectClass=organizationalUnit)
+    - LDAP_USER_ATTRIBUTE_ORG_NAME_ATTRIBUTE=ou
+    - LDAP_USER_ATTRIBUTE_MEMBERSHIP_ATTRIBUTE=ou
+    - LDAP_USER_ATTRIBUTE_MEMBERSHIP_VALUE_TYPE=name_or_dn
+```
+
+SSO_PROVIDER remains responsible for login. Setting SSO_SYNC_PROVIDER=ldap makes /user/list and /org/list use LDAP. LDAP does not provide login endpoints; do not set SSO_PROVIDER=ldap when SSO login is required.
+
+#### FastGPT Configuration
+
+fastgpt-pro must reach the SSO service and use the same token as SSO-service.AUTH_TOKEN:
+
+```yaml
+env:
+  - EXTERNAL_USER_SYSTEM_BASE_URL=http://fastgpt-sso:3000
+  - EXTERNAL_USER_SYSTEM_AUTH_TOKEN=replace-with-a-sync-token
+  - SYNC_MEMBER_CRON=0 0 * * *
+```
+
+Enable member synchronization in the FastGPT frontend under `Admin` -> `System Configuration` -> `User Configuration`. SYNC_MEMBER_CRON uses UTC; leaving it empty disables scheduled synchronization.
+
+#### LDAP Connection Configuration
+
+| Environment variable            | Required | Default                                | Description                                                  |
+| ------------------------------- | -------- | -------------------------------------- | ------------------------------------------------------------ |
+| LDAP_URL                        | Yes      | -                                      | Only ldap:// and ldaps:// are supported; do not use https:// |
+| LDAP_BASE_DN                    | Yes      | -                                      | Default search base DN                                       |
+| LDAP_BIND_DN                    | Yes      | -                                      | Read-only synchronization account DN                         |
+| LDAP_BIND_PASSWORD              | Yes      | -                                      | Synchronization account password                             |
+| LDAP_USER_BASE_DN               | No       | LDAP_BASE_DN                           | User search base                                             |
+| LDAP_USER_FILTER                | No       | (&(objectClass=inetOrgPerson)(uid=\*)) | LDAP user filter                                             |
+| LDAP_USER_USERNAME_ATTRIBUTE    | No       | uid                                    | User identifier attribute                                    |
+| LDAP_USER_MEMBER_NAME_ATTRIBUTE | No       | displayName                            | Display name attribute                                       |
+| LDAP_USER_CONTACT_ATTRIBUTE     | No       | mail                                   | Contact attribute                                            |
+| LDAP_USER_AVATAR_ATTRIBUTE      | No       | Empty                                  | Avatar attribute; empty disables sync                        |
+| LDAP_USERNAME_PREFIX            | No       | ldap-                                  | Username prefix                                              |
+| LDAP_PAGE_SIZE                  | No       | 500                                    | LDAP page size                                               |
+| LDAP_TIMEOUT_MS                 | No       | 10000                                  | LDAP operation timeout in milliseconds                       |
+| LDAP_CONNECT_TIMEOUT_MS         | No       | 10000                                  | LDAP connection timeout in milliseconds                      |
+
+For ldaps://, configure LDAP_TLS_REJECT_UNAUTHORIZED, LDAP_TLS_CA_FILE, LDAP_TLS_CA, LDAP_TLS_CERT_FILE, LDAP_TLS_KEY_FILE, and LDAP_TLS_SERVERNAME as needed. Use LDAP_TLS_CA_FILE for a private CA. Client certificate and key must be configured together.
+
+#### Membership Modes
+
+LDAP_MEMBERSHIP_MODE supports four modes:
+
+| Mode             | Relationship                                                    | Main configuration       |
+| ---------------- | --------------------------------------------------------------- | ------------------------ |
+| user_attribute   | A user attribute, usually ou, points to an organization         | LDAP*USER_ATTRIBUTE*\*   |
+| group_member_dn  | A group attribute, usually member, contains user DNs            | LDAP*GROUP_MEMBER_DN*\*  |
+| user_member_of   | A user attribute, usually memberOf, contains group DNs          | LDAP*USER_MEMBER_OF*\*   |
+| posix_member_uid | A group attribute, usually memberUid, contains user identifiers | LDAP*POSIX_MEMBER_UID*\* |
+
+**1. user_attribute: user attribute points to an organization**
+
+```dotenv
+LDAP_MEMBERSHIP_MODE=user_attribute
+LDAP_USER_ATTRIBUTE_ORG_BASE_DN=ou=company,dc=example,dc=com
+LDAP_USER_ATTRIBUTE_ORG_FILTER=(objectClass=organizationalUnit)
+LDAP_USER_ATTRIBUTE_ORG_NAME_ATTRIBUTE=ou
+LDAP_USER_ATTRIBUTE_MEMBERSHIP_ATTRIBUTE=ou
+LDAP_USER_ATTRIBUTE_MEMBERSHIP_VALUE_TYPE=name_or_dn
+```
+
+name_or_dn first tries a DN match and then falls back to the organization name.
+
+**2. group_member_dn: groups contain user DNs**
+
+```text
+dn: cn=engineering,ou=groups,dc=example,dc=com
+objectClass: groupOfNames
+cn: engineering
+member: uid=alice,ou=people,dc=example,dc=com
+```
+
+```dotenv
+LDAP_MEMBERSHIP_MODE=group_member_dn
+LDAP_GROUP_MEMBER_DN_ORG_BASE_DN=ou=groups,dc=example,dc=com
+LDAP_GROUP_MEMBER_DN_ORG_FILTER=(objectClass=groupOfNames)
+LDAP_GROUP_MEMBER_DN_ORG_NAME_ATTRIBUTE=cn
+LDAP_GROUP_MEMBER_DN_MEMBER_ATTRIBUTE=member
+LDAP_GROUP_MEMBER_DN_MEMBER_VALUE_TYPE=dn
+```
+
+For groupOfUniqueNames, change the filter to objectClass=groupOfUniqueNames and usually set the member attribute to uniqueMember.
+
+**3. user_member_of: users contain group DNs**
+
+```dotenv
+LDAP_MEMBERSHIP_MODE=user_member_of
+LDAP_USER_MEMBER_OF_ORG_BASE_DN=ou=groups,dc=example,dc=com
+LDAP_USER_MEMBER_OF_ORG_FILTER=(objectClass=groupOfNames)
+LDAP_USER_MEMBER_OF_ORG_NAME_ATTRIBUTE=cn
+LDAP_USER_MEMBER_OF_MEMBERSHIP_ATTRIBUTE=memberOf
+LDAP_USER_MEMBER_OF_MEMBERSHIP_VALUE_TYPE=dn
+```
+
+User entries must contain the memberOf attribute. Some OpenLDAP deployments require the memberof overlay.
+
+**4. posix_member_uid: POSIX groups contain user UIDs**
+
+```text
+dn: cn=engineering,ou=groups,dc=example,dc=com
+objectClass: posixGroup
+cn: engineering
+memberUid: alice
+```
+
+```dotenv
+LDAP_MEMBERSHIP_MODE=posix_member_uid
+LDAP_POSIX_MEMBER_UID_ORG_BASE_DN=ou=groups,dc=example,dc=com
+LDAP_POSIX_MEMBER_UID_ORG_FILTER=(objectClass=posixGroup)
+LDAP_POSIX_MEMBER_UID_ORG_NAME_ATTRIBUTE=cn
+LDAP_POSIX_MEMBER_UID_MEMBER_ATTRIBUTE=memberUid
+LDAP_POSIX_MEMBER_UID_USER_ID_ATTRIBUTE=uid
+LDAP_POSIX_MEMBER_UID_MEMBER_VALUE_TYPE=username
+```
+
+#### Sync Results and Limitations
+
+- Organization IDs use normalized LDAP DNs, and parentId is derived from DN hierarchy.
+- If the final organization list has multiple parentless organizations, a virtual root with id ldap-virtual-root and name ROOT is inserted.
+- The user result uses orgs for organization IDs. Synced usernames default to ldap- plus the LDAP user identifier.
+- The login provider must use the same prefix and identifier rule.
+- Nested groups are not recursively expanded, and dynamic groups are not parsed.
+
+#### Manually Check the Sync Interfaces
+
+```bash
+curl -H 'Authorization: Bearer replace-with-a-sync-token' http://fastgpt-sso:3000/org/list
+curl -H 'Authorization: Bearer replace-with-a-sync-token' http://fastgpt-sso:3000/user/list
 ```
 
 ## Standard Interface Documentation
@@ -647,7 +836,7 @@ Example response:
 
 ## How to Integrate Non-Standard Systems
 
-1. Self-development: Build according to the standard interfaces provided by FastGPT, then enter the deployed service address into fastgpt-pro.
+1. Self-development: Build according to the standard interfaces provided by FastGPT, then enter the deployed service address in the FastGPT frontend under `Admin` -> `System Configuration` -> `User Configuration`.
    You can use this template repository as a starting point: [fastgpt-sso-template](https://github.com/labring/fastgpt-sso-template)
 2. Custom development by the FastGPT team:
    a. Provide the system's SSO documentation, member and organization retrieval documentation, and an external test address.

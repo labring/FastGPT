@@ -111,7 +111,7 @@ const getDistance = (a: XYPosition, b: XYPosition): number =>
  * 在拐点处生成二次贝塞尔曲线，实现平滑圆角效果
  */
 const getBend = (a: XYPosition, b: XYPosition, c: XYPosition, size: number): string => {
-  const bendSize = Math.min(getDistance(a, b) / 2, getDistance(b, c) / 2, size);
+  const bendSize = Math.min(getDistance(a, b), getDistance(b, c), size);
   const { x, y } = b;
 
   // 三点共线，无需弯曲
@@ -204,6 +204,31 @@ const getPoints = ({
       points = dirAccessor === 'x' ? verticalSplit : horizontalSplit;
     } else {
       points = dirAccessor === 'x' ? horizontalSplit : verticalSplit;
+    }
+
+    const minRadius = 16;
+    const mainDistance = Math.abs(sourceGapped[dirAccessor] - targetGapped[dirAccessor]);
+    if (sourceDir[dirAccessor] === currDir && mainDistance < minRadius * 2) {
+      const oppositeAccessor = dirAccessor === 'x' ? 'y' : 'x';
+      const sourceCorner = sourceGapped[dirAccessor] + sourceDir[dirAccessor] * minRadius;
+      const targetCorner = targetGapped[dirAccessor] + targetDir[dirAccessor] * minRadius;
+      const detour = (sourceGapped[oppositeAccessor] + targetGapped[oppositeAccessor]) / 2;
+      centerX = dirAccessor === 'x' ? (sourceCorner + targetCorner) / 2 : detour;
+      centerY = dirAccessor === 'x' ? detour : (sourceCorner + targetCorner) / 2;
+      points =
+        dirAccessor === 'x'
+          ? [
+              { x: sourceCorner, y: sourceGapped.y },
+              { x: sourceCorner, y: detour },
+              { x: targetCorner, y: detour },
+              { x: targetCorner, y: targetGapped.y }
+            ]
+          : [
+              { x: sourceGapped.x, y: sourceCorner },
+              { x: detour, y: sourceCorner },
+              { x: detour, y: targetCorner },
+              { x: targetGapped.x, y: targetCorner }
+            ];
     }
   } else {
     // 同向或相邻 handle（如 Right -> Bottom）
@@ -315,12 +340,32 @@ export const getCustomStepPath = ({
     stepOffset
   });
 
+  const bendSizes = points.map((point, index) => {
+    if (index === 0 || index === points.length - 1) return 0;
+    const previous = points[index - 1];
+    const next = points[index + 1];
+    const isCorner = !(
+      (previous.x === point.x && point.x === next.x) ||
+      (previous.y === point.y && point.y === next.y)
+    );
+    return isCorner
+      ? Math.min(borderRadius, getDistance(previous, point), getDistance(point, next))
+      : 0;
+  });
+  for (let index = 1; index < bendSizes.length; index++) {
+    const sharedLength = getDistance(points[index - 1], points[index]);
+    if (bendSizes[index - 1] + bendSizes[index] > sharedLength) {
+      bendSizes[index - 1] = Math.min(bendSizes[index - 1], sharedLength / 2);
+      bendSizes[index] = Math.min(bendSizes[index], sharedLength - bendSizes[index - 1]);
+    }
+  }
+
   // 将点数组转换为 SVG 路径字符串
   const path = points.reduce<string>((res, p, i) => {
     let segment = '';
 
     if (i > 0 && i < points.length - 1) {
-      segment = getBend(points[i - 1], p, points[i + 1], borderRadius);
+      segment = getBend(points[i - 1], p, points[i + 1], bendSizes[i]);
     } else {
       segment = `${i === 0 ? 'M' : 'L'}${p.x} ${p.y}`;
     }

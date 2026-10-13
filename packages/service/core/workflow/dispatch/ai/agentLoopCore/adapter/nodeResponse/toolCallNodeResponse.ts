@@ -7,15 +7,14 @@ export type CreateAgentLoopCoreToolCallNodeResponseParams = {
   totalPoints: number;
   toolCallInputTokens: number;
   toolCallOutputTokens: number;
-  toolTotalPoints: number;
   modelName: string;
   query: string;
   completeMessages: ChatCompletionMessageParam[];
   useVision?: boolean;
-  toolDetail: ChatHistoryItemResType[];
-  nodeId: string;
+  toolDetail?: ChatHistoryItemResType[];
   finishReason: string;
   requestIds: string[];
+  firstTokenTime?: number;
 };
 
 /**
@@ -28,20 +27,18 @@ export const createAgentLoopCoreToolCallNodeResponse = ({
   totalPoints,
   toolCallInputTokens,
   toolCallOutputTokens,
-  toolTotalPoints,
   modelName,
   query,
   completeMessages,
   useVision,
   toolDetail,
-  nodeId,
   finishReason,
-  requestIds
+  requestIds,
+  firstTokenTime
 }: CreateAgentLoopCoreToolCallNodeResponseParams): Record<string, unknown> => ({
   totalPoints,
   toolCallInputTokens,
   toolCallOutputTokens,
-  childTotalPoints: toolTotalPoints,
   model: modelName,
   query,
   historyPreview: getHistoryPreview(
@@ -49,8 +46,8 @@ export const createAgentLoopCoreToolCallNodeResponse = ({
     10000,
     useVision
   ),
-  toolDetail,
-  mergeSignId: nodeId,
+  ...(toolDetail?.length ? { toolDetail } : {}),
   finishReason,
-  llmRequestIds: requestIds
+  llmRequestIds: requestIds,
+  firstTokenTime
 });

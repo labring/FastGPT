@@ -19,9 +19,17 @@ describe('dispatchWorkflowReadFiles', () => {
   });
 
   it('returns the shared JSON response and node response for parsed files', async () => {
-    getFileContentByUrlMock.mockResolvedValue({
-      name: 'parsed.pdf',
-      content: 'Alpha content'
+    getFileContentByUrlMock.mockImplementation(async ({ onPdfParseUsage }) => {
+      onPdfParseUsage({
+        moduleName: 'PDF enhanced parse',
+        totalPoints: 12,
+        pages: 3
+      });
+
+      return {
+        name: 'parsed.pdf',
+        content: 'Alpha content'
+      };
     });
 
     const result = await dispatchWorkflowReadFiles({
@@ -40,7 +48,8 @@ describe('dispatchWorkflowReadFiles', () => {
       customPdfParse: true,
       usageId: 'usage_1',
       fileContext: undefined,
-      validateExternalUrlDomain: false
+      validateExternalUrlDomain: false,
+      onPdfParseUsage: expect.any(Function)
     });
     expect(JSON.parse(result.response)).toEqual([
       {
@@ -48,7 +57,13 @@ describe('dispatchWorkflowReadFiles', () => {
         content: 'Alpha content'
       }
     ]);
-    expect(result.usages).toEqual([]);
+    expect(result.usages).toEqual([
+      {
+        moduleName: 'PDF enhanced parse',
+        totalPoints: 12,
+        pages: 3
+      }
+    ]);
     expect(result.nodeResponse).toEqual({
       moduleType: FlowNodeTypeEnum.readFiles,
       moduleName: 'chat:read_file',

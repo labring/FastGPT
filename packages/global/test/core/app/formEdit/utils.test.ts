@@ -7,13 +7,16 @@ import {
   checkNeedsUserConfiguration,
   filterAgentGeneratedToolParams,
   filterToolConfiguredParams,
+  formatJsonEditorValue,
   getToolInputDisplayRenderTypeList,
   getToolInputManualRenderType,
   getToolConfigStatus,
   initAgentToolInputType,
   initToolInputTypeByDefaultMode,
   isAgentGeneratedToolInput,
+  migrateToolInputConfig,
   normalizeFlowNodeInputType,
+  parseJsonEditorValue,
   stripToolInputDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
 import {
@@ -44,6 +47,44 @@ const createMockToolTemplate = (inputs: FlowNodeInputItemType[] = []): FlowNodeT
     inputs,
     outputs: []
   }) as unknown as FlowNodeTemplateType;
+
+describe('parseJsonEditorValue', () => {
+  it.each([
+    ['[1,2,3]', [1, 2, 3]],
+    ['{"":""}', { '': '' }],
+    ['"text"', 'text'],
+    ['true', true],
+    ['null', null]
+  ])('parses %s into its native JSON value', (text, expected) => {
+    expect(parseJsonEditorValue(text)).toEqual({ success: true, value: expected });
+  });
+
+  it('keeps non-string values unchanged', () => {
+    const value = [1, 2, 3];
+
+    expect(parseJsonEditorValue(value)).toEqual({ success: true, value });
+  });
+
+  it('reports incomplete JSON without throwing', () => {
+    expect(parseJsonEditorValue('[1,2')).toEqual({
+      success: false,
+      value: '[1,2'
+    });
+  });
+});
+
+describe('formatJsonEditorValue', () => {
+  it.each([
+    [{ enabled: true }, '{\n  "enabled": true\n}'],
+    [[1, 2], '[\n  1,\n  2\n]'],
+    [null, 'null'],
+    [undefined, ''],
+    ['{"legacy":true}', '{"legacy":true}'],
+    ['"text"', '"text"']
+  ])('formats JSON editor value %#', (value, expected) => {
+    expect(formatJsonEditorValue(value)).toBe(expected);
+  });
+});
 
 describe('validateToolConfiguration', () => {
   describe('valid configurations', () => {
@@ -983,10 +1024,10 @@ describe('agent generated tool input helpers', () => {
 
   it.each([
     FlowNodeInputTypeEnum.hidden,
-    FlowNodeInputTypeEnum.fileSelect,
     FlowNodeInputTypeEnum.selectDataset,
     FlowNodeInputTypeEnum.selectLLMModel,
-    FlowNodeInputTypeEnum.customVariable
+    FlowNodeInputTypeEnum.customVariable,
+    FlowNodeInputTypeEnum.datasetTagFilter
   ])('should hide unsupported parent tool configuration type %s', (renderType) => {
     expect(canInputBeConfiguredAsToolParam(createMockInput({ renderTypeList: [renderType] }))).toBe(
       false
@@ -1042,15 +1083,15 @@ describe('agent generated tool input helpers', () => {
   it('should remove agentGenerated from unsupported input types', () => {
     const input = normalizeFlowNodeInputType(
       createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.fileSelect],
+        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.password],
         selectedType: FlowNodeInputTypeEnum.agentGenerated,
         defaultToAgentGenerated: true
       }),
       { isTool: true }
     );
 
-    expect(input.renderTypeList).toEqual([FlowNodeInputTypeEnum.fileSelect]);
-    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.fileSelect);
+    expect(input.renderTypeList).toEqual([FlowNodeInputTypeEnum.password]);
+    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.password);
   });
 
   it('should allow user chat input to be agent generated', () => {
@@ -1310,38 +1351,42 @@ describe('agent generated tool input helpers', () => {
     );
   });
 
-  it('should restore number input as manual type from valueType when render type was collapsed', () => {
+  it('should keep the persisted manual selection over the declared order', () => {
     const manualType = getToolInputManualRenderType(
       createMockInput({
-        valueType: WorkflowIOValueTypeEnum.number,
-        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.input],
+        renderTypeList: [
+          FlowNodeInputTypeEnum.agentGenerated,
+          FlowNodeInputTypeEnum.input,
+          FlowNodeInputTypeEnum.select,
+          FlowNodeInputTypeEnum.reference
+        ],
+        selectedType: FlowNodeInputTypeEnum.select
+      })
+    );
+
+    expect(manualType).toBe(FlowNodeInputTypeEnum.select);
+  });
+
+  it('should fall back to the first declared manual control', () => {
+    // JSON Schema 投影把主控件放在第一位，例如带候选值的数组参数。
+    const manualType = getToolInputManualRenderType(
+      createMockInput({
+        renderTypeList: [
+          FlowNodeInputTypeEnum.agentGenerated,
+          FlowNodeInputTypeEnum.JSONEditor,
+          FlowNodeInputTypeEnum.multipleSelect,
+          FlowNodeInputTypeEnum.reference
+        ],
         selectedType: FlowNodeInputTypeEnum.agentGenerated
       })
     );
 
-    expect(manualType).toBe(FlowNodeInputTypeEnum.numberInput);
+    expect(manualType).toBe(FlowNodeInputTypeEnum.JSONEditor);
   });
 
-  it('should restore number input when selected manual type degraded to textarea', () => {
+  it('should preserve textarea when it is the only manual candidate', () => {
     const manualType = getToolInputManualRenderType(
       createMockInput({
-        valueType: WorkflowIOValueTypeEnum.number,
-        renderTypeList: [
-          FlowNodeInputTypeEnum.agentGenerated,
-          FlowNodeInputTypeEnum.numberInput,
-          FlowNodeInputTypeEnum.textarea
-        ],
-        selectedType: FlowNodeInputTypeEnum.textarea
-      })
-    );
-
-    expect(manualType).toBe(FlowNodeInputTypeEnum.numberInput);
-  });
-
-  it('should preserve textarea for string inputs when it is the only manual candidate', () => {
-    const manualType = getToolInputManualRenderType(
-      createMockInput({
-        valueType: WorkflowIOValueTypeEnum.string,
         renderTypeList: [
           FlowNodeInputTypeEnum.agentGenerated,
           FlowNodeInputTypeEnum.reference,
@@ -1354,58 +1399,41 @@ describe('agent generated tool input helpers', () => {
     expect(manualType).toBe(FlowNodeInputTypeEnum.textarea);
   });
 
-  it('should restore text input when a string input carries a stale select type', () => {
-    const manualType = getToolInputManualRenderType(
-      createMockInput({
-        valueType: WorkflowIOValueTypeEnum.string,
-        renderTypeList: [
-          FlowNodeInputTypeEnum.agentGenerated,
-          FlowNodeInputTypeEnum.input,
-          FlowNodeInputTypeEnum.select,
-          FlowNodeInputTypeEnum.reference
-        ],
-        selectedType: FlowNodeInputTypeEnum.select
-      })
-    );
+  it('should not project a JSON editor onto nodes that only declare a text control', () => {
+    const textareaOnlyInput = createMockInput({
+      key: NodeInputKeyEnum.datasetSearchInput,
+      valueType: WorkflowIOValueTypeEnum.arrayString,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.reference,
+        FlowNodeInputTypeEnum.textarea
+      ],
+      selectedType: FlowNodeInputTypeEnum.agentGenerated
+    });
 
-    expect(manualType).toBe(FlowNodeInputTypeEnum.input);
+    expect(getToolInputManualRenderType(textareaOnlyInput)).toBe(FlowNodeInputTypeEnum.textarea);
+    expect(
+      getToolInputDisplayRenderTypeList({ input: textareaOnlyInput, showAgentGenerated: true })
+    ).toEqual([
+      FlowNodeInputTypeEnum.agentGenerated,
+      FlowNodeInputTypeEnum.textarea,
+      FlowNodeInputTypeEnum.reference
+    ]);
+
+    // 只声明单行 input 时退回 input，不要升级成多行控件。
+    expect(
+      getToolInputManualRenderType(
+        createMockInput({
+          valueType: WorkflowIOValueTypeEnum.arrayString,
+          renderTypeList: [FlowNodeInputTypeEnum.input]
+        })
+      )
+    ).toBe(FlowNodeInputTypeEnum.input);
   });
 
-  it('should ignore empty option placeholders when resolving the manual input type', () => {
-    const manualType = getToolInputManualRenderType(
-      createMockInput({
-        valueType: WorkflowIOValueTypeEnum.string,
-        list: [{ label: '', value: '' }],
-        renderTypeList: [
-          FlowNodeInputTypeEnum.agentGenerated,
-          FlowNodeInputTypeEnum.input,
-          FlowNodeInputTypeEnum.select,
-          FlowNodeInputTypeEnum.reference
-        ],
-        selectedType: FlowNodeInputTypeEnum.select
-      })
-    );
-
-    expect(manualType).toBe(FlowNodeInputTypeEnum.input);
-  });
-
-  it('should keep a strict string select when options are available', () => {
-    const manualType = getToolInputManualRenderType(
-      createMockInput({
-        valueType: WorkflowIOValueTypeEnum.string,
-        list: [{ label: 'A', value: 'a' }],
-        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.select],
-        selectedType: FlowNodeInputTypeEnum.select
-      })
-    );
-
-    expect(manualType).toBe(FlowNodeInputTypeEnum.select);
-  });
-
-  it('should collapse duplicate manual input options to the preferred string control', () => {
+  it('should collapse duplicate manual input options to the first declared control', () => {
     const renderTypeList = getToolInputDisplayRenderTypeList({
       input: createMockInput({
-        valueType: WorkflowIOValueTypeEnum.string,
         renderTypeList: [
           FlowNodeInputTypeEnum.reference,
           FlowNodeInputTypeEnum.agentGenerated,
@@ -1433,60 +1461,6 @@ describe('agent generated tool input helpers', () => {
 
     expect(renderTypeList).toEqual([
       FlowNodeInputTypeEnum.agentGenerated,
-      FlowNodeInputTypeEnum.reference
-    ]);
-  });
-
-  it.each([
-    {
-      valueType: WorkflowIOValueTypeEnum.number,
-      expectedType: FlowNodeInputTypeEnum.numberInput
-    },
-    {
-      valueType: WorkflowIOValueTypeEnum.object,
-      expectedType: FlowNodeInputTypeEnum.JSONEditor
-    }
-  ])('should preserve $expectedType as the only manual option', ({ valueType, expectedType }) => {
-    const renderTypeList = getToolInputDisplayRenderTypeList({
-      input: createMockInput({
-        valueType,
-        renderTypeList: [
-          FlowNodeInputTypeEnum.agentGenerated,
-          FlowNodeInputTypeEnum.input,
-          FlowNodeInputTypeEnum.textarea,
-          expectedType,
-          FlowNodeInputTypeEnum.reference
-        ]
-      }),
-      showAgentGenerated: true
-    });
-
-    expect(renderTypeList).toEqual([
-      FlowNodeInputTypeEnum.agentGenerated,
-      expectedType,
-      FlowNodeInputTypeEnum.reference
-    ]);
-  });
-
-  it('should preserve multipleSelect as the only manual option for array enums', () => {
-    const renderTypeList = getToolInputDisplayRenderTypeList({
-      input: createMockInput({
-        valueType: WorkflowIOValueTypeEnum.arrayString,
-        list: [{ label: 'A', value: 'a' }],
-        renderTypeList: [
-          FlowNodeInputTypeEnum.agentGenerated,
-          FlowNodeInputTypeEnum.input,
-          FlowNodeInputTypeEnum.select,
-          FlowNodeInputTypeEnum.multipleSelect,
-          FlowNodeInputTypeEnum.reference
-        ]
-      }),
-      showAgentGenerated: true
-    });
-
-    expect(renderTypeList).toEqual([
-      FlowNodeInputTypeEnum.agentGenerated,
-      FlowNodeInputTypeEnum.multipleSelect,
       FlowNodeInputTypeEnum.reference
     ]);
   });
@@ -1658,7 +1632,7 @@ describe('agent generated tool input helpers', () => {
     expect(params).toEqual({ apiKey: 'fixed secret' });
   });
 
-  it('should not initialize file fields as agent generated', () => {
+  it('should initialize file fields as agent generated', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
@@ -1667,8 +1641,11 @@ describe('agent generated tool input helpers', () => {
       })
     );
 
-    expect(input.renderTypeList).toEqual([FlowNodeInputTypeEnum.fileSelect]);
-    expect(isAgentGeneratedToolInput(input)).toBe(false);
+    expect(input.renderTypeList).toEqual([
+      FlowNodeInputTypeEnum.agentGenerated,
+      FlowNodeInputTypeEnum.fileSelect
+    ]);
+    expect(isAgentGeneratedToolInput(input)).toBe(true);
   });
 
   it('should not initialize password fields as agent generated', () => {
@@ -1695,5 +1672,92 @@ describe('agent generated tool input helpers', () => {
 
     expect(input.renderTypeList).toEqual([FlowNodeInputTypeEnum.custom]);
     expect(isAgentGeneratedToolInput(input)).toBe(false);
+  });
+});
+
+describe('migrateToolInputConfig', () => {
+  it('keeps selected type and value when the type remains allowed', () => {
+    const result = migrateToolInputConfig({
+      input: createMockInput({
+        label: 'New label',
+        description: 'New description',
+        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.textarea],
+        value: 'new value',
+        toolDescription: 'new tool description'
+      }),
+      sourceInput: createMockInput({
+        label: 'Saved label',
+        description: 'Saved description',
+        renderTypeList: [FlowNodeInputTypeEnum.input],
+        selectedType: FlowNodeInputTypeEnum.input,
+        value: 'saved value',
+        valueDesc: 'saved value description',
+        toolDescription: 'saved tool description'
+      })
+    });
+
+    expect(result).toMatchObject({
+      label: 'Saved label',
+      description: 'Saved description',
+      selectedType: FlowNodeInputTypeEnum.input,
+      value: 'saved value',
+      toolDescription: 'new tool description'
+    });
+    expect(result).not.toHaveProperty('valueDesc');
+  });
+
+  it('falls back to the new default type and clears value when the type is removed', () => {
+    const result = migrateToolInputConfig({
+      input: createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.textarea],
+        selectedType: FlowNodeInputTypeEnum.numberInput,
+        value: 10
+      }),
+      sourceInput: createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.input],
+        selectedType: FlowNodeInputTypeEnum.input,
+        value: 'saved value'
+      })
+    });
+
+    expect(result.selectedType).toBe(FlowNodeInputTypeEnum.numberInput);
+    expect(result.value).toBeUndefined();
+    expect(result.renderTypeList).toEqual([
+      FlowNodeInputTypeEnum.numberInput,
+      FlowNodeInputTypeEnum.textarea
+    ]);
+  });
+
+  it('filters single-select values to the new allowed options', () => {
+    const result = migrateToolInputConfig({
+      input: createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.select],
+        list: [{ value: 'new' }]
+      }),
+      sourceInput: createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.select],
+        selectedType: FlowNodeInputTypeEnum.select,
+        value: 'old'
+      })
+    });
+
+    expect(result.selectedType).toBe(FlowNodeInputTypeEnum.select);
+    expect(result.value).toBeUndefined();
+  });
+
+  it('filters multiple-select values while preserving compatible options', () => {
+    const result = migrateToolInputConfig({
+      input: createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.multipleSelect],
+        list: [{ value: 'new' }, { value: 'shared' }]
+      }),
+      sourceInput: createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.multipleSelect],
+        selectedType: FlowNodeInputTypeEnum.multipleSelect,
+        value: ['old', 'shared']
+      })
+    });
+
+    expect(result.value).toEqual(['shared']);
   });
 });

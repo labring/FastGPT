@@ -34,7 +34,7 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
   const [workflowData, setWorkflowData] = useSafeState({
-    nodes: appDetail.modules || [],
+    nodes: appDetail.nodes || [],
     edges: appDetail.edges || []
   });
 

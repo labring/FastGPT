@@ -1,4 +1,4 @@
-import type { AppSchemaType } from '@fastgpt/global/core/app/type';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import {
   getFileAmountLimit,
@@ -86,7 +86,7 @@ export const prepareWorkflowFileQuery = async ({
   limits
 }: {
   teamId: string;
-  chatConfig?: AppSchemaType['chatConfig'];
+  chatConfig?: AppChatConfigType;
   query: UserChatItemValueItemType[];
   limits?: WorkflowFileLimits;
 }) => {

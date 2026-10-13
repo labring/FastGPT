@@ -5,12 +5,12 @@ describe('agent loop event usage helpers', () => {
   it('normalizes optional usage lists', () => {
     const usage = {
       moduleName: 'account_usage:agent_call',
-      model: 'GPT-4',
+      modelId: '507f1f77bcf86cd799439011',
       totalPoints: 1
     };
     const compressedUsage = {
       moduleName: 'account_usage:tool_response_compress',
-      model: 'GPT-4',
+      modelId: '507f1f77bcf86cd799439011',
       totalPoints: 0.2
     };
 

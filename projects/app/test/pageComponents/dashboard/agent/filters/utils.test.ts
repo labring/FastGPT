@@ -1,0 +1,181 @@
+import { AppListSortEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { describe, expect, it } from 'vitest';
+import {
+  AppListFilterSchema,
+  AppListFiltersStoreSchema,
+  buildAppListRequest,
+  defaultAppListFilters,
+  getResourceListDisplayTime,
+  hasAppListActiveFilter,
+  hasResourceListActiveFilter,
+  resolveSceneListType,
+  toListTmbIds
+} from '@/pageComponents/dashboard/agent/filters/utils';
+
+describe('app list filter helpers', () => {
+  it('matches the displayed card time to the selected sort field', () => {
+    const createTime = new Date('2026-01-01T00:00:00.000Z');
+    const updateTime = new Date('2026-02-01T00:00:00.000Z');
+
+    expect(
+      getResourceListDisplayTime({
+        sort: AppListSortEnum.updateTimeDesc,
+        createTime,
+        updateTime
+      })
+    ).toBe(updateTime);
+    expect(
+      getResourceListDisplayTime({
+        sort: AppListSortEnum.createTimeDesc,
+        createTime,
+        updateTime
+      })
+    ).toBe(createTime);
+    expect(
+      getResourceListDisplayTime({
+        sort: AppListSortEnum.createTimeAsc,
+        createTime,
+        updateTime
+      })
+    ).toBe(createTime);
+  });
+
+  it('maps creator filter to list tmbIds', () => {
+    expect(toListTmbIds({ mode: 'all', tmbIds: ['me'] })).toBeUndefined();
+    expect(toListTmbIds({ mode: 'selected', tmbIds: [] })).toBeUndefined();
+    expect(toListTmbIds({ mode: 'selected', tmbIds: ['me'] })).toEqual(['me']);
+  });
+
+  it('preserves every selected creator when building the paginated app request', () => {
+    const tmbIds = ['member-1', 'member-2', 'member-3'];
+
+    expect(
+      buildAppListRequest({
+        parentId: '',
+        type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow],
+        searchKey: '',
+        offset: 0,
+        pageSize: 51,
+        sort: AppListSortEnum.createTimeDesc,
+        tmbIds
+      })
+    ).toMatchObject({ tmbIds });
+    expect(
+      buildAppListRequest({
+        parentId: null,
+        type: AppTypeEnum.simple,
+        searchKey: '',
+        offset: 0,
+        pageSize: 51,
+        tmbIds: []
+      }).tmbIds
+    ).toEqual([]);
+    expect(
+      buildAppListRequest({
+        parentId: '',
+        type: AppTypeEnum.workflow,
+        searchKey: '',
+        offset: 0,
+        pageSize: 50,
+        withRelatedAppCount: true
+      }).withRelatedAppCount
+    ).toBe(true);
+  });
+
+  it('treats search, type and creator as active filters, but not sort', () => {
+    expect(
+      hasAppListActiveFilter({
+        searchKey: '  ',
+        type: 'all',
+        creatorMode: 'all',
+        applyToolbarFilters: true
+      })
+    ).toBe(false);
+    expect(
+      hasAppListActiveFilter({
+        searchKey: 'bot',
+        type: 'all',
+        creatorMode: 'all',
+        applyToolbarFilters: false
+      })
+    ).toBe(true);
+    expect(
+      hasAppListActiveFilter({
+        searchKey: '',
+        type: AppTypeEnum.workflow,
+        creatorMode: 'all',
+        applyToolbarFilters: true
+      })
+    ).toBe(true);
+    expect(
+      hasAppListActiveFilter({
+        searchKey: '',
+        type: 'all',
+        creatorMode: 'selected',
+        applyToolbarFilters: true
+      })
+    ).toBe(true);
+    expect(
+      hasAppListActiveFilter({
+        searchKey: '',
+        type: AppTypeEnum.workflow,
+        creatorMode: 'selected',
+        applyToolbarFilters: false
+      })
+    ).toBe(false);
+  });
+
+  it('shares active-filter semantics with dataset and skill lists', () => {
+    expect(
+      hasResourceListActiveFilter({
+        searchKey: '',
+        type: 'all',
+        creatorMode: 'selected',
+        applyToolbarFilters: true
+      })
+    ).toBe(true);
+    expect(
+      hasResourceListActiveFilter({
+        searchKey: '',
+        creatorMode: 'all',
+        applyToolbarFilters: true
+      })
+    ).toBe(false);
+    expect(
+      hasResourceListActiveFilter({
+        searchKey: '  ',
+        type: 'websiteDataset',
+        creatorMode: 'all',
+        applyToolbarFilters: false
+      })
+    ).toBe(false);
+  });
+
+  it('drops types that do not belong to the current page', () => {
+    expect(resolveSceneListType(AppTypeEnum.workflow, 'agent')).toBe(AppTypeEnum.workflow);
+    expect(resolveSceneListType(AppTypeEnum.workflowTool, 'agent')).toBe('all');
+  });
+
+  it('fills store defaults and rejects invalid persisted types', () => {
+    expect(AppListFilterSchema.parse({})).toEqual(defaultAppListFilters);
+    expect(AppListFilterSchema.safeParse({ type: 'not-an-app-type' }).success).toBe(false);
+    expect(
+      AppListFiltersStoreSchema.parse({
+        agent: { type: AppTypeEnum.workflow }
+      })
+    ).toEqual({
+      agent: { ...defaultAppListFilters, type: AppTypeEnum.workflow },
+      tool: defaultAppListFilters,
+      skill: {
+        sort: 'updateTimeDesc',
+        creator: { mode: 'all', tmbIds: [] }
+      },
+      dataset: {
+        type: 'all',
+        sort: 'updateTimeDesc',
+        creator: { mode: 'all', tmbIds: [] }
+      },
+      templateMarket: { mode: 'all', tagIds: [] }
+    });
+  });
+});

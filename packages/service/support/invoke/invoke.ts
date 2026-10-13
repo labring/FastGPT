@@ -22,7 +22,7 @@ import { getUserDetail } from '../user/controller';
 import { MongoTeam } from '../user/team/teamSchema';
 import { InvokeFileUploadSchema, InvokeSessionSchema, type InvokeFileUploadType } from './type';
 import type { InvokeSessionType } from './type';
-import { addHours } from 'date-fns';
+import { addDays } from 'date-fns';
 
 const INVOKE_TOKEN_EXPIRES_IN = 60 * 60;
 
@@ -32,7 +32,7 @@ export class InvokeProcessor {
   static jwtSecret = serviceEnv.INVOKE_TOKEN_SECRET;
 
   public get session(): InvokeSessionType {
-    return this.session;
+    return this._session;
   }
 
   constructor(options: InvokeSessionType) {
@@ -88,7 +88,7 @@ export class InvokeProcessor {
       filename,
       body,
       contentType,
-      expiredTime: addHours(new Date(), 365)
+      expiredTime: addDays(new Date(), serviceEnv.FILE_URL_EXPIRED_DAYS)
     });
 
     await removeS3TTL({ key: result.key, bucketName: 'private' });

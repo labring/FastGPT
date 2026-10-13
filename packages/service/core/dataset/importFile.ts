@@ -1,7 +1,8 @@
 import path from 'path';
 import Papa from 'papaparse';
-import { readRawTextByLocalFile } from '../../common/file/read/utils';
+import { readFileContentBySource } from '../../common/file/read/utils';
 import { parseDatasetCsvHeaders } from './read';
+import type { FileSource } from '../../common/file/read/source';
 
 const supportedDatasetImportExtensions = new Set(['.csv', '.xlsx']);
 
@@ -12,27 +13,27 @@ const supportedDatasetImportExtensions = new Set(['.csv', '.xlsx']);
 export const parseDatasetImportFile = async ({
   teamId,
   tmbId,
-  filePath,
-  filename,
-  encoding
+  source,
+  filename
 }: {
   teamId: string;
   tmbId: string;
-  filePath: string;
+  source: FileSource;
   filename: string;
-  encoding: string;
 }) => {
   const extension = path.extname(filename).toLowerCase();
   if (!supportedDatasetImportExtensions.has(extension)) {
     throw new Error('Unsupported dataset import file extension');
   }
 
-  const { rawText, tableInfo } = await readRawTextByLocalFile({
+  const { rawText, tableInfo } = await readFileContentBySource({
     teamId,
     tmbId,
-    path: filePath,
-    encoding,
-    getFormatText: false
+    source,
+    getFormatText: false,
+    // 表头校验与 sheet/合并单元格校验依赖内置解析产出的结构化 CSV 与 tableInfo，
+    // 外部解析（sangfor）只返回 markdown，故模板/备份导入强制走系统解析。
+    forceSystemParse: true
   });
 
   if (extension === '.xlsx') {

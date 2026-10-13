@@ -3,8 +3,9 @@ import { VersionListItemSchema } from '../../../../core/app/version/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { PaginationSchema } from '../../../api';
 import { OpenAPIStoreNodeItemTypeSchema } from '../../workflow/node';
-import { AppResourceRefsSchema, AppSchemaTypeSchema } from '../../../../core/app/type';
-import { OpenAPIAppChatConfigSchema } from '../common/api';
+import { AppResourcesSchema } from '../../../../core/app/type';
+import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
+import { AppChatConfigInputSchema, OpenAPIAppChatConfigSchema } from '../common/api';
 import { BoolSchema, NumSchema } from '../../../../common/zod';
 
 export const PublishAppQuerySchema = z.object({
@@ -23,16 +24,19 @@ const PublishAppNodesSchema = z.array(OpenAPIStoreNodeItemTypeSchema).meta({
   description: '本次保存的应用节点配置'
 });
 
-const AppVersionEdgesSchema = AppSchemaTypeSchema.shape.edges.default([]).meta({
+const AppVersionEdgesSchema = z.array(StoreEdgeItemTypeSchema).default([]).meta({
   description: '版本内保存的应用连线配置'
 });
 
 const AppVersionChatConfigSchema = OpenAPIAppChatConfigSchema.default({}).meta({
   description: '版本内保存的应用对话配置'
 });
+const AppVersionChatConfigInputSchema = AppChatConfigInputSchema.default({}).meta({
+  description: '本次写入的应用对话配置'
+});
 
-const AppVersionResourceRefsSchema = AppResourceRefsSchema.optional().meta({
-  description: '该版本引用的外部资源集合'
+const AppVersionResourcesSchema = AppResourcesSchema.meta({
+  description: '该版本引用的资源集合'
 });
 
 const OpenAPIVersionListItemSchema = VersionListItemSchema.extend({
@@ -69,12 +73,13 @@ export const PublishAppBodySchema = z.object({
   edges: AppVersionEdgesSchema.optional().meta({
     description: '本次保存的应用连线配置；未传时按空连线保存'
   }),
-  chatConfig: AppVersionChatConfigSchema.optional().meta({
+  chatConfig: AppVersionChatConfigInputSchema.optional().meta({
     description: '本次保存的应用对话配置'
   }),
   isPublish: BoolSchema.optional().meta({
     example: true,
-    description: '是否将该版本发布为线上运行版本'
+    description:
+      '是否发布为线上运行版本；重排、问题优化、猜你想问和模型语音播放关闭时不校验模型，开启且未填模型时补默认值，已填模型不可用时拒绝发布'
   }),
   versionName: z.string().optional().meta({
     example: '正式发布版',
@@ -179,7 +184,7 @@ export const GetAppVersionDetailResponseSchema = z.object({
     example: '正式发布版',
     description: '版本名称'
   }),
-  resourceRefs: AppVersionResourceRefsSchema
+  resources: AppVersionResourcesSchema
 });
 export type GetAppVersionDetailResponseType = z.infer<typeof GetAppVersionDetailResponseSchema>;
 
@@ -215,7 +220,8 @@ export const GetLatestAppVersionResponseSchema = z.object({
     description: '版本内保存的应用节点配置'
   }),
   edges: AppVersionEdgesSchema,
-  chatConfig: AppVersionChatConfigSchema
+  chatConfig: AppVersionChatConfigSchema,
+  resources: AppVersionResourcesSchema
 });
 export type GetLatestAppVersionResponseType = z.infer<typeof GetLatestAppVersionResponseSchema>;
 

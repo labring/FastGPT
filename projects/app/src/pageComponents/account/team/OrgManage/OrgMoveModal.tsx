@@ -3,7 +3,7 @@ import { Button } from '@chakra-ui/react';
 import type { OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useState } from 'react';
 import OrgTree from './OrgTree';
 
@@ -16,7 +16,7 @@ function OrgMoveModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const { t } = useClientTranslation('account_team');
+  const { t } = useSafeTranslation();
   const [selectedOrg, setSelectedOrg] = useState<OrgListItemType>();
 
   const { runAsync: onMoveOrg, loading } = useRequest(putMoveOrg, {

@@ -1,4 +1,5 @@
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import type {
   RuntimeSkillMetadataType,
   SkillPackageType
@@ -10,6 +11,7 @@ import { MongoAgentSkills } from '../model/schema';
 import { createVersion } from '../version';
 import { updateCurrentVersion } from './update';
 import type { Readable } from 'node:stream';
+import { createResourcePermissions } from '../../../../support/permission/resourcePermissionService';
 
 type ImportSkillParams = {
   skill: SkillPackageType['skill'];
@@ -24,9 +26,9 @@ type ImportSkillParams = {
  * Import an opaque package stream as the initial Skill version.
  *
  * Import intentionally does not parse or validate package contents. This function uploads the
- * package before opening the Mongo transaction, then binds currentVersionId and removes the
- * temporary S3 TTL inside the transaction. If Mongo fails, the uploaded package keeps its TTL and
- * is cleaned by the shared S3 cleanup flow.
+ * package before opening the Mongo transaction, then creates the default ACL, binds currentVersionId,
+ * and removes the temporary S3 TTL inside the transaction. If Mongo fails, the uploaded package
+ * keeps its TTL and is cleaned by the shared S3 cleanup flow.
  * Runtime metadata remains empty until the workspace is saved and deployed from the edit sandbox.
  */
 export async function importSkill({
@@ -66,6 +68,18 @@ export async function importSkill({
 
   return mongoSessionRun(async (session) => {
     await newSkill.save({ session });
+
+    await createResourcePermissions({
+      resource: {
+        _id: newSkillId,
+        type: AgentSkillTypeEnum.skill,
+        teamId,
+        ...(parentId ? { parentId } : {})
+      },
+      tmbId,
+      resourceType: PerResourceTypeEnum.agentSkill,
+      session
+    });
 
     await updateCurrentVersion({
       skillId: newSkillId,

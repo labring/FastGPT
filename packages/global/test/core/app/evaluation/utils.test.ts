@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getEvaluationFileHeader } from '@fastgpt/global/core/app/evaluation/utils';
-import type { VariableItemType } from '@fastgpt/global/core/app/type';
+import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 
 // Helper to create mock variable items
 const createMockVariable = (key: string, required: boolean = false): VariableItemType =>

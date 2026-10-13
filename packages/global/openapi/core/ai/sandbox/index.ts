@@ -51,6 +51,10 @@ export const SandboxPath: OpenAPIPath = {
 
   '/core/ai/sandbox/verifyTicket': {
     get: {
+      'x-required-parameter-alternatives': [
+        [{ in: 'query', name: 'ticket' }],
+        [{ in: 'header', name: 'x-sandbox-preview-session' }]
+      ],
       summary: '校验沙盒访问凭证',
       description:
         '仅供 agent-sandbox-proxy 内部调用。ticket 查询参数与 x-sandbox-preview-session 请求头二选一，并且必须携带 x-proxy-token。',

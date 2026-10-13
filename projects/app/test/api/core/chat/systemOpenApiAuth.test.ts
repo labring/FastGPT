@@ -26,16 +26,12 @@ import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
-import {
-  setAgentRuntimeStop,
-  waitForWorkflowComplete
-} from '@fastgpt/service/core/workflow/dispatch/workflowStatus';
+import { setAgentRuntimeStop } from '@fastgpt/service/core/workflow/dispatch/workflowStatus';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/workflowStatus', () => ({
-  setAgentRuntimeStop: vi.fn(),
-  waitForWorkflowComplete: vi.fn()
+  setAgentRuntimeStop: vi.fn()
 }));
 
 type TestUser = Awaited<ReturnType<typeof getUser>>;
@@ -194,12 +190,6 @@ describe('system openapi chat auth', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: appId,
       chatId
-    });
-    expect(vi.mocked(waitForWorkflowComplete)).toHaveBeenCalledWith({
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: appId,
-      chatId,
-      timeout: 5000
     });
   });
 

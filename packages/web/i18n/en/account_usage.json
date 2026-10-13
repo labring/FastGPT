@@ -54,6 +54,7 @@
   "total_points_consumed": "AI points consumption",
   "total_usage": "Total Usage",
   "usage_detail": "Details",
+  "model_unavailable": "Model unavailable",
   "user_type": "type",
   "wecom": "WeCom",
   "wechat": "WeChat Personal"

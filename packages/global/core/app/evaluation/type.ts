@@ -4,7 +4,9 @@ export type EvaluationSchemaType = {
   _id: string;
   teamId: string;
   tmbId: string;
-  evalModel: string;
+  evalModelId?: string;
+  /** @deprecated */
+  evalModel?: string;
   appId: string;
   usageId: string;
   name: string;
@@ -34,7 +36,14 @@ export type EvalItemSchemaType = {
 
 export type evaluationType = Pick<
   EvaluationSchemaType,
-  'name' | 'appId' | 'createTime' | 'finishTime' | 'evalModel' | 'errorMessage' | 'score'
+  | 'name'
+  | 'appId'
+  | 'createTime'
+  | 'finishTime'
+  | 'evalModelId'
+  | 'evalModel'
+  | 'errorMessage'
+  | 'score'
 > & {
   _id: string;
   executorAvatar: string;

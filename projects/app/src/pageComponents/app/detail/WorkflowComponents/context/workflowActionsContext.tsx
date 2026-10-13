@@ -1,11 +1,8 @@
 // 工作流 Node/Edge 操作层
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createContext, useContextSelector } from 'use-context-selector';
-import { useTranslation } from 'next-i18next';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import type { OnConnectStartParams } from 'reactflow';
-import { WorkflowBufferDataContext } from './workflowInitContext';
+import { getWorkflowModelDetails } from '@/web/core/workflow/modelData';
+import { checkWorkflowNodeIssues } from '@/web/core/workflow/workflowCheck';
+import { collectWorkflowStartAutoFillRevertPatches } from '@/web/core/workflow/workflowStartAutoFill';
+import { migrateToolInputConfig } from '@fastgpt/global/core/app/formEdit/utils';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
@@ -14,10 +11,14 @@ import type {
   FlowNodeTemplateType,
   WorkflowCheckNodeIssueMap
 } from '@fastgpt/global/core/workflow/type/node';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { checkWorkflowNodeIssues } from '@/web/core/workflow/workflowCheck';
-import { collectWorkflowStartAutoFillRevertPatches } from '@/web/core/workflow/workflowStartAutoFill';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useTranslation } from 'next-i18next';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { OnConnectStartParams } from 'reactflow';
+import { createContext, useContextSelector } from 'use-context-selector';
+import { WorkflowBufferDataContext } from './workflowInitContext';
+import { AppContext } from '../../context';
 
 type FlowNodeChangeProps = { nodeId: string } & (
   | {
@@ -146,6 +147,8 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
     getNodes
   } = useContextSelector(WorkflowBufferDataContext, (v) => v);
 
+  const appId = useContextSelector(AppContext, (v) => v.appId);
+
   const singleNodeCheckTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const edgeCheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstEdgesEffectRef = useRef(true);
@@ -236,9 +239,25 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
 
   /** 单节点配置变更后防抖重校验，仅同步问题文案，不自动标红。 */
   const onRefreshSingleNodeWorkflowCheckIssues = useCallback(
-    (nodeId: string) => {
+    async (nodeId: string) => {
       const nodes = getNodes();
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, nodeId, t });
+      const models = await getWorkflowModelDetails({
+        nodes: nodes.filter((node) => node.id === nodeId),
+        appId
+      }).catch(() => undefined);
+      if (
+        !models ||
+        getNodes().find((node) => node.id === nodeId)?.data.inputs !==
+          nodes.find((node) => node.id === nodeId)?.data.inputs
+      )
+        return;
+      const issueMap = checkWorkflowNodeIssues({
+        nodes,
+        edges,
+        models,
+        nodeId,
+        t
+      });
 
       setNodes((state) =>
         state.map((item) => {
@@ -261,7 +280,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         })
       );
     },
-    [edges, getNodes, setNodes, t]
+    [appId, edges, getNodes, setNodes, t]
   );
 
   /** 节点配置变更后防抖触发单节点重新校验，避免每次输入都同步扫描。 */
@@ -289,15 +308,24 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       clearTimeout(edgeCheckTimerRef.current);
     }
 
-    edgeCheckTimerRef.current = setTimeout(() => {
+    edgeCheckTimerRef.current = setTimeout(async () => {
       edgeCheckTimerRef.current = null;
       const nodes = getNodes();
       if (nodes.length === 0) return;
 
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, t });
+      const models = await getWorkflowModelDetails({ nodes, appId }).catch(() => undefined);
+      if (
+        !models ||
+        nodes.some(
+          (node) =>
+            getNodes().find((current) => current.id === node.id)?.data.inputs !== node.data.inputs
+        )
+      )
+        return;
+      const issueMap = checkWorkflowNodeIssues({ nodes, edges, models, t });
       onSyncWorkflowCheckIssues(issueMap);
     }, 400);
-  }, [edges, getNodes, onSyncWorkflowCheckIssues, t]);
+  }, [appId, edges, getNodes, onSyncWorkflowCheckIssues, t]);
 
   useEffect(() => {
     if (isFirstEdgesEffectRef.current) {
@@ -386,19 +414,18 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       setNodes((state) =>
         state.map((item) => {
           if (item.id === id) {
+            const sourceInputMap = new Map(item.data.inputs.map((input) => [input.key, input]));
             return {
               ...item,
               data: {
                 ...item.data,
                 ...node,
-                inputs: node.inputs.map((input) => {
-                  const value =
-                    item.data.inputs.find((i) => i.key === input.key)?.value ?? input.value;
-                  return {
-                    ...input,
-                    value
-                  };
-                })
+                inputs: node.inputs.map((input) =>
+                  migrateToolInputConfig({
+                    input,
+                    sourceInput: sourceInputMap.get(input.key)
+                  })
+                )
               }
             };
           }
@@ -410,16 +437,6 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
   );
 
   // 使用结构共享优化的节点更改
-  const { llmModelList } = useSystemStore();
-  const llmModelMap = useMemo(() => {
-    return llmModelList.reduce(
-      (acc, model) => {
-        acc[model.model] = model;
-        return acc;
-      },
-      {} as Record<string, LLMModelItemType>
-    );
-  }, [llmModelList]);
   const onChangeNode = useCallback(
     (props: FlowNodeChangeProps | FlowNodeChangeProps[]) => {
       const updateData = Array.isArray(props) ? props : [props];
@@ -458,6 +475,17 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
               const existingIndex = updateObj.inputs.findIndex(
                 (item) => item.key === updateItem.key
               );
+              const hasInput = updateObj.inputs.some(
+                (item) => item.key === updateItem.value.key && item.key !== updateItem.key
+              );
+
+              if (hasInput) {
+                toast({
+                  status: 'warning',
+                  title: t('common:key_repetition')
+                });
+                return;
+              }
 
               updateObj = {
                 ...updateObj,
@@ -534,15 +562,6 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
             }
           });
 
-          updateObj.outputs = updateObj.outputs.map((output) => {
-            return {
-              ...output,
-              invalid: output.invalidCondition
-                ? output.invalidCondition({ inputs: updateObj.inputs, llmModelMap })
-                : undefined
-            };
-          });
-
           return {
             ...node,
             data: updateObj
@@ -561,7 +580,6 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       toast,
       t,
       onDelEdge,
-      llmModelMap,
       scheduleSingleNodeWorkflowCheck,
       scheduleWorkflowCheckOnEdgeChange
     ]

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 
 import {
   getWorkflowResponseWrite,
@@ -12,13 +12,20 @@ import {
   formatHttpError,
   rewriteRuntimeWorkFlow,
   getNodeErrResponse,
-  safePoints,
-  summarizeRuntimeNodeResponses
+  safePoints
 } from '@fastgpt/service/core/workflow/dispatch/utils';
+import {
+  summarizeRuntimeNodeResponses,
+  createNodeSummary,
+  createWorkflowRuntimeSummary,
+  mergeWorkflowRuntimeSummary,
+  runtimeSummaryToNodeSummary,
+  stripNodeSummaryErrorFields
+} from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { WorkflowVariableState } from '../../../../core/workflow/dispatch/utils/variables';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import type { ChatHistoryItemResType, ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   SseResponseEventEnum,
@@ -31,11 +38,17 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 
 const mockGetSystemToolRunTimeNodeFromSystemToolset = vi.fn();
 vi.mock('@fastgpt/service/core/workflow/utils', () => ({
   getSystemToolRunTimeNodeFromSystemToolset: (...args: any[]) =>
     mockGetSystemToolRunTimeNodeFromSystemToolset(...args)
+}));
+
+const mockAuthAppByTmbId = vi.fn();
+vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
+  authAppByTmbId: (...args: any[]) => mockAuthAppByTmbId(...args)
 }));
 
 const mockMongoAppFindOne = vi.fn();
@@ -918,6 +931,40 @@ describe('formatHttpError', () => {
 });
 
 describe('rewriteRuntimeWorkFlow', () => {
+  beforeEach(() => {
+    mockAuthAppByTmbId.mockReset();
+    mockMongoAppFindOne.mockReset();
+    mockMongoAppFind.mockReset();
+    mockMongoAppFind.mockReturnValue({ lean: vi.fn().mockResolvedValue([]) });
+    mockAuthAppByTmbId.mockImplementation(async ({ appId }: { appId: string }) => {
+      const findOneQuery = mockMongoAppFindOne({ _id: appId });
+      if (findOneQuery) {
+        const app = await findOneQuery.lean();
+        if (app) return { app };
+      }
+
+      const findQuery = mockMongoAppFind({ _id: { $in: [appId] } });
+      const [app] = await findQuery.lean();
+      if (app) return { app };
+      throw new Error('app not found');
+    });
+    mockGetMCPChildren.mockReset();
+    mockGetHTTPToolList.mockReset();
+
+    mockGetMCPChildren.mockImplementation(
+      async (app: { modules?: Array<{ toolConfig?: any }> }) => {
+        const toolSet = app.modules?.[0]?.toolConfig?.mcpToolSet;
+        return toolSet && Array.isArray(toolSet.toolList) ? toolSet.toolList : [];
+      }
+    );
+    mockGetHTTPToolList.mockImplementation(
+      async (app: { modules?: Array<{ toolConfig?: any }> }) => {
+        const toolSet = app.modules?.[0]?.toolConfig?.httpToolSet;
+        return toolSet && Array.isArray(toolSet.toolList) ? toolSet.toolList : [];
+      }
+    );
+  });
+
   const makeNode = (
     nodeId: string,
     flowNodeType: string,
@@ -951,7 +998,7 @@ describe('rewriteRuntimeWorkFlow', () => {
     const edges = [makeEdge('n1', 'n2')];
     const originalNodesLen = nodes.length;
     const originalEdgesLen = edges.length;
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
     expect(nodes.length).toBe(originalNodesLen);
     expect(edges.length).toBe(originalEdgesLen);
   });
@@ -969,7 +1016,7 @@ describe('rewriteRuntimeWorkFlow', () => {
     const childNode = makeNode('child1', 'systemTool');
     mockGetSystemToolRunTimeNodeFromSystemToolset.mockResolvedValue([childNode]);
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts1')).toBeUndefined();
     expect(nodes.find((n) => n.nodeId === 'child1')).toBeDefined();
@@ -983,7 +1030,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       name: 'MCPTool',
       avatar: 'avatar.png',
       toolConfig: {
-        mcpToolSet: { toolId: 'mcp-tool-1' }
+        mcpToolSet: { toolId: 'mcp-app-1' }
       }
     } as any);
     const parentNode = makeNode('parent', FlowNodeTypeEnum.chatNode);
@@ -1012,13 +1059,14 @@ describe('rewriteRuntimeWorkFlow', () => {
       { name: 'tool1', description: 'desc', inputSchema: {}, url: 'https://mcp.example.com' }
     ]);
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts2')).toBeUndefined();
     expect(nodes.find((n) => n.nodeId === 'ts20')).toMatchObject({
+      intro: 'desc',
       toolConfig: {
-        mcpToolSet: {
-          url: 'https://mcp.example.com'
+        mcpTool: {
+          toolId: 'mcp-mcp-app-1/tool1'
         }
       }
     });
@@ -1072,13 +1120,11 @@ describe('rewriteRuntimeWorkFlow', () => {
       }
     ]);
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
     const filteredEdges = filterOrphanEdges({ nodes, edges, workflowId: 'workflow-app' });
 
     expect(nodes.find((n) => n.nodeId === 'ts20')?.jsonSchema).toEqual(fullSchema);
-    expect(nodes.find((n) => n.nodeId === 'ts20')?.toolConfig?.mcpToolSet).toMatchObject({
-      url: 'https://mcp.example.com'
-    });
+    expect(nodes.find((n) => n.nodeId === 'ts20')?.toolConfig).not.toHaveProperty('mcpToolSet');
     expect(nodes.find((n) => n.nodeId === 'ts20')?.inputs[0]).toMatchObject({
       key: 'city',
       selectedType: FlowNodeInputTypeEnum.agentGenerated,
@@ -1106,40 +1152,132 @@ describe('rewriteRuntimeWorkFlow', () => {
       lean: vi.fn().mockResolvedValue(null)
     });
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts3')).toBeUndefined();
   });
 
-  it('should handle HTTP toolSet nodes', async () => {
-    const toolSetNode = makeNode('ts4', FlowNodeTypeEnum.toolSet, {
-      pluginId: 'http-plugin-1',
-      name: 'HTTPTool',
-      avatar: 'avatar.png',
+  it.each([undefined, '', 'http-plugin-1'])(
+    'should handle HTTP toolSet nodes with legacy id %j',
+    async (toolId) => {
+      const toolSetNode = makeNode('ts4', FlowNodeTypeEnum.toolSet, {
+        pluginId: 'http-plugin-1',
+        name: 'HTTPTool',
+        avatar: 'avatar.png',
+        toolConfig: {
+          httpToolSet: { toolId }
+        }
+      } as any);
+      const parentNode = makeNode('parent', FlowNodeTypeEnum.chatNode);
+      const nodes = [parentNode, toolSetNode];
+      const edges = [
+        makeEdge('parent', 'ts4', { sourceHandle: 'out', targetHandle: 'selectedTools' })
+      ];
+
+      mockMongoAppFindOne.mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ _id: 'http-plugin-1', name: 'HTTPApp' })
+      });
+      mockGetHTTPToolList.mockResolvedValue([
+        {
+          name: 'api1',
+          description: 'desc1',
+          url: 'http://example.com/api1',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              manual: { type: 'string', isToolParam: false },
+              generated: { type: 'string', isToolParam: true }
+            },
+            required: ['manual', 'generated']
+          },
+          requestSchema: {
+            type: 'object',
+            properties: {
+              manual: { type: 'string', isToolParam: true },
+              generated: { type: 'string', isToolParam: true }
+            },
+            required: ['manual', 'generated']
+          }
+        },
+        { name: 'api2', description: 'desc2', url: 'http://example.com/api2' }
+      ]);
+
+      await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
+
+      expect(nodes.find((n) => n.nodeId === 'ts4')).toBeUndefined();
+      expect(nodes.find((n) => n.nodeId === 'ts40')?.inputs).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            key: 'manual',
+            selectedType: FlowNodeInputTypeEnum.input
+          }),
+          expect.objectContaining({
+            key: 'generated',
+            selectedType: FlowNodeInputTypeEnum.agentGenerated
+          })
+        ])
+      );
+      expect(nodes.find((n) => n.nodeId === 'ts41')).toBeDefined();
+      expect(nodes.find((n) => n.nodeId === 'ts40')?.intro).toBe('desc1');
+      expect(nodes.find((n) => n.nodeId === 'ts41')?.intro).toBe('desc2');
+      expect(edges.filter((e) => e.target === 'ts40' || e.target === 'ts41').length).toBe(2);
+    }
+  );
+
+  it('should prefer saved MCP and HTTP toolSet child descriptions', async () => {
+    const mcpToolSetNode = makeNode('mcpToolSet', FlowNodeTypeEnum.toolSet, {
+      pluginId: 'mcp-app-1',
+      name: 'MCP ToolSet',
       toolConfig: {
-        httpToolSet: {}
+        mcpToolSet: {
+          toolList: [{ name: 'search', description: 'Saved MCP description' }]
+        }
       }
     } as any);
-    const parentNode = makeNode('parent', FlowNodeTypeEnum.chatNode);
-    const nodes = [parentNode, toolSetNode];
-    const edges = [
-      makeEdge('parent', 'ts4', { sourceHandle: 'out', targetHandle: 'selectedTools' })
-    ];
+    const httpToolSetNode = makeNode('httpToolSet', FlowNodeTypeEnum.toolSet, {
+      pluginId: 'http-app-1',
+      name: 'HTTP ToolSet',
+      toolConfig: {
+        httpToolSet: {
+          toolList: [{ name: 'search', description: 'Saved HTTP description' }]
+        }
+      }
+    } as any);
+    const nodes = [mcpToolSetNode, httpToolSetNode];
+    const edges: RuntimeEdgeItemType[] = [];
 
-    mockMongoAppFindOne.mockReturnValue({
-      lean: vi.fn().mockResolvedValue({ _id: 'http-plugin-1', name: 'HTTPApp' })
-    });
+    mockMongoAppFindOne.mockImplementation(({ _id }: { _id: string }) => ({
+      lean: vi.fn().mockResolvedValue(
+        _id === 'mcp-app-1'
+          ? {
+              _id,
+              modules: [
+                { toolConfig: { mcpToolSet: { url: 'https://mcp.example.com', toolList: [] } } }
+              ]
+            }
+          : { _id }
+      )
+    }));
+    mockGetMCPChildren.mockResolvedValue([
+      { name: 'search', description: 'Default MCP description', inputSchema: {} }
+    ]);
     mockGetHTTPToolList.mockResolvedValue([
-      { name: 'api1', description: 'desc1', url: 'http://example.com/api1' },
-      { name: 'api2', description: 'desc2', url: 'http://example.com/api2' }
+      {
+        name: 'search',
+        description: 'Default HTTP description',
+        path: '/search',
+        method: 'GET'
+      }
     ]);
 
     await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
 
-    expect(nodes.find((n) => n.nodeId === 'ts4')).toBeUndefined();
-    expect(nodes.find((n) => n.nodeId === 'ts40')).toBeDefined();
-    expect(nodes.find((n) => n.nodeId === 'ts41')).toBeDefined();
-    expect(edges.filter((e) => e.target === 'ts40' || e.target === 'ts41').length).toBe(2);
+    expect(nodes.find((node) => node.nodeId === 'mcpToolSet0')?.intro).toBe(
+      'Saved MCP description'
+    );
+    expect(nodes.find((node) => node.nodeId === 'httpToolSet0')?.intro).toBe(
+      'Saved HTTP description'
+    );
   });
 
   // Helper: route MongoApp.find responses by the toolsetId it queries, since
@@ -1196,7 +1334,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       }
     });
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(mcpToolNode.jsonSchema).toEqual(toolAInputSchema);
     expect(mcpToolNode.intro).toBe('tool A description');
@@ -1262,7 +1400,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       }
     });
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(httpToolNode.jsonSchema).toEqual(toolBRequestSchema);
     expect(httpToolNode.intro).toBe('tool B description');
@@ -1274,6 +1412,57 @@ describe('rewriteRuntimeWorkFlow', () => {
         FlowNodeInputTypeEnum.reference
       ]
     });
+  });
+
+  it('should preserve saved intro for standalone MCP and HTTP tool nodes', async () => {
+    const mcpToolNode = makeNode('mcp1', FlowNodeTypeEnum.tool, {
+      intro: 'Saved MCP intro',
+      toolConfig: { mcpTool: { toolId: 'mcp-toolset-1/toolA' } }
+    } as any);
+    const httpToolNode = makeNode('http1', FlowNodeTypeEnum.tool, {
+      intro: 'Saved HTTP intro',
+      toolConfig: { httpTool: { toolId: 'http-toolset-1/toolB' } }
+    } as any);
+    setupFindByIdMap({
+      'toolset-1': {
+        _id: 'toolset-1',
+        modules: [
+          {
+            toolConfig: {
+              mcpToolSet: {
+                url: 'https://mcp.example.com',
+                toolList: [
+                  {
+                    name: 'toolA',
+                    description: 'Remote MCP intro',
+                    inputSchema: { type: 'object', properties: {} }
+                  }
+                ]
+              },
+              httpToolSet: {
+                toolList: [
+                  {
+                    name: 'toolB',
+                    description: 'Remote HTTP intro',
+                    inputSchema: { type: 'object', properties: {} },
+                    requestSchema: { type: 'object', properties: {} }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    });
+
+    await rewriteRuntimeWorkFlow({
+      teamId: 'team1',
+      nodes: [mcpToolNode, httpToolNode],
+      edges: []
+    });
+
+    expect(mcpToolNode.intro).toBe('Saved MCP intro');
+    expect(httpToolNode.intro).toBe('Saved HTTP intro');
   });
 
   it('should use the remote default only when a saved tool input has no selection', async () => {
@@ -1337,6 +1526,7 @@ describe('rewriteRuntimeWorkFlow', () => {
 
     await rewriteRuntimeWorkFlow({
       teamId: 'team1',
+      tmbId: 'tmb1',
       nodes: [mcpToolNode, httpToolNode],
       edges: []
     });
@@ -1378,7 +1568,12 @@ describe('rewriteRuntimeWorkFlow', () => {
       }
     });
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes: [httpToolNode], edges: [] });
+    await rewriteRuntimeWorkFlow({
+      teamId: 'team1',
+      tmbId: 'tmb1',
+      nodes: [httpToolNode],
+      edges: []
+    });
 
     expect(httpToolNode.jsonSchema).toEqual(inputSchema);
   });
@@ -1413,7 +1608,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       }
     });
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(httpToolNode.jsonSchema).toEqual({ type: 'object' });
     expect(httpToolNode.intro).toBe('nested tool');
@@ -1432,7 +1627,7 @@ describe('rewriteRuntimeWorkFlow', () => {
 
     setupFindByIdMap({});
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(httpToolNode.jsonSchema).toEqual({ type: 'original' });
     expect(httpToolNode.intro).toBe('original');
@@ -1451,7 +1646,7 @@ describe('rewriteRuntimeWorkFlow', () => {
 
     setupFindByIdMap({});
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(httpToolNode.jsonSchema).toEqual({ type: 'original' });
     expect(httpToolNode.intro).toBe('original');
@@ -1520,6 +1715,117 @@ describe('getNodeErrResponse', () => {
 });
 
 describe('summarizeRuntimeNodeResponses', () => {
+  it('keeps tool execution errors out of the workflow error summary', () => {
+    const summary = summarizeRuntimeNodeResponses(undefined, [
+      {
+        id: 'tool-error',
+        nodeId: 'tool-node',
+        moduleType: FlowNodeTypeEnum.tool,
+        errorText: 'tool failed'
+      },
+      {
+        id: 'workflow-error',
+        nodeId: 'workflow-node',
+        moduleType: FlowNodeTypeEnum.chatNode,
+        errorText: 'workflow failed'
+      }
+    ] as ChatHistoryItemResType[]);
+
+    expect(summary).toMatchObject({
+      hasError: true,
+      errorCount: 1,
+      errorText: 'workflow failed'
+    });
+  });
+
+  it('keeps errors from non-tool child responses in the workflow summary', () => {
+    const summary = summarizeRuntimeNodeResponses(undefined, [
+      {
+        id: 'loop-child-error',
+        parentId: 'loop-iteration',
+        nodeId: 'workflow-node',
+        moduleType: FlowNodeTypeEnum.chatNode,
+        errorText: 'child workflow failed'
+      }
+    ] as ChatHistoryItemResType[]);
+
+    expect(summary).toMatchObject({
+      hasError: true,
+      errorCount: 1,
+      errorText: 'child workflow failed'
+    });
+  });
+
+  it('ignores captured errors in the workflow error summary', () => {
+    const summary = summarizeRuntimeNodeResponses(undefined, [
+      {
+        id: 'catch-http',
+        nodeId: 'http-node',
+        moduleType: FlowNodeTypeEnum.httpRequest468,
+        errorText: 'Network timeout',
+        errorCaptured: true
+      },
+      {
+        id: 'root-llm',
+        nodeId: 'chat-node',
+        moduleType: FlowNodeTypeEnum.chatNode,
+        errorText: 'Rate limit'
+      }
+    ] as ChatHistoryItemResType[]);
+
+    expect(summary).toMatchObject({
+      hasError: true,
+      errorCount: 1,
+      errorText: 'Rate limit'
+    });
+  });
+
+  it('preserves standalone canvas pluginModule error in the workflow error summary', () => {
+    const summary = summarizeRuntimeNodeResponses(undefined, [
+      {
+        id: 'canvas-plugin',
+        nodeId: 'plugin-node',
+        moduleType: FlowNodeTypeEnum.pluginModule,
+        toolInput: { query: 'test' },
+        errorText: 'Plugin failed'
+      }
+    ] as ChatHistoryItemResType[]);
+
+    expect(summary).toMatchObject({
+      hasError: true,
+      errorCount: 1,
+      errorText: 'Plugin failed'
+    });
+  });
+
+  it('collects new citations from incremental and nested responses', () => {
+    const firstSummary = summarizeRuntimeNodeResponses(undefined, [
+      {
+        id: 'dataset-response',
+        nodeId: 'dataset-node',
+        moduleType: FlowNodeTypeEnum.datasetSearchNode
+      }
+    ] as ChatHistoryItemResType[]);
+    const summary = summarizeRuntimeNodeResponses(firstSummary, [
+      {
+        id: 'dataset-response',
+        nodeId: 'dataset-node',
+        moduleType: FlowNodeTypeEnum.datasetSearchNode,
+        quoteList: [{ collectionId: 'collection-1' }],
+        childrenResponses: [
+          {
+            id: 'nested-dataset-response',
+            nodeId: 'nested-dataset-node',
+            moduleType: FlowNodeTypeEnum.datasetSearchNode,
+            quoteList: [{ collectionId: 'collection-2' }]
+          }
+        ]
+      }
+    ] as ChatHistoryItemResType[]);
+
+    expect(summary.citeCollectionIds).toEqual(['collection-1', 'collection-2']);
+  });
+
   it('deduplicates flattened child rows that are already included in parent child stats', () => {
     const summary = summarizeRuntimeNodeResponses(undefined, [
       {
@@ -1527,7 +1833,6 @@ describe('summarizeRuntimeNodeResponses', () => {
         nodeId: 'parent-node',
         moduleName: 'Parent',
         totalPoints: 1,
-        childTotalPoints: 2,
         childResponseCount: 1
       },
       {
@@ -1539,7 +1844,28 @@ describe('summarizeRuntimeNodeResponses', () => {
       }
     ]);
 
-    expect(summary.childTotalPoints).toBe(3);
+    expect(summary.totalPoints).toBe(3);
+    expect(summary.childResponseCount).toBe(2);
+  });
+
+  it('deduplicates child stats when child and parent are published in different batches', () => {
+    const childSummary = summarizeRuntimeNodeResponses(undefined, [
+      {
+        id: 'child',
+        parentId: 'parent',
+        nodeId: 'child-node',
+        moduleName: 'Child'
+      }
+    ]);
+    const summary = summarizeRuntimeNodeResponses(childSummary, [
+      {
+        id: 'parent',
+        nodeId: 'parent-node',
+        moduleName: 'Parent',
+        childResponseCount: 1
+      }
+    ]);
+
     expect(summary.childResponseCount).toBe(2);
   });
 
@@ -1561,7 +1887,7 @@ describe('summarizeRuntimeNodeResponses', () => {
       }
     ]);
 
-    expect(summary.childTotalPoints).toBe(3);
+    expect(summary.totalPoints).toBe(3);
     expect(summary.childResponseCount).toBe(2);
   });
 
@@ -1595,8 +1921,133 @@ describe('summarizeRuntimeNodeResponses', () => {
     expect(nextSummary.responseIds).toEqual(['repeat', 'next']);
     expect(nextSummary.finishedNodeIds).toEqual(['repeat-node', 'next-node']);
     expect(nextSummary).not.toHaveProperty('runningTime');
-    expect(nextSummary.childTotalPoints).toBe(6);
+    expect(nextSummary.totalPoints).toBe(6);
     expect(nextSummary.childResponseCount).toBe(2);
+  });
+
+  it('extracts direct nodeResponse LLM tokens once', () => {
+    const response = {
+      id: 'chat-response',
+      nodeId: 'chat-node',
+      moduleType: FlowNodeTypeEnum.chatNode,
+      inputTokens: 12,
+      outputTokens: 5
+    } as any;
+
+    const firstSummary = summarizeRuntimeNodeResponses(undefined, [response]);
+    const nextSummary = summarizeRuntimeNodeResponses(firstSummary, [response]);
+
+    expect(firstSummary).toMatchObject({ llmInputTokens: 12, llmOutputTokens: 5 });
+    expect(nextSummary).toMatchObject({ llmInputTokens: 12, llmOutputTokens: 5 });
+  });
+
+  it('counts toolCall model tokens but does not recurse into tool details', () => {
+    const summary = summarizeRuntimeNodeResponses(undefined, [
+      {
+        id: 'tool-call',
+        nodeId: 'tool-call-node',
+        moduleType: FlowNodeTypeEnum.toolCall,
+        toolCallInputTokens: 20,
+        toolCallOutputTokens: 8,
+        toolDetail: [
+          {
+            id: 'child-tool',
+            nodeId: 'child-tool-node',
+            inputTokens: 100,
+            outputTokens: 40
+          }
+        ]
+      } as any
+    ]);
+
+    expect(summary).toMatchObject({ llmInputTokens: 20, llmOutputTokens: 8 });
+  });
+
+  it('counts dataset LLM children and deep search, excluding embedding and rerank tokens', () => {
+    const summary = summarizeRuntimeNodeResponses(undefined, [
+      {
+        id: 'dataset-search',
+        nodeId: 'dataset-node',
+        moduleType: FlowNodeTypeEnum.datasetSearchNode,
+        embeddingTokens: 700,
+        reRankInputTokens: 300,
+        deepSearchResult: { inputTokens: 9, outputTokens: 4 },
+        childrenResponses: [
+          {
+            id: 'query-extension',
+            nodeId: 'query-extension-node',
+            moduleType: FlowNodeTypeEnum.datasetSearchNode,
+            inputTokens: 15,
+            outputTokens: 6,
+            embeddingTokens: 500
+          }
+        ]
+      } as any
+    ]);
+
+    expect(summary).toMatchObject({ llmInputTokens: 24, llmOutputTokens: 10 });
+  });
+
+  it('deduplicates dataset child tokens when the child row arrives before its parent', () => {
+    const child = {
+      id: 'dataset-child',
+      nodeId: 'dataset-child',
+      moduleType: FlowNodeTypeEnum.datasetSearchNode,
+      inputTokens: 4,
+      outputTokens: 2
+    } as ChatHistoryItemResType;
+    const parent = {
+      id: 'dataset-parent',
+      nodeId: 'dataset-parent',
+      moduleType: FlowNodeTypeEnum.datasetSearchNode,
+      childrenResponses: [child]
+    } as ChatHistoryItemResType;
+
+    const summary = summarizeRuntimeNodeResponses(undefined, [child, parent]);
+
+    expect(summary).toMatchObject({ llmInputTokens: 4, llmOutputTokens: 2 });
+  });
+
+  it('deduplicates dataset child tokens across summary batches', () => {
+    const child = {
+      id: 'dataset-child-batch',
+      nodeId: 'dataset-child-batch',
+      moduleType: FlowNodeTypeEnum.datasetSearchNode,
+      inputTokens: 4,
+      outputTokens: 2
+    } as ChatHistoryItemResType;
+    const parent = {
+      id: 'dataset-parent-batch',
+      nodeId: 'dataset-parent-batch',
+      moduleType: FlowNodeTypeEnum.datasetSearchNode,
+      childrenResponses: [child]
+    } as ChatHistoryItemResType;
+
+    const firstBatch = summarizeRuntimeNodeResponses(undefined, [child]);
+    const secondBatch = summarizeRuntimeNodeResponses(firstBatch, [parent]);
+
+    expect(secondBatch).toMatchObject({ llmInputTokens: 4, llmOutputTokens: 2 });
+  });
+});
+
+describe('stripNodeSummaryErrorFields', () => {
+  it('keeps tool child usage and citations but removes promoted error fields', () => {
+    expect(
+      stripNodeSummaryErrorFields({
+        llmInputTokens: 10,
+        llmOutputTokens: 4,
+        totalPoints: 2,
+        citeCollectionIds: ['collection-1'],
+        hasError: true,
+        errorCount: 1,
+        errorText: 'tool failed'
+      })
+    ).toEqual({
+      llmInputTokens: 10,
+      llmOutputTokens: 4,
+      totalPoints: 2,
+      citeCollectionIds: ['collection-1']
+    });
   });
 });
 
@@ -1623,5 +2074,92 @@ describe('safePoints', () => {
 
   it('undefined → 0', () => {
     expect(safePoints(undefined)).toBe(0);
+  });
+});
+
+describe('mergeWorkflowRuntimeSummary', () => {
+  it('累加节点与子 runtime，保留控制字段且不修改输入', () => {
+    const current = {
+      ...createWorkflowRuntimeSummary(),
+      llmInputTokens: 10,
+      llmOutputTokens: 2
+    };
+    const child = {
+      ...createWorkflowRuntimeSummary(),
+      llmInputTokens: 20,
+      llmOutputTokens: 3,
+      responseIds: ['child'],
+      finishedNodeIds: ['end'],
+      hasError: true,
+      errorText: 'failed',
+      hasLoopRunBreak: true,
+      hasToolStop: true,
+      hasNestedEnd: true,
+      nestedEndOutput: 'output',
+      pluginOutput: { answer: 1 },
+      totalPoints: 4,
+      childResponseCount: 2
+    };
+    const merged = mergeWorkflowRuntimeSummary({
+      currentSummary: current,
+      nodeSummary: { llmInputTokens: 1, llmOutputTokens: 1 },
+      workflowRuntimeSummary: child
+    });
+    expect(merged).toEqual({ ...child, llmInputTokens: 31, llmOutputTokens: 6 });
+    expect(current.llmInputTokens).toBe(10);
+    expect(current.responseIds).toEqual([]);
+    expect(child.llmInputTokens).toBe(20);
+    expect(mergeWorkflowRuntimeSummary({})).toEqual(createWorkflowRuntimeSummary());
+  });
+
+  it('兼容恢复快照缺少 token 字段，并从 nodeResponse 提取 LLM token', () => {
+    const legacy = { ...createWorkflowRuntimeSummary() } as Partial<
+      ReturnType<typeof createWorkflowRuntimeSummary>
+    >;
+    delete legacy.llmInputTokens;
+    delete legacy.llmOutputTokens;
+    const merged = mergeWorkflowRuntimeSummary({
+      currentSummary: legacy as any,
+      nodeSummary: { llmInputTokens: 3, llmOutputTokens: 4 }
+    });
+    expect(merged.llmInputTokens).toBe(3);
+    expect(merged.llmOutputTokens).toBe(4);
+    const display = summarizeRuntimeNodeResponses(undefined, [
+      { id: 'embedding', inputTokens: 900, outputTokens: 100 } as any
+    ]);
+    expect(display.llmInputTokens).toBe(900);
+    expect(display.llmOutputTokens).toBe(100);
+  });
+});
+
+describe('createNodeSummary', () => {
+  it('每次执行独立采集，并通过统一入口累加 token', () => {
+    const summary = createNodeSummary();
+    summary.mergeNodeSummary({ llmInputTokens: 5, llmOutputTokens: 2 });
+    summary.mergeNodeSummary({ llmInputTokens: 3 });
+    summary.mergeNodeSummary({});
+    expect(summary).toMatchObject({ llmInputTokens: 8, llmOutputTokens: 2 });
+    expect(createNodeSummary()).toMatchObject({ llmInputTokens: 0, llmOutputTokens: 0 });
+  });
+});
+
+describe('runtimeSummaryToNodeSummary', () => {
+  it('只输出有值的 node summary 字段', () => {
+    expect(runtimeSummaryToNodeSummary(createWorkflowRuntimeSummary())).toBeUndefined();
+
+    expect(
+      runtimeSummaryToNodeSummary({
+        ...createWorkflowRuntimeSummary(),
+        llmInputTokens: 13,
+        llmOutputTokens: 7,
+        hasError: true,
+        errorText: 'failed'
+      })
+    ).toEqual({
+      llmInputTokens: 13,
+      llmOutputTokens: 7,
+      hasError: true,
+      errorText: 'failed'
+    });
   });
 });

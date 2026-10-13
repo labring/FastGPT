@@ -14,6 +14,12 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import dayjs from 'dayjs';
 import { getAuthLoginRedirectPath } from '@/web/support/user/loginRedirect/url';
 import { getLanguageRequestHeaders } from '@fastgpt/web/i18n/utils';
+import { ToastHandledError } from '@fastgpt/global/common/error/utils';
+import { isLogoutInProgress } from '@/web/support/user/logoutState';
+import {
+  FASTGPT_WEB_REQUEST_HEADER,
+  FASTGPT_WEB_REQUEST_VALUE
+} from '@fastgpt/global/common/system/constants';
 
 type ConfigType = {
   headers?: { [key: string]: string };
@@ -92,11 +98,19 @@ function getDeduplicatedRequestKey({
   Every request generates a unique sign
   If the number of requests exceeds maxQuantity, cancel the earliest request and initiate a new request
 */
-function checkMaxQuantity({ url, maxQuantity }: { url: string; maxQuantity?: number }) {
+function checkMaxQuantity({
+  url,
+  maxQuantity,
+  cancelToken
+}: {
+  url: string;
+  maxQuantity?: number;
+  cancelToken?: AbortController;
+}) {
   if (!maxQuantity) return {};
   const item = maxQuantityMap[url];
   const id = getNanoid();
-  const sign = new AbortController();
+  const sign = cancelToken ?? new AbortController();
 
   if (item && item.length > 0) {
     if (item.length >= maxQuantity) {
@@ -133,8 +147,11 @@ function requestFinish({ signId, url }: { signId?: string; url: string }) {
  */
 function startInterceptors(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
   const languageHeaders = getLanguageRequestHeaders();
+  config.headers ??= {} as InternalAxiosRequestConfig['headers'];
+  if (config.method?.toUpperCase() === 'GET') {
+    config.headers[FASTGPT_WEB_REQUEST_HEADER] = FASTGPT_WEB_REQUEST_VALUE;
+  }
   if (Object.keys(languageHeaders).length > 0) {
-    config.headers ??= {} as InternalAxiosRequestConfig['headers'];
     Object.assign(config.headers, languageHeaders);
   }
 
@@ -186,6 +203,10 @@ function responseError(err: any) {
 
   // Token error
   if (data?.code in TOKEN_ERROR_CODE) {
+    if (isLogoutInProgress()) {
+      return Promise.reject(new ToastHandledError('Ignore auth errors during logout'));
+    }
+
     const authErrorEvent = new CustomEvent<AuthErrorEventDetail>(AUTH_ERROR_EVENT_NAME, {
       detail: {
         data
@@ -258,7 +279,7 @@ function request(
     }
   }
 
-  const { id: signId, abortSignal } = checkMaxQuantity({ url, maxQuantity });
+  const { id: signId, abortSignal } = checkMaxQuantity({ url, maxQuantity, cancelToken });
   const shouldSendBody = ['POST', 'PUT'].includes(method) || dataAsBody;
   // 共享请求不接管取消语义，避免一个调用方取消所有等待者。
   const deduplicatedRequestKey =

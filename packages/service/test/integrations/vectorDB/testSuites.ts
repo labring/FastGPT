@@ -15,7 +15,9 @@ const insertTestVectors = async (
         teamId,
         datasetId,
         collectionId: TEST_COLLECTION_IDS[index],
-        vectors: [vector]
+        vectors: [vector],
+        // Milvus 单表方案要求每条向量携带 BM25 文本;其他 provider 忽略该字段。
+        texts: [`integration-test-${index}`]
       });
       insertIds.push(ids[0]);
     })
@@ -68,7 +70,7 @@ export const createVectorDBTestSuite = (vectorCtrl: VectorControllerType) => {
 
     test('embRecall returns results', async () => {
       const { teamId, datasetId } = createTestIds();
-      await insertTestVectors(vectorCtrl, teamId, datasetId);
+      const insertIds = await insertTestVectors(vectorCtrl, teamId, datasetId);
 
       const { results } = await vectorCtrl.embRecall({
         teamId,
@@ -80,6 +82,8 @@ export const createVectorDBTestSuite = (vectorCtrl: VectorControllerType) => {
 
       expect(results.length).toBeGreaterThan(0);
       expect(results.every((item) => TEST_COLLECTION_IDS.includes(item.collectionId))).toBe(true);
+      // 主键必返:下游反查 indexes.dataId 依赖 id;SDK 只解析 output_fields 指定字段,缺 id 会被吞成空召回
+      expect(results.every((item) => item.id && insertIds.includes(String(item.id)))).toBe(true);
 
       await cleanupTestVectors(vectorCtrl, teamId, datasetId);
     });

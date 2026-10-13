@@ -1,9 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { resolveDashboardAppListTypes } from '@/pageComponents/dashboard/agent/utils/appListTypes';
+import {
+  getDashboardAppListScene,
+  resolveDashboardAppListTypes
+} from '@/pageComponents/dashboard/agent/utils/appListTypes';
 
-describe('resolveDashboardAppListTypes', () => {
-  it('should include legacy HTTP plugin apps in the dashboard tool all list', () => {
+describe('dashboard app list types', () => {
+  it('resolves scene from pathname', () => {
+    expect(getDashboardAppListScene('/dashboard/agent')).toBe('agent');
+    expect(getDashboardAppListScene('/dashboard/tool')).toBe('tool');
+    expect(getDashboardAppListScene('/dashboard/systemTool')).toBe('other');
+    expect(getDashboardAppListScene('/chat/team')).toBe('chat');
+  });
+
+  it('maps scene and type to list API types', () => {
     expect(
       resolveDashboardAppListTypes({
         pathname: '/dashboard/tool',
@@ -16,27 +26,24 @@ describe('resolveDashboardAppListTypes', () => {
       AppTypeEnum.httpToolSet,
       AppTypeEnum.httpPlugin
     ]);
-  });
-
-  it('should include legacy HTTP plugin apps when filtering dashboard tools by HTTP toolset', () => {
     expect(
       resolveDashboardAppListTypes({
         pathname: '/dashboard/tool',
         type: AppTypeEnum.httpToolSet
       })
     ).toEqual([AppTypeEnum.toolFolder, AppTypeEnum.httpToolSet, AppTypeEnum.httpPlugin]);
-  });
-
-  it('should keep agent page type filters unchanged', () => {
+    expect(
+      resolveDashboardAppListTypes({
+        pathname: '/dashboard/tool',
+        type: AppTypeEnum.workflowTool
+      })
+    ).toEqual([AppTypeEnum.toolFolder, AppTypeEnum.workflowTool]);
     expect(
       resolveDashboardAppListTypes({
         pathname: '/dashboard/agent',
         type: AppTypeEnum.workflow
       })
     ).toEqual([AppTypeEnum.folder, AppTypeEnum.workflow]);
-  });
-
-  it('should include chat agent v2 apps in the chat app list', () => {
     expect(
       resolveDashboardAppListTypes({
         pathname: '/chat',

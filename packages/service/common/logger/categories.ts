@@ -12,7 +12,11 @@
 
 export const LogCategories = {
   // 应用层日志
-  SYSTEM: ['system'],
+  SYSTEM: Object.assign(['system'], {
+    UPGRADE: Object.assign(['system', 'upgrade'], {
+      V4163: ['system', 'upgrade', '4163']
+    })
+  }),
   NETWORK: ['system', 'network'],
 
   // 基础设施层
@@ -165,6 +169,8 @@ export const moduleCategories: readonly ModuleCategory[] = Object.keys(LogCatego
 // 导出类型以供 TypeScript 类型推断
 export type LogCategory =
   | typeof LogCategories.SYSTEM
+  | typeof LogCategories.SYSTEM.UPGRADE
+  | (typeof LogCategories.SYSTEM.UPGRADE)[keyof typeof LogCategories.SYSTEM.UPGRADE]
   | (typeof LogCategories.INFRA)[keyof typeof LogCategories.INFRA]
   | (typeof LogCategories.HTTP)[keyof typeof LogCategories.HTTP]
   | (typeof LogCategories.MODULE)[keyof typeof LogCategories.MODULE]

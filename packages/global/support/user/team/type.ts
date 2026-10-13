@@ -41,6 +41,8 @@ export type TeamMemberSchema = {
   createTime: Date;
   updateTime?: Date;
   name: string;
+  /** 成员名是否由显式来源设置；false 表示 name 是待确认的 username 回落值。存量文档迁移前可能缺失该字段。 */
+  isSetMemberName?: boolean;
   role: TeamMemberRoleEnum;
   status: TeamMemberStatusEnum;
   avatar: string;
@@ -56,7 +58,8 @@ export const TeamTmbItemSchema = ThidPartyAccountSchema.extend({
   teamId: ObjectIdSchema,
   teamAvatar: z.string().nullish(),
   teamName: z.string(),
-  memberName: z.string(),
+  memberName: z.string().default('Member'),
+  isSetMemberName: z.boolean().default(false),
   avatar: z.string().nullish(),
   balance: z.number().optional(),
   tmbId: ObjectIdSchema,
@@ -85,6 +88,8 @@ export type TeamMemberItemType<
   tmbId: string;
   teamId: string;
   memberName: string;
+  /** 成员名是否已由显式来源设置；为 false 时 memberName 是待确认的回落展示名（登录用户名或空串），不是用户提交值。 */
+  isSetMemberName: boolean;
   avatar: string;
   role: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;

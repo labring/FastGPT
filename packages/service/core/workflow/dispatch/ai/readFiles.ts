@@ -49,7 +49,9 @@ export const dispatchWorkflowReadFiles = async ({
           customPdfParse,
           usageId,
           fileContext: getWorkflowFileContext(),
-          validateExternalUrlDomain: false
+          validateExternalUrlDomain: false,
+          // 只收集并返回给运行时，统一由 read_files 节点落账，避免底层解析器重复收费。
+          onPdfParseUsage: (usage) => usages.push(usage)
         });
 
         return {

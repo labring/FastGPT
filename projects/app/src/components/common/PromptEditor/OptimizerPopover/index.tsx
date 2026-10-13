@@ -1,18 +1,18 @@
-import { useMemo, useRef, useState } from 'react';
+import React from 'react';
+import { onOptimizePrompt } from '@/web/common/api/fetch';
+import { getModelDefault } from '@/web/core/ai/model/modelData';
 import type { FlexProps } from '@chakra-ui/react';
 import { Box, Button, Flex, Textarea, useDisclosure } from '@chakra-ui/react';
-import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useTranslation } from 'next-i18next';
+import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useLocalStorageState } from 'ahooks';
+import { useTranslation } from 'next-i18next';
+import { useMemo, useRef, useState } from 'react';
 import AIModelSelector from '../../../Select/AIModelSelector';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { onOptimizePrompt } from '@/web/common/api/fetch';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 export type OptimizerPromptProps = {
   onChangeText: (text: string) => void;
@@ -22,7 +22,7 @@ export type OptimizerPromptProps = {
 export type OnOptimizePromptProps = {
   originalPrompt?: string;
   input: string;
-  model: string;
+  modelId: string;
   onResult: (result: string) => void;
   abortController?: AbortController;
 };
@@ -35,7 +35,6 @@ const OptimizerPopover = ({
   iconButtonStyle?: FlexProps;
 }) => {
   const { t } = useTranslation();
-  const { llmModelList, defaultModels } = useSystemStore();
 
   const InputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -44,7 +43,7 @@ const OptimizerPopover = ({
   const [selectedModel = '', setSelectedModel] = useLocalStorageState<string>(
     'prompt-editor-selected-model',
     {
-      defaultValue: defaultModels.llm?.model || ''
+      defaultValue: ''
     }
   );
 
@@ -52,27 +51,6 @@ const OptimizerPopover = ({
   const { isOpen: isConfirmOpen, onOpen: onOpenConfirm, onClose: onCloseConfirm } = useDisclosure();
 
   const closePopoverRef = useRef<() => void>();
-
-  const modelOptions = useMemo(() => {
-    return llmModelList.map((model) => {
-      return {
-        label: (
-          <Flex alignItems={'center'}>
-            <Avatar
-              src={model.avatar || HUGGING_FACE_ICON}
-              fallbackSrc={HUGGING_FACE_ICON}
-              mr={1.5}
-              w={5}
-            />
-            <Box fontWeight={'normal'} fontSize={'14px'} color={'myGray.900'}>
-              {model.name}
-            </Box>
-          </Flex>
-        ),
-        value: model.model
-      };
-    });
-  }, [llmModelList]);
 
   const isEmptyOptimizerInput = useMemo(() => {
     return !optimizerInput.trim();
@@ -89,7 +67,7 @@ const OptimizerPopover = ({
     await onOptimizePrompt({
       originalPrompt: defaultPrompt,
       input: optimizerInput,
-      model: selectedModel,
+      modelId: selectedModel,
       onResult: (result: string) => {
         if (!controller.signal.aborted) {
           setOptimizedResult((prev) => prev + result);
@@ -138,6 +116,12 @@ const OptimizerPopover = ({
           }
         }}
         onOpenFunc={() => {
+          if (!selectedModel)
+            getModelDefault({ modelType: ModelTypeEnum.llm })
+              .then((model) => {
+                if (model) setSelectedModel((current) => current || model.modelId);
+              })
+              .catch(() => {});
           setTimeout(() => {
             InputRef.current?.focus();
           }, 50);
@@ -208,8 +192,9 @@ const OptimizerPopover = ({
                     )}
 
                     <Box flex={1} />
-                    {modelOptions && modelOptions.length > 0 && (
+                    {
                       <AIModelSelector
+                        modelType={ModelTypeEnum.llm}
                         borderColor={'transparent'}
                         _hover={{
                           border: '1px solid',
@@ -217,10 +202,9 @@ const OptimizerPopover = ({
                         }}
                         size={'sm'}
                         value={selectedModel}
-                        list={modelOptions}
                         onChange={setSelectedModel}
                       />
-                    )}
+                    }
                   </>
                 ) : (
                   <MyIcon name={'common/ellipsis'} w={6} ml={3} color={'myGray.400'} />

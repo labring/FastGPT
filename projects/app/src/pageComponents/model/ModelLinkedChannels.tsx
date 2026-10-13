@@ -1,0 +1,184 @@
+import ChannelStatusTag from './ChannelStatusTag';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import type { ModelChannelSummary } from '@fastgpt/global/openapi/core/ai/model/api';
+import { Box, Button, Flex, HStack, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
+import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { useState } from 'react';
+
+const ChannelTableColumns = () => (
+  <colgroup>
+    <col style={{ width: '160px' }} />
+    <col />
+    <col style={{ width: '100px' }} />
+    <col style={{ width: '100px' }} />
+  </colgroup>
+);
+
+/** 新增与编辑模型共用的渠道入口和已关联渠道概览。新增时本地暂存并在创建时统一提交，编辑时解绑操作会通过 onRemove 即时生效。 */
+const ModelLinkedChannels = ({
+  channels,
+  selectedIds,
+  onCreate,
+  onAssociate,
+  onManage,
+  onTest,
+  testingChannelIds,
+  onRemove
+}: {
+  channels: ModelChannelSummary[];
+  selectedIds: Set<number>;
+  onCreate?: () => void;
+  onAssociate?: () => void;
+  onManage: () => void;
+  onTest: (channelId: number) => void;
+  testingChannelIds: ReadonlySet<number>;
+  onRemove?: (channelId: number) => Promise<unknown> | void;
+}) => {
+  const { t, i18n } = useSafeTranslation();
+  const [showAllChannels, setShowAllChannels] = useState(false);
+  const linkedChannels = channels.filter((channel) => selectedIds.has(channel.id));
+  const displayedChannels =
+    showAllChannels || linkedChannels.length <= 5 ? linkedChannels : linkedChannels.slice(0, 5);
+
+  return (
+    <Box>
+      <HStack spacing={2} mb={3} flexWrap="wrap">
+        {onCreate && (
+          <Button
+            size="sm"
+            variant="primaryOutline"
+            leftIcon={<MyIcon name="common/addLight" w="16px" />}
+            onClick={onCreate}
+          >
+            {t('config_model:create_channel')}
+          </Button>
+        )}
+        {onAssociate && (
+          <Button
+            size="sm"
+            variant="primaryOutline"
+            leftIcon={<MyIcon name="common/link" w="16px" />}
+            onClick={onAssociate}
+          >
+            {t('config_model:associate_existing_channels')}
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="primaryOutline"
+          leftIcon={<MyIcon name="common/upperRight" w="16px" />}
+          onClick={onManage}
+        >
+          {t('config_model:channel_management')}
+        </Button>
+      </HStack>
+
+      <FixedTableLayout
+        scrollMode="normal"
+        rootProps={{
+          h: 'auto',
+          maxH: '220px',
+          p: 2,
+          border: '1px solid',
+          borderColor: 'myGray.200',
+          borderRadius: '12px',
+          overflow: 'hidden'
+        }}
+        bodyProps={{ flex: '1 1 auto', minH: 0, overflowY: 'auto' }}
+        renderHeader={({ headerTableWidth }) => (
+          <Table sx={{ tableLayout: 'fixed', width: `${headerTableWidth} !important` }}>
+            <ChannelTableColumns />
+            <Thead>
+              <Tr h="40px">
+                <Th px={3}>{t('config_model:channel_name')}</Th>
+                <Th px={3}>{t('config_model:channel_type')}</Th>
+                <Th px={3}>{t('config_model:channel_status')}</Th>
+                <Th px={3}>{t('common:Operation')}</Th>
+              </Tr>
+            </Thead>
+          </Table>
+        )}
+        renderBody={() => (
+          <Table sx={{ tableLayout: 'fixed' }}>
+            <ChannelTableColumns />
+            <Tbody color="myGray.600">
+              {displayedChannels.map((channel) => (
+                <Tr key={channel.id} h="56px">
+                  <Td px={3} fontWeight="500">
+                    <Box noOfLines={1}>{channel.name}</Box>
+                  </Td>
+                  <Td px={3}>
+                    <HStack spacing={2} minW={0}>
+                      <Avatar src={channel.protocol.avatar} w="16px" flexShrink={0} />
+                      <Box noOfLines={1}>
+                        {parseI18nString(channel.protocol.name, i18n.language)}
+                      </Box>
+                    </HStack>
+                  </Td>
+                  <Td px={3}>
+                    <ChannelStatusTag status={channel.status} />
+                  </Td>
+                  <Td px={3}>
+                    <HStack spacing={1}>
+                      <MyIconButton
+                        icon="core/chat/sendLight"
+                        tip={t('config_model:model.test_model')}
+                        isLoading={testingChannelIds.has(channel.id)}
+                        onClick={() => onTest(channel.id)}
+                      />
+                      {onRemove && (
+                        <PopoverConfirm
+                          type={'delete'}
+                          placement={'bottom-end'}
+                          content={t('config_model:confirm_remove_channel_association')}
+                          onConfirm={() => onRemove(channel.id)}
+                          Trigger={
+                            <Box>
+                              <MyIconButton
+                                icon="delete"
+                                tip={t('config_model:remove_channel_association')}
+                                hoverColor="red.500"
+                              />
+                            </Box>
+                          }
+                        />
+                      )}
+                    </HStack>
+                  </Td>
+                </Tr>
+              ))}
+              {linkedChannels.length === 0 && (
+                <Tr>
+                  <Td colSpan={4} border={0}>
+                    <EmptyTip mt={0} py={5} text={t('config_model:model_channel_empty')} />
+                  </Td>
+                </Tr>
+              )}
+            </Tbody>
+          </Table>
+        )}
+      />
+      {linkedChannels.length > 5 && (
+        <Flex justifyContent="center" mt={2}>
+          <Button
+            variant="transparentBase"
+            size="xs"
+            color="myGray.500"
+            _hover={{ color: 'primary.600' }}
+            onClick={() => setShowAllChannels((prev) => !prev)}
+          >
+            {showAllChannels ? t('common:Fold') : t('config_model:channel_max_five_tip')}
+          </Button>
+        </Flex>
+      )}
+    </Box>
+  );
+};
+
+export default ModelLinkedChannels;

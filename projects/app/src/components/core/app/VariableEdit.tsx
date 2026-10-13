@@ -1,11 +1,12 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useMemo, useState } from 'react';
-import { Box, Flex, Table, Thead, Tr, Th, Td, TableContainer, Tbody } from '@chakra-ui/react';
+import { Box, Flex, Table, Thead, Tr, Th, Td, Tbody } from '@chakra-ui/react';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import {
   VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import type { VariableItemType } from '@fastgpt/global/core/app/type';
+import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
@@ -97,8 +98,15 @@ const VariableEdit = ({
       />
       {/* Form render */}
       {formatVariables.length > 0 && (
-        <TableContainer mt={2} borderRadius={'md'} overflow={'hidden'} borderWidth={'1px'}>
-          <Table variant={'workflow'} w={'100%'} sx={{ tableLayout: 'fixed' }}>
+        <FixedTableContainer
+          bodyBg="white"
+          flush
+          tableVariant={'flat'}
+          mt={2}
+          borderRadius={'md'}
+          borderWidth={'1px'}
+        >
+          <Table w={'100%'} sx={{ tableLayout: 'fixed' }}>
             <Thead>
               <Tr>
                 <Th pl={'24px !important'} pr={'8px !important'}>
@@ -147,7 +155,7 @@ const VariableEdit = ({
               )}
             </DndDrag>
           </Table>
-        </TableContainer>
+        </FixedTableContainer>
       )}
 
       {/* Edit modal */}

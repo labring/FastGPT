@@ -280,7 +280,7 @@ export type GetMarketplaceDownloadUrlsResponseType = z.infer<
 
 // Upload marketplace pkg
 export const UploadMarketplacePkgBodySchema = z.object({
-  file: z.any(),
+  file: z.string().meta({ format: 'binary', description: '上传的 .pkg 文件' }),
   source: MarketplacePkgSourceSchema.optional().default(MarketplaceOfficialSource)
 });
 export const UploadMarketplacePkgDataSchema = z.object({

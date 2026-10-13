@@ -15,6 +15,12 @@ import {
   AgentSkillSourceEnum,
   AgentSkillCategoryEnum
 } from '@fastgpt/global/core/ai/skill/constants';
+import {
+  OwnerRoleVal,
+  PerResourceTypeEnum,
+  ReadRoleVal
+} from '@fastgpt/global/support/permission/constant';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { Readable } from 'node:stream';
 
 describe('AgentSkill Controller', () => {
@@ -31,7 +37,11 @@ describe('AgentSkill Controller', () => {
     const skillIds = await MongoAgentSkills.find({ teamId: testTeamId }, { _id: 1 }).lean();
     await Promise.all([
       MongoAgentSkills.deleteMany({ teamId: testTeamId }),
-      MongoAgentSkillsVersion.deleteMany({ skillId: { $in: skillIds.map((skill) => skill._id) } })
+      MongoAgentSkillsVersion.deleteMany({ skillId: { $in: skillIds.map((skill) => skill._id) } }),
+      MongoResourcePermission.deleteMany({
+        teamId: testTeamId,
+        resourceType: PerResourceTypeEnum.agentSkill
+      })
     ]);
   });
 
@@ -40,7 +50,11 @@ describe('AgentSkill Controller', () => {
     const skillIds = await MongoAgentSkills.find({ teamId: testTeamId }, { _id: 1 }).lean();
     await Promise.all([
       MongoAgentSkills.deleteMany({ teamId: testTeamId }),
-      MongoAgentSkillsVersion.deleteMany({ skillId: { $in: skillIds.map((skill) => skill._id) } })
+      MongoAgentSkillsVersion.deleteMany({ skillId: { $in: skillIds.map((skill) => skill._id) } }),
+      MongoResourcePermission.deleteMany({
+        teamId: testTeamId,
+        resourceType: PerResourceTypeEnum.agentSkill
+      })
     ]);
   });
 
@@ -364,6 +378,14 @@ describe('AgentSkill Controller', () => {
       expect(skill?.description).toBe(skillData.description);
       expect(skill?.source).toBe(AgentSkillSourceEnum.personal);
       expect(skill?.currentRuntimeSkills).toHaveLength(0);
+      await expect(
+        MongoResourcePermission.findOne({
+          teamId: testTeamId,
+          resourceType: PerResourceTypeEnum.agentSkill,
+          resourceId: skillId,
+          tmbId: testTmbId
+        }).lean()
+      ).resolves.toMatchObject({ permission: OwnerRoleVal });
     });
 
     it('should allow importing duplicate name without error', async () => {
@@ -394,6 +416,49 @@ describe('AgentSkill Controller', () => {
       expect(firstSkillId).toBeDefined();
       expect(secondSkillId).toBeDefined();
       expect(firstSkillId).not.toBe(secondSkillId);
+    });
+
+    it('should create owner permission and inherit parent collaborators', async () => {
+      const folder = await createSkillFolder({
+        name: 'Import Parent',
+        teamId: testTeamId,
+        tmbId: testTmbId
+      });
+      const collaboratorTmbId = new Types.ObjectId();
+      await MongoResourcePermission.create({
+        teamId: testTeamId,
+        resourceType: PerResourceTypeEnum.agentSkill,
+        resourceId: folder._id,
+        tmbId: collaboratorTmbId,
+        permission: ReadRoleVal
+      });
+
+      const skillId = await importSkill({
+        skill: {
+          name: 'Imported Child',
+          description: 'A child imported into a folder',
+          category: []
+        },
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        parentId: folder._id.toString(),
+        packageStream: Readable.from(packageContent),
+        contentLength: packageContent.length
+      });
+
+      const permissions = await MongoResourcePermission.find({
+        teamId: testTeamId,
+        resourceType: PerResourceTypeEnum.agentSkill,
+        resourceId: skillId
+      }).lean();
+      expect(
+        new Map(permissions.map((permission) => [String(permission.tmbId), permission.permission]))
+      ).toEqual(
+        new Map([
+          [testTmbId, OwnerRoleVal],
+          [String(collaboratorTmbId), ReadRoleVal]
+        ])
+      );
     });
   });
 });

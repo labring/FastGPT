@@ -83,10 +83,7 @@ const DatasetSchema = new Schema({
     required: true,
     default: DatasetTypeEnum.dataset
   },
-  avatar: {
-    type: String,
-    default: '/icon/logo.svg'
-  },
+  avatar: String,
   name: {
     type: String,
     required: true
@@ -95,17 +92,26 @@ const DatasetSchema = new Schema({
     type: Date,
     default: () => new Date()
   },
+  createTime: {
+    type: Date,
+    default: () => new Date()
+  },
   vectorModel: {
-    type: String,
-    required: true,
-    default: 'text-embedding-3-small'
+    type: String
+  },
+  vectorModelId: {
+    type: String
   },
   agentModel: {
-    type: String,
-    required: true,
-    default: 'gpt-4o-mini'
+    type: String
+  },
+  agentModelId: {
+    type: String
   },
   vlmModel: String,
+  vlmModelId: {
+    type: String
+  },
   intro: {
     type: String,
     default: ''
@@ -125,9 +131,24 @@ const DatasetSchema = new Schema({
   chunkSettings: {
     type: ChunkSettings
   },
+  // 外部文档解析服务开关,整体存取;缺失字段由读取层用固定默认值补全
+  sangforFileParseConfig: {
+    type: {
+      keep_header_footer: Boolean,
+      keep_appendix: Boolean,
+      image_analysis: Boolean,
+      chart_analysis: Boolean
+    }
+  },
   inheritPermission: {
     type: Boolean,
     default: true
+  },
+  // collection 级权限开关（显式、可逆）：关闭态（默认，含存量数据）时 collection 可读性 == dataset 可读，
+  // 不依赖任何 collection ACL 行；启用态逐 collection 解析物化快照（由启用接口负责物化）。
+  collectionPermissionEnabled: {
+    type: Boolean,
+    default: false
   },
 
   apiDatasetServer: Object,
@@ -151,8 +172,12 @@ const DatasetSchema = new Schema({
   yuqueServer: Object
 });
 
-defineIndex(DatasetSchema, { key: { teamId: 1 } });
+defineIndex(DatasetSchema, { key: { teamId: 1, createTime: 1 } });
+defineIndex(DatasetSchema, { key: { teamId: 1, updateTime: -1 } });
+defineIndex(DatasetSchema, { key: { teamId: 1, parentId: 1 } });
 defineIndex(DatasetSchema, { key: { type: 1 } }); // Admin count
 defineIndex(DatasetSchema, { key: { deleteTime: 1 } }); // 添加软删除字段索引
+
+defineIndex(DatasetSchema, { key: { teamId: 1 }, deprecated: true });
 
 export const MongoDataset = getMongoModel<DatasetSchemaType>(DatasetCollectionName, DatasetSchema);

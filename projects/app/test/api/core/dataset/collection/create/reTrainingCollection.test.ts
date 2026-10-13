@@ -7,14 +7,18 @@ const {
   mockDelCollection,
   mockMongoSessionRun,
   mockCollectionTagsToTagLabel,
-  mockAddAuditLog
+  mockAddAuditLog,
+  mockGetCollectionCollaborators,
+  mockCarryOverCollectionPermission
 } = vi.hoisted(() => ({
   mockAuthDatasetCollection: vi.fn(),
   mockCreateCollectionAndInsertData: vi.fn(),
   mockDelCollection: vi.fn(),
-  mockMongoSessionRun: vi.fn((fn: any) => fn('session')),
+  mockMongoSessionRun: vi.fn((fn: (session: string) => unknown) => fn('session')),
   mockCollectionTagsToTagLabel: vi.fn(),
-  mockAddAuditLog: vi.fn()
+  mockAddAuditLog: vi.fn(),
+  mockGetCollectionCollaborators: vi.fn(),
+  mockCarryOverCollectionPermission: vi.fn()
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -36,6 +40,14 @@ vi.mock('@fastgpt/service/common/mongo/sessionRun', () => ({
 
 vi.mock('@fastgpt/service/core/dataset/collection/utils', () => ({
   collectionTagsToTagLabel: mockCollectionTagsToTagLabel
+}));
+
+vi.mock('@fastgpt/service/support/permission/collection/collaborator', () => ({
+  getCollectionCollaborators: mockGetCollectionCollaborators
+}));
+
+vi.mock('@fastgpt/service/support/permission/collection/controller', () => ({
+  carryOverCollectionPermission: mockCarryOverCollectionPermission
 }));
 
 vi.mock('@fastgpt/service/support/user/audit/util', () => ({
@@ -73,6 +85,8 @@ describe('reTrainingCollection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCollectionTagsToTagLabel.mockResolvedValue(['tag-label']);
+    mockGetCollectionCollaborators.mockResolvedValue([]);
+    mockCarryOverCollectionPermission.mockResolvedValue(undefined);
     mockCreateCollectionAndInsertData.mockResolvedValue({
       collectionId: newCollectionId,
       results: { insertLen: 0 }

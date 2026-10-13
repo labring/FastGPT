@@ -133,7 +133,7 @@ export function usePagination<DataT, ResT = unknown>(
   const paginationRef = useRef<HTMLDivElement>(null);
   const totalDataLength = useMemo(() => Math.max(total, data.length), [total, data.length]);
 
-  const isEmpty = total === 0 && !isLoading;
+  const isEmpty = total === 0 && !isLoading && !error;
   const noMore = data.length > 0 && data.length >= totalDataLength;
 
   const fetchData = useMemoizedFn(
@@ -368,7 +368,14 @@ export function usePagination<DataT, ResT = unknown>(
       // Watch scroll position
       useThrottleEffect(
         () => {
-          if (!ref?.current || type !== 'scroll' || noMore || isLoading || data.length === 0)
+          if (
+            !ref?.current ||
+            type !== 'scroll' ||
+            noMore ||
+            isLoading ||
+            error ||
+            data.length === 0
+          )
             return;
           const { scrollTop, scrollHeight, clientHeight } = ref.current;
 
@@ -380,7 +387,7 @@ export function usePagination<DataT, ResT = unknown>(
             fetchData(pageNum + 1, ref);
           }
         },
-        [scroll, isLoading],
+        [data, error, scroll],
         { wait: 50 }
       );
 

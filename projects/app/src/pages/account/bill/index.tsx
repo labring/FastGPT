@@ -2,8 +2,11 @@
 import { Box, Button, Flex } from '@chakra-ui/react';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useMemo, useState } from 'react';
+import { packageBillTypes, billTypeMap } from '@fastgpt/global/support/wallet/bill/constants';
+import type { GetBillListQueryType } from '@fastgpt/global/openapi/support/wallet/bill/api';
+import SingleSelectFilter from '@fastgpt/web/components/common/TagFilter/SingleSelectFilter';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import ApplyInvoiceModal from '@/pageComponents/account/bill/ApplyInvoiceModal';
 import { useRouter } from 'next/router';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
@@ -19,12 +22,24 @@ const BillTable = dynamic(() => import('@/pageComponents/account/bill/BillTable'
 const InvoiceHeaderForm = dynamic(() => import('@/pageComponents/account/bill/InvoiceHeaderForm'));
 const InvoiceTable = dynamic(() => import('@/pageComponents/account/bill/InvoiceTable'));
 const BillAndInvoice = () => {
-  const { t } = useClientTranslation(['account_bill', 'account']);
+  const { t } = useSafeTranslation();
   const router = useRouter();
   const { invoiceTab = InvoiceTabEnum.bill } = router.query as { invoiceTab: `${InvoiceTabEnum}` };
 
   const [isOpenInvoiceModal, setIsOpenInvoiceModal] = useState(false);
   const [recordsRefreshKey, setRecordsRefreshKey] = useState(0);
+  const [billType, setBillType] = useState<GetBillListQueryType['type']>();
+  const billTypeOptions = useMemo(
+    () => [
+      { label: t('account_bill:all'), value: undefined },
+      ...packageBillTypes.map((value) => ({
+        label: t(billTypeMap[value].label),
+        value
+      })),
+      { label: t('common:Other'), value: 'other' as const }
+    ],
+    [t]
+  );
 
   return (
     <AccountContainer>
@@ -42,7 +57,13 @@ const BillAndInvoice = () => {
             {t('account:bills_and_invoices')}
           </Box>
         </Flex>
-        <Flex flex={['0 0 auto', '1 0 0']} minH={0} flexDirection={'column'} py={[2, 6]}>
+        <Flex
+          flex={['0 0 auto', '1 0 0']}
+          minH={0}
+          flexDirection={'column'}
+          py={[2, 6]}
+          pt={[4, 6]}
+        >
           <Flex
             px={[2, 6]}
             justifyContent={'space-between'}
@@ -78,7 +99,22 @@ const BillAndInvoice = () => {
               ></FillRowTabs>
             </Box>
             {invoiceTab !== InvoiceTabEnum.invoiceHeader && (
-              <Flex mt={[3, 0]} w={['100%', 'auto']} justifyContent={'flex-end'}>
+              <Flex
+                mt={[3, 0]}
+                w={['100%', 'auto']}
+                justifyContent={'flex-end'}
+                alignItems={'center'}
+                gap={3}
+              >
+                {invoiceTab === InvoiceTabEnum.bill && (
+                  <SingleSelectFilter
+                    title={t('account_bill:package_type')}
+                    value={billType}
+                    options={billTypeOptions}
+                    onChange={setBillType}
+                    maxW={'260px'}
+                  />
+                )}
                 <Button
                   w={['100%', 'auto']}
                   variant={'primary'}
@@ -100,7 +136,9 @@ const BillAndInvoice = () => {
             minH={0}
             overflow={['visible', 'hidden']}
           >
-            {invoiceTab === InvoiceTabEnum.bill && <BillTable key={recordsRefreshKey} />}
+            {invoiceTab === InvoiceTabEnum.bill && (
+              <BillTable key={recordsRefreshKey} billType={billType} />
+            )}
             {invoiceTab === InvoiceTabEnum.invoice && <InvoiceTable key={recordsRefreshKey} />}
             {invoiceTab === InvoiceTabEnum.invoiceHeader && <InvoiceHeaderForm />}
           </Box>

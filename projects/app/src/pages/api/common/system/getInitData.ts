@@ -1,3 +1,4 @@
+import { getModelProviderMetadata } from '@fastgpt/service/core/ai/model/provider/controller';
 import type { NextApiResponse } from 'next';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
@@ -9,7 +10,6 @@ import {
   type GetSystemInitDataResponse
 } from '@fastgpt/global/openapi/common/system/api';
 import { getRuntimeSubPlansConfig } from '@fastgpt/global/support/wallet/sub/utils';
-import { desensitizeSystemDefaultModels } from '@fastgpt/service/core/ai/config/utils';
 
 async function handler(
   req: ApiRequestProps,
@@ -30,8 +30,7 @@ async function handler(
         return {
           bufferId: global.systemInitBufferId,
           feConfigs: global.feConfigs,
-          systemVersion: global.systemVersion,
-          defaultModels: desensitizeSystemDefaultModels(global.systemDefaultModel)
+          systemVersion: global.systemVersion
         };
       }
 
@@ -40,10 +39,7 @@ async function handler(
         feConfigs: global.feConfigs,
         subPlans,
         systemVersion: global.systemVersion,
-        activeModelList: global.systemActiveDesensitizedModels,
-        defaultModels: desensitizeSystemDefaultModels(global.systemDefaultModel),
-        modelProviders: global.ModelProviderRawCache,
-        aiproxyChannels: global.aiproxyChannelsCache
+        aiproxyChannels: getModelProviderMetadata().aiproxyChannels
       };
     } catch {
       const referer = req.headers.referer;
@@ -51,9 +47,7 @@ async function handler(
         return {
           feConfigs: global.feConfigs,
           subPlans,
-          modelProviders: global.ModelProviderRawCache,
-          aiproxyChannels: global.aiproxyChannelsCache,
-          activeModelList: global.systemActiveDesensitizedModels
+          aiproxyChannels: getModelProviderMetadata().aiproxyChannels
         };
       }
 
@@ -61,16 +55,14 @@ async function handler(
       if (bufferId && unAuthBufferId === bufferId) {
         return {
           bufferId: unAuthBufferId,
-          modelProviders: global.ModelProviderRawCache,
-          aiproxyChannels: global.aiproxyChannelsCache
+          aiproxyChannels: getModelProviderMetadata().aiproxyChannels
         };
       }
 
       return {
         bufferId: unAuthBufferId,
         feConfigs: global.feConfigs,
-        modelProviders: global.ModelProviderRawCache,
-        aiproxyChannels: global.aiproxyChannelsCache
+        aiproxyChannels: getModelProviderMetadata().aiproxyChannels
       };
     }
   })();

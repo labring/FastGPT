@@ -1,3 +1,4 @@
+import { requiredAlternatives } from '../../../common/zod/openapi';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '../../../core/chat/constants';
 import {
@@ -364,7 +365,8 @@ export const createChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) =
       ...ChatTargetInputShape,
       ...shape
     })
-    .superRefine(refineRequiredChatTargetInput);
+    .superRefine(refineRequiredChatTargetInput)
+    .meta(requiredAlternatives([['appId'], ['skillId']], true));
 
 /**
  * 构造允许缺省 chat target 的对外入参 schema。
@@ -393,7 +395,8 @@ export const createOutLinkChatTargetInputSchema = <T extends z.ZodRawShape>(shap
       ...OutLinkChatAuthInputShape,
       ...shape
     })
-    .superRefine(refineRequiredChatTargetInput);
+    .superRefine(refineRequiredChatTargetInput)
+    .meta(requiredAlternatives([['appId'], ['skillId'], ['outLinkAuthData']], true));
 
 /** 构造允许缺省 chat target、且包含外链鉴权字段的入参 schema。 */
 export const createOptionalOutLinkChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) =>

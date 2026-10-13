@@ -1,4 +1,5 @@
 import type {
+  StoreNodeItemType,
   WorkflowCheckIssue,
   WorkflowCheckNodeIssueMap
 } from '@fastgpt/global/core/workflow/type/node';
@@ -16,11 +17,15 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import {
   getHandleId,
+  isWorkflowSystemModelInput,
   isValidReferenceValue,
   isValidReferenceValueFormat,
-  nodeInputIsReference
+  nodeInputIsReference,
+  workflowModelKeyMappings
 } from '@fastgpt/global/core/workflow/utils';
 import type { TFunction } from 'next-i18next';
+import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
+import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import type {
   FlowNodeInputItemType,
   ReferenceItemValueType
@@ -29,9 +34,10 @@ import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import type { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
+import type { PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
-import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
+import appErrList, { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import pluginErrList, { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
 import {
@@ -41,6 +47,11 @@ import {
   isAgentGeneratedToolInput
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { isToolNotExistError } from '@fastgpt/global/core/app/utils';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { getWorkflowModelDetails } from './modelData';
+import { storeEdge2RenderEdge, storeNode2FlowNode } from './utils';
 
 type WorkflowCheckContext = {
   nodeMap: Map<string, Node<FlowNodeItemType, string | undefined>>;
@@ -49,6 +60,8 @@ type WorkflowCheckContext = {
   outgoingEdgesMap: Map<string, Edge<any>[]>;
   reachableNodeSet: Set<string>;
 };
+
+type WorkflowCheckModel = Awaited<ReturnType<typeof getWorkflowModelDetails>>[number];
 
 const workflowCheckSkipConnectionTypes = new Set<FlowNodeTypeEnum>([
   FlowNodeTypeEnum.comment,
@@ -117,10 +130,11 @@ const isEmptyWorkflowInputValue = (value: unknown) =>
   value === '' ||
   (Array.isArray(value) && value.length === 0);
 
-/** hidden / 非必填 any 不参与通用必填校验，避免系统 hidden 字段误报或与节点特判重复。 */
+/** hidden / off 不渲染，非必填 any 不参与通用必填校验，避免系统 hidden 字段误报或与节点特判重复。 */
 const shouldSkipGenericRequiredInputCheck = (input: FlowNodeInputItemType) => {
   const renderType = getSelectedInputRenderType(input);
-  if (renderType === FlowNodeInputTypeEnum.hidden) return true;
+  if (renderType === FlowNodeInputTypeEnum.hidden || renderType === FlowNodeInputTypeEnum.off)
+    return true;
   if (!input.valueType) return true;
   if (input.valueType === WorkflowIOValueTypeEnum.boolean) return true;
   if (input.valueType === WorkflowIOValueTypeEnum.any) {
@@ -131,9 +145,20 @@ const shouldSkipGenericRequiredInputCheck = (input: FlowNodeInputItemType) => {
 
 /** 优先取 label，空则取 debugLabel，并走 i18n 翻译，避免展示 quoteQA 等内部 key。 */
 const getInputLabel = (input: FlowNodeInputItemType, t?: TFunction) => {
+  const modelLabels: Record<string, string> = {
+    [NodeInputKeyEnum.aiModelId]: 'common:core.ai.Model',
+    [NodeInputKeyEnum.aiModel]: 'common:core.ai.Model',
+    [NodeInputKeyEnum.datasetSearchRerankModelId]: 'common:core.dataset.search.ReRank',
+    [NodeInputKeyEnum.datasetSearchRerankModel]: 'common:core.dataset.search.ReRank',
+    [NodeInputKeyEnum.datasetSearchExtensionModelId]: 'common:core.module.template.Query extension',
+    [NodeInputKeyEnum.datasetSearchExtensionModel]: 'common:core.module.template.Query extension',
+    [NodeInputKeyEnum.datasetDeepSearchModelId]: 'common:deep_rag_search',
+    [NodeInputKeyEnum.datasetDeepSearchModel]: 'common:deep_rag_search'
+  };
   const rawLabel =
     (typeof input.label === 'string' && input.label ? input.label : undefined) ||
     (typeof input.debugLabel === 'string' && input.debugLabel ? input.debugLabel : undefined) ||
+    modelLabels[input.key] ||
     input.key;
 
   if (t && rawLabel) {
@@ -161,7 +186,12 @@ type WorkflowCheckMessageCode =
   | 'tool_inactive'
   | 'tool_missing'
   | 'tool_load_failed'
-  | 'tool_no_permission';
+  | 'tool_no_permission'
+  | 'model_unavailable'
+  | 'model_unavailable_short'
+  | 'model_required'
+  | 'resource_missing'
+  | 'resource_no_permission';
 
 /** issue.code -> 设计稿固定文案 code。表外 code 映射到最接近的已有文案。 */
 const WORKFLOW_CHECK_ISSUE_MESSAGE_CODE_MAP: Record<string, WorkflowCheckMessageCode> = {
@@ -185,7 +215,12 @@ const WORKFLOW_CHECK_ISSUE_MESSAGE_CODE_MAP: Record<string, WorkflowCheckMessage
   tool_missing: 'tool_missing',
   tool_load_failed: 'tool_load_failed',
   tool_no_permission: 'tool_no_permission',
+  model_unavailable: 'model_unavailable',
+  model_unavailable_short: 'model_unavailable_short',
+  model_required: 'model_required',
   tool_offline: 'tool_missing',
+  resource_missing: 'resource_missing',
+  resource_no_permission: 'resource_no_permission',
   loop_run_missing_break: 'if_else_incomplete',
   variable_update_incomplete: 'code_input_incomplete'
 };
@@ -196,7 +231,10 @@ export const WORKFLOW_CHECK_PENDING_HANDLE_CODES = new Set<string>([
   'tool_missing',
   'tool_load_failed',
   'tool_no_permission',
-  'tool_offline'
+  'tool_offline',
+  'model_unavailable',
+  'resource_missing',
+  'resource_no_permission'
 ]);
 
 export type WorkflowCheckUIStatus = 'pending_improve' | 'pending_handle';
@@ -207,7 +245,7 @@ export const getWorkflowCheckIssueUIStatus = (code: string): WorkflowCheckUIStat
 
 const workflowCheckMessageFallback: Record<
   WorkflowCheckMessageCode,
-  (params?: { inputName?: string }) => string
+  (params?: { inputName?: string; model?: string; nodeName?: string }) => string
 > = {
   required_input_empty: ({ inputName } = {}) => `需填写必填项 ${inputName ?? ''}`.trim(),
   no_upstream: () => '未与其他节点连线',
@@ -223,9 +261,15 @@ const workflowCheckMessageFallback: Record<
   context_extract_empty: () => '需配置至少一个目标字段',
   tool_call_empty: () => '需配置工具或开启虚拟机',
   tool_inactive: () => '该工具尚未激活，请激活使用',
-  tool_missing: () => '该工具不存在，请删除',
+  tool_missing: () => '该工具不存在或已被删除',
   tool_load_failed: () => '工具加载失败，请稍后重试',
-  tool_no_permission: () => '当前账号无权限访问该资源'
+  tool_no_permission: () => '当前账号无权限访问该资源',
+  model_unavailable: ({ nodeName, inputName } = {}) =>
+    `节点「${nodeName ?? ''}」的「${inputName ?? ''}」模型不可用`,
+  model_unavailable_short: ({ inputName } = {}) => `「${inputName ?? ''}」模型不可用`,
+  model_required: ({ inputName } = {}) => `未配置[${inputName ?? ''}]模型`,
+  resource_missing: () => '引用的知识库或技能已删除或不可用，请删除',
+  resource_no_permission: () => '无权限访问该资源，请检查权限'
 };
 
 const PLUGIN_DATA_PERMISSION_ERROR_CODES = new Set<string>([
@@ -239,16 +283,19 @@ const PLUGIN_DATA_MISSING_ERROR_CODES = new Set<string>([
 ]);
 
 /** pluginData.error 可能是 statusText 或 getErrText 翻译后的 message，需两种都识别。 */
-const resolvePluginDataErrorIssueCode = (error: string): WorkflowCheckMessageCode => {
+export const resolvePluginDataErrorIssueCode = (error: string): WorkflowCheckMessageCode => {
   if (
+    error === 'resource_no_permission' ||
     PLUGIN_DATA_PERMISSION_ERROR_CODES.has(error) ||
     error === ERROR_RESPONSE[AppErrEnum.unAuthApp]?.message ||
     error === ERROR_RESPONSE[PluginErrEnum.unAuth]?.message
   ) {
-    return 'tool_no_permission';
+    return 'resource_no_permission';
   }
 
   if (
+    error === 'tool_missing' ||
+    error === 'resource_missing' ||
     PLUGIN_DATA_MISSING_ERROR_CODES.has(error) ||
     error === ERROR_RESPONSE[AppErrEnum.unExist]?.message ||
     error === ERROR_RESPONSE[PluginErrEnum.unExist]?.message ||
@@ -269,7 +316,7 @@ const resolveWorkflowCheckMessageCode = (issueCode: string): WorkflowCheckMessag
 const translateWorkflowCheckIssueMessage = (
   messageCode: WorkflowCheckMessageCode,
   t: TFunction,
-  params?: { inputName?: string }
+  params?: { inputName?: string; model?: string; nodeName?: string }
 ) => {
   switch (messageCode) {
     case 'required_input_empty':
@@ -306,6 +353,23 @@ const translateWorkflowCheckIssueMessage = (
       return t('common:core.workflow.check.tool_load_failed', params);
     case 'tool_no_permission':
       return t('common:core.workflow.check.tool_no_permission', params);
+    case 'model_unavailable':
+      return t('common:core.workflow.check.model_unavailable', params);
+    case 'model_unavailable_short':
+      return t('common:core.workflow.check.model_unavailable_short', {
+        ...params,
+        defaultValue: workflowCheckMessageFallback.model_unavailable_short(params)
+      });
+    case 'model_required':
+      // 短提示使用独立 key；开发热更新或旧语言资源尚未刷新时也不能沿用带节点名的旧模板。
+      return t('common:core.workflow.check.model_required_short', {
+        ...params,
+        defaultValue: workflowCheckMessageFallback.model_required(params)
+      });
+    case 'resource_missing':
+      return t('common:core.workflow.check.resource_missing', params);
+    case 'resource_no_permission':
+      return t('common:core.workflow.check.resource_no_permission', params);
   }
 };
 
@@ -313,7 +377,7 @@ const translateWorkflowCheckIssueMessage = (
 export const getWorkflowCheckIssueMessage = (
   issueCode: string,
   t?: TFunction,
-  params?: { inputName?: string }
+  params?: { inputName?: string; model?: string; nodeName?: string }
 ) => {
   const messageCode = resolveWorkflowCheckMessageCode(issueCode);
   if (!messageCode) return '';
@@ -322,6 +386,37 @@ export const getWorkflowCheckIssueMessage = (
     return translateWorkflowCheckIssueMessage(messageCode, t, params);
   }
   return workflowCheckMessageFallback[messageCode](params);
+};
+
+/**
+ * 统一提取工具节点或卡片的错误提示文案。
+ * 覆盖：已下线 (tool_offline)、无权限 (resource_no_permission)、已删除/不存在 (tool_missing) 以及具体未知报错。
+ */
+export const getToolErrorMessage = ({
+  status,
+  error,
+  t
+}: {
+  status?: PluginStatusType;
+  error?: string | null;
+  t: TFunction;
+}): string | undefined => {
+  if (status === PluginStatusEnum.Offline) {
+    return getWorkflowCheckIssueMessage('tool_offline', t);
+  }
+  if (!error) return undefined;
+
+  const issueCode = resolvePluginDataErrorIssueCode(error);
+  if (issueCode === 'resource_no_permission' || issueCode === 'tool_missing') {
+    return getWorkflowCheckIssueMessage(issueCode, t);
+  }
+
+  const errorText = appErrList[error]?.message || pluginErrList[error]?.message;
+  return (
+    errorText ||
+    (typeof error === 'string' ? error : undefined) ||
+    getWorkflowCheckIssueMessage('tool_load_failed', t)
+  );
 };
 
 const createWorkflowCheckContext = ({
@@ -449,11 +544,13 @@ const isVariableUpdateValueEmpty = (item: TUpdateListItem, context: WorkflowChec
 export const checkWorkflowNodeIssues = ({
   nodes,
   edges,
+  models,
   nodeId,
   t
 }: {
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge<any>[];
+  models?: WorkflowCheckModel[];
   nodeId?: string;
   t?: TFunction;
 }): WorkflowCheckNodeIssueMap => {
@@ -489,11 +586,105 @@ export const checkWorkflowNodeIssues = ({
     const data = node.data;
     const inputs = data.inputs;
     const inputMap = new Map(inputs.map((input) => [input.key, input]));
+    const datasetSelectInput = inputMap.get(NodeInputKeyEnum.datasetSelectList);
+    const hasSelectedDataset =
+      !datasetSelectInput ||
+      nodeInputIsReference(datasetSelectInput) ||
+      (Array.isArray(datasetSelectInput.value) && datasetSelectInput.value.length > 0);
     const isToolNode = context.incomingEdgesMap
       .get(data.nodeId)
       ?.some((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools);
     const status = data.status ?? data.pluginData?.status;
     const isToolOffline = status === PluginStatusEnum.Offline;
+
+    const isDynamicModelValue = (value: unknown) =>
+      Array.isArray(value) || (typeof value === 'string' && /^\{\{.*\}\}$/.test(value));
+    const addUnavailableModelIssue = ({
+      modelId,
+      model,
+      type,
+      featureEnabled,
+      inputKey,
+      modelInput,
+      defaultWhenEmpty = false,
+      allowLegacyModelFallback = false
+    }: {
+      modelId?: unknown;
+      model?: unknown;
+      type: ModelTypeEnum;
+      featureEnabled: boolean;
+      inputKey: string;
+      modelInput?: FlowNodeInputItemType;
+      defaultWhenEmpty?: boolean;
+      allowLegacyModelFallback?: boolean;
+    }) => {
+      if (!featureEnabled) return;
+      const value = getModelReferenceValue({ modelId, model });
+      if (isDynamicModelValue(value)) return;
+      const inputName = getInputLabel(
+        modelInput ??
+          inputMap.get(inputKey) ?? {
+            key: inputKey,
+            label: '',
+            renderTypeList: []
+          },
+        t
+      );
+      if (isEmptyModelValue(value)) {
+        // 发布接口会为这些辅助功能写入默认模型；非空失效引用仍走下方严格校验。
+        if (defaultWhenEmpty) return;
+        addIssue({
+          node,
+          code: 'model_required',
+          inputKey,
+          message: getWorkflowCheckIssueMessage('model_required', t, {
+            nodeName: data.name,
+            inputName
+          })
+        });
+        return;
+      }
+      if (!models) return;
+
+      const available = !isEmptyModelValue(modelId)
+        ? models.some(
+            (item) =>
+              item.type === type &&
+              (item.modelId === String(modelId) ||
+                (allowLegacyModelFallback && item.model === modelId))
+          )
+        : models.some((item) => item.model === model && item.type === type);
+      if (available) return;
+
+      addIssue({
+        node,
+        code: 'model_unavailable',
+        message: getWorkflowCheckIssueMessage('model_unavailable', t, {
+          model: String(value),
+          nodeName: data.name,
+          inputName
+        }),
+        inputKey
+      });
+    };
+
+    inputs.forEach((input) => {
+      if (
+        getSelectedInputRenderType(input) !== FlowNodeInputTypeEnum.selectLLMModel ||
+        isWorkflowSystemModelInput({ node: data, input })
+      ) {
+        return;
+      }
+
+      addUnavailableModelIssue({
+        modelId: input.value ?? input.defaultValue,
+        type: ModelTypeEnum.llm,
+        featureEnabled: !!input.required || !isEmptyModelValue(input.value ?? input.defaultValue),
+        inputKey: input.key,
+        // 旧版 WorkflowTool 默认值保存的是 model，请求期间仍需兼容识别。
+        allowLegacyModelFallback: true
+      });
+    });
 
     if (isToolOffline) {
       addIssue({
@@ -508,6 +699,56 @@ export const checkWorkflowNodeIssues = ({
         code: issueCode,
         message: getWorkflowCheckIssueMessage(issueCode, t)
       });
+    }
+
+    // ACL 由保存/发布服务端按资源快照做差量校验；前端同步展示服务端返回的资源级标记，
+    // 并提示已删除或不可用的实体。
+    const datasetParamsInput = inputMap.get(NodeInputKeyEnum.datasetParams);
+    const addResourceIssues = (value: unknown, inputKey: string) => {
+      if (!Array.isArray(value)) return;
+      if (
+        value.some(
+          (item) => item && (item as { error?: string }).error === 'resource_no_permission'
+        )
+      ) {
+        addIssue({
+          node,
+          code: 'resource_no_permission',
+          message: getWorkflowCheckIssueMessage('resource_no_permission', t),
+          inputKey
+        });
+      }
+      if (
+        value.some(
+          (item) =>
+            item &&
+            (item as { error?: string }).error &&
+            (item as { error?: string }).error !== 'resource_no_permission'
+        )
+      ) {
+        addIssue({
+          node,
+          code: 'resource_missing',
+          message: getWorkflowCheckIssueMessage('resource_missing', t),
+          inputKey
+        });
+      }
+    };
+
+    [NodeInputKeyEnum.datasetSelectList, NodeInputKeyEnum.skills].forEach((key) =>
+      addResourceIssues(inputMap.get(key)?.value, key)
+    );
+
+    if (
+      data.flowNodeType === FlowNodeTypeEnum.agent &&
+      datasetParamsInput?.value &&
+      typeof datasetParamsInput.value === 'object' &&
+      !Array.isArray(datasetParamsInput.value)
+    ) {
+      addResourceIssues(
+        (datasetParamsInput.value as { datasets?: unknown }).datasets,
+        NodeInputKeyEnum.datasetParams
+      );
     }
 
     // 工具调用下游工具只有 systemInputConfig 未配置时才算未激活。
@@ -527,6 +768,103 @@ export const checkWorkflowNodeIssues = ({
     }
 
     if (!workflowCheckSkipNodeRuleTypes.has(data.flowNodeType)) {
+      for (const [legacyKey, modelIdKey] of workflowModelKeyMappings) {
+        const legacyInput = inputMap.get(legacyKey);
+        const modelIdInput = inputMap.get(modelIdKey);
+        const systemModelInput =
+          modelIdInput ??
+          legacyInput ??
+          moduleTemplatesFlat
+            .find((template) => template.flowNodeType === data.flowNodeType)
+            ?.inputs.find((input) => input.key === modelIdKey);
+        if (
+          !systemModelInput ||
+          !isWorkflowSystemModelInput({ node: data, input: systemModelInput })
+        ) {
+          continue;
+        }
+
+        const type =
+          legacyKey === NodeInputKeyEnum.datasetSearchRerankModel
+            ? ModelTypeEnum.rerank
+            : ModelTypeEnum.llm;
+        const featureKey = (() => {
+          if (legacyKey === NodeInputKeyEnum.datasetSearchRerankModel) {
+            return NodeInputKeyEnum.datasetSearchUsingReRank;
+          }
+          if (legacyKey === NodeInputKeyEnum.datasetSearchExtensionModel) {
+            return NodeInputKeyEnum.datasetSearchUsingExtensionQuery;
+          }
+          if (legacyKey === NodeInputKeyEnum.datasetDeepSearchModel) {
+            return NodeInputKeyEnum.datasetDeepSearch;
+          }
+        })();
+
+        const isDatasetQueryExtension =
+          data.flowNodeType === FlowNodeTypeEnum.datasetSearchNode &&
+          modelIdKey === NodeInputKeyEnum.datasetSearchExtensionModelId;
+        // 问题优化摘要只展示实际 ID；旧名称或 defaultValue 不能掩盖尚未选择模型的状态。
+        // 可选功能的开关缺省表示未开启，不借用模板默认值。
+        const featureValue = featureKey
+          ? hasSelectedDataset && inputMap.get(featureKey)?.value
+          : true;
+        addUnavailableModelIssue({
+          modelId: isDatasetQueryExtension
+            ? modelIdInput?.value
+            : (modelIdInput?.value ?? modelIdInput?.defaultValue),
+          model: isDatasetQueryExtension
+            ? undefined
+            : (legacyInput?.value ?? legacyInput?.defaultValue),
+          type,
+          featureEnabled: Boolean(featureValue),
+          defaultWhenEmpty:
+            modelIdKey === NodeInputKeyEnum.datasetSearchRerankModelId ||
+            modelIdKey === NodeInputKeyEnum.datasetSearchExtensionModelId,
+          inputKey: isDatasetQueryExtension ? modelIdKey : systemModelInput.key,
+          modelInput: systemModelInput
+        });
+      }
+
+      if (
+        data.flowNodeType === FlowNodeTypeEnum.agent &&
+        datasetParamsInput?.value &&
+        typeof datasetParamsInput.value === 'object' &&
+        !Array.isArray(datasetParamsInput.value)
+      ) {
+        const datasetParams = datasetParamsInput.value as Record<string, unknown>;
+        const hasSelectedDataset =
+          Array.isArray(datasetParams.datasets) && datasetParams.datasets.length > 0;
+        addUnavailableModelIssue({
+          modelId: datasetParams[NodeInputKeyEnum.datasetSearchRerankModelId],
+          model: datasetParams[NodeInputKeyEnum.datasetSearchRerankModel],
+          type: ModelTypeEnum.rerank,
+          featureEnabled:
+            hasSelectedDataset && Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingReRank]),
+          defaultWhenEmpty: true,
+          inputKey: NodeInputKeyEnum.datasetParams,
+          modelInput: {
+            key: NodeInputKeyEnum.datasetSearchRerankModelId,
+            label: '',
+            renderTypeList: []
+          }
+        });
+        addUnavailableModelIssue({
+          modelId: datasetParams[NodeInputKeyEnum.datasetSearchExtensionModelId],
+          model: datasetParams[NodeInputKeyEnum.datasetSearchExtensionModel],
+          type: ModelTypeEnum.llm,
+          featureEnabled:
+            hasSelectedDataset &&
+            Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingExtensionQuery]),
+          defaultWhenEmpty: true,
+          inputKey: NodeInputKeyEnum.datasetParams,
+          modelInput: {
+            key: NodeInputKeyEnum.datasetSearchExtensionModelId,
+            label: '',
+            renderTypeList: []
+          }
+        });
+      }
+
       if (data.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
         const ifElseList = inputMap.get(NodeInputKeyEnum.ifElseList)?.value as
           | IfElseListItemType[]
@@ -632,6 +970,18 @@ export const checkWorkflowNodeIssues = ({
             return false;
           }
           if (!input.canEdit) {
+            return false;
+          }
+          // 工具参数由 Agent 生成时无需填写引用值；手动模式仍按代码变量校验。
+          if (
+            isToolNode &&
+            isAgentGeneratedToolInput(
+              initToolInputTypeByDefaultMode(input, {
+                allowUserChatInputAgentGenerated: true
+              })
+            ) &&
+            canInputBeAgentGenerated(input)
+          ) {
             return false;
           }
           return !input.key || !input.label || isUnsetReferenceValue(input.value);
@@ -763,6 +1113,18 @@ export const checkWorkflowNodeIssues = ({
         if (shouldSkipGenericRequiredInputCheck(input)) {
           return;
         }
+        // 搜索辅助模型的空值由发布接口补默认，不能再被通用 required 规则重复拦截。
+        if (
+          isWorkflowSystemModelInput({ node: data, input }) &&
+          !nodeInputIsReference(input) &&
+          [
+            NodeInputKeyEnum.datasetSearchRerankModelId,
+            NodeInputKeyEnum.datasetSearchRerankModel,
+            NodeInputKeyEnum.datasetSearchExtensionModelId,
+            NodeInputKeyEnum.datasetSearchExtensionModel
+          ].includes(input.key as NodeInputKeyEnum)
+        )
+          return;
 
         // Agent 生成字段运行时由模型填写，不需要开发者预填。
         const normalizedInput =
@@ -790,6 +1152,9 @@ export const checkWorkflowNodeIssues = ({
         if (
           input.required &&
           inputValueIsEmpty &&
+          !issueMap[data.nodeId]?.some(
+            (issue) => issue.code === 'model_required' && issue.inputKey === input.key
+          ) &&
           !(data.flowNodeType === FlowNodeTypeEnum.code && input.canEdit)
         ) {
           addIssue({
@@ -842,6 +1207,74 @@ export const checkWorkflowNodeIssues = ({
 export const checkWorkflowHasError = (nodeIssueMap: WorkflowCheckNodeIssueMap) =>
   Object.values(nodeIssueMap).some((issues) => issues.some((issue) => issue.level === 'error'));
 
+/** 检查聊天配置模型；沿用应用授权与模型类型约束，非空 ID 不允许按旧名称回退。 */
+export const checkWorkflowChatConfigModelIssues = ({
+  chatConfig,
+  models,
+  t
+}: {
+  chatConfig?: AppChatConfigType;
+  models?: WorkflowCheckModel[];
+  t?: TFunction;
+}) => {
+  const issues: WorkflowCheckIssue[] = [];
+  const check = ({
+    config,
+    type,
+    inputName,
+    enabled
+  }: {
+    config?: { modelId?: unknown; model?: unknown };
+    type: ModelTypeEnum;
+    inputName: string;
+    enabled: boolean;
+  }) => {
+    if (!enabled || !config || !models) return;
+    const value = getModelReferenceValue(config);
+    if (isEmptyModelValue(value)) {
+      if (models.some((item) => item.type === type)) return;
+      issues.push({
+        nodeId: '__chat_config__',
+        nodeType: FlowNodeTypeEnum.workflowStart,
+        level: 'error',
+        code: 'model_required',
+        inputKey: inputName,
+        message: getWorkflowCheckIssueMessage('model_required', t, { inputName })
+      });
+      return;
+    }
+    if (Array.isArray(value) || typeof value !== 'string') return;
+    const available = models.some(
+      (item) =>
+        item.type === type &&
+        (!isEmptyModelValue(config.modelId) ? item.modelId === value : item.model === value)
+    );
+    if (available) return;
+    issues.push({
+      nodeId: '__chat_config__',
+      nodeType: FlowNodeTypeEnum.workflowStart,
+      level: 'error',
+      code: 'model_unavailable',
+      inputKey: inputName,
+      message: getWorkflowCheckIssueMessage('model_unavailable_short', t, { inputName })
+    });
+  };
+
+  check({
+    config: chatConfig?.questionGuide,
+    type: ModelTypeEnum.llm,
+    inputName: t?.('common:core.app.Question Guide') ?? 'Question guide',
+    enabled: chatConfig?.questionGuide?.open === true
+  });
+  check({
+    config: chatConfig?.ttsConfig,
+    type: ModelTypeEnum.tts,
+    inputName: t?.('common:core.app.tts.Speech model') ?? 'Speech model',
+    enabled: chatConfig?.ttsConfig?.type === 'model'
+  });
+  return issues;
+};
+
 /** 返回存在 error 的 nodeId 列表；传入 nodeOrder 时按画布节点顺序排列，便于稳定定位第一个错误节点。 */
 export const getWorkflowCheckErrorNodeIds = (
   nodeIssueMap: WorkflowCheckNodeIssueMap,
@@ -864,20 +1297,71 @@ export const getWorkflowCheckErrorNodeIds = (
 export const checkWorkflowBeforeRunOrPublish = ({
   nodes,
   edges,
-  t
+  models,
+  t,
+  chatConfig
 }: {
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge<any>[];
+  models?: WorkflowCheckModel[];
   t?: TFunction;
+  chatConfig?: AppChatConfigType;
 }) => {
-  const issueMap = checkWorkflowNodeIssues({ nodes, edges, t });
+  const issueMap = checkWorkflowNodeIssues({ nodes, edges, models, t });
+  const chatConfigIssues = checkWorkflowChatConfigModelIssues({ chatConfig, models, t });
   const nodeOrder = nodes.map((node) => node.data.nodeId);
   const errorNodeIds = getWorkflowCheckErrorNodeIds(issueMap, nodeOrder);
+  const firstErrorNodeId = errorNodeIds[0];
+  const firstErrorIssue = firstErrorNodeId
+    ? issueMap[firstErrorNodeId]?.find((issue) => issue.level === 'error')
+    : chatConfigIssues.find((issue) => issue.level === 'error');
 
   return {
     issueMap,
-    hasError: errorNodeIds.length > 0,
-    firstErrorNodeId: errorNodeIds[0],
-    errorNodeIds
+    hasError: errorNodeIds.length > 0 || chatConfigIssues.length > 0,
+    firstErrorNodeId,
+    firstErrorIssue,
+    errorNodeIds,
+    chatConfigIssues
   };
+};
+
+/**
+ * 将持久化工作流转换为发布校验使用的画布结构，并结合应用基线加载已引用模型的校验信息。
+ * 表单发布与调试对话共用该入口，避免两条链路对同一模型配置给出不同结论。
+ */
+export const checkStoreWorkflowBeforeRunOrPublish = async ({
+  nodes: storeNodes,
+  edges: storeEdges,
+  appId,
+  chatConfig,
+  t
+}: {
+  nodes: StoreNodeItemType[];
+  edges: StoreEdgeItemType[];
+  appId?: string;
+  chatConfig?: AppChatConfigType;
+  t: TFunction;
+}) => {
+  const toolNodeIds = new Set(
+    storeEdges
+      .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
+      .map((edge) => edge.target)
+  );
+  const nodes = storeNodes.map((item) =>
+    storeNode2FlowNode({
+      item,
+      t,
+      isTool: toolNodeIds.has(item.nodeId)
+    })
+  );
+  const edges = storeEdges.map((edge) => storeEdge2RenderEdge({ edge }));
+
+  return checkWorkflowBeforeRunOrPublish({
+    nodes,
+    edges,
+    models: await getWorkflowModelDetails({ nodes, chatConfig, appId }),
+    chatConfig,
+    t
+  });
 };

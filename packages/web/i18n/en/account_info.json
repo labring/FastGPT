@@ -100,6 +100,7 @@
   "package_expiry_time": "Plan expiration",
   "package_usage_rules": "Higher-tier Plans take priority. Any unused time on the current Plan resumes afterward.",
   "password": "Password",
+  "root_password_change_tip": "To change the root password, update DEFAULT_ROOT_PSW and restart the service.",
   "password_tip": "At least 8 characters, including at least two of numbers, lowercase letters, uppercase letters, or special characters, with no spaces allowed",
   "password_update_error": "Could not change password",
   "password_update_success": "Password changed successfully",
@@ -125,5 +126,7 @@
   "user_account": "Account",
   "user_team_team_name": "Team",
   "you_can_convert": "You can redeem",
-  "yuan": "Yuan"
+  "yuan": "Yuan",
+  "password_not_set": "No password set",
+  "set_password": "Set"
 }

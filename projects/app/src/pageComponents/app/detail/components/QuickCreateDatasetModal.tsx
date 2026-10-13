@@ -1,38 +1,40 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'next-i18next';
-import { useForm } from 'react-hook-form';
-import {
-  Box,
-  Flex,
-  ModalBody,
-  ModalFooter,
-  Button,
-  FormControl,
-  Input,
-  Progress
-} from '@chakra-ui/react';
-import MyModal from '@fastgpt/web/components/common/MyModal';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { postCreateDatasetWithFiles } from '@/web/core/dataset/api';
-import { getUploadAvatarPresignedUrl, getUploadTempFilePresignedUrl } from '@/web/common/file/api';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { getWebDefaultEmbeddingModel, getWebDefaultLLMModel } from '@/web/common/system/utils';
-import { getErrText } from '@fastgpt/global/common/error/utils';
-import { formatFileSize } from '@fastgpt/global/common/file/tools';
-import { getFileIcon } from '@fastgpt/global/common/file/icon';
-import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
-import type { ImportSourceItemType } from '@/web/core/dataset/type';
+import React from 'react';
 import FileSelector, {
   type SelectFileItemType
 } from '@/pageComponents/dataset/detail/Import/components/FileSelector';
-import { useRouter } from 'next/router';
-import { S3FileUploader } from '@fastgpt/web/common/file/uploader';
+import { getUploadAvatarPresignedUrl, getUploadTempFilePresignedUrl } from '@/web/common/file/api';
+import { getModelDefault } from '@/web/core/ai/model/modelData';
+import { postCreateDatasetWithFiles } from '@/web/core/dataset/api';
+import type { ImportSourceItemType } from '@/web/core/dataset/type';
+import {
+  Box,
+  Button,
+  Flex,
+  FormControl,
+  Input,
+  ModalBody,
+  ModalFooter,
+  Progress
+} from '@chakra-ui/react';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { documentFileType } from '@fastgpt/global/common/file/constants';
+import { getFileIcon } from '@fastgpt/global/common/file/icon';
+import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
+import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
+import { S3FileUploader } from '@fastgpt/web/common/file/uploader';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useForm } from 'react-hook-form';
 
 const QuickCreateDatasetModal = ({
   onClose,
@@ -45,14 +47,6 @@ const QuickCreateDatasetModal = ({
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { defaultModels, embeddingModelList, llmModelList } = useSystemStore();
-
-  const defaultVectorModel =
-    defaultModels.embedding?.model || getWebDefaultEmbeddingModel(embeddingModelList)?.model;
-  const defaultAgentModel =
-    defaultModels.datasetTextLLM?.model || getWebDefaultLLMModel(llmModelList)?.model;
-  const defaultVLLM = defaultModels.datasetImageLLM?.model;
-
   const [selectFiles, setSelectFiles] = useState<ImportSourceItemType[]>([]);
   const uploadControllers = useRef(new Map<string, AbortController>());
 
@@ -197,14 +191,23 @@ const QuickCreateDatasetModal = ({
 
   const { runAsync: onCreate, loading: isCreating } = useRequest(
     async (data) => {
+      const [vector, agent, vlm] = await Promise.all([
+        getModelDefault({ modelType: ModelTypeEnum.embedding }),
+        getModelDefault({ modelType: ModelTypeEnum.llm, defaultKey: 'datasetTextLLM' }),
+        getModelDefault({
+          modelType: ModelTypeEnum.llm,
+          defaultKey: 'datasetImageLLM',
+          vision: true
+        })
+      ]);
       return await postCreateDatasetWithFiles({
         datasetParams: {
           name: data.name.trim(),
           avatar: data.avatar,
           parentId,
-          vectorModel: defaultVectorModel,
-          agentModel: defaultAgentModel,
-          vlmModel: defaultVLLM
+          vectorModelId: vector?.modelId,
+          agentModelId: agent?.modelId,
+          vlmModelId: vlm?.modelId
         },
         files: selectFiles
           .filter((item) => item.dbFileId && !item.errorMsg)
@@ -263,7 +266,7 @@ const QuickCreateDatasetModal = ({
 
         <Box>
           <FileSelector
-            fileType={'.txt, .docx, .csv, .xlsx, .pdf, .md, .html, .htm, .pptx, .doc, .xls, .ppt'}
+            fileType={documentFileType}
             selectFiles={selectFiles}
             onSelectFiles={handleSelectFiles}
           />

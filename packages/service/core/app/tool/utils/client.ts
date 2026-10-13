@@ -33,9 +33,11 @@ import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
-import type {
-  FlowNodeTemplateType,
-  NodeToolConfigType
+import { ToolReferenceNodeInputTypeSchema } from '@fastgpt/global/core/workflow/type/io';
+import {
+  FlowNodeTemplateTypeSchema,
+  type FlowNodeTemplateType,
+  type NodeToolConfigType
 } from '@fastgpt/global/core/workflow/type/node';
 import {
   pluginData2FlowNodeIO,
@@ -45,6 +47,7 @@ import {
   projectExternalVariableInput
 } from '@fastgpt/global/core/workflow/utils';
 import { Types } from 'mongoose';
+import { getHTTPToolList } from '../../http';
 import { getMCPChildren } from '../../mcp';
 import { MongoApp } from '../../schema';
 import { getAppVersionById, checkIsLatestVersion } from '../../version/controller';
@@ -103,35 +106,8 @@ type AppToolType = WorkflowTemplateType & {
   isLatestVersion?: boolean; // Auto computed
 };
 
-const omitRuntimeJsonSchemaField = <T>(value: T): T => {
-  if (Array.isArray(value)) {
-    return value.map((item) => omitRuntimeJsonSchemaField(item)) as T;
-  }
-
-  if (!value || typeof value !== 'object') return value;
-
-  const rest = { ...(value as Record<string, any>) };
-  delete rest.jsonSchema;
-
-  return Object.fromEntries(
-    Object.entries(rest).map(([key, item]) => [key, omitRuntimeJsonSchemaField(item)])
-  ) as T;
-};
-
-const omitClientPreviewSchemaFields = <T extends Record<string, any>>(value: T): T => {
-  const rest = { ...value };
-  delete rest.inputSchema;
-  delete rest.outputSchema;
-  delete rest.secretSchema;
-
-  return omitRuntimeJsonSchemaField(rest) as T;
-};
-
 /**
  * 构建返回给客户端的系统工具预览节点。
- *
- * 该节点只用于前端 UI 展示、工具选择和插入画布；服务端会用 JSON Schema
- * 转成节点 IO，但响应中不携带原始 schema，避免把运行时契约混进客户端预览数据。
  */
 export async function getClientSystemToolPreviewNode({
   pluginId,
@@ -207,7 +183,6 @@ export async function getClientSystemToolPreviewNode({
     avatar: toolDetail.avatar,
     name: toolDetail.name,
     intro: toolDetail.intro,
-    toolDescription: toolDetail.toolDescription,
     courseUrl: toolDetail.courseUrl,
     readmeUrl: toolDetail.readmeUrl,
     userGuide: toolDetail.userGuide ?? undefined,
@@ -267,8 +242,8 @@ export async function getClientSystemToolPreviewNode({
 /**
  * 构建返回给客户端的工具预览节点。
  *
- * 该结果只用于前端 UI 展示、工具选择和插入画布。运行时 JSON Schema 只在服务端
- * 内部用于转换节点 IO，返回前会被裁剪，避免客户端依赖执行阶段的 schema contract。
+ * 该结果只用于前端 UI 展示、工具选择和插入画布。运行时 JSON Schema
+ * 在服务端内部用于转换节点 IO，不返回给客户端预览数据。
  */
 export async function getClientToolPreviewNode({
   appId,
@@ -303,10 +278,12 @@ export async function getClientToolPreviewNode({
     const app: AppToolType = await (async () => {
       // App / Mcp toolset / Http toolset
       if (idSource === AppToolSourceEnum.personal) {
-        const item = await MongoApp.findById(pluginId).lean();
+        const item = await MongoApp.findOne({ _id: pluginId, deleteTime: null }).lean();
         if (!item) return Promise.reject(PluginErrEnum.unExist);
         if (AppFolderTypeList.includes(item.type)) return Promise.reject(PluginErrEnum.unExist);
 
+        const isToolSetApp =
+          item.type === AppTypeEnum.mcpToolSet || item.type === AppTypeEnum.httpToolSet;
         const version = await getAppVersionById({
           appId: pluginId,
           versionId: versionId || undefined,
@@ -314,26 +291,15 @@ export async function getClientToolPreviewNode({
         });
 
         const isLatest =
-          version.versionId && Types.ObjectId.isValid(version.versionId)
+          !isToolSetApp && version.versionId && Types.ObjectId.isValid(version.versionId)
             ? await checkIsLatestVersion({
                 appId: pluginId,
                 versionId: version.versionId
               })
             : true;
 
-        // Adapt
-        if (item.type === AppTypeEnum.mcpToolSet && !version.nodes[0].toolConfig) {
-          const children = await getMCPChildren(item);
-          version.nodes[0].toolConfig = {
-            mcpToolSet: {
-              toolList: children,
-              url: '',
-              headerSecret: {}
-            }
-          };
-        }
-
-        const shouldReturnVersion = versionId ? true : versionId === undefined && getLatestVersion;
+        const shouldReturnVersion =
+          !isToolSetApp && (versionId ? true : versionId === undefined && getLatestVersion);
 
         return {
           id: String(item._id),
@@ -366,23 +332,12 @@ export async function getClientToolPreviewNode({
         const item = await MongoApp.findById(parentId).lean();
         if (!item) return Promise.reject(PluginErrEnum.unExist);
 
-        const version = await getAppVersionById({
-          appId: parentId,
-          versionId: versionId || undefined,
-          app: item
-        });
-        const toolConfig = version.nodes[0].toolConfig?.mcpToolSet;
         const tool = await (async () => {
           const matchTool = <T extends { name: string }>(tools: T[]) =>
             getToolNameCandidates(toolName)
               .map((name) => tools.find((item) => item.name === name))
               .find(Boolean);
 
-          if (toolConfig?.toolList) {
-            // new mcp toolset
-            return matchTool(toolConfig.toolList);
-          }
-          // old mcp toolset
           return matchTool(await getMCPChildren(item));
         })();
         if (!tool) return Promise.reject(PluginErrEnum.unExist);
@@ -417,20 +372,10 @@ export async function getClientToolPreviewNode({
         const item = await MongoApp.findById(parentId).lean();
         if (!item) return Promise.reject(PluginErrEnum.unExist);
 
-        const version = await getAppVersionById({
-          appId: parentId,
-          versionId: versionId || undefined,
-          app: item
-        });
-        const toolConfig = version.nodes[0].toolConfig?.httpToolSet;
-        const tool = await (async () => {
-          if (toolConfig?.toolList) {
-            return getToolNameCandidates(toolName)
-              .map((name) => toolConfig.toolList.find((item) => item.name === name))
-              .find(Boolean);
-          }
-          return undefined;
-        })();
+        const toolList = await getHTTPToolList(item);
+        const tool = getToolNameCandidates(toolName)
+          .map((name) => toolList.find((item) => item.name === name))
+          .find(Boolean);
         if (!tool) return Promise.reject(PluginErrEnum.unExist);
         return {
           avatar: item.avatar,
@@ -493,7 +438,7 @@ export async function getClientToolPreviewNode({
         // mcp tools
         return {
           flowNodeType: FlowNodeTypeEnum.toolSet,
-          nodeIOConfig: toolSetData2FlowNodeIO({ nodes: app.workflow.nodes })
+          nodeIOConfig: toolSetData2FlowNodeIO({ nodes: app.workflow.nodes, toolSetId: app.id })
         };
       }
 
@@ -519,6 +464,10 @@ export async function getClientToolPreviewNode({
       forceDefaultMode: true,
       allowUserChatInputAgentGenerated: true
     });
+    const intro =
+      idSource === AppToolSourceEnum.mcp || idSource === AppToolSourceEnum.http
+        ? app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.tool)?.intro
+        : app.intro;
 
     return {
       id: getNanoid(),
@@ -528,8 +477,7 @@ export async function getClientToolPreviewNode({
       flowNodeType,
       avatar: app.avatar,
       name: parseI18nString(app.name, lang),
-      intro: parseI18nString(app.intro, lang),
-      toolDescription: app.toolDescription,
+      intro: parseI18nString(intro, lang),
       courseUrl: app.courseUrl,
       userGuide: app.userGuide,
       showStatus: true,
@@ -557,5 +505,19 @@ export async function getClientToolPreviewNode({
     };
   })();
 
-  return omitClientPreviewSchemaFields(data);
+  const isMcpOrHttpTool =
+    idSource === AppToolSourceEnum.mcp ||
+    idSource === AppToolSourceEnum.http ||
+    !!data.toolConfig?.mcpTool ||
+    !!data.toolConfig?.httpTool ||
+    !!data.toolConfig?.mcpToolSet ||
+    !!data.toolConfig?.httpToolSet;
+
+  // 普通工作流和系统工具的自定义 IO 定义仍有效，不套用外部工具的裁剪契约。
+  if (!isMcpOrHttpTool) return data;
+
+  return FlowNodeTemplateTypeSchema.parse({
+    ...data,
+    inputs: ToolReferenceNodeInputTypeSchema.array().parse(data.inputs)
+  });
 }

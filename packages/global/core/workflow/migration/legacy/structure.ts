@@ -5,8 +5,9 @@ import {
   FlowNodeTypeEnum
 } from '../../node/constant';
 import { PluginStatusEnum } from '../../../plugin/type';
+import { normalizeVariableValueType } from '../../../app/variable/utils';
 
-const inputTypes = new Set(Object.values(FlowNodeInputTypeEnum));
+const inputTypes = new Set<string>(Object.values(FlowNodeInputTypeEnum));
 const outputTypes = new Set(Object.values(FlowNodeOutputTypeEnum));
 const nodeTypes = new Set(Object.values(FlowNodeTypeEnum));
 const legacyNodeTypes = new Set(['userGuide', 'pluginConfig']);
@@ -244,12 +245,19 @@ export const migrateLegacyWorkflowStructureData = ({
             .map(normalizeInputType)
             .filter(
               (type): type is FlowNodeInputTypeEnum =>
-                typeof type === 'string' && inputTypes.has(type as FlowNodeInputTypeEnum)
+                typeof type === 'string' && inputTypes.has(type)
             )
         : [];
       // 与历史 dataClean 保持一致：旧输入缺少有效渲染方式时回退为 reference，避免 canonical 数据进入不可渲染状态。
       input.renderTypeList =
         renderTypeList.length > 0 ? renderTypeList : [FlowNodeInputTypeEnum.reference];
+      // 选中类型也可能已被移除；在严格校验前清理，由后续迁移选择有效的默认类型。
+      const selectedType = normalizeInputType(input.selectedType);
+      if (typeof selectedType === 'string' && inputTypes.has(selectedType)) {
+        input.selectedType = selectedType;
+      } else {
+        delete input.selectedType;
+      }
       // 缺失或非法 valueType 统一使用 any，避免严格 schema 阻断整条 workflow。
       input.valueType = normalizeValueType(input.valueType);
       const inputList = normalizeInputList(input.inputList);
@@ -294,6 +302,17 @@ export const migrateLegacyWorkflowStructureData = ({
     // 历史 questionGuide 使用布尔值；当前格式要求包含 open 字段的配置对象。
     normalizedChatConfig.questionGuide = { open: normalizedChatConfig.questionGuide };
   }
+  if (typeof normalizedChatConfig.chatInputGuide === 'string') {
+    // 历史版本未开启输入引导时可能保存空字符串；canonical 结构要求配置对象或未定义。
+    delete normalizedChatConfig.chatInputGuide;
+  }
+  if (
+    isRecord(normalizedChatConfig.scheduledTriggerConfig) &&
+    typeof normalizedChatConfig.scheduledTriggerConfig.defaultPrompt !== 'string'
+  ) {
+    // 定时触发新增 defaultPrompt 必填字段；历史配置未设置时补齐空字符串默认值。
+    normalizedChatConfig.scheduledTriggerConfig.defaultPrompt = '';
+  }
   if (Array.isArray(normalizedChatConfig.variables)) {
     // 变量列表只保留对象，并补齐当前 schema 依赖的 key、label、description、valueType 和 type。
     normalizedChatConfig.variables = normalizedChatConfig.variables
@@ -304,20 +323,24 @@ export const migrateLegacyWorkflowStructureData = ({
         if (typeof variable.key !== 'string' || !variable.key) variable.key = `variable_${index}`;
         if (typeof variable.label !== 'string') variable.label = variable.key;
         if (typeof variable.description !== 'string') variable.description = '';
-        variable.valueType = normalizeValueType(variable.valueType);
         // 兼容旧的语义类型名称，并将未知类型降级为普通输入。
-        variable.type =
-          {
-            string: VariableInputEnum.input,
-            text: VariableInputEnum.input,
-            number: VariableInputEnum.numberInput,
-            boolean: VariableInputEnum.switch,
-            multiSelect: VariableInputEnum.multipleSelect
-          }[String(variable.type)] ??
-          (typeof variable.type === 'string' &&
-          variableTypes.has(variable.type as VariableInputEnum)
-            ? variable.type
-            : VariableInputEnum.input);
+        const legacyVariableType = {
+          string: VariableInputEnum.input,
+          text: VariableInputEnum.input,
+          number: VariableInputEnum.numberInput,
+          boolean: VariableInputEnum.switch,
+          multiSelect: VariableInputEnum.multipleSelect
+        }[String(variable.type)];
+        const currentVariableType =
+          typeof variable.type === 'string' && variableTypes.has(variable.type as VariableInputEnum)
+            ? (variable.type as VariableInputEnum)
+            : undefined;
+        const mappedVariableType = legacyVariableType ?? currentVariableType;
+        variable.valueType = normalizeVariableValueType({
+          type: mappedVariableType,
+          valueType: variable.valueType
+        });
+        variable.type = mappedVariableType ?? VariableInputEnum.input;
         if (typeof variable.maxLength !== 'number' || variable.maxLength < 0) {
           // 负数或非数字长度没有有效含义，删除后使用当前默认约束。
           delete variable.maxLength;

@@ -3,13 +3,17 @@ import type {
   ChatCompletionMessageToolCall,
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import type {
+  AIChatItemValueItemType,
+  ChatHistoryItemResType
+} from '@fastgpt/global/core/chat/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type {
   AgentLoopInteractiveToolExecuteParams,
   AgentLoopToolExecutionResult
 } from '../../../../../ai/llm/agentLoop/interface';
 import type { AgentLoopCoreSystemToolInfo } from './toolInfo';
+import type { NodeSummary } from '../../../../types/runtime';
 
 export type AgentLoopCoreUserToolInfo<TRaw = unknown> = {
   type: 'user';
@@ -30,11 +34,13 @@ export type AgentLoopCoreToolExecuteParams = {
 export type AgentLoopCoreToolRunResult<TChildrenResponse = unknown> = {
   response: string;
   assistantMessages?: ChatCompletionMessageParam[];
+  assistantResponses?: AIChatItemValueItemType[];
   usages?: ChatNodeUsageType[];
   interactive?: TChildrenResponse;
   stop?: boolean;
   errorMessage?: string;
   nodeResponse?: ChatHistoryItemResType;
+  nodeSummary?: NodeSummary;
 };
 
 export type AgentLoopCoreToolProvider<TRawTool = unknown, TChildrenResponse = unknown> = {
@@ -57,6 +63,7 @@ export type AgentLoopCoreToolProvider<TRawTool = unknown, TChildrenResponse = un
 export const normalizeAgentLoopCoreToolRunResult = <TChildrenResponse = unknown>({
   response,
   assistantMessages = [],
+  assistantResponses,
   usages = [],
   interactive,
   stop = false,
@@ -66,6 +73,7 @@ export const normalizeAgentLoopCoreToolRunResult = <TChildrenResponse = unknown>
   return {
     response,
     assistantMessages,
+    assistantResponses,
     usages,
     interactive,
     stop,

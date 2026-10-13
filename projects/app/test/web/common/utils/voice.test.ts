@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findSpeechVoice } from '@/web/common/utils/voice';
+import { findSpeechVoice, hasModelTTSConfig } from '@/web/common/utils/voice';
 
 const voice = (lang: string) => ({ lang });
 
@@ -22,5 +22,23 @@ describe('findSpeechVoice', () => {
 
   it('returns undefined when no matching voice exists', () => {
     expect(findSpeechVoice([voice('fr-FR')], 'ko-KR')).toBeUndefined();
+  });
+});
+
+describe('hasModelTTSConfig', () => {
+  it('accepts canonical modelId-only TTS configuration', () => {
+    expect(hasModelTTSConfig({ type: 'model', modelId: 'tts-model-id', voice: 'alloy' })).toBe(
+      true
+    );
+  });
+
+  it('keeps legacy model configuration compatible during migration', () => {
+    expect(hasModelTTSConfig({ type: 'model', model: 'legacy-tts', voice: 'alloy' })).toBe(true);
+  });
+
+  it('rejects incomplete or non-model TTS configuration', () => {
+    expect(hasModelTTSConfig({ type: 'model', voice: 'alloy' })).toBe(false);
+    expect(hasModelTTSConfig({ type: 'web' })).toBe(false);
+    expect(hasModelTTSConfig()).toBe(false);
   });
 });

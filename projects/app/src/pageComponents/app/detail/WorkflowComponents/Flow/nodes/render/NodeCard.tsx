@@ -1,70 +1,75 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import UseGuideModal from '@/components/common/Modal/UseGuideModal';
+import SecretInputModal from '@/pageComponents/app/tool/SecretInputModal';
+import { getAppPermission } from '@/web/core/app/api';
+import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
+import { getAppVersionList } from '@/web/core/app/api/version';
+import { getTeamToolVersions } from '@/web/core/plugin/team/api';
+import { storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { getWorkflowCheckIssueUIStatus } from '@/web/core/workflow/workflowCheck';
 import { Box, Button, Flex, type FlexProps } from '@chakra-ui/react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import InlineEdit from './InlineEdit';
-import type { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { useTranslation } from 'next-i18next';
-import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
+import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import type { SystemToolVersionType } from '@fastgpt/global/core/app/tool/systemTool/type/base';
+import {
+  getToolRawId,
+  isDebugToolSource,
+  mergeToolSetChildDescriptions,
+  splitCombineToolId
+} from '@fastgpt/global/core/app/tool/utils';
+import { getToolErrorMessage } from '@/web/core/workflow/workflowCheck';
+import {
+  PluginStatusEnum,
+  PluginStatusMap,
+  type PluginStatusType
+} from '@fastgpt/global/core/plugin/type';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { NodeGradients } from '@fastgpt/global/core/workflow/node/constant';
 import {
   AppNodeFlowNodeTypeMap,
   FlowNodeTypeEnum,
   isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
-import {
-  getGradientByColorSchema,
-  getBorderColorByColorSchema,
-  getColorSchemaByFlowNodeType
-} from '@fastgpt/web/core/workflow/utils';
-import { useReactFlow } from 'reactflow';
-import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
-import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
-import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
-import { useDebug } from '../../hooks/useDebug';
-import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
-import { getAppVersionList } from '@/web/core/app/api/version';
-import { getTeamToolVersions } from '@/web/core/plugin/team/api';
-import { storeNode2FlowNode } from '@/web/core/workflow/utils';
-import { getWorkflowCheckIssueUIStatus } from '@/web/core/workflow/workflowCheck';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { useContextSelector } from 'use-context-selector';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useWorkflowUtils } from '../../hooks/useUtils';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
-import MyImage from '@fastgpt/web/components/common/Image/MyImage';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import UseGuideModal from '@/components/common/Modal/UseGuideModal';
-import NodeDebugResponse from './RenderDebug/NodeDebugResponse';
-import MyTag from '@fastgpt/web/components/common/Tag/index';
-import MySelect from '@fastgpt/web/components/common/MySelect';
-import { useBoolean, useCreation } from 'ahooks';
-import { formatToolError } from '@fastgpt/global/core/app/utils';
-import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import SecretInputModal from '@/pageComponents/app/tool/SecretInputModal';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
-import { WorkflowUIContext } from '../../../context/workflowUIContext';
-import {
-  PluginStatusEnum,
-  PluginStatusMap,
-  type PluginStatusType
-} from '@fastgpt/global/core/plugin/type';
-import {
-  splitCombineToolId,
-  getToolRawId,
-  isDebugToolSource
-} from '@fastgpt/global/core/app/tool/utils';
-import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
-import { getAppPermission } from '@/web/core/app/api';
-import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import type { SystemToolVersionType } from '@fastgpt/global/core/app/tool/systemTool/type/base';
+import type {
+  FlowNodeItemType,
+  StoreNodeItemType,
+  WorkflowCheckIssue
+} from '@fastgpt/global/core/workflow/type/node';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import MyImage from '@fastgpt/web/components/common/Image/MyImage';
+import MySelect from '@fastgpt/web/components/common/MySelect';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
-import type { WorkflowCheckIssue } from '@fastgpt/global/core/workflow/type/node';
+import {
+  getBorderColorByColorSchema,
+  getColorSchemaByFlowNodeType,
+  getGradientByColorSchema
+} from '@fastgpt/web/core/workflow/utils';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useBoolean, useCreation } from 'ahooks';
+import { useTranslation } from 'next-i18next';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useReactFlow } from 'reactflow';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
+import { WorkflowUIContext } from '../../../context/workflowUIContext';
+import { useDebug } from '../../hooks/useDebug';
+import { useNodeOutputValidity } from '../../hooks/useNodeOutputValidity';
+import { useWorkflowUtils } from '../../hooks/useUtils';
+import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
+import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
+import InlineEdit from './InlineEdit';
+import NodeDebugResponse from './RenderDebug/NodeDebugResponse';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -130,8 +135,11 @@ const NodeCard = (props: Props) => {
     inputs,
     rtDoms,
     pluginId,
+    flowNodeType,
     colorSchema
   } = props;
+
+  useNodeOutputValidity(nodeId);
 
   const { hasToolNode, getNodeById, foldedNodesMap } = useContextSelector(
     WorkflowBufferDataContext,
@@ -347,7 +355,6 @@ const NodeCard = (props: Props) => {
   }, [isAppNode, node, toolStatus]);
 
   /* Node header - 重构后的版本,依赖项大幅减少 */
-  const error = useMemo(() => formatToolError(node?.pluginData?.error), [node?.pluginData?.error]);
   const showHeader = node?.flowNodeType !== FlowNodeTypeEnum.comment;
 
   const RenderToolHandle = useMemo(
@@ -446,10 +453,13 @@ const NodeCard = (props: Props) => {
                       rtDoms={rtDoms}
                     />
 
-                    <NodeStatusBadge status={nodeTemplate?.status} error={error} />
+                    <NodeStatusBadge
+                      status={nodeTemplate?.status ?? node?.pluginData?.status}
+                      error={node?.pluginData?.error}
+                    />
                   </Flex>
 
-                  <NodeIntro nodeId={nodeId} intro={intro} />
+                  <NodeIntro nodeId={nodeId} intro={intro} flowNodeType={flowNodeType} />
                 </Box>
               )}
             </Box>
@@ -696,13 +706,16 @@ NodeTitleSection.displayName = 'NodeTitleSection';
 // 节点介绍组件
 const NodeIntro = React.memo(function NodeIntro({
   nodeId,
-  intro = ''
+  intro = '',
+  flowNodeType
 }: {
   nodeId: string;
   intro?: string;
+  flowNodeType: FlowNodeTypeEnum;
 }) {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const [isIntroEditing, setIsIntroEditing] = useState(false);
 
   const handleSave = useCallback(
     (newVal: string) => {
@@ -728,6 +741,7 @@ const NodeIntro = React.memo(function NodeIntro({
         type={'textarea'}
         maxLength={500}
         placeholder={t('app:node_not_intro')}
+        onEditingChange={setIsIntroEditing}
         fontSize={'sm'}
         lineHeight={'short'}
         color={'myGray.500'}
@@ -735,6 +749,19 @@ const NodeIntro = React.memo(function NodeIntro({
         py={'3px'}
         px={'6px'}
       />
+      {isIntroEditing && flowNodeType === FlowNodeTypeEnum.toolSet && (
+        <Flex
+          alignItems={'center'}
+          gap={'0.25rem'}
+          py={'0.25rem'}
+          px={0}
+          fontSize={'xs'}
+          color={'myGray.500'}
+        >
+          <MyIcon name={'common/info'} w={'14px'} />
+          {t('app:toolset_intro_tips')}
+        </Flex>
+      )}
     </Box>
   );
 });
@@ -808,7 +835,11 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
                 template.colorSchema ?? getColorSchemaByFlowNodeType(template.flowNodeType),
               name: node.name,
               intro: node.intro,
-              avatar: node.avatar
+              avatar: node.avatar,
+              toolConfig: mergeToolSetChildDescriptions({
+                savedToolConfig: node.toolConfig,
+                templateToolConfig: template.toolConfig
+              })
             }
           });
         }
@@ -913,7 +944,6 @@ const MenuRender = React.memo(function MenuRender({
             pluginId: node.data.pluginId
           }),
           intro: node.data.intro,
-          toolDescription: node.data.toolDescription,
           showStatus: node.data.showStatus,
 
           version: node.data.version,
@@ -1160,8 +1190,7 @@ NodeActionButtons.displayName = 'NodeActionButtons';
 const NodeStatusBadge = React.memo<{ status?: PluginStatusType; error?: string | null }>(
   ({ status, error }) => {
     const { t } = useTranslation();
-    const errorText =
-      error || (status === PluginStatusEnum.Offline ? 'common:error.tool_not_exist' : undefined);
+    const errorText = getToolErrorMessage({ status, error, t });
 
     if (errorText) {
       return (
@@ -1175,7 +1204,7 @@ const NodeStatusBadge = React.memo<{ status?: PluginStatusType; error?: string |
           fontWeight={'medium'}
         >
           <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
-          <Box color={'red.600'}>{t(errorText as any)}</Box>
+          <Box color={'red.600'}>{errorText}</Box>
         </Flex>
       );
     }

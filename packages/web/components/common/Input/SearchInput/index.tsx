@@ -15,7 +15,7 @@ const SearchInput = (props: InputProps) => {
         transform={'translateY(-50%)'}
         color={'myGray.600'}
       />
-      <Input fontSize="sm" bg={'myGray.25'} pl={8} {...props} />
+      <Input h={'36px'} fontSize="sm" bg={'myGray.25'} pl={8} {...props} />
     </InputGroup>
   );
 };

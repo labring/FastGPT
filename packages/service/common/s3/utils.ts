@@ -1,4 +1,5 @@
 import { isAfter } from 'date-fns';
+import { createHash } from 'node:crypto';
 import type { ClientSession } from 'mongoose';
 import { buffer as consumeStreamToBuffer } from 'node:stream/consumers';
 import type { Readable } from 'node:stream';
@@ -32,31 +33,57 @@ export async function readStreamToBuffer(params: {
   stream: Readable;
   maxBytes?: number;
   exceededMessage?: string;
+  signal?: AbortSignal;
+  /** 在当前累计字节写入 chunks 前同步执行，用于流式资源记账或硬限制。 */
+  onReadBytes?: (readBytes: number) => void;
 }): Promise<Buffer> {
-  const { stream, maxBytes, exceededMessage } = params;
+  const { stream, maxBytes, exceededMessage, signal, onReadBytes } = params;
 
-  if (maxBytes === undefined) {
-    return consumeStreamToBuffer(stream);
+  const createAbortError = () => {
+    const error = new Error('File stream reading was aborted');
+    error.name = 'AbortError';
+    return error;
+  };
+  if (signal?.aborted) {
+    stream.destroy();
+    throw createAbortError();
   }
+  const onAbort = () => stream.destroy(createAbortError());
+  signal?.addEventListener('abort', onAbort, { once: true });
 
-  const chunks: Buffer[] = [];
-  let totalSize = 0;
-
-  for await (const chunk of stream) {
-    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-    totalSize += buffer.length;
-
-    if (totalSize > maxBytes) {
-      stream.destroy();
-      throw new Error(
-        exceededMessage ?? `S3 object exceeds maximum allowed size (${maxBytes} bytes)`
-      );
+  try {
+    if (maxBytes === undefined && !onReadBytes) {
+      return await consumeStreamToBuffer(stream);
     }
 
-    chunks.push(buffer);
-  }
+    const chunks: Buffer[] = [];
+    let totalSize = 0;
 
-  return Buffer.concat(chunks, totalSize);
+    for await (const chunk of stream) {
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      totalSize += buffer.length;
+
+      if (maxBytes !== undefined && totalSize > maxBytes) {
+        stream.destroy();
+        throw new Error(
+          exceededMessage ?? `S3 object exceeds maximum allowed size (${maxBytes} bytes)`
+        );
+      }
+
+      try {
+        onReadBytes?.(totalSize);
+      } catch (error) {
+        stream.destroy(error instanceof Error ? error : undefined);
+        throw error;
+      }
+
+      chunks.push(buffer);
+    }
+
+    return Buffer.concat(chunks, totalSize);
+  } finally {
+    signal?.removeEventListener('abort', onAbort);
+  }
 }
 
 /**
@@ -273,9 +300,29 @@ export const getFileS3Key = {
     };
   },
 
-  rawText: ({ hash, customPdfParse }: { hash: string; customPdfParse?: boolean }) => {
+  rawText: ({
+    hash,
+    customPdfParse,
+    sangforFileParseConfig
+  }: {
+    hash: string;
+    customPdfParse?: boolean;
+    sangforFileParseConfig?: Record<string, unknown>;
+  }) => {
+    // 解析配置纳入缓存 key,避免同文件不同开关共享缓存;未传配置保持旧 key 格式
+    const configSuffix = sangforFileParseConfig
+      ? `-${createHash('md5')
+          .update(
+            JSON.stringify(sangforFileParseConfig, (_key, value) =>
+              value instanceof Object && !Array.isArray(value)
+                ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)))
+                : value
+            )
+          )
+          .digest('hex')}`
+      : '';
     return encodeS3ObjectKey(
-      [S3Sources.rawText, `${hash}${customPdfParse ? '-true' : ''}`].join('/')
+      [S3Sources.rawText, `${hash}${customPdfParse ? '-true' : ''}${configSuffix}`].join('/')
     );
   }
 };

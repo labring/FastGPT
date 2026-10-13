@@ -1,9 +1,9 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useMemo, useState } from 'react';
 import {
   Flex,
   Box,
   Button,
-  TableContainer,
   Table,
   Thead,
   Tr,
@@ -19,7 +19,6 @@ import {
   HStack
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useQuery } from '@tanstack/react-query';
 import {
   getShareChatList,
@@ -33,7 +32,7 @@ import { useForm } from 'react-hook-form';
 import { defaultOutLinkForm } from '@/web/core/app/constants';
 import type { OutLinkEditType, OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -58,8 +57,7 @@ const Share = ({
   type: PublishChannelEnum;
   onRefreshOutLinkCounts: () => Promise<unknown>;
 }) => {
-  const { t } = useTranslation();
-  const { setIsLoading } = useLoading();
+  const { t } = useSafeTranslation();
   const { feConfigs } = useSystemStore();
   const { copyData } = useCopyData();
   const [editLinkData, setEditLinkData] = useState<OutLinkEditType>();
@@ -78,9 +76,30 @@ const Share = ({
     getShareChatList({ appId, type: PublishChannelEnum.share })
   );
 
+  const { runAsync: onDelShareChat } = useRequest(
+    async (id: string) => {
+      await delShareChatById(id);
+      void Promise.all([refetchShareChatList(), onRefreshOutLinkCounts()]);
+    },
+    {
+      successToast: t('common:delete_success'),
+      errorToast: t('common:delete_failed')
+    }
+  );
+
   return (
-    <MyBox h={'100%'} isLoading={isFetching} position={'relative'} p={6} minH={'50vh'}>
-      <Flex justifyContent={'space-between'} flexDirection="row">
+    <MyBox
+      h={'100%'}
+      minH={0}
+      minW={0}
+      display={'flex'}
+      flexDirection={'column'}
+      overflow={'hidden'}
+      isLoading={isFetching}
+      position={'relative'}
+      p={6}
+    >
+      <Flex flexShrink={0} justifyContent={'space-between'} flexDirection="row">
         <HStack>
           <Box>
             <Flex alignItems={'center'}>
@@ -123,8 +142,8 @@ const Share = ({
           {t('common:core.app.share.Create link')}
         </Button>
       </Flex>
-      <TableContainer mt={3}>
-        <Table variant={'simple'} w={'100%'} overflowX={'auto'} fontSize={'sm'}>
+      <FixedTableContainer mt={3} flex={'1 1 0'} h={0} maxH="none">
+        <Table variant={'simple'} w={'100%'} fontSize={'sm'}>
           <Thead>
             <Tr>
               <Th>{t('common:Name')}</Th>
@@ -156,9 +175,7 @@ const Share = ({
                   </Td>
                 )}
                 <Td>
-                  {item.lastTime
-                    ? t(formatTimeToChatTime(item.lastTime) as any).replace('#', ':')
-                    : t('common:un_used')}
+                  {item.lastTime ? t(formatTimeToChatTime(item.lastTime)) : t('common:un_used')}
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>
                   <Button
@@ -170,11 +187,12 @@ const Share = ({
                     {t('common:core.app.outLink.Select Mode')}
                   </Button>
                   <MyMenu
+                    strategy="fixed"
                     Button={
                       <IconButton
                         icon={<MyIcon name={'more'} w={'14px'} />}
                         name={'more'}
-                        variant={'whiteBase'}
+                        variant={'whitePrimary'}
                         size={'sm'}
                         aria-label={''}
                       />
@@ -203,19 +221,7 @@ const Share = ({
                             type: 'danger',
                             onClick: () =>
                               openConfirm({
-                                onConfirm: async () => {
-                                  setIsLoading(true);
-                                  try {
-                                    await delShareChatById(item._id);
-                                    void Promise.all([
-                                      refetchShareChatList(),
-                                      onRefreshOutLinkCounts()
-                                    ]);
-                                  } catch (error) {
-                                    console.log(error);
-                                  }
-                                  setIsLoading(false);
-                                }
+                                onConfirm: () => onDelShareChat(item._id)
                               })()
                           }
                         ]
@@ -227,11 +233,11 @@ const Share = ({
             ))}
           </Tbody>
         </Table>
-      </TableContainer>
+        {shareChatList.length === 0 && !isFetching && (
+          <EmptyTip text={t('common:core.app.share.Not share link')} />
+        )}
+      </FixedTableContainer>
 
-      {shareChatList.length === 0 && !isFetching && (
-        <EmptyTip text={t('common:core.app.share.Not share link')} />
-      )}
       {!!editLinkData && (
         <EditLinkModal
           appId={appId}
@@ -282,7 +288,7 @@ function EditLinkModal({
   onEdit: () => void;
 }) {
   const { feConfigs } = useSystemStore();
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const {
     register,
     setValue,

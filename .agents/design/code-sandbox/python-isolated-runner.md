@@ -15,8 +15,9 @@ GHSA-5jmh-5f2m-89jg 证明该模型存在结构性缺陷：Python 反射链可�
 - 旧 `worker.py` 和 `PythonProcessPool` 已删除；
 - `/sandbox/python` 统一使用 `PythonIsolatedRunner`；
 - Python 进程最多执行一次用户代码，执行后销毁；
-- Linux/Docker 环境固定启用 `chroot`、`no_new_privs`、`seccomp`、`setgid/setuid`；
-- 网络请求统一走父进程 HTTP 代理，不允许 Python 子进程直接网络 syscall。
+- Linux/Docker 环境固定启用 `chroot`、`no_new_privs`、`setgid/setuid`，默认启用 `seccomp`；
+- 仅允许部署者通过 `SANDBOX_DISABLE_SECCOMP=true` 显式跳过 seccomp，加载失败时不自动降级；
+- 默认配置下网络请求统一走父进程 HTTP 代理，seccomp 不允许 Python 子进程直接网络 syscall。
 
 ## 目标
 
@@ -41,7 +42,7 @@ POST /sandbox/python
   -> PythonIsolatedRunner.execute({ code, variables })
   -> 获取干净的 one-shot 预热 Python 进程
      -> 无空闲进程时按需 spawn
-  -> 预热进程已完成 chroot + no_new_privs + seccomp + setgid/setuid
+  -> 预热进程已完成 chroot + no_new_privs + setgid/setuid，并按配置安装 seccomp
   -> bootstrap 注入 helper、variables、受限 builtins
   -> exec 用户代码并调用 main
   -> stdout 输出 JSON line result/http_request
@@ -92,12 +93,12 @@ Go shared library `fastgpt_python_sandbox.so` 负责 Linux native 隔离：
 - `setgroups([])`；
 - `setgid(65537)` / `setuid(65537)`；
 - `PR_SET_NO_NEW_PRIVS`；
-- 安装 seccomp filter；
+- 默认安装 seccomp filter，显式关闭时跳过该步骤；
 - 危险 syscall 默认拒绝，`execve/execveat`、`ptrace`、`mount` 等不能落地。
 
 ## 配置
 
-Python 隔离相关配置已经收敛为内部安全默认，不提供运行时环境变量关闭或改弱：
+Python native 隔离整体不能关闭。seccomp 使用安全默认值，仅为不兼容内核提供显式关闭开关：
 
 | 配置 | 当前值 | 说明 |
 | --- | --- | --- |
@@ -106,7 +107,8 @@ Python 隔离相关配置已经收敛为内部安全默认，不提供运行时�
 | 直接网络 syscall | `false` | 统一走父进程 `http_request` 代理 |
 | chroot 根目录 | `/tmp/fastgpt-python-sandbox` | Docker 构建阶段准备 |
 | 用户代码 uid/gid | `65537:65537` | native 初始化后降权 |
-| native seccomp/chroot/setuid | Linux 固定开启 | 缺少 native 库或 chroot root 时 fail-closed |
+| native chroot/no_new_privs/setuid | Linux 固定开启 | 缺少 native 库或 chroot root 时 fail-closed |
+| native seccomp | 默认开启 | `SANDBOX_DISABLE_SECCOMP=true` 时显式关闭；加载失败不自动降级 |
 
 保留的 Python 业务配置：
 
@@ -120,7 +122,7 @@ Python 隔离相关配置已经收敛为内部安全默认，不提供运行时�
 
 ## 网络代理
 
-Python 子进程不允许直接使用网络 syscall。用户代码如需请求外部网络，必须调用：
+启用 seccomp 时，Python 子进程不允许直接使用网络 syscall。用户代码如需请求外部网络，必须调用：
 
 ```python
 http_request(url, method='GET', headers=None, body=None, timeout=None)
@@ -187,10 +189,10 @@ Python bootstrap 向父进程写出：
 OS 层是多租户核心安全边界：
 
 - 每个 Python 子进程最多执行一次用户代码；
-- 执行用户代码前已经 chroot、降权、安装 seccomp；
+- 执行用户代码前已经 chroot、降权，并按配置安装 seccomp；
 - 执行完成后整个进程树销毁；
 - 不复用执行过用户代码的解释器；
-- seccomp 不允许命令执行和高危系统调用；
+- 默认启用的 seccomp 不允许命令执行和高危系统调用；
 - chroot 只包含 Python 运行所需 stdlib、site-packages、动态库、证书、DNS 配置和 sandbox runtime 文件。
 
 ### 资源边界
@@ -251,7 +253,7 @@ Docker 镜像使用 Debian bookworm/glibc。Alpine/musl 下 Go c-shared `.so`
 - native `.so` 加载；
 - setuid/setgid 降权；
 - chroot 生效；
-- seccomp 阻断命令执行；
+- 默认配置下 seccomp 阻断命令执行；
 - numpy/pandas/matplotlib 在 chroot/seccomp 下可用；
 - Docker 包可用性测试覆盖 Python 和 JS 白名单包。
 

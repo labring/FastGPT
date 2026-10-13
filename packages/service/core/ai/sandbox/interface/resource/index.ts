@@ -5,8 +5,4 @@ export {
   stopSandboxResource,
   stopSandboxResources
 } from '../../application/resource';
-export {
-  deleteAppSandboxesForAppDeletion as deleteAppSandboxes,
-  deleteSkillEditSandboxesForSkillDeletion as deleteSkillEditSandboxes
-} from '../../application/legacyMigration';
 export type { DeleteSandboxParams, GetSandboxInfoParams } from '../../application/resource';

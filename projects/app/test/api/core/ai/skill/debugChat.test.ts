@@ -1,36 +1,41 @@
-import { buildDebugRuntimeNodes } from '@fastgpt/service/core/ai/skill/debugChat';
 import * as debugChatApi from '@/pages/api/core/ai/skill/debugChat';
-import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
-import {
-  FlowNodeTypeEnum,
-  FlowNodeInputTypeEnum,
-  FlowNodeOutputTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
-import {
-  NodeInputKeyEnum,
-  NodeOutputKeyEnum,
-  WorkflowIOValueTypeEnum
-} from '@fastgpt/global/core/workflow/constants';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
-import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import * as responseModule from '@fastgpt/service/common/response';
-import { getUser } from '@test/datas/users';
-import { Call } from '@test/utils/request';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { getEditDebugSandboxId } from '@fastgpt/service/core/ai/skill/edit/config';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
-import {
-  PerResourceTypeEnum,
-  ReadPermissionVal
-} from '@fastgpt/global/support/permission/constant';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import {
   ChatRoleEnum,
   ChatSourceEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import {
+  PerResourceTypeEnum,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
+import * as responseModule from '@fastgpt/service/common/response';
+import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
+import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
+import { buildDebugRuntimeNodes } from '@fastgpt/service/core/ai/skill/debugChat';
+import { getEditDebugSandboxId } from '@fastgpt/service/core/ai/skill/edit/config';
+import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { getUser } from '@test/datas/users';
+import { setModelTestMap, setModelTestSnapshot } from '@test/modelCache';
+import { Call } from '@test/utils/request';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const debugChatMocks = vi.hoisted(() => ({
   dispatchWorkFlow: vi.fn(),
@@ -98,11 +103,15 @@ const AGENT_NODE_ID = 'skill-debug-agent';
 // ═══════════════════════════════════════════════
 describe('buildDebugRuntimeNodes', () => {
   const SKILL_ID = '507f1f77bcf86cd799439011';
-  const MODEL = 'gpt-4o';
+  const MODEL_ID = '507f1f77bcf86cd799439012';
   const SYSTEM_PROMPT = 'You are a helpful assistant.';
 
   it('should return exactly two nodes and one edge', () => {
-    const { runtimeNodes, runtimeEdges } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
+    const { runtimeNodes, runtimeEdges } = buildDebugRuntimeNodes(
+      SKILL_ID,
+      MODEL_ID,
+      SYSTEM_PROMPT
+    );
     expect(runtimeNodes).toHaveLength(2);
     expect(runtimeEdges).toHaveLength(1);
   });
@@ -110,7 +119,7 @@ describe('buildDebugRuntimeNodes', () => {
   // ── Start node ──────────────────────────────
   describe('start node (workflowStart)', () => {
     it('should be the first node with correct type and isEntry=true', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
+      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL_ID, SYSTEM_PROMPT);
       const startNode = runtimeNodes[0];
 
       expect(startNode.nodeId).toBe(START_NODE_ID);
@@ -120,7 +129,7 @@ describe('buildDebugRuntimeNodes', () => {
     });
 
     it('should have exactly one userChatInput input with empty default value', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
+      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL_ID, SYSTEM_PROMPT);
       const startNode = runtimeNodes[0];
 
       expect(startNode.inputs).toHaveLength(1);
@@ -132,7 +141,7 @@ describe('buildDebugRuntimeNodes', () => {
     });
 
     it('should have exactly one userChatInput output with static type', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
+      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL_ID, SYSTEM_PROMPT);
       const startNode = runtimeNodes[0];
 
       expect(startNode.outputs).toHaveLength(1);
@@ -147,7 +156,7 @@ describe('buildDebugRuntimeNodes', () => {
   // ── Agent node ──────────────────────────────
   describe('agent node', () => {
     it('should have correct type and isEntry=false with showStatus=true', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
+      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL_ID, SYSTEM_PROMPT);
       const agentNode = runtimeNodes[1];
 
       expect(agentNode.nodeId).toBe(AGENT_NODE_ID);
@@ -157,7 +166,7 @@ describe('buildDebugRuntimeNodes', () => {
     });
 
     it('userChatInput input should reference start node output', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
+      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL_ID, SYSTEM_PROMPT);
       const agentNode = runtimeNodes[1];
 
       const userInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.userChatInput);
@@ -168,7 +177,7 @@ describe('buildDebugRuntimeNodes', () => {
     });
 
     it('history input should be a number with value 20', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
+      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL_ID, SYSTEM_PROMPT);
       const agentNode = runtimeNodes[1];
 
       const historyInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.history);
@@ -179,19 +188,19 @@ describe('buildDebugRuntimeNodes', () => {
       expect(historyInput!.max).toBe(50);
     });
 
-    it('aiModel input should carry the provided model value', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
+    it('aiModelId input should carry the provided model ID', () => {
+      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL_ID, SYSTEM_PROMPT);
       const agentNode = runtimeNodes[1];
 
-      const modelInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiModel);
+      const modelInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId);
       expect(modelInput).toBeDefined();
-      expect(modelInput!.value).toBe(MODEL);
+      expect(modelInput!.value).toBe(MODEL_ID);
       expect(modelInput!.valueType).toBe(WorkflowIOValueTypeEnum.string);
       expect(modelInput!.required).toBe(true);
     });
 
     it('aiSystemPrompt input should carry the provided system prompt', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
+      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL_ID, SYSTEM_PROMPT);
       const agentNode = runtimeNodes[1];
 
       const promptInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiSystemPrompt);
@@ -201,7 +210,7 @@ describe('buildDebugRuntimeNodes', () => {
     });
 
     it('should enable vision preview for uploaded images', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
+      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL_ID, SYSTEM_PROMPT);
       const agentNode = runtimeNodes[1];
 
       const visionInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiChatVision);
@@ -214,7 +223,7 @@ describe('buildDebugRuntimeNodes', () => {
     });
 
     it('editSkillId input should contain exactly the given skillId', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
+      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL_ID, SYSTEM_PROMPT);
       const agentNode = runtimeNodes[1];
 
       const editSkillInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.editSkillId);
@@ -225,7 +234,7 @@ describe('buildDebugRuntimeNodes', () => {
     });
 
     it('should not pass session skills or edit debug boolean', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
+      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL_ID, SYSTEM_PROMPT);
       const agentNode = runtimeNodes[1];
 
       expect(agentNode.inputs.some((i) => i.key === NodeInputKeyEnum.skills)).toBe(false);
@@ -233,7 +242,7 @@ describe('buildDebugRuntimeNodes', () => {
     });
 
     it('should have an answerText output with static type', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
+      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL_ID, SYSTEM_PROMPT);
       const agentNode = runtimeNodes[1];
 
       expect(agentNode.outputs).toHaveLength(1);
@@ -248,7 +257,7 @@ describe('buildDebugRuntimeNodes', () => {
   // ── Edge ────────────────────────────────────
   describe('edge (start -> agent)', () => {
     it('should connect start to agent with waiting status', () => {
-      const { runtimeEdges } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
+      const { runtimeEdges } = buildDebugRuntimeNodes(SKILL_ID, MODEL_ID, SYSTEM_PROMPT);
       const edge = runtimeEdges[0];
 
       expect(edge.source).toBe(START_NODE_ID);
@@ -257,7 +266,7 @@ describe('buildDebugRuntimeNodes', () => {
     });
 
     it('should use correct handle IDs', () => {
-      const { runtimeEdges } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
+      const { runtimeEdges } = buildDebugRuntimeNodes(SKILL_ID, MODEL_ID, SYSTEM_PROMPT);
       const edge = runtimeEdges[0];
 
       expect(edge.sourceHandle).toBe(getHandleId(START_NODE_ID, 'source', 'right'));
@@ -269,7 +278,7 @@ describe('buildDebugRuntimeNodes', () => {
   describe('dynamic value injection', () => {
     it('should inject different edit skill ids correctly', () => {
       const anotherSkillId = '507f1f77bcf86cd799439022';
-      const { runtimeNodes } = buildDebugRuntimeNodes(anotherSkillId, MODEL, SYSTEM_PROMPT);
+      const { runtimeNodes } = buildDebugRuntimeNodes(anotherSkillId, MODEL_ID, SYSTEM_PROMPT);
       const agentNode = runtimeNodes[1];
 
       const editSkillInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.editSkillId);
@@ -277,15 +286,16 @@ describe('buildDebugRuntimeNodes', () => {
     });
 
     it('should inject different models correctly', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, 'claude-3-5-sonnet', SYSTEM_PROMPT);
+      const anotherModelId = '507f1f77bcf86cd799439013';
+      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, anotherModelId, SYSTEM_PROMPT);
       const agentNode = runtimeNodes[1];
 
-      const modelInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiModel);
-      expect(modelInput!.value).toBe('claude-3-5-sonnet');
+      const modelInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId);
+      expect(modelInput!.value).toBe(anotherModelId);
     });
 
     it('should inject empty system prompt without error', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, '');
+      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL_ID, '');
       const agentNode = runtimeNodes[1];
 
       const promptInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiSystemPrompt);
@@ -307,6 +317,28 @@ describe('debugChat handler — parameter validation', () => {
   beforeEach(async () => {
     testUser = await getUser(`debug-chat-user-${getNanoid(6)}`);
     vi.clearAllMocks();
+    const modelData: LLMModelDataType = {
+      modelId: '507f1f77bcf86cd799439012',
+      provider: 'test',
+      model: 'gpt-4o',
+      name: 'GPT-4o',
+      type: ModelTypeEnum.llm,
+      scope: 'system' as const,
+      isActive: true,
+      config: {
+        maxContext: 32000,
+        maxResponse: 4000,
+        quoteMaxToken: 16000
+      }
+    };
+    const runtimeModel = { ...modelData, ...modelData.config };
+    setModelTestMap(
+      new Map([
+        [`id:${modelData.modelId}`, modelData],
+        [`model:${modelData.model}`, modelData]
+      ])
+    );
+    setModelTestSnapshot({ defaultModels: { llm: runtimeModel } });
     debugChatMocks.preChatRound.mockResolvedValue({
       chatId: 'prepared-debug-chat-id',
       responseChatItemId: 'prepared-debug-response-id',
@@ -323,10 +355,18 @@ describe('debugChat handler — parameter validation', () => {
       system_memories: { memory: 'value' },
       durationSeconds: 1.2,
       customFeedbacks: ['feedback-id'],
-      nodeResponseSummary: {
+      workflowRuntimeSummary: {
+        responseIds: [],
+        finishedNodeIds: [],
+        hasError: false,
         citeCollectionIds: [],
         errorCount: 0,
-        totalPoints: 0
+        totalPoints: 0,
+        hasLoopRunBreak: false,
+        hasToolStop: false,
+        hasNestedEnd: false,
+        llmInputTokens: 0,
+        llmOutputTokens: 0
       }
     });
     debugChatMocks.finalizeChatRound.mockResolvedValue(undefined);
@@ -353,7 +393,7 @@ describe('debugChat handler — parameter validation', () => {
       body: {
         chatId: getNanoid(),
         responseChatItemId: getNanoid(),
-        model: 'gpt-4o',
+        modelId: '507f1f77bcf86cd799439012',
         messages: [{ role: 'user', content: 'hello' }]
       }
     });
@@ -367,12 +407,27 @@ describe('debugChat handler — parameter validation', () => {
       body: {
         skillId,
         responseChatItemId: getNanoid(),
-        model: 'gpt-4o',
+        modelId: '507f1f77bcf86cd799439012',
         messages: [{ role: 'user', content: 'hello' }]
       }
     });
     expect(getSseErrResMock()).not.toHaveBeenCalled();
     expect(result.error?.message ?? result.error).toMatch(/chatId/i);
+  });
+
+  it('should reject legacy model without modelId at the API boundary', async () => {
+    const result = await Call(debugChatApi.default, {
+      auth: testUser,
+      body: {
+        skillId,
+        chatId: getNanoid(),
+        responseChatItemId: getNanoid(),
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: 'hello' }]
+      } as any
+    });
+    expect(getSseErrResMock()).not.toHaveBeenCalled();
+    expect(result.error?.message ?? result.error).toMatch(/modelId/i);
   });
 
   it('should call sseErrRes when messages array is empty', async () => {
@@ -383,7 +438,7 @@ describe('debugChat handler — parameter validation', () => {
         skillId,
         chatId: getNanoid(),
         responseChatItemId: getNanoid(),
-        model: 'gpt-4o',
+        modelId: '507f1f77bcf86cd799439012',
         messages: []
       }
     });
@@ -403,7 +458,7 @@ describe('debugChat handler — parameter validation', () => {
         skillId,
         chatId: getNanoid(),
         responseChatItemId: getNanoid(),
-        model: 'gpt-4o',
+        modelId: '507f1f77bcf86cd799439012',
         messages: [{ role: 'user', content: 'hi' }]
       }
     });
@@ -435,7 +490,7 @@ describe('debugChat handler — parameter validation', () => {
         skillId,
         chatId: getNanoid(),
         responseChatItemId: getNanoid(),
-        model: 'gpt-4o',
+        modelId: '507f1f77bcf86cd799439012',
         messages: [{ role: 'user', content: 'hi' }]
       }
     });
@@ -478,7 +533,7 @@ describe('debugChat handler — parameter validation', () => {
         skillId,
         chatId: getNanoid(),
         responseChatItemId: getNanoid(),
-        model: 'gpt-4o',
+        modelId: '507f1f77bcf86cd799439012',
         messages: [{ role: 'user', content: 'hi' }]
       }
     });
@@ -513,7 +568,7 @@ describe('debugChat handler — parameter validation', () => {
         skillId,
         chatId: 'debug-chat-id',
         responseChatItemId: 'client-response-id',
-        model: 'gpt-4o',
+        modelId: '507f1f77bcf86cd799439012',
         messages: [{ role: 'user', content: 'hi' }]
       }
     });
@@ -569,4 +624,68 @@ describe('debugChat handler — parameter validation', () => {
       debugChatMocks.responseWrite.mock.invocationCallOrder[doneWriteIndex]
     );
   });
+
+  it.each(['owner', 'collaborator', 'unshared'] as const)(
+    'checks model permission separately from skill edit permission (%s)',
+    async (scenario) => {
+      const modelOwner =
+        scenario === 'owner'
+          ? testUser
+          : await getUser(`model-owner-${getNanoid(6)}`, testUser.teamId);
+      const modelId = '507f1f77bcf86cd799439013';
+      await MongoAIModel.create({
+        _id: modelId,
+        model: 'private-debug-model',
+        name: 'Private debug model',
+        provider: 'openai',
+        type: ModelTypeEnum.llm,
+        scope: 'team',
+        teamId: testUser.teamId,
+        tmbId: modelOwner.tmbId,
+        isActive: true,
+        config: { maxContext: 8192, maxResponse: 2048, quoteMaxToken: 4000 }
+      });
+      if (scenario === 'collaborator') {
+        await MongoResourcePermission.create({
+          resourceType: PerResourceTypeEnum.model,
+          resourceId: modelId,
+          teamId: testUser.teamId,
+          tmbId: testUser.tmbId,
+          permission: ReadPermissionVal
+        });
+      }
+      await MongoSandboxInstance.create({
+        provider: 'opensandbox',
+        sandboxId: getEditDebugSandboxId(skillId),
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId,
+        userId: ChatSourceTypeEnum.skillEdit,
+        status: 'running',
+        teamId: testUser.teamId,
+        image: { repository: 'test-image', tag: 'latest' }
+      });
+
+      await Call(debugChatApi.default, {
+        auth: testUser,
+        cookies: {},
+        headers: { origin: 'http://test.local' },
+        body: {
+          skillId,
+          chatId: getNanoid(),
+          responseChatItemId: getNanoid(),
+          modelId,
+          messages: [{ role: 'user', content: 'hi' }]
+        }
+      });
+      if (scenario === 'unshared') {
+        const error = getSseErrResMock().mock.calls[0]?.[1];
+        expect(error?.message ?? error).toBe(ModelErrEnum.unAuthModel);
+        expect(debugChatMocks.preChatRound).not.toHaveBeenCalled();
+        expect(debugChatMocks.dispatchWorkFlow).not.toHaveBeenCalled();
+      } else {
+        expect(getSseErrResMock()).not.toHaveBeenCalled();
+        expect(debugChatMocks.dispatchWorkFlow).toHaveBeenCalledTimes(1);
+      }
+    }
+  );
 });

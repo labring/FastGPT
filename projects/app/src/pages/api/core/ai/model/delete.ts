@@ -1,41 +1,29 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
+import { authModelConfig } from '@/service/core/ai/model/auth';
 import { NextAPI } from '@/service/middleware/entry';
-import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
-import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
-import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/config/utils';
+import {
+  DeleteModelsBodySchema,
+  type DeleteModelsBody
+} from '@fastgpt/global/openapi/core/ai/model/api';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { deleteModels } from '@fastgpt/service/core/ai/model/service';
 
-export type deleteQuery = {
-  model: string;
-};
+async function handler(req: ApiRequestProps<DeleteModelsBody>): Promise<void> {
+  const { modelIds, channelType } = parseApiInput({
+    req,
+    bodySchema: DeleteModelsBodySchema
+  }).body;
 
-export type deleteBody = Record<string, never>;
+  const {
+    actor: { tmbId, teamId }
+  } = await authModelConfig({ req, modelIds, channelType });
 
-export type deleteResponse = Record<string, never>;
-
-async function handler(
-  req: ApiRequestProps<deleteBody, deleteQuery>,
-  _res: ApiResponseType<any>
-): Promise<deleteResponse> {
-  await authSystemAdmin({ req });
-
-  const { model } = req.query;
-
-  const modelData = findModelFromAlldata(model);
-
-  if (!modelData) {
-    return Promise.reject('Model not found');
-  }
-
-  if (!modelData.isCustom) {
-    return Promise.reject('System model cannot be deleted');
-  }
-
-  await MongoSystemModel.deleteOne({ model });
-
-  await updatedReloadSystemModel();
-
-  return {};
+  await deleteModels({
+    modelIds,
+    channelType,
+    teamId,
+    tmbId
+  });
 }
 
 export default NextAPI(handler);

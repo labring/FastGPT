@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Box, Button, Flex, HStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
@@ -15,6 +15,7 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import Markdown from '@/components/Markdown';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { resetPreviewScroll } from './previewScroll';
 
 const PreviewData = () => {
   const { t } = useTranslation();
@@ -28,6 +29,11 @@ const PreviewData = () => {
   const processParamsForm = useContextSelector(DatasetImportContext, (v) => v.processParamsForm);
 
   const [previewFile, setPreviewFile] = useState<ImportSourceItemType>();
+  const previewScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    resetPreviewScroll(previewScrollRef.current);
+  }, [previewFile?.id]);
 
   const { data = { chunks: [], total: 0 }, loading: isLoading } = useRequest(
     async () => {
@@ -129,7 +135,15 @@ const PreviewData = () => {
             </Box>
           </Flex>
           <MyBox isLoading={isLoading} flex={'1 0 0'} h={0} minW={0}>
-            <Box h={'100%'} minW={0} overflowY={'auto'} overflowX={'auto'} px={5} py={3}>
+            <Box
+              ref={previewScrollRef}
+              h={'100%'}
+              minW={0}
+              overflowY={'auto'}
+              overflowX={'auto'}
+              px={5}
+              py={3}
+            >
               {previewFile ? (
                 <>
                   {data.chunks.map((item, index) => (

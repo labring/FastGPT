@@ -2,6 +2,7 @@ import { FlowNodeTypeEnum, NodeColorSchemaEnum } from '../node/constant';
 import { FlowNodeInputItemTypeSchema, FlowNodeOutputItemTypeSchema } from './io';
 import { HttpToolConfigTypeSchema } from '../../app/tool/httpTool/type';
 import { McpToolConfigSchema } from '../../app/tool/mcpTool/type';
+import { ToolSetToolSummarySchema } from '../../app/tool/toolSet/type';
 import { ParentIdSchema } from '../../../common/parentFolder/type';
 import { InteractiveNodeResponseTypeSchema } from '../template/system/interactive/type';
 import { StoreSecretValueTypeSchema } from '../../../common/secret/type';
@@ -10,23 +11,51 @@ import { SourceMemberSchema } from '../../../support/user/type';
 import z from 'zod';
 import { BoolSchema, NumSchema } from '../../../common/zod';
 
-export const NodeToolConfigTypeSchema = z.object({
-  mcpToolSet: z
-    .object({
-      url: z.string().meta({
-        description: 'MCP 服务地址'
-      }),
-      headerSecret: StoreSecretValueTypeSchema.nullish().meta({
-        description: 'MCP 服务请求头密钥配置'
-      }),
-      toolList: z.array(McpToolConfigSchema).meta({
-        description: 'MCP 工具集包含的工具列表'
-      })
-    })
-    .optional()
-    .meta({
-      description: '节点绑定的 MCP 工具集配置'
-    }),
+export const McpToolSetRuntimeConfigSchema = z.object({
+  url: z.string().meta({
+    description: 'MCP 服务地址'
+  }),
+  headerSecret: StoreSecretValueTypeSchema.nullish().meta({
+    description: 'MCP 服务请求头密钥配置'
+  }),
+  toolList: z.array(McpToolConfigSchema).meta({
+    description: 'MCP 工具集包含的工具列表'
+  })
+});
+export type McpToolSetRuntimeConfigType = z.infer<typeof McpToolSetRuntimeConfigSchema>;
+
+export const HttpToolSetRuntimeConfigSchema = z.object({
+  toolList: z.array(HttpToolConfigTypeSchema).meta({
+    description: 'HTTP 工具集包含的工具列表'
+  }),
+  baseUrl: z.string().optional().meta({
+    description: 'HTTP 工具集请求基础地址'
+  }),
+  apiSchemaStr: z.string().optional().meta({
+    description: 'HTTP 工具集导入的 OpenAPI Schema 原始内容'
+  }),
+  customHeaders: z.string().optional().meta({
+    description: 'HTTP 工具集公共请求头 JSON 字符串'
+  }),
+  headerSecret: StoreSecretValueTypeSchema.nullish().meta({
+    description: 'HTTP 工具集请求头密钥配置'
+  })
+});
+export type HttpToolSetRuntimeConfigType = z.infer<typeof HttpToolSetRuntimeConfigSchema>;
+
+const ToolSetReferenceSchema = z.object({
+  toolId: z.string().min(1).meta({
+    description: '工具集 ID'
+  })
+});
+
+const ToolSetPreviewReferenceSchema = ToolSetReferenceSchema.extend({
+  toolList: z.array(ToolSetToolSummarySchema).optional().meta({
+    description: '工具集预览展示摘要，不包含执行 Schema'
+  })
+});
+
+const NodeToolConfigCommonSchema = z.object({
   mcpTool: z
     .object({
       toolId: z.string().meta({
@@ -84,28 +113,6 @@ export const NodeToolConfigTypeSchema = z.object({
     .meta({
       description: '节点绑定的系统工具集配置'
     }),
-  httpToolSet: z
-    .object({
-      toolList: z.array(HttpToolConfigTypeSchema).meta({
-        description: 'HTTP 工具集包含的工具列表'
-      }),
-      baseUrl: z.string().optional().meta({
-        description: 'HTTP 工具集请求基础地址'
-      }),
-      apiSchemaStr: z.string().optional().meta({
-        description: 'HTTP 工具集导入的 OpenAPI Schema 原始内容'
-      }),
-      customHeaders: z.string().optional().meta({
-        description: 'HTTP 工具集公共请求头 JSON 字符串'
-      }),
-      headerSecret: StoreSecretValueTypeSchema.nullish().meta({
-        description: 'HTTP 工具集请求头密钥配置'
-      })
-    })
-    .optional()
-    .meta({
-      description: '节点绑定的 HTTP 工具集配置'
-    }),
   httpTool: z
     .object({
       toolId: z.string().meta({
@@ -115,6 +122,22 @@ export const NodeToolConfigTypeSchema = z.object({
     .optional()
     .meta({
       description: '节点绑定的 HTTP 单工具配置'
+    })
+});
+
+/** 工作流数据兼容当前引用格式与历史完整快照；引用分支优先，避免空 HTTP toolList 被当成完整配置而丢失 ID。 */
+export const NodeToolConfigTypeSchema = NodeToolConfigCommonSchema.extend({
+  mcpToolSet: z
+    .union([ToolSetPreviewReferenceSchema, McpToolSetRuntimeConfigSchema])
+    .optional()
+    .meta({
+      description: '兼容历史 MCP 工具集快照或当前工具集引用'
+    }),
+  httpToolSet: z
+    .union([ToolSetPreviewReferenceSchema, HttpToolSetRuntimeConfigSchema])
+    .optional()
+    .meta({
+      description: '兼容历史 HTTP 工具集快照或当前工具集引用'
     })
 });
 export type NodeToolConfigType = z.infer<typeof NodeToolConfigTypeSchema>;
@@ -156,7 +179,10 @@ export const FlowNodeCommonTypeSchema = z.object({
   colorSchema: z.enum(NodeColorSchemaEnum).optional(), // color schema
   name: z.string(), // name
   intro: z.string().optional(), // template list intro
-  toolDescription: z.string().optional(), // tool description
+  toolDescription: z.string().optional().meta({
+    description: '已废弃：节点作为工具被调用时的能力说明',
+    deprecated: true
+  }),
   showStatus: BoolSchema.optional(), // chatting response step status
 
   version: z.string().optional(), // version
@@ -203,10 +229,15 @@ export const FlowNodeTemplateTypeSchema = FlowNodeCommonTypeSchema.extend({
 
   // Info
   isTool: BoolSchema.optional(), // can be connected by tool
+  /** 是否展示可编辑的工具参数面板，与自定义变量动态输入相互独立。 */
+  hasToolInput: BoolSchema.optional(),
 
   // Action
   forbidDelete: BoolSchema.optional(), // forbid delete
   unique: BoolSchema.optional(),
+
+  // 声明式展示控制：声明后在无上下文（侧边栏）或上下文不匹配时不展示
+  isShowInContext: z.custom<NodeTemplateContextPredicate>().optional(),
 
   diagram: z.string().optional(),
   courseUrl: z.string().optional(),
@@ -223,6 +254,25 @@ export const FlowNodeTemplateTypeSchema = FlowNodeCommonTypeSchema.extend({
 });
 export type FlowNodeTemplateType = z.infer<typeof FlowNodeTemplateTypeSchema>;
 
+/** 模板快捷添加和侧边栏过滤使用的画布上下文。 */
+export type NodeTemplateContext = {
+  /** 是否来自画布左侧节点侧边栏，而不是快捷添加/连线上下文。 */
+  isSidebar: boolean;
+  sourceNodeId: string | null;
+  sourceType: FlowNodeTypeEnum | null;
+  sourceIsTool: boolean;
+  /** 源节点是否已被 selectedTools 边挂载到工具调用（工具子流程）。 */
+  isConnectedTool: boolean;
+  handleId: string | null;
+  /** 源节点所在容器（loopRun/parallelRun 等）的节点类型。 */
+  parentType: FlowNodeTypeEnum | null;
+  /** 画布上是否已有工具调用节点。 */
+  hasToolNode: boolean;
+  /** 画布上是否已有循环执行节点。 */
+  hasLoopRunNode: boolean;
+};
+export type NodeTemplateContextPredicate = (ctx: NodeTemplateContext | null) => boolean;
+
 // Api response
 export const NodeTemplateListItemTypeSchema = z.object({
   id: z.string(), // 系统节点-系统节点的 id， 系统插件-插件的 id，团队应用的 id
@@ -235,7 +285,12 @@ export const NodeTemplateListItemTypeSchema = z.object({
   avatar: z.string().optional(),
   name: z.string(),
   intro: z.string().optional(), // template list intro
+  toolDescription: z.string().optional().meta({
+    description: '已废弃：节点作为工具被调用时的能力说明',
+    deprecated: true
+  }),
   isTool: BoolSchema.optional(),
+  hasToolInput: BoolSchema.optional(),
 
   authorAvatar: z.string().optional(),
   author: z.string().optional(),

@@ -1,18 +1,15 @@
-import { Box, Button, Flex, Input, Textarea } from '@chakra-ui/react';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyModal from '@fastgpt/web/components/v2/common/MyModal';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useTranslation } from 'next-i18next';
-import { useForm, useWatch } from 'react-hook-form';
+import React from 'react';
 import { createAppTypeMap } from '@/pageComponents/app/constants';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { useCallback, useMemo } from 'react';
-import { useContextSelector } from 'use-context-selector';
-import { AppListContext } from './context';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { postCreateApp } from '@/web/core/app/api';
-import { useRouter } from 'next/router';
 import ImportAppConfigEditor from '@/pageComponents/app/ImportAppConfigEditor';
+import {
+  isDashboardImportAppTypeAllowed,
+  type JsonImportModalScene,
+  parseDashboardImportConfig,
+  resolveImportAppType
+} from '@/pageComponents/dashboard/agent/utils/appTemplateParse';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
+import { getModelList } from '@/web/core/ai/model/modelData';
+import { postCreateApp } from '@/web/core/app/api';
 import { postFetchWorkflow } from '@/web/support/marketing/api';
 import {
   getUtmParams,
@@ -20,14 +17,19 @@ import {
   removeUtmParams,
   removeUtmWorkflow
 } from '@/web/support/marketing/utils';
+import { Box, Button, Flex, Input, Textarea } from '@chakra-ui/react';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
-import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
-import {
-  isDashboardImportAppTypeAllowed,
-  type JsonImportModalScene,
-  parseDashboardImportConfig,
-  resolveImportAppType
-} from '@/pageComponents/dashboard/agent/utils/appTemplateParse';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
+import { useCallback, useMemo } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
+import { useContextSelector } from 'use-context-selector';
+import { AppListContext } from './context';
 
 type FormType = {
   avatar: string;
@@ -150,7 +152,9 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
       const { workflow, appType } = await parseDashboardImportConfig({
         config,
         scene,
-        t
+        t,
+        models: await getModelList(),
+        modelCatalogLoaded: true
       });
 
       return postCreateApp({
@@ -159,7 +163,7 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
         name: (name || '').trim() || t('app:unnamed_app'),
         intro: (intro || '').trim(),
         type: appType,
-        modules: workflow.nodes,
+        nodes: workflow.nodes,
         edges: workflow.edges || [],
         chatConfig: workflow.chatConfig,
         utmParams: getUtmParams()

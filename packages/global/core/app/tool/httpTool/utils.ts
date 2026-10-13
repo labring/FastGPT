@@ -9,7 +9,7 @@ import {
   jsonSchema2NodeOutput
 } from '../../jsonschema';
 import { type StoreSecretValueType } from '../../../../common/secret/type';
-import { type JsonSchemaPropertiesItemType } from '../../jsonschema';
+import { type JSONSchemaInputType, type JsonSchemaPropertiesItemType } from '../../jsonschema';
 import {
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum,
@@ -60,6 +60,26 @@ export const jsonSchemaProperty2ManualHttpToolValueType = (
     schema
   });
 };
+
+/** Read the explicit HTTP input mode, falling back to the legacy description marker. */
+export const isHttpToolInputAgentGenerated = (
+  property: Pick<JsonSchemaPropertiesItemType, 'isToolParam' | 'x-tool-description'>
+): boolean => property.isToolParam ?? Boolean(property['x-tool-description']);
+
+/** Persist the HTTP input mode while retaining the legacy description marker. */
+export const updateHttpToolInputProperty = ({
+  key,
+  property,
+  enabled
+}: {
+  key: string;
+  property: JsonSchemaPropertiesItemType;
+  enabled: boolean;
+}): JsonSchemaPropertiesItemType => ({
+  ...property,
+  'x-tool-description': enabled ? property.description || key : '',
+  isToolParam: enabled
+});
 
 export const getHTTPToolSetRuntimeNode = ({
   name,
@@ -168,8 +188,56 @@ export const getHTTPToolRuntimeSchemas = ({
     !!inputSchema?.properties && Object.keys(inputSchema.properties).length > 0;
 
   return {
+    // 有效 requestSchema 是执行契约，不能把展示用 inputSchema 的字段或必填约束合入。
     requestSchema: currentRequestSchema,
     inputSchema: hasInputProperties ? inputSchema : currentRequestSchema
+  };
+};
+
+/**
+ * 仅依据 OpenAPI 原文的 Query/Path/Header 声明补齐 JSON Body 的调用契约。
+ * 不读取编辑器 inputSchema；保留已有属性约束，也不凭空添加 required: []。
+ * 导入和历史工具回源共用此规则，避免两种运行入口产生不同的必填参数。
+ */
+export const completeOpenAPIRequestSchema = ({
+  requestSchema,
+  parameters = []
+}: {
+  requestSchema?: JSONSchemaInputType;
+  parameters?: PathDataType['params'];
+}): JSONSchemaInputType | undefined => {
+  const declaredParameters = parameters.filter(
+    (parameter) =>
+      parameter &&
+      typeof parameter.name === 'string' &&
+      parameter.schema &&
+      ['query', 'path', 'header'].includes(parameter.in)
+  );
+  if (!requestSchema || declaredParameters.length === 0) return requestSchema;
+
+  const required = [
+    ...new Set([
+      ...(requestSchema.required ?? []),
+      ...declaredParameters
+        .filter((parameter) => parameter.required === true || parameter.in === 'path')
+        .map((parameter) => parameter.name)
+    ])
+  ];
+  return {
+    ...requestSchema,
+    properties: {
+      ...Object.fromEntries(
+        declaredParameters.map((parameter) => [
+          parameter.name,
+          {
+            ...parameter.schema,
+            ...(parameter.description ? { description: parameter.description } : {})
+          }
+        ])
+      ),
+      ...requestSchema.properties
+    },
+    ...(required.length ? { required } : {})
   };
 };
 
@@ -206,7 +274,7 @@ export const pathData2ToolList = async (
 
       if (pathItem.params && Array.isArray(pathItem.params)) {
         pathItem.params.forEach((param) => {
-          if (param.name && param.schema) {
+          if (param.in !== 'body' && param.name && param.schema) {
             const description = param.description || param.schema.description || '';
             requestProperties[param.name] = {
               ...param.schema,
@@ -214,6 +282,7 @@ export const pathData2ToolList = async (
               isToolParam: true
             };
             inputProperties[param.name] = {
+              ...param.schema,
               type: param.schema.type || 'any',
               description,
               'x-tool-description': param.description || param.name,
@@ -240,6 +309,7 @@ export const pathData2ToolList = async (
         if (requestSchema.properties) {
           Object.entries(requestSchema.properties).forEach(([key, value]: [string, any]) => {
             inputProperties[key] = {
+              ...value,
               type: value.type || 'any',
               description: value.description || '',
               'x-tool-description': value.description || key,
@@ -279,7 +349,9 @@ export const pathData2ToolList = async (
         description: pathItem.description || pathItem.name,
         path: pathItem.path,
         method: pathItem.method?.toLowerCase(),
-        requestSchema,
+        requestSchema: pathItem.request?.content?.['application/json']?.schema
+          ? completeOpenAPIRequestSchema({ requestSchema, parameters: pathItem.params })
+          : requestSchema,
         inputSchema: {
           type: 'object',
           properties: inputProperties,

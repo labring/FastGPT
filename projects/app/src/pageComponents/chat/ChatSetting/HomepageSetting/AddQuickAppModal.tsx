@@ -1,8 +1,8 @@
-import { getMyApps, getAppBasicInfoByIds } from '@/web/core/app/api';
+import { getMyAppsV2 } from '@/web/core/app/api';
 import { Box, Button, Grid, GridItem, HStack, VStack, Flex, Checkbox } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import type { App } from '@/pageComponents/chat/ChatSetting/AppTree';
@@ -18,6 +18,8 @@ import { getAppFolderPath } from '@/web/core/app/api/app';
 import { ChevronRightIcon } from '@chakra-ui/icons';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { MAX_QUICK_APP_COUNT } from './constants';
+import { useQuickAppInfo } from './useQuickAppInfo';
+import { useVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 
 type Props = {
   selectedIds: string[];
@@ -30,7 +32,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
 
   const [localSelectedIds, setLocalSelectedIds] = useState<string[]>(selectedIds);
 
-  const [selectedInfo, setSelectedInfo] = useState<Record<string, ChatQuickAppType>>({});
+  const { selectedInfo, cacheApp } = useQuickAppInfo(localSelectedIds);
 
   const { watch, setValue } = useForm<{ name: string }>({
     defaultValues: {
@@ -42,35 +44,33 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
   const [parentId, setParentId] = useState<ParentIdType>('');
 
   const {
-    data: appData = { apps: [], paths: [] as { parentId: string; parentName: string }[] },
-    loading: isFetching
-  } = useRequest(
-    async () => {
-      const [apps, paths] = await Promise.all([
-        getMyApps({
-          parentId,
-          searchKey: searchAppName,
-          type: [
-            AppTypeEnum.folder,
-            AppTypeEnum.simple,
-            AppTypeEnum.chatAgent,
-            AppTypeEnum.workflow
-          ]
-        }),
-        searchAppName.trim()
-          ? Promise.resolve([])
-          : getAppFolderPath({ sourceId: parentId, type: 'current' })
-      ]);
-      return { apps, paths };
+    scrollDataList,
+    totalData,
+    ScrollList,
+    isLoading: loadingApps
+  } = useVirtualList(getMyAppsV2, {
+    params: {
+      parentId,
+      searchKey: searchAppName,
+      type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.chatAgent, AppTypeEnum.workflow]
     },
+    pageSize: 50,
+    itemHeight: 40,
+    refreshDeps: [parentId, searchAppName],
+    throttleWait: 500
+  });
+  const availableApps = scrollDataList.map(({ data }) => data);
+  const isFetching = loadingApps && totalData.length === 0;
+  const { data: paths = [] } = useRequest(
+    () =>
+      searchAppName.trim()
+        ? Promise.resolve([])
+        : getAppFolderPath({ sourceId: parentId, type: 'current' }),
     {
       manual: false,
-      throttleWait: 500,
       refreshDeps: [parentId, searchAppName]
     }
   );
-  const availableApps = appData.apps;
-  const paths = appData.paths;
 
   const availableAppsMap = useMemo(() => {
     const map = new Map<string, App>();
@@ -80,30 +80,16 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
 
   const handleCheck = useCallback(
     (id: string) => {
-      setLocalSelectedIds((prev) => {
-        const exists = prev.includes(id);
-        if (exists) {
-          // remove id and its cached info
-          setSelectedInfo((old) => {
-            const next: Record<string, ChatQuickAppType> = { ...old };
-            delete next[id];
-            return next;
-          });
-          return prev.filter((v) => v !== id);
-        }
-        if (prev.length >= MAX_QUICK_APP_COUNT) return prev;
-        // add id and cache its info if available from current list
-        const app = availableAppsMap.get(id);
-        if (app) {
-          setSelectedInfo((old) => ({
-            ...old,
-            [id]: { _id: id, name: app.name, avatar: app.avatar }
-          }));
-        }
-        return [...prev, id];
-      });
+      if (localSelectedIds.includes(id)) {
+        setLocalSelectedIds((previous) => previous.filter((value) => value !== id));
+        return;
+      }
+      if (localSelectedIds.length >= MAX_QUICK_APP_COUNT) return;
+      const app = availableAppsMap.get(id);
+      if (app) cacheApp({ _id: id, name: app.name, avatar: app.avatar });
+      setLocalSelectedIds((previous) => [...previous, id]);
     },
-    [availableAppsMap]
+    [availableAppsMap, cacheApp, localSelectedIds]
   );
 
   const checkedQuickApps = useMemo<ChatQuickAppType[]>(() => {
@@ -117,22 +103,6 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
       })
       .filter(Boolean) as ChatQuickAppType[];
   }, [localSelectedIds, selectedInfo, availableAppsMap]);
-
-  useEffect(() => {
-    const missing = localSelectedIds.filter((id) => !selectedInfo[id]);
-    if (missing.length === 0) return;
-    getAppBasicInfoByIds(missing)
-      .then((list) => {
-        setSelectedInfo((old) => {
-          const next: Record<string, ChatQuickAppType> = { ...old };
-          list.forEach((item) => {
-            next[item.id] = { _id: item.id, name: item.name, avatar: item.avatar };
-          });
-          return next;
-        });
-      })
-      .catch(() => {});
-  }, [localSelectedIds, selectedInfo]);
 
   const { loading: isUpdating, runAsync: confirmSelect } = useRequest(
     async () => {
@@ -235,15 +205,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                   )}
                 </Box>
 
-                <VStack
-                  align="stretch"
-                  spacing={1.5}
-                  flex={1}
-                  px={4}
-                  overflowY="auto"
-                  h={0}
-                  minH={0}
-                >
+                <ScrollList flex={1} px={4} minH={0}>
                   {availableApps.length === 0 && !isFetching && (
                     <EmptyTip text={t('common:folder.empty')} />
                   )}
@@ -305,7 +267,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                       </Flex>
                     </Box>
                   ))}
-                </VStack>
+                </ScrollList>
               </Flex>
             </GridItem>
 

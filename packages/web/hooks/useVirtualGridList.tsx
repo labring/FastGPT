@@ -1,9 +1,11 @@
 import { Box } from '@chakra-ui/react';
-import {
+import React, {
+  Fragment,
   type ReactNode,
   type RefObject,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState
@@ -14,6 +16,8 @@ type UseVirtualGridListParams<T> = {
   list: T[];
   /** 列表上下文变化时用于重置虚拟窗口，例如目录、搜索词或 tab 变化。 */
   listKey: string;
+  /** 实际承载列表滚动的容器，必须与分页 ScrollData 使用同一个 ref。 */
+  scrollContainerRef: RefObject<HTMLElement | null>;
   /** Grid 中不属于 list 的固定卡片数量，例如“新建”入口。 */
   reservedSlotCount?: number;
   /** 每次加载的行数批次 */
@@ -30,6 +34,10 @@ type UseVirtualGridListParams<T> = {
   overscanRows?: number;
   /** 最大同时渲染行数，防止内存溢出 */
   maxRenderRows?: number;
+  /** 正在加载时追加到列表尾部的占位卡片数量 */
+  loadingItemCount?: number;
+  /** 渲染占位卡片，参数为占位卡片在完整列表中的索引 */
+  renderLoadingItem?: (index: number) => ReactNode;
 };
 
 type UseVirtualGridListReturn<T> = {
@@ -46,6 +54,9 @@ type VirtualGridItemsState<T> = {
   topPlaceholderHeight: number;
   bottomPlaceholderHeight: number;
   loadMoreRef: RefObject<HTMLDivElement>;
+  loadingStartIndex: number;
+  loadingEndIndex: number;
+  renderLoadingItem?: (index: number) => ReactNode;
 };
 
 type VirtualGridItemsProps<T> = VirtualGridItemsState<T> & {
@@ -84,7 +95,10 @@ const VirtualGridItems = <T,>({
   hasMore,
   topPlaceholderHeight,
   bottomPlaceholderHeight,
-  loadMoreRef
+  loadMoreRef,
+  loadingStartIndex,
+  loadingEndIndex,
+  renderLoadingItem
 }: VirtualGridItemsProps<T>) => {
   return (
     <>
@@ -96,6 +110,12 @@ const VirtualGridItems = <T,>({
       )}
       {/* 渲染当前视口内的可见项 */}
       {visibleList.map(renderItem)}
+      {renderLoadingItem &&
+        Array.from({ length: Math.max(loadingEndIndex - loadingStartIndex, 0) }).map((_, index) => (
+          <Fragment key={`loading-${loadingStartIndex + index}`}>
+            {renderLoadingItem(loadingStartIndex + index)}
+          </Fragment>
+        ))}
       {/* 底部占位符及加载更多触发器 */}
       {hasMore && (
         <Box
@@ -121,6 +141,7 @@ const VirtualGridItems = <T,>({
 export function useVirtualGridList<T>({
   list,
   listKey,
+  scrollContainerRef,
   reservedSlotCount = 0,
   batchRows = defaultBatchRows,
   defaultColumnCount = defaultGridColumnCount,
@@ -128,7 +149,9 @@ export function useVirtualGridList<T>({
   estimatedRowGap = defaultEstimatedRowGap,
   preloadRootMargin = defaultPreloadRootMargin,
   overscanRows = defaultOverscanRows,
-  maxRenderRows
+  maxRenderRows,
+  loadingItemCount = 0,
+  renderLoadingItem
 }: UseVirtualGridListParams<T>): UseVirtualGridListReturn<T> {
   const gridRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -140,8 +163,26 @@ export function useVirtualGridList<T>({
     startRow: 0,
     endRow: batchRows
   });
+  const windowRowsStateRef = useRef(windowRowsState);
+  const rowHeightRef = useRef(estimatedRowHeight);
+  const rowGapRef = useRef(estimatedRowGap);
+  const pendingScrollAnchorRef = useRef<{
+    scrollTop: number;
+    topPlaceholderHeight: number;
+  }>();
+  const overflowAnchorStateRef = useRef<{
+    element: HTMLElement;
+    value: string;
+  }>();
+
   // 计算最大渲染行数，至少为 batchRows，默认不超过 batchRows * 2 或 30
   const resolvedMaxRenderRows = Math.max(maxRenderRows ?? Math.max(batchRows * 2, 30), batchRows);
+  const resolvedLoadingItemCount = Math.max(loadingItemCount, 0);
+
+  // 计算总槽位数（数据项 + 固定项）
+  const totalSlotCount = list.length + resolvedLoadingItemCount + reservedSlotCount;
+  // 计算总行数
+  const totalRows = Math.ceil(totalSlotCount / gridColumnCount);
 
   /**
    * 更新网格度量信息（列数、行高、行间距）
@@ -150,6 +191,8 @@ export function useVirtualGridList<T>({
   const updateGridMetrics = useCallback(() => {
     const grid = gridRef.current;
     if (!grid) return;
+
+    const scrollContainer = scrollContainerRef.current;
 
     const gridStyle = getComputedStyle(grid);
     const gridTemplateColumns = gridStyle.gridTemplateColumns;
@@ -164,7 +207,20 @@ export function useVirtualGridList<T>({
     // 获取行间距
     const nextRowGap = Number.parseFloat(gridStyle.rowGap);
     if (!Number.isNaN(nextRowGap)) {
-      setRowGap((prev) => (prev === nextRowGap ? prev : nextRowGap));
+      setRowGap((prev) => {
+        if (prev === nextRowGap) return prev;
+        if (scrollContainer) {
+          pendingScrollAnchorRef.current = {
+            scrollTop: scrollContainer.scrollTop,
+            topPlaceholderHeight: getVirtualPlaceholderHeight(
+              windowRowsStateRef.current.startRow,
+              rowHeightRef.current,
+              rowGapRef.current
+            )
+          };
+        }
+        return nextRowGap;
+      });
     }
 
     // 通过第一个带有 data-virtual-item 标记的元素测量实际行高
@@ -172,10 +228,47 @@ export function useVirtualGridList<T>({
     if (measuredNode instanceof HTMLElement) {
       const nextRowHeight = measuredNode.getBoundingClientRect().height;
       if (nextRowHeight > 0) {
-        setRowHeight((prev) => (prev === nextRowHeight ? prev : nextRowHeight));
+        setRowHeight((prev) => {
+          if (prev === nextRowHeight) return prev;
+          if (scrollContainer) {
+            pendingScrollAnchorRef.current = {
+              scrollTop: scrollContainer.scrollTop,
+              topPlaceholderHeight: getVirtualPlaceholderHeight(
+                windowRowsStateRef.current.startRow,
+                rowHeightRef.current,
+                rowGapRef.current
+              )
+            };
+          }
+          return nextRowHeight;
+        });
       }
     }
-  }, [defaultColumnCount]);
+  }, [defaultColumnCount, scrollContainerRef]);
+
+  useLayoutEffect(() => {
+    windowRowsStateRef.current = windowRowsState;
+    rowHeightRef.current = rowHeight;
+    rowGapRef.current = rowGap;
+  }, [rowGap, rowHeight, windowRowsState]);
+
+  useLayoutEffect(() => {
+    const anchor = pendingScrollAnchorRef.current;
+    const scrollContainer = scrollContainerRef.current;
+    if (!anchor || !scrollContainer) return;
+
+    const nextTopPlaceholderHeight = getVirtualPlaceholderHeight(
+      windowRowsStateRef.current.startRow,
+      rowHeightRef.current,
+      rowGapRef.current
+    );
+    const scrollDelta = nextTopPlaceholderHeight - anchor.topPlaceholderHeight;
+
+    if (scrollDelta !== 0) {
+      scrollContainer.scrollTop = Math.max(anchor.scrollTop + scrollDelta, 0);
+    }
+    pendingScrollAnchorRef.current = undefined;
+  }, [rowGap, rowHeight, scrollContainerRef]);
 
   // 监听网格尺寸变化和窗口 resize，更新度量信息
   useEffect(() => {
@@ -199,11 +292,6 @@ export function useVirtualGridList<T>({
       window.removeEventListener('resize', updateGridMetrics);
     };
   }, [list.length, updateGridMetrics]);
-
-  // 计算总槽位数（数据项 + 固定项）
-  const totalSlotCount = list.length + reservedSlotCount;
-  // 计算总行数
-  const totalRows = Math.ceil(totalSlotCount / gridColumnCount);
 
   /**
    * 计算首行需要常驻渲染的数据项数量
@@ -256,11 +344,24 @@ export function useVirtualGridList<T>({
         return;
       }
 
-      const rect = grid.getBoundingClientRect();
-      // 计算虚拟视口相对于固定区域顶部的偏移量
-      const virtualViewportTop = Math.max(-rect.top - fixedSectionOffset, 0);
+      const scrollContainer = scrollContainerRef.current;
+      if (!scrollContainer) return;
+
+      const gridRect = grid.getBoundingClientRect();
+      const scrollContainerRect = scrollContainer.getBoundingClientRect();
+      const gridContentTop = gridRect.top - scrollContainerRect.top + scrollContainer.scrollTop;
+
+      // Use the actual scroll container viewport instead of the browser viewport.
+      const virtualViewportTop = Math.max(
+        scrollContainer.scrollTop - gridContentTop - fixedSectionOffset,
+        0
+      );
       const virtualViewportBottom = Math.max(
-        window.innerHeight - rect.top - fixedSectionOffset + (usePreload ? preloadBottomMargin : 0),
+        scrollContainer.scrollTop +
+          scrollContainer.clientHeight -
+          gridContentTop -
+          fixedSectionOffset +
+          (usePreload ? preloadBottomMargin : 0),
         0
       );
 
@@ -311,6 +412,21 @@ export function useVirtualGridList<T>({
         nextEndRow = Math.min(centeredStartRow + resolvedMaxRenderRows, totalVirtualRows);
       }
 
+      const currentWindowRows = windowRowsStateRef.current;
+      const willUpdateWindow =
+        currentWindowRows.key !== listKey ||
+        currentWindowRows.startRow !== nextStartRow ||
+        currentWindowRows.endRow !== nextEndRow;
+
+      if (willUpdateWindow) {
+        const activeElement = document.activeElement;
+
+        // Chrome 会在虚拟窗口卸载焦点节点时尝试恢复其可见位置，导致滚动位置回跳。
+        if (activeElement instanceof HTMLElement && grid.contains(activeElement)) {
+          activeElement.blur();
+        }
+      }
+
       // 更新状态，仅在值变化时触发重渲染
       setWindowRowsState((state) => {
         if (
@@ -336,21 +452,61 @@ export function useVirtualGridList<T>({
       preloadBottomMargin,
       resolvedMaxRenderRows,
       rowFullHeight,
-      totalVirtualRows
+      totalVirtualRows,
+      scrollContainerRef
     ]
   );
 
   const { schedulePreloadSyncWindow: schedulePreloadSyncWindowRows } = useVirtualScrollWindow({
-    containerRef: gridRef,
+    containerRef: scrollContainerRef,
     syncWindow: syncWindowRows,
-    listenToWindow: true
+    listenToWindow: false
   });
 
   // 当列表关键数据变化时，立即同步一次窗口
   useEffect(() => {
     updateGridMetrics();
     schedulePreloadSyncWindowRows();
-  }, [leadingItemCount, list.length, listKey, schedulePreloadSyncWindowRows, updateGridMetrics]);
+  }, [
+    leadingItemCount,
+    list.length,
+    listKey,
+    resolvedLoadingItemCount,
+    schedulePreloadSyncWindowRows,
+    updateGridMetrics
+  ]);
+
+  useLayoutEffect(() => {
+    const nextScrollContainer = scrollContainerRef.current;
+    const currentState = overflowAnchorStateRef.current;
+
+    if (currentState?.element === nextScrollContainer) return;
+
+    if (currentState) {
+      currentState.element.style.overflowAnchor = currentState.value;
+    }
+
+    if (!nextScrollContainer) {
+      overflowAnchorStateRef.current = undefined;
+      return;
+    }
+
+    overflowAnchorStateRef.current = {
+      element: nextScrollContainer,
+      value: nextScrollContainer.style.overflowAnchor
+    };
+    nextScrollContainer.style.overflowAnchor = 'none';
+  });
+
+  useLayoutEffect(() => {
+    return () => {
+      const currentState = overflowAnchorStateRef.current;
+      if (!currentState) return;
+
+      currentState.element.style.overflowAnchor = currentState.value;
+      overflowAnchorStateRef.current = undefined;
+    };
+  }, [scrollContainerRef]);
 
   // 获取当前有效的窗口行状态，如果 key 不匹配则重置
   const activeWindowRows =
@@ -367,8 +523,13 @@ export function useVirtualGridList<T>({
   const endRow = Math.min(Math.max(activeWindowRows.endRow, startRow), totalVirtualRows);
 
   // 计算可见项在原始 list 中的索引范围
-  const visibleStartIndex = leadingItemCount + startRow * gridColumnCount;
-  const visibleEndIndex = Math.min(leadingItemCount + endRow * gridColumnCount, list.length);
+  const virtualStartIndex = startRow * gridColumnCount;
+  const virtualEndIndex = endRow * gridColumnCount;
+  const visibleStartIndex = leadingItemCount + virtualStartIndex;
+  const visibleEndIndex = Math.min(leadingItemCount + virtualEndIndex, list.length);
+  const virtualListLength = Math.max(list.length - leadingItemCount, 0);
+  const loadingStartIndex = Math.max(virtualStartIndex - virtualListLength, 0);
+  const loadingEndIndex = Math.min(virtualEndIndex - virtualListLength, resolvedLoadingItemCount);
 
   // 首行固定项列表
   const leadingList = useMemo(() => list.slice(0, leadingItemCount), [leadingItemCount, list]);
@@ -397,9 +558,21 @@ export function useVirtualGridList<T>({
       hasMore,
       topPlaceholderHeight,
       bottomPlaceholderHeight,
-      loadMoreRef
+      loadMoreRef,
+      loadingStartIndex,
+      loadingEndIndex,
+      renderLoadingItem
     }),
-    [bottomPlaceholderHeight, hasMore, leadingList, topPlaceholderHeight, visibleList]
+    [
+      bottomPlaceholderHeight,
+      hasMore,
+      leadingList,
+      loadingEndIndex,
+      loadingStartIndex,
+      renderLoadingItem,
+      topPlaceholderHeight,
+      visibleList
+    ]
   );
 
   // 渲染函数，接收 renderItem 回调
@@ -415,7 +588,8 @@ export function useVirtualGridList<T>({
     if (!hasMore) return;
 
     const target = loadMoreRef.current;
-    if (!target || typeof IntersectionObserver === 'undefined') return;
+    const scrollContainer = scrollContainerRef.current;
+    if (!target || !scrollContainer || typeof IntersectionObserver === 'undefined') return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -424,6 +598,7 @@ export function useVirtualGridList<T>({
         }
       },
       {
+        root: scrollContainer,
         rootMargin: preloadRootMargin,
         threshold: 0.1
       }
@@ -434,7 +609,13 @@ export function useVirtualGridList<T>({
     return () => {
       observer.disconnect();
     };
-  }, [hasMore, preloadRootMargin, schedulePreloadSyncWindowRows, visibleList.length]);
+  }, [
+    hasMore,
+    preloadRootMargin,
+    schedulePreloadSyncWindowRows,
+    scrollContainerRef,
+    visibleList.length
+  ]);
 
   return {
     gridRef,

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import { getIsMemberSyncMode, getRegisterMethods } from '@/web/common/system/utils';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 
 const createFeConfigs = (overrides: Partial<FastGPTFeConfigsType>): FastGPTFeConfigsType => ({
   uploadFileMaxAmount: 10,

@@ -115,6 +115,7 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
 
   exportDOM(): DOMExportOutput {
     const element = document.createElement('span');
+    element.textContent = this.getTextContent();
     return { element };
   }
 
@@ -131,7 +132,7 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
   }
 
   isKeyboardSelectable(): boolean {
-    return true;
+    return false;
   }
 
   getSkillKey(): string {

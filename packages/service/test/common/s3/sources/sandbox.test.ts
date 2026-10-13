@@ -15,7 +15,7 @@ const createSourceWithoutConstructor = (exists: boolean) => {
   return source;
 };
 
-describe('S3SandboxSource migration helpers', () => {
+describe('S3SandboxSource archive helpers', () => {
   it('stores v2 archives under sandbox/archive', async () => {
     const source = createSourceWithoutConstructor(false);
 
@@ -39,24 +39,6 @@ describe('S3SandboxSource migration helpers', () => {
     });
     expect(source.removeObject).toHaveBeenCalledWith('sandbox/archive/sandbox-2/package.zip');
     expect(source.isObjectExists).toHaveBeenCalledWith('sandbox/archive/sandbox-2/package.zip');
-  });
-
-  it('keeps Legacy archives under agent-sandbox', async () => {
-    const source = createSourceWithoutConstructor(false);
-
-    await S3SandboxSource.prototype.uploadLegacyWorkspaceArchive.call(source, {
-      sandboxId: 'legacy-1',
-      body: Buffer.from('zip')
-    });
-    await S3SandboxSource.prototype.deleteLegacyWorkspaceArchiveNow.call(source, {
-      sandboxId: 'legacy-1'
-    });
-
-    expect(source.client.uploadObject).toHaveBeenCalledWith(
-      expect.objectContaining({ key: 'agent-sandbox/legacy-1/package.zip' })
-    );
-    expect(source.removeObject).toHaveBeenCalledWith('agent-sandbox/legacy-1/package.zip');
-    expect(source.isObjectExists).toHaveBeenCalledWith('agent-sandbox/legacy-1/package.zip');
   });
 
   it('fails when the archive still exists after deletion', async () => {

@@ -11,7 +11,8 @@ import {
   getAgentSandboxMissingRequiredEnvKeys,
   getRuntimeEnv,
   isAgentSandboxProvider,
-  validateS3Env
+  validateS3Env,
+  validateAgentUsersEnv
 } from './env.util';
 import {
   LogLevelSchema,
@@ -30,7 +31,9 @@ export const serviceEnv = createEnv({
   skipValidation: isPhaseProductionBuild,
   server: {
     // ==================== 基础配置 ====================
-    DB_MAX_LINK: IntSchema.min(1).default(5),
+    DB_MAX_LINK: NumSchema.int()
+      .default(10)
+      .transform((value) => Math.min(1000, Math.max(10, value))),
 
     // ==================== 密钥 ====================
     ROOT_KEY: z
@@ -53,13 +56,13 @@ export const serviceEnv = createEnv({
     CODE_SANDBOX_TOKEN: z.string().default('codesandbox'),
 
     // AI Proxy
-    AIPROXY_API_ENDPOINT: UrlSchema.optional(),
-    AIPROXY_API_TOKEN: z.string().optional(),
-    OPENAI_BASE_URL: UrlSchema.default('https://api.openai.com/v1'),
-    CHAT_API_KEY: z.string().optional(),
+    AIPROXY_API_ENDPOINT: UrlSchema,
+    AIPROXY_API_TOKEN: z.string().trim().min(1),
 
     PRO_URL: UrlSchema.optional(),
     PRO_TOKEN: z.string().min(32, 'PRO_TOKEN must be at least 32 characters').optional(),
+    AGENT_USERS: z.string().optional(),
+    DEFAULT_AGENT_PSW: z.string().optional(),
 
     // 官网访客归因 CRM；未配置地址时不进行身份上报
     CRM_API_URL: UrlSchema.optional(),
@@ -84,6 +87,9 @@ export const serviceEnv = createEnv({
     // Agent sandbox
     AGENT_SANDBOX_PROVIDER: z.enum(agentSandboxProviderList).optional().meta({
       description: 'Agent 沙箱提供方，可选 sealosdevbox 或 opensandbox；为空时不启用沙箱'
+    }),
+    AGENT_SANDBOX_SHOW_FREE_TIP: BoolSchema.default(false).meta({
+      description: '是否展示虚拟机“限时免费”标签；默认为 false，为空或未配置时不展示'
     }),
     // Sealos配置
     AGENT_SANDBOX_SEALOS_BASEURL: UrlSchema.optional().meta({
@@ -167,6 +173,29 @@ export const serviceEnv = createEnv({
     TEXTIN_SECRET_CODE: z.string().optional().meta({
       description: '合合信息 Textin 服务 Secret Code'
     }),
+    DOCUMENT_PARSE_PROVIDER: z.enum(['', 'sangfor']).default('').meta({
+      description:
+        '文档解析 provider，默认不启用；sangfor 表示命中的扩展名直接走 Sangfor，覆盖「增强解析」开关'
+    }),
+    SANGFOR_PARSE_EXTENSIONS: z.string().default('pdf').meta({
+      description: 'Sangfor 接管的扩展名（逗号分隔，默认 pdf）；未命中的文件继续原解析链'
+    }),
+    SANGFOR_PARSE_TIMEOUT_SECONDS: IntSchema.min(1).max(7200).default(600).meta({
+      description: 'Sangfor 文档解析请求超时时间（秒），默认 10 分钟，最大 2 小时'
+    }),
+
+    // ==================== 智能分块 ====================
+    // 配置后，导入文档(文本/PDF/网页)当 chunkSettingMode=intelligent(智能分块) 时，把「文本→chunk」委托给 sangfor 服务。
+    // 未配置时智能分块不可用,已启用智能分块的集合导入会显式报错,不影响平台其他分块功能。
+    SANGFOR_CHUNK_URL: UrlSchema.optional().meta({
+      description: 'sangfor 智能分块服务地址'
+    }),
+    SANGFOR_CHUNK_KEY: z.string().optional().meta({
+      description: 'sangfor 智能分块服务密钥(Bearer Token)'
+    }),
+    SANGFOR_CHUNK_TIMEOUT_MINUTES: IntSchema.min(1).default(60).meta({
+      description: 'sangfor 智能分块服务超时时间(分钟)'
+    }),
 
     // ==================== 数据库与缓存 ====================
     // Redisg
@@ -204,6 +233,10 @@ export const serviceEnv = createEnv({
     SEEKDB_URL: z.string().optional().meta({ description: 'SeekDB 向量库连接参数' }),
     MILVUS_ADDRESS: z.string().optional().meta({ description: 'Milvus 向量库连接参数' }),
     MILVUS_TOKEN: z.string().optional().meta({ description: 'Milvus 向量库Token' }),
+    // ==================== 全文检索 ====================
+    MILVUS_LANGUAGE_IDENTIFIER: z.enum(['lingua', 'whatlang']).default('lingua').meta({
+      description: 'Milvus 语言识别引擎(BM25 analyzer): lingua(默认) | whatlang'
+    }),
     OPENGAUSS_URL: z.string().optional().meta({ description: 'openGauss 向量库连接参数' }),
     HNSW_EF_SEARCH: IntSchema.min(1).default(100).meta({
       description: '向量检索 hnsw ef_search 参数，仅对 PG / OB / OpenGauss 生效'
@@ -229,6 +262,22 @@ export const serviceEnv = createEnv({
       }),
     STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS: IntSchema.min(1).default(300).meta({
       description: 'short-redirect 模式下临时 S3 预签名下载链接 TTL（秒）'
+    }),
+    DATASET_ARCHIVE_MAX_FILES: IntSchema.min(1).default(2000).meta({
+      description: '知识库批量下载单个 ZIP 最多包含的原始文件数'
+    }),
+    DATASET_ARCHIVE_MAX_SOURCE_SIZE_MB: IntSchema.min(1).default(2048).meta({
+      description: '知识库批量下载归档前原始文件逻辑总大小上限（MiB）'
+    }),
+    DATASET_ARCHIVE_MAX_CONCURRENCY: IntSchema.min(1).default(4).meta({
+      description: '知识库批量下载在 Redis 集群中的同时归档数'
+    }),
+    DATASET_ARCHIVE_PREPARE_TIMEOUT_SECONDS: IntSchema.min(1).default(300).meta({
+      description: '知识库批量下载发送响应头前的最长准备时间（秒）'
+    }),
+    // 聊天记录中持久化文件访问短链的有效期。
+    FILE_URL_EXPIRED_DAYS: NumSchema.positive().default(90).meta({
+      description: '聊天记录中文件访问短链有效期（天），支持小数'
     }),
     STORAGE_S3_ENDPOINT: UrlSchema.default('http://localhost:9000'),
     STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH: z.string().optional(),
@@ -264,6 +313,10 @@ export const serviceEnv = createEnv({
     TRACING_OTEL_URL: UrlSchema.optional(),
     TRACING_OTEL_SAMPLE_RATIO: NumSchema.min(0).max(1).optional(),
 
+    LANGFUSE_SECRET_KEY: z.string().optional(),
+    LANGFUSE_PUBLIC_KEY: z.string().optional(),
+    LANGFUSE_BASE_URL: UrlSchema.optional(),
+
     // ==================== 域名与前端 ====================
     FE_DOMAIN: UrlSchema.meta({
       description:
@@ -284,6 +337,9 @@ export const serviceEnv = createEnv({
     CHECK_INTERNAL_IP: BoolSchema.default(false).meta({ description: '是否启用内网 IP 检查' }),
     AUTH_COOKIE_SECURE: BoolSchema.default(false).meta({
       description: '是否强制为登录 Cookie 添加 Secure 属性，仅允许通过 HTTPS 传输'
+    }),
+    CSRF_ENABLED: BoolSchema.default(true).meta({
+      description: '是否启用 CSRF Web 请求标记校验'
     }),
     TRUSTED_PROXY_ENABLE: BoolSchema.default(false).meta({
       description:
@@ -306,6 +362,9 @@ export const serviceEnv = createEnv({
     }),
 
     //==================== Beta features ====================
+    DATASET_SYNONYM_ENABLED: BoolSchema.default(false).meta({
+      description: '是否启用知识库同义词能力；关闭时不读取同义词配置或执行查询扩展'
+    }),
     AGENT_ENGINE: z.enum(['fastAgent', 'piAgent']).default('fastAgent').meta({
       description: 'Agent 引擎选择：fastAgent（FastGPT agent loop）| piAgent（pi-agent-core 引擎）'
     }),
@@ -315,16 +374,19 @@ export const serviceEnv = createEnv({
     DISABLE_CACHE: BoolSchema.default(false).meta({
       description: '是否禁用系统内存缓存'
     }),
+    DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED: BoolSchema.default(false).meta({
+      description: '新建团队时是否为默认全员组授予应用、Skill 和知识库创建权限'
+    }),
 
     // ==================== 并发控制与限制 ====================
     WECHAT_CHANNEL_CONCURRENCY: IntSchema.min(10).default(1000).meta({
       description: '微信渠道 poll worker 并发数'
     }),
-    PARSE_FILE_WORKERS: IntSchema.min(1).max(1000).default(5).meta({
-      description: '文件解析 worker 常驻线程数'
+    SYSTEM_MIGRATION_BATCH_SIZE: IntSchema.min(50).max(1000).default(100).meta({
+      description: '系统迁移任务每批处理的记录数'
     }),
-    PARSE_FILE_WORKER_MEMORY_LIMIT_MB: IntSchema.min(128).default(512).meta({
-      description: '单个文件解析 worker 的 V8 老生代内存上限（MB）'
+    SYSTEM_MIGRATION_DELAY_SECONDS: IntSchema.min(0).default(0).meta({
+      description: '配置了 delay 的系统迁移任务延迟执行时间（秒），默认 0 为不延迟'
     }),
     XLSX_PARSE_MAX_ROWS: IntSchema.min(1).max(1_048_576).default(100_000).meta({
       description: 'XLSX 单个工作表允许的最大行数'
@@ -341,17 +403,14 @@ export const serviceEnv = createEnv({
       .meta({
         description: 'XLSX 工作簿允许的累计合并单元格回填量'
       }),
-    HTML_TO_MARKDOWN_WORKERS: IntSchema.min(1).max(1000).default(10).meta({
-      description: 'HTML 转 Markdown worker 常驻线程数'
-    }),
-    TEXT_TO_CHUNKS_WORKERS: IntSchema.min(1).max(1000).default(10).meta({
-      description: '文本切块 worker 常驻线程数'
-    }),
     PARSE_FILE_TIMEOUT_SECONDS: IntSchema.min(60).max(6000).default(600).meta({
       description: '文件解析单任务超时时间（秒）'
     }),
     WORKFLOW_MAX_RUN_TIMES: IntSchema.default(500).meta({
       description: '工作流最大运行次数，避免极端死循环'
+    }),
+    RETRIEVAL_RESULTS_LIMIT: IntSchema.default(0).meta({
+      description: '知识库检索节点日志详情记录的召回候选集上限，默认 0 表示不记录'
     }),
     WORKFLOW_MAX_LOOP_TIMES: IntSchema.default(100).meta({
       description: '循环/并行节点最大输入数组长度（默认 100）'
@@ -439,6 +498,8 @@ if (serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY > serviceEnv.WORKFLOW_MAX_LOOP_
 }
 
 if (!isPhaseProductionBuild) {
+  validateAgentUsersEnv(serviceEnv);
+
   validateS3Env(serviceEnv);
 
   if (serviceEnv.PRO_URL && !serviceEnv.PRO_TOKEN) {

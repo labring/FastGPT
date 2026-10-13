@@ -28,6 +28,7 @@ import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/u
 import type { GetPaginationRecordsBodyType } from '@fastgpt/global/openapi/core/chat/record/api';
 import { AUTH_ERROR_EVENT_NAME } from '@/web/common/api/request';
 import { clearToken } from '@/web/support/user/auth';
+import { resetUserModelCatalogAfterLogin } from '@/web/core/ai/model/useUserModelStore';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
@@ -179,6 +180,7 @@ const ChatContent = (props: ChatPageProps) => {
   }, [currentAppId, currentChatId]);
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
+      resetUserModelCatalogAfterLogin();
       setUserInfo(res.user);
     },
     [setUserInfo]
@@ -208,7 +210,7 @@ const ChatContent = (props: ChatPageProps) => {
 
   // show main chat interface
   return (
-    <ChatContextProvider params={chatHistoryProviderParams}>
+    <ChatContextProvider params={chatHistoryProviderParams} disabled={!currentAppId}>
       <ChatItemContextProvider
         showRouteToDatasetDetail={isStandalone !== '1'}
         showRunningStatus={props.showRunningStatus}
@@ -233,6 +235,7 @@ const Render = (props: ChatPageProps) => {
 
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
+      resetUserModelCatalogAfterLogin();
       setUserInfo(res.user);
     },
     [setUserInfo]
@@ -327,7 +330,16 @@ export async function getServerSideProps(context: any) {
       showFullText: chatQuoteReaderConfig?.showFullText ?? true,
       canDownloadSource: chatQuoteReaderConfig?.canDownloadSource ?? true,
       showWholeResponse: chatQuoteReaderConfig?.showWholeResponse ?? true,
-      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow', 'login', 'user']))
+      // Layout 的强制成员名弹窗也会在聊天页打开，SSR 必须一并注入其翻译资源。
+      ...(await serviceSideProps(context, [
+        'file',
+        'app',
+        'chat',
+        'workflow',
+        'login',
+        'user',
+        'account_team'
+      ]))
     }
   };
 }

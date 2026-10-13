@@ -310,19 +310,24 @@ describe('addDirectoryToArchive', () => {
     expect(archive.append).not.toHaveBeenCalled();
   });
 
-  it('拒绝归档 provider 返回的 workspace 外绝对路径', async () => {
+  it('允许归档 provider 返回的 workspace 外绝对路径', async () => {
     const archive = makeArchive();
+    const readFileStream = vi.fn(() =>
+      (async function* () {
+        yield new TextEncoder().encode('secret');
+      })()
+    );
     const sandbox = makeSandbox({
       listDirectory: vi.fn().mockResolvedValue([
         makeDirectoryEntry('secret.txt', {
           path: '/etc/secret.txt'
         })
-      ])
+      ]),
+      readFileStream
     });
 
-    await expect(addDirectoryToArchive(sandbox, archive, '/workspace', '')).rejects.toThrow(
-      'Sandbox path is outside workspace'
-    );
-    expect(archive.append).not.toHaveBeenCalled();
+    await addDirectoryToArchive(sandbox, archive, '/workspace', '');
+    expect(readFileStream).toHaveBeenCalledWith('/etc/secret.txt');
+    expect(archive.append).toHaveBeenCalledWith(expect.anything(), { name: 'secret.txt' });
   });
 });

@@ -30,10 +30,10 @@ cp test/.env.example test/.env.test.local
 pnpm test
 
 # 运行 service integration tests
-pnpm test:service:integration
+FASTGPT_TEST_MODE=integration pnpm test
 
 # 运行当前这组 vectorDB 集成测试
-pnpm test:vector
+FASTGPT_TEST_MODE=integration pnpm test
 ```
 
 ## 结构说明

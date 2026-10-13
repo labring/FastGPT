@@ -1,50 +1,69 @@
 import {
   AccountEmailUsernameSchema,
   AccountPhoneUsernameSchema,
+  type AccountKind,
   type AccountVerificationCapabilities,
   type AccountVerificationMethod,
-  type AccountVerificationResolution,
-  type RecognizedAccountKind
+  type AccountVerificationPasswordPolicy,
+  type AccountVerificationResolution
 } from './type';
 
 /**
+ * 根据持久化 username 和 SSO 配置状态识别账号类型。
+ * 邮箱、手机号和已知第三方前缀优先于通用 SSO 连字符规则。
+ */
+export const resolveAccountKindByUsername = ({
+  username,
+  ssoConfigured
+}: {
+  username: string;
+  ssoConfigured: boolean;
+}): AccountKind => {
+  const normalizedUsername = username.trim();
+  if (!normalizedUsername) return 'invalid';
+
+  const firstSeparatorIndex = normalizedUsername.indexOf('-');
+  const prefix =
+    firstSeparatorIndex > 0 && firstSeparatorIndex < normalizedUsername.length - 1
+      ? normalizedUsername.slice(0, firstSeparatorIndex)
+      : undefined;
+
+  if (AccountEmailUsernameSchema.safeParse(normalizedUsername).success) return 'email';
+  if (AccountPhoneUsernameSchema.safeParse(normalizedUsername).success) return 'phone';
+  if (prefix === 'wechat') return 'wechat';
+  if (prefix === 'git') return 'github';
+  if (prefix === 'google') return 'google';
+  if (prefix === 'microsoft') return 'microsoft';
+  if (prefix === 'wecom') return 'wecom';
+  if (ssoConfigured && prefix) return 'sso';
+  return 'local';
+};
+
+/**
  * 根据持久化 username 和部署能力推导唯一验证方式。
- * 当账号没有可用的外部验证方式时，统一降级为密码验证。
+ * 该纯函数只做分类和降级，不读取运行环境，也不改写传入的 username。
+ * 只有调用方显式允许且数据库确认存在密码时，才降级为旧密码验证。
  */
 export const resolveAccountVerificationByUsername = ({
   username,
-  capabilities
+  capabilities,
+  allowPasswordFallback,
+  oldPasswordAvailable
 }: {
   username: string;
   capabilities: AccountVerificationCapabilities;
-}): AccountVerificationResolution => {
-  const normalizedUsername = username.trim();
-  if (!normalizedUsername) {
+} & AccountVerificationPasswordPolicy): AccountVerificationResolution => {
+  const accountKind = resolveAccountKindByUsername({
+    username,
+    ssoConfigured: capabilities.oauth.sso
+  });
+  if (accountKind === 'invalid') {
     return {
       status: 'unsupported',
       accountKind: 'invalid',
       unsupportedReason: 'empty_username'
     };
   }
-
-  const hasPrefix = (prefix: string) =>
-    normalizedUsername.startsWith(`${prefix}-`) && normalizedUsername.length > prefix.length + 1;
-  const firstSeparatorIndex = normalizedUsername.indexOf('-');
-  const hasSsoPrefix =
-    firstSeparatorIndex > 0 && firstSeparatorIndex < normalizedUsername.length - 1;
-
-  // 联系方式优先于通用 SSO 前缀，避免带连字符的合法邮箱被误判。
-  const accountKind = (() => {
-    if (AccountEmailUsernameSchema.safeParse(normalizedUsername).success) return 'email';
-    if (AccountPhoneUsernameSchema.safeParse(normalizedUsername).success) return 'phone';
-    if (hasPrefix('wechat')) return 'wechat';
-    if (hasPrefix('git')) return 'github';
-    if (hasPrefix('google')) return 'google';
-    if (hasPrefix('microsoft')) return 'microsoft';
-    if (hasPrefix('wecom')) return 'wecom';
-    if (capabilities.oauth.sso && hasSsoPrefix) return 'sso';
-    return 'local';
-  })() satisfies RecognizedAccountKind;
 
   type ExternalVerificationMethod = Exclude<AccountVerificationMethod, 'oldPassword'>;
 
@@ -97,9 +116,26 @@ export const resolveAccountVerificationByUsername = ({
     }
   };
 
+  const method = candidateMethods.find(isMethodAvailable);
+  if (method) {
+    return {
+      status: 'supported',
+      accountKind,
+      method
+    };
+  }
+
+  if (allowPasswordFallback && oldPasswordAvailable) {
+    return {
+      status: 'supported',
+      accountKind,
+      method: 'oldPassword'
+    };
+  }
+
   return {
-    status: 'supported',
+    status: 'unsupported',
     accountKind,
-    method: candidateMethods.find(isMethodAvailable) ?? 'oldPassword'
+    unsupportedReason: 'no_available_verification_method'
   };
 };

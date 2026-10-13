@@ -10,7 +10,8 @@ import {
   assertCaptchaVerificationCreateRateLimit,
   assertCodeVerificationConsumeRateLimit,
   assertPasswordVerificationCreateRateLimit,
-  assertPasswordVerificationConsumeRateLimit
+  assertPasswordVerificationConsumeRateLimit,
+  assertPasswordUpdateRateLimit
 } from '@fastgpt/service/common/rateLimit/interface/accountVerification';
 import { RATE_LIMIT_KEY_PREFIX } from '@fastgpt/service/common/rateLimit/core';
 
@@ -65,7 +66,8 @@ describe('account verification frequency actions', () => {
     getVerificationFrequencyLimitKey('captcha-create', 'register', 'account', account),
     getVerificationFrequencyLimitKey('captcha-consume', 'register', 'account', account),
     getVerificationFrequencyLimitKey('password-create', 'login', 'account', account),
-    getVerificationFrequencyLimitKey('password-consume', 'login', 'account', account)
+    getVerificationFrequencyLimitKey('password-consume', 'login', 'account', account),
+    getVerificationFrequencyLimitKey('password-update', 'changePassword', 'account', account)
   ];
 
   beforeEach(async () => {
@@ -84,7 +86,8 @@ describe('account verification frequency actions', () => {
       'password consume',
       assertPasswordVerificationConsumeRateLimit,
       { account, scene: 'login', limit: 10 }
-    ]
+    ],
+    ['password update', assertPasswordUpdateRateLimit, { account, limit: 10 }]
   ] as const)('limits %s to 10 attempts', async (_name, assertFrequency, params) => {
     for (let index = 0; index < 10; index++) {
       await expect(assertFrequency(params)).resolves.toBeUndefined();

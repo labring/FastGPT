@@ -1,38 +1,39 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
-import type { RenderInputProps } from '../type';
-import { useTranslation } from 'next-i18next';
-import { useContextSelector } from 'use-context-selector';
+import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import InputRender from '@/components/core/app/formRender';
+import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
+import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 import { WorkflowBufferDataContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
+import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponents/utils';
-import { InputTypeEnum } from '@/components/core/app/formRender/constant';
-import { getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
-import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
-import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
+import {
+  getSelectedInputRenderType,
+  workflowModelKeyMappings
+} from '@fastgpt/global/core/workflow/utils';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useLocalStorageState } from 'ahooks';
-import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
+import { useTranslation } from 'next-i18next';
+import React, { useCallback, useMemo } from 'react';
+import { useContextSelector } from 'use-context-selector';
+import type { RenderInputProps } from '../type';
 
 const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { getNodeById, edges } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
-  );
+  const { getNodeById, edges } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
-  const { feConfigs, llmModelList } = useSystemStore();
+  const { feConfigs } = useSystemStore();
 
-  const [defaultModel, setDefaultModel] = useLocalStorageState<string>(
-    'workflow_default_llm_model',
-    {
-      defaultValue: getWebDefaultLLMModel()?.model || ''
-    }
+  const [, setDefaultModel] = useLocalStorageState<string>('workflow_default_llm_model', {
+    defaultValue: ''
+  });
+
+  const selectedRenderType = getSelectedInputRenderType(item);
+  const inputType = nodeInputTypeToInputType(
+    selectedRenderType ? [selectedRenderType] : item.renderTypeList
   );
 
   const editorVariables = useMemoEnhance(() => {
@@ -63,8 +64,21 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
           value = value.slice(0, 1000000);
         }
       }
-      if (item.key === NodeInputKeyEnum.aiModel) {
+      if (item.key === NodeInputKeyEnum.aiModel || item.key === NodeInputKeyEnum.aiModelId) {
         setDefaultModel(value);
+      }
+
+      const modelIdKey = workflowModelKeyMappings.find(
+        ([legacyKey]) => legacyKey === item.key
+      )?.[1];
+      if (inputType === InputTypeEnum.selectLLMModel && modelIdKey) {
+        onChangeNode({
+          nodeId,
+          type: 'replaceInput',
+          key: item.key,
+          value: { ...item, key: modelIdKey, value }
+        });
+        return;
       }
 
       onChangeNode({
@@ -74,12 +88,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
         value: { ...item, value }
       });
     },
-    [item, nodeId, onChangeNode, setDefaultModel]
-  );
-
-  const selectedRenderType = getSelectedInputRenderType(item);
-  const inputType = nodeInputTypeToInputType(
-    selectedRenderType ? [selectedRenderType] : item.renderTypeList
+    [inputType, item, nodeId, onChangeNode, setDefaultModel]
   );
 
   // 嵌套容器节点（loop/parallelRun/loopRun）里的 select 下拉向上展开，避免被子节点覆盖。
@@ -88,13 +97,6 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
     if (!node) return undefined;
     return isNestedParentNodeType(node.flowNodeType) ? ('top-start' as const) : undefined;
   }, [getNodeById, nodeId]);
-
-  // 添加默认值处理的效果
-  useEffect(() => {
-    if (inputType === InputTypeEnum.selectLLMModel && item.value === undefined && defaultModel) {
-      handleChange(defaultModel);
-    }
-  }, [defaultModel, handleChange, inputType, item.value]);
 
   const canOptimizePrompt = item.key === NodeInputKeyEnum.aiSystemPrompt;
   const OptimizerPopverComponent = useCallback(
@@ -119,7 +121,6 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
       onChange={handleChange}
       variables={[...(editorVariables || []), ...(externalVariables || [])]}
       variableLabels={editorVariables}
-      modelList={llmModelList}
       ExtensionPopover={canOptimizePrompt ? [OptimizerPopverComponent] : undefined}
       menuPlacement={menuPlacement}
       {...item}

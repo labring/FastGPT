@@ -32,11 +32,16 @@ export enum TeamErrEnum {
   cannotDeleteNonEmptyOrg = 'cannotDeleteNonEmptyOrg',
   cannotDeleteDefaultGroup = 'cannotDeleteDefaultGroup',
   userNotActive = 'userNotActive',
+  userForbidden = 'userForbidden',
   invitationLinkInvalid = 'invitationLinkInvalid',
   youHaveBeenInTheTeam = 'youHaveBeenInTheTeam',
   tooManyInvitations = 'tooManyInvitations',
   unPermission = 'unPermission',
-  accountCancellationPending = 'accountCancellationPending'
+  accountCancellationPending = 'accountCancellationPending',
+  teamPluginInstallDisabled = 'teamPluginInstallDisabled',
+  teamOwnerOverSize = 'teamOwnerOverSize',
+  onlyMultiTeam = 'onlyMultiTeam',
+  ownerTransferConflict = 'ownerTransferConflict'
 }
 
 const teamErr = [
@@ -113,6 +118,10 @@ const teamErr = [
   {
     statusText: TeamErrEnum.userNotActive,
     message: i18nT('common:code_error.team_error.user_not_active')
+  },
+  {
+    statusText: TeamErrEnum.userForbidden,
+    message: i18nT('common:code_error.team_error.user_forbidden')
   },
   {
     statusText: TeamErrEnum.orgMemberNotExist,
@@ -217,6 +226,23 @@ const teamErr = [
   {
     statusText: EnterpriseAuthErrEnum.processing,
     message: i18nT('common:enterprise_auth.error.processing')
+  },
+  {
+    statusText: TeamErrEnum.teamPluginInstallDisabled,
+    message: i18nT('common:code_error.team_error.team_plugin_install_disabled'),
+    httpStatus: 403
+  },
+  {
+    statusText: TeamErrEnum.teamOwnerOverSize,
+    message: i18nT('common:code_error.team_error.owner_team_over_size')
+  },
+  {
+    statusText: TeamErrEnum.onlyMultiTeam,
+    message: i18nT('common:code_error.team_error.only_multi_team')
+  },
+  {
+    statusText: TeamErrEnum.ownerTransferConflict,
+    message: i18nT('common:code_error.team_error.owner_transfer_conflict')
   }
 ];
 
@@ -228,7 +254,8 @@ export default teamErr.reduce(
         code: 500000 + index,
         statusText: cur.statusText,
         message: cur.message,
-        data: null
+        data: null,
+        ...(cur.httpStatus !== undefined ? { httpStatus: cur.httpStatus } : {})
       }
     };
   },

@@ -1,37 +1,29 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { WorkerNameEnum } from '@fastgpt/service/worker/utils';
 import { countPromptTokensInWorker } from '@fastgpt/service/worker/countGptMessagesTokens/count';
+import { availableParallelism } from 'node:os';
 
 // hoisted: 这些 mock 必须在 vi.mock 工厂里可见
-const { mockRun, mockGetWorkerController, mockRunWorker, mockUploadImage2S3Bucket, mockEnv } =
-  vi.hoisted(() => {
-    const mockRun = vi.fn();
-    return {
-      mockRun,
-      mockGetWorkerController: vi.fn(() => ({ run: mockRun })),
-      mockRunWorker: vi.fn(),
-      mockUploadImage2S3Bucket: vi.fn(),
-      mockEnv: {
-        PARSE_FILE_WORKERS: 5,
-        HTML_TO_MARKDOWN_WORKERS: 10,
-        TEXT_TO_CHUNKS_WORKERS: 10,
-        PARSE_FILE_TIMEOUT_SECONDS: 300
-      } as {
-        PARSE_FILE_WORKERS: number;
-        HTML_TO_MARKDOWN_WORKERS: number;
-        TEXT_TO_CHUNKS_WORKERS: number;
-        PARSE_FILE_TIMEOUT_SECONDS: number;
-      }
-    };
-  });
+const { mockRun, mockGetWorkerController, mockUploadImage2S3Bucket, mockEnv } = vi.hoisted(() => {
+  const mockRun = vi.fn();
+  return {
+    mockRun,
+    mockGetWorkerController: vi.fn(() => ({ run: mockRun })),
+    mockUploadImage2S3Bucket: vi.fn(),
+    mockEnv: {
+      PARSE_FILE_TIMEOUT_SECONDS: 300
+    } as {
+      PARSE_FILE_TIMEOUT_SECONDS: number;
+    }
+  };
+});
 
-// 拦截 getWorkerController / runWorker，保留 WorkerNameEnum 等枚举
+// 拦截 getWorkerController，保留 WorkerNameEnum 等枚举
 vi.mock('@fastgpt/service/worker/utils', async (importOriginal) => {
   const mod = await importOriginal<typeof import('@fastgpt/service/worker/utils')>();
   return {
     ...mod,
-    getWorkerController: mockGetWorkerController,
-    runWorker: mockRunWorker
+    getWorkerController: mockGetWorkerController
   };
 });
 
@@ -49,7 +41,8 @@ vi.mock('@fastgpt/service/common/s3/utils', async (importOriginal) => {
 });
 
 // 必须在 vi.mock 之后再 import 被测模块
-const { text2Chunks, readRawContentFromBuffer } = await import('@fastgpt/service/worker/function');
+const { text2Chunks, readRawContentFromBuffer, readRawContentFromSource } =
+  await import('@fastgpt/service/worker/function');
 const { htmlToMarkdown } = await import('@fastgpt/service/common/string/utils');
 
 describe('worker/function', () => {
@@ -57,7 +50,6 @@ describe('worker/function', () => {
     mockRun.mockReset();
     mockGetWorkerController.mockReset();
     mockGetWorkerController.mockImplementation(() => ({ run: mockRun }));
-    mockRunWorker.mockReset();
     mockUploadImage2S3Bucket.mockReset();
   });
 
@@ -75,7 +67,6 @@ describe('worker/function', () => {
       expect(result.chunks.join('')).toContain('hello world');
 
       // 关键：测试环境必须走短路，绝不能调起 worker
-      expect(mockRunWorker).not.toHaveBeenCalled();
       expect(mockGetWorkerController).not.toHaveBeenCalled();
     });
 
@@ -97,7 +88,6 @@ describe('worker/function', () => {
       expect(result.chunks.length).toBeGreaterThan(1);
       expect(result.chunks.every((chunk) => countPromptTokensInWorker(chunk) <= 12)).toBe(true);
       expect(result.chunks.join('')).toBe(text);
-      expect(mockRunWorker).not.toHaveBeenCalled();
       expect(mockGetWorkerController).not.toHaveBeenCalled();
     });
 
@@ -119,7 +109,6 @@ describe('worker/function', () => {
         true
       );
       expect(result.chunks.join('')).toBe(text);
-      expect(mockRunWorker).not.toHaveBeenCalled();
       expect(mockGetWorkerController).not.toHaveBeenCalled();
     });
 
@@ -132,7 +121,6 @@ describe('worker/function', () => {
           lengthUnit: 'token'
         })
       ).rejects.toThrow('Text contains a character that exceeds the token length limit');
-      expect(mockRunWorker).not.toHaveBeenCalled();
       expect(mockGetWorkerController).not.toHaveBeenCalled();
     });
 
@@ -153,7 +141,6 @@ describe('worker/function', () => {
       expect(result.chunks.every((chunk) => chunk.startsWith(header))).toBe(true);
       expect(result.chunks.every((chunk) => countPromptTokensInWorker(chunk) <= 28)).toBe(true);
       expect(result.chunks.join('\n')).toContain('𠮷');
-      expect(mockRunWorker).not.toHaveBeenCalled();
       expect(mockGetWorkerController).not.toHaveBeenCalled();
     });
   });
@@ -161,7 +148,6 @@ describe('worker/function', () => {
   describe('readRawContentFromBuffer', () => {
     afterEach(() => {
       // 防止 env 跨用例污染
-      mockEnv.PARSE_FILE_WORKERS = 5;
       mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 300;
     });
 
@@ -184,9 +170,12 @@ describe('worker/function', () => {
       expect(mockGetWorkerController).toHaveBeenCalledTimes(1);
       const poolCfg = mockGetWorkerController.mock.calls[0][0];
       expect(poolCfg.name).toBe(WorkerNameEnum.readFile);
-      expect(poolCfg.maxReservedThreads).toBe(5); // 默认值
+      expect(poolCfg.maxReservedThreads).toBe(availableParallelism());
       expect(poolCfg.taskTimeoutMs).toBe(5 * 60 * 1000);
       expect(poolCfg.maxTasksPerWorker).toBe(100);
+      expect(poolCfg.resourcePolicy.queueTimeoutMs).toBe(30 * 60 * 1000);
+      expect(poolCfg.idleWorkerTimeoutMs).toBe(60 * 1000);
+      expect(poolCfg.minIdleWorkers).toBe(1);
 
       // run 入参
       expect(mockRun).toHaveBeenCalledTimes(1);
@@ -196,6 +185,11 @@ describe('worker/function', () => {
       expect(runArg.bufferSize).toBe(original.length);
       expect(runArg.buffer).toBe(sourceArrayBuffer);
       expect(runArg.sharedBuffer).toBeUndefined();
+      expect(poolCfg.resourcePolicy.getTaskResourceBytes(runArg)).toBe(32 * 1024 * 1024 + 17);
+      const resourceSnapshot = poolCfg.resourcePolicy.getResourceSnapshot();
+      expect(resourceSnapshot.availableResourceBytes).toBe(
+        resourceSnapshot.memoryDetails.currentlySchedulableMemoryBytes
+      );
       expect(mockRun.mock.calls[0][1]).toEqual([sourceArrayBuffer]);
     });
 
@@ -249,20 +243,6 @@ describe('worker/function', () => {
       const runArg = mockRun.mock.calls[0][0];
       const view = new Uint8Array(runArg.buffer ?? runArg.sharedBuffer);
       expect(Array.from(view)).toEqual(Array.from(bytes));
-    });
-
-    it('PARSE_FILE_WORKERS 自定义值生效', async () => {
-      mockEnv.PARSE_FILE_WORKERS = 8;
-      mockRun.mockResolvedValueOnce({ rawText: '' });
-
-      await readRawContentFromBuffer({
-        extension: 'txt',
-        encoding: 'utf-8',
-        buffer: Buffer.from('x')
-      });
-
-      const poolCfg = mockGetWorkerController.mock.calls[0][0];
-      expect(poolCfg.maxReservedThreads).toBe(8);
     });
 
     it('PARSE_FILE_TIMEOUT_SECONDS 自定义值生效（秒 -> 毫秒）', async () => {
@@ -344,12 +324,10 @@ describe('worker/function', () => {
       ).rejects.toThrow('Unsupported worker uploadFile mime type: text/plain');
     });
 
-    it('并发文件解析直接交给 readFile worker pool，并发数由 PARSE_FILE_WORKERS 决定', async () => {
+    it('并发文件解析直接交给资源感知 readFile worker pool', async () => {
       let activeCount = 0;
       let maxActiveCount = 0;
       const callOrder: string[] = [];
-      mockEnv.PARSE_FILE_WORKERS = 3;
-
       mockRun.mockImplementation(
         async (props: {
           extension: string;
@@ -439,9 +417,106 @@ describe('worker/function', () => {
     });
   });
 
+  describe('readRawContentFromSource', () => {
+    it('可信 S3 按 HEAD size 一次性预留物化与解析峰值的较大值', async () => {
+      mockRun.mockResolvedValueOnce({ rawText: 'ok' });
+      const materialize = vi.fn(async () => ({
+        buffer: Buffer.from('0123456789'),
+        metadata: { filename: 'a.txt', extension: 'txt', encoding: 'utf-8' }
+      }));
+
+      await readRawContentFromSource({
+        source: {
+          kind: 's3',
+          sizeBytes: 10,
+          metadata: { filename: 'a.txt', extension: 'txt' },
+          materialize
+        }
+      });
+
+      const [runArg, transferList, handlers] = mockRun.mock.calls[0];
+      expect(runArg).toMatchObject({
+        extension: 'txt',
+        bufferSize: 10,
+        sourceKind: 's3',
+        initialResourceBytes: 32 * 1024 * 1024 + 20
+      });
+      expect(runArg.buffer).toBeUndefined();
+      expect(runArg.sharedBuffer).toBeUndefined();
+      expect(transferList).toBeUndefined();
+      expect(materialize).not.toHaveBeenCalled();
+
+      const updateResourceBytes = vi.fn();
+      const loaded = await handlers.loadFile({ updateResourceBytes }, new AbortController().signal);
+      expect(materialize).toHaveBeenCalledTimes(1);
+      expect(updateResourceBytes).not.toHaveBeenCalled();
+      expect(loaded).toMatchObject({
+        bufferSize: 10,
+        metadata: { extension: 'txt', encoding: 'utf-8' }
+      });
+      expect(Buffer.from(loaded.buffer).toString()).toBe('0123456789');
+    });
+
+    it('未知 External 只按最大 base 启动，下载和最终格式只单调更新软预留', async () => {
+      mockRun.mockResolvedValueOnce({ rawText: 'ok' });
+      const materialize = vi.fn(async ({ onReadBytes }) => {
+        onReadBytes?.(4);
+        onReadBytes?.(10);
+        return {
+          buffer: Buffer.from('0123456789'),
+          metadata: { filename: 'response.xlsx', encoding: 'utf-8' }
+        };
+      });
+
+      await readRawContentFromSource({
+        source: {
+          kind: 'externalHttp',
+          maxSizeBytes: 1024,
+          metadata: {},
+          materialize
+        }
+      });
+
+      const [runArg, , handlers] = mockRun.mock.calls[0];
+      expect(runArg).toMatchObject({
+        extension: '',
+        bufferSize: 0,
+        sourceKind: 'externalHttp',
+        initialResourceBytes: 128 * 1024 * 1024
+      });
+
+      const updateResourceBytes = vi.fn();
+      const loaded = await handlers.loadFile({ updateResourceBytes }, new AbortController().signal);
+      expect(updateResourceBytes.mock.calls.map(([bytes]) => bytes)).toEqual([
+        128 * 1024 * 1024 + 8,
+        128 * 1024 * 1024 + 20,
+        128 * 1024 * 1024 + 60
+      ]);
+      expect(loaded.metadata.extension).toBe('xlsx');
+    });
+
+    it('External 物化错误原样抛出，不返回 Buffer 给 worker', async () => {
+      mockRun.mockResolvedValueOnce({ rawText: 'ok' });
+      const sourceError = new Error('download failed');
+
+      await readRawContentFromSource({
+        source: {
+          kind: 'externalHttp',
+          maxSizeBytes: 100,
+          metadata: { filename: 'a.txt' },
+          materialize: vi.fn().mockRejectedValue(sourceError)
+        }
+      });
+
+      const handlers = mockRun.mock.calls[0][2];
+      await expect(
+        handlers.loadFile({ updateResourceBytes: vi.fn() }, new AbortController().signal)
+      ).rejects.toBe(sourceError);
+    });
+  });
+
   describe('htmlToMarkdown', () => {
     afterEach(() => {
-      mockEnv.HTML_TO_MARKDOWN_WORKERS = 10;
       mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 300;
     });
 
@@ -451,14 +526,18 @@ describe('worker/function', () => {
       const result = await htmlToMarkdown('<h1>Title</h1>');
 
       expect(result).toBe('# Title');
-      expect(mockRunWorker).not.toHaveBeenCalled();
       expect(mockGetWorkerController).toHaveBeenCalledTimes(1);
 
       const poolCfg = mockGetWorkerController.mock.calls[0][0];
       expect(poolCfg.name).toBe(WorkerNameEnum.htmlStr2Md);
-      expect(poolCfg.maxReservedThreads).toBe(10);
+      expect(poolCfg.maxReservedThreads).toBe(Math.min(availableParallelism(), 5));
       expect(poolCfg.taskTimeoutMs).toBe(5 * 60 * 1000);
       expect(poolCfg.maxTasksPerWorker).toBe(100);
+      expect(poolCfg.resourcePolicy.queueTimeoutMs).toBe(30 * 60 * 1000);
+      expect(poolCfg.resourcePolicy.resourcePollIntervalMs).toBe(30 * 1000);
+      expect(poolCfg.resourcePolicy.getTaskResourceBytes({ html: '<h1>Title</h1>' })).toBe(0);
+      expect(poolCfg.idleWorkerTimeoutMs).toBe(60 * 1000);
+      expect(poolCfg.minIdleWorkers).toBe(1);
 
       expect(mockRun).toHaveBeenCalledWith({ html: '<h1>Title</h1>' });
     });
@@ -470,16 +549,6 @@ describe('worker/function', () => {
 
       expect(result).toBe('');
       expect(mockRun).toHaveBeenCalledWith({ html: '' });
-    });
-
-    it('HTML_TO_MARKDOWN_WORKERS 自定义值生效', async () => {
-      mockEnv.HTML_TO_MARKDOWN_WORKERS = 6;
-      mockRun.mockResolvedValueOnce({ rawText: 'ok' });
-
-      await htmlToMarkdown('<p>ok</p>');
-
-      const poolCfg = mockGetWorkerController.mock.calls[0][0];
-      expect(poolCfg.maxReservedThreads).toBe(6);
     });
   });
 });

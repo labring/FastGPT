@@ -1,3 +1,4 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import {
   ModalBody,
   Box,
@@ -21,7 +22,7 @@ import {
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { Trans } from 'next-i18next';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import Icon from '@fastgpt/web/components/common/Icon';
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 import { useEffect, useMemo, useState } from 'react';
@@ -90,7 +91,7 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
       }
     : undefined;
 }) {
-  const { t } = useClientTranslation('account_custom_domain');
+  const { t } = useSafeTranslation();
   const { feConfigs } = useSystemStore();
   const { copyData } = useCopyData();
 
@@ -264,33 +265,35 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
               components={{ bold: <Text as="span" fontWeight="bold" color="gray.900" /> }}
             />
           </Box>
-          <Table size="sm" marginTop={'16px'} w="full">
-            <Thead>
-              <Tr>
-                <Th>{t('account_custom_domain:DNS_record.type')}</Th>
-                <Th>TTL</Th>
-                <Th>{t('common:value')}</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              <Tr>
-                <Td>CNAME</Td>
-                <Td>Auto</Td>
-                <Td>
-                  <Flex alignItems="center" gap={2} justifyContent="space-between">
-                    <Text>{cnameDomain}</Text>
-                    <IconButton
-                      icon={<Icon name="copy" w="14px" />}
-                      aria-label="copy"
-                      size="xs"
-                      variant="ghost"
-                      onClick={() => copyData(cnameDomain || '')}
-                    />
-                  </Flex>
-                </Td>
-              </Tr>
-            </Tbody>
-          </Table>
+          <FixedTableContainer mt={'16px'}>
+            <Table size="sm" w="full">
+              <Thead>
+                <Tr>
+                  <Th>{t('account_custom_domain:DNS_record.type')}</Th>
+                  <Th>TTL</Th>
+                  <Th>{t('common:value')}</Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                <Tr>
+                  <Td>CNAME</Td>
+                  <Td>Auto</Td>
+                  <Td>
+                    <Flex alignItems="center" gap={2} justifyContent="space-between">
+                      <Text>{cnameDomain}</Text>
+                      <IconButton
+                        icon={<Icon name="copy" w="14px" />}
+                        aria-label="copy"
+                        size="xs"
+                        variant="ghost"
+                        onClick={() => copyData(cnameDomain || '')}
+                      />
+                    </Flex>
+                  </Td>
+                </Tr>
+              </Tbody>
+            </Table>
+          </FixedTableContainer>
 
           <Flex>
             <Link

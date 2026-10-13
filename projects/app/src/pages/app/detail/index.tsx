@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import { Box } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import Loading from '@fastgpt/web/components/common/MyLoading';
-import { serviceSideProps } from '@/web/common/i18n/utils';
+import { useRequiredQueryParam } from '@/web/common/hooks/useRequiredQueryParam';
 import NextHead from '@/components/common/NextHead';
 import { useContextSelector } from 'use-context-selector';
 import AppContextProvider, { AppContext } from '@/pageComponents/app/detail/context';
@@ -11,6 +11,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { TabEnum } from '@/pageComponents/app/detail/context';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { shouldRouteReadOnlyAppToLogs } from '@/pageComponents/app/detail/permissionRouting';
 
 const SimpleEdit = dynamic(() => import('@/pageComponents/app/detail/Edit/SimpleApp'));
 const AgentEdit = dynamic(() => import('@/pageComponents/app/detail/Edit/ChatAgent'));
@@ -23,6 +24,7 @@ const AppDetail = () => {
   const { appId: storeAppId, source, setAppId, setSource } = useChatStore();
   const appId = useContextSelector(AppContext, (e) => e.appId);
   const appDetail = useContextSelector(AppContext, (e) => e.appDetail);
+  const currentTab = useContextSelector(AppContext, (e) => e.currentTab);
   const route2Tab = useContextSelector(AppContext, (e) => e.route2Tab);
   const isCurrentAppLoaded = !!appDetail._id && appDetail._id === appId;
   const isChatStoreReady = source === ChatSourceEnum.test && storeAppId === appDetail._id;
@@ -32,13 +34,19 @@ const AppDetail = () => {
     if (isCurrentAppLoaded) {
       setAppId(appDetail._id);
 
-      if (!appDetail.permission.hasWritePer) {
+      if (
+        shouldRouteReadOnlyAppToLogs({
+          hasWritePermission: appDetail.permission.hasWritePer,
+          currentTab
+        })
+      ) {
         route2Tab(TabEnum.logs);
       }
     }
   }, [
     appDetail._id,
     appDetail.permission.hasWritePer,
+    currentTab,
     isCurrentAppLoaded,
     route2Tab,
     setAppId,
@@ -67,29 +75,19 @@ const AppDetail = () => {
 };
 
 const Provider = () => {
+  const appId = useRequiredQueryParam('appId', {
+    fallbackRoute: '/dashboard/agent'
+  });
+
+  if (!appId) {
+    return null;
+  }
+
   return (
     <AppContextProvider>
       <AppDetail />
     </AppContextProvider>
   );
 };
-
-export async function getServerSideProps(context: any) {
-  return {
-    // TODO: 精简 i18n，避免交叉使用。
-    props: {
-      ...(await serviceSideProps(context, [
-        'app',
-        'chat',
-        'user',
-        'file',
-        'publish',
-        'apikey',
-        'workflow',
-        'skill'
-      ]))
-    }
-  };
-}
 
 export default Provider;

@@ -5,6 +5,7 @@ import {
   parseChatFileS3Key
 } from '@fastgpt/service/common/s3/sources/chat/key';
 import {
+  createDatasetFileS3KeyFilter,
   isAuthorizedDatasetFileS3Key,
   parseDatasetFileS3Key
 } from '@fastgpt/service/common/s3/sources/dataset/key';
@@ -194,6 +195,17 @@ describe('authorized S3 object key helpers', () => {
     });
     expect(isAuthorizedDatasetFileS3Key({ key, datasetId: 'dataset-1' })).toBe(true);
     expect(isAuthorizedDatasetFileS3Key({ key, datasetId: 'dataset-2' })).toBe(false);
+    expect(isAuthorizedDatasetFileS3Key({ key, datasetId: ['dataset-1', 'dataset-2'] })).toBe(true);
+    expect(isAuthorizedDatasetFileS3Key({ key, datasetId: ['dataset-2', 'dataset-3'] })).toBe(
+      false
+    );
+
+    const filter = createDatasetFileS3KeyFilter('dataset-1');
+    expect(filter(key)).toBe(true);
+    expect(filter('dataset/dataset-2/folder/demo.pdf')).toBe(false);
+    expect(filter('chat/app-1/user-1/chat-1/demo.pdf')).toBe(false);
+    expect(filter('temp/team-1/demo.pdf')).toBe(false);
+
     expect(parseDatasetFileS3Key('dataset/dataset-1')).toBeNull();
   });
 

@@ -1,24 +1,30 @@
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 /* push data to training queue */
-import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
-import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
-import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
-import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { NextAPI } from '@/service/middleware/entry';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
-import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
-import type { ApiRequestProps } from '@fastgpt/next/type';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import {
   PushDataBodySchema,
   type PushDataResponseType
 } from '@fastgpt/global/openapi/core/dataset/data/api';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
-import { getLLMModel } from '@fastgpt/service/core/ai/model';
-import { getVlmModel } from '@fastgpt/service/core/ai/model';
-import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
+import {
+  preCreateDatasetDataAndPushToTrainingQueue,
+  pushDataListToTrainingQueue
+} from '@fastgpt/service/core/dataset/training/controller';
+import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
+import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 
 async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
   const body = parseApiInput({ req, bodySchema: PushDataBodySchema }).body;
@@ -35,12 +41,26 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
     collectionId,
     per: WritePermissionVal
   });
+  const modelHandle = await getTeamModelHandle({ teamId });
+  const vectorModelData = modelHandle.getEmbeddingModelData(
+    getDatasetModelReference(collection.dataset, 'embedding')
+  );
+  const agentModelData = modelHandle.getLLMModelData(
+    getDatasetModelReference(collection.dataset, 'agent')
+  );
+  const vlmModelData = modelHandle.getVlmModelData(
+    getDatasetModelReference(collection.dataset, 'vlm'),
+    { optional: true }
+  );
 
   const mode = getTrainingModeByCollection({
     ...collection,
+    ...(body.trainingType && { trainingType: body.trainingType }),
+    ...(body.autoIndexes !== undefined && { autoIndexes: body.autoIndexes }),
+    ...(body.imageIndex !== undefined && { imageIndex: body.imageIndex }),
     supportImageIndex: getDatasetImageIndexCapability({
-      vectorModel: collection.dataset.vectorModel,
-      vlmModel: collection.dataset.vlmModel
+      vectorModel: vectorModelData,
+      vlmModel: vlmModelData
     }).supportImageIndex
   });
 
@@ -50,6 +70,16 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
     insertLen: predictDataLimitLength(mode, data)
   });
 
+  // imageId 一旦提供，就必须归属于当前已鉴权 collection 的 dataset，避免其他来源的 key 进入训练队列
+  const hasInvalidImageKey = data.some(
+    ({ imageId }) =>
+      imageId !== undefined &&
+      !isAuthorizedDatasetFileS3Key({ key: imageId, datasetId: collection.datasetId })
+  );
+  if (hasInvalidImageKey) {
+    return Promise.reject(CommonErrEnum.unAuthFileKey);
+  }
+
   return mongoSessionRun(async (session) => {
     const traingUsageId = await (async () => {
       if (billId) return billId;
@@ -58,15 +88,30 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
         tmbId,
         appName: collection.name,
         billSource: UsageSourceEnum.training,
-        vectorModel: getEmbeddingModel(collection.dataset.vectorModel)?.name,
-        agentModel: getLLMModel(collection.dataset.agentModel)?.name,
-        vllmModel: getVlmModel(collection.dataset.vlmModel)?.name,
+        vectorModelId: vectorModelData.modelId!,
+        agentModelId: agentModelData.modelId,
+        vllmModelId: vlmModelData?.modelId,
         session
       });
       return newUsageId;
     })();
 
-    return pushDataListToTrainingQueue({
+    if (mode === TrainingModeEnum.qa) {
+      return pushDataListToTrainingQueue({
+        ...body,
+        session,
+        billId: traingUsageId,
+        mode,
+        teamId,
+        tmbId,
+        datasetId: collection.datasetId,
+        vectorModel: vectorModelData,
+        agentModel: agentModelData,
+        vlmModel: vlmModelData
+      });
+    }
+
+    return preCreateDatasetDataAndPushToTrainingQueue({
       ...body,
       session,
       billId: traingUsageId,
@@ -74,9 +119,9 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
       teamId,
       tmbId,
       datasetId: collection.datasetId,
-      vectorModel: collection.dataset.vectorModel,
-      agentModel: collection.dataset.agentModel,
-      vlmModel: collection.dataset.vlmModel
+      vectorModel: vectorModelData,
+      agentModel: agentModelData,
+      vlmModel: vlmModelData
     });
   });
 }

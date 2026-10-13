@@ -18,7 +18,6 @@ const createAdminToolDetail = () => ({
   intro: 'Tool intro',
   author: 'FastGPT',
   tags: [],
-  toolDescription: 'Tool description',
   currentCost: 0,
   systemKeyCost: 0,
   hasTokenFee: false,

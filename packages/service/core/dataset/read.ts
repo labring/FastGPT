@@ -1,28 +1,28 @@
 import {
+  ChunkSettingModeEnum,
   ChunkTriggerConfigTypeEnum,
+  DatasetCollectionDataProcessModeEnum,
   DatasetSourceReadTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
+import type { IultmzhFileParseConfigType } from '@fastgpt/global/core/dataset/type';
 import { urlsFetch } from '../../common/string/cheerio';
 import { type TextSplitProps } from '../../common/string/textSplitter';
-import { axios } from '../../common/api/axios';
-import { readFileContentByBuffer } from '../../common/file/read/utils';
-import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
+import { readFileContentBySource } from '../../common/file/read/utils';
 import { getApiDatasetRequest } from './apiDataset';
+import { chunkByIultmzh } from '../../thirdProvider/sangfor/chunk';
+import { serviceEnv } from '../../env';
 import Papa from 'papaparse';
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { text2Chunks } from '../../worker/function';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import { getFileMaxSize } from '../../common/file/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
 import { getS3DatasetSource } from '../../common/s3/sources/dataset';
 import { getFileS3Key, isS3ObjectKey } from '../../common/s3/utils';
 import { isAuthorizedDatasetFileS3Key } from '../../common/s3/sources/dataset/key';
-import { getLogger, LogCategories } from '../../common/logger';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { getBackendFileOperationTimeoutMs } from '../../common/file/parseTimeout';
-
-const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
+import { createExternalHttpFileSource } from '../../common/file/read/source';
+import { getTeamFileSizeLimitBytes } from '../../support/permission/fileLimit';
 
 const datasetCsvColumnTypes = new Set(['q', 'a', 'index', 'indexes', 'metadata']);
 
@@ -59,152 +59,58 @@ export const readFileRawTextByUrl = async ({
   tmbId,
   url,
   customPdfParse,
+  sangforFileParseConfig,
   getFormatText,
-  relatedId,
   datasetId,
-  maxFileSize = getFileMaxSize()
+  usageId,
+  maxSizeBytes
 }: {
   teamId: string;
   tmbId: string;
   url: string;
   customPdfParse?: boolean;
+  sangforFileParseConfig?: IultmzhFileParseConfigType;
   getFormatText?: boolean;
   relatedId: string; // externalFileId / apiFileId
   datasetId: string;
-  maxFileSize?: number;
+  usageId?: string;
+  maxSizeBytes?: number;
 }) => {
-  const extension = parseFileExtensionFromUrl(url);
-  const downloadTimeoutMs = getBackendFileOperationTimeoutMs();
-  const downloadDeadline = Date.now() + downloadTimeoutMs;
-  const getRemainingDownloadMs = () => Math.max(0, downloadDeadline - Date.now());
-  const getDownloadRequestTimeout = (maxTimeoutMs: number) => {
-    const remainingMs = getRemainingDownloadMs();
-    if (remainingMs <= 0) {
-      throw new Error(`File download timeout after ${downloadTimeoutMs / 1000} seconds`);
+  const effectiveMaxSizeBytes = maxSizeBytes ?? (await getTeamFileSizeLimitBytes({ teamId }));
+  const filename = (() => {
+    try {
+      return decodeURIComponent(new URL(url).pathname.split('/').pop() || '') || undefined;
+    } catch {
+      return undefined;
     }
-    return Math.min(maxTimeoutMs, remainingMs);
-  };
-
-  // Check file size
-  try {
-    const headResponse = await axios.head(url, { timeout: getDownloadRequestTimeout(10000) });
-    const contentLength = parseInt(
-      getAxiosHeaderValue(headResponse.headers['content-length']) || '0'
-    );
-
-    if (contentLength > 0 && contentLength > maxFileSize) {
-      return Promise.reject(
-        `File too large. Size: ${Math.round(contentLength / 1024 / 1024)}MB, Maximum allowed: ${Math.round(maxFileSize / 1024 / 1024)}MB`
-      );
-    }
-  } catch (error) {
-    if (getRemainingDownloadMs() <= 0) throw error;
-    logger.warn('File HEAD request failed, skip size precheck', { url, error });
-  }
-
-  // Use stream response type, avoid double memory usage
-  const response = await axios({
-    method: 'get',
-    url: url,
-    responseType: 'stream',
-    maxContentLength: maxFileSize,
-    timeout: getDownloadRequestTimeout(30000)
+  })();
+  const source = createExternalHttpFileSource({
+    url,
+    maxSizeBytes: effectiveMaxSizeBytes,
+    timeoutMs: getBackendFileOperationTimeoutMs(),
+    metadata: { filename }
   });
-
-  // 优化：直接从 stream 转换为 buffer，避免 arraybuffer 中间步骤
-  const chunks: Buffer[] = [];
-  let totalLength = 0;
-
-  return new Promise<{ rawText: string }>((resolve, reject) => {
-    let isAborted = false;
-
-    const cleanup = () => {
-      if (!isAborted) {
-        isAborted = true;
-        chunks.length = 0; // 清理内存
-        response.data.destroy();
-      }
-    };
-
-    // Stream timeout
-    const streamTimeoutMs = getRemainingDownloadMs();
-    const timeoutId = setTimeout(() => {
-      cleanup();
-      reject(new Error(`File download timeout after ${downloadTimeoutMs / 1000} seconds`));
-    }, streamTimeoutMs);
-
-    response.data.on('data', (chunk: Buffer) => {
-      if (isAborted) return;
-      totalLength += chunk.length;
-      if (totalLength > maxFileSize) {
-        clearTimeout(timeoutId);
-        cleanup();
-        return reject(
-          `File too large. Maximum size allowed is ${Math.round(maxFileSize / 1024 / 1024)}MB.`
-        );
-      }
-
-      chunks.push(chunk);
-    });
-
-    response.data.on('end', async () => {
-      if (isAborted) return;
-
-      clearTimeout(timeoutId);
-
-      try {
-        if (getRemainingDownloadMs() <= 0) {
-          throw new Error(`File download timeout after ${downloadTimeoutMs / 1000} seconds`);
-        }
-
-        // 合并所有 chunks 为单个 buffer
-        const buffer = Buffer.concat(chunks as unknown as Uint8Array[]);
-
-        // 立即清理 chunks 数组释放内存
-        chunks.length = 0;
-
-        const { fileParsedPrefix } = getFileS3Key.dataset({
-          datasetId,
-          filename: 'file'
-        });
-        const { rawText } = await retryFn(() => {
-          return readFileContentByBuffer({
-            customPdfParse,
-            getFormatText,
-            extension,
-            teamId,
-            tmbId,
-            buffer,
-            encoding: 'utf-8',
-            imageKeyOptions: {
-              // TODO: 链接解析出来的图片不过期，删除知识库时候也需要一起删
-              prefix: fileParsedPrefix
-            }
-          });
-        });
-
-        if (getRemainingDownloadMs() <= 0) {
-          throw new Error(`File download timeout after ${downloadTimeoutMs / 1000} seconds`);
-        }
-
-        resolve({ rawText });
-      } catch (error) {
-        cleanup();
-        reject(error);
-      }
-    });
-
-    response.data.on('error', (error: Error) => {
-      clearTimeout(timeoutId);
-      cleanup();
-      reject(error);
-    });
-
-    response.data.on('close', () => {
-      clearTimeout(timeoutId);
-      cleanup();
-    });
+  const { fileParsedPrefix } = getFileS3Key.dataset({
+    datasetId,
+    filename: 'file'
   });
+  const { rawText } = await retryFn(() =>
+    readFileContentBySource({
+      customPdfParse,
+      sangforFileParseConfig,
+      usageId,
+      getFormatText,
+      source,
+      teamId,
+      tmbId,
+      imageKeyOptions: {
+        // TODO: 链接解析出来的图片不过期，删除知识库时候也需要一起删
+        prefix: fileParsedPrefix
+      }
+    })
+  );
+
+  return { rawText };
 };
 
 /*
@@ -221,6 +127,7 @@ export const readDatasetSourceRawText = async ({
   externalFileId,
   apiDatasetServer,
   customPdfParse,
+  sangforFileParseConfig,
   getFormatText,
   usageId,
   datasetId
@@ -230,6 +137,8 @@ export const readDatasetSourceRawText = async ({
   type: DatasetSourceReadTypeEnum;
   sourceId: string;
   customPdfParse?: boolean;
+  /** 外部文档解析开关;建议传入 getDatasetIultmzhFileParseConfig(dataset) 补全后的完整配置 */
+  sangforFileParseConfig?: IultmzhFileParseConfigType;
   getFormatText?: boolean;
 
   selector?: string; // link selector
@@ -256,6 +165,7 @@ export const readDatasetSourceRawText = async ({
       fileId: sourceId,
       getFormatText,
       customPdfParse,
+      sangforFileParseConfig,
       usageId,
       datasetId
     });
@@ -287,7 +197,9 @@ export const readDatasetSourceRawText = async ({
       url: sourceId,
       relatedId: externalFileId,
       datasetId,
-      customPdfParse
+      customPdfParse,
+      sangforFileParseConfig,
+      usageId
     });
     return {
       rawText
@@ -299,7 +211,9 @@ export const readDatasetSourceRawText = async ({
       teamId,
       tmbId,
       customPdfParse,
-      datasetId
+      sangforFileParseConfig,
+      datasetId,
+      usageId
     });
     return {
       title,
@@ -318,14 +232,18 @@ export const readApiServerFileContent = async ({
   teamId,
   tmbId,
   customPdfParse,
-  datasetId
+  sangforFileParseConfig,
+  datasetId,
+  usageId
 }: {
   apiDatasetServer?: ApiDatasetServerType;
   apiFileId: string;
   teamId: string;
   tmbId: string;
   customPdfParse?: boolean;
+  sangforFileParseConfig?: IultmzhFileParseConfigType;
   datasetId: string;
+  usageId?: string;
 }): Promise<{
   title?: string;
   rawText: string;
@@ -335,7 +253,9 @@ export const readApiServerFileContent = async ({
     tmbId,
     apiFileId,
     customPdfParse,
-    datasetId
+    sangforFileParseConfig,
+    datasetId,
+    usageId
   });
 };
 
@@ -346,6 +266,8 @@ export const rawText2Chunks = async ({
   backupParse,
   chunkSize = 512,
   imageIdList,
+  chunkSettingMode,
+  trainingType,
   ...splitProps
 }: {
   rawText: string;
@@ -356,6 +278,9 @@ export const rawText2Chunks = async ({
 
   backupParse?: boolean;
   tableParse?: boolean;
+  // chunkSettingMode=intelligent 且训练类型为 chunk 时,「文本→chunk」委托给外部智能分块服务
+  chunkSettingMode?: ChunkSettingModeEnum;
+  trainingType?: DatasetCollectionDataProcessModeEnum;
 } & TextSplitProps): Promise<
   {
     q: string;
@@ -479,6 +404,22 @@ export const rawText2Chunks = async ({
     if (textLength < chunkTriggerMinSize) {
       return [{ q: rawText, a: '', imageIdList }];
     }
+  }
+
+  // 智能分块: chunkSettingMode=intelligent 且训练类型为 chunk 时,把「文本→chunk」委托给 sangfor 智能分块服务。
+  // 未配置服务地址、请求失败、响应异常都由 chunkByIultmzh 抛错,不静默回退本地分块。
+  if (
+    trainingType === DatasetCollectionDataProcessModeEnum.chunk &&
+    chunkSettingMode === ChunkSettingModeEnum.intelligent
+  ) {
+    return chunkByIultmzh({
+      text: rawText,
+      imageIdList,
+      url: serviceEnv.SANGFOR_CHUNK_URL,
+      key: serviceEnv.SANGFOR_CHUNK_KEY,
+      chunkSize,
+      timeoutMs: serviceEnv.SANGFOR_CHUNK_TIMEOUT_MINUTES * 60 * 1000
+    });
   }
 
   const { chunks } = await text2Chunks({

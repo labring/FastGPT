@@ -13,7 +13,6 @@ import {
 } from '@fastgpt/global/core/ai/llm/utils';
 import { loadRequestMessages } from '../../../utils';
 import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
-import { getLLMModel } from '../../../../model';
 import { AgentUsageModuleName } from '../../domain/usage';
 import {
   askUserToolName,
@@ -68,21 +67,20 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   runtime: AgentLoopRuntime<TChildrenResponse>;
 }): Promise<AgentLoopResult<TChildrenResponse>> => {
   const state = readPiAgentProviderState(input.providerState);
-  const modelName = runtime.llmParams.model;
-  const modelData = getLLMModel(modelName);
+  const modelData = runtime.llmParams.model;
   const piModel = buildPiModel(
-    modelName,
+    modelData,
     runtime.llmParams.useVision,
     runtime.llmParams.userKey,
     runtime.llmParams.maxTokens
   );
   const requestMessages = await loadRequestMessages({
     messages: input.messages,
-    useVision: runtime.llmParams.useVision && modelData.vision,
-    useAudio: runtime.llmParams.useAudio && modelData.audio,
-    useVideo: runtime.llmParams.useVideo && modelData.video,
+    useVision: runtime.llmParams.useVision && modelData.config.vision,
+    useAudio: runtime.llmParams.useAudio && modelData.config.audio,
+    useVideo: runtime.llmParams.useVideo && modelData.config.video,
     extractFiles: runtime.llmParams.extractFiles,
-    supportReason: modelData.reasoning
+    supportReason: modelData.config.reasoning
   });
   const requestIds: string[] = [];
   let requestIndex = 0;
@@ -312,6 +310,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       rawResponse: result.response,
       response: normalizedResponse,
       assistantMessages: result.assistantMessages,
+      assistantResponses: result.assistantResponses,
       usages: result.usages,
       errorMessage: result.errorMessage,
       metadata: result.metadata,
@@ -405,20 +404,25 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     }
   });
 
-  const pendingRequests: Array<{ requestId: string; requestIndex: number; startedAt: number }> = [];
+  const pendingRequests: Array<{
+    requestId: string;
+    requestIndex: number;
+    startedAt: number;
+    firstTokenAt?: number;
+  }> = [];
   const maxRunAgentTimes = Math.max(1, runtime.maxRunAgentTimes ?? 100);
   const agent = new Agent({
     initialState: {
       systemPrompt: input.systemPrompt ?? '',
       model: piModel,
-      thinkingLevel: getPiThinkingLevel(modelName, runtime.llmParams.reasoningEffort),
+      thinkingLevel: getPiThinkingLevel(modelData, runtime.llmParams.reasoningEffort),
       tools,
       messages: initialPiMessages
     },
     // pi-agent-core 只提供 parallel/sequential 两档。统一使用串行，确保不超过 runtime 的并发上限，
     // 同时避免 plan/ask 和普通工具在同一轮并行修改状态。
     toolExecution: 'sequential',
-    getApiKey: () => getModelApiKey(modelName, runtime.llmParams.userKey),
+    getApiKey: () => getModelApiKey(modelData, runtime.llmParams.userKey),
     onPayload: (payload) => {
       if (requestIndex >= maxRunAgentTimes) {
         reachedRunLimit = true;
@@ -466,6 +470,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         if (hasCompressionResult) {
           runtime.emitEvent?.({
             type: 'after_message_compress',
+            modelName: modelData.name,
             usages,
             requestIds: result.requestIds ?? [],
             seconds: +((Date.now() - startTime) / 1000).toFixed(2),
@@ -514,6 +519,8 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     if (event.type === 'message_update') {
       const assistantEvent = event.assistantMessageEvent;
       if (assistantEvent.type === 'text_delta') {
+        const request = pendingRequests[0];
+        if (request) request.firstTokenAt ??= Date.now();
         answerText += assistantEvent.delta;
         runtime.emitEvent?.({
           type: 'answer_delta',
@@ -522,6 +529,8 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         return;
       }
       if (assistantEvent.type === 'thinking_delta') {
+        const request = pendingRequests[0];
+        if (request) request.firstTokenAt ??= Date.now();
         reasoningText += assistantEvent.delta;
         runtime.emitEvent?.({
           type: 'reasoning_delta',
@@ -624,7 +633,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       llmTotalPoints += totalPoints;
       const usage: AgentLoopUsage = {
         moduleName: AgentUsageModuleName.agentCall,
-        model: modelData.name,
+        modelId: modelData.modelId,
         totalPoints,
         inputTokens: requestInputTokens,
         outputTokens: requestOutputTokens
@@ -643,6 +652,10 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         toolCalls: messageData.toolCalls,
         usages: [usage],
         seconds: +((Date.now() - request.startedAt) / 1000).toFixed(2),
+        firstTokenTime:
+          request.firstTokenAt === undefined
+            ? undefined
+            : +((request.firstTokenAt - request.startedAt) / 1000).toFixed(2),
         error: event.message.errorMessage
       });
       return;
@@ -701,6 +714,10 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         finishReason: requestFinishReason,
         usages: [],
         seconds: +((Date.now() - request.startedAt) / 1000).toFixed(2),
+        firstTokenTime:
+          request.firstTokenAt === undefined
+            ? undefined
+            : +((request.firstTokenAt - request.startedAt) / 1000).toFixed(2),
         error: requestError
       });
     });
@@ -713,6 +730,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       ? [
           {
             moduleName: AgentUsageModuleName.agentCall,
+            modelId: modelData.modelId,
             inputTokens,
             outputTokens,
             totalPoints: llmTotalPoints

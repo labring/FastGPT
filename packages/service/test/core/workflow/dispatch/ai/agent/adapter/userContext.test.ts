@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
@@ -98,14 +98,15 @@ const getUserContextMessagesForTest = async ({
   currentWorkingDirectory?: string;
 }) => {
   const context = await useUserContext(params);
+  const messages = await context.getCurrentMessages({
+    skillInfos,
+    currentWorkingDirectory
+  });
 
   return {
     chatHistories: context.chatHistories,
     queryInput: context.queryInput,
-    ...context.getCurrentMessages({
-      skillInfos,
-      currentWorkingDirectory
-    }),
+    ...messages,
     currentFiles: context.currentFiles
   };
 };
@@ -453,7 +454,7 @@ describe('useUserContext', () => {
     );
   });
 
-  it('loads dataset name and description from backend when selected state only keeps id', async () => {
+  it('authorizes datasets before loading metadata without a resource snapshot', async () => {
     vi.mocked(MongoDataset.find).mockReturnValueOnce({
       lean: vi.fn(async () => [
         {
@@ -479,7 +480,6 @@ describe('useUserContext', () => {
               datasetId: 'dataset_1'
             }
           ],
-          authTmbId: true,
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
           maxFileAmount: 20
@@ -912,13 +912,15 @@ describe('useUserContext', () => {
   });
 
   it('uses url as the final defensive file name fallback when parser returns an empty name', async () => {
-    const parseUrlToFileTypeSpy = vi
-      .spyOn(workflowContext, 'parseUrlToFileType')
-      .mockReturnValueOnce({
-        name: '',
-        type: ChatFileTypeEnum.file,
-        url: 'https://files.example.com/nameless'
-      });
+    const prepareFilesSpy = vi
+      .spyOn(workflowContext, 'prepareWorkflowFiles')
+      .mockResolvedValueOnce([
+        {
+          name: '',
+          type: ChatFileTypeEnum.file,
+          url: 'https://files.example.com/nameless'
+        }
+      ]);
 
     await runWithContextAsync(
       {
@@ -941,7 +943,7 @@ describe('useUserContext', () => {
       }
     );
 
-    parseUrlToFileTypeSpy.mockRestore();
+    prepareFilesSpy.mockRestore();
   });
 
   it('ignores non-string file urls defensively', async () => {
@@ -1082,3 +1084,12 @@ describe('useUserContext', () => {
     );
   });
 });
+
+// 分类测试隔离外部服务，避免无后缀样例发出真实网络请求。
+beforeEach(async () => {
+  const { axios } = await import('@fastgpt/service/common/api/axios');
+  vi.spyOn(axios, 'head').mockResolvedValue({
+    headers: { 'content-type': 'application/octet-stream' }
+  } as any);
+});
+afterEach(() => vi.restoreAllMocks());

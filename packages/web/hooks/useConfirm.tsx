@@ -131,6 +131,7 @@ export const useConfirm = (props?: {
 
       useEffect(() => {
         if (isOpen) {
+          setRequesting(false);
           setCountDownAmount(countDown);
           setInputValue('');
           timer.current = setInterval(() => {
@@ -167,6 +168,10 @@ export const useConfirm = (props?: {
       const finalCancelText = customCancelText || closeText;
       const finalShowCancel = customShowCancel !== undefined ? customShowCancel : showCancel;
       const finalVariant = customConfirmButtonVariant || map.variant;
+
+      // 关闭后立即卸载：确认回调常伴随父级状态更新，若保留 Chakra 的退场动画节点，
+      // 退场期间的重渲染会让 portal 残留成透明遮罩并永久拦截页面点击。
+      if (!isOpen) return null;
 
       return (
         <MyModal isOpen={isOpen} onClose={handleClose} isCentered size={'sm'} borderRadius={'10px'}>
@@ -223,7 +228,6 @@ export const useConfirm = (props?: {
                 <DeleteConfirmInput
                   value={inputValue}
                   confirmText={customContentInputConfirmText}
-                  placeholder={customContentInputConfirmText}
                   onChange={setInputValue}
                 />
               )}
@@ -254,9 +258,14 @@ export const useConfirm = (props?: {
                       if (typeof confirmCb.current === 'function') {
                         await confirmCb.current();
                       }
-                      onClose();
-                    } catch {}
+                    } catch {
+                      // 失败时保持弹窗打开并解除 loading，允许用户重试。
+                      setRequesting(false);
+                      return;
+                    }
+                    // 确认成功后重置 requesting 并关闭弹窗，避免再次打开时残留 loading 态
                     setRequesting(false);
+                    onClose();
                   }}
                 >
                   {countDownAmount > 0 ? `${countDownAmount}s` : finalConfirmText}

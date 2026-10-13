@@ -53,7 +53,9 @@ export const DevApiTagsMap = {
   datasetData: '数据管理',
   datasetTraining: '训练管理',
   datasetApiDataset: 'API 数据集管理',
+  datasetTag: '标签管理',
   datasetFile: '知识库文件管理',
+  datasetSynonym: '同义词管理',
 
   /* 核心-插件系统 */
   pluginToolTag: '工具标签',
@@ -78,6 +80,7 @@ export const DevApiTagsMap = {
   apiKey: 'API Key 管理',
   customDomain: '自定义域名',
   commonFile: '文件管理',
+  model: '模型管理',
   commonSystem: '系统接口',
   commonOther: '基础功能其他',
 
@@ -97,36 +100,41 @@ export const DevApiTagsMap = {
   teamSubscription: '订阅管理',
 
   /* 插件市场 */
-  pluginMarketplace: '插件市场-系统工具',
+  pluginMarketplace: '工具',
 
-  /* 管理员-插件管理 */
-  pluginAdmin: '管理员插件管理',
-  pluginToolAdmin: '管理员系统工具管理',
+  /* 子服务-Pro */
+  subserviceProDataset: '知识库',
 
-  /* 管理员-系统管理 */
-  adminDashboard: '仪表盘',
+  /* 系统资源 */
+  pluginAdmin: '插件管理',
+  pluginToolAdmin: '系统工具管理',
+
+  /* 管理员系统接口 */
+  adminDashboard: '数据面板',
   adminInform: '通知管理',
-  adminApps: '应用管理',
+  adminApps: '应用资源',
   adminWalletCoupon: '兑换码管理',
-  adminUsers: '用户管理',
-  adminTeams: '团队管理',
-  adminDatasets: '知识库管理',
+  adminUsers: '用户信息',
+  adminTeams: '团队',
+  adminDatasets: '知识库资源',
   adminPays: '订单管理',
-  adminPlans: '套餐管理',
+  adminPlans: '套餐',
   adminSettings: '系统配置',
-  adminLogs: '系统日志',
-  adminLicense: '许可证管理',
-  adminTemplate: '模板管理',
-  adminTemplateType: '模板类型管理',
-  adminWalletInvoice: '发票管理',
+  adminSystemMigration: '升级脚本',
+  adminSystemModel: '系统模型',
+  adminModelChannel: '模型渠道',
+  adminModelLog: '模型监控日志',
+  adminLicense: 'License 管理',
+  adminTemplate: '应用模板',
+  adminTemplateType: '模板类型',
+  adminWalletInvoice: '发票处理',
   adminWalletRefund: '退款管理',
-  adminAuth: '管理员认证'
+  adminAuth: '认证',
+  adminAudit: '审计日志'
 };
 
 /** Scalar 文档导航中的标签展示名，key 保持 OpenAPI 内部标签唯一。 */
-export const DevApiTagNameAliases: Record<string, string> = {
-  [DevApiTagsMap.pluginMarketplace]: '系统工具'
-};
+export const DevApiTagNameAliases: Record<string, string> = {};
 
 export const SystemOpenApiTagMap = {
   appLog: 'systemOpenAPI:appLog',
@@ -141,5 +149,7 @@ export const SystemOpenApiTagMap = {
   datasetCollectionCreate: 'systemOpenAPI:datasetCollectionCreate',
   datasetData: 'systemOpenAPI:datasetData',
   datasetDataIndex: 'systemOpenAPI:datasetDataIndex',
-  datasetOther: 'systemOpenAPI:datasetOther'
+  datasetOther: 'systemOpenAPI:datasetOther',
+
+  model: 'systemOpenAPI:model'
 };

@@ -1,14 +1,15 @@
 import type {
   AppAutoExecuteConfigType,
   AppChatConfigType,
+  EntryPointItemType,
   AppQGConfigType,
   AppScheduledTriggerConfigType,
   AppTTSConfigType,
   AppWelcomeConfigType,
   AppWhisperConfigType,
-  ChatInputGuideConfigType,
-  VariableItemType
+  ChatInputGuideConfigType
 } from '../../../app/type';
+import type { VariableItemType } from '../../../app/variable/type';
 import { defaultQGConfig } from '../../../app/constants';
 import { NodeInputKeyEnum } from '../../constants';
 import type { StoreEdgeItemType } from '../../type/edge';
@@ -142,6 +143,13 @@ export function migrateSystemConfigToChatConfig(input: LegacyWorkflowDataInput) 
       getSystemConfigInputValue<AppAutoExecuteConfigType>(
         systemConfigNode,
         NodeInputKeyEnum.autoExecute
+      )
+    ],
+    [
+      'entryPoints',
+      getSystemConfigInputValue<EntryPointItemType[]>(
+        systemConfigNode,
+        NodeInputKeyEnum.entryPoints
       )
     ]
   ];

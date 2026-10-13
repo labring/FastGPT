@@ -64,7 +64,11 @@ describe('chatGenerateStatus', () => {
           updateTime: expect.any(Date)
         }),
         $setOnInsert: {
-          createTime: expect.any(Date)
+          createTime: expect.any(Date),
+          summary: {
+            llmInputTokens: 0,
+            llmOutputTokens: 0
+          }
         }
       },
       {
@@ -99,7 +103,11 @@ describe('chatGenerateStatus', () => {
           updateTime: expect.any(Date)
         }),
         $setOnInsert: {
-          createTime: expect.any(Date)
+          createTime: expect.any(Date),
+          summary: {
+            llmInputTokens: 0,
+            llmOutputTokens: 0
+          }
         }
       },
       {

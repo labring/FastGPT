@@ -104,6 +104,9 @@ const createXmlTagScanner = ({ onStartTag }: { onStartTag: (tag: string) => void
       if (disabled) return;
 
       for (let index = 0; index < chunk.length; index++) {
+        // onStartTag 可能禁用非 worksheet 扫描，不能继续消费当前 chunk 污染状态。
+        if (disabled) return;
+
         const byte = chunk[index];
         if (!insideTag) {
           if (byte !== 0x3c) continue;

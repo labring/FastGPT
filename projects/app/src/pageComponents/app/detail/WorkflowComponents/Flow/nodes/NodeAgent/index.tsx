@@ -1,57 +1,60 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Box, Button, Flex, Grid, HStack, Switch, useDisclosure } from '@chakra-ui/react';
-import { type NodeProps } from 'reactflow';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { useTranslation } from 'next-i18next';
-import { useContextSelector } from 'use-context-selector';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import dynamic from 'next/dynamic';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { useTranslation } from 'next-i18next';
+import dynamic from 'next/dynamic';
+import React, { useCallback, useMemo } from 'react';
+import { type NodeProps } from 'reactflow';
+import { useContextSelector } from 'use-context-selector';
 
-import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
-import RenderInput from '../render/RenderInput';
-import RenderOutput from '../render/RenderOutput';
-import RenderToolInput, { hasDynamicToolInput } from '../render/RenderToolInput';
 import IOTitle from '../../components/IOTitle';
+import NodeCard from '../render/NodeCard';
+import RenderInput from '../render/RenderInput';
 import InputLabel from '../render/RenderInput/Label';
+import RenderOutput from '../render/RenderOutput';
 import CatchError from '../render/RenderOutput/CatchError';
+import RenderToolInput, { hasDynamicToolInput } from '../render/RenderToolInput';
 
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
-import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import { AppContext } from '@/pageComponents/app/detail/context';
+import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
+import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
 
-import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { getEditorVariables } from '../../../utils';
-import { getWebLLMModel } from '@/web/common/system/utils';
+import { useWorkflowQuoteLimit } from '../../hooks/useWorkflowQuoteLimit';
 
-import { useAgentSkillManager } from './useAgentSkillManager';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
+import { useAgentSkillManager } from './useAgentSkillManager';
+import { restoreDatasetParams } from './utils';
 
-import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import type { AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import MyTag from '@fastgpt/web/components/common/Tag/index';
 import DatasetCard from '@/components/core/app/DatasetCard';
+import SkillCard from '@/components/core/app/SkillCard';
+import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
+import { getToolIdentityKey, isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
+import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import WorkflowSandboxConfig, {
   createSandboxEntrypointInput
 } from '../components/WorkflowSandboxConfig';
-import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
-import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
-import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
 
 const PromptEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/PromptEditor'));
 const SkillSelectModal = dynamic(
@@ -99,12 +102,10 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const { splitToolInputs, splitOutput } = useContextSelector(WorkflowUtilsContext, (ctx) => ctx);
-  const { getNodeById, edges, llmMaxQuoteContext } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
-  );
+  const { getNodeById, edges } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
-  const { feConfigs, defaultModels } = useSystemStore();
+  const { feConfigs } = useSystemStore();
+  const llmMaxQuoteContext = useWorkflowQuoteLimit();
   const externalProviderWorkflowVariables = feConfigs?.externalProviderWorkflowVariables;
   const { teamPlanStatus, isTeamAdmin } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
@@ -146,19 +147,26 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     [editorVariables, externalVariables]
   );
 
-  // ---- Dataset params state (for Agent node inline settings button) ----
-  const [datasetParamsData, setDatasetParamsData] = useState<AppDatasetSearchParamsType>({
-    searchMode: DatasetSearchModeEnum.embedding,
-    embeddingWeight: 0.5,
-    limit: 3000,
-    similarity: 0.5,
-    usingReRank: true,
-    rerankModel: defaultModels.llm?.model,
-    rerankWeight: 0.6,
-    datasetSearchUsingExtensionQuery: true,
-    datasetSearchExtensionModel: defaultModels.llm?.model,
-    datasetSearchExtensionBg: ''
-  });
+  // 节点 inputs 是已保存参数的唯一来源；弹窗自行维护草稿，避免本地副本遗漏模型 ID。
+  const datasetParamsData = useMemo(
+    () =>
+      restoreDatasetParams({
+        state: {
+          searchMode: DatasetSearchModeEnum.embedding,
+          embeddingWeight: 0.5,
+          limit: 3000,
+          similarity: 0.5,
+          usingReRank: true,
+          rerankModelId: undefined,
+          rerankWeight: 0.6,
+          datasetSearchUsingExtensionQuery: true,
+          datasetSearchExtensionModelId: undefined,
+          datasetSearchExtensionBg: ''
+        },
+        inputs
+      }),
+    [inputs]
+  );
   const {
     isOpen: isOpenDatasetParams,
     onOpen: onOpenDatasetParams,
@@ -169,18 +177,6 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     onOpen: onOpenDatasetSelect,
     onClose: onCloseDatasetSelect
   } = useDisclosure();
-
-  useEffect(() => {
-    inputs.forEach((input) => {
-      if ((datasetParamsData as any)[input.key] !== undefined) {
-        setDatasetParamsData((state) => ({
-          ...state,
-          [input.key]: input.value ?? (state as any)[input.key]
-        }));
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inputs]);
 
   // ---- Prompt ----
   const promptInput = useMemo(
@@ -208,6 +204,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const manualKeys = useMemo(
     () =>
       new Set([
+        NodeInputKeyEnum.aiModelId,
         NodeInputKeyEnum.aiModel,
         NodeInputKeyEnum.aiSystemPrompt,
         NodeInputKeyEnum.skills,
@@ -218,7 +215,10 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     []
   );
   const modelInputs = useMemo(
-    () => commonInputs.filter((i) => i.key === NodeInputKeyEnum.aiModel),
+    () =>
+      commonInputs.filter(
+        (i) => i.key === NodeInputKeyEnum.aiModelId || i.key === NodeInputKeyEnum.aiModel
+      ),
     [commonInputs]
   );
   // Inputs rendered before skills/tools (fileLink, userChatInput)
@@ -439,14 +439,15 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   } = useDisclosure();
 
   // ---- Model ----
-  const currentModel = useMemo(() => {
-    const modelValue = inputs.find((i) => i.key === NodeInputKeyEnum.aiModel)?.value;
-    return getWebLLMModel(modelValue);
-  }, [inputs]);
+  const { model: currentModel } = useModelDetail({
+    modelType: ModelTypeEnum.llm,
+    modelId: inputs.find((input) => input.key === NodeInputKeyEnum.aiModelId)?.value,
+    model: inputs.find((input) => input.key === NodeInputKeyEnum.aiModel)?.value
+  });
 
   return (
     <NodeCard minW={'524px'} selected={selected} {...data}>
-      {isTool && hasDynamicToolInput(inputs) && (
+      {isTool && hasDynamicToolInput(data) && (
         <Container>
           <RenderToolInput nodeId={nodeId} inputs={inputs} />
         </Container>
@@ -538,80 +539,31 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 >
                   {t('common:Choose')}
                 </Button>
-                {selectedAgentSkills.map((item) => {
-                  const isDeleted = !!item.isDeleted;
-
-                  return (
-                    <MyTooltip
-                      key={item.skillId}
-                      label={
-                        isDeleted ? t('skill:skill_deleted_click_remove_tip') : item.description
-                      }
-                    >
-                      <Flex
-                        alignItems={'center'}
-                        h={10}
-                        boxShadow={'sm'}
-                        bg={'white'}
-                        border={'base'}
-                        borderColor={isDeleted ? 'red.600' : undefined}
-                        px={2}
-                        borderRadius={'md'}
-                        _hover={{
-                          borderColor: isDeleted ? 'red.600' : 'primary.300',
-                          '& .delete-btn': { display: 'flex' },
-                          '& .unHoverStyle': { display: 'none' }
-                        }}
-                      >
-                        {item.avatar ? (
-                          <Avatar src={item.avatar} w={'18px'} borderRadius={'xs'} />
-                        ) : (
-                          <MyIcon name={'core/skill/default'} w={'18px'} />
-                        )}
-                        <Box
-                          ml={1.5}
-                          flex={'1 0 0'}
-                          w={0}
-                          className="textEllipsis"
-                          fontWeight={'bold'}
-                          fontSize={['sm', 'sm']}
-                        >
-                          {item.name}
-                        </Box>
-                        {isDeleted && (
-                          <MyTag colorSchema="red" type="fill" className="unHoverStyle">
-                            <MyIcon name={'common/error'} w={'14px'} mr={1} />
-                            <Box color={'red.600'} maxW={'100px'} className="textEllipsis">
-                              {t('skill:skill_deleted')}
-                            </Box>
-                          </MyTag>
-                        )}
-                        <Box className="delete-btn" display={'none'}>
-                          <MyIconButton
-                            icon="delete"
-                            hoverBg="red.50"
-                            hoverColor="red.600"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!skillsInput) return;
-                              onChangeNode({
-                                nodeId,
-                                key: NodeInputKeyEnum.skills,
-                                type: 'updateInput',
-                                value: {
-                                  ...skillsInput,
-                                  value: selectedAgentSkills.filter(
-                                    (s) => s.skillId !== item.skillId
-                                  )
-                                }
-                              });
-                            }}
-                          />
-                        </Box>
-                      </Flex>
-                    </MyTooltip>
-                  );
-                })}
+                {selectedAgentSkills.map((item) => (
+                  <SkillCard
+                    key={item.skillId}
+                    skill={item}
+                    avatarSize={'18px'}
+                    nameFontWeight={'bold'}
+                    flexProps={{
+                      h: 10,
+                      px: 2,
+                      boxShadow: 'sm'
+                    }}
+                    onDelete={() => {
+                      if (!skillsInput) return;
+                      onChangeNode({
+                        nodeId,
+                        key: NodeInputKeyEnum.skills,
+                        type: 'updateInput',
+                        value: {
+                          ...skillsInput,
+                          value: selectedAgentSkills.filter((s) => s.skillId !== item.skillId)
+                        }
+                      });
+                    }}
+                  />
+                ))}
               </Grid>
               {isOpenSkillSelect && (
                 <SkillSelectModal
@@ -745,7 +697,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   </MyTooltip>
                 ))}
               </Grid>
-              {isOpenToolSelect && (
+              {isOpenToolSelect && currentModel && (
                 <ToolSelectModal
                   selectedTools={selectedTools}
                   selectedModel={currentModel}
@@ -817,7 +769,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                     name: d.name,
                     avatar: d.avatar,
                     vectorModel: d.vectorModel,
-                    isDeleted: d.isDeleted
+                    error: d.error
                   }))}
                   onChange={(e) => {
                     if (!datasetSelectInput) return;
@@ -865,7 +817,6 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           maxTokens={llmMaxQuoteContext}
           onClose={onCloseDatasetParams}
           onSuccess={(e) => {
-            setDatasetParamsData(e);
             for (const key in e) {
               const item = inputs.find((input) => input.key === key);
               if (!item) continue;

@@ -1,9 +1,10 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useMemo, useState } from 'react';
 import {
   Flex,
   Box,
   Button,
-  TableContainer,
+  IconButton,
   Table,
   Thead,
   Tr,
@@ -20,7 +21,7 @@ import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { defaultOutLinkForm } from '@/web/core/app/constants';
 import type { WecomAppType, OutLinkEditType } from '@fastgpt/global/support/outLink/type';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
-import { Trans, useTranslation } from 'next-i18next';
+import { Trans } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
@@ -30,6 +31,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDocPath } from '@/web/common/system/doc';
 import { listCustomDomain } from '@/web/support/customDomain/api';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const WecomEditModal = dynamic(() => import('./WecomEditModal'));
 const ShowShareLinkModal = dynamic(() => import('../components/showShareLinkModal'));
@@ -41,8 +43,8 @@ const Wecom = ({
   appId: string;
   onRefreshOutLinkCounts: () => Promise<unknown>;
 }) => {
-  const { t } = useTranslation();
-  const { Loading, setIsLoading } = useLoading();
+  const { t } = useSafeTranslation();
+  const { Loading } = useLoading();
   const { feConfigs } = useSystemStore();
   const [editWecomData, setEditWecomData] = useState<OutLinkEditType<WecomAppType>>();
   const [isEdit, setIsEdit] = useState<boolean>(false);
@@ -60,6 +62,17 @@ const Wecom = ({
     manual: false
   });
 
+  const { runAsync: onDelShareChat, loading: isDeleting } = useRequest(
+    async (id: string) => {
+      await delShareChatById(id);
+      void Promise.all([refetchShareChatList(), onRefreshOutLinkCounts()]);
+    },
+    {
+      successToast: t('common:delete_success'),
+      errorToast: t('common:delete_failed')
+    }
+  );
+
   const {
     onOpen: openShowShareLinkModal,
     isOpen: showShareLinkModalOpen,
@@ -74,8 +87,17 @@ const Wecom = ({
   });
 
   return (
-    <Box position={'relative'} p={6} minH={'50vh'}>
-      <Flex justifyContent={'space-between'} flexDirection="row">
+    <Box
+      h={'100%'}
+      minH={0}
+      minW={0}
+      display={'flex'}
+      flexDirection={'column'}
+      overflow={'hidden'}
+      position={'relative'}
+      p={6}
+    >
+      <Flex flexShrink={0} justifyContent={'space-between'} flexDirection="row">
         <Flex alignItems={'center'}>
           <Box color={'myGray.900'} fontWeight={'medium'} fontSize={'lg'}>
             {t('publish:wecom.title')}
@@ -127,8 +149,8 @@ const Wecom = ({
           </Button>
         </Flex>
       </Flex>
-      <TableContainer mt={3}>
-        <Table variant={'simple'} w={'100%'} overflowX={'auto'} fontSize={'sm'}>
+      <FixedTableContainer mt={3} flex={'1 1 0'} h={0} maxH="none">
+        <Table variant={'simple'} w={'100%'} fontSize={'sm'}>
           <Thead>
             <Tr>
               <Th>{t('common:Name')} </Th>
@@ -160,9 +182,7 @@ const Wecom = ({
                   </Td>
                 )}
                 <Td>
-                  {item.lastTime
-                    ? t(formatTimeToChatTime(item.lastTime) as any).replace('#', ':')
-                    : t('common:un_used')}
+                  {item.lastTime ? t(formatTimeToChatTime(item.lastTime)) : t('common:un_used')}
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>
                   <Button
@@ -177,14 +197,14 @@ const Wecom = ({
                     {t('publish:request_address')}
                   </Button>
                   <MyMenu
+                    strategy="fixed"
                     Button={
-                      <MyIcon
+                      <IconButton
+                        icon={<MyIcon name={'more'} w={'14px'} />}
                         name={'more'}
-                        _hover={{ bg: 'myGray.100' }}
-                        cursor={'pointer'}
-                        borderRadius={'md'}
-                        w={'14px'}
-                        p={2}
+                        variant={'whitePrimary'}
+                        size={'sm'}
+                        aria-label={'more'}
                       />
                     }
                     menuList={[
@@ -209,19 +229,7 @@ const Wecom = ({
                           {
                             label: t('common:Delete'),
                             icon: 'delete',
-                            onClick: async () => {
-                              setIsLoading(true);
-                              try {
-                                await delShareChatById(item._id);
-                                void Promise.all([
-                                  refetchShareChatList(),
-                                  onRefreshOutLinkCounts()
-                                ]);
-                              } catch (error) {
-                                console.log(error);
-                              }
-                              setIsLoading(false);
-                            }
+                            onClick: () => onDelShareChat(item._id)
                           }
                         ]
                       }
@@ -232,7 +240,31 @@ const Wecom = ({
             ))}
           </Tbody>
         </Table>
-      </TableContainer>
+        {shareChatList.length === 0 && !isFetching && (
+          <EmptyTip
+            {...(feConfigs.customDomain?.enable && customDomains.length > 0
+              ? { text: '' }
+              : {
+                  text: (
+                    <Trans
+                      i18nKey={i18nT('app:publish_channel.wecom.empty')}
+                      components={{
+                        a: (
+                          <Link
+                            color="primary.600"
+                            key="link"
+                            href="/account/customDomain"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          />
+                        )
+                      }}
+                    />
+                  )
+                })}
+          />
+        )}
+      </FixedTableContainer>
       {editWecomData && (
         <WecomEditModal
           appId={appId}
@@ -247,31 +279,7 @@ const Wecom = ({
           isEdit={isEdit}
         />
       )}
-      {shareChatList.length === 0 && !isFetching && (
-        <EmptyTip
-          {...(feConfigs.customDomain?.enable && customDomains.length > 0
-            ? { text: '' }
-            : {
-                text: (
-                  <Trans
-                    i18nKey={i18nT('app:publish_channel.wecom.empty')}
-                    components={{
-                      a: (
-                        <Link
-                          color="primary.600"
-                          key="link"
-                          href="/account/customDomain"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        />
-                      )
-                    }}
-                  />
-                )
-              })}
-        />
-      )}
-      <Loading loading={isFetching} fixed={false} />
+      <Loading loading={isFetching || isDeleting} fixed={false} />
       {showShareLinkModalOpen && (
         <ShowShareLinkModal
           shareLink={showShareLink ?? ''}

@@ -2,7 +2,6 @@ import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import { ChatWorkflowSseResponseSchema } from '../../chat/completion/api';
 import {
-  ListAppsBySkillIdResponseSchema,
   CreateSkillBodySchema,
   CreateSkillFolderBodySchema,
   CreateSkillFolderResponseSchema,
@@ -15,10 +14,10 @@ import {
   GetSkillFolderPathResponseSchema,
   ImportSkillQuerySchema,
   ImportSkillResponseSchema,
-  ListAppsBySkillIdQuerySchema,
   ListSkillVersionsBodySchema,
   ListSkillVersionsResponseSchema,
   ListSkillsQuerySchema,
+  ListSkillsV2QuerySchema,
   ListSkillsResponseSchema,
   SaveDeploySkillBodySchema,
   SaveDeploySkillResponseSchema,
@@ -40,12 +39,14 @@ import {
   UpdateSkillCollaboratorResponseSchema
 } from './api';
 import { SandboxRuntimeStatusResponseSchema } from '../../../../core/ai/sandbox/type';
+import { SkillBatchPath } from './batch';
 
 export const SkillPath: OpenAPIPath = {
+  ...SkillBatchPath,
   '/core/ai/skill/list': {
     post: {
       summary: '获取技能列表',
-      description: '分页获取当前团队可见的系统技能或个人技能',
+      description: '获取当前团队可见的系统技能或个人技能',
       tags: [DevApiTagsMap.skillBasic],
       requestBody: {
         content: {
@@ -57,6 +58,30 @@ export const SkillPath: OpenAPIPath = {
       responses: {
         200: {
           description: '成功返回技能列表',
+          content: {
+            'application/json': {
+              schema: ListSkillsResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/ai/skill/listV2': {
+    post: {
+      summary: '分页获取技能列表',
+      description: '分页获取当前团队可见的系统技能或个人技能',
+      tags: [DevApiTagsMap.skillBasic],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: ListSkillsV2QuerySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功返回分页技能列表',
           content: {
             'application/json': {
               schema: ListSkillsResponseSchema
@@ -304,26 +329,6 @@ export const SkillPath: OpenAPIPath = {
                 type: 'string',
                 format: 'binary'
               }
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/ai/skill/apps': {
-    get: {
-      summary: '查询引用技能的应用',
-      description: '查询使用指定 skillId 的应用列表',
-      tags: [DevApiTagsMap.skillBasic],
-      requestParams: {
-        query: ListAppsBySkillIdQuerySchema
-      },
-      responses: {
-        200: {
-          description: '成功返回引用应用列表',
-          content: {
-            'application/json': {
-              schema: ListAppsBySkillIdResponseSchema
             }
           }
         }

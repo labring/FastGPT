@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   appendAgentLoopCoreChildNodeResponses,
-  withAgentLoopCoreChildTotalPoints
+  stripAgentLoopCoreChildTotalPoints
 } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/nodeResponse/children';
 import { createAgentLoopCoreCompressNodeResponse } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/nodeResponse/compress';
 
@@ -12,9 +12,10 @@ describe('createAgentLoopCoreCompressNodeResponse', () => {
       createAgentLoopCoreCompressNodeResponse({
         moduleName: 'Compress',
         moduleType: FlowNodeTypeEnum.toolCall,
+        modelName: 'GPT-4',
         usage: {
           moduleName: 'usage',
-          model: 'GPT-4',
+          modelId: '507f1f77bcf86cd799439011',
           inputTokens: 10,
           outputTokens: 3,
           totalPoints: 0.2
@@ -31,6 +32,7 @@ describe('createAgentLoopCoreCompressNodeResponse', () => {
       moduleType: FlowNodeTypeEnum.toolCall,
       moduleLogo: 'core/app/agent/child/contextCompress',
       runningTime: 0.4,
+      modelId: '507f1f77bcf86cd799439011',
       model: 'GPT-4',
       llmRequestIds: ['req_1'],
       inputTokens: 10,
@@ -57,6 +59,7 @@ describe('createAgentLoopCoreCompressNodeResponse', () => {
       expect.objectContaining({
         id: 'req_empty',
         nodeId: 'req_empty',
+        modelId: undefined,
         model: undefined,
         inputTokens: undefined,
         outputTokens: undefined,
@@ -68,8 +71,8 @@ describe('createAgentLoopCoreCompressNodeResponse', () => {
 });
 
 describe('agentLoopCore child node responses', () => {
-  it('recomputes childTotalPoints from childrenResponses', () => {
-    const response = withAgentLoopCoreChildTotalPoints({
+  it('removes cached childTotalPoints and keeps child responses', () => {
+    const response = stripAgentLoopCoreChildTotalPoints({
       id: 'parent',
       nodeId: 'parent',
       moduleName: 'Parent',
@@ -93,7 +96,8 @@ describe('agentLoopCore child node responses', () => {
       ]
     });
 
-    expect(response.childTotalPoints).toBeCloseTo(0.3);
+    expect(response).not.toHaveProperty('childTotalPoints');
+    expect(response.childrenResponses).toHaveLength(2);
   });
 
   it('appends children and removes childTotalPoints when there is no child usage', () => {
@@ -125,7 +129,6 @@ describe('agentLoopCore child node responses', () => {
       })
     ).toEqual(
       expect.objectContaining({
-        childTotalPoints: 0.5,
         childrenResponses: [
           expect.objectContaining({
             id: 'child'
@@ -133,5 +136,11 @@ describe('agentLoopCore child node responses', () => {
         ]
       })
     );
+    expect(
+      appendAgentLoopCoreChildNodeResponses({
+        nodeResponse: response,
+        childrenResponses: []
+      })
+    ).not.toHaveProperty('childTotalPoints');
   });
 });

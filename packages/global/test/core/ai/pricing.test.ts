@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   calculateModelPrice,
   getRuntimeResolvedPriceTiers,
+  MAX_MODEL_PRICE_TIERS,
+  normalizeModelPricingForRead,
+  normalizeModelPricingForSave,
   sanitizeModelPriceTiers
-} from '@fastgpt/global/core/ai/pricing';
+} from '@fastgpt/global/core/ai/model/pricing';
 
 describe('sanitizeModelPriceTiers', () => {
   it('should return empty array for non-array input', () => {
@@ -21,6 +25,19 @@ describe('sanitizeModelPriceTiers', () => {
     expect(sanitizeModelPriceTiers([])).toEqual([]);
   });
 
+  it('should cap the number of price tiers', () => {
+    const result = sanitizeModelPriceTiers(
+      Array.from({ length: MAX_MODEL_PRICE_TIERS + 1 }, (_, index) => ({
+        maxInputTokens: (index + 1) * 10,
+        inputPrice: index + 1,
+        outputPrice: index + 1
+      }))
+    );
+
+    expect(result).toHaveLength(MAX_MODEL_PRICE_TIERS);
+    expect(result.at(-1)?.maxInputTokens).toBe(MAX_MODEL_PRICE_TIERS * 10);
+  });
+
   it('should always push first tier with minInputTokens: 0 and prices', () => {
     const result = sanitizeModelPriceTiers([{ maxInputTokens: 30, inputPrice: 1, outputPrice: 2 }]);
     expect(result).toEqual([
@@ -28,11 +45,25 @@ describe('sanitizeModelPriceTiers', () => {
     ]);
   });
 
-  it('should push first tier even without prices', () => {
+  it('should normalize a single tier without prices', () => {
     // @ts-ignore
     const result = sanitizeModelPriceTiers([{ maxInputTokens: 10 }]);
     expect(result).toEqual([
       { minInputTokens: 0, maxInputTokens: 10, inputPrice: 0, outputPrice: 0 }
+    ]);
+  });
+
+  it('should normalize a single tier when both prices are zero', () => {
+    const result = sanitizeModelPriceTiers([{ maxInputTokens: 10, inputPrice: 0, outputPrice: 0 }]);
+    expect(result).toEqual([
+      { minInputTokens: 0, maxInputTokens: 10, inputPrice: 0, outputPrice: 0 }
+    ]);
+  });
+
+  it('should preserve a single tier when either price is non-zero', () => {
+    const result = sanitizeModelPriceTiers([{ inputPrice: 0, outputPrice: 2 }]);
+    expect(result).toEqual([
+      { minInputTokens: 0, maxInputTokens: undefined, inputPrice: 0, outputPrice: 2 }
     ]);
   });
 
@@ -163,6 +194,13 @@ describe('sanitizeModelPriceTiers', () => {
 });
 
 describe('getRuntimeResolvedPriceTiers', () => {
+  it('should return no tier for a single configured tier with zero prices', () => {
+    const result = getRuntimeResolvedPriceTiers({
+      priceTiers: [{ maxInputTokens: 10, inputPrice: 0, outputPrice: 0 }]
+    });
+    expect(result).toEqual([]);
+  });
+
   it('should resolve ranges from configured tiers', () => {
     const result = getRuntimeResolvedPriceTiers({
       priceTiers: [
@@ -193,6 +231,28 @@ describe('getRuntimeResolvedPriceTiers', () => {
     expect(result).toEqual([{ minInputTokens: 0, inputPrice: 2, outputPrice: 2 }]);
   });
 
+  it('should progressively fall back from empty tiers and zero legacy IO to comprehensive price', () => {
+    const result = getRuntimeResolvedPriceTiers({
+      priceTiers: [{ inputPrice: 0, outputPrice: 0 }],
+      inputPrice: 0,
+      outputPrice: 0,
+      charsPointsPrice: 2
+    });
+
+    expect(result).toEqual([{ minInputTokens: 0, inputPrice: 2, outputPrice: 2 }]);
+  });
+
+  it('should progressively fall back when the configured tiers array is empty', () => {
+    const result = getRuntimeResolvedPriceTiers({
+      priceTiers: [],
+      inputPrice: 1,
+      outputPrice: 3,
+      charsPointsPrice: 9
+    });
+
+    expect(result).toEqual([{ minInputTokens: 0, inputPrice: 1, outputPrice: 3 }]);
+  });
+
   it('should prioritize priceTiers over legacy fields', () => {
     const result = getRuntimeResolvedPriceTiers({
       charsPointsPrice: 10,
@@ -221,34 +281,27 @@ describe('getRuntimeResolvedPriceTiers', () => {
     ]);
   });
 
-  it('should return default tier for undefined config', () => {
-    // undefined config 会走 charsPointsPrice 逻辑，返回默认梯度
-    expect(getRuntimeResolvedPriceTiers(undefined)).toEqual([
-      { minInputTokens: 0, inputPrice: 0, outputPrice: 0 }
-    ]);
+  it('should return no tier for undefined config', () => {
+    expect(getRuntimeResolvedPriceTiers(undefined)).toEqual([]);
   });
 
-  it('should return default tier for empty object config', () => {
-    // 空对象 config 会走 charsPointsPrice 逻辑，返回默认梯度
-    expect(getRuntimeResolvedPriceTiers({})).toEqual([
-      { minInputTokens: 0, inputPrice: 0, outputPrice: 0 }
-    ]);
+  it('should return no tier for empty object config', () => {
+    expect(getRuntimeResolvedPriceTiers({})).toEqual([]);
   });
 
-  it('should handle inputPrice of 0 (not use legacy mode)', () => {
+  it('should preserve legacy pricing when only outputPrice is non-zero', () => {
     const result = getRuntimeResolvedPriceTiers({
       inputPrice: 0,
       outputPrice: 5
     });
-    // inputPrice 为 0，不满足 hasLegacyIOPrice 条件，走 charsPointsPrice 逻辑
-    expect(result).toEqual([{ minInputTokens: 0, inputPrice: 0, outputPrice: 0 }]);
+    expect(result).toEqual([{ minInputTokens: 0, inputPrice: 0, outputPrice: 5 }]);
   });
 
-  it('should handle charsPointsPrice of 0', () => {
+  it('should drop charsPointsPrice of 0', () => {
     const result = getRuntimeResolvedPriceTiers({
       charsPointsPrice: 0
     });
-    expect(result).toEqual([{ minInputTokens: 0, inputPrice: 0, outputPrice: 0 }]);
+    expect(result).toEqual([]);
   });
 
   it('should handle invalid price types', () => {
@@ -258,7 +311,7 @@ describe('getRuntimeResolvedPriceTiers', () => {
       // @ts-ignore
       outputPrice: NaN
     });
-    expect(result).toEqual([{ minInputTokens: 0, inputPrice: 0, outputPrice: 0 }]);
+    expect(result).toEqual([]);
   });
 
   it('should handle empty priceTiers array', () => {
@@ -466,10 +519,9 @@ describe('calculateModelPrice', () => {
       inputTokens: 1000,
       outputTokens: 500
     });
-    // undefined config 会返回默认梯度
     expect(totalPoints).toBe(0);
-    expect(matchedTier).toEqual({ minInputTokens: 0, inputPrice: 0, outputPrice: 0 });
-    expect(tiers).toEqual([{ minInputTokens: 0, inputPrice: 0, outputPrice: 0 }]);
+    expect(matchedTier).toBeUndefined();
+    expect(tiers).toEqual([]);
   });
 
   it('should handle empty config', () => {
@@ -479,8 +531,8 @@ describe('calculateModelPrice', () => {
       outputTokens: 500
     });
     expect(totalPoints).toBe(0);
-    expect(matchedTier).toBeDefined();
-    expect(tiers.length).toBeGreaterThan(0);
+    expect(matchedTier).toBeUndefined();
+    expect(tiers).toEqual([]);
   });
 
   it('should handle negative tokens gracefully', () => {
@@ -510,4 +562,84 @@ describe('calculateModelPrice', () => {
     expect(matchedTier?.minInputTokens).toBe(100);
     expect(totalPoints).toBeGreaterThan(0);
   });
+});
+
+describe('normalizeModelPricingForRead', () => {
+  const modelData = {
+    type: ModelTypeEnum.llm,
+    provider: 'OpenAI',
+    model: 'test-model',
+    name: 'Test Model',
+    scope: 'system' as const,
+    isActive: false,
+    config: { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000 }
+  };
+
+  it.each([
+    { inputPrice: 1, outputPrice: 3 },
+    { inputPrice: 0, outputPrice: 3 },
+    { charsPointsPrice: 2 }
+  ])('converts legacy LLM pricing without retaining old fields: %j', (pricing) => {
+    const original = { ...modelData, ...pricing };
+    const result = normalizeModelPricingForRead(original);
+    expect(result.priceTiers).toEqual([
+      {
+        minInputTokens: 0,
+        inputPrice: 'charsPointsPrice' in pricing ? pricing.charsPointsPrice : pricing.inputPrice,
+        outputPrice: 'charsPointsPrice' in pricing ? pricing.charsPointsPrice : pricing.outputPrice
+      }
+    ]);
+    for (const key of ['inputPrice', 'outputPrice', 'charsPointsPrice']) {
+      expect(result).not.toHaveProperty(key);
+    }
+  });
+
+  it('keeps current tiers ahead of legacy fields', () => {
+    const priceTiers = [{ minInputTokens: 0, inputPrice: 2, outputPrice: 4 }];
+    expect(
+      normalizeModelPricingForRead({ ...modelData, priceTiers, inputPrice: 10, outputPrice: 20 })
+        .priceTiers
+    ).toEqual(priceTiers);
+  });
+});
+
+describe('normalizeModelPricingForSave', () => {
+  const modelData = {
+    type: ModelTypeEnum.llm,
+    provider: 'OpenAI',
+    model: 'test-model',
+    name: 'Test Model',
+    scope: 'system' as const,
+    isActive: false,
+    config: { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000 }
+  };
+
+  it('persists a free edit without falling back to the legacy prices', () => {
+    const form = normalizeModelPricingForRead({ ...modelData, inputPrice: 1, outputPrice: 3 });
+    form.priceTiers = [{ minInputTokens: 0, inputPrice: 0, outputPrice: 0 }];
+    const saved = normalizeModelPricingForSave(form);
+    expect(saved.priceTiers).toEqual([]);
+    expect(saved).not.toHaveProperty('inputPrice');
+    expect(saved).not.toHaveProperty('outputPrice');
+  });
+
+  it('ignores stale legacy fields even if caller still includes them in save input', () => {
+    const result = normalizeModelPricingForSave({
+      ...modelData,
+      charsPointsPrice: 9,
+      inputPrice: 1,
+      outputPrice: 3,
+      priceTiers: []
+    });
+    expect(result).toEqual({ ...modelData, priceTiers: [] });
+  });
+
+  it.each([ModelTypeEnum.embedding, ModelTypeEnum.tts, ModelTypeEnum.stt, ModelTypeEnum.rerank])(
+    'preserves current non-LLM pricing for %s',
+    (type) => {
+      const model = { ...modelData, type, charsPointsPrice: 5, config: {} } as any;
+      expect(normalizeModelPricingForRead(model)).toBe(model);
+      expect(normalizeModelPricingForSave(model)).toBe(model);
+    }
+  );
 });

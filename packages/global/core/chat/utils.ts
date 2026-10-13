@@ -14,20 +14,76 @@ import type { WorkflowInteractiveResponseType } from '../workflow/template/syste
 import { extractDeepestInteractive } from '../workflow/runtime/utils';
 import { childrenResponseFields, getChildrenResponses } from './utils/mergeNode';
 
-// Concat 2 -> 1, and sort by role
+/**
+ * 合并两段历史，并把 system 消息排到最前。
+ *
+ * 比较函数必须同时看 a、b：只看 a 时两条 system 消息互相都「更小」，排序结果依赖引擎实现，
+ * 多条 system 会被倒序。按「是否 system」比较后依赖 sort 的稳定性，各组内部保持原顺序。
+ */
 export const concatHistories = (histories1: ChatItemMiniType[], histories2: ChatItemMiniType[]) => {
   const newHistories = [...histories1, ...histories2];
-  return newHistories.sort((a) => {
-    if (a.obj === ChatRoleEnum.System) {
-      return -1;
-    }
-    return 1;
-  });
+  const rolePriority = (item: ChatItemMiniType) => (item.obj === ChatRoleEnum.System ? 0 : 1);
+  return newHistories.sort((a, b) => rolePriority(a) - rolePriority(b));
 };
 
 export const hasContextCheckpoint = (history: ChatItemMiniType) =>
   history.obj === ChatRoleEnum.AI &&
   history.value.some((value) => Boolean(value.contextCheckpoint));
+
+/**
+ * 判定当前节点响应是否属于工具调用或工具执行详情。
+ *
+ * 工具执行的返回结果（无论成功或业务报错）都会作为工具输出提交给上层大模型继续推理，
+ * 且已在消息内部的工具折叠卡片中展示，不应被提升为整轮对话或工作流的顶层失败错误。
+ *
+ * 判定依据：
+ * 1. 显式工具节点类型（FlowNodeTypeEnum.tool / toolSet / toolCall）；
+ * 2. 具备 Function Calling 调用与消费特征：
+ *    - 绑定了 Agent 调度的 toolId；
+ *    - 或产生并挂载了供大模型继续推理消费的 toolRes（子应用工具、自定义工具、系统工具在被调用时均会生成 toolRes）。
+ */
+export const isToolExecutionResponse = (item: ChatHistoryItemResType): boolean => {
+  if (
+    item.moduleType === FlowNodeTypeEnum.tool ||
+    item.moduleType === FlowNodeTypeEnum.toolSet ||
+    item.moduleType === FlowNodeTypeEnum.toolCall
+  ) {
+    return true;
+  }
+
+  if (item.toolRes !== undefined || Boolean(item.toolId)) {
+    return true;
+  }
+
+  return false;
+};
+
+/**
+ * 从节点响应列表中定位导致会话、Agent 或工作流失败的目标错误节点。
+ *
+ * 前后端在处理顶层失败错误时统一遵循该逻辑：
+ * 1. 忽略被错误捕获分支（catchError）正常捕获的节点（errorCaptured === true）；
+ * 2. 忽略工具执行节点（isToolExecutionResponse === true），因为工具报错会由大模型继续推理消化；
+ * 3. 优先取顶层根节点错误（!item.parentId），保持容器封装与层级边界；
+ * 4. 若无根节点错误，但存在未正常挂载到父级的错误节点（例如容器执行异常中断导致孤儿节点），
+ *    允许从后往前提取作为兜底，避免流程崩溃时静默吞错。
+ */
+export const findFailedResponseNode = (
+  responseData: ChatHistoryItemResType[] = []
+): ChatHistoryItemResType | undefined => {
+  const isCandidate = (item: ChatHistoryItemResType) =>
+    !item.errorCaptured && !isToolExecutionResponse(item) && Boolean(item.error || item.errorText);
+
+  // 1. 优先匹配根节点（!item.parentId）
+  const rootErrorNode = responseData.findLast((item) => !item.parentId && isCandidate(item));
+  if (rootErrorNode) return rootErrorNode;
+
+  // 2. 孤儿节点兜底：仅当节点的父级未被记录（如父容器崩溃未生成自身 nodeResponse）时，才作为未挂载异常兜底暴露
+  const nodeIds = new Set(responseData.map((item) => item.id).filter(Boolean));
+  return responseData.findLast(
+    (item) => isCandidate(item) && Boolean(item.parentId && !nodeIds.has(item.parentId))
+  );
+};
 
 // Keep the first n and last n characters
 export const getHistoryPreview = (
@@ -120,6 +176,7 @@ const getNodeResponseFieldMap = ({
   return responseDetail
     ? {
         quoteList: true,
+        retrievalResults: true,
         ...fields
       }
     : fields;
@@ -299,7 +356,7 @@ export const getFlatAppResponses = (res: ChatHistoryItemResType[]): ChatHistoryI
     .flat();
 };
 
-/* 
+/*
   对于交互模式下，有两种响应：
   1. 提交交互结果，此时不会新增一条 user 消息
   2. 发送 user 消息，此时对话会新增一条 user 消息

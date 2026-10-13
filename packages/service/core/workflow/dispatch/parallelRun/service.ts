@@ -1,11 +1,8 @@
 import { cloneDeep } from 'lodash-es';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { ParallelRunStatusEnum } from '@fastgpt/global/core/workflow/constants';
-import {
-  collectResponseFeedbacks,
-  getRuntimeNodeResponseSummary,
-  injectNestedStartInputs
-} from '../utils';
+import { collectResponseFeedbacks, injectNestedStartInputs } from '../utils';
+import { getWorkflowRuntimeSummary } from '../utils/summary';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
@@ -130,7 +127,7 @@ export type ParallelTaskResult =
  *
  * Note: runWorkflow always resolves (never rejects), so node-level errors are
  * detected here by checking whether the nestedEnd node was actually reached.
- * 新 writer 链路不会再返回完整 nodeResponse 列表，因此运行判断只读 runtimeNodeResponseSummary。
+ * 新 writer 链路不会再返回完整 nodeResponse 列表，因此运行判断只读 workflowRuntimeSummary。
  */
 export const parseTaskResponse = (params: {
   index: number;
@@ -149,9 +146,9 @@ export const parseTaskResponse = (params: {
     };
   }
 
-  const runtimeNodeResponseSummary = getRuntimeNodeResponseSummary(response);
-  const hasNestedEnd = runtimeNodeResponseSummary.hasNestedEnd;
-  const nestedEndOutput = runtimeNodeResponseSummary.nestedEndOutput;
+  const workflowRuntimeSummary = getWorkflowRuntimeSummary(response);
+  const hasNestedEnd = workflowRuntimeSummary.hasNestedEnd;
+  const nestedEndOutput = workflowRuntimeSummary.nestedEndOutput;
 
   // nestedEnd was not reached → sub-workflow terminated with an error
   if (!hasNestedEnd) {
@@ -159,7 +156,7 @@ export const parseTaskResponse = (params: {
       success: false,
       index,
       error: getErrText(
-        runtimeNodeResponseSummary.errorText,
+        workflowRuntimeSummary.errorText,
         i18nT('workflow:parallel_task_not_reach_end')
       ),
       response,
@@ -168,7 +165,7 @@ export const parseTaskResponse = (params: {
   }
 
   // 保持 main 分支旧口径：成功任务的 totalPoints 是子流程各 nodeResponse.totalPoints 之和。
-  const totalPoints = runtimeNodeResponseSummary.totalPoints ?? 0;
+  const totalPoints = workflowRuntimeSummary.totalPoints ?? 0;
   return { success: true, index, data: nestedEndOutput, response, totalPoints };
 };
 
@@ -224,9 +221,7 @@ const buildParallelTaskWrapper = ({
   input: any;
   parentNodeId: string;
 }): ChatHistoryItemResType => {
-  const runtimeSummary = result.response
-    ? getRuntimeNodeResponseSummary(result.response)
-    : undefined;
+  const runtimeSummary = result.response ? getWorkflowRuntimeSummary(result.response) : undefined;
   const taskNodeId = result.taskResponseId || `${parentNodeId}_task_${result.index}`;
 
   return {
@@ -236,7 +231,6 @@ const buildParallelTaskWrapper = ({
     moduleName: i18nT('workflow:parallel_task'),
     moduleNameArgs: { index: result.index + 1 },
     runningTime: result.runningTime,
-    totalPoints: result.totalPoints,
     loopInputValue: input,
     loopOutputValue: result.success ? result.data : undefined,
     error: result.success ? undefined : result.error,

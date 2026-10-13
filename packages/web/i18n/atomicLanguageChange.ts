@@ -1,7 +1,7 @@
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { I18nNsType } from './i18next';
 import { I18N_NAMESPACES } from './constants';
-import { loadLocaleResource } from './resourceLoaders';
+import { loadLanguageBundleWithRetry } from './resourceLoaders';
 import {
   getLanguageStorageKind,
   getLangMapping,
@@ -47,46 +47,34 @@ export type AtomicLanguageChangeOptions = {
   i18n: I18nLike;
   language: string;
   storageKey: string;
-  namespaces?: I18nNsType[number][];
 };
 
 let languageChangeQueue = Promise.resolve();
+const LANGUAGE_BUNDLE_NAMESPACES = I18N_NAMESPACES as I18nNsType;
 
-/** 获取当前页面实际使用的 namespace，至少包含 common。 */
-export const getActiveI18nNamespaces = (i18n: I18nLike): I18nNsType[number][] => {
-  const reportNamespaces = i18n.reportNamespaces?.getUsedNamespaces?.() || [];
-  const configuredNamespaces = i18n.options?.ns
-    ? Array.isArray(i18n.options.ns)
-      ? i18n.options.ns
-      : [i18n.options.ns]
-    : [];
-
-  return Array.from(new Set(['common', ...configuredNamespaces, ...reportNamespaces])).filter(
-    (namespace): namespace is I18nNsType[number] =>
-      I18N_NAMESPACES.includes(namespace as I18nNsType[number])
+const preloadResources = async (languages: localeType[], i18n: I18nLike) => {
+  const languagesToLoad = languages.filter(
+    (language) =>
+      !LANGUAGE_BUNDLE_NAMESPACES.every((namespace) => i18n.hasResourceBundle(language, namespace))
   );
-};
+  const bundles = await Promise.all(
+    languagesToLoad.map(async (language) => ({
+      language,
+      bundle: await loadLanguageBundleWithRetry(language)
+    }))
+  );
 
-const preloadResources = async (
-  languages: localeType[],
-  namespaces: I18nNsType[number][],
-  i18n: I18nLike
-) => {
-  const resources: StagedResource[] = [];
-
-  for (const language of languages) {
-    for (const namespace of namespaces) {
-      resources.push({
+  return bundles.flatMap(({ language, bundle }) =>
+    LANGUAGE_BUNDLE_NAMESPACES.map(
+      (namespace): StagedResource => ({
         language,
         namespace,
-        resource: (await loadLocaleResource(language, namespace)) as Record<string, unknown>,
+        resource: bundle[namespace],
         existed: i18n.hasResourceBundle(language, namespace),
         previousResource: i18n.getResourceBundle?.(language, namespace)
-      });
-    }
-  }
-
-  return resources;
+      })
+    )
+  );
 };
 
 const addResources = (i18n: I18nLike, resources: StagedResource[]) => {
@@ -134,13 +122,12 @@ const restorePreference = (snapshot: LanguagePreferenceSnapshot) => {
 const runAtomicLanguageChange = async ({
   i18n,
   language: rawLanguage,
-  storageKey,
-  namespaces
+  storageKey
 }: AtomicLanguageChangeOptions) => {
   const language = getLangMapping(rawLanguage);
   const previousLanguage = getLangMapping(i18n.language || language);
   const requiredLanguages = getRequiredI18nLanguages(language);
-  const activeNamespaces = namespaces || getActiveI18nNamespaces(i18n);
+  const activeNamespaces = [...LANGUAGE_BUNDLE_NAMESPACES];
   const storageKind: LanguageStorageKind = getLanguageStorageKind(storageKey);
   const storageSnapshot: LanguagePreferenceSnapshot = {
     ...snapshotLanguagePreference(storageKey, storageKind),
@@ -162,7 +149,7 @@ const runAtomicLanguageChange = async ({
 
   try {
     // Prepare：先直接加载完整语言链，避免把 changeLanguage 的 resolve 当作成功信号。
-    stagedResources = await preloadResources(requiredLanguages, activeNamespaces, i18n);
+    stagedResources = await preloadResources(requiredLanguages, i18n);
     addResources(i18n, stagedResources);
 
     i18n.on('failedLoading', onFailedLoading);

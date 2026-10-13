@@ -13,7 +13,7 @@ import {
   ChatItemCollectionName,
   ChatItemResponseCollectionName
 } from '@fastgpt/service/core/chat/constants';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { getTeamMemberMap } from '@fastgpt/service/support/user/team/utils';
 import { ChatSourceTypeEnum, type ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
@@ -28,10 +28,12 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controlle
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { getTimezoneCodeFromStr } from '@fastgpt/global/common/time/timezone';
 import { getLocationFromIp } from '@fastgpt/service/common/geo';
+import { getDisplayChatTitle } from '@fastgpt/service/core/chat/title';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { AppVersionCollectionName } from '@fastgpt/service/core/app/version/schema';
 import { ExportChatLogsBodySchema } from '@fastgpt/global/openapi/core/app/log/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { isUnselectedLogUserFilter } from '@fastgpt/global/core/app/logs/utils';
 const logger = getLogger(LogCategories.MODULE.APP.LOGS);
 
 const appChatSourceMatch = {
@@ -83,30 +85,31 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const variables = (chatConfig.variables || []).filter(
     (item) => item.type !== VariableInputEnum.password
   );
+  const csvHeader = `\uFEFF${title},${variables.map((variable) => formatJsonString(variable.label)).join(',')}`;
+  const logExportAudit = () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.EXPORT_APP_CHAT_LOG,
+      params: {
+        appName: app.name,
+        appType: getI18nAppType(app.type)
+      }
+    });
+  };
+
+  // 用户未选择时鉴权后直接给空 CSV，避免再跑成员聚合和聊天日志 pipeline。
+  if (isUnselectedLogUserFilter(tmbIds, outLinkUids)) {
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8;');
+    res.setHeader('Content-Disposition', 'attachment; filename=usage.csv; ');
+    res.write(csvHeader);
+    res.end();
+    logExportAudit();
+    return;
+  }
 
   // Get members
-  const teamMemberWithContact = await MongoTeamMember.aggregate([
-    { $match: { teamId: new Types.ObjectId(teamId) } },
-    {
-      $lookup: {
-        from: 'users',
-        localField: 'userId',
-        foreignField: '_id',
-        as: 'user'
-      }
-    },
-    {
-      $project: {
-        memberId: '$_id',
-        teamId: 1,
-        userId: 1,
-        name: 1,
-        role: 1,
-        status: 1,
-        contact: { $ifNull: [{ $arrayElemAt: ['$user.contact', 0] }, '-'] }
-      }
-    }
-  ]);
+  const memberDisplayMap = await getTeamMemberMap({ teamId, fields: '_id name' });
 
   const where = {
     appId: new Types.ObjectId(appId),
@@ -432,9 +435,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     readStream: cursor
   });
 
-  write(
-    `\uFEFF${title},${variables.map((variable) => formatJsonString(variable.label)).join(',')}`
-  );
+  write(csvHeader);
 
   cursor.on('data', (doc) => {
     const createdTime = doc.createTime
@@ -444,10 +445,8 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       ? dayjs(doc.updateTime).utcOffset(timezoneCode).format('YYYY-MM-DD HH:mm:ss')
       : '';
     const source = sourcesMap[doc.source as ChatSourceEnum]?.label || doc.source;
-    const titleStr = doc.customTitle || doc.title || '';
-    const tmbName = doc.outLinkUid
-      ? doc.outLinkUid
-      : teamMemberWithContact.find((member) => String(member.memberId) === String(doc.tmbId))?.name;
+    const titleStr = getDisplayChatTitle({ customTitle: doc.customTitle, title: doc.title });
+    const tmbName = doc.outLinkUid ? doc.outLinkUid : memberDisplayMap.get(String(doc.tmbId))?.name;
     const region = getLocationFromIp(doc.originIp, locale);
 
     const valueMap: Record<string, () => any> = {
@@ -520,17 +519,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     res.end();
   });
 
-  (async () => {
-    addAuditLog({
-      tmbId,
-      teamId,
-      event: AuditEventEnum.EXPORT_APP_CHAT_LOG,
-      params: {
-        appName: app.name,
-        appType: getI18nAppType(app.type)
-      }
-    });
-  })();
+  logExportAudit();
 }
 
 export default NextAPI(handler);

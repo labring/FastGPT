@@ -1,12 +1,12 @@
-import { Box, Button, Flex, HStack, useDisclosure } from '@chakra-ui/react';
-import MyPopover from '@fastgpt/web/components/common/MyPopover';
-import React, { useState } from 'react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useTranslation } from 'next-i18next';
-import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import SaveAndPublishModal from '@/components/common/Modal/SaveAndPublishModal';
+import { Box, Button, Flex, HStack, useDisclosure } from '@chakra-ui/react';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useTranslation } from 'next-i18next';
+import React, { useState } from 'react';
 
 const SaveButton = ({
   colorSchema,
@@ -19,7 +19,7 @@ const SaveButton = ({
   isLoading: boolean;
   isDisabled?: boolean;
   onClickSave: (options: { isPublish?: boolean; versionName?: string }) => Promise<void>;
-  checkData?: () => boolean | undefined;
+  checkData?: () => boolean | undefined | Promise<boolean | undefined>;
 }) => {
   const { t } = useTranslation();
   const [isSave, setIsSave] = useState(false);
@@ -122,8 +122,15 @@ const SaveButton = ({
               rounded={'4px'}
               _hover={{ color, bg: 'rgba(17, 24, 36, 0.05)' }}
               cursor={'pointer'}
-              onClick={() => {
-                const canOpen = !checkData || checkData();
+              onClick={async () => {
+                const canOpen =
+                  !checkData ||
+                  (await Promise.resolve()
+                    .then(checkData)
+                    .catch(() => {
+                      toast({ status: 'error', title: t('common:model_catalog_load_failed') });
+                      return false;
+                    }));
                 if (canOpen) {
                   onSaveAndPublishModalOpen();
                 }

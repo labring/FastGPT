@@ -21,6 +21,13 @@ export type ChildrenResponseField = (typeof childrenResponseFields)[number];
 export const getChildrenResponses = (item: ChatHistoryItemResType) =>
   childrenResponseFields.flatMap((key) => item[key] || []);
 
+/** 递归汇总新 nodeResponse 结构中所有后代节点自身的积分，不包含当前节点。 */
+export const getChildrenTotalPoints = (item: ChatHistoryItemResType): number =>
+  (item.childrenResponses || []).reduce(
+    (sum, child) => sum + (child.totalPoints ?? 0) + getChildrenTotalPoints(child),
+    0
+  );
+
 const NODE_RESPONSE_INCREMENT_NUMBER_FIELDS = [
   'runningTime',
   'totalPoints',
@@ -366,7 +373,13 @@ export const appendNodeResponseByParent = (
   return inserted ? nextResponses : [...orphanResult.responses, incomingWithChildren];
 };
 
-const normalizeNodeResponseChildren = (
+/**
+ * 为内嵌 child 补齐当前 response 的 parentId，并递归合并其内部增量。
+ *
+ * 同一 child 可能先作为独立 flat row 发布，随后又随 parent 的 childrenResponses 到达；
+ * 统一 parentId 后，实时流和详情读取都能使用相同的 `id + parentId` 身份去重。
+ */
+export const normalizeNodeResponseChildren = (
   response: ChatHistoryItemResType
 ): ChatHistoryItemResType => {
   const normalizedChildren = childrenResponseFields.reduce<Partial<ChatHistoryItemResType>>(
@@ -374,7 +387,13 @@ const normalizeNodeResponseChildren = (
       const children = response[field] as ChatHistoryItemResType[] | undefined;
       if (!children?.length) return acc;
 
-      const mergedChildren = mergeNodeResponseDataByIdAndParent(children);
+      const childrenWithParent = response.id
+        ? children.map((child) => ({
+            ...child,
+            ...(child.parentId ? {} : { parentId: response.id })
+          }))
+        : children;
+      const mergedChildren = mergeNodeResponseDataByIdAndParent(childrenWithParent);
       return mergedChildren.length > 0 ? { ...acc, [field]: mergedChildren } : acc;
     },
     {}
@@ -386,8 +405,16 @@ const normalizeNodeResponseChildren = (
   };
 };
 
-const stripChildTotalPoints = (item: ChatHistoryItemResType): ChatHistoryItemResType => {
-  const strippedItem = { ...item };
+/**
+ * 递归移除仅用于旧版缓存的 childTotalPoints。
+ * 新数据的子节点积分由客户端根据 childrenResponses 动态计算，不能进入持久化或合并结果。
+ */
+export const stripNodeResponseChildTotalPoints = (
+  item: ChatHistoryItemResType
+): ChatHistoryItemResType => {
+  const strippedItem = { ...item } as ChatHistoryItemResType & {
+    childTotalPoints?: number;
+  };
   delete strippedItem.childTotalPoints;
 
   const strippedChildren = childrenResponseFields.reduce<Partial<ChatHistoryItemResType>>(
@@ -397,7 +424,7 @@ const stripChildTotalPoints = (item: ChatHistoryItemResType): ChatHistoryItemRes
 
       return {
         ...acc,
-        [field]: children.map(stripChildTotalPoints)
+        [field]: children.map(stripNodeResponseChildTotalPoints)
       };
     },
     {}
@@ -413,4 +440,4 @@ const stripChildTotalPoints = (item: ChatHistoryItemResType): ChatHistoryItemRes
 export const mergeNodeResponseDataByIdAndParent = (
   responseDataList: ChatHistoryItemResType[] = []
 ): ChatHistoryItemResType[] =>
-  mergeNodeResponseListByParent(responseDataList).map(stripChildTotalPoints);
+  mergeNodeResponseListByParent(responseDataList).map(stripNodeResponseChildTotalPoints);

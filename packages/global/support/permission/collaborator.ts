@@ -13,6 +13,7 @@ export type CollaboratorItemDetailType = {
   permission: Permission;
   name: string;
   avatar: string;
+  username?: string;
 } & CollaboratorIdType;
 
 export type CollaboratorItemType = {

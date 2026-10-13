@@ -35,7 +35,6 @@ const createToolNode = (overrides: Record<string, any> = {}) =>
     name: 'Search',
     avatar: 'tool-avatar',
     intro: 'Search intro',
-    toolDescription: 'Search data',
     inputs: [],
     ...overrides
   }) as any;
@@ -79,7 +78,6 @@ describe('useToolCatalog', () => {
         createToolNode({
           nodeId: 'weather',
           name: 'Weather',
-          toolDescription: '',
           intro: 'Weather intro',
           inputs: [
             {
@@ -119,7 +117,7 @@ describe('useToolCatalog', () => {
         type: 'function',
         function: {
           name: 'search',
-          description: 'Search: Search data',
+          description: 'Search: Search intro',
           parameters: explicitSchema
         }
       },
@@ -237,6 +235,29 @@ describe('useToolCatalog', () => {
       },
       required: ['count']
     });
+  });
+
+  it('omits parameters when user selection has no agent-generated inputs', () => {
+    const schema = createToolSchema(
+      createToolNode({
+        name: '用户选择',
+        jsonSchema: { type: 'object' },
+        inputs: [
+          {
+            key: 'description',
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderTypeList: [FlowNodeInputTypeEnum.textarea]
+          },
+          {
+            key: 'userSelectOptions',
+            valueType: WorkflowIOValueTypeEnum.any,
+            renderTypeList: [FlowNodeInputTypeEnum.custom]
+          }
+        ]
+      })
+    );
+
+    expect(schema.function).not.toHaveProperty('parameters');
   });
 
   it('normalizes scalar raw schemas before merging agent-generated inputs', () => {

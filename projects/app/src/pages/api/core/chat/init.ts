@@ -24,6 +24,7 @@ import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { buildChatTargetResponse } from '@fastgpt/global/openapi/core/chat/api';
 import { createChatAgentHelperAppConfig } from '@fastgpt/global/core/ai/auxiliaryGeneration/chatAgentHelper';
+import { getDisplayChatTitle } from '@fastgpt/service/core/chat/title';
 
 async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
   const { sourceType, sourceId, chatId } = parseApiInput({
@@ -61,7 +62,7 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
     return InitChatResponseSchema.parse({
       chatId,
       ...buildChatTargetResponse({ sourceType, sourceId }),
-      title: chat?.title || '',
+      title: getDisplayChatTitle({ customTitle: chat?.customTitle, title: chat?.title }),
       userAvatar: undefined,
       variables: {},
       chatGenerateStatus: chat?.chatGenerateStatus,
@@ -125,7 +126,7 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
     return InitChatResponseSchema.parse({
       chatId,
       ...buildChatTargetResponse({ sourceType, sourceId }),
-      title: chat?.title || '',
+      title: getDisplayChatTitle({ customTitle: chat?.customTitle, title: chat?.title }),
       userAvatar: undefined,
       variables: {},
       chatGenerateStatus,
@@ -190,17 +191,19 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
     return InitChatResponseSchema.parse({
       chatId,
       ...buildChatTargetResponse({ sourceType, sourceId }),
-      title: chat?.title || '',
+      title: getDisplayChatTitle({ customTitle: chat?.customTitle, title: chat?.title }),
       userAvatar: undefined,
       variables,
       chatGenerateStatus: chat?.chatGenerateStatus,
       hasBeenRead: chat?.hasBeenRead,
       app: {
         chatConfig: appChatConfig,
-        chatModels: getChatModelNameListByModules(nodes),
+        chatModels: await getChatModelNameListByModules(nodes, {
+          teamId: String(app.teamId)
+        }),
         name: app.name,
-        avatar: app.avatar,
-        intro: app.intro,
+        avatar: app.avatar ?? '',
+        intro: app.intro ?? '',
         type: app.type,
         pluginInputs
       }

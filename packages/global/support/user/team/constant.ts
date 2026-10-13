@@ -1,5 +1,6 @@
 export const TeamCollectionName = 'teams';
 export const TeamMemberCollectionName = 'team_members';
+export const MAX_TEAM_OWNER_COUNT = 5;
 
 export enum TeamMemberRoleEnum {
   owner = 'owner'
@@ -34,7 +35,5 @@ export const TeamMemberStatusMap = {
 };
 
 export const notLeaveStatus = {
-  $not: {
-    $in: [TeamMemberStatusEnum.leave, TeamMemberStatusEnum.forbidden]
-  }
+  $eq: TeamMemberStatusEnum.active
 };

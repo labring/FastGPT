@@ -1,10 +1,10 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import AvatarGroup from '@fastgpt/web/components/common/Avatar/AvatarGroup';
 import {
   Box,
   Button,
   Flex,
   Table,
-  TableContainer,
   Tbody,
   Td,
   Th,
@@ -12,7 +12,7 @@ import {
   Tr,
   useDisclosure
 } from '@chakra-ui/react';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyMenu, { type MenuItemType } from '@fastgpt/web/components/common/MyMenu';
@@ -32,7 +32,7 @@ const ChangeOwnerModal = dynamic(() => import('./GroupTransferOwnerModal'));
 const GroupInfoModal = dynamic(() => import('./GroupInfoModal'));
 const GroupManageMember = dynamic(() => import('./GroupManageMember'));
 function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
-  const { t } = useClientTranslation(['account_team', 'user']);
+  const { t } = useSafeTranslation();
   const { userInfo } = useUserStore();
 
   const {
@@ -118,10 +118,10 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
         flex={['0 0 auto', '1 0 0']}
         h={['auto', 0]}
         minH={0}
-        overflowY={['visible', 'auto']}
+        overflow={'hidden'}
         isLoading={isLoadingGroups}
       >
-        <TableContainer overflow={'unset'} fontSize={'sm'}>
+        <FixedTableContainer h={['60dvh', '100%']} maxH="none" fontSize={'sm'}>
           <Table overflow={'unset'}>
             <Thead>
               <Tr bg={'white !important'}>
@@ -223,7 +223,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               ))}
             </Tbody>
           </Table>
-        </TableContainer>
+        </FixedTableContainer>
       </MyBox>
 
       <ConfirmDeleteGroupModal />

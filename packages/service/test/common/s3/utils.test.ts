@@ -873,3 +873,47 @@ describe('getFileS3Key', () => {
     });
   });
 });
+
+describe('getFileS3Key.rawText', () => {
+  const hash = 'abc123def456';
+  const sangforFileParseConfig = {
+    keep_header_footer: true,
+    keep_appendix: false,
+    image_analysis: true,
+    chart_analysis: false
+  };
+
+  it('keeps the legacy key format when no parse config is given', () => {
+    const noFlag = getFileS3Key.rawText({ hash });
+    expect(noFlag).toBe(getFileS3Key.rawText({ hash, customPdfParse: false }));
+    expect(noFlag).toContain(hash);
+    expect(getFileS3Key.rawText({ hash, customPdfParse: true })).toContain(`${hash}-true`);
+  });
+
+  it('is stable for the same config regardless of key order', () => {
+    const reordered = {
+      chart_analysis: false,
+      image_analysis: true,
+      keep_appendix: false,
+      keep_header_footer: true
+    };
+
+    expect(getFileS3Key.rawText({ hash, customPdfParse: true, sangforFileParseConfig })).toBe(
+      getFileS3Key.rawText({ hash, customPdfParse: true, sangforFileParseConfig: reordered })
+    );
+  });
+
+  it('changes the key when config values differ', () => {
+    const flipped = { ...sangforFileParseConfig, keep_header_footer: false };
+
+    expect(getFileS3Key.rawText({ hash, customPdfParse: true, sangforFileParseConfig })).not.toBe(
+      getFileS3Key.rawText({ hash, customPdfParse: true, sangforFileParseConfig: flipped })
+    );
+  });
+
+  it('differs from the legacy key once a config is attached', () => {
+    expect(getFileS3Key.rawText({ hash, customPdfParse: true, sangforFileParseConfig })).not.toBe(
+      getFileS3Key.rawText({ hash, customPdfParse: true })
+    );
+  });
+});

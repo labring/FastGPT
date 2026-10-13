@@ -26,7 +26,6 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { workflowStartNodeId } from '@/web/core/app/constants';
-import { getWebLLMModel } from '@/web/common/system/utils';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent/index';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
@@ -39,7 +38,7 @@ import {
   getToolConfigStatus,
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
-import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
+import { getNewToolPreviewNode } from '@/web/core/app/api/tool';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
@@ -68,6 +67,10 @@ export const appWorkflow2AgentForm = ({
   nodes.forEach((node) => {
     const inputMap = new Map(node.inputs.map((input) => [input.key, input.value]));
     if (node.flowNodeType === FlowNodeTypeEnum.agent) {
+      defaultAppForm.aiSettings.modelId = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.aiModelId
+      );
       defaultAppForm.aiSettings.model = findInputValueByKey(node.inputs, NodeInputKeyEnum.aiModel);
       defaultAppForm.aiSettings.systemPrompt = inputMap.get(NodeInputKeyEnum.aiSystemPrompt);
       defaultAppForm.aiSettings.temperature = inputMap.get(NodeInputKeyEnum.aiChatTemperature);
@@ -145,6 +148,7 @@ export const checkAgentSkillSandboxUnavailable = ({
   );
 };
 
+/** 将 Agent 表单转换为工作流，并通过共用 Schema 校验和归一化知识库参数。 */
 export function agentForm2AppWorkflow(
   data: AppFormEditFormType,
   t: any // i18nT
@@ -153,13 +157,37 @@ export function agentForm2AppWorkflow(
 } {
   const aiChatNodeId = '7BdojPlukIQw';
   const normalizedSandboxEntrypoint = data.aiSettings.sandboxEntrypoint?.trim() || undefined;
-  const modelData = getWebLLMModel(data.aiSettings.model);
   const modelMultimodal = {
-    vision: !!modelData?.vision,
-    audio: !!modelData?.audio,
-    video: !!modelData?.video,
-    extractFiles: !!(modelData?.vision || modelData?.audio || modelData?.video)
+    // 表单只控制文件上传；媒体传递和链接提取统一放行，实际能力由运行时模型配置判断。
+    vision: true,
+    audio: true,
+    video: true,
+    extractFiles: true
   };
+  const modelReferenceInputs: FlowNodeInputItemType[] = [
+    ...(data.aiSettings.modelId !== undefined || !data.aiSettings.model
+      ? [
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
+            label: t('common:core.module.input.label.aiModel'),
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: data.aiSettings.modelId
+          }
+        ]
+      : []),
+    ...(data.aiSettings.model
+      ? [
+          {
+            key: NodeInputKeyEnum.aiModel,
+            renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
+            label: t('common:core.module.input.label.aiModel'),
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: data.aiSettings.model
+          }
+        ]
+      : [])
+  ];
 
   function workflowStartTemplate(): StoreNodeItemType {
     return {
@@ -193,13 +221,7 @@ export function agentForm2AppWorkflow(
           },
           version: AgentNode.version,
           inputs: [
-            {
-              key: NodeInputKeyEnum.aiModel,
-              renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
-              label: t('common:core.module.input.label.aiModel'),
-              valueType: WorkflowIOValueTypeEnum.string,
-              value: data.aiSettings.model
-            },
+            ...modelReferenceInputs,
             {
               key: NodeInputKeyEnum.aiSystemPrompt,
               renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
@@ -298,6 +320,8 @@ export function agentForm2AppWorkflow(
 
                 return {
                   id: tool.pluginId,
+                  name: tool.name,
+                  avatar: tool.avatar,
                   version: tool.version,
                   source: tool.source,
                   toolConfig: tool.toolConfig,
@@ -323,11 +347,14 @@ export function agentForm2AppWorkflow(
                 searchMode: data.dataset.searchMode,
                 embeddingWeight: data.dataset.embeddingWeight,
                 usingReRank: data.dataset.usingReRank,
+                rerankModelId: data.dataset.rerankModelId,
                 rerankModel: data.dataset.rerankModel,
                 rerankWeight: data.dataset.rerankWeight,
                 datasetSearchUsingExtensionQuery: data.dataset.datasetSearchUsingExtensionQuery,
+                datasetSearchExtensionModelId: data.dataset.datasetSearchExtensionModelId,
                 datasetSearchExtensionModel: data.dataset.datasetSearchExtensionModel,
                 datasetSearchExtensionBg: data.dataset.datasetSearchExtensionBg,
+                collectionFilterMatch: data.dataset.collectionFilterMatch,
                 [NodeInputKeyEnum.authTmbId]: data.dataset.authTmbId
               })
             },
@@ -438,9 +465,8 @@ export const loadGeneratedTools = async ({
         }
 
         // 新工具，需要与已配置的 tool 进行 input 合并
-        const tool = await getClientToolPreviewNode({
+        const tool = await getNewToolPreviewNode({
           appId: toolId,
-          getLatestVersion: true,
           source
         });
         // 验证工具配置

@@ -57,6 +57,47 @@ describe('datasetSearchResultConcat', () => {
     });
   });
 
+  describe('Input immutability', () => {
+    it('should not change the score objects of the lists it merges', () => {
+      // 召回链路先融合一次、取快照（retrievalResults），再和重排结果、图片结果各融合一次。
+      // 若融合改写了传入项的 score，快照里的 rrf 分数和名次会变成最后一次融合的值。
+      const recall = [
+        createSearchItem('1', 'Question 1', [
+          { type: SearchScoreTypeEnum.embedding, value: 0.9, index: 0 },
+          { type: SearchScoreTypeEnum.rrf, value: 0.02, index: 0 }
+        ]),
+        createSearchItem('2', 'Question 2', [
+          { type: SearchScoreTypeEnum.rrf, value: 0.01, index: 1 }
+        ])
+      ];
+      const rerank = [
+        createSearchItem('2', 'Question 2', [
+          { type: SearchScoreTypeEnum.reRank, value: 0.95, index: 0 }
+        ]),
+        createSearchItem('1', 'Question 1', [
+          { type: SearchScoreTypeEnum.reRank, value: 0.4, index: 1 },
+          { type: SearchScoreTypeEnum.rrf, value: 0.5, index: 0 }
+        ])
+      ];
+      const recallBefore = structuredClone(recall);
+      const rerankBefore = structuredClone(rerank);
+
+      const first = datasetSearchResultConcat([
+        { weight: 0.5, list: recall },
+        { weight: 0.5, list: rerank }
+      ]);
+      expect(recall).toEqual(recallBefore);
+      expect(rerank).toEqual(rerankBefore);
+
+      // 同样的输入再融合一次，结果不变
+      const second = datasetSearchResultConcat([
+        { weight: 0.5, list: recall },
+        { weight: 0.5, list: rerank }
+      ]);
+      expect(second).toEqual(first);
+    });
+  });
+
   describe('RRF algorithm tests', () => {
     it('should calculate RRF scores correctly', () => {
       const items1 = [

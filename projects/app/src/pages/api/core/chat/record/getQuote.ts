@@ -63,7 +63,9 @@ async function handler(req: ApiRequestProps): Promise<GetQuoteResponseType> {
     quoteDataFieldSelector
   ).lean();
 
-  const formatPreviewUrlList = await getFormatDatasetCiteList(list);
+  const formatPreviewUrlList = await getFormatDatasetCiteList(list, {
+    datasetIds: Array.from(new Set(list.map((item) => String(item.datasetId)).filter(Boolean)))
+  });
   const quoteList = processChatTimeFilter(formatPreviewUrlList, chatItem.time);
 
   return GetQuoteResponseSchema.parse(quoteList);

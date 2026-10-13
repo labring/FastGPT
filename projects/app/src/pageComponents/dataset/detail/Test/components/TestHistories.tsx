@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -9,6 +8,7 @@ import {
   useSearchTestStore,
   type SearchTestStoreItemType
 } from '@/web/core/dataset/store/searchTest';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const TestHistories = ({
   datasetId,
@@ -21,7 +21,7 @@ const TestHistories = ({
   onSelect: (item: SearchTestStoreItemType) => void;
   onClearSelect: () => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { datasetTestList, delDatasetTestItemById } = useSearchTestStore();
 
   // The store is shared across dataset pages; show only the current dataset's test records.
@@ -94,7 +94,7 @@ const TestHistories = ({
               />
             </Box>
             <Box className="time" flex={'0 0 auto'} fontSize={'xs'} color={'myGray.500'}>
-              {t(formatTimeToChatTime(item.time) as any).replace('#', ':')}
+              {t(formatTimeToChatTime(item.time))}
             </Box>
             <MyTooltip label={t('common:core.dataset.test.delete test history')}>
               <Box className="delete" visibility={'hidden'} w={'0.8rem'} h={'0.8rem'} ml={1}>

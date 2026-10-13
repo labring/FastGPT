@@ -24,7 +24,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/api';
 
 async function handler(req: ApiRequestProps<CreateDatasetFolderBody>) {
-  const { parentId, name, intro } = parseApiInput({
+  const { parentId, name, intro, inheritPermission } = parseApiInput({
     req,
     bodySchema: CreateDatasetFolderBodySchema
   }).body;
@@ -49,15 +49,22 @@ async function handler(req: ApiRequestProps<CreateDatasetFolderBody>) {
   await checkCreateFolderDepth({ parentId, teamId, model: MongoDataset });
 
   await mongoSessionRun(async (session) => {
-    const dataset = await MongoDataset.create({
-      ...parseParentIdInMongo(parentId),
-      avatar: FolderImgUrl,
-      name,
-      intro,
-      teamId,
-      tmbId,
-      type: DatasetTypeEnum.folder
-    });
+    const [dataset] = await MongoDataset.create(
+      [
+        {
+          ...parseParentIdInMongo(parentId),
+          avatar: FolderImgUrl,
+          name,
+          intro,
+          teamId,
+          tmbId,
+          type: DatasetTypeEnum.folder,
+          // 独立态创建（sangfor 专用）：下级建权不合并父级快照，只写 owner
+          inheritPermission
+        }
+      ],
+      { session }
+    );
 
     await createResourceDefaultCollaborators({
       tmbId,

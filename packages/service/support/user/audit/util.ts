@@ -3,6 +3,7 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { MongoTeamAudit } from './schema';
+import { getLogger, LogCategories } from '../../../common/logger';
 import type {
   AdminAuditEventEnum,
   AuditEventEnum,
@@ -10,6 +11,15 @@ import type {
   AuditEventParamsType
 } from '@fastgpt/global/support/user/audit/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+
+const logger = getLogger(LogCategories.INFRA.MONGO);
+
+export type AuditLogInput = {
+  tmbId: string;
+  teamId: string;
+  event: AuditEventEnum | AdminAuditEventEnum;
+  params?: Record<string, unknown>;
+};
 
 export function getI18nAppType(type: AppTypeEnum): string {
   if (type === AppTypeEnum.folder) return i18nT('account_team:type.Folder');
@@ -60,6 +70,7 @@ export function getI18nInformLevel(level: string): string {
   return i18nT('common:UnKnow');
 }
 
+/** 写入单条审计并在内部重试、记录最终失败；调用方可直接调用，无需等待或捕获异常。 */
 export function addAuditLog<T extends AuditEventEnum>({
   teamId,
   tmbId,
@@ -101,5 +112,28 @@ export function addAuditLog<T extends AuditEventEnum | AdminAuditEventEnum>({
       event,
       metadata: params
     });
+  }).catch((error) => {
+    logger.error('Audit log write failed', { error, teamId, tmbId, event });
   });
 }
+
+/** 批量写入审计日志，保留每个变更对象一条日志的展示粒度。 */
+export const addAuditLogs = async (logs: AuditLogInput[]): Promise<void> => {
+  if (logs.length === 0) return;
+
+  try {
+    await retryFn(async () => {
+      await MongoTeamAudit.insertMany(
+        logs.map(({ tmbId, teamId, event, params }) => ({
+          tmbId,
+          teamId,
+          event,
+          metadata: params
+        })),
+        { ordered: true }
+      );
+    });
+  } catch (error) {
+    logger.error('Batch audit log write failed', { error, count: logs.length });
+  }
+};

@@ -109,6 +109,7 @@ describe('createAgentLoopCoreRuntimeEnvironment', () => {
 
     environment.emitEvent({
       type: 'after_message_compress',
+      modelName: 'GPT-4',
       usages: [usage],
       requestIds: ['req_compress'],
       seconds: 0.1

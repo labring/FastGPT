@@ -1,18 +1,17 @@
-import { useCallback } from 'react';
+import React from 'react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
-import { useTranslation } from 'next-i18next';
-import { type Node, useKeyPress, useReactFlow } from 'reactflow';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { useContextSelector } from 'use-context-selector';
-import { useWorkflowUtils } from './useUtils';
-import { useKeyPress as useKeyPressEffect } from 'ahooks';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
+import { useKeyPress as useKeyPressEffect } from 'ahooks';
+import { useTranslation } from 'next-i18next';
+import { useCallback } from 'react';
+import { type Node, useKeyPress, useReactFlow } from 'reactflow';
+import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { WorkflowUIContext } from '../../context/workflowUIContext';
 import { isWorkflowShortcutInputtingTarget } from './keyboard';
+import { useWorkflowUtils } from './useUtils';
 
 export const useKeyboard = () => {
   const { t } = useTranslation();
@@ -20,11 +19,6 @@ export const useKeyboard = () => {
   const setNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.setNodes);
   const mouseInCanvas = useContextSelector(WorkflowUIContext, (v) => v.mouseInCanvas);
   const getMousePosition = useContextSelector(WorkflowUIContext, (v) => v.getMousePosition);
-
-  const { getMyModelList } = useSystemStore();
-  const { data: myModels } = useRequest(getMyModelList, {
-    manual: false
-  });
 
   const { copyData } = useCopyData();
   const { computedNewNodeName } = useWorkflowUtils();
@@ -80,11 +74,6 @@ export const useKeyboard = () => {
 
       const newNodes = filteredData.map((item) => {
         const nodeId = getNanoid();
-        item.data.inputs.forEach((input) => {
-          if (input.key === 'model') {
-            if (!myModels?.has(input.value)) input.value = undefined;
-          }
-        });
         return {
           // reset id
           ...item,
@@ -123,7 +112,6 @@ export const useKeyboard = () => {
     getMousePosition,
     hasInputtingElement,
     mouseInCanvas,
-    myModels,
     screenToFlowPosition,
     setNodes
   ]);

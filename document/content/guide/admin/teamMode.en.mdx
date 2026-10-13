@@ -7,17 +7,25 @@ description: FastGPT Team Mode Documentation
 
 Currently supported team modes:
 
-1. Multi-team mode (default)
-2. Single-team mode (one global team)
+1. Single-team mode (default, one global team)
+2. Multi-team mode
 3. Member sync mode (all members synced from external systems)
 
 <table className="table-hover table-striped-columns" style={{ textAlign: 'center' }}>
   <thead>
     <tr>
-      <th rowSpan="2" className="text-center">Team Mode</th>
-      <th colSpan="2" className="text-center">SMS/Email Registration</th>
-      <th colSpan="2" className="text-center">Admin Direct Add</th>
-      <th colSpan="2" className="text-center">SSO Registration</th>
+      <th rowSpan="2" className="text-center">
+        Team Mode
+      </th>
+      <th colSpan="2" className="text-center">
+        SMS/Email Registration
+      </th>
+      <th colSpan="2" className="text-center">
+        Admin Direct Add
+      </th>
+      <th colSpan="2" className="text-center">
+        SSO Registration
+      </th>
     </tr>
     <tr>
       <th className="text-center">Creates Default Team</th>
@@ -28,7 +36,7 @@ Currently supported team modes:
       <th className="text-center">Joins Root Team</th>
     </tr>
   </thead>
-  <tbody >
+  <tbody>
     <tr>
       <td className="text-center">Single-team Mode</td>
       <td className="text-center">❌</td>
@@ -59,7 +67,7 @@ Currently supported team modes:
   </tbody>
 </table>
 
-### Multi-team Mode (Default)
+### Multi-team Mode
 
 In multi-team mode, a default team owned by the user is automatically created when each user is created.
 
@@ -73,9 +81,8 @@ When system configuration is complete and sync mode is enabled, members from ext
 
 For specific sync methods and rules, see [SSO & External Member Sync](/en/guide/admin/sso).
 
-
 ## Configuration
 
-In `fastgpt-pro`, open **System Configuration → Member Configuration** and select the team mode.
+In the FastGPT frontend, go to `Admin` -> `System Configuration` -> `User Configuration` to configure the team mode.
 
 ![Select a team mode in Member Configuration](/imgs/teammode.png)

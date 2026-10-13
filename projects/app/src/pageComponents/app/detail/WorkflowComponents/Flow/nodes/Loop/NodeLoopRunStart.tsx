@@ -1,3 +1,4 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
 import { type NodeProps } from 'reactflow';
@@ -9,7 +10,7 @@ import {
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import { Box, Flex, Table, TableContainer, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
+import { Box, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import React, { useEffect, useMemo } from 'react';
 import { FlowValueTypeMap } from '@fastgpt/global/core/workflow/node/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -73,7 +74,7 @@ const NodeLoopRunStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     >
       <Box px={4} pt={2} w={'420px'}>
         <Box bg={'white'} borderRadius={'md'} overflow={'hidden'} border={'base'}>
-          <TableContainer>
+          <FixedTableContainer flush className="nodrag nowheel">
             <Table bg={'white'} variant={'workflow'}>
               <Thead>
                 <Tr>
@@ -100,7 +101,7 @@ const NodeLoopRunStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 ))}
               </Tbody>
             </Table>
-          </TableContainer>
+          </FixedTableContainer>
         </Box>
       </Box>
     </NodeCard>

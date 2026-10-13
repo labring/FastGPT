@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
+import { CAPTCHA_VERIFICATION_PURPOSES } from '@fastgpt/global/support/user/account/verification/type';
 import { mapLegacyAuthCode } from '../../../scripts/migration/authCodeToTmpData';
 
 const now = new Date('2026-07-31T00:00:00.000Z');
@@ -81,7 +82,7 @@ describe('mapLegacyAuthCode', () => {
       )
     ).toEqual({
       kind: 'mapped',
-      records: ['register', 'forgetPassword', 'unsubscribe', 'bindNotification'].map((scene) => ({
+      records: CAPTCHA_VERIFICATION_PURPOSES.map((scene) => ({
         dataId: `verification:v1:${scene}:captcha:account@example.com`,
         data: { code: 'abc123' },
         expireAt

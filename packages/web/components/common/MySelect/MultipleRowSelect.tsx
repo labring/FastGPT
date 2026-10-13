@@ -14,6 +14,7 @@ import {
 } from '@chakra-ui/react';
 import { type ListItemType, type MultipleArraySelectProps, type MultipleSelectProps } from './type';
 import EmptyTip from '../EmptyTip';
+import MyLoading from '../MyLoading';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../../common/Icon';
 
@@ -49,7 +50,8 @@ const RenderList = React.memo(function RenderList({
   SelectedItemRef
 }: RenderListProps) {
   const { t } = useTranslation();
-  const selectedValue = cloneValue[index];
+  const safeCloneValue = Array.isArray(cloneValue) ? cloneValue : [];
+  const selectedValue = safeCloneValue[index];
   const selectedIndex = list.findIndex((item) => item.value === selectedValue);
   const children = list[selectedIndex]?.children || [];
 
@@ -95,7 +97,7 @@ const RenderList = React.memo(function RenderList({
                 bg: 'primary.50'
               }}
               onClick={() => {
-                const newValue = [...cloneValue];
+                const newValue = [...safeCloneValue];
 
                 if (item.value === selectedValue) {
                   for (let i = index; i < newValue.length; i++) {
@@ -158,9 +160,12 @@ export const MultipleRowSelect = ({
   value = [],
   list,
   emptyTip,
+  isLoading = false,
   maxH = 300,
   onSelect,
   ButtonProps,
+  onOpenFunc,
+  onCloseFunc,
   changeOnEverySelect = false,
   rowMinWidth = 'auto'
 }: MultipleSelectProps & {
@@ -168,11 +173,19 @@ export const MultipleRowSelect = ({
 }) => {
   const ButtonRef = useRef<HTMLButtonElement>(null);
 
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const [cloneValue, setCloneValue] = useState(value);
+  const { isOpen, onOpen, onClose } = useDisclosure({ onClose: onCloseFunc });
+  const [cloneValue, setCloneValue] = useState<(string | undefined)[]>(() =>
+    Array.isArray(value) ? value : []
+  );
 
   const MenuRef = useRef<(HTMLDivElement | null)[]>([]);
   const SelectedItemRef = useRef<(HTMLDivElement | null)[]>([]);
+
+  // 异步列表从单列切换为分组时，使用外部 value 恢复完整路径；有效的手动路径保持不变。
+  const safeValue = Array.isArray(value) ? value : [];
+  const safeCloneValue = Array.isArray(cloneValue) ? cloneValue : [];
+  const resolvedCloneValue =
+    isOpen && !list.some((item) => item.value === safeCloneValue[0]) ? safeValue : safeCloneValue;
 
   useEffect(() => {
     if (isOpen) {
@@ -190,12 +203,13 @@ export const MultipleRowSelect = ({
   const onOpenSelect = useCallback(() => {
     setCloneValue(Array.isArray(value) ? value : []);
     onOpen();
-  }, [value, onOpen]);
+    onOpenFunc?.();
+  }, [value, onOpen, onOpenFunc]);
 
   return (
     <Box
       css={css({
-        '& div': {
+        '& div:not([data-preserve-width])': {
           width: 'auto !important'
         }
       })}
@@ -217,6 +231,7 @@ export const MultipleRowSelect = ({
           size={'lg'}
           fontSize={'sm'}
           textAlign={'left'}
+          overflow={'hidden'}
           _active={{
             transform: 'none'
           }}
@@ -230,13 +245,15 @@ export const MultipleRowSelect = ({
               }
             : {})}
         >
-          <Flex alignItems={'center'} minW={0} overflow={'hidden'}>
+          {/* data-preserve-width：避免外层 width:auto 冲掉触发器截断 */}
+          <Flex alignItems={'center'} minW={0} w={'100%'} overflow={'hidden'} data-preserve-width>
             <Box
-              flex="1 1 0"
+              data-preserve-width
+              flex={'1 1 0'}
               minW={0}
-              overflow="hidden"
-              textOverflow="ellipsis"
-              whiteSpace="nowrap"
+              overflow={'hidden'}
+              textOverflow={'ellipsis'}
+              whiteSpace={'nowrap'}
             >
               {label ?? placeholder}
             </Box>
@@ -268,21 +285,34 @@ export const MultipleRowSelect = ({
           display={'flex'}
           userSelect={'none'}
         >
-          <RenderList
-            list={list}
-            index={0}
-            cloneValue={cloneValue}
-            setCloneValue={setCloneValue}
-            onSelect={onSelect}
-            onClose={onClose}
-            changeOnEverySelect={changeOnEverySelect}
-            emptyTip={emptyTip}
-            maxH={maxH}
-            minWidth={minWidth}
-            rowMinWidth={rowMinWidth}
-            MenuRef={MenuRef}
-            SelectedItemRef={SelectedItemRef}
-          />
+          {isLoading ? (
+            <Box
+              data-preserve-width
+              role="status"
+              position="relative"
+              minH="96px"
+              minW={rowMinWidth}
+              flex={1}
+            >
+              <MyLoading fixed={false} size="md" bg="transparent" />
+            </Box>
+          ) : (
+            <RenderList
+              list={list}
+              index={0}
+              cloneValue={resolvedCloneValue}
+              setCloneValue={setCloneValue}
+              onSelect={onSelect}
+              onClose={onClose}
+              changeOnEverySelect={changeOnEverySelect}
+              emptyTip={emptyTip}
+              maxH={maxH}
+              minWidth={minWidth}
+              rowMinWidth={rowMinWidth}
+              MenuRef={MenuRef}
+              SelectedItemRef={SelectedItemRef}
+            />
+          )}
         </MenuList>
       </Menu>
     </Box>

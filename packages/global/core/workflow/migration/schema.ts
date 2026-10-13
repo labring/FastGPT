@@ -27,6 +27,8 @@ export type CanonicalAgentToolInputConfig = z.infer<typeof CanonicalAgentToolInp
 /** 当前版本的 Agent 工具；迁移只保留持久化所需字段，工具定义由消费边界加载。 */
 const CanonicalAvailableAgentToolSchema = z.object({
   id: z.string(),
+  name: z.string().optional(),
+  avatar: z.string().optional(),
   version: z.string().optional(),
   source: z.string().optional(),
   toolConfig: NodeToolConfigTypeSchema.optional(),

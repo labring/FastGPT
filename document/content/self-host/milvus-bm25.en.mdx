@@ -1,0 +1,96 @@
+---
+title: 'Milvus BM25 Full-Text Search Configuration and Migration'
+description: 'Upgrade Milvus to 2.5.16+ and enable FastGPT BM25 full-text search'
+---
+
+## Background
+
+FastGPT full-text search defaults to MongoDB `$text`. When **Milvus is used as the vector store**, full-text search automatically switches to Milvus BM25 (single `modeldata_v2` table, vector + full-text in one collection) and stops writing the MongoDB full-text table. This requires Milvus **≥ 2.5.16**; below 2.5.16 FastGPT fails to start with an explicit error — it never silently downgrades.
+
+> The full-text backend follows the actual vector store: Milvus → BM25; other vector stores (PG / OceanBase / SeekDB / openGauss) keep MongoDB `$text`. There is no separate full-text engine switch to configure.
+
+## Configuration and Migration
+
+### 1. Backup
+
+Back up before upgrading so you can roll back:
+
+- **Milvus data volume** (the `milvus` data directory of the standalone instance, containing vectors)
+- Milvus companion **etcd / MinIO** volumes
+- **MongoDB** (`dataset_datas`, `dataset_collections`, `datasets` and other business data)
+
+### 2. Stop Writes
+
+Run during a **low-write window**, or stop FastGPT app writes first. If you must keep serving during migration, avoid writing dataset data concurrently (see step 5 "New data during migration").
+
+### 3. Upgrade Milvus to 2.5.16+
+
+Keep the existing Milvus data volume and the old `modeldata` collection during the upgrade. Replace the image tag and restart:
+
+```yaml
+# Milvus service in docker-compose
+image: milvusdb/milvus:v2.5.16
+```
+
+> The old `modeldata` collection is the vector source for the migration. After upgrading, verify that the collection exists and is non-empty. If it is missing or empty, stop the migration and restore the Milvus data from backup.
+
+### 4. Verify Version
+
+Start FastGPT — Milvus initialization calls `getVersion()` to gate the version; below 2.5.16, or when the version cannot be fetched/parsed, **startup terminates**. You can also verify manually:
+
+```bash
+# Confirm the server version is >= v2.5.16 via milvus-cli / Attu / SDK getVersion
+```
+
+### 5. Migrate
+
+After confirming that the old Milvus `modeldata` collection exists and contains vectors, call the migration API. This is a pure copy and does not regenerate embeddings.
+
+```bash
+# 1. Dry run to preview stats
+curl 'http://host/api/admin/4162/milvus?dryRun=1' \
+  -H 'rootkey: YOUR_ROOT_KEY'
+
+# 2. Real migration
+curl 'http://host/api/admin/4162/milvus?batchSize=500' \
+  -H 'rootkey: YOUR_ROOT_KEY'
+
+# 3. If the request is interrupted by a gateway timeout, resume with the returned migrationId
+curl 'http://host/api/admin/4162/milvus?resumeMigrationId=<uuid>' \
+  -H 'rootkey: YOUR_ROOT_KEY'
+```
+
+The migration iterates Milvus `modeldata` vector rows, looks up the original text from MongoDB `dataset_datas.indexes`, and writes the result to `modeldata_v2`. `imageEmbedding` indexes keep their vectors but use empty BM25 text. The migration supports resumable progress, persists failed rows for self-healing retries, **verifies the actual `modeldata_v2` row count on completion**, and uses idempotent `upsert`, making retries safe.
+
+### 6. Verify the Migration
+
+- API returns `status: done` and `targetCount >= processedCount`.
+- Smoke-test full-text / hybrid search in a dataset to confirm hits.
+
+### 7. Actively Delete the Old `modeldata` Table
+
+After migration, the old `modeldata` table is **never auto-deleted**. Once the admin confirms the migration is correct, delete it explicitly:
+
+- Via the migration API (drop after validation + clear the MongoDB legacy full-text table):
+
+  ```bash
+  curl 'http://host/api/admin/4162/milvus?removeOld=1' \
+    -H 'rootkey: YOUR_ROOT_KEY'
+  ```
+
+- Or drop `modeldata` manually via milvus-cli / SDK.
+
+> After deletion, FastGPT restart does **not** recreate or access the old table: normal init only creates/loads `modeldata_v2`; `modeldata` is detected/loaded only by the migration script.
+
+### 8. Rollback
+
+- If `removeOld` was **not** run (old table intact): downgrade the FastGPT image and restore backups; the legacy full-text data is still in MongoDB.
+- If `removeOld` was run (old table dropped): restore the Milvus data volume from backup before downgrading.
+- Migration is re-runnable (idempotent upsert); on failure, resume with `resumeMigrationId`.
+
+## FAQ
+
+- **Startup fails with `Milvus version ... is not supported`**: Milvus is below 2.5.16; upgrade to 2.5.16+.
+- **Migration reports that the old `modeldata` collection is missing or empty**: stop the migration and check whether FastGPT is connected to the correct Milvus instance and whether the data volume is mounted correctly. Restore from backup if the data is lost.
+- **Migration stays `failed` with `targetCount < processedCount`**: the target table has fewer actual rows than written; check Milvus health (OOM / released collection) and resume with `resumeMigrationId`.
+- **Full-text search returns nothing after migration**: confirm the migration finished with `status: done`; an empty `modeldata_v2` means no full-text hits.

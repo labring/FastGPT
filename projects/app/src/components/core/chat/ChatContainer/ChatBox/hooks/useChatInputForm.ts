@@ -1,7 +1,7 @@
 import { useMemo, type RefObject } from 'react';
 import { useForm } from 'react-hook-form';
 import { useDebounceEffect, useMemoizedFn } from 'ahooks';
-import type { VariableItemType } from '@fastgpt/global/core/app/type';
+import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { ChatTypeEnum, textareaMinH } from '../constants';
 import type { ChatBoxInputFormType, ChatBoxInputType } from '../type';

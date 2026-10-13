@@ -1,6 +1,6 @@
 import { type SourceMemberType } from '@fastgpt/global/support/user/type';
 import { MongoTeam } from './team/teamSchema';
-import { MongoTeamMember } from './team/teamMemberSchema';
+import { getTeamMemberMap } from './team/utils';
 import { type ClientSession } from '../../common/mongo';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 
@@ -92,7 +92,7 @@ export const checkWebSyncLimit = async ({
 /**
  * This function will add a property named sourceMember to the list passed in.
  * @param list The list to add the sourceMember property to. [TmbId] property is required.
- * @error If member is not found, this item will be skipped.
+ * If member is not found, fallback unknown member info with leave status is used to preserve list length for pagination.
  * @returns The list with the sourceMember property added.
  */
 export async function addSourceMember<T extends { tmbId: string }>({
@@ -106,33 +106,42 @@ export async function addSourceMember<T extends { tmbId: string }>({
 
   const tmbIdList = list
     .map((item) => (item.tmbId ? String(item.tmbId) : undefined))
-    .filter(Boolean);
-  const tmbList = await MongoTeamMember.find(
-    {
-      _id: { $in: tmbIdList }
-    },
-    'tmbId name avatar status',
-    {
-      session
-    }
-  ).lean();
+    .filter((tmbId): tmbId is string => tmbId !== undefined);
+  const tmbMap = await getTeamMemberMap({
+    memberIds: tmbIdList,
+    fields: '_id name avatar status',
+    session
+  });
 
-  return list
-    .map((item) => {
-      const tmb = tmbList.find((tmb) => String(tmb._id) === String(item.tmbId));
-      if (!tmb) return;
+  const hasToObject = <R>(doc: unknown): doc is { toObject: () => R } =>
+    typeof doc === 'object' &&
+    doc !== null &&
+    'toObject' in doc &&
+    typeof (doc as Record<string, unknown>).toObject === 'function';
 
-      // @ts-ignore
-      const formatItem = typeof item.toObject === 'function' ? item.toObject() : item;
+  const defaultLeaveMember = {
+    name: 'undefined',
+    avatar: '',
+    status: TeamMemberStatusEnum.leave
+  };
 
-      return {
-        ...formatItem,
-        sourceMember: {
-          name: tmb.name?.trim() ? tmb.name : 'unknow',
-          avatar: tmb.avatar,
-          status: tmb.status ?? TeamMemberStatusEnum.active
-        }
-      };
-    })
-    .filter(Boolean) as Array<T & { sourceMember: SourceMemberType }>;
+  return list.map((item) => {
+    const tmb = tmbMap.get(String(item.tmbId)) ?? defaultLeaveMember;
+    const formatItem = hasToObject<T>(item) ? item.toObject() : item;
+
+    return {
+      ...formatItem,
+      sourceMember: formatSourceMember(tmb)
+    };
+  }) as Array<T & { sourceMember: SourceMemberType }>;
 }
+
+export const formatSourceMember = (member: {
+  name?: string | null;
+  avatar?: string | null;
+  status?: TeamMemberStatusEnum | null;
+}): SourceMemberType => ({
+  name: member.name?.trim() ? member.name : 'unknown',
+  avatar: member.avatar,
+  status: member.status ?? TeamMemberStatusEnum.active
+});

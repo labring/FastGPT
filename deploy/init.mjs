@@ -20,7 +20,7 @@ if (!basePath.endsWith('deploy')) {
  * 扫描 `deploy/version/*` 获取所有可发布版本。
  *
  * 每个版本目录必须包含 `args.json` 和 `docker-compose.template.yml`。`main`
- * 固定作为迭代版展示，其余目录名都作为稳定版展示；这里仅负责发现和排序。
+ * 对应当前稳定版并固定排在首位，其余版本按版本号倒序排列。
  *
  * @returns {Promise<string[]>}
  */
@@ -56,8 +56,8 @@ const loadDeployVersions = async () => {
   }
 
   return versions.sort((a, b) => {
-    if (a === 'main') return 1;
-    if (b === 'main') return -1;
+    if (a === 'main') return -1;
+    if (b === 'main') return 1;
     return b.localeCompare(a, undefined, { numeric: true });
   });
 };

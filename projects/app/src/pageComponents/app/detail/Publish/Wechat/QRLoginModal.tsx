@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Box, Button, Flex, ModalBody, ModalFooter, Text } from '@chakra-ui/react';
+import { Box, Button, Flex, Text } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { POST, GET } from '@/web/common/api/request';
 import QRCode from 'qrcode';
+import { useMemoizedFn } from 'ahooks';
 import MyLoading from '@fastgpt/web/components/common/MyLoading';
 
 type QRStatus = 'loading' | 'wait' | 'scanned' | 'confirmed' | 'expired' | 'error';
@@ -25,23 +26,25 @@ const QRLoginModal = ({
   const [errMsg, setErrMsg] = useState('');
   const canvasRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(true);
-  const pollingRef = useRef(false);
+  const sessionRef = useRef(0);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const stopPolling = useCallback(() => {
-    pollingRef.current = false;
+    sessionRef.current += 1;
+    clearTimeout(successTimerRef.current);
   }, []);
 
-  // 串行轮询：等上一个请求完成后再发起下一个
-  const startPolling = useCallback(() => {
-    pollingRef.current = true;
+  /** 串行查询当前扫码会话；重试或关闭后，旧请求的结果和延迟回调均失效。 */
+  const startPolling = useMemoizedFn((session: number) => {
+    const isCurrentSession = () => mountedRef.current && sessionRef.current === session;
 
     const poll = async () => {
-      while (pollingRef.current && mountedRef.current) {
+      while (isCurrentSession()) {
         try {
           const data = await GET<{ status: string }>('/support/outLink/wechat/qrcode/status', {
             outLinkId
           });
-          if (!mountedRef.current || !pollingRef.current) return;
+          if (!isCurrentSession()) return;
 
           switch (data.status) {
             case 'scaned':
@@ -49,23 +52,22 @@ const QRLoginModal = ({
               break;
             case 'confirmed':
               setStatus('confirmed');
-              pollingRef.current = false;
               toast({
                 title: t('publish:wechat.login_success'),
                 status: 'success'
               });
-              setTimeout(onSuccess, 1000);
+              successTimerRef.current = setTimeout(() => {
+                if (isCurrentSession()) onSuccess();
+              }, 1000);
               return;
             case 'expired':
               setStatus('expired');
-              pollingRef.current = false;
               return;
           }
         } catch {
-          if (!mountedRef.current) return;
+          if (!isCurrentSession()) return;
           setStatus('error');
           setErrMsg(t('publish:wechat.status_check_failed'));
-          pollingRef.current = false;
           return;
         }
 
@@ -75,7 +77,7 @@ const QRLoginModal = ({
     };
 
     poll();
-  }, [outLinkId, toast, t, onSuccess]);
+  });
 
   // 用 qrcode 库渲染二维码到 canvas
   const drawQRCode = useCallback((text: string) => {
@@ -95,45 +97,46 @@ const QRLoginModal = ({
       .catch(console.error);
   }, []);
 
-  const generateQR = useCallback(async () => {
+  /** 稳定函数引用，避免渲染时的回调变化重新触发初始化；每次生成开启独立会话。 */
+  const generateQR = useMemoizedFn(async () => {
+    stopPolling();
+    const session = sessionRef.current;
     try {
       setStatus('loading');
       setErrMsg('');
-      stopPolling();
 
       const data = await POST<{
         qrcode: string;
         qrcode_img_content: string;
       }>('/support/outLink/wechat/qrcode/generate', { outLinkId });
 
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || sessionRef.current !== session) return;
 
       setQrText(data.qrcode_img_content);
       setStatus('wait');
 
-      startPolling();
+      startPolling(session);
     } catch {
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || sessionRef.current !== session) return;
       setStatus('error');
       setErrMsg(t('publish:wechat.qr_generate_failed'));
     }
-  }, [outLinkId, startPolling, stopPolling, t]);
+  });
 
-  // qrText 变化时重新渲染二维码
+  // 等待态会重新挂载 canvas 容器，即使重试返回相同内容也需要重新绘制
   useEffect(() => {
-    drawQRCode(qrText);
-  }, [qrText, drawQRCode]);
+    if (status === 'wait') drawQRCode(qrText);
+  }, [qrText, status, drawQRCode]);
 
   useEffect(() => {
     mountedRef.current = true;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     generateQR();
 
     return () => {
       mountedRef.current = false;
       stopPolling();
     };
-  }, [generateQR, stopPolling]);
+  }, [outLinkId, generateQR, stopPolling]);
 
   const renderContent = () => {
     switch (status) {

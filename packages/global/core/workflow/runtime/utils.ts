@@ -117,7 +117,10 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
   if (valueType?.startsWith('array')) {
     if (isObjectString(value)) {
       try {
-        return json5.parse(value);
+        const parsed = json5.parse(value);
+        // 单个对象的 JSON 字符串与其他非数组值一样包成单元素数组，
+        // 否则数组类型的输入拿到的是对象，循环/并行节点会报「不是数组」
+        return Array.isArray(parsed) ? parsed : [parsed];
       } catch {}
     }
     return [value];
@@ -255,10 +258,7 @@ export const getWorkflowEntryNodeIds = (
     }
   }
 
-  const entryList = [
-    FlowNodeTypeEnum.workflowStart,
-    FlowNodeTypeEnum.pluginInput
-  ];
+  const entryList = [FlowNodeTypeEnum.workflowStart, FlowNodeTypeEnum.pluginInput];
   return nodes
     .filter(
       (node) =>
@@ -280,7 +280,6 @@ export const storeNodes2RuntimeNodes = (
         name: node.name,
         avatar: node.avatar,
         intro: node.intro,
-        toolDescription: node.toolDescription,
         flowNodeType: node.flowNodeType,
         showStatus: node.showStatus,
         isEntry: entryNodeIds.includes(node.nodeId),
@@ -423,10 +422,12 @@ export function rewriteNodeOutputByHistories(
       outputs: node.outputs.map((output: FlowNodeOutputItemType) => {
         return {
           ...output,
-          value:
-            interactive?.nodeOutputs?.find(
+          value: (() => {
+            const nodeOutput = interactive.nodeOutputs?.find(
               (item: NodeOutputItemType) => item.nodeId === node.nodeId && item.key === output.key
-            )?.value || output?.value
+            );
+            return nodeOutput ? nodeOutput.value : output.value;
+          })()
         };
       })
     };

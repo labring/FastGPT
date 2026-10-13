@@ -6,8 +6,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   dispatchWorkFlow,
   runWorkflow,
-  WorkflowQueue,
-  filterToolCallNodeResponses
+  WorkflowQueue
 } from '@fastgpt/service/core/workflow/dispatch/index';
 import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
 import { createClientAbortTracker } from '@fastgpt/service/core/workflow/dispatch/utils/clientAbort';
@@ -26,6 +25,17 @@ import {
 import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/types/runtime';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
+import { assertWorkflowNodeModelResources } from '@fastgpt/service/core/workflow/utils/resource';
+
+// 默认走真实实现，只有模型校验相关用例按需注入失败。
+vi.mock('@fastgpt/service/core/workflow/utils/resource', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/core/workflow/utils/resource')>();
+  return {
+    ...actual,
+    assertWorkflowNodeModelResources: vi.fn(actual.assertWorkflowNodeModelResources)
+  };
+});
 
 const waitWithTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: string) => {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -59,51 +69,6 @@ const createWorkflowVariableState = (
   toRuntimeRecord: () => ({ ...variables }),
   toStoreRecord: () => ({ ...variables }),
   clone: () => createWorkflowVariableState({ ...variables })
-});
-
-describe('filterToolCallNodeResponses', () => {
-  it('hides tool errors and their descendants while keeping successful responses', () => {
-    const responses = filterToolCallNodeResponses([
-      {
-        id: 'success',
-        nodeId: 'success',
-        moduleType: FlowNodeTypeEnum.tool,
-        moduleName: 'Success'
-      },
-      {
-        id: 'failed',
-        nodeId: 'failed',
-        moduleType: FlowNodeTypeEnum.tool,
-        moduleName: 'Failed',
-        errorText: 'tool failed'
-      },
-      {
-        id: 'failed-child',
-        nodeId: 'failed-child',
-        parentId: 'failed',
-        moduleType: FlowNodeTypeEnum.tool,
-        moduleName: 'Failed child'
-      },
-      {
-        id: 'nested',
-        nodeId: 'nested',
-        moduleType: FlowNodeTypeEnum.tool,
-        moduleName: 'Nested',
-        childrenResponses: [
-          {
-            id: 'nested-error',
-            nodeId: 'nested-error',
-            moduleType: FlowNodeTypeEnum.tool,
-            moduleName: 'Nested error',
-            error: 'nested failed'
-          }
-        ]
-      }
-    ] as any);
-
-    expect(responses.map((response) => response.id)).toEqual(['success', 'nested']);
-    expect(responses[1]).not.toHaveProperty('childrenResponses');
-  });
 });
 
 describe('dispatchWorkFlow SSE initialization guard', () => {
@@ -618,6 +583,74 @@ describe('getWorkflowNodeRunParams', () => {
     expect(variableState.getToRuntimeRecordCount()).toBe(1);
   });
 
+  it('同节点引用工具参数时不读取 input value', () => {
+    const variableState = createVariableState();
+    const node = createNode('code', FlowNodeTypeEnum.code);
+    node.inputs = [
+      {
+        key: 'customParam',
+        label: '',
+        canEdit: true,
+        defaultToAgentGenerated: true,
+        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
+        value: 'agent value',
+        valueType: WorkflowIOValueTypeEnum.string
+      },
+      {
+        key: 'codeInput',
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.reference],
+        value: ['code', 'customParam'],
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map([['code', node]]),
+      variableState: variableState.state
+    });
+
+    expect(params.codeInput).toBeUndefined();
+  });
+
+  it('跨节点引用工具参数时不读取目标节点 input value', () => {
+    const variableState = createVariableState();
+    const node = createNode('code', FlowNodeTypeEnum.code);
+    const sourceNode = createNode('source', FlowNodeTypeEnum.code);
+    node.inputs = [
+      {
+        key: 'codeInput',
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.reference],
+        value: ['source', 'customParam'],
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+    sourceNode.inputs = [
+      {
+        key: 'customParam',
+        label: '',
+        canEdit: true,
+        defaultToAgentGenerated: true,
+        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
+        value: 'agent value',
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map([
+        ['code', node],
+        ['source', sourceNode]
+      ]),
+      variableState: variableState.state
+    });
+
+    expect(params.codeInput).toBeUndefined();
+  });
+
   it('dynamic input 保持顶层和动态参数对象同步写入', () => {
     const variableState = createVariableState({ name: 'Ada' });
     const node = createNode('node1', FlowNodeTypeEnum.textEditor);
@@ -646,6 +679,81 @@ describe('getWorkflowNodeRunParams', () => {
 
     expect(params[NodeInputKeyEnum.addInputParam]).toEqual({ dynamicName: 'Ada' });
     expect(params.dynamicName).toBe('Ada');
+  });
+
+  it('标签过滤条件行会解析行内引用并编成 tags JSON', () => {
+    const variableState = createVariableState({ price: 18 });
+    const node = createNode('search', FlowNodeTypeEnum.datasetSearchNode);
+    node.inputs = [
+      {
+        key: NodeInputKeyEnum.collectionFilterMatch,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.datasetTagFilter, FlowNodeInputTypeEnum.reference],
+        valueType: WorkflowIOValueTypeEnum.string,
+        value: {
+          logic: 'AND',
+          conditions: [
+            {
+              tag: 'price',
+              tagType: 'number',
+              op: '$gte',
+              valueMode: 'reference',
+              value: [VARIABLE_NODE_ID, 'price']
+            }
+          ]
+        }
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: variableState.state
+    });
+
+    expect(params[NodeInputKeyEnum.collectionFilterMatch]).toBe(
+      JSON.stringify({ tags: { $and: [{ price: { $gte: 18 } }] } })
+    );
+    expect(variableState.getToRuntimeRecordCount()).toBe(1);
+  });
+
+  it('Agent 嵌套 datasetParams 会解析标签过滤行内引用', () => {
+    const variableState = createVariableState({ price: 18 });
+    const node = createNode('agent', FlowNodeTypeEnum.agent);
+    node.inputs = [
+      {
+        key: NodeInputKeyEnum.datasetParams,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        valueType: WorkflowIOValueTypeEnum.object,
+        value: {
+          datasets: [{ datasetId: 'dataset-1' }],
+          collectionFilterMatch: {
+            logic: 'AND',
+            conditions: [
+              {
+                tag: 'price',
+                tagType: 'number',
+                op: '$gte',
+                valueMode: 'reference',
+                value: [VARIABLE_NODE_ID, 'price']
+              }
+            ]
+          }
+        }
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: variableState.state
+    });
+
+    expect(params[NodeInputKeyEnum.datasetParams]).toMatchObject({
+      datasets: [{ datasetId: 'dataset-1' }],
+      collectionFilterMatch: JSON.stringify({ tags: { $and: [{ price: { $gte: 18 } }] } })
+    });
   });
 });
 
@@ -766,6 +874,180 @@ describe('runWorkflow catchError', () => {
       ).toBe(`caught: ${errorText}`);
     } finally {
       callbackMap[FlowNodeTypeEnum.textEditor] = originalTextEditorDispatch;
+    }
+  });
+
+  describe('模型资源校验失败', () => {
+    const teamId = '654a4107c32f3bf5f998452f';
+    const tmbId = '65ab7007462ada7dbb899948';
+    const errorText = 'model auth failed';
+    const createRunProps = (runtimeNodes: any[], runtimeEdges: any[] = []) =>
+      ({
+        apiVersion: 'v2',
+        mode: 'chat',
+        runningAppInfo: { id: '67e0d5535c02d1d5cdede721', name: 'model auth', teamId, tmbId },
+        runningUserInfo: {
+          teamId,
+          tmbId,
+          teamName: 'team',
+          memberName: 'member',
+          contact: '',
+          username: 'user'
+        },
+        uid: 'user-model-auth-test',
+        lang: 'zh-CN',
+        histories: [],
+        query: [],
+        variables: {},
+        chatConfig: {},
+        runtimeNodes,
+        runtimeEdges,
+        variableState: createWorkflowVariableState(),
+        externalProvider: {},
+        workflowDispatchDeep: 0,
+        maxRunTimes: 10,
+        stream: false,
+        responseDetail: true,
+        responseAllData: true,
+        checkIsStopping: () => false
+      }) as any;
+
+    it('开启 catchError 时转为节点错误输出，且不执行节点本体', async () => {
+      const originalTextEditorDispatch = callbackMap[FlowNodeTypeEnum.textEditor];
+      vi.mocked(assertWorkflowNodeModelResources).mockRejectedValueOnce(new Error(errorText));
+      callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn(async ({ params }) => ({
+        data: { [NodeOutputKeyEnum.text]: params[NodeInputKeyEnum.textareaInput] }
+      }));
+
+      const sourceNode = createNode('source', FlowNodeTypeEnum.textEditor);
+      sourceNode.isEntry = true;
+      sourceNode.catchError = true;
+      sourceNode.outputs = [
+        {
+          id: NodeOutputKeyEnum.errorText,
+          key: NodeOutputKeyEnum.errorText,
+          type: FlowNodeOutputTypeEnum.error,
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string
+        }
+      ];
+      const targetNode = createNode('target', FlowNodeTypeEnum.textEditor);
+      targetNode.inputs = [
+        {
+          key: NodeInputKeyEnum.textareaInput,
+          label: '',
+          renderTypeList: [FlowNodeInputTypeEnum.textarea],
+          value: `caught: {{$source.${NodeOutputKeyEnum.errorText}$}}`,
+          valueType: WorkflowIOValueTypeEnum.string
+        }
+      ];
+
+      try {
+        await runWorkflow(
+          createRunProps(
+            [sourceNode, targetNode],
+            [
+              {
+                source: 'source',
+                target: 'target',
+                sourceHandle: 'source-source_catch-right',
+                targetHandle: 'target-target-left',
+                status: 'waiting'
+              }
+            ]
+          )
+        );
+
+        // 校验失败的节点本体不执行，错误分支下游拿到 errorText。
+        expect(callbackMap[FlowNodeTypeEnum.textEditor]).toHaveBeenCalledTimes(1);
+        expect(vi.mocked(callbackMap[FlowNodeTypeEnum.textEditor]).mock.calls[0][0].params).toEqual(
+          expect.objectContaining({ [NodeInputKeyEnum.textareaInput]: `caught: ${errorText}` })
+        );
+      } finally {
+        callbackMap[FlowNodeTypeEnum.textEditor] = originalTextEditorDispatch;
+      }
+    });
+
+    it('未开启 catchError 时工作流正常结束，不向外抛出', async () => {
+      const originalTextEditorDispatch = callbackMap[FlowNodeTypeEnum.textEditor];
+      vi.mocked(assertWorkflowNodeModelResources).mockRejectedValueOnce(new Error(errorText));
+      callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn(async () => ({ data: {} }));
+
+      const sourceNode = createNode('source', FlowNodeTypeEnum.textEditor);
+      sourceNode.isEntry = true;
+
+      try {
+        await expect(runWorkflow(createRunProps([sourceNode]))).resolves.toBeDefined();
+        expect(callbackMap[FlowNodeTypeEnum.textEditor]).not.toHaveBeenCalled();
+      } finally {
+        callbackMap[FlowNodeTypeEnum.textEditor] = originalTextEditorDispatch;
+      }
+    });
+  });
+});
+
+describe('runWorkflow assistant response aggregation', () => {
+  it('preserves reasoning when a stopped chat node has not produced answer text', async () => {
+    const originalChatNodeDispatch = callbackMap[FlowNodeTypeEnum.chatNode];
+    const reasoningText = 'Partial reasoning before the user stopped the workflow.';
+    const chatNode = createNode('chat', FlowNodeTypeEnum.chatNode);
+    chatNode.isEntry = true;
+
+    callbackMap[FlowNodeTypeEnum.chatNode] = vi.fn().mockResolvedValue({
+      data: {
+        answerText: '',
+        reasoningText
+      },
+      [DispatchNodeResponseKeyEnum.answerText]: '',
+      [DispatchNodeResponseKeyEnum.reasoningText]: reasoningText
+    });
+
+    try {
+      const result = await runWorkflow({
+        apiVersion: 'v2',
+        mode: 'chat',
+        runningAppInfo: {
+          id: '67e0d5535c02d1d5cdede721',
+          name: 'reasoning persistence test',
+          teamId: '654a4107c32f3bf5f998452f',
+          tmbId: '65ab7007462ada7dbb899948'
+        },
+        runningUserInfo: {
+          teamId: '654a4107c32f3bf5f998452f',
+          tmbId: '65ab7007462ada7dbb899948',
+          teamName: 'team',
+          memberName: 'member',
+          contact: '',
+          username: 'user'
+        },
+        uid: 'reasoning-persistence-test',
+        lang: 'zh-CN',
+        histories: [],
+        query: [],
+        variables: {},
+        chatConfig: {},
+        runtimeNodes: [chatNode],
+        runtimeEdges: [],
+        variableState: createWorkflowVariableState(),
+        externalProvider: {},
+        workflowDispatchDeep: 0,
+        maxRunTimes: 10,
+        stream: false,
+        responseDetail: true,
+        responseAllData: true,
+        checkIsStopping: () => false
+      } as any);
+
+      expect(callbackMap[FlowNodeTypeEnum.chatNode]).toHaveBeenCalledTimes(1);
+      expect(result[DispatchNodeResponseKeyEnum.assistantResponses]).toEqual([
+        {
+          reasoning: {
+            content: reasoningText
+          }
+        }
+      ]);
+    } finally {
+      callbackMap[FlowNodeTypeEnum.chatNode] = originalChatNodeDispatch;
     }
   });
 });
@@ -1037,4 +1319,75 @@ describe('WorkflowQueue', () => {
       });
     });
   });
+});
+
+describe('Workflow runtime LLM token summary', () => {
+  it.each(['return', 'throw', 'hidden'])(
+    '保留 %s 节点的 token，并使用请求级 sink 统计 AppLog token',
+    async (mode) => {
+      const original = callbackMap[FlowNodeTypeEnum.textEditor];
+      const publish = vi.fn(async (items: any[]) => items.map((item) => item.response));
+      const node = createNode('summary-node', FlowNodeTypeEnum.textEditor);
+      node.isEntry = true;
+      callbackMap[FlowNodeTypeEnum.textEditor] = async ({ nodeSummary }) => {
+        nodeSummary.mergeNodeSummary({
+          llmInputTokens: mode === 'throw' ? 10 : 30,
+          llmOutputTokens: mode === 'throw' ? 3 : 7
+        });
+        if (mode === 'throw') throw new Error('after LLM');
+        return {
+          ...(mode === 'hidden' ? {} : { responseData: { inputTokens: 900, outputTokens: 800 } })
+        };
+      };
+      try {
+        const result = await runWorkflow({
+          apiVersion: 'v2',
+          mode: 'chat',
+          runningAppInfo: {
+            id: '67e0d5535c02d1d5cdede721',
+            name: 'summary',
+            teamId: '654a4107c32f3bf5f998452f',
+            tmbId: '65ab7007462ada7dbb899948'
+          },
+          runningUserInfo: {
+            teamId: '654a4107c32f3bf5f998452f',
+            tmbId: '65ab7007462ada7dbb899948'
+          },
+          histories: [],
+          query: [],
+          chatConfig: {},
+          runtimeNodes: [node],
+          runtimeEdges: [],
+          variableState: createWorkflowVariableState(),
+          externalProvider: {},
+          workflowDispatchDeep: 0,
+          maxRunTimes: 10,
+          checkIsStopping: () => false,
+          isToolCall: mode === 'throw',
+          nodeResponseSink: {
+            publish
+          }
+        } as any);
+        const inputTokens = mode === 'throw' ? 10 : 30;
+        const outputTokens = mode === 'throw' ? 3 : 7;
+        expect(result.workflowRuntimeSummary).toMatchObject({
+          llmInputTokens: mode === 'return' ? 930 : inputTokens,
+          llmOutputTokens: mode === 'return' ? 807 : outputTokens
+        });
+        if (mode === 'throw') {
+          expect(publish).toHaveBeenCalledWith([
+            expect.objectContaining({
+              response: expect.objectContaining({
+                nodeId: 'summary-node',
+                error: 'after LLM'
+              }),
+              emit: true
+            })
+          ]);
+        }
+      } finally {
+        callbackMap[FlowNodeTypeEnum.textEditor] = original;
+      }
+    }
+  );
 });

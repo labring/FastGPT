@@ -1,15 +1,15 @@
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { ParentIdSchema } from '../../../../common/parentFolder/type';
-import { AppTypeEnum } from '../../../../core/app/constants';
+import { AppListSortEnum, AppTypeEnum } from '../../../../core/app/constants';
 import {
   AppChatConfigTypeSchema,
-  AppResourceRefsSchema,
+  AppTTSConfigTypeSchema,
   AppScheduledTriggerConfigTypeSchema,
-  VariableItemTypeSchema,
   AppSchemaTypeSchema,
   type AppDetailType,
   type AppListItemType
 } from '../../../../core/app/type';
+import { VariableItemTypeSchema } from '../../../../core/app/variable/type';
 import { ShortUrlSchema } from '../../../../support/marketing/type';
 import { AppPermissionSchema } from '../../../../support/permission/app/controller.schema';
 import { SourceMemberSchema } from '../../../../support/user/type';
@@ -19,7 +19,8 @@ import {
   OpenAPIStoreNodeItemTypeSchema
 } from '../../workflow/node';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
-import { BoolSchema, NumSchema } from '../../../../common/zod';
+import { BoolSchema, IntSchema, NumSchema, optionalNullToUndefined } from '../../../../common/zod';
+import { PaginationResponseSchema, PaginationSchema } from '../../../api';
 import { migrateWorkflowToCurrent } from '../../../../core/workflow/migration';
 import z from 'zod';
 
@@ -59,23 +60,46 @@ const preprocessListAppType = (value: unknown) => {
   return isAppType(value) ? value : undefined;
 };
 
-export const OpenAPIAppScheduledTriggerConfigSchema = z
-  .preprocess(emptyObjectToUndefined, AppScheduledTriggerConfigTypeSchema.optional())
-  .meta({
-    description: '应用定时触发配置'
-  });
+export const OpenAPIAppScheduledTriggerConfigSchema = optionalNullToUndefined(
+  z.preprocess(emptyObjectToUndefined, AppScheduledTriggerConfigTypeSchema.optional())
+).meta({
+  description: '应用定时触发配置'
+});
 
 const OpenAPIAppQGConfigSchema = z.object({
   open: BoolSchema.meta({
     description: '是否开启问题引导'
   }),
+  modelId: z.string().optional().meta({
+    description: '生成问题引导时使用的模型 ID'
+  }),
   model: z.string().optional().meta({
-    description: '生成问题引导时使用的模型'
+    description: '生成问题引导时使用的旧模型标识',
+    deprecated: true
   }),
   customPrompt: z.string().optional().meta({
     description: '生成问题引导时追加的自定义提示词'
   })
 });
+
+// 上线回填完成前，客户端仍可能携带旧 model；接口接收后由业务层按 modelId 优先解析。
+// 可选模型的 null 表示未填写；在请求边界归一化，存储结构仍只保存 string/undefined。
+// transform 外层保留 optional，确保推导出的对象字段仍可省略，而非必填的 string | undefined。
+const OptionalAppModelIdInputSchema = z
+  .string()
+  .nullable()
+  .transform((value) => value ?? undefined)
+  .optional();
+export const AppQuestionGuideInputSchema = OpenAPIAppQGConfigSchema.extend({
+  modelId: OptionalAppModelIdInputSchema.meta({
+    description: '猜你想问模型 ID；开启但未填写时，发布使用默认 LLM'
+  })
+}).strict();
+export const AppTTSConfigInputSchema = AppTTSConfigTypeSchema.extend({
+  modelId: OptionalAppModelIdInputSchema.meta({
+    description: '语音播放模型 ID；模型播报开启但未填写时，发布使用默认 TTS'
+  })
+}).strict();
 
 const OpenAPIVariableItemSchema = VariableItemTypeSchema.omit({
   list: true,
@@ -126,19 +150,30 @@ const OpenAPIVariableItemSchema = VariableItemTypeSchema.omit({
   });
 
 export const OpenAPIAppChatConfigSchema = AppChatConfigTypeSchema.extend({
-  variables: z.array(OpenAPIVariableItemSchema).optional().meta({
+  variables: optionalNullToUndefined(z.array(OpenAPIVariableItemSchema)).meta({
     description: '应用启动对话前需要用户填写的变量列表'
   }),
-  questionGuide: OpenAPIAppQGConfigSchema.optional().meta({
+  questionGuide: optionalNullToUndefined(OpenAPIAppQGConfigSchema).meta({
     description: '问题引导配置'
   }),
-  scheduledTriggerConfig: OpenAPIAppScheduledTriggerConfigSchema.optional().meta({
+  scheduledTriggerConfig: OpenAPIAppScheduledTriggerConfigSchema.meta({
     description: '定时触发配置'
   })
 }).meta({
   description: '应用对话运行配置，例如欢迎语、变量、语音和定时触发配置'
 });
 
+/** 普通客户端新写入稳定 modelId，同时在迁移期接收存量 model 配置。 */
+export const AppChatConfigInputSchema = OpenAPIAppChatConfigSchema.extend({
+  questionGuide: optionalNullToUndefined(AppQuestionGuideInputSchema).meta({
+    description: '问题引导配置'
+  }),
+  ttsConfig: optionalNullToUndefined(AppTTSConfigInputSchema).meta({
+    description: '语音播报配置'
+  })
+});
+
+/* Create app */
 /**
  * 在校验前迁移创建请求中的工作流。
  *
@@ -158,12 +193,14 @@ const migrateCreateAppBodyWorkflow = (value: unknown) => {
       chatConfig: body.chatConfig
     });
 
-    return {
+    const migratedBody: Record<string, unknown> = {
       ...body,
-      modules: workflow.nodes,
+      nodes: workflow.nodes,
       edges: workflow.edges,
       chatConfig: workflow.chatConfig
     };
+    delete migratedBody.modules;
+    return migratedBody;
   } catch {
     return value;
   }
@@ -186,11 +223,11 @@ export const CreateAppBodySchema = z
       example: '新应用',
       description: '应用名称'
     }),
-    avatar: z.string().optional().meta({
+    avatar: z.string().nullish().meta({
       example: 'https://example.com/avatar.png',
       description: '应用头像'
     }),
-    intro: z.string().optional().meta({
+    intro: z.string().nullish().meta({
       example: '应用介绍',
       description: '应用介绍'
     }),
@@ -198,15 +235,20 @@ export const CreateAppBodySchema = z
       example: AppTypeEnum.workflow,
       description: '应用类型'
     }),
-    modules: z.array(CreateAppNodeSchema).optional().meta({
+    nodes: z.array(CreateAppNodeSchema).optional().meta({
       example: [],
       description: '应用节点配置'
+    }),
+    // 旧 modules 只能在 preprocess 成功后被删除；残留时必须拒绝，避免静默创建空应用。
+    modules: z.never().optional().meta({
+      description: '已废弃：旧版节点配置，建议使用 nodes',
+      deprecated: true
     }),
     edges: CreateAppEdgesSchema.optional().meta({
       example: [],
       description: '应用连线'
     }),
-    chatConfig: OpenAPIAppChatConfigSchema.optional().meta({
+    chatConfig: AppChatConfigInputSchema.strict().optional().meta({
       description: '聊天配置'
     }),
     templateId: z.string().optional().meta({
@@ -221,7 +263,7 @@ export const CreateAppBodySchema = z
     example: {
       name: '新应用',
       type: AppTypeEnum.simple,
-      modules: [],
+      nodes: [],
       edges: [],
       parentId: '68ad85a7463006c963799a05'
     }
@@ -266,16 +308,52 @@ export const ListAppBodySchema = z
     searchKey: z.string().optional().meta({
       example: '客服',
       description: '应用名称或介绍搜索关键词'
+    }),
+    sort: z.enum(AppListSortEnum).optional().meta({
+      example: AppListSortEnum.updateTimeDesc,
+      description: '列表排序。缺省按最近修改倒序'
+    }),
+    tmbIds: z
+      .array(ObjectIdSchema)
+      .optional()
+      .meta({
+        example: ['68ad85a7463006c963799a06'],
+        description: '按创建者筛选。缺省不过滤；空数组表示无选中创建者，返回空列表'
+      }),
+    pinnedFirst: BoolSchema.optional().meta({
+      example: true,
+      description:
+        '是否启用置顶排序。仅应用工作台列表使用；缺省时置顶不参与排序，返回结构也不含置顶状态'
     })
   })
   .meta({
     example: {
       parentId: '68ad85a7463006c963799a05',
       type: AppTypeEnum.workflow,
-      searchKey: '客服'
+      searchKey: '客服',
+      sort: AppListSortEnum.updateTimeDesc,
+      tmbIds: ['68ad85a7463006c963799a06']
     }
   });
 export type ListAppBodyType = z.infer<typeof ListAppBodySchema>;
+
+/* ============================================================================
+ * API: 获取应用列表 V2
+ * Route: POST /api/core/app/listV2
+ * Method: POST
+ * Description: 分页获取当前团队下当前用户可读的应用或文件夹列表。
+ * Tags: ['基础管理']
+ * ============================================================================ */
+export const ListAppV2BodySchema = ListAppBodySchema.extend({
+  excludeAppId: ObjectIdSchema.optional().meta({
+    description: '排除指定应用，适用于不允许选择当前编辑应用的场景'
+  }),
+  withRelatedAppCount: BoolSchema.optional().meta({
+    example: true,
+    description: '是否返回非文件夹 App 和工具被正式应用引用的数量'
+  })
+}).extend(PaginationSchema.shape);
+export type ListAppV2BodyType = z.infer<typeof ListAppV2BodySchema>;
 
 export const AppListItemSchema = z
   .object({
@@ -283,16 +361,24 @@ export const AppListItemSchema = z
     parentId: ParentIdSchema.meta({ description: '父级应用/文件夹 ID' }),
     tmbId: ObjectIdSchema.meta({ description: '创建者团队成员 ID' }),
     name: z.string().meta({ example: '客服应用', description: '应用名称' }),
-    avatar: z.string().meta({ description: '应用头像' }),
+    avatar: AppSchemaTypeSchema.shape.avatar.meta({ description: '应用头像' }),
     intro: z.string().meta({ description: '应用介绍' }),
     type: z.enum(AppTypeEnum).meta({ example: AppTypeEnum.workflow, description: '应用类型' }),
+    createTime: z.coerce.date().meta({ description: '创建时间' }),
     updateTime: z.coerce.date().meta({ description: '更新时间' }),
     pluginData: AppSchemaTypeSchema.shape.pluginData,
     permission: AppPermissionSchema,
     inheritPermission: BoolSchema.optional().meta({ description: '是否继承父级权限' }),
     private: BoolSchema.optional().meta({ description: '是否仅自己可见' }),
     sourceMember: SourceMemberSchema.meta({ description: '创建者信息' }),
-    hasInteractiveNode: BoolSchema.optional().meta({ description: '是否包含交互节点' })
+    hasInteractiveNode: BoolSchema.optional().meta({ description: '是否包含交互节点' }),
+    relatedAppCount: IntSchema.optional().meta({
+      example: 0,
+      description: '被正式应用引用的 App 或工具数量，仅非文件夹资源 Owner 且显式请求时返回'
+    }),
+    isPinned: BoolSchema.optional().meta({
+      description: '是否置顶。仅在请求启用置顶排序时返回'
+    })
   })
   .meta({
     description: '应用列表项'
@@ -302,6 +388,22 @@ export const ListAppResponseSchema = z.array(AppListItemSchema).meta({
   description: '应用列表'
 });
 export type ListAppResponseType = z.infer<typeof ListAppResponseSchema>;
+
+export const ListAppV2ResponseSchema = PaginationResponseSchema(AppListItemSchema).meta({
+  description: '应用列表(分页)'
+});
+export type ListAppV2ResponseType = z.infer<typeof ListAppV2ResponseSchema>;
+
+export const GetReferencedAppsQuerySchema = z.object({
+  resourceType: z.enum(['agent', 'tool', 'dataset', 'skill']).meta({
+    description: '目标资源类型: agent (应用), tool (工具), dataset (知识库), skill (技能)'
+  }),
+  resourceId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '目标资源 ID 或包含该类资源的文件夹 ID'
+  })
+});
+export type GetReferencedAppsQuery = z.infer<typeof GetReferencedAppsQuerySchema>;
 
 /* ============================================================================
  * API: 获取应用详情
@@ -330,18 +432,15 @@ export const GetAppDetailResponseSchema = AppSchemaTypeSchema.extend({
     description: '应用编排版本，v2 表示当前工作流编排结构'
   }),
   name: z.string().meta({ example: '客服应用', description: '应用名称' }),
-  avatar: z.string().meta({ description: '应用头像' }),
+  avatar: AppSchemaTypeSchema.shape.avatar.meta({ description: '应用头像' }),
   intro: z.string().meta({ description: '应用介绍' }),
   templateId: z.string().optional().meta({
     example: 'template-simple-chat',
     description: '创建应用时使用的模板 ID'
   }),
   updateTime: z.coerce.date().meta({ description: '最后更新时间' }),
-  modules: z
-    .array(OpenAPIStoreNodeItemTypeSchema)
-    .default([])
-    .meta({ description: '应用节点配置' }),
-  edges: AppSchemaTypeSchema.shape.edges.default([]).meta({
+  nodes: z.array(OpenAPIStoreNodeItemTypeSchema).default([]).meta({ description: '应用节点配置' }),
+  edges: z.array(StoreEdgeItemTypeSchema).default([]).meta({
     description: '应用连线'
   }),
   pluginData: AppSchemaTypeSchema.shape.pluginData,
@@ -354,8 +453,8 @@ export const GetAppDetailResponseSchema = AppSchemaTypeSchema.extend({
   scheduledTriggerNextTime: z.coerce.date().optional().meta({
     description: '下一次定时触发时间'
   }),
-  resourceRefs: AppResourceRefsSchema.optional().meta({
-    description: '应用发布后引用的外部资源集合'
+  publishedVersionId: ObjectIdSchema.optional().meta({
+    description: '当前最新正式发布 Version ID'
   }),
   inheritPermission: BoolSchema.optional().meta({
     description: '是否继承父级文件夹权限'
@@ -407,8 +506,8 @@ export const UpdateAppBodySchema = z
       .enum(AppTypeEnum)
       .optional()
       .meta({ example: AppTypeEnum.workflow, description: '应用类型' }),
-    avatar: z.string().optional().meta({ description: '应用头像' }),
-    intro: z.string().optional().meta({ description: '应用介绍' }),
+    avatar: z.string().nullish().meta({ description: '应用头像' }),
+    intro: z.string().nullish().meta({ description: '应用介绍' }),
     nodes: z.never().optional(),
     modules: z.never().optional(),
     edges: z.never().optional(),
@@ -422,10 +521,36 @@ export const UpdateAppBodySchema = z
   });
 export type UpdateAppBodyType = z.infer<typeof UpdateAppBodySchema>;
 
-export const UpdateAppResponseSchema = z.unknown().nullable().optional().meta({
-  description: 'MongoDB 更新结果；移动应用时无返回数据'
+export type UpdateAppResponseType = void;
+
+/* ============================================================================
+ * API: 置顶应用
+ * Route: PUT /api/core/app/pin
+ * Method: PUT
+ * Description: 置顶或取消置顶应用、文件夹。置顶只影响列表排序，不计入审计行为。
+ * Tags: ['基础管理']
+ * ============================================================================ */
+
+export const PinAppQuerySchema = z.object({
+  appId: AppIdSchema
 });
-export type UpdateAppResponseType = z.infer<typeof UpdateAppResponseSchema>;
+export type PinAppQueryType = z.infer<typeof PinAppQuerySchema>;
+
+export const PinAppBodySchema = z.object({
+  isPinned: BoolSchema.meta({
+    example: true,
+    description: '是否置顶。置顶状态按团队共享，团队间隔离'
+  })
+});
+export type PinAppBodyType = z.infer<typeof PinAppBodySchema>;
+
+export const PinAppResponseSchema = z.object({
+  isPinned: BoolSchema.meta({
+    example: true,
+    description: '操作后的置顶状态'
+  })
+});
+export type PinAppResponseType = z.infer<typeof PinAppResponseSchema>;
 
 /* ============================================================================
  * API: 删除应用

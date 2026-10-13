@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   authDataset: vi.fn(),
   rawText2Chunks: vi.fn(),
-  replaceS3KeyToPreviewUrl: vi.fn(async (value: string) => value)
+  replaceS3KeysToPreviewUrls: vi.fn(async (values: string[]) => values)
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -19,9 +19,15 @@ vi.mock('@fastgpt/service/core/dataset/read', () => ({
   rawText2Chunks: mocks.rawText2Chunks
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getEmbeddingModel: vi.fn(() => ({})),
-  getLLMModel: vi.fn(() => ({}))
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
+  getSystemModelHandle: async () => ({
+    getEmbeddingModelData: vi.fn(() => ({ modelId: 'embedding-id', config: {} })),
+    getLLMModelData: vi.fn(() => ({ modelId: 'llm-id', config: {} }))
+  }),
+  getTeamModelHandle: async () => ({
+    getEmbeddingModelData: vi.fn(() => ({ modelId: 'embedding-id', config: {} })),
+    getLLMModelData: vi.fn(() => ({ modelId: 'llm-id', config: {} }))
+  })
 }));
 
 vi.mock('@fastgpt/global/core/dataset/training/utils', () => ({
@@ -31,15 +37,17 @@ vi.mock('@fastgpt/global/core/dataset/training/utils', () => ({
     chunkSize: 500,
     paragraphChunkDeep: 1,
     paragraphChunkMinSize: 100,
-    chunkSplitter: ''
+    chunkSplitter: '',
+    chunkSettingMode: 'intelligent',
+    trainingType: 'chunk'
   })),
   getLLMMaxChunkSize: vi.fn(() => 1000),
   minChunkSize: 64,
   maxPreviewChunkCount: 50_000
 }));
 
-vi.mock('@fastgpt/service/core/dataset/utils', () => ({
-  replaceS3KeyToPreviewUrl: mocks.replaceS3KeyToPreviewUrl
+vi.mock('@fastgpt/service/common/s3/utils/preview', () => ({
+  replaceS3KeysToPreviewUrls: mocks.replaceS3KeysToPreviewUrls
 }));
 
 import handler from '@/pages/api/core/dataset/file/getRawTextPreviewChunks';
@@ -100,6 +108,28 @@ describe('getRawTextPreviewChunks', () => {
         chunkSize: 500,
         overlapRatio: 0.2,
         maxChunks: 50_000
+      })
+    );
+    expect(mocks.replaceS3KeysToPreviewUrls).toHaveBeenCalledWith(
+      ['hello', ''],
+      expect.any(Date),
+      expect.objectContaining({ filter: expect.any(Function) })
+    );
+  });
+
+  // 预览必须和导入走同一条分块路径，否则智能分块的预览结果与实际入库结果不一致。
+  it('forwards chunkSettingMode and trainingType to chunk splitting', async () => {
+    await callHandler({
+      datasetId,
+      rawText: 'hello world',
+      overlapRatio: 0.2,
+      chunkSize: 500
+    });
+
+    expect(mocks.rawText2Chunks).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chunkSettingMode: 'intelligent',
+        trainingType: 'chunk'
       })
     );
   });

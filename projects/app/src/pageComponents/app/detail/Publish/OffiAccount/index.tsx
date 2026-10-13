@@ -1,9 +1,10 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useMemo, useState } from 'react';
 import {
   Flex,
   Box,
   Button,
-  TableContainer,
+  IconButton,
   Table,
   Thead,
   Tr,
@@ -21,7 +22,7 @@ import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { defaultOutLinkForm } from '@/web/core/app/constants';
 import type { OutLinkEditType, OffiAccountAppType } from '@fastgpt/global/support/outLink/type';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
@@ -40,8 +41,8 @@ const OffiAccount = ({
   appId: string;
   onRefreshOutLinkCounts: () => Promise<unknown>;
 }) => {
-  const { t } = useTranslation();
-  const { Loading, setIsLoading } = useLoading();
+  const { t } = useSafeTranslation();
+  const { Loading } = useLoading();
   const { feConfigs } = useSystemStore();
   const [editOffiAccountData, setEditOffiAccountData] =
     useState<OutLinkEditType<OffiAccountAppType>>();
@@ -63,6 +64,17 @@ const OffiAccount = ({
     }
   );
 
+  const { runAsync: onDelShareChat, loading: isDeleting } = useRequest(
+    async (id: string) => {
+      await delShareChatById(id);
+      void Promise.all([refetchShareChatList(), onRefreshOutLinkCounts()]);
+    },
+    {
+      successToast: t('common:delete_success'),
+      errorToast: t('common:delete_failed')
+    }
+  );
+
   const {
     onOpen: openShowShareLinkModal,
     isOpen: showShareLinkModalOpen,
@@ -72,8 +84,17 @@ const OffiAccount = ({
   const [showShareLink, setShowShareLink] = useState<string | null>(null);
 
   return (
-    <Box position={'relative'} p={6} minH={'50vh'}>
-      <Flex justifyContent={'space-between'} flexDirection="row">
+    <Box
+      h={'100%'}
+      minH={0}
+      minW={0}
+      display={'flex'}
+      flexDirection={'column'}
+      overflow={'hidden'}
+      position={'relative'}
+      p={6}
+    >
+      <Flex flexShrink={0} justifyContent={'space-between'} flexDirection="row">
         <HStack>
           <Box color={'myGray.900'} fontWeight={'medium'} fontSize={'lg'}>
             {t('publish:official_account.title')}
@@ -114,8 +135,8 @@ const OffiAccount = ({
           {t('common:add_new')}
         </Button>
       </Flex>
-      <TableContainer mt={3}>
-        <Table variant={'simple'} w={'100%'} overflowX={'auto'} fontSize={'sm'}>
+      <FixedTableContainer mt={3} flex={'1 1 0'} h={0} maxH="none">
+        <Table variant={'simple'} w={'100%'} fontSize={'sm'}>
           <Thead>
             <Tr>
               <Th>{t('common:Name')} </Th>
@@ -147,9 +168,7 @@ const OffiAccount = ({
                   </Td>
                 )}
                 <Td>
-                  {item.lastTime
-                    ? t(formatTimeToChatTime(item.lastTime) as any).replace('#', ':')
-                    : t('common:un_used')}
+                  {item.lastTime ? t(formatTimeToChatTime(item.lastTime)) : t('common:un_used')}
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>
                   <Button
@@ -164,14 +183,14 @@ const OffiAccount = ({
                     {t('publish:request_address')}
                   </Button>
                   <MyMenu
+                    strategy="fixed"
                     Button={
-                      <MyIcon
+                      <IconButton
+                        icon={<MyIcon name={'more'} w={'14px'} />}
                         name={'more'}
-                        _hover={{ bg: 'myGray.100' }}
-                        cursor={'pointer'}
-                        borderRadius={'md'}
-                        w={'14px'}
-                        p={2}
+                        variant={'whitePrimary'}
+                        size={'sm'}
+                        aria-label={'more'}
                       />
                     }
                     menuList={[
@@ -196,19 +215,7 @@ const OffiAccount = ({
                           {
                             label: t('common:Delete'),
                             icon: 'delete',
-                            onClick: async () => {
-                              setIsLoading(true);
-                              try {
-                                await delShareChatById(item._id);
-                                void Promise.all([
-                                  refetchShareChatList(),
-                                  onRefreshOutLinkCounts()
-                                ]);
-                              } catch (error) {
-                                console.log(error);
-                              }
-                              setIsLoading(false);
-                            }
+                            onClick: () => onDelShareChat(item._id)
                           }
                         ]
                       }
@@ -219,7 +226,10 @@ const OffiAccount = ({
             ))}
           </Tbody>
         </Table>
-      </TableContainer>
+        {shareChatList.length === 0 && !isFetching && (
+          <EmptyTip text={t('common:core.app.share.Not share link')}></EmptyTip>
+        )}
+      </FixedTableContainer>
       {editOffiAccountData && (
         <OffiAccountEditModal
           appId={appId}
@@ -233,10 +243,7 @@ const OffiAccount = ({
           isEdit={isEdit}
         />
       )}
-      {shareChatList.length === 0 && !isFetching && (
-        <EmptyTip text={t('common:core.app.share.Not share link')}> </EmptyTip>
-      )}
-      <Loading loading={isFetching} fixed={false} />
+      <Loading loading={isFetching || isDeleting} fixed={false} />
       {showShareLinkModalOpen && (
         <ShowShareLinkModal
           shareLink={showShareLink ?? ''}

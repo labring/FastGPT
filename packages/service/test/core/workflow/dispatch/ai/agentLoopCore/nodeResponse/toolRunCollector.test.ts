@@ -21,7 +21,7 @@ const createCall = ({
   }) as any;
 
 describe('createAgentLoopCoreToolRunResponseCollector', () => {
-  it('caches completed tool flow response and attaches compression child', () => {
+  it('caches completed tool flow response and appends a flat compression row', () => {
     const collector = createAgentLoopCoreToolRunResponseCollector({
       moduleType: FlowNodeTypeEnum.toolCall,
       getToolInfo: () => ({
@@ -67,9 +67,9 @@ describe('createAgentLoopCoreToolRunResponseCollector', () => {
       seconds: 0.8,
       toolResponseCompress: {
         response: 'compressed response',
+        modelName: 'GPT-4',
         usage: {
           moduleName: 'account_usage:tool_response_compress',
-          model: 'GPT-4',
           totalPoints: 0.3
         },
         requestIds: ['req_compress'],
@@ -91,28 +91,24 @@ describe('createAgentLoopCoreToolRunResponseCollector', () => {
           }),
           expect.objectContaining({
             id: 'search',
-            childrenResponses: [
-              expect.objectContaining({
-                id: 'existing_child'
-              }),
-              expect.objectContaining({
-                id: 'req_compress',
-                moduleName: 'chat:tool_response_compress',
-                moduleType: FlowNodeTypeEnum.toolCall,
-                moduleLogo: 'core/app/agent/child/contextCompress',
-                runningTime: 0.4,
-                model: 'GPT-4',
-                textOutput: 'compressed response',
-                llmRequestIds: ['req_compress'],
-                totalPoints: 0.3
-              })
-            ]
+            childrenResponses: [expect.objectContaining({ id: 'existing_child' })]
+          }),
+          expect.objectContaining({
+            id: 'req_compress',
+            parentId: 'search',
+            moduleName: 'chat:tool_response_compress',
+            moduleType: FlowNodeTypeEnum.toolCall,
+            moduleLogo: 'core/app/agent/child/contextCompress',
+            runningTime: 0.4,
+            model: 'GPT-4',
+            textOutput: 'compressed response',
+            llmRequestIds: ['req_compress'],
+            totalPoints: 0.3
           })
         ],
         flowUsages: [
           {
             moduleName: 'account_usage:tool_response_compress',
-            model: 'GPT-4',
             totalPoints: 0.3
           }
         ]
@@ -137,45 +133,90 @@ describe('createAgentLoopCoreToolRunResponseCollector', () => {
       call,
       response: 'failed',
       errorMessage: 'failed',
-      seconds: 0.6
+      seconds: 0.6,
+      usages: [{ moduleName: 'Search', totalPoints: 1.5 }]
     });
     collector.appendContextCompressNodeResponse({
+      modelName: 'GPT-4',
       usage: {
         moduleName: 'account_usage:compress_llm_messages',
-        model: 'GPT-4',
         totalPoints: 0.2
       },
       requestIds: [],
       seconds: 0.1
     });
 
-    expect(collector.toolRunResponses).toEqual([
+    expect(collector.toolRunResponses).toHaveLength(2);
+    expect(collector.toolRunResponses[0]).toEqual(
       expect.objectContaining({
         flowResponses: [
           expect.objectContaining({
-            id: expect.stringMatching(/^[a-zA-Z0-9]+$/),
-            moduleName: 'chat:compress_llm_messages',
-            moduleType: FlowNodeTypeEnum.toolCall,
-            moduleLogo: 'core/app/agent/child/contextCompress',
-            runningTime: 0.1,
-            llmRequestIds: undefined,
-            totalPoints: 0.2,
-            compressTextAgent: {
-              inputTokens: 0,
-              outputTokens: 0,
-              totalPoints: 0.2
-            }
+            id: 'call_search',
+            toolRes: 'failed',
+            errorText: 'failed',
+            totalPoints: 1.5
           })
         ],
-        flowUsages: [
-          {
-            moduleName: 'account_usage:compress_llm_messages',
-            model: 'GPT-4',
+        flowUsages: [{ moduleName: 'Search', totalPoints: 1.5 }]
+      })
+    );
+    expect(collector.toolRunResponses[1]).toEqual(
+      expect.objectContaining({
+        flowResponses: [
+          expect.objectContaining({
+            moduleName: 'chat:compress_llm_messages',
             totalPoints: 0.2
-          }
+          })
         ]
       })
-    ]);
+    );
+  });
+
+  it('keeps cached child responses and appends a failed tool response', () => {
+    const collector = createAgentLoopCoreToolRunResponseCollector({
+      moduleType: FlowNodeTypeEnum.toolCall,
+      getToolInfo: () => ({ name: 'Workflow search', avatar: 'workflow-avatar' })
+    });
+    const call = createCall({ id: 'call_workflow' });
+
+    collector.cacheToolFlowResponse({
+      callId: call.id,
+      flowResponse: {
+        flowResponses: [
+          {
+            id: 'child_node',
+            nodeId: 'child_node',
+            moduleType: FlowNodeTypeEnum.chatNode,
+            moduleName: 'Child node',
+            totalPoints: 2
+          }
+        ],
+        flowUsages: [{ moduleName: 'Child node', totalPoints: 2 }],
+        runTimes: 1
+      }
+    });
+    collector.appendToolNodeResponse({
+      call,
+      response: 'workflow failed',
+      errorMessage: 'workflow failed',
+      seconds: 0.8,
+      usages: [{ moduleName: 'Child node', totalPoints: 2 }]
+    });
+
+    expect(collector.toolRunResponses[0]).toEqual(
+      expect.objectContaining({
+        flowResponses: [
+          expect.objectContaining({
+            id: 'child_node',
+            moduleName: 'Child node',
+            toolRes: 'workflow failed',
+            errorText: 'workflow failed',
+            totalPoints: 2
+          })
+        ],
+        flowUsages: [{ moduleName: 'Child node', totalPoints: 2 }]
+      })
+    );
   });
 
   it('falls back with tool info and keeps an empty cached response unchanged', () => {
@@ -207,9 +248,9 @@ describe('createAgentLoopCoreToolRunResponseCollector', () => {
       seconds: 0.9,
       toolResponseCompress: {
         response: 'compressed response',
+        modelName: 'GPT-4',
         usage: {
           moduleName: 'account_usage:tool_response_compress',
-          model: 'GPT-4',
           totalPoints: 0.1
         },
         requestIds: ['req_empty_compress'],
@@ -244,17 +285,18 @@ describe('createAgentLoopCoreToolRunResponseCollector', () => {
     });
     const usage = {
       moduleName: 'account_usage:compress_llm_messages',
-      model: 'GPT-4',
       totalPoints: 0.2
     };
 
     collector.appendContextCompressNodeResponse({
+      modelName: 'GPT-4',
       usage,
       requestIds: [],
       contextCheckpoint: '<context_checkpoint>same</context_checkpoint>',
       seconds: 0.1
     });
     collector.appendContextCompressNodeResponse({
+      modelName: 'GPT-4',
       usage,
       requestIds: [],
       contextCheckpoint: '<context_checkpoint>same</context_checkpoint>',

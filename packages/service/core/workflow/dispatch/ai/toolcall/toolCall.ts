@@ -19,9 +19,11 @@ import {
   type AgentLoopCoreToolRunFlowResponse
 } from '../agentLoopCore/interface';
 import { createToolCallToolProvider } from './toolProvider';
+import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
 
 type ResponseType = {
   requestIds: string[];
+  firstTokenTime?: number;
   error?: string;
   toolDispatchFlowResponses: AgentLoopCoreToolRunFlowResponse[];
   toolCallInputTokens: number;
@@ -68,6 +70,14 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
   let getProviderToolInfo: (name: string) => ToolInfo | undefined = () => undefined;
   const getToolInfo = (name: string) => getProviderToolInfo(name);
 
+  const mergeChildWorkflowSummary = (
+    workflowSummary: Parameters<typeof runtimeSummaryToNodeSummary>[0]
+  ) => {
+    props.nodeSummary.mergeNodeSummary(
+      stripNodeSummaryErrorFields(runtimeSummaryToNodeSummary(workflowSummary))
+    );
+  };
+
   const runtimeEnvironment = createAgentLoopCoreRuntimeEnvironment({
     node: workflowProps.node,
     workflowStreamResponse,
@@ -85,7 +95,8 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     workflowProps,
     runtimeNodes,
     runtimeEdges,
-    cacheToolFlowResponse: runtimeEnvironment.cacheToolFlowResponse
+    cacheToolFlowResponse: runtimeEnvironment.cacheToolFlowResponse,
+    onWorkflowRuntimeSummary: mergeChildWorkflowSummary
   });
   getProviderToolInfo = toolProvider.getToolInfo;
   const systemPrompt = toolProvider.finalMessages
@@ -112,7 +123,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
         teamId: workflowProps.runningUserInfo.teamId,
         environment: runtimeEnvironment,
         llmParams: {
-          model: toolModel.model,
+          model: toolModel,
           maxTokens: maxToken,
           stream,
           temperature,
@@ -173,6 +184,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
 
   return {
     requestIds: outputSummary.requestIds,
+    firstTokenTime: outputSummary.firstTokenTime,
     error: outputSummary.errorText,
     toolDispatchFlowResponses: runtimeEnvironment.toolRunResponses,
     toolCallInputTokens: outputSummary.inputTokens,

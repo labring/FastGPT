@@ -43,7 +43,6 @@ const TrainingDataSchema = new Schema({
     enum: Object.values(TrainingModeEnum),
     required: true
   },
-
   expireAt: {
     // It will be deleted after 7 days
     type: Date,
@@ -55,7 +54,7 @@ const TrainingDataSchema = new Schema({
   },
   retryCount: {
     type: Number,
-    default: 5
+    default: 3
   },
 
   q: {
@@ -138,8 +137,7 @@ defineIndex(TrainingDataSchema, {
 defineIndex(TrainingDataSchema, {
   key: { expireAt: 1 },
   options: { expireAfterSeconds: 7 * 24 * 60 * 60 }
-}); // 7 days
-
+});
 export const MongoDatasetTraining = getMongoModel<DatasetTrainingSchemaType>(
   DatasetTrainingCollectionName,
   TrainingDataSchema

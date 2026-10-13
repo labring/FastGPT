@@ -10,6 +10,7 @@ import {
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '../../../constants';
+import { createHideInContext } from '../../context';
 import { i18nT } from '../../../../../common/i18n/utils';
 import {
   Input_Template_Children_Node_List,
@@ -35,6 +36,11 @@ export const LoopRunNode: FlowNodeTemplateType = {
   name: i18nT('workflow:loop_run'),
   intro: i18nT('workflow:intro_loop_run'),
   showStatus: true,
+  isTool: true,
+  isShowInContext: createHideInContext([
+    { parentType: FlowNodeTypeEnum.loopRun },
+    { parentType: FlowNodeTypeEnum.parallelRun }
+  ]),
   courseUrl: '/guide/build/workflow/nodes/loop_run',
   catchError: false,
   inputs: [
@@ -42,6 +48,7 @@ export const LoopRunNode: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.loopRunMode,
       renderTypeList: [FlowNodeInputTypeEnum.select],
       valueType: WorkflowIOValueTypeEnum.string,
+      canAgentGenerated: false,
       required: true,
       label: i18nT('workflow:loop_run_mode'),
       description: i18nT('workflow:loop_run_mode_tip'),
@@ -65,6 +72,7 @@ export const LoopRunNode: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.loopRunInputArray,
       renderTypeList: [FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.arrayAny,
+      canAgentGenerated: false,
       required: true,
       label: i18nT('workflow:loop_run_input_array'),
       value: []
@@ -73,6 +81,7 @@ export const LoopRunNode: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.loopCustomOutputs,
       renderTypeList: [FlowNodeInputTypeEnum.addInputParam],
       valueType: WorkflowIOValueTypeEnum.dynamic,
+      canAgentGenerated: false,
       label: i18nT('workflow:loop_custom_outputs'),
       description: i18nT('workflow:loop_custom_outputs_tip'),
       required: false,

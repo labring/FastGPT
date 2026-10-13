@@ -18,6 +18,7 @@ export const chatConfigType = {
   scheduledTriggerConfig: Object,
   chatInputGuide: Object,
   fileSelectConfig: Object,
+  entryPoints: Array,
   instruction: String,
   autoExecute: Object
 };
@@ -53,10 +54,7 @@ const AppSchema = new Schema(
       type: String,
       enum: ['v1', 'v2']
     },
-    avatar: {
-      type: String,
-      default: '/icon/logo.svg'
-    },
+    avatar: String,
     intro: {
       type: String,
       default: ''
@@ -67,18 +65,30 @@ const AppSchema = new Schema(
       type: Date,
       default: () => new Date()
     },
+    createTime: {
+      type: Date,
+      default: () => new Date()
+    },
 
-    // Workflow data
+    /** @deprecated 仅供旧版本兼容和回滚，正常工作流使用 app_versions.nodes */
     modules: {
       type: Array,
-      default: []
+      default: undefined
     },
+    /** @deprecated 仅供旧版本兼容和回滚，正常工作流使用 app_versions.edges */
     edges: {
       type: Array,
-      default: []
+      default: undefined
     },
+    /** @deprecated 仅供旧版本兼容和回滚，正常工作流使用 app_versions.chatConfig */
     chatConfig: {
-      type: chatConfigType
+      type: chatConfigType,
+      default: undefined
+    },
+    /** @deprecated 仅供旧版本兼容、回滚和资源迁移核对 */
+    resourceRefs: {
+      type: Object,
+      default: undefined
     },
 
     // Tool config
@@ -105,11 +115,9 @@ const AppSchema = new Schema(
     scheduledTriggerNextTime: {
       type: Date
     },
-    resourceRefs: {
-      skillIds: {
-        type: [String],
-        default: []
-      }
+    publishedVersionId: {
+      type: Schema.Types.ObjectId,
+      ref: 'app_versions'
     },
     inheritPermission: {
       type: Boolean,
@@ -119,6 +127,10 @@ const AppSchema = new Schema(
     // Chat setting
     favourite: Boolean,
     quick: Boolean,
+
+    // 置顶。应用与文件夹共用，团队内共享
+    isPinned: Boolean,
+    pinnedAt: Date,
 
     /** @deprecated */
     defaultPermission: Number,
@@ -136,10 +148,17 @@ const AppSchema = new Schema(
 );
 
 defineIndex(AppSchema, { key: { teamId: 1, updateTime: -1 } });
+defineIndex(AppSchema, { key: { teamId: 1, createTime: 1 } });
 defineIndex(AppSchema, { key: { teamId: 1, type: 1 } });
+defineIndex(AppSchema, { key: { teamId: 1, parentId: 1 } });
+// 置顶优先排序。置顶项数量很少，只需覆盖排序前缀，不为各排序组合单独建索引
+// defineIndex(AppSchema, { key: { teamId: 1, isPinned: -1, pinnedAt: -1 } });
+
 defineIndex(AppSchema, {
-  key: { teamId: 1, deleteTime: 1, 'resourceRefs.skillIds': 1 }
+  key: { teamId: 1, deleteTime: 1, publishedVersionId: 1 }
 });
+// 旧版本回滚仍会按 resourceRefs.skillIds 反查，兼容窗口结束后再登记为 deprecated。
+defineIndex(AppSchema, { key: { teamId: 1, deleteTime: 1, 'resourceRefs.skillIds': 1 } });
 
 // Schedule
 defineIndex(AppSchema, {

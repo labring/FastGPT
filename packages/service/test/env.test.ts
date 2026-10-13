@@ -3,8 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const validInvokeTokenSecret = 'fastgpt_test_invoke_token_secret_32';
 
 const originalEnv = {
+  DB_MAX_LINK: process.env.DB_MAX_LINK,
+  SYSTEM_MIGRATION_BATCH_SIZE: process.env.SYSTEM_MIGRATION_BATCH_SIZE,
+  SYSTEM_MIGRATION_DELAY_SECONDS: process.env.SYSTEM_MIGRATION_DELAY_SECONDS,
   SYSTEM_MAX_STRING_LENGTH_M: process.env.SYSTEM_MAX_STRING_LENGTH_M,
-  PARSE_FILE_WORKER_MEMORY_LIMIT_MB: process.env.PARSE_FILE_WORKER_MEMORY_LIMIT_MB,
   XLSX_PARSE_MAX_ROWS: process.env.XLSX_PARSE_MAX_ROWS,
   XLSX_PARSE_MAX_COLUMNS: process.env.XLSX_PARSE_MAX_COLUMNS,
   XLSX_PARSE_MAX_CELLS: process.env.XLSX_PARSE_MAX_CELLS,
@@ -14,14 +16,20 @@ const originalEnv = {
   AGENT_SANDBOX_STORAGE_SIZE_GI: process.env.AGENT_SANDBOX_STORAGE_SIZE_GI,
   FE_DOMAIN: process.env.FE_DOMAIN,
   AGENT_SANDBOX_SUSPEND_MINUTES: process.env.AGENT_SANDBOX_SUSPEND_MINUTES,
+  AGENT_SANDBOX_SHOW_FREE_TIP: process.env.AGENT_SANDBOX_SHOW_FREE_TIP,
   AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS: process.env.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS,
   FILE_TOKEN_KEY: process.env.FILE_TOKEN_KEY,
+  FILE_URL_EXPIRED_DAYS: process.env.FILE_URL_EXPIRED_DAYS,
   FILE_DOWNLOAD_PUBLIC_URL_PREFIX: process.env.FILE_DOWNLOAD_PUBLIC_URL_PREFIX,
   STORAGE_DOWNLOAD_URL_MODE: process.env.STORAGE_DOWNLOAD_URL_MODE,
   SYNC_INDEX: process.env.SYNC_INDEX,
+  DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED: process.env.DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED,
   AES256_SECRET_KEY: process.env.AES256_SECRET_KEY,
   INVOKE_TOKEN_SECRET: process.env.INVOKE_TOKEN_SECRET,
   SOMARK_API_KEY: process.env.SOMARK_API_KEY,
+  DOCUMENT_PARSE_PROVIDER: process.env.DOCUMENT_PARSE_PROVIDER,
+  SANGFOR_PARSE_EXTENSIONS: process.env.SANGFOR_PARSE_EXTENSIONS,
+  SANGFOR_PARSE_TIMEOUT_SECONDS: process.env.SANGFOR_PARSE_TIMEOUT_SECONDS,
   PRO_URL: process.env.PRO_URL,
   PRO_TOKEN: process.env.PRO_TOKEN,
   VITEST: process.env.VITEST,
@@ -35,7 +43,10 @@ const originalEnv = {
   AGENT_SANDBOX_OPENSANDBOX_IMAGE: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE,
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX:
     process.env.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX,
-  AGENT_SANDBOX_APT_MIRROR: process.env.AGENT_SANDBOX_APT_MIRROR
+  AGENT_SANDBOX_APT_MIRROR: process.env.AGENT_SANDBOX_APT_MIRROR,
+  MILVUS_LANGUAGE_IDENTIFIER: process.env.MILVUS_LANGUAGE_IDENTIFIER,
+  MILVUS_ADDRESS: process.env.MILVUS_ADDRESS,
+  SANGFOR_CHUNK_URL: process.env.SANGFOR_CHUNK_URL
 };
 
 const importServiceEnv = async () => {
@@ -46,8 +57,10 @@ const importServiceEnv = async () => {
 
 describe('serviceEnv', () => {
   afterEach(() => {
+    vi.stubEnv('DB_MAX_LINK', originalEnv.DB_MAX_LINK);
+    vi.stubEnv('SYSTEM_MIGRATION_BATCH_SIZE', originalEnv.SYSTEM_MIGRATION_BATCH_SIZE);
+    vi.stubEnv('SYSTEM_MIGRATION_DELAY_SECONDS', originalEnv.SYSTEM_MIGRATION_DELAY_SECONDS);
     vi.stubEnv('SYSTEM_MAX_STRING_LENGTH_M', originalEnv.SYSTEM_MAX_STRING_LENGTH_M);
-    vi.stubEnv('PARSE_FILE_WORKER_MEMORY_LIMIT_MB', originalEnv.PARSE_FILE_WORKER_MEMORY_LIMIT_MB);
     vi.stubEnv('XLSX_PARSE_MAX_ROWS', originalEnv.XLSX_PARSE_MAX_ROWS);
     vi.stubEnv('XLSX_PARSE_MAX_COLUMNS', originalEnv.XLSX_PARSE_MAX_COLUMNS);
     vi.stubEnv('XLSX_PARSE_MAX_CELLS', originalEnv.XLSX_PARSE_MAX_CELLS);
@@ -57,17 +70,26 @@ describe('serviceEnv', () => {
     vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', originalEnv.AGENT_SANDBOX_STORAGE_SIZE_GI);
     vi.stubEnv('FE_DOMAIN', originalEnv.FE_DOMAIN);
     vi.stubEnv('AGENT_SANDBOX_SUSPEND_MINUTES', originalEnv.AGENT_SANDBOX_SUSPEND_MINUTES);
+    vi.stubEnv('AGENT_SANDBOX_SHOW_FREE_TIP', originalEnv.AGENT_SANDBOX_SHOW_FREE_TIP);
     vi.stubEnv(
       'AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS',
       originalEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS
     );
     vi.stubEnv('FILE_TOKEN_KEY', originalEnv.FILE_TOKEN_KEY);
+    vi.stubEnv('FILE_URL_EXPIRED_DAYS', originalEnv.FILE_URL_EXPIRED_DAYS);
     vi.stubEnv('FILE_DOWNLOAD_PUBLIC_URL_PREFIX', originalEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX);
     vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', originalEnv.STORAGE_DOWNLOAD_URL_MODE);
     vi.stubEnv('SYNC_INDEX', originalEnv.SYNC_INDEX);
+    vi.stubEnv(
+      'DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED',
+      originalEnv.DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED
+    );
     vi.stubEnv('AES256_SECRET_KEY', originalEnv.AES256_SECRET_KEY);
     vi.stubEnv('INVOKE_TOKEN_SECRET', originalEnv.INVOKE_TOKEN_SECRET);
     vi.stubEnv('SOMARK_API_KEY', originalEnv.SOMARK_API_KEY);
+    vi.stubEnv('DOCUMENT_PARSE_PROVIDER', originalEnv.DOCUMENT_PARSE_PROVIDER);
+    vi.stubEnv('SANGFOR_PARSE_EXTENSIONS', originalEnv.SANGFOR_PARSE_EXTENSIONS);
+    vi.stubEnv('SANGFOR_PARSE_TIMEOUT_SECONDS', originalEnv.SANGFOR_PARSE_TIMEOUT_SECONDS);
     vi.stubEnv('PRO_URL', originalEnv.PRO_URL);
     vi.stubEnv('PRO_TOKEN', originalEnv.PRO_TOKEN);
     vi.stubEnv('VITEST', originalEnv.VITEST);
@@ -84,6 +106,40 @@ describe('serviceEnv', () => {
       originalEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX
     );
     vi.stubEnv('AGENT_SANDBOX_APT_MIRROR', originalEnv.AGENT_SANDBOX_APT_MIRROR);
+    vi.stubEnv('MILVUS_LANGUAGE_IDENTIFIER', originalEnv.MILVUS_LANGUAGE_IDENTIFIER);
+    vi.stubEnv('MILVUS_ADDRESS', originalEnv.MILVUS_ADDRESS);
+    vi.stubEnv('SANGFOR_CHUNK_URL', originalEnv.SANGFOR_CHUNK_URL);
+  });
+
+  it('clamps DB_MAX_LINK to the supported connection pool range', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('DB_MAX_LINK', undefined);
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { DB_MAX_LINK: 10 }
+    });
+
+    vi.stubEnv('DB_MAX_LINK', '-1');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { DB_MAX_LINK: 10 }
+    });
+
+    vi.stubEnv('DB_MAX_LINK', '5');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { DB_MAX_LINK: 10 }
+    });
+
+    vi.stubEnv('DB_MAX_LINK', '20');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { DB_MAX_LINK: 20 }
+    });
+
+    vi.stubEnv('DB_MAX_LINK', '1001');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { DB_MAX_LINK: 1000 }
+    });
   });
 
   it('enables MongoDB index synchronization by default and supports disabling it', async () => {
@@ -102,6 +158,96 @@ describe('serviceEnv', () => {
     });
   });
 
+  it('validates the persisted file URL expiration in days', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('FILE_URL_EXPIRED_DAYS', undefined);
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { FILE_URL_EXPIRED_DAYS: 90 }
+    });
+
+    vi.stubEnv('FILE_URL_EXPIRED_DAYS', '30');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { FILE_URL_EXPIRED_DAYS: 30 }
+    });
+
+    vi.stubEnv('FILE_URL_EXPIRED_DAYS', '0');
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
+
+    vi.stubEnv('FILE_URL_EXPIRED_DAYS', 'not-a-number');
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
+  });
+
+  it('validates the system migration batch size during service env init', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('SYSTEM_MIGRATION_BATCH_SIZE', undefined);
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { SYSTEM_MIGRATION_BATCH_SIZE: 100 }
+    });
+
+    vi.stubEnv('SYSTEM_MIGRATION_BATCH_SIZE', '50');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { SYSTEM_MIGRATION_BATCH_SIZE: 50 }
+    });
+
+    vi.stubEnv('SYSTEM_MIGRATION_BATCH_SIZE', '1000');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { SYSTEM_MIGRATION_BATCH_SIZE: 1000 }
+    });
+
+    vi.stubEnv('SYSTEM_MIGRATION_BATCH_SIZE', '49');
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
+
+    vi.stubEnv('SYSTEM_MIGRATION_BATCH_SIZE', '1001');
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
+
+    vi.stubEnv('SYSTEM_MIGRATION_BATCH_SIZE', 'not-a-number');
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
+  });
+
+  it('validates system migration delay seconds', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('SYSTEM_MIGRATION_DELAY_SECONDS', undefined);
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { SYSTEM_MIGRATION_DELAY_SECONDS: 0 }
+    });
+
+    vi.stubEnv('SYSTEM_MIGRATION_DELAY_SECONDS', '300');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { SYSTEM_MIGRATION_DELAY_SECONDS: 300 }
+    });
+
+    vi.stubEnv('SYSTEM_MIGRATION_DELAY_SECONDS', '-1');
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
+
+    vi.stubEnv('SYSTEM_MIGRATION_DELAY_SECONDS', 'not-a-number');
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
+  });
+
+  it('disables default team basic permissions by default and supports enabling them', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED', undefined);
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED: false }
+    });
+
+    vi.stubEnv('DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED', 'true');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED: true }
+    });
+  });
+
   it('reads the optional SoMark API key', async () => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
     vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
@@ -111,6 +257,66 @@ describe('serviceEnv', () => {
     await expect(importServiceEnv()).resolves.toMatchObject({
       serviceEnv: {
         SOMARK_API_KEY: 'sk-somark-test'
+      }
+    });
+  });
+
+  it('reads the Sangfor document parsing configuration', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+    vi.stubEnv('DOCUMENT_PARSE_PROVIDER', 'sangfor');
+    vi.stubEnv('SANGFOR_PARSE_EXTENSIONS', 'pdf,docx');
+    vi.stubEnv('SANGFOR_PARSE_TIMEOUT_SECONDS', '45');
+
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: {
+        DOCUMENT_PARSE_PROVIDER: 'sangfor',
+        SANGFOR_PARSE_EXTENSIONS: 'pdf,docx',
+        SANGFOR_PARSE_TIMEOUT_SECONDS: 45
+      }
+    });
+  });
+
+  it('defaults Sangfor parsing to PDF with a 10 minute timeout', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+    vi.stubEnv('DOCUMENT_PARSE_PROVIDER', 'sangfor');
+    vi.stubEnv('SANGFOR_PARSE_EXTENSIONS', undefined);
+    vi.stubEnv('SANGFOR_PARSE_TIMEOUT_SECONDS', undefined);
+
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: {
+        DOCUMENT_PARSE_PROVIDER: 'sangfor',
+        SANGFOR_PARSE_EXTENSIONS: 'pdf',
+        SANGFOR_PARSE_TIMEOUT_SECONDS: 600
+      }
+    });
+  });
+
+  it('defaults DOCUMENT_PARSE_PROVIDER to empty', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+    vi.stubEnv('DOCUMENT_PARSE_PROVIDER', undefined);
+
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: {
+        DOCUMENT_PARSE_PROVIDER: ''
+      }
+    });
+  });
+
+  it('accepts the maximum Sangfor timeout of 7200 seconds', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+    vi.stubEnv('SANGFOR_PARSE_TIMEOUT_SECONDS', '7200');
+
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: {
+        SANGFOR_PARSE_TIMEOUT_SECONDS: 7200
       }
     });
   });
@@ -149,29 +355,6 @@ describe('serviceEnv', () => {
     await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
 
     vi.stubEnv('SYSTEM_MAX_STRING_LENGTH_M', 'not-a-number');
-    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
-  });
-
-  it('validates the file parsing worker memory limit during service env init', async () => {
-    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
-    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
-    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
-
-    vi.stubEnv('PARSE_FILE_WORKER_MEMORY_LIMIT_MB', undefined);
-    await expect(importServiceEnv()).resolves.toMatchObject({
-      serviceEnv: {
-        PARSE_FILE_WORKER_MEMORY_LIMIT_MB: 512
-      }
-    });
-
-    vi.stubEnv('PARSE_FILE_WORKER_MEMORY_LIMIT_MB', '768');
-    await expect(importServiceEnv()).resolves.toMatchObject({
-      serviceEnv: {
-        PARSE_FILE_WORKER_MEMORY_LIMIT_MB: 768
-      }
-    });
-
-    vi.stubEnv('PARSE_FILE_WORKER_MEMORY_LIMIT_MB', '127');
     await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
   });
 
@@ -235,6 +418,16 @@ describe('serviceEnv', () => {
         INVOKE_TOKEN_SECRET: validInvokeTokenSecret
       }
     });
+  });
+
+  it('does not require a password change session secret during service env init', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+    vi.stubEnv('VITEST', undefined);
+    vi.stubEnv('NODE_ENV', 'production');
+
+    await expect(importServiceEnv()).resolves.not.toThrow();
   });
 
   it('requires FE_DOMAIN during service env init', async () => {
@@ -368,6 +561,20 @@ describe('serviceEnv', () => {
     expect(customEnv.serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX).toBe('custom-volume');
   });
 
+  it('defaults AGENT_SANDBOX_SHOW_FREE_TIP to false and supports enabling it', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('AGENT_SANDBOX_SHOW_FREE_TIP', undefined);
+    const defaultEnv = await importServiceEnv();
+    expect(defaultEnv.serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP).toBe(false);
+
+    vi.stubEnv('AGENT_SANDBOX_SHOW_FREE_TIP', 'true');
+    const enabledEnv = await importServiceEnv();
+    expect(enabledEnv.serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP).toBe(true);
+  });
+
   it('reads the optional Agent Sandbox apt mirror value', async () => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
     vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
@@ -456,13 +663,48 @@ describe('serviceEnv', () => {
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://mock-opensandbox.local');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', 'mock-opensandbox-api-key');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO', 'legacy/runtime-image');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG', 'legacy-stable');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', undefined);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL', 'http://mock-volume-manager.local');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN', 'mock-volume-manager-token');
 
     await expect(importServiceEnv()).rejects.toThrow(
       'AGENT_SANDBOX_OPENSANDBOX_IMAGE are required when AGENT_SANDBOX_PROVIDER is opensandbox'
     );
+  });
+
+  it('非法 SANGFOR_CHUNK_URL 直接启动校验失败,合法地址去掉尾部斜杠', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('SANGFOR_CHUNK_URL', 'not-a-valid-url');
+    await expect(importServiceEnv()).rejects.toThrow(/SANGFOR_CHUNK_URL/);
+
+    vi.stubEnv('SANGFOR_CHUNK_URL', 'http://chunk-service.example/v1/chunk/');
+    const validEnv = await importServiceEnv();
+    expect(validEnv.serviceEnv.SANGFOR_CHUNK_URL).toBe('http://chunk-service.example/v1/chunk');
+
+    vi.stubEnv('SANGFOR_CHUNK_URL', undefined);
+    const unsetEnv = await importServiceEnv();
+    expect(unsetEnv.serviceEnv.SANGFOR_CHUNK_URL).toBeUndefined();
+  });
+});
+
+describe('MILVUS_LANGUAGE_IDENTIFIER', () => {
+  afterEach(() => {
+    vi.stubEnv('MILVUS_LANGUAGE_IDENTIFIER', '');
+    vi.stubEnv('MILVUS_ADDRESS', '');
+  });
+
+  it('TC-2.3 defaults to lingua identifier', async () => {
+    vi.stubEnv('MILVUS_LANGUAGE_IDENTIFIER', '');
+    const { serviceEnv } = await importServiceEnv();
+    expect(serviceEnv.MILVUS_LANGUAGE_IDENTIFIER).toBe('lingua');
+  });
+
+  it('TC-2.5 no independent FULL_TEXT_ENGINE env field (fulltext follows vector provider)', async () => {
+    vi.stubEnv('MILVUS_LANGUAGE_IDENTIFIER', '');
+    const { serviceEnv } = await importServiceEnv();
+    expect((serviceEnv as Record<string, unknown>).FULL_TEXT_ENGINE).toBeUndefined();
   });
 });

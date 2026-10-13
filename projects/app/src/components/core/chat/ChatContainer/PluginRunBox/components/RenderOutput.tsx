@@ -16,6 +16,9 @@ const RenderOutput = () => {
 
   const histories = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const isChatting = useContextSelector(PluginRunContext, (v) => v.isChatting);
+  // 没有 onStartChat 即为日志详情等只读回看场景（与 RenderInput 隐藏运行按钮的判断一致），
+  // 此时不展示底部“内容由 AI 生成”合规提示
+  const onStartChat = useContextSelector(PluginRunContext, (v) => v.onStartChat);
   const aiRecord = useMemo(
     () => [...histories].reverse().find((item) => item.obj === ChatRoleEnum.AI),
     [histories]
@@ -61,7 +64,7 @@ const RenderOutput = () => {
           {aiRecord?.responseData ? <Markdown source={`~~~json\n${pluginOutputs}`} /> : null}
         </Box>
       </Box>
-      <ComplianceTip type={'chat'} />
+      {!!onStartChat && <ComplianceTip type={'chat'} />}
     </>
   );
 };

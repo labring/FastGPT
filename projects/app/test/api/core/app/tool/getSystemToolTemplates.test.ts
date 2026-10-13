@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const mocks = vi.hoisted(() => ({
   authCert: vi.fn(),
@@ -83,7 +84,6 @@ describe('get system tool templates handler', () => {
         id: 'weather',
         name: 'Weather',
         intro: 'Forecast lookup',
-        toolDescription: 'Get weather',
         isToolSet: false,
         status: PluginStatusEnum.Normal,
         tags: ['life']
@@ -92,7 +92,6 @@ describe('get system tool templates handler', () => {
         id: 'math',
         name: 'Math',
         intro: 'Calculator',
-        toolDescription: 'Compute numbers',
         isToolSet: false,
         status: PluginStatusEnum.Normal,
         tags: ['calc']
@@ -101,7 +100,6 @@ describe('get system tool templates handler', () => {
         id: 'hidden-weather',
         name: 'Hidden Weather',
         intro: 'Forecast lookup',
-        toolDescription: 'Get weather',
         isToolSet: false,
         status: PluginStatusEnum.Normal,
         tags: ['life'],
@@ -117,11 +115,38 @@ describe('get system tool templates handler', () => {
     } as ApiRequestProps<GetSystemPluginTemplatesBody>);
 
     expect(result.map((item) => item.id)).toEqual(['weather']);
+    expect(result[0]).toMatchObject({
+      isTool: true,
+      flowNodeType: FlowNodeTypeEnum.tool
+    });
     expect(mocks.getSystemToolList).toHaveBeenCalledWith({
       lang: 'zh',
       op: 'or',
       sources: ['system', 'teamId:team-1'],
       tags: ['life']
+    });
+  });
+
+  it('marks top-level system toolsets as tools while preserving toolset type', async () => {
+    mocks.getSystemToolList.mockResolvedValue([
+      {
+        id: 'toolset',
+        name: 'Toolset',
+        intro: '',
+        isToolSet: true,
+        status: PluginStatusEnum.Normal,
+        tags: []
+      }
+    ]);
+
+    const result = await handler({
+      body: {}
+    } as ApiRequestProps<GetSystemPluginTemplatesBody>);
+
+    expect(result[0]).toMatchObject({
+      id: 'toolset',
+      isTool: true,
+      flowNodeType: FlowNodeTypeEnum.toolSet
     });
   });
 
@@ -139,7 +164,6 @@ describe('get system tool templates handler', () => {
         source: 'debug:tmbId:tmb-1',
         name: 'Debug Tool',
         intro: '',
-        toolDescription: '',
         isToolSet: false,
         status: PluginStatusEnum.Normal,
         tags: []
@@ -149,7 +173,6 @@ describe('get system tool templates handler', () => {
         source: 'system',
         name: 'System Tool',
         intro: '',
-        toolDescription: '',
         isToolSet: false,
         status: PluginStatusEnum.Normal,
         tags: []
@@ -226,7 +249,6 @@ describe('get system tool templates handler', () => {
           name: 'A+B Tool',
           status: PluginStatusEnum.Normal,
           description: 'Exact plus',
-          toolDescription: 'Use literal plus',
           icon: 'plus-icon',
           currentCost: 2,
           systemKeyCost: 0.5
@@ -236,7 +258,6 @@ describe('get system tool templates handler', () => {
           name: 'AxxB Tool',
           status: PluginStatusEnum.Normal,
           description: 'Would match an unescaped regex',
-          toolDescription: 'No literal plus',
           currentCost: 3,
           systemKeyCost: 1
         }
@@ -256,7 +277,9 @@ describe('get system tool templates handler', () => {
       avatar: 'plus-icon',
       currentCost: 2,
       systemKeyCost: 0.5,
-      hasTokenFee: true
+      hasTokenFee: true,
+      isTool: true,
+      flowNodeType: FlowNodeTypeEnum.tool
     });
     expect(mocks.getSystemToolDisplayInfoWithChildIcons).toHaveBeenCalledWith({
       pluginId: 'toolset',
@@ -317,7 +340,6 @@ describe('get system tool templates handler', () => {
         id: 'normal-tool',
         name: 'Normal Tool',
         intro: '',
-        toolDescription: '',
         isToolSet: false,
         status: PluginStatusEnum.Normal,
         tags: []
@@ -326,7 +348,6 @@ describe('get system tool templates handler', () => {
         id: 'hidden-tool',
         name: 'Hidden Tool',
         intro: '',
-        toolDescription: '',
         isToolSet: false,
         status: PluginStatusEnum.Hidden,
         tags: []
@@ -335,7 +356,6 @@ describe('get system tool templates handler', () => {
         id: 'soon-offline-tool',
         name: 'Soon Offline Tool',
         intro: '',
-        toolDescription: '',
         isToolSet: false,
         status: PluginStatusEnum.SoonOffline,
         tags: []
@@ -344,7 +364,6 @@ describe('get system tool templates handler', () => {
         id: 'offline-tool',
         name: 'Offline Tool',
         intro: '',
-        toolDescription: '',
         isToolSet: false,
         status: PluginStatusEnum.Offline,
         tags: []

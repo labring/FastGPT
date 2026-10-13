@@ -10,11 +10,8 @@ import { TTSTypeEnum } from '@/web/core/app/constants';
 import ScheduledTriggerConfig from '@/components/core/app/ScheduledTriggerConfig';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext, WorkflowInitContext } from '../../context/workflowInitContext';
-import {
-  type AppChatConfigType,
-  type AppDetailType,
-  type VariableItemType
-} from '@fastgpt/global/core/app/type';
+import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
+import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import VariableEdit from '@/components/core/app/VariableEdit';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import WelcomeTextConfig from '@/components/core/app/WelcomeTextConfig';

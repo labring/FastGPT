@@ -21,34 +21,11 @@ const listTypeScriptFiles = (root: string): string[] =>
   });
 
 const getModuleSpecifiers = (path: string): string[] => {
-  const source = ts.createSourceFile(
-    path,
-    readFileSync(path, 'utf8'),
-    ts.ScriptTarget.Latest,
-    true,
-    path.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
-  );
-  const specifiers: string[] = [];
-  const visit = (node: ts.Node) => {
-    if (
-      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
-      node.moduleSpecifier &&
-      ts.isStringLiteral(node.moduleSpecifier)
-    ) {
-      specifiers.push(node.moduleSpecifier.text);
-    }
-    if (
-      ts.isCallExpression(node) &&
-      node.expression.kind === ts.SyntaxKind.ImportKeyword &&
-      node.arguments.length === 1 &&
-      ts.isStringLiteral(node.arguments[0])
-    ) {
-      specifiers.push(node.arguments[0].text);
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(source);
-  return specifiers;
+  // 这里只需要模块引用，无需为数千个生产文件构建完整 AST。预解析器仍覆盖
+  // import/export、动态 import() 和 require()，可保持边界检查语义并避免 CI 超时。
+  return ts
+    .preProcessFile(readFileSync(path, 'utf8'), true, true)
+    .importedFiles.map(({ fileName }) => fileName);
 };
 
 const resolveRelativeModule = (from: string, specifier: string): string | undefined => {

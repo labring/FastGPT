@@ -31,7 +31,7 @@ Sandbox 的 provider SDK 已有自己的契约测试，但它无法验证 FastGP
 运行命令：
 
 ```bash
-pnpm test:service:integration:sandbox
+FASTGPT_TEST_MODE=sandbox pnpm test
 ```
 
 只有 `SANDBOX_INTEGRATION=true` 时才运行真实 provider 用例。已启用但 provider 环境变量不完整

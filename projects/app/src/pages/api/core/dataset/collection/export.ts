@@ -15,7 +15,9 @@ import { authDatasetCollection } from '@fastgpt/service/support/permission/datas
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { type NextApiResponse } from 'next';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
-import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
+import { replaceS3KeysToPreviewUrls } from '@fastgpt/service/common/s3/utils/preview';
+import { createDatasetFileS3KeyFilter } from '@fastgpt/service/common/s3/sources/dataset/key';
+import { serviceEnv } from '@fastgpt/service/env';
 import { addDays } from 'date-fns';
 import { ExportCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -124,10 +126,13 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     cursor.pause();
 
     try {
-      const [sanitizedQ, sanitizedA] = await Promise.all([
-        replaceS3KeyToPreviewUrl(sanitizeCsvField(doc.q || ''), addDays(new Date(), 90)),
-        replaceS3KeyToPreviewUrl(sanitizeCsvField(doc.a || ''), addDays(new Date(), 90))
-      ]);
+      const [sanitizedQ, sanitizedA] = await replaceS3KeysToPreviewUrls(
+        [sanitizeCsvField(doc.q || ''), sanitizeCsvField(doc.a || '')],
+        addDays(new Date(), serviceEnv.FILE_URL_EXPIRED_DAYS),
+        {
+          filter: createDatasetFileS3KeyFilter(collection.datasetId)
+        }
+      );
 
       write(`\n${sanitizedQ},${sanitizedA}`);
     } catch (error) {

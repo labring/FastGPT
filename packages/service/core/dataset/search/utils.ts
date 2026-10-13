@@ -1,13 +1,143 @@
 import { queryExtension } from '../../ai/functions/queryExtension';
+import { addHours } from 'date-fns';
 import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import { isHttpUrl } from '@fastgpt/global/common/string/url';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../../common/logger';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import { getImageBase64 } from '../../../common/file/image/utils';
 import { serviceEnv } from '../../../env';
 import { isS3ObjectKey } from '../../../common/s3/utils';
+import { S3Buckets } from '../../../common/s3/config/constants';
+import { createS3DownloadAccessUrl } from '../../../common/s3/accessLink/downloadAlias/service';
+import { isAuthorizedDatasetFileS3Key } from '../../../common/s3/sources/dataset/key';
+import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import type {
+  EmbeddingModelDataType,
+  LLMModelDataType
+} from '@fastgpt/global/core/ai/model/schema';
+import { getDatasetSynonymRuntimeConfig, isDatasetSynonymEnabled } from '../synonym/entity';
+import {
+  buildSynonymMatcher,
+  normalizeSynonymTerm,
+  type DatasetSynonymMatcherMapping
+} from '../synonym/utils';
+import type { DatasetSynonymMappingMetadataType } from '@fastgpt/global/core/dataset/synonym';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
+const maxSynonymQueryCodePoints = 4096;
+
+type DatasetSynonymQueryMatch = DatasetSynonymMappingMetadataType & {
+  preserveOriginal: boolean;
+  order: number;
+};
+
+/**
+ * 合并多个知识库/版本对同一 query 的命中。同一 term 只有一个标准词时直接替换；
+ * 标准词冲突或跨知识库搜索时保留原词并稳定追加全部标准词。
+ */
+export const mergeDatasetSynonymQueryMatches = ({
+  query,
+  matches
+}: {
+  query: string;
+  matches: DatasetSynonymQueryMatch[];
+}) => {
+  const termMap = new Map<
+    string,
+    {
+      matchedTerm: string;
+      standards: Array<{ term: string; order: number }>;
+      preserveOriginal: boolean;
+    }
+  >();
+
+  for (const match of matches) {
+    const key = normalizeSynonymTerm(match.matchedTerm);
+    const item = termMap.get(key) ?? {
+      matchedTerm: match.matchedTerm,
+      standards: [],
+      preserveOriginal: false
+    };
+    if (
+      !item.standards.some(
+        ({ term }) => normalizeSynonymTerm(term) === normalizeSynonymTerm(match.standardizedTerm)
+      )
+    ) {
+      item.standards.push({ term: match.standardizedTerm, order: match.order });
+    }
+    item.preserveOriginal ||= match.preserveOriginal;
+    termMap.set(key, item);
+  }
+
+  const mappings: DatasetSynonymMatcherMapping[] = [...termMap.entries()].map(
+    ([normalizedTerm, item], index) => {
+      item.standards.sort((a, b) => a.order - b.order || a.term.localeCompare(b.term));
+      const standardTerms = item.standards.map(({ term }) => term);
+      const preserveOriginal = item.preserveOriginal || standardTerms.length > 1;
+      return {
+        logicalMappingId: `query-${index}`,
+        datasetId: 'query',
+        fileVersion: 0,
+        standardizedTerm: [preserveOriginal ? item.matchedTerm : '', ...standardTerms]
+          .filter(Boolean)
+          .join(' '),
+        normalizedStandardizedTerm: `__synonym_query_expansion_${index}__`,
+        synonymTerms: [item.matchedTerm],
+        normalizedSynonymTerms: [normalizedTerm]
+      };
+    }
+  );
+  if (mappings.length === 0) return query;
+
+  const transformed = buildSynonymMatcher(mappings).transform(query).transformedText;
+  if (Array.from(transformed).length <= maxSynonymQueryCodePoints) return transformed;
+
+  logger.warn('Dataset synonym query expansion exceeded limit', {
+    originalLength: Array.from(query).length,
+    transformedLength: Array.from(transformed).length,
+    limit: maxSynonymQueryCodePoints
+  });
+  return query;
+};
+
+/** 依次按 datasetIds 和当前生效版本收集命中，保持冲突扩展顺序稳定。 */
+export const standardizeDatasetSearchQueries = async ({
+  teamId,
+  datasetIds,
+  queries
+}: {
+  teamId: string;
+  datasetIds: string[];
+  queries: string[];
+}) => {
+  if (!isDatasetSynonymEnabled()) return queries;
+
+  const runtimeConfigs = await Promise.all(
+    datasetIds.map((datasetId) => getDatasetSynonymRuntimeConfig({ teamId, datasetId }))
+  );
+
+  return queries.map((query) => {
+    const matches: DatasetSynonymQueryMatch[] = [];
+    runtimeConfigs.forEach((runtime, datasetOrder) => {
+      if (!runtime) return;
+      // 规则切换后历史向量最终一致，始终保留原词可覆盖新旧 embedding 混合阶段。
+      const preserveOriginal = true;
+      const versions = [runtime.active].filter(Boolean) as NonNullable<typeof runtime.active>[];
+      versions.forEach((version, versionOrder) => {
+        version.matcher.transform(query).usedMappings.forEach((mapping) => {
+          matches.push({
+            ...mapping,
+            preserveOriginal,
+            order: datasetOrder * 2 + versionOrder
+          });
+        });
+      });
+    });
+    return mergeDatasetSynonymQueryMatches({ query, matches });
+  });
+};
 
 /**
  * 计算多个 collection 过滤条件的交集。
@@ -32,9 +162,7 @@ export const isValidImageEmbeddingSource = (imageUrl?: string) => {
 
   if (url.startsWith('data:image/')) return true;
   if (isS3ObjectKey(url, 'dataset')) return true;
-  if (isS3ObjectKey(url, 'temp')) return true;
-  if (isS3ObjectKey(url, 'chat')) return true;
-  if (/^https?:\/\//i.test(url)) return true;
+  if (isHttpUrl(url)) return true;
 
   return false;
 };
@@ -60,6 +188,41 @@ export const normalizeImageToBase64 = async (imageUrl: string) => {
   return completeBase64;
 };
 
+export const isImageEmbeddingIndex = (index: { type?: string | number }) =>
+  index.type === DatasetDataIndexTypeEnum.imageEmbedding;
+
+/**
+ * 将知识库图片索引转换为模型可读输入。
+ *
+ * 私有 S3 对象只允许读取绑定当前 datasetId 的 `dataset/*` key；只放行合法的
+ * data URL 或外部 HTTP(S) 链接，其余格式（包括 temp/*、chat/*、本地路径等）一律拒绝。
+ */
+export const normalizeDatasetIndexImageToModelInput = async (
+  imageUrl: string,
+  datasetId: string
+) => {
+  if (isS3ObjectKey(imageUrl, 'dataset')) {
+    // 知识库图片必须绑定当前 dataset；缺少 datasetId 时也拒绝读取，避免兼容分支绕过鉴权。
+    if (!isAuthorizedDatasetFileS3Key({ key: imageUrl, datasetId })) {
+      throw new Error('Invalid dataset file key');
+    }
+    if (serviceEnv.MULTIPLE_DATA_TO_BASE64) {
+      return getS3DatasetSource().getDatasetBase64Image(imageUrl);
+    }
+    return createS3DownloadAccessUrl({
+      objectKey: imageUrl,
+      bucketName: S3Buckets.private,
+      expiredTime: addHours(new Date(), 2)
+    });
+  }
+
+  if (imageUrl.startsWith('data:image/') || isHttpUrl(imageUrl)) {
+    return normalizeImageToBase64(imageUrl);
+  }
+
+  throw new Error('Invalid dataset file key');
+};
+
 /**
  * 对文本查询做 query extension。
  * 调用方会先把多个文本 query 合并成一个字符串传入，这里始终按普通字符串处理，
@@ -73,15 +236,17 @@ export const datasetSearchQueryExtension = async ({
   userKey,
   teamId,
   extensionBg = '',
-  histories = []
+  histories = [],
+  datasetIds = []
 }: {
   query: string;
-  llmModel?: string;
-  embeddingModel?: string;
+  llmModel?: LLMModelDataType;
+  embeddingModel?: EmbeddingModelDataType;
   userKey?: OpenaiAccountType;
   teamId: string;
   extensionBg?: string;
   histories?: ChatItemMiniType[];
+  datasetIds?: string[];
 }) => {
   /**
    * query extension 结果可能与原 query 只有标点或空格差异。
@@ -131,6 +296,8 @@ export const datasetSearchQueryExtension = async ({
     queries = filterSameQuery(queries.concat(aiExtensionResult.extensionQueries));
     reRankQuery = queries.join('\n');
   }
+
+  queries = await standardizeDatasetSearchQueries({ teamId, datasetIds, queries });
 
   return {
     searchQueries: queries,

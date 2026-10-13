@@ -2,6 +2,8 @@ import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { imageFileType } from '@fastgpt/global/common/file/constants';
 import { isEqual } from 'lodash-es';
+import mime from 'mime';
+import { parseContentDispositionFilename } from '@fastgpt/global/common/file/tools';
 import type {
   FileSelectorInputObjectItemType,
   FileSelectorInputItemType,
@@ -39,7 +41,8 @@ export const inferFileSelectorType = (filename?: string): ChatFileTypeEnum => {
  * 对外只允许传递后端可存储的 key/url + name/type，避免 base64 被写入变量或表单值。
  */
 export const sanitizeFileSelectValue = (
-  value: FileSelectorInputValueType = []
+  value: FileSelectorInputValueType = [],
+  retainPreviewUrl = false
 ): FileSelectorValueItemType[] => {
   if (!Array.isArray(value)) return [];
 
@@ -71,7 +74,8 @@ export const sanitizeFileSelectValue = (
       if (key) {
         return {
           ...baseFile,
-          key
+          key,
+          ...(retainPreviewUrl && url ? { url } : {})
         };
       }
 
@@ -142,6 +146,71 @@ export const getFileSelectorDisplayIcon = (
   return file.icon || fallbackIcon;
 };
 
+/**
+ * 浏览器直接探测无文件名外链的展示文件名；有 filename 参数或带后缀的路径时不请求远端。
+ * 只读 HEAD：通过已有 MIME 库推断后缀，或复用 Content-Disposition 的文件名解析。
+ * 跨域拒绝、超时及未知元数据返回 undefined；结果仅用于 getFileIcon，不改写文件类型。
+ */
+export const probeFileSelectorLinkFilename = async ({
+  url,
+  signal
+}: {
+  url: string;
+  signal: AbortSignal;
+}): Promise<string | undefined> => {
+  if (signal.aborted) return;
+  const parsedUrl = (() => {
+    try {
+      return new URL(url);
+    } catch {
+      return;
+    }
+  })();
+  if (!parsedUrl || !['http:', 'https:'].includes(parsedUrl.protocol)) return;
+
+  const filename = (() => {
+    const queryFilename = parsedUrl.searchParams.get('filename')?.trim();
+    if (queryFilename) return queryFilename;
+    const basename = parsedUrl.pathname.split('/').at(-1) ?? '';
+    try {
+      return decodeURIComponent(basename);
+    } catch {
+      return basename;
+    }
+  })();
+  if (parsedUrl.searchParams.get('filename')?.trim() || filename.includes('.')) return filename;
+
+  // 联动条目取消和请求超时；清理监听与定时器，不改写调用方的 signal。
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  signal.addEventListener('abort', abort, { once: true });
+  const timeout = setTimeout(abort, 3000);
+  try {
+    const response = await fetch(url, {
+      method: 'HEAD',
+      credentials: 'omit',
+      referrerPolicy: 'no-referrer',
+      signal: controller.signal
+    });
+    if (signal.aborted || controller.signal.aborted || !response.ok) return;
+    const contentType = response.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase();
+    const extension =
+      contentType && contentType !== 'application/octet-stream'
+        ? mime.getExtension(contentType)
+        : undefined;
+    return extension
+      ? `file.${extension}`
+      : parseContentDispositionFilename(response.headers.get('Content-Disposition') ?? undefined) ||
+          undefined;
+  } catch {
+    // 图标探测失败不影响表单和页面，包括 CORS 拒绝与取消请求。
+    return;
+  } finally {
+    clearTimeout(timeout);
+    signal.removeEventListener('abort', abort);
+  }
+};
+
 export const isFileSelectorCleanValueEcho = ({
   value,
   cleanedValue,
@@ -168,7 +237,7 @@ export const markFileSelectorUploading = (files: FileSelectorRenderItemType[]) =
 };
 
 /**
- * 上传成功后补齐后端 key 和临时预览 URL。后续 emit 时会由 sanitizeFileSelectValue 去掉预览 URL。
+ * 上传成功后补齐后端 key 和临时预览 URL。默认 emit 只保留 key，临时调试可保留预览 URL。
  */
 export const markFileSelectorUploadSuccess = ({
   files,

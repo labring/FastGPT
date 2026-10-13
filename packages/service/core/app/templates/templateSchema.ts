@@ -1,4 +1,4 @@
-import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
+import { type AppTemplateStorageSchemaType } from '@fastgpt/global/core/app/type';
 import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo/index';
 import { UserTagsSchema } from '@fastgpt/global/support/user/type';
 const { Schema } = connectionMongo;
@@ -41,7 +41,7 @@ const AppTemplateSchema = new Schema({
 
 defineIndex(AppTemplateSchema, { key: { templateId: 1 } });
 
-export const MongoAppTemplate = getMongoModel<AppTemplateSchemaType>(
+export const MongoAppTemplate = getMongoModel<AppTemplateStorageSchemaType>(
   collectionName,
   AppTemplateSchema
 );

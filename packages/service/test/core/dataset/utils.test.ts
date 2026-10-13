@@ -1,529 +1,52 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-  createS3KeysPreviewUrlMap,
   getDatasetImageIndexCapability,
-  getDatasetImageTrainingMode,
-  getS3ObjectKeysFromMarkdownTexts,
-  replaceS3KeysToPreviewUrls,
-  replaceS3KeyToPreviewUrl
+  getDatasetImageTrainingMode
 } from '@fastgpt/service/core/dataset/utils';
 import {
   matchDatasetDataMarkdownImages,
   matchDatasetDataMarkdownImageUrls,
   uniqueDatasetDataMarkdownImageUrls
 } from '@fastgpt/service/core/dataset/data/utils';
-import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
+import {
+  createOrGetCollectionTags,
+  getTrainingModeByCollection,
+  validateAndNormalizeTagValue,
+  validateDatasetTagValue
+} from '@fastgpt/service/core/dataset/collection/utils';
 import {
   DatasetCollectionDataProcessModeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type {
+  EmbeddingModelDataType,
+  LLMModelDataType
+} from '@fastgpt/global/core/ai/model/schema';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
-const mockCreateS3DownloadAccessUrls = vi.hoisted(() =>
-  vi.fn(async (params: Array<{ objectKey: string }>) =>
-    params.map(
-      ({ objectKey }) => `https://example.com/api/system/file/d/mock-short-link-${objectKey}`
-    )
-  )
-);
+const mockMongoDatasetCollectionTagsFind = vi.hoisted(() => vi.fn());
+const mockMongoDatasetCollectionTagsFindOne = vi.hoisted(() => vi.fn());
+const mockMongoDatasetCollectionTagsCreate = vi.hoisted(() => vi.fn());
+const mockMongoDatasetCollectionTagsUpdateOne = vi.hoisted(() => vi.fn());
+const mockMongoDatasetCollectionTagsLegacyFind = vi.hoisted(() => vi.fn());
 
-vi.mock('@fastgpt/service/common/s3/utils', () => ({
-  isS3ObjectKey: vi.fn((key: string, source: string) => {
-    if (!key) return false;
-    return key.startsWith(`${source}/`);
-  })
-}));
-
-vi.mock('@fastgpt/service/common/s3/accessLink', () => ({
-  createS3DownloadAccessUrls: mockCreateS3DownloadAccessUrls
-}));
-
-vi.mock('@fastgpt/service/common/s3/contracts/type', () => ({
-  S3Sources: {
-    avatar: 'avatar',
-    chat: 'chat',
-    dataset: 'dataset',
-    temp: 'temp',
-    rawText: 'rawText'
+vi.mock('@fastgpt/service/core/dataset/tag/schema', () => ({
+  MongoDatasetCollectionTags: {
+    find: mockMongoDatasetCollectionTagsLegacyFind
   }
 }));
 
-describe('replaceS3KeyToPreviewUrl', () => {
-  const expiredTime = new Date('2025-12-31');
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  describe('边界情况处理', () => {
-    it('空字符串应返回空字符串', async () => {
-      const result = await replaceS3KeyToPreviewUrl('', expiredTime);
-      expect(result).toBe('');
-    });
-
-    it('null 应返回 null', async () => {
-      const result = await replaceS3KeyToPreviewUrl(null as unknown as string, expiredTime);
-      expect(result).toBe(null);
-    });
-
-    it('undefined 应返回 undefined', async () => {
-      const result = await replaceS3KeyToPreviewUrl(undefined as unknown as string, expiredTime);
-      expect(result).toBe(undefined);
-    });
-
-    it('非字符串类型应原样返回', async () => {
-      const result = await replaceS3KeyToPreviewUrl(123 as unknown as string, expiredTime);
-      expect(result).toBe(123);
-    });
-  });
-
-  // 测试不包含 S3 链接的普通文本
-  describe('普通文本处理', () => {
-    it('纯文本不做任何替换', async () => {
-      const text = '这是一段普通文本，不包含任何图片链接';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toBe(text);
-    });
-
-    it('普通 HTTP 链接不做替换', async () => {
-      const text = '![image](https://example.com/image.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toBe(text);
-    });
-
-    it('普通 markdown 链接不做替换', async () => {
-      const text = '[链接文本](https://example.com/page)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toBe(text);
-    });
-  });
-
-  // 测试 dataset 前缀的 S3 链接替换
-  describe('dataset S3 链接替换', () => {
-    it('应替换 dataset 图片链接', async () => {
-      const text =
-        '![image.png](dataset/68fee42e1d416bb5ddc85b19/6901c3071ba2bea567e8d8db/aZos7D-214afce5-4d42-4356-9e05-8164d51c59ae.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-
-      expect(result).toContain('https://example.com/api/system/file/d/mock-short-link-');
-      expect(result).toContain('dataset/68fee42e1d416bb5ddc85b19');
-      expect(result).toMatch(/!\[image\.png\]\(https:\/\/example\.com/);
-    });
-
-    it('应替换 dataset 普通链接（非图片）', async () => {
-      const text = '[文档](dataset/68fee42e1d416bb5ddc85b19/6901c3071ba2bea567e8d8db/document.pdf)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-
-      expect(result).toContain('https://example.com/api/system/file/d/mock-short-link-');
-      expect(result).toMatch(/\[文档\]\(https:\/\/example\.com/);
-    });
-
-    it('应替换 Turndown 使用尖括号包装的含空格 S3 key', async () => {
-      const objectKey = 'dataset/team1/新建 DOCX 文档 [2]_parsed/image.png';
-      const result = await replaceS3KeyToPreviewUrl(`![image](<${objectKey}>)`, expiredTime);
-
-      expect(result).toContain(`mock-short-link-${objectKey}`);
-      expect(result).not.toContain('<');
-    });
-
-    it('对象键包含大于号时应正常处理', async () => {
-      const objectKey = 'dataset/team1/a>b.png';
-      const result = await replaceS3KeyToPreviewUrl(`![image](<${objectKey}>)`, expiredTime);
-
-      expect(result).toContain(`mock-short-link-${objectKey}`);
-    });
-  });
-
-  // 测试 chat 前缀的 S3 链接替换
-  describe('chat S3 链接替换', () => {
-    it('应替换 chat 图片链接', async () => {
-      const text =
-        '![screenshot.png](chat/691ae29d404d0468717dd747/68ad85a7463006c96379a07/jXfXy8yfGAFs9WJpcWRbAhV2/parsed/9a0f4fed-4edf-4613-a8d6-533af5ae51dc.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-
-      expect(result).toContain('https://example.com/api/system/file/d/mock-short-link-');
-      expect(result).toContain('chat/691ae29d404d0468717dd747');
-    });
-  });
-
-  // 测试多个链接替换
-  describe('多个链接替换', () => {
-    it('应正确替换多个 S3 链接', async () => {
-      const text = `这是一段包含多个图片的文本：
-![图片1](dataset/team1/collection1/image1.png)
-一些中间文字
-![图片2](chat/app1/user1/chat1/image2.jpg)
-更多文字
-![外部图片](https://external.com/image3.png)`;
-
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-
-      // dataset 和 chat 链接应被替换
-      expect(result).toContain('mock-short-link-dataset/team1/collection1/image1.png');
-      expect(result).toContain('mock-short-link-chat/app1/user1/chat1/image2.jpg');
-      // 外部链接不应被替换
-      expect(result).toContain('https://external.com/image3.png');
-    });
-  });
-
-  // 测试不支持的 S3 前缀
-  describe('不支持的 S3 前缀', () => {
-    it('avatar 前缀不应被替换（只支持 dataset 和 chat）', async () => {
-      const text = '![头像](avatar/team1/user-avatar.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      // avatar 的 isS3ObjectKey 返回 false（因为只检查 dataset 和 chat）
-      expect(result).toBe(text);
-    });
-
-    it('temp 前缀应被替换', async () => {
-      const text = '![临时文件](temp/team1/temp-file.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('https://example.com/api/system/file/d/mock-short-link-');
-      expect(result).toContain('temp/team1/temp-file.png');
-    });
-  });
-
-  // 测试特殊字符处理
-  describe('特殊字符处理', () => {
-    // 中文字符
-    it('文件名包含中文应正常处理', async () => {
-      const text = '![中文图片名.png](dataset/team1/collection1/中文文件名.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('https://example.com/api/system/file/d/mock-short-link-');
-    });
-
-    it('alt 文本为空应正常处理', async () => {
-      const text = '![](dataset/team1/collection1/no-alt.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toMatch(/!\[\]\(https:\/\/example\.com/);
-    });
-
-    // 日韩文字符
-    it('文件名包含日文应正常处理', async () => {
-      const text = '![日本語ファイル](dataset/team1/日本語テスト.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/日本語テスト.png');
-    });
-
-    it('文件名包含韩文应正常处理', async () => {
-      const text = '![한국어](dataset/team1/한국어파일.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/한국어파일.png');
-    });
-
-    // Emoji 表情符号
-    it('文件名包含 emoji 应正常处理', async () => {
-      const text = '![🎉 celebration](dataset/team1/🎉emoji🚀test.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/🎉emoji🚀test.png');
-    });
-
-    it('alt 文本包含多个 emoji 应正常处理', async () => {
-      const text = '![🔥💯🎯](dataset/team1/file.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toMatch(/!\[🔥💯🎯\]\(https:\/\/example\.com/);
-    });
-
-    // 特殊符号
-    it('文件名包含下划线和连字符应正常处理', async () => {
-      const text = '![image](dataset/team1/my_file-name_v2.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/my_file-name_v2.png');
-    });
-
-    it('文件名包含 @ 符号应正常处理', async () => {
-      const text = '![email](dataset/team1/user@example.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/user@example.png');
-    });
-
-    it('文件名包含 # 符号应正常处理', async () => {
-      const text = '![hash](dataset/team1/file#1.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/file#1.png');
-    });
-
-    it('文件名包含 $ 符号应正常处理', async () => {
-      const text = '![dollar](dataset/team1/price$100.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/price$100.png');
-    });
-
-    it('文件名包含 % 符号应正常处理', async () => {
-      const text = '![percent](dataset/team1/50%off.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/50%off.png');
-    });
-
-    it('文件名包含 + 符号应正常处理', async () => {
-      const text = '![plus](dataset/team1/a+b.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/a+b.png');
-    });
-
-    it('文件名包含 = 符号应正常处理', async () => {
-      const text = '![equals](dataset/team1/x=1.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/x=1.png');
-    });
-
-    // 多个点号
-    it('文件名包含多个点号应正常处理', async () => {
-      const text = '![dots](dataset/team1/file.name.v1.2.3.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/file.name.v1.2.3.png');
-    });
-
-    // 空格相关
-    it('alt 文本包含空格应正常处理', async () => {
-      const text = '![image with spaces](dataset/team1/file.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toMatch(/!\[image with spaces\]\(https:\/\/example\.com/);
-    });
-
-    it('文件名包含 URL 编码的空格 %20 应正常处理', async () => {
-      const text = '![encoded](dataset/team1/file%20name.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/file%20name.png');
-    });
-
-    // 括号类字符
-    it('alt 文本包含转义方括号不匹配正则，不做替换', async () => {
-      // 由于 markdown 正则 [^\]]* 不匹配包含 ] 的 alt 文本，这种情况不会被替换
-      const text = '![image \\[1\\]](dataset/team1/file.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      // 预期不做替换
-      expect(result).toBe(text);
-    });
-
-    it('alt 文本包含圆括号应正常处理', async () => {
-      const text = '![image (1)](dataset/team1/file.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('https://example.com/api/system/file/d/mock-short-link-');
-    });
-
-    it('文件名包含花括号应正常处理', async () => {
-      const text = '![braces](dataset/team1/file{1}.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/file{1}.png');
-    });
-
-    it('文件名包含方括号应正常处理', async () => {
-      const text = '![braces](dataset/team1/file[1].png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/file[1].png');
-    });
-
-    // 引号
-    it('alt 文本包含单引号应正常处理', async () => {
-      const text = "![it's a test](dataset/team1/file.png)";
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toMatch(/!\[it's a test\]\(https:\/\/example\.com/);
-    });
-
-    it('alt 文本包含双引号应正常处理', async () => {
-      const text = '![say "hello"](dataset/team1/file.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('https://example.com/api/system/file/d/mock-short-link-');
-    });
-
-    // 反斜杠
-    it('alt 文本包含反斜杠应正常处理', async () => {
-      const text = '![path\\to\\file](dataset/team1/file.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('https://example.com/api/system/file/d/mock-short-link-');
-    });
-
-    // 特殊 markdown 字符
-    it('alt 文本包含星号应正常处理', async () => {
-      const text = '![*important*](dataset/team1/file.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toMatch(/!\[\*important\*\]\(https:\/\/example\.com/);
-    });
-
-    it('alt 文本包含下划线强调应正常处理', async () => {
-      const text = '![_emphasis_](dataset/team1/file.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toMatch(/!\[_emphasis_\]\(https:\/\/example\.com/);
-    });
-
-    it('alt 文本包含反引号应正常处理', async () => {
-      const text = '![`code`](dataset/team1/file.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toMatch(/!\[`code`\]\(https:\/\/example\.com/);
-    });
-
-    // 数字和字母混合
-    it('文件名是纯 UUID 格式应正常处理', async () => {
-      const text = '![uuid](dataset/team1/550e8400-e29b-41d4-a716-446655440000.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain(
-        'mock-short-link-dataset/team1/550e8400-e29b-41d4-a716-446655440000.png'
-      );
-    });
-
-    it('文件名是纯数字应正常处理', async () => {
-      const text = '![numbers](dataset/team1/123456789.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/123456789.png');
-    });
-
-    // 超长文件名
-    it('超长文件名应正常处理', async () => {
-      const longName = 'a'.repeat(200);
-      const text = `![long](dataset/team1/${longName}.png)`;
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain(`mock-short-link-dataset/team1/${longName}.png`);
-    });
-
-    // 阿拉伯文和希伯来文（RTL 文字）
-    it('文件名包含阿拉伯文应正常处理', async () => {
-      const text = '![عربي](dataset/team1/ملف.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/ملف.png');
-    });
-
-    // 俄文
-    it('文件名包含俄文应正常处理', async () => {
-      const text = '![русский](dataset/team1/файл.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/файл.png');
-    });
-
-    // 泰文
-    it('文件名包含泰文应正常处理', async () => {
-      const text = '![ไทย](dataset/team1/ไฟล์.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/ไฟล์.png');
-    });
-
-    // 特殊扩展名
-    it('无扩展名的文件应正常处理', async () => {
-      const text = '![noext](dataset/team1/README)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/README');
-    });
-
-    it('双扩展名的文件应正常处理', async () => {
-      const text = '![tarball](dataset/team1/archive.tar.gz)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/archive.tar.gz');
-    });
-
-    // 管道符和其他 shell 特殊字符
-    it('文件名包含管道符应正常处理', async () => {
-      const text = '![pipe](dataset/team1/a|b.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/a|b.png');
-    });
-
-    it('文件名包含波浪号应正常处理', async () => {
-      const text = '![tilde](dataset/team1/~user.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/~user.png');
-    });
-
-    it('文件名包含 & 符号应正常处理', async () => {
-      const text = '![ampersand](dataset/team1/a&b.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/a&b.png');
-    });
-
-    // 换行符
-    it('alt 文本不包含换行符时应正常处理', async () => {
-      const text = '![single line](dataset/team1/file.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('https://example.com/api/system/file/d/mock-short-link-');
-    });
-
-    // 特殊组合
-    it('文件名包含多种特殊字符组合应正常处理', async () => {
-      const text = '![complex](dataset/team1/file_v1.2-beta@test#1$100%off.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/file_v1.2-beta@test#1$100%off.png');
-    });
-
-    it('中英文混合 alt 和文件名应正常处理', async () => {
-      const text = '![测试image图片](dataset/team1/test测试file文件.png)';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('mock-short-link-dataset/team1/test测试file文件.png');
-    });
-  });
-
-  // 测试链接格式边界情况
-  describe('链接格式边界情况', () => {
-    it('链接中有空格应正常处理', async () => {
-      const text = '![image](  dataset/team1/collection1/image.png  )';
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-
-      expect(result).toContain('https://example.com/api/system/file/d/mock-short-link-');
-    });
-
-    it('混合文本和链接应只替换 S3 链接', async () => {
-      const text = `# 标题
-
-普通段落文字 ![S3图片](dataset/team1/file.png) 后续文字
-
-[普通链接](https://google.com)
-
-\`\`\`code
-代码块
-\`\`\``;
-
-      const result = await replaceS3KeyToPreviewUrl(text, expiredTime);
-
-      expect(result).toContain(
-        'https://example.com/api/system/file/d/mock-short-link-dataset/team1/file.png'
-      );
-      expect(result).toContain('https://google.com');
-      expect(result).toContain('# 标题');
-    });
-  });
-});
-
-describe('批量 S3 预览 URL 格式化', () => {
-  const expiredTime = new Date('2025-12-31');
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('应跨多段文本按首次出现顺序提取并去重 key', () => {
-    expect(
-      getS3ObjectKeysFromMarkdownTexts([
-        '![a](dataset/team/a.png) ![a2](dataset/team/a.png)',
-        '[b](chat/app/b.pdf) ![external](https://example.com/c.png)',
-        '![avatar](avatar/team/avatar.png)'
-      ])
-    ).toEqual(['dataset/team/a.png', 'chat/app/b.pdf']);
-  });
-
-  it('多段文本中的重复 key 应只进入一次批量签发并保持文本顺序', async () => {
-    const result = await replaceS3KeysToPreviewUrls(
-      ['first ![a](dataset/team/a.png)', 'second [same](dataset/team/a.png) [b](chat/app/b.pdf)'],
-      expiredTime
-    );
-
-    expect(mockCreateS3DownloadAccessUrls).toHaveBeenCalledTimes(1);
-    expect(mockCreateS3DownloadAccessUrls.mock.calls[0][0].map((item) => item.objectKey)).toEqual([
-      'dataset/team/a.png',
-      'chat/app/b.pdf'
-    ]);
-    expect(result).toEqual([
-      'first ![a](https://example.com/api/system/file/d/mock-short-link-dataset/team/a.png)',
-      'second [same](https://example.com/api/system/file/d/mock-short-link-dataset/team/a.png) [b](https://example.com/api/system/file/d/mock-short-link-chat/app/b.pdf)'
-    ]);
-  });
-
-  it('超过批量上限时应分片且完整返回映射', async () => {
-    const objectKeys = Array.from({ length: 501 }, (_, index) => `dataset/team/${index}.png`);
-    const result = await createS3KeysPreviewUrlMap({ objectKeys, expiredTime });
-
-    expect(mockCreateS3DownloadAccessUrls).toHaveBeenCalledTimes(2);
-    expect(mockCreateS3DownloadAccessUrls.mock.calls[0][0]).toHaveLength(500);
-    expect(mockCreateS3DownloadAccessUrls.mock.calls[1][0]).toHaveLength(1);
-    expect(result.get('dataset/team/500.png')).toContain('mock-short-link-dataset/team/500.png');
-  });
-});
+vi.mock('@fastgpt/service/core/dataset/tag/schemaV2', () => ({
+  MongoDatasetCollectionTagsV2: {
+    find: mockMongoDatasetCollectionTagsFind,
+    findOne: (...args: unknown[]) => ({
+      lean: vi.fn().mockImplementation(() => mockMongoDatasetCollectionTagsFindOne(...args))
+    }),
+    create: mockMongoDatasetCollectionTagsCreate,
+    updateOne: mockMongoDatasetCollectionTagsUpdateOne
+  }
+}));
 
 describe('matchDatasetDataMarkdownImageUrls', () => {
   it('应提取统一的 markdown 图片节点结构', async () => {
@@ -564,6 +87,64 @@ describe('matchDatasetDataMarkdownImageUrls', () => {
 
     expect(result).toEqual(['dataset/team/a.png', 'https://example.com/b.jpg']);
   });
+
+  it('应保留 URL 中未转义的括号，而不是在第一个 ) 处截断', () => {
+    const result = matchDatasetDataMarkdownImages(
+      '见图 ![img](https://cdn.example.com/img(1).png) 结束'
+    );
+
+    expect(result).toEqual([
+      {
+        raw: '![img](https://cdn.example.com/img(1).png)',
+        alt: 'img',
+        url: 'https://cdn.example.com/img(1).png',
+        index: 3
+      }
+    ]);
+  });
+
+  it('应保留 URL 中转义的右括号', () => {
+    const result = matchDatasetDataMarkdownImages(
+      String.raw`![img](https://cdn.example.com/a\).png)`
+    );
+
+    expect(result).toEqual([
+      {
+        raw: String.raw`![img](https://cdn.example.com/a\).png)`,
+        alt: 'img',
+        url: 'https://cdn.example.com/a).png',
+        index: 0
+      }
+    ]);
+  });
+
+  it('应保留标题和尖括号目的地址，且 URL 使用反转义后的值', () => {
+    const result = matchDatasetDataMarkdownImages(
+      String.raw`![img](<https://cdn.example.com/a\>.png> "caption")`
+    );
+
+    expect(result).toEqual([
+      {
+        raw: String.raw`![img](<https://cdn.example.com/a\>.png> "caption")`,
+        alt: 'img',
+        url: 'https://cdn.example.com/a>.png',
+        index: 0
+      }
+    ]);
+  });
+
+  it('应过滤空 URL 并对图片 URL 进行 trim 处理', () => {
+    const result = matchDatasetDataMarkdownImages('![empty]() ![space](  dataset/team/cat.png  )');
+
+    expect(result).toEqual([
+      {
+        raw: '![space](  dataset/team/cat.png  )',
+        alt: 'space',
+        url: 'dataset/team/cat.png',
+        index: 11
+      }
+    ]);
+  });
 });
 
 describe('getDatasetImageTrainingMode', () => {
@@ -595,7 +176,7 @@ describe('getDatasetImageTrainingMode', () => {
         supportImageIndex: false,
         hasMarkdownImages: true
       })
-    ).toBe(TrainingModeEnum.chunk);
+    ).toBe(TrainingModeEnum.index);
   });
 });
 
@@ -622,29 +203,45 @@ describe('getTrainingModeByCollection', () => {
         imageIndex: true,
         supportImageIndex: false
       })
-    ).toBe(TrainingModeEnum.chunk);
+    ).toBe(TrainingModeEnum.index);
   });
 });
 
 describe('getDatasetImageIndexCapability', () => {
-  beforeEach(() => {
-    global.embeddingModelMap.set('vision-embedding-model', {
-      ...global.systemDefaultModel.embedding,
-      model: 'vision-embedding-model',
-      name: 'vision-embedding-model',
+  const visionEmbeddingModel: EmbeddingModelDataType = {
+    modelId: '507f1f77bcf86cd799439011',
+    provider: 'test',
+    model: 'vision-embedding-model',
+    name: 'vision-embedding-model',
+    type: ModelTypeEnum.embedding,
+    scope: 'system' as const,
+    isActive: true,
+    config: {
+      defaultToken: 512,
+      maxToken: 8192,
+      weight: 0,
       vision: true
-    });
-    global.llmModelMap.set('dataset-vlm-model', {
-      ...global.systemDefaultModel.llm,
-      model: 'dataset-vlm-model',
-      name: 'dataset-vlm-model',
+    }
+  };
+  const datasetVlmModel: LLMModelDataType = {
+    modelId: '507f1f77bcf86cd799439012',
+    provider: 'test',
+    model: 'dataset-vlm-model',
+    name: 'dataset-vlm-model',
+    type: ModelTypeEnum.llm,
+    scope: 'system' as const,
+    isActive: true,
+    config: {
+      maxContext: 32000,
+      maxResponse: 4000,
+      quoteMaxToken: 16000,
       vision: true
-    });
-  });
+    }
+  };
 
   it('未配置 VLM 时不应自动回退到默认 VLM', async () => {
     const result = getDatasetImageIndexCapability({
-      vectorModel: 'vision-embedding-model'
+      vectorModel: visionEmbeddingModel
     });
 
     expect(result.supportVlm).toBe(false);
@@ -655,13 +252,162 @@ describe('getDatasetImageIndexCapability', () => {
 
   it('配置 VLM 时应同时返回 VLM 和多模态索引能力', async () => {
     const result = getDatasetImageIndexCapability({
-      vectorModel: 'vision-embedding-model',
-      vlmModel: 'dataset-vlm-model'
+      vectorModel: visionEmbeddingModel,
+      vlmModel: datasetVlmModel
     });
 
     expect(result.supportVlm).toBe(true);
     expect(result.supportImageEmbedding).toBe(true);
     expect(result.supportImageIndex).toBe(true);
     expect(result.availableVlmModel?.model).toBe('dataset-vlm-model');
+  });
+});
+
+describe('validateDatasetTagValue', () => {
+  it.each([
+    ['string', 'value', 'value', undefined],
+    ['array', ['a'], ['a'], undefined],
+    ['number', '1.25', 1.25, undefined],
+    ['datetime', '1704067200000', 1704067200000, undefined],
+    ['string', 1, 1, DatasetErrEnum.tagValueInvalid],
+    ['array', ['a'.repeat(257)], ['a'.repeat(257)], DatasetErrEnum.arrayTagValueInvalid],
+    ['number', 'abc', 'abc', DatasetErrEnum.tagValueInvalid],
+    ['datetime', Number.MAX_VALUE, Number.MAX_VALUE, DatasetErrEnum.tagValueDatetimeInvalid]
+  ])('validates and normalizes %s values', (tagType, value, normalized, error) => {
+    expect(validateAndNormalizeTagValue({ tagType: tagType as any, value: value as any })).toEqual({
+      value: normalized,
+      ...(error ? { error } : {})
+    });
+    expect(validateDatasetTagValue({ tagType: tagType as any, value: value as any })).toBe(error);
+  });
+});
+
+describe('createOrGetCollectionTags', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([])
+    });
+    mockMongoDatasetCollectionTagsFindOne.mockResolvedValue(null);
+    mockMongoDatasetCollectionTagsCreate.mockResolvedValue([]);
+    mockMongoDatasetCollectionTagsLegacyFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([])
+    });
+    mockMongoDatasetCollectionTagsUpdateOne.mockResolvedValue({ acknowledged: true });
+  });
+
+  it('returns without database work when tags are absent or empty', async () => {
+    await expect(
+      createOrGetCollectionTags({ tags: undefined, datasetId: 'ds-1', teamId: 'team-1' })
+    ).resolves.toBeUndefined();
+    await expect(
+      createOrGetCollectionTags({ tags: [], datasetId: 'ds-1', teamId: 'team-1' })
+    ).resolves.toEqual([]);
+    expect(mockMongoDatasetCollectionTagsFind).not.toHaveBeenCalled();
+  });
+
+  it('creates the migration carrier on demand for legacy string names', async () => {
+    mockMongoDatasetCollectionTagsLegacyFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([{ _id: 'legacy-1', tag: 'preset-option' }])
+    });
+    mockMongoDatasetCollectionTagsCreate.mockResolvedValue([
+      {
+        _id: 'default-tag-id',
+        toObject: () => ({ _id: 'default-tag-id' })
+      }
+    ]);
+
+    const result = await createOrGetCollectionTags({
+      tags: ['safety'],
+      datasetId: 'ds-1',
+      teamId: 'team-1'
+    });
+
+    expect(result).toEqual([{ tagId: 'default-tag-id', value: ['safety'] }]);
+    expect(mockMongoDatasetCollectionTagsCreate).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          tag: 'default_tag',
+          options: ['preset-option'],
+          fromMigration: true
+        })
+      ],
+      expect.any(Object)
+    );
+    expect(mockMongoDatasetCollectionTagsUpdateOne).toHaveBeenCalledWith(
+      { _id: 'default-tag-id', teamId: 'team-1', datasetId: 'ds-1' },
+      { $addToSet: { options: { $each: ['safety'] } } },
+      expect.any(Object)
+    );
+  });
+
+  it('handles mixed legacy and typed inputs with normalization and deduplication', async () => {
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id', tag: 'score', tagType: 'number' }])
+    });
+    mockMongoDatasetCollectionTagsFindOne.mockResolvedValue({ _id: 'default-tag-id' });
+
+    const result = await createOrGetCollectionTags({
+      tags: [' legacy ', 'legacy', { tag: ' score ', value: '2' }],
+      datasetId: 'ds-1',
+      teamId: 'team-1'
+    });
+
+    expect(result).toEqual([
+      { tagId: 'default-tag-id', value: ['legacy'] },
+      { tagId: 'tag-id', value: 2 }
+    ]);
+    expect(mockMongoDatasetCollectionTagsUpdateOne).toHaveBeenCalledWith(
+      { _id: 'default-tag-id', teamId: 'team-1', datasetId: 'ds-1' },
+      { $addToSet: { options: { $each: ['legacy'] } } },
+      expect.any(Object)
+    );
+  });
+
+  it('handles an object input named default_tag as a normal typed tag', async () => {
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi
+        .fn()
+        .mockResolvedValue([
+          { _id: 'ordinary-default-tag-id', tag: 'default_tag', tagType: 'string' }
+        ])
+    });
+
+    await expect(
+      createOrGetCollectionTags({
+        tags: [{ tag: 'default_tag', value: 'ordinary value' }],
+        datasetId: 'ds-1',
+        teamId: 'team-1'
+      })
+    ).resolves.toEqual([{ tagId: 'ordinary-default-tag-id', value: 'ordinary value' }]);
+    expect(mockMongoDatasetCollectionTagsFindOne).not.toHaveBeenCalled();
+    expect(mockMongoDatasetCollectionTagsCreate).not.toHaveBeenCalled();
+  });
+
+  it('rejects missing tags and conflicting duplicate values', async () => {
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([])
+    });
+    await expect(
+      createOrGetCollectionTags({
+        tags: [{ tag: 'missing', value: 'A' }],
+        datasetId: 'ds-1',
+        teamId: 'team-1'
+      })
+    ).rejects.toBe(DatasetErrEnum.tagNotExist);
+
+    mockMongoDatasetCollectionTagsFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([{ _id: 'tag-id', tag: 'tag', tagType: 'string' }])
+    });
+    await expect(
+      createOrGetCollectionTags({
+        tags: [
+          { tag: 'tag', value: 'A' },
+          { tag: 'tag', value: 'B' }
+        ],
+        datasetId: 'ds-1',
+        teamId: 'team-1'
+      })
+    ).rejects.toBe(DatasetErrEnum.tagValueInvalid);
   });
 });

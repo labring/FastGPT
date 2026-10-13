@@ -15,7 +15,7 @@ Redis commands without mixing with dev application keys. Set `SANDBOX_INTEGRATIO
 complete provider configuration, then run:
 
 ```bash
-pnpm test:service:integration:sandbox
+FASTGPT_TEST_MODE=sandbox pnpm test
 ```
 
 `SANDBOX_INTEGRATION_TOOL_MAX_MS`, `SANDBOX_INTEGRATION_TIMEOUT_MAX_MS`,

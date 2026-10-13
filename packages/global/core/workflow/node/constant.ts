@@ -37,6 +37,10 @@ export enum FlowNodeInputTypeEnum {
   timeRangeSelect = 'timeRangeSelect',
   password = 'password',
 
+  datasetTagFilter = 'datasetTagFilter',
+
+  off = 'off', // 关闭
+
   agentGenerated = 'agentGenerated' // for compatibility for >= v4.16.0
 }
 export const FlowNodeInputMap: Record<
@@ -116,6 +120,12 @@ export const FlowNodeInputMap: Record<
   },
   [FlowNodeInputTypeEnum.password]: {
     icon: 'core/workflow/inputType/password'
+  },
+  [FlowNodeInputTypeEnum.datasetTagFilter]: {
+    icon: 'core/workflow/inputType/input'
+  },
+  [FlowNodeInputTypeEnum.off]: {
+    icon: 'circleMinus'
   },
   [FlowNodeInputTypeEnum.agentGenerated]: {
     icon: 'core/workflow/inputType/agentGenerated'

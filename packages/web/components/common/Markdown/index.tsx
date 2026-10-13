@@ -4,6 +4,7 @@ import RemarkGfm from 'remark-gfm';
 import RehypeExternalLinks from 'rehype-external-links';
 import { Box, Code as ChakraCode, Image, Link } from '@chakra-ui/react';
 import MarkdownTable from './MarkdownTable';
+import { isSafeHref } from '@fastgpt/global/common/string/url';
 
 type MarkdownProps = {
   source: string;
@@ -22,11 +23,16 @@ const Markdown = ({ source, className }: MarkdownProps) => {
         <Image src={src} alt={alt} maxW="100%" my={2} borderRadius="md" loading="lazy" />
       ),
       // 链接
-      a: ({ href, children }: any) => (
-        <Link href={href} color="primary.600" textDecoration="underline" isExternal>
-          {children}
-        </Link>
-      ),
+      a: ({ href, children }: any) => {
+        if (!isSafeHref(href)) {
+          return <Box as="span">{children || href}</Box>;
+        }
+        return (
+          <Link href={href} color="primary.600" textDecoration="underline" isExternal>
+            {children}
+          </Link>
+        );
+      },
       // 行内代码
       code: ({ children, className }: any) => {
         // 如果有 className,说明是代码块,保留原样

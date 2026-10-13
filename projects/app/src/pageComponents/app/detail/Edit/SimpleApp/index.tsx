@@ -23,7 +23,7 @@ const SimpleEdit = () => {
   const [appForm, setAppForm] = useState(() => {
     if (past.length === 0) {
       return appWorkflow2Form({
-        nodes: appDetail.modules,
+        nodes: appDetail.nodes,
         chatConfig: {
           ...appDetail.chatConfig,
           fileSelectConfig: appDetail.chatConfig?.fileSelectConfig || {
@@ -65,6 +65,7 @@ const SimpleEdit = () => {
       h={'100%'}
       minH={0}
       flexDirection={'column'}
+      pr={[3, 3]}
       borderLeft={currentTab === TabEnum.publish ? '1px solid' : undefined}
       borderColor={'myGray.200'}
     >

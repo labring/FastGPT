@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
   mockVectorInsert,
   mockVectorDelete,
+  mockVectorRefreshCreateTime,
   mockVectorEmbRecall,
   mockVectorInit,
   mockGetVectorDataByTime,
@@ -18,7 +19,8 @@ import {
   getVectorCountByTeamId,
   getVectorCount,
   insertDatasetDataVector,
-  deleteDatasetDataVector
+  deleteDatasetDataVector,
+  refreshDatasetDataVectorCreateTime
 } from '@fastgpt/service/common/vectorDB/controller';
 
 // Mock redis cache functions
@@ -64,6 +66,7 @@ vi.mock('@fastgpt/service/common/logger', async (importOriginal) => {
 describe('VectorDB Controller', () => {
   beforeEach(() => {
     resetVectorMocks();
+    mockVectorRefreshCreateTime.mockReset().mockResolvedValue(undefined);
     mockRedisStringGet.mockReset();
     mockRedisStringSet.mockReset();
     mockRedisStringDelete.mockReset();
@@ -75,6 +78,29 @@ describe('VectorDB Controller', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  describe('refreshDatasetDataVectorCreateTime', () => {
+    it('skips empty lists and deduplicates IDs before bounded batches', async () => {
+      await refreshDatasetDataVectorCreateTime({ teamId: 'team', idList: [] });
+      expect(mockVectorRefreshCreateTime).not.toHaveBeenCalled();
+      const ids = Array.from({ length: 101 }, (_, i) => String(i));
+      await refreshDatasetDataVectorCreateTime({ teamId: 'team', idList: [...ids, ids[0]] });
+      expect(mockVectorRefreshCreateTime.mock.calls).toEqual([
+        [{ teamId: 'team', idList: ids.slice(0, 100) }],
+        [{ teamId: 'team', idList: ids.slice(100) }]
+      ]);
+    });
+
+    it('retries a failed batch and rejects when retries are exhausted', async () => {
+      mockVectorRefreshCreateTime.mockRejectedValueOnce(new Error('temporary'));
+      await refreshDatasetDataVectorCreateTime({ teamId: 'team', idList: ['1'] });
+      expect(mockVectorRefreshCreateTime).toHaveBeenCalledTimes(2);
+      mockVectorRefreshCreateTime.mockRejectedValue(new Error('offline'));
+      await expect(
+        refreshDatasetDataVectorCreateTime({ teamId: 'team', idList: ['2'] })
+      ).rejects.toThrow('offline');
+    });
   });
 
   describe('initVectorStore', () => {
@@ -437,6 +463,46 @@ describe('VectorDB Controller', () => {
       expect(mockGetVectors).not.toHaveBeenCalled();
       expect(mockVectorInsert).not.toHaveBeenCalled();
       expect(mockRedisStringDelete).not.toHaveBeenCalled();
+    });
+
+    /**
+     * 被测函数名: insertDatasetDataVector
+     * 被测函数等级: 3-High
+     * 单测函数功能描述: 确认 texts 通过 ...props 透传到 Vector.insert
+     * 单测函数测试思路(正常场景):
+     * 1、(全文文本透传) mock Vector.insert;调用 insertDatasetDataVector({inputs, texts, ...})
+     *    期望: Vector.insert 收到 texts(TC-9.1)
+     */
+    it('TC-9.1 forwards texts to Vector.insert', async () => {
+      const mockVectors = [[0.1, 0.2]];
+      mockGetVectors.mockResolvedValue({
+        tokens: 10,
+        vectors: mockVectors
+      });
+      mockVectorInsert.mockResolvedValue({
+        insertIds: ['id_1']
+      });
+
+      const result = await insertDatasetDataVector({
+        teamId: 'team_123',
+        datasetId: 'dataset_456',
+        collectionId: 'col_789',
+        inputs: ['hello'],
+        texts: ['hello'],
+        model: mockModel as any
+      });
+
+      expect(mockVectorInsert).toHaveBeenCalledWith({
+        teamId: 'team_123',
+        datasetId: 'dataset_456',
+        collectionId: 'col_789',
+        vectors: mockVectors,
+        texts: ['hello']
+      });
+      expect(result).toEqual({
+        tokens: 10,
+        insertIds: ['id_1']
+      });
     });
   });
 

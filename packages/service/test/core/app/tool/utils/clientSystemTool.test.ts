@@ -45,7 +45,6 @@ describe('getClientSystemToolPreviewNode', () => {
       intro: 'Weather query',
       author: 'FastGPT',
       tags: [],
-      toolDescription: 'Weather query',
       currentCost: 0,
       systemKeyCost: 1,
       hasTokenFee: false,
@@ -110,7 +109,6 @@ describe('getClientSystemToolPreviewNode', () => {
       intro: 'Weather query',
       author: 'FastGPT',
       tags: [],
-      toolDescription: 'Weather query',
       currentCost: 0,
       systemKeyCost: 0,
       hasTokenFee: false,
@@ -150,7 +148,6 @@ describe('getClientSystemToolPreviewNode', () => {
       intro: 'Workflow tool',
       author: 'FastGPT',
       tags: [],
-      toolDescription: 'Workflow tool',
       currentCost: 0,
       systemKeyCost: 0,
       hasTokenFee: false,
@@ -203,7 +200,6 @@ describe('getClientSystemToolPreviewNode', () => {
       intro: 'Workflow tool',
       author: 'FastGPT',
       tags: [],
-      toolDescription: 'Workflow tool',
       currentCost: 0,
       systemKeyCost: 0,
       hasTokenFee: false,
@@ -255,7 +251,6 @@ describe('getClientSystemToolPreviewNode', () => {
       intro: 'Weather query',
       author: 'FastGPT',
       tags: [],
-      toolDescription: 'Weather query',
       currentCost: 0,
       systemKeyCost: 0,
       hasTokenFee: false,
@@ -284,7 +279,6 @@ describe('getClientSystemToolPreviewNode', () => {
       intro: 'Weather query',
       author: 'FastGPT',
       tags: [],
-      toolDescription: 'Weather query',
       currentCost: 0,
       systemKeyCost: 0,
       hasTokenFee: false,
@@ -319,7 +313,6 @@ describe('getClientSystemToolPreviewNode', () => {
       intro: 'Weather query',
       author: 'FastGPT',
       tags: [],
-      toolDescription: 'Weather query',
       currentCost: 0,
       systemKeyCost: 0,
       hasTokenFee: false,
@@ -359,7 +352,6 @@ describe('getClientSystemToolPreviewNode', () => {
       intro: 'Weather query',
       author: 'FastGPT',
       tags: [],
-      toolDescription: 'Weather query',
       currentCost: 0,
       systemKeyCost: 0,
       hasTokenFee: false,
@@ -404,7 +396,6 @@ describe('getClientSystemToolPreviewNode', () => {
       intro: 'Search tools',
       author: 'FastGPT',
       tags: [],
-      toolDescription: 'Search tools',
       currentCost: 0,
       systemKeyCost: 0,
       hasTokenFee: false,
@@ -445,7 +436,6 @@ describe('getClientSystemToolPreviewNode', () => {
       intro: 'Workflow tool intro',
       author: 'FastGPT',
       tags: [],
-      toolDescription: 'Run workflow tool',
       currentCost: 1,
       systemKeyCost: 0,
       hasTokenFee: true,
@@ -480,6 +470,7 @@ describe('getClientSystemToolPreviewNode', () => {
 
     expect(result.flowNodeType).toBe(FlowNodeTypeEnum.pluginModule);
     expect(result.pluginId).toBe('commercial-workflow-tool');
+    expect(result.avatar).toBe('workflow.svg');
     expect(result.toolConfig).toBeUndefined();
     expect(result.isFolder).toBe(false);
     expect(result.inputs[0]?.key).toBe('query');

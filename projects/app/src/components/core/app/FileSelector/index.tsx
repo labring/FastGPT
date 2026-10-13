@@ -60,6 +60,8 @@ import {
   useChatApiTarget
 } from '@/web/core/chat/utils';
 import { getFileAmountLimit, getFileSizeLimitBytes } from '@fastgpt/global/core/workflow/fileLimit';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { useFileSelectorLinkIcons } from './useLinkIcons';
 
 type WebkitFileSystemFileEntry = {
   isFile: true;
@@ -177,12 +179,15 @@ const FileSelector = ({
   canLocalUpload,
   canUrlUpload,
   onFileErrorChange,
+  retainPreviewUrl = false,
   isDisabled = false,
   isInvalid = false
 }: AppFileSelectConfigType & {
   value: FileSelectorInputValueType;
   onChange?: (e: FileSelectorValueItemType[]) => void;
   onFileErrorChange?: (hasError: boolean) => void;
+  /** 仅临时调试表单保留上传预览地址，持久化场景仍只输出 key。 */
+  retainPreviewUrl?: boolean;
   canLocalUpload?: boolean;
   canUrlUpload?: boolean;
   isDisabled?: boolean;
@@ -215,6 +220,7 @@ const FileSelector = ({
   const [fileList, setFileList] = useState<FileSelectorRenderItemType[]>(() =>
     formatFileSelectorInternalValue(value)
   );
+  const linkIcons = useFileSelectorLinkIcons(fileList);
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -234,7 +240,7 @@ const FileSelector = ({
   }, [hasFileError]);
 
   useEffect(() => {
-    const cleanedValue = sanitizeFileSelectValue(value);
+    const cleanedValue = sanitizeFileSelectValue(value, retainPreviewUrl);
     if (
       skipNextCleanEcho.current &&
       isFileSelectorCleanValueEcho({
@@ -259,20 +265,20 @@ const FileSelector = ({
     if (!isEqual(cleanedValue, value)) {
       onChangeRef.current?.(cleanedValue);
     }
-  }, [value]);
+  }, [value, retainPreviewUrl]);
 
   const handleChangeFiles = useCallback(
     (files: FileSelectorRenderItemType[], emitChange = true) => {
       setFileList([...files]);
 
       if (emitChange) {
-        const cleanedFiles = sanitizeFileSelectValue(files);
+        const cleanedFiles = sanitizeFileSelectValue(files, retainPreviewUrl);
         lastEmittedValue.current = cleanedFiles;
         skipNextCleanEcho.current = true;
         onChangeRef.current?.(cleanedFiles);
       }
     },
-    []
+    [retainPreviewUrl]
   );
 
   // 后端存储值只保留 key；组件渲染时再为 key-only 文件补临时预览 URL。
@@ -795,23 +801,28 @@ const FileSelector = ({
           <MyDivider />
           <VStack>
             {fileList.map((file) => {
-              const fileIcon = getFileSelectorDisplayIcon(file);
+              const linkIcon = linkIcons.get(file.id);
+              const fileIcon = getFileSelectorDisplayIcon({
+                ...file,
+                icon: !file.key && linkIcon && linkIcon.url === file.url ? linkIcon.icon : file.icon
+              });
               const isUploadingFile = isFileSelectorUploading(file);
               return (
                 <Box key={file?.id} w={'full'}>
                   <HStack py={1} px={3} bg={'white'} borderRadius={'md'} border={'sm'}>
                     <MyAvatar src={fileIcon} w={'1.2rem'} />
-                    <Box
-                      fontSize={'sm'}
-                      flex={'1 0 0'}
-                      className="textEllipsis"
-                      title={file?.name}
-                      {...(file?.error && {
-                        color: 'red.600'
-                      })}
-                    >
-                      {file?.name}
-                    </Box>
+                    <MyTooltip label={file?.name} showOnlyWhenOverflow>
+                      <Box
+                        fontSize={'sm'}
+                        flex={'1 0 0'}
+                        className="textEllipsis"
+                        {...(file?.error && {
+                          color: 'red.600'
+                        })}
+                      >
+                        {file?.name}
+                      </Box>
+                    </MyTooltip>
 
                     {/* Status icon */}
                     {!isUploadingFile ? (

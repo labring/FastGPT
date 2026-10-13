@@ -33,7 +33,7 @@ const NodeSimple = ({
   const Render = useMemo(() => {
     return (
       <NodeCard minW={minW} maxW={maxW} selected={selected} {...data}>
-        {isTool && hasDynamicToolInput(inputs) && (
+        {isTool && hasDynamicToolInput(data) && (
           <>
             <Container>
               <RenderToolInput nodeId={nodeId} inputs={inputs} />

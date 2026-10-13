@@ -75,14 +75,14 @@ afterEach(() => {
 });
 
 describe('getRequiredI18nLanguages', () => {
-  it('returns only English when English is the active language', () => {
-    expect(getRequiredI18nLanguages(LangEnum.en)).toEqual([LangEnum.en]);
+  it('returns only Simplified Chinese when it is the active language', () => {
+    expect(getRequiredI18nLanguages(LangEnum.zh_CN)).toEqual([LangEnum.zh_CN]);
   });
 
-  it.each([LangEnum.zh_CN, LangEnum.zh_Hant, LangEnum.ko_KR])(
-    'appends English fallback for %s',
+  it.each([LangEnum.en, LangEnum.zh_Hant, LangEnum.ko_KR])(
+    'appends Simplified Chinese fallback for %s',
     (language) => {
-      expect(getRequiredI18nLanguages(language)).toEqual([language, LangEnum.en]);
+      expect(getRequiredI18nLanguages(language)).toEqual([language, LangEnum.zh_CN]);
     }
   );
 });

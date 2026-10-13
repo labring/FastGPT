@@ -20,7 +20,7 @@ export const CreateAppFolderBodySchema = z
       example: '默认文件夹',
       description: '文件夹名称'
     }),
-    intro: z.string().optional().meta({
+    intro: z.string().nullish().meta({
       example: '文件夹介绍',
       description: '文件夹介绍'
     }),

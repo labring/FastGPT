@@ -1,9 +1,15 @@
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { ThinkingLevel } from '@mariozechner/pi-agent-core';
-import { getLLMModel } from '../../../../model';
-import { defaultUserOpenAIBaseUrl, openaiBaseUrl, openaiBaseKey } from '../../../../config';
+import {
+  defaultUserOpenAIBaseUrl,
+  openaiBaseUrl,
+  openaiBaseKey,
+  getAiproxyScopeHeaders
+} from '../../../../config';
+import { getLegacyModelEndpoint } from '../../../../legacy/requestUrl';
 import { computedMaxToken } from '../../../../utils';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 type Model = import('@mariozechner/pi-ai').Model<'openai-completions'>;
 
@@ -17,11 +23,14 @@ const supportedThinkingLevels = new Set<ThinkingLevel>([
 ]);
 
 export function getPiThinkingLevel(
-  modelNameOrId?: string,
+  modelData: LLMModelDataType,
   reasoningEffort?: ReasoningEffort
 ): ThinkingLevel {
-  const cfg = getLLMModel(modelNameOrId);
-  if (!cfg?.reasoning || !cfg.reasoningEffort || reasoningEffort === 'none') {
+  if (
+    !modelData.config.reasoning ||
+    !modelData.config.reasoningEffort ||
+    reasoningEffort === 'none'
+  ) {
     return 'off';
   }
 
@@ -33,49 +42,63 @@ export function getPiThinkingLevel(
 }
 
 export function buildPiModel(
-  modelNameOrId?: string,
+  modelData: LLMModelDataType,
   useVision?: boolean,
   userKey?: OpenaiAccountType,
   maxTokens?: number
 ): Model {
-  const cfg = getLLMModel(modelNameOrId);
   const hasUserOpenAIKey = !!userKey?.key;
-  const baseUrl =
-    normalizeBaseUrl(
-      hasUserOpenAIKey ? userKey?.baseUrl || defaultUserOpenAIBaseUrl : cfg?.requestUrl
-    ) || openaiBaseUrl;
-  const apiKey = hasUserOpenAIKey ? userKey.key : cfg?.requestAuth || openaiBaseKey;
-  const defaultMaxTokens = Math.min(cfg?.maxResponse ?? 4096, (cfg?.maxContext ?? 128000) - 2048);
+  const legacyEndpoint = !hasUserOpenAIKey ? getLegacyModelEndpoint(modelData) : undefined;
+
+  const baseUrl = hasUserOpenAIKey
+    ? normalizeBaseUrl(userKey?.baseUrl || defaultUserOpenAIBaseUrl) || openaiBaseUrl
+    : legacyEndpoint
+      ? normalizeBaseUrl(legacyEndpoint.baseUrl) || openaiBaseUrl
+      : openaiBaseUrl;
+
+  const apiKey = hasUserOpenAIKey ? userKey.key : legacyEndpoint?.apiKey || openaiBaseKey;
+
+  const scopeHeaders = getAiproxyScopeHeaders(modelData, baseUrl);
+  const headers = {
+    ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+    ...scopeHeaders
+  };
+
+  const defaultMaxTokens = Math.min(
+    modelData.config.maxResponse,
+    modelData.config.maxContext - 2048
+  );
   const resolvedMaxTokens =
-    cfg && typeof maxTokens === 'number'
+    typeof maxTokens === 'number'
       ? computedMaxToken({
-          model: cfg,
+          model: modelData,
           maxToken: maxTokens
         })
       : undefined;
 
   return {
-    id: cfg?.model ?? 'gpt-4o',
-    name: cfg?.name ?? cfg?.model ?? 'gpt-4o',
+    id: modelData.model,
+    name: modelData.name,
     api: 'openai-completions',
     provider: 'openai',
     baseUrl,
-    reasoning: cfg?.reasoning ?? false,
+    reasoning: modelData.config.reasoning ?? false,
     input: useVision ? ['text', 'image'] : ['text'],
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-    contextWindow: cfg?.maxContext ?? 128000,
+    contextWindow: modelData.config.maxContext,
     maxTokens: resolvedMaxTokens ?? defaultMaxTokens,
-    headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined,
+    headers: Object.keys(headers).length > 0 ? headers : undefined,
     compat: {
       supportsDeveloperRole: false,
       supportsStore: false,
-      supportsReasoningEffort: cfg?.reasoningEffort ?? false,
+      supportsReasoningEffort: modelData.config.reasoningEffort ?? false,
       maxTokensField: 'max_tokens'
     }
   };
 }
 
-export function getModelApiKey(modelNameOrId?: string, userKey?: OpenaiAccountType): string {
-  const cfg = getLLMModel(modelNameOrId);
-  return userKey?.key || cfg?.requestAuth || openaiBaseKey || '';
+export function getModelApiKey(modelData: LLMModelDataType, userKey?: OpenaiAccountType): string {
+  if (userKey?.key) return userKey.key;
+  const legacyEndpoint = getLegacyModelEndpoint(modelData);
+  return legacyEndpoint?.apiKey || openaiBaseKey || '';
 }

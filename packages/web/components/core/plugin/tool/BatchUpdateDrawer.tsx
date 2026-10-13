@@ -84,6 +84,7 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
     hasSelections,
     toggleSelect,
     isSelected,
+    getRowSelectionProps,
     setSelectedItems
   } = useTableMultipleSelect<ToolCardItemType>({
     list: updatableTools,
@@ -108,7 +109,6 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
   useEffect(() => {
     if (!selectedToolForDetail?.id || !onFetchVersions) return;
 
-    setSelectedVersion(undefined);
     fetchToolVersions(selectedToolForDetail.id);
   }, [fetchToolVersions, onFetchVersions, selectedToolForDetail?.id]);
 
@@ -124,6 +124,11 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
   const isSelectedToolDeleting = selectedToolForDetail
     ? (deletingToolIds?.has(selectedToolForDetail.id) ?? false)
     : false;
+  const isDetailView =
+    viewMode === 'detail' &&
+    Boolean(
+      selectedToolForDetail && updatableTools.some((tool) => tool.id === selectedToolForDetail.id)
+    );
 
   // Use tool detail hook
   const { parentTool, isToolSet, subTools, readmeContent, loadingDetail } = useToolDetail({
@@ -131,7 +136,7 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
     version: activeVersion,
     tags: selectedToolForDetail?.tags ?? undefined,
     onFetchDetail,
-    autoFetch: viewMode === 'detail'
+    autoFetch: isDetailView
   });
 
   const handleClose = useCallback(() => {
@@ -155,16 +160,6 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
     setSelectedToolForDetail(null);
     setSelectedVersion(undefined);
   }, []);
-
-  useEffect(() => {
-    if (
-      viewMode === 'detail' &&
-      selectedToolForDetail &&
-      !updatableTools.some((tool) => tool.id === selectedToolForDetail.id)
-    ) {
-      handleBack();
-    }
-  }, [handleBack, selectedToolForDetail, updatableTools, viewMode]);
 
   /** 执行选中插件更新，并把插件级失败原因留在当前列表中供用户重试。 */
   const handleUpdateTools = useCallback(
@@ -246,7 +241,7 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
       <DrawerOverlay />
       <DrawerContent maxW="480px" borderLeftRadius="md">
         <DrawerHeader pt={6} pb={1}>
-          {viewMode === 'list' ? (
+          {!isDetailView ? (
             <Flex gap={1.5} alignItems="center">
               <Box fontSize={'16px'} fontWeight={500} color={'myGray.900'}>
                 {t('app:toolkit_plugin_update')}
@@ -304,7 +299,7 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
         </DrawerHeader>
 
         <DrawerBody position="relative" sx={drawerScrollbarStyles}>
-          {viewMode === 'list' ? (
+          {!isDetailView ? (
             <VStack align="stretch" spacing={0} pb={20}>
               <Grid
                 gridTemplateColumns="48px minmax(0, 1fr) 108px"
@@ -332,6 +327,7 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
                     alignItems="center"
                     borderBottom="1px solid"
                     borderColor="myGray.200"
+                    {...getRowSelectionProps(tool, { isDisabled: isUpdating })}
                   >
                     <Flex px={3} align="center">
                       <Checkbox

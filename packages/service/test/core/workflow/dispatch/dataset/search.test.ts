@@ -1,18 +1,26 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import * as modelGetters from '../../../../../core/ai/model/catalog/service';
 
 const {
   defaultSearchDatasetDataMock,
   deepRagSearchMock,
+  loadWorkflowDatasetResourceMock,
   findDatasetByIdMock,
+  getDatasetSearchVlmModelMock,
   formatModelChars2PointsMock,
   usagePushMock
 } = vi.hoisted(() => ({
   defaultSearchDatasetDataMock: vi.fn(),
   deepRagSearchMock: vi.fn(),
+  loadWorkflowDatasetResourceMock: vi.fn(),
   findDatasetByIdMock: vi.fn(),
+  getDatasetSearchVlmModelMock: vi.fn(),
   formatModelChars2PointsMock: vi.fn(),
   usagePushMock: vi.fn()
 }));
@@ -22,8 +30,16 @@ vi.mock('@fastgpt/service/core/dataset/search', () => ({
   deepRagSearch: deepRagSearchMock
 }));
 
-vi.mock('@fastgpt/service/core/dataset/schema', () => ({
-  DatasetCollectionName: 'datasets',
+vi.mock('@fastgpt/service/core/dataset/search/vlm', () => ({
+  getDatasetSearchVlmModel: getDatasetSearchVlmModelMock
+}));
+
+vi.mock('@fastgpt/service/core/workflow/utils/resource', () => ({
+  loadWorkflowDatasetResource: loadWorkflowDatasetResourceMock
+}));
+
+vi.mock('@fastgpt/service/core/dataset/schema', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/dataset/schema')>()),
   MongoDataset: {
     findById: findDatasetByIdMock
   }
@@ -33,13 +49,45 @@ vi.mock('@fastgpt/service/core/dataset/utils', () => ({
   filterDatasetsByTmbId: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getEmbeddingModel: vi.fn(() => ({
-    model: 'embedding-model',
-    name: 'Embedding Model'
-  })),
-  getRerankModel: vi.fn(() => undefined)
-}));
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => {
+  const handle = {
+    getDefaultModelData: vi.fn(),
+    getEmbeddingModelData: vi.fn(() => ({
+      modelId: '68ad85a7463006c963799a01',
+      model: 'embedding-model',
+      name: 'Embedding Model',
+      type: 'embedding',
+      config: {}
+    })),
+    getLLMModelData: vi.fn(() => ({
+      modelId: '68ad85a7463006c963799a02',
+      model: 'gpt-query',
+      name: 'gpt-query name',
+      type: 'llm',
+      config: {}
+    })),
+    getRerankModelData: vi.fn(() => undefined),
+    getVlmModelData: vi.fn(() => ({
+      modelId: '68ad85a7463006c963799a03',
+      model: 'vision-model',
+      name: 'gpt-vision name',
+      type: 'llm',
+      config: { vision: true }
+    })),
+    getOptionalVlmModelData: vi.fn(({ modelId, model }) =>
+      modelId || model
+        ? {
+            modelId: '68ad85a7463006c963799a03',
+            model: 'vision-model',
+            name: 'gpt-vision name',
+            type: 'llm',
+            config: { vision: true }
+          }
+        : undefined
+    )
+  };
+  return { getSystemModelHandle: async () => handle, getTeamModelHandle: async () => handle };
+});
 
 vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   formatModelChars2Points: formatModelChars2PointsMock
@@ -48,12 +96,101 @@ vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
 import { dispatchDatasetSearch } from '../../../../../core/workflow/dispatch/dataset/search';
 
 describe('dispatchDatasetSearch', () => {
+  const runSearch = (params: Record<string, unknown> = {}, nodeSummary = createNodeSummary()) =>
+    dispatchDatasetSearch({
+      runningAppInfo: { teamId: 'team_1' },
+      runningUserInfo: { tmbId: 'tmb_1' },
+      externalProvider: {},
+      histories: [],
+      node: { name: 'Dataset Search' },
+      params: { datasets: [{ datasetId: 'dataset_1' }], userChatInput: 'question', ...params },
+      nodeSummary,
+      usagePush: usagePushMock
+    } as any);
+
+  it('executes and bills the fallback auxiliary models when configured models are unavailable', async () => {
+    vi.mocked((await modelGetters.getSystemModelHandle()).getLLMModelData).mockImplementationOnce(
+      () => {
+        throw new UserError(ModelErrEnum.unExist);
+      }
+    );
+    vi.mocked(
+      (await modelGetters.getSystemModelHandle()).getRerankModelData
+    ).mockImplementationOnce(() => {
+      throw new UserError(ModelErrEnum.unConfigured);
+    });
+    vi.mocked((await modelGetters.getSystemModelHandle()).getDefaultModelData).mockImplementation(
+      (slot) =>
+        ({
+          modelId: `fallback-${slot}`,
+          model: `fallback-${slot}`,
+          name: `Fallback ${slot}`,
+          type: slot,
+          config: {}
+        }) as any
+    );
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes: [],
+      embeddingTokens: 0,
+      reRankInputTokens: 10,
+      usingReRank: true,
+      queryExtensionResult: {
+        inputTokens: 3,
+        outputTokens: 2,
+        embeddingTokens: 0,
+        requestId: 'fallback-request',
+        seconds: 0,
+        query: 'expanded'
+      }
+    });
+    const nodeSummary = createNodeSummary();
+    const result = await runSearch(
+      {
+        usingReRank: true,
+        datasetSearchUsingExtensionQuery: true,
+        datasetSearchExtensionModelId: 'deleted'
+      },
+      nodeSummary
+    );
+    expect(nodeSummary).toMatchObject({ llmInputTokens: 0, llmOutputTokens: 0 });
+    expect(result.error).toBeUndefined();
+    expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rerankModel: expect.objectContaining({ modelId: 'fallback-rerank' }),
+        datasetSearchExtensionModel: expect.objectContaining({ modelId: 'fallback-llm' })
+      })
+    );
+    expect(usagePushMock).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ modelId: 'fallback-rerank' }),
+        expect.objectContaining({ modelId: 'fallback-llm' })
+      ])
+    );
+  });
+
+  it('still fails immediately when the embedding model is unavailable', async () => {
+    vi.mocked(
+      (await modelGetters.getSystemModelHandle()).getEmbeddingModelData
+    ).mockImplementationOnce(() => {
+      throw new UserError(ModelErrEnum.unExist);
+    });
+    const result = await runSearch({ usingReRank: true, datasetSearchUsingExtensionQuery: true });
+    expect(result.error).toBeDefined();
+    expect(defaultSearchDatasetDataMock).not.toHaveBeenCalled();
+    expect((await modelGetters.getSystemModelHandle()).getDefaultModelData).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
-    findDatasetByIdMock.mockReturnValue({
-      lean: vi.fn().mockResolvedValue({
-        vectorModel: 'embedding-model'
-      })
+    getDatasetSearchVlmModelMock.mockResolvedValue({
+      modelId: '68ad85a7463006c963799a03',
+      model: 'vision-model',
+      name: 'gpt-vision name',
+      type: 'llm',
+      config: { vision: true }
+    });
+    loadWorkflowDatasetResourceMock.mockResolvedValue({
+      vectorModel: 'embedding-model',
+      vlmModel: 'gpt-vision'
     });
     formatModelChars2PointsMock.mockImplementation(
       ({
@@ -61,14 +198,82 @@ describe('dispatchDatasetSearch', () => {
         inputTokens = 0,
         outputTokens = 0
       }: {
-        model?: string;
+        model?: string | { model: string; name: string };
         inputTokens?: number;
         outputTokens?: number;
       }) => ({
-        modelName: `${model || 'unknown'} name`,
+        modelName: typeof model === 'string' ? `${model || 'unknown'} name` : model?.name,
         totalPoints: (inputTokens + outputTokens) / 100
       })
     );
+  });
+
+  it('continues text search when all selected VLM models are unusable', async () => {
+    getDatasetSearchVlmModelMock.mockResolvedValue(undefined);
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes: [],
+      embeddingTokens: 0,
+      reRankInputTokens: 0,
+      usingReRank: false
+    });
+    const result = await dispatchDatasetSearch({
+      runningAppInfo: { teamId: 'team_1' },
+      runningUserInfo: { tmbId: 'tmb_1' },
+      externalProvider: {},
+      histories: [],
+      node: { name: 'Dataset Search' },
+      params: {
+        datasets: [{ datasetId: 'first' }, { datasetId: 'second' }],
+        userChatInput: 'question'
+      },
+      nodeSummary: createNodeSummary(),
+      usagePush: usagePushMock
+    } as any);
+    expect(getDatasetSearchVlmModelMock).toHaveBeenCalledWith({
+      teamId: 'team_1',
+      datasetIds: ['first', 'second'],
+      modelHandle: await modelGetters.getSystemModelHandle()
+    });
+    expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
+      expect.objectContaining({ vlmModel: undefined })
+    );
+    expect(result.error).toBeUndefined();
+    expect(result.data?.quoteQA).toEqual([]);
+  });
+
+  it('passes collectionFilterMatch directly to defaultSearchDatasetData', async () => {
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes: [],
+      embeddingTokens: 0,
+      reRankInputTokens: 0,
+      usingSimilarityFilter: false,
+      usingReRank: false
+    });
+    const props = {
+      runningAppInfo: { teamId: 'team_1' },
+      runningUserInfo: { tmbId: 'tmb_1' },
+      externalProvider: {},
+      histories: [],
+      node: { name: 'Dataset Search' },
+      params: {
+        datasets: [{ datasetId: 'dataset_1' }],
+        similarity: 0.4,
+        limit: 5000,
+        userChatInput: 'query',
+        searchMode: DatasetSearchModeEnum.embedding,
+        usingReRank: false,
+        datasetSearchUsingExtensionQuery: false,
+        collectionFilterMatch: '{"tags":{"$and":["legacy"]}}'
+      },
+      nodeSummary: createNodeSummary(),
+      usagePush: usagePushMock
+    } as any;
+
+    await dispatchDatasetSearch(props);
+
+    expect(defaultSearchDatasetDataMock.mock.calls[0][0]).toMatchObject({
+      collectionFilterMatch: '{"tags":{"$and":["legacy"]}}'
+    });
   });
 
   it('adds query extension as a child node response of dataset search', async () => {
@@ -116,6 +321,7 @@ describe('dispatchDatasetSearch', () => {
         rerankWeight: 0.5,
         datasetSearchUsingExtensionQuery: true
       },
+      nodeSummary: createNodeSummary(),
       usagePush: usagePushMock
     } as any);
 
@@ -138,6 +344,7 @@ describe('dispatchDatasetSearch', () => {
       })
     ]);
     expect(nodeResponse?.childTotalPoints).toBeUndefined();
+    expect(nodeResponse?.totalPoints).toBeCloseTo(0.26);
     expect(usagePushMock).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
@@ -190,6 +397,7 @@ describe('dispatchDatasetSearch', () => {
         rerankWeight: 0.5,
         datasetSearchUsingExtensionQuery: true
       },
+      nodeSummary: createNodeSummary(),
       usagePush: usagePushMock
     } as any);
 
@@ -252,6 +460,7 @@ describe('dispatchDatasetSearch', () => {
         rerankWeight: 0.5,
         datasetSearchUsingExtensionQuery: false
       },
+      nodeSummary: createNodeSummary(),
       usagePush: usagePushMock
     } as any);
 
@@ -316,6 +525,7 @@ describe('dispatchDatasetSearch', () => {
         datasetSearchUsingExtensionQuery: false,
         datasetDeepSearch: true
       },
+      nodeSummary: createNodeSummary(),
       usagePush: usagePushMock
     } as any);
 
@@ -329,5 +539,100 @@ describe('dispatchDatasetSearch', () => {
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.datasetQueries).toEqual([
       'https://files.example.com/query.png'
     ]);
+  });
+
+  describe('retrievalResults', () => {
+    const recalled = [
+      { id: 'recall_1', q: 'q1', a: 'a1', sourceName: 'doc1.md' },
+      { id: 'recall_2', q: 'q2', a: 'a2', sourceName: 'doc2.md' }
+    ];
+    const reranked = [{ id: 'recall_2', q: 'q2', a: 'a2', sourceName: 'doc2.md' }];
+
+    // searchUsingReRank 为 true 时计费分支会读取 rerankModelData，必须配置。
+    const useRerankModel = async () => {
+      vi.mocked((await modelGetters.getSystemModelHandle()).getRerankModelData).mockReturnValue({
+        modelId: 'rerank-model',
+        model: 'rerank-model',
+        name: 'Rerank Model',
+        type: 'rerank',
+        config: {}
+      } as any);
+    };
+
+    it('keeps the pre-rerank candidates when rerank is on', async () => {
+      await useRerankModel();
+      defaultSearchDatasetDataMock.mockResolvedValue({
+        searchRes: reranked,
+        retrievalResults: recalled,
+        embeddingTokens: 10,
+        reRankInputTokens: 5,
+        usingSimilarityFilter: false,
+        usingReRank: true
+      });
+
+      const result = await runSearch({ usingReRank: true });
+      const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
+
+      expect(nodeResponse?.retrievalResults?.map((item) => item.id)).toEqual([
+        'recall_1',
+        'recall_2'
+      ]);
+      // quoteList 仍是重排后的列表
+      expect(nodeResponse?.quoteList?.map((item) => item.id)).toEqual(['recall_2']);
+    });
+
+    it('records whatever the recall layer produced, the layer owns the rerank gate', async () => {
+      // 是否产出由检索层按 usingReRank 决定，dispatcher 只负责原样记录。
+      defaultSearchDatasetDataMock.mockResolvedValue({
+        searchRes: recalled,
+        retrievalResults: recalled,
+        embeddingTokens: 10,
+        reRankInputTokens: 0,
+        usingSimilarityFilter: false,
+        usingReRank: false
+      });
+
+      const result = await runSearch({ usingReRank: false });
+
+      expect(
+        result[DispatchNodeResponseKeyEnum.nodeResponse]?.retrievalResults?.map((item) => item.id)
+      ).toEqual(['recall_1', 'recall_2']);
+    });
+
+    it('omits the field when the recall layer produced nothing', async () => {
+      // 重排关闭或 RETRIEVAL_RESULTS_LIMIT=0 时检索层不产出该字段。
+      await useRerankModel();
+      defaultSearchDatasetDataMock.mockResolvedValue({
+        searchRes: reranked,
+        embeddingTokens: 10,
+        reRankInputTokens: 5,
+        usingSimilarityFilter: false,
+        usingReRank: true
+      });
+
+      const result = await runSearch({ usingReRank: true });
+
+      expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).not.toHaveProperty(
+        'retrievalResults'
+      );
+    });
+
+    it('omits the field on the deep search path, which does not produce it', async () => {
+      await useRerankModel();
+      deepRagSearchMock.mockResolvedValue({
+        searchRes: reranked,
+        embeddingTokens: 10,
+        reRankInputTokens: 5,
+        usingSimilarityFilter: false,
+        usingReRank: true
+      });
+
+      const result = await runSearch({ usingReRank: true, datasetDeepSearch: true });
+      expect(deepRagSearchMock).toHaveBeenCalled();
+
+      expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).not.toHaveProperty(
+        'retrievalResults'
+      );
+    });
   });
 });

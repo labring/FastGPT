@@ -5,17 +5,23 @@ import { UserSchema } from '../../../../../support/user/type';
 import { TeamTmbItemSchema } from '../../../../../support/user/team/type';
 import {
   AccountLoginUsernameSchema,
+  AccountContactChannelSchema,
+  AccountContactUsernameSchema,
+  AccountKindSchema,
   AccountPasswordSchema,
+  AccountVerificationUnsupportedReasonSchema,
   ExternalAuthStringSchema,
   ShortAuthStringSchema
 } from '../../../../../support/user/account/verification/type';
 import { PublicAuthTrackRegisterParamsSchema } from '../common';
+import { OpenObjectOpenApiMeta } from '../../../../../common/zod/openapi';
 
 const OpenAPITeamTmbItemSchema = TeamTmbItemSchema.omit({
   permission: true
 }).extend({
   permission: z.any().meta({
-    description: '团队权限实例。返回值为服务端权限对象，文档中按任意结构展示。'
+    ...OpenObjectOpenApiMeta,
+    description: '团队权限实例。具体权限字段取决于团队角色配置。'
   })
 });
 
@@ -25,13 +31,14 @@ export const OpenAPIUserSchema = UserSchema.omit({
 }).extend({
   team: OpenAPITeamTmbItemSchema,
   permission: z.any().meta({
-    description: '用户权限实例。返回值为服务端权限对象，文档中按任意结构展示。'
+    ...OpenObjectOpenApiMeta,
+    description: '用户权限实例。具体权限字段取决于团队角色配置。'
   })
 });
 export type OpenAPIUserType = z.infer<typeof OpenAPIUserSchema>;
 
 export const LoginSuccessResponseSchema = z.object({
-  user: z.any().meta({
+  user: OpenAPIUserSchema.meta({
     description: '用户详情'
   }),
   token: z.string().meta({
@@ -40,6 +47,167 @@ export const LoginSuccessResponseSchema = z.object({
   })
 });
 export type LoginSuccessResponseType = z.infer<typeof LoginSuccessResponseSchema>;
+
+export const LoginVerificationRequiredResponseSchema = z
+  .object({
+    status: z.literal('verificationRequired').meta({ description: '密码正确，需要二次验证' }),
+    challenge: z.string().trim().min(1).max(128).meta({
+      description: '登录二次验证 Challenge，仅在内存中短期使用',
+      example: 'login-challenge-token'
+    }),
+    method: z.literal('code').meta({ description: '二次验证方式', example: 'code' }),
+    channel: AccountContactChannelSchema,
+    maskedTarget: z.string().meta({
+      description: '验证码接收目标的脱敏值',
+      example: 'us***@example.com'
+    }),
+    expiredAt: z.iso.datetime({ offset: true }).meta({
+      description: 'Challenge 过期时间',
+      example: '2026-01-02T00:05:00.000Z'
+    })
+  })
+  .strict();
+export type LoginVerificationRequiredResponseType = z.infer<
+  typeof LoginVerificationRequiredResponseSchema
+>;
+
+export const LoginByPasswordResponseSchema = z.union([
+  LoginSuccessResponseSchema,
+  LoginVerificationRequiredResponseSchema
+]);
+export type LoginByPasswordResponseType = z.infer<typeof LoginByPasswordResponseSchema>;
+
+/* ============================================================================
+ * API: 登录二次验证内部协议
+ * Routes: POST /api/support/user/account/login/verification/resolve
+ *         POST /api/support/user/account/login/verification/captcha
+ *         POST /api/support/user/account/login/verification/sendCode
+ * Description: FastGPT app 与 Pro 之间的登录二次验证能力协议，仅供服务端调用。
+ * Tags: ['User Login', 'Account Verification']
+ * ============================================================================ */
+
+export const LoginVerificationResolveBodySchema = z
+  .object({
+    username: AccountLoginUsernameSchema.meta({
+      description: '登录用户名',
+      example: 'user@example.com'
+    })
+  })
+  .strict();
+export type LoginVerificationResolveBodyType = z.infer<typeof LoginVerificationResolveBodySchema>;
+
+export const LoginVerificationResolveResponseSchema = z.discriminatedUnion('status', [
+  z
+    .object({
+      status: z.literal('supported').meta({ description: '账号具备登录二次验证能力' }),
+      // 能被支持的账号类型就是可投递验证码的联系方式，取值与 channel 完全一致，因此复用同一份声明
+      accountKind: AccountContactChannelSchema.meta({
+        description: '账号类型，登录二次验证只支持邮箱和手机号账号',
+        example: 'email'
+      }),
+      method: z.literal('code').meta({ description: '二次验证方式', example: 'code' }),
+      channel: AccountContactChannelSchema,
+      target: AccountContactUsernameSchema.meta({
+        description: '验证码实际接收目标',
+        example: 'user@example.com'
+      })
+    })
+    .strict(),
+  z
+    .object({
+      status: z.literal('unsupported').meta({
+        description: '账号当前不具备登录二次验证能力，主服务回退密码登录'
+      }),
+      accountKind: AccountKindSchema.meta({ description: '账号类型识别结果', example: 'email' }),
+      unsupportedReason: AccountVerificationUnsupportedReasonSchema.meta({
+        description: '不支持二次验证的原因',
+        example: 'no_available_verification_method'
+      })
+    })
+    .strict()
+]);
+export type LoginVerificationResolveResponseType = z.infer<
+  typeof LoginVerificationResolveResponseSchema
+>;
+
+export const LoginVerificationChallengeBodySchema = z
+  .object({
+    challenge: z.string().trim().min(1).max(128).meta({
+      description: '登录二次验证 Challenge',
+      example: 'login-challenge-token'
+    })
+  })
+  .strict();
+export type LoginVerificationChallengeBodyType = z.infer<
+  typeof LoginVerificationChallengeBodySchema
+>;
+
+export const LoginVerificationSendCodeBodySchema = LoginVerificationChallengeBodySchema.extend({
+  captcha: ShortAuthStringSchema.max(64).meta({
+    description: '图片验证码答案',
+    example: 'A1B2C3'
+  })
+});
+export type LoginVerificationSendCodeBodyType = z.infer<typeof LoginVerificationSendCodeBodySchema>;
+
+export const LoginVerificationVerifyBodySchema = LoginVerificationChallengeBodySchema.extend({
+  code: ShortAuthStringSchema.meta({
+    description: '邮箱或手机验证码',
+    example: '123456'
+  })
+});
+export type LoginVerificationVerifyBodyType = z.infer<typeof LoginVerificationVerifyBodySchema>;
+
+export const LoginVerificationCaptchaBodySchema = z
+  .object({
+    challengeHash: z
+      .string()
+      .length(64)
+      .regex(/^[a-f0-9]+$/)
+      .meta({
+        description: 'Challenge 的 SHA-256 摘要',
+        example: 'a'.repeat(64)
+      })
+  })
+  .strict();
+export type LoginVerificationCaptchaBodyType = z.infer<typeof LoginVerificationCaptchaBodySchema>;
+
+export const LoginVerificationSendCodeInternalBodySchema =
+  LoginVerificationCaptchaBodySchema.extend({
+    target: AccountContactUsernameSchema.meta({
+      description: '验证码接收目标，由主服务从 Challenge 材料解析',
+      example: 'user@example.com'
+    }),
+    channel: AccountContactChannelSchema,
+    captcha: ShortAuthStringSchema.max(64).meta({
+      description: '图片验证码答案',
+      example: 'A1B2C3'
+    }),
+    lang: LanguageSchema.meta({
+      description: '验证码消息语言',
+      example: 'zh-CN'
+    })
+  });
+export type LoginVerificationSendCodeInternalBodyType = z.infer<
+  typeof LoginVerificationSendCodeInternalBodySchema
+>;
+
+export const LoginVerificationCaptchaResponseSchema = z.object({
+  captchaImage: z.string().meta({
+    description: 'Base64 编码的图片验证码',
+    example: 'data:image/png;base64,...'
+  })
+});
+export type LoginVerificationCaptchaResponseType = z.infer<
+  typeof LoginVerificationCaptchaResponseSchema
+>;
+
+export const LoginVerificationSendCodeResponseSchema = z.object({
+  message: z.string().meta({ description: '发送结果说明', example: '发送验证码成功' })
+});
+export type LoginVerificationSendCodeResponseType = z.infer<
+  typeof LoginVerificationSendCodeResponseSchema
+>;
 
 export const WxLoginExpiredResponseSchema = z.object({
   expired: z.literal(true).meta({
@@ -56,7 +224,13 @@ export const WxLoginResultResponseSchema = z.union([
 ]);
 export type WxLoginResultResponseType = z.infer<typeof WxLoginResultResponseSchema>;
 
-// ===== Pre login - get login verification code =====
+/* ============================================================================
+ * API: 获取预登录验证码
+ * Route: GET /api/support/user/account/preLogin
+ * Method: GET
+ * Description: 获取密码登录所需的验证码，30 秒内有效；同一用户名重新获取会覆盖旧验证码
+ * Tags: ['User Login']
+ * ============================================================================ */
 export const PreLoginQuerySchema = z.object({
   username: AccountLoginUsernameSchema.meta({
     example: 'admin',
@@ -69,7 +243,7 @@ export const PreLoginResponseSchema = z
   .object({
     code: z.string().meta({
       example: 'a1b2c3',
-      description: '预登录验证码'
+      description: '预登录验证码，30 秒内有效；同一用户名重新获取会覆盖旧验证码'
     })
   })
   .meta({
@@ -79,19 +253,26 @@ export const PreLoginResponseSchema = z
   });
 export type PreLoginResponseType = z.infer<typeof PreLoginResponseSchema>;
 
-// ===== Login by password =====
+/* ============================================================================
+ * API: 用户密码登录
+ * Route: POST /api/support/user/account/loginByPassword
+ * Method: POST
+ * Description: 使用预登录验证码和经一次 SHA-256 哈希的原始密码登录
+ * Tags: ['User Login']
+ * ============================================================================ */
 export const LoginByPasswordBodySchema = PublicAuthTrackRegisterParamsSchema.extend({
   username: AccountLoginUsernameSchema.meta({
     example: 'admin',
     description: '用户名'
   }),
   password: AccountPasswordSchema.meta({
-    example: 'hashed_password',
-    description: '密码'
+    example: 'a4b7fbda9179055ba005b83fe1d9d558c85e5f6afc2ce4071439ecdab864b98e',
+    description:
+      '将原始密码按 UTF-8 编码后计算一次 SHA-256，传入 64 位小写十六进制结果；不要直接传原始密码或重复哈希。示例为 example-password 的 SHA-256；Apifox 前置脚本见接口说明。'
   }),
   code: ShortAuthStringSchema.meta({
     example: '123456',
-    description: '预登录验证码'
+    description: 'preLogin 返回的验证码，30 秒内有效'
   }),
   language: LanguageSchema.optional().default('zh-CN').meta({
     example: 'zh-CN',
@@ -100,7 +281,7 @@ export const LoginByPasswordBodySchema = PublicAuthTrackRegisterParamsSchema.ext
 }).meta({
   example: {
     username: 'admin',
-    password: 'hashed_password',
+    password: 'a4b7fbda9179055ba005b83fe1d9d558c85e5f6afc2ce4071439ecdab864b98e',
     code: '123456',
     language: 'zh-CN'
   }

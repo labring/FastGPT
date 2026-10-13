@@ -1,4 +1,4 @@
-name: Build fastgpt-marketplace images
+name: Release FastGPT-marketplace
 on:
   workflow_dispatch:
     inputs:
@@ -26,6 +26,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Capture proxy envs from variables
         run: |

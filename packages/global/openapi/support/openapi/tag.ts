@@ -1,3 +1,4 @@
+import { requiredAlternatives } from '../../../common/zod/openapi';
 import z from 'zod';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { BoolSchema, IntSchema } from '../../../common/zod';
@@ -110,7 +111,8 @@ export const UpdateOpenApiTagBodySchema = z
   })
   .refine(({ name, order }) => name !== undefined || order !== undefined, {
     message: 'name or order is required'
-  });
+  })
+  .meta(requiredAlternatives([['name'], ['order']]));
 export type UpdateOpenApiTagBodyType = z.infer<typeof UpdateOpenApiTagBodySchema>;
 
 export const UpdateOpenApiTagResponseSchema = z.undefined().meta({

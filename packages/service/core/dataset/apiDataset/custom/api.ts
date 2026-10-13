@@ -4,6 +4,7 @@ import type {
   ApiDatasetDetailResponse,
   APIFileServerType
 } from '@fastgpt/global/core/dataset/apiDataset/type';
+import type { IultmzhFileParseConfigType } from '@fastgpt/global/core/dataset/type';
 import { type Method } from 'axios';
 import { createProxyAxios } from '../../../../common/api/axios';
 import { readFileRawTextByUrl } from '../../read';
@@ -170,13 +171,17 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
     tmbId,
     apiFileId,
     customPdfParse,
-    datasetId
+    sangforFileParseConfig,
+    datasetId,
+    usageId
   }: {
     teamId: string;
     tmbId: string;
     apiFileId: string;
     customPdfParse?: boolean;
+    sangforFileParseConfig?: IultmzhFileParseConfigType;
     datasetId: string;
+    usageId?: string;
   }): Promise<ApiFileReadContentResponseType> => {
     const data = await request<
       {
@@ -202,7 +207,8 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
       // Get from buffer
       const rawTextBuffer = await getS3RawTextSource().getRawTextBuffer({
         sourceId: previewUrl,
-        customPdfParse
+        customPdfParse,
+        sangforFileParseConfig
       });
       if (rawTextBuffer) {
         return {
@@ -218,6 +224,8 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
         relatedId: apiFileId,
         datasetId,
         customPdfParse,
+        sangforFileParseConfig,
+        usageId,
         getFormatText: true
       });
 
@@ -227,7 +235,8 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
         sourceId: previewUrl,
         sourceName,
         text: rawText,
-        customPdfParse
+        customPdfParse,
+        sangforFileParseConfig
       });
 
       return {

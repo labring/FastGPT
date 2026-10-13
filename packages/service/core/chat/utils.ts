@@ -3,7 +3,7 @@ import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global
 import { createChatFilePreviewUrlGetter } from '../../common/s3/sources/chat';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import type { VariableItemType } from '@fastgpt/global/core/app/type';
+import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 

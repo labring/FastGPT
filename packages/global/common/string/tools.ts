@@ -17,10 +17,16 @@ export const hashStr = (str: string) => {
 /* simple text, remove chinese space and extra \n */
 export const simpleText = (text = '') => {
   text = text.trim();
-  text = text.replace(/([\u4e00-\u9fa5])[\s&&[^\n]]+([\u4e00-\u9fa5])/g, '$1$2');
+  // `[^\S\r\n]` \u662f\u201c\u9664\u6362\u884c\u5916\u7684\u7a7a\u767d\u201d\uff1b`[\s&&[^\n]]` \u7684\u4ea4\u96c6\u5199\u6cd5\u53ea\u5728 v \u6807\u5fd7\u4e0b\u6210\u7acb\uff0c
+  // \u666e\u901a\u6b63\u5219\u4f1a\u628a\u672b\u5c3e\u7684 `]` \u5f53\u5b57\u9762\u91cf\uff0c\u53cd\u800c\u4f1a\u5220\u6389\u6b63\u6587\u91cc\u7684 `]]`\u3002
+  // Matching the character on the right consumes it, so the next run of blanks
+  // has no Chinese character in front of it any more and only every second
+  // gap is closed. Look ahead instead of capturing, so every gap is seen.
+  text = text.replace(/(?<=[\u4e00-\u9fa5])[^\S\r\n]+(?=[\u4e00-\u9fa5])/g, '');
   text = text.replace(/\r\n|\r/g, '\n');
   text = text.replace(/\n{3,}/g, '\n\n');
-  text = text.replace(/[\s&&[^\n]]{2,}/g, ' ');
+  // \u53ea\u538b\u7f29\u6b63\u6587\u5b57\u7b26\u4e4b\u95f4\u7684\u591a\u4f59\u7a7a\u767d\uff0c\u4fdd\u7559\u884c\u9996\u7f29\u8fdb\u548c Markdown \u786c\u6362\u884c\u6240\u9700\u7684\u884c\u5c3e\u7a7a\u683c\u3002
+  text = text.replace(/(?<=\S)[^\S\r\n]{2,}(?=\S)/g, ' ');
   text = text.replace(/[\x00-\x08]/g, ' ');
 
   return text;
@@ -54,32 +60,81 @@ export const customNanoid = (str: string, size: number) => customAlphabet(str, s
 /* Custom text to reg, need to replace special chats */
 export const replaceRegChars = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/* slice json str */
+/**
+ * Extract the first complete JSON value out of a model's answer.
+ *
+ * Walks forward from the first opening bracket and returns as soon as that
+ * value closes, so anything written after it is left out -- a second object, a
+ * closing code fence followed by a note, a sentence mentioning a {placeholder}.
+ * Searching backwards for the last closing bracket instead would swallow all
+ * of it.
+ *
+ * The result is handed to `jsonrepair` / `json5.parse`, so the scan follows
+ * JSON5: single- and double-quoted strings, `//` line comments and block
+ * comments are non-structural and their brackets are not counted.
+ *
+ * A string with no bracket, or a value that never closes, is returned
+ * unchanged and left to the caller's repair step, as before.
+ */
 export const sliceJsonStr = (str: string) => {
   str = str.trim();
 
   // Find first opening bracket
-  let start = -1;
-  let openChar = '';
-
-  for (let i = 0; i < str.length; i++) {
-    if (str[i] === '{' || str[i] === '[') {
-      start = i;
-      openChar = str[i];
-      break;
-    }
-  }
-
+  const start = str.search(/[{\[]/);
   if (start === -1) return str;
 
-  // Find matching closing bracket from the end
+  const openChar = str[start];
   const closeChar = openChar === '{' ? '}' : ']';
 
-  for (let i = str.length - 1; i >= start; i--) {
+  let depth = 0;
+  let stringChar: string | undefined;
+  let escaped = false;
+  let comment: 'line' | 'block' | undefined;
+
+  for (let i = start; i < str.length; i++) {
     const ch = str[i];
 
-    if (ch === closeChar) {
-      return str.slice(start, i + 1);
+    if (comment === 'line') {
+      if (ch === '\n' || ch === '\r' || ch === '\u2028' || ch === '\u2029') {
+        comment = undefined;
+      }
+      continue;
+    }
+    if (comment === 'block') {
+      if (ch === '*' && str[i + 1] === '/') {
+        comment = undefined;
+        i++;
+      }
+      continue;
+    }
+
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === '\\') {
+      if (stringChar) escaped = true;
+      continue;
+    }
+    if (stringChar) {
+      if (ch === stringChar) stringChar = undefined;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      stringChar = ch;
+      continue;
+    }
+    if (ch === '/' && (str[i + 1] === '/' || str[i + 1] === '*')) {
+      comment = str[i + 1] === '/' ? 'line' : 'block';
+      i++;
+      continue;
+    }
+
+    if (ch === openChar) {
+      depth++;
+    } else if (ch === closeChar) {
+      depth--;
+      if (depth === 0) return str.slice(start, i + 1);
     }
   }
 
@@ -135,6 +190,27 @@ export const parseFileExtensionFromUrl = (url = '') => {
   return '';
 };
 
+/**
+ * Format `absNum` (at least the smallest unit) with the largest unit it reaches,
+ * from units sorted largest first. When rounding to two decimals would show a
+ * whole next unit, that unit is used instead: 99,999,999 reads 1亿, not 10000万,
+ * and 999,999 reads 1M, not 1000K.
+ */
+const formatWithLargestUnit = (
+  absNum: number,
+  units: [size: number, unit: string][]
+): string | undefined => {
+  const round = (value: number) => Number(value.toFixed(2));
+  const index = units.findIndex(([size]) => absNum >= size);
+  if (index === -1) return undefined;
+  const [size, unit] = units[index];
+  const larger = units[index - 1];
+  if (larger && round(absNum / size) >= larger[0] / size) {
+    return `${round(absNum / larger[0])}${larger[1]}`;
+  }
+  return `${round(absNum / size)}${unit}`;
+};
+
 export const formatNumberWithUnit = (num: number, locale: string = 'zh-CN'): string => {
   if (num === 0) return '0';
   if (!num || isNaN(num)) return '-';
@@ -142,24 +218,30 @@ export const formatNumberWithUnit = (num: number, locale: string = 'zh-CN'): str
   const isNegative = num < 0;
   const prefix = isNegative ? '-' : '';
 
-  if (locale === 'zh-CN') {
-    if (absNum >= 10000) {
-      const value = absNum / 10000;
-      const formatted = Number(value.toFixed(2)).toString();
-      return `${prefix}${formatted}万`;
-    }
+  const normalizedLocale = locale.trim().toLowerCase().replaceAll('_', '-');
+
+  if (normalizedLocale.startsWith('zh')) {
+    const isHant =
+      normalizedLocale === 'zh-hant' ||
+      normalizedLocale.includes('hant') ||
+      normalizedLocale === 'zh-tw' ||
+      normalizedLocale === 'zh-hk';
+    const yiUnit = isHant ? '億' : '亿';
+    const wanUnit = isHant ? '萬' : '万';
+
+    const unitText = formatWithLargestUnit(absNum, [
+      [100000000, yiUnit],
+      [10000, wanUnit]
+    ]);
+    if (unitText) return `${prefix}${unitText}`;
     return num.toLocaleString(locale);
   } else {
-    if (absNum >= 1000000) {
-      const value = absNum / 1000000;
-      const formatted = Number(value.toFixed(2)).toString();
-      return `${prefix}${formatted}M`;
-    }
-    if (absNum >= 1000) {
-      const value = absNum / 1000;
-      const formatted = Number(value.toFixed(2)).toString();
-      return `${prefix}${formatted}K`;
-    }
+    const unitText = formatWithLargestUnit(absNum, [
+      [1000000000, 'B'],
+      [1000000, 'M'],
+      [1000, 'K']
+    ]);
+    if (unitText) return `${prefix}${unitText}`;
     return num.toLocaleString(locale);
   }
 };

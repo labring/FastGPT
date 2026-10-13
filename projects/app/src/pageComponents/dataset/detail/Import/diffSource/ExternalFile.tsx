@@ -1,20 +1,9 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslation } from 'next-i18next';
 import { useFieldArray, useForm } from 'react-hook-form';
-import {
-  Box,
-  Button,
-  Flex,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  TableContainer,
-  Input
-} from '@chakra-ui/react';
+import { Box, Button, Flex, Table, Thead, Tbody, Tr, Th, Td, Input } from '@chakra-ui/react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Loading from '@fastgpt/web/components/common/MyLoading';
@@ -89,7 +78,7 @@ const CustomLinkInput = () => {
 
   return (
     <Box>
-      <TableContainer>
+      <FixedTableContainer>
         <Table bg={'white'}>
           <Thead>
             <Tr bg={'myGray.50'}>
@@ -146,7 +135,7 @@ const CustomLinkInput = () => {
             ))}
           </Tbody>
         </Table>
-      </TableContainer>
+      </FixedTableContainer>
       <Flex mt={5} justifyContent={'space-between'}>
         <Button
           variant={'whitePrimary'}

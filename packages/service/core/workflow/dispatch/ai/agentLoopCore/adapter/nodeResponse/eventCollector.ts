@@ -5,10 +5,7 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import type { AgentLoopEvent } from '../../../../../../ai/llm/agentLoop/interface';
 import { AgentNodeResponseDisplay } from '../../domain/constants';
 import { parseJsonArgs } from '../../../../../../ai/utils';
-import {
-  appendAgentLoopCoreChildNodeResponses,
-  withAgentLoopCoreChildTotalPoints
-} from './children';
+import { stripAgentLoopCoreChildTotalPoints } from './children';
 import { createAgentLoopCoreCompressNodeResponse } from './compress';
 import type { AgentLoopCoreToolDisplayInfo } from '../../domain/toolInfo';
 
@@ -30,6 +27,8 @@ export type CreateAgentLoopCoreNodeResponseEventCollectorParams = {
   };
   nodeResponses?: ChatHistoryItemResType[];
   appendNodeResponse?: (nodeResponse: ChatHistoryItemResType) => void;
+  /** ToolCall 的主模型 response 由外层 nodeResponse 承载，内部 loop 只收集工具相关 response。 */
+  collectAgentCallNodeResponse?: boolean;
   getToolInfo: (name: string) => AgentLoopCoreToolDisplayInfo;
 };
 
@@ -48,6 +47,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
   node,
   nodeResponses,
   appendNodeResponse,
+  collectAgentCallNodeResponse = true,
   getToolInfo
 }: CreateAgentLoopCoreNodeResponseEventCollectorParams) => {
   const appendedCallIds = new Set<string>();
@@ -80,6 +80,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
       moduleName: AgentNodeResponseDisplay.toolResponseCompress.moduleName,
       moduleType: node.flowNodeType,
       moduleLogo: AgentNodeResponseDisplay.toolResponseCompress.moduleLogo,
+      modelName: compress.modelName,
       usage: compress.usage,
       requestIds: compress.requestIds,
       seconds: compress.seconds,
@@ -99,12 +100,14 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
     call,
     response,
     usages,
-    seconds
+    seconds,
+    errorMessage
   }: {
     call: ToolRunEndEvent['call'];
     response: string;
     usages?: ChatNodeUsageType[];
     seconds: number;
+    errorMessage?: string;
   }): ChatHistoryItemResType => {
     const toolInfo = getToolInfo(call.function.name);
     const parsedInput = parseJsonArgs(call.function.arguments);
@@ -118,7 +121,8 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
       runningTime: seconds,
       toolInput: parsedInput || undefined,
       toolRes: response,
-      totalPoints: getUsageTotalPoints(usages)
+      totalPoints: getUsageTotalPoints(usages),
+      ...(errorMessage ? { errorText: errorMessage } : {})
     };
   };
 
@@ -128,7 +132,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
     appendedCallIds.add(event.id);
 
     append(
-      withAgentLoopCoreChildTotalPoints({
+      stripAgentLoopCoreChildTotalPoints({
         id: `${node.nodeId}-plan-${event.id}`,
         nodeId: `${node.nodeId}-plan-${event.id}`,
         moduleName: AgentNodeResponseDisplay.plan.moduleName,
@@ -147,7 +151,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
     appendedCallIds.add(event.id);
 
     append(
-      withAgentLoopCoreChildTotalPoints({
+      stripAgentLoopCoreChildTotalPoints({
         id: `${node.nodeId}-ask-${event.id}`,
         nodeId: `${node.nodeId}-ask-${event.id}`,
         moduleName: AgentNodeResponseDisplay.ask.moduleName,
@@ -162,6 +166,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
   const appendAgentCallNodeResponse = (
     event: Extract<AgentLoopEvent, { type: 'llm_request_end' }>
   ) => {
+    if (!collectAgentCallNodeResponse) return;
     if (appendedLlmRequestIds.has(event.requestId)) return;
     appendedLlmRequestIds.add(event.requestId);
 
@@ -173,6 +178,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
       moduleType: node.flowNodeType,
       moduleLogo: AgentNodeResponseDisplay.master.moduleLogo,
       runningTime: event.seconds,
+      modelId: usage?.modelId,
       model: event.modelName,
       llmRequestIds: [event.requestId],
       inputTokens: usage?.inputTokens,
@@ -181,6 +187,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
       finishReason: event.finishReason,
       textOutput: event.answerText,
       reasoningText: event.reasoningText,
+      firstTokenTime: event.firstTokenTime,
       ...(event.error ? { errorText: getErrText(event.error) } : {})
     });
   };
@@ -197,6 +204,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
         moduleName: AgentNodeResponseDisplay.contextCompress.moduleName,
         moduleType: node.flowNodeType,
         moduleLogo: AgentNodeResponseDisplay.contextCompress.moduleLogo,
+        modelName: event.modelName,
         usage: getFirstUsage(event),
         requestIds: event.requestIds,
         seconds: event.seconds
@@ -206,40 +214,38 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
 
   const createToolNodeResponse = (event: ToolRunEndEvent): ChatHistoryItemResType => {
     const pendingResult = pendingToolResultMap.get(event.call.id);
+    const usages = pendingResult?.usages || event.usages;
     const toolNodeResponse =
       (event.metadata as ChatHistoryItemResType | undefined) ||
       pendingResult?.nodeResponse ||
       createFallbackToolNodeResponse({
         call: event.call,
         response: event.response,
-        usages: pendingResult?.usages,
-        seconds: event.seconds
+        usages,
+        seconds: event.seconds,
+        errorMessage: event.errorMessage
       });
-    const compressNodeResponse = event.toolResponseCompress
-      ? createToolResponseCompressNodeResponse(event.toolResponseCompress)
-      : undefined;
-
-    return appendAgentLoopCoreChildNodeResponses({
-      nodeResponse: {
-        ...toolNodeResponse,
-        runningTime: toolNodeResponse.runningTime ?? event.seconds,
-        toolRes: toolNodeResponse.toolRes ?? event.response
-      },
-      childrenResponses: compressNodeResponse ? [compressNodeResponse] : []
-    });
+    return {
+      ...toolNodeResponse,
+      runningTime: toolNodeResponse.runningTime ?? event.seconds,
+      toolRes: toolNodeResponse.toolRes ?? event.response,
+      totalPoints: toolNodeResponse.totalPoints ?? getUsageTotalPoints(usages),
+      ...(event.errorMessage ? { errorText: event.errorMessage } : {})
+    };
   };
 
   const appendToolNodeResponse = (event: ToolRunEndEvent) => {
     if (appendedCallIds.has(event.call.id)) return;
     appendedCallIds.add(event.call.id);
 
-    // 工具错误只参与 agent-loop 控制，不落入 Agent 的可见运行详情。
-    if (event.errorMessage) {
-      pendingToolResultMap.delete(event.call.id);
-      return;
+    const toolNodeResponse = createToolNodeResponse(event);
+    append(toolNodeResponse);
+    if (event.toolResponseCompress) {
+      append({
+        ...createToolResponseCompressNodeResponse(event.toolResponseCompress),
+        parentId: toolNodeResponse.id
+      });
     }
-
-    append(createToolNodeResponse(event));
     pendingToolResultMap.delete(event.call.id);
   };
 

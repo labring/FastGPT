@@ -13,11 +13,15 @@ export const SelectedAgentSkillItemTypeSchema = z.object({
   name: z.string(),
   description: z.string().default(''),
   avatar: z.string().optional(),
-  isDeleted: z.boolean().default(false)
+  /** 资源异常状态码（如 resource_missing, resource_no_permission），正常时为 undefined */
+  error: z.string().optional()
 });
 export type SelectedAgentSkillItemType = z.infer<typeof SelectedAgentSkillItemTypeSchema>;
-export const StoredSelectedAgentSkillItemTypeSchema = SelectedAgentSkillItemTypeSchema.pick({
-  skillId: true
+export const StoredSelectedAgentSkillItemTypeSchema = z.object({
+  skillId: z.string(),
+  name: z.string().optional(),
+  avatar: z.string().optional(),
+  description: z.string().optional()
 });
 export type StoredSelectedAgentSkillItemType = z.infer<
   typeof StoredSelectedAgentSkillItemTypeSchema
@@ -35,7 +39,9 @@ export type AvailableSelectedToolItemType = SelectedToolItemType;
 
 export const AppFormEditFormV1TypeSchema = z.object({
   aiSettings: z.object({
-    [NodeInputKeyEnum.aiModel]: z.string(),
+    [NodeInputKeyEnum.aiModelId]: z.string().optional(),
+    /** @deprecated */
+    [NodeInputKeyEnum.aiModel]: z.string().optional(),
     [NodeInputKeyEnum.aiSystemPrompt]: z.string().optional(),
 
     [NodeInputKeyEnum.aiChatTemperature]: z.number().optional(),

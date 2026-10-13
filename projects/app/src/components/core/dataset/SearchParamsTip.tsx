@@ -1,13 +1,14 @@
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { Flex, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
+import { ModelStatusLabel } from '@/components/Select/ModelStatusLabel';
+import { useModelSummary } from '@/web/core/ai/model/useModelSummary';
+import { Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import {
   DatasetSearchModeEnum,
   DatasetSearchModeMap
 } from '@fastgpt/global/core/dataset/constants';
-import { useTranslation } from 'next-i18next';
-import React, { useMemo } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getWebLLMModel } from '@/web/common/system/utils';
+import { useTranslation } from 'next-i18next';
+import React from 'react';
 
 const SearchParamsTip = ({
   searchMode,
@@ -27,33 +28,21 @@ const SearchParamsTip = ({
   queryExtensionModel?: string;
 }) => {
   const { t } = useTranslation();
-  const { reRankModelList } = useSystemStore();
+  const detailState = useModelSummary({
+    modelId: usingExtensionQuery ? queryExtensionModel : undefined
+  });
 
-  const hasReRankModel = reRankModelList.length > 0;
+  const hasReRankModel = true;
   const hasEmptyResponseMode = responseEmptyText !== undefined;
   const hasSimilarityMode = usingReRank || searchMode === DatasetSearchModeEnum.embedding;
 
-  const extensionModelName = useMemo(
-    () => (usingExtensionQuery ? getWebLLMModel(queryExtensionModel)?.name : ''),
-    [usingExtensionQuery, queryExtensionModel]
-  );
-
   return (
-    <TableContainer
+    <FixedTableContainer
       bg={'primary.50'}
       borderRadius={'lg'}
       borderWidth={'1px'}
       borderColor={'primary.1'}
       sx={{
-        '& thead > tr': {
-          borderBottom: 'none !important'
-        },
-        '& thead > tr > th': {
-          borderBottom: 'none !important'
-        },
-        '& tbody > tr:first-of-type > td, & tbody > tr:first-of-type > th': {
-          borderTop: 'none !important'
-        },
         '&::-webkit-scrollbar': {
           height: '6px',
           borderRadius: '4px'
@@ -103,13 +92,23 @@ const SearchParamsTip = ({
               </Td>
             )}
             <Td pt={0} pb={2} fontSize={'mini'}>
-              {extensionModelName || '❌'}
+              {usingExtensionQuery ? (
+                <ModelStatusLabel
+                  modelId={queryExtensionModel}
+                  detail={detailState.detail}
+                  loading={detailState.loading}
+                  error={detailState.error}
+                  noTruncate
+                />
+              ) : (
+                '❌'
+              )}
             </Td>
             {hasEmptyResponseMode && <Th>{responseEmptyText !== '' ? '✅' : '❌'}</Th>}
           </Tr>
         </Tbody>
       </Table>
-    </TableContainer>
+    </FixedTableContainer>
   );
 };
 

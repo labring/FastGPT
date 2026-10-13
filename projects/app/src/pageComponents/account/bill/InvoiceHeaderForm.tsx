@@ -13,7 +13,7 @@ import {
 import { type TeamInvoiceHeaderType } from '@fastgpt/global/support/user/team/type';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { type UseFormReturn, useForm } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { accountPageRootStyles } from '@/pageComponents/account/styles';
@@ -25,7 +25,7 @@ export const InvoiceHeaderSingleForm = ({
   inputForm: UseFormReturn<TeamInvoiceHeaderType, any>;
   required?: boolean;
 }) => {
-  const { t } = useClientTranslation(['account_bill', 'user']);
+  const { t } = useSafeTranslation();
 
   const { watch, register } = inputForm;
   const needSpecialInvoice = watch('needSpecialInvoice');
@@ -214,11 +214,11 @@ const InvoiceHeaderForm = () => {
     manual: false,
     onSuccess: (data) => {
       console.log(data, '--');
-      inputForm.reset(data);
+      inputForm.reset({ ...inputForm.getValues(), ...data });
     }
   });
 
-  const { t } = useClientTranslation(['account_bill', 'user']);
+  const { t } = useSafeTranslation();
 
   const { loading: isSubmitting, runAsync: onUpdateHeader } = useRequest(
     (data: TeamInvoiceHeaderType) => updateTeamInvoiceHeader(data),
@@ -239,8 +239,8 @@ const InvoiceHeaderForm = () => {
         overflowY={['visible', 'auto']}
       >
         <Flex w={'100%'} justify={'center'} flexDir={'column'} align={'center'}>
-          <InvoiceHeaderSingleForm inputForm={inputForm} />
-          <Flex w={'100%'} justify={'center'} mt={'3rem'}>
+          <InvoiceHeaderSingleForm inputForm={inputForm} required />
+          <Flex w={'100%'} justify={'center'} mt={4}>
             <Button
               w={['100%', 'auto']}
               variant={'primary'}

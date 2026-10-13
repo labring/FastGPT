@@ -3,7 +3,7 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamSkillCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
-import { importSkill } from '@fastgpt/service/core/ai/skill/manage';
+import { importSkill, updateParentFoldersUpdateTime } from '@fastgpt/service/core/ai/skill/manage';
 import {
   ImportSkillQuerySchema,
   ImportSkillResponseSchema,
@@ -76,6 +76,8 @@ async function handler(
     contentLength,
     parentId: query.parentId ?? null
   });
+
+  updateParentFoldersUpdateTime({ parentId: query.parentId });
 
   void addAuditLog({
     tmbId,

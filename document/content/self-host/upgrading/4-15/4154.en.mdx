@@ -1,12 +1,13 @@
 ---
 title: 'V4.15.4'
-description: 'FastGPT V4.15.4 Release Notes'
+description: 'FastGPT V4.15.4 release notes'
 releaseTime: '2026-07-24'
 upgradeTags:
+  - IMPORTANT
   - CONFIG
 ---
 
-## 📦 Upgrade Guide
+## 📦 Upgrade guide
 
 ### Configure the required FE_DOMAIN
 
@@ -18,7 +19,7 @@ production; local development can use `http://localhost:3000`.
 FE_DOMAIN=https://fastgpt.example.com
 ```
 
-### MongoDB Index Synchronization Changes
+### MongoDB index synchronization changes
 
 Starting with V4.15.4, `SYNC_INDEX` is deprecated and replaced by `MONGO_DEPRECATE_INDEX`. The new variable controls whether indexes explicitly marked as deprecated by a schema are removed and defaults to `true`. Setting it to `false` skips only deprecated-index cleanup; missing current schema indexes are still created.
 
@@ -36,20 +37,20 @@ This process does not call Mongoose's full `syncIndexes()` operation, so indexes
 
 To fully remove obsolete indexes before upgrading to V4.15.4:
 
-1. Upgrade to and start V4.15.3 once.
-2. Set `SYNC_INDEX=true`, restart the services, and wait for index synchronization to finish.
+1. Set `SYNC_INDEX=true`, restart the services, and wait for index synchronization to finish.
+2. Upgrade to and start V4.15.3 once.
 3. After confirming that index synchronization succeeded, upgrade to V4.15.4.
 
 V4.15.3 removes every index that is not declared in its schemas, which may include custom indexes. Back up your database and review the existing indexes before following this procedure. If custom indexes must be preserved, record their definitions and recreate them after synchronization, or do not use V4.15.3 for full cleanup.
 
 Setting `MONGO_DEPRECATE_INDEX=false` skips deprecated-index cleanup that may be introduced in future releases, but does not skip creation of missing indexes.
 
-### Image Changes
+### Image changes
 
 - Update the `fastgpt-app` (FastGPT core service) image tag to `v4.15.4`.
 - Update the `fastgpt-pro` (FastGPT commercial edition) image tag to `v4.15.4`.
 
-## 🚀 New Features
+## 🚀 New features
 
 ## ⚙️ Improvements
 

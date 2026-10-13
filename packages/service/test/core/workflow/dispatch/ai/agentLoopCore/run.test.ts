@@ -448,3 +448,104 @@ describe('runAgentLoopCore', () => {
     );
   });
 });
+
+describe('Agent Loop summary ownership', () => {
+  it('does not expose an independent event token summary', async () => {
+    runAgentLoopMock.mockImplementationOnce(async ({ runtime }) => {
+      runtime.emitEvent({
+        type: 'tool_run_end',
+        call: { id: 'tool', function: { name: 'child', arguments: '{}' } },
+        rawResponse: '',
+        response: '',
+        seconds: 1,
+        usages: [],
+        toolResponseCompress: {
+          response: '',
+          modelName: 'model',
+          requestIds: [],
+          seconds: 1,
+          usage: { moduleName: 'compress', inputTokens: 3, outputTokens: 1, totalPoints: 1 }
+        }
+      });
+      return {
+        status: 'done',
+        completeMessages: [],
+        assistantMessages: [],
+        requestIds: [],
+        finishReason: 'stop',
+        usages: []
+      };
+    });
+
+    const { summary } = await runAgentLoopCoreWithSummary({
+      input: { messages: [] },
+      runtime: {} as any
+    });
+
+    expect(summary).not.toHaveProperty('nodeSummary');
+  });
+
+  it.each(['done', 'error', 'paused'])(
+    '统计 %s 本轮主调用与压缩，排除同名子 Agent 账单',
+    async (status) => {
+      const childUsage = {
+        moduleName: 'account_usage:agent_call',
+        inputTokens: 999,
+        outputTokens: 888,
+        totalPoints: 10
+      };
+      runAgentLoopMock.mockImplementationOnce(async ({ runtime }) => {
+        for (const inputTokens of [10, 20])
+          runtime.emitEvent({
+            type: 'llm_request_end',
+            requestIndex: 1,
+            requestId: 'req',
+            modelName: 'model',
+            finishReason: 'stop',
+            seconds: 1,
+            usages: [{ moduleName: 'arbitrary name', inputTokens, outputTokens: 2, totalPoints: 1 }]
+          });
+        runtime.emitEvent({
+          type: 'after_message_compress',
+          modelName: 'model',
+          requestIds: [],
+          seconds: 1,
+          usages: [{ moduleName: 'compress', inputTokens: 5, outputTokens: 1, totalPoints: 1 }]
+        });
+        runtime.emitEvent({
+          type: 'tool_run_end',
+          call: { id: 'tool', function: { name: 'child', arguments: '{}' } },
+          rawResponse: '',
+          response: '',
+          seconds: 1,
+          usages: [childUsage],
+          toolResponseCompress: {
+            response: '',
+            modelName: 'model',
+            requestIds: [],
+            seconds: 1,
+            usage: { moduleName: 'compress', inputTokens: 3, outputTokens: 1, totalPoints: 1 }
+          }
+        });
+        return {
+          status,
+          completeMessages: [],
+          assistantMessages: [],
+          requestIds: [],
+          finishReason: 'stop',
+          usages: [childUsage],
+          ...(status === 'error' ? { error: 'failed' } : {}),
+          ...(status === 'paused'
+            ? { pause: { type: 'ask', ask: { reason: 'continue?', questions: [] }, askId: 'ask' } }
+            : {})
+        };
+      });
+      const { summary } = await runAgentLoopCoreWithSummary({
+        input: { messages: [] },
+        runtime: {} as any
+      });
+      expect(summary).not.toHaveProperty('nodeSummary');
+      expect(summary.usages).toEqual([childUsage]);
+    }
+  );
+});

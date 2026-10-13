@@ -363,7 +363,7 @@ describe('JS 运行时长限制', () => {
     const pidBefore = (pool as any).workers[0].proc.pid;
     const result = await pool.execute({
       code: `async function main() {
-        await delay(${env.SANDBOX_MAX_TIMEOUT + 5000});
+        await new Promise(resolve => setTimeout(resolve, ${env.SANDBOX_MAX_TIMEOUT + 5000}));
         return { done: true };
       }`,
       variables: {}

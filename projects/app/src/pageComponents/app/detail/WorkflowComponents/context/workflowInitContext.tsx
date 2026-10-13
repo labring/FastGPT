@@ -1,14 +1,20 @@
+import type {
+  FlowNodeItemType,
+  FlowNodeTemplateType
+} from '@fastgpt/global/core/workflow/type/node';
 import { createContext } from 'use-context-selector';
-import type { FlowNodeTemplateType, FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useDeepCompareEffect, useMemoizedFn } from 'ahooks';
 import React, {
   type Dispatch,
-  type SetStateAction,
   type ReactNode,
+  type SetStateAction,
+  useCallback,
   useMemo,
-  useRef,
-  useCallback
+  useRef
 } from 'react';
 import {
   type Edge,
@@ -18,10 +24,6 @@ import {
   useEdgesState,
   useNodesState
 } from 'reactflow';
-import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getWebLLMModel } from '@/web/common/system/utils';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -71,7 +73,7 @@ export type WorkflowDataContextType = {
   setEdges: Dispatch<SetStateAction<Edge<any>[]>>;
   onEdgesChange: OnChange<EdgeChange>;
   forbiddenSaveSnapshot: React.MutableRefObject<boolean>;
-  llmMaxQuoteContext: number;
+
   childrenNodeIdListMap: Record<string, string[]>;
 };
 export const WorkflowBufferDataContext = createContext<WorkflowDataContextType>({
@@ -109,7 +111,7 @@ export const WorkflowBufferDataContext = createContext<WorkflowDataContextType>(
     throw new Error('Function not implemented.');
   },
   forbiddenSaveSnapshot: { current: false },
-  llmMaxQuoteContext: 0,
+
   childrenNodeIdListMap: {}
 });
 
@@ -136,7 +138,6 @@ const WorkflowInitContextProvider = ({
     let allNodeFolded = true;
     let hasToolNode = false;
     let hasLoopRunNode = false;
-    let llmMaxQuoteContext = 0;
 
     nodes.forEach((node) => {
       const flowNodeType = node.data.flowNodeType;
@@ -190,18 +191,6 @@ const WorkflowInitContextProvider = ({
       if (flowNodeType === FlowNodeTypeEnum.workflowStart) {
         workflowStartNode = node.data;
       }
-      // Max context computed
-      const map: Record<string, boolean> = {
-        [FlowNodeTypeEnum.chatNode]: true,
-        [FlowNodeTypeEnum.agent]: true
-      };
-      if (map[flowNodeType]) {
-        const model =
-          node.data.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
-        const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken || 0;
-        llmMaxQuoteContext = Math.max(llmMaxQuoteContext, quoteMaxToken);
-      }
-
       if (!node.data.isFolded && flowNodeType !== FlowNodeTypeEnum.comment) {
         allNodeFolded = false;
       }
@@ -224,7 +213,7 @@ const WorkflowInitContextProvider = ({
       allNodeFolded,
       hasToolNode,
       hasLoopRunNode,
-      llmMaxQuoteContext,
+
       foldedNodesMap,
       compareNodeList
     };
@@ -257,7 +246,6 @@ const WorkflowInitContextProvider = ({
   const allNodeFolded = nodeFormat.allNodeFolded;
   const hasToolNode = nodeFormat.hasToolNode;
   const hasLoopRunNode = nodeFormat.hasLoopRunNode;
-  const llmMaxQuoteContext = nodeFormat.llmMaxQuoteContext;
 
   const getNodeList = useMemoizedFn(() => nodeList);
 
@@ -372,7 +360,6 @@ const WorkflowInitContextProvider = ({
       setEdges,
       onEdgesChange,
       forbiddenSaveSnapshot,
-      llmMaxQuoteContext,
       nodeAmount: nodeList.length,
       childrenNodeIdListMap
     };
@@ -393,7 +380,6 @@ const WorkflowInitContextProvider = ({
     edges,
     setEdges,
     onEdgesChange,
-    llmMaxQuoteContext,
     nodeList.length,
     childrenNodeIdListMap
   ]);

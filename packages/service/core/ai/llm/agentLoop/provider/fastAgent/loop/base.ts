@@ -8,11 +8,11 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import type { CreateLLMResponseProps } from '../../../../request';
 import { createLLMResponse } from '../../../../request';
 import { compressRequestMessages, compressToolResponse } from '../../../../compress';
-import { getLLMModel } from '../../../../../model';
 import { filterEmptyAssistantMessages } from './message';
 import { countGptMessagesTokens } from '../../../../../../../common/string/tiktoken';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { AgentLoopAssistantResponse } from '../../../domain/tool';
 import type {
   AgentLoopChildrenInteractiveParams,
   AgentLoopInteractiveToolExecuteParams,
@@ -76,6 +76,7 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
       outputTokens: number;
       totalPoints: number;
     };
+    firstTokenTime?: number;
     seconds: number;
     error?: unknown;
   }) => void;
@@ -84,12 +85,14 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
     rawResponse: string;
     response: string;
     assistantMessages?: ChatCompletionMessageParam[];
+    assistantResponses?: AgentLoopAssistantResponse[];
     errorMessage?: string;
     seconds: number;
     usages?: AgentLoopUsage[];
     metadata?: unknown;
     toolResponseCompress?: {
       response: string;
+      modelName: string;
       usage: AgentLoopUsage;
       requestIds: string[];
       seconds: number;
@@ -140,7 +143,7 @@ export const onCompressContext = async ({
   isAborted: RunAgentCallProps['isAborted'];
   messageTokens?: number;
   requestMessages: ChatCompletionMessageParam[];
-  modelData: LLMModelItemType;
+  modelData: LLMModelDataType;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   tools?: ChatCompletionTool[];
   userKey: RunAgentCallProps['userKey'];
@@ -213,7 +216,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
   onReasoning,
   onStreaming
 }: RunAgentCallProps<TChildrenResponse>): Promise<RunAgentResponse<TChildrenResponse>> => {
-  const modelData = getLLMModel(model);
+  const modelData = model;
 
   let runTimes = 0;
   let toolChildPause:
@@ -286,6 +289,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     const {
       response,
       assistantMessages: toolAssistantMessages,
+      assistantResponses: toolAssistantResponses,
       usages: toolUsages,
       interactive,
       stop,
@@ -314,6 +318,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       rawResponse: response,
       response: normalizeToolResponseContent(response),
       assistantMessages: toolAssistantMessages,
+      assistantResponses: toolAssistantResponses,
       errorMessage: interactiveToolErrorMessage || errorMessage,
       seconds: +((Date.now() - toolStartTime) / 1000).toFixed(2),
       usages: toolUsages,
@@ -412,6 +417,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
 
     // 2. Request LLM
     const requestStartTime = Date.now();
+    let firstTokenTime: number | undefined;
     onLLMRequestStart?.({
       requestIndex: runTimes,
       modelName: modelData.name
@@ -434,14 +440,20 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         model: modelData,
         messages: requestMessages,
         tool_choice: consecutiveSameToolRequestTimes >= 5 ? 'none' : 'auto',
-        toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
+        toolCallMode: modelData.config.toolChoice ? 'toolChoice' : 'prompt',
         parallel_tool_calls: body.parallel_tool_calls ?? true
       },
       userKey,
       teamId,
       isAborted,
-      onReasoning,
-      onStreaming,
+      onReasoning: (event) => {
+        firstTokenTime ??= Date.now();
+        onReasoning?.(event);
+      },
+      onStreaming: (event) => {
+        firstTokenTime ??= Date.now();
+        onStreaming?.(event);
+      },
       onToolCall,
       onToolParam
     });
@@ -466,6 +478,10 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         totalPoints
       },
       seconds: +((Date.now() - requestStartTime) / 1000).toFixed(2),
+      firstTokenTime:
+        firstTokenTime === undefined
+          ? undefined
+          : +((firstTokenTime - requestStartTime) / 1000).toFixed(2),
       error: error ?? responseEmptyTip
     });
     // 请求后赋值操作
@@ -532,6 +548,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         const {
           response,
           assistantMessages: toolAssistantMessages,
+          assistantResponses: toolAssistantResponses,
           usages: toolUsages,
           interactive,
           stop: stopLoop,
@@ -578,6 +595,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
               toolFinalResponse: normalizedCompressedContext,
               toolResponseCompress: {
                 response: normalizedCompressedContext,
+                modelName: modelData.name,
                 usage: compressionUsage,
                 requestIds: compressionResult.requestIds ?? [],
                 seconds: +((Date.now() - compressStartTime) / 1000).toFixed(2)
@@ -595,6 +613,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           rawResponse: response,
           response: toolFinalResponse,
           assistantMessages: toolAssistantMessages,
+          assistantResponses: toolAssistantResponses,
           ...(toolErrorMessage || errorMessage
             ? { errorMessage: toolErrorMessage || errorMessage }
             : {}),

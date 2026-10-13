@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 vi.mock('@/pageComponents/app/detail/Edit/SimpleApp/utils', () => ({
   form2AppWorkflow: vi.fn((data) => ({
@@ -217,6 +220,85 @@ describe('parseDashboardImportConfig', () => {
     });
   });
 
+  it('should repair an imported cross-environment modelId by model name', async () => {
+    const result = await parseDashboardImportConfig({
+      config: {
+        type: AppTypeEnum.workflow,
+        nodes: [
+          createWorkflowNode('workflowStart'),
+          {
+            ...createWorkflowNode('chatNode', 'chat'),
+            inputs: [
+              {
+                key: NodeInputKeyEnum.aiModelId,
+                value: 'source-environment-model-id',
+                renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+              },
+              {
+                key: NodeInputKeyEnum.aiModel,
+                value: 'gpt-4o',
+                renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+              }
+            ]
+          }
+        ],
+        edges: []
+      },
+      scene: 'agent',
+      t,
+      models: [
+        { modelId: 'target-environment-model-id', model: 'gpt-4o', type: ModelTypeEnum.llm }
+      ],
+      modelCatalogLoaded: true
+    });
+
+    expect(result.workflow.nodes[1].inputs).toEqual([
+      expect.objectContaining({
+        key: NodeInputKeyEnum.aiModelId,
+        value: 'target-environment-model-id'
+      })
+    ]);
+  });
+
+  it('should clear unresolved imported values and preserve the modelId input', async () => {
+    const result = await parseDashboardImportConfig({
+      config: {
+        type: AppTypeEnum.workflow,
+        nodes: [
+          createWorkflowNode('workflowStart'),
+          {
+            ...createWorkflowNode('chatNode', 'chat'),
+            inputs: [
+              {
+                key: NodeInputKeyEnum.aiModelId,
+                value: 'invalid-id',
+                renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+              },
+              {
+                key: NodeInputKeyEnum.aiModel,
+                value: 'invalid-model',
+                renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+              }
+            ]
+          }
+        ],
+        edges: []
+      },
+      scene: 'agent',
+      t,
+      models: [
+        { modelId: 'available-model-id', model: 'available-model', type: ModelTypeEnum.llm }
+      ],
+      modelCatalogLoaded: true
+    });
+
+    expect(result.workflow.nodes[1].inputs).toHaveLength(1);
+    expect(result.workflow.nodes[1].inputs[0]).toMatchObject({
+      key: NodeInputKeyEnum.aiModelId
+    });
+    expect(result.workflow.nodes[1].inputs[0]).toHaveProperty('value', undefined);
+  });
+
   it('should preserve legacy workflow fields for create API migration', async () => {
     const legacyStartNode = {
       ...createWorkflowNode('workflowStart'),
@@ -399,6 +481,51 @@ describe('isDashboardImportAppTypeAllowed', () => {
 });
 
 describe('parseAppImportConfig', () => {
+  it('should reject model normalization before the model catalog is loaded', async () => {
+    await expect(
+      parseAppImportConfig({
+        config: {
+          type: AppTypeEnum.workflow,
+          nodes: [createWorkflowNode('workflowStart')],
+          edges: []
+        },
+        t,
+        models: [],
+        modelCatalogLoaded: false
+      })
+    ).rejects.toThrow('common:model_catalog_load_failed');
+  });
+
+  it('should accept an empty catalog after it has been loaded successfully', async () => {
+    const modelInputs = [
+      {
+        key: NodeInputKeyEnum.aiModelId,
+        value: 'source-model-id',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+      },
+      {
+        key: NodeInputKeyEnum.aiModel,
+        value: 'source-model',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+      }
+    ];
+    const result = await parseAppImportConfig({
+      config: {
+        type: AppTypeEnum.workflow,
+        nodes: [
+          createWorkflowNode('workflowStart'),
+          { ...createWorkflowNode('chatNode'), inputs: modelInputs }
+        ],
+        edges: []
+      },
+      t,
+      models: [],
+      modelCatalogLoaded: true
+    });
+
+    expect(result.workflow.nodes[1].inputs).toEqual(modelInputs);
+  });
+
   it('should parse through the shared import entry with caller constraints', async () => {
     const result = await parseAppImportConfig({
       config: {

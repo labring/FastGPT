@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BoolSchema } from '@fastgpt/global/common/zod';
+import { BoolSchema, optionalNullToUndefined, queryArrayParam } from '@fastgpt/global/common/zod';
 import {
   FlowNodeInputItemTypeSchema,
   FlowNodeOutputItemTypeSchema
@@ -9,6 +9,7 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
+import z from 'zod';
 
 describe('BoolSchema', () => {
   it('should accept boolean values directly', () => {
@@ -57,5 +58,42 @@ describe('BoolSchema', () => {
     expect(output.required).toBe(true);
     expect(output.invalid).toBe(false);
     expect(output.invalidCondition?.({ inputs: [], llmModelMap: {} })).toBe(true);
+  });
+});
+
+describe('optionalNullToUndefined', () => {
+  const schema = optionalNullToUndefined(z.union([z.boolean(), z.number(), z.string()]));
+
+  it('normalizes null and undefined to undefined', () => {
+    expect(schema.parse(null)).toBeUndefined();
+    expect(schema.parse(undefined)).toBeUndefined();
+  });
+
+  it.each([false, 0, ''])('preserves valid falsy values: %j', (value) => {
+    expect(schema.parse(value)).toBe(value);
+  });
+});
+
+describe('queryArrayParam', () => {
+  const schema = queryArrayParam(z.array(z.coerce.number()).min(1));
+
+  it('normalizes single string to array', () => {
+    expect(schema.parse('3')).toEqual([3]);
+  });
+
+  it('normalizes comma-separated string to array', () => {
+    expect(schema.parse('3,4,5')).toEqual([3, 4, 5]);
+  });
+
+  it('preserves native arrays', () => {
+    expect(schema.parse([1, 2])).toEqual([1, 2]);
+    expect(schema.parse(['1', '2'])).toEqual([1, 2]);
+  });
+
+  it('normalizes empty and undefined values', () => {
+    const optionalSchema = queryArrayParam(z.array(z.coerce.number()).optional());
+    expect(optionalSchema.parse(undefined)).toBeUndefined();
+    expect(optionalSchema.parse(null)).toBeUndefined();
+    expect(optionalSchema.parse('')).toBeUndefined();
   });
 });

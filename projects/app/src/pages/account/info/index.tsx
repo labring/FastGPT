@@ -6,7 +6,6 @@ import {
   Button,
   useDisclosure,
   useTheme,
-  Input,
   Link,
   Grid,
   type BoxProps
@@ -18,12 +17,11 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import type { UserType } from '@fastgpt/global/support/user/type';
 import dynamic from 'next/dynamic';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
-import { putUpdateMemberName } from '@/web/support/user/team/api';
 import { getDocPath } from '@/web/common/system/doc';
 import {
   StandardSubLevelEnum,
@@ -49,6 +47,9 @@ import { getIsMemberSyncMode } from '@/web/common/system/utils';
 import { accountPageRootStyles, accountTitleTextStyles } from '@/pageComponents/account/styles';
 import { getAccountCancellationStatus } from '@/web/support/user/account/cancellation/api';
 import { AccountCancellationConfirmModal } from '@/pageComponents/account/cancel/AccountCancellationConfirmModal';
+import { usePasswordChangeStore } from '@/web/support/user/account/password/store';
+import { canManagePasswordFromAccountInfo } from '@/pageComponents/account/info/password';
+import { shouldPromptContactBinding } from '@/web/support/user/inform/utils';
 
 const RedeemCouponModal = dynamic(() => import('@/pageComponents/account/info/RedeemCouponModal'), {
   ssr: false
@@ -62,7 +63,7 @@ const StandDetailModal = dynamic(
   { ssr: false }
 );
 const ConversionModal = dynamic(() => import('@/pageComponents/account/info/ConversionModal'));
-const UpdatePswModal = dynamic(() => import('@/pageComponents/account/info/UpdatePswModal'));
+const UpdatePswModal = dynamic(() => import('@/components/support/user/safe/PasswordChangeModal'));
 const UpdateContact = dynamic(() => import('@/components/support/user/inform/UpdateContactModal'));
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
 const EnterpriseAuthStatusRowHeight = '32px';
@@ -77,6 +78,9 @@ const EnterpriseAuthStatusRow = dynamic(
 const ModelPriceModal = dynamic(() =>
   import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
 );
+const MemberNameModal = dynamic(() => import('@/pageComponents/account/info/MemberNameModal'), {
+  ssr: false
+});
 
 const Info = () => {
   const { isPc } = useSystem();
@@ -86,7 +90,13 @@ const Info = () => {
 
   return (
     <AccountContainer>
-      <Box {...accountPageRootStyles} overflowY={['visible', 'auto']} py={[3, 6]} px={[5, 6]}>
+      <Box
+        {...accountPageRootStyles}
+        overflowY={['visible', 'auto']}
+        py={[3, 6]}
+        pt={[4, 6]}
+        px={[5, 6]}
+      >
         {isPc ? (
           <Flex w={'100%'} alignItems={'flex-start'}>
             <Box flex={'0 0 330px'}>
@@ -121,8 +131,8 @@ export default React.memo(Info);
 const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const theme = useTheme();
   const { feConfigs, initd } = useSystemStore();
-  const { t } = useClientTranslation('account_info');
-  const { userInfo, updateUserInfo, teamPlanStatus, initUserInfo } = useUserStore();
+  const { t } = useSafeTranslation();
+  const { userInfo, updateUserInfo, teamPlanStatus } = useUserStore();
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: {
       avatar: userInfo?.avatar ?? undefined,
@@ -132,6 +142,12 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const standardPlan = teamPlanStatus?.standard;
   const { isPc } = useSystem();
   const { toast } = useToast();
+  const canManagePassword = canManagePasswordFromAccountInfo({
+    isPlus: feConfigs?.isPlus,
+    username: userInfo?.username,
+    passwordAvailable: userInfo?.passwordAvailable
+  });
+  const isRoot = userInfo?.username === 'root';
   const [autoOpenEnterpriseAuth, setAutoOpenEnterpriseAuth] = useState(false);
   const showEnterpriseAuth = feConfigs?.show_enterprise_auth;
 
@@ -145,11 +161,28 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     onClose: onCloseUpdatePsw,
     onOpen: onOpenUpdatePsw
   } = useDisclosure();
+  const passwordChangeSession = usePasswordChangeStore((state) => state.session);
   const {
     isOpen: isOpenUpdateContact,
     onClose: onCloseUpdateContact,
     onOpen: onOpenUpdateContact
   } = useDisclosure();
+  const {
+    isOpen: isOpenMemberName,
+    onClose: onCloseMemberName,
+    onOpen: onOpenMemberName
+  } = useDisclosure();
+  const shouldPromptContact = shouldPromptContactBinding({
+    isPlus: feConfigs?.isPlus,
+    bindNotificationMethod: feConfigs?.bind_notification_method,
+    contact: userInfo?.contact
+  });
+
+  const onMemberNameSuccess = useCallback(() => {
+    if (shouldPromptContact) {
+      onOpenUpdateContact();
+    }
+  }, [onOpenUpdateContact, shouldPromptContact]);
 
   const onClickSave = useCallback(
     async (data: UserType) => {
@@ -216,6 +249,22 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
       window.removeEventListener('hashchange', triggerEnterpriseAuthFromHash);
     };
   }, [triggerEnterpriseAuthFromHash]);
+
+  useEffect(() => {
+    if (canManagePassword && passwordChangeSession?.required === false) onOpenUpdatePsw();
+  }, [canManagePassword, onOpenUpdatePsw, passwordChangeSession]);
+
+  const handlePasswordAction = useCallback(() => {
+    if (isRoot) {
+      toast({
+        status: 'info',
+        title: t('account_info:root_password_change_tip')
+      });
+      return;
+    }
+    onOpenUpdatePsw();
+  }, [isRoot, onOpenUpdatePsw, t, toast]);
+
   const { Component: AvatarUploader, handleFileSelectorOpen } = useUploadAvatar(
     getUploadAvatarPresignedUrl,
     {
@@ -240,6 +289,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   } as const;
 
   const isSyncMember = getIsMemberSyncMode(feConfigs);
+  const memberDisplayName = userInfo?.team?.memberName;
   return (
     <Box>
       {/* user info */}
@@ -254,12 +304,14 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
           <Box {...labelStyles}>{t('account_info:user_account')}&nbsp;</Box>
           <Box flex={1}>{userInfo?.username}</Box>
         </Flex>
-        {feConfigs?.isPlus && (
+        {canManagePassword && (
           <Flex mt={4} alignItems={'center'}>
             <Box {...labelStyles}>{t('account_info:password')}&nbsp;</Box>
-            <Box flex={1}>*****</Box>
-            <Button {...actionButtonStyles} variant={'whitePrimary'} onClick={onOpenUpdatePsw}>
-              {t('account_info:change')}
+            <Box flex={1}>
+              {userInfo?.hasPassword ? '*****' : t('account_info:password_not_set')}
+            </Box>
+            <Button {...actionButtonStyles} variant={'whitePrimary'} onClick={handlePasswordAction}>
+              {userInfo?.hasPassword ? t('account_info:change') : t('account_info:set_password')}
             </Button>
           </Flex>
         )}
@@ -349,24 +401,15 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
         {feConfigs?.isPlus && (
           <Flex mt={[4, 4]} alignItems={'center'}>
             <Box {...labelStyles}>{t('account_info:member_name')}&nbsp;</Box>
-            <Input
-              flex={'1 0 0'}
-              disabled={isSyncMember}
-              defaultValue={userInfo?.team?.memberName || 'Member'}
-              title={t('account_info:click_modify_nickname')}
-              borderColor={'transparent'}
-              h={'36px'}
-              transform={['none', 'translateX(-11px)']}
-              maxLength={100}
-              onBlur={async (e) => {
-                const val = e.target.value;
-                if (val === userInfo?.team?.memberName) return;
-                try {
-                  await putUpdateMemberName(val);
-                  initUserInfo();
-                } catch {}
-              }}
-            />
+            <Box flex={1}>{memberDisplayName}</Box>
+            <Button
+              {...actionButtonStyles}
+              variant={'whitePrimary'}
+              isDisabled={isSyncMember}
+              onClick={onOpenMemberName}
+            >
+              {t('account_info:change')}
+            </Button>
           </Flex>
         )}
         {feConfigs?.isPlus && (userInfo?.team?.balance ?? 0) > 0 && (
@@ -409,15 +452,24 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
       {isOpenConversionModal && (
         <ConversionModal onClose={onCloseConversionModal} onOpenContact={onOpenContact} />
       )}
-      {isOpenUpdatePsw && <UpdatePswModal onClose={onCloseUpdatePsw} />}
+      {canManagePassword && isOpenUpdatePsw && (
+        <UpdatePswModal onClose={onCloseUpdatePsw} onSuccess={onCloseUpdatePsw} />
+      )}
       {isOpenUpdateContact && <UpdateContact onClose={onCloseUpdateContact} mode="contact" />}
+      {isOpenMemberName && (
+        <MemberNameModal
+          memberName={memberDisplayName || 'Member'}
+          onClose={onCloseMemberName}
+          onSuccess={onMemberNameSuccess}
+        />
+      )}
     </Box>
   );
 };
 
 const PlanUsage = () => {
   const router = useRouter();
-  const { t } = useClientTranslation('account_info');
+  const { t } = useSafeTranslation();
   const { userInfo, teamPlanStatus, initTeamPlanStatus } = useUserStore();
   const { subPlans, feConfigs } = useSystemStore();
 
@@ -794,7 +846,7 @@ const ButtonStyles = {
 const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const { feConfigs, setNotSufficientModalType, subPlans } = useSystemStore();
   const { teamPlanStatus, userInfo } = useUserStore();
-  const { t } = useClientTranslation('account_info');
+  const { t } = useSafeTranslation();
   const { isPc } = useSystem();
   const router = useRouter();
   const {

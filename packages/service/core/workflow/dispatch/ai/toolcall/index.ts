@@ -1,15 +1,9 @@
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { getTeamModelHandle } from '../../../../ai/model/catalog/service';
 import type { DispatchNodeResultType } from '../../../types/runtime';
-import { getLLMModel } from '../../../../ai/model';
-import { getAgentLoopHistories, getNodeErrResponse } from '../../utils';
-import { runToolCall } from './toolCall';
-import { type DispatchToolModuleProps } from './type';
-import { postTextCensor } from '../../../../chat/postTextCensor';
-import { useToolNodeList } from './hooks/useToolNodeList';
-import { useToolMessages } from './hooks/useToolMessages';
-import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/interface/toolCall';
-import { readWorkflowFileBuffer } from '../../../utils/context';
+
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   assertSandboxAvailable,
   getRunningSandboxId,
@@ -18,16 +12,23 @@ import {
   runAgentSandboxEntrypoint,
   withAgentSandboxInitLease
 } from '../../../../ai/sandbox/interface/runtime';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
+import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/interface/toolCall';
+import { postTextCensor } from '../../../../chat/postTextCensor';
+import { readWorkflowFileBuffer } from '../../../utils/context';
+import { getAgentLoopHistories, getNodeErrResponse } from '../../utils';
 import {
   buildAgentLoopCoreRequestMessages,
-  createAgentLoopCoreToolCallNodeResponse,
   createAgentLoopCoreChildInteractiveParams,
+  createAgentLoopCoreToolCallNodeResponse,
   filterAgentLoopCoreToolResponseToPreview,
   getAgentLoopCorePersistedTextOutput,
   summarizeAgentLoopCoreToolRunFlowResponses
 } from '../agentLoopCore/interface';
+import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
+import { useToolMessages } from './hooks/useToolMessages';
+import { useToolNodeList } from './hooks/useToolNodeList';
+import { runToolCall } from './toolCall';
+import { type DispatchToolModuleProps } from './type';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -41,11 +42,11 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     histories,
     chatConfig,
     lastInteractive,
-    runningUserInfo,
     runningAppInfo,
     externalProvider,
     responseChatItemId,
     params: {
+      modelId,
       model,
       systemPrompt,
       userChatInput,
@@ -75,19 +76,20 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   const useSandbox = isAppChat ? appSandboxAvailability?.available === true : !!useAgentSandbox;
 
   try {
-    const toolModel = getLLMModel(model);
-    const useVision = aiChatVision && toolModel.vision;
-    const useAudio = aiChatAudio && toolModel.audio;
-    const useVideo = aiChatVideo && toolModel.video;
+    const modelHandle = await getTeamModelHandle({ teamId: runningAppInfo.teamId });
+    const toolModel = modelHandle.getLLMModelData({ modelId, model });
+    const useVision = aiChatVision && toolModel.config.vision;
+    const useAudio = aiChatAudio && toolModel.config.audio;
+    const useVideo = aiChatVideo && toolModel.config.video;
     const chatHistories = getAgentLoopHistories(history, histories);
     const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
     const parseHistoryFiles = !!fileUrlInput?.value?.length;
     const fileLinks = parseHistoryFiles ? rawFileLinks : undefined;
 
-    props.params.aiChatVision = aiChatVision && toolModel.vision;
+    props.params.aiChatVision = aiChatVision && toolModel.config.vision;
     props.params.aiChatAudio = useAudio;
     props.params.aiChatVideo = useVideo;
-    props.params.aiChatReasoning = aiChatReasoning && toolModel.reasoning;
+    props.params.aiChatReasoning = aiChatReasoning && toolModel.config.reasoning;
     props.params.fileUrlList = fileLinks;
     props.params.useAgentSandbox = useSandbox;
     props.params.sandboxEntrypoint = useSandbox ? sandboxEntrypoint : undefined;
@@ -102,7 +104,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     props.node.isEntry = false;
 
     const { messages, currentInputFiles } = await useToolMessages({
-      defaultSystemPrompt: toolModel.defaultSystemChatPrompt,
+      defaultSystemPrompt: toolModel.config.defaultSystemChatPrompt,
       systemPrompt,
       chatHistories,
       responseChatItemId,
@@ -159,7 +161,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       : undefined;
 
     // 未配置独立模型密钥时，沿用系统文本审核逻辑。
-    if (toolModel.censor && !externalProvider.openaiAccount?.key) {
+    if (toolModel.config.censor && !externalProvider.openaiAccount?.key) {
       await postTextCensor({
         text: `${systemPrompt}
           ${userChatInput}
@@ -177,7 +179,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       assistantResponses = [], // FastGPT 持久化到 assistant.value 的响应。
       finish_reason,
       error,
-      requestIds
+      requestIds,
+      firstTokenTime
     } = await (async () => {
       const adaptMessages = buildAgentLoopCoreRequestMessages({
         messages,
@@ -198,26 +201,26 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         })
       });
     })();
-
-    const { runTimes, toolDetail, toolTotalPoints } =
+    const { runTimes, toolDetail } =
       summarizeAgentLoopCoreToolRunFlowResponses(toolDispatchFlowResponses);
+    // 有 sink 时 child workflow 和当前 ToolCall 的内部 response 已经独立发布；
+    // 只在无 sink 的调试/单测路径把兼容详情挂回顶层 response。
+    const toolDetailForResponse = props.nodeResponseSink ? undefined : toolDetail;
     const modelName = toolModel.name;
     const modelTotalPoints = toolCallTotalPoints;
-    const totalPointsUsage = modelTotalPoints + toolTotalPoints;
     const previewAssistantResponses = filterAgentLoopCoreToolResponseToPreview(assistantResponses);
     const nodeResponse = createAgentLoopCoreToolCallNodeResponse({
-      totalPoints: totalPointsUsage,
+      totalPoints: modelTotalPoints,
       toolCallInputTokens,
       toolCallOutputTokens,
-      toolTotalPoints,
       modelName,
       query: userChatInput,
       completeMessages,
       useVision,
-      toolDetail,
-      nodeId,
+      toolDetail: toolDetailForResponse,
       finishReason: finish_reason || 'stop',
-      requestIds
+      requestIds,
+      firstTokenTime
     });
 
     if (error) {
@@ -239,11 +242,13 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       };
     }
 
+    const answerText = getAgentLoopCorePersistedTextOutput(previewAssistantResponses);
+
     return {
       data: {
-        [NodeOutputKeyEnum.answerText]:
-          getAgentLoopCorePersistedTextOutput(previewAssistantResponses)
+        [NodeOutputKeyEnum.answerText]: answerText
       },
+      [DispatchNodeResponseKeyEnum.toolResponse]: answerText,
       [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
       [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
         ? previewAssistantResponses

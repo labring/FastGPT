@@ -226,6 +226,16 @@ export const createAgentLoopCoreAssistantEventCollector = ({
     };
   };
 
+  /** 子输出归属对应工具，保留子流程自己的展示字段；父模型后续输出另起一段。 */
+  const appendToolAssistantResponses = (callId: string, values?: AIChatItemValueItemType[]) => {
+    if (!values?.length) return;
+
+    const responseIndex = findToolResponseIndex(callId);
+    const insertIndex = responseIndex >= 0 ? responseIndex + 1 : assistantResponses.length;
+    assistantResponses.splice(insertIndex, 0, ...values);
+    currentAssistantTextIndex = undefined;
+  };
+
   const appendMetaAssistantResponse = (
     event: Extract<
       AgentLoopEvent,
@@ -347,24 +357,8 @@ export const createAgentLoopCoreAssistantEventCollector = ({
 
         const functionName = toolNameByCallId.get(event.call.id) || event.call.function.name;
 
-        if (event.errorMessage) {
-          if (findToolResponseIndex(event.call.id) < 0) {
-            const toolInfo = getToolInfo?.(functionName);
-            upsertToolResponse({
-              id: event.call.id,
-              toolName: toolInfo?.name || functionName,
-              toolAvatar: toolInfo?.avatar || '',
-              functionName,
-              params: event.call.function.arguments ?? ''
-            });
-          } else {
-            updateToolResponse(event.call.id, (tool) => {
-              const toolWithoutResponse = { ...tool };
-              delete toolWithoutResponse.response;
-              return toolWithoutResponse;
-            });
-          }
-        } else if (findToolResponseIndex(event.call.id) < 0) {
+        // 失败也是模型已消费的工具结果，必须与成功结果一样持久化为 toolResponse。
+        if (findToolResponseIndex(event.call.id) < 0) {
           const toolInfo = getToolInfo?.(functionName);
           upsertToolResponse({
             id: event.call.id,
@@ -380,6 +374,13 @@ export const createAgentLoopCoreAssistantEventCollector = ({
             response: appendUniqueDelta(tool.response, event.response)
           }));
         }
+
+        // The low-level loop intentionally keeps these values opaque. This
+        // adapter is the boundary that owns the concrete persisted chat type.
+        appendToolAssistantResponses(
+          event.call.id,
+          event.assistantResponses as AIChatItemValueItemType[] | undefined
+        );
 
         return;
       }

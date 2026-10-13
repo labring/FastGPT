@@ -39,6 +39,10 @@ export const findSpeechVoice = <T extends { lang: string }>(
     .find((voice): voice is T => Boolean(voice));
 };
 
+/** 迁移期同时识别稳定 modelId 与旧 model，避免旧配置或新配置被跳过。 */
+export const hasModelTTSConfig = (ttsConfig?: AppTTSConfigType) =>
+  ttsConfig?.type === TTSTypeEnum.model && Boolean(ttsConfig.modelId ?? ttsConfig.model);
+
 const isAbortError = (error: unknown) =>
   error instanceof DOMException
     ? error.name === 'AbortError'
@@ -373,7 +377,7 @@ export const useAudioPlay = (props?: {
   /* split audio text and fetch tts */
   const splitText2Audio = useCallback(
     async (text: string, done?: boolean) => {
-      if (ttsConfig?.type === TTSTypeEnum.model && ttsConfig?.model) {
+      if (hasModelTTSConfig(ttsConfig)) {
         if (!isMediaSourceSupported()) {
           // 不支持 MediaSource 时，等待文本结束后一次性播放
           if (done) {
@@ -440,7 +444,7 @@ export const useAudioPlay = (props?: {
         playWebAudio(text);
       }
     },
-    [appendAudioStream, getAudioStream, playWebAudio, ttsConfig?.model, ttsConfig?.type]
+    [appendAudioStream, getAudioStream, playWebAudio, ttsConfig]
   );
 
   // listen audio status

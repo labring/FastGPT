@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
+import { DatasetSynonymSchemaVersion } from '@fastgpt/global/core/dataset/synonym';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type {
@@ -46,11 +47,21 @@ vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
 }));
 
 const embeddingModel = {
+  modelId: '68ad85a7463006c963799a05',
   model: 'text-embedding-3-small',
   name: 'text-embedding-3-small',
-  maxToken: 128
+  provider: 'openai',
+  scope: 'system' as const,
+  isActive: true,
+  type: 'embedding',
+  config: {
+    defaultToken: 512,
+    maxToken: 128,
+    weight: 100
+  }
 } as any;
 const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
+const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
 const tokenHeavyText = Array.from({ length: 30 }, (_, index) => `𠮷${index}`).join('');
 const largeTokenHeavyText = Array.from(
   { length: 320 },
@@ -142,6 +153,7 @@ const createData = async (
 
 describe('DatasetDataIndexOperation', () => {
   beforeEach(() => {
+    serviceEnv.DATASET_SYNONYM_ENABLED = true;
     serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
     resetVectorMocks();
     mockGetVectors.mockClear();
@@ -150,7 +162,6 @@ describe('DatasetDataIndexOperation', () => {
     mockCountPromptTokens.mockImplementation(async (text: string) =>
       countPromptTokensInWorker(text)
     );
-    vi.mocked(getEmbeddingModel).mockReturnValue(embeddingModel);
     mockGetVectors.mockImplementation(async ({ inputs }) =>
       createMockVectorsResponse(inputs.map((input) => input.input))
     );
@@ -162,6 +173,7 @@ describe('DatasetDataIndexOperation', () => {
 
   afterEach(() => {
     serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+    serviceEnv.DATASET_SYNONYM_ENABLED = originalDatasetSynonymEnabled;
   });
 
   describe('getSystemIndexes', () => {
@@ -169,7 +181,7 @@ describe('DatasetDataIndexOperation', () => {
       const textModelOperation = new DatasetDataIndexOperation(embeddingModel);
       const visionOperation = new DatasetDataIndexOperation({
         ...embeddingModel,
-        vision: true
+        config: { ...embeddingModel.config, vision: true }
       });
 
       expect(
@@ -366,7 +378,7 @@ describe('DatasetDataIndexOperation', () => {
     it('should not check prefix token budget when text is empty and only image index is generated', async () => {
       const operation = new DatasetDataIndexOperation({
         ...embeddingModel,
-        vision: true
+        config: { ...embeddingModel.config, vision: true }
       });
 
       const result = await operation.getSystemIndexes({
@@ -389,7 +401,7 @@ describe('DatasetDataIndexOperation', () => {
     it('should create image embedding indexes from image id and markdown images', async () => {
       const operation = new DatasetDataIndexOperation({
         ...embeddingModel,
-        vision: true
+        config: { ...embeddingModel.config, vision: true }
       });
 
       const result = await operation.getSystemIndexes({
@@ -464,7 +476,7 @@ describe('DatasetDataIndexOperation', () => {
     it('should regenerate system indexes and only reuse matching image embedding ids', async () => {
       const operation = new DatasetDataIndexOperation({
         ...embeddingModel,
-        vision: true
+        config: { ...embeddingModel.config, vision: true }
       });
 
       const result = await operation.formatIndexes({
@@ -514,7 +526,7 @@ describe('DatasetDataIndexOperation', () => {
     it('should keep text indexes whose text matches image embedding source', async () => {
       const operation = new DatasetDataIndexOperation({
         ...embeddingModel,
-        vision: true
+        config: { ...embeddingModel.config, vision: true }
       });
       const imageSource = 'dataset/team/main.png';
 
@@ -639,7 +651,7 @@ describe('DatasetDataIndexOperation', () => {
     it('should keep image embedding indexes unsplit even when text looks too long', async () => {
       const operation = new DatasetDataIndexOperation({
         ...embeddingModel,
-        vision: true
+        config: { ...embeddingModel.config, vision: true }
       });
       const imageSource = 'dataset/team/a-very-long-image-source-name-that-is-not-text.png';
 
@@ -824,7 +836,7 @@ describe('DatasetDataIndexOperation', () => {
     it('should insert text and image embedding patch items in one vector call', async () => {
       const operation = new DatasetDataIndexOperation({
         ...embeddingModel,
-        vision: true
+        config: { ...embeddingModel.config, vision: true }
       });
       mockVectorInsert.mockResolvedValueOnce({ insertIds: ['text_vector_id', 'image_vector_id'] });
       const patchResult = operation.buildPatch({
@@ -833,7 +845,7 @@ describe('DatasetDataIndexOperation', () => {
           { type: DatasetDataIndexTypeEnum.custom, text: 'text index' },
           {
             type: DatasetDataIndexTypeEnum.imageEmbedding,
-            text: 'dataset/team/collection/image.png'
+            text: 'dataset/dataset_id/collection/image.png'
           }
         ]
       });
@@ -851,7 +863,10 @@ describe('DatasetDataIndexOperation', () => {
         expect.objectContaining({
           inputs: [
             { type: 'text', input: 'text index' },
-            { type: 'image', input: 'data:image/png;base64,dataset/team/collection/image.png' }
+            {
+              type: 'image',
+              input: 'data:image/png;base64,dataset/dataset_id/collection/image.png'
+            }
           ]
         })
       );
@@ -859,10 +874,42 @@ describe('DatasetDataIndexOperation', () => {
         { type: DatasetDataIndexTypeEnum.custom, text: 'text index', dataId: 'text_vector_id' },
         {
           type: DatasetDataIndexTypeEnum.imageEmbedding,
-          text: 'dataset/team/collection/image.png',
+          text: 'dataset/dataset_id/collection/image.png',
           dataId: 'image_vector_id'
         }
       ]);
+    });
+
+    it('should skip image embedding vector insertion when key belongs to another dataset', async () => {
+      const operation = new DatasetDataIndexOperation({
+        ...embeddingModel,
+        config: { ...embeddingModel.config, vision: true }
+      });
+      mockVectorInsert.mockResolvedValueOnce({ insertIds: ['text_vector_id'] });
+      const patchResult = operation.buildPatch({
+        currentIndexes: [],
+        nextIndexes: [
+          { type: DatasetDataIndexTypeEnum.custom, text: 'text index' },
+          {
+            type: DatasetDataIndexTypeEnum.imageEmbedding,
+            text: 'dataset/foreign_dataset_id/image.png'
+          }
+        ]
+      });
+
+      const tokens = await operation.insertVectorForPatch({
+        patchResult,
+        teamId: 'team_id',
+        datasetId: 'dataset_id',
+        collectionId: 'collection_id'
+      });
+
+      expect(tokens).toBeGreaterThan(0);
+      expect(mockGetVectors).toHaveBeenCalledWith(
+        expect.objectContaining({
+          inputs: [{ type: 'text', input: 'text index' }]
+        })
+      );
     });
   });
 
@@ -908,7 +955,7 @@ describe('DatasetDataIndexOperation', () => {
     it('should skip invalid image embedding sources without dropping valid text indexes', async () => {
       const operation = new DatasetDataIndexOperation({
         ...embeddingModel,
-        vision: true
+        config: { ...embeddingModel.config, vision: true }
       });
 
       const result = await operation.insertVectors({
@@ -948,7 +995,7 @@ describe('DatasetDataIndexOperation', () => {
         data: dataItem,
         type: DatasetDataIndexTypeEnum.custom,
         text: ' new custom ',
-        model: 'text-embedding-3-small'
+        model: embeddingModel
       });
 
       const updatedData = await MongoDatasetData.findById(data._id).lean();
@@ -975,7 +1022,7 @@ describe('DatasetDataIndexOperation', () => {
         indexDataId: 'custom_old',
         type: DatasetDataIndexTypeEnum.custom,
         text: 'updated',
-        model: 'text-embedding-3-small'
+        model: embeddingModel
       });
 
       const updatedData = await MongoDatasetData.findById(data._id).lean();
@@ -994,6 +1041,106 @@ describe('DatasetDataIndexOperation', () => {
       expect(mockVectorDelete).toHaveBeenCalledWith({
         teamId: String(dataItem.teamId),
         idList: ['custom_old']
+      });
+    });
+
+    it('should use the latest Mongo indexes instead of a stale API snapshot', async () => {
+      const { data, dataItem } = await createData();
+      await MongoDatasetData.updateOne(
+        { _id: data._id },
+        {
+          $set: {
+            indexes: [
+              {
+                type: DatasetDataIndexTypeEnum.custom,
+                text: 'newer custom',
+                dataId: 'custom_newer'
+              }
+            ],
+            updateTime: new Date(Date.now() + 10_000)
+          }
+        }
+      );
+
+      await expect(
+        updateDatasetDataIndex({
+          data: dataItem,
+          indexDataId: 'custom_old',
+          type: DatasetDataIndexTypeEnum.custom,
+          text: 'requested update',
+          model: embeddingModel
+        })
+      ).rejects.toBe('Dataset data index not found');
+      expect(mockVectorInsert).not.toHaveBeenCalled();
+    });
+
+    it('should preserve concurrent edits and clean the new manual index vector', async () => {
+      const { root, dataset, data, dataItem } = await createData();
+      await MongoDatasetSynonym.create({
+        teamId: root.teamId,
+        datasetId: dataset._id,
+        version: 1,
+        enabled: true,
+        schemaVersion: DatasetSynonymSchemaVersion
+      });
+      mockGetVectors.mockImplementationOnce(async ({ inputs }) => {
+        await MongoDatasetData.updateOne(
+          { _id: data._id },
+          { $set: { q: 'concurrent question', updateTime: new Date(Date.now() + 10_000) } }
+        );
+        return createMockVectorsResponse(inputs.map((input) => input.input));
+      });
+
+      await expect(
+        updateDatasetDataIndex({
+          data: dataItem,
+          indexDataId: 'custom_old',
+          type: DatasetDataIndexTypeEnum.custom,
+          text: 'requested update',
+          model: embeddingModel
+        })
+      ).rejects.toThrow('数据已变化');
+
+      await expect(MongoDatasetData.findById(data._id).lean()).resolves.toMatchObject({
+        q: 'concurrent question',
+        indexes: [expect.objectContaining({ dataId: 'custom_old', text: 'old custom' })]
+      });
+      expect(mockVectorDelete).toHaveBeenCalledWith({
+        teamId: String(dataItem.teamId),
+        idList: ['id_1']
+      });
+    });
+
+    it('should clean the new manual index vector when the synonym matcher changes', async () => {
+      const { root, dataset, data, dataItem } = await createData();
+      const synonym = await MongoDatasetSynonym.create({
+        teamId: root.teamId,
+        datasetId: dataset._id,
+        version: 1,
+        enabled: true,
+        schemaVersion: DatasetSynonymSchemaVersion
+      });
+      mockGetVectors.mockImplementationOnce(async ({ inputs }) => {
+        await MongoDatasetSynonym.updateOne({ _id: synonym._id }, { $set: { version: 2 } });
+        return createMockVectorsResponse(inputs.map((input) => input.input));
+      });
+
+      await expect(
+        updateDatasetDataIndex({
+          data: dataItem,
+          indexDataId: 'custom_old',
+          type: DatasetDataIndexTypeEnum.custom,
+          text: '退钱说明',
+          model: embeddingModel
+        })
+      ).rejects.toThrow('同义词配置已变化');
+
+      await expect(MongoDatasetData.findById(data._id).lean()).resolves.toMatchObject({
+        indexes: [expect.objectContaining({ dataId: 'custom_old', text: 'old custom' })]
+      });
+      expect(mockVectorDelete).toHaveBeenCalledWith({
+        teamId: String(dataItem.teamId),
+        idList: ['id_1']
       });
     });
 
@@ -1018,7 +1165,7 @@ describe('DatasetDataIndexOperation', () => {
           indexDataId: `${type}_old`,
           type,
           text: 'new',
-          model: 'text-embedding-3-small'
+          model: embeddingModel
         });
 
         const updatedData = await MongoDatasetData.findById(data._id).lean();
@@ -1044,7 +1191,7 @@ describe('DatasetDataIndexOperation', () => {
         indexDataId: 'custom_old',
         type: DatasetDataIndexTypeEnum.custom,
         text: 'old custom',
-        model: 'text-embedding-3-small'
+        model: embeddingModel
       });
 
       expect(result).toEqual({
@@ -1066,7 +1213,7 @@ describe('DatasetDataIndexOperation', () => {
           data: dataItem,
           type: DatasetDataIndexTypeEnum.custom,
           text: '   ',
-          model: 'text-embedding-3-small'
+          model: embeddingModel
         })
       ).rejects.toBe('Dataset data index text is required');
 
@@ -1075,7 +1222,7 @@ describe('DatasetDataIndexOperation', () => {
           data: dataItem,
           type: DatasetDataIndexTypeEnum.default,
           text: 'default',
-          model: 'text-embedding-3-small'
+          model: embeddingModel
         })
       ).rejects.toBe('System indexes cannot be saved separately');
 
@@ -1084,7 +1231,7 @@ describe('DatasetDataIndexOperation', () => {
           data: dataItem,
           type: DatasetDataIndexTypeEnum.imageEmbedding,
           text: 'dataset/team/image.png',
-          model: 'text-embedding-3-small'
+          model: embeddingModel
         })
       ).rejects.toBe('System indexes cannot be saved separately');
 
@@ -1094,7 +1241,7 @@ describe('DatasetDataIndexOperation', () => {
           indexDataId: 'missing_id',
           type: DatasetDataIndexTypeEnum.custom,
           text: 'valid',
-          model: 'text-embedding-3-small'
+          model: embeddingModel
         })
       ).rejects.toBe('Dataset data index not found');
     });
@@ -1108,7 +1255,7 @@ describe('DatasetDataIndexOperation', () => {
           data: dataItem,
           type: DatasetDataIndexTypeEnum.custom,
           text: 'too long',
-          model: 'text-embedding-3-small'
+          model: embeddingModel
         })
       ).rejects.toBe('Dataset data index text is too long');
     });
@@ -1206,14 +1353,14 @@ describe('DatasetDataIndexOperation', () => {
     it('should use provided embedding model object for maxToken', () => {
       const operation = new DatasetDataIndexOperation({
         ...embeddingModel,
-        maxToken: 321
+        config: { ...embeddingModel.config, maxToken: 321 }
       });
 
       expect(operation.maxToken).toBe(321);
     });
 
-    it('should use the resolved embedding model when only a model name is provided', () => {
-      const operation = new DatasetDataIndexOperation('unknown-model');
+    it('should use the canonical model config directly', () => {
+      const operation = new DatasetDataIndexOperation(embeddingModel);
 
       expect(operation.maxToken).toBe(128);
     });

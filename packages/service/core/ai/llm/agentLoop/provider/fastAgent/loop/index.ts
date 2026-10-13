@@ -257,6 +257,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       pushAgentLoopUsages(runtime, [usage]);
       emitAgentLoopEvent(runtime, {
         type: 'after_message_compress',
+        modelName: runtime.model.name,
         usages: normalizeAgentLoopUsages([usage]),
         requestIds,
         seconds,
@@ -279,12 +280,13 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       toolCalls,
       usage,
       seconds,
+      firstTokenTime,
       error
     }) => {
       const agentCallUsage = usage
         ? {
             moduleName: AgentUsageModuleName.agentCall,
-            model: modelName,
+            modelId: runtime.model.modelId,
             totalPoints: usage.totalPoints,
             inputTokens: usage.inputTokens,
             outputTokens: usage.outputTokens
@@ -302,6 +304,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         toolCalls,
         usages: normalizeAgentLoopUsages([agentCallUsage]),
         seconds,
+        firstTokenTime,
         error
       });
     },
@@ -338,6 +341,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       rawResponse,
       response,
       assistantMessages,
+      assistantResponses,
       seconds,
       errorMessage,
       usages,
@@ -353,6 +357,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         rawResponse,
         response,
         assistantMessages,
+        assistantResponses,
         seconds,
         errorMessage,
         usages,

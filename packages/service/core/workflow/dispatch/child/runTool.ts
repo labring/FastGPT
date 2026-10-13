@@ -4,18 +4,29 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { assertMCPUrlNotInternal, MCPClient } from '../../../app/mcp';
+import { assertMCPUrlNotInternal, getMCPChildren, MCPClient } from '../../../app/mcp';
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
+import { getHTTPToolRuntimeSchemas } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { assertToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
 import { getNodeErrResponse } from '../utils';
-import { getAppVersionById } from '../../../../core/app/version/controller';
-import { runHTTPTool } from '../../../app/http';
+import { getHTTPToolList, runHTTPTool } from '../../../app/http';
 import { getWorkflowContext } from '../../utils/context';
+import { getWorkflowResourceContext } from '../../utils/context';
+import { getAppVersionById } from '../../../app/version/controller';
+import {
+  HttpToolSetRuntimeConfigSchema,
+  McpToolSetRuntimeConfigSchema
+} from '@fastgpt/global/core/workflow/type/node';
+import {
+  filterWorkflowToolList,
+  isWorkflowResourceError,
+  loadWorkflowAppResource
+} from '../../utils/resource';
 import {
   getToolNameCandidates,
   getToolRawId,
@@ -24,10 +35,9 @@ import {
 } from '@fastgpt/global/core/app/tool/utils';
 import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
+import { computedSystemToolUsage } from '../../../app/tool/runtime/utils';
 import { InvokeProcessor } from '../../../../support/invoke/invoke';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { authAppByTmbId } from '../../../../support/permission/app/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getWorkflowAppId } from '../utils/source';
 import {
   assertTeamPluginSourceAccess,
@@ -63,10 +73,11 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     runningAppInfo,
     variableState,
     workflowStreamResponse,
-    node: { name, avatar, toolConfig, version, catchError, jsonSchema }
+    node: { name, avatar, toolConfig, version, catchError }
   } = props;
   const cTime = String(variableState.get('cTime') ?? '');
   const logger = getLogger(LogCategories.MODULE.APP.TOOL);
+  const resourceContext = getWorkflowResourceContext();
 
   const { uid: uId, chatId = '' } = props;
   const appId = getWorkflowAppId(runningAppInfo);
@@ -102,16 +113,16 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
   try {
     /**
-     * HTTP/MCP 子工具的 toolId 可由工作流 JSON 持久化，运行时必须用当前工作流执行身份
+     * HTTP/MCP 子工具的 toolId 可由工作流 JSON 持久化，运行时必须用当前运行用户执行身份
      * 重新校验父工具集权限，避免脏数据或绕过保存接口的跨用户工具集引用被执行。
      */
-    const authRuntimeToolset = async (parentId: string) => {
-      await authAppByTmbId({
-        tmbId: runningAppInfo.tmbId,
+    const authRuntimeToolset = async (parentId: string, toolName?: string) =>
+      loadWorkflowAppResource({
+        tmbId: runningUserInfo.tmbId,
         appId: parentId,
-        per: ReadPermissionVal
+        type: 'tool',
+        toolName
       });
-    };
 
     // run system tool
     if (toolConfig?.systemTool?.toolId) {
@@ -232,15 +243,12 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         });
       }
 
-      const usagePoints = (() => {
-        if (
-          params.system_input_config?.type === SystemToolSecretInputTypeEnum.team ||
-          params.system_input_config?.type === SystemToolSecretInputTypeEnum.manual
-        ) {
-          return 0;
-        }
-        return (tool.systemKeyCost ?? 0) + (tool.currentCost ?? 0);
-      })();
+      const usagePoints = computedSystemToolUsage({
+        tool,
+        useSystemKey:
+          params.system_input_config?.type !== SystemToolSecretInputTypeEnum.team &&
+          params.system_input_config?.type !== SystemToolSecretInputTypeEnum.manual
+      });
       props.usagePush([
         {
           moduleName: name,
@@ -275,15 +283,24 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       if (!parentId || !toolName) {
         throw new Error(`Invalid MCP tool id: ${toolConfig.mcpTool.toolId}`);
       }
-      await authRuntimeToolset(parentId);
-
-      const mcpToolSet = toolConfig.mcpToolSet;
-      if (!mcpToolSet) throw new Error('MCP tool set is missing from runtime node');
+      const app = await authRuntimeToolset(parentId, toolName);
+      const workflow = await getAppVersionById({ appId: parentId, app });
+      const mcpToolSet = McpToolSetRuntimeConfigSchema.safeParse(
+        workflow.nodes[0]?.toolConfig?.mcpToolSet
+      ).data;
+      const mcpToolList = filterWorkflowToolList({
+        context: resourceContext,
+        appId: parentId,
+        tools: await getMCPChildren(app, workflow)
+      });
+      if (!mcpToolSet || !mcpToolList.length) throw new Error('MCP tool set is missing');
       const mcpTool = getToolNameCandidates(toolName)
-        .map((name) => mcpToolSet.toolList.find((tool) => tool.name === name))
+        .map((name) => mcpToolList.find((tool) => tool.name === name))
         .find(Boolean);
       if (!mcpTool) throw new Error(`MCP tool ${toolName} not found`);
-      const { headerSecret, url } = mcpToolSet;
+      const url = mcpToolSet?.url ?? mcpTool.url;
+      const headerSecret = mcpToolSet?.headerSecret ?? mcpTool.headerSecret;
+      if (!url) throw new Error('MCP tool set URL is missing');
 
       await assertMCPUrlNotInternal(url);
 
@@ -316,18 +333,25 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       if (!parentId || !toolName) {
         throw new Error(`Invalid HTTP tool id: ${toolConfig.httpTool.toolId}`);
       }
-      await authRuntimeToolset(parentId);
-
-      const toolset = await getAppVersionById({
+      const app = await authRuntimeToolset(parentId, toolName);
+      const workflow = await getAppVersionById({
         appId: parentId,
-        versionId: version
+        versionId: version,
+        app
       });
-      const toolSetData = toolset.nodes[0].toolConfig?.httpToolSet;
-      if (!toolSetData || typeof toolSetData !== 'object') {
+      const toolSetData = HttpToolSetRuntimeConfigSchema.safeParse(
+        workflow.nodes[0]?.toolConfig?.httpToolSet
+      ).data;
+      const toolList = filterWorkflowToolList({
+        context: resourceContext,
+        appId: parentId,
+        tools: await getHTTPToolList(app, workflow)
+      });
+      if (!toolSetData || !toolList.length) {
         throw new Error('HTTP tool set not found');
       }
 
-      const { headerSecret, baseUrl, toolList, customHeaders } = toolSetData;
+      const { headerSecret, baseUrl, customHeaders } = toolSetData ?? {};
 
       const httpTool = getToolNameCandidates(toolName)
         .map((name) => toolList?.find((tool: HttpToolConfigType) => tool.name === name))
@@ -337,11 +361,14 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       }
 
       toolInput = params;
+      // 最新定义先兼容旧标量/缺失 requestSchema，与运行节点构建使用同一套解析逻辑。
+      const { requestSchema } = getHTTPToolRuntimeSchemas(httpTool);
       assertToolRuntimeParams({
-        jsonSchema: jsonSchema ?? httpTool.requestSchema,
+        jsonSchema: requestSchema,
         params
       });
       const { data, errorMsg } = await runHTTPTool({
+        apiSchemaStr: toolSetData?.apiSchemaStr,
         baseUrl: baseUrl || '',
         toolPath: httpTool.path,
         method: httpTool.method,
@@ -407,6 +434,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       };
     }
   } catch (error) {
+    if (isWorkflowResourceError(error)) throw error;
     if (systemToolId) {
       pushTrack.runSystemTool({
         teamId: runningUserInfo.teamId,

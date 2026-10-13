@@ -6,9 +6,9 @@ import {
   type AppQGConfigType,
   type AppTTSConfigType,
   type AppWhisperConfigType,
-  type ChatInputGuideConfigType,
-  type VariableItemType
+  type ChatInputGuideConfigType
 } from '@fastgpt/global/core/app/type';
+import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';

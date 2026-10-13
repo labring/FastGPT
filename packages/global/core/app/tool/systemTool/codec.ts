@@ -43,16 +43,7 @@ export const SystemToolCodec = {
   },
 
   fromDBTypeToListItemType(item: SystemPluginToolCollectionType): SystemToolListItemType {
-    const {
-      name,
-      avatar,
-      intro,
-      toolDescription,
-      version,
-      userGuide,
-      author = '',
-      tags
-    } = item.customConfig!;
+    const { name, avatar, intro, version, userGuide, author = '', tags } = item.customConfig!;
 
     return {
       id: item.pluginId,
@@ -74,7 +65,6 @@ export const SystemToolCodec = {
       systemKeyCost: 0,
       // 数据库里面取出来的一定不是 toolset
       isToolSet: false,
-      toolDescription: toolDescription ?? intro ?? '',
       hideTags: item.hideTags ?? [],
       promoteTags: item.promoteTags ?? []
       // TODO: 不知道谁做落了，之后再补吧
@@ -118,7 +108,6 @@ export const SystemToolCodec = {
       status: config?.status ?? PluginStatusEnum.Normal,
       systemKeyCost: config?.systemKeyCost ?? 0,
       tags: config?.customConfig?.tags ?? tool.tags ?? [],
-      toolDescription: config?.customConfig?.toolDescription ?? tool.toolDescription ?? '',
       version: tool.version,
       courseUrl: tool.tutorialUrl,
       hideTags: config?.hideTags ?? [],

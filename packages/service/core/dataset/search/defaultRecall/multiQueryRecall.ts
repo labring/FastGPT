@@ -1,6 +1,7 @@
-import { getForbidCollectionIdList, filterCollectionByMetadata } from './collectionFilter';
+import { getForbidCollectionIdList, filterCollectionByMetadata } from '../filter/collectionFilter';
 import { embeddingRecall } from './embeddingRecall';
 import { fullTextRecall } from './fullTextRecall';
+import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 /**
  * 默认召回的并行调度层。
@@ -13,6 +14,7 @@ export const multiQueryRecall = async ({
   model,
   imageQueries,
   collectionFilterMatch,
+  readableCollectionIdList,
   embeddingLimit,
   fullTextLimit,
   textQueries,
@@ -20,25 +22,43 @@ export const multiQueryRecall = async ({
 }: {
   teamId: string;
   datasetIds: string[];
-  model: string;
+  model: EmbeddingModelDataType;
   imageQueries: string[];
   collectionFilterMatch?: string;
+  readableCollectionIdList?: string[];
   embeddingLimit: number;
   fullTextLimit: number;
   textQueries: string[];
   imageCaptionQueries: string[];
 }) => {
-  const [forbidCollectionIdList, filterCollectionIdList] = await Promise.all([
+  const [forbidCollectionIdList, metadataFilterCollectionIdList] = await Promise.all([
     getForbidCollectionIdList({
       teamId,
       datasetIds
     }),
-    filterCollectionByMetadata({
-      teamId,
-      datasetIds,
-      collectionFilterMatch
-    })
+    filterCollectionByMetadata({ teamId, datasetIds, collectionFilterMatch })
   ]);
+
+  // 权限可读集合 ∩ 用户 metadata 过滤集合 → 有效过滤集合（AND 语义）。
+  // 两者均未定义 → 不设 collectionId 过滤（undefined）；交集为空 → 直接返回空结果（跳过向量召回）。
+  let filterCollectionIdList: string[] | undefined;
+  if (readableCollectionIdList && metadataFilterCollectionIdList) {
+    const readableSet = new Set(readableCollectionIdList);
+    filterCollectionIdList = metadataFilterCollectionIdList.filter((id) => readableSet.has(id));
+  } else {
+    filterCollectionIdList = readableCollectionIdList ?? metadataFilterCollectionIdList;
+  }
+
+  if (filterCollectionIdList && filterCollectionIdList.length === 0) {
+    return {
+      tokens: 0,
+      textEmbeddingRecallResults: [],
+      imageCaptionEmbeddingRecallResults: [],
+      imageVectorRecallResults: [],
+      textFullTextRecallResults: [],
+      imageCaptionFullTextRecallResults: []
+    };
+  }
 
   const [
     {

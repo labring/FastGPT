@@ -34,7 +34,7 @@ export type AuxiliaryGenerationProcessorResponse = {
   aiResponse: AIChatItemValueItemType[];
   memories?: Record<string, any>;
   usage: {
-    model: string;
+    modelId: string;
     inputTokens: number;
     outputTokens: number;
   };

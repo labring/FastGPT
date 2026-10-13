@@ -5,6 +5,7 @@ import {
   type AppQGConfigType
 } from './type';
 import type { AppFileSelectConfigType } from './type/config.schema';
+import { documentFileExtensions } from '../../common/file/constants';
 
 export enum AppTypeEnum {
   folder = 'folder',
@@ -35,6 +36,20 @@ export const ToolTypeList = [
 ];
 export const AppTypeList = [AppTypeEnum.simple, AppTypeEnum.chatAgent, AppTypeEnum.workflow];
 
+export const ENTRY_POINT_VARIABLE_KEY = 'system_entryPoint';
+
+export enum AppListSortEnum {
+  updateTimeDesc = 'updateTimeDesc',
+  createTimeDesc = 'createTimeDesc',
+  createTimeAsc = 'createTimeAsc'
+}
+
+export const appListSortMongoMap: Record<AppListSortEnum, Record<string, 1 | -1>> = {
+  [AppListSortEnum.updateTimeDesc]: { updateTime: -1 },
+  [AppListSortEnum.createTimeDesc]: { createTime: -1 },
+  [AppListSortEnum.createTimeAsc]: { createTime: 1 }
+};
+
 export const defaultTTSConfig: AppTTSConfigType = { type: 'web' };
 
 export const defaultAutoExecuteConfig: AppAutoExecuteConfigType = {
@@ -50,7 +65,6 @@ export const defaultWhisperConfig: AppWhisperConfigType = {
 
 export const defaultQGConfig: AppQGConfigType = {
   open: false,
-  model: 'gpt-5',
   customPrompt: ''
 };
 
@@ -83,7 +97,7 @@ export enum AppTemplateTypeEnum {
 }
 
 export const defaultFileExtensionTypes = {
-  canSelectFile: ['.pdf', '.docx', '.pptx', '.xlsx', '.txt', '.md', '.html', '.csv'],
+  canSelectFile: [...documentFileExtensions],
   canSelectImg: ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'],
   canSelectVideo: ['.mp4', '.mov', '.avi', '.mpeg', '.webm'],
   canSelectAudio: ['.mp3', '.wav', '.ogg', '.m4a', '.amr', '.mpga'],

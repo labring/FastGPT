@@ -12,17 +12,13 @@ import type {
 } from '@fastgpt/global/openapi/core/chat/controler/api';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import {
-  setAgentRuntimeStop,
-  waitForWorkflowComplete
-} from '@fastgpt/service/core/workflow/dispatch/workflowStatus';
+import { setAgentRuntimeStop } from '@fastgpt/service/core/workflow/dispatch/workflowStatus';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/workflowStatus', () => ({
-  setAgentRuntimeStop: vi.fn(),
-  waitForWorkflowComplete: vi.fn()
+  setAgentRuntimeStop: vi.fn()
 }));
 
 describe('v2 chat stop skill edit target', () => {
@@ -65,23 +61,17 @@ describe('v2 chat stop skill edit target', () => {
     expect(res.code).toBe(200);
     expect(res.data).toEqual({
       success: true,
-      completed: true,
-      chatGenerateStatus: ChatGenerateStatusEnum.done
+      completed: false,
+      chatGenerateStatus: ChatGenerateStatusEnum.generating
     });
     expect(vi.mocked(setAgentRuntimeStop)).toHaveBeenCalledWith({
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: skillId,
       chatId
     });
-    expect(vi.mocked(waitForWorkflowComplete)).toHaveBeenCalledWith({
-      sourceType: ChatSourceTypeEnum.skillEdit,
-      sourceId: skillId,
-      chatId,
-      timeout: 5000
-    });
   });
 
-  it('should keep completed=false when skill edit chat is still generating after wait', async () => {
+  it('should return immediately without waiting for a generating chat to finish', async () => {
     await MongoChat.create({
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,

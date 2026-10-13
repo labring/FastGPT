@@ -1,6 +1,16 @@
 import type { NextApiResponse, NextApiRequest } from 'next';
 import NextCors from 'nextjs-cors';
 
+/** 解析跨域白名单；未配置时返回 undefined，以保留默认允许所有跨域的兼容行为。 */
+export const parseAllowedOrigins = (value?: string) => {
+  if (!value?.trim()) return undefined;
+
+  return value
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+};
+
 /** 为 Next Pages API 请求应用 CORS，并允许应用层传入来源白名单。 */
 export async function withNextCors({
   req,

@@ -1,20 +1,24 @@
-import React, { useCallback, useState } from 'react';
-import { Box, Checkbox, Divider, Flex } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import { filterSensitiveNodesData } from '@/web/core/workflow/utils';
-import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
-import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { fileDownload } from '@/web/common/file/utils';
-import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
-import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import MyBox from '@fastgpt/web/components/common/MyBox';
-import { filterSensitiveFormData } from '@/web/core/app/utils';
+import { getModelList } from '@/web/core/ai/model/modelData';
+import { addModelNamesToAppForm, filterSensitiveFormData } from '@/web/core/app/utils';
+import { filterSensitiveNodesData } from '@/web/core/workflow/utils';
+import { Box, Checkbox, Divider, Flex } from '@chakra-ui/react';
 import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
-import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { addModelNamesToWorkflow } from '@fastgpt/global/core/workflow/utils';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { cloneDeep } from 'lodash-es';
+import { useTranslation } from 'next-i18next';
+import React, { useCallback, useState } from 'react';
 
 type ExportConfigPopoverProps = {
   appType: AppTypeEnum;
@@ -45,6 +49,7 @@ const ExportConfigPopover = ({
 }: ExportConfigPopoverProps) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
+  const { toast } = useToast();
 
   const [localFilterSensitiveInfo, setLocalFilterSensitiveInfo] = useState<boolean>(true);
   const filterSensitiveInfo = filterSensitiveInfoProp ?? localFilterSensitiveInfo;
@@ -62,10 +67,15 @@ const ExportConfigPopover = ({
 
   const onExportWorkflow = useCallback(
     async (mode: 'copy' | 'json') => {
+      const modelList = await getModelList();
+
       let config = '';
 
       if (appForm) {
-        const appConfig = filterSensitiveInfo ? filterSensitiveFormData(appForm) : appForm;
+        const appConfig = cloneDeep(
+          filterSensitiveInfo ? filterSensitiveFormData(appForm) : appForm
+        );
+        addModelNamesToAppForm({ appForm: appConfig, models: modelList });
         config = JSON.stringify(
           {
             ...appConfig,
@@ -79,14 +89,16 @@ const ExportConfigPopover = ({
       } else if (getWorkflowData) {
         const workflowData = getWorkflowData();
         if (!workflowData) return;
-        const nodes = filterSensitiveInfo
-          ? filterSensitiveNodesData(workflowData.nodes)
-          : workflowData.nodes;
+        const nodes = cloneDeep(
+          filterSensitiveInfo ? filterSensitiveNodesData(workflowData.nodes) : workflowData.nodes
+        );
+        const exportChatConfig = cloneDeep(chatConfig);
+        addModelNamesToWorkflow({ nodes, chatConfig: exportChatConfig, models: modelList });
         config = JSON.stringify(
           {
             nodes,
             edges: workflowData.edges,
-            chatConfig,
+            chatConfig: exportChatConfig,
             type: appType,
             name: appName,
             intro: appIntro ?? ''
@@ -123,6 +135,7 @@ const ExportConfigPopover = ({
       chatConfig,
       copyData,
       getWorkflowData,
+      toast,
       t,
       filterSensitiveInfo
     ]

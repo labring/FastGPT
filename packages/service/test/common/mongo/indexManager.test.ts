@@ -1,8 +1,20 @@
 import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { connectionMongo, defineIndex, Schema } from '@fastgpt/service/common/mongo';
+import {
+  connectionMongo,
+  defineIndex,
+  getSchemaDeprecatedMongoIndexes,
+  Schema
+} from '@fastgpt/service/common/mongo';
 import type { DeprecatedMongoIndexDefinition } from '@fastgpt/service/common/mongo/schemaIndexes';
 import { MongoIndexManager } from '@fastgpt/service/common/mongo/indexManager';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import {
+  MongoDatasetSynonym,
+  MongoDatasetSynonymMapping
+} from '@fastgpt/service/core/dataset/synonym/schema';
+import { MongoModelStatusProbeRecord } from '@fastgpt/service/core/ai/modelStatus/schema';
 
 const logger = {
   debug: vi.fn(),
@@ -42,6 +54,25 @@ const legacyDefinition = {
   indexName: 'legacy_field_1',
   key: { legacyField: 1 }
 } as const;
+
+describe('dataset synonym index declarations', () => {
+  it('declares strict version uniqueness without legacy compatibility metadata', () => {
+    const indexes = MongoDatasetSynonymMapping.schema.indexes();
+    const normalizedTermIndex = indexes.find(
+      ([key]) => 'normalizedStandardizedTerm' in key && 'fileVersion' in key
+    );
+    const logicalIdIndex = indexes.find(
+      ([key]) => 'logicalMappingId' in key && 'fileVersion' in key
+    );
+
+    expect(normalizedTermIndex?.[1]).toMatchObject({ unique: true });
+    expect(normalizedTermIndex?.[1].partialFilterExpression).toBeUndefined();
+    expect(logicalIdIndex?.[1]).toMatchObject({ unique: true });
+    expect(logicalIdIndex?.[1].partialFilterExpression).toBeUndefined();
+    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetSynonym.schema)).toEqual([]);
+    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetSynonymMapping.schema)).toEqual([]);
+  });
+});
 
 describe('MongoIndexManager.syncModelIndexes', () => {
   beforeEach(() => {
@@ -115,6 +146,35 @@ describe('MongoIndexManager.syncModelIndexes', () => {
     expect(logger.debug).not.toHaveBeenCalled();
   });
 
+  it('replaces a full unique index with a named partial unique index on the same key', async () => {
+    const schema = new Schema(
+      { datasetId: String, fileVersion: Number, term: String },
+      { autoIndex: false }
+    );
+    const key = { datasetId: 1, fileVersion: 1, term: 1 } as const;
+    defineIndex(schema, {
+      key,
+      options: {
+        name: 'version_term_unique_v2',
+        unique: true,
+        partialFilterExpression: {
+          fileVersion: { $type: 'number' },
+          term: { $type: 'string' }
+        }
+      }
+    });
+    defineIndex(schema, { key, options: { unique: true }, deprecated: true });
+    const model = createModel({ schema });
+    const legacyName = 'datasetId_1_fileVersion_1_term_1';
+    await model.collection.createIndex(key, { name: legacyName, unique: true });
+
+    await MongoIndexManager.syncModelIndexes({ model, logger });
+
+    const indexNames = await getIndexNames(model);
+    expect(indexNames).toContain('version_term_unique_v2');
+    expect(indexNames).not.toContain(legacyName);
+  });
+
   it('reuses an in-flight task for concurrent calls on the same Model', async () => {
     const schema = new Schema({ currentField: String }, { autoIndex: false });
     defineIndex(schema, {
@@ -150,6 +210,73 @@ describe('MongoIndexManager.syncModelIndexes', () => {
     await expect(MongoIndexManager.syncModelIndexes({ model })).rejects.toThrow();
 
     expect(await getIndexNames(model)).toContain('legacy_field_1');
+  });
+
+  it('replaces the legacy global model unique index with the system-model partial index', async () => {
+    const schema = new Schema({ model: String, scope: String }, { autoIndex: false });
+    defineIndex(schema, {
+      key: { scope: 1, model: 1 },
+      options: {
+        unique: true,
+        partialFilterExpression: { scope: 'system' }
+      }
+    });
+    defineIndex(schema, {
+      key: { model: 1 },
+      options: { unique: true },
+      deprecated: true
+    });
+    const model = createModel({ schema, prefix: 'SystemModelIndex' });
+    await model.collection.createIndex({ model: 1 }, { name: 'model_1', unique: true });
+
+    await MongoIndexManager.syncModelIndexes({ model, logger });
+
+    const indexes = await model.collection.indexes();
+    expect(indexes).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'model_1' })])
+    );
+    expect(indexes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'scope_1_model_1',
+          key: { scope: 1, model: 1 },
+          unique: true,
+          partialFilterExpression: { scope: 'system' }
+        })
+      ])
+    );
+  });
+
+  it('replaces model status testedAt indexes with requestEndedAt indexes', async () => {
+    const schema = new Schema({}, { autoIndex: false });
+    defineIndex(schema, { key: { modelId: 1, requestEndedAt: -1 } });
+    defineIndex(schema, {
+      key: { requestEndedAt: 1 },
+      options: { expireAfterSeconds: 30 * 24 * 60 * 60 }
+    });
+    defineDeprecatedTestIndexes(
+      schema,
+      getSchemaDeprecatedMongoIndexes(MongoModelStatusProbeRecord.schema)
+    );
+    const model = createModel({ schema, prefix: 'ModelStatusProbeIndex' });
+    await model.collection.createIndex(
+      { modelId: 1, testedAt: -1 },
+      { name: 'modelId_1_testedAt_-1' }
+    );
+    await model.collection.createIndex(
+      { testedAt: 1 },
+      { name: 'testedAt_1', expireAfterSeconds: 30 * 24 * 60 * 60 }
+    );
+
+    await MongoIndexManager.syncModelIndexes({ model, logger });
+
+    const indexes = await model.collection.indexes();
+    expect(indexes.map(({ name }) => name)).toEqual(
+      expect.arrayContaining(['modelId_1_requestEndedAt_-1', 'requestEndedAt_1', '_id_'])
+    );
+    expect(indexes.map(({ name }) => name)).not.toEqual(
+      expect.arrayContaining(['modelId_1_testedAt_-1', 'testedAt_1'])
+    );
   });
 });
 
@@ -450,5 +577,38 @@ describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {
       errors: 1
     });
     expect(MongoIndexManager.formatCleanupReport(report)).toContain('error=test error');
+  });
+});
+
+describe('dataset training TTL index migration', () => {
+  it('keeps the existing training TTL index unchanged', () => {
+    const ttlIndex = MongoDatasetTraining.schema.indexes().find(([key]) => 'expireAt' in key);
+
+    expect(ttlIndex).toEqual([
+      { expireAt: 1 },
+      expect.objectContaining({
+        expireAfterSeconds: 7 * 24 * 60 * 60
+      })
+    ]);
+    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetTraining.schema)).toEqual([]);
+  });
+});
+
+describe('dataset rebuild status index migration', () => {
+  it('drops the old rebuilding index and retains the replacement and customer indexes', async () => {
+    const schema = new Schema(
+      { rebuilding: Boolean, indexStatus: String, teamId: String, datasetId: String },
+      { autoIndex: false }
+    );
+    defineIndex(schema, { key: { indexStatus: 1, teamId: 1, datasetId: 1 } });
+    defineDeprecatedTestIndexes(schema, getSchemaDeprecatedMongoIndexes(MongoDatasetData.schema));
+    const model = createModel({ schema, prefix: 'DatasetRebuildIndex' });
+    await model.collection.createIndex({ rebuilding: 1, teamId: 1, datasetId: 1 });
+    await model.collection.createIndex({ rebuilding: 1 }, { name: 'customer_rebuild_status' });
+    await MongoIndexManager.syncModelIndexes({ model, logger });
+    const names = await getIndexNames(model);
+    expect(names.has('rebuilding_1_teamId_1_datasetId_1')).toBe(false);
+    expect(names.has('indexStatus_1_teamId_1_datasetId_1')).toBe(true);
+    expect(names.has('customer_rebuild_status')).toBe(true);
   });
 });

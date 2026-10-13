@@ -43,7 +43,7 @@ const DatasetCollectionSchema = new Schema({
     required: true
   },
   tags: {
-    type: [String],
+    type: [],
     default: []
   },
 
@@ -78,6 +78,12 @@ const DatasetCollectionSchema = new Schema({
 
   forbid: Boolean,
 
+  // Permission: 继承态标记（默认 true = 快照 = merge(父级有效 clbs, 自身 clbs)）
+  inheritPermission: {
+    type: Boolean,
+    default: true
+  },
+
   // Parse settings
   customPdfParse: Boolean,
   apiFileParentId: String,
@@ -106,9 +112,23 @@ defineIndex(DatasetCollectionSchema, {
   }
 });
 
+// scan subtree by inherit state (permission sync / collection list)
+defineIndex(DatasetCollectionSchema, {
+  key: {
+    teamId: 1,
+    datasetId: 1,
+    parentId: 1,
+    inheritPermission: 1
+  }
+});
+
 // Tag filter
 defineIndex(DatasetCollectionSchema, {
   key: { teamId: 1, datasetId: 1, tags: 1 }
+});
+// New format tags.tagId filter
+defineIndex(DatasetCollectionSchema, {
+  key: { teamId: 1, datasetId: 1, 'tags.tagId': 1 }
 });
 // create time filter
 defineIndex(DatasetCollectionSchema, {

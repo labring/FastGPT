@@ -36,7 +36,7 @@ async function handler(
     .map((app) => ({
       appId: String(app._id),
       name: app.name,
-      avatar: app.avatar
+      avatar: app.avatar ?? ''
     }));
 }
 

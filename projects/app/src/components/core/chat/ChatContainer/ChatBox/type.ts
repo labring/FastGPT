@@ -49,11 +49,6 @@ export type SendPromptFnType = (
   }
 ) => void;
 
-export type StopChatFnResult = {
-  chatGenerateStatus: ChatGenerateStatusEnum;
-  completed: boolean;
-};
-
 export type ChatGenerateStatusChangePayload = {
   sourceTarget: ChatSourceTarget;
   chatId: string;
@@ -63,6 +58,11 @@ export type ChatGenerateStatusChangePayload = {
 };
 
 export type ChatGenerateStatusChangeHandler = (data: ChatGenerateStatusChangePayload) => void;
+
+export type ChatGeneratingConflictRecovery = {
+  previousAiDataId?: string;
+  canReusePreviousAi: boolean;
+};
 
 export type ComponentRef = {
   restartChat: () => void;

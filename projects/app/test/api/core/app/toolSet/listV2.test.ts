@@ -1,0 +1,85 @@
+import handler from '@/pages/api/core/app/toolSet/listV2';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import type {
+  ListToolSetV2BodyType,
+  ListToolSetV2ResponseType
+} from '@fastgpt/global/openapi/core/app/toolSet/api';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { getUser } from '@test/datas/users';
+import { Call } from '@test/utils/request';
+import { describe, expect, it } from 'vitest';
+
+describe('POST /api/core/app/toolSet/listV2', () => {
+  it('filters and paginates HTTP toolset children after authentication', async () => {
+    const user = await getUser(`toolset-list-v2-${getNanoid(6)}`);
+    const toolNode = {
+      toolConfig: {
+        httpToolSet: {
+          toolList: [
+            {
+              name: 'create-ticket',
+              description: 'Create a ticket',
+              path: '/create-ticket',
+              method: 'POST'
+            },
+            {
+              name: 'search-ticket',
+              description: 'Search tickets',
+              path: '/search-ticket',
+              method: 'GET'
+            },
+            {
+              name: 'delete-ticket',
+              description: 'Delete a ticket',
+              path: '/delete-ticket',
+              method: 'DELETE'
+            }
+          ]
+        }
+      }
+    };
+    const app = await MongoApp.create({
+      name: 'HTTP toolset',
+      type: AppTypeEnum.httpToolSet,
+      teamId: user.teamId,
+      tmbId: user.tmbId,
+      modules: [toolNode]
+    });
+    const version = await MongoAppVersion.create({
+      tmbId: user.tmbId,
+      appId: app._id,
+      nodes: [toolNode],
+      edges: [],
+      chatConfig: {},
+      versionName: 'HTTP toolset v1',
+      isPublish: true
+    });
+    await MongoApp.updateOne({ _id: app._id }, { $set: { publishedVersionId: version._id } });
+
+    const response = await Call<
+      ListToolSetV2BodyType,
+      Record<string, never>,
+      ListToolSetV2ResponseType
+    >(handler, {
+      auth: user,
+      body: {
+        parentId: String(app._id),
+        searchKey: 'ticket',
+        offset: 1,
+        pageSize: 1
+      }
+    });
+
+    expect(response.code).toBe(200);
+    expect(response.data.total).toBe(3);
+    expect(response.data.list).toHaveLength(1);
+    expect(response.data.list[0]).toMatchObject({
+      name: 'search-ticket',
+      id: `http-${app._id}/search-ticket`,
+      flowNodeType: 'tool',
+      isFolder: false
+    });
+  });
+});

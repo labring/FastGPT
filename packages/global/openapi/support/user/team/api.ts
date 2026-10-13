@@ -63,11 +63,11 @@ const SearchMemberSchema = z
     }),
     name: z.string().meta({
       example: '张三',
-      description: '成员名称'
+      description: '成员名称，展示口径；即数据库成员名'
     }),
-    memberName: z.string().meta({
+    memberName: z.string().default('Member').meta({
       example: '张三',
-      description: '成员展示名称'
+      description: '成员展示名称；即数据库成员名，未显式设置过时为加入时的回落值'
     }),
     avatar: z.string().nullish().meta({
       example: 'https://example.com/avatar.png',
@@ -249,7 +249,7 @@ export const TeamListItemSchema = z
       example: 'FastGPT 团队',
       description: '团队名称'
     }),
-    memberName: z.string().meta({
+    memberName: z.string().default('Member').meta({
       example: '张三',
       description: '当前用户在团队中的名称'
     }),
@@ -265,7 +265,7 @@ export const TeamListItemSchema = z
       example: '68ad85a7463006c963799a07',
       description: '团队成员 ID'
     }),
-    role: z.enum(TeamMemberRoleEnum).optional().meta({
+    role: z.enum(TeamMemberRoleEnum).nullish().meta({
       example: TeamMemberRoleEnum.owner,
       description: '团队成员角色；历史数据可能未设置该废弃字段'
     }),

@@ -1,3 +1,4 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import {
   Box,
@@ -5,7 +6,6 @@ import {
   Flex,
   HStack,
   Table,
-  TableContainer,
   Tbody,
   Td,
   Th,
@@ -14,7 +14,7 @@ import {
   useDisclosure,
   VStack
 } from '@chakra-ui/react';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   delRemoveMember,
@@ -38,22 +38,23 @@ import {
 import { format } from 'date-fns/format';
 import OrgTags from '@/components/support/user/team/OrgTags';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { useCallback, useState, useMemo } from 'react';
+import { useCallback, useState, useMemo, type ComponentProps } from 'react';
 import { downloadFetch, getIsMemberSyncMode } from '@/web/common/system/utils';
 import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { type PaginationResponse } from '@fastgpt/global/openapi/api';
-import MySelect from '@fastgpt/web/components/common/MySelect';
+import { SingleSelectFilter } from '@fastgpt/web/components/common/TagFilter';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
 const InviteModal = dynamic(() => import('./Invite/InviteModal'));
 const TransferOwnershipModal = dynamic(() => import('./TransferOwnershipModal'));
+
 function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
-  const { t } = useClientTranslation(['account_team', 'user']);
+  const { t } = useSafeTranslation();
   const { toast } = useToast();
   const { userInfo, initUserInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
@@ -61,30 +62,16 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
 
   const { myTeams, onSwitchTeam } = useContextSelector(TeamContext, (v) => v);
 
-  // Member status selector
+  const [status, setStatus] = useState<string | undefined>(TeamMemberStatusEnum.active);
+
   const statusOptions = [
-    {
-      label: t('common:All'),
-      value: undefined
-    },
-    {
-      label: t('common:user.team.member.active'),
-      value: 'active'
-    },
-    {
-      label: t('account_team:leave'),
-      value: 'leave'
-    },
+    { label: t('common:All'), value: undefined },
+    { label: t('common:user.team.member.active'), value: TeamMemberStatusEnum.active },
+    { label: t('account_team:leave'), value: TeamMemberStatusEnum.leave },
     ...(isSyncMode
-      ? [
-          {
-            label: t('account_team:forbidden'),
-            value: 'forbidden'
-          }
-        ]
+      ? [{ label: t('account_team:forbidden'), value: TeamMemberStatusEnum.forbidden }]
       : [])
   ];
-  const [status, setStatus] = useState<string>();
 
   const isWecomTeam = useMemo(() => {
     return !!userInfo?.team?.isWecomTeam;
@@ -122,6 +109,15 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const onRefreshMembers = useCallback(() => {
     refetchMemberList();
   }, [refetchMemberList]);
+
+  // 外层统一显示成员请求 loading，避免滚动容器重复渲染 loading 覆盖层。
+  const MemberScrollContainer = useMemo(
+    () =>
+      function MemberScrollContainer(props: ComponentProps<typeof MemberScrollData>) {
+        return <MemberScrollData {...props} showLoadingOverlay={false} />;
+      },
+    [MemberScrollData]
+  );
 
   const { isOpen: isOpenInvite, onOpen: onOpenInvite, onClose: onCloseInvite } = useDisclosure();
 
@@ -190,23 +186,28 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
           alignItems={['stretch', 'center']}
           gap={2}
         >
-          <HStack w={['100%', 'auto']} gap={2}>
-            <Box flexShrink={0}>
-              <MySelect
-                bg={'white'}
-                list={statusOptions}
-                value={status}
-                onChange={(v) => setStatus(v)}
-              />
-            </Box>
-            <Box flex={['1 0 0', 'initial']} w={['auto', '200px']}>
+          <Flex
+            w={['100%', 'auto']}
+            flexDirection={['column', 'row']}
+            alignItems={'stretch'}
+            gap={2}
+          >
+            <Box w={['100%', '200px']}>
               <SearchInput
                 bg={'white'}
                 placeholder={t('account_team:search_member')}
                 onChange={(e) => setSearchKey(e.target.value)}
               />
             </Box>
-          </HStack>
+            <Box w={['100%', 'auto']}>
+              <SingleSelectFilter
+                title={t('common:Status')}
+                value={status}
+                options={statusOptions}
+                onChange={setStatus}
+              />
+            </Box>
+          </Flex>
           {userInfo?.team.permission.hasManagePer && isSyncMode && (
             <Button
               w={['100%', 'auto']}
@@ -221,28 +222,37 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               {t('account_team:sync_immediately')}
             </Button>
           )}
-          {userInfo?.team.permission.hasManagePer && !isSyncMode && !isWecomTeam && (
-            <Button
-              w={['100%', 'auto']}
-              variant={'primary'}
-              size="md"
-              borderRadius={'md'}
-              leftIcon={<MyIcon name="common/inviteLight" w={'16px'} color={'white'} />}
-              onClick={onOpenInvite}
-            >
-              {t('account_team:user_team_invite_member')}
-            </Button>
-          )}
-          {userInfo?.team.permission.isOwner && !isSyncMode && isWecomTeam && (
-            <Button
-              w={['100%', 'auto']}
-              variant={'whitePrimary'}
-              size="md"
-              borderRadius={'md'}
-              onClick={onOpenTransferModal}
-            >
-              {t('account_team:transfer_team_ownership')}
-            </Button>
+          {((userInfo?.team.permission.isOwner && !isSyncMode && feConfigs?.teamMode === 'multi') ||
+            (userInfo?.team.permission.hasManagePer && !isSyncMode && !isWecomTeam)) && (
+            <HStack w={['100%', 'auto']} gap={2}>
+              {userInfo?.team.permission.isOwner &&
+                !isSyncMode &&
+                feConfigs?.teamMode === 'multi' && (
+                  <Button
+                    w={['100%', 'auto']}
+                    flex={['1 1 0', 'initial']}
+                    variant={'whitePrimary'}
+                    size="md"
+                    borderRadius={'md'}
+                    onClick={onOpenTransferModal}
+                  >
+                    {t('account_team:transfer_team_ownership')}
+                  </Button>
+                )}
+              {userInfo?.team.permission.hasManagePer && !isSyncMode && !isWecomTeam && (
+                <Button
+                  w={['100%', 'auto']}
+                  flex={['1 1 0', 'initial']}
+                  variant={'primary'}
+                  size="md"
+                  borderRadius={'md'}
+                  leftIcon={<MyIcon name="common/inviteLight" w={'16px'} color={'white'} />}
+                  onClick={onOpenInvite}
+                >
+                  {t('account_team:user_team_invite_member')}
+                </Button>
+              )}
+            </HStack>
           )}
           {userInfo?.team.permission.isOwner && isSyncMode && (
             <Button
@@ -285,120 +295,125 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
       </Flex>
 
       <MyBox isLoading={isLoading} flex={['0 0 auto', '1 0 0']} h={['auto', 0]} minH={0}>
-        <MemberScrollData px={6} h={['auto', '100%']} overflowY={['visible', 'auto']}>
-          <TableContainer overflow={'unset'} fontSize={'sm'}>
-            <Table overflow={'unset'}>
-              <Thead>
-                <Tr bgColor={'white !important'}>
-                  <Th borderLeftRadius="6px" bgColor="myGray.100">
-                    {t('account_team:user_name')}
-                  </Th>
-                  <Th bgColor="myGray.100">{t('common:contact_way')}</Th>
-                  <Th bgColor="myGray.100" pl={9}>
-                    {t('account_team:org')}
-                  </Th>
-                  <Th bgColor="myGray.100">{t('account_team:join_update_time')}</Th>
-                  <Th borderRightRadius="6px" bgColor="myGray.100">
-                    {t('common:Action')}
-                  </Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {members.map((member) => (
-                  <Tr key={member.tmbId} overflow={'unset'}>
-                    <Td>
-                      <HStack>
-                        <Avatar src={member.avatar} w={['18px', '22px']} borderRadius={'50%'} />
-                        <Box className={'textEllipsis'}>
-                          {member.memberName}
-                          {member.status !== 'active' && (
-                            <Tag ml="2" colorSchema="gray" bg={'myGray.100'} color={'myGray.700'}>
-                              {member.status === 'forbidden'
-                                ? t('account_team:forbidden')
-                                : t('account_team:leave')}
-                            </Tag>
-                          )}
-                        </Box>
-                      </HStack>
-                    </Td>
-                    <Td maxW={'300px'}>{member.contact || '-'}</Td>
-                    <Td maxWidth="300px">
-                      {(() => {
-                        return <OrgTags orgs={member.orgs || undefined} type="tag" />;
-                      })()}
-                    </Td>
-                    <Td maxW={'300px'}>
-                      <VStack gap={0} align="start">
-                        <Box>{format(new Date(member.createTime), 'yyyy-MM-dd HH:mm:ss')}</Box>
-                        <Box>
-                          {member.updateTime
-                            ? format(new Date(member.updateTime), 'yyyy-MM-dd HH:mm:ss')
-                            : '-'}
-                        </Box>
-                      </VStack>
-                    </Td>
-                    <Td>
-                      {userInfo?.team.permission.hasManagePer &&
-                        member.role !== TeamMemberRoleEnum.owner &&
-                        member.tmbId !== userInfo?.team.tmbId &&
-                        (member.status === TeamMemberStatusEnum.active ? (
-                          <HStack>
-                            <MyIconButton
-                              icon={'edit'}
-                              size="1rem"
-                              hoverColor={'blue.500'}
-                              onClick={() => handleEditMemberName(member.tmbId, member.memberName)}
-                            />
-                            <PopoverConfirm
-                              Trigger={
-                                <Box>
-                                  <MyIconButton
-                                    icon={'common/trash'}
-                                    hoverColor={'red.500'}
-                                    hoverBg="red.50"
-                                    size={'1rem'}
-                                  />
-                                </Box>
-                              }
-                              type="delete"
-                              content={
-                                isSyncMode
-                                  ? t('account_team:forbidden_tip', {
-                                      username: member.memberName
-                                    })
-                                  : t('account_team:remove_tip', {
-                                      username: member.memberName
-                                    })
-                              }
-                              onConfirm={() => onRemoveMember(member.tmbId)}
-                            />
-                          </HStack>
-                        ) : (
+        <FixedTableContainer
+          scrollContainer={MemberScrollContainer}
+          maxH="none"
+          minH={0}
+          px={4}
+          h={['60dvh', '100%']}
+          fontSize={'sm'}
+        >
+          <Table overflow={'unset'}>
+            <Thead>
+              <Tr bgColor={'white !important'}>
+                <Th borderLeftRadius="6px" bgColor="myGray.100">
+                  {t('account_team:user_name')}
+                </Th>
+                <Th bgColor="myGray.100">{t('common:contact_way')}</Th>
+                <Th bgColor="myGray.100" pl={9}>
+                  {t('account_team:org')}
+                </Th>
+                <Th bgColor="myGray.100">{t('account_team:join_update_time')}</Th>
+                <Th borderRightRadius="6px" bgColor="myGray.100">
+                  {t('common:Action')}
+                </Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {members.map((member) => (
+                <Tr key={member.tmbId} overflow={'unset'}>
+                  <Td>
+                    <HStack>
+                      <Avatar src={member.avatar} w={['18px', '22px']} borderRadius={'50%'} />
+                      <Box className={'textEllipsis'}>
+                        {member.memberName}
+                        {member.status !== 'active' && (
+                          <Tag ml="2" colorSchema="gray" bg={'myGray.100'} color={'myGray.700'}>
+                            {member.status === 'forbidden'
+                              ? t('account_team:forbidden')
+                              : t('account_team:leave')}
+                          </Tag>
+                        )}
+                      </Box>
+                    </HStack>
+                  </Td>
+                  <Td maxW={'300px'}>{member.contact || '-'}</Td>
+                  <Td maxWidth="300px">
+                    {(() => {
+                      return <OrgTags orgs={member.orgs || undefined} type="tag" />;
+                    })()}
+                  </Td>
+                  <Td maxW={'300px'}>
+                    <VStack gap={0} align="start">
+                      <Box>{format(new Date(member.createTime), 'yyyy-MM-dd HH:mm:ss')}</Box>
+                      <Box>
+                        {member.updateTime
+                          ? format(new Date(member.updateTime), 'yyyy-MM-dd HH:mm:ss')
+                          : '-'}
+                      </Box>
+                    </VStack>
+                  </Td>
+                  <Td>
+                    {userInfo?.team.permission.hasManagePer &&
+                      member.role !== TeamMemberRoleEnum.owner &&
+                      member.tmbId !== userInfo?.team.tmbId &&
+                      (member.status === TeamMemberStatusEnum.active ? (
+                        <HStack>
+                          <MyIconButton
+                            icon={'edit'}
+                            size="1rem"
+                            hoverColor={'blue.500'}
+                            onClick={() => handleEditMemberName(member.tmbId, member.memberName)}
+                          />
                           <PopoverConfirm
                             Trigger={
-                              <Box display={'inline-block'}>
+                              <Box>
                                 <MyIconButton
-                                  icon={'common/confirm/restoreTip'}
+                                  icon={'common/trash'}
+                                  hoverColor={'red.500'}
+                                  hoverBg="red.50"
                                   size={'1rem'}
-                                  hoverColor={'primary.500'}
                                 />
                               </Box>
                             }
-                            type="info"
-                            content={t('account_team:restore_tip', {
-                              username: member.memberName
-                            })}
-                            onConfirm={() => onRestore(member.tmbId)}
+                            type="delete"
+                            content={
+                              isSyncMode
+                                ? t('account_team:forbidden_tip', {
+                                    username: member.memberName
+                                  })
+                                : t('account_team:remove_tip', {
+                                    username: member.memberName
+                                  })
+                            }
+                            onConfirm={() => onRemoveMember(member.tmbId)}
                           />
-                        ))}
-                    </Td>
-                  </Tr>
-                ))}
-              </Tbody>
-            </Table>
-            <EditMemberNameModal size="sm" />
-          </TableContainer>
-        </MemberScrollData>
+                        </HStack>
+                      ) : (
+                        <PopoverConfirm
+                          Trigger={
+                            <Box display={'inline-block'}>
+                              <MyIconButton
+                                icon={'common/confirm/restoreTip'}
+                                size={'1rem'}
+                                hoverColor={'primary.500'}
+                              />
+                            </Box>
+                          }
+                          type="info"
+                          content={t('account_team:restore_tip', {
+                            username: member.memberName
+                          })}
+                          onConfirm={() => onRestore(member.tmbId)}
+                        />
+                      ))}
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+          <EditMemberNameModal size="sm" maxLength={20} />
+        </FixedTableContainer>
       </MyBox>
 
       {isOpenInvite && userInfo?.team?.teamId && <InviteModal onClose={onCloseInvite} />}

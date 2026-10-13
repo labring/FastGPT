@@ -1,13 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { loadLocaleResource, clearLocaleResourceFailure } = vi.hoisted(() => ({
-  loadLocaleResource: vi.fn(),
-  clearLocaleResourceFailure: vi.fn()
+const { loadLocaleResourceWithRetry } = vi.hoisted(() => ({
+  loadLocaleResourceWithRetry: vi.fn()
 }));
 
 vi.mock('@fastgpt/web/i18n/resourceLoaders', () => ({
-  loadLocaleResource,
-  clearLocaleResourceFailure
+  loadLocaleResourceWithRetry
 }));
 
 import dynamicImportBackend from '@fastgpt/web/i18n/dynamicImportBackend';
@@ -29,16 +27,15 @@ describe('dynamicImportBackend.read', () => {
 
   it('returns a loaded language resource', async () => {
     const resource = { Confirm: '확인' };
-    loadLocaleResource.mockResolvedValue(resource);
+    loadLocaleResourceWithRetry.mockResolvedValue(resource);
 
     await expect(readResource('ko-KR', 'common')).resolves.toBe(resource);
-    expect(loadLocaleResource).toHaveBeenCalledOnce();
-    expect(clearLocaleResourceFailure).not.toHaveBeenCalled();
+    expect(loadLocaleResourceWithRetry).toHaveBeenCalledOnce();
   });
 
   it('reuses the in-flight request for the same language and namespace', async () => {
     let resolveLoad: ((resource: Record<string, string>) => void) | undefined;
-    loadLocaleResource.mockImplementation(
+    loadLocaleResourceWithRetry.mockImplementation(
       () =>
         new Promise((resolve) => {
           resolveLoad = resolve;
@@ -53,24 +50,12 @@ describe('dynamicImportBackend.read', () => {
       { Confirm: '确认' },
       { Confirm: '确认' }
     ]);
-    expect(loadLocaleResource).toHaveBeenCalledOnce();
-  });
-
-  it('retries three times after the initial load and then succeeds', async () => {
-    loadLocaleResource
-      .mockRejectedValueOnce(new Error('first failure'))
-      .mockRejectedValueOnce(new Error('second failure'))
-      .mockRejectedValueOnce(new Error('third failure'))
-      .mockResolvedValue({ Confirm: '確認' });
-
-    await expect(readResource('zh-Hant', 'common')).resolves.toEqual({ Confirm: '確認' });
-    expect(loadLocaleResource).toHaveBeenCalledTimes(4);
-    expect(clearLocaleResourceFailure).toHaveBeenCalledTimes(3);
+    expect(loadLocaleResourceWithRetry).toHaveBeenCalledOnce();
   });
 
   it('returns a typed load error after all retries fail', async () => {
     const cause = new Error('chunk unavailable');
-    loadLocaleResource.mockRejectedValue(cause);
+    loadLocaleResourceWithRetry.mockRejectedValue(cause);
 
     await expect(readResource('en', 'common')).rejects.toMatchObject({
       name: 'ClientI18nLoadError',
@@ -78,7 +63,6 @@ describe('dynamicImportBackend.read', () => {
       namespace: 'common',
       cause
     } satisfies Partial<ClientI18nLoadError>);
-    expect(loadLocaleResource).toHaveBeenCalledTimes(4);
-    expect(clearLocaleResourceFailure).toHaveBeenCalledTimes(3);
+    expect(loadLocaleResourceWithRetry).toHaveBeenCalledOnce();
   });
 });

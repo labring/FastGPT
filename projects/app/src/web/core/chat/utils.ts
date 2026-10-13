@@ -1,7 +1,3 @@
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { getWebLLMModel } from '@/web/common/system/utils';
 import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { useMemo } from 'react';
@@ -253,25 +249,3 @@ export const hasChatAuthTargetInput = (
 
 export const getAppIdFromChatTarget = (target: ChatTargetInputType) =>
   'appId' in target ? target.appId : undefined;
-
-export function checkChatSupportSelectFileByChatModels(models: string[] = []) {
-  for (const model of models) {
-    const modelData = getWebLLMModel(model);
-    if (modelData?.vision) {
-      return true;
-    }
-  }
-  return false;
-}
-
-export function checkChatSupportSelectFileByModules(modules: StoreNodeItemType[] = []) {
-  const chatModules = modules.filter(
-    (item) =>
-      item.flowNodeType === FlowNodeTypeEnum.chatNode ||
-      item.flowNodeType === FlowNodeTypeEnum.toolCall
-  );
-  const models: string[] = chatModules.map(
-    (item) => item.inputs.find((item) => item.key === 'model')?.value || ''
-  );
-  return checkChatSupportSelectFileByChatModels(models);
-}

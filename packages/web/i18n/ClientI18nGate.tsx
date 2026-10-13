@@ -8,8 +8,7 @@ import {
   persistLanguagePreference
 } from './utils';
 import { changeLanguageAtomically } from './atomicLanguageChange';
-
-const BASE_NAMESPACE = 'common';
+import { I18N_NAMESPACES } from './constants';
 
 type ClientI18nGateProps = {
   defaultLanguage: string;
@@ -24,13 +23,14 @@ const ClientI18nGate = ({
   fallback,
   children
 }: ClientI18nGateProps) => {
-  const { i18n } = useTranslation();
+  // 门禁只订阅语言状态；完整资源由下方统一加载，避免默认 common 的独立请求。
+  const { i18n } = useTranslation([]);
   const language = getLangMapping(getClientLanguagePreference(storageKey) || defaultLanguage);
   const requiredLanguages = useMemo(() => getRequiredI18nLanguages(language), [language]);
   const ready =
     i18n.language === language &&
     requiredLanguages.every((requiredLanguage) =>
-      i18n.hasResourceBundle(requiredLanguage, BASE_NAMESPACE)
+      I18N_NAMESPACES.every((namespace) => i18n.hasResourceBundle(requiredLanguage, namespace))
     );
   const [, setLoadedLanguage] = useState<string>();
   const [loadError, setLoadError] = useState<{ language: string; error: unknown }>();
@@ -51,8 +51,7 @@ const ClientI18nGate = ({
     changeLanguageAtomically({
       i18n,
       language,
-      storageKey,
-      namespaces: [BASE_NAMESPACE]
+      storageKey
     })
       .then(() => {
         if (!active) return;

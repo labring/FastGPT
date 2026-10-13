@@ -1,0 +1,83 @@
+import ChannelStatusTag from './ChannelStatusTag';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import type { ModelChannelSummary } from '@fastgpt/global/openapi/core/ai/model/api';
+import { Box, HStack, VStack } from '@chakra-ui/react';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+
+/** 展示模型关联的渠道数量，并在悬浮时列出具体渠道。 */
+const ModelChannelCount = ({
+  channels,
+  onClick
+}: {
+  channels: ModelChannelSummary[];
+  onClick?: () => void;
+}) => {
+  const { t, i18n } = useSafeTranslation();
+  const label =
+    channels.length > 0
+      ? t('config_model:channel_count', { count: channels.length })
+      : t('config_model:no_channel_configured');
+  const trigger = (
+    <Box
+      data-row-action
+      display="inline-flex"
+      alignItems="center"
+      gap={2}
+      p={1}
+      borderRadius="md"
+      whiteSpace="nowrap"
+      cursor={onClick ? 'pointer' : 'default'}
+      _hover={{ bg: 'myGray.50', color: 'primary.700' }}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={(event) => {
+        if (!onClick || (event.key !== 'Enter' && event.key !== ' ')) return;
+        event.preventDefault();
+        onClick();
+      }}
+    >
+      <MyIcon name="common/link" w="14px" />
+      <Box>{label}</Box>
+    </Box>
+  );
+
+  if (channels.length === 0) return trigger;
+
+  return (
+    <MyPopover
+      trigger="hover"
+      closeOnTriggerLeave
+      placement="bottom"
+      hasArrow
+      Trigger={trigger}
+      w="360px"
+      maxW="calc(100vw - 32px)"
+      p={5}
+      borderRadius="lg"
+      boxShadow="lg"
+    >
+      {() => (
+        <VStack alignItems="stretch" spacing={3} maxH="280px" overflowY="auto">
+          {channels.map((channel) => (
+            <HStack key={channel.id} spacing={3}>
+              <Box w="110px" flexShrink={0} noOfLines={1}>
+                {channel.name}
+              </Box>
+              <HStack flex={1} minW={0}>
+                <Avatar src={channel.protocol.avatar} w="18px" />
+                <Box noOfLines={1}>{parseI18nString(channel.protocol.name, i18n.language)}</Box>
+              </HStack>
+              <ChannelStatusTag status={channel.status} flexShrink={0} />
+            </HStack>
+          ))}
+        </VStack>
+      )}
+    </MyPopover>
+  );
+};
+
+export default ModelChannelCount;

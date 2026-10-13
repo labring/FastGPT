@@ -1,4 +1,5 @@
 import z from 'zod';
+import { JsonValueOpenApiMeta, OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { StoreSecretValueTypeSchema } from '../../../../common/secret/type';
 import { CreateAppBodySchema } from '../common/api';
@@ -11,7 +12,7 @@ import { HttpToolTypeEnum } from '../../../../core/app/tool/httpTool/constants';
  * ============================================================================ */
 export const CreateHttpToolsBodySchema = CreateAppBodySchema.omit({
   type: true,
-  modules: true,
+  nodes: true,
   edges: true,
   chatConfig: true
 })
@@ -93,6 +94,7 @@ export const GetApiSchemaByUrlBodySchema = z
 export type GetApiSchemaByUrlBodyType = z.infer<typeof GetApiSchemaByUrlBodySchema>;
 
 export const GetApiSchemaByUrlResponseSchema = z.any().meta({
+  ...OpenObjectOpenApiMeta,
   description: '解析后的 OpenAPI Schema 对象'
 });
 export type GetApiSchemaByUrlResponseType = z.infer<typeof GetApiSchemaByUrlResponseSchema>;
@@ -103,6 +105,10 @@ export type GetApiSchemaByUrlResponseType = z.infer<typeof GetApiSchemaByUrlResp
  * ============================================================================ */
 export const RunHttpToolBodySchema = z
   .object({
+    apiSchemaStr: z.string().optional().meta({
+      description: '导入工具的 OpenAPI 原文，用于恢复请求参数位置；手动工具不传',
+      example: '{"openapi":"3.0.0","paths":{}}'
+    }),
     params: z.record(z.string(), z.any()).meta({
       example: { query: 'hello' },
       description: '工具调用参数'
@@ -152,9 +158,13 @@ export type RunHttpToolBodyType = z.infer<typeof RunHttpToolBodySchema>;
 
 export const RunHttpToolResponseSchema = z
   .object({
-    data: z.any().optional().meta({
-      description: '工具调用返回结果'
-    }),
+    data: z
+      .any()
+      .optional()
+      .meta({
+        ...JsonValueOpenApiMeta,
+        description: '工具调用返回结果'
+      }),
     errorMsg: z.string().optional().meta({
       example: '请求失败',
       description: '错误信息'

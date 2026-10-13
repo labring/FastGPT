@@ -10,6 +10,7 @@ import { getTeamPluginSource } from '@fastgpt/global/core/app/tool/utils';
 import { TeamManagePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
+  assertTeamPluginInstallEnabled,
   assertTeamPluginSourceReady,
   getRawPluginIdFromSystemToolId,
   upsertTeamInstalledPluginPolicy
@@ -24,9 +25,7 @@ export type ConfirmTeamUploadPkgPluginResponse = TeamPkgEmptyResponseType;
 async function handler(
   req: ApiRequestProps<ConfirmTeamUploadPkgPluginBody>
 ): Promise<ConfirmTeamUploadPkgPluginResponse> {
-  if (global.feConfigs.enable_team_plugin_upload === false) {
-    return Promise.reject('Team plugin upload is disabled');
-  }
+  assertTeamPluginInstallEnabled();
 
   const {
     body: { toolIds }

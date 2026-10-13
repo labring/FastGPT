@@ -22,6 +22,8 @@ const TrainingErrorModal = ({
       onClose={onClose}
       title={t('dataset:training_error_list')}
       size={'lg'}
+      h={'100%'}
+      bodyStyles={{ overflow: 'hidden' }}
       isCentered
       borderRadius={'10px'}
       sx={{

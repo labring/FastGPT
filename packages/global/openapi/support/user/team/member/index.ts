@@ -79,7 +79,8 @@ export const TeamMemberPath: OpenAPIPath = {
   '/proApi/support/user/team/member/list': {
     post: {
       summary: '获取团队成员列表',
-      description: '分页获取当前团队成员，支持状态、关键词、组织和成员组筛选',
+      description:
+        '分页获取当前团队成员，支持状态、关键词、组织、成员组和指定成员 ID 筛选，可将当前登录成员置顶',
       tags: [...TeamMemberTags],
       requestBody: {
         content: {

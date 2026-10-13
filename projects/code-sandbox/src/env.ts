@@ -46,9 +46,13 @@ export const env = createEnv({
 
     // ===== 进程池 =====
     /** 进程池大小（预热 worker 数量） */
-    SANDBOX_POOL_SIZE: IntSchema.min(1).max(100).default(20),
+    SANDBOX_POOL_SIZE: IntSchema.min(1).max(100).default(5),
     /** 同一 queueId 同时可进入执行流程的请求数；为空时不启用 queueId 排队 */
     SANDBOX_QUEUE_ID_CONCURRENCY: IntSchema.min(1).max(100).optional(),
+
+    // ===== OS 隔离 =====
+    /** 仅用于不支持应用内 seccomp 的内核；chroot 和 UID/GID 降权仍保持启用 */
+    SANDBOX_DISABLE_SECCOMP: BoolSchema.default(false),
 
     // ===== 资源限制 =====
     SANDBOX_API_MAX_BODY_MB: IntSchema.min(1).max(100).default(8),

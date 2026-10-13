@@ -1,7 +1,13 @@
-import React, { useMemo, useState } from 'react';
-import { Box, Grid, IconButton, HStack, Flex, VStack } from '@chakra-ui/react';
+import React, { useMemo, useRef, useState } from 'react';
+import { Box, Grid, IconButton, HStack, Flex, VStack, Checkbox } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { delAppById, putAppById, resumeInheritPer, changeOwner } from '@/web/core/app/api';
+import {
+  batchMoveApps,
+  delAppById,
+  putAppById,
+  resumeInheritPer,
+  changeOwner
+} from '@/web/core/app/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -26,6 +32,7 @@ import { getCollaboratorList, postUpdateAppCollaborators } from '@/web/core/app/
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import AppTypeTag from './TypeTag';
 import { postCopyApp } from '@/web/core/app/api/app';
+import ReferencedAppsPopover from '@/pageComponents/dashboard/ReferencedAppsPopover';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
@@ -35,16 +42,31 @@ import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { createAppTypeMap } from '@/pageComponents/app/constants';
+import { getDashboardAppListScene } from './utils/appListTypes';
+import { getResourceListDisplayTime, hasAppListActiveFilter } from './filters/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
 import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { getGridPageSize } from '@fastgpt/web/hooks/useResponsiveGridPageSize';
+import ResourceCardSkeleton from '@/pageComponents/dashboard/ResourceCardSkeleton';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
 
+/** 未指定类型时，Agent 页默认建工作流，其余页面默认建工作流工具。 */
+const resolveCreateAppType = (appType: AppTypeEnum | 'all', pathname: string) => {
+  if (appType !== 'all' && appType in createAppTypeMap) {
+    return createAppTypeMap[appType as keyof typeof createAppTypeMap].type;
+  }
+  return getDashboardAppListScene(pathname) === 'agent'
+    ? AppTypeEnum.workflow
+    : AppTypeEnum.workflowTool;
+};
+
 const List = () => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const router = useRouter();
   const { parentId = null } = router.query;
   const { isPc } = useSystem();
@@ -59,28 +81,51 @@ const List = () => {
 
   const {
     myApps,
+    ScrollData,
     appType,
     loadMyApps,
     isFetchingApps,
+    isEmpty,
     onUpdateApp,
     setMoveAppId,
     folderDetail,
     searchKey,
-    setSearchKey
+    setSearchKey,
+    listFilters,
+    columnCount,
+    pageSize,
+    isBatchMode,
+    selectedAppIds,
+    onToggleSelectApp
   } = useContextSelector(AppListContext, (v) => v);
 
   const hasCreatePer = folderDetail
     ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
     : userInfo?.team.permission.hasAppCreatePer;
+  const hasActiveFilter = hasAppListActiveFilter({
+    searchKey,
+    type: appType,
+    creatorMode: listFilters.creator.mode,
+    applyToolbarFilters: isPc
+  });
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
   const [editPerAppId, setEditPerAppId] = useState<string>();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isInitialLoading = !isEmpty && myApps.length === 0 && isFetchingApps;
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: myApps,
-    listKey: `${router.pathname}-${appType}-${parentId || ''}-${searchKey}`,
-    reservedSlotCount: 1,
+    listKey: `${router.pathname}-${appType}-${parentId || ''}-${searchKey}-${listFilters.type}-${listFilters.creator.mode}-${listFilters.creator.tmbIds.join(',')}-${listFilters.sort}-${columnCount}-${pageSize}-${isInitialLoading}-${isBatchMode}`,
+    scrollContainerRef,
+    reservedSlotCount: isInitialLoading || isBatchMode ? 0 : 1,
     estimatedRowHeight: 160,
-    estimatedRowGap: 20
+    estimatedRowGap: 20,
+    loadingItemCount: isFetchingApps
+      ? isInitialLoading
+        ? getGridPageSize(columnCount)
+        : pageSize
+      : 0,
+    renderLoadingItem: () => <ResourceCardSkeleton />
   });
 
   const editPerApp = useMemo(
@@ -104,7 +149,12 @@ const List = () => {
       borderColor: 'primary.600'
     },
     onDrop: (dragId: string, targetId: string) => {
-      openMoveConfirm({ onConfirm: async () => onPutAppById(dragId, { parentId: targetId }) })();
+      openMoveConfirm({
+        onConfirm: async () => {
+          await batchMoveApps({ ids: [dragId], parentId: targetId });
+          await loadMyApps();
+        }
+      })();
     }
   });
 
@@ -156,33 +206,66 @@ const List = () => {
     }
   );
   const renderAppCard = (app: (typeof myApps)[number]) => {
+    const displayTime = getResourceListDisplayTime({
+      sort: listFilters.sort,
+      createTime: app.createTime,
+      updateTime: app.updateTime
+    });
     const isAgent = AppTypeList.includes(app.type);
     const isTool = ToolTypeList.includes(app.type);
     const isFolder = AppFolderTypeList.includes(app.type);
+    const isSelected = selectedAppIds.includes(app._id);
+    const canBatchOperate = Boolean(app.permission?.hasManagePer || app.permission?.isOwner);
+
     return (
       <MyBox
         key={app._id}
         data-virtual-item=""
-        py={4}
+        pt={5}
+        pb={3}
         px={5}
-        cursor={'pointer'}
-        border={'base'}
-        bg={'white'}
+        cursor={isBatchMode ? (canBatchOperate ? 'pointer' : 'not-allowed') : 'pointer'}
+        border={'1px solid'}
+        borderColor={isBatchMode && isSelected ? 'primary.600 !important' : 'myGray.200'}
+        bg={isBatchMode && isSelected ? 'primary.50' : 'white'}
         borderRadius={'10px'}
         position={'relative'}
         display={'flex'}
         flexDirection={'column'}
-        _hover={{
-          borderColor: 'primary.300',
-          boxShadow: '1.5',
-          '& .more': {
-            display: 'flex'
-          },
-          '& .time': {
-            display: ['flex', 'none']
-          }
-        }}
+        _hover={
+          isBatchMode
+            ? {
+                borderColor: canBatchOperate
+                  ? isSelected
+                    ? 'primary.600'
+                    : 'primary.300'
+                  : 'myGray.200',
+                boxShadow: canBatchOperate ? '1.5' : undefined,
+                '& .time': {
+                  display: 'flex !important'
+                },
+                '& .more': {
+                  display: 'none !important'
+                }
+              }
+            : {
+                borderColor: 'primary.300',
+                boxShadow: '1.5',
+                '& .more': {
+                  display: 'flex'
+                },
+                '& .time': {
+                  display: ['flex', 'none']
+                }
+              }
+        }
         onClick={() => {
+          if (isBatchMode) {
+            if (canBatchOperate) {
+              onToggleSelectApp(app._id);
+            }
+            return;
+          }
           if (AppFolderTypeList.includes(app.type)) {
             setSearchKey('');
             router.push({
@@ -200,10 +283,11 @@ const List = () => {
             );
           }
         }}
-        {...getBoxProps({
-          dataId: app._id,
-          isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.toolFolder
-        })}
+        {...(!isBatchMode &&
+          getBoxProps({
+            dataId: app._id,
+            isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.toolFolder
+          }))}
       >
         <Grid templateColumns="auto 1fr auto" alignItems="center" width="100%" gap={2}>
           <Avatar src={app.avatar} borderRadius={'sm'} w={'1.5rem'} />
@@ -212,8 +296,28 @@ const List = () => {
               <Box className={'textEllipsis'}>{app.name}</Box>
             </MyTooltip>
           </Box>
-          <Box justifySelf="end" mr={-5}>
-            <AppTypeTag type={app.type} />
+          <Box justifySelf="end">
+            {isBatchMode ? (
+              canBatchOperate ? (
+                <Checkbox size={'sm'} isChecked={isSelected} pointerEvents={'none'} />
+              ) : (
+                <MyTooltip label={t('common:read_only_no_batch_permission')}>
+                  <Box
+                    w={'16px'}
+                    h={'16px'}
+                    borderRadius={'xs'}
+                    border={'1px solid'}
+                    borderColor={'#CECECE'}
+                    bg={'#F9F9F9'}
+                    cursor={'not-allowed'}
+                  />
+                </MyTooltip>
+              )
+            ) : (
+              <Box mr={-5}>
+                <AppTypeTag type={app.type} />
+              </Box>
+            )}
           </Box>
         </Grid>
         <Box
@@ -242,14 +346,22 @@ const List = () => {
               iconColor={'myGray.400'}
               w={'0.875rem'}
             />
+            {typeof app.relatedAppCount === 'number' && (
+              <ReferencedAppsPopover
+                resourceId={app._id}
+                resourceType={
+                  getDashboardAppListScene(router.pathname) === 'tool' ? 'tool' : 'agent'
+                }
+                count={app.relatedAppCount}
+                trigger={'hover'}
+              />
+            )}
           </HStack>
           <HStack>
             {isPc && (
               <HStack spacing={0.5} className="time">
                 <MyIcon name={'history'} w={'0.85rem'} color={'myGray.400'} />
-                <Box color={'myGray.500'}>
-                  {t(formatTimeToChatTime(app.updateTime) as any).replace('#', ':')}
-                </Box>
+                <Box color={'myGray.500'}>{t(formatTimeToChatTime(displayTime))}</Box>
               </HStack>
             )}
             {(AppFolderTypeList.includes(app.type)
@@ -410,91 +522,114 @@ const List = () => {
     );
   };
 
-  if (myApps.length === 0 && isFetchingApps) return null;
-
   return (
-    <>
-      {myApps.length === 0 && !folderDetail ? (
-        searchKey ? (
-          <EmptyTip />
-        ) : isPc && hasCreatePer ? (
-          <CreateButton appType={appType} />
-        ) : (
-          <Grid
-            py={4}
-            gridTemplateColumns={
-              folderDetail
-                ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
-                : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
-            }
-            gridGap={5}
-            alignItems={'stretch'}
-          >
-            {hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />}
-          </Grid>
-        )
-      ) : (
-        <>
+    <ScrollData
+      ScrollContainerRef={scrollContainerRef}
+      h={'full'}
+      minH={0}
+      pr={folderDetail ? [3, 2] : [3, 6]}
+      mr={folderDetail ? [-3, -2] : [-3, -6]}
+      showLoadingOverlay={false}
+    >
+      <>
+        {isInitialLoading ? (
           <Grid
             ref={gridRef}
             py={4}
             gridTemplateColumns={
-              folderDetail
+              parentId
                 ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
                 : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
             }
             gridGap={5}
             alignItems={'stretch'}
           >
-            {hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />}
             {renderVirtualGridItems(renderAppCard)}
           </Grid>
-        </>
-      )}
-      <DeleteConfirmModal />
-      <ConfirmCopyModal />
-      {!!editedApp && (
-        <EditResourceModal
-          {...editedApp}
-          title={t('common:core.app.edit_content')}
-          onClose={() => {
-            setEditedApp(undefined);
-          }}
-          onEdit={({ id, ...data }) => onUpdateApp(id, data)}
-        />
-      )}
-      {!!editPerApp && (
-        <ConfigPerModal
-          {...(editPerApp.permission.isOwner && {
-            onChangeOwner: (tmbId: string) =>
-              changeOwner({
-                appId: editPerApp._id,
-                ownerId: tmbId
-              }).then(() => loadMyApps())
-          })}
-          refetchResource={loadMyApps}
-          hasParent={Boolean(parentId)}
-          resumeInheritPermission={onResumeInheritPermission}
-          isInheritPermission={editPerApp.inheritPermission}
-          avatar={editPerApp.avatar}
-          name={editPerApp.name}
-          managePer={{
-            defaultRole: ReadRoleVal,
-            permission: editPerApp.permission,
-            onGetCollaboratorList: () => getCollaboratorList(editPerApp._id),
-            roleList: AppRoleList,
-            onUpdateCollaborators: (props) =>
-              postUpdateAppCollaborators({
-                ...props,
-                appId: editPerApp._id
-              }),
-            refreshDeps: [editPerApp.inheritPermission]
-          }}
-          onClose={() => setEditPerAppId(undefined)}
-        />
-      )}
-      <MoveConfirmModal />
-    </>
+        ) : isEmpty && !folderDetail ? (
+          hasActiveFilter || isBatchMode ? (
+            <EmptyTip />
+          ) : isPc && hasCreatePer ? (
+            <CreateButton appType={appType} />
+          ) : (
+            <Grid
+              py={4}
+              gridTemplateColumns={
+                parentId
+                  ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
+                  : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
+              }
+              gridGap={5}
+              alignItems={'stretch'}
+            >
+              {!isBatchMode &&
+                (hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />)}
+            </Grid>
+          )
+        ) : (
+          <>
+            <Grid
+              ref={gridRef}
+              py={4}
+              gridTemplateColumns={
+                parentId
+                  ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
+                  : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
+              }
+              gridGap={5}
+              alignItems={'stretch'}
+            >
+              {!isBatchMode &&
+                (hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />)}
+              {renderVirtualGridItems(renderAppCard)}
+            </Grid>
+          </>
+        )}
+        <DeleteConfirmModal />
+        <ConfirmCopyModal />
+        {!!editedApp && (
+          <EditResourceModal
+            {...editedApp}
+            title={t('common:core.app.edit_content')}
+            onClose={() => {
+              setEditedApp(undefined);
+            }}
+            onEdit={({ id, ...data }) => onUpdateApp(id, data)}
+          />
+        )}
+        {!!editPerApp && (
+          <ConfigPerModal
+            {...(editPerApp.permission.isOwner && {
+              onChangeOwner: (tmbId: string) =>
+                changeOwner({
+                  appId: editPerApp._id,
+                  ownerId: tmbId
+                }).then(() => loadMyApps())
+            })}
+            refetchResource={loadMyApps}
+            hasParent={Boolean(parentId)}
+            resumeInheritPermission={onResumeInheritPermission}
+            isInheritPermission={editPerApp.inheritPermission}
+            avatar={editPerApp.avatar}
+            name={editPerApp.name}
+            managePer={{
+              defaultRole: ReadRoleVal,
+              permission: editPerApp.permission,
+              onGetCollaboratorList: () => getCollaboratorList(editPerApp._id),
+              roleList: AppRoleList,
+              onUpdateCollaborators: (props) =>
+                postUpdateAppCollaborators({
+                  ...props,
+                  appId: editPerApp._id
+                }),
+              refreshDeps: [editPerApp.inheritPermission]
+            }}
+            onClose={() => setEditPerAppId(undefined)}
+          />
+        )}
+        <MoveConfirmModal />
+      </>
+    </ScrollData>
   );
 };
 
@@ -503,12 +638,7 @@ const CreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   const [isHoverCreateButton, setIsHoverCreateButton] = useState(false);
   const router = useRouter();
   const parentId = router.query.parentId;
-  const createAppType =
-    appType !== 'all' && appType in createAppTypeMap
-      ? createAppTypeMap[appType as keyof typeof createAppTypeMap].type
-      : router.pathname.includes('/agent')
-        ? AppTypeEnum.workflow
-        : AppTypeEnum.workflowTool;
+  const createAppType = resolveCreateAppType(appType, router.pathname);
   const isToolType = ToolTypeList.includes(createAppType);
 
   return (
@@ -577,12 +707,7 @@ const CreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
 const ListCreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
   const router = useRouter();
   const parentId = router.query.parentId;
-  const createAppType =
-    appType !== 'all' && appType in createAppTypeMap
-      ? createAppTypeMap[appType as keyof typeof createAppTypeMap].type
-      : router.pathname.includes('/agent')
-        ? AppTypeEnum.workflow
-        : AppTypeEnum.workflowTool;
+  const createAppType = resolveCreateAppType(appType, router.pathname);
 
   return (
     <ListCreateCard
@@ -598,7 +723,8 @@ const ForbiddenCreateButton = () => {
   const { t } = useTranslation();
   return (
     <MyBox
-      py={4}
+      pt={5}
+      pb={3}
       px={5}
       cursor={'not-allowed'}
       border={'base'}

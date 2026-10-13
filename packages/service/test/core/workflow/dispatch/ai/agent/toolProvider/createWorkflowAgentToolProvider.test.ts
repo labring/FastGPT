@@ -1,14 +1,37 @@
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { createWorkflowAgentToolProvider as createWorkflowAgentToolProviderWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/agent/toolProvider';
 import {
   getWorkflowFileContext,
   runWithContext
 } from '@fastgpt/service/core/workflow/utils/context';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { describe, expect, it, vi } from 'vitest';
 
-const { dispatchWorkflowReadFilesMock, dispatchAgentDatasetSearchMock } = vi.hoisted(() => ({
-  dispatchWorkflowReadFilesMock: vi.fn(),
-  dispatchAgentDatasetSearchMock: vi.fn()
+const { dispatchWorkflowReadFilesMock, dispatchAgentDatasetSearchMock, getLLMModelDataMock } =
+  vi.hoisted(() => ({
+    dispatchWorkflowReadFilesMock: vi.fn(),
+    dispatchAgentDatasetSearchMock: vi.fn(),
+    getLLMModelDataMock: vi.fn(({ modelId, model }) => ({
+      modelId: modelId ?? '68ad85a7463006c963799a42',
+      model: model ?? 'gpt-4',
+      name: model ?? 'gpt-4',
+      config: { maxContext: 128000, maxResponse: 8192, quoteMaxToken: 30000 }
+    }))
+  }));
+
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()),
+  getSystemModelHandle: async () => ({
+    ...(await (
+      await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()
+    ).getSystemModelHandle()),
+    getLLMModelData: getLLMModelDataMock
+  }),
+  getTeamModelHandle: async () => ({
+    ...(await (
+      await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()
+    ).getSystemModelHandle()),
+    getLLMModelData: getLLMModelDataMock
+  })
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/readFiles', () => ({
@@ -65,6 +88,12 @@ const createContext = (overrides: Record<string, any> = {}) =>
     }),
     params: {
       model: 'gpt-4'
+    },
+    modelData: {
+      modelId: '68ad85a7463006c963799a42',
+      model: 'gpt-4',
+      name: 'gpt-4',
+      config: { maxContext: 128000, maxResponse: 8192, quoteMaxToken: 30000 }
     },
     currentFiles: [],
     runningUserInfo: {
@@ -277,7 +306,9 @@ describe('createWorkflowAgentToolProvider', () => {
   });
 
   it('creates dataset search executor and current input files from workflow agent context', async () => {
+    const onToolResult = vi.fn();
     dispatchAgentDatasetSearchMock.mockResolvedValue({
+      nodeSummary: { llmInputTokens: 12, llmOutputTokens: 4 },
       response: 'dataset content',
       usages: [{ moduleName: 'Dataset search', totalPoints: 2 }],
       nodeResponse: {
@@ -285,6 +316,7 @@ describe('createWorkflowAgentToolProvider', () => {
       }
     });
     const provider = createWorkflowAgentToolProvider({
+      onToolResult,
       context: createContext({
         requestOrigin: 'https://fastgpt.example.com',
         currentFiles: [
@@ -327,12 +359,19 @@ describe('createWorkflowAgentToolProvider', () => {
         datasetParams: {
           datasets: [{ datasetId: 'dataset_1' }]
         },
-        llmModel: 'gpt-4',
+        llmModel: expect.objectContaining({
+          modelId: '68ad85a7463006c963799a42',
+          model: 'gpt-4'
+        }),
         userKey: {
           key: 'user-key'
         }
       })
     );
+    expect(onToolResult).toHaveBeenCalledWith({
+      response: 'dataset content',
+      nodeSummary: { llmInputTokens: 12, llmOutputTokens: 4 }
+    });
     expect(result.metadata).toEqual(
       expect.objectContaining({
         id: 'call_dataset',

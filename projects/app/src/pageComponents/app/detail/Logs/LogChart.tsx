@@ -12,7 +12,12 @@ import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
 import type { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
 import DateRangePicker from '@fastgpt/web/components/common/DateRangePicker';
-import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import {
+  MultiSelectFilter,
+  toMultiSelectFilterQuery,
+  type MultiSelectFilterValue,
+  useCommonFilterLabels
+} from '@fastgpt/web/components/common/TagFilter';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { AppContext } from '../context';
@@ -33,6 +38,7 @@ import {
 import dayjs from 'dayjs';
 import LineChartComponent from '@fastgpt/web/components/common/charts/LineChartComponent';
 import BarChartComponent from '@fastgpt/web/components/common/charts/BarChartComponent';
+import { formatTokenCount } from '@fastgpt/global/common/math/tools';
 import { theme } from '@fastgpt/web/styles/theme';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import {
@@ -48,10 +54,8 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 export type HeaderControlProps = {
   appId: string;
   showSourceSelector?: boolean;
-  chatSources: ChatSourceEnum[];
-  setChatSources: (value: ChatSourceEnum[]) => void;
-  isSelectAllSource: boolean;
-  setIsSelectAllSource: React.Dispatch<React.SetStateAction<boolean>>;
+  sourceFilter: MultiSelectFilterValue<ChatSourceEnum>;
+  setSourceFilter: (value: MultiSelectFilterValue<ChatSourceEnum>) => void;
   dateRange: DateRangeType;
   setDateRange: (value: DateRangeType) => void;
   px?: [number, number];
@@ -134,10 +138,8 @@ const generateCompleteTimeSeries = (
 
 const LogChart = ({
   appId,
-  chatSources,
-  setChatSources,
-  isSelectAllSource,
-  setIsSelectAllSource,
+  sourceFilter,
+  setSourceFilter,
   dateRange,
   setDateRange,
   showSourceSelector = true,
@@ -152,6 +154,7 @@ const LogChart = ({
   const [appTimespan, setAppTimespan] = useState<AppLogTimespanEnum>(AppLogTimespanEnum.day);
 
   const [offset, setOffset] = useState<string>(offsetOptions[0].value);
+  const chartSources = useMemo(() => toMultiSelectFilterQuery(sourceFilter), [sourceFilter]);
 
   const { data: chartData, loading } = useRequest(
     async () => {
@@ -160,7 +163,7 @@ const LogChart = ({
         dateStart: dateRange.from || new Date(),
         dateEnd: addDays(dateRange.to || new Date(), 1),
         offset: parseInt(offset),
-        source: chatSources,
+        source: chartSources,
         userTimespan,
         chatTimespan,
         appTimespan
@@ -173,7 +176,7 @@ const LogChart = ({
         dateRange.from,
         dateRange.to,
         offset,
-        chatSources,
+        chartSources,
         userTimespan,
         chatTimespan,
         appTimespan
@@ -232,10 +235,22 @@ const LogChart = ({
             : item.summary.newUserCount,
         retentionUserCount: item.summary.retentionUserCount,
         points: item.summary.points,
+        inputTokens: item.summary.inputTokens || 0,
+        outputTokens: item.summary.outputTokens || 0,
+        totalTokens: (item.summary.inputTokens || 0) + (item.summary.outputTokens || 0),
         sourceCountMap: item.summary.sourceCountMap
       }),
       createDefaultValues(
-        ['userCount', 'newUserCount', 'retentionUserCount', 'points', 'sourceCountMap'],
+        [
+          'userCount',
+          'newUserCount',
+          'retentionUserCount',
+          'points',
+          'inputTokens',
+          'outputTokens',
+          'totalTokens',
+          'sourceCountMap'
+        ],
         {
           sourceCountMap: Object.keys(ChatSourceMap).reduce(
             (acc, key) => ({ ...acc, [key]: 0 }),
@@ -303,7 +318,12 @@ const LogChart = ({
     };
 
     const cumulative = {
-      ...calculateStats(user, { userCount: 'sum', points: 'sum' }),
+      ...calculateStats(user, {
+        userCount: 'sum',
+        points: 'sum',
+        inputTokens: 'sum',
+        outputTokens: 'sum'
+      }),
       ...calculateStats(chat, {
         chatItemCount: 'sum',
         chatCount: 'sum',
@@ -339,10 +359,8 @@ const LogChart = ({
       <HeaderControl
         px={px}
         appId={appId}
-        chatSources={chatSources}
-        setChatSources={setChatSources}
-        isSelectAllSource={isSelectAllSource}
-        setIsSelectAllSource={setIsSelectAllSource}
+        sourceFilter={sourceFilter}
+        setSourceFilter={setSourceFilter}
         dateRange={dateRange}
         setDateRange={setDateRange}
         showSourceSelector={showSourceSelector}
@@ -503,6 +521,60 @@ const LogChart = ({
                   />
                 </Box>
               </Grid>
+              <Box {...chartBoxStyles} mt={5}>
+                <LineChartComponent
+                  data={formatChartData.user}
+                  title={t('app:logs_token_trend')}
+                  lines={[
+                    {
+                      dataKey: 'totalTokens',
+                      name: t('app:logs_total_token'),
+                      color: theme.colors.primary['400']
+                    },
+                    {
+                      dataKey: 'inputTokens',
+                      name: t('app:logs_input_token'),
+                      color: theme.colors.green['400']
+                    },
+                    {
+                      dataKey: 'outputTokens',
+                      name: t('app:logs_output_token'),
+                      color: theme.colors.yellow['400']
+                    }
+                  ]}
+                  tooltipItems={[
+                    {
+                      label: t('app:logs_total_token'),
+                      dataKey: 'totalTokens',
+                      color: theme.colors.primary['400'],
+                      formatter: formatTokenCount
+                    },
+                    {
+                      label: t('app:logs_input_token'),
+                      dataKey: 'inputTokens',
+                      color: theme.colors.green['400'],
+                      formatter: formatTokenCount
+                    },
+                    {
+                      label: t('app:logs_output_token'),
+                      dataKey: 'outputTokens',
+                      color: theme.colors.yellow['400'],
+                      formatter: formatTokenCount
+                    }
+                  ]}
+                  HeaderRightChildren={
+                    <Flex alignItems={'center'} fontSize={'sm'} color={'myGray.600'}>
+                      {t('app:logs_total')}:{' '}
+                      {formatTokenCount(
+                        formatChartData.cumulative.inputTokens +
+                          formatChartData.cumulative.outputTokens
+                      )}
+                    </Flex>
+                  }
+                  blur={!feConfigs?.isPlus}
+                  allowDecimals={false}
+                />
+              </Box>
             </AccordionPanel>
           </AccordionItem>
           <AccordionItem border={'none'} mt={4}>
@@ -763,18 +835,16 @@ const LogChart = ({
 export default React.memo(LogChart);
 
 const HeaderControl = ({
-  chatSources,
-  setChatSources,
-  isSelectAllSource,
-  setIsSelectAllSource,
+  sourceFilter,
+  setSourceFilter,
   dateRange,
   setDateRange,
   showSourceSelector = true,
   px = [4, 8]
 }: HeaderControlProps) => {
   const { t } = useTranslation();
-
-  const sourceList = useMemo(
+  const labels = useCommonFilterLabels();
+  const sourceOptions = useMemo(
     () =>
       Object.entries(ChatSourceMap).map(([key, value]) => ({
         label: t(value.name as any),
@@ -784,49 +854,21 @@ const HeaderControl = ({
   );
 
   return (
-    <Flex flexDir={['column', 'row']} alignItems={['flex-start', 'center']} gap={3} pb={2} px={px}>
+    <Flex flexDir={['column', 'row']} alignItems={'flex-start'} gap={3} pb={2} px={px}>
+      <DateRangePicker
+        defaultDate={dateRange}
+        onSuccess={setDateRange}
+        formLabel={t('app:logs_date')}
+      />
       {showSourceSelector && (
-        <Flex>
-          <MultipleSelect<ChatSourceEnum>
-            list={sourceList}
-            value={chatSources}
-            onSelect={setChatSources}
-            isSelectAll={isSelectAllSource}
-            setIsSelectAll={setIsSelectAllSource}
-            h={10}
-            w={'226px'}
-            bg={'white'}
-            rounded={'8px'}
-            tagStyle={{
-              px: 1,
-              py: 1,
-              borderRadius: 'sm',
-              bg: 'myGray.100',
-              color: 'myGray.900'
-            }}
-            borderColor={'myGray.200'}
-            formLabel={t('app:logs_source')}
-            formLabelFontSize={'sm'}
-          />
-        </Flex>
-      )}
-      <Flex>
-        <DateRangePicker
-          defaultDate={dateRange}
-          onSuccess={(date) => {
-            setDateRange(date);
-          }}
-          bg={'white'}
-          h={10}
-          w={'240px'}
-          rounded={'8px'}
-          borderColor={'myGray.200'}
-          formLabel={t('app:logs_date')}
-          _hover={{
-            borderColor: 'primary.300'
-          }}
+        <MultiSelectFilter
+          title={t('app:logs_source')}
+          value={sourceFilter}
+          onChange={setSourceFilter}
+          options={sourceOptions}
+          labels={labels}
         />
-      </Flex>
+      )}
     </Flex>
   );
 };
@@ -839,7 +881,9 @@ const TotalData = ({ appId }: { appId: string }) => {
     data: totalData = {
       totalUsers: 0,
       totalChats: 0,
-      totalPoints: 0
+      totalPoints: 0,
+      totalInputTokens: 0,
+      totalOutputTokens: 0
     }
   } = useRequest(
     async () => {
@@ -849,7 +893,9 @@ const TotalData = ({ appId }: { appId: string }) => {
       return {
         totalUsers: 455,
         totalChats: 22112,
-        totalPoints: 112233
+        totalPoints: 112233,
+        totalInputTokens: 0,
+        totalOutputTokens: 0
       };
     },
     {
@@ -868,7 +914,8 @@ const TotalData = ({ appId }: { appId: string }) => {
           border: 'primary.200',
           bg: 'primary.50'
         },
-        value: totalData.totalUsers
+        value: totalData.totalUsers,
+        subText: undefined as string | undefined
       },
       {
         label: t('app:logs_total_chat'),
@@ -878,7 +925,8 @@ const TotalData = ({ appId }: { appId: string }) => {
           border: 'green.200',
           bg: 'green.50'
         },
-        value: totalData.totalChats
+        value: totalData.totalChats,
+        subText: undefined as string | undefined
       },
       {
         label: t('app:logs_total_points'),
@@ -888,10 +936,22 @@ const TotalData = ({ appId }: { appId: string }) => {
           border: 'yellow.200',
           bg: 'yellow.50'
         },
-        value: totalData.totalPoints
+        value: totalData.totalPoints,
+        subText: undefined as string | undefined
       }
+      // {
+      //   label: t('app:logs_total_token_consumption'),
+      //   icon: 'support/bill/tokens',
+      //   colorSchema: {
+      //     icon: 'blue.600',
+      //     border: 'blue.200',
+      //     bg: 'blue.50'
+      //   },
+      //   value: (totalData.totalInputTokens || 0) + (totalData.totalOutputTokens || 0),
+      //   subText: `${t('app:logs_input')}${formatTokenCount(totalData.totalInputTokens || 0)} | ${t('app:logs_output')}${formatTokenCount(totalData.totalOutputTokens || 0)}`
+      // }
     ];
-  }, [t, totalData.totalChats, totalData.totalPoints, totalData.totalUsers]);
+  }, [t, totalData]);
 
   return (
     <>
@@ -918,8 +978,15 @@ const TotalData = ({ appId }: { appId: string }) => {
                 color={'myGray.900'}
                 filter={feConfigs?.isPlus ? 'none' : 'blur(7.5px)'}
               >
-                {item.value.toLocaleString()}
+                {item.label === t('app:logs_total_token_consumption')
+                  ? formatTokenCount(item.value)
+                  : item.value.toLocaleString()}
               </Box>
+              {item.subText && (
+                <Box fontSize={'xs'} color={'myGray.400'} mt={1}>
+                  {item.subText}
+                </Box>
+              )}
             </Flex>
             <Flex
               w={12}

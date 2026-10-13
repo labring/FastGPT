@@ -37,6 +37,8 @@ const Loading = ({
         <ParticleLoading size={size} />
       ) : (
         <Spinner
+          data-preserve-width
+          flexShrink={0}
           thickness="4px"
           speed="0.65s"
           emptyColor="myGray.100"

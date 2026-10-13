@@ -5,7 +5,7 @@ import {
   resolveStreamBlockPlugins,
   updateStreamBlockAnimations,
   type StreamBlockRuntime
-} from '@/components/Markdown/streamAnimationRuntime';
+} from '@/components/Markdown/stream/streamAnimationRuntime';
 
 const block = (source: string, startOffset = 0) => ({ source, startOffset });
 const createState = () => ({ runtimes: new Map<number, StreamBlockRuntime>() });

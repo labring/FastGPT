@@ -1,50 +1,66 @@
-import React, { useCallback, useMemo } from 'react';
+import { getModelQuoteTokenLimit } from '@/web/core/ai/model/selection';
 import {
   Box,
+  Button,
   Flex,
   Grid,
-  type BoxProps,
-  useDisclosure,
-  Button,
   HStack,
-  Switch
+  Switch,
+  useDisclosure,
+  type BoxProps
 } from '@chakra-ui/react';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useTranslation } from 'next-i18next';
+import React, { useCallback, useMemo } from 'react';
 
-import dynamic from 'next/dynamic';
+import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
+import DatasetCard from '@/components/core/app/DatasetCard';
+import SkillCard from '@/components/core/app/SkillCard';
+import { useWelcomeTextFoldState } from '@/components/core/app/useAppEditorUIState';
+import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
+import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
+import { AppContext } from '@/pageComponents/app/detail/context';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
+import { TTSTypeEnum } from '@/web/core/app/constants';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { SmallAddIcon } from '@chakra-ui/icons';
+import { AGENT_SANDBOX_TOOLSET_ID, SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
+import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
-import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
-import { TTSTypeEnum } from '@/web/core/app/constants';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { getWebLLMModel } from '@/web/common/system/utils';
-import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
-import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
-import { cardStyles } from '../../constants';
-import { SmallAddIcon } from '@chakra-ui/icons';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useSkillManager } from './hooks/useSkillManager';
-import { AGENT_SANDBOX_TOOLSET_ID, SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import SandboxConfigButton from '../../components/SandboxConfigButton';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import { useAgentSkillSelect } from './hooks/useAgentSkillSelect';
-import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
-import DatasetCard from '@/components/core/app/DatasetCard';
+import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
+import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '@/pageComponents/app/detail/context';
-import { useWelcomeTextFoldState } from '@/components/core/app/useAppEditorUIState';
+import SandboxConfigButton from '../../components/SandboxConfigButton';
+import { cardStyles } from '../../constants';
+import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
+import { useInitializeQueryExtensionModel } from '../FormComponent/useInitializeQueryExtensionModel';
+import { useAgentSkillSelect } from './hooks/useAgentSkillSelect';
+import { useSkillManager } from './hooks/useSkillManager';
+import DatasetTagFilterRows, {
+  TagFilterLogicToggle
+} from '@/components/core/dataset/DatasetTagFilterRows';
+import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
+import { workflowSystemVariables } from '@/web/core/app/utils';
+import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import {
+  isDatasetTagFilterValue,
+  type DatasetTagFilterValue
+} from '@fastgpt/global/core/dataset/search/tagFilter';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
 const SkillSelectModal = dynamic(() => import('../FormComponent/ToolSelector/SkillSelectModal'));
 const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'));
+const TTSSelect = dynamic(() => import('@/components/core/app/TTSSelect'));
+const QGConfig = dynamic(() => import('@/components/core/app/QGConfig'));
 const WelcomeTextConfig = dynamic(() => import('@/components/core/app/WelcomeTextConfig'));
 const WelcomeQuestionsConfig = dynamic(
   () => import('@/components/core/app/WelcomeQuestionsConfig')
@@ -73,6 +89,40 @@ const EditForm = ({
   const appId = useContextSelector(AppContext, (v) => v.appId);
 
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
+  const formatVariables = useMemo(
+    () =>
+      formatEditorVariablePickerIcon([
+        ...workflowSystemVariables.filter(
+          (variable) =>
+            !['appId', 'chatId', 'responseChatItemId', 'histories'].includes(variable.key)
+        ),
+        ...(appForm.chatConfig.variables ?? [])
+      ]).map((item) => ({ ...item, label: t(item.label as any) })),
+    [appForm.chatConfig.variables, t]
+  );
+  const tagFilterReferenceList = useMemo(
+    () => [
+      {
+        label: t('common:core.module.Variable'),
+        value: VARIABLE_NODE_ID,
+        children: formatVariables.map((item) => ({
+          label: item.label,
+          value: item.key,
+          valueType: item.valueType
+        }))
+      }
+    ],
+    [formatVariables, t]
+  );
+  const onCollectionFilterMatchChange = useCallback(
+    (value: DatasetTagFilterValue) => {
+      setAppForm((state) => ({
+        ...state,
+        dataset: { ...state.dataset, collectionFilterMatch: value }
+      }));
+    },
+    [setAppForm]
+  );
   const { isWelcomeTextFolded, toggleWelcomeTextFold } = useWelcomeTextFoldState(appId);
 
   const {
@@ -161,7 +211,12 @@ const EditForm = ({
     onClose: onCloseDatasetParams
   } = useDisclosure();
 
-  const selectedModel = getWebLLMModel(appForm.aiSettings.model);
+  useInitializeQueryExtensionModel({ appId, appForm, setAppForm });
+  const { model: configuredModel } = useModelDetail({
+    ...appForm.aiSettings,
+    modelType: ModelTypeEnum.llm
+  });
+  const selectedModel = configuredModel;
   const promptSkillOption = useMemo(
     () => ({
       ...skillOption,
@@ -187,8 +242,8 @@ const EditForm = ({
     [appForm.aiSettings.useAgentSandbox, onChangeAgentSandbox, skillOption]
   );
   const tokenLimit = useMemo(() => {
-    return selectedModel.quoteMaxToken || 3000;
-  }, [selectedModel.quoteMaxToken]);
+    return getModelQuoteTokenLimit(configuredModel);
+  }, [configuredModel]);
 
   const updateWelcomeText = useCallback(
     (value: string) => {
@@ -240,7 +295,10 @@ const EditForm = ({
               <SettingLLMModel
                 bg="myGray.50"
                 defaultData={{
-                  model: appForm.aiSettings.model,
+                  modelId:
+                    appForm.aiSettings.modelId !== undefined
+                      ? appForm.aiSettings.modelId
+                      : appForm.aiSettings.model || undefined,
                   // temperature: appForm.aiSettings.temperature,
                   // maxToken: appForm.aiSettings.maxToken,
                   // maxHistories: appForm.aiSettings.maxHistories,
@@ -257,12 +315,14 @@ const EditForm = ({
                 showStopSign={false}
                 showResponseFormat={false}
                 showMultimodalConfig={false}
-                onChange={({ maxHistories = 6, ...data }) => {
+                onChange={({ modelId, maxHistories = 6, ...data }) => {
                   setAppForm((state) => ({
                     ...state,
                     aiSettings: {
                       ...state.aiSettings,
                       ...data,
+                      modelId,
+                      model: undefined,
                       maxHistories
                     }
                   }));
@@ -364,74 +424,9 @@ const EditForm = ({
             gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
             gridGap={[2, 4]}
           >
-            {selectedAgentSkills.map((item) => {
-              const isDeleted = !!item.isDeleted;
-
-              return (
-                <MyTooltip
-                  key={item.skillId}
-                  label={isDeleted ? t('skill:skill_deleted_click_remove_tip') : item.description}
-                >
-                  <Flex
-                    overflow={'hidden'}
-                    alignItems={'center'}
-                    p={2.5}
-                    bg={'white'}
-                    boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
-                    borderRadius={'md'}
-                    border={'base'}
-                    borderColor={isDeleted ? 'red.600' : undefined}
-                    userSelect={'none'}
-                    _hover={{
-                      borderColor: isDeleted ? 'red.600' : 'primary.300',
-                      '.delete': {
-                        display: 'flex'
-                      },
-                      '.hoverStyle': {
-                        display: 'flex'
-                      },
-                      '.unHoverStyle': {
-                        display: 'none'
-                      }
-                    }}
-                  >
-                    {item.avatar ? (
-                      <Avatar src={item.avatar} w={'1.5rem'} h={'1.5rem'} borderRadius={'sm'} />
-                    ) : (
-                      <MyIcon name={'core/skill/default'} w={'1.5rem'} h={'1.5rem'} />
-                    )}
-                    <Box
-                      flex={'1 0 0'}
-                      ml={2}
-                      className={'textEllipsis'}
-                      fontSize={'sm'}
-                      color={'myGray.900'}
-                    >
-                      {item.name}
-                    </Box>
-                    {isDeleted && (
-                      <MyTag colorSchema="red" type="fill" className="unHoverStyle">
-                        <MyIcon name={'common/error'} w={'14px'} mr={1} />
-                        <Box color={'red.600'} maxW={'120px'} className="textEllipsis">
-                          {t('skill:skill_deleted')}
-                        </Box>
-                      </MyTag>
-                    )}
-                    <Box className="hoverStyle" display={['flex', 'none']} ml={0.5}>
-                      <MyIconButton
-                        icon="delete"
-                        hoverBg="red.50"
-                        hoverColor="red.600"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRemoveAgentSkill(item.skillId);
-                        }}
-                      />
-                    </Box>
-                  </Flex>
-                </MyTooltip>
-              );
-            })}
+            {selectedAgentSkills.map((item) => (
+              <SkillCard key={item.skillId} skill={item} onDelete={onRemoveAgentSkill} />
+            ))}
           </Grid>
 
           {isOpenSkillSelect && (
@@ -539,7 +534,10 @@ const EditForm = ({
                 limit={appForm.dataset.limit}
                 usingReRank={appForm.dataset.usingReRank}
                 usingExtensionQuery={appForm.dataset.datasetSearchUsingExtensionQuery}
-                queryExtensionModel={appForm.dataset.datasetSearchExtensionModel}
+                queryExtensionModel={
+                  appForm.dataset.datasetSearchExtensionModelId ||
+                  appForm.dataset.datasetSearchExtensionModel
+                }
               />
             </Box>
           )}
@@ -561,6 +559,30 @@ const EditForm = ({
               />
             ))}
           </Grid>
+          {appForm.dataset.datasets.length > 0 && feConfigs?.isPlus && (
+            <Box mt={4}>
+              <Flex alignItems={'center'} mb={2}>
+                <FormLabel color={'myGray.600'}>{t('workflow:tag_filter')}</FormLabel>
+                <QuestionTip ml={1} label={t('workflow:tag_filter_description')} />
+                <Box ml={2}>
+                  <TagFilterLogicToggle
+                    value={
+                      isDatasetTagFilterValue(appForm.dataset.collectionFilterMatch)
+                        ? appForm.dataset.collectionFilterMatch
+                        : undefined
+                    }
+                    onChange={onCollectionFilterMatchChange}
+                  />
+                </Box>
+              </Flex>
+              <DatasetTagFilterRows
+                value={appForm.dataset.collectionFilterMatch}
+                onChange={onCollectionFilterMatchChange}
+                datasetIds={appForm.dataset.datasets.map((item) => item.datasetId)}
+                referenceList={tagFilterReferenceList}
+              />
+            </Box>
+          )}
         </Box>
 
         {/* File select */}
@@ -617,7 +639,7 @@ const EditForm = ({
         </Box>
 
         {/* tts */}
-        {/* <Box {...BoxStyles}>
+        <Box {...BoxStyles}>
           <TTSSelect
             value={appForm.chatConfig.ttsConfig}
             onChange={(e) => {
@@ -630,7 +652,7 @@ const EditForm = ({
               }));
             }}
           />
-        </Box> */}
+        </Box>
 
         {/* whisper */}
         <Box {...BoxStyles}>
@@ -650,7 +672,7 @@ const EditForm = ({
         </Box>
 
         {/* question guide */}
-        {/* <Box {...BoxStyles}>
+        <Box {...BoxStyles}>
           <QGConfig
             value={appForm.chatConfig.questionGuide}
             onChange={(e) => {
@@ -663,7 +685,7 @@ const EditForm = ({
               }));
             }}
           />
-        </Box> */}
+        </Box>
 
         {/* question tips */}
         {/* <Box {...BoxStyles}>
@@ -690,7 +712,7 @@ const EditForm = ({
             name: item.name,
             avatar: item.avatar,
             vectorModel: item.vectorModel,
-            isDeleted: item.isDeleted
+            error: item.error
           }))}
           onClose={onCloseKbSelect}
           onChange={(e) => {

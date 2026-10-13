@@ -1,8 +1,9 @@
+import { requiredAlternatives } from '../../../../../common/zod/openapi';
 import z from 'zod';
 import {
-  CollaboratorItemSchema,
   CollaboratorListSchema,
-  CollaboratorTargetSchema
+  CollaboratorTargetSchema,
+  CollaboratorUpdateListSchema
 } from '../../../../../support/permission/collaborator.schema';
 
 /* ============================================================================
@@ -30,6 +31,7 @@ const TeamCollaboratorTargetDescription =
  * ============================================================================ */
 
 export const DeleteTeamCollaboratorQuerySchema = CollaboratorTargetSchema.meta({
+  ...requiredAlternatives([['tmbId'], ['groupId'], ['orgId']], true),
   description: TeamCollaboratorTargetDescription
 });
 export type DeleteTeamCollaboratorQueryType = z.infer<typeof DeleteTeamCollaboratorQuerySchema>;
@@ -44,8 +46,8 @@ export type DeleteTeamCollaboratorQueryType = z.infer<typeof DeleteTeamCollabora
 
 export const UpdateTeamCollaboratorBodySchema = z
   .object({
-    collaborators: z.array(CollaboratorItemSchema).min(1).meta({
-      description: '更新后的团队协作者权限列表；至少包含一个协作者'
+    collaborators: CollaboratorUpdateListSchema.meta({
+      description: '更新后的团队协作者权限列表；至少包含一个协作者且目标不可重复'
     })
   })
   .meta({
@@ -74,6 +76,7 @@ export const UpdateTeamCollaboratorOneBodySchema = CollaboratorTargetSchema.safe
     description: '权限角色值'
   })
 }).meta({
+  ...requiredAlternatives([['tmbId'], ['groupId'], ['orgId']], true),
   description: TeamCollaboratorTargetDescription,
   example: {
     tmbId: '68ad85a7463006c963799a06',

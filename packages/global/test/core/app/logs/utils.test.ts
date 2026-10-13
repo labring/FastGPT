@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { formatDateByTimespan, calculateOffsetDates } from '@fastgpt/global/core/app/logs/utils';
+import {
+  formatDateByTimespan,
+  calculateOffsetDates,
+  isUnselectedLogUserFilter,
+  isUnselectedLogSourceFilter
+} from '@fastgpt/global/core/app/logs/utils';
 import { AppLogTimespanEnum } from '@fastgpt/global/core/app/logs/constants';
 
 describe('formatDateByTimespan', () => {
@@ -240,5 +245,22 @@ describe('calculateOffsetDates', () => {
       expect(result.offsetStart.getTime()).toBe(start.getTime());
       expect(result.offsetEnd.getTime()).toBe(end.getTime());
     });
+  });
+});
+
+describe('isUnselectedLogUserFilter', () => {
+  it('only treats both empty arrays as unselected', () => {
+    expect(isUnselectedLogUserFilter([], [])).toBe(true);
+    expect(isUnselectedLogUserFilter(undefined, undefined)).toBe(false);
+    expect(isUnselectedLogUserFilter([], undefined)).toBe(false);
+    expect(isUnselectedLogUserFilter(['a'], [])).toBe(false);
+  });
+});
+
+describe('isUnselectedLogSourceFilter', () => {
+  it('only treats an empty array as unselected', () => {
+    expect(isUnselectedLogSourceFilter([])).toBe(true);
+    expect(isUnselectedLogSourceFilter(undefined)).toBe(false);
+    expect(isUnselectedLogSourceFilter(['api'])).toBe(false);
   });
 });

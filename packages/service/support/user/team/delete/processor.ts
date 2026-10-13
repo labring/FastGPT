@@ -8,7 +8,7 @@ import { MongoGroupMemberModel } from '../../../permission/memberGroup/groupMemb
 import { MongoMemberGroupModel } from '../../../permission/memberGroup/memberGroupSchema';
 import { MongoOrgMemberModel } from '../../../permission/org/orgMemberSchema';
 import { MongoOrgModel } from '../../../permission/org/orgSchema';
-import { MongoResourcePermission } from '../../../permission/schema';
+import { resourcePermissionRepo } from '../../../permission/repository/resourcePermissionRepo';
 import { delUserAllSession } from '../../session';
 import { MongoTeamMember } from '../teamMemberSchema';
 import { MongoTeam } from '../teamSchema';
@@ -22,13 +22,13 @@ import { onDelAllApp } from './utils';
 import { deleteEvaluationsByTeamId } from '../../../../core/app/evaluation/delete';
 import { MongoTeamSub } from '../../../../support/wallet/sub/schema';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { withAccountCancellationTeamLock } from '../../account/cancellation';
+import { withTeamLock } from '../../lock';
 import { MongoOutLink } from '../../../outLink/schema';
 
 const logger = getLogger(LogCategories.MODULE.USER.TEAM);
 
 export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) =>
-  withAccountCancellationTeamLock(job.data.teamId, async () => {
+  withTeamLock(job.data.teamId, async () => {
     const { teamId } = job.data;
     const startTime = Date.now();
 
@@ -113,9 +113,7 @@ export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) =>
 
       // 6. 删除团队信息
       // 删除权限
-      await MongoResourcePermission.deleteMany({
-        teamId
-      });
+      await resourcePermissionRepo.deleteByTeam(teamId);
 
       // 删除群组
       const groups = await MongoMemberGroupModel.find({ teamId });

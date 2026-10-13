@@ -6,7 +6,8 @@ import type {
 } from '@fastgpt/global/core/dataset/type';
 import { recallFromVectorStore } from '../../../../common/vectorDB/controller';
 import { getVectors } from '../../../ai/embedding';
-import { getEmbeddingModel, isImageEmbeddingModel } from '../../../ai/model';
+import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';
+import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { MongoDatasetCollection } from '../../collection/schema';
 import { MongoDatasetData } from '../../data/schema';
 import { getLogger, LogCategories } from '../../../../common/logger';
@@ -42,7 +43,7 @@ const buildVectorRecallTasks = async ({
   imageCaptionQueries,
   imageQueries
 }: {
-  model: string;
+  model: EmbeddingModelDataType;
   textQueries: string[];
   imageCaptionQueries: string[];
   imageQueries: string[];
@@ -50,7 +51,7 @@ const buildVectorRecallTasks = async ({
   tasks: VectorRecallTask[];
   tokens: number;
 }> => {
-  const embeddingModel = getEmbeddingModel(model);
+  const embeddingModel = model;
   const textTasks = [
     ...textQueries.map((query) => ({ source: 'text' as const, query })),
     ...imageCaptionQueries.map((query) => ({ source: 'imageCaption' as const, query }))
@@ -144,7 +145,7 @@ export const embeddingRecall = async ({
 }: {
   teamId: string;
   datasetIds: string[];
-  model: string;
+  model: EmbeddingModelDataType;
   imageQueries: string[];
   textQueries: string[];
   imageCaptionQueries: string[];
@@ -197,12 +198,18 @@ export const embeddingRecall = async ({
     new Set(recallResults.map((item) => item.results.map((item) => item.id?.trim())).flat())
   );
 
+  // 结果回查防御（NFR-8）：数据回查再附加权限过滤集合，防止向量库过滤失效时越权取出 data。
+  // 全快照模型下 filterCollectionIdList 已含权限 ∩ metadata 的有效集合；无过滤时保持原集合。
+  const recallFilterCollectionIdList = filterCollectionIdList
+    ? collectionIdList.filter((id) => filterCollectionIdList.includes(id))
+    : collectionIdList;
+
   const [dataMaps, collectionMaps] = await Promise.all([
     MongoDatasetData.find(
       {
         teamId,
         datasetId: { $in: datasetIds },
-        collectionId: { $in: collectionIdList },
+        collectionId: { $in: recallFilterCollectionIdList },
         'indexes.dataId': { $in: indexDataIds }
       },
       datasetDataSelectField,
@@ -222,7 +229,7 @@ export const embeddingRecall = async ({
       }),
     MongoDatasetCollection.find(
       {
-        _id: { $in: collectionIdList }
+        _id: { $in: recallFilterCollectionIdList }
       },
       datasetCollectionSelectField,
       { ...readFromSecondary }

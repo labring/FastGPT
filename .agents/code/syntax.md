@@ -90,20 +90,52 @@ const service2 = (props: {id:string; service1: typeof service1 }) => {
 
 ## 代码风格
 
-### 统一导出入口
+### 按处理步骤分段，使用空行和注释说明流程
 
-目录需要对外聚合导出时，只在该目录的 `index.ts` 中统一 re-export。不要为了兼容旧路径创建“转发文件”，也不要让已迁移的旧文件继续 `export ... from ...`。
+函数包含多个处理步骤时，按业务职责组织代码，避免把读取、转换、差量计算、写入和清理等操作连续堆在一起。
 
-- 对外引用优先从目录入口导入，例如 `@fastgpt/service/core/ai/llm/request`
-- 非 `index.ts` 文件应承载实际实现、类型定义或模块私有逻辑，不作为兼容层 re-export
-- 旧路径迁移时，直接修改所有引用到新的统一入口；确认无引用后删除旧文件
+- 不同处理步骤之间留一个空行；同一步骤内紧密相关的语句保持相邻，不逐行添加空行。
+- 多步骤业务函数在每个主要步骤前添加简短中文注释，说明该步骤的职责、关键约定或设计原因。顺序明确的长流程可使用 `// 1. ...`、`// 2. ...` 标注，调整流程时同步更新编号。
+- 对并发校验、事务提交、回滚、资源清理等容易误解的边界，说明执行顺序及其原因，例如为什么必须在写入前保存旧 ID、提交成功后才能删除旧资源。
+- 简单且命名已充分表达含义的代码不强行编号或添加注释；避免只复述语句的“查询数据”“设置变量”“返回结果”等注释。
+- 函数级 `/** ... */` 说明整体职责和输入输出约定，步骤注释说明局部流程，两者避免重复。
 
 ```typescript
-// ❌ 不好的实践：兼容旧路径的转发文件
-export { createWorkflowStreamResponseContext } from '@fastgpt/service/core/workflow/utils/streamResponseContext';
+// 1. 读取索引快照，保留版本以便提交时检查并发修改。
+const snapshot = await readIndexSnapshot(dataId);
 
-// ✅ 好的实践：只在 index.ts 聚合导出
+// 2. 计算需要替换的索引，未变化的向量继续复用。
+const patch = buildIndexPatch(snapshot);
+
+// 3. 写入会回填新 ID，必须提前保存待清理的旧 ID。
+const oldVectorIds = getReplacedVectorIds(patch);
+await insertVectorsForPatch(patch);
+
+// 4. 校验快照并提交；提交成功前保留旧向量，供失败重试使用。
+await commitIndexPatch({ snapshot, patch });
+
+// 5. 提交成功后再清理被替换的旧向量。
+await cleanupReplacedVectors(oldVectorIds);
+```
+
+### 禁止 re-export
+
+禁止使用 `export { ... } from '...'`、`export type { ... } from '...'` 或 `export * from '...'` 转导其他模块的成员，包括 `index.ts` barrel、目录聚合入口和兼容旧路径的转发文件。
+
+- 每个导出只能由其实际定义文件提供，使用方直接从定义模块导入
+- `index.ts` 可以包含自身的实现和定义，但不能聚合导出其他文件
+- 移动定义时，直接修改所有使用方的 import；确认旧路径无引用后删除旧文件
+- 不为缩短 import 路径、隐藏目录结构或兼容旧路径新增转导层，避免依赖来源不明确、循环依赖和无效模块加载
+
+```typescript
+// ❌ 不好的实践：通过目录入口转导其他模块
 export { createLLMResponse } from './createLLMResponse';
+export type { LLMResponse } from './type';
+export * from './constants';
+
+// ✅ 好的实践：使用方直接引用成员的定义模块
+import { createLLMResponse } from '@fastgpt/service/core/ai/llm/createLLMResponse';
+import type { LLMResponse } from '@fastgpt/global/core/ai/llm/type';
 ```
 
 ### 使用 `type` 进行类型声明，不使用 `interface`

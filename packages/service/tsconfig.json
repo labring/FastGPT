@@ -3,5 +3,17 @@
   "compilerOptions": {
     "moduleResolution": "bundler"
   },
-  "include": ["**/*.ts", "**/*.tsx", "**/*.d.ts"]
+  "include": ["**/*.ts", "**/*.tsx", "**/*.d.ts"],
+  "exclude": [
+    "node_modules",
+    "**/node_modules",
+    "**/test/**",
+    "**/*.test.ts",
+    "**/*.benchmark.ts",
+    "**/*.spec.ts",
+    "dist",
+    "**/dist/**",
+    "coverage",
+    "**/coverage/**"
+  ]
 }

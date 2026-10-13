@@ -78,6 +78,32 @@ describe('Workflow debug and MCP runtime OpenAPI contracts', () => {
     });
   });
 
+  it('accepts debug history whose interactive omits the optional description', () => {
+    const { history } = WorkflowDebugBodySchema.parse({
+      appId: '68ad85a7463006c963799a05',
+      history: [
+        {
+          obj: 'AI',
+          value: [
+            {
+              interactive: {
+                type: 'userSelect',
+                params: { userSelectOptions: [{ key: 'option1', value: 'Confirm' }] },
+                entryNodeIds: ['user-select'],
+                memoryEdges: [],
+                nodeOutputs: []
+              }
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(history[0]).toMatchObject({
+      value: [{ interactive: { params: { description: '' } } }]
+    });
+  });
+
   it('keeps workflow debug dynamic fields compatible with their legacy types', () => {
     type DebugNodeResponse = WorkflowDebugResponse['nodeResponses'][string];
 

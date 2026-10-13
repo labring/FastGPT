@@ -18,6 +18,8 @@ export default defineConfig({
   },
   test: {
     env: {
+      AIPROXY_API_ENDPOINT: process.env.AIPROXY_API_ENDPOINT ?? 'http://127.0.0.1:3000',
+      AIPROXY_API_TOKEN: process.env.AIPROXY_API_TOKEN ?? 'test-aiproxy-token',
       FILE_TOKEN_KEY:
         process.env.FILE_TOKEN_KEY ??
         'bfd697e7e798f75deaf2d31210bc93a2e41ad4eed9e7831071d77821b7b97cff',

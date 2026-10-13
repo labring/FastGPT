@@ -1,8 +1,11 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getTeamAppTemplates, getAppToolTemplates } from '@/web/core/app/api/tool';
+import type {
+  NodeTemplateContext,
+  NodeTemplateListItemType
+} from '@fastgpt/global/core/workflow/type/node';
+import { isTemplateVisible } from '@fastgpt/global/core/workflow/template/context';
+import { getTeamAppTemplatesV2, getAppToolTemplates } from '@/web/core/app/api/tool';
 import { TemplateTypeEnum } from './header';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
@@ -11,8 +14,11 @@ import { useDebounceEffect } from 'ahooks';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 
-export const useNodeTemplates = () => {
+export const useNodeTemplates = (context: NodeTemplateContext | null = null) => {
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.basic);
 
   const [searchKey, setSearchKey] = useState('');
@@ -20,21 +26,64 @@ export const useNodeTemplates = () => {
 
   const [parentId, setParentId] = useState<ParentIdType>('');
   const [parentSource, setParentSource] = useState<string>();
+  // 进入目录/面包屑只携带 ID，保留已加载父项类型，避免再次查询详情。
+  const parentTypes = useRef(new Map<string, AppTypeEnum>());
+  const [parentType, setParentType] = useState<AppTypeEnum>();
 
   const appId = useContextSelector(AppContext, (v) => v.appDetail._id);
-  const { basicNodeTemplates, hasToolNode, hasLoopRunNode, getNodeList, nodeAmount } =
-    useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { basicNodeTemplates, getNodeList, nodeAmount } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
 
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const { data: toolTags = [] } = useRequest(getPluginToolTags, {
     manual: false
   });
 
+  const isTeamTemplate =
+    templateType === TemplateTypeEnum.myTools || templateType === TemplateTypeEnum.agent;
+  const teamTemplateTypes =
+    templateType === TemplateTypeEnum.myTools
+      ? [
+          AppTypeEnum.toolFolder,
+          AppTypeEnum.workflowTool,
+          AppTypeEnum.mcpToolSet,
+          AppTypeEnum.httpToolSet
+        ]
+      : [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow];
+
+  const {
+    data: teamTemplates,
+    isLoading: teamTemplatesIsLoading,
+    ScrollData: TeamScrollData
+  } = useScrollPagination(getTeamAppTemplatesV2, {
+    params: {
+      parentId,
+      searchKey: searchKey || undefined,
+      type: teamTemplateTypes,
+      parentType: templateType === TemplateTypeEnum.myTools && parentId ? parentType : undefined,
+      excludeAppId: appId
+    },
+    pageSize: 50,
+    disabled: !isTeamTemplate,
+    refreshDeps: [isTeamTemplate, templateType, parentId, searchKey, appId]
+  });
+
+  useEffect(() => {
+    (
+      teamTemplates as (NodeTemplateListItemType & { appType?: AppTypeEnum })[] | undefined
+    )?.forEach(({ id, appType }) => {
+      if (appType) parentTypes.current.set(id, appType);
+    });
+  }, [teamTemplates]);
+
   const { data: basicNodes } = useRequest(
     async () => {
       if (templateType === TemplateTypeEnum.basic) {
         return basicNodeTemplates
           .filter((item) => {
+            if (item.flowNodeType === FlowNodeTypeEnum.queryExtension) return false;
             // unique node filter
             if (item.unique) {
               const nodeExist = getNodeList().some(
@@ -44,19 +93,7 @@ export const useNodeTemplates = () => {
                 return false;
               }
             }
-            // tool stop or tool params
-            if (
-              !hasToolNode &&
-              (item.flowNodeType === FlowNodeTypeEnum.stopTool ||
-                item.flowNodeType === FlowNodeTypeEnum.toolParams)
-            ) {
-              return false;
-            }
-            // loopRunBreak only shows when a loopRun node exists on the canvas
-            if (!hasLoopRunNode && item.flowNodeType === FlowNodeTypeEnum.loopRunBreak) {
-              return false;
-            }
-            return true;
+            return isTemplateVisible(item, context);
           })
           .map<NodeTemplateListItemType>((item) => ({
             id: item.id,
@@ -64,14 +101,15 @@ export const useNodeTemplates = () => {
             templateType: item.templateType,
             avatar: item.avatar,
             name: item.name,
-            intro: item.intro
+            intro: item.intro,
+            isTool: item.isTool
           }));
       }
     },
     {
       manual: false,
       throttleWait: 100,
-      refreshDeps: [basicNodeTemplates, nodeAmount, hasToolNode, hasLoopRunNode, templateType]
+      refreshDeps: [basicNodeTemplates, nodeAmount, templateType, context]
     }
   );
 
@@ -93,26 +131,6 @@ export const useNodeTemplates = () => {
       tags?: string[];
       source?: string;
     }) => {
-      if (type === TemplateTypeEnum.myTools) {
-        // app, workflow-plugin, mcp
-        return getTeamAppTemplates({
-          parentId,
-          searchKey: searchVal,
-          type: [
-            AppTypeEnum.toolFolder,
-            AppTypeEnum.workflowTool,
-            AppTypeEnum.mcpToolSet,
-            AppTypeEnum.httpToolSet
-          ]
-        }).then((res) => res.filter((app) => app.id !== appId));
-      }
-      if (type === TemplateTypeEnum.agent) {
-        return getTeamAppTemplates({
-          parentId,
-          searchKey: searchVal,
-          type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
-        }).then((res) => res.filter((app) => app.id !== appId));
-      }
       if (type === TemplateTypeEnum.systemTools) {
         // systemTool
         return getAppToolTemplates({
@@ -122,9 +140,13 @@ export const useNodeTemplates = () => {
           tags
         });
       }
+      return [];
     },
     {
-      onSuccess() {
+      onSuccess(list: (NodeTemplateListItemType & { appType?: AppTypeEnum })[] | undefined) {
+        list?.forEach(({ id, appType }) => {
+          if (appType) parentTypes.current.set(id, appType);
+        });
         searchKeyLock.current = false;
       }
     }
@@ -132,7 +154,7 @@ export const useNodeTemplates = () => {
 
   useDebounceEffect(
     () => {
-      if (searchKeyLock.current) {
+      if (templateType !== TemplateTypeEnum.systemTools || searchKeyLock.current) {
         return;
       }
 
@@ -143,7 +165,7 @@ export const useNodeTemplates = () => {
         source: parentSource
       });
     },
-    [searchKey, parentSource],
+    [searchKey, parentSource, templateType],
     {
       wait: 300
     }
@@ -162,48 +184,77 @@ export const useNodeTemplates = () => {
   const onUpdateParentId = useCallback(
     (parentId: ParentIdType, source?: string) => {
       const nextParentSource = parentId ? (source ?? parentSource) : undefined;
+      const nextParentType =
+        templateType === TemplateTypeEnum.myTools && parentId
+          ? parentTypes.current.get(parentId)
+          : undefined;
 
       searchKeyLock.current = true;
       setSearchKey('');
+      setParentType(nextParentType);
       setParentId(parentId);
       setParentSource(nextParentSource);
-      loadNodeTemplates({ parentId, source: nextParentSource });
+      if (templateType === TemplateTypeEnum.systemTools) {
+        loadNodeTemplates({ parentId, source: nextParentSource });
+      }
     },
-    [loadNodeTemplates, parentSource]
+    [loadNodeTemplates, parentSource, templateType]
   );
   const onUpdateTemplateType = useCallback(
     (type: TemplateTypeEnum) => {
       searchKeyLock.current = true;
       setSearchKey('');
+      setParentType(undefined);
       setParentId('');
       setParentSource(undefined);
       setSelectedTagIds([]);
       setTemplateType(type);
-      loadNodeTemplates({ type });
+      if (type === TemplateTypeEnum.systemTools) {
+        loadNodeTemplates({ type });
+      }
     },
     [loadNodeTemplates]
   );
   const onUpdateSelectedTagIds = useCallback(
     (tags: string[]) => {
       setSelectedTagIds(tags);
-      loadNodeTemplates({ parentId, searchVal: searchKey, tags, source: parentSource });
+      if (templateType === TemplateTypeEnum.systemTools) {
+        loadNodeTemplates({ parentId, searchVal: searchKey, tags, source: parentSource });
+      }
     },
-    [loadNodeTemplates, parentId, parentSource, searchKey]
+    [loadNodeTemplates, parentId, parentSource, searchKey, templateType]
   );
 
   const templates = useMemo(() => {
     if (templateType === TemplateTypeEnum.basic) {
-      return basicNodes || [];
+      return (basicNodes || []).filter((item) =>
+        context?.handleId === NodeOutputKeyEnum.selectedTools
+          ? 'isTool' in item && item.isTool === true
+          : true
+      );
     }
-    return teamAndSystemTools || [];
-  }, [basicNodes, teamAndSystemTools, templateType]);
+    const templateList = isTeamTemplate ? teamTemplates : teamAndSystemTools;
+    return (templateList || []).filter((item) =>
+      context?.handleId === NodeOutputKeyEnum.selectedTools
+        ? 'isTool' in item && item.isTool === true
+        : true
+    );
+  }, [
+    basicNodes,
+    context?.handleId,
+    isTeamTemplate,
+    teamAndSystemTools,
+    teamTemplates,
+    templateType
+  ]);
 
   return {
     templateType,
     parentId,
     parentSource,
-    templatesIsLoading,
+    templatesIsLoading: isTeamTemplate ? teamTemplatesIsLoading : templatesIsLoading,
     templates,
+    TeamScrollData: isTeamTemplate ? TeamScrollData : undefined,
     onUpdateParentId,
     onUpdateTemplateType,
     searchKey,

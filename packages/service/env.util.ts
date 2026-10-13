@@ -1,5 +1,6 @@
 import type { SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import { agentSandboxProviderList } from '@fastgpt/global/core/ai/sandbox/constants';
+import { isHttpUrl } from '@fastgpt/global/common/string/url';
 import z from 'zod';
 import type { StorageDownloadUrlMode } from './common/s3/contracts/type';
 import type { StorageVendorSchema } from './env.const';
@@ -8,11 +9,21 @@ const TEST_INVOKE_TOKEN_SECRET = 'fastgpt_test_invoke_token_secret_32';
 const TEST_PRO_TOKEN = 'fastgpt_test_pro_token_32_chars_min';
 /**
  * 测试套件会在多个 workspace（包含 pro/admin 子模块）里直接导入 serviceEnv。
- * INVOKE_TOKEN_SECRET 生产启动仍要求显式配置；PRO_TOKEN 仅在启用 Pro 内部调用时配置。
+ * AI Proxy 和 INVOKE_TOKEN_SECRET 生产启动仍要求显式配置；PRO_TOKEN 仅在启用 Pro 内部调用时配置。
  * 仅 Vitest/测试环境允许注入稳定测试密钥，避免每个测试项目都重复维护同一组运行时密钥。
  */
 export const getRuntimeEnv = (): NodeJS.ProcessEnv => ({
   ...process.env,
+  AIPROXY_API_ENDPOINT:
+    process.env.AIPROXY_API_ENDPOINT ??
+    (process.env.VITEST === 'true' || process.env.NODE_ENV === 'test'
+      ? 'http://127.0.0.1:3000'
+      : undefined),
+  AIPROXY_API_TOKEN:
+    process.env.AIPROXY_API_TOKEN ??
+    (process.env.VITEST === 'true' || process.env.NODE_ENV === 'test'
+      ? 'test-aiproxy-token'
+      : undefined),
   INVOKE_TOKEN_SECRET:
     process.env.INVOKE_TOKEN_SECRET ??
     (process.env.VITEST === 'true' || process.env.NODE_ENV === 'test'
@@ -72,11 +83,9 @@ export const validateS3Env = (env: S3Env): void => {
 export const AgentSandboxProxyUrlSchema = z.string().refine((url) => /^wss?:\/\//.test(url), {
   message: 'AGENT_SANDBOX_PROXY_URL must start with ws:// or wss://'
 });
-export const AgentSandboxPreviewProxyUrlSchema = z
-  .string()
-  .refine((url) => /^https?:\/\//.test(url), {
-    message: 'AGENT_SANDBOX_PREVIEW_PROXY_URL must start with http:// or https://'
-  });
+export const AgentSandboxPreviewProxyUrlSchema = z.string().refine(isHttpUrl, {
+  message: 'AGENT_SANDBOX_PREVIEW_PROXY_URL must start with http:// or https://'
+});
 const agentSandboxProviderRequiredEnvKeys = {
   sealosdevbox: [
     'AGENT_SANDBOX_SEALOS_BASEURL',
@@ -161,4 +170,23 @@ export const validateAgentSandboxPreviewProxyEnv = (): void => {
   throw new Error(
     `Invalid Agent Sandbox preview proxy environment variable: AGENT_SANDBOX_PREVIEW_PROXY_URL is required when AGENT_SANDBOX_PROVIDER is ${provider}.`
   );
+};
+
+/**
+ * 校验 Agent 用户初始化环境变量。
+ * 当配置了 AGENT_USERS 时，必须提供初始密码 DEFAULT_AGENT_PSW。
+ */
+export const validateAgentUsersEnv = (env: {
+  AGENT_USERS?: string;
+  DEFAULT_AGENT_PSW?: string;
+}): void => {
+  const agentUsernames = env.AGENT_USERS?.split(',')
+    .map((username) => username.trim())
+    .filter(Boolean);
+
+  if (agentUsernames?.length && !env.DEFAULT_AGENT_PSW) {
+    throw new Error(
+      'Invalid environment configuration: DEFAULT_AGENT_PSW is required when AGENT_USERS is configured.'
+    );
+  }
 };

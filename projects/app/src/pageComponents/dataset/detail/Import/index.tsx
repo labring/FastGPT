@@ -28,7 +28,8 @@ const ImportDataset = () => {
   }, [importSource]);
 
   return ImportComponent ? (
-    <Box flex={'1 0 0'} overflow={'auto'}>
+    // 抵消页面左右留白，再将留白放进滚动区：内容位置不变，滚动条贴页面边缘。
+    <Box flex={'1 0 0'} minH={0} mx={[-2, -9]} px={[2, 9]} overflow={'auto'}>
       <ImportComponent />
     </Box>
   ) : null;

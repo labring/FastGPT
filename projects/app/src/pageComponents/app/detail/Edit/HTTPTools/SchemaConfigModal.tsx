@@ -1,3 +1,4 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -9,7 +10,6 @@ import {
   ModalBody,
   ModalFooter,
   Table,
-  TableContainer,
   Tbody,
   Td,
   Textarea,
@@ -57,21 +57,23 @@ const SchemaConfigModal = ({ onClose }: { onClose: () => void }) => {
   const reloadApp = useContextSelector(AppContext, (v) => v.reloadApp);
 
   const toolSetData = useMemo(() => {
-    const toolSetNode = appDetail.modules.find(
+    const toolSetNode = appDetail.nodes.find(
       (item) => item.flowNodeType === FlowNodeTypeEnum.toolSet
     );
     return toolSetNode?.toolConfig?.httpToolSet;
-  }, [appDetail.modules]);
+  }, [appDetail.nodes]);
+
+  const editableToolSetData = toolSetData && 'toolId' in toolSetData ? undefined : toolSetData;
 
   const { register, setValue, handleSubmit, watch } = useForm<HttpToolsType>({
     defaultValues: {
       avatar: '',
       name: appDetail?.name || '',
       intro: '',
-      baseUrl: toolSetData?.baseUrl || '',
-      apiSchemaStr: toolSetData?.apiSchemaStr || '',
-      customHeaders: toolSetData?.customHeaders || '{"Authorization":"Bearer"}',
-      headerSecret: toolSetData?.headerSecret || {}
+      baseUrl: editableToolSetData?.baseUrl || '',
+      apiSchemaStr: editableToolSetData?.apiSchemaStr || '',
+      customHeaders: editableToolSetData?.customHeaders || '{"Authorization":"Bearer"}',
+      headerSecret: editableToolSetData?.headerSecret || {}
     }
   });
 
@@ -208,7 +210,7 @@ const SchemaConfigModal = ({ onClose }: { onClose: () => void }) => {
           borderWidth={'1px'}
           borderBottom={'none'}
         >
-          <TableContainer overflowY={'visible'} overflowX={'unset'}>
+          <FixedTableContainer flush>
             <Table>
               <Thead>
                 <Tr>
@@ -312,7 +314,7 @@ const SchemaConfigModal = ({ onClose }: { onClose: () => void }) => {
                 </Tr>
               </Tbody>
             </Table>
-          </TableContainer>
+          </FixedTableContainer>
         </Box>
       </ModalBody>
 

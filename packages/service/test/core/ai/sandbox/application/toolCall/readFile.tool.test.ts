@@ -5,7 +5,9 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 const createSandboxInstance = (content: unknown) =>
   ({
     ensureAvailable: vi.fn(async () => undefined),
-    resolveRuntimePath: vi.fn((path: string) => `/workspace/sessions/chat_1/${path}`),
+    resolveRuntimePath: vi.fn((path: string) =>
+      path.startsWith('/') ? path : `/workspace/sessions/chat_1/${path}`
+    ),
     provider: {
       readFiles: vi.fn(async (paths: string[]) =>
         paths.map((path) => ({
@@ -45,6 +47,26 @@ describe('sandboxReadFileTool', () => {
     expect(sandboxInstance.provider.readFiles).toHaveBeenCalledWith([
       '/workspace/sessions/chat_1/notes.txt'
     ]);
+  });
+
+  it('reads absolute files outside workspace for builtin skills', async () => {
+    const sandboxInstance = createSandboxInstance('# Skill Creator');
+    const path = '/root/.fastgpt/skills/skill-creator/SKILL.md';
+
+    const result = await sandboxReadFileTool.execute({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1',
+      userId: 'user_1',
+      chatId: 'chat_1',
+      sandboxInstance,
+      params: { path }
+    });
+
+    expect(result.response).toBe('# Skill Creator');
+    expect(sandboxInstance.resolveRuntimePath).toHaveBeenCalledWith(path, {
+      allowAbsolutePath: true
+    });
+    expect(sandboxInstance.provider.readFiles).toHaveBeenCalledWith([path]);
   });
 
   it('reads a line range and returns a continuation hint', async () => {

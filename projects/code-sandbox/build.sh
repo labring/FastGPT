@@ -11,6 +11,11 @@ if [ "${SANDBOX_BUILD_NATIVE_PYTHON:-}" = "true" ]; then
   pnpm run build:native:python
 fi
 
+if [ "${SANDBOX_BUILD_NATIVE_JS:-}" = "true" ]; then
+  echo "Building native JS sandbox addon..."
+  pnpm run build:native:js
+fi
+
 # 编译入口（配置见 tsdown.config.ts）：
 #   - 同时打包 index 和 worker 两个独立 bundle
 #   - 所有 npm 依赖均打入 bundle（noExternal），仅保留 Node 内置模块外部化
@@ -29,6 +34,9 @@ cp src/isolated/python-bootstrap.py dist/python-bootstrap.py
 if [ -f src/isolated/fastgpt_python_sandbox.so ]; then
   cp src/isolated/fastgpt_python_sandbox.so dist/fastgpt_python_sandbox.so
 fi
+if [ -f src/isolated/fastgpt_js_sandbox.node ]; then
+  cp src/isolated/fastgpt_js_sandbox.node dist/fastgpt_js_sandbox.node
+fi
 
 echo ""
 echo "Build complete!"
@@ -38,6 +46,9 @@ echo "  - python-isolated-runner.js: $(du -h dist/python-isolated-runner.js | cu
 echo "  - python-bootstrap.py: $(du -h dist/python-bootstrap.py | cut -f1)"
 if [ -f dist/fastgpt_python_sandbox.so ]; then
   echo "  - fastgpt_python_sandbox.so: $(du -h dist/fastgpt_python_sandbox.so | cut -f1)"
+fi
+if [ -f dist/fastgpt_js_sandbox.node ]; then
+  echo "  - fastgpt_js_sandbox.node: $(du -h dist/fastgpt_js_sandbox.node | cut -f1)"
 fi
 echo ""
 echo "ℹ️  worker 通过 safeRequire(name) 在运行时动态加载白名单模块"

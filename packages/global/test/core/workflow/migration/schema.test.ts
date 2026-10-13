@@ -2,10 +2,15 @@ import { describe, expect, it } from 'vitest';
 import {
   CanonicalFlowNodeInputItemSchema,
   LegacyFlowNodeInputItemSchema,
-  migrateWorkflowToCurrent
+  migrateWorkflowToCurrent,
+  isLegacyV1Workflow
 } from '@fastgpt/global/core/workflow/migration';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { AppChatConfigTypeSchema } from '@fastgpt/global/core/app/type';
 
 const inputWithLegacyIndex = {
@@ -43,6 +48,41 @@ describe('workflow input schema boundaries', () => {
 });
 
 describe('workflow migration boundary', () => {
+  it.each(['legacyDatasetTagFilter', 'unknownInputType', 123, null])(
+    'cleans invalid selected types before schema validation: %j',
+    (selectedType) => {
+      const input = {
+        key: 'collectionFilterMatch',
+        label: 'Filter',
+        selectedType,
+        renderTypeList: ['legacyDatasetTagFilter', FlowNodeInputTypeEnum.reference],
+        value: { tags: ['legacy'] }
+      };
+      const source = {
+        nodes: [
+          {
+            nodeId: 'dataset-search',
+            flowNodeType: 'datasetSearchNode',
+            name: 'Dataset search',
+            inputs: [input],
+            outputs: []
+          }
+        ]
+      };
+      const snapshot = structuredClone(source);
+      const result = migrateWorkflowToCurrent(source);
+
+      expect(result.nodes[0].inputs[0]).toMatchObject({
+        key: input.key,
+        selectedType: FlowNodeInputTypeEnum.reference,
+        value: input.value
+      });
+      expect(result.nodes[0].inputs[0].renderTypeList).not.toContain('legacyDatasetTagFilter');
+      expect(source).toEqual(snapshot);
+      expect(migrateWorkflowToCurrent(result)).toEqual(result);
+    }
+  );
+
   it('maps the legacy default field and keeps an explicit current default', async () => {
     const result = await migrateWorkflowToCurrent({
       nodes: [
@@ -76,6 +116,97 @@ describe('workflow migration boundary', () => {
     ]);
     expect(result.nodes[0].inputs[0]).not.toHaveProperty('isToolParam');
     expect(result.nodes[0].inputs[1]).not.toHaveProperty('isToolParam');
+  });
+
+  it('keeps node and input descriptions', async () => {
+    const result = await migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'chat-1',
+          flowNodeType: 'chatNode',
+          name: 'Chat',
+          intro: 'Node intro',
+          inputs: [
+            {
+              key: 'query',
+              label: 'Query',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              toolDescription: 'Input description'
+            }
+          ],
+          outputs: []
+        }
+      ]
+    });
+
+    expect(result.nodes[0]).toMatchObject({ intro: 'Node intro' });
+    expect(result.nodes[0].inputs[0].toolDescription).toBe('Input description');
+  });
+
+  it('cleans null legacy node tool descriptions', async () => {
+    const result = await migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'chat-1',
+          flowNodeType: 'chatNode',
+          name: 'Chat',
+          toolDescription: null,
+          inputs: [],
+          outputs: []
+        }
+      ]
+    });
+
+    expect(result.nodes[0]).not.toHaveProperty('toolDescription');
+  });
+
+  it('keeps legacy file inputs manual', async () => {
+    const result = await migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'plugin-input',
+          flowNodeType: 'pluginInput',
+          name: 'Plugin input',
+          inputs: [
+            {
+              key: 'files',
+              label: 'Files',
+              renderTypeList: [FlowNodeInputTypeEnum.fileSelect, FlowNodeInputTypeEnum.reference],
+              toolDescription: 'Legacy file input',
+              isToolParam: true
+            }
+          ],
+          outputs: []
+        },
+        {
+          nodeId: 'http-tool',
+          flowNodeType: 'httpRequest468',
+          name: 'HTTP tool',
+          inputs: [
+            {
+              key: 'files',
+              label: 'Files',
+              canEdit: true,
+              toolDescription: 'Legacy file input',
+              isToolParam: true,
+              renderTypeList: [FlowNodeInputTypeEnum.fileSelect, FlowNodeInputTypeEnum.reference]
+            }
+          ],
+          outputs: []
+        }
+      ]
+    });
+
+    expect(result.nodes.map((node) => node.inputs[0])).toEqual([
+      expect.objectContaining({
+        defaultToAgentGenerated: false,
+        selectedType: FlowNodeInputTypeEnum.fileSelect
+      }),
+      expect.objectContaining({
+        defaultToAgentGenerated: false,
+        selectedType: FlowNodeInputTypeEnum.fileSelect
+      })
+    ]);
   });
 
   it('rejects V1 nodes before V2 schema parsing', async () => {
@@ -234,6 +365,41 @@ describe('workflow migration boundary', () => {
     expect(result.nodes[0].flowNodeType).toBe('emptyNode');
     expect(result.nodes[0].inputs[0]).not.toHaveProperty('llmModelType');
     expect(result.chatConfig).not.toHaveProperty('_id');
+  });
+
+  it('maps empty variable value types and falls back to any for unknown variable types', () => {
+    const result = migrateWorkflowToCurrent({
+      nodes: [],
+      chatConfig: {
+        variables: [
+          {
+            key: 'query',
+            label: 'Query',
+            description: '',
+            type: VariableInputEnum.textarea,
+            valueType: null
+          },
+          {
+            key: 'count',
+            label: 'Count',
+            description: '',
+            type: VariableInputEnum.numberInput
+          },
+          {
+            key: 'unknown',
+            label: 'Unknown',
+            description: '',
+            type: 'removed-input-type'
+          }
+        ]
+      }
+    });
+
+    expect(result.chatConfig.variables).toMatchObject([
+      { type: VariableInputEnum.textarea, valueType: WorkflowIOValueTypeEnum.string },
+      { type: VariableInputEnum.numberInput, valueType: WorkflowIOValueTypeEnum.number },
+      { type: VariableInputEnum.input, valueType: WorkflowIOValueTypeEnum.any }
+    ]);
   });
 
   it('adds an empty config to available Agent tools missing config', async () => {
@@ -482,6 +648,7 @@ describe('workflow migration boundary', () => {
           ],
           [NodeInputKeyEnum.chatInputGuide, { open: true, customUrl: 'https://example.com' }],
           [NodeInputKeyEnum.autoExecute, { open: true, defaultPrompt: 'Run automatically' }],
+          [NodeInputKeyEnum.entryPoints, [{ id: 'knowledge', name: 'Knowledge Q&A' }]],
           [NodeInputKeyEnum.instruction, 'Legacy instruction']
         ].map(([key, value]) => ({
           key,
@@ -513,6 +680,7 @@ describe('workflow migration boundary', () => {
         scheduledTriggerConfig: { cronString: '0 0 * * *', timezone: 'UTC', defaultPrompt: 'Run' },
         chatInputGuide: { open: true, customUrl: 'https://example.com' },
         autoExecute: { open: true, defaultPrompt: 'Run automatically' },
+        entryPoints: [{ id: 'knowledge', name: 'Knowledge Q&A' }],
         instruction: ''
       }
     });
@@ -785,6 +953,62 @@ describe('workflow migration boundary', () => {
     expect(input.defaultToAgentGenerated).toBe(true);
   });
 
+  it('migrates every 4.15 tool parameter to Agent generation', async () => {
+    const [agentGeneratedInput, referenceInput] = (
+      await migrateWorkflowToCurrent({
+        nodes: [
+          {
+            nodeId: 'tool-params',
+            flowNodeType: 'toolParams',
+            name: 'Custom tool variables',
+            inputs: [
+              {
+                valueType: WorkflowIOValueTypeEnum.string,
+                renderTypeList: [FlowNodeInputTypeEnum.reference],
+                key: 'aaa',
+                label: 'aaa',
+                toolDescription: 'aaaaa',
+                required: true,
+                canEdit: true,
+                customInputConfig: {
+                  selectValueTypeList: [WorkflowIOValueTypeEnum.string],
+                  showDescription: true
+                },
+                enum: ''
+              },
+              {
+                valueType: WorkflowIOValueTypeEnum.string,
+                renderTypeList: [FlowNodeInputTypeEnum.reference],
+                selectedType: FlowNodeInputTypeEnum.reference,
+                value: ['source-node', 'output'],
+                key: 'reference',
+                label: 'reference',
+                toolDescription: 'Linked value',
+                required: true,
+                canEdit: true,
+                customInputConfig: {
+                  selectValueTypeList: [WorkflowIOValueTypeEnum.string],
+                  showDescription: true
+                }
+              }
+            ],
+            outputs: []
+          }
+        ]
+      } as any)
+    ).nodes[0].inputs;
+
+    expect(agentGeneratedInput).toMatchObject({
+      defaultToAgentGenerated: true,
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.reference]
+    });
+    expect(referenceInput).toMatchObject({
+      defaultToAgentGenerated: true,
+      selectedType: FlowNodeInputTypeEnum.agentGenerated
+    });
+  });
+
   it('moves a legacy MCP ToolSet input into toolConfig', async () => {
     const result = await migrateWorkflowToCurrent({
       nodes: [
@@ -1034,5 +1258,69 @@ describe('workflow migration boundary', () => {
     };
 
     expect(await migrateWorkflowToCurrent(input as any)).toEqual(input);
+  });
+
+  it('preserves name and avatar on selectedTools during canonical migration', async () => {
+    const input = {
+      nodes: [
+        {
+          nodeId: 'agent-1',
+          flowNodeType: 'agent',
+          name: 'Agent',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              label: 'Selected tools',
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+              selectedType: FlowNodeInputTypeEnum.selectTool,
+              value: [
+                {
+                  id: 'tool-1',
+                  name: 'My Tool Name',
+                  avatar: 'core/workflow/template/tool',
+                  config: {},
+                  inputs: []
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: {}
+    };
+
+    const result = await migrateWorkflowToCurrent(input as any);
+    const selectedToolsValue = (result.nodes[0].inputs[0] as any).value;
+    expect(selectedToolsValue[0].name).toBe('My Tool Name');
+    expect(selectedToolsValue[0].avatar).toBe('core/workflow/template/tool');
+  });
+
+  describe('isLegacyV1Workflow', () => {
+    it('identifies V1 workflow when node has moduleId and no valid nodeId', () => {
+      expect(isLegacyV1Workflow([{ moduleId: 'userGuide', flowType: 'userGuide' }])).toBe(true);
+    });
+
+    it('does not identify V2 workflow as V1 when node has valid nodeId even if moduleId exists', () => {
+      expect(
+        isLegacyV1Workflow([{ nodeId: 'node-1', moduleId: 'userGuide', flowNodeType: 'userGuide' }])
+      ).toBe(false);
+    });
+
+    it('does not identify damaged V2 node without moduleId as V1 to avoid false deletions', () => {
+      expect(isLegacyV1Workflow([{ flowNodeType: 'chatNode', name: 'Damaged V2 Node' }])).toBe(
+        false
+      );
+    });
+
+    it('does not identify standard V2 workflow as V1', () => {
+      expect(
+        isLegacyV1Workflow([
+          { nodeId: 'node-1', flowNodeType: 'chatNode' },
+          { nodeId: 'node-2', flowNodeType: 'datasetSearchNode' }
+        ])
+      ).toBe(false);
+    });
   });
 });

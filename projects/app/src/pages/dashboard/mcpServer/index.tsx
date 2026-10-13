@@ -1,21 +1,9 @@
 'use client';
-import { serviceSideProps } from '@/web/common/i18n/utils';
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useState } from 'react';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
-import {
-  Box,
-  Button,
-  Flex,
-  HStack,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr
-} from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
+import { Box, Button, Flex, HStack, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { deleteMcpServer, getMcpServerList } from '@/web/support/mcp/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -36,7 +24,7 @@ const UsageWay = dynamic(() => import('@/pageComponents/dashboard/mcp/usageWay')
 });
 
 const McpServer = () => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { isPc } = useSystem();
   const { userInfo } = useUserStore();
 
@@ -64,7 +52,14 @@ const McpServer = () => {
     <>
       <DashboardContainer>
         {({ MenuIcon }) => (
-          <MyBox isLoading={isLoading} h={'100%'} p={6}>
+          <MyBox
+            isLoading={isLoading}
+            h={'100%'}
+            p={6}
+            display="flex"
+            flexDirection="column"
+            minH={0}
+          >
             {isPc ? (
               <Flex alignItems={'flex-end'} justifyContent={'space-between'}>
                 <Box>
@@ -105,7 +100,7 @@ const McpServer = () => {
             )}
 
             {/* table */}
-            <TableContainer mt={4} bg={'white'} borderRadius={'md'}>
+            <FixedTableContainer flex="1 1 0" maxH="none" mt={4} bg={'white'} borderRadius={'md'}>
               <Table>
                 <Thead>
                   <Tr borderBottom={'base'}>
@@ -164,7 +159,7 @@ const McpServer = () => {
                 </Tbody>
               </Table>
               {mcpServerList.length === 0 && <EmptyTip />}
-            </TableContainer>
+            </FixedTableContainer>
           </MyBox>
         )}
       </DashboardContainer>
@@ -185,11 +180,3 @@ const McpServer = () => {
 };
 
 export default McpServer;
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['dashboard_mcp']))
-    }
-  };
-}

@@ -1,6 +1,8 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import * as getUsers from '@/pages/api/core/app/logs/getUsers';
+import * as listApi from '@/pages/api/core/app/logs/list';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
@@ -10,11 +12,18 @@ import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { Call } from '@test/utils/request';
 import type {
   GetLogUsersBody,
-  GetLogUsersResponse
+  GetLogUsersResponse,
+  getAppChatLogsBody,
+  getAppChatLogsResponseType
 } from '@fastgpt/global/openapi/core/app/log/api';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 type EmptyQuery = Record<string, never>;
+type TestChatLog = {
+  chatId: string;
+  userId: string;
+  source: ChatSourceEnum;
+};
 
 describe('getUsers API', () => {
   let testAppId: string;
@@ -22,6 +31,17 @@ describe('getUsers API', () => {
   let testTmbId: string;
   let testUserId: string;
   let authUser: any;
+
+  const createAppChatLogs = (logs: TestChatLog[], updateTime: Date) =>
+    MongoAppChatLog.create(
+      logs.map((log) => ({
+        ...log,
+        appId: testAppId,
+        teamId: testTeamId,
+        createTime: updateTime,
+        updateTime
+      }))
+    );
 
   beforeEach(async () => {
     // Create test user
@@ -94,39 +114,26 @@ describe('getUsers API', () => {
     const now = new Date();
 
     // Create chats with different users
-    await MongoChat.create([
-      {
-        chatId: 'chat-1',
-        appId: testAppId,
-        teamId: testTeamId,
-        tmbId: testTmbId,
-        sourceType: ChatSourceTypeEnum.app,
-        source: 'online',
-        updateTime: now,
-        title: 'Chat 1'
-      },
-      {
-        chatId: 'chat-2',
-        appId: testAppId,
-        teamId: testTeamId,
-        tmbId: testTmbId,
-        sourceType: ChatSourceTypeEnum.app,
-        source: 'online',
-        updateTime: now,
-        title: 'Chat 2'
-      },
-      {
-        chatId: 'chat-3',
-        appId: testAppId,
-        teamId: testTeamId,
-        tmbId: testTmbId,
-        outLinkUid: 'external-user-1',
-        sourceType: ChatSourceTypeEnum.app,
-        source: 'share',
-        updateTime: now,
-        title: 'Chat 3'
-      }
-    ]);
+    await createAppChatLogs(
+      [
+        {
+          chatId: 'chat-1',
+          userId: testTmbId,
+          source: ChatSourceEnum.online
+        },
+        {
+          chatId: 'chat-2',
+          userId: testTmbId,
+          source: ChatSourceEnum.online
+        },
+        {
+          chatId: 'chat-3',
+          userId: 'external-user-1',
+          source: ChatSourceEnum.share
+        }
+      ],
+      now
+    );
 
     const dateStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const dateEnd = new Date(now.getTime() + 1000).toISOString();
@@ -154,6 +161,120 @@ describe('getUsers API', () => {
     expect(outLinkUser?.count).toBe(1);
   });
 
+  it('returns a protected share visitor as an out-link filter that finds their chat', async () => {
+    const visitor = await MongoUser.create({
+      username: 'protected-share-visitor',
+      password: 'test-password'
+    });
+    const visitorMember = await MongoTeamMember.create({
+      teamId: testTeamId,
+      userId: visitor._id,
+      name: 'Protected Share Visitor',
+      status: 'active',
+      createTime: new Date(),
+      defaultTeam: false
+    });
+    const visitorTmbId = String(visitorMember._id);
+    const now = new Date();
+    await createAppChatLogs(
+      [
+        {
+          chatId: 'protected-share-chat',
+          userId: visitorTmbId,
+          source: ChatSourceEnum.share
+        }
+      ],
+      now
+    );
+    await MongoChat.create({
+      chatId: 'protected-share-chat',
+      appId: testAppId,
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      outLinkUid: visitorTmbId,
+      sourceType: ChatSourceTypeEnum.app,
+      source: ChatSourceEnum.share,
+      updateTime: now,
+      title: 'Protected share chat'
+    });
+    const dateStart = new Date(now.getTime() - 1000).toISOString();
+    const dateEnd = new Date(now.getTime() + 1000).toISOString();
+
+    const users = await Call<GetLogUsersBody, EmptyQuery, GetLogUsersResponse>(getUsers.default, {
+      auth: authUser,
+      body: { appId: testAppId, dateStart, dateEnd }
+    });
+
+    expect(users.code).toBe(200);
+    const shareVisitor = users.data.list.find((item) => item.outLinkUid === visitorTmbId);
+    expect(shareVisitor).toMatchObject({ tmbId: null, name: 'Protected Share Visitor' });
+
+    const logs = await Call<getAppChatLogsBody, EmptyQuery, getAppChatLogsResponseType>(
+      listApi.default,
+      {
+        auth: authUser,
+        headers: { cookie: 'NEXT_LOCALE=zh-CN' },
+        body: {
+          appId: testAppId,
+          dateStart,
+          dateEnd,
+          outLinkUids: [visitorTmbId]
+        }
+      }
+    );
+
+    expect(logs.code).toBe(200);
+    expect(logs.data.list).toEqual(
+      expect.arrayContaining([expect.objectContaining({ chatId: 'protected-share-chat' })])
+    );
+  });
+
+  it('does not resolve an out-link UID to a member from another team', async () => {
+    const foreignUser = await MongoUser.create({
+      username: 'foreign-user-logs',
+      password: 'test-password'
+    });
+    const foreignTeam = await MongoTeam.create({
+      name: 'Foreign Team Logs',
+      ownerId: foreignUser._id,
+      avatar: 'foreign-avatar',
+      createTime: new Date(),
+      balance: 0
+    });
+    const foreignMember = await MongoTeamMember.create({
+      teamId: foreignTeam._id,
+      userId: foreignUser._id,
+      name: 'Foreign Member',
+      role: TeamMemberRoleEnum.owner,
+      status: 'active',
+      createTime: new Date(),
+      defaultTeam: true
+    });
+    const now = new Date();
+    const foreignTmbId = String(foreignMember._id);
+    await createAppChatLogs(
+      [{ chatId: 'foreign-member-chat', userId: foreignTmbId, source: ChatSourceEnum.share }],
+      now
+    );
+
+    const res = await Call<GetLogUsersBody, EmptyQuery, GetLogUsersResponse>(getUsers.default, {
+      auth: authUser,
+      body: {
+        appId: testAppId,
+        dateStart: new Date(now.getTime() - 1000).toISOString(),
+        dateEnd: new Date(now.getTime() + 1000).toISOString()
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.list).toContainEqual(
+      expect.objectContaining({
+        outLinkUid: foreignTmbId,
+        name: foreignTmbId
+      })
+    );
+  });
+
   it('should filter users by searchKey', async () => {
     const now = new Date();
 
@@ -173,29 +294,21 @@ describe('getUsers API', () => {
     });
 
     // Create chats
-    await MongoChat.create([
-      {
-        chatId: 'chat-search-1',
-        appId: testAppId,
-        teamId: testTeamId,
-        tmbId: teamMember2._id,
-        sourceType: ChatSourceTypeEnum.app,
-        source: 'online',
-        updateTime: now,
-        title: 'Chat Search 1'
-      },
-      {
-        chatId: 'chat-search-2',
-        appId: testAppId,
-        teamId: testTeamId,
-        tmbId: testTmbId,
-        outLinkUid: 'alice-user',
-        sourceType: ChatSourceTypeEnum.app,
-        source: 'share',
-        updateTime: now,
-        title: 'Chat Search 2'
-      }
-    ]);
+    await createAppChatLogs(
+      [
+        {
+          chatId: 'chat-search-1',
+          userId: String(teamMember2._id),
+          source: ChatSourceEnum.online
+        },
+        {
+          chatId: 'chat-search-2',
+          userId: 'alice-user',
+          source: ChatSourceEnum.share
+        }
+      ],
+      now
+    );
 
     const dateStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const dateEnd = new Date(now.getTime() + 1000).toISOString();
@@ -236,54 +349,33 @@ describe('getUsers API', () => {
     const now = new Date();
 
     // Create chats with different frequencies
-    await MongoChat.create([
-      // User A: 3 chats
-      {
-        chatId: 'sort-1',
-        appId: testAppId,
-        teamId: testTeamId,
-        tmbId: testTmbId,
-        outLinkUid: 'user-a',
-        sourceType: ChatSourceTypeEnum.app,
-        source: 'share',
-        updateTime: now,
-        title: 'Sort 1'
-      },
-      {
-        chatId: 'sort-2',
-        appId: testAppId,
-        teamId: testTeamId,
-        tmbId: testTmbId,
-        outLinkUid: 'user-a',
-        sourceType: ChatSourceTypeEnum.app,
-        source: 'share',
-        updateTime: now,
-        title: 'Sort 2'
-      },
-      {
-        chatId: 'sort-3',
-        appId: testAppId,
-        teamId: testTeamId,
-        tmbId: testTmbId,
-        outLinkUid: 'user-a',
-        sourceType: ChatSourceTypeEnum.app,
-        source: 'share',
-        updateTime: now,
-        title: 'Sort 3'
-      },
-      // User B: 1 chat
-      {
-        chatId: 'sort-4',
-        appId: testAppId,
-        teamId: testTeamId,
-        tmbId: testTmbId,
-        outLinkUid: 'user-b',
-        sourceType: ChatSourceTypeEnum.app,
-        source: 'share',
-        updateTime: now,
-        title: 'Sort 4'
-      }
-    ]);
+    await createAppChatLogs(
+      [
+        // User A: 3 chats
+        {
+          chatId: 'sort-1',
+          userId: 'user-a',
+          source: ChatSourceEnum.share
+        },
+        {
+          chatId: 'sort-2',
+          userId: 'user-a',
+          source: ChatSourceEnum.share
+        },
+        {
+          chatId: 'sort-3',
+          userId: 'user-a',
+          source: ChatSourceEnum.share
+        },
+        // User B: 1 chat
+        {
+          chatId: 'sort-4',
+          userId: 'user-b',
+          source: ChatSourceEnum.share
+        }
+      ],
+      now
+    );
 
     const dateStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const dateEnd = new Date(now.getTime() + 1000).toISOString();
@@ -311,41 +403,26 @@ describe('getUsers API', () => {
     const now = new Date();
 
     // Create chats with different sources
-    await MongoChat.create([
-      {
-        chatId: 'source-1',
-        appId: testAppId,
-        teamId: testTeamId,
-        tmbId: testTmbId,
-        outLinkUid: 'online-user',
-        sourceType: ChatSourceTypeEnum.app,
-        source: 'online',
-        updateTime: now,
-        title: 'Online Chat'
-      },
-      {
-        chatId: 'source-2',
-        appId: testAppId,
-        teamId: testTeamId,
-        tmbId: testTmbId,
-        outLinkUid: 'share-user',
-        sourceType: ChatSourceTypeEnum.app,
-        source: 'share',
-        updateTime: now,
-        title: 'Share Chat'
-      },
-      {
-        chatId: 'source-3',
-        appId: testAppId,
-        teamId: testTeamId,
-        tmbId: testTmbId,
-        outLinkUid: 'api-user',
-        sourceType: ChatSourceTypeEnum.app,
-        source: 'api',
-        updateTime: now,
-        title: 'API Chat'
-      }
-    ]);
+    await createAppChatLogs(
+      [
+        {
+          chatId: 'source-1',
+          userId: 'online-user',
+          source: ChatSourceEnum.online
+        },
+        {
+          chatId: 'source-2',
+          userId: 'share-user',
+          source: ChatSourceEnum.share
+        },
+        {
+          chatId: 'source-3',
+          userId: 'api-user',
+          source: ChatSourceEnum.api
+        }
+      ],
+      now
+    );
 
     const dateStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const dateEnd = new Date(now.getTime() + 1000).toISOString();
@@ -393,5 +470,77 @@ describe('getUsers API', () => {
     // Should not find share-user
     const shareUser2 = res2.data.list.find((u) => u.outLinkUid === 'share-user');
     expect(shareUser2).toBeUndefined();
+  });
+
+  it('should paginate users and search beyond the first 100 users', async () => {
+    const now = new Date();
+    const logs = Array.from({ length: 101 }, (_, index) => {
+      const userId = `bulk-user-${String(index).padStart(3, '0')}`;
+      return [
+        {
+          chatId: `bulk-${index}-1`,
+          userId,
+          source: ChatSourceEnum.share
+        },
+        {
+          chatId: `bulk-${index}-2`,
+          userId,
+          source: ChatSourceEnum.share
+        }
+      ];
+    }).flat();
+    logs.push({
+      chatId: 'search-target',
+      userId: 'search-target-user',
+      source: ChatSourceEnum.share
+    });
+    await createAppChatLogs(logs, now);
+
+    const page1 = await Call<GetLogUsersBody, EmptyQuery, GetLogUsersResponse>(getUsers.default, {
+      auth: authUser,
+      body: {
+        appId: testAppId,
+        dateStart: new Date(now.getTime() - 1000).toISOString(),
+        dateEnd: new Date(now.getTime() + 1000).toISOString(),
+        pageSize: 1,
+        offset: 0
+      }
+    });
+    expect(page1.code).toBe(200);
+    expect(page1.data.total).toBe(102);
+    expect(page1.data.list).toHaveLength(1);
+
+    const page2 = await Call<GetLogUsersBody, EmptyQuery, GetLogUsersResponse>(getUsers.default, {
+      auth: authUser,
+      body: {
+        appId: testAppId,
+        dateStart: new Date(now.getTime() - 1000).toISOString(),
+        dateEnd: new Date(now.getTime() + 1000).toISOString(),
+        pageSize: 1,
+        offset: 1
+      }
+    });
+    expect(page2.code).toBe(200);
+    expect(page2.data.total).toBe(102);
+    expect(page2.data.list).toHaveLength(1);
+    expect(page2.data.list[0].outLinkUid).not.toBe(page1.data.list[0].outLinkUid);
+
+    const searched = await Call<GetLogUsersBody, EmptyQuery, GetLogUsersResponse>(
+      getUsers.default,
+      {
+        auth: authUser,
+        body: {
+          appId: testAppId,
+          dateStart: new Date(now.getTime() - 1000).toISOString(),
+          dateEnd: new Date(now.getTime() + 1000).toISOString(),
+          searchKey: 'search-target-user',
+          pageSize: 1,
+          offset: 0
+        }
+      }
+    );
+    expect(searched.code).toBe(200);
+    expect(searched.data.total).toBe(1);
+    expect(searched.data.list[0].outLinkUid).toBe('search-target-user');
   });
 });

@@ -1,62 +1,69 @@
-import MyBox from '@fastgpt/web/components/common/MyBox';
-import DashboardContainer from '../../../pageComponents/dashboard/Container';
-import { useTranslation } from 'next-i18next';
-import { Box, Button, Flex, Input, VStack } from '@chakra-ui/react';
-import { useRouter } from 'next/router';
-import { serviceSideProps } from '@/web/common/i18n/utils';
-import AIModelSelector from '@/components/Select/AIModelSelector';
-import { useForm, useWatch } from 'react-hook-form';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import AppSelect from '@/components/Select/AppSelect';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import FileSelector, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
-import { Trans } from 'next-i18next';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getAppDetailById } from '@/web/core/app/api';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { fileDownload } from '@/web/common/file/utils';
-import { postCreateEvaluation } from '@/web/core/app/api/evaluation';
-import { useState } from 'react';
+import React from 'react';
 import Markdown from '@/components/Markdown';
-import { getEvaluationFileHeader } from '@fastgpt/global/core/app/evaluation/utils';
-import { evaluationFileErrors } from '@fastgpt/global/core/app/evaluation/constants';
+import AIModelSelector from '@/components/Select/AIModelSelector';
+import AppSelect from '@/components/Select/AppSelect';
+import FileSelector, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
+import { fileDownload } from '@/web/common/file/utils';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useModelDefault } from '@/web/core/ai/model/useModelDefault';
+import { getAppDetailById } from '@/web/core/app/api';
+import { postCreateEvaluation } from '@/web/core/app/api/evaluation';
+import { Box, Button, Flex, Input, VStack } from '@chakra-ui/react';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { evaluationFileErrors } from '@fastgpt/global/core/app/evaluation/constants';
+import { getEvaluationFileHeader } from '@fastgpt/global/core/app/evaluation/utils';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { Trans } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { useRouter } from 'next/router';
+import { useEffect, useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
+import DashboardContainer from '../../../pageComponents/dashboard/Container';
 
 type EvaluationFormType = {
   name: string;
-  evalModel: string;
+  evalModelId: string;
   appId: string;
   evaluationFiles: SelectFileItemType[];
 };
 
 const EvaluationCreating = () => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const router = useRouter();
   const { toast } = useToast();
 
   const [percent, setPercent] = useState(0);
   const [error, setError] = useState<string>();
 
-  const { llmModelList } = useSystemStore();
-
   const { register, setValue, control, handleSubmit } = useForm<EvaluationFormType>({
     defaultValues: {
       name: '',
-      evalModel: llmModelList[0]?.model,
+      evalModelId: '',
       appId: '',
       evaluationFiles: [] as SelectFileItemType[]
     }
   });
 
   const name = useWatch({ control, name: 'name' });
-  const evalModel = useWatch({ control, name: 'evalModel' });
+  const evalModelId = useWatch({ control, name: 'evalModelId' });
   const appId = useWatch({ control, name: 'appId' });
   const evaluationFiles = useWatch({ control, name: 'evaluationFiles' });
+  const { model: defaultModel } = useModelDefault({
+    modelType: ModelTypeEnum.llm,
+    enabled: !evalModelId
+  });
+  useEffect(() => {
+    if (!evalModelId && defaultModel) setValue('evalModelId', defaultModel.modelId);
+  }, [defaultModel, evalModelId, setValue]);
 
   const { runAsync: getAppDetail, loading: isLoadingAppDetail } = useRequest(() => {
     if (appId) return getAppDetailById(appId);
@@ -80,7 +87,7 @@ const EvaluationCreating = () => {
       await postCreateEvaluation({
         file: data.evaluationFiles[0].file,
         name: data.name,
-        evalModel: data.evalModel,
+        evalModelId: data.evalModelId,
         appId: data.appId,
         percentListen: setPercent
       });
@@ -177,15 +184,12 @@ const EvaluationCreating = () => {
                 {t('dashboard_evaluation:Evaluation_model')}
               </FormLabel>
               <AIModelSelector
+                modelType={ModelTypeEnum.llm}
                 w={'406px'}
                 bg={'myGray.50'}
-                value={evalModel}
-                list={llmModelList.map((item) => ({
-                  label: item.name,
-                  value: item.model
-                }))}
+                value={evalModelId}
                 onChange={(e) => {
-                  setValue('evalModel', e);
+                  setValue('evalModelId', e);
                 }}
               />
             </Flex>
@@ -343,7 +347,7 @@ const EvaluationCreating = () => {
                 onClick={handleSubmit(onSubmit)}
                 isLoading={isCreating}
                 isDisabled={
-                  !!error || !name || !evalModel || !appId || evaluationFiles.length === 0
+                  !!error || !name || !evalModelId || !appId || evaluationFiles.length === 0
                 }
               >
                 {isCreating
@@ -361,11 +365,3 @@ const EvaluationCreating = () => {
 };
 
 export default EvaluationCreating;
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['dashboard_evaluation', 'file']))
-    }
-  };
-}

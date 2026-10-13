@@ -14,7 +14,9 @@ import {
 } from '../../../../src/web/common/api/request';
 import {
   FASTGPT_LANGUAGE_HEADER,
-  FASTGPT_SHARE_LANGUAGE_HEADER
+  FASTGPT_SHARE_LANGUAGE_HEADER,
+  FASTGPT_WEB_REQUEST_HEADER,
+  FASTGPT_WEB_REQUEST_VALUE
 } from '@fastgpt/global/common/system/constants';
 import {
   LANG_KEY,
@@ -24,7 +26,9 @@ import {
 } from '@fastgpt/web/i18n/utils';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { TOKEN_ERROR_CODE } from '@fastgpt/global/common/error/errorCode';
+import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 import { clearToken } from '@/web/support/user/auth';
+import { beginLogout, resetLogoutState } from '@/web/support/user/logoutState';
 
 // Mock all required dependencies
 vi.mock('@fastgpt/web/common/system/utils', () => ({
@@ -76,6 +80,7 @@ describe('request utils', () => {
     vi.clearAllMocks();
     Object.keys(maxQuantityMap).forEach((key) => delete maxQuantityMap[key]);
     deduplicatedRequestMap.clear();
+    resetLogoutState();
     mockLocation.pathname = '/test';
     dispatchEventMock.mockReturnValue(true);
   });
@@ -211,6 +216,13 @@ describe('request utils', () => {
     });
   });
 
+  describe('web request header', () => {
+    it('adds the Web header to requests even without language headers', () => {
+      const config = startInterceptors({ headers: {}, method: 'GET' } as any);
+
+      expect(config.headers?.[FASTGPT_WEB_REQUEST_HEADER]).toBe(FASTGPT_WEB_REQUEST_VALUE);
+    });
+  });
   describe('raw request body', () => {
     it('should send File without mutating its readonly properties', async () => {
       const file = new File(['skill package'], 'skill.zip', { type: 'application/octet-stream' });
@@ -240,9 +252,10 @@ describe('request utils', () => {
     });
 
     it('should handle first request', () => {
-      const result = checkMaxQuantity({ url: 'test', maxQuantity: 2 });
+      const cancelToken = new AbortController();
+      const result = checkMaxQuantity({ url: 'test', maxQuantity: 2, cancelToken });
       expect(result.id).toBeDefined();
-      expect(result.abortSignal).toBeDefined();
+      expect(result.abortSignal).toBe(cancelToken.signal);
       expect(maxQuantityMap['test']?.length).toBe(1);
     });
 
@@ -286,6 +299,23 @@ describe('request utils', () => {
   });
 
   describe('responseError', () => {
+    it('suppresses concurrent token errors during intentional logout', async () => {
+      mockLocation.pathname = '/dashboard';
+      beginLogout();
+      const err = {
+        response: {
+          data: {
+            code: tokenErrorCode
+          }
+        }
+      };
+
+      await expect(responseError(err)).rejects.toBeInstanceOf(ToastHandledError);
+      expect(dispatchEventMock).not.toHaveBeenCalled();
+      expect(clearToken).not.toHaveBeenCalled();
+      expect(mockLocation.replace).not.toHaveBeenCalled();
+    });
+
     it('should handle token error for non-outlink page', async () => {
       mockLocation.pathname = '/dashboard';
       const err = {

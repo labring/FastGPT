@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   mockAuthDatasetData,
@@ -8,14 +8,25 @@ const {
   mockUpdateDatasetDataSystemIndexes,
   mockPushGenerateVectorUsage,
   mockAddAuditLog,
-  mockReplaceS3KeyToPreviewUrl
+  mockReplaceS3KeysToPreviewUrls,
+  mockEmbeddingModel
 } = vi.hoisted(() => ({
   mockAuthDatasetData: vi.fn(),
   mockUpdateDatasetDataByIndexes: vi.fn(),
   mockUpdateDatasetDataSystemIndexes: vi.fn(),
   mockPushGenerateVectorUsage: vi.fn(),
   mockAddAuditLog: vi.fn(),
-  mockReplaceS3KeyToPreviewUrl: vi.fn()
+  mockReplaceS3KeysToPreviewUrls: vi.fn(),
+  mockEmbeddingModel: {
+    modelId: '68ad85a7463006c963799a06',
+    model: 'vision-embedding',
+    name: 'Vision embedding',
+    provider: 'openai',
+    scope: 'system' as const,
+    isActive: true,
+    type: 'embedding',
+    config: { defaultToken: 512, maxToken: 8192, weight: 100, vision: true }
+  }
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -40,8 +51,13 @@ vi.mock('@fastgpt/service/support/user/audit/util', () => ({
   getI18nDatasetType: vi.fn((type: string) => type)
 }));
 
-vi.mock('@fastgpt/service/core/dataset/utils', () => ({
-  replaceS3KeyToPreviewUrl: mockReplaceS3KeyToPreviewUrl
+vi.mock('@fastgpt/service/common/s3/utils/preview', () => ({
+  replaceS3KeysToPreviewUrls: mockReplaceS3KeysToPreviewUrls
+}));
+
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
+  getSystemModelHandle: async () => ({ getEmbeddingModelData: vi.fn(() => mockEmbeddingModel) }),
+  getTeamModelHandle: async () => ({ getEmbeddingModelData: vi.fn(() => mockEmbeddingModel) })
 }));
 
 import handler from '@/pages/api/core/dataset/data/update';
@@ -52,6 +68,7 @@ const buildAuthResult = () => ({
   teamId: 'team-id',
   tmbId: 'tmb-id',
   collection: {
+    datasetId: 'dataset-id',
     name: 'Collection',
     indexPrefixTitle: true,
     indexSize: 256,
@@ -87,7 +104,7 @@ describe('PUT /api/core/dataset/data/update', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAuthDatasetData.mockResolvedValue(buildAuthResult());
-    mockReplaceS3KeyToPreviewUrl.mockImplementation((text: string) => text);
+    mockReplaceS3KeysToPreviewUrls.mockImplementation((texts: string[]) => texts);
     mockUpdateDatasetDataByIndexes.mockResolvedValue({ tokens: 12 });
     mockUpdateDatasetDataSystemIndexes.mockResolvedValue({ tokens: 0 });
   });
@@ -123,7 +140,7 @@ describe('PUT /api/core/dataset/data/update', () => {
           text: 'new custom'
         }
       ],
-      model: 'vision-embedding',
+      model: mockEmbeddingModel,
       indexSize: 256,
       indexPrefix: '# Collection'
     });
@@ -132,12 +149,17 @@ describe('PUT /api/core/dataset/data/update', () => {
       teamId: 'team-id',
       tmbId: 'tmb-id',
       inputTokens: 12,
-      model: 'vision-embedding'
+      model: mockEmbeddingModel
     });
     expect(result).toEqual({
       q: 'new question',
       a: 'new answer'
     });
+    expect(mockReplaceS3KeysToPreviewUrls).toHaveBeenCalledTimes(1);
+    expect(mockReplaceS3KeysToPreviewUrls.mock.calls[0]?.[0]).toEqual([
+      'new question',
+      'new answer'
+    ]);
   });
 
   it('should pass an explicit empty question to the index update path', async () => {
@@ -176,10 +198,34 @@ describe('PUT /api/core/dataset/data/update', () => {
       a: 'old answer',
       imageId: 'dataset/team/main.png',
       imageIndex: true,
-      model: 'vision-embedding',
+      model: mockEmbeddingModel,
       indexSize: 256,
       indexPrefix: '# Collection'
     });
     expect(mockUpdateDatasetDataByIndexes).not.toHaveBeenCalled();
+  });
+
+  it('should pass datasetId filter to replaceS3KeysToPreviewUrls to prevent signing foreign keys', async () => {
+    await handler({
+      body: {
+        dataId,
+        q: 'question',
+        a: 'answer',
+        indexes: []
+      }
+    } as any);
+
+    expect(mockReplaceS3KeysToPreviewUrls).toHaveBeenCalledWith(
+      ['question', 'answer'],
+      expect.any(Date),
+      expect.objectContaining({
+        filter: expect.any(Function)
+      })
+    );
+
+    const filter = mockReplaceS3KeysToPreviewUrls.mock.calls[0]?.[2]?.filter;
+    expect(filter('dataset/dataset-id/image.png')).toBe(true);
+    expect(filter('dataset/foreign-dataset/image.png')).toBe(false);
+    expect(filter('chat/app/user/chat/image.png')).toBe(false);
   });
 });

@@ -169,9 +169,17 @@ const OutLink = () => {
   const [isThirdPartyChannelOpen, setIsThirdPartyChannelOpen] = useState(true);
 
   return (
-    <Flex h={'full'} borderTop={'1px solid'} borderColor={'myGray.200'}>
+    <Flex
+      h={'full'}
+      minH={0}
+      overflow={'hidden'}
+      borderTop={'1px solid'}
+      borderColor={'myGray.200'}
+    >
       <Box
         w={'220px'}
+        flexShrink={0}
+        overflowY={'auto'}
         h={'full'}
         borderRight={'1px solid'}
         borderColor={'myGray.200'}
@@ -315,7 +323,12 @@ const OutLink = () => {
         </Box>
       </Box>
 
-      <Box flex={1} minW={0} overflowY={'auto'}>
+      <Box
+        flex={1}
+        minW={0}
+        minH={0}
+        overflowY={linkType === PublishChannelEnum.playground ? 'auto' : 'hidden'}
+      >
         {linkType === PublishChannelEnum.share && (
           <Link
             appId={appId}

@@ -54,6 +54,7 @@
   "total_points_consumed": "AI 포인트 소비량",
   "total_usage": "총 사용량",
   "usage_detail": "상세",
+  "model_unavailable": "사용할 수 없는 모델",
   "user_type": "유형",
   "wecom": "WeCom",
   "wechat": "WeChat 개인"

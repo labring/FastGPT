@@ -12,6 +12,8 @@ import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { Types } from '@fastgpt/service/common/mongo';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import type { GetCollectionDetailResponseType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -20,21 +22,20 @@ import {
   GetCollectionDetailResponseSchema
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import {
-  activeTrainingExpr,
-  finalErrorTrainingExpr,
-  getSlowestTrainingStatus,
-  remainingTrainingMatch,
-  trainingModeRanks
+  getCollectionTrainingStatusFromCounts,
+  getCollectionTrainingModeCountsPipeline,
+  type CollectionTrainingModeCount
 } from '@fastgpt/service/core/dataset/training/query';
-import { CollectionTrainingStatusEnum } from '@fastgpt/global/core/dataset/constants';
-
-const defaultCollectionTrainingStatus = {
-  trainingAmount: 0,
-  activeTrainingAmount: 0,
-  finalErrorAmount: 0,
-  hasError: false,
-  slowestTrainingStatus: CollectionTrainingStatusEnum.ready
-};
+import {
+  datasetDataRebuildStatusCountFields,
+  type DatasetDataRebuildStatusCounts
+} from '@fastgpt/service/core/dataset/data/query';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import {
+  datasetDataRebuildIndexProcessingStatuses,
+  datasetDataRebuildSynonymProcessingStatuses,
+  datasetDataRebuildFailedStatuses
+} from '@fastgpt/global/core/dataset/data/utils';
 
 /**
  * 获取数据集集合的训练状态统计信息
@@ -52,90 +53,37 @@ const getCollectionTrainingStatus = async ({
   datasetId: Types.ObjectId;
   collectionId: Types.ObjectId;
 }) => {
-  const [trainingStatus] = await MongoDatasetTraining.aggregate(
-    [
-      {
-        $match: {
-          teamId,
-          datasetId,
-          collectionId,
-          ...remainingTrainingMatch
-        }
-      },
-      {
-        $addFields: {
-          modeRank: {
-            $switch: {
-              branches: trainingModeRanks.map(({ mode, rank }) => ({
-                case: { $eq: ['$mode', mode] },
-                then: rank
-              })),
-              default: 999
-            }
-          },
-          isActiveTraining: activeTrainingExpr,
-          isFinalErrorTraining: finalErrorTrainingExpr
-        }
-      },
-      {
-        $group: {
-          _id: '$mode',
-          modeRank: { $first: '$modeRank' },
-          activeCount: { $sum: { $cond: ['$isActiveTraining', 1, 0] } },
-          finalErrorCount: { $sum: { $cond: ['$isFinalErrorTraining', 1, 0] } },
-          trainingAmount: { $sum: 1 }
-        }
-      },
-      {
-        $sort: {
-          modeRank: 1
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          trainingAmount: { $sum: '$trainingAmount' },
-          activeTrainingAmount: { $sum: '$activeCount' },
-          finalErrorAmount: { $sum: '$finalErrorCount' },
-          modeCounts: {
-            $push: {
-              mode: '$_id',
-              activeCount: '$activeCount',
-              finalErrorCount: '$finalErrorCount'
+  const [[trainingStatus], [dataStatus]] = await Promise.all([
+    MongoDatasetTraining.aggregate<{ modeCounts: CollectionTrainingModeCount[] }>(
+      getCollectionTrainingModeCountsPipeline({ teamId, datasetId, collectionId }),
+      readFromSecondary
+    ),
+    MongoDatasetData.aggregate<DatasetDataRebuildStatusCounts>(
+      [
+        {
+          $match: {
+            teamId,
+            datasetId,
+            collectionId,
+            indexStatus: {
+              $in: [
+                ...datasetDataRebuildIndexProcessingStatuses,
+                ...datasetDataRebuildSynonymProcessingStatuses,
+                ...datasetDataRebuildFailedStatuses
+              ]
             }
           }
-        }
-      }
-    ],
-    readFromSecondary
-  );
-
-  if (!trainingStatus) return defaultCollectionTrainingStatus;
-
-  const { slowestTrainingMode, slowestTrainingStatus } = getSlowestTrainingStatus(
-    Object.fromEntries(
-      trainingStatus.modeCounts.map(
-        ({
-          mode,
-          activeCount,
-          finalErrorCount
-        }: {
-          mode: any;
-          activeCount: number;
-          finalErrorCount: number;
-        }) => [mode, { activeCount, finalErrorCount }]
-      )
+        },
+        { $group: { _id: null, ...datasetDataRebuildStatusCountFields } }
+      ],
+      readFromSecondary
     )
-  );
+  ]);
 
-  return {
-    trainingAmount: trainingStatus.trainingAmount,
-    activeTrainingAmount: trainingStatus.activeTrainingAmount,
-    finalErrorAmount: trainingStatus.finalErrorAmount,
-    hasError: trainingStatus.finalErrorAmount > 0,
-    slowestTrainingMode,
-    slowestTrainingStatus
-  };
+  return getCollectionTrainingStatusFromCounts({
+    modeCounts: trainingStatus?.modeCounts,
+    rebuildCounts: dataStatus
+  });
 };
 
 async function handler(req: ApiRequestProps): Promise<GetCollectionDetailResponseType> {
@@ -151,8 +99,13 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionDetailRespons
   });
 
   const fileId = collection?.fileId;
-  if (fileId && !isS3ObjectKey(fileId, 'dataset')) {
-    return Promise.reject('Invalid dataset file key');
+  // fileId 必须属于集合所属 dataset，否则拒绝读取元数据，避免泄露外库文件的文件名/体积/类型。
+  if (
+    fileId &&
+    (!isS3ObjectKey(fileId, 'dataset') ||
+      !isAuthorizedDatasetFileS3Key({ key: fileId, datasetId: collection.datasetId }))
+  ) {
+    return Promise.reject(CommonErrEnum.unAuthFileKey);
   }
 
   const [file, indexAmount, trainingStatus] = await Promise.all([

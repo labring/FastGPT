@@ -4,10 +4,13 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import type { EntryPointItemType } from '@fastgpt/global/core/app/type';
 import {
+  getEntryPointRuntimeVariables,
   getWorkflowFileVariableInputs,
   WorkflowVariableState
 } from '../../../../core/workflow/dispatch/utils/variables';
+import { ENTRY_POINT_VARIABLE_KEY } from '@fastgpt/global/core/app/constants';
 import { encryptSecret } from '../../../../common/secret/aes256gcm';
 import { anyValueDecrypt } from '../../../../common/secret/utils';
 
@@ -33,6 +36,65 @@ const createState = (props: Partial<Parameters<typeof WorkflowVariableState.crea
   });
 
 describe('WorkflowVariableState', () => {
+  it('should expose a configured entry point as a runtime-only variable', async () => {
+    const runtimeOnlyVariables = getEntryPointRuntimeVariables({
+      entryPoints: [
+        { id: 'knowledge', name: 'Knowledge Q&A' },
+        { id: 'writing', name: 'Writing' }
+      ],
+      inputVariables: { [ENTRY_POINT_VARIABLE_KEY]: 'Writing' }
+    });
+    const state = await createState({ runtimeOnlyVariables });
+
+    expect(state.get(ENTRY_POINT_VARIABLE_KEY)).toBe('Writing');
+    expect(state.toRuntimeRecord()).toMatchObject({ [ENTRY_POINT_VARIABLE_KEY]: 'Writing' });
+    expect(state.toStoreRecord()).not.toHaveProperty(ENTRY_POINT_VARIABLE_KEY);
+  });
+
+  it('should ignore entry point values that are not configured by the app', () => {
+    expect(
+      getEntryPointRuntimeVariables({
+        entryPoints: [{ id: 'knowledge', name: 'Knowledge Q&A' }],
+        inputVariables: { [ENTRY_POINT_VARIABLE_KEY]: 'Forged entry point' }
+      })
+    ).toEqual({});
+    expect(
+      getEntryPointRuntimeVariables({
+        inputVariables: { [ENTRY_POINT_VARIABLE_KEY]: 'Knowledge Q&A' }
+      })
+    ).toEqual({});
+    expect(
+      getEntryPointRuntimeVariables({
+        entryPoints: null,
+        inputVariables: { [ENTRY_POINT_VARIABLE_KEY]: 'Knowledge Q&A' }
+      })
+    ).toEqual({});
+    expect(
+      getEntryPointRuntimeVariables({
+        entryPoints: [
+          { id: 'knowledge', name: 'Knowledge Q&A' },
+          null
+        ] as unknown as EntryPointItemType[],
+        inputVariables: { [ENTRY_POINT_VARIABLE_KEY]: 'Knowledge Q&A' }
+      })
+    ).toEqual({});
+    expect(
+      getEntryPointRuntimeVariables({
+        entryPoints: { id: 'knowledge', name: 'Knowledge Q&A' } as unknown as EntryPointItemType[],
+        inputVariables: { [ENTRY_POINT_VARIABLE_KEY]: 'Knowledge Q&A' }
+      })
+    ).toEqual({});
+    expect(
+      getEntryPointRuntimeVariables({
+        entryPoints: [
+          { id: 'first', name: 'Same name' },
+          { id: 'second', name: 'Same name' }
+        ],
+        inputVariables: { [ENTRY_POINT_VARIABLE_KEY]: 'Same name' }
+      })
+    ).toEqual({});
+  });
+
   it('should initialize normal variables and runtime-only system variables', async () => {
     const state = await createState({
       variablesConfig: [

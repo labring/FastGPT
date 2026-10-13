@@ -41,6 +41,7 @@ export type SandboxRuntimePaths = {
 
 type ResolveSandboxRuntimePathOptions = {
   allowAbsolutePath?: boolean;
+  allowOutsideWorkspace?: boolean;
 };
 
 /** 根据 provider 工作目录和 Chat source 构造本轮 Sandbox 运行时路径。 */
@@ -76,10 +77,9 @@ export const getSandboxRuntimePaths = ({
 };
 
 /**
- * 将运行时文件路径解析到当前会话目录，并限制绝对路径只能落在 workspace 内。
+ * 将运行时文件路径解析到当前会话目录；显式允许绝对路径时默认不限制其 workspace 范围。
  *
- * 相对路径始终以 sessionWorkDirectory 为基准；绝对路径用于编辑器从会话目录
- * 向上浏览 workspace，不把目录层级当作安全隔离边界。
+ * 相对路径始终以 sessionWorkDirectory 为基准；绝对路径直接按 sandbox 文件系统路径使用。
  */
 export const resolveSandboxRuntimePath = (
   path: string | undefined,
@@ -87,7 +87,7 @@ export const resolveSandboxRuntimePath = (
   options: ResolveSandboxRuntimePathOptions = {}
 ) => {
   const rawPath = path || '.';
-  const workspaceRoot = trimSandboxPathRight(runtimePaths.workspaceRoot);
+  const allowOutsideWorkspace = options.allowOutsideWorkspace ?? true;
   const sessionWorkDirectory = trimSandboxPathRight(runtimePaths.sessionWorkDirectory);
 
   if (rawPath === '.' || rawPath === './' || rawPath === '') {
@@ -102,7 +102,12 @@ export const resolveSandboxRuntimePath = (
     if (!options.allowAbsolutePath) {
       throw new Error('Absolute sandbox paths are not allowed');
     }
-    if (rawPath !== workspaceRoot && !rawPath.startsWith(`${workspaceRoot}/`)) {
+    const workspaceRoot = trimSandboxPathRight(runtimePaths.workspaceRoot);
+    if (
+      !allowOutsideWorkspace &&
+      rawPath !== workspaceRoot &&
+      !rawPath.startsWith(`${workspaceRoot}/`)
+    ) {
       throw new Error('Sandbox path is outside workspace');
     }
     return rawPath;

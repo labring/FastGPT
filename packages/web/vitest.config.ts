@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
+import { getTestMaxWorkers } from '../../test/vitestWorkers';
 
 export default defineConfig({
   resolve: {
@@ -25,6 +26,8 @@ export default defineConfig({
       cleanOnRerun: false
     },
     outputFile: 'test-results.json',
+    fileParallelism: true,
+    maxWorkers: getTestMaxWorkers(),
     include: ['test/**/*.test.ts']
   }
 });

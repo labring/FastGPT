@@ -58,3 +58,11 @@ Source issues are listed with their affected pages in the cohort records. These 
 Executable API calls, model services, database migrations, external provider UIs, and third-party video/solution sites are outside this documentation rendering check. The review preserves Chinese registered names, contributor handles, and intentional multilingual sample values where they identify the original entity or protocol example.
 
 The existing local changes in `document/lib/docs-locale.js`, `document/lib/fastgpt-home-url.ts`, and `document/middleware.ts` belong to the user and are preserved. This delivery consists of local source changes and verification; deployment is a separate release action.
+
+## Pull request integration with current upstream
+
+Before opening the pull request, merged upstream commit `547b48fe5` into the reviewed branch. The original 249-page editorial ledger remains the record for its source snapshot. The integrated inventory includes eight additional bilingual pages and one additional navigation pair from upstream: 257 page pairs and 40 navigation pairs in total.
+
+Resolved seven overlapping files while preserving upstream's current API authentication, SSO deployment, administrator navigation, model configuration, and object-storage behavior. Updated Dataset screenshot paths, retained English procedural context, and removed a duplicate SSO heading introduced by the merge. Fixed five invalid links in upstream's TokenDance, V4.16.2, and V4.17.1 pages and translated the number-unit example in V4.17.2.
+
+Integration validation passed: four English regression tests; 257 pages, 40 navigation files, and 374 internal links; all 514 MDX references; both sitemap tests; MDX generation; TypeScript checking; and the Next.js 15.5.27 production build with all 522 pages generated. The build used the IO environment values listed above. The earlier full rendered-page and browser acceptance results apply to the pre-integration snapshot; interactive browser acceptance was not repeated for the newly imported upstream changes.

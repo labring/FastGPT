@@ -24,7 +24,7 @@ const WorkflowEdit = () => {
   useMount(() => {
     initData(
       cloneDeep({
-        nodes: appDetail.modules || [],
+        nodes: appDetail.nodes || [],
         edges: appDetail.edges || []
       }),
       true

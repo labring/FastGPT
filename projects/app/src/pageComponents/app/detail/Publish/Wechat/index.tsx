@@ -1,11 +1,12 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useState } from 'react';
 import {
   Box,
   Button,
+  IconButton,
   Flex,
   Link,
   Table,
-  TableContainer,
   Tbody,
   Td,
   Th,
@@ -19,7 +20,7 @@ import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { defaultOutLinkForm } from '@/web/core/app/constants';
 import type { WechatAppType, OutLinkEditType } from '@fastgpt/global/support/outLink/type';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import dynamic from 'next/dynamic';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
@@ -40,7 +41,7 @@ const Wechat = ({
   appId: string;
   onRefreshOutLinkCounts: () => Promise<unknown>;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { Loading, setIsLoading } = useLoading();
   const { feConfigs } = useSystemStore();
   const [editData, setEditData] = useState<OutLinkEditType<WechatAppType>>();
@@ -59,6 +60,17 @@ const Wechat = ({
     }
   );
 
+  const { runAsync: onDelShareChat, loading: isDeleting } = useRequest(
+    async (id: string) => {
+      await delShareChatById(id);
+      void Promise.all([refetch(), onRefreshOutLinkCounts()]);
+    },
+    {
+      successToast: t('common:delete_success'),
+      errorToast: t('common:delete_failed')
+    }
+  );
+
   const statusBadge = (status?: string) => {
     const map: Record<string, { colorSchema: ColorSchemaType; label: string }> = {
       online: { colorSchema: 'green', label: t('publish:wechat.status.online') },
@@ -70,8 +82,17 @@ const Wechat = ({
   };
 
   return (
-    <Box position={'relative'} p={6} minH={'50vh'}>
-      <Flex justifyContent={'space-between'}>
+    <Box
+      h={'100%'}
+      minH={0}
+      minW={0}
+      display={'flex'}
+      flexDirection={'column'}
+      overflow={'hidden'}
+      position={'relative'}
+      p={6}
+    >
+      <Flex flexShrink={0} justifyContent={'space-between'}>
         <Flex alignItems={'center'}>
           <Box color={'myGray.900'} fontWeight={'medium'} fontSize={'lg'}>
             {t('publish:wechat.title')}
@@ -107,7 +128,7 @@ const Wechat = ({
         </Button>
       </Flex>
 
-      <TableContainer mt={3}>
+      <FixedTableContainer mt={3} flex={'1 1 0'} h={0} maxH="none">
         <Table variant={'simple'} w={'100%'} fontSize={'sm'}>
           <Thead>
             <Tr>
@@ -125,9 +146,7 @@ const Wechat = ({
                 <Td>{statusBadge(item.app?.status)}</Td>
                 <Td>{Math.round(item.usagePoints)}</Td>
                 <Td>
-                  {item.lastTime
-                    ? t(formatTimeToChatTime(item.lastTime) as any).replace('#', ':')
-                    : t('common:un_used')}
+                  {item.lastTime ? t(formatTimeToChatTime(item.lastTime)) : t('common:un_used')}
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>
                   {!item.app?.token ? (
@@ -173,10 +192,15 @@ const Wechat = ({
                     </Button>
                   )}
                   <MyMenu
+                    strategy="fixed"
                     Button={
-                      <Button size={'smSquare'} variant={'whiteBase'}>
-                        <MyIcon name={'more'} w={'14px'} />
-                      </Button>
+                      <IconButton
+                        icon={<MyIcon name={'more'} w={'14px'} />}
+                        name={'more'}
+                        variant={'whitePrimary'}
+                        size={'sm'}
+                        aria-label={'more'}
+                      />
                     }
                     menuList={[
                       {
@@ -199,15 +223,7 @@ const Wechat = ({
                           {
                             label: t('common:Delete'),
                             icon: 'delete',
-                            onClick: async () => {
-                              setIsLoading(true);
-                              try {
-                                await delShareChatById(item._id);
-                                void Promise.all([refetch(), onRefreshOutLinkCounts()]);
-                              } finally {
-                                setIsLoading(false);
-                              }
-                            }
+                            onClick: () => onDelShareChat(item._id)
                           }
                         ]
                       }
@@ -218,11 +234,10 @@ const Wechat = ({
             ))}
           </Tbody>
         </Table>
-      </TableContainer>
-
-      {shareChatList.length === 0 && !isFetching && (
-        <EmptyTip text={t('common:core.app.share.Not share link')} />
-      )}
+        {shareChatList.length === 0 && !isFetching && (
+          <EmptyTip text={t('common:core.app.share.Not share link')} />
+        )}
+      </FixedTableContainer>
 
       {editData && (
         <WechatEditModal
@@ -249,7 +264,7 @@ const Wechat = ({
         />
       )}
 
-      <Loading loading={isFetching} fixed={false} />
+      <Loading loading={isFetching || isDeleting} fixed={false} />
     </Box>
   );
 };

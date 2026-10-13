@@ -8,6 +8,7 @@ import { SearchDataResponseQuoteListItemSchema } from '../../dataset/type';
 import { DatasetSearchModeEnum } from '../../dataset/constants';
 import { ChatRoleEnum } from '../../chat/constants';
 import z from 'zod';
+import { JsonValueOpenApiMeta, OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
 import type { JSONSchemaInputType } from '../../app/jsonschema';
 
 const AgentPlanNodeStatusSchema = z.enum(['set_plan', 'update_plan', 'ask_question']);
@@ -18,6 +19,7 @@ export type RuntimeNodeItemType = {
   name: StoreNodeItemType['name'];
   avatar?: StoreNodeItemType['avatar'];
   intro?: StoreNodeItemType['intro'];
+  /** @deprecated Unused now in favor of `intro` in node data. */
   toolDescription?: StoreNodeItemType['toolDescription'];
   flowNodeType: StoreNodeItemType['flowNodeType'];
   showStatus?: StoreNodeItemType['showStatus'];
@@ -47,6 +49,7 @@ export const DispatchNodeResponseSchema = z
       .optional()
       .meta({ description: '模块名 i18n 插值参数' }),
     runningTime: z.number().optional().meta({ description: '运行时间: 秒' }),
+    firstTokenTime: z.number().optional().meta({ description: '首 token 响应时间: 秒' }),
     query: z.string().optional().meta({ description: '查询语句' }),
     textOutput: z.string().optional().meta({ description: '文本输出' }),
 
@@ -74,10 +77,10 @@ export const DispatchNodeResponseSchema = z
     tokens: z.number().optional().meta({ description: '总 token' }),
     inputTokens: z.number().optional().meta({ description: '输入 token' }),
     outputTokens: z.number().optional().meta({ description: '输出 token' }),
-    model: z.string().optional().meta({ description: '模型' }),
+    modelId: z.string().optional().meta({ description: '模型 ID' }),
+    model: z.string().optional().meta({ description: '旧模型标识', deprecated: true }),
     contextTotalLen: z.number().optional().meta({ description: '上下文总长度' }),
     totalPoints: z.number().optional().meta({ description: '总积分' }),
-    childTotalPoints: z.number().optional().meta({ description: '子节点总积分' }),
     childResponseCount: z.number().optional().meta({ description: '子节点响应数量' }),
 
     // LLM chat
@@ -112,6 +115,10 @@ export const DispatchNodeResponseSchema = z
     rerankWeight: z.number().optional().meta({ description: '重排权重' }),
     reRankInputTokens: z.number().optional().meta({ description: '重排输入 token' }),
     searchUsingReRank: z.boolean().optional().meta({ description: '使用重排' }),
+    retrievalResults: z
+      .array(SearchDataResponseQuoteListItemSchema)
+      .optional()
+      .meta({ description: '融合候选集（去重/过滤前），仅重排开启时记录' }),
     deepSearchResult: z
       .object({
         model: z.string().meta({ description: '模型' }),
@@ -147,12 +154,18 @@ export const DispatchNodeResponseSchema = z
     // Tool
     toolInput: z.record(z.string(), z.any()).optional().meta({ description: '工具输入' }),
     pluginOutput: z.record(z.string(), z.any()).optional().meta({ description: '插件输出' }),
-    pluginDetail: z.array(z.any()).optional(),
+    pluginDetail: z.array(z.any()).optional().meta({
+      items: OpenObjectOpenApiMeta,
+      description: '插件执行详情（递归节点响应）'
+    }),
     toolParamsResult: z
       .record(z.string(), z.any())
       .optional()
       .meta({ description: '工具参数结果' }),
-    toolRes: z.any().optional().meta({ description: '工具响应' }),
+    toolRes: z
+      .any()
+      .optional()
+      .meta({ ...JsonValueOpenApiMeta, description: '工具响应' }),
 
     // if-else
     ifElseResult: z.string().optional().meta({ description: '判断器结果' }),
@@ -160,7 +173,10 @@ export const DispatchNodeResponseSchema = z
     // tool call
     toolCallInputTokens: z.number().optional().meta({ description: '工具调用输入 token' }),
     toolCallOutputTokens: z.number().optional().meta({ description: '工具调用输出 token' }),
-    toolDetail: z.array(z.any()).optional(),
+    toolDetail: z.array(z.any()).optional().meta({
+      items: OpenObjectOpenApiMeta,
+      description: '工具执行详情（递归节点响应）'
+    }),
     toolStop: z.boolean().optional(),
 
     // Agent call
@@ -189,39 +205,71 @@ export const DispatchNodeResponseSchema = z
     formInputResult: z.record(z.string(), z.any()).optional().meta({ description: '表单输入结果' }),
 
     // update var
-    updateVarResult: z.array(z.any()).optional().meta({ description: '更新变量结果' }),
+    updateVarResult: z
+      .array(z.any())
+      .optional()
+      .meta({ items: JsonValueOpenApiMeta, description: '更新变量结果' }),
 
     // loop
-    loopResult: z.array(z.any()).optional().meta({ description: '循环结果' }),
-    loopInput: z.array(z.any()).optional().meta({ description: '循环输入' }),
-    loopDetail: z.array(z.any()).optional().meta({ description: '循环详情' }),
-    loopInputValue: z.any().optional().meta({ description: '循环输入值' }),
-    loopOutputValue: z.any().optional().meta({ description: '循环输出值' }),
+    loopResult: z
+      .array(z.any())
+      .optional()
+      .meta({ items: JsonValueOpenApiMeta, description: '循环结果' }),
+    loopInput: z
+      .array(z.any())
+      .optional()
+      .meta({ items: JsonValueOpenApiMeta, description: '循环输入' }),
+    loopDetail: z.array(z.any()).optional().meta({
+      items: OpenObjectOpenApiMeta,
+      description: '循环详情（递归节点响应）'
+    }),
+    loopInputValue: z
+      .any()
+      .optional()
+      .meta({ ...JsonValueOpenApiMeta, description: '循环输入值' }),
+    loopOutputValue: z
+      .any()
+      .optional()
+      .meta({ ...JsonValueOpenApiMeta, description: '循环输出值' }),
 
     // parallel run
-    parallelInput: z.array(z.any()).optional().meta({ description: '并行输入' }),
-    parallelResult: z.array(z.any()).optional().meta({ description: '并行结果' }),
-    parallelRunDetail: z
+    parallelInput: z
       .array(z.any())
       .optional()
-      .meta({ description: '各任务执行摘要（成功/失败状态）' }),
-    parallelDetail: z
+      .meta({ items: JsonValueOpenApiMeta, description: '并行输入' }),
+    parallelResult: z
       .array(z.any())
       .optional()
-      .meta({ description: '成功任务子工作流完整响应列表', deprecated: true }),
+      .meta({ items: JsonValueOpenApiMeta, description: '并行结果' }),
+    parallelRunDetail: z.array(z.any()).optional().meta({
+      items: OpenObjectOpenApiMeta,
+      description: '各任务执行摘要（成功/失败状态）'
+    }),
+    parallelDetail: z.array(z.any()).optional().meta({
+      items: OpenObjectOpenApiMeta,
+      description: '成功任务子工作流完整响应列表',
+      deprecated: true
+    }),
 
     // loopRun
     loopRunInput: z
       .any()
       .optional()
-      .meta({ description: 'loopRun 循环输入（数组或条件模式标记）' }),
+      .meta({ ...JsonValueOpenApiMeta, description: 'loopRun 循环输入（数组或条件模式标记）' }),
     loopRunIterations: z.number().optional().meta({ description: 'loopRun 实际执行轮数' }),
-    loopRunHistory: z.array(z.any()).optional().meta({ description: 'loopRun 每轮快照' }),
-    loopRunDetail: z
+    loopRunHistory: z.array(z.any()).optional().meta({
+      items: OpenObjectOpenApiMeta,
+      description: 'loopRun 每轮快照'
+    }),
+    loopRunDetail: z.array(z.any()).optional().meta({
+      items: OpenObjectOpenApiMeta,
+      description: 'loopRun 各轮子工作流节点响应聚合',
+      deprecated: true
+    }),
+    childrenResponses: z
       .array(z.any())
       .optional()
-      .meta({ description: 'loopRun 各轮子工作流节点响应聚合', deprecated: true }),
-    childrenResponses: z.array(z.any()).optional().meta({ description: '子节点响应' }),
+      .meta({ items: OpenObjectOpenApiMeta, description: '子节点响应' }),
 
     // Tools
     toolId: z.string().optional().meta({ description: '工具 ID' }),
@@ -254,6 +302,6 @@ export type DispatchNodeResponseType = Omit<
 export const NodeOutputItemSchema = z.object({
   nodeId: z.string(),
   key: z.enum(Object.values(NodeOutputKeyEnum)),
-  value: z.any()
+  value: z.any().meta({ ...JsonValueOpenApiMeta, description: '节点输出值' })
 });
 export type NodeOutputItemType = z.infer<typeof NodeOutputItemSchema>;

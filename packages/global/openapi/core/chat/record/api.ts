@@ -1,16 +1,14 @@
 import z from 'zod';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
+import { OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
+import { queryArrayParam } from '../../../../common/zod';
 import { DatasetCiteItemSchema } from '../../../../core/dataset/type';
 import { LinkedListResponseSchema, LinkedPaginationSchema, PaginationSchema } from '../../../api';
 import { ChatItemMiniSchema } from '../../../../core/chat/type';
-import { AppTTSConfigTypeSchema } from '../../../../core/app/type';
+import { AppTTSConfigInputSchema } from '../../app/common/api';
 import { ChatSourceTypeEnum, GetChatTypeEnum } from '../../../../core/chat/constants';
-import {
-  createOutLinkChatTargetInputSchema,
-  refineRequiredChatTargetInput,
-  transformChatAuthTargetInput
-} from '../api';
+import { createOutLinkChatTargetInputSchema, transformChatAuthTargetInput } from '../api';
 
 const GetRecordTypeSchema = z.enum([
   GetChatTypeEnum.normal,
@@ -18,15 +16,7 @@ const GetRecordTypeSchema = z.enum([
   GetChatTypeEnum.home
 ]);
 
-const QueryStringArraySchema = z
-  .union([z.string(), z.array(z.string())])
-  .optional()
-  .transform((val) => {
-    if (!val) return undefined;
-    const values = Array.isArray(val) ? val : val.split(',');
-
-    return values.map((item) => item.trim()).filter(Boolean);
-  });
+const QueryStringArraySchema = queryArrayParam(z.array(z.string().trim()).optional());
 
 /* ============================================================================
  * API: 获取对话响应详细数据
@@ -169,9 +159,10 @@ const GetRecordPropsSchema = {
     description: '是否包含已删除的记录'
   })
 };
-export const GetPaginationRecordsBodyRawSchema = PaginationSchema.extend(
-  createOutLinkChatTargetInputSchema(GetRecordPropsSchema).shape
-).superRefine(refineRequiredChatTargetInput);
+export const GetPaginationRecordsBodyRawSchema = createOutLinkChatTargetInputSchema({
+  ...PaginationSchema.shape,
+  ...GetRecordPropsSchema
+});
 export const GetPaginationRecordsBodySchema = GetPaginationRecordsBodyRawSchema.transform(
   transformChatAuthTargetInput
 );
@@ -179,7 +170,7 @@ export type GetPaginationRecordsBodyType = z.infer<typeof GetPaginationRecordsBo
 export type GetPaginationRecordsBodyRuntimeType = z.infer<typeof GetPaginationRecordsBodySchema>;
 
 export const GetPaginationRecordsResponseSchema = z.object({
-  list: z.array(z.any()).meta({ description: '对话列表' }),
+  list: z.array(z.any()).meta({ items: OpenObjectOpenApiMeta, description: '对话列表' }),
   total: z.number().int().nonnegative().meta({ example: 10, description: '总数' })
 });
 export type GetPaginationRecordsResponseType = z.infer<typeof GetPaginationRecordsResponseSchema>;
@@ -190,9 +181,10 @@ export type GetPaginationRecordsResponseType = z.infer<typeof GetPaginationRecor
  * Method: POST
  * Description: 获取对话（v2）
  * ============================================================================ */
-export const GetRecordsV2BodyRawSchema = LinkedPaginationSchema(
-  createOutLinkChatTargetInputSchema(GetRecordPropsSchema).shape
-).superRefine(refineRequiredChatTargetInput);
+export const GetRecordsV2BodyRawSchema = createOutLinkChatTargetInputSchema({
+  ...LinkedPaginationSchema().shape,
+  ...GetRecordPropsSchema
+});
 export const GetRecordsV2BodySchema = GetRecordsV2BodyRawSchema.transform(
   transformChatAuthTargetInput
 );
@@ -211,7 +203,7 @@ export type GetRecordsV2ResponseType = z.infer<typeof GetRecordsV2ResponseSchema
  * ============================================================================ */
 
 export const GetChatSpeechBodySchema = createOutLinkChatTargetInputSchema({
-  ttsConfig: AppTTSConfigTypeSchema.meta({ description: 'TTS 配置' }),
+  ttsConfig: AppTTSConfigInputSchema.meta({ description: 'TTS 配置' }),
   input: z.string().meta({ example: '你好，世界', description: '要转换的文本内容' })
 }).transform(transformChatAuthTargetInput);
 export type GetChatSpeechBodyType = z.infer<typeof GetChatSpeechBodySchema>;
@@ -235,7 +227,7 @@ export type AudioTranscriptionsDataType = z.infer<typeof AudioTranscriptionsData
 export type AudioTranscriptionsDataRuntimeType = z.infer<typeof AudioTranscriptionsDataSchema>;
 
 export const AudioTranscriptionsFormRawSchema = z.object({
-  file: z.any().meta({ format: 'binary', description: '上传的音频文件（二进制）' }),
+  file: z.string().meta({ format: 'binary', description: '上传的音频文件（二进制）' }),
   data: AudioTranscriptionsDataRawSchema.meta({
     description: '语音识别参数（JSON 序列化后传入）'
   })

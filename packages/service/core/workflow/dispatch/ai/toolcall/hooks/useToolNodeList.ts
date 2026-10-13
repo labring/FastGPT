@@ -49,7 +49,6 @@ export const useToolNodeList = ({
         flowNodeType: tool.flowNodeType,
         avatar: tool.avatar,
         intro: tool.intro,
-        toolDescription: tool.toolDescription,
         jsonSchema,
         inputs
       };

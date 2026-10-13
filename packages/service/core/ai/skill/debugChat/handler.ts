@@ -1,42 +1,40 @@
-import type { NodeApiRequest, NodeApiResponse } from '../../../../types/http';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import type { SkillDebugChatBody } from '@fastgpt/global/core/ai/skill/api';
+import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
+import {
+  ChatGenerateStatusEnum,
+  ChatRoleEnum,
+  ChatSourceEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
+import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
+import { concatHistories, removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
 import {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
-import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import { concatHistories, removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
-import {
-  ChatGenerateStatusEnum,
-  ChatRoleEnum,
-  ChatSourceTypeEnum,
-  ChatSourceEnum
-} from '@fastgpt/global/core/chat/constants';
-import type { SkillDebugChatBody } from '@fastgpt/global/core/ai/skill/api';
 import {
   ChatWorkflowSseResponseSchema,
   type ChatWorkflowSseResponseType
 } from '@fastgpt/global/openapi/core/chat/completion/api';
-import { UserError } from '@fastgpt/global/common/error/utils';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { sseErrRes } from '../../../../common/response';
-import { authSkill } from '../../../../support/permission/skill/auth';
-import { teamFrequencyLimit, LimitTypeEnum } from '../../../../common/api/frequencyLimit';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { LimitTypeEnum, teamFrequencyLimit } from '../../../../common/api/frequencyLimit';
 import { getIpFromRequest } from '../../../../common/geo';
-import { getLocale } from '../../../../common/middle/i18n';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { getLocale } from '../../../../common/middle/i18n';
+import { sseErrRes } from '../../../../common/response';
+import { assertAuthModels } from '../../../../support/permission/model/auth';
+import { authSkill } from '../../../../support/permission/skill/auth';
 import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
-import { getDefaultLLMModel } from '../../model';
-import { getRunningSkillEditSandbox } from '../../sandbox/interface/skillEdit';
-import { dispatchWorkFlow } from '../../../workflow/dispatch';
-import { prepareWorkflowFileQuery } from '../../../workflow/utils/fileLimits';
-import { WORKFLOW_MAX_RUN_TIMES } from '../../../workflow/constants';
+import type { NodeApiRequest, NodeApiResponse } from '../../../../types/http';
+
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
+import { updateChatGenerateStatus } from '../../../chat/chatGenerateStatus';
 import { getChatItems } from '../../../chat/controller';
 import {
   failChatRound,
@@ -45,13 +43,17 @@ import {
   updateInteractiveChat
 } from '../../../chat/saveChat';
 import { preChatRound, type PreChatRoundResult } from '../../../chat/utils/prepare';
-import { updateChatGenerateStatus } from '../../../chat/chatGenerateStatus';
+import { WORKFLOW_MAX_RUN_TIMES } from '../../../workflow/constants';
+import { dispatchWorkFlow } from '../../../workflow/dispatch';
+import type { AgentSandboxPrepareAction } from '../../../workflow/dispatch/ai/agent/sub/sandbox';
+import { prepareWorkflowFileQuery } from '../../../workflow/utils/fileLimits';
+import { createWorkflowResourceContext } from '../../../workflow/utils/resource';
 import {
   createWorkflowStreamResponseContext,
   type WorkflowStreamResponseContext
 } from '../../../workflow/utils/streamResponseContext';
+import { getRunningSkillEditSandbox } from '../../sandbox/interface/skillEdit';
 import { buildDebugRuntimeNodes } from './runtime';
-import type { AgentSandboxPrepareAction } from '../../../workflow/dispatch/ai/agent/sub/sandbox';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS);
 const skillDebugFileSelectConfig: AppFileSelectConfigType = {
@@ -96,7 +98,7 @@ export async function handleSkillDebugChat(
       chatId,
       responseChatItemId: responseChatItemIdFromBody = getNanoid(),
       messages = [],
-      model,
+      modelId,
       systemPrompt = ''
     } = body;
     skillId = parsedSkillId;
@@ -109,16 +111,22 @@ export async function handleSkillDebugChat(
       throw new UserError('messages is required');
     }
 
-    const resolvedModel = model || getDefaultLLMModel().model;
     const originIp = getIpFromRequest(req);
 
-    const { teamId, tmbId, skill } = await authSkill({
+    const { teamId, tmbId, isRoot, skill } = await authSkill({
       req,
       authToken: true,
       authApiKey: true,
       skillId,
       per: WritePermissionVal
     });
+    // Skill 编辑权限不包含任意模型的使用权限，创建对话和调用沙盒前单独校验。
+    const { handle: modelHandle } = await assertAuthModels({
+      actor: { teamId, tmbId, isRoot },
+      modelIds: [modelId],
+      action: 'use'
+    });
+    const modelData = modelHandle.getLLMModelData({ modelId });
 
     if (!(await teamFrequencyLimit({ teamId, type: LimitTypeEnum.chat, res }))) {
       return ChatWorkflowSseResponseSchema.parse('');
@@ -184,7 +192,7 @@ export async function handleSkillDebugChat(
 
     const { runtimeNodes, runtimeEdges } = buildDebugRuntimeNodes(
       skillId,
-      resolvedModel,
+      modelData.modelId,
       systemPrompt
     );
 
@@ -201,7 +209,11 @@ export async function handleSkillDebugChat(
       showNodeStatus: true
     });
 
-    logger.debug('Dispatching skill debug workflow', { skillId, chatId, model });
+    logger.debug('Dispatching skill debug workflow', {
+      skillId,
+      chatId,
+      modelId: modelData.modelId
+    });
 
     const {
       flatNodeResponses,
@@ -209,7 +221,7 @@ export async function handleSkillDebugChat(
       system_memories,
       durationSeconds,
       customFeedbacks,
-      nodeResponseSummary
+      workflowRuntimeSummary
     } = await dispatchWorkFlow({
       apiVersion: 'v2',
       res,
@@ -245,6 +257,13 @@ export async function handleSkillDebugChat(
         persistToDb: true,
         retainInMemory: true
       },
+      // 入口已鉴权的资源即本次调试的完整快照：固定节点只在内存核对，不再重复鉴权；
+      // 快照外的静态资源一律视为未声明，动态引用仍按运行人鉴权。
+      resourceContext: createWorkflowResourceContext({
+        resources: [{ type: 'model', id: modelData.modelId }],
+        teamId,
+        isRoot
+      }),
       agentSandboxPrepareActions: options.agentSandboxPrepareActions
     });
 
@@ -253,8 +272,10 @@ export async function handleSkillDebugChat(
 
       if (item.model && (item.inputTokens !== undefined || item.outputTokens !== undefined)) {
         try {
+          const usageModel = modelHandle.findModelData({ model: item.model });
+          if (!usageModel) return item;
           const { totalPoints } = formatModelChars2Points({
-            model: item.model,
+            model: usageModel,
             inputTokens: item.inputTokens ?? 0,
             outputTokens: item.outputTokens ?? 0
           });
@@ -276,7 +297,7 @@ export async function handleSkillDebugChat(
     computedFlowResponses.forEach((nodeResponse) => {
       streamResponseContext?.responseWrite(workflowSseEvent.flowNodeResponse(nodeResponse));
     });
-    streamResponseContext.responseWrite(workflowSseEvent.workflowDuration(durationSeconds));
+    // 本轮耗时由 dispatch 在 root runtime 统一下发（本流的 writer 已交给它），此处重复下发会让客户端累加翻倍。
 
     streamResponseContext.responseWrite(workflowSseEvent.answerStop());
 
@@ -301,7 +322,7 @@ export async function handleSkillDebugChat(
       userContent: workflowUserQuestion,
       aiContent: aiResponse,
       durationSeconds,
-      nodeResponseSummary,
+      workflowRuntimeSummary,
       metadata: { originIp }
     };
 

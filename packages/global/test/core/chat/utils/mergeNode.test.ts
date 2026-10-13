@@ -5,6 +5,7 @@ import {
   appendNodeResponseByParent,
   childrenResponseFields,
   getChildrenResponses,
+  getChildrenTotalPoints,
   getNodeResponseIdentityKey,
   mergeNodeResponseDataByIdAndParent
 } from '@fastgpt/global/core/chat/utils/mergeNode';
@@ -176,6 +177,23 @@ describe('node response child helpers', () => {
     );
     expect(getNodeResponseIdentityKey(createNodeResponse({ id: 'node' }))).toBe('node\u0000');
   });
+
+  it('recursively sums descendant own points without including the current node', () => {
+    const response = createNodeResponse({
+      id: 'root',
+      totalPoints: 10,
+      childrenResponses: [
+        createNodeResponse({
+          id: 'child-1',
+          totalPoints: 2,
+          childrenResponses: [createNodeResponse({ id: 'grandchild', totalPoints: 3 })]
+        }),
+        createNodeResponse({ id: 'child-2', totalPoints: 4 })
+      ]
+    });
+
+    expect(getChildrenTotalPoints(response)).toBe(9);
+  });
 });
 
 describe('mergeNodeResponseDataByIdAndParent', () => {
@@ -339,6 +357,41 @@ describe('mergeNodeResponseDataByIdAndParent', () => {
     expect(result).toHaveLength(1);
     expect(result[0].childTotalPoints).toBeUndefined();
     expect(result[0].childrenResponses?.map((item) => item.id)).toEqual(['child-1', 'child-2']);
+  });
+
+  it('should deduplicate inline children with separately persisted child rows', () => {
+    const result = mergeNodeResponseDataByIdAndParent([
+      {
+        id: 'agent-1',
+        nodeId: 'agent-node',
+        moduleName: 'Agent',
+        moduleType: FlowNodeTypeEnum.agent,
+        childrenResponses: [
+          {
+            id: 'child-1',
+            nodeId: 'tool-node',
+            moduleName: 'Tool',
+            moduleType: FlowNodeTypeEnum.tool
+          }
+        ]
+      },
+      {
+        id: 'child-1',
+        parentId: 'agent-1',
+        nodeId: 'tool-node',
+        moduleName: 'Tool',
+        moduleType: FlowNodeTypeEnum.tool,
+        totalPoints: 2
+      }
+    ]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].childrenResponses).toHaveLength(1);
+    expect(result[0].childrenResponses?.[0]).toMatchObject({
+      id: 'child-1',
+      parentId: 'agent-1',
+      totalPoints: 2
+    });
   });
 
   it('should merge repeated node increments with many inline children efficiently', () => {

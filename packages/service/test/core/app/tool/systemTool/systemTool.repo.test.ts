@@ -86,8 +86,7 @@ const createPluginTool = ({
   version: '1.0.0',
   etag: `${pluginId}-etag`,
   icon: `${pluginId}.svg`,
-  tags,
-  toolDescription: `${name} description`
+  tags
 });
 
 const createToolConfig = ({
@@ -258,6 +257,7 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
       originCost: 0,
       customConfig: {
         name: 'Workflow Tool',
+        avatar: 'configured-workflow-tool.svg',
         intro: 'Workflow intro',
         version: 'workflow-version',
         tags: [],
@@ -322,6 +322,7 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
     });
 
     expect(tool.author).toBe('Custom Author');
+    expect(tool.avatar).toBe('configured-workflow-tool.svg');
     expect(tool.hasTokenFee).toBe(true);
     expect(tool.version).toBe('latest-version');
     expect(tool.versionLabel).toBe('Latest Version');
@@ -412,7 +413,6 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
       version: '1.0.0',
       icon: 'weather.svg',
       tags: [],
-      toolDescription: 'Weather tool',
       inputSchema,
       outputSchema,
       secretSchema,
@@ -421,7 +421,6 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
           id: 'forecast',
           name: { en: 'Forecast' },
           description: { en: 'Forecast intro' },
-          toolDescription: 'Forecast tool',
           inputSchema,
           outputSchema
         }
@@ -470,7 +469,6 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
       version: '1.0.0',
       icon: 'weather.svg',
       tags: [],
-      toolDescription: 'Weather tool',
       hasSecret: true,
       secretSchema: {
         type: 'object',
@@ -480,8 +478,7 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
         {
           id: 'forecast',
           name: { en: 'Forecast' },
-          description: { en: 'Forecast intro' },
-          toolDescription: 'Forecast tool'
+          description: { en: 'Forecast intro' }
         }
       ]
     });
@@ -510,7 +507,6 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
       version: '1.0.0',
       icon: 'weather.svg',
       tags: [],
-      toolDescription: 'Weather tool',
       hasSecret: true,
       secretSchema: {
         type: 'object',
@@ -542,7 +538,6 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
       version: '1.0.0',
       icon: 'weather.svg',
       tags: [],
-      toolDescription: 'Weather tool',
       hasSecret: true,
       secretSchema: {
         type: 'object',
@@ -580,7 +575,6 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
       version: '1.0.0',
       icon: 'weather.svg',
       tags: [],
-      toolDescription: 'Weather tool',
       hasSecret: true,
       secretSchema: {
         type: 'object',
@@ -618,7 +612,6 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
       version: '1.0.0',
       icon: 'weather.svg',
       tags: [],
-      toolDescription: 'Weather tool',
       hasSecret: true,
       secretSchema: {
         type: 'object',
@@ -655,7 +648,6 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
       version: '0.0.1',
       icon: 'perplexity.svg',
       tags: [],
-      toolDescription: 'Perplexity tool',
       inputSchema: null,
       outputSchema: null,
       secretSchema: null,
@@ -664,7 +656,6 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
           id: 'search',
           name: { en: 'Search' },
           description: { en: 'Search intro' },
-          toolDescription: 'Search tool',
           inputSchema: null,
           outputSchema: null
         }
@@ -710,6 +701,8 @@ describe('SystemToolRepo.getSystemToolWorkflowRuntime', () => {
     mocks.findSystemTool.mockResolvedValue({
       pluginId: 'commercial-workflow-tool',
       currentCost: 2,
+      systemKeyCost: 3,
+      hasTokenFee: true,
       customConfig: {
         name: 'Workflow Tool',
         avatar: 'workflow.svg',
@@ -741,6 +734,8 @@ describe('SystemToolRepo.getSystemToolWorkflowRuntime', () => {
       name: 'Workflow Tool',
       avatar: 'workflow.svg',
       currentCost: 2,
+      systemKeyCost: 3,
+      hasTokenFee: true,
       associatedPluginId: 'app-id',
       chatConfig: {
         variables: [
@@ -774,7 +769,6 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
         name: 'Workflow Tool',
         avatar: 'workflow.svg',
         intro: 'Workflow intro',
-        toolDescription: 'Workflow description',
         version: 'workflow-version',
         tags: ['workflow'],
         associatedPluginId: 'app-id',
@@ -792,7 +786,6 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
       name: 'Workflow Tool',
       avatar: 'workflow.svg',
       intro: 'Workflow intro',
-      toolDescription: 'Workflow description',
       version: 'workflow-version',
       currentCost: 3,
       systemKeyCost: 4,
@@ -832,14 +825,12 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
         version: '1.0.0',
         icon: 'weather.svg',
         tags: ['life'],
-        toolDescription: 'Weather tool',
         hasSecret: false,
         children: [
           {
             id: 'forecast',
             name: { en: 'Forecast' },
             description: { en: 'Forecast intro' },
-            toolDescription: 'Forecast tool',
             icon: 'forecast.svg',
             inputSchema,
             outputSchema
@@ -854,8 +845,7 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
         systemKeyCost: 1,
         customConfig: {
           name: 'Forecast',
-          version: '1.0.0',
-          toolDescription: 'Configured forecast'
+          version: '1.0.0'
         }
       }
     ]);
@@ -869,7 +859,6 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
       name: 'Forecast',
       intro: 'Forecast intro',
       avatar: 'forecast.svg',
-      toolDescription: 'Configured forecast',
       currentCost: 2,
       systemKeyCost: 1
     });
@@ -904,14 +893,12 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
         version: '1.0.0',
         icon: 'weather.svg',
         tags: ['life'],
-        toolDescription: 'Weather tool',
         hasSecret: false,
         children: [
           {
             id: 'forecast',
             name: { en: 'Forecast' },
             description: { en: 'Forecast intro' },
-            toolDescription: 'Forecast tool',
             icon: 'forecast.svg',
             inputSchema,
             outputSchema
@@ -929,7 +916,6 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
       id: 'forecast',
       name: 'Forecast',
       description: 'Forecast intro',
-      toolDescription: 'Forecast tool',
       icon: 'forecast.svg'
     });
     expect(tool.children?.[0]).not.toHaveProperty('inputSchema');
@@ -962,7 +948,6 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
         version: '1.0.0',
         icon: 'weather.svg',
         tags: ['life'],
-        toolDescription: 'Weather tool',
         hasSecret: false
       }
     ]);
@@ -987,9 +972,7 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
       status: PluginStatusEnum.Offline,
       currentCost: 3,
       systemKeyCost: 2,
-      customConfig: {
-        toolDescription: 'Configured forecast'
-      }
+      customConfig: {}
     };
 
     mocks.findSystemTools.mockResolvedValueOnce([childConfig]).mockResolvedValueOnce([
@@ -1010,14 +993,12 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
         version: '1.0.0',
         icon: 'weather.svg',
         tags: ['life'],
-        toolDescription: 'Weather tool',
         hasSecret: false,
         children: [
           {
             id: 'forecast',
             name: { en: 'Forecast' },
             description: { en: 'Forecast intro' },
-            toolDescription: 'Forecast tool',
             icon: 'forecast.svg'
           }
         ]
@@ -1034,8 +1015,7 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
       source: 'debug:tmbId:tmb-1',
       status: PluginStatusEnum.Normal,
       currentCost: 3,
-      systemKeyCost: 2,
-      toolDescription: 'Configured forecast'
+      systemKeyCost: 2
     });
   });
 
@@ -1051,14 +1031,12 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
         version: '1.0.0',
         icon: 'weather.svg',
         tags: ['life'],
-        toolDescription: 'Weather tool',
         hasSecret: false,
         children: [
           {
             id: 'forecast',
             name: { en: 'Forecast' },
-            description: { en: 'Forecast intro' },
-            toolDescription: 'Forecast tool'
+            description: { en: 'Forecast intro' }
           }
         ]
       }
@@ -1103,14 +1081,12 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
         version: '1.0.0',
         icon: 'weather.svg',
         tags: ['life'],
-        toolDescription: 'Weather tool',
         hasSecret: false,
         children: [
           {
             id: 'forecast',
             name: { en: 'Forecast' },
-            description: { en: 'Forecast intro' },
-            toolDescription: 'Forecast tool'
+            description: { en: 'Forecast intro' }
           }
         ]
       }
@@ -1124,14 +1100,12 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
       version: '1.0.0',
       icon: 'weather.svg',
       tags: ['life'],
-      toolDescription: 'Weather tool',
       hasSecret: false,
       children: [
         {
           id: 'forecast',
           name: { en: 'Forecast' },
           description: { en: 'Forecast intro' },
-          toolDescription: 'Forecast tool',
           icon: 'forecast.svg',
           inputSchema,
           outputSchema

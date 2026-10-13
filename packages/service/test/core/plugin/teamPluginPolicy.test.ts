@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
 const mocks = vi.hoisted(() => ({
   findOne: vi.fn(),
@@ -17,7 +18,30 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
   }
 }));
 
-import { assertTeamPluginSourceAccess } from '@fastgpt/service/core/plugin/teamPluginPolicy';
+import {
+  assertTeamPluginInstallEnabled,
+  assertTeamPluginSourceAccess
+} from '@fastgpt/service/core/plugin/teamPluginPolicy';
+
+describe('assertTeamPluginInstallEnabled', () => {
+  const originalFeConfigs = global.feConfigs;
+
+  afterEach(() => {
+    global.feConfigs = originalFeConfigs;
+  });
+
+  it('allows installation only when the feature is explicitly enabled', () => {
+    global.feConfigs = { ...global.feConfigs, enable_team_plugin_upload: true } as any;
+
+    expect(() => assertTeamPluginInstallEnabled()).not.toThrow();
+  });
+
+  it.each([false, undefined])('rejects when the feature flag is %s', (enabled) => {
+    global.feConfigs = { ...global.feConfigs, enable_team_plugin_upload: enabled } as any;
+
+    expect(() => assertTeamPluginInstallEnabled()).toThrow(TeamErrEnum.teamPluginInstallDisabled);
+  });
+});
 
 describe('assertTeamPluginSourceAccess', () => {
   beforeEach(() => {

@@ -1,3 +1,4 @@
+import { GetReferencedAppsQuerySchema } from '../../../openapi/core/app/common/api';
 import { describe, expect, it } from 'vitest';
 import { openAPIDocument } from '../../../openapi/provider/devapi';
 import { openAPITagGroups } from '../../../openapi/path';
@@ -29,6 +30,13 @@ const objectId = '68ad85a7463006c963799a05';
 
 describe('App OpenAPI contracts', () => {
   it('registers app ownership transfer and template type APIs', () => {
+    expect(openAPIDocument.paths?.['/core/app/list']?.post).toBeDefined();
+    expect(openAPIDocument.paths?.['/core/app/listV2']?.post).toBeDefined();
+    expect(openAPIDocument.paths?.['/core/app/referencedApps']?.get).toBeDefined();
+    expect(openAPIDocument.paths?.['/core/app/appsByAppId']).toBeUndefined();
+    expect(openAPIDocument.paths?.['/core/app/referencedAppsByAppId']).toBeUndefined();
+    expect(openAPIDocument.paths?.['/core/app/appsByToolId']).toBeUndefined();
+    expect(openAPIDocument.paths?.['/core/app/toolSet/listV2']?.post).toBeDefined();
     expect(openAPIDocument.paths?.['/proApi/core/app/changeOwner']?.post).toBeDefined();
     expect(
       openAPIDocument.paths?.['/proApi/core/app/template/getTemplateTypes']?.get
@@ -113,6 +121,22 @@ describe('App OpenAPI contracts', () => {
       appId: objectId,
       collaborators: [{ tmbId: objectId, permission: 4 }]
     });
+    expect(() =>
+      UpdateAppCollaboratorBodySchema.parse({
+        appId: objectId,
+        collaborators: [
+          { tmbId: objectId, permission: 4 },
+          { tmbId: objectId, permission: 2 }
+        ]
+      })
+    ).toThrow();
+    const collaborators = Array.from({ length: 501 }, (_, index) => ({
+      tmbId: `${index.toString(16).padStart(24, '0')}`,
+      permission: 4
+    }));
+    expect(
+      UpdateAppCollaboratorBodySchema.parse({ appId: objectId, collaborators }).collaborators
+    ).toHaveLength(501);
     expect(GetTemplateTypesQuerySchema.parse({})).toEqual({});
     expect(
       GetTemplateTypesResponseSchema.parse([
@@ -123,6 +147,9 @@ describe('App OpenAPI contracts', () => {
         }
       ])
     ).toHaveLength(1);
+    expect(
+      GetReferencedAppsQuerySchema.parse({ resourceType: 'agent', resourceId: objectId })
+    ).toEqual({ resourceType: 'agent', resourceId: objectId });
   });
 
   it('parses application evaluation request and response contracts', () => {
@@ -130,15 +157,17 @@ describe('App OpenAPI contracts', () => {
       CreateEvaluationBodySchema.parse({
         name: '客服问答评测',
         appId: objectId,
-        evalModel: 'gpt-4o-mini'
+        evalModelId: objectId
       })
     ).toEqual({
       name: '客服问答评测',
       appId: objectId,
-      evalModel: 'gpt-4o-mini'
+      evalModelId: objectId
     });
-    expect(CreateEvaluationFormSchema.parse({ file: {}, data: '{}' })).toEqual({
-      file: {},
+    expect(
+      CreateEvaluationFormSchema.parse({ file: 'binary-file-placeholder', data: '{}' })
+    ).toEqual({
+      file: 'binary-file-placeholder',
       data: '{}'
     });
     expect(DeleteEvaluationQuerySchema.parse({ evalId: objectId })).toEqual({ evalId: objectId });

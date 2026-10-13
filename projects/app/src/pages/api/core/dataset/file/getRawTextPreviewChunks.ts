@@ -1,23 +1,26 @@
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps } from '@fastgpt/next/type';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { rawText2Chunks } from '@fastgpt/service/core/dataset/read';
 import {
   computedCollectionChunkSettings,
   getLLMMaxChunkSize,
   maxPreviewChunkCount
 } from '@fastgpt/global/core/dataset/training/utils';
-import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
-import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
-import { addDays } from 'date-fns';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
+import { rawText2Chunks } from '@fastgpt/service/core/dataset/read';
+import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+
 import {
-  GetRawTextPreviewChunksBodySchema,
   GetPreviewChunksResponseSchema,
+  GetRawTextPreviewChunksBodySchema,
   type GetRawTextPreviewChunksBody,
   type GetRawTextPreviewChunksResponse
 } from '@fastgpt/global/openapi/core/dataset/file/api';
+import { createDatasetFileS3KeyFilter } from '@fastgpt/service/common/s3/sources/dataset/key';
+import { replaceS3KeysToPreviewUrls } from '@fastgpt/service/common/s3/utils/preview';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addDays } from 'date-fns';
 
 async function handler(
   req: ApiRequestProps<GetRawTextPreviewChunksBody>
@@ -34,11 +37,11 @@ async function handler(
     datasetId,
     per: WritePermissionVal
   });
-
+  const modelHandle = await getTeamModelHandle({ teamId: dataset.teamId });
   const formatChunkSettings = computedCollectionChunkSettings({
     ...chunkSettings,
-    llmModel: getLLMModel(dataset.agentModel),
-    vectorModel: getEmbeddingModel(dataset.vectorModel)
+    llmModel: modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent')),
+    vectorModel: modelHandle.getEmbeddingModelData(getDatasetModelReference(dataset, 'embedding'))
   });
 
   const chunks = await rawText2Chunks({
@@ -48,18 +51,29 @@ async function handler(
     chunkSize: formatChunkSettings.chunkSize,
     paragraphChunkDeep: formatChunkSettings.paragraphChunkDeep,
     paragraphChunkMinSize: formatChunkSettings.paragraphChunkMinSize,
-    maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
+    maxSize: getLLMMaxChunkSize(
+      modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent'))
+    ),
     overlapRatio,
     customReg: formatChunkSettings.chunkSplitter ? [formatChunkSettings.chunkSplitter] : [],
+    chunkSettingMode: formatChunkSettings.chunkSettingMode,
+    trainingType: formatChunkSettings.trainingType,
     maxChunks: maxPreviewChunkCount
   });
 
-  const chunksWithPreviewUrls = await Promise.all(
-    chunks.slice(0, 10).map(async (chunk) => ({
-      q: await replaceS3KeyToPreviewUrl(chunk.q, addDays(new Date(), 1)),
-      a: await replaceS3KeyToPreviewUrl(chunk.a, addDays(new Date(), 1))
-    }))
+  const previewChunks = chunks.slice(0, 10);
+  const previewTexts = previewChunks.flatMap(({ q, a }) => [q, a]);
+  const previewTextsWithUrls = await replaceS3KeysToPreviewUrls(
+    previewTexts,
+    addDays(new Date(), 1),
+    {
+      filter: createDatasetFileS3KeyFilter(datasetId)
+    }
   );
+  const chunksWithPreviewUrls = previewChunks.map((chunk, index) => ({
+    q: previewTextsWithUrls[index * 2] ?? chunk.q,
+    a: previewTextsWithUrls[index * 2 + 1] ?? chunk.a
+  }));
 
   return GetPreviewChunksResponseSchema.parse({
     chunks: chunksWithPreviewUrls,

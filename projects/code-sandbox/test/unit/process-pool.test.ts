@@ -8,13 +8,88 @@
  * - 并发正确性
  * - shutdown 后行为
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
+import { BaseProcessPool } from '../../src/pool/base-process-pool';
 import { ProcessPool } from '../../src/pool/process-pool';
 import { PythonIsolatedRunner } from '../../src/isolated/python-isolated-runner';
 
 // ============================================================
 // JS ProcessPool
 // ============================================================
+describe('JS 错误诊断', () => {
+  let pool: ProcessPool;
+
+  afterEach(async () => {
+    await pool?.shutdown();
+  });
+
+  it('返回异常堆栈、cause 和失败前 console 输出', async () => {
+    pool = new ProcessPool(1);
+    await pool.init();
+    const result = await pool.execute({
+      code: `async function main() {
+        console.log('before failure');
+        throw new TypeError('outer failure', { cause: new Error('root failure') });
+      }`,
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('TypeError: outer failure');
+    expect(result.message).toContain('at main');
+    expect(result.message).toContain('root failure');
+    expect(result.message).toContain('Console output:\nbefore failure');
+  });
+
+  it.each(['null', "'plain failure'", "{ reason: 'object failure' }"])(
+    '抛出非 Error 值 %s 时仍返回失败原因',
+    async (value) => {
+      pool = new ProcessPool(1);
+      await pool.init();
+      const result = await pool.execute({
+        code: `async function main() { throw ${value}; }`,
+        variables: {}
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/null|plain failure|object failure/);
+      expect(result.message).not.toContain('Console output:');
+    }
+  );
+
+  it('语法错误返回具体原因和位置', async () => {
+    pool = new ProcessPool(1);
+    await pool.init();
+    const result = await pool.execute({
+      code: 'async function main( {',
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('SyntaxError');
+    expect(result.message).toContain('Unexpected token');
+    expect(result.message).toMatch(/1:\d+/);
+  });
+
+  it('错误和输出过长时保留原始错误并标记截断', async () => {
+    pool = new ProcessPool(1);
+    await pool.init();
+    const result = await pool.execute({
+      code: `async function main() {
+        console.log('x'.repeat(20000));
+        console.log('last captured line');
+        console.log('x'.repeat(1024 * 1024));
+        throw new Error('original failure ' + 'x'.repeat(20000));
+      }`,
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('Error: original failure');
+    expect(result.message).toContain('[error truncated]');
+    expect(result.message).toContain('[earlier logs truncated]');
+    expect(result.message).toContain('last captured line');
+    expect(result.message).toContain('[log capture limit reached]');
+    expect(result.message!.length).toBeLessThan(34000);
+  });
+});
+
 describe('ProcessPool 生命周期', () => {
   let pool: ProcessPool;
 
@@ -45,16 +120,86 @@ describe('ProcessPool 生命周期', () => {
     expect(s.busy).toBe(0);
   });
 
-  it('execute 后 worker 归还到 idle', async () => {
+  it('shutdown 后新任务立即返回 not ready，不进入永久等待队列', async () => {
     pool = new ProcessPool(1);
     await pool.init();
+    await pool.shutdown();
+
+    const result = await pool.execute({
+      code: `async function main() { return { ok: true }; }`,
+      variables: {}
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/not ready/i);
+    expect(pool.stats.queued).toBe(0);
+  });
+
+  it('初始化期间 shutdown 会终止尚未 ready 的真实子进程', async () => {
+    class NeverReadyPool extends BaseProcessPool {
+      constructor() {
+        super(1, {
+          name: 'NeverReady',
+          workerScript: '',
+          spawnCommand: () => 'sleep 30',
+          allowedModules: []
+        });
+      }
+    }
+
+    const warmingPool = new NeverReadyPool();
+    const initPromise = warmingPool.init();
+    const initAssertion = expect(initPromise).rejects.toThrow('shutting down');
+
+    const warmingDeadline = Date.now() + 2000;
+    while (warmingPool.stats.warming !== 1 && Date.now() < warmingDeadline) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    expect(warmingPool.stats.warming).toBe(1);
+
+    const warmingWorker = [...((warmingPool as any).warmingWorkers as Map<any, unknown>).keys()][0];
+    const warmingPid = warmingWorker?.proc.pid as number | undefined;
+    expect(warmingPid).toBeTypeOf('number');
+
+    await warmingPool.shutdown();
+    await initAssertion;
+    expect(warmingPool.stats).toMatchObject({ total: 0, idle: 0, warming: 0, ready: false });
+
+    if (warmingPid) {
+      const exitDeadline = Date.now() + 2000;
+      while (Date.now() < exitDeadline) {
+        try {
+          process.kill(warmingPid, 0);
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        } catch {
+          break;
+        }
+      }
+      expect(() => process.kill(warmingPid, 0)).toThrow();
+    }
+  });
+
+  it('execute 后销毁已接触用户代码的 worker，并补充新的预热进程', async () => {
+    pool = new ProcessPool(1);
+    await pool.init();
+    const firstWorkerId = (pool as any).workers[0]?.id;
     await pool.execute({
       code: `async function main() { return { ok: true }; }`,
       variables: {}
     });
+
+    const deadline = Date.now() + 3000;
+    while (
+      Date.now() < deadline &&
+      ((pool as any).workers[0]?.id === firstWorkerId || pool.stats.idle !== 1)
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+
     const s = pool.stats;
     expect(s.idle).toBe(1);
     expect(s.busy).toBe(0);
+    expect((pool as any).workers[0]?.id).not.toBe(firstWorkerId);
   });
 });
 
@@ -203,6 +348,11 @@ describe('ProcessPool Worker 健康检查 (ping/pong)', () => {
     expect(r1.success).toBe(true);
     expect(r1.data?.codeReturn.step).toBe(1);
 
+    const firstReplacementDeadline = Date.now() + 3000;
+    while (pool.stats.idle === 0 && Date.now() < firstReplacementDeadline) {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+
     // 触发健康检查（通过 triggerHealthCheck）
     (pool as any).pingWorker((pool as any).idleWorkers[0]);
 
@@ -216,6 +366,11 @@ describe('ProcessPool Worker 健康检查 (ping/pong)', () => {
     });
     expect(r2.success).toBe(true);
     expect(r2.data?.codeReturn.step).toBe(2);
+
+    const secondReplacementDeadline = Date.now() + 3000;
+    while (pool.stats.total === 0 && Date.now() < secondReplacementDeadline) {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
     expect(pool.stats.total).toBe(1);
   });
 

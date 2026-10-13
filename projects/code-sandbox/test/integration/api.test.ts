@@ -390,22 +390,40 @@ describe('API 错误处理安全', () => {
     await poolReady;
   }, 30000);
 
-  it('JS 执行异常不泄露堆栈', async () => {
+  it('JS 执行异常返回堆栈和失败前输出', async () => {
     const res = await app.request('/sandbox/js', {
       method: 'POST',
       headers: headers({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
-        code: 'async function main() { null.x; }',
+        code: 'async function main() { console.log("before failure"); null.x; }',
         variables: {}
       })
     });
+    expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.success).toBe(false);
-    // 错误信息不应包含宿主进程的真实文件路径（如 node_modules、/src/pool/）
-    const msg = data.message || '';
-    expect(msg).not.toContain('node_modules');
-    expect(msg).not.toContain('/src/pool/');
-    expect(msg).not.toContain('process-pool');
+    // 失败诊断通过 message 返回；匹配用户函数帧，避免依赖构建产物路径。
+    expect(data.message).toContain('TypeError:');
+    expect(data.message).toContain('at main');
+    expect(data.message).toContain('Console output:\nbefore failure');
+  });
+
+  it('Python 执行异常返回堆栈和失败前输出', async () => {
+    const res = await app.request('/sandbox/python', {
+      method: 'POST',
+      headers: headers({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        code: 'def main():\n    print("before failure")\n    raise ValueError("execution failed")',
+        variables: {}
+      })
+    });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.success).toBe(false);
+    expect(data.message).toContain('Traceback (most recent call last):');
+    expect(data.message).toContain('ValueError: execution failed');
+    expect(data.message).toContain('line 3, in main');
+    expect(data.message).toContain('Console output:\nbefore failure');
   });
 
   it('无效 JSON body 返回 400', async () => {

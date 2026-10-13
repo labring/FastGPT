@@ -16,28 +16,50 @@ import {
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import { useCallback, useEffect, useRef, useMemo } from 'react';
-import { Box, Flex, HStack } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { useBasicTypeaheadTriggerMatch } from '../../utils';
 import Avatar from '../../../../Avatar';
 import MyIcon from '../../../../Icon';
 import MyBox from '../../../../MyBox';
-import { useMount } from 'ahooks';
 import { useRequest } from '../../../../../../hooks/useRequest';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useTranslation } from 'next-i18next';
 import type { SkillLabelItemType } from '../SkillLabelPlugin';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 
-/* 
-  两列渲染器
-  第三列会展示第二列选中的 tool/toolset 的详细信息：头像、名称、描述、子工具（如有）
-*/
+const MENU_WIDTH = 'min(954px, calc(100vw - 16px))';
+const MENU_HEIGHT = '337px';
+const FIRST_COLUMN_WIDTH = '200px';
+const CHILD_COLUMN_WIDTH = '280px';
+const PAGE_SIZE = 50;
+const PAGE_LOAD_THRESHOLD = 80;
+
+export type SkillOptionPageType = {
+  list: SkillItemType[];
+  total: number;
+};
+
+export type SkillOptionPageLoader = (
+  params: { offset: number; pageSize: number },
+  cancelToken?: AbortController
+) => Promise<SkillOptionPageType>;
+
+export type SkillFolderPageLoader = (
+  id: string,
+  source: string | undefined,
+  params: { offset: number; pageSize: number },
+  cancelToken?: AbortController
+) => Promise<SkillOptionPageType>;
+
 export type SkillOptionItemType = {
   description?: string;
   list: SkillItemType[];
+  total?: number;
+  folderExpandMode?: 'auto' | 'manual';
   onSelect?: (id: string) => Promise<SkillOptionItemType | undefined>;
   onClick?: (id: string, source?: string) => Promise<SkillClickResult | undefined>;
-  onFolderLoad?: (id: string) => Promise<SkillItemType[]>;
+  loadPage?: SkillOptionPageLoader;
+  onFolderLoad?: SkillFolderPageLoader;
 };
 
 export type SkillClickResult = {
@@ -61,15 +83,48 @@ export type SkillItemType = {
   folderChildren?: SkillItemType[];
 
   // Toolset
-  tools?: {
-    id: string;
-    name: string;
-    source?: string;
-  }[];
+  tools?: SkillItemType[];
 };
 
 const getSkillItemKey = (item: Pick<SkillItemType, 'id' | 'source'>) =>
   getToolIdentityKey(item.id, item.source);
+
+const mergeSkillItems = (current: SkillItemType[], incoming: SkillItemType[]) => {
+  const keys = new Set(current.map(getSkillItemKey));
+  return current.concat(
+    incoming.filter((item) => {
+      const key = getSkillItemKey(item);
+      if (keys.has(key)) return false;
+      keys.add(key);
+      return true;
+    })
+  );
+};
+
+const isManualFolder = (item: SkillItemType, option: SkillOptionItemType) =>
+  Boolean(item.isFolder && option.folderExpandMode === 'manual');
+
+type ColumnPageState = {
+  option: SkillOptionItemType;
+  offset: number;
+  total: number;
+  loading: boolean;
+  error: boolean;
+  lastRequestedOffset?: number;
+  loadedOffsets: Set<number>;
+  requestId: number;
+  controller?: AbortController;
+};
+
+type ColumnPageStateView = Pick<ColumnPageState, 'offset' | 'total' | 'loading' | 'error'>;
+
+type ColumnPageLoadResult = 'loaded' | 'failed' | 'stale';
+
+type ColumnPageRequest = {
+  option: SkillOptionItemType;
+  promise: Promise<ColumnPageLoadResult>;
+  token: symbol;
+};
 
 export default function SkillPickerPlugin({
   skillOption,
@@ -83,24 +138,22 @@ export default function SkillPickerPlugin({
   const { t } = useTranslation();
   const [skillOptions, setSkillOptions] = useState<SkillOptionItemType[]>([skillOption]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMenuPositioned, setIsMenuPositioned] = useState(false);
+  const [hasHorizontalOverflow, setHasHorizontalOverflow] = useState(false);
+  const [menuQueryVersion, setMenuQueryVersion] = useState(0);
   const isMenuOpenRef = useRef(false);
 
   const updateMenuOpen = useCallback((open: boolean) => {
+    const wasOpen = isMenuOpenRef.current;
     isMenuOpenRef.current = open;
+    if (!open || !wasOpen) {
+      setIsMenuPositioned(false);
+    }
+    if (!open) {
+      setHasHorizontalOverflow(false);
+    }
     setIsMenuOpen(open);
   }, []);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setSkillOptions((state) => {
-        const newOptions = [...state];
-        newOptions[0] = skillOption;
-        return newOptions;
-      });
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [skillOption]);
 
   const [editor] = useLexicalComposerContext();
   const [selectedRowIndex, setSelectedRowIndex] = useState<Record<number, number>>({
@@ -109,11 +162,154 @@ export default function SkillPickerPlugin({
   const [currentColumnIndex, setCurrentColumnIndex] = useState<number>(0);
   const [currentRowIndex, setCurrentRowIndex] = useState<number>(0);
   const [interactionMode, setInteractionMode] = useState<'mouse' | 'keyboard'>('mouse');
+  const selectionRequestIdRef = useRef(0);
+  const folderOptionsRef = useRef<Map<string, SkillOptionItemType>>(new Map());
+  const folderRequestsRef = useRef<
+    Map<string, { promise: Promise<SkillOptionPageType>; controller: AbortController }>
+  >(new Map());
+  const [loadingFolderIds, setLoadingFolderIds] = useState<Set<string>>(new Set());
+  const columnPageStateRef = useRef<Map<number, ColumnPageState>>(new Map());
+  const columnPageRequestsRef = useRef<Map<number, ColumnPageRequest>>(new Map());
+  const columnPageNavigationRef = useRef<Map<number, symbol>>(new Map());
+  const columnElementRef = useRef<Map<number, HTMLDivElement>>(new Map());
+  const [columnPageStates, setColumnPageStates] = useState<Record<number, ColumnPageStateView>>({});
 
   // Refs for scroll management
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const menuAnchorRef = useRef<HTMLElement | null>(null);
+  const menuElementRef = useRef<HTMLDivElement | null>(null);
+  const menuPositionFrameRef = useRef<number | null>(null);
+  const matchingStringRef = useRef<string | null>(null);
 
-  // Scroll selected item into view
+  const updateHorizontalOverflow = useCallback(() => {
+    const menuElement = menuElementRef.current;
+    if (!menuElement) return;
+
+    setHasHorizontalOverflow(menuElement.scrollWidth > menuElement.clientWidth);
+  }, []);
+
+  const getTriggerRect = useCallback(() => {
+    const selection = window.getSelection();
+    const anchorNode = selection?.anchorNode;
+    if (
+      !selection ||
+      !selection.isCollapsed ||
+      !anchorNode ||
+      anchorNode.nodeType !== Node.TEXT_NODE
+    ) {
+      return undefined;
+    }
+
+    const triggerLength = (matchingStringRef.current?.length ?? 0) + 1;
+    const startOffset = selection.anchorOffset - triggerLength;
+    if (startOffset < 0) return undefined;
+
+    const range = document.createRange();
+    try {
+      range.setStart(anchorNode, startOffset);
+      range.setEnd(anchorNode, selection.anchorOffset);
+      return range.getBoundingClientRect();
+    } catch {
+      return undefined;
+    }
+  }, []);
+
+  const updateMenuPosition = useCallback(() => {
+    const anchorElement = menuAnchorRef.current;
+    const menuElement = menuElementRef.current;
+    if (!anchorElement || !menuElement) return;
+
+    const currentAnchorLeft = Number.parseFloat(anchorElement.style.left);
+    if (!Number.isFinite(currentAnchorLeft)) return;
+
+    const menuRect = menuElement.getBoundingClientRect();
+    const triggerRect = getTriggerRect();
+    const viewportWidth = window.innerWidth;
+    const edgePadding = 8;
+    const maxLeft = Math.max(edgePadding, viewportWidth - menuRect.width - edgePadding);
+    const nextLeft = Math.min(Math.max(triggerRect?.left ?? menuRect.left, edgePadding), maxLeft);
+    const anchorRect = anchorElement.getBoundingClientRect();
+    const nextOffset = nextLeft - anchorRect.left;
+    const nextTransform = `translate3d(${nextOffset}px, 0, 0)`;
+
+    // Keep Lexical as the single owner of the anchor position. The menu transform only corrects viewport overflow.
+    if (menuElement.style.transform !== nextTransform) {
+      menuElement.style.transform = nextTransform;
+    }
+    setIsMenuPositioned(true);
+  }, [getTriggerRect]);
+
+  const scheduleMenuPosition = useCallback(() => {
+    if (menuPositionFrameRef.current !== null) {
+      cancelAnimationFrame(menuPositionFrameRef.current);
+    }
+
+    menuPositionFrameRef.current = requestAnimationFrame(() => {
+      menuPositionFrameRef.current = requestAnimationFrame(() => {
+        menuPositionFrameRef.current = null;
+        updateMenuPosition();
+      });
+    });
+  }, [updateMenuPosition]);
+
+  const setMenuElement = useCallback(
+    (element: HTMLDivElement | null) => {
+      if (!element) {
+        menuElementRef.current?.style.removeProperty('transform');
+      }
+      menuElementRef.current = element;
+      if (element && isMenuOpenRef.current) {
+        setIsMenuPositioned(false);
+        scheduleMenuPosition();
+      }
+    },
+    [scheduleMenuPosition]
+  );
+
+  useEffect(() => {
+    if (!isFocus || !isMenuOpen) return;
+
+    const anchorElement = menuAnchorRef.current;
+    const menuElement = menuElementRef.current;
+    if (!anchorElement || !menuElement) return;
+
+    scheduleMenuPosition();
+    updateHorizontalOverflow();
+
+    const anchorObserver = new MutationObserver(scheduleMenuPosition);
+    anchorObserver.observe(anchorElement, {
+      attributes: true,
+      attributeFilter: ['style']
+    });
+
+    const menuObserver = new ResizeObserver(() => {
+      scheduleMenuPosition();
+      updateHorizontalOverflow();
+    });
+    menuObserver.observe(menuElement);
+
+    window.addEventListener('resize', scheduleMenuPosition);
+
+    return () => {
+      anchorObserver.disconnect();
+      menuObserver.disconnect();
+      window.removeEventListener('resize', scheduleMenuPosition);
+
+      if (menuPositionFrameRef.current !== null) {
+        cancelAnimationFrame(menuPositionFrameRef.current);
+        menuPositionFrameRef.current = null;
+      }
+    };
+  }, [
+    isFocus,
+    isMenuOpen,
+    menuQueryVersion,
+    scheduleMenuPosition,
+    skillOptions.length,
+    updateHorizontalOverflow
+  ]);
+
+  // Scroll the selected row into view and reveal newly appended columns.
   const scrollIntoView = useCallback((columnIndex: number, rowIndex: number, retryCount = 0) => {
     const scroll = (currentRetryCount: number) => {
       const itemKey = `${columnIndex}-${rowIndex}`;
@@ -124,13 +320,12 @@ export default function SkillPickerPlugin({
           if (container) {
             container.scrollTop = 0;
           }
-        } else {
-          itemElement.scrollIntoView({
-            behavior: 'smooth',
-            block: 'nearest',
-            inline: 'nearest'
-          });
         }
+        itemElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'nearest'
+        });
       } else if (currentRetryCount < 5) {
         // Retry if element not found yet (DOM not ready)
         setTimeout(() => {
@@ -142,30 +337,261 @@ export default function SkillPickerPlugin({
     scroll(retryCount);
   }, []);
 
-  // Recursively collects all visible items including expanded folder children for keyboard navigation
-  const getFlattenedVisibleItems = useCallback(
-    (columnIndex: number): SkillItemType[] => {
-      const column = skillOptions[columnIndex];
+  const getItemChildOption = useCallback((item: SkillItemType, option: SkillOptionItemType) => {
+    if (item.children) {
+      const folderExpandMode = item.children.folderExpandMode ?? option.folderExpandMode;
+      return folderExpandMode === item.children.folderExpandMode
+        ? item.children
+        : { ...item.children, folderExpandMode };
+    }
 
-      const flatten = (items: SkillItemType[]): SkillItemType[] => {
-        const result: SkillItemType[] = [];
-        items.forEach((item) => {
-          result.push(item);
-          // Include folder children only if folder is expanded
-          if (item.isFolder && item.open && item.folderChildren) {
-            result.push(...flatten(item.folderChildren));
-          }
-        });
-        return result;
+    if (item.folderChildren) {
+      return {
+        description: option.description,
+        list: item.folderChildren,
+        folderExpandMode: option.folderExpandMode,
+        onClick: option.onClick,
+        onFolderLoad: option.onFolderLoad
       };
+    }
 
-      return flatten(column.list);
+    if (item.tools?.length) {
+      return {
+        list: item.tools,
+        folderExpandMode: option.folderExpandMode,
+        onClick: option.onClick
+      };
+    }
+
+    return undefined;
+  }, []);
+
+  const publishColumnPageState = useCallback((columnIndex: number, state: ColumnPageState) => {
+    setColumnPageStates((prev) => ({
+      ...prev,
+      [columnIndex]: {
+        offset: state.offset,
+        total: state.total,
+        loading: state.loading,
+        error: state.error
+      }
+    }));
+  }, []);
+
+  const resetColumnPageState = useCallback(
+    (columnIndex: number, option?: SkillOptionItemType) => {
+      const currentState = columnPageStateRef.current.get(columnIndex);
+      if (option && currentState?.option === option) return;
+
+      currentState?.controller?.abort();
+      columnPageRequestsRef.current.delete(columnIndex);
+      columnPageNavigationRef.current.delete(columnIndex);
+
+      if (!option) {
+        columnPageStateRef.current.delete(columnIndex);
+        setColumnPageStates((prev) => {
+          if (!(columnIndex in prev)) return prev;
+          const next = { ...prev };
+          delete next[columnIndex];
+          return next;
+        });
+        return;
+      }
+
+      const total = option.total ?? option.list.length;
+      const nextState: ColumnPageState = {
+        option,
+        offset: option.list.length,
+        total,
+        loading: false,
+        error: false,
+        loadedOffsets: new Set(option.list.length > 0 || total === 0 ? [0] : []),
+        requestId: 0
+      };
+      columnPageStateRef.current.set(columnIndex, nextState);
+      publishColumnPageState(columnIndex, nextState);
     },
-    [skillOptions]
+    [publishColumnPageState]
   );
 
-  // Handle item selection (hover/keyboard navigation)
-  const { runAsync: handleItemSelect, loading: isItemSelectLoading } = useRequest(
+  const clearColumnPageStatesAfter = useCallback((columnIndex: number) => {
+    columnPageStateRef.current.forEach((state, index) => {
+      if (index < columnIndex) return;
+      state.controller?.abort();
+      columnPageStateRef.current.delete(index);
+      columnPageRequestsRef.current.delete(index);
+      columnPageNavigationRef.current.delete(index);
+    });
+
+    setColumnPageStates((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      Object.keys(next).forEach((key) => {
+        if (Number(key) < columnIndex) return;
+        delete next[Number(key)];
+        changed = true;
+      });
+      return changed ? next : prev;
+    });
+  }, []);
+
+  const appendColumn = useCallback(
+    (columnIndex: number, option?: SkillOptionItemType) => {
+      if (option) {
+        resetColumnPageState(columnIndex + 1, option);
+      } else {
+        clearColumnPageStatesAfter(columnIndex + 1);
+      }
+
+      setSkillOptions((prev) => {
+        const next = prev.slice(0, columnIndex + 1);
+        if (option) next.push(option);
+        return next;
+      });
+    },
+    [clearColumnPageStatesAfter, resetColumnPageState]
+  );
+
+  /**
+   * Loads one page for a navigation column and reuses an in-flight request for the same option.
+   * Returns `loaded` after applying the page, `failed` for an active request error, and `stale`
+   * when the request was cancelled or its column state was replaced before completion.
+   */
+  const loadColumnPage = useCallback(
+    (columnIndex: number, option: SkillOptionItemType, offset: number) => {
+      const loadPage = option.loadPage;
+      if (!loadPage) return Promise.resolve<ColumnPageLoadResult>('stale');
+
+      let state = columnPageStateRef.current.get(columnIndex);
+      if (!state || state.option !== option) {
+        resetColumnPageState(columnIndex, option);
+        state = columnPageStateRef.current.get(columnIndex);
+      }
+
+      const pendingRequest = columnPageRequestsRef.current.get(columnIndex);
+      if (state?.loading) {
+        return pendingRequest?.option === option
+          ? pendingRequest.promise
+          : Promise.resolve<ColumnPageLoadResult>('stale');
+      }
+      if (!state || state.loadedOffsets.has(offset) || offset >= state.total) {
+        return Promise.resolve<ColumnPageLoadResult>('stale');
+      }
+
+      const controller = new AbortController();
+      const requestId = state.requestId + 1;
+      state.loading = true;
+      state.error = false;
+      state.lastRequestedOffset = offset;
+      state.requestId = requestId;
+      state.controller = controller;
+      publishColumnPageState(columnIndex, state);
+
+      const requestToken = Symbol();
+      const promise = (async (): Promise<ColumnPageLoadResult> => {
+        try {
+          const page = await loadPage({ offset, pageSize: PAGE_SIZE }, controller);
+          const latestState = columnPageStateRef.current.get(columnIndex);
+          if (
+            controller.signal.aborted ||
+            !latestState ||
+            latestState.option !== option ||
+            latestState.requestId !== requestId
+          ) {
+            return 'stale';
+          }
+
+          const nextOption: SkillOptionItemType = {
+            ...option,
+            list: mergeSkillItems(option.list, page.list),
+            total: page.total
+          };
+          latestState.option = nextOption;
+          latestState.offset = Math.max(latestState.offset, offset + page.list.length);
+          latestState.total = page.total;
+          latestState.loadedOffsets.add(offset);
+          latestState.loading = false;
+          latestState.error = false;
+          latestState.controller = undefined;
+
+          setSkillOptions((prev) => {
+            if (prev[columnIndex] !== option) return prev;
+            const next = [...prev];
+            next[columnIndex] = nextOption;
+            return next;
+          });
+          publishColumnPageState(columnIndex, latestState);
+          return 'loaded';
+        } catch (error) {
+          const latestState = columnPageStateRef.current.get(columnIndex);
+          if (
+            controller.signal.aborted ||
+            !latestState ||
+            latestState.option !== option ||
+            latestState.requestId !== requestId
+          ) {
+            return 'stale';
+          }
+
+          latestState.loading = false;
+          latestState.error = true;
+          latestState.controller = undefined;
+          publishColumnPageState(columnIndex, latestState);
+          void error;
+          return 'failed';
+        } finally {
+          const currentRequest = columnPageRequestsRef.current.get(columnIndex);
+          if (currentRequest?.token === requestToken) {
+            columnPageRequestsRef.current.delete(columnIndex);
+          }
+        }
+      })();
+
+      columnPageRequestsRef.current.set(columnIndex, {
+        option,
+        promise,
+        token: requestToken
+      });
+      return promise;
+    },
+    [publishColumnPageState, resetColumnPageState]
+  );
+
+  const handleColumnScroll = useCallback(
+    (columnIndex: number) => {
+      const option = skillOptions[columnIndex];
+      const state = columnPageStateRef.current.get(columnIndex);
+      const element = columnElementRef.current.get(columnIndex);
+      if (
+        !option?.loadPage ||
+        !state ||
+        !element ||
+        state.loading ||
+        state.error ||
+        state.offset >= state.total
+      ) {
+        return;
+      }
+
+      if (element.scrollHeight - element.scrollTop - element.clientHeight <= PAGE_LOAD_THRESHOLD) {
+        void loadColumnPage(columnIndex, option, state.offset);
+      }
+    },
+    [loadColumnPage, skillOptions]
+  );
+
+  const retryColumnPage = useCallback(
+    (columnIndex: number) => {
+      const option = skillOptions[columnIndex];
+      const state = columnPageStateRef.current.get(columnIndex);
+      if (!option?.loadPage || !state || state.loading) return;
+      void loadColumnPage(columnIndex, option, state.lastRequestedOffset ?? state.offset);
+    },
+    [loadColumnPage, skillOptions]
+  );
+
+  // Resolve a root category or a folder explicitly expanded by the user.
+  const { runAsync: handleItemSelect } = useRequest(
     async ({
       currentColumnIndex,
       item,
@@ -175,34 +601,161 @@ export default function SkillPickerPlugin({
       item?: SkillItemType;
       option?: SkillOptionItemType;
     }) => {
-      if (!item || !option?.onSelect) return;
+      if (!item || !option) return;
 
-      const buffer = item.children;
-      if (buffer) {
-        setSkillOptions((prev) => {
-          const newOptions = [...prev];
-          newOptions[currentColumnIndex + 1] = buffer;
-          return newOptions;
-        });
+      const requestId = ++selectionRequestIdRef.current;
+      const itemKey = getSkillItemKey(item);
+      const childOption = getItemChildOption(item, option);
+
+      if (childOption) {
+        appendColumn(currentColumnIndex, childOption);
+        return childOption;
+      }
+
+      if (item.isFolder && option.onFolderLoad) {
+        const cachedOption = folderOptionsRef.current.get(itemKey);
+        if (cachedOption) {
+          appendColumn(currentColumnIndex, cachedOption);
+          return cachedOption;
+        }
+
+        setLoadingFolderIds((prev) => new Set(prev).add(itemKey));
+        let pendingRequest = folderRequestsRef.current.get(itemKey);
+        if (!pendingRequest) {
+          const controller = new AbortController();
+          const promise = Promise.resolve().then(() =>
+            option.onFolderLoad!(
+              item.id,
+              item.source,
+              { offset: 0, pageSize: PAGE_SIZE },
+              controller
+            )
+          );
+          pendingRequest = { promise, controller };
+          folderRequestsRef.current.set(itemKey, pendingRequest);
+        }
+        try {
+          const page = await pendingRequest.promise;
+          if (selectionRequestIdRef.current !== requestId) return;
+
+          const nextOption: SkillOptionItemType = {
+            description: option.description,
+            list: page.list,
+            total: page.total,
+            folderExpandMode: option.folderExpandMode,
+            loadPage: (params, cancelToken) =>
+              option.onFolderLoad!(item.id, item.source, params, cancelToken),
+            onClick: option.onClick,
+            onFolderLoad: option.onFolderLoad
+          };
+          folderOptionsRef.current.set(itemKey, nextOption);
+          appendColumn(currentColumnIndex, nextOption);
+          return nextOption;
+        } finally {
+          if (folderRequestsRef.current.get(itemKey) === pendingRequest) {
+            folderRequestsRef.current.delete(itemKey);
+          }
+          setLoadingFolderIds((prev) => {
+            const next = new Set(prev);
+            next.delete(itemKey);
+            return next;
+          });
+        }
         return;
       }
 
-      const result = await option.onSelect(item.id);
+      if (item.isFolder) {
+        const emptyOption = {
+          description: option.description,
+          list: [],
+          folderExpandMode: option.folderExpandMode,
+          onClick: option.onClick
+        } satisfies SkillOptionItemType;
+        appendColumn(currentColumnIndex, emptyOption);
+        return emptyOption;
+      }
 
-      setSkillOptions((prev) => {
-        const newOptions = [...prev];
-        if (result?.list && result?.list?.length > 0) {
-          newOptions[currentColumnIndex + 1] = result;
-        } else {
-          for (let i = currentColumnIndex + 1; i < newOptions.length; i++) {
-            // @ts-ignore
-            newOptions[i] = undefined;
-          }
-        }
-        return newOptions.filter(Boolean);
-      });
+      if (!option.onSelect) return;
+
+      const result = await option.onSelect(item.id);
+      if (selectionRequestIdRef.current !== requestId) return;
+
+      appendColumn(currentColumnIndex, result);
+      return result;
+    },
+    {
+      refreshDeps: [appendColumn, getItemChildOption]
     }
   );
+
+  useEffect(() => {
+    const columnPageStates = columnPageStateRef.current;
+    const columnPageRequests = columnPageRequestsRef.current;
+    const columnPageNavigation = columnPageNavigationRef.current;
+    const folderRequests = folderRequestsRef.current;
+    const timer = window.setTimeout(() => {
+      selectionRequestIdRef.current += 1;
+      columnPageStates.forEach((state) => state.controller?.abort());
+      columnPageStates.clear();
+      columnPageRequests.clear();
+      columnPageNavigation.clear();
+      folderRequests.forEach(({ controller }) => controller.abort());
+      folderRequests.clear();
+      folderOptionsRef.current.clear();
+      setColumnPageStates({});
+      setSkillOptions([skillOption]);
+      setSelectedRowIndex({ 0: 0 });
+      setCurrentColumnIndex(0);
+      setCurrentRowIndex(0);
+      setInteractionMode('mouse');
+
+      const firstItem = skillOption.list[0];
+      if (firstItem && !isManualFolder(firstItem, skillOption)) {
+        void handleItemSelect({
+          currentColumnIndex: 0,
+          item: firstItem,
+          option: skillOption
+        });
+      }
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+      selectionRequestIdRef.current += 1;
+      columnPageStates.forEach((state) => state.controller?.abort());
+      columnPageRequests.clear();
+      columnPageNavigation.clear();
+      folderRequests.forEach(({ controller }) => controller.abort());
+    };
+  }, [handleItemSelect, skillOption]);
+
+  // Fill short columns so the next page is available without requiring a scrollbar first.
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    const frame = requestAnimationFrame(() => {
+      skillOptions.forEach((option, columnIndex) => {
+        const state = columnPageStateRef.current.get(columnIndex);
+        const element = columnElementRef.current.get(columnIndex);
+        if (
+          !option.loadPage ||
+          !state ||
+          !element ||
+          state.loading ||
+          state.error ||
+          state.offset >= state.total
+        ) {
+          return;
+        }
+
+        if (element.scrollHeight <= element.clientHeight + PAGE_LOAD_THRESHOLD) {
+          void loadColumnPage(columnIndex, option, state.offset);
+        }
+      });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [columnPageStates, isMenuOpen, loadColumnPage, skillOptions]);
 
   const insertSkillNodeText = useCallback(
     (skillId: string, matchingString?: string | null) => {
@@ -285,95 +838,6 @@ export default function SkillPickerPlugin({
     }
   );
 
-  // Handle folder toggle
-  const [loadingFolderIds, setLoadingFolderIds] = useState(new Set());
-  const { runAsync: handleFolderToggle } = useRequest(
-    async ({
-      currentColumnIndex,
-      item,
-      option
-    }: {
-      currentColumnIndex: number;
-      item?: SkillItemType;
-      option?: SkillOptionItemType;
-    }) => {
-      if (!item || !item.isFolder || !option?.onFolderLoad) return;
-      const currentFolder = item;
-
-      // Step 1: Toggle folder open/closed state
-      setSkillOptions((prev) => {
-        const newOptions = [...prev];
-        const columnData = { ...newOptions[currentColumnIndex] };
-
-        // Recursively find and toggle the target folder
-        const toggleFolderOpen = (items: SkillItemType[]): SkillItemType[] => {
-          return items.map((item) => {
-            // Found the target folder, toggle its open state
-            if (getSkillItemKey(item) === getSkillItemKey(currentFolder)) {
-              return { ...item, open: !currentFolder.open };
-            }
-            // Recursively search in nested folders
-            if (item.folderChildren) {
-              return { ...item, folderChildren: toggleFolderOpen(item.folderChildren) };
-            }
-            return item;
-          });
-        };
-
-        columnData.list = toggleFolderOpen(columnData.list);
-        newOptions[currentColumnIndex] = columnData;
-        return newOptions;
-      });
-
-      // Step 2: Load folder children only if folder has no data
-      if (!currentFolder.open && currentFolder?.folderChildren === undefined) {
-        setLoadingFolderIds((prev) => {
-          const next = new Set(prev);
-          next.add(currentFolder.id);
-          return next;
-        });
-
-        try {
-          const result = await option.onFolderLoad(currentFolder.id);
-
-          setSkillOptions((prev) => {
-            const newOptions = [...prev];
-            const columnData = { ...newOptions[currentColumnIndex] };
-
-            const addFolderChildren = (items: SkillItemType[]): SkillItemType[] => {
-              return items.map((item) => {
-                if (getSkillItemKey(item) === getSkillItemKey(currentFolder)) {
-                  return {
-                    ...item,
-                    folderChildren: result
-                  };
-                }
-                if (item.folderChildren) {
-                  return { ...item, folderChildren: addFolderChildren(item.folderChildren) };
-                }
-                return item;
-              });
-            };
-
-            columnData.list = addFolderChildren(columnData.list);
-            newOptions[currentColumnIndex] = columnData;
-            return newOptions;
-          });
-        } finally {
-          setLoadingFolderIds((prev) => {
-            const next = new Set(prev);
-            next.delete(currentFolder.id);
-            return next;
-          });
-        }
-      }
-    }
-  );
-
-  // First init
-  useMount(() => {
-    handleItemSelect({ currentColumnIndex: 0, item: skillOption.list[0], option: skillOption });
-  });
   // Scroll to selected item when menu opens
   useEffect(() => {
     if (isMenuOpen) {
@@ -399,25 +863,27 @@ export default function SkillPickerPlugin({
         setInteractionMode('keyboard');
 
         if (currentColumnIndex >= 0 && currentColumnIndex < skillOptions.length) {
-          const columnItems = getFlattenedVisibleItems(currentColumnIndex);
+          const columnItems = skillOptions[currentColumnIndex]?.list;
           if (!columnItems || columnItems.length === 0) return true;
 
-          // Use functional update to get the latest row index
-          setCurrentRowIndex((prevRowIndex) => {
-            const newIndex = prevRowIndex > 0 ? prevRowIndex - 1 : columnItems.length - 1;
+          columnPageNavigationRef.current.delete(currentColumnIndex);
 
-            handleItemSelect({
-              currentColumnIndex: currentColumnIndex,
-              item: columnItems[newIndex],
-              option: skillOptions[currentColumnIndex]
+          // Keep manual folders collapsed while preserving automatic expansion elsewhere.
+          const newIndex = currentRowIndex > 0 ? currentRowIndex - 1 : columnItems.length - 1;
+          setCurrentRowIndex(newIndex);
+
+          const currentOption = skillOptions[currentColumnIndex];
+          const nextItem = columnItems[newIndex];
+          if (currentOption && nextItem && !isManualFolder(nextItem, currentOption)) {
+            void handleItemSelect({
+              currentColumnIndex,
+              item: nextItem,
+              option: currentOption
             });
+          }
 
-            // Scroll into view after state update
-            requestAnimationFrame(() => {
-              scrollIntoView(currentColumnIndex, newIndex);
-            });
-
-            return newIndex;
+          requestAnimationFrame(() => {
+            scrollIntoView(currentColumnIndex, newIndex);
           });
         }
 
@@ -437,26 +903,98 @@ export default function SkillPickerPlugin({
         setInteractionMode('keyboard');
 
         if (currentColumnIndex >= 0 && currentColumnIndex < skillOptions.length) {
-          const columnItems = getFlattenedVisibleItems(currentColumnIndex);
+          const columnItems = skillOptions[currentColumnIndex]?.list;
           if (!columnItems || columnItems.length === 0) return true;
 
-          // Use functional update to get the latest row index
-          setCurrentRowIndex((prevRowIndex) => {
-            const newIndex = prevRowIndex < columnItems.length - 1 ? prevRowIndex + 1 : 0;
+          const currentOption = skillOptions[currentColumnIndex];
+          const pageState = columnPageStateRef.current.get(currentColumnIndex);
+          const isLastLoadedRow = currentRowIndex >= columnItems.length - 1;
 
-            handleItemSelect({
-              currentColumnIndex: currentColumnIndex,
-              item: columnItems[newIndex],
-              option: skillOptions[currentColumnIndex]
-            });
+          const moveToRow = ({
+            option,
+            items,
+            rowIndex
+          }: {
+            option: SkillOptionItemType;
+            items: SkillItemType[];
+            rowIndex: number;
+          }) => {
+            setCurrentRowIndex(rowIndex);
 
-            // Scroll into view after state update
+            const nextItem = items[rowIndex];
+            if (nextItem && !isManualFolder(nextItem, option)) {
+              void handleItemSelect({
+                currentColumnIndex,
+                item: nextItem,
+                option
+              });
+            }
+
             requestAnimationFrame(() => {
-              scrollIntoView(currentColumnIndex, newIndex);
+              scrollIntoView(currentColumnIndex, rowIndex);
             });
+          };
 
-            return newIndex;
-          });
+          if (
+            currentOption?.loadPage &&
+            isLastLoadedRow &&
+            (!pageState || pageState.offset < pageState.total)
+          ) {
+            if (columnPageNavigationRef.current.has(currentColumnIndex)) return true;
+
+            const pendingRequest = columnPageRequestsRef.current.get(currentColumnIndex);
+            if (pageState?.loading && pendingRequest?.option !== currentOption) return true;
+
+            const previousItemCount = columnItems.length;
+            const navigationToken = Symbol();
+            columnPageNavigationRef.current.set(currentColumnIndex, navigationToken);
+
+            void loadColumnPage(
+              currentColumnIndex,
+              currentOption,
+              pageState?.offset ?? columnItems.length
+            )
+              .then((result) => {
+                if (
+                  !isMenuOpenRef.current ||
+                  result !== 'loaded' ||
+                  columnPageNavigationRef.current.get(currentColumnIndex) !== navigationToken
+                ) {
+                  return;
+                }
+
+                const latestState = columnPageStateRef.current.get(currentColumnIndex);
+                if (!latestState || latestState.loading) return;
+
+                const latestOption = latestState.option;
+                const latestItems = latestOption.list;
+                if (latestItems.length > previousItemCount) {
+                  moveToRow({
+                    option: latestOption,
+                    items: latestItems,
+                    rowIndex: previousItemCount
+                  });
+                  return;
+                }
+
+                // Wrap only after the completed page confirms that no item remains.
+                if (latestState.offset < latestState.total) return;
+                moveToRow({ option: latestOption, items: latestItems, rowIndex: 0 });
+              })
+              .finally(() => {
+                if (columnPageNavigationRef.current.get(currentColumnIndex) === navigationToken) {
+                  columnPageNavigationRef.current.delete(currentColumnIndex);
+                }
+              });
+
+            return true;
+          }
+
+          const newIndex = currentRowIndex < columnItems.length - 1 ? currentRowIndex + 1 : 0;
+          if (currentOption) {
+            columnPageNavigationRef.current.delete(currentColumnIndex);
+            moveToRow({ option: currentOption, items: columnItems, rowIndex: newIndex });
+          }
         }
 
         return true;
@@ -473,10 +1011,46 @@ export default function SkillPickerPlugin({
         e.stopPropagation();
 
         setInteractionMode('keyboard');
+        columnPageNavigationRef.current.delete(currentColumnIndex);
 
         // Use functional updates to get the latest state
         setCurrentColumnIndex((prevColumnIndex) => {
-          if (prevColumnIndex >= skillOptions.length - 1) return prevColumnIndex;
+          const currentOption = skillOptions[prevColumnIndex];
+          const currentItem = currentOption?.list[currentRowIndex];
+
+          if (currentItem && currentOption && isManualFolder(currentItem, currentOption)) {
+            void handleItemSelect({
+              currentColumnIndex: prevColumnIndex,
+              item: currentItem,
+              option: currentOption
+            }).then((nextOption) => {
+              if (!nextOption || !isMenuOpenRef.current) return;
+
+              const nextColumnIndex = prevColumnIndex + 1;
+              setSelectedRowIndex((state) => ({
+                ...state,
+                [prevColumnIndex]: currentRowIndex
+              }));
+              setCurrentColumnIndex(nextColumnIndex);
+              setCurrentRowIndex(0);
+
+              requestAnimationFrame(() => {
+                scrollIntoView(nextColumnIndex, 0);
+              });
+            });
+            return prevColumnIndex;
+          }
+
+          if (prevColumnIndex >= skillOptions.length - 1) {
+            if (currentItem && currentOption) {
+              void handleItemSelect({
+                currentColumnIndex: prevColumnIndex,
+                item: currentItem,
+                option: currentOption
+              });
+            }
+            return prevColumnIndex;
+          }
 
           const newColumnIndex = prevColumnIndex + 1;
 
@@ -485,15 +1059,16 @@ export default function SkillPickerPlugin({
             [prevColumnIndex]: currentRowIndex
           }));
 
-          setCurrentRowIndex(0);
+          setCurrentRowIndex(selectedRowIndex[newColumnIndex] ?? 0);
 
           // Use the latest skillOptions from closure to get the new column items
           const newColumnOption = skillOptions[newColumnIndex];
           const newColumnItems = newColumnOption?.list;
-          if (newColumnItems && newColumnItems.length > 0) {
-            handleItemSelect({
+          const newColumnItem = newColumnItems?.[0];
+          if (newColumnOption && newColumnItem && !isManualFolder(newColumnItem, newColumnOption)) {
+            void handleItemSelect({
               currentColumnIndex: newColumnIndex,
-              item: newColumnItems[0],
+              item: newColumnItem,
               option: newColumnOption
             });
 
@@ -536,8 +1111,9 @@ export default function SkillPickerPlugin({
           setCurrentRowIndex(() => newRowIndex);
 
           // Only keep data up to and including the current column
+          clearColumnPageStatesAfter(newColumnIndex + 1);
           setSkillOptions((state) => {
-            return state.slice(0, prevColumnIndex + 1);
+            return state.slice(0, newColumnIndex + 1);
           });
 
           // Scroll into view after state update
@@ -562,13 +1138,17 @@ export default function SkillPickerPlugin({
         e.stopPropagation();
 
         setInteractionMode('keyboard');
+        columnPageNavigationRef.current.delete(currentColumnIndex);
 
-        const flattenedItems = getFlattenedVisibleItems(currentColumnIndex);
-        const latestItem = flattenedItems[currentRowIndex];
+        const latestItem = skillOptions[currentColumnIndex]?.list[currentRowIndex];
         const latestOption = skillOptions[currentColumnIndex];
 
-        if (!(latestItem.open && latestItem.folderChildren?.length === 0)) {
-          handleFolderToggle({
+        if (
+          latestItem &&
+          latestOption &&
+          (getItemChildOption(latestItem, latestOption) || latestItem.isFolder)
+        ) {
+          void handleItemSelect({
             currentColumnIndex,
             item: latestItem,
             option: latestOption
@@ -590,13 +1170,26 @@ export default function SkillPickerPlugin({
         e.stopPropagation();
 
         setInteractionMode('keyboard');
+        columnPageNavigationRef.current.delete(currentColumnIndex);
 
-        const flattenedItems = getFlattenedVisibleItems(currentColumnIndex);
-        const latestItem = flattenedItems[currentRowIndex];
+        const latestItem = skillOptions[currentColumnIndex]?.list[currentRowIndex];
         const latestOption = skillOptions[currentColumnIndex];
 
-        if (latestOption?.onClick) {
-          handleItemClick({ item: latestItem, option: latestOption });
+        if (!latestItem || !latestOption) return false;
+
+        if (isManualFolder(latestItem, latestOption)) return true;
+
+        if (latestItem.isFolder || getItemChildOption(latestItem, latestOption)) {
+          void handleItemSelect({
+            currentColumnIndex,
+            item: latestItem,
+            option: latestOption
+          });
+          return true;
+        }
+
+        if (latestOption.onClick) {
+          void handleItemClick({ item: latestItem, option: latestOption });
 
           return true;
         }
@@ -622,213 +1215,240 @@ export default function SkillPickerPlugin({
     currentRowIndex,
     skillOptions,
     handleItemSelect,
-    handleFolderToggle,
     handleItemClick,
+    loadColumnPage,
     selectedRowIndex,
     scrollIntoView,
-    getFlattenedVisibleItems
+    getItemChildOption,
+    clearColumnPageStatesAfter
   ]);
 
-  const selectedTool = useMemo(() => {
-    const item = skillOptions[currentColumnIndex]?.list[currentRowIndex];
-    if (!item || !item.canClick) return null;
-    return item;
-  }, [skillOptions, currentColumnIndex, currentRowIndex]);
+  const isExpandable = useCallback(
+    (item: SkillItemType, option: SkillOptionItemType) =>
+      Boolean(item.isFolder || getItemChildOption(item, option)),
+    [getItemChildOption]
+  );
 
-  // Recursively render item list
+  // Render one flat list per navigation column.
   const renderItemList = useCallback(
     (
       items: SkillItemType[],
       columnData: SkillOptionItemType,
       columnIndex: number,
-      onSelectOption?: (item: SkillItemType, option: SkillOptionItemType) => void,
-      depth: number = 0,
-      startFlatIndex: number = 0
-    ): { elements: JSX.Element[]; nextFlatIndex: number } => {
-      const renderItems = (
-        currentItems: SkillItemType[],
-        currentDepth: number,
-        currentStartFlatIndex: number
-      ): { elements: JSX.Element[]; nextFlatIndex: number } => {
-        const result: JSX.Element[] = [];
-        const activeRowIndex = selectedRowIndex[columnIndex];
-        let currentFlatIndex = currentStartFlatIndex;
+      onSelectOption?: (item: SkillItemType, option: SkillOptionItemType) => void
+    ): JSX.Element[] => {
+      const activeRowIndex = selectedRowIndex[columnIndex];
 
-        currentItems.forEach((item) => {
-          const flatIndex = currentFlatIndex;
-          currentFlatIndex++;
+      return items.map((item, rowIndex) => {
+        const isActive = columnIndex < currentColumnIndex && rowIndex === activeRowIndex;
+        const isSelected = columnIndex === currentColumnIndex && rowIndex === currentRowIndex;
+        const expandable = isExpandable(item, columnData);
 
-          // 前面的列，才有激活态
-          const isActive = columnIndex < currentColumnIndex && flatIndex === activeRowIndex;
-          // 当前选中的东西
-          const isSelected = columnIndex === currentColumnIndex && flatIndex === currentRowIndex;
+        return (
+          <MyBox
+            key={getSkillItemKey(item)}
+            ref={(el) => {
+              if (el) {
+                itemRefs.current.set(`${columnIndex}-${rowIndex}`, el as HTMLDivElement);
+              } else {
+                itemRefs.current.delete(`${columnIndex}-${rowIndex}`);
+              }
+            }}
+            pl={1}
+            pr={2}
+            py={1.5}
+            gap={2}
+            borderRadius={'4px'}
+            cursor={'pointer'}
+            bg={isActive || isSelected ? 'myGray.100' : undefined}
+            color={'myGray.600'}
+            display={'flex'}
+            alignItems={'center'}
+            h={'33px'}
+            flexShrink={0}
+            onMouseDown={(e) => {
+              e.preventDefault();
+            }}
+            onMouseMove={() => {
+              if (interactionMode === 'keyboard') {
+                columnPageNavigationRef.current.delete(columnIndex);
+                setInteractionMode('mouse');
+              }
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              columnPageNavigationRef.current.delete(columnIndex);
 
-          result.push(
-            <MyBox
-              key={getSkillItemKey(item)}
-              ref={(el) => {
-                if (el) {
-                  itemRefs.current.set(`${columnIndex}-${flatIndex}`, el as HTMLDivElement);
-                } else {
-                  itemRefs.current.delete(`${columnIndex}-${flatIndex}`);
-                }
-              }}
-              px={2}
-              py={1.5}
-              gap={2}
-              pl={1 + currentDepth * 4}
-              borderRadius={'4px'}
-              cursor={'pointer'}
-              bg={isActive || isSelected ? 'myGray.100' : ''}
-              color={isSelected ? 'primary.700' : 'myGray.600'}
-              display={'flex'}
-              alignItems={'center'}
-              size={'sm'}
-              onMouseDown={(e) => {
-                e.preventDefault();
-              }}
-              onMouseMove={() => {
-                if (interactionMode === 'keyboard') {
-                  setInteractionMode('mouse');
-                }
-              }}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (item.isFolder) {
-                  handleFolderToggle({
-                    currentColumnIndex: columnIndex,
-                    item,
-                    option: columnData
-                  });
-                } else {
-                  if (onSelectOption) {
-                    onSelectOption(item, columnData);
-                  } else {
-                    handleItemClick({
-                      item,
-                      option: columnData
-                    });
-                  }
-                }
-              }}
-              onMouseEnter={(e) => {
-                e.preventDefault();
-
-                // Ignore mouse hover in keyboard mode
-                if (interactionMode === 'keyboard') {
-                  return;
-                }
-
-                if (columnIndex !== currentColumnIndex) {
-                  setSelectedRowIndex((state) => ({
-                    ...state,
-                    [currentColumnIndex]: currentRowIndex
-                  }));
-                }
-
-                setCurrentRowIndex(flatIndex);
-                setCurrentColumnIndex(columnIndex);
-                handleItemSelect({
+              if (expandable || (!item.canClick && columnData.onSelect)) {
+                void handleItemSelect({
                   currentColumnIndex: columnIndex,
                   item,
                   option: columnData
                 });
-              }}
-            >
-              {item.isFolder && !(item.open && item.folderChildren?.length === 0) ? (
+                return;
+              }
+
+              if (onSelectOption) {
+                onSelectOption(item, columnData);
+              } else {
+                void handleItemClick({ item, option: columnData });
+              }
+            }}
+            onMouseEnter={(e) => {
+              e.preventDefault();
+
+              // Ignore mouse hover in keyboard mode until the pointer moves again.
+              if (interactionMode === 'keyboard') return;
+              columnPageNavigationRef.current.delete(columnIndex);
+
+              if (columnIndex !== currentColumnIndex) {
+                setSelectedRowIndex((state) => ({
+                  ...state,
+                  [currentColumnIndex]: currentRowIndex
+                }));
+              }
+
+              setCurrentRowIndex(rowIndex);
+              setCurrentColumnIndex(columnIndex);
+
+              if (!isManualFolder(item, columnData)) {
+                void handleItemSelect({
+                  currentColumnIndex: columnIndex,
+                  item,
+                  option: columnData
+                });
+              }
+            }}
+          >
+            {item.icon && (
+              <Avatar src={item.icon} w={'1.2rem'} borderRadius={'xs'} flexShrink={0} />
+            )}
+            <Box fontSize={'sm'} fontWeight={'medium'} flex={'1 0 0'} className="textEllipsis">
+              {item.label}
+            </Box>
+            {expandable && (
+              <Box w={6} h={6} display={'flex'} alignItems={'center'} justifyContent={'center'}>
                 <MyIcon
-                  name={loadingFolderIds.has(item.id) ? 'common/loading' : 'core/chat/chevronRight'}
+                  name={
+                    loadingFolderIds.has(getSkillItemKey(item))
+                      ? 'common/loading'
+                      : 'core/chat/chevronRight'
+                  }
                   w={4}
                   color={'myGray.500'}
-                  transform={item.open ? 'rotate(90deg)' : 'none'}
-                  transition={'transform 0.2s'}
-                  mr={-1}
                 />
-              ) : columnData.onFolderLoad ? (
-                <Box w={3} flexShrink={0} />
-              ) : null}
-
-              {item.icon && <Avatar src={item.icon} w={'1.2rem'} borderRadius={'xs'} />}
-              {/* Folder content */}
-              <Box fontSize={'sm'} fontWeight={'medium'} flex={'1 0 0'} className="textEllipsis">
-                {item.label}
-                {item.isFolder && item.open && item.folderChildren?.length === 0 && (
-                  <Box as="span" color={'myGray.400'} fontSize={'xs'} ml={2}>
-                    {t('app:empty_folder')}
-                  </Box>
-                )}
               </Box>
-            </MyBox>
-          );
-
-          // render folderChildren
-          if (
-            item.isFolder &&
-            item.open &&
-            !!item.folderChildren &&
-            item.folderChildren.length > 0
-          ) {
-            const { elements, nextFlatIndex } = renderItems(
-              item.folderChildren,
-              currentDepth + 1,
-              currentFlatIndex
-            );
-            result.push(...elements);
-            currentFlatIndex = nextFlatIndex;
-          }
-        });
-
-        return { elements: result, nextFlatIndex: currentFlatIndex };
-      };
-
-      return renderItems(items, depth, startFlatIndex);
+            )}
+          </MyBox>
+        );
+      });
     },
     [
       selectedRowIndex,
       currentColumnIndex,
       currentRowIndex,
       loadingFolderIds,
-      t,
       interactionMode,
-      handleFolderToggle,
       handleItemClick,
-      handleItemSelect
+      handleItemSelect,
+      isExpandable
     ]
   );
-  // Render single column
+
+  // Render a fixed-width navigation column.
   const renderColumn = useCallback(
     (
       columnData: SkillOptionItemType,
       columnIndex: number,
       onSelectOption?: (item: SkillItemType, option: SkillOptionItemType) => void
     ) => {
-      const columnWidth = columnData.onFolderLoad ? '280px' : '200px';
+      const pageState = columnPageStates[columnIndex];
+      const canLoadMore = Boolean(
+        columnData.loadPage && pageState && pageState.offset < pageState.total
+      );
 
       return (
         <MyBox
-          isLoading={currentColumnIndex === columnIndex && isItemClickLoading}
+          isLoading={
+            (currentColumnIndex === columnIndex && isItemClickLoading) ||
+            (pageState?.loading === true && columnData.list.length === 0)
+          }
+          ref={(element) => {
+            if (element) {
+              columnElementRef.current.set(columnIndex, element as HTMLDivElement);
+            } else {
+              columnElementRef.current.delete(columnIndex);
+            }
+          }}
           key={columnIndex}
-          ml={columnIndex > 0 ? 2 : 0}
           p={1.5}
-          borderRadius={'sm'}
-          w={columnWidth}
+          borderRadius={'6px'}
+          w={columnIndex === 0 ? FIRST_COLUMN_WIDTH : CHILD_COLUMN_WIDTH}
+          h={'100%'}
           boxShadow={'0 4px 10px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.10)'}
           bg={'white'}
           flexShrink={0}
-          maxH={'350px'}
-          overflow={'auto'}
+          overflowY={'auto'}
+          overflowX={'hidden'}
+          onScroll={() => handleColumnScroll(columnIndex)}
+          sx={{
+            scrollbarColor: 'var(--chakra-colors-myGray-300) transparent',
+            scrollbarWidth: 'thin',
+            '&::-webkit-scrollbar': { width: '6px' },
+            '&::-webkit-scrollbar-thumb': {
+              background: 'var(--chakra-colors-myGray-300)',
+              borderRadius: '3px'
+            }
+          }}
         >
           {columnData.description && (
-            <Box color={'myGray.500'} fontSize={'xs'}>
+            <Box color={'myGray.500'} fontSize={'xs'} lineHeight={'20px'} h={'20px'}>
               {columnData.description}
             </Box>
           )}
-          {renderItemList(columnData.list, columnData, columnIndex, onSelectOption).elements}
+          {renderItemList(columnData.list, columnData, columnIndex, onSelectOption)}
+          {columnData.list.length === 0 && !pageState?.loading && !pageState?.error && (
+            <Box color={'myGray.400'} fontSize={'xs'} lineHeight={'20px'} h={'20px'}>
+              {t('app:empty_folder')}
+            </Box>
+          )}
+          {canLoadMore && pageState?.loading && columnData.list.length > 0 && (
+            <Box h={6} display={'flex'} alignItems={'center'} justifyContent={'center'}>
+              <MyIcon name={'common/loading'} w={4} color={'myGray.400'} />
+            </Box>
+          )}
+          {canLoadMore && pageState?.error && (
+            <Box
+              h={6}
+              display={'flex'}
+              alignItems={'center'}
+              justifyContent={'center'}
+              cursor={'pointer'}
+              title={t('common:core.chat.retry')}
+              aria-label={t('common:core.chat.retry')}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                retryColumnPage(columnIndex);
+              }}
+            >
+              <MyIcon name={'common/retryLight'} w={4} color={'myGray.500'} />
+            </Box>
+          )}
         </MyBox>
       );
     },
-    [currentColumnIndex, isItemClickLoading, renderItemList]
+    [
+      columnPageStates,
+      currentColumnIndex,
+      handleColumnScroll,
+      isItemClickLoading,
+      renderItemList,
+      retryColumnPage,
+      t
+    ]
   );
 
   // For LexicalTypeaheadMenuPlugin compatibility
@@ -875,6 +1495,10 @@ export default function SkillPickerPlugin({
   return (
     <LexicalTypeaheadMenuPlugin
       onQueryChange={(matchingString) => {
+        matchingStringRef.current = matchingString;
+        if (matchingString !== null) {
+          setMenuQueryVersion((version) => version + 1);
+        }
         // Update menu open state based on query
         updateMenuOpen(matchingString !== null);
       }}
@@ -882,83 +1506,48 @@ export default function SkillPickerPlugin({
       triggerFn={checkForTriggerMatch}
       options={menuOptions}
       menuRenderFn={(anchorElementRef, { selectOptionAndCleanUp }) => {
-        const shouldShow = skillOptions.length > 0 && anchorElementRef.current !== null && isFocus;
+        if (anchorElementRef.current === null) return null;
+
+        menuAnchorRef.current = anchorElementRef.current;
+        const shouldShow = skillOptions.length > 0 && isFocus;
 
         return ReactDOM.createPortal(
-          <Flex
-            visibility={shouldShow ? 'visible' : 'hidden'}
-            position="relative"
-            align="flex-start"
+          <Box
+            ref={setMenuElement}
+            visibility={shouldShow && isMenuPositioned ? 'visible' : 'hidden'}
             zIndex={99999}
+            w={'max-content'}
+            maxW={MENU_WIDTH}
+            h={MENU_HEIGHT}
+            p={2}
+            bg={hasHorizontalOverflow ? '#fbfbfc' : 'transparent'}
+            borderRadius={'12px'}
+            overflowX={'auto'}
+            overflowY={'hidden'}
+            sx={{
+              scrollbarColor: 'var(--chakra-colors-myGray-300) transparent',
+              scrollbarWidth: 'auto',
+              '&::-webkit-scrollbar': { height: '8px' },
+              '&::-webkit-scrollbar-thumb': {
+                background: 'var(--chakra-colors-myGray-300)',
+                borderRadius: '4px'
+              },
+              '&::-webkit-scrollbar-track': { background: 'transparent' }
+            }}
           >
-            {skillOptions.map((column, index) => {
-              return renderColumn(column, index, (item, option) => {
-                if (!option.onClick) return;
-                selectOptionAndCleanUp({
-                  key: getSkillItemKey(item),
-                  ...item,
-                  onClick: option.onClick
-                } as any);
-              });
-            })}
-
-            {selectedTool && (
-              <Box
-                ml={2}
-                p={2.5}
-                borderRadius={'sm'}
-                w={'200px'}
-                boxShadow={
-                  '0 4px 10px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.10)'
-                }
-                bg={'white'}
-                flexShrink={0}
-                maxH={'350px'}
-                overflow={'auto'}
-              >
-                <HStack>
-                  {selectedTool.icon && (
-                    <Avatar src={selectedTool.icon} w={'1.3rem'} borderRadius={'xs'} />
-                  )}
-                  {/* Folder content */}
-                  <Box fontSize={'sm'} fontWeight={'medium'}>
-                    {selectedTool.label}
-                  </Box>
-                </HStack>
-                <Box color={'myGray.500'} fontSize={'xs'} className="textEllipsis3">
-                  {selectedTool.description || t('app:tool_not_desc')}
-                </Box>
-                {/* Tools */}
-                {selectedTool.tools && selectedTool.tools.length > 0 && (
-                  <>
-                    <Box mt={2} color={'myGray.900'} fontSize={'sm'}>
-                      {t('app:tools')}({selectedTool.tools.length})
-                    </Box>
-                    {selectedTool.tools.map((tool) => (
-                      <Box
-                        key={tool.id}
-                        mt={1}
-                        fontSize={'xs'}
-                        color={'myGray.600'}
-                        display={'flex'}
-                        alignItems={'center'}
-                        gap={1.5}
-                      >
-                        <Box
-                          w={'6px'}
-                          h={'6px'}
-                          borderRadius={'50%'}
-                          bg={'primary.600'}
-                          flexShrink={0}
-                        />
-                        {tool.name}
-                      </Box>
-                    ))}
-                  </>
-                )}
-              </Box>
-            )}
-          </Flex>,
+            <Flex align={'stretch'} gap={2} h={'100%'} w={'max-content'}>
+              {skillOptions.map((column, index) =>
+                renderColumn(column, index, (item, option) => {
+                  if (!option.onClick || isExpandable(item, option)) return;
+                  selectOptionAndCleanUp({
+                    key: getSkillItemKey(item),
+                    ...item,
+                    onClick: option.onClick
+                  } as any);
+                })
+              )}
+            </Flex>
+          </Box>,
           anchorElementRef.current!
         );
       }}

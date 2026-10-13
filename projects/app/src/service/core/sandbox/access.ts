@@ -8,7 +8,10 @@ import {
   type AppSandboxAvailability
 } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
+import {
+  getAppLatestVersion,
+  getAppDraftWorkflow
+} from '@fastgpt/service/core/app/version/controller';
 import {
   authSandboxSession,
   type AuthSandboxSessionParams,
@@ -41,7 +44,7 @@ export async function resolveSandboxSessionAvailability(
 
   const app = await MongoApp.findById(session.sourceId).lean();
   const appEnabled = isChatTest
-    ? isAppSandboxEnabledInNodes(app?.modules ?? [])
+    ? isAppSandboxEnabledInNodes((await getAppDraftWorkflow(session.sourceId)).nodes)
     : isAppSandboxEnabledInNodes(
         (await getAppLatestVersion(session.sourceId, app ?? undefined)).nodes
       );

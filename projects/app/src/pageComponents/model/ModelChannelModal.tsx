@@ -1,0 +1,338 @@
+import { useModelChannelTest } from './useModelChannelTest';
+import ChannelStatusTag from './ChannelStatusTag';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { ModelChannelSummary } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
+import {
+  Box,
+  Button,
+  Checkbox,
+  Flex,
+  HStack,
+  Table,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr
+} from '@chakra-ui/react';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
+import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { useLockFn } from 'ahooks';
+import { useMemo, useState } from 'react';
+
+/** 固定行内基线，并禁用 Chakra 默认的勾选图标动画。 */
+const channelCheckboxStyles = {
+  verticalAlign: 'middle',
+  '&, & *': {
+    animation: 'none !important',
+    transition: 'none !important'
+  },
+  '& .chakra-checkbox__control': {
+    transform: 'none !important'
+  }
+};
+
+type ModelChannelModalModel = {
+  model: string;
+  modelId?: string;
+  modelData?: AIModelDocumentDataType;
+  getModelData?: () => AIModelDocumentDataType | undefined;
+  avatar?: string;
+};
+
+/**
+ * 渲染模型渠道选择内容，不包含 Modal 外壳和提交行为。
+ *
+ * 由调用方持有选择草稿，因此既可用于独立关联弹窗，也可嵌入模板创建的第二步，
+ * 避免步骤切换时卸载并重新创建 Modal 产生动画抖动。
+ */
+export const ModelChannelSelector = ({
+  models,
+  channels,
+  channelType,
+  selectedChannelIds,
+  onChange,
+  onCreate,
+  showCurrentModel = true,
+  showSelectedModelCount = false,
+  showTest = true
+}: {
+  models: ModelChannelModalModel[];
+  channels: ModelChannelSummary[];
+  channelType: ChannelType;
+  selectedChannelIds: number[];
+  onChange: (channelIds: number[]) => void;
+  onCreate?: () => void;
+  showCurrentModel?: boolean;
+  showSelectedModelCount?: boolean;
+  showTest?: boolean;
+}) => {
+  const { t, i18n } = useSafeTranslation();
+  const selectedIds = useMemo(() => new Set(selectedChannelIds), [selectedChannelIds]);
+  const selectedChannelCount = channels.filter((channel) => selectedIds.has(channel.id)).length;
+  const isAllSelected = channels.length > 0 && selectedChannelCount === channels.length;
+  const testModel = showTest && models.length === 1 ? models[0] : undefined;
+  const { testingChannelIds, testModelChannel } = useModelChannelTest({
+    target: (() => {
+      if (!testModel) return;
+      if (testModel.getModelData || testModel.modelData) {
+        return {
+          source: 'draft' as const,
+          getModelData: testModel.getModelData ?? (() => testModel.modelData)
+        };
+      }
+      if (testModel.modelId) {
+        return { source: 'installed' as const, modelId: testModel.modelId, model: testModel.model };
+      }
+    })(),
+    channels,
+    channelType
+  });
+
+  const toggleChannel = (channelId: number) => {
+    const next = new Set(selectedIds);
+    if (next.has(channelId)) next.delete(channelId);
+    else next.add(channelId);
+    onChange(channels.filter((channel) => next.has(channel.id)).map((channel) => channel.id));
+  };
+
+  return (
+    <>
+      {showCurrentModel && (
+        <Flex alignItems="center" gap={4} mb={3} flexShrink={0} minH="20px">
+          <Box fontWeight="500" flexShrink={0}>
+            {t('config_model:current_model')}
+          </Box>
+          {models.length <= 3 ? (
+            <Flex alignItems="center" gap={5} minW={0} flexWrap="wrap">
+              {models.map((model, index) => (
+                <HStack key={`${model.model}:${index}`} spacing={1.5} minW={0}>
+                  <Avatar src={model.avatar} w="18px" borderRadius="50%" flexShrink={0} />
+                  <Box noOfLines={1}>{model.model}</Box>
+                </HStack>
+              ))}
+            </Flex>
+          ) : (
+            <Box>{t('config_model:included_models', { count: models.length })}</Box>
+          )}
+        </Flex>
+      )}
+      {(showSelectedModelCount || onCreate) && (
+        <Flex alignItems="center" gap={3} mb={3} flexShrink={0}>
+          {showSelectedModelCount && (
+            <Box fontWeight="500">
+              {t('config_model:selected_model_count', { count: models.length })}
+            </Box>
+          )}
+          {onCreate && (
+            <Button
+              size="sm"
+              variant="primaryOutline"
+              leftIcon={<MyIcon name="common/addLight" w="16px" />}
+              ml="auto"
+              flexShrink={0}
+              onClick={onCreate}
+            >
+              {t('config_model:create_channel')}
+            </Button>
+          )}
+        </Flex>
+      )}
+
+      <FixedTableLayout
+        scrollMode="normal"
+        rootProps={{
+          p: 2,
+          border: '1px solid',
+          borderColor: 'myGray.200',
+          borderRadius: '12px',
+          flex: '1 1 0',
+          gap: 2,
+          overflow: 'hidden'
+        }}
+        renderHeader={({ headerTableWidth }) => (
+          <Table
+            sx={{
+              tableLayout: 'fixed',
+              width: `${headerTableWidth} !important`
+            }}
+          >
+            <colgroup>
+              <col style={{ width: '120px' }} />
+              <col />
+              <col />
+              <col style={{ width: '122px' }} />
+              {testModel && <col style={{ width: '80px' }} />}
+            </colgroup>
+            <Thead>
+              <Tr h="40px">
+                <Th px={6}>
+                  <HStack spacing={2}>
+                    <Checkbox
+                      sx={channelCheckboxStyles}
+                      isChecked={isAllSelected}
+                      isIndeterminate={selectedChannelCount > 0 && !isAllSelected}
+                      onChange={() =>
+                        onChange(isAllSelected ? [] : channels.map((channel) => channel.id))
+                      }
+                    />
+                    <Box>{t('common:Select_all')}</Box>
+                  </HStack>
+                </Th>
+                <Th px={6}>{t('config_model:channel_name')}</Th>
+                <Th px={6}>{t('config_model:channel_type')}</Th>
+                <Th px={6}>{t('config_model:channel_status')}</Th>
+                {testModel && <Th px={6}>{t('config_model:test')}</Th>}
+              </Tr>
+            </Thead>
+          </Table>
+        )}
+        bodyProps={{ flex: '1 1 0', minH: 0, overflowY: 'auto' }}
+        renderBody={() => (
+          <Table sx={{ tableLayout: 'fixed' }}>
+            <colgroup>
+              <col style={{ width: '120px' }} />
+              <col />
+              <col />
+              <col style={{ width: '122px' }} />
+              {testModel && <col style={{ width: '80px' }} />}
+            </colgroup>
+            <Tbody color="myGray.600">
+              {channels.map((channel) => (
+                <Tr
+                  key={channel.id}
+                  h="80px"
+                  cursor="pointer"
+                  _hover={{ bg: 'myGray.25' }}
+                  onClick={() => toggleChannel(channel.id)}
+                >
+                  <Td px={6}>
+                    {/* 仅复选框区域拦截冒泡，单元格空白仍由行处理点击。 */}
+                    <Box
+                      display="inline-flex"
+                      verticalAlign="middle"
+                      alignItems="center"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <Checkbox
+                        sx={channelCheckboxStyles}
+                        isChecked={selectedIds.has(channel.id)}
+                        onChange={() => toggleChannel(channel.id)}
+                      />
+                    </Box>
+                  </Td>
+                  <Td px={6} fontWeight="500">
+                    <Box noOfLines={1}>{channel.name}</Box>
+                  </Td>
+                  <Td px={6}>
+                    <HStack spacing={2} minW={0}>
+                      <Avatar src={channel.protocol.avatar} w="16px" flexShrink={0} />
+                      <Box noOfLines={1}>
+                        {parseI18nString(channel.protocol.name, i18n.language)}
+                      </Box>
+                    </HStack>
+                  </Td>
+                  <Td px={6}>
+                    <ChannelStatusTag status={channel.status} />
+                  </Td>
+                  {testModel && (
+                    <Td px={6}>
+                      <Box display="inline-flex">
+                        <MyIconButton
+                          icon="core/chat/sendLight"
+                          tip={t('config_model:model.test_model')}
+                          isLoading={testingChannelIds.has(channel.id)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void testModelChannel(channel.id);
+                          }}
+                        />
+                      </Box>
+                    </Td>
+                  )}
+                </Tr>
+              ))}
+              {channels.length === 0 && (
+                <Tr>
+                  <Td colSpan={testModel ? 5 : 4} border={0}>
+                    <EmptyTip py={12} text={t('config_model:no_channels')} />
+                  </Td>
+                </Tr>
+              )}
+            </Tbody>
+          </Table>
+        )}
+      />
+    </>
+  );
+};
+
+/** 独立的已有渠道关联弹窗；选择内容与模板创建第二步共享。 */
+const ModelChannelModal = ({
+  models,
+  channels,
+  channelType,
+  selectedChannelIds,
+  onConfirm,
+  onClose,
+  showCurrentModel = true,
+  showTest = true
+}: {
+  models: ModelChannelModalModel[];
+  channels: ModelChannelSummary[];
+  channelType: ChannelType;
+  selectedChannelIds: number[];
+  onConfirm: (channelIds: number[]) => unknown | Promise<unknown>;
+  onClose: () => void;
+  showCurrentModel?: boolean;
+  showTest?: boolean;
+}) => {
+  const { t } = useSafeTranslation();
+  const [selection, setSelection] = useState(selectedChannelIds);
+  const { runAsync: confirmRequest, loading: confirming } = useRequest(async () => {
+    await onConfirm(selection);
+  });
+  const confirm = useLockFn(confirmRequest);
+
+  return (
+    <MyModal
+      isOpen
+      onClose={onClose}
+      title={t('config_model:associate_existing_channels')}
+      w="820px"
+      h="612px"
+      maxW="calc(100vw - 32px)"
+      bodyStyles={{ overflow: 'hidden' }}
+      footer={
+        <>
+          <Button size="md" variant="whiteBase" onClick={onClose}>
+            {t('common:Cancel')}
+          </Button>
+          <Button size="md" isLoading={confirming} onClick={confirm}>
+            {t('config_model:associate')}
+          </Button>
+        </>
+      }
+    >
+      <ModelChannelSelector
+        models={models}
+        channels={channels}
+        channelType={channelType}
+        selectedChannelIds={selection}
+        onChange={setSelection}
+        showCurrentModel={showCurrentModel}
+        showTest={showTest}
+      />
+    </MyModal>
+  );
+};
+
+export default ModelChannelModal;

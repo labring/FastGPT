@@ -1,4 +1,4 @@
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission/dataset/auth';
 import {
   CreateCollectionByLocalFileBodySchema,
   type CreateCollectionWithResultResponseType
@@ -7,31 +7,36 @@ import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/col
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { documentFileType } from '@fastgpt/global/common/file/constants';
 import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { decodeMultipartFilename } from '@fastgpt/service/common/s3/filename';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const filepaths: string[] = [];
+  let fileId: string | undefined;
+  let promoted = false;
 
   try {
-    const result = await multer.resolveFormData({
+    const formData = await multer.resolveFormData({
       request: req,
       maxFileSize: global.feConfigs.uploadFileMaxSize,
       allowedExtensions: parseAllowedExtensions(documentFileType)
     });
-    filepaths.push(result.fileMetadata.path);
+    filepaths.push(formData.fileMetadata.path);
 
-    const { teamId, tmbId, dataset } = await authDataset({
+    const collectionData = CreateCollectionByLocalFileBodySchema.parse(formData.data);
+    const { teamId, tmbId, dataset } = await authDatasetCollectionCreate({
       req,
       authToken: true,
       authApiKey: true,
-      per: WritePermissionVal,
-      datasetId: result.data.datasetId
+      datasetId: collectionData.datasetId,
+      parentId: collectionData.parentId
     });
 
     // Check dataset limit
@@ -40,17 +45,16 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       insertLen: 1
     });
 
-    const collectionData = CreateCollectionByLocalFileBodySchema.parse(result.data);
-    const collectionName = decodeMultipartFilename(result.fileMetadata.originalname);
+    const collectionName = decodeMultipartFilename(formData.fileMetadata.originalname);
 
-    const fileId = await getS3DatasetSource().upload({
+    fileId = await getS3DatasetSource().upload({
       datasetId: dataset._id,
-      stream: result.getReadStream(),
-      size: result.fileMetadata.size,
+      stream: formData.getReadStream(),
+      size: formData.fileMetadata.size,
       filename: collectionName
     });
 
-    return await createCollectionAndInsertData({
+    const collectionResult = await createCollectionAndInsertData({
       dataset,
       createCollectionParams: {
         ...collectionData,
@@ -66,7 +70,19 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
         }
       }
     });
+    promoted = true;
+    return collectionResult;
   } catch (error) {
+    if (fileId && !promoted) {
+      await getS3DatasetSource()
+        .cleanupPendingDatasetFile(fileId)
+        .catch((cleanupError) => {
+          logger.warn('Local-file pending dataset file cleanup failed', {
+            fileId,
+            error: cleanupError
+          });
+        });
+    }
     return Promise.reject(error);
   } finally {
     multer.clearDiskTempFiles(filepaths);

@@ -4,18 +4,51 @@ import Papa from 'papaparse';
 import XLSX from 'xlsx';
 import { filterEmptyTableData, formatMarkdownTableRow } from './utils';
 import { workerEnv } from '../../env';
+import { estimateFileParseMemoryBytes } from '../../fileParseResource';
 import { preflightXlsx } from './xlsxPreflight';
 
 /**
- * XLSX 解析安全预算。部署时可按业务文件规模调整，放大限制时需同时评估 worker 内存上限。
+ * XLSX 结构安全预算。行列与单元格限制可按业务规模调整。
  */
 export const XLSX_PARSE_LIMITS = {
   maxRows: workerEnv.XLSX_PARSE_MAX_ROWS,
   maxColumns: workerEnv.XLSX_PARSE_MAX_COLUMNS,
   maxCells: workerEnv.XLSX_PARSE_MAX_CELLS,
-  maxMergedCells: workerEnv.XLSX_PARSE_MAX_MERGED_CELLS,
-  maxUncompressedBytes: workerEnv.PARSE_FILE_WORKER_MEMORY_LIMIT_MB * 1024 * 1024
+  maxMergedCells: workerEnv.XLSX_PARSE_MAX_MERGED_CELLS
 } as const;
+
+/**
+ * 使用调度器对同一 XLSX 输入的内存估算限制解压总量，保留 ZIP 炸弹防护且不引入固定 worker 额度。
+ */
+export const getXlsxParseLimits = (fileSizeBytes: number) => ({
+  ...XLSX_PARSE_LIMITS,
+  maxUncompressedBytes: estimateFileParseMemoryBytes({
+    extension: 'xlsx',
+    fileSizeBytes
+  })
+});
+
+/**
+ * Excel 的“常规”格式会把超过 11 位的数字显示为科学计数法，SheetJS 格式化时也一样：
+ * 8613812345678 这样的编号或手机号会变成 "8.61381E+12"，原始位数在表格和 CSV 中都丢失了。
+ * 对常规格式且仍能被 JavaScript 精确表示的整数改为写出完整数值；用户显式设置的数字格式和
+ * 已超出安全整数范围的值保持 SheetJS 原有文本，避免输出一个已经失真的数字。
+ */
+const keepWholeNumberDigits = (worksheet: XLSX.WorkSheet) => {
+  for (const address of Object.keys(worksheet)) {
+    if (address.startsWith('!')) continue;
+    const cell = worksheet[address] as XLSX.CellObject;
+    if (
+      cell.t === 'n' &&
+      cell.z === 'General' &&
+      typeof cell.v === 'number' &&
+      Number.isSafeInteger(cell.v) &&
+      cell.w?.includes('E')
+    ) {
+      cell.w = String(cell.v);
+    }
+  }
+};
 
 /**
  * 将 XLSX 转换为 CSV 原文和 Markdown 表格。
@@ -26,14 +59,17 @@ export const XLSX_PARSE_LIMITS = {
 export const readXlsxRawText = async ({
   buffer
 }: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
+  const parseLimits = getXlsxParseLimits(buffer.length);
   await preflightXlsx({
     buffer,
-    limits: XLSX_PARSE_LIMITS
+    limits: parseLimits
   });
 
   const workbook = XLSX.read(buffer, {
     type: 'buffer',
     cellDates: true,
+    // 保留单元格数字格式，用于识别被“常规”格式改写为科学计数法的整数。
+    cellNF: true,
     // 预检已验证真实坐标；这里继续截断，避免后续依赖升级意外绕过纵深保护。
     sheetRows: XLSX_PARSE_LIMITS.maxRows
   });
@@ -123,6 +159,7 @@ export const readXlsxRawText = async ({
   });
 
   const result = worksheets.map(({ name, worksheet, merges, sheetRange }) => {
+    keepWholeNumberDigits(worksheet);
     const data = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
       header: 1,
       defval: '',

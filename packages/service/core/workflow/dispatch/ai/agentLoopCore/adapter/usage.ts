@@ -7,11 +7,12 @@ import {
 /** 将 Agent Loop 的内部 usage 显式转换为 workflow 统一账单结构。 */
 export const agentLoopUsagesToChatNodeUsages = (usages?: AgentLoopUsage[]): ChatNodeUsageType[] =>
   normalizeAgentLoopUsages(usages).map(
-    ({ moduleName, totalPoints, model, inputTokens, outputTokens }) => ({
+    ({ moduleName, totalPoints, modelId, inputTokens, outputTokens, pages }) => ({
       moduleName,
       totalPoints,
-      model,
-      inputTokens,
-      outputTokens
+      ...(modelId !== undefined && { modelId }),
+      ...(inputTokens !== undefined && { inputTokens }),
+      ...(outputTokens !== undefined && { outputTokens }),
+      ...(pages !== undefined && { pages })
     })
   );

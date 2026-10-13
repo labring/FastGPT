@@ -1,5 +1,5 @@
 import type { ChatCompletionMessageToolCall } from '@fastgpt/global/core/ai/llm/type';
-import type { WorkflowResponseType } from '../../../../type';
+import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
 import type { AgentLoopCoreToolDisplayInfo } from '../../domain/toolInfo';
 
 export type CreateAgentLoopCoreEventStreamParams = {
@@ -11,6 +11,8 @@ export type CreateAgentLoopCoreEventStreamParams = {
 };
 
 export type AgentLoopCoreEventStream = {
+  /** 标记后续 assistant 文本开始新的展示块。 */
+  startNewAnswerBlock: () => void;
   streamReasoning: (text: string) => void;
   streamAnswer: (text: string) => void;
   streamToolCall: (call: ChatCompletionMessageToolCall) => void;

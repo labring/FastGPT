@@ -1,3 +1,4 @@
+import { OpenObjectOpenApiMeta, requiredAlternatives } from '../../../../common/zod/openapi';
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
@@ -14,9 +15,12 @@ import {
   OpenAPIFlowNodeInputItemTypeSchema,
   OpenAPIStoreNodeItemTypeSchema
 } from '../../workflow/node';
+import { AppChatConfigInputSchema } from '../../app/common/api';
+import { optionalNullToUndefined } from '../../../../common/zod';
 
+/** 带默认值的字段仅归一空值，保留原 Schema 的必填输出类型和默认值。 */
 const nullishToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
-  z.preprocess((v) => v ?? undefined, schema);
+  z.preprocess((value) => value ?? undefined, schema);
 
 const ChatTestNodeInputSchema = OpenAPIFlowNodeInputItemTypeSchema.superRefine((input, ctx) => {
   if (input.key !== NodeInputKeyEnum.selectedTools || input.value === undefined) return;
@@ -52,14 +56,14 @@ const WebCompletionsSchema = z.object({
     .meta({
       description: '会话 ID；未传入或传入空字符串时自动生成新会话 ID'
     }),
-  appId: nullishToUndefined(ObjectIdSchema.optional()).meta({
+  appId: optionalNullToUndefined(ObjectIdSchema).meta({
     description:
       '应用 ID。推荐在请求体中传入；APIKey 调用时优先级为 body.appId > Authorization 中的 apiKey-appId 后缀 > 旧 APIKey 绑定 appId。apiKey-appId 仅用于兼容 OpenAI SDK，不会写入数据库'
   }),
-  customUid: nullishToUndefined(z.string().max(1024).optional()).meta({
+  customUid: optionalNullToUndefined(z.string().max(1024)).meta({
     description: '自定义用户ID(分享链接)'
   }),
-  metadata: nullishToUndefined(z.record(z.string(), z.any()).optional()).meta({
+  metadata: optionalNullToUndefined(z.record(z.string(), z.any())).meta({
     description: '元数据'
   })
 });
@@ -76,11 +80,11 @@ const ChatCompletionCreateParamsSchema = z.object({
 
 export const ChatCompletionAuthProxySchema = z
   .object({
-    username: nullishToUndefined(z.string().trim().min(1).max(128).optional()).meta({
+    username: optionalNullToUndefined(z.string().trim().min(1).max(128)).meta({
       example: 'user@example.com',
       description: 'API Key 代理调用的团队成员用户名'
     }),
-    tmbId: nullishToUndefined(ObjectIdSchema.optional()).meta({
+    tmbId: optionalNullToUndefined(ObjectIdSchema).meta({
       description: 'API Key 代理调用的团队成员 ID'
     })
   })
@@ -88,6 +92,7 @@ export const ChatCompletionAuthProxySchema = z
     message: 'authProxy.username or authProxy.tmbId is required'
   })
   .meta({
+    ...requiredAlternatives([['username'], ['tmbId']]),
     description:
       'API Key 代理调用身份。仅开启 authProxy 的团队级 API Key 可用，username 与 tmbId 同时传入时必须指向同一团队成员'
   });
@@ -95,10 +100,10 @@ export type ChatCompletionAuthProxy = z.infer<typeof ChatCompletionAuthProxySche
 
 export const CompletionsPropsSchema = WebCompletionsSchema.extend({
   ...ChatCompletionCreateParamsSchema.shape,
-  outLinkAuthData: nullishToUndefined(OutLinkChatAuthSchema.optional()).meta({
+  outLinkAuthData: optionalNullToUndefined(OutLinkChatAuthSchema).meta({
     description: '外链鉴权数据。share 模式传 shareId/outLinkUid。'
   }),
-  authProxy: nullishToUndefined(ChatCompletionAuthProxySchema.optional()).meta({
+  authProxy: optionalNullToUndefined(ChatCompletionAuthProxySchema).meta({
     description: 'API Key 代理调用身份'
   }),
   variables: nullishToUndefined(z.record(z.string(), z.any()).default({})).meta({
@@ -139,6 +144,7 @@ export type CompletionsProps = z.infer<typeof CompletionsPropsSchema>;
 const ChatCompletionResponseMessageSchema = z.object({
   role: z.literal('assistant').meta({ description: '消息角色' }),
   content: z.any().meta({
+    anyOf: [{ type: 'string' }, { type: 'array', items: OpenObjectOpenApiMeta }],
     description:
       '消息内容。普通对话为字符串；detail=true 或工作流命中交互节点时，可能为按字段名区分的对象数组（如 text / interactive / tool / file / reasoning）。v1 会额外补充 type 字段，取值为 text / interactive / tool / file / reasoning；v2 不补充 type。当元素包含 interactive 字段时，只返回交互展示配置，不返回 entryNodeIds / memoryEdges / nodeOutputs 等内部运行态字段'
   }),
@@ -172,6 +178,7 @@ export const CompletionsResponseSchema = z.object({
   }),
   choices: z.array(ChatCompletionChoiceSchema).meta({ description: '回复选项列表' }),
   responseData: z.array(z.any()).optional().meta({
+    items: OpenObjectOpenApiMeta,
     description:
       '各节点详细响应数据（仅 detail=true 时返回）。每项是一个节点的执行结果，常见字段如 moduleName / moduleType / runningTime / quoteList 等'
   }),
@@ -232,7 +239,7 @@ export const ChatTestPropsSchema = z.object({
     example: [],
     description: '临时执行的工作流连线列表'
   }),
-  chatConfig: CanonicalWorkflowDataSchema.shape.chatConfig.meta({
+  chatConfig: AppChatConfigInputSchema.meta({
     example: {},
     description: '当前格式的聊天配置'
   }),

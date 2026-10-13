@@ -68,6 +68,9 @@ const OutLinkSchema = new Schema({
     type: Boolean,
     default: true
   },
+  allowAnonymous: {
+    type: Boolean
+  },
   limit: {
     maxUsagePoints: {
       type: Number,

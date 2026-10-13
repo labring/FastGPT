@@ -92,8 +92,8 @@ const FillRowTabs = (
       overflowX={'auto'}
       overflowY={'hidden'}
       overscrollBehaviorX={'contain'}
-      scrollbarWidth={'none'}
       sx={{
+        scrollbarWidth: 'none',
         '&::-webkit-scrollbar': {
           display: 'none'
         }
@@ -141,12 +141,12 @@ const FillRowTabs = (
             ? {
                 bg: 'white',
                 boxShadow: '1.5',
-                color: 'primary.600'
+                color: 'primary.700'
               }
             : {
                 color: 'myGray.500',
                 _hover: {
-                  color: 'primary.600'
+                  color: 'primary.700'
                 },
                 onClick: () => {
                   if (scrollPositionKey && scrollContainerRef.current) {

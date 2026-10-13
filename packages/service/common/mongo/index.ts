@@ -40,7 +40,33 @@ export const connectionLogMongo = (() => {
   return global.mongodbLog;
 })();
 
+const installedSchemas = new WeakSet<mongoose.Schema>();
+
+/**
+ * Converts top-level BSON ObjectId values in a query result to strings.
+ *
+ * This intentionally keeps the existing shallow conversion behavior. The
+ * middleware is shared by all Mongo models, so recursively walking arbitrary
+ * populated or aggregate-shaped values here would add an uncontrolled cost to
+ * every matching query.
+ */
+const convertObjectIds = (obj: any) => {
+  if (!obj) return;
+
+  if (obj._id?._bsontype === 'ObjectId') {
+    obj._id = obj._id.toString();
+  }
+
+  for (const key of Object.keys(obj)) {
+    if (obj[key]?._bsontype === 'ObjectId') {
+      obj[key] = obj[key].toString();
+    }
+  }
+};
+
 const addCommonMiddleware = (schema: mongoose.Schema) => {
+  if (installedSchemas.has(schema)) return schema;
+
   const operations = [
     /^find/,
     'save',
@@ -98,34 +124,18 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
       }
       next();
     });
-
-    // Convert _id to string
-    schema.post(/^find/, function (docs) {
-      if (!docs) return;
-
-      const convertObjectIds = (obj: any) => {
-        if (!obj) return;
-
-        // Convert _id
-        if (obj._id && obj._id.toString) {
-          obj._id = obj._id.toString();
-        }
-
-        // Convert other ObjectId fields
-        Object.keys(obj).forEach((key) => {
-          if (obj[key] && obj[key]._bsontype === 'ObjectId') {
-            obj[key] = obj[key].toString();
-          }
-        });
-      };
-
-      if (Array.isArray(docs)) {
-        docs.forEach((doc) => convertObjectIds(doc));
-      } else {
-        convertObjectIds(docs);
-      }
-    });
   });
+
+  // Register the result transform once per Schema instead of once per timing operation.
+  schema.post(/^find/, function (docs) {
+    if (Array.isArray(docs)) {
+      docs.forEach((doc) => convertObjectIds(doc));
+    } else {
+      convertObjectIds(docs);
+    }
+  });
+
+  installedSchemas.add(schema);
 
   return schema;
 };

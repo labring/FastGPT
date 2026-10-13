@@ -1,5 +1,6 @@
 import { getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { isHttpUrl } from '@fastgpt/global/common/string/url';
 import { Readable } from 'node:stream';
 import { axios } from '../../api/axios';
 import { getFileMaxSize } from '../utils';
@@ -12,12 +13,18 @@ const EXTERNAL_FILE_DOWNLOAD_TIMEOUT_MS = 180_000;
  */
 export const readExternalFileBuffer = async ({
   url,
-  maxFileSize = getFileMaxSize()
+  maxSizeBytes = getFileMaxSize(),
+  timeoutMs = EXTERNAL_FILE_DOWNLOAD_TIMEOUT_MS,
+  signal,
+  onReadBytes
 }: {
   url: string;
-  maxFileSize?: number;
+  maxSizeBytes?: number;
+  timeoutMs?: number;
+  signal?: AbortSignal;
+  onReadBytes?: (readBytes: number) => void;
 }) => {
-  if (!/^https?:\/\//i.test(url)) {
+  if (!isHttpUrl(url)) {
     throw new UserError('External file URL must be an absolute HTTP(S) URL');
   }
 
@@ -28,13 +35,14 @@ export const readExternalFileBuffer = async ({
 
   const response = await axios.get<Readable>(url, {
     responseType: 'stream',
-    timeout: EXTERNAL_FILE_DOWNLOAD_TIMEOUT_MS,
-    maxContentLength: maxFileSize
+    timeout: timeoutMs,
+    maxContentLength: maxSizeBytes,
+    signal
   });
   const contentLength = Number(getAxiosHeaderValue(response.headers['content-length']) || 0);
-  if (contentLength > maxFileSize) {
+  if (contentLength > maxSizeBytes) {
     if (response.data instanceof Readable) response.data.destroy();
-    throw new UserError(`File exceeds maximum allowed size (${maxFileSize} bytes)`);
+    throw new UserError(`File exceeds maximum allowed size (${maxSizeBytes} bytes)`);
   }
 
   const responseStream =
@@ -45,8 +53,10 @@ export const readExternalFileBuffer = async ({
   return {
     buffer: await readStreamToBuffer({
       stream: responseStream,
-      maxBytes: maxFileSize,
-      exceededMessage: `File exceeds maximum allowed size (${maxFileSize} bytes)`
+      maxBytes: maxSizeBytes,
+      exceededMessage: `File exceeds maximum allowed size (${maxSizeBytes} bytes)`,
+      signal,
+      onReadBytes
     }),
     contentType: getAxiosHeaderValue(response.headers['content-type']),
     contentDisposition: getAxiosHeaderValue(response.headers['content-disposition'])

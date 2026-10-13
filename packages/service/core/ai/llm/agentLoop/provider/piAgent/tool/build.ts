@@ -26,6 +26,7 @@ import {
 } from '../../../domain/systemTool/datasetSearch';
 import {
   normalizeAgentLoopUsages,
+  type AgentLoopAssistantResponse,
   type AgentLoopEvent,
   type AgentLoopRuntime,
   type AgentLoopUsage
@@ -100,6 +101,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     execute: () => Promise<{
       response: string;
       assistantMessages?: ChatCompletionMessageParam[];
+      assistantResponses?: AgentLoopAssistantResponse[];
       usages?: AgentLoopUsage[];
       interactive?: TChildrenResponse;
       stop?: boolean;
@@ -129,6 +131,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       rawResponse: result.response,
       response: normalizedResponse,
       assistantMessages,
+      assistantResponses: result.assistantResponses,
       usages,
       errorMessage: result.errorMessage,
       metadata: result.metadata,
@@ -144,7 +147,9 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       name: toolName,
       label: toolName,
       description: tool.function.description || '',
-      parameters: Type.Unsafe<any>((tool.function.parameters as Record<string, unknown>) ?? {}),
+      parameters: tool.function.parameters
+        ? Type.Unsafe<any>(tool.function.parameters as Record<string, unknown>)
+        : Type.Object({}, { additionalProperties: false }),
       execute: async (callId: string, args: unknown) => {
         const call = createToolCall({ id: callId, name: toolName, args: normalizeToolArgs(args) });
         const result = await executeOrdinaryTool({

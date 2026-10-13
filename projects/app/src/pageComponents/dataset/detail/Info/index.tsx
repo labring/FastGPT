@@ -1,42 +1,50 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Flex, Switch, Input } from '@chakra-ui/react';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { useForm } from 'react-hook-form';
-import type { DatasetItemType } from '@fastgpt/global/core/dataset/type';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useTranslation } from 'next-i18next';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { type EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
+import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { postRebuildEmbedding } from '@/web/core/dataset/api/training';
-import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
-import { useContextSelector } from 'use-context-selector';
-import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
-import MyDivider from '@fastgpt/web/components/common/MyDivider/index';
-import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
-import MemberManager from '../../MemberManager';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getModelDetail } from '@/web/core/ai/model/modelData';
 import {
   getCollaboratorList,
   postUpdateDatasetCollaborators
 } from '@/web/core/dataset/api/collaborator';
-import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
-import dynamic from 'next/dynamic';
-import type { EditAPIDatasetInfoFormType } from './components/EditApiServiceModal';
-import { type EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
+import { postRebuildEmbedding } from '@/web/core/dataset/api/training';
+import { postDisableCollectionPermission } from '@/web/core/dataset/api';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { Box, Flex, Input, Switch, Skeleton, SkeletonText } from '@chakra-ui/react';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
+import type { DatasetItemType } from '@fastgpt/global/core/dataset/type';
+import type { MyEmbeddingModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import MyDivider from '@fastgpt/web/components/common/MyDivider/index';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useTranslation } from 'next-i18next';
+import dynamic from 'next/dynamic';
+import React, { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { useContextSelector } from 'use-context-selector';
+import MemberManager from '../../MemberManager';
+import type { EditAPIDatasetInfoFormType } from './components/EditApiServiceModal';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const EditAPIDatasetInfoModal = dynamic(() => import('./components/EditApiServiceModal'));
 
 const Info = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
-  const { datasetDetail, loadDatasetDetail, updateDataset, rebuildingCount, trainingCount } =
-    useContextSelector(DatasetPageContext, (v) => v);
-  const { feConfigs, llmModelList, embeddingModelList, getVlmModelList } = useSystemStore();
+  const {
+    datasetDetail,
+    loadDatasetDetail,
+    updateDataset,
+    hasTrainingTask,
+    refreshCollectionList
+  } = useContextSelector(DatasetPageContext, (v) => v);
+  const { feConfigs } = useSystemStore();
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
   const [editedAPIDataset, setEditedAPIDataset] = useState<EditAPIDatasetInfoFormType>();
@@ -51,7 +59,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const vectorModel = watch('vectorModel');
   const agentModel = watch('agentModel');
 
-  const vllmModelList = useMemo(() => getVlmModelList(), [getVlmModelList]);
   const vlmModel = watch('vlmModel');
 
   const { openConfirm: onOpenConfirmRebuild, ConfirmModal: ConfirmRebuildModal } = useConfirm({
@@ -64,12 +71,32 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       title: t('common:action_confirm')
     });
 
+  const {
+    openConfirm: openConfirmDisableCollectionPer,
+    ConfirmModal: ConfirmDisableCollectionPerModal
+  } = useConfirm({
+    type: 'delete',
+    content: t('common:permission.collection_permission_disable_confirm')
+  });
+
+  /**
+   * 关闭数据集权限：清理全部 collection 协作者配置后刷新知识库详情。
+   * 该流程独立于确认框执行，失败由请求层提示且开关保持原值。
+   */
+  const { runAsync: disableCollectionPer, loading: isDisablingCollectionPer } = useRequest(
+    async () => {
+      await postDisableCollectionPermission({ datasetId });
+      await loadDatasetDetail(datasetId);
+    }
+  );
+
   const { runAsync: onSave } = useRequest(
-    (data: DatasetItemType) => {
+    (data: DatasetItemType, clearVlmModel = false) => {
+      if (clearVlmModel) return updateDataset({ id: datasetId, vlmModelId: null });
       return updateDataset({
         id: datasetId,
-        agentModel: data.agentModel?.model,
-        vlmModel: data.vlmModel?.model,
+        agentModelId: data.agentModel?.modelId ?? data.agentModelId,
+        vlmModelId: data.vlmModel?.modelId ?? data.vlmModelId,
         externalReadUrl: data.externalReadUrl
       });
     },
@@ -80,14 +107,15 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   );
 
   const { runAsync: onRebuilding } = useRequest(
-    (vectorModel: EmbeddingModelItemType) => {
+    (vectorModel: MyEmbeddingModelItemType) => {
       return postRebuildEmbedding({
         datasetId,
-        vectorModel: vectorModel.model
+        vectorModelId: vectorModel.modelId
       });
     },
     {
       onSuccess() {
+        refreshCollectionList();
         refetchDatasetTraining();
         loadDatasetDetail(datasetId);
       },
@@ -108,7 +136,19 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     reset(datasetDetail);
   }, [datasetDetail, datasetDetail._id, reset]);
 
-  const isTraining = rebuildingCount > 0 || trainingCount > 0;
+  const isTraining = hasTrainingTask;
+
+  if (datasetDetail._id !== datasetId) {
+    return (
+      <Box w="100%" p={6} aria-hidden="true">
+        <Flex alignItems="center" gap={1.5} mb={5}>
+          <Skeleton boxSize="20px" borderRadius="xs" flexShrink={0} />
+          <Skeleton h={5} flex={1} borderRadius="sm" />
+        </Flex>
+        <SkeletonText noOfLines={3} spacing={2} skeletonHeight={3} />
+      </Box>
+    );
+  }
 
   return (
     <Box w={'100%'} h={'100%'} p={6}>
@@ -171,8 +211,9 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           </Flex>
           <Box pt={2} minW={0} maxW={'100%'} overflow={'hidden'}>
             <AIModelSelector
+              modelType={ModelTypeEnum.embedding}
               w={'100%'}
-              value={vectorModel.model}
+              value={vectorModel?.modelId ?? datasetDetail.vectorModelId}
               fontSize={'mini'}
               disableTip={
                 isTraining
@@ -181,12 +222,11 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                     )
                   : undefined
               }
-              list={embeddingModelList.map((item) => ({
-                label: item.name,
-                value: item.model
-              }))}
-              onChange={(e) => {
-                const vectorModel = embeddingModelList.find((item) => item.model === e);
+              onChange={async (e) => {
+                const vectorModel = await getModelDetail({
+                  modelId: e,
+                  modelType: ModelTypeEnum.embedding
+                });
                 if (!vectorModel) return;
                 return onOpenConfirmRebuild({
                   onConfirm: async () => {
@@ -205,15 +245,15 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           </FormLabel>
           <Box pt={2} minW={0} maxW={'100%'} overflow={'hidden'}>
             <AIModelSelector
+              modelType={ModelTypeEnum.llm}
               w={'100%'}
-              value={agentModel.model}
-              list={llmModelList.map((item) => ({
-                label: item.name,
-                value: item.model
-              }))}
+              value={agentModel?.modelId ?? datasetDetail.agentModelId}
               fontSize={'mini'}
-              onChange={(e) => {
-                const agentModel = llmModelList.find((item) => item.model === e);
+              onChange={async (e) => {
+                const agentModel = await getModelDetail({
+                  modelId: e,
+                  modelType: ModelTypeEnum.llm
+                });
                 if (!agentModel) return;
                 setValue('agentModel', agentModel);
                 return handleSubmit((data) => onSave({ ...data, agentModel: agentModel }))();
@@ -228,15 +268,22 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           </FormLabel>
           <Box pt={2} minW={0} maxW={'100%'} overflow={'hidden'}>
             <AIModelSelector
+              modelType={ModelTypeEnum.llm}
               w={'100%'}
-              value={vlmModel?.model}
-              list={vllmModelList.map((item) => ({
-                label: item.name,
-                value: item.model
-              }))}
+              value={vlmModel?.modelId ?? datasetDetail.vlmModelId}
+              canBeUnset
+              unsetLabel={t('common:not_set')}
+              vision
               fontSize={'mini'}
-              onChange={(e) => {
-                const vlmModel = vllmModelList.find((item) => item.model === e);
+              onChange={async (e) => {
+                if (e === '') {
+                  return handleSubmit(async (data) => {
+                    await onSave(data, true);
+                    setValue('vlmModel', undefined);
+                    setValue('vlmModelId', undefined);
+                  })();
+                }
+                const vlmModel = await getModelDetail({ modelId: e, modelType: ModelTypeEnum.llm });
                 if (!vlmModel) return;
                 setValue('vlmModel', vlmModel);
                 return handleSubmit((data) => onSave({ ...data, vlmModel }))();
@@ -254,7 +301,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             <Box flex={1} />
             <Switch
               isChecked={!!datasetDetail.autoSync}
-              onChange={(e) => {
+              onChange={async (e) => {
                 e.preventDefault();
                 const autoSync = e.target.checked;
                 const text = autoSync ? t('dataset:open_auto_sync') : t('dataset:close_auto_sync');
@@ -400,6 +447,34 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         )}
       </Box>
 
+      {datasetDetail.permission.hasManagePer &&
+        datasetDetail.collectionPermissionEnabled === true && (
+          <>
+            <MyDivider my={4} h={'2px'} maxW={'500px'} />
+            <Box fontSize={'mini'} color={'myGray.500'}>
+              {t('common:permission.collection_permission_enabled_tip')}
+              <Box
+                as={'span'}
+                ml={1}
+                textDecoration={'underline'}
+                cursor={'pointer'}
+                _hover={{ color: 'primary.600' }}
+                onClick={() =>
+                  !isDisablingCollectionPer &&
+                  openConfirmDisableCollectionPer({
+                    onConfirm: () => {
+                      // 确认框先关闭，清理流程独立执行，避免弹窗退出期间的状态刷新打断关闭动画。
+                      disableCollectionPer().catch(() => undefined);
+                    }
+                  })()
+                }
+              >
+                {t('common:permission.collection_permission_disable_action')}
+              </Box>
+            </Box>
+          </>
+        )}
+
       {datasetDetail.permission.hasManagePer && (
         <>
           <MyDivider my={4} h={'2px'} maxW={'500px'} />
@@ -423,6 +498,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
 
       <ConfirmRebuildModal countDown={10} />
       <ConfirmSyncScheduleModal />
+      <ConfirmDisableCollectionPerModal />
       {editedDataset && (
         <EditResourceModal
           {...editedDataset}

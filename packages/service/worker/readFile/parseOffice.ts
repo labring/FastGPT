@@ -7,6 +7,36 @@ const maxPowerPointEntries = 10000;
 const maxPowerPointXmlFileBytes = 10 * 1024 * 1024;
 const maxPowerPointXmlBytes = 100 * 1024 * 1024;
 
+const ELEMENT_NODE = 1;
+
+/**
+ * Read a paragraph in document order.
+ *
+ * `a:br` is a soft line break (Shift+Enter) inside one paragraph. Collecting
+ * only `a:t` drops it and glues the text on either side into a single word.
+ */
+const readParagraphText = (paragraphNode: Element) => {
+  let text = '';
+
+  const visit = (node: Node) => {
+    Array.from(node.childNodes).forEach((child) => {
+      if (child.nodeType !== ELEMENT_NODE) return;
+
+      const element = child as Element;
+      if (element.nodeName === 'a:t') {
+        text += element.textContent ?? '';
+      } else if (element.nodeName === 'a:br') {
+        text += '\n';
+      } else {
+        visit(element);
+      }
+    });
+  };
+
+  visit(paragraphNode);
+  return text;
+};
+
 const parsePowerPoint = async ({
   buffer,
   encoding
@@ -151,13 +181,7 @@ const parsePowerPoint = async ({
 
       return Array.from(xmlParagraphNodesList)
         .filter((paragraphNode) => paragraphNode.getElementsByTagName('a:t').length != 0)
-        .map((paragraphNode) => {
-          const xmlTextNodeList = paragraphNode.getElementsByTagName('a:t');
-          return Array.from(xmlTextNodeList)
-            .filter((textNode) => textNode.childNodes[0] && textNode.childNodes[0].nodeValue)
-            .map((textNode) => textNode.childNodes[0].nodeValue)
-            .join('');
-        })
+        .map((paragraphNode) => readParagraphText(paragraphNode))
         .join('\n');
     })
     .join('\n');

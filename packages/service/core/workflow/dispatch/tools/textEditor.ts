@@ -26,7 +26,8 @@ export const dispatchTextEditor = (props: Record<string, any>): Response => {
       },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         textOutput: text
-      }
+      },
+      [DispatchNodeResponseKeyEnum.toolResponse]: text
     };
   }
 
@@ -61,6 +62,7 @@ export const dispatchTextEditor = (props: Record<string, any>): Response => {
     },
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       textOutput: textResult
-    }
+    },
+    [DispatchNodeResponseKeyEnum.toolResponse]: textResult
   };
 };

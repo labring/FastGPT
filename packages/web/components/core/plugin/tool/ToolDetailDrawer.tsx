@@ -27,7 +27,7 @@ import {
   type ToolDetailFetchResponse,
   type ToolDetailVersionType
 } from './ToolDetail';
-import { isToolVersionInstalled } from './utils';
+import { getInitialToolDetailVersion, isToolVersionInstalled } from './utils';
 
 const ToolDetailHeaderSkeleton = () => (
   <Flex alignItems={'center'} gap={1.5} flex={1}>
@@ -94,7 +94,16 @@ const ToolDetailDrawer = ({
 }) => {
   const { t, i18n } = useTranslation();
   const isInstalled = selectedTool.installed;
-  const [selectedVersion, setSelectedVersion] = useState<string | undefined>(selectedTool.version);
+  const [versionSelection, setVersionSelection] = useState(() => ({
+    toolId: selectedTool.id,
+    sourceVersion: selectedTool.version,
+    selectedVersion: getInitialToolDetailVersion(selectedTool)
+  }));
+  const selectedVersion =
+    versionSelection.toolId === selectedTool.id &&
+    versionSelection.sourceVersion === selectedTool.version
+      ? versionSelection.selectedVersion
+      : getInitialToolDetailVersion(selectedTool);
 
   const isDownload = useMemo(() => {
     return mode === 'marketplace';
@@ -142,7 +151,7 @@ const ToolDetailDrawer = ({
     }
   }, [fetchInstalledToolVersions, onFetchInstalledVersions, selectedTool.id]);
 
-  // 未指定版本时由详情接口解析最新版本，避免版本列表返回后再次请求同一份详情。
+  // 固定版本入口优先请求指定版本；未指定时由详情接口解析最新版本。
   const activeVersion = selectedVersion;
 
   // Use tool detail hook
@@ -164,7 +173,10 @@ const ToolDetailDrawer = ({
   });
 
   const currentVersion =
-    activeVersion || parentTool?.version || toolVersions[0]?.version || selectedTool.version;
+    parentTool?.version || activeVersion || toolVersions[0]?.version || selectedTool.version;
+  const currentVersionLabel =
+    toolVersions.find((item) => item.version === currentVersion)?.versionDescription ??
+    currentVersion;
   const contentReady = detailReady && !loadingVersions;
   const isCurrentVersionInstalled = isToolVersionInstalled({
     isInstalled: !!isInstalled,
@@ -172,7 +184,8 @@ const ToolDetailDrawer = ({
     installedVersions: installedToolVersions?.map((item) => item.version),
     installedVersion
   });
-  const isLatestVersionSelected = currentVersion === selectedTool.version;
+  const isLatestVersionSelected =
+    currentVersion === (toolVersions[0]?.version ?? selectedTool.version);
   const hasUpdateButton =
     !!isInstalled &&
     !!onUpdate &&
@@ -200,8 +213,9 @@ const ToolDetailDrawer = ({
                 <Box flex={1} />
                 {toolVersions.length > 0 && (
                   <MyMenu
-                    trigger="hover"
+                    trigger="click"
                     placement="bottom-end"
+                    menuListProps={{ maxH: '60vh', overflowY: 'auto' }}
                     Button={
                       <Flex
                         alignItems={'center'}
@@ -214,18 +228,21 @@ const ToolDetailDrawer = ({
                         cursor={'pointer'}
                         color={'myGray.700'}
                       >
-                        <Box fontSize={'12px'}>{currentVersion || t('common:Version')}</Box>
+                        <Box fontSize={'12px'}>{currentVersionLabel || t('common:Version')}</Box>
                         <MyIcon name="core/chat/chevronDown" w={4} />
                       </Flex>
                     }
                     menuList={[
                       {
                         children: toolVersions.map((item) => ({
-                          label: item.version,
-                          description: item.versionDescription,
+                          label: item.versionDescription ?? item.version,
                           isActive: item.version === currentVersion,
                           onClick: () => {
-                            setSelectedVersion(item.version);
+                            setVersionSelection({
+                              toolId: selectedTool.id,
+                              sourceVersion: selectedTool.version,
+                              selectedVersion: item.version
+                            });
                             onVersionChange?.(item.version);
                           }
                         }))

@@ -405,8 +405,11 @@ export class SandboxClient {
     return this.runtimePaths;
   }
 
-  /** 将调用方文件路径解析到当前会话目录，绝对路径仅允许落在 workspace 内。 */
-  resolveRuntimePath(path?: string, options: { allowAbsolutePath?: boolean } = {}) {
+  /** 将调用方文件路径解析到当前会话目录；绝对路径默认不限制 workspace 范围。 */
+  resolveRuntimePath(
+    path?: string,
+    options: { allowAbsolutePath?: boolean; allowOutsideWorkspace?: boolean } = {}
+  ) {
     return resolveSandboxRuntimePath(path, this.runtimePaths, options);
   }
 

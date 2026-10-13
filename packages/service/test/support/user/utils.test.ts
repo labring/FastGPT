@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { addSourceMember, clearWebSyncLimit } from '../../../support/user/utils';
 import { MongoTeam } from '../../../support/user/team/teamSchema';
-import { MongoTeamMember } from '../../../support/user/team/teamMemberSchema';
+import { MongoUser } from '../../../support/user/schema';
+import { getTeamMemberMap } from '../../../support/user/team/utils';
 
 vi.mock('../../../support/user/team/teamSchema', () => ({
   MongoTeam: {
@@ -9,8 +10,12 @@ vi.mock('../../../support/user/team/teamSchema', () => ({
   }
 }));
 
-vi.mock('../../../support/user/team/teamMemberSchema', () => ({
-  MongoTeamMember: {
+vi.mock('../../../support/user/team/utils', () => ({
+  getTeamMemberMap: vi.fn()
+}));
+
+vi.mock('../../../support/user/schema', () => ({
+  MongoUser: {
     find: vi.fn()
   }
 }));
@@ -18,6 +23,9 @@ vi.mock('../../../support/user/team/teamMemberSchema', () => ({
 describe('support user utils', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(MongoUser.find).mockReturnValue({
+      lean: vi.fn().mockResolvedValue([])
+    } as any);
   });
 
   it('clears website sync limit timestamp', async () => {
@@ -35,41 +43,64 @@ describe('support user utils', () => {
   it.each([null, undefined, '', '   '])(
     'falls back to unknow when source member name is %j',
     async (name) => {
-      vi.mocked(MongoTeamMember.find).mockReturnValue({
-        lean: vi.fn().mockResolvedValue([
-          {
-            _id: 'member-id',
-            name,
-            avatar: '',
-            status: 'active'
-          }
+      vi.mocked(getTeamMemberMap).mockResolvedValue(
+        new Map([
+          [
+            'member-id',
+            {
+              _id: 'member-id',
+              userId: 'user-id',
+              name,
+              avatar: '',
+              status: 'active'
+            } as any
+          ]
         ])
-      } as any);
+      );
 
       const [result] = await addSourceMember({
         list: [{ tmbId: 'member-id' }]
       });
 
-      expect(result.sourceMember.name).toBe('unknow');
+      expect(result.sourceMember.name).toBe('unknown');
     }
   );
 
   it('preserves a non-empty source member name', async () => {
-    vi.mocked(MongoTeamMember.find).mockReturnValue({
-      lean: vi.fn().mockResolvedValue([
-        {
-          _id: 'member-id',
-          name: 'Member name',
-          avatar: '',
-          status: 'active'
-        }
+    vi.mocked(getTeamMemberMap).mockResolvedValue(
+      new Map([
+        [
+          'member-id',
+          {
+            _id: 'member-id',
+            userId: 'user-id',
+            name: 'Member name',
+            avatar: '',
+            status: 'active'
+          } as any
+        ]
       ])
-    } as any);
+    );
 
     const [result] = await addSourceMember({
       list: [{ tmbId: 'member-id' }]
     });
 
     expect(result.sourceMember.name).toBe('Member name');
+  });
+
+  it('falls back to default leave member when member is not found', async () => {
+    vi.mocked(getTeamMemberMap).mockResolvedValue(new Map());
+
+    const result = await addSourceMember({
+      list: [{ tmbId: 'missing-member-id' }]
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].sourceMember).toEqual({
+      name: 'undefined',
+      avatar: '',
+      status: 'leave'
+    });
   });
 });

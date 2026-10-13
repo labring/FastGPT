@@ -1,7 +1,7 @@
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { MongoResourcePermission } from '../../../../support/permission/schema';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { AppTypeEnum, AppFolderTypeList } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { getResourcePermissionsByTeam } from '../../../../support/permission/resourcePermissionService';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { isPrivateResourceByCollaborators, sumPer } from '@fastgpt/global/support/permission/utils';
 import { getGroupsByTmbId } from '../../../../support/permission/memberGroup/controllers';
@@ -21,13 +21,10 @@ export const getUserAvaliableWorkflowTools = async ({
 }) => {
   // Get team all app permissions
   const [roleList, myGroupMap, myOrgSet] = await Promise.all([
-    MongoResourcePermission.find({
+    getResourcePermissionsByTeam({
       resourceType: PerResourceTypeEnum.app,
-      teamId,
-      resourceId: {
-        $exists: true
-      }
-    }).lean(),
+      teamId
+    }),
     getGroupsByTmbId({
       tmbId,
       teamId
@@ -93,20 +90,6 @@ export const getUserAvaliableWorkflowTools = async ({
           });
         };
 
-        // Inherit app, check parent folder clb and it's own clb
-        if (!AppFolderTypeList.includes(app.type) && app.parentId && app.inheritPermission) {
-          const resourceClbs = roleListMap.get(String(app._id)) ?? [];
-          const parentClbs = roleListMap.get(String(app.parentId)) ?? [];
-
-          return {
-            Per: getPer(String(app.parentId)).addRole(getPer(String(app._id)).role),
-            privateApp: isPrivateResourceByCollaborators({
-              resourceClbs,
-              parentClbs,
-              inheritPermission: true
-            })
-          };
-        }
         const resourceClbs = roleListMap.get(String(app._id)) ?? [];
 
         return {

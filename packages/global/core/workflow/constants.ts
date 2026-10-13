@@ -127,6 +127,7 @@ export enum NodeInputKeyEnum {
   scheduleTrigger = 'scheduleTrigger',
   chatInputGuide = 'chatInputGuide',
   autoExecute = 'autoExecute',
+  entryPoints = 'entryPoints',
 
   // plugin config
   instruction = 'instruction',
@@ -139,6 +140,8 @@ export enum NodeInputKeyEnum {
 
   // latest
   // common
+  aiModelId = 'modelId',
+  /** @deprecated */
   aiModel = 'model',
   aiSystemPrompt = 'systemPrompt',
   description = 'description',
@@ -190,15 +193,22 @@ export enum NodeInputKeyEnum {
 
   datasetSearchUsingReRank = 'usingReRank',
   datasetSearchRerankWeight = 'rerankWeight',
+  datasetSearchRerankModelId = 'rerankModelId',
+  /** @deprecated */
   datasetSearchRerankModel = 'rerankModel',
 
   datasetSearchUsingExtensionQuery = 'datasetSearchUsingExtensionQuery',
+  datasetSearchExtensionModelId = 'datasetSearchExtensionModelId',
+  /** @deprecated */
   datasetSearchExtensionModel = 'datasetSearchExtensionModel',
   datasetSearchExtensionBg = 'datasetSearchExtensionBg',
   datasetSearchInput = 'datasetSearchInput',
+  collectionFilterVersion = 'collectionFilterVersion',
   collectionFilterMatch = 'collectionFilterMatch',
   authTmbId = 'authTmbId',
   datasetDeepSearch = 'datasetDeepSearch',
+  datasetDeepSearchModelId = 'datasetDeepSearchModelId',
+  /** @deprecated */
   datasetDeepSearchModel = 'datasetDeepSearchModel',
   datasetDeepSearchMaxTimes = 'datasetDeepSearchMaxTimes',
   datasetDeepSearchBg = 'datasetDeepSearchBg',

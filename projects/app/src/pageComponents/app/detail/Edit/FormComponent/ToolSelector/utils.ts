@@ -3,9 +3,9 @@ import {
   getSavedToolInputSelectedType,
   initToolInputTypeByDefaultMode,
   isAgentGeneratedToolInput,
+  migrateToolInputConfig,
   stripToolInputDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 
 export const countAgentGeneratedToolInputs = (tool: Pick<FlowNodeTemplateType, 'inputs'>) =>
@@ -36,18 +36,12 @@ export const inheritToolInputConfig = <T extends Pick<FlowNodeTemplateType, 'inp
       });
       if (!sourceInput) return stripToolInputDefaultMode(normalizedInput);
 
-      const renderTypeList =
-        selectedType && !normalizedInput.renderTypeList.includes(selectedType)
-          ? [selectedType, ...normalizedInput.renderTypeList]
-          : normalizedInput.renderTypeList;
-      return stripToolInputDefaultMode({
-        ...normalizedInput,
-        value: sourceInput.value,
-        valueDesc: sourceInput.valueDesc,
-        renderTypeList,
-        selectedType: selectedType ?? normalizedInput.selectedType,
-        toolDescription: input.toolDescription ?? sourceInput.toolDescription
-      } satisfies FlowNodeInputItemType);
+      return stripToolInputDefaultMode(
+        migrateToolInputConfig({
+          input: normalizedInput,
+          sourceInput
+        })
+      );
     })
   } as T;
 };

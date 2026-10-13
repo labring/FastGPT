@@ -194,10 +194,8 @@ const ToolkitMarketplace = () => {
 
   // 处理搜索框失焦,更新 URL
   const handleSearchBlur = useCallback(() => {
-    if (router.isReady) {
-      updateUrlParams(searchText, selectedTagIds);
-    }
-  }, [router.isReady, searchText, selectedTagIds, updateUrlParams]);
+    updateUrlParams(searchText, selectedTagIds);
+  }, [searchText, selectedTagIds, updateUrlParams]);
 
   const handleSourceSelect = useCallback(
     (nextSource?: MarketplaceSourceFilterValue) => {
@@ -255,16 +253,18 @@ const ToolkitMarketplace = () => {
 
   const selectedTagKey = selectedTagIds.join(',');
   const selectedSourceKey = selectedSource ?? 'all';
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: displayTools,
     listKey: `${searchText}-${selectedTagKey}-${selectedSourceKey}-${i18n.language}`,
+    scrollContainerRef,
     estimatedRowHeight: 178,
     estimatedRowGap: 20
   });
 
   useEffect(() => {
     const currentDetailQuery = getCurrentDetailQuery();
-    if (!router.isReady || !currentDetailQuery.pluginId) return;
+    if (!currentDetailQuery.pluginId) return;
 
     const queryDetail = {
       pluginId: currentDetailQuery.pluginId,
@@ -295,14 +295,12 @@ const ToolkitMarketplace = () => {
 
       return queryTool;
     });
-  }, [displayTools, getCurrentDetailQuery, router.isReady]);
+  }, [displayTools, getCurrentDetailQuery]);
 
   // 监听 selectedTagIds 变化,更新 URL
   useEffect(() => {
-    if (router.isReady) {
-      updateUrlParams(searchText, selectedTagIds);
-    }
-  }, [router.isReady, searchText, selectedTagIds, selectedSource, updateUrlParams]);
+    updateUrlParams(searchText, selectedTagIds);
+  }, [searchText, selectedTagIds, selectedSource, updateUrlParams]);
 
   const onDownload = useCallback(async (toolId: string, version?: string) => {
     try {
@@ -543,7 +541,13 @@ const ToolkitMarketplace = () => {
           </Box>
         </Box>
 
-        <ScrollData flex={1} minHeight={0} height="auto" pb={10}>
+        <ScrollData
+          ScrollContainerRef={scrollContainerRef}
+          flex={1}
+          minHeight={0}
+          height="auto"
+          pb={10}
+        >
           <VStack ref={heroSectionRef} w={'full'} gap={8} px={8} pt={4} pb={8} mt={8}>
             <Box
               position={'relative'}

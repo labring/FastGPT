@@ -9,6 +9,7 @@ import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controll
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   ReadCollectionSourceBodySchema,
@@ -71,11 +72,17 @@ async function handler(req: ApiRequestProps): Promise<ReadCollectionSourceRespon
     if (
       collection.type === DatasetCollectionTypeEnum.file &&
       collection.fileId &&
-      isS3ObjectKey(collection.fileId, 'dataset')
+      isS3ObjectKey(collection.fileId, 'dataset') &&
+      // fileId 必须属于集合所属 dataset，避免外库文件被签发下载直链。
+      isAuthorizedDatasetFileS3Key({
+        key: collection.fileId,
+        datasetId: collection.datasetId
+      })
     ) {
       return (
         await getS3DatasetSource().createGetDatasetFileURL({
           key: collection.fileId,
+          datasetId: collection.datasetId,
           expiredHours: 1,
           external: true
         })

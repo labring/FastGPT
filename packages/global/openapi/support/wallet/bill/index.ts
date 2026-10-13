@@ -90,7 +90,8 @@ export const BillPath: OpenAPIPath = {
   '/proApi/support/wallet/bill/list': {
     post: {
       summary: '获取订单列表',
-      description: '分页获取当前团队订单列表，支持按订单类型筛选',
+      description:
+        '分页获取当前团队订单列表，支持按订单类型筛选；other 排除套餐订阅、AI 积分套餐和知识库扩容',
       tags: [DevApiTagsMap.walletBill],
       requestBody: {
         content: { 'application/json': { schema: BillListQuerySchema } }

@@ -99,7 +99,6 @@ const MyNumberInput = (props: Props) => {
       <NumberInputField
         placeholder={placeholder}
         h={restProps.h}
-        defaultValue={restProps.defaultValue}
         {...(register && name
           ? register(name, {
               required: props.isRequired,

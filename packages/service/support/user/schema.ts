@@ -8,6 +8,10 @@ import { LangEnum } from '@fastgpt/global/common/i18n/type';
 
 export const userCollectionName = 'users';
 
+// 历史缺失、null 和空字符串必须保留为“无密码”，不能被哈希成有效摘要。
+const hashPasswordValue = (value: unknown) =>
+  typeof value === 'string' && value.length > 0 ? hashStr(value) : value;
+
 const UserSchema = new Schema({
   status: {
     type: String,
@@ -21,9 +25,9 @@ const UserSchema = new Schema({
   },
   password: {
     type: String,
-    required: true,
-    set: (val: string) => hashStr(val),
-    get: (val: string) => hashStr(val),
+    required: false,
+    set: hashPasswordValue,
+    get: hashPasswordValue,
     select: false
   },
   passwordUpdateTime: Date,

@@ -6,7 +6,6 @@ import type {
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { parseLLMStreamResponse } from '../../../utils';
 import { parsePromptToolCall } from '../../promptCall';
-import { getLLMModel } from '../../../model';
 import type { CompleteParams, CompleteResponse, CreateLLMResponseProps } from '../types';
 
 /**
@@ -30,7 +29,7 @@ export const createStreamResponse = async ({
   isAborted?: CreateLLMResponseProps<ChatCompletionCreateParams>['isAborted'];
 }): Promise<CompleteResponse> => {
   const { retainDatasetCite = true, tools, toolCallMode = 'toolChoice', model } = body;
-  const modelData = getLLMModel(model);
+  const modelData = model;
 
   const { parsePart, getResponseData, updateFinishReason, updateError } = parseLLMStreamResponse();
 
@@ -50,7 +49,7 @@ export const createStreamResponse = async ({
 
           const { reasoningContent, responseContent } = parsePart({
             part,
-            parseThinkTag: modelData.reasoning,
+            parseThinkTag: modelData.config.reasoning,
             retainDatasetCite
           });
 
@@ -134,7 +133,7 @@ export const createStreamResponse = async ({
 
           const { reasoningContent, content, responseContent } = parsePart({
             part,
-            parseThinkTag: modelData.reasoning,
+            parseThinkTag: modelData.config.reasoning,
             retainDatasetCite
           });
           answer += content;
@@ -208,7 +207,7 @@ export const createStreamResponse = async ({
 
         const { reasoningContent, responseContent } = parsePart({
           part,
-          parseThinkTag: modelData.reasoning,
+          parseThinkTag: modelData.config.reasoning,
           retainDatasetCite
         });
 

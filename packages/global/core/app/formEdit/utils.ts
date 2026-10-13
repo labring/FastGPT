@@ -1,4 +1,4 @@
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../../workflow/constants';
+import { NodeInputKeyEnum } from '../../workflow/constants';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../workflow/node/constant';
 import type { FlowNodeInputItemType } from '../../workflow/type/io';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
@@ -18,12 +18,12 @@ const formRenderTypesMap: Record<string, boolean> = {
   [FlowNodeInputTypeEnum.select]: true,
   [FlowNodeInputTypeEnum.multipleSelect]: true,
   [FlowNodeInputTypeEnum.JSONEditor]: true,
+  [FlowNodeInputTypeEnum.fileSelect]: true,
   [FlowNodeInputTypeEnum.timePointSelect]: true,
   [FlowNodeInputTypeEnum.timeRangeSelect]: true
 };
 
 const agentGeneratedDenyRenderTypes = new Set<FlowNodeInputTypeEnum>([
-  FlowNodeInputTypeEnum.fileSelect,
   FlowNodeInputTypeEnum.password,
   FlowNodeInputTypeEnum.selectLLMModel,
   FlowNodeInputTypeEnum.settingLLMModel,
@@ -36,7 +36,10 @@ const agentGeneratedDenyRenderTypes = new Set<FlowNodeInputTypeEnum>([
   FlowNodeInputTypeEnum.selectTool,
   FlowNodeInputTypeEnum.selectDataset,
   FlowNodeInputTypeEnum.selectDatasetParamsModal,
-  FlowNodeInputTypeEnum.settingDatasetQuotePrompt
+  FlowNodeInputTypeEnum.settingDatasetQuotePrompt,
+  FlowNodeInputTypeEnum.datasetTagFilter,
+  // off 面向第三方接口调用方，不参与 Agent 生成。
+  FlowNodeInputTypeEnum.off
 ]);
 
 // 工具配置不能处理依赖文件、知识库、模型或外部动态上下文的输入。
@@ -59,11 +62,7 @@ type InputRenderTypeState = {
 type SavedToolInputTypeState = InputRenderTypeState;
 
 type ToolInputTypeState = InputRenderTypeState &
-  Pick<FlowNodeInputItemType, 'key' | 'renderTypeList'> &
-  Pick<
-    Partial<FlowNodeInputItemType>,
-    'defaultToAgentGenerated' | 'toolDescription' | 'list' | 'enums' | 'enum' | 'valueType'
-  >;
+  Pick<FlowNodeInputItemType, 'key' | 'renderTypeList'>;
 
 type ToolInputDefaultModeOptions = {
   forceDefaultMode?: boolean;
@@ -84,6 +83,7 @@ const manualInputRenderTypes = new Set<FlowNodeInputTypeEnum>([
   FlowNodeInputTypeEnum.select,
   FlowNodeInputTypeEnum.multipleSelect,
   FlowNodeInputTypeEnum.JSONEditor,
+  FlowNodeInputTypeEnum.fileSelect,
   FlowNodeInputTypeEnum.timePointSelect,
   FlowNodeInputTypeEnum.timeRangeSelect,
   FlowNodeInputTypeEnum.password
@@ -94,6 +94,28 @@ const manualInputRenderTypes = new Set<FlowNodeInputTypeEnum>([
  */
 export const isAgentGeneratedToolInput = (input: InputRenderTypeState) =>
   getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.agentGenerated;
+
+export type JsonEditorValueParseResult =
+  | { success: true; value: unknown }
+  | { success: false; value: string };
+
+/** 将 JSON Editor 文本转换为原生 JSON 值；输入中的半成品保留文本供表单继续编辑。 */
+export const parseJsonEditorValue = (value: unknown): JsonEditorValueParseResult => {
+  if (typeof value !== 'string') return { success: true, value };
+
+  try {
+    return { success: true, value: JSON.parse(value) };
+  } catch {
+    return { success: false, value };
+  }
+};
+
+/** 将已持久化的 JSON Editor 值转换为编辑文本；历史字符串本身就是编辑文本。 */
+export const formatJsonEditorValue = (value: unknown): string => {
+  if (typeof value === 'string') return value;
+  if (value === undefined) return '';
+  return JSON.stringify(value, null, 2) ?? '';
+};
 
 /**
  * 服务端 runtime schema 的安全边界：即使持久化数据被篡改，也只允许普通可生成字段进入模型 schema。
@@ -189,77 +211,91 @@ const shouldUseAgentGeneratedOnly = (
 const getManualRenderTypeCandidates = (renderTypeList: FlowNodeInputTypeEnum[] = []) =>
   renderTypeList.filter((type) => manualInputRenderTypes.has(type));
 
-const getValueTypePreferredManualType = (input: ToolInputTypeState) => {
-  switch (input.valueType) {
-    case WorkflowIOValueTypeEnum.number:
-      return FlowNodeInputTypeEnum.numberInput;
-    case WorkflowIOValueTypeEnum.boolean:
-      return FlowNodeInputTypeEnum.switch;
-    case WorkflowIOValueTypeEnum.object:
-    case WorkflowIOValueTypeEnum.arrayString:
-    case WorkflowIOValueTypeEnum.arrayNumber:
-    case WorkflowIOValueTypeEnum.arrayBoolean:
-    case WorkflowIOValueTypeEnum.arrayObject:
-    case WorkflowIOValueTypeEnum.arrayAny:
-    case WorkflowIOValueTypeEnum.any:
-      return FlowNodeInputTypeEnum.JSONEditor;
-    case WorkflowIOValueTypeEnum.string:
-    default:
-      return FlowNodeInputTypeEnum.input;
+/**
+ * 取工具入参在“手动输入”下唯一使用的那个控件。
+ *
+ * 这里只使用 renderType 状态：已选中的手动控件优先，否则取 renderTypeList 中第一个手动控件
+ * （JSON Schema 投影和节点模板都会把主控件放在第一位）。
+ * 必须折叠成一个：NodeInputSelect 里 input/textarea/JSONEditor/numberInput 的菜单标题都是
+ * “手动输入”，同时展示会出现同名重复项。
+ *
+ * 刻意不看 valueType：控件由 renderTypeList 声明，valueType 只描述值形状。
+ * 例如知识库搜索的 datasetSearchInput 是 arrayString 却声明 textarea，就该渲染 textarea。
+ * 没有手动候选时返回 undefined，调用方不能把它伪造成手动输入。
+ */
+export const getToolInputManualRenderType = (input: InputRenderTypeState) => {
+  const candidates = getManualRenderTypeCandidates(input.renderTypeList);
+  const selectedType = getSelectedInputRenderType(input);
+
+  return selectedType && candidates.includes(selectedType) ? selectedType : candidates[0];
+};
+
+const getToolInputAllowedValues = (input: FlowNodeInputItemType) => {
+  const selectedType = getSelectedInputRenderType(input);
+  if (
+    ![FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.multipleSelect].includes(
+      selectedType as FlowNodeInputTypeEnum
+    )
+  ) {
+    return undefined;
   }
+
+  return [
+    input.list?.map((item) => item.value),
+    input.enums?.map((item) => item.value),
+    input.enum?.split('\n').filter(Boolean)
+  ].find((values) => values && values.length > 0);
 };
 
 /**
- * Agent 生成只是输入来源，切回手动输入时需要恢复真实编辑控件。
- * JSON Schema 的 list 可能只是候选值；只有没有 valueType 对应主控件时才回退到 select/multipleSelect。
- * 没有手动候选时返回 undefined，调用方不能把它伪造成手动输入。
+ * 切换工作流版本时迁移输入配置。
+ *
+ * 按新工具定义迁移同 key 输入，保留用户标题和说明；输入类型变化时清理旧值，
+ * 类型保持时仅保留新类型仍允许的枚举值，避免版本切换留下不兼容配置。
  */
-export const getToolInputManualRenderType = (input: ToolInputTypeState) => {
-  const candidates = getManualRenderTypeCandidates(input.renderTypeList);
-  const selectedType = getSelectedInputRenderType(input);
-  const preferredType = getValueTypePreferredManualType(input);
-  const isGenericSelectedType =
-    selectedType === FlowNodeInputTypeEnum.input || selectedType === FlowNodeInputTypeEnum.textarea;
-  const isSelectSelectedType =
-    selectedType === FlowNodeInputTypeEnum.select ||
-    selectedType === FlowNodeInputTypeEnum.multipleSelect;
-  const hasPreferredManualType = candidates.includes(preferredType);
+export const migrateToolInputConfig = ({
+  input,
+  sourceInput
+}: {
+  input: FlowNodeInputItemType;
+  sourceInput?: FlowNodeInputItemType;
+}): FlowNodeInputItemType => {
+  if (!sourceInput) return input;
 
-  if (
-    selectedType &&
-    candidates.includes(selectedType) &&
-    (!isGenericSelectedType || preferredType === FlowNodeInputTypeEnum.input) &&
-    (!isSelectSelectedType || !hasPreferredManualType)
-  ) {
-    return selectedType;
-  }
+  const getConstrainedSelectedType = (targetInput: FlowNodeInputItemType) => {
+    const selectedType = getSelectedInputRenderType(targetInput);
+    return selectedType && targetInput.renderTypeList.includes(selectedType)
+      ? selectedType
+      : targetInput.renderTypeList[0];
+  };
+  const sourceSelectedType = getConstrainedSelectedType(sourceInput);
+  const selectedType = input.renderTypeList.includes(sourceSelectedType as FlowNodeInputTypeEnum)
+    ? sourceSelectedType
+    : getConstrainedSelectedType(input);
+  const selectedTypeChanged = sourceSelectedType !== selectedType;
 
-  const hasGenericManualInput =
-    candidates.includes(FlowNodeInputTypeEnum.input) ||
-    candidates.includes(FlowNodeInputTypeEnum.textarea);
-  if (!candidates.length) return undefined;
+  const value = (() => {
+    if (selectedTypeChanged) return undefined;
 
-  if (candidates.includes(preferredType)) {
-    return preferredType;
-  }
+    const allowedValues = getToolInputAllowedValues({ ...input, selectedType });
+    if (!allowedValues) return sourceInput.value;
 
-  if (
-    input.valueType?.startsWith('array') &&
-    candidates.includes(FlowNodeInputTypeEnum.multipleSelect)
-  ) {
-    return FlowNodeInputTypeEnum.multipleSelect;
-  }
+    if (selectedType === FlowNodeInputTypeEnum.multipleSelect) {
+      return Array.isArray(sourceInput.value)
+        ? sourceInput.value.filter((item) => allowedValues.includes(item))
+        : undefined;
+    }
 
-  if (hasGenericManualInput) {
-    // string 类型的 input/textarea 都是合法手动控件，优先保留候选列表中的具体类型。
-    return preferredType === FlowNodeInputTypeEnum.input
-      ? candidates.includes(FlowNodeInputTypeEnum.input)
-        ? FlowNodeInputTypeEnum.input
-        : FlowNodeInputTypeEnum.textarea
-      : preferredType;
-  }
+    return allowedValues.includes(sourceInput.value) ? sourceInput.value : undefined;
+  })();
 
-  return candidates[0];
+  return {
+    ...input,
+    label: sourceInput.label ?? input.label,
+    description: sourceInput.description ?? input.description,
+    selectedType,
+    value
+  };
 };
 
 /**
@@ -336,14 +372,13 @@ export const initAgentToolInputType = <T extends FlowNodeInputItemType>({
   if (mode === AgentToolInputModeEnum.manual) {
     const manualType = getToolInputManualRenderType(inputWithoutSelection);
     if (manualType) {
+      // manualType 一定来自 renderTypeList，这里只需补上可切回的 agentGenerated。
       const renderTypeList = Array.from(
         new Set([
           ...(canInputBeAgentGenerated(inputWithoutSelection)
             ? [FlowNodeInputTypeEnum.agentGenerated]
             : []),
-          ...(inputWithoutSelection.renderTypeList.includes(manualType)
-            ? inputWithoutSelection.renderTypeList
-            : [manualType, ...inputWithoutSelection.renderTypeList])
+          ...inputWithoutSelection.renderTypeList
         ])
       );
 

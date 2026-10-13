@@ -146,9 +146,12 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
 
   const { runAsync: updateAppDetail } = useRequest(async (data: UpdateAppBodyType) => {
     await putAppById(appId, data);
+    const { avatar, intro, ...rest } = data;
     setAppDetail((state) => ({
       ...state,
-      ...data
+      ...rest,
+      ...(avatar !== undefined && { avatar: avatar ?? '' }),
+      ...(intro !== undefined && { intro: intro ?? '' })
     }));
   });
 
@@ -164,11 +167,6 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
           return Promise.reject(new ToastHandledError('Debug tool cannot be published'));
         }
         await postPublishApp(appId, data);
-        setAppDetail((state) => ({
-          ...state,
-          ...data,
-          modules: data.nodes || state.modules
-        }));
         reloadAppLatestVersion();
       } catch (error: any) {
         if (error.statusText == AppErrEnum.unExist) {

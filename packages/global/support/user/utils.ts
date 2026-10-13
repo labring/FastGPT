@@ -14,3 +14,7 @@ export const getRandomUserAvatar = () => {
 
   return defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)];
 };
+
+/** 历史缺失、null 和空字符串都表示用户尚未设置本地密码。 */
+export const hasStoredPassword = (password: unknown): password is string =>
+  typeof password === 'string' && password.length > 0;

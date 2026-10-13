@@ -12,6 +12,7 @@ import SystemErrEnum from './code/system';
 import agentSkillErr from './code/skill';
 import sandboxErr from './code/sandbox';
 import couponErr from './code/coupon';
+import modelErr from './code/model';
 import { i18nT } from '../i18n/utils';
 
 export const ERROR_CODE: { [key: number]: string } = {
@@ -31,7 +32,7 @@ export const ERROR_CODE: { [key: number]: string } = {
 };
 
 export const TOKEN_ERROR_CODE: Record<number, string> = {
-  403: i18nT('common:code_error.token_error_code.403')
+  401: i18nT('common:code_error.token_error_code.401')
 };
 
 export const proxyError: Record<string, boolean> = {
@@ -73,13 +74,13 @@ export const ERROR_RESPONSE: Record<
   }
 > = {
   [ERROR_ENUM.unAuthorization]: {
-    code: 403,
+    code: 401,
     statusText: ERROR_ENUM.unAuthorization,
-    message: i18nT('common:code_error.error_message.403'),
+    message: i18nT('common:code_error.error_message.401'),
     data: null
   },
   [ERROR_ENUM.unAuthProToken]: {
-    code: 403,
+    code: 401,
     statusText: ERROR_ENUM.unAuthProToken,
     message: 'PRO_TOKEN check error',
     data: null
@@ -133,5 +134,6 @@ export const ERROR_RESPONSE: Record<
   ...SystemErrEnum,
   ...agentSkillErr,
   ...sandboxErr,
-  ...couponErr
+  ...couponErr,
+  ...modelErr
 };

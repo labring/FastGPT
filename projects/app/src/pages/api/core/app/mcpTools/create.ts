@@ -53,18 +53,18 @@ async function handler(
       url,
       toolList,
       name,
-      avatar,
+      avatar: avatar ?? undefined,
       headerSecret: formatedHeaderAuth
     });
     const mcpToolsId = await onCreateApp({
       name,
-      avatar,
+      avatar: avatar ?? undefined,
       parentId,
       teamId,
       tmbId,
       type: AppTypeEnum.mcpToolSet,
-      modules: [toolSetRuntimeNode],
-      storageModules: encodeMcpToolSetNodesForStorage([toolSetRuntimeNode]),
+      nodes: [toolSetRuntimeNode],
+      storageNodes: encodeMcpToolSetNodesForStorage([toolSetRuntimeNode]),
       session
     });
 

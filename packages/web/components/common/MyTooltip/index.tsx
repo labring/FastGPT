@@ -8,6 +8,7 @@ const defaultTooltipProps = {
   hasArrow: true,
   arrowSize: 12,
   offset: [-15, 15] as [number, number],
+  closeOnScroll: true,
   color: 'myGray.800',
   px: 4,
   py: 2,

@@ -1,9 +1,20 @@
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { GET, POST } from '@/web/common/api/request';
 import type {
   FlowNodeTemplateType,
   NodeTemplateListItemType
 } from '@fastgpt/global/core/workflow/type/node';
-import { getAppDetailById, getMyApps } from '../api';
+import type { PaginationResponseType } from '@fastgpt/global/openapi/api';
+import type {
+  ListToolSetV2BodyType,
+  ListToolSetV2ResponseType
+} from '@fastgpt/global/openapi/core/app/toolSet/api';
+import type {
+  ListAppV2BodyType,
+  ListAppV2ResponseType
+} from '@fastgpt/global/openapi/core/app/common/api';
+import { getAllApps, getAppDetailById, getMyAppsV2 } from '../api';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -11,50 +22,82 @@ import type {
   ParentIdType,
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
-import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
-import { getMcpChildren } from './mcpTools';
 import type {
   GetPreviewNodeQuery,
+  GetToolSetChildrenResponseType,
   GetSystemToolTemplatesBodyType,
   GetToolPathQueryType
 } from '@fastgpt/global/openapi/core/app/tool/api';
 
+type TeamAppTemplatesV2Query = Omit<ListAppV2BodyType, 'type'> & {
+  parentType?: AppTypeEnum;
+  type?: AppTypeEnum[];
+};
+
+type AppListItem = ListAppV2ResponseType['list'][number];
+
+const mapAppToTeamTemplate = (app: AppListItem) => ({
+  tmbId: app.tmbId,
+  id: app._id,
+  pluginId: app._id,
+  isFolder:
+    app.type === AppTypeEnum.folder ||
+    app.type === AppTypeEnum.toolFolder ||
+    app.type === AppTypeEnum.httpToolSet ||
+    app.type === AppTypeEnum.httpPlugin ||
+    app.type === AppTypeEnum.mcpToolSet,
+  templateType: FlowNodeTemplateTypeEnum.teamApp,
+  flowNodeType:
+    app.type === AppTypeEnum.workflow
+      ? FlowNodeTypeEnum.appModule
+      : app.type === AppTypeEnum.mcpToolSet || app.type === AppTypeEnum.httpToolSet
+        ? FlowNodeTypeEnum.toolSet
+        : FlowNodeTypeEnum.pluginModule,
+  avatar: app.avatar,
+  name: app.name,
+  intro: app.intro,
+  showStatus: false,
+  version: app.pluginData?.nodeVersion,
+  isTool: true,
+  sourceMember: app.sourceMember,
+  appType: app.type
+});
+
 /* ============ team plugin ============== */
+/** parentType 来自已加载的列表项；普通目录和 Agent 查询直接走 list，不额外探测父资源。 */
 export const getTeamAppTemplates = async (data?: {
   parentId?: ParentIdType;
+  parentType?: AppTypeEnum;
   searchKey?: string;
   type?: AppTypeEnum[];
 }) => {
-  if (data?.parentId) {
-    // handle get mcptools
-    const app = await getAppDetailById(data.parentId);
-    if (app.type === AppTypeEnum.mcpToolSet) {
-      const children = await getMcpChildren({ id: data.parentId, searchKey: data.searchKey });
-      return children.map((item) => ({
+  const { parentType, ...listQuery } = data ?? {};
+  // 列表项已经提供 appType；普通目录和 Agent 不再请求接口探测父资源类型。
+  if (
+    data?.parentId &&
+    (parentType === AppTypeEnum.mcpToolSet || parentType === AppTypeEnum.httpToolSet) &&
+    (!data.type || data.type.includes(parentType))
+  ) {
+    const { type, tools } = await GET<GetToolSetChildrenResponseType>(
+      '/core/app/tool/getToolSetChildren',
+      {
+        appId: data.parentId,
+        searchKey: data.searchKey
+      }
+    );
+    if (type === AppTypeEnum.mcpToolSet || type === AppTypeEnum.httpToolSet) {
+      return tools.map((item) => ({
         ...item,
         intro: item.description || '',
         flowNodeType: FlowNodeTypeEnum.tool,
         templateType: FlowNodeTemplateTypeEnum.teamApp,
-        appType: app.type,
-        isFolder: false
-      }));
-      // handle http toolset
-    } else if (app.type === AppTypeEnum.httpToolSet) {
-      const toolList = app.modules[0]?.toolConfig?.httpToolSet?.toolList;
-      if (!toolList) return [];
-      return toolList.map((item) => ({
-        id: `${AppToolSourceEnum.http}-${app._id}/${item.name}`,
-        avatar: app.avatar,
-        name: item.name,
-        intro: item.description || '',
-        flowNodeType: FlowNodeTypeEnum.tool,
-        templateType: FlowNodeTemplateTypeEnum.teamApp,
-        appType: app.type,
+        appType: type,
+        isTool: true,
         isFolder: false
       }));
     }
   }
-  return getMyApps(data).then((res) =>
+  return getAllApps(data ? listQuery : undefined).then((res) =>
     res.map((app) => ({
       tmbId: app.tmbId,
       id: app._id,
@@ -84,6 +127,45 @@ export const getTeamAppTemplates = async (data?: {
   );
 };
 
+/** Load one paginated team app template page while preserving toolset child behavior. */
+export const getTeamAppTemplatesV2 = async (
+  data: TeamAppTemplatesV2Query,
+  cancelToken?: AbortController
+): Promise<PaginationResponseType<NodeTemplateListItemType>> => {
+  const { parentId, parentType, searchKey, type, excludeAppId, ...pagination } = data;
+
+  if (parentId) {
+    const resolvedParentType = parentType ?? (await getAppDetailById(parentId)).type;
+    if (
+      (resolvedParentType === AppTypeEnum.mcpToolSet ||
+        resolvedParentType === AppTypeEnum.httpToolSet) &&
+      (!type || type.includes(resolvedParentType))
+    ) {
+      return getToolSetListV2({ parentId, searchKey, ...pagination }, cancelToken);
+    }
+  }
+
+  const response = await getMyAppsV2(
+    {
+      ...pagination,
+      parentId,
+      searchKey,
+      type,
+      excludeAppId
+    },
+    cancelToken
+  );
+
+  return {
+    list: response.list.map(mapAppToTeamTemplate),
+    total: response.total
+  };
+};
+
+/** Fetch one paginated page from an MCP or HTTP toolset. */
+export const getToolSetListV2 = (data: ListToolSetV2BodyType, cancelToken?: AbortController) =>
+  POST<ListToolSetV2ResponseType>('/core/app/toolSet/listV2', data, { cancelToken });
+
 /* ============ Tool ============== */
 export const getAppToolTemplates = (data: GetSystemToolTemplatesBodyType) =>
   POST<NodeTemplateListItemType[]>('/core/app/tool/getSystemToolTemplates', data);
@@ -95,3 +177,25 @@ export const getAppToolPaths = (data: GetToolPathQueryType) => {
 
 export const getClientToolPreviewNode = (data: GetPreviewNodeQuery) =>
   GET<FlowNodeTemplateType>('/core/app/tool/getPreviewNode', data);
+
+/**
+ * 添加工具时，个人工作流和 Agent 默认跟随最新发布版本；系统工具保留固定最新版本的策略。
+ * 显式切换版本和加载已保存配置仍使用 getClientToolPreviewNode，避免覆盖用户的固定版本。
+ */
+export const getNewToolPreviewNode = async (
+  data: Omit<GetPreviewNodeQuery, 'versionId' | 'getLatestVersion'>
+) => {
+  const preview = await getClientToolPreviewNode({ ...data, getLatestVersion: true });
+
+  if (splitCombineToolId(data.appId).source !== AppToolSourceEnum.personal) {
+    return preview;
+  }
+
+  // 预览需要读取最新版本，但新添加的个人工具不能固化该版本号。
+  return {
+    ...preview,
+    version: '',
+    versionLabel: undefined,
+    isLatestVersion: true
+  };
+};
