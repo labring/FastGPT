@@ -205,7 +205,7 @@ export const getDomainConfig = async <T extends SystemInstanceConfigDomainKey>(
 
   const revision = doc?.revision ?? 0;
   const overrides = (doc?.overrides ?? {}) as DeepPartial<SystemInstanceConfigDomainMap[T]>;
-  const effectiveConfig = resolveDomainEffectiveConfig(domain, overrides);
+  const effectiveConfig = resolveDomainEffectiveConfig(domain, overrides, { strict: false });
 
   if (domain === 'subservice') {
     const subserviceConfig = effectiveConfig as SystemInstanceConfigDomainMap['subservice'];

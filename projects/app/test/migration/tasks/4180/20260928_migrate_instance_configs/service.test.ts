@@ -253,7 +253,8 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
   it('drops conflicting leaves, backfills valid siblings, and marks skipped paths in explicitDefaultPaths', async () => {
     // 管理员既有 parallelMaxConcurrency=100（自身合法：默认 maxLoopTimes=100），
     // 待补的 maxLoopTimes=20 合并后违反 superRefine（100 > 20）；
-    // 但合法的独立字段 parseMaxProcess=12 应正常迁入，冲突项记入 explicitDefaultPaths 防死锁
+    // 但合法的独立同胞字段 maxRunTimes=600 以及独立对象字段 parseMaxProcess=12 应正常迁入，
+    // 只有真正的冲突项 maxLoopTimes 记入 explicitDefaultPaths 防死锁
     await MongoSystemInstanceConfig.create({
       domain: 'performance',
       schemaVersion: 1,
@@ -265,26 +266,29 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
     const result = await applyInstanceConfigMigration({
       overrides: {
         performance: {
-          workflow: { maxLoopTimes: 20 },
+          workflow: { maxRunTimes: 600, maxLoopTimes: 20 },
           dataset: { parseMaxProcess: 12 }
         }
       },
       logger: { ...logger, warn }
     });
 
-    // 冲突项 maxLoopTimes 被剔除，独立项 parseMaxProcess 成功回填
+    // 冲突项 maxLoopTimes 被剔除，同胞项 maxRunTimes 与独立项 parseMaxProcess 成功回填
     expect(result.backfilledDomains).toEqual(['performance']);
-    expect(result.backfilledPaths).toEqual(['performance.dataset.parseMaxProcess']);
+    expect(result.backfilledPaths).toContain('performance.workflow.maxRunTimes');
+    expect(result.backfilledPaths).toContain('performance.dataset.parseMaxProcess');
+    expect(result.backfilledPaths).not.toContain('performance.workflow.maxLoopTimes');
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining('conflicts with existing values'),
       expect.objectContaining({ domain: 'performance', field: 'workflow.maxLoopTimes' })
     );
 
     const doc = await MongoSystemInstanceConfig.findOne({ domain: 'performance' }).lean();
-    expect(doc?.overrides.workflow).toEqual({ parallelMaxConcurrency: 100 });
+    expect(doc?.overrides.workflow).toEqual({ parallelMaxConcurrency: 100, maxRunTimes: 600 });
     expect((doc?.overrides as any).dataset?.parseMaxProcess).toBe(12);
-    // 冲突项被登记入 explicitDefaultPaths，使后置 inspect 判定已完工，不引发无限崩溃死锁
+    // 冲突项被登记入 explicitDefaultPaths，同胞项绝不被误伤
     expect(doc?.explicitDefaultPaths).toContain('workflow.maxLoopTimes');
+    expect(doc?.explicitDefaultPaths).not.toContain('workflow.maxRunTimes');
 
     // 终验：inspect 不再认为该字段缺失
     const inspect = await inspectInstanceConfigMigration();
