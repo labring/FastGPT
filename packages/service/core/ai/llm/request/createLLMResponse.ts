@@ -79,6 +79,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
   ) as ChatCompletionMessageParam[];
   let currentMessages: ChatCompletionMessageParam[] = [...initialRequestMessages];
   let continuationCount = 0;
+  let emptyToolCallRetryCount = 0;
   let aiRequestMeta: AIApiRequestMeta = {
     usedUserOpenAIKey: false
   };
@@ -135,6 +136,26 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       })();
 
       accumulator.appendResponse(parsedResponse);
+
+      // Some providers occasionally finish with tool_calls but omit the actual
+      // tool_calls array. Retrying the unchanged request once lets transient
+      // malformed responses recover without changing the conversation state.
+      const shouldRetryEmptyToolCalls =
+        parsedResponse.finish_reason === 'tool_calls' &&
+        !parsedResponse.toolCalls?.length &&
+        !parsedResponse.answerText &&
+        !parsedResponse.reasoningText &&
+        !parsedResponse.error &&
+        emptyToolCallRetryCount < 1;
+
+      if (shouldRetryEmptyToolCalls) {
+        emptyToolCallRetryCount++;
+        logger.warn(`Retrying empty tool_calls response`, {
+          requestId,
+          retryCount: emptyToolCallRetryCount
+        });
+        continue;
+      }
 
       if (accumulator.shouldContinue()) {
         // 继续输出时，用原始 requestBody.messages 做基础，避免把 rewrite 前 messages 混回上下文。
