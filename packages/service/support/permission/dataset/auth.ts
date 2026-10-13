@@ -32,6 +32,7 @@ import { isAuthorizedDatasetFileS3Key } from '../../../common/s3/sources/dataset
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { shouldInheritResourcePermission } from '../resourcePermissionPolicy';
 import { resolveCollectionPermission } from '../collection/auth';
+import { assertDatasetPermission } from './utils';
 
 export const authDatasetByTmbId = async ({
   tmbId,
@@ -71,7 +72,6 @@ export const authDatasetByTmbId = async ({
       return Promise.reject(DatasetErrEnum.unAuthDataset);
     }
 
-    const isOwner = tmbPer.isOwner || String(dataset.tmbId) === String(tmbId);
     const isGetParentClb =
       shouldInheritResourcePermission(dataset.inheritPermission) &&
       dataset.type !== DatasetTypeEnum.folder &&
@@ -93,16 +93,15 @@ export const authDatasetByTmbId = async ({
       })
     ]);
 
-    const Per = new DatasetPermission({ role: sumPer(folderPer, myPer), isOwner });
-
-    if (!Per.checkPer(per)) {
-      return Promise.reject(DatasetErrEnum.unAuthDataset);
-    }
-
-    return {
-      ...dataset,
-      permission: Per
-    };
+    return assertDatasetPermission({
+      dataset,
+      teamId,
+      tmbId,
+      isTeamOwner: tmbPer.isOwner,
+      isRoot,
+      role: sumPer(folderPer, myPer) ?? 0,
+      per
+    });
   })();
 
   return { dataset };

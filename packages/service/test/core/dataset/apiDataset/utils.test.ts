@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import {
-  assertCollectionParentPlanAcyclic,
   buildApiFileParentUpdates,
   getApiFileSyncRootIds,
   resolveApiFileRecordParent,
@@ -118,33 +117,6 @@ describe('buildApiFileParentUpdates', () => {
         collections: [collection()]
       })
     ).toEqual([]);
-  });
-});
-
-describe('assertCollectionParentPlanAcyclic', () => {
-  it.each(['self', 'descendant'])('拒绝最终关系成环：%s', (mode) => {
-    expect(() =>
-      assertCollectionParentPlanAcyclic({
-        collections: [collection({ _id: 'a' }), collection({ _id: 'b', parentId: 'a' })],
-        updates: [{ _id: 'a', newParentId: mode === 'self' ? 'a' : 'b' }]
-      })
-    ).toThrow('Circular collection parent move');
-  });
-  it('同批移出后代后再移动祖先，按最终树验证而不是旧树拒绝', () => {
-    expect(() =>
-      assertCollectionParentPlanAcyclic({
-        collections: [
-          collection({ _id: 'a' }),
-          collection({ _id: 'b', parentId: 'a' }),
-          collection({ _id: 'c', parentId: 'b' })
-        ],
-        updates: [
-          { _id: 'a', newParentId: 'b' },
-          { _id: 'b', newParentId: null },
-          { _id: 'c', newParentId: 'a' }
-        ]
-      })
-    ).not.toThrow();
   });
 });
 

@@ -80,34 +80,6 @@ export const buildApiFileParentUpdates = ({
 };
 
 /**
- * 校验最终移动计划，而非逐次校验旧树，允许同批修复逆序祖先链。
- * 与 ACL 开关和继承态无关；沿本轮移动节点的最终祖先链检查，并缓存已验证路径。
- */
-export const assertCollectionParentPlanAcyclic = ({
-  collections,
-  updates
-}: {
-  collections: Pick<ApiFileLocalCollection, '_id' | 'parentId'>[];
-  updates: Pick<ApiFileParentUpdate, '_id' | 'newParentId'>[];
-}): void => {
-  const parents = new Map(
-    collections.map((item) => [String(item._id), item.parentId ? String(item.parentId) : null])
-  );
-  for (const item of updates) parents.set(item._id, item.newParentId);
-  const verified = new Set<string>();
-  for (const item of updates) {
-    const path = new Set<string>();
-    let currentId: string | null = item._id;
-    while (currentId && !verified.has(currentId)) {
-      if (path.has(currentId)) throw new Error(`Circular collection parent move: ${currentId}`);
-      path.add(currentId);
-      currentId = parents.get(currentId) ?? null;
-    }
-    for (const id of path) verified.add(id);
-  }
-};
-
-/**
  * 同步只查询真实远端 ID。新派生目录保存 sourceId，正文尚未落库时也能恢复同步；
  * 历史目录仅在本地挂载关系能证明来源时兼容，不盲目裁剪 provider ID 的后缀。
  */

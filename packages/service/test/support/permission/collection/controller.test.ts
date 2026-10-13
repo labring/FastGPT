@@ -1148,7 +1148,7 @@ describe.sequential('moveCollectionPermissionsBatch', () => {
           ]
         })
       )
-    ).rejects.toThrow('Circular collection parent move');
+    ).rejects.toThrow('Circular parent plan');
     expect((await MongoDatasetCollection.findById(parent._id).lean())?.parentId).toBeNull();
     expect(String((await MongoDatasetCollection.findById(child._id).lean())?.parentId)).toBe(
       String(parent._id)
@@ -1220,7 +1220,7 @@ describe.sequential('moveCollectionPermissionsBatch', () => {
             session
           })
         )
-      ).rejects.toThrow('Circular collection parent move');
+      ).rejects.toThrow('Circular parent plan');
       for (const [index, folder] of folders.entries()) {
         await expect(
           collectionClbs(teamId, String(folder._id)).then(toPermissionMap)

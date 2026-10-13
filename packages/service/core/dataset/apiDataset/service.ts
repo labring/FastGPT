@@ -8,19 +8,16 @@ import {
   createApiFileCollectionsBatch,
   bulkInsertFolderCollections,
   bulkMoveCollectionsParent,
-  type BulkInsertCollectionDoc,
   type BulkMoveCollectionParentItem
 } from '../collection/controller';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDatasetCollection } from '../collection/schema';
 import { getApiDatasetRequest } from './index';
 import { buildApiFileRecords, buildApiFileTree, toApiFileDirId, type ApiFileRecord } from './tree';
-import {
-  assertCollectionParentPlanAcyclic,
-  buildApiFileParentUpdates,
-  resolveApiFileRecordParent
-} from './utils';
+import { buildApiFileParentUpdates, resolveApiFileRecordParent } from './utils';
 import type { ApiFileImportChanges } from './auth';
+import { planApiFileFolders, createApiFileFolders } from './folder';
+import { assertParentPlanAcyclic } from '../../../common/parentFolder/parentPlan';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { Types } from '../../../common/mongo';
 import { getLogger, LogCategories } from '../../../common/logger';
@@ -128,26 +125,11 @@ export const createApiDatasetCollection = async ({
     }
   }
 
-  // 3. 两套 id 表：idMap 只收「已落库的」collection，是新目录落库后才补入的
-  const buildIdMap = (
-    existMap: typeof existByApiFileId,
-    fileRecords: ApiFileRecord[]
-  ): { idMap: Map<string, string>; newFolderIdMap: Map<string, Types.ObjectId> } => {
-    const idMap = new Map<string, string>();
-    for (const [apiFileId, item] of existMap) {
-      // 查表统一用字符串 ID；实际落库边界再转换为 ObjectId。
-      idMap.set(apiFileId, String(item._id));
-    }
-
-    const newFolderIdMap = new Map<string, Types.ObjectId>();
-    for (const record of fileRecords) {
-      if (record.type === 'folder' && !existMap.has(record.apiFileId)) {
-        newFolderIdMap.set(record.apiFileId, new Types.ObjectId());
-      }
-    }
-    return { idMap, newFolderIdMap };
-  };
-  const { idMap, newFolderIdMap } = buildIdMap(existByApiFileId, records);
+  // 3. 已提交映射与预分配目录 ID 分开，鉴权计划不能提前影响实际落库。
+  const idMap = new Map(
+    [...existByApiFileId].map(([apiFileId, item]) => [apiFileId, String(item._id)])
+  );
+  const folderPlan = planApiFileFolders({ records, idMap });
 
   const parentOptions = {
     idMap,
@@ -170,24 +152,34 @@ export const createApiDatasetCollection = async ({
     }));
 
   // 写入前生成完整计划：鉴权失败或最终父级成环时，不能留下任何目录骨架。
-  const plannedIdMap = new Map([...idMap, ...newFolderIdMap].map(([key, id]) => [key, String(id)]));
+  const plannedIdMap = new Map([
+    ...idMap,
+    ...folderPlan.map(({ record, id }) => [record.apiFileId, String(id)] as const)
+  ]);
   const plannedMoves = buildApiFileParentUpdates({
     records,
     collections: existCollections,
     idMap: plannedIdMap,
     targetParentId
   });
-  const newFolders = records
-    .filter((record) => record.type === 'folder' && !existByApiFileId.has(record.apiFileId))
-    .map((record) => ({
-      _id: plannedIdMap.get(record.apiFileId)!,
-      parentId:
-        resolveApiFileRecordParent({ record, idMap: plannedIdMap, targetParentId }).parentId ?? null
-    }));
-  const newFolderParents = new Map(newFolders.map((folder) => [folder._id, folder.parentId]));
-  assertCollectionParentPlanAcyclic({
-    collections: [...existCollections, ...newFolders],
-    updates: plannedMoves
+  const newFolders = folderPlan.map(({ record, id }) => ({
+    id: String(id),
+    parentId:
+      resolveApiFileRecordParent({ record, idMap: plannedIdMap, targetParentId }).parentId ?? null
+  }));
+  const newFolderParents = new Map(newFolders.map((folder) => [folder.id, folder.parentId]));
+  const existingParents = new Map(
+    existCollections.map((item) => [String(item._id), item.parentId ? String(item.parentId) : null])
+  );
+  await assertParentPlanAcyclic({
+    changes: [
+      ...newFolders,
+      ...plannedMoves.map((item) => ({ id: item._id, parentId: item.newParentId }))
+    ],
+    loadParents: async (ids) =>
+      ids.flatMap((id) =>
+        existingParents.has(id) ? [{ id, parentId: existingParents.get(id)! }] : []
+      )
   });
   const creationParentIds = new Set<string | null>();
   for (const record of records) {
@@ -212,54 +204,16 @@ export const createApiDatasetCollection = async ({
   let successCount = 0;
   let failedCount = 0;
 
-  // 4. 目录按层 insertMany 建骨架。按层而非按序号：批失败是批级的，
-  //    跨层分批会让同一批里父失败而子成功，留下 parentId 悬空的目录
-  const dirRecords = records.filter((record) => record.type === 'folder');
-  const dirDepths = Array.from(new Set(dirRecords.map((record) => record.depth))).sort(
-    (a, b) => a - b
-  );
-
-  for (const depth of dirDepths) {
-    const docs: BulkInsertCollectionDoc[] = [];
-
-    for (const record of dirRecords) {
-      // 已存在的目录只参与第 5 步的层级校正，不重复创建
-      if (record.depth !== depth || existByApiFileId.has(record.apiFileId)) continue;
-
-      const parentId = resolveParentId(record);
-      // 未命中不等于回退：只可能是祖先目录本轮写入失败，整棵跳过（不回退到请求体 parentId）
-      if (parentId === undefined) {
-        failedCount++;
-        continue;
-      }
-
-      docs.push({
-        _id: newFolderIdMap.get(record.apiFileId)!,
-        name: record.name,
-        type: DatasetCollectionTypeEnum.folder,
-        apiFileId: record.apiFileId,
-        metadata: { apiFileSourceId: record.sourceId },
-        // 归一：无 server 父级时不写该字段，与下面的 file 侧落库形态一致
-        apiFileParentId: record.apiFileParentId ?? undefined,
-        parentId,
-        inheritPermission: inheritPermissionOf(record)
-      });
-    }
-
-    const { successApiFileIds, failedApiFileIds } = await bulkInsertFolderCollections({
-      teamId,
-      tmbId,
-      datasetId: String(dataset._id),
-      docs
-    });
-
-    for (const apiFileId of successApiFileIds) {
-      const _id = newFolderIdMap.get(apiFileId);
-      if (_id) idMap.set(apiFileId, String(_id));
-    }
-    successCount += successApiFileIds.length;
-    failedCount += failedApiFileIds.length;
-  }
+  // 4. 与同步共用按层补建流程；仅成功提交的目录会进入 idMap。
+  const folderResult = await createApiFileFolders({
+    folders: folderPlan,
+    ...parentOptions,
+    inheritPermissionOf,
+    insertFolders: (docs) =>
+      bulkInsertFolderCollections({ teamId, tmbId, datasetId: String(dataset._id), docs })
+  });
+  successCount += folderResult.createdIds.length;
+  failedCount += folderResult.failedIds.length + folderResult.skippedIds.length;
 
   // 5. 校正已存在节点的层级。
   // 必须在上面目录逐层落库的循环之后调用：idMap 在该循环里才补入新目录的 _id。
@@ -361,7 +315,7 @@ export const createApiDatasetCollection = async ({
     teamId,
     datasetId: String(dataset._id),
     nodeCount: nodes.length,
-    folderCount: dirRecords.length,
+    folderCount: records.filter((record) => record.type === 'folder').length,
     fileCount: fileRecords.length,
     successCount,
     failedCount

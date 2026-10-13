@@ -399,7 +399,7 @@ describe('createApiDatasetCollection', () => {
         apiFiles: [apiFile('parent', 'folder', true)],
         targetParentId: mode === 'self' ? parent : child
       })
-    ).rejects.toThrow('Circular collection parent move');
+    ).rejects.toThrow('Circular parent plan');
     expect(mockBulkInsertFolderCollections).not.toHaveBeenCalled();
     expect(mockBulkMoveCollectionsParent).not.toHaveBeenCalled();
     expect(mockCreateApiFileCollectionsBatch).not.toHaveBeenCalled();
@@ -677,6 +677,7 @@ describe('createApiDatasetCollection', () => {
     const targetParentId = localId('target');
     mockCollectionFind.mockReturnValue({
       lean: vi.fn().mockResolvedValue([
+        { _id: targetParentId, type: 'folder', parentId: null },
         { _id: localId('existing'), apiFileId: 'old', type: 'apiFile', parentId: null },
         {
           _id: localId('unchanged'),

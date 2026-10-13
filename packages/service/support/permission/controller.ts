@@ -79,6 +79,48 @@ export const getTmbPermission = async ({
 };
 
 /**
+ * 批量解析资源有效权限；成员组/组织由请求上下文提供，避免每个资源重复解析。
+ * 个人记录（包括 0）优先于组/组织；只查询候选 ID，每 1000 个一批，缺失记录返回 0。
+ */
+export const getTmbPermissionMap = async ({
+  resourceType,
+  resourceIds,
+  teamId,
+  tmbId,
+  groupIds,
+  orgIds
+}: {
+  resourceType: PerResourceTypeEnum;
+  resourceIds: string[];
+  teamId: string;
+  tmbId: string;
+  groupIds: string[];
+  orgIds: string[];
+}): Promise<Map<string, PermissionValueType>> => {
+  const ids = [...new Set(resourceIds)];
+  const personal = new Map<string, PermissionValueType>();
+  const inherited = new Map<string, PermissionValueType>();
+  for (let offset = 0; offset < ids.length; offset += 1000) {
+    const rows = await resourcePermissionRepo.findByResourceIdsAndCollaborators({
+      resourceType,
+      resourceIds: ids.slice(offset, offset + 1000),
+      teamId,
+      collaborators: [
+        { tmbId },
+        ...groupIds.map((groupId) => ({ groupId })),
+        ...orgIds.map((orgId) => ({ orgId }))
+      ]
+    });
+    for (const row of rows) {
+      const id = String(row.resourceId);
+      if (String(row.tmbId ?? '') === tmbId) personal.set(id, row.permission);
+      else inherited.set(id, sumPer(inherited.get(id) ?? 0, row.permission) ?? 0);
+    }
+  }
+  return new Map(ids.map((id) => [id, personal.get(id) ?? inherited.get(id) ?? 0]));
+};
+
+/**
  * Only get resource's owned clbs, not including parents'.
  */
 export async function getResourceOwnedClbs({

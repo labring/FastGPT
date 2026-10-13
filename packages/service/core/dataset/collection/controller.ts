@@ -1,4 +1,4 @@
-import { assertCollectionParentPlanAcyclic } from '../apiDataset/utils';
+import { assertParentPlanAcyclic } from '../../../common/parentFolder/parentPlan';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
@@ -267,20 +267,33 @@ export const bulkMoveCollectionsParent = async ({
 }) => {
   if (items.length === 0) return { successIds: [], failedIds: [], matchedCount: 0 };
 
-  // 树结构校验独立于 ACL：关闭态和独立态也不能成环。同一事务读取最终计划涉及的本地树。
-  const collections = await MongoDatasetCollection.find(
-    { teamId, datasetId: { $in: [...new Set(items.map((item) => item.datasetId))] } },
-    '_id parentId'
-  )
-    .session(session)
-    .lean();
-  assertCollectionParentPlanAcyclic({
-    collections,
-    updates: items.map((item) => ({
-      _id: item._id,
-      newParentId: item.newParentId ? String(item.newParentId) : null
-    }))
-  });
+  // 树结构校验独立于 ACL，按知识库隔离读取涉及的祖先；关闭态和独立态也不能成环。
+  const byDataset = new Map<string, BulkMoveCollectionParentItem[]>();
+  for (const item of items) {
+    const list = byDataset.get(item.datasetId) ?? [];
+    list.push(item);
+    byDataset.set(item.datasetId, list);
+  }
+  for (const [datasetId, updates] of byDataset) {
+    await assertParentPlanAcyclic({
+      changes: updates.map((item) => ({
+        id: item._id,
+        parentId: item.newParentId ? String(item.newParentId) : null
+      })),
+      loadParents: async (ids) => {
+        const parents = await MongoDatasetCollection.find(
+          { teamId, datasetId, _id: { $in: ids } },
+          '_id parentId'
+        )
+          .session(session)
+          .lean();
+        return parents.map((item) => ({
+          id: String(item._id),
+          parentId: item.parentId ? String(item.parentId) : null
+        }));
+      }
+    });
+  }
 
   // 第一阶段：parentId 仍是旧值，因此 ACL 可以从旧父级剥离继承位；函数同时按新拓扑算出移动节点的新快照。
   const movedFolders = await moveCollectionPermissionsBatch({

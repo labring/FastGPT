@@ -481,7 +481,11 @@ describe('bulkMoveCollectionsParent', () => {
     mockFindByResource.mockResolvedValue([]);
     mockFindByResourceIds.mockResolvedValue([]);
     mockWriteResources.mockResolvedValue(undefined);
-    mockFind.mockReturnValue({ session: () => ({ lean: async () => [] }) });
+    mockFind.mockImplementation((query) => ({
+      session: () => ({
+        lean: async () => (query._id?.$in ?? []).map((id: string) => ({ _id: id, parentId: null }))
+      })
+    }));
   });
 
   it('ACL 与 parentId 全部迁移成功时正常返回', async () => {

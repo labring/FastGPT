@@ -1,15 +1,5 @@
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import {
-  ManagePermissionVal,
-  ReadPermissionVal,
-  WritePermissionVal
-} from '@fastgpt/global/support/permission/constant';
-import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
-import {
-  authDatasetCollection,
-  authDatasetCollectionCreate
-} from '../../../support/permission/dataset/auth';
-import { authUserPer } from '../../../support/permission/user/auth';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { authDatasetCollectionMoves } from '../../../support/permission/collection/moveAuth';
 import type { AuthModeType } from '../../../support/permission/type';
 import type { ApiFileParentUpdate } from './utils';
 
@@ -31,34 +21,17 @@ export const authApiFileImportChanges = async ({
   moves,
   ...auth
 }: AuthModeType & ApiFileImportChanges & { datasetId: string }): Promise<void> => {
-  const checked = new Set<string>();
-  const checkCollection = async (collectionId: string, per: number) => {
-    const key = `${collectionId}:${per}`;
-    if (checked.has(key)) return;
-    const { collection } = await authDatasetCollection({ ...auth, collectionId, per });
-    if (String(collection.datasetId) !== datasetId) throw DatasetErrEnum.unAuthDatasetCollection;
-    checked.add(key);
-  };
-
-  // 创建目录和文件前，核对由远端树解析出来的真实授权边界。
-  for (const parentId of new Set(creationParentIds)) {
-    if (parentId) await checkCollection(parentId, WritePermissionVal);
-    else await authDatasetCollectionCreate({ ...auth, datasetId });
-  }
-
-  let requiresRootMove = false;
-  for (const item of moves) {
-    // 仅清理远端父字段不改变本地落位，不扩大为管理权限操作。
-    if (item.oldParentId === item.newParentId) {
-      await checkCollection(item._id, WritePermissionVal);
-      continue;
-    }
-    await checkCollection(item._id, ReadPermissionVal);
-    if (item.oldParentId) await checkCollection(item.oldParentId, ManagePermissionVal);
-    if (item.newParentId && !newFolderIds.has(item.newParentId)) {
-      await checkCollection(item.newParentId, ManagePermissionVal);
-    }
-    requiresRootMove ||= !item.oldParentId || !item.newParentId;
-  }
-  if (requiresRootMove) await authUserPer({ ...auth, per: TeamDatasetCreatePermissionVal });
+  await authDatasetCollectionMoves({
+    ...auth,
+    datasetId,
+    creationParentIds,
+    newFolderIds,
+    moves: moves
+      .filter((item) => item.oldParentId !== item.newParentId)
+      .map((item) => ({ collectionId: item._id, targetParentId: item.newParentId })),
+    // 仅清理远端父字段仍按节点 write 校验。
+    collectionChecks: moves
+      .filter((item) => item.oldParentId === item.newParentId)
+      .map((item) => ({ collectionId: item._id, per: WritePermissionVal }))
+  });
 };
