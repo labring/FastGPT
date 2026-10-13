@@ -7,7 +7,7 @@ import {
   toApiFileDirId,
   type ApiFileTreeSeed
 } from '@fastgpt/service/core/dataset/apiDataset/tree';
-import { ApiDatasetMockServer } from '@test/mockserver/dataset/server';
+import { createRemoteTree, generateRemoteTree } from '@test/fixtures/apiDataset/tree';
 
 /** 造一个 listFiles 返回的 server 节点；name 刻意与 id 不同，用于断言 name 被原样透传 */
 const file = (id: string, type: 'file' | 'folder', hasChild = false): ApiFileTreeSeed => ({
@@ -199,10 +199,14 @@ describe('buildApiFileTree', () => {
     ).rejects.toThrow('list files failed');
   });
   it('4 万文件无遗漏、无重复，所有父目录都先于子记录生成', async () => {
-    const server = new ApiDatasetMockServer({
-      customTree: { l1: 4, l2: 10, l3: 10, filesPerLeaf: 100 }
-    });
-    listFiles.mockImplementation(async ({ parentId }) => server.customFiles.get(parentId) ?? []);
+    const tree = createRemoteTree(
+      generateRemoteTree({ folderCounts: [4, 10, 10], filesPerLeaf: 100 })
+    );
+    listFiles.mockImplementation(async ({ parentId }) =>
+      (tree.children.get(parentId) ?? []).map((node) =>
+        file(node.key, node.type === 'folder' ? 'folder' : 'file', node.type === 'folder')
+      )
+    );
     const nodes = await buildApiFileTree({ request, seeds: [file('root', 'folder', true)] });
     const records = buildApiFileRecords(nodes);
     expect(listFiles).toHaveBeenCalledTimes(445);

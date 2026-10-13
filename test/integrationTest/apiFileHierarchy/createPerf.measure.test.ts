@@ -47,7 +47,7 @@ vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal)
       modelId: 'measure-agent-model',
       model: 'measure-agent-model',
       maxToken: 8000,
-      config: {}
+      config: { maxContext: 8000, maxResponse: 1000 }
     }),
     getEmbeddingModelData: () => ({
       modelId: 'measure-embedding-model',
@@ -80,11 +80,13 @@ vi.mock('@fastgpt/service/common/mongo/sessionRun', async (importOriginal) => ({
 import { Types } from '@fastgpt/service/common/mongo';
 import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoTeamSub } from '@fastgpt/service/support/wallet/sub/schema';
 import { createApiDatasetCollection } from '@fastgpt/service/core/dataset/apiDataset/service';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { pushDatasetToParseQueue } from '@fastgpt/service/core/dataset/training/controller';
+import { createRemoteTree, generateRemoteTree } from '@test/fixtures/apiDataset/tree';
 
 /**
  * 已知会被真实路径调用的落库算子，用来实证「每次写入带多少行」。
@@ -107,39 +109,14 @@ const serverItem = (id: string, type: 'file' | 'folder') => ({
   hasChild: type === 'folder'
 });
 
-const buildServerTree = ({ l1, l2, l3, filesPerLeaf }: Shape) => {
-  const tree: Record<string, ReturnType<typeof serverItem>[]> = { ROOT: [] };
-  let fileSeq = 0;
-
-  for (let a = 0; a < l1; a++) {
-    const idA = `L1-${a}`;
-    tree.ROOT.push(serverItem(idA, 'folder'));
-    tree[idA] = [];
-
-    for (let b = 0; b < l2; b++) {
-      const idB = `${idA}/L2-${b}`;
-      tree[idA].push(serverItem(idB, 'folder'));
-      tree[idB] = [];
-
-      for (let c = 0; c < l3; c++) {
-        const idC = `${idB}/L3-${c}`;
-        tree[idB].push(serverItem(idC, 'folder'));
-        tree[idC] = [];
-
-        for (let f = 0; f < filesPerLeaf; f++) {
-          tree[idC].push(serverItem(`F-${fileSeq++}`, 'file'));
-        }
-      }
-    }
-  }
-
-  return tree;
-};
-
-const countFolders = ({ l1, l2, l3 }: Shape) => l1 + l1 * l2 + l1 * l2 * l3;
-
 const runCreate = async (shape: Shape) => {
-  const tree = buildServerTree(shape);
+  const tree = createRemoteTree(
+    generateRemoteTree({
+      folderCounts: [shape.l1, shape.l2, shape.l3],
+      filesPerLeaf: shape.filesPerLeaf,
+      rootKey: 'ROOT'
+    })
+  );
   mockState.listFilesCalls = 0;
   mockState.logged.length = 0;
   opCounts.collectionCreate = 0;
@@ -147,26 +124,32 @@ const runCreate = async (shape: Shape) => {
   opCounts.trainingInsertMany = 0;
   mockState.listFiles.mockImplementation(async ({ parentId }: any) => {
     mockState.listFilesCalls++;
-    return tree[parentId ?? 'ROOT'] ?? [];
+    return (tree.children.get(parentId ?? 'ROOT') ?? []).map((node) =>
+      serverItem(node.key, node.type === 'folder' ? 'folder' : 'file')
+    );
   });
 
   const teamId = String(new Types.ObjectId());
+  const tmbId = String(new Types.ObjectId());
+  // 创建路径会在事务内锁定权限开关，测量输入必须是真实存在的知识库。
+  const dataset = await MongoDataset.create({
+    teamId,
+    tmbId,
+    name: 'Creation measurement',
+    type: 'apiDataset',
+    apiDatasetServer: { apiServer: { basePath: 'ROOT' } },
+    chunkSettings: {}
+  });
   const startedAt = Date.now();
   const result = await createApiDatasetCollection({
-    datasetId: String(new Types.ObjectId()),
+    datasetId: String(dataset._id),
     apiFiles: [{ ...serverItem(RootCollectionId, 'folder'), name: 'root' }] as any,
     parentId: undefined,
     customPdfParse: false,
     trainingType: 'chunk',
     teamId,
-    tmbId: String(new Types.ObjectId()),
-    dataset: {
-      _id: new Types.ObjectId(),
-      teamId,
-      apiDatasetServer: { apiServer: { basePath: 'ROOT' } },
-      permission: {},
-      chunkSettings: {}
-    } as any
+    tmbId,
+    dataset: { ...dataset.toObject(), permission: {} } as any
   } as any);
   const wallMs = Date.now() - startedAt;
 
@@ -174,7 +157,7 @@ const runCreate = async (shape: Shape) => {
 
   return {
     files,
-    folders: countFolders(shape),
+    folders: tree.nodes.filter((node) => node.type === 'folder').length - 1,
     wallMs,
     perFileMs: Number((wallMs / files).toFixed(2)),
     result,
