@@ -39,27 +39,50 @@ describe('migration buildLegacyDomainOverrides', () => {
     });
   });
 
-  it('maps legacy censor / fileUrlWhitelist / workflowHttpNode into security', () => {
+  it('maps legacy fileUrlWhitelist / workflowHttpNode into security', () => {
     const overrides = buildLegacyDomainOverrides({
       feConfigs: {},
       systemEnv: {
-        censor: {
-          BAIDU_TEXT_CENSOR_CLIENTID: 'bid',
-          BAIDU_TEXT_CENSOR_CLIENTSECRET: 'bsecret',
-          customCensorURL: 'https://censor.example.com'
-        },
         workflowHttpNode: { ignoreHttpsCertificate: true },
         fileUrlWhitelist: ['https://cdn.example.com']
       }
     });
 
     expect(overrides.security).toMatchObject({
+      workflowHttpNode: { ignoreHttpsCertificate: true },
+      fileUrlWhitelist: ['https://cdn.example.com']
+    });
+  });
+
+  it('maps legacy censor from fastgptPro document into security', () => {
+    // censor 的权威来源是 legacyPro 文档（SystemEnvSchema 从未定义过 censor），
+    // 迁移必须从 proConfig.censor 读取，而不是 systemEnv
+    const pro = buildLegacyProOverrides({
+      censor: {
+        BAIDU_TEXT_CENSOR_CLIENTID: 'bid',
+        BAIDU_TEXT_CENSOR_CLIENTSECRET: 'bsecret',
+        customCensorURL: 'https://censor.example.com'
+      }
+    });
+
+    expect(pro.security).toMatchObject({
       censor: {
         baiduClientId: 'bid',
         baiduClientSecret: 'bsecret',
         customCensorUrl: 'https://censor.example.com'
-      },
-      workflowHttpNode: { ignoreHttpsCertificate: true },
+      }
+    });
+
+    // 合并链路：pro 侧 censor 与开源侧 env 类 security 字段共存不互吞
+    const sparse = buildSparseLegacyOverrides({
+      feConfigs: {},
+      systemEnv: { fileUrlWhitelist: ['https://cdn.example.com'] },
+      proConfig: {
+        censor: { BAIDU_TEXT_CENSOR_CLIENTID: 'bid' }
+      }
+    });
+    expect(sparse.security).toMatchObject({
+      censor: { baiduClientId: 'bid' },
       fileUrlWhitelist: ['https://cdn.example.com']
     });
   });
