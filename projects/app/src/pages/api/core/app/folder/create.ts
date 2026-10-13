@@ -29,7 +29,13 @@ import {
 async function handler(
   req: ApiRequestProps<CreateAppFolderBodyType>
 ): Promise<CreateAppFolderResponseType> {
-  const { name, intro, parentId, type } = parseApiInput({
+  const {
+    name,
+    intro,
+    parentId,
+    type,
+    inheritPermission = true
+  } = parseApiInput({
     req,
     bodySchema: CreateAppFolderBodySchema
   }).body;
@@ -62,7 +68,9 @@ async function handler(
           intro,
           teamId,
           tmbId,
-          type
+          type,
+          // 独立态只写创建者 ACL，不合并父文件夹权限；未传时保持历史默认继承。
+          inheritPermission
         }
       ],
       { session }

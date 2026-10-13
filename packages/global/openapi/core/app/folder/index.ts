@@ -11,7 +11,8 @@ export const AppFolderPath: OpenAPIPath = {
   '/core/app/folder/create': {
     post: {
       summary: '创建应用文件夹',
-      description: '在根目录或指定父级文件夹下创建应用文件夹或工具文件夹',
+      description:
+        '在根目录或指定父级文件夹下创建应用文件夹或工具文件夹，可选择是否继承父级文件夹权限',
       tags: [DevApiTagsMap.appFolder],
       requestBody: {
         content: {
