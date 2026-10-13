@@ -1,5 +1,6 @@
 import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
+  ManageRoleVal,
   OwnerRoleVal,
   PerResourceTypeEnum,
   ReadRoleVal,
@@ -9,9 +10,12 @@ import type { Model } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { bulkMoveCollectionsParent } from '@fastgpt/service/core/dataset/collection/controller';
 import {
   createCollectionPermission,
   moveCollectionPermission,
+  moveCollectionPermissionsBatch,
+  syncMovedCollectionPermissionDescendants,
   syncDatasetToCollections,
   syncRootCollections
 } from '@fastgpt/service/support/permission/collection/controller';
@@ -20,6 +24,7 @@ import {
   createResourceDefaultCollaborators,
   getResourceOwnedClbs
 } from '@fastgpt/service/support/permission/controller';
+import { resourcePermissionRepo } from '@fastgpt/service/support/permission/repository/resourcePermissionRepo';
 import { updateResourceCollaborators } from '@fastgpt/service/support/permission/resourcePermissionService';
 import { getFakeUsers } from '@test/datas/users';
 import type { parseHeaderCertRet } from '@test/mocks/request';
@@ -341,76 +346,45 @@ describe.sequential('moveCollectionPermission', () => {
     expect(await datasetSwitchState(String(dataset._id))).toBe(false);
   });
 
-  it('keeps an independent collection isolated when moved into a folder with the switch enabled', async () => {
+  it.each([false, true])('独立权限节点移动保持隔离，目标为 dataset 根：%s', async (toRoot) => {
     const users = await getFakeUsers(2);
     const dataset = await createDataset({ user: users.owner });
-    // 独立态只存在于启用态：创建 inheritPermission=false 的 collection 前必须启用开关
-    await enableDatasetCollectionPermissions({
-      teamId: String(users.owner.teamId),
-      datasetId: String(dataset._id)
-    });
+    const datasetId = String(dataset._id);
+    const teamId = String(users.owner.teamId);
+    await enableDatasetCollectionPermissions({ teamId, datasetId });
     const folder = await createCollection({
       user: users.owner,
-      datasetId: String(dataset._id),
+      datasetId,
       name: 'folder',
       type: DatasetCollectionTypeEnum.folder
     });
-    const independent = await createCollection({
-      user: users.owner,
-      datasetId: String(dataset._id),
-      name: 'independent',
-      inheritPermission: false
-    });
-
-    await moveCollection({
-      collectionId: String(independent._id),
-      targetParentId: String(folder._id)
-    });
-
-    await expect(MongoDatasetCollection.findById(independent._id).lean()).resolves.toMatchObject({
-      parentId: String(folder._id),
-      inheritPermission: false
-    });
-    // 独立态移动不合并目标父级：快照保持不变
-    await expect(
-      collectionClbs(String(users.owner.teamId), String(independent._id)).then(toPermissionMap)
-    ).resolves.toEqual(new Map([[String(users.owner.tmbId), OwnerRoleVal]]));
-    // 开关由 enable 置位，move 不再改动它
-    expect(await datasetSwitchState(String(dataset._id))).toBe(true);
-  });
-
-  it('keeps an independent collection isolated when moved back to the dataset root', async () => {
-    const users = await getFakeUsers(2);
-    const dataset = await createDataset({ user: users.owner });
-    // 独立态只存在于启用态：创建 inheritPermission=false 的 collection 前必须启用开关
-    await enableDatasetCollectionPermissions({
-      teamId: String(users.owner.teamId),
-      datasetId: String(dataset._id)
-    });
-    const folder = await createCollection({
-      user: users.owner,
-      datasetId: String(dataset._id),
-      name: 'folder',
-      type: DatasetCollectionTypeEnum.folder
+    // 父级带额外 reader，避免仅 owner 的 fixture 无法识别意外继承。
+    await setCollaborators({
+      resource: { _id: String(folder._id), type: folder.type, teamId },
+      resourceModel: MongoDatasetCollection,
+      resourceType: PerResourceTypeEnum.collection,
+      collaborators: [
+        { tmbId: String(users.owner.tmbId), permission: OwnerRoleVal },
+        { tmbId: String(users.members[0].tmbId), permission: ReadRoleVal }
+      ]
     });
     const independent = await createCollection({
       user: users.owner,
-      datasetId: String(dataset._id),
+      datasetId,
       name: 'independent',
-      parentId: String(folder._id),
+      parentId: toRoot ? String(folder._id) : undefined,
       inheritPermission: false
     });
-
-    await moveCollection({ collectionId: String(independent._id), targetParentId: null });
-
+    const targetParentId = toRoot ? null : String(folder._id);
+    await moveCollection({ collectionId: String(independent._id), targetParentId });
     await expect(MongoDatasetCollection.findById(independent._id).lean()).resolves.toMatchObject({
-      parentId: null,
+      parentId: targetParentId,
       inheritPermission: false
     });
     await expect(
-      collectionClbs(String(users.owner.teamId), String(independent._id)).then(toPermissionMap)
+      collectionClbs(teamId, String(independent._id)).then(toPermissionMap)
     ).resolves.toEqual(new Map([[String(users.owner.tmbId), OwnerRoleVal]]));
-    expect(await datasetSwitchState(String(dataset._id))).toBe(true);
+    expect(await datasetSwitchState(datasetId)).toBe(true);
   });
 
   it('propagates the new snapshot to the descendants of a moved folder', async () => {
@@ -469,6 +443,455 @@ describe.sequential('moveCollectionPermission', () => {
       collectionClbs(String(users.owner.teamId), String(child._id)).then(toPermissionMap)
     ).resolves.toEqual(expectedMap);
     expect(await datasetSwitchState(String(dataset._id))).toBe(false);
+  });
+});
+
+// 保留真实 Mongo 的快照读取与子树传播；全局 session mock 不提供事务回滚验证。
+describe.sequential(
+  'moveCollectionPermissionsBatch / syncMovedCollectionPermissionDescendants',
+  () => {
+    it.each(['none', 'inherited', 'independent', 'two-level'])(
+      '同批移动父子时使用新快照，中间祖先模式：%s',
+      async (intermediateMode) => {
+        const users = await getFakeUsers(4);
+        const dataset = await createDataset({ user: users.owner });
+        const datasetId = String(dataset._id);
+        const teamId = String(users.owner.teamId);
+        await enableDatasetCollectionPermissions({ teamId, datasetId });
+        const folder = (name: string, parentId?: string) =>
+          createCollection({
+            user: users.owner,
+            datasetId,
+            name,
+            parentId,
+            type: DatasetCollectionTypeEnum.folder
+          });
+        const target = await folder('target');
+        const oldParent = await folder('old-parent');
+        const movingParent = await folder('moving-parent', String(oldParent._id));
+        const intermediate =
+          intermediateMode === 'none'
+            ? movingParent
+            : await createCollection({
+                user: users.owner,
+                datasetId,
+                name: 'intermediate',
+                type: DatasetCollectionTypeEnum.folder,
+                parentId: String(movingParent._id),
+                inheritPermission: intermediateMode !== 'independent'
+              });
+        const newParent =
+          intermediateMode === 'two-level'
+            ? await folder('intermediate-child', String(intermediate._id))
+            : intermediate;
+        const movingChild = await folder('moving-child', String(oldParent._id));
+        const descendant = await createCollection({
+          user: users.owner,
+          datasetId,
+          name: 'descendant',
+          parentId: String(movingChild._id)
+        });
+
+        // 两个父目录的协作者不同，才能同时判别旧继承剥离与新快照传播。
+        for (const [resource, member] of [
+          [target, users.members[0]],
+          [oldParent, users.members[1]]
+        ] as const) {
+          await setCollaborators({
+            resource: { _id: String(resource._id), type: resource.type, teamId },
+            resourceModel: MongoDatasetCollection,
+            resourceType: PerResourceTypeEnum.collection,
+            collaborators: [
+              { tmbId: String(users.owner.tmbId), permission: OwnerRoleVal },
+              { tmbId: String(member.tmbId), permission: ReadRoleVal }
+            ]
+          });
+        }
+
+        // 自定义授权放在中间节点；两层场景还验证批量 ACL 归并和完整旧父级快照。
+        if (intermediateMode !== 'none') {
+          await setCollaborators({
+            resource: { _id: String(intermediate._id), type: intermediate.type, teamId },
+            resourceModel: MongoDatasetCollection,
+            resourceType: PerResourceTypeEnum.collection,
+            collaborators: [
+              ...(await collectionClbs(teamId, String(intermediate._id))),
+              { tmbId: String(users.members[2].tmbId), permission: WriteRoleVal }
+            ].filter((collaborator): collaborator is { tmbId: string; permission: number } =>
+              Boolean(collaborator.tmbId)
+            )
+          });
+        }
+
+        await mongoSessionRun((session) =>
+          bulkMoveCollectionsParent({
+            teamId,
+            // 子节点在前，验证拓扑解析不依赖输入顺序；中间节点不在移动列表内。
+            items: [
+              {
+                _id: String(movingChild._id),
+                datasetId,
+                type: movingChild.type,
+                inheritPermission: movingChild.inheritPermission,
+                oldParentId: String(oldParent._id),
+                newParentId: newParent._id,
+                apiFileParentId: 'new-parent'
+              },
+              {
+                _id: String(movingParent._id),
+                datasetId,
+                type: movingParent.type,
+                inheritPermission: movingParent.inheritPermission,
+                oldParentId: String(oldParent._id),
+                newParentId: target._id,
+                apiFileParentId: 'target'
+              }
+            ],
+            session
+          })
+        );
+
+        const expected = new Map([
+          [String(users.owner.tmbId), OwnerRoleVal],
+          [String(users.members[0].tmbId), ReadRoleVal]
+        ]);
+        const descendantExpected = new Map(
+          intermediateMode === 'independent'
+            ? [[String(users.owner.tmbId), OwnerRoleVal]]
+            : expected
+        );
+        if (intermediateMode !== 'none') {
+          descendantExpected.set(String(users.members[2].tmbId), WriteRoleVal);
+        }
+        for (const id of new Set(
+          [movingParent._id, intermediate._id, newParent._id, movingChild._id, descendant._id].map(
+            String
+          )
+        )) {
+          await expect(collectionClbs(teamId, id).then(toPermissionMap)).resolves.toEqual(
+            id === String(movingParent._id) ? expected : descendantExpected
+          );
+        }
+        await expect(
+          MongoDatasetCollection.findById(movingChild._id).lean()
+        ).resolves.toMatchObject({
+          parentId: String(newParent._id)
+        });
+        await expect(
+          MongoDatasetCollection.findById(movingParent._id).lean()
+        ).resolves.toMatchObject({
+          parentId: String(target._id)
+        });
+      }
+    );
+  }
+);
+
+describe.sequential('moveCollectionPermissionsBatch', () => {
+  it('空列表无需读取或写入权限', async () => {
+    await expect(
+      mongoSessionRun((session) =>
+        moveCollectionPermissionsBatch({
+          teamId: 'unused-team',
+          items: [],
+          session
+        })
+      )
+    ).resolves.toEqual([]);
+  });
+
+  it.each(['disabled', 'independent', 'root'])(
+    '无需变更快照时保持数据且不生成子树传播计划：%s',
+    async (mode) => {
+      const users = await getFakeUsers(1);
+      const dataset = await createDataset({ user: users.owner });
+      const datasetId = String(dataset._id);
+      const teamId = String(users.owner.teamId);
+      if (mode !== 'disabled') await enableDatasetCollectionPermissions({ teamId, datasetId });
+      const collection = await createCollection({
+        user: users.owner,
+        datasetId,
+        name: 'folder',
+        type: DatasetCollectionTypeEnum.folder,
+        inheritPermission: mode !== 'independent'
+      });
+      const collectionId = String(collection._id);
+      const before = toPermissionMap(await collectionClbs(teamId, collectionId));
+      await expect(
+        mongoSessionRun((session) =>
+          moveCollectionPermissionsBatch({
+            teamId,
+            items: [
+              {
+                collectionId,
+                datasetId,
+                type: collection.type,
+                inheritPermission: collection.inheritPermission,
+                oldParentId: null,
+                newParentId: null
+              }
+            ],
+            session
+          })
+        )
+      ).resolves.toEqual([]);
+      await expect(collectionClbs(teamId, collectionId).then(toPermissionMap)).resolves.toEqual(
+        before
+      );
+    }
+  );
+
+  it('多个移动节点共享两层外部祖先时复用新快照，两个分支都继承新权限', async () => {
+    const users = await getFakeUsers(2);
+    const dataset = await createDataset({ user: users.owner });
+    const datasetId = String(dataset._id);
+    const teamId = String(users.owner.teamId);
+    await enableDatasetCollectionPermissions({ teamId, datasetId });
+    const folder = (name: string, parentId?: string) =>
+      createCollection({
+        user: users.owner,
+        datasetId,
+        name,
+        parentId,
+        type: DatasetCollectionTypeEnum.folder
+      });
+    const target = await folder('target');
+    const ancestor = await folder('ancestor');
+    const shared = await folder('shared', String(ancestor._id));
+    const left = await folder('left', String(shared._id));
+    const right = await folder('right', String(shared._id));
+    const movingLeft = await folder('moving-left');
+    const movingRight = await folder('moving-right');
+    const movingSameParent = await folder('moving-same-parent');
+    await setCollaborators({
+      resource: { _id: String(target._id), type: target.type, teamId },
+      resourceModel: MongoDatasetCollection,
+      resourceType: PerResourceTypeEnum.collection,
+      collaborators: [
+        { tmbId: String(users.owner.tmbId), permission: OwnerRoleVal },
+        { tmbId: String(users.members[0].tmbId), permission: ReadRoleVal }
+      ]
+    });
+
+    // shared、left、right 都不移动。先解析 left 再解析 right，第二条路径会经过已算过的 shared。
+    const moves = [
+      [movingLeft, left],
+      [movingRight, right],
+      [movingSameParent, left],
+      [ancestor, target]
+    ] as const;
+    await mongoSessionRun((session) =>
+      bulkMoveCollectionsParent({
+        teamId,
+        items: moves.map(([collection, parent]) => ({
+          _id: String(collection._id),
+          datasetId,
+          type: collection.type,
+          inheritPermission: collection.inheritPermission,
+          oldParentId: null,
+          newParentId: parent._id,
+          apiFileParentId: parent.name
+        })),
+        session
+      })
+    );
+
+    const expected = new Map([
+      [String(users.owner.tmbId), OwnerRoleVal],
+      [String(users.members[0].tmbId), ReadRoleVal]
+    ]);
+    for (const collection of [
+      ancestor,
+      shared,
+      left,
+      right,
+      movingLeft,
+      movingRight,
+      movingSameParent
+    ]) {
+      await expect(
+        collectionClbs(teamId, String(collection._id)).then(toPermissionMap)
+      ).resolves.toEqual(expected);
+    }
+    for (const [collection, parent] of moves) {
+      await expect(MongoDatasetCollection.findById(collection._id).lean()).resolves.toMatchObject({
+        parentId: String(parent._id)
+      });
+    }
+  });
+
+  it('旧节点缺少 ACL 快照时按空快照重建，移入空权限父级时撤销继承授权', async () => {
+    const users = await getFakeUsers(2);
+    const dataset = await createDataset({ user: users.owner });
+    const datasetId = String(dataset._id);
+    const teamId = String(users.owner.teamId);
+    await enableDatasetCollectionPermissions({ teamId, datasetId });
+    const folder = (name: string, parentId?: string) =>
+      createCollection({
+        user: users.owner,
+        datasetId,
+        name,
+        parentId,
+        type: DatasetCollectionTypeEnum.folder
+      });
+    const target = await folder('target');
+    const emptyParent = await folder('legacy-empty-parent');
+    const ancestor = await folder('legacy-ancestor', String(emptyParent._id));
+    const intermediate = await folder('legacy-intermediate', String(ancestor._id));
+    const movingChild = await folder('legacy-moving-child', String(emptyParent._id));
+    await setCollaborators({
+      resource: { _id: String(target._id), type: target.type, teamId },
+      resourceModel: MongoDatasetCollection,
+      resourceType: PerResourceTypeEnum.collection,
+      collaborators: [
+        { tmbId: String(users.owner.tmbId), permission: OwnerRoleVal },
+        { tmbId: String(users.members[0].tmbId), permission: ReadRoleVal }
+      ]
+    });
+    await resourcePermissionRepo.deleteByResources({
+      teamId,
+      resourceType: PerResourceTypeEnum.collection,
+      resourceIds: [emptyParent, ancestor, intermediate, movingChild].map((node) =>
+        String(node._id)
+      )
+    });
+
+    await mongoSessionRun((session) =>
+      bulkMoveCollectionsParent({
+        teamId,
+        items: [
+          [movingChild, intermediate],
+          [ancestor, target]
+        ].map(([collection, parent]) => ({
+          _id: String(collection._id),
+          datasetId,
+          type: collection.type,
+          oldParentId: String(emptyParent._id),
+          newParentId: parent._id,
+          apiFileParentId: parent.name
+        })),
+        session
+      })
+    );
+    for (const collection of [ancestor, intermediate, movingChild]) {
+      await expect(
+        collectionClbs(teamId, String(collection._id)).then(toPermissionMap)
+      ).resolves.toEqual(
+        new Map([
+          [String(users.owner.tmbId), ManageRoleVal],
+          [String(users.members[0].tmbId), ReadRoleVal]
+        ])
+      );
+    }
+    await mongoSessionRun((session) =>
+      bulkMoveCollectionsParent({
+        teamId,
+        items: [
+          {
+            _id: String(movingChild._id),
+            datasetId,
+            type: movingChild.type,
+            oldParentId: String(intermediate._id),
+            newParentId: emptyParent._id,
+            apiFileParentId: emptyParent.name
+          }
+        ],
+        session
+      })
+    );
+    await expect(collectionClbs(teamId, String(movingChild._id))).resolves.toEqual([]);
+  });
+
+  it.each(['moving', 'external-self', 'external-pair', 'mixed'])(
+    '目标父级循环在写入前失败，保留原快照和父级：%s',
+    async (mode) => {
+      const users = await getFakeUsers(1);
+      const dataset = await createDataset({ user: users.owner });
+      const datasetId = String(dataset._id);
+      const teamId = String(users.owner.teamId);
+      await enableDatasetCollectionPermissions({ teamId, datasetId });
+      const folders = await Promise.all(
+        ['a', 'b', 'moving'].map((name) =>
+          createCollection({
+            user: users.owner,
+            datasetId,
+            name,
+            type: DatasetCollectionTypeEnum.folder
+          })
+        )
+      );
+      const [a, b, moving] = folders;
+      // 直接写入历史脏树，避免通过业务移动接口构造时提前拒绝环。
+      if (mode === 'external-self' || mode === 'external-pair') {
+        await MongoDatasetCollection.updateOne(
+          { _id: a._id },
+          { $set: { parentId: String(mode === 'external-self' ? a._id : b._id) } }
+        );
+        if (mode === 'external-pair') {
+          await MongoDatasetCollection.updateOne(
+            { _id: b._id },
+            { $set: { parentId: String(a._id) } }
+          );
+        }
+      } else if (mode === 'mixed') {
+        await MongoDatasetCollection.updateOne(
+          { _id: a._id },
+          { $set: { parentId: String(moving._id) } }
+        );
+      }
+      const before = await Promise.all(
+        folders.map(async (folder) => ({
+          parentId: (await MongoDatasetCollection.findById(folder._id).lean())?.parentId,
+          permissions: toPermissionMap(await collectionClbs(teamId, String(folder._id)))
+        }))
+      );
+      const moves =
+        mode === 'moving'
+          ? [
+              [a, b],
+              [b, a]
+            ]
+          : [[moving, a]];
+      await expect(
+        mongoSessionRun((session) =>
+          bulkMoveCollectionsParent({
+            teamId,
+            items: moves.map(([collection, parent]) => ({
+              _id: String(collection._id),
+              datasetId,
+              type: collection.type,
+              oldParentId: null,
+              newParentId: parent._id,
+              apiFileParentId: parent.name
+            })),
+            session
+          })
+        )
+      ).rejects.toThrow('Circular collection parent move');
+      for (const [index, folder] of folders.entries()) {
+        await expect(
+          collectionClbs(teamId, String(folder._id)).then(toPermissionMap)
+        ).resolves.toEqual(before[index].permissions);
+        expect((await MongoDatasetCollection.findById(folder._id).lean())?.parentId).toBe(
+          before[index].parentId
+        );
+      }
+    }
+  );
+});
+
+describe('syncMovedCollectionPermissionDescendants', () => {
+  it('空传播计划直接返回', async () => {
+    await expect(
+      mongoSessionRun((session) =>
+        syncMovedCollectionPermissionDescendants({
+          teamId: 'unused-team',
+          folders: [],
+          movedCollectionIds: new Set(),
+          session
+        })
+      )
+    ).resolves.toBeUndefined();
   });
 });
 
