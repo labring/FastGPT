@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import NodeCard from '../render/NodeCard';
 import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';

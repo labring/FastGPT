@@ -66,20 +66,6 @@ export const getSelectedInputRenderType = (input: {
   selectedType?: FlowNodeInputItemType['selectedType'];
 }) => input.selectedType ?? input.renderTypeList?.[0];
 
-export const getSelectedInputRenderTypeIndex = (input: {
-  renderTypeList?: FlowNodeInputItemType['renderTypeList'];
-  selectedType?: FlowNodeInputItemType['selectedType'];
-}) => {
-  const selectedRenderType = getSelectedInputRenderType(input);
-  const selectedRenderTypePosition = selectedRenderType
-    ? input.renderTypeList?.findIndex((renderType) => renderType === selectedRenderType)
-    : -1;
-
-  return selectedRenderTypePosition !== undefined && selectedRenderTypePosition >= 0
-    ? selectedRenderTypePosition
-    : 0;
-};
-
 /**
  * 判断输入值是否应按工作流引用解析。
  * settingDatasetQuotePrompt 内部渲染 Reference 选择器，虽然 renderType 不是 reference，

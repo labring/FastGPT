@@ -5,7 +5,6 @@ import { Box, Button, Flex } from '@chakra-ui/react';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { Position } from '@xyflow/react';
 import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import {
   createIfElseBranchId,

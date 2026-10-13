@@ -7,49 +7,12 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import {
-  hydrateRuntime,
-  serializeRuntime,
-  uiWorkflow2StoreWorkflow
-} from '@/web/core/workflow/editor/codec';
-import { storeEdge2RenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { hydrateRuntime, serializeRuntime } from '@/web/core/workflow/editor/codec';
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 const t = ((key: string) => key) as never;
-
-/**
- * 旧持久化路径：initData 的模板物化 + 保存时的 uiWorkflow2StoreWorkflow。
- * 往返夹具用它和新边界（hydrateRuntime + serializeRuntime）比较持久化语义。
- */
-const legacyPersist = (input: ReturnType<typeof createStoreWorkflow>) => {
-  const toolNodeIds = new Set(
-    input.edges
-      .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
-      .map((edge) => edge.target)
-  );
-  const nodes = input.nodes.map((node) =>
-    storeNode2FlowNode({ item: node as never, isTool: toolNodeIds.has(node.nodeId), t })
-  );
-  const edges = input.edges.map((edge) => storeEdge2RenderEdge({ edge: edge as never }));
-  return uiWorkflow2StoreWorkflow({ nodes, edges });
-};
-
-/**
- * 有意差异：容器尺寸字段（宽、高、容器头部输入区高度）在新边界被 migration 清理，
- * 且模板默认值不再进入文档；旧路径会把它们持久化。比较前先对旧路径输出做同样清理。
- */
-const canvasSizeInputKeys = [
-  NodeInputKeyEnum.nodeWidth,
-  NodeInputKeyEnum.nodeHeight,
-  NodeInputKeyEnum.nestedNodeInputHeight
-];
-const stripCanvasSizeFromLegacy = <T extends { inputs: { key: string }[] }>(nodes: T[]) =>
-  nodes.map((node) => ({
-    ...node,
-    inputs: node.inputs.filter((input) => !canvasSizeInputKeys.includes(input.key as never))
-  }));
 
 const createStoreWorkflow = () => ({
   nodes: [
@@ -310,16 +273,7 @@ describe('workflow editor codec', () => {
     expect(serializeRuntime(nextRuntime)).toEqual(first);
   });
 
-  it('matches the legacy persistence path on current-shaped workflows', () => {
-    const input = createStoreWorkflow();
-    const viaCodec = serializeRuntime(hydrateRuntime({ input, t }));
-    const viaLegacy = legacyPersist(input);
-
-    expect(viaCodec.nodes).toEqual(stripCanvasSizeFromLegacy(viaLegacy.nodes));
-    expect(viaCodec.edges).toEqual(viaLegacy.edges);
-  });
-
-  it('preserves root-level variable references like the legacy path', () => {
+  it('preserves root-level variable references', () => {
     const input = {
       ...createStoreWorkflow(),
       chatConfig: {
@@ -347,7 +301,6 @@ describe('workflow editor codec', () => {
         .find((node) => node.nodeId === 'answer')
         ?.inputs.find((item) => item.key === NodeInputKeyEnum.answerText)?.value
     ).toEqual([VARIABLE_NODE_ID, 'customVar']);
-    expect(viaCodec.nodes).toEqual(stripCanvasSizeFromLegacy(legacyPersist(input).nodes));
   });
 
   it('migrates legacy structures at the inbound boundary', () => {

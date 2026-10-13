@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import NodeCard from './render/NodeCard';
 import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { Box, Textarea } from '@chakra-ui/react';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';

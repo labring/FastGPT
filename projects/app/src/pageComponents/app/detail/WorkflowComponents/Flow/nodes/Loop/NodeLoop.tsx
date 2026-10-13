@@ -3,7 +3,6 @@
   When the childNodes of loopFlow change, it automatically calculates the rectangular width, height, and position of the childNodes,
   thereby further updating the width and height properties of the loop node.
 */
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React from 'react';
 import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from '../render/NodeCard';

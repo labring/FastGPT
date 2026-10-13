@@ -50,8 +50,6 @@ export const StoredSelectedDatasetSchema = z.object({
       description: '知识库向量模型快照'
     })
 });
-export type StoredSelectedDatasetType = z.infer<typeof StoredSelectedDatasetSchema>;
-
 // Dynamic input field configuration
 export const CustomFieldConfigTypeSchema = z.object({
   // reference
@@ -233,8 +231,6 @@ export const InputComponentPropsTypeSchema = z.object({
       deprecated: true
     })
 });
-export type InputComponentPropsType = z.infer<typeof InputComponentPropsTypeSchema>;
-
 export const InputConfigInputTypeSchema = z.enum([
   'input',
   'numberInput',
@@ -244,8 +240,6 @@ export const InputConfigInputTypeSchema = z.enum([
 ]);
 
 export const InputConfigInputTypeEnum = InputConfigInputTypeSchema.enum;
-
-export type InputConfigInputTypeType = z.infer<typeof InputConfigInputTypeSchema>;
 
 /** 系统密钥输入配置 */
 export const InputConfigTypeSchema = z.object({
@@ -464,11 +458,3 @@ export const WorkflowReferenceSnapshotSchema = z.object({
   })
 });
 export type WorkflowReferenceSnapshot = z.infer<typeof WorkflowReferenceSnapshotSchema>;
-
-/* http node */
-export const HttpParamAndHeaderItemTypeSchema = z.object({
-  key: z.string(),
-  type: z.string(),
-  value: z.string()
-});
-export type HttpParamAndHeaderItemType = z.infer<typeof HttpParamAndHeaderItemTypeSchema>;

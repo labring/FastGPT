@@ -3,7 +3,6 @@ import { Position } from '@xyflow/react';
 import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import { Box } from '@chakra-ui/react';
 import NodeCard from './render/NodeCard';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';

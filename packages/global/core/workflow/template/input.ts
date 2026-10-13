@@ -78,15 +78,6 @@ export const Input_Template_Dataset_Quote: FlowNodeInputItemType = {
   description: '',
   valueType: WorkflowIOValueTypeEnum.datasetQuote
 };
-export const Input_Template_Text_Quote: FlowNodeInputItemType = {
-  key: NodeInputKeyEnum.stringQuoteText,
-  renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-  label: i18nT('app:document_quote'),
-  debugLabel: i18nT('app:document_quote'),
-  description: i18nT('app:document_quote_tip'),
-  valueType: WorkflowIOValueTypeEnum.string
-};
-
 export const Input_Template_File_Link: FlowNodeInputItemType = {
   key: NodeInputKeyEnum.fileUrlList,
   renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.JSONEditor],

@@ -335,10 +335,6 @@ const classifyViewportNodesWithPositions = ({
   };
 };
 
-export const classifyViewportNodes = (
-  params: ClassifyViewportNodesParams
-): ViewportNodeClassification => classifyViewportNodesWithPositions(params).classification;
-
 const getRectBounds = (rects: readonly NodeRect[]): NodeRect | undefined => {
   if (rects.length === 0) return;
 
@@ -650,26 +646,6 @@ export const areNodeRectsIntersecting = (left: NodeRect, right: NodeRect) =>
   left.right > right.left &&
   left.top < right.bottom &&
   left.bottom > right.top;
-
-/** 给 ReactFlow 兼容接口附上已确认的 renderer 尺寸；尺寸来源仍是 Dimension Index。 */
-const withNodeDimension = <T extends { id: string }>(
-  node: T,
-  dimension: NodeCardDimension
-): T & NodeCardDimension => ({
-  ...node,
-  width: dimension.width,
-  height: dimension.height
-});
-
-/** 过滤掉尚未测量的节点，供 fitView 等只接受完整矩形的 API 使用。 */
-export const getDimensionedNodes = <T extends { id: string }>(
-  nodes: readonly T[],
-  getDimension: DimensionReader
-): Array<T & NodeCardDimension> =>
-  nodes.flatMap((node) => {
-    const dimension = getDimension(node.id);
-    return dimension ? [withNodeDimension(node, dimension)] : [];
-  });
 
 const defaultScheduler: DimensionFrameScheduler = {
   schedule: (callback) => {

@@ -67,11 +67,7 @@ export const canvasNodeToStoreNode = (
     position: node.position
   });
 
-export const EDGE_ID_PREFIX = 'wfedge-';
-
-/** 投影边 id 编码 runtime 边数组下标；断连按 index 精确删除一条边。 */
-export const encodeRuntimeEdgeId = (index: number) => `${EDGE_ID_PREFIX}${index}`;
-/** 与 storeEdge2RenderEdge 相同的 handle 归一；值匹配删除时必须对两边同时应用。 */
+/** 归一化边的 handle；值匹配删除时必须对两边同时应用。 */
 export const normalizeEdgeHandles = (edge: {
   sourceHandle?: string | null;
   targetHandle?: string | null;

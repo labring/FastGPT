@@ -88,7 +88,6 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
 
   return renderHandle ? Render : null;
 };
-
 export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
   const renderHandle = useContext(WorkflowHandleRenderContext);
   const { t } = useTranslation();
@@ -160,7 +159,3 @@ export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
 
   return renderHandle ? Render : null;
 };
-
-export default function Dom() {
-  return <></>;
-}

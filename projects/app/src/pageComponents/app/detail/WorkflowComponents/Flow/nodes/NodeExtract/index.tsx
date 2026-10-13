@@ -2,7 +2,6 @@ import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useMemo, useState } from 'react';
 import { Box, Button, Table, Thead, Tbody, Tr, Th, Td, Flex } from '@chakra-ui/react';
 import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import { useTranslation } from 'next-i18next';
 import NodeCard from '../render/NodeCard';

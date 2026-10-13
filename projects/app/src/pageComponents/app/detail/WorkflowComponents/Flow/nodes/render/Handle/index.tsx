@@ -148,7 +148,6 @@ export const MySourceHandle = React.memo(function MySourceHandle({
     </MyTooltip>
   );
 });
-
 export const MyTargetHandle = React.memo(function MyTargetHandle({
   nodeId,
   handleId,
@@ -214,7 +213,3 @@ export const MyTargetHandle = React.memo(function MyTargetHandle({
     />
   );
 });
-
-export default function Dom() {
-  return <></>;
-}

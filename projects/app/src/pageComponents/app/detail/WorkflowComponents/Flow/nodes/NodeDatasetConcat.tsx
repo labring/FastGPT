@@ -6,7 +6,6 @@ import {
   type FlowNodeInputItemType,
   type ReferenceItemValueType
 } from '@fastgpt/global/core/workflow/type/io';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';

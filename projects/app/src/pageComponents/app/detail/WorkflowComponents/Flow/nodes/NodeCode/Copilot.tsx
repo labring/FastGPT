@@ -296,7 +296,7 @@ const NodeCopilot = ({
         status: 'success',
         title: t('app:code_applied_successfully')
       });
-    } catch (error) {
+    } catch {
       toast({
         status: 'error',
         title: t('app:apply_code_failed')

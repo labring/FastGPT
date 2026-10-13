@@ -42,7 +42,6 @@ export const HttpToolSetRuntimeConfigSchema = z.object({
     description: 'HTTP 工具集请求头密钥配置'
   })
 });
-export type HttpToolSetRuntimeConfigType = z.infer<typeof HttpToolSetRuntimeConfigSchema>;
 
 const ToolSetReferenceSchema = z.object({
   toolId: z.string().min(1).meta({
@@ -211,8 +210,6 @@ export const FlowNodeCommonTypeSchema = z.object({
   hasSystemSecret: BoolSchema.optional(),
   readmeUrl: z.string().optional()
 });
-export type FlowNodeCommonType = z.infer<typeof FlowNodeCommonTypeSchema>;
-
 const HandleTypeSchema = z.object({
   left: BoolSchema,
   right: BoolSchema,
@@ -325,7 +322,6 @@ export const NodeTemplateListTypeSchema = z.array(
 export type NodeTemplateListType = z.infer<typeof NodeTemplateListTypeSchema>;
 
 export const WorkflowCheckIssueLevelSchema = z.enum(['error', 'warning']);
-export type WorkflowCheckIssueLevel = z.infer<typeof WorkflowCheckIssueLevelSchema>;
 
 /**
  * 一条工作流问题：只携带稳定标识与插值参数，不携带文案。

@@ -227,7 +227,3 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
 
   return renderHandle ? <>{LeftHandle}</> : null;
 });
-
-export default function Dom() {
-  return <></>;
-}

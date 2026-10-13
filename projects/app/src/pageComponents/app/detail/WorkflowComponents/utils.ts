@@ -1,17 +1,9 @@
 import { getGlobalVariableNode } from '@/web/core/workflow/adapt';
 import { workflowSystemVariables } from '@/web/core/app/utils';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
-import {
-  NodeInputKeyEnum,
-  NodeOutputKeyEnum,
-  VARIABLE_NODE_ID
-} from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import type { DeepReadonly } from '@fastgpt/global/core/workflow/editor/types';
-import {
-  FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
@@ -27,21 +19,6 @@ type EditorVariableNode = {
   outputs: readonly DeepReadonly<
     Pick<FlowNodeOutputItemType, 'id' | 'label' | 'type' | 'invalid'>
   >[];
-};
-
-export const filterExportModules = (modules: StoreNodeItemType[]) => {
-  modules.forEach((module) => {
-    // dataset - remove select dataset value
-    if (module.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
-      module.inputs.forEach((item) => {
-        if (item.key === NodeInputKeyEnum.datasetSelectList) {
-          item.value = [];
-        }
-      });
-    }
-  });
-
-  return JSON.stringify(modules, null, 2);
 };
 
 export const getEditorVariables = ({

@@ -2,10 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   areNodeRectsIntersecting,
   classifyRenderableGraph,
-  classifyViewportNodes,
   createDimensionBatcher,
   createMeasurementQueue,
-  getDimensionedNodes,
   getLayoutDimension,
   getNodeRect,
   getUnmeasuredViewportFitNodeIds,
@@ -153,7 +151,7 @@ describe('workflow dimension geometry', () => {
     });
   });
 
-  it('derives rectangles and filters nodes without an index entry', () => {
+  it('derives rectangles', () => {
     const first = { id: 'first', position: { x: 10, y: 20 } };
     const second = { id: 'second', position: { x: 50, y: 30 } };
     const firstRect = getNodeRect(first, { width: 100, height: 60 });
@@ -161,56 +159,10 @@ describe('workflow dimension geometry', () => {
 
     expect(firstRect).toMatchObject({ right: 110, bottom: 80, centerX: 60, centerY: 50 });
     expect(areNodeRectsIntersecting(firstRect!, secondRect!)).toBe(true);
-    expect(
-      getDimensionedNodes([first, second], (nodeId) =>
-        nodeId === 'first' ? { width: 100, height: 60 } : undefined
-      )
-    ).toEqual([{ ...first, width: 100, height: 60 }]);
   });
 });
 
 describe('workflow viewport measurement scheduling', () => {
-  it('classifies viewport and safety-zone nodes and keeps their parents full', () => {
-    const result = classifyViewportNodes({
-      viewport: { x: 0, y: 0, zoom: 1, width: 100, height: 100 },
-      dimensions: new Map(),
-      nodes: [
-        { id: 'visible', position: { x: 10, y: 10 } },
-        { id: 'parent', position: { x: 10, y: 10 } },
-        { id: 'child', parentNodeId: 'parent', position: { x: 20, y: 20 } },
-        { id: 'overscan', position: { x: 290, y: 10 } },
-        { id: 'far', position: { x: 1000, y: 10 } }
-      ]
-    });
-
-    expect(result.visibleNodeIds).toEqual(new Set(['visible', 'parent', 'child']));
-    expect(result.overscanNodeIds).toEqual(new Set(['overscan']));
-    expect(result.fullNodeIds).toEqual(new Set(['visible', 'child', 'parent', 'overscan']));
-    expect(result.priorities.get('far')).toBe(2);
-  });
-
-  it('uses occupied dimensions for viewport classification', () => {
-    const result = classifyViewportNodes({
-      viewport: { x: 0, y: 0, zoom: 1, width: 100, height: 100 },
-      dimensions: new Map([
-        ['issue-node', measuredDimension({ width: 80, height: 40 }, { width: 80, height: 140 })]
-      ]),
-      nodes: [{ id: 'issue-node', position: { x: 10, y: -130 } }]
-    });
-
-    expect(result.visibleNodeIds).toEqual(new Set(['issue-node']));
-  });
-
-  it('keeps focused nodes full even outside the viewport', () => {
-    const result = classifyViewportNodes({
-      viewport: { x: 0, y: 0, zoom: 1, width: 100, height: 100 },
-      dimensions: new Map(),
-      nodes: [{ id: 'focused', position: { x: 1000, y: 1000 }, focusPinned: true }]
-    });
-
-    expect(result.fullNodeIds).toEqual(new Set(['focused']));
-  });
-
   it('renders overscan nodes so their measurements can complete', () => {
     const result = classifyRenderableGraph({
       viewport: { x: 0, y: 0, zoom: 1, width: 100, height: 100 },
@@ -261,42 +213,6 @@ describe('workflow viewport measurement scheduling', () => {
     expect(result.hiddenNodeIds).toEqual(new Set(['parent', 'child']));
     expect(result.renderedNodeIds).toEqual(new Set());
     expect(result.renderedEdgeIds).toEqual(new Set());
-  });
-
-  it('lets the outermost container own viewport classification for descendants', () => {
-    const result = classifyViewportNodes({
-      viewport: { x: 0, y: 0, zoom: 1, width: 100, height: 100 },
-      dimensions: new Map([
-        ['parent', measuredDimension({ width: 80, height: 80 })],
-        ['child', measuredDimension({ width: 20, height: 20 })]
-      ]),
-      nodes: [
-        { id: 'parent', position: { x: 500, y: 500 } },
-        { id: 'child', parentNodeId: 'parent', position: { x: -500, y: -500 } }
-      ]
-    });
-
-    expect(result.visibleNodeIds).toEqual(new Set());
-    expect(result.overscanNodeIds).toEqual(new Set());
-    expect(result.hiddenNodeIds).toEqual(new Set(['parent', 'child']));
-  });
-
-  it('keeps folded descendants hidden while retaining the folded container', () => {
-    const result = classifyViewportNodes({
-      viewport: { x: 0, y: 0, zoom: 1, width: 100, height: 100 },
-      dimensions: new Map([
-        ['parent', measuredDimension({ width: 80, height: 80 })],
-        ['child', measuredDimension({ width: 20, height: 20 })]
-      ]),
-      nodes: [
-        { id: 'parent', position: { x: 10, y: 10 }, isFolded: true },
-        { id: 'child', parentNodeId: 'parent', position: { x: 20, y: 20 } }
-      ]
-    });
-
-    expect(result.visibleNodeIds).toEqual(new Set(['parent']));
-    expect(result.fullNodeIds).toEqual(new Set(['parent']));
-    expect(result.hiddenNodeIds).toEqual(new Set(['child']));
   });
 
   it('deduplicates queue entries, preserves generation, and limits batches', () => {

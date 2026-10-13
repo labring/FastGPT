@@ -212,7 +212,7 @@ const createUpstreamRevisionStore = ({
  * chatConfig 的常驻派生列表。读全量节点（例如按 flowNodeType 找流程开始节点）的场景不要用它，
  * 那些消费点的相关集合是整份文档，窄化没有意义。
  *
- * `includeChildren` 与 `getNodeAllSource` 同名参数一致：容器节点要把子工作流的输出算进来源时传 true。
+ * `includeChildren` 为容器节点把子工作流输出纳入来源闭包时传 true。
  */
 export const useNodeWorkflowDocument = ({
   nodeId,

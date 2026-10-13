@@ -38,7 +38,7 @@ export const getHandleIndex = (
       | IfElseListItemType[]
       | undefined;
     if (Array.isArray(ifElseList)) {
-      const idx = ifElseList.findIndex((item, index) => {
+      const idx = ifElseList.findIndex((item) => {
         const itemHandleId = getHandleId(
           sourceNode.data.nodeId,
           'source',

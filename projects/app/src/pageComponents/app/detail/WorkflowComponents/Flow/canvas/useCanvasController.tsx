@@ -87,69 +87,6 @@ export const getPositionDelta = (initialPosition: XYPosition, nextPosition?: XYP
   限定容量的最大堆,根为当前最大距离。保留为通用最近邻筛选工具,
   辅助线拖动热路径不再依赖该结构。
 */
-export const createBoundedMaxHeap = <T,>(capacity: number) => {
-  const data: Array<{ value: T; key: number }> = [];
-
-  const siftUp = (i: number) => {
-    while (i > 0) {
-      const p = (i - 1) >> 1;
-      if (data[p].key >= data[i].key) break;
-      const tmp = data[p];
-      data[p] = data[i];
-      data[i] = tmp;
-      i = p;
-    }
-  };
-
-  const siftDown = (i: number) => {
-    const n = data.length;
-    while (true) {
-      const l = i * 2 + 1;
-      const r = l + 1;
-      let largest = i;
-      if (l < n && data[l].key > data[largest].key) largest = l;
-      if (r < n && data[r].key > data[largest].key) largest = r;
-      if (largest === i) break;
-      const tmp = data[i];
-      data[i] = data[largest];
-      data[largest] = tmp;
-      i = largest;
-    }
-  };
-
-  return {
-    tryAdd(value: T, key: number) {
-      if (data.length < capacity) {
-        data.push({ value, key });
-        siftUp(data.length - 1);
-      } else if (capacity > 0 && key < data[0].key) {
-        data[0] = { value, key };
-        siftDown(0);
-      }
-    },
-    values(): T[] {
-      return data.map((item) => item.value);
-    }
-  };
-};
-
-/** 筛选限定范围内曼哈顿距离最近的前 k 个节点。 */
-export const collectNearestNodes = (
-  rawNodes: Node[],
-  dragPos: XYPosition,
-  limit: number,
-  k: number
-): Node[] => {
-  const heap = createBoundedMaxHeap<Node>(k);
-  for (const n of rawNodes) {
-    const dx = Math.abs(n.position.x - dragPos.x);
-    const dy = Math.abs(n.position.y - dragPos.y);
-    if (dx > limit || dy > limit) continue;
-    heap.tryAdd(n, dx + dy);
-  }
-  return heap.values();
-};
-
 /*
   Compute helper lines for snapping nodes to each other
   Refer: https://reactflow.dev/examples/interaction/helper-lines
@@ -994,7 +931,7 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
 
   /* edge */
   const onEdgeMouseEnter = useCallback(
-    (e: any, edge: Edge) => {
+    (_event: any, edge: Edge) => {
       setHoverEdgeId(edge.id);
     },
     [setHoverEdgeId]
