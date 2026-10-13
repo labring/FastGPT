@@ -84,7 +84,13 @@ const MemberNameModal = dynamic(() => import('@/pageComponents/account/info/Memb
 
 const Info = () => {
   const { isPc } = useSystem();
-  const { teamPlanStatus } = useUserStore();
+  const { userInfo, teamPlanStatus, initTeamPlanStatus } = useUserStore();
+  // 返回账号页或切换团队时重新读取用量，避免沿用登录时的统计快照。
+  useRequest(initTeamPlanStatus, {
+    manual: false,
+    ready: !!userInfo?.team?.teamId,
+    refreshDeps: [userInfo?.team?.teamId]
+  });
   const standardPlan = teamPlanStatus?.standard;
   const { isOpen: isOpenContact, onClose: onCloseContact, onOpen: onOpenContact } = useDisclosure();
 
@@ -809,7 +815,7 @@ const PlanUsage = () => {
                 <Box
                   borderRadius={'sm'}
                   transition="width 0.3s"
-                  w={`${item.rate}%`}
+                  w={`${Math.min(item.rate, 100)}%`}
                   bg={`${item.rate < 50 ? 'green' : item.rate < 80 ? 'yellow' : 'red'}.500`}
                 />
               </Flex>

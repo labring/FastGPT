@@ -16,7 +16,7 @@ import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSc
 import * as vectorController from '@fastgpt/service/common/vectorDB/controller';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { SystemErrEnum } from '@fastgpt/global/common/error/code/system';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeList } from '@fastgpt/global/core/app/constants';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
@@ -306,9 +306,29 @@ describe('checkTeamAppTypeLimit', () => {
       expect(countSpy).toHaveBeenCalledWith({
         teamId: mockTeamId,
         type: {
-          $in: [AppTypeEnum.chatAgent, AppTypeEnum.simple, AppTypeEnum.workflow]
+          $in: AppTypeList
         }
       });
+    });
+
+    it.each([99, 100])('系统配额将新增数量计入边界：已有 %s 个', async (totalApps) => {
+      const countSpy = vi
+        .spyOn(MongoApp, 'countDocuments')
+        .mockResolvedValueOnce(0)
+        .mockResolvedValueOnce(totalApps);
+      const standardSpy = vi
+        .spyOn(walletUtils, 'getTeamStandPlan')
+        .mockResolvedValue({ standard: undefined });
+      global.licenseData = { maxApps: 100 } as typeof global.licenseData;
+
+      const check = checkTeamAppTypeLimit({ teamId: mockTeamId, appCheckType: 'app' });
+      if (totalApps === 99) {
+        await expect(check).resolves.toBeUndefined();
+      } else {
+        await expect(check).rejects.toBe(SystemErrEnum.licenseAppAmountLimit);
+      }
+      expect(countSpy).toHaveBeenLastCalledWith({ type: { $in: AppTypeList } });
+      expect(standardSpy).toHaveBeenCalledWith({ teamId: mockTeamId, readPreference: 'primary' });
     });
 
     it('当系统许可证限制存在且超限时抛出系统错误', async () => {
