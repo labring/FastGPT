@@ -73,12 +73,6 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
         per: TeamAppCreatePermissionVal
       });
 
-  // 上限校验
-  await checkTeamAppTypeLimit({
-    teamId,
-    appCheckType: type === AppTypeEnum.workflowTool ? 'tool' : 'app'
-  });
-
   const tmb = await MongoTeamMember.findById({ _id: tmbId }, 'userId')
     .populate<{
       user: { username: string };
@@ -124,6 +118,10 @@ export const config = {
   }
 };
 
+/**
+ * 新建应用及初始版本、默认协作者。所有新增入口统一按资源类型校验配额；
+ * 复制、转换新建和工具集创建传入的 session 会继续复用，原地转换不走此入口。
+ */
 export const onCreateApp = async ({
   parentId,
   name,
@@ -161,6 +159,16 @@ export const onCreateApp = async ({
   isRoot?: boolean;
   session?: ClientSession;
 }) => {
+  // 配额属于新增资源的约束，放在共享入口，避免复制或转换新建绕过路由校验。
+  await checkTeamAppTypeLimit({
+    teamId,
+    appCheckType: AppFolderTypeList.includes(type)
+      ? 'folder'
+      : ToolTypeList.includes(type)
+        ? 'tool'
+        : 'app'
+  });
+
   if (parentId) {
     const parentApp = await MongoApp.findById(parentId, 'type').lean();
 
