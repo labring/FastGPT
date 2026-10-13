@@ -117,5 +117,6 @@
   "migrations.20261009_migrate_dataset_rebuild_status.result": "迁移完成，剩余旧状态 {{remainingCount}} 条。",
   "migrations.20261009_migrate_dataset_rebuild_status.datas": "迁移旧重建标记",
   "migrations.20261009_migrate_dataset_rebuild_status.trainings": "恢复重建任务状态",
-  "migrations.20261009_migrate_dataset_rebuild_status.validation": "校验迁移结果"
+  "migrations.20261009_migrate_dataset_rebuild_status.validation": "校验迁移结果",
+  "prerequisite_not_succeeded": "请先执行「{{name}}」，并等待其成功完成后再执行当前任务。"
 }
