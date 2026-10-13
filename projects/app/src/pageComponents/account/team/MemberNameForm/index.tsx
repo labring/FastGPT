@@ -9,8 +9,10 @@ import { memberNameButtonStyles, memberNameInputStyles, memberNameLabelStyles } 
 import { useMemberNameForm } from './useMemberNameForm';
 
 export type MemberNameFormModalProps = {
-  /** 输入框初始值：强制补齐场景传空值，账号页传当前成员名。 */
+  /** 输入框初始值：强制补齐优先使用已有成员显示名，不使用登录账号；账号页使用当前成员名。 */
   defaultName: string;
+  /** SSO 同步模式存在已有成员显示名时，避免用户在强制弹窗自行改写。 */
+  readOnlyName?: boolean;
   /** 是否允许取消关闭；强制补齐场景必须为 false，避免用户跳过待补齐状态。 */
   dismissible?: boolean;
   placeholder?: string;
@@ -30,6 +32,7 @@ export type MemberNameFormModalProps = {
  */
 const MemberNameFormModal = ({
   defaultName,
+  readOnlyName = false,
   dismissible = true,
   placeholder,
   helperText,
@@ -100,6 +103,7 @@ const MemberNameFormModal = ({
         </Box>
         <Input
           autoFocus
+          isReadOnly={readOnlyName}
           value={memberName}
           {...memberNameInputStyles}
           maxLength={20}
