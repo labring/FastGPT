@@ -23,7 +23,7 @@ import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNod
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 /** 分类源柄的平移量：模块级常量，避免每次渲染换数组身份打穿 MySourceHandle 的 React.memo。 */
-const sourceTranslate = [34, 0] as [number, number];
+const sourceTranslate = [9, 0] as [number, number];
 const NodeCQNode = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
   const { nodeId } = data;

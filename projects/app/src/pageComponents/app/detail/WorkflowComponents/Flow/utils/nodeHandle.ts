@@ -8,10 +8,10 @@ import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/
 import { getIfElseBranchHandleKey } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 
-const ifElseHandleTranslate = [5, 0] as [number, number];
-const ifElseElseHandleTranslate = [18, 0] as [number, number];
-const optionHandleTranslate = [58, 0] as [number, number];
-const sourceHandleTranslate = [34, 0] as [number, number];
+const ifElseHandleTranslate = [9, 0] as [number, number];
+const ifElseElseHandleTranslate = [9, 0] as [number, number];
+const optionHandleTranslate = [9, 0] as [number, number];
+const sourceHandleTranslate = [9, 0] as [number, number];
 
 export type NodeShellHandleData = {
   nodeId: string;
@@ -37,6 +37,23 @@ export type NodeShellHandleModel = {
   hasCatchSource: boolean;
   replacesDefaultSource: boolean;
 };
+
+/** 根据折叠与测量状态选择唯一的 handle 宿主，避免拓扑缺失或重复挂载。 */
+export const getNodeHandleRenderMode = ({
+  isFolded,
+  renderFull,
+  hasMeasuredDynamicHandles,
+  isMeasurement
+}: {
+  isFolded: boolean;
+  renderFull: boolean;
+  hasMeasuredDynamicHandles: boolean;
+  isMeasurement: boolean;
+}) => ({
+  // 折叠卡片不渲染业务内容里的分支柄，shell 必须始终保留完整拓扑。
+  renderShellHandles: isFolded || !renderFull || (hasMeasuredDynamicHandles && !isMeasurement),
+  renderFullHandles: !isFolded && (isMeasurement || !hasMeasuredDynamicHandles)
+});
 
 const getInputArray = <T>(node: NodeShellHandleData, key: string) => {
   const value = node.inputs.find((input) => input.key === key)?.value;

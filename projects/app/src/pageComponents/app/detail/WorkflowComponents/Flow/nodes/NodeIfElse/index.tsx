@@ -26,7 +26,7 @@ import { useWorkflowSnapshotGetter } from '../render/useWorkflowDocument';
 import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
 /** ELSE 分支源柄的平移量：模块级常量，避免每次渲染换数组身份打穿 MySourceHandle 的 React.memo。 */
-const elseHandleTranslate = [18, 0] as [number, number];
+const elseHandleTranslate = [9, 0] as [number, number];
 
 const NodeIfElse = ({ data, selected }: CanvasNodeProps) => {
   const { nodeId } = data;

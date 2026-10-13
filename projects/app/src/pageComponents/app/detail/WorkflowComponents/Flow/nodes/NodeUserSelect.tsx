@@ -23,7 +23,7 @@ import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNod
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 /** 选项源柄的平移量：模块级常量，避免每次渲染换数组身份打穿 MySourceHandle 的 React.memo。 */
-const optionHandleTranslate = [58, 0] as [number, number];
+const optionHandleTranslate = [9, 0] as [number, number];
 
 const NodeUserSelect = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
@@ -92,8 +92,6 @@ const NodeUserSelect = ({ data, selected }: CanvasNodeProps) => {
                     nodeId={nodeId}
                     handleId={getHandleId(nodeId, 'source', item.key)}
                     position={Position.Right}
-                    // Handler 渲染在 DraggableInputList 的 flex 输入容器内；右侧删除按钮和 gap
-                    // 使该容器比节点内容区域缩进 24px，需要补偿后才能与节点右边缘对齐。
                     translate={optionHandleTranslate}
                   />
                 )

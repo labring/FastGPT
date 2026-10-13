@@ -13,9 +13,9 @@ import { useWorkflow } from '@/web/core/workflow/editor/react/useWorkflow';
 import { useWorkflowUIValue } from '../../../canvas/canvasState';
 import { WorkflowHandleRenderContext } from './handleRenderContext';
 
-/** 目标柄与折叠分支源柄的平移量：模块级常量，避免每次渲染换数组身份打穿 React.memo。 */
-const sourceTranslate = [4, 0] as [number, number];
-const targetTranslate = [-4, 0] as [number, number];
+/** 保留稳定数组身份；左右额外偏移由 MySourceHandle/MyTargetHandle 按状态计算。 */
+const sourceTranslate = [9, 0] as [number, number];
+const targetTranslate = [-9, 0] as [number, number];
 
 export const ConnectionSourceHandle = ({
   nodeId,

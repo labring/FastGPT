@@ -5,6 +5,7 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import {
+  getNodeHandleRenderMode,
   getNodeShellHandleModel,
   type NodeShellHandleData
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/utils/nodeHandle';
@@ -18,6 +19,20 @@ const createNode = (patch: Partial<NodeShellHandleData> = {}): NodeShellHandleDa
 });
 
 describe('workflow shell handle topology', () => {
+  it('keeps shell handles while a folded node is being measured', () => {
+    expect(
+      getNodeHandleRenderMode({
+        isFolded: true,
+        renderFull: true,
+        hasMeasuredDynamicHandles: false,
+        isMeasurement: true
+      })
+    ).toEqual({
+      renderShellHandles: true,
+      renderFullHandles: false
+    });
+  });
+
   it('keeps branch handle ids identical to the full if/else node', () => {
     const model = getNodeShellHandleModel(
       createNode({

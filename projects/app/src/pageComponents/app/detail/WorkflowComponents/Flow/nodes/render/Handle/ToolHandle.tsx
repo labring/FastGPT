@@ -4,7 +4,6 @@ import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import { type Connection, Handle, Position } from '@xyflow/react';
 import { useCallback, useContext, useMemo } from 'react';
-import { useContextSelector } from 'use-context-selector';
 import { isConnectionTargetAllowed } from '@fastgpt/global/core/workflow/editor/utils';
 import { useWorkflowUIValue } from '../../../canvas/canvasState';
 import { useWorkflowActions, useWorkflow } from '@/web/core/workflow/editor/react/useWorkflow';
@@ -80,7 +79,7 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
           border={'4px solid #8774EE'}
           rounded={'xs'}
           bg={'white'}
-          transform={'translate(0,0) rotate(45deg)'}
+          transform={'translate(0,8px) rotate(45deg)'}
           pointerEvents={'none'}
         />
       </Handle>
@@ -151,7 +150,7 @@ export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
             border={'4px solid #8774EE'}
             rounded={'xs'}
             bg={'white'}
-            transform={'translate(0,0) rotate(45deg)'}
+            transform={'translate(0,-8px) rotate(45deg)'}
             pointerEvents={'none'}
           />
         </Handle>

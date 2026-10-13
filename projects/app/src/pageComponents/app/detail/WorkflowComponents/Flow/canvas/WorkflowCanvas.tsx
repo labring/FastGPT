@@ -48,7 +48,11 @@ import {
 } from '../nodes/render/Handle/handleRenderContext';
 import { ToolSourceHandle, ToolTargetHandle } from '../nodes/render/Handle/ToolHandle';
 import { useIsToolNode } from '../nodes/render/useWorkflowDocument';
-import { getNodeShellHandleModel, type NodeShellHandleModel } from '../utils/nodeHandle';
+import {
+  getNodeHandleRenderMode,
+  getNodeShellHandleModel,
+  type NodeShellHandleModel
+} from '../utils/nodeHandle';
 import { type CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 
 // region nodeTypes Canvas node type registration
@@ -331,6 +335,13 @@ const VirtualizedNode = React.memo(
     });
     const isMeasurement = mode === 'measurement';
     const renderFull = mode !== 'shell' || !hasMeasuredDynamicHandles;
+    const isFolded = props.data.isFolded === true;
+    const { renderShellHandles, renderFullHandles } = getNodeHandleRenderMode({
+      isFolded,
+      renderFull,
+      hasMeasuredDynamicHandles,
+      isMeasurement
+    });
     const pinNodeFocus = useWorkflowCanvasValue((v) => v.pinNodeFocus);
     const unpinNodeFocus = useWorkflowCanvasValue((v) => v.unpinNodeFocus);
     const setHoverNodeId = useWorkflowUIValue((v) => v.setHoverNodeId);
@@ -370,13 +381,13 @@ const VirtualizedNode = React.memo(
           {...props}
           handleModel={handleModel}
           overlay={renderFull}
-          renderHandles={!renderFull || (hasMeasuredDynamicHandles && !isMeasurement)}
+          renderHandles={renderShellHandles}
         />
         {renderFull && (
           <MeasuredNode
             nodeComponent={nodeComponent}
             handleModel={handleModel}
-            renderHandles={isMeasurement || !hasMeasuredDynamicHandles}
+            renderHandles={renderFullHandles}
             offscreenMeasurement={isMeasurement}
             {...props}
           />
