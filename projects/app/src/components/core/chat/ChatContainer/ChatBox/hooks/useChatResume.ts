@@ -22,6 +22,7 @@ import {
   mergeResumeCompletedChatRecords,
   shouldCheckChatResumeStatus,
   shouldCreateResumeAiPlaceholder,
+  shouldReleaseResumeTarget,
   shouldReplaceResumeAiValue,
   shouldResetResumeAiPlaceholder,
   waitForConflictRecoveryRecords
@@ -239,6 +240,19 @@ export const useChatResume = ({
   useUpdateEffect(() => {
     resumeRecordsRefreshRef.current = undefined;
   }, [sourceKey, chatId]);
+
+  useEffect(() => {
+    if (
+      shouldReleaseResumeTarget({
+        chatGenerateStatus,
+        resumedChatTarget: resumedChatTargetRef.current,
+        sourceKey,
+        chatId
+      })
+    ) {
+      resumedChatTargetRef.current = undefined;
+    }
+  }, [chatGenerateStatus, chatId, resumedChatTargetRef, sourceKey]);
 
   useEffect(() => {
     if (
@@ -529,9 +543,11 @@ export const useChatResume = ({
         flushGeneratingMessages();
 
         const isStreamError = (error as ResumeStreamErrorType | undefined)?.isStreamError === true;
+        // 只有恢复流明确返回业务错误时才能结束本轮生成。
+        // 网络、鉴权或 target 传输错误不能把服务端仍为 generating 的会话误解锁。
         resumeFinalStatus = isStreamError
           ? ChatGenerateStatusEnum.error
-          : ChatGenerateStatusEnum.done;
+          : ChatGenerateStatusEnum.generating;
 
         finishResumeAiRecord({ mergeResponseData: false });
         scrollToBottom('auto');

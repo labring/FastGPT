@@ -36,6 +36,7 @@ type StreamFetchProps = {
   data: Record<string, any>;
   onMessage: StartChatFnProps['generatingMessage'];
   abortCtrl: AbortController;
+  requestMode?: 'chat' | 'raw';
 };
 export type StreamResponseType = {
   responseText: string;
@@ -105,12 +106,13 @@ export const createResumeReadyNotifier = (onResumeReady?: () => void) => {
   };
 };
 
-const shouldSendStreamResumeHeader = (url: string) =>
+export const shouldSendStreamResumeHeader = (url: string) =>
   new Set([
     '/api/v2/chat/completions',
     '/api/proApi/core/chat/chatHome',
     '/api/core/chat/chatTest',
     '/api/proApi/core/chat/chatAgentHelper/completions',
+    '/api/proApi/core/workflow/builder/chat',
     '/api/core/ai/skill/debugChat',
     '/api/proApi/core/ai/skill/debugChat'
   ]).has(url);
@@ -184,6 +186,16 @@ export function handleEventSourceData(params: HandleEventSourceDataParams) {
       case SseResponseEventEnum.planStatus:
       case SseResponseEventEnum.skillCall: {
         onmessage({ responseValueId, event, ...obj });
+        break;
+      }
+
+      case SseResponseEventEnum.workflowBuilderApplied: {
+        onmessage({ responseValueId, event, workflowBuilderApplied: obj });
+        break;
+      }
+
+      case SseResponseEventEnum.workflowBuilderVersion: {
+        onmessage({ responseValueId, event, workflowBuilderVersion: obj.version });
         break;
       }
 
@@ -691,12 +703,15 @@ function $resumefetch({
   });
 }
 
-export const streamFetch = ({
-  url = '/api/v2/chat/completions',
+/**
+ * 构造 SSE 请求体。普通聊天保留运行参数注入；独立辅助模块使用 raw 模式原样发送契约数据。
+ */
+export const buildStreamFetchBody = ({
   data,
-  onMessage,
-  abortCtrl
-}: StreamFetchProps) => {
+  requestMode = 'chat'
+}: Pick<StreamFetchProps, 'data' | 'requestMode'>) => {
+  if (requestMode === 'raw') return data;
+
   const rawVars = data?.variables;
   const variables = {
     ...(rawVars && typeof rawVars === 'object' && !Array.isArray(rawVars)
@@ -704,6 +719,23 @@ export const streamFetch = ({
       : {}),
     cTime: formatTime2YMDHMW(new Date())
   };
+
+  return {
+    ...data,
+    variables,
+    detail: true,
+    stream: true,
+    retainDatasetCite: data.retainDatasetCite ?? true
+  };
+};
+
+export const streamFetch = ({
+  url = '/api/v2/chat/completions',
+  data,
+  onMessage,
+  abortCtrl,
+  requestMode = 'chat'
+}: StreamFetchProps) => {
   const shouldEnableStreamResume = shouldSendStreamResumeHeader(url);
 
   return $ssefetch({
@@ -717,18 +749,16 @@ export const streamFetch = ({
           [STREAM_RESUME_REQUEST_HEADER]: STREAM_RESUME_REQUEST_HEADER_ENABLED
         })
       },
-      body: JSON.stringify({
-        ...data,
-        variables,
-        detail: true,
-        stream: true,
-        retainDatasetCite: data.retainDatasetCite ?? true
-      })
+      body: JSON.stringify(buildStreamFetchBody({ data, requestMode }))
     },
     onmessage: onMessage,
     abortController: abortCtrl
   });
 };
+
+/** 使用共享 SSE 生命周期，但不注入普通聊天的 Workflow 运行参数。 */
+export const streamRawFetch = (props: Omit<StreamFetchProps, 'requestMode'>) =>
+  streamFetch({ ...props, requestMode: 'raw' });
 
 type StreamResumeFetchParams = ChatAuthTargetInput & {
   chatId: string;

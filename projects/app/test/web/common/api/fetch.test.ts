@@ -7,7 +7,8 @@ import {
   createStreamFetchError,
   getStreamReasoningQueueConsumeCount,
   getStreamTypingQueueConsumeCount,
-  handleEventSourceData
+  handleEventSourceData,
+  shouldSendStreamResumeHeader
 } from '@/web/common/api/fetch';
 import {
   SseResponseEventEnum,
@@ -210,9 +211,24 @@ describe('createResumeReadyNotifier', () => {
   });
 });
 
+describe('shouldSendStreamResumeHeader', () => {
+  it('enables resume for the Pro Skill Helper endpoint', () => {
+    expect(shouldSendStreamResumeHeader('/api/proApi/core/ai/skill/debugChat')).toBe(true);
+  });
+
+  it('enables resume for the Pro Workflow Builder endpoint', () => {
+    expect(shouldSendStreamResumeHeader('/api/proApi/core/workflow/builder/chat')).toBe(true);
+  });
+});
+
 describe('buildStreamResumeUrl', () => {
   it.each([
     { name: 'App', chatTarget: { appId: 'app-1' }, expected: { appId: 'app-1' } },
+    {
+      name: 'Workflow Builder',
+      chatTarget: { appId: 'app-1', sourceType: ChatSourceTypeEnum.workflowBuilder as const },
+      expected: { appId: 'app-1', sourceType: ChatSourceTypeEnum.workflowBuilder }
+    },
     {
       name: 'Agent Helper',
       chatTarget: { appId: 'app-1', sourceType: ChatSourceTypeEnum.chatAgentHelper as const },
@@ -241,6 +257,10 @@ describe('activateStreamResumeController', () => {
       { chatId: 'chat-1', chatTarget: { appId: 'app-1' } },
       { chatId: 'chat-2', chatTarget: { appId: 'app-1' } },
       { chatId: 'chat-1', chatTarget: { appId: 'app-2' } },
+      {
+        chatId: 'chat-1',
+        chatTarget: { appId: 'app-1', sourceType: ChatSourceTypeEnum.workflowBuilder as const }
+      },
       {
         chatId: 'chat-1',
         chatTarget: { appId: 'app-1', sourceType: ChatSourceTypeEnum.chatAgentHelper as const }

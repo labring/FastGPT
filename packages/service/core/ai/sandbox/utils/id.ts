@@ -14,7 +14,7 @@ export const getSandboxUserId = ({
   sourceType: ChatSourceTypeEnum;
   userId: string;
 }) => {
-  if (sourceType === ChatSourceTypeEnum.app) {
+  if (sourceType === ChatSourceTypeEnum.app || sourceType === ChatSourceTypeEnum.workflowBuilder) {
     return userId;
   }
 
