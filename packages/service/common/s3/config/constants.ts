@@ -20,6 +20,11 @@ export const getSystemMaxFileSize = () => global.feConfigs.limit?.uploadFileMaxS
 export const getStorageFileUrlExpiredDays = () =>
   getSystemInstanceConfig().storage.fileUrlExpiredDays ?? serviceEnv.FILE_URL_EXPIRED_DAYS;
 
+/** short-redirect 302 预签名地址临时有效期（秒）：请求期读快照，Admin 保存即生效。 */
+export const getStorageRedirectTtlSeconds = () =>
+  getSystemInstanceConfig().storage.redirectTtlSeconds ??
+  serviceEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS;
+
 export const S3_KEY_PATH_INVALID_CHARS = /[|\\/]/;
 
 /** 达到该大小的浏览器直传文件切换到代理层 Multipart 上传。 */
@@ -43,7 +48,6 @@ type BucketStorageOptions = {
 const storageRegion = serviceEnv.STORAGE_REGION;
 const storageVendor = serviceEnv.STORAGE_VENDOR;
 const storageS3Endpoint = serviceEnv.STORAGE_S3_ENDPOINT;
-export const storageDownloadRedirectTtlSeconds = serviceEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS;
 const storagePublicAccessExtraSubPath = serviceEnv.STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH;
 
 /** 由实例配置注入的存储运行策略。 */

@@ -22,7 +22,7 @@ import {
 import {
   canUseStorageDownloadRedirect,
   replaceS3UrlWithCdnEndpoint,
-  storageDownloadRedirectTtlSeconds
+  getStorageRedirectTtlSeconds
 } from '@fastgpt/service/common/s3/config/constants';
 import {
   getUploadInspectBytes,
@@ -358,7 +358,7 @@ const resolveS3RedirectExpiresSeconds = ({ expiresAt }: { expiresAt: Date }) => 
     throw CommonErrEnum.unAuthFile;
   }
 
-  return Math.min(storageDownloadRedirectTtlSeconds, remainingSeconds);
+  return Math.min(getStorageRedirectTtlSeconds(), remainingSeconds);
 };
 
 /**
