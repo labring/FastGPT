@@ -1,5 +1,6 @@
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import {
+  TeamApikeyCreateRoleVal,
   TeamAppCreateRoleVal,
   TeamDatasetCreateRoleVal,
   TeamSkillCreateRoleVal
@@ -20,7 +21,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
 const originalDefaultPermissionsEnabled = serviceEnv.DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED;
-const defaultBasicRole = TeamAppCreateRoleVal | TeamSkillCreateRoleVal | TeamDatasetCreateRoleVal;
+const defaultBasicRole =
+  TeamAppCreateRoleVal |
+  TeamSkillCreateRoleVal |
+  TeamDatasetCreateRoleVal |
+  TeamApikeyCreateRoleVal;
 const setDefaultPermissionsEnabled = (enabled: boolean) =>
   Reflect.set(serviceEnv, 'DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED', enabled);
 
@@ -67,7 +72,7 @@ describe('createTeamDefaultGroup', () => {
     expect(permission.hasAppCreatePer).toBe(true);
     expect(permission.hasSkillCreatePer).toBe(true);
     expect(permission.hasDatasetCreatePer).toBe(true);
-    expect(permission.hasApikeyCreatePer).toBe(false);
+    expect(permission.hasApikeyCreatePer).toBe(true);
     expect(permission.hasManagePer).toBe(false);
   });
 
@@ -93,7 +98,7 @@ describe('createTeamDefaultGroup', () => {
     expect(permission.hasAppCreatePer).toBe(true);
     expect(permission.hasSkillCreatePer).toBe(true);
     expect(permission.hasDatasetCreatePer).toBe(true);
-    expect(permission.hasApikeyCreatePer).toBe(false);
+    expect(permission.hasApikeyCreatePer).toBe(true);
     expect(permission.hasManagePer).toBe(false);
   });
 
