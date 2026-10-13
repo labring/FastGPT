@@ -72,6 +72,76 @@ describe('resolveApiFileRecordParent', () => {
 });
 
 describe('buildApiFileParentUpdates', () => {
+  it.each([null, 'manual-parent'])('局部根正文失去子级后移回派生目录原位置：%s', (parentId) => {
+    expect(
+      buildApiFileParentUpdates({
+        records: [record()],
+        idMap: new Map(),
+        collections: [
+          collection({ parentId: 'derived', apiFileParentId: 'obsolete' }),
+          collection({
+            _id: 'derived',
+            apiFileId: 'doc#dir',
+            type: DatasetCollectionTypeEnum.folder,
+            parentId,
+            metadata: { apiFileSourceId: 'doc' }
+          })
+        ]
+      })
+    ).toEqual([
+      {
+        _id: 'local-doc',
+        type: DatasetCollectionTypeEnum.apiFile,
+        inheritPermission: undefined,
+        oldParentId: 'derived',
+        newParentId: parentId,
+        apiFileParentId: null
+      }
+    ]);
+  });
+  it('兼容有正文挂载证据的历史派生目录，不依赖来源字段存在', () => {
+    expect(
+      buildApiFileParentUpdates({
+        records: [record()],
+        idMap: new Map(),
+        collections: [
+          collection({ parentId: 'derived' }),
+          collection({
+            _id: 'derived',
+            apiFileId: 'doc#dir',
+            type: DatasetCollectionTypeEnum.folder
+          })
+        ]
+      })[0].newParentId
+    ).toBeNull();
+  });
+  it.each([
+    'remote-directory-retained',
+    'different-source',
+    'file-parent',
+    'manual-folder',
+    'folder-record'
+  ])('不折叠非派生目录或仍被远端保留的目录：%s', (scenario) => {
+    const directory = collection({
+      _id: 'parent',
+      apiFileId: scenario === 'manual-folder' ? 'manual' : 'doc#dir',
+      type:
+        scenario === 'file-parent'
+          ? DatasetCollectionTypeEnum.apiFile
+          : DatasetCollectionTypeEnum.folder,
+      metadata: { apiFileSourceId: scenario === 'different-source' ? 'doc#dir' : 'doc' }
+    });
+    const records = [record({ type: scenario === 'folder-record' ? 'folder' : 'file' })];
+    if (scenario === 'remote-directory-retained')
+      records.push(record({ sourceId: 'doc#dir', apiFileId: 'doc#dir', type: 'folder' }));
+    expect(
+      buildApiFileParentUpdates({
+        records,
+        idMap: new Map(),
+        collections: [collection({ parentId: 'parent' }), directory]
+      })
+    ).toEqual([]);
+  });
   it('正文移入新派生目录并清除旧远端父字段；再次执行无更新', () => {
     const records = [record({ parentDirId: 'doc#dir' })];
     const idMap = new Map([['doc#dir', 'derived']]);

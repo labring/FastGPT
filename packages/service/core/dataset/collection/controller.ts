@@ -916,7 +916,9 @@ export const delCollectionRelatedSource = async ({
   ]);
 };
 /**
- * delete collection and it related data
+ * 删除集合及关联数据：Mongo 分块、任务、全文和 ACL 必须随调用方事务一起提交或回滚。
+ * 同一 session 的数据库操作顺序执行；事务内失败交给外层重试整段回调，不能在已中止事务中局部重试。
+ * 向量与对象存储仍沿用现有外部清理行为，不属于 Mongo 事务。
  */
 export async function delCollection({
   collections,
@@ -962,22 +964,19 @@ export async function delCollection({
     )
     .map((item) => item.imageId!);
 
-  await retryFn(async () => {
+  const remove = async () => {
+    // 同一 session 不并行发起 Mongo 写入；重建失败时旧分块和旧任务必须随集合一起恢复。
+    await MongoDatasetTraining.deleteMany(
+      { teamId, datasetId: { $in: datasetIds }, collectionId: { $in: collectionIds } },
+      { session }
+    );
+    await getFullTextStore().deleteByCollectionIds({ teamId, datasetIds, collectionIds }, session);
+    await MongoDatasetData.deleteMany(
+      { teamId, datasetId: { $in: datasetIds }, collectionId: { $in: collectionIds } },
+      { session }
+    );
+
     await Promise.all([
-      // Delete training data
-      MongoDatasetTraining.deleteMany({
-        teamId,
-        datasetId: { $in: datasetIds },
-        collectionId: { $in: collectionIds }
-      }),
-      // Delete dataset_data_texts(store 分发:mongo 真实删除,milvus 空操作——全文随向量删除)
-      getFullTextStore().deleteByCollectionIds({ teamId, datasetIds, collectionIds }, session),
-      // Delete dataset_datas
-      MongoDatasetData.deleteMany({
-        teamId,
-        datasetId: { $in: datasetIds },
-        collectionId: { $in: collectionIds }
-      }),
       // Delete images if needed
       ...(delImg // 兼容旧图像删除
         ? [
@@ -1025,7 +1024,10 @@ export async function delCollection({
 
     // delete s3 images which are uploaded by users
     await s3DatasetSource.deleteDatasetFilesByKeys(imageIds);
-  });
+  };
+
+  if (session?.inTransaction()) await remove();
+  else await retryFn(remove);
 }
 
 /** 查找 collection 及其全部子节点（parentId 子树）；返回 [根, ...子孙]。 */

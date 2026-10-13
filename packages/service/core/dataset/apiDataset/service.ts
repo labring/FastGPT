@@ -99,7 +99,7 @@ export const createApiDatasetCollection = async ({
   // 2. 本地已有 collection：既用于幂等去重，也用于层级校正
   const existCollections = await MongoDatasetCollection.find(
     { teamId, datasetId: dataset._id },
-    '_id apiFileId apiFileParentId parentId type inheritPermission'
+    '_id apiFileId apiFileParentId parentId type inheritPermission metadata'
   ).lean();
   const existByApiFileId = new Map(
     existCollections

@@ -55,15 +55,37 @@ export const buildApiFileParentUpdates = ({
   collections: ApiFileLocalCollection[];
 } & Omit<Parameters<typeof resolveApiFileRecordParent>[0], 'record'>): ApiFileParentUpdate[] => {
   const existingById = new Map(collections.map((item) => [item.apiFileId, item]));
+  const existingByLocalId = new Map(collections.map((item) => [String(item._id), item]));
+  const remoteIds = new Set(records.map((item) => item.apiFileId));
   return records.flatMap((record) => {
     const existing = existingById.get(record.apiFileId);
     if (!existing) return [];
-    const { parentId, apiFileParentId, preserveExistingPlacement } = resolveApiFileRecordParent({
+    const {
+      parentId: resolvedParentId,
+      apiFileParentId,
+      preserveExistingPlacement
+    } = resolveApiFileRecordParent({
       record,
       ...parentOptions
     });
-    if (parentId === undefined || preserveExistingPlacement) return [];
     const oldParentId = existing.parentId ? String(existing.parentId) : null;
+    const parentId = (() => {
+      if (!preserveExistingPlacement) return resolvedParentId;
+      // 局部导入根从“目录＋正文”变回叶子文件时，正文应回到派生目录原来的位置。
+      // 普通用户目录仍保留；明确来源或历史同名目录内的正文挂载关系才作为派生目录证据。
+      const previousDirectory = oldParentId ? existingByLocalId.get(oldParentId) : undefined;
+      if (
+        record.type !== 'file' ||
+        previousDirectory?.type !== DatasetCollectionTypeEnum.folder ||
+        previousDirectory.apiFileId !== toApiFileDirId(record.sourceId, 'file') ||
+        remoteIds.has(previousDirectory.apiFileId) ||
+        (previousDirectory.metadata?.apiFileSourceId !== undefined &&
+          previousDirectory.metadata.apiFileSourceId !== record.sourceId)
+      )
+        return undefined;
+      return previousDirectory.parentId ? String(previousDirectory.parentId) : null;
+    })();
+    if (parentId === undefined) return [];
     if (oldParentId === parentId && (existing.apiFileParentId ?? null) === apiFileParentId)
       return [];
     return [
