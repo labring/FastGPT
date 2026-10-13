@@ -9,13 +9,15 @@ import { memberNameButtonStyles, memberNameInputStyles, memberNameLabelStyles } 
 import { useMemberNameForm } from './useMemberNameForm';
 
 export type MemberNameFormModalProps = {
-  /** 输入框初始值：强制补齐场景传用户名，账号页传当前成员名。 */
+  /** 输入框初始值：强制补齐场景传空值，账号页传当前成员名。 */
   defaultName: string;
   /** 是否允许取消关闭；强制补齐场景必须为 false，避免用户跳过待补齐状态。 */
   dismissible?: boolean;
   placeholder?: string;
   /** 可选说明文字：帮助区分登录账号、工号和成员显示名。 */
   helperText?: string;
+  /** 企业同步失败时提供退出登录入口，不等于取消必填要求。 */
+  onExit?: () => void | Promise<void>;
   /** 提交并刷新用户信息后回调，参数是刷新后的用户信息；不回调即可保留弹窗等待重试。 */
   onSubmitted: (userInfo: UserType | null) => void;
   onClose?: () => void;
@@ -31,6 +33,7 @@ const MemberNameFormModal = ({
   dismissible = true,
   placeholder,
   helperText,
+  onExit,
   onSubmitted,
   onClose
 }: MemberNameFormModalProps) => {
@@ -68,6 +71,16 @@ const MemberNameFormModal = ({
           {dismissible && (
             <Button variant="whiteBase" {...memberNameButtonStyles} onClick={onClose}>
               {t('account_team:cancel_member_name')}
+            </Button>
+          )}
+          {onExit && (
+            <Button
+              variant="whiteBase"
+              {...memberNameButtonStyles}
+              isDisabled={loading}
+              onClick={() => void onExit()}
+            >
+              {t('account_team:force_member_name_sign_out')}
             </Button>
           )}
           <Button
