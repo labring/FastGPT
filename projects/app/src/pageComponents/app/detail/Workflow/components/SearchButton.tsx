@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { Box, Flex, Button, IconButton, type ButtonProps, Input } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useReactFlow } from '@xyflow/react';
 import { useKeyPress, useThrottleEffect } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -13,16 +12,13 @@ import {
   useWorkflowCanvasRendererValue,
   useWorkflowCanvasValue
 } from '../../WorkflowComponents/Flow/canvas/workflowCanvasContext';
-import { getDimensionedNodes } from '../../WorkflowComponents/Flow/canvas/nodeDimensions';
 
 const SearchButton = (props: ButtonProps) => {
   const { t } = useTranslation();
   // 命中节点读文档一次性算，不建订阅；高亮标记是画布视图数据，写进 host overlay 由投影合并。
   const getWorkflow = useWorkflowSnapshotGetter();
   const patchViewData = useWorkflowOverlayActions();
-  const { fitView } = useReactFlow();
-  const getNodes = useWorkflowCanvasRendererValue((v) => v.getNodes);
-  const getNodeDimension = useWorkflowCanvasValue((v) => v.getNodeDimension);
+  const focusNodes = useWorkflowCanvasValue((v) => v.focusNodes);
   const selectNodes = useWorkflowCanvasRendererValue((v) => v.selectNodes);
   const { isMac } = useSystem();
 
@@ -85,24 +81,13 @@ const SearchButton = (props: ButtonProps) => {
 
     setSearchedNodeCount(matchedNodeIds.length);
     const activeNodeId = matchedNodeIds[searchIndex] ?? matchedNodeIds[0];
-    const activeNode = getNodes().find((node) => node.id === activeNodeId);
-    const [dimensionedNode] = activeNode ? getDimensionedNodes([activeNode], getNodeDimension) : [];
     const fitTargetKey = `${keyword}:${searchIndex}:${activeNodeId}`;
-    if (dimensionedNode && fittedSearchTargetRef.current !== fitTargetKey) {
+    if (fittedSearchTargetRef.current !== fitTargetKey) {
       fittedSearchTargetRef.current = fitTargetKey;
-      fitView({ nodes: [dimensionedNode], padding: 0.6, minZoom: 0.6 });
+      focusNodes([activeNodeId], { padding: 0.6, minZoom: 0.6 });
     }
     selectNodes([activeNodeId]);
-  }, [
-    fitView,
-    getNodes,
-    getNodeDimension,
-    getWorkflow,
-    keyword,
-    patchViewData,
-    searchIndex,
-    selectNodes
-  ]);
+  }, [focusNodes, getWorkflow, keyword, patchViewData, searchIndex, selectNodes]);
 
   useThrottleEffect(
     () => {

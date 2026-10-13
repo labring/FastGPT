@@ -29,8 +29,7 @@ import { WorkflowSelectionProvider } from '../context/workflowSelectionContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import {
-  useWorkflowIssueFocusRef,
-  useWorkflowIssueFocusTick,
+  useWorkflowIssueFocusNodeId,
   useWorkflowRuntime
 } from '@/web/core/workflow/editor/session/workflowSession';
 import {
@@ -471,8 +470,7 @@ CanvasOverlays.displayName = 'CanvasOverlays';
 const WorkflowCanvas = () => {
   const nodes = useWorkflowCanvasRendererValue((v) => v.nodes);
   const renderedNodes = useWorkflowCanvasRendererValue((v) => v.renderedNodes);
-  const nodeDimensions = useWorkflowCanvasValue((v) => v.nodeDimensions);
-  const fitNodes = useWorkflowCanvasValue((v) => v.fitNodes);
+  const focusNodes = useWorkflowCanvasValue((v) => v.focusNodes);
   const renderedEdges = useWorkflowCanvasRendererValue((v) => v.renderedEdges);
   const runtime = useWorkflowRuntime();
   const helperLinesRef = useRef<HelperLinesController>(null);
@@ -481,8 +479,7 @@ const WorkflowCanvas = () => {
   const reactFlowWrapperCallback = useWorkflowUIValue((v) => v.reactFlowWrapperCallback);
   const workflowControlMode = useWorkflowUIValue((v) => v.workflowControlMode);
   const menu = useWorkflowUIValue((v) => v.menu);
-  const issueFocusRef = useWorkflowIssueFocusRef();
-  const issueFocusTick = useWorkflowIssueFocusTick();
+  const issueFocusNodeId = useWorkflowIssueFocusNodeId();
 
   const {
     handleNodesChange,
@@ -508,34 +505,22 @@ const WorkflowCanvas = () => {
   const onMoveStart = useCallback(() => setMovingCanvas(true), []);
   const onMoveEnd = useCallback(() => setMovingCanvas(false), []);
 
-  const canvasWidth = useStore((state) => state.width);
-  const canvasHeight = useStore((state) => state.height);
   const startNodeId = nodes.find(
     (node) => node.data.flowNodeType === FlowNodeTypeEnum.workflowStart
   )?.id;
   const fittedStartRuntimeRef = useRef<unknown>();
-  const fittedIssueNodeRef = useRef<string>();
 
   useEffect(() => {
     if (!runtime || !startNodeId) return;
     if (fittedStartRuntimeRef.current === runtime) return;
-    if (!fitNodes([startNodeId], { padding: 0.3 })) return;
+    focusNodes([startNodeId], { padding: 0.3 });
     fittedStartRuntimeRef.current = runtime;
-  }, [canvasHeight, canvasWidth, nodeDimensions, fitNodes, nodes, runtime, startNodeId]);
+  }, [focusNodes, runtime, startNodeId]);
 
   useEffect(() => {
-    const focusedNodeId = issueFocusRef.current;
-    if (!focusedNodeId) {
-      fittedIssueNodeRef.current = undefined;
-      return;
-    }
-    if (fittedIssueNodeRef.current === focusedNodeId) return;
-
-    const focusedNode = nodes.find((node) => node.id === focusedNodeId);
-    if (!focusedNode) return;
-    if (!fitNodes([focusedNode.id], { padding: 0.3, minZoom: 0.6 })) return;
-    fittedIssueNodeRef.current = focusedNodeId;
-  }, [canvasHeight, canvasWidth, nodeDimensions, fitNodes, issueFocusTick, issueFocusRef, nodes]);
+    if (!issueFocusNodeId) return;
+    focusNodes([issueFocusNodeId], { padding: 0.3, minZoom: 0.6 });
+  }, [focusNodes, issueFocusNodeId]);
 
   return (
     <>

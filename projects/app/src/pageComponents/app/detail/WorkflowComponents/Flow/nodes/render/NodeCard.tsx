@@ -194,7 +194,7 @@ const NodeCard = (props: Props) => {
   const focusIssueNode = useWorkflowIssueFocusAction();
   const patchViewData = useWorkflowOverlayActions();
   const isMeasuring = useWorkflowCanvasValue((v) => v.measurementNodeIds.includes(nodeId));
-  const fitNodes = useWorkflowCanvasValue((v) => v.fitNodes);
+  const focusNodes = useWorkflowCanvasValue((v) => v.focusNodes);
   const presentationMode = useWorkflowUIValue((v) => v.presentationMode);
   const setPresentationMode = useWorkflowUIValue((v) => v.setPresentationMode);
 
@@ -210,11 +210,8 @@ const NodeCard = (props: Props) => {
     nodeActions?.setFolded(false);
     setPresentationMode(false);
 
-    // Fit view to show this node in center
-    setTimeout(() => {
-      fitNodes([nodeId], { padding: 0.3, minZoom: 0.6 });
-    }, 100);
-  }, [fitNodes, nodeActions, setPresentationMode, nodeId]);
+    focusNodes([nodeId], { padding: 0.3, minZoom: 0.6 });
+  }, [focusNodes, nodeActions, setPresentationMode, nodeId]);
 
   const showToolHandle = isTool;
 

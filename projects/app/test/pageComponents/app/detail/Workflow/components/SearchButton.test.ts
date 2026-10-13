@@ -5,9 +5,7 @@ import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  fitView: vi.fn(),
-  getNodeDimension: vi.fn(),
-  getNodes: vi.fn(() => [{ id: 'alpha-1' }, { id: 'alpha-2' }]),
+  focusNodes: vi.fn(),
   getWorkflow: vi.fn(),
   patchViewData: vi.fn(),
   selectNodes: vi.fn()
@@ -42,10 +40,6 @@ vi.mock('@chakra-ui/react', () => {
 
 vi.mock('next-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key })
-}));
-
-vi.mock('@xyflow/react', () => ({
-  useReactFlow: () => ({ fitView: mocks.fitView })
 }));
 
 vi.mock('ahooks', async () => {
@@ -86,13 +80,9 @@ vi.mock(
 
 vi.mock('@/pageComponents/app/detail/WorkflowComponents/Flow/canvas/workflowCanvasContext', () => ({
   useWorkflowCanvasRendererValue: (selector: (value: unknown) => unknown) =>
-    selector({ getNodes: mocks.getNodes, selectNodes: mocks.selectNodes }),
+    selector({ selectNodes: mocks.selectNodes }),
   useWorkflowCanvasValue: (selector: (value: unknown) => unknown) =>
-    selector({ getNodeDimension: mocks.getNodeDimension })
-}));
-
-vi.mock('@/pageComponents/app/detail/WorkflowComponents/Flow/canvas/nodeDimensions', () => ({
-  getDimensionedNodes: (nodes: unknown[]) => nodes
+    selector({ focusNodes: mocks.focusNodes })
 }));
 
 import SearchButton from '@/pageComponents/app/detail/Workflow/components/SearchButton';
@@ -145,6 +135,10 @@ describe('SearchButton', () => {
     });
     await act(async () => undefined);
     expect(container.textContent).toContain('1 / 2');
+    expect(mocks.focusNodes).toHaveBeenLastCalledWith(['alpha-1'], {
+      padding: 0.6,
+      minZoom: 0.6
+    });
 
     await act(async () => {
       Simulate.change(input, { target: { value: 'missing' } });

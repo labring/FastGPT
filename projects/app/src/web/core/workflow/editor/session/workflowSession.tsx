@@ -79,9 +79,6 @@ type WorkflowSessionValue = {
    * 因此拖拽落点、单字段提交都不会带动只关心 overlay 的消费者，反之亦然。
    */
   viewTick: number;
-  /** 问题焦点变化序号；画布据此用 Dimension Index 重新定位视口。 */
-  issueFocusTick: number;
-
   /**
    * renderer view 通道：host 持有的按节点视图数据（debug 结果、搜索高亮、教程元信息），
    * 只在投影时合并进画布节点。生产者见 patchViewData；不写入 Runtime Document。
@@ -174,7 +171,6 @@ const WorkflowSessionContext = createContext<WorkflowSessionValue>({
   runtime: null,
   editorSessionId: '',
   viewTick: 0,
-  issueFocusTick: 0,
   overlaysRef: { current: {} },
   patchViewData: notImplemented,
   undo: notImplemented,
@@ -246,9 +242,6 @@ export const useWorkflowViewTick = () =>
 
 export const useWorkflowIssueFocusRef = () =>
   useContextSelector(WorkflowSessionContext, (value) => value.issueFocusRef);
-
-export const useWorkflowIssueFocusTick = () =>
-  useContextSelector(WorkflowSessionContext, (value) => value.issueFocusTick);
 
 export const useWorkflowOverlayRef = () =>
   useContextSelector(WorkflowSessionContext, (value) => value.overlaysRef);
@@ -344,7 +337,6 @@ export const WorkflowSessionProvider = ({
   const runtimeRef = useRef<WorkflowRuntimePort | null>(null);
   const initialRuntimeSeenRef = useRef(false);
   const [viewTick, setViewTick] = useState(0);
-  const [issueFocusTick, setIssueFocusTick] = useState(0);
   /**
    * host 自身的重渲染触发：canUndo / canRedo / isSaved 都是渲染期从 runtime 读出来的派生值，
    * 任何 runtime 事件之后都要重算。它不进 context value，消费者拿不到，因此不可能被当成
@@ -504,7 +496,6 @@ export const WorkflowSessionProvider = ({
    */
   const focusIssueNode = useMemoizedFn((nodeId?: string) => {
     if (updateIssueFocusNode(nodeId)) {
-      setIssueFocusTick((tick) => tick + 1);
       bumpView();
     }
   });
@@ -818,7 +809,6 @@ export const WorkflowSessionProvider = ({
       runtime,
       editorSessionId,
       viewTick,
-      issueFocusTick,
       overlaysRef,
       patchViewData,
       undo,
@@ -848,7 +838,6 @@ export const WorkflowSessionProvider = ({
       runtime,
       editorSessionId,
       viewTick,
-      issueFocusTick,
       patchViewData,
       undo,
       redo,

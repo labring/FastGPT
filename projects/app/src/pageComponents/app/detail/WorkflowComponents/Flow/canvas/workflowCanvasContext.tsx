@@ -13,6 +13,7 @@ import {
   type NodeChange,
   applyEdgeChanges as applyReactFlowEdgeChanges,
   applyNodeChanges as applyReactFlowNodeChanges,
+  useNodesInitialized,
   useReactFlow,
   useStore
 } from '@xyflow/react';
@@ -58,6 +59,7 @@ type WorkflowRenderMode = 'full' | 'shell' | 'measurement';
 
 type WorkflowCanvasContextType = {
   fitNodes: (nodeIds?: readonly string[], options?: ViewportFitOptions) => boolean;
+  focusNodes: (nodeIds: readonly string[], options?: ViewportFitOptions) => void;
   nodeDimensions: ReadonlyMap<string, NodeDimensions>;
   containerLayouts: ReadonlyMap<string, ParentNodeLayout>;
   getNodeDimension: (nodeId: string) => NodeCardDimension | undefined;
@@ -70,6 +72,9 @@ type WorkflowCanvasContextType = {
 };
 const WorkflowCanvasContext = createContext<WorkflowCanvasContextType>({
   fitNodes: function () {
+    throw new Error('Function not implemented.');
+  },
+  focusNodes: function () {
     throw new Error('Function not implemented.');
   },
   nodeDimensions: new Map(),
@@ -152,6 +157,11 @@ type PendingFitRequest = {
   options?: ViewportFitOptions;
 };
 
+type PendingFocusRequest = {
+  nodeIds: readonly string[];
+  options?: ViewportFitOptions;
+};
+
 const defaultViewport: CanvasViewport = {
   x: 0,
   y: 0,
@@ -192,9 +202,10 @@ const areSourceHandleCentersEqual = (
 const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   // region canvasState Canvas runtime state and render refs
 
-  const { setViewport } = useReactFlow();
+  const { fitView, getNodes: getReactFlowNodes, setViewport } = useReactFlow<CanvasNode, Edge>();
   const canvasWidth = useStore((state) => state.width);
   const canvasHeight = useStore((state) => state.height);
+  const nodesInitialized = useNodesInitialized();
   const runtime = useWorkflowRuntime();
   const viewTick = useWorkflowViewTick();
   const overlaysRef = useWorkflowOverlayRef();
@@ -236,15 +247,18 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   const pendingViewportRef = useRef<CanvasViewport>();
   const renderStateFrameRef = useRef<number>();
   const measurementFrameRef = useRef<number>();
+  const focusFrameRef = useRef<number>();
   const nodeMeasurementKeysRef = useRef(new Map<string, { data: CanvasNodeData; key: string }>());
   const nodeDataGenerationsRef = useRef(new Map<string, number>());
   const measurementGenerationsRef = useRef(new Map<string, number>());
   const nextMeasurementGenerationRef = useRef(0);
   const focusPinnedNodeIdsRef = useRef(new Set<string>());
+  const focusRequestPinnedNodeIdsRef = useRef(new Set<string>());
   const staleDimensionNodeIdsRef = useRef(new Set<string>());
   const initializedCanvasRef = useRef(false);
   const newContainerIdsRef = useRef(new Set<string>());
   const pendingFitRef = useRef<PendingFitRequest>();
+  const pendingFocusRef = useRef<PendingFocusRequest>();
 
   // endregion
 
@@ -513,6 +527,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       );
       reconcileRenderState(nextNodes);
       applyPendingViewportFit();
+      scheduleFocusFrame();
     }
   });
   const [dimensionBatcher] = useState(() =>
@@ -574,7 +589,9 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       isFolded: node.data.isFolded,
       selected: node.selected,
       dragging: node.dragging,
-      focusPinned: focusPinnedNodeIdsRef.current.has(node.id)
+      focusPinned:
+        focusPinnedNodeIdsRef.current.has(node.id) ||
+        focusRequestPinnedNodeIdsRef.current.has(node.id)
     }));
     const renderedGraph = classifyRenderableGraph({
       nodes: viewportNodes,
@@ -703,12 +720,16 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       }
       reconcileRenderState(nodesRef.current);
       applyPendingViewportFit();
+      scheduleFocusFrame();
     });
   }
 
   const pruneDimensions = (activeNodeIds: Set<string>) => {
     focusPinnedNodeIdsRef.current.forEach((nodeId) => {
       if (!activeNodeIds.has(nodeId)) focusPinnedNodeIdsRef.current.delete(nodeId);
+    });
+    focusRequestPinnedNodeIdsRef.current.forEach((nodeId) => {
+      if (!activeNodeIds.has(nodeId)) focusRequestPinnedNodeIdsRef.current.delete(nodeId);
     });
     measurementGenerationsRef.current.forEach((_generation, nodeId) => {
       if (!activeNodeIds.has(nodeId)) {
@@ -1006,6 +1027,84 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     if (request) requestViewportFit(request);
   };
 
+  const scheduleFocusFrame = useMemoizedFn(() => {
+    if (focusFrameRef.current !== undefined) return;
+    focusFrameRef.current = scheduleFrame(() => {
+      focusFrameRef.current = undefined;
+      const request = pendingFocusRef.current;
+      if (!request) return;
+
+      const viewportNodes = toViewportNodes();
+      const fitNodeIds = getViewportFitNodeIds({
+        nodes: viewportNodes,
+        nodeIds: request.nodeIds
+      });
+      if (fitNodeIds.length === 0) {
+        pendingFocusRef.current = undefined;
+        focusRequestPinnedNodeIdsRef.current.clear();
+        return;
+      }
+
+      const missingNodeIds = getUnmeasuredViewportFitNodeIds({
+        nodes: viewportNodes,
+        nodeIds: fitNodeIds,
+        dimensions: getFitDimensions()
+      });
+      if (missingNodeIds.length > 0) {
+        reconcileRenderState(nodesRef.current);
+        scheduleMeasurementFrame();
+        return;
+      }
+
+      if (!nodesInitialized || canvasWidth <= 0 || canvasHeight <= 0) return;
+
+      const targetNodes = getReactFlowNodes().filter((node) => fitNodeIds.includes(node.id));
+      if (targetNodes.length !== fitNodeIds.length) return;
+
+      const releaseFocusPin = () => {
+        if (pendingFocusRef.current !== request) return;
+        pendingFocusRef.current = undefined;
+        focusRequestPinnedNodeIdsRef.current.clear();
+        reconcileRenderState(nodesRef.current);
+      };
+
+      Promise.resolve(
+        fitView({
+          nodes: targetNodes,
+          ...request.options
+        })
+      ).then(releaseFocusPin, releaseFocusPin);
+    });
+  });
+
+  useEffect(() => {
+    if (pendingFocusRef.current) scheduleFocusFrame();
+  }, [
+    canvasHeight,
+    canvasWidth,
+    nodeDimensions,
+    nodesInitialized,
+    renderedNodes,
+    scheduleFocusFrame
+  ]);
+
+  /** 聚焦指定节点：尺寸仍由 Dimension Index 管理，最终 viewport 交给 xyflow。 */
+  const focusNodes = useMemoizedFn((nodeIds: readonly string[], options?: ViewportFitOptions) => {
+    const fitNodeIds = getViewportFitNodeIds({
+      nodes: toViewportNodes(),
+      nodeIds
+    });
+    if (fitNodeIds.length === 0) return;
+
+    focusRequestPinnedNodeIdsRef.current = new Set(fitNodeIds);
+    pendingFocusRef.current = {
+      nodeIds: fitNodeIds,
+      options: options ? { ...options } : undefined
+    };
+    reconcileRenderState(nodesRef.current);
+    scheduleFocusFrame();
+  });
+
   /** 直接按完整节点图和测量尺寸设置 viewport，不依赖 React Flow 当前渲染集合。 */
   const fitNodes = useMemoizedFn(
     (nodeIds?: readonly string[], options?: ViewportFitOptions): boolean => {
@@ -1063,6 +1162,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       measurementQueueRef.current.clear();
       if (renderStateFrameRef.current !== undefined) cancelFrame(renderStateFrameRef.current);
       if (measurementFrameRef.current !== undefined) cancelFrame(measurementFrameRef.current);
+      if (focusFrameRef.current !== undefined) cancelFrame(focusFrameRef.current);
     },
     [dimensionBatcher]
   );
@@ -1074,6 +1174,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   const contextValue = useMemo(
     () => ({
       fitNodes,
+      focusNodes,
       nodeDimensions,
       containerLayouts,
       getNodeDimension,
@@ -1086,6 +1187,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     }),
     [
       fitNodes,
+      focusNodes,
       nodeDimensions,
       containerLayouts,
       getNodeDimension,
