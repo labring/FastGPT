@@ -9,6 +9,7 @@ import { axiosWithoutSSRF } from '../../common/api/axios';
 import { getLogger, LogCategories } from '../../common/logger';
 import { getImageBuffer } from '../../common/file/image/utils';
 import { uploadParsedPdfImage, type ParsedPdfImageKeyOptions } from '../../common/file/read/image';
+import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/controller';
 import { serviceEnv } from '../../env';
 import { appendIultmzhFileParseFields } from './parseConfig';
 
@@ -21,13 +22,17 @@ const SangforParseResponseSchema = z.object({
 
 /** Only configured formats use Sangfor; other files retain the original parser chain. */
 export const useSangforParse = (extension: string): boolean => {
-  if (serviceEnv.DOCUMENT_PARSE_PROVIDER !== 'sangfor') return false;
+  const provider =
+    getSystemInstanceConfig().providers.documentParse.provider ||
+    serviceEnv.DOCUMENT_PARSE_PROVIDER;
+  if (provider !== 'sangfor') return false;
   if (!global.systemEnv?.customPdfParse?.url) return false;
 
   const normalizeExtension = (value: string) => value.trim().toLowerCase().replace(/^\./, '');
-  const extensions = serviceEnv.SANGFOR_PARSE_EXTENSIONS.split(',')
-    .map(normalizeExtension)
-    .filter(Boolean);
+  const rawExtensions =
+    getSystemInstanceConfig().providers.documentParse.sangfor.extensions ||
+    serviceEnv.SANGFOR_PARSE_EXTENSIONS;
+  const extensions = rawExtensions.split(',').map(normalizeExtension).filter(Boolean);
   return extensions.includes(normalizeExtension(extension));
 };
 
@@ -88,8 +93,11 @@ export const parseFromSangfor = async ({
     form.append('file', fileBuffer, { filename: `file.${extension}` });
     appendIultmzhFileParseFields(form, sangforFileParseConfig);
     // customPdfParse.url 由部署方/root 管理员配置，可能指向内网解析服务，不使用 SSRF 拦截器。
+    const timeoutSeconds =
+      getSystemInstanceConfig().providers.documentParse.sangfor.timeoutSeconds ||
+      serviceEnv.SANGFOR_PARSE_TIMEOUT_SECONDS;
     const { data } = await axiosWithoutSSRF.post<unknown>(url, form, {
-      timeout: serviceEnv.SANGFOR_PARSE_TIMEOUT_SECONDS * 1000,
+      timeout: timeoutSeconds * 1000,
       headers: {
         ...form.getHeaders(),
         Authorization: key ? `Bearer ${key}` : undefined

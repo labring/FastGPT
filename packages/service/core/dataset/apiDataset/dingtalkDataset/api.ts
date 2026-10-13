@@ -14,6 +14,7 @@ import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import type { Method } from 'axios';
 import { axiosWithoutSSRF, createProxyAxios } from '../../../../common/api/axios';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/controller';
 import { serviceEnv } from '../../../../env';
 import { getDingtalkAppAccessToken } from '../../../../common/dingtalk/accessToken';
 
@@ -87,19 +88,26 @@ type ListAllByNextTokenProps<T> = {
   maxResults?: number;
 };
 
-const dingtalkBaseUrl = serviceEnv.DINGTALK_BASE_URL;
-const dingtalkOapiBaseUrl = serviceEnv.DINGTALK_OAPI_BASE_URL;
+const getDingtalkBaseUrl = () =>
+  getSystemInstanceConfig().providers.dataSource.dingtalkBaseUrl || serviceEnv.DINGTALK_BASE_URL;
+const getDingtalkOapiBaseUrl = () =>
+  getSystemInstanceConfig().providers.dataSource.dingtalkOapiBaseUrl ||
+  serviceEnv.DINGTALK_OAPI_BASE_URL;
 const dingtalkListPageSize = 100;
 const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
 
 // DINGTALK_BASE_URL / DINGTALK_OAPI_BASE_URL 由部署方配置，可能指向内网代理，不使用 SSRF 拦截器。
 const instance = createProxyAxios(
   {
-    baseURL: dingtalkBaseUrl,
     timeout: 60000
   },
   false
 );
+
+instance.interceptors.request.use((config) => {
+  config.baseURL = getDingtalkBaseUrl();
+  return config;
+});
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -195,7 +203,7 @@ const getDingtalkOperatorId = async ({
 }) => {
   try {
     const { data } = await axiosWithoutSSRF.post<DingtalkUserResponse>(
-      `${serviceEnv.DINGTALK_OAPI_BASE_URL}/topapi/v2/user/get`,
+      `${getDingtalkOapiBaseUrl()}/topapi/v2/user/get`,
       {
         userid: dingtalkServer.userId
       },

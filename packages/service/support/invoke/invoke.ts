@@ -14,6 +14,7 @@ import type {
 } from '@fastgpt/global/openapi/plugin/invoke';
 import { getS3ChatSource } from '../../common/s3/sources/chat';
 import { removeS3TTL } from '../../common/s3/utils';
+import { getStorageFileUrlExpiredDays } from '../../common/s3/config/constants';
 import { serviceEnv } from '../../env';
 import { getGroupsByTmbId } from '../permission/memberGroup/controllers';
 import { getOrgsByTmbId } from '../permission/org/controllers';
@@ -88,7 +89,7 @@ export class InvokeProcessor {
       filename,
       body,
       contentType,
-      expiredTime: addDays(new Date(), serviceEnv.FILE_URL_EXPIRED_DAYS)
+      expiredTime: addDays(new Date(), getStorageFileUrlExpiredDays())
     });
 
     await removeS3TTL({ key: result.key, bucketName: 'private' });
