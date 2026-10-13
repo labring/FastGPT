@@ -1,7 +1,8 @@
 import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
-  ChatCompletionTool
+  ChatCompletionTool,
+  ChatCompletionToolMessageContentPart
 } from '@fastgpt/global/core/ai/llm/type';
 import type {
   AIChatItemValueItemType,
@@ -41,6 +42,8 @@ export type AgentLoopCoreToolRunResult<TChildrenResponse = unknown> = {
   errorMessage?: string;
   nodeResponse?: ChatHistoryItemResType;
   nodeSummary?: NodeSummary;
+  /** 写入 LLM tool message 的结构化 content（text / image_url parts）。 */
+  content?: ChatCompletionToolMessageContentPart[];
 };
 
 export type AgentLoopCoreToolProvider<TRawTool = unknown, TChildrenResponse = unknown> = {
@@ -68,7 +71,8 @@ export const normalizeAgentLoopCoreToolRunResult = <TChildrenResponse = unknown>
   interactive,
   stop = false,
   errorMessage,
-  nodeResponse
+  nodeResponse,
+  content
 }: AgentLoopCoreToolRunResult<TChildrenResponse>): AgentLoopToolExecutionResult<TChildrenResponse> => {
   return {
     response,
@@ -78,6 +82,7 @@ export const normalizeAgentLoopCoreToolRunResult = <TChildrenResponse = unknown>
     interactive,
     stop,
     errorMessage,
-    metadata: nodeResponse
+    metadata: nodeResponse,
+    content
   };
 };
