@@ -268,6 +268,43 @@ describe('migration buildSparseLegacyOverrides', () => {
     // 中文缺失时用英文兜底，避免历史仅配置英文模板的实例丢失模板
     expect(pro.auth?.loginProviders?.sms?.register).toEqual({ zh: 'SMS_REGISTER_EN' });
   });
+
+  it('normalizes legacy object-shape fastLogin into the array contract', () => {
+    // 旧商业版 Admin 存储的是 Record<key, { authUrl }> 对象形状
+    const pro = buildLegacyProOverrides({
+      fastLogin: {
+        sso: { authUrl: 'https://sso.example.com/login' },
+        oidc: { authUrl: 'https://oidc.example.com/auth' }
+      }
+    });
+
+    expect(pro.auth?.fastLogin).toEqual([
+      { key: 'sso', authUrl: 'https://sso.example.com/login' },
+      { key: 'oidc', authUrl: 'https://oidc.example.com/auth' }
+    ]);
+
+    // 数组形状（新版表单形状）原样保留
+    const arrayPro = buildLegacyProOverrides({
+      fastLogin: [{ key: 'sso', authUrl: 'https://sso.example.com/login' }]
+    });
+    expect(arrayPro.auth?.fastLogin).toEqual([
+      { key: 'sso', authUrl: 'https://sso.example.com/login' }
+    ]);
+
+    // 空对象/空数组不写覆盖项；缺 authUrl 的条目丢弃
+    expect(buildLegacyProOverrides({ fastLogin: {} }).auth?.fastLogin).toBeUndefined();
+    expect(buildLegacyProOverrides({ fastLogin: [] }).auth?.fastLogin).toBeUndefined();
+    expect(
+      buildLegacyProOverrides({ fastLogin: { broken: {} } }).auth?.fastLogin
+    ).toBeUndefined();
+
+    // 规范化结果必须通过 security/auth 域两阶段校验
+    for (const domain of SYSTEM_INSTANCE_CONFIG_DOMAINS) {
+      const domainOverrides = pro[domain];
+      if (!domainOverrides) continue;
+      expect(() => resolveDomainEffectiveConfig(domain, domainOverrides)).not.toThrow();
+    }
+  });
 });
 
 describe('migration collectEnvRehomedWarnings', () => {
