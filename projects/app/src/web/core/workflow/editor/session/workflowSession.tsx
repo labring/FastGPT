@@ -66,6 +66,29 @@ import {
 
 // region sessionContracts Session state and public hook contracts
 
+export type WorkflowPersistenceState = {
+  isSaved: boolean;
+  serializeWorkflow: () => StoreWorkflow | undefined;
+  serializeWorkflowAndCheck: (hideTip?: boolean) => Promise<StoreWorkflow | undefined>;
+  markSaved: (request: WorkflowSaveRequest) => boolean;
+  createSaveRequest: (appId: string) => WorkflowSaveRequest | undefined;
+  isCurrentSaveRequest: (request: WorkflowSaveRequest) => boolean;
+  leaveSaveSign: MutableRefObject<boolean>;
+};
+
+export type WorkflowHistoryState = {
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  versions: WorkflowVersionEntry[];
+  switchVersion: (entry: WorkflowVersionEntry, customTitle: string) => boolean;
+  switchCloudVersion: (appVersion: AppVersionSchemaType) => boolean;
+};
+
+type WorkflowPersistenceActions = Omit<WorkflowPersistenceState, 'isSaved'>;
+type WorkflowHistoryActions = Omit<WorkflowHistoryState, 'canUndo' | 'canRedo'>;
+
 type WorkflowSessionValue = {
   runtime: WorkflowRuntimePort | null;
   /** 当前工作流编辑页的 Monaco model 生命周期标识。 */
@@ -87,16 +110,12 @@ type WorkflowSessionValue = {
   /** 写入 renderer view 数据并触发一次重投影；同节点多次 patch 按 key 合并。 */
   patchViewData: (patches: ViewOverlayPatch[]) => void;
 
-  undo: () => void;
-  redo: () => void;
-  canUndo: boolean;
-  canRedo: boolean;
+  /** markSaved 不发布 Runtime change；只作为 savepoint hook 的失效信号。 */
+  savepointTick: number;
   versions: WorkflowVersionEntry[];
   switchVersion: (entry: WorkflowVersionEntry, customTitle: string) => boolean;
   switchCloudVersion: (appVersion: AppVersionSchemaType) => boolean;
 
-  /** 当前内容是否等于已保存内容；撤销回已保存内容会自然回到已保存态。 */
-  isSaved: boolean;
   /** 置 false 表示主动离开，跳过离开保护与自动保存。 */
   leaveSaveSign: MutableRefObject<boolean>;
   /** 出站序列化（保存、草稿、调试共用）；同时捕获内容版本供 markSaved 回填。 */
@@ -119,27 +138,11 @@ type WorkflowSessionValue = {
   initRuntime: (content: CanonicalWorkflowData) => void;
   loadDocument: (content: CanonicalWorkflowData) => void;
   sessionActions: WorkflowSessionActions;
-  persistence: WorkflowPersistenceState;
-  historyState: WorkflowHistoryState;
+  persistence: WorkflowPersistenceActions;
+  historyState: WorkflowHistoryActions;
 };
 
 export type WorkflowSessionActions = Pick<WorkflowSessionValue, 'initRuntime' | 'loadDocument'>;
-
-export type WorkflowPersistenceState = Pick<
-  WorkflowSessionValue,
-  | 'isSaved'
-  | 'serializeWorkflow'
-  | 'serializeWorkflowAndCheck'
-  | 'markSaved'
-  | 'createSaveRequest'
-  | 'isCurrentSaveRequest'
-  | 'leaveSaveSign'
->;
-
-export type WorkflowHistoryState = Pick<
-  WorkflowSessionValue,
-  'undo' | 'redo' | 'canUndo' | 'canRedo' | 'versions' | 'switchVersion' | 'switchCloudVersion'
->;
 
 /** 合并 renderer overlay；完全相同的 patch 保持原引用，避免无意义的画布重投影。 */
 export const mergeViewOverlayPatches = ({
@@ -173,14 +176,10 @@ const WorkflowSessionContext = createContext<WorkflowSessionValue>({
   viewTick: 0,
   overlaysRef: { current: {} },
   patchViewData: notImplemented,
-  undo: notImplemented,
-  redo: notImplemented,
-  canUndo: false,
-  canRedo: false,
+  savepointTick: 0,
   versions: [],
   switchVersion: notImplemented,
   switchCloudVersion: notImplemented,
-  isSaved: true,
   leaveSaveSign: { current: true },
   serializeWorkflow: notImplemented,
   serializeWorkflowAndCheck: notImplemented,
@@ -197,7 +196,6 @@ const WorkflowSessionContext = createContext<WorkflowSessionValue>({
     loadDocument: notImplemented
   },
   persistence: {
-    isSaved: true,
     serializeWorkflow: notImplemented,
     serializeWorkflowAndCheck: notImplemented,
     markSaved: notImplemented,
@@ -208,8 +206,6 @@ const WorkflowSessionContext = createContext<WorkflowSessionValue>({
   historyState: {
     undo: notImplemented,
     redo: notImplemented,
-    canUndo: false,
-    canRedo: false,
     versions: [],
     switchVersion: notImplemented,
     switchCloudVersion: notImplemented
@@ -231,11 +227,55 @@ export const useWorkflowIssueFocusNodeId = () =>
 export const useWorkflowSessionActions = (): WorkflowSessionActions =>
   useContextSelector(WorkflowSessionContext, (value) => value.sessionActions);
 
-export const useWorkflowPersistence = (): WorkflowPersistenceState =>
-  useContextSelector(WorkflowSessionContext, (value) => value.persistence);
+const useRuntimeSubscription = (runtime: WorkflowRuntimePort | null) =>
+  useMemo(
+    () => (onStoreChange: () => void) =>
+      runtime && !runtime.isDisposed() ? runtime.subscribe(onStoreChange) : () => undefined,
+    [runtime]
+  );
 
-export const useWorkflowHistory = (): WorkflowHistoryState =>
-  useContextSelector(WorkflowSessionContext, (value) => value.historyState);
+/** Runtime markSaved 不发布 change；tick 只负责让 savepoint 读取重新检查。 */
+const useRuntimeSavepoint = (runtime: WorkflowRuntimePort | null, invalidation: number) => {
+  const subscribe = useRuntimeSubscription(runtime);
+  const getSnapshot = useCallback(
+    () =>
+      `${invalidation}:${runtime && !runtime.isDisposed() ? Number(runtime.getSavepoint().isDirty) : 0}`,
+    [runtime, invalidation]
+  );
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+
+  return snapshot.endsWith(':1');
+};
+
+/** History snapshot 每次读取都会新建对象，订阅只返回稳定的布尔标记避免快照抖动。 */
+const useRuntimeHistoryFlags = (runtime: WorkflowRuntimePort | null) => {
+  const subscribe = useRuntimeSubscription(runtime);
+  const getSnapshot = useCallback(() => {
+    const history = runtime && !runtime.isDisposed() ? runtime.getHistory() : undefined;
+    return `${history?.canUndo ? 1 : 0}:${history?.canRedo ? 1 : 0}`;
+  }, [runtime]);
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const [canUndo, canRedo] = snapshot.split(':');
+
+  return { canUndo: canUndo === '1', canRedo: canRedo === '1' };
+};
+
+export const useWorkflowPersistence = (): WorkflowPersistenceState => {
+  const runtime = useWorkflowRuntime();
+  const savepointTick = useContextSelector(WorkflowSessionContext, (value) => value.savepointTick);
+  const persistence = useContextSelector(WorkflowSessionContext, (value) => value.persistence);
+  const isDirty = useRuntimeSavepoint(runtime, savepointTick);
+
+  return useMemo(() => ({ ...persistence, isSaved: !isDirty }), [isDirty, persistence]);
+};
+
+export const useWorkflowHistory = (): WorkflowHistoryState => {
+  const runtime = useWorkflowRuntime();
+  const history = useContextSelector(WorkflowSessionContext, (value) => value.historyState);
+  const { canUndo, canRedo } = useRuntimeHistoryFlags(runtime);
+
+  return useMemo(() => ({ ...history, canUndo, canRedo }), [canRedo, canUndo, history]);
+};
 
 export const useWorkflowViewTick = () =>
   useContextSelector(WorkflowSessionContext, (value) => value.viewTick);
@@ -270,11 +310,7 @@ export const useWorkflowOverlayValue = (nodeId?: string) => {
  */
 export const useWorkflowSnapshot = (): WorkflowSnapshot | undefined => {
   const runtime = useWorkflowRuntime();
-
-  const subscribe = useMemo(
-    () => (onStoreChange: () => void) => runtime?.subscribe(onStoreChange) ?? (() => undefined),
-    [runtime]
-  );
+  const subscribe = useRuntimeSubscription(runtime);
   const getSnapshot = useCallback(
     () => (runtime && !runtime.isDisposed() ? runtime.getWorkflow() : undefined),
     [runtime]
@@ -337,12 +373,7 @@ export const WorkflowSessionProvider = ({
   const runtimeRef = useRef<WorkflowRuntimePort | null>(null);
   const initialRuntimeSeenRef = useRef(false);
   const [viewTick, setViewTick] = useState(0);
-  /**
-   * host 自身的重渲染触发：canUndo / canRedo / isSaved 都是渲染期从 runtime 读出来的派生值，
-   * 任何 runtime 事件之后都要重算。它不进 context value，消费者拿不到，因此不可能被当成
-   * 语义或几何通道误用（语义走快照身份，几何走画布自己的 runtime 订阅）。
-   */
-  const [, notifyHost] = useReducer((count: number) => count + 1, 0);
+  const [savepointTick, bumpSavepointTick] = useReducer((count: number) => count + 1, 0);
   const overlaysRef = useRef<ViewDataOverlayMap>({});
   const [versions, setVersionsRaw] = useState<WorkflowVersionEntry[]>([]);
   const versionsRef = useRef<WorkflowVersionEntry[]>([]);
@@ -434,7 +465,6 @@ export const WorkflowSessionProvider = ({
       } else if (change.origin !== 'command') {
         syncLiveVersion(next);
       }
-      notifyHost();
     });
     setRuntime(next);
   });
@@ -485,9 +515,7 @@ export const WorkflowSessionProvider = ({
     }
   }, [runtime, appDetailChatConfig]);
 
-  // 命令提交、undo/redo 与 Savepoint 回填都通过 host 重渲染刷新下列派生状态。
-  const history = runtime && !runtime.isDisposed() ? runtime.getHistory() : undefined;
-  const isSaved = !runtime || runtime.isDisposed() ? true : !runtime.getSavepoint().isDirty;
+  const isSaved = !useRuntimeSavepoint(runtime, savepointTick);
 
   /**
    * 问题焦点：标红哪个节点由 host 单点持有（旧行为同一时刻只标红一个），投影合并进节点 data。
@@ -553,7 +581,7 @@ export const WorkflowSessionProvider = ({
     if (pendingSaveRevision.current === request.contentRevision) {
       pendingSaveRevision.current = undefined;
     }
-    notifyHost();
+    bumpSavepointTick();
     saveCoordinator.invalidate();
     return true;
   });
@@ -772,9 +800,8 @@ export const WorkflowSessionProvider = ({
     () => ({ initRuntime, loadDocument }),
     [initRuntime, loadDocument]
   );
-  const persistence = useMemo<WorkflowPersistenceState>(
+  const persistence = useMemo<WorkflowPersistenceActions>(
     () => ({
-      isSaved,
       serializeWorkflow,
       serializeWorkflowAndCheck,
       markSaved,
@@ -783,7 +810,6 @@ export const WorkflowSessionProvider = ({
       leaveSaveSign
     }),
     [
-      isSaved,
       serializeWorkflow,
       serializeWorkflowAndCheck,
       markSaved,
@@ -791,17 +817,15 @@ export const WorkflowSessionProvider = ({
       isCurrentSaveRequest
     ]
   );
-  const historyState = useMemo<WorkflowHistoryState>(
+  const historyState = useMemo<WorkflowHistoryActions>(
     () => ({
       undo,
       redo,
-      canUndo: history?.canUndo ?? false,
-      canRedo: history?.canRedo ?? false,
       versions,
       switchVersion,
       switchCloudVersion
     }),
-    [undo, redo, history?.canUndo, history?.canRedo, versions, switchVersion, switchCloudVersion]
+    [undo, redo, versions, switchVersion, switchCloudVersion]
   );
 
   const value: WorkflowSessionValue = useMemo(
@@ -811,14 +835,10 @@ export const WorkflowSessionProvider = ({
       viewTick,
       overlaysRef,
       patchViewData,
-      undo,
-      redo,
-      canUndo: history?.canUndo ?? false,
-      canRedo: history?.canRedo ?? false,
+      savepointTick,
       versions,
       switchVersion,
       switchCloudVersion,
-      isSaved,
       leaveSaveSign,
       serializeWorkflow,
       serializeWorkflowAndCheck,
@@ -839,14 +859,10 @@ export const WorkflowSessionProvider = ({
       editorSessionId,
       viewTick,
       patchViewData,
-      undo,
-      redo,
-      history?.canUndo,
-      history?.canRedo,
+      savepointTick,
       versions,
       switchVersion,
       switchCloudVersion,
-      isSaved,
       serializeWorkflow,
       serializeWorkflowAndCheck,
       markSaved,

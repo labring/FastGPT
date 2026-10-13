@@ -222,10 +222,6 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   const edgesRef = useRef<Edge<any>[]>(edges);
   const renderedNodesRef = useRef<CanvasNode[]>([]);
   const renderedEdgesRef = useRef<Edge<any>[]>([]);
-  // React Flow 的挂载集合只增量扩展；尺寸回写不应替换现有节点身份。
-  // shortcut: 已挂载节点只在工作流删除或折叠时回收，超大图再增加按距离回收。
-  const renderedNodeIdsRef = useRef(new Set<string>());
-  const renderedEdgeIdsRef = useRef(new Set<string>());
   const projectionCache = useRef(createProjectionCache());
   const [nodeDimensions, setNodeDimensions] = useState<ReadonlyMap<string, NodeDimensions>>(
     () => new Map()
@@ -668,42 +664,21 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     );
     scheduleMeasurementFrame();
 
-    // 测量节点直接复用 React Flow 的节点渲染树，已挂载节点保留为 shell/full，避免测量完成时卸载。
+    // 测量节点直接复用 React Flow 的节点渲染树；viewport 外节点按本次目标集合卸载。
     const desiredNodeIds = new Set([
       ...renderedGraph.renderedNodeIds,
       ...[...nextModes].filter(([, mode]) => mode === 'measurement').map(([nodeId]) => nodeId)
     ]);
 
-    const activeNodeIds = new Set(nextNodes.map((node) => node.id));
-    const retainedNodeIds = renderedNodeIdsRef.current;
-    retainedNodeIds.forEach((nodeId) => {
-      if (!activeNodeIds.has(nodeId) || renderedGraph.hiddenNodeIds.has(nodeId)) {
-        retainedNodeIds.delete(nodeId);
-      }
-    });
-    desiredNodeIds.forEach((nodeId) => {
-      if (activeNodeIds.has(nodeId) && !renderedGraph.hiddenNodeIds.has(nodeId)) {
-        retainedNodeIds.add(nodeId);
-      }
-    });
-
-    const edgeById = new Map(edgesRef.current.map((edge) => [edge.id, edge]));
-    const retainedEdgeIds = renderedEdgeIdsRef.current;
-    retainedEdgeIds.forEach((edgeId) => {
-      const edge = edgeById.get(edgeId);
-      if (!edge || !retainedNodeIds.has(edge.source) || !retainedNodeIds.has(edge.target)) {
-        retainedEdgeIds.delete(edgeId);
-      }
-    });
-    renderedGraph.renderedEdgeIds.forEach((edgeId) => retainedEdgeIds.add(edgeId));
+    const renderedEdgeIds = renderedGraph.renderedEdgeIds;
 
     publishRenderedGraph(
-      nextNodes.filter((node) => retainedNodeIds.has(node.id)),
+      nextNodes.filter((node) => desiredNodeIds.has(node.id)),
       edgesRef.current.filter(
         (edge) =>
-          retainedEdgeIds.has(edge.id) &&
-          retainedNodeIds.has(edge.source) &&
-          retainedNodeIds.has(edge.target)
+          renderedEdgeIds.has(edge.id) &&
+          desiredNodeIds.has(edge.source) &&
+          desiredNodeIds.has(edge.target)
       )
     );
   }

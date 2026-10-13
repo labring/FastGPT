@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const srcRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../../../src');
+const globalRoot = resolve(srcRoot, '../../../packages/global');
 const detailRoot = join(srcRoot, 'pageComponents/app/detail');
 const flowRoot = join(detailRoot, 'WorkflowComponents/Flow');
 /** 编辑器目录：画布组件树 + adapter / host / projection / codec。 */
@@ -112,14 +113,23 @@ describe('workflow editor subscription guards', () => {
 
   it('画布与 Reference 不对普通字段事件做全量刷新', () => {
     const canvasSource = readFileSync(join(flowRoot, 'canvas/workflowCanvasContext.tsx'), 'utf8');
-    const adapterSource = readFileSync(
-      join(srcRoot, 'web/core/workflow/editor/react/workflowEditorAdapter.tsx'),
+    const subscriptionSource = readFileSync(
+      join(globalRoot, 'core/workflow/editor/runtime/subscriptionModule.ts'),
       'utf8'
     );
 
     expect(canvasSource).not.toMatch(/runtime\.subscribe\(syncFromRuntime\)/);
     expect(canvasSource).toMatch(/change\.affectedRecords\.structure/);
-    expect(adapterSource).toMatch(/change\.changedRecords\.edgeIds\.length > 0/);
+    expect(subscriptionSource).toMatch(/change\.changedRecords\.edgeIds\.length > 0/);
+  });
+
+  it('viewport 重算不保留已经离屏的节点集合', () => {
+    const canvasSource = readFileSync(join(flowRoot, 'canvas/workflowCanvasContext.tsx'), 'utf8');
+
+    expect(canvasSource).not.toMatch(/renderedNodeIdsRef|renderedEdgeIdsRef/);
+    expect(canvasSource).toMatch(
+      /nextNodes\.filter\(\(node\) => desiredNodeIds\.has\(node\.id\)\)/
+    );
   });
 
   it('public Canvas context 不暴露 ReactFlow 原语', () => {

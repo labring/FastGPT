@@ -368,24 +368,107 @@ export type WorkflowDispatchResult = {
 
 // endregion
 
+// region reactIndependentEditorContracts Runtime-owned editor bindings
+
+/** React Adapter 兼容层使用的结构身份快照；只保留结构字段，不复制节点语义数据。 */
+export type WorkflowNodeIdentity = {
+  nodeId: string;
+  parentNodeId?: string;
+};
+
+export type WorkflowStructureSnapshot = DeepReadonly<{
+  nodes: WorkflowNodeIdentity[];
+  edges: WorkflowEdgeSnapshot[];
+}>;
+
+export type WorkflowGeometryUpdate = {
+  nodeId: string;
+  position?: { x: number; y: number };
+  isFolded?: boolean;
+};
+
+export type WorkflowNodeUpdateOptions = {
+  /** 与节点 patch 在同一事务中断开的连线。 */
+  disconnectEdges?: readonly Omit<Extract<WorkflowCommand, { type: 'disconnectEdge' }>, 'type'>[];
+};
+
+export type WorkflowNodeHandle = {
+  data: WorkflowNodeSnapshot;
+  view: WorkflowNodeViewSnapshot;
+  setName: (name: string) => WorkflowDispatchResult;
+  setFolded: (isFolded: boolean) => WorkflowDispatchResult;
+  updateNode: (
+    patch: (node: WorkflowNodeSnapshot) => Partial<DeepReadonly<WorkflowNodeData>>,
+    options?: WorkflowNodeUpdateOptions
+  ) => WorkflowDispatchResult;
+};
+
+export type WorkflowNodeActions = Pick<WorkflowNodeHandle, 'setName' | 'setFolded' | 'updateNode'>;
+
+export type WorkflowFieldHandle = {
+  data: WorkflowFieldSnapshot;
+  reference: WorkflowFieldSnapshot['references'];
+  setValue: (value: unknown) => WorkflowDispatchResult;
+};
+
+export type WorkflowStructureCommands = {
+  addNode: (node: StoreNodeItemType) => WorkflowDispatchResult;
+  addNodes: (
+    nodes: readonly StoreNodeItemType[],
+    edge?: StoreEdgeItemType
+  ) => WorkflowDispatchResult;
+  connectEdge: (edge: StoreEdgeItemType) => WorkflowDispatchResult;
+  disconnectEdge: (
+    command: Omit<Extract<WorkflowCommand, { type: 'disconnectEdge' }>, 'type'>
+  ) => WorkflowDispatchResult;
+  disconnectEdges: (
+    commands: readonly Omit<Extract<WorkflowCommand, { type: 'disconnectEdge' }>, 'type'>[]
+  ) => WorkflowDispatchResult;
+  removeNodes: (nodeIds: readonly string[]) => WorkflowDispatchResult;
+  attachToContainer: (nodeId: string, containerId: string) => WorkflowDispatchResult;
+};
+
+export type WorkflowStructureHandle = WorkflowStructureSnapshot & WorkflowStructureCommands;
+
+/** Runtime 持有的稳定写句柄；只读 getter 在调用时读取当前快照。 */
+export type WorkflowActionsHandle = WorkflowStructureCommands & {
+  commitGeometry: (updates: readonly WorkflowGeometryUpdate[]) => WorkflowDispatchResult;
+  getWorkflowSnapshot: () => WorkflowStructureSnapshot;
+  getEdges: () => readonly WorkflowEdgeSnapshot[];
+};
+
+// endregion
+
 // region runtimePort Runtime public port contract
 
 /** Workflow Runtime Port 的唯一行为测试与 adapter seam。 */
 export type WorkflowRuntimePort = {
   getWorkflow: () => WorkflowSnapshot;
+  /** React Adapter 兼容层使用的结构快照；不携带节点语义数据。 */
+  getStructureSnapshot: () => WorkflowStructureSnapshot;
   /** 画布投影专用边视图，包含 Runtime 稳定 id；不用于持久化。 */
   getCanvasEdges: () => readonly WorkflowCanvasEdgeSnapshot[];
   getWorkflowIssues: () => WorkflowIssuesSnapshot;
   getWorkflowData: () => CanonicalWorkflowData;
   getNode: (nodeId: string) => WorkflowNodeSnapshot | undefined;
   getNodeView: (nodeId: string) => WorkflowNodeViewSnapshot | undefined;
+  getNodeHandle: (nodeId: string) => WorkflowNodeHandle | undefined;
+  getNodeActions: (nodeId: string) => WorkflowNodeActions | undefined;
   getField: (query: WorkflowFieldQuery) => WorkflowFieldSnapshot | undefined;
+  getFieldHandle: (query: WorkflowFieldQuery) => WorkflowFieldHandle | undefined;
   getReferenceOptions: (query: WorkflowReferenceOptionsQuery) => readonly WorkflowReferenceOption[];
+  getWorkflowActions: () => WorkflowActionsHandle;
   getHistory: () => HistorySnapshot;
   getSavepoint: () => WorkflowSavepoint;
   getChangeLog: () => readonly WorkflowChange[];
   dispatch: (command: WorkflowCommand | readonly WorkflowCommand[]) => WorkflowDispatchResult;
   subscribe: (listener: (change: WorkflowChange) => void) => () => void;
+  subscribeWorkflow: (listener: () => void) => () => void;
+  /** 订阅单节点语义与几何变化；细分几何时使用 subscribeNodeView。 */
+  subscribeNode: (nodeId: string, listener: () => void) => () => void;
+  subscribeNodeView: (nodeId: string, listener: () => void) => () => void;
+  subscribeField: (query: WorkflowFieldQuery, listener: () => void) => () => void;
+  subscribeReferenceOptions: (listener: () => void) => () => void;
   undo: () => WorkflowDispatchResult;
   redo: () => WorkflowDispatchResult;
   /** 一次性回放多条相邻 history，最终状态只发布一条 change。 */

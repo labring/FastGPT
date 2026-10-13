@@ -223,6 +223,30 @@ describe('workflow viewport measurement scheduling', () => {
     expect(result.renderedNodeIds).toEqual(new Set(['overscan']));
   });
 
+  it('removes a judgment node after it leaves the viewport', () => {
+    const nodes = [
+      { id: 'if-else', position: { x: 10, y: 10 } },
+      { id: 'far', position: { x: 1000, y: 10 } }
+    ];
+    const viewport = { x: 0, y: 0, zoom: 1, width: 100, height: 100 };
+
+    const visible = classifyRenderableGraph({
+      viewport,
+      dimensions: new Map(),
+      nodes,
+      edges: []
+    });
+    const afterPan = classifyRenderableGraph({
+      viewport: { ...viewport, x: -1000 },
+      dimensions: new Map(),
+      nodes,
+      edges: []
+    });
+
+    expect(visible.renderedNodeIds.has('if-else')).toBe(true);
+    expect(afterPan.renderedNodeIds.has('if-else')).toBe(false);
+  });
+
   it('drops an unmeasured offscreen container and its contents from the rendered graph', () => {
     const result = classifyRenderableGraph({
       viewport: { x: 0, y: 0, zoom: 1, width: 100, height: 100 },

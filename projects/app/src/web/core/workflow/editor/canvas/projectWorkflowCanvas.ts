@@ -24,8 +24,7 @@ import {
   normalizeEdgeHandles,
   type CanvasNode,
   type CanvasNodeData,
-  type ViewOverlayData,
-  type ViewDataKey
+  type ViewOverlayData
 } from '@/web/core/workflow/editor/canvas/canvasTypes';
 
 // region projectionContracts Canvas projection contracts

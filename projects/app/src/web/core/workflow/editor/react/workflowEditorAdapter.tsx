@@ -1,22 +1,24 @@
 import type {
   DeepReadonly,
   PlacementRequest,
-  WorkflowChange,
   WorkflowDispatchResult,
-  WorkflowEdgeSnapshot,
-  WorkflowFieldIdentity,
   WorkflowFieldQuery,
-  WorkflowFieldSnapshot,
   WorkflowCommand,
   WorkflowNodeData,
   WorkflowNodeSnapshot,
-  WorkflowNodeViewSnapshot,
   WorkflowRuntimePort,
   WorkflowReferenceOptionsQuery,
   WorkflowReferenceOption,
-  WorkflowSnapshot,
   WorkflowGraphQueries,
-  WorkflowIssueUpdate
+  WorkflowActionsHandle as RuntimeWorkflowActionsHandle,
+  WorkflowFieldHandle as RuntimeWorkflowFieldHandle,
+  WorkflowGeometryUpdate as RuntimeWorkflowGeometryUpdate,
+  WorkflowNodeActions as RuntimeWorkflowNodeActions,
+  WorkflowNodeHandle as RuntimeWorkflowNodeHandle,
+  WorkflowNodeUpdateOptions as RuntimeWorkflowNodeUpdateOptions,
+  WorkflowStructureCommands as RuntimeWorkflowStructureCommands,
+  WorkflowStructureHandle as RuntimeWorkflowStructureHandle,
+  WorkflowStructureSnapshot as RuntimeWorkflowStructureSnapshot
 } from '@fastgpt/global/core/workflow/editor/types';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type {
@@ -26,90 +28,17 @@ import type {
 
 // region adapterContracts React adapter public contracts
 
-export type WorkflowNodeIdentity = {
-  nodeId: string;
-  parentNodeId?: string;
-};
-
-export type WorkflowStructureSnapshot = DeepReadonly<{
-  nodes: WorkflowNodeIdentity[];
-  edges: WorkflowEdgeSnapshot[];
-}>;
-
-export type WorkflowGeometryUpdate = {
-  nodeId: string;
-  position?: { x: number; y: number };
-  isFolded?: boolean;
-};
-
-export type WorkflowNodeHandle = {
-  data: WorkflowNodeSnapshot;
-  view: WorkflowNodeViewSnapshot;
-  setName: (name: string) => WorkflowDispatchResult;
-  setFolded: (isFolded: boolean) => WorkflowDispatchResult;
-  /**
-   * 提交节点语义数据 patch（updateNode 命令），差异记录仍由 Runtime 按字段粒度发布。
-   * 只接受函数形式：入参是派发瞬间的当前记录，返回值是只读快照形状的 patch。
-   *
-   * 记录级数组（inputs / outputs）必须基于这份当前记录整表拼装。拿渲染期快照当基线
-   * 会覆盖掉同一 tick 内的其他写入，多行同时提交时互相丢改动。
-   * 位置与折叠不在此提交（只走 commitGeometry）。
-   */
-  updateNode: (
-    patch: (node: WorkflowNodeSnapshot) => Partial<DeepReadonly<WorkflowNodeData>>,
-    options?: WorkflowNodeUpdateOptions
-  ) => WorkflowDispatchResult;
-};
-
-export type WorkflowNodeActions = Pick<WorkflowNodeHandle, 'setName' | 'setFolded' | 'updateNode'>;
-
-export type WorkflowFieldHandle = {
-  data: WorkflowFieldSnapshot;
-  reference: WorkflowFieldSnapshot['references'];
-  setValue: (value: unknown) => WorkflowDispatchResult;
-};
+export type WorkflowStructureSnapshot = RuntimeWorkflowStructureSnapshot;
+export type WorkflowGeometryUpdate = RuntimeWorkflowGeometryUpdate;
+export type WorkflowNodeHandle = RuntimeWorkflowNodeHandle;
+export type WorkflowNodeActions = RuntimeWorkflowNodeActions;
+export type WorkflowNodeUpdateOptions = RuntimeWorkflowNodeUpdateOptions;
+export type WorkflowStructureCommands = RuntimeWorkflowStructureCommands;
+export type WorkflowStructureHandle = RuntimeWorkflowStructureHandle;
+export type WorkflowActionsHandle = RuntimeWorkflowActionsHandle;
+export type WorkflowFieldHandle = RuntimeWorkflowFieldHandle;
 
 type WorkflowDisconnectEdge = Omit<Extract<WorkflowCommand, { type: 'disconnectEdge' }>, 'type'>;
-
-export type WorkflowNodeUpdateOptions = {
-  /**
-   * 与 patch 同一事务断开的连线。
-   * 删除或替换输出字段时旧 handle 上的连线必须一起消失；拆成两次 dispatch 会让撤销需要按两下。
-   * index 需按降序给出：同一事务内逐条删除会改变后续下标。
-   */
-  disconnectEdges?: readonly WorkflowDisconnectEdge[];
-};
-
-/** 结构级写命令：`useWorkflow()` 的结构句柄与 `useWorkflowActions()` 的稳定句柄共用同一份签名。 */
-export type WorkflowStructureCommands = {
-  addNode: (node: StoreNodeItemType) => WorkflowDispatchResult;
-  addNodes: (
-    nodes: readonly StoreNodeItemType[],
-    edge?: StoreEdgeItemType
-  ) => WorkflowDispatchResult;
-  connectEdge: (edge: StoreEdgeItemType) => WorkflowDispatchResult;
-  disconnectEdge: (command: WorkflowDisconnectEdge) => WorkflowDispatchResult;
-  disconnectEdges: (commands: readonly WorkflowDisconnectEdge[]) => WorkflowDispatchResult;
-  removeNodes: (nodeIds: readonly string[]) => WorkflowDispatchResult;
-  attachToContainer: (nodeId: string, containerId: string) => WorkflowDispatchResult;
-};
-
-export type WorkflowStructureHandle = WorkflowStructureSnapshot & WorkflowStructureCommands;
-
-/**
- * 稳定的写能力句柄：只包 command 与非订阅 getter，不携带任何随结构变化的字段，
- * 因此对象身份在 adapter 生命周期内不变，使用它的组件对结构变更的订阅数为零。
- *
- * 两个 getter 都是「点击时读当前值」用的，不会让组件重渲染：
- * 结构快照身份随结构版本变化，边集合直接复用快照里的只读数组。
- */
-export type WorkflowActionsHandle = WorkflowStructureCommands & {
-  commitGeometry: (updates: readonly WorkflowGeometryUpdate[]) => WorkflowDispatchResult;
-  /** 非订阅读取当前结构快照（节点 identity + 边集合）。 */
-  getWorkflowSnapshot: () => WorkflowStructureSnapshot;
-  /** 非订阅读取当前边集合，供只在事件回调里用边的消费点使用。 */
-  getEdges: () => readonly WorkflowEdgeSnapshot[];
-};
 
 export type WorkflowCanvasHandle = {
   commitGeometry: (updates: readonly WorkflowGeometryUpdate[]) => WorkflowDispatchResult;
@@ -117,43 +46,7 @@ export type WorkflowCanvasHandle = {
 
 // endregion
 
-// region adapterInternals React adapter cache and listener helpers
-
 type Listener = () => void;
-type ListenerRegistry = Map<string, Set<Listener>>;
-
-const getFieldIdentityKey = ({ nodeId, key, kind }: WorkflowFieldIdentity) =>
-  `${nodeId}\0${kind}\0${key}`;
-
-const getFieldQueryKey = ({ nodeId, fieldKey, kind }: WorkflowFieldQuery) =>
-  `${nodeId}\0${kind ?? '*'}\0${fieldKey}`;
-
-const freezeStructure = (workflow: WorkflowSnapshot): WorkflowStructureSnapshot =>
-  Object.freeze({
-    nodes: Object.freeze(
-      workflow.nodes.map((node) =>
-        Object.freeze({
-          nodeId: node.nodeId,
-          ...(node.parentNodeId !== undefined ? { parentNodeId: node.parentNodeId } : {})
-        })
-      )
-    ),
-    edges: workflow.edges
-  }) as WorkflowStructureSnapshot;
-
-const notify = (listeners: Set<Listener>) => {
-  listeners.forEach((listener) => listener());
-};
-
-const collectRegistryListeners = (registry: ListenerRegistry, nodeIds: readonly string[]) => {
-  const notified = new Set<Listener>();
-  nodeIds.forEach((nodeId) => {
-    registry.get(nodeId)?.forEach((listener) => notified.add(listener));
-  });
-  return notified;
-};
-
-// endregion
 
 // region adapterContracts React adapter public contracts
 
@@ -192,12 +85,9 @@ export const createWorkflowEditorAdapter = (
   subscribeImmediately = true
 ): WorkflowEditorAdapter => {
   let disposed = false;
-  let unsubscribeRuntime: (() => void) | undefined;
-  let unsubscribeIssues: (() => void) | undefined;
-  let structure = freezeStructure(runtime.getWorkflow());
-  // port 返回的查询对象本身在 runtime 生命周期内身份不变，取一次即可当稳定引用透传。
-  const graphQueries = runtime.getGraphQueries();
-  const workflowActions = Object.freeze({
+  void subscribeImmediately;
+
+  const fallbackActions: WorkflowActionsHandle = Object.freeze({
     addNode: (node: StoreNodeItemType) => runtime.dispatch({ type: 'addNode', node }),
     addNodes: (nodes: readonly StoreNodeItemType[], edge?: StoreEdgeItemType) =>
       runtime.dispatch([
@@ -214,341 +104,180 @@ export const createWorkflowEditorAdapter = (
     removeNodes: (nodeIds: readonly string[]) =>
       runtime.dispatch({ type: 'removeNodes', nodeIds: [...nodeIds] }),
     attachToContainer: (nodeId: string, containerId: string) =>
-      runtime.dispatch({ type: 'attachToContainer', nodeId, containerId })
+      runtime.dispatch({ type: 'attachToContainer', nodeId, containerId }),
+    commitGeometry: (updates) =>
+      runtime.dispatch(
+        updates.map(({ nodeId, position, isFolded }) => ({
+          type: 'commitGeometry' as const,
+          nodeId,
+          ...(position ? { position: { x: position.x, y: position.y } } : {}),
+          ...(isFolded !== undefined ? { isFolded } : {})
+        }))
+      ),
+    getWorkflowSnapshot: () => getStructureSnapshot(),
+    getEdges: () => getStructureSnapshot().edges
   });
-  const getStructureSnapshot = (): WorkflowStructureSnapshot => structure;
-  /** 批量 geometry 提交：canvas 句柄与稳定 action 句柄共用同一份实现。 */
-  const commitGeometry = (updates: readonly WorkflowGeometryUpdate[]): WorkflowDispatchResult =>
-    runtime.dispatch(
-      updates.map(({ nodeId, position, isFolded }) => ({
-        type: 'commitGeometry' as const,
-        nodeId,
-        ...(position ? { position: { x: position.x, y: position.y } } : {}),
-        ...(isFolded !== undefined ? { isFolded } : {})
-      }))
-    );
-  /**
-   * 结构变化时只重建 `structure` 与 `workflowHandle`，本句柄不重建：
-   * getter 读的是闭包里的 live binding，所以身份在 adapter 生命周期内恒定。
-   */
-  const actionsHandle: WorkflowActionsHandle = Object.freeze({
-    ...workflowActions,
-    commitGeometry,
-    getWorkflowSnapshot: getStructureSnapshot,
-    getEdges: () => structure.edges
-  });
-  const createWorkflowHandle = (snapshot: WorkflowStructureSnapshot): WorkflowStructureHandle =>
-    Object.freeze({ ...snapshot, ...workflowActions });
-  let workflowHandle = createWorkflowHandle(structure);
-  const workflowListeners = new Set<Listener>();
-  const referenceListeners = new Set<Listener>();
-  const nodeDataListeners: ListenerRegistry = new Map();
-  const nodeViewListeners: ListenerRegistry = new Map();
-  const fieldListeners: ListenerRegistry = new Map();
-  const nodeHandles = new Map<string, WorkflowNodeHandle>();
-  const fieldHandles = new Map<string, WorkflowFieldHandle>();
-  const setNameActions = new Map<string, WorkflowNodeHandle['setName']>();
-  const setFoldedActions = new Map<string, WorkflowNodeHandle['setFolded']>();
-  const updateNodeActions = new Map<string, WorkflowNodeHandle['updateNode']>();
 
-  const subscribeRegistry = (registry: ListenerRegistry, nodeId: string, listener: Listener) => {
-    const listeners = registry.get(nodeId) ?? new Set<Listener>();
-    listeners.add(listener);
-    registry.set(nodeId, listeners);
-    return () => {
-      listeners.delete(listener);
-      if (listeners.size === 0) registry.delete(nodeId);
-    };
-  };
-
-  const setFolded = (nodeId: string, isFolded: boolean): WorkflowDispatchResult =>
-    runtime.dispatch({ type: 'commitGeometry', nodeId, isFolded });
-
-  const setName = (nodeId: string, name: string): WorkflowDispatchResult =>
-    runtime.dispatch({ type: 'updateNode', nodeId, patch: { name } });
-
-  const updateNode = (
-    nodeId: string,
-    patch: (node: WorkflowNodeSnapshot) => Partial<DeepReadonly<WorkflowNodeData>>,
-    options?: WorkflowNodeUpdateOptions
-  ): WorkflowDispatchResult => {
-    const disconnects = options?.disconnectEdges;
-    // 派发瞬间读当前记录；节点已删除时提交空 patch，由 Runtime 报 not_found。
-    const current = runtime.getNode(nodeId);
-    const resolved = current ? patch(current) : {};
-    // Runtime 会 clone patch，只读快照可以原样透传。
-    return runtime.dispatch([
-      ...(disconnects?.map((command) => ({ type: 'disconnectEdge' as const, ...command })) ?? []),
-      { type: 'updateNode', nodeId, patch: resolved as Partial<WorkflowNodeData> }
-    ]);
-  };
-
-  const getSetName = (nodeId: string) => {
-    const previous = setNameActions.get(nodeId);
-    if (previous) return previous;
-    const action = (name: string) => setName(nodeId, name);
-    setNameActions.set(nodeId, action);
-    return action;
-  };
-
-  const getSetFolded = (nodeId: string) => {
-    const previous = setFoldedActions.get(nodeId);
-    if (previous) return previous;
-    const action = (isFolded: boolean) => setFolded(nodeId, isFolded);
-    setFoldedActions.set(nodeId, action);
-    return action;
-  };
-
-  const getUpdateNode = (nodeId: string) => {
-    const previous = updateNodeActions.get(nodeId);
-    if (previous) return previous;
-    const action = (
-      patch: (node: WorkflowNodeSnapshot) => Partial<DeepReadonly<WorkflowNodeData>>,
-      options?: WorkflowNodeUpdateOptions
-    ) => updateNode(nodeId, patch, options);
-    updateNodeActions.set(nodeId, action);
-    return action;
-  };
-
-  /** 节点消失时一并丢弃句柄与缓存 action，避免删除后仍能被写。 */
-  const dropNodeHandle = (nodeId: string) => {
-    nodeHandles.delete(nodeId);
-    setNameActions.delete(nodeId);
-    setFoldedActions.delete(nodeId);
-    updateNodeActions.delete(nodeId);
+  const getStructureSnapshot = (): WorkflowStructureSnapshot => {
+    if (disposed) return { nodes: [], edges: [] };
+    if (runtime.getStructureSnapshot) return runtime.getStructureSnapshot();
+    const workflow = runtime.getWorkflow();
+    return Object.freeze({
+      nodes: Object.freeze(
+        workflow.nodes.map((node) =>
+          Object.freeze({
+            nodeId: node.nodeId,
+            ...(node.parentNodeId !== undefined ? { parentNodeId: node.parentNodeId } : {})
+          })
+        )
+      ),
+      edges: workflow.edges
+    }) as WorkflowStructureSnapshot;
   };
 
   const getNodeSnapshot = (nodeId: string): WorkflowNodeHandle | undefined => {
     if (disposed) return undefined;
+    if (runtime.getNodeHandle) return runtime.getNodeHandle(nodeId);
     const data = runtime.getNode(nodeId);
     const view = runtime.getNodeView(nodeId);
-    if (!data || !view) {
-      dropNodeHandle(nodeId);
-      return undefined;
-    }
-
-    const previous = nodeHandles.get(nodeId);
-    if (previous?.data === data && previous.view === view) return previous;
-
-    const handle = {
+    if (!data || !view) return undefined;
+    return Object.freeze({
       data,
       view,
-      setName: getSetName(nodeId),
-      setFolded: getSetFolded(nodeId),
-      updateNode: getUpdateNode(nodeId)
-    } satisfies WorkflowNodeHandle;
-    nodeHandles.set(nodeId, handle);
-    return handle;
+      setName: (name: string) => runtime.dispatch({ type: 'updateNode', nodeId, patch: { name } }),
+      setFolded: (isFolded: boolean) =>
+        runtime.dispatch({ type: 'commitGeometry', nodeId, isFolded }),
+      updateNode: (
+        patch: (node: WorkflowNodeSnapshot) => Partial<DeepReadonly<WorkflowNodeData>>,
+        options?: WorkflowNodeUpdateOptions
+      ) => {
+        const current = runtime.getNode(nodeId);
+        const resolved = current ? patch(current) : {};
+        return runtime.dispatch([
+          ...(options?.disconnectEdges?.map((command) => ({
+            type: 'disconnectEdge' as const,
+            ...command
+          })) ?? []),
+          { type: 'updateNode', nodeId, patch: resolved as Partial<WorkflowNodeData> }
+        ]);
+      }
+    });
   };
 
   const getNodeActions = (nodeId: string): WorkflowNodeActions | undefined => {
-    if (disposed || !runtime.getNode(nodeId) || !runtime.getNodeView(nodeId)) {
-      dropNodeHandle(nodeId);
-      return undefined;
-    }
-    return {
-      setName: getSetName(nodeId),
-      setFolded: getSetFolded(nodeId),
-      updateNode: getUpdateNode(nodeId)
-    };
-  };
-
-  const setFieldValue = (identity: WorkflowFieldIdentity, value: unknown): WorkflowDispatchResult =>
-    runtime.dispatch({
-      type: 'updateField',
-      nodeId: identity.nodeId,
-      fieldKey: identity.key,
-      kind: identity.kind,
-      value
-    });
-
-  const getSetFieldValue = (identity: WorkflowFieldIdentity) => {
-    const identityKey = getFieldIdentityKey(identity);
-    const previous = fieldHandles.get(identityKey)?.setValue;
-    if (previous) return previous;
-    return (value: unknown) => setFieldValue(identity, value);
+    if (disposed) return undefined;
+    if (runtime.getNodeActions) return runtime.getNodeActions(nodeId);
+    const handle = getNodeSnapshot(nodeId);
+    return handle
+      ? { setName: handle.setName, setFolded: handle.setFolded, updateNode: handle.updateNode }
+      : undefined;
   };
 
   const getFieldSnapshot = (query: WorkflowFieldQuery): WorkflowFieldHandle | undefined => {
     if (disposed) return undefined;
+    if (runtime.getFieldHandle) return runtime.getFieldHandle(query);
     const data = runtime.getField(query);
-    if (!data) {
-      const kinds = query.kind ? [query.kind] : (['input', 'output'] as const);
-      kinds.forEach((kind) => {
-        const key = getFieldIdentityKey({ nodeId: query.nodeId, key: query.fieldKey, kind });
-        fieldHandles.delete(key);
-      });
-      return undefined;
-    }
-
-    const identity = { nodeId: data.nodeId, key: data.key, kind: data.kind };
-    const identityKey = getFieldIdentityKey(identity);
-    const previous = fieldHandles.get(identityKey);
-    if (previous?.data === data) return previous;
-
-    const handle = Object.freeze({
+    if (!data) return undefined;
+    return Object.freeze({
       data,
       reference: data.references,
-      setValue: getSetFieldValue(identity)
+      setValue: (value: unknown) =>
+        runtime.dispatch({
+          type: 'updateField',
+          nodeId: data.nodeId,
+          fieldKey: data.key,
+          kind: data.kind,
+          value
+        })
     });
-    fieldHandles.set(identityKey, handle);
-    return handle;
   };
 
-  const collectFieldListeners = (identities: readonly WorkflowFieldIdentity[]) => {
-    const listeners = new Set<Listener>();
-    identities.forEach((identity) => {
-      [
-        getFieldIdentityKey(identity),
-        getFieldQueryKey({ nodeId: identity.nodeId, fieldKey: identity.key })
-      ].forEach((key) => fieldListeners.get(key)?.forEach((listener) => listeners.add(listener)));
+  // 旧 Port 没有 scoped subscriptions；仅为旧测试/外部 mock 合并它唯一的 issue 通道。
+  const legacyIssueListeners = new Set<Listener>();
+  let unsubscribeLegacyIssues: (() => void) | undefined;
+  const subscribeLegacyIssues = (listener: Listener) => {
+    if (!runtime.subscribeIssues) return () => undefined;
+    legacyIssueListeners.add(listener);
+    unsubscribeLegacyIssues ??= runtime.subscribeIssues(() => {
+      [...legacyIssueListeners].forEach((legacyListener) => legacyListener());
     });
-    return listeners;
+    return () => {
+      legacyIssueListeners.delete(listener);
+      if (legacyIssueListeners.size === 0) {
+        unsubscribeLegacyIssues?.();
+        unsubscribeLegacyIssues = undefined;
+      }
+    };
   };
 
-  const onRuntimeChange = (change: WorkflowChange) => {
-    if (disposed) return;
-
-    if (change.kind === 'geometry') {
-      notify(collectRegistryListeners(nodeViewListeners, change.changedRecords.nodeViewIds));
-      return;
-    }
-
-    const structureChanged = change.kind === 'replace' || change.affectedRecords.structure;
-    if (structureChanged) {
-      // Runtime 的结构信号还覆盖节点类型与 outputs；即使公开快照字段不变，身份也必须刷新。
-      structure = freezeStructure(runtime.getWorkflow());
-      workflowHandle = createWorkflowHandle(structure);
-    }
-
-    const nodeDataIds = new Set([
-      ...change.changedRecords.nodeIds,
-      ...change.affectedRecords.nodeIds,
-      ...change.changedRecords.fieldIds.map((field) => field.nodeId),
-      ...change.affectedRecords.fieldIds.map((field) => field.nodeId)
-    ]);
-    const dataListeners = collectRegistryListeners(nodeDataListeners, [...nodeDataIds]);
-    const viewListeners = collectRegistryListeners(
-      nodeViewListeners,
-      change.changedRecords.nodeViewIds
-    );
-    const fieldListenersToNotify =
-      change.kind === 'replace'
-        ? new Set([...fieldListeners.values()].flatMap((listeners) => [...listeners]))
-        : collectFieldListeners([
-            ...change.changedRecords.fieldIds,
-            ...change.affectedRecords.fieldIds
-          ]);
-
-    if (change.kind === 'replace') {
-      [...nodeHandles.keys()].forEach((nodeId) => {
-        if (!runtime.getNode(nodeId)) dropNodeHandle(nodeId);
-      });
-      fieldHandles.clear();
-      collectRegistryListeners(nodeDataListeners, [...nodeDataListeners.keys()]).forEach(
-        (listener) => dataListeners.add(listener)
-      );
-      collectRegistryListeners(nodeViewListeners, [...nodeViewListeners.keys()]).forEach(
-        (listener) => viewListeners.add(listener)
-      );
-    } else {
-      change.changedRecords.nodeIds.forEach((nodeId) => {
-        if (!runtime.getNode(nodeId)) dropNodeHandle(nodeId);
-      });
-    }
-    dataListeners.forEach((listener) => viewListeners.delete(listener));
-    notify(dataListeners);
-    notify(viewListeners);
-    notify(fieldListenersToNotify);
-    if (
-      change.kind === 'replace' ||
-      change.affectedRecords.structure ||
-      change.changedRecords.edgeIds.length > 0
-    ) {
-      notify(referenceListeners);
-    }
-    if (structureChanged) {
-      notify(workflowListeners);
-    }
+  const subscribeWithFallback = (
+    subscribeRuntime: ((listener: Listener) => () => void) | undefined,
+    listener: Listener,
+    includeIssues: boolean
+  ) => {
+    if (disposed) return () => undefined;
+    const unsubscribeRuntime = subscribeRuntime
+      ? subscribeRuntime(listener)
+      : runtime.subscribe(() => listener());
+    const unsubscribeIssues =
+      !subscribeRuntime && includeIssues ? subscribeLegacyIssues(listener) : undefined;
+    return () => {
+      unsubscribeRuntime();
+      unsubscribeIssues?.();
+    };
   };
 
-  /**
-   * Issue-only 刷新不是 Workflow Change：结构、几何与字段都没变，
-   * 只需要让订阅了这些节点的 hook 重新读取带 Unified Issue View 的 snapshot。
-   */
-  const onIssueUpdate = (update: WorkflowIssueUpdate) => {
-    if (disposed) return;
-    notify(collectRegistryListeners(nodeDataListeners, update.nodeIds));
-    if (update.nodeIds.length === 0) return;
+  const workflowActions = runtime.getWorkflowActions?.() ?? fallbackActions;
+  const canvasHandle: WorkflowCanvasHandle = Object.freeze({
+    commitGeometry: workflowActions.commitGeometry
+  });
+  let workflowHandleSnapshot: WorkflowStructureSnapshot | undefined;
+  let workflowHandle: WorkflowStructureHandle | undefined;
 
-    // invalid 变化会让任意引用消费者的 field/reference view 失效，不能只通知来源节点。
-    notify(collectRegistryListeners(fieldListeners, [...fieldListeners.keys()]));
-    notify(new Set(referenceListeners));
+  const getWorkflowSnapshot = (): WorkflowStructureHandle => {
+    const structure = getStructureSnapshot();
+    if (workflowHandle && workflowHandleSnapshot === structure) return workflowHandle;
+    workflowHandleSnapshot = structure;
+    workflowHandle = Object.freeze({ ...structure, ...workflowActions });
+    return workflowHandle;
   };
-
-  const connect = () => {
-    if (disposed || unsubscribeRuntime) return;
-    unsubscribeRuntime = runtime.subscribe(onRuntimeChange);
-    unsubscribeIssues = runtime.subscribeIssues(onIssueUpdate);
-  };
-  if (subscribeImmediately) connect();
-  const canvasHandle: WorkflowCanvasHandle = Object.freeze({ commitGeometry });
 
   return {
-    connect,
-    getWorkflowSnapshot: () => workflowHandle,
-    subscribeWorkflow: (listener) => {
-      if (disposed) return () => undefined;
-      connect();
-      workflowListeners.add(listener);
-      return () => workflowListeners.delete(listener);
-    },
+    connect: () => undefined,
+    getWorkflowSnapshot,
+    subscribeWorkflow: (listener) =>
+      subscribeWithFallback(runtime.subscribeWorkflow, listener, false),
     getNodeSnapshot,
     getNodeActions,
-    subscribeNode: (nodeId, listener) => {
-      if (disposed) return () => undefined;
-      connect();
-      const dataUnsubscribe = subscribeRegistry(nodeDataListeners, nodeId, listener);
-      const viewUnsubscribe = subscribeRegistry(nodeViewListeners, nodeId, listener);
-      return () => {
-        dataUnsubscribe();
-        viewUnsubscribe();
-      };
-    },
+    subscribeNode: (nodeId, listener) =>
+      subscribeWithFallback(
+        runtime.subscribeNode ? (callback) => runtime.subscribeNode!(nodeId, callback) : undefined,
+        listener,
+        true
+      ),
     getFieldSnapshot,
-    subscribeField: (query, listener) => {
-      if (disposed) return () => undefined;
-      connect();
-      return subscribeRegistry(fieldListeners, getFieldQueryKey(query), listener);
-    },
+    subscribeField: (query, listener) =>
+      subscribeWithFallback(
+        runtime.subscribeField ? (callback) => runtime.subscribeField!(query, callback) : undefined,
+        listener,
+        true
+      ),
     getReferenceOptions: (query) => runtime.getReferenceOptions(query),
-    subscribeReferenceOptions: (listener) => {
-      if (disposed) return () => undefined;
-      connect();
-      referenceListeners.add(listener);
-      return () => referenceListeners.delete(listener);
-    },
+    subscribeReferenceOptions: (listener) =>
+      subscribeWithFallback(
+        runtime.subscribeReferenceOptions
+          ? (callback) => runtime.subscribeReferenceOptions!(callback)
+          : undefined,
+        listener,
+        true
+      ),
     getCanvasHandle: () => canvasHandle,
     getStructureSnapshot,
-    getGraphQueries: () => graphQueries,
-    getWorkflowActions: () => actionsHandle,
-    getPlacementContext: (request) => runtime.getPlacementContext(request),
+    getGraphQueries: () => runtime.getGraphQueries(),
+    getWorkflowActions: () => workflowActions,
+    getPlacementContext: (request) => (disposed ? null : runtime.getPlacementContext(request)),
     dispose: () => {
-      if (disposed) return;
       disposed = true;
-      unsubscribeRuntime?.();
-      unsubscribeIssues?.();
-      unsubscribeIssues = undefined;
-      workflowListeners.clear();
-      nodeDataListeners.clear();
-      nodeViewListeners.clear();
-      fieldListeners.clear();
-      referenceListeners.clear();
-      nodeHandles.clear();
-      fieldHandles.clear();
-      setNameActions.clear();
-      setFoldedActions.clear();
-      updateNodeActions.clear();
     }
   };
 };

@@ -5,6 +5,7 @@ import type {
   WorkflowCommand,
   WorkflowCommandError,
   WorkflowFieldIdentity,
+  WorkflowFieldSnapshot,
   WorkflowNodeData,
   WorkflowReferenceStatus
 } from '../types';
@@ -202,5 +203,18 @@ export type GeometryCommand = Extract<WorkflowCommand, { type: 'commitGeometry' 
 export type GeometryStageResult =
   | { ok: false; error: WorkflowCommandError }
   | { ok: true; views?: NodeViewStore };
+
+/** Snapshot module 在事务失败时需要恢复的字段缓存；其他缓存按记录身份自然复用或裁剪。 */
+export type SnapshotFieldCacheEntry = {
+  nodeId: string;
+  fieldKey: string;
+  kind: 'input' | 'output';
+  field: FlowNodeInputItemType | FlowNodeOutputItemType;
+  snapshot: WorkflowFieldSnapshot;
+};
+
+export type SnapshotModuleState = {
+  fieldSnapshotCache: Map<string, SnapshotFieldCacheEntry>;
+};
 
 // endregion
