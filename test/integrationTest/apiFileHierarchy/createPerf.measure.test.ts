@@ -79,8 +79,11 @@ vi.mock('@fastgpt/service/common/mongo/sessionRun', async (importOriginal) => ({
 
 import { Types } from '@fastgpt/service/common/mongo';
 import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoTeamSub } from '@fastgpt/service/support/wallet/sub/schema';
 import { createApiDatasetCollection } from '@fastgpt/service/core/dataset/apiDataset/service';
@@ -138,6 +141,7 @@ const runCreate = async (shape: Shape) => {
     name: 'Creation measurement',
     type: 'apiDataset',
     apiDatasetServer: { apiServer: { basePath: 'ROOT' } },
+    collectionPermissionEnabled: process.env.MEASURE_COLLECTION_PERMISSION_ENABLED === '1',
     chunkSettings: {}
   });
   const startedAt = Date.now();
@@ -154,13 +158,56 @@ const runCreate = async (shape: Shape) => {
   const wallMs = Date.now() - startedAt;
 
   const files = shape.l1 * shape.l2 * shape.l3 * shape.filesPerLeaf;
+  const folders = tree.nodes.filter((node) => node.type === 'folder').length;
+
+  // 耗时之外验证实际提交：所有目录/正文都落库，且解析任务逐一指向本轮正文。
+  expect(result).toEqual({ successCount: files + folders, failedCount: 0 });
+  const collections = await MongoDatasetCollection.find({ datasetId: dataset._id })
+    .select('_id type parentId apiFileId')
+    .lean();
+  expect(collections).toHaveLength(files + folders);
+  expect(new Set(collections.map((item) => item.apiFileId)).size).toBe(collections.length);
+  const byId = new Map(collections.map((item) => [String(item._id), item]));
+  const bodies = collections.filter((item) => item.type === DatasetCollectionTypeEnum.apiFile);
+  expect(bodies).toHaveLength(files);
+  for (const item of collections) {
+    if (item.parentId) {
+      const parent = byId.get(String(item.parentId));
+      expect(parent?.type).toBe(DatasetCollectionTypeEnum.folder);
+      const remoteParent = tree.byKey.get(item.apiFileId!)?.parent;
+      expect(parent?.apiFileId).toBe(remoteParent === 'ROOT' ? RootCollectionId : remoteParent);
+    } else expect(item.apiFileId).toBe(RootCollectionId);
+  }
+  const tasks = await MongoDatasetTraining.find({ datasetId: dataset._id })
+    .select('collectionId billId mode')
+    .lean();
+  expect(tasks).toHaveLength(files);
+  expect(tasks.every((item) => item.mode === 'parse')).toBe(true);
+  expect(tasks.map((item) => String(item.collectionId)).sort()).toEqual(
+    bodies.map((item) => String(item._id)).sort()
+  );
+  if (files > 0) expect(new Set(tasks.map((item) => item.billId)).size).toBe(1);
+  const permissions = await MongoResourcePermission.find({
+    teamId,
+    resourceType: PerResourceTypeEnum.collection
+  }).lean();
+  if (dataset.collectionPermissionEnabled) {
+    expect(permissions).toHaveLength(collections.length);
+    expect(
+      permissions.every((item) => String(item.tmbId) === tmbId && item.permission === OwnerRoleVal)
+    ).toBe(true);
+    expect(new Set(permissions.map((item) => String(item.resourceId)))).toEqual(
+      new Set(byId.keys())
+    );
+  } else expect(permissions).toEqual([]);
 
   return {
     files,
-    folders: tree.nodes.filter((node) => node.type === 'folder').length - 1,
+    folders: folders - 1,
     wallMs,
     perFileMs: Number((wallMs / files).toFixed(2)),
     result,
+    collectionPermissionEnabled: dataset.collectionPermissionEnabled,
     listFilesCalls: mockState.listFilesCalls,
     opCounts: { ...opCounts },
     phase:
@@ -217,7 +264,7 @@ describe.runIf(process.env.MEASURE_CREATE_PERF === '1')('创建路径耗时测�
     const primitives = await measurePrimitives();
     const run = await runCreate(shape);
 
-    expect(run.opCounts.trainingInsertMany).toBe(1);
+    expect(run.opCounts.trainingInsertMany).toBe(run.files > 0 ? 1 : 0);
 
     // 每次测量输出一行，便于对比不同规模
     console.log(
@@ -231,6 +278,7 @@ describe.runIf(process.env.MEASURE_CREATE_PERF === '1')('创建路径耗时测�
             perFileMs: run.perFileMs,
             listFilesCalls: run.listFilesCalls,
             result: run.result,
+            collectionPermissionEnabled: run.collectionPermissionEnabled,
             opCounts: run.opCounts,
             phase: run.phase,
             primitives
@@ -263,5 +311,6 @@ describe.runIf(process.env.MEASURE_CREATE_PERF === '1')('解析队列 4 万规�
     const durationMs = Date.now() - startedAt;
     expect(durationMs).toBeLessThan(60_000);
     await expect(MongoDatasetTraining.countDocuments({ teamId, datasetId })).resolves.toBe(40_000);
+    console.log('[MEASURE_QUEUE] ' + JSON.stringify({ tasks: 40_000, durationMs }));
   }, 70_000);
 });
