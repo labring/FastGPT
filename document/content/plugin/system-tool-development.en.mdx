@@ -16,7 +16,7 @@ System tool plugins run in the runtime provided by the FastGPT Plugin service. T
 
 ## Differences From The Legacy Mechanism
 
-1. The deployment relationship between FastGPT and FastGPT Plugin remains an external extension model, and the overall architecture is still microservice-based.
+1. FastGPT and FastGPT Plugin remain separate services within a microservice architecture.
 2. The plugin package protocol upgrades from the old built-in system tool directory to a unified `.pkg` format, making installation, version management, hot updates, and future plugin type expansion easier.
 3. The plugin runtime is managed by the server. The current default runtime is `local-pool`, where each plugin version has its own process pool, queue, and runtime configuration.
 4. Plugin metadata, input/output schemas, secret schemas, and icon assets are included in build artifacts for use by FastGPT pages, workflows, and Agents.
@@ -344,11 +344,11 @@ Local debug boundaries:
 - `ctx.invoke.uploadFile()` uses a local mock implementation and defaults to `.fastgpt-plugin-debug/uploads`.
 - Local debug quickly validates plugin logic and schemas.
 - Local debug does not simulate the production child-process pool, real Node.js IPC, network environment, server timeout, or queue scheduling.
-- Before listing official plugins, still manually install plugins in a test environment and complete end-to-end testing.
+- Before listing an official plugin, install it manually in a test environment and complete end-to-end testing.
 
 ## 7. Remote Debugging
 
-Remote debugging connects a locally developed plugin to a FastGPT test environment. The FastGPT page authenticates the user and generates a debug link, while the CLI uses that link to create a WSS debug channel. Debug plugins are visible only to the current debugger.
+Remote debugging connects a locally developed plugin to a FastGPT test environment. The FastGPT page authenticates the user and generates a debug link, while the CLI uses that link to create a WSS debug channel. Debug plugins are visible only to the developer running that session.
 
 Before using it, confirm that the test environment has deployed the FastGPT Plugin service and Connection Gateway, and that your local machine can reach the Gateway WSS endpoint returned by the test environment.
 
@@ -423,7 +423,7 @@ The End Debugging action in FastGPT revokes the current member's debug channel a
 
 ## 8. Build, Check, And Pack
 
-Inside a plugin directory, usually run:
+Generated plugin projects normally support these commands from the plugin directory:
 
 ```bash
 pnpm run test
@@ -498,7 +498,7 @@ Official plugins require:
 
 Business plugins are released to private repositories. Manage versions, secrets, installation packages, and acceptance records according to the customer delivery process. Security boundaries for external APIs, customer private addresses, and account secrets should be recorded separately.
 
-If you do not need official inclusion, see [Upload System Tool](../guide/build/tools/system-plugins/upload_system_tool.en.mdx) to use the plugin in your own FastGPT deployment.
+If you do not need official inclusion, see [Upload System Tool](/en/guide/build/tools/system-plugins/upload_system_tool) to use the plugin in your own FastGPT deployment.
 
 ## FAQ
 

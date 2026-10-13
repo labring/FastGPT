@@ -13,7 +13,7 @@ export function GET() {
 
   const urlEntries = pages
     .map((page) => {
-      const filePath = `content/${page.file.path}`;
+      const filePath = `content/${page.data._file.path}`;
       // @ts-ignore
       const lastModified = docLastModifiedData[filePath] || page.data.lastModified;
 

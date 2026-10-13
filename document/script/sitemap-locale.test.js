@@ -13,7 +13,7 @@ test('docs locale follows the configured build host', () => {
 test('sitemap route selects the build locale and local modification keys', () => {
   const source = fs.readFileSync(path.join(__dirname, '../app/sitemap.xml/route.ts'), 'utf8');
   assert.match(source, /source\.getPages\(locale\)/);
-  assert.match(source, /const filePath = `content\/\$\{page\.file\.path\}`/);
+  assert.match(source, /const filePath = `content\/\$\{page\.data\._file\.path\}`/);
   assert.doesNotMatch(source, /source\.getPages\(\)/);
   assert.doesNotMatch(source, /document\/content\/\$\{page\.file\.path\}/);
 });

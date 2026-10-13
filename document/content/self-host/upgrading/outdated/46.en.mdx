@@ -12,13 +12,13 @@ upgradeTags:
 
 Update the image to the latest or V4.6 version. For the commercial edition, update to V0.2.1.
 
-The legacy `config.json` guide is no longer maintained. For current versions, see [Model Configuration](../../config/model/intro.en.mdx) and [Environment Variables](../../config/env.en.mdx). The commercial edition configuration file has also been updated — refer to the latest Lark documentation.
+The legacy `config.json` guide is no longer maintained. For current versions, see [Model Configuration](/en/self-host/config/model/intro) and [Environment Variables](/en/self-host/config/env). The commercial edition configuration file has also been updated — refer to the latest Lark documentation.
 
 ## 2. Run the Initialization APIs
 
 Send 2 HTTP requests (replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your domain).
 
-**These initialization endpoints may be very slow. If the request times out, don't worry — just check the logs. Important: Make sure initv46 completes successfully before running initv46-2.**
+**These initialization endpoints may take a long time. If a request times out, check the logs for its progress and result. Confirm that `initv46` completed successfully before running `initv46-2`.**
 
 1. https://xxxxx/api/admin/initv46
 
@@ -46,7 +46,7 @@ What the initialization does:
 ## V4.6 New Features
 
 1. New - Team management.
-2. New - Multi-vector support (multiple vectors mapped to a single dataset).
+2. New - Multi-vector support (multiple vectors mapped to a single data entry).
 3. New - TTS (text-to-speech).
 4. New - Support for configuring text preprocessing models in datasets.
 5. New (Online environment) - ReRank vector recall for improved retrieval accuracy.

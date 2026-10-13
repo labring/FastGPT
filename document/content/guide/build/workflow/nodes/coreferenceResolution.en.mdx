@@ -9,19 +9,19 @@ description: FastGPT Query Rewriting node overview and usage
 - Has external input
 - Trigger-based execution
 
-![](/imgs/coreferenceResolution1.jpg)
+![Query Rewriting node configuration](/imgs/coreferenceResolution1.jpg)
 
 ## Background
 
-In RAG, we perform embedding searches against the database based on the input query to find relevant content (Dataset search).
+In RAG, we perform semantic searches against the database based on the input query to find relevant content (Dataset search).
 
 During search -- especially in multi-turn conversations -- follow-up questions often fail to retrieve useful results. One reason is that Dataset search only uses the "current" question. Consider this example:
 
-![](/imgs/coreferenceResolution2.webp)
+![A follow-up question without enough context for Dataset search](/imgs/coreferenceResolution2.webp)
 
 When the user asks "What is the second point?", the system searches the Dataset for exactly that phrase and finds nothing. The actual intended query is "What is the QA structure?". This is why we need a Query Rewriting node to complete the user's current question so the Dataset search can return relevant results. With query rewriting applied:
 
-![](/imgs/coreferenceResolution3.webp)
+![Query rewritten with the preceding conversation context](/imgs/coreferenceResolution3.webp)
 
 ## What It Does
 

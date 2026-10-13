@@ -24,7 +24,7 @@ const en: Partial<Translations> = {
   search: 'Search',
   nextPage: 'Next Page',
   previousPage: 'Previous Page',
-  lastUpdate: 'File Updated',
+  lastUpdate: 'Last updated',
   editOnGithub: 'Edit on GitHub',
   searchNoResult: 'No results found',
   toc: 'On this page',
@@ -57,7 +57,7 @@ export async function generateMetadata({
   const description =
     lang === 'zh-CN'
       ? '学习如何使用 FastGPT 构建 AI 智能体。完整文档涵盖知识库、可视化工作流、RAG 系统和 API 集成。'
-      : 'Learn how to build AI agents with FastGPT. Complete documentation covering knowledge base, visual workflow, RAG system, and API integration.';
+      : 'Learn how to build AI agents with FastGPT. Explore guides to Datasets, visual workflows, RAG systems, and API integrations.';
 
   return {
     title: {
@@ -100,7 +100,7 @@ export async function generateMetadata({
       title: lang === 'zh-CN' ? 'FastGPT 快速开始' : 'Getting Started with FastGPT',
       description: lang === 'zh-CN'
         ? '学习如何使用 FastGPT 构建 AI 智能体。完整文档涵盖知识库、可视化工作流、RAG 系统和 API 集成。'
-        : 'Learn how to build AI agents with FastGPT. Complete documentation covering knowledge base, visual workflow, RAG system, and API integration.',
+        : 'Learn how to build AI agents with FastGPT. Explore guides to Datasets, visual workflows, RAG systems, and API integrations.',
       images: ['/og-image.png']
     },
     robots: {

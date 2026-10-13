@@ -14,8 +14,8 @@ Install and configure these dependencies on your machine to build <FastGPTLink c
 
 - [Git](https://git-scm.com/)
 - [Docker](https://www.docker.com/)
-- [Node.js v20.14.0](https://nodejs.org) (match this version closely; use [nvm](https://github.com/nvm-sh/nvm) to manage Node versions)
-- [pnpm](https://pnpm.io/) recommended version 9.4.0 (current official dev environment)
+- [Node.js >=20](https://nodejs.org) (keep development environments on the same version; use [nvm](https://github.com/nvm-sh/nvm) to manage Node.js versions)
+- [pnpm](https://pnpm.io/) 10.x
 
 We recommend developing on \*nix environments (Linux, macOS, Windows WSL).
 
@@ -72,7 +72,7 @@ cp .env.template .env.local
 
 **2. config.json Configuration File**
 
-Copy `data/config.json` to create `data/config.local.json`. For detailed parameters, see [Configuration Guide](./config/model/intro.en.mdx).
+Copy `data/config.json` to create `data/config.local.json`. For detailed parameters, see [Configuration Guide](/en/self-host/config/model/intro).
 
 ```bash
 cp data/config.json data/config.local.json
@@ -87,7 +87,7 @@ This file usually doesn't need changes. Key `systemEnv` parameters:
 
 ### 5. Run
 
-See `dev.md` in the project root. The first compile may take a while — be patient.
+See `dev.md` in the project root. The first build may take longer while dependencies are compiled.
 
 ```bash
 # Run from the code root directory to install all dependencies
@@ -144,7 +144,7 @@ _On Windows, use git bash to add execute permissions and run the script._
 
 ### TypeError: Cannot read properties of null (reading 'useMemo')
 
-Delete all `node_modules` and reinstall with Node 18 — newer Node versions may have issues. Local dev workflow:
+An earlier workaround for this error was to delete all `node_modules` directories and reinstall with Node 18. Current development requires Node.js >=20 as listed above; check the requirements for the FastGPT version you are working on before changing runtimes. The local development steps are:
 
 1. Root directory: `pnpm i`
 2. Copy `config.json` -> `config.local.json`

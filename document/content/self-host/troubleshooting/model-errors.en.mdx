@@ -6,12 +6,12 @@ description: FastGPT Self-Hosting Model Troubleshooting
 
 ### (1) How to check model availability issues
 
-1. For privately deployed models, first confirm whether the deployed model is normal.
-2. Directly test whether the upstream model is running normally through CURL request (cloud model or private model are both tested).
-3. Request OneAPI through CURL request to test whether the model is normal.
-4. Use the model for testing in FastGPT.
+1. For a self-hosted model, confirm that its service is running.
+2. Send a `curl` request directly to the upstream model API. Test this for both cloud and self-hosted models.
+3. Send the same type of request through OneAPI to check the gateway connection.
+4. Test the model in FastGPT.
 
-Here are a few test CURL examples:
+Use the following `curl` examples, substituting your service URL and credentials:
 
 <Tabs items={['LLM Model','Embedding Model','Rerank Model','TTS Model','Whisper Model']}>
   <Tab value="LLM Model">
@@ -55,7 +55,7 @@ curl --location --request POST 'https://xxxx.com/api/v1/rerank' \
   "model": "bge-rerank-m3",
   "query": "Who is the director",
   "documents": [
-    "Who are you?\nI am the assistant of the movie 'Suzume'"
+    "Who are you?\nI am the assistant for the film Suzume"
   ]
 }'
 ```
@@ -88,22 +88,172 @@ curl https://api.openai.com/v1/audio/transcriptions \
 
 ### (2) Error - Model response is empty/Model error
 
-This error is due to the fact that under stream mode, oneapi directly ended the stream request and did not return any content.
+OneAPI can close a streaming request before returning any content.
 
-Version 4.8.10 added error logs. When an error occurs, the actual Body parameters sent will be printed in the log. You can copy the parameters and send a request test to oneapi through curl.
+Starting with version 4.8.10, the error log includes the request body sent to the model. Copy that body and send it to OneAPI with `curl` to reproduce the failure. Testing with `stream=false` can expose an error that the streaming response hides.
 
-Since oneapi cannot correctly capture errors in stream mode, sometimes you can set `stream=false` to get the exact error.
+Check these possible causes:
 
-Possible error issues:
+1. The model provider's content controls rejected the request.
+2. The model rejects optional request parameters. Test with `messages` and the required parameters first.
+3. Parameter values exceed the model's supported range: some models reject a `temperature` of 0 or values with two decimal places; `max_tokens` or the context length may also exceed the limit.
+4. The deployed model service has a problem or lacks compatible streaming support.
 
-1. Domestic models hit risk control.
-2. Unsupported model parameters: only keep messages and necessary parameters for testing, delete other parameters for testing.
+Use the request body from your error log in a test like this:
+
+```bash
+curl --location --request POST 'https://api.openai.com/v1/chat/completions' \
+--header 'Authorization: Bearer sk-xxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "model": "xxx",
+  "temperature": 0.01,
+  "max_tokens": 1000,
+  "stream": true,
+  "messages": [
+    {
+      "role": "user",
+      "content": "You are hungry"
+    }
+  ]
+}'
+```
+
+---
+
+### Testing tool calling support
+
+Both the model provider and OneAPI must support tool calling. Test the full two-round exchange in streaming mode.
+
+#### 1. Request a tool call
+
+```bash
+curl --location --request POST 'https://oneapi.xxx/v1/chat/completions' \
+--header 'Authorization: Bearer sk-xxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "model": "gpt-5",
+  "temperature": 0.01,
+  "max_tokens": 8000,
+  "stream": true,
+  "messages": [
+    {
+      "role": "user",
+      "content": "What time is it?"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "hCVbIY",
+        "description": "Get the current time in the user time zone.",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto"
+}'
+```
+
+#### 2. Inspect the response
+
+A successful response includes `tool_calls`. In a streaming response, inspect `choices[].delta.tool_calls` and collect the call ID, function name, and argument fragments. For example, the relevant part of a chunk looks like this:
+
+```json
+{
+  "choices": [
+    {
+      "index": 0,
+      "delta": {
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_0n24eiFk8OUyIyrdEbLdirU7",
+            "type": "function",
+            "function": {
+              "name": "hCVbIY",
+              "arguments": "{}"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+#### 3. Return the tool result
+
+Send the assistant's tool call and the corresponding tool result in a second request. Use the call ID and function name from your actual first response in both messages. The example below uses `kDia9S19c4RO` as the call ID and a sample time as the tool result. The model should then produce an answer using that result.
+
+```bash
+curl --location --request POST 'https://oneapi.xxxx/v1/chat/completions' \
+--header 'Authorization: Bearer sk-xxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "model": "gpt-5",
+  "temperature": 0.01,
+  "max_tokens": 8000,
+  "stream": true,
+  "messages": [
+    {
+      "role": "user",
+      "content": "What time is it?"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "kDia9S19c4RO",
+          "type": "function",
+          "function": {
+            "name": "hCVbIY",
+            "arguments": "{}"
+          }
+        }
+      ]
+    },
+    {
+      "tool_call_id": "kDia9S19c4RO",
+      "role": "tool",
+      "name": "hCVbIY",
+      "content": "{\n  \"time\": \"2024-09-14 22:59:21 Sunday\"\n}"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "hCVbIY",
+        "description": "Get the current time in the user time zone.",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto"
+}'
+```
+
+---
+
+### Vector search scores greater than 1
+
+Scores above 1 indicate that the embedding model produces unnormalized vectors. FastGPT currently supports normalized embedding models; use a model that normalizes its vectors.
 
 ---
 
 ### (3) "Current group upstream load is saturated, please try again later"
 
-If you encounter this error (e.g. `request id:xxx`) in the logs or response, this is typically an OneAPI channel issue. Try switching to a different model or a different relay provider.
+If you encounter this error (e.g. `request id:xxx`) in the logs or response, this is typically a OneAPI channel issue. Try switching to a different model or a different relay provider.
 
 ---
 

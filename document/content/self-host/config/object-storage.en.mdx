@@ -18,7 +18,7 @@ FastGPT supports MinIO, AWS S3, Alibaba Cloud OSS, Tencent Cloud COS, and Cloudf
 - External download URLs are always FastGPT short links. FastGPT no longer returns object storage presigned URLs directly.
 - `STORAGE_DOWNLOAD_URL_MODE` supports two modes and defaults to `short-proxy`:
   - `short-proxy`: FastGPT validates the short link and proxies the file stream. No public object storage endpoint is required.
-  - `short-redirect`: FastGPT validates the short link, then redirects to a short-lived object storage or CDN URL. File traffic bypasses FastGPT.
+  - `short-redirect`: FastGPT validates the short link, then sends an HTTP 302 redirect to a short-lived object storage or CDN URL. File traffic bypasses FastGPT.
 - Self-hosted MinIO requires `STORAGE_EXTERNAL_ENDPOINT` when using `short-redirect`.
 
 ## Provider Configuration

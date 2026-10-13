@@ -21,12 +21,12 @@ FastGPT API documentation is split into two sets:
 
 **Dev API:**
 
-- [China Mainland documentation](https://cloud.fastgpt.cn/apidoc/devapi)
+- [Mainland China documentation](https://cloud.fastgpt.cn/apidoc/devapi)
 - [International documentation](https://cloud.fastgpt.io/apidoc/devapi)
 
 **System OpenAPI**
 
-- [China Mainland documentation](https://cloud.fastgpt.cn/apidoc/systemopenapi)
+- [Mainland China documentation](https://cloud.fastgpt.cn/apidoc/systemopenapi)
 - [International documentation](https://cloud.fastgpt.io/apidoc/systemopenapi)
 
 ## Usage Notes
@@ -38,15 +38,17 @@ FastGPT OpenAPI endpoints let you authenticate with an API Key to operate relate
 You can find API Keys in two places:
 
 1. `Account` - `API Keys`
-2. `App` - `Publish Channels` - `API Access`
+2. `App` - `Publishing Channels` - `API Access`
 
 ### API Key Scope
 
-An API Key acts as the current account's access credential within the current team. In other words, any resource the account can access in that team can also be operated through the API Key.
+An API Key carries the current account's permissions within its team. Use it to operate on resources that the account can access in that team.
 
 ### How to Find the BaseURL
 
-**Note: BaseURL is not an endpoint URL. It is the root URL for all endpoints, and requesting the BaseURL directly does nothing.**
+**BaseURL is the shared root URL for API requests. Append the endpoint path before sending a request.**
+
+Open your app's **API Access** page and copy the API root address displayed beside the API key list. The screenshot highlights this address. For a local deployment, the example below uses `http://localhost:3000/api`.
 
 ![](../../public/imgs/fastgpt-api-baseurl.png)
 

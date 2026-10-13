@@ -3,7 +3,7 @@ title: Dataset Chunk Reader
 description: FastGPT Chunk Reader feature overview
 ---
 
-In enterprise AI deployments, the accuracy and transparency of document citations have always been a key concern. The Dataset Chunk Reader introduced in FastGPT 4.9.1 solves this pain point, making AI citations no longer a "black box."
+The Dataset Chunk Reader, introduced in FastGPT 4.9.1, helps users verify AI citations by showing the source document and highlighting the cited passages.
 
 # Why a Chunk Reader?
 
@@ -15,13 +15,13 @@ Previously, after uploading documents to the Dataset, traditional citations only
 
 | Question                    | Citation                    |
 | --------------------------- | --------------------------- |
-| ![](/imgs/chunkReader1.png) | ![](/imgs/chunkReader2.jpg) |
+| ![A question answered using Dataset content](/imgs/chunkReader1.png) | ![A citation showing only its matched chunk](/imgs/chunkReader2.jpg) |
 
 ## FastGPT Chunk Reader: Precise Positioning, Seamless Reading
 
-With FastGPT's Chunk Reader, the same Dataset content and questions are presented in a fundamentally better way:
+FastGPT's Chunk Reader displays the cited passage within its source document:
 
-![](/imgs/chunkReader4.jpg)
+![Open a cited passage in the Chunk Reader](/imgs/chunkReader4.jpg)
 
 When AI cites Dataset content, click the citation link to open a popup showing the full original text with the cited passage clearly highlighted. This ensures traceability while providing a convenient reading experience.
 
@@ -35,25 +35,25 @@ In the conversation interface, when AI cites Dataset content, source information
 
 This design ensures answer traceability and makes it easy to verify AI accuracy and review surrounding context.
 
-![](/imgs/chunkReader3.webp)
+![Full source text with highlighted citations](/imgs/chunkReader3.webp)
 
 ## Citation Navigation
 
 The top-right corner of the Chunk Reader provides simple navigation controls for switching between multiple citations. The navigation area displays the current citation index and total count (e.g., "7/10"), so you always know your browsing progress.
 
-![](/imgs/chunkReader5.jpg)
+![Navigate between citations using the top-right controls](/imgs/chunkReader5.jpg)
 
 ## Citation Quality Scoring
 
 Each citation includes a relevance score label showing its ranking among all matched knowledge fragments. Hover over the label to see full scoring details, including why the citation was selected and how its relevance score breaks down.
 
-![](/imgs/chunkReader6.png)
+![Inspect citation relevance scores](/imgs/chunkReader6.png)
 
 ## One-Click Document Export
 
-The Chunk Reader includes a content export feature so valuable information is never lost. Users with read access to the Dataset can save the full cited document to their local device with a single click.
+Users with read access to the Dataset can save the full cited document locally. Click the download icon beside the document title, then choose **Download Data**. The same menu also offers **Open Original**.
 
-![](/imgs/chunkReader7.jpg)
+![Download Data and Open Original menu](/imgs/chunkReader7.jpg)
 
 # Advanced Features
 
@@ -61,11 +61,11 @@ The Chunk Reader includes a content export feature so valuable information is ne
 
 FastGPT provides flexible citation visibility settings to balance openness and security. For example, with anonymous share links, administrators can precisely control what external visitors can see.
 
-When set to "citation content only," external users clicking a citation link will only see the specific cited text fragments, not the full source document. The Chunk Reader automatically adjusts its display mode accordingly.
+When set to "citation content only," external users clicking a citation link will see the specific cited text fragments. The Chunk Reader automatically adjusts its display mode accordingly.
 
 |                             |                             |
 | --------------------------- | --------------------------- |
-| ![](/imgs/chunkReader8.png) | ![](/imgs/chunkReader9.jpg) |
+| ![Configure citation visibility on a share link](/imgs/chunkReader8.png) | ![Chunk Reader showing only the allowed citation content](/imgs/chunkReader9.jpg) |
 
 ## Instant Annotation
 

@@ -20,7 +20,7 @@ System plugins have therefore been split into a standalone repository:
 
 [FastGPT Plugin](https://github.com/labring/fastgpt-plugin)
 
-FastGPT Plugin v1.0.0 systematically refactors the plugin project so plugin installation, version management, runtime isolation, and operations configuration share one model.
+FastGPT Plugin v1.0.0 redesigns the plugin project around a consistent approach to installation, version management, runtime isolation, and operational configuration.
 
 ## Design Goals
 
@@ -46,7 +46,7 @@ The main goals of FastGPT Plugin are:
 
 ## Repository Structure
 
-`fastgpt-plugin` is a pnpm workspace Monorepo designed with Clean Architecture and DDD as references.
+`fastgpt-plugin` is a pnpm workspace monorepo that follows Clean Architecture and domain-driven design (DDD).
 
 ```text
 fastgpt-plugin/
@@ -76,7 +76,7 @@ Core dependency direction:
 - `apps/*` are composition roots that assemble dependencies, register routes, start processes, or provide development commands.
 - `sdk/*` is published for external users and provides service calls and plugin development capabilities.
 
-For system tool development, see [System Tool Development Guide](./system-tool-development.en.mdx). For model presets, see [Add Model Presets](./model-presets.en.mdx).
+For system tool development, see [System Tool Development Guide](/en/plugin/system-tool-development). For model presets, see [Add Model Presets](/en/plugin/model-presets).
 
 ## Repository Responsibilities
 
@@ -85,7 +85,7 @@ The FastGPT Plugin ecosystem mainly involves these repositories:
 | Repository                  | Purpose                                                                |
 | --------------------------- | ---------------------------------------------------------------------- |
 | `labring/fastgpt-plugin`    | Plugin service, SDK, CLI, debug monitor, and infrastructure code.      |
-| `fastgpt-official-plugins`  | Plugins maintained or reviewed by FastGPT officials.                   |
+| `fastgpt-official-plugins`  | Plugins maintained or reviewed by the FastGPT team.                    |
 | `fastgpt-community-plugins` | Community third-party plugins.                                         |
 | `fastgpt-business-plugins`  | Private plugins, customer-customized plugins, and commercial delivery. |
 
@@ -107,7 +107,7 @@ The FastGPT Plugin service is responsible for plugin package management, runtime
 System plugins can be installed in two main ways:
 
 1. System-level installation: the root user uploads a `.pkg` file on the plugin management page or installs a plugin from Marketplace. The installed plugin is visible to the whole system.
-2. Team-level installation: only team administrators can install plugins, and each installation is visible only within that team. See [Install and Manage Team Plugins](./team-installation.en.mdx) for instructions.
+2. Team-level installation: only team administrators can install plugins, and each installation is visible only within that team. See [Install and Manage Team Plugins](/en/plugin/team-installation) for instructions.
 
 After a plugin is installed, the service saves the plugin package file, parses plugin metadata, and registers the plugin with the runtime when it is enabled. System administrators can manage plugin status, system secrets, and runtime parameters.
 
@@ -179,7 +179,7 @@ System tool plugins are developed with `@fastgpt-plugin/cli` and `@fastgpt-plugi
 
 Developers use the CLI to create single-tool or tool-suite skeletons, and use the SDK to declare `manifest`, `inputSchema`, `outputSchema`, `secretSchema`, and handler logic. After development, run tests, build, check, and pack to generate a `.pkg` file.
 
-Continue with [System Tool Development Guide](./system-tool-development.en.mdx) to develop system tools.
+Continue with [System Tool Development Guide](/en/plugin/system-tool-development) to develop system tools.
 
 ## References
 
