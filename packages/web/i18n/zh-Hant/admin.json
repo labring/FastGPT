@@ -1105,6 +1105,8 @@
   "storage_external_endpoint_tip": "用戶端可直接連線的物件儲存位址；MinIO 等自架儲存在 short-redirect 模式下必須設定，否則下載會失敗。留空則回落到環境變數 STORAGE_EXTERNAL_ENDPOINT。",
   "storage_cdn_endpoint": "CDN 加速位址",
   "storage_cdn_endpoint_tip": "選填。設定後 short-redirect 臨時下載位址會改寫為該 CDN 網域；需同時設定外部存取端點。留空則回落到環境變數 STORAGE_S3_CDN_ENDPOINT。",
+  "storage_redirect_ttl_seconds": "重定向位址有效期（秒）",
+  "storage_redirect_ttl_seconds_tip": "short-redirect 模式下 302 發送的預簽名下載位址的最大有效期。",
   "revision_conflict_refreshing": "配置已被他人修改，正在重新整理至最新版本",
   "feature_section_display": "展示設定",
   "page_title_inform": "通知管理",

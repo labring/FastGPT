@@ -1105,6 +1105,8 @@
   "storage_external_endpoint_tip": "클라이언트가 직접 접근 가능한 객체 스토리지 주소입니다. MinIO 등 자체 호스팅 스토리지가 short-redirect 모드를 사용할 때 반드시 설정해야 하며, 그렇지 않으면 다운로드가 실패합니다. 비워 두면 STORAGE_EXTERNAL_ENDPOINT 환경 변수로 대체됩니다.",
   "storage_cdn_endpoint": "CDN 엔드포인트",
   "storage_cdn_endpoint_tip": "선택 사항입니다. 설정하면 short-redirect 임시 다운로드 주소가 이 CDN 도메인으로 재작성되며, 외부 접근 엔드포인트가 함께 필요합니다. 비워 두면 STORAGE_S3_CDN_ENDPOINT 환경 변수로 대체됩니다.",
+  "storage_redirect_ttl_seconds": "리다이렉트 URL TTL (초)",
+  "storage_redirect_ttl_seconds_tip": "short-redirect 모드에서 302로 발급되는 서명된 다운로드 URL의 최대 유효 기간입니다.",
   "revision_conflict_refreshing": "다른 사용자가 설정을 수정했습니다. 최신 버전으로 새로 고칩니다.",
   "feature_section_display": "표시 설정",
   "page_title_inform": "알림 관리",
