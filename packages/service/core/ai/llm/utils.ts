@@ -28,6 +28,26 @@ import {
 const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
 /**
+ * 判断 URL 是否为沙箱文件预览地址。
+ *
+ * 预览地址带一次性 session 凭证且只在服务端网络拓扑内可达，不适合直接透传给模型服务商。
+ * 这里按 env 里的代理前缀识别（与 sandbox 层 buildSandboxPreviewFileUrl 的 `/preview/` 契约一致），
+ * 避免把 sandbox 模块及其 dal/redis 依赖拖进 llm 模块。
+ */
+export const isSandboxPreviewFileUrl = (url: string) => {
+  const base = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
+  if (!base) return false;
+  return url.startsWith(`${base.replace(/\/+$/, '')}/preview/`);
+};
+
+/**
+ * 图片占位文本里的 URL 可能是带凭证的预览地址，写入提示词前先脱敏，
+ * 避免凭证经纯文本路径外发给模型服务商。
+ */
+export const maskImagePlaceholderUrl = (url: string) =>
+  isSandboxPreviewFileUrl(url) ? 'sandbox preview file' : url;
+
+/**
  * 判断消息是否属于系统级提示。
  * 这类消息不参与普通会话窗口裁剪，避免 system/developer 指令被上下文截断。
  */
@@ -290,6 +310,38 @@ export const loadRequestMessages = async ({
    */
   const shouldLoadMediaAsBase64 = (url: string) =>
     url.startsWith('/') || serviceEnv.MULTIPLE_DATA_TO_BASE64;
+
+  /**
+   * 预览图片在发送前由服务端下载并转成 data URI。
+   * 下载失败时丢弃该图片 part，避免把带凭证的预览地址透传给模型服务商。
+   */
+  const inlineSandboxPreviewImage = async (
+    part: ChatCompletionContentPart
+  ): Promise<ChatCompletionContentPart | undefined> => {
+    if (
+      part.type !== 'image_url' ||
+      !part.image_url.url ||
+      !isSandboxPreviewFileUrl(part.image_url.url)
+    ) {
+      return part;
+    }
+
+    try {
+      const { completeBase64: base64 } = await getImageBase64(part.image_url.url);
+      return {
+        ...part,
+        image_url: {
+          ...part.image_url,
+          url: base64
+        }
+      };
+    } catch (error) {
+      logger.warn('Failed to inline sandbox preview image, drop the image part', {
+        error: getErrText(error)
+      });
+      return undefined;
+    }
+  };
 
   /**
    * 仅从短文本中识别媒体 URL。普通文档 URL 仍作为文本保留，不在这里转成 LLM 媒体输入。
@@ -740,12 +792,63 @@ export const loadRequestMessages = async ({
             ...formatAssistantItem(item, supportReason),
             content: formatContent
           };
+        } else if (item.role === ChatCompletionRequestMessageRoleEnum.Tool) {
+          // 供应商接口的 tool content 只接受字符串或文本 parts，图片不能放进 tool 消息。
+          // 文本保留在 tool 消息里；图片先按模型能力过滤、再归一化，
+          // 并转换成紧随 tool 消息之后的 user 视觉消息。
+          if (Array.isArray(item.content)) {
+            const supportedContent = item.content
+              .map((part) => filterSupportedUserContentPart(part as ChatCompletionContentPart))
+              .filter(Boolean) as ChatCompletionContentPart[];
+
+            const textParts = supportedContent.filter(
+              (part): part is ChatCompletionContentPartText => part.type === 'text'
+            );
+            const mediaParts = supportedContent.filter((part) => part.type !== 'text');
+
+            const normalizedTextParts = (await normalizeMediaContentParts(
+              textParts
+            )) as ChatCompletionContentPartText[];
+            const toolContent =
+              normalizedTextParts.length === 0
+                ? 'none'
+                : normalizedTextParts.length === 1
+                  ? normalizedTextParts[0].text
+                  : normalizedTextParts;
+
+            const normalizedMediaParts = await normalizeMediaContentParts(
+              (await Promise.all(mediaParts.map(inlineSandboxPreviewImage))).filter(
+                (part): part is ChatCompletionContentPart => Boolean(part)
+              )
+            );
+            if (normalizedMediaParts.length === 0) {
+              return {
+                ...item,
+                content: toolContent
+              };
+            }
+
+            return [
+              {
+                ...item,
+                content: toolContent
+              },
+              {
+                role: ChatCompletionRequestMessageRoleEnum.User,
+                content: normalizedMediaParts
+              } as ChatCompletionMessageParam
+            ];
+          }
+
+          return item;
         } else {
           return item;
         }
       })
     )
-  ).filter(Boolean) as ChatCompletionMessageParam[];
+  )
+    .flat()
+    .filter(Boolean) as ChatCompletionMessageParam[];
 
   return loadMessages;
 };
