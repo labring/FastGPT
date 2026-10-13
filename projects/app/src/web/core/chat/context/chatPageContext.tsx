@@ -13,9 +13,9 @@ import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { getRecentlyUsedApps } from '@/web/core/chat/api';
+import { getRecentlyUsedApps, clearRecentlyUsedApps } from '@/web/core/chat/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { useLatest, useMount } from 'ahooks';
+import { useLatest, useMount, useUnmountedRef } from 'ahooks';
 import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/global/openapi/core/chat/api';
 import type { UserType } from '@fastgpt/global/support/user/type';
 
@@ -42,6 +42,7 @@ export type ChatPageContextValue = {
   myApps: GetRecentlyUsedAppsResponseType;
   upsertRecentlyUsedAppPlaceholder: (app: RecentlyUsedAppPlaceholderInput) => void;
   refreshRecentlyUsed: () => void;
+  clearRecentlyUsed: () => Promise<void>;
 };
 
 export const ChatPageContext = createContext<ChatPageContextValue>({
@@ -58,7 +59,8 @@ export const ChatPageContext = createContext<ChatPageContextValue>({
   userInfo: null,
   myApps: [],
   upsertRecentlyUsedAppPlaceholder: () => {},
-  refreshRecentlyUsed: () => {}
+  refreshRecentlyUsed: () => {},
+  clearRecentlyUsed: async () => {}
 });
 
 export const ChatPageContextProvider = ({
@@ -79,6 +81,7 @@ export const ChatPageContextProvider = ({
     lastPane
   } = useChatStore();
   const { userInfo } = useUserStore();
+  const unmountedRef = useUnmountedRef();
 
   const { pane = lastPane || ChatSidebarPaneEnum.HOME } = router.query as {
     pane: ChatSidebarPaneEnum;
@@ -91,17 +94,30 @@ export const ChatPageContextProvider = ({
   const [cachedHomeAppId, setCachedHomeAppId] = useState('');
 
   // Get recently used apps
-  const { data: myApps = [], refresh: refreshRecentlyUsed } = useRequest(
-    () => getRecentlyUsedApps(),
-    {
-      manual: false,
-      ready: !!userInfo,
-      errorToast: '',
-      refreshDeps: [userInfo?.team?.tmbId],
-      pollingInterval: 30000,
-      throttleWait: 500 // 500ms throttle
-    }
-  );
+  const {
+    data: myApps = [],
+    refresh: refreshRecentlyUsed,
+    cancel: cancelRecentlyUsed,
+    mutate: mutateRecentlyUsed
+  } = useRequest(() => getRecentlyUsedApps(), {
+    manual: false,
+    ready: !!userInfo,
+    errorToast: '',
+    refreshDeps: [userInfo?.team?.tmbId],
+    pollingInterval: 30000,
+    throttleWait: 500 // 500ms throttle
+  });
+
+  /** 删除成功后同步清空服务端列表和本地占位，取消旧请求以免恢复已清除的记录。 */
+  const clearRecentlyUsed = useCallback(async () => {
+    await clearRecentlyUsedApps();
+    if (unmountedRef.current) return;
+
+    cancelRecentlyUsed();
+    mutateRecentlyUsed([]);
+    setRecentlyUsedAppPlaceholders([]);
+    refreshRecentlyUsed();
+  }, [cancelRecentlyUsed, mutateRecentlyUsed, refreshRecentlyUsed, unmountedRef]);
 
   // Initialize chat page state
   useMount(async () => {
@@ -270,7 +286,8 @@ export const ChatPageContextProvider = ({
       userInfo,
       myApps: mergedMyApps,
       upsertRecentlyUsedAppPlaceholder,
-      refreshRecentlyUsed
+      refreshRecentlyUsed,
+      clearRecentlyUsed
     }),
     [
       pane,
@@ -283,7 +300,8 @@ export const ChatPageContextProvider = ({
       userInfo,
       mergedMyApps,
       upsertRecentlyUsedAppPlaceholder,
-      refreshRecentlyUsed
+      refreshRecentlyUsed,
+      clearRecentlyUsed
     ]
   );
 
