@@ -1,4 +1,5 @@
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
+import z from 'zod';
 import {
   SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
   SYSTEM_INSTANCE_CONFIG_DOMAINS,
@@ -860,45 +861,62 @@ export const applyInstanceConfigMigration = async ({
   };
 
   /**
-   * 当校验报错时，从待补集合中定位并剔除导致冲突的候选字段。
-   * 支持跨字段关联定位：当报错字段位于既有文档（如 parallelMaxConcurrency）时，
-   * 溯源剔除待补集合在同层级下的待补字段（如 maxLoopTimes）。
+   * 采用「试删 + 复验」策略确定性定位导致冲突的候选叶子字段：
+   * 1. 优先对待补集合中与 badPath 拥有最长公共父路径的候选叶子（如 badPath 为 workflow.parallelMaxConcurrency，
+   *    优先测试同属 workflow 的 maxLoopTimes）逐一试删复验；
+   * 2. 只有当剔除某个待补叶子后，原 badPath 报错确实消解时，才确认该叶子为冲突根因并正式剔除；
+   * 3. 杜绝盲目剔除首个叶子导致合法的同胞字段（如 maxRunTimes）被误删丢失。
    */
-  const removeCandidateConflict = (
-    target: Record<string, unknown>,
-    path: (string | number)[]
+  const tryResolveConflictLeaf = (
+    domain: SystemInstanceConfigDomainKey,
+    existingOverrides: Record<string, unknown>,
+    candidateMissing: Record<string, unknown>,
+    badPath: (string | number)[]
   ): string | undefined => {
-    // 1. 如果 badPath 直接位于待补集合中，直接剔除它
-    if (removeNestedPath(target, path)) {
-      return path.join('.');
+    const badPathStr = badPath.join('.');
+
+    // 若 badPath 本身就是待补集合中的叶子，直接试删复验
+    if (flattenOverridePaths(candidateMissing).includes(badPathStr)) {
+      const cloned = structuredClone(candidateMissing);
+      if (removeNestedPath(cloned, badPath)) {
+        removeNestedPath(candidateMissing, badPath);
+        return badPathStr;
+      }
     }
 
-    // 2. 如果 badPath 属于既有字段（如 parallelMaxConcurrency），说明是待补集合中
-    // 该层级下的相关字段（如 maxLoopTimes）与其产生了跨字段校验冲突。
-    // 查找并剔除待补集合在同级父路径下的首个叶子字段：
-    for (let len = path.length - 1; len >= 1; len--) {
-      const parentPath = path.slice(0, len);
-      let cursor: any = target;
-      for (const seg of parentPath) {
-        cursor = cursor?.[seg];
-      }
-      if (cursor && typeof cursor === 'object' && !Array.isArray(cursor)) {
-        const firstKey = Object.keys(cursor)[0];
-        if (firstKey) {
-          const targetPath = [...parentPath, firstKey];
-          if (removeNestedPath(target, targetPath)) {
-            return targetPath.join('.');
-          }
+    // 收集所有待补叶子路径，按与 badPath 的公共父路径长度降序排列
+    const allCandidatePaths = flattenOverridePaths(candidateMissing);
+    if (allCandidatePaths.length === 0) return undefined;
+
+    const candidates = [...allCandidatePaths].sort((a, b) => {
+      const aParts = a.split('.');
+      const bParts = b.split('.');
+      const aCommon = badPath.filter((seg, idx) => String(seg) === aParts[idx]).length;
+      const bCommon = badPath.filter((seg, idx) => String(seg) === bParts[idx]).length;
+      return bCommon - aCommon;
+    });
+
+    for (const testPathStr of candidates) {
+      const testPath = testPathStr.split('.');
+      const cloned = structuredClone(candidateMissing);
+      if (!removeNestedPath(cloned, testPath)) continue;
+
+      const testMerged = mergeMissingOverrides(existingOverrides, cloned);
+      try {
+        // 试删后复验：若完全通过或不再报出当前 badPath，说明此待补字段即为冲突源
+        resolveDomainEffectiveConfig(domain, testMerged, { strict: false });
+        removeNestedPath(candidateMissing, testPath);
+        return testPathStr;
+      } catch (err: any) {
+        const remainingIssues =
+          (err as { issues?: { path?: (string | number)[] }[] })?.issues ?? [];
+        const stillFailsBadPath = remainingIssues.some(
+          (issue) => Array.isArray(issue.path) && issue.path.join('.') === badPathStr
+        );
+        if (!stillFailsBadPath) {
+          removeNestedPath(candidateMissing, testPath);
+          return testPathStr;
         }
-      }
-    }
-
-    // 3. 兜底：若仍未匹配，剔除待补集合中的第一个叶子字段
-    const allPaths = flattenOverridePaths(target);
-    if (allPaths.length > 0) {
-      const fallback = allPaths[0].split('.');
-      if (removeNestedPath(target, fallback)) {
-        return allPaths[0];
       }
     }
 
@@ -940,19 +958,28 @@ export const applyInstanceConfigMigration = async ({
       // 循环剔除待补字段中的冲突叶子，直到与既有值合并后能通过终审校验
       const candidateMissing = structuredClone(missing);
       const skippedConflictPaths: string[] = [];
+      let unresolvableConflict = false;
+
       for (;;) {
         const merged = mergeMissingOverrides(existingOverrides, candidateMissing);
         try {
-          resolveDomainEffectiveConfig(domain, merged);
+          resolveDomainEffectiveConfig(domain, merged, { strict: false });
           break;
         } catch (error) {
+          const isZod = error instanceof z.ZodError || Array.isArray((error as any)?.issues);
+          if (!isZod) {
+            // 非 Schema 校验错误（如系统级异常/断言错误），不作为冲突处理，直接抛出重试
+            throw error;
+          }
+
           const issues = (error as { issues?: { path?: (string | number)[] }[] })?.issues ?? [];
           const badPath = issues.find(
             (issue) => Array.isArray(issue.path) && issue.path.length > 0
           )?.path;
           const removedField = badPath
-            ? removeCandidateConflict(candidateMissing, badPath)
+            ? tryResolveConflictLeaf(domain, existingOverrides, candidateMissing, badPath)
             : undefined;
+
           if (!removedField) {
             // 无法定位具体叶子（例如整域类型矛盾）：将全部待补路径记入 explicitDefaultPaths 并告警跳过
             const unresolvable = flattenOverridePaths(missing);
@@ -960,20 +987,25 @@ export const applyInstanceConfigMigration = async ({
               'Instance config backfill skipped: unresolvable conflict with existing values',
               { domain, missingPaths: unresolvable, error }
             );
-            await MongoSystemInstanceConfig.updateOne(
+            const updateRes = await MongoSystemInstanceConfig.updateOne(
               { domain, revision: doc.revision },
               {
                 $set: {
                   explicitDefaultPaths: Array.from(
                     new Set([...explicitDefaultPaths, ...unresolvable])
-                  ),
+                  ).slice(0, 200),
                   updatedAt: new Date()
                 },
                 $inc: { revision: 1 }
               }
             );
-            return [];
+            if (updateRes.modifiedCount > 0) {
+              return [];
+            }
+            unresolvableConflict = true;
+            break;
           }
+
           skippedConflictPaths.push(removedField);
           logger.warn(
             'Instance config backfill skipped conflicting field: conflicts with existing values',
@@ -982,13 +1014,18 @@ export const applyInstanceConfigMigration = async ({
         }
       }
 
+      if (unresolvableConflict) {
+        continue;
+      }
+
       const mergedOverrides = mergeMissingOverrides(existingOverrides, candidateMissing);
       const allMissingPaths = flattenOverridePaths(missing);
       const acceptedPaths = flattenOverridePaths(candidateMissing);
-      const autoSkipped = allMissingPaths.filter((p) => !acceptedPaths.includes(p));
+      const acceptedSet = new Set(acceptedPaths);
+      const autoSkipped = allMissingPaths.filter((p) => !acceptedSet.has(p));
       const nextExplicitDefaultPaths = Array.from(
         new Set([...explicitDefaultPaths, ...skippedConflictPaths, ...autoSkipped])
-      );
+      ).slice(0, 200);
 
       const updated = await MongoSystemInstanceConfig.updateOne(
         { domain, revision: doc.revision },
@@ -1000,7 +1037,7 @@ export const applyInstanceConfigMigration = async ({
           },
           $inc: { revision: 1 }
         },
-        { runValidators: true }
+        { runValidators: false }
       );
       if (updated.modifiedCount > 0) return acceptedPaths;
     }

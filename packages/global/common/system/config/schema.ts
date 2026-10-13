@@ -60,6 +60,15 @@ const makeFieldPartial = (
   if (type === 'object') {
     return makeDomainOverrideSchema(fieldSchema as any, options).optional();
   }
+  if (type === 'array') {
+    const element =
+      (fieldSchema as any)?.element ??
+      (fieldSchema as any)?.def?.type ??
+      (fieldSchema as any)?._def?.type;
+    return element
+      ? z.array(makeFieldPartial(element, options)).optional()
+      : fieldSchema.optional();
+  }
   if (type === 'default' || type === 'prefault') {
     const inner = (fieldSchema as any)?.def?.innerType ?? (fieldSchema as any)?._def?.innerType;
     return makeFieldPartial(inner, options);

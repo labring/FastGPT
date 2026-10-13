@@ -69,6 +69,30 @@ describe('Domain default config and overrides validation', () => {
       { strict: false }
     );
     expect(effective.name).toBe('Custom Site');
+
+    // 递归支持：数组元素内的废弃字段同样在 lenient 模式下被安全剥离（如 navbarItems）
+    const parsedArray = parseDomainOverrides(
+      'site',
+      {
+        navbarItems: [
+          { id: 'nav1', name: 'Nav', avatar: '', url: 'https://nav.com', legacyKey: 'drop_me' }
+        ]
+      },
+      { strict: false }
+    );
+    expect(parsedArray.navbarItems?.[0]).toEqual({
+      id: 'nav1',
+      name: 'Nav',
+      avatar: '',
+      url: 'https://nav.com'
+    });
+
+    // 默认 strict 模式下，数组元素内的未知字段依然被严格拒绝
+    expect(() =>
+      parseDomainOverrides('site', {
+        navbarItems: [{ id: 'nav1', name: 'Nav', avatar: '', url: 'https://nav.com', badKey: 1 }]
+      })
+    ).toThrow();
   });
 });
 
