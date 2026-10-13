@@ -250,6 +250,25 @@ describe('startManualSystemMigration', () => {
       SystemMigrationStatusEnum.pending
     );
   });
+
+  it('reports human-readable prerequisite name instead of raw id when prerequisite is incomplete', async () => {
+    const prerequisite = {
+      ...manual,
+      id: '20261008_migrate_chunk_training',
+      nameKey: 'system_migration:migrations.20261008_migrate_chunk_training.name'
+    };
+    const dependent = {
+      ...manual,
+      id: '20261009_migrate_dataset_rebuild_status',
+      nameKey: 'system_migration:migrations.20261009_migrate_dataset_rebuild_status.name',
+      dependsOn: [prerequisite.id]
+    };
+    const registry = [prerequisite, dependent];
+
+    await expect(startManualSystemMigration(dependent.id, registry)).rejects.toThrow(
+      '请先完成前置任务「迁移旧版知识库训练任务」'
+    );
+  });
   it('lists a waiting task without blocking readiness, then accepts exactly one concurrent start', async () => {
     const list = await getSystemMigrationList([manual]);
     expect(list.businessReady).toBe(true);

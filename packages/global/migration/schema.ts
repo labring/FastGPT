@@ -133,6 +133,7 @@ export const SystemMigrationListItemSchema = z.object({
   nameKey: z.string().meta({ description: '脚本名称的 i18n key' }),
   descriptionKey: z.string().meta({ description: '脚本描述的 i18n key' }),
   blockStartup: z.boolean().meta({ description: '是否阻塞节点 ready' }),
+  dependsOn: z.array(z.string()).optional().meta({ description: '前置依赖升级任务 ID 列表' }),
   onFailure: SystemMigrationFailurePolicySchema.meta({
     description: '任务失败后停止还是继续执行后续升级任务'
   }),

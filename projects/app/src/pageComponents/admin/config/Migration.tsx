@@ -25,6 +25,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModalV2 from '@fastgpt/web/components/v2/common/MyModal';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   getSystemMigrationFailedRecords,
@@ -170,6 +171,7 @@ const MigrationProgressStage = ({
  */
 const MigrationCard = ({
   migration,
+  allMigrations,
   serverTime,
   onViewFailedRecords,
   onRetry,
@@ -178,6 +180,7 @@ const MigrationCard = ({
   starting
 }: {
   migration: SystemMigrationListItem;
+  allMigrations?: SystemMigrationListItem[];
   serverTime: Date;
   onViewFailedRecords: (
     migration: SystemMigrationListItem,
@@ -189,6 +192,7 @@ const MigrationCard = ({
   starting: boolean;
 }) => {
   const { t } = useSafeTranslation();
+  const { toast } = useToast();
   const displayStatus = getSystemMigrationDisplayStatus({ migration, serverTime });
   const visual = statusVisual[displayStatus];
   const resultText = migration.result
@@ -196,6 +200,17 @@ const MigrationCard = ({
     : undefined;
   const unscopedError = migration.lastError?.stageKey ? undefined : migration.lastError;
   const errorText = unscopedError?.message;
+
+  const unmetPrerequisiteName = useMemo(() => {
+    if (!migration.dependsOn?.length) return undefined;
+    const incompleteId = migration.dependsOn.find((depId) => {
+      const dep = allMigrations?.find((m) => m.id === depId);
+      return dep?.status !== SystemMigrationStatusEnum.succeeded;
+    });
+    if (!incompleteId) return undefined;
+    const depMigration = allMigrations?.find((m) => m.id === incompleteId);
+    return depMigration ? t(depMigration.nameKey as any) : incompleteId;
+  }, [migration.dependsOn, allMigrations, t]);
 
   return (
     <Box
@@ -236,7 +251,18 @@ const MigrationCard = ({
             size={'sm'}
             variant={'primary'}
             isLoading={starting}
-            onClick={() => onStart(migration.id)}
+            onClick={() => {
+              if (unmetPrerequisiteName) {
+                toast({
+                  title: t('system_migration:prerequisite_not_succeeded', {
+                    name: unmetPrerequisiteName
+                  }),
+                  status: 'warning'
+                });
+                return;
+              }
+              onStart(migration.id);
+            }}
           >
             {t('system_migration:start_migration')}
           </Button>
@@ -247,7 +273,18 @@ const MigrationCard = ({
             size={'sm'}
             variant={'primary'}
             isLoading={retrying}
-            onClick={() => onRetry(migration.id)}
+            onClick={() => {
+              if (unmetPrerequisiteName) {
+                toast({
+                  title: t('system_migration:prerequisite_not_succeeded', {
+                    name: unmetPrerequisiteName
+                  }),
+                  status: 'warning'
+                });
+                return;
+              }
+              onRetry(migration.id);
+            }}
           >
             {t('system_migration:retry_migration')}
           </Button>
@@ -604,6 +641,7 @@ const SystemMigrationsPage = () => {
                   <MigrationCard
                     key={migration.id}
                     migration={migration}
+                    allMigrations={data.migrations}
                     serverTime={data.serverTime}
                     onViewFailedRecords={(migration, progress) =>
                       setFailedRecordsTarget({ migration, progress })

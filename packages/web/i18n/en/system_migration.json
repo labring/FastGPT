@@ -117,5 +117,6 @@
   "migrations.20261009_migrate_dataset_rebuild_status.result": "Migration complete. {{remainingCount}} legacy statuses remain.",
   "migrations.20261009_migrate_dataset_rebuild_status.datas": "Migrate legacy rebuild flags",
   "migrations.20261009_migrate_dataset_rebuild_status.trainings": "Restore rebuild task statuses",
-  "migrations.20261009_migrate_dataset_rebuild_status.validation": "Validate migration"
+  "migrations.20261009_migrate_dataset_rebuild_status.validation": "Validate migration",
+  "prerequisite_not_succeeded": "Please execute the prerequisite task "{{name}}" first"
 }

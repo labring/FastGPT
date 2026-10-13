@@ -17,12 +17,25 @@ import {
 } from './entity';
 import { systemMigrations, type SystemMigration } from './registry';
 import type { SystemMigrationStateSchemaType } from './mongoSchema';
+import zhMigration from '@fastgpt/web/i18n/zh-CN/system_migration.json';
 
 const getStateMap = (states: SystemMigrationStateSchemaType[]) =>
   new Map(states.map((state) => [state._id, state]));
 
+const getMigrationDisplayName = (
+  migration: SystemMigration | undefined,
+  fallbackId: string
+): string => {
+  if (!migration) return fallbackId;
+  const key = migration.nameKey.replace(/^system_migration:/, '');
+  return (zhMigration as Record<string, string>)[key] || migration.id;
+};
+
 /** 启动和重试均要求前置任务成功；缺失、等待、执行中和失败状态都不能作为完成依据。 */
-const assertMigrationDependenciesComplete = async (migration: SystemMigration): Promise<void> => {
+const assertMigrationDependenciesComplete = async (
+  migration: SystemMigration,
+  registry: readonly SystemMigration[] = systemMigrations
+): Promise<void> => {
   const dependencyIds = migration.dependsOn ?? [];
   if (!dependencyIds.length) return;
   const stateMap = getStateMap(await getMigrationStates([...dependencyIds]));
@@ -30,7 +43,9 @@ const assertMigrationDependenciesComplete = async (migration: SystemMigration): 
     (id) => stateMap.get(id)?.status !== SystemMigrationStatusEnum.succeeded
   );
   if (incompleteId) {
-    throw new UserError(`Prerequisite system migration has not succeeded: ${incompleteId}`);
+    const prerequisite = registry.find((item) => item.id === incompleteId);
+    const prerequisiteName = getMigrationDisplayName(prerequisite, incompleteId);
+    throw new UserError(`请先完成前置任务「${prerequisiteName}」`);
   }
 };
 
@@ -93,6 +108,7 @@ export const getSystemMigrationList = async (
         nameKey: migration.nameKey,
         descriptionKey: migration.descriptionKey,
         blockStartup: migration.blockStartup,
+        dependsOn: migration.dependsOn ? [...migration.dependsOn] : undefined,
         onFailure: migration.onFailure,
         status:
           state?.status ??
@@ -157,7 +173,7 @@ export const retryNonBlockingSystemMigration = async (
   if (migration.blockStartup) {
     throw new UserError('Blocking system migration must be recovered by restarting the App node');
   }
-  await assertMigrationDependenciesComplete(migration);
+  await assertMigrationDependenciesComplete(migration, migrations);
   if (!(await resetFailedMigration(migrationId))) {
     // 条件更新把重复点击、执行中和已成功任务统一挡在状态边界外。
     throw new UserError('Only a failed system migration can be retried');
@@ -191,7 +207,7 @@ export const startManualSystemMigration = async (
   if (!migration.manual || migration.blockStartup) {
     throw new UserError('Only a manual non-blocking system migration can be started');
   }
-  await assertMigrationDependenciesComplete(migration);
+  await assertMigrationDependenciesComplete(migration, migrations);
   await ensureMigrationStates([migration]);
   if (!(await enqueueManualMigration(migrationId))) {
     throw new UserError('Only a waiting system migration can be started');

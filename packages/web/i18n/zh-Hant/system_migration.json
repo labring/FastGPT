@@ -117,5 +117,6 @@
   "migrations.20261009_migrate_dataset_rebuild_status.result": "遷移完成，剩餘舊狀態 {{remainingCount}} 筆。",
   "migrations.20261009_migrate_dataset_rebuild_status.datas": "遷移舊重建標記",
   "migrations.20261009_migrate_dataset_rebuild_status.trainings": "恢復重建任務狀態",
-  "migrations.20261009_migrate_dataset_rebuild_status.validation": "驗證遷移結果"
+  "migrations.20261009_migrate_dataset_rebuild_status.validation": "驗證遷移結果",
+  "prerequisite_not_succeeded": "請先執行前置任務「{{name}}」"
 }

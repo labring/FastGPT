@@ -117,5 +117,6 @@
   "migrations.20261009_migrate_dataset_rebuild_status.result": "마이그레이션 완료. 이전 상태 {{remainingCount}}개가 남아 있습니다.",
   "migrations.20261009_migrate_dataset_rebuild_status.datas": "이전 재색인 필드 변환",
   "migrations.20261009_migrate_dataset_rebuild_status.trainings": "재색인 작업 상태 복원",
-  "migrations.20261009_migrate_dataset_rebuild_status.validation": "마이그레이션 검증"
+  "migrations.20261009_migrate_dataset_rebuild_status.validation": "마이그레이션 검증",
+  "prerequisite_not_succeeded": "선행 작업 "{{name}}"을(를) 먼저 실행해 주세요"
 }
