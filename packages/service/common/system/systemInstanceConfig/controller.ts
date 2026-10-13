@@ -512,7 +512,7 @@ export const getSystemInstanceConfigSnapshot = async (): Promise<SystemInstanceC
     domainOverridesMap[domainKey] = doc.overrides;
   }
 
-  const snapshot = resolveSystemInstanceConfig(domainOverridesMap);
+  const snapshot = resolveSystemInstanceConfig(domainOverridesMap, { strict: false });
   if (serviceEnv.AIPROXY_API_ENDPOINT && snapshot.subservice?.aiProxy) {
     snapshot.subservice.aiProxy.endpoint = serviceEnv.AIPROXY_API_ENDPOINT;
   }

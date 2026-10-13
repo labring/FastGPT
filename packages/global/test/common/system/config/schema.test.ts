@@ -52,6 +52,24 @@ describe('Domain default config and overrides validation', () => {
       })
     ).toThrow();
   });
+
+  it('strips unknown fields in lenient mode (strict: false) to prevent startup deadlocks', () => {
+    // 模拟数据库中包含废弃字段时（清理迁移前），lenient 模式剥离未知字段并安全解析
+    const parsed = parseDomainOverrides(
+      'site',
+      { name: 'Custom Site', legacyDeprecatedField: 'ignored' },
+      { strict: false }
+    );
+    expect(parsed.name).toBe('Custom Site');
+    expect((parsed as any).legacyDeprecatedField).toBeUndefined();
+
+    const effective = resolveDomainEffectiveConfig(
+      'site',
+      { name: 'Custom Site', legacyDeprecatedField: 'ignored' },
+      { strict: false }
+    );
+    expect(effective.name).toBe('Custom Site');
+  });
 });
 
 describe('resolveDomainEffectiveConfig (Two-Phase Validation & Merge)', () => {
