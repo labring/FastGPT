@@ -25,7 +25,7 @@ describe('buildAuthoritativeSystemEnv', () => {
     expect(result.customPdfParse?.url).toBe('https://pdf.example.com');
   });
 
-  it('keeps legacy-only extension keys and customPdfParse.price', () => {
+  it('keeps legacy-only extension keys and lets instance config own schema fields', () => {
     const instanceConfig = resolveSystemInstanceConfig();
 
     const result = buildAuthoritativeSystemEnv({
@@ -37,14 +37,18 @@ describe('buildAuthoritativeSystemEnv', () => {
       instanceConfig
     });
 
-    // schema 外/旧库独有字段必须原样保留
+    // schema 外/旧库独有扩展字段必须原样保留
     expect(result.langfuse).toEqual({
       publicKey: 'pk',
       secretKey: 'sk',
       baseUrl: 'https://lf.example.com'
     });
     expect((result.customPdfParse as any)?.price).toBe(0.01);
-    expect(result.fileUrlWhitelist).toEqual(['https://allowed.example.com']);
+
+    // schema 内桥接字段以实例配置为唯一权威来源：blockStartup 迁移在初始化前
+    // 已把旧库 systemEnv.fileUrlWhitelist 回填进 security 域。若此处继续优先
+    // 旧库值，管理员在 Admin 页面修改/清空白名单会被旧库残值静默回退。
+    expect(result.fileUrlWhitelist).toEqual([]);
   });
 
   it('works with no legacy systemEnv at all', () => {

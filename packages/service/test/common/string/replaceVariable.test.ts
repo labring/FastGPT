@@ -1,17 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
+
+// commit 94ae033d7 起 checkStrOversize/logOversizeString 改为 `getSystemMaxStringLength()`：
+// `(getSystemInstanceConfig().resource.systemMaxStringLengthM ?? serviceEnv.SYSTEM_MAX_STRING_LENGTH_M) * SYSTEM_STRING_LENGTH_UNIT`。
+// 生产快照叶子被 schema 默认值填满，`?? serviceEnv` 兜底永不触发；本文件通过改写实例配置快照来驱动行为，
+// 预置"域对象存在、叶子字段全部缺省"的种子快照，既保证 getSystemInstanceConfig 采纳它、又不误填默认值改变上限。
+(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+
 import { valToStr, replaceVariable } from '@fastgpt/service/common/string/replaceVariable';
+import { SYSTEM_STRING_LENGTH_UNIT } from '@fastgpt/service/env.const';
 
 const { loggerInfoMock } = vi.hoisted(() => ({
   loggerInfoMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/common/logger', () => ({
+// replaceVariable 接管实例配置后会经 controller 引入 Mongo schema 链路（indexManager 需要
+// LogCategories.INFRA），因此只覆盖 getLogger，保留真实 LogCategories。
+vi.mock('@fastgpt/service/common/logger', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/common/logger')>()),
   getLogger: () => ({
     info: loggerInfoMock
-  }),
-  LogCategories: {
-    SYSTEM: ['system']
-  }
+  })
 }));
 
 describe('service replaceVariable', () => {
@@ -71,47 +80,46 @@ describe('service replaceVariable', () => {
     expect(stringifyCount).toBe(0);
   });
 
-  it('should stop replacement rounds when the result exceeds the system string limit', async () => {
-    vi.resetModules();
-    vi.doMock('@fastgpt/service/env', () => ({
-      SYSTEM_MAX_STRING_LENGTH: 20
-    }));
-    const { replaceVariable: replaceVariableWithSmallLimit } =
-      await import('@fastgpt/service/common/string/replaceVariable');
+  it('should stop replacement rounds when the result exceeds the system string limit', () => {
+    // getSystemMaxStringLength = (快照 resource.systemMaxStringLengthM ?? env.SYSTEM_MAX_STRING_LENGTH_M) * SYSTEM_STRING_LENGTH_UNIT。
+    // 直接给种子快照写叶子值来模拟 20 字符上限（快照是不经 schema 校验的测试对象，可用分数 M 精确得到 20），
+    // 用例结束后删掉叶子，恢复"缺省回落 env"的种子语义，避免影响同文件其他用例。
+    const snapshot = (global as any).systemInstanceConfig;
+    snapshot.resource.systemMaxStringLengthM = 20 / SYSTEM_STRING_LENGTH_UNIT;
+    try {
+      expect(
+        replaceVariable('{{large}}', {
+          large: `${'x'.repeat(21)}{{next}}`,
+          next: 'should not be scanned'
+        })
+      ).toBe(`${'x'.repeat(21)}{{next}}`);
+      expect(loggerInfoMock).toHaveBeenCalledWith(
+        'Oversize string detected during synchronous string processing',
+        {
+          source: 'replaceVariable',
+          reason: 'replacement_result',
+          length: 29,
+          maxLength: 20
+        }
+      );
 
-    expect(
-      replaceVariableWithSmallLimit('{{large}}', {
-        large: `${'x'.repeat(21)}{{next}}`,
-        next: 'should not be scanned'
-      })
-    ).toBe(`${'x'.repeat(21)}{{next}}`);
-    expect(loggerInfoMock).toHaveBeenCalledWith(
-      'Oversize string detected during synchronous string processing',
-      {
-        source: 'replaceVariable',
-        reason: 'replacement_result',
-        length: 29,
-        maxLength: 20
-      }
-    );
+      loggerInfoMock.mockClear();
 
-    loggerInfoMock.mockClear();
-
-    expect(replaceVariableWithSmallLimit(`${'x'.repeat(21)}{{next}}`, { next: 'value' })).toBe(
-      `${'x'.repeat(21)}{{next}}`
-    );
-    expect(loggerInfoMock).toHaveBeenCalledWith(
-      'Oversize string detected during synchronous string processing',
-      {
-        source: 'replaceVariable',
-        reason: 'input',
-        length: 29,
-        maxLength: 20
-      }
-    );
-
-    vi.doUnmock('@fastgpt/service/env');
-    vi.resetModules();
+      expect(replaceVariable(`${'x'.repeat(21)}{{next}}`, { next: 'value' })).toBe(
+        `${'x'.repeat(21)}{{next}}`
+      );
+      expect(loggerInfoMock).toHaveBeenCalledWith(
+        'Oversize string detected during synchronous string processing',
+        {
+          source: 'replaceVariable',
+          reason: 'input',
+          length: 29,
+          maxLength: 20
+        }
+      );
+    } finally {
+      delete snapshot.resource.systemMaxStringLengthM;
+    }
   });
 
   it('should stringify the same referenced variable once per replacement round', () => {

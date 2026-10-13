@@ -174,12 +174,13 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
   });
 
   it('wraps schema rejection with the domain name for diagnosability', async () => {
-    // logUrl 属废弃字段会被剔除，但残留的 maxRunTimes=0 违反 positiveInteger；
+    // logUrl 属废弃字段会被剔除，但残留的 maxRunTimes=-1 违反 nonNegativeInteger
+    // （0 是合法的"禁用"取值，不能用作非法样例）；
     // blockStartup 下终审错误必须能定位到具体域。
     await seedDirtyDoc({
       domain: 'performance',
       revision: 1,
-      overrides: { workflow: { maxRunTimes: 0 }, chat: { logUrl: 'http://legacy' } }
+      overrides: { workflow: { maxRunTimes: -1 }, chat: { logUrl: 'http://legacy' } }
     });
 
     await expect(cleanupInstanceConfigDeprecatedFields({ logger })).rejects.toThrow(

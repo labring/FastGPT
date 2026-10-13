@@ -1,4 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
+
+// commit 94ae033d7 起本被测链路改为读取实例配置：
+// normalizeImageToBase64 → `getSystemInstanceConfig().feature.multipleDataToBase64 ?? serviceEnv.MULTIPLE_DATA_TO_BASE64`，
+// isDatasetSynonymEnabled → `getSystemInstanceConfig().feature.datasetSynonymEnabled ?? serviceEnv.DATASET_SYNONYM_ENABLED`。
+// 生产快照的叶子字段被 schema 默认值填满，`?? serviceEnv` 兜底分支永不触发。
+// 本文件通过改写 serviceEnv 驱动被测行为，因此预置"域对象存在、叶子字段全部缺省"的种子快照，
+// 使 getSystemInstanceConfig 首次调用采纳它、读取回落到 serviceEnv，保持原 env 驱动的测试意图。
+(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+
 import { serviceEnv } from '@fastgpt/service/env';
 import { Types } from '@fastgpt/service/common/mongo';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';

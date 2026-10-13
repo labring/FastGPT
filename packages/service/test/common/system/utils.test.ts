@@ -1,4 +1,11 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// checkInternalIp 已接管实例配置：真实快照由 schema 默认值填满（checkInternalIp=false），
+// `?? serviceEnv` 兜底只在快照字段缺省时生效。本文件通过改写 serviceEnv 驱动行为，
+// 因此预置一个"security 字段缺省"的种子快照：getSystemInstanceConfig 首次调用时
+// 优先采纳 global.systemInstanceConfig 并缓存，从而走 ?? serviceEnv 兜底分支。
+(global as any).systemInstanceConfig = { security: {} };
+
 import { isInternalAddress } from '@fastgpt/service/common/system/utils';
 import { serviceEnv } from '@fastgpt/service/env';
 import dns from 'dns/promises';

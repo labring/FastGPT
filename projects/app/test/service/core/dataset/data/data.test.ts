@@ -1,3 +1,40 @@
+// 消费点已接管实例配置（94ae033d7）：isDatasetSynonymEnabled / MULTIPLE_DATA_TO_BASE64 等
+// 改为 getSystemInstanceConfig().<域>.<字段> ?? serviceEnv.X。真实快照由 schema 默认值填满，
+// ?? serviceEnv 兜底只在快照叶子缺省时生效。本文件通过改写 serviceEnv 驱动行为，
+// 故预置"域对象存在、叶子全部缺省"的种子快照，让 getSystemInstanceConfig 首次调用采纳它并缓存。
+(global as any).systemInstanceConfig = {
+  site: {},
+  auth: {},
+  security: {},
+  feature: {},
+  commercial: {},
+  resource: {},
+  performance: {
+    workflow: {},
+    parse: {},
+    dataset: {},
+    chat: {},
+    streamResume: {},
+    tracking: {},
+    task: {},
+    channel: {}
+  },
+  storage: {},
+  vector: {},
+  providers: {
+    documentParse: { customPdf: {}, sangfor: {} },
+    dataSource: {},
+    externalProviderWorkflowVariables: []
+  },
+  subservice: {
+    plugin: {},
+    codeSandbox: {},
+    aiProxy: {},
+    mcp: {},
+    agentSandbox: { provider: '', common: {}, sealosdevbox: {}, opensandbox: {}, proxy: {} }
+  }
+};
+
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
