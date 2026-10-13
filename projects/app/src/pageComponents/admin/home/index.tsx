@@ -22,18 +22,20 @@ const formatDate = (value?: string) => {
  * 顺序即界面顺序：先给客户最关心的登录与计费，再是增强类能力。
  * 新增能力时在 licenseFunctionKeys 与本清单各补一项即可，两个清单不一致时由
  * typing 报错提醒，不会静默漏展示某一项授权。
+ * labelKey 存完整静态 i18n key（而非裸名再模板拼接），保证缺失翻译可被
+ * 静态扫描/grep 检出，与其余 Admin 页面 t('admin:xxx') 风格一致。
  */
 const FUNCTION_CAPABILITY_ITEMS: Array<{
   key: LicenseFunctionKey;
-  labelKey: string;
+  labelKey: `admin:${string}`;
 }> = [
-  { key: 'sso', labelKey: 'license_sso' },
-  { key: 'pay', labelKey: 'license_pay' },
-  { key: 'eval', labelKey: 'license_eval' },
-  { key: 'datasetEnhance', labelKey: 'license_dataset_enhance' },
-  { key: 'assistantGenerate', labelKey: 'license_assistant_generate' },
-  { key: 'portal', labelKey: 'license_portal' },
-  { key: 'sandboxSkills', labelKey: 'license_sandbox_skills' }
+  { key: 'sso', labelKey: 'admin:license_sso' },
+  { key: 'pay', labelKey: 'admin:license_pay' },
+  { key: 'eval', labelKey: 'admin:license_eval' },
+  { key: 'datasetEnhance', labelKey: 'admin:license_dataset_enhance' },
+  { key: 'assistantGenerate', labelKey: 'admin:license_assistant_generate' },
+  { key: 'portal', labelKey: 'admin:license_portal' },
+  { key: 'sandboxSkills', labelKey: 'admin:license_sandbox_skills' }
 ];
 
 /** 无有效授权（尚未激活/已到期）时统一使用的占位符，避免把「不限」误读为真实额度。 */
@@ -42,25 +44,25 @@ const PLACEHOLDER = '--';
 /** 四态对应的徽标文案与配色；「即将过期」用橙色提示续期。 */
 const LICENSE_STATUS_DISPLAY: Record<
   LicenseStatusEnum,
-  { labelKey: string; color: string; dot: string }
+  { labelKey: `admin:${string}`; color: string; dot: string }
 > = {
   [LicenseStatusEnum.inactive]: {
-    labelKey: 'license_inactive',
+    labelKey: 'admin:license_inactive',
     color: 'red.600',
     dot: 'red.500'
   },
   [LicenseStatusEnum.active]: {
-    labelKey: 'license_active',
+    labelKey: 'admin:license_active',
     color: 'primary.600',
     dot: 'primary.500'
   },
   [LicenseStatusEnum.expiring]: {
-    labelKey: 'license_expiring_soon',
+    labelKey: 'admin:license_expiring_soon',
     color: 'orange.600',
     dot: 'orange.500'
   },
   [LicenseStatusEnum.expired]: {
-    labelKey: 'license_expired',
+    labelKey: 'admin:license_expired',
     color: 'red.600',
     dot: 'red.500'
   }
@@ -84,11 +86,11 @@ const AdminHome = () => {
   const isLicenseValid = isActivated;
   const company = isLicenseValid ? licenseData?.company : undefined;
   const limits = isLicenseValid ? licenseData?.limits : undefined;
-  const licenseTypeKey = !isLicenseValid
+  const licenseTypeKey: `admin:${string}` | undefined = !isLicenseValid
     ? undefined
     : licenseData?.licenseType === 'trial'
-      ? 'license_trial'
-      : 'license_business';
+      ? 'admin:license_trial'
+      : 'admin:license_business';
   const avatarText = useMemo(() => {
     const latin = company
       ?.match(/[A-Za-z]/g)
@@ -101,7 +103,7 @@ const AdminHome = () => {
   // 未激活/已过期时全部显示为未授权（不隐藏任何能力项），避免过期授权继续显示为已开通。
   const capabilities = FUNCTION_CAPABILITY_ITEMS.map(({ key, labelKey }) => ({
     key,
-    label: t(`admin:${labelKey}`),
+    label: t(labelKey),
     enabled: isLicenseValid && Boolean(licenseData?.functions?.[key])
   }));
 
@@ -240,7 +242,7 @@ const AdminHome = () => {
                         fontWeight={500}
                         whiteSpace="nowrap"
                       >
-                        {t(`admin:${licenseTypeKey}`)}
+                        {t(licenseTypeKey)}
                       </Box>
                     )}
                   </Flex>
@@ -278,7 +280,7 @@ const AdminHome = () => {
                         borderRadius="50%"
                         bg={statusDisplay.dot}
                       />
-                      {t(`admin:${statusDisplay.labelKey}`)}
+                      {t(statusDisplay.labelKey)}
                     </Box>
                     <Flex alignItems="center" gap={4}>
                       <Box color="myGray.500" fontSize="12px">
