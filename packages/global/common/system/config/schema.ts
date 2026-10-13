@@ -38,39 +38,43 @@ export const SystemInstanceConfigDomainKeySchema = z.enum(SYSTEM_INSTANCE_CONFIG
  * 递归将 ZodObject 内的所有叶子和嵌套对象转换为严格且可选的 Partial Schema。
  */
 export const makeDomainOverrideSchema = <T extends z.ZodRawShape>(
-  schema: z.ZodObject<T>
+  schema: z.ZodObject<T>,
+  options?: { strict?: boolean }
 ): z.ZodObject<{ [K in keyof T]: z.ZodTypeAny }> => {
   const shape = schema.shape;
   const newShape: Record<string, z.ZodTypeAny> = {};
 
   for (const key in shape) {
-    newShape[key] = makeFieldPartial(shape[key] as any);
+    newShape[key] = makeFieldPartial(shape[key] as any, options);
   }
 
-  return z.strictObject(newShape) as any;
+  return (options?.strict === false ? z.object(newShape) : z.strictObject(newShape)) as any;
 };
 
-const makeFieldPartial = (fieldSchema: z.ZodTypeAny): z.ZodTypeAny => {
+const makeFieldPartial = (
+  fieldSchema: z.ZodTypeAny,
+  options?: { strict?: boolean }
+): z.ZodTypeAny => {
   const type = (fieldSchema as any)?.type ?? (fieldSchema as any)?._def?.type;
 
   if (type === 'object') {
-    return makeDomainOverrideSchema(fieldSchema as any).optional();
+    return makeDomainOverrideSchema(fieldSchema as any, options).optional();
   }
   if (type === 'default' || type === 'prefault') {
     const inner = (fieldSchema as any)?.def?.innerType ?? (fieldSchema as any)?._def?.innerType;
-    return makeFieldPartial(inner);
+    return makeFieldPartial(inner, options);
   }
   if (type === 'optional') {
     const inner = (fieldSchema as any)?.def?.innerType ?? (fieldSchema as any)?._def?.innerType;
-    return makeFieldPartial(inner).optional();
+    return makeFieldPartial(inner, options).optional();
   }
   if (type === 'nullable') {
     const inner = (fieldSchema as any)?.def?.innerType ?? (fieldSchema as any)?._def?.innerType;
-    return makeFieldPartial(inner).nullable().optional();
+    return makeFieldPartial(inner, options).nullable().optional();
   }
   if (type === 'effects' || type === 'transform') {
     const inner = (fieldSchema as any)?.def?.schema ?? (fieldSchema as any)?._def?.schema;
-    return makeFieldPartial(inner);
+    return makeFieldPartial(inner, options);
   }
   return fieldSchema.optional();
 };
@@ -127,6 +131,24 @@ export const systemInstanceConfigDomainOverrideSchemaMap = {
 } as const;
 
 /**
+ * 宽容模式（lenient）稀疏 Overrides 校验 Schema 映射表。
+ * 用于读取数据库存量文档：剥离未识别或废弃字段，防止启动阶段因存量旧字段未清理而崩溃死锁。
+ */
+export const systemInstanceConfigDomainLenientOverrideSchemaMap = {
+  site: makeDomainOverrideSchema(SiteConfigSchema, { strict: false }),
+  auth: makeDomainOverrideSchema(AuthConfigSchema, { strict: false }),
+  security: makeDomainOverrideSchema(SecurityConfigSchema, { strict: false }),
+  feature: makeDomainOverrideSchema(FeatureConfigSchema, { strict: false }),
+  commercial: makeDomainOverrideSchema(CommercialConfigSchema, { strict: false }),
+  resource: makeDomainOverrideSchema(ResourceConfigSchema, { strict: false }),
+  performance: makeDomainOverrideSchema(PerformanceConfigBaseSchema, { strict: false }),
+  storage: makeDomainOverrideSchema(StorageConfigSchema, { strict: false }),
+  vector: makeDomainOverrideSchema(VectorConfigSchema, { strict: false }),
+  providers: makeDomainOverrideSchema(ProvidersConfigBaseSchema, { strict: false }),
+  subservice: makeDomainOverrideSchema(SubserviceConfigBaseSchema, { strict: false })
+} as const;
+
+/**
  * 获取指定 Domain 的完整内置默认配置。
  */
 export const getDomainDefaultConfig = <T extends SystemInstanceConfigDomainKey>(
@@ -137,13 +159,19 @@ export const getDomainDefaultConfig = <T extends SystemInstanceConfigDomainKey>(
 };
 
 /**
- * 阶段 1 校验：校验提交的 overrides 形态与字段类型（拒绝未知字段）。
+ * 阶段 1 校验：校验提交的 overrides 形态与字段类型。
+ * - 默认 strict 模式：拒绝未知字段，用于 Admin API 输入检验；
+ * - strict: false 模式：剥离未知字段，用于数据库快照读取。
  */
 export const parseDomainOverrides = <T extends SystemInstanceConfigDomainKey>(
   domain: T,
-  overrides: unknown
+  overrides: unknown,
+  options?: { strict?: boolean }
 ): DeepPartial<SystemInstanceConfigDomainMap[T]> => {
-  const schema = systemInstanceConfigDomainOverrideSchemaMap[domain];
+  const schema =
+    options?.strict === false
+      ? systemInstanceConfigDomainLenientOverrideSchemaMap[domain]
+      : systemInstanceConfigDomainOverrideSchemaMap[domain];
   return schema.parse(overrides ?? {}) as DeepPartial<SystemInstanceConfigDomainMap[T]>;
 };
 
@@ -155,10 +183,11 @@ export const parseDomainOverrides = <T extends SystemInstanceConfigDomainKey>(
  */
 export const resolveDomainEffectiveConfig = <T extends SystemInstanceConfigDomainKey>(
   domain: T,
-  overrides?: unknown
+  overrides?: unknown,
+  options?: { strict?: boolean }
 ): SystemInstanceConfigDomainMap[T] => {
   const defaultValues = getDomainDefaultConfig(domain);
-  const parsedOverrides = parseDomainOverrides(domain, overrides);
+  const parsedOverrides = parseDomainOverrides(domain, overrides, options);
   const merged = deepMergeConfig(defaultValues, parsedOverrides);
   const fullSchema = systemInstanceConfigDomainSchemaMap[domain];
   return fullSchema.parse(merged) as SystemInstanceConfigDomainMap[T];
@@ -189,20 +218,25 @@ export type SystemInstanceConfig = z.infer<typeof SystemInstanceConfigSchema>;
 export const resolveSystemInstanceConfig = (
   domainOverridesMap: Partial<{
     [K in SystemInstanceConfigDomainKey]: unknown;
-  }> = {}
+  }> = {},
+  options?: { strict?: boolean }
 ): SystemInstanceConfig => {
   return {
-    site: resolveDomainEffectiveConfig('site', domainOverridesMap.site),
-    auth: resolveDomainEffectiveConfig('auth', domainOverridesMap.auth),
-    security: resolveDomainEffectiveConfig('security', domainOverridesMap.security),
-    feature: resolveDomainEffectiveConfig('feature', domainOverridesMap.feature),
-    commercial: resolveDomainEffectiveConfig('commercial', domainOverridesMap.commercial),
-    resource: resolveDomainEffectiveConfig('resource', domainOverridesMap.resource),
-    performance: resolveDomainEffectiveConfig('performance', domainOverridesMap.performance),
-    storage: resolveDomainEffectiveConfig('storage', domainOverridesMap.storage),
-    vector: resolveDomainEffectiveConfig('vector', domainOverridesMap.vector),
-    providers: resolveDomainEffectiveConfig('providers', domainOverridesMap.providers),
-    subservice: resolveDomainEffectiveConfig('subservice', domainOverridesMap.subservice)
+    site: resolveDomainEffectiveConfig('site', domainOverridesMap.site, options),
+    auth: resolveDomainEffectiveConfig('auth', domainOverridesMap.auth, options),
+    security: resolveDomainEffectiveConfig('security', domainOverridesMap.security, options),
+    feature: resolveDomainEffectiveConfig('feature', domainOverridesMap.feature, options),
+    commercial: resolveDomainEffectiveConfig('commercial', domainOverridesMap.commercial, options),
+    resource: resolveDomainEffectiveConfig('resource', domainOverridesMap.resource, options),
+    performance: resolveDomainEffectiveConfig(
+      'performance',
+      domainOverridesMap.performance,
+      options
+    ),
+    storage: resolveDomainEffectiveConfig('storage', domainOverridesMap.storage, options),
+    vector: resolveDomainEffectiveConfig('vector', domainOverridesMap.vector, options),
+    providers: resolveDomainEffectiveConfig('providers', domainOverridesMap.providers, options),
+    subservice: resolveDomainEffectiveConfig('subservice', domainOverridesMap.subservice, options)
   };
 };
 
