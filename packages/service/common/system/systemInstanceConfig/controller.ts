@@ -32,6 +32,11 @@ import type {
 import { MongoSystemInstanceConfig } from './schema';
 import { MongoSystemConfigs } from '../config/schema';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
+import { SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
+import {
+  SubPlanInputSchema,
+  type SubPlanType
+} from '@fastgpt/global/support/wallet/sub/type';
 import { mongoSessionRun } from '../../mongo/sessionRun';
 import { serviceEnv } from '../../../env';
 import { getLogger, LogCategories } from '../../logger';
@@ -370,6 +375,45 @@ export const batchUpdateDomainConfigs = async ({
 }): Promise<SystemInstanceConfigDomainKey[]> => {
   if (items.length === 0 && subPlans === undefined) return [];
 
+  /**
+   * 将 Admin 套餐表单提交的扁平 subPlans 归一化为持久化的嵌套存储形状，并通过
+   * SubPlanInputSchema 做权威校验（该 schema 与旧 updateConfig 保存链路同源，
+   * 负责日期强转、积分包字段清洗与未知键剥离）。
+   *
+   * 历史形状是 Record 且字段集混杂（旧表单扁平键 + Pro 后端注入的嵌套键），
+   * 新 commercial 页提交的仍是同样的扁平形状；若原样落库，
+   * FastGPTConfigFileSchema 解析后 extraDatasetSize.price / extraPoints.packages
+   * 等关键计费字段会被静默丢失。这里只做"扁平键 → 嵌套键"的最小搬运，
+   * 其余字段透传给 schema 统一清洗，保证持久化形状唯一。
+   */
+  const normalizeSubPlansInput = (input: Record<string, unknown>): SubPlanType => {
+    // 嵌套键优先：已是存储形状的记录（如从旧库回读后透传）不被扁平键覆盖
+    const extraDatasetSize =
+      input[SubTypeEnum.extraDatasetSize] ??
+      (input.extraDatasetSizePrice !== undefined
+        ? { price: input.extraDatasetSizePrice }
+        : undefined);
+    const extraPoints =
+      input[SubTypeEnum.extraPoints] ??
+      (input.extraPointsPackages !== undefined
+        ? { packages: input.extraPointsPackages }
+        : undefined);
+
+    const { extraDatasetSizePrice, extraPointsPackages, ...rest } = input;
+
+    return SubPlanInputSchema.parse({
+      ...rest,
+      ...(extraDatasetSize !== undefined
+        ? { [SubTypeEnum.extraDatasetSize]: extraDatasetSize }
+        : {}),
+      ...(extraPoints !== undefined ? { [SubTypeEnum.extraPoints]: extraPoints } : {})
+    });
+  };
+
+  // 套餐输入在进入事务前完成归一化：非法形状直接拒绝，避免半写状态与脏数据落库
+  const normalizedSubPlans =
+    subPlans === undefined ? undefined : normalizeSubPlansInput(subPlans);
+
   // 1. 预校验与准备阶段：对所有域执行敏感字段恢复、形态校验、终审校验和默认值剪枝
   const preparedItems = await Promise.all(
     items.map(async ({ domain, expectedRevision, overrides: submittedOverrides }) => {
@@ -404,7 +448,7 @@ export const batchUpdateDomainConfigs = async ({
 
   // 2. 事务执行阶段：在同一个 session 中执行所有文档的新建、带 revision 限制的更新以及套餐写入
   await mongoSessionRun(async (session) => {
-    if (subPlans !== undefined) {
+    if (normalizedSubPlans !== undefined) {
       const latestFastgpt = await MongoSystemConfigs.findOne(
         { type: SystemConfigsTypeEnum.fastgpt },
         undefined,
@@ -417,7 +461,7 @@ export const batchUpdateDomainConfigs = async ({
             type: SystemConfigsTypeEnum.fastgpt,
             value: {
               ...(latestFastgpt?.value ?? {}),
-              subPlans
+              subPlans: normalizedSubPlans
             },
             createTime: new Date()
           }
