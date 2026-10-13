@@ -226,7 +226,7 @@ export const GetChannelLogsQuerySchema = z.object({
     description: '查询结束时间（Unix 毫秒）'
   }),
   pageNum: IntSchema.positive().optional().meta({ example: 1, description: '页码，从 1 开始' }),
-  pageSize: IntSchema.positive().max(100).meta({ example: 20, description: '每页条数，最大 100' })
+  pageSize: IntSchema.positive().max(200).meta({ example: 20, description: '每页条数，最大 200' })
 });
 export type GetChannelLogsQuery = z.infer<typeof GetChannelLogsQuerySchema>;
 
