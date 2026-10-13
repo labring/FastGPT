@@ -31,6 +31,7 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import type { ChannelLogListItem } from '@fastgpt/global/openapi/core/ai/model/channel/api';
+import { PaginationPageSizeLimit } from '@fastgpt/global/openapi/api';
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import { useModelConfig } from '@/web/core/ai/model/useModelConfig';
 import ModelTabHeader from '@/components/core/ai/ModelTabHeader';
@@ -109,7 +110,7 @@ const ChannelLog = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
 
   const { data, isLoading, total, pageSize, Pagination } = usePagination(getChannelLog, {
     defaultPageSize: 20,
-    pageSizeOptions: [20, 50, 100, 200],
+    pageSizeOptions: [20, 50, 100, 200, PaginationPageSizeLimit],
     pageSizeCacheKey: 'config-model-channel-log',
     refreshDeps: [filterProps, channelType],
     params: {

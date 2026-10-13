@@ -1,5 +1,9 @@
 import z from 'zod';
-import { PaginationResponseSchema } from '../../../../api';
+import {
+  PaginationPageSizeLimit,
+  PaginationPageSizeSchema,
+  PaginationResponseSchema
+} from '../../../../api';
 import { IntSchema, NumSchema, queryArrayParam } from '../../../../../common/zod';
 import {
   ChannelConfigSchema,
@@ -146,7 +150,9 @@ export type AffectedModelsResponse = z.infer<typeof AffectedModelsResponseSchema
 // ═══ GET /api/core/ai/model/channel/list ═══
 export const ListChannelsQuerySchema = z.object({
   pageNum: NumSchema.optional().meta({ description: '页码，从 1 开始' }),
-  pageSize: NumSchema.optional().meta({ description: '每页条数，不传返回全量' }),
+  pageSize: PaginationPageSizeSchema.optional().meta({
+    description: `每页条数，最大 ${PaginationPageSizeLimit}；不传返回全量`
+  }),
   search: z.string().optional().meta({ description: '模糊搜索关键字（名称、模型等）' }),
   channelType: ChannelTypeSchema.optional().meta({
     description: 'system=系统渠道（仅 root）；team=当前登录成员本人的私有渠道'
@@ -226,7 +232,7 @@ export const GetChannelLogsQuerySchema = z.object({
     description: '查询结束时间（Unix 毫秒）'
   }),
   pageNum: IntSchema.positive().optional().meta({ example: 1, description: '页码，从 1 开始' }),
-  pageSize: IntSchema.positive().max(200).meta({ example: 20, description: '每页条数，最大 200' })
+  pageSize: PaginationPageSizeSchema
 });
 export type GetChannelLogsQuery = z.infer<typeof GetChannelLogsQuerySchema>;
 
