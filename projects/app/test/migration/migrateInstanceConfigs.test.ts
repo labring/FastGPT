@@ -298,6 +298,18 @@ describe('migration buildSparseLegacyOverrides', () => {
       buildLegacyProOverrides({ fastLogin: { broken: {} } }).auth?.fastLogin
     ).toBeUndefined();
 
+    // 数组分支同样过滤 authUrl 为空/缺失的条目，与对象分支语义一致
+    const mixedArrayPro = buildLegacyProOverrides({
+      fastLogin: [
+        { key: 'sso', authUrl: 'https://sso.example.com/login' },
+        { key: 'broken' },
+        { key: 'empty', authUrl: '' }
+      ]
+    });
+    expect(mixedArrayPro.auth?.fastLogin).toEqual([
+      { key: 'sso', authUrl: 'https://sso.example.com/login' }
+    ]);
+
     // 规范化结果必须通过 security/auth 域两阶段校验
     for (const domain of SYSTEM_INSTANCE_CONFIG_DOMAINS) {
       const domainOverrides = pro[domain];

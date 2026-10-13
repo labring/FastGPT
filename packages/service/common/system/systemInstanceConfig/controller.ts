@@ -38,6 +38,8 @@ import {
   type SubPlanType
 } from '@fastgpt/global/support/wallet/sub/type';
 import { mongoSessionRun } from '../../mongo/sessionRun';
+import { ZodError } from 'zod';
+import { ApiRequestInputParseError } from '../../zod/requestParseError';
 import { serviceEnv } from '../../../env';
 import { getLogger, LogCategories } from '../../logger';
 
@@ -387,17 +389,20 @@ export const batchUpdateDomainConfigs = async ({
    * 其余字段透传给 schema 统一清洗，保证持久化形状唯一。
    */
   const normalizeSubPlansInput = (input: Record<string, unknown>): SubPlanType => {
+    // 空输入经 RHF valueAsNumber 会产出 NaN/''/null；NaN 会让 NumSchema 整表
+    // 校验失败，等价于"未配置"（对齐旧 adapt.ts 的 `|| 0` 兜底语义）
+    const isFillable = (v: unknown) =>
+      v !== undefined && v !== null && v !== '' && !(typeof v === 'number' && Number.isNaN(v));
+
     // 嵌套键优先：已是存储形状的记录（如从旧库回读后透传）不被扁平键覆盖
     const extraDatasetSize =
       input[SubTypeEnum.extraDatasetSize] ??
-      (input.extraDatasetSizePrice !== undefined
+      (isFillable(input.extraDatasetSizePrice)
         ? { price: input.extraDatasetSizePrice }
         : undefined);
     const extraPoints =
       input[SubTypeEnum.extraPoints] ??
-      (input.extraPointsPackages !== undefined
-        ? { packages: input.extraPointsPackages }
-        : undefined);
+      (isFillable(input.extraPointsPackages) ? { packages: input.extraPointsPackages } : undefined);
 
     const { extraDatasetSizePrice, extraPointsPackages, ...rest } = input;
 
@@ -410,9 +415,22 @@ export const batchUpdateDomainConfigs = async ({
     });
   };
 
-  // 套餐输入在进入事务前完成归一化：非法形状直接拒绝，避免半写状态与脏数据落库
+  // 套餐输入在进入事务前完成归一化：非法形状直接拒绝，避免半写状态与脏数据落库。
+  // subPlans 来自 API body 透传（z.record 不校验内容），ZodError 包装为请求入参
+  // 错误让入口层降级为 400，Admin 能定位具体字段而不是收到 500 原始 issues
   const normalizedSubPlans =
-    subPlans === undefined ? undefined : normalizeSubPlansInput(subPlans);
+    subPlans === undefined
+      ? undefined
+      : (() => {
+          try {
+            return normalizeSubPlansInput(subPlans);
+          } catch (error) {
+            if (error instanceof ZodError) {
+              throw new ApiRequestInputParseError(error, { inputSource: 'body' });
+            }
+            throw error;
+          }
+        })();
 
   // 1. 预校验与准备阶段：对所有域执行敏感字段恢复、形态校验、终审校验和默认值剪枝
   const preparedItems = await Promise.all(

@@ -307,6 +307,36 @@ describe('systemInstanceConfig controller', () => {
         const siteDoc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
         expect(siteDoc).toBeNull();
       });
+
+      it('treats NaN from cleared numeric inputs as unconfigured instead of failing the save', async () => {
+        // RHF valueAsNumber 对清空输入产出 NaN，等价"未配置"（对齐旧 || 0 容错）
+        await batchUpdateDomainConfigs({
+          items: [],
+          subPlans: { extraDatasetSizePrice: Number.NaN, extraPointsPackages: Number.NaN },
+          actor: { actor: 'admin' }
+        });
+
+        const doc = await MongoSystemConfigs.findOne({
+          type: SystemConfigsTypeEnum.fastgpt
+        }).lean();
+        // 保存成功即验证 NaN 不再阻断整表校验；嵌套计费字段应保持缺省
+        const subPlans = ((doc?.value as Record<string, any>)?.subPlans ?? {}) as Record<
+          string,
+          any
+        >;
+        expect(subPlans.extraDatasetSize).toBeUndefined();
+        expect(subPlans.extraPoints).toBeUndefined();
+      });
+
+      it('wraps invalid subPlans as a request input error for a 400 response', async () => {
+        await expect(
+          batchUpdateDomainConfigs({
+            items: [],
+            subPlans: { planDescriptionUrl: 123 },
+            actor: { actor: 'admin' }
+          })
+        ).rejects.toMatchObject({ name: 'ApiRequestInputParseError' });
+      });
     });
   });
 });

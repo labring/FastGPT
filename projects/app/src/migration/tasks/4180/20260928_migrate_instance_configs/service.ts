@@ -422,7 +422,10 @@ export const buildSparseLegacyOverrides = ({
  */
 const normalizeFastLogin = (raw: unknown): Record<string, unknown>[] | undefined => {
   if (Array.isArray(raw)) {
-    const list = compactDeep(raw) as Record<string, unknown>[] | undefined;
+    // 数组分支与对象分支保持一致：authUrl 为空的条目无法生成有效跳转地址，
+    // 且 schema 的 urlWithDefault('') 会放行空串，不过滤会落库可点击但跳空地址的按钮
+    const compacted = compactDeep(raw) as Record<string, unknown>[] | undefined;
+    const list = compacted?.filter((item) => isNonEmpty(item?.authUrl));
     return list && list.length > 0 ? list : undefined;
   }
   if (raw !== null && typeof raw === 'object') {
