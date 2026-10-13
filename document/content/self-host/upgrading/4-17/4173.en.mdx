@@ -37,5 +37,3 @@ This upgrade does not include new system migration scripts. Simply update the im
 4. Fixed a maximum call stack size exceeded error caused by self-recursion in the `InvokeProcessor` session getter.
 5. Fixed batch creation failures for Agent team members caused by unordered concurrency.
 6. Fixed inconsistent classification of external file URLs in Workflows. URLs without a filename or extension can now be classified using response headers and a limited content probe. AI Chat, Agents, Tool calls, and document reading share the same classification results, and document parsing reuses the detected filename.
-7. Fixed the account model page showing model configuration and channel management tabs when team models are disabled.
-8. Fixed channel list validation failures when AI Proxy returns `null` for unconfigured channel fields.
