@@ -18,7 +18,7 @@ This upgrade does not include new system migration scripts. Simply update the im
 ## 🚀 New Features
 
 1. Added support for limited HTML rendering in the Markdown component and optimized interactions across components.
-2. Added an option to inherit parent permissions when creating Dataset folders.
+2. Added an option to inherit parent permissions when creating App, Tool, and Dataset folders.
 3. Added support for dedicated AI models and channels for team members, improving multi-tenant and member-level model resource isolation and authorization with deep AI Proxy integration.
 
 ## ⚙️ Optimizations
@@ -37,3 +37,4 @@ This upgrade does not include new system migration scripts. Simply update the im
 3. Fixed JSON serialization errors when MCP tool input schemas contain recursive circular references (such as `{ $ref: '#' }`).
 4. Fixed a maximum call stack size exceeded error caused by self-recursion in the `InvokeProcessor` session getter.
 5. Fixed batch creation failures for Agent team members caused by unordered concurrency.
+6. Fixed an issue where NextAPI proxying Pro API streamed or raw responses without Content-Type (such as WeChat login callbacks) would append a default JSON envelope before the stream finished, corrupting the response.
