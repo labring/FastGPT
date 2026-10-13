@@ -118,5 +118,5 @@
   "migrations.20261009_migrate_dataset_rebuild_status.datas": "Migrate legacy rebuild flags",
   "migrations.20261009_migrate_dataset_rebuild_status.trainings": "Restore rebuild task statuses",
   "migrations.20261009_migrate_dataset_rebuild_status.validation": "Validate migration",
-  "prerequisite_not_succeeded": "Please execute the prerequisite task \"{{name}}\" first"
+  "prerequisite_not_succeeded": "Run \"{{name}}\" first and wait for it to succeed before running this task."
 }

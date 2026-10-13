@@ -1,4 +1,5 @@
 import startHandler from '@/pages/api/admin/migrations/start';
+import { SystemMigrationDependencyError } from '@/migration/error';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   SystemMigrationFailurePolicyEnum,
@@ -134,4 +135,29 @@ describe('system migration admin APIs', () => {
     expect(mocks.retryNonBlockingSystemMigration).not.toHaveBeenCalled();
     expect(mocks.wakeSystemMigrationRunner).not.toHaveBeenCalled();
   });
+
+  it.each(['start', 'retry'] as const)(
+    'returns translatable dependency details without waking the runner on %s',
+    async (action) => {
+      const prerequisiteNameKey =
+        'system_migration:migrations.20261008_migrate_chunk_training.name';
+      const service =
+        action === 'start'
+          ? mocks.startManualSystemMigration
+          : mocks.retryNonBlockingSystemMigration;
+      const handler = action === 'start' ? startHandler : retryHandler;
+      service.mockRejectedValueOnce(new SystemMigrationDependencyError(prerequisiteNameKey));
+      const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+
+      await handler({ headers: {}, body: { migrationId: 'dependent' } } as any, res as any);
+
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith({
+        code: 409,
+        message: 'system_migration:prerequisite_not_succeeded',
+        data: { prerequisiteNameKey }
+      });
+      expect(mocks.wakeSystemMigrationRunner).not.toHaveBeenCalled();
+    }
+  );
 });

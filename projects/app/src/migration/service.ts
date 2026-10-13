@@ -17,19 +17,10 @@ import {
 } from './entity';
 import { systemMigrations, type SystemMigration } from './registry';
 import type { SystemMigrationStateSchemaType } from './mongoSchema';
-import zhMigration from '@fastgpt/web/i18n/zh-CN/system_migration.json';
+import { SystemMigrationDependencyError } from './error';
 
 const getStateMap = (states: SystemMigrationStateSchemaType[]) =>
   new Map(states.map((state) => [state._id, state]));
-
-const getMigrationDisplayName = (
-  migration: SystemMigration | undefined,
-  fallbackId: string
-): string => {
-  if (!migration) return fallbackId;
-  const key = migration.nameKey.replace(/^system_migration:/, '');
-  return (zhMigration as Record<string, string>)[key] || migration.id;
-};
 
 /** 启动和重试均要求前置任务成功；缺失、等待、执行中和失败状态都不能作为完成依据。 */
 const assertMigrationDependenciesComplete = async (
@@ -44,8 +35,10 @@ const assertMigrationDependenciesComplete = async (
   );
   if (incompleteId) {
     const prerequisite = registry.find((item) => item.id === incompleteId);
-    const prerequisiteName = getMigrationDisplayName(prerequisite, incompleteId);
-    throw new UserError(`请先完成前置任务「${prerequisiteName}」`);
+    // 缺失依赖属于注册表配置错误，不能把内部 ID 当作用户提示名称。
+    if (!prerequisite)
+      throw new Error(`System migration dependency not registered: ${incompleteId}`);
+    throw new SystemMigrationDependencyError(prerequisite.nameKey);
   }
 };
 
@@ -108,7 +101,6 @@ export const getSystemMigrationList = async (
         nameKey: migration.nameKey,
         descriptionKey: migration.descriptionKey,
         blockStartup: migration.blockStartup,
-        dependsOn: migration.dependsOn ? [...migration.dependsOn] : undefined,
         onFailure: migration.onFailure,
         status:
           state?.status ??
