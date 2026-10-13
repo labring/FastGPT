@@ -77,6 +77,9 @@ AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
 AGENT_SANDBOX_CPU_COUNT=1
 AGENT_SANDBOX_MEMORY_MIB=2048
 AGENT_SANDBOX_STORAGE_SIZE_GI=1
+# Kubernetes 运行态超卖倍数（CPU / 内存独立）：requests = limits / 对应值（1 = 该维度不超卖）
+AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR=1
+AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR=1
 ```
 
 ### 运行态镜像与 CPU 架构
@@ -141,6 +144,8 @@ AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports
 | `AGENT_SANDBOX_CPU_COUNT`             | `1`        | 单个 Agent Sandbox 的 CPU 核数上限。       |
 | `AGENT_SANDBOX_MEMORY_MIB`            | `2048`     | 单个 Agent Sandbox 的内存上限，单位 MiB。  |
 | `AGENT_SANDBOX_STORAGE_SIZE_GI`       | `1`        | 沙盒存储容量，单位 Gi。                    |
+| `AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR`    | `1`        | Kubernetes 运行态 CPU 超卖倍数：CPU requests = limits / 该值；大于 1 时创建 Burstable QoS Pod。仅 opensandbox provider 生效。 |
+| `AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR` | `1`        | Kubernetes 运行态内存超卖倍数：内存 requests = limits / 该值；大于 1 时创建 Burstable QoS Pod。仅 opensandbox provider 生效。 |
 | `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES`  | `67108864` | IDE Agent WebSocket 单消息大小上限。       |
 | `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`    | `16777216` | IDE Agent WebSocket 单帧大小上限。         |
 | `AGENT_SANDBOX_SUSPEND_MINUTES`       | `60`       | 运行中的沙盒持续未活跃多少分钟后自动暂停。 |
