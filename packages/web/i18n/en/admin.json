@@ -1105,6 +1105,8 @@
   "storage_external_endpoint_tip": "Object storage address reachable by clients. Required for self-hosted storage such as MinIO in short-redirect mode; otherwise downloads fail. Falls back to STORAGE_EXTERNAL_ENDPOINT when empty.",
   "storage_cdn_endpoint": "CDN Endpoint",
   "storage_cdn_endpoint_tip": "Optional. When set, short-redirect download URLs are rewritten to this CDN domain; requires an external endpoint. Falls back to STORAGE_S3_CDN_ENDPOINT when empty.",
+  "storage_redirect_ttl_seconds": "Redirect URL TTL (seconds)",
+  "storage_redirect_ttl_seconds_tip": "Max lifetime of the pre-signed URL issued by the 302 redirect in short-redirect mode.",
   "revision_conflict_refreshing": "The configuration was modified elsewhere. Refreshing to the latest revision.",
   "feature_section_display": "Display Configuration",
   "page_title_inform": "Notifications",

@@ -264,7 +264,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
   ),
   ...createEntries(
     'storage',
-    ['downloadMode', 'externalEndpoint', 'cdnEndpoint', 'fileUrlExpiredDays'],
+    ['downloadMode', 'externalEndpoint', 'cdnEndpoint', 'fileUrlExpiredDays', 'redirectTtlSeconds'],
     {
       edition: 'all',
       secret: false,

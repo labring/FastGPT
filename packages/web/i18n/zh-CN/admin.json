@@ -1105,6 +1105,8 @@
   "storage_external_endpoint_tip": "客户端可直连的对象存储地址；MinIO 等自建存储在 short-redirect 模式下必须配置，否则下载会失败。留空则回落到环境变量 STORAGE_EXTERNAL_ENDPOINT。",
   "storage_cdn_endpoint": "CDN 加速地址",
   "storage_cdn_endpoint_tip": "可选。配置后 short-redirect 临时下载地址会改写为该 CDN 域名；需同时配置外部访问端点。留空则回落到环境变量 STORAGE_S3_CDN_ENDPOINT。",
+  "storage_redirect_ttl_seconds": "重定向地址有效期（秒）",
+  "storage_redirect_ttl_seconds_tip": "short-redirect 模式下 302 下发的预签名下载地址的最大有效期。",
   "revision_conflict_refreshing": "配置已被他人修改，正在刷新至最新版本",
   "feature_section_display": "展示配置",
   "page_title_inform": "通知管理",
