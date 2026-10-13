@@ -109,8 +109,8 @@ const LimitsSettingComponent = () => {
               serviceRequestMaxContentLength: Number(formData.serviceRequestMaxContentLength) || 10,
               systemMaxStringLengthM: Number(formData.systemMaxStringLengthM) || 100,
               maxFolderDepth: Number(formData.maxFolderDepth) || 4,
-              appFolderMaxAmount: Number(formData.appFolderMaxAmount) || 1000,
-              datasetFolderMaxAmount: Number(formData.datasetFolderMaxAmount) || 1000,
+              appFolderMaxAmount: Number(formData.appFolderMaxAmount ?? 1000),
+              datasetFolderMaxAmount: Number(formData.datasetFolderMaxAmount ?? 1000),
               uploadFileMaxSize: Number(formData.uploadFileMaxSize) || 1000,
               uploadFileMaxAmount: Number(formData.uploadFileMaxAmount) || 1000,
               exportDatasetLimitMinutes: Number(formData.exportDatasetLimitMinutes) || 0,
@@ -305,10 +305,12 @@ const LimitsSettingComponent = () => {
               render={({ field }) => (
                 <NumberInput
                   {...numberInputProps}
-                  min={1}
+                  min={0}
                   max={10000}
                   value={field.value ?? 1000}
-                  onChange={(_, val) => field.onChange(val || 1000)}
+                  // 0 = 禁止创建新目录，与旧 env 语义一致，不能用 || 吃掉 0
+                  onChange={(valueAsString, val) =>
+                    field.onChange(valueAsString === '' ? 1000 : val)}
                 >
                   <NumberInputField />
                   <NumberInputStepper>
@@ -331,10 +333,11 @@ const LimitsSettingComponent = () => {
               render={({ field }) => (
                 <NumberInput
                   {...numberInputProps}
-                  min={1}
+                  min={0}
                   max={10000}
                   value={field.value ?? 1000}
-                  onChange={(_, val) => field.onChange(val || 1000)}
+                  onChange={(valueAsString, val) =>
+                    field.onChange(valueAsString === '' ? 1000 : val)}
                 >
                   <NumberInputField />
                   <NumberInputStepper>
@@ -527,10 +530,12 @@ const LimitsSettingComponent = () => {
               render={({ field }) => (
                 <NumberInput
                   {...numberInputProps}
-                  min={1}
+                  min={0}
                   max={5000}
                   value={field.value ?? 500}
-                  onChange={(_, val) => field.onChange(val || 500)}
+                  // 0 是合法取值（禁用工作流），不能用 || 兜底，否则输入 0 会被吃回默认值
+                  onChange={(valueAsString, val) =>
+                    field.onChange(valueAsString === '' ? 500 : val)}
                 >
                   <NumberInputField />
                   <NumberInputStepper>
@@ -553,10 +558,11 @@ const LimitsSettingComponent = () => {
               render={({ field }) => (
                 <NumberInput
                   {...numberInputProps}
-                  min={1}
+                  min={0}
                   max={1000}
                   value={field.value ?? 100}
-                  onChange={(_, val) => field.onChange(val || 100)}
+                  onChange={(valueAsString, val) =>
+                    field.onChange(valueAsString === '' ? 100 : val)}
                 >
                   <NumberInputField />
                   <NumberInputStepper>
@@ -740,10 +746,11 @@ const LimitsSettingComponent = () => {
               render={({ field }) => (
                 <NumberInput
                   {...numberInputProps}
-                  min={1}
+                  min={0}
                   max={10000000}
                   value={field.value ?? 1000000}
-                  onChange={(_, val) => field.onChange(val || 1000000)}
+                  onChange={(valueAsString, val) =>
+                    field.onChange(valueAsString === '' ? 1000000 : val)}
                 >
                   <NumberInputField />
                   <NumberInputStepper>
@@ -945,10 +952,12 @@ const LimitsSettingComponent = () => {
               render={({ field }) => (
                 <NumberInput
                   {...numberInputProps}
-                  min={1}
+                  min={0}
                   max={50000}
                   value={field.value ?? 5000}
-                  onChange={(_, val) => field.onChange(val || 5000)}
+                  // 0 = 不限流（消费点对 falsy qpm 放行），不能用 || 兜底
+                  onChange={(valueAsString, val) =>
+                    field.onChange(valueAsString === '' ? 5000 : val)}
                 >
                   <NumberInputField />
                   <NumberInputStepper>
@@ -1146,10 +1155,12 @@ const LimitsSettingComponent = () => {
               render={({ field }) => (
                 <NumberInput
                   {...numberInputProps}
-                  min={1}
+                  min={0}
                   max={50}
                   value={field.value ?? 3}
-                  onChange={(_, val) => field.onChange(val || 3)}
+                  // 0 = 暂停评测消费（BullMQ 合法取值），不能用 || 吃掉
+                  onChange={(valueAsString, val) =>
+                    field.onChange(valueAsString === '' ? 3 : val)}
                 >
                   <NumberInputField />
                   <NumberInputStepper>

@@ -131,6 +131,35 @@ describe('resolveDomainEffectiveConfig (Two-Phase Validation & Merge)', () => {
     expect(valid.workflow.parallelMaxConcurrency).toBe(5);
   });
 
+  it('accepts legacy zero values that mean disable/unlimited at the consumer', () => {
+    // 旧 env IntSchema 允许 0，且这些字段的消费点对 0 有明确"禁用/不限"语义
+    // （maxRunTimes<=0 停止工作流、maxLoopTimes=0 拒绝循环输入、!qpm 放行限流），
+    // 迁移必须原样保留 0，否则会把客户的禁用配置静默改回默认启用值。
+    const zeroed = resolveDomainEffectiveConfig('performance', {
+      workflow: { maxRunTimes: 0, maxLoopTimes: 0 },
+      chat: { maxQpm: 0 },
+      parse: { maxHtmlTransformChars: 0 }
+    });
+    expect(zeroed.workflow.maxRunTimes).toBe(0);
+    expect(zeroed.workflow.maxLoopTimes).toBe(0);
+    expect(zeroed.chat.maxQpm).toBe(0);
+    expect(zeroed.parse.maxHtmlTransformChars).toBe(0);
+
+    // maxLoopTimes=0 表示禁用循环，并行约束此时无意义，不得连带拒绝整个 performance 域
+    expect(() =>
+      resolveDomainEffectiveConfig('performance', {
+        workflow: { maxLoopTimes: 0 }
+      })
+    ).not.toThrow();
+  });
+
+  it('still rejects negative values for zero-tolerant fields', () => {
+    expect(() =>
+      parseDomainOverrides('performance', { workflow: { maxRunTimes: -1 } })
+    ).toThrowError();
+    expect(() => parseDomainOverrides('performance', { chat: { maxQpm: -5 } })).toThrowError();
+  });
+
   it('validates documentParse providers and constraints', () => {
     // somark does not require customPdf.url
     const somarkConfig = resolveDomainEffectiveConfig('providers', {
