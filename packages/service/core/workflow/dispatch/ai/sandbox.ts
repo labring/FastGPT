@@ -1,10 +1,8 @@
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import {
-  buildSandboxClientQueryFromChatSource,
-  ensureAppSandboxRuntimeReady,
-  getRunningSandboxId
-} from '../../../ai/sandbox/interface/runtime';
+import { buildSandboxClientQueryFromChatSource } from '../../../ai/sandbox/interface/runtime';
+import { ensureAppSandboxRuntimeReady } from '../../../ai/sandbox/application/runtime/upgrade';
+import { getRunningSandboxId } from '../../../ai/sandbox/utils/id';
 import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
 
 /**

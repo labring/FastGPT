@@ -3,23 +3,31 @@ import type { BuiltinSkillSource } from '@fastgpt/global/core/ai/skill/runtime/b
 import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
 import {
   type DeployedSkillInfo,
-  type DeployedSkillVersion,
+  type DeployedSkillVersion
+} from '../../../../../../ai/sandbox/application/runtime/skill/types';
+import {
   getAgentSkillInfos,
+  injectAgentSkillFilesToSandbox
+} from '../../../../../../ai/sandbox/application/runtime/skill/core';
+import {
   getBuiltinSkillsRootPath,
-  injectAgentSkillFilesToSandbox,
+  syncBuiltinSkillsToSandbox
+} from '../../../../../../ai/sandbox/application/runtime/skill/builtin';
+import {
   injectCurrentInputFiles,
-  prepareAgentSandboxRuntime,
   preparePackageMirrors,
   prepareSandbox,
-  resolveSandboxHome,
-  runAgentSkillVersionEntrypoints,
-  runSandboxEntrypoint,
-  syncBuiltinSkillsToSandbox,
-  withAgentSandboxInitLease,
-  type SandboxClient,
   type SandboxPrepareContext,
   type SandboxPrepareStep
-} from '../../../../../../ai/sandbox/interface/runtime';
+} from '../../../../../../ai/sandbox/application/runtime/prepare';
+import { prepareAgentSandboxRuntime } from '../../../../../../ai/sandbox/application/runtime';
+import { resolveSandboxHome } from '../../../../../../ai/sandbox/application/runtime/home';
+import { runAgentSkillVersionEntrypoints } from '../../../../../../ai/sandbox/application/runtime/skill/entrypoint';
+import {
+  runSandboxEntrypoint,
+  withAgentSandboxInitLease
+} from '../../../../../../ai/sandbox/application/runtime/entrypoint';
+import { type SandboxClient } from '../../../../../../ai/sandbox/application/runtime/client';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { readWorkflowFileBuffer } from '../../../../../utils/context';
 

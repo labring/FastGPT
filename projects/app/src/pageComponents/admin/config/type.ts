@@ -191,6 +191,8 @@ export type ConfigFormType = {
     scripts?: string;
     limit?: FastGPTConfigFileType['feConfigs']['limit'];
     systemEnv: {
+      agentSandboxMax?: FastGPTConfigFileType['systemEnv']['agentSandboxMax'];
+      agentSandboxMaxPerTeam?: FastGPTConfigFileType['systemEnv']['agentSandboxMaxPerTeam'];
       openapiPrefix: string;
       datasetParseMaxProcess: number;
       vectorMaxProcess: number;

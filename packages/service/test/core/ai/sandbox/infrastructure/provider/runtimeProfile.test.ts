@@ -98,8 +98,9 @@ describe('sandbox runtime profile', () => {
     vi.stubEnv('AGENT_SANDBOX_SEALOS_WORK_DIRECTORY', '/custom/devbox/workspace');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', 'runtime/fastgpt:stable');
 
-    const { buildBaseSandboxRuntimeEnv, getSandboxRuntimeProfile } =
-      await loadSandboxRuntimeProfileModule();
+    const { getSandboxRuntimeProfile } = await loadSandboxRuntimeProfileModule();
+    const { buildBaseSandboxRuntimeEnv } =
+      await import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile/utils');
     const runtimeProfile = getSandboxRuntimeProfile('sealosdevbox');
 
     expect(

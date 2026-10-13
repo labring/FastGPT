@@ -23,7 +23,7 @@ import { buildDefaultAgentSystemPrompt } from '../../../../ai/llm/agentLoop/inte
 import {
   assertSandboxAvailable,
   resolveAppSandboxAvailability
-} from '../../../../ai/sandbox/interface/runtime';
+} from '../../../../ai/sandbox/application/availability';
 import { nodeHasDynamicInput } from '../../../../app/resources';
 import { getWorkflowFileMaxAmount } from '../../../utils/context';
 import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';

@@ -26,7 +26,7 @@ import {
   getAgentSandboxArchiveMaxBytes,
   getAgentSandboxMaxFileBytes,
   getAgentSandboxSkillMaxBytes
-} from '@fastgpt/service/core/ai/sandbox/interface/config';
+} from '@fastgpt/service/core/ai/sandbox/config';
 import { serviceEnv } from '@fastgpt/service/env';
 import { appEnv } from '@/env';
 import { pluginTagList } from '@fastgpt/global/sdk/fastgpt-plugin';
@@ -109,7 +109,6 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   limit: {
     exportDatasetLimitMinutes: 0,
     websiteSyncLimitMinuted: 0,
-    agentSandboxMaxEditDebug: serviceEnv.AGENT_SANDBOX_MAX_EDIT_DEBUG,
     agentSandboxArchiveMaxBytes: getAgentSandboxArchiveMaxBytes(),
     skillSandboxMaxBytes: getAgentSandboxSkillMaxBytes(),
     agentSandboxMaxFileBytes: getAgentSandboxMaxFileBytes(),
@@ -176,6 +175,8 @@ export async function initSystemConfig() {
     },
     systemEnv: Object.assign(
       {
+        agentSandboxMax: serviceEnv.AGENT_SANDBOX_MAX,
+        agentSandboxMaxPerTeam: serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM,
         datasetParseMaxProcess: serviceEnv.DATASET_PARSE_MAX_PROCESS,
         vectorMaxProcess: serviceEnv.VECTOR_MAX_PROCESS,
         qaMaxProcess: serviceEnv.QA_MAX_PROCESS,

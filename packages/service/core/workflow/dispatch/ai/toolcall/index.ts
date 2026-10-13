@@ -6,13 +6,15 @@ import type { DispatchNodeResultType } from '../../../types/runtime';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   assertSandboxAvailable,
-  getRunningSandboxId,
-  getSandboxRuntimeProfile,
-  resolveAppSandboxAvailability,
+  resolveAppSandboxAvailability
+} from '../../../../ai/sandbox/application/availability';
+import { getRunningSandboxId } from '../../../../ai/sandbox/utils/id';
+import { getSandboxRuntimeProfile } from '../../../../ai/sandbox/application/runtime';
+import {
   runAgentSandboxEntrypoint,
   withAgentSandboxInitLease
-} from '../../../../ai/sandbox/interface/runtime';
-import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/interface/toolCall';
+} from '../../../../ai/sandbox/application/runtime/entrypoint';
+import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/application/toolCall';
 import { postTextCensor } from '../../../../chat/postTextCensor';
 import { readWorkflowFileBuffer } from '../../../utils/context';
 import { getAgentLoopHistories, getNodeErrResponse } from '../../utils';
@@ -224,11 +226,16 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     });
 
     if (error) {
-      return getNodeErrResponse({
-        error,
-        [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
-        [DispatchNodeResponseKeyEnum.runTimes]: runTimes
-      });
+      return {
+        ...getNodeErrResponse({
+          error,
+          [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
+          [DispatchNodeResponseKeyEnum.runTimes]: runTimes
+        }),
+        [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
+          ? previewAssistantResponses
+          : undefined
+      };
     }
 
     if (toolWorkflowInteractiveResponse) {

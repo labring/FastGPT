@@ -21,6 +21,35 @@ describe('SealosDevboxAdapter', () => {
     expect(adapter.rootPath).toBe('/workspace');
   });
 
+  it.each(['Stopped', 'Stopping', 'Creating', 'Deleting'])(
+    'connect-only rejects %s without starting the devbox',
+    async (state) => {
+      const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        jsonResponse({
+          code: 200,
+          data: { name: 'sandbox-1', image: 'node:20', state: { phase: state }, ssh: {} }
+        })
+      );
+      await expect(new SealosDevboxAdapter(CONFIG).connectRunning()).rejects.toThrow(
+        'Invalid sandbox state'
+      );
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock.mock.calls[0][1]?.method ?? 'GET').toBe('GET');
+    }
+  );
+  it('connect-only checks readiness of a running devbox', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      String(input).includes('/exec')
+        ? jsonResponse({ code: 200, data: { exitCode: 0, stdout: '', stderr: '' } })
+        : jsonResponse({
+            code: 200,
+            data: { name: 'sandbox-1', image: 'node:20', state: { phase: 'Running' }, ssh: {} }
+          })
+    );
+    await new SealosDevboxAdapter(CONFIG).connectRunning();
+    expect(fetchMock.mock.calls.every(([input]) => !String(input).includes('/resume'))).toBe(true);
+  });
+
   it('maps resource limits to Kubernetes quantities when creating a devbox', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       if (String(input).endsWith('/api/v1/devbox/sandbox-1')) {

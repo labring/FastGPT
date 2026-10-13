@@ -52,7 +52,7 @@ import {
   createWorkflowStreamResponseContext,
   type WorkflowStreamResponseContext
 } from '../../../workflow/utils/streamResponseContext';
-import { getRunningSkillEditSandbox } from '../../sandbox/interface/skillEdit';
+import { getRunningSkillEditSandbox } from '../../sandbox/application/skillEdit/runtime';
 import { buildDebugRuntimeNodes } from './runtime';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS);
