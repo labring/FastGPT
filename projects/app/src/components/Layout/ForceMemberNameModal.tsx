@@ -1,6 +1,6 @@
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MemberNameFormModal from '@/pageComponents/account/team/MemberNameForm';
-import { useUserStore } from '@/web/support/user/useUserStore';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 /**
  * 强制补齐当前团队成员名。
@@ -8,12 +8,18 @@ import { useUserStore } from '@/web/support/user/useUserStore';
  */
 const ForceMemberNameModal = ({ onSuccess }: { onSuccess: () => void }) => {
   const { t } = useSafeTranslation();
-  const { userInfo } = useUserStore();
+  const { feConfigs } = useSystemStore();
 
   return (
     <MemberNameFormModal
-      defaultName={userInfo?.username ?? ''}
+      // 不预填账号或工号，避免用户一次确认就把回落值标记为已设置姓名。
+      defaultName=""
       dismissible={false}
+      helperText={
+        feConfigs?.teamMode === 'sync'
+          ? t('account_team:force_member_name_sync_hint')
+          : t('account_team:force_member_name_hint')
+      }
       placeholder={t('account_team:invite_member_name_placeholder')}
       onSubmitted={(latestUserInfo) => {
         // 刷新后仍待补齐说明提交没有生效，保留弹窗让用户重试。

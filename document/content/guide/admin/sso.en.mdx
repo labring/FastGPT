@@ -629,6 +629,27 @@ FastGPT provides the following standard interfaces:
 3. https://example.com/org/list - Get the organization list
 4. https://example.com/user/list - Get the member list
 
+### Mapping SSO member names, login IDs, and employee numbers (important)
+
+`username` and `memberName` have different responsibilities:
+
+| Field | Meaning | Example |
+| --- | --- | --- |
+| `username` | Stable login identifier with the namespace prefix required by the integration | `corp-E00123` |
+| `memberName` | Display name, typically the directory's full name or an explicitly chosen display name | `Jane Doe` |
+| Employee number (upstream field) | May construct `username`, but should **not silently count as an explicitly confirmed member name** | `E00123` |
+
+**Check both endpoints independently:**
+
+1. **Interactive SSO login:** `GET /login/oauth/getUserInfo?code=...` should return an intended `memberName` when the identity provider has one. The `username` field alone does not provide a member name.
+2. **External member synchronization:** `GET /user/list` includes each user's `memberName`. A correct name in this list **does not establish** that the interactive login endpoint returns it. Both endpoints should use consistent names for the same `username`.
+
+The current product policy requires users without a valid member name to complete the name prompt. **The prompt must not prefill a fallback login ID or employee number and allow one-click confirmation that marks it as an explicitly set member name.**
+
+Administrators should configure the source of `memberName` in the **SSO adapter or upstream identity provider mapping**, for example using the directory's `display_name`. If an organization **deliberately uses employee IDs as display names**, it may explicitly map that upstream field to `memberName`, rather than relying on an implicit fallback.
+
+**Troubleshooting:** If a user has a directory name but still sees the mandatory prompt, verify that the actual interactive SSO login response contains a valid `memberName` (1–20 characters after trimming), then compare it with `/user/list`. Do not expose authorization codes, tokens, or sensitive user data in logs.
+
 ### Get SSO Login Redirect URL
 
 Returns a redirect login URL. FastGPT will automatically redirect to this URL. The redirect_uri is automatically appended to the URL query string.

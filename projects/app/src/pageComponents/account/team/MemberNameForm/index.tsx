@@ -14,6 +14,8 @@ export type MemberNameFormModalProps = {
   /** 是否允许取消关闭；强制补齐场景必须为 false，避免用户跳过待补齐状态。 */
   dismissible?: boolean;
   placeholder?: string;
+  /** 可选说明文字：帮助区分登录账号、工号和成员显示名。 */
+  helperText?: string;
   /** 提交并刷新用户信息后回调，参数是刷新后的用户信息；不回调即可保留弹窗等待重试。 */
   onSubmitted: (userInfo: UserType | null) => void;
   onClose?: () => void;
@@ -28,6 +30,7 @@ const MemberNameFormModal = ({
   defaultName,
   dismissible = true,
   placeholder,
+  helperText,
   onSubmitted,
   onClose
 }: MemberNameFormModalProps) => {
@@ -97,6 +100,11 @@ const MemberNameFormModal = ({
           }}
         />
         {showNameError && <FormErrorMessage fontSize="mini">{nameError}</FormErrorMessage>}
+        {helperText && (
+          <Box mt={2} fontSize="sm" color="myGray.600">
+            {helperText}
+          </Box>
+        )}
       </FormControl>
     </MyModal>
   );

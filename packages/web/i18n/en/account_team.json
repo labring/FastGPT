@@ -111,6 +111,8 @@
   "member_name_label": "Team member name",
   "member_name_placeholder": "Enter your team member name",
   "invite_member_name_placeholder": "Set your name in this team (20 characters max)",
+  "force_member_name_hint": "Your login account or employee ID identifies you. Enter the team member display name according to your organization's naming rules instead of simply confirming the login ID.",
+  "force_member_name_sync_hint": "External member synchronization is enabled. If your organization already stores your name, ask an administrator to check the memberName field returned by the SSO login endpoint. A name in /user/list does not prove it is returned during login. Manual changes may be overwritten by later synchronization.",
   "member_name_required": "Enter a member name",
   "member_name_limit": "Use 20 characters or fewer",
   "join_team_success": "Joined the team successfully",

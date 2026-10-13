@@ -111,6 +111,8 @@
   "member_name_label": "團隊成員名",
   "member_name_placeholder": "請輸入團隊成員名",
   "invite_member_name_placeholder": "請設定您在該團隊內的名稱（不超過20個字符）",
+  "force_member_name_hint": "登入帳號或工號僅用於身分識別。請依所屬組織的命名規則填寫團隊成員顯示名稱，不要直接將登入帳號當作已確認姓名。",
+  "force_member_name_sync_hint": "目前使用外部成員同步。如果企業系統已有姓名，請聯絡管理員檢查 SSO 登入介面的 memberName 欄位；/user/list 回傳姓名不代表登入介面也已回傳。手動填寫的姓名可能被後續同步覆寫。",
   "member_name_required": "請輸入成員名",
   "member_name_limit": "請控制字符數在20以內",
   "join_team_success": "加入團隊成功",
