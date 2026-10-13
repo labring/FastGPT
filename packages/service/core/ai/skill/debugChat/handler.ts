@@ -37,7 +37,6 @@ import { assertAuthModels } from '../../../../support/permission/model/auth';
 import { authSkill } from '../../../../support/permission/skill/auth';
 import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
-import type { NodeApiRequest, NodeApiResponse } from '../../../../types/http';
 
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { updateChatGenerateStatus } from '../../../chat/chatGenerateStatus';
