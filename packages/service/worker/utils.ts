@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import path from 'path';
 import { getLogger, LogCategories } from '../common/logger';
 import { serviceEnv } from '../env';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 type WorkerTaskOutcome =
   | 'success'
@@ -175,6 +176,65 @@ export class WorkerTaskExecutionTimeoutError extends Error {
     this.name = 'WorkerTaskExecutionTimeoutError';
   }
 }
+
+const WORKER_NETWORK_ERROR_CODES = [
+  'ENOTFOUND',
+  'ECONNREFUSED',
+  'ETIMEDOUT',
+  'ECONNRESET',
+  'EAI_AGAIN',
+  'EHOSTUNREACH',
+  'ENETUNREACH',
+  'ECONNABORTED',
+  'ERR_NETWORK',
+  'ERR_NAME_NOT_RESOLVED'
+];
+
+/**
+ * 校验 Worker 任务执行错误是否属于预期的外部网络/DNS 故障或用户业务异常。
+ * 针对用户提供的外部链接失效（如 ENOTFOUND、ECONNREFUSED 等）降级为 warn，避免污染系统 error 指标；
+ * 但如果涉及 example.com 等未替换的配置占位符，仍保留为 error 便于定位系统配置缺陷。
+ */
+export const isExpectedWorkerTaskError = (error: unknown): boolean => {
+  if (!error) return false;
+
+  const errObj = error as {
+    code?: string;
+    message?: string;
+    name?: string;
+    cause?: { code?: string; message?: string };
+  };
+
+  const message = typeof error === 'string' ? error : errObj.message || '';
+
+  // 配置类占位符错误（如 example.com / seedream.example.com 未替换）仍属于系统配置缺陷，保留 error
+  if (message.includes('example.com')) {
+    return false;
+  }
+
+  if (error instanceof UserError || errObj.name === 'UserError') return true;
+
+  const code = errObj.code || errObj.cause?.code;
+  if (typeof code === 'string' && WORKER_NETWORK_ERROR_CODES.includes(code)) {
+    return true;
+  }
+
+  if (
+    message.includes('ENOTFOUND') ||
+    message.includes('ECONNREFUSED') ||
+    message.includes('ETIMEDOUT') ||
+    message.includes('ECONNRESET') ||
+    message.includes('EAI_AGAIN') ||
+    message.includes('EHOSTUNREACH') ||
+    message.includes('ENETUNREACH') ||
+    message.includes('getaddrinfo') ||
+    message.includes('maximum allowed size')
+  ) {
+    return true;
+  }
+
+  return false;
+};
 
 /*
   多线程任务管理
@@ -784,6 +844,15 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     return item;
   }
 
+  /**
+   * 校验 Worker 任务执行错误是否属于预期的外部网络/DNS 故障或用户业务异常。
+   * 针对用户提供的外部链接失效（如 ENOTFOUND、ECONNREFUSED 等）降级为 warn，避免污染系统 error 指标；
+   * 但如果涉及 example.com 等未替换的配置占位符，仍保留为 error 便于定位系统配置缺陷。
+   */
+  private isExpectedTaskError(error: unknown): boolean {
+    return isExpectedWorkerTaskError(error);
+  }
+
   private completeTask(
     item: WorkerQueueItem<Props>,
     result: { type: 'success' | 'error'; data: unknown }
@@ -803,7 +872,12 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     const resourceSnapshot = this.resourcePolicy?.getResourceSnapshot();
 
     if (result.type === 'error') {
-      this.logger.error('Worker task failed', {
+      const isExpected = this.isExpectedTaskError(result.data);
+      const logFn = isExpected
+        ? this.logger.warn.bind(this.logger)
+        : this.logger.error.bind(this.logger);
+
+      logFn('Worker task failed', {
         eventName: 'worker.task.failed',
         workerName: this.name,
         workerId: item.id,
