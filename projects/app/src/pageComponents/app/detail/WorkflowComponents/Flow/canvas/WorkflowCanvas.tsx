@@ -496,6 +496,7 @@ const WorkflowCanvas = () => {
     handleNodesChange,
     handleEdgeChange,
     onConnectStart,
+    onClickConnectStart,
     onConnectEnd,
     customOnConnect,
     onEdgeMouseEnter,
@@ -568,6 +569,7 @@ const WorkflowCanvas = () => {
           onEdgesChange={handleEdgeChange}
           onConnect={customOnConnect}
           onConnectStart={onConnectStart}
+          onClickConnectStart={onClickConnectStart}
           onConnectEnd={onConnectEnd}
           onEdgeMouseEnter={onEdgeMouseEnter}
           onEdgeMouseLeave={onEdgeMouseLeave}

@@ -62,7 +62,6 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          top: active ? '-14px' : '-10px',
           zIndex: 30,
           ...(showHandle ? {} : { visibility: 'hidden' })
         }}
@@ -79,7 +78,7 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
           border={'4px solid #8774EE'}
           rounded={'xs'}
           bg={'white'}
-          transform={'translate(0,8px) rotate(45deg)'}
+          transform={'rotate(45deg)'}
           pointerEvents={'none'}
         />
       </Handle>
@@ -125,37 +124,38 @@ export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
   const Render = useMemo(() => {
     return (
       <MyTooltip label={t('common:core.workflow.tool.Handle')} shouldWrapChildren={false}>
-        <Handle
-          style={{
-            borderRadius: '0',
-            backgroundColor: 'transparent',
-            border: 'none',
-            width: size,
-            height: size,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            bottom: active ? '-14px' : '-10px',
-            zIndex: 30
-          }}
-          type="source"
-          id={NodeOutputKeyEnum.selectedTools}
-          position={Position.Bottom}
-          onConnect={onConnect}
-        >
-          <Box
-            w={size}
-            h={size}
-            border={'4px solid #8774EE'}
-            rounded={'xs'}
-            bg={'white'}
-            transform={'translate(0,-8px) rotate(45deg)'}
-            pointerEvents={'none'}
-          />
-        </Handle>
+        <Box position="absolute" left="50%" bottom={0} w="0px" h="0px">
+          <Handle
+            style={{
+              borderRadius: '0',
+              backgroundColor: 'transparent',
+              border: 'none',
+              width: size,
+              height: size,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 30
+            }}
+            type="source"
+            id={NodeOutputKeyEnum.selectedTools}
+            position={Position.Bottom}
+            onConnect={onConnect}
+          >
+            <Box
+              w={size}
+              h={size}
+              border={'4px solid #8774EE'}
+              rounded={'xs'}
+              bg={'white'}
+              transform={'rotate(45deg)'}
+              pointerEvents={'none'}
+            />
+          </Handle>
+        </Box>
       </MyTooltip>
     );
-  }, [active, onConnect, size, t]);
+  }, [onConnect, size, t]);
 
   return renderHandle ? Render : null;
 };

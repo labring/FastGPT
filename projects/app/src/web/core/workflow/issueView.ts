@@ -110,11 +110,15 @@ export const collectWorkflowErrorIssues = (runtime: WorkflowRuntimePort) => {
 /**
  * 渲染 Issue 文案：code 查 i18n key，params 交给 i18next 插值。
  *
- * `params.inputName`、`params.nodeName` 和 `params.model` 都是 Issue 产生时确定的插值数据；
- * 不把用户输入或文档字段再次当作翻译 key，避免动态 key 绕过静态收集。
+ * `params.inputName` 可能是模板里的 i18n key，也可能是用户自定义字段名，因此统一交给
+ * i18next 解析；未命中时保留原文。`params.nodeName` 是工作流自身信息，`model` 是纯数据。
  */
 export const renderWorkflowIssueMessage = (issue: WorkflowIssueLike, t: TFunction) => {
   const key = WORKFLOW_ISSUE_I18N_KEYS[issue.code] as any;
   const params = issue.params;
-  return params ? t(key, params) : t(key);
+  if (!params) return t(key);
+  return t(key, {
+    ...params,
+    ...(params.inputName ? { inputName: t(params.inputName as any) } : {})
+  });
 };

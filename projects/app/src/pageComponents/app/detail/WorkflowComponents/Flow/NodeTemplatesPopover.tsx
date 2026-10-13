@@ -106,7 +106,7 @@ const NodeTemplatesPopover = () => {
       <PopoverContent
         position="fixed"
         top={`${handleParams.popoverPosition.y}px`}
-        left={`${handleParams.popoverPosition.x + 10}px`}
+        left={`${handleParams.popoverPosition.x}px`}
         width={popoverWidth}
         height={popoverHeight}
         boxShadow="3px 0 20px rgba(0,0,0,0.2)"

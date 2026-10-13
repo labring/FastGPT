@@ -127,24 +127,26 @@ export const MySourceHandle = React.memo(function MySourceHandle({
       }
       shouldWrapChildren={false}
     >
-      <Handle
-        style={styles}
-        type="source"
-        id={handleId}
-        data-workflow-source-handle-id={handleId}
-        position={position}
-        isConnectableEnd={false}
-      >
-        {showAddIcon && (
-          <MyIcon
-            name={'edgeAdd'}
-            color={'primary.500'}
-            pointerEvents={'none'}
-            w={`${handleAddIconSize}px`}
-            h={`${handleAddIconSize}px`}
-          />
-        )}
-      </Handle>
+      <Box position="absolute" right={0} top="50%" w="0px" h="0px">
+        <Handle
+          style={styles}
+          type="source"
+          id={handleId}
+          data-workflow-source-handle-id={handleId}
+          position={position}
+          isConnectableEnd={false}
+        >
+          {showAddIcon && (
+            <MyIcon
+              name={'edgeAdd'}
+              color={'primary.500'}
+              pointerEvents={'none'}
+              w={`${handleAddIconSize}px`}
+              h={`${handleAddIconSize}px`}
+            />
+          )}
+        </Handle>
+      </Box>
     </MyTooltip>
   );
 });

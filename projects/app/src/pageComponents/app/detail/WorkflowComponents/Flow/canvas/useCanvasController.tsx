@@ -9,6 +9,7 @@ import {
   type NodePositionChange,
   type XYPosition,
   useReactFlow,
+  useStoreApi,
   type NodeRemoveChange,
   type NodeSelectionChange
 } from '@xyflow/react';
@@ -29,7 +30,7 @@ import {
 } from '@/web/core/workflow/editor/session/workflowSession';
 import { useCanvas } from '@/web/core/workflow/editor/react/useWorkflowQueries';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useMemoizedFn } from 'ahooks';
 import { useWorkflowCanvasRendererValue, useWorkflowCanvasValue } from './workflowCanvasContext';
 import { useWorkflowUIValue } from './canvasState';
@@ -449,6 +450,7 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
   const openNodeTemplates = useWorkflowModalValue((v) => v.openNodeTemplates);
 
   const { flowToScreenPosition, getZoom, getNode, getEdge } = useReactFlow<CanvasNode, Edge>();
+  const store = useStoreApi<CanvasNode, Edge>();
   const { isDowningCtrl } = useKeyboard();
   const getNodeDimension = useWorkflowCanvasValue((v) => v.getNodeDimension);
 
@@ -530,43 +532,55 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
     }
   });
 
-  const getTemplatesListPopoverPosition = useMemoizedFn(({ nodeId }: { nodeId: string | null }) => {
-    const node = nodeId ? getNode(nodeId) : undefined;
-    if (!node) return { x: 0, y: 0 };
+  const getTemplatesListPopoverPosition = useMemoizedFn(
+    ({
+      nodeId,
+      handleId,
+      handleRect
+    }: {
+      nodeId: string | null;
+      handleId: string | null;
+      handleRect?: Pick<DOMRect, 'left' | 'right' | 'top' | 'bottom' | 'width' | 'height'>;
+    }) => {
+      const isToolHandle = handleId === NodeOutputKeyEnum.selectedTools;
+      const node = handleRect || !nodeId ? undefined : getNode(nodeId);
+      if (!handleRect && !node) return { x: 0, y: 0 };
 
-    const position = flowToScreenPosition({
-      x: node.position.x,
-      y: node.position.y
-    });
+      const position = node ? flowToScreenPosition(node.position) : { x: 0, y: 0 };
+      const zoom = node ? getZoom() : 0;
+      const nodeWidth = node ? (getNodeDimension(node.id)?.width ?? 0) : 0;
+      let x = handleRect
+        ? isToolHandle
+          ? handleRect.left + handleRect.width / 2 - popoverWidth / 2
+          : handleRect.right + 10
+        : position.x + nodeWidth * zoom + 10;
+      let y = handleRect ? (isToolHandle ? handleRect.bottom + 10 : handleRect.top) : position.y;
 
-    const zoom = getZoom();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
 
-    const nodeWidth = getNodeDimension(node.id)?.width ?? 0;
-    let x = position.x + nodeWidth * zoom;
-    let y = position.y;
+      const margin = 20;
 
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
+      if (x + popoverWidth + margin > viewportWidth) {
+        x = handleRect
+          ? isToolHandle
+            ? viewportWidth - popoverWidth - margin
+            : handleRect.left - popoverWidth - 10
+          : position.x + nodeWidth * zoom - popoverWidth - 30;
+      }
+      x = Math.max(margin, x);
 
-    const margin = 20;
+      if (y + popoverHeight + margin > viewportHeight) {
+        y = Math.max(margin, viewportHeight - popoverHeight - margin);
+      }
 
-    // Check right boundary
-    if (x + popoverWidth + margin > viewportWidth) {
-      x = Math.max(margin, position.x + nodeWidth * zoom - popoverWidth - 30);
+      if (y < margin) {
+        y = margin;
+      }
+
+      return { x, y };
     }
-
-    // Check bottom boundary
-    if (y + popoverHeight + margin > viewportHeight) {
-      y = Math.max(margin, viewportHeight - popoverHeight - margin);
-    }
-
-    // Check top boundary
-    if (y < margin) {
-      y = margin;
-    }
-
-    return { x, y };
-  });
+  );
   const getAddNodePosition = useMemoizedFn(
     ({ nodeId, handleId }: { nodeId: string | null; handleId: string | null }) => {
       const node = nodeId ? getNode(nodeId) : undefined;
@@ -837,7 +851,7 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
 
   /* connect */
   const onConnectStart = useCallback(
-    (event: any, params: OnConnectStartParams) => {
+    (event: MouseEvent | TouchEvent, params: OnConnectStartParams) => {
       const { nodeId, handleId } = params;
       if (!nodeId || params.handleType === 'target') return;
 
@@ -852,47 +866,34 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
         ...params,
         context: runtime?.getPlacementContext({ node: { nodeId, handleId } }) ?? null
       });
-
-      // Check connect or click(If the mouse position remains basically unchanged, it indicates a click)
-      if (params.handleId) {
-        const initialX = event.clientX;
-        const initialY = event.clientY;
-        const startTime = Date.now();
-
-        const handleMouseUp = (moveEvent: MouseEvent) => {
-          document.removeEventListener('mouseup', handleMouseUp);
-
-          const currentX = moveEvent.clientX;
-          const currentY = moveEvent.clientY;
-          const endTime = Date.now();
-          const pressDuration = endTime - startTime;
-
-          if (
-            Math.abs(currentX - initialX) <= 5 &&
-            Math.abs(currentY - initialY) <= 5 &&
-            pressDuration < 500
-          ) {
-            const popoverPosition = getTemplatesListPopoverPosition({ nodeId });
-            const addNodePosition = getAddNodePosition({ nodeId, handleId });
-            openNodeTemplates({
-              ...params,
-              popoverPosition,
-              addNodePosition
-            });
-          }
-        };
-
-        document.addEventListener('mouseup', handleMouseUp);
-      }
     },
-    [
-      runtime,
-      setConnectingEdge,
-      getTemplatesListPopoverPosition,
-      getAddNodePosition,
-      openNodeTemplates,
-      canvas
-    ]
+    [runtime, setConnectingEdge, canvas]
+  );
+
+  const onClickConnectStart = useCallback(
+    (event: MouseEvent | TouchEvent | undefined, params: OnConnectStartParams) => {
+      const { nodeId, handleId } = params;
+      if (!nodeId || !handleId || params.handleType === 'target') return;
+
+      if (runtime?.getNodeView(nodeId)?.isFolded) {
+        canvas.commitGeometry([{ nodeId, isFolded: false }]);
+      }
+
+      const handleElement =
+        event?.target instanceof Element ? event.target.closest('.react-flow__handle') : null;
+      openNodeTemplates({
+        ...params,
+        popoverPosition: getTemplatesListPopoverPosition({
+          nodeId,
+          handleId,
+          handleRect: handleElement?.getBoundingClientRect()
+        }),
+        addNodePosition: getAddNodePosition({ nodeId, handleId })
+      });
+      // XYFlow 在此回调返回后才写入点击起点，微任务中清理以免下次点击被当作连线终点。
+      queueMicrotask(() => store.setState({ connectionClickStartHandle: null }));
+    },
+    [runtime, canvas, getTemplatesListPopoverPosition, getAddNodePosition, openNodeTemplates, store]
   );
   const onConnectEnd = useCallback(() => {
     setConnectingEdge(undefined);
@@ -980,6 +981,7 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
     handleNodesChange,
     handleEdgeChange,
     onConnectStart,
+    onClickConnectStart,
     onConnectEnd,
     onConnect,
     customOnConnect,
