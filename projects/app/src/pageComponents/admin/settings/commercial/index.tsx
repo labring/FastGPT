@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Input, Textarea, SimpleGrid, Text } from '@chakra-ui/react';
 import { useForm, Controller } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 import { useDomainConfig, batchUpdateDomainConfigApi } from '@/web/common/system/useDomainConfig';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
@@ -45,9 +46,11 @@ const CommercialSettingComponent = () => {
 
   const { runAsync: onSaveBatch, loading: isBatchSaving } = useRequest(
     async (formData: CommercialConfigForm) => {
-      // 1. 先做套餐表单校验并拿到数据：若校验失败（返回 undefined）直接中断，不提交任何请求
+      // 1. 先做套餐表单校验并拿到数据：若校验失败（返回 undefined）直接中断，不提交任何请求。
+      // 必须抛 ToastHandledError 而不是 return：return 对 useRequest 是成功 resolve，
+      // 会误弹「保存配置成功」；该错误类在 onError 中被静默跳过（RHF 已给字段级提示）。
       const subPlansData = await plansRef.current?.getSubPlansData();
-      if (subPlansData === undefined) return;
+      if (subPlansData === undefined) throw new ToastHandledError('Plans validation failed');
 
       // 2. 商业配置与套餐合并为单个批量事务请求原子提交：
       // 任一校验失败、revision 冲突或写入异常，整体回滚，杜绝半生效状态。
