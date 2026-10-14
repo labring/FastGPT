@@ -220,14 +220,25 @@ const formatValidationErrors = (errors?: ErrorObject[] | null) =>
  */
 const canStripUndeclaredTopLevelProperties = (
   schema: JSONSchemaInputType
-): schema is JSONSchemaInputType & { properties: Record<string, unknown> } =>
-  schema.type === 'object' &&
-  schema.additionalProperties === false &&
-  !!schema.properties &&
-  !schema.$ref &&
-  !schema.oneOf &&
-  !schema.anyOf &&
-  !schema.allOf;
+): schema is JSONSchemaInputType & { properties: Record<string, unknown> } => {
+  // 兼容 type: ['object', 'null'] 这类可空对象根 schema，它们同样会触发多余字段报错
+  const type = schema.type;
+  const isObjectRoot = type === 'object' || (Array.isArray(type) && type.includes('object'));
+
+  return (
+    isObjectRoot &&
+    schema.additionalProperties === false &&
+    !!schema.properties &&
+    // 以下形态无法用「properties 白名单」安全推断合法字段，一律不剔除：
+    // - $ref/oneOf/anyOf/allOf：候选字段需由分支决定；
+    // - patternProperties：命中正则的键同样是合法字段（如 patternProperties['^x_'] 允许 x_foo）。
+    !schema.$ref &&
+    !schema.oneOf &&
+    !schema.anyOf &&
+    !schema.allOf &&
+    !schema.patternProperties
+  );
+};
 
 /**
  * 就地剔除 schema 未声明的顶层字段。

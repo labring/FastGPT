@@ -476,6 +476,40 @@ describe('JSON Schema runtime validation', () => {
     expect(result.errors.join(' ')).toContain('must NOT have additional properties');
   });
 
+  it('keeps patternProperties fields alongside properties', () => {
+    // patternProperties 命中的键也是合法参数，不能按 properties 白名单剔除（否则静默丢参）
+    const params: Record<string, unknown> = { a: 1, x_foo: 2 };
+
+    const result = validateToolRuntimeParams({
+      jsonSchema: {
+        type: 'object',
+        properties: { a: { type: 'number' } },
+        patternProperties: { '^x_': { type: 'number' } },
+        additionalProperties: false
+      },
+      params
+    });
+
+    expect(result).toEqual({ success: true, errors: [] });
+    expect(params).toEqual({ a: 1, x_foo: 2 });
+  });
+
+  it('strips undeclared fields for nullable object root schemas', () => {
+    const params: Record<string, unknown> = { query: 'fastgpt', unknown: true };
+
+    expect(
+      validateToolRuntimeParams({
+        jsonSchema: {
+          type: ['object', 'null'],
+          properties: { query: { type: 'string' } },
+          additionalProperties: false
+        },
+        params
+      })
+    ).toEqual({ success: true, errors: [] });
+    expect(params).toEqual({ query: 'fastgpt' });
+  });
+
   it('validates root union schemas', () => {
     const jsonSchema = {
       oneOf: [
