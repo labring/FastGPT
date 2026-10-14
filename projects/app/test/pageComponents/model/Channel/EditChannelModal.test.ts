@@ -100,4 +100,18 @@ describe('EditChannelModal channel metadata', () => {
     expect(html).toContain('https://api.openai.com/v1');
     expect(html).not.toContain('https://provider.example.com');
   });
+
+  it('retains Plugin order independently of numeric channel IDs and appends unranked options', () => {
+    mocks.metadata = {
+      1: { ...mocks.metadata[1], order: 2 },
+      2: { name: 'First unranked', defaultBaseUrl: '', keyHelp: '', canCreate: true },
+      8: { name: 'Third', defaultBaseUrl: '', keyHelp: '', canCreate: true, order: 1 },
+      23: { name: 'Second', defaultBaseUrl: '', keyHelp: '', canCreate: true, order: 0 },
+      4: { name: 'Unsupported', defaultBaseUrl: '', keyHelp: '', canCreate: false, order: 0 },
+      99: { name: 'Unranked', defaultBaseUrl: '', keyHelp: '', canCreate: true }
+    };
+    render('team');
+    expect(mocks.options.map(({ value }) => value)).toEqual([23, 8, 1, 2, 99]);
+    expect(mocks.metadata[23].order).toBe(0);
+  });
 });

@@ -71,22 +71,27 @@ const EditChannelModal = ({
   );
   const providerList = useMemo(
     () =>
-      Object.entries(channelProviderMetas).flatMap(([channelId, mapData]) => {
-        if (!mapData.canCreate) return [];
+      Object.entries(channelProviderMetas)
+        .sort(
+          ([, a], [, b]) =>
+            (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER)
+        )
+        .flatMap(([channelId, mapData]) => {
+          if (!mapData.canCreate) return [];
 
-        return [
-          {
-            defaultBaseUrl: mapData.defaultBaseUrl,
-            keyHelp: mapData.keyHelp,
-            icon: mapData.avatar,
-            label: parseI18nString(
-              mapData.displayName ?? mapData.name,
-              i18n.language as localeType
-            ),
-            value: Number(channelId)
-          }
-        ];
-      }),
+          return [
+            {
+              defaultBaseUrl: mapData.defaultBaseUrl,
+              keyHelp: mapData.keyHelp,
+              icon: mapData.avatar,
+              label: parseI18nString(
+                mapData.displayName ?? mapData.name,
+                i18n.language as localeType
+              ),
+              value: Number(channelId)
+            }
+          ];
+        }),
     [channelProviderMetas, i18n.language]
   );
 

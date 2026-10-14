@@ -7,6 +7,7 @@ import { useMemoizedFn, useMount } from 'ahooks';
 import { TrackEventName } from '../common/system/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useUserStore } from '../support/user/useUserStore';
+import { unAuthPagePaths } from '../support/user/constants';
 import {
   setBdVId,
   setFastGPTSem,
@@ -46,12 +47,12 @@ const MARKETING_PARAMS: (keyof MarketingQueryParams)[] = [
   'couponCode'
 ];
 
-/** 登录身份或会话代次变化时刷新配置，常规轮询继续复用当前会话。 */
+/** 公共页面立即加载配置；受保护页面先确认用户身份，再按会话代次刷新与轮询。 */
 export const useInitApp = () => {
   const router = useRouter();
 
   const { loadGitStar, setInitd, feConfigs } = useSystemStore();
-  const { userInfo, authGeneration } = useUserStore();
+  const { authGeneration, isUserInfoInitialized } = useUserStore();
   const [scripts, setScripts] = useState<FastGPTFeConfigsType['scripts']>([]);
   const [title, setTitle] = useState(appClientEnv.systemName);
 
@@ -128,7 +129,9 @@ export const useInitApp = () => {
   });
 
   useRequest(initFetch, {
-    refreshDeps: [userInfo?.username, authGeneration],
+    // 首次恢复 Cookie 会话前不发请求，避免挂载和身份恢复各请求一次。
+    ready: unAuthPagePaths.has(router.pathname) || isUserInfoInitialized,
+    refreshDeps: [authGeneration],
     manual: false,
     pollingInterval: 300000 // 5 minutes refresh
   });

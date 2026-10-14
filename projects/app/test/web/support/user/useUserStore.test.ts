@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { useUserStore as useUserStoreType } from '@/web/support/user/useUserStore';
 import type { UserType } from '@fastgpt/global/support/user/type';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
@@ -11,6 +11,17 @@ const i18nMocks = vi.hoisted(() => ({
   setLangToStorage: vi.fn(),
   getLangMapping: vi.fn((lang: string) => lang)
 }));
+
+const apiMocks = vi.hoisted(() => ({
+  getTokenLogin: vi.fn(),
+  putUserInfo: vi.fn(),
+  getTeamPlanStatus: vi.fn().mockResolvedValue(null)
+}));
+vi.mock('@/web/support/user/api', () => ({
+  getTokenLogin: apiMocks.getTokenLogin,
+  putUserInfo: apiMocks.putUserInfo
+}));
+vi.mock('@/web/support/user/team/api', () => ({ getTeamPlanStatus: apiMocks.getTeamPlanStatus }));
 
 const localStorageMock = vi.hoisted(() => {
   let store: Record<string, string> = {};
@@ -67,8 +78,10 @@ describe('useUserStore', () => {
   beforeEach(async () => {
     vi.resetModules();
     vi.clearAllMocks();
+    apiMocks.getTokenLogin.mockReset();
     localStorageMock.clear();
     vi.stubGlobal('localStorage', localStorageMock);
+    vi.stubGlobal('document', { querySelector: () => null });
     useUserStore = (await import('@/web/support/user/useUserStore')).useUserStore;
 
     useUserStore.setState({
@@ -76,11 +89,13 @@ describe('useUserStore', () => {
       isTeamAdmin: false
     });
   });
+  afterEach(() => vi.unstubAllGlobals());
 
   it('does not persist backend language when setting user info', () => {
     useUserStore.getState().setUserInfo(buildUser('en'));
 
     expect(useUserStore.getState().userInfo?.language).toBe('en');
+    expect(useUserStore.getState().isUserInfoInitialized).toBe(true);
     expect(i18nMocks.getLangMapping).not.toHaveBeenCalled();
     expect(i18nMocks.setLangToStorage).not.toHaveBeenCalled();
   });
@@ -108,11 +123,57 @@ describe('useUserStore', () => {
       await import('@/web/support/user/currentAuthTmbId');
     useUserStore.getState().invalidateAuthSession();
     expect(useUserStore.getState().userInfo).toBeNull();
+    expect(useUserStore.getState().isUserInfoInitialized).toBe(true);
     expect(readMemberId()).toBe(user.team.tmbId);
     useUserStore.getState().setUserInfo(user);
     expect(useUserStore.getState().authGeneration).toBe(generation + 2);
     expect(JSON.parse(localStorageMock.getItem('userStore')!).state).not.toHaveProperty(
       'authGeneration'
     );
+    expect(JSON.parse(localStorageMock.getItem('userStore')!).state).not.toHaveProperty(
+      'isUserInfoInitialized'
+    );
+  });
+
+  it('marks initial identity and its generation ready in one store update', async () => {
+    const user = buildUser('en');
+    let resolveUser!: (user: UserType) => void;
+    apiMocks.getTokenLogin.mockReturnValue(
+      new Promise<UserType>((resolve) => {
+        resolveUser = resolve;
+      })
+    );
+    const snapshots: { generation: number; ready: boolean; userId?: string }[] = [];
+    const unsubscribe = useUserStore.subscribe((state) => {
+      snapshots.push({
+        generation: state.authGeneration,
+        ready: state.isUserInfoInitialized,
+        userId: state.userInfo?._id
+      });
+    });
+    try {
+      const request = useUserStore.getState().initUserInfo();
+      expect(useUserStore.getState().isUserInfoInitialized).toBe(false);
+      resolveUser(user);
+      await expect(request).resolves.toEqual(user);
+      expect(snapshots.filter(({ ready }) => ready)).toEqual([
+        { generation: 1, ready: true, userId: user._id }
+      ]);
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  it('ends initial user loading after a failure and allows a later successful retry', async () => {
+    apiMocks.getTokenLogin.mockRejectedValueOnce(new Error('Network unavailable'));
+    expect(useUserStore.getState().isUserInfoInitialized).toBe(false);
+    await expect(useUserStore.getState().initUserInfo()).resolves.toBeNull();
+    expect(useUserStore.getState().isUserInfoInitialized).toBe(true);
+    expect(useUserStore.getState().authGeneration).toBe(0);
+
+    const user = buildUser('en');
+    apiMocks.getTokenLogin.mockResolvedValueOnce(user);
+    await expect(useUserStore.getState().initUserInfo()).resolves.toEqual(user);
+    expect(useUserStore.getState().authGeneration).toBe(1);
   });
 });

@@ -15,6 +15,7 @@ type State = {
   setEnterpriseAuthNoticeRead: (teamId: string) => void;
 
   userInfo: UserType | null;
+  isUserInfoInitialized: boolean;
   authGeneration: number;
   invalidateAuthSession: () => void;
   isTeamAdmin: boolean;
@@ -49,12 +50,14 @@ export const useUserStore = create<State>()(
         },
 
         userInfo: null,
+        isUserInfoInitialized: false,
         authGeneration: 0,
         /** 立即撤销本地会话；保留跳登录时使用的原成员 ID，避免丢失跨团队跳转校验。 */
         invalidateAuthSession() {
           set((state) => {
             state.authGeneration += 1;
             state.userInfo = null;
+            state.isUserInfoInitialized = true;
             state.isTeamAdmin = false;
           });
         },
@@ -74,6 +77,10 @@ export const useUserStore = create<State>()(
 
             return res;
           } catch (error) {
+            // 网络失败也结束首次身份确认，避免配置初始化永久等待；后续仍可重试登录。
+            set((state) => {
+              state.isUserInfoInitialized = true;
+            });
             console.log('[Init user] error', error);
             return null;
           }
@@ -90,6 +97,8 @@ export const useUserStore = create<State>()(
               state.authGeneration += 1;
             }
             state.userInfo = user ? user : null;
+            // 与身份、会话代次一起更新，首次恢复用户时只触发一次配置请求。
+            state.isUserInfoInitialized = true;
             state.isTeamAdmin = !!user?.team?.permission?.hasManagePer;
           });
         },

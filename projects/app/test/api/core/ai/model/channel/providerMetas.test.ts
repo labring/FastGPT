@@ -37,6 +37,7 @@ describe('GET /api/core/ai/model/channel/providerMetas', () => {
         name: 'OpenAI',
         displayName: global.aiproxyChannelsCache[0].name,
         avatar: 'model/openai',
+        order: 0,
         defaultBaseUrl: 'https://api.openai.com/v1',
         keyHelp: 'sk-*',
         canCreate: true

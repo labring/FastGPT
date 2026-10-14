@@ -18,7 +18,7 @@ import { getModelProviderMetadata } from '../provider/controller';
 
 /**
  * 合并上游表单配置与 Plugin 展示元数据，不返回实例渠道或密钥。
- * 展示元数据每次读取最新缓存；仅两边均存在的类型可创建，历史类型仍可展示。
+ * 展示元数据和顺序每次读取最新缓存；仅两边均存在的类型可创建，历史类型仍可展示。
  */
 export const getChannelTypeMetas = async (): Promise<ProviderMetasResponse> => {
   const typeMetas = await getCachedTypeMetas(() => aiProxyClient.getTypeMetas());
@@ -34,7 +34,7 @@ export const getChannelTypeMetas = async (): Promise<ProviderMetasResponse> => {
     ])
   );
 
-  for (const channel of getModelProviderMetadata().aiproxyChannels ?? []) {
+  for (const [order, channel] of (getModelProviderMetadata().aiproxyChannels ?? []).entries()) {
     const meta = typeMetas[channel.channelId];
     result[channel.channelId] = {
       name: meta?.name ?? channel.name.en,
@@ -42,6 +42,8 @@ export const getChannelTypeMetas = async (): Promise<ProviderMetasResponse> => {
       keyHelp: meta?.keyHelp ?? '',
       displayName: channel.name,
       avatar: channel.avatar,
+      // 数字键对象会按 ID 遍历，显式保留原数组顺序供前端排序。
+      order,
       // SDK 尚未声明官网字段，兼容 Plugin 响应中附带的字符串值。
       website:
         'website' in channel && typeof channel.website === 'string' ? channel.website : undefined,

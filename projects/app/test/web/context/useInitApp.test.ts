@@ -23,7 +23,8 @@ const mocks = vi.hoisted(() => ({
   setFastGPTSem: vi.fn(),
   setCouponCode: vi.fn(),
   userInfo: null as { username: string } | null,
-  authGeneration: 0
+  authGeneration: 0,
+  isUserInfoInitialized: false
 }));
 
 vi.mock('next/router', () => ({
@@ -47,7 +48,11 @@ vi.mock('@/web/common/system/useSystemStore', () => ({
 }));
 
 vi.mock('@/web/support/user/useUserStore', () => ({
-  useUserStore: () => ({ userInfo: mocks.userInfo, authGeneration: mocks.authGeneration })
+  useUserStore: () => ({
+    userInfo: mocks.userInfo,
+    authGeneration: mocks.authGeneration,
+    isUserInfoInitialized: mocks.isUserInfoInitialized
+  })
 }));
 
 vi.mock('@/web/support/marketing/utils', () => ({
@@ -90,8 +95,10 @@ describe('useInitApp marketing params inside AppShell', () => {
     vi.clearAllMocks();
     mocks.router.isReady = false;
     mocks.router.query = {};
+    mocks.router.pathname = '/';
     mocks.userInfo = null;
     mocks.authGeneration = 0;
+    mocks.isUserInfoInitialized = false;
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -99,6 +106,7 @@ describe('useInitApp marketing params inside AppShell', () => {
 
   afterEach(async () => {
     await act(async () => root.unmount());
+    vi.useRealTimers();
     container.remove();
     window.close();
     vi.unstubAllGlobals();
@@ -172,16 +180,84 @@ describe('useInitApp marketing params inside AppShell', () => {
     });
   });
 
-  it('refreshes initialization on same-account re-login without waiting for the polling interval', async () => {
+  it.each([true, false])(
+    'waits for protected-page user initialization and requests once when authenticated=%s',
+    async (authenticated) => {
+      vi.mocked(useRequest).mockImplementation(ahooksUseRequest);
+      mocks.router.isReady = true;
+      mocks.router.pathname = '/dashboard/agent';
+      await render();
+      expect(clientInitData).not.toHaveBeenCalled();
+
+      mocks.isUserInfoInitialized = true;
+      if (authenticated) {
+        mocks.userInfo = { username: 'member' };
+        mocks.authGeneration = 1;
+      }
+      await render();
+      expect(clientInitData).toHaveBeenCalledTimes(1);
+
+      mocks.router.pathname = '/dashboard/dataset';
+      await render();
+      expect(clientInitData).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it('loads public login configuration immediately and refreshes after login and logout', async () => {
     vi.mocked(useRequest).mockImplementation(ahooksUseRequest);
     mocks.router.isReady = true;
+    mocks.router.pathname = '/login';
+    await render();
+    expect(clientInitData).toHaveBeenCalledTimes(1);
+
     mocks.userInfo = { username: 'member' };
     mocks.authGeneration = 1;
+    mocks.isUserInfoInitialized = true;
+    mocks.router.pathname = '/dashboard/agent';
+    await render();
+    expect(clientInitData).toHaveBeenCalledTimes(2);
+
+    // 退出已明确撤销身份；即使尚未跳离受保护页面，也要开始刷新匿名配置。
+    mocks.userInfo = null;
+    mocks.authGeneration = 2;
+    await render();
+    expect(clientInitData).toHaveBeenCalledTimes(3);
+  });
+
+  it.each(['/price', '/chat/share', '/apidoc/devapi'])(
+    'loads %s without waiting for user initialization',
+    async (pathname) => {
+      vi.mocked(useRequest).mockImplementation(ahooksUseRequest);
+      mocks.router.isReady = true;
+      mocks.router.pathname = pathname;
+      await render();
+      expect(clientInitData).toHaveBeenCalledTimes(1);
+
+      // 匿名身份确认不会改变会话，也不应重复请求。
+      mocks.isUserInfoInitialized = true;
+      await render();
+      expect(clientInitData).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it('refreshes same-account sessions and retains five-minute polling', async () => {
+    vi.useFakeTimers();
+    vi.mocked(useRequest).mockImplementation(ahooksUseRequest);
+    mocks.router.isReady = true;
+    mocks.router.pathname = '/dashboard/agent';
+    mocks.userInfo = { username: 'member' };
+    mocks.authGeneration = 1;
+    mocks.isUserInfoInitialized = true;
     await render();
     expect(clientInitData).toHaveBeenCalledTimes(1);
 
     mocks.authGeneration = 2;
     await render();
     expect(clientInitData).toHaveBeenCalledTimes(2);
+
+    await act(async () => vi.advanceTimersByTimeAsync(299999));
+    expect(clientInitData).toHaveBeenCalledTimes(2);
+    await act(async () => vi.advanceTimersByTimeAsync(1));
+    expect(clientInitData).toHaveBeenCalledTimes(3);
   });
 });

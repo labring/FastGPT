@@ -189,7 +189,7 @@ export type ListChannelsResponse = z.infer<typeof ListChannelsResponseSchema>;
  * API: 获取渠道类型展示与表单元数据
  * Route: GET /api/core/ai/model/channel/providerMetas
  * Method: GET
- * Description: 登录用户按需获取协议名称、图标、官网、默认地址及 Key 提示
+ * Description: 登录用户按需获取协议名称、排序、图标、官网、默认地址及 Key 提示
  * Tags: ['Model', 'Channel', 'Read']
  * ============================================================================ */
 export const ProviderMetaItemSchema = z.object({
@@ -207,6 +207,10 @@ export const ProviderMetaItemSchema = z.object({
   }),
   avatar: z.string().optional().meta({ description: '协议图标', example: 'model/openai' }),
   website: z.string().optional().meta({ description: '协议官网', example: 'https://openai.com' }),
+  order: IntSchema.nonnegative().optional().meta({
+    description: 'Plugin 协议目录中的原始顺序，从 0 开始；缺省时排列在有顺序的类型之后',
+    example: 0
+  }),
   canCreate: z
     .boolean()
     .meta({ description: '上游支持且有展示元数据时允许作为新建渠道选项', example: true })

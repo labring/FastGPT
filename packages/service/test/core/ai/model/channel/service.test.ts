@@ -97,6 +97,7 @@ describe('getChannelTypeMetas', () => {
         keyHelp: 'sk-*',
         displayName: name,
         avatar: 'custom.svg',
+        order: 0,
         website: 'https://custom.example.com',
         canCreate: true
       },
@@ -106,6 +107,7 @@ describe('getChannelTypeMetas', () => {
         keyHelp: '',
         displayName: name,
         avatar: 'legacy.svg',
+        order: 1,
         website: undefined,
         canCreate: false
       },
@@ -116,6 +118,7 @@ describe('getChannelTypeMetas', () => {
         keyHelp: '',
         displayName: name,
         avatar: 'bad-website.svg',
+        order: 2,
         website: undefined,
         canCreate: false
       }
@@ -124,7 +127,8 @@ describe('getChannelTypeMetas', () => {
 
     // 上游缓存命中时，Plugin 的展示更新仍须立即生效。
     global.aiproxyChannelsCache[0].avatar = 'updated.svg';
-    expect((await getChannelTypeMetas())[1].avatar).toBe('updated.svg');
+    global.aiproxyChannelsCache.reverse();
+    expect((await getChannelTypeMetas())[1]).toMatchObject({ avatar: 'updated.svg', order: 2 });
     expect(mocks.getTypeMetas).toHaveBeenCalledTimes(1);
   });
 
