@@ -275,6 +275,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       {!!editFolder && (
         <EditFolderModal
           {...editFolder}
+          showInheritPermission={!!parentId}
           onClose={() => setEditFolder(undefined)}
           onCreate={(data) => onCreateFolder({ ...data, parentId, type: AppTypeEnum.folder })}
           onEdit={({ id, ...data }) => onUpdateApp(id, data)}

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { dispatchTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const {
   authAppByTmbIdMock,
@@ -295,6 +296,35 @@ describe('dispatchTool runtime toolset auth', () => {
       secretsVal: {}
     });
     runToolStreamMock.mockResolvedValue({ output: { ok: true } });
+  });
+
+  it('signs the system-tool invoke token as the runtime caller, not the app owner', async () => {
+    const props = createDispatchToolProps({ systemTool: { toolId: 'systemTool-search' } });
+    props.runningAppInfo = {
+      ...props.runningAppInfo,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app-id',
+      teamId: 'owner-team',
+      tmbId: 'app-owner-tmb'
+    };
+    props.runningUserInfo = {
+      ...props.runningUserInfo,
+      teamId: 'caller-team',
+      tmbId: 'caller-tmb'
+    };
+
+    await dispatchTool(props);
+
+    const token = runToolStreamMock.mock.calls[0][0].systemVar.invokeToken as string;
+    const [, payload] = token.split('.');
+    const tokenPayload = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+
+    expect(tokenPayload).toMatchObject({
+      teamId: 'caller-team',
+      tmbId: 'caller-tmb',
+      uId: 'uid',
+      appId: 'app-id'
+    });
   });
 
   it.each([

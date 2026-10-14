@@ -23,6 +23,7 @@ import {
 } from '../../../../support/permission/collaborator.schema';
 import { AppListSortEnum } from '../../../../core/app/constants';
 import { BoolSchema, IntSchema } from '../../../../common/zod';
+import { PaginationPageSizeSchema } from '../../../api';
 
 const IdSchema = z.string().min(1).meta({ description: '资源 ID' });
 const SandboxInstanceKeySchema = z.string().min(1).describe('FastGPT sandbox instance key');
@@ -43,7 +44,7 @@ const createListSkillsQuerySchema = () =>
     parentId: NullableParentIdSchema,
     offset: IntSchema.optional().describe('偏移量'),
     page: z.coerce.number().int().positive().optional().describe('页码'),
-    pageSize: z.coerce.number().int().positive().optional().describe('每页数量'),
+    pageSize: PaginationPageSizeSchema.optional(),
     withAppCount: BoolSchema.optional().meta({
       example: true,
       description: '是否返回引用应用数量'
@@ -418,7 +419,7 @@ export type ExportSkillQuery = z.infer<typeof ExportSkillQuerySchema>;
 export const ListSkillVersionsBodySchema = z.object({
   skillId: IdSchema,
   pageNum: z.number().int().positive().optional().describe('页码，从 1 开始'),
-  pageSize: z.number().int().positive().describe('每页数量'),
+  pageSize: PaginationPageSizeSchema,
   isCurrent: z.boolean().optional().describe('筛选是否为当前版本')
 });
 export type ListSkillVersionsBody = z.infer<typeof ListSkillVersionsBodySchema>;

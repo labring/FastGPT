@@ -1,5 +1,6 @@
 import { getTeamMembers } from './api';
 import type { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import { PaginationPageSizeLimit } from '@fastgpt/global/openapi/api';
 
 /**
  * 分页读取成员编辑所需的完整列表，只在数量一致且成员 ID 不重复时返回。
@@ -20,7 +21,7 @@ export const getAllTeamMembers = async (
   while (true) {
     controller.signal.throwIfAborted();
     const response = await getTeamMembers(
-      { ...params, pageSize: 1000, offset: members.length },
+      { ...params, pageSize: PaginationPageSizeLimit, offset: members.length },
       controller
     );
     controller.signal.throwIfAborted();

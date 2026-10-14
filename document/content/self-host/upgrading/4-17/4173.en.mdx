@@ -18,13 +18,17 @@ This upgrade does not include new system migration scripts. Simply update the im
 ## 🚀 New Features
 
 1. Added support for limited HTML rendering in the Markdown component and optimized interactions across components.
-2. Supported choosing whether to inherit permissions by default when creating Dataset folders.
-3. Supported configuring dedicated AI models and channels for workspace members, improving multi-tenant and member-level model resource isolation and authorization with deep AI Proxy integration.
+2. Added an option to inherit parent permissions when creating App, Tool, and Dataset folders.
+3. Added support for dedicated AI models and channels for team members, improving multi-tenant and member-level model resource isolation and authorization with deep AI Proxy integration.
 
 ## ⚙️ Optimizations
 
 1. Unified padding and spacing for App, Skill, Dataset, and Tool cards to enhance visual consistency.
 2. Aligned permission metadata and added related App display in the Skill management dashboard.
+3. Lowered the log level to warning for model requests interrupted by user cancellation or health checks, keeping them out of model service error metrics. These interruptions are no longer reported as API key errors when using a personal OpenAI API key.
+4. System migration dependency errors now identify the prerequisite task in the current interface language, making it easier to run or retry tasks in the required order.
+5. Changed the "username" label to "member name" in team member management to distinguish it from the login account.
+6. Improved classification of external file URLs in Workflows. URLs without a filename or extension can now be classified using response headers and a limited content probe. AI Chat, Agents, Tool calls, and document reading share the same classification results, and document parsing reuses the detected filename.
 
 ## 🐛 Bug Fixes
 
@@ -33,3 +37,4 @@ This upgrade does not include new system migration scripts. Simply update the im
 3. Fixed JSON serialization errors when MCP tool input schemas contain recursive circular references (such as `{ $ref: '#' }`).
 4. Fixed a maximum call stack size exceeded error caused by self-recursion in the `InvokeProcessor` session getter.
 5. Fixed batch creation failures for Agent team members caused by unordered concurrency.
+6. Fixed an issue where NextAPI proxying Pro API streamed or raw responses without Content-Type (such as WeChat login callbacks) would append a default JSON envelope before the stream finished, corrupting the response.
