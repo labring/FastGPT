@@ -1,10 +1,7 @@
 import { GET } from '@/web/common/api/request';
 import type { GetSystemInitDataResponse } from '@fastgpt/global/openapi/common/system/api';
-export const getSystemInitData = (bufferId?: string, pathname?: string) =>
-  GET<GetSystemInitDataResponse>('/common/system/getInitData', {
-    bufferId,
-    ...(pathname !== undefined && { pathname })
-  });
+export const getSystemInitData = (bufferId?: string) =>
+  GET<GetSystemInitDataResponse>('/common/system/getInitData', { bufferId });
 
 /* 活动 banner */
 export const getOperationalAd = () =>

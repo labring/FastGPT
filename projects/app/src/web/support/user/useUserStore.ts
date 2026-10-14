@@ -1,3 +1,4 @@
+import { resetUserModelCatalogAfterLogin } from '@/web/core/ai/model/useUserModelStore';
 import { create, devtools, persist, immer } from '@fastgpt/web/common/zustand';
 
 import type { UserUpdateParams } from '@/types/user';
@@ -78,8 +79,9 @@ export const useUserStore = create<State>()(
             return null;
           }
         },
-        /** 恢复 Cookie 用户和资料不撤销首屏请求；显式新登录或退出才使旧响应失效。 */
+        /** 恢复 Cookie 用户和资料不撤销首屏请求；显式新会话才使旧响应失效，登录成功同时清理模型目录及退出保护。 */
         setUserInfo(user: UserType | null, newSession = false) {
+          if (newSession && user) resetUserModelCatalogAfterLogin();
           setCurrentAuthTmbId(user?.team?.tmbId);
           set((state) => {
             if (newSession || (state.userInfo && !user)) {

@@ -60,7 +60,7 @@ const CancelAccountPage = () => {
       status: 'success',
       title: t('account_info:account_cancellation_submit_success', '注销提交成功')
     });
-    setUserInfo(null);
+    setUserInfo(null, true);
     void router.replace('/login?lastRoute=/account/cancel');
   }, [router, setUserInfo, t, toast]);
 
@@ -145,7 +145,7 @@ const CancelAccountPage = () => {
   // 验证页返回则回到账号信息页继续注销流程。
   const onBack = useCallback(() => {
     if (isPendingView) {
-      setUserInfo(null);
+      setUserInfo(null, true);
       void router.replace('/login');
       return;
     }

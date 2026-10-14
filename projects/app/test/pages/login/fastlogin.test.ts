@@ -19,17 +19,17 @@ const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
   t: (key: string) => key,
   resolveLoginRedirect: vi.fn(),
-  resetModelCatalog: vi.fn(),
-  initClientAfterLogin: vi.fn()
+  resetModelCatalog: vi.fn()
 }));
 
 vi.mock('next/router', () => ({ useRouter: () => mocks.router }));
 vi.mock('@/web/support/user/useUserStore', () => ({
-  useUserStore: () => ({ setUserInfo: mocks.setUserInfo })
+  useUserStore: Object.assign(() => ({ setUserInfo: mocks.setUserInfo }), {
+    getState: () => ({ setUserInfo: mocks.setUserInfo })
+  })
 }));
 vi.mock('@/web/support/user/auth', () => ({
-  clearToken: mocks.clearToken,
-  initClientAfterLogin: mocks.initClientAfterLogin
+  clearToken: mocks.clearToken
 }));
 vi.mock('@/web/support/user/api', () => ({ postFastLogin: mocks.postFastLogin }));
 vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
@@ -115,7 +115,7 @@ describe('FastLogin inside the CSR route gate', () => {
       fallbackRoute: '/app/detail?appId=app-1',
       lastTmbId: 'member-1'
     });
-    expect(mocks.initClientAfterLogin).toHaveBeenCalledExactlyOnceWith(user);
+    expect(mocks.setUserInfo).toHaveBeenCalledExactlyOnceWith(user, true);
     await act(async () => vi.advanceTimersByTimeAsync(100));
     expect(mocks.router.push).toHaveBeenCalledExactlyOnceWith('/dashboard/agent');
   });

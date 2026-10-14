@@ -113,24 +113,24 @@ describe('initStaticData through the real initialization pipeline', () => {
     useSystemStore.setState({ initDataBufferId: 'unAuth_config-1', feConfigs: global.feConfigs });
 
     // 旧缓存必须被整体替换，返回值、Store 和持久化中都不能残留旧私有字段。
-    const { feConfigs: publicConfig } = await clientInitData(3, '/chat');
+    const { feConfigs: publicConfig } = await clientInitData();
     expect(publicConfig).not.toHaveProperty('payConfig');
     expect(publicConfig).not.toHaveProperty('futurePrivateField');
-    expect(publicConfig).not.toHaveProperty('agentSandboxProxyUrl');
-    expect(publicConfig).not.toHaveProperty('limit');
-    expect(publicConfig.uploadFileMaxSize).toBe(1000);
+    expect(publicConfig.agentSandboxProxyUrl).toBe('https://sandbox.example.com/');
+    expect(publicConfig.limit).toEqual({ agentSandboxMaxFileBytes: 2 * 1024 ** 2 });
+    expect(publicConfig.uploadFileMaxSize).toBe(32);
     expect(useSystemStore.getState().feConfigs).toEqual(publicConfig);
-    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v4_chat_config-1');
+    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v5_config-1');
     expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(publicConfig);
 
-    const cached = await clientInitData(3, '/chat');
+    const cached = await clientInitData();
     expect(cached.feConfigs).toBe(useSystemStore.getState().feConfigs);
     expect(cached.feConfigs).toEqual(publicConfig);
 
     // 登录切换缓存命名空间；随后登录态命中缓存时，缺省的套餐仍须保留。
     mocks.authenticated = true;
     useUserStore.setState({ authGeneration: 1 });
-    await clientInitData(3, '/chat');
+    await clientInitData();
     const authenticated = useSystemStore.getState();
     expect(authenticated.feConfigs.payConfig).toEqual({ wx: true });
     expect(authenticated.feConfigs).toMatchObject({
@@ -149,7 +149,7 @@ describe('initStaticData through the real initialization pipeline', () => {
       authenticated.feConfigs
     );
 
-    await clientInitData(3, '/chat');
+    await clientInitData();
     expect(useSystemStore.getState().subPlans).toBe(authenticated.subPlans);
     expect(JSON.parse(storage.get('globalStore')!).state).not.toHaveProperty('aiproxyChannels');
     expect(JSON.parse(storage.get('globalStore')!).state).not.toHaveProperty(
@@ -159,22 +159,18 @@ describe('initStaticData through the real initialization pipeline', () => {
     // 退出后再次整体替换，防止用 merge 将登录态配置留在本地。
     mocks.authenticated = false;
     useUserStore.getState().invalidateAuthSession();
-    const anonymous = await clientInitData(3, '/chat');
+    const anonymous = await clientInitData();
     expect(anonymous.feConfigs).toEqual(publicConfig);
     expect(useSystemStore.getState().feConfigs).toEqual(publicConfig);
-    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v4_chat_config-1');
+    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v5_config-1');
     expect(useSystemStore.getState().systemVersion).toBe('4.17.3');
     expect(useSystemStore.getState().authenticatedConfigGeneration).toBeUndefined();
     expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(publicConfig);
 
     expect(mocks.GET.mock.calls).toEqual(
-      [
-        'unAuth_config-1',
-        'unAuth_v4_chat_config-1',
-        'unAuth_v4_chat_config-1',
-        'config-1',
-        'config-1'
-      ].map((bufferId) => ['/common/system/getInitData', { bufferId, pathname: '/chat' }])
+      ['unAuth_config-1', 'unAuth_v5_config-1', 'unAuth_v5_config-1', 'config-1', 'config-1'].map(
+        (bufferId) => ['/common/system/getInitData', { bufferId }]
+      )
     );
   });
 
@@ -198,7 +194,7 @@ describe('initStaticData through the real initialization pipeline', () => {
       expect(await olderRequest).toEqual(latest);
 
       expect(useSystemStore.getState().initDataBufferId).toBe(
-        login ? 'config-1' : 'unAuth_v4_base_config-1'
+        login ? 'config-1' : 'unAuth_v5_config-1'
       );
       expect(Boolean(useSystemStore.getState().feConfigs.payConfig)).toBe(login);
       expect(useSystemStore.getState().authenticatedConfigGeneration).toBe(
@@ -247,7 +243,7 @@ describe('initStaticData through the real initialization pipeline', () => {
     expect(persisted.state).not.toHaveProperty('aiproxyChannels');
   });
 
-  it('supports navigation from anonymous pricing to sharing and real documentation/sandbox consumers', async () => {
+  it('keeps public plans and real documentation/sandbox consumers available across cache hits', async () => {
     mocks.referer = 'https://app.example.com/price';
     await clientInitData();
     const { subPlans } = useSystemStore.getState();
@@ -266,40 +262,11 @@ describe('initStaticData through the real initialization pipeline', () => {
     expect(useSystemStore.getState().feConfigs.limit?.agentSandboxMaxFileBytes).toBe(2 * 1024 ** 2);
   });
 
-  it('replaces each anonymous page profile and persistence instead of retaining fields from the previous page', async () => {
-    global.feConfigs.login_method = ['email'];
-    const pages = ['/login', '/price', '/chat/share', '/chat', '/apidoc/devapi', '/login'];
-    for (const pathname of pages) {
-      const { feConfigs } = await clientInitData(3, pathname);
-      expect(useSystemStore.getState().feConfigs).toEqual(feConfigs);
-      expect(useSystemStore.getState().initDataPage).toBe(
-        pathname === '/chat/share'
-          ? 'share'
-          : pathname === '/apidoc/devapi'
-            ? 'base'
-            : pathname.slice(1)
-      );
-      expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(feConfigs);
-      expect(feConfigs.login_method).toEqual(
-        ['/login', '/chat'].includes(pathname) ? ['email'] : undefined
-      );
-      expect(feConfigs.agentSandboxProxyUrl).toBe(
-        pathname === '/chat/share' ? 'https://sandbox.example.com/' : undefined
-      );
-      expect(feConfigs.uploadFileMaxSize).toBe(
-        ['/price', '/chat/share'].includes(pathname) ? 32 : 1000
-      );
-    }
-    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v4_login_config-1');
-    expect(mocks.GET.mock.calls.map(([, query]) => query.pathname)).toEqual(pages);
-    expect(JSON.parse(storage.get('globalStore')!).state).not.toHaveProperty('initDataPage');
-  });
-
   it('preserves zero upload limits in memory and persistence across an anonymous cache hit', async () => {
     global.feConfigs.uploadFileMaxAmount = 0;
     global.feConfigs.uploadFileMaxSize = 0;
-    await clientInitData(3, '/chat/share');
-    await clientInitData(3, '/chat/share');
+    await clientInitData();
+    await clientInitData();
     expect(useSystemStore.getState().feConfigs).toMatchObject({
       uploadFileMaxAmount: 0,
       uploadFileMaxSize: 0

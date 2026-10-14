@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { clearToken, initClientAfterLogin } from '@/web/support/user/auth';
+import { clearToken } from '@/web/support/user/auth';
 import { oauthLogin } from '@/web/support/user/api';
 import { submitAccountCancellation } from '@/web/support/user/account/cancellation/api';
 import { authorizePasswordChange } from '@/web/support/user/account/password/api';
@@ -67,7 +67,7 @@ const provider = () => {
           })
         : undefined;
 
-      await initClientAfterLogin(res.user);
+      useUserStore.getState().setUserInfo(res.user, true);
 
       if (targetRoute) {
         router.replace(targetRoute);
@@ -99,7 +99,7 @@ const provider = () => {
             status: 'success',
             title: t('account_info:account_cancellation_submit_success', '注销提交成功')
           });
-          setUserInfo(null);
+          setUserInfo(null, true);
           setLoginStore(undefined);
           await router.replace('/login?lastRoute=/account/cancel');
           return;

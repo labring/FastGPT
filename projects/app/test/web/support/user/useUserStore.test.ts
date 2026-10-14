@@ -123,11 +123,17 @@ describe('useUserStore', () => {
     // resetModules 后从同一模块实例读取重定向身份。
     const { getCurrentAuthTmbId: readMemberId } =
       await import('@/web/support/user/currentAuthTmbId');
+    const { beginLogout, isLogoutInProgress } = await import('@/web/support/user/logoutState');
+    const { useUserModelStore } = await import('@/web/core/ai/model/useUserModelStore');
+    const modelGeneration = useUserModelStore.getState().loginGeneration;
+    beginLogout();
     useUserStore.getState().invalidateAuthSession();
     expect(useUserStore.getState().userInfo).toBeNull();
     expect(readMemberId()).toBe(user.team.tmbId);
     useUserStore.getState().setUserInfo(user, true);
     expect(useUserStore.getState().authGeneration).toBe(generation + 2);
+    expect(isLogoutInProgress()).toBe(false);
+    expect(useUserModelStore.getState().loginGeneration).toBe(modelGeneration + 1);
     expect(JSON.parse(localStorageMock.getItem('userStore')!).state).not.toHaveProperty(
       'authGeneration'
     );

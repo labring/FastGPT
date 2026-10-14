@@ -6,7 +6,6 @@ import type { FastGPTFeConfigsType, LicenseDataType } from '@fastgpt/global/comm
 import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import type { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { getOperationalAd } from './api';
-import { getInitDataPage } from '@fastgpt/global/common/system/initData';
 
 type LoginStoreType = {
   provider: OAuthEnum;
@@ -55,7 +54,7 @@ type State = {
 
   initDataBufferId?: string;
   authenticatedConfigGeneration?: number;
-  initDataPage?: ReturnType<typeof getInitDataPage>;
+  initConfigGeneration?: number;
   feConfigs: FastGPTFeConfigsType;
   subPlans?: SubPlanType;
   systemVersion: string;
@@ -63,10 +62,7 @@ type State = {
   operationalAd?: { operationalAdImage: string; operationalAdLink: string; id: string };
   loadOperationalAd: () => Promise<void>;
 
-  initStaticData: (
-    e: GetSystemInitDataResponse,
-    context: { authGeneration: number; pathname?: string }
-  ) => void;
+  initStaticData: (e: GetSystemInitDataResponse, context: { authGeneration: number }) => void;
 
   appType?: string;
   setAppType: (e?: string) => void;
@@ -174,7 +170,7 @@ export const useSystemStore = create<State>()(
 
         initDataBufferId: undefined,
         authenticatedConfigGeneration: undefined,
-        initDataPage: undefined,
+        initConfigGeneration: undefined,
         feConfigs: {
           uploadFileMaxSize: 1000,
           uploadFileMaxAmount: 1000
@@ -193,13 +189,12 @@ export const useSystemStore = create<State>()(
             console.log('Get operational ad error', error);
           }
         },
-        /** 就绪标记只存内存，并绑定确认配置的会话和页面；匿名响应撤销登录配置就绪状态。 */
-        initStaticData(res, { authGeneration, pathname }) {
+        /** 就绪标记只存内存，并绑定确认配置的会话；匿名响应撤销登录配置就绪状态。 */
+        initStaticData(res, { authGeneration }) {
           set((state) => {
             state.initDataBufferId = res.bufferId;
+            state.initConfigGeneration = authGeneration;
             state.authenticatedConfigGeneration = res.isAuthenticated ? authGeneration : undefined;
-            // 与配置原子更新，登录组件不能用上一页面的初始化状态抢先执行 SSO。
-            state.initDataPage = pathname === undefined ? undefined : getInitDataPage(pathname);
 
             if (res.feConfigs) {
               // 只补客户端既有上传默认值，不合并上一页字段；响应中的 0 也必须保留。

@@ -30,13 +30,9 @@ export const LoginContainer = ({
   onSuccess: LoginSuccessHandler;
 }) => {
   const router = useRouter();
-  const { initd, feConfigs, initDataPage, authenticatedConfigGeneration } = useSystemStore();
-  // 全局曾初始化不代表当前已有登录配置；/chat 的配置也包含完整登录表单依赖。
-  const loginConfigReady =
-    initd &&
-    (authenticatedConfigGeneration !== undefined ||
-      initDataPage === 'login' ||
-      initDataPage === 'chat');
+  const { initd, feConfigs } = useSystemStore();
+  // 匿名白名单已包含完整登录表单依赖，首次初始化完成即可选择登录方式。
+  const loginConfigReady = initd;
   const { resetChatCache } = useChatStore();
   const { isPc } = useSystem();
   const loginGuideDocUrl = feConfigs?.loginGuideDocUrl?.trim();

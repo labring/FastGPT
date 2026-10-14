@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { useRouter } from 'next/router';
-import { initClientAfterLogin } from '@/web/support/user/auth';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { useMount } from 'ahooks';
 import LoginModal from '@/pageComponents/login/LoginModal';
 import { subRoute } from '@fastgpt/web/common/system/utils';
@@ -36,7 +36,7 @@ const Login = () => {
           })
         : undefined;
 
-      await initClientAfterLogin(res.user);
+      useUserStore.getState().setUserInfo(res.user, true);
 
       if (targetRoute) {
         router.replace(targetRoute);

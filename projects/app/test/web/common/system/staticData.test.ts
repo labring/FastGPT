@@ -80,9 +80,9 @@ describe('clientInitData request snapshots and retries', () => {
       .mockRejectedValueOnce(new Error('Third attempt failed'))
       .mockResolvedValueOnce(response);
 
-    const pending = clientInitData(3, '/chat/share');
+    const pending = clientInitData();
     await vi.advanceTimersByTimeAsync(499);
-    expect(mocks.getSystemInitData).toHaveBeenCalledExactlyOnceWith('buffer_1', '/chat/share');
+    expect(mocks.getSystemInitData).toHaveBeenCalledExactlyOnceWith('buffer_1');
     expect(mocks.initStaticData).not.toHaveBeenCalled();
 
     await vi.advanceTimersByTimeAsync(1);
@@ -94,12 +94,8 @@ describe('clientInitData request snapshots and retries', () => {
     await vi.advanceTimersByTimeAsync(500);
     expect(await pending).toEqual({ feConfigs: response.feConfigs });
     expect(mocks.getSystemInitData).toHaveBeenCalledTimes(4);
-    expect(mocks.getSystemInitData.mock.calls.every((args) => args[1] === '/chat/share')).toBe(
-      true
-    );
     expect(mocks.initStaticData).toHaveBeenCalledExactlyOnceWith(response, {
-      authGeneration: 0,
-      pathname: '/chat/share'
+      authGeneration: 0
     });
   });
 
@@ -145,8 +141,9 @@ describe('clientInitData request snapshots and retries', () => {
         feConfigs: { uploadFileMaxAmount: 3, uploadFileMaxSize: 16, systemTitle: 'newest' }
       };
       mocks.getSystemInitData.mockReturnValueOnce(older.promise).mockResolvedValueOnce(response);
-      const pending = clientInitData(3, '/login');
-      await clientInitData(3, '/chat/share');
+      const pending = clientInitData();
+      mocks.authGeneration += 1;
+      await clientInitData();
 
       if (completion === 'success') {
         older.resolve({
@@ -159,8 +156,7 @@ describe('clientInitData request snapshots and retries', () => {
 
       expect(await pending).toEqual({ feConfigs: response.feConfigs });
       expect(mocks.initStaticData).toHaveBeenCalledExactlyOnceWith(response, {
-        authGeneration: 0,
-        pathname: '/chat/share'
+        authGeneration: 1
       });
       expect(mocks.getSystemInitData).toHaveBeenCalledTimes(2);
       expect(vi.getTimerCount()).toBe(0);
@@ -196,15 +192,32 @@ describe('clientInitData request snapshots and retries', () => {
       .mockResolvedValueOnce(response);
     const pending = clientInitData();
     await vi.advanceTimersByTimeAsync(499);
+    mocks.authGeneration += 1;
     await clientInitData();
     await vi.advanceTimersByTimeAsync(1);
 
     expect(await pending).toEqual({ feConfigs: response.feConfigs });
     expect(mocks.getSystemInitData).toHaveBeenCalledTimes(2);
     expect(mocks.initStaticData).toHaveBeenCalledExactlyOnceWith(response, {
-      authGeneration: 0,
-      pathname: undefined
+      authGeneration: 1
     });
+  });
+
+  it('shares an in-flight request within one session and starts a fresh request after completion', async () => {
+    const response = {
+      isAuthenticated: false,
+      feConfigs: { uploadFileMaxAmount: 3, uploadFileMaxSize: 16 }
+    };
+    const held = deferResponse();
+    mocks.getSystemInitData.mockReturnValueOnce(held.promise).mockResolvedValueOnce(response);
+    const first = clientInitData();
+    const second = clientInitData();
+    expect(second).toBe(first);
+    expect(mocks.getSystemInitData).toHaveBeenCalledTimes(1);
+    held.resolve(response);
+    await first;
+    await clientInitData();
+    expect(mocks.getSystemInitData).toHaveBeenCalledTimes(2);
   });
 
   it('does not restore authenticated data while the logout Cookie is still being cleared', async () => {
@@ -219,16 +232,16 @@ describe('clientInitData request snapshots and retries', () => {
     expect(mocks.initStaticData).not.toHaveBeenCalled();
   });
 
-  it('requests immediately even while logout is pending and relies on server authentication', async () => {
+  it('waits for logout Cookie clearing before requesting anonymous configuration', async () => {
     const logout = deferResponse<void>();
     beginLogout();
     setPendingLogoutRequest(logout.promise);
     const response = { isAuthenticated: false, feConfigs: { systemTitle: 'anonymous' } };
     mocks.getSystemInitData.mockResolvedValueOnce(response);
     const pending = clientInitData();
-    expect(mocks.getSystemInitData).toHaveBeenCalledExactlyOnceWith('buffer_1', undefined);
-    expect(await pending).toEqual({ feConfigs: response.feConfigs });
+    expect(mocks.getSystemInitData).not.toHaveBeenCalled();
     logout.resolve();
+    expect(await pending).toEqual({ feConfigs: response.feConfigs });
     expect(mocks.getSystemInitData).toHaveBeenCalledTimes(1);
   });
 });

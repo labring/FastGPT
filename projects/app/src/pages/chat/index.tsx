@@ -27,8 +27,7 @@ import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import type { GetPaginationRecordsBodyType } from '@fastgpt/global/openapi/core/chat/record/api';
 import { AUTH_ERROR_EVENT_NAME } from '@/web/common/api/request';
-import { clearToken, initClientAfterLogin } from '@/web/support/user/auth';
-import { clientInitData } from '@/web/common/system/staticData';
+import { clearToken } from '@/web/support/user/auth';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
@@ -178,7 +177,7 @@ const ChatContent = (props: ChatPageProps) => {
     };
   }, [currentAppId, currentChatId]);
   const loginSuccess = useCallback(async (res: LoginSuccessResponseType) => {
-    await initClientAfterLogin(res.user);
+    useUserStore.getState().setUserInfo(res.user, true);
   }, []);
 
   // Waiting for user info to be initialized
@@ -229,15 +228,15 @@ const Render = (props: ChatPageProps) => {
   const [isInitedUser, setIsInitedUser] = useState(!props.shouldInitUserInfo);
 
   const loginSuccess = useCallback(async (res: LoginSuccessResponseType) => {
-    await initClientAfterLogin(res.user);
+    useUserStore.getState().setUserInfo(res.user, true);
   }, []);
 
   useEffect(() => {
     const handleAuthError = () => {
       // 全局拦截器已豁免 /chat 跳转；这里同步页面态，触发本页 LoginModal。
-      void Promise.resolve(clearToken())
-        .then(() => clientInitData(3, '/chat'))
-        .catch((error) => console.error('Refresh anonymous chat initialization failed:', error));
+      void Promise.resolve(clearToken()).catch((error) =>
+        console.error('Chat logout failed:', error)
+      );
     };
 
     window.addEventListener(AUTH_ERROR_EVENT_NAME, handleAuthError);

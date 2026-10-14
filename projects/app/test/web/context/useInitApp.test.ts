@@ -25,7 +25,7 @@ const mocks = vi.hoisted(() => ({
   userInfo: null as { username: string } | null,
   authGeneration: 0,
   configAuthenticated: false,
-  loadedPage: undefined as string | undefined
+  initConfigGeneration: undefined as number | undefined
 }));
 
 vi.mock('next/router', () => ({
@@ -40,19 +40,22 @@ vi.mock('@/web/common/system/staticData', () => ({
   clientInitData: vi.fn().mockResolvedValue({ feConfigs: {} })
 }));
 
-vi.mock('@/web/common/system/useSystemStore', () => ({
-  useSystemStore: () => ({
+vi.mock('@/web/common/system/useSystemStore', () => {
+  const state = () => ({
     loadGitStar: vi.fn(),
     setInitd: vi.fn(),
     feConfigs: {},
-    authenticatedConfigGeneration: mocks.configAuthenticated ? mocks.authGeneration : undefined,
-    initDataPage: mocks.loadedPage
-  })
-}));
-
-vi.mock('@/web/support/user/useUserStore', () => ({
-  useUserStore: { getState: () => ({ authGeneration: mocks.authGeneration }) }
-}));
+    authenticatedConfigGeneration: mocks.configAuthenticated
+      ? mocks.initConfigGeneration
+      : undefined,
+    initConfigGeneration: mocks.initConfigGeneration
+  });
+  return { useSystemStore: Object.assign(state, { getState: state }) };
+});
+vi.mock('@/web/support/user/useUserStore', () => {
+  const state = () => ({ userInfo: mocks.userInfo, authGeneration: mocks.authGeneration });
+  return { useUserStore: Object.assign(state, { getState: state }) };
+});
 
 vi.mock('@/web/support/marketing/utils', () => ({
   setBdVId: mocks.setBdVId,
@@ -98,7 +101,11 @@ describe('useInitApp marketing params inside AppShell', () => {
     mocks.userInfo = null;
     mocks.authGeneration = 0;
     mocks.configAuthenticated = false;
-    mocks.loadedPage = undefined;
+    mocks.initConfigGeneration = undefined;
+    vi.mocked(clientInitData).mockImplementation(async () => {
+      mocks.initConfigGeneration = mocks.authGeneration;
+      return { feConfigs: { uploadFileMaxAmount: 1000, uploadFileMaxSize: 1000 } };
+    });
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -186,84 +193,55 @@ describe('useInitApp marketing params inside AppShell', () => {
       vi.mocked(useRequest).mockImplementation(ahooksUseRequest);
       mocks.router.isReady = true;
       mocks.router.pathname = pathname;
+      mocks.configAuthenticated = true;
       await render();
-      expect(clientInitData).toHaveBeenCalledExactlyOnceWith(3, pathname);
+      expect(clientInitData).toHaveBeenCalledExactlyOnceWith();
       mocks.userInfo = { username: 'restored-member' };
       await render();
       expect(clientInitData).toHaveBeenCalledTimes(1);
     }
   );
 
-  it('refreshes anonymous configuration on category changes while retaining reuse within the same category', async () => {
+  it.each([false, true])(
+    'ignores navigation and profile changes and retains periodic refresh when authenticated=%s',
+    async (authenticated) => {
+      vi.useFakeTimers();
+      Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+      vi.mocked(useRequest).mockImplementation(ahooksUseRequest);
+      mocks.router.isReady = true;
+      mocks.configAuthenticated = authenticated;
+      mocks.userInfo = authenticated ? { username: 'member' } : null;
+      await render();
+      for (const pathname of ['/login', '/price', '/chat/share', '/chat', '/dashboard/agent']) {
+        mocks.router.pathname = pathname;
+        await render();
+      }
+      mocks.userInfo = authenticated ? { username: 'member' } : null;
+      await render();
+      expect(clientInitData).toHaveBeenCalledExactlyOnceWith();
+      await act(async () => vi.advanceTimersByTimeAsync(300000));
+      expect(clientInitData).toHaveBeenCalledTimes(2);
+    }
+  );
+
+  it('refreshes once for login, a same-user new session and logout', async () => {
     vi.mocked(useRequest).mockImplementation(ahooksUseRequest);
     mocks.router.isReady = true;
-    mocks.router.pathname = '/login';
     await render();
-    expect(clientInitData).toHaveBeenLastCalledWith(3, '/login');
-
-    mocks.router.query = { lastRoute: '/price' };
-    await render();
-    expect(clientInitData).toHaveBeenCalledTimes(1);
-
-    mocks.router.pathname = '/price';
-    await render();
-    expect(clientInitData).toHaveBeenLastCalledWith(3, '/price');
-    expect(clientInitData).toHaveBeenCalledTimes(2);
-
-    mocks.router.query = { tab: 'extra' };
-    await render();
-    expect(clientInitData).toHaveBeenCalledTimes(2);
-
-    mocks.router.pathname = '/chat/share';
-    await render();
-    expect(clientInitData).toHaveBeenLastCalledWith(3, '/chat/share');
-    expect(clientInitData).toHaveBeenCalledTimes(3);
-
-    mocks.router.pathname = '/chat';
-    await render();
-    expect(clientInitData).toHaveBeenLastCalledWith(3, '/chat');
-    expect(clientInitData).toHaveBeenCalledTimes(4);
-  });
-
-  it('does not request on user, session or timer changes and reuses authenticated data across pages', async () => {
-    vi.useFakeTimers();
-    vi.mocked(useRequest).mockImplementation(ahooksUseRequest);
-    mocks.router.isReady = true;
-    mocks.router.pathname = '/dashboard/agent';
+    mocks.userInfo = { username: 'member' };
+    mocks.authGeneration += 1;
     mocks.configAuthenticated = true;
     await render();
-    mocks.userInfo = { username: 'restored-member' };
-    await render();
-    mocks.router.pathname = '/price';
-    await render();
-    await act(async () => vi.advanceTimersByTimeAsync(600000));
-    expect(clientInitData).toHaveBeenCalledTimes(1);
-    mocks.userInfo = { username: 'another-member' };
+    expect(clientInitData).toHaveBeenCalledTimes(2);
     mocks.authGeneration += 1;
     await render();
-    expect(clientInitData).toHaveBeenCalledTimes(1);
-  });
-
-  it('reuses an anonymous page projection already fetched by an explicit success callback', async () => {
-    vi.mocked(useRequest).mockImplementation(ahooksUseRequest);
-    mocks.router.isReady = true;
-    mocks.router.pathname = '/chat';
+    expect(clientInitData).toHaveBeenCalledTimes(3);
+    mocks.userInfo = null;
+    mocks.authGeneration += 1;
+    mocks.configAuthenticated = false;
     await render();
-    mocks.loadedPage = 'login';
-    mocks.router.pathname = '/login';
+    expect(clientInitData).toHaveBeenCalledTimes(4);
     await render();
-    expect(clientInitData).toHaveBeenCalledTimes(1);
-  });
-
-  it('refreshes page-specific data after an anonymous server response even when local user info remains', async () => {
-    vi.mocked(useRequest).mockImplementation(ahooksUseRequest);
-    mocks.router.isReady = true;
-    mocks.router.pathname = '/price';
-    mocks.userInfo = { username: 'expired-member' };
-    await render();
-    mocks.router.pathname = '/chat/share';
-    await render();
-    expect(clientInitData).toHaveBeenCalledTimes(2);
-    expect(clientInitData).toHaveBeenLastCalledWith(3, '/chat/share');
+    expect(clientInitData).toHaveBeenCalledTimes(4);
   });
 });

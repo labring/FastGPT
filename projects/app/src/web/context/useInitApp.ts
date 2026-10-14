@@ -1,3 +1,4 @@
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { useEffect, useRef } from 'react';
 import { clientInitData } from '@/web/common/system/staticData';
 import { useRouter } from 'next/router';
@@ -5,8 +6,6 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useMemoizedFn, useMount } from 'ahooks';
 import { TrackEventName } from '../common/system/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useUserStore } from '../support/user/useUserStore';
-import { getInitDataPage } from '@fastgpt/global/common/system/initData';
 import {
   setBdVId,
   setFastGPTSem,
@@ -46,18 +45,12 @@ const MARKETING_PARAMS: (keyof MarketingQueryParams)[] = [
   'couponCode'
 ];
 
-/** 首屏直接初始化；匿名跨页面类别补取白名单，身份变化由成功回调主动刷新。 */
+/** 首屏直接初始化；监听身份变化，复用已确认的同一会话配置，资料和页面变化不重复请求。 */
 export const useInitApp = () => {
   const router = useRouter();
 
-  const {
-    loadGitStar,
-    setInitd,
-    feConfigs,
-    authenticatedConfigGeneration,
-    initDataPage: loadedPage
-  } = useSystemStore();
-  const initDataPage = getInitDataPage(router.pathname);
+  const { loadGitStar, setInitd, feConfigs } = useSystemStore();
+  const { userInfo, authGeneration } = useUserStore();
 
   const getPathWithoutMarketingParams = useMemoizedFn(() => {
     const filteredQuery = { ...router.query };
@@ -92,7 +85,7 @@ export const useInitApp = () => {
   const initFetch = useMemoizedFn(async () => {
     const {
       feConfigs: { isPlus }
-    } = await clientInitData(3, router.pathname);
+    } = await clientInitData();
 
     // log fastgpt
     if (!isPlus) {
@@ -132,18 +125,19 @@ export const useInitApp = () => {
   });
 
   const initRequest = useRequest(initFetch, {
-    // 匿名页面切换配置类别时重新投影；相同类别内的导航不重复请求。
-    refreshDeps: [initDataPage],
+    refreshDeps: [userInfo?.username, authGeneration],
     refreshDepsAction: () => {
-      // 登录配置覆盖所有页面；显式成功回调已经更新配置时也不重复请求。
+      const { initConfigGeneration, authenticatedConfigGeneration } = useSystemStore.getState();
+      // 首屏请求可能早于 Cookie 用户恢复；已确认相同身份时直接复用，避免第二次请求。
       if (
-        authenticatedConfigGeneration === useUserStore.getState().authGeneration ||
-        loadedPage === initDataPage
+        initConfigGeneration === authGeneration &&
+        (authenticatedConfigGeneration !== undefined) === !!userInfo
       )
         return;
       initRequest.refresh();
     },
-    manual: false
+    manual: false,
+    pollingInterval: 300000
   });
 
   // Marketing data track

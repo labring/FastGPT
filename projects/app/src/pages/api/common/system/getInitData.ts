@@ -10,32 +10,20 @@ import {
 } from '@fastgpt/global/openapi/common/system/api';
 import { getRuntimeSubPlansConfig } from '@fastgpt/global/support/wallet/sub/utils';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
-import { getInitDataPage } from '@fastgpt/global/common/system/initData';
 
 /** 按会话鉴权返回初始化数据；匿名白名单覆盖登录、价格和分享聊天的公共依赖。 */
 async function handler(
   req: ApiRequestProps,
   _res: NextApiResponse
 ): Promise<GetSystemInitDataResponse> {
-  const { bufferId, pathname } = parseApiInput({
+  const { bufferId } = parseApiInput({
     req,
     querySchema: GetSystemInitDataQuerySchema
   }).query;
   const subPlans = getRuntimeSubPlansConfig(global.subPlans);
-  // 新客户端显式传路由，避免 SPA 导航后的 Referer 仍指向原页面；旧客户端兼容 Referer。
-  const page = getInitDataPage(
-    pathname ??
-      (() => {
-        try {
-          return new URL(req.headers.referer ?? '').pathname;
-        } catch {
-          return undefined;
-        }
-      })()
-  );
 
   /**
-   * 登录后保留完整配置；匿名只投影公共页面实际使用的字段。
+   * 登录后保留完整配置；匿名统一投影公共页面实际使用的字段。
    * 嵌套对象也逐项投影，避免扩展配置中的未知字段随整个对象下发。
    */
   const filterFeConfigs = (isAuthenticated: boolean): Partial<FastGPTFeConfigsType> => {
@@ -90,11 +78,8 @@ async function handler(
       }
     };
 
-    // /chat 未登录时只展示登录表单；上传和聊天字段由登录成功后的主动刷新补齐。
-    if (page === 'login' || page === 'chat') return { ...commonConfig, ...loginConfig };
-    if (page === 'price') return { ...commonConfig, ...uploadConfig };
-    if (page === 'share') return { ...commonConfig, ...uploadConfig, ...chatConfig };
-    return commonConfig;
+    // 所有匿名入口共用同一白名单，页面切换无需补取配置。
+    return { ...commonConfig, ...loginConfig, ...uploadConfig, ...chatConfig };
   };
 
   // 只有鉴权失败才降级为匿名响应，配置处理错误仍交给 API 中间件报告。
@@ -121,16 +106,9 @@ async function handler(
       };
     }
 
-    if (page === 'price') {
-      return {
-        feConfigs,
-        subPlans
-      };
-    }
-
     // 白名单改变时升级版本，强制旧匿名缓存重新获取过滤后的配置。
     const unAuthBufferId = global.systemInitBufferId
-      ? `unAuth_v4_${page}_${global.systemInitBufferId}`
+      ? `unAuth_v5_${global.systemInitBufferId}`
       : '';
     if (bufferId && unAuthBufferId === bufferId) {
       return {
@@ -138,9 +116,11 @@ async function handler(
       };
     }
 
+    // 公开价格页免登录可用，统一匿名响应也提供套餐；缓存命中时沿用客户端已有套餐。
     return {
       bufferId: unAuthBufferId,
-      feConfigs
+      feConfigs,
+      subPlans
     };
   })();
 

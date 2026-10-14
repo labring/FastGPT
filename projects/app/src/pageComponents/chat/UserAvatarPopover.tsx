@@ -3,7 +3,6 @@ import { Box, Flex, Text, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { clearToken } from '@/web/support/user/auth';
-import { clientInitData } from '@/web/common/system/staticData';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -35,7 +34,6 @@ const UserAvatarPopover = ({
 
   const handleLogout = useCallback(async () => {
     await clearToken();
-    await clientInitData(3, '/chat');
   }, []);
 
   const onLogout = useCallback(

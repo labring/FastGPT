@@ -30,13 +30,7 @@ vi.mock('@/web/common/system/useSystemStore', () => ({
 }));
 vi.mock('@/web/common/system/staticData', () => ({ clientInitData: mocks.clientInitData }));
 
-import { clearToken, initClientAfterLogin } from '@/web/support/user/auth';
-import type { UserType } from '@fastgpt/global/support/user/type';
-import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
-import {
-  TeamMemberRoleEnum,
-  TeamMemberStatusEnum
-} from '@fastgpt/global/support/user/team/constant';
+import { clearToken } from '@/web/support/user/auth';
 import {
   getPendingLogoutRequest,
   isLogoutInProgress,
@@ -72,8 +66,7 @@ describe('user auth logout state', () => {
     expect(mocks.invalidateAuthSession).toHaveBeenCalledTimes(1);
     expect(getPendingLogoutRequest()).toBeUndefined();
     expect(mocks.setSystemState).toHaveBeenCalledWith({
-      authenticatedConfigGeneration: undefined,
-      initDataPage: undefined
+      authenticatedConfigGeneration: undefined
     });
     expect(mocks.clientInitData).not.toHaveBeenCalled();
   });
@@ -115,53 +108,5 @@ describe('user auth logout state', () => {
     await clearToken();
     expect(mocks.loginOut).toHaveBeenCalledTimes(2);
     expect(mocks.invalidateAuthSession).toHaveBeenCalledTimes(2);
-  });
-});
-
-describe('initClientAfterLogin', () => {
-  const permission = new TeamPermission({ isOwner: true });
-  const user: UserType = {
-    _id: 'user',
-    username: 'member',
-    avatar: '',
-    timezone: 'Asia/Shanghai',
-    language: 'en',
-    hasPassword: true,
-    tags: [],
-    permission,
-    team: {
-      userId: 'user',
-      tmbId: 'member',
-      teamId: 'team',
-      teamName: 'Team',
-      memberName: 'Member',
-      isSetMemberName: true,
-      avatar: '',
-      role: TeamMemberRoleEnum.owner,
-      status: TeamMemberStatusEnum.active,
-      permission
-    }
-  };
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.clientInitData.mockResolvedValue({ feConfigs: {} });
-    vi.stubGlobal('window', { location: { pathname: '/chat' } });
-  });
-  afterEach(() => vi.unstubAllGlobals());
-
-  it('explicitly advances the session before requesting full configuration once', async () => {
-    mocks.clientInitData.mockImplementationOnce(async () => {
-      expect(mocks.setUserInfo).toHaveBeenCalledExactlyOnceWith(user, true);
-      expect(mocks.resetModelCatalog).toHaveBeenCalledOnce();
-      return { feConfigs: {} };
-    });
-    await initClientAfterLogin(user);
-    expect(mocks.clientInitData).toHaveBeenCalledExactlyOnceWith(3, '/chat');
-  });
-
-  it('keeps successful authentication when configuration refresh fails', async () => {
-    mocks.clientInitData.mockRejectedValueOnce(new Error('Initialization unavailable'));
-    await expect(initClientAfterLogin(user)).resolves.toBeUndefined();
-    expect(mocks.setUserInfo).toHaveBeenCalledWith(user, true);
   });
 });

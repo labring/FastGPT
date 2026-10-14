@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { initClientAfterLogin } from '@/web/support/user/auth';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { postFastLogin } from '@/web/support/user/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import Loading from '@fastgpt/web/components/common/MyLoading';
@@ -40,7 +40,7 @@ const FastLogin = () => {
         lastTmbId
       });
 
-      await initClientAfterLogin(res.user);
+      useUserStore.getState().setUserInfo(res.user, true);
 
       if (targetRoute) {
         setTimeout(() => {
