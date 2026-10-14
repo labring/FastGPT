@@ -33,9 +33,6 @@ export const getPasswordLoginMinuteLimitCount = () =>
   getSystemInstanceConfig().security.passwordLoginMinuteLimitCount ??
   serviceEnv.PASSWORD_LOGIN_MINUTE_LIMIT_COUNT;
 
-export const serviceRequestMaxContentLength =
-  serviceEnv.SERVICE_REQUEST_MAX_CONTENT_LENGTH * 1024 * 1024;
-
 export const InitialErrorEnum = {
   S3_ERROR: 's3_error',
   MONGO_ERROR: 'mongo_error',

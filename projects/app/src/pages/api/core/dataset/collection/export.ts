@@ -19,7 +19,6 @@ import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { replaceS3KeysToPreviewUrls } from '@fastgpt/service/common/s3/utils/preview';
 import { createDatasetFileS3KeyFilter } from '@fastgpt/service/common/s3/sources/dataset/key';
 import { getStorageFileUrlExpiredDays } from '@fastgpt/service/common/s3/config/constants';
-import { serviceEnv } from '@fastgpt/service/env';
 import { addDays } from 'date-fns';
 import { ExportCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
