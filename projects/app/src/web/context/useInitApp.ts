@@ -85,7 +85,7 @@ export const useInitApp = () => {
   const initFetch = useMemoizedFn(async () => {
     const {
       feConfigs: { isPlus }
-    } = await clientInitData();
+    } = await (router.pathname === '/price' ? clientInitData(3, true) : clientInitData());
 
     // log fastgpt
     if (!isPlus) {

@@ -220,6 +220,29 @@ describe('clientInitData request snapshots and retries', () => {
     expect(mocks.getSystemInitData).toHaveBeenCalledTimes(2);
   });
 
+  it.each([false, true])(
+    'reuses a pending ordinary initialization and only supplements missing plans: hasPlans=%s',
+    async (hasPlans) => {
+      const held = deferResponse();
+      const response = {
+        isAuthenticated: true,
+        feConfigs: { uploadFileMaxAmount: 3, uploadFileMaxSize: 16 }
+      };
+      mocks.getSystemInitData.mockReturnValueOnce(held.promise).mockResolvedValueOnce(response);
+      const ordinary = clientInitData();
+      const price = clientInitData(3, true);
+      expect(mocks.getSystemInitData).toHaveBeenCalledTimes(1);
+      held.resolve({
+        ...response,
+        ...(hasPlans && { subPlans: { extraDatasetSize: { price: 4 } } })
+      });
+      await ordinary;
+      await price;
+      expect(mocks.getSystemInitData).toHaveBeenCalledTimes(hasPlans ? 1 : 2);
+      if (!hasPlans) expect(mocks.getSystemInitData).toHaveBeenLastCalledWith('buffer_1', true);
+    }
+  );
+
   it('does not restore authenticated data while the logout Cookie is still being cleared', async () => {
     const cachedConfig = mocks.feConfigs;
     beginLogout();

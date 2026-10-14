@@ -122,9 +122,8 @@ describe('getInitData anonymous configuration filtering', () => {
     expect(code).toBe(200);
     expect(data).toEqual({
       isAuthenticated: false,
-      bufferId: 'unAuth_v5_config-1',
-      feConfigs: publicConfig,
-      subPlans: global.subPlans
+      bufferId: 'unAuth_v6_config-1',
+      feConfigs: publicConfig
     });
     expect(global.feConfigs).toEqual(originalConfig);
   });
@@ -133,7 +132,7 @@ describe('getInitData anonymous configuration filtering', () => {
     const { code, data } = await Call(handler, {
       auth,
       headers: {},
-      query: { bufferId: 'unAuth_v5_config-1' }
+      query: { bufferId: 'unAuth_v6_config-1' }
     });
 
     expect(code).toBe(200);
@@ -163,36 +162,48 @@ describe('getInitData anonymous configuration filtering', () => {
     'unAuth_v3_chat_config-1',
     'config-1',
     'unAuth_v4_chat_config-1',
-    'unAuth_v5_config-old',
+    'unAuth_v5_config-1',
+    'unAuth_v6_config-old',
     'unAuth_v4_share_config-1'
   ])('refreshes stale or authenticated cache %s with filtered data', async (bufferId) => {
     const { data } = await Call(handler, { headers: {}, query: { bufferId } });
 
-    expect(data.bufferId).toBe('unAuth_v5_config-1');
+    expect(data.bufferId).toBe('unAuth_v6_config-1');
     expect(data.feConfigs).toEqual(publicConfig);
   });
 
   it('retains the anonymous cache-hit response only for the current policy version', async () => {
     const { data } = await Call(handler, {
       headers: {},
-      query: { bufferId: 'unAuth_v5_config-1' }
+      query: { bufferId: 'unAuth_v6_config-1' }
     });
 
-    expect(data).toEqual({ isAuthenticated: false, bufferId: 'unAuth_v5_config-1' });
+    expect(data).toEqual({ isAuthenticated: false, bufferId: 'unAuth_v6_config-1' });
   });
 
-  it('ignores legacy route hints and supplies public plans when replacing a page cache', async () => {
-    const { data } = await Call(handler, {
+  it.each([
+    {
       headers: { referer: 'https://app.example.com/price?resumePurchase=1#standard' },
-      query: { bufferId: 'unAuth_v4_price_config-1', pathname: '/chat', scope: 'base' }
-    });
-    expect(data).toEqual({
-      isAuthenticated: false,
-      bufferId: 'unAuth_v5_config-1',
-      feConfigs: publicConfig,
-      subPlans: global.subPlans
-    });
-  });
+      query: { bufferId: 'unAuth_v6_config-1' }
+    },
+    {
+      headers: { referer: 'https://app.example.com/login' },
+      query: { bufferId: 'unAuth_v6_config-1', includeSubPlans: 'true' }
+    }
+  ])(
+    'returns filtered configs and public plans despite a matching anonymous buffer: %s',
+    async ({ headers, query }) => {
+      const { data } = await Call(handler, {
+        headers,
+        query
+      });
+      expect(data).toEqual({
+        isAuthenticated: false,
+        feConfigs: publicConfig,
+        subPlans: global.subPlans
+      });
+    }
+  );
 
   it.each([undefined, ''])(
     'returns filtered data without treating an absent system version %s as a cache hit',
@@ -237,7 +248,7 @@ describe('getInitData anonymous configuration filtering', () => {
       headers: { referer: 'https://app.example.com/login' }
     });
 
-    expect(data.bufferId).toBe('unAuth_v5_config-1');
+    expect(data.bufferId).toBe('unAuth_v6_config-1');
     expect(data.feConfigs).not.toHaveProperty('payConfig');
   });
 
@@ -259,6 +270,24 @@ describe('getInitData anonymous configuration filtering', () => {
 
     expect(invalidQuery.error).toBeInstanceOf(ApiRequestInputParseError);
     expect(authCert).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'https://app.example.com/login?next=/price',
+    'https://app.example.com/price-extra',
+    'invalid referer'
+  ])('does not return plans for an incidental or malformed Referer: %s', async (referer) => {
+    const { data } = await Call(handler, { headers: { referer } });
+    expect(data.feConfigs).toEqual(publicConfig);
+    expect(data).not.toHaveProperty('subPlans');
+  });
+  it('includes requested plans for an authenticated cache hit', async () => {
+    const { data } = await Call(handler, {
+      auth,
+      headers: {},
+      query: { bufferId: 'config-1', includeSubPlans: true }
+    });
+    expect(data.subPlans).toEqual(global.subPlans);
   });
 
   it('reports invalid response data as an internal schema error', async () => {

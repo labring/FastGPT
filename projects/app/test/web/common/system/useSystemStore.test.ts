@@ -120,7 +120,7 @@ describe('initStaticData through the real initialization pipeline', () => {
     expect(publicConfig.limit).toEqual({ agentSandboxMaxFileBytes: 2 * 1024 ** 2 });
     expect(publicConfig.uploadFileMaxSize).toBe(32);
     expect(useSystemStore.getState().feConfigs).toEqual(publicConfig);
-    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v5_config-1');
+    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v6_config-1');
     expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(publicConfig);
 
     const cached = await clientInitData();
@@ -162,13 +162,13 @@ describe('initStaticData through the real initialization pipeline', () => {
     const anonymous = await clientInitData();
     expect(anonymous.feConfigs).toEqual(publicConfig);
     expect(useSystemStore.getState().feConfigs).toEqual(publicConfig);
-    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v5_config-1');
+    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v6_config-1');
     expect(useSystemStore.getState().systemVersion).toBe('4.17.3');
     expect(useSystemStore.getState().authenticatedConfigGeneration).toBeUndefined();
     expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(publicConfig);
 
     expect(mocks.GET.mock.calls).toEqual(
-      ['unAuth_config-1', 'unAuth_v5_config-1', 'unAuth_v5_config-1', 'config-1', 'config-1'].map(
+      ['unAuth_config-1', 'unAuth_v6_config-1', 'unAuth_v6_config-1', 'config-1', 'config-1'].map(
         (bufferId) => ['/common/system/getInitData', { bufferId }]
       )
     );
@@ -194,7 +194,7 @@ describe('initStaticData through the real initialization pipeline', () => {
       expect(await olderRequest).toEqual(latest);
 
       expect(useSystemStore.getState().initDataBufferId).toBe(
-        login ? 'config-1' : 'unAuth_v5_config-1'
+        login ? 'config-1' : 'unAuth_v6_config-1'
       );
       expect(Boolean(useSystemStore.getState().feConfigs.payConfig)).toBe(login);
       expect(useSystemStore.getState().authenticatedConfigGeneration).toBe(
@@ -244,8 +244,12 @@ describe('initStaticData through the real initialization pipeline', () => {
   });
 
   it('keeps public plans and real documentation/sandbox consumers available across cache hits', async () => {
-    mocks.referer = 'https://app.example.com/price';
-    await clientInitData();
+    mocks.referer = 'https://app.example.com/login';
+    await clientInitData(3, true);
+    expect(mocks.GET).toHaveBeenLastCalledWith('/common/system/getInitData', {
+      bufferId: undefined,
+      includeSubPlans: true
+    });
     const { subPlans } = useSystemStore.getState();
     expect(subPlans).toEqual(global.subPlans);
 

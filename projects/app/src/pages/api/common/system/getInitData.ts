@@ -16,7 +16,7 @@ async function handler(
   req: ApiRequestProps,
   _res: NextApiResponse
 ): Promise<GetSystemInitDataResponse> {
-  const { bufferId } = parseApiInput({
+  const { bufferId, includeSubPlans } = parseApiInput({
     req,
     querySchema: GetSystemInitDataQuerySchema
   }).query;
@@ -94,7 +94,8 @@ async function handler(
         return {
           bufferId: global.systemInitBufferId,
           feConfigs,
-          systemVersion: global.systemVersion
+          systemVersion: global.systemVersion,
+          ...(includeSubPlans && { subPlans })
         };
       }
 
@@ -106,9 +107,21 @@ async function handler(
       };
     }
 
+    // 仅套餐保留价格页兼容分支，feConfigs 始终使用统一匿名白名单。
+    const needsSubPlans =
+      includeSubPlans ??
+      (() => {
+        try {
+          return new URL(req.headers.referer ?? '').pathname === '/price';
+        } catch {
+          return false;
+        }
+      })();
+    if (needsSubPlans) return { feConfigs, subPlans };
+
     // 白名单改变时升级版本，强制旧匿名缓存重新获取过滤后的配置。
     const unAuthBufferId = global.systemInitBufferId
-      ? `unAuth_v5_${global.systemInitBufferId}`
+      ? `unAuth_v6_${global.systemInitBufferId}`
       : '';
     if (bufferId && unAuthBufferId === bufferId) {
       return {
@@ -116,11 +129,9 @@ async function handler(
       };
     }
 
-    // 公开价格页免登录可用，统一匿名响应也提供套餐；缓存命中时沿用客户端已有套餐。
     return {
       bufferId: unAuthBufferId,
-      feConfigs,
-      subPlans
+      feConfigs
     };
   })();
 
