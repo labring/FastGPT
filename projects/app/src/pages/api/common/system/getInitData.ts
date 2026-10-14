@@ -15,7 +15,7 @@ async function handler(
   req: ApiRequestProps,
   _res: NextApiResponse
 ): Promise<GetSystemInitDataResponse> {
-  const { bufferId, includeSubPlans } = parseApiInput({
+  const { bufferId } = parseApiInput({
     req,
     querySchema: GetSystemInitDataQuerySchema
   }).query;
@@ -69,6 +69,15 @@ async function handler(
     .catch(() => false);
   const feConfigs = filterFeConfigs(isAuthenticated);
 
+  // 套餐由当前页面路径决定，公开配置仍只按会话鉴权过滤。
+  const pathname = (() => {
+    try {
+      return new URL(req.headers.referer ?? '').pathname;
+    } catch {
+      return '';
+    }
+  })();
+
   const response = (() => {
     if (isAuthenticated) {
       if (bufferId && global.systemInitBufferId && global.systemInitBufferId === bufferId) {
@@ -76,7 +85,7 @@ async function handler(
           bufferId: global.systemInitBufferId,
           feConfigs,
           systemVersion: global.systemVersion,
-          ...(includeSubPlans && { subPlans })
+          ...(pathname === '/price' && { subPlans })
         };
       }
 
@@ -88,17 +97,7 @@ async function handler(
       };
     }
 
-    // 仅套餐保留价格页兼容分支，feConfigs 始终使用统一匿名白名单。
-    const needsSubPlans =
-      includeSubPlans ??
-      (() => {
-        try {
-          return new URL(req.headers.referer ?? '').pathname === '/price';
-        } catch {
-          return false;
-        }
-      })();
-    if (needsSubPlans) return { feConfigs, subPlans };
+    if (pathname === '/price') return { feConfigs, subPlans };
 
     // 白名单改变时升级版本，强制旧匿名缓存重新获取过滤后的配置。
     const unAuthBufferId = global.systemInitBufferId

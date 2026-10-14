@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { SubPlanSchema } from '../../../support/wallet/sub/type';
 import { FastGPTFeConfigsSchema } from '../../../common/system/types';
-import { BoolSchema, NumSchema } from '../../../common/zod';
+import { NumSchema } from '../../../common/zod';
 
 /* ============================================================================
  * API: 获取系统初始化数据
@@ -15,11 +15,6 @@ export const GetSystemInitDataQuerySchema = z.object({
   bufferId: z.string().optional().meta({
     example: 'system-config-20260811',
     description: '客户端已有的系统配置缓存标识；一致时服务端返回精简数据'
-  }),
-  includeSubPlans: BoolSchema.optional().meta({
-    example: true,
-    description:
-      '是否额外获取公开套餐配置；价格页使用，缓存命中时也返回，不影响前端配置的鉴权与过滤；省略时兼容价格页 Referer'
   })
 });
 export type GetSystemInitDataQuery = z.infer<typeof GetSystemInitDataQuerySchema>;
@@ -54,7 +49,8 @@ export const GetSystemInitDataResponseSchema = z.object({
       '前端功能开关和链接配置；登录后仅返回 Schema 声明的公开字段，匿名统一投影登录、价格和分享聊天所需的公共字段白名单'
   }),
   subPlans: SubPlanSchema.optional().meta({
-    description: '系统套餐配置；登录用户在缓存未命中时返回；请求额外套餐或匿名价格页时始终返回'
+    description:
+      '系统套餐配置；登录用户在缓存未命中时返回；Referer 的 pathname 为 /price 时始终返回'
   }),
   systemVersion: z.string().optional().meta({
     example: '4.16.0',

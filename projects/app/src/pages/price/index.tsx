@@ -43,7 +43,7 @@ const PriceBox = () => {
     async () => {
       // 团队上下文由用户初始化写入，请求套餐前必须等待它完成，避免重复请求造成页面二次白屏。
       // 首屏与全局初始化共享套餐请求；SPA 进入价格页时也能补齐匿名套餐。
-      const [userInfo] = await Promise.all([initUserInfo(), clientInitData(3, true)]);
+      const [userInfo] = await Promise.all([initUserInfo(), clientInitData()]);
       const teamSubPlan = await getTeamPlanStatus();
 
       return { userInfo, teamSubPlan };

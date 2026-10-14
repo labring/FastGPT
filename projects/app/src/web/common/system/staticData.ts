@@ -10,31 +10,35 @@ let latestRequestId = 0;
 let inFlightRequest:
   | {
       authGeneration: number;
-      includeSubPlans: boolean;
+      pathname: string;
       receivedSubPlans: boolean;
       promise: Promise<{ feConfigs: FastGPTFeConfigsType }>;
     }
   | undefined;
 
 /**
- * 同一会话、相同套餐请求的并发初始化共用请求及重试，新会话启动独立请求；只有最新请求可以提交。
+ * 同一会话的并发初始化共用请求及重试；价格页仅在已有请求缺少套餐时补取，新会话启动独立请求；只有最新请求可以提交。
  * 过期成功、失败和等待中的重试都只读取当前缓存，避免重新发请求或覆盖新会话。
  */
 export const clientInitData = (
-  retry = 3,
-  includeSubPlans = false
+  retry = 3
 ): Promise<{
   feConfigs: FastGPTFeConfigsType;
 }> => {
   const { authGeneration } = useUserStore.getState();
+  const pathname = typeof window === 'undefined' ? '' : window.location.pathname;
   if (inFlightRequest?.authGeneration === authGeneration) {
     const existing = inFlightRequest;
-    if (!includeSubPlans || existing.includeSubPlans) return existing.promise;
+    if (pathname !== '/price' || existing.pathname === '/price') return existing.promise;
     // 登录初始化本就可能返回套餐，先复用它；只有缺少套餐时才补发价格页请求。
     return existing.promise.then((result) => {
-      if (existing.receivedSubPlans || authGeneration !== useUserStore.getState().authGeneration)
+      if (
+        existing.receivedSubPlans ||
+        authGeneration !== useUserStore.getState().authGeneration ||
+        window.location.pathname !== '/price'
+      )
         return result;
-      return clientInitData(retry, true);
+      return clientInitData(retry);
     });
   }
   const requestId = ++latestRequestId;
@@ -50,9 +54,7 @@ export const clientInitData = (
       const pendingLogout = getPendingLogoutRequest();
       if (pendingLogout) await pendingLogout;
       if (!isCurrentRequest()) return readCache();
-      const res = await (includeSubPlans
-        ? getSystemInitData(useSystemStore.getState().initDataBufferId, true)
-        : getSystemInitData(useSystemStore.getState().initDataBufferId));
+      const res = await getSystemInitData(useSystemStore.getState().initDataBufferId);
       if (!isCurrentRequest()) return readCache();
       // 退出请求尚未清除 Cookie 时，上游仍可能认作登录态，不能重新恢复这些配置。
       if (res.isAuthenticated && isLogoutInProgress()) return readCache();
@@ -70,7 +72,7 @@ export const clientInitData = (
 
   const request = {
     authGeneration,
-    includeSubPlans,
+    pathname,
     receivedSubPlans: false,
     promise: fetchInitData(retry)
   };

@@ -47,6 +47,7 @@ const deferResponse = <T = GetSystemInitDataResponse>() => {
 describe('clientInitData request snapshots and retries', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.stubGlobal('window', { location: { pathname: '/login' } });
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     mocks.authGeneration = 0;
     resetLogoutState();
@@ -61,6 +62,7 @@ describe('clientInitData request snapshots and retries', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
     resetLogoutState();
   });
 
@@ -123,6 +125,7 @@ describe('clientInitData request snapshots and retries', () => {
   });
 
   it('returns an empty configuration when neither the response nor the cache has one', async () => {
+    vi.stubGlobal('window', undefined);
     mocks.feConfigs = undefined;
     mocks.getSystemInitData.mockResolvedValueOnce({ bufferId: 'buffer_1' });
 
@@ -230,7 +233,8 @@ describe('clientInitData request snapshots and retries', () => {
       };
       mocks.getSystemInitData.mockReturnValueOnce(held.promise).mockResolvedValueOnce(response);
       const ordinary = clientInitData();
-      const price = clientInitData(3, true);
+      window.location.pathname = '/price';
+      const price = clientInitData();
       expect(mocks.getSystemInitData).toHaveBeenCalledTimes(1);
       held.resolve({
         ...response,
@@ -239,9 +243,22 @@ describe('clientInitData request snapshots and retries', () => {
       await ordinary;
       await price;
       expect(mocks.getSystemInitData).toHaveBeenCalledTimes(hasPlans ? 1 : 2);
-      if (!hasPlans) expect(mocks.getSystemInitData).toHaveBeenLastCalledWith('buffer_1', true);
+      if (!hasPlans) expect(mocks.getSystemInitData).toHaveBeenLastCalledWith('buffer_1');
     }
   );
+
+  it('skips the price-page followup when navigation leaves it before the pending response finishes', async () => {
+    const held = deferResponse();
+    mocks.getSystemInitData.mockReturnValueOnce(held.promise);
+    const ordinary = clientInitData();
+    window.location.pathname = '/price';
+    const price = clientInitData();
+    window.location.pathname = '/login';
+    held.resolve({ isAuthenticated: false, feConfigs: { systemTitle: 'public' } });
+    await ordinary;
+    await price;
+    expect(mocks.getSystemInitData).toHaveBeenCalledExactlyOnceWith('buffer_1');
+  });
 
   it('does not restore authenticated data while the logout Cookie is still being cleared', async () => {
     const cachedConfig = mocks.feConfigs;

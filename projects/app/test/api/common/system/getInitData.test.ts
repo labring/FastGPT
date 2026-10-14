@@ -193,8 +193,8 @@ describe('getInitData anonymous configuration filtering', () => {
       query: { bufferId: 'unAuth_v8_config-1' }
     },
     {
-      headers: { referer: 'https://app.example.com/login' },
-      query: { bufferId: 'unAuth_v8_config-1', includeSubPlans: 'true' }
+      headers: { referer: 'https://app.example.com/price' },
+      query: { bufferId: 'unAuth_v8_config-1' }
     }
   ])(
     'returns filtered configs and public plans despite a matching anonymous buffer: %s',
@@ -285,11 +285,11 @@ describe('getInitData anonymous configuration filtering', () => {
     expect(data.feConfigs).toEqual(publicConfig);
     expect(data).not.toHaveProperty('subPlans');
   });
-  it('includes requested plans for an authenticated cache hit', async () => {
+  it('includes plans for an authenticated price-page cache hit', async () => {
     const { data } = await Call(handler, {
       auth,
-      headers: {},
-      query: { bufferId: 'config-1', includeSubPlans: true }
+      headers: { referer: 'https://app.example.com/price?tab=extra' },
+      query: { bufferId: 'config-1' }
     });
     expect(data.subPlans).toEqual(global.subPlans);
   });

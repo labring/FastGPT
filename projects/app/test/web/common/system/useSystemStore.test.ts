@@ -241,11 +241,10 @@ describe('initStaticData through the real initialization pipeline', () => {
   );
 
   it('keeps public plans and documentation consumers available across cache hits', async () => {
-    mocks.referer = 'https://app.example.com/login';
-    await clientInitData(3, true);
+    mocks.referer = 'https://app.example.com/price';
+    await clientInitData();
     expect(mocks.GET).toHaveBeenLastCalledWith('/common/system/getInitData', {
-      bufferId: undefined,
-      includeSubPlans: true
+      bufferId: undefined
     });
     const { subPlans } = useSystemStore.getState();
     expect(subPlans).toEqual(global.subPlans);

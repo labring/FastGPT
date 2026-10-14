@@ -195,8 +195,7 @@ describe('useInitApp marketing params inside AppShell', () => {
       mocks.router.pathname = pathname;
       mocks.configAuthenticated = true;
       await render();
-      if (pathname === '/price') expect(clientInitData).toHaveBeenCalledExactlyOnceWith(3, true);
-      else expect(clientInitData).toHaveBeenCalledExactlyOnceWith();
+      expect(clientInitData).toHaveBeenCalledExactlyOnceWith();
       mocks.userInfo = { username: 'restored-member' };
       await render();
       expect(clientInitData).toHaveBeenCalledTimes(1);
