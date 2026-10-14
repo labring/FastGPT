@@ -201,9 +201,9 @@ curl -fsSL https://doc.fastgpt.cn/deploy/install.sh -o install.sh
 FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.source.yml bash install.sh
 ```
 
-脚本会复制该 compose 文件为最终的 `docker-compose.yml`，并继续随机生成登录密码和各类凭证、写入 S3/MCP 地址。生成完成后，按终端输出的 root 密码登录。
+脚本会复制该 compose 文件为最终的 `docker-compose.yml`，并继续随机生成各类服务凭证、写入 S3/MCP 地址。生成完成后，用 `root` / `123456` 登录，首次登录会强制要求修改密码。
 
-完全离线环境下，需要同时准备 `docker-compose.yml` 和 `install.sh`。如果无法运行脚本，则需要手动修改 `DEFAULT_ROOT_PSW`、服务 Token、数据库密码、S3/MCP 地址等配置。
+完全离线环境下，需要同时准备 `docker-compose.yml` 和 `install.sh`。如果无法运行脚本，则需要手动修改服务 Token、数据库密码、S3/MCP 地址等配置。
 
 #### 自定义镜像源部署
 
@@ -251,9 +251,13 @@ docker compose up -d
 
 ### 5. 访问 FastGPT
 
-可通过第三步开放的端口/域名访问 FastGPT。登录用户名为 `root`，密码为 `docker-compose.yml` 环境变量里设置的 `DEFAULT_ROOT_PSW`。
+可通过第三步开放的端口/域名访问 FastGPT。登录用户名为 `root`，初始密码为 `123456`。
 
-如果使用交互式脚本部署，脚本会随机生成 `DEFAULT_ROOT_PSW`，并在执行完成后输出本次登录密码；如果手动下载部署，请自行修改 `docker-compose.yml` 中的默认密码后再启动服务。每次重启容器，都会按 `DEFAULT_ROOT_PSW` 自动更新 root 用户密码。
+首次登录后系统会强制要求修改密码。root 密码不再由环境变量托管，**重启容器不会重置密码**。若忘记密码，可在服务器上通过容器脚本重置：
+
+```bash
+docker exec -e ROOT_PSW='新密码' fastgpt-app node /app/scripts/reset-root-password.cjs
+```
 
 ### 6. 配置模型
 
@@ -457,7 +461,7 @@ mongo 连接失败，查看 mongo 的运行状态**对应日志**。
 
 ### 如何修改密码
 
-修改 `docker-compose.yml` 文件中 `DEFAULT_ROOT_PSW` 并重启即可，密码会自动更新。
+忘记密码或想主动更换时，用容器脚本重置，详见 [常见问题](../troubleshooting/faq.mdx) 的「如何修改 root 密码」。
 
 ### 部署 Zilliz 版本，获取账号和密钥
 

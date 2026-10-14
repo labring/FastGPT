@@ -27,6 +27,7 @@ export type UserModelSchema = {
   status: `${UserStatusEnum}`;
   lastLoginTmbId?: string;
   passwordUpdateTime?: Date;
+  mustChangePassword?: boolean;
   fastgpt_sem?: FastGPTSemType;
   contact?: string | null;
   tags: UserTagsType[];
@@ -45,7 +46,8 @@ export const UserSchema = z.object({
   contact: z.string().nullish(),
   tags: z.array(UserTagsSchema).optional(),
   hasPassword: z.boolean(),
-  passwordAvailable: z.boolean().optional()
+  passwordAvailable: z.boolean().optional(),
+  mustChangePassword: z.boolean().optional()
 });
 export type UserType = z.infer<typeof UserSchema>;
 

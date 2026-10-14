@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   finishPostLoginAction,
   getNextPostLoginAction,
+  isMandatoryPostLoginAction,
   isMandatoryPostLoginActionRoute,
   isPostLoginActionRoute,
   startPostLoginAction,
@@ -13,7 +14,8 @@ import {
 const getAction = (
   completed: OneTimePostLoginAction[] = [],
   hasImportantInform = true,
-  currentAction?: PostLoginAction
+  currentAction?: PostLoginAction,
+  mustChangePassword = false
 ) =>
   getNextPostLoginAction({
     canStartMandatory: true,
@@ -25,7 +27,8 @@ const getAction = (
     shouldShowContact: true,
     contactHandled: false,
     isPlus: true,
-    hasImportantInform
+    hasImportantInform,
+    mustChangePassword
   });
 
 describe('post login action order', () => {
@@ -164,6 +167,37 @@ describe('post login action order', () => {
 
   it('keeps the current action ahead of newly arrived notifications', () => {
     expect(getAction([], true, 'activityAd')).toBe('activityAd');
+  });
+
+  it('prioritises the forced password change over every other action', () => {
+    expect(getAction([], true, undefined, true)).toBe('forcePasswordChange');
+    // 未改密时后面的动作只能排队，不能抢在强制改密前面弹出。
+    expect(getAction(['forcePasswordChange'], true, undefined, true)).toBe('invitation');
+  });
+
+  it('treats the forced password change as a mandatory action', () => {
+    expect(isMandatoryPostLoginAction('forcePasswordChange')).toBe(true);
+  });
+
+  it('keeps the forced password change behind the mandatory gate', () => {
+    const params = {
+      canStartMandatory: true,
+      canStartOptional: true,
+      completed: new Set<OneTimePostLoginAction>(),
+      inviteLinkId: '',
+      hasPendingMemberName: false,
+      shouldShowContact: false,
+      contactHandled: false,
+      // root 账号不在 plus 名单里，强制改密必须不依赖 isPlus 才能拦住默认口令。
+      isPlus: false,
+      hasImportantInform: false,
+      mustChangePassword: true
+    };
+
+    expect(getNextPostLoginAction(params)).toBe('forcePasswordChange');
+    // 只准入可选动作时不能展示强制改密：它属于强制动作集合，必须走强制门槛。
+    expect(getNextPostLoginAction({ ...params, canStartMandatory: false })).toBeUndefined();
+    expect(getNextPostLoginAction({ ...params, mustChangePassword: false })).toBeUndefined();
   });
 
   it('can enqueue important notifications again after the first login flow', () => {

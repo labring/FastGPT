@@ -1,6 +1,7 @@
 import { serviceEnv } from '@fastgpt/service/env';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 
 const {
   mockUserFindOne,
@@ -168,5 +169,33 @@ describe('system user initialization and agent user check', () => {
     expect(getAgentUserTmbIds()).toEqual(new Set(['tmb-agent-a']));
     expect(checkIsAgentUser('tmb-agent-a')).toBe(true);
     expect(mockWithLease).toHaveBeenCalledTimes(2);
+  });
+
+  it('leaves an existing root untouched: no password write, no forced-change backfill', async () => {
+    mutableServiceEnv.AGENT_USERS = undefined;
+    mockUserFindOne.mockResolvedValue({ _id: 'root-id' });
+
+    await initSystemUser();
+
+    expect(mockUserCreate).not.toHaveBeenCalled();
+  });
+
+  it('creates root with the fixed default password and the change flag', async () => {
+    mutableServiceEnv.AGENT_USERS = undefined;
+    mockUserFindOne.mockResolvedValue(null);
+    mockUserCreate.mockResolvedValue([{ _id: 'root-id' }]);
+
+    await initSystemUser();
+
+    expect(mockUserCreate).toHaveBeenCalledWith(
+      [
+        {
+          username: 'root',
+          password: hashStr('123456'),
+          mustChangePassword: true
+        }
+      ],
+      { session: expect.anything(), ordered: true }
+    );
   });
 });

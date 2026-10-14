@@ -122,7 +122,7 @@ description: FastGPT Docker Compose self-hosting deployment workflow. Use when a
 
 - FastGPT 访问地址：脚本中设置的 `FASTGPT_FE_DOMAIN`。
 - 登录账号：`root`。
-- 登录密码：脚本输出的随机密码，或 `docker-compose.yml` 中的 `DEFAULT_ROOT_PSW`。
+- 登录密码：`123456`。首次登录会强制要求修改密码，请提示用户提前准备新密码。
 - 已开放或需要开放的宿主机端口：以脚本最终输出的 FastGPT/Sandbox Proxy 映射为准（默认 `3000`、`3006`），MCP 为 `3003`；仅旧版外部 S3 下载链路还需要 `9000`。
 - 下一步动作：登录后到 `管理员-模型提供商` 配置语言模型和索引模型；如需使用系统插件，到插件市场安装；如需公网 HTTPS，配置域名和反向代理。
 

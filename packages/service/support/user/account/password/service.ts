@@ -102,7 +102,8 @@ export const updatePasswordWithChangeSession = async ({
       {
         $set: {
           password: newPassword,
-          passwordUpdateTime: new Date()
+          passwordUpdateTime: new Date(),
+          mustChangePassword: false
         }
       },
       { session }
@@ -121,6 +122,39 @@ export const updatePasswordWithChangeSession = async ({
     if (deleted.deletedCount !== 1) {
       throw new UserError(UserErrEnum.passwordChangeAuthorizationInvalid);
     }
+  });
+
+/** 强制改密路径：账号处于「必须改密」状态时的专用写入。 */
+export const forceUpdatePassword = async ({
+  userId,
+  newPassword
+}: {
+  userId: string;
+  newPassword: string;
+}) =>
+  mongoSessionRun(async (session) => {
+    const isForcedChangePending = await MongoUser.exists({
+      _id: userId,
+      mustChangePassword: true
+    }).session(session);
+    if (!isForcedChangePending) {
+      throw new UserError(UserErrEnum.passwordChangeAuthorizationInvalid);
+    }
+
+    await assertNewPasswordDiffersFromCurrent({ userId, newPassword, session });
+
+    const updateResult = await MongoUser.updateOne(
+      { _id: userId, mustChangePassword: true },
+      {
+        $set: {
+          password: newPassword,
+          passwordUpdateTime: new Date(),
+          mustChangePassword: false
+        }
+      },
+      { session }
+    );
+    if (updateResult.matchedCount !== 1) throw new Error('Failed to update password');
   });
 
 /** 拒绝将当前持久化密码再次设置为新密码。Schema setter 负责沿用现有双层哈希协议。 */

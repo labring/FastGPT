@@ -215,9 +215,9 @@ curl -fsSL https://doc.fastgpt.cn/deploy/install.sh -o install.sh
 FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.source.yml bash install.sh
 ```
 
-The script copies this compose file to the final `docker-compose.yml`, then generates login passwords and credentials, and writes the S3/MCP addresses. After generation, log in with the root password printed in the terminal.
+The script copies this compose file to the final `docker-compose.yml`, then generates service credentials and writes the S3/MCP addresses. After generation, log in with `root` / `123456`; the first login forces a password change.
 
-For a fully offline environment, prepare `docker-compose.yml` and `install.sh` in advance. If the script cannot run, manually update `DEFAULT_ROOT_PSW`, service tokens, database passwords, and S3/MCP addresses.
+For a fully offline environment, prepare `docker-compose.yml` and `install.sh` in advance. If the script cannot run, manually update service tokens, database passwords, and S3/MCP addresses.
 
 #### Deploy with a Custom Image Registry
 
@@ -266,9 +266,13 @@ docker compose up -d
 ### 5. Access FastGPT
 
 Access FastGPT via the port/domain opened in step 3.
-Login username is `root`, password is the `DEFAULT_ROOT_PSW` set in `docker-compose.yml` environment variables.
+Login username is `root`, and the initial password is `123456`.
 
-If you deploy with the interactive script, it randomly generates `DEFAULT_ROOT_PSW` and prints the login password when it finishes. If you deploy manually, change the default password in `docker-compose.yml` before starting the service. Each container restart automatically updates the root user's password based on `DEFAULT_ROOT_PSW`.
+The first login forces a password change. The root password is no longer managed by an environment variable, so **restarting the container no longer resets it**. If you forget the password, reset it from the server with the container script:
+
+```bash
+docker exec -e ROOT_PSW='your-new-password' fastgpt-app node /app/scripts/reset-root-password.cjs
+```
 
 ### 6. Configure Models
 
@@ -472,7 +476,7 @@ Caused by service initialization errors triggering a restart.
 
 ### How to Change Password
 
-Modify `DEFAULT_ROOT_PSW` in `docker-compose.yml` and restart — the password auto-updates.
+If you forgot the password or want to change it, reset it with the container script — see "How to change the root password" in the [FAQ](../troubleshooting/faq.en.mdx).
 
 ### Deploy Zilliz Version: Get Account and Credentials
 

@@ -92,6 +92,7 @@ export async function getUserDetail({
       ? { accountCancellation: formatTeamAccountCancellationSummary(accountCancellation) }
       : {}),
     hasPassword: hasStoredPassword(user.password),
-    passwordAvailable: getUserPasswordAvailability(user.username)
+    passwordAvailable: getUserPasswordAvailability(user.username),
+    mustChangePassword: user.mustChangePassword === true
   };
 }

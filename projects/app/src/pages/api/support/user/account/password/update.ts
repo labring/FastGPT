@@ -22,11 +22,11 @@ import { NextAPI } from '@/service/middleware/entry';
 /** 使用当前登录 Session 和一次性改密 Session 更新密码，并仅保留发起请求的 Session。 */
 async function handler(req: ApiRequestProps<UpdatePasswordBody>): Promise<void> {
   const { body } = parseApiInput({ req, bodySchema: UpdatePasswordBodySchema });
-  const { userId, sessionId, tmbId, teamId, isRoot } = await authCert({
+  const { userId, sessionId, tmbId, teamId } = await authCert({
     req,
     authToken: true
   });
-  if (!sessionId || isRoot) return Promise.reject(ERROR_ENUM.unAuthorization);
+  if (!sessionId) return Promise.reject(ERROR_ENUM.unAuthorization);
 
   await assertPasswordUpdateRateLimit({
     account: userId,
