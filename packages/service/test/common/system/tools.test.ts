@@ -11,11 +11,11 @@ vi.mock('@fastgpt/service/env', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
-  getAgentSandboxArchiveMaxBytes: vi.fn(() => 1024),
-  getAgentSandboxMaxFileBytes: vi.fn(() => 512),
   getAgentSandboxSkillMaxBytes: vi.fn(() => 512)
 }));
 
+// setup 已加载过此模块，清缓存后才能使用本文件声明的环境与沙箱 mock。
+vi.resetModules();
 const { initFastGPTConfig } = await import('@fastgpt/service/common/system/tools');
 
 describe('initFastGPTConfig', () => {
@@ -42,9 +42,7 @@ describe('initFastGPTConfig', () => {
 
   it('配置校验失败时不中断，仍可降级挂载全局状态', () => {
     initFastGPTConfig({
-      feConfigs: {
-        uploadFileMaxSize: 'invalid_size' as any
-      },
+      feConfigs: {},
       systemEnv: {
         datasetParseMaxProcess: 'not_a_number' as any
       }
@@ -105,46 +103,28 @@ describe('initFastGPTConfig', () => {
       customSetting: 7
     });
   });
-  it('removes legacy sandbox connection and file limit settings while retaining unrelated limits', () => {
-    initFastGPTConfig({
-      feConfigs: {
-        agentSandboxProxyUrl: 'wss://old-proxy',
-        limit: { agentSandboxMaxFileBytes: 1, customLimit: 7 }
-      },
-      systemEnv: {}
-    } as any);
-    expect(global.feConfigs).not.toHaveProperty('agentSandboxProxyUrl');
-    expect(global.feConfigs.limit).not.toHaveProperty('agentSandboxMaxFileBytes');
-    expect(global.feConfigs.limit).toMatchObject({ customLimit: 7, maxFolderDepth: 4 });
-  });
-  it.each([undefined, []])(
-    'migrates legacy backend policies with explicit whitelist %s taking precedence',
-    (configured) => {
+  it.each([{ fileUrlWhitelist: ['private.internal'] }, { fileUrlWhitelist: [] }])(
+    'loads backend policies from systemEnv and computes nested upload limits with whitelist %j',
+    ({ fileUrlWhitelist }) => {
       initFastGPTConfig({
         feConfigs: {
-          uploadFileMaxSize: 1,
-          uploadFileMaxAmount: 2,
-          fileUrlWhitelist: ['private.internal'],
-          ip_whitelist: '10.0.0.1',
-          evalFileMaxLines: 99
+          limit: {
+            uploadFileMaxSize: 32,
+            uploadFileMaxAmount: 7,
+            workflowParallelRunMaxConcurrency: 20
+          }
         },
-        systemEnv: { fileUrlWhitelist: configured }
+        systemEnv: { fileUrlWhitelist, ip_whitelist: '10.0.0.1' }
       } as any);
-      expect(global.systemEnv.fileUrlWhitelist).toEqual(configured ?? ['private.internal']);
+      expect(global.systemEnv.fileUrlWhitelist).toEqual(fileUrlWhitelist);
       expect(global.systemEnv.ip_whitelist).toBe('10.0.0.1');
       expect(global.feConfigs.limit).toMatchObject({
         uploadFileMaxAmount: 1000,
-        uploadFileMaxSize: 1000
+        uploadFileMaxSize: 1000,
+        skillSandboxMaxBytes: 512,
+        maxFolderDepth: 4,
+        workflowParallelRunMaxConcurrency: 20
       });
-      for (const key of [
-        'fileUrlWhitelist',
-        'ip_whitelist',
-        'evalFileMaxLines',
-        'uploadFileMaxAmount',
-        'uploadFileMaxSize'
-      ]) {
-        expect(global.feConfigs).not.toHaveProperty(key);
-      }
     }
   );
 });

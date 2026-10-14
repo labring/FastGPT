@@ -31,26 +31,6 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
     .strip()
     .parse(config.systemEnv);
 
-  // 兼容旧版后端策略配置；显式 systemEnv（包括空白名单）始终优先。
-  config.systemEnv.fileUrlWhitelist ??= Array.isArray(config.feConfigs.fileUrlWhitelist)
-    ? config.feConfigs.fileUrlWhitelist
-    : undefined;
-  config.systemEnv.ip_whitelist ??=
-    typeof config.feConfigs.ip_whitelist === 'string' ? config.feConfigs.ip_whitelist : undefined;
-  delete config.feConfigs.fileUrlWhitelist;
-  delete config.feConfigs.ip_whitelist;
-  delete config.feConfigs.evalFileMaxLines;
-  delete config.feConfigs.uploadFileMaxSize;
-  delete config.feConfigs.uploadFileMaxAmount;
-
-  // 旧文件/数据库配置可能仍包含已迁移到 getTicket 的字段，不再进入全局前端配置。
-  delete config.feConfigs.agentSandboxProxyUrl;
-  if (config.feConfigs.limit) {
-    delete config.feConfigs.limit.agentSandboxMaxFileBytes;
-    delete config.feConfigs.limit.agentSandboxArchiveMaxBytes;
-    delete config.feConfigs.limit.agentSandboxMaxSessionRuntime;
-  }
-
   // Special config computed
   config.feConfigs.showCustomPdfParse =
     !!config.systemEnv.customPdfParse?.url ||
