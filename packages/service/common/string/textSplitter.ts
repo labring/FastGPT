@@ -343,11 +343,21 @@ ${mdSplitString}
   }
 
   /**
+   * 表头预算不足时的降级：不再拼回表头，直接按长度安全切分，保证内容不丢且每块不超过上限。
+   * 仅含表头的分块没有可检索内容，因此不产出（与上面“只有表头无数据行”返回空分块的处理一致）。
+   */
+  const splitWithoutHeader = (text: string) =>
+    splitTextByLengthLimit({
+      text,
+      maxLength: chunkSize,
+      stepLength: chunkSize,
+      countLength,
+      maxChunks
+    });
+
+  /**
    * token 模式下表格行拆分后还要补回表头；这里按“表头 + 内容”的最终文本
    * 做二分兜底，避免只按行内容拆分后，拼回表头又超过 embedding 上限。
-   *
-   * 表头自身占满预算、连一个字符都放不下时不再抛错：改为不带表头地按长度切分剩余内容，
-   * 保证正文完整入库。仅含表头的分块没有可检索内容，因此不产出（与上面“只有表头无数据行”的处理一致）。
    */
   const splitTextWithHeaderLimit = (text: string) => {
     const result: string[] = [];
@@ -371,18 +381,11 @@ ${mdSplitString}
         }
       }
 
+      // 防御性分支：当前唯一调用方是 splitTableLineWithHeader，它已保证 contentChunkSize >= 1，
+      // 且传入文本来自受该预算约束的 commonSplit，故二分必有解（bestEnd >= 1）而不会走到这里。
+      // 保留是为了循环收敛：若 bestEnd 为 0 又直接切片，restText 不会推进会死循环。
       if (bestEnd === 0) {
-        pushChunks(
-          result,
-          splitTextByLengthLimit({
-            text: restText,
-            maxLength: chunkSize,
-            stepLength: chunkSize,
-            countLength,
-            maxChunks
-          }),
-          maxChunks
-        );
+        pushChunks(result, splitWithoutHeader(restText), maxChunks);
         break;
       }
 
@@ -398,13 +401,7 @@ ${mdSplitString}
     const contentChunkSize = chunkSize - countLength(defaultChunk);
     // 表头（含分隔行）本身就超出 chunk 预算：无法再拼回表头，退化为按长度安全切分该行内容。
     if (contentChunkSize <= 0) {
-      return splitTextByLengthLimit({
-        text: line,
-        maxLength: chunkSize,
-        stepLength: chunkSize,
-        countLength,
-        maxChunks
-      });
+      return splitWithoutHeader(line);
     }
 
     return commonSplit({
