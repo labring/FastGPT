@@ -45,11 +45,13 @@ export { getSafeSandboxInputFilename, joinSandboxPath } from '../utils';
 export type { DeployedSkillInfo, DeployedSkillVersion } from '../application/runtime/skill/types';
 export {
   getAgentSkillInfos,
-  injectAgentSkillFilesToSandbox,
-  runAgentSkillVersionEntrypoints,
-  syncBuiltinSkillsToSandbox
+  injectAgentSkillFilesToSandbox
 } from '../application/runtime/skill/core';
-export { getBuiltinSkillsRootPath } from '../application/runtime/skill/builtin';
+export {
+  getBuiltinSkillsRootPath,
+  syncBuiltinSkillsToSandbox
+} from '../application/runtime/skill/builtin';
+export { runAgentSkillVersionEntrypoints } from '../application/runtime/skill/entrypoint';
 
 type SandboxClientQueryWithId = SandboxClientQuery & { sandboxId: string; chatId: string };
 
