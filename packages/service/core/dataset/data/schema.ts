@@ -123,6 +123,9 @@ defineIndex(DatasetDataSchema, {
   key: { teamId: 1, datasetId: 1, collectionId: 1, indexStatus: 1 }
 });
 
+// 同义词复合索引只在模块加载期按 env 声明（schema 求值早于实例配置加载，无法热生效）；
+// 运行时开关 feature.datasetSynonymEnabled 可在 Admin 切换读写链路，但仅当
+// DATASET_SYNONYM_ENABLED=true 部署重启后索引才完整生效。registry 已按 restart 标注。
 if (serviceEnv.DATASET_SYNONYM_ENABLED) {
   defineIndex(DatasetDataSchema, {
     key: { teamId: 1, datasetId: 1, synonymVersion: 1, synonymRebuildingVersion: 1 }
