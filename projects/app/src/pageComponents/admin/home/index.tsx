@@ -7,6 +7,8 @@ import LicenseInput from '@/components/admin/License/Input';
 import { commercialDocUrl } from '@/components/admin/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { LicenseFunctionKey } from '@fastgpt/global/common/system/types';
+import type { LicenseType } from '@fastgpt/global/common/system/license/schema';
+import type { ParseKeys } from '@fastgpt/web/i18n/i18next';
 import { getLicenseStatus, LicenseStatusEnum } from '@fastgpt/global/common/system/license/utils';
 
 const formatDate = (value?: string) => {
@@ -22,12 +24,12 @@ const formatDate = (value?: string) => {
  * 顺序即界面顺序：先给客户最关心的登录与计费，再是增强类能力。
  * 新增能力时在 licenseFunctionKeys 与本清单各补一项即可，两个清单不一致时由
  * typing 报错提醒，不会静默漏展示某一项授权。
- * labelKey 存完整静态 i18n key（而非裸名再模板拼接），保证缺失翻译可被
- * 静态扫描/grep 检出，与其余 Admin 页面 t('admin:xxx') 风格一致。
+ * labelKey 用 ParseKeys<'admin'> 编译期联合类型约束（而非仅约束前缀的模板类型），
+ * key 拼写错误、漏加翻译在 tsc 阶段即报错；同时保持静态完整 key 可被 grep 检出。
  */
 const FUNCTION_CAPABILITY_ITEMS: Array<{
   key: LicenseFunctionKey;
-  labelKey: `admin:${string}`;
+  labelKey: ParseKeys<'admin'>;
 }> = [
   { key: 'sso', labelKey: 'admin:license_sso' },
   { key: 'pay', labelKey: 'admin:license_pay' },
@@ -41,10 +43,19 @@ const FUNCTION_CAPABILITY_ITEMS: Array<{
 /** 无有效授权（尚未激活/已到期）时统一使用的占位符，避免把「不限」误读为真实额度。 */
 const PLACEHOLDER = '--';
 
+/**
+ * 授权类型徽标：显式映射 LicenseType（trial/official）到完整 i18n key，
+ * Record 类型穷举强制新增授权类型时补全映射，避免兜底分支把未知类型静默标成商业版。
+ */
+const LICENSE_TYPE_DISPLAY: Record<LicenseType, ParseKeys<'admin'>> = {
+  trial: 'admin:license_trial',
+  official: 'admin:license_business'
+};
+
 /** 四态对应的徽标文案与配色；「即将过期」用橙色提示续期。 */
 const LICENSE_STATUS_DISPLAY: Record<
   LicenseStatusEnum,
-  { labelKey: `admin:${string}`; color: string; dot: string }
+  { labelKey: ParseKeys<'admin'>; color: string; dot: string }
 > = {
   [LicenseStatusEnum.inactive]: {
     labelKey: 'admin:license_inactive',
@@ -86,11 +97,9 @@ const AdminHome = () => {
   const isLicenseValid = isActivated;
   const company = isLicenseValid ? licenseData?.company : undefined;
   const limits = isLicenseValid ? licenseData?.limits : undefined;
-  const licenseTypeKey: `admin:${string}` | undefined = !isLicenseValid
-    ? undefined
-    : licenseData?.licenseType === 'trial'
-      ? 'admin:license_trial'
-      : 'admin:license_business';
+  const licenseTypeKey = isLicenseValid
+    ? LICENSE_TYPE_DISPLAY[licenseData?.licenseType ?? 'official']
+    : undefined;
   const avatarText = useMemo(() => {
     const latin = company
       ?.match(/[A-Za-z]/g)
