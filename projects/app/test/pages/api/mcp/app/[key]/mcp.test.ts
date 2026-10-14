@@ -1,5 +1,6 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { JSONRPCMessageSchema, isJSONRPCErrorResponse } from '@modelcontextprotocol/sdk/types.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -8,6 +9,13 @@ const mocks = vi.hoisted(() => ({
   callMcpServerTool: vi.fn(),
   getMcpAuthProxyFromHeaders: vi.fn(),
   handleRequest: vi.fn()
+}));
+
+const mockLogger = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn()
 }));
 
 vi.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {
@@ -28,7 +36,7 @@ vi.mock('@modelcontextprotocol/sdk/server/index.js', () => {
 });
 
 vi.mock('@fastgpt/service/common/logger', () => ({
-  getLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
+  getLogger: () => mockLogger,
   LogCategories: { MODULE: { MCP: { APP: 'mcp.app' } } }
 }));
 
@@ -96,7 +104,7 @@ describe('mcp app handler', () => {
     expect(isJSONRPCErrorResponse(JSONRPCMessageSchema.parse(body))).toBe(true);
   });
 
-  it('keeps legacy 500 response for non-cancellation errors', async () => {
+  it('keeps legacy 500 response for unexpected errors', async () => {
     mocks.getMcpServerTools.mockRejectedValue(new Error('some other error'));
 
     const res = await callPostHandler();
@@ -107,5 +115,32 @@ describe('mcp app handler', () => {
       error: { code: -32603, message: 'Internal server error' },
       id: null
     });
+    expect(mockLogger.error).toHaveBeenCalled();
+    expect(mockLogger.warn).not.toHaveBeenCalled();
+  });
+
+  it('returns a parseable JSON-RPC error with the original id when the key is invalid', async () => {
+    // key 不存在时的抛出形态：Promise.reject(裸字符串)，不是 Error 实例
+    mocks.getMcpServerTools.mockRejectedValue(CommonErrEnum.invalidResource);
+
+    const res = await callPostHandler();
+
+    // 无效 key 属于客户端侧状态，不是服务端异常：返回可解析的 JSON-RPC 错误而非 500
+    expect(res.status).toHaveBeenCalledWith(200);
+    const body = res.json.mock.calls[0][0];
+    expect(body).toEqual({
+      jsonrpc: '2.0',
+      id: 1,
+      error: {
+        code: -32000,
+        message: 'common:error_invalid_resource'
+      }
+    });
+    expect(() => JSONRPCMessageSchema.parse(body)).not.toThrow();
+    expect(isJSONRPCErrorResponse(JSONRPCMessageSchema.parse(body))).toBe(true);
+
+    // 日志降级为 warn，避免预期内的客户端错误污染服务端 error 指标
+    expect(mockLogger.warn).toHaveBeenCalled();
+    expect(mockLogger.error).not.toHaveBeenCalled();
   });
 });
