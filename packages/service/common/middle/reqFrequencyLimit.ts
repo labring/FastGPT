@@ -21,7 +21,8 @@ export function useIPFrequencyLimit({
 }) {
   return async (req: NodeHttpRequest, res: NodeApiResponse) => {
     // 实例配置为权威来源（blockStartup 迁移已回填 env 初值）；?? 兜底仅覆盖
-    // 快照未初始化的启动早期/测试种子场景，env 不是并行的第二生效来源。
+    // 叶子缺省的部分快照（测试种子）场景——生产快照（含未初始化时的默认合成）
+    // 叶子恒被 schema 默认值填满，env 不是并行的第二生效来源。
     const useIpLimit = getSystemInstanceConfig().security.useIpLimit ?? serviceEnv.USE_IP_LIMIT;
     if (!useIpLimit && !force) {
       return;
