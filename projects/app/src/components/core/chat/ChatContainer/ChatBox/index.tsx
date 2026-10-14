@@ -334,16 +334,12 @@ const ChatBox = ({
     resetInputVal,
     captureSubmittedInput,
     isSubmittedInputCurrent,
-    prepareSubmittedInput,
     clearSubmittedInput,
-    restoreSubmittedInput,
-    draftFilesState,
-    retryDraftFiles
+    restoreSubmittedInput
   } = useChatInputForm({
     sourceKey,
     chatId,
     draftIdentity,
-    draftTarget: chatAuthTarget,
     chatBoxSourceKey: chatBoxData?.sourceKey,
     chatRecordsLength: chatRecords.length,
     chatType,
@@ -375,7 +371,6 @@ const ChatBox = ({
     TextareaDom,
     captureSubmittedInput,
     isSubmittedInputCurrent,
-    prepareSubmittedInput,
     clearSubmittedInput,
     restoreSubmittedInput,
     setQuestionGuide,
@@ -699,8 +694,6 @@ const ChatBox = ({
           enableVoiceInput={resolvedFeatures.voice}
           disableSend={isRoundPending || (!isReady && !disabledSendTip)}
           TextareaDom={TextareaDom}
-          draftFilesState={draftFilesState}
-          onRetryDraftFiles={retryDraftFiles}
           resetInputVal={resetInputVal}
           chatForm={chatForm}
         />
@@ -773,8 +766,6 @@ const ChatBox = ({
                       enableVoiceInput={resolvedFeatures.voice}
                       disableSend={isRoundPending}
                       TextareaDom={TextareaDom}
-                      draftFilesState={draftFilesState}
-                      onRetryDraftFiles={retryDraftFiles}
                       resetInputVal={resetInputVal}
                       chatForm={chatForm}
                     />

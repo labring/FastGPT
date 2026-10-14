@@ -13,7 +13,12 @@ import {
 } from '@/web/core/chat/inputDraft/storage';
 
 const identity = { tmbId: 'member-a', appId: 'app-a', chatId: 'chat-a' };
-const file = { key: 'chat/file.pdf', name: 'file.pdf', type: 'file' as const };
+const file = {
+  key: 'chat/file.pdf',
+  url: 'https://preview',
+  name: 'file.pdf',
+  type: 'file' as const
+};
 
 describe('chat input draft storage', () => {
   let dom: JSDOM;

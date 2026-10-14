@@ -1,7 +1,4 @@
 {
-  "draft_files_loading": "正在恢复草稿附件…",
-  "draft_files_error": "部分草稿附件无法恢复，请重试或重新选择文件。",
-  "draft_files_retry": "重试",
   "AI_input_is_empty": "传入 AI 节点的内容为空",
   "LLM_model_response_empty": "模型响应为空，请查看模型详情请求",
   "Next": "下一个",

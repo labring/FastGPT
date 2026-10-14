@@ -1,7 +1,4 @@
 {
-  "draft_files_loading": "초안 첨부파일을 복원하는 중…",
-  "draft_files_error": "일부 첨부파일을 복원하지 못했습니다. 다시 시도하거나 파일을 다시 선택하세요.",
-  "draft_files_retry": "다시 시도",
   "AI_input_is_empty": "AI 노드로 전달된 내용이 비어 있습니다",
   "LLM_model_response_empty": "모델 응답이 비어 있습니다. 모델 상세 요청을 확인해 주세요",
   "Next": "다음",

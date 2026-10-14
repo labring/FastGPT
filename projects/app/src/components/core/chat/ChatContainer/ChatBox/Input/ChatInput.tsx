@@ -37,8 +37,6 @@ type ChatInputProps = BoxProps & {
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
   resetInputVal: (val: ChatBoxInputType) => void;
   chatForm: UseFormReturn<ChatBoxInputFormType>;
-  draftFilesState?: 'ready' | 'loading' | 'error';
-  onRetryDraftFiles?: () => void;
 };
 
 const ChatInput = ({
@@ -51,8 +49,6 @@ const ChatInput = ({
   TextareaDom,
   resetInputVal,
   chatForm,
-  draftFilesState = 'ready',
-  onRetryDraftFiles,
   ...props
 }: ChatInputProps) => {
   const { t } = useTranslation();
@@ -136,10 +132,7 @@ const ChatInput = ({
     chatId
   });
   const havInput = !!inputValue || fileList.length > 0;
-  const draftFilesBlocked =
-    draftFilesState === 'loading' || (draftFilesState === 'error' && fileList.length > 0);
-  const canSendMessage =
-    havInput && !hasFileUploading && !formFileUploading && !disableSend && !draftFilesBlocked;
+  const canSendMessage = havInput && !hasFileUploading && !formFileUploading && !disableSend;
   const canUploadFile =
     showSelectFile ||
     showSelectImg ||
@@ -529,26 +522,6 @@ const ChatInput = ({
         }
       }}
     >
-      {draftFilesState !== 'ready' && (
-        <Flex
-          alignItems="center"
-          gap={2}
-          mb={2}
-          fontSize="sm"
-          color={draftFilesState === 'error' ? 'orange.600' : 'myGray.500'}
-        >
-          <Box>
-            {t(
-              draftFilesState === 'loading' ? 'chat:draft_files_loading' : 'chat:draft_files_error'
-            )}
-          </Box>
-          {draftFilesState === 'error' && (
-            <Box as="button" type="button" color="primary.600" onClick={onRetryDraftFiles}>
-              {t('chat:draft_files_retry')}
-            </Box>
-          )}
-        </Flex>
-      )}
       {/* Real Chat Input */}
       <Flex
         direction={'column'}

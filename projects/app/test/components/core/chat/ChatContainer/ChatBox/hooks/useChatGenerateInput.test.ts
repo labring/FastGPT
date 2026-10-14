@@ -19,12 +19,10 @@ import { clearChatInputDrafts, readChatInputDraft } from '@/web/core/chat/inputD
 
 const mocks = vi.hoisted(() => ({
   start: vi.fn(),
-  prepare: vi.fn(),
   toast: vi.fn(),
   startAudio: vi.fn(),
   finishAudio: vi.fn()
 }));
-vi.mock('@/web/common/file/api', () => ({ prepareChatInputDraftFiles: mocks.prepare }));
 vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
 vi.mock('@fastgpt/web/hooks/useSystem', () => ({ useSystem: () => ({ isPc: false }) }));
 vi.mock('@/web/common/system/useSystemStore', () => ({
@@ -89,7 +87,6 @@ describe('chat generation with input drafts', () => {
       TextareaDom: textarea,
       captureSubmittedInput: input.captureSubmittedInput,
       isSubmittedInputCurrent: input.isSubmittedInputCurrent,
-      prepareSubmittedInput: input.prepareSubmittedInput,
       clearSubmittedInput: input.clearSubmittedInput,
       restoreSubmittedInput: input.restoreSubmittedInput,
       setQuestionGuide: () => {},
@@ -198,14 +195,6 @@ describe('chat generation with input drafts', () => {
     vi.clearAllMocks();
     mocks.start.mockResolvedValue({ responseText: 'answer' });
     mocks.startAudio.mockResolvedValue(undefined);
-    mocks.prepare.mockImplementation(async ({ keys }: { keys: string[] }) =>
-      keys.map((key) => ({
-        key,
-        status: 'ready',
-        url: 'https://fresh',
-        expiresAt: Date.now() + 3600000
-      }))
-    );
     root = createRoot(document.getElementById('root')!);
   });
   afterEach(async () => {
@@ -289,39 +278,6 @@ describe('chat generation with input drafts', () => {
     expect(mocks.start).toHaveBeenCalledOnce();
     expect(input.chatForm.getValues('input')).toBe('independent draft');
     expect(readChatInputDraft(identity)?.text).toBe('independent draft');
-  });
-
-  it('keeps input when attachment preparation rejects before the send is accepted', async () => {
-    await render();
-    await edit('submitted', [file]);
-    mocks.prepare.mockRejectedValueOnce(new Error('offline'));
-    await send();
-    expect(mocks.start).not.toHaveBeenCalled();
-    expect(records).toEqual([]);
-    expect(input.chatForm.getValues('input')).toBe('submitted');
-    expect(readChatInputDraft(identity)?.files).toHaveLength(1);
-  });
-
-  it('does not send or clear another conversation after leaving during file preparation', async () => {
-    await render();
-    await edit('submitted', [file]);
-    let resolve: (value: unknown) => void = () => {};
-    mocks.prepare.mockReturnValueOnce(
-      new Promise((done) => {
-        resolve = done;
-      })
-    );
-    await send();
-    await render({ chatId: 'B' });
-    await edit('B draft');
-    await act(async () =>
-      resolve([
-        { key: file.key, status: 'ready', url: 'https://fresh', expiresAt: Date.now() + 3600000 }
-      ])
-    );
-    expect(mocks.start).not.toHaveBeenCalled();
-    expect(input.chatForm.getValues('input')).toBe('B draft');
-    expect(readChatInputDraft(identity)?.text).toBe('submitted');
   });
 
   it('releases prepared audio without clearing the next conversation when leaving during initialization', async () => {

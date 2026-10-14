@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, type RefObject } from 'react';
 import { useForm } from 'react-hook-form';
 import { useDebounceFn, useMemoizedFn } from 'ahooks';
 import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
@@ -7,7 +7,6 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import {
   CHAT_INPUT_DRAFT_CLEAR_EVENT,
-  CHAT_INPUT_DRAFT_EXPIRE_MS,
   getChatInputDraftContentKey,
   getChatInputDraftEpoch,
   getChatInputDraftKey,
@@ -18,8 +17,6 @@ import {
   type ChatInputDraft,
   type ChatInputDraftIdentity
 } from '@/web/core/chat/inputDraft/storage';
-import { prepareChatInputDraftFiles } from '@/web/common/file/api';
-import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
 import { ChatTypeEnum, textareaMinH } from '../constants';
 import type { ChatBoxInputFormType, ChatBoxInputType, UserInputFileItemType } from '../type';
 
@@ -28,8 +25,6 @@ export type ChatInputSubmission = {
   identity?: ChatInputDraftIdentity;
   revision: string;
   epoch: string;
-  updatedAt: number;
-  target?: ChatAuthTargetInput;
   text: string;
   files: UserInputFileItemType[];
   /** 接受发送后记录空表单版本，失败只恢复未被继续编辑的表单。 */
@@ -40,20 +35,18 @@ type InputDraftState = Omit<ChatInputDraft, 'identity'> & {
   identity?: ChatInputDraftIdentity;
   formKey: string;
   epoch: string;
-  target?: ChatAuthTargetInput;
   runtimeFiles: UserInputFileItemType[];
   skipSave?: boolean;
 };
 
 /**
  * 表单只编辑当前会话；草稿按 tmbId/appId/chatId 隔离，最后修改后保留一小时。
- * 恢复与预览刷新不算编辑。发送快照清理、主动删除和迟到文件回调均检查所有者和版本。
+ * 恢复不算编辑。发送快照清理和主动删除检查所有者和版本，草稿保存与恢复不请求后端。
  */
 export const useChatInputForm = ({
   sourceKey,
   chatId,
   draftIdentity,
-  draftTarget,
   chatBoxSourceKey,
   chatRecordsLength,
   chatType,
@@ -63,7 +56,6 @@ export const useChatInputForm = ({
   sourceKey?: string;
   chatId?: string;
   draftIdentity?: ChatInputDraftIdentity;
-  draftTarget?: ChatAuthTargetInput;
   chatBoxSourceKey?: string;
   chatRecordsLength: number;
   chatType: ChatTypeEnum;
@@ -79,9 +71,6 @@ export const useChatInputForm = ({
   const stateRef = useRef<InputDraftState>();
   const applyingRef = useRef(false);
   const mountedRef = useRef(false);
-  const preparingRef = useRef(new Set<string>());
-  const [draftFilesState, setDraftFilesState] = useState<'ready' | 'loading' | 'error'>('ready');
-
   const resizeTextarea = useMemoizedFn((text: string) => {
     requestAnimationFrame(() => {
       if (TextareaDom.current) {
@@ -100,84 +89,10 @@ export const useChatInputForm = ({
     resizeTextarea(state.text);
   });
 
-  /** 原始文件引用可以在网络失败期间保留；待上传的新文件仍不能进入草稿。 */
-  const prepareFiles = useMemoizedFn(async (state: InputDraftState) => {
-    const remainingMs = state.updatedAt + CHAT_INPUT_DRAFT_EXPIRE_MS - Date.now();
-    if (!state.identity || state.files.length === 0 || remainingMs <= 0) return;
-    const requestKey = JSON.stringify([state.formKey, state.revision]);
-    if (preparingRef.current.has(requestKey)) return;
-    preparingRef.current.add(requestKey);
-    if (mountedRef.current && stateRef.current?.revision === state.revision) {
-      setDraftFilesState('loading');
-    }
-    try {
-      const results = await prepareChatInputDraftFiles({
-        ...(state.target ?? { appId: state.identity.appId }),
-        chatId: state.identity.chatId,
-        keys: state.files.map((file) => file.key),
-        remainingMs
-      });
-      const current = stateRef.current;
-      if (
-        !mountedRef.current ||
-        current?.formKey !== state.formKey ||
-        current.revision !== state.revision ||
-        current.epoch !== getChatInputDraftEpoch(current.identity)
-      )
-        return;
-
-      const resultMap = new Map(results.map((result) => [result.key, result]));
-      const runtimeFiles = current.runtimeFiles.flatMap((file) => {
-        const result = file.key ? resultMap.get(file.key) : undefined;
-        if (!result) return [file];
-        if (result.status === 'unavailable') return [];
-        return [
-          {
-            ...file,
-            url: result.url,
-            icon: file.type === 'image' ? result.url : getFileIcon(file.name),
-            status: 1 as const,
-            process: 100
-          }
-        ];
-      });
-      const files = current.files.filter(
-        (file) => resultMap.get(file.key)?.status !== 'unavailable'
-      );
-      const changed = files.length !== current.files.length;
-      const next = {
-        ...current,
-        files,
-        runtimeFiles,
-        revision: changed ? getNanoid() : current.revision
-      };
-      stateRef.current = next;
-      applyForm(next);
-      if (changed && next.identity) saveChatInputDraft({ ...next, identity: next.identity });
-      setDraftFilesState(
-        results.some((result) => result.status === 'unavailable') ||
-          current.files.some((file) => !resultMap.has(file.key))
-          ? 'error'
-          : 'ready'
-      );
-    } catch {
-      if (
-        mountedRef.current &&
-        stateRef.current?.formKey === state.formKey &&
-        stateRef.current.revision === state.revision
-      ) {
-        setDraftFilesState('error');
-      }
-    } finally {
-      preparingRef.current.delete(requestKey);
-    }
-  });
-
   const persistDraft = useMemoizedFn((state: InputDraftState) => {
     if (!state.identity || state.skipSave || state.epoch !== getChatInputDraftEpoch(state.identity))
       return;
     saveChatInputDraft({ ...state, identity: state.identity });
-    void prepareFiles(state);
   });
   const {
     run: scheduleSave,
@@ -194,14 +109,13 @@ export const useChatInputForm = ({
       ...file,
       id: getNanoid(),
       uploadId: getNanoid(),
-      icon: getFileIcon(file.name),
+      icon: file.type === 'image' ? file.url : getFileIcon(file.name),
       status: 1,
       process: 100
     }));
     const state: InputDraftState = {
       formKey,
       identity: draftIdentity,
-      target: draftTarget,
       text: draft?.text ?? '',
       files: draft?.files ?? [],
       runtimeFiles,
@@ -211,8 +125,6 @@ export const useChatInputForm = ({
     };
     stateRef.current = state;
     applyForm(state);
-    setDraftFilesState(runtimeFiles.length > 0 ? 'loading' : 'ready');
-    void prepareFiles(state);
   });
 
   useLayoutEffect(() => {
@@ -232,15 +144,7 @@ export const useChatInputForm = ({
       const current = stateRef.current;
       if (!current || applyingRef.current) return;
       const runtimeFiles = (values.files ?? []) as UserInputFileItemType[];
-      const known = new Map(current.files.map((file) => [file.key, file]));
-      const files = runtimeFiles.flatMap((file) => {
-        const uploaded = serializeChatInputFiles([file]);
-        return uploaded.length
-          ? uploaded
-          : file.key && known.has(file.key)
-            ? [known.get(file.key)!]
-            : [];
-      });
+      const files = serializeChatInputFiles(runtimeFiles);
       const text = values.input ?? '';
       if (getChatInputDraftContentKey(current) === getChatInputDraftContentKey({ text, files })) {
         current.runtimeFiles = runtimeFiles;
@@ -266,7 +170,6 @@ export const useChatInputForm = ({
       } else {
         scheduleSave(next);
       }
-      if (files.length === 0) setDraftFilesState('ready');
     });
     return () => subscription.unsubscribe();
   }, [watch, scheduleSave, cancelSave, persistDraft]);
@@ -294,7 +197,6 @@ export const useChatInputForm = ({
       };
       stateRef.current = next;
       applyForm(next);
-      setDraftFilesState('ready');
     };
     window.addEventListener('pagehide', flush);
     window.addEventListener('beforeunload', flush);
@@ -324,7 +226,6 @@ export const useChatInputForm = ({
     stateRef.current = next;
     applyForm(next);
     persistDraft(next);
-    if (next.files.length === 0) setDraftFilesState('ready');
   });
 
   /** 发送前固定所有者和版本，并同步保存本轮占用的输入快照。 */
@@ -340,8 +241,6 @@ export const useChatInputForm = ({
         identity: current.identity,
         revision: current.revision,
         epoch: current.epoch,
-        updatedAt: current.updatedAt,
-        target: current.target,
         text,
         files
       };
@@ -378,62 +277,6 @@ export const useChatInputForm = ({
     };
     stateRef.current = next;
     applyForm(next);
-    setDraftFilesState('ready');
-  });
-
-  /** 正式发送前再校验附件，防止输入框长时间停留后引用已经过期；失败时不清草稿。 */
-  const prepareSubmittedInput = useMemoizedFn(async (submission: ChatInputSubmission) => {
-    if (!isSubmittedInputCurrent(submission)) return false;
-    if (!submission.identity || submission.files.length === 0) return true;
-    const refs = serializeChatInputFiles(submission.files);
-    if (refs.length !== submission.files.length) return false;
-    const ownsForm = () =>
-      isSubmittedInputCurrent(submission) && stateRef.current?.revision === submission.revision;
-    if (ownsForm()) setDraftFilesState('loading');
-    try {
-      const results = await prepareChatInputDraftFiles({
-        ...(submission.target ?? { appId: submission.identity.appId }),
-        chatId: submission.identity.chatId,
-        keys: refs.map((file) => file.key),
-        remainingMs: Math.max(1, submission.updatedAt + CHAT_INPUT_DRAFT_EXPIRE_MS - Date.now())
-      });
-      const ready = new Map(
-        results.flatMap((result) =>
-          result.status === 'ready' ? [[result.key, result.url] as const] : []
-        )
-      );
-      const available = refs.every((file) => ready.has(file.key));
-      submission.files = submission.files.map((file) => ({
-        ...file,
-        url: ready.get(file.key ?? '') ?? file.url
-      }));
-      if (ownsForm()) {
-        const current = stateRef.current!;
-        const runtimeFiles = available
-          ? submission.files
-          : current.runtimeFiles.filter(
-              (file) =>
-                !file.key ||
-                !results.some(
-                  (result) => result.key === file.key && result.status === 'unavailable'
-                )
-            );
-        const next = {
-          ...current,
-          runtimeFiles,
-          files: current.files.filter((file) => runtimeFiles.some((item) => item.key === file.key)),
-          revision: available ? current.revision : getNanoid()
-        };
-        stateRef.current = next;
-        applyForm(next);
-        if (!available && next.identity) saveChatInputDraft({ ...next, identity: next.identity });
-        setDraftFilesState(available ? 'ready' : 'error');
-      }
-      return available && isSubmittedInputCurrent(submission);
-    } catch {
-      if (ownsForm()) setDraftFilesState('error');
-      return false;
-    }
   });
 
   /** 未收到回复的失败只恢复本轮快照，不覆盖更新的草稿或已删除的会话。 */
@@ -454,13 +297,6 @@ export const useChatInputForm = ({
         files: serializeChatInputFiles(submission.files)
       });
     }
-  });
-
-  const retryDraftFiles = useMemoizedFn(() => {
-    const current = stateRef.current;
-    if (!current) return;
-    if (current.files.length === 0) setDraftFilesState('ready');
-    else void prepareFiles(current);
   });
 
   // 只有这些聊天入口会在 ChatBox 内展示外部变量；其它入口即使存在 custom 变量，
@@ -501,10 +337,7 @@ export const useChatInputForm = ({
     resetInputVal,
     captureSubmittedInput,
     isSubmittedInputCurrent,
-    prepareSubmittedInput,
     clearSubmittedInput,
-    restoreSubmittedInput,
-    draftFilesState,
-    retryDraftFiles
+    restoreSubmittedInput
   };
 };

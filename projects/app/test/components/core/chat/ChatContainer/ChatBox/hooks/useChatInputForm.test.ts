@@ -13,16 +13,17 @@ import {
   type ChatInputDraftIdentity
 } from '@/web/core/chat/inputDraft/storage';
 
-const mocks = vi.hoisted(() => ({ prepare: vi.fn() }));
-vi.mock('@/web/common/file/api', () => ({ prepareChatInputDraftFiles: mocks.prepare }));
-
 const identity = { tmbId: 'member', appId: 'app', chatId: 'A' };
-const attachment = { key: 'chat/file.pdf', name: 'file.pdf', type: 'file' as const };
+const attachment = {
+  key: 'chat/file.pdf',
+  url: 'https://uploaded',
+  name: 'file.pdf',
+  type: 'file' as const
+};
 const uploadedFile = {
   ...attachment,
   id: 'file-id',
   uploadId: 'upload-id',
-  url: 'https://old',
   icon: 'icon',
   status: 1 as const
 };
@@ -73,15 +74,6 @@ describe('useChatInputForm', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-14T02:00:00Z'));
     clearChatInputDrafts();
-    mocks.prepare.mockReset();
-    mocks.prepare.mockImplementation(async ({ keys }: { keys: string[] }) =>
-      keys.map((key) => ({
-        key,
-        status: 'ready',
-        url: 'https://fresh',
-        expiresAt: Date.now() + CHAT_INPUT_DRAFT_EXPIRE_MS
-      }))
-    );
     root = createRoot(document.getElementById('root')!);
     mounted = false;
   });
@@ -114,14 +106,25 @@ describe('useChatInputForm', () => {
     const updatedAt = Date.now() - 5000;
     saveChatInputDraft({ identity, text: 'saved', files: [attachment], updatedAt });
     await render();
-    expect(result.chatForm.getValues('files')[0].url).toBe('https://fresh');
+    expect(result.chatForm.getValues('files')[0].url).toBe(attachment.url);
     expect(readChatInputDraft(identity)?.updatedAt).toBe(updatedAt);
-    expect(mocks.prepare).toHaveBeenCalledWith(
-      expect.objectContaining({ remainingMs: CHAT_INPUT_DRAFT_EXPIRE_MS - 5000 })
-    );
     await edit('latest');
     await act(async () => window.dispatchEvent(new window.Event('pagehide')));
     expect(readChatInputDraft(identity)?.text).toBe('latest');
+  });
+
+  it('restores uploaded attachment URLs and text after remount without renewing the draft', async () => {
+    await render();
+    await act(async () => result.resetInputVal({ text: 'refresh draft', files: [uploadedFile] }));
+    const saved = readChatInputDraft(identity)!;
+    await act(async () => root.unmount());
+    mounted = false;
+    await advance(1000);
+    root = createRoot(document.getElementById('root')!);
+    await render();
+    expect(result.chatForm.getValues('input')).toBe('refresh draft');
+    expect(result.chatForm.getValues('files')[0]).toMatchObject(attachment);
+    expect(readChatInputDraft(identity)?.updatedAt).toBe(saved.updatedAt);
   });
 
   it('never restores an expired draft', async () => {
@@ -134,7 +137,6 @@ describe('useChatInputForm', () => {
     await render();
     expect(result.chatForm.getValues('input')).toBe('');
     expect(result.chatForm.getValues('files')).toEqual([]);
-    expect(mocks.prepare).not.toHaveBeenCalled();
   });
 
   it('persists completed attachments immediately and drops pending files on conversation switch', async () => {
@@ -150,7 +152,7 @@ describe('useChatInputForm', () => {
     expect(result.chatForm.getValues('files')).toEqual([]);
     await render();
     expect(result.chatForm.getValues('files')).toHaveLength(1);
-    expect(result.chatForm.getValues('files')[0].url).toBe('https://fresh');
+    expect(result.chatForm.getValues('files')[0].url).toBe(attachment.url);
   });
 
   it('updates and clears data even when the textarea is not mounted', async () => {
@@ -222,77 +224,24 @@ describe('useChatInputForm', () => {
     expect(readChatInputDraft(identity)).toBeUndefined();
   });
 
-  it('ignores file responses after switching conversation or removing the attachment', async () => {
-    let resolve: (value: unknown) => void = () => {};
-    mocks.prepare.mockReturnValue(
-      new Promise((done) => {
-        resolve = done;
-      })
-    );
-    saveChatInputDraft({ identity, text: 'A', files: [attachment] });
-    await render();
-    await render({ ...identity, chatId: 'B' });
-    await act(async () =>
-      resolve([
-        { key: attachment.key, status: 'ready', url: 'https://late', expiresAt: Date.now() }
-      ])
-    );
-    expect(result.chatForm.getValues('files')).toEqual([]);
-
-    mocks.prepare.mockReturnValue(
-      new Promise((done) => {
-        resolve = done;
-      })
-    );
-    await render();
-    await act(async () => result.setValue('files', []));
-    await act(async () =>
-      resolve([
-        { key: attachment.key, status: 'ready', url: 'https://late', expiresAt: Date.now() }
-      ])
-    );
-    expect(result.chatForm.getValues('files')).toEqual([]);
-  });
-
-  it('keeps file references after a network failure and can retry preparation', async () => {
-    mocks.prepare.mockRejectedValueOnce(new Error('offline'));
-    saveChatInputDraft({ identity, text: 'draft', files: [attachment] });
-    await render();
-    expect(result.draftFilesState).toBe('error');
-    expect(readChatInputDraft(identity)?.files).toEqual([attachment]);
-    await act(async () => result.retryDraftFiles());
-    expect(result.draftFilesState).toBe('ready');
-    expect(result.chatForm.getValues('files')[0].url).toBe('https://fresh');
-  });
-
-  it('refreshes image previews while progress and pending preview changes do not renew the draft', async () => {
+  it('restores cached image previews while progress and icons do not renew the draft', async () => {
     const updatedAt = Date.now() - 5000;
-    const image = { key: 'chat/image.png', name: 'image.png', type: 'image' as const };
+    const image = {
+      key: 'chat/image.png',
+      url: 'https://image-preview',
+      name: 'image.png',
+      type: 'image' as const
+    };
     saveChatInputDraft({ identity, text: 'image draft', files: [image], updatedAt });
     await render();
     const runtimeImage = result.chatForm.getValues('files')[0];
-    expect(runtimeImage.icon).toBe('https://fresh');
+    expect(runtimeImage.icon).toBe(image.url);
     await advance(1000);
     await act(async () => result.setValue('files', [{ ...runtimeImage, process: 50 }]));
-    await act(async () => result.setValue('files', [{ ...runtimeImage, url: undefined }]));
+    await act(async () => result.setValue('files', [{ ...runtimeImage, icon: 'data:base64' }]));
     await advance(1000);
     expect(readChatInputDraft(identity)?.updatedAt).toBe(updatedAt);
     expect(readChatInputDraft(identity)?.files).toEqual([image]);
-    expect(mocks.prepare).toHaveBeenCalledOnce();
-  });
-
-  it('removes unavailable attachments without renewing text and permits retry with no files', async () => {
-    mocks.prepare.mockResolvedValueOnce([
-      { key: attachment.key, status: 'unavailable', reason: 'missing' }
-    ]);
-    const updatedAt = Date.now() - 5000;
-    saveChatInputDraft({ identity, text: 'keep text', files: [attachment], updatedAt });
-    await render();
-    expect(result.chatForm.getValues('files')).toEqual([]);
-    expect(readChatInputDraft(identity)?.text).toBe('keep text');
-    expect(readChatInputDraft(identity)?.updatedAt).toBe(updatedAt);
-    await act(async () => result.retryDraftFiles());
-    expect(result.draftFilesState).toBe('ready');
   });
 
   it('supports a non-cached composer when the member identity is unavailable', async () => {
@@ -306,64 +255,6 @@ describe('useChatInputForm', () => {
     expect(readChatInputDraft(identity)).toBeUndefined();
   });
 
-  it('prepares attachments again immediately before sending without extending local draft time', async () => {
-    saveChatInputDraft({
-      identity,
-      text: 'send',
-      files: [attachment],
-      updatedAt: Date.now() - 5000
-    });
-    await render();
-    const submission = result.captureSubmittedInput({
-      text: 'send',
-      files: result.chatForm.getValues('files')
-    });
-    let ready = false;
-    await act(async () => {
-      ready = await result.prepareSubmittedInput(submission);
-    });
-    expect(ready).toBe(true);
-    expect(submission.files[0].url).toBe('https://fresh');
-    expect(readChatInputDraft(identity)?.updatedAt).toBe(Date.now() - 5000);
-  });
-
-  it('keeps input when send preparation fails and removes confirmed unavailable attachments', async () => {
-    await render();
-    await act(async () => result.resetInputVal({ text: 'keep', files: [uploadedFile] }));
-    const submission = result.captureSubmittedInput({
-      text: 'keep',
-      files: result.chatForm.getValues('files')
-    });
-    mocks.prepare.mockRejectedValueOnce(new Error('offline'));
-    let ready = true;
-    await act(async () => {
-      ready = await result.prepareSubmittedInput(submission);
-    });
-    expect(ready).toBe(false);
-    expect(result.chatForm.getValues('input')).toBe('keep');
-    expect(readChatInputDraft(identity)?.files).toEqual([attachment]);
-    mocks.prepare.mockResolvedValueOnce([
-      { key: attachment.key, status: 'unavailable', reason: 'expired' }
-    ]);
-    await act(async () => {
-      ready = await result.prepareSubmittedInput(submission);
-    });
-    expect(ready).toBe(false);
-    expect(result.chatForm.getValues('input')).toBe('keep');
-    expect(result.chatForm.getValues('files')).toEqual([]);
-  });
-
-  it('preserves missing response rows until an explicit file result confirms availability', async () => {
-    mocks.prepare.mockResolvedValueOnce([]);
-    saveChatInputDraft({ identity, text: 'draft', files: [attachment] });
-    await render();
-    expect(result.draftFilesState).toBe('error');
-    expect(result.chatForm.getValues('files')[0].key).toBe(attachment.key);
-    expect(readChatInputDraft(identity)?.files).toEqual([attachment]);
-    await act(async () => result.retryDraftFiles());
-    expect(result.draftFilesState).toBe('ready');
-  });
-
   it('ignores unrelated cleanup and flushes beforeunload with an attachment-free draft', async () => {
     await render();
     await edit('keep');
@@ -371,22 +262,14 @@ describe('useChatInputForm', () => {
     expect(result.chatForm.getValues('input')).toBe('keep');
     await act(async () => window.dispatchEvent(new window.Event('beforeunload')));
     expect(readChatInputDraft(identity)?.text).toBe('keep');
-    await act(async () => result.retryDraftFiles());
-    expect(result.draftFilesState).toBe('ready');
   });
 
-  it('rejects pending uploads and submissions whose member or cleanup epoch changed', async () => {
+  it('rejects submissions whose member or cleanup epoch changed', async () => {
     await render();
     await edit('submitted');
-    const pending = result.captureSubmittedInput({
-      text: 'submitted',
-      files: [{ id: 'pending', type: 'file', name: 'pending.pdf', status: 0, icon: 'icon' }]
-    });
-    await expect(result.prepareSubmittedInput(pending)).resolves.toBe(false);
     const submission = result.captureSubmittedInput({ text: 'submitted' });
     await render({ ...identity, tmbId: 'another member' });
     expect(result.isSubmittedInputCurrent(submission)).toBe(false);
-    await expect(result.prepareSubmittedInput(submission)).resolves.toBe(false);
     await edit('new member draft');
     const next = result.captureSubmittedInput({ text: 'new member draft' });
     await act(async () => clearChatInputDrafts());

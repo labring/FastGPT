@@ -17,6 +17,7 @@ export type ChatInputDraftIdentity = z.infer<typeof ChatInputDraftIdentitySchema
 
 const ChatInputDraftFileSchema = z.object({
   key: z.string().min(1),
+  url: z.string().min(1),
   name: z.string(),
   type: z.enum(ChatFileTypeEnum)
 });
@@ -59,7 +60,7 @@ export const serializeChatInputFiles = (files: UserInputFileItemType[]): ChatInp
     return result.success ? [result.data] : [];
   });
 
-/** 内容比较不受预览 URL、field array ID 和上传进度变化影响。 */
+/** 只比较文字和已上传文件引用，不受 field array ID 和上传进度变化影响。 */
 export const getChatInputDraftContentKey = ({
   text,
   files

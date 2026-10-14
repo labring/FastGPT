@@ -104,7 +104,6 @@ type UseChatGenerateProps = {
   TextareaDom: MutableRefObject<HTMLTextAreaElement | null>;
   captureSubmittedInput: (input: ChatBoxInputType) => ChatInputSubmission;
   isSubmittedInputCurrent: (submission: ChatInputSubmission) => boolean;
-  prepareSubmittedInput: (submission: ChatInputSubmission) => Promise<boolean>;
   clearSubmittedInput: (submission: ChatInputSubmission) => void;
   restoreSubmittedInput: (submission: ChatInputSubmission) => void;
   setQuestionGuide: (guides: string[]) => void;
@@ -130,8 +129,7 @@ const isAbortByLeave = (reason: unknown) => {
  *
  * 输入约定：
  * - refs 仍由 ChatBox 持有，保证页面切换、恢复生成等生命周期清理共用同一组 controller。
- * - `captureSubmittedInput/clearSubmittedInput/restoreSubmittedInput`、`createQuestionGuide`、`scrollToBottom`、`generatingScroll` 都来自前面 PR
- *   已抽出的基础 hook，`useChatGenerate` 只编排它们，不重新实现输入或滚动细节。
+ * - 输入快照、草稿清理、失败恢复、问题引导和滚动由基础 hook 提供，本 hook 只编排生成流程。
  * - `notifyChatGenerateStatusChange` 只负责把生成状态变化抛给外部，不感知侧栏历史等外部模型。
  *
  * 边界行为：
@@ -153,7 +151,6 @@ export const useChatGenerate = ({
   TextareaDom,
   captureSubmittedInput,
   isSubmittedInputCurrent,
-  prepareSubmittedInput,
   clearSubmittedInput,
   restoreSubmittedInput,
   setQuestionGuide,
@@ -677,7 +674,11 @@ export const useChatGenerate = ({
       variablesForm.handleSubmit(
         async ({ variables = {} }) => {
           if (!onStartChat) return;
-          if (activeSourceKeyRef.current !== sourceKey || activeChatIdRef.current !== chatId)
+          if (
+            activeSourceKeyRef.current !== sourceKey ||
+            activeChatIdRef.current !== chatId ||
+            (submission && !isSubmittedInputCurrent(submission))
+          )
             return;
           if (isRoundPending || chatRequestActiveRef.current) {
             if (!hideInUI) {
@@ -713,22 +714,6 @@ export const useChatGenerate = ({
           });
           const previousAiDataId = getLastAiDataId(history);
           chatRequestActiveRef.current = true;
-          if (submission) {
-            const filesReady = await prepareSubmittedInput(submission);
-            if (!filesReady) {
-              chatRequestActiveRef.current = false;
-              return;
-            }
-            files = submission.files;
-          }
-          if (
-            activeSourceKeyRef.current !== sourceKey ||
-            activeChatIdRef.current !== chatId ||
-            (submission && !isSubmittedInputCurrent(submission))
-          ) {
-            chatRequestActiveRef.current = false;
-            return;
-          }
           try {
             if (autoTTSResponse) {
               await startSegmentedAudio();

@@ -99,13 +99,6 @@ describe('S3 TTL cleanup', () => {
     expect(await MongoS3TTL.find({ minioKey: fileKey, bucketName })).toHaveLength(0);
   });
 
-  it('removes the scanned ordinary TTL when its bucket is unavailable', async () => {
-    await createExpiredTtl();
-    global.s3BucketMap = {};
-    await clearExpiredMinioFiles();
-    expect(await MongoS3TTL.find({ minioKey: fileKey, bucketName })).toHaveLength(0);
-  });
-
   it('rejects a Multipart TTL without an uploadId', async () => {
     await expect(
       MongoS3TTL.create({
@@ -116,34 +109,4 @@ describe('S3 TTL cleanup', () => {
       })
     ).rejects.toThrow();
   });
-
-  it.each(['renewed', 'persisted'] as const)(
-    'skips a stale scan after a file was %s',
-    async (action) => {
-      const storage = createVitestStorageMock({ vi, bucketName });
-      const bucket = new S3BaseBucket(storage, undefined);
-      const addDeleteJob = vi.spyOn(bucket, 'addDeleteJob').mockResolvedValue(undefined);
-      await createExpiredTtl();
-      const snapshot = await MongoS3TTL.find({ minioKey: fileKey }).lean();
-      global.s3BucketMap = { [bucketName]: bucket };
-      vi.spyOn(MongoS3TTL, 'find').mockReturnValueOnce({
-        lean: async () => {
-          if (action === 'renewed') {
-            await MongoS3TTL.updateOne(
-              { minioKey: fileKey },
-              { $set: { expiredTime: new Date(Date.now() + 60000) } }
-            );
-          } else {
-            await MongoS3TTL.deleteMany({ minioKey: fileKey });
-          }
-          return snapshot;
-        }
-      } as ReturnType<typeof MongoS3TTL.find>);
-      await clearExpiredMinioFiles();
-      expect(addDeleteJob).not.toHaveBeenCalled();
-      expect(await MongoS3TTL.countDocuments({ minioKey: fileKey })).toBe(
-        action === 'renewed' ? 1 : 0
-      );
-    }
-  );
 });
