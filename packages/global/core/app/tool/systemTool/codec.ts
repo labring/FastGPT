@@ -1,11 +1,10 @@
-import type { LangEnum } from '../../../../common/i18n/type';
-import { parseI18nString } from '../../../../common/i18n/utils';
-import type { ToolListItemType } from '../../../../sdk/fastgpt-plugin';
+import type { SystemToolListItemType } from './type';
+import type { ToolListItemType as SDKToolListItemType } from '../../../../sdk/fastgpt-plugin';
 import type { SystemPluginToolCollectionType } from '../../../plugin/tool/type';
 import { PluginStatusEnum } from '../../../plugin/type';
 import { SystemToolSystemSecretStatusEnum } from './constants';
-import type { SystemToolListItemType } from './type';
 import { isDebugToolSource } from '../utils';
+
 
 type SystemToolConfigLike = SystemPluginToolCollectionType & {
   toObject?: () => SystemPluginToolCollectionType;
@@ -78,22 +77,23 @@ export const SystemToolCodec = {
   attachToolConfig({
     tool,
     config,
-    lang,
     source
   }: {
-    tool: ToolListItemType;
+    tool: SDKToolListItemType;
     config?: SystemPluginToolCollectionType;
-    lang?: `${LangEnum}`;
     source?: string;
   }): SystemToolListItemType {
     const isDebugSource = isDebugToolSource(source) || isDebugToolSource(tool.source);
     const configuredSecretsVal = isDebugSource ? undefined : this.getConfiguredSecretsVal(config);
     const hasSystemSecret = !!configuredSecretsVal;
+    const systemTitle = (
+      globalThis as typeof globalThis & { feConfigs?: { systemTitle?: string } }
+    ).feConfigs?.systemTitle;
 
     return {
       id: this.getDBPluginId(tool.pluginId),
       etag: tool.etag,
-      author: tool.author ?? global.feConfigs.systemTitle ?? '',
+      author: tool.author ?? systemTitle ?? '',
       avatar: tool.icon,
       currentCost: config?.currentCost ?? 0,
       hasSystemSecret,
@@ -102,9 +102,9 @@ export const SystemToolCodec = {
         hasSystemSecret
       }),
       hasTokenFee: config?.hasTokenFee ?? false,
-      intro: parseI18nString(tool.description, lang),
+      intro: tool.description,
       isToolSet: !!tool.children && tool.children.length > 0,
-      name: parseI18nString(tool.name, lang),
+      name: tool.name,
       status: config?.status ?? PluginStatusEnum.Normal,
       systemKeyCost: config?.systemKeyCost ?? 0,
       tags: config?.customConfig?.tags ?? tool.tags ?? [],
@@ -114,6 +114,7 @@ export const SystemToolCodec = {
       promoteTags: config?.promoteTags ?? [],
       pluginOrder: config?.pluginOrder ?? 0,
       readmeUrl: tool.readmeUrl,
+      ...(tool.readmeUrls !== undefined ? { readmeUrls: tool.readmeUrls } : {}),
       source: tool.source,
       userGuide: config?.customConfig?.userGuide
     };

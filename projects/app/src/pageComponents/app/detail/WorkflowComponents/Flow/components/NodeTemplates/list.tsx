@@ -17,7 +17,7 @@ import {
   css
 } from '@chakra-ui/react';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { getToolIdentityKey, isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
@@ -89,7 +89,7 @@ const NodeTemplateListItem = ({
   isPopover?: boolean;
   onUpdateParentId: (parentId: string, source?: string) => void;
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
 
   const { screenToFlowPosition } = useReactFlow();
@@ -120,7 +120,7 @@ const NodeTemplateListItem = ({
             />
             <Flex alignItems={'center'} gap={2} ml={3} flex={'1'} minW={0}>
               <Box fontWeight={'bold'} color={'myGray.900'} className="textEllipsis">
-                {template.name}
+                {t(selectPluginText(template.name, i18n.language))}
               </Box>
               {isDebugTool && <DebugToolTag />}
             </Flex>
@@ -129,7 +129,8 @@ const NodeTemplateListItem = ({
             )}
           </Flex>
           <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
-            {template.intro || t('common:core.workflow.Not intro')}
+            {t(selectPluginText(template.intro, i18n.language)) ||
+              t('common:core.workflow.Not intro')}
           </Box>
           {isSystemTool && (
             <CostTooltip
@@ -201,7 +202,7 @@ const NodeTemplateListItem = ({
               fontSize={isPopover ? 'xs' : 'sm'}
               className="textEllipsis"
             >
-              {t(template.name as any)}
+              {t(selectPluginText(template.name, i18n.language))}
             </Box>
             {feConfigs?.enable_team_plugin_upload === true && isSystemSource && <SystemToolTag />}
             {isDebugTool && <DebugToolTag />}
@@ -365,16 +366,16 @@ const NodeTemplateList = ({
           .map((input) => ({
             ...input,
             value: input.value ?? input.defaultValue,
-            valueDesc: input.valueDesc ? t(input.valueDesc as any) : undefined,
-            label: t(input.label as any),
-            description: input.description ? t(input.description as any) : undefined,
-            placeholder: input.placeholder ? t(input.placeholder as any) : undefined,
-            debugLabel: input.debugLabel ? t(input.debugLabel as any) : undefined,
-            toolDescription: input.toolDescription ? t(input.toolDescription as any) : undefined,
+            valueDesc: input.valueDesc ? t(input.valueDesc) : undefined,
+            label: t(input.label),
+            description: input.description ? t(input.description) : undefined,
+            placeholder: input.placeholder ? t(input.placeholder) : undefined,
+            debugLabel: input.debugLabel ? t(input.debugLabel) : undefined,
+            toolDescription: input.toolDescription ? t(input.toolDescription) : undefined,
             list: Array.isArray(input.list)
-              ? input.list.map((opt: any) => ({
+              ? input.list.map((opt) => ({
                   ...opt,
-                  label: opt?.label ? t(opt.label as any) : opt?.label
+                  label: opt?.label ? t(opt.label) : opt?.label
                 }))
               : input.list
           }));
@@ -408,11 +409,11 @@ const NodeTemplateList = ({
           template: {
             ...templateNode,
             name: computedNewNodeName({
-              templateName: t(templateNode.name as any),
+              templateName: t(selectPluginText(templateNode.name, i18n.language)),
               flowNodeType: templateNode.flowNodeType,
               pluginId: templateNode.pluginId
             }),
-            intro: t(templateNode.intro as any),
+            intro: t(selectPluginText(templateNode.intro, i18n.language)),
             inputs: inputsWithAutoFill.map((input) =>
               normalizeFlowNodeInputType(input, {
                 isTool: isToolMode,
@@ -424,9 +425,9 @@ const NodeTemplateList = ({
               .filter((output) => output.deprecated !== true)
               .map((output) => ({
                 ...output,
-                valueDesc: t(output.valueDesc as any),
-                label: t(output.label as any),
-                description: t(output.description as any)
+                valueDesc: t(output.valueDesc ?? ''),
+                label: t(output.label),
+                description: t(output.description ?? '')
               }))
           },
           position,
@@ -520,8 +521,8 @@ const NodeTemplateList = ({
           if (item.templateType && map[item.templateType]) {
             map[item.templateType].list.push({
               ...item,
-              name: t(item.name as any),
-              intro: t(item.intro as any)
+              name: t(selectPluginText(item.name, i18n.language)),
+              intro: t(selectPluginText(item.intro, i18n.language))
             });
           }
         });
@@ -549,8 +550,8 @@ const NodeTemplateList = ({
               label: '',
               list: templates.map((item) => ({
                 ...item,
-                name: t(parseI18nString(item.name, i18n.language)),
-                intro: t(parseI18nString(item.intro || '', i18n.language))
+                name: t(selectPluginText(item.name, i18n.language)),
+                intro: t(selectPluginText(item.intro, i18n.language))
               }))
             }
           ]
@@ -581,7 +582,7 @@ const NodeTemplateList = ({
                   flex={1}
                   color={isPopover ? 'myGray.600' : 'myGray.900'}
                 >
-                  {t(item.label as any)}
+                  {t(item.label)}
                 </Box>
               )}
 
@@ -627,7 +628,7 @@ const NodeTemplateList = ({
                 borderRadius={'md'}
                 px={3}
               >
-                {t(label as any)}
+                {t(label)}
                 <AccordionIcon />
               </AccordionButton>
               <AccordionPanel py={0}>{renderNodeList(list)}</AccordionPanel>

@@ -12,7 +12,8 @@ const privateToolSchemaKeys = new Set([
   'toolDescription',
   'x-tool-description',
   'isToolParam',
-  'isSecret'
+  'isSecret',
+  'x-i18n'
 ]);
 
 /**

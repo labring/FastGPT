@@ -98,6 +98,9 @@ export const uiWorkflow2StoreWorkflow = ({
       showStatus: item.data.showStatus,
       position: item.position,
       version: item.data.version,
+      ...(item.data.metadataLocale !== undefined
+        ? { metadataLocale: item.data.metadataLocale }
+        : {}),
       inputs: filterUnselectableReferenceInputs({
         node: item.data,
         inputs,

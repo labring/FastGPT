@@ -2,6 +2,7 @@ import { type NodeTemplateListItemType } from '@fastgpt/global/core/workflow/typ
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
+import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -90,7 +91,7 @@ export async function handler(
         })) ?? [];
 
     return GetSystemToolTemplatesResponseSchema.parse(
-      filterTemplatesBySearchKey(childTemplates, searchRegex)
+      filterTemplatesBySearchKey(childTemplates, searchRegex, lang)
     );
   }
   // no parentId, get all tools
@@ -130,7 +131,7 @@ export async function handler(
       instructions: tool.userGuide ?? '',
       tags: tool.tags
     }))
-    .filter((item) => filterTemplateBySearchKey(item, searchRegex));
+    .filter((item) => filterTemplateBySearchKey(item, searchRegex, lang));
 
   return GetSystemToolTemplatesResponseSchema.parse(templates);
 }
@@ -173,16 +174,24 @@ function isSelectableToolStatus(status?: PluginStatusType) {
 
 function filterTemplatesBySearchKey<T extends NodeTemplateListItemType>(
   templates: T[],
-  searchRegex?: RegExp
+  searchRegex?: RegExp,
+  lang?: string
 ) {
   if (!searchRegex) return templates;
-  return templates.filter((item) => filterTemplateBySearchKey(item, searchRegex));
+  return templates.filter((item) => filterTemplateBySearchKey(item, searchRegex, lang));
 }
 
-function filterTemplateBySearchKey(template: NodeTemplateListItemType, searchRegex?: RegExp) {
+function filterTemplateBySearchKey(
+  template: NodeTemplateListItemType,
+  searchRegex?: RegExp,
+  lang?: string
+) {
   if (!searchRegex) return true;
 
-  return [template.name, template.intro, template.instructions, ...(template.tags ?? [])].some(
-    (text) => searchRegex.test(String(text ?? ''))
-  );
+  return [
+    selectPluginText(template.name, lang),
+    selectPluginText(template.intro, lang),
+    template.instructions,
+    ...(template.tags ?? [])
+  ].some((text) => searchRegex.test(String(text ?? '')));
 }
