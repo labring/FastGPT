@@ -11,13 +11,11 @@ import {
 } from '@fastgpt/service/support/user/account/password/service';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 
-const originalFeConfigs = global.feConfigs;
-
 /** 构造只影响 SSO 密码策略的 feConfigs，其余字段沿用运行时已有配置。 */
 const setSsoPasswordPolicy = (enabled: boolean) => {
   global.feConfigs = {
     ...global.feConfigs,
-    limit: global.feConfigs.limit ?? { uploadFileMaxAmount: 10, uploadFileMaxSize: 10 },
+    limit: global.feConfigs?.limit ?? { uploadFileMaxAmount: 10, uploadFileMaxSize: 10 },
     sso: {
       url: 'https://sso.example.com',
       disablePasswordForSsoUsers: enabled
@@ -54,7 +52,12 @@ describe('password change session service', () => {
 });
 
 describe('SSO password policy', () => {
-  beforeEach(() => setSsoPasswordPolicy(false));
+  let originalFeConfigs: typeof global.feConfigs;
+  beforeEach(() => {
+    // 全局配置由 beforeAll 初始化，不能在模块导入时保存未初始化的值。
+    originalFeConfigs = global.feConfigs;
+    setSsoPasswordPolicy(false);
+  });
   afterEach(() => {
     global.feConfigs = originalFeConfigs;
   });

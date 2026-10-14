@@ -28,8 +28,7 @@ const mocks = vi.hoisted(() => ({
   setUserInfo: vi.fn(),
   setLoginStore: vi.fn(),
   oauthLogin: vi.fn(),
-  clearToken: vi.fn(),
-  resetUserModelCatalogAfterLogin: vi.fn()
+  clearToken: vi.fn()
 }));
 
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
@@ -63,7 +62,9 @@ vi.mock('@/web/support/user/auth', () => ({
 }));
 
 vi.mock('@/web/support/user/useUserStore', () => ({
-  useUserStore: () => ({ setUserInfo: mocks.setUserInfo })
+  useUserStore: Object.assign(() => ({ setUserInfo: mocks.setUserInfo }), {
+    getState: () => ({ setUserInfo: mocks.setUserInfo })
+  })
 }));
 
 vi.mock('@/web/common/system/useSystemStore', () => ({
@@ -85,10 +86,6 @@ vi.mock('@/web/common/utils/uri', () => ({
 
 vi.mock('@/web/support/user/loginRedirect', () => ({
   useLoginRedirectAfterLogin: () => mocks.resolveLoginRedirect
-}));
-
-vi.mock('@/web/core/ai/model/useUserModelStore', () => ({
-  resetUserModelCatalogAfterLogin: mocks.resetUserModelCatalogAfterLogin
 }));
 
 vi.mock('@/web/support/user/api', () => ({
@@ -215,6 +212,7 @@ describe('login page invitation redirects', () => {
       fallbackRoute: invitationRoute,
       lastTmbId: 'tmb-a'
     });
+    expect(mocks.setUserInfo).toHaveBeenCalledExactlyOnceWith(user, true);
     expect(mocks.router.replace).toHaveBeenCalledWith(invitationRoute);
   });
 
@@ -236,6 +234,7 @@ describe('login page invitation redirects', () => {
         fallbackRoute: invitationRoute,
         lastTmbId: 'tmb-a'
       });
+      expect(mocks.setUserInfo).toHaveBeenCalledExactlyOnceWith(user, true);
       expect(mocks.router.replace).toHaveBeenCalledWith(invitationRoute);
     });
   });
@@ -262,6 +261,7 @@ describe('login page invitation redirects', () => {
     await render();
 
     expect(mocks.oauthLogin).toHaveBeenCalledOnce();
+    expect(mocks.setUserInfo).toHaveBeenCalledExactlyOnceWith(user, true);
     expect(mocks.router.replace).toHaveBeenCalledWith(invitationRoute);
   });
 
