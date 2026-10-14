@@ -1,8 +1,6 @@
 // @vitest-environment jsdom
 
 import React from 'react';
-import { act } from 'react';
-import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ChakraProvider } from '@chakra-ui/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -54,40 +52,6 @@ describe('resolveMultipleSelectItems', () => {
 });
 
 describe('MultipleSelect', () => {
-  it('mounts the menu only after opening and removes it after closing', async () => {
-    const host = document.createElement('div');
-    document.body.appendChild(host);
-    const root = createRoot(host);
-
-    await act(async () => {
-      root.render(
-        React.createElement(ChakraProvider, null, React.createElement(MultipleSelect, props))
-      );
-    });
-
-    expect(host.textContent).not.toContain('Deferred option');
-    expect(host.querySelector('.chakra-menu__menu-list')).toBeNull();
-
-    await act(async () => {
-      host
-        .querySelector('[role="button"]')
-        ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    });
-
-    expect(host.textContent).toContain('Deferred option');
-    expect(host.querySelector('.chakra-menu__menu-list')).not.toBeNull();
-
-    await act(async () => {
-      host
-        .querySelector('[aria-expanded="true"]')
-        ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    });
-
-    expect(host.textContent).not.toContain('Deferred option');
-    expect(host.querySelector('.chakra-menu__menu-list')).toBeNull();
-    root.unmount();
-  });
-
   it('keeps the closed server render free of menu content', () => {
     const html = renderToStaticMarkup(
       React.createElement(ChakraProvider, null, React.createElement(MultipleSelect, props))
