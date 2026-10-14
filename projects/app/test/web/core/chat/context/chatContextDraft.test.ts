@@ -26,7 +26,7 @@ vi.mock('next/router', () => ({ useRouter: () => ({ query: {}, replace: vi.fn() 
 vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
 
 const identity = { tmbId: 'member', appId: 'app', chatId: 'A' };
-const originalUserStorage = useUserStore.persist.getOptions().storage;
+const originalUserStorage = useUserStore.persist?.getOptions().storage;
 const makeUser = (tmbId: string) =>
   ({ team: { tmbId } }) as NonNullable<ReturnType<typeof useUserStore.getState>['userInfo']>;
 
@@ -60,8 +60,9 @@ describe('history deletion draft ownership', () => {
     vi.stubGlobal('localStorage', dom.window.localStorage);
     vi.stubGlobal('sessionStorage', dom.window.sessionStorage);
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-    // Zustand 在模块导入时选择存储，改用本测例的真实 JSDOM 存储，避免 Node 占位对象。
-    useUserStore.persist.setOptions({ storage: createJSONStorage(() => dom.window.localStorage) });
+    // 模块导入时没有 Web Storage 的 Node 会使用内存 store，不安装 persist 接口。
+    // 已安装 persist 时改用本测例的真实 JSDOM 存储，避免 Node 占位对象。
+    useUserStore.persist?.setOptions({ storage: createJSONStorage(() => dom.window.localStorage) });
     vi.clearAllMocks();
     clearChatInputDrafts();
     useChatStore.setState({ chatId: 'A', outLinkAuthData: {} });
@@ -70,7 +71,7 @@ describe('history deletion draft ownership', () => {
   afterEach(async () => {
     await act(async () => root.unmount());
     clearChatInputDrafts();
-    useUserStore.persist.setOptions({ storage: originalUserStorage });
+    useUserStore.persist?.setOptions({ storage: originalUserStorage });
     dom.window.close();
     vi.unstubAllGlobals();
   });

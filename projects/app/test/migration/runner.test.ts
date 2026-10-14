@@ -532,11 +532,15 @@ describe('system migration runner', () => {
 
     try {
       await runner.start();
-      await vi.waitFor(async () => {
-        expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
-          SystemMigrationStatusEnum.failed
-        );
-      });
+      // CI 并发执行时真实 Mongo I/O 可能超过默认 1 秒，仍等待实际失败状态而非固定延时。
+      await vi.waitFor(
+        async () => {
+          expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
+            SystemMigrationStatusEnum.failed
+          );
+        },
+        { timeout: 5_000 }
+      );
 
       const state = await MongoSystemMigrationState.findById(migration.id).lean();
       expect(state?.lastError?.message).toContain('cannot access failed record details');
@@ -563,11 +567,14 @@ describe('system migration runner', () => {
 
     try {
       await runner.start();
-      await vi.waitFor(async () => {
-        expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
-          SystemMigrationStatusEnum.failed
-        );
-      });
+      await vi.waitFor(
+        async () => {
+          expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
+            SystemMigrationStatusEnum.failed
+          );
+        },
+        { timeout: 5_000 }
+      );
       expect(
         (await MongoSystemMigrationState.findById(migration.id).lean())?.lastError?.message
       ).toContain('cannot access failed record details');

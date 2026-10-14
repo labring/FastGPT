@@ -329,6 +329,8 @@ S3 续期与清理测试使用本地 MongoDB，远端对象元信息及签名能
 完成 App TypeScript 检查、修改文件的 ESLint/Prettier 检查和 `git diff --check`。
 历史删除测试额外覆盖请求发起后切换应用或成员，以及远端删除失败，确认仅清理原请求所属草稿。
 
+CI 补充验证：关闭 Node 的 Web Storage 复现了成员 store 未安装 Zustand `persist` 接口的测试初始化错误。测试现兼容纯内存 store，同时保留真实 JSDOM 草稿存储和成员切换断言；在该环境下，历史清理与迁移 runner 两个局部测试文件共 17 项通过。阻塞迁移状态断言沿用同文件已有的 5 秒等待预算，以容纳 CI 的 Mongo I/O 延迟。
+
 ## 10. TODO
 
 - [x] 核实已有草稿实现和串会话原因。
