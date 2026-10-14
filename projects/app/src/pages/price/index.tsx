@@ -1,6 +1,8 @@
-import { initPriceData } from '@/pageComponents/price/init';
+import { clientInitData } from '@/web/common/system/staticData';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Button, Flex, HStack, IconButton } from '@chakra-ui/react';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { getTeamPlanStatus } from '@/web/support/user/team/api';
 
 import StandardPlan, { BillingModeSwitch } from '@/pageComponents/price/Standard';
 import ExtraPlan from '@/pageComponents/price/ExtraPlan';
@@ -22,6 +24,7 @@ import {
 } from '@/pageComponents/price/purchaseIntent';
 
 const PriceBox = () => {
+  const { initUserInfo } = useUserStore();
   const { t } = useSafeTranslation();
   const { subPlans } = useSystemStore();
   const router = useRouter();
@@ -36,9 +39,19 @@ const PriceBox = () => {
   const [userSubMode, setUserSubMode] = useState<`${SubModeEnum}`>(SubModeEnum.month);
   const [resumePurchaseIntent, setResumePurchaseIntent] = useState<PricePurchaseIntent>();
 
-  const { data: initialData, loading: isLoading } = useRequest(initPriceData, {
-    manual: false
-  });
+  const { data: initialData, loading: isLoading } = useRequest(
+    async () => {
+      // 团队上下文由用户初始化写入，请求套餐前必须等待它完成，避免重复请求造成页面二次白屏。
+      const userInfo = await initUserInfo();
+      if (!useSystemStore.getState().subPlans) await clientInitData();
+      const teamSubPlan = await getTeamPlanStatus();
+
+      return { userInfo, teamSubPlan };
+    },
+    {
+      manual: false
+    }
+  );
   const userInfo = initialData?.userInfo;
   const teamSubPlan = initialData?.teamSubPlan;
   const shouldResumePurchase = router.query.resumePurchase === '1';

@@ -127,7 +127,6 @@ describe('getInitData anonymous configuration filtering', () => {
 
     expect(code).toBe(200);
     expect(data).toEqual({
-      isAuthenticated: false,
       bufferId: 'unAuth_v8_config-1',
       feConfigs: publicConfig
     });
@@ -143,7 +142,6 @@ describe('getInitData anonymous configuration filtering', () => {
 
     expect(code).toBe(200);
     expect(data).toEqual({
-      isAuthenticated: true,
       bufferId: 'config-1',
       feConfigs: expectedAuthenticatedConfig(),
       subPlans: global.subPlans,
@@ -155,7 +153,6 @@ describe('getInitData anonymous configuration filtering', () => {
     const { data } = await Call(handler, { auth, headers: {}, query: { bufferId: 'config-1' } });
 
     expect(data).toEqual({
-      isAuthenticated: true,
       bufferId: 'config-1',
       feConfigs: expectedAuthenticatedConfig(),
       systemVersion: '4.17.3'
@@ -184,7 +181,7 @@ describe('getInitData anonymous configuration filtering', () => {
       query: { bufferId: 'unAuth_v8_config-1' }
     });
 
-    expect(data).toEqual({ isAuthenticated: false, bufferId: 'unAuth_v8_config-1' });
+    expect(data).toEqual({ bufferId: 'unAuth_v8_config-1' });
   });
 
   it.each([
@@ -204,7 +201,6 @@ describe('getInitData anonymous configuration filtering', () => {
         query
       });
       expect(data).toEqual({
-        isAuthenticated: false,
         feConfigs: publicConfig,
         subPlans: global.subPlans
       });

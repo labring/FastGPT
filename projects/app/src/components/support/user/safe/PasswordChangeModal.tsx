@@ -248,9 +248,7 @@ const PasswordChangeModal = ({
       });
       reset();
       setStoredSession(undefined);
-      // 密码更新已确认新会话；资料刷新暂时失败时也要主动刷新初始化配置。
-      const user = (await initUserInfo()) ?? userInfo;
-      if (user) useUserStore.getState().setUserInfo(user, true);
+      await initUserInfo();
       toast({ status: 'success', title: t('common:password_set_success') });
       await onSuccess?.();
     } catch (error) {

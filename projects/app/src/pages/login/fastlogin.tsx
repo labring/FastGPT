@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { clearToken } from '@/web/support/user/auth';
 import { postFastLogin } from '@/web/support/user/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import Loading from '@fastgpt/web/components/common/MyLoading';
@@ -11,6 +12,7 @@ import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/u
 import { useLoginRedirectAfterLogin } from '@/web/support/user/loginRedirect';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { getFastGPTSem, onFastGPTLoginSuccess } from '@/web/support/marketing/utils';
+import { resetUserModelCatalogAfterLogin } from '@/web/core/ai/model/useUserModelStore';
 
 /** 使用 CSR 门禁恢复后的凭据完成登录；相同 code/token 在本次挂载中只消费一次。 */
 const FastLogin = () => {
@@ -27,6 +29,7 @@ const FastLogin = () => {
     lastTmbId?: string;
   };
 
+  const { setUserInfo } = useUserStore();
   const { toast } = useToast();
   const { t, i18n } = useSafeTranslation();
   const resolveLoginRedirect = useLoginRedirectAfterLogin();
@@ -40,7 +43,8 @@ const FastLogin = () => {
         lastTmbId
       });
 
-      useUserStore.getState().setUserInfo(res.user, true);
+      resetUserModelCatalogAfterLogin();
+      setUserInfo(res.user);
 
       if (targetRoute) {
         setTimeout(() => {
@@ -48,7 +52,7 @@ const FastLogin = () => {
         }, 100);
       }
     },
-    [callbackUrl, lastTmbId, resolveLoginRedirect, router]
+    [callbackUrl, lastTmbId, resolveLoginRedirect, router, setUserInfo]
   );
 
   const authCode = useCallback(
@@ -89,6 +93,7 @@ const FastLogin = () => {
     if (handledCredentials?.code === code && handledCredentials.token === token) return;
     handledCredentialsRef.current = { code, token };
 
+    clearToken();
     const safeCallbackUrl = validateRedirectUrl(callbackUrl);
     router.prefetch(safeCallbackUrl);
     authCode(code, token);

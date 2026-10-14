@@ -25,16 +25,17 @@ const UserAvatarPopover = ({
   ...props
 }: UserAvatarPopoverProps) => {
   const { t } = useTranslation();
-  const { userInfo } = useUserStore();
+  const { setUserInfo, userInfo } = useUserStore();
   const { isPc } = useSystem();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { currentLang, onChangeLanguage } = useChatLanguageSwitch('account');
 
   const { openConfirm, ConfirmModal } = useConfirm({ content: t('common:confirm_logout') });
 
-  const handleLogout = useCallback(async () => {
-    await clearToken();
-  }, []);
+  const handleLogout = useCallback(() => {
+    setUserInfo(null);
+    clearToken();
+  }, [setUserInfo]);
 
   const onLogout = useCallback(
     (closeMenu?: () => void) => {

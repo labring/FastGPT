@@ -3,10 +3,10 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useInitApp } from '@/web/context/useInitApp';
-import ClientRouteReadyGate from '@/web/context/ClientRouteReadyGate';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useRequest as ahooksUseRequest } from 'ahooks';
 import { clientInitData } from '@/web/common/system/staticData';
+import ClientRouteReadyGate from '@/web/context/ClientRouteReadyGate';
 
 const mocks = vi.hoisted(() => ({
   router: {
@@ -22,10 +22,7 @@ const mocks = vi.hoisted(() => ({
   setUtmParams: vi.fn(),
   setFastGPTSem: vi.fn(),
   setCouponCode: vi.fn(),
-  userInfo: null as { username: string } | null,
-  authGeneration: 0,
-  configAuthenticated: false,
-  initConfigGeneration: undefined as number | undefined
+  userInfo: null as { username: string } | null
 }));
 
 vi.mock('next/router', () => ({
@@ -40,22 +37,17 @@ vi.mock('@/web/common/system/staticData', () => ({
   clientInitData: vi.fn().mockResolvedValue({ feConfigs: {} })
 }));
 
-vi.mock('@/web/common/system/useSystemStore', () => {
-  const state = () => ({
+vi.mock('@/web/common/system/useSystemStore', () => ({
+  useSystemStore: () => ({
     loadGitStar: vi.fn(),
     setInitd: vi.fn(),
-    feConfigs: {},
-    authenticatedConfigGeneration: mocks.configAuthenticated
-      ? mocks.initConfigGeneration
-      : undefined,
-    initConfigGeneration: mocks.initConfigGeneration
-  });
-  return { useSystemStore: Object.assign(state, { getState: state }) };
-});
-vi.mock('@/web/support/user/useUserStore', () => {
-  const state = () => ({ userInfo: mocks.userInfo, authGeneration: mocks.authGeneration });
-  return { useUserStore: Object.assign(state, { getState: state }) };
-});
+    feConfigs: {}
+  })
+}));
+
+vi.mock('@/web/support/user/useUserStore', () => ({
+  useUserStore: () => ({ userInfo: mocks.userInfo })
+}));
 
 vi.mock('@/web/support/marketing/utils', () => ({
   setBdVId: mocks.setBdVId,
@@ -97,15 +89,7 @@ describe('useInitApp marketing params inside AppShell', () => {
     vi.clearAllMocks();
     mocks.router.isReady = false;
     mocks.router.query = {};
-    mocks.router.pathname = '/';
     mocks.userInfo = null;
-    mocks.authGeneration = 0;
-    mocks.configAuthenticated = false;
-    mocks.initConfigGeneration = undefined;
-    vi.mocked(clientInitData).mockImplementation(async () => {
-      mocks.initConfigGeneration = mocks.authGeneration;
-      return { feConfigs: { limit: { uploadFileMaxAmount: 1000, uploadFileMaxSize: 1000 } } };
-    });
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -113,7 +97,6 @@ describe('useInitApp marketing params inside AppShell', () => {
 
   afterEach(async () => {
     await act(async () => root.unmount());
-    vi.useRealTimers();
     container.remove();
     window.close();
     vi.unstubAllGlobals();
@@ -186,62 +169,24 @@ describe('useInitApp marketing params inside AppShell', () => {
       shortUrlContent: 'chat'
     });
   });
-
-  it.each(['/dashboard/agent', '/login', '/price', '/chat/share', '/apidoc/devapi'])(
-    'initializes %s immediately without waiting for user restoration',
-    async (pathname) => {
-      vi.mocked(useRequest).mockImplementation(ahooksUseRequest);
-      mocks.router.isReady = true;
-      mocks.router.pathname = pathname;
-      mocks.configAuthenticated = true;
-      await render();
-      expect(clientInitData).toHaveBeenCalledExactlyOnceWith();
-      mocks.userInfo = { username: 'restored-member' };
-      await render();
-      expect(clientInitData).toHaveBeenCalledTimes(1);
-    }
-  );
-
-  it.each([false, true])(
-    'ignores navigation and profile changes and retains periodic refresh when authenticated=%s',
-    async (authenticated) => {
-      vi.useFakeTimers();
-      Object.defineProperty(document, 'hidden', { value: false, configurable: true });
-      vi.mocked(useRequest).mockImplementation(ahooksUseRequest);
-      mocks.router.isReady = true;
-      mocks.configAuthenticated = authenticated;
-      mocks.userInfo = authenticated ? { username: 'member' } : null;
-      await render();
-      for (const pathname of ['/login', '/price', '/chat/share', '/chat', '/dashboard/agent']) {
-        mocks.router.pathname = pathname;
-        await render();
-      }
-      mocks.userInfo = authenticated ? { username: 'member' } : null;
-      await render();
-      expect(clientInitData).toHaveBeenCalledExactlyOnceWith();
-      await act(async () => vi.advanceTimersByTimeAsync(300000));
-      expect(clientInitData).toHaveBeenCalledTimes(2);
-    }
-  );
-
-  it('refreshes once for login, a same-user new session and logout', async () => {
+  it('refreshes initialization once after login and preserves the original username dependency', async () => {
     vi.mocked(useRequest).mockImplementation(ahooksUseRequest);
     mocks.router.isReady = true;
     await render();
+    expect(clientInitData).toHaveBeenCalledTimes(1);
+
     mocks.userInfo = { username: 'member' };
-    mocks.authGeneration += 1;
-    mocks.configAuthenticated = true;
     await render();
     expect(clientInitData).toHaveBeenCalledTimes(2);
-    mocks.authGeneration += 1;
+
+    // 资料更新和页面切换不改变用户名，因此不增加初始化请求。
+    mocks.userInfo = { username: 'member' };
+    mocks.router.pathname = '/price';
+    await render();
+    expect(clientInitData).toHaveBeenCalledTimes(2);
+
+    mocks.userInfo = null;
     await render();
     expect(clientInitData).toHaveBeenCalledTimes(3);
-    mocks.userInfo = null;
-    mocks.authGeneration += 1;
-    mocks.configAuthenticated = false;
-    await render();
-    expect(clientInitData).toHaveBeenCalledTimes(4);
-    await render();
-    expect(clientInitData).toHaveBeenCalledTimes(4);
   });
 });

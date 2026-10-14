@@ -3,14 +3,26 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { unAuthPagePaths } from '@/web/support/user/constants';
+
+const unAuthPage: { [key: string]: boolean } = {
+  '/': true,
+  '/login': true,
+  '/login/provider': true,
+  '/login/fastlogin': true,
+  '/login/sso': true,
+  '/appStore': true,
+  '/chat': true,
+  '/chat/share': true,
+  '/tools/price': true,
+  '/price': true
+};
 
 const Auth = ({ children }: { children: JSX.Element | React.ReactNode }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { toast } = useToast();
   const { userInfo, initUserInfo } = useUserStore();
-  const isUnAuthPage = unAuthPagePaths.has(router.pathname);
+  const isUnAuthPage = unAuthPage[router.pathname] === true;
 
   useQuery(['initUserInfo'], initUserInfo, {
     enabled: !isUnAuthPage,

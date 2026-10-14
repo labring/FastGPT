@@ -31,8 +31,6 @@ export const LoginContainer = ({
 }) => {
   const router = useRouter();
   const { initd, feConfigs } = useSystemStore();
-  // 匿名白名单已包含完整登录表单依赖，首次初始化完成即可选择登录方式。
-  const loginConfigReady = initd;
   const { resetChatCache } = useChatStore();
   const { isPc } = useSystem();
   const loginGuideDocUrl = feConfigs?.loginGuideDocUrl?.trim();
@@ -76,7 +74,7 @@ export const LoginContainer = ({
   );
   const pageType =
     selectedPageType ??
-    (loginConfigReady && (!autoLoginMethod || autoLoginFailed) ? initialPageType : undefined);
+    (initd && (!autoLoginMethod || autoLoginFailed) ? initialPageType : undefined);
 
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
@@ -90,13 +88,13 @@ export const LoginContainer = ({
   }, [feConfigs?.oauth?.wechat, resetChatCache]);
 
   useEffect(() => {
-    if (!loginConfigReady || initializedRef.current) return;
+    if (!initd || initializedRef.current) return;
     initializedRef.current = true;
 
     if (autoLoginMethod) {
       void startLogin(autoLoginMethod).catch(() => setAutoLoginFailed(true));
     }
-  }, [autoLoginMethod, loginConfigReady, startLogin]);
+  }, [autoLoginMethod, initd, startLogin]);
 
   return (
     <>

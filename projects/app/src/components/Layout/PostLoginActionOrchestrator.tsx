@@ -167,8 +167,8 @@ const PostLoginActionOrchestrator = ({
   unreadQueryFetched
 }: PostLoginActionOrchestratorProps) => {
   const router = useRouter();
-  const { feConfigs, authenticatedConfigGeneration } = useSystemStore();
-  const { userInfo, authGeneration } = useUserStore();
+  const { feConfigs } = useSystemStore();
+  const { userInfo } = useUserStore();
   const userId = userInfo?._id;
   const teamId = userInfo?.team?.teamId;
   // 只在路由变化时解析邀请参数：这个值同时是加锁快照的来源，需要保持稳定身份
@@ -203,10 +203,7 @@ const PostLoginActionOrchestrator = ({
   // 强制补齐不依赖未读通知数据，不能等该查询 settle；
   // 可选通知类动作需要查询结果判断 hasImportantInform，所以必须等 isFetched。
   const canStartMandatory = baseReady && canRunMandatoryActions;
-  // 匿名白名单不包含通知开关，当前会话拿到登录配置前不能将可选动作判为完成。
-  const authenticatedConfigReady = authenticatedConfigGeneration === authGeneration;
-  const canStartOptional =
-    baseReady && authenticatedConfigReady && canRunOptionalActions && unreadQueryFetched;
+  const canStartOptional = baseReady && canRunOptionalActions && unreadQueryFetched;
 
   const finishOneTimeAction = useCallback(
     (action: OneTimePostLoginAction) => {

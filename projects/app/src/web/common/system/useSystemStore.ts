@@ -53,17 +53,14 @@ type State = {
   clearLicenseData: () => void;
 
   initDataBufferId?: string;
-  authenticatedConfigGeneration?: number;
-  initConfigGeneration?: number;
   feConfigs: FastGPTFeConfigsType;
   subPlans?: SubPlanType;
-  subPlansConfigGeneration?: number;
   systemVersion: string;
 
   operationalAd?: { operationalAdImage: string; operationalAdLink: string; id: string };
   loadOperationalAd: () => Promise<void>;
 
-  initStaticData: (e: GetSystemInitDataResponse, context: { authGeneration: number }) => void;
+  initStaticData: (e: GetSystemInitDataResponse) => void;
 
   appType?: string;
   setAppType: (e?: string) => void;
@@ -170,13 +167,10 @@ export const useSystemStore = create<State>()(
         },
 
         initDataBufferId: undefined,
-        authenticatedConfigGeneration: undefined,
-        initConfigGeneration: undefined,
         feConfigs: {
           limit: { uploadFileMaxSize: 1000, uploadFileMaxAmount: 1000 }
         },
         subPlans: undefined,
-        subPlansConfigGeneration: undefined,
         systemVersion: '0.0.0',
 
         operationalAd: undefined,
@@ -190,24 +184,10 @@ export const useSystemStore = create<State>()(
             console.log('Get operational ad error', error);
           }
         },
-        /** 就绪标记只存内存，并绑定确认配置的会话；匿名响应撤销登录配置就绪状态。 */
-        initStaticData(res, { authGeneration }) {
+        /** 整体替换接口返回的配置，避免未登录响应与上次登录配置合并后残留字段。 */
+        initStaticData(res) {
           set((state) => {
-            // 持久化套餐未经本次会话确认；配置版本变化且未带套餐时，也需要重新补取。
-            if (res.subPlans !== undefined) {
-              state.subPlans = res.subPlans;
-              state.subPlansConfigGeneration = authGeneration;
-            } else if (
-              res.bufferId &&
-              state.initDataBufferId &&
-              res.bufferId !== state.initDataBufferId
-            ) {
-              state.subPlansConfigGeneration = undefined;
-            }
             state.initDataBufferId = res.bufferId;
-            state.initConfigGeneration = authGeneration;
-            state.authenticatedConfigGeneration = res.isAuthenticated ? authGeneration : undefined;
-
             if (res.feConfigs) {
               // 只补客户端既有上传默认值，不合并上一页字段；响应中的 0 也必须保留。
               state.feConfigs = {
@@ -219,6 +199,7 @@ export const useSystemStore = create<State>()(
                 }
               };
             }
+            state.subPlans = res.subPlans ?? state.subPlans;
             state.systemVersion = res.systemVersion ?? state.systemVersion;
           });
         }

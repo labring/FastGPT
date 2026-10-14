@@ -27,6 +27,7 @@ import { validateRedirectUrl } from '@/web/common/utils/uri';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import { useLoginRedirectAfterLogin } from '@/web/support/user/loginRedirect';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
+import { resetUserModelCatalogAfterLogin } from '@/web/core/ai/model/useUserModelStore';
 
 const provider = () => {
   const { t, i18n } = useSafeTranslation();
@@ -67,13 +68,14 @@ const provider = () => {
           })
         : undefined;
 
-      useUserStore.getState().setUserInfo(res.user, true);
+      resetUserModelCatalogAfterLogin();
+      setUserInfo(res.user);
 
       if (targetRoute) {
         router.replace(targetRoute);
       }
     },
-    [lastRoute, lastTmbId, resolveLoginRedirect, router]
+    [lastRoute, lastTmbId, resolveLoginRedirect, router, setUserInfo]
   );
 
   const authProps = useCallback(
@@ -99,7 +101,7 @@ const provider = () => {
             status: 'success',
             title: t('account_info:account_cancellation_submit_success', '注销提交成功')
           });
-          setUserInfo(null, true);
+          setUserInfo(null);
           setLoginStore(undefined);
           await router.replace('/login?lastRoute=/account/cancel');
           return;

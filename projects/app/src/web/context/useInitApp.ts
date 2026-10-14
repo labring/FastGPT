@@ -1,11 +1,12 @@
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { clientInitData } from '@/web/common/system/staticData';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index';
 import { useMemoizedFn, useMount } from 'ahooks';
 import { TrackEventName } from '../common/system/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useUserStore } from '../support/user/useUserStore';
 import {
   setBdVId,
   setFastGPTSem,
@@ -45,12 +46,13 @@ const MARKETING_PARAMS: (keyof MarketingQueryParams)[] = [
   'couponCode'
 ];
 
-/** 首屏直接初始化；监听身份变化，复用已确认的同一会话配置，资料和页面变化不重复请求。 */
 export const useInitApp = () => {
   const router = useRouter();
 
   const { loadGitStar, setInitd, feConfigs } = useSystemStore();
-  const { userInfo, authGeneration } = useUserStore();
+  const { userInfo } = useUserStore();
+  const [scripts, setScripts] = useState<FastGPTFeConfigsType['scripts']>([]);
+  const [title, setTitle] = useState(appClientEnv.systemName);
 
   const getPathWithoutMarketingParams = useMemoizedFn(() => {
     const filteredQuery = { ...router.query };
@@ -84,8 +86,10 @@ export const useInitApp = () => {
 
   const initFetch = useMemoizedFn(async () => {
     const {
-      feConfigs: { isPlus }
+      feConfigs: { scripts, isPlus, systemTitle }
     } = await clientInitData();
+
+    setTitle(systemTitle || 'FastGPT');
 
     // log fastgpt
     if (!isPlus) {
@@ -96,13 +100,11 @@ export const useInitApp = () => {
       );
     }
 
+    loadGitStar();
+
+    setScripts(scripts || []);
     setInitd();
   });
-
-  // 主动登录刷新同样会更新配置；GitHub 展示开关改变时补取数量，不触发初始化请求。
-  useEffect(() => {
-    void loadGitStar();
-  }, [feConfigs.show_git, loadGitStar]);
 
   useMount(() => {
     const errorTrack = (event: ErrorEvent) => {
@@ -124,20 +126,10 @@ export const useInitApp = () => {
     };
   });
 
-  const initRequest = useRequest(initFetch, {
-    refreshDeps: [userInfo?.username, authGeneration],
-    refreshDepsAction: () => {
-      const { initConfigGeneration, authenticatedConfigGeneration } = useSystemStore.getState();
-      // 首屏请求可能早于 Cookie 用户恢复；已确认相同身份时直接复用，避免第二次请求。
-      if (
-        initConfigGeneration === authGeneration &&
-        (authenticatedConfigGeneration !== undefined) === !!userInfo
-      )
-        return;
-      initRequest.refresh();
-    },
+  useRequest(initFetch, {
+    refreshDeps: [userInfo?.username],
     manual: false,
-    pollingInterval: 300000
+    pollingInterval: 300000 // 5 minutes refresh
   });
 
   // Marketing data track
@@ -197,7 +189,7 @@ export const useInitApp = () => {
 
   return {
     feConfigs,
-    scripts: feConfigs.scripts ?? [],
-    title: feConfigs.systemTitle || appClientEnv.systemName
+    scripts,
+    title
   };
 };

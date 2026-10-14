@@ -1,4 +1,3 @@
-import { resetUserModelCatalogAfterLogin } from '@/web/core/ai/model/useUserModelStore';
 import { create, devtools, persist, immer } from '@fastgpt/web/common/zustand';
 
 import type { UserUpdateParams } from '@/types/user';
@@ -16,15 +15,13 @@ type State = {
   setEnterpriseAuthNoticeRead: (teamId: string) => void;
 
   userInfo: UserType | null;
-  authGeneration: number;
-  invalidateAuthSession: () => void;
   isTeamAdmin: boolean;
   initUserInfo: () => Promise<UserType | null>;
-  setUserInfo: (user: UserType | null, newSession?: boolean) => void;
+  setUserInfo: (user: UserType | null) => void;
   updateUserInfo: (user: UserUpdateParams) => Promise<void>;
 
   teamPlanStatus: ClientTeamPlanStatusType | null;
-  initTeamPlanStatus: () => Promise<ClientTeamPlanStatusType | null>;
+  initTeamPlanStatus: () => Promise<any>;
 
   teamOrgs: OrgType[];
 };
@@ -50,48 +47,29 @@ export const useUserStore = create<State>()(
         },
 
         userInfo: null,
-        authGeneration: 0,
-        /** 立即撤销本地会话；保留跳登录时使用的原成员 ID，避免丢失跨团队跳转校验。 */
-        invalidateAuthSession() {
-          set((state) => {
-            state.authGeneration += 1;
-            state.userInfo = null;
-            state.isTeamAdmin = false;
-          });
-        },
         isTeamAdmin: false,
-        /** 恢复用户后再刷新团队套餐；套餐失败不撤销已恢复的身份，完成后调用方可直接读取套餐状态。 */
         async initUserInfo() {
-          const user = await getTokenLogin().catch((error) => {
+          get().initTeamPlanStatus();
+
+          try {
+            const res = await getTokenLogin();
+            get().setUserInfo(res);
+
+            //设置html的fontsize
+            const html = document?.querySelector('html');
+            if (html) {
+              // html.style.fontSize = '16px';
+            }
+
+            return res;
+          } catch (error) {
             console.log('[Init user] error', error);
             return null;
-          });
-          if (!user) {
-            set((state) => {
-              state.teamPlanStatus = null;
-            });
-            return null;
           }
-
-          get().setUserInfo(user);
-          await get()
-            .initTeamPlanStatus()
-            .catch((error) => {
-              set((state) => {
-                state.teamPlanStatus = null;
-              });
-              console.log('[Init team plan] error', error);
-            });
-          return user;
         },
-        /** 恢复 Cookie 用户和资料不撤销首屏请求；显式新会话才使旧响应失效，登录成功同时清理模型目录及退出保护。 */
-        setUserInfo(user: UserType | null, newSession = false) {
-          if (newSession && user) resetUserModelCatalogAfterLogin();
+        setUserInfo(user: UserType | null) {
           setCurrentAuthTmbId(user?.team?.tmbId);
           set((state) => {
-            if (newSession || (state.userInfo && !user)) {
-              state.authGeneration += 1;
-            }
             state.userInfo = user ? user : null;
             state.isTeamAdmin = !!user?.team?.permission?.hasManagePer;
           });
@@ -119,9 +97,9 @@ export const useUserStore = create<State>()(
         async initTeamPlanStatus() {
           return getTeamPlanStatus().then((res) => {
             set((state) => {
-              state.teamPlanStatus = res ?? null;
+              state.teamPlanStatus = res;
             });
-            return res ?? null;
+            return res;
           });
         },
         teamMemberGroups: [],

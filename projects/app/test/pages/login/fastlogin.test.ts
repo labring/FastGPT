@@ -24,13 +24,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('next/router', () => ({ useRouter: () => mocks.router }));
 vi.mock('@/web/support/user/useUserStore', () => ({
-  useUserStore: Object.assign(() => ({ setUserInfo: mocks.setUserInfo }), {
-    getState: () => ({ setUserInfo: mocks.setUserInfo })
-  })
+  useUserStore: () => ({ setUserInfo: mocks.setUserInfo })
 }));
-vi.mock('@/web/support/user/auth', () => ({
-  clearToken: mocks.clearToken
-}));
+vi.mock('@/web/support/user/auth', () => ({ clearToken: mocks.clearToken }));
 vi.mock('@/web/support/user/api', () => ({ postFastLogin: mocks.postFastLogin }));
 vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
@@ -87,7 +83,7 @@ describe('FastLogin inside the CSR route gate', () => {
     vi.unstubAllGlobals();
   });
 
-  it('waits for hydrated credentials before authenticating and explicitly initializing the new session', async () => {
+  it('waits for hydrated credentials before clearing the session and authenticating', async () => {
     await render();
     expect(mocks.clearToken).not.toHaveBeenCalled();
     expect(mocks.postFastLogin).not.toHaveBeenCalled();
@@ -102,7 +98,7 @@ describe('FastLogin inside the CSR route gate', () => {
     mocks.router.isReady = true;
     await render();
 
-    expect(mocks.clearToken).not.toHaveBeenCalled();
+    expect(mocks.clearToken).toHaveBeenCalledOnce();
     expect(mocks.postFastLogin).toHaveBeenCalledExactlyOnceWith({
       code: 'code-1',
       token: 'token-1',
@@ -115,7 +111,8 @@ describe('FastLogin inside the CSR route gate', () => {
       fallbackRoute: '/app/detail?appId=app-1',
       lastTmbId: 'member-1'
     });
-    expect(mocks.setUserInfo).toHaveBeenCalledExactlyOnceWith(user, true);
+    expect(mocks.setUserInfo).toHaveBeenCalledWith(user);
+    expect(mocks.resetModelCatalog).toHaveBeenCalledOnce();
     await act(async () => vi.advanceTimersByTimeAsync(100));
     expect(mocks.router.push).toHaveBeenCalledExactlyOnceWith('/dashboard/agent');
   });
@@ -131,7 +128,7 @@ describe('FastLogin inside the CSR route gate', () => {
     await render();
 
     expect(mocks.postFastLogin).toHaveBeenCalledOnce();
-    expect(mocks.clearToken).not.toHaveBeenCalled();
+    expect(mocks.clearToken).toHaveBeenCalledOnce();
   });
 
   it('authenticates newly supplied credentials on a later visit to the same page', async () => {

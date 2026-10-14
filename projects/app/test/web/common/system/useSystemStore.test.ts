@@ -3,7 +3,6 @@ import handler from '@/pages/api/common/system/getInitData';
 import { Call } from '@test/utils/request';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { resetLogoutState } from '@/web/support/user/logoutState';
 
 const auth = {
   userId: 'user-1',
@@ -33,11 +32,9 @@ vi.mock('@/web/common/api/request', () => ({
 
 describe('initStaticData through the real initialization pipeline', () => {
   let useSystemStore: typeof import('@/web/common/system/useSystemStore').useSystemStore;
-  let useUserStore: typeof import('@/web/support/user/useUserStore').useUserStore;
   let clientInitData: typeof import('@/web/common/system/staticData').clientInitData;
   let getDocPath: typeof import('@/web/common/system/doc').getDocPath;
   let initialState: ReturnType<typeof useSystemStore.getState>;
-  let initialUserState: ReturnType<typeof useUserStore.getState>;
   const storage = new Map<string, string>();
 
   beforeAll(async () => {
@@ -48,17 +45,13 @@ describe('initStaticData through the real initialization pipeline', () => {
     });
     ({ useSystemStore } = await import('@/web/common/system/useSystemStore'));
     ({ clientInitData } = await import('@/web/common/system/staticData'));
-    ({ useUserStore } = await import('@/web/support/user/useUserStore'));
     ({ getDocPath } = await import('@/web/common/system/doc'));
     initialState = useSystemStore.getState();
-    initialUserState = useUserStore.getState();
   });
 
   beforeEach(() => {
     vi.clearAllMocks();
     useSystemStore.setState(initialState, true);
-    useUserStore.setState(initialUserState, true);
-    resetLogoutState();
     storage.clear();
     mocks.authenticated = false;
     mocks.referer = 'https://app.example.com/login';
@@ -100,7 +93,6 @@ describe('initStaticData through the real initialization pipeline', () => {
 
   afterAll(() => {
     useSystemStore.setState(initialState, true);
-    useUserStore.setState(initialUserState, true);
     vi.unstubAllGlobals();
   });
 
@@ -113,7 +105,7 @@ describe('initStaticData through the real initialization pipeline', () => {
     expect(publicConfig).not.toHaveProperty('futurePrivateField');
     expect(publicConfig).not.toHaveProperty('agentSandboxProxyUrl');
     expect(publicConfig.limit).toEqual({ uploadFileMaxAmount: 7, uploadFileMaxSize: 32 });
-    expect(publicConfig.limit.uploadFileMaxSize).toBe(32);
+    expect(publicConfig.limit?.uploadFileMaxSize).toBe(32);
     expect(useSystemStore.getState().feConfigs).toEqual(publicConfig);
     expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v8_config-1');
     expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(publicConfig);
@@ -124,7 +116,6 @@ describe('initStaticData through the real initialization pipeline', () => {
 
     // 登录切换缓存命名空间；随后登录态命中缓存时，缺省的套餐仍须保留。
     mocks.authenticated = true;
-    useUserStore.setState({ authGeneration: 1 });
     await clientInitData();
     const authenticated = useSystemStore.getState();
     expect(authenticated.feConfigs.payConfig).toEqual({ wx: true });
@@ -135,7 +126,6 @@ describe('initStaticData through the real initialization pipeline', () => {
     });
     expect(authenticated.initDataBufferId).toBe('config-1');
     expect(authenticated.systemVersion).toBe('4.17.3');
-    expect(authenticated.authenticatedConfigGeneration).toBe(1);
     expect(authenticated).not.toHaveProperty('aiproxyChannels');
     expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(
       authenticated.feConfigs
@@ -144,19 +134,14 @@ describe('initStaticData through the real initialization pipeline', () => {
     await clientInitData();
     expect(useSystemStore.getState().subPlans).toBe(authenticated.subPlans);
     expect(JSON.parse(storage.get('globalStore')!).state).not.toHaveProperty('aiproxyChannels');
-    expect(JSON.parse(storage.get('globalStore')!).state).not.toHaveProperty(
-      'authenticatedConfigGeneration'
-    );
 
     // 退出后再次整体替换，防止用 merge 将登录态配置留在本地。
     mocks.authenticated = false;
-    useUserStore.getState().invalidateAuthSession();
     const anonymous = await clientInitData();
     expect(anonymous.feConfigs).toEqual(publicConfig);
     expect(useSystemStore.getState().feConfigs).toEqual(publicConfig);
     expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v8_config-1');
     expect(useSystemStore.getState().systemVersion).toBe('4.17.3');
-    expect(useSystemStore.getState().authenticatedConfigGeneration).toBeUndefined();
     expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(publicConfig);
 
     expect(mocks.GET.mock.calls).toEqual(
@@ -164,46 +149,6 @@ describe('initStaticData through the real initialization pipeline', () => {
         (bufferId) => ['/common/system/getInitData', { bufferId }]
       )
     );
-  });
-
-  it.each([true, false])(
-    'preserves the latest configuration when login=%s and responses finish out of order',
-    async (login) => {
-      const authenticated = await Call(handler, { auth, headers: {} });
-      const anonymous = await Call(handler, { headers: {} });
-      let releaseOlder!: (response: typeof authenticated.data) => void;
-      const heldResponse = new Promise<typeof authenticated.data>((resolve) => {
-        releaseOlder = resolve;
-      });
-      mocks.GET.mockReturnValueOnce(heldResponse).mockResolvedValueOnce(
-        login ? authenticated.data : anonymous.data
-      );
-
-      const olderRequest = clientInitData();
-      useUserStore.getState().invalidateAuthSession();
-      const latest = await clientInitData();
-      releaseOlder(login ? anonymous.data : authenticated.data);
-      expect(await olderRequest).toEqual(latest);
-
-      expect(useSystemStore.getState().initDataBufferId).toBe(
-        login ? 'config-1' : 'unAuth_v8_config-1'
-      );
-      expect(Boolean(useSystemStore.getState().feConfigs.payConfig)).toBe(login);
-      expect(useSystemStore.getState().authenticatedConfigGeneration).toBe(
-        login ? useUserStore.getState().authGeneration : undefined
-      );
-      expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(latest.feConfigs);
-    }
-  );
-
-  it('keeps an expired session unready when the server returns anonymous data', async () => {
-    mocks.authenticated = true;
-    useUserStore.setState({ authGeneration: 1 });
-    vi.mocked(authCert).mockRejectedValueOnce(new Error('Session expired'));
-    await clientInitData();
-
-    expect(useSystemStore.getState().authenticatedConfigGeneration).toBeUndefined();
-    expect(useSystemStore.getState().feConfigs).not.toHaveProperty('payConfig');
   });
 
   it.each([1, 2])(
@@ -248,34 +193,14 @@ describe('initStaticData through the real initialization pipeline', () => {
     });
     const { subPlans } = useSystemStore.getState();
     expect(subPlans).toEqual(global.subPlans);
-    expect(useSystemStore.getState().subPlansConfigGeneration).toBe(0);
 
     mocks.referer = 'https://app.example.com/chat/share?shareId=share-1';
     await clientInitData();
 
     expect(useSystemStore.getState().subPlans).toBe(subPlans);
-    expect(useSystemStore.getState().subPlansConfigGeneration).toBe(0);
     expect(getDocPath('/guide/version/cloud/privacy')).toBe(
       'https://docs.example.com/guide/version/cloud/privacy'
     );
-  });
-
-  it('only confirms plans from a response and invalidates them when the known configuration version changes', () => {
-    useSystemStore.setState({ subPlans: global.subPlans });
-    expect(useSystemStore.getState().subPlansConfigGeneration).toBeUndefined();
-    const response = { isAuthenticated: false, bufferId: 'unAuth_v8_config-1' };
-    useSystemStore
-      .getState()
-      .initStaticData({ ...response, subPlans: global.subPlans }, { authGeneration: 0 });
-    useSystemStore.getState().initStaticData(response, { authGeneration: 0 });
-    expect(useSystemStore.getState().subPlansConfigGeneration).toBe(0);
-    expect(JSON.parse(storage.get('globalStore')!).state).not.toHaveProperty(
-      'subPlansConfigGeneration'
-    );
-    useSystemStore
-      .getState()
-      .initStaticData({ ...response, bufferId: 'unAuth_v8_config-2' }, { authGeneration: 0 });
-    expect(useSystemStore.getState().subPlansConfigGeneration).toBeUndefined();
   });
 
   it('preserves zero upload limits in memory and persistence across an anonymous cache hit', async () => {

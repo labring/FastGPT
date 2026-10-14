@@ -11,11 +11,7 @@ const mocks = vi.hoisted(() => ({
   router: { isReady: false, query: {} as Record<string, string> },
   system: {
     initd: true,
-    feConfigs: {
-      sso: { url: 'https://sso.example.com', autoLogin: true } as
-        | { url: string; autoLogin: boolean }
-        | undefined
-    }
+    feConfigs: { sso: { url: 'https://sso.example.com', autoLogin: true } }
   },
   startLogin: vi.fn().mockResolvedValue(undefined),
   resetChatCache: vi.fn()
@@ -69,7 +65,6 @@ describe('LoginContainer route initialization', () => {
     mocks.router.isReady = false;
     mocks.router.query = {};
     mocks.system.initd = true;
-    mocks.system.feConfigs.sso = { url: 'https://sso.example.com', autoLogin: true };
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -124,18 +119,5 @@ describe('LoginContainer route initialization', () => {
     await render();
     expect(container.textContent).toBe(LoginPageTypeEnum.passwordLogin);
     expect(mocks.startLogin).toHaveBeenCalledOnce();
-  });
-
-  it('waits for initialization to finish before starting automatic login', async () => {
-    mocks.system.initd = false;
-    await render();
-    expect(container.textContent).toBe('pending');
-    expect(mocks.startLogin).not.toHaveBeenCalled();
-
-    mocks.system.initd = true;
-    await render();
-    expect(mocks.startLogin).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ provider: 'sso' })
-    );
   });
 });

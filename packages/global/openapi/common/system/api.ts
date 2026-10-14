@@ -35,11 +35,6 @@ const ClientFeConfigsSchema = FastGPTFeConfigsSchema.partial()
   });
 
 export const GetSystemInitDataResponseSchema = z.object({
-  isAuthenticated: z.boolean().default(false).meta({
-    example: true,
-    description:
-      '当前响应是否经过会话鉴权；仅 true 时配置可用于登录后的引导，旧响应缺省按未就绪处理'
-  }),
   bufferId: z.string().optional().meta({
     example: 'system-config-20260811',
     description: '当前系统配置缓存标识；未登录时带 unAuth_v8_ 前缀，包含匿名过滤规则版本'

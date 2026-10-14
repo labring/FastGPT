@@ -115,7 +115,7 @@ async function handler(
     };
   })();
 
-  return GetSystemInitDataResponseSchema.parse({ ...response, isAuthenticated });
+  return GetSystemInitDataResponseSchema.parse(response);
 }
 
 export default NextAPI(handler);
