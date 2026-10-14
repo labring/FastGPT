@@ -73,4 +73,20 @@ describe('getSpeech model resource permission', () => {
     );
     expect(mocks.text2Speech).not.toHaveBeenCalled();
   });
+
+  it('bypasses model resource check when only legacy model is configured', async () => {
+    await handler(
+      {
+        body: {
+          appId: '65f000000000000000000071',
+          ttsConfig: { type: 'model', model: 'legacy-tts', voice: 'voice-id' },
+          input: 'hello'
+        }
+      } as any,
+      { end: vi.fn() } as any
+    );
+
+    expect(mocks.authTargetModelResource).not.toHaveBeenCalled();
+    expect(mocks.text2Speech).toHaveBeenCalledOnce();
+  });
 });

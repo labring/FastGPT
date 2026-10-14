@@ -1,5 +1,4 @@
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import {
   AppResourcesSchema,
   type AppResource,
@@ -11,7 +10,6 @@ import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migratio
 import { isInteractiveNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import { Types, type ClientSession } from '../../../common/mongo';
 import { MongoTransactionConflictError } from '../../../common/mongo/sessionRun';
-import { getTeamModelHandle } from '../../ai/model/catalog/service';
 import { decodeToolSetNodesFromStorage } from '../jsonSchemaStorage';
 import { mergeAppResources, resolveStoredAppResources } from '../resources';
 import { MongoApp } from '../schema';
@@ -31,31 +29,14 @@ export type AppPublishedWorkflow = Pick<AppVersionSchemaType, 'nodes'>;
 const getVersionResourceSnapshot = (
   version: VersionResourceSource,
   nodes = version.nodes,
-  chatConfig = version.chatConfig,
-  models: readonly AIModelDataType[] = []
+  chatConfig = version.chatConfig
 ): AppResourcesType =>
   resolveStoredAppResources({
     resources: version.resources,
     nodes,
     chatConfig,
-    resourceRefs: version.resourceRefs,
-    models
+    resourceRefs: version.resourceRefs
   });
-
-/** 有效快照无需重新解析模型；仅历史或损坏快照通过公开目录读取入口补齐 modelId。 */
-const getFallbackResourceModels = async ({
-  resources,
-  appId,
-  app
-}: {
-  resources: unknown;
-  appId: string;
-  app?: Pick<AppSchemaType, 'teamId'> | null;
-}) => {
-  if (AppResourcesSchema.safeParse(resources).success) return [];
-  const owner = app ?? (await MongoApp.findById(appId, 'teamId').lean());
-  return owner ? (await getTeamModelHandle({ teamId: String(owner.teamId) })).getAllModels() : [];
-};
 
 const normalizeStoredVersionWorkflow = (
   version: Pick<AppVersionSchemaType, 'nodes' | 'edges' | 'chatConfig'>
@@ -72,10 +53,7 @@ const normalizeStoredVersionWorkflow = (
  * 避免当前配置占位导致该版本中的欢迎语、定时任务等旧值被丢弃。
  * 缺失或非法的 resources 会按该版本内容回退提取，确保快照始终合法。
  */
-export const normalizeAppVersionWorkflow = (
-  version: AppVersionSchemaType,
-  models: readonly AIModelDataType[] = []
-): AppVersionWorkflow => {
+export const normalizeAppVersionWorkflow = (version: AppVersionSchemaType): AppVersionWorkflow => {
   // 历史版本只迁移该版本自身的系统配置节点，不继承当前应用 chatConfig，
   // 避免当前配置占位导致该版本中的欢迎语、定时任务等旧值被丢弃。
   const normalizedWorkflow = normalizeStoredVersionWorkflow(version);
@@ -85,8 +63,7 @@ export const normalizeAppVersionWorkflow = (
     resources: getVersionResourceSnapshot(
       version,
       normalizedWorkflow.nodes,
-      normalizedWorkflow.chatConfig,
-      models
+      normalizedWorkflow.chatConfig
     ),
     ...normalizedWorkflow
   };
@@ -124,10 +101,7 @@ const loadApp = async (appId: string, app?: AppVersionLookupApp) =>
  * 在非阻塞迁移窗口内读取无正式 Version 应用的旧工作流。
  * 草稿 Version 不能替代旧代码实际运行的 App 图；迁移补出正式 Version 后停止 fallback。
  */
-const normalizeLegacyAppWorkflow = (
-  app?: AppVersionLookupApp | null,
-  models: readonly AIModelDataType[] = []
-): AppVersionWorkflow => {
+const normalizeLegacyAppWorkflow = (app?: AppVersionLookupApp | null): AppVersionWorkflow => {
   if (!app) return emptyVersionWorkflow();
 
   const normalizedWorkflow = migrateWorkflowToCurrent({
@@ -141,8 +115,7 @@ const normalizeLegacyAppWorkflow = (
     resources: resolveStoredAppResources({
       nodes: normalizedWorkflow.nodes,
       chatConfig: normalizedWorkflow.chatConfig,
-      resourceRefs: app.resourceRefs,
-      models
+      resourceRefs: app.resourceRefs
     }),
     ...normalizedWorkflow
   };
@@ -174,17 +147,8 @@ export const getAppLatestVersion = async (appId: string, app?: AppVersionLookupA
       })
       .lean());
 
-  if (version)
-    return normalizeAppVersionWorkflow(
-      version,
-      await getFallbackResourceModels({ resources: version.resources, appId, app })
-    );
-  return normalizeLegacyAppWorkflow(
-    migrationApp,
-    migrationApp
-      ? (await getTeamModelHandle({ teamId: String(migrationApp.teamId) })).getAllModels()
-      : []
-  );
+  if (version) return normalizeAppVersionWorkflow(version);
+  return normalizeLegacyAppWorkflow(migrationApp);
 };
 
 /**
@@ -193,18 +157,9 @@ export const getAppLatestVersion = async (appId: string, app?: AppVersionLookupA
  */
 export const getAppDraftWorkflow = async (appId: string, app?: AppVersionLookupApp) => {
   const draft = await getAppDraftVersion(appId);
-  if (draft)
-    return normalizeAppVersionWorkflow(
-      draft,
-      await getFallbackResourceModels({ resources: draft.resources, appId, app })
-    );
+  if (draft) return normalizeAppVersionWorkflow(draft);
   const migrationApp = await loadApp(appId, app);
-  return normalizeLegacyAppWorkflow(
-    migrationApp,
-    migrationApp
-      ? (await getTeamModelHandle({ teamId: String(migrationApp.teamId) })).getAllModels()
-      : []
-  );
+  return normalizeLegacyAppWorkflow(migrationApp);
 };
 
 /**
@@ -243,8 +198,7 @@ export const getAppDraftResourceBaseline = async (
     resources: draft.resources,
     nodes: decodeToolSetNodesFromStorage(draft.nodes),
     chatConfig: draft.chatConfig,
-    resourceRefs: (draft as { resourceRefs?: unknown }).resourceRefs,
-    models: await getFallbackResourceModels({ resources: draft.resources, appId })
+    resourceRefs: (draft as { resourceRefs?: unknown }).resourceRefs
   });
 
   if (filter) {
@@ -473,11 +427,7 @@ export const getAppVersionById = async ({
       appId
     }).lean();
 
-    if (version)
-      return normalizeAppVersionWorkflow(
-        version,
-        await getFallbackResourceModels({ resources: version.resources, appId, app })
-      );
+    if (version) return normalizeAppVersionWorkflow(version);
   }
 
   return getAppLatestVersion(appId, app);

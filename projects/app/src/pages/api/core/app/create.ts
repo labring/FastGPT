@@ -197,14 +197,14 @@ export const onCreateApp = async ({
   await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
   const resources = extractAppResources({
     nodes: normalizedWorkflow.nodes,
-    chatConfig: normalizedWorkflow.chatConfig,
-    models: modelHandle.getAllModels()
+    chatConfig: normalizedWorkflow.chatConfig
   });
   if (!AppFolderTypeList.includes(type!)) {
     await checkAppResourceReadPermissions({
       resources,
       tmbId,
-      isRoot
+      isRoot,
+      modelHandle
     });
   }
 

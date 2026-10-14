@@ -214,13 +214,16 @@ kept      = extracted 中已在 baseline 出现的部分（不重新鉴权）
 
 ### 7.3 模型校验边界
 
-- `formatModels` 只负责 canonical `modelId`、模型存在性、启用状态和类型校验。发布时应传入 `global.systemActiveModelList`，不能先按当前成员权限过滤，否则 baseline 中已有模型会被错误阻断。
-- `resolveAppResourcesByPermission` 把 `model` 纳入 `added / kept`，新增模型通过现有 `PerResourceTypeEnum.model` 权限数据和 `getMemberModelIds` 校验。
+- `formatModels` 负责在写入/导入/调试边界（保存 `create.ts`、发布 `publish.ts`、模板解析 `appTemplateParse.ts`、调试 `prepareWorkflowDebugResourceContext`）将 legacy `model` 归一化为 canonical `modelId`、在 `preserve` 与 `validate` 模式下为已开启但留空的可选模型槽位物化默认 `modelId`，并在 `validate` 模式下校验模型存在性、启用状态和类型。调用方统一传入 `modelHandle.getActiveModels()`，不能先按当前成员权限过滤，否则 baseline 中已有模型会被错误阻断。
+- **团队模型与系统模型的兼容/回退边界**：显式 `modelId` 校验同时支持系统模型与团队模型；但旧 `model` 名称兼容提取（含跨环境 JSON 导入导出）以及默认模型回退（`defaultModelIds` 与同类型候选兜底）均通过 `isSystemModel` 严格限制为系统模型，绝不匹配或回退到团队模型。
+- `extractAppResources` 与 `extractWorkflowNodeModelReferences` 只提取已开启槽位的 canonical `*ModelId`（不依赖模型目录 `models` 参数，忽略 legacy `model` 字段）。
+- `resolveAppResourcesByPermission` 把 `model` 纳入 `added / kept`，新增模型通过现有 `PerResourceTypeEnum.model` 权限数据和 `getAuthorizedModelIds` 校验。
 - `modelId` 已唯一标识 `ai_models` 实体，资源快照统一存 `{ type: 'model', id: modelId }`，不再保存 `modelType`。模型类型仍由提取位置和现有 `getLLMModelData / getRerankModelData / getTTSModelData` 等 typed getter 校验，不进入资源身份。
-- 正式运行的静态模型在统一节点调度边界校验当前 Version 快照；动态模型在同一入口按运行人权限校验。各节点不重复接入资源鉴权，也不新增 `loadWorkflowModelResource`。
-- Test / Debug 使用请求体生成临时资源上下文：baseline 内模型沿用 App 已有授权，新增模型按当前操作人校验。
-- 动态模型或无 App 快照场景使用通用资源权限校验 `{ type: 'model', id: modelId }`，并由 typed getter 校验模型存在、启用和类型；不创建模型专用鉴权分支。
-- `createQuestionGuide`、TTS 等独立于 Workflow dispatcher 的 App 辅助入口也必须先走应用快照，不能因它们不在 `runWorkflow` 调用栈内而绕过：命中正式 Version `resources` 直接放行；登录成员（Test/Debug 场景）未命中时按 `resolveAppResourcesByPermission` 校验草稿基线与新增资源，与 chatTest/debug 中知识库等资源一致；外链 / API Key 只认正式 Version。
+- 统一遵循“有 `modelId` 才校验，仅 legacy `model` 绕过”原则：
+  - 工作流节点调度边界（`assertWorkflowNodeModelResources`）复用 `extractWorkflowNodeModelReferences(node)`：静态 `modelId` 核对当前 Version 快照，动态 `modelId` 按运行人 `assertAuthModels(use)` 校验；历史仅含 legacy `model`（无 `modelId`）的节点不提取资源引用、绕过快照核对，交由节点内 `get*ModelData` 仅在系统模型内兼容解析。各节点内部不重复接入资源鉴权，也不新增 `loadWorkflowModelResource`。
+  - `createQuestionGuide`、`getSpeech`（TTS）等独立于 Workflow dispatcher 的 App 辅助入口，仅在配置中存在非空 `modelId` 时调用 `authTargetModelResource` 走应用快照校验（命中正式 Version `resources` 直接放行；登录成员 Test/Debug 未命中时按 `resolveAppResourcesByPermission` 校验草稿基线与新增资源；外链 / API Key 只认正式 Version）；历史仅配置 legacy `model` 或空值回退默认系统模型时绕过快照校验。
+- Test / Debug（`prepareWorkflowDebugResourceContext`）先对请求体执行 `formatModels(preserve)` 将 legacy `model` 与已开启空槽位归一化为系统模型 `modelId`，再生成临时资源上下文：baseline 内模型沿用 App 已有授权，新增模型按当前操作人校验。
+- 动态模型或无 App 快照场景使用 `assertAuthModels(use)` 按运行人校验 `modelId`，并由 typed getter 校验模型存在、启用和类型。
 - App 来源请求携带客户端 `modelId` 时，服务端不得仅信任请求值：静态配置按正式 Version 快照校验；非 App 来源或明确的动态模型按当前运行人权限校验。
 - 当前 App 直接提取的模型来源仍是 LLM、rerank、TTS 等已有静态 `modelId` 入口。Embedding 模型属于 Dataset 自身配置，STT 当前没有 App 静态 `modelId`，不在本次提取范围；未来新增直接选择入口时只需让提取器产出同一种 `{ type: 'model', id }` 资源，不扩展资源 Schema。
 

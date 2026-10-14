@@ -1,6 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
-import { AppResourcesSchema } from '@fastgpt/global/core/app/type';
 import {
   GetAppVersionDetailQuerySchema,
   GetAppVersionDetailResponseSchema,
@@ -9,7 +8,6 @@ import {
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { rewriteAppWorkflowToDetail } from '@fastgpt/service/core/app/utils';
 import { normalizeAppVersionWorkflow } from '@fastgpt/service/core/app/version/controller';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
@@ -34,12 +32,7 @@ async function handler(req: NextApiRequest): Promise<GetAppVersionDetailResponse
     return Promise.reject('version not found');
   }
 
-  const normalizedWorkflow = normalizeAppVersionWorkflow(
-    result,
-    AppResourcesSchema.safeParse(result.resources).success
-      ? []
-      : (await getTeamModelHandle({ teamId: String(app.teamId) })).getAllModels()
-  );
+  const normalizedWorkflow = normalizeAppVersionWorkflow(result);
   await rewriteAppWorkflowToDetail({
     nodes: normalizedWorkflow.nodes,
     teamId,

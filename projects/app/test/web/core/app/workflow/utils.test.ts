@@ -2376,6 +2376,31 @@ describe('workflow model validation', () => {
     expect(issues).toHaveLength(1);
     expect(issues[0].code).toBe('model_required');
   });
+
+  it('does not treat team models as valid default fallback or legacy model matches in workflowCheck', () => {
+    const teamModels = [
+      { modelId: 'team-llm', model: 'gpt-4o', type: ModelTypeEnum.llm, scope: 'team' }
+    ];
+
+    expect(
+      checkWorkflowChatConfigModelIssues({
+        chatConfig: { questionGuide: { open: true } },
+        models: teamModels
+      })[0]?.code
+    ).toBe('model_required');
+    expect(
+      checkWorkflowChatConfigModelIssues({
+        chatConfig: { questionGuide: { open: true, model: 'gpt-4o' } },
+        models: teamModels
+      })[0]?.code
+    ).toBe('model_unavailable');
+    expect(
+      checkWorkflowChatConfigModelIssues({
+        chatConfig: { questionGuide: { open: true, modelId: 'team-llm' } },
+        models: teamModels
+      })
+    ).toEqual([]);
+  });
   const makeModelNode = (
     inputs: FlowNodeItemType['inputs'],
     flowNodeType = FlowNodeTypeEnum.chatNode
@@ -2438,6 +2463,36 @@ describe('workflow model validation', () => {
     expect(issues?.find((issue) => issue.code === 'model_unavailable')?.message).toContain(
       '模型不可用'
     );
+  });
+
+  it('validates all duplicate model inputs on a node in checkWorkflowNodeIssues', () => {
+    const duplicateFirstInvalid = makeModelNode([
+      {
+        key: NodeInputKeyEnum.aiModelId,
+        value: 'missing-first-id',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+      },
+      {
+        key: NodeInputKeyEnum.aiModelId,
+        value: 'llm-id',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+      }
+    ]);
+    const duplicateSecondInvalid = makeModelNode([
+      {
+        key: NodeInputKeyEnum.aiModelId,
+        value: 'llm-id',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+      },
+      {
+        key: NodeInputKeyEnum.aiModelId,
+        value: 'missing-second-id',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+      }
+    ]);
+
+    expect(getModelIssueCodes(duplicateFirstInvalid)).toContain('model_unavailable');
+    expect(getModelIssueCodes(duplicateSecondInvalid)).toContain('model_unavailable');
   });
 
   it('does not statically validate reference and template model values', () => {

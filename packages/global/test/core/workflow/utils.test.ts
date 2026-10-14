@@ -1473,7 +1473,7 @@ describe('formatModels', () => {
     expect(chatConfig.questionGuide).toEqual({ open: false, modelId: 'disabled-llm' });
     expect(chatConfig.ttsConfig).toEqual({
       type: 'web',
-      model: 'disabled-tts'
+      modelId: 'disabled-tts'
     });
   });
 
@@ -2100,7 +2100,7 @@ describe('formatModels', () => {
     expect(nodes[0].inputs[0].value).toEqual({
       datasets: [{ datasetId: 'dataset-1' }],
       usingReRank: false,
-      rerankModel: 'disabled-rerank',
+      rerankModelId: 'disabled-rerank',
       datasetSearchUsingExtensionQuery: true,
       datasetSearchExtensionModelId: models[2].modelId
     });
@@ -2206,5 +2206,134 @@ describe('formatModels', () => {
       modelId: models[4].modelId,
       model: models[4].model
     });
+  });
+
+  it('never matches team models for legacy model extraction, default fallback, or export model names', () => {
+    const teamModels = [
+      {
+        modelId: 'team-llm-id',
+        model: 'team-llm',
+        type: ModelTypeEnum.llm,
+        scope: 'team'
+      }
+    ];
+    const legacyNodes = [
+      {
+        nodeId: 'chat-legacy',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        name: 'Chat Legacy',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModel,
+            value: 'team-llm',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          }
+        ],
+        outputs: []
+      },
+      {
+        nodeId: 'chat-id',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        name: 'Chat ID',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            value: 'team-llm-id',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          }
+        ],
+        outputs: []
+      }
+    ];
+    const chatConfig = {
+      questionGuide: { open: true }
+    };
+
+    formatModels({
+      nodes: legacyNodes,
+      chatConfig,
+      models: teamModels,
+      defaultModelIds: { [ModelTypeEnum.llm]: 'team-llm-id' },
+      modelReferencePolicy: 'preserve'
+    });
+
+    expect(legacyNodes[0].inputs[0]).toMatchObject({
+      key: NodeInputKeyEnum.aiModelId,
+      value: 'team-llm'
+    });
+    expect(legacyNodes[1].inputs[0]).toMatchObject({
+      key: NodeInputKeyEnum.aiModelId,
+      value: 'team-llm-id'
+    });
+    expect(chatConfig.questionGuide).toEqual({
+      open: true,
+      modelId: ''
+    });
+
+    addModelNamesToWorkflow({
+      nodes: [legacyNodes[1]],
+      models: teamModels
+    });
+    expect(legacyNodes[1].inputs).toHaveLength(1);
+  });
+
+  it('validates all duplicate model inputs on a node instead of only the first match', () => {
+    const duplicateModelIdNodes = [
+      {
+        nodeId: 'chat-dup-id',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        name: 'Chat Dup ID',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            value: models[0].modelId,
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            value: 'invalid-second-model-id',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    expect(() =>
+      formatModels({
+        nodes: duplicateModelIdNodes,
+        models,
+        modelReferencePolicy: 'validate'
+      })
+    ).toThrow('Model model is unavailable');
+
+    const duplicateLegacyNodes = [
+      {
+        nodeId: 'chat-dup-legacy',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        name: 'Chat Dup Legacy',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModel,
+            value: 'invalid-first-legacy-model',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.aiModel,
+            value: models[0].model,
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    expect(() =>
+      formatModels({
+        nodes: duplicateLegacyNodes,
+        models,
+        modelReferencePolicy: 'validate'
+      })
+    ).toThrow('Model model is unavailable');
   });
 });

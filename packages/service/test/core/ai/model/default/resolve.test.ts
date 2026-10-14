@@ -116,4 +116,23 @@ describe('resolveEffectiveDefaultModelIds', () => {
     expect(result.embedding).toBeUndefined();
     expect(result.datasetImageLLM).toBeUndefined();
   });
+
+  it('never uses team models as configured or fallback defaults', () => {
+    const result = resolveEffectiveDefaultModelIds({
+      models: [{ ...llm('team-llm', true), scope: 'team' }],
+      configuredDefaults: {
+        llm: 'team-llm',
+        datasetTextLLM: 'team-llm',
+        datasetImageLLM: 'team-llm',
+        chatTitleLLM: 'team-llm'
+      }
+    });
+
+    expect(result).toMatchObject({
+      llm: undefined,
+      datasetTextLLM: undefined,
+      datasetImageLLM: undefined,
+      chatTitleLLM: undefined
+    });
+  });
 });

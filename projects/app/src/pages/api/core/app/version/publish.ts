@@ -59,8 +59,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   });
   const extracted = extractAppResources({
     nodes: normalizedWorkflow.nodes,
-    chatConfig: normalizedWorkflow.chatConfig,
-    models: modelHandle.getAllModels()
+    chatConfig: normalizedWorkflow.chatConfig
   });
   if (autoSave) {
     await mongoSessionRun(async (session) => {
@@ -71,6 +70,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
         tmbId,
         isRoot,
         blockOnUnauthorized: false,
+        modelHandle,
         session
       });
       await MongoAppVersion.findOneAndUpdate(
@@ -128,6 +128,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       tmbId,
       isRoot,
       blockOnUnauthorized: !!isPublish,
+      modelHandle,
       session
     });
 

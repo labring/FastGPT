@@ -7,6 +7,7 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { isSystemModel } from '@fastgpt/global/core/ai/model/utils';
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { addModelNamesToWorkflow } from '@fastgpt/global/core/workflow/utils';
 
@@ -47,7 +48,7 @@ export function filterSensitiveFormData(appForm: AppFormEditFormType) {
   };
 }
 
-/** 为简易应用导出补充可跨环境匹配的模型名称，并保留原 modelId。 */
+/** 为简易应用导出补充可跨环境匹配的系统模型名称，并保留原 modelId。 */
 export function addModelNamesToAppForm({
   appForm,
   models
@@ -57,7 +58,9 @@ export function addModelNamesToAppForm({
 }) {
   const getModelName = ({ modelId, type }: { modelId?: string; type: ModelTypeEnum }) => {
     if (typeof modelId !== 'string' || /^\{\{.*\}\}$/.test(modelId)) return;
-    return models.find((item) => item.modelId === modelId && item.type === type)?.model;
+    return models.find(
+      (item) => isSystemModel(item) && item.modelId === modelId && item.type === type
+    )?.model;
   };
 
   const aiModel = getModelName({

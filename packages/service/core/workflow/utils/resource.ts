@@ -7,15 +7,9 @@ import type {
   AppResourceType,
   AppSchemaType
 } from '@fastgpt/global/core/app/type';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import {
-  formatModels,
-  isWorkflowSystemModelInput,
-  nodeInputIsReference
-} from '@fastgpt/global/core/workflow/utils';
+import { formatModels } from '@fastgpt/global/core/workflow/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authAppByTmbId } from '../../../support/permission/app/auth';
 import { resolveAppResourcesByPermission } from '../../../support/permission/app/resource';
@@ -24,7 +18,7 @@ import { assertAuthModels } from '../../../support/permission/model/auth';
 import { getTeamModelHandle } from '../../ai/model/catalog/service';
 import {
   extractAppResources,
-  extractDatasetModelsFromParams,
+  extractWorkflowNodeModelReferences,
   getAppResourceKey,
   mergeAppResources,
   resolveSystemModelId
@@ -115,15 +109,6 @@ export const assertWorkflowResource = ({
   }
 };
 
-const modelFeatureKeyMap = new Map<string, NodeInputKeyEnum>([
-  [NodeInputKeyEnum.datasetSearchRerankModelId, NodeInputKeyEnum.datasetSearchUsingReRank],
-  [
-    NodeInputKeyEnum.datasetSearchExtensionModelId,
-    NodeInputKeyEnum.datasetSearchUsingExtensionQuery
-  ],
-  [NodeInputKeyEnum.datasetDeepSearchModelId, NodeInputKeyEnum.datasetDeepSearch]
-]);
-
 /**
  * 在统一节点调度边界校验实际使用的模型资源。
  *
@@ -141,30 +126,7 @@ export const assertWorkflowNodeModelResources = async ({
   teamId: string;
   tmbId: string;
 }) => {
-  const modelReferences: Array<{ value: unknown; dynamic: boolean }> = [];
-  const selectedDatasets = params[NodeInputKeyEnum.datasetSelectList];
-  const hasSelectedDataset = Array.isArray(selectedDatasets) && selectedDatasets.length > 0;
-  const addModel = (value: unknown, dynamic: boolean) => {
-    if (value !== undefined && value !== null) modelReferences.push({ value, dynamic });
-  };
-
-  node.inputs.forEach((input) => {
-    if (!isWorkflowSystemModelInput({ node, input })) return;
-    const featureKey = modelFeatureKeyMap.get(input.key);
-    if (featureKey && (!hasSelectedDataset || params[featureKey] !== true)) return;
-    addModel(params[input.key], nodeInputIsReference(input));
-  });
-
-  const datasetParamsInput = node.inputs.find(
-    (input) => input.key === NodeInputKeyEnum.datasetParams
-  );
-  const datasetParams = params[NodeInputKeyEnum.datasetParams];
-  if (node.flowNodeType === FlowNodeTypeEnum.agent) {
-    const dynamic = datasetParamsInput ? nodeInputIsReference(datasetParamsInput) : false;
-    extractDatasetModelsFromParams(datasetParams).forEach(({ id }) => {
-      addModel(id, dynamic);
-    });
-  }
+  const modelReferences = extractWorkflowNodeModelReferences({ node, params });
 
   const context = getWorkflowResourceContext();
   const permissionModelIds = new Set<string>();
@@ -390,7 +352,7 @@ export const loadChildWorkflowWithResource = async ({
 /**
  * 为工作流调试与测试（chatTest 与 debug）准备未发布工作流的资源上下文并校验权限。
  * 1. 规范化工作流模型引用与字段（formatModels）；
- * 2. 静态提取工作流节点与配置声明的资源快照（extractAppResources 带模型目录）；
+ * 2. 静态提取工作流节点与配置声明的资源快照（extractAppResources）；
  * 3. 按资源快照初始化白名单上下文（createWorkflowResourceContext）；
  * 4. 相对应用当前草稿快照基线校验新增资源读取权限（阻断未授权操作，root 请求保留跨团队权限）。
  */
@@ -410,19 +372,16 @@ export const prepareWorkflowDebugResourceContext = async ({
   isRoot?: boolean;
 }) => {
   const modelHandle = await getTeamModelHandle({ teamId });
-  if (nodes) {
-    formatModels({
-      nodes: nodes as StoreNodeItemType[],
-      chatConfig,
-      models: modelHandle.getAllModels(),
-      defaultModelIds: modelHandle.getSystemDefaultModelIds(),
-      modelReferencePolicy: 'preserve'
-    });
-  }
+  formatModels({
+    nodes: nodes as StoreNodeItemType[] | undefined,
+    chatConfig,
+    models: modelHandle.getActiveModels(),
+    defaultModelIds: modelHandle.getSystemDefaultModelIds(),
+    modelReferencePolicy: 'preserve'
+  });
   const extractedResources = extractAppResources({
     nodes,
-    chatConfig,
-    models: modelHandle.getAllModels()
+    chatConfig
   });
   const resourceContext = createWorkflowResourceContext({
     resources: extractedResources,

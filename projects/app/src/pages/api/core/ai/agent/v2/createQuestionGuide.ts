@@ -10,6 +10,7 @@ import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import type { NextApiResponse } from 'next';
 
 import type { AppQGConfigType } from '@fastgpt/global/core/app/type';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   CreateQuestionGuideResponseSchema,
@@ -73,35 +74,30 @@ async function handler(
   });
   const messages = chats2GPTMessages({ messages: histories, reserveId: false });
   const modelHandle = await getTeamModelHandle({ teamId });
-  const qgModelData = (() => {
-    if (inputQuestionGuide?.modelId !== undefined || inputQuestionGuide?.model !== undefined) {
-      return modelHandle.getLLMModelData({
-        modelId: inputQuestionGuide.modelId,
-        model: inputQuestionGuide.model
-      });
-    }
-    if (
-      persistedQuestionGuide?.modelId !== undefined ||
-      persistedQuestionGuide?.model !== undefined
-    ) {
-      return modelHandle.getLLMModelData({
-        modelId: persistedQuestionGuide.modelId,
-        model: persistedQuestionGuide.model
-      });
-    }
-    return modelHandle.getDefaultModelData('llm');
-  })();
-  await authTargetModelResource({
-    targetType: resolvedSourceType,
-    targetId: resolvedSourceId,
-    modelId: qgModelData.modelId,
-    teamId,
-    tmbId,
-    isRoot,
-    authType,
-    handle: modelHandle,
-    resources: appWorkflow?.resources
-  });
+  const targetQuestionGuide =
+    inputQuestionGuide?.modelId !== undefined || inputQuestionGuide?.model !== undefined
+      ? inputQuestionGuide
+      : persistedQuestionGuide;
+  const qgModelData =
+    targetQuestionGuide?.modelId !== undefined || targetQuestionGuide?.model !== undefined
+      ? modelHandle.getLLMModelData({
+          modelId: targetQuestionGuide.modelId,
+          model: targetQuestionGuide.model
+        })
+      : modelHandle.getDefaultModelData('llm');
+  if (!isEmptyModelValue(targetQuestionGuide?.modelId)) {
+    await authTargetModelResource({
+      targetType: resolvedSourceType,
+      targetId: resolvedSourceId,
+      modelId: qgModelData.modelId,
+      teamId,
+      tmbId,
+      isRoot,
+      authType,
+      handle: modelHandle,
+      resources: appWorkflow?.resources
+    });
+  }
 
   const { result, inputTokens, outputTokens } = await createQuestionGuide({
     messages,

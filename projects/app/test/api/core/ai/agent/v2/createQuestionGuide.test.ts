@@ -71,4 +71,27 @@ describe('createQuestionGuide model resource permission', () => {
 
     expect(mocks.createQuestionGuide).not.toHaveBeenCalled();
   });
+
+  it('bypasses model resource check when only legacy model is configured', async () => {
+    mocks.createQuestionGuide.mockResolvedValue({
+      result: ['q1'],
+      inputTokens: 1,
+      outputTokens: 1
+    });
+
+    await expect(
+      handler(
+        {
+          body: {
+            appId: '65f000000000000000000071',
+            chatId: 'chat-id',
+            questionGuide: { open: true, model: 'legacy-model' }
+          }
+        } as any,
+        {} as any
+      )
+    ).resolves.toEqual(['q1']);
+
+    expect(mocks.createQuestionGuide).toHaveBeenCalledOnce();
+  });
 });

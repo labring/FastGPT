@@ -21,10 +21,12 @@ import {
   isValidReferenceValue,
   isValidReferenceValueFormat,
   nodeInputIsReference,
-  workflowModelKeyMappings
+  workflowDatasetParamModelSlots,
+  workflowSystemModelSlots
 } from '@fastgpt/global/core/workflow/utils';
 import type { TFunction } from 'next-i18next';
 import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
+import { isSystemModel } from '@fastgpt/global/core/ai/model/utils';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import type {
   FlowNodeInputItemType,
@@ -651,9 +653,9 @@ export const checkWorkflowNodeIssues = ({
             (item) =>
               item.type === type &&
               (item.modelId === String(modelId) ||
-                (allowLegacyModelFallback && item.model === modelId))
+                (allowLegacyModelFallback && isSystemModel(item) && item.model === modelId))
           )
-        : models.some((item) => item.model === model && item.type === type);
+        : models.some((item) => isSystemModel(item) && item.model === model && item.type === type);
       if (available) return;
 
       addIssue({
@@ -768,37 +770,37 @@ export const checkWorkflowNodeIssues = ({
     }
 
     if (!workflowCheckSkipNodeRuleTypes.has(data.flowNodeType)) {
-      for (const [legacyKey, modelIdKey] of workflowModelKeyMappings) {
-        const legacyInput = inputMap.get(legacyKey);
-        const modelIdInput = inputMap.get(modelIdKey);
-        const systemModelInput =
-          modelIdInput ??
-          legacyInput ??
-          moduleTemplatesFlat
-            .find((template) => template.flowNodeType === data.flowNodeType)
-            ?.inputs.find((input) => input.key === modelIdKey);
-        if (
-          !systemModelInput ||
-          !isWorkflowSystemModelInput({ node: data, input: systemModelInput })
-        ) {
-          continue;
-        }
-
-        const type =
-          legacyKey === NodeInputKeyEnum.datasetSearchRerankModel
-            ? ModelTypeEnum.rerank
-            : ModelTypeEnum.llm;
-        const featureKey = (() => {
-          if (legacyKey === NodeInputKeyEnum.datasetSearchRerankModel) {
-            return NodeInputKeyEnum.datasetSearchUsingReRank;
-          }
-          if (legacyKey === NodeInputKeyEnum.datasetSearchExtensionModel) {
-            return NodeInputKeyEnum.datasetSearchUsingExtensionQuery;
-          }
-          if (legacyKey === NodeInputKeyEnum.datasetDeepSearchModel) {
-            return NodeInputKeyEnum.datasetDeepSearch;
-          }
-        })();
+      for (const {
+        legacyKey,
+        modelIdKey,
+        type,
+        featureKey,
+        defaultWhenEmpty
+      } of workflowSystemModelSlots) {
+        const modelIdInputs = data.inputs.filter(
+          (input) => input.key === modelIdKey && isWorkflowSystemModelInput({ node: data, input })
+        );
+        const legacyInputs = data.inputs.filter(
+          (input) => input.key === legacyKey && isWorkflowSystemModelInput({ node: data, input })
+        );
+        const templateModelInput =
+          modelIdInputs.length === 0 && legacyInputs.length === 0
+            ? moduleTemplatesFlat
+                .find((template) => template.flowNodeType === data.flowNodeType)
+                ?.inputs.find(
+                  (input) =>
+                    input.key === modelIdKey && isWorkflowSystemModelInput({ node: data, input })
+                )
+            : undefined;
+        const systemModelInputs =
+          modelIdInputs.length > 0
+            ? modelIdInputs
+            : legacyInputs.length > 0
+              ? legacyInputs
+              : templateModelInput
+                ? [templateModelInput]
+                : [];
+        if (systemModelInputs.length === 0) continue;
 
         const isDatasetQueryExtension =
           data.flowNodeType === FlowNodeTypeEnum.datasetSearchNode &&
@@ -808,21 +810,28 @@ export const checkWorkflowNodeIssues = ({
         const featureValue = featureKey
           ? hasSelectedDataset && inputMap.get(featureKey)?.value
           : true;
-        addUnavailableModelIssue({
-          modelId: isDatasetQueryExtension
-            ? modelIdInput?.value
-            : (modelIdInput?.value ?? modelIdInput?.defaultValue),
-          model: isDatasetQueryExtension
-            ? undefined
-            : (legacyInput?.value ?? legacyInput?.defaultValue),
-          type,
-          featureEnabled: Boolean(featureValue),
-          defaultWhenEmpty:
-            modelIdKey === NodeInputKeyEnum.datasetSearchRerankModelId ||
-            modelIdKey === NodeInputKeyEnum.datasetSearchExtensionModelId,
-          inputKey: isDatasetQueryExtension ? modelIdKey : systemModelInput.key,
-          modelInput: systemModelInput
-        });
+        const fallbackLegacyInput = legacyInputs[0];
+        for (const systemModelInput of systemModelInputs) {
+          const currentModelIdInput =
+            systemModelInput.key === modelIdKey && modelIdInputs.length > 0
+              ? systemModelInput
+              : undefined;
+          const currentLegacyInput =
+            systemModelInput.key === legacyKey ? systemModelInput : fallbackLegacyInput;
+          addUnavailableModelIssue({
+            modelId: isDatasetQueryExtension
+              ? currentModelIdInput?.value
+              : (currentModelIdInput?.value ?? currentModelIdInput?.defaultValue),
+            model: isDatasetQueryExtension
+              ? undefined
+              : (currentLegacyInput?.value ?? currentLegacyInput?.defaultValue),
+            type,
+            featureEnabled: Boolean(featureValue),
+            defaultWhenEmpty,
+            inputKey: isDatasetQueryExtension ? modelIdKey : systemModelInput.key,
+            modelInput: systemModelInput
+          });
+        }
       }
 
       if (
@@ -834,35 +843,27 @@ export const checkWorkflowNodeIssues = ({
         const datasetParams = datasetParamsInput.value as Record<string, unknown>;
         const hasSelectedDataset =
           Array.isArray(datasetParams.datasets) && datasetParams.datasets.length > 0;
-        addUnavailableModelIssue({
-          modelId: datasetParams[NodeInputKeyEnum.datasetSearchRerankModelId],
-          model: datasetParams[NodeInputKeyEnum.datasetSearchRerankModel],
-          type: ModelTypeEnum.rerank,
-          featureEnabled:
-            hasSelectedDataset && Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingReRank]),
-          defaultWhenEmpty: true,
-          inputKey: NodeInputKeyEnum.datasetParams,
-          modelInput: {
-            key: NodeInputKeyEnum.datasetSearchRerankModelId,
-            label: '',
-            renderTypeList: []
-          }
-        });
-        addUnavailableModelIssue({
-          modelId: datasetParams[NodeInputKeyEnum.datasetSearchExtensionModelId],
-          model: datasetParams[NodeInputKeyEnum.datasetSearchExtensionModel],
-          type: ModelTypeEnum.llm,
-          featureEnabled:
-            hasSelectedDataset &&
-            Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingExtensionQuery]),
-          defaultWhenEmpty: true,
-          inputKey: NodeInputKeyEnum.datasetParams,
-          modelInput: {
-            key: NodeInputKeyEnum.datasetSearchExtensionModelId,
-            label: '',
-            renderTypeList: []
-          }
-        });
+        for (const {
+          legacyKey,
+          modelIdKey,
+          type,
+          featureKey,
+          defaultWhenEmpty
+        } of workflowDatasetParamModelSlots) {
+          addUnavailableModelIssue({
+            modelId: datasetParams[modelIdKey],
+            model: datasetParams[legacyKey],
+            type,
+            featureEnabled: hasSelectedDataset && Boolean(datasetParams[featureKey]),
+            defaultWhenEmpty,
+            inputKey: NodeInputKeyEnum.datasetParams,
+            modelInput: {
+              key: modelIdKey,
+              label: '',
+              renderTypeList: []
+            }
+          });
+        }
       }
 
       if (data.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
@@ -1232,7 +1233,7 @@ export const checkWorkflowChatConfigModelIssues = ({
     if (!enabled || !config || !models) return;
     const value = getModelReferenceValue(config);
     if (isEmptyModelValue(value)) {
-      if (models.some((item) => item.type === type)) return;
+      if (models.some((item) => isSystemModel(item) && item.type === type)) return;
       issues.push({
         nodeId: '__chat_config__',
         nodeType: FlowNodeTypeEnum.workflowStart,
@@ -1247,7 +1248,9 @@ export const checkWorkflowChatConfigModelIssues = ({
     const available = models.some(
       (item) =>
         item.type === type &&
-        (!isEmptyModelValue(config.modelId) ? item.modelId === value : item.model === value)
+        (!isEmptyModelValue(config.modelId)
+          ? item.modelId === value
+          : isSystemModel(item) && item.model === value)
     );
     if (available) return;
     issues.push({

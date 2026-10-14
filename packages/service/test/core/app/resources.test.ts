@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -13,7 +12,6 @@ import {
   resolveStoredAppResources,
   splitExtractedAppResources
 } from '@fastgpt/service/core/app/resources';
-import { getModelTestDefaults } from '@test/modelCache';
 
 const createInput = (key: string, value: unknown, reference = false) => ({
   key,
@@ -181,19 +179,50 @@ describe('extractAppResources', () => {
     expect(resources).toEqual([]);
   });
 
-  it('projects a legacy model name through an explicitly supplied catalog', () => {
-    const llm = getModelTestDefaults().llm!;
+  it('extracts all static canonical model inputs on a node with duplicate modelId keys', () => {
+    const resources = extractAppResources({
+      nodes: [
+        createNode({
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [
+            createInput(NodeInputKeyEnum.aiModelId, 'static-model-1'),
+            createInput(NodeInputKeyEnum.aiModelId, 'static-model-2'),
+            createInput(NodeInputKeyEnum.aiModelId, ['source', 'model'], true)
+          ]
+        })
+      ]
+    });
+
+    expect(resources).toEqual([
+      { type: 'model', id: 'static-model-1' },
+      { type: 'model', id: 'static-model-2' }
+    ]);
+  });
+
+  it('ignores legacy model fields when canonical modelId is absent', () => {
     const resources = extractAppResources({
       nodes: [
         createNode({
           flowNodeType: FlowNodeTypeEnum.agent,
-          inputs: [createInput(NodeInputKeyEnum.aiModelId, llm.model)]
+          inputs: [
+            createInput(NodeInputKeyEnum.aiModel, 'legacy-llm'),
+            createInput(NodeInputKeyEnum.datasetParams, {
+              datasets: [{ datasetId: '65f000000000000000000001' }],
+              [NodeInputKeyEnum.datasetSearchUsingReRank]: true,
+              [NodeInputKeyEnum.datasetSearchRerankModel]: 'legacy-rerank',
+              [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]: true,
+              [NodeInputKeyEnum.datasetSearchExtensionModel]: 'legacy-extension'
+            })
+          ]
         })
       ],
-      models: [llm]
+      chatConfig: {
+        questionGuide: { open: true, model: 'legacy-guide' } as any,
+        ttsConfig: { type: 'model', model: 'legacy-tts' } as any
+      } as any
     });
 
-    expect(resources).toEqual([{ type: 'model', id: llm.modelId }]);
+    expect(resources.filter((resource) => resource.type === 'model')).toEqual([]);
   });
 
   it('records selected workflow apps as tool resources', () => {
@@ -319,48 +348,6 @@ describe('resolveStoredAppResources', () => {
         resources: [{ type: 'model', id: 'model-1', data: { modelType: 'llm' } }]
       })
     ).toEqual([{ type: 'model', id: 'model-1' }]);
-  });
-
-  it('resolves legacy model names to modelIds using the caller catalog when resources is missing', () => {
-    const models = [
-      {
-        modelId: 'resolved-llm-id',
-        model: 'gpt-4o',
-        name: 'GPT-4o',
-        type: ModelTypeEnum.llm,
-        provider: 'openai',
-        isActive: true,
-        config: {}
-      } as any,
-      {
-        modelId: 'resolved-tts-id',
-        model: 'tts-1',
-        name: 'TTS-1',
-        type: ModelTypeEnum.tts,
-        provider: 'openai',
-        isActive: true,
-        config: {}
-      } as any
-    ];
-
-    expect(
-      resolveStoredAppResources({
-        nodes: [
-          createNode({
-            flowNodeType: FlowNodeTypeEnum.agent,
-            inputs: [createInput(NodeInputKeyEnum.aiModelId, 'gpt-4o')]
-          })
-        ],
-        models,
-        chatConfig: {
-          questionGuide: { open: true, model: 'gpt-4o' } as any,
-          ttsConfig: { type: 'model', model: 'tts-1' } as any
-        }
-      })
-    ).toEqual([
-      { type: 'model', id: 'resolved-llm-id' },
-      { type: 'model', id: 'resolved-tts-id' }
-    ]);
   });
 });
 

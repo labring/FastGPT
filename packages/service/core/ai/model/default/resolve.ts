@@ -1,9 +1,10 @@
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
+import { isSystemModel } from '@fastgpt/global/core/ai/model/utils';
 
 /**
- * 按成员实际可用模型计算有效默认 ID。管理员配置不可用时仅在同类型内回退；图片数据集
+ * 按成员实际可用系统模型计算有效默认 ID。管理员配置不可用时仅在同类型系统模型内回退；图片数据集
  * 与 chatTitle 是可选增强能力，只校验已配置模型，不做隐式回退。
  */
 export const resolveEffectiveDefaultModelIds = ({
@@ -13,7 +14,7 @@ export const resolveEffectiveDefaultModelIds = ({
   models: AIModelDataType[];
   configuredDefaults: ModelDefaultIds;
 }): ModelDefaultIds => {
-  models = models.filter((model) => model.isActive);
+  models = models.filter((model) => model.isActive && isSystemModel(model));
   const modelMap = new Map(models.map((model) => [model.modelId, model]));
   const resolve = ({
     configuredId,

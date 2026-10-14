@@ -490,11 +490,12 @@ const displayModel =
 
 - 新建节点和新模板只产生新 ID key，不需要额外双写旧 key。
 - 数据库批量迁移脚本只回填 ID sibling，不删除历史 key，便于回滚；业务写入边界的 `formatModels` 则产出只含 ID key 的规范节点。
-- `formatModels` 只在服务端写入边界执行，客户端不依赖分页模型列表做身份迁移。画布恢复在模板补齐前按原始 key 去重：存在 canonical input 时删除所有 legacy input；只有静态 legacy input 时复用 canonical 模板槽位但保留旧 key，等待保存边界解析；动态 legacy input 可原样迁移到 canonical key。静态旧 `model` 仅在同名、同类型 active 模型存在时转换为 `modelId`；已有动态 `modelId` 时直接保留；已有静态 `modelId` 时严格按 ID 校验，不允许借旧 `model` 修复。
-- `formatModels` 按写入场景显式选择三种策略：`preserve` 只规范字段名并保留无法解析的原值；`fallback` 回退同类型模型；`validate` 严格校验开启功能的静态模型。三种策略都不做成员模型权限判断。
-- 自动保存和保存版本使用 `preserve`：有效旧模型名仍转换成 ID；无效静态值原样写入 canonical `modelId`，不报错且不回退。应用创建、复制和转化使用 `fallback`：无效静态值优先回退到有效的系统默认同类型模型，系统默认无效时再回退第一个 active 同类型模型。发布使用 `validate`：开启功能的无效静态模型聚合报错；功能关闭时不报错，并按相同默认优先级回退。动态引用和模板表达式在所有策略下都只迁移字段名、不做静态校验。
+- `formatModels` 在服务端写入/调试边界与前端导入边界执行，传入 `modelHandle.getActiveModels()`（客户端导入传入当前可用列表）。画布恢复在模板补齐前按原始 key 去重：存在 canonical input 时删除所有 legacy input；只有静态 legacy input 时复用 canonical 模板槽位但保留旧 key，等待保存边界解析；动态 legacy input 可原样迁移到 canonical key。
+- **系统模型与团队模型边界**：在 `formatModels`、前端 `modelData`/`modelReference` 以及导出辅助函数（`addModelNamesToWorkflow`、`addModelNamesToAppForm`）中，只有显式传入的 `modelId` 允许同时命中系统模型（`scope = 'system'`）与团队私有模型（`scope = 'team'`）；**任何通过旧 `model` 名称的兼容提取/导入跨环境恢复（`matchedModelByName`）以及向默认模型或首个同类型模型的回退（`getFallbackModelId`），都必须严格过滤 `isSystemModel(item)`，绝不允许命中或回退到团队私有模型**；导出补充 `model` 名称时也只为系统模型补充，团队私有模型只导出 `modelId`。
+- `formatModels` 按场景显式选择四种策略：`preserve` 规范字段名、转换有效 legacy 系统 `model` 并为已开启的空可选槽位补齐系统默认 `modelId`，保留其他无法解析的原值；`fallback` 回退同类型系统模型；`validate` 为已开启的空可选槽位补齐系统默认 `modelId`，并严格校验开启功能的静态模型；`import` 用于跨环境 JSON 导入（优先 `modelId`，未命中再按 `model` 匹配当前环境系统模型，均未命中则置为 `undefined` 等待模板初始化系统默认模型）。四种策略都不做成员模型权限判断（权限校验由写入口与运行时的资源鉴权独立负责，见 [模型鉴权收敛设计](./model-permission-auth.md) 与 [应用资源鉴权设计](../app/app-resource-permission.md)）。
+- 自动保存、保存版本以及工作流调试资源上下文（`prepareWorkflowDebugResourceContext`）使用 `preserve`：有效旧系统模型名转换成 ID，已开启但留空的可选模型槽位（如问题引导、TTS、查询扩展）物化为系统默认模型 ID，无效非空静态值原样写入 canonical `modelId`（不报错且不回退）。模板解析、应用创建、复制及转换使用 `fallback`：有效引用保持不变，无效静态值优先回退到有效的同类型系统默认模型，系统默认无效时再回退第一个 active 同类型系统模型；模型回退不处理成员权限不足，权限仍由对应资源鉴权入口校验。用户主动发布使用 `validate`：已开启的空可选槽位先补齐系统默认模型 ID，仍无效的开启功能静态模型聚合报错；功能关闭时不报错并保留原值。动态引用和模板表达式在所有策略下都只迁移字段名、不做静态校验。
 - 编辑或保存存量 Workflow 时，会将命中的 deprecated input 原位转换为 ID input，不再双写旧 key。
-- 运行时没有任何兼容性任意回退：只要 `modelId` 字段存在（包括空字符串）就仅按 ID 解析；只有字段为 `undefined` 才允许按 deprecated `model` 精确查找。ID/名称为空、无效、停用或类型错误均抛错，统一由客户端显示“xxx 模型已停用”。
+- 运行时没有任何兼容性任意回退：只要 `modelId` 字段存在（包括空字符串）就仅按 ID 解析；只有字段为 `undefined` 才允许按 deprecated `model` 精确查找系统模型。ID/名称为空、无效、停用或类型错误均抛错，统一由客户端显示“xxx 模型已停用”。
 
 引用类型 input 的 value 保留原引用路径，仅将旧 key 改为 ID key。运行时引用结果统一按 `modelId` 解释；若上游仍输出旧 `model` 字符串，则直接报“模型不存在”。
 
@@ -528,6 +529,9 @@ const displayModel =
 - 不在本轮增加“创建者即所有者”、团队成员 groupId、跨成员私有模型授权等规则。
 
 ## 9. 客户端可用模型获取优化
+
+> [!NOTE]
+> 本节为 modelId 迁移第一阶段的分页过渡设计；后续已演进为按身份缓存与版本握手的完整客户端模型目录（`/core/ai/model/catalog` 与 `/core/ai/model/list`）以及服务端模型鉴权收敛，当前最新实现以 [客户端模型目录设计](./client-model-catalog.md)、[模型鉴权收敛设计](./model-permission-auth.md) 与 [应用资源鉴权设计](../app/app-resource-permission.md) 为准。
 
 ### 9.1 服务端接口
 
@@ -685,7 +689,7 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 
 - 旧记录迁移时保留 legacy 字段，因此回滚旧镜像仍能读取这些旧记录。
 - 新版本创建的记录只写 modelId，旧镜像无法读取这部分新记录。
-- 资源引用回填在新版本部署完成后执行；普通业务引用在回填前兼容读取 legacy 字段。模型协作者权限只过滤客户端目录，后端执行链暂不鉴权，这是跨越迁移窗口持续生效的已确认临时产品边界，而不是缓存 TTL 或发布窗口内的偶发弱一致性。新写入仍只写 modelId，故不能在会同时处理写请求的新旧应用实例之间长期滚动混跑。
+- 资源引用回填在新版本部署完成后执行；普通业务引用在回填前兼容读取 legacy 字段。模型权限与资源声明遵循“**如果有 `modelId` 就提取并检查，只有旧 `model`（无 `modelId`）就绕过资源提取与权限检查**”的统一规则（详见 [模型鉴权收敛设计](./model-permission-auth.md) 与 [应用资源鉴权设计](../app/app-resource-permission.md)），保证存量未回填旧配置在迁移窗口内可继续运行。新写入仍只写 modelId，故不能在会同时处理写请求的新旧应用实例之间长期滚动混跑。
 - FastGPT 与 Pro 滚动发布期间，新 Usage 的 modelId 可能暂时无法被旧侧展示解析；该短窗口仅影响模型归因展示，金额和 token 不受影响，已明确接受，不增加双写。
 - 如果部署要求新旧实例长期混跑，就必须临时双写 legacy 字段；这与“新保存只有 modelId”的已确认要求冲突，需要另行决策，不能隐式实现。
 
@@ -761,7 +765,7 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 ## 14. 风险与后续清理
 
 - 插件模型未物化会导致部分模型没有 ID，因此插件列表获取失败必须阻止启动；运行时重载失败则保留上一版 active 模型，不进入半更新状态。
-- 本版本不增加 `permissionVersion`，模型选择权限只在获取模型时提示且后端执行链不校验；一小时 TTL 作为兜底，正确性主要依赖模型变更后的全量缓存删除和权限变更后的团队缓存删除。
+- 成员模型目录缓存结合 `catalogVersion` 与团队级失效清理（详见 [模型鉴权收敛设计](./model-permission-auth.md)），一小时 TTL 作为兜底。
 - new-write-only-ID 使旧镜像不能读取升级后新数据，发布流程必须接受这一限制。
 - Workflow 是动态结构，单靠 TypeScript 无法证明无遗漏，必须同时做迁移样本和静态 key 审计。
 - config 嵌套会影响当前所有 `modelData.maxContext/vision/...` 调用点，必须通过静态审计确保没有继续读取旧顶层类型字段。
@@ -792,13 +796,14 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 
 ### 14.2 与团队安装的边界
 
-团队安装引入后，`model` 名称不再足以表示全局身份，因此当前兼容必须遵守以下边界：
+团队安装引入后，`model` 名称不再足以表示全局身份，因此当前兼容与回退必须遵守以下边界：
 
-1. 旧 `model` 查找和 4163 中的 `resourceName -> resourceId` 映射始终只允许命中 `scope=system`；运行时权限不读取 `resourceName`，也不得按名称选择团队模型。
-2. 团队模型从第一版开始只持久化、传输和授权 `modelId`，不新增团队级名称 fallback。
-3. 如果统一模型缓存未来同时装载系统与团队模型，兼容名称索引必须与 ID 索引物理隔离，或继续放在只含系统模型的 Map 中；不能建立无 scope 的全局 `model:<name>` 索引。
-4. 模型配置 JSON 的名称对齐只用于管理员导入系统模型。团队安装应使用模板 ID、安装记录 ID 或其他明确身份，不能复用这条跨实例名称匹配规则。
-5. PR2 应先移除“插件模板自动预装全部系统模型”的策略，否则团队安装阶段会同时存在平台自动安装和团队显式安装两套所有权语义。
+1. 旧 `model` 查找、`formatModels`（含 `import` 跨环境导入恢复）、前端 `modelData`/`modelReference`、导出补充 `model` 名称（`addModelNamesToWorkflow`/`addModelNamesToAppForm`）以及 4163 中的 `resourceName -> resourceId` 映射始终只允许命中 `scope=system`（`isSystemModel`）；运行时权限不读取 `resourceName`，也不得按名称选择或导出团队模型。
+2. 默认模型计算（服务端 `resolveEffectiveDefaultModelIds`、客户端 `getModelDefault`、`formatModels` 中的 `getFallbackModelId` 以及 4170 迁移回退）始终只允许使用或回退到 `scope=system` 的系统模型，绝不能回退到团队私有模型（`scope=team`）。
+3. 团队模型从第一版开始只持久化、传输和授权 `modelId`，不新增团队级名称 fallback。
+4. `ModelHandle` 同时装载系统与团队模型时，兼容名称索引 `modelsByName` 与默认模型 `defaultModels` 严格只收录系统模型；不建立包含团队模型的 `model:<name>` 索引。
+5. 模型配置 JSON 的名称对齐只用于管理员导入系统模型。团队安装使用独立创建与 `modelId` 身份，不复用跨实例名称匹配规则。
+6. PR2 应先移除“插件模板自动预装全部系统模型”的策略，否则团队安装阶段会同时存在平台自动安装和团队显式安装两套所有权语义。
 
 ### 14.3 建议清理顺序与验证门槛
 

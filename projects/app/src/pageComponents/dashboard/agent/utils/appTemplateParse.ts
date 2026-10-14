@@ -31,7 +31,7 @@ type ParseAppImportConfigOptions = {
   allowedAppTypes?: readonly SupportedImportAppType[];
   expectedAppType?: SupportedImportAppType;
   migrateWorkflow?: boolean;
-  models?: Array<{ modelId: string; model: string; type: ModelTypeEnum }>;
+  models?: Parameters<typeof formatModels>[0]['models'];
   /** 传入 models 时必须同时确认目录已成功加载，避免失败后的空数组清空导入引用。 */
   modelCatalogLoaded?: boolean;
 };

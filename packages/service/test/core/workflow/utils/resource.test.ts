@@ -57,12 +57,12 @@ const createFindResult = (documents: unknown = []) => ({
 
 describe('workflow resource context', () => {
   /** 构造静态选择或动态引用模型的节点，两个权限上下文复用相同输入结构。 */
-  const createModelNode = (renderType: FlowNodeInputTypeEnum) => ({
+  const createModelNode = (renderType: FlowNodeInputTypeEnum, value = 'model-1') => ({
     flowNodeType: FlowNodeTypeEnum.chatNode,
     inputs: [
       {
         key: NodeInputKeyEnum.aiModelId,
-        value: renderType === FlowNodeInputTypeEnum.reference ? ['source', 'model'] : 'model-1',
+        value: renderType === FlowNodeInputTypeEnum.reference ? ['source', 'model'] : value,
         label: '',
         valueType: WorkflowIOValueTypeEnum.string,
         renderTypeList: [renderType]
@@ -78,7 +78,7 @@ describe('workflow resource context', () => {
     mocks.mongoDatasetFindOne.mockReturnValue(createFindResult({ _id: 'dataset-2' }));
     mocks.assertAuthModels.mockResolvedValue({ handle: {}, models: [] });
     mocks.getSystemModelHandle.mockResolvedValue({
-      getAllModels: () => [],
+      getActiveModels: () => [],
       getSystemDefaultModelIds: () => ({})
     });
   });
@@ -127,7 +127,7 @@ describe('workflow resource context', () => {
       ).resolves.toBeUndefined();
       await expect(
         assertWorkflowNodeModelResources({
-          node: createModelNode(FlowNodeInputTypeEnum.selectLLMModel),
+          node: createModelNode(FlowNodeInputTypeEnum.selectLLMModel, 'missing-model'),
           params: { [NodeInputKeyEnum.aiModelId]: 'missing-model' },
           teamId: 'team-1',
           tmbId: 'tmb-1'
@@ -150,6 +150,49 @@ describe('workflow resource context', () => {
     });
   });
 
+  it('enforces member permission when duplicate modelId inputs have a trailing dynamic reference', async () => {
+    const modelResource = { type: 'model' as const, id: 'model-1' };
+    const context = createWorkflowResourceContext({ resources: [modelResource] });
+    const duplicateInputNode = {
+      flowNodeType: FlowNodeTypeEnum.chatNode,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.aiModelId,
+          value: 'model-1',
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+        },
+        {
+          key: NodeInputKeyEnum.aiModelId,
+          value: ['source', 'model'],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.reference]
+        }
+      ]
+    };
+
+    mocks.assertAuthModels.mockRejectedValueOnce(new Error('forbidden dynamic model'));
+
+    await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
+      await expect(
+        assertWorkflowNodeModelResources({
+          node: duplicateInputNode,
+          params: { [NodeInputKeyEnum.aiModelId]: 'model-1' },
+          teamId: 'team-1',
+          tmbId: 'tmb-1'
+        })
+      ).rejects.toThrow('forbidden dynamic model');
+    });
+
+    expect(mocks.assertAuthModels).toHaveBeenCalledExactlyOnceWith({
+      actor: { teamId: 'team-1', tmbId: 'tmb-1', isRoot: false },
+      modelIds: ['model-1'],
+      action: 'use'
+    });
+  });
+
   it('system tool context skips static checks but still authorizes dynamic models', async () => {
     const rootContext = createWorkflowResourceContext({ resources: [], isRoot: true });
     const context = await runWithContext(
@@ -162,7 +205,7 @@ describe('workflow resource context', () => {
     await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
       // 静态模型未在任何快照声明，也不鉴权。
       await assertWorkflowNodeModelResources({
-        node: createModelNode(FlowNodeInputTypeEnum.selectLLMModel),
+        node: createModelNode(FlowNodeInputTypeEnum.selectLLMModel, 'undeclared'),
         params: { [NodeInputKeyEnum.aiModelId]: 'undeclared' },
         teamId: 'team-1',
         tmbId: 'tmb-1'
@@ -238,7 +281,7 @@ describe('workflow resource context', () => {
 
   it('normalizes legacy model name and legacy keys when preparing debug context', async () => {
     mocks.getSystemModelHandle.mockResolvedValue({
-      getAllModels: () => [{ model: 'legacy-llm', modelId: 'resolved-model-id', type: 'llm' }],
+      getActiveModels: () => [{ model: 'legacy-llm', modelId: 'resolved-model-id', type: 'llm' }],
       getSystemDefaultModelIds: () => ({})
     });
     mocks.resolveAppResourcesByPermission.mockResolvedValue([
