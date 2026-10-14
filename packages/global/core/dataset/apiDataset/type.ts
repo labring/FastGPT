@@ -1,4 +1,5 @@
 import z from 'zod';
+import { ensureHttpProtocol } from '../../../common/string/url';
 
 export const APIFileItemSchema = z.object({
   id: z.string(),
@@ -15,7 +16,8 @@ export type APIFileItemType = z.infer<typeof APIFileItemSchema>;
 // Api dataset config
 export const APIFileServerSchema = z
   .object({
-    baseUrl: z.string(),
+    // 只做规范化不做拒绝：该 schema 同时用于读取历史记录，缺失协议的老数据不应导致解析失败
+    baseUrl: z.string().transform((val) => ensureHttpProtocol(val)),
     authorization: z.string().optional(),
     basePath: z.string().optional()
   })

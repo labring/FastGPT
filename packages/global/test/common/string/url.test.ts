@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ensureHttpProtocol,
   isHttpUrl,
   isSafeHref,
   isSafeImgSrc,
@@ -41,6 +42,27 @@ describe('url utils', () => {
       expect(stripUrlTrailingSlash('https://example.com')).toBe('https://example.com');
       expect(stripUrlTrailingSlash('')).toBe('');
       expect(stripUrlTrailingSlash(undefined)).toBe('');
+    });
+  });
+
+  describe('ensureHttpProtocol', () => {
+    it('should prepend https when the protocol is missing', () => {
+      expect(ensureHttpProtocol('api.example.com')).toBe('https://api.example.com');
+      expect(ensureHttpProtocol('api.example.com/v1')).toBe('https://api.example.com/v1');
+      expect(ensureHttpProtocol('  api.example.com  ')).toBe('https://api.example.com');
+    });
+
+    it('should keep existing http/https prefixes unchanged', () => {
+      expect(ensureHttpProtocol('https://api.example.com')).toBe('https://api.example.com');
+      expect(ensureHttpProtocol('http://api.example.com')).toBe('http://api.example.com');
+      // 协议大小写不敏感，保留用户原始写法
+      expect(ensureHttpProtocol('HTTPS://api.example.com')).toBe('HTTPS://api.example.com');
+    });
+
+    it('should return empty string for empty input', () => {
+      expect(ensureHttpProtocol('')).toBe('');
+      expect(ensureHttpProtocol('   ')).toBe('');
+      expect(ensureHttpProtocol(undefined)).toBe('');
     });
   });
 
