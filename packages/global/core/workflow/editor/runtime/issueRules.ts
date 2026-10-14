@@ -69,6 +69,12 @@ const startTypes = new Set<FlowNodeTypeEnum>([
   FlowNodeTypeEnum.loopRunStart
 ]);
 
+/** 容器内部起始节点没有上游，也不要求在空容器中立刻连到下游。 */
+const containerStartTypes = new Set<FlowNodeTypeEnum>([
+  FlowNodeTypeEnum.nestedStart,
+  FlowNodeTypeEnum.loopRunStart
+]);
+
 /** 起点、插件入参与注释不跑节点专属规则，也不跑通用必填/引用校验。 */
 const skipNodeRuleTypes = new Set<FlowNodeTypeEnum>([
   FlowNodeTypeEnum.pluginInput,
@@ -772,7 +778,11 @@ export const collectNodeIssues = (
       addIssue({ code: 'no_upstream' });
     } else if (!isStartNode && !reachableNodeIds.has(nodeId)) {
       addIssue({ code: 'unreachable_from_start' });
-    } else if (incomingEdges.length === 0 && meaningfulOutgoingEdges.length === 0) {
+    } else if (
+      !containerStartTypes.has(data.flowNodeType) &&
+      incomingEdges.length === 0 &&
+      meaningfulOutgoingEdges.length === 0
+    ) {
       addIssue({ code: 'isolated_node' });
     }
   }

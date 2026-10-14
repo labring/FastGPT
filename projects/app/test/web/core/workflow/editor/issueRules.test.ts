@@ -288,12 +288,12 @@ const EXPECTED_ISSUES: Record<string, { nodes: string[]; config: string[] }> = {
     nodes: ['n29|no_upstream|', 'n29|required_input_empty|loopInputArray'],
     config: []
   },
-  'template:loopStart:workflow:loop_start': { nodes: ['n30|isolated_node|'], config: [] },
+  'template:loopStart:workflow:loop_start': { nodes: [], config: [] },
   'template:loopEnd:workflow:loop_end': {
     nodes: ['n31|no_upstream|', 'n31|required_input_empty|loopEndInput'],
     config: []
   },
-  'template:loopRunStart:workflow:loop_run_start': { nodes: ['n32|isolated_node|'], config: [] },
+  'template:loopRunStart:workflow:loop_run_start': { nodes: [], config: [] },
   'template:tool:': { nodes: ['n33|no_upstream|'], config: [] },
   'template:toolSet:': { nodes: ['n34|no_upstream|'], config: [] },
   'template:cfr:workflow:question_optimization': {
@@ -350,11 +350,11 @@ const EXPECTED_ISSUES: Record<string, { nodes: string[]; config: string[] }> = {
   },
   'code:if_else_incomplete': { nodes: ['if|if_else_incomplete|ifElseList'], config: [] },
   'code:loop_run_missing_break': {
-    nodes: ['loopStart|isolated_node|', 'loop|loop_run_missing_break|'],
+    nodes: ['loop|loop_run_missing_break|'],
     config: []
   },
   'code:loop_run_with_break': {
-    nodes: ['loopBreak|no_upstream|', 'loopStart|isolated_node|'],
+    nodes: ['loopBreak|no_upstream|'],
     config: []
   },
   'code:user_select_empty': { nodes: ['select|user_select_empty|userSelectOptions'], config: [] },
@@ -487,7 +487,6 @@ const EXPECTED_ISSUES: Record<string, { nodes: string[]; config: string[] }> = {
       'if|if_else_incomplete|ifElseList',
       'loopCode|code_input_incomplete|',
       'loopCode|no_upstream|',
-      'loopStart|isolated_node|',
       'loop|loop_run_missing_break|',
       'update|required_input_empty|updateList'
     ],
