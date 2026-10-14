@@ -22,16 +22,19 @@ const SangforParseResponseSchema = z.object({
 
 /** Only configured formats use Sangfor; other files retain the original parser chain. */
 export const useSangforParse = (extension: string): boolean => {
-  const provider =
-    getSystemInstanceConfig().providers.documentParse.provider ||
-    serviceEnv.DOCUMENT_PARSE_PROVIDER;
+  const documentParse = getSystemInstanceConfig().providers.documentParse;
+  const provider = documentParse.provider || serviceEnv.DOCUMENT_PARSE_PROVIDER;
   if (provider !== 'sangfor') return false;
-  if (!global.systemEnv?.customPdfParse?.url) return false;
+
+  // 地址/凭据以 providers.documentParse.sangfor 为权威（Admin 提供商页写入处）；
+  // customPdfParse 桥接值仅作存量兼容兜底：迁移把 CUSTOM_PDF_PARSE_URL/KEY 同时
+  // 写入 sangfor.*，历史部署两处取值一致，故兜底不改变行为。
+  const sangforUrl = documentParse.sangfor.url || global.systemEnv?.customPdfParse?.url;
+  if (!sangforUrl) return false;
 
   const normalizeExtension = (value: string) => value.trim().toLowerCase().replace(/^\./, '');
   const rawExtensions =
-    getSystemInstanceConfig().providers.documentParse.sangfor.extensions ||
-    serviceEnv.SANGFOR_PARSE_EXTENSIONS;
+    documentParse.sangfor.extensions || serviceEnv.SANGFOR_PARSE_EXTENSIONS;
   const extensions = rawExtensions.split(',').map(normalizeExtension).filter(Boolean);
   return extensions.includes(normalizeExtension(extension));
 };
@@ -83,19 +86,24 @@ export const parseFromSangfor = async ({
   imageKeyOptions?: ParsedPdfImageKeyOptions;
   sangforFileParseConfig?: IultmzhFileParseConfigType;
 }) => {
-  const { url, key } = global.systemEnv?.customPdfParse ?? {};
+  const documentParse = getSystemInstanceConfig().providers.documentParse;
+  // 地址/凭据以 sangfor 域为权威来源（Admin 提供商页写入处），customPdfParse 桥接值
+  // 仅作存量兼容兜底；迁移把 CUSTOM_PDF_PARSE_URL/KEY 同时写入两处，存量部署取值一致。
+  const { url, key } = {
+    url: documentParse.sangfor.url || global.systemEnv?.customPdfParse?.url,
+    key: documentParse.sangfor.key || global.systemEnv?.customPdfParse?.key
+  };
   if (!url) {
-    throw new Error('[sangfor] global.systemEnv.customPdfParse.url is required');
+    throw new Error('[sangfor] providers.documentParse.sangfor.url is required');
   }
 
   try {
     const form = new FormData();
     form.append('file', fileBuffer, { filename: `file.${extension}` });
     appendIultmzhFileParseFields(form, sangforFileParseConfig);
-    // customPdfParse.url 由部署方/root 管理员配置，可能指向内网解析服务，不使用 SSRF 拦截器。
+    // sangfor.url 由部署方/root 管理员配置，可能指向内网解析服务，不使用 SSRF 拦截器。
     const timeoutSeconds =
-      getSystemInstanceConfig().providers.documentParse.sangfor.timeoutSeconds ||
-      serviceEnv.SANGFOR_PARSE_TIMEOUT_SECONDS;
+      documentParse.sangfor.timeoutSeconds || serviceEnv.SANGFOR_PARSE_TIMEOUT_SECONDS;
     const { data } = await axiosWithoutSSRF.post<unknown>(url, form, {
       timeout: timeoutSeconds * 1000,
       headers: {
