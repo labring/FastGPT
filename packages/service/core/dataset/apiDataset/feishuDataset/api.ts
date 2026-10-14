@@ -32,6 +32,7 @@ type FeishuFileListResponse = {
   next_page_token: string;
 };
 
+// 实例配置优先；|| env 兜底仅在显式置空/未初始化/测试种子场景生效（见 common/dingtalk/endpoint.ts 同型注释）
 const getFeishuBaseUrl = () =>
   getSystemInstanceConfig().providers.dataSource.feishuBaseUrl || serviceEnv.FEISHU_BASE_URL;
 const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);

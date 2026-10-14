@@ -42,6 +42,7 @@ type YuqueTocListResponse = {
   parent_uuid: string;
 }[];
 
+// 实例配置优先；|| env 兜底仅在显式置空/未初始化/测试种子场景生效（见 common/dingtalk/endpoint.ts 同型注释）
 const getYuqueBaseUrl = () =>
   getSystemInstanceConfig().providers.dataSource.yuqueDatasetBaseUrl ||
   serviceEnv.YUQUE_DATASET_BASE_URL;
