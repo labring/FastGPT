@@ -331,6 +331,7 @@ const ChatBox = ({
     setValue,
     chatStarted,
     chatStartedWatch,
+    textareaRef,
     resetInputVal,
     captureSubmittedInput,
     isSubmittedInputCurrent,
@@ -694,6 +695,7 @@ const ChatBox = ({
           enableVoiceInput={resolvedFeatures.voice}
           disableSend={isRoundPending || (!isReady && !disabledSendTip)}
           TextareaDom={TextareaDom}
+          textareaRef={textareaRef}
           resetInputVal={resetInputVal}
           chatForm={chatForm}
         />
@@ -766,6 +768,7 @@ const ChatBox = ({
                       enableVoiceInput={resolvedFeatures.voice}
                       disableSend={isRoundPending}
                       TextareaDom={TextareaDom}
+                      textareaRef={textareaRef}
                       resetInputVal={resetInputVal}
                       chatForm={chatForm}
                     />

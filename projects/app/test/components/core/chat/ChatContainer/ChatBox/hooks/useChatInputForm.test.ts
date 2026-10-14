@@ -1,6 +1,7 @@
 import { JSDOM } from 'jsdom';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { useFieldArray, useWatch } from 'react-hook-form';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
@@ -22,6 +23,24 @@ describe('useChatInputForm', () => {
   type Props = Partial<Omit<Parameters<typeof useChatInputForm>[0], 'TextareaDom'>> & {
     withTextarea?: boolean;
   };
+  const Input = ({ input }: { input: ReturnType<typeof useChatInputForm> }) => {
+    const inputValue = useWatch({ control: input.chatForm.control, name: 'input' });
+    const { fields } = useFieldArray({ control: input.chatForm.control, name: 'files' });
+    return React.createElement(
+      React.Fragment,
+      null,
+      React.createElement('textarea', {
+        ref: input.textareaRef,
+        value: inputValue,
+        readOnly: true
+      }),
+      React.createElement(
+        'div',
+        { 'data-testid': 'files' },
+        fields.map((file) => file.name).join(',')
+      )
+    );
+  };
   const Harness = ({ withTextarea = true, ...props }: Props) => {
     result = useChatInputForm({
       sourceKey: 'app:app',
@@ -34,7 +53,7 @@ describe('useChatInputForm', () => {
       ...props,
       TextareaDom: textarea
     });
-    return withTextarea ? React.createElement('textarea', { ref: textarea }) : null;
+    return withTextarea ? React.createElement(Input, { input: result }) : null;
   };
   const render = async (props: Props = {}) =>
     act(async () => root.render(React.createElement(Harness, props)));
@@ -128,5 +147,59 @@ describe('useChatInputForm', () => {
     await act(async () => result.resetInputVal({ text: 'no DOM' }));
     expect(result.chatForm.getValues('input')).toBe('no DOM');
     expect(readChatInputDraft(identity)?.text).toBe('no DOM');
+  });
+
+  it('sizes a multiline draft when the textarea mounts after restoration without renewing it', async () => {
+    const text = 'one\ntwo\nthree\nfour';
+    saveChatInputDraft({ identity, text, files: [] });
+    const savedAt = readChatInputDraft(identity)?.updatedAt;
+    Object.defineProperty(dom.window.HTMLTextAreaElement.prototype, 'scrollHeight', {
+      configurable: true,
+      get() {
+        return this.value.split('\n').length * 24;
+      }
+    });
+    await render({ withTextarea: false });
+    expect(result.chatForm.getValues('input')).toBe(text);
+    await render();
+    expect(textarea.current?.value).toBe(text);
+    expect(textarea.current?.style.height).toBe('96px');
+    expect(textarea.current?.style.overflowY).toBe('hidden');
+    expect(readChatInputDraft(identity)?.updatedAt).toBe(savedAt);
+  });
+
+  it('allows scrolling in long restored drafts and resets height and overflow on clear', async () => {
+    const text = Array.from({ length: 10 }, () => 'line').join('\n');
+    saveChatInputDraft({ identity, text, files: [] });
+    Object.defineProperty(dom.window.HTMLTextAreaElement.prototype, 'scrollHeight', {
+      configurable: true,
+      get() {
+        return this.value.split('\n').length * 24;
+      }
+    });
+    await render({ withTextarea: false });
+    await render();
+    expect(textarea.current?.style.height).toBe('128px');
+    expect(textarea.current?.style.overflowY).toBe('auto');
+    await act(async () => result.resetInputVal({}));
+    expect(textarea.current?.style.height).toBe(textareaMinH);
+    expect(textarea.current?.style.overflowY).toBe('hidden');
+    await render({ withTextarea: false });
+    expect(textarea.current).toBeNull();
+  });
+
+  it('updates newly mounted text and file subscribers when switching from a saved draft to a new chat', async () => {
+    saveChatInputDraft({
+      identity,
+      text: 'A draft',
+      files: [{ key: 'chat/file.txt', url: 'https://uploaded', name: 'file.txt', type: 'file' }]
+    });
+    await render({ withTextarea: false });
+    await render({ draftIdentity: { ...identity, chatId: 'new-chat' } });
+    expect(result.chatForm.getValues('input')).toBe('');
+    expect(result.chatForm.getValues('files')).toEqual([]);
+    expect(textarea.current?.value).toBe('');
+    expect(document.querySelector('[data-testid="files"]')?.textContent).toBe('');
+    expect(readChatInputDraft(identity)?.text).toBe('A draft');
   });
 });

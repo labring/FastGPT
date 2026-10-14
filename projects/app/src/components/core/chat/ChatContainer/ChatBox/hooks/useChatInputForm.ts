@@ -1,4 +1,4 @@
-import { useMemo, type RefObject } from 'react';
+import { useMemo, type MutableRefObject } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useMemoizedFn } from 'ahooks';
 import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
@@ -20,7 +20,7 @@ export const useChatInputForm = ({
   chatRecordsLength,
   chatType,
   variableList,
-  TextareaDom
+  TextareaDom: textareaDomRef
 }: {
   sourceKey?: string;
   chatId?: string;
@@ -29,7 +29,7 @@ export const useChatInputForm = ({
   chatRecordsLength: number;
   chatType: ChatTypeEnum;
   variableList: VariableItemType[];
-  TextareaDom: RefObject<HTMLTextAreaElement>;
+  TextareaDom: MutableRefObject<HTMLTextAreaElement | null>;
 }) => {
   const chatForm = useForm<ChatBoxInputFormType>({
     defaultValues: { input: '', files: [], chatStarted: false }
@@ -38,11 +38,19 @@ export const useChatInputForm = ({
   const chatStartedWatch = useWatch({ control: chatForm.control, name: 'chatStarted' });
   const resizeTextarea = useMemoizedFn((text: string) => {
     requestAnimationFrame(() => {
-      if (TextareaDom.current) {
-        TextareaDom.current.style.height = textareaMinH;
-        if (text) TextareaDom.current.style.height = `${TextareaDom.current.scrollHeight}px`;
+      if (textareaDomRef.current) {
+        const textarea = textareaDomRef.current;
+        const maxHeight = 128;
+        textarea.style.height = textareaMinH;
+        if (text) textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
+        textarea.style.overflowY = text && textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
       }
     });
+  });
+  // 会话初始化和变量填写可能让 textarea 晚于草稿恢复挂载，挂载时补算已有内容高度。
+  const textareaRef = useMemoizedFn((textarea: HTMLTextAreaElement | null) => {
+    textareaDomRef.current = textarea;
+    if (textarea) resizeTextarea(chatForm.getValues('input'));
   });
 
   const inputDraft = useChatInputDraft({
@@ -87,6 +95,7 @@ export const useChatInputForm = ({
     setValue,
     chatStarted,
     chatStartedWatch,
+    textareaRef,
     ...inputDraft
   };
 };

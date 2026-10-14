@@ -86,7 +86,7 @@ export const useChatInputDraft = ({
     maxWait: 1000
   });
 
-  const restoreDraft = useMemoizedFn(() => {
+  const loadDraft = useMemoizedFn(() => {
     const draft = readChatInputDraft(identity);
     const runtimeFiles: UserInputFileItemType[] = (draft?.files ?? []).map((file) => ({
       ...file,
@@ -107,19 +107,25 @@ export const useChatInputDraft = ({
       epoch: getChatInputDraftEpoch(identity)
     };
     stateRef.current = state;
-    applyForm(state);
   });
 
   useLayoutEffect(() => {
     mountedRef.current = true;
-    restoreDraft();
+    // 先切换快照所有者，并暂停旧订阅，防止新挂载的 field array 把旧表单内容写入新会话。
+    applyingRef.current = true;
+    loadDraft();
     return () => {
       // layout cleanup 在新会话恢复前执行，始终保存仍由旧表单持有的快照。
       flushSave();
       cancelSave();
       mountedRef.current = false;
     };
-  }, [formKey, restoreDraft, cancelSave, flushSave]);
+  }, [formKey, loadDraft, cancelSave, flushSave]);
+
+  useEffect(() => {
+    // useWatch/useFieldArray 在子组件的 passive effect 中订阅；此时赋值才能通知刚挂载的输入区。
+    applyForm(stateRef.current!);
+  }, [formKey, applyForm]);
 
   useEffect(() => {
     const subscription = watch((values) => {
