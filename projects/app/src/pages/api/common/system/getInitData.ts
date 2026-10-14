@@ -15,7 +15,7 @@ async function handler(
   req: ApiRequestProps,
   _res: NextApiResponse
 ): Promise<GetSystemInitDataResponse> {
-  const { bufferId } = parseApiInput({
+  const { bufferId, includeSubPlans } = parseApiInput({
     req,
     querySchema: GetSystemInitDataQuerySchema
   }).query;
@@ -26,7 +26,14 @@ async function handler(
    * 响应 Schema 同时过滤顶层及嵌套对象的未知字段，避免扩展配置泄漏。
    */
   const filterFeConfigs = (isAuthenticated: boolean): GetSystemInitDataResponse['feConfigs'] => {
-    const config = global.feConfigs;
+    const config = {
+      ...global.feConfigs,
+      sso: (() => {
+        if (!global.feConfigs.sso && !global.systemEnv?.sso?.url) return undefined;
+        // 地址及启用状态以服务端连接配置为准，不能信任存储的前端能力标志。
+        return { ...global.feConfigs.sso, enabled: Boolean(global.systemEnv?.sso?.url) };
+      })()
+    };
     if (isAuthenticated) return config;
 
     const commonConfig = {
@@ -69,15 +76,6 @@ async function handler(
     .catch(() => false);
   const feConfigs = filterFeConfigs(isAuthenticated);
 
-  // 套餐由当前页面路径决定，公开配置仍只按会话鉴权过滤。
-  const pathname = (() => {
-    try {
-      return new URL(req.headers.referer ?? '').pathname;
-    } catch {
-      return '';
-    }
-  })();
-
   const response = (() => {
     if (isAuthenticated) {
       if (bufferId && global.systemInitBufferId && global.systemInitBufferId === bufferId) {
@@ -85,7 +83,7 @@ async function handler(
           bufferId: global.systemInitBufferId,
           feConfigs,
           systemVersion: global.systemVersion,
-          ...(pathname === '/price' && { subPlans })
+          ...(includeSubPlans && { subPlans })
         };
       }
 
@@ -97,21 +95,21 @@ async function handler(
       };
     }
 
-    if (pathname === '/price') return { feConfigs, subPlans };
-
     // 白名单改变时升级版本，强制旧匿名缓存重新获取过滤后的配置。
     const unAuthBufferId = global.systemInitBufferId
-      ? `unAuth_v8_${global.systemInitBufferId}`
+      ? `unAuth_v9_${global.systemInitBufferId}`
       : '';
     if (bufferId && unAuthBufferId === bufferId) {
       return {
-        bufferId: unAuthBufferId
+        bufferId: unAuthBufferId,
+        ...(includeSubPlans && { subPlans })
       };
     }
 
     return {
       bufferId: unAuthBufferId,
-      feConfigs
+      feConfigs,
+      ...(includeSubPlans && { subPlans })
     };
   })();
 

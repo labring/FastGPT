@@ -53,7 +53,9 @@ type State = {
   clearLicenseData: () => void;
 
   initDataBufferId?: string;
-  feConfigs: FastGPTFeConfigsType;
+  feConfigs: NonNullable<GetSystemInitDataResponse['feConfigs']> & {
+    limit: FastGPTFeConfigsType['limit'];
+  };
   subPlans?: SubPlanType;
   systemVersion: string;
 
@@ -206,7 +208,7 @@ export const useSystemStore = create<State>()(
       })),
       {
         name: 'globalStore',
-        version: 3,
+        version: 4,
         // 清理旧结构与可能透传的私有字段，下一次初始化重新确认配置。
         migrate: (persistedState): Partial<State> => {
           const {

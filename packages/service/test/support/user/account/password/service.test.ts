@@ -11,13 +11,13 @@ import {
 } from '@fastgpt/service/support/user/account/password/service';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 
-/** 构造只影响 SSO 密码策略的 feConfigs，其余字段沿用运行时已有配置。 */
+/** 分别配置真实 SSO 服务与公开密码策略，其余字段沿用运行时已有配置。 */
 const setSsoPasswordPolicy = (enabled: boolean) => {
+  global.systemEnv = { ...global.systemEnv, sso: { url: 'https://sso.example.com' } };
   global.feConfigs = {
     ...global.feConfigs,
     limit: global.feConfigs?.limit ?? { uploadFileMaxAmount: 10, uploadFileMaxSize: 10 },
     sso: {
-      url: 'https://sso.example.com',
       disablePasswordForSsoUsers: enabled
     }
   };
@@ -53,13 +53,16 @@ describe('password change session service', () => {
 
 describe('SSO password policy', () => {
   let originalFeConfigs: typeof global.feConfigs;
+  let originalSystemEnv: typeof global.systemEnv;
   beforeEach(() => {
     // 全局配置由 beforeAll 初始化，不能在模块导入时保存未初始化的值。
     originalFeConfigs = global.feConfigs;
+    originalSystemEnv = global.systemEnv;
     setSsoPasswordPolicy(false);
   });
   afterEach(() => {
     global.feConfigs = originalFeConfigs;
+    global.systemEnv = originalSystemEnv;
   });
 
   it('only disables password for dynamically classified SSO users when the policy is enabled', () => {
@@ -90,8 +93,10 @@ describe('SSO password policy', () => {
     expect(getUserPasswordAvailability('tenant-user')).toBe(true);
 
     global.feConfigs.sso = {
+      enabled: true,
       disablePasswordForSsoUsers: true
     };
+    global.systemEnv.sso = undefined;
     expect(isSsoPasswordDisabled()).toBe(false);
     expect(getUserPasswordAvailability('tenant-user')).toBe(true);
   });

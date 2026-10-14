@@ -57,6 +57,29 @@ const createFormInput = (overrides: DeepPartial<ConfigFormInput> = {}): ConfigFo
 };
 
 describe('formatFormData2ConfigStore', () => {
+  it.each([undefined, { url: 'https://current-sso.example.com' }, { url: '' }])(
+    'moves legacy SSO URLs into systemEnv without overriding explicit server config %j',
+    (serverConfig) => {
+      const source = {
+        fastgpt: {
+          feConfigs: { sso: { url: 'https://legacy-sso.example.com', title: 'SSO' } },
+          systemEnv: { sso: serverConfig }
+        },
+        fastgptPro: {}
+      };
+      const form = formatConfigStore2FormSchema(source as any);
+      const stored = formatFormData2ConfigStore(form);
+      const expected = serverConfig ?? { url: 'https://legacy-sso.example.com' };
+      expect(form.siteSettings.systemEnv.sso).toEqual(expected);
+      expect(form.loginSettings.sso).not.toHaveProperty('url');
+      expect(stored.fastgpt.systemEnv.sso).toEqual(expected);
+      expect(stored.fastgpt.feConfigs.sso).toEqual({
+        title: 'SSO',
+        enabled: Boolean(expected.url)
+      });
+      expect(source.fastgpt.feConfigs.sso.url).toBe('https://legacy-sso.example.com');
+    }
+  );
   it('persists sandbox quotas in server configuration', () => {
     const form = createFormInput();
     form.siteSettings.systemEnv.agentSandboxMax = 12;

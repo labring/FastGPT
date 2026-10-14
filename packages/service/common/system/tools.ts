@@ -7,6 +7,7 @@ import { isIPv6 } from 'net';
 import { getLogger, LogCategories } from '../logger';
 import { getAgentSandboxSkillMaxBytes } from '../../core/ai/sandbox/config';
 import { hasAgentSandboxConfig, serviceEnv } from '../../env';
+import { normalizeSsoConfig } from '@fastgpt/global/common/system/config/sso';
 
 const logger = getLogger(LogCategories.ERROR);
 
@@ -30,6 +31,14 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   })
     .strip()
     .parse(config.systemEnv);
+
+  // 旧地址只在加载边界迁入服务端配置；校验降级时也不能重新挂回 feConfigs。
+  const sso = normalizeSsoConfig({
+    publicConfig: config.feConfigs.sso,
+    serverConfig: config.systemEnv.sso
+  });
+  config.feConfigs.sso = sso.publicConfig;
+  config.systemEnv.sso = sso.serverConfig;
 
   // Special config computed
   config.feConfigs.showCustomPdfParse =

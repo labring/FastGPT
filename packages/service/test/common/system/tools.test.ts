@@ -19,6 +19,26 @@ vi.resetModules();
 const { initFastGPTConfig } = await import('@fastgpt/service/common/system/tools');
 
 describe('initFastGPTConfig', () => {
+  it.each([false, true])(
+    'keeps SSO addresses exclusively in systemEnv when other configuration validation fails=%s',
+    (invalid) => {
+      initFastGPTConfig({
+        feConfigs: { sso: { url: 'http://legacy-sso.internal', title: 'SSO' } },
+        systemEnv: { ...(invalid && { datasetParseMaxProcess: 'invalid' }) }
+      } as any);
+      expect(global.systemEnv.sso).toEqual({ url: 'http://legacy-sso.internal' });
+      expect(global.feConfigs.sso).toEqual({ enabled: true, title: 'SSO' });
+    }
+  );
+
+  it('prefers explicit server SSO configuration and corrects stale capability flags', () => {
+    initFastGPTConfig({
+      feConfigs: { sso: { url: 'http://legacy-sso.internal', enabled: true } },
+      systemEnv: { sso: { url: '' } }
+    } as any);
+    expect(global.systemEnv.sso).toEqual({ url: '' });
+    expect(global.feConfigs.sso).toEqual({ enabled: false });
+  });
   beforeEach(() => {
     global.feConfigs = {} as any;
     global.systemEnv = {} as any;

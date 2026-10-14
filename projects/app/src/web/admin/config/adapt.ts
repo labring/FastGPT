@@ -5,6 +5,7 @@ import type {
   FastGPTRegisterMethodType
 } from '@fastgpt/global/common/system/types';
 import { SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
+import { normalizeSsoConfig } from '@fastgpt/global/common/system/config/sso';
 
 const removedFeConfigKeys = [
   ['show', 'team', 'chat'].join('_'),
@@ -33,8 +34,13 @@ export function formatConfigStore2FormSchema({
   fastgptPro
 }: ConfigStoreType): ConfigFormType {
   const { feConfigs, systemEnv, subPlans } = fastgpt || { feConfigs: {}, systemEnv: {} };
+  const ssoConfigs = normalizeSsoConfig({
+    publicConfig: feConfigs?.sso,
+    serverConfig: systemEnv?.sso
+  });
   const normalizedFeConfigs = omitRemovedFeConfigs({
-    ...(feConfigs || {})
+    ...(feConfigs || {}),
+    sso: ssoConfigs.publicConfig
   } as FastGPTFeConfigsType);
 
   // 初始化配置
@@ -86,6 +92,7 @@ export function formatConfigStore2FormSchema({
       ? feConfigs.fileUrlWhitelist
       : undefined,
     ip_whitelist = typeof feConfigs?.ip_whitelist === 'string' ? feConfigs.ip_whitelist : undefined,
+    sso: _serverSso,
     workflowHttpNode = { ignoreHttpsCertificate: false },
     ...systemEnvProps
   } = systemEnv || {};
@@ -131,6 +138,7 @@ export function formatConfigStore2FormSchema({
         customPdfParse,
         fileUrlWhitelist,
         ip_whitelist,
+        sso: ssoConfigs.serverConfig,
         workflowHttpNode,
         ...systemEnvProps
       }
@@ -295,6 +303,7 @@ export function formatFormData2ConfigStore({
   const finalSystemEnv = securitySystemEnvUpdates
     ? { ...systemEnv, ...securitySystemEnvUpdates }
     : systemEnv;
+  const ssoConfigs = normalizeSsoConfig({ publicConfig: sso, serverConfig: finalSystemEnv.sso });
 
   const formatFeConfig: FastGPTFeConfigsType = omitRemovedFeConfigs({
     ...feConfigs,
@@ -320,7 +329,7 @@ export function formatFormData2ConfigStore({
         : undefined,
       wecom: !!wecom
     },
-    sso,
+    sso: ssoConfigs.publicConfig,
     teamMode,
     accountCancellation,
     payConfig: {
@@ -397,6 +406,7 @@ export function formatFormData2ConfigStore({
       feConfigs: formatFeConfig,
       systemEnv: {
         ...finalSystemEnv,
+        sso: ssoConfigs.serverConfig,
         fileUrlWhitelist: finalSystemEnv.fileUrlWhitelist || []
       },
       subPlans: {

@@ -107,7 +107,7 @@ describe('initStaticData through the real initialization pipeline', () => {
     expect(publicConfig.limit).toEqual({ uploadFileMaxAmount: 7, uploadFileMaxSize: 32 });
     expect(publicConfig.limit?.uploadFileMaxSize).toBe(32);
     expect(useSystemStore.getState().feConfigs).toEqual(publicConfig);
-    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v8_config-1');
+    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v9_config-1');
     expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(publicConfig);
 
     const cached = await clientInitData();
@@ -140,18 +140,18 @@ describe('initStaticData through the real initialization pipeline', () => {
     const anonymous = await clientInitData();
     expect(anonymous.feConfigs).toEqual(publicConfig);
     expect(useSystemStore.getState().feConfigs).toEqual(publicConfig);
-    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v8_config-1');
+    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v9_config-1');
     expect(useSystemStore.getState().systemVersion).toBe('4.17.3');
     expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(publicConfig);
 
     expect(mocks.GET.mock.calls).toEqual(
-      ['unAuth_config-1', 'unAuth_v8_config-1', 'unAuth_v8_config-1', 'config-1', 'config-1'].map(
+      ['unAuth_config-1', 'unAuth_v9_config-1', 'unAuth_v9_config-1', 'config-1', 'config-1'].map(
         (bufferId) => ['/common/system/getInitData', { bufferId }]
       )
     );
   });
 
-  it.each([1, 2])(
+  it.each([1, 2, 3])(
     'clears legacy config and channel caches from version %s while retaining unrelated state',
     async (version) => {
       storage.set(
@@ -160,7 +160,7 @@ describe('initStaticData through the real initialization pipeline', () => {
           version,
           state: {
             gitStar: 123,
-            feConfigs: global.feConfigs,
+            feConfigs: { ...global.feConfigs, sso: { url: 'https://sso.internal.example.com' } },
             initDataBufferId: 'config-1',
             aiproxyChannels: global.aiproxyChannelsCache,
             modelProviders: ['legacy-provider'],
@@ -179,7 +179,7 @@ describe('initStaticData through the real initialization pipeline', () => {
       expect(useSystemStore.getState()).not.toHaveProperty('modelProviderMap');
       expect(useSystemStore.getState()).not.toHaveProperty('defaultModels');
       const persisted = JSON.parse(storage.get('globalStore')!);
-      expect(persisted.version).toBe(3);
+      expect(persisted.version).toBe(4);
       expect(persisted.state.gitStar).toBe(123);
       expect(persisted.state).not.toHaveProperty('aiproxyChannels');
     }
@@ -187,9 +187,10 @@ describe('initStaticData through the real initialization pipeline', () => {
 
   it('keeps public plans and documentation consumers available across cache hits', async () => {
     mocks.referer = 'https://app.example.com/price';
-    await clientInitData();
+    await clientInitData({ includeSubPlans: true });
     expect(mocks.GET).toHaveBeenLastCalledWith('/common/system/getInitData', {
-      bufferId: undefined
+      bufferId: undefined,
+      includeSubPlans: true
     });
     const { subPlans } = useSystemStore.getState();
     expect(subPlans).toEqual(global.subPlans);
@@ -201,6 +202,12 @@ describe('initStaticData through the real initialization pipeline', () => {
     expect(getDocPath('/guide/version/cloud/privacy')).toBe(
       'https://docs.example.com/guide/version/cloud/privacy'
     );
+
+    global.subPlans = { extraDatasetSize: { price: 8 } };
+    mocks.referer = '';
+    await clientInitData({ includeSubPlans: true });
+    expect(useSystemStore.getState().subPlans).toEqual(global.subPlans);
+    expect(useSystemStore.getState().feConfigs.docUrl).toBe('https://docs.example.com');
   });
 
   it('preserves zero upload limits in memory and persistence across an anonymous cache hit', async () => {

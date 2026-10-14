@@ -3,10 +3,8 @@ import handler from '@/pages/api/common/system/getInitData';
 import { Call } from '@test/utils/request';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import * as providerMetadata from '@fastgpt/service/core/ai/model/provider/controller';
-import {
-  FastGPTFeConfigsSchema,
-  type FastGPTFeConfigsType
-} from '@fastgpt/global/common/system/types';
+import { FastGPTFeConfigsSchema } from '@fastgpt/global/common/system/types';
+import type { GetSystemInitDataResponse } from '@fastgpt/global/openapi/common/system/api';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import { ZodError } from 'zod';
@@ -27,7 +25,7 @@ const publicConfig = {
   sso: {
     icon: '/sso.svg',
     title: 'Company SSO',
-    url: 'https://sso.example.com',
+    enabled: true,
     autoLogin: true,
     disablePasswordForSsoUsers: true
   },
@@ -45,7 +43,7 @@ const publicConfig = {
   limit: { uploadFileMaxAmount: 7, uploadFileMaxSize: 32 },
   show_compliance_copywriting: true,
   enable_team_model: true
-} satisfies FastGPTFeConfigsType;
+} satisfies NonNullable<GetSystemInitDataResponse['feConfigs']>;
 
 const auth = {
   userId: 'user-1',
@@ -80,6 +78,7 @@ describe('getInitData anonymous configuration filtering', () => {
     vi.clearAllMocks();
     global.systemInitBufferId = 'config-1';
     global.systemVersion = '4.17.3';
+    global.systemEnv = { ...global.systemEnv, sso: { url: 'https://sso.internal.example.com' } };
     global.aiproxyChannelsCache = [channel];
     global.subPlans = { extraDatasetSize: { price: 4 } };
     global.feConfigs = {
@@ -127,7 +126,7 @@ describe('getInitData anonymous configuration filtering', () => {
 
     expect(code).toBe(200);
     expect(data).toEqual({
-      bufferId: 'unAuth_v8_config-1',
+      bufferId: 'unAuth_v9_config-1',
       feConfigs: publicConfig
     });
     expect(global.feConfigs).toEqual(originalConfig);
@@ -137,7 +136,7 @@ describe('getInitData anonymous configuration filtering', () => {
     const { code, data } = await Call(handler, {
       auth,
       headers: {},
-      query: { bufferId: 'unAuth_v8_config-1' }
+      query: { bufferId: 'unAuth_v9_config-1' }
     });
 
     expect(code).toBe(200);
@@ -166,42 +165,42 @@ describe('getInitData anonymous configuration filtering', () => {
     'config-1',
     'unAuth_v4_chat_config-1',
     'unAuth_v5_config-1',
-    'unAuth_v8_config-old',
+    'unAuth_v8_config-1',
+    'unAuth_v9_config-old',
     'unAuth_v4_share_config-1'
   ])('refreshes stale or authenticated cache %s with filtered data', async (bufferId) => {
     const { data } = await Call(handler, { headers: {}, query: { bufferId } });
 
-    expect(data.bufferId).toBe('unAuth_v8_config-1');
+    expect(data.bufferId).toBe('unAuth_v9_config-1');
     expect(data.feConfigs).toEqual(publicConfig);
   });
 
   it('retains the anonymous cache-hit response only for the current policy version', async () => {
     const { data } = await Call(handler, {
       headers: {},
-      query: { bufferId: 'unAuth_v8_config-1' }
+      query: { bufferId: 'unAuth_v9_config-1' }
     });
 
-    expect(data).toEqual({ bufferId: 'unAuth_v8_config-1' });
+    expect(data).toEqual({ bufferId: 'unAuth_v9_config-1' });
   });
 
   it.each([
-    {
-      headers: { referer: 'https://app.example.com/price?resumePurchase=1#standard' },
-      query: { bufferId: 'unAuth_v8_config-1' }
-    },
-    {
-      headers: { referer: 'https://app.example.com/price' },
-      query: { bufferId: 'unAuth_v8_config-1' }
-    }
+    undefined,
+    'https://app.example.com/price',
+    'https://app.example.com/fastai/price',
+    'https://app.example.com/zh-CN/price',
+    'https://app.example.com/fastai/zh-CN/price',
+    'https://app.example.com/login?next=/price',
+    'invalid referer'
   ])(
-    'returns filtered configs and public plans despite a matching anonymous buffer: %s',
-    async ({ headers, query }) => {
+    'returns explicitly requested plans on an anonymous cache hit independently of Referer %s',
+    async (referer) => {
       const { data } = await Call(handler, {
-        headers,
-        query
+        headers: { referer },
+        query: { bufferId: 'unAuth_v9_config-1', includeSubPlans: 'true' }
       });
       expect(data).toEqual({
-        feConfigs: publicConfig,
+        bufferId: 'unAuth_v9_config-1',
         subPlans: global.subPlans
       });
     }
@@ -236,9 +235,13 @@ describe('getInitData anonymous configuration filtering', () => {
     }
   ])('preserves $name', async ({ config }) => {
     global.feConfigs = config;
+    global.systemEnv.sso = undefined;
     const { code, data } = await Call(handler, { headers: {} });
     expect(code).toBe(200);
-    expect(data.feConfigs).toEqual(config);
+    expect(data.feConfigs).toEqual({
+      ...config,
+      ...('sso' in config && { sso: { ...config.sso, enabled: false } })
+    });
   });
 
   it('treats an expired session as anonymous without exposing complete configuration', async () => {
@@ -248,7 +251,7 @@ describe('getInitData anonymous configuration filtering', () => {
       headers: { referer: 'https://app.example.com/login' }
     });
 
-    expect(data.bufferId).toBe('unAuth_v8_config-1');
+    expect(data.bufferId).toBe('unAuth_v9_config-1');
     expect(data.feConfigs).not.toHaveProperty('payConfig');
   });
 
@@ -273,21 +276,75 @@ describe('getInitData anonymous configuration filtering', () => {
   });
 
   it.each([
+    'https://app.example.com/price',
     'https://app.example.com/login?next=/price',
     'https://app.example.com/price-extra',
     'invalid referer'
-  ])('does not return plans for an incidental or malformed Referer: %s', async (referer) => {
+  ])('does not infer a plans request from Referer: %s', async (referer) => {
     const { data } = await Call(handler, { headers: { referer } });
     expect(data.feConfigs).toEqual(publicConfig);
     expect(data).not.toHaveProperty('subPlans');
   });
-  it('includes plans for an authenticated price-page cache hit', async () => {
+  it('includes explicitly requested plans for an authenticated cache hit without Referer', async () => {
     const { data } = await Call(handler, {
       auth,
-      headers: { referer: 'https://app.example.com/price?tab=extra' },
-      query: { bufferId: 'config-1' }
+      headers: {},
+      query: { bufferId: 'config-1', includeSubPlans: true }
     });
     expect(data.subPlans).toEqual(global.subPlans);
+  });
+
+  it.each([true, 'true', '1'])(
+    'returns public plans on an anonymous cache miss for includeSubPlans=%s without exposing login-only config',
+    async (includeSubPlans) => {
+      const { data } = await Call(handler, { headers: {}, query: { includeSubPlans } });
+      expect(data).toEqual({
+        bufferId: 'unAuth_v9_config-1',
+        feConfigs: publicConfig,
+        subPlans: global.subPlans
+      });
+      expect(data.feConfigs).not.toHaveProperty('payConfig');
+      expect(data.feConfigs.sso).not.toHaveProperty('url');
+    }
+  );
+
+  it.each([false, 'false', '0'])(
+    'does not include anonymous plans for includeSubPlans=%s',
+    async (includeSubPlans) => {
+      const { data } = await Call(handler, { headers: {}, query: { includeSubPlans } });
+      expect(data).not.toHaveProperty('subPlans');
+    }
+  );
+
+  it('rejects an invalid plans flag before authentication', async () => {
+    const response = await Call(handler, {
+      headers: {},
+      query: { includeSubPlans: ['true'] }
+    });
+    expect(response.error).toBeInstanceOf(ApiRequestInputParseError);
+    expect(authCert).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])(
+    'derives the SSO capability and keeps the root address exclusively on the server for authenticated=%s',
+    async (authenticated) => {
+      const original = structuredClone(global.feConfigs.sso);
+      const { data } = await Call(handler, { headers: {}, ...(authenticated && { auth }) });
+      expect(data.feConfigs.sso).toEqual(publicConfig.sso);
+      expect(JSON.stringify(data)).not.toContain('sso.internal.example.com');
+      expect(global.feConfigs.sso).toEqual(original);
+    }
+  );
+
+  it('reports unavailable SSO even when stored display and password-policy switches are enabled', async () => {
+    global.feConfigs.sso = { enabled: true, autoLogin: true, disablePasswordForSsoUsers: true };
+    global.systemEnv.sso = { url: '' };
+    const { data } = await Call(handler, { headers: {} });
+    expect(data.feConfigs.sso).toEqual({
+      enabled: false,
+      autoLogin: true,
+      disablePasswordForSsoUsers: true
+    });
   });
 
   it.each([false, true])(

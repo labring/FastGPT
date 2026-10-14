@@ -43,7 +43,8 @@ const PriceBox = () => {
     async () => {
       // 团队上下文由用户初始化写入，请求套餐前必须等待它完成，避免重复请求造成页面二次白屏。
       const userInfo = await initUserInfo();
-      if (!useSystemStore.getState().subPlans) await clientInitData();
+      // 价格页显式确认当前公开套餐；本地缓存存在也不能跳过，避免展示已变更的旧价格。
+      await clientInitData({ includeSubPlans: true });
       const teamSubPlan = await getTeamPlanStatus();
 
       return { userInfo, teamSubPlan };

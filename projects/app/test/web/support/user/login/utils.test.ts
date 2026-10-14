@@ -1,4 +1,4 @@
-import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
+import type { GetSystemInitDataResponse } from '@fastgpt/global/openapi/common/system/api';
 import { describe, expect, it } from 'vitest';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import {
@@ -15,7 +15,9 @@ const labels = {
   microsoft: 'Microsoft'
 };
 
-const createFeConfigs = (overrides: Partial<FastGPTFeConfigsType> = {}): FastGPTFeConfigsType => ({
+type ClientFeConfigs = NonNullable<GetSystemInitDataResponse['feConfigs']>;
+
+const createFeConfigs = (overrides: ClientFeConfigs = {}): ClientFeConfigs => ({
   limit: { uploadFileMaxAmount: 10, uploadFileMaxSize: 10 },
   ...overrides
 });
@@ -34,7 +36,7 @@ describe('resolveInitialLoginPageType', () => {
     expect(
       resolveInitialLoginPageType({
         rootLogin: false,
-        sso: { url: 'https://sso.example.com', disablePasswordForSsoUsers: true }
+        sso: { enabled: true, disablePasswordForSsoUsers: true }
       })
     ).toBe(LoginPageTypeEnum.methodSelection);
   });
@@ -52,7 +54,7 @@ describe('resolveInitialLoginPageType', () => {
     expect(
       resolveInitialLoginPageType({
         rootLogin: false,
-        sso: { url: 'https://sso.example.com', disablePasswordForSsoUsers: false }
+        sso: { enabled: true, disablePasswordForSsoUsers: false }
       })
     ).toBe(LoginPageTypeEnum.passwordLogin);
   });
@@ -100,13 +102,21 @@ describe('resolveAutoLoginProvider', () => {
 });
 
 describe('getLoginMethodItems', () => {
+  it('does not show a disabled SSO capability even when display settings are present', () => {
+    const methods = getLoginMethodItems({
+      mode: 'selection',
+      labels,
+      feConfigs: { sso: { enabled: false, title: 'Unavailable SSO' } }
+    });
+    expect(methods.map(({ id }) => id)).toEqual(['page:password']);
+  });
   it('renders every enabled provider in product order and keeps password last', () => {
     const methods = getLoginMethodItems({
       mode: 'selection',
       pageType: LoginPageTypeEnum.methodSelection,
       labels,
       feConfigs: createFeConfigs({
-        sso: { url: 'https://sso.example.com', title: 'Company SSO', icon: '/sso.png' },
+        sso: { enabled: true, title: 'Company SSO', icon: '/sso.png' },
         oauth: {
           wechat: 'wechat-app-id',
           wecom: true,
@@ -149,7 +159,7 @@ describe('getLoginMethodItems', () => {
       pageType: LoginPageTypeEnum.wechat,
       labels,
       feConfigs: createFeConfigs({
-        sso: { url: 'https://sso.example.com' },
+        sso: { enabled: true },
         oauth: {
           wechat: 'wechat-app-id',
           wecom: true,

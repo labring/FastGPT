@@ -229,13 +229,15 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .object({
       icon: z.string().optional().meta({ description: 'SSO 登录方式图标' }),
       title: z.string().optional().meta({ description: 'SSO 登录按钮显示标题' }),
-      url: z.string().optional().meta({ description: 'SSO 认证跳转地址' }),
+      enabled: BoolSchema.optional().meta({
+        description: '是否接入 SSO，由服务端根据 systemEnv.sso.url 派生，不作为后端鉴权依据'
+      }),
       autoLogin: z
         .boolean()
         .optional()
         .meta({ description: '是否在首次进入页面时自动跳转 SSO 登录' }),
       disablePasswordForSsoUsers: z.boolean().optional().meta({
-        description: '是否禁止 SSO 账号使用平台密码登录与改密；仅在配置了 sso.url 时生效'
+        description: '是否禁止 SSO 账号使用平台密码登录与改密；仅在配置了 systemEnv.sso.url 时生效'
       })
     })
     .optional()
@@ -402,6 +404,15 @@ export const SystemEnvSchema = z.looseObject({
   hnswMaxScanTuples: NumSchema.default(100000).meta({ description: 'HNSW 向量检索最大扫描元组数' }),
   customPdfParse: CustomPdfParseSchema.optional(),
   langfuse: LangfuseConfigSchema.optional(),
+  sso: z
+    .object({
+      url: z.string().optional().meta({
+        description: 'SSO 后端服务根地址，仅服务端请求授权、用户信息及同步时使用',
+        example: 'http://fastgpt-sso:3000'
+      })
+    })
+    .optional()
+    .meta({ description: 'SSO 服务端连接配置，不向普通客户端下发' }),
   fileUrlWhitelist: z
     .array(z.string())
     .optional()
