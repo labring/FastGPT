@@ -7,7 +7,7 @@ import {
   type ProviderMetasResponse
 } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 
-/** 获取渠道 Provider 元数据配置 */
+/** 登录后按需读取渠道类型展示与表单配置，系统和团队入口共用。 */
 async function handler(
   req: ApiRequestProps<Record<string, never>, Record<string, never>>
 ): Promise<ProviderMetasResponse> {

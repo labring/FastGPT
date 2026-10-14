@@ -46,11 +46,12 @@ const MARKETING_PARAMS: (keyof MarketingQueryParams)[] = [
   'couponCode'
 ];
 
+/** 登录身份或会话代次变化时刷新配置，常规轮询继续复用当前会话。 */
 export const useInitApp = () => {
   const router = useRouter();
 
   const { loadGitStar, setInitd, feConfigs } = useSystemStore();
-  const { userInfo } = useUserStore();
+  const { userInfo, authGeneration } = useUserStore();
   const [scripts, setScripts] = useState<FastGPTFeConfigsType['scripts']>([]);
   const [title, setTitle] = useState(appClientEnv.systemName);
 
@@ -127,7 +128,7 @@ export const useInitApp = () => {
   });
 
   useRequest(initFetch, {
-    refreshDeps: [userInfo?.username],
+    refreshDeps: [userInfo?.username, authGeneration],
     manual: false,
     pollingInterval: 300000 // 5 minutes refresh
   });

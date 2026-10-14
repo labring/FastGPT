@@ -4,6 +4,9 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useInitApp } from '@/web/context/useInitApp';
 import ClientRouteReadyGate from '@/web/context/ClientRouteReadyGate';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest as ahooksUseRequest } from 'ahooks';
+import { clientInitData } from '@/web/common/system/staticData';
 
 const mocks = vi.hoisted(() => ({
   router: {
@@ -18,7 +21,9 @@ const mocks = vi.hoisted(() => ({
   initFastGPTSemSourceDomain: vi.fn(),
   setUtmParams: vi.fn(),
   setFastGPTSem: vi.fn(),
-  setCouponCode: vi.fn()
+  setCouponCode: vi.fn(),
+  userInfo: null as { username: string } | null,
+  authGeneration: 0
 }));
 
 vi.mock('next/router', () => ({
@@ -42,7 +47,7 @@ vi.mock('@/web/common/system/useSystemStore', () => ({
 }));
 
 vi.mock('@/web/support/user/useUserStore', () => ({
-  useUserStore: () => ({ userInfo: null })
+  useUserStore: () => ({ userInfo: mocks.userInfo, authGeneration: mocks.authGeneration })
 }));
 
 vi.mock('@/web/support/marketing/utils', () => ({
@@ -85,6 +90,8 @@ describe('useInitApp marketing params inside AppShell', () => {
     vi.clearAllMocks();
     mocks.router.isReady = false;
     mocks.router.query = {};
+    mocks.userInfo = null;
+    mocks.authGeneration = 0;
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -95,6 +102,7 @@ describe('useInitApp marketing params inside AppShell', () => {
     container.remove();
     window.close();
     vi.unstubAllGlobals();
+    vi.mocked(useRequest).mockReset();
   });
 
   it('waits for CSR query restoration at the application gate before consuming params', async () => {
@@ -162,5 +170,18 @@ describe('useInitApp marketing params inside AppShell', () => {
       shortUrlMedium: 'email',
       shortUrlContent: 'chat'
     });
+  });
+
+  it('refreshes initialization on same-account re-login without waiting for the polling interval', async () => {
+    vi.mocked(useRequest).mockImplementation(ahooksUseRequest);
+    mocks.router.isReady = true;
+    mocks.userInfo = { username: 'member' };
+    mocks.authGeneration = 1;
+    await render();
+    expect(clientInitData).toHaveBeenCalledTimes(1);
+
+    mocks.authGeneration = 2;
+    await render();
+    expect(clientInitData).toHaveBeenCalledTimes(2);
   });
 });

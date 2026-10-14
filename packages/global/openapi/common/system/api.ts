@@ -7,7 +7,7 @@ import { BoolSchema, NumSchema } from '../../../common/zod';
  * API: 获取系统初始化数据
  * Route: GET /api/common/system/getInitData
  * Method: GET
- * Description: 根据登录状态和缓存标识返回前端系统配置和套餐信息；模型目录独立加载
+ * Description: 登录后返回完整前端配置；匿名仅返回登录、价格和分享聊天所需字段，价格页额外返回套餐信息；模型目录独立加载
  * Tags: ['系统接口', 'Read']
  * ============================================================================ */
 
@@ -29,19 +29,19 @@ const FastGPTFeConfigsSchema = z.looseObject({
   disableMarketplace: BoolSchema.optional().meta({ description: '是否隐藏插件市场安装入口' })
 }) as z.ZodType<FastGPTFeConfigsType>;
 
-const I18nStringStrictSchema = z.object({
-  en: z.string(),
-  'zh-CN': z.string(),
-  'zh-Hant': z.string()
-});
-
 export const GetSystemInitDataResponseSchema = z.object({
+  isAuthenticated: z.boolean().default(false).meta({
+    example: true,
+    description:
+      '当前响应是否经过会话鉴权；仅 true 时配置可用于登录后的引导，旧响应缺省按未就绪处理'
+  }),
   bufferId: z.string().optional().meta({
     example: 'system-config-20260811',
-    description: '当前系统配置缓存标识；未登录时带 unAuth_ 前缀'
+    description: '当前系统配置缓存标识；未登录时带 unAuth_v2_ 前缀，包含匿名过滤规则版本'
   }),
   feConfigs: FastGPTFeConfigsSchema.optional().meta({
-    description: '前端功能开关和链接配置'
+    description:
+      '前端功能开关和链接配置；登录后返回完整配置，匿名仅保留站点展示、登录方式、上传限制、聊天合规提示、模型标签和沙箱连接配置'
   }),
   subPlans: SubPlanSchema.optional().meta({
     description: '系统套餐配置；仅登录用户或价格页面返回'
@@ -49,20 +49,7 @@ export const GetSystemInitDataResponseSchema = z.object({
   systemVersion: z.string().optional().meta({
     example: '4.16.0',
     description: 'FastGPT 系统版本'
-  }),
-  aiproxyChannels: z
-    .array(
-      z.object({
-        channelId: z.number(),
-        name: I18nStringStrictSchema,
-        avatar: z.string(),
-        website: z.string().optional()
-      })
-    )
-    .optional()
-    .meta({
-      description: 'AI Proxy 渠道配置列表'
-    })
+  })
 });
 export type GetSystemInitDataResponse = z.infer<typeof GetSystemInitDataResponseSchema>;
 

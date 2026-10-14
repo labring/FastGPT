@@ -15,6 +15,8 @@ type State = {
   setEnterpriseAuthNoticeRead: (teamId: string) => void;
 
   userInfo: UserType | null;
+  authGeneration: number;
+  invalidateAuthSession: () => void;
   isTeamAdmin: boolean;
   initUserInfo: () => Promise<UserType | null>;
   setUserInfo: (user: UserType | null) => void;
@@ -47,6 +49,15 @@ export const useUserStore = create<State>()(
         },
 
         userInfo: null,
+        authGeneration: 0,
+        /** 立即撤销本地会话；保留跳登录时使用的原成员 ID，避免丢失跨团队跳转校验。 */
+        invalidateAuthSession() {
+          set((state) => {
+            state.authGeneration += 1;
+            state.userInfo = null;
+            state.isTeamAdmin = false;
+          });
+        },
         isTeamAdmin: false,
         async initUserInfo() {
           get().initTeamPlanStatus();
@@ -67,9 +78,17 @@ export const useUserStore = create<State>()(
             return null;
           }
         },
+        /** 同步用户和成员身份；普通信息刷新保留配置，身份变化使旧请求失效。 */
         setUserInfo(user: UserType | null) {
           setCurrentAuthTmbId(user?.team?.tmbId);
           set((state) => {
+            // 相同身份的信息刷新不启动新会话；登录、退出和团队切换使旧初始化请求失效。
+            if (
+              state.userInfo?._id !== user?._id ||
+              state.userInfo?.team?.tmbId !== user?.team?.tmbId
+            ) {
+              state.authGeneration += 1;
+            }
             state.userInfo = user ? user : null;
             state.isTeamAdmin = !!user?.team?.permission?.hasManagePer;
           });

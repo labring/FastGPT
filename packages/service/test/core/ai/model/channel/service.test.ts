@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => {
   const system = createClient();
   const getChannelsAffectedModels = vi.fn().mockResolvedValue([]);
   return {
+    getTypeMetas: vi.fn(),
     group,
     system,
     getChannelsAffectedModels,
@@ -25,6 +26,7 @@ const mocks = vi.hoisted(() => {
 
 vi.mock('@fastgpt/service/thirdProvider/aiproxy/client', () => ({
   aiProxyClient: {
+    getTypeMetas: mocks.getTypeMetas,
     system: { channels: mocks.system },
     group: mocks.groupFactory
   }
@@ -39,8 +41,10 @@ import {
   updateChannel,
   updateChannelStatus,
   batchOperateChannels,
-  deleteChannel
+  deleteChannel,
+  getChannelTypeMetas
 } from '@fastgpt/service/core/ai/model/channel/service';
+import { resetChannelCache } from '@fastgpt/service/core/ai/model/channel/cache';
 
 const TEAM_ID = '60000000000000000000000b';
 const TMB_ID = '60000000000000000000000a';
@@ -59,6 +63,89 @@ const makeChannel = (id: number, overrides: Record<string, unknown> = {}) => ({
 });
 
 const notFound = () => Promise.reject({ response: { status: 404 } });
+
+describe('getChannelTypeMetas', () => {
+  beforeEach(() => {
+    resetChannelCache();
+    mocks.getTypeMetas.mockReset();
+    global.aiproxyChannelsCache = [];
+  });
+
+  it('merges display metadata and restricts creation to the intersection without leaking upstream extras', async () => {
+    const name = { en: 'Custom', 'zh-CN': '自定义', 'zh-Hant': '自訂' };
+    const displayChannels = [
+      { channelId: 1, name, avatar: 'custom.svg', website: 'https://custom.example.com' },
+      { channelId: 2, name, avatar: 'legacy.svg' },
+      { channelId: 4, name, avatar: 'bad-website.svg', website: 123 }
+    ];
+    global.aiproxyChannelsCache = displayChannels;
+    const upstream = {
+      1: {
+        name: 'Upstream',
+        defaultBaseUrl: 'https://api.example.com',
+        keyHelp: 'sk-*',
+        key: 'secret'
+      },
+      3: { name: 'Unknown', defaultBaseUrl: '', keyHelp: '' }
+    };
+    mocks.getTypeMetas.mockResolvedValue(upstream);
+
+    expect(await getChannelTypeMetas()).toEqual({
+      1: {
+        name: 'Upstream',
+        defaultBaseUrl: 'https://api.example.com',
+        keyHelp: 'sk-*',
+        displayName: name,
+        avatar: 'custom.svg',
+        website: 'https://custom.example.com',
+        canCreate: true
+      },
+      2: {
+        name: 'Custom',
+        defaultBaseUrl: '',
+        keyHelp: '',
+        displayName: name,
+        avatar: 'legacy.svg',
+        website: undefined,
+        canCreate: false
+      },
+      3: { name: 'Unknown', defaultBaseUrl: '', keyHelp: '', canCreate: false },
+      4: {
+        name: 'Custom',
+        defaultBaseUrl: '',
+        keyHelp: '',
+        displayName: name,
+        avatar: 'bad-website.svg',
+        website: undefined,
+        canCreate: false
+      }
+    });
+    expect(upstream[1].key).toBe('secret');
+
+    // 上游缓存命中时，Plugin 的展示更新仍须立即生效。
+    global.aiproxyChannelsCache[0].avatar = 'updated.svg';
+    expect((await getChannelTypeMetas())[1].avatar).toBe('updated.svg');
+    expect(mocks.getTypeMetas).toHaveBeenCalledTimes(1);
+  });
+
+  it('supports empty and uninitialized display caches', async () => {
+    mocks.getTypeMetas.mockResolvedValue({});
+    expect(await getChannelTypeMetas()).toEqual({});
+    vi.stubGlobal('aiproxyChannelsCache', undefined);
+    try {
+      expect(await getChannelTypeMetas()).toEqual({});
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('propagates upstream errors and allows a subsequent retry', async () => {
+    const error = new Error('AI Proxy unavailable');
+    mocks.getTypeMetas.mockRejectedValueOnce(error).mockResolvedValueOnce({});
+    await expect(getChannelTypeMetas()).rejects.toBe(error);
+    await expect(getChannelTypeMetas()).resolves.toEqual({});
+  });
+});
 
 describe('channel service', () => {
   beforeEach(() => {

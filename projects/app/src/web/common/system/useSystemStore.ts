@@ -4,7 +4,6 @@ import type { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import type { GetSystemInitDataResponse } from '@fastgpt/global/openapi/common/system/api';
 import type { FastGPTFeConfigsType, LicenseDataType } from '@fastgpt/global/common/system/types';
 import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { getOperationalAd } from './api';
 
@@ -54,15 +53,15 @@ type State = {
   clearLicenseData: () => void;
 
   initDataBufferId?: string;
+  authenticatedConfigGeneration?: number;
   feConfigs: FastGPTFeConfigsType;
   subPlans?: SubPlanType;
   systemVersion: string;
 
-  aiproxyChannels: NonNullable<GetSystemInitDataResponse['aiproxyChannels']>;
   operationalAd?: { operationalAdImage: string; operationalAdLink: string; id: string };
   loadOperationalAd: () => Promise<void>;
 
-  initStaticData: (e: GetSystemInitDataResponse) => void;
+  initStaticData: (e: GetSystemInitDataResponse, authGeneration: number) => void;
 
   appType?: string;
   setAppType: (e?: string) => void;
@@ -169,6 +168,7 @@ export const useSystemStore = create<State>()(
         },
 
         initDataBufferId: undefined,
+        authenticatedConfigGeneration: undefined,
         feConfigs: {
           uploadFileMaxSize: 1000,
           uploadFileMaxAmount: 1000
@@ -176,7 +176,6 @@ export const useSystemStore = create<State>()(
         subPlans: undefined,
         systemVersion: '0.0.0',
 
-        aiproxyChannels: [],
         operationalAd: undefined,
         loadOperationalAd: async () => {
           try {
@@ -188,23 +187,25 @@ export const useSystemStore = create<State>()(
             console.log('Get operational ad error', error);
           }
         },
-        initStaticData(res) {
+        /** 就绪标记只存内存，并绑定确认该配置的会话；匿名响应立即撤销登录配置就绪状态。 */
+        initStaticData(res, authGeneration) {
           set((state) => {
             state.initDataBufferId = res.bufferId;
+            state.authenticatedConfigGeneration = res.isAuthenticated ? authGeneration : undefined;
 
             state.feConfigs = res.feConfigs ?? state.feConfigs;
             state.subPlans = res.subPlans ?? state.subPlans;
             state.systemVersion = res.systemVersion ?? state.systemVersion;
-
-            state.aiproxyChannels = res.aiproxyChannels ?? state.aiproxyChannels;
           });
         }
       })),
       {
         name: 'globalStore',
-        version: 1,
+        version: 2,
+        // 渠道类型改为模型管理页按需加载，升级时清理旧全局缓存。
         migrate: (persistedState) => {
           const {
+            aiproxyChannels: _aiproxyChannels,
             modelProviders: _modelProviders,
             modelProviderMap: _modelProviderMap,
             defaultModels: _defaultModels,
@@ -219,9 +220,7 @@ export const useSystemStore = create<State>()(
           initDataBufferId: state.initDataBufferId,
           feConfigs: state.feConfigs,
           subPlans: state.subPlans,
-          systemVersion: state.systemVersion,
-
-          aiproxyChannels: state.aiproxyChannels
+          systemVersion: state.systemVersion
         })
       }
     )
