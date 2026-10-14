@@ -242,6 +242,7 @@ describe('get system tool templates handler', () => {
     expect(mocks.getClientToolPreviewNode).toHaveBeenCalledTimes(3);
     expect(mocks.getClientToolPreviewNode).toHaveBeenCalledWith({
       appId: 'systemTool-suite/search',
+      teamId: 'team-1',
       source: 'team-1',
       getLatestVersion: true,
       lang: 'zh'
