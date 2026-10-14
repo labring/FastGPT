@@ -8,7 +8,6 @@ export const unAuthPagePaths = new Set([
   '/appStore',
   '/chat',
   '/chat/share',
-  '/tools/price',
   '/price',
   // API 文档不挂载 Layout/Auth，同样需要立即初始化公共配置。
   '/apidoc/devapi',

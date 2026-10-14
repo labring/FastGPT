@@ -6,7 +6,7 @@ describe('getInitDataPage', () => {
     ['/login', 'login'],
     ['/login/sso', 'login'],
     ['/price', 'price'],
-    ['/tools/price', 'price'],
+    ['/tools/price', 'base'],
     ['/chat', 'chat'],
     ['/chat/share', 'share'],
     ['/login/provider', 'base'],

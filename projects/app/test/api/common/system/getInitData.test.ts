@@ -142,6 +142,7 @@ describe('getInitData anonymous configuration filtering', () => {
   it.each([
     { pathname: '/login', page: 'login', expected: loginConfig },
     { pathname: '/price', page: 'price', expected: priceConfig },
+    { pathname: '/tools/price', page: 'base', expected: commonConfig },
     { pathname: '/chat/share', page: 'share', expected: shareConfig },
     { pathname: '/chat', page: 'chat', expected: publicConfig },
     { pathname: '/apidoc/devapi', page: 'base', expected: commonConfig }

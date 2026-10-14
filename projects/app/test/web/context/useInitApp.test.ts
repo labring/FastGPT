@@ -210,7 +210,7 @@ describe('useInitApp marketing params inside AppShell', () => {
     expect(clientInitData).toHaveBeenLastCalledWith(3, '/price');
     expect(clientInitData).toHaveBeenCalledTimes(2);
 
-    mocks.router.pathname = '/tools/price';
+    mocks.router.query = { tab: 'extra' };
     await render();
     expect(clientInitData).toHaveBeenCalledTimes(2);
 
