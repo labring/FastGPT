@@ -1,4 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
+
+// checkPswExpired 已接管实例配置 auth.passwordExpiredMonth（null=显式"永不过期"，
+// undefined 才回落 env）。本文件通过 stubEnv 驱动行为，预置叶子缺省种子快照，
+// 让 auth.passwordExpiredMonth 为 undefined、?? 之前的 === undefined 兜底命中 env。
+(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
