@@ -84,6 +84,98 @@ export const getPositionDelta = (initialPosition: XYPosition, nextPosition?: XYP
   y: typeof nextPosition?.y === 'number' ? nextPosition.y - initialPosition.y : 0
 });
 
+type WorkflowDragNode = Pick<CanvasNode, 'id' | 'position' | 'selected' | 'data'>;
+
+export type WorkflowDragGesture = {
+  nodeIds: readonly string[];
+  startPositions: ReadonlyMap<string, XYPosition>;
+};
+
+/** 递归收集容器后代，移动容器时保持整棵子树的相对位置。 */
+export const getContainerDescendantIds = (nodes: readonly WorkflowDragNode[], parentId: string) => {
+  const childrenByParent = new Map<string, string[]>();
+  nodes.forEach((node) => {
+    const childParentId = node.data.parentNodeId;
+    if (!childParentId) return;
+    const children = childrenByParent.get(childParentId) ?? [];
+    children.push(node.id);
+    childrenByParent.set(childParentId, children);
+  });
+
+  const descendants = new Set<string>();
+  const visit = (nodeId: string) => {
+    childrenByParent.get(nodeId)?.forEach((childId) => {
+      if (descendants.has(childId)) return;
+      descendants.add(childId);
+      visit(childId);
+    });
+  };
+  visit(parentId);
+  return descendants;
+};
+
+/** 过滤选中容器的后代，确定一次 gesture 的移动根并扩展全部后代。 */
+export const getWorkflowDragNodeIds = (
+  nodes: readonly WorkflowDragNode[],
+  activeNodeId: string
+) => {
+  const nodeById = new Map(nodes.map((node) => [node.id, node] as const));
+  const selectedIds = new Set(nodes.filter((node) => node.selected).map((node) => node.id));
+
+  const hasSelectedAncestor = (nodeId: string) => {
+    const visited = new Set<string>();
+    let parentId = nodeById.get(nodeId)?.data.parentNodeId;
+    while (parentId && !visited.has(parentId)) {
+      if (selectedIds.has(parentId)) return true;
+      visited.add(parentId);
+      parentId = nodeById.get(parentId)?.data.parentNodeId;
+    }
+    return false;
+  };
+
+  const roots = new Set(
+    nodes.filter((node) => node.selected && !hasSelectedAncestor(node.id)).map((node) => node.id)
+  );
+  if (nodeById.has(activeNodeId) && !hasSelectedAncestor(activeNodeId)) {
+    roots.add(activeNodeId);
+  }
+
+  const nodeIds = new Set<string>();
+  roots.forEach((rootId) => {
+    nodeIds.add(rootId);
+    getContainerDescendantIds(nodes, rootId).forEach((nodeId) => nodeIds.add(nodeId));
+  });
+  return nodeIds;
+};
+
+/** 捕获 gesture 起点；拖拽帧用起点差量计算，避免布局重算改变相对位置。 */
+export const captureWorkflowDrag = (
+  nodes: readonly WorkflowDragNode[],
+  activeNodeId: string
+): WorkflowDragGesture => ({
+  nodeIds: [...getWorkflowDragNodeIds(nodes, activeNodeId)],
+  startPositions: new Map(nodes.map((node) => [node.id, { ...node.position }] as const))
+});
+
+/** 把受影响节点扩展到容器祖先，确保包围框重定位与子节点同事务提交。 */
+export const getGeometryNodeIdsForDrag = (
+  nodes: readonly WorkflowDragNode[],
+  gesture: WorkflowDragGesture
+) => {
+  const nodeById = new Map(nodes.map((node) => [node.id, node] as const));
+  const nodeIds = new Set(gesture.nodeIds);
+  gesture.nodeIds.forEach((nodeId) => {
+    const visited = new Set<string>();
+    let parentId = nodeById.get(nodeId)?.data.parentNodeId;
+    while (parentId && !visited.has(parentId)) {
+      nodeIds.add(parentId);
+      visited.add(parentId);
+      parentId = nodeById.get(parentId)?.data.parentNodeId;
+    }
+  });
+  return nodeIds;
+};
+
 /*
   Compute helper lines for snapping nodes to each other
   Refer: https://reactflow.dev/examples/interaction/helper-lines
@@ -430,6 +522,7 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
   const applyNodeChanges = useWorkflowCanvasRendererValue((v) => v.applyNodeChanges);
   const applyEdgeChanges = useWorkflowCanvasRendererValue((v) => v.applyEdgeChanges);
   const getNodes = useWorkflowCanvasRendererValue((v) => v.getNodes);
+  const replaceNodes = useWorkflowCanvasRendererValue((v) => v.replaceNodes);
   // 只用写能力与事件期读取：稳定 action 句柄订阅数为零，画布组件不再随结构变化重渲染。
   const actions = useWorkflowActions();
   const canvas = useCanvas();
@@ -458,6 +551,7 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
   */
   const pendingEdgeDisconnects = useRef<EdgeDisconnectValue[]>([]);
   const edgeDisconnectScheduled = useRef(false);
+  const dragGestureRef = useRef<WorkflowDragGesture>();
 
   const flushEdgeDisconnects = useMemoizedFn(() => {
     edgeDisconnectScheduled.current = false;
@@ -655,12 +749,11 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
           ? createHelperLineScanner({ change, node, getNodeDimension })
           : undefined;
 
-      // 一次遍历同时收集子节点并扫描顶层吸附候选。
-      const childNodes: CanvasNode[] = [];
+      // 一次遍历同时收集全部后代并扫描顶层吸附候选。
+      const descendantIds = getContainerDescendantIds(nodes, parentId);
+      const childNodes = nodes.filter((candidate) => descendantIds.has(candidate.id));
       for (const n of nodes) {
-        if (n.data.parentNodeId === parentId) {
-          childNodes.push(n);
-        } else if (!n.data.parentNodeId) {
+        if (!n.data.parentNodeId) {
           helperLineScanner?.scanNode(n);
         }
       }
@@ -671,16 +764,18 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
         helperLinesRef.current?.clear();
       }
 
-      // 计算子节点的位置变化 (此处 change.position 已是吸附后值)
+      // 计算整棵子树的位置变化；始终以 gesture 起点计算，避免包围框重算改变相对位置。
       if (childNodes.length > 0) {
-        const initPosition = node.position;
+        const initPosition = dragGestureRef.current?.startPositions.get(parentId) ?? node.position;
         const { x: deltaX, y: deltaY } = getPositionDelta(initPosition, change.position);
 
         const childNodesChange: NodePositionChange[] = childNodes.map((childNode) => {
-          if (change.dragging) {
+          if (change.position) {
+            const startPosition =
+              dragGestureRef.current?.startPositions.get(childNode.id) ?? childNode.position;
             const position = {
-              x: childNode.position.x + deltaX,
-              y: childNode.position.y + deltaY
+              x: startPosition.x + deltaX,
+              y: startPosition.y + deltaY
             };
             return {
               ...change,
@@ -716,6 +811,11 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
 
     return [];
   });
+
+  const onNodeDragStart = useMemoizedFn((_event: unknown, node: CanvasNode) => {
+    dragGestureRef.current = captureWorkflowDrag(getNodes(), node.id);
+  });
+
   const handleNodesChange = useMemoizedFn((changes: NodeChange<CanvasNode>[]) => {
     const childChanges: NodeChange<CanvasNode>[] = [];
     const removableNodeIds: string[] = [];
@@ -801,16 +901,47 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
 
     if (removableNodeIds.length > 0) actions.removeNodes(removableNodeIds);
 
-    const geometryNodeIds = collectCommittedGeometryNodeIds([...changes, ...childChanges]);
-    if (geometryNodeIds.size > 0) {
-      const currentNodes = getNodes();
-      const geometryUpdates = collectGeometryUpdates({
-        nodeIds: geometryNodeIds,
-        currentNodes,
-        getPreviousPosition: (nodeId) => runtime?.getNodeView(nodeId)?.position
-      });
-      if (geometryUpdates.length > 0) canvas.commitGeometry(geometryUpdates);
+    // 拖拽 gesture 由 onNodeDragStop 统一提交；非拖拽位置变更保留旧的即时提交路径。
+    if (!dragGestureRef.current) {
+      const geometryNodeIds = collectCommittedGeometryNodeIds([...changes, ...childChanges]);
+      if (geometryNodeIds.size > 0) {
+        const currentNodes = getNodes();
+        const geometryUpdates = collectGeometryUpdates({
+          nodeIds: geometryNodeIds,
+          currentNodes,
+          getPreviousPosition: (nodeId) => runtime?.getNodeView(nodeId)?.position
+        });
+        if (geometryUpdates.length > 0) canvas.commitGeometry(geometryUpdates);
+      }
     }
+  });
+
+  const commitDragGeometry = useMemoizedFn(() => {
+    const gesture = dragGestureRef.current;
+    dragGestureRef.current = undefined;
+    if (!gesture) return;
+
+    const currentNodes = getNodes();
+    const geometryNodeIds = getGeometryNodeIdsForDrag(currentNodes, gesture);
+    const geometryUpdates = collectGeometryUpdates({
+      nodeIds: geometryNodeIds,
+      currentNodes,
+      getPreviousPosition: (nodeId) => runtime?.getNodeView(nodeId)?.position
+    });
+    if (geometryUpdates.length === 0) return;
+
+    const result = canvas.commitGeometry(geometryUpdates);
+    if (result.ok) return;
+
+    // Geometry batch 失败时回到 Runtime 已提交位置，避免 renderer 留下半套布局。
+    replaceNodes(
+      currentNodes.map((currentNode) => {
+        const position =
+          gesture.startPositions.get(currentNode.id) ??
+          runtime?.getNodeView(currentNode.id)?.position;
+        return position ? { ...currentNode, position: { ...position } } : currentNode;
+      })
+    );
   });
 
   const handleEdgeChange = useMemoizedFn((changes: EdgeChange[]) => {
@@ -837,13 +968,11 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
     queueMicrotask(flushEdgeDisconnects);
   });
 
-  const onNodeDragStop = useCallback(
-    (_: any, node: CanvasNode) => {
-      helperLinesRef.current?.clear();
-      checkNodeOverLoopNode(node);
-    },
-    [checkNodeOverLoopNode, helperLinesRef]
-  );
+  const onNodeDragStop = useMemoizedFn((_event: unknown, node: CanvasNode) => {
+    helperLinesRef.current?.clear();
+    commitDragGeometry();
+    checkNodeOverLoopNode(node);
+  });
 
   /* connect */
   const onConnectStart = useCallback(
@@ -983,6 +1112,7 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
     customOnConnect,
     onEdgeMouseEnter,
     onEdgeMouseLeave,
+    onNodeDragStart,
     onNodeDragStop,
     onPaneContextMenu,
     onPaneClick

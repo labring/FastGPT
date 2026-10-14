@@ -501,6 +501,7 @@ const WorkflowCanvas = () => {
     customOnConnect,
     onEdgeMouseEnter,
     onEdgeMouseLeave,
+    onNodeDragStart,
     onNodeDragStop,
     onPaneContextMenu,
     onPaneClick
@@ -588,6 +589,7 @@ const WorkflowCanvas = () => {
                 panOnScroll: true
               }
             : {})}
+          onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
           noWheelClassName={
             !movingCanvas || workflowControlMode === 'drag' ? 'nowheel' : 'nowheel-moving'

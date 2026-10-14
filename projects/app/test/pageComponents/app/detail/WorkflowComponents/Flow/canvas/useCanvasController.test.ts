@@ -12,6 +12,10 @@ import {
   collectSelectionConflictIds,
   collectGeometryUpdates,
   collectCommittedGeometryNodeIds,
+  captureWorkflowDrag,
+  getContainerDescendantIds,
+  getGeometryNodeIdsForDrag,
+  getWorkflowDragNodeIds,
   getPositionDelta,
   computeHelperLines as computeHelperLinesWithNode,
   dropEdgeDisconnectsOfRemovedNodes,
@@ -117,6 +121,55 @@ describe('getPositionDelta', () => {
 
   it('keeps an explicit y coordinate of 0', () => {
     expect(getPositionDelta({ x: 10, y: 20 }, { y: 0 })).toEqual({ x: 0, y: -20 });
+  });
+});
+
+describe('container drag geometry', () => {
+  const hierarchyNode = (
+    id: string,
+    parentNodeId: string | undefined,
+    x: number,
+    y: number,
+    selected = false
+  ) =>
+    buildNode(id, x, y, 50, 50, {
+      selected,
+      data: { parentNodeId }
+    });
+
+  it('moves every descendant with a container while keeping selected child roots independent', () => {
+    const nodes = [
+      hierarchyNode('container', undefined, 100, 200, true),
+      hierarchyNode('nested', 'container', 20, 30, true),
+      hierarchyNode('leaf', 'nested', 4, 5, true),
+      hierarchyNode('outside', undefined, 700, 800)
+    ];
+
+    expect([...getContainerDescendantIds(nodes, 'container')]).toEqual(['nested', 'leaf']);
+    expect([...getWorkflowDragNodeIds(nodes, 'container')]).toEqual([
+      'container',
+      'nested',
+      'leaf'
+    ]);
+
+    const childGesture = captureWorkflowDrag(
+      [
+        hierarchyNode('container', undefined, 100, 200),
+        hierarchyNode('child', 'container', 20, 30, true)
+      ],
+      'child'
+    );
+    expect([...childGesture.nodeIds]).toEqual(['child']);
+  });
+
+  it('includes container ancestors so bbox relocation commits with child movement', () => {
+    const nodes = [
+      hierarchyNode('container', undefined, 100, 200),
+      hierarchyNode('child', 'container', 20, 30)
+    ];
+    const gesture = captureWorkflowDrag(nodes, 'child');
+
+    expect([...getGeometryNodeIdsForDrag(nodes, gesture)]).toEqual(['child', 'container']);
   });
 });
 
