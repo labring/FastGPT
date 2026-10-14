@@ -107,6 +107,9 @@ const reduceQueue = () => {
   return global.datasetParseQueueLen === 0;
 };
 
+const isTeamError = (err: unknown, code: TeamErrEnum): boolean =>
+  err === code || (err instanceof Error && err.message === code);
+
 /** 读取并分块原文；共用训练租约，解析失败才扣重试次数，容量不足则暂停等待恢复。 */
 export const datasetParseQueue = async (): Promise<any> => {
   const max = global.systemEnv?.datasetParseMaxProcess || 10;
@@ -362,7 +365,7 @@ export const datasetParseQueue = async (): Promise<any> => {
           });
         } catch (err) {
           if (err instanceof TrainingLeaseLostError) continue;
-          if (err === TeamErrEnum.datasetSizeNotEnough) {
+          if (isTeamError(err, TeamErrEnum.datasetSizeNotEnough)) {
             logger.info('Parse queue dataset limit exceeded, locking task', {
               trainingId: data._id,
               datasetId: data.datasetId,
@@ -375,10 +378,7 @@ export const datasetParseQueue = async (): Promise<any> => {
             continue;
           }
 
-          if (
-            err === TeamErrEnum.aiPointsNotEnough ||
-            (err instanceof Error && err.message === TeamErrEnum.aiPointsNotEnough)
-          ) {
+          if (isTeamError(err, TeamErrEnum.aiPointsNotEnough)) {
             logger.warn('Parse queue AI points limit exceeded, locking task', {
               trainingId: data._id,
               datasetId: data.datasetId,
@@ -387,7 +387,16 @@ export const datasetParseQueue = async (): Promise<any> => {
             await taskLease.fail(i18nT('common:code_error.team_error.ai_points_not_enough'), {
               blocked: true
             });
-            await checkTeamAiPointsAndLock(data.teamId, String(data._id));
+            const pointsAvailable = await checkTeamAiPointsAndLock(data.teamId, String(data._id));
+            if (pointsAvailable) {
+              logger.warn(
+                'Parse queue AI points check mismatch: task blocked but team lock skipped',
+                {
+                  trainingId: data._id,
+                  teamId: data.teamId
+                }
+              );
+            }
 
             continue;
           }
