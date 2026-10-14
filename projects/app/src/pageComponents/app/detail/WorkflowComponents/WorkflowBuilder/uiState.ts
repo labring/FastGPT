@@ -154,7 +154,10 @@ export const getWorkflowBuilderInitialState = ({
 
 /** 在版本到期时主动刷新 UI，避免提醒和横幅停留在可应用状态。 */
 export const useWorkflowBuilderVersionExpired = (expiresAt?: string) => {
-  const [expiredVersion, setExpiredVersion] = useState<string>();
+  const isAlreadyExpired = () => Boolean(expiresAt && new Date(expiresAt).getTime() <= Date.now());
+  const [expiredVersion, setExpiredVersion] = useState<string | undefined>(() =>
+    isAlreadyExpired() ? expiresAt : undefined
+  );
 
   useEffect(() => {
     if (!expiresAt) return;
