@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
@@ -13,6 +13,7 @@ import { type FieldArrayWithId, type UseFieldArrayReturn } from 'react-hook-form
 import { type ChatBoxInputFormType, type UserInputFileItemType } from '../type';
 import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { useFileUploadLimits } from '@/web/common/file/hooks/useFileUploadLimits';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import {
   getUploadChatFilePresignedUrl,
@@ -51,10 +52,21 @@ type UploadTaskState = {
   key?: string;
 };
 
+/** 管理当前成员/会话的文件选择与上传；离开后取消任务，迟到的读取、进度和结果不得写回新输入。 */
 export const useFileUpload = (props: UseFileUploadOptions) => {
   const { fileSelectConfig, fileCtrl, outLinkAuthData, sourceTarget, chatId } = props;
   const fileUploadMode = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploadMode);
   const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
+  const { userInfo } = useUserStore();
+  const uploadOwnerKey = JSON.stringify([
+    userInfo?.team?.tmbId,
+    sourceTarget,
+    chatId,
+    outLinkAuthData?.shareId,
+    outLinkAuthData?.outLinkUid
+  ]);
+  const uploadOwnerRef = useRef(uploadOwnerKey);
+  const uploadMountedRef = useRef(false);
   const { toast } = useToast();
   const { t } = useTranslation();
   const { maxUploadFileCount, maxUploadFileSize } = useFileUploadLimits();
@@ -69,9 +81,10 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
   const uploadTasksRef = useRef(new Map<string, UploadTaskState>());
   const fileListRef = useRef<UploadFileField[]>(fileList);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    uploadOwnerRef.current = uploadOwnerKey;
     fileListRef.current = fileList;
-  }, [fileList]);
+  }, [uploadOwnerKey, fileList]);
 
   const hasFileUploading = fileList.some((item) => !item.url);
 
@@ -169,11 +182,13 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
     uploadTasksRef.current.clear();
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    uploadMountedRef.current = true;
     return () => {
+      uploadMountedRef.current = false;
       cancelAllUploadTasks();
     };
-  }, [cancelAllUploadTasks]);
+  }, [uploadOwnerKey, cancelAllUploadTasks]);
 
   /**
    * 按当前 field array 状态安全写回上传结果。
@@ -236,6 +251,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
 
   const onSelectFile = useCallback(
     async ({ files }: { files: File[] }) => {
+      if (!uploadMountedRef.current || uploadOwnerRef.current !== uploadOwnerKey) return [];
       if (!files || files.length === 0) {
         return [];
       }
@@ -319,14 +335,17 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
         )
       );
 
+      // FileReader 完成时可能已经切换会话，旧文件不能追加到新会话的输入列表。
+      if (!uploadMountedRef.current || uploadOwnerRef.current !== uploadOwnerKey) return [];
       appendFiles(loadFiles);
 
       return loadFiles;
     },
-    [maxSelectFiles, appendFiles, toast, t, maxSize]
+    [maxSelectFiles, appendFiles, toast, t, maxSize, uploadOwnerKey]
   );
 
   const uploadFiles = useCallback(async () => {
+    if (!uploadMountedRef.current || uploadOwnerRef.current !== uploadOwnerKey) return;
     const filterFiles = fileListRef.current.filter((item) => item.status === 0 && item.rawFile);
 
     if (filterFiles.length === 0) return;
@@ -340,9 +359,14 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
         if (uploadTasksRef.current.has(uploadId)) return;
 
         const task = registerUploadTask(uploadId);
+        // 进度与完成回调均归属于发起上传的会话，而不是回调执行时的当前表单。
+        const updateOwnedFile = (patch: Partial<UserInputFileItemType>) =>
+          uploadOwnerRef.current === uploadOwnerKey &&
+          !task.canceled &&
+          updateFileByUploadId(uploadId, patch);
 
         try {
-          if (!updateFileByUploadId(uploadId, { status: 1, process: file.process ?? 0 })) {
+          if (!updateOwnedFile({ status: 1, process: file.process ?? 0 })) {
             task.canceled = true;
             return;
           }
@@ -376,7 +400,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
             onProgress: (loaded, total) => {
               if (!total) return;
               const percent = Math.round((loaded / total) * 100);
-              updateFileByUploadId(uploadId, { process: percent, status: 1 });
+              updateOwnedFile({ process: percent, status: 1 });
             },
             signal: task.controller.signal,
             t
@@ -396,14 +420,18 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
           await uploader.upload();
 
           // Update file url and key
-          updateFileByUploadId(uploadId, {
+          updateOwnedFile({
             url: previewUrl,
             key,
             process: 100,
             status: 1
           });
         } catch (error) {
-          if (isUploadAbortError(error) || task.canceled) {
+          if (
+            isUploadAbortError(error) ||
+            task.canceled ||
+            uploadOwnerRef.current !== uploadOwnerKey
+          ) {
             return;
           }
 
@@ -422,6 +450,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
   }, [
     chatAuthTarget,
     chatId,
+    uploadOwnerKey,
     cleanupUploadTask,
     fileSelectConfig,
     fileUploadMode,

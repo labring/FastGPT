@@ -27,6 +27,14 @@ export async function clearExpiredMinioFiles() {
 
     for (const file of expiredFiles) {
       try {
+        // 续期或对话保存可能已改变扫描结果；清理前按原到期值和数据库时间重新确认。
+        const stillExpired = await MongoS3TTL.exists({
+          _id: file._id,
+          expiredTime: file.expiredTime,
+          $expr: { $lte: ['$expiredTime', '$$NOW'] }
+        });
+        if (!stillExpired) continue;
+
         const bucketName = file.bucketName;
         const bucket = global.s3BucketMap[bucketName];
         const multipartUploadId = file.multipart?.uploadId?.trim();
@@ -47,7 +55,7 @@ export async function clearExpiredMinioFiles() {
           } else {
             await bucket.addDeleteJob({ key: file.minioKey });
           }
-          await MongoS3TTL.deleteOne({ _id: file._id });
+          await MongoS3TTL.deleteOne({ _id: file._id, expiredTime: file.expiredTime });
 
           success++;
           logger.info('Cleaned expired S3 file', {
@@ -61,7 +69,7 @@ export async function clearExpiredMinioFiles() {
             key: file.minioKey
           });
           if (!hasMultipartMarker) {
-            await MongoS3TTL.deleteOne({ minioKey: file.minioKey, bucketName: file.bucketName });
+            await MongoS3TTL.deleteOne({ _id: file._id, expiredTime: file.expiredTime });
             logger.info('Removed expired S3 TTL without bucket', {
               key: file.minioKey,
               bucketName: file.bucketName

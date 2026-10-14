@@ -1,4 +1,7 @@
 {
+  "draft_files_loading": "Restoring draft attachments…",
+  "draft_files_error": "Some draft attachments could not be restored. Retry or select the files again.",
+  "draft_files_retry": "Retry",
   "AI_input_is_empty": "The content passed to the AI ​​node is empty",
   "LLM_model_response_empty": "The model returned an empty response. Check the model request details.",
   "Next": "Next",

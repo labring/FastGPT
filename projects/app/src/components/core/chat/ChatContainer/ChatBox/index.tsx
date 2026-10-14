@@ -22,7 +22,8 @@ import type { StartChatFnProps } from '../type';
 import ChatInput from './Input/ChatInput';
 import AgentAskComposer from './Input/AgentAskComposer';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import type { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { getInteractiveByHistories, isPendingAgentAsk } from './utils/interactive';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -197,6 +198,18 @@ const ChatBox = ({
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
+  const tmbId = useUserStore((state) => state.userInfo?.team?.tmbId);
+  const draftIdentity = useMemo(
+    () =>
+      sourceTarget.sourceType === ChatSourceTypeEnum.app &&
+      sourceTarget.sourceId &&
+      tmbId &&
+      chatId &&
+      chatType !== ChatTypeEnum.log
+        ? { tmbId, appId: sourceTarget.sourceId, chatId }
+        : undefined,
+    [sourceTarget, tmbId, chatId, chatType]
+  );
   const activeSourceKeyRef = useRef<string | undefined>(sourceKey);
   const activeChatIdRef = useRef<string | undefined>(chatId);
   useLayoutEffect(() => {
@@ -313,9 +326,24 @@ const ChatBox = ({
     [chatRecords]
   );
 
-  const { chatForm, setValue, chatStarted, chatStartedWatch, resetInputVal } = useChatInputForm({
+  const {
+    chatForm,
+    setValue,
+    chatStarted,
+    chatStartedWatch,
+    resetInputVal,
+    captureSubmittedInput,
+    isSubmittedInputCurrent,
+    prepareSubmittedInput,
+    clearSubmittedInput,
+    restoreSubmittedInput,
+    draftFilesState,
+    retryDraftFiles
+  } = useChatInputForm({
     sourceKey,
     chatId,
+    draftIdentity,
+    draftTarget: chatAuthTarget,
     chatBoxSourceKey: chatBoxData?.sourceKey,
     chatRecordsLength: chatRecords.length,
     chatType,
@@ -345,7 +373,11 @@ const ChatBox = ({
     activeSourceKeyRef,
     activeChatIdRef,
     TextareaDom,
-    resetInputVal,
+    captureSubmittedInput,
+    isSubmittedInputCurrent,
+    prepareSubmittedInput,
+    clearSubmittedInput,
+    restoreSubmittedInput,
     setQuestionGuide,
     createQuestionGuide,
     scrollToBottom,
@@ -667,6 +699,8 @@ const ChatBox = ({
           enableVoiceInput={resolvedFeatures.voice}
           disableSend={isRoundPending || (!isReady && !disabledSendTip)}
           TextareaDom={TextareaDom}
+          draftFilesState={draftFilesState}
+          onRetryDraftFiles={retryDraftFiles}
           resetInputVal={resetInputVal}
           chatForm={chatForm}
         />
@@ -739,6 +773,8 @@ const ChatBox = ({
                       enableVoiceInput={resolvedFeatures.voice}
                       disableSend={isRoundPending}
                       TextareaDom={TextareaDom}
+                      draftFilesState={draftFilesState}
+                      onRetryDraftFiles={retryDraftFiles}
                       resetInputVal={resetInputVal}
                       chatForm={chatForm}
                     />

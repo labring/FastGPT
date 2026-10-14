@@ -56,6 +56,8 @@ import {
 import { getLastAiDataId } from '../utils/resume';
 import type { ChatGeneratingConflictRecovery } from '../type';
 
+import type { ChatInputSubmission } from './useChatInputForm';
+
 type HumanChatSiteItemType = Extract<ChatSiteItemType, { obj: ChatRoleEnum.Human }>;
 
 type NotifyChatGenerateStatusChange = (
@@ -100,7 +102,11 @@ type UseChatGenerateProps = {
   activeSourceKeyRef: MutableRefObject<string | undefined>;
   activeChatIdRef: MutableRefObject<string | undefined>;
   TextareaDom: MutableRefObject<HTMLTextAreaElement | null>;
-  resetInputVal: (value: ChatBoxInputType) => void;
+  captureSubmittedInput: (input: ChatBoxInputType) => ChatInputSubmission;
+  isSubmittedInputCurrent: (submission: ChatInputSubmission) => boolean;
+  prepareSubmittedInput: (submission: ChatInputSubmission) => Promise<boolean>;
+  clearSubmittedInput: (submission: ChatInputSubmission) => void;
+  restoreSubmittedInput: (submission: ChatInputSubmission) => void;
   setQuestionGuide: (guides: string[]) => void;
   createQuestionGuide: () => Promise<void>;
   scrollToBottom: (behavior?: 'smooth' | 'auto', delay?: number) => void;
@@ -124,7 +130,7 @@ const isAbortByLeave = (reason: unknown) => {
  *
  * 输入约定：
  * - refs 仍由 ChatBox 持有，保证页面切换、恢复生成等生命周期清理共用同一组 controller。
- * - `resetInputVal`、`createQuestionGuide`、`scrollToBottom`、`generatingScroll` 都来自前面 PR
+ * - `captureSubmittedInput/clearSubmittedInput/restoreSubmittedInput`、`createQuestionGuide`、`scrollToBottom`、`generatingScroll` 都来自前面 PR
  *   已抽出的基础 hook，`useChatGenerate` 只编排它们，不重新实现输入或滚动细节。
  * - `notifyChatGenerateStatusChange` 只负责把生成状态变化抛给外部，不感知侧栏历史等外部模型。
  *
@@ -145,7 +151,11 @@ export const useChatGenerate = ({
   activeSourceKeyRef,
   activeChatIdRef,
   TextareaDom,
-  resetInputVal,
+  captureSubmittedInput,
+  isSubmittedInputCurrent,
+  prepareSubmittedInput,
+  clearSubmittedInput,
+  restoreSubmittedInput,
   setQuestionGuide,
   createQuestionGuide,
   scrollToBottom,
@@ -662,9 +672,13 @@ export const useChatGenerate = ({
       hideInUI = false,
       clearInput = false
     }) => {
+      // 变量校验可能异步完成，发送快照必须在点击时固定，避免期间编辑的内容被清掉。
+      const submission = clearInput ? captureSubmittedInput({ text, files }) : undefined;
       variablesForm.handleSubmit(
         async ({ variables = {} }) => {
           if (!onStartChat) return;
+          if (activeSourceKeyRef.current !== sourceKey || activeChatIdRef.current !== chatId)
+            return;
           if (isRoundPending || chatRequestActiveRef.current) {
             if (!hideInUI) {
               toast({
@@ -699,6 +713,22 @@ export const useChatGenerate = ({
           });
           const previousAiDataId = getLastAiDataId(history);
           chatRequestActiveRef.current = true;
+          if (submission) {
+            const filesReady = await prepareSubmittedInput(submission);
+            if (!filesReady) {
+              chatRequestActiveRef.current = false;
+              return;
+            }
+            files = submission.files;
+          }
+          if (
+            activeSourceKeyRef.current !== sourceKey ||
+            activeChatIdRef.current !== chatId ||
+            (submission && !isSubmittedInputCurrent(submission))
+          ) {
+            chatRequestActiveRef.current = false;
+            return;
+          }
           try {
             if (autoTTSResponse) {
               await startSegmentedAudio();
@@ -707,6 +737,17 @@ export const useChatGenerate = ({
           } catch (error) {
             chatRequestActiveRef.current = false;
             throw error;
+          }
+
+          // 音频初始化等待期间可能已离开当前会话，此时不创建消息或清理新会话输入。
+          if (
+            activeSourceKeyRef.current !== sourceKey ||
+            activeChatIdRef.current !== chatId ||
+            (submission && !isSubmittedInputCurrent(submission))
+          ) {
+            chatRequestActiveRef.current = false;
+            if (autoTTSResponse) finishSegmentedAudio();
+            return;
           }
 
           const currentHumanChat: HumanChatSiteItemType = {
@@ -782,9 +823,7 @@ export const useChatGenerate = ({
               : newChatList
           );
 
-          if (clearInput) {
-            resetInputVal({});
-          }
+          if (submission) clearSubmittedInput(submission);
           setQuestionGuide([]);
           scrollToBottom('smooth', 100);
 
@@ -886,7 +925,7 @@ export const useChatGenerate = ({
               // 服务端已有生成任务，本轮并未真正创建；回滚占位消息后再恢复原有流。
               setChatRecords(history);
               if (shouldRestoreSubmittedChatInput({ clearInput })) {
-                resetInputVal({ text, files });
+                if (submission) restoreSubmittedInput(submission);
               }
               // 暂时解除本轮发送态；恢复 hook 会用服务端记录校准当前轮并接管后续状态。
               setChatBoxData((state) =>
@@ -924,7 +963,7 @@ export const useChatGenerate = ({
                 responseText: err?.responseText
               })
             ) {
-              resetInputVal({ text, files });
+              if (submission) restoreSubmittedInput(submission);
             }
 
             const finishedInActiveChat =

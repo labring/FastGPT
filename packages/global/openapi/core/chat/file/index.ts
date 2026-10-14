@@ -3,12 +3,28 @@ import { DevApiTagsMap } from '../../../tag';
 import {
   PresignChatFilePostUrlRawSchema,
   PresignDraftChatFilePostUrlRawSchema,
-  PresignChatFileGetUrlRawSchema
+  PresignChatFileGetUrlRawSchema,
+  PrepareDraftFilesRawSchema,
+  PrepareDraftFilesResponseSchema
 } from './api';
 import { CreatePostPresignedUrlResponseSchema } from '../../../../common/file/s3/type';
 import { z } from 'zod';
 
 export const ChatFilePath: OpenAPIPath = {
+  '/core/chat/file/prepareDraftFiles': {
+    post: {
+      summary: '准备输入草稿附件',
+      description: '校验已上传文件，按草稿剩余保留时间续期临时对象并返回新的预览链接。',
+      tags: [DevApiTagsMap.chatFile],
+      requestBody: { content: { 'application/json': { schema: PrepareDraftFilesRawSchema } } },
+      responses: {
+        200: {
+          description: '逐个返回附件的可用状态',
+          content: { 'application/json': { schema: PrepareDraftFilesResponseSchema } }
+        }
+      }
+    }
+  },
   '/core/chat/file/presignChatFilePostUrl': {
     post: {
       summary: '获取文件上传 URL',

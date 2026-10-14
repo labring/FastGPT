@@ -2,12 +2,18 @@ import { POST } from '@/web/common/api/request';
 import type {
   PresignChatFileGetUrlParams,
   PresignChatFilePostUrlParams,
-  PresignDraftChatFilePostUrlParams
+  PresignDraftChatFilePostUrlParams,
+  PrepareDraftFilesParams,
+  PrepareDraftFilesResponse
 } from '@fastgpt/global/openapi/core/chat/file/api';
 import type {
   CreatePostPresignedUrlResponseType,
   PresignFileUploadParams
 } from '@fastgpt/global/common/file/s3/type';
+
+/** 校验草稿附件、按剩余有效期续期并获取新预览链接。 */
+export const prepareChatInputDraftFiles = (params: PrepareDraftFilesParams) =>
+  POST<PrepareDraftFilesResponse>('/core/chat/file/prepareDraftFiles', params);
 
 export const getUploadAvatarPresignedUrl = (
   params: PresignFileUploadParams & {
