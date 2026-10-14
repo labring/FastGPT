@@ -308,14 +308,20 @@ export const resolveUploadFile = ({
   hint,
   policy,
   evidence,
-  skipFileTypeCheck = getSystemInstanceConfig().security.skipFileTypeCheck ??
-    serviceEnv.SKIP_FILE_TYPE_CHECK
+  skipFileTypeCheck
 }: {
   hint: UploadFileHint;
   policy: UploadPolicy;
   evidence: UploadFileEvidence;
   skipFileTypeCheck?: boolean;
 }): ResolvedUploadFile => {
+  // skipFileTypeCheck 权威来源为实例配置（blockStartup 迁移已回填 env 初值），
+  // 调用方显式传值优先；?? 兜底仅覆盖快照未初始化的启动早期/测试种子场景。
+  const effectiveSkipFileTypeCheck =
+    skipFileTypeCheck ??
+    getSystemInstanceConfig().security.skipFileTypeCheck ??
+    serviceEnv.SKIP_FILE_TYPE_CHECK;
+
   const normalizedHint = normalizeUploadHint(hint);
   const filename = normalizedHint.declaredFilename || normalizedHint.filename;
   const filenameExtension = getFilenameExtension(filename);
@@ -342,7 +348,7 @@ export const resolveUploadFile = ({
     policy
   });
 
-  if (skipFileTypeCheck) {
+  if (effectiveSkipFileTypeCheck) {
     const resolvedExtension = explicitExtension || policy.fallbackExtension || '';
     return {
       filename: resolveAcceptedFilename({ filename, extension: resolvedExtension }),
