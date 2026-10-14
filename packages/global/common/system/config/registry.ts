@@ -164,7 +164,6 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
     [
       'hideChatCopyrightSetting',
       'multipleDataToBase64',
-      'datasetSynonymEnabled',
       'agentEngine',
       'disableCache',
       'showEmptyChat',
@@ -181,6 +180,14 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
     ],
     { edition: 'all', secret: false, applyMode: 'live' }
   ),
+  // 同义词功能开关运行时可切换读写链路，但 synonymVersion 复合索引在模块加载期
+  // 按 DATASET_SYNONYM_ENABLED 决定是否声明（schema 求值早于配置加载，无法热生效），
+  // 完整效果需重启，按 restart 标注避免"即时生效"的虚假承诺。
+  ...createEntries('feature', ['datasetSynonymEnabled'], {
+    edition: 'all',
+    secret: false,
+    applyMode: 'restart'
+  }),
   ...createEntries(
     'commercial',
     ['showCoupon', 'showDiscountCoupon', 'payFormUrl', 'agentSandboxFreeTip'],
