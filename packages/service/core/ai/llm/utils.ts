@@ -21,8 +21,7 @@ import {
   parseFilenameExtension
 } from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/controller';
-import { serviceEnv } from '../../../env';
+import { getMultipleDataToBase64 } from '../../../common/system/constants';
 import {
   classifyUrlMediaType,
   createFileClassificationContext,
@@ -260,11 +259,12 @@ export const loadRequestMessages = async ({
 
   /**
    * 判断媒体是否需要在服务端转 base64。
-   * 本地相对路径只有服务端能读取；远程媒体统一由 MULTIPLE_DATA_TO_BASE64 控制。
+   * 本地路径只有服务端能读取；multipleDataToBase64 用于兼容不支持远程 URL 的模型。
+   * 开关在本次请求入口只取一次：若逐条媒体求值，管理员中途保存配置会触发快照
+   * 重载，导致同一次请求部分图片转 base64、部分保留远程 URL 的混合形态。
    */
+  const multipleDataToBase64 = getMultipleDataToBase64();
   const shouldLoadMediaAsBase64 = (url: string) => {
-    const multipleDataToBase64 =
-      getSystemInstanceConfig().feature.multipleDataToBase64 ?? serviceEnv.MULTIPLE_DATA_TO_BASE64;
     return url.startsWith('/') || multipleDataToBase64;
   };
 
