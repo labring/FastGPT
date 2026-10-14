@@ -1,3 +1,4 @@
+import { getFileUploadLimits } from '@fastgpt/global/common/file/limit';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import {
@@ -29,10 +30,14 @@ async function handler(
     per: TeamDatasetCreatePermissionVal
   });
   const planStatus = await getTeamPlanStatus({ teamId });
+  const uploadLimits = getFileUploadLimits({
+    teamPlan: planStatus.standard,
+    systemLimit: global.feConfigs.limit
+  });
 
   await assertUploadRateLimit({
     identity: String(tmbId),
-    limit: planStatus.standard?.maxUploadFileCount || global.feConfigs.limit.uploadFileMaxAmount
+    limit: uploadLimits.maxUploadFileCount
   });
 
   const bucket = new S3PrivateBucket();
@@ -43,8 +48,7 @@ async function handler(
       { rawKey: fileKey, filename, ...(size !== undefined ? { size } : {}) },
       {
         expiredHours: 1,
-        maxFileSize:
-          planStatus.standard?.maxUploadFileSize ?? global.feConfigs.limit.uploadFileMaxSize
+        maxFileSize: uploadLimits.maxUploadFileSize
       }
     )
   );

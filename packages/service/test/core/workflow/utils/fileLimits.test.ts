@@ -97,15 +97,15 @@ describe('prepareWorkflowFileQuery', () => {
     expect(getTeamPlanStatusMock).not.toHaveBeenCalled();
   });
 
-  it('preserves an explicit zero team file count instead of falling back to the system limit', () => {
+  it('treats a zero team file count as unset and falls back to the system limit', () => {
     expect(
       getWorkflowFileAmountLimits({
         teamMaxFileAmount: 0,
         systemMaxFileAmount: 20
       })
     ).toEqual({
-      maxFileAmount: 0,
-      queryMaxFileAmount: 0
+      maxFileAmount: 20,
+      queryMaxFileAmount: 20
     });
   });
 

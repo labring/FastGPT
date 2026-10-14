@@ -196,8 +196,8 @@ export const useSystemStore = create<State>()(
                 ...res.feConfigs,
                 limit: {
                   ...res.feConfigs.limit,
-                  uploadFileMaxAmount: res.feConfigs.limit?.uploadFileMaxAmount ?? 1000,
-                  uploadFileMaxSize: res.feConfigs.limit?.uploadFileMaxSize ?? 1000
+                  uploadFileMaxAmount: res.feConfigs.limit?.uploadFileMaxAmount || 1000,
+                  uploadFileMaxSize: res.feConfigs.limit?.uploadFileMaxSize || 1000
                 }
               };
             }

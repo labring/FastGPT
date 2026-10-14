@@ -7,7 +7,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import React, { type DragEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useFileUploadLimits } from '@/web/common/file/hooks/useFileUploadLimits';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { ImportSourceItemType } from '@/web/core/dataset/type';
 
@@ -30,7 +30,7 @@ const FileSelector = ({
   const { t } = useTranslation();
 
   const { toast } = useToast();
-  const { feConfigs } = useSystemStore();
+  const { maxUploadFileSize, maxUploadFileCount } = useFileUploadLimits();
   const teamPlanStatus = useUserStore((s) => s.teamPlanStatus);
 
   const [teamPlanLoadComplete, setTeamPlanLoadComplete] = useState(
@@ -55,20 +55,12 @@ const FileSelector = ({
     };
   }, [teamPlanStatus]);
 
-  // 文件数量限制：团队套餐 || 系统配置 || 默认值
-  const maxCount =
-    teamPlanStatus?.standard?.maxUploadFileCount || feConfigs?.limit?.uploadFileMaxAmount || 1000;
+  const maxCount = maxUploadFileCount;
   // 文件大小限制（bytes）：与 presignDatasetFilePostUrl / 代理上传 JWT 一致 — 须等套餐拉取后再算，避免未加载时用 feConfigs 显示 1000M、实际套餐为 5M
   const maxSize = useMemo(() => {
     if (!teamPlanReady) return null;
-    const mb =
-      teamPlanStatus?.standard?.maxUploadFileSize ?? feConfigs?.limit?.uploadFileMaxSize ?? 500;
-    return mb * 1024 * 1024;
-  }, [
-    teamPlanReady,
-    teamPlanStatus?.standard?.maxUploadFileSize,
-    feConfigs?.limit?.uploadFileMaxSize
-  ]);
+    return maxUploadFileSize * 1024 * 1024;
+  }, [teamPlanReady, maxUploadFileSize]);
 
   const { File, onOpen } = useSelectFile({
     fileType,

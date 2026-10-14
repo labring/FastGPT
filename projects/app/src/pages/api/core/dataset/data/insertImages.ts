@@ -1,3 +1,4 @@
+import { getFileUploadLimits } from '@fastgpt/global/common/file/limit';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
@@ -69,9 +70,13 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
     }
 
     const planStatus = await getTeamPlanStatus({ teamId });
+    const uploadLimits = getFileUploadLimits({
+      teamPlan: planStatus.standard,
+      systemLimit: global.feConfigs.limit
+    });
     await assertUploadRateLimit({
       identity: String(tmbId),
-      limit: planStatus.standard?.maxUploadFileCount || global.feConfigs.limit.uploadFileMaxAmount,
+      limit: uploadLimits.maxUploadFileCount,
       increment: result.fileMetadata.length
     });
 

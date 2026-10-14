@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useMemoizedFn } from 'ahooks';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useFileUploadLimits } from '@/web/common/file/hooks/useFileUploadLimits';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 
@@ -19,14 +19,14 @@ type UseImageUploadProps = {
 export const useImageUpload = ({ maxSize, onFileSelect }: UseImageUploadProps) => {
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
+  const { maxUploadFileSize } = useFileUploadLimits();
 
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
 
   // use system config max size, but cap to match server limit
   // server validates the base64 string length (12MB), the original file should be smaller because the base64 encoding will increase the size by about 33%
-  const configMaxSize = maxSize || feConfigs?.limit?.uploadFileMaxSize || 100; // MB
+  const configMaxSize = maxSize || maxUploadFileSize; // MB
   const serverLimitMB = 12; // server base64 limit
   const clientLimitMB = Math.floor(serverLimitMB * 0.75); // considering the base64 encoding overhead, the client limit is set to 9MB
   const finalMaxSize = Math.min(configMaxSize, clientLimitMB);

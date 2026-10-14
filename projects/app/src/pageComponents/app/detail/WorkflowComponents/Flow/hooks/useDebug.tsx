@@ -31,8 +31,7 @@ import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
 import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import { getUserFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
+import { useFileUploadLimits } from '@/web/common/file/hooks/useFileUploadLimits';
 import type { FileSelectorValueItemType } from '@/components/core/app/FileSelector/type';
 import {
   checkInputShouldRenderInDebug,
@@ -77,11 +76,9 @@ export const useDebug = () => {
   const setDebugChatId = useContextSelector(WorkflowDebugContext, (v) => v.setDebugChatId);
 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
+  const { maxUploadFileCount } = useFileUploadLimits();
   const debugFileMaxAmount = getUserFileAmountLimit({
-    teamMaxFileAmount: teamPlanStatus?.standard?.maxUploadFileCount,
-    systemMaxFileAmount: feConfigs?.limit?.uploadFileMaxAmount ?? 10
+    systemMaxFileAmount: maxUploadFileCount
   });
   const { filteredVar, customVar, internalVar, variables } = useMemo(() => {
     const variables = appDetail.chatConfig?.variables || [];

@@ -210,16 +210,16 @@ describe('initStaticData through the real initialization pipeline', () => {
     expect(useSystemStore.getState().feConfigs.docUrl).toBe('https://docs.example.com');
   });
 
-  it('preserves zero upload limits in memory and persistence across an anonymous cache hit', async () => {
+  it('falls back from zero upload limits in memory and persistence across an anonymous cache hit', async () => {
     global.feConfigs.limit.uploadFileMaxAmount = 0;
     global.feConfigs.limit.uploadFileMaxSize = 0;
     await clientInitData();
     await clientInitData();
     expect(useSystemStore.getState().feConfigs).toMatchObject({
-      limit: { uploadFileMaxAmount: 0, uploadFileMaxSize: 0 }
+      limit: { uploadFileMaxAmount: 1000, uploadFileMaxSize: 1000 }
     });
     expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toMatchObject({
-      limit: { uploadFileMaxAmount: 0, uploadFileMaxSize: 0 }
+      limit: { uploadFileMaxAmount: 1000, uploadFileMaxSize: 1000 }
     });
   });
 });

@@ -33,7 +33,7 @@ describe('getFileMaxSize', () => {
   it.each([
     [undefined, 1000],
     [500, 500],
-    [0, 0]
+    [0, 1000]
   ])('returns the configured size %s or the missing-value default in bytes', (value, expected) => {
     global.feConfigs = { limit: { uploadFileMaxSize: value } } as any;
     expect(getFileMaxSize()).toBe(expected * 1024 * 1024);

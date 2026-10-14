@@ -12,8 +12,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { type FieldArrayWithId, type UseFieldArrayReturn } from 'react-hook-form';
 import { type ChatBoxInputFormType, type UserInputFileItemType } from '../type';
 import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
+import { useFileUploadLimits } from '@/web/common/file/hooks/useFileUploadLimits';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import {
   getUploadChatFilePresignedUrl,
@@ -58,8 +57,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
   const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
+  const { maxUploadFileCount, maxUploadFileSize } = useFileUploadLimits();
 
   const {
     update: updateFiles,
@@ -91,12 +89,10 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
   // Query 模块配额与用户配额取更小值。
   const maxSelectFiles = getFileAmountLimit({
     moduleMaxFileAmount: fileSelectConfig?.maxFiles,
-    teamMaxFileAmount: teamPlanStatus?.standard?.maxUploadFileCount,
-    systemMaxFileAmount: feConfigs?.limit?.uploadFileMaxAmount ?? 10
+    systemMaxFileAmount: maxUploadFileCount
   });
   const maxSize = getFileSizeLimitBytes({
-    teamMaxFileSize: teamPlanStatus?.standard?.maxUploadFileSize,
-    systemMaxFileSize: feConfigs?.limit?.uploadFileMaxSize ?? 500
+    systemMaxFileSize: maxUploadFileSize
   });
   const canSelectFileAmount = Math.max(maxSelectFiles - fileList.length, 0);
 
