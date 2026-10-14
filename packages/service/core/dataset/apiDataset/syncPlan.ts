@@ -15,10 +15,14 @@ import {
  */
 export const buildApiFileSyncPlan = <T extends ApiFileLocalCollection & { name: string }>({
   records,
-  collections
+  collections,
+  transientFolderIds = new Set<string>(),
+  rootParentIds
 }: {
   records: ApiFileRecord[];
   collections: T[];
+  transientFolderIds?: Set<string>;
+  rootParentIds?: Map<string, string | null>;
 }) => {
   const root = collections.find((item) => item.apiFileId === RootCollectionId);
   const rootCollectionId = root ? String(root._id) : undefined;
@@ -40,7 +44,7 @@ export const buildApiFileSyncPlan = <T extends ApiFileLocalCollection & { name: 
   const remoteIds = new Set<string>();
   let existingCount = 0;
   for (const record of records) {
-    remoteIds.add(record.apiFileId);
+    if (!transientFolderIds.has(record.apiFileId)) remoteIds.add(record.apiFileId);
     const existing = existingByApiId.get(record.apiFileId);
     if (!existing) {
       if (record.type === 'file') missingFiles.push(record);
@@ -69,14 +73,16 @@ export const buildApiFileSyncPlan = <T extends ApiFileLocalCollection & { name: 
     records,
     collections,
     idMap: plannedIdMap,
-    rootCollectionId
+    rootCollectionId,
+    rootParentIds
   });
   const parentChanges = [
     ...folders.map(({ record, id }) => {
       const { parentId } = resolveApiFileRecordParent({
         record,
         idMap: plannedIdMap,
-        rootCollectionId
+        rootCollectionId,
+        rootParentIds
       });
       if (parentId === undefined) throw new Error(`Missing API file parent: ${record.apiFileId}`);
       return { id: String(id), parentId };
@@ -108,10 +114,13 @@ export const buildApiFileSyncPlan = <T extends ApiFileLocalCollection & { name: 
  */
 export const selectApiFileSyncDeletes = <T extends ApiFileLocalCollection>({
   candidates,
-  collections
+  collections,
+  expectedFileIds = new Set<string>()
 }: {
   candidates: ApiFileLocalCollection[];
   collections: T[];
+  /** 远端仍保留的正文；正文补建失败时，其派生目录仍是下轮同步范围的唯一凭据。 */
+  expectedFileIds?: Set<string>;
 }): T[] => {
   const candidateById = new Map(candidates.map((item) => [String(item._id), item.apiFileId]));
   const localById = new Map(collections.map((item) => [String(item._id), item]));
@@ -125,6 +134,22 @@ export const selectApiFileSyncDeletes = <T extends ApiFileLocalCollection>({
       .map((item) => String(item._id))
   );
   const visited = new Set<string>();
+  const existingFileIds = new Set(
+    collections
+      .filter((item) => item.type === DatasetCollectionTypeEnum.apiFile)
+      .map((item) => item.apiFileId)
+  );
+  for (const item of collections) {
+    const sourceId = item.metadata?.apiFileSourceId;
+    if (
+      item.type === DatasetCollectionTypeEnum.folder &&
+      typeof sourceId === 'string' &&
+      expectedFileIds.has(sourceId) &&
+      !existingFileIds.has(sourceId)
+    ) {
+      pendingDelete.delete(String(item._id));
+    }
+  }
   for (const item of collections) {
     if (pendingDelete.has(String(item._id))) continue;
     let parentId = item.parentId ? String(item.parentId) : null;

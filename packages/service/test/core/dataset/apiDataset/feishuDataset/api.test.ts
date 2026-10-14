@@ -29,7 +29,7 @@ describe('useFeishuDatasetRequest', () => {
       { baseURL: serviceEnv.FEISHU_BASE_URL, timeout: 60000 },
       false
     );
-    mocks.post.mockResolvedValueOnce({ data: { tenant_access_token: 'token' } });
+    mocks.post.mockResolvedValueOnce({ data: { code: 0, tenant_access_token: 'token' } });
     const interceptor = mocks.use.mock.calls[0][0];
     await expect(interceptor({ headers: {} })).resolves.toEqual({
       headers: { Authorization: 'Bearer token', 'Content-Type': 'application/json; charset=utf-8' }
@@ -44,7 +44,73 @@ describe('useFeishuDatasetRequest', () => {
   });
 });
 
+describe('飞书租户 Token 错误', () => {
+  it.each([
+    { code: 10003, msg: 'app secret invalid' },
+    { code: 1069701, msg: 'tenant token invalid' },
+    { code: 1069704, msg: 'service unavailable' }
+  ])('HTTP 200 业务失败保留原因：$msg', async (data) => {
+    provider();
+    mocks.post.mockResolvedValueOnce({ data });
+    const config = { headers: {} };
+    await expect(mocks.use.mock.calls[0][0](config)).rejects.toMatchObject({
+      code: data.code,
+      message: data.msg
+    });
+    expect(config.headers).toEqual({});
+  });
+
+  it.each([undefined, null])('缺失 Token 响应 %j 返回可读错误', async (data) => {
+    provider();
+    mocks.post.mockResolvedValueOnce({ data });
+    await expect(mocks.use.mock.calls[0][0]({ headers: {} })).rejects.toBe('服务器异常');
+  });
+
+  it.each([undefined, '', '  ', 123])(
+    '业务成功但 Token=%j 时不使用 Bearer undefined',
+    async (token) => {
+      provider();
+      mocks.post.mockResolvedValueOnce({ data: { code: 0, tenant_access_token: token } });
+      const config = { headers: {} };
+      await expect(mocks.use.mock.calls[0][0](config)).rejects.toMatchObject({
+        code: 'UNAUTHORIZED',
+        message: expect.stringContaining('有效 Token')
+      });
+      expect(config.headers).toEqual({});
+    }
+  );
+
+  it('Token 端点的 HTTP 404 不能作为文件删除依据，也不继续探测 folder', async () => {
+    mocks.post.mockRejectedValue({
+      response: { status: 404, data: { msg: 'tenant token endpoint not found' } }
+    });
+    mocks.request.mockImplementation(async () => mocks.use.mock.calls[0][0]({ headers: {} }));
+    expect(await provider().getFileDetail({ apiFileId: 'token' })).toMatchObject({
+      success: false,
+      code: 'UNKNOWN_ERROR',
+      message: 'tenant token endpoint not found'
+    });
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('listFiles', () => {
+  it.each([undefined, {}, { files: 'not-array' }])(
+    'code=0 但列表缺失或格式错误 %j 时返回具体错误',
+    async (data) => {
+      mocks.request.mockResolvedValueOnce(ok(data));
+      await expect(provider().listFiles({})).rejects.toThrow('飞书文件列表响应缺失或格式错误');
+    }
+  );
+
+  it('飞书 HTTP 200 业务失败的 msg 不被 HTTP 通用文案覆盖', async () => {
+    mocks.request.mockResolvedValueOnce({ data: { code: 1069701, msg: 'tenant token expired' } });
+    await expect(provider().listFiles({})).rejects.toMatchObject({
+      message: 'tenant token expired',
+      status: 401
+    });
+  });
+
   it.each([undefined, 'subfolder'])(
     '分页携带父 token %s，过滤不支持的类型并转换秒级时间戳',
     async (parentId) => {

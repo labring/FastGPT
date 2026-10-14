@@ -97,7 +97,7 @@ async function handler(req: ApiRequestProps) {
     if (!collection) {
       return Promise.reject(CommonErrEnum.fileNotFound);
     }
-    id = collection._id;
+    id = String(collection._id);
   }
 
   if (!id) {

@@ -50,19 +50,50 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
     false
   );
 
+  /** Token 和业务接口共用业务状态校验，HTTP 200 不代表飞书业务调用成功。 */
+  const assertResponseSuccess = (data?: Pick<ResponseDataType, 'code' | 'msg'>) => {
+    if (!data || typeof data !== 'object') {
+      logger.warn('Feishu dataset response data is empty');
+      throw '服务器异常';
+    }
+    if (data.code !== 0) {
+      throw {
+        code: data.code ?? 'UNKNOWN_ERROR',
+        message: data.msg || '飞书接口异常',
+        status: data.code === 1069701 ? 401 : data.code === 1069704 ? 503 : undefined
+      };
+    }
+  };
+
   // 添加请求拦截器
   instance.interceptors.request.use(async (config) => {
     if (!config.headers.Authorization) {
-      const { data } = await axiosWithoutSSRF.post<{ tenant_access_token: string }>(
-        `${feishuBaseUrl}/open-apis/auth/v3/tenant_access_token/internal`,
-        {
+      try {
+        const { data } = await axiosWithoutSSRF.post<
+          Pick<ResponseDataType, 'code' | 'msg'> & { tenant_access_token?: string }
+        >(`${feishuBaseUrl}/open-apis/auth/v3/tenant_access_token/internal`, {
           app_id: feishuServer.appId,
           app_secret: feishuServer.appSecret
+        });
+        assertResponseSuccess(data);
+        if (typeof data.tenant_access_token !== 'string' || !data.tenant_access_token.trim()) {
+          throw toApiDatasetError({
+            code: 'UNAUTHORIZED',
+            message: '飞书租户令牌响应缺少有效 Token，请检查 App ID、App Secret 和应用权限',
+            status: 401
+          });
         }
-      );
 
-      config.headers['Authorization'] = `Bearer ${data.tenant_access_token}`;
-      config.headers['Content-Type'] = 'application/json; charset=utf-8';
+        config.headers['Authorization'] = `Bearer ${data.tenant_access_token}`;
+        config.headers['Content-Type'] = 'application/json; charset=utf-8';
+      } catch (error) {
+        const result = classifyApiDatasetError(error);
+        // 鉴权端点的 404 不能被元数据探测当作文件不存在，避免错误删除本地文件。
+        if (result.code === 'NOT_FOUND') {
+          throw toApiDatasetError({ code: 'UNKNOWN_ERROR', message: result.message });
+        }
+        throw error;
+      }
     }
     return config;
   });
@@ -71,18 +102,7 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
    * 响应数据检查
    */
   const checkRes = (data: ResponseDataType) => {
-    if (data === undefined) {
-      logger.warn('Feishu dataset response data is empty');
-      return Promise.reject('服务器异常');
-    }
-    if (data.code !== 0) {
-      // 飞书业务失败可能仍返回 HTTP 200，不能让缺失 data 被解释为文件已删除。
-      return Promise.reject({
-        code: data.code,
-        message: data.msg ?? '飞书接口异常',
-        status: data.code === 1069701 ? 401 : data.code === 1069704 ? 503 : undefined
-      });
-    }
+    assertResponseSuccess(data);
     return data.data;
   };
   const responseError = (err: any) => {
@@ -132,6 +152,10 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
         },
         'GET'
       );
+
+      if (!data || !Array.isArray(data.files)) {
+        throw new Error('飞书文件列表响应缺失或格式错误');
+      }
 
       if (data.has_more) {
         const nextFiles = await fetchFiles(data.next_page_token);

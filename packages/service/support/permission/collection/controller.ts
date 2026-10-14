@@ -569,6 +569,8 @@ export type CollectionPermissionCreateItem = {
   parentId: ParentIdType;
   tmbId: string;
   inheritPermission?: boolean;
+  /** 内部创建流程已核对来源归属、位置和 owner，可复用其完整快照。 */
+  permissionSourceCollectionId?: string;
 };
 
 /**
@@ -606,9 +608,16 @@ export async function createCollectionPermissionsBatch({
     }
 
     // 同父级的快照只读一次：40k 行下逐行回查父级是主要开销
-    const inheritingItems = items.filter((item) => item.inheritPermission !== false);
+    const inheritingItems = items.filter(
+      (item) => item.inheritPermission !== false && !item.permissionSourceCollectionId
+    );
     const parentIds = Array.from(
-      new Set(inheritingItems.filter((item) => item.parentId).map((item) => String(item.parentId)))
+      new Set([
+        ...inheritingItems.filter((item) => item.parentId).map((item) => String(item.parentId)),
+        ...items.flatMap((item) =>
+          item.permissionSourceCollectionId ? [item.permissionSourceCollectionId] : []
+        )
+      ])
     );
     const parentRows: ResourcePermissionRow[] = [];
     for (const resourceIds of chunked(parentIds, COLLECTION_PERMISSION_WRITE_CHUNK_SIZE)) {
@@ -637,19 +646,27 @@ export async function createCollectionPermissionsBatch({
       const key = JSON.stringify([
         item.inheritPermission !== false,
         item.parentId ?? null,
-        item.tmbId
+        item.tmbId,
+        item.permissionSourceCollectionId
       ]);
       if (!collaboratorsByKey.has(key)) {
         collaboratorsByKey.set(
           key,
-          item.inheritPermission === false
-            ? [{ tmbId: item.tmbId, permission: OwnerRoleVal }]
-            : mergeResourceCollaborators({
-                parentCollaborators: item.parentId
-                  ? (parentClbsById.get(String(item.parentId)) ?? [])
-                  : datasetClbs,
-                childCollaborators: [{ tmbId: item.tmbId, permission: OwnerRoleVal }]
-              })
+          item.permissionSourceCollectionId
+            ? [
+                ...(parentClbsById.get(item.permissionSourceCollectionId) ?? []).filter(
+                  (row) => String(row.tmbId ?? '') !== item.tmbId
+                ),
+                { tmbId: item.tmbId, permission: OwnerRoleVal }
+              ]
+            : item.inheritPermission === false
+              ? [{ tmbId: item.tmbId, permission: OwnerRoleVal }]
+              : mergeResourceCollaborators({
+                  parentCollaborators: item.parentId
+                    ? (parentClbsById.get(String(item.parentId)) ?? [])
+                    : datasetClbs,
+                  childCollaborators: [{ tmbId: item.tmbId, permission: OwnerRoleVal }]
+                })
         );
       }
       return {
@@ -757,7 +774,7 @@ export async function moveCollectionPermissionsBatch({
   }
 
   for (const [datasetId, datasetItems] of byDataset) {
-    const enabled = await getDatasetCollectionPermissionEnabled({ teamId, datasetId, session });
+    const enabled = await lockDatasetCollectionPermissionState({ teamId, datasetId, session });
     if (!enabled) continue;
 
     const moving = datasetItems.filter((item) => item.inheritPermission !== false);
@@ -765,7 +782,7 @@ export async function moveCollectionPermissionsBatch({
 
     const snapshotIds = Array.from(
       new Set(
-        moving
+        datasetItems
           .flatMap((item) => [item.collectionId, item.oldParentId, item.newParentId])
           .filter(Boolean)
           .map(String)
@@ -795,8 +812,8 @@ export async function moveCollectionPermissionsBatch({
         ? (newSnapshotsById.get(String(parentId)) ?? snapshotById.get(String(parentId)) ?? [])
         : datasetClbs;
 
-    // 输入顺序不能假设为父→子。用 DFS 让「新父级也是移动节点」的父级先入 orderedMoving。
-    const movingById = new Map(moving.map((item) => [item.collectionId, item]));
+    // 结构依赖包含独立权限节点：它们的父级也会改变，只是不需要重算自身 ACL。
+    const movingById = new Map(datasetItems.map((item) => [item.collectionId, item]));
 
     // 找出所有外部父节点的祖先链，检查是否有祖先属于本轮 moving
     const externalParentIds = Array.from(
@@ -911,13 +928,16 @@ export async function moveCollectionPermissionsBatch({
       }
 
       visitingIds.add(item.collectionId);
-      const newParent = item.newParentId && movingById.get(String(item.newParentId));
-      if (newParent) {
-        visit(newParent);
-      } else if (item.newParentId) {
-        const movingAncestorId = findMovingAncestorId(String(item.newParentId));
-        if (movingAncestorId && movingById.has(movingAncestorId)) {
-          visit(movingById.get(movingAncestorId)!);
+      // 独立节点是 ACL 依赖的终点，不能沿其新父级继续计算继承关系。
+      if (item.inheritPermission !== false) {
+        const newParent = item.newParentId && movingById.get(String(item.newParentId));
+        if (newParent) {
+          visit(newParent);
+        } else if (item.newParentId) {
+          const movingAncestorId = findMovingAncestorId(String(item.newParentId));
+          if (movingAncestorId && movingById.has(movingAncestorId)) {
+            visit(movingById.get(movingAncestorId)!);
+          }
         }
       }
       visitingIds.delete(item.collectionId);
@@ -929,6 +949,10 @@ export async function moveCollectionPermissionsBatch({
     const snapshots: Array<{ resourceId: string; collaborators: CollaboratorItemType[] }> = [];
 
     for (const item of orderedMoving) {
+      if (item.inheritPermission === false) {
+        newSnapshotsById.set(item.collectionId, snapshotById.get(item.collectionId) ?? []);
+        continue;
+      }
       if (item.newParentId && !movingById.has(String(item.newParentId))) {
         resolveIntermediateSnapshots(String(item.newParentId));
       }

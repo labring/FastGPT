@@ -3,6 +3,7 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import {
   buildApiFileParentUpdates,
+  planLegacyApiFileFolders,
   getApiFileSyncRootIds,
   resolveApiFileRecordParent,
   type ApiFileLocalCollection
@@ -253,5 +254,134 @@ describe('getApiFileSyncRootIds', () => {
         collection({ apiFileId: undefined })
       ])
     ).toEqual(['doc', 'real#dir']);
+  });
+});
+
+describe('planLegacyApiFileFolders', () => {
+  const apiDatasetServer = { dingtalkServer: { appKey: 'key', userId: 'user' } };
+  const legacy = () =>
+    collection({
+      type: DatasetCollectionTypeEnum.folder,
+      metadata: { custom: 'keep' },
+      parentId: 'manual'
+    });
+  it.each([true, false])(
+    '旧正文有子级=%s 时保留目录 ID、子树与 ACL；叶子沿用原位置',
+    (hasChild) => {
+      const records = hasChild
+        ? [record({ apiFileId: 'doc#dir', type: 'folder' }), record({ parentDirId: 'doc#dir' })]
+        : [record()];
+      const collections = [legacy()];
+      const before = JSON.stringify({ records, collections });
+      const plan = planLegacyApiFileFolders({ records, collections, apiDatasetServer });
+      expect(plan.collections[0]).toMatchObject({
+        _id: 'local-doc',
+        apiFileId: 'doc#dir',
+        parentId: 'manual',
+        type: DatasetCollectionTypeEnum.folder,
+        metadata: { custom: 'keep', apiFileSourceId: 'doc', apiFileLegacyDocument: true }
+      });
+      expect(plan.migrations).toEqual([
+        {
+          collectionId: 'local-doc',
+          sourceId: 'doc',
+          directoryId: 'doc#dir',
+          oldParentId: 'manual',
+          inheritPermission: undefined
+        }
+      ]);
+      expect(plan.permissionSources).toEqual(new Map([['doc', 'local-doc']]));
+      expect(plan.transientFolderIds).toEqual(new Set(hasChild ? [] : ['doc#dir']));
+      if (!hasChild) {
+        expect(plan.rootParentIds.get('doc')).toBe('manual');
+        expect(
+          resolveApiFileRecordParent({
+            record: record(),
+            idMap: new Map(),
+            rootParentIds: plan.rootParentIds
+          }).parentId
+        ).toBe('manual');
+        expect(
+          resolveApiFileRecordParent({
+            record: record(),
+            idMap: new Map(),
+            rootParentIds: plan.rootParentIds,
+            targetParentId: null
+          })
+        ).toMatchObject({ parentId: null, preserveExistingPlacement: false });
+        expect(
+          resolveApiFileRecordParent({
+            record: record(),
+            idMap: new Map(),
+            rootParentIds: plan.rootParentIds,
+            rootCollectionId: 'root'
+          }).parentId
+        ).toBe('root');
+      }
+      expect(JSON.stringify({ records, collections })).toBe(before);
+      const retry = planLegacyApiFileFolders({
+        records,
+        collections: plan.collections,
+        apiDatasetServer
+      });
+      expect(retry.migrations).toEqual([]);
+      expect(retry.permissionSources).toEqual(plan.permissionSources);
+      const completed = planLegacyApiFileFolders({
+        records,
+        collections: [...plan.collections, collection()],
+        apiDatasetServer
+      });
+      expect(completed.permissionSources.size).toBe(0);
+      expect(completed.transientFolderIds.size).toBe(0);
+    }
+  );
+  it.each([
+    undefined,
+    { apiServer: { baseUrl: 'https://api.test' } },
+    { yuqueServer: { userId: 'user' } },
+    { feishuServer: { appId: 'app', folderToken: 'folder' } },
+    { ...apiDatasetServer, apiServer: { baseUrl: 'https://api.test' } }
+  ])('其他 Provider 或优先配置保持原类型冲突保护：%j', (config) => {
+    const collections = [legacy()],
+      records = [record()];
+    const plan = planLegacyApiFileFolders({ records, collections, apiDatasetServer: config });
+    expect(plan.collections).toBe(collections);
+    expect(plan.records).toBe(records);
+    expect(plan.migrations).toEqual([]);
+  });
+  it('已有来源标记的真实目录不冒充旧正文，非正文也不转换', () => {
+    for (const records of [[record()], [record({ type: 'folder' })]]) {
+      const existing = collection({
+        type: DatasetCollectionTypeEnum.folder,
+        metadata: { apiFileSourceId: 'doc' }
+      });
+      expect(
+        planLegacyApiFileFolders({ records, collections: [existing], apiDatasetServer }).migrations
+      ).toEqual([]);
+    }
+  });
+  it.each(['local', 'remote'])('派生身份与 %s 记录冲突时在写入前拒绝', (kind) => {
+    const records = [
+      record(),
+      ...(kind === 'remote' ? [record({ sourceId: 'doc#dir', apiFileId: 'doc#dir' })] : [])
+    ];
+    const collections = [
+      legacy(),
+      ...(kind === 'local' ? [collection({ _id: 'other', apiFileId: 'doc#dir' })] : [])
+    ];
+    expect(() => planLegacyApiFileFolders({ records, collections, apiDatasetServer })).toThrow(
+      'Legacy API file directory identity conflicts'
+    );
+  });
+  it('非兼容派生目录不提供权限复制来源', () => {
+    const directory = collection({
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'doc#dir',
+      metadata: { apiFileSourceId: 'doc' }
+    });
+    expect(
+      planLegacyApiFileFolders({ records: [record()], collections: [directory], apiDatasetServer })
+        .permissionSources.size
+    ).toBe(0);
   });
 });

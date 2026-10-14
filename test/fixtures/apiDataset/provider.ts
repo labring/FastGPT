@@ -157,7 +157,7 @@ export const createProviderFixture = ({
 
     if (path.endsWith('/tenant_access_token/internal')) {
       calls.push({ kind: 'auth', key: 'feishu' });
-      return reply({ tenant_access_token: 'fixture-token' });
+      return reply({ code: 0, tenant_access_token: 'fixture-token' });
     }
     if (path.endsWith('/oauth2/accessToken')) {
       calls.push({ kind: 'auth', key: 'dingtalk' });

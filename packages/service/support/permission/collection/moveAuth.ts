@@ -18,6 +18,7 @@ import type { PermissionValueType } from '@fastgpt/global/support/permission/typ
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 import { MongoDatasetCollection } from '../../../core/dataset/collection/schema';
+import { Types } from '../../../common/mongo';
 import { MongoDataset } from '../../../core/dataset/schema';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { parseHeaderCert } from '../auth/common';
@@ -38,10 +39,10 @@ export type CollectionMoveAuthItem = { collectionId: string; targetParentId: str
  */
 export const authDatasetCollectionMoves = async ({
   datasetId: requestedDatasetId,
-  moves,
-  collectionChecks = [],
-  creationParentIds = [],
-  newFolderIds = new Set<string>(),
+  moves: requestedMoves,
+  collectionChecks: requestedCollectionChecks = [],
+  creationParentIds: requestedCreationParentIds = [],
+  newFolderIds: requestedNewFolderIds = new Set<string>(),
   ...auth
 }: AuthModeType & {
   datasetId?: string;
@@ -50,6 +51,18 @@ export const authDatasetCollectionMoves = async ({
   creationParentIds?: (string | null)[];
   newFolderIds?: Set<string>;
 }) => {
+  // Mongoose 文档的 _id 运行时可能是 ObjectId；统一 Map、豁免列表和 Mongo 查询的 ID 形式。
+  const idOf = (id: string) => new Types.ObjectId(id).toHexString();
+  const moves = requestedMoves.map((item) => ({
+    collectionId: idOf(item.collectionId),
+    targetParentId: item.targetParentId === null ? null : idOf(item.targetParentId)
+  }));
+  const collectionChecks = requestedCollectionChecks.map((item) => ({
+    ...item,
+    collectionId: idOf(item.collectionId)
+  }));
+  const creationParentIds = requestedCreationParentIds.map((id) => (id ? idOf(id) : null));
+  const newFolderIds = new Set([...requestedNewFolderIds].map(idOf));
   const identity = await parseHeaderCert(auth);
   const { teamId, tmbId, isRoot } = identity;
   const collections = new Map<string, DatasetCollectionSchemaType>();
@@ -189,7 +202,7 @@ export const authDatasetCollectionMove = async ({
     moves: [{ collectionId, targetParentId }]
   });
   const collection: CollectionWithDatasetType = {
-    ...result.collections.get(collectionId)!,
+    ...result.collections.get(new Types.ObjectId(collectionId).toHexString())!,
     dataset: result.dataset
   };
   return { ...result, collection };

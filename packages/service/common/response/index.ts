@@ -2,7 +2,7 @@ import type { NodeApiResponse, NodeHttpResponse } from '../../types/http';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { getErrorMessage, UserError } from '@fastgpt/global/common/error/utils';
 import { clearCookie } from '../../support/permission/auth/common';
 import { ZodError } from 'zod';
 import type Stream from 'node:stream';
@@ -121,15 +121,10 @@ export function processError(params: {
   }
 
   // 2. 提取通用错误消息
-  let msg = error?.response?.statusText || error?.message || '请求错误';
-  if (typeof error === 'string') {
-    msg = error;
-  } else if (proxyError[error?.code]) {
+  // 上游响应体的具体原因优先于 statusText；保留既有网络错误提示和业务码语义。
+  let msg = getErrorMessage(error, '请求错误');
+  if (typeof error !== 'string' && proxyError[error?.code]) {
     msg = '网络连接异常';
-  } else if (error?.response?.data?.error?.message) {
-    msg = error?.response?.data?.error?.message;
-  } else if (error?.error?.message) {
-    msg = error?.error?.message;
   }
 
   // 3. 根据错误类型记录不同级别的日志

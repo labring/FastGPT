@@ -1,4 +1,7 @@
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import {
+  ManagePermissionVal,
+  WritePermissionVal
+} from '@fastgpt/global/support/permission/constant';
 import { authDatasetCollectionMoves } from '../../../support/permission/collection/moveAuth';
 import type { AuthModeType } from '../../../support/permission/type';
 import type { ApiFileParentUpdate } from './utils';
@@ -8,6 +11,8 @@ export type ApiFileImportChanges = {
   creationParentIds: (string | null)[];
   newFolderIds: Set<string>;
   moves: ApiFileParentUpdate[];
+  /** 兼容转换会复用旧目录权限，必须有该目录的 manage。 */
+  permissionSourceIds?: string[];
 };
 
 /**
@@ -19,6 +24,7 @@ export const authApiFileImportChanges = async ({
   creationParentIds,
   newFolderIds,
   moves,
+  permissionSourceIds = [],
   ...auth
 }: AuthModeType & ApiFileImportChanges & { datasetId: string }): Promise<void> => {
   await authDatasetCollectionMoves({
@@ -30,8 +36,11 @@ export const authApiFileImportChanges = async ({
       .filter((item) => item.oldParentId !== item.newParentId)
       .map((item) => ({ collectionId: item._id, targetParentId: item.newParentId })),
     // 仅清理远端父字段仍按节点 write 校验。
-    collectionChecks: moves
-      .filter((item) => item.oldParentId === item.newParentId)
-      .map((item) => ({ collectionId: item._id, per: WritePermissionVal }))
+    collectionChecks: [
+      ...moves
+        .filter((item) => item.oldParentId === item.newParentId)
+        .map((item) => ({ collectionId: item._id, per: WritePermissionVal })),
+      ...permissionSourceIds.map((collectionId) => ({ collectionId, per: ManagePermissionVal }))
+    ]
   });
 };

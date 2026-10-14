@@ -1,4 +1,5 @@
 import { assertParentPlanAcyclic } from '../../../common/parentFolder/parentPlan';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
@@ -293,6 +294,33 @@ export const bulkMoveCollectionsParent = async ({
         }));
       }
     });
+  }
+
+  // 计划可能在拉取远端树、鉴权或事务重试期间失效；先核对真实源状态，不能按旧父级剥离新 ACL。
+  for (const [datasetId, updates] of byDataset) {
+    for (let offset = 0; offset < updates.length; offset += 1000) {
+      const batch = updates.slice(offset, offset + 1000);
+      const sources = await MongoDatasetCollection.find(
+        { teamId, datasetId, _id: { $in: batch.map((item) => item._id) } },
+        '_id parentId type inheritPermission'
+      )
+        .session(session)
+        .lean();
+      const byId = new Map(sources.map((item) => [String(item._id), item]));
+      if (
+        batch.some((item) => {
+          const source = byId.get(item._id);
+          return (
+            !source ||
+            (source.parentId ? String(source.parentId) : null) !== item.oldParentId ||
+            source.type !== item.type ||
+            (source.inheritPermission !== false) !== (item.inheritPermission !== false)
+          );
+        })
+      ) {
+        throw new UserError('Collection parent plan has changed', '文件位置或权限已变更，请重试');
+      }
+    }
   }
 
   // 第一阶段：parentId 仍是旧值，因此 ACL 可以从旧父级剥离继承位；函数同时按新拓扑算出移动节点的新快照。
@@ -672,16 +700,57 @@ export async function createCollections({
   collections,
   session
 }: {
-  collections: (Omit<CreateOneCollectionParams, 'session'> & { _id?: Types.ObjectId })[];
+  collections: (Omit<CreateOneCollectionParams, 'session'> & {
+    _id?: Types.ObjectId;
+    /** 可信内部兼容转换：复用同位置旧节点，或其目录内正文的 owner 与完整权限。 */
+    permissionSourceCollectionId?: string;
+  })[];
   session?: ClientSession;
 }) {
   if (collections.length === 0) return [];
 
   const fn = async (s: ClientSession) => {
+    // 权限复用必须读取本事务的真实来源；不能把请求或规划时的 ACL 快照直接写给新集合。
+    const permissionSourceIds = [
+      ...new Set(
+        collections.flatMap((item) =>
+          item.permissionSourceCollectionId ? [item.permissionSourceCollectionId] : []
+        )
+      )
+    ];
+    const sources = new Map<string, DatasetCollectionSchemaType>();
+    for (let offset = 0; offset < permissionSourceIds.length; offset += 1000) {
+      const rows = await MongoDatasetCollection.find(
+        { _id: { $in: permissionSourceIds.slice(offset, offset + 1000) } },
+        '_id teamId datasetId tmbId parentId type inheritPermission'
+      )
+        .session(s)
+        .lean();
+      for (const row of rows) sources.set(String(row._id), row);
+    }
+    const permissionSourceById = new Map<string, string>();
+
     // 1. 标签可能新增文档，必须在当前事务内解析，不能随模型参数提前计算。
     const tagsByKey = new Map<string, Awaited<ReturnType<typeof createOrGetCollectionTags>>>();
     const docs = [];
-    for (const props of collections) {
+    for (const { permissionSourceCollectionId, ...props } of collections) {
+      const source = permissionSourceCollectionId
+        ? sources.get(permissionSourceCollectionId)
+        : undefined;
+      const insideSource = source && String(source._id) === String(props.parentId ?? '');
+      if (
+        permissionSourceCollectionId &&
+        (!source ||
+          String(source.teamId) !== String(props.teamId) ||
+          String(source.datasetId) !== String(props.datasetId) ||
+          (insideSource && source.type !== DatasetCollectionTypeEnum.folder) ||
+          (!insideSource && String(source.parentId ?? '') !== String(props.parentId ?? '')))
+      ) {
+        throw new UserError(
+          'Collection permission source has changed',
+          '文件位置或权限已变更，请重试'
+        );
+      }
       const key = JSON.stringify([props.teamId, props.datasetId, props.tags]);
       if (!tagsByKey.has(key)) {
         tagsByKey.set(
@@ -694,9 +763,18 @@ export async function createCollections({
           })
         );
       }
+      const id = props._id ?? new Types.ObjectId();
+      if (permissionSourceCollectionId)
+        permissionSourceById.set(String(id), permissionSourceCollectionId);
       docs.push({
         ...props,
-        _id: props._id ?? new Types.ObjectId(),
+        _id: id,
+        ...(source
+          ? {
+              tmbId: String(source.tmbId),
+              inheritPermission: insideSource ? true : source.inheritPermission
+            }
+          : {}),
         parentId: props.parentId ? String(props.parentId) : null,
         tags: tagsByKey.get(key)
       });
@@ -724,7 +802,8 @@ export async function createCollections({
           datasetId: doc.datasetId,
           parentId: doc.parentId,
           tmbId: doc.tmbId,
-          inheritPermission: doc.inheritPermission
+          inheritPermission: doc.inheritPermission,
+          permissionSourceCollectionId: permissionSourceById.get(String(doc._id))
         })),
         session: s
       });
@@ -774,6 +853,8 @@ export type CreateApiFileCollectionItem = {
    */
   inheritPermission?: boolean;
   metadata?: Record<string, any>;
+  /** 旧目录兼容转换时保留原 owner 与 ACL；外部 API 不开放此字段。 */
+  permissionSourceCollectionId?: string;
 };
 
 /**
@@ -827,6 +908,7 @@ export const createApiFileCollectionsBatch = async ({
         apiFileId: file.apiFileId,
         apiFileParentId: file.apiFileParentId,
         inheritPermission: file.inheritPermission,
+        permissionSourceCollectionId: file.permissionSourceCollectionId,
         metadata: file.metadata,
         trainingType,
         chunkSize: formatCreateCollectionParams.chunkSize,

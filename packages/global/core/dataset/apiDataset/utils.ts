@@ -1,4 +1,5 @@
 import type { ApiDatasetErrorCode, ApiDatasetResult, ApiDatasetServerType } from './type';
+import { getErrorMessage } from '../../../common/error/utils';
 
 /** 构造成功结果，保留 success 判别类型，便于调用方直接读取 data。 */
 export const toApiDatasetSuccess = <T>(
@@ -41,17 +42,7 @@ export const classifyApiDatasetError = (
   const rawStatus = response.status ?? error.status ?? error.statusCode;
   const status = typeof rawStatus === 'number' ? rawStatus : undefined;
   const code = body.code ?? error.code;
-  const msg = String(
-    body.message ??
-      body.msg ??
-      body.error ??
-      (typeof response.data === 'string' ? response.data : undefined) ??
-      error.message ??
-      error.msg ??
-      error.error ??
-      (typeof error.data === 'string' ? error.data : undefined) ??
-      err
-  );
+  const msg = getErrorMessage(err);
 
   if (status !== undefined && status >= 400) {
     if (status === 404)
@@ -125,7 +116,7 @@ export const classifyApiDatasetError = (
   if (/not found|文件不存在|不存在/i.test(msg)) {
     return toApiDatasetError({ code: 'NOT_FOUND', message: msg, status: status ?? 404 });
   }
-  return toApiDatasetError({ code: 'UNKNOWN_ERROR', message: msg, status });
+  return toApiDatasetError({ code: 'UNKNOWN_ERROR', message: msg || '未知错误', status });
 };
 
 export const filterApiDatasetServerPublicData = (apiDatasetServer?: ApiDatasetServerType) => {

@@ -14,18 +14,94 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import { MongoDatasetCollection } from '../collection/schema';
 import { getApiDatasetRequest } from './index';
 import { buildApiFileRecords, buildApiFileTree, toApiFileDirId, type ApiFileRecord } from './tree';
-import { buildApiFileParentUpdates, resolveApiFileRecordParent } from './utils';
+import {
+  buildApiFileParentUpdates,
+  resolveApiFileRecordParent,
+  planLegacyApiFileFolders,
+  usesDingtalkDataset,
+  type LegacyApiFileFolderMigration
+} from './utils';
 import type { ApiFileImportChanges } from './auth';
 import { planApiFileFolders, createApiFileFolders } from './folder';
 import { assertParentPlanAcyclic } from '../../../common/parentFolder/parentPlan';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
-import { Types } from '../../../common/mongo';
+import { Types, type ClientSession } from '../../../common/mongo';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { lockDatasetCollectionPermissionState } from '../../../support/permission/collection/datasetSwitch';
 import { getLogger, LogCategories } from '../../../common/logger';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 
 const logger = getLogger(LogCategories.MODULE.DATASET);
+
+/**
+ * 提交已鉴权的旧目录身份转换；本地 ID、父级和 ACL 不变，元数据使用字段更新保留其他配置。
+ * 比较计划时的身份、父级及继承状态，任一失效整批回滚；转换标记让正文入队失败后仍可重试。
+ */
+export const applyLegacyApiFileFolders = async ({
+  teamId,
+  datasetId,
+  migrations,
+  session
+}: {
+  teamId: string;
+  datasetId: string;
+  migrations: LegacyApiFileFolderMigration[];
+  session?: ClientSession;
+}) => {
+  if (migrations.length === 0) return;
+  const apply = async (transaction: ClientSession) => {
+    // 与本库的目录创建/移动串行提交，避免规划后并发生成相同派生身份。
+    await lockDatasetCollectionPermissionState({ teamId, datasetId, session: transaction });
+    for (let offset = 0; offset < migrations.length; offset += 1000) {
+      const batch = migrations.slice(offset, offset + 1000);
+      const conflicts = await MongoDatasetCollection.find(
+        { teamId, datasetId, apiFileId: { $in: batch.map((item) => item.directoryId) } },
+        '_id'
+      )
+        .session(transaction)
+        .lean();
+      if (conflicts.length) {
+        throw new UserError(
+          'Legacy API file directory identity has changed',
+          '文件位置或权限已变更，请重试'
+        );
+      }
+      const result = await MongoDatasetCollection.bulkWrite(
+        batch.map((item) => ({
+          updateOne: {
+            filter: {
+              _id: item.collectionId,
+              teamId,
+              datasetId,
+              type: DatasetCollectionTypeEnum.folder,
+              apiFileId: item.sourceId,
+              parentId: item.oldParentId,
+              inheritPermission: item.inheritPermission === false ? false : { $ne: false },
+              'metadata.apiFileSourceId': { $exists: false }
+            },
+            update: {
+              $set: {
+                apiFileId: item.directoryId,
+                'metadata.apiFileSourceId': item.sourceId,
+                'metadata.apiFileLegacyDocument': true
+              }
+            }
+          }
+        })),
+        { session: transaction, ordered: true }
+      );
+      if (result.matchedCount !== batch.length) {
+        throw new UserError(
+          'Legacy API file folder plan has changed',
+          '文件位置或权限已变更，请重试'
+        );
+      }
+    }
+  };
+  return session ? apply(session) : mongoSessionRun(apply);
+};
 
 /**
  * 按远端层级导入 API 文件库并校正已有节点的父级。
@@ -64,26 +140,73 @@ export const createApiDatasetCollection = async ({
 
   const request = await getApiDatasetRequest(dataset.apiDatasetServer);
 
-  // 1. 拉 server 树（父先子后）。拉取失败直接抛出，本轮不写任何数据
+  // 1. 本地快照同时用于幂等匹配、旧目录识别与后续移动计划。
+  const localCollections = await MongoDatasetCollection.find(
+    { teamId, datasetId: dataset._id },
+    '_id apiFileId apiFileParentId parentId type inheritPermission metadata'
+  ).lean();
+  const localByApiId = new Map(localCollections.map((item) => [item.apiFileId, item]));
+  const legacySourceIds = new Set(
+    localCollections.flatMap((item) => {
+      if (item.type !== DatasetCollectionTypeEnum.folder) return [];
+      if (item.metadata?.apiFileSourceId === undefined)
+        return item.apiFileId ? [item.apiFileId] : [];
+      return item.metadata.apiFileLegacyDocument === true &&
+        typeof item.metadata.apiFileSourceId === 'string'
+        ? [item.metadata.apiFileSourceId]
+        : [];
+    })
+  );
+  // V2 根信息来自客户端。兼容旧目录前使用真实详情更新类型和 hasChild，防止旧页面信息漏掉子树。
+  const seeds = await (async () => {
+    if (!usesDingtalkDataset(dataset.apiDatasetServer)) return apiFiles;
+    const verified: typeof apiFiles = [];
+    const details = new Map<string, ReturnType<typeof request.getFileDetail>>();
+    for (const item of apiFiles) {
+      if (
+        item.id === RootCollectionId ||
+        !legacySourceIds.has(item.id) ||
+        localByApiId.get(item.id)?.type === DatasetCollectionTypeEnum.apiFile
+      ) {
+        verified.push(item);
+        continue;
+      }
+      if (!details.has(item.id))
+        details.set(item.id, request.getFileDetail({ apiFileId: item.id }));
+      const detail = await details.get(item.id)!;
+      if (!detail.success)
+        throw new UserError('Legacy API file source verification failed', detail.message);
+      if (detail.data.id !== item.id || (item.type === 'file' && detail.data.type !== 'file')) {
+        throw new UserError(
+          'Legacy API file source type has changed',
+          '文件类型与远端不一致，请刷新后重试'
+        );
+      }
+      verified.push(detail.data);
+    }
+    return verified;
+  })();
+
+  // 2. 拉 server 树（父先子后）。拉取失败直接抛出，本轮不写任何数据
   const nodes = await buildApiFileTree({
     request,
-    seeds: apiFiles.map((item) => ({
+    seeds: seeds.map((item) => ({
       ...item,
       // 根哨兵不是真实 server 节点，展开子级要用知识库根
       ...(item.id === RootCollectionId ? { listId: startId } : {})
     }))
   });
 
-  // 1b. 摊平成待落库记录：folder 只出目录记录；带子文档的 file 出「同名目录 + 正文」两条，
+  // 2b. 摊平成待落库记录：folder 只出目录记录；带子文档的 file 出「同名目录 + 正文」两条，
   //     于是子节点始终挂在一条真实的目录上，不会再出现「父是 file 导致 parentId 无解」
-  const records = buildApiFileRecords(nodes);
+  const remoteRecords = buildApiFileRecords(nodes);
 
-  // 1c. 请求级 inheritPermission 只作用于**显式选中的节点**：它们的后代保持继承态，权限跟随
+  // 2c. 请求级 inheritPermission 只作用于**显式选中的节点**：它们的后代保持继承态，权限跟随
   //     选中的祖先（整库导入时只有根哨兵独立，全库继承它）。
   //     否则 4w 节点各自落独立态，给某个目录授权不会传给其子目录。
   //     #dir 是选中文件的同名目录，同属该节点，用与建树同一个函数派生，避免后缀口径漂移
   const selectedDirIds = new Set(
-    apiFiles.flatMap((item) => [item.id, toApiFileDirId(item.id, item.type)])
+    seeds.flatMap((item) => [item.id, toApiFileDirId(item.id, item.type)])
   );
   /**
    * undefined = 保持继承（schema default），交回父级传播。
@@ -96,11 +219,14 @@ export const createApiDatasetCollection = async ({
   const inheritPermissionOf = (record: ApiFileRecord) =>
     selectedDirIds.has(record.apiFileId) ? requestInheritPermission : undefined;
 
-  // 2. 本地已有 collection：既用于幂等去重，也用于层级校正
-  const existCollections = await MongoDatasetCollection.find(
-    { teamId, datasetId: dataset._id },
-    '_id apiFileId apiFileParentId parentId type inheritPermission metadata'
-  ).lean();
+  // 2d. 旧目录只改变远端身份；实际写入仍在完整计划校验与鉴权之后。
+  const legacyPlan = planLegacyApiFileFolders({
+    records: remoteRecords,
+    collections: localCollections,
+    apiDatasetServer: dataset.apiDatasetServer
+  });
+  const records = legacyPlan.records;
+  const existCollections = legacyPlan.collections;
   const existByApiFileId = new Map(
     existCollections
       .filter((item) => item.apiFileId)
@@ -133,7 +259,8 @@ export const createApiDatasetCollection = async ({
 
   const parentOptions = {
     idMap,
-    targetParentId
+    targetParentId,
+    rootParentIds: legacyPlan.rootParentIds
   };
   /** 只有已落库父目录可用于实际写入，父层失败时保持跳过语义。 */
   const resolveParentId = (record: ApiFileRecord): Types.ObjectId | null | undefined => {
@@ -160,12 +287,18 @@ export const createApiDatasetCollection = async ({
     records,
     collections: existCollections,
     idMap: plannedIdMap,
-    targetParentId
+    targetParentId,
+    rootParentIds: legacyPlan.rootParentIds
   });
   const newFolders = folderPlan.map(({ record, id }) => ({
     id: String(id),
     parentId:
-      resolveApiFileRecordParent({ record, idMap: plannedIdMap, targetParentId }).parentId ?? null
+      resolveApiFileRecordParent({
+        record,
+        idMap: plannedIdMap,
+        targetParentId,
+        rootParentIds: legacyPlan.rootParentIds
+      }).parentId ?? null
   }));
   const newFolderParents = new Map(newFolders.map((folder) => [folder.id, folder.parentId]));
   const existingParents = new Map(
@@ -187,7 +320,8 @@ export const createApiDatasetCollection = async ({
     let parentId = resolveApiFileRecordParent({
       record,
       idMap: plannedIdMap,
-      targetParentId
+      targetParentId,
+      rootParentIds: legacyPlan.rootParentIds
     }).parentId;
     if (parentId === undefined) continue;
     // 新目录归当前调用者所有，其创建授权来自最近已有父级，不能查询尚未落库的目录。
@@ -198,7 +332,16 @@ export const createApiDatasetCollection = async ({
   await authorizeChanges?.({
     creationParentIds: [...creationParentIds],
     newFolderIds: new Set(newFolderParents.keys()),
-    moves: plannedMoves
+    moves: plannedMoves,
+    ...(legacyPlan.permissionSources.size
+      ? { permissionSourceIds: [...new Set(legacyPlan.permissionSources.values())] }
+      : {})
+  });
+
+  await applyLegacyApiFileFolders({
+    teamId,
+    datasetId: String(dataset._id),
+    migrations: legacyPlan.migrations
   });
 
   let successCount = 0;
@@ -280,6 +423,7 @@ export const createApiDatasetCollection = async ({
               apiFileParentId: record.apiFileParentId ?? undefined,
               parentId: parentId ? String(parentId) : undefined,
               inheritPermission: inheritPermissionOf(record),
+              permissionSourceCollectionId: legacyPlan.permissionSources.get(record.apiFileId),
               metadata: { relatedImgId: record.apiFileId }
             })),
             createCollectionParams: {

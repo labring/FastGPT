@@ -197,6 +197,29 @@ describe('selectApiFileSyncDeletes', () => {
     expect(selectApiFileSyncDeletes({ candidates: [a, b], collections: [a, b] })).toEqual([a, b]);
   });
 
+  it('正文创建失败时保留其派生目录和祖先，正文成功后允许删除临时目录', () => {
+    const ancestor = local('ancestor');
+    const directory = local('doc#dir', {
+      parentId: ancestor._id,
+      metadata: { apiFileSourceId: 'doc' }
+    });
+    const candidates = [ancestor, directory];
+    expect(
+      selectApiFileSyncDeletes({
+        candidates,
+        collections: candidates,
+        expectedFileIds: new Set(['doc'])
+      })
+    ).toEqual([]);
+    const body = local('doc', { type: DatasetCollectionTypeEnum.apiFile, parentId: null });
+    expect(
+      selectApiFileSyncDeletes({
+        candidates,
+        collections: [...candidates, body],
+        expectedFileIds: new Set(['doc'])
+      })
+    ).toEqual(candidates);
+  });
   it('万层祖先链以迭代方式保护，输入保持不变', () => {
     const collections = Array.from({ length: 10000 }, (_, i) => ({
       _id: String(i),

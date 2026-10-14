@@ -67,6 +67,14 @@ describe('useYuqueDatasetRequest', () => {
 });
 
 describe('listFiles', () => {
+  it.each([
+    { success: false, message: 'token invalid' },
+    { error: { message: 'quota exhausted' } }
+  ])('HTTP 200 失败正文 %j 不能被当作空列表', async (data) => {
+    request.mockResolvedValueOnce({ data });
+    await expect(provider().listFiles({})).rejects.toEqual(data);
+  });
+
   it.each([{ lastPage: [] }, { lastPage: [{ id: 101, name: 'Repo 101' }] }])(
     '知识库分页直到不足一页（末页 %j），ID 转成字符串',
     async ({ lastPage }) => {

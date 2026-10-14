@@ -100,6 +100,19 @@ describe('update collection', () => {
       String(target._id)
     );
   });
+  it('externalFileId 定位的 ObjectId 可正常移动，身份只解析一次', async () => {
+    const { actor, datasetId, file, target } = await fixture();
+    await MongoDatasetCollection.updateOne({ _id: file._id }, { externalFileId: 'external-move' });
+    vi.mocked(parseHeaderCert).mockClear();
+    const result = await Call(updateHandler, {
+      auth: actor,
+      body: { datasetId, externalFileId: 'external-move', parentId: String(target._id) }
+    });
+    expect(result.code).toBe(200);
+    expect(String((await MongoDatasetCollection.findById(file._id).lean())?.parentId)).toBe(
+      String(target._id)
+    );
+  });
   it.each(['source', 'target'] as const)('%s 只有 write 拒绝移动，保持原位置', async (side) => {
     const context = await fixture();
     await context.grant(String(context[side]._id), WriteRoleVal);

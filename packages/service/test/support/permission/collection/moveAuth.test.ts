@@ -137,6 +137,17 @@ describe('authDatasetCollectionMoves', () => {
     expect(single.collection.dataset.name).toBe('move-auth');
     expect(single.tmbId).toBe(actor.tmbId);
   });
+  it.each(['object', 'uppercase'])('批量和单条鉴权归一 %s ID，并返回完整源记录', async (form) => {
+    const { auth, file, target } = await fixture();
+    const normalize = (id: unknown) =>
+      form === 'object' ? new Types.ObjectId(String(id)) : String(id).toUpperCase();
+    const move = { collectionId: normalize(file._id), targetParentId: normalize(target._id) };
+    const batch = await authDatasetCollectionMoves({ ...auth, moves: [move] as never });
+    expect(batch.collections.get(String(file._id))?.name).toBe('file');
+    const single = await authDatasetCollectionMove({ ...auth, ...move } as never);
+    expect(String(single.collection._id)).toBe(String(file._id));
+    expect(single.collection.dataset.name).toBe('move-auth');
+  });
   it.each(['source', 'target'] as const)(
     '父目录 %s 只有 write 时批量和单条都拒绝',
     async (side) => {

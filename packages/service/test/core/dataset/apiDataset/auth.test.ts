@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { Types } from '@fastgpt/service/common/mongo';
 import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
@@ -122,14 +123,24 @@ describe('authApiFileImportChanges', () => {
   });
   it('本轮新目录归调用者所有，但仍要求源目录 manage', async () => {
     const { call, move, acl, source, target } = await fixture();
+    const plannedId = String(new Types.ObjectId());
     await acl(String(source._id), ManageRoleVal);
     await expect(
       call({
         creationParentIds: [String(target._id)],
-        newFolderIds: new Set(['new-folder']),
-        moves: [{ ...move, newParentId: 'new-folder' }]
+        newFolderIds: new Set([plannedId]),
+        moves: [{ ...move, newParentId: plannedId }]
       })
     ).resolves.toBeUndefined();
+  });
+  it('兼容权限来源要求 manage，只有 write 时拒绝，即使没有父级移动', async () => {
+    const { call, file, acl } = await fixture();
+    await acl(String(file._id), WriteRoleVal);
+    await expect(call({ permissionSourceIds: [String(file._id)] })).rejects.toBe(
+      DatasetErrEnum.unAuthDatasetCollection
+    );
+    await acl(String(file._id), ManageRoleVal);
+    await expect(call({ permissionSourceIds: [String(file._id)] })).resolves.toBeUndefined();
   });
   it('仅更新远端父字段仍要求节点 write', async () => {
     const { call, move } = await fixture();

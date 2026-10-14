@@ -56,88 +56,69 @@ describe('buildApiFileTree', () => {
     ]);
   });
 
-  it('T1-3: seed.listId 覆盖 listFiles 的 parentId', async () => {
+  it.each(['base-path', undefined])('显式 listId=%s 决定哨兵枚举位置', async (listId) => {
     listFiles.mockResolvedValue([]);
-
     const nodes = await buildApiFileTree({
       request,
-      seeds: [{ ...file(RootCollectionId, 'folder', true), listId: 'base-path' }]
+      seeds: [{ ...file(RootCollectionId, 'folder', true), listId }]
     });
-
-    expect(listFiles).toHaveBeenCalledTimes(1);
-    expect(listFiles).toHaveBeenCalledWith({ parentId: 'base-path' });
-    expect(nodes).toHaveLength(1);
-    expect(nodes[0]).toMatchObject({
-      serverId: RootCollectionId,
-      type: 'folder',
-      name: `name-${RootCollectionId}`,
-      depth: 0,
-      serverParentId: null
-    });
-  });
-
-  it('T1-3b: 显式 undefined 的 seed.listId 枚举 provider 根，不回退到 SYSTEM_ROOT', async () => {
-    listFiles.mockResolvedValue([]);
-
-    await buildApiFileTree({
-      request,
-      seeds: [{ ...file(RootCollectionId, 'folder', true), listId: undefined }]
-    });
-
-    expect(listFiles).toHaveBeenCalledWith({ parentId: undefined });
-  });
-
-  it('T1-4: hasChild 为 false 的 folder 不递归拉取子级', async () => {
-    const nodes = await buildApiFileTree({
-      request,
-      seeds: [file('empty-folder', 'folder', false)]
-    });
-
-    expect(listFiles).not.toHaveBeenCalled();
+    expect(listFiles).toHaveBeenCalledExactlyOnceWith({ parentId: listId });
     expect(nodes).toEqual([
-      {
-        serverId: 'empty-folder',
-        serverParentId: null,
-        dirId: 'empty-folder',
+      expect.objectContaining({
+        serverId: RootCollectionId,
         type: 'folder',
-        name: 'name-empty-folder',
+        name: `name-${RootCollectionId}`,
         depth: 0,
-        hasChild: false
-      }
+        serverParentId: null
+      })
     ]);
   });
 
-  it('T1-5: 单 file seed 产出 1 个根节点且不拉取子级', async () => {
-    const nodes = await buildApiFileTree({ request, seeds: [file('f1', 'file', false)] });
-
-    expect(listFiles).not.toHaveBeenCalled();
-    expect(nodes).toHaveLength(1);
-    expect(nodes[0]).toMatchObject({
-      serverId: 'f1',
-      type: 'file',
-      depth: 0,
-      serverParentId: null,
-      hasChild: false
-    });
-  });
-
-  it('T1-6: seeds 为空返回空数组且不调用 listFiles', async () => {
-    const nodes = await buildApiFileTree({ request, seeds: [] });
-
-    expect(nodes).toEqual([]);
-    expect(listFiles).not.toHaveBeenCalled();
-  });
-
-  it('T1-7: 重复 id 的 seed 只产出一个节点', async () => {
+  it.each([
+    { name: '空输入', seeds: [], expected: [], parents: [] },
+    {
+      name: '无子目录',
+      seeds: [file('empty-folder', 'folder')],
+      expected: [['empty-folder', 'empty-folder', 'folder', false]],
+      parents: []
+    },
+    {
+      name: '叶子正文',
+      seeds: [file('f1', 'file')],
+      expected: [['f1', 'f1#dir', 'file', false]],
+      parents: []
+    },
+    {
+      name: '重复根只展开一次',
+      seeds: [file('dup', 'folder', true), file('dup', 'folder', true)],
+      expected: [['dup', 'dup', 'folder', true]],
+      parents: ['dup']
+    }
+  ])('$name：只输出唯一根，按 hasChild 决定是否拉取', async ({ seeds, expected, parents }) => {
     listFiles.mockResolvedValue([]);
-
-    const nodes = await buildApiFileTree({
-      request,
-      seeds: [file('dup', 'folder', true), file('dup', 'folder', true)]
-    });
-
-    expect(nodes).toHaveLength(1);
-    expect(listFiles).toHaveBeenCalledTimes(1);
+    const nodes = await buildApiFileTree({ request, seeds });
+    expect(
+      nodes.map(({ serverId, dirId, type, hasChild, name, depth, serverParentId }) => [
+        serverId,
+        dirId,
+        type,
+        hasChild,
+        name,
+        depth,
+        serverParentId
+      ])
+    ).toEqual(
+      expected.map(([id, dirId, type, hasChild]) => [
+        id,
+        dirId,
+        type,
+        hasChild,
+        `name-${id}`,
+        0,
+        null
+      ])
+    );
+    expect(listFiles.mock.calls.map(([args]) => args.parentId)).toEqual(parents);
   });
 
   it('T1-7b: 子目录先于祖先传入时，以祖先遍历出的层级覆盖根级占位', async () => {

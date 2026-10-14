@@ -483,7 +483,15 @@ describe('bulkMoveCollectionsParent', () => {
     mockWriteResources.mockResolvedValue(undefined);
     mockFind.mockImplementation((query) => ({
       session: () => ({
-        lean: async () => (query._id?.$in ?? []).map((id: string) => ({ _id: id, parentId: null }))
+        lean: async () =>
+          (query._id?.$in ?? []).map((id: string) => ({
+            _id: id,
+            parentId: id.startsWith('collection-')
+              ? `old-parent-${id.slice('collection-'.length)}`
+              : null,
+            type: DatasetCollectionTypeEnum.apiFile,
+            inheritPermission: true
+          }))
       })
     }));
   });
@@ -642,64 +650,61 @@ describe('createApiFileCollectionsBatch', () => {
     expect(mockCreateTrainingUsage).toHaveBeenCalledTimes(1);
   });
 
-  it('未提供 session 时集合、账单与解析队列共用同一事务', async () => {
-    const result = await createApiFileCollectionsBatch({
-      dataset: makeDataset(),
-      files: [makeFile('first'), makeFile('second')],
-      createCollectionParams: collectionParams
-    });
-    expect(result.collectionIds).toHaveLength(2);
-    expect(mockTrainingInsertMany).toHaveBeenCalledTimes(1);
-    expect(mockTrainingInsertMany.mock.calls[0][1].session).toBe(
-      mockInsertMany.mock.calls[0][1].session
-    );
-    expect(mockCreateTrainingUsage.mock.calls[0][0].session).toBe(
-      mockInsertMany.mock.calls[0][1].session
-    );
-  });
-
-  it('逐文件账单保持名称和队列对应关系，同时仍批量创建集合和 ACL', async () => {
-    mockPermissionEnabled.mockResolvedValue(true);
-    mockFindByResource.mockResolvedValue([]);
-    mockCreateTrainingUsage
-      .mockResolvedValueOnce({ usageId: 'first-bill' })
-      .mockResolvedValueOnce({ usageId: 'second-bill' });
-    const result = await createApiFileCollectionsBatch({
-      dataset: makeDataset(),
-      files: [makeFile('first'), makeFile('second')],
-      createCollectionParams: collectionParams,
-      billing: { mode: 'perFile' },
-      indexLimitEstimate: 0,
-      session: {} as ClientSession
-    });
-    expect(mockCreateTrainingUsage.mock.calls.map(([args]) => args.appName)).toEqual([
-      'first',
-      'second'
-    ]);
-    expect(mockInsertMany).toHaveBeenCalledTimes(1);
-    expect(mockWriteResources).toHaveBeenCalledTimes(1);
-    expect(mockTrainingInsertMany).toHaveBeenCalledExactlyOnceWith(
-      [
-        expect.objectContaining({ collectionId: result.collectionIds[0], billId: 'first-bill' }),
-        expect.objectContaining({ collectionId: result.collectionIds[1], billId: 'second-bill' })
-      ],
-      { session: {}, ordered: true }
-    );
-  });
-
-  it('整批复用已有账单，不重复创建训练账单', async () => {
-    await createApiFileCollectionsBatch({
-      dataset: makeDataset(),
-      files: [makeFile('first'), makeFile('second')],
-      createCollectionParams: collectionParams,
-      billing: { mode: 'shared', billId: 'existing' },
-      session: {} as ClientSession
-    });
-    expect(mockCreateTrainingUsage).not.toHaveBeenCalled();
-    expect(
-      mockTrainingInsertMany.mock.calls[0][0].map((item: { billId: string }) => item.billId)
-    ).toEqual(['existing', 'existing']);
-  });
+  it.each([
+    {
+      name: '缺省共享账单、内部事务',
+      billing: undefined,
+      session: undefined,
+      names: ['first +1'],
+      bills: ['first-bill', 'first-bill']
+    },
+    {
+      name: '逐文件账单、调用方事务',
+      billing: { mode: 'perFile' as const },
+      session: {} as ClientSession,
+      names: ['first', 'second'],
+      bills: ['first-bill', 'second-bill']
+    },
+    {
+      name: '复用已有账单、调用方事务',
+      billing: { mode: 'shared' as const, billId: 'existing' },
+      session: {} as ClientSession,
+      names: [],
+      bills: ['existing', 'existing']
+    }
+  ])(
+    '$name：集合、ACL、账单及队列共用事务，账单逐项对应',
+    async ({ billing, session, names, bills }) => {
+      mockPermissionEnabled.mockResolvedValue(true);
+      mockFindByResource.mockResolvedValue([]);
+      mockCreateTrainingUsage
+        .mockResolvedValueOnce({ usageId: 'first-bill' })
+        .mockResolvedValueOnce({ usageId: 'second-bill' });
+      const result = await createApiFileCollectionsBatch({
+        dataset: makeDataset(),
+        files: [makeFile('first'), makeFile('second')],
+        createCollectionParams: collectionParams,
+        billing,
+        indexLimitEstimate: 0,
+        session
+      });
+      expect(result.collectionIds).toHaveLength(2);
+      expect(mockInsertMany).toHaveBeenCalledTimes(1);
+      expect(mockWriteResources).toHaveBeenCalledTimes(1);
+      expect(mockCreateTrainingUsage.mock.calls.map(([args]) => args.appName)).toEqual(names);
+      const transaction = mockInsertMany.mock.calls[0][1].session;
+      if (session) expect(transaction).toBe(session);
+      expect(mockWriteResources.mock.calls[0][0].session).toBe(transaction);
+      for (const [args] of mockCreateTrainingUsage.mock.calls)
+        expect(args.session).toBe(transaction);
+      expect(mockTrainingInsertMany).toHaveBeenCalledExactlyOnceWith(
+        result.collectionIds.map((collectionId, index) =>
+          expect.objectContaining({ collectionId, billId: bills[index] })
+        ),
+        { session: transaction, ordered: true }
+      );
+    }
+  );
 
   it.each([
     { stage: 'bill', write: mockCreateTrainingUsage },
