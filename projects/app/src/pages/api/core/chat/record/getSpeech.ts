@@ -12,7 +12,7 @@ import { GetChatSpeechBodySchema } from '@fastgpt/global/openapi/core/chat/recor
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { MongoTTSBuffer } from '@fastgpt/service/common/buffer/tts/schema';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { authTargetModelResource } from '@fastgpt/service/support/permission/app/resource';
+import { authTargetModelResource } from '@fastgpt/service/core/app/resource/service';
 
 /*
 1. get tts from chatItem store

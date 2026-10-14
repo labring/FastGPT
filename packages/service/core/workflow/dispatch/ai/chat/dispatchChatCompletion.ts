@@ -10,7 +10,7 @@ import { createLLMResponse } from '../../../../ai/llm/request';
 import { computedMaxToken } from '../../../../ai/utils';
 import { postTextCensor } from '../../../../chat/postTextCensor';
 import { getWorkflowFileMaxAmount } from '../../../utils/context';
-import { loadWorkflowModelResource } from '../../../utils/resource';
+import { loadWorkflowModelResource } from '../../../resource/service';
 import { checkQuoteQAValue, getHistories, getNodeErrResponse } from '../../utils';
 import { getChatMessages } from './chatMessages';
 import { getDatasetCiteData } from './datasetCite';

@@ -6,10 +6,8 @@ import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 import InputRender from '@/components/core/app/formRender';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import type { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
-import type {
-  EditorVariableLabelPickerType,
-  EditorVariablePickerType
-} from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+import type { EditorVariableLabelPickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+import type { EditorVariablePickerType } from '@fastgpt/global/core/workflow/type/io';
 
 type NumberOperator = NonNullable<TUpdateListItem['numberOperator']>;
 

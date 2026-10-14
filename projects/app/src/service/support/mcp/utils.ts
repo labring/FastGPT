@@ -5,11 +5,11 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controlle
 import { type Tool } from '@modelcontextprotocol/sdk/types.js';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
-import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
+import type { AppChatConfigType, AppSchemaType } from '@fastgpt/global/core/app/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { type toolCallProps } from './type';
-import { type AppSchemaType } from '@fastgpt/global/core/app/type';
+
 import {
   getRunningUserInfoByTmbId,
   getUserIdByTmbId
@@ -49,7 +49,7 @@ import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { resolveMcpEffectiveTmbId } from './auth';
 import { assertCancellation } from '@fastgpt/service/support/user/account/cancellation/guard';
-import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
 
 const assertMcpTeamUsable = async (mcp: { teamId?: string; tmbId?: string }) => {
   if (!mcp.teamId || !mcp.tmbId) return;

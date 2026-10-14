@@ -13,7 +13,6 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo } from 'react';
-
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
 import DatasetCard from '@/components/core/app/DatasetCard';
 import SkillCard from '@/components/core/app/SkillCard';
@@ -28,11 +27,8 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { AGENT_SANDBOX_TOOLSET_ID, SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
-import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
@@ -47,7 +43,7 @@ import { useSkillManager } from './hooks/useSkillManager';
 import DatasetTagFilterRows, {
   TagFilterLogicToggle
 } from '@/components/core/dataset/DatasetTagFilterRows';
-import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
+import { formatEditorVariablePickerIcon } from '@fastgpt/web/core/workflow/utils';
 import { workflowSystemVariables } from '@/web/core/app/utils';
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import {

@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/service/support/permission/auth/chat', () => ({
   authChatTargetCrud: mocks.authChatTargetCrud
 }));
-vi.mock('@fastgpt/service/support/permission/app/resource', () => ({
+vi.mock('@fastgpt/service/core/app/resource/service', () => ({
   authTargetModelResource: mocks.authTargetModelResource
 }));
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({

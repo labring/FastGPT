@@ -10,7 +10,7 @@ import {
 import type { AppResourcesType, AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
-import { formatModels } from '@fastgpt/global/core/workflow/utils';
+import { formatModels } from '@fastgpt/global/common/workflow/model';
 import {
   CreateAppRequestBodySchema,
   CreateAppResponseSchema,
@@ -34,7 +34,7 @@ import {
   beforeUpdateAppFormat,
   updateParentFoldersUpdateTime
 } from '@fastgpt/service/core/app/controller';
-import { extractAppResources } from '@fastgpt/service/core/app/resources';
+import { extractAppResources } from '@fastgpt/service/core/app/resource/utils';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/register';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';

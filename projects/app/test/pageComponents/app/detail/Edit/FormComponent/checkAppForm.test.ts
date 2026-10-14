@@ -4,17 +4,16 @@ import {
   checkAppFormResourceIssues,
   checkAppFormSandboxIssues
 } from '@/pageComponents/app/detail/Edit/FormComponent/checkAppForm';
-import { getWorkflowModelDetails } from '@/web/core/workflow/modelData';
+import { getWorkflowModelCheckData } from '@/web/core/workflow/modelData';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
-import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
+
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import type { TFunction } from 'next-i18next';
 
 vi.mock('@/web/core/workflow/modelData', () => ({
-  getWorkflowModelDetails: vi.fn().mockResolvedValue([])
+  getWorkflowModelCheckData: vi.fn().mockResolvedValue({ references: [], defaultModelIds: {} })
 }));
 
 const mockT: TFunction = ((key: string) => {
@@ -217,7 +216,7 @@ describe('checkAppFormResourceIssues', () => {
         t: mockT
       });
       expect(result).toBeUndefined();
-      expect(getWorkflowModelDetails).toHaveBeenLastCalledWith({
+      expect(getWorkflowModelCheckData).toHaveBeenLastCalledWith({
         nodes: [],
         chatConfig: appForm.chatConfig,
         appId

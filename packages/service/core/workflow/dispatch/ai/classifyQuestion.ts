@@ -1,20 +1,17 @@
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflow/template/system/classifyQuestion/type';
-
-import { type LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { getCQSystemPrompt } from '@fastgpt/global/core/ai/prompt/agent';
-
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { createLLMResponse } from '../../../ai/llm/request';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { loadWorkflowModelResource } from '../../utils/resource';
+import { loadWorkflowModelResource } from '../../resource/service';
 import { getHistories } from '../utils';
 import { getWorkflowSourceNodeKey } from '../utils/source';
 

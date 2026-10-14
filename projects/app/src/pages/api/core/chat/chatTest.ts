@@ -1,3 +1,4 @@
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { sseErrRes } from '@fastgpt/service/common/response';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -29,11 +30,11 @@ import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-
 import {
   ChatRoleEnum,
   ChatSourceEnum,
-  ChatSourceTypeEnum
+  ChatSourceTypeEnum,
+  ChatGenerateStatusEnum
 } from '@fastgpt/global/core/chat/constants';
 import {
   failChatRound,
@@ -50,7 +51,6 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ChatTestPropsSchema } from '@fastgpt/global/openapi/core/chat/completion/api';
 import { updateChatGenerateStatus } from '@fastgpt/service/core/chat/chatGenerateStatus';
-import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   createWorkflowStreamResponseContext,
@@ -58,8 +58,8 @@ import {
 } from '@fastgpt/service/core/workflow/utils/streamResponseContext';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { APP_SANDBOX_ENABLED_CHAT_METADATA_KEY } from '@fastgpt/global/core/ai/sandbox/constants';
-import { isAppSandboxEnabledInNodes } from '@fastgpt/global/core/workflow/utils';
-import { prepareWorkflowDebugResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
+import { isAppSandboxEnabledInNodes } from '@fastgpt/global/common/app/workflow';
+import { prepareAppWorkflowResources } from '@fastgpt/service/core/app/resource/service';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let streamResponseContext: WorkflowStreamResponseContext | undefined;
@@ -95,7 +95,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       appId,
       per: ReadPermissionVal
     });
-    const resourceContext = await prepareWorkflowDebugResourceContext({
+    const resources = await prepareAppWorkflowResources({
       appId,
       nodes,
       chatConfig,
@@ -103,6 +103,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       tmbId,
       isRoot
     });
+    const resourceContext = createWorkflowResourceContext({ resources, teamId, isRoot });
 
     // 类型获取
     const isPlugin = app.type === AppTypeEnum.workflowTool;

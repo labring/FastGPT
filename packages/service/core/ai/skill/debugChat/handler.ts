@@ -47,7 +47,7 @@ import { WORKFLOW_MAX_RUN_TIMES } from '../../../workflow/constants';
 import { dispatchWorkFlow } from '../../../workflow/dispatch';
 import type { AgentSandboxPrepareAction } from '../../../workflow/dispatch/ai/agent/sub/sandbox';
 import { prepareWorkflowFileQuery } from '../../../workflow/utils/fileLimits';
-import { createWorkflowResourceContext } from '../../../workflow/utils/resource';
+import { createWorkflowResourceContext } from '../../../workflow/resource/context';
 import {
   createWorkflowStreamResponseContext,
   type WorkflowStreamResponseContext

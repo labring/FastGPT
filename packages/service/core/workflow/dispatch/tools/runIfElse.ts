@@ -1,25 +1,27 @@
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   IfElseResultEnum,
   VariableConditionEnum
 } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
-import {
-  type ConditionListItemType,
-  type IfElseConditionType,
-  type IfElseListItemType
+import type {
+  ConditionListItemType,
+  IfElseConditionType,
+  IfElseListItemType
 } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
-import { getIfElseBranchHandleKey } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
+import {
+  getIfElseBranchHandleKey,
+  getElseIFLabel
+} from '@fastgpt/global/common/workflow/condition';
 import type {
   DispatchNodeResultType,
   ModuleDispatchProps,
   WorkflowVariableStateLike
 } from '../../types/runtime';
-import { getElseIFLabel, getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
-import { type ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
+import type { ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.condition]: IfElseConditionType;

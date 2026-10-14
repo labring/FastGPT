@@ -23,7 +23,7 @@ import type {
 import {
   getSelectedInputRenderType,
   nodeInputIsReference
-} from '@fastgpt/global/core/workflow/utils';
+} from '@fastgpt/global/common/workflow/reference';
 import {
   normalizeFlowNodeInputType,
   serializeAgentTool

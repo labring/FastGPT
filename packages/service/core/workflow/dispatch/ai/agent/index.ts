@@ -24,7 +24,7 @@ import {
   resolveAppSandboxAvailability
 } from '../../../../ai/sandbox/application/availability';
 import { getWorkflowFileMaxAmount } from '../../../utils/context';
-import { loadWorkflowModelResource } from '../../../utils/resource';
+import { loadWorkflowModelResource } from '../../../resource/service';
 import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
 import {
   buildAgentLoopCoreDoneMemories,

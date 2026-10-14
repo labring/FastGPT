@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { formatModels } from '@fastgpt/global/common/workflow/model';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -10,7 +12,7 @@ import {
   mergeAppResources,
   resolveStoredAppResources,
   splitExtractedAppResources
-} from '@fastgpt/service/core/app/resources';
+} from '@fastgpt/service/core/app/resource/utils';
 
 const createInput = (key: string, value: unknown, reference = false) => ({
   key,
@@ -38,6 +40,62 @@ const createNode = ({
   }) as unknown as StoreNodeItemType;
 
 describe('extractAppResources', () => {
+  it.each([NodeInputKeyEnum.aiModel, NodeInputKeyEnum.aiModelId])(
+    'excludes dynamic expressions after normalizing %s for publication',
+    (modelKey) => {
+      const nodes = [
+        createNode({
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            createInput(modelKey, '{{selectedModel}}'),
+            createInput(NodeInputKeyEnum.datasetParams, {
+              datasets: [{ datasetId: 'dataset-id' }],
+              usingReRank: true,
+              rerankModelId: '{{rerankModelId}}',
+              datasetSearchUsingExtensionQuery: true,
+              datasetSearchExtensionModelId: '{{extensionModelId}}'
+            })
+          ]
+        }),
+        createNode({
+          flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+          inputs: [
+            createInput(NodeInputKeyEnum.datasetSelectList, [{ datasetId: 'dataset-id' }]),
+            createInput(NodeInputKeyEnum.datasetSearchUsingReRank, true),
+            createInput(NodeInputKeyEnum.datasetSearchRerankModelId, '{{rerankModelId}}'),
+            createInput(NodeInputKeyEnum.datasetSearchUsingExtensionQuery, true),
+            createInput(NodeInputKeyEnum.datasetSearchExtensionModelId, '{{extensionModelId}}')
+          ]
+        }),
+        createNode({
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [createInput(NodeInputKeyEnum.aiModelId, 'static-model-id')]
+        })
+      ];
+      const chatConfig = {
+        questionGuide: { open: true, modelId: '{{guideModelId}}' },
+        ttsConfig: { type: 'model' as const, modelId: '{{ttsModelId}}' }
+      };
+
+      expect(() =>
+        formatModels({
+          nodes,
+          chatConfig,
+          models: [{ modelId: 'static-model-id', model: 'static-model', type: ModelTypeEnum.llm }],
+          modelReferencePolicy: 'validate'
+        })
+      ).not.toThrow();
+      expect(nodes[0].inputs[0]).toMatchObject({
+        key: NodeInputKeyEnum.aiModelId,
+        value: '{{selectedModel}}'
+      });
+      expect(extractAppResources({ nodes, chatConfig })).toEqual([
+        { type: 'dataset', id: 'dataset-id' },
+        { type: 'model', id: 'static-model-id' }
+      ]);
+    }
+  );
+
   it('ignores dataset model resources when no dataset is selected', () => {
     const resources = extractAppResources({
       nodes: [
@@ -158,21 +216,18 @@ describe('extractAppResources', () => {
     ]);
   });
 
-  it('does not record dynamic canonical model references', () => {
+  it('does not record reference or disabled canonical model inputs', () => {
     const resources = extractAppResources({
       nodes: [
         createNode({
           flowNodeType: FlowNodeTypeEnum.agent,
           inputs: [
-            createInput(NodeInputKeyEnum.aiModelId, '{{modelId}}'),
+            createInput(NodeInputKeyEnum.aiModelId, ['source', 'model'], true),
             createInput(NodeInputKeyEnum.datasetSearchUsingReRank, false),
             createInput(NodeInputKeyEnum.datasetSearchRerankModelId, 'disabled-rerank-model-id')
           ]
         })
-      ],
-      chatConfig: {
-        questionGuide: { open: true, modelId: '{{guideModelId}}' }
-      } as any
+      ]
     });
 
     expect(resources).toEqual([]);

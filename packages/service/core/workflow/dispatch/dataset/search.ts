@@ -3,8 +3,8 @@ import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prom
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { NodeOutputKeyEnum, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
@@ -16,7 +16,7 @@ import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search
 import { getDatasetSearchVlmModel } from '../../../dataset/search/vlm';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { loadWorkflowDatasetResource, loadWorkflowModelResource } from '../../utils/resource';
+import { loadWorkflowDatasetResource, loadWorkflowModelResource } from '../../resource/service';
 import { getNodeErrResponse } from '../utils';
 import {
   createImageCaptionChildNodeResponse,
@@ -150,7 +150,7 @@ export const dispatchDatasetSearch = async (
     // Get vector model
     const dataset = await loadWorkflowDatasetResource({
       datasetId: datasetIds[0],
-      datasetIds: requestedDatasetIds,
+      datasetIds,
       tmbId
     });
     const modelHandle = await getTeamModelHandle({ teamId });

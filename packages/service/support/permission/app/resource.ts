@@ -1,26 +1,17 @@
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { UserError } from '@fastgpt/global/common/error/utils';
-import type { AppResource, AppResourcesType } from '@fastgpt/global/core/app/type';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { Types, type ClientSession } from '../../../common/mongo';
+
+import type { AppResource } from '@fastgpt/global/core/app/type';
+
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { Types } from '../../../common/mongo';
 import type { ModelHandle } from '../../../core/ai/model/catalog/handle';
 import { getTeamModelHandle } from '../../../core/ai/model/catalog/service';
-import {
-  getAppResourceKey,
-  hasAppResource,
-  mergeAppResources,
-  splitExtractedAppResources
-} from '../../../core/app/resources';
-import { MongoApp } from '../../../core/app/schema';
-import {
-  getAppDraftResourceBaseline,
-  getAppLatestVersion
-} from '../../../core/app/version/controller';
+import { getAppResourceKey, mergeAppResources } from '../../../core/app/resource/utils';
+
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { authDatasetByTmbId } from '../dataset/auth';
-import { assertAuthModels, authModels } from '../model/auth';
+import { authModels } from '../model/auth';
 import { authSkillByTmbId } from '../skill/auth';
 import { authAppByTmbId } from './auth';
 
@@ -66,16 +57,6 @@ const getErrorKey = (error: unknown): string => {
 /** 判断是否属于已知明确的无权限 / 资源不存在业务错误。 */
 export const isKnownUnauthorizedError = (error: unknown): boolean => {
   return KNOWN_UNAUTHORIZED_ERRORS.has(getErrorKey(error));
-};
-
-/** 判断是否属于已知明确的成员不存在或已离职错误。 */
-export const isKnownMemberNotExistError = (error: unknown): boolean => {
-  const key = getErrorKey(error);
-  return (
-    key === 'member not exist' ||
-    key === 'tmbId or userId is required' ||
-    key === 'Member not found'
-  );
 };
 
 /**
@@ -213,7 +194,11 @@ export const filterAuthorizedAppResources = async ({
   try {
     await getTmbInfoByTmbId({ tmbId: validTmbId });
   } catch (error) {
-    if (isKnownMemberNotExistError(error)) {
+    if (
+      ['member not exist', 'tmbId or userId is required', 'Member not found'].includes(
+        getErrorKey(error)
+      )
+    ) {
       return [];
     }
     throw error;
@@ -230,131 +215,4 @@ export const filterAuthorizedAppResources = async ({
 
   const unauthorizedKeys = new Set(unauthorized.map((item) => getAppResourceKey(item.resource)));
   return resources.filter((resource) => !unauthorizedKeys.has(getAppResourceKey(resource)));
-};
-
-/**
- * 按当前应用草稿快照解析资源，并只校验相对快照新增的 ACL 资源。
- * 保存/自动保存不阻断无权限新增；发布和 Test/Debug 通过 blockOnUnauthorized 阻断。
- * 历史未迁移草稿（缺失 resources 字段）统一按所属应用的所有者 app.tmbId 过滤基线。
- */
-export const resolveAppResourcesByPermission = async ({
-  appId,
-  extracted,
-  tmbId,
-  isRoot = false,
-  blockOnUnauthorized,
-  allowRootCrossTeam = false,
-  modelHandle,
-  session
-}: {
-  appId: string;
-  extracted: AppResource[];
-  tmbId: string;
-  isRoot?: boolean;
-  blockOnUnauthorized: boolean;
-  allowRootCrossTeam?: boolean;
-  /** 调用方已读取的团队模型目录；不传时按需读取。 */
-  modelHandle?: ModelHandle;
-  session?: ClientSession;
-}) => {
-  const baseline = await getAppDraftResourceBaseline(appId, session, async (rawResources) => {
-    // 只有历史草稿缺少 resources、需要从旧字段重建基线时，才查询应用所有者。
-    // 已有合法快照会在 getAppDraftResourceBaseline 内直接返回，避免额外一次数据库请求。
-    const app = await MongoApp.findById(appId, 'tmbId')
-      .session(session ?? null)
-      .lean();
-    const appOwnerTmbId = app?.tmbId ? String(app.tmbId) : undefined;
-    if (!appOwnerTmbId) return [];
-
-    return filterAuthorizedAppResources({
-      resources: rawResources,
-      tmbId: appOwnerTmbId,
-      isRoot,
-      allowRootCrossTeam,
-      modelHandle
-    });
-  });
-  const { kept, added } = splitExtractedAppResources({ extracted, baseline });
-  if (added.length === 0) return mergeAppResources(kept);
-
-  if (blockOnUnauthorized) {
-    await checkAppResourceReadPermissions({
-      resources: added,
-      tmbId,
-      isRoot,
-      allowRootCrossTeam,
-      modelHandle
-    });
-    return mergeAppResources([...kept, ...added]);
-  }
-
-  const authorizedAdded = await filterAuthorizedAppResources({
-    resources: added,
-    tmbId,
-    isRoot,
-    allowRootCrossTeam,
-    modelHandle
-  });
-  return mergeAppResources([...kept, ...authorizedAdded]);
-};
-
-/**
- * 校验独立辅助调用点（如问题引导、TTS 音频生成）使用的模型资源。
- * - 目标为 App：与工作流资源同一条链路，先查应用快照，再按身份决定是否允许成员鉴权兜底。
- *   1. 命中当前正式 Version 快照直接放行（正式对话、外链、API Key 共用）；
- *   2. 未命中时，只有登录成员（authType=token，唯一能进入 Test/Debug 的身份）继续走调试链路：
- *      草稿快照基线内的模型放行，相对草稿新增的模型按成员 `use` 权限阻断校验，
- *      与 chatTest/debug 中知识库等资源的 `resolveAppResourcesByPermission` 规则一致；
- *   3. 外链 / API Key 只能使用正式版本，未命中直接拒绝。
- * - 非 App（skillEdit、chatAgentHelper）：只有登录成员能进入，直接按成员 `use` 权限校验。
- * 模型类型与启用状态由调用方的 typed getter 校验；调用方必须传入读取模型时使用的 handle，避免重复读取目录。
- */
-export const authTargetModelResource = async ({
-  targetType,
-  targetId,
-  modelId,
-  teamId,
-  tmbId,
-  isRoot,
-  authType,
-  handle,
-  resources
-}: {
-  targetType: ChatSourceTypeEnum;
-  targetId?: string;
-  modelId: string;
-  teamId: string;
-  tmbId: string;
-  isRoot: boolean;
-  /** 本次请求身份类型；只有 token 允许走草稿快照与成员鉴权兜底。 */
-  authType?: `${AuthUserTypeEnum}`;
-  handle: ModelHandle;
-  /** App 正式版本资源快照；调用方已读取版本时传入，避免重复查询。 */
-  resources?: AppResourcesType;
-}) => {
-  if (targetType === ChatSourceTypeEnum.app && targetId) {
-    const modelResource: AppResource = { type: 'model', id: modelId };
-    const published = resources ?? (await getAppLatestVersion(targetId)).resources;
-    if (hasAppResource({ resources: published, resource: modelResource })) return;
-
-    if (authType !== AuthUserTypeEnum.token) {
-      throw new UserError(ModelErrEnum.unAuthModel);
-    }
-    await resolveAppResourcesByPermission({
-      appId: targetId,
-      extracted: [modelResource],
-      tmbId,
-      isRoot,
-      blockOnUnauthorized: true,
-      allowRootCrossTeam: isRoot,
-      modelHandle: handle
-    });
-    return;
-  }
-  await assertAuthModels({
-    actor: { teamId, tmbId, isRoot },
-    modelIds: [modelId],
-    action: 'use',
-    handle
-  });
 };

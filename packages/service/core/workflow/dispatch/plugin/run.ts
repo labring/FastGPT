@@ -11,7 +11,6 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-
 import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges,
@@ -40,11 +39,9 @@ import {
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
 import { getWorkflowRuntimeSummary } from '../utils/summary';
 import { runWithDerivedWorkflowFileContext } from '../../utils/context';
-import {
-  createSystemToolResourceContext,
-  loadChildWorkflowWithResource,
-  type WorkflowResourceContext
-} from '../../utils/resource';
+import { createSystemToolResourceContext } from '../../resource/context';
+import { loadChildWorkflowWithResource } from '../../resource/service';
+import type { WorkflowResourceContext } from '@fastgpt/global/core/workflow/runtime/type';
 import { withWorkflowNodeResponseOutputPolicy } from '../nodeResponseSink';
 
 type RunPluginProps = ModuleDispatchProps<{

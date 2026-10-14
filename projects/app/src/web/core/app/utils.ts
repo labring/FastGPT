@@ -1,15 +1,14 @@
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { chatHistoryValueDesc } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-
-import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+import type { EditorVariablePickerType } from '@fastgpt/global/core/workflow/type/io';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { isSystemModel } from '@fastgpt/global/core/ai/model/utils';
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
-import { addModelNamesToWorkflow } from '@fastgpt/global/core/workflow/utils';
+import { addModelNamesToWorkflow } from '@fastgpt/global/common/workflow/model';
 
 export const SYSTEM_CONFIG_AUTO_OPEN_QUERY_KEY = 'openSystemConfig';
 

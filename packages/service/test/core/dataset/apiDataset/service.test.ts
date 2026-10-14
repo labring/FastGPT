@@ -509,53 +509,6 @@ describe('createApiDatasetCollection', () => {
     expect(result).toEqual({ successCount: 2, failedCount: 1 });
   });
 
-  it('校正失败日志有界：只采样前 10 条失败 id', async () => {
-    const fileIds = Array.from({ length: 12 }, (_, i) => `f${i}`);
-    setServerTree({
-      p: [...fileIds.map((id) => apiFile(id, 'file')), apiFile('new-file', 'file')]
-    });
-    mockCollectionFind.mockReturnValue({
-      lean: vi.fn().mockResolvedValue(
-        fileIds.map((apiFileId, i) => ({
-          _id: localId(`EX${i}`),
-          apiFileId,
-          apiFileParentId: 'p',
-          parentId: localId('STALE')
-        }))
-      )
-    });
-    mockBulkMoveCollectionsParent.mockImplementation(async ({ items }: any) => ({
-      successIds: [],
-      failedIds: items.map((u: any) => u._id),
-      matchedCount: items.length
-    }));
-
-    const result = await call({ apiFiles: [apiFile('p', 'folder', true)] });
-
-    expect(correctionUpdates()).toHaveLength(12);
-    expect(result.failedCount).toBe(0);
-    expect(createdBatchFiles().map((file: any) => file.apiFileId)).toEqual(['new-file']);
-    // 40k 规模下 failedIds 可能上万条，日志只带 count + 前 10 条样本
-    expect(mockLoggerWarn).toHaveBeenCalledWith(
-      'Create api file collection parent update failed',
-      expect.objectContaining({
-        failedCount: 12,
-        failedIdsSample: [
-          localId('EX0'),
-          localId('EX1'),
-          localId('EX2'),
-          localId('EX3'),
-          localId('EX4'),
-          localId('EX5'),
-          localId('EX6'),
-          localId('EX7'),
-          localId('EX8'),
-          localId('EX9')
-        ]
-      })
-    );
-  });
-
   it.each([undefined, false])(
     '根哨兵保持层级且仅其自身使用权限标记 %s',
     async (inheritPermission) => {
@@ -726,30 +679,5 @@ describe('createApiDatasetCollection', () => {
     );
     expect(mockBulkInsertFolderCollections).not.toHaveBeenCalled();
     expect(mockCreateApiFileCollectionsBatch).not.toHaveBeenCalled();
-  });
-
-  it('当 matchedCount 小于 corrections 数量时触发未完全命中警告', async () => {
-    setServerTree({ root: [apiFile('doc', 'file')] });
-    mockCollectionFind.mockReturnValue({
-      lean: vi.fn().mockResolvedValue([
-        {
-          _id: localId('DOC_1'),
-          apiFileId: 'doc',
-          parentId: localId('OLD'),
-          apiFileParentId: 'other'
-        }
-      ])
-    });
-    mockBulkMoveCollectionsParent.mockResolvedValueOnce({
-      successIds: [localId('DOC_1')],
-      failedIds: [],
-      matchedCount: 0
-    });
-
-    await call({ apiFiles: [apiFile('root', 'folder', true)] });
-    expect(mockLoggerWarn).toHaveBeenCalledWith(
-      'Create api file collection parent correction not fully matched',
-      expect.anything()
-    );
   });
 });

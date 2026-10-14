@@ -1,3 +1,17 @@
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import {
+  loadWorkflowSkillResources,
+  loadWorkflowAppResource,
+  loadWorkflowDatasetResource,
+  loadWorkflowModelResource,
+  WorkflowResourceError
+} from '@fastgpt/service/core/workflow/resource/service';
+import { getUser } from '@test/datas/users';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -8,6 +22,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   mongoDatasetFind: vi.fn(),
   mongoDatasetFindOne: vi.fn(),
+  authDatasetByTmbId: vi.fn(),
   assertAuthModels: vi.fn(),
   resolveAppResourcesByPermission: vi.fn(),
   getSystemModelHandle: vi.fn()
@@ -30,8 +45,8 @@ vi.mock('@fastgpt/service/core/dataset/schema', async (importOriginal) => {
   };
 });
 
-vi.mock('@fastgpt/service/support/permission/app/resource', () => ({
-  resolveAppResourcesByPermission: mocks.resolveAppResourcesByPermission
+vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
+  authDatasetByTmbId: mocks.authDatasetByTmbId
 }));
 
 vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
@@ -43,16 +58,10 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import {
   createSystemToolResourceContext,
-  createWorkflowChildResourceContext,
   filterWorkflowToolList,
   hasWorkflowResource,
-  loadWorkflowAppResource,
-  loadWorkflowDatasetResource,
-  loadWorkflowModelResource,
-  createWorkflowResourceContext,
-  prepareWorkflowDebugResourceContext,
-  WorkflowResourceError
-} from '@fastgpt/service/core/workflow/utils/resource';
+  createWorkflowResourceContext
+} from '@fastgpt/service/core/workflow/resource/context';
 
 const createFindResult = (documents: unknown = []) => ({
   lean: vi.fn().mockResolvedValue(documents)
@@ -61,6 +70,9 @@ const createFindResult = (documents: unknown = []) => ({
 describe('workflow resource context', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.authDatasetByTmbId.mockImplementation(async ({ datasetId }) => ({
+      dataset: { _id: datasetId }
+    }));
     mocks.mongoDatasetFind.mockReturnValue(
       createFindResult([{ _id: 'dataset-1' }, { _id: 'dataset-2' }])
     );
@@ -106,7 +118,11 @@ describe('workflow resource context', () => {
 
     const childContext = await runWithContext(
       { mcpClientMemory: {}, resourceContext: rootContext },
-      () => createWorkflowChildResourceContext([{ type: 'dataset', id: 'dataset-2' }], 'child-team')
+      () =>
+        createWorkflowResourceContext({
+          resources: [{ type: 'dataset', id: 'dataset-2' }],
+          teamId: 'child-team'
+        })
     );
 
     expect(childContext.isRoot).toBe(true);
@@ -261,63 +277,64 @@ describe('workflow resource context', () => {
     });
   });
 
-  it('normalizes legacy model name and legacy keys when preparing debug context', async () => {
-    mocks.getSystemModelHandle.mockResolvedValue({
-      getActiveModels: () => [{ model: 'legacy-llm', modelId: 'resolved-model-id', type: 'llm' }],
-      getSystemDefaultModelIds: () => ({}),
-      getLLMModelData: vi.fn(() => ({
-        modelId: 'resolved-model-id',
-        model: 'legacy-llm',
-        name: 'legacy-llm',
-        type: 'llm',
-        config: {}
-      }))
+  it('authorizes only missing dataset IDs and reuses the first loaded entity', async () => {
+    const context = createWorkflowResourceContext({
+      resources: [{ type: 'dataset', id: 'snapshot' }]
     });
-    mocks.resolveAppResourcesByPermission.mockResolvedValue([
-      { type: 'model', id: 'resolved-model-id' }
-    ]);
-    const nodes = [
-      {
-        flowNodeType: FlowNodeTypeEnum.chatNode,
-        inputs: [
-          {
-            key: NodeInputKeyEnum.aiModel,
-            value: 'legacy-llm',
-            valueType: WorkflowIOValueTypeEnum.string,
-            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
-          }
-        ]
-      } as any
-    ];
-
-    const context = await prepareWorkflowDebugResourceContext({
-      appId: 'app-debug-1',
-      nodes,
-      teamId: 'team-1',
-      tmbId: 'tmb-1'
+    await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
+      await expect(
+        loadWorkflowDatasetResource({
+          datasetId: 'member',
+          datasetIds: ['member', 'snapshot'],
+          tmbId: 'member'
+        })
+      ).resolves.toEqual({ _id: 'member' });
     });
-
-    expect(nodes[0].inputs[0].key).toBe(NodeInputKeyEnum.aiModelId);
-    expect(nodes[0].inputs[0].value).toBe('resolved-model-id');
-    expect(context.resourceMap.has('model:resolved-model-id')).toBe(true);
-    expect(mocks.resolveAppResourcesByPermission).toHaveBeenCalledWith({
-      appId: 'app-debug-1',
-      extracted: [{ type: 'model', id: 'resolved-model-id' }],
-      tmbId: 'tmb-1',
-      isRoot: false,
-      blockOnUnauthorized: true,
-      allowRootCrossTeam: false,
-      modelHandle: expect.anything()
-    });
-
-    await runWithContext({ mcpClientMemory: {}, resourceContext: context }, () =>
-      loadWorkflowModelResource({
-        modelId: 'resolved-model-id',
-        teamId: 'team-1',
-        tmbId: 'tmb-1'
-      })
+    expect(mocks.authDatasetByTmbId).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ datasetId: 'member' })
     );
-    expect(mocks.assertAuthModels).not.toHaveBeenCalled();
+    expect(mocks.mongoDatasetFindOne).not.toHaveBeenCalled();
+  });
+
+  it('rejects an unauthorized additional dataset before reading the snapshot entity', async () => {
+    mocks.authDatasetByTmbId.mockRejectedValueOnce(DatasetErrEnum.unAuthDataset);
+    const context = createWorkflowResourceContext({
+      resources: [{ type: 'dataset', id: 'snapshot' }]
+    });
+    await runWithContext({ mcpClientMemory: {}, resourceContext: context }, () =>
+      expect(
+        loadWorkflowDatasetResource({
+          datasetId: 'snapshot',
+          datasetIds: ['snapshot', 'forbidden'],
+          tmbId: 'member'
+        })
+      ).rejects.toBe(DatasetErrEnum.unAuthDataset)
+    );
+    expect(mocks.mongoDatasetFindOne).not.toHaveBeenCalled();
+  });
+
+  it('propagates database failures instead of reporting a missing snapshot resource', async () => {
+    const error = new Error('database unavailable');
+    const context = createWorkflowResourceContext({
+      resources: [
+        { type: 'dataset', id: 'dataset' },
+        { type: 'tool', id: 'tool' }
+      ]
+    });
+    mocks.mongoDatasetFindOne.mockReturnValueOnce({ lean: vi.fn().mockRejectedValue(error) });
+    const appQuery = vi.spyOn(MongoApp, 'findOne').mockImplementationOnce(() => {
+      throw error;
+    });
+    try {
+      await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
+        await expect(loadWorkflowDatasetResource({ datasetId: 'dataset' })).rejects.toBe(error);
+        await expect(
+          loadWorkflowAppResource({ appId: 'tool', type: 'tool', tmbId: 'member' })
+        ).rejects.toBe(error);
+      });
+    } finally {
+      appQuery.mockRestore();
+    }
   });
 
   it('rejects a declared App resource when the entity is unavailable', async () => {
@@ -337,57 +354,65 @@ describe('workflow resource context', () => {
       ).rejects.toBeInstanceOf(WorkflowResourceError)
     );
   });
+});
 
-  describe('prepareWorkflowDebugResourceContext', () => {
-    it('extracts resources, loads context, and enforces read permission blocking on unauthorized items', async () => {
-      mocks.resolveAppResourcesByPermission.mockResolvedValue([
-        { type: 'dataset', id: 'dataset-1' }
-      ]);
-
-      const context = await prepareWorkflowDebugResourceContext({
-        appId: 'app-debug-1',
-        nodes: [
-          {
-            flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-            nodeId: 'node-ds',
-            inputs: [
-              {
-                key: NodeInputKeyEnum.datasetSelectList,
-                value: [{ datasetId: 'dataset-1' }],
-                valueType: WorkflowIOValueTypeEnum.selectDataset,
-                renderTypeList: [FlowNodeInputTypeEnum.selectDataset]
-              }
-            ]
-          } as any
-        ],
-        teamId: 'team-1',
-        tmbId: 'tmb-1',
-        isRoot: true
-      });
-
-      expect(context.isRoot).toBe(true);
-      expect(mocks.resolveAppResourcesByPermission).toHaveBeenCalledWith({
-        appId: 'app-debug-1',
-        extracted: [{ type: 'dataset', id: 'dataset-1' }],
-        tmbId: 'tmb-1',
-        isRoot: true,
-        blockOnUnauthorized: true,
-        allowRootCrossTeam: true,
-        modelHandle: expect.anything()
-      });
+describe('loadWorkflowSkillResources', () => {
+  it('rejects a missing declared Skill instead of silently dropping it', async () => {
+    const resourceContext = createWorkflowResourceContext({
+      resources: [{ type: 'skill', id: 'missing-skill' }]
     });
-
-    it('propagates permission errors when resolveAppResourcesByPermission throws', async () => {
-      mocks.resolveAppResourcesByPermission.mockRejectedValue(new Error('unauthorized resource'));
-
-      await expect(
-        prepareWorkflowDebugResourceContext({
-          appId: 'app-debug-1',
-          nodes: [],
-          teamId: 'team-1',
-          tmbId: 'tmb-1'
-        })
-      ).rejects.toThrow('unauthorized resource');
+    await runWithContext({ mcpClientMemory: {}, resourceContext }, () =>
+      expect(
+        loadWorkflowSkillResources({ skillIds: ['missing-skill'], tmbId: 'member' })
+      ).rejects.toBe(SkillErrEnum.unExist)
+    );
+  });
+  it('uses member permission for new Skills and keeps snapshot authorization for existing Skills', async () => {
+    const owner = await getUser(`skill-resource-owner-${getNanoid(6)}`);
+    const member = await getUser(`skill-resource-member-${getNanoid(6)}`, owner.teamId);
+    const skill = await MongoAgentSkills.create({
+      name: 'Private Skill',
+      source: AgentSkillSourceEnum.personal,
+      description: '',
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const skillId = String(skill._id);
+    await expect(
+      loadWorkflowSkillResources({
+        skillIds: [skillId, skillId],
+        tmbId: member.tmbId
+      })
+    ).resolves.toEqual([]);
+    const resourceContext = createWorkflowResourceContext({
+      resources: [{ type: 'skill', id: skillId }],
+      teamId: owner.teamId
+    });
+    await runWithContext({ mcpClientMemory: {}, resourceContext }, async () => {
+      const resources = await loadWorkflowSkillResources({
+        skillIds: [skillId, skillId],
+        tmbId: member.tmbId
+      });
+      expect(resources.map((skill) => String(skill._id))).toEqual([skillId]);
+    });
+    const otherTeam = createWorkflowResourceContext({
+      resources: [{ type: 'skill', id: skillId }],
+      teamId: '65f000000000000000000099'
+    });
+    await runWithContext({ mcpClientMemory: {}, resourceContext: otherTeam }, () =>
+      expect(loadWorkflowSkillResources({ skillIds: [skillId], tmbId: member.tmbId })).rejects.toBe(
+        SkillErrEnum.unExist
+      )
+    );
+    const root = createWorkflowResourceContext({
+      resources: [{ type: 'skill', id: skillId }],
+      teamId: '65f000000000000000000099',
+      isRoot: true
+    });
+    await runWithContext({ mcpClientMemory: {}, resourceContext: root }, async () => {
+      expect(
+        await loadWorkflowSkillResources({ skillIds: [skillId], tmbId: member.tmbId })
+      ).toHaveLength(1);
     });
   });
 });

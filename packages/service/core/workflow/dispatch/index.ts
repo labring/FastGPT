@@ -5,7 +5,11 @@ import type {
   ChatHistoryItemResType,
   ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type';
-import type { NodeOutputItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type {
+  NodeOutputItemType,
+  RuntimeNodeItemType,
+  WorkflowResourceContext
+} from '@fastgpt/global/core/workflow/runtime/type';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -18,7 +22,6 @@ import type {
   NodeEdgeGroups,
   NodeEdgeGroupsMap
 } from '../types/runtime';
-import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { filterWorkflowEdges, valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import type {
@@ -41,7 +44,7 @@ import {
   mergeWorkflowRuntimeSummary
 } from './utils/summary';
 import { getEntryPointRuntimeVariables, WorkflowVariableState } from './utils/variables';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { callbackMap } from './constants';
 import { getUserChatInfo } from '../../../support/user/team/utils';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
@@ -82,7 +85,6 @@ import { getWorkflowNodeRunParams } from './utils/runtime';
 import type { AgentSandboxPrepareAction } from './ai/agent/sub/sandbox';
 import { getWorkflowSource } from './utils/source';
 import { prepareWorkflowFileContext } from '../utils/fileContext';
-import type { WorkflowResourceContext } from '../utils/resource';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 

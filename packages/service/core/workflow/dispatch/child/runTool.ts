@@ -1,9 +1,9 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+
 import { assertMCPUrlNotInternal, getMCPChildren, MCPClient } from '../../../app/mcp';
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
@@ -16,17 +16,12 @@ import { pushTrack } from '../../../../common/middle/tracks/utils';
 import { getNodeErrResponse } from '../utils';
 import { getHTTPToolList, runHTTPTool } from '../../../app/http';
 import { getWorkflowContext } from '../../utils/context';
-import { getWorkflowResourceContext } from '../../utils/context';
 import { getAppVersionById } from '../../../app/version/controller';
 import {
   HttpToolSetRuntimeConfigSchema,
   McpToolSetRuntimeConfigSchema
 } from '@fastgpt/global/core/workflow/type/node';
-import {
-  filterWorkflowToolList,
-  isWorkflowResourceError,
-  loadWorkflowAppResource
-} from '../../utils/resource';
+import { isWorkflowResourceError, loadWorkflowAppResource } from '../../resource/service';
 import {
   getToolNameCandidates,
   getToolRawId,
@@ -77,7 +72,6 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
   } = props;
   const cTime = String(variableState.get('cTime') ?? '');
   const logger = getLogger(LogCategories.MODULE.APP.TOOL);
-  const resourceContext = getWorkflowResourceContext();
 
   const { uid: uId, chatId = '' } = props;
   const appId = getWorkflowAppId(runningAppInfo);
@@ -113,8 +107,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
   try {
     /**
-     * HTTP/MCP 子工具的 toolId 可由工作流 JSON 持久化，运行时必须用当前运行用户执行身份
-     * 重新校验父工具集权限，避免脏数据或绕过保存接口的跨用户工具集引用被执行。
+     * 子工具按名称命中版本快照时沿用发布授权，未命中时检查运行成员的工具集读取权限。
      */
     const authRuntimeToolset = async (parentId: string, toolName?: string) =>
       loadWorkflowAppResource({
@@ -288,11 +281,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       const mcpToolSet = McpToolSetRuntimeConfigSchema.safeParse(
         workflow.nodes[0]?.toolConfig?.mcpToolSet
       ).data;
-      const mcpToolList = filterWorkflowToolList({
-        context: resourceContext,
-        appId: parentId,
-        tools: await getMCPChildren(app, workflow)
-      });
+      const mcpToolList = await getMCPChildren(app, workflow);
       if (!mcpToolSet || !mcpToolList.length) throw new Error('MCP tool set is missing');
       const mcpTool = getToolNameCandidates(toolName)
         .map((name) => mcpToolList.find((tool) => tool.name === name))
@@ -342,11 +331,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       const toolSetData = HttpToolSetRuntimeConfigSchema.safeParse(
         workflow.nodes[0]?.toolConfig?.httpToolSet
       ).data;
-      const toolList = filterWorkflowToolList({
-        context: resourceContext,
-        appId: parentId,
-        tools: await getHTTPToolList(app, workflow)
-      });
+      const toolList = await getHTTPToolList(app, workflow);
       if (!toolSetData || !toolList.length) {
         throw new Error('HTTP tool set not found');
       }

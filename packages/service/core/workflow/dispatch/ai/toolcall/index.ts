@@ -16,7 +16,7 @@ import {
 import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/application/toolCall';
 import { postTextCensor } from '../../../../chat/postTextCensor';
 import { readWorkflowFileBuffer } from '../../../utils/context';
-import { loadWorkflowModelResource } from '../../../utils/resource';
+import { loadWorkflowModelResource } from '../../../resource/service';
 import { getAgentLoopHistories, getNodeErrResponse } from '../../utils';
 import {
   buildAgentLoopCoreRequestMessages,

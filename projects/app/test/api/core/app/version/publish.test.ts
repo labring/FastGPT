@@ -22,11 +22,9 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
 import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
-import {
-  createWorkflowResourceContext,
-  loadWorkflowModelResource,
-  prepareWorkflowDebugResourceContext
-} from '@fastgpt/service/core/workflow/utils/resource';
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
+import { loadWorkflowModelResource } from '@fastgpt/service/core/workflow/resource/service';
+import { prepareAppWorkflowResources } from '@fastgpt/service/core/app/resource/service';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getRootUser, getUser } from '@test/datas/users';
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
@@ -405,13 +403,18 @@ describe('publish optional model defaults', () => {
       });
     };
 
-    // 1. 预览链路：prepareWorkflowDebugResourceContext + 运行时节点模型校验通过
+    // 1. 预览链路：prepareAppWorkflowResources + 运行时节点模型校验通过
     const previewNodes = createWorkflowNodes();
-    const previewContext = await prepareWorkflowDebugResourceContext({
+    const previewResources = await prepareAppWorkflowResources({
       appId: String(app._id),
       nodes: previewNodes as any,
       teamId: String(root.teamId),
       tmbId: String(root.tmbId),
+      isRoot: true
+    });
+    const previewContext = createWorkflowResourceContext({
+      resources: previewResources,
+      teamId: String(root.teamId),
       isRoot: true
     });
     await expect(
@@ -429,7 +432,7 @@ describe('publish optional model defaults', () => {
         nodes: createWorkflowNodes() as any
       }
     });
-    expect(publishResult.code).toBe(200);
+    expect(publishResult.code, JSON.stringify(publishResult)).toBe(200);
 
     const publishedVersion = await getAppLatestVersion(String(app._id), app);
     expect(publishedVersion.nodes[0].inputs).toContainEqual(

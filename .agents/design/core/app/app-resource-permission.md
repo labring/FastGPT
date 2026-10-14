@@ -212,7 +212,7 @@ kept      = extracted 中已在 baseline 出现的部分（不重新鉴权）
 
 ### 7.3 模型校验边界
 
-- `formatModels` 负责在写入/导入/调试边界（保存 `create.ts`、发布 `publish.ts`、模板解析 `appTemplateParse.ts`、调试 `prepareWorkflowDebugResourceContext`）将 legacy `model` 归一化为 canonical `modelId`、在 `preserve` 与 `validate` 模式下为已开启但留空的可选模型槽位物化默认 `modelId`，并在 `validate` 模式下校验模型存在性、启用状态和类型。调用方统一传入 `modelHandle.getActiveModels()`，不能先按当前成员权限过滤，否则 baseline 中已有模型会被错误阻断。
+- `formatModels` 负责在写入/导入/调试边界（保存 `create.ts`、发布 `publish.ts`、模板解析 `appTemplateParse.ts`、调试 `prepareAppWorkflowResources`）将 legacy `model` 归一化为 canonical `modelId`、在 `preserve` 与 `validate` 模式下为已开启但留空的可选模型槽位物化默认 `modelId`，并在 `validate` 模式下校验模型存在性、启用状态和类型。调用方统一传入 `modelHandle.getActiveModels()`，不能先按当前成员权限过滤，否则 baseline 中已有模型会被错误阻断。
 - **团队模型与系统模型的兼容/回退边界**：显式 `modelId` 校验同时支持系统模型与团队模型；但旧 `model` 名称兼容提取（含跨环境 JSON 导入导出）以及默认模型回退（`defaultModelIds` 与同类型候选兜底）均通过 `isSystemModel` 严格限制为系统模型，绝不匹配或回退到团队模型。
 - `extractAppResources` 只提取已开启槽位的静态 canonical `*ModelId`（通过 `nodeInputIsReference(input)` 排除引用输入，通过 `resolveSystemModelId` 排除 `{{...}}` 模板与非字符串值，忽略 legacy `model` 字段）。
 - `resolveAppResourcesByPermission` 把 `model` 纳入 `added / kept`，新增模型通过现有 `PerResourceTypeEnum.model` 权限数据和 `getAuthorizedModelIds` 校验。
@@ -220,7 +220,7 @@ kept      = extracted 中已在 baseline 出现的部分（不重新鉴权）
 - 统一遵循“有 `modelId` 才校验，仅 legacy `model` 绕过”原则：
   - 工作流各模型消费节点（`dispatchChatCompletion`、`classifyQuestion`、`extract`、`toolcall`、`queryExternsion`、`agent`、`dataset/search`、`agent/sub/dataset`）统一调用 `loadWorkflowModelResource`：先通过 `handle.getLLMModelData / getRerankModelData` 解析模型定义（可选槽位传 `fallbackToDefault: true` 时仅对 `isModelConfigError` 回退默认模型），再对非空 `modelId` 检查 `hasWorkflowResource`——命中快照直接放行，未命中快照按运行人 `assertAuthModels(use)` 校验；历史仅含 legacy `model`（无 `modelId`）的节点绕过快照与权限核对，仅在系统模型内兼容解析。
   - `createQuestionGuide`、`getSpeech`（TTS）等独立于 Workflow dispatcher 的 App 辅助入口，仅在配置中存在非空 `modelId` 时调用 `authTargetModelResource` 走应用快照校验（命中正式 Version `resources` 直接放行；登录成员 Test/Debug 未命中时按 `resolveAppResourcesByPermission` 校验草稿基线与新增资源；外链 / API Key 只认正式 Version）；历史仅配置 legacy `model` 或空值回退默认系统模型时绕过快照校验。
-- Test / Debug（`prepareWorkflowDebugResourceContext`）先对请求体执行 `formatModels(preserve)` 将 legacy `model` 与已开启空槽位归一化为系统模型 `modelId`，再生成临时资源上下文：baseline 内模型沿用 App 已有授权，新增模型按当前操作人校验。
+- Test / Debug（`prepareAppWorkflowResources`）先对请求体执行 `formatModels(preserve)` 将 legacy `model` 与已开启空槽位归一化为系统模型 `modelId`，返回授权后的资源列表，由 Test/Debug 入口构建临时资源上下文：baseline 内模型沿用 App 已有授权，新增模型按当前操作人校验。
 - 未命中快照的模型或无 App 快照场景使用 `assertAuthModels(use)` 按运行人校验 `modelId`，并由 typed getter 校验模型存在、启用和类型。
 - App 来源请求携带客户端 `modelId` 时，服务端不得仅信任请求值：命中正式 Version 快照直接放行；未命中快照或非 App 来源按当前运行人权限校验。
 - 当前 App 直接提取的模型来源仍是 LLM、rerank、TTS 等已有静态 `modelId` 入口。Embedding 模型属于 Dataset 自身配置，STT 当前没有 App 静态 `modelId`，不在本次提取范围；未来新增直接选择入口时只需让提取器产出同一种 `{ type: 'model', id }` 资源，不扩展资源 Schema。
@@ -229,7 +229,9 @@ kept      = extracted 中已在 baseline 出现的部分（不重新鉴权）
 
 本分支之前，MCP/HTTP 只对**父工具集 App** 做读权限，没有按子工具名鉴权。本方案不新增这一层。
 
-增量 `added` 只按 `type + id`。父工具集已在 baseline 时，再勾子工具或改成整包都不触发鉴权。`toolNames` 随本次 extract 写入，只表示这版图选了哪些子工具（运行时按快照过滤），不是独立 ACL。
+增量 `added` 只按 `type + id`。父工具集已在 baseline 时，再勾子工具或改成整包都不触发鉴权。`toolNames` 随本次 extract 写入，只表示这版图选了哪些子工具，不是独立 ACL。
+
+运行时展开整个工具集时，按快照中的 `toolNames` 裁剪子工具列表。读取或执行单个子工具时，`loadWorkflowAppResource` 按具体 `toolName` 判断：命中快照沿用发布授权，未命中则检查运行成员的父工具集读权限；通过后直接读取完整定义，不再按快照重复裁剪。单工具 Schema 补齐只读取定义，具体子工具授权在执行入口完成。
 
 新拖进一个尚未在 baseline 里的工具集：算 `tool` id 新增，保存/发布按 7.1 / 7.2 对该父 App 做读权限校验。
 
@@ -320,14 +322,14 @@ type AppResource =
 ### 13.1 现状与问题
 在表单式应用（Agent 与 AgentV2）中，若引用的工具、技能、知识库等资源被卸载、删除或操作者无权限，点击发布时出现提示 UI 不一致：
 - **Agent**：前端 `Header.tsx` 捕获到工作流图中的工具异常，但直接写死弹窗 `app.error.publish_unExist_app`（“发布失败，请检查工具配置是否正确”）；
-- **AgentV2**：工作流未将工具展开为独立节点，且通用校验器 `workflowCheck.ts` 未对未开放的 Agent 节点进行工具校验，导致请求直接穿透到后端 `/api/core/app/version/publish` 接口，后端 ACL 鉴权失败返回 `unAuthApp`，前端弹窗 `code_error.app_error.un_auth_app`（“无权操作该应用”）。
+- **AgentV2**：工作流未将工具展开为独立节点，且通用校验器 `check/check.ts` 未对未开放的 Agent 节点进行工具校验，导致请求直接穿透到后端 `/api/core/app/version/publish` 接口，后端 ACL 鉴权失败返回 `unAuthApp`，前端弹窗 `code_error.app_error.un_auth_app`（“无权操作该应用”）。
 
 ### 13.2 对齐方案与设计决策
 1. **统一前端拦截**：在 `Header.tsx` 的 `checkData` 发布前阶段，统一调用表单资源检查函数 `checkAppFormResourceIssues`，对 `appForm.selectedTools`、`appForm.selectedAgentSkills`、`appForm.dataset.datasets` 进行有效性与权限扫描，若存在异常立即在前端阻断发布。
 2. **优先显示具体原因**：
    - 提取具体错误原因（无权限优先提示 `core.workflow.check.resource_no_permission` 或 `tool_no_permission`，已下线提示 `tool_offline`，已删除提示 `tool_missing` / `resource_missing`）；
    - 在后续 `checkWorkflowBeforeRunOrPublish` 检查中，若发现其他错误（如模型未配置、模型不可用），优先取 `firstIssue.message`，兜底才使用通用文案。
-3. **工作流校验器边界保护**：保持 `workflowCheck.ts` 不变，不提前引入对未开放的 Agent 节点的工作流校验，改动完全收敛在表单层 `FormComponent` 中。
+3. **工作流校验器边界保护**：保持 `check/check.ts` 不变，不提前引入对未开放的 Agent 节点的工作流校验，改动完全收敛在表单层 `FormComponent` 中。
 
 ---
 
@@ -373,7 +375,7 @@ type AppResource =
    - `ToolSelect.tsx`：工具卡片仅依赖 `tool.pluginData?.error`（或下线状态）渲染单个错误 Tag，不再存在双标签 Bug；
    - `DatasetSelectModal.tsx` / `SkillSelectModal.tsx`：通过 `!item.error` 过滤有效项。
 4. **校验层（Workflow & Form Check）**：
-   - `workflowCheck.ts`：统一通过 `item.error === 'resource_no_permission'` 和 `item.error === 'resource_missing'` 报告 issue；
+   - `check/check.ts`：统一通过 `item.error === 'resource_no_permission'` 和 `item.error === 'resource_missing'` 报告 issue；
    - `checkAppForm.ts`：统一通过 `tool.pluginData?.error`、`skill.error`、`dataset.error` 进行表单级发布前阻断与文案提取。
 5. **单元测试回归（Tests）**：
    - 更新 `rewriteAppWorkflowToDetail.test.ts`、`checkAppForm.test.ts`、`workflow/utils.test.ts`、`controller.test.ts` 等单测断言。
@@ -406,7 +408,7 @@ type AppResource =
    - 经审查确认，`pro` 仓库与主仓库中 `formatToolError` 无外部依赖，且与 `workflowCheck` 的错误码解析逻辑高度重复、文案定义割裂；
    - 彻底从 `@fastgpt/global/core/app/utils.ts` 中删除 `formatToolError` 及无用 imports；
 2. **统一由 `getToolErrorMessage` 负责**：
-   - 统一由 `@/web/core/workflow/workflowCheck` 的 `getToolErrorMessage({ status, error, t })` 负责工具下线状态（`status === PluginStatusEnum.Offline`）、已知错误码（`resource_no_permission`、`tool_missing`）以及具体未知报错的格式化；
+   - 统一由 `@/web/core/workflow/check/message` 的 `getToolErrorMessage({ status, error, t })` 负责工具下线状态（`status === PluginStatusEnum.Offline`）、已知错误码（`resource_no_permission`、`tool_missing`）以及具体未知报错的格式化；
    - 工具不存在/已删除/已下线文案全面统一收敛为：“该工具不存在或已被删除”（`common:core.workflow.check.tool_missing`）；
    - `ToolSelect.tsx`、`NodeCard.tsx` 以及 `checkAppForm.ts` 全面切换至 `getToolErrorMessage`。
 3. **表单发布校验收敛**：
@@ -502,10 +504,10 @@ export const createWorkflowResourceContext = ({
   resources: AppResourcesType;
   teamId?: string;
   isRoot?: boolean;
-}): Promise<WorkflowResourceContext> => {
-  const normalizedResources = mergeAppResources(Array.isArray(resources) ? resources : []);
+}): WorkflowResourceContext => {
+  const normalizedResources = mergeAppResources(resources);
   const resourceMap = new Map(
-    normalizedResources.map((resource) => [getResourceKey(resource.type, resource.id), resource])
+    normalizedResources.map((resource) => [getAppResourceKey(resource), resource])
   );
   return { teamId, isRoot, resourceMap };
 };
@@ -547,13 +549,47 @@ flowchart TD
 2. **子应用与工具集（`loadWorkflowAppResource` / `loadChildWorkflowWithResource`）**：
    - 命中 `hasWorkflowResource` 时直接现场执行 `MongoApp.findOne`；未找到或格式非法统一抛出 `WorkflowResourceError`；
    - 未命中快照时回退按当前运行人读权限查询（`authAppByTmbId`）；
-   - 子应用工作流节点按需通过 `loadWorkflowAppWorkflow` 实时获取对应版本。
+   - 子应用工作流节点按需通过 `loadChildWorkflowWithResource` 实时获取对应版本及独立资源上下文。
 3. **知识库检索（`loadWorkflowDatasetResource` / `loadAgentDatasetContext`）**：
    - 命中 `hasWorkflowResource({ type: 'dataset' })` 时现场执行 `MongoDataset.findOne` / `MongoDataset.find`；查不到统一抛出 `DatasetErrEnum.unExist`；
    - 未命中快照的知识库回退按当前运行人读权限鉴权（`authDatasetByTmbId` / `filterDatasetsByTmbId`）。
-4. **沙箱技能（`injectAgentSkillFilesToSandbox`）**：
-   - 遍历 `skillIds`，命中 `hasWorkflowResource({ type: 'skill' })` 的走快照，未命中的调用 `authSkillByTmbId` 按运行人鉴权；
-   - 随后现场执行 `MongoAgentSkills.find` 查询有效实体，数量不匹配或缺失直接抛出 `SkillErrEnum.unExist`。
+4. **沙箱技能（`loadWorkflowSkillResources` → `injectAgentSkillFilesToSandbox`）**：
+   - 工作流 prepare 先加载技能：命中快照的直接按团队约束查询实体，缺失抛出 `SkillErrEnum.unExist`；未命中的按运行人读权限校验，无权限或不存在时跳过；
+   - 沙箱注入只接收已授权实体，负责读取技能版本并部署文件，不读取工作流上下文、不执行成员鉴权。
 5. **统一复用与错误隔离**：
-   - 所有派发分支统一收敛至 `packages/service/core/workflow/utils/resource.ts`，运行态不再维护任何 `dynamic*` 布尔标记；
+   - 所有派发分支统一收敛至 `packages/service/core/workflow/resource/service.ts`，运行态不再维护任何 `dynamic*` 布尔标记；
    - 不引入任何中间层查询缓存，每次执行现场查库，确保多节点或协作修改的数据实时一致性。
+
+## 18. 资源模块职责重构
+
+资源身份和授权语义保持不变；旧 `model` 只解析系统模型并跳过鉴权。
+
+- `global/core/workflow/model` 保存槽位与校验契约，`global/common/workflow` 保存共享纯引用处理；不依赖 web 组件。
+- `service/core/app/resource/utils.ts` 负责资源提取、合并、差量与查询条件，不查库、不记录日志。
+- `service/core/app/resource/service.ts` 负责草稿基线、保存/发布增量权限和调试资源准备；版本读取不再执行业务回调。
+- `service/core/workflow/resource/context.ts` 负责快照上下文与选择，`service.ts` 负责执行点授权和加载；不进入草稿/发布编排。
+- 沙箱注入函数只接收已授权 Skill，工作流 prepare 在调用前加载授权资源。
+- 前端校验分别接收引用状态与默认模型 ID；应用摘要只补引用状态，不伪造 `isSystem`。`web/core/workflow/service.ts` 编排数据读取与结构转换，`check/check.ts` 只执行校验。
+- 资源数据库读取只转换已知 ID 类型错误，连接/存储故障正常传播。
+
+重构验收：
+
+- [x] 旧路径、转导层与反向依赖已清除，直接调用新的定义模块。
+- [x] 草稿缺失/非法快照、root、系统工具、成员回退与旧模型约定保持一致。
+- [x] 共享槽位选择有统一实现，前端引用与默认值契约分离。
+- [x] 沙箱部署不读取 Workflow 上下文或成员权限。
+- [x] 相关局部测试、类型检查、lint、依赖检查通过。
+
+
+### 18.1 工作流校验与共享工具归属
+
+- 删除旧前端 `workflowCheck.ts` 与 `global/core/workflow/utils.ts`，调用方直接导入实际定义模块，不保留 barrel 或旧路径转导。
+- 前端 `check/check.ts` 组织扫描，`graph.ts` 建立一次图索引，`node.ts` 与 `model.ts` 返回问题代码和展示参数，`message.ts` 在输出边界补全翻译和节点信息。工具错误来源归一化放在 `error.ts`，不依赖展示模块。
+- 节点模型与聊天配置模型复用同一引用匹配；非空稳定 ID 不按旧名称兜底，只有旧 WorkflowTool 自定义选择器保留既有名称默认值兼容。
+- `global/common/workflow` 承担连线标识、输入投影和条件分支规则；`global/common/app` 承担 App 聊天配置、沙箱能力查询和 App/工具到节点 IO 的适配。
+- 变量图标格式化归 Web 展示层，工具运行消息构造归唯一使用方 PluginRunBox；删除始终返回空对象的 `getModuleInputUiField`。
+- App `legacy/utils.ts` 集中处理旧欢迎语、文本变量类型及 enums，并在适配前补齐旧工具集 ID。兼容转换不修改原记录。`welcomeText` 仍是会话保存和当前表单使用的字段，继续与 welcomeConfig 保持同步。
+- 保留错误代码、画布节点顺序、单节点检查的全图上下文以及旧模型免 ACL 语义；相关校验和共享函数测试迁移到新模块对应位置。
+
+- 小文件按语义聚合：连线 handle 编码归入共享 reference；条件标签与分支 ID 初始化合并到 condition；App 沙箱能力查询归入 App workflow。资源上下文与变量选择器类型分别并入已有 runtime/type 与 type/io；Web 变量图标格式化并入工作流展示工具，规则输出类型并入前端 workflow/type。
+- 保留异步准备入口、聊天配置模块和工具错误归一化模块的独立边界，避免为了减少文件数量引入展示层与规则层的反向依赖。

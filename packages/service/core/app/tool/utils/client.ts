@@ -29,11 +29,11 @@ import {
   FlowNodeInputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
-import type {
-  FlowNodeInputItemType,
-  FlowNodeOutputItemType
+import {
+  type FlowNodeInputItemType,
+  type FlowNodeOutputItemType,
+  ToolReferenceNodeInputTypeSchema
 } from '@fastgpt/global/core/workflow/type/io';
-import { ToolReferenceNodeInputTypeSchema } from '@fastgpt/global/core/workflow/type/io';
 import {
   FlowNodeTemplateTypeSchema,
   type FlowNodeTemplateType,
@@ -43,9 +43,9 @@ import {
   pluginData2FlowNodeIO,
   toolSetData2FlowNodeIO,
   toolData2FlowNodeIO,
-  appData2FlowNodeIO,
-  projectExternalVariableInput
-} from '@fastgpt/global/core/workflow/utils';
+  appData2FlowNodeIO
+} from '@fastgpt/global/common/app/workflow';
+import { projectExternalVariableInput } from '@fastgpt/global/common/workflow/input';
 import { Types } from 'mongoose';
 import { getHTTPToolList } from '../../http';
 import { getMCPChildren } from '../../mcp';

@@ -4,7 +4,7 @@ import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
-import { formatModels } from '@fastgpt/global/core/workflow/utils';
+import { formatModels } from '@fastgpt/global/common/workflow/model';
 import {
   PublishAppBodySchema,
   PublishAppQuerySchema,
@@ -20,11 +20,11 @@ import {
   beforeUpdateAppFormat,
   updateParentFoldersUpdateTime
 } from '@fastgpt/service/core/app/controller';
-import { extractAppResources } from '@fastgpt/service/core/app/resources';
+import { extractAppResources } from '@fastgpt/service/core/app/resource/utils';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { resolveAppResourcesByPermission } from '@fastgpt/service/support/permission/app/resource';
+import { resolveAppResourcesByPermission } from '@fastgpt/service/core/app/resource/service';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 
 async function handler(req: ApiRequestProps<PostPublishAppProps>) {

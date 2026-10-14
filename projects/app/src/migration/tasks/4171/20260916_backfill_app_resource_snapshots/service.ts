@@ -16,7 +16,7 @@ import {
 } from '@fastgpt/service/core/app/jsonSchemaStorage';
 import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { parseLegacyMcpChildApps } from '@fastgpt/service/core/app/mcp';
-import { resolveStoredAppResources } from '@fastgpt/service/core/app/resources';
+import { resolveStoredAppResources } from '@fastgpt/service/core/app/resource/utils';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';

@@ -1,6 +1,6 @@
 import { APP_SANDBOX_ENABLED_CHAT_METADATA_KEY } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { isAppSandboxEnabledInNodes } from '@fastgpt/global/core/workflow/utils';
+import { isAppSandboxEnabledInNodes } from '@fastgpt/global/common/app/workflow';
 import {
   assertSandboxAvailable,
   resolveAppSandboxAvailability,

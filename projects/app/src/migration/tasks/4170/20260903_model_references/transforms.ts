@@ -4,11 +4,9 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import {
-  getSelectedInputRenderType,
-  isWorkflowSystemModelInput,
-  workflowModelKeyMappings
-} from '@fastgpt/global/core/workflow/utils';
+import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
+import { isWorkflowSystemModelInput } from '@fastgpt/global/common/workflow/model';
+import { workflowModelKeyMappings } from '@fastgpt/global/core/workflow/model/constants';
 import type { ModelCatalog } from './modelCatalog';
 import type { ModelRequirement, ReferenceTransformResult } from './types';
 

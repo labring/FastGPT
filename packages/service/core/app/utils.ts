@@ -1,14 +1,11 @@
 import { getDatasetModelReference } from '../dataset/model';
 import { MongoDataset } from '../dataset/schema';
-
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import {
-  nodeInputIsReference,
-  projectExternalVariableInput
-} from '@fastgpt/global/core/workflow/utils';
+import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
+import { projectExternalVariableInput } from '@fastgpt/global/common/workflow/input';
 import {
   initAgentToolInputType,
   normalizeFlowNodeInputType
@@ -40,7 +37,7 @@ import { MongoAgentSkills } from '../ai/skill/model/schema';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { getAppResourceKey, normalizeAppToolResource } from './resources';
+import { getAppResourceKey, normalizeAppToolResource } from './resource/utils';
 import type {
   FlowNodeInputItemType,
   SelectedDatasetType

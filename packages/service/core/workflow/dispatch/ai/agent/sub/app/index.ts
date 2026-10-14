@@ -1,17 +1,15 @@
 import type { DispatchSubAppResponse } from '../../type';
-import {
-  createSystemToolResourceContext,
-  loadChildWorkflowWithResource
-} from '../../../../../../../core/workflow/utils/resource';
+import { createSystemToolResourceContext } from '../../../../../resource/context';
+import { loadChildWorkflowWithResource } from '../../../../../resource/service';
 import { getUserChatInfo } from '../../../../../../../support/user/team/utils';
-import { runWorkflow } from '../../../../../../../core/workflow/dispatch';
+import { runWorkflow, type RunWorkflowProps } from '../../../../../../../core/workflow/dispatch';
 import {
   getWorkflowEntryNodeIds,
   rewriteNodeOutputByHistories,
   storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { chats2GPTMessages, chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
+import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -21,8 +19,7 @@ import {
   filterWorkflowToolInputVariables,
   getWorkflowToolInputsFromStoreNodes
 } from '@fastgpt/global/core/app/tool/workflowTool/utils';
-import { appData2FlowNodeIO } from '@fastgpt/global/core/workflow/utils';
-import type { RunWorkflowProps } from '../../../../../../../core/workflow/dispatch';
+import { appData2FlowNodeIO } from '@fastgpt/global/common/app/workflow';
 import { SystemToolRepo } from '../../../../../../app/tool/systemTool/systemTool.repo';
 import { anyValueDecrypt } from '../../../../../../../common/secret/utils';
 import {

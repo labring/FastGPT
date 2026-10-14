@@ -5,7 +5,10 @@ import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import { getAppVersionList } from '@/web/core/app/api/version';
 import { getTeamToolVersions } from '@/web/core/plugin/team/api';
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
-import { getWorkflowCheckIssueUIStatus } from '@/web/core/workflow/workflowCheck';
+import {
+  getWorkflowCheckIssueUIStatus,
+  getToolErrorMessage
+} from '@/web/core/workflow/check/message';
 import { Box, Button, Flex, type FlexProps } from '@chakra-ui/react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
@@ -18,15 +21,14 @@ import {
   mergeToolSetChildDescriptions,
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
-import { getToolErrorMessage } from '@/web/core/workflow/workflowCheck';
 import {
   PluginStatusEnum,
   PluginStatusMap,
   type PluginStatusType
 } from '@fastgpt/global/core/plugin/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { NodeGradients } from '@fastgpt/global/core/workflow/node/constant';
 import {
+  type NodeGradients,
   AppNodeFlowNodeTypeMap,
   FlowNodeTypeEnum,
   isNestedParentNodeType

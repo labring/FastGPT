@@ -34,8 +34,8 @@ vi.mock('@fastgpt/service/core/dataset/search/vlm', () => ({
   getDatasetSearchVlmModel: getDatasetSearchVlmModelMock
 }));
 
-vi.mock('@fastgpt/service/core/workflow/utils/resource', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@fastgpt/service/core/workflow/utils/resource')>()),
+vi.mock('@fastgpt/service/core/workflow/resource/service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/workflow/resource/service')>()),
   loadWorkflowDatasetResource: loadWorkflowDatasetResourceMock
 }));
 

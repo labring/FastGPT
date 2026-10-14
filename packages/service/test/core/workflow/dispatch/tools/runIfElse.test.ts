@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { VARIABLE_NODE_ID, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
-import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
+import {
+  IfElseResultEnum,
+  VariableConditionEnum
+} from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { dispatchIfElse } from '@fastgpt/service/core/workflow/dispatch/tools/runIfElse';
 
 type DispatchProps = Parameters<typeof dispatchIfElse>[0];

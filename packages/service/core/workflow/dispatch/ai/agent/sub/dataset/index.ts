@@ -27,7 +27,7 @@ import { filterDatasetsByTmbId } from '../../../../../../dataset/utils';
 import {
   loadWorkflowDatasetResource,
   loadWorkflowModelResource
-} from '../../../../../utils/resource';
+} from '../../../../../resource/service';
 import {
   createChunkSelectionChildNodeResponse,
   createImageCaptionChildNodeResponse,
@@ -241,7 +241,7 @@ export const dispatchAgentDatasetSearch = async ({
     // Get vector model
     const dataset = await loadWorkflowDatasetResource({
       datasetId: datasetIds[0],
-      datasetIds: requestedDatasetIds,
+      datasetIds,
       tmbId
     });
     const modelHandle = await getTeamModelHandle({ teamId });

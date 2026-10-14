@@ -1,6 +1,6 @@
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { isWorkflowSystemModelInput } from '@fastgpt/global/core/workflow/utils';
+import { isWorkflowSystemModelInput } from '@fastgpt/global/common/workflow/model';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 
 /** 获取一次目录后同步投影模型名称，缺失或停用引用只影响展示，不改变工作流本身。 */

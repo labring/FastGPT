@@ -19,7 +19,7 @@ import {
   type CreateQuestionGuideV2BodyType
 } from '@fastgpt/global/openapi/core/ai/agent/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { authTargetModelResource } from '@fastgpt/service/support/permission/app/resource';
+import { authTargetModelResource } from '@fastgpt/service/core/app/resource/service';
 
 async function handler(
   req: ApiRequestProps<CreateQuestionGuideV2BodyType>,

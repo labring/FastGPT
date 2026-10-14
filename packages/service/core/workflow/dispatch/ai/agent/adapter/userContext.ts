@@ -5,7 +5,7 @@ import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { getAgentLoopHistories } from '../../../utils';
 import { MongoDataset } from '../../../../../dataset/schema';
 import { filterDatasetsByTmbId } from '../../../../../dataset/utils';
-import { hasWorkflowResource } from '../../../../utils/resource';
+import { hasWorkflowResource } from '../../../../resource/context';
 import { getWorkflowResourceContext } from '../../../../utils/context';
 import type { DeployedSkillInfo } from '../../../../../ai/sandbox/application/runtime/skill/types';
 import {
@@ -37,16 +37,26 @@ export const loadAgentDatasetContext = async (
 
   const datasetIds = selectedDataset.map((item) => item.datasetId);
   const resourceContext = getWorkflowResourceContext();
-  const hasUncheckedDatasets = datasetIds.some(
+  const uncheckedDatasetIds = datasetIds.filter(
     (id) => !hasWorkflowResource({ context: resourceContext, type: 'dataset', id })
   );
-  const authorizedDatasetIds =
-    authTmbId || hasUncheckedDatasets
-      ? await filterDatasetsByTmbId({
-          datasetIds,
-          tmbId
-        })
-      : datasetIds;
+  let authorizedDatasetIds = datasetIds;
+  if (authTmbId) {
+    authorizedDatasetIds = await filterDatasetsByTmbId({
+      datasetIds,
+      tmbId
+    });
+  } else if (uncheckedDatasetIds.length > 0) {
+    const allowedUncheckedSet = new Set(
+      await filterDatasetsByTmbId({
+        datasetIds: uncheckedDatasetIds,
+        tmbId
+      })
+    );
+    authorizedDatasetIds = datasetIds.filter(
+      (id) => !uncheckedDatasetIds.includes(id) || allowedUncheckedSet.has(id)
+    );
+  }
   if (authorizedDatasetIds.length === 0) return [];
 
   const datasets = await MongoDataset.find(
@@ -55,7 +65,7 @@ export const loadAgentDatasetContext = async (
         $in: authorizedDatasetIds
       },
       ...(resourceContext &&
-      !hasUncheckedDatasets &&
+      uncheckedDatasetIds.length === 0 &&
       resourceContext.teamId &&
       !resourceContext.isRoot
         ? { teamId: resourceContext.teamId }

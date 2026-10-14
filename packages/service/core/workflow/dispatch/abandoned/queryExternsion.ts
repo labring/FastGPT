@@ -3,15 +3,15 @@ import { getTeamModelHandle } from '../../../ai/model/catalog/service';
 
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { queryExtension } from '../../../../core/ai/functions/queryExtension';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { loadWorkflowModelResource } from '../../utils/resource';
+import { loadWorkflowModelResource } from '../../resource/service';
 import { getHistories } from '../utils';
 
 type Props = ModuleDispatchProps<{

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Position } from 'reactflow';
 import { MySourceHandle, MyTargetHandle } from '.';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { isNodeConnectionAllowed } from '@fastgpt/global/core/workflow/template/context';
@@ -10,7 +10,7 @@ import { WorkflowBufferDataContext } from '../../../../context/workflowInitConte
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
-import { getIfElseBranchHandleKey } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
+import { getIfElseBranchHandleKey } from '@fastgpt/global/common/workflow/condition';
 
 export const ConnectionSourceHandle = ({
   nodeId,

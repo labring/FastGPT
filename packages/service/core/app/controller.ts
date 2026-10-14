@@ -34,7 +34,7 @@ import {
   type AppFormEditFormType
 } from '@fastgpt/global/core/app/formEdit/type';
 import z from 'zod';
-import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
+import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { deleteChatResourcesBySource } from '../chat/delete';
 

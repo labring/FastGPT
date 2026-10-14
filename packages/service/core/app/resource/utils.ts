@@ -1,4 +1,9 @@
 import {
+  isWorkflowModelExpression,
+  isWorkflowModelSlotEnabled,
+  isWorkflowSystemModelInput
+} from '@fastgpt/global/common/workflow/model';
+import {
   AppResourcesSchema,
   type AppChatConfigType,
   type AppResource,
@@ -10,16 +15,13 @@ import { splitCombineToolId, splitToolsetToolPluginId } from '@fastgpt/global/co
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+
+import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
 import {
-  isValidReferenceValueFormat,
-  isWorkflowSystemModelInput,
-  nodeInputIsReference,
   workflowDatasetParamModelSlots,
   workflowSystemModelSlots
-} from '@fastgpt/global/core/workflow/utils';
-import { getLogger, LogCategories } from '../../common/logger';
-
-const resourceLogger = getLogger(LogCategories.MODULE.APP);
+} from '@fastgpt/global/core/workflow/model/constants';
 
 const getValueList = (value: unknown) =>
   Array.isArray(value) ? value : value === undefined || value === null ? [] : [value];
@@ -33,15 +35,6 @@ const getStringValue = (value: unknown) => {
   if (typeof value === 'string' && value) return value;
   if (typeof value === 'number') return String(value);
   return;
-};
-
-/**
- * 提取节点/对话配置里的稳定模型标识（modelId）。
- */
-export const resolveSystemModelId = (value: unknown) => {
-  const rawValue = getStringValue(value) ?? getStringValue(getObjectValue(value, 'modelId'));
-  if (!rawValue || /^\{\{.*\}\}$/.test(rawValue)) return;
-  return rawValue;
 };
 
 const getEntityId = (value: unknown, specificKey?: string) =>
@@ -198,13 +191,11 @@ export const extractAppResources = ({
   };
 
   const addDataset = (value: unknown) => {
-    if (isValidReferenceValueFormat(value)) return;
     getValueList(value).forEach((item) => {
-      if (isValidReferenceValueFormat(item)) return;
       const id = getEntityId(item, 'datasetId');
       if (id) addResource({ type: 'dataset', id });
       const nested = getObjectValue(item, 'datasets');
-      if (nested && !isValidReferenceValueFormat(nested)) addDataset(nested);
+      if (nested) addDataset(nested);
     });
   };
 
@@ -216,7 +207,9 @@ export const extractAppResources = ({
   };
 
   const addModel = (value: unknown) => {
-    const id = resolveSystemModelId(value);
+    const id = getEntityId(value, 'modelId');
+    // 表达式尚未解析成真实模型 ID，不能固化为静态授权或在保存边界查目录。
+    if (isWorkflowModelExpression(id)) return;
     if (id) addResource({ type: 'model', id });
   };
 
@@ -247,16 +240,23 @@ export const extractAppResources = ({
     addTool(node.toolConfig?.httpTool?.toolId);
 
     const inputs = node.inputs ?? [];
+    const enabledSystemModelKeys = new Set<string>(
+      workflowSystemModelSlots
+        .filter((slot) => isWorkflowModelSlotEnabled({ node, slot }))
+        .map(({ modelIdKey }) => modelIdKey)
+    );
+
     inputs.forEach((input) => {
       if (nodeInputIsReference(input)) return;
       if (input.key === NodeInputKeyEnum.skills) {
         addSkills(input.value);
       }
-      if (
-        input.key === NodeInputKeyEnum.datasetSelectList ||
-        input.key === NodeInputKeyEnum.datasetParams
-      ) {
+      if (input.key === NodeInputKeyEnum.datasetSelectList) {
         addDataset(input.value);
+      }
+      if (input.key === NodeInputKeyEnum.datasetParams) {
+        addDataset(input.value);
+        addDatasetParamsModels(input.value);
       }
       if (input.key === NodeInputKeyEnum.selectedTools) {
         getValueList(input.value).forEach((tool) => {
@@ -268,40 +268,10 @@ export const extractAppResources = ({
         const id = getEntityId(input.value, 'appId');
         if (id) addResource({ type: 'agent', id });
       }
+      if (enabledSystemModelKeys.has(input.key) && isWorkflowSystemModelInput({ node, input })) {
+        addModel(input.value);
+      }
     });
-
-    const datasetSelectInput = inputs.find(
-      (input) => input.key === NodeInputKeyEnum.datasetSelectList
-    );
-    const hasSelectedDataset =
-      !datasetSelectInput ||
-      nodeInputIsReference(datasetSelectInput) ||
-      getValueList(datasetSelectInput.value).length > 0;
-
-    for (const { modelIdKey, featureKey } of workflowSystemModelSlots) {
-      const featureEnabled =
-        !featureKey ||
-        (hasSelectedDataset &&
-          inputs.some(
-            (item) => item.key === featureKey && !nodeInputIsReference(item) && item.value === true
-          ));
-      if (!featureEnabled) continue;
-
-      inputs.forEach((input) => {
-        if (
-          input.key === modelIdKey &&
-          !nodeInputIsReference(input) &&
-          isWorkflowSystemModelInput({ node, input })
-        ) {
-          addModel(input.value);
-        }
-      });
-    }
-
-    const datasetParamsInput = inputs.find((input) => input.key === NodeInputKeyEnum.datasetParams);
-    if (datasetParamsInput && !nodeInputIsReference(datasetParamsInput)) {
-      addDatasetParamsModels(datasetParamsInput.value);
-    }
   });
 
   if (chatConfig?.questionGuide?.open === true) {
@@ -332,7 +302,6 @@ export const resolveStoredAppResources = ({
   if (Array.isArray(resources)) {
     const parsed = AppResourcesSchema.safeParse(resources);
     if (parsed.success) return mergeAppResources(parsed.data);
-    resourceLogger.warn('Invalid stored app resources, fallback to node extraction');
   }
 
   const extracted = extractAppResources({

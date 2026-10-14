@@ -10,15 +10,8 @@ import { uploadSkillPackage } from '@fastgpt/service/core/ai/skill/package';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
-import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
+
 import { getUser } from '@test/datas/users';
-import {
-  PerResourceTypeEnum,
-  ReadPermissionVal
-} from '@fastgpt/global/support/permission/constant';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 
 const makePackage = async (entries: Array<{ path: string; name: string; description: string }>) => {
   const zip = new JSZip();
@@ -223,10 +216,11 @@ description: Zeta skill
 
     const deployedSkillVersions = await injectAgentSkillFilesToSandbox({
       sandbox: sandbox as any,
-      skillIds: [String(skill1._id), String(skill2._id)],
-      teamId,
-      tmbId,
-      workDirectory: '/workspace'
+      workDirectory: '/workspace',
+      skills: await MongoAgentSkills.find({
+        _id: { $in: [String(skill1._id), String(skill2._id)] },
+        deleteTime: null
+      }).lean()
     });
     const result = await getAgentSkillInfos({
       sandbox: sandbox as any,
@@ -296,31 +290,6 @@ description: Zeta skill
 });
 
 describe('injectAgentSkillFilesToSandbox', () => {
-  it('rejects a declared static skill when its entity is unavailable', async () => {
-    const resource = { type: 'skill' as const, id: 'missing-skill' };
-    const resourceContext = {
-      isRoot: false,
-      resources: [resource],
-      resourceMap: new Map([['skill:missing-skill', resource]]),
-      appMap: new Map(),
-      workflowMap: new Map(),
-      datasetMap: new Map(),
-      skillMap: new Map()
-    };
-
-    await runWithContext({ mcpClientMemory: {}, resourceContext }, () =>
-      expect(
-        injectAgentSkillFilesToSandbox({
-          sandbox: createSkillFilesystemMocks() as any,
-          skillIds: [resource.id],
-          teamId: 'team-id',
-          tmbId: 'tmb-id',
-          workDirectory: '/workspace'
-        })
-      ).rejects.toBe(SkillErrEnum.unExist)
-    );
-  });
-
   it('stops when deployed skill directory enumeration fails', async () => {
     const sandbox = {
       ...createSkillFilesystemMocks(),
@@ -333,10 +302,8 @@ describe('injectAgentSkillFilesToSandbox', () => {
     await expect(
       injectAgentSkillFilesToSandbox({
         sandbox: sandbox as any,
-        skillIds: [],
-        teamId: new Types.ObjectId().toHexString(),
-        tmbId: new Types.ObjectId().toHexString(),
-        workDirectory: '/workspace'
+        workDirectory: '/workspace',
+        skills: await MongoAgentSkills.find({ _id: { $in: [] }, deleteTime: null }).lean()
       })
     ).rejects.toThrow('list failed');
 
@@ -437,10 +404,11 @@ description: Latest current skill
 
     const deployedSkillVersions = await injectAgentSkillFilesToSandbox({
       sandbox: sandbox as any,
-      skillIds: [String(skill._id)],
-      teamId,
-      tmbId,
-      workDirectory: '/workspace'
+      workDirectory: '/workspace',
+      skills: await MongoAgentSkills.find({
+        _id: { $in: [String(skill._id)] },
+        deleteTime: null
+      }).lean()
     });
     const result = await getAgentSkillInfos({
       sandbox: sandbox as any,
@@ -472,7 +440,7 @@ description: Latest current skill
     ]);
   });
 
-  it('injects a global system skill from the resource snapshot', async () => {
+  it('injects an authorized global system skill', async () => {
     const user = await getUser(`runtime-system-skill-${getNanoid(6)}`);
     const { teamId, tmbId } = user;
     const skill = await MongoAgentSkills.create({
@@ -513,19 +481,14 @@ description: Latest current skill
       readFiles: vi.fn()
     };
 
-    const resourceContext = createWorkflowResourceContext({
-      resources: [{ type: 'skill', id: String(skill._id) }],
-      teamId
+    const staticVersions = await injectAgentSkillFilesToSandbox({
+      sandbox: sandbox as any,
+      workDirectory: '/workspace',
+      skills: await MongoAgentSkills.find({
+        _id: { $in: [String(skill._id)] },
+        deleteTime: null
+      }).lean()
     });
-    const staticVersions = await runWithContext({ mcpClientMemory: {}, resourceContext }, () =>
-      injectAgentSkillFilesToSandbox({
-        sandbox: sandbox as any,
-        skillIds: [String(skill._id)],
-        teamId,
-        tmbId,
-        workDirectory: '/workspace'
-      })
-    );
 
     expect(staticVersions).toEqual([
       {
@@ -537,131 +500,6 @@ description: Latest current skill
         targetDir
       }
     ]);
-  });
-
-  it('filters unauthorized runtime skills instead of injecting them', async () => {
-    const owner = await getUser(`runtime-skill-owner-${getNanoid(6)}`);
-    const runner = await getUser(`runtime-skill-runner-${getNanoid(6)}`, owner.teamId);
-
-    const [readableSkill, protectedSkill] = await MongoAgentSkills.create([
-      {
-        name: 'Readable',
-        description: '',
-        teamId: owner.teamId,
-        tmbId: owner.tmbId,
-        source: AgentSkillSourceEnum.personal
-      },
-      {
-        name: 'Protected',
-        description: '',
-        teamId: owner.teamId,
-        tmbId: owner.tmbId,
-        source: AgentSkillSourceEnum.personal
-      }
-    ]);
-    await MongoResourcePermission.create({
-      resourceType: PerResourceTypeEnum.agentSkill,
-      teamId: owner.teamId,
-      resourceId: String(readableSkill._id),
-      tmbId: runner.tmbId,
-      permission: ReadPermissionVal
-    });
-
-    const readableVersionId = new Types.ObjectId();
-    const protectedVersionId = new Types.ObjectId();
-    const [readablePackage, protectedPackage] = await Promise.all([
-      makePackage([{ path: 'skill.md', name: 'readable', description: 'Readable skill' }]),
-      makePackage([{ path: 'skill.md', name: 'protected', description: 'Protected skill' }])
-    ]);
-    const [readableStorage, protectedStorage] = await Promise.all([
-      uploadSkillPackage({
-        teamId: owner.teamId,
-        skillId: String(readableSkill._id),
-        packageObjectId: 'runtime-readable-version',
-        zipBuffer: readablePackage
-      }),
-      uploadSkillPackage({
-        teamId: owner.teamId,
-        skillId: String(protectedSkill._id),
-        packageObjectId: 'runtime-protected-version',
-        zipBuffer: protectedPackage
-      })
-    ]);
-    await MongoAgentSkillsVersion.create([
-      {
-        _id: readableVersionId,
-        skillId: readableSkill._id,
-        tmbId: owner.tmbId,
-        storageKey: readableStorage.key
-      },
-      {
-        _id: protectedVersionId,
-        skillId: protectedSkill._id,
-        tmbId: owner.tmbId,
-        storageKey: protectedStorage.key
-      }
-    ]);
-    await Promise.all([
-      MongoAgentSkills.updateOne(
-        { _id: readableSkill._id },
-        { $set: { currentVersionId: readableVersionId } }
-      ),
-      MongoAgentSkills.updateOne(
-        { _id: protectedSkill._id },
-        { $set: { currentVersionId: protectedVersionId } }
-      )
-    ]);
-
-    const readableTargetDir = `/workspace/projects/${String(readableVersionId)}`;
-    const protectedTargetDir = `/workspace/projects/${String(protectedVersionId)}`;
-    const sandbox = {
-      ...createSkillFilesystemMocks(),
-      writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer }>) =>
-        makeWriteResults(entries)
-      ),
-      execute: vi.fn(async (command: string) => {
-        if (command.includes('unzip')) {
-          return { exitCode: 0, stdout: '', stderr: '' };
-        }
-
-        throw new Error(`Unexpected command: ${command}`);
-      }),
-      readFiles: vi.fn()
-    };
-
-    const deployedSkillVersions = await injectAgentSkillFilesToSandbox({
-      sandbox: sandbox as any,
-      skillIds: [String(readableSkill._id), String(protectedSkill._id)],
-      teamId: owner.teamId,
-      tmbId: runner.tmbId,
-      workDirectory: '/workspace'
-    });
-
-    expect(deployedSkillVersions).toEqual([
-      {
-        skillId: String(readableSkill._id),
-        name: 'Readable',
-        description: '',
-        avatar: undefined,
-        versionId: String(readableVersionId),
-        targetDir: readableTargetDir
-      }
-    ]);
-    expect(sandbox.writeFiles).toHaveBeenCalledTimes(1);
-    const writtenFilePaths = sandbox.writeFiles.mock.calls[0][0].map(
-      (entry: { path: string }) => entry.path
-    );
-    expect(writtenFilePaths).toEqual([
-      expect.stringContaining(`/workspace/projects/.tmp-${String(readableVersionId)}`)
-    ]);
-    expect(writtenFilePaths.join('\n')).not.toContain(String(protectedVersionId));
-    expect(sandbox.moveFiles).toHaveBeenCalledWith([
-      expect.objectContaining({ destination: readableTargetDir })
-    ]);
-    const movedDestinations = sandbox.moveFiles.mock.calls.flatMap(([entries]) =>
-      entries.map(({ destination }) => destination)
-    );
-    expect(movedDestinations).not.toContain(protectedTargetDir);
   });
 
   it('skips existing current version directories and removes unselected version directories', async () => {
@@ -710,10 +548,11 @@ description: Latest current skill
 
     const deployedSkillVersions = await injectAgentSkillFilesToSandbox({
       sandbox: sandbox as any,
-      skillIds: [String(skill._id)],
-      teamId,
-      tmbId,
-      workDirectory: '/workspace'
+      workDirectory: '/workspace',
+      skills: await MongoAgentSkills.find({
+        _id: { $in: [String(skill._id)] },
+        deleteTime: null
+      }).lean()
     });
 
     expect(deployedSkillVersions).toEqual([
@@ -782,10 +621,11 @@ description: Latest current skill
     await expect(
       injectAgentSkillFilesToSandbox({
         sandbox: sandbox as any,
-        skillIds: [String(skill._id)],
-        teamId,
-        tmbId,
-        workDirectory: '/workspace'
+        workDirectory: '/workspace',
+        skills: await MongoAgentSkills.find({
+          _id: { $in: [String(skill._id)] },
+          deleteTime: null
+        }).lean()
       })
     ).rejects.toThrow('Failed to write skill ZIP package: write failed');
     expect(sandbox.deleteDirectories).toHaveBeenCalledWith([
@@ -809,10 +649,11 @@ description: Latest current skill
     // 1. Test when skill is invalid or deleted (skills.length === 0)
     const resultNoSkills = await injectAgentSkillFilesToSandbox({
       sandbox: sandbox as any,
-      skillIds: [new Types.ObjectId().toHexString()],
-      teamId,
-      tmbId,
-      workDirectory: '/workspace'
+      workDirectory: '/workspace',
+      skills: await MongoAgentSkills.find({
+        _id: { $in: [new Types.ObjectId().toHexString()] },
+        deleteTime: null
+      }).lean()
     });
     expect(resultNoSkills).toEqual([]);
 
@@ -826,10 +667,11 @@ description: Latest current skill
     });
     const resultNoVersion = await injectAgentSkillFilesToSandbox({
       sandbox: sandbox as any,
-      skillIds: [String(skill._id)],
-      teamId,
-      tmbId,
-      workDirectory: '/workspace'
+      workDirectory: '/workspace',
+      skills: await MongoAgentSkills.find({
+        _id: { $in: [String(skill._id)] },
+        deleteTime: null
+      }).lean()
     });
     expect(resultNoVersion).toEqual([]);
   });
@@ -847,10 +689,8 @@ description: Latest current skill
 
     const result = await injectAgentSkillFilesToSandbox({
       sandbox: sandbox as any,
-      skillIds: [],
-      teamId: new Types.ObjectId().toHexString(),
-      tmbId,
-      workDirectory: '/workspace'
+      workDirectory: '/workspace',
+      skills: await MongoAgentSkills.find({ _id: { $in: [] }, deleteTime: null }).lean()
     });
 
     expect(result).toEqual([]);

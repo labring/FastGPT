@@ -1,7 +1,12 @@
-import { NodeGradients, NodeBorderColors } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  NodeGradients,
+  NodeBorderColors,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import { type VariableInputEnum, variableMap } from '@fastgpt/global/core/workflow/constants';
+import type { EditorVariablePickerType } from '@fastgpt/global/core/workflow/type/io';
 
 const getColorSchemaBySource = (source?: AppToolSourceEnum | string) => {
   if (source === AppToolSourceEnum.http || source === AppToolSourceEnum.mcp) {
@@ -60,4 +65,13 @@ export const getColorSchemaByFlowNodeType = (
     return 'skyBlue';
   }
   return undefined;
+};
+
+export const formatEditorVariablePickerIcon = (
+  variables: { key: string; label: string; type?: `${VariableInputEnum}`; required?: boolean }[]
+): EditorVariablePickerType[] => {
+  return variables.map((item) => ({
+    ...item,
+    icon: item.type ? variableMap[item.type]?.icon : variableMap['input'].icon
+  }));
 };

@@ -19,7 +19,7 @@ import {
   useValidateFieldName,
   useSubmitErrorHandler
 } from '@/components/core/app/utils/formValidation';
-import { getSelectedInputRenderType } from '@fastgpt/global/core/app/formEdit/utils';
+import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 
 export const defaultInput: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.reference], // Can only choose one here

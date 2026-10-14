@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -839,7 +840,7 @@ describe('getAgentRuntimeTools schema loading', () => {
       tools: [{ id: 'mcp-stripped_mcp_app/search', config: {} }]
     });
 
-    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.stripped_mcp_app, undefined);
+    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.stripped_mcp_app);
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
   });
@@ -858,7 +859,7 @@ describe('getAgentRuntimeTools schema loading', () => {
       tools: [{ id: 'legacy_mcp_app', config: {} }]
     });
 
-    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.legacy_mcp_app, undefined);
+    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.legacy_mcp_app);
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.name).toBe('legacy_mcp_app0');
     expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
@@ -879,7 +880,7 @@ describe('getAgentRuntimeTools schema loading', () => {
       tools: [{ id: 'mcp-legacy_mcp_app/search', config: {} }]
     });
 
-    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.legacy_mcp_app, undefined);
+    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.legacy_mcp_app);
     expect(tools).toHaveLength(1);
     expect(tools[0].id).toBe('legacy_mcp_appsearch');
     expect(tools[0].name).toBe('search');
@@ -921,6 +922,81 @@ describe('getAgentRuntimeTools schema loading', () => {
       id: 'http_app',
       name: 'http_app name'
     });
+  });
+
+  it.each([
+    { source: 'mcp', appId: 'mcp_app', toolName: 'search', authorization: 'snapshot' },
+    { source: 'http', appId: 'http_app', toolName: 'create', authorization: 'snapshot' },
+    { source: 'mcp', appId: 'mcp_app', toolName: 'search', authorization: 'member' },
+    { source: 'http', appId: 'http_app', toolName: 'create', authorization: 'member' },
+    { source: 'mcp', appId: 'mcp_app', toolName: 'search', authorization: 'denied' },
+    { source: 'http', appId: 'http_app', toolName: 'create', authorization: 'denied' }
+  ])(
+    'loads $source child tools using $authorization authorization',
+    async ({ source, appId, toolName, authorization }) => {
+      if (authorization === 'denied') {
+        authAppByTmbIdMock.mockRejectedValueOnce(AppErrEnum.unAuthApp);
+      }
+      const tools = await runWithContext(
+        {
+          mcpClientMemory: {},
+          resourceContext: {
+            isRoot: false,
+            resourceMap: new Map([
+              [
+                `tool:${appId}`,
+                {
+                  type: 'tool',
+                  id: appId,
+                  data: { toolNames: [authorization === 'snapshot' ? toolName : 'otherTool'] }
+                }
+              ]
+            ])
+          }
+        },
+        () =>
+          getAgentRuntimeTools({
+            tmbId: 'tmb_1',
+            tools: [{ id: `${source}-${appId}/${toolName}`, config: {} }]
+          })
+      );
+
+      expect(tools).toHaveLength(authorization === 'denied' ? 0 : 1);
+      if (authorization === 'snapshot') {
+        expect(authAppByTmbIdMock).not.toHaveBeenCalled();
+      } else {
+        expect(authAppByTmbIdMock).toHaveBeenCalledOnce();
+      }
+      if (authorization !== 'denied') expect(tools[0].name).toBe(toolName);
+    }
+  );
+
+  it.each([
+    { appId: 'mcp_app', tool: mcpTool },
+    { appId: 'http_app', tool: httpTool }
+  ])('keeps snapshot child selection when expanding $appId', async ({ appId, tool }) => {
+    const children = [tool, { ...tool, name: 'otherTool' }];
+    getMCPChildrenMock.mockResolvedValue(children);
+    getHTTPToolListMock.mockResolvedValue(children);
+
+    const tools = await runWithContext(
+      {
+        mcpClientMemory: {},
+        resourceContext: {
+          isRoot: false,
+          resourceMap: new Map([
+            [`tool:${appId}`, { type: 'tool', id: appId, data: { toolNames: [tool.name] } }]
+          ])
+        }
+      },
+      () => getAgentRuntimeTools({ tmbId: 'tmb_1', tools: [{ id: appId, config: {} }] })
+    );
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].toolConfig?.mcpTool?.toolId ?? tools[0].toolConfig?.httpTool?.toolId).toContain(
+      `/${tool.name}`
+    );
+    expect(authAppByTmbIdMock).not.toHaveBeenCalled();
   });
 
   it('loads a selected HTTP tool with its request schema', async () => {

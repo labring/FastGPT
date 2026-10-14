@@ -446,3 +446,12 @@ export const HttpParamAndHeaderItemTypeSchema = z.object({
   value: z.string()
 });
 export type HttpParamAndHeaderItemType = z.infer<typeof HttpParamAndHeaderItemTypeSchema>;
+
+export type EditorVariablePickerType = {
+  key: string;
+  label: string;
+  required?: boolean;
+  icon?: string;
+  valueType?: WorkflowIOValueTypeEnum;
+  valueDesc?: string;
+};

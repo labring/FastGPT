@@ -1,3 +1,4 @@
+import { loadWorkflowSkillResources } from '../../../../../resource/service';
 import type { AgentInputFile } from '../../adapter/userContext';
 import type { BuiltinSkillSource } from '@fastgpt/global/core/ai/skill/runtime/builtin';
 import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
@@ -118,7 +119,6 @@ export async function ensureAgentSandboxRuntime({
             context,
             preparePackageMirrors(),
             injectSelectedSkillFiles({
-              teamId,
               tmbId,
               skillIds,
               selectedSkills
@@ -189,22 +189,19 @@ const scanEditDebugSkillInfos = (): AgentSandboxPrepareStep => async (context) =
 
 const injectSelectedSkillFiles =
   ({
-    teamId,
     tmbId,
     skillIds,
     selectedSkills
   }: {
-    teamId: string;
     tmbId: string;
     skillIds: string[];
     selectedSkills?: SelectedAgentSkillItemType[];
   }): AgentSandboxPrepareStep =>
   async (context) => {
+    const skills = await loadWorkflowSkillResources({ skillIds, tmbId });
     const deployedSkillVersions = await injectAgentSkillFilesToSandbox({
       sandbox: context.sandbox,
-      teamId,
-      tmbId,
-      skillIds,
+      skills,
       workDirectory: context.workspaceRoot ?? context.workDirectory
     });
     const selectedSkillMap = new Map(selectedSkills?.map((skill) => [skill.skillId, skill]) || []);

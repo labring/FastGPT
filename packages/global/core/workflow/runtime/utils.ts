@@ -1,7 +1,7 @@
 import json5 from 'json5';
 import { ChatRoleEnum } from '../../../core/chat/constants';
 import type { ChatItemMiniType } from '../../../core/chat/type';
-import type { NodeOutputItemType } from './type';
+import type { NodeOutputItemType, RuntimeNodeItemType } from './type';
 import { createChatCompletionDeltaResponse } from '../../ai/llm/utils';
 import {
   NodeInputKeyEnum,
@@ -14,8 +14,8 @@ import { type WorkflowInteractiveResponseType } from '../template/system/interac
 import type { RuntimeEdgeItemType, StoreEdgeItemType } from '../type/edge';
 import type { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import type { StoreNodeItemType } from '../type/node';
-import { isValidReferenceValueFormat } from '../utils';
-import type { RuntimeNodeItemType } from './type';
+import { isValidReferenceValueFormat } from '../../../common/workflow/reference';
+
 import { isSecretValue } from '../../../common/secret/utils';
 import { isChildInteractive } from '../template/system/interactive/constants';
 
