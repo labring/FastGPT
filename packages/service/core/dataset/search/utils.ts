@@ -222,7 +222,8 @@ export const normalizeDatasetIndexImageToModelInput = async (
   }
 
   if (imageUrl.startsWith('data:image/') || isHttpUrl(imageUrl)) {
-    return normalizeImageToBase64(imageUrl);
+    // 透传 toBase64：同批 S3 key 与外部 URL 并存时保持单一快照，防混合形态
+    return normalizeImageToBase64(imageUrl, toBase64);
   }
 
   throw new Error('Invalid dataset file key');
