@@ -1,6 +1,5 @@
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MemberNameFormModal from '@/pageComponents/account/team/MemberNameForm';
-import { useUserStore } from '@/web/support/user/useUserStore';
 
 /**
  * 强制补齐当前团队成员名。
@@ -8,11 +7,10 @@ import { useUserStore } from '@/web/support/user/useUserStore';
  */
 const ForceMemberNameModal = ({ onSuccess }: { onSuccess: () => void }) => {
   const { t } = useSafeTranslation();
-  const { userInfo } = useUserStore();
 
   return (
     <MemberNameFormModal
-      defaultName={userInfo?.username ?? ''}
+      defaultName=""
       dismissible={false}
       placeholder={t('account_team:invite_member_name_placeholder')}
       onSubmitted={(latestUserInfo) => {

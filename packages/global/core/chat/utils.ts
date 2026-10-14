@@ -37,17 +37,13 @@ export const hasContextCheckpoint = (history: ChatItemMiniType) =>
  * 且已在消息内部的工具折叠卡片中展示，不应被提升为整轮对话或工作流的顶层失败错误。
  *
  * 判定依据：
- * 1. 显式工具节点类型（FlowNodeTypeEnum.tool / toolSet / toolCall）；
+ * 1. 显式工具节点类型（FlowNodeTypeEnum.tool / toolSet）；
  * 2. 具备 Function Calling 调用与消费特征：
  *    - 绑定了 Agent 调度的 toolId；
  *    - 或产生并挂载了供大模型继续推理消费的 toolRes（子应用工具、自定义工具、系统工具在被调用时均会生成 toolRes）。
  */
 export const isToolExecutionResponse = (item: ChatHistoryItemResType): boolean => {
-  if (
-    item.moduleType === FlowNodeTypeEnum.tool ||
-    item.moduleType === FlowNodeTypeEnum.toolSet ||
-    item.moduleType === FlowNodeTypeEnum.toolCall
-  ) {
+  if (item.moduleType === FlowNodeTypeEnum.tool || item.moduleType === FlowNodeTypeEnum.toolSet) {
     return true;
   }
 

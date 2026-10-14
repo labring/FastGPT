@@ -3,7 +3,7 @@ import type {
   ChatCompletionMessageToolCall,
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
-import type { SandboxClient } from '../../../sandbox/interface/runtime';
+import type { SandboxClient } from '../../../sandbox/application/runtime/client';
 import type { AgentLoopDatasetSearchExecutor } from './systemTool/datasetSearch';
 import type { AgentLoopUsage } from './usage';
 

@@ -10,7 +10,7 @@ vi.mock('@fastgpt/service/env', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/interface/config', () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
   getAgentSandboxArchiveMaxBytes: vi.fn(() => 1024),
   getAgentSandboxMaxFileBytes: vi.fn(() => 512),
   getAgentSandboxSkillMaxBytes: vi.fn(() => 512)
@@ -66,5 +66,43 @@ describe('initFastGPTConfig', () => {
       systemEnv: {}
     } as any);
     expect(global.feConfigs.show_agent_sandbox_free_tip).toBe(true);
+  });
+
+  it.each(['agentSandboxMax', 'agentSandboxMaxPerTeam'])(
+    '加载入口拒绝非法 %s，保留此前的全局配置',
+    (field) => {
+      initFastGPTConfig({ feConfigs: {}, systemEnv: { agentSandboxMax: 7 } } as any);
+      const previousSystemEnv = global.systemEnv;
+      const previousFeConfigs = global.feConfigs;
+
+      expect(() =>
+        initFastGPTConfig({ feConfigs: {}, systemEnv: { [field]: -1 } } as any)
+      ).toThrow();
+      expect(global.systemEnv).toBe(previousSystemEnv);
+      expect(global.feConfigs).toBe(previousFeConfigs);
+    }
+  );
+
+  it('其他配置降级时仍归一化配额，并保留无关字段', () => {
+    initFastGPTConfig(
+      JSON.parse(
+        JSON.stringify({
+          feConfigs: {},
+          systemEnv: {
+            datasetParseMaxProcess: 'not_a_number',
+            agentSandboxMax: '12',
+            agentSandboxMaxPerTeam: null,
+            customSetting: 7
+          }
+        })
+      )
+    );
+
+    expect(global.systemEnv).toMatchObject({
+      datasetParseMaxProcess: 'not_a_number',
+      agentSandboxMax: 12,
+      agentSandboxMaxPerTeam: undefined,
+      customSetting: 7
+    });
   });
 });

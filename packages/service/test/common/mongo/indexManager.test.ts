@@ -14,6 +14,7 @@ import {
   MongoDatasetSynonym,
   MongoDatasetSynonymMapping
 } from '@fastgpt/service/core/dataset/synonym/schema';
+import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
 import { MongoModelStatusProbeRecord } from '@fastgpt/service/core/ai/modelStatus/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 
@@ -624,5 +625,30 @@ describe('dataset rebuild status index migration', () => {
     expect(names.has('rebuilding_1_teamId_1_datasetId_1')).toBe(false);
     expect(names.has('indexStatus_1_teamId_1_datasetId_1')).toBe(true);
     expect(names.has('customer_rebuild_status')).toBe(true);
+  });
+});
+
+describe('sandbox quota index migration', () => {
+  it('removes the old source quota index and retains current and customer indexes', async () => {
+    const schema = new Schema({}, { autoIndex: false });
+    MongoSandboxInstance.schema.indexes().forEach(([key, options]) => {
+      defineIndex(schema, { key, options });
+    });
+    defineDeprecatedTestIndexes(
+      schema,
+      getSchemaDeprecatedMongoIndexes(MongoSandboxInstance.schema)
+    );
+    const model = createModel({ schema, prefix: 'SandboxQuotaIndex' });
+    await model.collection.createIndex({ sourceType: 1, status: 1, provider: 1 });
+    await model.collection.createIndex({ sourceType: 1 }, { name: 'customer_sandbox_source' });
+
+    await MongoIndexManager.syncModelIndexes({ model, logger });
+
+    const names = await getIndexNames(model);
+    expect(names).not.toContain('sourceType_1_status_1_provider_1');
+    expect(names).toContain('teamId_1_status_1');
+    expect(names).toContain('status_1_lastActiveAt_1');
+    expect(names).toContain('sourceType_1_sourceId_1_userId_1');
+    expect(names).toContain('customer_sandbox_source');
   });
 });

@@ -4,11 +4,8 @@
  * 只组合工作目录、输入文件、镜像源等 prepare step，不直接操作 Mongo 或 provider 配置。
  */
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
-import {
-  injectInputFilesToSandbox,
-  type SandboxInputFile,
-  type SandboxInputFileReader
-} from './files';
+import { injectInputFilesToSandbox, type SandboxInputFile } from './files';
+import { type SandboxInputFileReader } from '../file';
 import { prepareSandboxRuntimeMirrors } from './mirrors';
 
 export type SandboxPrepareContext = {

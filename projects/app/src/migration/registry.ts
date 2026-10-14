@@ -23,6 +23,7 @@ import { enableChannelReasoningMapping } from './tasks/4171/20260923_enable_chan
 import { backfillMemberNameSet } from './tasks/4171/20260928_backfill_member_name_set';
 import { migrateDatasetRebuildStatus } from './tasks/4171/20261009_migrate_dataset_rebuild_status';
 import { migrateChunkTraining } from './tasks/4171/20261008_migrate_chunk_training';
+import { backfillAgentSandboxTeamId } from './tasks/4173/20261009_backfill_agent_sandbox_team_id';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -514,6 +515,34 @@ export const systemMigrations = [
     onFailure: SystemMigrationFailurePolicyEnum.continue,
     manual: true,
     run: migrateDatasetRebuildStatus
+  },
+  {
+    id: '20261009_backfill_agent_sandbox_team_id',
+    version: '4.17.3',
+    nameKey: i18nT('system_migration:migrations.20261009_backfill_agent_sandbox_team_id.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261009_backfill_agent_sandbox_team_id.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261009_backfill_agent_sandbox_team_id.result'),
+    progressSteps: [
+      {
+        key: 'instances',
+        labelKey: i18nT(
+          'system_migration:migrations.20261009_backfill_agent_sandbox_team_id.instances'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261009_backfill_agent_sandbox_team_id.validation'
+        )
+      }
+    ],
+    // 缺 teamId 只影响团队配额归属：app 会话与技能编辑共用系统总上限，且运行期会惰性补齐，
+    // 无需阻塞启动；孤儿记录只跳过，来源异常或校验发现的遗漏由管理员修复后重试。
+    blockStartup: false,
+    onFailure: SystemMigrationFailurePolicyEnum.continue,
+    run: backfillAgentSandboxTeamId
   }
 ] as const satisfies readonly SystemMigration[];
 

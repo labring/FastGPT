@@ -19,7 +19,7 @@ import {
   normalizeChatFileStoreValue
 } from '../../../chat/fileStoreValue';
 import { getWorkflowFileContext } from '../../utils/context';
-import { isAbsoluteHttpUrl } from '../../utils/fileContext';
+import { isAbsoluteHttpUrl } from '../../../chat/file/utils';
 import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 
 const DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES = 5;

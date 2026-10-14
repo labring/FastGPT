@@ -208,9 +208,11 @@ describe('startManualSystemMigration', () => {
       dependsOn: [prerequisite.id]
     };
     const registry = [prerequisite, dependent];
-    await expect(startManualSystemMigration(dependent.id, registry)).rejects.toThrow(
-      prerequisite.id
-    );
+    await expect(startManualSystemMigration(dependent.id, registry)).rejects.toMatchObject({
+      name: 'UserError',
+      message: 'system_migration:prerequisite_not_succeeded',
+      prerequisiteNameKey: prerequisite.nameKey
+    });
     await getSystemMigrationList(registry);
     for (const status of [
       SystemMigrationStatusEnum.waiting,
@@ -219,9 +221,9 @@ describe('startManualSystemMigration', () => {
       SystemMigrationStatusEnum.failed
     ]) {
       await MongoSystemMigrationState.updateOne({ _id: prerequisite.id }, { $set: { status } });
-      await expect(startManualSystemMigration(dependent.id, registry)).rejects.toThrow(
-        prerequisite.id
-      );
+      await expect(startManualSystemMigration(dependent.id, registry)).rejects.toMatchObject({
+        prerequisiteNameKey: prerequisite.nameKey
+      });
       expect((await MongoSystemMigrationState.findById(dependent.id))?.status).toBe(
         SystemMigrationStatusEnum.waiting
       );
@@ -230,9 +232,11 @@ describe('startManualSystemMigration', () => {
       { _id: dependent.id },
       { $set: { status: SystemMigrationStatusEnum.failed } }
     );
-    await expect(retryNonBlockingSystemMigration(dependent.id, registry)).rejects.toThrow(
-      prerequisite.id
-    );
+    await expect(retryNonBlockingSystemMigration(dependent.id, registry)).rejects.toMatchObject({
+      name: 'UserError',
+      message: 'system_migration:prerequisite_not_succeeded',
+      prerequisiteNameKey: prerequisite.nameKey
+    });
     await MongoSystemMigrationState.updateOne(
       { _id: prerequisite.id },
       { $set: { status: SystemMigrationStatusEnum.succeeded } }
@@ -249,6 +253,26 @@ describe('startManualSystemMigration', () => {
     expect((await MongoSystemMigrationState.findById(dependent.id))?.status).toBe(
       SystemMigrationStatusEnum.pending
     );
+  });
+
+  it('returns a prerequisite name key without choosing a server language', async () => {
+    const prerequisite = {
+      ...manual,
+      id: '20261008_migrate_chunk_training',
+      nameKey: 'system_migration:migrations.20261008_migrate_chunk_training.name'
+    };
+    const dependent = {
+      ...manual,
+      id: '20261009_migrate_dataset_rebuild_status',
+      nameKey: 'system_migration:migrations.20261009_migrate_dataset_rebuild_status.name',
+      dependsOn: [prerequisite.id]
+    };
+    const registry = [prerequisite, dependent];
+
+    await expect(startManualSystemMigration(dependent.id, registry)).rejects.toMatchObject({
+      message: 'system_migration:prerequisite_not_succeeded',
+      prerequisiteNameKey: prerequisite.nameKey
+    });
   });
   it('lists a waiting task without blocking readiness, then accepts exactly one concurrent start', async () => {
     const list = await getSystemMigrationList([manual]);

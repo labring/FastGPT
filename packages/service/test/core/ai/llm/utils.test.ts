@@ -2,7 +2,10 @@ import {
   loadRequestMessages,
   filterGPTMessageByMaxContext
 } from '@fastgpt/service/core/ai/llm/utils';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
+import {
+  ChatCompletionContentPartInputAudioSchema,
+  type ChatCompletionMessageParam
+} from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
@@ -45,11 +48,12 @@ const mockGetImageBase64 = vi.mocked(getImageBase64);
 const mockAxiosHead = vi.mocked(axios.head);
 const mockAxiosGet = vi.mocked(axios.get);
 const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
+const multimediaEnv: { MULTIPLE_DATA_TO_BASE64: boolean } = serviceEnv;
 
 describe('filterGPTMessageByMaxContext function tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+    multimediaEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
     mockCountGptMessagesTokens.mockResolvedValue(10);
   });
 
@@ -429,7 +433,7 @@ describe('filterGPTMessageByMaxContext function tests', () => {
 describe('loadRequestMessages function tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+    multimediaEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
     mockGetImageBase64.mockResolvedValue({
       completeBase64: 'data:image/png;base64,test',
       base64: 'test',
@@ -571,7 +575,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should extract audio and video links when enabled', async () => {
-      serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
 
       const messages: ChatCompletionMessageParam[] = [
         {
@@ -622,7 +626,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should convert extracted audio and video links when MULTIPLE_DATA_TO_BASE64 is enabled', async () => {
-      serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = true;
       mockAxiosGet.mockResolvedValue({
         data: Buffer.from('media bytes')
       });
@@ -672,8 +676,97 @@ describe('loadRequestMessages function tests', () => {
       });
     });
 
+    it.each([
+      ['https://files.example.com/opaque', '会议录音', undefined],
+      ['https://files.example.com/opaque', 'explicit.mp3', undefined],
+      ['https://files.example.com/audio.ogg', 'incorrect.wav', 'ogg'],
+      ['https://files.example.com/audio.mp3', undefined, 'mp3'],
+      ['https://files.example.com/audio.bin', '会议录音', undefined]
+    ] as const)(
+      '按 audio 类型转换，名称不影响发送，URL 格式可选：%s / %s',
+      async (url, name, format) => {
+        multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+        const result = await loadRequestMessages({
+          messages: [
+            {
+              role: ChatCompletionRequestMessageRoleEnum.User,
+              content: [
+                { type: 'file_url', fileType: 'audio', url, name },
+                { type: 'text', text: '识别录音' }
+              ]
+            }
+          ],
+          useAudio: true
+        });
+        expect(result[0].content).toEqual([
+          { type: 'input_audio', input_audio: { data: url, ...(format ? { format } : {}) } },
+          { type: 'text', text: '识别录音' }
+        ]);
+        const content = result[0].content;
+        if (Array.isArray(content)) {
+          expect(() => ChatCompletionContentPartInputAudioSchema.parse(content[0])).not.toThrow();
+        }
+        expect(mockAxiosGet).not.toHaveBeenCalled();
+      }
+    );
+
+    it('无文件名音频转 base64 时仍保留附件，不猜测 format', async () => {
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = true;
+      const url = 'https://files.example.com/opaque';
+      const buffer = Buffer.from('audio bytes');
+      mockAxiosGet.mockResolvedValue({ data: buffer });
+
+      const result = await loadRequestMessages({
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: [{ type: 'file_url', fileType: 'audio', url }]
+          }
+        ],
+        useAudio: true
+      });
+
+      expect(result[0].content).toEqual([
+        { type: 'input_audio', input_audio: { data: `data:;base64,${buffer.toString('base64')}` } }
+      ]);
+      expect(mockAxiosGet).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(
+      (['file_url', 'video_url'] as const).flatMap((type) =>
+        [false, true].map((base64) => [type, base64] as const)
+      )
+    )('无后缀视频按协议转换，类型=%s、转 base64=%s', async (type, base64) => {
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = base64;
+      const url = 'https://files.example.com/opaque?token=video';
+      const buffer = Buffer.from('video bytes');
+      mockAxiosGet.mockResolvedValue({ data: buffer });
+
+      const result = await loadRequestMessages({
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: [
+              type === 'file_url'
+                ? { type, fileType: 'video', url, name: 'misleading.wav' }
+                : { type, video_url: { url } }
+            ]
+          }
+        ],
+        useVideo: true
+      });
+
+      expect(result[0].content).toEqual([
+        {
+          type: 'video_url',
+          video_url: { url: base64 ? `data:;base64,${buffer.toString('base64')}` : url }
+        }
+      ]);
+      expect(mockAxiosGet).toHaveBeenCalledTimes(base64 ? 1 : 0);
+    });
+
     it('should ignore file keys and normalize audio and video file_url from existing urls', async () => {
-      serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
       const audioUrl = 'https://cdn.example.com/preview/audio.mp3';
       const videoUrl = 'https://cdn.example.com/preview/video.mp4';
       const messages: ChatCompletionMessageParam[] = [
@@ -749,7 +842,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should extract clean image url from markdown link in json-like text', async () => {
-      serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
       const imageUrl =
         'https://proxy.file.fastgpt.io/chat/image.png?X-Amz-Signature=test&x-id=GetObject';
       const messages: ChatCompletionMessageParam[] = [
@@ -770,7 +863,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should extract image url before newline terminators', async () => {
-      serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
       const imageUrl =
         'https://proxy.file.fastgpt.io/chat/%E7%AE%80%E5%8E%86.png?X-Amz-Signature=test&x-id=GetObject';
       const messages: ChatCompletionMessageParam[] = [
@@ -924,7 +1017,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should pass through remote image URLs in array content without axios.head validation', async () => {
-      serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
       const messages: ChatCompletionMessageParam[] = [
         {
           role: ChatCompletionRequestMessageRoleEnum.User,
@@ -945,7 +1038,8 @@ describe('loadRequestMessages function tests', () => {
       expect(content.some((item: any) => item.type === 'image_url')).toBe(true);
     });
 
-    it('should remove origin from image URLs when provided', async () => {
+    it('should preserve absolute image URLs', async () => {
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
       const messages: ChatCompletionMessageParam[] = [
         {
           role: ChatCompletionRequestMessageRoleEnum.User,
@@ -955,12 +1049,13 @@ describe('loadRequestMessages function tests', () => {
 
       const result = await loadRequestMessages({
         messages,
-        useVision: true,
-        origin: 'https://mysite.com'
+        useVision: true
       });
 
-      // Just verify the function processes without error - axios call verification is complex
       expect(result).toHaveLength(1);
+      expect(result[0].content).toEqual([
+        { type: 'image_url', image_url: { url: 'https://mysite.com/images/test.png' } }
+      ]);
     });
   });
 
@@ -1191,7 +1286,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should handle environment variable MULTIPLE_DATA_TO_BASE64', async () => {
-      serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = true;
 
       const messages: ChatCompletionMessageParam[] = [
         {

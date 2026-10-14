@@ -1,6 +1,6 @@
 import { SubPlanSchema } from '../../../support/wallet/sub/type';
 import { z } from 'zod';
-import { BoolSchema, NumSchema } from '../../zod';
+import { BoolSchema, IntSchema, NumSchema, optionalNullToUndefined } from '../../zod';
 import type {
   LicensePayload,
   LicenseSchemaVersionType,
@@ -265,9 +265,6 @@ export const FastGPTFeConfigsSchema = z.looseObject({
       websiteSyncLimitMinuted: NumSchema.optional().meta({
         description: '网页数据源自动同步时间间隔限制（分钟）'
       }),
-      agentSandboxMaxEditDebug: NumSchema.optional().meta({
-        description: '单团队 Agent 沙箱最大同时在线编辑调试数'
-      }),
       agentSandboxMaxSessionRuntime: NumSchema.optional().meta({
         description: 'Agent 沙箱最大会话运行时间（毫秒）'
       }),
@@ -406,6 +403,16 @@ export const CustomDomainSchema = z.looseObject({
 export type customDomainType = z.infer<typeof CustomDomainSchema>;
 
 export const SystemEnvSchema = z.looseObject({
+  agentSandboxMax: optionalNullToUndefined(IntSchema.min(1)).meta({
+    description:
+      'Agent 沙箱活跃实例系统总上限，须为正整数（app 会话与技能编辑共用计数池）；未配置时使用环境变量',
+    example: 100
+  }),
+  agentSandboxMaxPerTeam: optionalNullToUndefined(IntSchema.min(1)).meta({
+    description:
+      '单团队 Agent 沙箱活跃实例配额，须为正整数；未配置时使用环境变量，环境变量未配置时不限制',
+    example: 10
+  }),
   openapiPrefix: z.string().optional(),
 
   datasetParseMaxProcess: NumSchema.default(10).meta({

@@ -2,7 +2,7 @@
 
 状态：已实现，作为当前分支唯一技术方案
 
-最后核对：2026-07-27
+最后核对：2026-10-12
 
 ## 1. 目标与范围
 
@@ -61,6 +61,10 @@ sessionWorkDirectory = <workspaceRoot>/sessions/<chatId>
 - 顶层 `status` 是唯一权威生命周期状态。
 - `operation` 只记录 operation token、持久阶段、心跳和错误，不承担第二套状态判断。
 - 普通 runtime 不得连接 `legacyMigrating` 或其他过渡态实例。
+- 新建 / 停止后重启 / 归档恢复统一经过「系统总上限 + 团队配额」Quota 检查
+  （`application/quota.ts`）：用量为 Mongo 活跃实例数，超限返回 409；
+  stop/archive/delete/keepalive 等释放路径不经过检查，不会被 Quota 阻塞。详见
+  [Agent Sandbox 当前设计](./index.md) 的「Quota」。
 - 单个 Chat 删除不删除共享 Sandbox，也不单独清理 `sessions/<chatId>`。
 - App 或 Skill 删除负责清理所属 v2 与 Legacy 资源。
 
@@ -100,6 +104,7 @@ type SandboxInstance = {
     startedAt: Date;
     heartbeatAt: Date;
     failedAt?: Date;
+    retryAfter?: Date; // 允许接管的时间，错误文本只用于展示
     error?: string;
   };
 };
@@ -161,6 +166,45 @@ App runtime 遵循以下规则：
 副作用完成后持久化 phase，最后使用相同 operation ID 提交终态。失败保留过渡态、phase 和错误，
 由原操作重试或满足隔离窗口后的 stale recovery 接管，不能直接把过渡态改回 `running`。
 
+创建/启动失败与归档恢复失败由 `application/lifecycle/service.ts` 统一收敛，请求重试、每 10 分钟
+的 stale recovery cron 和 Provider 迁移共用同一流程：
+
+- 接管先遵守持久化的 `retryAfter`；历史正向记录没有该字段时，分别等待 provisioning 5 分钟、
+  restoring 20 分钟的 heartbeat 隔离窗口。错误也可能来自超时，不能因 `operation.error` 存在就
+  假定远端调用已结束。业务删除接管这些过渡态同样遵守此规则。
+- 拿到 Lifecycle Lease 后重新读取记录；先原子抢占新 token 并持久化 `rollbackClaimed` 与精确清理目标，
+  然后依次提交 `rollbackProviderReleased`、`rollbackVolumeReleased` 和稳定终态。已经开始回滚的记录
+  只续跑清理。新失败写入 retryAfter：明确远端终止可立即重试，超时或未知结果等待隔离窗口；
+  旧回滚记录没有 retryAfter 时继续沿清理方向续跑。旧 `rollbackProviderDeleted` checkpoint
+  通过幂等清理兼容。
+- provisioning 回滚只停止计算资源，保留 workspace、volume、团队归属和业务元数据，回到 `stopped`。
+  restoring 回滚删除目标 Provider 半成品及 Mongo 中记录的目标 PVC generation，保留原 S3 归档，回到
+  `archived`。不能复用会删除 S3 的通用删除，也不能用普通归档覆盖恢复前的备份。
+- `providerEnsured` / `archiveInstalled` 已完成远端阶段时，只查询远端状态；确认仍为 Running 后可补交
+  `running`，不能通过 ensure/create 隐式创建资源。跨 Provider restore 迁移则先回到 archived。
+- 远端清理失败、状态不明或终态写入失败都保留活跃过渡态与 checkpoint，不提前释放配额。终态提交
+  前再次核对 Provider；若断点续跑发现迟到资源，重新进入清理阶段。回滚完成后的新激活重新检查配额。
+- 租约丢失的执行者不再记录可接管失败或调用 stop/delete 补偿，只关闭本地连接。Mongo fencing 不能
+  取消已发出的 Provider 请求，隔离窗口是保守策略，不能证明所有远端操作都已终止。
+- 新阶段在旧节点中属于未知阶段，旧 runner 会拒绝续跑并保留过渡态；滚动升级期间由新节点完成恢复。
+
+运行准备只有 `application/runtime/service.ts` 一条决策链：归属准备 → Running 快路径，或锁内重读 →
+旧 operation 恢复 → 配置归档/Provider 切换 → Quota → provision/restore → running。Client 只维护连接、
+派生路径和目录准备缓存，不解释 phase；Provider migration 和 Workflow 配置准备复用同一入口。
+
+- `connectRunning()` 只连接已有 Running 远端资源，不执行 create/start/resume；停止或过渡态返回不可用。
+  Running 快路径和保活均使用它，不能用仍会 resume 的 `ensureRunning({ allowCreate: false })` 替代。
+- 完整激活在慢路径取得 Lifecycle Lease 后才调用 ensureRunning；首次创建和缺失资源修复按
+  Source → Lifecycle 顺序取得两把锁。WithinLease 能力消费锁内快照，不重复取锁或自行重读。
+- 配置准备仅完成配置兼容与过渡态收敛，不启动 stopped 或恢复 archived；遇到其他执行者时有限等待，
+  每轮经过同一决策链，不能另写 phase 判断。完整激活遇到 busy 则返回 initializing。
+- Runner 从过渡态推导 operation 类型，step 返回 checkpoint，下一阶段消费已持久化 resource；
+  完成返回最新记录，删除返回 void，冲突抛明确错误。未知历史 phase 保留原状并拒绝猜测。
+- 共享状态、隔离时间、租约和限制统一定义在 `sandbox/constants.ts`；隔离时间按 operation 类型
+  直接读取毫秒表，stale 查询和失败重试不再换算分钟或导出派生别名。Redis TTL 等外部接口要求
+  其他单位时在常量名中明确。Schema 与推导类型留在 `type.ts`，文件私有实现细节留在所属模块。
+- Client 的只连接/完整激活能力由 factory 注入并贯穿后续使用，Provider 变更时路径同步更新。
+
 ### 5.2 Lease 分层
 
 锁顺序固定为：
@@ -173,6 +217,7 @@ Source Mutation Lease -> Sandbox Lifecycle Lease
 - Sandbox Lifecycle Lease 以稳定 `sandboxId` 为键，跨 Provider 串行化单个物理身份的生命周期。
 - Legacy migration job lease 只防止管理员重复调度，不承担单条资源正确性。
 - prepare 初始化 lease 只保护运行时文件准备，不替代生命周期 lease。
+- Quota 检查只统计 Mongo 活跃实例；检查与记录写入之间允许并发窗口，因此高并发下可能短暂超过限制。
 
 长任务在每个远端副作用前后调用 lease `assertValid()`。Provider 的 create/start/stop/delete 必须
 基于稳定 ID 保持幂等，重复删除或 404 按成功处理。App/Skill source 在创建、恢复、迁移前必须仍然
@@ -335,12 +380,12 @@ Sandbox 模块保持单向依赖：
 interface -> application -> infrastructure -> sandbox-adapter
 ```
 
-- 外部生产代码只从 `interface/*` 使用稳定能力。
+- 外部生产代码直接从公开能力的实际定义模块导入；interface 只保留 source 映射、会话和业务清理等实际实现。
 - application 负责编排，不直接访问 Mongoose Model。
 - v2 与 Legacy Mongo 读写集中在 `infrastructure/instance` repository。
 - Legacy migration 按 `service/workspace/cleanup/normalization/debugChatCleanup/types` 拆分，阶段判断留在 application。
-- 对外聚合只使用目录 `index.ts`，不保留非 `index.ts` 的兼容转发文件。
-- 架构测试阻止反向依赖、外部绕过 interface 和 Sandbox 内部循环导入。
+- 不使用任何 re-export 或 barrel；移动定义时同步修改调用方和 mock 路径。
+- 架构测试仅检查 Sandbox 域内的相对导入循环；模块分层和直接导入约定由代码审查核对。
 
 具体入口和当前工具集合见 [Agent Sandbox 当前设计](./index.md)。
 

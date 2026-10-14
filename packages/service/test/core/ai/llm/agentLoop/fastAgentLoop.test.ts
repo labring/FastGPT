@@ -41,7 +41,7 @@ vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   }))
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/interface/toolCall', () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/application/toolCall', () => ({
   runSandboxTools: runSandboxToolsMock,
   getSandboxToolInfo: vi.fn(() => ({
     name: 'Sandbox',

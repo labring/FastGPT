@@ -5,6 +5,11 @@
  * 内部口令。文件路径必须落在当前 provider 的 workDirectory 内，并以 URL path segment
  * 形式传给 agent-proxy。
  */
+import {
+  SANDBOX_PREVIEW_SESSION_TTL_SECONDS,
+  SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX,
+  SANDBOX_PREVIEW_SESSION_ID_LENGTH
+} from '../constants';
 import z from 'zod';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -13,10 +18,6 @@ import { serviceEnv } from '../../../../env';
 import { resolveSandboxWorkspacePath } from './file';
 import { getSandboxRuntimeProfile } from '../infrastructure/provider/runtimeProfile';
 import { trimSandboxPathRight } from '../utils';
-
-export const SANDBOX_PREVIEW_SESSION_TTL_SECONDS = 2 * 60 * 60;
-export const SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX = 500;
-export const SANDBOX_PREVIEW_SESSION_ID_LENGTH = 24;
 const SANDBOX_PREVIEW_SESSION_KEY_PREFIX = 'sandbox:preview';
 const CREATE_SANDBOX_PREVIEW_SESSION_SCRIPT = `
 redis.call("zremrangebyscore", KEYS[1], "-inf", ARGV[1])

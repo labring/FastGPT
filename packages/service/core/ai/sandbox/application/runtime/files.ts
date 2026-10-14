@@ -12,8 +12,6 @@ import {
   type SandboxInputFileReader
 } from '../file';
 
-export type { SandboxInputFileReader } from '../file';
-
 export type SandboxInputFile = {
   name: string;
   url: string;

@@ -8,7 +8,7 @@ import { getExecuteTool, type ToolDispatchContext } from '../sub/utils';
 import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
 import { createWorkflowAgentLoopToolCatalog } from './toolCatalog';
 import type { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import type { SandboxClient } from '../../../../../ai/sandbox/interface/runtime';
+import type { SandboxClient } from '../../../../../ai/sandbox/application/runtime/client';
 import type { UseUserContextResult } from './userContext';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import {

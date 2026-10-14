@@ -1,5 +1,5 @@
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
-import type { DeployedSkillInfo } from '../../../../../../ai/sandbox/interface/runtime';
+import type { DeployedSkillInfo } from '../../../../../../ai/sandbox/application/runtime/skill/types';
 import { READ_FILES_TOOL_NAME } from '../../../../../../ai/llm/agentLoop/interface';
 import { SANDBOX_READ_FILE_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 import type { AgentLoopCoreInputFile } from './files';

@@ -20,14 +20,11 @@ const { dispatchWorkflowReadFilesMock, getSandboxToolInfoMock, runAgentLoopMock,
     runWorkflowMock: vi.fn()
   }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/interface/toolCall', async (importOriginal) => {
+vi.mock('@fastgpt/service/core/ai/sandbox/application/toolCall', async (importOriginal) => {
   const original =
-    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/interface/toolCall')>();
+    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/application/toolCall')>();
 
-  return {
-    ...original,
-    getSandboxToolInfo: getSandboxToolInfoMock
-  };
+  return { ...original, getSandboxToolInfo: getSandboxToolInfoMock };
 });
 
 vi.mock('@fastgpt/service/core/ai/llm/agentLoop/interface', async (importOriginal) => {

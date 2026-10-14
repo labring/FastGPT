@@ -1,191 +1,256 @@
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
+import * as repository from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository';
+import {
+  runSandboxLifecycleOperation,
+  runSandboxLifecycleDeletion,
+  type SandboxLifecycleDefinition
+} from '@fastgpt/service/core/ai/sandbox/application/lifecycle/runner';
+import {
+  SandboxOperationSettledError,
+  SandboxOperationConflictError
+} from '@fastgpt/service/core/ai/sandbox/application/lifecycle/error';
+import { canResumeSandboxOperation } from '@fastgpt/service/core/ai/sandbox/application/lifecycle/utils';
 
-const mocks = vi.hoisted(() => ({
-  claimSandboxOperation: vi.fn(),
-  advanceSandboxOperation: vi.fn(),
-  completeSandboxOperation: vi.fn(),
-  deleteClaimedSandboxRecord: vi.fn(),
-  markSandboxOperationFailed: vi.fn()
-}));
-
-vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository', () => ({
-  claimSandboxOperation: mocks.claimSandboxOperation,
-  advanceSandboxOperation: mocks.advanceSandboxOperation,
-  completeSandboxOperation: mocks.completeSandboxOperation,
-  deleteClaimedSandboxRecord: mocks.deleteClaimedSandboxRecord,
-  markSandboxOperationFailed: mocks.markSandboxOperationFailed
-}));
-
-import { runSandboxLifecycleOperation } from '@fastgpt/service/core/ai/sandbox/application/lifecycle/runner';
-
-const createResource = (overrides: Record<string, unknown> = {}) =>
-  ({
-    _id: 'resource-1',
-    provider: 'opensandbox',
-    sandboxId: 'sandbox-1',
+const sandboxId = 'runner-contract-test';
+const lease = { signal: new AbortController().signal, assertValid: vi.fn() };
+const read = () => repository.findSandboxInstanceBySandboxId({ sandboxId });
+const create = async () => {
+  await MongoSandboxInstance.create({
+    sandboxId,
+    teamId: 'runner-team',
     sourceType: ChatSourceTypeEnum.app,
-    sourceId: 'app-1',
-    userId: 'user-1',
-    status: 'stopping',
-    lastActiveAt: new Date('2026-07-01T00:00:00.000Z'),
-    operation: {
-      id: 'operation-1',
-      type: 'stop',
-      phase: 'claimed',
-      startedAt: new Date(),
-      heartbeatAt: new Date()
-    },
-    ...overrides
-  }) as any;
-
-const lease = {
-  signal: new AbortController().signal,
-  assertValid: vi.fn()
-};
-
-describe('sandbox lifecycle runner', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.claimSandboxOperation.mockResolvedValue(createResource());
-    mocks.advanceSandboxOperation.mockImplementation(async ({ phase }: { phase: string }) =>
-      createResource({
-        operation: {
-          id: 'operation-1',
-          type: 'stop',
-          phase,
-          startedAt: new Date(),
-          heartbeatAt: new Date()
-        }
-      })
-    );
-    mocks.completeSandboxOperation.mockResolvedValue(createResource({ status: 'stopped' }));
-    mocks.deleteClaimedSandboxRecord.mockResolvedValue({ deletedCount: 1 });
-    mocks.markSandboxOperationFailed.mockResolvedValue(undefined);
+    sourceId: sandboxId,
+    userId: 'user',
+    provider: 'sealosdevbox',
+    status: 'running',
+    lastActiveAt: new Date()
   });
+  return (await read())!;
+};
+const definition = (
+  run: SandboxLifecycleDefinition['steps'][number]['run']
+): SandboxLifecycleDefinition => ({
+  status: 'stopping',
+  steps: [{ fromPhase: 'claimed', toPhase: 'providerStopped', run }],
+  finish: { type: 'complete', status: 'stopped' }
+});
 
-  it('runs each step, checkpoints it, and completes the stable state', async () => {
-    const firstStep = vi.fn(async () => undefined);
-    const secondStep = vi.fn(async () => undefined);
+beforeAll(async () => {
+  await MongoSandboxInstance.init();
+});
+beforeEach(async () => {
+  vi.restoreAllMocks();
+  lease.assertValid.mockReset();
+  await MongoSandboxInstance.deleteMany({ sandboxId });
+});
 
-    await runSandboxLifecycleOperation({
-      resource: createResource(),
+describe('runSandboxLifecycleOperation', () => {
+  it('claims, persists returned checkpoint fields and returns the latest stable record', async () => {
+    const resource = await create();
+    const result = await runSandboxLifecycleOperation({
+      resource,
       lease,
       definition: {
-        operationType: 'stop',
         status: 'stopping',
         steps: [
           {
             fromPhase: 'claimed',
-            toPhase: 'providerStopped',
-            run: firstStep,
-            set: { storage: { volumes: [] } }
+            toPhase: 'prepared',
+            run: async () => ({ versionId: 'checkpoint-version' })
           },
-          { fromPhase: 'providerStopped', toPhase: 'volumeStopped', run: secondStep }
+          {
+            fromPhase: 'prepared',
+            toPhase: 'providerStopped',
+            run: async ({ resource }) => {
+              expect(resource.versionId).toBe('checkpoint-version');
+              expect((await read())?.operation?.phase).toBe('prepared');
+            }
+          }
         ],
-        finish: { type: 'complete', status: 'stopped' }
-      }
-    });
-
-    expect(firstStep).toHaveBeenCalledTimes(1);
-    expect(secondStep).toHaveBeenCalledTimes(1);
-    expect(mocks.advanceSandboxOperation.mock.calls.map(([input]) => input.phase)).toEqual([
-      'providerStopped',
-      'volumeStopped'
-    ]);
-    expect(mocks.advanceSandboxOperation).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        phase: 'providerStopped',
-        set: { storage: { volumes: [] } }
-      })
-    );
-    expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
-      expect.objectContaining({ fromStatus: 'stopping', status: 'stopped' })
-    );
-  });
-
-  it('resumes from the persisted phase without replaying completed steps', async () => {
-    const firstStep = vi.fn(async () => undefined);
-    const secondStep = vi.fn(async () => undefined);
-    mocks.claimSandboxOperation.mockResolvedValue(
-      createResource({
-        operation: {
-          id: 'operation-2',
-          type: 'stop',
-          phase: 'providerStopped',
-          startedAt: new Date(),
-          heartbeatAt: new Date()
+        finish: {
+          type: 'complete',
+          status: 'stopped',
+          set: ({ resource }) => ({ versionId: resource.versionId })
         }
-      })
-    );
-
-    await runSandboxLifecycleOperation({
-      resource: createResource(),
-      lease,
-      definition: {
-        operationType: 'stop',
-        status: 'stopping',
-        steps: [
-          { fromPhase: 'claimed', toPhase: 'providerStopped', run: firstStep },
-          { fromPhase: 'providerStopped', toPhase: 'volumeStopped', run: secondStep }
-        ],
-        finish: { type: 'complete', status: 'stopped' }
       }
     });
-
-    expect(firstStep).not.toHaveBeenCalled();
-    expect(secondStep).toHaveBeenCalledTimes(1);
-    expect(mocks.advanceSandboxOperation).toHaveBeenCalledTimes(1);
+    expect(result.status).toBe('stopped');
+    expect(result.operation).toBeUndefined();
+    expect(result.versionId).toBe('checkpoint-version');
   });
 
-  it('keeps the operation in its transition state when a step fails', async () => {
-    const error = new Error('provider failed');
+  it.each([true, false])('persists safe retry eligibility for settled=%s', async (settled) => {
+    const resource = await create();
+    const error = settled
+      ? new SandboxOperationSettledError('command exited')
+      : new Error('connection interrupted');
     await expect(
       runSandboxLifecycleOperation({
-        resource: createResource(),
+        resource,
         lease,
-        definition: {
-          operationType: 'stop',
-          status: 'stopping',
-          steps: [
-            {
-              fromPhase: 'claimed',
-              toPhase: 'providerStopped',
-              run: async () => {
-                throw error;
-              }
-            }
-          ],
-          finish: { type: 'complete', status: 'stopped' }
-        }
+        definition: definition(async () => {
+          throw error;
+        })
       })
-    ).rejects.toThrow('provider failed');
-
-    expect(mocks.markSandboxOperationFailed).toHaveBeenCalledWith(
-      expect.objectContaining({ operationId: 'operation-1', status: 'stopping' })
-    );
-    expect(mocks.completeSandboxOperation).not.toHaveBeenCalled();
+    ).rejects.toBe(error);
+    const failed = (await read())!;
+    expect(failed.status).toBe('stopping');
+    expect(failed.operation?.error).toBe(error.message);
+    expect(canResumeSandboxOperation(failed)).toBe(settled);
+    expect(failed.operation?.retryAfter).toBeInstanceOf(Date);
   });
 
-  it('deletes the record only after all delete phases are checkpointed', async () => {
-    await runSandboxLifecycleOperation({
-      resource: createResource({ status: 'deleting' }),
+  it('resumes checkpoints without repeating prior steps and clears failure metadata', async () => {
+    const resource = await create();
+    const claimed = (await repository.claimSandboxOperation({
+      resource,
+      status: 'stopping',
+      type: 'stop'
+    }))!;
+    const advanced = (await repository.advanceSandboxOperation({
+      resource: claimed,
+      operationId: claimed.operation!.id,
+      status: 'stopping',
+      phase: 'providerStopped'
+    }))!;
+    const step = vi.fn();
+    const result = await runSandboxLifecycleOperation({
+      resource: advanced,
       lease,
+      definition: definition(step)
+    });
+    expect(step).not.toHaveBeenCalled();
+    expect(result.status).toBe('stopped');
+  });
+
+  it('rejects stale claims without executing side effects', async () => {
+    const resource = await create();
+    await repository.claimSandboxOperation({ resource, status: 'stopping', type: 'stop' });
+    const step = vi.fn();
+    await expect(
+      runSandboxLifecycleOperation({ resource, lease, definition: definition(step) })
+    ).rejects.toBeInstanceOf(SandboxOperationConflictError);
+    expect(step).not.toHaveBeenCalled();
+  });
+
+  it('uses the operation created with the initial record without replacing its token', async () => {
+    const initial = await repository.createSandboxProvisioningInstance({
+      sandboxId,
+      teamId: 'runner-team',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: sandboxId,
+      userId: 'user',
+      provider: 'sealosdevbox'
+    });
+    const token = initial.instance!.operation!.id;
+    await runSandboxLifecycleOperation({
+      resource: initial.instance!,
+      lease,
+      claim: { type: 'created' },
       definition: {
-        operationType: 'delete',
-        status: 'deleting',
+        status: 'provisioning',
         steps: [
-          { fromPhase: 'claimed', toPhase: 'providerDeleted', run: async () => undefined },
-          { fromPhase: 'providerDeleted', toPhase: 'archiveDeleted', run: async () => undefined }
+          {
+            fromPhase: 'claimed',
+            toPhase: 'providerEnsured',
+            run: async ({ operationId }) => {
+              expect(operationId).toBe(token);
+            }
+          }
         ],
-        finish: { type: 'delete' }
+        finish: { type: 'complete', status: 'running' }
       }
     });
+    expect((await read())?.status).toBe('running');
+  });
 
-    expect(mocks.deleteClaimedSandboxRecord).toHaveBeenCalledWith(
-      expect.objectContaining({ operationId: 'operation-1' })
+  it('does not commit or mark failure after losing execution ownership', async () => {
+    const resource = await create();
+    await expect(
+      runSandboxLifecycleOperation({
+        resource,
+        lease,
+        definition: definition(async () => {
+          lease.assertValid.mockImplementation(() => {
+            throw new Error('lease lost');
+          });
+        })
+      })
+    ).rejects.toThrow('lease lost');
+    const current = (await read())!;
+    expect(current.operation?.phase).toBe('claimed');
+    expect(current.operation?.error).toBeUndefined();
+  });
+
+  it('checks execution ownership again after terminal verification', async () => {
+    const resource = await create();
+    await expect(
+      runSandboxLifecycleOperation({
+        resource,
+        lease,
+        definition: {
+          ...definition(async () => undefined),
+          finish: {
+            type: 'complete',
+            status: 'stopped',
+            beforeComplete: async () => {
+              lease.assertValid.mockImplementation(() => {
+                throw new Error('lease lost');
+              });
+            }
+          }
+        }
+      })
+    ).rejects.toThrow('lease lost');
+    expect((await read())?.status).toBe('stopping');
+  });
+
+  it('rejects unknown persisted phases instead of treating them as claimed', async () => {
+    const resource = await create();
+    const claimed = (await repository.claimSandboxOperation({
+      resource,
+      status: 'stopping',
+      type: 'stop',
+      phase: 'futurePhase'
+    }))!;
+    await expect(
+      runSandboxLifecycleOperation({
+        resource: claimed,
+        lease,
+        definition: definition(async () => undefined)
+      })
+    ).rejects.toThrow('Unsupported stop phase');
+  });
+
+  it('retains the original failure when error persistence is unavailable', async () => {
+    const resource = await create();
+    vi.spyOn(repository, 'markSandboxOperationFailed').mockRejectedValueOnce(
+      new Error('mongo unavailable')
     );
-    expect(mocks.completeSandboxOperation).not.toHaveBeenCalled();
+    await expect(
+      runSandboxLifecycleOperation({
+        resource,
+        lease,
+        definition: definition(async () => {
+          throw new Error('original failure');
+        })
+      })
+    ).rejects.toThrow('original failure');
+  });
+});
+
+describe('runSandboxLifecycleDeletion', () => {
+  it('deletes only the claimed deleting record and returns void', async () => {
+    const resource = await create();
+    await expect(
+      runSandboxLifecycleDeletion({
+        resource,
+        lease,
+        definition: { status: 'deleting', steps: [], finish: { type: 'delete' } }
+      })
+    ).resolves.toBeUndefined();
+    expect(await read()).toBeNull();
   });
 });

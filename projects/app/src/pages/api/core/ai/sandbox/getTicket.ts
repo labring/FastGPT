@@ -1,9 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import {
-  buildSandboxClientQueryFromChatSource,
-  getSandboxClient
-} from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
 import { authSandboxRuntimeSession } from '@/service/core/sandbox/access';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { serviceEnv } from '@fastgpt/service/env';

@@ -809,7 +809,7 @@ const PlanUsage = () => {
                 <Box
                   borderRadius={'sm'}
                   transition="width 0.3s"
-                  w={`${item.rate}%`}
+                  w={`${Math.min(item.rate, 100)}%`}
                   bg={`${item.rate < 50 ? 'green' : item.rate < 80 ? 'yellow' : 'red'}.500`}
                 />
               </Flex>

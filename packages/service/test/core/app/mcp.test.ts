@@ -391,6 +391,47 @@ describe('MCPClient', () => {
       expect(tagsSchema.items).not.toHaveProperty('$ref');
     });
 
+    it('should keep recursive $ref schema JSON-serializable', async () => {
+      const mcpClient = new MCPClient(config);
+      const client = stubConnection(mcpClient);
+
+      // 递归 $ref：request -> properties -> children -> items -> 回到根
+      const recursiveSchema = {
+        type: 'object',
+        properties: {
+          request: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              children: { type: 'array', items: { $ref: '#' } }
+            }
+          }
+        }
+      };
+      client.listTools.mockResolvedValue({
+        tools: [{ name: 'recursive', description: 'recursive ref', inputSchema: recursiveSchema }]
+      });
+
+      // 交给真实解析器执行 getTools 传入的选项，验证递归 $ref 不会产出循环引用对象
+      const actual = await vi.importActual<typeof import('@apidevtools/json-schema-ref-parser')>(
+        '@apidevtools/json-schema-ref-parser'
+      );
+      mockDereference.mockImplementation((schema, options) =>
+        actual.default.dereference(schema, options)
+      );
+
+      const tools = await mcpClient.getTools();
+
+      expect(() => JSON.stringify(tools)).not.toThrow();
+      expect(tools[0]!.inputSchema!.properties!['request']).toEqual({
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          children: { type: 'array', items: { $ref: '#' } }
+        }
+      });
+    });
+
     it('should handle tool with no description', async () => {
       const mcpClient = new MCPClient(config);
       const client = stubConnection(mcpClient);

@@ -61,12 +61,15 @@ export const ChatCompletionContentPartInputAudioSchema = z.object({
   type: z.literal('input_audio'),
   input_audio: z.object({
     data: z.string(),
-    format: z.enum(
-      audioFileType
-        .split(',')
-        .map((item) => item.trim().replace(/^\./, ''))
-        .filter(Boolean) as [string, ...string[]]
-    )
+    format: z
+      .enum(
+        audioFileType
+          .split(',')
+          .map((item) => item.trim().replace(/^\./, ''))
+          .filter(Boolean) as [string, ...string[]]
+      )
+      .optional()
+      .meta({ description: '已知音频格式；未知时省略，由模型接口处理音频内容' })
   }),
   key: z.string().optional()
 });

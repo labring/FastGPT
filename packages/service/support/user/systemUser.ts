@@ -129,7 +129,7 @@ const executeSystemUserCreation = async (defaultRootPassword: string): Promise<v
           status: TeamMemberStatusEnum.active,
           createTime: now
         })),
-        { session }
+        { session, ordered: true }
       );
 
       logger.info('Agent users created', {

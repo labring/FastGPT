@@ -23,7 +23,7 @@ import { buildDefaultAgentSystemPrompt } from '../../../../ai/llm/agentLoop/inte
 import {
   assertSandboxAvailable,
   resolveAppSandboxAvailability
-} from '../../../../ai/sandbox/interface/runtime';
+} from '../../../../ai/sandbox/application/availability';
 import { nodeHasDynamicInput } from '../../../../app/resources';
 import { getWorkflowFileMaxAmount } from '../../../utils/context';
 import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
@@ -240,7 +240,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     // 获取请求上下文
     const { chatHistories, queryInput } = userContext;
-    const { rewrittenHistories, currentUserMessage } = userContext.getCurrentMessages({
+    const { rewrittenHistories, currentUserMessage } = await userContext.getCurrentMessages({
       skillInfos,
       currentWorkingDirectory
     });
