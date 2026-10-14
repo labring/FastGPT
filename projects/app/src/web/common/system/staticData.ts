@@ -6,18 +6,15 @@ import { isLogoutInProgress, getPendingLogoutRequest } from '@/web/support/user/
 
 import { useSystemStore } from './useSystemStore';
 
-let latestRequestId = 0;
 let inFlightRequest:
   | {
       authGeneration: number;
-      pathname: string;
-      receivedSubPlans: boolean;
       promise: Promise<{ feConfigs: FastGPTFeConfigsType }>;
     }
   | undefined;
 
 /**
- * 同一会话的并发初始化共用请求及重试；价格页仅在已有请求缺少套餐时补取，新会话启动独立请求；只有最新请求可以提交。
+ * 同一会话的并发初始化共用请求、重试及 Store 更新；新会话启动独立请求。
  * 过期成功、失败和等待中的重试都只读取当前缓存，避免重新发请求或覆盖新会话。
  */
 export const clientInitData = (
@@ -26,24 +23,9 @@ export const clientInitData = (
   feConfigs: FastGPTFeConfigsType;
 }> => {
   const { authGeneration } = useUserStore.getState();
-  const pathname = typeof window === 'undefined' ? '' : window.location.pathname;
-  if (inFlightRequest?.authGeneration === authGeneration) {
-    const existing = inFlightRequest;
-    if (pathname !== '/price' || existing.pathname === '/price') return existing.promise;
-    // 登录初始化本就可能返回套餐，先复用它；只有缺少套餐时才补发价格页请求。
-    return existing.promise.then((result) => {
-      if (
-        existing.receivedSubPlans ||
-        authGeneration !== useUserStore.getState().authGeneration ||
-        window.location.pathname !== '/price'
-      )
-        return result;
-      return clientInitData(retry);
-    });
-  }
-  const requestId = ++latestRequestId;
-  const isCurrentRequest = () =>
-    requestId === latestRequestId && authGeneration === useUserStore.getState().authGeneration;
+  if (inFlightRequest?.authGeneration === authGeneration) return inFlightRequest.promise;
+  // 同一会话只有一个进行中的初始化，单独的请求序号不再承担额外的失效判断。
+  const isCurrentRequest = () => authGeneration === useUserStore.getState().authGeneration;
   const readCache = () => ({ feConfigs: useSystemStore.getState().feConfigs ?? {} });
 
   /** 重试不创建新请求快照，等待期间失效后直接结束。 */
@@ -58,7 +40,6 @@ export const clientInitData = (
       if (!isCurrentRequest()) return readCache();
       // 退出请求尚未清除 Cookie 时，上游仍可能认作登录态，不能重新恢复这些配置。
       if (res.isAuthenticated && isLogoutInProgress()) return readCache();
-      request.receivedSubPlans = res.subPlans !== undefined;
       useSystemStore.getState().initStaticData(res, { authGeneration });
 
       return readCache();
@@ -72,8 +53,6 @@ export const clientInitData = (
 
   const request = {
     authGeneration,
-    pathname,
-    receivedSubPlans: false,
     promise: fetchInitData(retry)
   };
   inFlightRequest = request;

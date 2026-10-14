@@ -248,14 +248,34 @@ describe('initStaticData through the real initialization pipeline', () => {
     });
     const { subPlans } = useSystemStore.getState();
     expect(subPlans).toEqual(global.subPlans);
+    expect(useSystemStore.getState().subPlansConfigGeneration).toBe(0);
 
     mocks.referer = 'https://app.example.com/chat/share?shareId=share-1';
     await clientInitData();
 
     expect(useSystemStore.getState().subPlans).toBe(subPlans);
+    expect(useSystemStore.getState().subPlansConfigGeneration).toBe(0);
     expect(getDocPath('/guide/version/cloud/privacy')).toBe(
       'https://docs.example.com/guide/version/cloud/privacy'
     );
+  });
+
+  it('only confirms plans from a response and invalidates them when the known configuration version changes', () => {
+    useSystemStore.setState({ subPlans: global.subPlans });
+    expect(useSystemStore.getState().subPlansConfigGeneration).toBeUndefined();
+    const response = { isAuthenticated: false, bufferId: 'unAuth_v8_config-1' };
+    useSystemStore
+      .getState()
+      .initStaticData({ ...response, subPlans: global.subPlans }, { authGeneration: 0 });
+    useSystemStore.getState().initStaticData(response, { authGeneration: 0 });
+    expect(useSystemStore.getState().subPlansConfigGeneration).toBe(0);
+    expect(JSON.parse(storage.get('globalStore')!).state).not.toHaveProperty(
+      'subPlansConfigGeneration'
+    );
+    useSystemStore
+      .getState()
+      .initStaticData({ ...response, bufferId: 'unAuth_v8_config-2' }, { authGeneration: 0 });
+    expect(useSystemStore.getState().subPlansConfigGeneration).toBeUndefined();
   });
 
   it('preserves zero upload limits in memory and persistence across an anonymous cache hit', async () => {

@@ -57,6 +57,7 @@ type State = {
   initConfigGeneration?: number;
   feConfigs: FastGPTFeConfigsType;
   subPlans?: SubPlanType;
+  subPlansConfigGeneration?: number;
   systemVersion: string;
 
   operationalAd?: { operationalAdImage: string; operationalAdLink: string; id: string };
@@ -175,6 +176,7 @@ export const useSystemStore = create<State>()(
           limit: { uploadFileMaxSize: 1000, uploadFileMaxAmount: 1000 }
         },
         subPlans: undefined,
+        subPlansConfigGeneration: undefined,
         systemVersion: '0.0.0',
 
         operationalAd: undefined,
@@ -191,6 +193,17 @@ export const useSystemStore = create<State>()(
         /** 就绪标记只存内存，并绑定确认配置的会话；匿名响应撤销登录配置就绪状态。 */
         initStaticData(res, { authGeneration }) {
           set((state) => {
+            // 持久化套餐未经本次会话确认；配置版本变化且未带套餐时，也需要重新补取。
+            if (res.subPlans !== undefined) {
+              state.subPlans = res.subPlans;
+              state.subPlansConfigGeneration = authGeneration;
+            } else if (
+              res.bufferId &&
+              state.initDataBufferId &&
+              res.bufferId !== state.initDataBufferId
+            ) {
+              state.subPlansConfigGeneration = undefined;
+            }
             state.initDataBufferId = res.bufferId;
             state.initConfigGeneration = authGeneration;
             state.authenticatedConfigGeneration = res.isAuthenticated ? authGeneration : undefined;
@@ -206,7 +219,6 @@ export const useSystemStore = create<State>()(
                 }
               };
             }
-            state.subPlans = res.subPlans ?? state.subPlans;
             state.systemVersion = res.systemVersion ?? state.systemVersion;
           });
         }

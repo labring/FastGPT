@@ -79,6 +79,7 @@ describe('useUserStore', () => {
     vi.resetModules();
     vi.clearAllMocks();
     apiMocks.getTokenLogin.mockReset();
+    apiMocks.getTeamPlanStatus.mockReset().mockResolvedValue(null);
     localStorageMock.clear();
     vi.stubGlobal('localStorage', localStorageMock);
     vi.stubGlobal('document', { querySelector: () => null });
@@ -169,10 +170,43 @@ describe('useUserStore', () => {
     }
   });
 
+  it('loads team plans once, after user restoration, and waits for them before finishing', async () => {
+    const user = buildUser('en');
+    apiMocks.getTokenLogin.mockResolvedValueOnce(user);
+    let releasePlan!: (status: null) => void;
+    apiMocks.getTeamPlanStatus.mockImplementationOnce(() => {
+      expect(useUserStore.getState().userInfo?.team.tmbId).toBe(user.team.tmbId);
+      return new Promise<null>((resolve) => {
+        releasePlan = resolve;
+      });
+    });
+    const completed = vi.fn();
+    const request = useUserStore.getState().initUserInfo().then(completed);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(apiMocks.getTeamPlanStatus).toHaveBeenCalledTimes(1);
+    expect(completed).not.toHaveBeenCalled();
+    releasePlan(null);
+    await request;
+    expect(completed).toHaveBeenCalledExactlyOnceWith(user);
+    expect(useUserStore.getState().teamPlanStatus).toBeNull();
+  });
+
+  it('retains restored identity when the team-plan request fails and clears stale plans', async () => {
+    const user = buildUser('en');
+    apiMocks.getTokenLogin.mockResolvedValueOnce(user);
+    apiMocks.getTeamPlanStatus.mockRejectedValueOnce(new Error('Plan unavailable'));
+    await expect(useUserStore.getState().initUserInfo()).resolves.toEqual(user);
+    expect(useUserStore.getState().userInfo).toEqual(user);
+    expect(useUserStore.getState().teamPlanStatus).toBeNull();
+    expect(apiMocks.getTeamPlanStatus).toHaveBeenCalledTimes(1);
+  });
+
   it('ends initial user loading after a failure and allows a later successful retry', async () => {
     apiMocks.getTokenLogin.mockRejectedValueOnce(new Error('Network unavailable'));
     await expect(useUserStore.getState().initUserInfo()).resolves.toBeNull();
     expect(useUserStore.getState().authGeneration).toBe(0);
+    expect(apiMocks.getTeamPlanStatus).not.toHaveBeenCalled();
 
     const user = buildUser('en');
     apiMocks.getTokenLogin.mockResolvedValueOnce(user);

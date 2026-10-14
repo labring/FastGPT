@@ -24,7 +24,7 @@ type State = {
   updateUserInfo: (user: UserUpdateParams) => Promise<void>;
 
   teamPlanStatus: ClientTeamPlanStatusType | null;
-  initTeamPlanStatus: () => Promise<any>;
+  initTeamPlanStatus: () => Promise<ClientTeamPlanStatusType | null>;
 
   teamOrgs: OrgType[];
 };
@@ -60,24 +60,29 @@ export const useUserStore = create<State>()(
           });
         },
         isTeamAdmin: false,
+        /** 恢复用户后再刷新团队套餐；套餐失败不撤销已恢复的身份，完成后调用方可直接读取套餐状态。 */
         async initUserInfo() {
-          get().initTeamPlanStatus();
-
-          try {
-            const res = await getTokenLogin();
-            get().setUserInfo(res);
-
-            //设置html的fontsize
-            const html = document?.querySelector('html');
-            if (html) {
-              // html.style.fontSize = '16px';
-            }
-
-            return res;
-          } catch (error) {
+          const user = await getTokenLogin().catch((error) => {
             console.log('[Init user] error', error);
             return null;
+          });
+          if (!user) {
+            set((state) => {
+              state.teamPlanStatus = null;
+            });
+            return null;
           }
+
+          get().setUserInfo(user);
+          await get()
+            .initTeamPlanStatus()
+            .catch((error) => {
+              set((state) => {
+                state.teamPlanStatus = null;
+              });
+              console.log('[Init team plan] error', error);
+            });
+          return user;
         },
         /** 恢复 Cookie 用户和资料不撤销首屏请求；显式新会话才使旧响应失效，登录成功同时清理模型目录及退出保护。 */
         setUserInfo(user: UserType | null, newSession = false) {
@@ -114,9 +119,9 @@ export const useUserStore = create<State>()(
         async initTeamPlanStatus() {
           return getTeamPlanStatus().then((res) => {
             set((state) => {
-              state.teamPlanStatus = res;
+              state.teamPlanStatus = res ?? null;
             });
-            return res;
+            return res ?? null;
           });
         },
         teamMemberGroups: [],
