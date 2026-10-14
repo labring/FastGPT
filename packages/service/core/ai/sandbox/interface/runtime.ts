@@ -26,7 +26,7 @@ export { assertSandboxAvailable, resolveAppSandboxAvailability } from '../applic
 export type { AppSandboxAvailability } from '../application/availability';
 export { getRunningSandboxId } from '../utils/id';
 export { getSandboxRuntimeProfile } from '../application/runtime';
-export type { SandboxRuntimeProfile } from '../application/runtime';
+export type { SandboxRuntimeProfile } from '../infrastructure/provider/runtimeProfile/types';
 export { ensureAppSandboxRuntimeReady } from '../application/runtime/upgrade';
 export {
   runAgentSandboxEntrypoint,
@@ -42,14 +42,14 @@ export { getSandboxRuntimeMirrorsConfig } from '../application/runtime/mirrors';
 export type { SandboxPrepareContext, SandboxPrepareStep } from '../application/runtime/prepare';
 export { resolveSandboxHome } from '../application/runtime/home';
 export { getSafeSandboxInputFilename, joinSandboxPath } from '../utils';
-export type { DeployedSkillInfo, DeployedSkillVersion } from '../application/runtime/skill';
+export type { DeployedSkillInfo, DeployedSkillVersion } from '../application/runtime/skill/types';
 export {
   getAgentSkillInfos,
-  getBuiltinSkillsRootPath,
   injectAgentSkillFilesToSandbox,
   runAgentSkillVersionEntrypoints,
   syncBuiltinSkillsToSandbox
-} from '../application/runtime/skill';
+} from '../application/runtime/skill/core';
+export { getBuiltinSkillsRootPath } from '../application/runtime/skill/builtin';
 
 type SandboxClientQueryWithId = SandboxClientQuery & { sandboxId: string; chatId: string };
 
