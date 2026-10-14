@@ -720,10 +720,9 @@ describe('isDatasetResourceMissingError', () => {
 
   it('identifies unExistDataset as missing resource error', () => {
     expect(isDatasetResourceMissingError(DatasetErrEnum.unExist)).toBe(true);
-    expect(isDatasetResourceMissingError('unExistDataset')).toBe(true);
     expect(isDatasetResourceMissingError(new UserError(DatasetErrEnum.unExist))).toBe(true);
-    expect(isDatasetResourceMissingError({ message: 'unExistDataset' })).toBe(true);
-    expect(isDatasetResourceMissingError({ code: 'unExistDataset' })).toBe(true);
+    expect(isDatasetResourceMissingError({ message: DatasetErrEnum.unExist })).toBe(true);
+    expect(isDatasetResourceMissingError({ statusText: DatasetErrEnum.unExist })).toBe(true);
   });
 
   it('does not match unexpected system errors', () => {

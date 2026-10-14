@@ -18,7 +18,6 @@ import { getDatasetSearchAuxiliaryModels } from '../../../dataset/search/auxilia
 import { getDatasetSearchVlmModel } from '../../../dataset/search/vlm';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { UserError } from '@fastgpt/global/common/error/utils';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { isWorkflowResourceError, loadWorkflowDatasetResource } from '../../utils/resource';
 import { getNodeErrResponse } from '../utils';
@@ -68,28 +67,13 @@ export type DatasetSearchResponse = DispatchNodeResultType<{
  */
 export const isDatasetResourceMissingError = (error: unknown): boolean => {
   if (isWorkflowResourceError(error)) return true;
-  if (error === DatasetErrEnum.unExist || error === 'unExistDataset') return true;
+  if (error === DatasetErrEnum.unExist) return true;
 
-  if (
-    error instanceof UserError &&
-    (error.message === DatasetErrEnum.unExist || error.message === 'unExistDataset')
-  ) {
-    return true;
-  }
-
-  const errObj = error as { message?: string; code?: string; name?: string } | null;
-  if (
-    typeof errObj === 'object' &&
-    errObj !== null &&
-    (errObj.message === DatasetErrEnum.unExist ||
-      errObj.message === 'unExistDataset' ||
-      errObj.code === DatasetErrEnum.unExist ||
-      errObj.code === 'unExistDataset' ||
-      errObj.name === 'WorkflowResourceError' ||
-      (typeof errObj.message === 'string' &&
-        errObj.message.startsWith('App resource is not declared')))
-  ) {
-    return true;
+  const errObj = error as { message?: string; statusText?: string } | null;
+  if (typeof errObj === 'object' && errObj !== null) {
+    if (errObj.message === DatasetErrEnum.unExist || errObj.statusText === DatasetErrEnum.unExist) {
+      return true;
+    }
   }
 
   return false;
