@@ -177,14 +177,15 @@ export const dispatchTool = async ({
       const formatToolId = getToolRawId(tool.id);
       const appId = getWorkflowAppId(runningAppInfo);
 
+      // 系统工具的用户信息反向调用必须使用实际运行成员，不能使用应用 owner。
       const invokeToken = appId
         ? new InvokeProcessor({
             appId,
             chatId,
             uId: uid,
             permissions: tool.permissions ?? [],
-            teamId: runningAppInfo.teamId,
-            tmbId: runningAppInfo.tmbId
+            teamId: String(runningUserInfo.teamId),
+            tmbId: String(runningUserInfo.tmbId)
           }).generateToken()
         : undefined;
 
