@@ -49,6 +49,7 @@ async function handler(
         nodes: draftWorkflow.nodes,
         edges: draftWorkflow.edges,
         chatConfig: draftWorkflow.chatConfig,
+        referenceSnapshots: draftWorkflow.referenceSnapshots,
         teamId: app.teamId,
         tmbId,
         session
@@ -69,6 +70,7 @@ async function handler(
       nodes: draftWorkflow.nodes,
       edges: draftWorkflow.edges,
       chatConfig: draftWorkflow.chatConfig,
+      referenceSnapshots: draftWorkflow.referenceSnapshots,
       resources: draftWorkflow.resources,
       teamId,
       tmbId,

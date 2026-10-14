@@ -108,6 +108,7 @@ const TemplateMarket = ({
         nodes: templateDetail.workflow.nodes || [],
         edges: templateDetail.workflow.edges || [],
         chatConfig: templateDetail.workflow.chatConfig,
+        referenceSnapshots: templateDetail.workflow.referenceSnapshots,
         templateId: templateDetail.templateId
       });
 

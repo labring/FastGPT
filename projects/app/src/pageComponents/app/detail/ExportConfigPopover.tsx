@@ -9,6 +9,7 @@ import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { type WorkflowReferenceSnapshot } from '@fastgpt/global/core/workflow/type/io';
 import { addModelNamesToWorkflow } from '@fastgpt/global/core/workflow/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -32,6 +33,8 @@ type ExportConfigPopoverProps = {
     | {
         nodes: StoreNodeItemType[];
         edges: StoreEdgeItemType[];
+        chatConfig?: AppChatConfigType;
+        referenceSnapshots?: WorkflowReferenceSnapshot[];
       }
     | undefined;
   appForm: AppFormEditFormType;
@@ -92,13 +95,17 @@ const ExportConfigPopover = ({
         const nodes = cloneDeep(
           filterSensitiveInfo ? filterSensitiveNodesData(workflowData.nodes) : workflowData.nodes
         );
-        const exportChatConfig = cloneDeep(chatConfig);
+        const exportChatConfig = cloneDeep(workflowData.chatConfig ?? chatConfig);
         addModelNamesToWorkflow({ nodes, chatConfig: exportChatConfig, models: modelList });
         config = JSON.stringify(
           {
             nodes,
             edges: workflowData.edges,
             chatConfig: exportChatConfig,
+            // 已删除引用来源的历史展示元数据；为空时不写进 DSL，导入侧本来就容忍缺失。
+            ...(workflowData.referenceSnapshots?.length
+              ? { referenceSnapshots: workflowData.referenceSnapshots }
+              : {}),
             type: appType,
             name: appName,
             intro: appIntro ?? ''

@@ -278,6 +278,31 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
     ]);
   });
 
+  it('starts a new text segment after a tool without child assistant responses', () => {
+    const collector = createAgentLoopCoreAssistantEventCollector();
+    const call = createToolCall({ id: 'call_workflow', name: 'workflow_tool' });
+
+    collector.emitEvent({ type: 'answer_delta', text: 'before tool' });
+    collector.emitEvent({ type: 'tool_call', call });
+    collector.emitEvent({
+      type: 'tool_run_end',
+      call,
+      rawResponse: 'workflow result',
+      response: 'workflow result',
+      seconds: 0.1
+    });
+    collector.emitEvent({ type: 'answer_delta', text: 'after tool' });
+
+    expect(collector.assistantResponses).toEqual([
+      { text: { content: 'before tool' } },
+      {
+        id: 'call_workflow',
+        tools: [expect.objectContaining({ response: 'workflow result' })]
+      },
+      { text: { content: 'after tool' } }
+    ]);
+  });
+
   it('persists a failed tool result as the tool response', () => {
     const collector = createAgentLoopCoreAssistantEventCollector();
     const call = createToolCall({ id: 'call_failed', name: 'search' });

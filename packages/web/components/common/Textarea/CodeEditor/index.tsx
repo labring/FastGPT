@@ -33,6 +33,7 @@ const CodeEditor = ({ resize = true, ...props }: Props) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const fullName = getLanguage(props.language);
+  const modalPath = props.path ? `${props.path}/modal` : undefined;
   return (
     <>
       <MyEditor {...props} resize={resize} onOpenModal={onOpen} language={fullName} />
@@ -46,7 +47,13 @@ const CodeEditor = ({ resize = true, ...props }: Props) => {
         bodyStyles={{ flex: '1 0 0', minH: 0, overflow: 'auto' }}
         footer={<Button onClick={onClose}>{t('common:Confirm')}</Button>}
       >
-        <MyEditor {...props} bg={'myGray.50'} height={'100%'} language={fullName} />
+        <MyEditor
+          {...props}
+          bg={'myGray.50'}
+          height={'100%'}
+          language={fullName}
+          path={modalPath}
+        />
       </MyModal>
     </>
   );

@@ -44,7 +44,7 @@ export const upgradeLegacyDatasetSearchNode = ({
   };
 };
 
-/** 先持久化再提交本地升级；持久化失败时 commit 不会执行。 */
+/** 先持久化再提交本地升级；远端返回失败或抛错时 commit 都不会执行。 */
 export const persistLegacyDatasetSearchNodeUpgrade = async ({
   nodes,
   nodeId,
@@ -55,7 +55,7 @@ export const persistLegacyDatasetSearchNodeUpgrade = async ({
   nodes: StoreNodeItemType[];
   nodeId: string;
   filterInput: FlowNodeInputItemType;
-  persist: (nodes: StoreNodeItemType[]) => Promise<void>;
+  persist: (nodes: StoreNodeItemType[]) => Promise<boolean>;
   commit: (node: StoreNodeItemType) => void;
 }) => {
   let upgradedNode: StoreNodeItemType | undefined;
@@ -66,6 +66,8 @@ export const persistLegacyDatasetSearchNodeUpgrade = async ({
   });
   if (!upgradedNode) throw new Error(`Dataset search node not found: ${nodeId}`);
 
-  await persist(upgradedNodes);
+  const saved = await persist(upgradedNodes);
+  if (!saved) return false;
   commit(upgradedNode);
+  return true;
 };

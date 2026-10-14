@@ -30,6 +30,7 @@ import type {
   RuntimeEdgeItemType,
   StoreEdgeItemType
 } from '@fastgpt/global/core/workflow/type/edge';
+import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 
@@ -1342,13 +1343,13 @@ describe('getReferenceVariableValue', () => {
     expect(result).toBeUndefined();
   });
 
-  it('should return original value when node not found', () => {
+  it('should return undefined when source node is missing', () => {
     const result = getReferenceVariableValue({
       value: ['nonexistent', 'out1'],
       nodesMap: {},
       variables: {}
     });
-    expect(result).toEqual(['nonexistent', 'out1']);
+    expect(result).toBeUndefined();
   });
 
   it('should return non-reference value as-is', () => {
@@ -1360,20 +1361,15 @@ describe('getReferenceVariableValue', () => {
     expect(result).toBe('plain string');
   });
 
-  it('should keep two-column table data as a two-dimensional array', () => {
-    const tableData = [
-      ['指标', '金额（元）'],
-      ['资产总额（期末余额）', '22,701,764,055.63'],
-      ['负债总额（期末余额）', '4,809,415,705.17']
-    ];
-
+  it('should keep an ordinary array when it has no references', () => {
+    const value = ['plain value', 1];
     const result = getReferenceVariableValue({
-      value: tableData,
+      value: value as any,
       nodesMap: {},
       variables: {}
     });
 
-    expect(result).toEqual(tableData);
+    expect(result).toBe(value);
   });
 
   it('should handle array with single reference', () => {
@@ -1459,6 +1455,43 @@ describe('getReferenceVariableValue', () => {
       variables: {}
     });
     expect(result).toEqual(['value1']);
+  });
+
+  it('should return undefined when an explicit reference array has no live source', () => {
+    const result = getReferenceVariableValue({
+      value: [
+        ['missingNode', 'out1'],
+        [VARIABLE_NODE_ID, 'missingVariable']
+      ],
+      nodesMap: {},
+      variables: {}
+    });
+
+    expect(result).toBeUndefined();
+  });
+
+  it('should drop dead references and keep resolving the rest of an array', () => {
+    const nodesMap: Record<string, RuntimeNodeItemType> = {
+      node1: {
+        nodeId: 'node1',
+        name: 'test',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        inputs: [],
+        outputs: [
+          { id: 'out1', key: 'output1', type: FlowNodeOutputTypeEnum.static, value: 'value1' }
+        ]
+      }
+    };
+    const result = getReferenceVariableValue({
+      value: [
+        ['node1', 'out1'],
+        ['missingNode', 'out1'],
+        [VARIABLE_NODE_ID, 'var1']
+      ],
+      nodesMap,
+      variables: { var1: 'hello' }
+    });
+    expect(result).toEqual(['value1', 'hello']);
   });
 
   it('should flatten array output values in reference array', () => {

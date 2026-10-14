@@ -4,11 +4,13 @@ import type {
   NodeTemplateContext,
   NodeTemplateListItemType
 } from '@fastgpt/global/core/workflow/type/node';
-import { isTemplateVisible } from '@fastgpt/global/core/workflow/template/context';
+import {
+  isTemplateAddable,
+  isTemplateVisible
+} from '@fastgpt/global/core/workflow/template/context';
 import { getTeamAppTemplatesV2, getAppToolTemplates } from '@/web/core/app/api/tool';
 import { TemplateTypeEnum } from './header';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useDebounceEffect } from 'ahooks';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -16,6 +18,10 @@ import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  appSystemModuleTemplates,
+  pluginSystemModuleTemplates
+} from '@fastgpt/global/core/workflow/template/constants';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 
 export const useNodeTemplates = (context: NodeTemplateContext | null = null) => {
@@ -31,10 +37,11 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
   const [parentType, setParentType] = useState<AppTypeEnum>();
 
   const appId = useContextSelector(AppContext, (v) => v.appDetail._id);
-  const { basicNodeTemplates, getNodeList, nodeAmount } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
-  );
+  const appType = useContextSelector(AppContext, (v) => v.appDetail.type);
+  // 基础模板目录按 host 区分：工具（Plugin host）与工作流（Workflow host）各用自己的系统模板常量，
+  // 不再从数据层 Context 透传。
+  const basicNodeTemplates =
+    appType === AppTypeEnum.workflowTool ? pluginSystemModuleTemplates : appSystemModuleTemplates;
 
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const { data: toolTags = [] } = useRequest(getPluginToolTags, {
@@ -84,15 +91,9 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
         return basicNodeTemplates
           .filter((item) => {
             if (item.flowNodeType === FlowNodeTypeEnum.queryExtension) return false;
-            // unique node filter
-            if (item.unique) {
-              const nodeExist = getNodeList().some(
-                (node) => node.flowNodeType === item.flowNodeType
-              );
-              if (nodeExist) {
-                return false;
-              }
-            }
+            // unique 模板只按作用域提供（容器内不给「流程开始」这类根级系统节点），
+            // 模板标记只是目录输入，runtime 仍是唯一性的最终拒绝方。
+            if (!isTemplateAddable(item, context)) return false;
             return isTemplateVisible(item, context);
           })
           .map<NodeTemplateListItemType>((item) => ({
@@ -109,7 +110,7 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
     {
       manual: false,
       throttleWait: 100,
-      refreshDeps: [basicNodeTemplates, nodeAmount, templateType, context]
+      refreshDeps: [basicNodeTemplates, templateType, context]
     }
   );
 

@@ -1,15 +1,16 @@
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { type Node } from 'reactflow';
+import type { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { type Node } from '@xyflow/react';
 import NodeTemplateListHeader from './components/NodeTemplates/header';
 import NodeTemplateList from './components/NodeTemplates/list';
 import { useNodeTemplates } from './components/NodeTemplates/useNodeTemplates';
-import { buildNodeTemplateContext } from '@fastgpt/global/core/workflow/template/context';
 import { useMemoizedFn } from 'ahooks';
 import React from 'react';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext } from '../context/workflowInitContext';
-import { WorkflowActionsContext } from '../context/workflowActionsContext';
-import AppDetailPanelModal from '../../components/AppDetailPanelModal';
+import { usePlacementContext } from '@/web/core/workflow/editor/react/useWorkflowQueries';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
+import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
+import { useClearCanvasSelection } from './canvas/useCanvasController';
+import AppDetailPanelModal, { usePanelContentMounted } from '../../components/AppDetailPanelModal';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
@@ -19,27 +20,12 @@ type ModuleTemplateListProps = {
 export const sliderWidth = 460;
 
 const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
-  const { setNodes, edges, getNodeById, hasToolNode, hasLoopRunNode } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
-  );
-  const onRefreshSingleNodeWorkflowCheckIssues = useContextSelector(
-    WorkflowActionsContext,
-    (v) => v.onRefreshSingleNodeWorkflowCheckIssues
-  );
-
-  const templateContext = React.useMemo(
-    () =>
-      buildNodeTemplateContext({
-        sourceNode: undefined,
-        edges,
-        getNodeById,
-        isSidebar: true,
-        hasToolNode,
-        hasLoopRunNode
-      }),
-    [edges, getNodeById, hasToolNode, hasLoopRunNode]
-  );
+  const actions = useWorkflowActions();
+  const clearCanvasSelection = useClearCanvasSelection();
+  // 收起动画跑完再卸载头部与列表，否则内容会在动画第一帧就消失。
+  const isContentMounted = usePanelContentMounted(isOpen);
+  // 侧边栏是 root context：候选集与 unique 过滤全部由 Runtime 按文档根派生。
+  const templateContext = usePlacementContext({ isSidebar: true });
 
   const {
     templateType,
@@ -57,23 +43,13 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
     toolTags
   } = useNodeTemplates(templateContext);
 
-  const onAddNode = useMemoizedFn(async ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => {
-    setNodes((state) => {
-      const newState = state
-        .map((node) => ({
-          ...node,
-          selected: false
-        }))
-        // @ts-ignore
-        .concat(newNodes);
-      return newState;
-    });
-
-    // 新增节点后立即同步下方待完善提示，不依赖 10s 定时扫描或用户首次编辑。
-    setTimeout(() => {
-      onRefreshSingleNodeWorkflowCheckIssues(newNodes[0]?.data.nodeId ?? '');
-    }, 0);
-  });
+  const onAddNode = useMemoizedFn(
+    async ({ newNodes }: { newNodes: Node<FlowNodeItemType, FlowNodeTypeEnum>[] }) => {
+      clearCanvasSelection();
+      // 新增节点的问题由 Runtime 在 addNode 事务后自行刷新，画布不需要额外触发。
+      return actions.addNodes(newNodes.map(canvasNodeToStoreNode));
+    }
+  );
 
   return (
     <AppDetailPanelModal
@@ -99,29 +75,34 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         userSelect: 'none',
         fontSize: 'sm'
       }}
+      // 收起后不挂 DOM：模板列表与头部标签栏都是重内容，挂着会跟着每次文档提交重渲染。
       header={
-        <NodeTemplateListHeader
-          onClose={onClose}
-          templateType={templateType}
-          onUpdateTemplateType={onUpdateTemplateType}
-          parentId={parentId}
-          parentSource={parentSource}
-          searchKey={searchKey}
-          setSearchKey={setSearchKey}
-          onUpdateParentId={onUpdateParentId}
-          selectedTagIds={selectedTagIds}
-          setSelectedTagIds={setSelectedTagIds}
-          toolTags={toolTags}
-        />
+        isContentMounted ? (
+          <NodeTemplateListHeader
+            onClose={onClose}
+            templateType={templateType}
+            onUpdateTemplateType={onUpdateTemplateType}
+            parentId={parentId}
+            parentSource={parentSource}
+            searchKey={searchKey}
+            setSearchKey={setSearchKey}
+            onUpdateParentId={onUpdateParentId}
+            selectedTagIds={selectedTagIds}
+            setSelectedTagIds={setSelectedTagIds}
+            toolTags={toolTags}
+          />
+        ) : undefined
       }
     >
-      <NodeTemplateList
-        onAddNode={onAddNode}
-        templates={templates}
-        templateType={templateType}
-        onUpdateParentId={onUpdateParentId}
-        ScrollData={TeamScrollData}
-      />
+      {isContentMounted && (
+        <NodeTemplateList
+          onAddNode={onAddNode}
+          templates={templates}
+          templateType={templateType}
+          onUpdateParentId={onUpdateParentId}
+          ScrollData={TeamScrollData}
+        />
+      )}
     </AppDetailPanelModal>
   );
 };

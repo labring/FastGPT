@@ -1,5 +1,4 @@
 import React from 'react';
-import { pluginSystemModuleTemplates } from '@fastgpt/global/core/workflow/template/constants';
 import { ReactFlowCustomProvider } from '../WorkflowComponents/context';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext, TabEnum } from '../context';
@@ -9,57 +8,71 @@ import { Flex } from '@chakra-ui/react';
 import { workflowBoxStyles } from '../constants';
 import dynamic from 'next/dynamic';
 import { cloneDeep } from 'lodash-es';
+import { useTranslation } from 'next-i18next';
+import { materializeWorkflow } from '@/web/core/workflow/editor/codec';
 
 import Flow from '../WorkflowComponents/Flow';
-import { WorkflowUtilsContext } from '../WorkflowComponents/context/workflowUtilsContext';
+import { useWorkflowSessionActions } from '@/web/core/workflow/editor/session/workflowSession';
+import { WorkflowUIProvider } from '../WorkflowComponents/Flow/canvas/canvasState';
+import { WorkflowModalProvider } from '../WorkflowComponents/Flow/panels/workflowPanelState';
 
 const Logs = dynamic(() => import('../Logs/index'));
 const PublishChannel = dynamic(() => import('../Publish'));
 
 const WorkflowEdit = () => {
+  const { t } = useTranslation();
   const { appDetail, currentTab } = useContextSelector(AppContext, (e) => e);
 
-  const initData = useContextSelector(WorkflowUtilsContext, (v) => v.initData);
+  const { initRuntime } = useWorkflowSessionActions();
 
   useMount(() => {
-    initData(
-      cloneDeep({
-        nodes: appDetail.nodes || [],
-        edges: appDetail.edges || []
-      }),
-      true
+    initRuntime(
+      materializeWorkflow({
+        input: {
+          nodes: cloneDeep(appDetail.nodes || []),
+          edges: cloneDeep(appDetail.edges || []),
+          referenceSnapshots: cloneDeep(appDetail.referenceSnapshots)
+        },
+        chatConfig: appDetail.chatConfig,
+        t
+      })
     );
   });
 
+  // renderer 层交互状态：Header 与画布都要读写弹窗/交互 Context，挂在两者共同祖先。
   return (
-    <Flex {...workflowBoxStyles}>
-      <Header />
+    <WorkflowUIProvider>
+      <WorkflowModalProvider>
+        <Flex {...workflowBoxStyles}>
+          <Header />
 
-      {currentTab === TabEnum.appEdit ? (
-        <Flow />
-      ) : (
-        <Flex
-          flexDirection={'column'}
-          flex={1}
-          minH={0}
-          mt={'72px'}
-          px={4}
-          pb={4}
-          bg={'white'}
-          overflowY={'auto'}
-          overflowX={'hidden'}
-        >
-          {currentTab === TabEnum.publish && <PublishChannel />}
-          {currentTab === TabEnum.logs && <Logs />}
+          {currentTab === TabEnum.appEdit ? (
+            <Flow />
+          ) : (
+            <Flex
+              flexDirection={'column'}
+              flex={1}
+              minH={0}
+              mt={'72px'}
+              px={4}
+              pb={4}
+              bg={'white'}
+              overflowY={'auto'}
+              overflowX={'hidden'}
+            >
+              {currentTab === TabEnum.publish && <PublishChannel />}
+              {currentTab === TabEnum.logs && <Logs />}
+            </Flex>
+          )}
         </Flex>
-      )}
-    </Flex>
+      </WorkflowModalProvider>
+    </WorkflowUIProvider>
   );
 };
 
 const Render = () => {
   return (
-    <ReactFlowCustomProvider templates={pluginSystemModuleTemplates}>
+    <ReactFlowCustomProvider>
       <WorkflowEdit />
     </ReactFlowCustomProvider>
   );

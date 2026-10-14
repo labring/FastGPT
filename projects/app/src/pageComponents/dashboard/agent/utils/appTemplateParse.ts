@@ -3,6 +3,7 @@ import { getAppType, getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import type { WorkflowReferenceSnapshot } from '@fastgpt/global/core/workflow/type/io';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
@@ -15,6 +16,7 @@ type ImportWorkflowConfig = {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
   chatConfig?: AppChatConfigType;
+  referenceSnapshots?: WorkflowReferenceSnapshot[];
 };
 
 type ParsedImportConfig = {
@@ -229,7 +231,10 @@ const parseWorkflowLikeImportConfig = async ({
   const workflow = {
     nodes: config.nodes as StoreNodeItemType[],
     edges: Array.isArray(config.edges) ? (config.edges as StoreEdgeItemType[]) : [],
-    chatConfig: (config.chatConfig ?? {}) as AppChatConfigType
+    chatConfig: (config.chatConfig ?? {}) as AppChatConfigType,
+    ...(Array.isArray(config.referenceSnapshots)
+      ? { referenceSnapshots: config.referenceSnapshots as WorkflowReferenceSnapshot[] }
+      : {})
   };
 
   return migrateWorkflow ? migrateWorkflowToCurrent(workflow) : workflow;

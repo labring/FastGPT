@@ -1,5 +1,6 @@
 import type { AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import type { DeepReadonly } from '@fastgpt/global/core/workflow/editor/types';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 
@@ -32,12 +33,12 @@ export const getDatasetSearchParamInputs = ({
   inputs,
   values
 }: {
-  inputs: FlowNodeInputItemType[];
+  inputs: readonly DeepReadonly<FlowNodeInputItemType>[];
   values: AppDatasetSearchParamsType;
 }): FlowNodeInputItemType[] =>
   Object.entries(values).flatMap(([key, value]) => {
     const input =
       inputs.find((input) => input.key === key) ??
       DatasetSearchModule.inputs.find((input) => input.key === key);
-    return input ? [{ ...input, value }] : [];
+    return input ? [{ ...input, value } as unknown as FlowNodeInputItemType] : [];
   });

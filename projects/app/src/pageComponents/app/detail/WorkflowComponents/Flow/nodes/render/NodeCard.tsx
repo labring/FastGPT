@@ -4,8 +4,19 @@ import { getAppPermission } from '@/web/core/app/api';
 import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import { getAppVersionList } from '@/web/core/app/api/version';
 import { getTeamToolVersions } from '@/web/core/plugin/team/api';
+import {
+  useWorkflowIssueFocusAction,
+  useWorkflowIssueFocusNodeId,
+  useWorkflowOverlayActions,
+  useWorkflowOverlayValue,
+  useWorkflowRuntime
+} from '@/web/core/workflow/editor/session/workflowSession';
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
-import { getWorkflowCheckIssueUIStatus } from '@/web/core/workflow/workflowCheck';
+import {
+  getToolErrorMessage,
+  getWorkflowIssueUIStatus,
+  renderWorkflowIssueMessage
+} from '@/web/core/workflow/issueView';
 import { Box, Button, Flex, type FlexProps } from '@chakra-ui/react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
@@ -18,14 +29,18 @@ import {
   mergeToolSetChildDescriptions,
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
-import { getToolErrorMessage } from '@/web/core/workflow/workflowCheck';
+
+import type {
+  DeepReadonly,
+  WorkflowNodeData,
+  WorkflowNodeSnapshot
+} from '@fastgpt/global/core/workflow/editor/types';
 import {
   PluginStatusEnum,
   PluginStatusMap,
   type PluginStatusType
 } from '@fastgpt/global/core/plugin/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { NodeGradients } from '@fastgpt/global/core/workflow/node/constant';
 import {
   AppNodeFlowNodeTypeMap,
   FlowNodeTypeEnum,
@@ -55,31 +70,51 @@ import {
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useQuery } from '@tanstack/react-query';
 import { useBoolean, useCreation } from 'ahooks';
 import { useTranslation } from 'next-i18next';
-import React, { useCallback, useMemo, useState } from 'react';
-import { useReactFlow } from 'reactflow';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
-import { WorkflowUIContext } from '../../../context/workflowUIContext';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useReactFlow } from '@xyflow/react';
+import { omit } from 'lodash-es';
+import { migrateToolInputConfig } from '@fastgpt/global/core/app/formEdit/utils';
+import { useField, useFieldActions } from '@/web/core/workflow/editor/react/useField';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
+import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
+
+import { useWorkflowUIValue } from '../../canvas/canvasState';
+import { useWorkflowCanvasValue } from '../../canvas/workflowCanvasContext';
 import { useDebug } from '../../hooks/useDebug';
-import { useNodeOutputValidity } from '../../hooks/useNodeOutputValidity';
+import { useClearCanvasSelection } from '../../canvas/useCanvasController';
 import { useWorkflowUtils } from '../../hooks/useUtils';
+import { useIsToolNode } from './useWorkflowDocument';
 import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
 import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
 import InlineEdit from './InlineEdit';
 import NodeDebugResponse from './RenderDebug/NodeDebugResponse';
 
-type Props = FlowNodeItemType & {
+/**
+ * 节点卡片入参：只保留 renderer 交互状态与画布视图数据。
+ *
+ * 名称、头像、简介、版本、类型、错误标记一律由卡片自己读文档与 host 问题存储，
+ * 不再从投影塞满的 FlowNodeItemType props 里取；调用点仍可整体展开 data，多余字段被忽略。
+ */
+type Props = {
+  nodeId: string;
   children?: React.ReactNode | React.ReactNode[] | string;
   minW?: string | number;
   maxW?: string | number;
   minH?: string | number;
   w?: string | number;
   h?: string | number;
+  /** 选中态属于 renderer 交互层，由节点组件从 reactflow props 透传。 */
   selected?: boolean;
+  /** 搜索命中高亮：画布视图数据，由投影 overlay 合并后透传。 */
   searchedText?: string;
+  /** 调试结果标记：同上，调试路径的数据入口在收尾票统一改读 host。 */
+  debugResult?: FlowNodeItemType['debugResult'];
+  /** 覆盖文档 intro 的展示文案（并行运行的结束节点用本地化说明）。 */
+  intro?: string;
   menuForbid?: {
     copilot?: boolean;
     debug?: boolean;
@@ -89,10 +124,9 @@ type Props = FlowNodeItemType & {
   };
   customStyle?: FlexProps;
   rtDoms?: React.ReactNode[];
-  colorSchema?: keyof typeof NodeGradients;
 };
 
-const getCurrentSystemToolTemplate = async (node?: FlowNodeItemType) => {
+const getCurrentSystemToolTemplate = async (node?: WorkflowNodeData) => {
   if (!node?.pluginId || node.pluginData?.error || isDebugToolSource(node.source)) return;
 
   try {
@@ -113,10 +147,6 @@ const NodeCard = (props: Props) => {
   const { t } = useTranslation();
   const {
     children,
-    avatar = LOGO_ICON,
-    avatarLinear,
-    name = t('common:core.module.template.UnKnow Module'),
-    intro,
     minW = '300px',
     maxW = '666px',
     minH = 0,
@@ -125,57 +155,65 @@ const NodeCard = (props: Props) => {
     nodeId,
     selected,
     searchedText,
-    menuForbid,
-    isTool = false,
-    isError = false,
-    workflowCheckIssues,
     debugResult,
-    isFolded,
+    intro: introOverride,
+    menuForbid,
     customStyle,
-    inputs,
-    rtDoms,
-    pluginId,
-    flowNodeType,
-    colorSchema
+    rtDoms
   } = props;
 
-  useNodeOutputValidity(nodeId);
-
-  const { hasToolNode, getNodeById, foldedNodesMap } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
+  // 投影节点只承载结构/元数据；普通语义字段从 scoped snapshot 读取。
+  const node = useNode<WorkflowNodeData & Pick<WorkflowNodeSnapshot, 'issues'>>(
+    nodeId,
+    (handle) => handle?.data
   );
-  const onUpdateNodeError = useContextSelector(WorkflowActionsContext, (v) => v.onUpdateNodeError);
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const setHoverNodeId = useContextSelector(WorkflowUIContext, (v) => v.setHoverNodeId);
-  const presentationMode = useContextSelector(WorkflowUIContext, (v) => v.presentationMode);
-  const setPresentationMode = useContextSelector(WorkflowUIContext, (v) => v.setPresentationMode);
-  const { fitView } = useReactFlow();
+  const isFolded = useNode(nodeId, (handle) => !!handle?.view.isFolded);
+  // 容器折叠时子节点整体隐藏：折叠状态存在父容器的 Node View 上。
+  const hidden = useNode(node?.parentNodeId ?? '', (handle) => !!handle?.view.isFolded);
+  // 工具子流程节点：结构快照里指向本节点的 selectedTools 入边即可判定；
+  // 该入边必然来自工具调用节点，不必再额外确认画布上存在工具调用节点。
+  const isTool = useIsToolNode(nodeId);
 
-  const inputConfig = useMemo(
-    () => inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig),
-    [inputs]
+  const avatar = node?.avatar ?? LOGO_ICON;
+  const avatarLinear = node?.avatarLinear;
+  const name = node?.name ?? t('common:core.module.template.UnKnow Module');
+  const intro = introOverride ?? node?.intro;
+  const pluginId = node?.pluginId;
+  const flowNodeType = node?.flowNodeType;
+  const colorSchema = node?.colorSchema;
+
+  // 问题文案归 Runtime：直接读节点 snapshot 的 Issue View，标红焦点仍由 host 单点持有。
+  const nodeIssues = node?.issues;
+  const isError = useWorkflowIssueFocusNodeId() === nodeId;
+  // 教程元信息是画布视图数据（不进文档），由下面的工具详情请求写进 host overlay。
+  const viewData = useWorkflowOverlayValue(nodeId);
+  const courseUrl = viewData?.courseUrl as string | undefined;
+  const readmeUrl = (viewData?.readmeUrl as string | undefined) ?? node?.readmeUrl;
+
+  // 标红焦点归 host：点击标红节点即清除焦点（旧 onUpdateNodeError(nodeId, false) 行为）。
+  const focusIssueNode = useWorkflowIssueFocusAction();
+  const patchViewData = useWorkflowOverlayActions();
+  const isMeasuring = useWorkflowCanvasValue((v) => v.measurementNodeIds.includes(nodeId));
+  const focusNodes = useWorkflowCanvasValue((v) => v.focusNodes);
+  const presentationMode = useWorkflowUIValue((v) => v.presentationMode);
+  const setPresentationMode = useWorkflowUIValue((v) => v.setPresentationMode);
+
+  const nodeActions = useNodeActions(nodeId);
+  const inputConfig = useField(
+    nodeId,
+    NodeInputKeyEnum.systemInputConfig,
+    'input',
+    (field) => field?.data.input
   );
 
   const handleDoubleClick = useCallback(() => {
-    onChangeNode({
-      nodeId,
-      type: 'attr',
-      key: 'isFolded',
-      value: false
-    });
+    nodeActions?.setFolded(false);
     setPresentationMode(false);
 
-    // Fit view to show this node in center
-    setTimeout(() => {
-      fitView({
-        nodes: [{ id: nodeId }],
-        padding: 0.3
-      });
-    }, 100);
-  }, [onChangeNode, setPresentationMode, fitView, nodeId]);
+    focusNodes([nodeId], { padding: 0.3, minZoom: 0.6 });
+  }, [focusNodes, nodeActions, setPresentationMode, nodeId]);
 
-  const showToolHandle = isTool && hasToolNode;
+  const showToolHandle = isTool;
 
   const gradient = useMemo(() => {
     const { source } = splitCombineToolId(pluginId ?? '');
@@ -227,8 +265,8 @@ const NodeCard = (props: Props) => {
   }, [isFolded, avatar, avatarLinear, name, handleDoubleClick]);
 
   const errorIssues = useMemo(
-    () => workflowCheckIssues?.filter((issue) => issue.level === 'error') ?? [],
-    [workflowCheckIssues]
+    () => nodeIssues?.filter((issue) => issue.level === 'error') ?? [],
+    [nodeIssues]
   );
 
   const { outlineColor, outlineWidth } = useMemo(() => {
@@ -250,21 +288,24 @@ const NodeCard = (props: Props) => {
     };
   }, [presentationMode, isFolded, colorSchema, selected, isError, pluginId]);
 
-  // Current node and parent node
-  const { node, hidden } = useMemo(() => {
-    const node = getNodeById(nodeId);
-    const hidden = node?.parentNodeId ? foldedNodesMap[node.parentNodeId] : false;
-
-    return { node, hidden };
-  }, [foldedNodesMap, getNodeById, nodeId]);
-
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
   const isLoopNode = isNestedParentNodeType(node?.flowNodeType ?? '');
 
-  const { data: nodeTemplate } = useRequest(
-    async () => {
+  const { data: nodeTemplate } = useQuery({
+    queryKey: [
+      'workflow',
+      'node-template',
+      nodeId,
+      isAppNode,
+      node?.pluginData?.error,
+      node?.pluginData?.status,
+      node?.pluginId,
+      node?.source,
+      node?.version
+    ],
+    queryFn: async () => {
       if (node?.pluginData?.error) {
-        return undefined;
+        return null;
       }
 
       if (isAppNode) {
@@ -287,46 +328,29 @@ const NodeCard = (props: Props) => {
         const template = moduleTemplatesFlat.find(
           (item) => item.flowNodeType === node?.flowNodeType
         );
-        return template;
+        return template ?? null;
       }
     },
-    {
-      onSuccess(res) {
-        if (!res) return;
-        // 教程元信息由工具详情实时回写，兼容已保存的旧节点。
-        onChangeNode([
-          {
-            nodeId,
-            type: 'attr',
-            key: 'courseUrl',
-            value: res?.courseUrl
-          },
-          {
-            nodeId,
-            type: 'attr',
-            key: 'readmeUrl',
-            value: res?.readmeUrl
-          },
-          {
-            nodeId,
-            type: 'attr',
-            key: 'userGuide',
-            value: res?.userGuide
-          }
-        ]);
-      },
-      manual: false,
-      errorToast: '',
-      refreshDeps: [
-        isAppNode,
-        node?.pluginData?.error,
-        node?.pluginData?.status,
-        node?.pluginId,
-        node?.source,
-        node?.version
-      ]
-    }
-  );
+    enabled: !isMeasuring,
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 5 * 60 * 1000
+  });
+
+  useEffect(() => {
+    if (!nodeTemplate) return;
+    // 教程元信息由工具详情实时回写，兼容已保存的旧节点。
+    // 这三个字段是画布视图数据（不进文档），直接写 host overlay 由投影合并。
+    patchViewData([
+      {
+        nodeId,
+        values: {
+          courseUrl: nodeTemplate.courseUrl,
+          readmeUrl: nodeTemplate.readmeUrl,
+          userGuide: nodeTemplate.userGuide
+        }
+      }
+    ]);
+  }, [nodeId, nodeTemplate, patchViewData]);
 
   const toolStatus = nodeTemplate?.status ?? node?.pluginData?.status;
   const showVersion = useMemo(() => {
@@ -355,6 +379,15 @@ const NodeCard = (props: Props) => {
   }, [isAppNode, node, toolStatus]);
 
   /* Node header - 重构后的版本,依赖项大幅减少 */
+  const error = useMemo(
+    () =>
+      getToolErrorMessage({
+        status: toolStatus,
+        error: node?.pluginData?.error,
+        t
+      }),
+    [node?.pluginData?.error, t, toolStatus]
+  );
   const showHeader = node?.flowNodeType !== FlowNodeTypeEnum.comment;
 
   const RenderToolHandle = useMemo(
@@ -367,6 +400,7 @@ const NodeCard = (props: Props) => {
 
   return (
     <Flex
+      data-workflow-node-occupied="true"
       position={'relative'}
       outline={selected && (presentationMode || isFolded) ? '16px solid' : undefined}
       outlineColor={'rgba(17, 24, 36, 0.05)'}
@@ -375,6 +409,7 @@ const NodeCard = (props: Props) => {
       {...customStyle}
     >
       <Flex
+        data-workflow-node-card="true"
         hidden={hidden}
         flexDirection={'column'}
         {...(isFolded
@@ -404,9 +439,7 @@ const NodeCard = (props: Props) => {
             visibility: 'visible'
           }
         }}
-        onMouseEnter={() => setHoverNodeId(nodeId)}
-        onMouseLeave={() => setHoverNodeId(undefined)}
-        {...(isError ? { onMouseDownCapture: () => onUpdateNodeError(nodeId, false) } : {})}
+        {...(isError ? { onMouseDownCapture: () => focusIssueNode(undefined) } : {})}
       >
         {debugResult && <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />}
 
@@ -447,15 +480,15 @@ const NodeCard = (props: Props) => {
                     {showVersion && <NodeVersion node={node!} />}
 
                     <NodeActionButtons
-                      nodeTemplate={nodeTemplate}
-                      courseUrl={node?.courseUrl}
-                      readmeUrl={node?.readmeUrl}
+                      nodeTemplate={nodeTemplate ?? undefined}
+                      courseUrl={courseUrl}
+                      readmeUrl={readmeUrl}
                       rtDoms={rtDoms}
                     />
 
                     <NodeStatusBadge
                       status={nodeTemplate?.status ?? node?.pluginData?.status}
-                      error={node?.pluginData?.error}
+                      error={error}
                     />
                   </Flex>
 
@@ -477,13 +510,13 @@ const NodeCard = (props: Props) => {
                     <NodeSecret
                       nodeId={nodeId}
                       isFolder={node?.isFolder}
-                      courseUrl={node?.courseUrl}
-                      readmeUrl={node?.readmeUrl}
+                      courseUrl={courseUrl}
+                      readmeUrl={readmeUrl}
                       hasSystemSecret={node?.hasSystemSecret}
                       pluginId={node?.pluginId}
                       source={node?.source}
                       systemKeyCost={node?.systemKeyCost}
-                      inputConfig={inputConfig}
+                      inputConfig={inputConfig as unknown as FlowNodeInputItemType}
                     />
                   ) : (
                     children
@@ -517,7 +550,7 @@ const NodeCard = (props: Props) => {
         )}
       </Flex>
       {!isFolded && errorIssues.length > 0 && (
-        <Box position={'absolute'} top={'100%'} left={0} w={'100%'}>
+        <Box position={'absolute'} top={'100%'} left={0} w={'100%'} pointerEvents={'none'}>
           <NodeWorkflowCheckIssues issues={errorIssues} />
         </Box>
       )}
@@ -531,7 +564,7 @@ export default React.memo(NodeCard);
 const WorkflowCheckIssueStatusIcon = React.memo(function WorkflowCheckIssueStatusIcon({
   status
 }: {
-  status: ReturnType<typeof getWorkflowCheckIssueUIStatus>;
+  status: ReturnType<typeof getWorkflowIssueUIStatus>;
 }) {
   return (
     <MyIcon
@@ -565,7 +598,7 @@ const NodeWorkflowCheckIssues = React.memo(function NodeWorkflowCheckIssues({
   return (
     <Flex flexDirection={'column'} alignItems={'flex-start'} gap={'8px'} mt={2}>
       {issues.map((issue, index) => {
-        const status = getWorkflowCheckIssueUIStatus(issue.code);
+        const status = getWorkflowIssueUIStatus(issue.code);
         // 显式保留静态 key，避免 i18n 清理脚本误删状态前缀文案。
         const statusPrefixText =
           status === 'pending_handle'
@@ -597,7 +630,7 @@ const NodeWorkflowCheckIssues = React.memo(function NodeWorkflowCheckIssues({
               wordBreak={'break-word'}
               {...workflowCheckIssueTextStyle}
             >
-              {issue.message.trim()}
+              {renderWorkflowIssueMessage(issue, t)}
             </Box>
           </Flex>
         );
@@ -616,7 +649,7 @@ const NodeTitleSection = React.memo<{
 }>(({ nodeId, avatar, name, searchedText, appId }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const nodeActions = useNodeActions(nodeId);
 
   const childAppId = useMemo(() => {
     if (!appId) return;
@@ -652,16 +685,11 @@ const NodeTitleSection = React.memo<{
         return false;
       }
       if (trimmed !== name) {
-        onChangeNode({
-          nodeId,
-          type: 'attr',
-          key: 'name',
-          value: trimmed
-        });
+        nodeActions?.setName(trimmed);
       }
       return true;
     },
-    [name, onChangeNode, nodeId, toast, t]
+    [name, nodeActions, toast, t]
   );
 
   const renderDisplay = useCallback(
@@ -711,26 +739,21 @@ const NodeIntro = React.memo(function NodeIntro({
 }: {
   nodeId: string;
   intro?: string;
-  flowNodeType: FlowNodeTypeEnum;
+  flowNodeType?: FlowNodeTypeEnum;
 }) {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const nodeActions = useNodeActions(nodeId);
   const [isIntroEditing, setIsIntroEditing] = useState(false);
 
   const handleSave = useCallback(
     (newVal: string) => {
       const trimmed = newVal.trim();
       if (trimmed !== intro) {
-        onChangeNode({
-          nodeId,
-          type: 'attr',
-          key: 'intro',
-          value: trimmed
-        });
+        nodeActions?.updateNode(() => ({ intro: trimmed }));
       }
       return true;
     },
-    [intro, onChangeNode, nodeId]
+    [intro, nodeActions]
   );
 
   return (
@@ -766,10 +789,10 @@ const NodeIntro = React.memo(function NodeIntro({
   );
 });
 
-const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeItemType }) {
+const NodeVersion = React.memo(function NodeVersion({ node }: { node: WorkflowNodeData }) {
   const { t } = useTranslation();
 
-  const onResetNode = useContextSelector(WorkflowActionsContext, (v) => v.onResetNode);
+  const nodeActions = useNodeActions(node.nodeId);
   const { openConfirm: openKeepLatestConfirm, ConfirmModal: KeepLatestConfirmModal } = useConfirm({
     content: t('app:keep_the_latest_confirm_tip')
   });
@@ -827,26 +850,41 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
         });
 
         if (!!template) {
-          onResetNode({
-            id: node.nodeId,
-            node: {
-              ...template,
-              colorSchema:
-                template.colorSchema ?? getColorSchemaByFlowNodeType(template.flowNodeType),
-              name: node.name,
-              intro: node.intro,
-              avatar: node.avatar,
-              toolConfig: mergeToolSetChildDescriptions({
-                savedToolConfig: node.toolConfig,
-                templateToolConfig: template.toolConfig
-              })
-            }
-          });
+          const versionTemplate = {
+            ...template,
+            colorSchema:
+              template.colorSchema ?? getColorSchemaByFlowNodeType(template.flowNodeType),
+            name: node.name,
+            intro: node.intro,
+            avatar: node.avatar,
+            toolConfig: mergeToolSetChildDescriptions({
+              savedToolConfig: node.toolConfig,
+              templateToolConfig: template.toolConfig
+            })
+          };
+          // 切换版本 = 用新版本模板整体覆盖节点数据，保留位置、折叠与已配置的工具输入。
+          // adapter 没有整节点替换句柄，这里拼出完整 patch 走 updateNode：Runtime 会用当前
+          // Node View 覆盖 patch 里的 position/isFolded，教程地址等视图字段也不进文档。
+          // 覆盖基线取派发瞬间的记录：拉模板是异步的，用渲染期快照会把期间的其他写入冲掉。
+          const sourceInputMap = new Map(node.inputs.map((input) => [input.key, input]));
+          nodeActions?.updateNode(
+            (current) =>
+              omit(
+                {
+                  ...current,
+                  ...versionTemplate,
+                  inputs: versionTemplate.inputs.map((input) =>
+                    migrateToolInputConfig({ input, sourceInput: sourceInputMap.get(input.key) })
+                  )
+                },
+                ['debugResult', 'searchedText', 'courseUrl', 'readmeUrl', 'userGuide']
+              ) as Partial<DeepReadonly<WorkflowNodeData>>
+          );
         }
       }
     },
     {
-      refreshDeps: [node, onResetNode]
+      refreshDeps: [node, nodeActions]
     }
   );
   const onSelectVersion = useCallback(
@@ -917,92 +955,58 @@ const MenuRender = React.memo(function MenuRender({
 }) {
   const { t } = useTranslation();
   const { openDebugNode, DebugInputModal } = useDebug();
-  const { setNodes, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const actions = useWorkflowActions();
+  const nodeActions = useNodeActions(nodeId);
+  const runtime = useWorkflowRuntime();
+  const clearCanvasSelection = useClearCanvasSelection();
+  // 删除走 ReactFlow 的 deleteElements：它派生的 remove 变更由画布变更漏斗接管。
   const { deleteElements } = useReactFlow();
 
   const { computedNewNodeName } = useWorkflowUtils();
 
-  // Get current node to check if folded
-  const currentNode = getNodeById(nodeId);
-  const isFolded = currentNode?.isFolded;
+  const isFolded = useNode(nodeId, (handle) => !!handle?.view.isFolded);
 
-  const onCopyNode = useCallback(
-    (nodeId: string) => {
-      setNodes((state) => {
-        const node = state.find((node) => node.id === nodeId);
-        if (!node) return state;
-        const template: Omit<StoreNodeItemType, 'nodeId'> = {
-          flowNodeType: node.data.flowNodeType,
-          parentNodeId: node.data.parentNodeId,
-          avatar: node.data.avatar,
-          avatarLinear: node.data.avatarLinear,
-          colorSchema: node.data.colorSchema,
-          name: computedNewNodeName({
-            templateName: node.data.name,
-            flowNodeType: node.data.flowNodeType,
-            pluginId: node.data.pluginId
-          }),
-          intro: node.data.intro,
-          showStatus: node.data.showStatus,
-
-          version: node.data.version,
-          versionLabel: node.data.versionLabel,
-          isLatestVersion: node.data.isLatestVersion,
-
-          catchError: node.data.catchError,
-          inputs: node.data.inputs,
-          outputs: node.data.outputs,
-
-          pluginId: node.data.pluginId,
-          source: node.data.source,
-          isFolder: node.data.isFolder,
-          pluginData: node.data.pluginData,
-
-          toolConfig: node.data.toolConfig,
-
-          currentCost: node.data.currentCost,
-          systemKeyCost: node.data.systemKeyCost,
-          hasTokenFee: node.data.hasTokenFee,
-          hasSystemSecret: node.data.hasSystemSecret,
-          readmeUrl: node.data.readmeUrl
-        };
-
-        return [
-          ...state.map((item) => ({
-            ...item,
-            selected: false
-          })),
-          storeNode2FlowNode({
-            item: {
-              flowNodeType: template.flowNodeType,
-              avatar: template.avatar,
-              avatarLinear: template.avatarLinear,
-              colorSchema: template.colorSchema,
-              name: template.name,
-              intro: template.intro,
-              nodeId: getNanoid(),
-              position: { x: node.position.x + 200, y: node.position.y + 50 },
-              showStatus: template.showStatus,
-              pluginId: template.pluginId,
-              source: template.source,
-              inputs: template.inputs,
-              outputs: template.outputs,
-              version: template.version,
-              versionLabel: template.versionLabel,
-              isLatestVersion: template.isLatestVersion,
-              toolConfig: template.toolConfig,
-              catchError: template.catchError
-            },
-            selected: true,
-            parentNodeId: template.parentNodeId,
-            t
-          })
-        ];
-      });
-    },
-    [computedNewNodeName, setNodes, t]
-  );
+  /**
+   * 复制当前节点：从文档快照取字段、Node View 取坐标，生成新 nodeId 后走 adapter 写入文档。
+   * 只透传 storeNode2FlowNode 实际消费的字段（旧 template 里的 isFolder/pluginData/计费等为死代码）。
+   * 文档快照是 DeepReadonly，item 仅做结构透传，这里整体断言回可变形状。
+   */
+  const onCopyNode = useCallback(() => {
+    const data = runtime?.getNode(nodeId);
+    const position = runtime?.getNodeView(nodeId)?.position;
+    if (!data || !position) return;
+    const newNode = storeNode2FlowNode({
+      item: {
+        flowNodeType: data.flowNodeType,
+        avatar: data.avatar,
+        avatarLinear: data.avatarLinear,
+        colorSchema: data.colorSchema,
+        name: computedNewNodeName({
+          templateName: data.name,
+          flowNodeType: data.flowNodeType,
+          pluginId: data.pluginId
+        }),
+        intro: data.intro,
+        nodeId: getNanoid(),
+        position: { x: position.x + 200, y: position.y + 50 },
+        showStatus: data.showStatus,
+        pluginId: data.pluginId,
+        source: data.source,
+        inputs: data.inputs,
+        outputs: data.outputs,
+        version: data.version,
+        versionLabel: data.versionLabel,
+        isLatestVersion: data.isLatestVersion,
+        toolConfig: data.toolConfig,
+        catchError: data.catchError
+      } as StoreNodeItemType,
+      selected: false,
+      parentNodeId: data.parentNodeId,
+      t
+    });
+    clearCanvasSelection();
+    actions.addNode(canvasNodeToStoreNode(newNode));
+  }, [actions, clearCanvasSelection, computedNewNodeName, nodeId, runtime, t]);
   const Render = useMemo(() => {
     const menuList = [
       ...(menuForbid?.fold
@@ -1013,12 +1017,7 @@ const MenuRender = React.memo(function MenuRender({
               label: isFolded ? t('workflow:Unfold') : t('workflow:Fold'),
               variant: 'whiteBase',
               onClick: () => {
-                onChangeNode({
-                  nodeId,
-                  type: 'attr',
-                  key: 'isFolded',
-                  value: !isFolded
-                });
+                nodeActions?.setFolded(!isFolded);
               }
             }
           ]),
@@ -1039,7 +1038,7 @@ const MenuRender = React.memo(function MenuRender({
               icon: 'copy',
               label: t('common:Copy'),
               variant: 'whiteBase',
-              onClick: () => onCopyNode(nodeId)
+              onClick: onCopyNode
             }
           ]),
       ...(menuForbid?.delete
@@ -1100,7 +1099,8 @@ const MenuRender = React.memo(function MenuRender({
     onCopyNode,
     deleteElements,
     isFolded,
-    onChangeNode
+    nodeActions,
+    runtime
   ]);
 
   return Render;
@@ -1190,7 +1190,8 @@ NodeActionButtons.displayName = 'NodeActionButtons';
 const NodeStatusBadge = React.memo<{ status?: PluginStatusType; error?: string | null }>(
   ({ status, error }) => {
     const { t } = useTranslation();
-    const errorText = getToolErrorMessage({ status, error, t });
+    const errorText =
+      error || (status === PluginStatusEnum.Offline ? 'common:error.tool_not_exist' : undefined);
 
     if (errorText) {
       return (
@@ -1204,7 +1205,7 @@ const NodeStatusBadge = React.memo<{ status?: PluginStatusType; error?: string |
           fontWeight={'medium'}
         >
           <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
-          <Box color={'red.600'}>{errorText}</Box>
+          <Box color={'red.600'}>{t(errorText as any)}</Box>
         </Flex>
       );
     }
@@ -1253,7 +1254,12 @@ const NodeSecret = React.memo(function NodeSecret({
   inputConfig: FlowNodeInputItemType | undefined;
 }) {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  // 密钥配置只会落在 systemInputConfig 记录上：提交走字段句柄，等价旧 onChangeNode updateInput。
+  const inputFieldActions = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.systemInputConfig,
+    kind: 'input'
+  });
 
   const [
     isOpenToolParamConfigModal,
@@ -1283,15 +1289,7 @@ const NodeSecret = React.memo(function NodeSecret({
           isFolder={isFolder}
           onClose={onCloseToolParamConfigModal}
           onSubmit={(data) => {
-            onChangeNode({
-              nodeId,
-              type: 'updateInput',
-              key: inputConfig.key,
-              value: {
-                ...inputConfig,
-                value: data
-              }
-            });
+            inputFieldActions.setValue(data);
             onCloseToolParamConfigModal();
           }}
           courseUrl={courseUrl}

@@ -220,6 +220,27 @@ describe('parseDashboardImportConfig', () => {
     });
   });
 
+  it('preserves reference snapshots through workflow JSON parsing', async () => {
+    const referenceSnapshots = [
+      {
+        reference: ['deleted-node', 'output'] as [string, string],
+        sourceLabel: 'Deleted node'
+      }
+    ];
+    const result = await parseDashboardImportConfig({
+      config: {
+        type: AppTypeEnum.workflow,
+        nodes: [createWorkflowNode('workflowStart')],
+        edges: [],
+        referenceSnapshots
+      },
+      scene: 'agent',
+      t
+    });
+
+    expect(result.workflow.referenceSnapshots).toEqual(referenceSnapshots);
+  });
+
   it('should repair an imported cross-environment modelId by model name', async () => {
     const result = await parseDashboardImportConfig({
       config: {
@@ -575,7 +596,12 @@ describe('parseWorkflowImportConfig', () => {
     expect(result).toEqual({
       nodes: [createWorkflowNode('workflowStart')],
       edges: [{ source: 'a', sourceHandle: 'a-out', target: 'b', targetHandle: 'b-in' }],
-      chatConfig: { welcomeText: 'hello', welcomeConfig: { welcomeText: 'hello' } }
+      chatConfig: {
+        welcomeText: 'hello',
+        welcomeConfig: { welcomeText: 'hello' },
+        questionGuide: undefined
+      },
+      referenceSnapshots: []
     });
   });
 
@@ -598,8 +624,10 @@ describe('parseWorkflowImportConfig', () => {
       edges: [],
       chatConfig: {
         welcomeText: 'plugin hello',
-        welcomeConfig: { welcomeText: 'plugin hello' }
-      }
+        welcomeConfig: { welcomeText: 'plugin hello' },
+        questionGuide: undefined
+      },
+      referenceSnapshots: []
     });
   });
 

@@ -12,10 +12,12 @@ export {
   LegacyStoreNodeItemSchema,
   LegacyWorkflowDataSchema,
   LegacyFlowNodeInputItemSchema,
+  StoreWorkflowInputSchema,
   type LegacyStoreNodeItem,
   type LegacyFlowNodeInputItem,
   type LegacyWorkflowData,
-  type LegacyWorkflowDataInput
+  type LegacyWorkflowDataInput,
+  type StoreWorkflowInput
 } from './legacy/schema';
 
 export { migrateWorkflowToCurrent, isLegacyV1Workflow } from './migrate';

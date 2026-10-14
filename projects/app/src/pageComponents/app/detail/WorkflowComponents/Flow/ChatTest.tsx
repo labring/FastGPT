@@ -162,7 +162,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
 
 const Render = (Props: Props) => {
   const { chatId } = useChatStore();
-  const { appDetail } = useContextSelector(AppContext, (v) => v);
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const chatRecordProviderParams = useMemo(
     () => ({

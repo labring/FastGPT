@@ -165,7 +165,8 @@ const SkillSelectModal = ({
           skillId: detail._id,
           name: detail.name,
           description: detail.description,
-          avatar: detail.avatar
+          avatar: detail.avatar,
+          isDeleted: false
         });
       };
 
@@ -284,7 +285,8 @@ const SkillSelectModal = ({
                           skillId: item._id,
                           name: item.name,
                           description: item.description,
-                          avatar: item.avatar
+                          avatar: item.avatar,
+                          isDeleted: false
                         })
                       }
                       onRemove={() => onRemoveSkill(item._id)}

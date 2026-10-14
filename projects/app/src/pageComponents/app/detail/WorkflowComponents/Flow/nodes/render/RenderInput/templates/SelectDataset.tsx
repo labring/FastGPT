@@ -1,34 +1,25 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Box, Button, Flex, Grid, Switch, useDisclosure } from '@chakra-ui/react';
 import { type SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import { useTranslation } from 'next-i18next';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import dynamic from 'next/dynamic';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useContextSelector } from 'use-context-selector';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
+import { useField, useFieldActions } from '@/web/core/workflow/editor/react/useField';
 import DatasetCard from '@/components/core/app/DatasetCard';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 
 export const SelectDatasetRender = React.memo(function SelectDatasetRender({
-  inputs = [],
   item,
   nodeId
 }: RenderInputProps) {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-
-  const [data, setData] = useState({
-    searchMode: DatasetSearchModeEnum.embedding,
-    limit: 5,
-    similarity: 0.5,
-    usingReRank: true
-  });
+  const currentInput = useField(nodeId, item.key, 'input', (field) => field?.data.input);
+  const fieldActions = useFieldActions({ nodeId, fieldKey: item.key, kind: 'input' });
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -37,35 +28,15 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
   } = useDisclosure();
 
   const selectedDatasets = useMemo(() => {
-    if (Array.isArray(item.value)) return item.value as SelectedDatasetType[];
+    if (Array.isArray(currentInput?.value)) return currentInput.value as SelectedDatasetType[];
     return [] as SelectedDatasetType[];
-  }, [item.value]);
-
-  useEffect(() => {
-    inputs.forEach((input) => {
-      // @ts-ignore
-      if (data[input.key] !== undefined) {
-        setData((state) => ({
-          ...state,
-          [input.key]: input.value
-        }));
-      }
-    });
-  }, [inputs]);
+  }, [currentInput?.value]);
 
   const onDeleteDataset = useCallback(
     (datasetId: string) => {
-      onChangeNode({
-        nodeId,
-        key: item.key,
-        type: 'updateInput',
-        value: {
-          ...item,
-          value: selectedDatasets.filter((dataset) => dataset.datasetId !== datasetId)
-        }
-      });
+      fieldActions.setValue(selectedDatasets.filter((dataset) => dataset.datasetId !== datasetId));
     },
-    [item, nodeId, onChangeNode, selectedDatasets]
+    [fieldActions, selectedDatasets]
   );
 
   const Render = useMemo(() => {
@@ -98,15 +69,7 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
               error: item.error
             }))}
             onChange={(e) => {
-              onChangeNode({
-                nodeId,
-                key: item.key,
-                type: 'updateInput',
-                value: {
-                  ...item,
-                  value: e
-                }
-              });
+              fieldActions.setValue(e);
             }}
             onClose={onCloseDatasetSelect}
           />
@@ -114,10 +77,8 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
       </>
     );
   }, [
+    fieldActions,
     isOpenDatasetSelect,
-    item,
-    nodeId,
-    onChangeNode,
     onCloseDatasetSelect,
     onOpenDatasetSelect,
     onDeleteDataset,
@@ -125,22 +86,27 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
     t
   ]);
 
+  if (!currentInput) return null;
+
   return Render;
 });
 
-export const SwitchAuthTmb = React.memo(function SwitchAuthTmb({
-  inputs = [],
-  item,
-  nodeId
-}: RenderInputProps) {
+export const SwitchAuthTmb = React.memo(function SwitchAuthTmb({ nodeId }: RenderInputProps) {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-
-  const authTmbIdInput = useMemo(
-    () => inputs.find((v) => v.key === NodeInputKeyEnum.authTmbId),
-    [inputs]
+  const authTmbIdInput = useField(
+    nodeId,
+    NodeInputKeyEnum.authTmbId,
+    'input',
+    (field) => field?.data.input
   );
+  const authTmbFieldActions = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.authTmbId,
+    kind: 'input'
+  });
+
+  const authTmbIdValue = authTmbIdInput?.value;
 
   return feConfigs?.isPlus && authTmbIdInput ? (
     <Flex alignItems={'center'}>
@@ -149,17 +115,9 @@ export const SwitchAuthTmb = React.memo(function SwitchAuthTmb({
       <Switch
         ml={1}
         size={'sm'}
-        isChecked={!!authTmbIdInput.value}
+        isChecked={!!authTmbIdValue}
         onChange={(e) => {
-          onChangeNode({
-            nodeId,
-            key: NodeInputKeyEnum.authTmbId,
-            type: 'updateInput',
-            value: {
-              ...authTmbIdInput,
-              value: e.target.checked
-            }
-          });
+          authTmbFieldActions.setValue(e.target.checked);
         }}
       />
     </Flex>

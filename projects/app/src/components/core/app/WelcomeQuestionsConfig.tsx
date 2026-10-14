@@ -4,7 +4,6 @@ import DraggableInputList from './DraggableInputList';
 
 type WelcomeQuestionsConfigProps = {
   value?: string[];
-  zoom?: number;
   onChange: (value: string[]) => void;
 };
 
@@ -12,7 +11,7 @@ type WelcomeQuestionsConfigProps = {
  * 编辑对话开场白下方的预设问题列表。
  * 保持为受控组件；空列表不创建输入项，用户点击新增后才写入一个空问题。
  */
-function WelcomeQuestionsConfig({ value, zoom, onChange }: WelcomeQuestionsConfigProps) {
+function WelcomeQuestionsConfig({ value, onChange }: WelcomeQuestionsConfigProps) {
   const { t } = useTranslation();
   const questions = value ?? [];
   const [autoFocusKey, setAutoFocusKey] = useState<string>();
@@ -41,7 +40,6 @@ function WelcomeQuestionsConfig({ value, zoom, onChange }: WelcomeQuestionsConfi
         key: String(index),
         value: text
       }))}
-      zoom={zoom}
       placeholder={t('workflow:welcome_question_placeholder')}
       addText={t('workflow:add_welcome_question')}
       autoFocusKey={autoFocusKey}

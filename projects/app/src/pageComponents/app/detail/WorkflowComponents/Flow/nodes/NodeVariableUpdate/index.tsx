@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import NodeCard from '../render/NodeCard';
-import { type NodeProps } from 'reactflow';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
@@ -23,14 +22,12 @@ import type {
 import { getRefData } from '@/web/core/workflow/utils';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { getEditorVariables } from '../../../utils';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
   valueTypeToInputType,
   variableInputTypeToInputType
 } from '@/components/core/app/formRender/utils';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useMemoizedFn } from 'ahooks';
 import ValueTypeLabel from '../render/ValueTypeLabel';
@@ -38,6 +35,9 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
 import VariableSelector from './VariableSelector';
 import ValueRenderer from './ValueRenderer';
+import { useNodeWorkflowDocument } from '../render/useWorkflowDocument';
+import { useField, useFieldActions } from '@/web/core/workflow/editor/react/useField';
+import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
 // 切换目标变量时按新类型生成默认操作字段与初值，
 // 保证 UI 初始显示与 runtime 默认行为一致（否则 boolean 会出现 UI 显示"是" / runtime 写 false 的错配）
@@ -55,26 +55,35 @@ const getDefaultsForValueType = (valueType?: WorkflowIOValueTypeEnum): Partial<T
   };
 };
 
-const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
-  const { inputs = [], nodeId } = data;
+const NodeVariableUpdate = ({ data, selected }: CanvasNodeProps) => {
+  const { nodeId } = data;
   const { t } = useTranslation();
 
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { edges, getNodeById } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
+  // 变量列表只读本节点与其上游来源闭包：窄订阅让无关字段的提交不重算也不重渲染。
+  const { workflow, getNodeById, graph } = useNodeWorkflowDocument({ nodeId });
+  const updateListInput = useField(
+    nodeId,
+    NodeInputKeyEnum.updateList,
+    'input',
+    (field) => field?.data.input
   );
+  const updateListFieldActions = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.updateList,
+    kind: 'input'
+  });
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const variables = useMemoEnhance(() => {
+    if (!workflow || !graph) return [];
     return getEditorVariables({
       nodeId,
       getNodeById,
-      edges,
-      appDetail,
-      t
+      chatConfig: workflow.chatConfig,
+      t,
+      getSourceNodeIds: (sourceNodeId) => graph.getSourceNodeIds({ nodeId: sourceNodeId })
     });
-  }, [nodeId, getNodeById, edges, appDetail, t]);
+  }, [nodeId, getNodeById, graph, workflow, t]);
   const { feConfigs } = useSystemStore();
   const externalProviderWorkflowVariables = useMemo(() => {
     return (
@@ -85,29 +94,15 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
     );
   }, [feConfigs?.externalProviderWorkflowVariables]);
 
-  const updateList = useMemo(
-    () =>
-      (inputs.find((input) => input.key === NodeInputKeyEnum.updateList)
-        ?.value as TUpdateListItem[]) || [],
-    [inputs]
-  );
+  const updateListValue = updateListInput?.value;
+  const updateList = useMemo(() => (updateListValue as TUpdateListItem[]) || [], [updateListValue]);
 
+  /** 更新列表整体就是 updateList 字段的值：增删改都按完整数组提交，一次交互一条历史。 */
   const onUpdateList = useCallback(
     (value: TUpdateListItem[]) => {
-      const updateListInput = inputs.find((input) => input.key === NodeInputKeyEnum.updateList);
-      if (!updateListInput) return;
-
-      onChangeNode({
-        nodeId,
-        type: 'updateInput',
-        key: NodeInputKeyEnum.updateList,
-        value: {
-          ...updateListInput,
-          value
-        }
-      });
+      updateListFieldActions.setValue(value);
     },
-    [inputs, nodeId, onChangeNode]
+    [updateListFieldActions]
   );
 
   const ValueRow = useMemoizedFn(
@@ -168,7 +163,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
       };
 
       return (
-        <Container key={index} w={'full'} mx={0} pt={4}>
+        <Container w={'full'} mx={0} pt={4}>
           {/* 目标变量 */}
           <Flex className="nodrag" cursor={'default'} alignItems={'center'} position={'relative'}>
             <Flex alignItems={'center'} position={'relative'} fontWeight={'medium'}>
@@ -259,11 +254,13 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
     return (
       <NodeCard selected={selected} minW={'522px'} maxW={'1000px'} {...data}>
         <Box px={4} pb={4}>
-          <Flex flexDirection={'column'} gap={4}>
-            {updateList.map((updateItem, index) => (
-              <ValueRow key={index} updateItem={updateItem} index={index} />
-            ))}
-          </Flex>
+          <WorkflowFieldScope nodeId={nodeId} fieldKey={NodeInputKeyEnum.updateList}>
+            <Flex flexDirection={'column'} gap={4}>
+              {updateList.map((updateItem, index) => (
+                <ValueRow key={index} updateItem={updateItem} index={index} />
+              ))}
+            </Flex>
+          </WorkflowFieldScope>
           <Flex className="nodrag" alignItems={'center'} mt={4}>
             <Button
               variant={'whiteBase'}
@@ -288,7 +285,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
         </Box>
       </NodeCard>
     );
-  }, [ValueRow, data, onUpdateList, selected, t, updateList]);
+  }, [ValueRow, data, nodeId, onUpdateList, selected, t, updateList]);
 
   return Render;
 };

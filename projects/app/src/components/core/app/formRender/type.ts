@@ -48,7 +48,8 @@ export type SpecificProps = {
   // selectDataset
   datasetOptions?: SelectedDatasetType[];
 
-  // JSONEditor - no extra props
+  // JSONEditor
+  path?: string;
 
   // selectLLMModel
   outLinkAuthData?: OutLinkChatAuthProps;

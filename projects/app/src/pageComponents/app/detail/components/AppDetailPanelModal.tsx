@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, Flex, type BoxProps, type FlexProps } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 
@@ -21,6 +21,40 @@ export type AppDetailPanelModalProps = {
 };
 
 export const APP_DETAIL_PANEL_WIDTH_PX = 400;
+
+/** 面板宽高的过渡时长：收起动画期间内容必须保持挂载，见 `usePanelContentMounted`。 */
+export const APP_DETAIL_PANEL_TRANSITION_MS = 200;
+
+const PANEL_TRANSITION = `width ${APP_DETAIL_PANEL_TRANSITION_MS}ms ease, height ${APP_DETAIL_PANEL_TRANSITION_MS}ms ease`;
+
+/**
+ * 收起动画结束后再卸载面板内容。
+ *
+ * 面板用 CSS transition 收宽高，直接按 `isOpen` 卸载会让内容在动画第一帧就消失，
+ * 只剩一个空壳在缩。展开时立即挂载，收起时延迟到过渡跑完。
+ *
+ * 只给「内容很重、挂着会跟着外部状态白重渲染」的调用点用（模板列表、系统配置、发布历史）；
+ * 运行预览收起时要保住对话状态，不要用这个 hook。
+ */
+export const usePanelContentMounted = (isOpen: boolean) => {
+  const [mounted, setMounted] = useState(isOpen);
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+
+  if (prevIsOpen !== isOpen) {
+    setPrevIsOpen(isOpen);
+    if (isOpen) setMounted(true);
+  }
+
+  useEffect(() => {
+    if (isOpen) return;
+    // 收起时等宽高过渡跑完再卸载；异步 setState 不会级联，中途重新展开会被 cleanup 取消。
+    const timer = setTimeout(() => setMounted(false), APP_DETAIL_PANEL_TRANSITION_MS);
+    return () => clearTimeout(timer);
+  }, [isOpen]);
+
+  // 展开首帧直接由 isOpen 保证挂载，避免依赖 render-phase state 更新完成后再显示内容。
+  return isOpen || mounted;
+};
 
 /**
  * 应用详情页侧边弹窗，直接复用运行预览原有的宽高过渡和视觉样式。
@@ -90,7 +124,7 @@ const AppDetailPanelModal = ({
         borderRadius={'md'}
         overflow={'hidden'}
         pointerEvents={isOpen ? 'auto' : 'none'}
-        transition={'width 0.2s ease, height 0.2s ease'}
+        transition={PANEL_TRANSITION}
         willChange={'width, height'}
         {...contentProps}
       >

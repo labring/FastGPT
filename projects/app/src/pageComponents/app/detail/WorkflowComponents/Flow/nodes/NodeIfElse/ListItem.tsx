@@ -4,7 +4,10 @@ import {
   type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag/index';
 import Container from '../../components/Container';
-import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
+import {
+  type ConditionListItemType,
+  type IfElseListItemType
+} from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { type ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
 import { useTranslation } from 'next-i18next';
@@ -21,44 +24,65 @@ import {
   renderNumberConditionList,
   stringConditionList
 } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
-import { useContextSelector } from 'use-context-selector';
 import React, { useCallback, useMemo } from 'react';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyInput from '@/components/MyInput';
 import { getElseIFLabel, getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { MySourceHandle } from '../render/Handle';
-import { Position, useReactFlow } from 'reactflow';
+import { Position, useReactFlow } from '@xyflow/react';
 import { getRefData, getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import DragIcon from '@fastgpt/web/components/common/DndDrag/DragIcon';
-import { AppContext } from '@/pageComponents/app/detail/context';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { useDocumentGetNodeById, useNodeWorkflowDocument } from '../render/useWorkflowDocument';
+
+type UpdateBranch = (
+  conditionIndex: number,
+  update: (branch: IfElseListItemType) => IfElseListItemType
+) => void;
+
+const conditionItemKeys = new WeakMap<object, string>();
+let nextConditionItemKey = 0;
+
+/** 保留未修改条件项的 React identity；数据结构暂无持久化 conditionId。 */
+const getConditionItemKey = (item: ConditionListItemType) => {
+  const existing = conditionItemKeys.get(item);
+  if (existing) return existing;
+  const key = `ifelse-condition-${nextConditionItemKey++}`;
+  conditionItemKeys.set(item, key);
+  return key;
+};
 
 const ListItem = ({
   provided,
   snapshot,
   conditionIndex,
   conditionItem,
-  ifElseList,
-  onUpdateIfElseList,
+  branchCount,
+  onUpdateBranch,
+  onDeleteBranch,
   nodeId
 }: {
   provided: DraggableProvided;
   snapshot: DraggableStateSnapshot;
   conditionIndex: number;
   conditionItem: IfElseListItemType;
-  ifElseList: IfElseListItemType[];
-  onUpdateIfElseList: (value: IfElseListItemType[]) => void;
+  branchCount: number;
+  onUpdateBranch: UpdateBranch;
+  /** 删除分支由父节点提交：分支记录与其 handle 连线必须在同一事务里消失。 */
+  onDeleteBranch: (conditionIndex: number) => void;
   nodeId: string;
 }) => {
   const { t } = useTranslation();
   const { getZoom } = useReactFlow();
-  const onDelEdge = useContextSelector(WorkflowActionsContext, (v) => v.onDelEdge);
-  const handleId = getHandleId(nodeId, 'source', getIfElseBranchHandleKey(conditionItem));
+  const handleId = getHandleId(
+    nodeId,
+    'source',
+    getIfElseBranchHandleKey(conditionItem, conditionIndex)
+  );
 
   const Render = useMemo(() => {
     return (
@@ -70,11 +94,11 @@ const ListItem = ({
       >
         <Container w={snapshot.isDragging ? '' : 'full'} className="nodrag">
           <Flex mb={4} alignItems={'center'}>
-            {ifElseList.length > 1 && <DragIcon provided={provided} />}
+            {branchCount > 1 && <DragIcon provided={provided} />}
             <Box color={'myGray.900'} fontWeight={'medium'} fontSize={'md'} ml={2}>
               {getElseIFLabel(conditionIndex)}
             </Box>
-            {conditionItem.list?.length > 1 && (
+            {conditionItem.list.length > 1 && (
               <Flex
                 ml={1.5}
                 px={1}
@@ -87,17 +111,10 @@ const ListItem = ({
                 }}
                 rounded={'md'}
                 onClick={() => {
-                  onUpdateIfElseList(
-                    ifElseList.map((ifElse, index) => {
-                      if (index === conditionIndex) {
-                        return {
-                          ...ifElse,
-                          condition: ifElse.condition === 'AND' ? 'OR' : 'AND'
-                        };
-                      }
-                      return ifElse;
-                    })
-                  );
+                  onUpdateBranch(conditionIndex, (branch) => ({
+                    ...branch,
+                    condition: branch.condition === 'AND' ? 'OR' : 'AND'
+                  }));
                 }}
               >
                 {conditionItem.condition}
@@ -105,7 +122,7 @@ const ListItem = ({
               </Flex>
             )}
             <Box flex={1} />
-            {ifElseList.length > 1 && (
+            {branchCount > 1 && (
               <MyIcon
                 ml={2}
                 boxSize={5}
@@ -114,148 +131,35 @@ const ListItem = ({
                 _hover={{ color: 'red.600' }}
                 color={'myGray.600'}
                 onClick={() => {
-                  onUpdateIfElseList(ifElseList.filter((_, index) => index !== conditionIndex));
-                  onDelEdge({
-                    nodeId,
-                    sourceHandle: handleId
-                  });
+                  onDeleteBranch(conditionIndex);
                 }}
               />
             )}
           </Flex>
           <Box>
-            {conditionItem.list?.map((item, i) => {
-              return (
-                <Box key={i}>
-                  {/* condition list */}
-                  <Flex gap={1.5} mb={2} alignItems={'center'}>
-                    {/* variable reference */}
-                    <VariableSelector
-                      nodeId={nodeId}
-                      variable={item.variable}
-                      onSelect={(e) => {
-                        onUpdateIfElseList(
-                          ifElseList.map((ifElse, index) => {
-                            if (index === conditionIndex) {
-                              return {
-                                ...ifElse,
-                                list: ifElse.list.map((item, index) => {
-                                  if (index === i) {
-                                    return {
-                                      ...item,
-                                      variable: e,
-                                      condition: undefined
-                                    };
-                                  }
-                                  return item;
-                                })
-                              };
-                            }
-                            return ifElse;
-                          })
-                        );
-                      }}
-                    />
-                    {/* condition select */}
-                    <ConditionSelect
-                      condition={item.condition}
-                      variable={item.variable}
-                      onSelect={(e) => {
-                        onUpdateIfElseList(
-                          ifElseList.map((ifElse, index) => {
-                            if (index === conditionIndex) {
-                              return {
-                                ...ifElse,
-                                list: ifElse.list.map((item, index) => {
-                                  if (index === i) {
-                                    return {
-                                      ...item,
-                                      condition: e
-                                    };
-                                  }
-                                  return item;
-                                })
-                              };
-                            }
-                            return ifElse;
-                          })
-                        );
-                      }}
-                    />
-                    {/* value */}
-                    <ConditionValueInput
-                      value={item.value}
-                      valueType={item.valueType}
-                      condition={item.condition}
-                      variable={item.variable}
-                      nodeId={nodeId}
-                      updateValue={(value, valueType) => {
-                        onUpdateIfElseList(
-                          ifElseList.map((ifElse, index) => {
-                            return {
-                              ...ifElse,
-                              list:
-                                index === conditionIndex
-                                  ? ifElse.list.map((item, index) => {
-                                      if (index === i) {
-                                        return {
-                                          ...item,
-                                          value,
-                                          valueType
-                                        };
-                                      }
-                                      return item;
-                                    })
-                                  : ifElse.list
-                            };
-                          })
-                        );
-                      }}
-                    />
-                    {/* delete */}
-                    {conditionItem.list.length > 1 && (
-                      <MyIconButton
-                        icon="minus"
-                        hoverColor={'red.600'}
-                        hoverBg="red.100"
-                        onClick={() => {
-                          onUpdateIfElseList(
-                            ifElseList.map((ifElse, index) => {
-                              if (index === conditionIndex) {
-                                return {
-                                  ...ifElse,
-                                  list: ifElse.list.filter((_, index) => index !== i)
-                                };
-                              }
-                              return ifElse;
-                            })
-                          );
-                        }}
-                      />
-                    )}
-                  </Flex>
-                </Box>
-              );
-            })}
+            {conditionItem.list.map((item, itemIndex) => (
+              <ConditionItem
+                key={getConditionItemKey(item)}
+                conditionIndex={conditionIndex}
+                itemIndex={itemIndex}
+                item={item}
+                onUpdateBranch={onUpdateBranch}
+                nodeId={nodeId}
+                canDelete={conditionItem.list.length > 1}
+              />
+            ))}
           </Box>
           <Flex>
             <Button
               onClick={() => {
-                onUpdateIfElseList(
-                  ifElseList.map((ifElse, index) => {
-                    if (index === conditionIndex) {
-                      return {
-                        ...ifElse,
-                        list: ifElse.list.concat({
-                          variable: undefined,
-                          condition: undefined,
-                          value: undefined
-                        })
-                      };
-                    }
-                    return ifElse;
+                onUpdateBranch(conditionIndex, (branch) => ({
+                  ...branch,
+                  list: branch.list.concat({
+                    variable: undefined,
+                    condition: undefined,
+                    value: undefined
                   })
-                );
+                }));
               }}
               variant={'link'}
               leftIcon={<MyIcon name={'common/addLight'} boxSize={4} mr={-1} />}
@@ -270,7 +174,7 @@ const ListItem = ({
             nodeId={nodeId}
             handleId={handleId}
             position={Position.Right}
-            translate={[5, 0]}
+            translate={[9, 0]}
           />
         )}
       </Flex>
@@ -279,12 +183,12 @@ const ListItem = ({
     conditionIndex,
     conditionItem.condition,
     conditionItem.list,
+    branchCount,
     getZoom,
     handleId,
-    ifElseList,
     nodeId,
-    onDelEdge,
-    onUpdateIfElseList,
+    onDeleteBranch,
+    onUpdateBranch,
     provided,
     snapshot.isDragging,
     t
@@ -309,6 +213,76 @@ const ListItem = ({
 };
 
 export default React.memo(ListItem);
+
+const ConditionItem = React.memo(
+  ({
+    conditionIndex,
+    itemIndex,
+    item,
+    onUpdateBranch,
+    nodeId,
+    canDelete
+  }: {
+    conditionIndex: number;
+    itemIndex: number;
+    item: ConditionListItemType;
+    onUpdateBranch: UpdateBranch;
+    nodeId: string;
+    canDelete: boolean;
+  }) => {
+    const updateItem = useCallback(
+      (patch: Partial<ConditionListItemType>) => {
+        onUpdateBranch(conditionIndex, (branch) => ({
+          ...branch,
+          list: branch.list.map((current, index) =>
+            index === itemIndex ? { ...current, ...patch } : current
+          )
+        }));
+      },
+      [conditionIndex, itemIndex, onUpdateBranch]
+    );
+
+    return (
+      <Box>
+        <Flex gap={1.5} mb={2} alignItems={'center'}>
+          <VariableSelector
+            nodeId={nodeId}
+            variable={item.variable}
+            onSelect={(variable) => updateItem({ variable, condition: undefined })}
+          />
+          <ConditionSelect
+            condition={item.condition}
+            variable={item.variable}
+            onSelect={(condition) => updateItem({ condition })}
+            nodeId={nodeId}
+          />
+          <ConditionValueInput
+            value={item.value}
+            valueType={item.valueType}
+            condition={item.condition}
+            variable={item.variable}
+            nodeId={nodeId}
+            updateValue={(value, valueType) => updateItem({ value, valueType })}
+          />
+          {canDelete && (
+            <MyIconButton
+              icon="minus"
+              hoverColor={'red.600'}
+              hoverBg="red.100"
+              onClick={() =>
+                onUpdateBranch(conditionIndex, (branch) => ({
+                  ...branch,
+                  list: branch.list.filter((_, index) => index !== itemIndex)
+                }))
+              }
+            />
+          )}
+        </Flex>
+      </Box>
+    );
+  }
+);
+ConditionItem.displayName = 'ConditionItem';
 
 const VariableSelector = ({
   nodeId,
@@ -346,24 +320,26 @@ const VariableSelector = ({
 const ConditionSelect = ({
   condition,
   variable,
-  onSelect
+  onSelect,
+  nodeId
 }: {
   condition?: VariableConditionEnum;
   variable?: ReferenceItemValueType;
   onSelect: (e: VariableConditionEnum) => void;
+  nodeId: string;
 }) => {
   const { t } = useTranslation();
-  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
-  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+  const getNodeById = useDocumentGetNodeById();
+  const { workflow } = useNodeWorkflowDocument({ nodeId });
 
   // get condition type
   const { valueType, required } = useMemoEnhance(() => {
     return getRefData({
       variable,
       getNodeById,
-      chatConfig: appDetail.chatConfig
+      chatConfig: workflow?.chatConfig as AppChatConfigType
     });
-  }, [appDetail.chatConfig, getNodeById, variable]);
+  }, [getNodeById, variable, workflow?.chatConfig]);
 
   const conditionList = useMemo(() => {
     if (valueType === WorkflowIOValueTypeEnum.string) return stringConditionList;
@@ -434,16 +410,17 @@ const ConditionValueInput = ({
   nodeId: string;
 }) => {
   const { t } = useTranslation();
-  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
-  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+  const getNodeById = useDocumentGetNodeById();
+  const { workflow } = useNodeWorkflowDocument({ nodeId });
 
   const isReference = useMemo(() => type === 'reference', [type]);
 
   const globalVariables = useMemoEnhance(() => {
+    if (!workflow) return [];
     return getWorkflowGlobalVariables({
-      chatConfig: appDetail.chatConfig
+      chatConfig: workflow.chatConfig as AppChatConfigType
     });
-  }, [appDetail.chatConfig]);
+  }, [workflow?.chatConfig]);
 
   // get value type
   const valueType = useMemo(() => {

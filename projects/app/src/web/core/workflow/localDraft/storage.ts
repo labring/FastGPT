@@ -1,6 +1,7 @@
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { WorkflowReferenceSnapshot } from '@fastgpt/global/core/workflow/type/io';
 
 export const WORKFLOW_LOCAL_DRAFT_STORAGE_KEY = 'fastgpt_workflow_local_draft_v1';
 
@@ -16,6 +17,8 @@ export type WorkflowLocalDraft = {
     nodes: StoreNodeItemType[];
     edges: StoreEdgeItemType[];
     chatConfig: AppChatConfigType;
+    /** 与保存/发布链路一致：草稿也要带上已删除引用来源的历史展示元数据。 */
+    referenceSnapshots?: WorkflowReferenceSnapshot[];
   };
 };
 
@@ -96,8 +99,6 @@ export const saveWorkflowLocalDraft = ({
   tmbId: string;
   data: WorkflowLocalDraft['data'];
 }) => {
-  removeWorkflowLocalDraftByApp({ appId });
-
   if (!isBrowser() || !appId || !tmbId || data.nodes.length === 0) {
     return false;
   }

@@ -5,6 +5,7 @@ import { PaginationSchema } from '../../../api';
 import { OpenAPIStoreNodeItemTypeSchema } from '../../workflow/node';
 import { AppResourcesSchema } from '../../../../core/app/type';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
+import { WorkflowReferenceSnapshotSchema } from '../../../../core/workflow/type/io';
 import { AppChatConfigInputSchema, OpenAPIAppChatConfigSchema } from '../common/api';
 import { BoolSchema, NumSchema } from '../../../../common/zod';
 
@@ -38,6 +39,13 @@ const AppVersionChatConfigInputSchema = AppChatConfigInputSchema.default({}).met
 const AppVersionResourcesSchema = AppResourcesSchema.meta({
   description: '该版本引用的资源集合'
 });
+
+const AppVersionReferenceSnapshotsSchema = z
+  .array(WorkflowReferenceSnapshotSchema)
+  .default([])
+  .meta({
+    description: '该版本内已删除引用来源的历史展示元数据'
+  });
 
 const OpenAPIVersionListItemSchema = VersionListItemSchema.extend({
   _id: ObjectIdSchema.meta({
@@ -75,6 +83,9 @@ export const PublishAppBodySchema = z.object({
   }),
   chatConfig: AppVersionChatConfigInputSchema.optional().meta({
     description: '本次保存的应用对话配置'
+  }),
+  referenceSnapshots: AppVersionReferenceSnapshotsSchema.optional().meta({
+    description: '本次保存的已删除引用来源历史展示元数据；未传时按空数组保存'
   }),
   isPublish: BoolSchema.optional().meta({
     example: true,
@@ -184,6 +195,7 @@ export const GetAppVersionDetailResponseSchema = z.object({
     example: '正式发布版',
     description: '版本名称'
   }),
+  referenceSnapshots: AppVersionReferenceSnapshotsSchema,
   resources: AppVersionResourcesSchema
 });
 export type GetAppVersionDetailResponseType = z.infer<typeof GetAppVersionDetailResponseSchema>;
@@ -221,6 +233,7 @@ export const GetLatestAppVersionResponseSchema = z.object({
   }),
   edges: AppVersionEdgesSchema,
   chatConfig: AppVersionChatConfigSchema,
+  referenceSnapshots: AppVersionReferenceSnapshotsSchema,
   resources: AppVersionResourcesSchema
 });
 export type GetLatestAppVersionResponseType = z.infer<typeof GetLatestAppVersionResponseSchema>;

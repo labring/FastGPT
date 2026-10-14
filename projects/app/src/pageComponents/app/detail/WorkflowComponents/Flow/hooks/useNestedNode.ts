@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { useSize } from 'ahooks';
+import { useContext, useEffect, useMemo, useRef } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import {
   ArrayTypeMap,
@@ -7,19 +6,17 @@ import {
   VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import {
-  Input_Template_Children_Node_List,
-  Input_Template_NESTED_NODE_OFFSET
-} from '@fastgpt/global/core/workflow/template/input';
 import { isValidArrayReferenceValue } from '@fastgpt/global/core/workflow/utils';
 import { type ReferenceArrayValueType } from '@fastgpt/global/core/workflow/type/io';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { WorkflowBufferDataContext, WorkflowInitContext } from '../../context/workflowInitContext';
-import { WorkflowActionsContext } from '../../context/workflowActionsContext';
-import { WorkflowLayoutContext } from '../../context/workflowComputeContext';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
+import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflow } from '@/web/core/workflow/editor/react/useWorkflow';
+import { useDocumentGetNodeById } from '../nodes/render/useWorkflowDocument';
 import { AppContext } from '../../../context';
+import { useWorkflowCanvasValue } from '../canvas/workflowCanvasContext';
+import { WorkflowNodeOffscreenMeasurementContext } from '../nodes/render/Handle/handleRenderContext';
 
 type UseNestedNodeParams = {
   nodeId: string;
@@ -34,73 +31,32 @@ type UseNestedNodeResult = {
   inputBoxRef: React.RefObject<HTMLDivElement>;
 };
 
-// Shared hook for nested-container nodes (Loop / ParallelRun / LoopRun).
+/** 为 Loop / ParallelRun / LoopRun 读取容器内容区的 renderer 派生尺寸。 */
 export const useNestedNode = ({
   nodeId,
   inputs,
   arrayInputKey = NodeInputKeyEnum.nestedInputArray
 }: UseNestedNodeParams): UseNestedNodeResult => {
-  const { getNodeById, nodeIds, childNodeIds } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => {
-      return {
-        getNodeById: v.getNodeById,
-        nodeIds: v.nodeIds,
-        childNodeIds: v.childrenNodeIdListMap[nodeId],
-        getNodeList: v.getNodeList
-      };
-    }
-  );
-  // 订阅子节点尺寸变化：ReactFlow 完成测量后会更新 node.width / node.height,
-  // 把它们压成字符串当 signal,有变化就重算 bounds,避免 50ms 定时器抢跑在测量前。
-  const childDimensionsSignal = useContextSelector(WorkflowInitContext, (v) => {
-    let signal = '';
-    for (const node of v.nodes) {
-      if (node.data.parentNodeId === nodeId) {
-        signal += `${node.id}:${node.width ?? 0}x${node.height ?? 0}|`;
-      }
-    }
-    return signal;
-  });
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  // 这里只用到「全量节点 id」与「按 id 查一个节点的 outputs」：
+  // id 列表属结构通道（单字段提交不通知），查节点走非订阅 getter，两者都不需要整份语义快照。
+  const structureNodes = useWorkflow((structure) => structure.nodes);
+  const getNodeById = useDocumentGetNodeById();
+  const nodeActions = useNodeActions(nodeId);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const resetParentNodeSizeAndPosition = useContextSelector(
-    WorkflowLayoutContext,
-    (v) => v.resetParentNodeSizeAndPosition
-  );
+  const containerLayout = useWorkflowCanvasValue((value) => value.containerLayouts.get(nodeId));
+  const isMeasurement = useContext(WorkflowNodeOffscreenMeasurementContext);
 
-  // ── 1. Read sizing & array input from inputs ────────────────────────────────
-  const computedResult = useMemoEnhance(() => {
-    return {
-      nodeWidth: Math.round(
-        Number(inputs.find((input) => input.key === NodeInputKeyEnum.nodeWidth)?.value) || 500
-      ),
-      nodeHeight: Math.round(
-        Number(inputs.find((input) => input.key === NodeInputKeyEnum.nodeHeight)?.value) || 500
-      ),
-      nestedInputArray: arrayInputKey
-        ? inputs.find((input) => input.key === arrayInputKey)
-        : undefined,
-      loopNodeInputHeight: inputs.find(
-        (input) => input.key === NodeInputKeyEnum.nestedNodeInputHeight
-      )
-    };
-  }, [inputs, arrayInputKey]);
-
+  // ── 1. Read the container array input（外框尺寸是常量，不再从 inputs 读）─────
   const nestedInputArray = useMemoEnhance(
-    () => computedResult.nestedInputArray,
-    [computedResult.nestedInputArray]
+    () => (arrayInputKey ? inputs.find((input) => input.key === arrayInputKey) : undefined),
+    [inputs, arrayInputKey]
   );
-  const nodeWidth = computedResult.nodeWidth;
-  const nodeHeight = computedResult.nodeHeight;
-  const loopNodeInputHeight =
-    computedResult.loopNodeInputHeight ?? Input_Template_NESTED_NODE_OFFSET;
-
   // ── 2. Infer array valueType from referenced output ─────────────────────────
   const newValueType = useMemo(() => {
     if (!nestedInputArray) return WorkflowIOValueTypeEnum.arrayAny;
     const value = nestedInputArray.value as ReferenceArrayValueType;
 
+    const nodeIds = structureNodes.map((item) => item.nodeId);
     if (!value || value.length === 0 || !isValidArrayReferenceValue(value, nodeIds)) {
       return WorkflowIOValueTypeEnum.arrayAny;
     }
@@ -113,69 +69,31 @@ export const useNestedNode = ({
       if (ref?.[0] === VARIABLE_NODE_ID) {
         return globalVariables.find((item) => item.key === ref[1])?.valueType;
       } else {
-        const node = getNodeById(ref?.[0]);
-        const output = node?.outputs.find((output) => output.id === ref?.[1]);
+        const sourceNode = getNodeById(ref?.[0]);
+        const output = sourceNode?.outputs.find((output) => output.id === ref?.[1]);
         return output?.valueType;
       }
     })(value[0]);
 
     return ArrayTypeMap[valueType as keyof typeof ArrayTypeMap] ?? WorkflowIOValueTypeEnum.arrayAny;
-  }, [appDetail.chatConfig, getNodeById, nestedInputArray, nodeIds]);
+  }, [appDetail.chatConfig, nestedInputArray, structureNodes, getNodeById]);
 
   useEffect(() => {
     if (!nestedInputArray || !arrayInputKey || nestedInputArray.valueType === newValueType) return;
-    onChangeNode({
-      nodeId,
-      type: 'updateInput',
-      key: arrayInputKey,
-      value: {
-        ...nestedInputArray,
-        valueType: newValueType
-      }
-    });
-  }, [nestedInputArray, newValueType, nodeId, onChangeNode, arrayInputKey]);
+    // 记录级替换：基准取派发瞬间的文档 inputs（不是 props 里过滤后的子集），只换命中 key 的那一条。
+    nodeActions?.updateNode((current) => ({
+      inputs: current.inputs.map((input) =>
+        input.key === arrayInputKey ? { ...input, valueType: newValueType } : input
+      )
+    }));
+  }, [nestedInputArray, newValueType, nodeActions, arrayInputKey]);
 
-  // ── 3a. Maintain childrenNodeIdList ─────────────────────────────────────────
-  useEffect(() => {
-    onChangeNode({
-      nodeId,
-      type: 'updateInput',
-      key: NodeInputKeyEnum.childrenNodeIdList,
-      value: {
-        ...Input_Template_Children_Node_List,
-        value: childNodeIds
-      }
-    });
-  }, [childNodeIds, nodeId, onChangeNode]);
-
-  // ── 3b. Trigger layout reset on child id / dimension change ─────────────────
-  // 依赖 childDimensionsSignal,子节点被 ReactFlow 测量出新的 w/h 后会再触发一次,
-  // 确保 bounds 计算基于真实尺寸,而不是赶在 50ms 定时器到期时还是 0 的状态。
-  useEffect(() => {
-    const timer = setTimeout(() => resetParentNodeSizeAndPosition(nodeId), 50);
-    return () => clearTimeout(timer);
-  }, [childNodeIds, childDimensionsSignal, nodeId, resetParentNodeSizeAndPosition]);
-
-  // ── 4 & 5. Measure input-box height, sync and re-layout ────────────────────
+  // 容器子区域只消费 renderer 派生尺寸；离屏测量跳过该尺寸，才能得到可收缩的自身内容基线。
   const inputBoxRef = useRef<HTMLDivElement>(null);
-  const size = useSize(inputBoxRef);
-  useEffect(() => {
-    if (!size?.height) return;
 
-    onChangeNode({
-      nodeId,
-      type: 'replaceInput',
-      key: NodeInputKeyEnum.nestedNodeInputHeight,
-      value: {
-        ...loopNodeInputHeight,
-        value: size.height
-      }
-    });
-
-    const timer = setTimeout(() => resetParentNodeSizeAndPosition(nodeId), 50);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [size?.height]);
-
-  return { nodeWidth, nodeHeight, inputBoxRef };
+  return {
+    nodeWidth: isMeasurement ? 0 : (containerLayout?.childWidth ?? 0),
+    nodeHeight: isMeasurement ? 0 : (containerLayout?.childHeight ?? 0),
+    inputBoxRef
+  };
 };

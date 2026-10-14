@@ -1257,7 +1257,11 @@ describe('workflow migration boundary', () => {
       chatConfig: {}
     };
 
-    expect(await migrateWorkflowToCurrent(input as any)).toEqual(input);
+    // canonical 会补上根级 referenceSnapshots 默认值，其余字段保持不变
+    expect(await migrateWorkflowToCurrent(input as any)).toEqual({
+      ...input,
+      referenceSnapshots: []
+    });
   });
 
   it('preserves name and avatar on selectedTools during canonical migration', async () => {

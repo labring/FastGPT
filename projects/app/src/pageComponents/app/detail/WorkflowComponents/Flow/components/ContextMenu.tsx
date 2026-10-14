@@ -4,44 +4,112 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { CommentNode } from '@fastgpt/global/core/workflow/template/system/comment';
-import { useContextSelector } from 'use-context-selector';
-import { type Node, useReactFlow } from 'reactflow';
-import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
+import { type Node, useReactFlow } from '@xyflow/react';
 import dagre from '@dagrejs/dagre';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { cloneDeep } from 'lodash-es';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { WorkflowUIContext } from '../../context/workflowUIContext';
-import { WorkflowLayoutContext } from '../../context/workflowComputeContext';
+import { useWorkflowUIValue } from '../canvas/canvasState';
+import {
+  useWorkflowCanvasRendererValue,
+  useWorkflowCanvasValue
+} from '../canvas/workflowCanvasContext';
 import { getHandleIndex } from '../utils/edge';
+import { getParentNodeSizeAndPosition } from '../utils/layout';
+import { useCanvas } from '@/web/core/workflow/editor/react/useWorkflowQueries';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
+import {
+  canvasNodeToStoreNode,
+  type CanvasNode
+} from '@/web/core/workflow/editor/canvas/canvasTypes';
+import {
+  useWorkflowRuntime,
+  useWorkflowSnapshot
+} from '@/web/core/workflow/editor/session/workflowSession';
+import { useClearCanvasSelection } from '../canvas/useCanvasController';
+import { type DimensionReader, type NodeCardDimension } from '../canvas/nodeDimensions';
+
+/** 右键菜单单项：执行动作后关闭菜单。不依赖父组件状态，放模块级避免每次渲染重建组件。 */
+const ContextMenuItem = ({
+  icon,
+  label,
+  onClick,
+  ...props
+}: {
+  icon: string;
+  label: string;
+  onClick: () => any;
+} & StackProps) => {
+  const closeContextMenu = useWorkflowUIValue((ctx) => ctx.closeContextMenu);
+
+  return (
+    <HStack
+      px={2}
+      py={1}
+      cursor={'pointer'}
+      borderRadius={'sm'}
+      _hover={{ bg: 'myGray.50', color: 'primary.500' }}
+      onClick={() => {
+        onClick();
+        closeContextMenu();
+      }}
+      {...props}
+    >
+      <MyIcon name={icon as any} w={'1rem'} ml={1} />
+      <Box fontSize={'sm'} fontWeight={'500'}>
+        {label}
+      </Box>
+    </HStack>
+  );
+};
 
 const ContextMenu = () => {
   const { t } = useTranslation();
-  const menu = useContextSelector(WorkflowUIContext, (v) => v.menu!);
-  const setMenu = useContextSelector(WorkflowUIContext, (ctx) => ctx.setMenu);
-  const { setNodes, setEdges, allNodeFolded } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
-  );
-  const getParentNodeSizeAndPosition = useContextSelector(
-    WorkflowLayoutContext,
-    (v) => v.getParentNodeSizeAndPosition
-  );
+  const menu = useWorkflowUIValue((v) => v.menu!);
+  const actions = useWorkflowActions();
+  const canvas = useCanvas();
+  const clearCanvasSelection = useClearCanvasSelection();
 
-  const { fitView, screenToFlowPosition, getNodes } = useReactFlow();
+  // 自动对齐只读 renderer 交互状态（位置、测量尺寸）；写入走画布本地数组，
+  // 受控模式下 useReactFlow().setNodes 会被转成整份 reset 变更。
+  const { screenToFlowPosition } = useReactFlow();
+  const getNodes = useWorkflowCanvasRendererValue((v) => v.getNodes);
+  const fitNodes = useWorkflowCanvasValue((v) => v.fitNodes);
+  const edges = useWorkflowCanvasRendererValue((v) => v.edges);
+  const getNodeDimension = useWorkflowCanvasValue((v) => v.getNodeDimension);
+  const replaceNodes = useWorkflowCanvasRendererValue((v) => v.replaceNodes);
+  const runtime = useWorkflowRuntime();
+  // 语义通道：快照只在语义版本变化时换身份，节点增删会带动下面的折叠判定重算。
+  const workflow = useWorkflowSnapshot();
+
+  /**
+   * 是否全部节点已折叠：折叠存在 Node View 上，语义快照不含，只能问 runtime。
+   * host 的 viewTick 只覆盖 overlay 与标红焦点，折叠提交（commitGeometry）不再 bump 任何计数器，
+   * 所以这里不做 memo，每次渲染按当前值算：菜单是 {!!menu && <ContextMenu />}，每次打开都重新挂载，
+   * 用户看到标签时读到的一定是当前值；唯一过期窗口是「菜单常驻期间从节点卡片改折叠」。
+   * comment 节点不参与判定，空文档视为已全部折叠，与旧派生索引一致。
+   */
+  const allNodeFolded = (workflow?.nodes ?? []).every(
+    (node) =>
+      node.flowNodeType === FlowNodeTypeEnum.comment ||
+      !!runtime?.getNodeView(node.nodeId)?.isFolded
+  );
 
   const onLayout = useCallback(() => {
     const updateChildNodesPosition = ({
       startNode,
       nodes,
-      edges
+      edges,
+      getDimension
     }: {
-      startNode: Node<FlowNodeItemType>;
-      nodes: Node<FlowNodeItemType>[];
+      startNode: Node<FlowNodeItemType, FlowNodeTypeEnum>;
+      nodes: Node<FlowNodeItemType, FlowNodeTypeEnum>[];
       edges: any[];
+      getDimension: DimensionReader;
     }) => {
       const startPosition = { x: startNode.position.x, y: startNode.position.y };
+      const startDimension = getDimension(startNode.id);
+      if (!startDimension) return;
 
       const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
       dagreGraph.setGraph({
@@ -51,7 +119,8 @@ const ContextMenu = () => {
       });
 
       nodes.forEach((node) => {
-        dagreGraph.setNode(node.id, { width: node.width!, height: node.height! });
+        const dimension = getDimension(node.id);
+        if (dimension) dagreGraph.setNode(node.id, dimension);
       });
 
       // Find connected nodes
@@ -65,13 +134,13 @@ const ContextMenu = () => {
 
       dagre.layout(dagreGraph);
       const layoutedStartNode = dagreGraph.node(startNode.data.nodeId);
-      const offsetX = startPosition.x - (layoutedStartNode.x - startNode.width! / 2);
-      const offsetY = startPosition.y - (layoutedStartNode.y - startNode.height! / 2);
+      const offsetX = startPosition.x - (layoutedStartNode.x - startDimension.width / 2);
+      const offsetY = startPosition.y - (layoutedStartNode.y - startDimension.height / 2);
 
       // Group nodes by rank (horizontal position in LR layout)
       const nodesByRank: Map<
         number,
-        Array<{ node: Node<FlowNodeItemType>; dagreNode: any }>
+        Array<{ node: Node<FlowNodeItemType, FlowNodeTypeEnum>; dagreNode: any }>
       > = new Map();
 
       nodes.forEach((node) => {
@@ -94,7 +163,9 @@ const ContextMenu = () => {
         // Find the minimum left position (for left alignment)
         let minLeft = Infinity;
         nodesInRank.forEach(({ node, dagreNode }) => {
-          const left = dagreNode.x - node.width! / 2;
+          const dimension = getDimension(node.id);
+          if (!dimension) return;
+          const left = dagreNode.x - dimension.width / 2;
           minLeft = Math.min(minLeft, left);
         });
 
@@ -128,24 +199,34 @@ const ContextMenu = () => {
 
         // Assign Y positions in sorted order
         let currentY =
-          Math.min(...nodesInRank.map(({ dagreNode, node }) => dagreNode.y - node.height! / 2)) +
-          offsetY;
+          Math.min(
+            ...nodesInRank.map(({ dagreNode, node }) => {
+              const dimension = getDimension(node.id);
+              return dagreNode.y - (dimension?.height ?? 0) / 2;
+            })
+          ) + offsetY;
         nodesInRank.forEach(({ node }) => {
+          const dimension = getDimension(node.id);
+          if (!dimension) return;
           node.position = { x: minLeft + offsetX, y: currentY };
-          currentY += node.height! + 80;
+          currentY += dimension.height + 80;
         });
       });
     };
     const updateParentNodesPosition = ({
       startNode,
       nodes,
-      edges
+      edges,
+      getDimension
     }: {
-      startNode: Node<FlowNodeItemType>;
-      nodes: Node<FlowNodeItemType>[];
+      startNode: Node<FlowNodeItemType, FlowNodeTypeEnum>;
+      nodes: Node<FlowNodeItemType, FlowNodeTypeEnum>[];
       edges: any[];
+      getDimension: DimensionReader;
     }) => {
       const startPosition = { x: startNode.position.x, y: startNode.position.y };
+      const startDimension = getDimension(startNode.id);
+      if (!startDimension) return;
 
       const childNodeIdsSet = new Set(
         nodes.filter((node) => !!node.data.parentNodeId).map((node) => node.data.nodeId)
@@ -160,7 +241,8 @@ const ContextMenu = () => {
 
       nodes.forEach((node) => {
         if (childNodeIdsSet.has(node.data.nodeId)) return;
-        dagreGraph.setNode(node.id, { width: node.width!, height: node.height! });
+        const dimension = getDimension(node.id);
+        if (dimension) dagreGraph.setNode(node.id, dimension);
       });
 
       // Find connected nodes
@@ -176,13 +258,13 @@ const ContextMenu = () => {
 
       dagre.layout(dagreGraph);
       const layoutedStartNode = dagreGraph.node(startNode.data.nodeId);
-      const offsetX = startPosition.x - (layoutedStartNode.x - startNode.width! / 2);
-      const offsetY = startPosition.y - (layoutedStartNode.y - startNode.height! / 2);
+      const offsetX = startPosition.x - (layoutedStartNode.x - startDimension.width / 2);
+      const offsetY = startPosition.y - (layoutedStartNode.y - startDimension.height / 2);
 
       // Group nodes by rank (horizontal position in LR layout)
       const nodesByRank: Map<
         number,
-        Array<{ node: Node<FlowNodeItemType>; dagreNode: any }>
+        Array<{ node: Node<FlowNodeItemType, FlowNodeTypeEnum>; dagreNode: any }>
       > = new Map();
 
       nodes.forEach((node) => {
@@ -205,7 +287,9 @@ const ContextMenu = () => {
         // Find the minimum left position (for left alignment)
         let minLeft = Infinity;
         nodesInRank.forEach(({ node, dagreNode }) => {
-          const left = dagreNode.x - node.width! / 2;
+          const dimension = getDimension(node.id);
+          if (!dimension) return;
+          const left = dagreNode.x - dimension.width / 2;
           minLeft = Math.min(minLeft, left);
         });
 
@@ -239,15 +323,21 @@ const ContextMenu = () => {
 
         // Assign Y positions in sorted order
         let currentY =
-          Math.min(...nodesInRank.map(({ dagreNode, node }) => dagreNode.y - node.height! / 2)) +
-          offsetY;
+          Math.min(
+            ...nodesInRank.map(({ dagreNode, node }) => {
+              const dimension = getDimension(node.id);
+              return dagreNode.y - (dimension?.height ?? 0) / 2;
+            })
+          ) + offsetY;
         nodesInRank.forEach(({ node }) => {
+          const dimension = getDimension(node.id);
+          if (!dimension) return;
           const targetX = minLeft + offsetX;
           const diffX = targetX - node.position.x;
           const diffY = currentY - node.position.y;
 
           node.position = { x: targetX, y: currentY };
-          currentY += node.height! + 80;
+          currentY += dimension.height + 80;
 
           // Sync child nodes position
           nodes.forEach((childNode) => {
@@ -262,86 +352,86 @@ const ContextMenu = () => {
       });
     };
 
-    setNodes((nodes) => {
-      let newNodes = cloneDeep(nodes);
-
-      setEdges((edges) => {
-        const childNodesIdSet = new Set();
-
-        // 1. Layout child nodes
-        const childNodesMap: Record<string, Node<FlowNodeItemType>[]> = {};
-        newNodes.forEach((node) => {
-          const parentId = node.data.parentNodeId;
-          if (parentId) {
-            // Skip children without valid dimensions (not yet rendered)
-            if (!node.width || !node.height) return;
-
-            childNodesIdSet.add(parentId);
-            if (!childNodesMap[parentId]) {
-              childNodesMap[parentId] = [];
-            }
-            childNodesMap[parentId].push(node);
-          }
-        });
-        const childNodesArr = Object.values(childNodesMap);
-        if (childNodesArr.length > 0) {
-          childNodesArr.forEach((childNodes) => {
-            updateChildNodesPosition({
-              startNode: childNodes[0],
-              nodes: childNodes,
-              edges
-            });
-          });
-        }
-
-        // 2. Reset parent node size and position
-        const parentNodes = newNodes.filter((node) => childNodesIdSet.has(node.data.nodeId));
-        parentNodes.forEach((node) => {
-          const res = getParentNodeSizeAndPosition({
-            nodes: newNodes,
-            parentId: node.data.nodeId
-          });
-          if (!res) return;
-          const { parentX, parentY, nodeWidth, nodeHeight, childHeight, childWidth } = res;
-
-          node.position = {
-            x: parentX,
-            y: parentY
-          };
-          node.width = nodeWidth;
-          node.height = nodeHeight;
-          node.data.inputs.forEach((input) => {
-            if (input.key === NodeInputKeyEnum.nodeHeight) {
-              input.value = childHeight;
-            } else if (input.key === NodeInputKeyEnum.nodeWidth) {
-              input.value = childWidth;
-            }
-          });
-        });
-
-        // 3. Layout parent node
-        updateParentNodesPosition({
-          startNode:
-            newNodes.find((node) =>
-              [
-                FlowNodeTypeEnum.workflowStart,
-                FlowNodeTypeEnum.pluginInput
-              ].includes(node.data.flowNodeType)
-            ) || newNodes[0],
-          nodes: newNodes,
-          edges
-        });
-        return edges;
-      });
-
-      return newNodes;
+    const sourceNodes = getNodes();
+    const layoutDimensions = new Map<string, NodeCardDimension>();
+    sourceNodes.forEach((node) => {
+      const dimension = getNodeDimension(node.id);
+      if (dimension) layoutDimensions.set(node.id, dimension);
     });
+    if (layoutDimensions.size !== sourceNodes.length) return;
+
+    const getLayoutDimension: DimensionReader = (nodeId) => layoutDimensions.get(nodeId);
+    const newNodes = cloneDeep(sourceNodes) as Node<FlowNodeItemType, FlowNodeTypeEnum>[];
+    const previousPositions = new Map(
+      newNodes.map((node) => [node.id, { x: node.position.x, y: node.position.y }])
+    );
+    const childNodesIdSet = new Set<string>();
+
+    // 1. Layout child nodes
+    const childNodesMap: Record<string, Node<FlowNodeItemType, FlowNodeTypeEnum>[]> = {};
+    newNodes.forEach((node) => {
+      const parentId = node.data.parentNodeId;
+      if (parentId) {
+        childNodesIdSet.add(parentId);
+        (childNodesMap[parentId] ??= []).push(node);
+      }
+    });
+    Object.values(childNodesMap).forEach((childNodes) => {
+      updateChildNodesPosition({
+        startNode: childNodes[0],
+        nodes: childNodes,
+        edges,
+        getDimension: getLayoutDimension
+      });
+    });
+
+    // 2. Reset parent node size and position. Dimensions remain renderer-local;
+    // container size persistence is intentionally outside this ticket.
+    const parentNodes = newNodes.filter((node) => childNodesIdSet.has(node.data.nodeId));
+    parentNodes.forEach((node) => {
+      const res = getParentNodeSizeAndPosition({
+        nodes: newNodes,
+        parentId: node.data.nodeId,
+        getNodeDimension: getLayoutDimension
+      });
+      if (!res) return;
+      node.position = { x: res.parentX, y: res.parentY };
+      layoutDimensions.set(node.id, { width: res.nodeWidth, height: res.nodeHeight });
+    });
+
+    // 3. Layout parent node
+    const startNode = newNodes.find((node) =>
+      [FlowNodeTypeEnum.workflowStart, FlowNodeTypeEnum.pluginInput].includes(
+        node.data.flowNodeType
+      )
+    );
+    if (startNode || newNodes[0]) {
+      updateParentNodesPosition({
+        startNode: startNode || newNodes[0],
+        nodes: newNodes,
+        edges,
+        getDimension: getLayoutDimension
+      });
+    }
+
+    const renderNodes = newNodes.map((node) => {
+      const dimension = getLayoutDimension(node.id);
+      return dimension ? { ...node, ...dimension } : node;
+    });
+    replaceNodes(renderNodes as CanvasNode[]);
+    canvas.commitGeometry(
+      renderNodes.flatMap((node) => {
+        const previous = previousPositions.get(node.id);
+        return previous && (previous.x !== node.position.x || previous.y !== node.position.y)
+          ? [{ nodeId: node.data.nodeId, position: node.position }]
+          : [];
+      })
+    );
 
     setTimeout(() => {
-      const validNodes = getNodes().filter((node) => node.width && node.height);
-      fitView({ nodes: validNodes, padding: 0.3 });
+      fitNodes(undefined, { padding: 0.3 });
     });
-  }, [fitView, getNodes, getParentNodeSizeAndPosition, setEdges, setNodes]);
+  }, [canvas, edges, fitNodes, getNodeDimension, getNodes, replaceNodes]);
 
   const onAddComment = useCallback(() => {
     // Compensate for menu position offset (set in onPaneContextMenu)
@@ -355,69 +445,17 @@ const ContextMenu = () => {
       t
     });
 
-    setNodes((state) => {
-      const newState = state
-        .map((node) => ({
-          ...node,
-          selected: false
-        }))
-        // @ts-ignore
-        .concat(newNode);
-      return newState;
-    });
-  }, [menu?.left, menu?.top, screenToFlowPosition, setNodes, t]);
+    clearCanvasSelection();
+    actions.addNode(canvasNodeToStoreNode(newNode));
+  }, [actions, clearCanvasSelection, menu, screenToFlowPosition, t]);
 
   const onFold = useCallback(() => {
-    setNodes((state) => {
-      return state.map((node) => {
-        // Skip comment nodes
-        if (node.data.flowNodeType === FlowNodeTypeEnum.comment) {
-          return node;
-        }
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            isFolded: !allNodeFolded
-          }
-        };
-      });
-    });
-  }, [allNodeFolded, setNodes]);
-
-  const ContextMenuItem = useCallback(
-    ({
-      icon,
-      label,
-      onClick,
-      ...props
-    }: {
-      icon: string;
-      label: string;
-      onClick: () => any;
-    } & StackProps) => {
-      return (
-        <HStack
-          px={2}
-          py={1}
-          cursor={'pointer'}
-          borderRadius={'sm'}
-          _hover={{ bg: 'myGray.50', color: 'primary.500' }}
-          onClick={() => {
-            onClick();
-            setMenu(null);
-          }}
-          {...props}
-        >
-          <MyIcon name={icon as any} w={'1rem'} ml={1} />
-          <Box fontSize={'sm'} fontWeight={'500'}>
-            {label}
-          </Box>
-        </HStack>
-      );
-    },
-    [setMenu]
-  );
+    canvas.commitGeometry(
+      (workflow?.nodes ?? [])
+        .filter((node) => node.flowNodeType !== FlowNodeTypeEnum.comment)
+        .map((node) => ({ nodeId: node.nodeId, isFolded: !allNodeFolded }))
+    );
+  }, [allNodeFolded, canvas, workflow]);
 
   return (
     <Box>

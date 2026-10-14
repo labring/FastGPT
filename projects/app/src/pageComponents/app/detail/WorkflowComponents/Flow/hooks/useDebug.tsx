@@ -1,7 +1,5 @@
 import React from 'react';
-import { getWorkflowModelDetails } from '@/web/core/workflow/modelData';
-import { getNodeAllSource } from '@/web/core/workflow/utils';
-import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/workflowCheck';
+import { getGlobalVariableNode } from '@/web/core/workflow/adapt';
 import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
@@ -9,16 +7,14 @@ import {
   type StoreEdgeItemType
 } from '@fastgpt/global/core/workflow/type/edge';
 import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useCallback, useMemo, useState } from 'react';
-import { useReactFlow } from 'reactflow';
-import { uiWorkflow2StoreWorkflow } from '../../utils';
+import { useCallback, useState } from 'react';
 
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
@@ -26,10 +22,13 @@ import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import { type FieldErrors, useForm } from 'react-hook-form';
 import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '../../../context';
-import { WorkflowActionsContext } from '../../context/workflowActionsContext';
-import { WorkflowDebugContext } from '../../context/workflowDebugContext';
-import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
+import { useWorkflowPersistence } from '@/web/core/workflow/editor/session/workflowSession';
+import {
+  useDocumentGetNodeById,
+  useGraphQueries,
+  useWorkflowSnapshotGetter
+} from '../nodes/render/useWorkflowDocument';
+import { useWorkflowDebugValue } from '../../debug/workflowDebugSession';
 import { getUserFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -58,47 +57,28 @@ enum TabEnum {
 export const useDebug = () => {
   const { t } = useSafeTranslation();
   const { t: workflowT } = useTranslation();
-  const { toast } = useToast();
-
-  const setNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.setNodes);
-  const getNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodes);
-  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
-  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
-  const childrenNodeIdListMap = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v.childrenNodeIdListMap
-  );
-  const { fitView } = useReactFlow();
-  const { onUpdateNodeError, onRemoveError, onSyncWorkflowCheckIssues } = useContextSelector(
-    WorkflowActionsContext,
-    (v) => v
-  );
-  const onStartNodeDebug = useContextSelector(WorkflowDebugContext, (v) => v.onStartNodeDebug);
-  const setDebugChatId = useContextSelector(WorkflowDebugContext, (v) => v.setDebugChatId);
-
-  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const { feConfigs } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
   const debugFileMaxAmount = getUserFileAmountLimit({
     teamMaxFileAmount: teamPlanStatus?.standard?.maxUploadFileCount,
     systemMaxFileAmount: feConfigs?.uploadFileMaxAmount ?? 10
   });
-  const { filteredVar, customVar, internalVar, variables } = useMemo(() => {
-    const variables = appDetail.chatConfig?.variables || [];
-    return {
-      filteredVar:
-        variables.filter(
-          (item) =>
-            item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
-        ) || [],
-      customVar: variables.filter((item) => item.type === VariableInputEnum.custom) || [],
-      internalVar: variables.filter((item) => item.type === VariableInputEnum.internal) || [],
-      variables
-    };
-  }, [appDetail.chatConfig?.variables]);
 
-  const [defaultGlobalVariables, setDefaultGlobalVariables] = useState<Record<string, any>>(
-    variables.reduce(
+  // 可引用来源要按 id 查任意节点并展开容器子节点：语义快照提供 edges，
+  // 节点查询走 port 的 getNode，子节点走 Runtime 图查询，app 侧不再自建索引。
+  // 三者都是非订阅读取：useDebug 挂在每个节点的 MenuRender 上，订阅语义快照会让
+  // 任意一笔字段提交带动全部节点菜单重渲染，而来源列表只在抽屉打开后才需要。
+  const getWorkflow = useWorkflowSnapshotGetter();
+  const getNodeById = useDocumentGetNodeById();
+  const graph = useGraphQueries();
+  const onStartNodeDebug = useWorkflowDebugValue((v) => v.onStartNodeDebug);
+  const setDebugChatId = useWorkflowDebugValue((v) => v.setDebugChatId);
+  const onOpenNodeDebug = useWorkflowDebugValue((v) => v.onOpenNodeDebug);
+  // 调试直接读取 Runtime canonical 序列化；发布校验不应阻止调试输入打开。
+  const { serializeWorkflow } = useWorkflowPersistence();
+
+  const [defaultGlobalVariables, setDefaultGlobalVariables] = useState<Record<string, any>>(() =>
+    (getWorkflow()?.chatConfig?.variables ?? []).reduce(
       (acc, item) => {
         acc[item.key] = item.defaultValue;
         return acc;
@@ -111,95 +91,17 @@ export const useDebug = () => {
   const [runtimeNodes, setRuntimeNodes] = useState<RuntimeNodeItemType[]>();
   const [runtimeEdges, setRuntimeEdges] = useState<RuntimeEdgeItemType[]>();
 
-  const flowData2StoreDataAndCheck = useCallback(async () => {
-    const nodes = getNodes();
-
-    const { issueMap, hasError, firstErrorNodeId, chatConfigIssues } =
-      checkWorkflowBeforeRunOrPublish({
-        nodes,
-        edges,
-        models: await getWorkflowModelDetails({
-          nodes,
-          chatConfig: appDetail.chatConfig,
-          appId: appDetail._id
-        }),
-        chatConfig: appDetail.chatConfig,
-        t: workflowT
-      });
-
-    if (!hasError) {
-      onRemoveError();
-      const storeNodes = uiWorkflow2StoreWorkflow({
-        nodes,
-        edges,
-        chatConfig: appDetail.chatConfig
-      });
-
-      return JSON.stringify(storeNodes);
-    }
-
-    onSyncWorkflowCheckIssues(issueMap);
-
-    if (firstErrorNodeId) {
-      onUpdateNodeError(firstErrorNodeId, true);
-      const firstErrorNode = nodes.find((node) => node.data.nodeId === firstErrorNodeId);
-      if (firstErrorNode) {
-        fitView({
-          nodes: [firstErrorNode],
-          padding: 0.3
-        });
-      }
-    }
-
-    toast({
-      status: 'warning',
-      title: t('common:core.workflow.Check Failed'),
-      description: [...Object.values(issueMap).flat(), ...chatConfigIssues]
-        .filter((issue) => issue.level === 'error')
-        .map((issue) => issue.message)
-        .filter(Boolean)
-        .join('\n')
-    });
-    return Promise.reject();
-  }, [
-    appDetail._id,
-    appDetail.chatConfig,
-    edges,
-    fitView,
-    getNodes,
-    onRemoveError,
-    onSyncWorkflowCheckIssues,
-    onUpdateNodeError,
-    t,
-    toast,
-    workflowT
-  ]);
-
   const openDebugNode = useCallback(
     async ({ entryNodeId }: { entryNodeId: string }) => {
-      // 调试入口在节点悬浮菜单里，鼠标移开后菜单会被隐藏；此时抽屉关闭时 focus-lock 无法把焦点还给菜单按钮，
-      // 会退回到卡片内第一个可聚焦元素（示意图 tooltip 的 span[tabindex=0]），导致示意图自动展开。先主动失焦。
-      (document.activeElement as HTMLElement | null)?.blur();
-
       // 每次打开调试弹窗生成独立的会话 chatId，文件上传与调试运行共用，保证文件归属校验通过
       setDebugChatId(getNanoid());
 
-      setNodes((state) =>
-        state.map((node) => ({
-          ...node,
-          data: {
-            ...node.data,
-            debugResult: undefined
-          }
-        }))
-      );
-      const {
-        nodes,
-        edges
-      }: {
-        nodes: StoreNodeItemType[];
-        edges: StoreEdgeItemType[];
-      } = JSON.parse(await flowData2StoreDataAndCheck());
+      // 只清上一轮 debug session 写过 overlay 的节点，不再对整份画布做全量清除
+      onOpenNodeDebug();
+      const serialized = serializeWorkflow();
+      if (!serialized) return;
+      const { nodes, edges }: { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] } =
+        serialized;
 
       const runtimeNodes = storeNodes2RuntimeNodes(nodes, [entryNodeId]);
       const runtimeEdges: RuntimeEdgeItemType[] = edges.map((edge) =>
@@ -218,7 +120,7 @@ export const useDebug = () => {
       setRuntimeNodes(runtimeNodes);
       setRuntimeEdges(runtimeEdges);
     },
-    [flowData2StoreDataAndCheck, setNodes, setDebugChatId]
+    [serializeWorkflow, onOpenNodeDebug, setDebugChatId]
   );
 
   const DebugInputModal = useCallback(() => {
@@ -231,17 +133,61 @@ export const useDebug = () => {
     const runtimeNode = runtimeNodes.find((node) => node.nodeId === runtimeNodeId);
 
     if (!runtimeNode) return <></>;
-    const referenceSourceNodes = getNodeAllSource({
-      nodeId: runtimeNode.nodeId,
-      getNodeById,
-      edges,
-      chatConfig: appDetail.chatConfig,
-      t: workflowT,
-      childrenNodeIdListMap
-    });
+    const workflow = getWorkflow();
+    const chatConfig = workflow?.chatConfig;
+    const variables = chatConfig?.variables ?? [];
+    const debugFileSelectConfig = chatConfig?.fileSelectConfig
+      ? {
+          ...chatConfig.fileSelectConfig,
+          customFileExtensionList: chatConfig.fileSelectConfig.customFileExtensionList?.map(
+            (item) => item
+          )
+        }
+      : undefined;
+    const getFormVariable = (item: (typeof variables)[number]) =>
+      getDebugGlobalVariableFormProps({
+        ...item,
+        list: item.list?.map((option) => ({ ...option })),
+        enums: item.enums?.map((option) => ({ ...option })),
+        markList: item.markList?.map((option) => ({ ...option })),
+        customFileExtensionList: item.customFileExtensionList?.map((item) => item),
+        datasetOptions: item.datasetOptions?.map((dataset) => ({
+          ...dataset,
+          vectorModel: { ...dataset.vectorModel }
+        })),
+        customInputConfig: item.customInputConfig
+          ? {
+              ...item.customInputConfig,
+              selectValueTypeList: item.customInputConfig.selectValueTypeList
+                ? [...item.customInputConfig.selectValueTypeList]
+                : undefined
+            }
+          : undefined
+      });
+    const filteredVar = variables.filter(
+      (item) => item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
+    );
+    const customVar = variables.filter((item) => item.type === VariableInputEnum.custom);
+    const internalVar = variables.filter((item) => item.type === VariableInputEnum.internal);
+    const referenceSourceNodes = [
+      ...(graph?.getSourceNodeIds({ nodeId: runtimeNode.nodeId, includeChildren: true }) ?? [])
+        .map((sourceNodeId) => getNodeById(sourceNodeId))
+        .filter((sourceNode): sourceNode is NonNullable<typeof sourceNode> => !!sourceNode)
+        .map((sourceNode) => ({
+          nodeId: sourceNode.nodeId,
+          sourceLabel: sourceNode.name,
+          icon: sourceNode.avatar,
+          outputs: sourceNode.outputs.map((output) => ({ ...output })),
+          catchError: sourceNode.catchError
+        })),
+      getGlobalVariableNode({
+        chatConfig: chatConfig as AppChatConfigType,
+        t: workflowT
+      })
+    ];
     const workflowStartFileInput = getWorkflowStartDebugFileInput({
       flowNodeType: runtimeNode.flowNodeType,
-      fileSelectConfig: appDetail.chatConfig?.fileSelectConfig
+      fileSelectConfig: debugFileSelectConfig
     });
     const renderInputs = [
       ...runtimeNode.inputs.filter((input) => {
@@ -291,7 +237,8 @@ export const useDebug = () => {
           nodeVariables
         };
       }
-      void onStartNodeDebug({
+
+      onStartNodeDebug({
         entryNodeId: runtimeNode.nodeId,
         runtimeNodes: runtimeNodes.map((node) =>
           node.nodeId === runtimeNode.nodeId
@@ -383,7 +330,7 @@ export const useDebug = () => {
           <Box display={currentTab === TabEnum.global ? 'block' : 'none'}>
             {customVar.map((item) => (
               <LabelAndFormRender
-                {...item}
+                {...getFormVariable(item)}
                 key={item.key}
                 label={item.label}
                 required={item.required}
@@ -396,7 +343,7 @@ export const useDebug = () => {
             ))}
             {internalVar.map((item) => (
               <LabelAndFormRender
-                {...item}
+                {...getFormVariable(item)}
                 key={item.key}
                 label={item.label}
                 required={item.required}
@@ -409,7 +356,7 @@ export const useDebug = () => {
             ))}
             {filteredVar.map((item) => (
               <LabelAndFormRender
-                {...getDebugGlobalVariableFormProps(item)}
+                {...getFormVariable(item)}
                 key={item.key}
                 label={item.label}
                 required={item.required}
@@ -438,17 +385,12 @@ export const useDebug = () => {
     defaultGlobalVariables,
     t,
     workflowT,
-    variables.length,
-    customVar,
-    internalVar,
-    filteredVar,
     runtimeNodeId,
     onStartNodeDebug,
+    getWorkflow,
     getNodeById,
-    edges,
-    appDetail.chatConfig,
-    debugFileMaxAmount,
-    childrenNodeIdListMap
+    graph,
+    debugFileMaxAmount
   ]);
 
   return {
@@ -456,7 +398,3 @@ export const useDebug = () => {
     openDebugNode
   };
 };
-
-export default function Dom() {
-  return <></>;
-}

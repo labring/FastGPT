@@ -18,10 +18,8 @@ import type { FileSelectorValueItemType } from '@/components/core/app/FileSelect
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import {
-  workflowReferenceValueIsSelectable,
-  type WorkflowReferenceSourceNode
-} from '@/web/core/workflow/utils';
+import { type WorkflowReferenceSourceNode } from '@/web/core/workflow/utils';
+import { workflowReferenceValueIsSelectable } from '@fastgpt/global/core/workflow/editor/utils';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
 
 const primitiveValueTypes = new Set<WorkflowIOValueTypeEnum>([
@@ -77,7 +75,10 @@ export const getWorkflowStartDebugFileInput = ({
     value: [],
     canLocalUpload: true,
     canUrlUpload: true,
-    ...fileSelectConfig
+    ...fileSelectConfig,
+    ...(fileSelectConfig?.customFileExtensionList
+      ? { customFileExtensionList: [...fileSelectConfig.customFileExtensionList] }
+      : {})
   };
 };
 
@@ -128,7 +129,8 @@ export const getDebugGlobalVariableFormProps = (variable: VariableItemType) => {
   return {
     ...variable,
     canSelectFile: variable.canSelectFile ?? true,
-    canLocalUpload: variable.canLocalUpload ?? true
+    canLocalUpload: variable.canLocalUpload ?? true,
+    ...(variable.list ? { list: variable.list.map((item) => ({ ...item })) } : {})
   };
 };
 
@@ -194,15 +196,16 @@ export const getDebugInputFormProps = (
     };
   }
 
-  if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
-    return {
-      ...props,
-      canSelectFile: props.canSelectFile ?? true,
-      canLocalUpload: props.canLocalUpload ?? true
-    };
-  }
-
-  return props;
+  return {
+    ...props,
+    ...(props.list ? { list: props.list.map((item) => ({ ...item })) } : {}),
+    ...(input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
+      ? {
+          canSelectFile: props.canSelectFile ?? true,
+          canLocalUpload: props.canLocalUpload ?? true
+        }
+      : {})
+  };
 };
 
 /** 统一生成节点调试字段属性和控件类型，避免控件类型继续读取转换前的 renderTypeList。 */

@@ -21,15 +21,6 @@ export const InteractiveBasicTypeSchema = z.object({
 });
 export type InteractiveBasicType = z.infer<typeof InteractiveBasicTypeSchema>;
 
-const InteractiveNodeTypeSchema = z.object({
-  entryNodeIds: z.array(z.string()).optional(),
-  interactiveId: z.string().optional(),
-  nodeResponseId: z.string().optional(),
-  memoryEdges: z.array(RuntimeEdgeItemTypeSchema).optional(),
-  nodeOutputs: z.array(NodeOutputItemSchema).optional()
-});
-export type InteractiveNodeType = z.infer<typeof InteractiveNodeTypeSchema>;
-
 export const ChildrenInteractiveSchema = z.object({
   type: z.literal('childrenInteractive'),
   params: z.object({
@@ -40,13 +31,6 @@ export const ChildrenInteractiveSchema = z.object({
     })
   })
 });
-export type ChildrenInteractive = InteractiveNodeType & {
-  type: 'childrenInteractive';
-  params: {
-    childrenResponse: WorkflowInteractiveResponseType;
-  };
-};
-
 export const ToolCallChildrenInteractiveSchema = z.object({
   type: z.literal('toolChildrenInteractive'),
   params: z.object({
@@ -61,9 +45,6 @@ export const ToolCallChildrenInteractiveSchema = z.object({
     })
   })
 });
-export type ToolCallChildrenInteractive = InteractiveNodeType &
-  z.infer<typeof ToolCallChildrenInteractiveSchema>;
-
 // Loop bode
 export const LoopInteractiveSchema = z.object({
   type: z.literal('loopInteractive'),
@@ -76,15 +57,6 @@ export const LoopInteractiveSchema = z.object({
     currentIndex: z.number()
   })
 });
-export type LoopInteractive = InteractiveNodeType & {
-  type: 'loopInteractive';
-  params: {
-    loopResult: any[];
-    childrenResponse: WorkflowInteractiveResponseType;
-    currentIndex: number;
-  };
-};
-
 export const LoopRunInteractiveSchema = z.object({
   type: z.literal('loopRunInteractive'),
   params: z.object({
@@ -103,18 +75,7 @@ export const LoopRunInteractiveSchema = z.object({
       })
   })
 });
-export type LoopRunInteractive = InteractiveNodeType & {
-  type: 'loopRunInteractive';
-  params: {
-    loopHistory: any[];
-    childrenResponse: WorkflowInteractiveResponseType;
-    iteration: number;
-    pendingIterationSummary?: Record<string, any>;
-  };
-};
-
 export const AgentPlanAskOptionSchema = z.string().min(1);
-export type AgentPlanAskOption = z.infer<typeof AgentPlanAskOptionSchema>;
 
 /**
  * Legacy `ask_user` schema.

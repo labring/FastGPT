@@ -75,6 +75,13 @@ describe('Copy', () => {
     expect(res2.error).toBeUndefined();
     expect(res2.code).toBe(200);
     const appId = res2.data as string;
+    const referenceSnapshots = [
+      {
+        reference: ['deleted-node', 'output'] as [string, string],
+        sourceLabel: 'Deleted node'
+      }
+    ];
+    await MongoApp.updateOne({ _id: appId }, { type: AppTypeEnum.workflow });
     await MongoAppVersion.updateOne(
       { appId, isPublish: true },
       {
@@ -94,10 +101,36 @@ describe('Copy', () => {
               ],
               outputs: []
             }
-          ]
+          ],
+          referenceSnapshots
         }
       }
     );
+    await MongoAppVersion.create({
+      appId,
+      tmbId: users.members[0].tmbId,
+      nodes: [
+        {
+          nodeId: 'autosave-chat-node',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          name: 'AutoSave Chat',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModel,
+              value: 'autosave-copy-model',
+              selectedType: FlowNodeInputTypeEnum.selectLLMModel,
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: {},
+      referenceSnapshots,
+      isAutoSave: true,
+      time: new Date('2020-01-01T00:00:00.000Z')
+    });
 
     const res3 = await Call<CopyAppBodyType, Record<string, never>, CopyAppResponseType>(
       copyapi.default,
@@ -155,6 +188,8 @@ describe('Copy', () => {
       getCachedSystemModelHandle()
         ?.getActiveModels()
         .find((model) => model.type === ModelTypeEnum.llm)?.modelId;
+    expect(copiedVersion?.referenceSnapshots).toEqual(referenceSnapshots);
+    expect(copiedVersion?.nodes[0].nodeId).toBe('autosave-chat-node');
     expect(copiedVersion?.nodes[0].inputs).toEqual([
       expect.objectContaining({
         key: NodeInputKeyEnum.aiModelId,

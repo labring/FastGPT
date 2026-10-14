@@ -1,15 +1,16 @@
 import { StoreEdgeItemTypeSchema } from './edge';
 import { AppChatConfigTypeSchema } from '../../app/type';
 import { ParentIdSchema } from '../../../common/parentFolder/type';
-import { AppTypeEnum } from '../../app/constants';
 import { StoreNodeItemTypeSchema } from './node';
+import { WorkflowReferenceSnapshotSchema } from './io';
 import { I18nStringSchema } from '../../../common/i18n/type';
 import z from 'zod';
 
 export const WorkflowTemplateBasicTypeSchema = z.object({
   nodes: z.array(StoreNodeItemTypeSchema),
   edges: z.array(StoreEdgeItemTypeSchema),
-  chatConfig: AppChatConfigTypeSchema.optional()
+  chatConfig: AppChatConfigTypeSchema.optional(),
+  referenceSnapshots: z.array(WorkflowReferenceSnapshotSchema).optional()
 });
 export type WorkflowTemplateBasicType = z.infer<typeof WorkflowTemplateBasicTypeSchema>;
 
@@ -34,22 +35,3 @@ export const WorkflowTemplateTypeSchema = z.object({
   workflow: WorkflowTemplateBasicTypeSchema
 });
 export type WorkflowTemplateType = z.infer<typeof WorkflowTemplateTypeSchema>;
-
-// template market
-export const TemplateMarketItemTypeSchema = WorkflowTemplateTypeSchema.extend({
-  tags: z.array(z.string()),
-  type: z.enum([AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.workflowTool])
-});
-export type TemplateMarketItemType = z.infer<typeof TemplateMarketItemTypeSchema>;
-
-// template market list
-export const TemplateMarketListItemTypeSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  intro: z.string().optional(),
-  author: z.string().optional(),
-  tags: z.array(z.string()),
-  type: z.enum([AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.workflowTool]),
-  avatar: z.string()
-});
-export type TemplateMarketListItemType = z.infer<typeof TemplateMarketListItemTypeSchema>;

@@ -8,43 +8,49 @@ import {
   normalizeLegacyDatasetTagFilterValue,
   type DatasetTagFilterValue
 } from '@fastgpt/global/core/dataset/search/tagFilter';
-import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 import { useReference } from './Reference';
 import DatasetTagFilterRows, {
   DatasetTagFilterDeprecated,
   DatasetTagFilterUpgradeButton,
   TagFilterLogicToggle
 } from '@/components/core/dataset/DatasetTagFilterRows';
-import { WorkflowBufferDataContext } from '../../../../../context/workflowInitContext';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useTranslation } from 'next-i18next';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
-import { WorkflowUtilsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowUtilsContext';
+import { useField, useFieldActions } from '@/web/core/workflow/editor/react/useField';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
+import { useWorkflowPersistence } from '@/web/core/workflow/editor/session/workflowSession';
+import { useNodeWorkflowDocument } from '../../useWorkflowDocument';
 import {
   datasetSearchUsesLegacyFilter,
   persistLegacyDatasetSearchNodeUpgrade
 } from '@/web/core/workflow/datasetSearchNodeUpgrade';
 
-const DatasetTagFilterRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
+const DatasetTagFilterRender = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { getNodeById, edges } = useContextSelector(WorkflowBufferDataContext, (v) => v);
-  const { appDetail } = useContextSelector(AppContext, (v) => v);
+  const nodeInputs = useNode<FlowNodeItemType['inputs']>(nodeId, (node) => node?.data.inputs) ?? [];
+  const currentInput = nodeInputs.find((input) => input.key === item.key);
+  const datasetSelectInput = nodeInputs.find(
+    (input) => input.key === NodeInputKeyEnum.datasetSelectList
+  );
+  const fieldActions = useFieldActions({ nodeId, fieldKey: item.key, kind: 'input' });
+  // 变量列表只读本节点与其上游来源闭包：窄订阅让无关字段的提交不重算也不重渲染。
+  const { workflow, getNodeById, graph } = useNodeWorkflowDocument({ nodeId });
   const { feConfigs } = useSystemStore();
-  const isLegacyNode = datasetSearchUsesLegacyFilter(inputs);
+  const isLegacyNode = datasetSearchUsesLegacyFilter(nodeInputs);
 
   const { referenceList } = useReference({
     nodeId,
     valueType: WorkflowIOValueTypeEnum.any
   });
   const datasetIds = useMemo(() => {
-    const datasetValue = inputs.find(
-      (input) => input.key === NodeInputKeyEnum.datasetSelectList
-    )?.value;
+    const datasetValue = datasetSelectInput?.value;
     if (!Array.isArray(datasetValue)) return [];
     return datasetValue
       .map((dataset) =>
@@ -53,17 +59,18 @@ const DatasetTagFilterRender = ({ inputs = [], item, nodeId }: RenderInputProps)
           : ''
       )
       .filter(Boolean);
-  }, [inputs]);
+  }, [datasetSelectInput?.value]);
 
   const editorVariables = useMemoEnhance(() => {
+    if (!workflow || !graph) return [];
     return getEditorVariables({
       nodeId,
       getNodeById,
-      edges,
-      appDetail,
-      t
+      chatConfig: workflow.chatConfig,
+      t,
+      getSourceNodeIds: (sourceNodeId) => graph.getSourceNodeIds({ nodeId: sourceNodeId })
     });
-  }, [nodeId, getNodeById, edges, appDetail, t]);
+  }, [nodeId, workflow, getNodeById, graph, t]);
 
   const externalVariables = useMemo(() => {
     return (
@@ -81,47 +88,55 @@ const DatasetTagFilterRender = ({ inputs = [], item, nodeId }: RenderInputProps)
 
   const onChange = useCallback(
     (value: DatasetTagFilterValue | string) => {
-      onChangeNode({
-        nodeId,
-        type: 'updateInput',
-        key: item.key,
-        value: { ...item, value }
-      });
+      fieldActions.setValue(value);
     },
-    [item, nodeId, onChangeNode]
+    [fieldActions]
   );
+
+  if (!currentInput) return null;
 
   if (isLegacyNode) {
     return (
-      <DatasetTagFilterDeprecated
-        value={normalizeLegacyDatasetTagFilterValue(item.value)}
-        onChange={onChange}
-        variables={allVariables}
-        variableLabels={editorVariables}
-      />
+      <WorkflowFieldScope nodeId={nodeId} fieldKey={item.key}>
+        <DatasetTagFilterDeprecated
+          value={normalizeLegacyDatasetTagFilterValue(currentInput.value)}
+          onChange={onChange}
+          variables={allVariables}
+          variableLabels={editorVariables}
+        />
+      </WorkflowFieldScope>
     );
   }
 
   return (
-    <DatasetTagFilterRows
-      value={item.value}
-      onChange={onChange}
-      datasetIds={datasetIds}
-      referenceList={referenceList}
-    />
+    <WorkflowFieldScope nodeId={nodeId} fieldKey={item.key}>
+      <DatasetTagFilterRows
+        value={currentInput.value}
+        onChange={onChange}
+        datasetIds={datasetIds}
+        referenceList={referenceList}
+      />
+    </WorkflowFieldScope>
   );
 };
 
 /** 标题右侧组件：新版显示 AND/OR 切换；旧版显示「已弃用，升级到最新版本」 */
 export const DatasetTagFilterLogic = React.memo(function DatasetTagFilterLogic({
-  inputs = [],
   item,
   nodeId
 }: RenderInputProps) {
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const flowData2StoreData = useContextSelector(WorkflowUtilsContext, (v) => v.flowData2StoreData);
-  const { appDetail, onSaveApp } = useContextSelector(AppContext, (v) => v);
-  const isLegacyNode = datasetSearchUsesLegacyFilter(inputs);
+  const fieldInput = useField(nodeId, item.key, 'input', (field) => field?.data.input);
+  const fieldActions = useFieldActions({ nodeId, fieldKey: item.key, kind: 'input' });
+  const nodeActions = useNodeActions(nodeId);
+  /** 升级要先持久化整份工作流，出站序列化直接读 host。 */
+  const { serializeWorkflow } = useWorkflowPersistence();
+  // 只订阅真正读到的两个字段：AppContext 值随 currentTab / appLatestVersion / loadingApp 变化，
+  // 整体订阅会让切 tab 也重渲染本节点组件。
+  const onSaveApp = useContextSelector(AppContext, (v) => v.onSaveApp);
+  const nodeInputs = useNode<FlowNodeItemType['inputs']>(nodeId, (node) => node?.data.inputs) ?? [];
+  const isLegacyNode = datasetSearchUsesLegacyFilter(nodeInputs);
+
+  if (!fieldInput) return null;
 
   if (isLegacyNode) {
     return (
@@ -142,7 +157,7 @@ export const DatasetTagFilterLogic = React.memo(function DatasetTagFilterLogic({
               item.description,
             value: createEmptyTagFilterValue()
           };
-          const workflow = flowData2StoreData();
+          const workflow = serializeWorkflow();
           if (!workflow) throw new Error('Workflow data is unavailable');
           await persistLegacyDatasetSearchNodeUpgrade({
             nodes: workflow.nodes,
@@ -153,15 +168,11 @@ export const DatasetTagFilterLogic = React.memo(function DatasetTagFilterLogic({
                 ...workflow,
                 nodes,
                 isPublish: false,
-                chatConfig: appDetail.chatConfig
+                chatConfig: workflow.chatConfig
               }),
             commit: (upgradedNode) =>
-              onChangeNode({
-                nodeId,
-                type: 'attr',
-                key: 'inputs',
-                value: upgradedNode.inputs
-              })
+              // 持久化成功后再把升级结果写回文档：整份 inputs 替换，一次提交。
+              nodeActions?.updateNode(() => ({ inputs: upgradedNode.inputs }))
           });
         }}
       />
@@ -170,14 +181,11 @@ export const DatasetTagFilterLogic = React.memo(function DatasetTagFilterLogic({
 
   return (
     <TagFilterLogicToggle
-      value={isDatasetTagFilterValue(item.value) ? item.value : createEmptyTagFilterValue()}
+      value={
+        isDatasetTagFilterValue(fieldInput.value) ? fieldInput.value : createEmptyTagFilterValue()
+      }
       onChange={(value) => {
-        onChangeNode({
-          nodeId,
-          type: 'updateInput',
-          key: item.key,
-          value: { ...item, value }
-        });
+        fieldActions.setValue(value);
       }}
     />
   );

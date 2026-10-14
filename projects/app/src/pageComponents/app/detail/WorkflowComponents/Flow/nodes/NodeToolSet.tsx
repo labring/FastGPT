@@ -1,44 +1,41 @@
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React, { useCallback } from 'react';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from './render/NodeCard';
 import Container from '../components/Container';
 import IOTitle from '../components/IOTitle';
 import ToolSetList, { getNodeToolSetList } from './components/ToolSetList';
 import { useTranslation } from 'next-i18next';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowActionsContext } from '../../context/workflowActionsContext';
+import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 
-const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeToolSet = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
   const toolList = getNodeToolSetList(data);
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const nodeActions = useNodeActions(data.nodeId);
   const onSaveDescription = useCallback(
     (index: number, description: string) => {
-      const toolSetKey = (['mcpToolSet', 'httpToolSet', 'systemToolSet'] as const).find(
-        (key) => data.toolConfig?.[key]
-      );
-      if (!toolSetKey || !data.toolConfig) return;
+      // 工具集描述是节点语义数据（toolConfig）：基于派发瞬间的记录整块替换后走 updateNode。
+      nodeActions?.updateNode((current) => {
+        const toolConfig = current.toolConfig;
+        const toolSetKey = (['mcpToolSet', 'httpToolSet', 'systemToolSet'] as const).find(
+          (key) => toolConfig?.[key]
+        );
+        const toolSet = toolSetKey ? toolConfig?.[toolSetKey] : undefined;
+        if (!toolConfig || !toolSetKey || !toolSet) return {};
 
-      const toolSet = data.toolConfig[toolSetKey];
-      if (!toolSet) return;
-
-      onChangeNode({
-        nodeId: data.nodeId,
-        type: 'attr',
-        key: 'toolConfig',
-        value: {
-          ...data.toolConfig,
-          [toolSetKey]: {
-            ...toolSet,
-            toolList: (toolSet.toolList ?? []).map((tool, toolIndex) =>
-              toolIndex === index ? { ...tool, description } : tool
-            )
+        return {
+          toolConfig: {
+            ...toolConfig,
+            [toolSetKey]: {
+              ...toolSet,
+              toolList: (toolSet.toolList ?? []).map((tool, toolIndex) =>
+                toolIndex === index ? { ...tool, description } : tool
+              )
+            }
           }
-        }
+        };
       });
     },
-    [data.nodeId, data.toolConfig, onChangeNode]
+    [nodeActions]
   );
 
   return (

@@ -2,9 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
 import { Box, HStack, Input, InputGroup, VStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useContextSelector } from 'use-context-selector';
-import { getAppDetailById } from '@/web/core/app/api';
-import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
+import { useField, useFieldActions } from '@/web/core/workflow/editor/react/useField';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
@@ -16,20 +14,21 @@ import { getFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 
 const FileSelectRender = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const fieldInput = useField(nodeId, item.key, 'input', (field) => field?.data.input);
+  const fieldActions = useFieldActions({ nodeId, fieldKey: item.key, kind: 'input' });
   const { feConfigs } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
 
   const [urlInput, setUrlInput] = useState('');
   const values = useMemo(() => {
-    if (Array.isArray(item.value)) {
-      return item.value;
+    if (Array.isArray(fieldInput?.value)) {
+      return fieldInput.value;
     }
     return [];
-  }, [item.value]);
+  }, [fieldInput?.value]);
 
   const maxSelectFiles = getFileAmountLimit({
-    moduleMaxFileAmount: item.maxFiles,
+    moduleMaxFileAmount: fieldInput?.maxFiles,
     defaultModuleMaxFileAmount: 5,
     teamMaxFileAmount: teamPlanStatus?.standard?.maxUploadFileCount,
     systemMaxFileAmount: feConfigs.uploadFileMaxAmount
@@ -40,33 +39,19 @@ const FileSelectRender = ({ item, nodeId }: RenderInputProps) => {
     (value: string) => {
       if (!value.trim()) return;
 
-      onChangeNode({
-        nodeId,
-        type: 'updateInput',
-        key: item.key,
-        value: {
-          ...item,
-          value: [value.trim(), ...values]
-        }
-      });
+      fieldActions.setValue([value.trim(), ...values]);
       setUrlInput('');
     },
-    [item, nodeId, onChangeNode, values]
+    [fieldActions, values]
   );
   const handleDeleteUrl = useCallback(
     (index: number) => {
-      onChangeNode({
-        nodeId,
-        type: 'updateInput',
-        key: item.key,
-        value: {
-          ...item,
-          value: values.filter((_, i) => i !== index)
-        }
-      });
+      fieldActions.setValue(values.filter((_, i) => i !== index));
     },
-    [item, nodeId, onChangeNode, values]
+    [fieldActions, values]
   );
+
+  if (!fieldInput) return null;
 
   return (
     <Box w={'500px'}>

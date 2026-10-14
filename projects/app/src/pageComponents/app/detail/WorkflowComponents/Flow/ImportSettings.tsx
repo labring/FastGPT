@@ -9,7 +9,8 @@ import dynamic from 'next/dynamic';
 import React, { useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../../context';
-import { WorkflowUtilsContext } from '../context/workflowUtilsContext';
+import { useWorkflowSessionActions } from '@/web/core/workflow/editor/session/workflowSession';
+import { materializeWorkflow } from '@/web/core/workflow/editor/codec';
 
 const ImportAppConfigEditor = dynamic(() => import('@/pageComponents/app/ImportAppConfigEditor'), {
   ssr: false
@@ -22,7 +23,8 @@ type Props = {
 const ImportSettings = ({ onClose }: Props) => {
   const { toast } = useToast();
 
-  const initData = useContextSelector(WorkflowUtilsContext, (v) => v.initData);
+  const { loadDocument } = useWorkflowSessionActions();
+  const chatConfig = useContextSelector(AppContext, (v) => v.appDetail.chatConfig);
   const appType = useContextSelector(AppContext, (v) => v.appDetail.type);
   const { t } = useTranslation();
   const [value, setValue] = useState('');
@@ -56,7 +58,13 @@ const ImportSettings = ({ onClose }: Props) => {
                 models: modelList,
                 modelCatalogLoaded: true
               });
-              await initData(workflowConfig);
+              loadDocument(
+                materializeWorkflow({
+                  input: workflowConfig,
+                  chatConfig: workflowConfig.chatConfig ?? chatConfig,
+                  t
+                })
+              );
               toast({
                 title: t('app:import_configs_success'),
                 status: 'success'

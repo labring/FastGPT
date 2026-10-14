@@ -1,14 +1,14 @@
+import { type AppDetailType, type AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { chatHistoryValueDesc } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { addModelNamesToWorkflow } from '@fastgpt/global/core/workflow/utils';
+import { workflowSystemVariables as globalWorkflowSystemVariables } from '@fastgpt/global/core/workflow/editor/variables';
 
 export const SYSTEM_CONFIG_AUTO_OPEN_QUERY_KEY = 'openSystemConfig';
 
@@ -86,42 +86,9 @@ export function addModelNamesToAppForm({
   return appForm;
 }
 
-export const workflowSystemVariables: EditorVariablePickerType[] = [
-  {
-    key: 'userId',
-    label: i18nT('workflow:use_user_id'),
-    required: true,
-    valueType: WorkflowIOValueTypeEnum.string
-  },
-  {
-    key: 'appId',
-    label: i18nT('common:core.module.http.AppId'),
-    required: true,
-    valueType: WorkflowIOValueTypeEnum.string
-  },
-  {
-    key: 'chatId',
-    label: i18nT('common:core.module.http.ChatId'),
-    valueType: WorkflowIOValueTypeEnum.string,
-    required: true
-  },
-  {
-    key: 'responseChatItemId',
-    label: i18nT('common:core.module.http.ResponseChatItemId'),
-    valueType: WorkflowIOValueTypeEnum.string,
-    required: true
-  },
-  {
-    key: 'histories',
-    label: i18nT('common:core.module.http.Histories'),
-    required: true,
-    valueType: WorkflowIOValueTypeEnum.chatHistory,
-    valueDesc: chatHistoryValueDesc
-  },
-  {
-    key: 'cTime',
-    label: i18nT('common:core.module.http.Current time'),
-    required: true,
-    valueType: WorkflowIOValueTypeEnum.string
-  }
-];
+export const workflowSystemVariables: EditorVariablePickerType[] = globalWorkflowSystemVariables;
+
+export const getAppQGuideCustomURL = (appDetail: AppDetailType | AppSchemaType): string => {
+  if (!('chatConfig' in appDetail)) return '';
+  return appDetail.chatConfig?.chatInputGuide?.customUrl ?? '';
+};

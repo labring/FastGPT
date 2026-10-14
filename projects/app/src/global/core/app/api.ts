@@ -4,6 +4,7 @@ export type PostPublishAppProps = {
   nodes: AppVersionSchemaType['nodes'];
   edges: AppVersionSchemaType['edges'];
   chatConfig: AppVersionSchemaType['chatConfig'];
+  referenceSnapshots?: AppVersionSchemaType['referenceSnapshots'];
   isPublish?: boolean;
   versionName?: string;
   autoSave?: boolean; // If it is automatically saved, only one copy of the entire app will be stored, overwriting the old version

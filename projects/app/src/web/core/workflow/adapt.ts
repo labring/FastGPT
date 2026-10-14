@@ -46,7 +46,8 @@ export const getGlobalVariableNode = ({
       type: FlowNodeOutputTypeEnum.static,
       label: item.label,
       key: item.key,
-      valueType: item.valueType || WorkflowIOValueTypeEnum.any
+      valueType: item.valueType || WorkflowIOValueTypeEnum.any,
+      icon: item.icon
     }))
   };
 

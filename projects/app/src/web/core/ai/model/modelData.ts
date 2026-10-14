@@ -95,19 +95,63 @@ export const getModelList = async <T extends ModelTypeEnum = ModelTypeEnum>(
   );
 };
 
+export type ModelDetailQuery<T extends ModelTypeEnum = ModelTypeEnum> = ModelFilter<T> & {
+  modelId?: string | null;
+  model?: string | null;
+};
+
+type ModelCatalogState = NonNullable<ReturnType<typeof peekModelCatalog>>;
+
+/**
+ * 只有静态模型引用才需要查目录：空值不查，工作流动态引用在运行时求值也不能当成静态 ID。
+ * 返回 undefined 表示本次查询没有可解析的模型身份。
+ */
+const getStaticModelQuery = (options: ModelDetailQuery) => {
+  if (typeof options.modelId === 'string' && !isEmptyModelValue(options.modelId)) {
+    return { modelId: options.modelId };
+  }
+  if (
+    isEmptyModelValue(options.modelId) &&
+    typeof options.model === 'string' &&
+    !isEmptyModelValue(options.model)
+  ) {
+    return { model: options.model };
+  }
+  return undefined;
+};
+
+/** 目录内精确定位模型；失效 ID 不回退默认，也不按旧名称替换。 */
+const resolveModelDetail = <T extends ModelTypeEnum = ModelTypeEnum>(
+  catalog: ModelCatalogState,
+  options: ModelDetailQuery<T>
+) => {
+  const query = getStaticModelQuery(options);
+  if (!query) return undefined;
+  const model = query.modelId
+    ? catalog.modelMap[query.modelId]
+    : catalog.modelList.find((item) => item.model === query.model);
+  return model && matchesModelFilter(model, options) ? model : undefined;
+};
+
 /** 精确读取当前模型能力；空值不请求，非空失效 ID 不回退默认，也不按旧名称替换。 */
 export const getModelDetail = async <T extends ModelTypeEnum = ModelTypeEnum>(
-  options: ModelFilter<T> & { modelId?: string | null; model?: string | null }
+  options: ModelDetailQuery<T>
 ) => {
-  if (isEmptyModelValue(options.modelId) && isEmptyModelValue(options.model)) return;
-  // 工作流动态引用在运行时求值，不能当成静态 ID 发起目录查询。
-  if (!isEmptyModelValue(options.modelId) && typeof options.modelId !== 'string') return;
-  if (isEmptyModelValue(options.modelId) && typeof options.model !== 'string') return;
+  // 没有静态模型身份时不发起目录请求，保持旧调用方的行为。
+  if (!getStaticModelQuery(options)) return;
   const catalog = await ensureModelCatalog(options);
-  const model = !isEmptyModelValue(options.modelId)
-    ? catalog.modelMap[options.modelId!]
-    : catalog.modelList.find((item) => item.model === options.model);
-  return model && matchesModelFilter(model, options) ? model : undefined;
+  return resolveModelDetail(catalog, options);
+};
+
+/**
+ * 同步读取模型详情：只使用已就绪的目录，绝不发起请求。
+ * 目录未就绪或身份不匹配时返回 undefined，供同步校验路径跳过本轮判定。
+ */
+export const peekModelDetail = <T extends ModelTypeEnum = ModelTypeEnum>(
+  options: ModelDetailQuery<T>
+) => {
+  const catalog = peekModelCatalog(options);
+  return catalog ? resolveModelDetail(catalog, options) : undefined;
 };
 
 /** 业务默认优先，再使用 catalog 有效默认，最后补能力过滤后的首项；不负责写入任何业务状态。 */

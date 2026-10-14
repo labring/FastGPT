@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
-import { type NodeProps, Position, useViewport } from 'reactflow';
+import { Position } from '@xyflow/react';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import { Box } from '@chakra-ui/react';
 import NodeCard from './render/NodeCard';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -11,43 +12,45 @@ import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MySourceHandle } from './render/Handle';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import { useContextSelector } from 'use-context-selector';
 import { type UserSelectOptionItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import IOTitle from '../components/IOTitle';
 import RenderOutput from './render/RenderOutput';
-import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import DraggableInputList from '@/components/core/app/DraggableInputList';
+import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
+import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
-const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+/** 选项源柄的平移量：模块级常量，避免每次渲染换数组身份打穿 MySourceHandle 的 React.memo。 */
+const optionHandleTranslate = [9, 0] as [number, number];
+
+const NodeUserSelect = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs } = data;
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const onDelEdge = useContextSelector(WorkflowActionsContext, (v) => v.onDelEdge);
-  const { zoom } = useViewport();
-
+  const { nodeId } = data;
+  const { inputs = [], outputs = [] } =
+    useNode<WorkflowNodeData>(nodeId, (node) => node?.data) ?? {};
+  const nodeActions = useNodeActions(nodeId);
+  // 边集合只在删除选项的回调里读，走非订阅 getter：点击时取当前值，组件不订阅结构变更。
+  const { getEdges } = useWorkflowActions();
+  // CustomComponent 是被 RenderInput 直接调用的普通函数，字段句柄必须在组件顶层取。
+  const optionsField = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.userSelectOptions,
+    kind: 'input'
+  });
   const CustomComponent = useMemo(
     () => ({
       [NodeInputKeyEnum.userSelectOptions]: (v: FlowNodeInputItemType) => {
-        const { key: optionKey, value, ...props } = v;
+        const { key: optionKey, value } = v;
         const options = value as UserSelectOptionItemType[];
 
         return (
           <Box>
             <DraggableInputList<UserSelectOptionItemType>
               items={options}
-              zoom={zoom}
               addText={t('common:core.module.Add_option')}
               onDragEnd={(list) => {
-                onChangeNode({
-                  nodeId,
-                  type: 'updateInput',
-                  key: optionKey,
-                  value: {
-                    ...props,
-                    key: optionKey,
-                    value: list
-                  }
-                });
+                optionsField.setValue(list);
               }}
               onChange={(key, value) => {
                 const newVal = options.map((val) =>
@@ -58,44 +61,29 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       }
                     : val
                 );
-                onChangeNode({
-                  nodeId,
-                  type: 'updateInput',
-                  key: optionKey,
-                  value: {
-                    ...props,
-                    key: optionKey,
-                    value: newVal
-                  }
-                });
+                optionsField.setValue(newVal);
               }}
               onAdd={() => {
-                onChangeNode({
-                  nodeId,
-                  type: 'updateInput',
-                  key: optionKey,
-                  value: {
-                    ...props,
-                    key: optionKey,
-                    value: options.concat({ value: '', key: getNanoid() })
-                  }
-                });
+                optionsField.setValue(options.concat({ value: '', key: getNanoid() }));
               }}
               onDelete={(key) => {
-                onChangeNode({
-                  nodeId,
-                  type: 'updateInput',
-                  key: optionKey,
-                  value: {
-                    ...props,
-                    key: optionKey,
-                    value: options.filter((input) => input.key !== key)
+                // 删除选项要同时断开该分支 handle 上的连线：同一事务提交，撤销只需一步。
+                nodeActions?.updateNode(
+                  (current) => ({
+                    inputs: current.inputs.map((input) =>
+                      input.key === optionKey
+                        ? { ...input, value: options.filter((option) => option.key !== key) }
+                        : input
+                    )
+                  }),
+                  {
+                    disconnectEdges: getOutputDisconnectCommands({
+                      edges: getEdges(),
+                      nodeId,
+                      outputKey: key
+                    })
                   }
-                });
-                onDelEdge({
-                  nodeId,
-                  sourceHandle: getHandleId(nodeId, 'source', key)
-                });
+                );
               }}
               renderRight={(item, snapshot) =>
                 !snapshot.isDragging && (
@@ -103,9 +91,7 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                     nodeId={nodeId}
                     handleId={getHandleId(nodeId, 'source', item.key)}
                     position={Position.Right}
-                    // Handler 渲染在 DraggableInputList 的 flex 输入容器内；右侧删除按钮和 gap
-                    // 使该容器比节点内容区域缩进 24px，需要补偿后才能与节点右边缘对齐。
-                    translate={[58, 0]}
+                    translate={optionHandleTranslate}
                   />
                 )
               }
@@ -114,7 +100,7 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         );
       }
     }),
-    [nodeId, onChangeNode, onDelEdge, t, zoom]
+    [getEdges, nodeActions, nodeId, optionsField, t]
   );
 
   return (

@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
-import { type NodeProps } from 'reactflow';
+import React, { useContext, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from '../render/NodeCard';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import Container from '../../components/Container';
 import RenderInput from '../render/RenderInput';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -9,7 +10,7 @@ import { useTranslation } from 'next-i18next';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useContextSelector } from 'use-context-selector';
 import IOTitle from '../../components/IOTitle';
-import RenderToolInput, { hasDynamicToolInput } from '../render/RenderToolInput';
+import RenderToolInput, { useHasDynamicToolInput } from '../render/RenderToolInput';
 import RenderOutput from '../render/RenderOutput';
 import CodeEditor from '@fastgpt/web/components/common/Textarea/CodeEditor';
 import { Box, Button, Flex } from '@chakra-ui/react';
@@ -26,36 +27,57 @@ import CatchError from '../render/RenderOutput/CatchError';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import NodeCopilot from './Copilot';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
-import { WorkflowUIContext } from '../../../context/workflowUIContext';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getSandboxPackages } from './api';
+import { useWorkflowUIValue } from '../../canvas/canvasState';
+import { WorkflowNodeOffscreenMeasurementContext } from '../render/Handle/handleRenderContext';
+import { AppContext } from '@/pageComponents/app/detail/context';
+import { useWorkflowEditorSessionId } from '@/web/core/workflow/editor/session/workflowSession';
+import { getWorkflowEditorPath } from '@/web/core/workflow/editor/workflowEditorPath';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { splitNodeOutputs, splitToolInputsByMode } from '@/web/core/workflow/utils';
+import { useIsToolNode } from '../render/useWorkflowDocument';
+import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { getSandboxPackages } from '@/web/core/workflow/api';
 
-const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeCode = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs, catchError } = data;
-  const { splitToolInputs, splitOutput } = useContextSelector(WorkflowUtilsContext, (ctx) => ctx);
+  const { nodeId } = data;
+  const {
+    inputs = [],
+    outputs = [],
+    catchError = false
+  } = useNode<WorkflowNodeData>(nodeId, (current) => current?.data) ?? {};
+  const nodeActions = useNodeActions(nodeId);
+  const hasDynamicInput = useHasDynamicToolInput(nodeId);
   const { successOutputs, errorOutputs } = useMemoEnhance(
-    () => splitOutput(outputs),
-    [splitOutput, outputs]
+    () => splitNodeOutputs(outputs),
+    [outputs]
   );
 
   const codeType = inputs.find(
     (item) => item.key === NodeInputKeyEnum.codeType
   ) as FlowNodeInputItemType;
 
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (ctx) => ctx.onChangeNode);
-  const presentationMode = useContextSelector(WorkflowUIContext, (ctx) => ctx.presentationMode);
+  // CustomComponent 由 RenderInput 以普通函数调用，hooks 只能取在组件顶层。
+  const codeField = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.code,
+    kind: 'input'
+  });
+  const appId = useContextSelector(AppContext, (v) => v.appId);
+  const editorSessionId = useWorkflowEditorSessionId();
+  const presentationMode = useWorkflowUIValue((ctx) => ctx.presentationMode);
+  const offscreenMeasurement = useContext(WorkflowNodeOffscreenMeasurementContext);
 
   const { ConfirmModal: SwitchLangConfirm, openConfirm: openSwitchLangConfirm } = useConfirm({
     content: t('workflow:code.Switch language confirm')
   });
 
-  const { data: packages } = useRequest(getSandboxPackages, {
-    manual: false,
-    errorToast: ''
+  const { data: packages } = useQuery({
+    queryKey: ['workflow', 'sandbox-packages'],
+    queryFn: getSandboxPackages,
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 5 * 60 * 1000
   });
 
   const packageText = useMemo(() => {
@@ -67,7 +89,7 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       modules: packagesList,
       globals: packages?.builtinGlobals.join(', ')
     });
-  }, [packages, codeType.value]);
+  }, [packages, codeType.value, t]);
 
   const CustomComponent = useMemo(() => {
     return {
@@ -86,22 +108,18 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 onChange={(newLang) => {
                   openSwitchLangConfirm({
                     onConfirm: () => {
-                      onChangeNode({
-                        nodeId,
-                        type: 'updateInput',
-                        key: NodeInputKeyEnum.codeType,
-                        value: { ...codeType, value: newLang }
-                      });
-
-                      onChangeNode({
-                        nodeId,
-                        type: 'updateInput',
-                        key: item.key,
-                        value: {
-                          ...item,
-                          value: SANDBOX_CODE_TEMPLATE[newLang]
-                        }
-                      });
+                      // 语言与模板代码必须一起换：同一事务提交，撤销一次回到旧语言。
+                      nodeActions?.updateNode((current) => ({
+                        inputs: current.inputs.map((input) => {
+                          if (input.key === NodeInputKeyEnum.codeType) {
+                            return { ...input, value: newLang };
+                          }
+                          if (input.key === item.key) {
+                            return { ...input, value: SANDBOX_CODE_TEMPLATE[newLang] };
+                          }
+                          return input;
+                        })
+                      }));
                     }
                   })();
                 }}
@@ -125,32 +143,26 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 content={t('workflow:code.Reset template confirm')}
                 placement={'top-end'}
                 onConfirm={() =>
-                  onChangeNode({
-                    nodeId,
-                    type: 'updateInput',
-                    key: item.key,
-                    value: {
-                      ...item,
-                      value: codeType.value === 'js' ? JS_TEMPLATE : PY_TEMPLATE
-                    }
-                  })
+                  codeField.setValue(codeType.value === 'js' ? JS_TEMPLATE : PY_TEMPLATE)
                 }
               />
             </Flex>
-            {presentationMode ? (
+            {presentationMode || offscreenMeasurement ? (
               <Box h={'200px'} />
             ) : (
               <CodeEditor
                 bg={'white'}
                 borderRadius={'sm'}
                 value={item.value}
+                path={getWorkflowEditorPath({
+                  appId,
+                  sessionId: editorSessionId,
+                  editorKind: 'code',
+                  nodeId,
+                  fieldKey: item.key
+                })}
                 onChange={(e) => {
-                  onChangeNode({
-                    nodeId,
-                    type: 'updateInput',
-                    key: item.key,
-                    value: { ...item, value: e }
-                  });
+                  codeField.setValue(e);
                 }}
                 language={codeType.value}
               />
@@ -159,11 +171,25 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         );
       }
     };
-  }, [packageText, codeType, nodeId, t, presentationMode, onChangeNode]);
+  }, [
+    packageText,
+    packages,
+    codeType,
+    t,
+    presentationMode,
+    nodeId,
+    nodeActions,
+    codeField,
+    openSwitchLangConfirm,
+    offscreenMeasurement,
+    appId,
+    editorSessionId
+  ]);
 
-  const { isTool, commonInputs } = useMemoEnhance(
-    () => splitToolInputs(inputs, nodeId),
-    [inputs, nodeId, splitToolInputs]
+  const isTool = useIsToolNode(nodeId);
+  const { commonInputs } = useMemoEnhance(
+    () => splitToolInputsByMode(inputs, isTool),
+    [inputs, isTool]
   );
 
   const rtDoms = useMemo(() => {
@@ -189,7 +215,7 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   return (
     <NodeCard minW={'400px'} selected={selected} rtDoms={rtDoms} {...data}>
-      {isTool && hasDynamicToolInput(data) && (
+      {isTool && hasDynamicInput && (
         <Container>
           <RenderToolInput nodeId={nodeId} inputs={inputs} />
         </Container>

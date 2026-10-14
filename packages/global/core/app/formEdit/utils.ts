@@ -132,6 +132,17 @@ export const canInputBeAgentGenerated = (
   return !input.renderTypeList.some((type) => agentGeneratedDenyRenderTypes.has(type));
 };
 
+/** 判断输入是否为工作流工具参数。 */
+export const isToolParamInput = (
+  input: Pick<
+    FlowNodeInputItemType,
+    'key' | 'canEdit' | 'defaultToAgentGenerated' | 'renderTypeList' | 'canAgentGenerated'
+  >
+) =>
+  input.canEdit === true &&
+  input.defaultToAgentGenerated === true &&
+  canInputBeAgentGenerated(input);
+
 /**
  * 归一当前节点输入的可选来源和默认选择。
  *

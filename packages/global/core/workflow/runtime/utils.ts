@@ -303,24 +303,25 @@ export const filterWorkflowEdges = (edges: RuntimeEdgeItemType[]) => {
 };
 
 /*
-  Get the value of the reference variable/node output
+  Get the value of the reference variable/node output.
+  来源节点已不存在（死引用）时取到 undefined，不会把 [nodeId, outputId] 元组当值传给下游：
+  出站裁剪删除后，脏引用可能随自动保存落库并被执行层读到。
   1. [string,string]
   2. [string,string][]
 */
 export const getReferenceVariableValue = ({
   value,
   nodesMap,
-  variables,
-  isReferenceVal = true
+  variables
 }: {
   value?: ReferenceValueType;
   nodesMap: Record<string, RuntimeNodeItemType> | Map<string, RuntimeNodeItemType>;
   variables: Record<string, unknown>;
-  isReferenceVal?: boolean;
 }) => {
-  if (!value || !isReferenceVal) return value;
+  if (!value) return value;
 
-  const resoleValue = (value: [string, string | undefined]) => {
+  /** 解析单个引用：全局变量走 variables，节点输出走 nodesMap；来源缺失一律 undefined。 */
+  const resolveValue = (value: [string, string | undefined]) => {
     const sourceNodeId = value[0];
     const outputId = value[1];
 
@@ -329,35 +330,31 @@ export const getReferenceVariableValue = ({
       return variables[outputId];
     }
 
-    // 避免 value 刚好就是二个元素的字符串数组
     const node = nodesMap instanceof Map ? nodesMap.get(sourceNodeId) : nodesMap[sourceNodeId];
-    if (!node) {
-      return value;
-    }
+    if (!node) return undefined;
 
     return node.outputs.find((output) => output.id === outputId)?.value;
   };
 
+  const isReferenceValue = (value: unknown): value is [string, string | undefined] =>
+    isValidReferenceValueFormat(value) && (value[1] === undefined || typeof value[1] === 'string');
+
   // handle single reference value
-  if (isValidReferenceValueFormat(value)) {
-    return resoleValue(value as [string, string | undefined]);
+  if (isReferenceValue(value)) {
+    return resolveValue(value as [string, string | undefined]);
   }
 
-  // handle reference array
-  if (
-    Array.isArray(value) &&
-    value.length > 0 &&
-    value.every((item) => isValidReferenceValueFormat(item, nodesMap))
-  ) {
-    return value
-      .map<any>((val) => {
-        return resoleValue(val as [string, string | undefined]);
-      })
-      .flat()
-      .filter((item) => item !== undefined);
-  }
+  // 普通数组不是引用集合，不能因没有 reference 被清空。
+  if (!Array.isArray(value) || !value.some(Array.isArray)) return value;
 
-  return value;
+  // 引用数组只保留形状正确的项；来源缺失或输出缺失由 resolveValue 转成 undefined 后过滤。
+  const references = value.filter(isReferenceValue);
+  if (references.length === 0) return undefined;
+  const resolved = references
+    .map((val) => resolveValue(val as [string, string | undefined]))
+    .flat()
+    .filter((item) => item !== undefined);
+  return resolved.length > 0 ? resolved : undefined;
 };
 
 export const formatVariableValByType = (val: any, valueType?: WorkflowIOValueTypeEnum) => {

@@ -1,8 +1,8 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useMemo, useState } from 'react';
 import { Box, Button, Table, Thead, Tbody, Tr, Th, Td, Flex } from '@chakra-ui/react';
-import { type NodeProps } from 'reactflow';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import { useTranslation } from 'next-i18next';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
@@ -15,35 +15,48 @@ import ExtractFieldModal, { defaultField } from './ExtractFieldModal';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import RenderToolInput, { hasDynamicToolInput } from '../render/RenderToolInput';
+import RenderToolInput, { useHasDynamicToolInput } from '../render/RenderToolInput';
 import {
   type FlowNodeInputItemType,
   type FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import IOTitle from '../../components/IOTitle';
-import { useContextSelector } from 'use-context-selector';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import CatchError from '../render/RenderOutput/CatchError';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import {
+  getOutputDisconnectCommands,
+  splitNodeOutputs,
+  splitToolInputsByMode
+} from '@/web/core/workflow/utils';
+import { useIsToolNode } from '../render/useWorkflowDocument';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
-const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
-  const { inputs, outputs, nodeId, catchError } = data;
+const NodeExtract = ({ data, selected }: CanvasNodeProps) => {
+  const { nodeId } = data;
+  const {
+    inputs = [],
+    outputs = [],
+    catchError = false
+  } = useNode<WorkflowNodeData>(nodeId, (node) => node?.data) ?? {};
 
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const nodeActions = useNodeActions(nodeId);
+  // 边集合只在删除/改名字段的回调里读，走非订阅 getter：点击时取当前值，组件不订阅结构变更。
+  const { getEdges } = useWorkflowActions();
 
-  const { splitToolInputs, splitOutput } = useContextSelector(WorkflowUtilsContext, (ctx) => ctx);
-  const { isTool, commonInputs } = useMemoEnhance(
-    () => splitToolInputs(inputs, nodeId),
-    [inputs, nodeId, splitToolInputs]
+  const isTool = useIsToolNode(nodeId);
+  const hasDynamicInput = useHasDynamicToolInput(nodeId);
+  const { commonInputs } = useMemoEnhance(
+    () => splitToolInputsByMode(inputs, isTool),
+    [inputs, isTool]
   );
 
   const { successOutputs, errorOutputs } = useMemoEnhance(
-    () => splitOutput(outputs),
-    [splitOutput, outputs]
+    () => splitNodeOutputs(outputs),
+    [outputs]
   );
 
   const [editExtractFiled, setEditExtractField] = useState<ContextExtractAgentItemType>();
@@ -51,8 +64,7 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const CustomComponent = useMemo(
     () => ({
       [NodeInputKeyEnum.extractKeys]: ({
-        value: extractKeys = [],
-        ...props
+        value: extractKeys = []
       }: Omit<FlowNodeInputItemType, 'value'> & {
         value?: ContextExtractAgentItemType[];
       }) => (
@@ -127,21 +139,29 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                           icon={'delete'}
                           hoverColor={'red.500'}
                           onClick={() => {
-                            onChangeNode({
-                              nodeId,
-                              type: 'updateInput',
-                              key: NodeInputKeyEnum.extractKeys,
-                              value: {
-                                ...props,
-                                value: extractKeys.filter((extract) => item.key !== extract.key)
+                            // 抽取字段与其结果 output 一起删除，旧 handle 连线同事务断开。
+                            nodeActions?.updateNode(
+                              (current) => ({
+                                inputs: current.inputs.map((input) =>
+                                  input.key === NodeInputKeyEnum.extractKeys
+                                    ? {
+                                        ...input,
+                                        value: extractKeys.filter(
+                                          (extract) => extract.key !== item.key
+                                        )
+                                      }
+                                    : input
+                                ),
+                                outputs: current.outputs.filter((output) => output.key !== item.key)
+                              }),
+                              {
+                                disconnectEdges: getOutputDisconnectCommands({
+                                  edges: getEdges(),
+                                  nodeId,
+                                  outputKey: item.key
+                                })
                               }
-                            });
-
-                            onChangeNode({
-                              nodeId,
-                              type: 'delOutput',
-                              key: item.key
-                            });
+                            );
                           }}
                         />
                       </Flex>
@@ -154,12 +174,12 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         </Box>
       )
     }),
-    [nodeId, onChangeNode, t]
+    [getEdges, nodeActions, nodeId, t]
   );
 
   return (
     <NodeCard minW={'400px'} selected={selected} {...data}>
-      {isTool && hasDynamicToolInput(data) && (
+      {isTool && hasDynamicInput && (
         <>
           <Container>
             <RenderToolInput nodeId={nodeId} inputs={inputs} />
@@ -186,26 +206,13 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           defaultField={editExtractFiled}
           onClose={() => setEditExtractField(undefined)}
           onSubmit={(data) => {
-            const input = inputs.find(
-              (input) => input.key === NodeInputKeyEnum.extractKeys
+            const documentInputs = inputs;
+
+            const input = documentInputs.find(
+              (item) => item.key === NodeInputKeyEnum.extractKeys
             ) as FlowNodeInputItemType;
-            const extracts: ContextExtractAgentItemType[] = input.value || [];
-
+            const extracts: ContextExtractAgentItemType[] = input?.value || [];
             const exists = extracts.find((item) => item.key === editExtractFiled.key);
-
-            const newInputs = exists
-              ? extracts.map((item) => (item.key === editExtractFiled.key ? data : item))
-              : extracts.concat(data);
-
-            onChangeNode({
-              nodeId,
-              type: 'updateInput',
-              key: NodeInputKeyEnum.extractKeys,
-              value: {
-                ...input,
-                value: newInputs
-              }
-            });
 
             const newOutput: FlowNodeOutputItemType = {
               id: getNanoid(),
@@ -215,38 +222,46 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               type: FlowNodeOutputTypeEnum.static
             };
 
-            if (exists) {
-              if (editExtractFiled.key === data.key) {
-                const output = outputs.find(
-                  (output) => output.key === data.key
-                ) as FlowNodeOutputItemType;
+            // 改名等于替换输出字段，旧 handle 上的连线必须同事务断开；未改名则原地更新，不动连线。
+            const replacedKey =
+              exists && editExtractFiled.key !== data.key ? editExtractFiled.key : undefined;
 
-                // update
-                onChangeNode({
-                  nodeId,
-                  type: 'updateOutput',
-                  key: data.key,
-                  value: {
-                    ...output,
-                    valueType: newOutput.valueType,
-                    label: newOutput.label
+            nodeActions?.updateNode(
+              (current) => ({
+                inputs: current.inputs.map((item) =>
+                  item.key === NodeInputKeyEnum.extractKeys
+                    ? {
+                        ...item,
+                        value: exists
+                          ? extracts.map((extract) =>
+                              extract.key === editExtractFiled.key ? data : extract
+                            )
+                          : extracts.concat(data)
+                      }
+                    : item
+                ),
+                outputs: replacedKey
+                  ? current.outputs.map((output) =>
+                      output.key === replacedKey ? newOutput : output
+                    )
+                  : exists
+                    ? current.outputs.map((output) =>
+                        output.key === data.key
+                          ? { ...output, valueType: newOutput.valueType, label: newOutput.label }
+                          : output
+                      )
+                    : current.outputs.concat(newOutput)
+              }),
+              replacedKey
+                ? {
+                    disconnectEdges: getOutputDisconnectCommands({
+                      edges: getEdges(),
+                      nodeId,
+                      outputKey: replacedKey
+                    })
                   }
-                });
-              } else {
-                onChangeNode({
-                  nodeId,
-                  type: 'replaceOutput',
-                  key: editExtractFiled.key,
-                  value: newOutput
-                });
-              }
-            } else {
-              onChangeNode({
-                nodeId,
-                type: 'addOutput',
-                value: newOutput
-              });
-            }
+                : undefined
+            );
 
             setEditExtractField(undefined);
           }}

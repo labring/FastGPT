@@ -1,20 +1,46 @@
 import DatasetParamsModal from '@/components/core/app/DatasetParamsModal';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
-import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 import { Flex, useDisclosure } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import React, { useMemo } from 'react';
-import { useContextSelector } from 'use-context-selector';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowQuoteLimit } from '../../../../hooks/useWorkflowQuoteLimit';
 import type { RenderInputProps } from '../type';
 import { getDatasetSearchParamInputs, getDatasetSearchParams } from './SelectDatasetParams.utils';
 
-const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+const emptyInputs: FlowNodeInputItemType[] = [];
+
+const SelectDatasetParam = ({ nodeId }: RenderInputProps) => {
+  const nodeActions = useNodeActions(nodeId);
+  const currentInputs =
+    useNode<FlowNodeInputItemType[]>(nodeId, (node) => node?.data.inputs) ?? emptyInputs;
   const llmMaxQuoteContext = useWorkflowQuoteLimit();
   const { t } = useTranslation();
-  const data = useMemo(() => getDatasetSearchParams(inputs), [inputs]);
+  const data = useMemo(() => {
+    const getValue = (key: string) => currentInputs.find((input) => input.key === key)?.value;
+    return getDatasetSearchParams(
+      [
+        NodeInputKeyEnum.datasetSearchMode,
+        NodeInputKeyEnum.datasetSearchEmbeddingWeight,
+        NodeInputKeyEnum.datasetMaxTokens,
+        NodeInputKeyEnum.datasetSimilarity,
+        NodeInputKeyEnum.datasetSearchUsingReRank,
+        NodeInputKeyEnum.datasetSearchRerankModelId,
+        NodeInputKeyEnum.datasetSearchRerankModel,
+        NodeInputKeyEnum.datasetSearchRerankWeight,
+        NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
+        NodeInputKeyEnum.datasetSearchExtensionModelId,
+        NodeInputKeyEnum.datasetSearchExtensionModel,
+        NodeInputKeyEnum.datasetSearchExtensionBg
+      ].map((key) => ({ key, value: getValue(key) })) as Pick<
+        FlowNodeInputItemType,
+        'key' | 'value'
+      >[]
+    );
+  }, [currentInputs]);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -49,13 +75,18 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
           maxTokens={llmMaxQuoteContext}
           onClose={onClose}
           onSuccess={(e) => {
-            for (const input of getDatasetSearchParamInputs({ inputs, values: e })) {
-              if (inputs.some((item) => item.key === input.key)) {
-                onChangeNode({ nodeId, type: 'updateInput', key: input.key, value: input });
-              } else {
-                onChangeNode({ nodeId, type: 'addInput', value: input });
-              }
-            }
+            // 记录级增改：以派发瞬间的 inputs 为基准合并后一次提交，避免逐条提交产生多条历史。
+            nodeActions?.updateNode((current) => {
+              const nextInputs = [...current.inputs];
+              getDatasetSearchParamInputs({ inputs: current.inputs, values: e }).forEach(
+                (input) => {
+                  const index = nextInputs.findIndex((item) => item.key === input.key);
+                  if (index >= 0) nextInputs[index] = input;
+                  else nextInputs.push(input);
+                }
+              );
+              return { inputs: nextInputs };
+            });
           }}
         />
       )}

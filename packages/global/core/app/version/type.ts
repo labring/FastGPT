@@ -1,6 +1,7 @@
 import { AppResourcesSchema, AppChatConfigTypeSchema } from '../type';
 import { StoreNodeItemTypeSchema } from '../../workflow/type/node';
 import { StoreEdgeItemTypeSchema } from '../../workflow/type/edge';
+import { WorkflowReferenceSnapshotSchema } from '../../workflow/type/io';
 import { SourceMemberSchema } from '../../../support/user/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../../common/type/mongo';
@@ -13,6 +14,7 @@ export const AppVersionSchema = z.object({
   nodes: z.array(StoreNodeItemTypeSchema),
   edges: z.array(StoreEdgeItemTypeSchema),
   chatConfig: AppChatConfigTypeSchema,
+  referenceSnapshots: z.array(WorkflowReferenceSnapshotSchema).optional(),
   isPublish: z.boolean().optional(),
   isAutoSave: z.boolean().optional(),
   versionName: z.string(),
@@ -41,6 +43,7 @@ export const PublishAppBodySchema = z.object({
   nodes: AppVersionSchema.shape.nodes.optional(),
   edges: AppVersionSchema.shape.edges.optional(),
   chatConfig: AppVersionSchema.shape.chatConfig.optional(),
+  referenceSnapshots: AppVersionSchema.shape.referenceSnapshots.optional(),
   isPublish: z.boolean().optional(),
   versionName: z.string().optional(),
   autoSave: z.boolean().optional()
