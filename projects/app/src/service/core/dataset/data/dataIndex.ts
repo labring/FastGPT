@@ -8,12 +8,13 @@ import type {
   DatasetDataIndexItemType,
   DatasetDataItemType
 } from '@fastgpt/global/core/dataset/type';
-import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';
+import { isImageEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
 import { text2Chunks } from '@fastgpt/service/worker/function';
-import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { getMultipleDataToBase64 } from '@fastgpt/service/common/system/constants';
 import {
   isImageEmbeddingIndex,
   isValidImageEmbeddingSource,
@@ -161,9 +162,9 @@ const buildEmbeddingSafeIndexTexts = async ({
  * 这些步骤需要放在一起维护，因为 Mongo 索引里的 `dataId` 必须和向量库 id 保持一致。
  */
 export class DatasetDataIndexOperation {
-  private readonly model?: EmbeddingModelDataType;
+  private readonly model?: EmbeddingSystemModelDataType;
 
-  constructor(model?: EmbeddingModelDataType) {
+  constructor(model?: EmbeddingSystemModelDataType) {
     this.model = model;
   }
 
@@ -171,7 +172,7 @@ export class DatasetDataIndexOperation {
     return this.getEmbeddingModel().config.maxToken;
   }
 
-  private getEmbeddingModel(): EmbeddingModelDataType {
+  private getEmbeddingModel(): EmbeddingSystemModelDataType {
     return this.model!;
   }
 
@@ -518,6 +519,8 @@ export class DatasetDataIndexOperation {
     transformText?: (text: string) => string;
   }) {
     const embModel = this.getEmbeddingModel();
+    // 批量入口一次求值下传：管理员中途保存配置不会让同批索引出现混合形态
+    const toBase64 = getMultipleDataToBase64();
     const vectorInputItems = (
       await Promise.all(
         indexes.map(async (index) => {
@@ -537,7 +540,7 @@ export class DatasetDataIndexOperation {
               item: index,
               input: {
                 type: 'image' as const,
-                input: await normalizeDatasetIndexImageToModelInput(index.text, datasetId)
+                input: await normalizeDatasetIndexImageToModelInput(index.text, datasetId, toBase64)
               }
             };
           } catch {
@@ -900,7 +903,7 @@ export const createDatasetDataIndex = async ({
   data: DatasetDataItemType;
   type: DatasetDataIndexTypeEnum;
   text: string;
-  model: EmbeddingModelDataType;
+  model: EmbeddingSystemModelDataType;
 }) => {
   return new DatasetDataIndexOperation(model).writeDatasetDataIndex({
     data,
@@ -926,7 +929,7 @@ export const updateDatasetDataIndex = async ({
   indexDataId: string;
   type: DatasetDataIndexTypeEnum;
   text: string;
-  model: EmbeddingModelDataType;
+  model: EmbeddingSystemModelDataType;
 }) => {
   return new DatasetDataIndexOperation(model).writeDatasetDataIndex({
     data,

@@ -13,6 +13,7 @@ import { MongoDatasetData } from '../../data/schema';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { readFromSecondary } from '../../../../common/mongo/utils';
 import { normalizeImageToBase64 } from '../utils';
+import { getMultipleDataToBase64 } from '../../../../common/system/constants';
 import { datasetCollectionSelectField, datasetDataSelectField } from './constant';
 import { buildSearchResultItem, concatRecallLists } from './result';
 
@@ -76,11 +77,13 @@ const buildVectorRecallTasks = async ({
   const validImageQueries = imageQueries.map((url) => url.trim()).filter(Boolean);
 
   if (validImageQueries.length > 0 && isImageEmbeddingModel(embeddingModel)) {
+    // 批量入口一次求值下传：管理员中途保存配置不会让同批图片出现混合形态
+    const toBase64 = getMultipleDataToBase64();
     const imageInputs = (
       await Promise.all(
         validImageQueries.map(async (url, index) => {
           try {
-            return await normalizeImageToBase64(url);
+            return await normalizeImageToBase64(url, toBase64);
           } catch (error) {
             // Image search is additive. A stale or unreadable image should not break text recall
             // or other valid images in the same request.
