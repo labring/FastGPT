@@ -1,6 +1,6 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getSystemInstanceConfig } from '../system/systemInstanceConfig/controller';
-import { serviceEnv, SYSTEM_MAX_STRING_LENGTH } from '../../env';
+import { serviceEnv } from '../../env';
 import { SYSTEM_STRING_LENGTH_UNIT } from '../../env.const';
 import { getLogger, LogCategories } from '../logger';
 
@@ -90,7 +90,8 @@ const hasVariableKey = (obj: Record<string, any>, key: string) => {
  * 将文本中的 `{{variable}}` 占位符替换为变量值。
  *
  * 替换时只格式化模板实际引用的变量，避免大变量表在每次工作流节点运行时被整体 stringify。
- * 字符串长度上限统一使用 service env 初始化后得到的系统配置，不由调用方逐层传递。
+ * 字符串长度上限读取实例配置 resource.systemMaxStringLengthM（快照叶子缺省时回落 env），
+ * 不由调用方逐层传递。
  */
 export const replaceVariable = (text: any, obj: Record<string, any>) => {
   if (typeof text !== 'string') return text;

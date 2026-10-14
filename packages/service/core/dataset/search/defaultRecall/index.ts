@@ -122,7 +122,7 @@ export async function searchDatasetData(
 
   // 重排前取快照：保存 textRecallResults，即重排前的文本召回候选集，
   // 仅用于日志详情对比召回与重排。仅重排开启时产出，避免未开启重排时切了切片又没人用。
-  // 上限由 RETRIEVAL_RESULTS_LIMIT 控制，0 表示不产出。
+  // 上限由实例配置 performance.dataset.retrievalResultsLimit 控制（缺省回落 env），0 表示不产出。
   const retrievalLimit =
     getSystemInstanceConfig().performance.dataset.retrievalResultsLimit ??
     serviceEnv.RETRIEVAL_RESULTS_LIMIT;

@@ -4,7 +4,6 @@ import {
   replaceS3KeysWithPreviewUrlMap
 } from '../../../common/s3/utils/preview';
 import { getStorageFileUrlExpiredDays } from '../../../common/s3/config/constants';
-import { serviceEnv } from '../../../env';
 import { addEndpointToImageUrl } from '../../../common/file/image/utils';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { addDays } from 'date-fns';
