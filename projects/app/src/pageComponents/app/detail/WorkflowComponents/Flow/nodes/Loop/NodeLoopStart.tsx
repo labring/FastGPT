@@ -51,6 +51,9 @@ const NodeLoopStart = ({ data, selected }: CanvasNodeProps) => {
 
   // Auth update loopStartInput output
   useEffect(() => {
+    // 新建容器的父节点可能先于 Runtime 子节点完成挂载；此时保持模板快照，避免初始化写入 history。
+    if (!parentInputs) return;
+
     const documentOutputs = outputs;
     if (!documentOutputs) return;
 
