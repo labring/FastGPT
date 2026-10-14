@@ -22,10 +22,12 @@ import {
   defaultSearchDatasetData,
   type DefaultSearchDatasetDataProps
 } from '../../../../../../dataset/search';
-import { getDatasetSearchAuxiliaryModels } from '../../../../../../dataset/search/auxiliaryModels';
 import { getDatasetSearchVlmModel } from '../../../../../../dataset/search/vlm';
 import { filterDatasetsByTmbId } from '../../../../../../dataset/utils';
-import { loadWorkflowDatasetResource } from '../../../../../utils/resource';
+import {
+  loadWorkflowDatasetResource,
+  loadWorkflowModelResource
+} from '../../../../../utils/resource';
 import {
   createChunkSelectionChildNodeResponse,
   createImageCaptionChildNodeResponse,
@@ -44,7 +46,6 @@ type DatasetSearchParams = {
   llmModel: LLMModelDataType;
   userKey?: OpenaiAccountType;
   datasetParams?: AppFormEditFormType['dataset'];
-  dynamicDataset?: boolean;
 };
 
 /**
@@ -183,8 +184,7 @@ export const dispatchAgentDatasetSearch = async ({
   teamId,
   tmbId,
   llmModel,
-  userKey,
-  dynamicDataset = false
+  userKey
 }: DatasetSearchParams): Promise<DispatchSubAppResponse> => {
   if (!datasetParams || datasetParams.datasets.length === 0) {
     return {
@@ -216,13 +216,12 @@ export const dispatchAgentDatasetSearch = async ({
   const nodeSummary = createNodeSummary();
   try {
     const requestedDatasetIds = datasetParams.datasets.map((item) => item.datasetId);
-    const datasetIds =
-      datasetParams.authTmbId || dynamicDataset
-        ? await filterDatasetsByTmbId({
-            datasetIds: requestedDatasetIds,
-            tmbId
-          })
-        : requestedDatasetIds;
+    const datasetIds = datasetParams.authTmbId
+      ? await filterDatasetsByTmbId({
+          datasetIds: requestedDatasetIds,
+          tmbId
+        })
+      : requestedDatasetIds;
 
     if (datasetIds.length === 0) {
       return {
@@ -243,7 +242,6 @@ export const dispatchAgentDatasetSearch = async ({
     const dataset = await loadWorkflowDatasetResource({
       datasetId: datasetIds[0],
       datasetIds: requestedDatasetIds,
-      dynamic: dynamicDataset,
       tmbId
     });
     const modelHandle = await getTeamModelHandle({ teamId });
@@ -252,10 +250,27 @@ export const dispatchAgentDatasetSearch = async ({
       model: dataset?.vectorModel
     });
     const vlmModelData = await getDatasetSearchVlmModel({ teamId, datasetIds, modelHandle });
-    const { rerankModelData, extensionModelData } = getDatasetSearchAuxiliaryModels(
-      datasetParams,
-      modelHandle
-    );
+    const rerankModelData = datasetParams.usingReRank
+      ? await loadWorkflowModelResource({
+          teamId,
+          tmbId,
+          modelId: datasetParams.rerankModelId,
+          model: datasetParams.rerankModel,
+          type: 'rerank',
+          fallbackToDefault: true,
+          modelHandle
+        })
+      : undefined;
+    const extensionModelData = datasetParams.datasetSearchUsingExtensionQuery
+      ? await loadWorkflowModelResource({
+          teamId,
+          tmbId,
+          modelId: datasetParams.datasetSearchExtensionModelId,
+          model: datasetParams.datasetSearchExtensionModel,
+          fallbackToDefault: true,
+          modelHandle
+        })
+      : undefined;
 
     const searchData: DefaultSearchDatasetDataProps = {
       histories: [],

@@ -8,7 +8,6 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import {
   extractAppResources,
   mergeAppResources,
-  nodeHasDynamicInput,
   resolveStoredAppResources,
   splitExtractedAppResources
 } from '@fastgpt/service/core/app/resources';
@@ -266,20 +265,6 @@ describe('extractAppResources', () => {
     });
 
     expect(resources).toEqual([{ type: 'dataset', id: 'dataset-1' }]);
-  });
-});
-
-describe('nodeHasDynamicInput', () => {
-  it('keeps the dynamic source marker separate from the resolved value', () => {
-    const node = createNode({
-      inputs: [
-        createInput(NodeInputKeyEnum.datasetSelectList, [{ datasetId: 'runtime-dataset' }], true)
-      ]
-    });
-
-    expect(nodeHasDynamicInput(undefined, [NodeInputKeyEnum.datasetSelectList])).toBe(false);
-    expect(nodeHasDynamicInput(node, [NodeInputKeyEnum.datasetSelectList])).toBe(true);
-    expect(nodeHasDynamicInput(node, [NodeInputKeyEnum.datasetParams])).toBe(false);
   });
 });
 

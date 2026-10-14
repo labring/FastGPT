@@ -111,17 +111,15 @@ API 契约向后兼容：
 
 ## 5. 运行时授权
 
-- 静态资源：必须命中当前选中 Version 的 `resources`，不按运行人 ACL。
-- 动态输入：`nodeHasDynamicInput` 标记后，按运行人 `auth*`。不能用「未命中快照」反推动态。
-- 静态模型：`modelId` 必须命中当前 Version 的 `{ type: 'model', id: modelId }` 资源；命中即代表该 App 已在发布时获得使用权，不再读取运行人、App owner 或发布人的模型 ACL。
-- 动态模型：保存阶段无法确定 `modelId`，运行时按当前运行人模型权限校验；不能借用 App 的静态快照放行动态值。
+- **不再区分运行态静态与动态输入**：移除 `isWorkflowNodeResourceDynamic` 与各节点的 `dynamic*` 参数，五类资源（`model` / `dataset` / `skill` / `tool` / `agent`）在具体执行的节点内统一按同一套规则处理：
+  - **命中当前 `WorkflowResourceContext`（`hasWorkflowResource`）**：直接走应用资源快照授权，不校验运行人个人权限；随后实时加载实体（`MongoApp.findOne` / `MongoDataset.findOne` / `MongoAgentSkills.find` / `ModelHandle`），若实体已被删除或不可用则抛出领域异常（`WorkflowResourceError` / `DatasetErrEnum.unExist` / `SkillErrEnum.unExist` / `ModelConfigError`）。
+  - **未命中 `WorkflowResourceContext`（或无快照上下文）**：直接回退按当前运行人（`tmbId`）权限校验与加载（`assertAuthModels(use)` / `authDatasetByTmbId` / `filterDatasetsByTmbId` / `authAppByTmbId` / `authSkillByTmbId`）。
 - 模型快照只替代“人的模型权限”判断，不替代模型有效性判断。模型被删除、停用或类型不匹配时，仍在实际使用节点抛出模型不可用错误。
-- 父子不共享快照：父先过 `agent/tool`，子用子 Version 自己的 `resources`。
+- 父子不共享快照：父先过 `agent/tool`，子用子 Version 自己的 `resources`。系统工具（commercial）通过 `createSystemToolResourceContext({ nodes, chatConfig })` 提取内部静态资源写入快照，且标记 `trusted: true` 跳过跨团队限制；未命中快照的资源仍按运行人鉴权。
 - 系统 Skill 放行；MCP/HTTP 用父工具集 id + 可选 `toolNames`。
 - `authTmbId` 仍是终端用户数据过滤，和发布快照是两层。
-- 无 `resourceContext` 仅保留非 App 场景：Skill 调试、商业工具主动清空父快照。App 正式运行（含 Pro 评测 / Home Chat）必须带快照。不能裸 `findById`。
-- **纯 JIT 实时查库，入口零 DB 查询**：入口 `createWorkflowResourceContext`（原 `loadWorkflowResourceContext`，已改为同步） 仅在内存中把快照转为白名单字典 `resourceMap`（耗时 ~0ms），彻底移除开局批量查库逻辑（不再生成 `appMap`、`workflowMap`、`datasetMap`、`skillMap` 等内存实体大字典）；root Test/Debug 请求保留跨团队标识向下传递 `isRoot`。
-- **现场核验与单点按需查库**：实体不在入口预取，只有流转到实际使用节点时，才现场调用 `assertWorkflowResource` / `assertWorkflowDatasetResources` 核对白名单，通过后再现场实时查询 MongoDB 单条记录（`loadWorkflowAppResource` / `loadWorkflowDatasetResource` / `loadWorkflowAppWorkflow`）。未命中的分支和未调用的工具整个运行周期零 DB 查询、零开销。
+- **纯 JIT 实时查库，入口零 DB 查询**：入口 `createWorkflowResourceContext`（原 `loadWorkflowResourceContext`，已改为同步）仅在内存中把快照转为白名单字典 `resourceMap`（耗时 ~0ms），彻底移除开局批量查库逻辑（不再生成 `appMap`、`workflowMap`、`datasetMap`、`skillMap` 等内存实体大字典）；root Test/Debug 请求保留跨团队标识向下传递 `isRoot`。
+- **现场核验与单点按需查库**：实体不在入口预取，只有流转到实际使用节点时，才在节点内调用 `loadWorkflowModelResource` / `loadWorkflowDatasetResource` / `loadWorkflowAppResource` / `loadChildWorkflowWithResource` / `injectAgentSkillFilesToSandbox` 核对 `hasWorkflowResource` 并实时加载。未命中的分支和未调用的工具整个运行周期零 DB 查询、零开销。
 - 缺失/软删/跨团队**在命中节点按需抛错**：查库未找到实体或软删时，抛出 `WorkflowResourceError` 或领域异常，其余未执行的分支不受影响。任何资源加载器都不得把“已声明但实体缺失”降级为静默跳过。编辑器通过 workflow check 标出失效引用并定位到节点（`resource_missing`）。
 
 ---
@@ -216,15 +214,15 @@ kept      = extracted 中已在 baseline 出现的部分（不重新鉴权）
 
 - `formatModels` 负责在写入/导入/调试边界（保存 `create.ts`、发布 `publish.ts`、模板解析 `appTemplateParse.ts`、调试 `prepareWorkflowDebugResourceContext`）将 legacy `model` 归一化为 canonical `modelId`、在 `preserve` 与 `validate` 模式下为已开启但留空的可选模型槽位物化默认 `modelId`，并在 `validate` 模式下校验模型存在性、启用状态和类型。调用方统一传入 `modelHandle.getActiveModels()`，不能先按当前成员权限过滤，否则 baseline 中已有模型会被错误阻断。
 - **团队模型与系统模型的兼容/回退边界**：显式 `modelId` 校验同时支持系统模型与团队模型；但旧 `model` 名称兼容提取（含跨环境 JSON 导入导出）以及默认模型回退（`defaultModelIds` 与同类型候选兜底）均通过 `isSystemModel` 严格限制为系统模型，绝不匹配或回退到团队模型。
-- `extractAppResources` 与 `extractWorkflowNodeModelReferences` 只提取已开启槽位的 canonical `*ModelId`（不依赖模型目录 `models` 参数，忽略 legacy `model` 字段）。
+- `extractAppResources` 只提取已开启槽位的静态 canonical `*ModelId`（通过 `nodeInputIsReference(input)` 排除引用输入，通过 `resolveSystemModelId` 排除 `{{...}}` 模板与非字符串值，忽略 legacy `model` 字段）。
 - `resolveAppResourcesByPermission` 把 `model` 纳入 `added / kept`，新增模型通过现有 `PerResourceTypeEnum.model` 权限数据和 `getAuthorizedModelIds` 校验。
 - `modelId` 已唯一标识 `ai_models` 实体，资源快照统一存 `{ type: 'model', id: modelId }`，不再保存 `modelType`。模型类型仍由提取位置和现有 `getLLMModelData / getRerankModelData / getTTSModelData` 等 typed getter 校验，不进入资源身份。
 - 统一遵循“有 `modelId` 才校验，仅 legacy `model` 绕过”原则：
-  - 工作流节点调度边界（`assertWorkflowNodeModelResources`）复用 `extractWorkflowNodeModelReferences(node)`：静态 `modelId` 核对当前 Version 快照，动态 `modelId` 按运行人 `assertAuthModels(use)` 校验；历史仅含 legacy `model`（无 `modelId`）的节点不提取资源引用、绕过快照核对，交由节点内 `get*ModelData` 仅在系统模型内兼容解析。各节点内部不重复接入资源鉴权，也不新增 `loadWorkflowModelResource`。
+  - 工作流各模型消费节点（`dispatchChatCompletion`、`classifyQuestion`、`extract`、`toolcall`、`queryExternsion`、`agent`、`dataset/search`、`agent/sub/dataset`）统一调用 `loadWorkflowModelResource`：先通过 `handle.getLLMModelData / getRerankModelData` 解析模型定义（可选槽位传 `fallbackToDefault: true` 时仅对 `isModelConfigError` 回退默认模型），再对非空 `modelId` 检查 `hasWorkflowResource`——命中快照直接放行，未命中快照按运行人 `assertAuthModels(use)` 校验；历史仅含 legacy `model`（无 `modelId`）的节点绕过快照与权限核对，仅在系统模型内兼容解析。
   - `createQuestionGuide`、`getSpeech`（TTS）等独立于 Workflow dispatcher 的 App 辅助入口，仅在配置中存在非空 `modelId` 时调用 `authTargetModelResource` 走应用快照校验（命中正式 Version `resources` 直接放行；登录成员 Test/Debug 未命中时按 `resolveAppResourcesByPermission` 校验草稿基线与新增资源；外链 / API Key 只认正式 Version）；历史仅配置 legacy `model` 或空值回退默认系统模型时绕过快照校验。
 - Test / Debug（`prepareWorkflowDebugResourceContext`）先对请求体执行 `formatModels(preserve)` 将 legacy `model` 与已开启空槽位归一化为系统模型 `modelId`，再生成临时资源上下文：baseline 内模型沿用 App 已有授权，新增模型按当前操作人校验。
-- 动态模型或无 App 快照场景使用 `assertAuthModels(use)` 按运行人校验 `modelId`，并由 typed getter 校验模型存在、启用和类型。
-- App 来源请求携带客户端 `modelId` 时，服务端不得仅信任请求值：静态配置按正式 Version 快照校验；非 App 来源或明确的动态模型按当前运行人权限校验。
+- 未命中快照的模型或无 App 快照场景使用 `assertAuthModels(use)` 按运行人校验 `modelId`，并由 typed getter 校验模型存在、启用和类型。
+- App 来源请求携带客户端 `modelId` 时，服务端不得仅信任请求值：命中正式 Version 快照直接放行；未命中快照或非 App 来源按当前运行人权限校验。
 - 当前 App 直接提取的模型来源仍是 LLM、rerank、TTS 等已有静态 `modelId` 入口。Embedding 模型属于 Dataset 自身配置，STT 当前没有 App 静态 `modelId`，不在本次提取范围；未来新增直接选择入口时只需让提取器产出同一种 `{ type: 'model', id }` 资源，不扩展资源 Schema。
 
 ### 7.4 `toolNames` 不是权限层
@@ -526,33 +524,36 @@ flowchart TD
         E1 -- 否 --> G1[从内存 Map 读取实体]
     end
 
-    subgraph 纯粹 JIT 架构 (只留 resourceMap, 纯实时查库)
+    subgraph 纯粹 JIT 架构 (只留 resourceMap, 节点内按需核对与回退)
         A2[API 入口] --> B2["createWorkflowResourceContext (纯内存构造 resourceMap, 0ms, 零 DB 查询)"]
         B2 --> C2[启动工作流引擎 dispatchWorkFlow]
-        C2 --> D2[流转到具体节点]
-        D2 --> E2{"节点命中? (如 runApp / dataset)"}
+        D2[流转到具体节点]
+        C2 --> D2
+        D2 --> E2{"节点内使用资源? (model / dataset / skill / tool / agent)"}
         E2 -- 未走该分支 --> F2[零 DB 查询, 完全无损跳过 ✅]
-        E2 -- 走该分支 --> G2["assertWorkflowResource (纯内存核对 resourceMap 白名单)"]
-        G2 -- 不在快照 --> H2[抛出未授权异常阻断 ❌]
-        G2 -- 命中快照 --> I2["实时查库: MongoApp.findOne / MongoDataset.findOne (~1ms)"]
+        E2 -- 走该分支 --> G2{"hasWorkflowResource (命中 resourceMap 快照?)"}
+        G2 -- 未命中快照 --> H2["回退按运行人 (tmbId) 权限鉴权与加载"]
+        G2 -- 命中快照 --> I2["免运行人鉴权, 实时查库/读取目录 (~1ms)"]
         I2 -- 实体已被删/查不到 --> J2[抛出不可用领域异常 ❌]
-        I2 -- 查得实体 --> K2[直接执行子工作流/读取知识库]
+        I2 -- 查得实体 --> K2[直接执行节点业务逻辑]
     end
 ```
 
-### 17.4 调度边界与现场查询收敛规则
+### 17.4 节点内按需鉴权与加载收敛规则
 
-1. **子应用与工具集（`loadWorkflowAppResource`）**：
-   - 动态引用或无快照时按当前运行人读权限查询（`authAppByTmbId`）；
-   - 静态引用时核对 `assertWorkflowResource` 白名单，通过后现场执行 `MongoApp.findOne`；未找到或格式非法统一抛出 `WorkflowResourceError`；
-   - 子应用工作流节点按需通过 `loadWorkflowAppWorkflow` 实时获取最新发布版本。
-2. **知识库检索（`loadWorkflowDatasetResource`）**：
-   - 动态引用或无快照时按当前运行人读权限鉴权（`authDatasetByTmbId`）；
-   - 静态引用核对 `assertWorkflowDatasetResources` 白名单后现场执行 `MongoDataset.findOne`；查不到统一抛出 `DatasetErrEnum.unExist`；
-   - Agent 用户上下文中的批量知识库元数据（`loadAgentDatasetContext`）现场单次 `MongoDataset.find`，兼顾 JIT 实时性与批查询性能。
-3. **沙箱技能（`injectAgentSkillFilesToSandbox`）**：
-   - 现场遍历核对 `assertWorkflowResource({ type: 'skill' })`；
-   - 现场执行 `MongoAgentSkills.find` 查询有效实体，数量不匹配或缺失直接抛出 `SkillErrEnum.unExist`。
-4. **统一复用与错误隔离**：
-   - 所有派发分支（`runApp.ts`、`runTool.ts`、`sub/app/index.ts`、`dispatch/utils/index.ts`）统一收敛至 `loadWorkflowAppResource` / `loadWorkflowDatasetResource`；
+1. **模型（`loadWorkflowModelResource`）**：
+   - 在具体使用模型的节点内调用，先通过 `ModelHandle` 解析模型定义（可选槽位支持 `fallbackToDefault: true`）；
+   - 非空 `modelId` 命中 `hasWorkflowResource({ type: 'model' })` 时直接放行；未命中时回退 `assertAuthModels(use)` 按运行人鉴权。
+2. **子应用与工具集（`loadWorkflowAppResource` / `loadChildWorkflowWithResource`）**：
+   - 命中 `hasWorkflowResource` 时直接现场执行 `MongoApp.findOne`；未找到或格式非法统一抛出 `WorkflowResourceError`；
+   - 未命中快照时回退按当前运行人读权限查询（`authAppByTmbId`）；
+   - 子应用工作流节点按需通过 `loadWorkflowAppWorkflow` 实时获取对应版本。
+3. **知识库检索（`loadWorkflowDatasetResource` / `loadAgentDatasetContext`）**：
+   - 命中 `hasWorkflowResource({ type: 'dataset' })` 时现场执行 `MongoDataset.findOne` / `MongoDataset.find`；查不到统一抛出 `DatasetErrEnum.unExist`；
+   - 未命中快照的知识库回退按当前运行人读权限鉴权（`authDatasetByTmbId` / `filterDatasetsByTmbId`）。
+4. **沙箱技能（`injectAgentSkillFilesToSandbox`）**：
+   - 遍历 `skillIds`，命中 `hasWorkflowResource({ type: 'skill' })` 的走快照，未命中的调用 `authSkillByTmbId` 按运行人鉴权；
+   - 随后现场执行 `MongoAgentSkills.find` 查询有效实体，数量不匹配或缺失直接抛出 `SkillErrEnum.unExist`。
+5. **统一复用与错误隔离**：
+   - 所有派发分支统一收敛至 `packages/service/core/workflow/utils/resource.ts`，运行态不再维护任何 `dynamic*` 布尔标记；
    - 不引入任何中间层查询缓存，每次执行现场查库，确保多节点或协作修改的数据实时一致性。

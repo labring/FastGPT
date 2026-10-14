@@ -17,7 +17,7 @@ import { authSkillByTmbId } from '../../../../../../support/permission/skill/aut
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getWorkflowResourceContext } from '../../../../../workflow/utils/context';
-import { assertWorkflowResource } from '../../../../../workflow/utils/resource';
+import { hasWorkflowResource } from '../../../../../workflow/utils/resource';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { Types } from '../../../../../../common/mongo';
 import { Readable } from 'node:stream';
@@ -139,15 +139,13 @@ export const injectAgentSkillFilesToSandbox = async ({
   skillIds,
   teamId,
   tmbId,
-  workDirectory,
-  dynamic = false
+  workDirectory
 }: {
   sandbox: ISandbox;
   skillIds: string[];
   teamId: string;
   tmbId: string;
   workDirectory: string;
-  dynamic?: boolean;
 }): Promise<DeployedSkillVersion[]> => {
   const skillsRootPath = getRuntimeSkillsRootPath(workDirectory);
   await sandbox.createDirectories([skillsRootPath]);
@@ -183,17 +181,10 @@ export const injectAgentSkillFilesToSandbox = async ({
   }
 
   const resourceContext = getWorkflowResourceContext();
-  if (resourceContext && !dynamic) {
-    skillIds.forEach((skillId) =>
-      assertWorkflowResource({
-        context: resourceContext,
-        type: 'skill',
-        id: skillId
-      })
-    );
-  }
-  const hasInvalidId = skillIds.some((id) => !Types.ObjectId.isValid(id));
-  if (resourceContext && !dynamic && hasInvalidId) {
+  const snapshotSkillIdSet = new Set(
+    skillIds.filter((id) => hasWorkflowResource({ context: resourceContext, type: 'skill', id }))
+  );
+  if (Array.from(snapshotSkillIdSet).some((id) => !Types.ObjectId.isValid(id))) {
     throw SkillErrEnum.unExist;
   }
   const validSkillIds = skillIds.filter((id) => Types.ObjectId.isValid(id));
@@ -202,17 +193,18 @@ export const injectAgentSkillFilesToSandbox = async ({
       ? await MongoAgentSkills.find({
           _id: { $in: validSkillIds },
           deleteTime: null,
-          // 系统工具内静态 skill 由管理员发布，按 ID 直接读取，不限制团队。
-          ...(resourceContext?.trusted && !dynamic
+          // 系统工具或 root 上下文内命中快照的静态 skill 由管理员发布，按 ID 直接读取，不限制团队。
+          ...(snapshotSkillIdSet.size > 0 && (!resourceContext?.teamId || resourceContext.isRoot)
             ? {}
-            : resourceContext?.teamId && !resourceContext?.isRoot
+            : resourceContext?.teamId && !resourceContext.isRoot
               ? {
                   $or: [{ teamId: resourceContext.teamId }, { source: AgentSkillSourceEnum.system }]
                 }
               : { $or: [{ teamId }, { source: AgentSkillSourceEnum.system }] })
         })
       : [];
-  if (resourceContext && !dynamic && teamSkills.length !== skillIds.length) {
+  const foundSkillIds = new Set(teamSkills.map((skill) => String(skill._id)));
+  if (Array.from(snapshotSkillIdSet).some((id) => !foundSkillIds.has(id))) {
     throw SkillErrEnum.unExist;
   }
   if (teamSkills.length === 0) {
@@ -225,7 +217,7 @@ export const injectAgentSkillFilesToSandbox = async ({
     await Promise.all(
       teamSkills.map(async (skill) => {
         try {
-          if (!resourceContext || dynamic) {
+          if (!snapshotSkillIdSet.has(String(skill._id))) {
             await authSkillByTmbId({
               tmbId,
               skillId: String(skill._id),

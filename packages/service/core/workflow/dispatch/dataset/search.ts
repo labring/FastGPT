@@ -4,7 +4,7 @@ import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
@@ -12,13 +12,11 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { resolveReadableCollectionIds } from '../../../../support/permission/collection/auth';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { getTeamModelHandle } from '../../../ai/model/catalog/service';
-import { nodeHasDynamicInput } from '../../../app/resources';
 import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search';
-import { getDatasetSearchAuxiliaryModels } from '../../../dataset/search/auxiliaryModels';
 import { getDatasetSearchVlmModel } from '../../../dataset/search/vlm';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { loadWorkflowDatasetResource } from '../../utils/resource';
+import { loadWorkflowDatasetResource, loadWorkflowModelResource } from '../../utils/resource';
 import { getNodeErrResponse } from '../utils';
 import {
   createImageCaptionChildNodeResponse,
@@ -127,18 +125,13 @@ export const dispatchDatasetSearch = async (
   }
 
   try {
-    const dynamicDataset = nodeHasDynamicInput(node, [
-      NodeInputKeyEnum.datasetSelectList,
-      NodeInputKeyEnum.datasetParams
-    ]);
     const requestedDatasetIds = datasets.map((item) => item.datasetId);
-    const datasetIds =
-      authTmbId || dynamicDataset
-        ? await filterDatasetsByTmbId({
-            datasetIds: requestedDatasetIds,
-            tmbId
-          })
-        : requestedDatasetIds;
+    const datasetIds = authTmbId
+      ? await filterDatasetsByTmbId({
+          datasetIds: requestedDatasetIds,
+          tmbId
+        })
+      : requestedDatasetIds;
 
     if (datasetIds.length === 0) {
       return emptyResult;
@@ -158,7 +151,6 @@ export const dispatchDatasetSearch = async (
     const dataset = await loadWorkflowDatasetResource({
       datasetId: datasetIds[0],
       datasetIds: requestedDatasetIds,
-      dynamic: dynamicDataset,
       tmbId
     });
     const modelHandle = await getTeamModelHandle({ teamId });
@@ -167,21 +159,34 @@ export const dispatchDatasetSearch = async (
       model: dataset?.vectorModel
     });
     const vlmModel = await getDatasetSearchVlmModel({ teamId, datasetIds, modelHandle });
-    const { rerankModelData, extensionModelData } = getDatasetSearchAuxiliaryModels(
-      {
-        usingReRank,
-        rerankModelId,
-        rerankModel,
-        datasetSearchUsingExtensionQuery,
-        datasetSearchExtensionModelId,
-        datasetSearchExtensionModel
-      },
-      modelHandle
-    );
+    const rerankModelData = usingReRank
+      ? await loadWorkflowModelResource({
+          teamId,
+          tmbId,
+          modelId: rerankModelId,
+          model: rerankModel,
+          type: 'rerank',
+          fallbackToDefault: true,
+          modelHandle
+        })
+      : undefined;
+    const extensionModelData = datasetSearchUsingExtensionQuery
+      ? await loadWorkflowModelResource({
+          teamId,
+          tmbId,
+          modelId: datasetSearchExtensionModelId,
+          model: datasetSearchExtensionModel,
+          fallbackToDefault: true,
+          modelHandle
+        })
+      : undefined;
     const deepSearchModelData = datasetDeepSearch
-      ? modelHandle.getLLMModelData({
+      ? await loadWorkflowModelResource({
+          teamId,
+          tmbId,
           modelId: datasetDeepSearchModelId,
-          model: datasetDeepSearchModel
+          model: datasetDeepSearchModel,
+          modelHandle
         })
       : undefined;
 

@@ -5,7 +5,7 @@ import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { getAgentLoopHistories } from '../../../utils';
 import { MongoDataset } from '../../../../../dataset/schema';
 import { filterDatasetsByTmbId } from '../../../../../dataset/utils';
-import { assertWorkflowDatasetResources } from '../../../../utils/resource';
+import { hasWorkflowResource } from '../../../../utils/resource';
 import { getWorkflowResourceContext } from '../../../../utils/context';
 import type { DeployedSkillInfo } from '../../../../../ai/sandbox/application/runtime/skill/types';
 import {
@@ -31,16 +31,17 @@ type AgentSelectedDatasetContext = AgentLoopCoreSelectedDatasetContext;
 export const loadAgentDatasetContext = async (
   selectedDataset: AgentSelectedDatasetInput[] = [],
   tmbId: string,
-  authTmbId = false,
-  dynamicDataset = false
+  authTmbId = false
 ): Promise<AgentSelectedDatasetContext[]> => {
   if (selectedDataset.length === 0) return [];
 
   const datasetIds = selectedDataset.map((item) => item.datasetId);
   const resourceContext = getWorkflowResourceContext();
-  assertWorkflowDatasetResources({ datasetIds, dynamic: dynamicDataset });
+  const hasUncheckedDatasets = datasetIds.some(
+    (id) => !hasWorkflowResource({ context: resourceContext, type: 'dataset', id })
+  );
   const authorizedDatasetIds =
-    authTmbId || dynamicDataset || !resourceContext
+    authTmbId || hasUncheckedDatasets
       ? await filterDatasetsByTmbId({
           datasetIds,
           tmbId
@@ -53,7 +54,10 @@ export const loadAgentDatasetContext = async (
       _id: {
         $in: authorizedDatasetIds
       },
-      ...(resourceContext && !dynamicDataset && resourceContext.teamId && !resourceContext.isRoot
+      ...(resourceContext &&
+      !hasUncheckedDatasets &&
+      resourceContext.teamId &&
+      !resourceContext.isRoot
         ? { teamId: resourceContext.teamId }
         : {})
     },
@@ -114,7 +118,6 @@ export const useUserContext = async ({
   parseHistoryFiles = false,
   selectedDataset,
   authTmbId,
-  dynamicDataset = false,
   tmbId,
   timezone
 }: {
@@ -128,7 +131,6 @@ export const useUserContext = async ({
   parseHistoryFiles?: boolean;
   selectedDataset?: AgentSelectedDatasetInput[];
   authTmbId?: boolean;
-  dynamicDataset?: boolean;
   tmbId: string;
   timezone: string;
 }): Promise<UseUserContextResult> => {
@@ -164,12 +166,7 @@ export const useUserContext = async ({
   });
 
   // 获取知识库
-  const selectedDatasetWithIntro = await loadAgentDatasetContext(
-    selectedDataset,
-    tmbId,
-    authTmbId,
-    dynamicDataset
-  );
+  const selectedDatasetWithIntro = await loadAgentDatasetContext(selectedDataset, tmbId, authTmbId);
 
   return {
     chatHistories,

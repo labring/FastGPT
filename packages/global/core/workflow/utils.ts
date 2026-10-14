@@ -665,15 +665,6 @@ export const isWorkflowSystemModelInput = ({
 };
 
 /**
- * 判断工作流系统模型输入是否为动态引用（引用连线、引用数组或 {{...}} 模板变量表达式）。
- * 动态模型输入在保存/发布时不写入静态资源快照，而是在运行时按执行成员的 use 权限鉴权。
- */
-export const isWorkflowDynamicModelInput = (input: FlowNodeInputItemType) =>
-  nodeInputIsReference(input) ||
-  Array.isArray(input.value) ||
-  (typeof input.value === 'string' && /^\{\{.*\}\}$/.test(input.value));
-
-/**
  * 在 Workflow 写入与调试边界统一格式化模型引用。
  *
  * 动态引用只迁移到 canonical key，不做静态校验。静态引用优先按 modelId、其次按 legacy model
@@ -913,7 +904,7 @@ export const formatModels = ({
 
       const fallbackLegacyModel = legacyInputs[0]?.value;
       for (const targetInput of targetInputs) {
-        if (!isWorkflowDynamicModelInput(targetInput)) {
+        if (!nodeInputIsReference(targetInput) && !isDynamicModelValue(targetInput.value)) {
           targetInput.value = resolveModelId({
             modelId: targetInput.key === modelIdKey ? targetInput.value : undefined,
             model: targetInput.key === legacyKey ? targetInput.value : fallbackLegacyModel,

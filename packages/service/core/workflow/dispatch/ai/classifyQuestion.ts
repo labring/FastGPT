@@ -5,7 +5,6 @@ import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflow/template/system/classifyQuestion/type';
-import { getTeamModelHandle } from '../../../ai/model/catalog/service';
 
 import { type LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { getCQSystemPrompt } from '@fastgpt/global/core/ai/prompt/agent';
@@ -15,6 +14,7 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { createLLMResponse } from '../../../ai/llm/request';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
+import { loadWorkflowModelResource } from '../../utils/resource';
 import { getHistories } from '../utils';
 import { getWorkflowSourceNodeKey } from '../utils/source';
 
@@ -40,6 +40,7 @@ type ActionProps = Props & {
 export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse> => {
   const {
     runningAppInfo,
+    runningUserInfo,
     node: { nodeId, name },
     histories,
     params: { modelId, model, history = 6, agents, userChatInput }
@@ -48,8 +49,12 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
   if (!userChatInput) {
     return Promise.reject('Input is empty');
   }
-  const modelHandle = await getTeamModelHandle({ teamId: runningAppInfo.teamId });
-  const cqModel = modelHandle.getLLMModelData({ modelId, model });
+  const cqModel = await loadWorkflowModelResource({
+    teamId: runningAppInfo.teamId,
+    tmbId: runningUserInfo.tmbId,
+    modelId,
+    model
+  });
 
   const memoryKey = getWorkflowSourceNodeKey({ runningAppInfo, nodeId });
   const chatHistories = getHistories(history, histories);

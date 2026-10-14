@@ -23,8 +23,8 @@ import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatc
 import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import {
-  assertWorkflowNodeModelResources,
   createWorkflowResourceContext,
+  loadWorkflowModelResource,
   prepareWorkflowDebugResourceContext
 } from '@fastgpt/service/core/workflow/utils/resource';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -391,12 +391,16 @@ describe('publish optional model defaults', () => {
             runtimeNodesMap,
             variableState
           });
-          await assertWorkflowNodeModelResources({
-            node,
-            params,
-            teamId: String(root.teamId),
-            tmbId: String(root.tmbId)
-          });
+          if (params[NodeInputKeyEnum.datasetSearchUsingReRank]) {
+            await loadWorkflowModelResource({
+              teamId: String(root.teamId),
+              tmbId: String(root.tmbId),
+              type: 'rerank',
+              modelId: params[NodeInputKeyEnum.datasetSearchRerankModelId],
+              model: params[NodeInputKeyEnum.datasetSearchRerankModel],
+              fallbackToDefault: true
+            });
+          }
         }
       });
     };

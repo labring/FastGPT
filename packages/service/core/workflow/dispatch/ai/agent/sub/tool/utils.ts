@@ -99,15 +99,13 @@ const getAgentRuntimeToolId = ({ pluginId, source }: { pluginId: string; source?
 export const getAgentRuntimeTools = async ({
   tools,
   tmbId,
-  lang,
-  dynamic = false
+  lang
 }: {
   tools: AgentToolType[];
   tmbId: string;
   lang?: localeType;
-  dynamic?: boolean;
 }): Promise<SubAppInitType[]> => {
-  const resourceContext = dynamic ? undefined : getWorkflowResourceContext();
+  const resourceContext = getWorkflowResourceContext();
   let teamIdPromise: Promise<string> | undefined;
   const getCurrentTeamId = async () => {
     if (!teamIdPromise) {
@@ -515,8 +513,7 @@ export const getAgentRuntimeTools = async ({
     return loadWorkflowAppResource({
       tmbId,
       appId: toolSetId,
-      type: 'tool',
-      dynamic
+      type: 'tool'
     });
   };
 
@@ -534,7 +531,9 @@ export const getAgentRuntimeTools = async ({
               tmbId,
               appId: authAppId,
               type: 'tool',
-              dynamic
+              ...(idSource === AppToolSourceEnum.mcp || idSource === AppToolSourceEnum.http
+                ? { toolName: splitToolsetToolPluginId(pluginId).toolName }
+                : {})
             }).then((app) => ({ app }))
           : Promise.resolve(undefined);
 
@@ -700,7 +699,6 @@ export const getAgentRuntimeTools = async ({
           return {
             type: 'tool',
             id: runtimeId,
-            dynamic,
             name: child.name,
             avatar: child.avatar,
             // MCP/HTTP tools have no workflow version.
@@ -821,7 +819,6 @@ export const getAgentRuntimeTools = async ({
             {
               type: toolType,
               id: runtimeToolId,
-              dynamic,
               name: toolNode.name,
               avatar: toolNode.avatar,
               version: toolNode.version,

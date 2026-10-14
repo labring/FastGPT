@@ -10,7 +10,8 @@ import {
   storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { NodeInputKeyEnum, type NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { type NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getHistories, safePoints } from '../utils';
 import { getWorkflowFileVariableInputs, WorkflowVariableState } from '../utils/variables';
@@ -20,7 +21,6 @@ import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { runWithDerivedWorkflowFileContext } from '../../utils/context';
 import { createWorkflowChildResourceContext, loadWorkflowAppResource } from '../../utils/resource';
 import { getAppVersionById } from '../../../app/version/controller';
-import { nodeHasDynamicInput } from '../../../app/resources';
 import { getWorkflowRuntimeSummary } from '../utils/summary';
 
 type Props = ModuleDispatchProps<{
@@ -46,12 +46,10 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     return Promise.reject('Input is empty');
   }
 
-  const dynamicApp = nodeHasDynamicInput(props.node, [NodeInputKeyEnum.runAppSelectApp]);
   const appData = await loadWorkflowAppResource({
     appId: app.id,
     tmbId: props.runningUserInfo.tmbId,
-    type: 'agent',
-    dynamic: dynamicApp
+    type: 'agent'
   });
   const childVersion = await getAppVersionById({
     appId: app.id,

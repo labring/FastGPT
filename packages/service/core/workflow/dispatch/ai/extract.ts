@@ -9,7 +9,6 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/template/system/contextExtract/type';
-import { getTeamModelHandle } from '../../../ai/model/catalog/service';
 
 import { sliceJsonStr } from '@fastgpt/global/common/string/tools';
 import { type LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
@@ -22,6 +21,7 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { createLLMResponse } from '../../../ai/llm/request';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
+import { loadWorkflowModelResource } from '../../utils/resource';
 import { getWorkflowSourceNodeKey } from '../utils/source';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.AI);
@@ -48,6 +48,7 @@ type ActionProps = Props & {
 export async function dispatchContentExtract(props: Props): Promise<Response> {
   const {
     runningAppInfo,
+    runningUserInfo,
     node: { nodeId, name },
     histories,
     params: { content, history = 6, modelId, model, description, extractKeys }
@@ -56,8 +57,12 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   if (!content) {
     return getNodeErrResponse({ error: 'Input is empty' });
   }
-  const modelHandle = await getTeamModelHandle({ teamId: runningAppInfo.teamId });
-  const extractModel = modelHandle.getLLMModelData({ modelId, model });
+  const extractModel = await loadWorkflowModelResource({
+    teamId: runningAppInfo.teamId,
+    tmbId: runningUserInfo.tmbId,
+    modelId,
+    model
+  });
   const chatHistories = getHistories(history, histories);
 
   const memoryKey = getWorkflowSourceNodeKey({ runningAppInfo, nodeId });

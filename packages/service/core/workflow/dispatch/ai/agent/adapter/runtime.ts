@@ -25,7 +25,6 @@ type WorkflowAgentLoopRuntimeContext = ToolDispatchContext & {
   };
   currentFiles: UseUserContextResult['currentFiles'];
   sandboxClient?: SandboxClient;
-  dynamicDataset?: boolean;
 };
 
 type WorkflowAgentLoopRuntimeArtifacts = {

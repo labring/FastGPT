@@ -74,7 +74,6 @@ type Props = Pick<
   };
   userChatInput: string;
   customAppVariables: Record<string, any>;
-  dynamic?: boolean;
 };
 
 export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse> => {
@@ -85,7 +84,6 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
     variableState,
     customAppVariables,
     userChatInput,
-    dynamic = false,
     ...data
   } = props;
 
@@ -93,8 +91,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
     appId: app.id,
     versionId: app.version,
     tmbId: runningUserInfo.tmbId,
-    type: 'tool',
-    dynamic
+    type: 'tool'
   });
   const { nodes, edges, chatConfig } = childVersion;
   const workflowToolVariables = filterWorkflowToolInputVariables({
@@ -215,7 +212,6 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     variableState,
     customAppVariables,
     userChatInput,
-    dynamic = false,
     ...data
   } = props;
   // plugin 子应用不接收普通 userChatInput；这里解构只为了避免透传给 runWorkflow。
@@ -249,18 +245,20 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
         // 系统 Workflow 没有调用者可访问的 App 记录，沿用当前工作流的用户上下文。
         externalProviderTmbId: systemToolRuntime.tmbId ?? runningAppInfo.tmbId,
         billingTool: systemToolRuntime,
-        // 系统工具由管理员发布：内部静态资源直接使用，动态引用仍按运行人鉴权。
-        resourceContext: createSystemToolResourceContext()
+        // 系统工具由管理员发布：内部静态资源直接写入快照免鉴权，未命中快照的资源仍按运行人鉴权。
+        resourceContext: createSystemToolResourceContext({
+          nodes: systemToolRuntime.nodes,
+          chatConfig: systemToolRuntime.chatConfig
+        })
       };
     }
 
-    // 个人工具按运行人校验 App 权限，并切换到工具自身的 Version 快照。
+    // 个人工具按资源快照或运行人校验 App 权限，并切换到工具自身的 Version 快照。
     const { appData, childVersion, resourceContext } = await loadChildWorkflowWithResource({
       appId: app.id,
       versionId: app.version,
       tmbId: runningUserInfo.tmbId,
-      type: 'tool',
-      dynamic
+      type: 'tool'
     });
 
     return {

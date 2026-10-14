@@ -38,14 +38,17 @@ vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
   assertAuthModels: mocks.assertAuthModels
 }));
 
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import {
-  assertWorkflowNodeModelResources,
   createSystemToolResourceContext,
   createWorkflowChildResourceContext,
   filterWorkflowToolList,
+  hasWorkflowResource,
   loadWorkflowAppResource,
   loadWorkflowDatasetResource,
+  loadWorkflowModelResource,
   createWorkflowResourceContext,
   prepareWorkflowDebugResourceContext,
   WorkflowResourceError
@@ -56,20 +59,6 @@ const createFindResult = (documents: unknown = []) => ({
 });
 
 describe('workflow resource context', () => {
-  /** 构造静态选择或动态引用模型的节点，两个权限上下文复用相同输入结构。 */
-  const createModelNode = (renderType: FlowNodeInputTypeEnum, value = 'model-1') => ({
-    flowNodeType: FlowNodeTypeEnum.chatNode,
-    inputs: [
-      {
-        key: NodeInputKeyEnum.aiModelId,
-        value: renderType === FlowNodeInputTypeEnum.reference ? ['source', 'model'] : value,
-        label: '',
-        valueType: WorkflowIOValueTypeEnum.string,
-        renderTypeList: [renderType]
-      }
-    ]
-  });
-
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.mongoDatasetFind.mockReturnValue(
@@ -79,7 +68,28 @@ describe('workflow resource context', () => {
     mocks.assertAuthModels.mockResolvedValue({ handle: {}, models: [] });
     mocks.getSystemModelHandle.mockResolvedValue({
       getActiveModels: () => [],
-      getSystemDefaultModelIds: () => ({})
+      getSystemDefaultModelIds: () => ({}),
+      getLLMModelData: vi.fn(({ modelId, model }: { modelId?: string; model?: string }) => ({
+        modelId: modelId ?? 'model-1',
+        model: model ?? modelId ?? 'model-1',
+        name: model ?? modelId ?? 'model-1',
+        type: 'llm',
+        config: {}
+      })),
+      getRerankModelData: vi.fn(({ modelId, model }: { modelId?: string; model?: string }) => ({
+        modelId: modelId ?? 'rerank-1',
+        model: model ?? modelId ?? 'rerank-1',
+        name: model ?? modelId ?? 'rerank-1',
+        type: 'rerank',
+        config: {}
+      })),
+      getDefaultModelData: vi.fn((slot: string) => ({
+        modelId: `default-${slot}`,
+        model: `default-${slot}`,
+        name: `default-${slot}`,
+        type: slot,
+        config: {}
+      }))
     });
   });
 
@@ -112,107 +122,119 @@ describe('workflow resource context', () => {
     });
   });
 
-  it('uses the snapshot for static resources and member permissions for dynamic resources', async () => {
+  it('uses the snapshot when a model hits and falls back to member permissions when it misses', async () => {
     const modelResource = { type: 'model' as const, id: 'model-1' };
     const context = createWorkflowResourceContext({ resources: [modelResource] });
 
     await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
       await expect(
-        assertWorkflowNodeModelResources({
-          node: createModelNode(FlowNodeInputTypeEnum.selectLLMModel),
-          params: { [NodeInputKeyEnum.aiModelId]: 'model-1' },
+        loadWorkflowModelResource({
+          modelId: 'model-1',
           teamId: 'team-1',
           tmbId: 'tmb-1'
         })
-      ).resolves.toBeUndefined();
+      ).resolves.toMatchObject({ modelId: 'model-1' });
+      expect(mocks.assertAuthModels).not.toHaveBeenCalled();
+
       await expect(
-        assertWorkflowNodeModelResources({
-          node: createModelNode(FlowNodeInputTypeEnum.selectLLMModel, 'missing-model'),
-          params: { [NodeInputKeyEnum.aiModelId]: 'missing-model' },
+        loadWorkflowModelResource({
+          modelId: 'missing-model',
           teamId: 'team-1',
           tmbId: 'tmb-1'
         })
-      ).rejects.toBeInstanceOf(WorkflowResourceError);
-      await expect(
-        assertWorkflowNodeModelResources({
-          node: createModelNode(FlowNodeInputTypeEnum.reference),
-          params: { [NodeInputKeyEnum.aiModelId]: 'model-1' },
-          teamId: 'team-1',
-          tmbId: 'tmb-1'
-        })
-      ).resolves.toBeUndefined();
+      ).resolves.toMatchObject({ modelId: 'missing-model' });
     });
 
     expect(mocks.assertAuthModels).toHaveBeenCalledExactlyOnceWith({
       actor: { teamId: 'team-1', tmbId: 'tmb-1', isRoot: false },
-      modelIds: ['model-1'],
-      action: 'use'
+      modelIds: ['missing-model'],
+      action: 'use',
+      handle: expect.anything()
     });
   });
 
-  it('enforces member permission when duplicate modelId inputs have a trailing dynamic reference', async () => {
-    const modelResource = { type: 'model' as const, id: 'model-1' };
-    const context = createWorkflowResourceContext({ resources: [modelResource] });
-    const duplicateInputNode = {
-      flowNodeType: FlowNodeTypeEnum.chatNode,
-      inputs: [
-        {
-          key: NodeInputKeyEnum.aiModelId,
-          value: 'model-1',
-          label: '',
-          valueType: WorkflowIOValueTypeEnum.string,
-          renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
-        },
-        {
-          key: NodeInputKeyEnum.aiModelId,
-          value: ['source', 'model'],
-          label: '',
-          valueType: WorkflowIOValueTypeEnum.string,
-          renderTypeList: [FlowNodeInputTypeEnum.reference]
-        }
-      ]
-    };
+  it('falls back to default model on ModelConfigError when fallbackToDefault is true, but rethrows permission errors', async () => {
+    const context = createWorkflowResourceContext({
+      resources: [{ type: 'model', id: 'deleted-static-model' }]
+    });
+    const handle = await mocks.getSystemModelHandle();
 
-    mocks.assertAuthModels.mockRejectedValueOnce(new Error('forbidden dynamic model'));
+    handle.getRerankModelData.mockImplementationOnce(() => {
+      throw new UserError(ModelErrEnum.unExist);
+    });
+    mocks.assertAuthModels.mockRejectedValueOnce(new UserError(ModelErrEnum.unAuthModel));
 
     await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
       await expect(
-        assertWorkflowNodeModelResources({
-          node: duplicateInputNode,
-          params: { [NodeInputKeyEnum.aiModelId]: 'model-1' },
+        loadWorkflowModelResource({
+          modelId: 'deleted-static-model',
+          type: 'rerank',
+          fallbackToDefault: true,
           teamId: 'team-1',
           tmbId: 'tmb-1'
         })
-      ).rejects.toThrow('forbidden dynamic model');
-    });
+      ).resolves.toMatchObject({ modelId: 'default-rerank' });
 
-    expect(mocks.assertAuthModels).toHaveBeenCalledExactlyOnceWith({
-      actor: { teamId: 'team-1', tmbId: 'tmb-1', isRoot: false },
-      modelIds: ['model-1'],
-      action: 'use'
+      await expect(
+        loadWorkflowModelResource({
+          modelId: 'unauthorized-runtime-model',
+          type: 'rerank',
+          fallbackToDefault: true,
+          teamId: 'team-1',
+          tmbId: 'tmb-1'
+        })
+      ).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
     });
   });
 
-  it('system tool context skips static checks but still authorizes dynamic models', async () => {
+  it('system tool context extracts static resources into snapshot and authorizes undeclared resources by member', async () => {
     const rootContext = createWorkflowResourceContext({ resources: [], isRoot: true });
+    const systemNodes = [
+      {
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            value: 'static-model-1',
+            label: '',
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          }
+        ]
+      },
+      {
+        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.datasetSelectList,
+            value: [{ datasetId: 'dataset-2' }],
+            label: '',
+            valueType: WorkflowIOValueTypeEnum.selectDataset,
+            renderTypeList: [FlowNodeInputTypeEnum.selectDataset]
+          }
+        ]
+      }
+    ] as any;
     const context = await runWithContext(
       { mcpClientMemory: {}, resourceContext: rootContext },
-      () => createSystemToolResourceContext()
+      () => createSystemToolResourceContext({ nodes: systemNodes })
     );
-    expect(context).toMatchObject({ trusted: true, isRoot: true });
+    expect(context).toMatchObject({ isRoot: true });
     expect(context.teamId).toBeUndefined();
+    expect(hasWorkflowResource({ context, type: 'model', id: 'static-model-1' })).toBe(true);
+    expect(hasWorkflowResource({ context, type: 'dataset', id: 'dataset-2' })).toBe(true);
+    expect(hasWorkflowResource({ context, type: 'model', id: 'dynamic-model' })).toBe(false);
 
     await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
-      // 静态模型未在任何快照声明，也不鉴权。
-      await assertWorkflowNodeModelResources({
-        node: createModelNode(FlowNodeInputTypeEnum.selectLLMModel, 'undeclared'),
-        params: { [NodeInputKeyEnum.aiModelId]: 'undeclared' },
+      // 命中静态快照的模型不按运行人鉴权。
+      await loadWorkflowModelResource({
+        modelId: 'static-model-1',
         teamId: 'team-1',
         tmbId: 'tmb-1'
       });
       expect(mocks.assertAuthModels).not.toHaveBeenCalled();
 
-      // 静态知识库按 ID 直接读取，不限制团队。
+      // 命中静态快照的知识库按 ID 直接读取，且因无 teamId 跳过团队限制。
       await loadWorkflowDatasetResource({ datasetId: 'dataset-2' });
       expect(mocks.mongoDatasetFindOne).toHaveBeenCalledWith({
         _id: 'dataset-2',
@@ -223,10 +245,9 @@ describe('workflow resource context', () => {
       const tools = [{ name: 'a' }, { name: 'b' }];
       expect(filterWorkflowToolList({ context, appId: 'tool-1', tools })).toBe(tools);
 
-      // 动态模型来自调用方输入，仍按运行人鉴权。
-      await assertWorkflowNodeModelResources({
-        node: createModelNode(FlowNodeInputTypeEnum.reference),
-        params: { [NodeInputKeyEnum.aiModelId]: 'dynamic-model' },
+      // 未命中快照的模型按运行人鉴权。
+      await loadWorkflowModelResource({
+        modelId: 'dynamic-model',
         teamId: 'team-1',
         tmbId: 'tmb-1'
       });
@@ -235,54 +256,22 @@ describe('workflow resource context', () => {
     expect(mocks.assertAuthModels).toHaveBeenCalledExactlyOnceWith({
       actor: { teamId: 'team-1', tmbId: 'tmb-1', isRoot: true },
       modelIds: ['dynamic-model'],
-      action: 'use'
+      action: 'use',
+      handle: expect.anything()
     });
-  });
-
-  it('does not authorize dataset models when no dataset is selected', async () => {
-    const node = {
-      flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-      inputs: [
-        {
-          key: NodeInputKeyEnum.datasetSelectList,
-          label: '',
-          value: [],
-          renderTypeList: [FlowNodeInputTypeEnum.selectDataset]
-        },
-        {
-          key: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
-          label: '',
-          value: true,
-          renderTypeList: [FlowNodeInputTypeEnum.hidden]
-        },
-        {
-          key: NodeInputKeyEnum.datasetSearchExtensionModelId,
-          label: '',
-          value: 'missing-model',
-          renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
-        }
-      ]
-    };
-
-    await expect(
-      assertWorkflowNodeModelResources({
-        node,
-        params: {
-          [NodeInputKeyEnum.datasetSelectList]: [],
-          [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]: true,
-          [NodeInputKeyEnum.datasetSearchExtensionModelId]: 'missing-model'
-        },
-        teamId: 'team-1',
-        tmbId: 'tmb-1'
-      })
-    ).resolves.toBeUndefined();
-    expect(mocks.assertAuthModels).not.toHaveBeenCalled();
   });
 
   it('normalizes legacy model name and legacy keys when preparing debug context', async () => {
     mocks.getSystemModelHandle.mockResolvedValue({
       getActiveModels: () => [{ model: 'legacy-llm', modelId: 'resolved-model-id', type: 'llm' }],
-      getSystemDefaultModelIds: () => ({})
+      getSystemDefaultModelIds: () => ({}),
+      getLLMModelData: vi.fn(() => ({
+        modelId: 'resolved-model-id',
+        model: 'legacy-llm',
+        name: 'legacy-llm',
+        type: 'llm',
+        config: {}
+      }))
     });
     mocks.resolveAppResourcesByPermission.mockResolvedValue([
       { type: 'model', id: 'resolved-model-id' }
@@ -322,13 +311,13 @@ describe('workflow resource context', () => {
     });
 
     await runWithContext({ mcpClientMemory: {}, resourceContext: context }, () =>
-      assertWorkflowNodeModelResources({
-        node: nodes[0],
-        params: { [NodeInputKeyEnum.aiModelId]: 'resolved-model-id' },
+      loadWorkflowModelResource({
+        modelId: 'resolved-model-id',
         teamId: 'team-1',
         tmbId: 'tmb-1'
       })
     );
+    expect(mocks.assertAuthModels).not.toHaveBeenCalled();
   });
 
   it('rejects a declared App resource when the entity is unavailable', async () => {

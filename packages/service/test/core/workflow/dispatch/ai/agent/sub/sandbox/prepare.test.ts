@@ -176,7 +176,6 @@ describe('ensureAgentSandboxRuntime', () => {
       teamId: 'team_1',
       tmbId: 'tmb_1',
       skillIds: ['skill_1'],
-      dynamic: false,
       workDirectory: '/workspace'
     });
     expect(prepareSandboxRuntimeMirrorsMock).toHaveBeenCalledWith({

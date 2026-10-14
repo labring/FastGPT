@@ -72,7 +72,6 @@ import {
 import { createWorkflowNodeResponseScope } from './nodeResponseSink';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isWorkflowSseResponseInitialized } from '../utils/streamResponseContext';
-import { assertWorkflowNodeModelResources } from '../utils/resource';
 import {
   addWorkflowStepEvent,
   getWorkflowStepStatus,
@@ -876,14 +875,6 @@ export class WorkflowQueue {
           const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
 
           try {
-            // 模型资源校验必须在 try 内：失败时走节点错误分支（支持 catchError），
-            // 否则异常会冲出调度循环，导致整个工作流无输出。
-            await assertWorkflowNodeModelResources({
-              node,
-              params,
-              teamId: this.data.runningUserInfo.teamId,
-              tmbId: this.data.runningUserInfo.tmbId
-            });
             const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
 
             if (result.error) {

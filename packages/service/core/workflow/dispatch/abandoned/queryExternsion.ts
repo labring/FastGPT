@@ -11,6 +11,7 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { queryExtension } from '../../../../core/ai/functions/queryExtension';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
+import { loadWorkflowModelResource } from '../../utils/resource';
 import { getHistories } from '../utils';
 
 type Props = ModuleDispatchProps<{
@@ -38,7 +39,13 @@ export const dispatchQueryExtension = async (props: Props): Promise<Response> =>
     return Promise.reject('Question is empty');
   }
   const modelHandle = await getTeamModelHandle({ teamId: props.runningAppInfo.teamId });
-  const queryExtensionModel = modelHandle.getLLMModelData({ modelId, model });
+  const queryExtensionModel = await loadWorkflowModelResource({
+    teamId: props.runningAppInfo.teamId,
+    tmbId: runningUserInfo.tmbId,
+    modelId,
+    model,
+    modelHandle
+  });
   const embeddingModel = modelHandle.getDefaultModelData('embedding');
   const chatHistories = getHistories(history, histories);
 

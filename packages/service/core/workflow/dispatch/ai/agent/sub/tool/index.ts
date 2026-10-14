@@ -65,7 +65,6 @@ export type Props = {
   uid: ChatDispatchProps['uid'];
   variableState: ChatDispatchProps['variableState'];
   workflowStreamResponse: ChatDispatchProps['workflowStreamResponse'];
-  dynamic?: boolean;
 };
 
 export const dispatchTool = async ({
@@ -76,10 +75,9 @@ export const dispatchTool = async ({
   chatId,
   uid,
   variableState,
-  workflowStreamResponse,
-  dynamic = false
+  workflowStreamResponse
 }: Props): Promise<DispatchSubAppResponse> => {
-  const resourceContext = dynamic ? undefined : getWorkflowResourceContext();
+  const resourceContext = getWorkflowResourceContext();
   const getNodeResponse = ({
     result,
     response
@@ -136,15 +134,14 @@ export const dispatchTool = async ({
   try {
     /**
      * Agent 工具调用也会按持久化 toolId 解析 HTTP/MCP 父工具集。
-     * 这里必须使用当前运行用户的 tmbId 做运行时授权，与入口及动态工具鉴权上下文保持一致。
+     * 这里优先命中当前工作流资源快照，未命中时回退到运行用户的 tmbId 做运行时授权。
      */
     const authRuntimeToolset = async (parentId: string, toolName?: string) =>
       loadWorkflowAppResource({
         tmbId: runningUserInfo.tmbId,
         appId: parentId,
         type: 'tool',
-        toolName,
-        dynamic
+        toolName
       });
 
     if (toolConfig?.systemTool?.toolId) {

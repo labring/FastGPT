@@ -142,8 +142,11 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         pluginId,
         version
       });
-      // 系统工具由管理员发布：内部静态资源直接使用，动态引用仍按运行人鉴权。
-      workflowToolResourceContext = createSystemToolResourceContext();
+      // 系统工具由管理员发布：内部静态资源命中快照直接使用，未命中快照的动态引用按运行人鉴权。
+      workflowToolResourceContext = createSystemToolResourceContext({
+        nodes: systemTool.nodes,
+        chatConfig: systemTool.chatConfig
+      });
 
       workflowTool = {
         id: pluginId,

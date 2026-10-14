@@ -990,7 +990,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.parameters.required).toEqual(['generated']);
   });
 
-  it('loads a dynamic MCP tool without using the parent resource snapshot', async () => {
+  it('falls back to member permissions when an MCP tool is not in the resource snapshot', async () => {
     const tools = await runWithContext(
       {
         mcpClientMemory: {},
@@ -1003,14 +1003,12 @@ describe('getAgentRuntimeTools schema loading', () => {
       () =>
         getAgentRuntimeTools({
           tmbId: 'tmb_1',
-          dynamic: true,
           tools: [{ id: 'mcp-mcp_app/search', config: {} }]
         })
     );
 
     expect(tools).toHaveLength(1);
     expect(tools[0].name).toBe('search');
-    expect(tools[0].dynamic).toBe(true);
     expect(authAppByTmbIdMock).toHaveBeenCalledWith(
       expect.objectContaining({ appId: 'mcp_app', tmbId: 'tmb_1' })
     );

@@ -50,7 +50,6 @@ type EnsureAgentSandboxRuntimeParams = {
   needSandboxRuntime: boolean;
   sandboxEntrypoint?: string;
   skillIds: string[];
-  dynamicSkills?: boolean;
   selectedSkills?: SelectedAgentSkillItemType[];
   editSkillId?: string;
   prepareActions?: AgentSandboxPrepareAction[];
@@ -78,7 +77,6 @@ export async function ensureAgentSandboxRuntime({
   needSandboxRuntime,
   sandboxEntrypoint,
   skillIds,
-  dynamicSkills = false,
   selectedSkills,
   editSkillId,
   prepareActions = [],
@@ -123,8 +121,7 @@ export async function ensureAgentSandboxRuntime({
               teamId,
               tmbId,
               skillIds,
-              selectedSkills,
-              dynamicSkills
+              selectedSkills
             }),
             injectCurrentInputFiles(currentFiles, readInputFile),
             ...prepareActions,
@@ -195,14 +192,12 @@ const injectSelectedSkillFiles =
     teamId,
     tmbId,
     skillIds,
-    selectedSkills,
-    dynamicSkills
+    selectedSkills
   }: {
     teamId: string;
     tmbId: string;
     skillIds: string[];
     selectedSkills?: SelectedAgentSkillItemType[];
-    dynamicSkills: boolean;
   }): AgentSandboxPrepareStep =>
   async (context) => {
     const deployedSkillVersions = await injectAgentSkillFilesToSandbox({
@@ -210,8 +205,7 @@ const injectSelectedSkillFiles =
       teamId,
       tmbId,
       skillIds,
-      workDirectory: context.workspaceRoot ?? context.workDirectory,
-      dynamic: dynamicSkills
+      workDirectory: context.workspaceRoot ?? context.workDirectory
     });
     const selectedSkillMap = new Map(selectedSkills?.map((skill) => [skill.skillId, skill]) || []);
 

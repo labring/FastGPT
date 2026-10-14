@@ -10,10 +10,8 @@ import { splitCombineToolId, splitToolsetToolPluginId } from '@fastgpt/global/co
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   isValidReferenceValueFormat,
-  isWorkflowDynamicModelInput,
   isWorkflowSystemModelInput,
   nodeInputIsReference,
   workflowDatasetParamModelSlots,
@@ -22,11 +20,6 @@ import {
 import { getLogger, LogCategories } from '../../common/logger';
 
 const resourceLogger = getLogger(LogCategories.MODULE.APP);
-
-type WorkflowNodeModelReference = {
-  value: unknown;
-  dynamic: boolean;
-};
 
 const getValueList = (value: unknown) =>
   Array.isArray(value) ? value : value === undefined || value === null ? [] : [value];
@@ -73,95 +66,6 @@ export const hasAppResource = ({
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
-
-/** 从知识库搜索配置中提取已开启的模型 ID（rerankModelId / datasetSearchExtensionModelId）。 */
-const extractDatasetModelsFromParams = (params: unknown): unknown[] => {
-  if (!isRecord(params)) return [];
-  if (!Array.isArray(params.datasets) || params.datasets.length === 0) return [];
-  const models: unknown[] = [];
-  for (const { featureKey, modelIdKey } of workflowDatasetParamModelSlots) {
-    if (params[featureKey] === true) {
-      models.push(params[modelIdKey]);
-    }
-  }
-  return models;
-};
-
-/**
- * 统一从工作流节点提取生效的系统模型引用（供静态资源快照提取与运行时节点鉴权共用）。
- *
- * 1. 仅读取 canonical `*ModelId`（写入边界已由 formatModels 归一化，存量数据已由 4170 补齐）。
- * 2. 知识库检索相关模型（重排、问题优化、深度检索）统一受知识库列表与对应开关门控。
- * 3. 传入运行时 `params` 时同时返回静态与动态引用；未传入时仅提取静态输入值。
- */
-export const extractWorkflowNodeModelReferences = ({
-  node,
-  params
-}: {
-  node: Pick<StoreNodeItemType | RuntimeNodeItemType, 'flowNodeType' | 'inputs'>;
-  params?: Record<string, unknown>;
-}): WorkflowNodeModelReference[] => {
-  const references: WorkflowNodeModelReference[] = [];
-  const inputs = node.inputs ?? [];
-
-  const hasSelectedDataset = (() => {
-    if (params) {
-      const selectedDatasets = params[NodeInputKeyEnum.datasetSelectList];
-      return Array.isArray(selectedDatasets) && selectedDatasets.length > 0;
-    }
-    const datasetSelectInput = inputs.find(
-      (input) => input.key === NodeInputKeyEnum.datasetSelectList
-    );
-    return (
-      !datasetSelectInput ||
-      nodeInputIsReference(datasetSelectInput) ||
-      getValueList(datasetSelectInput.value).length > 0
-    );
-  })();
-
-  const isFeatureEnabled = (featureKey: NodeInputKeyEnum) => {
-    if (params) return params[featureKey] === true;
-    return inputs.some(
-      (item) => item.key === featureKey && !nodeInputIsReference(item) && item.value === true
-    );
-  };
-
-  for (const { modelIdKey, featureKey } of workflowSystemModelSlots) {
-    if (featureKey && (!hasSelectedDataset || !isFeatureEnabled(featureKey))) continue;
-
-    const matchedInputs = inputs.filter(
-      (item) => item.key === modelIdKey && isWorkflowSystemModelInput({ node, input: item })
-    );
-    for (const input of matchedInputs) {
-      const dynamic = isWorkflowDynamicModelInput(input);
-      if (!params && dynamic) continue;
-
-      // 静态输入的值固定在 input.value 上；仅动态输入才从运行时解析后的 params[input.key] 取值，
-      // 避免同名重复输入下静态输入的 dynamic: false 与动态输入覆盖后的 params 值错配导致漏鉴权。
-      const value = dynamic ? params?.[input.key] : input.value;
-      if (value !== undefined && value !== null) {
-        references.push({ value, dynamic });
-      }
-    }
-  }
-
-  const datasetParamsInput = inputs.find((input) => input.key === NodeInputKeyEnum.datasetParams);
-  const datasetParamsDynamic = datasetParamsInput
-    ? nodeInputIsReference(datasetParamsInput)
-    : false;
-  if (params ? node.flowNodeType === FlowNodeTypeEnum.agent : !datasetParamsDynamic) {
-    const rawDatasetParams = params
-      ? params[NodeInputKeyEnum.datasetParams]
-      : datasetParamsInput?.value;
-    extractDatasetModelsFromParams(rawDatasetParams).forEach((id) => {
-      if (id !== undefined && id !== null) {
-        references.push({ value: id, dynamic: datasetParamsDynamic });
-      }
-    });
-  }
-
-  return references;
-};
 
 /**
  * 从历史 `resourceRefs.skillIds` 取出有效 skill id。
@@ -240,13 +144,6 @@ export const mergeAppResources = (resources: AppResourcesType): AppResourcesType
   });
 };
 
-/** 判断节点是否通过工作流引用动态提供指定资源输入。 */
-export const nodeHasDynamicInput = (
-  node: Pick<StoreNodeItemType | RuntimeNodeItemType, 'inputs'> | undefined,
-  keys: string[]
-) =>
-  node?.inputs?.some((input) => keys.includes(input.key) && nodeInputIsReference(input)) ?? false;
-
 /** 将工作流中的完整工具 ID 转为应用资源权限主体。 */
 export const normalizeAppToolResource = (toolId: unknown) => {
   const id = getStringValue(toolId);
@@ -318,11 +215,20 @@ export const extractAppResources = ({
     });
   };
 
-  const addModels = (value: unknown) => {
-    getValueList(value).forEach((item) => {
-      const id = resolveSystemModelId(item);
-      if (id) addResource({ type: 'model', id });
-    });
+  const addModel = (value: unknown) => {
+    const id = resolveSystemModelId(value);
+    if (id) addResource({ type: 'model', id });
+  };
+
+  /** 从知识库搜索配置中提取已开启的模型 ID（rerankModelId / datasetSearchExtensionModelId）。 */
+  const addDatasetParamsModels = (params: unknown) => {
+    if (!isRecord(params)) return;
+    if (!Array.isArray(params.datasets) || params.datasets.length === 0) return;
+    for (const { featureKey, modelIdKey } of workflowDatasetParamModelSlots) {
+      if (params[featureKey] === true) {
+        addModel(params[modelIdKey]);
+      }
+    }
   };
 
   nodes.forEach((node) => {
@@ -340,9 +246,12 @@ export const extractAppResources = ({
     addTool(node.toolConfig?.mcpTool?.toolId);
     addTool(node.toolConfig?.httpTool?.toolId);
 
-    node.inputs?.forEach((input) => {
+    const inputs = node.inputs ?? [];
+    inputs.forEach((input) => {
       if (nodeInputIsReference(input)) return;
-      if (input.key === NodeInputKeyEnum.skills) addSkills(input.value);
+      if (input.key === NodeInputKeyEnum.skills) {
+        addSkills(input.value);
+      }
       if (
         input.key === NodeInputKeyEnum.datasetSelectList ||
         input.key === NodeInputKeyEnum.datasetParams
@@ -361,16 +270,45 @@ export const extractAppResources = ({
       }
     });
 
-    extractWorkflowNodeModelReferences({ node }).forEach(({ value }) => {
-      addModels(value);
-    });
+    const datasetSelectInput = inputs.find(
+      (input) => input.key === NodeInputKeyEnum.datasetSelectList
+    );
+    const hasSelectedDataset =
+      !datasetSelectInput ||
+      nodeInputIsReference(datasetSelectInput) ||
+      getValueList(datasetSelectInput.value).length > 0;
+
+    for (const { modelIdKey, featureKey } of workflowSystemModelSlots) {
+      const featureEnabled =
+        !featureKey ||
+        (hasSelectedDataset &&
+          inputs.some(
+            (item) => item.key === featureKey && !nodeInputIsReference(item) && item.value === true
+          ));
+      if (!featureEnabled) continue;
+
+      inputs.forEach((input) => {
+        if (
+          input.key === modelIdKey &&
+          !nodeInputIsReference(input) &&
+          isWorkflowSystemModelInput({ node, input })
+        ) {
+          addModel(input.value);
+        }
+      });
+    }
+
+    const datasetParamsInput = inputs.find((input) => input.key === NodeInputKeyEnum.datasetParams);
+    if (datasetParamsInput && !nodeInputIsReference(datasetParamsInput)) {
+      addDatasetParamsModels(datasetParamsInput.value);
+    }
   });
 
   if (chatConfig?.questionGuide?.open === true) {
-    addModels(chatConfig.questionGuide.modelId);
+    addModel(chatConfig.questionGuide.modelId);
   }
   if (chatConfig?.ttsConfig?.type === 'model') {
-    addModels(chatConfig.ttsConfig.modelId);
+    addModel(chatConfig.ttsConfig.modelId);
   }
 
   return mergeAppResources(resources);
