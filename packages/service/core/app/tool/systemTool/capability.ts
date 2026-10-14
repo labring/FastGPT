@@ -230,6 +230,7 @@ export const getAuthorizedSystemToolTemplateCatalog = async (
         source: item.source,
         template: await getClientToolPreviewNode({
           appId: item.id,
+          teamId: context.teamId,
           source: item.source,
           getLatestVersion: true,
           lang: context.lang
