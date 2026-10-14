@@ -242,9 +242,41 @@ describe('Sangfor provider', () => {
         fileBuffer: Buffer.from('content'),
         extension: 'docx'
       })
-    ).rejects.toThrow('[sangfor] global.systemEnv.customPdfParse.url is required');
+    ).rejects.toThrow('[sangfor] providers.documentParse.sangfor.url is required');
 
     expect(postMock).not.toHaveBeenCalled();
+  });
+
+  it('prefers sangfor.url from instance config over the legacy bridge', async () => {
+    // 权威来源为 providers.documentParse.sangfor.*；Admin 只填 sangfor.url/key 也应生效。
+    // 注意 currentSnapshot 会被 controller 记忆化，这里在原对象上就地改写而非替换 global，
+    // 并在用例结束后恢复，避免污染同 worker 的其它文件。
+    const snapshot = (global as any).systemInstanceConfig;
+    const originalProvider = snapshot.providers.documentParse.provider;
+    const originalSangfor = snapshot.providers.documentParse.sangfor;
+    snapshot.providers.documentParse.provider = 'sangfor';
+    snapshot.providers.documentParse.sangfor = {
+      url: 'http://db-parser.test/parse',
+      key: 'db-key',
+      extensions: 'docx',
+      timeoutSeconds: 600
+    };
+    postMock.mockResolvedValueOnce({ data: { pages: 1, markdown: 'from-db' } });
+
+    try {
+      await parseFromSangfor({ fileBuffer: Buffer.from('docx'), extension: 'docx' });
+
+      expect(postMock).toHaveBeenCalledWith(
+        'http://db-parser.test/parse',
+        expect.any(FormData),
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer db-key' })
+        })
+      );
+    } finally {
+      snapshot.providers.documentParse.provider = originalProvider;
+      snapshot.providers.documentParse.sangfor = originalSangfor;
+    }
   });
 });
 
