@@ -7,3 +7,6 @@ export const ObjectIdSchema = z.preprocess(
     .regex(/^[0-9a-fA-F]{24}$/)
     .meta({ example: '68ee0bd23d17260b7829b137', description: 'ObjectId' })
 );
+
+delete (ObjectIdSchema as any)._zod.def.in._zod.optin;
+delete (ObjectIdSchema as any)._zod.optin;
