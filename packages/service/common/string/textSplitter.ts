@@ -317,6 +317,7 @@ const strIsMdTable = (str: string) => {
 const markdownTableSplit = (props: SplitProps): SplitResponse => {
   const { text = '', chunkSize, maxSize = defaultMaxChunkSize, maxChunks } = props;
   const countLength = getTextLengthCounter(props);
+  const splitTextByLengthLimit = getSplitTextByLengthLimit(props);
 
   // split by rows
   const splitText2Lines = text.split('\n').filter((line) => line.trim());
@@ -344,6 +345,9 @@ ${mdSplitString}
   /**
    * token 模式下表格行拆分后还要补回表头；这里按“表头 + 内容”的最终文本
    * 做二分兜底，避免只按行内容拆分后，拼回表头又超过 embedding 上限。
+   *
+   * 表头自身占满预算、连一个字符都放不下时不再抛错：改为不带表头地按长度切分剩余内容，
+   * 保证正文完整入库。仅含表头的分块没有可检索内容，因此不产出（与上面“只有表头无数据行”的处理一致）。
    */
   const splitTextWithHeaderLimit = (text: string) => {
     const result: string[] = [];
@@ -368,7 +372,18 @@ ${mdSplitString}
       }
 
       if (bestEnd === 0) {
-        throw new Error('Markdown table header leaves no token budget for row content');
+        pushChunks(
+          result,
+          splitTextByLengthLimit({
+            text: restText,
+            maxLength: chunkSize,
+            stepLength: chunkSize,
+            countLength,
+            maxChunks
+          }),
+          maxChunks
+        );
+        break;
       }
 
       const safeText = restChars.slice(0, bestEnd).join('');
@@ -381,8 +396,15 @@ ${mdSplitString}
 
   const splitTableLineWithHeader = (line: string) => {
     const contentChunkSize = chunkSize - countLength(defaultChunk);
+    // 表头（含分隔行）本身就超出 chunk 预算：无法再拼回表头，退化为按长度安全切分该行内容。
     if (contentChunkSize <= 0) {
-      throw new Error('Markdown table header exceeds token chunk size');
+      return splitTextByLengthLimit({
+        text: line,
+        maxLength: chunkSize,
+        stepLength: chunkSize,
+        countLength,
+        maxChunks
+      });
     }
 
     return commonSplit({
