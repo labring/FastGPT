@@ -285,6 +285,23 @@ describe('normalizeDatasetIndexImageToModelInput', () => {
       normalizeDatasetIndexImageToModelInput('/local/file.png', '507f1f77bcf86cd799439011')
     ).rejects.toThrow('Invalid dataset file key');
   });
+
+  it('honors explicit toBase64 pass-through on the http branch (batch entry snapshot)', async () => {
+    // 批量入口一次求值下传：显式 toBase64=true 时 HTTP 分支也必须转 base64，
+    // 不得回读实时配置（防止同批 S3 与外部 URL 混合形态）
+    serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+    mockGetImageBase64.mockResolvedValue({ completeBase64: 'data:image/png;base64,x' });
+
+    const httpUrl = 'https://example.com/pic.png';
+    const result = await normalizeDatasetIndexImageToModelInput(
+      httpUrl,
+      '507f1f77bcf86cd799439011',
+      true
+    );
+
+    expect(result).toBe('data:image/png;base64,x');
+    expect(mockGetImageBase64).toHaveBeenCalledWith(httpUrl);
+  });
 });
 
 describe('isValidImageEmbeddingSource', () => {
