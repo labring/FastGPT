@@ -150,6 +150,12 @@ const DatasetSchema = new Schema({
     type: Boolean,
     default: false
   },
+  // 内部事务版本：创建 ACL 与权限启停写同一 dataset，避免关闭态新集合漏入启用快照。
+  // 不参与接口合约或索引；旧记录由首次 $inc 自动初始化，无需全量迁移。
+  collectionPermissionVersion: {
+    type: Number,
+    default: 0
+  },
 
   apiDatasetServer: Object,
 

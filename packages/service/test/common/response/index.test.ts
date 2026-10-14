@@ -228,3 +228,47 @@ describe('getSseErrorResponse logging', () => {
     expect(logger.error).not.toHaveBeenCalled();
   });
 });
+
+describe('Provider error response messages', () => {
+  it.each([
+    { data: { message: 'hourly quota exhausted' }, expected: 'hourly quota exhausted' },
+    { data: { msg: '飞书 Token 已过期' }, expected: '飞书 Token 已过期' },
+    { data: { errmsg: 'access denied' }, expected: 'access denied' },
+    { data: { error: { message: '具体权限缺失' } }, expected: '具体权限缺失' },
+    { data: 'upstream text error', expected: 'upstream text error' },
+    { data: { message: ' ' }, expected: 'Request failed with status code 429' },
+    { data: { message: { unexpected: 'object' } }, expected: 'Request failed with status code 429' }
+  ])('JSON 和 SSE 保留响应体原因：$expected', ({ data, expected }) => {
+    const error = {
+      message: 'Request failed with status code 429',
+      response: { status: 429, statusText: 'Too Many Requests', data }
+    };
+    const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Parameters<
+      typeof jsonRes
+    >[0];
+    jsonRes(res, { code: 500, error });
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 500, message: expected, data: null })
+    );
+    expect(processError({ error }).shouldClearCookie).toBe(false);
+    expect(JSON.parse(getSseErrorResponse(error).data).message).toBe(expected);
+  });
+
+  it('上游原因仍经过统一脱敏，不返回请求配置', () => {
+    const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Parameters<
+      typeof jsonRes
+    >[0];
+    jsonRes(res, {
+      code: 500,
+      error: {
+        response: { data: { msg: 'request https://private.example/path failed' } },
+        config: { headers: { Authorization: 'secret' } }
+      }
+    });
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'request https://xxx failed' })
+    );
+    expect(JSON.stringify(vi.mocked(res.json).mock.calls)).not.toContain('secret');
+  });
+});
