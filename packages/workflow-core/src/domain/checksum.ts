@@ -1,3 +1,4 @@
+import CryptoJS from 'crypto-js';
 import type { WorkflowDocument } from './document';
 
 const sortRecord = (value: unknown): unknown => {
@@ -31,12 +32,17 @@ export const normalizeWorkflowDocument = (document: WorkflowDocument): WorkflowD
 /** 对规范化后的 UTF-8 JSON 计算跨 Node/Browser 一致的 SHA-256。 */
 export const getWorkflowChecksum = async (document: WorkflowDocument) => {
   const canonicalDocument = JSON.stringify(normalizeWorkflowDocument(document));
-  const digest = await globalThis.crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(canonicalDocument)
-  );
-  const checksum = Array.from(new Uint8Array(digest), (byte) =>
-    byte.toString(16).padStart(2, '0')
-  ).join('');
+  if (globalThis.crypto && globalThis.crypto.subtle && globalThis.crypto.subtle.digest) {
+    const digest = await globalThis.crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(canonicalDocument)
+    );
+    const checksum = Array.from(new Uint8Array(digest), (byte) =>
+      byte.toString(16).padStart(2, '0')
+    ).join('');
+    return `sha256:${checksum}`;
+  }
+
+  const checksum = CryptoJS.SHA256(canonicalDocument).toString();
   return `sha256:${checksum}`;
 };

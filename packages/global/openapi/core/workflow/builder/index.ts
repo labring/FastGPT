@@ -56,8 +56,9 @@ export const WorkflowBuilderPath: OpenAPIPath = {
   },
   '/core/workflow/builder/version/commit': {
     post: {
-      summary: '归档工作流辅助生成版本',
-      description: '画布应用成功后，将实际应用的 WorkflowDocument 归档到 S3 一天。',
+      summary: '记录首次本地画布应用确认',
+      description:
+        '记录用户首次在本地画布应用该版本的确认事实；候选文档归档已在生成完成时存入 S3。',
       tags: [DevApiTagsMap.workflowHelper],
       requestBody: {
         content: { 'application/json': { schema: WorkflowBuilderVersionCommitBodySchema } }

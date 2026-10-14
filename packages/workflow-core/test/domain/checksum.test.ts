@@ -1,5 +1,5 @@
 import { createWorkflowDocument, getWorkflowChecksum, normalizeWorkflowDocument } from '../../src';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 describe('canonical workflow checksum', () => {
   it('uses SHA-256 over canonical UTF-8 JSON', async () => {
@@ -25,5 +25,21 @@ describe('canonical workflow checksum', () => {
       schemaVersion: left.schemaVersion
     };
     expect(await getWorkflowChecksum(left)).toBe(await getWorkflowChecksum(right));
+  });
+
+  it('falls back to pure JS sha256 in insecure HTTP environments without crypto.subtle', async () => {
+    const document = createWorkflowDocument({
+      app: { name: 'AI 搭建工作流', intro: '私有化部署测试' }
+    });
+    const expectedChecksum = await getWorkflowChecksum(document);
+
+    const originalCrypto = globalThis.crypto;
+    // @ts-ignore
+    vi.stubGlobal('crypto', undefined);
+    try {
+      expect(await getWorkflowChecksum(document)).toBe(expectedChecksum);
+    } finally {
+      vi.stubGlobal('crypto', originalCrypto);
+    }
   });
 });

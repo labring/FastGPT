@@ -125,7 +125,7 @@ export const resolveAuthorizedChatFiles = async <File extends AuthorizedChatFile
     })
   );
 };
-const resolveSignedDownloadAliasFromUrl = (url: string) => {
+export const resolveSignedDownloadAliasFromUrl = (url: string) => {
   try {
     const parsedUrl = new URL(url, 'http://localhost:3000');
     const routePrefix = `${S3_ACCESS_LINK_ROUTES.download}/`;
