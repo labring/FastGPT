@@ -15,8 +15,14 @@ import { getTeamModelHandle } from '../../../ai/model/catalog/service';
 import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search';
 import { getDatasetSearchVlmModel } from '../../../dataset/search/vlm';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { loadWorkflowDatasetResource, loadWorkflowModelResource } from '../../resource/service';
+import {
+  isWorkflowResourceError,
+  loadWorkflowDatasetResource,
+  loadWorkflowModelResource
+} from '../../resource/service';
 import { getNodeErrResponse } from '../utils';
 import {
   createImageCaptionChildNodeResponse,
@@ -57,6 +63,39 @@ type DatasetSearchProps = ModuleDispatchProps<{
 export type DatasetSearchResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.datasetQuoteQA]: SearchDataResponseItemType[];
 }>;
+
+/**
+ * 判断错误是否属于知识库资源未在版本快照中声明、或已被删除/不存在的业务配置问题。
+ * 这类问题属于用户配置引用失效，不属于调度运行时的系统故障，降级为 warn 避免污染 error 指标。
+ */
+export const isDatasetResourceMissingError = (error: unknown): boolean => {
+  if (isWorkflowResourceError(error)) return true;
+  if (error === DatasetErrEnum.unExist || error === 'unExistDataset') return true;
+
+  if (
+    error instanceof UserError &&
+    (error.message === DatasetErrEnum.unExist || error.message === 'unExistDataset')
+  ) {
+    return true;
+  }
+
+  const errObj = error as { message?: string; code?: string; name?: string } | null;
+  if (
+    typeof errObj === 'object' &&
+    errObj !== null &&
+    (errObj.message === DatasetErrEnum.unExist ||
+      errObj.message === 'unExistDataset' ||
+      errObj.code === DatasetErrEnum.unExist ||
+      errObj.code === 'unExistDataset' ||
+      errObj.name === 'WorkflowResourceError' ||
+      (typeof errObj.message === 'string' &&
+        errObj.message.startsWith('App resource is not declared')))
+  ) {
+    return true;
+  }
+
+  return false;
+};
 
 /** 知识库检索工作流节点执行入口 */
 export const dispatchDatasetSearch = async (
@@ -402,7 +441,11 @@ export const dispatchDatasetSearch = async (
           : 'No results'
     };
   } catch (error) {
-    logger.error('Dataset search dispatch failed', { error });
+    if (isDatasetResourceMissingError(error)) {
+      logger.warn('Dataset search dispatch failed', { error });
+    } else {
+      logger.error('Dataset search dispatch failed', { error });
+    }
     return getNodeErrResponse({ error });
   }
 };

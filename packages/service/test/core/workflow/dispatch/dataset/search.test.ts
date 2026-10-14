@@ -1,3 +1,4 @@
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -14,15 +15,41 @@ const {
   findDatasetByIdMock,
   getDatasetSearchVlmModelMock,
   formatModelChars2PointsMock,
-  usagePushMock
-} = vi.hoisted(() => ({
-  defaultSearchDatasetDataMock: vi.fn(),
-  deepRagSearchMock: vi.fn(),
-  loadWorkflowDatasetResourceMock: vi.fn(),
-  findDatasetByIdMock: vi.fn(),
-  getDatasetSearchVlmModelMock: vi.fn(),
-  formatModelChars2PointsMock: vi.fn(),
-  usagePushMock: vi.fn()
+  usagePushMock,
+  mockLogger,
+  WorkflowResourceError,
+  isWorkflowResourceError
+} = vi.hoisted(() => {
+  class MockWorkflowResourceError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = 'WorkflowResourceError';
+    }
+  }
+
+  return {
+    defaultSearchDatasetDataMock: vi.fn(),
+    deepRagSearchMock: vi.fn(),
+    loadWorkflowDatasetResourceMock: vi.fn(),
+    findDatasetByIdMock: vi.fn(),
+    getDatasetSearchVlmModelMock: vi.fn(),
+    formatModelChars2PointsMock: vi.fn(),
+    usagePushMock: vi.fn(),
+    mockLogger: {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn()
+    },
+    WorkflowResourceError: MockWorkflowResourceError,
+    isWorkflowResourceError: (err: unknown): err is MockWorkflowResourceError =>
+      err instanceof MockWorkflowResourceError || (err as any)?.name === 'WorkflowResourceError'
+  };
+});
+
+vi.mock('@fastgpt/service/common/logger', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/common/logger')>()),
+  getLogger: () => mockLogger
 }));
 
 vi.mock('@fastgpt/service/core/dataset/search', () => ({
@@ -36,7 +63,9 @@ vi.mock('@fastgpt/service/core/dataset/search/vlm', () => ({
 
 vi.mock('@fastgpt/service/core/workflow/resource/service', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/workflow/resource/service')>()),
-  loadWorkflowDatasetResource: loadWorkflowDatasetResourceMock
+  loadWorkflowDatasetResource: loadWorkflowDatasetResourceMock,
+  WorkflowResourceError,
+  isWorkflowResourceError
 }));
 
 vi.mock('@fastgpt/service/core/dataset/schema', async (importOriginal) => ({
@@ -109,7 +138,10 @@ vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
   getAuthorizedModelIds: vi.fn(async () => new Set())
 }));
 
-import { dispatchDatasetSearch } from '../../../../../core/workflow/dispatch/dataset/search';
+import {
+  dispatchDatasetSearch,
+  isDatasetResourceMissingError
+} from '../../../../../core/workflow/dispatch/dataset/search';
 
 describe('dispatchDatasetSearch', () => {
   const runSearch = (params: Record<string, unknown> = {}, nodeSummary = createNodeSummary()) =>
@@ -650,5 +682,70 @@ describe('dispatchDatasetSearch', () => {
         'retrievalResults'
       );
     });
+  });
+
+  it('downgrades log to warn when dataset resource is undeclared (WorkflowResourceError)', async () => {
+    loadWorkflowDatasetResourceMock.mockRejectedValueOnce(
+      new WorkflowResourceError('App resource is not declared: dataset:deleted_id')
+    );
+    const result = await runSearch();
+    expect(result.error).toBeDefined();
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Dataset search dispatch failed',
+      expect.anything()
+    );
+    expect(mockLogger.error).not.toHaveBeenCalled();
+  });
+
+  it('downgrades log to warn when dataset is missing (unExistDataset)', async () => {
+    loadWorkflowDatasetResourceMock.mockRejectedValueOnce(DatasetErrEnum.unExist);
+    const result = await runSearch();
+    expect(result.error).toBeDefined();
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Dataset search dispatch failed',
+      expect.anything()
+    );
+    expect(mockLogger.error).not.toHaveBeenCalled();
+  });
+
+  it('retains logger.error for unexpected runtime errors', async () => {
+    loadWorkflowDatasetResourceMock.mockRejectedValueOnce(new Error('Mongo connection timed out'));
+    const result = await runSearch();
+    expect(result.error).toBeDefined();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Dataset search dispatch failed',
+      expect.anything()
+    );
+    expect(mockLogger.warn).not.toHaveBeenCalled();
+  });
+});
+
+describe('isDatasetResourceMissingError', () => {
+  it('identifies WorkflowResourceError as missing resource error', () => {
+    expect(
+      isDatasetResourceMissingError(
+        new WorkflowResourceError('App resource is not declared: dataset:123')
+      )
+    ).toBe(true);
+    expect(
+      isDatasetResourceMissingError(
+        new WorkflowResourceError('App resource is unavailable: dataset:123')
+      )
+    ).toBe(true);
+  });
+
+  it('identifies unExistDataset as missing resource error', () => {
+    expect(isDatasetResourceMissingError(DatasetErrEnum.unExist)).toBe(true);
+    expect(isDatasetResourceMissingError('unExistDataset')).toBe(true);
+    expect(isDatasetResourceMissingError(new UserError(DatasetErrEnum.unExist))).toBe(true);
+    expect(isDatasetResourceMissingError({ message: 'unExistDataset' })).toBe(true);
+    expect(isDatasetResourceMissingError({ code: 'unExistDataset' })).toBe(true);
+  });
+
+  it('does not match unexpected system errors', () => {
+    expect(isDatasetResourceMissingError(new Error('Database timeout'))).toBe(false);
+    expect(isDatasetResourceMissingError(new Error('Cannot read properties of undefined'))).toBe(
+      false
+    );
   });
 });
