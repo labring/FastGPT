@@ -375,6 +375,23 @@ export const datasetParseQueue = async (): Promise<any> => {
             continue;
           }
 
+          if (
+            err === TeamErrEnum.aiPointsNotEnough ||
+            (err instanceof Error && err.message === TeamErrEnum.aiPointsNotEnough)
+          ) {
+            logger.warn('Parse queue AI points limit exceeded, locking task', {
+              trainingId: data._id,
+              datasetId: data.datasetId,
+              collectionId: data.collectionId
+            });
+            await taskLease.fail(i18nT('common:code_error.team_error.ai_points_not_enough'), {
+              blocked: true
+            });
+            await checkTeamAiPointsAndLock(data.teamId, String(data._id));
+
+            continue;
+          }
+
           logger.error('Parse queue task failed', {
             error: err,
             trainingId: data._id,

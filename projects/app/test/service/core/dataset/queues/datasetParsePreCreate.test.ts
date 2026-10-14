@@ -1,4 +1,5 @@
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
@@ -18,6 +19,7 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { TrainingLeaseLostError } from '@fastgpt/service/core/dataset/training/service';
 import { serviceEnv } from '@fastgpt/service/env';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { checkTeamAiPointsAndLock } from '@/service/core/dataset/queues/utils';
 import { getRootUser } from '@test/datas/users';
 import { getModelTestDefaults } from '@test/modelCache';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -149,6 +151,19 @@ describe('datasetParseQueue creates index-ready data', () => {
       lockTime: BLOCKED_LOCK_TIME
     });
     expect(await MongoDatasetData.countDocuments({ collectionId: collection._id })).toBe(0);
+  });
+
+  it('pauses an AI points failure through the shared lease', async () => {
+    const { task, collection } = await createTask();
+    vi.mocked(checkDatasetIndexLimit).mockRejectedValueOnce(TeamErrEnum.aiPointsNotEnough);
+    await datasetParseQueue();
+    expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
+      retryCount: 4,
+      lockTime: BLOCKED_LOCK_TIME,
+      errorMsg: i18nT('common:code_error.team_error.ai_points_not_enough')
+    });
+    expect(await MongoDatasetData.countDocuments({ collectionId: collection._id })).toBe(0);
+    expect(checkTeamAiPointsAndLock).toHaveBeenCalledWith(String(task.teamId), String(task._id));
   });
 
   /** CT-01：解析执行前数据列表不含本次分块。 */
