@@ -8,8 +8,7 @@ import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import type { Method } from 'axios';
 import { axiosWithoutSSRF, createProxyAxios } from '../../../../common/api/axios';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/controller';
-import { serviceEnv } from '../../../../env';
+import { getDingtalkBaseUrl, getDingtalkOapiBaseUrl } from '../../../../common/dingtalk/endpoint';
 import { getDingtalkAppAccessToken } from '../../../../common/dingtalk/accessToken';
 
 type DingtalkUserResponse = {
@@ -82,11 +81,6 @@ type ListAllByNextTokenProps<T> = {
   maxResults?: number;
 };
 
-const getDingtalkBaseUrl = () =>
-  getSystemInstanceConfig().providers.dataSource.dingtalkBaseUrl || serviceEnv.DINGTALK_BASE_URL;
-const getDingtalkOapiBaseUrl = () =>
-  getSystemInstanceConfig().providers.dataSource.dingtalkOapiBaseUrl ||
-  serviceEnv.DINGTALK_OAPI_BASE_URL;
 const dingtalkListPageSize = 100;
 const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
 
