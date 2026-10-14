@@ -16,7 +16,7 @@ export const S3Buckets = {
 
 export const getSystemMaxFileSize = () => global.feConfigs.uploadFileMaxSize || 1024; // MB, 默认 1024MB;
 
-// 与 getStorageDownloadUrlMode 等"数据库唯一来源"getter 同型：?? env 兜底仅覆盖快照未初始化/测试种子场景
+// ?? env 兜底仅覆盖叶子缺省的部分快照（测试种子）场景；未初始化时快照同样填满 schema 默认值
 export const getStorageFileUrlExpiredDays = () =>
   getSystemInstanceConfig().storage.fileUrlExpiredDays ?? serviceEnv.FILE_URL_EXPIRED_DAYS;
 

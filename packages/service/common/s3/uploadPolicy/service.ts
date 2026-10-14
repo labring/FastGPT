@@ -312,7 +312,7 @@ export const resolveUploadFile = ({
   skipFileTypeCheck?: boolean;
 }): ResolvedUploadFile => {
   // skipFileTypeCheck 权威来源为实例配置（blockStartup 迁移已回填 env 初值），
-  // 调用方显式传值优先；?? 兜底仅覆盖快照未初始化的启动早期/测试种子场景。
+  // 调用方显式传值优先；?? 兜底仅覆盖叶子缺省的部分快照（测试种子）场景。
   const effectiveSkipFileTypeCheck =
     skipFileTypeCheck ??
     getSystemInstanceConfig().security.skipFileTypeCheck ??
