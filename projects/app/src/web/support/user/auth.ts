@@ -1,6 +1,11 @@
 import { loginOut } from '@/web/support/user/api';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
-import { beginLogout, isLogoutInProgress } from './logoutState';
+import {
+  useUserModelStore,
+  resetUserModelCatalogAfterLogin
+} from '@/web/core/ai/model/useUserModelStore';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import type { UserType } from '@fastgpt/global/support/user/type';
+import { beginLogout, getPendingLogoutRequest, setPendingLogoutRequest } from './logoutState';
 import { useUserStore } from './useUserStore';
 
 const clearAdStorage = () => {
@@ -30,20 +35,32 @@ const clearAdStorage = () => {
   }
 };
 
-/** 先撤销本地会话，Cookie 清除后刷新匿名配置；迟到的完成回调不更新已恢复的新会话。 */
+/** 并发退出共用请求，立即撤销身份和配置就绪状态；调用方在退出成功后导航或主动取匿名配置。 */
 export const clearToken = () => {
+  const pendingRequest = getPendingLogoutRequest();
+  if (pendingRequest) return pendingRequest;
+
   beginLogout();
   useUserStore.getState().invalidateAuthSession();
+  useSystemStore.setState({ authenticatedConfigGeneration: undefined, initDataPage: undefined });
   try {
     clearAdStorage();
     // 退出只清内存；持久目录保留到下一次真实登录成功后统一删除。
     useUserModelStore.getState().clearMemory();
-    return loginOut().finally(() => {
-      // Cookie 在服务端退出完成后才清除，届时再触发匿名初始化。
-      // 已经重新登录时不让迟到的退出回调撤销新会话。
-      if (isLogoutInProgress()) useUserStore.getState().invalidateAuthSession();
-    });
+    const request = loginOut();
+    setPendingLogoutRequest(request);
+    return request;
   } catch (error) {
     console.error('Failed to clear token:', error);
   }
+};
+
+/** 服务端确认登录或密码变更成功后，原子切换会话并主动刷新一次完整配置；刷新失败不撤销已成功的登录。 */
+export const initClientAfterLogin = async (user: UserType) => {
+  resetUserModelCatalogAfterLogin();
+  useUserStore.getState().setUserInfo(user, true);
+  const { clientInitData } = await import('@/web/common/system/staticData');
+  await clientInitData(3, window.location.pathname).catch((error) => {
+    console.error('Refresh initialization after login failed:', error);
+  });
 };

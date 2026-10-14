@@ -15,12 +15,11 @@ type State = {
   setEnterpriseAuthNoticeRead: (teamId: string) => void;
 
   userInfo: UserType | null;
-  isUserInfoInitialized: boolean;
   authGeneration: number;
   invalidateAuthSession: () => void;
   isTeamAdmin: boolean;
   initUserInfo: () => Promise<UserType | null>;
-  setUserInfo: (user: UserType | null) => void;
+  setUserInfo: (user: UserType | null, newSession?: boolean) => void;
   updateUserInfo: (user: UserUpdateParams) => Promise<void>;
 
   teamPlanStatus: ClientTeamPlanStatusType | null;
@@ -50,14 +49,12 @@ export const useUserStore = create<State>()(
         },
 
         userInfo: null,
-        isUserInfoInitialized: false,
         authGeneration: 0,
         /** 立即撤销本地会话；保留跳登录时使用的原成员 ID，避免丢失跨团队跳转校验。 */
         invalidateAuthSession() {
           set((state) => {
             state.authGeneration += 1;
             state.userInfo = null;
-            state.isUserInfoInitialized = true;
             state.isTeamAdmin = false;
           });
         },
@@ -77,28 +74,18 @@ export const useUserStore = create<State>()(
 
             return res;
           } catch (error) {
-            // 网络失败也结束首次身份确认，避免配置初始化永久等待；后续仍可重试登录。
-            set((state) => {
-              state.isUserInfoInitialized = true;
-            });
             console.log('[Init user] error', error);
             return null;
           }
         },
-        /** 同步用户和成员身份；普通信息刷新保留配置，身份变化使旧请求失效。 */
-        setUserInfo(user: UserType | null) {
+        /** 恢复 Cookie 用户和资料不撤销首屏请求；显式新登录或退出才使旧响应失效。 */
+        setUserInfo(user: UserType | null, newSession = false) {
           setCurrentAuthTmbId(user?.team?.tmbId);
           set((state) => {
-            // 相同身份的信息刷新不启动新会话；登录、退出和团队切换使旧初始化请求失效。
-            if (
-              state.userInfo?._id !== user?._id ||
-              state.userInfo?.team?.tmbId !== user?.team?.tmbId
-            ) {
+            if (newSession || (state.userInfo && !user)) {
               state.authGeneration += 1;
             }
             state.userInfo = user ? user : null;
-            // 与身份、会话代次一起更新，首次恢复用户时只触发一次配置请求。
-            state.isUserInfoInitialized = true;
             state.isTeamAdmin = !!user?.team?.permission?.hasManagePer;
           });
         },

@@ -6,12 +6,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import LoginContainer from '@/pageComponents/login';
 import ClientRouteReadyGate from '@/web/context/ClientRouteReadyGate';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
+import type { getInitDataPage } from '@fastgpt/global/common/system/initData';
 
 const mocks = vi.hoisted(() => ({
   router: { isReady: false, query: {} as Record<string, string> },
   system: {
     initd: true,
-    feConfigs: { sso: { url: 'https://sso.example.com', autoLogin: true } }
+    initDataPage: 'login' as ReturnType<typeof getInitDataPage> | undefined,
+    authenticatedConfigGeneration: undefined as number | undefined,
+    feConfigs: {
+      sso: { url: 'https://sso.example.com', autoLogin: true } as
+        | { url: string; autoLogin: boolean }
+        | undefined
+    }
   },
   startLogin: vi.fn().mockResolvedValue(undefined),
   resetChatCache: vi.fn()
@@ -65,6 +72,9 @@ describe('LoginContainer route initialization', () => {
     mocks.router.isReady = false;
     mocks.router.query = {};
     mocks.system.initd = true;
+    mocks.system.initDataPage = 'login';
+    mocks.system.authenticatedConfigGeneration = undefined;
+    mocks.system.feConfigs.sso = { url: 'https://sso.example.com', autoLogin: true };
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -120,4 +130,29 @@ describe('LoginContainer route initialization', () => {
     expect(container.textContent).toBe(LoginPageTypeEnum.passwordLogin);
     expect(mocks.startLogin).toHaveBeenCalledOnce();
   });
+
+  it('waits for login configuration after another anonymous page has initialized before starting SSO', async () => {
+    mocks.system.initDataPage = 'share';
+    mocks.system.feConfigs.sso = undefined;
+    await render();
+    expect(container.textContent).toBe('pending');
+    expect(mocks.startLogin).not.toHaveBeenCalled();
+
+    mocks.system.initDataPage = 'login';
+    mocks.system.feConfigs.sso = { url: 'https://sso.example.com', autoLogin: true };
+    await render();
+    expect(mocks.startLogin).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ provider: 'sso' })
+    );
+  });
+
+  it.each(['chat', undefined] as const)(
+    'accepts embedded chat or authenticated full configuration when page=%s',
+    async (page) => {
+      mocks.system.initDataPage = page;
+      mocks.system.authenticatedConfigGeneration = page === undefined ? 0 : undefined;
+      await render();
+      expect(mocks.startLogin).toHaveBeenCalledOnce();
+    }
+  );
 });

@@ -30,7 +30,13 @@ export const LoginContainer = ({
   onSuccess: LoginSuccessHandler;
 }) => {
   const router = useRouter();
-  const { initd, feConfigs } = useSystemStore();
+  const { initd, feConfigs, initDataPage, authenticatedConfigGeneration } = useSystemStore();
+  // 全局曾初始化不代表当前已有登录配置；/chat 的配置也包含完整登录表单依赖。
+  const loginConfigReady =
+    initd &&
+    (authenticatedConfigGeneration !== undefined ||
+      initDataPage === 'login' ||
+      initDataPage === 'chat');
   const { resetChatCache } = useChatStore();
   const { isPc } = useSystem();
   const loginGuideDocUrl = feConfigs?.loginGuideDocUrl?.trim();
@@ -74,7 +80,7 @@ export const LoginContainer = ({
   );
   const pageType =
     selectedPageType ??
-    (initd && (!autoLoginMethod || autoLoginFailed) ? initialPageType : undefined);
+    (loginConfigReady && (!autoLoginMethod || autoLoginFailed) ? initialPageType : undefined);
 
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
@@ -88,13 +94,13 @@ export const LoginContainer = ({
   }, [feConfigs?.oauth?.wechat, resetChatCache]);
 
   useEffect(() => {
-    if (!initd || initializedRef.current) return;
+    if (!loginConfigReady || initializedRef.current) return;
     initializedRef.current = true;
 
     if (autoLoginMethod) {
       void startLogin(autoLoginMethod).catch(() => setAutoLoginFailed(true));
     }
-  }, [autoLoginMethod, initd, startLogin]);
+  }, [autoLoginMethod, loginConfigReady, startLogin]);
 
   return (
     <>

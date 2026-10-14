@@ -180,7 +180,7 @@ function checkRes(data: ResponseDataType) {
 /**
  * 响应错误
  */
-function responseError(err: any) {
+async function responseError(err: any) {
   console.log('error->', 'Request failed', err);
   const pathname = window.location.pathname;
   const isOutlinkPage = {
@@ -217,7 +217,8 @@ function responseError(err: any) {
 
     if (!authErrorEvent.detail.skipRedirect && !isOutlinkPage && pathname !== `${subRoute}/chat`) {
       if (!authErrorEvent.detail.skipClearToken) {
-        clearToken();
+        // 等待服务端清除 Cookie 后再加载登录页，使首屏直接请求拿到真实匿名配置。
+        await clearToken()?.catch(() => {});
       }
       window.location.replace(
         getWebReqUrl(

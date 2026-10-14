@@ -3,6 +3,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { clearToken } from '@/web/support/user/auth';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import SecondaryNavigationContainer from '@/pageComponents/common/SecondaryNavigationContainer';
@@ -30,7 +31,7 @@ const AccountContainer = ({
   isLoading?: boolean;
 }) => {
   const { t } = useSafeTranslation();
-  const { userInfo, setUserInfo } = useUserStore();
+  const { userInfo } = useUserStore();
   const { feConfigs, systemVersion } = useSystemStore();
   const router = useRouter();
 
@@ -138,16 +139,16 @@ const AccountContainer = ({
     (tab: string) => {
       if (tab === TabEnum.loginout) {
         openConfirm({
-          onConfirm: () => {
-            setUserInfo(null);
-            router.replace('/login');
+          onConfirm: async () => {
+            await clearToken();
+            await router.replace('/login');
           }
         })();
       } else {
         router.replace('/account/' + tab);
       }
     },
-    [openConfirm, router, setUserInfo]
+    [openConfirm, router]
   );
 
   return (

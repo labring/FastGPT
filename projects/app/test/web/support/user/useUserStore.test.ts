@@ -95,12 +95,11 @@ describe('useUserStore', () => {
     useUserStore.getState().setUserInfo(buildUser('en'));
 
     expect(useUserStore.getState().userInfo?.language).toBe('en');
-    expect(useUserStore.getState().isUserInfoInitialized).toBe(true);
     expect(i18nMocks.getLangMapping).not.toHaveBeenCalled();
     expect(i18nMocks.setLangToStorage).not.toHaveBeenCalled();
   });
 
-  it('advances the session on identity changes while retaining it for same-member refreshes', () => {
+  it('retains global initialization across same-username profile and team refreshes', () => {
     const user = buildUser('en');
     useUserStore.getState().setUserInfo(user);
     const generation = useUserStore.getState().authGeneration;
@@ -108,6 +107,9 @@ describe('useUserStore', () => {
     expect(useUserStore.getState().authGeneration).toBe(generation);
 
     useUserStore.getState().setUserInfo({ ...user, team: { ...user.team, tmbId: 'new-member' } });
+    expect(useUserStore.getState().authGeneration).toBe(generation);
+    // 密码变更等明确的新会话，即便用户名相同也必须使旧请求失效。
+    useUserStore.getState().setUserInfo(user, true);
     expect(useUserStore.getState().authGeneration).toBe(generation + 1);
     useUserStore.getState().setUserInfo(null);
     expect(useUserStore.getState().authGeneration).toBe(generation + 2);
@@ -123,9 +125,8 @@ describe('useUserStore', () => {
       await import('@/web/support/user/currentAuthTmbId');
     useUserStore.getState().invalidateAuthSession();
     expect(useUserStore.getState().userInfo).toBeNull();
-    expect(useUserStore.getState().isUserInfoInitialized).toBe(true);
     expect(readMemberId()).toBe(user.team.tmbId);
-    useUserStore.getState().setUserInfo(user);
+    useUserStore.getState().setUserInfo(user, true);
     expect(useUserStore.getState().authGeneration).toBe(generation + 2);
     expect(JSON.parse(localStorageMock.getItem('userStore')!).state).not.toHaveProperty(
       'authGeneration'
@@ -135,7 +136,7 @@ describe('useUserStore', () => {
     );
   });
 
-  it('marks initial identity and its generation ready in one store update', async () => {
+  it('restores initial identity without invalidating the concurrently requested configuration', async () => {
     const user = buildUser('en');
     let resolveUser!: (user: UserType) => void;
     apiMocks.getTokenLogin.mockReturnValue(
@@ -143,21 +144,19 @@ describe('useUserStore', () => {
         resolveUser = resolve;
       })
     );
-    const snapshots: { generation: number; ready: boolean; userId?: string }[] = [];
+    const snapshots: { generation: number; userId?: string }[] = [];
     const unsubscribe = useUserStore.subscribe((state) => {
       snapshots.push({
         generation: state.authGeneration,
-        ready: state.isUserInfoInitialized,
         userId: state.userInfo?._id
       });
     });
     try {
       const request = useUserStore.getState().initUserInfo();
-      expect(useUserStore.getState().isUserInfoInitialized).toBe(false);
       resolveUser(user);
       await expect(request).resolves.toEqual(user);
-      expect(snapshots.filter(({ ready }) => ready)).toEqual([
-        { generation: 1, ready: true, userId: user._id }
+      expect(snapshots.filter(({ userId }) => userId)).toEqual([
+        { generation: 0, userId: user._id }
       ]);
     } finally {
       unsubscribe();
@@ -166,14 +165,12 @@ describe('useUserStore', () => {
 
   it('ends initial user loading after a failure and allows a later successful retry', async () => {
     apiMocks.getTokenLogin.mockRejectedValueOnce(new Error('Network unavailable'));
-    expect(useUserStore.getState().isUserInfoInitialized).toBe(false);
     await expect(useUserStore.getState().initUserInfo()).resolves.toBeNull();
-    expect(useUserStore.getState().isUserInfoInitialized).toBe(true);
     expect(useUserStore.getState().authGeneration).toBe(0);
 
     const user = buildUser('en');
     apiMocks.getTokenLogin.mockResolvedValueOnce(user);
     await expect(useUserStore.getState().initUserInfo()).resolves.toEqual(user);
-    expect(useUserStore.getState().authGeneration).toBe(1);
+    expect(useUserStore.getState().authGeneration).toBe(0);
   });
 });

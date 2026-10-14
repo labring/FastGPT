@@ -7,7 +7,7 @@ import { BoolSchema, NumSchema } from '../../../common/zod';
  * API: 获取系统初始化数据
  * Route: GET /api/common/system/getInitData
  * Method: GET
- * Description: 登录后返回完整前端配置；匿名仅返回登录、价格和分享聊天所需字段，价格页额外返回套餐信息；模型目录独立加载
+ * Description: 登录后返回完整前端配置；匿名按页面返回必要字段，价格页额外返回套餐信息；模型目录独立加载
  * Tags: ['系统接口', 'Read']
  * ============================================================================ */
 
@@ -15,19 +15,30 @@ export const GetSystemInitDataQuerySchema = z.object({
   bufferId: z.string().optional().meta({
     example: 'system-config-20260811',
     description: '客户端已有的系统配置缓存标识；一致时服务端返回精简数据'
-  })
+  }),
+  pathname: z
+    .string()
+    .max(512)
+    .regex(/^\/[^?#]*$/)
+    .optional()
+    .meta({
+      example: '/chat/share',
+      description:
+        '当前页面路由，不含查询参数和片段；省略时兼容读取 Referer，未知页面仅返回公共展示配置'
+    })
 });
 export type GetSystemInitDataQuery = z.infer<typeof GetSystemInitDataQuerySchema>;
 
 const FastGPTFeConfigsSchema = z.looseObject({
-  uploadFileMaxAmount: NumSchema,
-  uploadFileMaxSize: NumSchema,
+  // 匿名页面只返回实际依赖的字段，上传限制在价格和聊天页面才下发。
+  uploadFileMaxAmount: NumSchema.optional(),
+  uploadFileMaxSize: NumSchema.optional(),
   marketplaceUrl: z.string().url().optional().meta({
     example: 'https://v2.marketplace.fastgpt.cn',
     description: '插件市场服务地址'
   }),
   disableMarketplace: BoolSchema.optional().meta({ description: '是否隐藏插件市场安装入口' })
-}) as z.ZodType<FastGPTFeConfigsType>;
+}) as z.ZodType<Partial<FastGPTFeConfigsType>>;
 
 export const GetSystemInitDataResponseSchema = z.object({
   isAuthenticated: z.boolean().default(false).meta({
@@ -37,11 +48,11 @@ export const GetSystemInitDataResponseSchema = z.object({
   }),
   bufferId: z.string().optional().meta({
     example: 'system-config-20260811',
-    description: '当前系统配置缓存标识；未登录时带 unAuth_v2_ 前缀，包含匿名过滤规则版本'
+    description: '当前系统配置缓存标识；未登录时带 unAuth_v3_ 前缀，包含匿名过滤规则版本和页面类别'
   }),
   feConfigs: FastGPTFeConfigsSchema.optional().meta({
     description:
-      '前端功能开关和链接配置；登录后返回完整配置，匿名仅保留站点展示、登录方式、上传限制、聊天合规提示、模型标签和沙箱连接配置'
+      '前端功能开关和链接配置；登录后返回完整配置，匿名按登录、价格、聊天和公共展示页面分别投影白名单'
   }),
   subPlans: SubPlanSchema.optional().meta({
     description: '系统套餐配置；仅登录用户或价格页面返回'

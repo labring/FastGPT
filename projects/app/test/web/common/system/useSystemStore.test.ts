@@ -117,7 +117,7 @@ describe('initStaticData through the real initialization pipeline', () => {
     expect(publicConfig).not.toHaveProperty('payConfig');
     expect(publicConfig).not.toHaveProperty('futurePrivateField');
     expect(useSystemStore.getState().feConfigs).toEqual(publicConfig);
-    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v2_config-1');
+    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v3_login_config-1');
     expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(publicConfig);
 
     const cached = await clientInitData();
@@ -151,15 +151,19 @@ describe('initStaticData through the real initialization pipeline', () => {
     const anonymous = await clientInitData();
     expect(anonymous.feConfigs).toEqual(publicConfig);
     expect(useSystemStore.getState().feConfigs).toEqual(publicConfig);
-    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v2_config-1');
+    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v3_login_config-1');
     expect(useSystemStore.getState().systemVersion).toBe('4.17.3');
     expect(useSystemStore.getState().authenticatedConfigGeneration).toBeUndefined();
     expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(publicConfig);
 
     expect(mocks.GET.mock.calls).toEqual(
-      ['unAuth_config-1', 'unAuth_v2_config-1', 'unAuth_v2_config-1', 'config-1', 'config-1'].map(
-        (bufferId) => ['/common/system/getInitData', { bufferId }]
-      )
+      [
+        'unAuth_config-1',
+        'unAuth_v3_login_config-1',
+        'unAuth_v3_login_config-1',
+        'config-1',
+        'config-1'
+      ].map((bufferId) => ['/common/system/getInitData', { bufferId }])
     );
   });
 
@@ -183,7 +187,7 @@ describe('initStaticData through the real initialization pipeline', () => {
       expect(await olderRequest).toEqual(latest);
 
       expect(useSystemStore.getState().initDataBufferId).toBe(
-        login ? 'config-1' : 'unAuth_v2_config-1'
+        login ? 'config-1' : 'unAuth_v3_base_config-1'
       );
       expect(Boolean(useSystemStore.getState().feConfigs.payConfig)).toBe(login);
       expect(useSystemStore.getState().authenticatedConfigGeneration).toBe(
@@ -249,5 +253,47 @@ describe('initStaticData through the real initialization pipeline', () => {
       'https://sandbox.example.com/fs?ticket=share%2Fticket%3Fx%3D1'
     );
     expect(useSystemStore.getState().feConfigs.limit?.agentSandboxMaxFileBytes).toBe(2 * 1024 ** 2);
+  });
+
+  it('replaces each anonymous page profile and persistence instead of retaining fields from the previous page', async () => {
+    global.feConfigs.login_method = ['email'];
+    const pages = ['/login', '/price', '/chat/share', '/apidoc/devapi', '/login'];
+    for (const pathname of pages) {
+      const { feConfigs } = await clientInitData(3, pathname);
+      expect(useSystemStore.getState().feConfigs).toEqual(feConfigs);
+      expect(useSystemStore.getState().initDataPage).toBe(
+        pathname === '/chat/share'
+          ? 'share'
+          : pathname === '/apidoc/devapi'
+            ? 'base'
+            : pathname.slice(1)
+      );
+      expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(feConfigs);
+      expect(feConfigs.login_method).toEqual(pathname === '/login' ? ['email'] : undefined);
+      expect(feConfigs.agentSandboxProxyUrl).toBe(
+        pathname === '/chat/share' ? 'https://sandbox.example.com/' : undefined
+      );
+      expect(feConfigs.uploadFileMaxSize).toBe(
+        ['/price', '/chat/share'].includes(pathname) ? 32 : 1000
+      );
+    }
+    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v3_login_config-1');
+    expect(mocks.GET.mock.calls.map(([, query]) => query.pathname)).toEqual(pages);
+    expect(JSON.parse(storage.get('globalStore')!).state).not.toHaveProperty('initDataPage');
+  });
+
+  it('preserves zero upload limits in memory and persistence across an anonymous cache hit', async () => {
+    global.feConfigs.uploadFileMaxAmount = 0;
+    global.feConfigs.uploadFileMaxSize = 0;
+    await clientInitData(3, '/chat/share');
+    await clientInitData(3, '/chat/share');
+    expect(useSystemStore.getState().feConfigs).toMatchObject({
+      uploadFileMaxAmount: 0,
+      uploadFileMaxSize: 0
+    });
+    expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toMatchObject({
+      uploadFileMaxAmount: 0,
+      uploadFileMaxSize: 0
+    });
   });
 });

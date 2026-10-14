@@ -1,13 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { clientInitData } from '@/web/common/system/staticData';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index';
 import { useMemoizedFn, useMount } from 'ahooks';
 import { TrackEventName } from '../common/system/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useUserStore } from '../support/user/useUserStore';
-import { unAuthPagePaths } from '../support/user/constants';
+import { getInitDataPage } from '@fastgpt/global/common/system/initData';
 import {
   setBdVId,
   setFastGPTSem,
@@ -47,14 +46,18 @@ const MARKETING_PARAMS: (keyof MarketingQueryParams)[] = [
   'couponCode'
 ];
 
-/** 公共页面立即加载配置；受保护页面先确认用户身份，再按会话代次刷新与轮询。 */
+/** 首屏直接初始化；匿名跨页面类别补取白名单，身份变化由成功回调主动刷新。 */
 export const useInitApp = () => {
   const router = useRouter();
 
-  const { loadGitStar, setInitd, feConfigs } = useSystemStore();
-  const { authGeneration, isUserInfoInitialized } = useUserStore();
-  const [scripts, setScripts] = useState<FastGPTFeConfigsType['scripts']>([]);
-  const [title, setTitle] = useState(appClientEnv.systemName);
+  const {
+    loadGitStar,
+    setInitd,
+    feConfigs,
+    authenticatedConfigGeneration,
+    initDataPage: loadedPage
+  } = useSystemStore();
+  const initDataPage = getInitDataPage(router.pathname);
 
   const getPathWithoutMarketingParams = useMemoizedFn(() => {
     const filteredQuery = { ...router.query };
@@ -88,10 +91,8 @@ export const useInitApp = () => {
 
   const initFetch = useMemoizedFn(async () => {
     const {
-      feConfigs: { scripts, isPlus, systemTitle }
-    } = await clientInitData();
-
-    setTitle(systemTitle || 'FastGPT');
+      feConfigs: { isPlus }
+    } = await clientInitData(3, router.pathname);
 
     // log fastgpt
     if (!isPlus) {
@@ -102,11 +103,13 @@ export const useInitApp = () => {
       );
     }
 
-    loadGitStar();
-
-    setScripts(scripts || []);
     setInitd();
   });
+
+  // 主动登录刷新同样会更新配置；GitHub 展示开关改变时补取数量，不触发初始化请求。
+  useEffect(() => {
+    void loadGitStar();
+  }, [feConfigs.show_git, loadGitStar]);
 
   useMount(() => {
     const errorTrack = (event: ErrorEvent) => {
@@ -128,12 +131,19 @@ export const useInitApp = () => {
     };
   });
 
-  useRequest(initFetch, {
-    // 首次恢复 Cookie 会话前不发请求，避免挂载和身份恢复各请求一次。
-    ready: unAuthPagePaths.has(router.pathname) || isUserInfoInitialized,
-    refreshDeps: [authGeneration],
-    manual: false,
-    pollingInterval: 300000 // 5 minutes refresh
+  const initRequest = useRequest(initFetch, {
+    // 匿名页面切换配置类别时重新投影；相同类别内的导航不重复请求。
+    refreshDeps: [initDataPage],
+    refreshDepsAction: () => {
+      // 登录配置覆盖所有页面；显式成功回调已经更新配置时也不重复请求。
+      if (
+        authenticatedConfigGeneration === useUserStore.getState().authGeneration ||
+        loadedPage === initDataPage
+      )
+        return;
+      initRequest.refresh();
+    },
+    manual: false
   });
 
   // Marketing data track
@@ -193,7 +203,7 @@ export const useInitApp = () => {
 
   return {
     feConfigs,
-    scripts,
-    title
+    scripts: feConfigs.scripts ?? [],
+    title: feConfigs.systemTitle || appClientEnv.systemName
   };
 };

@@ -50,6 +50,37 @@ const publicConfig = {
   limit: { agentSandboxMaxFileBytes: 2 * 1024 ** 2 }
 } satisfies FastGPTFeConfigsType;
 
+const commonConfig = {
+  systemTitle: publicConfig.systemTitle,
+  favicon: publicConfig.favicon,
+  scripts: publicConfig.scripts,
+  isPlus: publicConfig.isPlus,
+  docUrl: publicConfig.docUrl
+};
+const loginConfig = {
+  ...commonConfig,
+  login_method: publicConfig.login_method,
+  register_method: publicConfig.register_method,
+  find_password_method: publicConfig.find_password_method,
+  loginGuideDocUrl: publicConfig.loginGuideDocUrl,
+  chineseRedirectUrl: publicConfig.chineseRedirectUrl,
+  wecomLoginAutoRedirect: publicConfig.wecomLoginAutoRedirect,
+  sso: publicConfig.sso,
+  oauth: publicConfig.oauth
+};
+const priceConfig = {
+  ...commonConfig,
+  uploadFileMaxAmount: publicConfig.uploadFileMaxAmount,
+  uploadFileMaxSize: publicConfig.uploadFileMaxSize
+};
+const shareConfig = {
+  ...priceConfig,
+  show_compliance_copywriting: publicConfig.show_compliance_copywriting,
+  enable_team_model: publicConfig.enable_team_model,
+  agentSandboxProxyUrl: publicConfig.agentSandboxProxyUrl,
+  limit: publicConfig.limit
+};
+
 const auth = {
   userId: 'user-1',
   teamId: 'team-1',
@@ -108,26 +139,41 @@ describe('getInitData anonymous configuration filtering', () => {
     vi.restoreAllMocks();
   });
 
-  it('projects all public values without exposing declared, unknown or nested private fields', async () => {
-    const privateFields = Object.keys(FastGPTFeConfigsSchema.shape).filter(
-      (key) => !Object.keys(publicConfig).includes(key)
-    );
-    global.feConfigs = {
-      ...global.feConfigs,
-      ...Object.fromEntries(privateFields.map((key) => [key, `private-${key}`]))
-    };
-    const originalConfig = structuredClone(global.feConfigs);
+  it.each([
+    { pathname: '/login', page: 'login', expected: loginConfig },
+    { pathname: '/price', page: 'price', expected: priceConfig },
+    { pathname: '/chat/share', page: 'share', expected: shareConfig },
+    { pathname: '/chat', page: 'chat', expected: publicConfig },
+    { pathname: '/apidoc/devapi', page: 'base', expected: commonConfig }
+  ])(
+    'projects only $page dependencies without leaking private fields',
+    async ({ pathname, page, expected }) => {
+      const privateFields = Object.keys(FastGPTFeConfigsSchema.shape).filter(
+        (key) => !Object.keys(publicConfig).includes(key)
+      );
+      global.feConfigs = {
+        ...global.feConfigs,
+        ...Object.fromEntries(privateFields.map((key) => [key, `private-${key}`]))
+      };
+      const originalConfig = structuredClone(global.feConfigs);
 
-    const { code, data } = await Call(handler, { headers: {} });
+      const { code, data } = await Call(handler, {
+        // 显式路由优先于 SPA 导航前的旧 Referer。
+        headers: { referer: 'https://app.example.com/login' },
+        query: { pathname }
+      });
 
-    expect(code).toBe(200);
-    expect(data).toEqual({
-      isAuthenticated: false,
-      bufferId: 'unAuth_v2_config-1',
-      feConfigs: publicConfig
-    });
-    expect(global.feConfigs).toEqual(originalConfig);
-  });
+      expect(code).toBe(200);
+      expect(data).toEqual({
+        isAuthenticated: false,
+        ...(page === 'price'
+          ? { subPlans: global.subPlans }
+          : { bufferId: `unAuth_v3_${page}_config-1` }),
+        feConfigs: expected
+      });
+      expect(global.feConfigs).toEqual(originalConfig);
+    }
+  );
 
   it('returns complete configuration when an authenticated member has an anonymous cache', async () => {
     const { code, data } = await Call(handler, {
@@ -157,34 +203,37 @@ describe('getInitData anonymous configuration filtering', () => {
     });
   });
 
-  it.each(['unAuth_config-1', 'unAuth_v1_config-1', 'config-1', 'unAuth_v2_config-old'])(
-    'refreshes stale or authenticated cache %s with filtered data',
-    async (bufferId) => {
-      const { data } = await Call(handler, { headers: {}, query: { bufferId } });
+  it.each([
+    'unAuth_config-1',
+    'unAuth_v2_config-1',
+    'config-1',
+    'unAuth_v3_login_config-old',
+    'unAuth_v3_share_config-1'
+  ])('refreshes stale or authenticated cache %s with filtered data', async (bufferId) => {
+    const { data } = await Call(handler, { headers: {}, query: { bufferId, pathname: '/login' } });
 
-      expect(data.bufferId).toBe('unAuth_v2_config-1');
-      expect(data).toHaveProperty('feConfigs');
-    }
-  );
+    expect(data.bufferId).toBe('unAuth_v3_login_config-1');
+    expect(data.feConfigs).toEqual(loginConfig);
+  });
 
   it('retains the anonymous cache-hit response only for the current policy version', async () => {
     const { data } = await Call(handler, {
       headers: {},
-      query: { bufferId: 'unAuth_v2_config-1' }
+      query: { bufferId: 'unAuth_v3_base_config-1' }
     });
 
-    expect(data).toEqual({ isAuthenticated: false, bufferId: 'unAuth_v2_config-1' });
+    expect(data).toEqual({ isAuthenticated: false, bufferId: 'unAuth_v3_base_config-1' });
   });
 
   it('supplies pricing plans even when the anonymous buffer matches, with a query and fragment', async () => {
     const { data } = await Call(handler, {
       headers: { referer: 'https://app.example.com/price?resumePurchase=1#standard' },
-      query: { bufferId: 'unAuth_v2_config-1' }
+      query: { bufferId: 'unAuth_v3_price_config-1' }
     });
 
     expect(data).toEqual({
       isAuthenticated: false,
-      feConfigs: publicConfig,
+      feConfigs: priceConfig,
       subPlans: global.subPlans
     });
   });
@@ -196,7 +245,7 @@ describe('getInitData anonymous configuration filtering', () => {
       const { data } = await Call(handler, { headers: {}, query: { bufferId: '' } });
 
       expect(data.bufferId).toBe('');
-      expect(data).toHaveProperty('feConfigs');
+      expect(data.feConfigs).toEqual(commonConfig);
     }
   );
 
@@ -220,7 +269,7 @@ describe('getInitData anonymous configuration filtering', () => {
     }
   ])('preserves $name', async ({ config }) => {
     global.feConfigs = config;
-    const { code, data } = await Call(handler, { headers: {} });
+    const { code, data } = await Call(handler, { headers: {}, query: { pathname: '/chat' } });
 
     expect(code).toBe(200);
     expect(data.feConfigs).toEqual(config);
@@ -233,7 +282,7 @@ describe('getInitData anonymous configuration filtering', () => {
       headers: { referer: 'https://app.example.com/login' }
     });
 
-    expect(data.bufferId).toBe('unAuth_v2_config-1');
+    expect(data.bufferId).toBe('unAuth_v3_login_config-1');
     expect(data.feConfigs).not.toHaveProperty('payConfig');
   });
 
@@ -254,6 +303,29 @@ describe('getInitData anonymous configuration filtering', () => {
     const invalidQuery = await Call(handler, { headers: {}, query: { bufferId: ['config-1'] } });
 
     expect(invalidQuery.error).toBeInstanceOf(ApiRequestInputParseError);
+    expect(authCert).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'https://app.example.com/login?next=/price#standard',
+    'https://app.example.com/price-extra',
+    'invalid referer'
+  ])(
+    'does not treat incidental /price text or malformed Referer as a price page: %s',
+    async (referer) => {
+      const { code, data } = await Call(handler, { headers: { referer } });
+      expect(code).toBe(200);
+      expect(data).not.toHaveProperty('subPlans');
+      expect(data.feConfigs).not.toHaveProperty('agentSandboxProxyUrl');
+    }
+  );
+
+  it('rejects non-path query values without accepting a full URL as the current page', async () => {
+    const response = await Call(handler, {
+      headers: {},
+      query: { pathname: 'https://app.example.com/price' }
+    });
+    expect(response.error).toBeInstanceOf(ApiRequestInputParseError);
     expect(authCert).not.toHaveBeenCalled();
   });
 

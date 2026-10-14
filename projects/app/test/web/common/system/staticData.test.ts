@@ -1,13 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import type { GetSystemInitDataResponse } from '@fastgpt/global/openapi/common/system/api';
-import { beginLogout, resetLogoutState } from '@/web/support/user/logoutState';
+import {
+  beginLogout,
+  resetLogoutState,
+  setPendingLogoutRequest
+} from '@/web/support/user/logoutState';
 
 const mocks = vi.hoisted(() => ({
   getSystemInitData: vi.fn(),
   initStaticData: vi.fn(),
   authGeneration: 0,
-  feConfigs: undefined as FastGPTFeConfigsType | undefined
+  feConfigs: undefined as Partial<FastGPTFeConfigsType> | undefined
 }));
 
 vi.mock('@/web/common/system/api', () => ({
@@ -31,10 +35,10 @@ vi.mock('@/web/common/system/useSystemStore', () => ({
 const { clientInitData } = await import('@/web/common/system/staticData');
 
 /** 由测试显式释放传输响应，用于验证会话切换和乱序完成。 */
-const deferResponse = () => {
-  let resolve!: (response: GetSystemInitDataResponse) => void;
+const deferResponse = <T = GetSystemInitDataResponse>() => {
+  let resolve!: (response: T) => void;
   let reject!: (error: Error) => void;
-  const promise = new Promise<GetSystemInitDataResponse>((success, failure) => {
+  const promise = new Promise<T>((success, failure) => {
     resolve = success;
     reject = failure;
   });
@@ -76,9 +80,9 @@ describe('clientInitData request snapshots and retries', () => {
       .mockRejectedValueOnce(new Error('Third attempt failed'))
       .mockResolvedValueOnce(response);
 
-    const pending = clientInitData();
+    const pending = clientInitData(3, '/chat/share');
     await vi.advanceTimersByTimeAsync(499);
-    expect(mocks.getSystemInitData).toHaveBeenCalledExactlyOnceWith('buffer_1');
+    expect(mocks.getSystemInitData).toHaveBeenCalledExactlyOnceWith('buffer_1', '/chat/share');
     expect(mocks.initStaticData).not.toHaveBeenCalled();
 
     await vi.advanceTimersByTimeAsync(1);
@@ -90,7 +94,13 @@ describe('clientInitData request snapshots and retries', () => {
     await vi.advanceTimersByTimeAsync(500);
     expect(await pending).toEqual({ feConfigs: response.feConfigs });
     expect(mocks.getSystemInitData).toHaveBeenCalledTimes(4);
-    expect(mocks.initStaticData).toHaveBeenCalledExactlyOnceWith(response, 0);
+    expect(mocks.getSystemInitData.mock.calls.every((args) => args[1] === '/chat/share')).toBe(
+      true
+    );
+    expect(mocks.initStaticData).toHaveBeenCalledExactlyOnceWith(response, {
+      authGeneration: 0,
+      pathname: '/chat/share'
+    });
   });
 
   it('rejects the final error after exhausting the default retry budget without writing data', async () => {
@@ -135,8 +145,8 @@ describe('clientInitData request snapshots and retries', () => {
         feConfigs: { uploadFileMaxAmount: 3, uploadFileMaxSize: 16, systemTitle: 'newest' }
       };
       mocks.getSystemInitData.mockReturnValueOnce(older.promise).mockResolvedValueOnce(response);
-      const pending = clientInitData();
-      await clientInitData();
+      const pending = clientInitData(3, '/login');
+      await clientInitData(3, '/chat/share');
 
       if (completion === 'success') {
         older.resolve({
@@ -148,7 +158,10 @@ describe('clientInitData request snapshots and retries', () => {
       }
 
       expect(await pending).toEqual({ feConfigs: response.feConfigs });
-      expect(mocks.initStaticData).toHaveBeenCalledExactlyOnceWith(response, 0);
+      expect(mocks.initStaticData).toHaveBeenCalledExactlyOnceWith(response, {
+        authGeneration: 0,
+        pathname: '/chat/share'
+      });
       expect(mocks.getSystemInitData).toHaveBeenCalledTimes(2);
       expect(vi.getTimerCount()).toBe(0);
     }
@@ -188,7 +201,10 @@ describe('clientInitData request snapshots and retries', () => {
 
     expect(await pending).toEqual({ feConfigs: response.feConfigs });
     expect(mocks.getSystemInitData).toHaveBeenCalledTimes(2);
-    expect(mocks.initStaticData).toHaveBeenCalledExactlyOnceWith(response, 0);
+    expect(mocks.initStaticData).toHaveBeenCalledExactlyOnceWith(response, {
+      authGeneration: 0,
+      pathname: undefined
+    });
   });
 
   it('does not restore authenticated data while the logout Cookie is still being cleared', async () => {
@@ -201,5 +217,18 @@ describe('clientInitData request snapshots and retries', () => {
 
     expect(await clientInitData()).toEqual({ feConfigs: cachedConfig });
     expect(mocks.initStaticData).not.toHaveBeenCalled();
+  });
+
+  it('requests immediately even while logout is pending and relies on server authentication', async () => {
+    const logout = deferResponse<void>();
+    beginLogout();
+    setPendingLogoutRequest(logout.promise);
+    const response = { isAuthenticated: false, feConfigs: { systemTitle: 'anonymous' } };
+    mocks.getSystemInitData.mockResolvedValueOnce(response);
+    const pending = clientInitData();
+    expect(mocks.getSystemInitData).toHaveBeenCalledExactlyOnceWith('buffer_1', undefined);
+    expect(await pending).toEqual({ feConfigs: response.feConfigs });
+    logout.resolve();
+    expect(mocks.getSystemInitData).toHaveBeenCalledTimes(1);
   });
 });

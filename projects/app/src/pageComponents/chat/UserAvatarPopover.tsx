@@ -3,6 +3,7 @@ import { Box, Flex, Text, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { clearToken } from '@/web/support/user/auth';
+import { clientInitData } from '@/web/common/system/staticData';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -25,17 +26,17 @@ const UserAvatarPopover = ({
   ...props
 }: UserAvatarPopoverProps) => {
   const { t } = useTranslation();
-  const { setUserInfo, userInfo } = useUserStore();
+  const { userInfo } = useUserStore();
   const { isPc } = useSystem();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { currentLang, onChangeLanguage } = useChatLanguageSwitch('account');
 
   const { openConfirm, ConfirmModal } = useConfirm({ content: t('common:confirm_logout') });
 
-  const handleLogout = useCallback(() => {
-    setUserInfo(null);
-    clearToken();
-  }, [setUserInfo]);
+  const handleLogout = useCallback(async () => {
+    await clearToken();
+    await clientInitData(3, '/chat');
+  }, []);
 
   const onLogout = useCallback(
     (closeMenu?: () => void) => {

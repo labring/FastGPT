@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { clearToken } from '@/web/support/user/auth';
+import { clearToken, initClientAfterLogin } from '@/web/support/user/auth';
 import { oauthLogin } from '@/web/support/user/api';
 import { submitAccountCancellation } from '@/web/support/user/account/cancellation/api';
 import { authorizePasswordChange } from '@/web/support/user/account/password/api';
@@ -27,7 +27,6 @@ import { validateRedirectUrl } from '@/web/common/utils/uri';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import { useLoginRedirectAfterLogin } from '@/web/support/user/loginRedirect';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
-import { resetUserModelCatalogAfterLogin } from '@/web/core/ai/model/useUserModelStore';
 
 const provider = () => {
   const { t, i18n } = useSafeTranslation();
@@ -68,14 +67,13 @@ const provider = () => {
           })
         : undefined;
 
-      resetUserModelCatalogAfterLogin();
-      setUserInfo(res.user);
+      await initClientAfterLogin(res.user);
 
       if (targetRoute) {
         router.replace(targetRoute);
       }
     },
-    [lastRoute, lastTmbId, resolveLoginRedirect, router, setUserInfo]
+    [lastRoute, lastTmbId, resolveLoginRedirect, router]
   );
 
   const authProps = useCallback(

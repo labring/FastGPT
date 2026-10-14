@@ -27,8 +27,8 @@ import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import type { GetPaginationRecordsBodyType } from '@fastgpt/global/openapi/core/chat/record/api';
 import { AUTH_ERROR_EVENT_NAME } from '@/web/common/api/request';
-import { clearToken } from '@/web/support/user/auth';
-import { resetUserModelCatalogAfterLogin } from '@/web/core/ai/model/useUserModelStore';
+import { clearToken, initClientAfterLogin } from '@/web/support/user/auth';
+import { clientInitData } from '@/web/common/system/staticData';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
@@ -152,7 +152,6 @@ const ChatLogin = ({ onSuccess }: { onSuccess: (res: LoginSuccessResponseType) =
 const ChatContent = (props: ChatPageProps) => {
   const { appId: pageAppId, isStandalone } = props;
   const { appId: storeAppId, chatId, source } = useChatStore();
-  const { setUserInfo } = useUserStore();
 
   const isInitedUser = useContextSelector(ChatPageContext, (v) => v.isInitedUser);
   const userInfo = useContextSelector(ChatPageContext, (v) => v.userInfo);
@@ -178,13 +177,9 @@ const ChatContent = (props: ChatPageProps) => {
       chatId: currentChatId
     };
   }, [currentAppId, currentChatId]);
-  const loginSuccess = useCallback(
-    async (res: LoginSuccessResponseType) => {
-      resetUserModelCatalogAfterLogin();
-      setUserInfo(res.user);
-    },
-    [setUserInfo]
-  );
+  const loginSuccess = useCallback(async (res: LoginSuccessResponseType) => {
+    await initClientAfterLogin(res.user);
+  }, []);
 
   // Waiting for user info to be initialized
   if (!isInitedUser) {
@@ -230,29 +225,26 @@ const ChatContent = (props: ChatPageProps) => {
 
 const Render = (props: ChatPageProps) => {
   const { feConfigs } = useSystemStore();
-  const { userInfo, setUserInfo, initUserInfo } = useUserStore();
+  const { userInfo, initUserInfo } = useUserStore();
   const [isInitedUser, setIsInitedUser] = useState(!props.shouldInitUserInfo);
 
-  const loginSuccess = useCallback(
-    async (res: LoginSuccessResponseType) => {
-      resetUserModelCatalogAfterLogin();
-      setUserInfo(res.user);
-    },
-    [setUserInfo]
-  );
+  const loginSuccess = useCallback(async (res: LoginSuccessResponseType) => {
+    await initClientAfterLogin(res.user);
+  }, []);
 
   useEffect(() => {
     const handleAuthError = () => {
       // 全局拦截器已豁免 /chat 跳转；这里同步页面态，触发本页 LoginModal。
-      setUserInfo(null);
-      void clearToken();
+      void Promise.resolve(clearToken())
+        .then(() => clientInitData(3, '/chat'))
+        .catch((error) => console.error('Refresh anonymous chat initialization failed:', error));
     };
 
     window.addEventListener(AUTH_ERROR_EVENT_NAME, handleAuthError);
     return () => {
       window.removeEventListener(AUTH_ERROR_EVENT_NAME, handleAuthError);
     };
-  }, [setUserInfo]);
+  }, []);
 
   useEffect(() => {
     if (!props.shouldInitUserInfo) return;

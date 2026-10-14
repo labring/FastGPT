@@ -10,37 +10,51 @@ import {
 } from '@fastgpt/global/openapi/common/system/api';
 import { getRuntimeSubPlansConfig } from '@fastgpt/global/support/wallet/sub/utils';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
+import { getInitDataPage } from '@fastgpt/global/common/system/initData';
 
 /** 按会话鉴权返回初始化数据；匿名白名单覆盖登录、价格和分享聊天的公共依赖。 */
 async function handler(
   req: ApiRequestProps,
   _res: NextApiResponse
 ): Promise<GetSystemInitDataResponse> {
-  const { bufferId } = parseApiInput({
+  const { bufferId, pathname } = parseApiInput({
     req,
     querySchema: GetSystemInitDataQuerySchema
   }).query;
   const subPlans = getRuntimeSubPlansConfig(global.subPlans);
+  // 新客户端显式传路由，避免 SPA 导航后的 Referer 仍指向原页面；旧客户端兼容 Referer。
+  const page = getInitDataPage(
+    pathname ??
+      (() => {
+        try {
+          return new URL(req.headers.referer ?? '').pathname;
+        } catch {
+          return undefined;
+        }
+      })()
+  );
 
   /**
    * 登录后保留完整配置；匿名只投影公共页面实际使用的字段。
    * 嵌套对象也逐项投影，避免扩展配置中的未知字段随整个对象下发。
    */
-  const filterFeConfigs = (isAuthenticated: boolean): FastGPTFeConfigsType => {
+  const filterFeConfigs = (isAuthenticated: boolean): Partial<FastGPTFeConfigsType> => {
     const config = global.feConfigs;
     if (isAuthenticated) return config;
 
-    return {
+    const commonConfig = {
       systemTitle: config.systemTitle,
       favicon: config.favicon,
       scripts: config.scripts,
       isPlus: config.isPlus,
-      // 登录入口也会嵌在 /chat 内，统一保留登录、注册和找回密码所需配置。
+      // 共享布局、登录政策链接和插件模型参数帮助共用文档地址。
+      docUrl: config.docUrl
+    };
+    const loginConfig = {
       login_method: config.login_method,
       register_method: config.register_method,
       find_password_method: config.find_password_method,
       loginGuideDocUrl: config.loginGuideDocUrl,
-      docUrl: config.docUrl,
       chineseRedirectUrl: config.chineseRedirectUrl,
       wecomLoginAutoRedirect: config.wecomLoginAutoRedirect,
       sso: config.sso && {
@@ -60,10 +74,13 @@ async function handler(
           tenantId: config.oauth.microsoft.tenantId,
           customButton: config.oauth.microsoft.customButton
         }
-      },
-      // 匿名价格页展示上传权益；分享聊天和沙箱编辑器也需要真实的上传限制。
+      }
+    };
+    const uploadConfig = {
       uploadFileMaxAmount: config.uploadFileMaxAmount,
-      uploadFileMaxSize: config.uploadFileMaxSize,
+      uploadFileMaxSize: config.uploadFileMaxSize
+    };
+    const chatConfig = {
       show_compliance_copywriting: config.show_compliance_copywriting,
       // 分享插件表单可选择模型，这个开关只控制系统模型标签的展示。
       enable_team_model: config.enable_team_model,
@@ -72,6 +89,13 @@ async function handler(
         agentSandboxMaxFileBytes: config.limit.agentSandboxMaxFileBytes
       }
     };
+
+    if (page === 'login') return { ...commonConfig, ...loginConfig };
+    if (page === 'price') return { ...commonConfig, ...uploadConfig };
+    if (page === 'share') return { ...commonConfig, ...uploadConfig, ...chatConfig };
+    // /chat 的匿名界面内嵌完整登录表单，保留两组依赖。
+    if (page === 'chat') return { ...commonConfig, ...loginConfig, ...uploadConfig, ...chatConfig };
+    return commonConfig;
   };
 
   // 只有鉴权失败才降级为匿名响应，配置处理错误仍交给 API 中间件报告。
@@ -98,8 +122,7 @@ async function handler(
       };
     }
 
-    const referer = req.headers.referer;
-    if (referer?.includes('/price')) {
+    if (page === 'price') {
       return {
         feConfigs,
         subPlans
@@ -108,7 +131,7 @@ async function handler(
 
     // 白名单改变时升级版本，强制旧匿名缓存重新获取过滤后的配置。
     const unAuthBufferId = global.systemInitBufferId
-      ? `unAuth_v2_${global.systemInitBufferId}`
+      ? `unAuth_v3_${page}_${global.systemInitBufferId}`
       : '';
     if (bufferId && unAuthBufferId === bufferId) {
       return {

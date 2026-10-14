@@ -22,6 +22,11 @@ const desensitizedEmbeddingModel = {
 };
 
 describe('system initialization OpenAPI contract', () => {
+  it('accepts page-specific configuration without inserting unused upload fields', () => {
+    const feConfigs = { systemTitle: 'Public page', favicon: '/custom.ico' };
+    const result = GetSystemInitDataResponseSchema.parse({ feConfigs });
+    expect(result.feConfigs).toEqual(feConfigs);
+  });
   it('drops all model catalog fields from system initialization', () => {
     const modelWithSecrets = {
       ...desensitizedEmbeddingModel,

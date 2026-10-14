@@ -13,7 +13,8 @@ let latestRequestId = 0;
  * 过期成功、失败和等待中的重试都只读取当前缓存，避免重新发请求或覆盖新会话。
  */
 export const clientInitData = async (
-  retry = 3
+  retry = 3,
+  pathname?: string
 ): Promise<{
   feConfigs: FastGPTFeConfigsType;
 }> => {
@@ -27,13 +28,13 @@ export const clientInitData = async (
   const fetchInitData = async (remaining: number): ReturnType<typeof clientInitData> => {
     if (!isCurrentRequest()) return readCache();
     try {
-      const res = await getSystemInitData(useSystemStore.getState().initDataBufferId);
+      const res = await getSystemInitData(useSystemStore.getState().initDataBufferId, pathname);
       if (!isCurrentRequest()) return readCache();
       // 退出请求尚未清除 Cookie 时，上游仍可能认作登录态，不能重新恢复这些配置。
       if (res.isAuthenticated && isLogoutInProgress()) return readCache();
-      useSystemStore.getState().initStaticData(res, authGeneration);
+      useSystemStore.getState().initStaticData(res, { authGeneration, pathname });
 
-      return { feConfigs: res.feConfigs ?? useSystemStore.getState().feConfigs ?? {} };
+      return readCache();
     } catch (error) {
       if (!isCurrentRequest()) return readCache();
       if (remaining <= 0) throw error;
