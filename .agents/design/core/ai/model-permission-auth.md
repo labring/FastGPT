@@ -70,6 +70,7 @@ getAuthorizedModelIds({ actor, handle, includeInactive? }): Promise<Set<string>>
   - 系统工具（commercial）内部使用 `createSystemToolResourceContext()`（`trusted`）：静态模型、知识库、应用、Skill、工具集子工具直接使用，不做声明校验与用户态鉴权；动态引用仍按运行人鉴权。个人工具仍切换到自身 Version 快照。
   - `dispatchWorkFlow` 的 `resourceContext` 改为必填，每个顶层运行都必须声明资源快照。Skill 调试把入口 `assertAuthModels(use)` 已授权的模型构造为快照传入，固定节点只做内存核对，不再重复鉴权，也不使用 `trusted`。
   - `createWorkflowResourceContext`（原 `loadWorkflowResourceContext`）为纯内存构造，改为同步；`runWithDerivedWorkflowFileContext` 不再支持传 `null` 清空快照（省略即继承父级）；Agent 子应用删除恒为真的 `useResourceSnapshot` 参数。
+- Agent v2 直接调用系统工具时，Invoke 令牌的 `teamId/tmbId` 取自 `runningUserInfo`，`appId` 仍取自 App source，确保用户信息反查当前运行成员而非应用 owner。
 - Pro ChatAgentHelper：接口在 `preChatRound` 之前调用 `resolveChatAgentHelperModel` 完成模型选择（含默认回退）、`use` 鉴权与可用性检查，processor 只接收已授权的 `model` 对象，不再读取模型目录。
 - `getUnauthorizedAppResources` 保留模型分支，用于应用保存、发布、调试时的混合资源批量过滤；其中停用模型返回 `unExist` 是既有行为，未改动。
 
