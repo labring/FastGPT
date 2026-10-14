@@ -211,6 +211,48 @@ const getValidator = (schema: object) => {
 const formatValidationErrors = (errors?: ErrorObject[] | null) =>
   (errors ?? []).map((error) => `${error.instancePath || '/'} ${error.message ?? 'is invalid'}`);
 
+/**
+ * 判断能否安全剔除未声明的顶层字段。
+ *
+ * 只在「根节点是 object、显式声明 additionalProperties: false、且带 properties」时成立：
+ * 此时 schema 明确表达「仅允许这些字段」，剔除多余字段是遵从作者意图。
+ * 未声明 additionalProperties 的 schema 保持既有宽松行为，不做剔除。
+ */
+const canStripUndeclaredTopLevelProperties = (
+  schema: JSONSchemaInputType
+): schema is JSONSchemaInputType & { properties: Record<string, unknown> } =>
+  schema.type === 'object' &&
+  schema.additionalProperties === false &&
+  !!schema.properties &&
+  !schema.$ref &&
+  !schema.oneOf &&
+  !schema.anyOf &&
+  !schema.allOf;
+
+/**
+ * 就地剔除 schema 未声明的顶层字段。
+ *
+ * 大模型或工作流节点常会传入 schema 之外的额外参数，直接交给 Ajv 会导致整次工具调用被判失败。
+ * 这里在业务校验前清理，使调用方手中的同一个对象成为合法入参。
+ *
+ * 刻意不使用 Ajv 的 `removeAdditional`：该选项在根 `oneOf` 下会把参数清空成 `{}` 却仍判定通过，
+ * 反而让工具收到空参数；联合/引用 schema 一律不剔除，交由 Ajv 正常判定并如实报错。
+ */
+const stripUndeclaredTopLevelProperties = ({
+  jsonSchema,
+  params
+}: {
+  jsonSchema: JSONSchemaInputType;
+  params: Record<string, unknown>;
+}) => {
+  if (!canStripUndeclaredTopLevelProperties(jsonSchema)) return;
+
+  const declaredKeys = new Set(Object.keys(jsonSchema.properties));
+  for (const key of Object.keys(params)) {
+    if (!declaredKeys.has(key)) delete params[key];
+  }
+};
+
 /** 使用原始 JSON Schema property 校验单个手工配置值。 */
 export const validateToolInputValue = ({
   schema,
@@ -247,6 +289,7 @@ export const validateToolRuntimeParams = ({
   if (!jsonSchema) return { success: true, errors: [] };
 
   try {
+    stripUndeclaredTopLevelProperties({ jsonSchema, params });
     const validator = getValidator(jsonSchema);
     const success = validator(params);
     return {
