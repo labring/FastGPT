@@ -6,6 +6,19 @@ export const isHttpUrl = (url?: string): boolean => {
   return /^https?:\/\//i.test(url.trim());
 };
 
+/**
+ * 为缺少协议头的地址补全 `https://`。
+ *
+ * 外部数据源地址（如 API 数据集 baseUrl）由用户手填，常见直接写 `api.example.com`。
+ * 这类地址交给 axios / `new URL()` 会抛 `ERR_INVALID_URL`，属于可预期的输入问题；
+ * 这里统一补全协议，已有 http/https 的地址仅去除首尾空白后原样返回。
+ */
+export const ensureHttpProtocol = (url?: string): string => {
+  const trimmed = url?.trim() ?? '';
+  if (!trimmed) return '';
+  return isHttpUrl(trimmed) ? trimmed : `https://${trimmed}`;
+};
+
 export const stripUrlTrailingSlash = (value?: string) => value?.replace(/\/+$/, '') || '';
 
 const ALLOWED_PROTOCOLS = new Set(['http', 'https', 'mailto', 'tel', 'cite', 'quote']);
