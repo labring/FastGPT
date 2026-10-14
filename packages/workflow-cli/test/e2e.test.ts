@@ -340,12 +340,12 @@ describe('PR1 through PR4 CLI end to end', () => {
     );
     const descriptor = JSON.parse(template.stdout[0]).result;
     expect(descriptor.name).toBe('AI 对话');
-    expect(descriptor.inputs.find((input: { key: string }) => input.key === 'model')).toMatchObject(
-      {
-        defaultPolicy: 'remoteValidated',
-        resourceKind: 'model'
-      }
-    );
+    expect(
+      descriptor.inputs.find((input: { key: string }) => input.key === 'modelId')
+    ).toMatchObject({
+      defaultPolicy: 'remoteValidated',
+      resourceKind: 'model'
+    });
     expect(JSON.stringify(descriptor)).not.toContain('workflow:template.ai_chat');
     expect(JSON.stringify(descriptor)).not.toContain('workflow:cli.input');
     await expect(access(join(queryDir, 'workflow.json'))).rejects.toThrow();

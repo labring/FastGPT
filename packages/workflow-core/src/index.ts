@@ -34,7 +34,3 @@ export * from './template/type';
 export * from './template/valueSchema';
 export * from './validation';
 export * from './public';
-export {
-  areWorkflowValueTypesCompatible,
-  getWorkflowReferenceSourceValueTypes
-} from '@fastgpt/global/common/workflow/reference';

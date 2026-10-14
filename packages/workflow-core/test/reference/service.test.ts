@@ -1,3 +1,4 @@
+import { areWorkflowValueTypesCompatible } from '@fastgpt/global/core/workflow/utils';
 import {
   FlowNodeInputTypeEnum,
   VARIABLE_NODE_ID,
@@ -5,7 +6,6 @@ import {
   WorkflowCommandError,
   WorkflowDocumentSchema,
   WorkflowIOValueTypeEnum,
-  areWorkflowValueTypesCompatible,
   builtinTemplateProvider,
   createWorkflowDocument,
   getAvailableInputReferences,

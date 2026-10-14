@@ -170,4 +170,40 @@ describe('chatInstanceRegistry', () => {
     unregister();
     vi.unstubAllGlobals();
   });
+
+  it('ignores external prompts from untrusted cross-origin messages', () => {
+    const listeners = new Set<(event: MessageEvent<unknown>) => void>();
+    const addEventListener = vi.fn(
+      (_type: string, listener: (event: MessageEvent<unknown>) => void) => {
+        listeners.add(listener);
+      }
+    );
+    const removeEventListener = vi.fn();
+    vi.stubGlobal('window', {
+      addEventListener,
+      removeEventListener,
+      location: { origin: 'https://fastgpt.run' }
+    });
+
+    const actions = createActions();
+    const identity = { sourceKey: 'app:app-1', chatId: 'preview-chat' };
+    const unregister = registerChatInstanceActions({ identity, actions });
+    const release = retainExternalChatPromptListener();
+
+    listeners.forEach((listener) =>
+      listener({
+        origin: 'https://malicious.example.com',
+        data: {
+          type: 'sendPrompt',
+          text: 'malicious input',
+          target: identity
+        }
+      } as MessageEvent<unknown>)
+    );
+    expect(actions.continueInteractive).not.toHaveBeenCalled();
+
+    release();
+    unregister();
+    vi.unstubAllGlobals();
+  });
 });

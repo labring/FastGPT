@@ -8,7 +8,9 @@ const workspaceFilters = {
   admin: '@fastgpt/admin',
   global: '@fastgpt/global',
   service: '@fastgpt/service',
-  web: '@fastgpt/web'
+  web: '@fastgpt/web',
+  'workflow-core': '@fastgpt/workflow-core',
+  'workflow-cli': '@fastgpt/workflow-cli'
 };
 const workspaceScopes = Object.keys(workspaceFilters);
 const supportedModes = ['unit', 'integration', 'sandbox', 'all'];
