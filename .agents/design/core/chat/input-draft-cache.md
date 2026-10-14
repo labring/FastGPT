@@ -53,12 +53,15 @@ Zod 校验缓存结构，读取时剔除损坏、空内容、未来时间和已�
 | 文件 | 职责 |
 | --- | --- |
 | `web/core/chat/inputDraft/storage.ts` | 有界客户端缓存、校验、过期、版本清理 |
-| `ChatBox/hooks/useChatInputForm.ts` | 内容监听、保存恢复、发送快照 |
+| `web/core/chat/inputDraft/useChatInputDraft.ts` | 内容监听、保存恢复、生命周期清理、发送快照 |
+| `ChatBox/hooks/useChatInputForm.ts` | 表单初始化、变量启动状态、textarea 高度；调用草稿 hook |
 | `ChatBox/hooks/useChatGenerate.ts` | 接受发送后的清理和失败恢复 |
 | `ChatBox/hooks/useFileUpload.tsx` | 上传异步回调归属与取消 |
 | `ChatBox/index.tsx` | 传入草稿身份和发送回调 |
 | `ChatBox/Input/ChatInput.tsx` | 将提前清附件收敛到接受发送时 |
 | 历史、重置、退出入口 | 清理对应的客户端缓存 |
+
+`useChatInputDraft` 接收已有表单、草稿身份和程序赋值后的 UI 回调。它管理缓存与表单的同步，不依赖 textarea DOM 或变量启动状态；缓存身份仍只有 `tmbId + appId + chatId`。身份未就绪时，`fallbackKey` 只区分当前表单的所有者，不产生缓存记录。发送快照类型由该 hook 的定义文件直接导出，发送模块直接导入。
 
 ## 验证
 
@@ -73,12 +76,13 @@ Zod 校验缓存结构，读取时剔除损坏、空内容、未来时间和已�
 历史清理测试兼容 Node 不提供 Web Storage 时的纯内存成员 store。
 本地测试限定为本次修改及受影响的输入、上传、发送和清理模块，不主动运行全量测试。
 
-2026-10-14 客户端方案局部验证：9 个测试文件、95 项用例通过。草稿存储与输入 hook 合计行覆盖率 99.58%，分支覆盖率 94.15%；App TypeScript、修改文件 ESLint/Prettier 和 `git diff --check` 通过。实际浏览器界面的手动验收未执行。
+2026-10-14 客户端方案此前完成 9 个测试文件、95 项用例的局部验证。本次 hook 拆分验证限定为草稿存储、草稿 hook、表单 hook 与发送集成，4 个文件、48 项用例通过；运行时关闭 Node Web Storage。三处实现合计行覆盖率 100%，分支覆盖率 94.73%，表单 hook 自身行与分支覆盖率均为 100%。App TypeScript、修改文件 ESLint/Prettier 和 `git diff --check` 通过。实际浏览器界面的手动验收未执行。
 
 ## TODO
 
 - [x] 明确纯客户端范围，保留已确认的文字、附件、身份和有效期规则。
 - [x] 删除新增后端附件准备接口、续期服务、OpenAPI 合约和 S3 清理改动。
 - [x] 恢复时直接回填缓存附件引用，移除异步准备状态和重试 UI。
+- [x] 在 `inputDraft` 导出独立草稿 hook，表单 hook 只管理表单、变量和高度。
 - [x] 完成客户端局部测试、类型和规范检查。
 - [x] 将客户端方案提交至 PR #7983 并接入 CI 自动跟进。

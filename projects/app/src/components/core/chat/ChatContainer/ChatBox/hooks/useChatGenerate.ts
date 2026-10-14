@@ -56,7 +56,7 @@ import {
 import { getLastAiDataId } from '../utils/resume';
 import type { ChatGeneratingConflictRecovery } from '../type';
 
-import type { ChatInputSubmission } from './useChatInputForm';
+import type { ChatInputSubmission } from '@/web/core/chat/inputDraft/useChatInputDraft';
 
 type HumanChatSiteItemType = Extract<ChatSiteItemType, { obj: ChatRoleEnum.Human }>;
 
