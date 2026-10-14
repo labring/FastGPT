@@ -1,5 +1,6 @@
 import z from 'zod';
-import { PluginStatusSchema } from '../../../../plugin/type';
+import { PluginStatusSchema, PluginTextSchema } from '../../../../plugin/type';
+import { LanguageSchema } from '../../../../../common/i18n/type';
 import { UserTagsSchema } from '../../../../../support/user/type';
 import { PluginPermissionEnumSchema } from '../../../../../sdk/fastgpt-plugin';
 import { SystemToolSystemSecretStatusEnum } from '../constants';
@@ -44,19 +45,18 @@ export const SystemToolListItemSchema = z.object({
   source: z.string().meta({ description: '工具的来源, system 或 teamId' }),
   isToolSet: z.boolean().meta({ description: '是否为工具集' }),
   avatar: z.string().meta({ description: '工具的图标' }),
-  name: z.string().meta({ description: '工具的名称' }),
-  intro: z.string().meta({ description: '工具的简介' }),
+  name: PluginTextSchema.meta({ description: '工具的名称' }),
+  intro: PluginTextSchema.meta({ description: '工具的简介' }),
   author: z.string().meta({ description: '工具的作者' }),
   tags: z.array(z.string()).meta({ description: '工具的标签' }),
-  toolDescription: z.string().optional().meta({
-    description: '已废弃：节点作为工具被调用时的能力说明',
-    deprecated: true
-  }),
 
   userGuide: z.string().nullish().meta({ description: '工具的使用指南(markdown 纯文本)' }),
   readmeUrl: z.string().optional().meta({ description: '工具的 README 地址' }),
+  readmeUrls: z
+    .partialRecord(LanguageSchema, z.string())
+    .optional()
+    .meta({ description: '按语言区分的插件 README 地址' }),
   courseUrl: z.string().optional().meta({ description: '工具的教程地址' }),
-
   pluginOrder: z.number().optional().meta({ description: '工具的排序字段' }),
   // 计费相关
   originCost: z.number().optional().meta({ description: '工具的原始费用' }), // 现在没用
@@ -79,13 +79,9 @@ export type SystemToolListItemType = z.infer<typeof SystemToolListItemSchema>;
 
 export const SystemToolChildDetailSchema = z.object({
   id: z.string(),
-  name: z.string(),
+  name: PluginTextSchema,
   status: PluginStatusSchema.meta({ description: '工具的状态' }),
-  description: z.string().optional(),
-  toolDescription: z.string().optional().meta({
-    description: '已废弃：节点作为工具被调用时的能力说明',
-    deprecated: true
-  }),
+  description: PluginTextSchema.optional(),
   icon: z.string().optional(),
   currentCost: z.number().meta({ description: '当前使用的费用' }),
   systemKeyCost: z.number().meta({ description: '系统密钥的费用' }),
@@ -116,7 +112,7 @@ export const SystemToolVersionSchema = z.object({
     example: '68ad85a7463006c963799a05',
     description: '工具版本标识。工作流工具为关联应用版本 ID，普通插件工具为插件版本号'
   }),
-  versionDescription: z.string().optional().meta({
+  versionDescription: PluginTextSchema.optional().meta({
     example: 'Workflow v1',
     description: '工具版本展示名。工作流工具为关联应用版本名称'
   })

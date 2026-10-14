@@ -36,7 +36,7 @@ import {
   postAdminCreateAppTypeTool,
   putAdminUpdateWorkflowTool
 } from '@/web/core/plugin/admin/tool/api';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { parseI18nString, selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -105,9 +105,9 @@ const WorkflowToolConfigModal = ({
           currentCost: res.currentCost,
           systemKeyCost: res.systemKeyCost,
           hasTokenFee: res.hasTokenFee,
-          name: res.name,
+          name: selectPluginText(res.name, i18n.language),
           avatar: res.avatar,
-          intro: res.intro,
+          intro: selectPluginText(res.intro, i18n.language),
           tags: res.tags || [],
           userGuide: res.userGuide || '',
           author: res.author,

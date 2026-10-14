@@ -1,4 +1,5 @@
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
+import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import SecretInputModal from '@/pageComponents/app/tool/SecretInputModal';
 import { getAppPermission } from '@/web/core/app/api';
 import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
@@ -104,7 +105,8 @@ const getCurrentSystemToolTemplate = async (node?: FlowNodeItemType) => {
     return getClientToolPreviewNode({
       appId: node.pluginId,
       versionId: node.version ?? '',
-      source: node.source
+      source: node.source,
+      lang: node.metadataLocale ?? 'en',
     });
   } catch {
     return;
@@ -279,7 +281,8 @@ const NodeCard = (props: Props) => {
             ? {
                 status: currentSystemToolTemplate.status,
                 courseUrl: currentSystemToolTemplate.courseUrl,
-                readmeUrl: currentSystemToolTemplate.readmeUrl,
+                readmeUrl:
+                  node.readmeUrl ?? node.pluginData?.readmeUrl ?? currentSystemToolTemplate.readmeUrl,
                 userGuide: currentSystemToolTemplate.userGuide,
                 diagram: currentSystemToolTemplate.diagram
               }
@@ -325,6 +328,7 @@ const NodeCard = (props: Props) => {
         node?.pluginData?.status,
         node?.pluginId,
         node?.source,
+        node?.metadataLocale,
         node?.version
       ]
     }
@@ -769,7 +773,7 @@ const NodeIntro = React.memo(function NodeIntro({
 });
 
 const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeItemType }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const onResetNode = useContextSelector(WorkflowActionsContext, (v) => v.onResetNode);
   const { openConfirm: openKeepLatestConfirm, ConfirmModal: KeepLatestConfirmModal } = useConfirm({
@@ -825,7 +829,8 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
         const template = await getClientToolPreviewNode({
           appId: node.pluginId,
           versionId,
-          source: node.source
+          source: node.source,
+          lang: node.metadataLocale ?? 'en'
         });
 
         if (!!template) {
@@ -872,11 +877,14 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
         value: ''
       },
       ...versionList.map((item) => ({
-        label: item.versionDescription || item.version,
+        label:
+          item.versionDescription !== undefined
+            ? selectPluginText(item.versionDescription, i18n.language)
+            : item.version,
         value: item.version
       }))
     ],
-    [node.isLatestVersion, node.version, t, versionList]
+    [i18n.language, node.isLatestVersion, node.version, t, versionList]
   );
   const valueLabel = useMemo(() => {
     return (
@@ -959,6 +967,7 @@ const MenuRender = React.memo(function MenuRender({
           pluginId: node.data.pluginId,
           source: node.data.source,
           isFolder: node.data.isFolder,
+          metadataLocale: node.data.metadataLocale,
           pluginData: node.data.pluginData,
 
           toolConfig: node.data.toolConfig,
@@ -988,6 +997,7 @@ const MenuRender = React.memo(function MenuRender({
               showStatus: template.showStatus,
               pluginId: template.pluginId,
               source: template.source,
+              metadataLocale: node.data.metadataLocale,
               inputs: template.inputs,
               outputs: template.outputs,
               version: template.version,

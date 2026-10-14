@@ -131,6 +131,7 @@ export const beforeUpdateAppFormat = async ({
               appId: selectedTool.id,
               versionId: selectedTool.version,
               source: selectedTool.source,
+              lang: selectedTool.metadataLocale ?? 'en',
               teamId
             });
             const inputMap = new Map(preview.inputs.map((input) => [input.key, input]));

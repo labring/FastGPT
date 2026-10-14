@@ -15,7 +15,7 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import Avatar from '../../../common/Avatar';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import MyIconButton from '../../../common/Icon/button';
 import { type ToolCardItemType } from './ToolCard';
 import MyIcon from '../../../common/Icon';
@@ -253,7 +253,7 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
             <Flex gap={1.5}>
               <Avatar src={parentTool?.icon ?? ''} borderRadius={'md'} w={6} />
               <Box fontSize={'16px'} fontWeight={500} color={'myGray.900'}>
-                {parseI18nString(parentTool?.name ?? '', i18n.language)}
+                {selectPluginText(parentTool?.name, i18n.language)}
               </Box>
               <Box flex={1} />
               {toolVersions.length > 0 && (
@@ -280,7 +280,10 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
                     {
                       children: toolVersions.map((item) => ({
                         label: item.version,
-                        description: item.versionDescription,
+                        description:
+                          item.versionDescription === undefined
+                            ? undefined
+                            : selectPluginText(item.versionDescription, i18n.language),
                         isActive: item.version === activeVersion,
                         onClick: () => setSelectedVersion(item.version)
                       }))
@@ -362,7 +365,7 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
                           textDecoration: 'underline'
                         }}
                       >
-                        {parseI18nString(tool.name, i18n.language)}
+                        {selectPluginText(tool.name, i18n.language)}
                       </Box>
                     </Flex>
                     <Flex px={3} align="center" gap={1} minW={0}>

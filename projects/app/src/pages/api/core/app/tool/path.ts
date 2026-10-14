@@ -14,6 +14,7 @@ import {
   type GetToolPathQueryType,
   type GetToolPathResponseType
 } from '@fastgpt/global/openapi/core/app/tool/api';
+import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import {
@@ -70,7 +71,7 @@ function getParentToolId({ toolId, source }: { toolId: string; source?: string }
 
   const { source: idSource, pluginId } = splitCombineToolId(toolId);
 
-  if (![AppToolSourceEnum.systemTool, AppToolSourceEnum.commercial].includes(idSource as any)) {
+  if (idSource !== AppToolSourceEnum.systemTool && idSource !== AppToolSourceEnum.commercial) {
     return;
   }
 
@@ -119,7 +120,7 @@ async function getToolPathItem({
 
   return {
     parentId: toolId,
-    parentName: tool.name
+    parentName: selectPluginText(tool.name, lang)
   };
 }
 

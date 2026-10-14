@@ -12,6 +12,7 @@ import { BoolSchema } from '../../../../common/zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { AppTypeEnum } from '../../../../core/app/constants';
 import { ToolSetToolSummarySchema } from '../../../../core/app/tool/toolSet/type';
+import { LanguageSchema } from '../../../../common/i18n/type';
 
 /* ============================================================================
  * API: 获取工具集子工具摘要
@@ -48,12 +49,7 @@ export const GetToolSetChildrenResponseSchema = z.object({
 });
 export type GetToolSetChildrenResponseType = z.infer<typeof GetToolSetChildrenResponseSchema>;
 
-const ToolNodeTemplateListItemSchema = NodeTemplateListItemTypeSchema.extend({
-  toolDescription: NodeTemplateListItemTypeSchema.shape.toolDescription.meta({
-    description: '已废弃：节点作为工具被调用时的能力说明',
-    deprecated: true
-  })
-}).catchall(z.any());
+const ToolNodeTemplateListItemSchema = NodeTemplateListItemTypeSchema.catchall(z.any());
 
 const ToolPreviewNodeResponseSchema = FlowNodeTemplateTypeSchema.omit({
   // Runtime-only predicate; functions cannot be represented in OpenAPI or JSON.
@@ -162,7 +158,8 @@ const GetPreviewNodeBaseQuerySchema = z.object({
   source: z.string().optional().meta({
     example: 'debug:tmbId:tmb_xxx',
     description: '工具来源。调试状态下显式传入 debug source，不再拼接到 appId 中'
-  })
+  }),
+  lang: LanguageSchema.optional().meta({ description: '预览文案语言；缺省使用当前请求语言' }),
 });
 
 export const GetPreviewNodeQuerySchema = z.union([

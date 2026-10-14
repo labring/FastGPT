@@ -3,7 +3,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, Grid } from '@chakra-ui/react';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import {
@@ -304,13 +304,14 @@ const RenderList = React.memo(function RenderList({
                       borderRadius={'sm'}
                     />
                     <Box fontWeight={'bold'} color={'myGray.900'} flex={'1'}>
-                      {template.name}
+                      {t(selectPluginText(template.name, i18n.language))}
                     </Box>
                     {isDebugTool && <DebugToolTag />}
                     <Box color={'myGray.500'}>By {template.author || feConfigs?.systemTitle}</Box>
                   </Flex>
                   <Box pt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
-                    {template.intro || t('common:core.workflow.Not intro')}
+                    {t(selectPluginText(template.intro, i18n.language)) ||
+                      t('common:core.workflow.Not intro')}
                   </Box>
                   <CostTooltip cost={template.currentCost} hasTokenFee={template.hasTokenFee} />
                 </Box>
@@ -340,7 +341,7 @@ const RenderList = React.memo(function RenderList({
                       fontSize={'sm'}
                       className="textEllipsis"
                     >
-                      {t(parseI18nString(template.name, i18n.language))}
+                      {t(selectPluginText(template.name, i18n.language))}
                     </Box>
                     {isDebugTool && <DebugToolTag />}
                   </Flex>

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import {
-  AdminSystemToolDetailSchema,
-  SystemToolDetailSchema
-} from '@fastgpt/global/core/app/tool/systemTool/type';
+import { AdminSystemToolDetailSchema, SystemToolDetailSchema } from '@fastgpt/global/core/app/tool/systemTool/type';
+import { SystemToolVersionSchema } from '@fastgpt/global/core/app/tool/systemTool/type/base';
+import { MarketplaceToolBaseSchema } from '@fastgpt/global/openapi/core/plugin/marketplace/api';
+import { UploadPkgPluginResponseItemSchema } from '@fastgpt/global/openapi/core/plugin/admin/api';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { SystemToolSystemSecretStatusEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { TeamToolDetailSchema } from '@fastgpt/global/openapi/core/plugin/team/tool/api';
@@ -94,6 +94,76 @@ describe('SystemToolDetailSchema', () => {
     expect(result.secretSchema).toBeUndefined();
   });
 });
+describe('plugin metadata response schemas', () => {
+  it('accepts legacy strings and preserves partial translations with localized readme URLs', () => {
+    const detail = SystemToolDetailSchema.parse({
+      ...createAdminToolDetail(),
+      name: { en: 'Search', 'zh-CN': '搜索' },
+      intro: { en: 'Find pages' },
+      readmeUrl: 'https://example.com/legacy.md',
+      readmeUrls: { en: 'https://example.com/en.md' },
+      children: [
+        {
+          id: 'child',
+          name: 'Legacy child',
+          description: { 'zh-CN': '子工具' },
+          status: PluginStatusEnum.Normal,
+          currentCost: 0,
+          systemKeyCost: 0
+        }
+      ]
+    });
+
+    expect(detail.name).toEqual({ en: 'Search', 'zh-CN': '搜索' });
+    expect(detail.readmeUrls).toEqual({ en: 'https://example.com/en.md' });
+    expect(detail.readmeUrl).toBe('https://example.com/legacy.md');
+    expect(detail.children?.[0].name).toBe('Legacy child');
+  });
+
+  it('accepts plugin text in marketplace, upload, and version responses', () => {
+    const metadata = { en: 'Search', 'zh-CN': '搜索' };
+    const marketplace = MarketplaceToolBaseSchema.parse({
+      type: 'tool',
+      id: 'search-record',
+      toolId: 'search',
+      pluginId: 'search',
+      version: '1.0.0',
+      etag: 'etag',
+      isToolset: true,
+      name: metadata,
+      description: 'Legacy description',
+      icon: 'search.svg',
+      readmeUrls: { en: 'https://example.com/en.md', 'zh-CN': 'https://example.com/zh.md' },
+      downloadCount: 0,
+      children: [
+        {
+          id: 'child',
+          name: metadata,
+          description: 'Legacy child description',
+        }
+      ]
+    });
+    const upload = UploadPkgPluginResponseItemSchema.parse({
+      pluginId: 'search',
+      version: '1.0.0',
+      etag: 'etag',
+      type: 'tool',
+      name: 'Legacy plugin',
+      icon: 'search.svg',
+      description: metadata,
+      versionDescription: metadata
+    });
+    const version = SystemToolVersionSchema.parse({ version: '1.0.0', versionDescription: metadata });
+
+    expect(marketplace.readmeUrls).toEqual({
+      en: 'https://example.com/en.md',
+      'zh-CN': 'https://example.com/zh.md'
+    });
+    expect(upload.name).toBe('Legacy plugin');
+    expect(version.versionDescription).toEqual(metadata);
+  });
+});
+
 
 describe('TeamToolDetailSchema', () => {
   it('accepts null tool schemas from legacy plugin definitions', () => {

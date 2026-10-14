@@ -88,6 +88,24 @@ describe('compileToolRuntime', () => {
     expect(manualCompiled.modelTool.function).not.toHaveProperty('parameters');
   });
 
+  it('builds the function description from the tool name and intro', () => {
+    const compiled = compileToolRuntime({
+      toolId: 'search',
+      name: 'Search',
+      description: 'Search documents',
+      inputs: []
+    });
+    const withoutIntro = compileToolRuntime({
+      toolId: 'search',
+      name: 'Search',
+      description: '',
+      inputs: []
+    });
+
+    expect(compiled.modelTool.function.description).toBe('Search: Search documents');
+    expect(withoutIntro.modelTool.function.description).toBe('Search');
+  });
+
   it('separates model parameters from configured values and defaults', () => {
     const compiled = compileToolRuntime({
       toolId: 'search',
