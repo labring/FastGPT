@@ -144,7 +144,7 @@ describe('getInitData anonymous configuration filtering', () => {
     { pathname: '/price', page: 'price', expected: priceConfig },
     { pathname: '/tools/price', page: 'base', expected: commonConfig },
     { pathname: '/chat/share', page: 'share', expected: shareConfig },
-    { pathname: '/chat', page: 'chat', expected: publicConfig },
+    { pathname: '/chat', page: 'chat', expected: loginConfig },
     { pathname: '/apidoc/devapi', page: 'base', expected: commonConfig }
   ])(
     'projects only $page dependencies without leaking private fields',
@@ -169,7 +169,7 @@ describe('getInitData anonymous configuration filtering', () => {
         isAuthenticated: false,
         ...(page === 'price'
           ? { subPlans: global.subPlans }
-          : { bufferId: `unAuth_v3_${page}_config-1` }),
+          : { bufferId: `unAuth_v4_${page}_config-1` }),
         feConfigs: expected
       });
       expect(global.feConfigs).toEqual(originalConfig);
@@ -180,7 +180,7 @@ describe('getInitData anonymous configuration filtering', () => {
     const { code, data } = await Call(handler, {
       auth,
       headers: {},
-      query: { bufferId: 'unAuth_v2_config-1' }
+      query: { bufferId: 'unAuth_v4_chat_config-1', pathname: '/chat' }
     });
 
     expect(code).toBe(200);
@@ -207,29 +207,30 @@ describe('getInitData anonymous configuration filtering', () => {
   it.each([
     'unAuth_config-1',
     'unAuth_v2_config-1',
+    'unAuth_v3_chat_config-1',
     'config-1',
-    'unAuth_v3_login_config-old',
-    'unAuth_v3_share_config-1'
+    'unAuth_v4_chat_config-old',
+    'unAuth_v4_share_config-1'
   ])('refreshes stale or authenticated cache %s with filtered data', async (bufferId) => {
-    const { data } = await Call(handler, { headers: {}, query: { bufferId, pathname: '/login' } });
+    const { data } = await Call(handler, { headers: {}, query: { bufferId, pathname: '/chat' } });
 
-    expect(data.bufferId).toBe('unAuth_v3_login_config-1');
+    expect(data.bufferId).toBe('unAuth_v4_chat_config-1');
     expect(data.feConfigs).toEqual(loginConfig);
   });
 
   it('retains the anonymous cache-hit response only for the current policy version', async () => {
     const { data } = await Call(handler, {
       headers: {},
-      query: { bufferId: 'unAuth_v3_base_config-1' }
+      query: { bufferId: 'unAuth_v4_base_config-1' }
     });
 
-    expect(data).toEqual({ isAuthenticated: false, bufferId: 'unAuth_v3_base_config-1' });
+    expect(data).toEqual({ isAuthenticated: false, bufferId: 'unAuth_v4_base_config-1' });
   });
 
   it('supplies pricing plans even when the anonymous buffer matches, with a query and fragment', async () => {
     const { data } = await Call(handler, {
       headers: { referer: 'https://app.example.com/price?resumePurchase=1#standard' },
-      query: { bufferId: 'unAuth_v3_price_config-1' }
+      query: { bufferId: 'unAuth_v4_price_config-1' }
     });
 
     expect(data).toEqual({
@@ -251,26 +252,31 @@ describe('getInitData anonymous configuration filtering', () => {
   );
 
   it.each([
+    { name: 'missing optional login settings', pathname: '/chat', config: {} },
     {
-      name: 'missing optional SSO, OAuth and sandbox settings',
+      name: 'false and empty login settings without Microsoft',
+      pathname: '/chat',
+      config: { isPlus: false, wecomLoginAutoRedirect: false, oauth: { wecom: false }, sso: {} }
+    },
+    {
+      name: 'missing optional sandbox settings',
+      pathname: '/chat/share',
       config: { uploadFileMaxAmount: 3, uploadFileMaxSize: 16 }
     },
     {
-      name: 'false, zero, empty SSO and OAuth without Microsoft',
+      name: 'false and zero chat settings',
+      pathname: '/chat/share',
       config: {
         uploadFileMaxAmount: 0,
         uploadFileMaxSize: 0,
         isPlus: false,
-        wecomLoginAutoRedirect: false,
         show_compliance_copywriting: false,
-        oauth: { wecom: false },
-        sso: {},
         limit: { agentSandboxMaxFileBytes: 0 }
       }
     }
-  ])('preserves $name', async ({ config }) => {
-    global.feConfigs = config;
-    const { code, data } = await Call(handler, { headers: {}, query: { pathname: '/chat' } });
+  ])('preserves $name', async ({ pathname, config }) => {
+    global.feConfigs = { uploadFileMaxAmount: 3, uploadFileMaxSize: 16, ...config };
+    const { code, data } = await Call(handler, { headers: {}, query: { pathname } });
 
     expect(code).toBe(200);
     expect(data.feConfigs).toEqual(config);
@@ -283,7 +289,7 @@ describe('getInitData anonymous configuration filtering', () => {
       headers: { referer: 'https://app.example.com/login' }
     });
 
-    expect(data.bufferId).toBe('unAuth_v3_login_config-1');
+    expect(data.bufferId).toBe('unAuth_v4_login_config-1');
     expect(data.feConfigs).not.toHaveProperty('payConfig');
   });
 

@@ -48,7 +48,7 @@ export const GetSystemInitDataResponseSchema = z.object({
   }),
   bufferId: z.string().optional().meta({
     example: 'system-config-20260811',
-    description: '当前系统配置缓存标识；未登录时带 unAuth_v3_ 前缀，包含匿名过滤规则版本和页面类别'
+    description: '当前系统配置缓存标识；未登录时带 unAuth_v4_ 前缀，包含匿名过滤规则版本和页面类别'
   }),
   feConfigs: FastGPTFeConfigsSchema.optional().meta({
     description:

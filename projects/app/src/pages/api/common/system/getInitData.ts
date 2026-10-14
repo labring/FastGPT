@@ -90,11 +90,10 @@ async function handler(
       }
     };
 
-    if (page === 'login') return { ...commonConfig, ...loginConfig };
+    // /chat 未登录时只展示登录表单；上传和聊天字段由登录成功后的主动刷新补齐。
+    if (page === 'login' || page === 'chat') return { ...commonConfig, ...loginConfig };
     if (page === 'price') return { ...commonConfig, ...uploadConfig };
     if (page === 'share') return { ...commonConfig, ...uploadConfig, ...chatConfig };
-    // /chat 的匿名界面内嵌完整登录表单，保留两组依赖。
-    if (page === 'chat') return { ...commonConfig, ...loginConfig, ...uploadConfig, ...chatConfig };
     return commonConfig;
   };
 
@@ -131,7 +130,7 @@ async function handler(
 
     // 白名单改变时升级版本，强制旧匿名缓存重新获取过滤后的配置。
     const unAuthBufferId = global.systemInitBufferId
-      ? `unAuth_v3_${page}_${global.systemInitBufferId}`
+      ? `unAuth_v4_${page}_${global.systemInitBufferId}`
       : '';
     if (bufferId && unAuthBufferId === bufferId) {
       return {
