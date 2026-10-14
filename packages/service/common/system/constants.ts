@@ -24,6 +24,15 @@ export const getServiceRequestMaxContentLength = () =>
 export const getMultipleDataToBase64 = () =>
   getSystemInstanceConfig().feature.multipleDataToBase64 ?? serviceEnv.MULTIPLE_DATA_TO_BASE64;
 
+/**
+ * 密码登录/验证短信的每分钟限流次数。
+ * 实例配置 security.passwordLoginMinuteLimitCount 为权威来源；快照叶子缺省时回落 env。
+ * create/consume 两处限流与改密接口共用本 helper，避免同一配置多处读取漂移。
+ */
+export const getPasswordLoginMinuteLimitCount = () =>
+  getSystemInstanceConfig().security.passwordLoginMinuteLimitCount ??
+  serviceEnv.PASSWORD_LOGIN_MINUTE_LIMIT_COUNT;
+
 export const serviceRequestMaxContentLength =
   serviceEnv.SERVICE_REQUEST_MAX_CONTENT_LENGTH * 1024 * 1024;
 
