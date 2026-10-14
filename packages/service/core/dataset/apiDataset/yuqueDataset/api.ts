@@ -53,6 +53,7 @@ type YuqueTocListResponse = {
 
 // 同一进程内，使用同一个缓存对象的浏览请求合并首次加载；结束后清除，不保存长期内存快照。
 const pendingSnapshots = new WeakMap<AsyncCache, Map<string, Promise<unknown>>>();
+// 实例配置优先；|| env 兜底仅在显式置空/未初始化/测试种子场景生效（见 common/dingtalk/endpoint.ts 同型注释）
 const getYuqueBaseUrl = () =>
   getSystemInstanceConfig().providers.dataSource.yuqueDatasetBaseUrl ||
   serviceEnv.YUQUE_DATASET_BASE_URL;
