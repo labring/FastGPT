@@ -33,22 +33,22 @@ const FileSelector = ({
   const { feConfigs } = useSystemStore();
   const teamPlanStatus = useUserStore((s) => s.teamPlanStatus);
 
-  const [teamPlanReady, setTeamPlanReady] = useState(
+  const [teamPlanLoadComplete, setTeamPlanLoadComplete] = useState(
     () => !!useUserStore.getState().teamPlanStatus
   );
 
+  // 已有套餐直接就绪；本地状态只记录异步加载完成，避免 effect 再触发一次渲染。
+  const teamPlanReady = !!teamPlanStatus || teamPlanLoadComplete;
+
   useEffect(() => {
-    if (teamPlanStatus) {
-      setTeamPlanReady(true);
-      return;
-    }
+    if (teamPlanStatus) return;
     let cancelled = false;
     useUserStore
       .getState()
       .initTeamPlanStatus()
       .catch(() => {})
       .finally(() => {
-        if (!cancelled) setTeamPlanReady(true);
+        if (!cancelled) setTeamPlanLoadComplete(true);
       });
     return () => {
       cancelled = true;
@@ -57,13 +57,18 @@ const FileSelector = ({
 
   // 文件数量限制：团队套餐 || 系统配置 || 默认值
   const maxCount =
-    teamPlanStatus?.standard?.maxUploadFileCount || feConfigs?.uploadFileMaxAmount || 1000;
+    teamPlanStatus?.standard?.maxUploadFileCount || feConfigs?.limit?.uploadFileMaxAmount || 1000;
   // 文件大小限制（bytes）：与 presignDatasetFilePostUrl / 代理上传 JWT 一致 — 须等套餐拉取后再算，避免未加载时用 feConfigs 显示 1000M、实际套餐为 5M
   const maxSize = useMemo(() => {
     if (!teamPlanReady) return null;
-    const mb = teamPlanStatus?.standard?.maxUploadFileSize ?? feConfigs?.uploadFileMaxSize ?? 500;
+    const mb =
+      teamPlanStatus?.standard?.maxUploadFileSize ?? feConfigs?.limit?.uploadFileMaxSize ?? 500;
     return mb * 1024 * 1024;
-  }, [teamPlanReady, teamPlanStatus?.standard?.maxUploadFileSize, feConfigs?.uploadFileMaxSize]);
+  }, [
+    teamPlanReady,
+    teamPlanStatus?.standard?.maxUploadFileSize,
+    feConfigs?.limit?.uploadFileMaxSize
+  ]);
 
   const { File, onOpen } = useSelectFile({
     fileType,

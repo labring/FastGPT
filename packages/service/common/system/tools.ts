@@ -5,11 +5,7 @@ import {
 } from '@fastgpt/global/common/system/types';
 import { isIPv6 } from 'net';
 import { getLogger, LogCategories } from '../logger';
-import {
-  getAgentSandboxArchiveMaxBytes,
-  getAgentSandboxMaxFileBytes,
-  getAgentSandboxSkillMaxBytes
-} from '../../core/ai/sandbox/config';
+import { getAgentSandboxSkillMaxBytes } from '../../core/ai/sandbox/config';
 import { hasAgentSandboxConfig, serviceEnv } from '../../env';
 
 const logger = getLogger(LogCategories.ERROR);
@@ -35,6 +31,26 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
     .strip()
     .parse(config.systemEnv);
 
+  // 兼容旧版后端策略配置；显式 systemEnv（包括空白名单）始终优先。
+  config.systemEnv.fileUrlWhitelist ??= Array.isArray(config.feConfigs.fileUrlWhitelist)
+    ? config.feConfigs.fileUrlWhitelist
+    : undefined;
+  config.systemEnv.ip_whitelist ??=
+    typeof config.feConfigs.ip_whitelist === 'string' ? config.feConfigs.ip_whitelist : undefined;
+  delete config.feConfigs.fileUrlWhitelist;
+  delete config.feConfigs.ip_whitelist;
+  delete config.feConfigs.evalFileMaxLines;
+  delete config.feConfigs.uploadFileMaxSize;
+  delete config.feConfigs.uploadFileMaxAmount;
+
+  // 旧文件/数据库配置可能仍包含已迁移到 getTicket 的字段，不再进入全局前端配置。
+  delete config.feConfigs.agentSandboxProxyUrl;
+  if (config.feConfigs.limit) {
+    delete config.feConfigs.limit.agentSandboxMaxFileBytes;
+    delete config.feConfigs.limit.agentSandboxArchiveMaxBytes;
+    delete config.feConfigs.limit.agentSandboxMaxSessionRuntime;
+  }
+
   // Special config computed
   config.feConfigs.showCustomPdfParse =
     !!config.systemEnv.customPdfParse?.url ||
@@ -45,13 +61,11 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   config.feConfigs.show_agent_sandbox = hasAgentSandboxConfig();
   config.feConfigs.show_agent_sandbox_free_tip =
     serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP || !!config.feConfigs.agentSandboxFree;
-  config.feConfigs.uploadFileMaxSize = serviceEnv.UPLOAD_FILE_MAX_SIZE;
-  config.feConfigs.uploadFileMaxAmount = serviceEnv.UPLOAD_FILE_MAX_AMOUNT;
   config.feConfigs.limit = {
     ...config.feConfigs.limit,
-    agentSandboxArchiveMaxBytes: getAgentSandboxArchiveMaxBytes(),
+    uploadFileMaxSize: serviceEnv.UPLOAD_FILE_MAX_SIZE,
+    uploadFileMaxAmount: serviceEnv.UPLOAD_FILE_MAX_AMOUNT,
     skillSandboxMaxBytes: getAgentSandboxSkillMaxBytes(),
-    agentSandboxMaxFileBytes: getAgentSandboxMaxFileBytes(),
     maxFolderDepth: serviceEnv.MAX_FOLDER_DEPTH
   };
 

@@ -16,9 +16,8 @@ const originalFeConfigs = global.feConfigs;
 /** 构造只影响 SSO 密码策略的 feConfigs，其余字段沿用运行时已有配置。 */
 const setSsoPasswordPolicy = (enabled: boolean) => {
   global.feConfigs = {
-    uploadFileMaxAmount: 10,
-    uploadFileMaxSize: 10,
     ...global.feConfigs,
+    limit: global.feConfigs.limit ?? { uploadFileMaxAmount: 10, uploadFileMaxSize: 10 },
     sso: {
       url: 'https://sso.example.com',
       disablePasswordForSsoUsers: enabled

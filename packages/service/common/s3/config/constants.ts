@@ -13,7 +13,7 @@ export const S3Buckets = {
   private: serviceEnv.STORAGE_PRIVATE_BUCKET
 } as const;
 
-export const getSystemMaxFileSize = () => global.feConfigs.uploadFileMaxSize || 1024; // MB, 默认 1024MB;
+export const getSystemMaxFileSize = () => global.feConfigs.limit?.uploadFileMaxSize ?? 1024; // MB, 默认 1024MB;
 
 export const S3_KEY_PATH_INVALID_CHARS = /[|\\/]/;
 

@@ -104,7 +104,7 @@ describe('useInitApp marketing params inside AppShell', () => {
     mocks.initConfigGeneration = undefined;
     vi.mocked(clientInitData).mockImplementation(async () => {
       mocks.initConfigGeneration = mocks.authGeneration;
-      return { feConfigs: { uploadFileMaxAmount: 1000, uploadFileMaxSize: 1000 } };
+      return { feConfigs: { limit: { uploadFileMaxAmount: 1000, uploadFileMaxSize: 1000 } } };
     });
     container = document.createElement('div');
     document.body.appendChild(container);

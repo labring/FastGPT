@@ -105,4 +105,46 @@ describe('initFastGPTConfig', () => {
       customSetting: 7
     });
   });
+  it('removes legacy sandbox connection and file limit settings while retaining unrelated limits', () => {
+    initFastGPTConfig({
+      feConfigs: {
+        agentSandboxProxyUrl: 'wss://old-proxy',
+        limit: { agentSandboxMaxFileBytes: 1, customLimit: 7 }
+      },
+      systemEnv: {}
+    } as any);
+    expect(global.feConfigs).not.toHaveProperty('agentSandboxProxyUrl');
+    expect(global.feConfigs.limit).not.toHaveProperty('agentSandboxMaxFileBytes');
+    expect(global.feConfigs.limit).toMatchObject({ customLimit: 7, maxFolderDepth: 4 });
+  });
+  it.each([undefined, []])(
+    'migrates legacy backend policies with explicit whitelist %s taking precedence',
+    (configured) => {
+      initFastGPTConfig({
+        feConfigs: {
+          uploadFileMaxSize: 1,
+          uploadFileMaxAmount: 2,
+          fileUrlWhitelist: ['private.internal'],
+          ip_whitelist: '10.0.0.1',
+          evalFileMaxLines: 99
+        },
+        systemEnv: { fileUrlWhitelist: configured }
+      } as any);
+      expect(global.systemEnv.fileUrlWhitelist).toEqual(configured ?? ['private.internal']);
+      expect(global.systemEnv.ip_whitelist).toBe('10.0.0.1');
+      expect(global.feConfigs.limit).toMatchObject({
+        uploadFileMaxAmount: 1000,
+        uploadFileMaxSize: 1000
+      });
+      for (const key of [
+        'fileUrlWhitelist',
+        'ip_whitelist',
+        'evalFileMaxLines',
+        'uploadFileMaxAmount',
+        'uploadFileMaxSize'
+      ]) {
+        expect(global.feConfigs).not.toHaveProperty(key);
+      }
+    }
+  );
 });

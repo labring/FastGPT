@@ -32,14 +32,14 @@ async function handler(
   const planStatus = await getTeamPlanStatus({ teamId });
   await assertUploadRateLimit({
     identity: String(userId),
-    limit: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount
+    limit: planStatus.standard?.maxUploadFileCount || global.feConfigs.limit.uploadFileMaxAmount
   });
 
   const result = await getS3DatasetSource().createUploadDatasetFileURL({
     datasetId,
     filename,
     size,
-    maxFileSize: planStatus.standard?.maxUploadFileSize ?? global.feConfigs.uploadFileMaxSize
+    maxFileSize: planStatus.standard?.maxUploadFileSize ?? global.feConfigs.limit.uploadFileMaxSize
   });
 
   return PresignDatasetFilePostUrlResponseSchema.parse(result);

@@ -115,8 +115,7 @@ describe('UpdateConfigBodySchema', () => {
       fastgpt: {
         feConfigs: {
           isPlus: true,
-          uploadFileMaxSize: '500',
-          uploadFileMaxAmount: '15'
+          limit: { uploadFileMaxSize: '500', uploadFileMaxAmount: '15' }
         }
       },
       fastgptPro: { someProKey: 'val' }
@@ -124,8 +123,7 @@ describe('UpdateConfigBodySchema', () => {
     expect(parsed.fastgpt).toEqual({
       feConfigs: {
         isPlus: true,
-        uploadFileMaxSize: 500,
-        uploadFileMaxAmount: 15
+        limit: { uploadFileMaxSize: 500, uploadFileMaxAmount: 15 }
       }
     });
     expect(parsed.fastgptPro).toEqual({ someProKey: 'val' });

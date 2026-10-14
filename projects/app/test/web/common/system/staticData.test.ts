@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import type { GetSystemInitDataResponse } from '@fastgpt/global/openapi/common/system/api';
 import {
   beginLogout,
@@ -11,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   getSystemInitData: vi.fn(),
   initStaticData: vi.fn(),
   authGeneration: 0,
-  feConfigs: undefined as Partial<FastGPTFeConfigsType> | undefined
+  feConfigs: undefined as GetSystemInitDataResponse['feConfigs']
 }));
 
 vi.mock('@/web/common/system/api', () => ({
@@ -52,8 +51,7 @@ describe('clientInitData request snapshots and retries', () => {
     mocks.authGeneration = 0;
     resetLogoutState();
     mocks.feConfigs = {
-      uploadFileMaxAmount: 7,
-      uploadFileMaxSize: 32,
+      limit: { uploadFileMaxAmount: 7, uploadFileMaxSize: 32 },
       systemTitle: 'cached'
     };
     mocks.initStaticData.mockImplementation((response: GetSystemInitDataResponse) => {
@@ -69,8 +67,7 @@ describe('clientInitData request snapshots and retries', () => {
   it('waits 500 ms between retries and commits new data only after the last allowed attempt succeeds', async () => {
     const response = {
       feConfigs: {
-        uploadFileMaxAmount: 3,
-        uploadFileMaxSize: 16,
+        limit: { uploadFileMaxAmount: 3, uploadFileMaxSize: 16 },
         systemTitle: 'FastGPT'
       }
     };
@@ -138,7 +135,10 @@ describe('clientInitData request snapshots and retries', () => {
       const older = deferResponse();
       const response = {
         isAuthenticated: false,
-        feConfigs: { uploadFileMaxAmount: 3, uploadFileMaxSize: 16, systemTitle: 'newest' }
+        feConfigs: {
+          limit: { uploadFileMaxAmount: 3, uploadFileMaxSize: 16 },
+          systemTitle: 'newest'
+        }
       };
       mocks.getSystemInitData.mockReturnValueOnce(older.promise).mockResolvedValueOnce(response);
       const pending = clientInitData();
@@ -174,7 +174,7 @@ describe('clientInitData request snapshots and retries', () => {
       mocks.authGeneration += 1;
       older.resolve({
         isAuthenticated: true,
-        feConfigs: { uploadFileMaxAmount: 3, uploadFileMaxSize: 16 }
+        feConfigs: { limit: { uploadFileMaxAmount: 3, uploadFileMaxSize: 16 } }
       });
 
       expect(await pending).toEqual({ feConfigs: cachedConfig ?? {} });
@@ -185,7 +185,7 @@ describe('clientInitData request snapshots and retries', () => {
   it('does not restart an obsolete request when its retry delay ends', async () => {
     const response = {
       isAuthenticated: false,
-      feConfigs: { uploadFileMaxAmount: 3, uploadFileMaxSize: 16, systemTitle: 'newest' }
+      feConfigs: { limit: { uploadFileMaxAmount: 3, uploadFileMaxSize: 16 }, systemTitle: 'newest' }
     };
     mocks.getSystemInitData
       .mockRejectedValueOnce(new Error('Temporary failure'))
@@ -206,7 +206,7 @@ describe('clientInitData request snapshots and retries', () => {
   it('shares an in-flight request within one session and starts a fresh request after completion', async () => {
     const response = {
       isAuthenticated: false,
-      feConfigs: { uploadFileMaxAmount: 3, uploadFileMaxSize: 16 }
+      feConfigs: { limit: { uploadFileMaxAmount: 3, uploadFileMaxSize: 16 } }
     };
     const held = deferResponse();
     mocks.getSystemInitData.mockReturnValueOnce(held.promise).mockResolvedValueOnce(response);
@@ -226,7 +226,7 @@ describe('clientInitData request snapshots and retries', () => {
       const held = deferResponse();
       const response = {
         isAuthenticated: true,
-        feConfigs: { uploadFileMaxAmount: 3, uploadFileMaxSize: 16 }
+        feConfigs: { limit: { uploadFileMaxAmount: 3, uploadFileMaxSize: 16 } }
       };
       mocks.getSystemInitData.mockReturnValueOnce(held.promise).mockResolvedValueOnce(response);
       const ordinary = clientInitData();
@@ -248,7 +248,7 @@ describe('clientInitData request snapshots and retries', () => {
     beginLogout();
     mocks.getSystemInitData.mockResolvedValueOnce({
       isAuthenticated: true,
-      feConfigs: { uploadFileMaxAmount: 3, uploadFileMaxSize: 16, show_pay: true }
+      feConfigs: { limit: { uploadFileMaxAmount: 3, uploadFileMaxSize: 16 }, show_pay: true }
     });
 
     expect(await clientInitData()).toEqual({ feConfigs: cachedConfig });

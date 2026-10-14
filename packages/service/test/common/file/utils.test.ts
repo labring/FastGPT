@@ -23,32 +23,20 @@ import {
 } from '@fastgpt/service/common/file/utils';
 
 describe('getFileMaxSize', () => {
-  it('should return default max size (1000MB) when uploadFileMaxSize is not set', () => {
-    const original = global.feConfigs?.uploadFileMaxSize;
-    global.feConfigs = { ...global.feConfigs } as any;
-    delete (global.feConfigs as any).uploadFileMaxSize;
-    expect(getFileMaxSize()).toBe(1000 * 1024 * 1024);
-    if (original !== undefined) {
-      (global.feConfigs as any).uploadFileMaxSize = original;
-    }
+  let originalConfig: typeof global.feConfigs;
+  beforeEach(() => {
+    originalConfig = global.feConfigs;
   });
-
-  it('should return configured max size in bytes', () => {
-    const original = global.feConfigs?.uploadFileMaxSize;
-    (global.feConfigs as any).uploadFileMaxSize = 500;
-    expect(getFileMaxSize()).toBe(500 * 1024 * 1024);
-    if (original !== undefined) {
-      (global.feConfigs as any).uploadFileMaxSize = original;
-    } else {
-      delete (global.feConfigs as any).uploadFileMaxSize;
-    }
+  afterEach(() => {
+    global.feConfigs = originalConfig;
   });
-
-  it('should handle zero value and fall back to default', () => {
-    (global.feConfigs as any).uploadFileMaxSize = 0;
-    // 0 is falsy, so it falls back to 1000
-    expect(getFileMaxSize()).toBe(1000 * 1024 * 1024);
-    delete (global.feConfigs as any).uploadFileMaxSize;
+  it.each([
+    [undefined, 1000],
+    [500, 500],
+    [0, 0]
+  ])('returns the configured size %s or the missing-value default in bytes', (value, expected) => {
+    global.feConfigs = { limit: { uploadFileMaxSize: value } } as any;
+    expect(getFileMaxSize()).toBe(expected * 1024 * 1024);
   });
 });
 

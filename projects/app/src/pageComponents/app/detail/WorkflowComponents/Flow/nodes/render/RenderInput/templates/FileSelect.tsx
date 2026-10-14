@@ -32,7 +32,7 @@ const FileSelectRender = ({ item, nodeId }: RenderInputProps) => {
     moduleMaxFileAmount: item.maxFiles,
     defaultModuleMaxFileAmount: 5,
     teamMaxFileAmount: teamPlanStatus?.standard?.maxUploadFileCount,
-    systemMaxFileAmount: feConfigs.uploadFileMaxAmount
+    systemMaxFileAmount: feConfigs.limit.uploadFileMaxAmount
   });
   const isMaxSelected = values.length >= maxSelectFiles;
 

@@ -119,16 +119,16 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .optional()
     .meta({ description: '在企业微信内置浏览器中访问时是否自动重定向到企微 OAuth 登录' }),
   accountCancellation: z
-    .looseObject({
+    .object({
       enabled: z.boolean().optional().meta({ description: '是否允许用户自助注销账号' })
     })
     .optional()
     .meta({ description: '账号注销配置' }),
   /** 仅暴露注销验证的布尔能力，不包含任何 Provider 密钥。 */
   accountVerification: z
-    .looseObject({
+    .object({
       accountCancellation: z
-        .looseObject({
+        .object({
           emailCode: z.boolean().optional().meta({ description: '注销时是否支持邮箱验证码校验' }),
           phoneCode: z
             .boolean()
@@ -226,7 +226,7 @@ export const FastGPTFeConfigsSchema = z.looseObject({
   favicon: z.string().optional().meta({ description: '站点浏览器 Favicon 图标地址' }),
 
   sso: z
-    .looseObject({
+    .object({
       icon: z.string().optional().meta({ description: 'SSO 登录方式图标' }),
       title: z.string().optional().meta({ description: 'SSO 登录按钮显示标题' }),
       url: z.string().optional().meta({ description: 'SSO 认证跳转地址' }),
@@ -241,12 +241,12 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .optional()
     .meta({ description: '企业单点登录（SSO）配置' }),
   oauth: z
-    .looseObject({
+    .object({
       github: z.string().optional().meta({ description: 'GitHub OAuth Client ID' }),
       google: z.string().optional().meta({ description: 'Google OAuth Client ID' }),
       wechat: z.string().optional().meta({ description: '微信开放平台 AppID' }),
       microsoft: z
-        .looseObject({
+        .object({
           clientId: z.string().optional().meta({ description: '微软 Azure AD Client ID' }),
           tenantId: z.string().optional().meta({ description: '微软 Azure AD 租户 ID' }),
           customButton: z.string().optional().meta({ description: '微软登录自定义按钮文案' })
@@ -259,23 +259,16 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .meta({ description: '第三方 OAuth 快捷登录配置' }),
   limit: z
     .looseObject({
+      uploadFileMaxAmount: NumSchema.default(1000).meta({ description: '单次最多上传文件数量' }),
+      uploadFileMaxSize: NumSchema.default(1000).meta({ description: '单文件最大大小限制（MB）' }),
       exportDatasetLimitMinutes: NumSchema.optional().meta({
         description: '知识库数据集导出频次限制（分钟）'
       }),
       websiteSyncLimitMinuted: NumSchema.optional().meta({
         description: '网页数据源自动同步时间间隔限制（分钟）'
       }),
-      agentSandboxMaxSessionRuntime: NumSchema.optional().meta({
-        description: 'Agent 沙箱最大会话运行时间（毫秒）'
-      }),
-      agentSandboxArchiveMaxBytes: NumSchema.optional().meta({
-        description: '沙箱归档文件大小限制（字节）'
-      }),
       skillSandboxMaxBytes: NumSchema.optional().meta({
         description: '技能沙箱最大体积限制（字节）'
-      }),
-      agentSandboxMaxFileBytes: NumSchema.optional().meta({
-        description: '沙箱单文件大小限制（字节）'
       }),
       workflowParallelRunMaxConcurrency: NumSchema.optional().meta({
         description: '工作流并行分支最大并发数'
@@ -284,12 +277,8 @@ export const FastGPTFeConfigsSchema = z.looseObject({
         description: '应用与知识库目录支持的最大嵌套深度'
       })
     })
-    .optional()
+    .default({ uploadFileMaxAmount: 1000, uploadFileMaxSize: 1000 })
     .meta({ description: '系统各项资源上限与速率限制' }),
-
-  uploadFileMaxAmount: NumSchema.default(1000).meta({ description: '单次最多上传文件数量' }),
-  uploadFileMaxSize: NumSchema.default(1000).meta({ description: '单文件最大大小限制（MB）' }),
-  evalFileMaxLines: NumSchema.optional().meta({ description: '评测用例文件最大支持行数' }),
 
   // Compute by systemEnv.customPdfParse
   showCustomPdfParse: z.boolean().optional().meta({ description: '是否启用高精自定义 PDF 解析器' }),
@@ -308,7 +297,7 @@ export const FastGPTFeConfigsSchema = z.looseObject({
   }),
 
   payConfig: z
-    .looseObject({
+    .object({
       wx: z.boolean().optional().meta({ description: '是否启用微信支付' }),
       alipay: z.boolean().optional().meta({ description: '是否启用支付宝支付' }),
       bank: z.boolean().optional().meta({ description: '是否启用公对公银行转账' })
@@ -316,15 +305,11 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .optional()
     .meta({ description: '可用支付方式配置' }),
   payFormUrl: z.string().optional().meta({ description: '第三方定制充值页面或工单表单跳转链接' }),
-  fileUrlWhitelist: z
-    .array(z.string())
-    .optional()
-    .meta({ description: '允许外部加载的文件资源 URL 域名白名单' }),
   customDomain: z
-    .looseObject({
+    .object({
       enable: z.boolean().optional().meta({ description: '是否开启自定义独立域名功能' }),
       domain: z
-        .looseObject({
+        .object({
           aliyun: z.string().optional().meta({ description: '阿里云 DNS 解析域名' }),
           tencent: z.string().optional().meta({ description: '腾讯云 DNS 解析域名' }),
           volcengine: z.string().optional().meta({ description: '火山引擎 DNS 解析域名' })
@@ -335,20 +320,11 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .optional()
     .meta({ description: '自定义独立域名绑定与 SSL 证书配置' }),
 
-  ip_whitelist: z
-    .string()
-    .optional()
-    .meta({ description: '系统访问限制的 IP 白名单列表（逗号分隔）' }),
-
   // tmp
   agentSandboxFree: z
     .boolean()
     .optional()
-    .meta({ description: 'Agent 代码沙箱环境是否处于免费体验期' }),
-  agentSandboxProxyUrl: z
-    .string()
-    .optional()
-    .meta({ description: 'Agent 代码沙箱服务内网代理地址' })
+    .meta({ description: 'Agent 代码沙箱环境是否处于免费体验期' })
 });
 export type FastGPTFeConfigsType = z.infer<typeof FastGPTFeConfigsSchema>;
 
@@ -426,7 +402,11 @@ export const SystemEnvSchema = z.looseObject({
   hnswMaxScanTuples: NumSchema.default(100000).meta({ description: 'HNSW 向量检索最大扫描元组数' }),
   customPdfParse: CustomPdfParseSchema.optional(),
   langfuse: LangfuseConfigSchema.optional(),
-  fileUrlWhitelist: z.array(z.string()).optional(),
+  fileUrlWhitelist: z
+    .array(z.string())
+    .optional()
+    .meta({ description: '后端外部文件 URL 域名白名单，不向客户端下发' }),
+  ip_whitelist: z.string().optional().meta({ description: '历史 IP 白名单，仅保存在服务端配置中' }),
   customDomain: CustomDomainSchema.optional(),
   workflowHttpNode: z
     .looseObject({

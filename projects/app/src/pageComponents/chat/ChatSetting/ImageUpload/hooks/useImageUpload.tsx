@@ -26,7 +26,7 @@ export const useImageUpload = ({ maxSize, onFileSelect }: UseImageUploadProps) =
 
   // use system config max size, but cap to match server limit
   // server validates the base64 string length (12MB), the original file should be smaller because the base64 encoding will increase the size by about 33%
-  const configMaxSize = maxSize || feConfigs?.uploadFileMaxSize || 100; // MB
+  const configMaxSize = maxSize || feConfigs?.limit?.uploadFileMaxSize || 100; // MB
   const serverLimitMB = 12; // server base64 limit
   const clientLimitMB = Math.floor(serverLimitMB * 0.75); // considering the base64 encoding overhead, the client limit is set to 9MB
   const finalMaxSize = Math.min(configMaxSize, clientLimitMB);

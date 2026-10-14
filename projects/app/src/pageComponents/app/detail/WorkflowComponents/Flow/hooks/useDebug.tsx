@@ -81,7 +81,7 @@ export const useDebug = () => {
   const { teamPlanStatus } = useUserStore();
   const debugFileMaxAmount = getUserFileAmountLimit({
     teamMaxFileAmount: teamPlanStatus?.standard?.maxUploadFileCount,
-    systemMaxFileAmount: feConfigs?.uploadFileMaxAmount ?? 10
+    systemMaxFileAmount: feConfigs?.limit?.uploadFileMaxAmount ?? 10
   });
   const { filteredVar, customVar, internalVar, variables } = useMemo(() => {
     const variables = appDetail.chatConfig?.variables || [];

@@ -28,8 +28,7 @@ describe('prepareWorkflowFileQuery', () => {
   beforeEach(() => {
     global.feConfigs = {
       ...originalFeConfigs,
-      uploadFileMaxAmount: 20,
-      uploadFileMaxSize: 100
+      limit: { uploadFileMaxAmount: 20, uploadFileMaxSize: 100 }
     };
   });
 

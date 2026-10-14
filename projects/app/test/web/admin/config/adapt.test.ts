@@ -139,7 +139,12 @@ describe('sandbox quota config round trip', () => {
     const input = createFormInput();
     input.siteSettings.systemEnv.agentSandboxMax = 12;
     input.siteSettings.systemEnv.agentSandboxMaxPerTeam = undefined;
-    input.siteSettings.limit = { exportDatasetLimitMinutes: 20, websiteSyncLimitMinuted: 60 };
+    input.siteSettings.limit = {
+      uploadFileMaxAmount: 7,
+      uploadFileMaxSize: 32,
+      exportDatasetLimitMinutes: 20,
+      websiteSyncLimitMinuted: 60
+    };
     const stored = formatFormData2ConfigStore(input);
     const form = formatConfigStore2FormSchema(stored);
 
@@ -150,8 +155,42 @@ describe('sandbox quota config round trip', () => {
     const saved = formatFormData2ConfigStore(form);
     expect(saved.fastgpt.systemEnv).toMatchObject(stored.fastgpt.systemEnv);
     expect(saved.fastgpt.feConfigs.limit).toEqual({
+      uploadFileMaxAmount: 7,
+      uploadFileMaxSize: 32,
       exportDatasetLimitMinutes: 20,
       websiteSyncLimitMinuted: 60
     });
   });
+});
+
+// 服务端策略只在 systemEnv 保存；兼容旧字段时不覆盖显式空白名单。
+describe('backend configuration boundary', () => {
+  it.each([undefined, []])(
+    'migrates legacy policies with systemEnv whitelist %s taking precedence',
+    (configured) => {
+      const form = formatConfigStore2FormSchema({
+        fastgpt: {
+          feConfigs: {
+            fileUrlWhitelist: ['private.internal'],
+            ip_whitelist: '10.0.0.1',
+            evalFileMaxLines: 100
+          },
+          systemEnv: { fileUrlWhitelist: configured }
+        } as any,
+        fastgptPro: {} as any
+      });
+      const stored = formatFormData2ConfigStore(form);
+      expect(stored.fastgpt.systemEnv.fileUrlWhitelist).toEqual(configured ?? ['private.internal']);
+      expect(stored.fastgpt.systemEnv.ip_whitelist).toBe('10.0.0.1');
+      for (const key of [
+        'fileUrlWhitelist',
+        'ip_whitelist',
+        'evalFileMaxLines',
+        'uploadFileMaxAmount',
+        'uploadFileMaxSize'
+      ]) {
+        expect(stored.fastgpt.feConfigs).not.toHaveProperty(key);
+      }
+    }
+  );
 });

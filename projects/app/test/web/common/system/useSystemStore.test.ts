@@ -36,7 +36,6 @@ describe('initStaticData through the real initialization pipeline', () => {
   let useUserStore: typeof import('@/web/support/user/useUserStore').useUserStore;
   let clientInitData: typeof import('@/web/common/system/staticData').clientInitData;
   let getDocPath: typeof import('@/web/common/system/doc').getDocPath;
-  let getSandboxProxyWsUrl: typeof import('@/pageComponents/chat/SandboxEditor/api').getSandboxProxyWsUrl;
   let initialState: ReturnType<typeof useSystemStore.getState>;
   let initialUserState: ReturnType<typeof useUserStore.getState>;
   const storage = new Map<string, string>();
@@ -51,7 +50,6 @@ describe('initStaticData through the real initialization pipeline', () => {
     ({ clientInitData } = await import('@/web/common/system/staticData'));
     ({ useUserStore } = await import('@/web/support/user/useUserStore'));
     ({ getDocPath } = await import('@/web/common/system/doc'));
-    ({ getSandboxProxyWsUrl } = await import('@/pageComponents/chat/SandboxEditor/api'));
     initialState = useSystemStore.getState();
     initialUserState = useUserStore.getState();
   });
@@ -77,12 +75,9 @@ describe('initStaticData through the real initialization pipeline', () => {
     global.feConfigs = {
       systemTitle: 'Custom FastGPT',
       docUrl: 'https://docs.example.com',
-      uploadFileMaxAmount: 7,
-      uploadFileMaxSize: 32,
+      limit: { uploadFileMaxAmount: 7, uploadFileMaxSize: 32, maxFolderDepth: 4 },
       show_compliance_copywriting: true,
       enable_team_model: true,
-      agentSandboxProxyUrl: 'https://sandbox.example.com/',
-      limit: { agentSandboxMaxFileBytes: 2 * 1024 ** 2, maxFolderDepth: 4 },
       payConfig: { wx: true },
       futurePrivateField: 'private-future-config'
     };
@@ -116,11 +111,11 @@ describe('initStaticData through the real initialization pipeline', () => {
     const { feConfigs: publicConfig } = await clientInitData();
     expect(publicConfig).not.toHaveProperty('payConfig');
     expect(publicConfig).not.toHaveProperty('futurePrivateField');
-    expect(publicConfig.agentSandboxProxyUrl).toBe('https://sandbox.example.com/');
-    expect(publicConfig.limit).toEqual({ agentSandboxMaxFileBytes: 2 * 1024 ** 2 });
-    expect(publicConfig.uploadFileMaxSize).toBe(32);
+    expect(publicConfig).not.toHaveProperty('agentSandboxProxyUrl');
+    expect(publicConfig.limit).toEqual({ uploadFileMaxAmount: 7, uploadFileMaxSize: 32 });
+    expect(publicConfig.limit.uploadFileMaxSize).toBe(32);
     expect(useSystemStore.getState().feConfigs).toEqual(publicConfig);
-    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v6_config-1');
+    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v8_config-1');
     expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(publicConfig);
 
     const cached = await clientInitData();
@@ -134,12 +129,9 @@ describe('initStaticData through the real initialization pipeline', () => {
     const authenticated = useSystemStore.getState();
     expect(authenticated.feConfigs.payConfig).toEqual({ wx: true });
     expect(authenticated.feConfigs).toMatchObject({
-      uploadFileMaxAmount: 7,
-      uploadFileMaxSize: 32,
+      limit: { uploadFileMaxAmount: 7, uploadFileMaxSize: 32, maxFolderDepth: 4 },
       show_compliance_copywriting: true,
-      enable_team_model: true,
-      agentSandboxProxyUrl: 'https://sandbox.example.com/',
-      limit: global.feConfigs.limit
+      enable_team_model: true
     });
     expect(authenticated.initDataBufferId).toBe('config-1');
     expect(authenticated.systemVersion).toBe('4.17.3');
@@ -162,13 +154,13 @@ describe('initStaticData through the real initialization pipeline', () => {
     const anonymous = await clientInitData();
     expect(anonymous.feConfigs).toEqual(publicConfig);
     expect(useSystemStore.getState().feConfigs).toEqual(publicConfig);
-    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v6_config-1');
+    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v8_config-1');
     expect(useSystemStore.getState().systemVersion).toBe('4.17.3');
     expect(useSystemStore.getState().authenticatedConfigGeneration).toBeUndefined();
     expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(publicConfig);
 
     expect(mocks.GET.mock.calls).toEqual(
-      ['unAuth_config-1', 'unAuth_v6_config-1', 'unAuth_v6_config-1', 'config-1', 'config-1'].map(
+      ['unAuth_config-1', 'unAuth_v8_config-1', 'unAuth_v8_config-1', 'config-1', 'config-1'].map(
         (bufferId) => ['/common/system/getInitData', { bufferId }]
       )
     );
@@ -194,7 +186,7 @@ describe('initStaticData through the real initialization pipeline', () => {
       expect(await olderRequest).toEqual(latest);
 
       expect(useSystemStore.getState().initDataBufferId).toBe(
-        login ? 'config-1' : 'unAuth_v6_config-1'
+        login ? 'config-1' : 'unAuth_v8_config-1'
       );
       expect(Boolean(useSystemStore.getState().feConfigs.payConfig)).toBe(login);
       expect(useSystemStore.getState().authenticatedConfigGeneration).toBe(
@@ -214,36 +206,41 @@ describe('initStaticData through the real initialization pipeline', () => {
     expect(useSystemStore.getState().feConfigs).not.toHaveProperty('payConfig');
   });
 
-  it('removes channel metadata from legacy persisted stores without losing other configuration', async () => {
-    storage.set(
-      'globalStore',
-      JSON.stringify({
-        version: 1,
-        state: {
-          feConfigs: global.feConfigs,
-          initDataBufferId: 'config-1',
-          aiproxyChannels: global.aiproxyChannelsCache,
-          modelProviders: ['legacy-provider'],
-          modelProviderMap: { old: 'provider' },
-          defaultModels: { old: 'model' }
-        }
-      })
-    );
+  it.each([1, 2])(
+    'clears legacy config and channel caches from version %s while retaining unrelated state',
+    async (version) => {
+      storage.set(
+        'globalStore',
+        JSON.stringify({
+          version,
+          state: {
+            gitStar: 123,
+            feConfigs: global.feConfigs,
+            initDataBufferId: 'config-1',
+            aiproxyChannels: global.aiproxyChannelsCache,
+            modelProviders: ['legacy-provider'],
+            modelProviderMap: { old: 'provider' },
+            defaultModels: { old: 'model' }
+          }
+        })
+      );
 
-    await useSystemStore.persist.rehydrate();
+      await useSystemStore.persist.rehydrate();
 
-    expect(useSystemStore.getState().feConfigs).toEqual(global.feConfigs);
-    expect(useSystemStore.getState().initDataBufferId).toBe('config-1');
-    expect(useSystemStore.getState()).not.toHaveProperty('aiproxyChannels');
-    expect(useSystemStore.getState()).not.toHaveProperty('modelProviders');
-    expect(useSystemStore.getState()).not.toHaveProperty('modelProviderMap');
-    expect(useSystemStore.getState()).not.toHaveProperty('defaultModels');
-    const persisted = JSON.parse(storage.get('globalStore')!);
-    expect(persisted.version).toBe(2);
-    expect(persisted.state).not.toHaveProperty('aiproxyChannels');
-  });
+      expect(useSystemStore.getState().feConfigs).toEqual(initialState.feConfigs);
+      expect(useSystemStore.getState().initDataBufferId).toBeUndefined();
+      expect(useSystemStore.getState()).not.toHaveProperty('aiproxyChannels');
+      expect(useSystemStore.getState()).not.toHaveProperty('modelProviders');
+      expect(useSystemStore.getState()).not.toHaveProperty('modelProviderMap');
+      expect(useSystemStore.getState()).not.toHaveProperty('defaultModels');
+      const persisted = JSON.parse(storage.get('globalStore')!);
+      expect(persisted.version).toBe(3);
+      expect(persisted.state.gitStar).toBe(123);
+      expect(persisted.state).not.toHaveProperty('aiproxyChannels');
+    }
+  );
 
-  it('keeps public plans and real documentation/sandbox consumers available across cache hits', async () => {
+  it('keeps public plans and documentation consumers available across cache hits', async () => {
     mocks.referer = 'https://app.example.com/login';
     await clientInitData(3, true);
     expect(mocks.GET).toHaveBeenLastCalledWith('/common/system/getInitData', {
@@ -260,24 +257,18 @@ describe('initStaticData through the real initialization pipeline', () => {
     expect(getDocPath('/guide/version/cloud/privacy')).toBe(
       'https://docs.example.com/guide/version/cloud/privacy'
     );
-    expect(getSandboxProxyWsUrl({ channel: 'fs', ticket: 'share/ticket?x=1' })).toBe(
-      'https://sandbox.example.com/fs?ticket=share%2Fticket%3Fx%3D1'
-    );
-    expect(useSystemStore.getState().feConfigs.limit?.agentSandboxMaxFileBytes).toBe(2 * 1024 ** 2);
   });
 
   it('preserves zero upload limits in memory and persistence across an anonymous cache hit', async () => {
-    global.feConfigs.uploadFileMaxAmount = 0;
-    global.feConfigs.uploadFileMaxSize = 0;
+    global.feConfigs.limit.uploadFileMaxAmount = 0;
+    global.feConfigs.limit.uploadFileMaxSize = 0;
     await clientInitData();
     await clientInitData();
     expect(useSystemStore.getState().feConfigs).toMatchObject({
-      uploadFileMaxAmount: 0,
-      uploadFileMaxSize: 0
+      limit: { uploadFileMaxAmount: 0, uploadFileMaxSize: 0 }
     });
     expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toMatchObject({
-      uploadFileMaxAmount: 0,
-      uploadFileMaxSize: 0
+      limit: { uploadFileMaxAmount: 0, uploadFileMaxSize: 0 }
     });
   });
 });

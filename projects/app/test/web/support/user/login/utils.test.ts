@@ -16,8 +16,7 @@ const labels = {
 };
 
 const createFeConfigs = (overrides: Partial<FastGPTFeConfigsType> = {}): FastGPTFeConfigsType => ({
-  uploadFileMaxAmount: 10,
-  uploadFileMaxSize: 10,
+  limit: { uploadFileMaxAmount: 10, uploadFileMaxSize: 10 },
   ...overrides
 });
 

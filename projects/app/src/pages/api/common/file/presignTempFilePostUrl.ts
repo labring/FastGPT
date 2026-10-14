@@ -32,7 +32,7 @@ async function handler(
 
   await assertUploadRateLimit({
     identity: String(tmbId),
-    limit: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount
+    limit: planStatus.standard?.maxUploadFileCount || global.feConfigs.limit.uploadFileMaxAmount
   });
 
   const bucket = new S3PrivateBucket();
@@ -43,7 +43,8 @@ async function handler(
       { rawKey: fileKey, filename, ...(size !== undefined ? { size } : {}) },
       {
         expiredHours: 1,
-        maxFileSize: planStatus.standard?.maxUploadFileSize ?? global.feConfigs.uploadFileMaxSize
+        maxFileSize:
+          planStatus.standard?.maxUploadFileSize ?? global.feConfigs.limit.uploadFileMaxSize
       }
     )
   );

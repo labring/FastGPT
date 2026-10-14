@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import { SubPlanSchema } from '../../../support/wallet/sub/type';
-import type { FastGPTFeConfigsType } from '../../../common/system/types';
+import { FastGPTFeConfigsSchema } from '../../../common/system/types';
 import { BoolSchema, NumSchema } from '../../../common/zod';
 
 /* ============================================================================
  * API: 获取系统初始化数据
  * Route: GET /api/common/system/getInitData
  * Method: GET
- * Description: 登录后返回完整前端配置；匿名统一返回公共页面必要字段，价格页额外获取公开套餐信息；模型目录独立加载
+ * Description: 登录后返回声明的公开前端配置；匿名统一返回公共页面必要字段，价格页额外获取公开套餐信息；模型目录独立加载
  * Tags: ['系统接口', 'Read']
  * ============================================================================ */
 
@@ -24,16 +24,20 @@ export const GetSystemInitDataQuerySchema = z.object({
 });
 export type GetSystemInitDataQuery = z.infer<typeof GetSystemInitDataQuerySchema>;
 
-const FastGPTFeConfigsSchema = z.looseObject({
-  // 匿名统一返回公共页面依赖的字段；客户端仍兼容缺省上传限制。
-  uploadFileMaxAmount: NumSchema.optional(),
-  uploadFileMaxSize: NumSchema.optional(),
-  marketplaceUrl: z.string().url().optional().meta({
-    example: 'https://v2.marketplace.fastgpt.cn',
-    description: '插件市场服务地址'
-  }),
-  disableMarketplace: BoolSchema.optional().meta({ description: '是否隐藏插件市场安装入口' })
-}) as z.ZodType<Partial<FastGPTFeConfigsType>>;
+// 配置存储兼容历史扩展；传输结构只暴露声明字段，且精简响应不补业务默认值。
+const ClientFeConfigsSchema = FastGPTFeConfigsSchema.partial()
+  .strip()
+  .extend({
+    limit: FastGPTFeConfigsSchema.shape.limit
+      .unwrap()
+      .partial()
+      .strip()
+      .extend({
+        uploadFileMaxAmount: NumSchema.optional(),
+        uploadFileMaxSize: NumSchema.optional()
+      })
+      .optional()
+  });
 
 export const GetSystemInitDataResponseSchema = z.object({
   isAuthenticated: z.boolean().default(false).meta({
@@ -43,11 +47,11 @@ export const GetSystemInitDataResponseSchema = z.object({
   }),
   bufferId: z.string().optional().meta({
     example: 'system-config-20260811',
-    description: '当前系统配置缓存标识；未登录时带 unAuth_v6_ 前缀，包含匿名过滤规则版本'
+    description: '当前系统配置缓存标识；未登录时带 unAuth_v8_ 前缀，包含匿名过滤规则版本'
   }),
-  feConfigs: FastGPTFeConfigsSchema.optional().meta({
+  feConfigs: ClientFeConfigsSchema.optional().meta({
     description:
-      '前端功能开关和链接配置；登录后返回完整配置，匿名统一投影登录、价格和分享聊天所需的公共字段白名单'
+      '前端功能开关和链接配置；登录后仅返回 Schema 声明的公开字段，匿名统一投影登录、价格和分享聊天所需的公共字段白名单'
   }),
   subPlans: SubPlanSchema.optional().meta({
     description: '系统套餐配置；登录用户在缓存未命中时返回；请求额外套餐或匿名价格页时始终返回'

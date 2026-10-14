@@ -69,11 +69,15 @@ const StandardPlanContentList = ({
       ticketResponseTime: standplan?.ticketResponseTime ?? plan.ticketResponseTime,
       customDomain: standplan?.customDomain ?? plan.customDomain,
       maxUploadFileSize: formatFileSize(
-        (standplan?.maxUploadFileSize || plan.maxUploadFileSize || feConfigs.uploadFileMaxSize) *
+        (standplan?.maxUploadFileSize ||
+          plan.maxUploadFileSize ||
+          feConfigs.limit.uploadFileMaxSize) *
           1024 ** 2
       ),
       maxUploadFileCount:
-        standplan?.maxUploadFileCount || plan.maxUploadFileCount || feConfigs.uploadFileMaxAmount,
+        standplan?.maxUploadFileCount ||
+        plan.maxUploadFileCount ||
+        feConfigs.limit.uploadFileMaxAmount,
       enableSandbox: standplan?.enableSandbox ?? plan.enableSandbox
     };
   }, [
@@ -97,8 +101,8 @@ const StandardPlanContentList = ({
     standplan?.maxUploadFileSize,
     standplan?.maxUploadFileCount,
     standplan?.enableSandbox,
-    feConfigs?.uploadFileMaxSize,
-    feConfigs?.uploadFileMaxAmount
+    feConfigs?.limit?.uploadFileMaxSize,
+    feConfigs?.limit?.uploadFileMaxAmount
   ]);
 
   return planContent ? (

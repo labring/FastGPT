@@ -129,7 +129,7 @@ const InputTypeConfig = ({
   const maxSelectFiles = Math.min(
     getUserFileAmountLimit({
       teamMaxFileAmount: teamPlanStatus?.standard?.maxUploadFileCount,
-      systemMaxFileAmount: feConfigs.uploadFileMaxAmount
+      systemMaxFileAmount: feConfigs.limit.uploadFileMaxAmount
     }),
     50
   );

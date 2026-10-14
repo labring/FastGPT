@@ -42,12 +42,9 @@ const publicConfig = {
       customButton: 'Company Microsoft'
     }
   },
-  uploadFileMaxAmount: 7,
-  uploadFileMaxSize: 32,
+  limit: { uploadFileMaxAmount: 7, uploadFileMaxSize: 32 },
   show_compliance_copywriting: true,
-  enable_team_model: true,
-  agentSandboxProxyUrl: 'https://sandbox.example.com',
-  limit: { agentSandboxMaxFileBytes: 2 * 1024 ** 2 }
+  enable_team_model: true
 } satisfies FastGPTFeConfigsType;
 
 const auth = {
@@ -61,6 +58,15 @@ const auth = {
   isRoot: false,
   sessionId: 'session-1'
 };
+
+const expectedAuthenticatedConfig = () => ({
+  ...structuredClone(publicConfig),
+  limit: { ...publicConfig.limit, workflowParallelRunMaxConcurrency: 20, maxFolderDepth: 4 },
+  show_pay: true,
+  payConfig: { wx: true, alipay: true },
+  payFormUrl: 'https://pay.example.com',
+  teamMode: 'sync'
+});
 
 const channel = {
   channelId: 1,
@@ -101,7 +107,7 @@ describe('getInitData anonymous configuration filtering', () => {
       payFormUrl: 'https://pay.example.com',
       teamMode: 'sync',
       futurePrivateField: 'private-future-config'
-    };
+    } as typeof global.feConfigs;
   });
 
   afterEach(() => {
@@ -122,7 +128,7 @@ describe('getInitData anonymous configuration filtering', () => {
     expect(code).toBe(200);
     expect(data).toEqual({
       isAuthenticated: false,
-      bufferId: 'unAuth_v6_config-1',
+      bufferId: 'unAuth_v8_config-1',
       feConfigs: publicConfig
     });
     expect(global.feConfigs).toEqual(originalConfig);
@@ -132,14 +138,14 @@ describe('getInitData anonymous configuration filtering', () => {
     const { code, data } = await Call(handler, {
       auth,
       headers: {},
-      query: { bufferId: 'unAuth_v6_config-1' }
+      query: { bufferId: 'unAuth_v8_config-1' }
     });
 
     expect(code).toBe(200);
     expect(data).toEqual({
       isAuthenticated: true,
       bufferId: 'config-1',
-      feConfigs: global.feConfigs,
+      feConfigs: expectedAuthenticatedConfig(),
       subPlans: global.subPlans,
       systemVersion: '4.17.3'
     });
@@ -151,7 +157,7 @@ describe('getInitData anonymous configuration filtering', () => {
     expect(data).toEqual({
       isAuthenticated: true,
       bufferId: 'config-1',
-      feConfigs: global.feConfigs,
+      feConfigs: expectedAuthenticatedConfig(),
       systemVersion: '4.17.3'
     });
   });
@@ -163,32 +169,32 @@ describe('getInitData anonymous configuration filtering', () => {
     'config-1',
     'unAuth_v4_chat_config-1',
     'unAuth_v5_config-1',
-    'unAuth_v6_config-old',
+    'unAuth_v8_config-old',
     'unAuth_v4_share_config-1'
   ])('refreshes stale or authenticated cache %s with filtered data', async (bufferId) => {
     const { data } = await Call(handler, { headers: {}, query: { bufferId } });
 
-    expect(data.bufferId).toBe('unAuth_v6_config-1');
+    expect(data.bufferId).toBe('unAuth_v8_config-1');
     expect(data.feConfigs).toEqual(publicConfig);
   });
 
   it('retains the anonymous cache-hit response only for the current policy version', async () => {
     const { data } = await Call(handler, {
       headers: {},
-      query: { bufferId: 'unAuth_v6_config-1' }
+      query: { bufferId: 'unAuth_v8_config-1' }
     });
 
-    expect(data).toEqual({ isAuthenticated: false, bufferId: 'unAuth_v6_config-1' });
+    expect(data).toEqual({ isAuthenticated: false, bufferId: 'unAuth_v8_config-1' });
   });
 
   it.each([
     {
       headers: { referer: 'https://app.example.com/price?resumePurchase=1#standard' },
-      query: { bufferId: 'unAuth_v6_config-1' }
+      query: { bufferId: 'unAuth_v8_config-1' }
     },
     {
       headers: { referer: 'https://app.example.com/login' },
-      query: { bufferId: 'unAuth_v6_config-1', includeSubPlans: 'true' }
+      query: { bufferId: 'unAuth_v8_config-1', includeSubPlans: 'true' }
     }
   ])(
     'returns filtered configs and public plans despite a matching anonymous buffer: %s',
@@ -219,19 +225,17 @@ describe('getInitData anonymous configuration filtering', () => {
   it.each([
     {
       name: 'missing optional login and sandbox settings',
-      config: { uploadFileMaxAmount: 3, uploadFileMaxSize: 16 }
+      config: { limit: { uploadFileMaxAmount: 3, uploadFileMaxSize: 16 } }
     },
     {
       name: 'false, zero and empty nested settings without Microsoft',
       config: {
-        uploadFileMaxAmount: 0,
-        uploadFileMaxSize: 0,
+        limit: { uploadFileMaxAmount: 0, uploadFileMaxSize: 0 },
         isPlus: false,
         wecomLoginAutoRedirect: false,
         show_compliance_copywriting: false,
         oauth: { wecom: false },
-        sso: {},
-        limit: { agentSandboxMaxFileBytes: 0 }
+        sso: {}
       }
     }
   ])('preserves $name', async ({ config }) => {
@@ -248,7 +252,7 @@ describe('getInitData anonymous configuration filtering', () => {
       headers: { referer: 'https://app.example.com/login' }
     });
 
-    expect(data.bufferId).toBe('unAuth_v6_config-1');
+    expect(data.bufferId).toBe('unAuth_v8_config-1');
     expect(data.feConfigs).not.toHaveProperty('payConfig');
   });
 
@@ -290,8 +294,68 @@ describe('getInitData anonymous configuration filtering', () => {
     expect(data.subPlans).toEqual(global.subPlans);
   });
 
+  it.each([false, true])(
+    'removes legacy sandbox config for authenticated=%s without mutating global state',
+    async (authenticated) => {
+      global.feConfigs.agentSandboxProxyUrl = 'wss://private-proxy.example.com';
+      global.feConfigs.fileUrlWhitelist = ['private.internal'];
+      global.feConfigs.ip_whitelist = '10.0.0.1';
+      global.feConfigs.evalFileMaxLines = 99;
+      Object.assign(global.feConfigs, {
+        accountCancellation: { enabled: true, secret: 'private' }
+      });
+      Object.assign(global.feConfigs, {
+        accountVerification: {
+          accountCancellation: { emailCode: true, secret: 'private' },
+          secret: 'private'
+        }
+      });
+      Object.assign(global.feConfigs, {
+        customDomain: {
+          enable: true,
+          kc: { aliyun: 'private' },
+          domain: { aliyun: 'public.example.com', secret: 'private' }
+        }
+      });
+      Object.assign(global.feConfigs, { payConfig: { wx: true, secret: 'private' } });
+      Object.assign(global.feConfigs, {
+        navbarItems: [
+          { id: 'link', name: 'link', avatar: '', url: '/price', isActive: true, secret: 'private' }
+        ]
+      });
+      Object.assign(global.feConfigs, {
+        externalProviderWorkflowVariables: [
+          { name: 'var', key: 'var', intro: '', isOpen: true, secret: 'private' }
+        ]
+      });
+      global.feConfigs.limit = { ...global.feConfigs.limit, agentSandboxMaxFileBytes: 1024 };
+      const originalConfig = structuredClone(global.feConfigs);
+      const { data } = await Call(handler, { headers: {}, ...(authenticated && { auth }) });
+      for (const key of [
+        'agentSandboxProxyUrl',
+        'fileUrlWhitelist',
+        'ip_whitelist',
+        'evalFileMaxLines',
+        'futurePrivateField'
+      ]) {
+        expect(data.feConfigs).not.toHaveProperty(key);
+      }
+      expect(JSON.stringify(data.feConfigs)).not.toContain('private');
+      if (authenticated) {
+        expect(data.feConfigs.accountCancellation).toEqual({ enabled: true });
+        expect(data.feConfigs.customDomain).toEqual({
+          enable: true,
+          domain: { aliyun: 'public.example.com' }
+        });
+        expect(data.feConfigs.externalProviderWorkflowVariables[0].key).toBe('var');
+      }
+      expect(data.feConfigs.limit ?? {}).not.toHaveProperty('agentSandboxMaxFileBytes');
+      expect(global.feConfigs).toEqual(originalConfig);
+    }
+  );
+
   it('reports invalid response data as an internal schema error', async () => {
-    global.feConfigs.uploadFileMaxSize = Number.NaN;
+    global.feConfigs.limit.uploadFileMaxSize = Number.NaN;
     const invalidResponse = await Call(handler, { auth, headers: {} });
 
     expect(invalidResponse.code).toBe(500);

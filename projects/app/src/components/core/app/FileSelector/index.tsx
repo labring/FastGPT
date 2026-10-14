@@ -395,11 +395,11 @@ const FileSelector = ({
     moduleMaxFileAmount: maxFiles,
     defaultModuleMaxFileAmount: 5,
     teamMaxFileAmount: teamPlanStatus?.standard?.maxUploadFileCount,
-    systemMaxFileAmount: feConfigs?.uploadFileMaxAmount ?? 10
+    systemMaxFileAmount: feConfigs?.limit?.uploadFileMaxAmount ?? 10
   });
   const maxSize = getFileSizeLimitBytes({
     teamMaxFileSize: teamPlanStatus?.standard?.maxUploadFileSize,
-    systemMaxFileSize: feConfigs?.uploadFileMaxSize ?? 500
+    systemMaxFileSize: feConfigs?.limit?.uploadFileMaxSize ?? 500
   });
   const canSelectFileAmount = Math.max(maxSelectFiles - fileList.length, 0);
   const isMaxSelected = canSelectFileAmount <= 0;

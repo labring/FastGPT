@@ -50,7 +50,7 @@ export const createAuthorizedChatFileUploadUrl = async ({
   const planStatus = await getTeamPlanStatus({ teamId });
   await assertUploadRateLimit({
     identity: uid,
-    limit: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount
+    limit: planStatus.standard?.maxUploadFileCount || global.feConfigs.limit.uploadFileMaxAmount
   });
 
   return getS3ChatSource().createUploadChatFileURL({
@@ -65,6 +65,6 @@ export const createAuthorizedChatFileUploadUrl = async ({
     uId: uid,
     allowedExtensions,
     extensionRules,
-    maxFileSize: planStatus.standard?.maxUploadFileSize ?? global.feConfigs.uploadFileMaxSize
+    maxFileSize: planStatus.standard?.maxUploadFileSize ?? global.feConfigs.limit.uploadFileMaxSize
   });
 };

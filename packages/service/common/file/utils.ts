@@ -6,7 +6,7 @@ import { getLogger, LogCategories } from '../logger';
 const logger = getLogger(LogCategories.INFRA.FILE);
 
 export const getFileMaxSize = () => {
-  const mb = global.feConfigs.uploadFileMaxSize || 1000;
+  const mb = global.feConfigs.limit?.uploadFileMaxSize ?? 1000;
   return mb * 1024 * 1024;
 };
 

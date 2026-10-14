@@ -174,10 +174,7 @@ export type ConfigFormType = {
       systemTitle: string;
       customApiDomain: string;
       customSharePageDomain: string;
-      uploadFileMaxAmount: number;
-      uploadFileMaxSize: number;
       botIframeUrl: string;
-      ip_whitelist?: string;
       customDomain?: {
         enable?: boolean;
         domain?: {
@@ -202,6 +199,7 @@ export type ConfigFormType = {
       hnswMaxScanTuples: number;
       customPdfParse?: customPdfParseType;
       fileUrlWhitelist?: string[];
+      ip_whitelist?: string;
       workflowHttpNode?: {
         ignoreHttpsCertificate?: boolean;
       };

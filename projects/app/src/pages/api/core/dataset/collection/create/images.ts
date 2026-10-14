@@ -34,7 +34,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
   try {
     const result = await multer.resolveMultipleFormData({
       request: req,
-      maxFileSize: global.feConfigs.uploadFileMaxSize,
+      maxFileSize: global.feConfigs.limit.uploadFileMaxSize,
       allowedExtensions: parseAllowedExtensions(datasetImageCollectionFileType)
     });
     filepaths.push(...result.fileMetadata.map((item) => item.path));
@@ -59,7 +59,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     const planStatus = await getTeamPlanStatus({ teamId });
     await assertUploadRateLimit({
       identity: String(tmbId),
-      limit: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
+      limit: planStatus.standard?.maxUploadFileCount || global.feConfigs.limit.uploadFileMaxAmount,
       increment: result.fileMetadata.length
     });
     const modelHandle = await getTeamModelHandle({ teamId });

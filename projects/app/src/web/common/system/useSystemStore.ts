@@ -172,8 +172,7 @@ export const useSystemStore = create<State>()(
         authenticatedConfigGeneration: undefined,
         initConfigGeneration: undefined,
         feConfigs: {
-          uploadFileMaxSize: 1000,
-          uploadFileMaxAmount: 1000
+          limit: { uploadFileMaxSize: 1000, uploadFileMaxAmount: 1000 }
         },
         subPlans: undefined,
         systemVersion: '0.0.0',
@@ -200,8 +199,11 @@ export const useSystemStore = create<State>()(
               // 只补客户端既有上传默认值，不合并上一页字段；响应中的 0 也必须保留。
               state.feConfigs = {
                 ...res.feConfigs,
-                uploadFileMaxAmount: res.feConfigs.uploadFileMaxAmount ?? 1000,
-                uploadFileMaxSize: res.feConfigs.uploadFileMaxSize ?? 1000
+                limit: {
+                  ...res.feConfigs.limit,
+                  uploadFileMaxAmount: res.feConfigs.limit?.uploadFileMaxAmount ?? 1000,
+                  uploadFileMaxSize: res.feConfigs.limit?.uploadFileMaxSize ?? 1000
+                }
               };
             }
             state.subPlans = res.subPlans ?? state.subPlans;
@@ -211,17 +213,23 @@ export const useSystemStore = create<State>()(
       })),
       {
         name: 'globalStore',
-        version: 2,
-        // 渠道类型改为模型管理页按需加载，升级时清理旧全局缓存。
-        migrate: (persistedState) => {
+        version: 3,
+        // 清理旧结构与可能透传的私有字段，下一次初始化重新确认配置。
+        migrate: (persistedState): Partial<State> => {
           const {
+            feConfigs: _feConfigs,
+            initDataBufferId: _initDataBufferId,
             aiproxyChannels: _aiproxyChannels,
             modelProviders: _modelProviders,
             modelProviderMap: _modelProviderMap,
             defaultModels: _defaultModels,
             ...systemState
           } = persistedState as Record<string, unknown>;
-          return systemState;
+          return {
+            ...systemState,
+            feConfigs: { limit: { uploadFileMaxAmount: 1000, uploadFileMaxSize: 1000 } },
+            initDataBufferId: undefined
+          };
         },
         partialize: (state) => ({
           gitStar: state.gitStar,
