@@ -16,6 +16,14 @@ export const getServiceRequestMaxContentLength = () =>
   1024 *
   1024;
 
+/**
+ * 媒体是否需要在服务端转 base64（兼容不支持远程 URL 的模型）。
+ * 实例配置 feature.multipleDataToBase64 为权威来源；快照叶子缺省时回落 env
+ * （仅测试种子快照场景）。统一 helper 防止各消费点写法漂移。
+ */
+export const getMultipleDataToBase64 = () =>
+  getSystemInstanceConfig().feature.multipleDataToBase64 ?? serviceEnv.MULTIPLE_DATA_TO_BASE64;
+
 export const serviceRequestMaxContentLength =
   serviceEnv.SERVICE_REQUEST_MAX_CONTENT_LENGTH * 1024 * 1024;
 
