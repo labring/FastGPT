@@ -278,6 +278,41 @@ describe('Sangfor provider', () => {
       snapshot.providers.documentParse.sangfor = originalSangfor;
     }
   });
+
+  it('never pairs sangfor.url with the legacy customPdf key (atomic group resolution)', async () => {
+    // OCR 跨来源凭据风险：sangfor.url 已配置、sangfor.key 为空时，
+    // 不得把 customPdf 服务商的 Bearer Token 发给深信服服务——url/key 成组解析
+    const snapshot = (global as any).systemInstanceConfig;
+    const originalProvider = snapshot.providers.documentParse.provider;
+    const originalSangfor = snapshot.providers.documentParse.sangfor;
+    snapshot.providers.documentParse.provider = 'sangfor';
+    snapshot.providers.documentParse.sangfor = {
+      url: 'http://db-parser.test/parse',
+      key: '',
+      extensions: 'docx',
+      timeoutSeconds: 600
+    };
+    vi.stubGlobal('systemEnv', {
+      customPdfParse: { url: 'http://legacy.test/parse', key: 'custom-pdf-secret' }
+    });
+    postMock.mockResolvedValueOnce({ data: { pages: 1, markdown: 'ok' } });
+
+    try {
+      await parseFromSangfor({ fileBuffer: Buffer.from('docx'), extension: 'docx' });
+
+      expect(postMock).toHaveBeenCalledWith(
+        'http://db-parser.test/parse',
+        expect.any(FormData),
+        expect.objectContaining({
+          // key 只取 sangfor 组内值（空），customPdf 的 secret 不得出现在请求头
+          headers: expect.not.objectContaining({ Authorization: 'Bearer custom-pdf-secret' })
+        })
+      );
+    } finally {
+      snapshot.providers.documentParse.provider = originalProvider;
+      snapshot.providers.documentParse.sangfor = originalSangfor;
+    }
+  });
 });
 
 describe('getDatasetIultmzhFileParseConfig', () => {
