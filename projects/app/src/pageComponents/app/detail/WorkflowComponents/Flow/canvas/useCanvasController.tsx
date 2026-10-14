@@ -85,10 +85,6 @@ export const getPositionDelta = (initialPosition: XYPosition, nextPosition?: XYP
 });
 
 /*
-  限定容量的最大堆,根为当前最大距离。保留为通用最近邻筛选工具,
-  辅助线拖动热路径不再依赖该结构。
-*/
-/*
   Compute helper lines for snapping nodes to each other
   Refer: https://reactflow.dev/examples/interaction/helper-lines
 */

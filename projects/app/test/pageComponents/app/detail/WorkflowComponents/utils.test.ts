@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-  filterExportModules,
-  getEditorVariables
-} from '@/pageComponents/app/detail/WorkflowComponents/utils';
+import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import { uiWorkflow2StoreWorkflow } from '@/web/core/workflow/editor/codec';
 import {
   FlowNodeInputTypeEnum,
@@ -646,46 +643,6 @@ describe('WorkflowComponents utils', () => {
           isDeleted: true
         }
       ]);
-    });
-  });
-
-  describe('filterExportModules', () => {
-    it('should filter dataset search node values', () => {
-      const modules = [
-        {
-          flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-          inputs: [
-            {
-              key: NodeInputKeyEnum.datasetSelectList,
-              value: ['dataset1']
-            }
-          ]
-        }
-      ];
-
-      const result = filterExportModules(modules);
-      const parsed = JSON.parse(result);
-
-      expect(parsed[0].inputs[0].value).toEqual([]);
-    });
-
-    it('should not modify non-dataset nodes', () => {
-      const modules = [
-        {
-          flowNodeType: FlowNodeTypeEnum.userInput,
-          inputs: [
-            {
-              key: 'someKey',
-              value: ['value1']
-            }
-          ]
-        }
-      ];
-
-      const result = filterExportModules(modules);
-      const parsed = JSON.parse(result);
-
-      expect(parsed[0].inputs[0].value).toEqual(['value1']);
     });
   });
 
