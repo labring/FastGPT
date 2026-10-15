@@ -1,6 +1,6 @@
 import {
   createTestWorkflowDispatch,
-  captureTestVariableContext
+  captureTestWorkflowContext
 } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../../../../../core/workflow/dispatch/index', () => ({
-  runWorkflow: (args: any) => mocks.runWorkflow(captureTestVariableContext(args))
+  runWorkflow: (args: any) => mocks.runWorkflow(captureTestWorkflowContext(args))
 }));
 
 vi.mock('../../../../../core/workflow/resource/service', () => ({
