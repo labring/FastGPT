@@ -5,7 +5,7 @@ upgradeTags:
   - IN PROGRESS
 ---
 
-## Upgrade Guide
+## Upgrade guide
 
 ### Image updates
 
@@ -15,11 +15,17 @@ upgradeTags:
 
 This upgrade does not include new system migration scripts. Simply update the image tags and restart the services.
 
-## 🚀 New Features
+### Configuration and API compatibility
+
+- `AGENT_SANDBOX_MAX` sets the total number of active Agent sandbox instances and defaults to 100. App sessions and Skill editing share this quota. If the new variable is unset, the legacy `AGENT_SANDBOX_MAX_EDIT_DEBUG` variable is still supported. Use `AGENT_SANDBOX_MAX_PER_TEAM` to set a per-team limit; it is unlimited by default. The admin system settings `agentSandboxMax` and `agentSandboxMaxPerTeam` take precedence over environment variables.
+- The shared pagination schemas now limit `pageSize` to 500. Some endpoints enforce smaller limits. Update custom API calls to stay within the limit for each endpoint.
+
+## 🚀 New features
 
 1. Added support for limited HTML rendering in the Markdown component and optimized interactions across components.
 2. Added an option to inherit parent permissions when creating App, Tool, and Dataset folders.
-3. Added support for dedicated AI models and channels for team members, improving multi-tenant and member-level model resource isolation and authorization with deep AI Proxy integration.
+3. Added support for dedicated AI models and model providers for team members, improving multi-tenant and member-level model resource isolation and authorization with deep AI Proxy integration.
+4. Added configurable system-wide and per-team limits for active Agent sandbox instances.
 
 ## ⚙️ Optimizations
 
@@ -29,12 +35,24 @@ This upgrade does not include new system migration scripts. Simply update the im
 4. System migration dependency errors now identify the prerequisite task in the current interface language, making it easier to run or retry tasks in the required order.
 5. Changed the "username" label to "member name" in team member management to distinguish it from the login account.
 6. Improved classification of external file URLs in Workflows. URLs without a filename or extension can now be classified using response headers and a limited content probe. AI Chat, Agents, Tool calls, and document reading share the same classification results, and document parsing reuses the detected filename.
+7. Improved API file library synchronization. The remote tree is fetched and structural changes are validated before folders are created and names and parent folders are updated in batches, with permission inheritance kept consistent. Rate limits, network failures, and remote service errors stop the sync instead of being mistaken for file deletions.
+8. System initialization now filters public configuration by login status and fetches model provider metadata and sandbox connection details on demand. Configuration refreshes after login, logout, or account changes to avoid reusing a previous session's cache.
+9. Unified shared pagination validation. Model provider call logs now support up to 500 entries per page.
+10. Important notifications older than 30 days no longer trigger priority alerts.
 
-## 🐛 Bug Fixes
+## 🐛 Fixes
 
 1. Fixed SeekDB data loss when containers are restarted or recreated.
 2. Fixed an incorrect active background color for the billing cycle toggle (monthly/annual) on the pricing page.
-3. Fixed JSON serialization errors when MCP tool input schemas contain recursive circular references (such as `{ $ref: '#' }`).
+3. Fixed JSON serialization errors when MCP tool input schemas contain recursive circular references (such as schemas using `{ $ref: '#' }` to reference themselves).
 4. Fixed a maximum call stack size exceeded error caused by self-recursion in the `InvokeProcessor` session getter.
 5. Fixed batch creation failures for Agent team members caused by unordered concurrency.
 6. Fixed an issue where NextAPI proxying Pro API streamed or raw responses without Content-Type (such as WeChat login callbacks) would append a default JSON envelope before the stream finished, corrupting the response.
+7. Fixed creation limits being bypassed when copying Agents or creating Apps through conversion. Agent creation quotas, License limits, and account resource usage now use consistent counts.
+8. Fixed Agent system Tool calls generating credentials with the App owner's identity. They now use the member running the Agent so Tools receive the correct user information.
+9. Fixed inconsistent file size and count limits between the frontend and backend. Limits now resolve in order from team overrides, plan settings, system configuration, and defaults, with legacy `0` values treated as unset.
+
+## 🛠️ Code improvements
+
+1. The SSO backend connection URL has moved from the `feConfigs.sso.url` field to the `systemEnv.sso.url` field. The legacy field is handled when configuration loads. Pro deployments continue to use the `EXTERNAL_USER_SYSTEM_BASE_URL` environment variable, so no manual migration is required.
+2. Requests using invalid or deleted MCP App access keys now return a JSON-RPC error with the original request ID instead of HTTP 500, and are logged as warnings.
