@@ -49,7 +49,7 @@
   "feedback_unhelpful": "没有帮助",
   "file_amount_over": "超出最大文件数量 {{max}}",
   "go_to_dataset": "前往知识库",
-  "history_generating": "思考中",
+  "history_generating": "运行中",
   "history_slider.home.title": "聊天",
   "home.chat_app": "首页聊天",
   "home.select_tools": "选择工具",
