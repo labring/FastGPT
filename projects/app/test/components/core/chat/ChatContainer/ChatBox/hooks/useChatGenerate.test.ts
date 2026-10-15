@@ -271,12 +271,8 @@ describe('useChatGenerate.sendPrompt', () => {
   });
 
   it('restores voice auto-send text and attachments after a failure through the real input entry', async () => {
-    let reject: (reason: unknown) => void = () => {};
-    mocks.start.mockReturnValueOnce(
-      new Promise((_, fail) => {
-        reject = fail;
-      })
-    );
+    const request = Promise.withResolvers<{ responseText: string }>();
+    mocks.start.mockReturnValueOnce(request.promise);
     await render({ withComposer: true });
     await edit('', [file]);
     const voiceButton = [...document.querySelectorAll('button')].find(
@@ -289,7 +285,7 @@ describe('useChatGenerate.sendPrompt', () => {
     expect(input.chatForm.getValues('files')).toEqual([]);
     expect(readChatInputDraft(identity)).toBeUndefined();
 
-    await act(async () => reject(new Error('network')));
+    await act(async () => request.reject(new Error('network')));
     expect(input.chatForm.getValues('input')).toBe('spoken input');
     expect(input.chatForm.getValues('files')[0].key).toBe(file.key);
     expect(readChatInputDraft(identity)?.files).toHaveLength(1);
@@ -319,12 +315,8 @@ describe('useChatGenerate.sendPrompt', () => {
     async (outcome) => {
       await render();
       await edit('submitted');
-      let resolveAudio: () => void = () => {};
-      mocks.startAudio.mockReturnValueOnce(
-        new Promise<void>((done) => {
-          resolveAudio = done;
-        })
-      );
+      const audio = Promise.withResolvers<void>();
+      mocks.startAudio.mockReturnValueOnce(audio.promise);
       if (outcome === 'reject') mocks.start.mockRejectedValueOnce(new Error('network'));
       await send({ autoTTSResponse: true });
       expect(mocks.start).not.toHaveBeenCalled();
@@ -339,7 +331,7 @@ describe('useChatGenerate.sendPrompt', () => {
         icon: 'icon'
       };
       await act(async () => input.chatForm.setValue('files', [pendingFile]));
-      await act(async () => resolveAudio());
+      await act(async () => audio.resolve());
 
       expect(mocks.start).toHaveBeenCalledOnce();
       expect(records.find((item) => item.obj === ChatRoleEnum.Human)?.value).toEqual([
@@ -348,6 +340,15 @@ describe('useChatGenerate.sendPrompt', () => {
       expect(input.chatForm.getValues('files')).toEqual([pendingFile]);
       expect(readChatInputDraft(identity)?.files).toEqual([]);
       expect(mocks.finishAudio).toHaveBeenCalledOnce();
+      expect(mocks.finishStatus).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status:
+            outcome === 'resolve' ? ChatGenerateStatusEnum.done : ChatGenerateStatusEnum.error,
+          finishedInActiveChat: true
+        })
+      );
+      expect(records.at(-1)?.status).toBe(ChatStatusEnum.finish);
+      if (outcome === 'reject') expect(records.at(-1)?.errorMsg).toBe('network');
     }
   );
 
@@ -431,40 +432,17 @@ describe('useChatGenerate.sendPrompt', () => {
     );
   });
 
-  it('still finishes a normally completed response', async () => {
-    await render();
-    await send();
-    expect(mocks.finishStatus).toHaveBeenCalledWith(
-      expect.objectContaining({ status: ChatGenerateStatusEnum.done, finishedInActiveChat: true })
-    );
-    expect(records.at(-1)?.status).toBe(ChatStatusEnum.finish);
-  });
-
-  it('still reports a genuine request failure', async () => {
-    mocks.start.mockRejectedValueOnce(new Error('network error'));
-    await render();
-    await send();
-    expect(mocks.finishStatus).toHaveBeenCalledWith(
-      expect.objectContaining({ status: ChatGenerateStatusEnum.error, finishedInActiveChat: true })
-    );
-    expect(records.at(-1)?.errorMsg).toBe('network error');
-  });
-
   it.each([{ chatId: 'B' }, { tmbId: 'other member' }])(
     'releases prepared audio and preserves both drafts when ownership changes during initialization: %o',
     async (owner) => {
       await render();
       await edit('submitted');
-      let resolve: () => void = () => {};
-      mocks.startAudio.mockReturnValueOnce(
-        new Promise<void>((done) => {
-          resolve = done;
-        })
-      );
+      const audio = Promise.withResolvers<void>();
+      mocks.startAudio.mockReturnValueOnce(audio.promise);
       await send({ autoTTSResponse: true });
       await render(owner);
       await edit('new owner draft');
-      await act(async () => resolve());
+      await act(async () => audio.resolve());
       expect(mocks.start).not.toHaveBeenCalled();
       expect(mocks.finishAudio).toHaveBeenCalledOnce();
       expect(input.chatForm.getValues('input')).toBe('new owner draft');

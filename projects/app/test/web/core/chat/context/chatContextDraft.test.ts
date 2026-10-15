@@ -77,12 +77,8 @@ describe('history deletion draft ownership', () => {
   });
 
   it('clears only the deleted conversation in the original app after an app switch', async () => {
-    let resolve: () => void = () => {};
-    mocks.remove.mockReturnValueOnce(
-      new Promise<void>((done) => {
-        resolve = done;
-      })
-    );
+    const completion = Promise.withResolvers<void>();
+    mocks.remove.mockReturnValueOnce(completion.promise);
     saveChatInputDraft({ identity, text: 'original app draft', files: [] });
     const other = { ...identity, appId: 'other app' };
     saveChatInputDraft({ identity: other, text: 'other app draft', files: [] });
@@ -93,7 +89,7 @@ describe('history deletion draft ownership', () => {
     });
     await render('other app');
     await act(async () => {
-      resolve();
+      completion.resolve();
       await request;
     });
     expect(readChatInputDraft(identity)).toBeUndefined();
@@ -101,12 +97,8 @@ describe('history deletion draft ownership', () => {
   });
 
   it('clears the original member app scope when the member changes during history cleanup', async () => {
-    let resolve: () => void = () => {};
-    mocks.clear.mockReturnValueOnce(
-      new Promise<void>((done) => {
-        resolve = done;
-      })
-    );
+    const completion = Promise.withResolvers<void>();
+    mocks.clear.mockReturnValueOnce(completion.promise);
     saveChatInputDraft({ identity, text: 'A', files: [] });
     saveChatInputDraft({ identity: { ...identity, chatId: 'B' }, text: 'B', files: [] });
     const other = { ...identity, tmbId: 'other member' };
@@ -118,7 +110,7 @@ describe('history deletion draft ownership', () => {
     });
     await render('app', 'other member');
     await act(async () => {
-      resolve();
+      completion.resolve();
       await request;
     });
     expect(readChatInputDraft(identity)).toBeUndefined();

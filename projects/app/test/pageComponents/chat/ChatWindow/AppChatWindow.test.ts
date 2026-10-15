@@ -119,18 +119,14 @@ describe('AppChatWindow recently used refresh timing', () => {
   });
 
   it('does not refresh on initialization or send until the response finishes', async () => {
-    let resolve: (result: { responseText: string }) => void = () => {};
-    mocks.stream.mockReturnValueOnce(
-      new Promise<{ responseText: string }>((done) => {
-        resolve = done;
-      })
-    );
+    const response = Promise.withResolvers<{ responseText: string }>();
+    mocks.stream.mockReturnValueOnce(response.promise);
     await render();
     expect(mocks.init).toHaveBeenCalledOnce();
     expect(mocks.refreshRecent).not.toHaveBeenCalled();
     const request = startChat(new AbortController());
     expect(mocks.refreshRecent).not.toHaveBeenCalled();
-    resolve({ responseText: 'answer' });
+    response.resolve({ responseText: 'answer' });
     await request;
     expect(mocks.refreshRecent).toHaveBeenCalledExactlyOnceWith('A');
   });

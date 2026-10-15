@@ -168,12 +168,8 @@ describe('useFileUpload', () => {
     await act(async () => result.uploadFiles());
     const completed = form.getValues('files')[0];
 
-    let finishUpload: () => void = () => {};
-    mocks.upload.mockReturnValueOnce(
-      new Promise<void>((resolve) => {
-        finishUpload = resolve;
-      })
-    );
+    const upload = Promise.withResolvers<void>();
+    mocks.upload.mockReturnValueOnce(upload.promise);
     await act(async () =>
       result.onSelectFile({
         files: [new dom.window.File(['pending'], 'pending.pdf', { type: 'application/pdf' })]
@@ -203,7 +199,7 @@ describe('useFileUpload', () => {
     await render('A');
     await act(async () => {
       oldUpload.onProgress?.(100, 100);
-      finishUpload();
+      upload.resolve();
       await uploading;
     });
     expect(form.getValues('files')).toEqual([completed]);
@@ -235,12 +231,8 @@ describe('useFileUpload', () => {
   });
 
   it('does not reassign an old pending file when automatic upload runs during a conversation switch', async () => {
-    let resolveOld: (value: unknown) => void = () => {};
-    mocks.presign.mockReturnValueOnce(
-      new Promise((resolve) => {
-        resolveOld = resolve;
-      })
-    );
+    const presign = Promise.withResolvers<{ key: string; previewUrl: string }>();
+    mocks.presign.mockReturnValueOnce(presign.promise);
     await render('A', true);
     await act(async () =>
       result.onSelectFile({
@@ -263,7 +255,7 @@ describe('useFileUpload', () => {
     expect(mocks.presign.mock.calls[1][0].chatId).toBe('B');
 
     await act(async () => {
-      resolveOld({ key: 'chat/old.pdf', previewUrl: 'https://old' });
+      presign.resolve({ key: 'chat/old.pdf', previewUrl: 'https://old' });
     });
     expect(form.getValues('files').map((file) => file.name)).toEqual(['new.pdf']);
     expect(mocks.upload).toHaveBeenCalledOnce();

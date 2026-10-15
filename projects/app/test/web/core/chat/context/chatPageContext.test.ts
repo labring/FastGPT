@@ -101,7 +101,7 @@ describe('ChatPageContext recently used apps', () => {
     vi.unstubAllGlobals();
   });
 
-  it('loads on entry without polling, refreshing or reordering when opening apps', async () => {
+  it('loads on entry without refreshing or reordering for clicks, existing apps or polling', async () => {
     await render();
     expect(mocks.getRecent).toHaveBeenCalledOnce();
     expect(context.myApps.map((item) => item.appId)).toEqual(['A', 'B']);
@@ -111,12 +111,6 @@ describe('ChatPageContext recently used apps', () => {
       await context.handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, 'C');
       await vi.advanceTimersByTimeAsync(90000);
     });
-    expect(mocks.getRecent).toHaveBeenCalledOnce();
-    expect(context.myApps.map((item) => item.appId)).toEqual(['A', 'B']);
-  });
-
-  it('does not refresh for conversations in apps already present in the list', async () => {
-    await render();
     await finishChat('B');
     await finishChat('A');
     expect(mocks.getRecent).toHaveBeenCalledOnce();
@@ -148,51 +142,36 @@ describe('ChatPageContext recently used apps', () => {
 
   it('uses current list membership for overlapping refreshes and ignores older responses', async () => {
     await render();
-    let resolveFirst: (apps: GetRecentlyUsedAppsResponseType) => void = () => {};
-    let resolveLatest: (apps: GetRecentlyUsedAppsResponseType) => void = () => {};
-    mocks.getRecent.mockReturnValueOnce(
-      new Promise<GetRecentlyUsedAppsResponseType>((done) => {
-        resolveFirst = done;
-      })
-    );
-    mocks.getRecent.mockReturnValueOnce(
-      new Promise<GetRecentlyUsedAppsResponseType>((done) => {
-        resolveLatest = done;
-      })
-    );
+    const first = Promise.withResolvers<GetRecentlyUsedAppsResponseType>();
+    const latest = Promise.withResolvers<GetRecentlyUsedAppsResponseType>();
+    mocks.getRecent.mockReturnValueOnce(first.promise).mockReturnValueOnce(latest.promise);
     await finishChat('C');
     await finishChat('C');
     expect(mocks.getRecent).toHaveBeenCalledTimes(3);
     expect(context.myApps.map((item) => item.appId)).toEqual(['A', 'B']);
 
-    await act(async () => resolveLatest([app('C'), app('A'), app('B')]));
+    await act(async () => latest.resolve([app('C'), app('A'), app('B')]));
     await finishChat('C');
     expect(mocks.getRecent).toHaveBeenCalledTimes(3);
     expect(context.myApps.map((item) => item.appId)).toEqual(['C', 'A', 'B']);
 
-    await act(async () => resolveFirst([app('A'), app('B')]));
+    await act(async () => first.resolve([app('A'), app('B')]));
     expect(context.myApps.map((item) => item.appId)).toEqual(['C', 'A', 'B']);
   });
 
-  it('allows the next conversation to retry when refreshing fails', async () => {
-    await render();
-    mocks.getRecent.mockRejectedValueOnce(new Error('offline'));
-    await finishChat('C');
-    expect(context.myApps.map((item) => item.appId)).toEqual(['A', 'B']);
-    mocks.getRecent.mockResolvedValueOnce([app('C'), app('A')]);
-    await finishChat('C');
-    expect(mocks.getRecent).toHaveBeenCalledTimes(3);
-    expect(context.myApps[0].appId).toBe('C');
-  });
-
-  it('allows retry when a successful response does not contain the new app yet', async () => {
-    await render();
-    await finishChat('C');
-    mocks.getRecent.mockResolvedValueOnce([app('C'), app('A')]);
-    await finishChat('C');
-    expect(mocks.getRecent).toHaveBeenCalledTimes(3);
-    expect(context.myApps[0].appId).toBe('C');
-  });
+  it.each(['failed request', 'missing app'] as const)(
+    'allows the next conversation to retry after %s',
+    async (outcome) => {
+      await render();
+      if (outcome === 'failed request') mocks.getRecent.mockRejectedValueOnce(new Error('offline'));
+      await finishChat('C');
+      expect(context.myApps.map((item) => item.appId)).toEqual(['A', 'B']);
+      mocks.getRecent.mockResolvedValueOnce([app('C'), app('A')]);
+      await finishChat('C');
+      expect(mocks.getRecent).toHaveBeenCalledTimes(3);
+      expect(context.myApps[0].appId).toBe('C');
+    }
+  );
 
   it('keeps the hidden home app out of the list and skips invalid app ids', async () => {
     useSystemStore.setState({ feConfigs: { ...originalSystem.feConfigs, isPlus: true } });

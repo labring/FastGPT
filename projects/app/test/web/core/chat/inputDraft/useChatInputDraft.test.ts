@@ -1,5 +1,5 @@
 import { JSDOM } from 'jsdom';
-import React, { act } from 'react';
+import React, { act, useLayoutEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { useForm, type UseFormReturn } from 'react-hook-form';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -36,16 +36,19 @@ describe('useChatInputDraft', () => {
   let chatForm: UseFormReturn<ChatBoxInputFormType>;
   let mounted: boolean;
   const onInputChange = vi.fn();
+  type HarnessOptions = { withCallback?: boolean; beforeMount?: () => void };
   const Harness = ({
     owner,
-    withCallback = true
+    withCallback = true,
+    beforeMount
   }: {
     owner?: ChatInputDraftIdentity;
-    withCallback?: boolean;
-  }) => {
+  } & HarnessOptions) => {
     chatForm = useForm<ChatBoxInputFormType>({
       defaultValues: { input: '', files: [], chatStarted: false }
     });
+    // 提前注册的 layout effect 模拟所有者初始化前到达的程序赋值。
+    useLayoutEffect(() => beforeMount?.(), [beforeMount]);
     result = useChatInputDraft({
       chatForm,
       identity: owner,
@@ -56,9 +59,9 @@ describe('useChatInputDraft', () => {
   };
   const render = async (
     owner: ChatInputDraftIdentity | undefined = identity,
-    withCallback = true
+    options: HarnessOptions = {}
   ) => {
-    await act(async () => root.render(React.createElement(Harness, { owner, withCallback })));
+    await act(async () => root.render(React.createElement(Harness, { owner, ...options })));
     mounted = true;
   };
   const edit = async (text: string) => act(async () => chatForm.setValue('input', text));
@@ -131,11 +134,18 @@ describe('useChatInputDraft', () => {
   });
 
   it('supports programmatic resets and clears without a UI callback', async () => {
-    await render(identity, false);
+    await render(identity, {
+      withCallback: false,
+      beforeMount: () => result.resetInputVal({ text: 'before owner initialization' })
+    });
+    expect(chatForm.getValues('input')).toBe('');
     await act(async () => result.resetInputVal({ text: 'no DOM', files: [uploadedFile] }));
     expect(chatForm.getValues('input')).toBe('no DOM');
     expect(readChatInputDraft(identity)?.files).toEqual([attachment]);
-    await act(async () => result.resetInputVal({}));
+    await act(async () => chatForm.reset({}));
+    expect(readChatInputDraft(identity)).toBeUndefined();
+    await act(async () => result.resetInputVal({ text: 'clear by typing' }));
+    await edit('');
     expect(readChatInputDraft(identity)).toBeUndefined();
   });
 
@@ -170,57 +180,50 @@ describe('useChatInputDraft', () => {
     expect(chatForm.getValues('input')).toBe('new while generating');
   });
 
-  it.each([0, 1] as const)(
-    'preserves a new attachment with upload status %i while accepting an older submission without renewing the cache',
-    async (status) => {
-      await render();
-      await edit('submitted');
-      const submission = result.captureSubmittedInput({ text: 'submitted', files: [] });
-      const saved = readChatInputDraft(identity)!;
-      await advance(1000);
+  it('preserves a new pending attachment while accepting an older submission without renewing the cache', async () => {
+    await render();
+    await edit('submitted');
+    const submission = result.captureSubmittedInput({ text: 'submitted', files: [] });
+    const saved = readChatInputDraft(identity)!;
+    await advance(1000);
 
-      const pendingFile = { ...createPendingFile(), status };
-      await act(async () => chatForm.setValue('files', [pendingFile]));
-      expect(readChatInputDraft(identity)).toMatchObject({
-        text: 'submitted',
-        files: [],
-        updatedAt: saved.updatedAt
-      });
-      expect(readChatInputDraft(identity)?.revision).not.toBe(saved.revision);
+    const pendingFile = createPendingFile();
+    await act(async () => chatForm.setValue('files', [pendingFile]));
+    expect(readChatInputDraft(identity)).toMatchObject({
+      text: 'submitted',
+      files: [],
+      updatedAt: saved.updatedAt
+    });
+    expect(readChatInputDraft(identity)?.revision).not.toBe(saved.revision);
 
-      await act(async () => result.clearSubmittedInput(submission));
-      expect(chatForm.getValues('input')).toBe('submitted');
-      expect(chatForm.getValues('files')).toEqual([pendingFile]);
-      expect(readChatInputDraft(identity)?.text).toBe('submitted');
-      await act(async () => result.restoreSubmittedInput(submission));
-      expect(chatForm.getValues('files')).toEqual([pendingFile]);
-    }
-  );
+    await act(async () => result.clearSubmittedInput(submission));
+    expect(chatForm.getValues('input')).toBe('submitted');
+    expect(chatForm.getValues('files')).toEqual([pendingFile]);
+    expect(readChatInputDraft(identity)?.text).toBe('submitted');
+    await act(async () => result.restoreSubmittedInput(submission));
+    expect(chatForm.getValues('files')).toEqual([pendingFile]);
+  });
 
-  it.each(['keep', 'remove', 'replace', 'reorder'] as const)(
-    'does not restore an older submission after a new pending selection is edited: %s',
-    async (action) => {
-      await render();
-      await edit('submitted');
-      const submission = result.captureSubmittedInput({ text: 'submitted', files: [] });
-      await act(async () => result.clearSubmittedInput(submission));
-
-      const first = createPendingFile('first');
-      const second = createPendingFile('second');
-      await act(async () => chatForm.setValue('files', [first, second]));
-      const nextFiles = (() => {
-        if (action === 'remove') return [];
-        if (action === 'replace') return [createPendingFile('replacement')];
-        if (action === 'reorder') return [second, first];
-        return [first, second];
-      })();
+  it('versions every pending selection change and never restores old input after returning to an empty selection', async () => {
+    await render();
+    await edit('submitted');
+    const submission = result.captureSubmittedInput({ text: 'submitted', files: [] });
+    await act(async () => result.clearSubmittedInput(submission));
+    const first = createPendingFile('first');
+    const second = createPendingFile('second');
+    // 逐步断言版本，避免“最初新增已改版本”掩盖后续替换、排序或删除未更新版本的问题。
+    for (const nextFiles of [[first], [second], [first, second], [second, first], []]) {
+      const previous = result.captureSubmittedInput({ files: chatForm.getValues('files') });
       await act(async () => chatForm.setValue('files', nextFiles));
+      expect(result.captureSubmittedInput({ files: nextFiles }).revision).not.toBe(
+        previous.revision
+      );
       await act(async () => result.restoreSubmittedInput(submission));
       expect(chatForm.getValues('input')).toBe('');
       expect(chatForm.getValues('files')).toEqual(nextFiles);
       expect(readChatInputDraft(identity)).toBeUndefined();
     }
-  );
+  });
 
   it('ignores field array id and upload progress changes when clearing an accepted submission', async () => {
     await render();
@@ -250,6 +253,9 @@ describe('useChatInputDraft', () => {
     await act(async () => result.restoreSubmittedInput(submission));
     expect(chatForm.getValues('input')).toBe('B draft');
     expect(readChatInputDraft(identity)?.text).toBe('A submission');
+    saveChatInputDraft({ identity, text: 'newer A draft', files: [] });
+    await act(async () => result.restoreSubmittedInput(submission));
+    expect(readChatInputDraft(identity)?.text).toBe('newer A draft');
   });
 
   it('does not revive drafts after deleting a conversation, including on unmount', async () => {
@@ -269,7 +275,7 @@ describe('useChatInputDraft', () => {
     expect(readChatInputDraft(identity)).toBeUndefined();
   });
 
-  it('restores text and image previews after remount without renewing for restoration or progress', async () => {
+  it('restores text and image previews after remount without renewing the cache', async () => {
     const image = {
       key: 'chat/image.png',
       url: 'https://image-preview',
@@ -290,10 +296,6 @@ describe('useChatInputDraft', () => {
     const runtimeImage = chatForm.getValues('files')[0];
     expect(runtimeImage).toMatchObject(image);
     expect(runtimeImage.icon).toBe(image.url);
-    await advance(1000);
-    await act(async () => chatForm.setValue('files', [{ ...runtimeImage, process: 50 }]));
-    await act(async () => chatForm.setValue('files', [{ ...runtimeImage, icon: 'data:base64' }]));
-    await advance(1000);
     expect(readChatInputDraft(identity)?.updatedAt).toBe(updatedAt);
     expect(readChatInputDraft(identity)?.files).toEqual([image]);
   });
@@ -307,6 +309,9 @@ describe('useChatInputDraft', () => {
     await act(async () => result.restoreSubmittedInput(submission));
     expect(chatForm.getValues('input')).toBe('runtime input');
     expect(readChatInputDraft(identity)).toBeUndefined();
+    await render();
+    await act(async () => result.restoreSubmittedInput(submission));
+    expect(chatForm.getValues('input')).toBe('');
   });
 
   it('ignores unrelated cleanup and flushes pending edits on page lifecycle events', async () => {

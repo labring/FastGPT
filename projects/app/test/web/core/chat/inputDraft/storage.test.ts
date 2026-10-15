@@ -1,5 +1,6 @@
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   CHAT_INPUT_DRAFT_EXPIRE_MS,
   CHAT_INPUT_DRAFT_STORAGE_KEY,
@@ -17,7 +18,7 @@ const file = {
   key: 'chat/file.pdf',
   url: 'https://preview',
   name: 'file.pdf',
-  type: 'file' as const
+  type: ChatFileTypeEnum.file
 };
 
 describe('chat input draft storage', () => {
@@ -106,11 +107,11 @@ describe('chat input draft storage', () => {
     expect(edited?.updatedAt).toBe(now);
   });
 
-  it('persists only completed file references and never raw file or base64 data', () => {
+  it('persists only valid completed file references and never raw file or base64 data', () => {
     const base = {
       id: 'id',
       name: 'file.pdf',
-      type: 'file' as const,
+      type: ChatFileTypeEnum.file,
       status: 1 as const,
       icon: 'data:base64'
     };
@@ -124,7 +125,8 @@ describe('chat input draft storage', () => {
       },
       { ...base, key: 'pending', process: 50 },
       { ...base, url: 'https://external' },
-      { ...base, key: 'failed', url: 'https://preview', error: 'error' }
+      { ...base, key: 'failed', url: 'https://preview', error: 'error' },
+      { ...base, ...file, type: 'unsupported' as ChatFileTypeEnum }
     ]);
     expect(files).toEqual([file]);
     saveChatInputDraft({ identity, text: '', files });
@@ -153,6 +155,7 @@ describe('chat input draft storage', () => {
           {},
           valid,
           { ...valid, text: 'latest', revision: 'new', updatedAt: now },
+          valid,
           { ...valid, identity: { ...identity, chatId: 'future' }, updatedAt: now + 5000 },
           { ...valid, identity: { ...identity, chatId: 'empty' }, text: '' }
         ]
@@ -213,10 +216,14 @@ describe('chat input draft storage', () => {
     readChatInputDraft();
     expect(window.sessionStorage.getItem('chatInput_old')).toBeNull();
     expect(window.sessionStorage.getItem('other-setting')).toBe('keep');
+    vi.stubGlobal('window', { sessionStorage: dom.window.sessionStorage });
+    expect(removeChatInputDraft({ identity })).toBe(true);
+    clearChatInputDrafts();
     vi.stubGlobal('window', undefined);
     expect(readChatInputDraft(identity)).toBeUndefined();
     expect(removeChatInputDraft({ identity })).toBe(false);
     expect(saveChatInputDraft({ identity, text: 'server', files: [] })).toBeUndefined();
+    expect(() => clearChatInputDrafts()).not.toThrow();
     vi.stubGlobal('window', dom.window);
   });
 });
