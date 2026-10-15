@@ -1423,16 +1423,17 @@ describe('createLLMResponse', () => {
             modelId: '68ad85a7463006c963799a05',
             provider: 'openai',
             baseUrl: 'https://system.example.com/v1',
-            request: expect.objectContaining({ model: 'gpt-4', messages, tools }),
-            response: expect.objectContaining({
+            response: {
               finish_reason: 'error',
-              answerText: content,
-              reasoningText: reasoning,
-              usage: expect.objectContaining({ prompt_tokens: 20, completion_tokens: 5 })
-            }),
+              usage: expect.objectContaining({ prompt_tokens: 20, completion_tokens: 5 }),
+              inputTokens: 20,
+              outputTokens: 5
+            },
             error: expectedError
           })
         );
+        // 请求体与正文只进入请求记录，不写入错误日志。
+        expect(logError.mock.calls[0][1]).not.toHaveProperty('request');
         expect(mockSaveLLMRequestRecord).toHaveBeenCalledTimes(1);
         expect(mockSaveLLMRequestRecord).toHaveBeenCalledWith(
           expect.objectContaining({
@@ -1447,7 +1448,7 @@ describe('createLLMResponse', () => {
       }
     );
 
-    it('should redact large image payloads in parsing-error logs without changing the actual request', async () => {
+    it('should keep request payloads out of parsing-error logs without changing the actual request', async () => {
       const logError = vi
         .spyOn(getLogger(LogCategories.MODULE.AI.LLM), 'error')
         .mockImplementation(() => {});
@@ -1488,20 +1489,6 @@ describe('createLLMResponse', () => {
       expect(logError).toHaveBeenCalledExactlyOnceWith(
         'LLM response parsing failed',
         expect.objectContaining({
-          request: expect.objectContaining({
-            messages: [
-              {
-                role: 'user',
-                content: [
-                  { type: 'text', text: 'Describe this image.' },
-                  {
-                    type: 'image_url',
-                    image_url: { url: 'data:image/png;base64,[base64 omitted]' }
-                  }
-                ]
-              }
-            ]
-          }),
           error: expect.objectContaining({
             code: 'LLM_TOOL_CALL_ERROR',
             message: expect.stringContaining('no valid tool calls'),
@@ -1509,8 +1496,11 @@ describe('createLLMResponse', () => {
           })
         })
       );
+      expect(logError.mock.calls[0][1]).not.toHaveProperty('request');
       expect(mockCreate.mock.calls[0][0].messages).toEqual(messages);
-      expect(JSON.stringify(logError.mock.calls)).not.toContain(imageUrl);
+      const loggedText = JSON.stringify(logError.mock.calls);
+      expect(loggedText).not.toContain(imageUrl);
+      expect(loggedText).not.toContain('Describe this image.');
     });
 
     it('should handle multiple tool calls in non-stream response', async () => {
