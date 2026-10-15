@@ -33,7 +33,6 @@ import type { ClientSession } from '../../common/mongo';
 import { removeS3TTL } from '../../common/s3/utils';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { encryptSecretValue, anyValueDecrypt } from '../../common/secret/utils';
-import type { SecretValueType } from '@fastgpt/global/common/secret/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { parseAgentAskAnswers } from '@fastgpt/global/core/ai/agent/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -980,10 +979,7 @@ export const updateInteractiveChat = async ({
           if (typeof decryptedVal === 'string') {
             return {
               ...item,
-              value: encryptSecretValue({
-                value: decryptedVal,
-                secret: ''
-              } as SecretValueType)
+              value: encryptSecretValue({ value: decryptedVal })
             };
           }
           return {

@@ -494,7 +494,7 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
   it('masks configured system secrets for administrator details', async () => {
     mocks.findSystemTool.mockResolvedValue({
       pluginId: 'systemTool-weather',
-      secretsVal: { apiKey: { secret: encryptSecret('production-secret'), value: '' } },
+      secretsVal: { apiKey: { secret: encryptSecret('production-secret') } },
       customConfig: {}
     });
     mocks.findSystemTools.mockResolvedValue([]);
@@ -1258,7 +1258,7 @@ describe('SystemToolRepo.getSystemToolRuntime', () => {
       pluginId: 'systemTool-weather',
       currentCost: 1,
       systemKeyCost: 2,
-      secretsVal: { apiKey: { secret: encryptSecret('encrypted-prod-secret'), value: '' } },
+      secretsVal: { apiKey: { secret: encryptSecret('encrypted-prod-secret') } },
       customConfig: {}
     });
     mocks.getTool.mockResolvedValue({

@@ -65,12 +65,6 @@ export async function handler(
     promoteTags: 'promoteTags' in updateFields ? (updateFields.promoteTags ?? null) : undefined,
     hideTags: 'hideTags' in updateFields ? (updateFields.hideTags ?? null) : undefined
   });
-  if ('secretsVal' in updateFields) {
-    Object.assign(baseUpdateFields, {
-      secretsVal: updateFields.secretsVal ?? null
-    });
-  }
-
   await MongoSystemTool.findOneAndUpdate(
     { pluginId },
     {

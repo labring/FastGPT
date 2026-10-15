@@ -18,7 +18,7 @@ export const CreateMcpToolsBodySchema = CreateAppBodySchema.omit({
       description: 'MCP 服务地址'
     }),
     headerSecret: StoreSecretValueTypeSchema.optional().meta({
-      example: { Authorization: { value: 'token', secret: '********' } },
+      example: { Authorization: { value: 'token' } },
       description: '请求头密钥'
     }),
     toolList: z.array(McpToolConfigSchema).meta({
@@ -107,7 +107,7 @@ export const GetMcpToolsBodySchema = z
       description: 'MCP 服务地址'
     }),
     headerSecret: StoreSecretValueTypeSchema.optional().meta({
-      example: { Authorization: { value: 'token', secret: '********' } },
+      example: { Authorization: { value: 'token' } },
       description: '请求头密钥'
     })
   })

@@ -69,13 +69,18 @@ const LabelAndFormRender = ({
           validate: (value) => {
             if (typeof value === 'number' || typeof value === 'boolean') return true;
             if (!required) return true;
-            // 密码类型特殊处理：已加密的密码格式为 { value: '', secret: 'xxx' }
+            // 密码值只允许明文 { value } 或密文 { secret }。
             if (inputType === InputTypeEnum.password) {
-              const hasValue = value && typeof value === 'object' && (value.value || value.secret);
+              const hasValue =
+                value &&
+                typeof value === 'object' &&
+                (('value' in value && !!value.value) || ('secret' in value && !!value.secret));
               if (!hasValue) return false;
               // 有 minLength 要求且正在输入新值时，检查长度
-              if (props.minLength && value.value && value.value.length < props.minLength) {
-                return t('common:min_length', { minLenth: props.minLength });
+              if (props.minLength && 'value' in value && value.value) {
+                if (value.value.length < props.minLength) {
+                  return t('common:min_length', { minLenth: props.minLength });
+                }
               }
               return true;
             }

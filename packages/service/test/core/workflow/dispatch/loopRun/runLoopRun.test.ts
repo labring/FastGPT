@@ -287,7 +287,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       return Promise.resolve(
         makeDispatchFlowResponse({
           [DispatchNodeResponseKeyEnum.newVariables]: {
-            runtimeOnly: { value: '', secret: 'encrypted-store-value' }
+            runtimeOnly: { secret: 'encrypted-store-value' }
           }
         })
       );
