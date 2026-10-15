@@ -110,4 +110,29 @@ describe('system tool workflow association validation', () => {
     expect(mocks.validateSystemToolWorkflowAssociation).toHaveBeenCalledWith('new-workflow-app');
     expect(mocks.findOneAndUpdateSystemTool).not.toHaveBeenCalled();
   });
+
+  it('does not persist compatibility secretsVal fields for workflow tools', async () => {
+    await expect(
+      createHandler(
+        createRequest({
+          ...createBody,
+          secretsVal: { apiKey: 'plain-value' }
+        })
+      )
+    ).resolves.toEqual({});
+
+    expect(mocks.createSystemTool.mock.calls[0][0]).not.toHaveProperty('secretsVal');
+
+    mocks.findOneSystemTool.mockResolvedValueOnce(updatePlugin);
+    await expect(
+      updateHandler(
+        createRequest({
+          id: 'commercial-tool',
+          secretsVal: { apiKey: 'plain-value' }
+        })
+      )
+    ).resolves.toEqual({});
+
+    expect(mocks.findOneAndUpdateSystemTool.mock.calls[0][1]).not.toHaveProperty('secretsVal');
+  });
 });
