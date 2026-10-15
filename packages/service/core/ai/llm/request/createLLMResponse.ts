@@ -223,8 +223,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     const responseEmptyTip = isNotResponse ? getEmptyResponseTip() : undefined;
 
     if (error) {
-      // 解析期错误（含流迭代失败、工具协议异常）在此统一记录，覆盖 throwError: false 的调用链。
-      // 日志不写请求体和正文，避免长上下文对话进入日志；完整内容通过 requestId 在请求记录中查看。
+      // 解析期错误已拿到响应，保留请求、原始工具诊断及消耗，避免抛错后只剩空响应记录。
       logger.error(
         'LLM response parsing failed',
         sanitizeLLMRequestRecordPayload({
@@ -233,7 +232,11 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
           modelId: modelData.modelId,
           provider: modelData.provider,
           baseUrl: aiRequestMeta.baseUrl,
+          request: requestBody,
           response: {
+            answerText,
+            reasoningText,
+            toolCalls,
             finish_reason,
             usage,
             inputTokens,
