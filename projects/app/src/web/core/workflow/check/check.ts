@@ -20,15 +20,19 @@ export const checkWorkflowNodeIssues = ({
   t
 }: {
   nodes: Node<FlowNodeItemType, string | undefined>[];
-  edges: Edge<any>[];
+  edges: Edge[];
   modelData?: WorkflowModelCheckData;
   nodeId?: string;
   t?: TFunction;
 }): WorkflowCheckNodeIssueMap => {
+  // 1. 构造单次校验复用的图索引与可达性集合。
   const context = createWorkflowCheckContext({ nodes: nodes.map((node) => node.data), edges });
   const issueMap: WorkflowCheckNodeIssueMap = {};
+
+  // 2. 按画布节点顺序汇总模型、资源、输入与连线规则，并在输出边界统一翻译。
   for (const { data } of nodes) {
     if (nodeId && data.nodeId !== nodeId) continue;
+
     const inputMap = new Map(data.inputs.map((input) => [input.key, input]));
     const models = checkWorkflowNodeModelRules({ data, inputMap, modelData });
     const issues = [
@@ -43,13 +47,17 @@ export const checkWorkflowNodeIssues = ({
       }),
       ...checkWorkflowNodeConnections({ data, context })
     ];
-    if (issues.length)
+
+    if (issues.length) {
       issueMap[data.nodeId] = issues.map((issue) =>
         formatWorkflowRuleIssue({ issue, node: data, t })
       );
+    }
   }
+
   return issueMap;
 };
+
 /** 校验聊天配置模型并在输出边界补全提示文案。 */
 export const checkWorkflowChatConfigModelIssues = ({
   chatConfig,
@@ -63,6 +71,7 @@ export const checkWorkflowChatConfigModelIssues = ({
   checkWorkflowChatModelRules({ chatConfig, modelData }).map((issue) =>
     formatWorkflowRuleIssue({ issue, t })
   );
+
 /** 返回存在 error 的 nodeId 列表；传入 nodeOrder 时按画布节点顺序排列，便于稳定定位第一个错误节点。 */
 export const getWorkflowCheckErrorNodeIds = (
   nodeIssueMap: WorkflowCheckNodeIssueMap,
@@ -90,13 +99,14 @@ export const checkWorkflowBeforeRunOrPublish = ({
   chatConfig
 }: {
   nodes: Node<FlowNodeItemType, string | undefined>[];
-  edges: Edge<any>[];
+  edges: Edge[];
   modelData?: WorkflowModelCheckData;
   t?: TFunction;
   chatConfig?: AppChatConfigType;
 }) => {
   const issueMap = checkWorkflowNodeIssues({ nodes, edges, modelData, t });
   const chatConfigIssues = checkWorkflowChatConfigModelIssues({ chatConfig, modelData, t });
+
   const nodeOrder = nodes.map((node) => node.data.nodeId);
   const errorNodeIds = getWorkflowCheckErrorNodeIds(issueMap, nodeOrder);
   const firstErrorNodeId = errorNodeIds[0];

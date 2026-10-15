@@ -1,10 +1,12 @@
 import { NodeInputKeyEnum } from '../constants';
 import { ModelTypeEnum } from '../../ai/constants';
+import { i18nT } from '../../../common/i18n/utils';
 
 export const workflowSystemModelSlots = [
   {
     legacyKey: NodeInputKeyEnum.aiModel,
     modelIdKey: NodeInputKeyEnum.aiModelId,
+    label: i18nT('common:core.ai.Model'),
     type: ModelTypeEnum.llm,
     feature: 'node_model',
     featureKey: undefined,
@@ -13,6 +15,7 @@ export const workflowSystemModelSlots = [
   {
     legacyKey: NodeInputKeyEnum.datasetSearchRerankModel,
     modelIdKey: NodeInputKeyEnum.datasetSearchRerankModelId,
+    label: i18nT('common:core.dataset.search.ReRank'),
     type: ModelTypeEnum.rerank,
     feature: 'rerank',
     featureKey: NodeInputKeyEnum.datasetSearchUsingReRank,
@@ -21,6 +24,7 @@ export const workflowSystemModelSlots = [
   {
     legacyKey: NodeInputKeyEnum.datasetSearchExtensionModel,
     modelIdKey: NodeInputKeyEnum.datasetSearchExtensionModelId,
+    label: i18nT('common:core.module.template.Query extension'),
     type: ModelTypeEnum.llm,
     feature: 'query_extension',
     featureKey: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
@@ -29,6 +33,7 @@ export const workflowSystemModelSlots = [
   {
     legacyKey: NodeInputKeyEnum.datasetDeepSearchModel,
     modelIdKey: NodeInputKeyEnum.datasetDeepSearchModelId,
+    label: i18nT('common:deep_rag_search'),
     type: ModelTypeEnum.llm,
     feature: 'node_model',
     featureKey: NodeInputKeyEnum.datasetDeepSearch,

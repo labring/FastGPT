@@ -43,18 +43,22 @@ vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal)
   ...(await importOriginal<object>()),
   // getTeamModelHandle 要读模型目录（依赖全局配置），测量无关，直接给定句柄
   getTeamModelHandle: async () => ({
-    getLLMModelData: () => ({
-      modelId: 'measure-agent-model',
-      model: 'measure-agent-model',
-      maxToken: 8000,
-      config: { maxContext: 8000, maxResponse: 1000 }
-    }),
-    getEmbeddingModelData: () => ({
-      modelId: 'measure-embedding-model',
-      model: 'measure-embedding-model',
-      config: { defaultToken: 100, maxToken: 100, weight: 0 }
-    }),
-    getVlmModelData: () => undefined
+    getModelData: (_ref: unknown, options?: { type?: string; vision?: boolean }) => {
+      if (options?.vision) return undefined;
+      if (options?.type === 'embedding') {
+        return {
+          modelId: 'measure-embedding-model',
+          model: 'measure-embedding-model',
+          config: { defaultToken: 100, maxToken: 100, weight: 0 }
+        };
+      }
+      return {
+        modelId: 'measure-agent-model',
+        model: 'measure-agent-model',
+        maxToken: 8000,
+        config: { maxContext: 8000, maxResponse: 1000 }
+      };
+    }
   })
 }));
 

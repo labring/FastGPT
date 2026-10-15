@@ -68,8 +68,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   let fileLinks = rawFileLinks;
   let userChatInput = rawUserChatInput;
   const modelConstantsData = await loadWorkflowModelResource({
-    teamId: runningAppInfo.teamId,
-    tmbId: runningUserInfo.tmbId,
+    appTeamId: runningAppInfo.teamId,
+    userInfo: runningUserInfo,
     modelId,
     model
   });

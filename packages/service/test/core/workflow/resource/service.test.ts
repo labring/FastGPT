@@ -81,6 +81,18 @@ describe('workflow resource context', () => {
     mocks.getSystemModelHandle.mockResolvedValue({
       getActiveModels: () => [],
       getSystemDefaultModelIds: () => ({}),
+      getModelData: vi.fn(
+        (
+          { modelId, model }: { modelId?: string; model?: string },
+          { type = 'llm' }: { type?: string } = {}
+        ) => ({
+          modelId: modelId ?? (type === 'rerank' ? 'rerank-1' : 'model-1'),
+          model: model ?? modelId ?? (type === 'rerank' ? 'rerank-1' : 'model-1'),
+          name: model ?? modelId ?? (type === 'rerank' ? 'rerank-1' : 'model-1'),
+          type,
+          config: {}
+        })
+      ),
       getLLMModelData: vi.fn(({ modelId, model }: { modelId?: string; model?: string }) => ({
         modelId: modelId ?? 'model-1',
         model: model ?? modelId ?? 'model-1',
@@ -146,8 +158,8 @@ describe('workflow resource context', () => {
       await expect(
         loadWorkflowModelResource({
           modelId: 'model-1',
-          teamId: 'team-1',
-          tmbId: 'tmb-1'
+          appTeamId: 'team-1',
+          userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
         })
       ).resolves.toMatchObject({ modelId: 'model-1' });
       expect(mocks.assertAuthModels).not.toHaveBeenCalled();
@@ -155,8 +167,8 @@ describe('workflow resource context', () => {
       await expect(
         loadWorkflowModelResource({
           modelId: 'missing-model',
-          teamId: 'team-1',
-          tmbId: 'tmb-1'
+          appTeamId: 'team-1',
+          userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
         })
       ).resolves.toMatchObject({ modelId: 'missing-model' });
     });
@@ -169,13 +181,111 @@ describe('workflow resource context', () => {
     });
   });
 
+  it('authorizes snapshot-missed models against runner userInfo.teamId instead of appTeamId in cross-team calls', async () => {
+    const appHandle = {
+      getActiveModels: () => [],
+      getSystemDefaultModelIds: () => ({}),
+      findModelData: vi.fn(({ modelId }: { modelId?: string }) => ({
+        modelId: modelId ?? 'sys-model',
+        model: modelId ?? 'sys-model',
+        name: modelId ?? 'sys-model',
+        type: 'llm',
+        config: {}
+      })),
+      getModelData: vi.fn(({ modelId, model }: { modelId?: string; model?: string }) => ({
+        modelId: modelId ?? 'sys-model',
+        model: model ?? modelId ?? 'sys-model',
+        name: model ?? modelId ?? 'sys-model',
+        type: 'llm',
+        config: {}
+      })),
+      getLLMModelData: vi.fn(({ modelId, model }: { modelId?: string; model?: string }) => ({
+        modelId: modelId ?? 'sys-model',
+        model: model ?? modelId ?? 'sys-model',
+        name: model ?? modelId ?? 'sys-model',
+        type: 'llm',
+        config: {}
+      })),
+      getRerankModelData: vi.fn(),
+      getDefaultModelData: vi.fn()
+    };
+    const runnerHandle = {
+      ...appHandle,
+      findModelData: vi.fn(({ modelId }: { modelId?: string }) => ({
+        modelId: modelId ?? 'sys-model',
+        model: modelId ?? 'sys-model',
+        name: modelId ?? 'sys-model',
+        type: 'llm',
+        config: {}
+      })),
+      getModelData: vi.fn(({ modelId, model }: { modelId?: string; model?: string }) => ({
+        modelId: modelId ?? 'sys-model',
+        model: model ?? modelId ?? 'sys-model',
+        name: model ?? modelId ?? 'sys-model',
+        type: 'llm',
+        config: {}
+      })),
+      getLLMModelData: vi.fn(({ modelId, model }: { modelId?: string; model?: string }) => ({
+        modelId: modelId ?? 'sys-model',
+        model: model ?? modelId ?? 'sys-model',
+        name: model ?? modelId ?? 'sys-model',
+        type: 'llm',
+        config: {}
+      }))
+    };
+
+    mocks.getSystemModelHandle.mockImplementation(async ({ teamId }: { teamId?: string } = {}) =>
+      teamId === 'runner-team' ? runnerHandle : appHandle
+    );
+    // 模拟系统模型在 app-team 默认开放，但在 runner-team 配置了 ACL 且未授权给 runner-tmb
+    mocks.assertAuthModels.mockImplementation(async ({ actor, handle }) => {
+      if (actor.teamId === 'runner-team' && handle === runnerHandle) {
+        throw new UserError(ModelErrEnum.unAuthModel);
+      }
+      return { handle, models: [] };
+    });
+
+    const context = createWorkflowResourceContext({
+      resources: [{ type: 'model', id: 'snapshot-model' }],
+      teamId: 'app-team'
+    });
+
+    await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
+      // 命中子应用快照的模型按 appTeamId 目录放行，不触发运行人鉴权
+      await expect(
+        loadWorkflowModelResource({
+          modelId: 'snapshot-model',
+          appTeamId: 'app-team',
+          userInfo: { teamId: 'runner-team', tmbId: 'runner-tmb' }
+        })
+      ).resolves.toMatchObject({ modelId: 'snapshot-model' });
+      expect(mocks.assertAuthModels).not.toHaveBeenCalled();
+
+      // 未命中快照的模型必须使用 runner-team 与 runnerHandle 鉴权，拒绝未授权模型
+      await expect(
+        loadWorkflowModelResource({
+          modelId: 'restricted-system-model',
+          appTeamId: 'app-team',
+          userInfo: { teamId: 'runner-team', tmbId: 'runner-tmb' }
+        })
+      ).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
+    });
+
+    expect(mocks.assertAuthModels).toHaveBeenCalledExactlyOnceWith({
+      actor: { teamId: 'runner-team', tmbId: 'runner-tmb', isRoot: false },
+      modelIds: ['restricted-system-model'],
+      action: 'use',
+      handle: runnerHandle
+    });
+  });
+
   it('falls back to default model on ModelConfigError when fallbackToDefault is true, but rethrows permission errors', async () => {
     const context = createWorkflowResourceContext({
       resources: [{ type: 'model', id: 'deleted-static-model' }]
     });
     const handle = await mocks.getSystemModelHandle();
 
-    handle.getRerankModelData.mockImplementationOnce(() => {
+    handle.getModelData.mockImplementationOnce(() => {
       throw new UserError(ModelErrEnum.unExist);
     });
     mocks.assertAuthModels.mockRejectedValueOnce(new UserError(ModelErrEnum.unAuthModel));
@@ -186,8 +296,8 @@ describe('workflow resource context', () => {
           modelId: 'deleted-static-model',
           type: 'rerank',
           fallbackToDefault: true,
-          teamId: 'team-1',
-          tmbId: 'tmb-1'
+          appTeamId: 'team-1',
+          userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
         })
       ).resolves.toMatchObject({ modelId: 'default-rerank' });
 
@@ -196,8 +306,8 @@ describe('workflow resource context', () => {
           modelId: 'unauthorized-runtime-model',
           type: 'rerank',
           fallbackToDefault: true,
-          teamId: 'team-1',
-          tmbId: 'tmb-1'
+          appTeamId: 'team-1',
+          userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
         })
       ).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
     });
@@ -245,8 +355,8 @@ describe('workflow resource context', () => {
       // 命中静态快照的模型不按运行人鉴权。
       await loadWorkflowModelResource({
         modelId: 'static-model-1',
-        teamId: 'team-1',
-        tmbId: 'tmb-1'
+        appTeamId: 'team-1',
+        userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
       });
       expect(mocks.assertAuthModels).not.toHaveBeenCalled();
 
@@ -264,8 +374,8 @@ describe('workflow resource context', () => {
       // 未命中快照的模型按运行人鉴权。
       await loadWorkflowModelResource({
         modelId: 'dynamic-model',
-        teamId: 'team-1',
-        tmbId: 'tmb-1'
+        appTeamId: 'team-1',
+        userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
       });
     });
 

@@ -30,8 +30,9 @@ async function handler(req: ApiRequestProps): Promise<DatasetDataIndexResponse> 
     assertWritable: true
   });
   const modelHandle = await getTeamModelHandle({ teamId });
-  const embeddingModel = modelHandle.getEmbeddingModelData(
-    getDatasetModelReference(collection.dataset, 'embedding')
+  const embeddingModel = modelHandle.getModelData(
+    getDatasetModelReference(collection.dataset, 'embedding'),
+    { type: 'embedding' }
   );
   const { index, tokens } = await createDatasetDataIndex({
     data: datasetData,

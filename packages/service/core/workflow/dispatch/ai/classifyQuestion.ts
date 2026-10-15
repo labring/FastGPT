@@ -47,8 +47,8 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
     return Promise.reject('Input is empty');
   }
   const cqModel = await loadWorkflowModelResource({
-    teamId: runningAppInfo.teamId,
-    tmbId: runningUserInfo.tmbId,
+    appTeamId: runningAppInfo.teamId,
+    userInfo: runningUserInfo,
     modelId,
     model
   });

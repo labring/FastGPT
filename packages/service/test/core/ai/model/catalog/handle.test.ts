@@ -30,10 +30,13 @@ const createHandle = (models: AIModelDataType[] = [vlm]) =>
     version: 'test'
   });
 
-describe('getVlmModelData and model lookup', () => {
+describe('getModelData and model lookup', () => {
   it('returns the snapshot model and narrows the result', () => {
     const handle = createHandle();
-    const model = handle.getVlmModelData({ modelId: vlm.modelId });
+    const model = handle.getModelData(
+      { modelId: vlm.modelId },
+      { type: ModelTypeEnum.llm, vision: true }
+    );
     expectTypeOf(model).toEqualTypeOf<LLMModelDataType>();
     expect(model.modelId).toBe(vlm.modelId);
     expect(Object.isFrozen(model)).toBe(true);
@@ -50,10 +53,14 @@ describe('getVlmModelData and model lookup', () => {
     const privateOnly = { ...first, modelId: 'private-only', model: 'private-vlm' };
     const handle = createHandle([first, vlm, second, privateOnly]);
 
-    expect(handle.getLLMModelData({ model: vlm.model }).modelId).toBe(vlm.modelId);
+    expect(handle.getModelData({ model: vlm.model }, { type: ModelTypeEnum.llm }).modelId).toBe(
+      vlm.modelId
+    );
     expect(handle.findModelData({ model: privateOnly.model })).toBeUndefined();
     for (const model of [first, second, privateOnly]) {
-      expect(handle.getLLMModelData({ modelId: model.modelId }).modelId).toBe(model.modelId);
+      expect(
+        handle.getModelData({ modelId: model.modelId }, { type: ModelTypeEnum.llm }).modelId
+      ).toBe(model.modelId);
     }
   });
 
@@ -64,7 +71,9 @@ describe('getVlmModelData and model lookup', () => {
     { model: vlm.name }
   ])('throws ModelErrEnum.unExist for an invalid reference: %j', (reference) => {
     const handle = createHandle();
-    expect(() => handle.getVlmModelData(reference)).toThrow(ModelErrEnum.unExist);
+    expect(() => handle.getModelData(reference, { type: ModelTypeEnum.llm, vision: true })).toThrow(
+      ModelErrEnum.unExist
+    );
   });
 
   it.each<AIModelDataType>([
@@ -76,19 +85,30 @@ describe('getVlmModelData and model lookup', () => {
       config: { defaultToken: 1, maxToken: 100, weight: 0, vision: true }
     }
   ])('throws unExist for disabled, nonvisual or wrong-type models: $type', (model) => {
-    expect(() => createHandle([model]).getVlmModelData({ modelId: vlm.modelId })).toThrow(
-      ModelErrEnum.unExist
-    );
+    expect(() =>
+      createHandle([model]).getModelData(
+        { modelId: vlm.modelId },
+        { type: ModelTypeEnum.llm, vision: true }
+      )
+    ).toThrow(ModelErrEnum.unExist);
   });
 });
 
 describe('upstream model selection semantics', () => {
   it.each([undefined, null, '', '   '])('treats empty references consistently (%s)', (modelId) => {
     const handle = createHandle();
-    expect(() => handle.getLLMModelData({ modelId })).toThrow(ModelErrEnum.unConfigured);
-    expect(handle.getLLMModelData({ modelId }, { optional: true })).toBeUndefined();
-    expect(handle.getVlmModelData({ modelId }, { optional: true })).toBeUndefined();
-    expect(handle.getLLMModelData({ modelId, model: vlm.model }).modelId).toBe(vlm.modelId);
+    expect(() => handle.getModelData({ modelId }, { type: ModelTypeEnum.llm })).toThrow(
+      ModelErrEnum.unConfigured
+    );
+    expect(
+      handle.getModelData({ modelId }, { type: ModelTypeEnum.llm, optional: true })
+    ).toBeUndefined();
+    expect(
+      handle.getModelData({ modelId }, { type: ModelTypeEnum.llm, vision: true, optional: true })
+    ).toBeUndefined();
+    expect(
+      handle.getModelData({ modelId, model: vlm.model }, { type: ModelTypeEnum.llm }).modelId
+    ).toBe(vlm.modelId);
   });
 
   it('reports disabled and wrong-type models by actual display name', () => {
@@ -139,7 +159,7 @@ describe('upstream model selection semantics', () => {
     const input = structuredClone(vlm);
     const handle = createHandle([input]);
     input.name = 'Changed input';
-    const resolved = handle.getLLMModelData({ modelId: vlm.modelId });
+    const resolved = handle.getModelData({ modelId: vlm.modelId }, { type: ModelTypeEnum.llm });
     expect(resolved.name).toBe('Visual model');
     expect(() => {
       (resolved as any).name = 'Wrong';

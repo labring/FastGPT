@@ -38,10 +38,15 @@ async function handler(
     per: WritePermissionVal
   });
   const modelHandle = await getTeamModelHandle({ teamId: dataset.teamId });
+  const agentModelData = modelHandle.getModelData(getDatasetModelReference(dataset, 'agent'), {
+    type: 'llm'
+  });
   const formatChunkSettings = computedCollectionChunkSettings({
     ...chunkSettings,
-    llmModel: modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent')),
-    vectorModel: modelHandle.getEmbeddingModelData(getDatasetModelReference(dataset, 'embedding'))
+    llmModel: agentModelData,
+    vectorModel: modelHandle.getModelData(getDatasetModelReference(dataset, 'embedding'), {
+      type: 'embedding'
+    })
   });
 
   const chunks = await rawText2Chunks({
@@ -51,9 +56,7 @@ async function handler(
     chunkSize: formatChunkSettings.chunkSize,
     paragraphChunkDeep: formatChunkSettings.paragraphChunkDeep,
     paragraphChunkMinSize: formatChunkSettings.paragraphChunkMinSize,
-    maxSize: getLLMMaxChunkSize(
-      modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent'))
-    ),
+    maxSize: getLLMMaxChunkSize(agentModelData),
     overlapRatio,
     customReg: formatChunkSettings.chunkSplitter ? [formatChunkSettings.chunkSplitter] : [],
     chunkSettingMode: formatChunkSettings.chunkSettingMode,

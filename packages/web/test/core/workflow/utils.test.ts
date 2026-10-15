@@ -3,37 +3,25 @@ import { formatEditorVariablePickerIcon } from '@fastgpt/web/core/workflow/utils
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 
 describe('formatEditorVariablePickerIcon', () => {
-  it('should add icon based on variable type', () => {
-    const variables = [
-      { key: 'var1', label: 'Variable 1', type: VariableInputEnum.input as `${VariableInputEnum}` }
-    ];
-    const result = formatEditorVariablePickerIcon(variables);
-    expect(result[0].icon).toBeDefined();
-    expect(result[0].key).toBe('var1');
-    expect(result[0].label).toBe('Variable 1');
-  });
-
-  it('should use default input icon when type is undefined', () => {
-    const variables = [{ key: 'var1', label: 'Variable 1' }];
-    const result = formatEditorVariablePickerIcon(variables);
-    expect(result[0].icon).toBeDefined();
-  });
-
-  it('should preserve required field', () => {
+  it('formats variable picker icons and preserves fields', () => {
     const variables = [
       {
         key: 'var1',
         label: 'Variable 1',
         type: VariableInputEnum.input as `${VariableInputEnum}`,
         required: true
-      }
+      },
+      { key: 'var2', label: 'Variable 2' }
     ];
     const result = formatEditorVariablePickerIcon(variables);
-    expect(result[0].required).toBe(true);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ key: 'var1', label: 'Variable 1', required: true });
+    expect(result[0].icon).toBeDefined();
+    expect(result[1]).toMatchObject({ key: 'var2', label: 'Variable 2' });
+    expect(result[1].icon).toBeDefined();
   });
 
-  it('should handle empty array', () => {
-    const result = formatEditorVariablePickerIcon([]);
-    expect(result).toEqual([]);
+  it('handles empty array', () => {
+    expect(formatEditorVariablePickerIcon([])).toEqual([]);
   });
 });

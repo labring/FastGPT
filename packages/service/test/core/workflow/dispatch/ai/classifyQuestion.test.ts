@@ -7,9 +7,11 @@ const { requestMock } = vi.hoisted(() => ({ requestMock: vi.fn() }));
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({ createLLMResponse: requestMock }));
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
   getSystemModelHandle: async () => ({
+    getModelData: () => ({ modelId: 'model', name: 'model', config: {} }),
     getLLMModelData: () => ({ modelId: 'model', name: 'model', config: {} })
   }),
   getTeamModelHandle: async () => ({
+    getModelData: () => ({ modelId: 'model', name: 'model', config: {} }),
     getLLMModelData: () => ({ modelId: 'model', name: 'model', config: {} })
   })
 }));

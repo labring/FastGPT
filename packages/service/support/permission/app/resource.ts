@@ -2,6 +2,7 @@ import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 
 import type { AppResource } from '@fastgpt/global/core/app/type';
+import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
 
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { Types } from '../../../common/mongo';
@@ -71,7 +72,8 @@ export const getUnauthorizedAppResources = async ({
   tmbId,
   isRoot = false,
   allowRootCrossTeam = false,
-  modelHandle
+  modelHandle,
+  tmbInfo: passedTmbInfo
 }: {
   resources: AppResource[];
   tmbId: string;
@@ -79,12 +81,25 @@ export const getUnauthorizedAppResources = async ({
   allowRootCrossTeam?: boolean;
   /** 调用方已读取的同团队模型目录；不传时按成员所属团队读取。 */
   modelHandle?: ModelHandle;
+  tmbInfo?: Pick<TeamTmbItemType, 'teamId' | 'permission'>;
 }) => {
   const normalizedResources = mergeAppResources(resources);
   const modelResources = normalizedResources.filter((resource) => resource.type === 'model');
+  let tmbInfoPromise:
+    | Promise<Pick<TeamTmbItemType, 'teamId' | 'permission'> | undefined>
+    | undefined = passedTmbInfo ? Promise.resolve(passedTmbInfo) : undefined;
+  const getTmbInfo = () => {
+    if (!tmbInfoPromise) {
+      tmbInfoPromise = getTmbInfoByTmbId({ tmbId });
+    }
+    return tmbInfoPromise;
+  };
+
   const modelCatalog = await (async () => {
     if (modelResources.length === 0) return;
-    const { teamId, permission } = await getTmbInfoByTmbId({ tmbId });
+    const tmbInfo = await getTmbInfo();
+    if (!tmbInfo) return;
+    const { teamId, permission } = tmbInfo;
     const handle = modelHandle ?? (await getTeamModelHandle({ teamId }));
     const denied = await authModels({
       actor: { teamId, tmbId, isRoot, teamPermission: permission },
@@ -106,11 +121,13 @@ export const getUnauthorizedAppResources = async ({
           if (!Types.ObjectId.isValid(resource.id)) {
             return { resource, error: AppErrEnum.unExist };
           }
+          const tmbInfo = await getTmbInfo();
           await authAppByTmbId({
             appId: resource.id,
             tmbId,
             per: ReadPermissionVal,
-            isRoot: rootAccess
+            isRoot: rootAccess,
+            ...(tmbInfo ? { tmbInfo } : {})
           });
           return;
         }
@@ -118,11 +135,13 @@ export const getUnauthorizedAppResources = async ({
           if (!Types.ObjectId.isValid(resource.id)) {
             return { resource, error: DatasetErrEnum.unExist };
           }
+          const tmbInfo = await getTmbInfo();
           await authDatasetByTmbId({
             datasetId: resource.id,
             tmbId,
             per: ReadPermissionVal,
-            isRoot: rootAccess
+            isRoot: rootAccess,
+            ...(tmbInfo ? { tmbInfo } : {})
           });
           return;
         }
@@ -130,11 +149,13 @@ export const getUnauthorizedAppResources = async ({
           if (!Types.ObjectId.isValid(resource.id)) {
             return { resource, error: SkillErrEnum.unExist };
           }
+          const tmbInfo = await getTmbInfo();
           await authSkillByTmbId({
             skillId: resource.id,
             tmbId,
             per: ReadPermissionVal,
-            isRoot: rootAccess
+            isRoot: rootAccess,
+            ...(tmbInfo ? { tmbInfo } : {})
           });
           return;
         }
@@ -191,8 +212,9 @@ export const filterAuthorizedAppResources = async ({
     return [];
   }
 
+  let tmbInfo: Pick<TeamTmbItemType, 'teamId' | 'permission'> | undefined;
   try {
-    await getTmbInfoByTmbId({ tmbId: validTmbId });
+    tmbInfo = await getTmbInfoByTmbId({ tmbId: validTmbId });
   } catch (error) {
     if (
       ['member not exist', 'tmbId or userId is required', 'Member not found'].includes(
@@ -209,7 +231,8 @@ export const filterAuthorizedAppResources = async ({
     tmbId: validTmbId,
     isRoot,
     allowRootCrossTeam,
-    modelHandle
+    modelHandle,
+    tmbInfo
   });
   if (unauthorized.length === 0) return resources;
 

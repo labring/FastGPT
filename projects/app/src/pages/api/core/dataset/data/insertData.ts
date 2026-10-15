@@ -56,9 +56,9 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
     text: simpleText(item.text)
   }));
   const modelHandle = await getTeamModelHandle({ teamId });
-  const vectorModelData = modelHandle.getEmbeddingModelData(
-    getDatasetModelReference(dataset, 'embedding')
-  );
+  const vectorModelData = modelHandle.getModelData(getDatasetModelReference(dataset, 'embedding'), {
+    type: 'embedding'
+  });
 
   await hasSameValue({
     teamId,

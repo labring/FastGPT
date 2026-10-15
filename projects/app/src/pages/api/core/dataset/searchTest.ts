@@ -112,10 +112,13 @@ export async function handler(
     modelHandle
   );
   const deepSearchModelData = datasetDeepSearch
-    ? modelHandle.getLLMModelData({
-        modelId: datasetDeepSearchModelId,
-        model: datasetDeepSearchModel
-      })
+    ? modelHandle.getModelData(
+        {
+          modelId: datasetDeepSearchModelId,
+          model: datasetDeepSearchModel
+        },
+        { type: 'llm' }
+      )
     : undefined;
 
   const auxiliaryModels = [rerankModelData, extensionModelData, deepSearchModelData].filter(
@@ -128,8 +131,9 @@ export async function handler(
     handle: modelHandle
   });
 
-  const embeddingModelData = modelHandle.getEmbeddingModelData(
-    getDatasetModelReference(dataset, 'embedding')
+  const embeddingModelData = modelHandle.getModelData(
+    getDatasetModelReference(dataset, 'embedding'),
+    { type: 'embedding' }
   );
   const vlmModelData = findFirstDatasetSearchVlmModel([dataset], modelHandle);
 

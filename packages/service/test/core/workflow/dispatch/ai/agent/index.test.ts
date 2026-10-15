@@ -85,12 +85,14 @@ vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal)
     ...(await (
       await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()
     ).getSystemModelHandle()),
+    getModelData: getLLMModelDataMock,
     getLLMModelData: getLLMModelDataMock
   }),
   getTeamModelHandle: async () => ({
     ...(await (
       await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()
     ).getSystemModelHandle()),
+    getModelData: getLLMModelDataMock,
     getLLMModelData: getLLMModelDataMock
   })
 }));

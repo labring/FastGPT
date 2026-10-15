@@ -80,8 +80,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
   try {
     const toolModel = await loadWorkflowModelResource({
-      teamId: runningAppInfo.teamId,
-      tmbId: runningUserInfo.tmbId,
+      appTeamId: runningAppInfo.teamId,
+      userInfo: runningUserInfo,
       modelId,
       model
     });

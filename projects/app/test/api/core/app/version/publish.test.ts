@@ -391,8 +391,11 @@ describe('publish optional model defaults', () => {
           });
           if (params[NodeInputKeyEnum.datasetSearchUsingReRank]) {
             await loadWorkflowModelResource({
-              teamId: String(root.teamId),
-              tmbId: String(root.tmbId),
+              appTeamId: String(root.teamId),
+              userInfo: {
+                teamId: String(root.teamId),
+                tmbId: String(root.tmbId)
+              },
               type: 'rerank',
               modelId: params[NodeInputKeyEnum.datasetSearchRerankModelId],
               model: params[NodeInputKeyEnum.datasetSearchRerankModel],

@@ -59,8 +59,8 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     return getNodeErrResponse({ error: 'Input is empty' });
   }
   const extractModel = await loadWorkflowModelResource({
-    teamId: runningAppInfo.teamId,
-    tmbId: runningUserInfo.tmbId,
+    appTeamId: runningAppInfo.teamId,
+    userInfo: runningUserInfo,
     modelId,
     model
   });

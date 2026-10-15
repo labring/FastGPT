@@ -58,12 +58,15 @@ export const createWorkflowCheckContext = ({
 
     const { nodeId, flowNodeType, inputs } = sourceNode;
 
-    const branchInputKey =
-      flowNodeType === FlowNodeTypeEnum.userSelect
-        ? NodeInputKeyEnum.userSelectOptions
-        : flowNodeType === FlowNodeTypeEnum.classifyQuestion
-          ? NodeInputKeyEnum.agents
-          : undefined;
+    const branchInputKey = (() => {
+      if (flowNodeType === FlowNodeTypeEnum.userSelect) {
+        return NodeInputKeyEnum.userSelectOptions;
+      }
+      if (flowNodeType === FlowNodeTypeEnum.classifyQuestion) {
+        return NodeInputKeyEnum.agents;
+      }
+      return undefined;
+    })();
     if (!branchInputKey) return true;
     if (!sourceHandle) return false;
     const branches = inputs.find((input) => input.key === branchInputKey)?.value as

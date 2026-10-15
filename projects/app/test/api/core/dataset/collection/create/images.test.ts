@@ -83,15 +83,19 @@ vi.mock('@fastgpt/service/core/dataset/collection/controller', () => ({
   createCollectionAndInsertData: mockCreateCollectionAndInsertData
 }));
 
+const mockModelHandle = {
+  getModelData: (
+    reference: unknown,
+    options?: { type?: string; vision?: boolean; optional?: boolean }
+  ) =>
+    options?.vision
+      ? mockGetDatasetVlmModel(reference, options)
+      : mockGetDatasetEmbeddingModel(reference, options)
+};
+
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
-  getSystemModelHandle: async () => ({
-    getEmbeddingModelData: mockGetDatasetEmbeddingModel,
-    getVlmModelData: mockGetDatasetVlmModel
-  }),
-  getTeamModelHandle: async () => ({
-    getEmbeddingModelData: mockGetDatasetEmbeddingModel,
-    getVlmModelData: mockGetDatasetVlmModel
-  })
+  getSystemModelHandle: async () => mockModelHandle,
+  getTeamModelHandle: async () => mockModelHandle
 }));
 
 vi.mock('@fastgpt/service/core/dataset/utils', async (importOriginal) => {

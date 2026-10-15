@@ -38,6 +38,7 @@ export const createWorkflowAgentToolProvider = ({
         const result = await dispatchAgentDatasetSearch({
           args: call.function.arguments,
           datasetParams,
+          appTeamId: context.runningAppInfo?.teamId,
           teamId: context.runningUserInfo.teamId,
           tmbId: context.runningUserInfo.tmbId,
           llmModel: context.modelData,

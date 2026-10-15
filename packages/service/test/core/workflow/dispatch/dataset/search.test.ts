@@ -68,6 +68,17 @@ vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => {
       config: {}
     })),
     getRerankModelData: vi.fn(() => undefined),
+    getModelData: vi.fn(
+      (
+        reference: { modelId?: string; model?: string },
+        options?: { type?: string; vision?: boolean }
+      ) => {
+        if (options?.vision) return (handle.getVlmModelData as any)(reference);
+        if (options?.type === 'rerank') return (handle.getRerankModelData as any)(reference);
+        if (options?.type === 'embedding') return (handle.getEmbeddingModelData as any)(reference);
+        return (handle.getLLMModelData as any)(reference);
+      }
+    ),
     getVlmModelData: vi.fn(() => ({
       modelId: '68ad85a7463006c963799a03',
       model: 'vision-model',

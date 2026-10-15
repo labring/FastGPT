@@ -71,17 +71,20 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
 
   const modelHandle = await getTeamModelHandle({ teamId });
   const vectorModelData =
-    modelHandle.getEmbeddingModelData({ modelId: vectorModelId }, { optional: true }) ??
+    modelHandle.getModelData({ modelId: vectorModelId }, { type: 'embedding', optional: true }) ??
     modelHandle.getDefaultModelData('embedding');
   const agentModelData =
-    modelHandle.getLLMModelData({ modelId: agentModelId }, { optional: true }) ??
+    modelHandle.getModelData({ modelId: agentModelId }, { type: 'llm', optional: true }) ??
     modelHandle.getDefaultModelData('llm');
   // 与普通创建入口一致：显式“不设置”必须保持禁用，只有省略参数才继承系统默认。
   const explicitVlm = vlmModelId !== undefined;
   const rawVlmModelData =
     vlmModelId === undefined
       ? modelHandle.getDefaultModelData('datasetImageLLM')
-      : modelHandle.getVlmModelData({ modelId: vlmModelId }, { optional: true });
+      : modelHandle.getModelData(
+          { modelId: vlmModelId },
+          { type: 'llm', vision: true, optional: true }
+        );
 
   const vlmModelData = await authDatasetCreateModels({
     actor: { teamId, tmbId, isRoot },

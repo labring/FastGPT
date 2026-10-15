@@ -40,6 +40,7 @@ import { DatasetSearchToolSchema } from './utils';
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 
 type DatasetSearchParams = {
+  appTeamId?: string;
   teamId: string;
   tmbId: string;
   args: string;
@@ -181,6 +182,7 @@ ${chunkSummaries}
 export const dispatchAgentDatasetSearch = async ({
   args,
   datasetParams,
+  appTeamId,
   teamId,
   tmbId,
   llmModel,
@@ -238,22 +240,32 @@ export const dispatchAgentDatasetSearch = async ({
         })
       : undefined;
 
+    const effectiveAppTeamId = appTeamId || teamId;
+    const userInfo = { teamId, tmbId };
+
     // Get vector model
     const dataset = await loadWorkflowDatasetResource({
       datasetId: datasetIds[0],
       datasetIds,
       tmbId
     });
-    const modelHandle = await getTeamModelHandle({ teamId });
-    const vectorModel = modelHandle.getEmbeddingModelData({
-      modelId: dataset?.vectorModelId,
-      model: dataset?.vectorModel
+    const modelHandle = await getTeamModelHandle({ teamId: effectiveAppTeamId });
+    const vectorModel = modelHandle.getModelData(
+      {
+        modelId: dataset?.vectorModelId,
+        model: dataset?.vectorModel
+      },
+      { type: 'embedding' }
+    );
+    const vlmModelData = await getDatasetSearchVlmModel({
+      teamId: effectiveAppTeamId,
+      datasetIds,
+      modelHandle
     });
-    const vlmModelData = await getDatasetSearchVlmModel({ teamId, datasetIds, modelHandle });
     const rerankModelData = datasetParams.usingReRank
       ? await loadWorkflowModelResource({
-          teamId,
-          tmbId,
+          appTeamId: effectiveAppTeamId,
+          userInfo,
           modelId: datasetParams.rerankModelId,
           model: datasetParams.rerankModel,
           type: 'rerank',
@@ -263,8 +275,8 @@ export const dispatchAgentDatasetSearch = async ({
       : undefined;
     const extensionModelData = datasetParams.datasetSearchUsingExtensionQuery
       ? await loadWorkflowModelResource({
-          teamId,
-          tmbId,
+          appTeamId: effectiveAppTeamId,
+          userInfo,
           modelId: datasetParams.datasetSearchExtensionModelId,
           model: datasetParams.datasetSearchExtensionModel,
           fallbackToDefault: true,

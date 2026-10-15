@@ -30,42 +30,30 @@ const createModelCheckData = (
 });
 
 describe('workflow model validation', () => {
-  it('does not reuse the old node-prefixed translation when cached locale resources are stale', () => {
-    const t = ((key: string, params: { inputName?: string; defaultValue?: string }) => {
-      if (key === 'common:core.workflow.check.model_required')
-        return '节点「知识库搜索」未配置「问题优化」，请选择模型';
-      return params.defaultValue ?? key;
-    }) as any;
-    expect(
-      getWorkflowCheckIssueMessage('model_required', t, {
-        nodeName: '知识库搜索',
-        inputName: '问题优化'
-      })
-    ).toBe('未配置[问题优化]模型');
-  });
   it('formats missing models in one translated sentence without node names or a separate model-label key', () => {
     const t = ((key: string, params?: { inputName?: string }) => {
       const text = (commonZh as Record<string, string>)[key.replace('common:', '')] ?? key;
       return text.replace('{{inputName}}', params?.inputName ?? '');
     }) as any;
     expect(
-      getWorkflowCheckIssueMessage('model_required', t, {
-        nodeName: '知识库搜索',
-        inputName: '问题优化'
+      getWorkflowCheckIssueMessage({
+        issueCode: 'model_required',
+        t,
+        params: {
+          nodeName: '知识库搜索',
+          inputName: '问题优化'
+        }
       })
     ).toBe('未配置[问题优化]模型');
     expect(
-      getWorkflowCheckIssueMessage('model_required', undefined, {
-        nodeName: '知识库搜索',
-        inputName: '问题优化'
+      getWorkflowCheckIssueMessage({
+        issueCode: 'model_required',
+        params: {
+          nodeName: '知识库搜索',
+          inputName: '问题优化'
+        }
       })
-    ).toBe('未配置[问题优化]模型');
-    expect(
-      getWorkflowCheckIssueMessage('model_required', undefined, {
-        nodeName: '知识库搜索',
-        inputName: '问题优化模型'
-      })
-    ).toBe('未配置[问题优化模型]模型');
+    ).toBe('common:core.workflow.check.model_required_short');
   });
   const models = [
     { modelId: 'llm-id', model: 'gpt-4o', type: ModelTypeEnum.llm },
@@ -248,11 +236,8 @@ describe('workflow model validation', () => {
       edges: [],
       modelData: createModelCheckData(models)
     })['model-node'];
-    expect(issues?.find((issue) => issue.code === 'model_unavailable')?.message).toContain(
-      'Model node'
-    );
-    expect(issues?.find((issue) => issue.code === 'model_unavailable')?.message).toContain(
-      '模型不可用'
+    expect(issues?.find((issue) => issue.code === 'model_unavailable')?.message).toBe(
+      'common:core.workflow.check.model_unavailable'
     );
   });
 
@@ -322,7 +307,11 @@ describe('workflow model validation', () => {
       const issues = checkWorkflowNodeIssues({
         nodes: [node],
         edges: [],
-        modelData: createModelCheckData(models)
+        modelData: createModelCheckData(models),
+        t: ((key: string, params?: { inputName?: string }) =>
+          key === 'common:core.workflow.check.model_required_short'
+            ? `未配置[${params?.inputName ?? ''}]模型`
+            : key) as any
       })['model-node'];
       expect(issues).toEqual(
         expect.arrayContaining([

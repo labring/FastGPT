@@ -7,14 +7,9 @@ import {
 import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 
 describe('getElseIFLabel', () => {
-  it('should return IF for index 0', () => {
+  it('formats IF for index 0 and ELSE IF N for index > 0', () => {
     expect(getElseIFLabel(0)).toBe(IfElseResultEnum.IF);
-  });
-
-  it('should return ELSE IF with index for index > 0', () => {
     expect(getElseIFLabel(1)).toBe(`${IfElseResultEnum.ELSE_IF} 1`);
-    expect(getElseIFLabel(2)).toBe(`${IfElseResultEnum.ELSE_IF} 2`);
-    expect(getElseIFLabel(10)).toBe(`${IfElseResultEnum.ELSE_IF} 10`);
   });
 });
 

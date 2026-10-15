@@ -49,28 +49,32 @@ vi.mock('@fastgpt/service/support/openapi/tools', () => ({
   updateApiKeyUsage: mockUpdateApiKeyUsage
 }));
 
-vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
-  getSystemModelHandle: async () => ({
-    getAllModels: () => [],
-    version: 'test',
-    getDefaultModelData: mockGetDefaultModelData,
-    getRerankModelData: mockGetRerankModelData,
-    getEmbeddingModelData: mockGetEmbeddingModelData,
-    getLLMModelData: mockGetLLMModelData,
-    findModelData: mockGetOptionalVlmModelData,
-    getOptionalVlmModelData: mockGetOptionalVlmModelData
-  }),
-  getTeamModelHandle: async () => ({
-    getAllModels: () => [],
-    version: 'test',
-    getDefaultModelData: mockGetDefaultModelData,
-    getRerankModelData: mockGetRerankModelData,
-    getEmbeddingModelData: mockGetEmbeddingModelData,
-    getLLMModelData: mockGetLLMModelData,
-    findModelData: mockGetOptionalVlmModelData,
-    getOptionalVlmModelData: mockGetOptionalVlmModelData
-  })
-}));
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => {
+  const getModelData = (ref: unknown, options?: { type?: string; vision?: boolean }) => {
+    if (options?.vision) return mockGetOptionalVlmModelData(ref, options);
+    if (options?.type === 'rerank') return mockGetRerankModelData(ref, options);
+    if (options?.type === 'embedding') return mockGetEmbeddingModelData(ref, options);
+    return mockGetLLMModelData(ref, options);
+  };
+  return {
+    getSystemModelHandle: async () => ({
+      getAllModels: () => [],
+      version: 'test',
+      getDefaultModelData: mockGetDefaultModelData,
+      getModelData,
+      findModelData: mockGetOptionalVlmModelData,
+      getOptionalVlmModelData: mockGetOptionalVlmModelData
+    }),
+    getTeamModelHandle: async () => ({
+      getAllModels: () => [],
+      version: 'test',
+      getDefaultModelData: mockGetDefaultModelData,
+      getModelData,
+      findModelData: mockGetOptionalVlmModelData,
+      getOptionalVlmModelData: mockGetOptionalVlmModelData
+    })
+  };
+});
 
 vi.mock('@fastgpt/service/support/user/audit/util', () => ({
   addAuditLog: mockAddAuditLog,

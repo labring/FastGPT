@@ -381,11 +381,16 @@ export const formatCollectionParamsByDataset = async ({
   createCollectionParams: Omit<CreateOneCollectionParams, 'name' | 'session'>;
 }) => {
   const modelHandle = await getTeamModelHandle({ teamId: String(dataset.teamId) });
-  const agentModelData = modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent'));
-  const embeddingModelData = modelHandle.getEmbeddingModelData(
-    getDatasetModelReference(dataset, 'embedding')
+  const agentModelData = modelHandle.getModelData(getDatasetModelReference(dataset, 'agent'), {
+    type: 'llm'
+  });
+  const embeddingModelData = modelHandle.getModelData(
+    getDatasetModelReference(dataset, 'embedding'),
+    { type: 'embedding' }
   );
-  const vlmModelData = modelHandle.getVlmModelData(getDatasetModelReference(dataset, 'vlm'), {
+  const vlmModelData = modelHandle.getModelData(getDatasetModelReference(dataset, 'vlm'), {
+    type: 'llm',
+    vision: true,
     optional: true
   });
 

@@ -81,6 +81,8 @@ export type ChatDispatchProps = {
     contact: string;
     teamId: string;
     tmbId: string;
+    timezone?: string;
+    externalProvider?: ExternalProviderType;
   };
   uid: string; // Who run this workflow
 

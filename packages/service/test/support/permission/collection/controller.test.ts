@@ -510,15 +510,22 @@ describe.sequential('createCollections / createCollectionPermission', () => {
     const datasetId = String(dataset._id);
     await enableDatasetCollectionPermissions({ teamId, datasetId });
     const modelHandle = vi.spyOn(modelCatalog, 'getTeamModelHandle').mockResolvedValue({
-      getLLMModelData: () => ({
-        modelId: 'agent',
-        config: { maxContext: 8000, maxResponse: 1000 }
-      }),
-      getEmbeddingModelData: () => ({
-        modelId: 'embedding',
-        config: { defaultToken: 100, maxToken: 100, weight: 0 }
-      }),
-      getVlmModelData: () => undefined
+      getModelData: (
+        _ref: unknown,
+        options?: { type?: string; vision?: boolean; optional?: boolean }
+      ) => {
+        if (options?.vision) return undefined;
+        if (options?.type === 'embedding') {
+          return {
+            modelId: 'embedding',
+            config: { defaultToken: 100, maxToken: 100, weight: 0 }
+          };
+        }
+        return {
+          modelId: 'agent',
+          config: { maxContext: 8000, maxResponse: 1000 }
+        };
+      }
     } as unknown as Awaited<ReturnType<typeof modelCatalog.getTeamModelHandle>>);
     const error = new Error('queue unavailable');
     const queueWrite = vi.spyOn(MongoDatasetTraining, 'insertMany').mockRejectedValueOnce(error);

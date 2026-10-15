@@ -324,6 +324,29 @@ describe('assertAuthModels', () => {
       assertAuthModels({ actor, modelIds: [created.modelId], action: 'grant' })
     ).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
   });
+  it('validates and narrows model type when type is specified', async () => {
+    const created = await createModel({ ...owner, modelData: draft });
+    const {
+      models: [llmModel]
+    } = await assertAuthModels({
+      actor,
+      modelIds: [created.modelId],
+      type: ModelTypeEnum.llm
+    });
+    expect(llmModel.modelId).toBe(created.modelId);
+    expect(llmModel.type).toBe(ModelTypeEnum.llm);
+
+    await expect(
+      assertAuthModels({
+        actor,
+        modelIds: [created.modelId],
+        type: ModelTypeEnum.embedding
+      })
+    ).rejects.toMatchObject({
+      message: ModelErrEnum.unExist,
+      displayMessage: 'Model type mismatch: Custom'
+    });
+  });
 });
 
 describe('getAuthorizedModelIds', () => {

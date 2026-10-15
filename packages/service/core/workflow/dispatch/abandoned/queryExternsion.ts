@@ -40,8 +40,8 @@ export const dispatchQueryExtension = async (props: Props): Promise<Response> =>
   }
   const modelHandle = await getTeamModelHandle({ teamId: props.runningAppInfo.teamId });
   const queryExtensionModel = await loadWorkflowModelResource({
-    teamId: props.runningAppInfo.teamId,
-    tmbId: runningUserInfo.tmbId,
+    appTeamId: props.runningAppInfo.teamId,
+    userInfo: runningUserInfo,
     modelId,
     model,
     modelHandle

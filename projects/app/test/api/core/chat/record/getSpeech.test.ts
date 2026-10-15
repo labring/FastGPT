@@ -17,8 +17,14 @@ vi.mock('@fastgpt/service/core/app/resource/service', () => ({
   authTargetModelResource: mocks.authTargetModelResource
 }));
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
-  getSystemModelHandle: async () => ({ getTTSModelData: mocks.getTTSModelData }),
-  getTeamModelHandle: async () => ({ getTTSModelData: mocks.getTTSModelData })
+  getSystemModelHandle: async () => ({
+    getModelData: mocks.getTTSModelData,
+    getTTSModelData: mocks.getTTSModelData
+  }),
+  getTeamModelHandle: async () => ({
+    getModelData: mocks.getTTSModelData,
+    getTTSModelData: mocks.getTTSModelData
+  })
 }));
 vi.mock('@fastgpt/service/core/ai/audio/speech', () => ({ text2Speech: mocks.text2Speech }));
 vi.mock('@fastgpt/service/common/response', () => ({ jsonRes: mocks.jsonRes }));

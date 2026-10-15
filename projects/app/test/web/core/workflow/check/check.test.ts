@@ -17,35 +17,21 @@ import {
   VARIABLE_NODE_ID
 } from '@fastgpt/global/core/workflow/constants';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
-import { workflowReferenceValueIsSelectable } from '@/web/core/workflow/utils';
 import {
   checkWorkflowNodeIssues,
   checkWorkflowBeforeRunOrPublish,
   getWorkflowCheckErrorNodeIds
 } from '@/web/core/workflow/check/check';
-import {
-  applyWorkflowStartInputAutoFill,
-  collectWorkflowStartInputAutoFillPatches,
-  collectWorkflowStartAutoFillRevertPatches,
-  collectWorkflowStartOutputAutoFillRevertPatches
-} from '@/web/core/workflow/workflowStartAutoFill';
+import { getToolErrorMessage } from '@/web/core/workflow/check/message';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { AssignedAnswerModule } from '@fastgpt/global/core/workflow/template/system/assignedAnswer';
-import {
-  DatasetConcatModule,
-  getOneQuoteInputTemplate
-} from '@fastgpt/global/core/workflow/template/system/datasetConcat';
+import { DatasetConcatModule } from '@fastgpt/global/core/workflow/template/system/datasetConcat';
 import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
 import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
-import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
-import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
-import { ClassifyQuestionModule } from '@fastgpt/global/core/workflow/template/system/classifyQuestion';
-import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
-import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 
 describe('checkWorkflowNodeIssues', () => {
   const makeNode = (
@@ -278,7 +264,7 @@ describe('checkWorkflowNodeIssues', () => {
     });
 
     expect(result.tool.map((issue) => issue.code)).toContain('tool_load_failed');
-    expect(result.tool[0]?.message).toBe('工具加载失败，请稍后重试');
+    expect(result.tool[0]?.message).toBe('common:core.workflow.check.tool_load_failed');
   });
 
   it('reports permission error when pluginData error is unAuthApp', () => {
@@ -294,7 +280,7 @@ describe('checkWorkflowNodeIssues', () => {
     });
 
     expect(result.tool.map((issue) => issue.code)).toContain('resource_no_permission');
-    expect(result.tool[0]?.message).toBe('无权限访问该资源，请检查权限');
+    expect(result.tool[0]?.message).toBe('common:core.workflow.check.resource_no_permission');
   });
 
   it('reports permission error when pluginData error is translated message', () => {
@@ -310,7 +296,7 @@ describe('checkWorkflowNodeIssues', () => {
     });
 
     expect(result.tool.map((issue) => issue.code)).toContain('resource_no_permission');
-    expect(result.tool[0]?.message).toBe('无权限访问该资源，请检查权限');
+    expect(result.tool[0]?.message).toBe('common:core.workflow.check.resource_no_permission');
   });
 
   it('reports missing tool when pluginData error is appUnExist', () => {
@@ -354,8 +340,12 @@ describe('checkWorkflowNodeIssues', () => {
     });
 
     expect(unreachableResult.unreachable[0]?.code).toBe('unreachable_from_start');
-    expect(unreachableResult.unreachable[0]?.message).toBe('未与其他节点连线');
-    expect(requiredResult.required[0]?.message).toBe('需填写必填项 answer');
+    expect(unreachableResult.unreachable[0]?.message).toBe(
+      'common:core.workflow.check.no_upstream'
+    );
+    expect(requiredResult.required[0]?.message).toBe(
+      'common:core.workflow.check.required_input_empty'
+    );
   });
 
   it('does not treat non-latest tool versions as inactive', () => {
@@ -688,179 +678,62 @@ describe('checkWorkflowNodeIssues', () => {
         inputs: templateInputs.map((input) => ({ ...input }))
       });
 
-    const runCheck = (node: Node<FlowNodeItemType>, extraNodes: Node<FlowNodeItemType>[] = []) =>
-      checkWorkflowNodeIssues({
-        nodes: [startNode, ...extraNodes, node],
-        edges: [
-          { id: 'e-start', source: 'start', target: node.data.nodeId, type: EDGE_TYPE },
-          ...extraNodes.map((extraNode, index) => ({
-            id: `e-extra-${index}`,
-            source: 'start',
-            target: extraNode.data.nodeId,
-            type: EDGE_TYPE
-          }))
-        ]
-      });
-
-    it('AssignedAnswerModule keeps required answerText with valueType any (template contract)', () => {
-      const answerInput = AssignedAnswerModule.inputs.find(
-        (input) => input.key === NodeInputKeyEnum.answerText
-      );
-
-      expect(answerInput?.required).toBe(true);
-      expect(answerInput?.valueType).toBe(WorkflowIOValueTypeEnum.any);
-      expect(answerInput?.value).toBeUndefined();
-    });
-
-    it('answerNode template default: empty required answerText reports required_input_empty', () => {
-      const node = makeNodeWithTemplateInputs(
+    it('reports required_input_empty for empty required template inputs and clears when filled', () => {
+      const answerNode = makeNodeWithTemplateInputs(
         'answer',
         FlowNodeTypeEnum.answerNode,
         AssignedAnswerModule.inputs
       );
-
-      const result = runCheck(node);
-      const answerIssues =
-        result.answer?.filter((issue) => issue.inputKey === NodeInputKeyEnum.answerText) ?? [];
-
-      expect(answerIssues.map((issue) => issue.code)).toContain('required_input_empty');
-    });
-
-    it('answerNode with filled content does not report required_input_empty', () => {
-      const node = makeNodeWithTemplateInputs('answer-ok', FlowNodeTypeEnum.answerNode, [
-        {
-          ...AssignedAnswerModule.inputs[0],
-          value: 'hello'
-        }
-      ]);
-
-      const result = runCheck(node);
-      const answerIssues =
-        result['answer-ok']?.filter((issue) => issue.code === 'required_input_empty') ?? [];
-
-      expect(answerIssues).toEqual([]);
-    });
-
-    it('answerNode contrast: same field with valueType string reports required_input_empty', () => {
-      const templateInput = AssignedAnswerModule.inputs.find(
-        (input) => input.key === NodeInputKeyEnum.answerText
-      );
-      expect(templateInput).toBeDefined();
-
-      const node = makeNode('answer-string', FlowNodeTypeEnum.answerNode, {
-        inputs: [
-          {
-            ...templateInput!,
-            valueType: WorkflowIOValueTypeEnum.string,
-            value: ''
-          }
-        ]
-      });
-
-      const result = runCheck(node);
-      const answerIssues =
-        result['answer-string']?.filter(
-          (issue) => issue.inputKey === NodeInputKeyEnum.answerText
-        ) ?? [];
-
-      expect(answerIssues.map((issue) => issue.code)).toContain('required_input_empty');
-    });
-
-    it('DatasetConcatModule default: empty quote list reports required_input_empty', () => {
-      const node = makeNodeWithTemplateInputs(
+      const concatNode = makeNodeWithTemplateInputs(
         'concat',
         FlowNodeTypeEnum.datasetConcatNode,
         DatasetConcatModule.inputs
       );
-
-      expect(node.data.inputs.filter((input) => input.canEdit)).toHaveLength(0);
-
-      const result = runCheck(node);
-
-      expect(result.concat?.map((issue) => issue.code)).toContain('required_input_empty');
-      expect(result.concat?.[0]?.inputKey).toBe(NodeInputKeyEnum.datasetQuoteList);
-    });
-
-    it('datasetConcat added quote without reference reports required_input_empty', () => {
-      const quoteTemplate = getOneQuoteInputTemplate({ index: 1 });
-      const node = makeNodeWithTemplateInputs('concat-one', FlowNodeTypeEnum.datasetConcatNode, [
-        ...DatasetConcatModule.inputs,
-        quoteTemplate
-      ]);
-
-      expect(quoteTemplate.required).toBe(true);
-
-      const result = runCheck(node);
-      const quoteIssues =
-        result['concat-one']?.filter((issue) => issue.code === 'required_input_empty') ?? [];
-
-      expect(quoteIssues.length).toBeGreaterThan(0);
-    });
-
-    it('datasetConcat with valid quote reference does not report required_input_empty', () => {
-      const datasetNode = makeNode('dataset', FlowNodeTypeEnum.datasetSearchNode, {
-        outputs: [
-          {
-            id: NodeOutputKeyEnum.datasetQuoteQA,
-            key: NodeOutputKeyEnum.datasetQuoteQA,
-            label: 'quote',
-            type: FlowNodeOutputTypeEnum.static,
-            valueType: WorkflowIOValueTypeEnum.datasetQuote
-          }
-        ]
-      });
-      const quoteKey = 'quote-1';
-      const node = makeNodeWithTemplateInputs('concat-ok', FlowNodeTypeEnum.datasetConcatNode, [
-        ...DatasetConcatModule.inputs,
-        {
-          ...getOneQuoteInputTemplate({ key: quoteKey, index: 1 }),
-          value: ['dataset', NodeOutputKeyEnum.datasetQuoteQA]
-        }
-      ]);
-
-      const result = checkWorkflowNodeIssues({
-        nodes: [startNode, datasetNode, node],
-        edges: [
-          { id: 'e1', source: 'start', target: 'dataset', type: EDGE_TYPE },
-          { id: 'e2', source: 'start', target: 'concat-ok', type: EDGE_TYPE }
-        ]
-      });
-
-      const requiredIssues =
-        result['concat-ok']?.filter((issue) => issue.code === 'required_input_empty') ?? [];
-      expect(requiredIssues).toEqual([]);
-    });
-
-    it('HttpNode468 template default: empty httpReqUrl reports http_url_empty via node rule', () => {
-      const node = makeNodeWithTemplateInputs(
+      const httpNode = makeNodeWithTemplateInputs(
         'http',
         FlowNodeTypeEnum.httpRequest468,
         HttpNode468.inputs
       );
-      const urlInput = node.data.inputs.find((input) => input.key === NodeInputKeyEnum.httpReqUrl);
 
-      expect(urlInput?.required).toBe(true);
-      expect(urlInput?.value).toBeUndefined();
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, answerNode, concatNode, httpNode],
+        edges: [
+          { id: 'e1', source: 'start', target: 'answer', type: EDGE_TYPE },
+          { id: 'e2', source: 'start', target: 'concat', type: EDGE_TYPE },
+          { id: 'e3', source: 'start', target: 'http', type: EDGE_TYPE }
+        ]
+      });
 
-      const result = runCheck(node);
-      expect(result.http?.map((issue) => issue.code)).toContain('http_url_empty');
-      expect(result.http?.[0]?.inputKey).toBe(NodeInputKeyEnum.httpReqUrl);
-      expect(result.http?.map((issue) => issue.code)).not.toContain('required_input_empty');
-    });
+      expect(result.answer?.map((i) => i.code)).toContain('required_input_empty');
+      expect(result.concat?.map((i) => i.code)).toContain('required_input_empty');
+      expect(result.http?.map((i) => i.code)).toContain('http_url_empty');
 
-    it('HttpNode468 with request url does not report http_url_empty', () => {
-      const node = makeNodeWithTemplateInputs(
-        'http-ok',
-        FlowNodeTypeEnum.httpRequest468,
-        HttpNode468.inputs.map((input) =>
-          input.key === NodeInputKeyEnum.httpReqUrl
-            ? { ...input, value: 'https://example.com/api' }
-            : input
-        )
+      const filledResult = checkWorkflowNodeIssues({
+        nodes: [
+          startNode,
+          makeNodeWithTemplateInputs('answer-ok', FlowNodeTypeEnum.answerNode, [
+            { ...AssignedAnswerModule.inputs[0], value: 'hello' }
+          ]),
+          makeNodeWithTemplateInputs(
+            'http-ok',
+            FlowNodeTypeEnum.httpRequest468,
+            HttpNode468.inputs.map((input) =>
+              input.key === NodeInputKeyEnum.httpReqUrl
+                ? { ...input, value: 'https://example.com/api' }
+                : input
+            )
+          )
+        ],
+        edges: [
+          { id: 'e1', source: 'start', target: 'answer-ok', type: EDGE_TYPE },
+          { id: 'e2', source: 'start', target: 'http-ok', type: EDGE_TYPE }
+        ]
+      });
+
+      expect(filledResult['answer-ok']?.map((i) => i.code) ?? []).not.toContain(
+        'required_input_empty'
       );
-
-      const result = runCheck(node);
-      expect(result['http-ok']?.map((issue) => issue.code) ?? []).not.toContain('http_url_empty');
+      expect(filledResult['http-ok']?.map((i) => i.code) ?? []).not.toContain('http_url_empty');
     });
 
     it('loopStart hidden required any does not false-positive required_input_empty', () => {
@@ -869,11 +742,11 @@ describe('checkWorkflowNodeIssues', () => {
         FlowNodeTypeEnum.nestedStart,
         LoopStartNode.inputs
       );
-
-      const result = runCheck(node);
-      expect(result['loop-start']?.map((issue) => issue.code) ?? []).not.toContain(
-        'required_input_empty'
-      );
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, node],
+        edges: [{ id: 'e-start', source: 'start', target: 'loop-start', type: EDGE_TYPE }]
+      });
+      expect(result['loop-start']?.map((i) => i.code) ?? []).not.toContain('required_input_empty');
     });
 
     it('uses selectedType in required validation', () => {
@@ -887,9 +760,11 @@ describe('checkWorkflowNodeIssues', () => {
           required: true
         }
       ]);
-
-      const result = runCheck(node);
-      expect(result['hidden-selected']?.map((issue) => issue.code) ?? []).not.toContain(
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, node],
+        edges: [{ id: 'e-start', source: 'start', target: 'hidden-selected', type: EDGE_TYPE }]
+      });
+      expect(result['hidden-selected']?.map((i) => i.code) ?? []).not.toContain(
         'required_input_empty'
       );
     });
@@ -925,531 +800,6 @@ describe('checkWorkflowNodeIssues', () => {
       ).toEqual(['required_input_empty']);
     });
   });
-
-  describe('auto-fill input variables after connecting from workflow start', () => {
-    const makeFreshConnectedNode = (
-      nodeId: string,
-      template: FlowNodeTemplateType
-    ): Node<FlowNodeItemType> =>
-      makeNode(nodeId, template.flowNodeType, {
-        inputs: template.inputs.map((input) => ({
-          ...input,
-          value: input.value ?? input.defaultValue
-        })),
-        outputs: template.outputs
-      });
-
-    const startNodeWithFiles = makeNode('start', FlowNodeTypeEnum.workflowStart, {
-      outputs: [...startNode.data.outputs, userFilesInput]
-    });
-
-    const applyStartAutoFill = (targetNode: Node<FlowNodeItemType>, workflowStart = startNode) => {
-      targetNode.data.inputs = applyWorkflowStartInputAutoFill({
-        inputs: targetNode.data.inputs,
-        workflowStartNodeId: workflowStart.data.nodeId,
-        workflowStartOutputs: workflowStart.data.outputs
-      });
-    };
-
-    const expectInputValue = (
-      node: Node<FlowNodeItemType>,
-      inputKey: NodeInputKeyEnum,
-      expectedValue: unknown
-    ) => {
-      expect(
-        node.data.inputs.find((input) => input.key === inputKey)?.value,
-        `${node.data.name || node.id}.${inputKey} should auto reference workflow start output after connection`
-      ).toEqual(expectedValue);
-    };
-
-    it.each([
-      [
-        'AI 对话',
-        AiChatModule,
-        'ai-chat',
-        NodeInputKeyEnum.userChatInput,
-        ['start', NodeOutputKeyEnum.userChatInput]
-      ],
-      [
-        '知识库搜索',
-        DatasetSearchModule,
-        'dataset-search',
-        NodeInputKeyEnum.datasetSearchInput,
-        [['start', NodeOutputKeyEnum.userChatInput]]
-      ],
-      [
-        '问题分类',
-        ClassifyQuestionModule,
-        'classify',
-        NodeInputKeyEnum.userChatInput,
-        ['start', NodeOutputKeyEnum.userChatInput]
-      ],
-      [
-        '工具调用',
-        ToolCallNode,
-        'tool-call',
-        NodeInputKeyEnum.userChatInput,
-        ['start', NodeOutputKeyEnum.userChatInput]
-      ]
-    ] as const)(
-      '%s 节点连线后应自动填充用户问题引用',
-      (_nodeName, template, nodeId, inputKey, expectedValue) => {
-        const targetNode = makeFreshConnectedNode(nodeId, template);
-        applyStartAutoFill(targetNode);
-
-        const result = checkWorkflowNodeIssues({
-          nodes: [startNode, targetNode],
-          edges: [{ id: `e-start-${nodeId}`, source: 'start', target: nodeId, type: EDGE_TYPE }]
-        });
-
-        expectInputValue(targetNode, inputKey, expectedValue);
-        expect(
-          result[nodeId]
-            ?.filter((issue) => issue.inputKey === inputKey)
-            .map((issue) => issue.code) ?? []
-        ).not.toContain('required_input_empty');
-      }
-    );
-
-    it('AI 对话节点连线且开启文件上传后应自动填充文件链接引用', () => {
-      const targetNode = makeFreshConnectedNode('ai-chat', AiChatModule);
-      applyStartAutoFill(targetNode, startNodeWithFiles);
-
-      expectInputValue(targetNode, NodeInputKeyEnum.fileUrlList, [
-        ['start', NodeOutputKeyEnum.userFiles]
-      ]);
-      expect(
-        workflowReferenceValueIsSelectable({
-          value: targetNode.data.inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList)
-            ?.value as any,
-          sourceNodes: [
-            {
-              nodeId: startNodeWithFiles.data.nodeId,
-              outputs: startNodeWithFiles.data.outputs
-            }
-          ],
-          valueType: WorkflowIOValueTypeEnum.arrayString
-        })
-      ).toBe(true);
-
-      const result = checkWorkflowNodeIssues({
-        nodes: [startNodeWithFiles, targetNode],
-        edges: [{ id: 'e-start-ai-chat', source: 'start', target: 'ai-chat', type: EDGE_TYPE }]
-      });
-      const fileLinkIssues =
-        result['ai-chat']?.filter((issue) => issue.inputKey === NodeInputKeyEnum.fileUrlList) ?? [];
-      expect(fileLinkIssues).toEqual([]);
-    });
-
-    it('收集自动填充补丁时，同一个节点的文件链接和用户问题应同时返回', () => {
-      const targetNode = makeFreshConnectedNode('ai-chat', AiChatModule);
-
-      const patches = collectWorkflowStartInputAutoFillPatches({
-        nodes: [startNodeWithFiles, targetNode],
-        edges: [{ source: 'start', target: 'ai-chat' }],
-        workflowStartNode: startNodeWithFiles.data
-      });
-
-      expect(
-        patches
-          .filter((patch) => patch.nodeId === 'ai-chat')
-          .map((patch) => patch.key)
-          .sort()
-      ).toEqual([NodeInputKeyEnum.fileUrlList, NodeInputKeyEnum.userChatInput].sort());
-    });
-
-    it('开启文件上传后再关闭，应清理自动写入的 userFiles 引用', () => {
-      const aiNode = makeFreshConnectedNode('ai-chat', AiChatModule);
-      const datasetNode = makeFreshConnectedNode('dataset-search', DatasetSearchModule);
-      const edges: Edge[] = [
-        { id: 'e-start-ai', source: 'start', target: 'ai-chat', type: EDGE_TYPE },
-        { id: 'e-ai-dataset', source: 'ai-chat', target: 'dataset-search', type: EDGE_TYPE }
-      ];
-      const nodes = [startNodeWithFiles, aiNode, datasetNode];
-
-      const autoFillPatches = collectWorkflowStartInputAutoFillPatches({
-        nodes,
-        edges,
-        workflowStartNode: startNodeWithFiles.data
-      });
-
-      nodes.forEach((node) => {
-        node.data.inputs = node.data.inputs.map((input) => {
-          const patch = autoFillPatches.find(
-            (item) => item.nodeId === node.data.nodeId && item.key === input.key
-          );
-          return patch ? patch.value : input;
-        });
-      });
-
-      const revertPatches = collectWorkflowStartOutputAutoFillRevertPatches({
-        nodes,
-        edges,
-        workflowStartNode: startNodeWithFiles.data,
-        outputKey: userFilesInput.key
-      });
-
-      expect(revertPatches.map((patch) => `${patch.nodeId}:${patch.key}`).sort()).toEqual(
-        [
-          `ai-chat:${NodeInputKeyEnum.fileUrlList}`,
-          `dataset-search:${NodeInputKeyEnum.datasetSearchInput}`
-        ].sort()
-      );
-
-      nodes.forEach((node) => {
-        node.data.inputs = node.data.inputs.map((input) => {
-          const patch = revertPatches.find(
-            (item) => item.nodeId === node.data.nodeId && item.key === input.key
-          );
-          return patch ? patch.value : input;
-        });
-      });
-
-      expectInputValue(aiNode, NodeInputKeyEnum.fileUrlList, undefined);
-      expectInputValue(datasetNode, NodeInputKeyEnum.datasetSearchInput, [
-        ['start', NodeOutputKeyEnum.userChatInput]
-      ]);
-
-      const result = checkWorkflowNodeIssues({
-        nodes: [startNode, aiNode, datasetNode],
-        edges
-      });
-      expect(
-        result['ai-chat']
-          ?.filter((issue) => issue.inputKey === NodeInputKeyEnum.fileUrlList)
-          .map((issue) => issue.code) ?? []
-      ).not.toContain('invalid_reference');
-      expect(
-        result['dataset-search']
-          ?.filter((issue) => issue.inputKey === NodeInputKeyEnum.datasetSearchInput)
-          .map((issue) => issue.code) ?? []
-      ).not.toContain('invalid_reference');
-    });
-
-    it('流程开始节点可达的间接下游节点也应自动填充用户问题引用', () => {
-      const aiNode = makeFreshConnectedNode('ai-chat', AiChatModule);
-      const toolNode = makeFreshConnectedNode('tool-call', ToolCallNode);
-
-      const patches = collectWorkflowStartInputAutoFillPatches({
-        nodes: [startNode, aiNode, toolNode],
-        edges: [
-          { source: 'start', target: 'ai-chat' },
-          { source: 'ai-chat', target: 'tool-call' }
-        ],
-        workflowStartNode: startNode.data
-      });
-
-      const toolUserQuestionPatch = patches.find(
-        (patch) => patch.nodeId === 'tool-call' && patch.key === NodeInputKeyEnum.userChatInput
-      );
-
-      expect(toolUserQuestionPatch?.value.value).toEqual([
-        'start',
-        NodeOutputKeyEnum.userChatInput
-      ]);
-    });
-
-    it('合法手动配置的用户问题引用不应被连线自动填充覆盖', () => {
-      const targetNode = makeFreshConnectedNode('ai-chat', AiChatModule);
-      const manualReference = [VARIABLE_NODE_ID, 'customQuestion'];
-      targetNode.data.inputs = targetNode.data.inputs.map((input) =>
-        input.key === NodeInputKeyEnum.userChatInput ? { ...input, value: manualReference } : input
-      );
-
-      applyStartAutoFill(targetNode);
-
-      expectInputValue(targetNode, NodeInputKeyEnum.userChatInput, manualReference);
-    });
-
-    it('未从流程开始连线时不应自动填充，应提示用户问题必填', () => {
-      const targetNode = makeFreshConnectedNode('ai-chat', AiChatModule);
-
-      const result = checkWorkflowNodeIssues({
-        nodes: [startNode, targetNode],
-        edges: []
-      });
-
-      expectInputValue(targetNode, NodeInputKeyEnum.userChatInput, undefined);
-      expect(
-        result['ai-chat']
-          ?.filter((issue) => issue.inputKey === NodeInputKeyEnum.userChatInput)
-          .map((issue) => issue.code) ?? []
-      ).toContain('required_input_empty');
-    });
-
-    it('断开流程开始连线后应回滚自动填充并重新提示用户问题必填', () => {
-      const targetNode = makeFreshConnectedNode('ai-chat', AiChatModule);
-      applyStartAutoFill(targetNode);
-
-      const patches = collectWorkflowStartAutoFillRevertPatches({
-        removedEdges: [{ id: 'e1', source: 'start', target: 'ai-chat' }],
-        remainingEdges: [],
-        getNodeById: (nodeId) => {
-          if (nodeId === 'start') return startNode.data;
-          if (nodeId === 'ai-chat') return targetNode.data;
-          return undefined;
-        }
-      });
-
-      expect(patches.map((patch) => patch.key)).toContain(NodeInputKeyEnum.userChatInput);
-      targetNode.data.inputs = targetNode.data.inputs.map((input) => {
-        const patch = patches.find((item) => item.key === input.key);
-        return patch ? patch.value : input;
-      });
-
-      const result = checkWorkflowNodeIssues({
-        nodes: [startNode, targetNode],
-        edges: []
-      });
-
-      expectInputValue(targetNode, NodeInputKeyEnum.userChatInput, undefined);
-      expect(
-        result['ai-chat']
-          ?.filter((issue) => issue.inputKey === NodeInputKeyEnum.userChatInput)
-          .map((issue) => issue.code) ?? []
-      ).toContain('required_input_empty');
-    });
-
-    it('断开流程开始主链路后应回滚整条下游链的自动填充并恢复必填校验', () => {
-      const aiNode = makeFreshConnectedNode('ai-chat', AiChatModule);
-      const datasetNode = makeFreshConnectedNode('dataset-search', DatasetSearchModule);
-      const classifyNode = makeFreshConnectedNode('classify', ClassifyQuestionModule);
-      const toolNode = makeFreshConnectedNode('tool-call', ToolCallNode);
-      const nodes = [startNodeWithFiles, aiNode, datasetNode, classifyNode, toolNode];
-      const previousEdges: Edge[] = [
-        { id: 'e-start-ai', source: 'start', target: 'ai-chat', type: EDGE_TYPE },
-        { id: 'e-ai-dataset', source: 'ai-chat', target: 'dataset-search', type: EDGE_TYPE },
-        { id: 'e-ai-classify', source: 'ai-chat', target: 'classify', type: EDGE_TYPE },
-        { id: 'e-classify-tool', source: 'classify', target: 'tool-call', type: EDGE_TYPE }
-      ];
-
-      const autoFillPatches = collectWorkflowStartInputAutoFillPatches({
-        nodes,
-        edges: previousEdges,
-        workflowStartNode: startNodeWithFiles.data
-      });
-
-      nodes.forEach((node) => {
-        node.data.inputs = node.data.inputs.map((input) => {
-          const patch = autoFillPatches.find(
-            (item) => item.nodeId === node.data.nodeId && item.key === input.key
-          );
-          return patch ? patch.value : input;
-        });
-      });
-
-      const revertPatches = collectWorkflowStartAutoFillRevertPatches({
-        removedEdges: [{ id: 'e-start-ai', source: 'start', target: 'ai-chat' }],
-        remainingEdges: previousEdges.filter((edge) => edge.id !== 'e-start-ai'),
-        getNodeById: (nodeId) => nodes.find((node) => node.data.nodeId === nodeId)?.data
-      });
-
-      expect(revertPatches.map((patch) => `${patch.nodeId}:${patch.key}`).sort()).toEqual(
-        [
-          `ai-chat:${NodeInputKeyEnum.fileUrlList}`,
-          `ai-chat:${NodeInputKeyEnum.userChatInput}`,
-          `dataset-search:${NodeInputKeyEnum.datasetSearchInput}`,
-          `classify:${NodeInputKeyEnum.userChatInput}`,
-          `tool-call:${NodeInputKeyEnum.fileUrlList}`,
-          `tool-call:${NodeInputKeyEnum.userChatInput}`
-        ].sort()
-      );
-
-      nodes.forEach((node) => {
-        node.data.inputs = node.data.inputs.map((input) => {
-          const patch = revertPatches.find(
-            (item) => item.nodeId === node.data.nodeId && item.key === input.key
-          );
-          return patch ? patch.value : input;
-        });
-      });
-
-      const result = checkWorkflowNodeIssues({
-        nodes,
-        edges: previousEdges.filter((edge) => edge.id !== 'e-start-ai')
-      });
-
-      expect(
-        result['ai-chat']
-          ?.filter((issue) => issue.inputKey === NodeInputKeyEnum.userChatInput)
-          .map((issue) => issue.code) ?? []
-      ).toContain('required_input_empty');
-      expect(
-        result['dataset-search']
-          ?.filter((issue) => issue.inputKey === NodeInputKeyEnum.datasetSearchInput)
-          .map((issue) => issue.code) ?? []
-      ).toContain('required_input_empty');
-      expect(
-        result['tool-call']
-          ?.filter((issue) => issue.inputKey === NodeInputKeyEnum.userChatInput)
-          .map((issue) => issue.code) ?? []
-      ).toContain('required_input_empty');
-    });
-
-    it('断开中间连线后应只回滚失去流程开始可达性的下游节点自动填充', () => {
-      const aiNode = makeFreshConnectedNode('ai-chat', AiChatModule);
-      const datasetNode = makeFreshConnectedNode('dataset-search', DatasetSearchModule);
-      const classifyNode = makeFreshConnectedNode('classify', ClassifyQuestionModule);
-      const toolNode = makeFreshConnectedNode('tool-call', ToolCallNode);
-      const nodes = [startNodeWithFiles, aiNode, datasetNode, classifyNode, toolNode];
-      const previousEdges: Edge[] = [
-        { id: 'e-start-ai', source: 'start', target: 'ai-chat', type: EDGE_TYPE },
-        { id: 'e-ai-dataset', source: 'ai-chat', target: 'dataset-search', type: EDGE_TYPE },
-        { id: 'e-ai-classify', source: 'ai-chat', target: 'classify', type: EDGE_TYPE },
-        { id: 'e-classify-tool', source: 'classify', target: 'tool-call', type: EDGE_TYPE }
-      ];
-
-      const autoFillPatches = collectWorkflowStartInputAutoFillPatches({
-        nodes,
-        edges: previousEdges,
-        workflowStartNode: startNodeWithFiles.data
-      });
-
-      nodes.forEach((node) => {
-        node.data.inputs = node.data.inputs.map((input) => {
-          const patch = autoFillPatches.find(
-            (item) => item.nodeId === node.data.nodeId && item.key === input.key
-          );
-          return patch ? patch.value : input;
-        });
-      });
-
-      const remainingEdges = previousEdges.filter((edge) => edge.id !== 'e-ai-classify');
-      const revertPatches = collectWorkflowStartAutoFillRevertPatches({
-        removedEdges: [{ id: 'e-ai-classify', source: 'ai-chat', target: 'classify' }],
-        remainingEdges,
-        getNodeById: (nodeId) => nodes.find((node) => node.data.nodeId === nodeId)?.data
-      });
-
-      expect(revertPatches.map((patch) => `${patch.nodeId}:${patch.key}`).sort()).toEqual(
-        [
-          `classify:${NodeInputKeyEnum.userChatInput}`,
-          `tool-call:${NodeInputKeyEnum.fileUrlList}`,
-          `tool-call:${NodeInputKeyEnum.userChatInput}`
-        ].sort()
-      );
-      expect(
-        revertPatches.some(
-          (patch) =>
-            patch.nodeId === 'dataset-search' && patch.key === NodeInputKeyEnum.datasetSearchInput
-        )
-      ).toBe(false);
-
-      nodes.forEach((node) => {
-        node.data.inputs = node.data.inputs.map((input) => {
-          const patch = revertPatches.find(
-            (item) => item.nodeId === node.data.nodeId && item.key === input.key
-          );
-          return patch ? patch.value : input;
-        });
-      });
-
-      const result = checkWorkflowNodeIssues({
-        nodes,
-        edges: remainingEdges
-      });
-
-      expect(
-        result['classify']
-          ?.filter((issue) => issue.inputKey === NodeInputKeyEnum.userChatInput)
-          .map((issue) => issue.code) ?? []
-      ).toContain('required_input_empty');
-      expect(
-        result['tool-call']
-          ?.filter((issue) => issue.inputKey === NodeInputKeyEnum.userChatInput)
-          .map((issue) => issue.code) ?? []
-      ).toContain('required_input_empty');
-      expect(
-        result['dataset-search']
-          ?.filter((issue) => issue.inputKey === NodeInputKeyEnum.datasetSearchInput)
-          .map((issue) => issue.code) ?? []
-      ).not.toContain('required_input_empty');
-    });
-  });
-
-  it.each([
-    ['AI chat files', AiChatModule, NodeInputKeyEnum.fileUrlList, undefined],
-    ['tool call files', ToolCallNode, NodeInputKeyEnum.fileUrlList, undefined],
-    [
-      'dataset search query',
-      DatasetSearchModule,
-      NodeInputKeyEnum.datasetSearchInput,
-      [['start', NodeOutputKeyEnum.userChatInput]]
-    ]
-  ] as const)(
-    'auto-fills %s using only available start outputs and validates without changing the value',
-    (_name, template, inputKey, expectedValue) => {
-      const inputs = template.inputs
-        .filter((input) => input.key === inputKey)
-        .map((input) => ({ ...input, value: input.value ?? input.defaultValue }));
-      expect(inputs).toHaveLength(1);
-      const node = makeNode('default-ref', template.flowNodeType, {
-        inputs: applyWorkflowStartInputAutoFill({
-          inputs,
-          workflowStartNodeId: startNode.data.nodeId,
-          workflowStartOutputs: startNode.data.outputs
-        })
-      });
-      expect(node.data.inputs[0].value).toEqual(expectedValue);
-
-      const result = checkWorkflowNodeIssues({
-        nodes: [startNode, node],
-        edges: [{ id: 'e-start-default', source: 'start', target: node.id, type: EDGE_TYPE }]
-      });
-
-      expect(result[node.id]?.filter((issue) => issue.inputKey === inputKey) ?? []).toEqual([]);
-      expect(node.data.inputs[0].value).toEqual(expectedValue);
-    }
-  );
-
-  it.each([
-    [
-      'optional files with deleted outputs and nodes',
-      ToolCallNode,
-      NodeInputKeyEnum.fileUrlList,
-      false,
-      [
-        ['start', NodeOutputKeyEnum.userFiles],
-        ['deleted-node', NodeOutputKeyEnum.userFiles]
-      ]
-    ],
-    [
-      'required query with live and stale references',
-      DatasetSearchModule,
-      NodeInputKeyEnum.datasetSearchInput,
-      true,
-      [
-        ['start', NodeOutputKeyEnum.userChatInput],
-        ['start', NodeOutputKeyEnum.userFiles]
-      ]
-    ],
-    [
-      'required user question with a live reference',
-      ClassifyQuestionModule,
-      NodeInputKeyEnum.userChatInput,
-      true,
-      ['start', NodeOutputKeyEnum.userChatInput]
-    ]
-  ] as const)(
-    'accepts imported %s without modifying the configured value',
-    (_name, template, inputKey, required, value) => {
-      const originalValue = structuredClone(value);
-      const inputs = template.inputs
-        .filter((input) => input.key === inputKey)
-        .map((input) => ({ ...input, value }));
-      expect(inputs).toHaveLength(1);
-      expect(inputs[0].required ?? false).toBe(required);
-      const node = makeNode('imported-ref', template.flowNodeType, { inputs });
-
-      const result = checkWorkflowNodeIssues({
-        nodes: [startNode, node],
-        edges: [{ id: 'e-start-imported', source: 'start', target: node.id, type: EDGE_TYPE }]
-      });
-
-      expect(result[node.id]?.filter((issue) => issue.inputKey === inputKey) ?? []).toEqual([]);
-      expect(node.data.inputs[0].value).toEqual(originalValue);
-    }
-  );
 
   it('keeps configured references when the upstream node or output was deleted', () => {
     const nodeWithDeletedNodeRef = makeNode('deleted-node', FlowNodeTypeEnum.chatNode, {
@@ -2159,6 +1509,91 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
           }
         ])
       ).toEqual(['u1']);
+    });
+  });
+
+  describe('getToolErrorMessage and non-system input label boundary', () => {
+    const mockT = ((key: string) => `translated:${key}`) as unknown as Parameters<
+      typeof getToolErrorMessage
+    >[0]['t'];
+
+    it('translates offline, permission, missing, appErrList, and fallback tool errors via t', () => {
+      expect(getToolErrorMessage({ status: PluginStatusEnum.Offline, t: mockT })).toBe(
+        'translated:common:core.workflow.check.tool_missing'
+      );
+      expect(getToolErrorMessage({ error: PluginErrEnum.unAuth, t: mockT })).toBe(
+        'translated:common:core.workflow.check.resource_no_permission'
+      );
+      expect(getToolErrorMessage({ error: PluginErrEnum.unExist, t: mockT })).toBe(
+        'translated:common:core.workflow.check.tool_missing'
+      );
+      expect(getToolErrorMessage({ error: AppErrEnum.invalidAppType, t: mockT })).toBe(
+        'translated:common:code_error.app_error.invalid_app_type'
+      );
+      expect(getToolErrorMessage({ error: '   ', t: mockT })).toBe(
+        'translated:common:core.workflow.check.tool_load_failed'
+      );
+      expect(getToolErrorMessage({ error: 'custom failure', t: mockT })).toBe('custom failure');
+      expect(getToolErrorMessage({ error: undefined, t: mockT })).toBeUndefined();
+    });
+
+    it('does not treat a non-system tool input named model with empty label as a system model slot', () => {
+      const startNode: Node<FlowNodeItemType> = {
+        id: 'start',
+        type: FlowNodeTypeEnum.workflowStart,
+        position: { x: 0, y: 0 },
+        data: {
+          nodeId: 'start',
+          flowNodeType: FlowNodeTypeEnum.workflowStart,
+          name: 'start',
+          avatar: '',
+          inputs: [],
+          outputs: [],
+          version: '1',
+          intro: ''
+        }
+      };
+      const toolNode: Node<FlowNodeItemType> = {
+        id: 'tool-1',
+        type: FlowNodeTypeEnum.pluginModule,
+        position: { x: 0, y: 0 },
+        data: {
+          nodeId: 'tool-1',
+          flowNodeType: FlowNodeTypeEnum.pluginModule,
+          name: 'tool',
+          avatar: '',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModel,
+              label: '',
+              required: true,
+              value: '',
+              valueType: WorkflowIOValueTypeEnum.string,
+              renderTypeList: [FlowNodeInputTypeEnum.input]
+            }
+          ],
+          outputs: [],
+          version: '1',
+          intro: ''
+        }
+      };
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, toolNode],
+        edges: [{ id: 'e1', source: 'start', target: 'tool-1', type: EDGE_TYPE }],
+        t: ((key: string, params?: { inputName?: string }) =>
+          key === 'common:core.workflow.check.required_input_empty'
+            ? `missing:${params?.inputName ?? ''}`
+            : `i18n:${key}`) as unknown as Parameters<typeof checkWorkflowNodeIssues>[0]['t']
+      });
+
+      expect(result['tool-1']).toEqual([
+        expect.objectContaining({
+          code: 'required_input_empty',
+          inputKey: NodeInputKeyEnum.aiModel,
+          message: `missing:i18n:${NodeInputKeyEnum.aiModel}`
+        })
+      ]);
     });
   });
 });

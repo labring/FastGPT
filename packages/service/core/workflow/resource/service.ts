@@ -2,7 +2,7 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { isModelConfigError } from '@fastgpt/global/common/error/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import type { LLMModelDataType, RerankModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { AppResourceType } from '@fastgpt/global/core/app/type';
 import type { WorkflowResourceContext } from '@fastgpt/global/core/workflow/runtime/type';
@@ -31,9 +31,16 @@ export const isWorkflowResourceError = (error: unknown): error is WorkflowResour
 const getSnapshotTeamFilter = (context: WorkflowResourceContext) =>
   context.teamId && !context.isRoot ? { teamId: context.teamId } : {};
 
-type LoadWorkflowModelBaseParams = {
+export type WorkflowResourceUserInfo = {
   teamId: string;
   tmbId: string;
+};
+
+type LoadWorkflowModelBaseParams = {
+  /** 应用或工具所属团队 ID，用于读取工作流静态模型目录。 */
+  appTeamId: string;
+  /** 当前运行人身份，未命中资源快照时按运行人所属团队与成员 ID 鉴权。 */
+  userInfo: WorkflowResourceUserInfo;
   modelId?: string;
   model?: string;
   modelHandle?: ModelHandle;
@@ -42,77 +49,81 @@ type LoadWorkflowModelBaseParams = {
 /**
  * 在节点执行点加载并校验模型资源。
  *
- * 1. 先通过 `ModelHandle` 的 typed getter 解析模型对象，保持缺失、停用、类型不符等 `ModelConfigError` 语义；
- * 2. 若 `modelId` 命中当前 `WorkflowResourceContext` 快照，直接放行；
- * 3. 未命中快照（或无上下文）时，回退到运行成员的 `use` 权限校验（`assertAuthModels`）；
+ * 1. 先通过 `ModelHandle.getModelData` 解析模型对象，保持缺失、停用、类型不符等 `ModelConfigError` 语义；
+ * 2. 若 `modelId` 命中当前 `WorkflowResourceContext` 快照，按 `appTeamId` 目录直接放行；
+ * 3. 未命中快照（或无上下文）时，使用运行人 `userInfo`（`userInfo.teamId` + `userInfo.tmbId`）及对应团队目录执行 `use` 权限校验（`assertAuthModels`）；
  * 4. 仅含 legacy `model`（无 `modelId`）的历史节点仅在系统模型目录内解析，不做快照或成员 ACL 校验；
  * 5. `fallbackToDefault: true` 时（如知识库重排/问题优化辅助模型），仅对 `ModelConfigError` 回退系统默认模型，权限错误不降级。
  */
-export async function loadWorkflowModelResource(
-  params: LoadWorkflowModelBaseParams & { type?: 'llm'; fallbackToDefault?: false }
-): Promise<LLMModelDataType>;
-
-export async function loadWorkflowModelResource(
-  params: LoadWorkflowModelBaseParams & { type?: 'llm'; fallbackToDefault: true }
-): Promise<LLMModelDataType | undefined>;
-
-export async function loadWorkflowModelResource(
-  params: LoadWorkflowModelBaseParams & { type: 'rerank'; fallbackToDefault?: false }
-): Promise<RerankModelDataType>;
-
-export async function loadWorkflowModelResource(
-  params: LoadWorkflowModelBaseParams & { type: 'rerank'; fallbackToDefault: true }
-): Promise<RerankModelDataType | undefined>;
-
-export async function loadWorkflowModelResource({
-  teamId,
-  tmbId,
+export const loadWorkflowModelResource = async <
+  T extends 'llm' | 'rerank' = 'llm',
+  Fallback extends boolean = false
+>({
+  appTeamId,
+  userInfo,
   modelId,
   model,
-  type = 'llm',
-  fallbackToDefault = false,
+  type = 'llm' as T,
+  fallbackToDefault = false as Fallback,
   modelHandle
 }: LoadWorkflowModelBaseParams & {
-  type?: 'llm' | 'rerank';
-  fallbackToDefault?: boolean;
-}): Promise<LLMModelDataType | RerankModelDataType | undefined> {
-  const handle = modelHandle ?? (await getTeamModelHandle({ teamId }));
+  type?: T;
+  fallbackToDefault?: Fallback;
+}): Promise<
+  Fallback extends true
+    ? Extract<AIModelDataType, { type: T }> | undefined
+    : Extract<AIModelDataType, { type: T }>
+> => {
+  type Result = Fallback extends true
+    ? Extract<AIModelDataType, { type: T }> | undefined
+    : Extract<AIModelDataType, { type: T }>;
+  const appHandle = modelHandle ?? (await getTeamModelHandle({ teamId: appTeamId }));
 
   try {
-    const modelData =
-      type === 'rerank'
-        ? handle.getRerankModelData({ modelId, model })
-        : handle.getLLMModelData({ modelId, model });
-
     const id = typeof modelId === 'string' ? modelId.trim() : '';
     const context = getWorkflowResourceContext();
-    if (id && !hasWorkflowResource({ context, type: 'model', id })) {
+    const isSnapshotAuthorized = !id || hasWorkflowResource({ context, type: 'model', id });
+    const authHandle =
+      isSnapshotAuthorized || !userInfo.teamId || userInfo.teamId === appTeamId
+        ? appHandle
+        : await getTeamModelHandle({ teamId: userInfo.teamId });
+    // 跨团队未命中快照时，若模型在运行人团队目录中存在则优先从运行人目录解析；
+    // 否则在应用目录解析以保留已删除/停用等 ModelConfigError 语义，再由 assertAuthModels 阻断无权限访问。
+    const resolveHandle =
+      authHandle !== appHandle && authHandle.findModelData?.({ modelId: id })
+        ? authHandle
+        : appHandle;
+    const modelData = resolveHandle.getModelData({ modelId, model }, { type });
+
+    if (!isSnapshotAuthorized) {
       await assertAuthModels({
-        actor: { teamId, tmbId, isRoot: context?.isRoot ?? false },
+        actor: {
+          teamId: userInfo.teamId,
+          tmbId: userInfo.tmbId,
+          isRoot: context?.isRoot ?? false
+        },
         modelIds: [id],
         action: 'use',
-        handle
+        handle: authHandle
       });
     }
 
-    return modelData;
+    return modelData as Result;
   } catch (error) {
     if (!fallbackToDefault || !isModelConfigError(error)) {
       throw error;
     }
 
     try {
-      return type === 'rerank'
-        ? handle.getDefaultModelData('rerank')
-        : handle.getDefaultModelData('llm');
+      return appHandle.getDefaultModelData(type) as Result;
     } catch (fallbackError) {
       if (!isModelConfigError(fallbackError)) {
         throw fallbackError;
       }
-      return undefined;
+      return undefined as Result;
     }
   }
-}
+};
 
 /**
  * 读取工作流使用的知识库。
@@ -141,7 +152,8 @@ export const loadWorkflowDatasetResource = async ({
         await authDatasetByTmbId({
           tmbId,
           datasetId: id,
-          per: ReadPermissionVal
+          per: ReadPermissionVal,
+          ...(context?.isRoot ? { isRoot: true } : {})
         })
       ).dataset;
     })
@@ -181,7 +193,14 @@ export const loadWorkflowAppResource = async ({
 }) => {
   const context = getWorkflowResourceContext();
   if (!hasWorkflowResource({ context, type, id: appId, toolName })) {
-    return (await authAppByTmbId({ appId, tmbId, per: ReadPermissionVal })).app;
+    return (
+      await authAppByTmbId({
+        appId,
+        tmbId,
+        per: ReadPermissionVal,
+        ...(context?.isRoot ? { isRoot: true } : {})
+      })
+    ).app;
   }
 
   let app = null;
@@ -262,6 +281,7 @@ export const loadChildWorkflowWithResource = async ({
   tmbId,
   type,
   toolName,
+  appTeamId,
   teamId
 }: {
   appId: string;
@@ -269,6 +289,7 @@ export const loadChildWorkflowWithResource = async ({
   tmbId: string;
   type: Extract<AppResourceType, 'agent' | 'tool'>;
   toolName?: string;
+  appTeamId?: string;
   teamId?: string;
 }) => {
   const appData = await loadWorkflowAppResource({
@@ -284,7 +305,7 @@ export const loadChildWorkflowWithResource = async ({
   });
   const resourceContext = createWorkflowResourceContext({
     resources: childVersion.resources,
-    teamId: teamId ?? String(appData.teamId)
+    teamId: appTeamId ?? teamId ?? String(appData.teamId)
   });
 
   return {

@@ -80,6 +80,7 @@ export const checkWorkflowNodeModelRules = ({
     featureEnabled,
     inputKey,
     modelInput,
+    fallbackLabel,
     defaultWhenEmpty = false,
     allowLegacyModelFallback = false
   }: {
@@ -89,6 +90,7 @@ export const checkWorkflowNodeModelRules = ({
     featureEnabled: boolean;
     inputKey: string;
     modelInput?: FlowNodeInputItemType;
+    fallbackLabel?: string;
     defaultWhenEmpty?: boolean;
     allowLegacyModelFallback?: boolean;
   }) => {
@@ -96,16 +98,10 @@ export const checkWorkflowNodeModelRules = ({
     const value = getModelReferenceValue({ modelId, model });
     // 动态模型到执行点才能确定，发布前仅校验静态引用。
     if (isWorkflowModelExpression(value)) return;
-    const input = modelInput ??
-      inputMap.get(inputKey) ?? {
-        key: inputKey,
-        label: '',
-        renderTypeList: []
-      };
     if (isEmptyModelValue(value)) {
       // 发布接口会为这些辅助功能写入默认模型；非空失效引用仍走下方严格校验。
       if (defaultWhenEmpty) return;
-      issues.push({ code: 'model_required', inputKey, input });
+      issues.push({ code: 'model_required', inputKey, input: modelInput, fallbackLabel });
       return;
     }
     if (!models) return;
@@ -119,9 +115,16 @@ export const checkWorkflowNodeModelRules = ({
     });
     if (available) return;
 
-    issues.push({ code: 'model_unavailable', inputKey, input, model: String(value) });
+    issues.push({
+      code: 'model_unavailable',
+      inputKey,
+      input: modelInput,
+      fallbackLabel,
+      model: String(value)
+    });
   };
 
+  // 1. 校验非系统槽位的自定义模型选择器。
   inputs.forEach((input) => {
     if (
       getSelectedInputRenderType(input) !== FlowNodeInputTypeEnum.selectLLMModel ||
@@ -142,9 +145,11 @@ export const checkWorkflowNodeModelRules = ({
   });
 
   const customIssues = issues.splice(0);
+
+  // 2. 校验节点系统模型槽位与 Agent 知识库参数模型。
   if (!workflowCheckSkipNodeRuleTypes.has(data.flowNodeType)) {
     for (const slot of workflowSystemModelSlots) {
-      const { legacyKey, modelIdKey, type, featureKey, defaultWhenEmpty } = slot;
+      const { legacyKey, modelIdKey, label, type, featureKey, defaultWhenEmpty } = slot;
       const { modelIdInputs, legacyInputs } = getWorkflowNodeModelInputs({ node: data, slot });
       const templateModelInput =
         modelIdInputs.length === 0 && legacyInputs.length === 0
@@ -155,14 +160,12 @@ export const checkWorkflowNodeModelRules = ({
                   input.key === modelIdKey && isWorkflowSystemModelInput({ node: data, input })
               )
           : undefined;
-      const systemModelInputs =
-        modelIdInputs.length > 0
-          ? modelIdInputs
-          : legacyInputs.length > 0
-            ? legacyInputs
-            : templateModelInput
-              ? [templateModelInput]
-              : [];
+      const systemModelInputs = (() => {
+        if (modelIdInputs.length > 0) return modelIdInputs;
+        if (legacyInputs.length > 0) return legacyInputs;
+        if (templateModelInput) return [templateModelInput];
+        return [];
+      })();
       if (systemModelInputs.length === 0) continue;
 
       const isDatasetQueryExtension =
@@ -174,6 +177,7 @@ export const checkWorkflowNodeModelRules = ({
         ? hasSelectedDataset && inputMap.get(featureKey)?.value
         : true;
       const fallbackLegacyInput = legacyInputs[0];
+
       for (const systemModelInput of systemModelInputs) {
         const currentModelIdInput =
           systemModelInput.key === modelIdKey && modelIdInputs.length > 0
@@ -192,7 +196,8 @@ export const checkWorkflowNodeModelRules = ({
           featureEnabled: Boolean(featureValue),
           defaultWhenEmpty,
           inputKey: isDatasetQueryExtension ? modelIdKey : systemModelInput.key,
-          modelInput: systemModelInput
+          modelInput: systemModelInput,
+          fallbackLabel: label
         });
       }
     }
@@ -209,6 +214,7 @@ export const checkWorkflowNodeModelRules = ({
       for (const {
         legacyKey,
         modelIdKey,
+        label,
         type,
         featureKey,
         defaultWhenEmpty
@@ -220,15 +226,12 @@ export const checkWorkflowNodeModelRules = ({
           featureEnabled: hasSelectedDataset && Boolean(datasetParams[featureKey]),
           defaultWhenEmpty,
           inputKey: NodeInputKeyEnum.datasetParams,
-          modelInput: {
-            key: modelIdKey,
-            label: '',
-            renderTypeList: []
-          }
+          fallbackLabel: label
         });
       }
     }
   }
+
   return { customIssues, systemIssues: issues };
 };
 

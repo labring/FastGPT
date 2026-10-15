@@ -7,6 +7,7 @@ import { pushAudioSpeechUsage } from '@/service/support/wallet/usage/push';
 import { authType2UsageSource } from '@/service/support/wallet/usage/utils';
 import { text2Speech } from '@fastgpt/service/core/ai/audio/speech';
 
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { GetChatSpeechBodySchema } from '@fastgpt/global/openapi/core/chat/record/api';
 import { type ApiRequestProps } from '@fastgpt/next/type';
@@ -46,10 +47,13 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       outLinkAuthData
     });
     const modelHandle = await getTeamModelHandle({ teamId });
-    const ttsModel = modelHandle.getTTSModelData({
-      modelId: ttsConfig.modelId,
-      model: ttsConfig.model
-    });
+    const ttsModel = modelHandle.getModelData(
+      {
+        modelId: ttsConfig.modelId,
+        model: ttsConfig.model
+      },
+      { type: ModelTypeEnum.tts }
+    );
     if (!isEmptyModelValue(ttsConfig.modelId)) {
       await authTargetModelResource({
         targetType: resolvedSourceType,

@@ -167,8 +167,9 @@ export const datasetParseQueue = async (): Promise<any> => {
         try {
           // 解析阶段只严格校验向量模型；辅助模型仅取分块元数据，不校验启用或可调用状态。
           const modelHandle = await getTeamModelHandle({ teamId: String(dataset.teamId) });
-          const embeddingModelData = modelHandle.getEmbeddingModelData(
-            getDatasetModelReference(dataset, 'embedding')
+          const embeddingModelData = modelHandle.getModelData(
+            getDatasetModelReference(dataset, 'embedding'),
+            { type: 'embedding' }
           );
           const agentModelData = modelHandle.findModelData(
             getDatasetModelReference(dataset, 'agent'),

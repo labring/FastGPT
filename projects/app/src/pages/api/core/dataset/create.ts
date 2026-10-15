@@ -64,20 +64,28 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
   // check model valid
   const modelHandle = await getTeamModelHandle({ teamId });
   const vectorModelStore =
-    modelHandle.getEmbeddingModelData(
+    modelHandle.getModelData(
       { modelId: vectorModelId, model: vectorModel },
-      { optional: true }
+      { type: 'embedding', optional: true }
     ) ?? modelHandle.getDefaultModelData('embedding');
   const agentModelStore =
-    modelHandle.getLLMModelData({ modelId: agentModelId, model: agentModel }, { optional: true }) ??
-    modelHandle.getDefaultModelData('llm');
+    modelHandle.getModelData(
+      { modelId: agentModelId, model: agentModel },
+      { type: 'llm', optional: true }
+    ) ?? modelHandle.getDefaultModelData('llm');
   // 显式空值表示“不设置”，不能再补系统默认或按旧名称恢复；仅未传引用时沿用默认。
   const explicitVlm = vlmModelId !== undefined || vlmModel !== undefined;
   const rawVlmModel = (() => {
     if (vlmModelId !== undefined)
-      return modelHandle.getVlmModelData({ modelId: vlmModelId }, { optional: true });
+      return modelHandle.getModelData(
+        { modelId: vlmModelId },
+        { type: 'llm', vision: true, optional: true }
+      );
     if (vlmModel !== undefined)
-      return modelHandle.getVlmModelData({ model: vlmModel }, { optional: true });
+      return modelHandle.getModelData(
+        { model: vlmModel },
+        { type: 'llm', vision: true, optional: true }
+      );
     return modelHandle.getDefaultModelData('datasetImageLLM');
   })();
 

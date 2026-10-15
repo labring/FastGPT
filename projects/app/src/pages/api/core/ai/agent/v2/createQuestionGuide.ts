@@ -10,6 +10,7 @@ import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import type { NextApiResponse } from 'next';
 
 import type { AppQGConfigType } from '@fastgpt/global/core/app/type';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
@@ -80,10 +81,13 @@ async function handler(
       : persistedQuestionGuide;
   const qgModelData =
     targetQuestionGuide?.modelId !== undefined || targetQuestionGuide?.model !== undefined
-      ? modelHandle.getLLMModelData({
-          modelId: targetQuestionGuide.modelId,
-          model: targetQuestionGuide.model
-        })
+      ? modelHandle.getModelData(
+          {
+            modelId: targetQuestionGuide.modelId,
+            model: targetQuestionGuide.model
+          },
+          { type: ModelTypeEnum.llm }
+        )
       : modelHandle.getDefaultModelData('llm');
   if (!isEmptyModelValue(targetQuestionGuide?.modelId)) {
     await authTargetModelResource({

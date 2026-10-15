@@ -141,7 +141,7 @@ describe('getDatasetSearchAuxiliaryModels', () => {
           { datasetSearchUsingExtensionQuery: true },
           {
             ...getCachedSystemModelHandle()!,
-            getLLMModelData: () => {
+            getModelData: () => {
               throw error;
             }
           }

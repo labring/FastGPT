@@ -89,10 +89,10 @@ export const checkAppFormResourceIssues = ({
 
   for (const item of resourceItems) {
     if (item.error === 'resource_no_permission') {
-      return getWorkflowCheckIssueMessage('resource_no_permission', t);
+      return getWorkflowCheckIssueMessage({ issueCode: 'resource_no_permission', t });
     }
     if (item.error) {
-      return getWorkflowCheckIssueMessage('resource_missing', t);
+      return getWorkflowCheckIssueMessage({ issueCode: 'resource_missing', t });
     }
   }
 

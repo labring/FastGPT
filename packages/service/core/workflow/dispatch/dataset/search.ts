@@ -64,7 +64,7 @@ export const dispatchDatasetSearch = async (
 ): Promise<DatasetSearchResponse> => {
   const {
     runningAppInfo: { teamId },
-    runningUserInfo: { tmbId },
+    runningUserInfo,
     externalProvider,
     histories,
     node,
@@ -95,6 +95,11 @@ export const dispatchDatasetSearch = async (
       datasetDeepSearchBg
     }
   } = props as DatasetSearchProps;
+  const { tmbId } = runningUserInfo;
+  const userInfo = {
+    teamId: runningUserInfo.teamId || teamId,
+    tmbId
+  };
 
   if (!Array.isArray(datasets)) {
     return Promise.reject(i18nT('chat:dataset_quote_type error'));
@@ -141,7 +146,7 @@ export const dispatchDatasetSearch = async (
     // 无当前用户身份）时不做 collection 级过滤，按 dataset 全量召回。
     const readableCollectionIdList = authTmbId
       ? await resolveReadableCollectionIds({
-          teamId,
+          teamId: userInfo.teamId,
           datasetIds,
           tmbId
         })
@@ -154,15 +159,18 @@ export const dispatchDatasetSearch = async (
       tmbId
     });
     const modelHandle = await getTeamModelHandle({ teamId });
-    const vectorModel = modelHandle.getEmbeddingModelData({
-      modelId: dataset?.vectorModelId,
-      model: dataset?.vectorModel
-    });
+    const vectorModel = modelHandle.getModelData(
+      {
+        modelId: dataset?.vectorModelId,
+        model: dataset?.vectorModel
+      },
+      { type: 'embedding' }
+    );
     const vlmModel = await getDatasetSearchVlmModel({ teamId, datasetIds, modelHandle });
     const rerankModelData = usingReRank
       ? await loadWorkflowModelResource({
-          teamId,
-          tmbId,
+          appTeamId: teamId,
+          userInfo,
           modelId: rerankModelId,
           model: rerankModel,
           type: 'rerank',
@@ -172,8 +180,8 @@ export const dispatchDatasetSearch = async (
       : undefined;
     const extensionModelData = datasetSearchUsingExtensionQuery
       ? await loadWorkflowModelResource({
-          teamId,
-          tmbId,
+          appTeamId: teamId,
+          userInfo,
           modelId: datasetSearchExtensionModelId,
           model: datasetSearchExtensionModel,
           fallbackToDefault: true,
@@ -182,8 +190,8 @@ export const dispatchDatasetSearch = async (
       : undefined;
     const deepSearchModelData = datasetDeepSearch
       ? await loadWorkflowModelResource({
-          teamId,
-          tmbId,
+          appTeamId: teamId,
+          userInfo,
           modelId: datasetDeepSearchModelId,
           model: datasetDeepSearchModel,
           modelHandle

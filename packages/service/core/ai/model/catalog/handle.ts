@@ -3,15 +3,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
 import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
-import type {
-  AIModelDataType,
-  EmbeddingModelDataType,
-  LLMModelDataType,
-  ModelReferenceType,
-  RerankModelDataType,
-  STTModelDataType,
-  TTSModelDataType
-} from '@fastgpt/global/core/ai/model/schema';
+import type { AIModelDataType, ModelReferenceType } from '@fastgpt/global/core/ai/model/schema';
 import { isSystemModel, isTeamModel } from '@fastgpt/global/core/ai/model/utils';
 import { cloneDeep } from 'lodash-es';
 import type { SystemDefaultModelType } from '../../type';
@@ -67,33 +59,30 @@ export const createModelHandle = (input: ModelSnapshot) => {
     if (!isEmptyModelValue(reference.modelId)) return modelsById.get(reference.modelId!);
     if (!isEmptyModelValue(reference.model)) return modelsByName.get(reference.model!);
   };
-  const typedGetter =
-    <T extends AIModelDataType>(type: T['type'], vision = false) =>
-    <O extends boolean = false>(
-      reference: ModelReferenceType,
-      options?: { optional?: O }
-    ): OptionalResult<T, O> => {
-      if (isEmptyModelValue(getModelReferenceValue(reference))) {
-        if (options?.optional) return undefined as OptionalResult<T, O>;
-        throw new UserError(ModelErrEnum.unConfigured);
+  /** 统一模型获取入口：解析引用、校验启用状态/类型/视觉能力并按 type 收窄返回类型。 */
+  const getModelData = <
+    T extends `${ModelTypeEnum}` = `${ModelTypeEnum}`,
+    O extends boolean = false
+  >(
+    reference: ModelReferenceType,
+    options?: { type?: T; vision?: boolean; optional?: O }
+  ): OptionalResult<Extract<AIModelDataType, { type: T }>, O> => {
+    if (isEmptyModelValue(getModelReferenceValue(reference))) {
+      if (options?.optional) {
+        return undefined as OptionalResult<Extract<AIModelDataType, { type: T }>, O>;
       }
-      const model = resolve(reference);
-      assertModelAvailable({ model, type, vision });
-      return model as OptionalResult<T, O>;
-    };
-
-  const getVlmModelData = typedGetter<LLMModelDataType>(ModelTypeEnum.llm, true);
+      throw new UserError(ModelErrEnum.unConfigured);
+    }
+    const model = resolve(reference);
+    assertModelAvailable({ model, type: options?.type, vision: options?.vision });
+    return model as OptionalResult<Extract<AIModelDataType, { type: T }>, O>;
+  };
 
   return Object.freeze({
     revision: snapshot.revision,
     version: snapshot.version,
     configuredDefaultModelIds: snapshot.configuredDefaultModelIds,
-    getLLMModelData: typedGetter<LLMModelDataType>(ModelTypeEnum.llm),
-    getEmbeddingModelData: typedGetter<EmbeddingModelDataType>(ModelTypeEnum.embedding),
-    getRerankModelData: typedGetter<RerankModelDataType>(ModelTypeEnum.rerank),
-    getTTSModelData: typedGetter<TTSModelDataType>(ModelTypeEnum.tts),
-    getSTTModelData: typedGetter<STTModelDataType>(ModelTypeEnum.stt),
-    getVlmModelData,
+    getModelData,
     /** 展示/编辑允许停用项；返回副本供草稿临时覆盖配置，不暴露共享对象。 */
     findModelData: <T extends `${ModelTypeEnum}` = `${ModelTypeEnum}`>(
       reference: ModelReferenceType,

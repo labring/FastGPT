@@ -25,7 +25,9 @@ export const getChatModelNameListByModules = async (
       const model = modelInput?.value;
 
       try {
-        return modelHandle.getLLMModelData({ modelId, model }, { optional: true })?.name ?? '';
+        return (
+          modelHandle.getModelData({ modelId, model }, { type: 'llm', optional: true })?.name ?? ''
+        );
       } catch {
         // chatModels 仅用于标题栏展示。动态、缺失或已停用模型不应阻断聊天初始化。
         return '';

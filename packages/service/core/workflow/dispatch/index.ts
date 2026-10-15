@@ -189,7 +189,12 @@ export async function dispatchWorkFlow({
   };
 
   const [{ timezone, externalProvider }, newUsageId, runtimeHistories] = await Promise.all([
-    getUserChatInfo(runningUserInfo.tmbId),
+    runningUserInfo.externalProvider
+      ? {
+          timezone: runningUserInfo.timezone ?? 'Asia/Shanghai',
+          externalProvider: runningUserInfo.externalProvider
+        }
+      : getUserChatInfo(runningUserInfo.tmbId),
     (() => {
       if (lastInteractive?.usageId) {
         return lastInteractive.usageId;

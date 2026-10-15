@@ -26,9 +26,20 @@ const { requestMock } = fixture;
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({ createLLMResponse: fixture.requestMock }));
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
   getSystemModelHandle: async () => ({
+    getModelData: () => ({ modelId: 'model', name: 'model', config: { maxResponse: 4096 } }),
     getLLMModelData: () => ({ modelId: 'model', name: 'model', config: { maxResponse: 4096 } })
   }),
   getTeamModelHandle: async () => ({
+    getModelData: () => ({
+      modelId: 'model',
+      name: 'model',
+      config: {
+        maxResponse: 4096,
+        maxContext: 8192,
+        audio: fixture.modelSupportsAudio,
+        video: fixture.modelSupportsVideo
+      }
+    }),
     getLLMModelData: () => ({
       modelId: 'model',
       name: 'model',

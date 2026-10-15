@@ -15,26 +15,23 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
 }));
 
+const resolveExtractMockModel = (...args: unknown[]) => {
+  const model = getLLMModelMock(...args);
+  return {
+    ...model,
+    modelId: '68ad85a7463006c963799a65',
+    config: model.config ?? model
+  };
+};
+
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
   getSystemModelHandle: async () => ({
-    getLLMModelData: (...args: unknown[]) => {
-      const model = getLLMModelMock(...args);
-      return {
-        ...model,
-        modelId: '68ad85a7463006c963799a65',
-        config: model.config ?? model
-      };
-    }
+    getModelData: resolveExtractMockModel,
+    getLLMModelData: resolveExtractMockModel
   }),
   getTeamModelHandle: async () => ({
-    getLLMModelData: (...args: unknown[]) => {
-      const model = getLLMModelMock(...args);
-      return {
-        ...model,
-        modelId: '68ad85a7463006c963799a65',
-        config: model.config ?? model
-      };
-    }
+    getModelData: resolveExtractMockModel,
+    getLLMModelData: resolveExtractMockModel
   })
 }));
 

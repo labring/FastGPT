@@ -52,16 +52,22 @@ export const getDatasetSearchAuxiliaryModels = (
     rerankModelData: resolve({
       enabled: usingReRank,
       getSelected: () =>
-        modelHandle.getRerankModelData({ modelId: rerankModelId, model: rerankModel }),
+        modelHandle.getModelData(
+          { modelId: rerankModelId, model: rerankModel },
+          { type: 'rerank' }
+        ),
       getDefault: () => modelHandle.getDefaultModelData('rerank')
     }),
     extensionModelData: resolve({
       enabled: datasetSearchUsingExtensionQuery,
       getSelected: () =>
-        modelHandle.getLLMModelData({
-          modelId: datasetSearchExtensionModelId,
-          model: datasetSearchExtensionModel
-        }),
+        modelHandle.getModelData(
+          {
+            modelId: datasetSearchExtensionModelId,
+            model: datasetSearchExtensionModel
+          },
+          { type: 'llm' }
+        ),
       getDefault: () => modelHandle.getDefaultModelData('llm')
     })
   };

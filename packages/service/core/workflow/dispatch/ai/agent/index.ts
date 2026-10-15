@@ -143,8 +143,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   } = props;
   const datasetParams = getAgentDatasetParams(props.params);
   const agentModel = await loadWorkflowModelResource({
-    teamId: runningAppInfo.teamId,
-    tmbId: runningUserInfo.tmbId,
+    appTeamId: runningAppInfo.teamId,
+    userInfo: runningUserInfo,
     modelId,
     model
   });
