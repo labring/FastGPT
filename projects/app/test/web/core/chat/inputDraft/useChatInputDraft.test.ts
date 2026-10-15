@@ -63,6 +63,15 @@ describe('useChatInputDraft', () => {
   };
   const edit = async (text: string) => act(async () => chatForm.setValue('input', text));
   const advance = async (ms: number) => act(async () => vi.advanceTimersByTimeAsync(ms));
+  const createPendingFile = (uploadId = 'pending-upload') => ({
+    id: `file-${uploadId}`,
+    uploadId,
+    rawFile: new dom.window.File(['pending'], `${uploadId}.pdf`),
+    type: 'file' as const,
+    name: `${uploadId}.pdf`,
+    status: 0 as const,
+    icon: 'icon'
+  });
 
   beforeEach(() => {
     dom = new JSDOM('<div id="root"></div>', { url: 'https://fastgpt.example' });
@@ -159,6 +168,76 @@ describe('useChatInputDraft', () => {
     await edit('new while generating');
     await act(async () => result.restoreSubmittedInput(next));
     expect(chatForm.getValues('input')).toBe('new while generating');
+  });
+
+  it.each([0, 1] as const)(
+    'preserves a new attachment with upload status %i while accepting an older submission without renewing the cache',
+    async (status) => {
+      await render();
+      await edit('submitted');
+      const submission = result.captureSubmittedInput({ text: 'submitted', files: [] });
+      const saved = readChatInputDraft(identity)!;
+      await advance(1000);
+
+      const pendingFile = { ...createPendingFile(), status };
+      await act(async () => chatForm.setValue('files', [pendingFile]));
+      expect(readChatInputDraft(identity)).toMatchObject({
+        text: 'submitted',
+        files: [],
+        updatedAt: saved.updatedAt
+      });
+      expect(readChatInputDraft(identity)?.revision).not.toBe(saved.revision);
+
+      await act(async () => result.clearSubmittedInput(submission));
+      expect(chatForm.getValues('input')).toBe('submitted');
+      expect(chatForm.getValues('files')).toEqual([pendingFile]);
+      expect(readChatInputDraft(identity)?.text).toBe('submitted');
+      await act(async () => result.restoreSubmittedInput(submission));
+      expect(chatForm.getValues('files')).toEqual([pendingFile]);
+    }
+  );
+
+  it.each(['keep', 'remove', 'replace', 'reorder'] as const)(
+    'does not restore an older submission after a new pending selection is edited: %s',
+    async (action) => {
+      await render();
+      await edit('submitted');
+      const submission = result.captureSubmittedInput({ text: 'submitted', files: [] });
+      await act(async () => result.clearSubmittedInput(submission));
+
+      const first = createPendingFile('first');
+      const second = createPendingFile('second');
+      await act(async () => chatForm.setValue('files', [first, second]));
+      const nextFiles = (() => {
+        if (action === 'remove') return [];
+        if (action === 'replace') return [createPendingFile('replacement')];
+        if (action === 'reorder') return [second, first];
+        return [first, second];
+      })();
+      await act(async () => chatForm.setValue('files', nextFiles));
+      await act(async () => result.restoreSubmittedInput(submission));
+      expect(chatForm.getValues('input')).toBe('');
+      expect(chatForm.getValues('files')).toEqual(nextFiles);
+      expect(readChatInputDraft(identity)).toBeUndefined();
+    }
+  );
+
+  it('ignores field array id and upload progress changes when clearing an accepted submission', async () => {
+    await render();
+    await act(async () => result.resetInputVal({ text: 'submitted', files: [uploadedFile] }));
+    const submission = result.captureSubmittedInput({ text: 'submitted', files: [uploadedFile] });
+    const saved = readChatInputDraft(identity)!;
+    await advance(1000);
+    await act(async () =>
+      chatForm.setValue('files', [
+        { ...uploadedFile, id: 'new-field-array-id', process: 50, icon: 'new-preview' }
+      ])
+    );
+    expect(readChatInputDraft(identity)).toEqual(saved);
+    await act(async () => result.clearSubmittedInput(submission));
+    expect(chatForm.getValues('input')).toBe('');
+    expect(chatForm.getValues('files')).toEqual([]);
+    expect(readChatInputDraft(identity)).toBeUndefined();
   });
 
   it('restores a failed submission only to its original conversation', async () => {

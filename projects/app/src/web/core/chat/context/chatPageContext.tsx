@@ -10,7 +10,7 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { getRecentlyUsedApps } from '@/web/core/chat/api';
@@ -160,29 +160,16 @@ export const ChatPageContextProvider = ({
     () => myApps.filter((app) => app.appId !== homeAppId),
     [homeAppId, myApps]
   );
-  const requestedRecentAppsRef = useRef(new Set<string>());
 
-  /** 仅为生成已结束的列表外应用同步一次；失败或服务端尚未记录时允许下一轮对话重试。 */
+  /** 对话正常结束后，仅在当前列表缺少该应用时刷新；失败保留原列表，供下一轮重试。 */
   const refreshRecentlyUsed = useMemoizedFn((appId: string) => {
     const tmbId = userInfo?.team?.tmbId;
     if (!tmbId || !appId || appId === homeAppId || myApps.some((app) => app.appId === appId)) {
       return;
     }
 
-    const key = `${tmbId}:${appId}`;
-    if (requestedRecentAppsRef.current.has(key)) return;
-
-    // 先登记，避免同一应用在刷新返回前重复请求；成员身份参与隔离。
-    requestedRecentAppsRef.current.add(key);
-    void requestRecentlyUsed()
-      .then((apps) => {
-        if (!apps.some((app) => app.appId === appId)) {
-          requestedRecentAppsRef.current.delete(key);
-        }
-      })
-      .catch(() => {
-        requestedRecentAppsRef.current.delete(key);
-      });
+    // 请求层 maxQuantity: 1 取消重叠旧请求，去重只依据最新列表，不保留已刷新应用的记录。
+    void requestRecentlyUsed().catch(() => {});
   });
 
   const lastestPane = useLatest(pane);

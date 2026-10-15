@@ -123,22 +123,54 @@ describe('ChatPageContext recently used apps', () => {
     expect(context.myApps.map((item) => item.appId)).toEqual(['A', 'B']);
   });
 
-  it('refreshes once for a new app and deduplicates calls while the request is pending', async () => {
+  it('refreshes a previously added app again after it falls outside the latest twenty apps', async () => {
+    let recentApps = [app('B')];
+    mocks.getRecent.mockImplementation(async () => recentApps);
     await render();
-    let resolve: (apps: GetRecentlyUsedAppsResponseType) => void = () => {};
+
+    recentApps = [app('A'), app('B')];
+    await finishChat('A');
+    expect(context.myApps[0].appId).toBe('A');
+
+    const otherApps = Array.from({ length: 20 }, (_, index) => app(`other-${index}`));
+    recentApps = otherApps;
+    await finishChat('other-0');
+    expect(context.myApps).toEqual(otherApps);
+
+    recentApps = [app('A'), ...otherApps.slice(0, 19)];
+    await finishChat('A');
+    expect(mocks.getRecent).toHaveBeenCalledTimes(4);
+    expect(context.myApps[0].appId).toBe('A');
+
+    await finishChat('A');
+    expect(mocks.getRecent).toHaveBeenCalledTimes(4);
+  });
+
+  it('uses current list membership for overlapping refreshes and ignores older responses', async () => {
+    await render();
+    let resolveFirst: (apps: GetRecentlyUsedAppsResponseType) => void = () => {};
+    let resolveLatest: (apps: GetRecentlyUsedAppsResponseType) => void = () => {};
     mocks.getRecent.mockReturnValueOnce(
       new Promise<GetRecentlyUsedAppsResponseType>((done) => {
-        resolve = done;
+        resolveFirst = done;
+      })
+    );
+    mocks.getRecent.mockReturnValueOnce(
+      new Promise<GetRecentlyUsedAppsResponseType>((done) => {
+        resolveLatest = done;
       })
     );
     await finishChat('C');
     await finishChat('C');
-    expect(mocks.getRecent).toHaveBeenCalledTimes(2);
+    expect(mocks.getRecent).toHaveBeenCalledTimes(3);
     expect(context.myApps.map((item) => item.appId)).toEqual(['A', 'B']);
 
-    await act(async () => resolve([app('C'), app('A'), app('B')]));
+    await act(async () => resolveLatest([app('C'), app('A'), app('B')]));
     await finishChat('C');
-    expect(mocks.getRecent).toHaveBeenCalledTimes(2);
+    expect(mocks.getRecent).toHaveBeenCalledTimes(3);
+    expect(context.myApps.map((item) => item.appId)).toEqual(['C', 'A', 'B']);
+
+    await act(async () => resolveFirst([app('A'), app('B')]));
     expect(context.myApps.map((item) => item.appId)).toEqual(['C', 'A', 'B']);
   });
 

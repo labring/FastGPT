@@ -8,6 +8,7 @@ import type {
   ChatBoxInputType,
   UserInputFileItemType
 } from '@/components/core/chat/ChatContainer/ChatBox/type';
+import { getFileUploadId } from '@/components/core/chat/ChatContainer/ChatBox/utils/uploadTask';
 import {
   CHAT_INPUT_DRAFT_CLEAR_EVENT,
   getChatInputDraftContentKey,
@@ -43,6 +44,7 @@ type InputDraftState = Omit<ChatInputDraft, 'identity'> & {
 /**
  * 在现有表单上管理纯客户端草稿：按成员、应用、会话保存文字及成功附件，切换前保存旧快照。
  * 恢复赋值不续期；发送清理和失败恢复检查所有者、版本和删除代次，避免覆盖新输入。
+ * 版本包含未完成附件的选择变化；只有文字或成功附件引用变化才更新缓存有效期。
  * identity 未就绪时仅管理当前表单，fallbackKey 只用于区分表单所有者，不参与缓存键。
  * onInputChange 在程序赋值后通知调用方更新 UI，本 hook 不依赖 textarea 或变量状态。
  */
@@ -134,7 +136,15 @@ export const useChatInputDraft = ({
       const runtimeFiles = (values.files ?? []) as UserInputFileItemType[];
       const files = serializeChatInputFiles(runtimeFiles);
       const text = values.input ?? '';
-      if (getChatInputDraftContentKey(current) === getChatInputDraftContentKey({ text, files })) {
+      const contentChanged =
+        getChatInputDraftContentKey(current) !== getChatInputDraftContentKey({ text, files });
+      // 待上传附件不进入缓存，但选择变化也属于新编辑；进度和 field array ID 不改变任务归属。
+      const fileSelectionChanged =
+        runtimeFiles.length !== current.runtimeFiles.length ||
+        runtimeFiles.some(
+          (file, index) => getFileUploadId(file) !== getFileUploadId(current.runtimeFiles[index])
+        );
+      if (!contentChanged && !fileSelectionChanged) {
         current.runtimeFiles = runtimeFiles;
         return;
       }
@@ -144,7 +154,7 @@ export const useChatInputDraft = ({
         files,
         runtimeFiles,
         revision: getNanoid(),
-        updatedAt: Date.now(),
+        updatedAt: contentChanged ? Date.now() : current.updatedAt,
         epoch: getChatInputDraftEpoch(current.identity),
         skipSave: false
       };
@@ -152,7 +162,7 @@ export const useChatInputDraft = ({
       const filesChanged =
         getChatInputDraftContentKey({ text: '', files: current.files }) !==
         getChatInputDraftContentKey({ text: '', files });
-      if (filesChanged || (!text && files.length === 0)) {
+      if (fileSelectionChanged || filesChanged || (!text && files.length === 0)) {
         cancelSave();
         persistDraft(next);
       } else {

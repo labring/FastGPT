@@ -315,6 +315,43 @@ describe('useChatGenerate.sendPrompt', () => {
   });
 
   it.each(['resolve', 'reject'] as const)(
+    'preserves a pending attachment selected during audio preparation when the submitted request %ss',
+    async (outcome) => {
+      await render();
+      await edit('submitted');
+      let resolveAudio: () => void = () => {};
+      mocks.startAudio.mockReturnValueOnce(
+        new Promise<void>((done) => {
+          resolveAudio = done;
+        })
+      );
+      if (outcome === 'reject') mocks.start.mockRejectedValueOnce(new Error('network'));
+      await send({ autoTTSResponse: true });
+      expect(mocks.start).not.toHaveBeenCalled();
+
+      const pendingFile = {
+        id: 'pending-file',
+        uploadId: 'pending-upload',
+        rawFile: new dom.window.File(['pending'], 'next.pdf'),
+        name: 'next.pdf',
+        type: 'file' as const,
+        status: 0 as const,
+        icon: 'icon'
+      };
+      await act(async () => input.chatForm.setValue('files', [pendingFile]));
+      await act(async () => resolveAudio());
+
+      expect(mocks.start).toHaveBeenCalledOnce();
+      expect(records.find((item) => item.obj === ChatRoleEnum.Human)?.value).toEqual([
+        { text: { content: 'submitted' } }
+      ]);
+      expect(input.chatForm.getValues('files')).toEqual([pendingFile]);
+      expect(readChatInputDraft(identity)?.files).toEqual([]);
+      expect(mocks.finishAudio).toHaveBeenCalledOnce();
+    }
+  );
+
+  it.each(['resolve', 'reject'] as const)(
     'keeps A generating after leaving for B when the aborted stream %ss',
     async (outcome) => {
       mocks.system.isPc = true;
