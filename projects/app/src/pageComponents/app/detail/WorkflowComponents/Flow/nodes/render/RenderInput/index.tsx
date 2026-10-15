@@ -114,6 +114,10 @@ type Props = {
   flowInputList: FlowNodeInputItemType[];
   nodeId: string;
   CustomComponent?: Record<string, (e: FlowNodeInputItemType) => React.ReactNode>;
+  getInputPatchOnRenderTypeChange?: (
+    input: FlowNodeInputItemType,
+    nextRenderType: FlowNodeInputTypeEnum
+  ) => Partial<FlowNodeInputItemType> | undefined;
   settingLLMModelProps?: RenderInputProps['settingLLMModelProps'];
   mb?: number;
   isTool?: boolean;
@@ -151,6 +155,7 @@ const RenderInput = ({
   flowInputList,
   nodeId,
   CustomComponent,
+  getInputPatchOnRenderTypeChange,
   settingLLMModelProps,
   mb = 5,
   isTool
@@ -273,6 +278,7 @@ const RenderInput = ({
               <InputLabel
                 nodeId={nodeId}
                 input={input}
+                getInputPatchOnRenderTypeChange={getInputPatchOnRenderTypeChange}
                 RightComponent={RenderComponent?.LableRightComponent}
                 rightInline={
                   renderType === FlowNodeInputTypeEnum.datasetTagFilter &&

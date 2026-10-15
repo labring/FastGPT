@@ -20,12 +20,23 @@ import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/refe
 type Props = {
   nodeId: string;
   input: FlowNodeInputItemType;
+  getInputPatchOnRenderTypeChange?: (
+    input: FlowNodeInputItemType,
+    nextRenderType: FlowNodeInputTypeEnum
+  ) => Partial<FlowNodeInputItemType> | undefined;
   RightComponent?: React.JSX.Element;
   rightInline?: boolean;
   isTool?: boolean;
 };
 
-const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Props) => {
+const InputLabel = ({
+  nodeId,
+  input,
+  getInputPatchOnRenderTypeChange,
+  RightComponent,
+  rightInline,
+  isTool
+}: Props) => {
   const { t } = useSafeTranslation();
 
   const labelText = t(input.label as any);
@@ -54,7 +65,8 @@ const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Prop
           renderTypeList: displayRenderTypeList,
           selectedType: e as FlowNodeInputTypeEnum
         }),
-        value: undefined
+        value: undefined,
+        ...getInputPatchOnRenderTypeChange?.(input, e as FlowNodeInputTypeEnum)
       };
 
       onChangeNode({
@@ -64,7 +76,7 @@ const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Prop
         value: nextInput
       });
     },
-    [displayRenderTypeList, input, nodeId, onChangeNode]
+    [displayRenderTypeList, getInputPatchOnRenderTypeChange, input, nodeId, onChangeNode]
   );
 
   return (

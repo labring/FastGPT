@@ -1,3 +1,4 @@
+import { workflowSystemVariables } from '../../app/utils';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { filterSelectableWorkflowNodeOutputs } from '../utils';
 import { isWorkflowSystemModelInput } from '@fastgpt/global/common/workflow/model';
@@ -207,7 +208,15 @@ export const checkWorkflowNodeInputRules = ({
     const [refNodeId, refOutputId] = value;
     if (!refNodeId || !refOutputId) return false;
     if (refNodeId === VARIABLE_NODE_ID) {
-      // variables 未提供时保持单节点增量校验的兼容性；运行/发布前会传入完整变量配置。
+      const systemVariable = workflowSystemVariables.find((item) => item.key === refOutputId);
+      if (systemVariable) {
+        return (
+          systemVariable.valueType === undefined ||
+          dynamicOptionValueTypes.has(systemVariable.valueType)
+        );
+      }
+
+      // variables 未提供时保持单节点增量校验的兼容性。
       if (!variables) return true;
 
       const variable = variables.find((item) => item.key === refOutputId);

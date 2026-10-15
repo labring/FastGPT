@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -12,6 +12,10 @@ import {
   resolveInteractiveResponseChatItemId,
   rewriteHistoriesByInteractiveResponse
 } from '@/components/core/chat/ChatContainer/ChatBox/utils/interactive';
+
+vi.mock('@/components/core/chat/components/FormInputResult', () => ({
+  resolveFormInputFileValues: ({ runtimeValue }: { runtimeValue: unknown }) => runtimeValue
+}));
 
 const baseInteractive = {
   entryNodeIds: ['node-1'],
@@ -133,6 +137,21 @@ describe('getInteractiveByHistories', () => {
     });
   });
 
+  it('keeps an empty dynamic userSelect pending instead of accepting free text', () => {
+    const interactive = {
+      ...createUserSelectInteractive(),
+      params: {
+        ...createUserSelectInteractive().params,
+        userSelectOptions: []
+      }
+    } as WorkflowInteractiveResponseType;
+
+    expect(getInteractiveByHistories([createAiRecord(interactive)])).toEqual({
+      interactive,
+      canSendQuery: false
+    });
+  });
+
   it('allows normal query after userSelect has been answered', () => {
     expect(getInteractiveByHistories([createAiRecord(createUserSelectInteractive('A'))])).toEqual({
       interactive: undefined,
@@ -234,6 +253,17 @@ describe('rewriteHistoriesByInteractiveResponse', () => {
     expect(result).toHaveLength(1);
     expect(result[0].status).toBe(ChatStatusEnum.loading);
     expect((result[0].value[0] as any).interactive.params.userSelectedVal).toBe('B');
+  });
+
+  it('does not mark an arbitrary userSelect response as selected', () => {
+    const interactive = createUserSelectInteractive();
+    const result = rewriteHistoriesByInteractiveResponse({
+      histories: [createAiRecord(interactive), createHumanRecord(), createAiPlaceholder()],
+      interactive,
+      interactiveVal: 'not-an-option'
+    });
+
+    expect((result[0].value[0] as any).interactive.params.userSelectedVal).toBeUndefined();
   });
 
   it('writes parsed userInput values into the submitted form', () => {

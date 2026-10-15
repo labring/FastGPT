@@ -198,7 +198,6 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
         onSelect={onSelect}
         popDirection={popDirection}
         isArray={isArray}
-        clearInvalid={isDynamicOptionInput}
       />
       {showReferenceHandle && (
         <MySourceHandle
@@ -345,13 +344,13 @@ const MultipleReferenceSelector = ({
     [list]
   );
 
-  // Get valid item and remove invalid item
-  const formatList = useMemo(() => {
+  const selectedList = useMemo(() => {
     if (!value || !Array.isArray(value)) return [];
 
-    return value.map((item) => {
+    return value.map((item, index) => {
       const [nodeName, outputName] = getSelectValue(item);
       return {
+        index,
         rawValue: item,
         nodeName,
         outputName
@@ -359,9 +358,10 @@ const MultipleReferenceSelector = ({
     });
   }, [getSelectValue, value]);
 
-  const invalidList = useMemo(() => {
-    return formatList.filter((item) => item.nodeName && item.outputName);
-  }, [formatList]);
+  const validSelectedList = useMemo(
+    () => selectedList.filter((item) => item.nodeName && item.outputName),
+    [selectedList]
+  );
 
   useEffect(() => {
     // Adapt array type from old version
@@ -369,26 +369,26 @@ const MultipleReferenceSelector = ({
       // @ts-ignore
       onSelect([value]);
     }
-  }, [formatList, onSelect, value]);
+  }, [onSelect, value]);
 
   useEffect(() => {
     if (!Array.isArray(value) || typeof value[0] === 'string') return;
 
-    const validReferenceCount = formatList.filter(
+    const validReferenceCount = selectedList.filter(
       (item) => item.nodeName && item.outputName
     ).length;
     if (clearInvalid && validReferenceCount !== value.length) {
       onSelect(
-        formatList.filter((item) => item.nodeName && item.outputName).map((item) => item.rawValue)
+        selectedList.filter((item) => item.nodeName && item.outputName).map((item) => item.rawValue)
       );
     }
-  }, [clearInvalid, formatList, onSelect, value]);
+  }, [clearInvalid, onSelect, selectedList, value]);
 
   const ArraySelector = useMemo(() => {
     return (
       <MultipleRowArraySelect
         label={
-          invalidList.length > 0 ? (
+          validSelectedList.length > 0 ? (
             <Grid
               py={3}
               gridTemplateColumns={'1fr 1fr'}
@@ -400,7 +400,7 @@ const MultipleReferenceSelector = ({
                 }
               }}
             >
-              {invalidList.map(({ nodeName, outputName }, index) => {
+              {validSelectedList.map(({ index, nodeName, outputName }) => {
                 return (
                   <Flex
                     key={index}
@@ -456,7 +456,7 @@ const MultipleReferenceSelector = ({
         popDirection={popDirection}
       />
     );
-  }, [invalidList, list, onSelect, placeholder, popDirection, value]);
+  }, [list, onSelect, placeholder, popDirection, validSelectedList, value]);
 
   return ArraySelector;
 };

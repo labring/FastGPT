@@ -111,7 +111,7 @@ export const checkWorkflowBeforeRunOrPublish = ({
     nodes,
     edges,
     modelData,
-    variables: chatConfig?.variables ?? [],
+    variables: chatConfig?.variables,
     t
   });
   const chatConfigIssues = checkWorkflowChatConfigModelIssues({ chatConfig, modelData, t });

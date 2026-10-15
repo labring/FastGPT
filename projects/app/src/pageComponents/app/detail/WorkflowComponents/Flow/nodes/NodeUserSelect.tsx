@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { type NodeProps, Position, useViewport } from 'reactflow';
 import { Box } from '@chakra-ui/react';
 import NodeCard from './render/NodeCard';
@@ -35,7 +35,6 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const onDelEdge = useContextSelector(WorkflowActionsContext, (v) => v.onDelEdge);
   const { zoom } = useViewport();
   const previousRenderTypeRef = useRef<FlowNodeInputTypeEnum>();
-  const lastManualOptionsRef = useRef<UserSelectOptionItemType[]>(defaultManualOptions);
 
   const userSelectInput = useMemo(
     () => inputs.find((input) => input.key === NodeInputKeyEnum.userSelectOptions),
@@ -47,18 +46,11 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     if (!userSelectInput || !currentRenderType) return;
 
     const previousRenderType = previousRenderTypeRef.current;
-    if (
-      currentRenderType === FlowNodeInputTypeEnum.custom &&
-      previousRenderType !== FlowNodeInputTypeEnum.reference &&
-      Array.isArray(userSelectInput.value)
-    ) {
-      lastManualOptionsRef.current = userSelectInput.value as UserSelectOptionItemType[];
-    }
     previousRenderTypeRef.current = currentRenderType;
     if (!previousRenderType || previousRenderType === currentRenderType) return;
 
     if (previousRenderType === FlowNodeInputTypeEnum.custom) {
-      lastManualOptionsRef.current.forEach((option) => {
+      (userSelectInput.userSelectManualOptions ?? []).forEach((option) => {
         onDelEdge({
           nodeId,
           sourceHandle: getOptionSourceHandleId(nodeId, option.key)
@@ -67,18 +59,34 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       return;
     }
 
-    const manualOptions = getDefaultManualOptions();
     onDelEdge({
       nodeId,
       sourceHandle: getOptionSourceHandleId(nodeId, referenceSourceHandleKey)
     });
-    onChangeNode({
-      nodeId,
-      type: 'updateInput',
-      key: NodeInputKeyEnum.userSelectOptions,
-      value: { ...userSelectInput, value: manualOptions }
-    });
-  }, [currentRenderType, nodeId, onChangeNode, onDelEdge, userSelectInput]);
+  }, [currentRenderType, nodeId, onDelEdge, userSelectInput]);
+
+  const getInputPatchOnRenderTypeChange = useCallback(
+    (input: FlowNodeInputItemType, nextRenderType: FlowNodeInputTypeEnum) => {
+      if (input.key !== NodeInputKeyEnum.userSelectOptions) return;
+
+      if (nextRenderType === FlowNodeInputTypeEnum.reference) {
+        const manualOptions = Array.isArray(input.value)
+          ? (input.value as UserSelectOptionItemType[])
+          : input.userSelectManualOptions;
+        return {
+          userSelectManualOptions: manualOptions?.map((option) => ({ ...option }))
+        };
+      }
+      if (nextRenderType === FlowNodeInputTypeEnum.custom) {
+        return {
+          value: (input.userSelectManualOptions ?? getDefaultManualOptions()).map((option) => ({
+            ...option
+          }))
+        };
+      }
+    },
+    []
+  );
 
   const CustomComponent = useMemo(
     () => ({
@@ -100,7 +108,8 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   value: {
                     ...props,
                     key: optionKey,
-                    value: list
+                    value: list,
+                    userSelectManualOptions: list
                   }
                 });
               }}
@@ -120,11 +129,13 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   value: {
                     ...props,
                     key: optionKey,
-                    value: newVal
+                    value: newVal,
+                    userSelectManualOptions: newVal
                   }
                 });
               }}
               onAdd={() => {
+                const newOptions = options.concat({ value: '', key: getNanoid() });
                 onChangeNode({
                   nodeId,
                   type: 'updateInput',
@@ -132,11 +143,13 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   value: {
                     ...props,
                     key: optionKey,
-                    value: options.concat({ value: '', key: getNanoid() })
+                    value: newOptions,
+                    userSelectManualOptions: newOptions
                   }
                 });
               }}
               onDelete={(key) => {
+                const newOptions = options.filter((input) => input.key !== key);
                 onChangeNode({
                   nodeId,
                   type: 'updateInput',
@@ -144,7 +157,8 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   value: {
                     ...props,
                     key: optionKey,
-                    value: options.filter((input) => input.key !== key)
+                    value: newOptions,
+                    userSelectManualOptions: newOptions
                   }
                 });
                 onDelEdge({
@@ -175,7 +189,12 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   return (
     <NodeCard minW={'400px'} selected={selected} {...data}>
       <Container>
-        <RenderInput nodeId={nodeId} flowInputList={inputs} CustomComponent={CustomComponent} />
+        <RenderInput
+          nodeId={nodeId}
+          flowInputList={inputs}
+          CustomComponent={CustomComponent}
+          getInputPatchOnRenderTypeChange={getInputPatchOnRenderTypeChange}
+        />
       </Container>
       <Container>
         <IOTitle text={t('common:Output')} />
