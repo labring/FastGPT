@@ -18,7 +18,7 @@ describe('system tool secrets', () => {
     });
 
     expect(stored).toMatchObject({
-      apiKey: { value: '' },
+      apiKey: { secret: expect.any(String) },
       region: 'us'
     });
     expect(stored.apiKey).not.toBe('new-api-key');
@@ -28,34 +28,57 @@ describe('system tool secrets', () => {
     });
   });
 
-  it('preserves an unedited masked value and migrates legacy plaintext', () => {
+  it('preserves an unedited masked value', () => {
     const stored = encryptSystemToolSecrets({
       secretsVal: { apiKey: SystemToolSecretMaskedValue },
-      existingSecretsVal: { apiKey: 'legacy-api-key' },
+      existingSecretsVal: { apiKey: { secret: encryptSecret('api-key') } },
       secretKeys
     });
 
-    expect(stored.apiKey).toMatchObject({ value: '' });
-    expect(decryptSecret((stored.apiKey as { secret: string }).secret)).toBe('legacy-api-key');
+    expect(stored.apiKey).toMatchObject({ secret: expect.any(String) });
+    expect(decryptSecret((stored.apiKey as { secret: string }).secret)).toBe('api-key');
   });
 
-  it('supports legacy secret wrappers and clears an edited empty value', () => {
+  it('encrypts a plain secret wrapper and clears an edited empty value', () => {
     const stored = encryptSystemToolSecrets({
-      secretsVal: { apiKey: '' },
-      existingSecretsVal: { apiKey: { value: 'legacy-api-key', secret: '' } },
+      secretsVal: { apiKey: { value: 'new-api-key' } },
       secretKeys
     });
 
-    expect(stored).toEqual({});
-    expect(decryptSystemToolSecrets({ apiKey: { value: 'legacy-api-key', secret: '' } })).toEqual({
-      apiKey: 'legacy-api-key'
-    });
+    expect(stored.apiKey).toMatchObject({ secret: expect.any(String) });
+    expect(decryptSecret((stored.apiKey as { secret: string }).secret)).toBe('new-api-key');
+    expect(
+      encryptSystemToolSecrets({
+        secretsVal: { apiKey: '' },
+        existingSecretsVal: stored,
+        secretKeys
+      })
+    ).toEqual({});
+  });
+
+  it('preserves an existing reference when the field is omitted or masked', () => {
+    const existing = { ref: ['node-1', 'token'] as [string, string] };
+
+    expect(
+      encryptSystemToolSecrets({
+        secretsVal: { region: 'us' },
+        existingSecretsVal: { apiKey: existing },
+        secretKeys
+      })
+    ).toEqual({ apiKey: existing, region: 'us' });
+    expect(
+      encryptSystemToolSecrets({
+        secretsVal: { apiKey: SystemToolSecretMaskedValue },
+        existingSecretsVal: { apiKey: existing },
+        secretKeys
+      })
+    ).toEqual({ apiKey: existing });
   });
 
   it('masks only configured secret schema fields', () => {
     const masked = maskSystemToolSecrets({
       secretsVal: {
-        apiKey: { secret: encryptSecret('api-key'), value: '' },
+        apiKey: { secret: encryptSecret('api-key') },
         region: 'us'
       },
       secretKeys

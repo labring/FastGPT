@@ -1,19 +1,61 @@
 import { decryptSecret, encryptSecret } from './aes256gcm';
-import type { SecretValueType } from '@fastgpt/global/common/secret/type';
-import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import {
+  getSecretPlainValue,
+  getSecretReferenceValue,
+  getSecretValueField,
+  hasSecretValueField,
+  type SecretValueReferenceResolver
+} from '@fastgpt/global/common/secret/utils';
+import type { SecretValueType, StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { HeaderSecretTypeEnum } from '@fastgpt/global/common/secret/constants';
-import { isSecretValue } from '../../../global/common/secret/utils';
+
+/** 读取静态 wrapper 或工作流 ref；ref 缺少工作流上下文时显式失败。 */
+export const resolveSecretValue = ({
+  value,
+  resolveReference
+}: {
+  value: unknown;
+  resolveReference?: SecretValueReferenceResolver;
+}) => {
+  if (typeof value !== 'object' || value === null) return value;
+
+  if (hasSecretValueField(value, 'ref')) {
+    const ref = getSecretReferenceValue(value);
+    if (!ref) throw new Error('Invalid secret reference');
+    if (!resolveReference) {
+      throw new Error('Secret reference requires workflow context');
+    }
+    const resolvedValue = resolveReference(ref);
+    if (resolvedValue === undefined) {
+      throw new Error(`Secret reference ${JSON.stringify(ref)} resolved to undefined`);
+    }
+    return resolvedValue;
+  }
+
+  if (hasSecretValueField(value, 'value')) {
+    return getSecretValueField(value, 'value');
+  }
+
+  if (hasSecretValueField(value, 'secret')) {
+    const secret = getSecretValueField(value, 'secret');
+    return decryptSecret(typeof secret === 'string' ? secret : undefined);
+  }
+
+  return value;
+};
 
 export const encryptSecretValue = (value: SecretValueType): SecretValueType => {
   if (typeof value !== 'object' || value === null) return value;
-  if (!value.value) {
-    return value;
+  if (hasSecretValueField(value, 'ref')) return value;
+  if (hasSecretValueField(value, 'value')) {
+    const plainValue = getSecretPlainValue(value);
+    if (plainValue === undefined) return value;
+    return {
+      secret: encryptSecret(plainValue)
+    };
   }
 
-  return {
-    secret: encryptSecret(value.value),
-    value: ''
-  };
+  return value;
 };
 
 export const storeSecretValue = (storeSecret: StoreSecretValueType = {}): StoreSecretValueType => {
@@ -25,19 +67,24 @@ export const storeSecretValue = (storeSecret: StoreSecretValueType = {}): StoreS
 };
 
 export const getSecretValue = ({
-  storeSecret
+  storeSecret,
+  resolveReference
 }: {
   storeSecret?: StoreSecretValueType;
+  resolveReference?: SecretValueReferenceResolver;
 }): Record<string, string> => {
   if (!storeSecret) return {};
 
   return Object.entries(storeSecret).reduce((acc: Record<string, string>, [key, val]) => {
-    if (typeof val !== 'object') {
+    if (typeof val !== 'object' || val === null) {
       return acc;
     }
 
-    const { secret, value } = val;
-    const actualValue = value || decryptSecret(secret);
+    const actualValue = resolveSecretValue({ value: val, resolveReference });
+
+    if (typeof actualValue !== 'string') {
+      throw new Error(`Secret header ${key || '<empty>'} must resolve to a string`);
+    }
 
     // Filter out empty values to avoid invalid headers
     if (!actualValue || !key) {
@@ -60,16 +107,17 @@ export const anyValueDecrypt = (value: any) => {
   const val = (() => {
     try {
       return JSON.parse(value);
-    } catch (error) {
+    } catch {
       return value;
     }
   })();
 
-  if (typeof val === 'object' && val !== null && val.value) {
-    return val.value;
+  if (typeof val !== 'object' || val === null) return val;
+  if (hasSecretValueField(val, 'ref')) return val;
+  if (hasSecretValueField(val, 'value')) return getSecretValueField(val, 'value');
+  if (hasSecretValueField(val, 'secret')) {
+    const secret = getSecretValueField(val, 'secret');
+    return decryptSecret(typeof secret === 'string' ? secret : undefined);
   }
-
-  if (!isSecretValue(val)) return val;
-
-  return decryptSecret(val.secret);
+  return val;
 };

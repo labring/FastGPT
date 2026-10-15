@@ -1,8 +1,51 @@
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import type { FlowNodeInputItemType, InputConfigType } from '@fastgpt/global/core/workflow/type/io';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
-import { encryptSecretValue, storeSecretValue } from '../../../common/secret/utils';
+import {
+  encryptSecretValue,
+  resolveSecretValue,
+  storeSecretValue
+} from '../../../common/secret/utils';
+import type { SecretValueReferenceResolver } from '@fastgpt/global/common/secret/utils';
+import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+
+const inputTypeValueTypeMap: Record<InputConfigType['inputType'], WorkflowIOValueTypeEnum> = {
+  input: WorkflowIOValueTypeEnum.string,
+  numberInput: WorkflowIOValueTypeEnum.number,
+  secret: WorkflowIOValueTypeEnum.string,
+  switch: WorkflowIOValueTypeEnum.boolean,
+  select: WorkflowIOValueTypeEnum.string
+};
+
+/** 解析系统工具手工输入中的静态 wrapper/ref，并复用工作流值类型转换。 */
+export const resolveToolInputValues = ({
+  value,
+  inputList,
+  resolveReference
+}: {
+  value?: Record<string, unknown>;
+  inputList?: InputConfigType[];
+  resolveReference?: SecretValueReferenceResolver;
+}) => {
+  if (!value) return value;
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, rawValue]) => {
+      const input = inputList?.find((item) => item.key === key);
+      const resolvedValue = resolveSecretValue({ value: rawValue, resolveReference });
+      if (!input) return [key, resolvedValue];
+
+      const valueType = inputTypeValueTypeMap[input.inputType];
+      if (resolvedValue !== null && typeof resolvedValue === 'object') {
+        throw new Error(`System tool input ${key} must resolve to a scalar`);
+      }
+
+      return [key, valueTypeFormat(resolvedValue, valueType)];
+    })
+  );
+};
 
 /**
  * 格式化工具输入中的敏感值。

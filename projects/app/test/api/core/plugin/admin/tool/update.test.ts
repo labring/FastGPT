@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SystemToolSecretMaskedValue } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
-import { decryptSecret } from '@fastgpt/service/common/secret/aes256gcm';
+import { decryptSecret, encryptSecret } from '@fastgpt/service/common/secret/aes256gcm';
 
 const mocks = vi.hoisted(() => ({
   authSystemAdmin: vi.fn(),
@@ -141,7 +141,6 @@ describe('admin system tool update handler', () => {
 
     const storedSecretsVal = mocks.updateOne.mock.calls[0][1].secretsVal;
     expect(decryptSecret(storedSecretsVal.apiKey.secret)).toBe('plain-value');
-    expect(storedSecretsVal.apiKey.value).toBe('');
 
     expect(mocks.updateMany).toHaveBeenCalledWith(
       { pluginId: { $regex: '^systemTool-weather/' } },
@@ -161,7 +160,7 @@ describe('admin system tool update handler', () => {
   it('保留管理员详情返回的 masked 系统密钥', async () => {
     mocks.findOne.mockResolvedValue({
       pluginId: 'systemTool-weather',
-      secretsVal: { apiKey: 'legacy-value' },
+      secretsVal: { apiKey: { secret: encryptSecret('configured-value') } },
       customConfig: {}
     });
 
@@ -176,6 +175,6 @@ describe('admin system tool update handler', () => {
     );
 
     const storedSecretsVal = mocks.updateOne.mock.calls[0][1].secretsVal;
-    expect(decryptSecret(storedSecretsVal.apiKey.secret)).toBe('legacy-value');
+    expect(decryptSecret(storedSecretsVal.apiKey.secret)).toBe('configured-value');
   });
 });
