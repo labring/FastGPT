@@ -7,6 +7,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { parseLLMStreamResponse } from '../../../utils';
 import { parsePromptToolCall } from '../../promptCall';
 import type { CompleteParams, CompleteResponse, CreateLLMResponseProps } from '../types';
+import { normalizeNativeToolCalls, normalizeToolName } from './normalize';
 
 /**
  * 解析 stream completion 响应。
@@ -37,16 +38,19 @@ export const createStreamResponse = async ({
     if (toolCallMode === 'toolChoice') {
       type ToolCallAccumulator = {
         id: string;
+        upstreamId?: string;
+        index?: number;
+        arrayIndex: number;
         name: string;
         arguments: string;
         hasEmittedStart: boolean;
       };
-      // 按 index 隔离每个并发工具调用，避免多工具交替吐字时状态污染
-      const toolCallsMap = new Map<number, ToolCallAccumulator>();
+      // index 是标准协议身份；缺 index 的兼容响应仅在稳定 id 能消歧时支持并行交错。
+      const toolCalls: ToolCallAccumulator[] = [];
+      const callsByIndex = new Map<number, ToolCallAccumulator>();
+      const callsById = new Map<string, ToolCallAccumulator>();
       const toolNames = new Set(tools.map((tool) => tool.function.name));
-
-      /** 还原供应商附加的 functions. 前缀，确保流式事件和最终工具调用使用相同名称。 */
-      const normalizeToolName = (name: string) => name.replace(/^functions\./, '');
+      let protocolError: Parameters<typeof normalizeNativeToolCalls>[0]['protocolError'];
 
       try {
         for await (const part of response) {
@@ -73,29 +77,96 @@ export const createStreamResponse = async ({
           const responseChoice = part.choices?.[0]?.delta;
           if (responseChoice?.tool_calls?.length) {
             responseChoice.tool_calls.forEach((toolCall, i) => {
-              const index = toolCall.index ?? i;
+              // 协议冲突后继续读取正文和 usage，但不再派发可能串到其他工具的事件。
+              if (protocolError) return;
+              const index = toolCall.index ?? undefined;
+              const upstreamId = toolCall.id ? toolCall.id : undefined;
+              const indexedCall = index === undefined ? undefined : callsByIndex.get(index);
+              const identifiedCall = upstreamId ? callsById.get(upstreamId) : undefined;
+              const fallbackCalls =
+                index === undefined && !identifiedCall
+                  ? toolCalls.filter((call) => call.arrayIndex === i)
+                  : [];
+              const fallbackCall = fallbackCalls.length === 1 ? fallbackCalls[0] : undefined;
 
-              if (!toolCallsMap.has(index)) {
-                toolCallsMap.set(index, {
-                  id: toolCall.id || getNanoid(6),
-                  name: '',
-                  arguments: '',
-                  hasEmittedStart: false
-                });
+              if (index === undefined && !upstreamId && toolCalls.length > 1) {
+                protocolError = {
+                  message:
+                    'LLM tool call error: parallel tool call delta is missing both index and id.',
+                  toolCall
+                };
+                return;
               }
 
-              const current = toolCallsMap.get(index)!;
-              if (toolCall.id) {
-                current.id = toolCall.id;
+              if (
+                index === undefined &&
+                upstreamId &&
+                !identifiedCall &&
+                fallbackCalls.some((call) => !call.upstreamId)
+              ) {
+                // 未知 id 可能是晚到身份，也可能是另一个并发调用，不能凭数组位置合并。
+                protocolError = {
+                  message:
+                    'LLM tool call error: late tool call id requires an index to identify the pending call.',
+                  toolCall
+                };
+                return;
+              }
+
+              const existing =
+                identifiedCall ?? indexedCall ?? (!upstreamId ? fallbackCall : undefined);
+              const current: ToolCallAccumulator = existing ?? {
+                id: upstreamId ?? getNanoid(6),
+                arrayIndex: i,
+                name: '',
+                arguments: '',
+                hasEmittedStart: false
+              };
+
+              if (
+                (identifiedCall && indexedCall && identifiedCall !== indexedCall) ||
+                (current.upstreamId && upstreamId && current.upstreamId !== upstreamId) ||
+                (current.index !== undefined && index !== undefined && current.index !== index)
+              ) {
+                protocolError = {
+                  message:
+                    'LLM tool call error: tool call index and id identify conflicting calls.',
+                  toolCall
+                };
+                return;
+              }
+
+              if (!existing) toolCalls.push(current);
+              if (index !== undefined) {
+                current.index = index;
+                callsByIndex.set(index, current);
+              }
+              if (upstreamId) {
+                current.upstreamId = upstreamId;
+                callsById.set(upstreamId, current);
+                // 晚到 id 仅补充上游身份映射，开始事件发出后对外 id 必须保持不变。
+                if (!current.hasEmittedStart) current.id = upstreamId;
               }
               if (toolCall.function?.name) {
-                current.name += toolCall.function.name;
+                const nextName = toolCall.function.name;
+                if (
+                  current.name &&
+                  normalizeToolName(current.name) !== normalizeToolName(nextName)
+                ) {
+                  protocolError = {
+                    message: `LLM tool call error: tool name changed from ${current.name} to ${nextName}.`,
+                    toolCall
+                  };
+                  return;
+                }
+                // name 是完整身份字段；重复下发可忽略，arguments 才按 delta 拼接。
+                current.name = nextName;
               }
               if (toolCall.function?.arguments) {
                 current.arguments += toolCall.function.arguments;
               }
 
-              // 工具名可能分片返回，命中本轮工具后才能派发事件，之前收到的参数先缓存。
+              // 名称晚于参数到达时先缓存参数，匹配本轮工具后一次性派发开始事件。
               const normalizedName = normalizeToolName(current.name);
               if (!toolNames.has(normalizedName)) return;
 
@@ -125,56 +196,27 @@ export const createStreamResponse = async ({
 
       const { reasoningContent, content, finish_reason, usage, error } = getResponseData();
 
-      // 流结束统一规范化：容错 functions. 前缀，并将空 arguments 兜底为 "{}"
-      const finalToolCalls: ChatCompletionMessageToolCall[] = Array.from(toolCallsMap.entries())
-        .sort(([a], [b]) => a - b)
-        .map<ChatCompletionMessageToolCall>(([, item]) => {
-          const normalizedName = normalizeToolName(item.name);
-          return {
-            id: item.id,
-            type: 'function',
-            function: {
-              name: normalizedName,
-              arguments: item.arguments.trim() === '' ? '{}' : item.arguments
-            }
-          };
-        })
-        .filter((call) => toolNames.has(call.function.name));
-
-      const result: CompleteResponse = {
-        error,
+      return {
         answerText: content,
         reasoningText: reasoningContent,
-        finish_reason,
         usage,
-        toolCalls: finalToolCalls
+        ...normalizeNativeToolCalls({
+          toolCalls: toolCalls
+            .sort((a, b) => (a.index ?? a.arrayIndex) - (b.index ?? b.arrayIndex))
+            .map((call) => ({
+              ...(call.index !== undefined && { index: call.index }),
+              id: call.id,
+              ...(call.upstreamId &&
+                call.upstreamId !== call.id && { upstreamId: call.upstreamId }),
+              type: 'function',
+              function: { name: call.name, arguments: call.arguments }
+            })),
+          toolNames,
+          finish_reason,
+          error,
+          protocolError
+        })
       };
-
-      // 中途未匹配可能只是名称尚未收齐；只有模型明确以工具调用结束且全部无效时才报错。
-      // 保留原始名称、参数和 usage，由入口层统一记录日志并按 throwError 决定是否抛出。
-      if (!error && finish_reason === 'tool_calls' && finalToolCalls.length === 0) {
-        return {
-          ...result,
-          finish_reason: 'error',
-          error: new Error(
-            'LLM tool call error: finish_reason=tool_calls but no valid tool calls matched the requested tools.',
-            {
-              cause: {
-                finish_reason,
-                expectedToolNames: [...toolNames],
-                receivedToolCalls: Array.from(toolCallsMap, ([index, call]) => ({
-                  index,
-                  id: call.id,
-                  type: 'function',
-                  function: { name: call.name, arguments: call.arguments }
-                }))
-              }
-            }
-          )
-        };
-      }
-
-      return result;
     } else {
       let startResponseWrite = false;
       let answer = '';

@@ -10,7 +10,7 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { mergeAssistantFieldMessages } from '@fastgpt/global/core/chat/adapt';
 import { promptToolCallMessageRewrite } from '../promptCall';
 import { loadRequestMessages } from '../utils';
-import { createLLMRequestId } from '../../record/controller';
+import { createLLMRequestId, sanitizeLLMRequestRecordPayload } from '../../record/controller';
 import type { AIApiRequestMeta } from '../../config';
 import { createChatCompletion } from './createChatCompletion';
 import { useLLMResponseAccumulator } from './hooks/useLLMResponseAccumulator';
@@ -224,24 +224,27 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
 
     if (error) {
       // 解析期错误已拿到响应，保留请求、原始工具诊断及消耗，避免抛错后只剩空响应记录。
-      logger.error('LLM response parsing failed', {
-        teamId,
-        requestId,
-        modelId: modelData.modelId,
-        provider: modelData.provider,
-        baseUrl: aiRequestMeta.baseUrl,
-        request: requestBody,
-        response: {
-          answerText,
-          reasoningText,
-          toolCalls,
-          finish_reason,
-          usage,
-          inputTokens,
-          outputTokens
-        },
-        error
-      });
+      logger.error(
+        'LLM response parsing failed',
+        sanitizeLLMRequestRecordPayload({
+          teamId,
+          requestId,
+          modelId: modelData.modelId,
+          provider: modelData.provider,
+          baseUrl: aiRequestMeta.baseUrl,
+          request: requestBody,
+          response: {
+            answerText,
+            reasoningText,
+            toolCalls,
+            finish_reason,
+            usage,
+            inputTokens,
+            outputTokens
+          },
+          error
+        })
+      );
     }
 
     if (saveLLMResponseRecord && teamId) {

@@ -7,6 +7,7 @@ import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { parseReasoningContent } from '../../../utils';
 import { parsePromptToolCall } from '../../promptCall';
 import type { CompleteParams, CompleteResponse } from '../types';
+import { normalizeNativeToolCalls } from './normalize';
 
 /**
  * 解析非 stream completion 响应。
@@ -75,25 +76,34 @@ export const createCompleteResponse = async ({
     };
   })();
 
+  // 原生工具在回调前统一名称与有效性，避免无效名称已经进入 SSE 或控制工具判断。
+  const normalizedTools =
+    tools?.length && toolCallMode === 'toolChoice'
+      ? normalizeNativeToolCalls({
+          toolCalls: toolCalls ?? [],
+          toolNames: new Set(tools.map((tool) => tool.function.name)),
+          finish_reason,
+          error: response.error
+        })
+      : { toolCalls, finish_reason, error: response.error };
+
   if (formatReasonContent) {
     onReasoning?.({ text: formatReasonContent });
   }
   if (formatContent) {
     onStreaming?.({ text: formatContent });
   }
-  if (toolCalls?.length && onToolCall) {
+  if (!normalizedTools.error) {
     // 保持与 stream 分支一致：解析出每个 tool call 后逐个回调给上层。
-    toolCalls.forEach((call) => {
-      onToolCall({ call });
+    normalizedTools.toolCalls?.forEach((call) => {
+      onToolCall?.({ call });
     });
   }
 
   return {
-    error: response.error,
     reasoningText: formatReasonContent,
     answerText: formatContent,
-    toolCalls,
-    finish_reason,
+    ...normalizedTools,
     usage
   };
 };

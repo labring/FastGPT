@@ -44,8 +44,8 @@ const sanitizeString = (value: string, key?: string) => {
 };
 
 /**
- * 清洗 LLM 请求记录快照中的 base64 内容，避免大文件或图片音频原文落库。
- * 只用于记录入库前的副本，不参与真实模型请求、token 统计或响应解析。
+ * 清洗 LLM 日志与请求记录快照中的 base64，并显式保留 Error 的不可枚举诊断属性。
+ * 只处理快照副本，不参与真实模型请求、token 统计或响应解析。
  */
 export const sanitizeLLMRequestRecordPayload = <T>(payload: T, key?: string): T => {
   if (typeof payload === 'string') {
@@ -54,6 +54,17 @@ export const sanitizeLLMRequestRecordPayload = <T>(payload: T, key?: string): T 
 
   if (!payload || typeof payload !== 'object') {
     return payload;
+  }
+
+  if (payload instanceof Error) {
+    // Object.entries(Error) 会丢掉 message、stack、cause，先展开再递归清洗诊断内容。
+    return sanitizeLLMRequestRecordPayload({
+      ...payload,
+      name: payload.name,
+      message: payload.message,
+      ...(payload.stack !== undefined && { stack: payload.stack }),
+      ...(payload.cause !== undefined && { cause: payload.cause })
+    }) as T;
   }
 
   if (payload instanceof Date) {

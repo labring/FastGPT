@@ -1,8 +1,36 @@
 import { describe, expect, it } from 'vitest';
 import {
   isStreamCompletionResponse,
-  normalizeCompletionFinishReason
+  normalizeCompletionFinishReason,
+  normalizeNativeToolCalls
 } from '@fastgpt/service/core/ai/llm/request/response/normalize';
+
+describe('normalizeNativeToolCalls', () => {
+  it('should normalize copies and keep only declared tools without hiding an upstream error', () => {
+    const toolCalls = [
+      {
+        id: 'a',
+        type: 'function' as const,
+        function: { name: 'functions.search', arguments: ' \t' }
+      },
+      { id: 'b', type: 'function' as const, function: { name: 'unknown', arguments: '{}' } }
+    ];
+    const error = new Error('upstream failed');
+    const result = normalizeNativeToolCalls({
+      toolCalls,
+      toolNames: new Set(['search']),
+      finish_reason: 'length',
+      error,
+      protocolError: { message: 'identity conflict', toolCall: toolCalls[1] }
+    });
+    expect(result.error).toBe(error);
+    expect(result.finish_reason).toBe('length');
+    expect(result.toolCalls).toEqual([
+      { id: 'a', type: 'function', function: { name: 'search', arguments: '{}' } }
+    ]);
+    expect(toolCalls[0].function).toEqual({ name: 'functions.search', arguments: ' \t' });
+  });
+});
 
 describe('normalizeCompletionFinishReason', () => {
   it('should prefer error over raw finish reason', () => {

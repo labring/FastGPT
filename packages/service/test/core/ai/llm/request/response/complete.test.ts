@@ -202,6 +202,78 @@ describe('createCompleteResponse', () => {
     expect(toolCalls).toEqual(result.toolCalls);
   });
 
+  it('should normalize and filter native calls before emitting their callbacks', async () => {
+    const onToolCall = vi.fn();
+    const result = await createCompleteResponse({
+      body: { model: createModel(), messages: [], stream: false, tools: [createTool('search')] },
+      response: {
+        choices: [
+          {
+            message: {
+              role: 'assistant',
+              content: null,
+              tool_calls: [
+                {
+                  id: 'valid',
+                  type: 'function',
+                  function: { name: 'functions.search', arguments: ' \t' }
+                },
+                { id: 'invalid', type: 'function', function: { name: 'unknown', arguments: '{}' } }
+              ]
+            },
+            finish_reason: 'tool_calls'
+          }
+        ]
+      } as any,
+      onToolCall
+    });
+    expect(result.error).toBeUndefined();
+    expect(result.toolCalls).toEqual([
+      { id: 'valid', type: 'function', function: { name: 'search', arguments: '{}' } }
+    ]);
+    expect(onToolCall).toHaveBeenCalledExactlyOnceWith({ call: result.toolCalls?.[0] });
+  });
+
+  it.each([false, true])(
+    'should reject invalid native calls without callbacks: upstream error=%s',
+    async (withUpstreamError) => {
+      const error = new Error('upstream failed');
+      const onToolCall = vi.fn();
+      const result = await createCompleteResponse({
+        body: { model: createModel(), messages: [], stream: false, tools: [createTool('search')] },
+        response: {
+          error: withUpstreamError ? error : undefined,
+          choices: [
+            {
+              message: {
+                role: 'assistant',
+                content: 'partial answer',
+                tool_calls: [
+                  {
+                    id: 'invalid',
+                    type: 'function',
+                    function: { name: 'unknown', arguments: '{}' }
+                  }
+                ]
+              },
+              finish_reason: 'tool_calls'
+            }
+          ]
+        } as any,
+        onToolCall
+      });
+      expect(onToolCall).not.toHaveBeenCalled();
+      expect(result.answerText).toBe('partial answer');
+      expect(result.toolCalls).toEqual([]);
+      if (withUpstreamError) expect(result.error).toBe(error);
+      else
+        expect(result).toMatchObject({
+          finish_reason: 'error',
+          error: { code: 'LLM_TOOL_CALL_ERROR', cause: { expectedToolNames: ['search'] } }
+        });
+    }
+  );
+
   it('should parse prompt tool response text and expose parsed tool calls', async () => {
     mockParsePromptToolCall.mockReturnValue({
       answer: 'visible answer',

@@ -6,6 +6,9 @@ import {
   saveLLMRequestRecord
 } from '@fastgpt/service/core/ai/record/controller';
 import { MongoLLMRequestRecord } from '@fastgpt/service/core/ai/record/schema';
+import { createStreamResponse } from '@fastgpt/service/core/ai/llm/request/response/stream';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { StreamResponseType } from '@fastgpt/global/core/ai/llm/type';
 
 const createBase64 = (length = 320) => 'a'.repeat(length);
 
@@ -52,7 +55,7 @@ describe('sanitizeLLMRequestRecordPayload', () => {
         }
       ]
     });
-    expect(payload.messages[0].content[1].image_url.url).toContain(createBase64());
+    expect(payload.messages[0].content[1].image_url?.url).toContain(createBase64());
   });
 
   it('redacts raw base64 data fields and keeps normal text', () => {
@@ -72,9 +75,121 @@ describe('sanitizeLLMRequestRecordPayload', () => {
       text: 'plain text should stay'
     });
   });
+
+  it('serializes nested errors and custom properties while redacting diagnostic data', () => {
+    const cause = Object.assign(new Error('provider failed'), { code: 'PROVIDER_ERROR' });
+    const error = Object.assign(
+      new Error('tool failed', {
+        cause: { original: cause, image: `data:image/png;base64,${createBase64()}` }
+      }),
+      { code: 'LLM_TOOL_CALL_ERROR' }
+    );
+    const result = sanitizeLLMRequestRecordPayload({
+      error,
+      date: new Date(0),
+      buffer: Buffer.from('image'),
+      empty: null,
+      enabled: false
+    });
+    expect(result).toMatchObject({
+      error: {
+        name: 'Error',
+        message: 'tool failed',
+        stack: expect.any(String),
+        code: 'LLM_TOOL_CALL_ERROR',
+        cause: {
+          original: {
+            name: 'Error',
+            message: 'provider failed',
+            code: 'PROVIDER_ERROR',
+            stack: expect.any(String)
+          },
+          image: 'data:image/png;base64,[base64 omitted]'
+        }
+      },
+      date: new Date(0),
+      buffer: '[base64 omitted]',
+      empty: null,
+      enabled: false
+    });
+    expect(error.cause).toHaveProperty('image', `data:image/png;base64,${createBase64()}`);
+    const noStack = new Error('no stack');
+    delete noStack.stack;
+    expect(sanitizeLLMRequestRecordPayload(noStack)).toEqual({
+      name: 'Error',
+      message: 'no stack'
+    });
+  });
 });
 
 describe('LLM request record team isolation', () => {
+  it('persists actual stream tool error diagnostics through sanitization and MongoDB', async () => {
+    async function* generate() {
+      yield {
+        choices: [
+          {
+            delta: {
+              tool_calls: [
+                {
+                  index: 0,
+                  id: 'invalid',
+                  type: 'function',
+                  function: { name: 'unknown', arguments: '{}' }
+                }
+              ]
+            },
+            finish_reason: 'tool_calls'
+          }
+        ]
+      };
+    }
+    const result = await createStreamResponse({
+      body: {
+        messages: [],
+        stream: true,
+        tools: [{ type: 'function', function: { name: 'search', parameters: { type: 'object' } } }],
+        model: {
+          modelId: '68ad85a7463006c963799a64',
+          type: ModelTypeEnum.llm,
+          scope: ModelScopeEnum.system,
+          provider: 'openai',
+          model: 'gpt-4o',
+          name: 'GPT-4o',
+          config: { maxContext: 128000, maxResponse: 4096, quoteMaxToken: 60000, reasoning: false }
+        }
+      },
+      response: generate() as unknown as StreamResponseType
+    });
+    await saveLLMRequestRecord({
+      teamId: '507f1f77bcf86cd799439011',
+      requestId: 'invalid_tool',
+      body: {},
+      response: result
+    });
+    const record = await getLLMRequestRecord('invalid_tool', '507f1f77bcf86cd799439011');
+    expect(record?.response).toMatchObject({
+      finish_reason: 'error',
+      error: {
+        name: 'LLMToolCallError',
+        code: 'LLM_TOOL_CALL_ERROR',
+        message: expect.stringContaining('no valid tool calls'),
+        stack: expect.any(String),
+        cause: {
+          finish_reason: 'tool_calls',
+          expectedToolNames: ['search'],
+          receivedToolCalls: [
+            {
+              index: 0,
+              id: 'invalid',
+              type: 'function',
+              function: { name: 'unknown', arguments: '{}' }
+            }
+          ]
+        }
+      }
+    });
+  });
+
   it('saves records with very large video data urls after redacting base64 payloads', async () => {
     const largeVideoBase64 = createBase64(10_000_000);
 

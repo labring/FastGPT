@@ -1,8 +1,72 @@
 import type {
+  ChatCompletionMessageToolCall,
   CompletionFinishReason,
   StreamResponseType,
   UnStreamResponseType
 } from '@fastgpt/global/core/ai/llm/type';
+import type { CompleteResponse } from '../types';
+
+/** 工具协议异常具有固定 code，诊断信息通过 cause 保留原始调用和冲突 delta。 */
+export class LLMToolCallError extends Error {
+  readonly code = 'LLM_TOOL_CALL_ERROR';
+
+  constructor({ message, cause }: { message: string; cause: unknown }) {
+    super(message, { cause });
+    this.name = 'LLMToolCallError';
+  }
+}
+
+/** 兼容供应商添加的字面量 functions. 前缀，不改变 functions_search 等合法名称。 */
+export const normalizeToolName = (name: string) => name.replace(/^functions\./, '');
+
+/**
+ * stream 和非 stream 共用的原生工具校验；必须在非 stream 派发工具回调前执行。
+ * 保留上游错误，过滤未声明工具；明确以 tool_calls 结束却没有有效调用时返回协议错误。
+ */
+export const normalizeNativeToolCalls = ({
+  toolCalls,
+  toolNames,
+  finish_reason,
+  error,
+  protocolError
+}: {
+  toolCalls: (ChatCompletionMessageToolCall & { index?: number; upstreamId?: string })[];
+  toolNames: Set<string>;
+  finish_reason: CompletionFinishReason;
+  error?: unknown;
+  protocolError?: { message: string; toolCall: unknown };
+}): Pick<CompleteResponse, 'toolCalls' | 'finish_reason' | 'error'> => {
+  const normalizedCalls = toolCalls
+    .map<ChatCompletionMessageToolCall>((call) => ({
+      id: call.id,
+      type: 'function',
+      function: {
+        name: normalizeToolName(call.function.name),
+        arguments: call.function.arguments.trim() === '' ? '{}' : call.function.arguments
+      }
+    }))
+    .filter((call) => toolNames.has(call.function.name));
+
+  if (error || (!protocolError && (finish_reason !== 'tool_calls' || normalizedCalls.length > 0))) {
+    return { toolCalls: normalizedCalls, finish_reason, error };
+  }
+
+  return {
+    toolCalls: protocolError ? [] : normalizedCalls,
+    finish_reason: 'error',
+    error: new LLMToolCallError({
+      message:
+        protocolError?.message ??
+        'LLM tool call error: finish_reason=tool_calls but no valid tool calls matched the requested tools.',
+      cause: {
+        finish_reason,
+        expectedToolNames: [...toolNames],
+        receivedToolCalls: toolCalls,
+        ...(protocolError && { conflictingToolCall: protocolError.toolCall })
+      }
+    })
+  };
+};
 
 /**
  * 补齐模型响应的 finish_reason。

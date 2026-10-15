@@ -41,7 +41,8 @@ vi.mock('@fastgpt/service/core/ai/llm/promptCall', () => ({
   promptToolCallMessageRewrite: vi.fn((messages: any) => messages)
 }));
 
-vi.mock('@fastgpt/service/core/ai/record/controller', () => ({
+vi.mock('@fastgpt/service/core/ai/record/controller', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/record/controller')>()),
   createLLMRequestId: vi.fn(() => 'test-request-id'),
   saveLLMRequestRecord: vi.fn()
 }));
@@ -1163,147 +1164,6 @@ describe('createLLMResponse', () => {
       expect(toolCallResults).toHaveLength(1);
     });
 
-    it('should mark non-stream tool_calls finish without tool calls as empty response', async () => {
-      const mockResponse = {
-        choices: [
-          {
-            message: {
-              role: 'assistant',
-              content: null,
-              tool_calls: []
-            },
-            finish_reason: 'tool_calls'
-          }
-        ],
-        usage: {
-          prompt_tokens: 20,
-          completion_tokens: 5,
-          total_tokens: 25
-        }
-      };
-
-      const mockAI = {
-        chat: {
-          completions: {
-            create: vi.fn().mockResolvedValue(mockResponse)
-          }
-        }
-      };
-      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
-
-      const tools = [
-        {
-          type: 'function' as const,
-          function: {
-            name: 'get_weather',
-            description: 'Get weather information',
-            parameters: {
-              type: 'object',
-              properties: {
-                location: { type: 'string' }
-              }
-            }
-          }
-        }
-      ];
-
-      const messages: ChatCompletionMessageParam[] = [
-        {
-          role: ChatCompletionRequestMessageRoleEnum.User,
-          content: "What's the weather in Beijing?"
-        }
-      ];
-
-      const result = await createLLMResponse({
-        body: {
-          model: createMockModelData(),
-          messages,
-          tools,
-          stream: false
-        }
-      });
-
-      expect(result.finish_reason).toBe('tool_calls');
-      expect(result.toolCalls).toBeUndefined();
-      expect(result.responseEmptyTip).toBe('chat:LLM_model_response_empty');
-      expect(result.assistantMessage).not.toHaveProperty('tool_calls');
-      expect(mockSaveLLMRequestRecord).toHaveBeenCalledWith(
-        expect.objectContaining({
-          response: expect.objectContaining({
-            finish_reason: 'tool_calls',
-            usage: expect.objectContaining({
-              inputTokens: 20,
-              outputTokens: 5
-            }),
-            error: 'chat:LLM_model_response_empty'
-          })
-        })
-      );
-    });
-
-    it('should not treat reasoning-only tool_calls finish as empty response', async () => {
-      const mockResponse = {
-        choices: [
-          {
-            message: {
-              role: 'assistant',
-              content: null,
-              reasoning_content: 'I already have enough context to answer.',
-              tool_calls: []
-            },
-            finish_reason: 'tool_calls'
-          }
-        ],
-        usage: {
-          prompt_tokens: 20,
-          completion_tokens: 12,
-          total_tokens: 32
-        }
-      };
-
-      const mockAI = {
-        chat: {
-          completions: {
-            create: vi.fn().mockResolvedValue(mockResponse)
-          }
-        }
-      };
-      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
-
-      const result = await createLLMResponse({
-        body: {
-          model: createMockModelData(),
-          messages: [
-            {
-              role: ChatCompletionRequestMessageRoleEnum.User,
-              content: "What's the weather in Beijing?"
-            }
-          ],
-          tools: [
-            {
-              type: 'function' as const,
-              function: {
-                name: 'get_weather',
-                description: 'Get weather information',
-                parameters: {
-                  type: 'object',
-                  properties: {
-                    location: { type: 'string' }
-                  }
-                }
-              }
-            }
-          ],
-          stream: false
-        }
-      });
-
-      expect(result.finish_reason).toBe('tool_calls');
-      expect(result.responseEmptyTip).toBeUndefined();
-      expect(result.reasoningText).toBe('I already have enough context to answer.');
-      expect(result.error).toBeUndefined();
-    });
-
     it('should handle stream tool call response', async () => {
       const chunks = [
         {
@@ -1427,39 +1287,62 @@ describe('createLLMResponse', () => {
     });
 
     it.each(
-      [undefined, 'unknown_tool'].flatMap((returnedName) => [
-        { returnedName, throwError: undefined },
-        { returnedName, throwError: false }
-      ])
+      [
+        { returnedName: undefined, content: '', reasoning: '' },
+        { returnedName: undefined, content: '', reasoning: 'Reasoning without a valid tool call.' },
+        {
+          returnedName: 'unknown_tool',
+          content: 'Model text before the invalid tool call.',
+          reasoning: 'Model reasoning before the invalid tool call.'
+        }
+      ].flatMap((scenario) =>
+        [true, false].flatMap((stream) => [
+          { ...scenario, stream, throwError: undefined },
+          { ...scenario, stream, throwError: false }
+        ])
+      )
     )(
-      'should reject tool_calls without valid stream calls: returned=$returnedName, throwError=$throwError',
-      async ({ returnedName, throwError }) => {
+      'should reject invalid tool_calls: stream=$stream, returned=$returnedName, reasoning=$reasoning, throwError=$throwError',
+      async ({ returnedName, content, reasoning, stream, throwError }) => {
         const logError = vi
           .spyOn(getLogger(LogCategories.MODULE.AI.LLM), 'error')
           .mockImplementation(() => {});
         const toolCalls = returnedName
           ? [
               {
-                index: 0,
+                ...(stream && { index: 0 }),
                 id: 'call_invalid',
                 type: 'function',
                 function: { name: returnedName, arguments: '{"location":"Beijing"}' }
               }
             ]
           : [];
-        const content = returnedName ? 'Model text before the invalid tool call.' : '';
-        const reasoning = returnedName ? 'Model reasoning before the invalid tool call.' : '';
         const mockAI = {
           chat: {
             completions: {
               create: vi.fn().mockResolvedValue(
-                createMockStreamResponse([
-                  {
-                    choices: [
-                      { delta: { content, tool_calls: toolCalls }, finish_reason: 'tool_calls' }
-                    ]
-                  }
-                ])
+                stream
+                  ? createMockStreamResponse([
+                      {
+                        choices: [
+                          { delta: { content, tool_calls: toolCalls }, finish_reason: 'tool_calls' }
+                        ]
+                      }
+                    ])
+                  : {
+                      choices: [
+                        {
+                          message: {
+                            role: 'assistant',
+                            content,
+                            reasoning_content: reasoning,
+                            tool_calls: toolCalls
+                          },
+                          finish_reason: 'tool_calls'
+                        }
+                      ],
+                      usage: { prompt_tokens: 20, completion_tokens: 5, total_tokens: 25 }
+                    }
               )
             }
           }
@@ -1501,11 +1384,13 @@ describe('createLLMResponse', () => {
             model: createMockModelData(),
             messages,
             tools,
-            stream: true,
+            stream,
             toolCallMode: 'toolChoice'
           }
         });
         const expectedError = expect.objectContaining({
+          name: 'LLMToolCallError',
+          code: 'LLM_TOOL_CALL_ERROR',
           message: expect.stringContaining('no valid tool calls'),
           cause: {
             finish_reason: 'tool_calls',
@@ -1561,6 +1446,72 @@ describe('createLLMResponse', () => {
         );
       }
     );
+
+    it('should redact large image payloads in parsing-error logs without changing the actual request', async () => {
+      const logError = vi
+        .spyOn(getLogger(LogCategories.MODULE.AI.LLM), 'error')
+        .mockImplementation(() => {});
+      const imageUrl = `data:image/png;base64,${'A'.repeat(2_000_000)}`;
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Describe this image.' },
+            { type: 'image_url', image_url: { url: imageUrl } }
+          ]
+        }
+      ];
+      const mockCreate = vi.fn().mockResolvedValue({
+        choices: [
+          {
+            message: { role: 'assistant', content: null, tool_calls: [] },
+            finish_reason: 'tool_calls'
+          }
+        ],
+        usage: { prompt_tokens: 20, completion_tokens: 5, total_tokens: 25 }
+      });
+      mockGetAIApi.mockReturnValue(
+        createMockAIApiResult({ chat: { completions: { create: mockCreate } } })
+      );
+      const result = await createLLMResponse({
+        throwError: false,
+        body: {
+          model: createMockModelData(),
+          messages,
+          tools: [
+            { type: 'function', function: { name: 'search', parameters: { type: 'object' } } }
+          ],
+          stream: false
+        }
+      });
+      expect(result.finish_reason).toBe('error');
+      expect(logError).toHaveBeenCalledExactlyOnceWith(
+        'LLM response parsing failed',
+        expect.objectContaining({
+          request: expect.objectContaining({
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { type: 'text', text: 'Describe this image.' },
+                  {
+                    type: 'image_url',
+                    image_url: { url: 'data:image/png;base64,[base64 omitted]' }
+                  }
+                ]
+              }
+            ]
+          }),
+          error: expect.objectContaining({
+            code: 'LLM_TOOL_CALL_ERROR',
+            message: expect.stringContaining('no valid tool calls'),
+            cause: expect.objectContaining({ expectedToolNames: ['search'] })
+          })
+        })
+      );
+      expect(mockCreate.mock.calls[0][0].messages).toEqual(messages);
+      expect(JSON.stringify(logError.mock.calls)).not.toContain(imageUrl);
+    });
 
     it('should handle multiple tool calls in non-stream response', async () => {
       const mockToolCalls: ChatCompletionMessageToolCall[] = [
