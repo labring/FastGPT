@@ -128,9 +128,9 @@ export async function generatePreCreatedData(): Promise<any> {
             teamId: data.teamId,
             tmbId: data.tmbId,
             inputTokens: tokens,
-            model: modelHandle.getEmbeddingModelData(
-              getDatasetModelReference(data.dataset, 'embedding')
-            ),
+            model: modelHandle.getModelData(getDatasetModelReference(data.dataset, 'embedding'), {
+              type: 'embedding'
+            }),
             usageId: data.billId
           });
 
@@ -175,8 +175,9 @@ const updatePreCreatedData = async ({
 }) => {
   const datasetData = trainingData.data!;
   const modelHandle = await getTeamModelHandle({ teamId: String(trainingData.teamId) });
-  const embModel = modelHandle.getEmbeddingModelData(
-    getDatasetModelReference(trainingData.dataset, 'embedding')
+  const embModel = modelHandle.getModelData(
+    getDatasetModelReference(trainingData.dataset, 'embedding'),
+    { type: 'embedding' }
   );
   const indexTrainingInput = await getIndexTrainingUpdateInput(trainingData);
 

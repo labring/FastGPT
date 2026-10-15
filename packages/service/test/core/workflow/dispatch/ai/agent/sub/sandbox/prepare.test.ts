@@ -9,6 +9,7 @@ const {
   runAgentSandboxEntrypointMock,
   resolveSandboxHomeMock,
   injectAgentSkillFilesToSandboxMock,
+  loadWorkflowSkillResourcesMock,
   syncBuiltinSkillsToSandboxMock,
   runAgentSkillVersionEntrypointsMock,
   getAgentSkillInfosMock,
@@ -22,6 +23,7 @@ const {
   runAgentSandboxEntrypointMock: vi.fn(),
   resolveSandboxHomeMock: vi.fn(),
   injectAgentSkillFilesToSandboxMock: vi.fn(),
+  loadWorkflowSkillResourcesMock: vi.fn(),
   syncBuiltinSkillsToSandboxMock: vi.fn(),
   runAgentSkillVersionEntrypointsMock: vi.fn(),
   getAgentSkillInfosMock: vi.fn(),
@@ -33,6 +35,9 @@ const {
 }));
 
 sandboxClientMock.provider = sandboxProviderMock;
+vi.mock('@fastgpt/service/core/workflow/resource/service', () => ({
+  loadWorkflowSkillResources: loadWorkflowSkillResourcesMock
+}));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime', async (importOriginal) => ({
   ...(await importOriginal<
@@ -127,6 +132,7 @@ describe('ensureAgentSandboxRuntime', () => {
       sandboxClient: sandboxClientMock,
       workDirectory: '/workspace'
     });
+    loadWorkflowSkillResourcesMock.mockResolvedValue([{ _id: 'skill_1' }]);
     resolveSandboxHomeMock.mockResolvedValue('/home/sandbox');
     injectAgentSkillFilesToSandboxMock.mockResolvedValue([
       {
@@ -171,12 +177,16 @@ describe('ensureAgentSandboxRuntime', () => {
       sandboxId: 'sandbox_1',
       fn: expect.any(Function)
     });
+    expect(loadWorkflowSkillResourcesMock).toHaveBeenCalledWith({
+      skillIds: ['skill_1'],
+      tmbId: 'tmb_1'
+    });
+    expect(loadWorkflowSkillResourcesMock.mock.invocationCallOrder[0]).toBeLessThan(
+      injectAgentSkillFilesToSandboxMock.mock.invocationCallOrder[0]
+    );
     expect(injectAgentSkillFilesToSandboxMock).toHaveBeenCalledWith({
       sandbox: sandboxProviderMock,
-      teamId: 'team_1',
-      tmbId: 'tmb_1',
-      skillIds: ['skill_1'],
-      dynamic: false,
+      skills: [{ _id: 'skill_1' }],
       workDirectory: '/workspace'
     });
     expect(prepareSandboxRuntimeMirrorsMock).toHaveBeenCalledWith({

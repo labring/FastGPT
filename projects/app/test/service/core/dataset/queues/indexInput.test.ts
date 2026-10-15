@@ -87,7 +87,7 @@ describe('index training image embedding helpers', () => {
     const modelHandle = await modelApi.getTeamModelHandle({ teamId });
     const lookup = vi.spyOn(modelApi, 'getTeamModelHandle').mockResolvedValue({
       ...modelHandle,
-      getVlmModelData: () => {
+      getModelData: () => {
         throw new Error('unexpected catalog failure');
       }
     });

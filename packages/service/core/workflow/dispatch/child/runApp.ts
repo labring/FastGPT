@@ -9,15 +9,15 @@ import {
   rewriteNodeOutputByHistories,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getNodeErrResponse, getHistories } from '../utils';
 import { getWorkflowFileVariableInputs, WorkflowVariableState } from '../utils/variables';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { prepareWorkflowFiles, runWithDerivedWorkflowFileContext } from '../../utils/context';
-import { loadChildWorkflowWithResource } from '../../utils/resource';
+import { loadChildWorkflowWithResource } from '../../resource/service';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getWorkflowRuntimeSummary } from '../utils/summary';
 

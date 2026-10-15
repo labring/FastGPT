@@ -4,7 +4,8 @@ import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import {
   ChatRoleEnum,
   ChatSourceEnum,
-  ChatSourceTypeEnum
+  ChatSourceTypeEnum,
+  ChatGenerateStatusEnum
 } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
@@ -17,7 +18,8 @@ import {
   getMaxHistoryLimitFromNodes,
   storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes,
-  getLastInteractiveValue
+  getLastInteractiveValue,
+  rewriteNodeOutputByHistories
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
@@ -47,18 +49,21 @@ import { type AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
-import type { AuthResponseType } from '@fastgpt/global/openapi/core/chat/completion/api';
-import { CompletionsPropsSchema } from '@fastgpt/global/openapi/core/chat/completion/api';
+import {
+  type AuthResponseType,
+  CompletionsPropsSchema
+} from '@fastgpt/global/openapi/core/chat/completion/api';
+
 import { NextAPI } from '@/service/middleware/entry';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
-import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   serverGetWorkflowToolRunUserQuery,
   updateWorkflowToolInputByVariables
 } from '@fastgpt/service/core/app/tool/workflowTool/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runtime/utils';
+
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -69,7 +74,7 @@ import { getIpFromRequest } from '@fastgpt/service/common/geo';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { updateChatGenerateStatus } from '@fastgpt/service/core/chat/chatGenerateStatus';
-import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+
 import {
   filterWorkflowFinalResponseData,
   getWorkflowDatasetCiteRetention,

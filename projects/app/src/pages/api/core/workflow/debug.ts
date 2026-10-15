@@ -1,3 +1,4 @@
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -23,7 +24,7 @@ import {
   getWorkflowFinalResponseData
 } from '@/service/core/workflow/nodeResponse';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { prepareWorkflowDebugResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
+import { prepareAppWorkflowResources } from '@fastgpt/service/core/app/resource/service';
 import { getAppDraftWorkflow } from '@fastgpt/service/core/app/version/controller';
 
 async function handler(req: NextApiRequest, res: NextApiResponse): Promise<WorkflowDebugResponse> {
@@ -62,12 +63,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
         source: UsageSourceEnum.fastgpt
       });
   const responseChatItemId = getNanoid();
-  const resourceContext = await prepareWorkflowDebugResourceContext({
+  const resources = await prepareAppWorkflowResources({
     appId,
     nodes,
     chatConfig: workflowChatConfig,
     teamId: String(app.teamId),
     tmbId,
+    isRoot
+  });
+  const resourceContext = createWorkflowResourceContext({
+    resources,
+    teamId: String(app.teamId),
     isRoot
   });
   const {

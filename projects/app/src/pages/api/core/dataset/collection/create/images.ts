@@ -69,10 +69,12 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     });
     const modelHandle = await getTeamModelHandle({ teamId });
     const { supportVlm, supportImageEmbedding } = getDatasetImageIndexCapability({
-      vectorModel: modelHandle.getEmbeddingModelData(
-        getDatasetModelReference(dataset, 'embedding')
-      ),
-      vlmModel: modelHandle.getVlmModelData(getDatasetModelReference(dataset, 'vlm'), {
+      vectorModel: modelHandle.getModelData(getDatasetModelReference(dataset, 'embedding'), {
+        type: 'embedding'
+      }),
+      vlmModel: modelHandle.getModelData(getDatasetModelReference(dataset, 'vlm'), {
+        type: 'llm',
+        vision: true,
         optional: true
       })
     });

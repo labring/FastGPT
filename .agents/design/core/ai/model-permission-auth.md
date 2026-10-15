@@ -18,6 +18,7 @@
 1. root 与团队管理员不能使用或管理其他成员的团队模型（有意设计）。
 2. 外链身份不读写成员模型缓存。
 3. 配置入口按模型实际 scope 判断是否需要团队模型能力，并要求请求声明的 `channelType` 与模型实际 scope 一致。
+4. 团队模型仅支持通过显式 `modelId` 引用与校验；任何旧 `model` 标识兼容解析（含运行时 `ModelHandle`、`formatModels`、跨环境导入导出、前端引用恢复）以及默认模型回退（含 `resolveEffectiveDefaultModelIds`、`formatModels` 默认物化、客户端 `getModelDefault`）均严格限定在系统模型（`isSystemModel`），绝不匹配或回退到团队模型。
 
 ## 鉴权动作
 
@@ -61,15 +62,16 @@ getAuthorizedModelIds({ actor, handle, includeInactive? }): Promise<Set<string>>
 
 单模型的使用鉴权不再绕道应用资源流水线（`checkAppResourceReadPermissions → getUnauthorizedAppResources`）。该流水线会按 tmbId 反查成员、重新读取目录、丢失 `isRoot`、重复判断启用状态，并抛出原始字符串错误。
 
-- `authTargetModelResource`（TTS、问题引导）：App 目标与知识库等资源走同一条快照链路——先查正式版本快照（正式对话、外链、API Key 共用）；未命中且 `authType=token`（唯一能进入 Test/Debug 的身份）时，复用 `resolveAppResourcesByPermission(blockOnUnauthorized)`：草稿快照基线内放行，相对草稿新增的模型按成员 `use` 阻断；外链 / API Key 未命中直接拒绝。非 App 目标（skillEdit、chatAgentHelper，仅登录成员可进入）走 `assertAuthModels(use)`。调用方必须传入读取模型时的 `handle`，并通过 `modelHandle` 透传到 App 资源鉴权，避免重复读取目录。
+- `authTargetModelResource`（TTS、问题引导）：显式模型引用先通过 `handle.getModelData` 解析，传入 `modelId` 或 legacy `model` 都使用解析出的 `modelData.modelId` 执行资源鉴权，旧名称不享有免鉴权豁免。App 目标与知识库等资源走同一条快照链路——先查正式版本快照（正式对话、外链、API Key 共用）；未命中且 `authType=token`（唯一能进入 Test/Debug 的身份）时，复用 `resolveAppResourcesByPermission(blockOnUnauthorized)`：草稿快照基线内放行，相对草稿新增的模型按成员 `use` 阻断；外链 / API Key 未命中直接拒绝。非 App 目标（skillEdit、chatAgentHelper，仅登录成员可进入）走 `assertAuthModels(use)`。问题引导未配置模型时，通过 `getAuthorizedModelIds` 获取授权集合，再调用 `handle.getDefaultModelData('llm', { authorizedIds })` 选择可用系统默认模型；TTS 仍要求模型引用和 voice。调用方必须传入读取模型时的 `handle`，并通过 `modelHandle` 透传到 App 资源鉴权，避免重复读取目录。
 - `authChatCrud` / `authChatTargetCrud` 返回 `isRoot`（外链固定 `false`），供上述调用方构造身份。
-- `assertWorkflowNodeModelResources`：在节点调度的 `try` 内、节点本体执行前调用，失败按节点错误处理（支持 `catchError`），不会中断整个工作流。规则：
-  - 静态模型只核对资源快照（纯内存），不做权限校验；
-  - 动态引用按运行人 `assertAuthModels(use)` 校验，`teamId/tmbId` 取自 `runningUserInfo`，`isRoot` 取自工作流资源上下文；
+- `loadWorkflowModelResource`：所有工作流模型（LLM / Rerank）与 dataset、skill、tool、agent 统一收敛到具体使用节点内部按需加载与鉴权（不再放在调度器预执行阶段），也不再区分运行态静态/动态引用。规则：
+  - 入参区分模型目录所属团队 `appTeamId`（取自 `runningAppInfo.teamId`）与运行人鉴权身份 `userInfo`（取自 `runningUserInfo` 的 `{ teamId, tmbId }`）：统一通过 `handle.getModelData(..., { type })` 解析模型定义，保留 `ModelConfigError` 语义；可选槽位传入 `fallbackToDefault: true` 时，仅对 `isModelConfigError` 在运行人有权限的系统模型内回退默认模型，无可用默认时返回 `undefined`，权限错误直接抛出；
+  - `modelId` 与 legacy `model` 统一使用解析后的模型 ID，通过 `hasWorkflowResource({ context, type: 'model', id })` 核对当前工作流资源快照：命中快照按 `appTeamId` 目录直接放行；未命中快照（或无快照上下文）时统一回退到运行人 `userInfo`（`userInfo.teamId` / `userInfo.tmbId` 及对应团队 `ModelHandle`）执行 `assertAuthModels(use)` 校验（`isRoot` 取自工作流资源上下文）。旧名称只在系统模型内兼容解析，仍须通过同一套资源授权；
+  - `prepareAppWorkflowResources`（Test/Debug 入口）在提取请求体资源与增量鉴权前，先用 `modelHandle.getActiveModels()` 执行 `formatModels(..., { modelReferencePolicy: 'preserve' })`，将调试请求体中的 legacy `model` 归一化为 `modelId`；已开启空槽位的默认 ID 由 `modelHandle.getDefaultModelIds(authorizedIds)` 提供，限定为当前操作人有权限的系统模型。显式引用仍从完整 active 目录解析，避免误拦 baseline 内已有授权模型；
   - 免登录外链的 `runningUserInfo` 为发布者，按成员身份计算（已确认可接受）；
-  - 系统工具（commercial）内部使用 `createSystemToolResourceContext()`（`trusted`）：静态模型、知识库、应用、Skill、工具集子工具直接使用，不做声明校验与用户态鉴权；动态引用仍按运行人鉴权。个人工具仍切换到自身 Version 快照。
-  - `dispatchWorkFlow` 的 `resourceContext` 改为必填，每个顶层运行都必须声明资源快照。Skill 调试把入口 `assertAuthModels(use)` 已授权的模型构造为快照传入，固定节点只做内存核对，不再重复鉴权，也不使用 `trusted`。
-  - `createWorkflowResourceContext`（原 `loadWorkflowResourceContext`）为纯内存构造，改为同步；`runWithDerivedWorkflowFileContext` 不再支持传 `null` 清空快照（省略即继承父级）；Agent 子应用删除恒为真的 `useResourceSnapshot` 参数。
+  - 系统工具（commercial）内部使用 `createSystemToolResourceContext({ nodes, chatConfig })`：提取内部静态资源写入快照，省略 teamId 以允许读取系统工具声明的跨团队资源，并继承父级 root 标记；未命中快照的资源仍按运行人鉴权。个人工具仍切换到自身 Version 快照。
+  - `dispatchWorkFlow` 的 `resourceContext` 改为必填，每个顶层运行都必须声明资源快照。Skill 调试把入口 `assertAuthModels(use)` 已授权的模型构造为快照传入，节点内命中快照直接放行，不再重复鉴权。
+  - `createWorkflowResourceContext`（原 `loadWorkflowResourceContext`）为纯内存构造，改为同步；`runWithDerivedWorkflowFileContext` 不再支持传 `null` 清空快照（省略即继承父级）；移除运行态 `dynamic*` 参数与 `isWorkflowNodeResourceDynamic`。
 - Agent v2 直接调用系统工具时，Invoke 令牌的 `teamId/tmbId` 取自 `runningUserInfo`，`appId` 仍取自 App source，确保用户信息反查当前运行成员而非应用 owner。
 - Pro ChatAgentHelper：接口在 `preChatRound` 之前调用 `resolveChatAgentHelperModel` 完成模型选择（含默认回退）、`use` 鉴权与可用性检查，processor 只接收已授权的 `model` 对象，不再读取模型目录。
 - `getUnauthorizedAppResources` 保留模型分支，用于应用保存、发布、调试时的混合资源批量过滤；其中停用模型返回 `unExist` 是既有行为，未改动。
@@ -92,8 +94,8 @@ getAuthorizedModelIds({ actor, handle, includeInactive? }): Promise<Set<string>>
 - [x] summary 仅吞已知无权限错误
 - [x] 修正 ModelConfigTable 过期注释，同步 client-model-catalog 与 model-id-reference-migration 文档
 - [x] 更新受影响测试并运行局部测试（update.test 直接写库的模型补齐目录修订号；集成测试兼容 UserError）
-- [x] 收敛间接路径：`authTargetModelResource` 非 App 分支、`assertWorkflowNodeModelResources` 动态引用改用 `assertAuthModels`；chat 鉴权返回 `isRoot`
-- [x] 恢复工作流节点模型校验：放入节点 `try`，失败转为节点错误；补调度测试
-- [x] 系统工具运行改用 `trusted` 上下文，静态资源免鉴权、动态引用仍鉴权；补单测
+- [x] 收敛间接路径：`authTargetModelResource` 非 App 分支与工作流模型运行态鉴权改用 `assertAuthModels`；chat 鉴权返回 `isRoot`
+- [x] 统一五类工作流资源（`model` / `dataset` / `skill` / `tool` / `agent`）运行态鉴权：移回节点内通过 `loadWorkflowModelResource` 执行，移除运行态动静态区分，统一按「命中 `resourceContext` 走快照、未命中回退运行人权限」处理
+- [x] 系统工具运行提取内部静态资源写入 `trusted` 上下文，静态资源免鉴权、未命中资源仍按运行人鉴权；补单测
 - [x] Skill 调试传入已授权模型快照，消除重复鉴权；`dispatchWorkFlow.resourceContext` 必填，清理 `null` 清空语义与 `useResourceSnapshot`
 - [x] Pro ChatAgentHelper 模型解析与鉴权前移到 `preChatRound` 之前，processor 只消费模型对象

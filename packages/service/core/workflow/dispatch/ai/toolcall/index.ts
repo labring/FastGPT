@@ -1,6 +1,5 @@
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getTeamModelHandle } from '../../../../ai/model/catalog/service';
 import type { DispatchNodeResultType } from '../../../types/runtime';
 
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -17,6 +16,7 @@ import {
 import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/application/toolCall';
 import { postTextCensor } from '../../../../chat/postTextCensor';
 import { readWorkflowFileBuffer } from '../../../utils/context';
+import { loadWorkflowModelResource } from '../../../resource/service';
 import { getAgentLoopHistories, getNodeErrResponse } from '../../utils';
 import {
   buildAgentLoopCoreRequestMessages,
@@ -45,6 +45,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     chatConfig,
     lastInteractive,
     runningAppInfo,
+    runningUserInfo,
     externalProvider,
     responseChatItemId,
     params: {
@@ -78,8 +79,12 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   const useSandbox = isAppChat ? appSandboxAvailability?.available === true : !!useAgentSandbox;
 
   try {
-    const modelHandle = await getTeamModelHandle({ teamId: runningAppInfo.teamId });
-    const toolModel = modelHandle.getLLMModelData({ modelId, model });
+    const toolModel = await loadWorkflowModelResource({
+      appTeamId: runningAppInfo.teamId,
+      userInfo: runningUserInfo,
+      modelId,
+      model
+    });
     const useVision = aiChatVision && toolModel.config.vision;
     const useAudio = aiChatAudio && toolModel.config.audio;
     const useVideo = aiChatVideo && toolModel.config.video;

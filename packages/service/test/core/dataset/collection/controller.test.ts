@@ -108,15 +108,22 @@ vi.mock('@fastgpt/service/core/dataset/training/schema', async (importOriginal) 
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   getTeamModelHandle: vi.fn(async () => ({
-    getLLMModelData: () => ({
-      modelId: 'agent-model',
-      config: { maxContext: 8000, maxResponse: 1000 }
-    }),
-    getEmbeddingModelData: () => ({
-      modelId: 'embedding-model',
-      config: { defaultToken: 100, maxToken: 100, weight: 0 }
-    }),
-    getVlmModelData: () => undefined
+    getModelData: (
+      _ref: unknown,
+      options?: { type?: string; vision?: boolean; optional?: boolean }
+    ) => {
+      if (options?.vision) return undefined;
+      if (options?.type === 'embedding') {
+        return {
+          modelId: 'embedding-model',
+          config: { defaultToken: 100, maxToken: 100, weight: 0 }
+        };
+      }
+      return {
+        modelId: 'agent-model',
+        config: { maxContext: 8000, maxResponse: 1000 }
+      };
+    }
   }))
 }));
 

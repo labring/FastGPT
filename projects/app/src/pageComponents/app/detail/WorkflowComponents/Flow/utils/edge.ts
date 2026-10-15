@@ -5,13 +5,13 @@
  */
 
 import { type Node, Position, type XYPosition } from 'reactflow';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
-import { getIfElseBranchHandleKey } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
+import { getIfElseBranchHandleKey } from '@fastgpt/global/common/workflow/condition';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 
 // Get sort index from source node's output handle order
 export const getHandleIndex = (
@@ -38,7 +38,7 @@ export const getHandleIndex = (
       | IfElseListItemType[]
       | undefined;
     if (Array.isArray(ifElseList)) {
-      const idx = ifElseList.findIndex((item, index) => {
+      const idx = ifElseList.findIndex((item) => {
         const itemHandleId = getHandleId(
           sourceNode.data.nodeId,
           'source',

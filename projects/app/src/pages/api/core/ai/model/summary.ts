@@ -10,7 +10,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
-import { getAppDraftResourceBaseline } from '@fastgpt/service/core/app/version/controller';
+import { getAppDraftResourceBaseline } from '@fastgpt/service/core/app/resource/service';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { isKnownUnauthorizedError } from '@fastgpt/service/support/permission/app/resource';
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
@@ -43,7 +43,7 @@ export async function handler(
         appId,
         per: ReadPermissionVal
       });
-      const baseline = await getAppDraftResourceBaseline(appId);
+      const baseline = await getAppDraftResourceBaseline({ appId, modelHandle });
       baseline.forEach((resource) => {
         if (resource.type === 'model') {
           appBaselineModelIds.add(resource.id);

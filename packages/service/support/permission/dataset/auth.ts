@@ -33,17 +33,20 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { shouldInheritResourcePermission } from '../resourcePermissionPolicy';
 import { resolveCollectionPermission } from '../collection/auth';
 import { assertDatasetPermission } from './utils';
+import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
 
 export const authDatasetByTmbId = async ({
   tmbId,
   datasetId,
   per,
-  isRoot = false
+  isRoot = false,
+  tmbInfo
 }: {
   tmbId: string;
   datasetId: string;
   per: PermissionValueType;
   isRoot?: boolean;
+  tmbInfo?: Pick<TeamTmbItemType, 'teamId' | 'permission'>;
 }): Promise<{
   dataset: DatasetSchemaType & {
     permission: DatasetPermission;
@@ -51,7 +54,7 @@ export const authDatasetByTmbId = async ({
 }> => {
   const dataset = await (async () => {
     const [{ teamId, permission: tmbPer }, dataset] = await Promise.all([
-      getTmbInfoByTmbId({ tmbId }),
+      tmbInfo ?? getTmbInfoByTmbId({ tmbId }),
       MongoDataset.findOne({ _id: datasetId, deleteTime: null }).lean()
     ]);
 
@@ -203,12 +206,15 @@ export async function authDatasetCollection({
     return Promise.reject(DatasetErrEnum.unExist);
   }
 
+  const tmbInfo = await getTmbInfoByTmbId({ tmbId });
+
   // 1. Dataset read 门槛：Collection 权限不能绕过 Dataset 权限
   const { dataset } = await authDatasetByTmbId({
     tmbId,
     datasetId: collection.datasetId,
     per: ReadPermissionVal,
-    isRoot: isRootFromHeader
+    isRoot: isRootFromHeader,
+    tmbInfo
   });
 
   // collection 与 dataset 必须属于同一团队；否则说明对象归属已经损坏，不能继续按 datasetId 授权。
@@ -233,7 +239,6 @@ export async function authDatasetCollection({
   //    视为 owner（含 owner 专属操作），与 listV2/RAG 短路保持一致。
   //    团队管理员（hasManagePer）不在此列：团队级 manage 只覆盖团队自身资源（成员组/组织），
   //    Dataset / Collection 等业务资源仍以各自 ACL 为准，与 authDatasetByTmbId、dataset list 一致。
-  const tmbInfo = await getTmbInfoByTmbId({ tmbId });
   const isTeamOwner = String(tmbInfo.teamId) === String(teamId) && tmbInfo.permission.isOwner;
 
   // 3. 短路：Dataset 处于关闭态（默认，含全部存量数据）→ Collection 有效权限直接等于

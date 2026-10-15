@@ -1,19 +1,17 @@
-import React from 'react';
-import { getWorkflowModelDetails } from '@/web/core/workflow/modelData';
+import { getWorkflowModelCheckData } from '@/web/core/workflow/modelData';
 import { getNodeAllSource } from '@/web/core/workflow/utils';
-import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/workflowCheck';
-import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/check/check';
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/utils';
-import {
-  type RuntimeEdgeItemType,
-  type StoreEdgeItemType
+import type {
+  RuntimeEdgeItemType,
+  StoreEdgeItemType
 } from '@fastgpt/global/core/workflow/type/edge';
-import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useCallback, useMemo, useState } from 'react';
 import { useReactFlow } from 'reactflow';
 import { uiWorkflow2StoreWorkflow } from '../../utils';
-
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
@@ -115,7 +113,7 @@ export const useDebug = () => {
       checkWorkflowBeforeRunOrPublish({
         nodes,
         edges,
-        models: await getWorkflowModelDetails({
+        modelData: await getWorkflowModelCheckData({
           nodes,
           chatConfig: appDetail.chatConfig,
           appId: appDetail._id

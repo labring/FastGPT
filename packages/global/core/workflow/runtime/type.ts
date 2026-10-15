@@ -10,6 +10,7 @@ import { ChatRoleEnum } from '../../chat/constants';
 import z from 'zod';
 import { JsonValueOpenApiMeta, OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
 import type { JSONSchemaInputType } from '../../app/jsonschema';
+import type { AppResource } from '../../app/type';
 
 const AgentPlanNodeStatusSchema = z.enum(['set_plan', 'update_plan', 'ask_question']);
 
@@ -305,3 +306,10 @@ export const NodeOutputItemSchema = z.object({
   value: z.any().meta({ ...JsonValueOpenApiMeta, description: '节点输出值' })
 });
 export type NodeOutputItemType = z.infer<typeof NodeOutputItemSchema>;
+
+export type WorkflowResourceContext = {
+  teamId?: string;
+  /** root Test/Debug 请求允许子工作流沿用跨团队资源权限。 */
+  isRoot: boolean;
+  resourceMap: Map<string, AppResource>;
+};

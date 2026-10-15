@@ -13,7 +13,6 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useCallback, useMemo, useTransition } from 'react';
-
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
@@ -35,7 +34,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
-import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
+import { formatEditorVariablePickerIcon } from '@fastgpt/web/core/workflow/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';

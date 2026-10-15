@@ -1,4 +1,10 @@
 import {
+  getWorkflowNodeModelInputs,
+  isWorkflowModelExpression,
+  isWorkflowModelSlotEnabled
+} from '@fastgpt/global/common/workflow/model';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import {
   AppResourcesSchema,
   type AppChatConfigType,
   type AppResource,
@@ -9,31 +15,15 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { splitCombineToolId, splitToolsetToolPluginId } from '@fastgpt/global/core/app/tool/utils';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+
+import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
 import {
-  isValidReferenceValueFormat,
-  isWorkflowSystemModelInput,
-  nodeInputIsReference
-} from '@fastgpt/global/core/workflow/utils';
-import { Types } from '../../common/mongo';
-import { getLogger, LogCategories } from '../../common/logger';
-
-const resourceLogger = getLogger(LogCategories.MODULE.APP);
-
-type AppResourceModelType =
-  | `${ModelTypeEnum.llm}`
-  | `${ModelTypeEnum.rerank}`
-  | `${ModelTypeEnum.tts}`;
-
-const modelInputTypes = new Map<string, AppResourceModelType>([
-  [NodeInputKeyEnum.aiModelId, 'llm'],
-  [NodeInputKeyEnum.datasetSearchRerankModelId, 'rerank'],
-  [NodeInputKeyEnum.datasetSearchExtensionModelId, 'llm'],
-  [NodeInputKeyEnum.datasetDeepSearchModelId, 'llm']
-]);
+  workflowDatasetParamModelSlots,
+  workflowSystemModelSlots
+} from '@fastgpt/global/core/workflow/model/constants';
+import { getCachedSystemModelHandle } from '../../ai/model/catalog/cache';
 
 const getValueList = (value: unknown) =>
   Array.isArray(value) ? value : value === undefined || value === null ? [] : [value];
@@ -47,28 +37,6 @@ const getStringValue = (value: unknown) => {
   if (typeof value === 'string' && value) return value;
   if (typeof value === 'number') return String(value);
   return;
-};
-
-/**
- * 把节点/对话配置里的模型引用收成稳定标识。
- * 新写入只保留 modelId；解析失败时保留现场 ID，提取器只记录不鉴权。
- */
-export const resolveSystemModelId = (
-  value: unknown,
-  modelType?: AppResourceModelType,
-  models: readonly AIModelDataType[] = []
-) => {
-  const rawValue =
-    getStringValue(value) ??
-    getStringValue(getObjectValue(value, 'modelId')) ??
-    getStringValue(getObjectValue(value, 'model'));
-  if (!rawValue || /^\{\{.*\}\}$/.test(rawValue)) return;
-
-  const resolved =
-    models.find((model) => model.modelId === rawValue) ??
-    models.find((model) => model.model === rawValue);
-  if (resolved && (!modelType || resolved.type === modelType)) return resolved.modelId;
-  return rawValue;
 };
 
 const getEntityId = (value: unknown, specificKey?: string) =>
@@ -93,22 +61,6 @@ export const hasAppResource = ({
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
-
-/** 从知识库搜索配置中提取已开启的模型引用（rerank / extension query）。 */
-export const extractDatasetModelsFromParams = (
-  params: unknown
-): Array<{ id: unknown; modelType: AppResourceModelType }> => {
-  if (!isRecord(params)) return [];
-  if (!Array.isArray(params.datasets) || params.datasets.length === 0) return [];
-  const models: Array<{ id: unknown; modelType: AppResourceModelType }> = [];
-  if (params[NodeInputKeyEnum.datasetSearchUsingReRank] === true) {
-    models.push({ id: params[NodeInputKeyEnum.datasetSearchRerankModelId], modelType: 'rerank' });
-  }
-  if (params[NodeInputKeyEnum.datasetSearchUsingExtensionQuery] === true) {
-    models.push({ id: params[NodeInputKeyEnum.datasetSearchExtensionModelId], modelType: 'llm' });
-  }
-  return models;
-};
 
 /**
  * 从历史 `resourceRefs.skillIds` 取出有效 skill id。
@@ -187,13 +139,6 @@ export const mergeAppResources = (resources: AppResourcesType): AppResourcesType
   });
 };
 
-/** 判断节点是否通过工作流引用动态提供指定资源输入。 */
-export const nodeHasDynamicInput = (
-  node: Pick<StoreNodeItemType | RuntimeNodeItemType, 'inputs'> | undefined,
-  keys: string[]
-) =>
-  node?.inputs?.some((input) => keys.includes(input.key) && nodeInputIsReference(input)) ?? false;
-
 /** 将工作流中的完整工具 ID 转为应用资源权限主体。 */
 export const normalizeAppToolResource = (toolId: unknown) => {
   const id = getStringValue(toolId);
@@ -229,16 +174,14 @@ export const normalizeAppToolResource = (toolId: unknown) => {
 /** 从工作流节点和对话配置提取稳定、扁平的资源快照。 */
 export const extractAppResources = ({
   nodes = [],
-  chatConfig,
-  models = []
+  chatConfig
 }: {
   nodes?: Array<StoreNodeItemType | RuntimeNodeItemType>;
   chatConfig?: AppChatConfigType;
-  /** 调用方持有的同一模型目录快照，仅用于把 legacy 名称投影为稳定 modelId。 */
-  models?: readonly AIModelDataType[];
 }): AppResourcesType => {
   const resources: AppResource[] = [];
   const addResource = (resource: AppResource) => resources.push(resource);
+  const systemHandle = getCachedSystemModelHandle();
 
   const addTool = (toolId: unknown) => {
     const resource = normalizeAppToolResource(toolId);
@@ -251,13 +194,11 @@ export const extractAppResources = ({
   };
 
   const addDataset = (value: unknown) => {
-    if (isValidReferenceValueFormat(value)) return;
     getValueList(value).forEach((item) => {
-      if (isValidReferenceValueFormat(item)) return;
       const id = getEntityId(item, 'datasetId');
       if (id) addResource({ type: 'dataset', id });
       const nested = getObjectValue(item, 'datasets');
-      if (nested && !isValidReferenceValueFormat(nested)) addDataset(nested);
+      if (nested) addDataset(nested);
     });
   };
 
@@ -268,26 +209,52 @@ export const extractAppResources = ({
     });
   };
 
-  const addModels = (value: unknown, modelType: AppResourceModelType) => {
-    getValueList(value).forEach((item) => {
-      const id = resolveSystemModelId(item, modelType, models);
-      if (id) addResource({ type: 'model', id });
-    });
+  /**
+   * 优先提取 canonical `modelId`；当 `modelId` 未设置且存在旧 `model` 标识时，
+   * 通过进程内系统模型目录映射为 `modelId`，保证未迁移草稿与系统工具静态资源能统一按 ID 校验。
+   */
+  const addModelReference = ({
+    modelId,
+    model,
+    type
+  }: {
+    modelId?: unknown;
+    model?: unknown;
+    type: ModelTypeEnum;
+  }) => {
+    const canonicalId = getEntityId(modelId, 'modelId');
+    if (canonicalId) {
+      // 表达式尚未解析成真实模型 ID，不能固化为静态授权或在保存边界查目录。
+      if (!isWorkflowModelExpression(canonicalId)) {
+        addResource({ type: 'model', id: canonicalId });
+      }
+      return;
+    }
+    if (modelId !== undefined) return;
+    const legacyModel = getStringValue(model);
+    if (!legacyModel || isWorkflowModelExpression(legacyModel)) return;
+    const resolvedId = systemHandle?.findModelData({ model: legacyModel }, { type })?.modelId;
+    if (resolvedId) {
+      addResource({ type: 'model', id: resolvedId });
+    }
+  };
+
+  /** 从知识库搜索配置中提取已开启的模型 ID（rerankModelId / datasetSearchExtensionModelId）。 */
+  const addDatasetParamsModels = (params: unknown) => {
+    if (!isRecord(params)) return;
+    if (!Array.isArray(params.datasets) || params.datasets.length === 0) return;
+    for (const { featureKey, modelIdKey, legacyKey, type } of workflowDatasetParamModelSlots) {
+      if (params[featureKey] === true) {
+        addModelReference({
+          modelId: params[modelIdKey],
+          model: params[legacyKey],
+          type
+        });
+      }
+    }
   };
 
   nodes.forEach((node) => {
-    const isStaticInputEnabled = (key: string) =>
-      node.inputs?.some(
-        (item) => item.key === key && !nodeInputIsReference(item) && item.value === true
-      ) ?? false;
-    const datasetSelectInput = node.inputs?.find(
-      (input) => input.key === NodeInputKeyEnum.datasetSelectList
-    );
-    const hasSelectedDataset =
-      !datasetSelectInput ||
-      nodeInputIsReference(datasetSelectInput) ||
-      getValueList(datasetSelectInput.value).length > 0;
-
     if (node.flowNodeType === FlowNodeTypeEnum.appModule && node.pluginId) {
       addResource({ type: 'agent', id: node.pluginId });
     }
@@ -302,19 +269,35 @@ export const extractAppResources = ({
     addTool(node.toolConfig?.mcpTool?.toolId);
     addTool(node.toolConfig?.httpTool?.toolId);
 
-    node.inputs?.forEach((input) => {
+    const inputs = node.inputs ?? [];
+    for (const slot of workflowSystemModelSlots) {
+      if (!isWorkflowModelSlotEnabled({ node, slot })) continue;
+      const { modelIdInputs, legacyInputs } = getWorkflowNodeModelInputs({ node, slot });
+      const fallbackLegacy =
+        legacyInputs[0] && !nodeInputIsReference(legacyInputs[0])
+          ? legacyInputs[0].value
+          : undefined;
+      (modelIdInputs.length > 0 ? modelIdInputs : legacyInputs).forEach((input) => {
+        if (nodeInputIsReference(input)) return;
+        addModelReference({
+          modelId: input.key === slot.modelIdKey ? input.value : undefined,
+          model: input.key === slot.legacyKey ? input.value : fallbackLegacy,
+          type: slot.type
+        });
+      });
+    }
+
+    inputs.forEach((input) => {
       if (nodeInputIsReference(input)) return;
-      if (input.key === NodeInputKeyEnum.skills) addSkills(input.value);
-      if (
-        input.key === NodeInputKeyEnum.datasetSelectList ||
-        input.key === NodeInputKeyEnum.datasetParams
-      ) {
+      if (input.key === NodeInputKeyEnum.skills) {
+        addSkills(input.value);
+      }
+      if (input.key === NodeInputKeyEnum.datasetSelectList) {
         addDataset(input.value);
       }
       if (input.key === NodeInputKeyEnum.datasetParams) {
-        extractDatasetModelsFromParams(input.value).forEach(({ id, modelType }) => {
-          addModels(id, modelType);
-        });
+        addDataset(input.value);
+        addDatasetParamsModels(input.value);
       }
       if (input.key === NodeInputKeyEnum.selectedTools) {
         getValueList(input.value).forEach((tool) => {
@@ -326,27 +309,22 @@ export const extractAppResources = ({
         const id = getEntityId(input.value, 'appId');
         if (id) addResource({ type: 'agent', id });
       }
-      const modelType = modelInputTypes.get(input.key);
-      const enabled =
-        input.key === NodeInputKeyEnum.datasetSearchRerankModelId
-          ? hasSelectedDataset && isStaticInputEnabled(NodeInputKeyEnum.datasetSearchUsingReRank)
-          : input.key === NodeInputKeyEnum.datasetSearchExtensionModelId
-            ? hasSelectedDataset &&
-              isStaticInputEnabled(NodeInputKeyEnum.datasetSearchUsingExtensionQuery)
-            : input.key === NodeInputKeyEnum.datasetDeepSearchModelId
-              ? hasSelectedDataset && isStaticInputEnabled(NodeInputKeyEnum.datasetDeepSearch)
-              : true;
-      if (modelType && enabled && isWorkflowSystemModelInput({ node, input })) {
-        addModels(input.value, modelType);
-      }
     });
   });
 
-  if (chatConfig?.questionGuide?.open) {
-    addModels(chatConfig.questionGuide.modelId ?? chatConfig.questionGuide.model, 'llm');
+  if (chatConfig?.questionGuide?.open === true) {
+    addModelReference({
+      modelId: chatConfig.questionGuide.modelId,
+      model: chatConfig.questionGuide.model,
+      type: ModelTypeEnum.llm
+    });
   }
   if (chatConfig?.ttsConfig?.type === 'model') {
-    addModels(chatConfig.ttsConfig.modelId ?? chatConfig.ttsConfig.model, 'tts');
+    addModelReference({
+      modelId: chatConfig.ttsConfig.modelId,
+      model: chatConfig.ttsConfig.model,
+      type: ModelTypeEnum.tts
+    });
   }
 
   return mergeAppResources(resources);
@@ -355,31 +333,26 @@ export const extractAppResources = ({
 /**
  * 解析一条 Version 上的 resources。
  * 数组（含空数组）视为已落库快照；缺字段则按 nodes 提取，并合并旧 resourceRefs.skillIds。
- * 旧模型名称的映射由调用方通过公开模型读取入口获取目录后传入，避免纯提取逻辑访问私有缓存。
  */
 export const resolveStoredAppResources = ({
   resources,
   nodes,
   chatConfig,
-  resourceRefs,
-  models
+  resourceRefs
 }: {
   resources?: unknown;
   nodes?: Array<StoreNodeItemType | RuntimeNodeItemType>;
   chatConfig?: AppChatConfigType;
   resourceRefs?: unknown;
-  models?: readonly AIModelDataType[];
 }): AppResourcesType => {
   if (Array.isArray(resources)) {
     const parsed = AppResourcesSchema.safeParse(resources);
     if (parsed.success) return mergeAppResources(parsed.data);
-    resourceLogger.warn('Invalid stored app resources, fallback to node extraction');
   }
 
   const extracted = extractAppResources({
     nodes: nodes ?? [],
-    chatConfig,
-    models: models ?? []
+    chatConfig
   });
   return mergeAppResources([
     ...extracted,

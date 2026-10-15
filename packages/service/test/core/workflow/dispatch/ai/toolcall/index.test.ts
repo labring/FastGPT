@@ -29,8 +29,18 @@ const {
 }));
 
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
-  getSystemModelHandle: async () => ({ getLLMModelData: getLLMModelDataMock }),
-  getTeamModelHandle: async () => ({ getLLMModelData: getLLMModelDataMock })
+  getSystemModelHandle: async () => ({
+    getModelData: getLLMModelDataMock,
+    getLLMModelData: getLLMModelDataMock
+  }),
+  getTeamModelHandle: async () => ({
+    getModelData: getLLMModelDataMock,
+    getLLMModelData: getLLMModelDataMock
+  })
+}));
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  assertAuthModels: vi.fn(async () => ({ handle: {}, models: [] })),
+  getAuthorizedModelIds: vi.fn(async () => new Set())
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/toolcall/toolCall', () => ({

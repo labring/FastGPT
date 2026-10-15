@@ -627,12 +627,13 @@ describe('pre-created data queue routing', () => {
       .spyOn(modelService, 'getTeamModelHandle')
       .mockImplementation(async (context) => {
         const modelHandle = await getTeamModelHandle(context);
-        return new Proxy(modelHandle, {
-          get(target, property, receiver) {
-            if (property === 'getVlmModelData') return vlmLookup;
-            return Reflect.get(target, property, receiver);
-          }
-        });
+        return {
+          ...modelHandle,
+          getModelData: ((reference: unknown, options?: { vision?: boolean }) => {
+            if (options?.vision) return vlmLookup();
+            return modelHandle.getModelData(reference as any, options as any);
+          }) as typeof modelHandle.getModelData
+        };
       });
     try {
       await generateRebuildIndex();

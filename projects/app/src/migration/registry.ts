@@ -381,6 +381,8 @@ export const systemMigrations = [
   },
   {
     id: '20260916_backfill_app_resource_snapshots',
+    // 资源提取只读取模型 ID，必须等 App、Version 和模板的模型引用回填全部成功。
+    dependsOn: ['20260903_backfill_app_model_references'],
     version: '4.17.1',
     nameKey: i18nT('system_migration:migrations.20260916_backfill_app_resource_snapshots.name'),
     descriptionKey: i18nT(

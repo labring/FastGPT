@@ -51,11 +51,16 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
     });
     const dataset = collection.dataset;
     const modelHandle = await getTeamModelHandle({ teamId });
-    const vectorModelData = modelHandle.getEmbeddingModelData(
-      getDatasetModelReference(dataset, 'embedding')
+    const vectorModelData = modelHandle.getModelData(
+      getDatasetModelReference(dataset, 'embedding'),
+      { type: 'embedding' }
     );
-    const agentModelData = modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent'));
-    const vlmModelData = modelHandle.getVlmModelData(getDatasetModelReference(dataset, 'vlm'), {
+    const agentModelData = modelHandle.getModelData(getDatasetModelReference(dataset, 'agent'), {
+      type: 'llm'
+    });
+    const vlmModelData = modelHandle.getModelData(getDatasetModelReference(dataset, 'vlm'), {
+      type: 'llm',
+      vision: true,
       optional: true
     });
     const { availableVlmModel, supportVlm, supportImageEmbedding } = getDatasetImageIndexCapability(

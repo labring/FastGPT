@@ -1,15 +1,9 @@
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
-import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { AIModelDataSchema } from '@fastgpt/global/core/ai/model/schema';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { createModelHandle, type ModelHandle } from '@fastgpt/service/core/ai/model/catalog/handle';
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  getAppLatestVersion: vi.fn(),
-  getAppDraftResourceBaseline: vi.fn(),
   getTeamModelHandle: vi.fn(),
   authAppByTmbId: vi.fn(),
   authDatasetByTmbId: vi.fn(),
@@ -19,11 +13,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
   getTeamModelHandle: mocks.getTeamModelHandle
-}));
-
-vi.mock('@fastgpt/service/core/app/version/controller', () => ({
-  getAppLatestVersion: mocks.getAppLatestVersion,
-  getAppDraftResourceBaseline: mocks.getAppDraftResourceBaseline
 }));
 
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
@@ -43,68 +32,9 @@ vi.mock('@fastgpt/service/support/user/team/controller', () => ({
 }));
 
 import {
-  authTargetModelResource,
   checkAppResourceReadPermissions,
-  filterAuthorizedAppResources,
-  getUnauthorizedAppResources
+  filterAuthorizedAppResources
 } from '@fastgpt/service/support/permission/app/resource';
-
-describe('authTargetModelResource', () => {
-  // App 分支只看版本快照，不读取 handle。
-  const memberArgs = {
-    teamId: 'team-1',
-    tmbId: 'tmb-1',
-    isRoot: false,
-    handle: {} as ModelHandle
-  };
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('allows a model that is declared in the published App version snapshot', async () => {
-    mocks.getAppLatestVersion.mockResolvedValue({
-      resources: [{ type: 'model', id: 'declared-model' }]
-    });
-
-    await expect(
-      authTargetModelResource({
-        targetType: ChatSourceTypeEnum.app,
-        targetId: 'app-1',
-        modelId: 'declared-model',
-        ...memberArgs
-      })
-    ).resolves.toBeUndefined();
-  });
-
-  it('rejects a model that is missing from the published App version snapshot', async () => {
-    mocks.getAppLatestVersion.mockResolvedValue({
-      resources: [{ type: 'model', id: 'other-model' }]
-    });
-
-    await expect(
-      authTargetModelResource({
-        targetType: ChatSourceTypeEnum.app,
-        targetId: 'app-1',
-        modelId: 'undeclared-model',
-        ...memberArgs
-      })
-    ).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
-  });
-
-  it('uses explicitly passed snapshot resources when available', async () => {
-    await expect(
-      authTargetModelResource({
-        targetType: ChatSourceTypeEnum.app,
-        targetId: 'app-1',
-        modelId: 'declared-model',
-        ...memberArgs,
-        resources: [{ type: 'model', id: 'declared-model' }]
-      })
-    ).resolves.toBeUndefined();
-
-    expect(mocks.getAppLatestVersion).not.toHaveBeenCalled();
-  });
-});
 
 describe('checkAppResourceReadPermissions', () => {
   const validTmbId = '65f000000000000000000001';
@@ -261,132 +191,5 @@ describe('filterAuthorizedAppResources', () => {
         tmbId: validTmbId
       })
     ).rejects.toThrow('MongoTimeoutError: query exceeded limit');
-  });
-});
-
-describe('team models in App resource permissions', () => {
-  const teamId = '65f000000000000000000002';
-  const tmbId = '65f000000000000000000001';
-  const ownId = '65f000000000000000000011';
-  const disabledId = '65f000000000000000000012';
-  const privateId = '65f000000000000000000013';
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.getTmbInfoByTmbId.mockResolvedValue({ teamId, permission: { hasManagePer: false } });
-    const models = [
-      { modelId: ownId, tmbId, isActive: true },
-      { modelId: disabledId, tmbId, isActive: false },
-      { modelId: privateId, tmbId: '65f000000000000000000099', isActive: true }
-    ].map((model) =>
-      AIModelDataSchema.parse({
-        ...model,
-        model: model.modelId,
-        name: 'Private model',
-        provider: 'OpenAI',
-        type: 'llm',
-        scope: 'team',
-        teamId,
-        config: { maxContext: 4096, maxResponse: 1024, quoteMaxToken: 1024 }
-      })
-    );
-    mocks.getTeamModelHandle.mockResolvedValue(
-      createModelHandle({
-        models,
-        defaultModels: {},
-        configuredDefaultModelIds: {},
-        revision: 1,
-        version: 'app-resource-team-catalog'
-      })
-    );
-  });
-
-  it('allows an owned team model through ID authorization', async () => {
-    await expect(
-      checkAppResourceReadPermissions({ resources: [{ type: 'model', id: ownId }], tmbId })
-    ).resolves.toBeUndefined();
-  });
-  it('distinguishes a disabled model from another member private model in the same snapshot', async () => {
-    const disabled = { type: 'model' as const, id: disabledId };
-    const privateModel = { type: 'model' as const, id: privateId };
-    expect(
-      await getUnauthorizedAppResources({ resources: [disabled, privateModel], tmbId })
-    ).toEqual([
-      { resource: disabled, error: ModelErrEnum.unExist },
-      { resource: privateModel, error: ERROR_ENUM.unAuthModel }
-    ]);
-  });
-
-  it('authorizes non-App targets with the caller handle instead of the App resource pipeline', async () => {
-    const handle = await mocks.getTeamModelHandle();
-    mocks.getTeamModelHandle.mockClear();
-    const args = {
-      targetType: ChatSourceTypeEnum.skillEdit,
-      targetId: 'skill-1',
-      teamId,
-      tmbId,
-      isRoot: false,
-      handle
-    };
-
-    await expect(authTargetModelResource({ ...args, modelId: ownId })).resolves.toBeUndefined();
-    await expect(authTargetModelResource({ ...args, modelId: privateId })).rejects.toMatchObject({
-      message: ModelErrEnum.unAuthModel
-    });
-    // root 也不能使用其他成员的团队模型。
-    await expect(
-      authTargetModelResource({ ...args, isRoot: true, modelId: privateId })
-    ).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
-    expect(mocks.getTeamModelHandle).not.toHaveBeenCalled();
-    expect(mocks.getAppLatestVersion).not.toHaveBeenCalled();
-  });
-
-  describe('App target follows the debug resource chain', () => {
-    const appId = '65f000000000000000000071';
-    const getArgs = async (authType?: 'token' | 'outLink') => {
-      const handle = await mocks.getTeamModelHandle();
-      mocks.getTeamModelHandle.mockClear();
-      return {
-        targetType: ChatSourceTypeEnum.app,
-        targetId: appId,
-        teamId,
-        tmbId,
-        isRoot: false,
-        authType,
-        handle,
-        resources: []
-      };
-    };
-
-    it('allows a token member to use a model declared by the draft snapshot baseline', async () => {
-      mocks.getAppDraftResourceBaseline.mockResolvedValue([{ type: 'model', id: privateId }]);
-
-      await expect(
-        authTargetModelResource({ ...(await getArgs('token')), modelId: privateId })
-      ).resolves.toBeUndefined();
-      expect(mocks.getAppDraftResourceBaseline).toHaveBeenCalledWith(
-        appId,
-        undefined,
-        expect.any(Function)
-      );
-    });
-
-    it('authorizes models added relative to the draft with the member use permission', async () => {
-      mocks.getAppDraftResourceBaseline.mockResolvedValue([]);
-      const args = await getArgs('token');
-
-      await expect(authTargetModelResource({ ...args, modelId: ownId })).resolves.toBeUndefined();
-      await expect(authTargetModelResource({ ...args, modelId: privateId })).rejects.toBe(
-        ERROR_ENUM.unAuthModel
-      );
-      // 复用调用方 handle，不重复读取模型目录。
-      expect(mocks.getTeamModelHandle).not.toHaveBeenCalled();
-    });
-
-    it('rejects non-token identities without falling back to the draft snapshot', async () => {
-      await expect(
-        authTargetModelResource({ ...(await getArgs('outLink')), modelId: ownId })
-      ).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
-      expect(mocks.getAppDraftResourceBaseline).not.toHaveBeenCalled();
-    });
   });
 });

@@ -1,6 +1,10 @@
-import { getNanoid } from '../../../../../common/string/tools';
-import { getElseIFLabel } from '../../../utils';
-import type { IfElseListItemType } from './type';
+import { IfElseResultEnum } from '../../core/workflow/template/system/ifElse/constant';
+import { getNanoid } from '../string/tools';
+import type { IfElseListItemType } from '../../core/workflow/template/system/ifElse/type';
+
+export const getElseIFLabel = (i: number) => {
+  return i === 0 ? IfElseResultEnum.IF : `${IfElseResultEnum.ELSE_IF} ${i}`;
+};
 
 export const createIfElseBranchId = () => getNanoid();
 
@@ -8,17 +12,12 @@ export const createIfElseBranchId = () => getNanoid();
 export const getIfElseBranchHandleKey = (item: IfElseListItemType, index?: number) =>
   item.branchId ?? (index === undefined ? '' : getElseIFLabel(index));
 
-const ensureUniqueBranchIds = ({
-  list,
-  createFallback
-}: {
-  list: IfElseListItemType[];
-  createFallback: (item: IfElseListItemType, index: number) => string;
-}) => {
+/** 新建条件分支补齐唯一 ID，已有唯一 ID 保持不变；重复 ID 重新生成。 */
+export const initNewIfElseList = (list: IfElseListItemType[] = []) => {
   const usedBranchIds = new Set<string>();
 
-  return list.map((item, index) => {
-    const preferredBranchId = item.branchId || createFallback(item, index);
+  return list.map((item) => {
+    const preferredBranchId = item.branchId || createIfElseBranchId();
     const branchId = (() => {
       if (!usedBranchIds.has(preferredBranchId)) return preferredBranchId;
 
@@ -36,12 +35,3 @@ const ensureUniqueBranchIds = ({
     };
   });
 };
-
-/**
- * 新建判断器节点初始化：默认分支必须生成随机 ID，不能继续复用 index label。
- */
-export const initNewIfElseList = (list: IfElseListItemType[] = []) =>
-  ensureUniqueBranchIds({
-    list,
-    createFallback: () => createIfElseBranchId()
-  });

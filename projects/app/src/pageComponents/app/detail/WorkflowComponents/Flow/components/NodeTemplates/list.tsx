@@ -41,7 +41,7 @@ import type {
   NodeTemplateListItemType,
   NodeTemplateListType
 } from '@fastgpt/global/core/workflow/type/node';
-import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
+import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -53,8 +53,8 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useLocalStorageState, useMemoizedFn } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo } from 'react';
-import type { Node } from 'reactflow';
-import { useReactFlow } from 'reactflow';
+import { type Node, useReactFlow } from 'reactflow';
+
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import { WorkflowModalContext } from '../../../context/workflowModalContext';

@@ -11,8 +11,8 @@ import { getSecretValue } from '../../../../../../../common/secret/utils';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { ChatDispatchProps } from '../../../../../types/runtime';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+
 import { pushTrack } from '../../../../../../../common/middle/tracks/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { assertToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
@@ -32,12 +32,7 @@ import { SystemToolRepo } from '../../../../../../app/tool/systemTool/systemTool
 import { computedSystemToolUsage } from '../../../../../../app/tool/runtime/utils';
 import { InvokeProcessor } from '../../../../../../../support/invoke/invoke';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
-import {
-  filterWorkflowToolList,
-  isWorkflowResourceError,
-  loadWorkflowAppResource
-} from '../../../../../utils/resource';
-import { getWorkflowResourceContext } from '../../../../../utils/context';
+import { isWorkflowResourceError, loadWorkflowAppResource } from '../../../../../resource/service';
 import { getWorkflowAppId } from '../../../../utils/source';
 import {
   assertTeamPluginSourceAccess,
@@ -65,7 +60,6 @@ export type Props = {
   uid: ChatDispatchProps['uid'];
   variableState: ChatDispatchProps['variableState'];
   workflowStreamResponse: ChatDispatchProps['workflowStreamResponse'];
-  dynamic?: boolean;
 };
 
 export const dispatchTool = async ({
@@ -76,10 +70,8 @@ export const dispatchTool = async ({
   chatId,
   uid,
   variableState,
-  workflowStreamResponse,
-  dynamic = false
+  workflowStreamResponse
 }: Props): Promise<DispatchSubAppResponse> => {
-  const resourceContext = dynamic ? undefined : getWorkflowResourceContext();
   const getNodeResponse = ({
     result,
     response
@@ -136,15 +128,14 @@ export const dispatchTool = async ({
   try {
     /**
      * Agent 工具调用也会按持久化 toolId 解析 HTTP/MCP 父工具集。
-     * 这里必须使用当前运行用户的 tmbId 做运行时授权，与入口及动态工具鉴权上下文保持一致。
+     * 这里优先命中当前工作流资源快照，未命中时回退到运行用户的 tmbId 做运行时授权。
      */
     const authRuntimeToolset = async (parentId: string, toolName?: string) =>
       loadWorkflowAppResource({
         tmbId: runningUserInfo.tmbId,
         appId: parentId,
         type: 'tool',
-        toolName,
-        dynamic
+        toolName
       });
 
     if (toolConfig?.systemTool?.toolId) {
@@ -266,11 +257,8 @@ export const dispatchTool = async ({
       const mcpToolSet = McpToolSetRuntimeConfigSchema.safeParse(
         workflow.nodes[0]?.toolConfig?.mcpToolSet
       ).data;
-      const mcpToolList = filterWorkflowToolList({
-        context: resourceContext,
-        appId: parentId,
-        tools: await getMCPChildren(app, workflow)
-      });
+      // 加载资源时已按子工具名称授权，执行阶段只检查最新定义和参数。
+      const mcpToolList = await getMCPChildren(app, workflow);
       if (!mcpToolSet || !mcpToolList.length) {
         return Promise.reject(`MCP tool set is missing`);
       }
@@ -321,11 +309,7 @@ export const dispatchTool = async ({
       const toolSetData = HttpToolSetRuntimeConfigSchema.safeParse(
         workflow.nodes[0]?.toolConfig?.httpToolSet
       ).data;
-      const toolList = filterWorkflowToolList({
-        context: resourceContext,
-        appId: parentId,
-        tools: await getHTTPToolList(app, workflow)
-      });
+      const toolList = await getHTTPToolList(app, workflow);
       if (!toolSetData || !toolList.length) {
         return Promise.reject(`HTTP tool set not found: ${toolConfig.httpTool.toolId}`);
       }
