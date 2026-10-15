@@ -16,7 +16,7 @@ import type { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import type { StoreNodeItemType } from '../type/node';
 import { isValidReferenceValueFormat } from '../utils';
 import type { RuntimeNodeItemType } from './type';
-import { isSecretValue } from '../../../common/secret/utils';
+import { isSecretValueLike } from '../../../common/secret/utils';
 import { isChildInteractive } from '../template/system/interactive/constants';
 
 export const extractDeepestInteractive = (
@@ -68,7 +68,7 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
   if (!valueType || valueType === WorkflowIOValueTypeEnum.any) return value;
 
   // Password check
-  if (valueType === WorkflowIOValueTypeEnum.string && isSecretValue(value)) return value;
+  if (valueType === WorkflowIOValueTypeEnum.string && isSecretValueLike(value)) return value;
 
   // 2. 如果值已经符合目标类型，直接返回
   if (

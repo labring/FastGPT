@@ -380,10 +380,7 @@ describe('getAgentRuntimeTools schema loading', () => {
         mcpToolSet: {
           url: 'https://current.example.com',
           headerSecret: {
-            Authorization: {
-              value: 'current-secret',
-              secret: ''
-            }
+            Authorization: { value: 'current-secret' }
           },
           toolList: [mcpTool]
         }

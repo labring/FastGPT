@@ -590,7 +590,7 @@ export const normalizeLegacyMcpHeaderSecret = (
   if (headerMap.success && Object.keys(headerMap.data).length > 0) return headerMap.data;
 
   const singleToken = SecretValueTypeSchema.safeParse(headerSecret);
-  if (singleToken.success && (singleToken.data.value || singleToken.data.secret)) {
+  if (singleToken.success) {
     return { Authorization: singleToken.data };
   }
 

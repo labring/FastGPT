@@ -47,6 +47,13 @@ vi.mock('@fastgpt/service/core/app/http', () => ({
 vi.mock('@fastgpt/service/core/app/mcp', () => ({
   assertMCPUrlNotInternal: vi.fn(),
   getMCPChildren: getMCPChildrenMock,
+  normalizeLegacyMcpHeaderSecret: (headerSecret: any) => {
+    if (!headerSecret || typeof headerSecret !== 'object') return undefined;
+    if ('value' in headerSecret || 'secret' in headerSecret || 'ref' in headerSecret) {
+      return { Authorization: headerSecret };
+    }
+    return headerSecret;
+  },
   MCPClient: vi.fn(function () {
     return { toolCall: mcpToolCallMock };
   })
@@ -500,6 +507,32 @@ describe('dispatchRunTool runtime toolset auth', () => {
       });
     }
   );
+
+  it('should normalize a legacy single MCP header secret', async () => {
+    const props = createRunToolProps({});
+    props.params = {
+      query: 'fastgpt',
+      toolData: {
+        name: 'search',
+        url: 'https://mcp.example.com',
+        headerSecret: { value: 'legacy-token' },
+        inputSchema: {
+          type: 'object',
+          properties: { query: { type: 'string' } },
+          required: ['query']
+        }
+      }
+    };
+    mcpToolCallMock.mockResolvedValueOnce({ ok: true });
+
+    const result = await dispatchRunTool(props);
+
+    expect(result.error).toBeUndefined();
+    expect(MCPClient).toHaveBeenCalledWith({
+      url: 'https://mcp.example.com',
+      headers: { Authorization: 'legacy-token' }
+    });
+  });
 
   it('should reject invalid system tool params before invoking the plugin runtime', async () => {
     getSystemToolDetailMock.mockResolvedValueOnce({
