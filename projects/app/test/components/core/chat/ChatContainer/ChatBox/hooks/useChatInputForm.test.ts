@@ -5,6 +5,7 @@ import { useFieldArray, useWatch } from 'react-hook-form';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatTypeEnum, textareaMinH } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { useChatInputForm } from '@/components/core/chat/ChatContainer/ChatBox/hooks/useChatInputForm';
 import {
@@ -141,15 +142,7 @@ describe('useChatInputForm', () => {
     expect(readChatInputDraft(b)).toBeUndefined();
   });
 
-  it('updates the form and draft before the textarea mounts', async () => {
-    await render({ withTextarea: false });
-    expect(textarea.current).toBeNull();
-    await act(async () => result.resetInputVal({ text: 'no DOM' }));
-    expect(result.chatForm.getValues('input')).toBe('no DOM');
-    expect(readChatInputDraft(identity)?.text).toBe('no DOM');
-  });
-
-  it('sizes a multiline draft when the textarea mounts after restoration without renewing it', async () => {
+  it('sizes a restored draft after delayed mounting, caps long input and resets on clear', async () => {
     const text = 'one\ntwo\nthree\nfour';
     saveChatInputDraft({ identity, text, files: [] });
     const savedAt = readChatInputDraft(identity)?.updatedAt;
@@ -166,18 +159,12 @@ describe('useChatInputForm', () => {
     expect(textarea.current?.style.height).toBe('96px');
     expect(textarea.current?.style.overflowY).toBe('hidden');
     expect(readChatInputDraft(identity)?.updatedAt).toBe(savedAt);
-  });
 
-  it('allows scrolling in long restored drafts and resets height and overflow on clear', async () => {
-    const text = Array.from({ length: 10 }, () => 'line').join('\n');
-    saveChatInputDraft({ identity, text, files: [] });
-    Object.defineProperty(dom.window.HTMLTextAreaElement.prototype, 'scrollHeight', {
-      configurable: true,
-      get() {
-        return this.value.split('\n').length * 24;
-      }
-    });
     await render({ withTextarea: false });
+    const longText = Array.from({ length: 10 }, () => 'line').join('\n');
+    await act(async () => result.resetInputVal({ text: longText }));
+    expect(result.chatForm.getValues('input')).toBe(longText);
+    expect(readChatInputDraft(identity)?.text).toBe(longText);
     await render();
     expect(textarea.current?.style.height).toBe('128px');
     expect(textarea.current?.style.overflowY).toBe('auto');
@@ -192,7 +179,14 @@ describe('useChatInputForm', () => {
     saveChatInputDraft({
       identity,
       text: 'A draft',
-      files: [{ key: 'chat/file.txt', url: 'https://uploaded', name: 'file.txt', type: 'file' }]
+      files: [
+        {
+          key: 'chat/file.txt',
+          url: 'https://uploaded',
+          name: 'file.txt',
+          type: ChatFileTypeEnum.file
+        }
+      ]
     });
     await render({ withTextarea: false });
     await render({ draftIdentity: { ...identity, chatId: 'new-chat' } });

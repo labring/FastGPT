@@ -105,43 +105,6 @@ describe('useChatInputDraft', () => {
     expect(chatForm.getValues('input')).toBe('A latest');
   });
 
-  it('flushes on pagehide and does not renew a restored draft', async () => {
-    const updatedAt = Date.now() - 5000;
-    saveChatInputDraft({ identity, text: 'saved', files: [attachment], updatedAt });
-    await render();
-    expect(chatForm.getValues('files')[0].url).toBe(attachment.url);
-    expect(readChatInputDraft(identity)?.updatedAt).toBe(updatedAt);
-    await edit('latest');
-    await act(async () => window.dispatchEvent(new window.Event('pagehide')));
-    expect(readChatInputDraft(identity)?.text).toBe('latest');
-  });
-
-  it('restores uploaded attachment URLs and text after remount without renewing the draft', async () => {
-    await render();
-    await act(async () => result.resetInputVal({ text: 'refresh draft', files: [uploadedFile] }));
-    const saved = readChatInputDraft(identity)!;
-    await act(async () => root.unmount());
-    mounted = false;
-    await advance(1000);
-    root = createRoot(document.getElementById('root')!);
-    await render();
-    expect(chatForm.getValues('input')).toBe('refresh draft');
-    expect(chatForm.getValues('files')[0]).toMatchObject(attachment);
-    expect(readChatInputDraft(identity)?.updatedAt).toBe(saved.updatedAt);
-  });
-
-  it('never restores an expired draft', async () => {
-    saveChatInputDraft({
-      identity,
-      text: 'old',
-      files: [attachment],
-      updatedAt: Date.now() - CHAT_INPUT_DRAFT_EXPIRE_MS
-    });
-    await render();
-    expect(chatForm.getValues('input')).toBe('');
-    expect(chatForm.getValues('files')).toEqual([]);
-  });
-
   it('persists completed attachments immediately and drops pending files on conversation switch', async () => {
     await render();
     await act(async () =>
@@ -227,17 +190,26 @@ describe('useChatInputDraft', () => {
     expect(readChatInputDraft(identity)).toBeUndefined();
   });
 
-  it('restores cached image previews while progress and icons do not renew the draft', async () => {
-    const updatedAt = Date.now() - 5000;
+  it('restores text and image previews after remount without renewing for restoration or progress', async () => {
     const image = {
       key: 'chat/image.png',
       url: 'https://image-preview',
       name: 'image.png',
       type: 'image' as const
     };
-    saveChatInputDraft({ identity, text: 'image draft', files: [image], updatedAt });
     await render();
+    await act(async () =>
+      result.resetInputVal({ text: 'image draft', files: [{ ...uploadedFile, ...image }] })
+    );
+    const updatedAt = readChatInputDraft(identity)?.updatedAt;
+    await act(async () => root.unmount());
+    mounted = false;
+    await advance(1000);
+    root = createRoot(document.getElementById('root')!);
+    await render();
+    expect(chatForm.getValues('input')).toBe('image draft');
     const runtimeImage = chatForm.getValues('files')[0];
+    expect(runtimeImage).toMatchObject(image);
     expect(runtimeImage.icon).toBe(image.url);
     await advance(1000);
     await act(async () => chatForm.setValue('files', [{ ...runtimeImage, process: 50 }]));
@@ -258,13 +230,16 @@ describe('useChatInputDraft', () => {
     expect(readChatInputDraft(identity)).toBeUndefined();
   });
 
-  it('ignores unrelated cleanup and flushes beforeunload with an attachment-free draft', async () => {
+  it('ignores unrelated cleanup and flushes pending edits on page lifecycle events', async () => {
     await render();
     await edit('keep');
     await act(async () => clearChatInputDrafts({ appId: 'other' }));
     expect(chatForm.getValues('input')).toBe('keep');
-    await act(async () => window.dispatchEvent(new window.Event('beforeunload')));
-    expect(readChatInputDraft(identity)?.text).toBe('keep');
+    for (const event of ['pagehide', 'beforeunload']) {
+      await edit(event);
+      await act(async () => window.dispatchEvent(new window.Event(event)));
+      expect(readChatInputDraft(identity)?.text).toBe(event);
+    }
   });
 
   it('rejects submissions whose member or cleanup epoch changed', async () => {

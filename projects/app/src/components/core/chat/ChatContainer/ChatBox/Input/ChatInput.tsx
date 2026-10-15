@@ -124,11 +124,11 @@ const ChatInput = ({
     showSelectAudio,
     showSelectCustomFileExtension,
     cancelUploadFile,
-    clearFiles,
     hasFileUploading
   } = useFileUpload({
     fileSelectConfig,
     fileCtrl,
+    getValues: chatForm.getValues,
     outLinkAuthData,
     sourceTarget,
     chatId
@@ -584,7 +584,6 @@ const ChatInput = ({
                   autoTTSResponse,
                   clearInput: true
                 });
-                clearFiles();
               }}
               resetInputVal={(val) => {
                 setMobilePreSpeak(false);

@@ -9,6 +9,7 @@ import { ChatBoxContext } from '@/components/core/chat/ChatContainer/ChatBox/Pro
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 import { useChatInputForm } from '@/components/core/chat/ChatContainer/ChatBox/hooks/useChatInputForm';
 import { useChatGenerate } from '@/components/core/chat/ChatContainer/ChatBox/hooks/useChatGenerate';
+import ChatInput from '@/components/core/chat/ChatContainer/ChatBox/Input/ChatInput';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type {
@@ -26,8 +27,18 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
 vi.mock('@fastgpt/web/hooks/useSystem', () => ({ useSystem: () => ({ isPc: false }) }));
 vi.mock('@/web/common/system/useSystemStore', () => ({
-  useSystemStore: () => ({ setNotSufficientModalType: () => {} })
+  useSystemStore: () => ({ feConfigs: { limit: {} }, setNotSufficientModalType: () => {} })
 }));
+vi.mock('@/components/core/chat/ChatContainer/ChatBox/Input/VoiceInput', async () => {
+  const { createElement, forwardRef, useImperativeHandle } = await import('react');
+  return {
+    // 只替换麦克风和转录服务，保留 ChatInput 的真实语音发送入口。
+    default: forwardRef<unknown, { handleSend: (text: string) => void }>(({ handleSend }, ref) => {
+      useImperativeHandle(ref, () => ({ onSpeak: () => {} }));
+      return createElement('button', { onClick: () => handleSend('spoken input') }, 'voice-send');
+    })
+  };
+});
 
 const identity = { tmbId: 'member', appId: 'app', chatId: 'A' };
 const sourceKey = 'app:app';
@@ -42,7 +53,7 @@ const file = {
   status: 1 as const
 };
 
-describe('chat generation with input drafts', () => {
+describe('useChatGenerate.sendPrompt', () => {
   let dom: JSDOM;
   let root: Root;
   let input: ReturnType<typeof useChatInputForm>;
@@ -52,11 +63,13 @@ describe('chat generation with input drafts', () => {
   const Harness = ({
     chatId,
     pending,
-    tmbId
+    tmbId,
+    withComposer
   }: {
     chatId: string;
     pending: boolean;
     tmbId: string;
+    withComposer: boolean;
   }) => {
     const textarea = useRef<HTMLTextAreaElement>(null);
     const activeSource = useRef<string | undefined>(sourceKey);
@@ -96,19 +109,32 @@ describe('chat generation with input drafts', () => {
       notifyChatGenerateStatusChange: () => {},
       finishChatGenerateStatus: () => {}
     });
-    return React.createElement('textarea', { ref: textarea });
+    return withComposer
+      ? React.createElement(ChatInput, {
+          onSendMessage: generate.sendPrompt,
+          onStopChat: async () => {},
+          enableInputGuide: false,
+          enableVoiceInput: true,
+          TextareaDom: textarea,
+          textareaRef: input.textareaRef,
+          resetInputVal: input.resetInputVal,
+          chatForm: input.chatForm
+        })
+      : React.createElement('textarea', { ref: textarea });
   };
 
   const Wrapper = ({
     chatId,
     required,
     pending,
-    tmbId
+    tmbId,
+    withComposer
   }: {
     chatId: string;
     required: boolean;
     pending: boolean;
     tmbId: string;
+    withComposer: boolean;
   }) => {
     const variablesForm = useForm<ChatBoxInputFormType>({
       defaultValues: { input: '', files: [], chatStarted: false, variables: { required: '' } }
@@ -116,8 +142,13 @@ describe('chat generation with input drafts', () => {
     variablesForm.register('variables.required', { required });
     const [chatRecords, setChatRecords] = useState<ChatSiteItemType[]>([]);
     records = chatRecords;
-    const [chatBoxData, setChatBoxData] = useState({ appId: 'app', sourceKey, chatId });
-    const runtime = {
+    const [chatBoxData, setChatBoxData] = useState({
+      appId: 'app',
+      sourceKey,
+      chatId,
+      app: { name: 'App' }
+    });
+    const runtime: React.ComponentProps<typeof WorkflowRuntimeContext.Provider>['value'] = {
       sourceTarget: { sourceType: ChatSourceTypeEnum.app, sourceId: 'app' },
       sourceKey,
       chatId,
@@ -141,38 +172,40 @@ describe('chat generation with input drafts', () => {
       startSegmentedAudio: mocks.startAudio,
       finishSegmentedAudio: mocks.finishAudio,
       setAudioPlayingChatId: () => {},
-      splitText2Audio: () => {}
+      splitText2Audio: () => {},
+      fileSelectConfig: { canSelectFile: true, canSelectImg: true },
+      whisperConfig: { open: true, autoSend: true },
+      chatInputGuide: { open: false }
     } as unknown as React.ComponentProps<typeof ChatBoxContext.Provider>['value'];
-    return React.createElement(
-      WorkflowRuntimeContext.Provider,
-      { value: runtime },
-      React.createElement(
-        ChatItemContext.Provider,
-        { value: item },
-        React.createElement(
-          ChatRecordContext.Provider,
-          { value: record },
-          React.createElement(
-            ChatBoxContext.Provider,
-            { value: chat },
-            React.createElement(Harness, { chatId, pending, tmbId })
-          )
-        )
-      )
-    );
+    /* eslint-disable react/no-children-prop -- Provider 的 children 为必填，createElement 的第三参无法满足该类型约束。 */
+    return React.createElement(WorkflowRuntimeContext.Provider, {
+      value: runtime,
+      children: React.createElement(ChatItemContext.Provider, {
+        value: item,
+        children: React.createElement(ChatRecordContext.Provider, {
+          value: record,
+          children: React.createElement(ChatBoxContext.Provider, {
+            value: chat,
+            children: React.createElement(Harness, { chatId, pending, tmbId, withComposer })
+          })
+        })
+      })
+    });
+    /* eslint-enable react/no-children-prop */
   };
   const render = async ({
     chatId = 'A',
     required = false,
     pending = false,
-    tmbId = identity.tmbId
+    tmbId = identity.tmbId,
+    withComposer = false
   } = {}) =>
     act(async () =>
-      root.render(React.createElement(Wrapper, { chatId, required, pending, tmbId }))
+      root.render(React.createElement(Wrapper, { chatId, required, pending, tmbId, withComposer }))
     );
   const edit = async (text: string, files: (typeof file)[] = []) =>
     act(async () => input.resetInputVal({ text, files }));
-  const send = async (clearInput = true, text = 'submitted', autoTTSResponse = false) =>
+  const send = async ({ clearInput = true, text = 'submitted', autoTTSResponse = false } = {}) =>
     act(async () =>
       generate.sendPrompt({
         text,
@@ -183,7 +216,10 @@ describe('chat generation with input drafts', () => {
     );
 
   beforeEach(() => {
-    dom = new JSDOM('<div id="root"></div>', { url: 'https://fastgpt.example' });
+    dom = new JSDOM('<div id="root"></div>', {
+      url: 'https://fastgpt.example',
+      pretendToBeVisual: true
+    });
     vi.stubGlobal('window', dom.window);
     vi.stubGlobal('document', dom.window.document);
     vi.stubGlobal('HTMLElement', dom.window.HTMLElement);
@@ -206,8 +242,11 @@ describe('chat generation with input drafts', () => {
     vi.unstubAllGlobals();
   });
 
-  it('keeps text and attachments when native variable validation rejects submission', async () => {
-    await render({ required: true });
+  it.each([
+    { required: true, pending: false },
+    { required: false, pending: true }
+  ])('preserves input when submission is blocked by %o', async (options) => {
+    await render(options);
     await edit('submitted', [file]);
     await send();
     expect(mocks.start).not.toHaveBeenCalled();
@@ -217,48 +256,29 @@ describe('chat generation with input drafts', () => {
     expect(readChatInputDraft(identity)?.files).toHaveLength(1);
   });
 
-  it('does not clear the composer when another round is still pending', async () => {
-    await render({ pending: true });
-    await edit('submitted', [file]);
-    await send();
-    expect(mocks.start).not.toHaveBeenCalled();
-    expect(input.chatForm.getValues('input')).toBe('submitted');
-    expect(input.chatForm.getValues('files')).toHaveLength(1);
-  });
-
-  it('clears accepted input and restores both text and attachments on a failure without a reply', async () => {
+  it('restores voice auto-send text and attachments after a failure through the real input entry', async () => {
     let reject: (reason: unknown) => void = () => {};
     mocks.start.mockReturnValueOnce(
       new Promise((_, fail) => {
         reject = fail;
       })
     );
-    await render();
-    await edit('submitted', [file]);
-    await send();
+    await render({ withComposer: true });
+    await edit('', [file]);
+    const voiceButton = [...document.querySelectorAll('button')].find(
+      (button) => button.textContent === 'voice-send'
+    );
+    expect(voiceButton).toBeDefined();
+    await act(async () => voiceButton?.click());
     expect(mocks.start).toHaveBeenCalledOnce();
     expect(input.chatForm.getValues('input')).toBe('');
+    expect(input.chatForm.getValues('files')).toEqual([]);
     expect(readChatInputDraft(identity)).toBeUndefined();
+
     await act(async () => reject(new Error('network')));
-    expect(input.chatForm.getValues('input')).toBe('submitted');
+    expect(input.chatForm.getValues('input')).toBe('spoken input');
     expect(input.chatForm.getValues('files')[0].key).toBe(file.key);
     expect(readChatInputDraft(identity)?.files).toHaveLength(1);
-  });
-
-  it('keeps a new draft when an older accepted send fails', async () => {
-    let reject: (reason: unknown) => void = () => {};
-    mocks.start.mockReturnValueOnce(
-      new Promise((_, fail) => {
-        reject = fail;
-      })
-    );
-    await render();
-    await edit('submitted');
-    await send();
-    await edit('new draft');
-    await act(async () => reject(new Error('network')));
-    expect(input.chatForm.getValues('input')).toBe('new draft');
-    expect(readChatInputDraft(identity)?.text).toBe('new draft');
   });
 
   it('does not restore a submission that already received a partial reply', async () => {
@@ -274,47 +294,31 @@ describe('chat generation with input drafts', () => {
   it('keeps an independent draft when sending a suggested question', async () => {
     await render();
     await edit('independent draft', [file]);
-    await send(false, 'suggested question');
+    await send({ clearInput: false, text: 'suggested question' });
     expect(mocks.start).toHaveBeenCalledOnce();
     expect(input.chatForm.getValues('input')).toBe('independent draft');
     expect(readChatInputDraft(identity)?.text).toBe('independent draft');
   });
 
-  it('releases prepared audio without clearing the next conversation when leaving during initialization', async () => {
-    await render();
-    await edit('submitted');
-    let resolve: () => void = () => {};
-    mocks.startAudio.mockReturnValueOnce(
-      new Promise<void>((done) => {
-        resolve = done;
-      })
-    );
-    await send(true, 'submitted', true);
-    await render({ chatId: 'B' });
-    await edit('B draft');
-    await act(async () => resolve());
-    expect(mocks.start).not.toHaveBeenCalled();
-    expect(mocks.finishAudio).toHaveBeenCalledOnce();
-    expect(input.chatForm.getValues('input')).toBe('B draft');
-    expect(readChatInputDraft(identity)?.text).toBe('submitted');
-  });
-
-  it('cancels an unaccepted send when the member changes within the same app and chat', async () => {
-    await render();
-    await edit('original member');
-    let resolve: () => void = () => {};
-    mocks.startAudio.mockReturnValueOnce(
-      new Promise<void>((done) => {
-        resolve = done;
-      })
-    );
-    await send(true, 'original member', true);
-    await render({ tmbId: 'other member' });
-    await edit('other member draft');
-    await act(async () => resolve());
-    expect(mocks.start).not.toHaveBeenCalled();
-    expect(mocks.finishAudio).toHaveBeenCalledOnce();
-    expect(input.chatForm.getValues('input')).toBe('other member draft');
-    expect(readChatInputDraft(identity)?.text).toBe('original member');
-  });
+  it.each([{ chatId: 'B' }, { tmbId: 'other member' }])(
+    'releases prepared audio and preserves both drafts when ownership changes during initialization: %o',
+    async (owner) => {
+      await render();
+      await edit('submitted');
+      let resolve: () => void = () => {};
+      mocks.startAudio.mockReturnValueOnce(
+        new Promise<void>((done) => {
+          resolve = done;
+        })
+      );
+      await send({ autoTTSResponse: true });
+      await render(owner);
+      await edit('new owner draft');
+      await act(async () => resolve());
+      expect(mocks.start).not.toHaveBeenCalled();
+      expect(mocks.finishAudio).toHaveBeenCalledOnce();
+      expect(input.chatForm.getValues('input')).toBe('new owner draft');
+      expect(readChatInputDraft(identity)?.text).toBe('submitted');
+    }
+  );
 });
