@@ -9,17 +9,17 @@
 
 之前用 `variables + storeVariables + fileMetaMap` 三套数据一起传递，导致 child/parent、变量更新、最终保存之间需要反复同步。尤其是 file 变量从 store object 转成 runtime URL 后，再保存时反推 object，容易出现 `name/type` 丢失、preview URL 被错误落库、base64 混入数据库等问题。
 
-最终方案是：工作流内部只保留一个全局变量管理入口，由 `packages/service/core/workflow/dispatch/utils/variables.ts` 统一管理变量读取、写入、运行态转换和存储态输出。
+最终方案是：工作流内部只保留一个全局变量管理入口，由 `packages/service/core/workflow/dispatch/context/variables.ts` 统一管理变量读取、写入、运行态转换和存储态输出。
 
 这里的 `variables.ts` 是文件命名，不表示只处理 `userId/appId/chatId` 这类系统字段；它负责管理整个工作流的 `variables`。
 
 ## 2. 目标
 
-1. `runWorkflow` 内部只传 `variableState`，不再传 `variables`、`storeVariables`、`fileMetaMap`。
+1. root 构建 `WorkflowVariableState` 并注入必填的 `WorkflowContext.variableContext`；`WorkflowDispatchProps` / `RunWorkflowProps` 不再携带变量状态。
 2. 变量读取统一返回 runtime value，节点仍然按现有方式消费 file URL。
 3. 变量更新统一写入 store value，并同步刷新 runtime value。
 4. 工作流最终返回和变量更新 SSE 都只输出 store record。
-5. file/password 特殊逻辑集中在 `utils/variables.ts`。
+5. file/password 特殊逻辑集中在 `context/variables.ts`。
 6. 前端 `FileSelector` 对外只输出可存储字段，不输出内部渲染字段。
 
 ## 3. 非目标
@@ -89,9 +89,9 @@ type WorkflowVariableStateItem = {
 
 ## 5. variables.ts 设计
 
-`packages/service/core/workflow/dispatch/utils/variables.ts` 提供 `WorkflowVariableState`。
+`packages/service/core/workflow/dispatch/context/variables.ts` 提供 `WorkflowVariableState`。
 
-`WorkflowVariableState.create()` 完全取代原来的 `getWorkflowVariableState`。旧函数不再保留兼容层，所有调用点都直接创建并传递 `WorkflowVariableState`，不再返回或解构 `runtimeVariables/storeVariables/fileMetaMap`。
+`WorkflowVariableState.create()` 完全取代原来的 `getWorkflowVariableState`。旧函数不再保留兼容层，运行入口创建并注入变量 Context，节点不再通过 props 传递实例，也不再返回或解构 `runtimeVariables/storeVariables/fileMetaMap`。
 
 ```ts
 class WorkflowVariableState {
@@ -110,11 +110,11 @@ class WorkflowVariableState {
 ```ts
 type WorkflowVariableStateCreateProps = {
   timezone: string;
-  runningAppInfo: ChatDispatchProps['runningAppInfo'];
-  uid: ChatDispatchProps['uid'];
-  chatId: ChatDispatchProps['chatId'];
-  responseChatItemId?: ChatDispatchProps['responseChatItemId'];
-  histories?: ChatDispatchProps['histories'];
+  runningAppInfo: WorkflowDispatchProps['runningAppInfo'];
+  uid: WorkflowDispatchProps['uid'];
+  chatId: WorkflowDispatchProps['chatId'];
+  responseChatItemId?: WorkflowDispatchProps['responseChatItemId'];
+  histories?: WorkflowDispatchProps['histories'];
   variablesConfig?: VariableItemType[];
   inputVariables?: Record<string, unknown>;
   externalVariables?: Record<string, unknown>;
@@ -207,11 +207,40 @@ const variableState = await WorkflowVariableState.create({
 });
 ```
 
-`runWorkflow` 只接收：
+创建完成后与文件、停止检查等依赖一起注入 `WorkflowContext`：
 
 ```ts
-variableState
+runWithContext({ ...context, variableContext: variableState }, () => runWorkflow(props));
 ```
+
+节点通过 `getWorkflowContext().variableContext` 读取变量，`runWorkflow` / `WorkflowDispatchProps` 不再接收 `variableState`。Child App 构建独立实例，Loop/Parallel 通过 `WorkflowRunStateSnapshot` 创建变量副本后，通过 `workflowContext.getChildContext({ variableContext })` 构建分支 Context，再用 `runWithContext` 激活；返回或抛错后自动恢复父作用域。变量合并仍遵循原有成功/交互检查点规则。纯参数解析和快照实例保留显式变量依赖，不依赖 ALS。
+
+`dispatch/utils/containerRunState.ts` 统一导出 `WorkflowRunStateSnapshot`，不再导出散装的快照创建和同步函数。实例构造时接收父 `variableContext`，内部完成 clone、基线保存和提交目标绑定；通过 `snapshot.variableContext` 注入运行副本，调用 `commit()` 立即提交差量，或 `discard()` 丢弃。每个实例只能结算一次，包括提交失败后也不能重试旧快照；不保证多字段原子性，也不回滚已经发生的响应、用量或部分变量写入。
+
+节点 output 可通过可选的 `nodeOutputs: { sourceNodes, targetNodes, childrenNodeIdList }` 一并跟踪；图的克隆、入口注入和交互恢复仍由执行器负责，快照仅同步 output 差量。Loop/Parallel 按各自成功或 checkpoint 规则提交；Workflow Tool runner 只跟踪 output，并保留在 finally 中提交已完成输出的规则。ToolCall provider 只跟踪变量，不再为变量提交传空节点数组。
+
+ToolCall 每次工具子运行使用独立变量副本；正常完成且未暂停、未停止时立即提交相对起点快照的变量差量，不按调用顺序排队等待。同名变量按实际写回顺序覆盖，无关变量不会被旧快照覆盖；异常或提交失败不阻塞其他调用，变量提交不保证多字段原子性。
+
+统一派生接口 `getChildContext(overrides)` 可同时覆盖变量、文件、资源和响应等 Context 字段；未覆盖字段共享父级引用，可选字段显式 `undefined` 表示清空。派生只创建新对象，不激活 ALS，不修改父 Context，不自动深拷贝能力实例，也不负责结果回写。多级派生基于当前子 Context，文件准入仍先通过 `fileContext.derive()` 完成，不能用普通 Context 浅拷贝代替鉴权。
+
+#### 7.1.1 响应 Context 与执行初始化
+
+`WorkflowContext.nodeResponseSink` 是必填的完整 `WorkflowNodeResponseContext`：持有本次执行的 `workflowRuntimeSummary`、`publish()`、`hasOutput` 和 `getChildContext()`。没有 writer/SSE 时仍构建 summary-only Scope，不用 undefined 表示整个响应能力缺失。
+
+- `createWorkflowEntryNodeResponseSink` 是唯一响应入口工厂，位于 `dispatch/context/nodeResponse.ts`。入口负责 writer 的构建、关闭和 flat rows 读取；底层 output 隐藏在实现内，派生 Scope 不提供关闭方法。
+- 响应 `getChildContext(overrides)` 统一取代 Scope、输出策略和 activity 的外部包装函数。普通视图继承当前 summary；新 workflow 显式传入新 summary。`record/emit` 按父策略 AND 收紧，子流程不能重新开启父层已隐藏的详情。
+- 所有执行边界在调用 `runWorkflow` 前准备变量和独立响应 Scope，再通过 `runWithContext` 激活一次完整执行 Context。Root、Child、Plugin、Agent 子应用、Loop 每轮、Parallel 每次尝试、ToolCall 每次调用均遵守这一约定；弃用 Loop 只隔离响应统计，保留共享变量兼容行为。
+- `runWorkflow` 只消费已经准备的 Context，不再创建 summary/Scope 或额外派生 `executionContext`。深度超限和异常恢复仍使用本次执行的独立 summary。
+- 共享 output 不经过父 Scope 转发，避免重复统计；变量差量回写、文件派生与鉴权规则不变。普通 Context 字段覆盖不自动重置 summary。
+
+#### 7.1.2 运行控制 Context
+
+`WorkflowContext.runtimeControl` 必填，包含 `mode`、`maxRunTimes`、`workflowDispatchDeep`、`isToolCall`。这四个字段不再属于 `WorkflowDispatchProps`、`ModuleDispatchProps` 或 `RunWorkflowProps`。
+
+- `dispatchWorkFlow` 只接收入口运行模式；根预算统一取 `WORKFLOW_MAX_RUN_TIMES`，深度从 0 开始，工具标记固定为 false，不再由入口调用方传入预算或工具标记。
+- 队列持有本流程的控制状态并统一扣减预算；节点 callback 在独立 Context 中执行，保留原来节点 props 展开时捕获的控制快照。Debug 节点快照模式转换为 test，因此其子流程不会意外进入逐步调试。
+- `workflowContext.getChildContext({ runtimeControl: overrides })` 复制当前控制状态并合并局部覆盖，未覆盖时也不共享可变对象。子流程仍继承节点开始执行时的预算，不改为全局共享额度；Agent/ToolCall 工具运行仅覆盖 `isToolCall: true`。
+- `runWorkflow` 从 Context 读取控制状态，进入时递增深度，完成、失败或深度超限时恢复。普通 Context 派生不自动递增深度，不重置预算，也不克隆变量或重置响应 summary。
 
 ### 7.2 变量读取
 
@@ -322,12 +351,12 @@ DB 读取返回前端时：
 
 | 文件 | 修改点 |
 |---|---|
-| `packages/service/core/workflow/dispatch/utils/variables.ts` | 新增 `WorkflowVariableState`，统一管理工作流全局变量，并内聚 file normalize、store/runtime 转换、URL 推断工具 |
+| `packages/service/core/workflow/dispatch/context/variables.ts` | 新增 `WorkflowVariableState`，统一管理工作流全局变量，并内聚 file normalize、store/runtime 转换、URL 推断工具 |
 | `packages/service/core/workflow/dispatch/utils/index.ts` | 删除 `getWorkflowVariableState` 和旧变量转换逻辑，保留无关通用工具 |
-| `packages/global/core/workflow/runtime/type.ts` | 增加 `WorkflowVariableStateLike`，移除 dispatch props 中的旧变量字段 |
+| `packages/service/core/workflow/dispatch/context/variables.ts`、`packages/service/core/workflow/types/runtime.ts` | 变量能力类型归属 Context 模块，移除 dispatch props 中的旧变量字段 |
 | `packages/global/core/workflow/runtime/utils.ts` | `getReferenceVariableValue`、`replaceEditorVariable` 改成通过 runtime variables record 读取全局变量 |
 | `packages/service/core/workflow/dispatch/index.ts` | root 初始化 `WorkflowVariableState`，`runWorkflow` 入参和返回改造 |
-| `packages/service/core/workflow/dispatch/type.ts` | `RunWorkflowProps` 改为接收 `variableState` |
+| `packages/service/core/workflow/dispatch/context/index.ts` | 必填 `variableContext`，提供变量分支作用域；`WorkflowDispatchProps` / `RunWorkflowProps` 移除变量注入 |
 | `packages/service/core/workflow/dispatch/tools/runUpdateVar.ts` | 全局变量更新改成 `variableState.get/set` |
 | `packages/service/core/workflow/dispatch/tools/runIfElse.ts` | 条件变量读取改成使用 `variableState.toRuntimeRecord()` |
 | `packages/service/core/workflow/dispatch/tools/http468.ts` | HTTP 变量替换改成使用 runtime variables record |
@@ -347,7 +376,7 @@ DB 读取返回前端时：
 
 - [x] 实现 `WorkflowVariableStateLike` 类型。
 - [x] 实现 `WorkflowVariableStateItem`、`WorkflowVariableStateCreateProps`，入参覆盖 `getWorkflowVariableState` 原本需要的 `timezone/runningAppInfo/uid/chatId/responseChatItemId/histories`。
-- [x] 在 `utils/variables.ts` 实现 `WorkflowVariableState.create()`。
+- [x] 在 `context/variables.ts` 实现 `WorkflowVariableState.create()`。
 - [x] 用 `WorkflowVariableState.create()` 完全替换 `getWorkflowVariableState`。
 - [x] 实现 `get()`、`set()`、`getStoreValue()`、`toRuntimeRecord()`、`toStoreRecord()`。
 - [x] 在 `WorkflowVariableState` 内部维护 runtime URL metadata。
@@ -365,11 +394,12 @@ DB 读取返回前端时：
 
 ### 10.3 工作流主链路
 
-- [x] 从 `ChatDispatchProps` / `RunWorkflowProps` 移除 `variables`。
-- [x] 从 `ChatDispatchProps` / `RunWorkflowProps` 移除 `storeVariables`。
-- [x] 从 `ChatDispatchProps` / `RunWorkflowProps` 移除 `fileMetaMap`。
-- [x] 增加 `variableState` 入参。
+- [x] 从 `WorkflowDispatchProps` / `RunWorkflowProps` 移除 `variables`。
+- [x] 从 `WorkflowDispatchProps` / `RunWorkflowProps` 移除 `storeVariables`。
+- [x] 从 `WorkflowDispatchProps` / `RunWorkflowProps` 移除 `fileMetaMap`。
+- [x] root 构建变量 Context；节点和子运行不再通过 props 传入变量状态。
 - [x] root `dispatchWorkFlow` 创建 root `WorkflowVariableState`。
+- [x] 上层准备完整变量/响应 Context，`runWorkflow` 不再补初始化或嵌套激活执行 Context。
 - [x] `child/runApp.ts`、`ai/agent/sub/app/index.ts` 等旧 `getWorkflowVariableState` 调用点全部迁移为 `WorkflowVariableState.create()`。
 - [x] `runWorkflow` 所有返回分支使用 `variableState.toStoreRecord()`。
 - [x] `updateVariables` SSE 使用 `variableState.toStoreRecord()`。
@@ -418,7 +448,7 @@ DB 读取返回前端时：
 - [x] 移除 `storeVariables`、`fileMetaMap` 在 dispatch props 中的所有传递。
 - [x] 清理临时 `console.log`。
 - [x] 清理迁移产生的无意义 `any`。
-- [x] 合并重复函数到 `utils/variables.ts`。
+- [x] 合并重复函数到 `context/variables.ts`。
 
 ## 11. 测试计划
 

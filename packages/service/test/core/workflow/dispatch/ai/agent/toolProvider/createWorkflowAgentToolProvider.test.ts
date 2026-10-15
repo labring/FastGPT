@@ -1,9 +1,7 @@
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { createWorkflowAgentToolProvider as createWorkflowAgentToolProviderWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/agent/toolProvider';
-import {
-  getWorkflowFileContext,
-  runWithContext
-} from '@fastgpt/service/core/workflow/utils/context';
+import { getWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, expect, it, vi } from 'vitest';
 
 const { dispatchWorkflowReadFilesMock, dispatchAgentDatasetSearchMock, getLLMModelDataMock } =
@@ -51,6 +49,7 @@ const createWorkflowAgentToolProvider: typeof createWorkflowAgentToolProviderWit
 
   return runWithContext(
     {
+      checkIsStopping: () => false,
       mcpClientMemory: {},
       fileContext: {
         limits: { maxFileAmount: 20, maxBytesPerFile: 1024 }
@@ -111,6 +110,7 @@ describe('createWorkflowAgentToolProvider', () => {
   it('uses the current Workflow FileContext maxFileAmount limit', () => {
     const provider = runWithContext(
       {
+        checkIsStopping: () => false,
         mcpClientMemory: {},
         fileContext: {
           limits: {

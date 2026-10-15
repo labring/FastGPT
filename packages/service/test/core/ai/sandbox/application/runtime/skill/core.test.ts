@@ -1,3 +1,4 @@
+import { createTestWorkflowFileContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, it, expect, vi } from 'vitest';
 import JSZip from 'jszip';
 import {

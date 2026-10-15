@@ -1,7 +1,7 @@
-import type { NodeHttpRequest, NodeHttpResponse } from '../../../types/http';
-import { getSseErrorResponse } from '../../../common/response';
-import { getLogger, LogCategories } from '../../../common/logger';
-import { clearCookie } from '../../../support/permission/auth/common';
+import type { NodeHttpRequest, NodeHttpResponse } from '../../../../types/http';
+import { getSseErrorResponse } from '../../../../common/response';
+import { getLogger, LogCategories } from '../../../../common/logger';
+import { clearCookie } from '../../../../support/permission/auth/common';
 import { STREAM_RESUME_REQUEST_HEADER } from '@fastgpt/global/core/chat/constants';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
@@ -11,9 +11,10 @@ import {
   workflowSseEvent,
   type WorkflowResponseType
 } from '@fastgpt/global/core/workflow/runtime/sse';
-import { createSseStreamContext } from '../../../common/response/sse';
-import { getStreamResumeMirror, startStreamResumeMirrorKeepAlive } from '../../chat/resume';
-import { getWorkflowResponseWrite } from '../dispatch/utils';
+
+import { createSseStreamContext } from '../../../../common/response/sse';
+import { getStreamResumeMirror, startStreamResumeMirrorKeepAlive } from '../../../chat/resume';
+import { getWorkflowResponseWrite } from '../utils';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);
 

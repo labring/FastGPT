@@ -1,9 +1,13 @@
+import {
+  createTestWorkflowDispatch,
+  captureTestVariableContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { WorkflowVariableState } from '../../../../../core/workflow/dispatch/utils/variables';
+import { WorkflowVariableState } from '../../../../../core/workflow/dispatch/context/variables';
 import { createNodeSummary } from '../../../../../core/workflow/dispatch/utils/summary';
 
 const mocks = vi.hoisted(() => ({
@@ -13,7 +17,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../../../../../core/workflow/dispatch/index', () => ({
-  runWorkflow: (args: any) => mocks.runWorkflow(args)
+  runWorkflow: (args: any) => mocks.runWorkflow(captureTestVariableContext(args))
 }));
 
 vi.mock('../../../../../core/workflow/resource/service', () => ({
@@ -24,7 +28,9 @@ vi.mock('../../../../../support/user/team/utils', () => ({
   getUserChatInfo: (args: any) => mocks.getUserChatInfo(args)
 }));
 
-import { dispatchRunAppNode } from '../../../../../core/workflow/dispatch/child/runApp';
+import { dispatchRunAppNode as dispatchRunAppNodeWithoutContext } from '../../../../../core/workflow/dispatch/child/runApp';
+
+const dispatchRunAppNode = createTestWorkflowDispatch(dispatchRunAppNodeWithoutContext);
 
 const createParentVariableState = () =>
   WorkflowVariableState.create({
@@ -106,7 +112,7 @@ describe('dispatchRunAppNode', () => {
       params: {
         userChatInput: 'hello to child'
       },
-      variableState: parentVariableState,
+      variableContext: parentVariableState,
       timezone: 'Asia/Shanghai',
       uid: 'caller-uid',
       chatId: 'chat-1',
@@ -203,7 +209,7 @@ describe('dispatchRunAppNode', () => {
       query: [{ type: 'text', text: { content: 'hello' } }],
       node: { pluginId: 'child-app-id', version: 'v1' },
       params: { userChatInput: 'hello to child' },
-      variableState: parentVariableState,
+      variableContext: parentVariableState,
       timezone: 'Asia/Shanghai',
       uid: 'caller-uid',
       chatId: 'chat-1',
@@ -244,7 +250,7 @@ describe('dispatchRunAppNode', () => {
       query: [{ type: 'text', text: { content: 'hello' } }],
       node: { pluginId: 'child-app-id', version: 'v1' },
       params: { userChatInput: 'hello to child', system_forbid_stream: true },
-      variableState: parentVariableState,
+      variableContext: parentVariableState,
       timezone: 'Asia/Shanghai',
       uid: 'caller-uid',
       chatId: 'chat-1',
@@ -273,7 +279,7 @@ describe('dispatchRunAppNode', () => {
       query: [],
       node: { pluginId: 'child-app-id', version: 'v1' },
       params: { userChatInput: '' },
-      variableState: parentVariableState,
+      variableContext: parentVariableState,
       usagePush: vi.fn()
     };
 
@@ -300,7 +306,7 @@ describe('dispatchRunAppNode', () => {
           }
         }
       },
-      variableState: parentVariableState,
+      variableContext: parentVariableState,
       usagePush: vi.fn(),
       nodeSummary: createNodeSummary()
     };

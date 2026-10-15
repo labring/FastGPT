@@ -61,9 +61,9 @@ import {
   HttpToolSetRuntimeConfigSchema
 } from '@fastgpt/global/core/workflow/type/node';
 import { getMCPChildren } from '../../../../../../app/mcp';
-import { filterWorkflowToolList } from '../../../../../resource/context';
+import { filterWorkflowToolList } from '../../../../context/resource';
 import { isWorkflowResourceError, loadWorkflowAppResource } from '../../../../../resource/service';
-import { getWorkflowResourceContext } from '../../../../../utils/context';
+import { getWorkflowResourceContext } from '../../../../context';
 import { getTmbInfoByTmbId } from '../../../../../../../support/user/team/controller';
 import {
   assertTeamPluginSourceAccess,

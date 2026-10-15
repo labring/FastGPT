@@ -58,14 +58,14 @@ import {
 
 import { NextAPI } from '@/service/middleware/entry';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
-import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/dispatch/context/resource';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   serverGetWorkflowToolRunUserQuery,
   updateWorkflowToolInputByVariables
 } from '@fastgpt/service/core/app/tool/workflowTool/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { getWorkflowMaxRunTimes } from '@fastgpt/service/core/workflow/constants';
+import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
@@ -87,7 +87,7 @@ import {
   createModerationFilteredWorkflowResponse,
   createWorkflowStreamResponseContext,
   type WorkflowStreamResponseContext
-} from '@fastgpt/service/core/workflow/utils/streamResponseContext';
+} from '@fastgpt/service/core/workflow/dispatch/context/streamResponse';
 import { authChatCompletionHeaderRequest } from '@/service/support/permission/auth/chatCompletion';
 import {
   getCompletionStartHookText,
@@ -105,7 +105,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     outLinkAuthData,
 
     stream,
-    showSkillReferences,
     messages = [],
     responseChatItemId = getNanoid(),
     metadata,
@@ -150,8 +149,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       responseAllData,
       canReadModerationRecords,
       outLinkUserId = customUid,
-      showRunningStatus,
-      showSkillReferences: authShowSkillReferences
+      showRunningStatus
     } = await (async () => {
       // share chat
       if (shareId && outLinkUid) {
@@ -214,8 +212,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       showCite: !!showCite,
       isShare: !!shareId
     });
-    const finalShowSkillReferences =
-      (showSkillReferences ?? authShowSkillReferences ?? false) && !!showRunningStatus;
     const isPlugin = app.type === AppTypeEnum.workflowTool;
     const pluginFixedTitle = isPlugin ? variables.cTime || formatTime2YMDHM(new Date()) : undefined;
 
@@ -421,8 +417,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       histories: newHistories,
       stream,
       retainDatasetCite: workflowRetainDatasetCite,
-      showSkillReferences: finalShowSkillReferences,
-      maxRunTimes: getWorkflowMaxRunTimes(),
       workflowStreamResponse: workflowResponseWrite,
       nodeResponseWriteConfig: {
         persistToDb: preparedRound.shouldPersistChatRound,

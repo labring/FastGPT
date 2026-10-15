@@ -10,7 +10,7 @@ import {
   createWorkflowStreamResponseContext,
   isWorkflowSseResponseInitialized,
   initWorkflowSseResponse
-} from '@fastgpt/service/core/workflow/utils/streamResponseContext';
+} from '@fastgpt/service/core/workflow/dispatch/context/streamResponse';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { createApiI18n } from '@fastgpt/service/common/i18n/request';

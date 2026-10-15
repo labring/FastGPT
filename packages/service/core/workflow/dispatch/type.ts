@@ -12,6 +12,17 @@ import type {
 import { type RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { WorkflowRuntimeSummaryFields } from '../types/summary';
+import type { WorkflowDispatchProps } from '../types/runtime';
+
+/** 已由入口或父工作流准备好上下文后，交给运行内核和调度队列的参数。 */
+export type RunWorkflowProps = WorkflowDispatchProps & {
+  /** 仅供运行内核记录协议版本 tracing 属性，不传给节点。 */
+  apiVersion?: 'v1' | 'v2';
+  runtimeNodes: RuntimeNodeItemType[];
+  runtimeEdges: RuntimeEdgeItemType[];
+  defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
+  concatUsage?: (points: number) => any;
+};
 
 /**
  * workflow 内部运行期使用的 nodeResponse 摘要。

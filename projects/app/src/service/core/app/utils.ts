@@ -28,12 +28,12 @@ import {
   type Props as SaveChatProps
 } from '@fastgpt/service/core/chat/saveChat';
 import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
-import { getWorkflowMaxRunTimes } from '@fastgpt/service/core/workflow/constants';
+import { updateChatGenerateStatus } from '@fastgpt/service/core/chat/chatGenerateStatus';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { prepareWorkflowFileQuery } from '@fastgpt/service/core/workflow/utils/fileLimits';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { createChatUsageRecord } from '@fastgpt/service/support/wallet/usage/controller';
-import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/dispatch/context/resource';
 
 const logger = getLogger();
 
@@ -200,7 +200,6 @@ export const getScheduleTriggerApp = async () => {
             chatConfig,
             histories: [],
             stream: false,
-            maxRunTimes: getWorkflowMaxRunTimes(),
             nodeResponseWriteConfig: {
               persistToDb: true,
               retainInMemory: false
