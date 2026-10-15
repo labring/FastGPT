@@ -13,16 +13,26 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getMcpAuthProxyFromHeaders } from '@/service/support/mcp/auth';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 const logger = getLogger(LogCategories.MODULE.MCP.APP);
 
-const mcpCancellationErrors = new Set<string>([
+const mcpExpectedClientErrors = new Set<string>([
   TeamErrEnum.accountCancellationPending,
-  UserErrEnum.accountCancellationPending
+  UserErrEnum.accountCancellationPending,
+  CommonErrEnum.invalidResource
 ]);
 
-/** 仅识别注销流程中的业务错误，已删除团队等其他错误继续走原有异常处理。 */
-const isMcpCancellationError = (error: unknown): boolean =>
-  error instanceof Error && mcpCancellationErrors.has(error.message);
+/**
+ * 识别预期内的客户端错误：注销流程中，或使用了无效/已删除的 MCP 访问 key。
+ * 两者都由客户端侧状态决定，不是服务端异常；其余错误继续按未知异常处理。
+ *
+ * 两种错误的抛出形态不同：注销守卫抛 `new Error(枚举值)`，
+ * 而 key 不存在时是 `Promise.reject(裸字符串)`，因此这里同时接受 Error 与字符串。
+ */
+const isMcpExpectedClientError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : error;
+  return typeof message === 'string' && mcpExpectedClientErrors.has(message);
+};
 
 const getMcpRequestId = (body: unknown): string | number | undefined => {
   if (typeof body !== 'object' || body === null || !('id' in body)) return undefined;
@@ -99,9 +109,16 @@ const handlePost = async (req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiRespo
     await server.connect(transport);
     await transport.handleRequest(req, res, req.body);
   } catch (error) {
-    logger.error('[MCP server] Error handling MCP request:', { error });
+    const isExpectedClientError = isMcpExpectedClientError(error);
+    if (isExpectedClientError) {
+      // 预期内的客户端错误（无效 key、注销中）：降级为 warn，避免污染服务端 error 指标
+      logger.warn('[MCP server] MCP request rejected:', { error });
+    } else {
+      logger.error('[MCP server] Error handling MCP request:', { error });
+    }
+
     if (!res.writableFinished) {
-      if (isMcpCancellationError(error)) {
+      if (isExpectedClientError) {
         // transport 尚未处理请求时，直接回传原请求 id，客户端才能将错误与请求匹配。
         const requestId = getMcpRequestId(req.body);
         res.status(200).json({
