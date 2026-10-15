@@ -17,8 +17,9 @@ import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search
 import { getDatasetSearchAuxiliaryModels } from '../../../dataset/search/auxiliaryModels';
 import { getDatasetSearchVlmModel } from '../../../dataset/search/vlm';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { loadWorkflowDatasetResource } from '../../utils/resource';
+import { isWorkflowResourceError, loadWorkflowDatasetResource } from '../../utils/resource';
 import { getNodeErrResponse } from '../utils';
 import {
   createImageCaptionChildNodeResponse,
@@ -59,6 +60,24 @@ type DatasetSearchProps = ModuleDispatchProps<{
 export type DatasetSearchResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.datasetQuoteQA]: SearchDataResponseItemType[];
 }>;
+
+/**
+ * 判断错误是否属于知识库资源未在版本快照中声明、或已被删除/不存在的业务配置问题。
+ * 这类问题属于用户配置引用失效，不属于调度运行时的系统故障，降级为 warn 避免污染 error 指标。
+ */
+export const isDatasetResourceMissingError = (error: unknown): boolean => {
+  if (isWorkflowResourceError(error)) return true;
+  if (error === DatasetErrEnum.unExist) return true;
+
+  const errObj = error as { message?: string; statusText?: string } | null;
+  if (typeof errObj === 'object' && errObj !== null) {
+    if (errObj.message === DatasetErrEnum.unExist || errObj.statusText === DatasetErrEnum.unExist) {
+      return true;
+    }
+  }
+
+  return false;
+};
 
 /** 知识库检索工作流节点执行入口 */
 export const dispatchDatasetSearch = async (
@@ -389,7 +408,11 @@ export const dispatchDatasetSearch = async (
           : 'No results'
     };
   } catch (error) {
-    logger.error('Dataset search dispatch failed', { error });
+    if (isDatasetResourceMissingError(error)) {
+      logger.warn('Dataset search dispatch failed', { error });
+    } else {
+      logger.error('Dataset search dispatch failed', { error });
+    }
     return getNodeErrResponse({ error });
   }
 };

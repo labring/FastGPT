@@ -51,10 +51,18 @@ export type WorkflowResourceContext = {
 };
 
 /** 静态资源快照不一致错误；不能被工具加载器降级为单个工具不可用。 */
-export class WorkflowResourceError extends UserError {}
+export class WorkflowResourceError extends UserError {
+  constructor(message: string, displayMessage?: string) {
+    super(message, displayMessage);
+    this.name = 'WorkflowResourceError';
+  }
+}
 
 export const isWorkflowResourceError = (error: unknown): error is WorkflowResourceError =>
-  error instanceof WorkflowResourceError;
+  error instanceof WorkflowResourceError ||
+  (typeof error === 'object' &&
+    error !== null &&
+    (error as { name?: string }).name === 'WorkflowResourceError');
 
 const getResourceKey = (type: AppResourceType, id: string) =>
   getAppResourceKey({ type, id } as AppResource);
