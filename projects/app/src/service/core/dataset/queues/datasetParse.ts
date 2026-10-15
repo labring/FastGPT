@@ -238,10 +238,17 @@ export const datasetParseQueue = async (): Promise<any> => {
             continue;
           }
 
+          // 模板与备份同为 CSV 结构化导入（逐行 q/a/index/metadata），重解析必须走行解析器，
+          // 且必须读取原始 CSV——默认的 formatText 是 Markdown 表格，行解析器识别不出表头。
+          const csvStructured =
+            collection.trainingType === DatasetCollectionDataProcessModeEnum.backup ||
+            collection.trainingType === DatasetCollectionDataProcessModeEnum.template;
+
           const { title, rawText } = await readDatasetSourceRawText({
             teamId: data.teamId,
             tmbId: data.tmbId,
             customPdfParse: collection.customPdfParse,
+            getFormatText: !csvStructured,
             // 解析开关仅对外部解析路径生效;非 customPdfParse 时传 undefined,rawText 缓存沿用旧 key
             sangforFileParseConfig: collection.customPdfParse
               ? getDatasetIultmzhFileParseConfig(dataset)
@@ -287,7 +294,7 @@ export const datasetParseQueue = async (): Promise<any> => {
             customReg: collection.chunkSplitter ? [collection.chunkSplitter] : [],
             chunkSettingMode: collection.chunkSettingMode,
             trainingType: collection.trainingType,
-            backupParse: collection.trainingType === DatasetCollectionDataProcessModeEnum.backup
+            backupParse: csvStructured
           });
 
           // Check dataset limit
