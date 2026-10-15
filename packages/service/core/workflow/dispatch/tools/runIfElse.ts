@@ -11,7 +11,10 @@ import type {
   IfElseConditionType,
   IfElseListItemType
 } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
-import { getIfElseBranchHandleKey, getElseIFLabel } from '@fastgpt/global/common/workflow/condition';
+import {
+  getIfElseBranchHandleKey,
+  getElseIFLabel
+} from '@fastgpt/global/common/workflow/condition';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import type { WorkflowVariableStateLike } from '../context/variables';
 import { getHandleId } from '@fastgpt/global/common/workflow/reference';
