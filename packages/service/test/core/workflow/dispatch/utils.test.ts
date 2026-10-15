@@ -1,3 +1,7 @@
+import {
+  createTestWorkflowFileContext,
+  runWithTestWorkflowContext as runWithContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 
 import {
@@ -1119,6 +1123,9 @@ describe('rewriteRuntimeWorkFlow', () => {
 
       await runWithContext(
         {
+          checkIsStopping: () => false,
+          fileContext: await createTestWorkflowFileContext(),
+
           mcpClientMemory: {},
           resourceContext: {
             isRoot: false,
