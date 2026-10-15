@@ -220,4 +220,3 @@ describe('workflow reference value type compatibility', () => {
     ).toBe(false);
   });
 });
-

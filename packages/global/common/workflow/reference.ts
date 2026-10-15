@@ -180,4 +180,3 @@ export const areWorkflowValueTypesCompatible = ({
   }
   return getWorkflowReferenceSourceValueTypes(expected).includes(actual as WorkflowIOValueTypeEnum);
 };
-
