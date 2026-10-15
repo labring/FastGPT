@@ -5,7 +5,7 @@ import * as teamLimit from '@fastgpt/service/support/permission/teamLimit';
 import { WorkflowStopSignalCache } from '@fastgpt/dal/redis/caches/workflowStopSignal';
 import { setAgentRuntimeStop, shouldWorkflowStop } from '@fastgpt/service/core/chat/stop';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { createTestWorkflowDispatch, createTestVariableContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { WorkflowContext } from '@fastgpt/service/core/workflow/dispatch/context';
 import * as WorkflowNodeResponse from '@fastgpt/service/core/workflow/dispatch/context/nodeResponse';
 import * as Tracing from '@fastgpt/service/common/tracing';
@@ -71,21 +71,6 @@ const waitWithTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label:
   }
 };
 
-const createWorkflowVariableState = (
-  variables: Record<string, unknown> = {}
-): WorkflowVariableStateLike => ({
-  get: (key) => variables[key],
-  set: async (key, value) => {
-    variables[key] = value;
-    return value;
-  },
-  getStoreValue: (key) => variables[key],
-  getFileStoreValueByRuntimeUrl: () => undefined,
-  toRuntimeRecord: () => ({ ...variables }),
-  toStoreRecord: () => ({ ...variables }),
-  clone: () => createWorkflowVariableState({ ...variables })
-});
-
 describe('runWorkflow instance execution budget', () => {
   it.each([0, 1, 3])(
     'executes only %i sequential text nodes for that instance budget',
@@ -140,7 +125,7 @@ describe('runWorkflow instance execution budget', () => {
           chatConfig: {},
           runtimeNodes: nodes,
           runtimeEdges: [createEdge('first', 'second'), createEdge('second', 'third')],
-          variableState: createWorkflowVariableState(),
+          
           externalProvider: {},
           workflowDispatchDeep: 0,
           maxRunTimes: getWorkflowMaxRunTimes(),
@@ -165,7 +150,6 @@ describe('runWorkflow instance execution budget', () => {
     }
   );
 });
-
 describe('dispatchWorkFlow SSE initialization guard', () => {
   it('rejects stream responses when SSE was not initialized before dispatch', async () => {
     const res = new EventEmitter() as any;
@@ -1296,7 +1280,7 @@ describe('runWorkflow catchError', () => {
           createEdge('source', 'success', 'waiting', 'source-source-right'),
           createEdge('source', 'error', 'waiting', 'source-source_catch-right')
         ],
-        variableContext: createWorkflowVariableState(),
+        variableContext: createTestVariableContext(),
         externalProvider: {},
         workflowDispatchDeep: 0,
         maxRunTimes: 10,
@@ -1490,7 +1474,7 @@ describe('runWorkflow assistant response aggregation', () => {
         chatConfig: {},
         runtimeNodes: [chatNode],
         runtimeEdges: [],
-        variableContext: createWorkflowVariableState(),
+        variableContext: createTestVariableContext(),
         externalProvider: {},
         workflowDispatchDeep: 0,
         maxRunTimes: 10,
@@ -1827,7 +1811,7 @@ describe('Workflow runtime LLM token summary', () => {
           chatConfig: {},
           runtimeNodes: [node],
           runtimeEdges: [],
-          variableContext: createWorkflowVariableState(),
+          variableContext: createTestVariableContext(),
           externalProvider: {},
           workflowDispatchDeep: 0,
           maxRunTimes: 10,

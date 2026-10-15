@@ -1,5 +1,5 @@
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { createTestWorkflowDispatch, captureTestVariableContext, getCapturedTestVariableContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { createTestWorkflowDispatch, captureTestWorkflowContext, getCapturedTestWorkflowContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   FlowNodeOutputTypeEnum,
@@ -29,7 +29,7 @@ vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => ({
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
-  runWorkflow: (args: any) => runWorkflowMock(captureTestVariableContext(args))
+  runWorkflow: (args: any) => runWorkflowMock(captureTestWorkflowContext(args))
 }));
 
 vi.mock('@fastgpt/service/env', async (importOriginal) => {
@@ -419,7 +419,7 @@ describe('dispatchParallelRun', () => {
     parentVariableState.clone = vi.fn(() => taskVariableState);
     parentVariableState.set = vi.fn((key: string, value: unknown) => originalSet(key, value));
     runWorkflowMock.mockImplementation(async (args: any) => {
-      await getCapturedTestVariableContext(args).set('count', 2);
+      await getCapturedTestWorkflowContext(args).variableContext.set('count', 2);
       return makeDispatchFlowResponse({
         nodeResponses: [
           makeResponseItem('nestedEnd', {
@@ -450,9 +450,9 @@ describe('dispatchParallelRun', () => {
       .mockReturnValueOnce(task1VariableState);
     runWorkflowMock.mockImplementation(async (args: any) => {
       if (args.nodeResponseParentId.endsWith('_task_0')) {
-        await getCapturedTestVariableContext(args).set('first', 1);
+        await getCapturedTestWorkflowContext(args).variableContext.set('first', 1);
       } else {
-        await getCapturedTestVariableContext(args).set('second', 2);
+        await getCapturedTestWorkflowContext(args).variableContext.set('second', 2);
       }
 
       return makeDispatchFlowResponse({
@@ -613,7 +613,7 @@ describe('dispatchParallelRun', () => {
     parentVariableState.set = vi.fn((key: string, value: unknown) => originalSet(key, value));
     runWorkflowMock
       .mockImplementationOnce(async (args: any) => {
-        await getCapturedTestVariableContext(args).set('count', 1);
+        await getCapturedTestWorkflowContext(args).variableContext.set('count', 1);
         return makeDispatchFlowResponse({
           nodeResponses: [
             makeResponseItem('failed-node', {
@@ -623,7 +623,7 @@ describe('dispatchParallelRun', () => {
         });
       })
       .mockImplementationOnce(async (args: any) => {
-        await getCapturedTestVariableContext(args).set('count', 2);
+        await getCapturedTestWorkflowContext(args).variableContext.set('count', 2);
         return makeDispatchFlowResponse({
           nodeResponses: [
             makeResponseItem('nestedEnd', {

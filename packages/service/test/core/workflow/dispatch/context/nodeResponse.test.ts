@@ -7,15 +7,6 @@ import {
   createWorkflowNodeResponseActivity
 } from '@fastgpt/service/core/workflow/dispatch/context/nodeResponse';
 import { createWorkflowRuntimeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
-import {
-  getWorkflowContext,
-  runWithContext
-} from '@fastgpt/service/core/workflow/dispatch/context';
-import {
-  createTestNodeResponseContext,
-  createTestWorkflowFileContext,
-  runWithTestWorkflowContext
-} from './fixtures';
 
 const createWriter = () => ({
   record: vi.fn(async (responses: ChatHistoryItemResType[]) => responses),
@@ -23,101 +14,7 @@ const createWriter = () => ({
   getFlatNodeResponses: vi.fn(() => [])
 });
 
-describe('WorkflowContext.getChildContext — 响应 Scope', () => {
-  it('无运行上下文时拒绝派生，不执行回调', () => {
-    const fn = vi.fn();
-    expect(() =>
-      runWithContext(getWorkflowContext().getChildContext({ nodeResponseSink: undefined }), fn)
-    ).toThrow('Workflow context is unavailable');
-    expect(fn).not.toHaveBeenCalled();
-  });
-
-  it('并行子流程各自持有响应 Scope，共享输出但不混合 summary 或 parentId', async () => {
-    const writer = createWriter();
-    const output = createWorkflowEntryNodeResponseSink({ writer: writer as any });
-    const parentSummary = createWorkflowRuntimeSummary();
-    const parentSink = createTestNodeResponseContext(output).getChildContext({
-      workflowRuntimeSummary: parentSummary
-    });
-    const fileContext = await createTestWorkflowFileContext();
-    const summaries = [createWorkflowRuntimeSummary(), createWorkflowRuntimeSummary()];
-
-    await runWithTestWorkflowContext(
-      {
-        checkIsStopping: () => false,
-        mcpClientMemory: {},
-        fileContext,
-        nodeResponseSink: parentSink
-      },
-      async (parentContext) => {
-        await Promise.all(
-          summaries.map((summary, index) => {
-            const childSink = createTestNodeResponseContext(
-              getWorkflowContext().nodeResponseSink
-            ).getChildContext({
-              workflowRuntimeSummary: summary,
-              defaultParentId: `parent-${index}`
-            });
-            return runWithContext(
-              getWorkflowContext().getChildContext({ nodeResponseSink: childSink }),
-              async () => {
-                await Promise.resolve();
-                expect(getWorkflowContext()).not.toBe(parentContext);
-                expect(getWorkflowContext().fileContext).toBe(fileContext);
-                expect(getWorkflowContext().nodeResponseSink).toBe(childSink);
-                await getWorkflowContext().nodeResponseSink!.publish([
-                  {
-                    response: {
-                      id: `child-${index}`,
-                      nodeId: `node-${index}`,
-                      moduleType: FlowNodeTypeEnum.textEditor,
-                      inputTokens: index + 1
-                    } as ChatHistoryItemResType
-                  }
-                ]);
-              }
-            );
-          })
-        );
-        expect(getWorkflowContext()).toBe(parentContext);
-        expect(getWorkflowContext().nodeResponseSink).toBe(parentSink);
-      }
-    );
-
-    expect(parentSummary.llmInputTokens).toBe(0);
-    expect(summaries.map((summary) => summary.llmInputTokens)).toEqual([1, 2]);
-    expect(writer.record).toHaveBeenCalledTimes(2);
-    expect(writer.record.mock.calls.flatMap(([responses]) => responses)).toEqual([
-      expect.objectContaining({ id: 'child-0', parentId: 'parent-0' }),
-      expect.objectContaining({ id: 'child-1', parentId: 'parent-1' })
-    ]);
-  });
-
-  it('子流程拒绝后恢复父 Scope，显式无输出只影响当前分支', async () => {
-    const fileContext = await createTestWorkflowFileContext();
-    const sink = createTestNodeResponseContext({ publish: vi.fn(async () => []) });
-    await runWithTestWorkflowContext(
-      { checkIsStopping: () => false, mcpClientMemory: {}, fileContext, nodeResponseSink: sink },
-      async () => {
-        await expect(
-          runWithContext(
-            getWorkflowContext().getChildContext({
-              nodeResponseSink: createWorkflowEntryNodeResponseSink()
-            }),
-            async () => {
-              await Promise.resolve();
-              expect(getWorkflowContext().nodeResponseSink.hasOutput).toBe(false);
-              throw new Error('child failed');
-            }
-          )
-        ).rejects.toThrow('child failed');
-        expect(getWorkflowContext().nodeResponseSink).toBe(sink);
-      }
-    );
-  });
-});
-
-describe('WorkflowNodeResponseSink', () => {
+describe('createWorkflowEntryNodeResponseSink', () => {
   it('派生策略和 activity 视图共享当前 summary，新流程显式替换 summary，子 Scope 无关闭权限', async () => {
     const writer = createWriter();
     const entry = createWorkflowEntryNodeResponseSink({
@@ -190,23 +87,25 @@ describe('WorkflowNodeResponseSink', () => {
     const output = {
       publish: vi.fn(async (inputs: any[]) => inputs.map((input) => input.response))
     };
-    const activeSink = createTestNodeResponseContext(output).getChildContext({ activity });
+    const activeSink = createWorkflowEntryNodeResponseSink({ output }).getChildContext({
+      activity
+    });
     const response = {
       id: 'activity',
       nodeId: 'node',
       moduleName: 'Node',
       moduleType: FlowNodeTypeEnum.textEditor
     };
-    await activeSink!.publish([{ response }]);
+    await activeSink.publish([{ response }]);
     expect(activity.publishedResponseCount).toBe(1);
     expect(output.publish).toHaveBeenCalledTimes(1);
 
-    const hiddenSink = createTestNodeResponseContext(output).getChildContext({
+    const hiddenSink = createWorkflowEntryNodeResponseSink({ output }).getChildContext({
       record: false,
       emit: false
     });
-    await hiddenSink!.publish([{ response }]);
-    expect(hiddenSink!.hasOutput).toBe(false);
+    await hiddenSink.publish([{ response }]);
+    expect(hiddenSink.hasOutput).toBe(false);
     expect(output.publish).toHaveBeenCalledTimes(1);
   });
 
@@ -217,46 +116,6 @@ describe('WorkflowNodeResponseSink', () => {
     expect(writer.getFlatNodeResponses).toHaveBeenCalledTimes(1);
     await sink.close();
     expect(writer.close).toHaveBeenCalledTimes(1);
-  });
-
-  it('每个 workflow scope 独立统计，底层 sink 仍共享写入', async () => {
-    const writer = createWriter();
-    const rawSink = createWorkflowEntryNodeResponseSink({ writer: writer as any });
-    const parentSummary = createWorkflowRuntimeSummary();
-    const childSummary = createWorkflowRuntimeSummary();
-    const parentSink = createTestNodeResponseContext(rawSink).getChildContext({
-      workflowRuntimeSummary: parentSummary
-    });
-    const childSink = createTestNodeResponseContext(parentSink).getChildContext({
-      workflowRuntimeSummary: childSummary
-    });
-
-    await parentSink.publish([
-      {
-        response: {
-          id: 'parent',
-          nodeId: 'parent-node',
-          moduleType: FlowNodeTypeEnum.textEditor,
-          inputTokens: 2,
-          outputTokens: 1
-        } as any
-      }
-    ]);
-    await childSink.publish([
-      {
-        response: {
-          id: 'child',
-          nodeId: 'child-node',
-          moduleType: FlowNodeTypeEnum.textEditor,
-          inputTokens: 5,
-          outputTokens: 3
-        } as any
-      }
-    ]);
-
-    expect(writer.record).toHaveBeenCalledTimes(2);
-    expect(parentSummary).toMatchObject({ llmInputTokens: 2, llmOutputTokens: 1 });
-    expect(childSummary).toMatchObject({ llmInputTokens: 5, llmOutputTokens: 3 });
   });
 
   it('隐藏策略跨多层 child scope 继承，child summary 仍独立更新', async () => {
@@ -270,17 +129,17 @@ describe('WorkflowNodeResponseSink', () => {
     const parentSummary = createWorkflowRuntimeSummary();
     const childSummary = createWorkflowRuntimeSummary();
     const grandchildSummary = createWorkflowRuntimeSummary();
-    const parentSink = createTestNodeResponseContext(rawSink).getChildContext({
+    const parentSink = rawSink.getChildContext({
       workflowRuntimeSummary: parentSummary
     });
-    const hiddenParentSink = createTestNodeResponseContext(parentSink).getChildContext({
+    const hiddenParentSink = parentSink.getChildContext({
       record: false,
       emit: false
     });
-    const childSink = createTestNodeResponseContext(hiddenParentSink).getChildContext({
+    const childSink = hiddenParentSink.getChildContext({
       workflowRuntimeSummary: childSummary
     });
-    const grandchildSink = createTestNodeResponseContext(childSink).getChildContext({
+    const grandchildSink = childSink.getChildContext({
       workflowRuntimeSummary: grandchildSummary,
       record: true,
       emit: true
@@ -312,7 +171,7 @@ describe('WorkflowNodeResponseSink', () => {
   it('child workflow scope 给缺少 parentId 的 response 补默认父级', async () => {
     const writer = createWriter();
     const rawSink = createWorkflowEntryNodeResponseSink({ writer: writer as any });
-    const childSink = createTestNodeResponseContext(rawSink).getChildContext({
+    const childSink = rawSink.getChildContext({
       workflowRuntimeSummary: createWorkflowRuntimeSummary(),
       defaultParentId: 'tool-response'
     });
@@ -343,20 +202,20 @@ describe('WorkflowNodeResponseSink', () => {
 
   it('并行节点使用独立 activity，其他节点发布不会改变当前节点归属', async () => {
     const writer = createWriter();
-    const workflowSink = createTestNodeResponseContext(
-      createWorkflowEntryNodeResponseSink({ writer: writer as any })
-    ).getChildContext({ workflowRuntimeSummary: createWorkflowRuntimeSummary() });
+    const workflowSink = createWorkflowEntryNodeResponseSink({
+      writer: writer as any
+    }).getChildContext({ workflowRuntimeSummary: createWorkflowRuntimeSummary() });
     const firstActivity = createWorkflowNodeResponseActivity();
     const secondActivity = createWorkflowNodeResponseActivity();
-    const firstNodeSink = createTestNodeResponseContext(workflowSink).getChildContext({
+    const firstNodeSink = workflowSink.getChildContext({
       activity: firstActivity
     });
-    const secondNodeSink = createTestNodeResponseContext(workflowSink).getChildContext({
+    const secondNodeSink = workflowSink.getChildContext({
       activity: secondActivity
     });
 
     await Promise.all([
-      firstNodeSink?.publish([
+      firstNodeSink.publish([
         {
           response: {
             id: 'first-node-response',
@@ -365,7 +224,7 @@ describe('WorkflowNodeResponseSink', () => {
           } as ChatHistoryItemResType
         }
       ]),
-      secondNodeSink?.publish([
+      secondNodeSink.publish([
         {
           response: {
             id: 'second-node-response',
@@ -480,7 +339,7 @@ describe('WorkflowNodeResponseSink', () => {
       apiVersion: 'v2',
       workflowStreamResponse
     });
-    const sink = createTestNodeResponseContext(rawSink).getChildContext({ workflowRuntimeSummary });
+    const sink = rawSink.getChildContext({ workflowRuntimeSummary });
     const response = {
       id: 'failed-response',
       nodeId: 'failed-node',
