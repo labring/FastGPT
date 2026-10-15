@@ -121,101 +121,120 @@ describe('sanitizeLLMRequestRecordPayload', () => {
     });
   });
 
-  it('omits stacks from top-level, nested and array errors but keeps other diagnostics', () => {
-    const cause = Object.assign(new Error('provider failed'), { code: 'PROVIDER_ERROR' });
-    const error = Object.assign(new Error('tool failed', { cause: { original: cause } }), {
-      code: 'LLM_TOOL_CALL_ERROR'
-    });
-    const result = sanitizeLLMRequestRecordPayload({ error, errors: [cause] }, undefined, {
-      omitErrorStack: true
-    });
-    expect(result).toEqual({
-      error: {
-        name: 'Error',
-        message: 'tool failed',
-        code: 'LLM_TOOL_CALL_ERROR',
-        cause: {
-          original: { name: 'Error', message: 'provider failed', code: 'PROVIDER_ERROR' }
+  it.each([false, true])(
+    'omits stacks from nested and array errors with enumerable=%s',
+    (enumerable) => {
+      const cause = Object.assign(new Error('provider failed'), { code: 'PROVIDER_ERROR' });
+      const error = Object.assign(new Error('tool failed', { cause: { original: cause } }), {
+        code: 'LLM_TOOL_CALL_ERROR'
+      });
+      Object.defineProperty(error, 'stack', { enumerable });
+      Object.defineProperty(cause, 'stack', { enumerable });
+      const result = sanitizeLLMRequestRecordPayload(
+        { error, errors: [cause] },
+        {
+          omitErrorStack: true
         }
-      },
-      errors: [{ name: 'Error', message: 'provider failed', code: 'PROVIDER_ERROR' }]
-    });
-    // 原始 Error 不被修改，日志场景默认仍保留 stack。
-    expect(error.stack).toEqual(expect.any(String));
-    expect(sanitizeLLMRequestRecordPayload({ error })).toMatchObject({
-      error: { stack: expect.any(String) }
-    });
-  });
+      );
+      expect(result).toEqual({
+        error: {
+          name: 'Error',
+          message: 'tool failed',
+          code: 'LLM_TOOL_CALL_ERROR',
+          cause: {
+            original: { name: 'Error', message: 'provider failed', code: 'PROVIDER_ERROR' }
+          }
+        },
+        errors: [{ name: 'Error', message: 'provider failed', code: 'PROVIDER_ERROR' }]
+      });
+      // 原始 Error 不被修改，日志场景默认仍保留 stack。
+      expect(error.stack).toEqual(expect.any(String));
+      expect(sanitizeLLMRequestRecordPayload({ error })).toMatchObject({
+        error: { stack: expect.any(String) }
+      });
+    }
+  );
 });
 
 describe('LLM request record team isolation', () => {
-  it('persists actual stream tool error diagnostics through sanitization and MongoDB', async () => {
-    async function* generate() {
-      yield {
-        choices: [
-          {
-            delta: {
-              tool_calls: [
-                {
-                  index: 0,
-                  id: 'invalid',
-                  type: 'function',
-                  function: { name: 'unknown', arguments: '{}' }
-                }
-              ]
-            },
-            finish_reason: 'tool_calls'
-          }
-        ]
-      };
-    }
-    const result = await createStreamResponse({
-      body: {
-        messages: [],
-        stream: true,
-        tools: [{ type: 'function', function: { name: 'search', parameters: { type: 'object' } } }],
-        model: {
-          modelId: '68ad85a7463006c963799a64',
-          type: ModelTypeEnum.llm,
-          scope: ModelScopeEnum.system,
-          provider: 'openai',
-          model: 'gpt-4o',
-          name: 'GPT-4o',
-          config: { maxContext: 128000, maxResponse: 4096, quoteMaxToken: 60000, reasoning: false }
-        }
-      },
-      response: generate() as unknown as StreamResponseType
-    });
-    await saveLLMRequestRecord({
-      teamId: '507f1f77bcf86cd799439011',
-      requestId: 'invalid_tool',
-      body: {},
-      response: result
-    });
-    const record = await getLLMRequestRecord('invalid_tool', '507f1f77bcf86cd799439011');
-    expect(record?.response).toMatchObject({
-      finish_reason: 'error',
-      error: {
-        name: 'LLMToolCallError',
-        code: 'LLM_TOOL_CALL_ERROR',
-        message: expect.stringContaining('no valid tool calls'),
-        cause: {
-          finish_reason: 'tool_calls',
-          expectedToolNames: ['search'],
-          receivedToolCalls: [
+  it.each([false, true])(
+    'persists actual tool diagnostics without stacks with enumerable=%s',
+    async (enumerable) => {
+      async function* generate() {
+        yield {
+          choices: [
             {
-              index: 0,
-              id: 'invalid',
-              type: 'function',
-              function: { name: 'unknown', arguments: '{}' }
+              delta: {
+                tool_calls: [
+                  {
+                    index: 0,
+                    id: 'invalid',
+                    type: 'function',
+                    function: { name: 'unknown', arguments: '{}' }
+                  }
+                ]
+              },
+              finish_reason: 'tool_calls'
             }
           ]
-        }
+        };
       }
-    });
-    // 请求记录会通过接口展示给团队成员，不保存包含服务端路径的调用栈。
-    expect(record?.response?.error).not.toHaveProperty('stack');
-  });
+      const result = await createStreamResponse({
+        body: {
+          messages: [],
+          stream: true,
+          tools: [
+            { type: 'function', function: { name: 'search', parameters: { type: 'object' } } }
+          ],
+          model: {
+            modelId: '68ad85a7463006c963799a64',
+            type: ModelTypeEnum.llm,
+            scope: ModelScopeEnum.system,
+            provider: 'openai',
+            model: 'gpt-4o',
+            name: 'GPT-4o',
+            config: {
+              maxContext: 128000,
+              maxResponse: 4096,
+              quoteMaxToken: 60000,
+              reasoning: false
+            }
+          }
+        },
+        response: generate() as unknown as StreamResponseType
+      });
+      Object.defineProperty(result.error, 'stack', { enumerable });
+      await saveLLMRequestRecord({
+        teamId: '507f1f77bcf86cd799439011',
+        requestId: 'invalid_tool',
+        body: {},
+        response: result
+      });
+      const record = await getLLMRequestRecord('invalid_tool', '507f1f77bcf86cd799439011');
+      expect(record?.response).toMatchObject({
+        finish_reason: 'error',
+        error: {
+          name: 'LLMToolCallError',
+          code: 'LLM_TOOL_CALL_ERROR',
+          message: expect.stringContaining('no valid tool calls'),
+          cause: {
+            finish_reason: 'tool_calls',
+            expectedToolNames: ['search'],
+            receivedToolCalls: [
+              {
+                index: 0,
+                id: 'invalid',
+                type: 'function',
+                function: { name: 'unknown', arguments: '{}' }
+              }
+            ]
+          }
+        }
+      });
+      // 请求记录会通过接口展示给团队成员，不保存包含服务端路径的调用栈。
+      expect(record?.response?.error).not.toHaveProperty('stack');
+    }
+  );
 
   it('saves records with very large video data urls after redacting base64 payloads', async () => {
     const largeVideoBase64 = createBase64(10_000_000);

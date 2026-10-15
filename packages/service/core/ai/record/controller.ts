@@ -48,54 +48,55 @@ const sanitizeString = (value: string, key?: string) => {
  * 只处理快照副本，不参与真实模型请求、token 统计或响应解析。
  *
  * omitErrorStack: 请求记录会通过接口展示给团队成员，写入时不保存调用栈（含服务端代码路径），
- * 只保留 name、message、code 和 cause；日志场景默认保留 stack 便于排查。
+ * 保留 name、message、code 和 cause 等诊断属性；日志场景默认保留 stack 便于排查。
  */
 export const sanitizeLLMRequestRecordPayload = <T>(
   payload: T,
-  key?: string,
-  options?: { omitErrorStack?: boolean }
+  { omitErrorStack = false }: { omitErrorStack?: boolean } = {}
 ): T => {
-  if (typeof payload === 'string') {
-    return sanitizeString(payload, key) as T;
-  }
+  /** 递归只携带字段上下文，整个快照共享同一组日志/入库选项，避免嵌套 cause 漏清理。 */
+  const sanitize = (value: unknown, key?: string): unknown => {
+    if (typeof value === 'string') {
+      return sanitizeString(value, key);
+    }
 
-  if (!payload || typeof payload !== 'object') {
-    return payload;
-  }
+    if (!value || typeof value !== 'object') {
+      return value;
+    }
 
-  if (payload instanceof Error) {
-    // Object.entries(Error) 会丢掉 message、stack、cause，先展开再递归清洗诊断内容。
-    return sanitizeLLMRequestRecordPayload(
-      {
-        ...payload,
-        name: payload.name,
-        message: payload.message,
-        ...(!options?.omitErrorStack && payload.stack !== undefined && { stack: payload.stack }),
-        ...(payload.cause !== undefined && { cause: payload.cause })
-      },
-      undefined,
-      options
-    ) as T;
-  }
+    if (value instanceof Error) {
+      // 先排除可能可枚举的 stack，再按使用场景补回；其余不可枚举诊断属性显式展开。
+      const { stack, ...enumerableFields } = value;
+      return sanitize({
+        ...enumerableFields,
+        name: value.name,
+        message: value.message,
+        ...(!omitErrorStack && stack !== undefined && { stack }),
+        ...(value.cause !== undefined && { cause: value.cause })
+      });
+    }
 
-  if (payload instanceof Date) {
-    return payload;
-  }
+    if (value instanceof Date) {
+      return value;
+    }
 
-  if (Buffer.isBuffer(payload)) {
-    return base64OmittedPlaceholder as T;
-  }
+    if (Buffer.isBuffer(value)) {
+      return base64OmittedPlaceholder;
+    }
 
-  if (Array.isArray(payload)) {
-    return payload.map((item) => sanitizeLLMRequestRecordPayload(item, undefined, options)) as T;
-  }
+    if (Array.isArray(value)) {
+      return value.map((item) => sanitize(item));
+    }
 
-  return Object.fromEntries(
-    Object.entries(payload).map(([entryKey, entryValue]) => [
-      entryKey,
-      sanitizeLLMRequestRecordPayload(entryValue, entryKey, options)
-    ])
-  ) as T;
+    return Object.fromEntries(
+      Object.entries(value).map(([entryKey, entryValue]) => [
+        entryKey,
+        sanitize(entryValue, entryKey)
+      ])
+    );
+  };
+
+  return sanitize(payload) as T;
 };
 
 /**
@@ -112,8 +113,8 @@ export const saveLLMRequestRecord = async (params: {
     await MongoLLMRequestRecord.create({
       teamId: params.teamId,
       requestId: params.requestId,
-      body: sanitizeLLMRequestRecordPayload(params.body, undefined, { omitErrorStack: true }),
-      response: sanitizeLLMRequestRecordPayload(params.response, undefined, {
+      body: sanitizeLLMRequestRecordPayload(params.body, { omitErrorStack: true }),
+      response: sanitizeLLMRequestRecordPayload(params.response, {
         omitErrorStack: true
       })
     });
