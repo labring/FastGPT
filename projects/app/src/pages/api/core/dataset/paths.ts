@@ -1,7 +1,12 @@
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  ReadPermissionVal,
+  PerResourceTypeEnum
+} from '@fastgpt/global/support/permission/constant';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import {
@@ -10,44 +15,80 @@ import {
   type GetDatasetPathsResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  getDatasetFolderListScope,
+  hasReadableDatasetFolderChild
+} from '@/service/core/dataset/visibleList';
+import { getFolderParentPathItems } from '@fastgpt/service/common/parentFolder/ancestorIds';
+import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
+import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
+import { findResourceKeysByCollaboratorsPermission } from '@fastgpt/service/support/permission/resourcePermissionService';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetPathsResponse> {
   const { sourceId: datasetId, type } = parseApiInput({
     req,
     querySchema: GetDatasetPathsQuerySchema
   }).query;
+  if (!datasetId) return [];
 
-  if (!datasetId) {
-    return [];
-  }
-
-  const { dataset } = await authDataset({
+  const {
+    tmbId,
+    teamId,
+    permission: teamPer
+  } = await authUserPer({
     req,
     authToken: true,
-    datasetId,
     per: ReadPermissionVal
   });
-
-  const paths = await getParents(
-    type === 'current' ? dataset._id : (dataset.parentId ?? undefined)
-  );
-
-  return GetDatasetPathsResponseSchema.parse(paths);
-}
-
-export async function getParents(parentId?: string): Promise<ParentTreePathItemType[]> {
-  if (!parentId) {
-    return [];
+  const folderScope = await getDatasetFolderListScope({ teamId, currentFolderId: datasetId });
+  const folder = folderScope.folders.find(({ _id }) => _id === datasetId);
+  if (!folder) {
+    await authDataset({ req, authToken: true, datasetId, per: ReadPermissionVal });
+    throw CommonErrEnum.invalidParams;
   }
 
-  const parent = await MongoDataset.findById(parentId, 'name parentId');
+  if (!teamPer.isOwner) {
+    const [groups, orgSet] = await Promise.all([
+      getGroupsByTmbId({ tmbId, teamId }),
+      getOrgIdSetWithParentByTmbId({ teamId, tmbId })
+    ]);
+    const groupIds = groups.map(({ _id }) => String(_id));
+    const orgIds = Array.from(orgSet).map(String);
+    const readableResourceIds = await findResourceKeysByCollaboratorsPermission({
+      resourceType: PerResourceTypeEnum.dataset,
+      teamId,
+      tmbId,
+      groupIds,
+      orgIds,
+      permission: ReadPermissionVal,
+      matchLogic: 'or',
+      personalPermissionPriority: true
+    });
+    if (
+      !readableResourceIds.some((id) => String(id) === datasetId) &&
+      !(await hasReadableDatasetFolderChild({
+        teamId,
+        folderIds: folderScope.folderIds,
+        readableResourceIds
+      }))
+    ) {
+      await authDataset({ req, authToken: true, datasetId, per: ReadPermissionVal });
+    }
+  }
 
-  if (!parent) return [];
-
-  const paths = await getParents(parent.parentId ?? undefined);
-  paths.push({ parentId, parentName: parent.name });
-
-  return paths;
+  const paths = await getFolderParentPathItems({
+    folderId: type === 'current' ? datasetId : folder.parentId ? String(folder.parentId) : null,
+    findFolder: (id) =>
+      MongoDataset.findOne({
+        _id: id,
+        teamId,
+        deleteTime: null,
+        type: DatasetTypeEnum.folder
+      })
+        .select('_id name parentId')
+        .lean()
+  });
+  return GetDatasetPathsResponseSchema.parse(paths);
 }
 
 export default NextAPI(handler);

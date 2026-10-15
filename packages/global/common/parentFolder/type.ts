@@ -8,6 +8,11 @@ export const ParentIdSchema = z
   .nullish();
 export type ParentIdType = string | null | undefined;
 
+export const FolderAccessModeSchema = z.enum(['read', 'navigate']).meta({
+  description: '目录访问方式：read 表示真实读取权限，navigate 仅表示可通过可读后代浏览'
+});
+export type FolderAccessMode = z.infer<typeof FolderAccessModeSchema>;
+
 export const GetPathPropsSchema = z.object({
   sourceId: ParentIdSchema.optional(),
   type: z.enum(['current', 'parent']).optional()

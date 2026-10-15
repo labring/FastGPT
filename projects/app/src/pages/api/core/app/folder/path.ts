@@ -1,48 +1,88 @@
 import type { NextApiRequest } from 'next';
-import type {
-  ParentIdType,
-  ParentTreePathItemType
-} from '@fastgpt/global/common/parentFolder/type';
+import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import {
+  ReadPermissionVal,
+  PerResourceTypeEnum
+} from '@fastgpt/global/support/permission/constant';
+import { AppRolePerMap } from '@fastgpt/global/support/permission/app/constant';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetAppFolderPathQuerySchema,
   GetAppFolderPathResponseSchema
 } from '@fastgpt/global/openapi/core/app/folder/api';
+import { getAppFolderListScope, hasReadableAppFolderChild } from '@/service/core/app/visibleList';
+import { getFolderParentPathItems } from '@fastgpt/service/common/parentFolder/ancestorIds';
+import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
+import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
+import { findResourceKeysByCollaboratorsPermission } from '@fastgpt/service/support/permission/resourcePermissionService';
 
 async function handler(req: NextApiRequest): Promise<ParentTreePathItemType[]> {
   const { sourceId: appId, type = 'current' } = parseApiInput({
     req,
     querySchema: GetAppFolderPathQuerySchema
   }).query;
+  if (!appId) return [];
 
-  if (!appId) {
-    return [];
+  const {
+    tmbId,
+    teamId,
+    permission: teamPer
+  } = await authUserPer({
+    req,
+    authToken: true,
+    per: ReadPermissionVal
+  });
+  const folderScope = await getAppFolderListScope({ teamId, currentFolderId: appId });
+  const folder = folderScope.folders.find(({ _id }) => _id === appId);
+  if (!folder) {
+    await authApp({ req, authToken: true, appId, per: ReadPermissionVal });
+    throw CommonErrEnum.invalidParams;
   }
 
-  const { app } = await authApp({ req, authToken: true, appId, per: ReadPermissionVal });
+  // 非所有者仅可通过真实可读的后代资源进入目录。
+  if (!teamPer.isOwner) {
+    const [groups, orgSet] = await Promise.all([
+      getGroupsByTmbId({ tmbId, teamId }),
+      getOrgIdSetWithParentByTmbId({ teamId, tmbId })
+    ]);
+    const groupIds = groups.map(({ _id }) => String(_id));
+    const orgIds = Array.from(orgSet).map(String);
+    const readableResourceIds = await findResourceKeysByCollaboratorsPermission({
+      resourceType: PerResourceTypeEnum.app,
+      teamId,
+      tmbId,
+      groupIds,
+      orgIds,
+      permission: ReadPermissionVal,
+      matchLogic: 'or',
+      personalPermissionPriority: true,
+      rolePerMap: AppRolePerMap
+    });
+    if (
+      !readableResourceIds.some((id) => String(id) === appId) &&
+      !(await hasReadableAppFolderChild({
+        teamId,
+        folderIds: folderScope.folderIds,
+        readableResourceIds
+      }))
+    ) {
+      await authApp({ req, authToken: true, appId, per: ReadPermissionVal });
+    }
+  }
 
-  return GetAppFolderPathResponseSchema.parse(
-    await getParents(type === 'current' ? appId : app.parentId)
-  );
+  const paths = await getFolderParentPathItems({
+    folderId: type === 'current' ? appId : folder.parentId ? String(folder.parentId) : null,
+    findFolder: (id) =>
+      MongoApp.findOne({ _id: id, teamId, deleteTime: null, type: folder.type })
+        .select('_id name parentId')
+        .lean()
+  });
+  return GetAppFolderPathResponseSchema.parse(paths);
 }
 
 export default NextAPI(handler);
-
-async function getParents(parentId: ParentIdType): Promise<ParentTreePathItemType[]> {
-  if (!parentId) {
-    return [];
-  }
-
-  const parent = await MongoApp.findById(parentId, 'name parentId');
-
-  if (!parent) return [];
-
-  const paths = await getParents(parent.parentId);
-  paths.push({ parentId, parentName: parent.name });
-
-  return paths;
-}

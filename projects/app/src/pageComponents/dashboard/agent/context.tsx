@@ -254,7 +254,12 @@ const AppListContextProvider = ({
     }
   );
 
-  const { data: folderDetail, runAsync: refetchFolderDetail } = useRequest(
+  const {
+    data: requestedFolderDetail,
+    error: folderDetailError,
+    loading: isLoadingFolderDetail,
+    runAsync: refetchFolderDetail
+  } = useRequest(
     () => {
       if (parentId) return getAppDetailById(parentId);
       return Promise.resolve(null);
@@ -264,6 +269,14 @@ const AppListContextProvider = ({
       refreshDeps: [parentId]
     }
   );
+  // 仅导航目录可能无法读取详情，避免目录切换或请求失败时沿用上一个目录的权限。
+  const folderDetail = (() => {
+    if (!parentId) return null;
+    if (isLoadingFolderDetail || folderDetailError || requestedFolderDetail?._id !== parentId) {
+      return undefined;
+    }
+    return requestedFolderDetail;
+  })();
 
   const { runAsync: onUpdateApp } = useRequest((id: string, data: UpdateAppBodyType) =>
     putAppById(id, data).then(async (res) => {

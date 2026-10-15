@@ -198,13 +198,23 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
   );
   const loadMyDatasets = useCallback(() => fetchData({ init: true }), [fetchData]);
 
-  const { data: folderDetail, runAsync: refetchFolderDetail } = useRequest(
-    () => (parentId ? getDatasetById(parentId) : Promise.resolve(undefined)),
-    {
-      manual: false,
-      refreshDeps: [parentId]
+  const {
+    data: requestedFolderDetail,
+    error: folderDetailError,
+    loading: isLoadingFolderDetail,
+    runAsync: refetchFolderDetail
+  } = useRequest(() => (parentId ? getDatasetById(parentId) : Promise.resolve(undefined)), {
+    manual: false,
+    refreshDeps: [parentId]
+  });
+  // 仅导航目录可能无法读取详情，避免目录切换或请求失败时沿用上一个目录的权限。
+  const folderDetail = (() => {
+    if (!parentId) return undefined;
+    if (isLoadingFolderDetail || folderDetailError || requestedFolderDetail?._id !== parentId) {
+      return undefined;
     }
-  );
+    return requestedFolderDetail;
+  })();
 
   const { data: paths = [], runAsync: refetchPaths } = useRequest(
     async () => {

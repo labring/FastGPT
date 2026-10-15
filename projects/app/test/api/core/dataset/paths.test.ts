@@ -1,8 +1,23 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getParents } from '@/pages/api/core/dataset/paths';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { GetDatasetPathsResponseSchema } from '@fastgpt/global/openapi/core/dataset/api';
+import { describe, it, expect } from 'vitest';
+import handler from '@/pages/api/core/dataset/paths';
+import detailHandler from '@/pages/api/core/dataset/detail';
+import { getFolderParentPathItems } from '@fastgpt/service/common/parentFolder/ancestorIds';
+import {
+  GetDatasetPathsResponseSchema,
+  type GetDatasetPathsQuery,
+  type GetDatasetPathsResponse
+} from '@fastgpt/global/openapi/core/dataset/api';
 import { ParentIdSchema } from '@fastgpt/global/common/parentFolder/type';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  PerResourceTypeEnum,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { getFakeUsers } from '@test/datas/users';
+import { Call } from '@test/utils/request';
 
 class FakeObjectId {
   constructor(private readonly hex: string) {}
@@ -11,111 +26,129 @@ class FakeObjectId {
   }
 }
 
-vi.mock('@fastgpt/service/core/dataset/schema', () => ({
-  MongoDataset: {
-    findById: vi.fn()
-  },
-  ChunkSettings: {},
-  DatasetCollectionName: 'datasets'
-}));
-
-describe('getParents', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+describe('getFolderParentPathItems', () => {
+  it('returns an empty path for a missing source or parent record', async () => {
+    await expect(
+      getFolderParentPathItems({ folderId: null, findFolder: async () => null })
+    ).resolves.toEqual([]);
+    await expect(
+      getFolderParentPathItems({ folderId: 'missing', findFolder: async () => null })
+    ).resolves.toEqual([]);
   });
 
-  it('should return empty array if parentId is undefined', async () => {
-    const result = await getParents(undefined);
-    expect(result).toEqual([]);
-  });
-
-  it('should return empty array if parent not found', async () => {
-    vi.mocked(MongoDataset.findById).mockResolvedValueOnce(null);
-
-    const result = await getParents('non-existent-id');
-    expect(result).toEqual([]);
-  });
-
-  it('should return single parent path if no further parents', async () => {
-    vi.mocked(MongoDataset.findById).mockResolvedValueOnce({
-      name: 'Parent1',
-      parentId: undefined
+  it('returns paths from the root through the requested folder', async () => {
+    const folders = new Map([
+      ['child', { _id: 'child', name: 'Child', parentId: 'parent' }],
+      ['parent', { _id: 'parent', name: 'Parent', parentId: null }]
+    ]);
+    const result = await getFolderParentPathItems({
+      folderId: 'child',
+      findFolder: async (id) => folders.get(id) ?? null
     });
-
-    const result = await getParents('parent1-id');
-
-    expect(result).toEqual([{ parentId: 'parent1-id', parentName: 'Parent1' }]);
-  });
-
-  it('should return full parent path for nested parents', async () => {
-    vi.mocked(MongoDataset.findById)
-      .mockResolvedValueOnce({
-        name: 'Child',
-        parentId: 'parent1-id'
-      })
-      .mockResolvedValueOnce({
-        name: 'Parent1',
-        parentId: 'parent2-id'
-      })
-      .mockResolvedValueOnce({
-        name: 'Parent2',
-        parentId: undefined
-      });
-
-    const result = await getParents('child-id');
-
     expect(result).toEqual([
-      { parentId: 'parent2-id', parentName: 'Parent2' },
-      { parentId: 'parent1-id', parentName: 'Parent1' },
-      { parentId: 'child-id', parentName: 'Child' }
+      { parentId: 'parent', parentName: 'Parent' },
+      { parentId: 'child', parentName: 'Child' }
     ]);
   });
 
-  it('should coerce ObjectId-like values through the response schema', async () => {
+  it('stops cycles and limits the path depth', async () => {
+    const cyclic = new Map([
+      ['first', { _id: 'first', name: 'First', parentId: 'second' }],
+      ['second', { _id: 'second', name: 'Second', parentId: 'first' }]
+    ]);
+    await expect(
+      getFolderParentPathItems({
+        folderId: 'first',
+        findFolder: async (id) => cyclic.get(id) ?? null
+      })
+    ).resolves.toEqual([
+      { parentId: 'second', parentName: 'Second' },
+      { parentId: 'first', parentName: 'First' }
+    ]);
+
+    await expect(
+      getFolderParentPathItems({
+        folderId: 'first',
+        maxDepth: 1,
+        findFolder: async (id) => cyclic.get(id) ?? null
+      })
+    ).resolves.toEqual([{ parentId: 'first', parentName: 'First' }]);
+  });
+
+  it('keeps ObjectId path identifiers valid for the response schema', async () => {
     const childHex = '69e5ca9ce4f63f23d53848da';
     const parentHex = '69e5ca9ce4f63f23d53848db';
     const childObjectId = new FakeObjectId(childHex);
     const parentObjectId = new FakeObjectId(parentHex);
+    const folders = new Map([
+      [childHex, { _id: childObjectId, name: 'Child', parentId: parentObjectId }],
+      [parentHex, { _id: parentObjectId, name: 'Parent', parentId: null }]
+    ]);
+    const result = await getFolderParentPathItems({
+      folderId: childHex,
+      findFolder: async (id) => folders.get(id) ?? null
+    });
 
-    vi.mocked(MongoDataset.findById)
-      .mockResolvedValueOnce({
-        name: 'Child',
-        parentId: parentObjectId
-      })
-      .mockResolvedValueOnce({
-        name: 'Parent',
-        parentId: null
-      });
-
-    const result = await getParents(childObjectId as unknown as string);
-    const parsed = GetDatasetPathsResponseSchema.parse(result);
-
-    expect(parsed).toEqual([
+    expect(GetDatasetPathsResponseSchema.parse(result)).toEqual([
       { parentId: parentHex, parentName: 'Parent' },
       { parentId: childHex, parentName: 'Child' }
     ]);
-    for (const item of parsed) {
-      expect(typeof item.parentId).toBe('string');
-    }
   });
+});
 
-  it('should handle circular references gracefully', async () => {
-    vi.mocked(MongoDataset.findById)
-      .mockResolvedValueOnce({
-        name: 'Node1',
-        parentId: 'node2-id'
-      })
-      .mockResolvedValueOnce({
-        name: 'Node2',
-        parentId: 'node1-id' // Circular reference
-      });
-
-    const result = await getParents('node1-id');
-
-    expect(result).toEqual([
-      { parentId: 'node2-id', parentName: 'Node2' },
-      { parentId: 'node1-id', parentName: 'Node1' }
+describe('GET /api/core/dataset/paths', () => {
+  it('returns a navigable folder breadcrumb and denies an empty inaccessible folder', async () => {
+    const { owner, members } = await getFakeUsers(1);
+    const [rootFolder, childFolder, readableDataset, hiddenFolder] = await MongoDataset.create([
+      { name: 'Root', type: DatasetTypeEnum.folder, teamId: owner.teamId, tmbId: owner.tmbId },
+      { name: 'Child', type: DatasetTypeEnum.folder, teamId: owner.teamId, tmbId: owner.tmbId },
+      {
+        name: 'Readable Dataset',
+        type: DatasetTypeEnum.dataset,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId
+      },
+      { name: 'Hidden', type: DatasetTypeEnum.folder, teamId: owner.teamId, tmbId: owner.tmbId }
     ]);
+    await MongoDataset.updateOne({ _id: childFolder._id }, { $set: { parentId: rootFolder._id } });
+    await MongoDataset.updateOne(
+      { _id: readableDataset._id },
+      { $set: { parentId: childFolder._id } }
+    );
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.dataset,
+      teamId: owner.teamId,
+      resourceId: readableDataset._id,
+      tmbId: members[0].tmbId,
+      permission: ReadPermissionVal
+    });
+
+    const response = await Call<
+      Record<string, never>,
+      GetDatasetPathsQuery,
+      GetDatasetPathsResponse
+    >(handler, {
+      auth: members[0],
+      query: { sourceId: String(childFolder._id), type: 'current' }
+    });
+    expect(response.code).toBe(200);
+    expect(response.data).toEqual([
+      { parentId: String(rootFolder._id), parentName: 'Root' },
+      { parentId: String(childFolder._id), parentName: 'Child' }
+    ]);
+    expect(JSON.stringify(response.data)).not.toContain('Readable Dataset');
+
+    const deniedDetail = await Call(detailHandler, {
+      auth: members[0],
+      query: { id: String(childFolder._id) }
+    });
+    expect(deniedDetail.error).toBe(DatasetErrEnum.unAuthDataset);
+
+    const denied = await Call<Record<string, never>, GetDatasetPathsQuery, GetDatasetPathsResponse>(
+      handler,
+      { auth: members[0], query: { sourceId: String(hiddenFolder._id), type: 'current' } }
+    );
+    expect(denied.error).toBe(DatasetErrEnum.unAuthDataset);
   });
 });
 

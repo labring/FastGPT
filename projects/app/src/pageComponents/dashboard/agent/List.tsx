@@ -99,8 +99,8 @@ const List = () => {
     onToggleSelectApp
   } = useContextSelector(AppListContext, (v) => v);
 
-  const hasCreatePer = folderDetail
-    ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
+  const hasCreatePer = parentId
+    ? Boolean(folderDetail?.permission.hasWritePer && folderDetail.type !== AppTypeEnum.httpPlugin)
     : userInfo?.team.permission.hasAppCreatePer;
   const hasActiveFilter = hasAppListActiveFilter({
     searchKey,

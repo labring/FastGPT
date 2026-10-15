@@ -69,11 +69,11 @@ function List() {
     onToggleSelectDataset
   } = useContextSelector(DatasetsContext, (v) => v);
   const { userInfo } = useUserStore();
-  const canCreateDataset = folderDetail
-    ? folderDetail.permission.hasWritePer
-    : !!userInfo?.team?.permission.hasDatasetCreatePer;
   const router = useRouter();
   const { parentId = null } = router.query as { parentId?: string | null };
+  const canCreateDataset = parentId
+    ? Boolean(folderDetail?.permission.hasWritePer)
+    : !!userInfo?.team?.permission.hasDatasetCreatePer;
   const [editPerDatasetId, setEditPerDatasetId] = useState<string>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 

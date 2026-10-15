@@ -1,5 +1,5 @@
 import { ObjectIdSchema } from '../../../../common/type/mongo';
-import { ParentIdSchema } from '../../../../common/parentFolder/type';
+import { FolderAccessModeSchema, ParentIdSchema } from '../../../../common/parentFolder/type';
 import { AppListSortEnum, AppTypeEnum } from '../../../../core/app/constants';
 import {
   AppChatConfigTypeSchema,
@@ -378,6 +378,10 @@ export const AppListItemSchema = z
     }),
     isPinned: BoolSchema.optional().meta({
       description: '是否置顶。仅在请求启用置顶排序时返回'
+    }),
+    folderAccessMode: FolderAccessModeSchema.optional().meta({
+      example: 'navigate',
+      description: '文件夹访问方式；navigate 仅允许浏览可读后代，不授予真实读取权限'
     })
   })
   .meta({
