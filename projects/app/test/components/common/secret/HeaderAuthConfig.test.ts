@@ -7,6 +7,7 @@ import {
 } from '@/components/common/secret/HeaderAuthConfig';
 import {
   formatReferenceValue,
+  getShowInput,
   getSingleReference,
   shouldRenderReferenceSelector
 } from '@/components/common/secret/HeaderAuthForm';
@@ -50,5 +51,12 @@ describe('HeaderAuth ref helpers', () => {
 
   it('renders the reference selector before a value has been selected', () => {
     expect(shouldRenderReferenceSelector({ mode: 'reference' })).toBe(true);
+  });
+
+  it('shows the input only for empty or actively edited values', () => {
+    expect(getShowInput({ secretValue: { value: '' }, index: 0 })).toBe(true);
+    expect(getShowInput({ secretValue: { value: 'token' }, index: 0 })).toBe(false);
+    expect(getShowInput({ secretValue: { secret: 'encrypted' }, index: 0 })).toBe(false);
+    expect(getShowInput({ secretValue: { value: 'token' }, editingIndex: 0, index: 0 })).toBe(true);
   });
 });

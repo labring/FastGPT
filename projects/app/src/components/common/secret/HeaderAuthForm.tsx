@@ -1,7 +1,7 @@
 import type { ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Flex, IconButton, Input } from '@chakra-ui/react';
+import { Box, Button, Flex, HStack, IconButton, Input, type ButtonProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
   getSecretCipherValue,
@@ -13,6 +13,7 @@ import { HeaderSecretTypeEnum } from '@fastgpt/global/common/secret/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 export const getSingleReference = (
   value?: HeaderSecretValueType
@@ -38,7 +39,7 @@ export const formatReferenceValue = (value?: HeaderSecretValueType) => {
     : (reference as [string, string?]).join(' / ');
 };
 
-const getShowInput = ({
+export const getShowInput = ({
   secretValue,
   editingIndex,
   index
@@ -51,12 +52,13 @@ const getShowInput = ({
   const hasValue = !!getSecretPlainValue(secretValue);
   const isEditing = editingIndex === index;
 
-  return !hasSecret || hasValue || isEditing;
+  return (!hasSecret && !hasValue) || isEditing;
 };
 
 export type SecretReferenceRenderer = (params: {
   value?: ReferenceItemValueType;
   onChange: (value?: ReferenceItemValueType) => void;
+  buttonProps?: ButtonProps;
 }) => React.ReactNode;
 
 type ValueMode = 'manual' | 'reference';
@@ -81,9 +83,9 @@ const HeaderModeSelect = ({
 }) => (
   <Box ml={2} className="nodrag">
     <NodeInputSelect
-      renderTypeList={[FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]}
+      renderTypeList={[FlowNodeInputTypeEnum.password, FlowNodeInputTypeEnum.reference]}
       selectedType={
-        mode === 'reference' ? FlowNodeInputTypeEnum.reference : FlowNodeInputTypeEnum.input
+        mode === 'reference' ? FlowNodeInputTypeEnum.reference : FlowNodeInputTypeEnum.password
       }
       onChange={(nextMode) =>
         onChange(nextMode === FlowNodeInputTypeEnum.reference ? 'reference' : 'manual')
@@ -91,6 +93,54 @@ const HeaderModeSelect = ({
     />
   </Box>
 );
+
+const CustomHeaderModeSelect = ({
+  mode,
+  onChange
+}: {
+  mode: ValueMode;
+  onChange: (mode: ValueMode) => void;
+}) => {
+  const { t } = useTranslation();
+  const isReference = mode === 'reference';
+
+  return (
+    <Box className="nodrag" flexShrink={0}>
+      <MyTooltip
+        label={t(
+          isReference ? 'workflow:click_to_change_reference' : 'workflow:click_to_change_value'
+        )}
+      >
+        <HStack
+          w={'4rem'}
+          h={10}
+          border={'1px solid'}
+          borderRight={'none'}
+          borderColor={'myGray.200'}
+          borderLeftRadius={'sm'}
+          justifyContent={'center'}
+          bg={'white'}
+          px={2}
+          spacing={2}
+          cursor={'pointer'}
+          _hover={{
+            bg: 'myGray.50'
+          }}
+          onClick={() => onChange(isReference ? 'manual' : 'reference')}
+        >
+          <MyIcon
+            name={
+              isReference ? 'core/workflow/inputType/reference' : 'core/workflow/inputType/password'
+            }
+            w={4}
+            color={'primary.600'}
+          />
+          <MyIcon name={'common/lineChange'} w={'14px'} color={'myGray.500'} />
+        </HStack>
+      </MyTooltip>
+    </Box>
+  );
+};
 
 const AuthValueDisplay = ({
   showInput,
@@ -102,7 +152,8 @@ const AuthValueDisplay = ({
   bg,
   secretValue,
   mode = 'manual',
-  renderReference
+  renderReference,
+  modeSelect
 }: {
   showInput: boolean;
   index?: number;
@@ -114,61 +165,90 @@ const AuthValueDisplay = ({
   secretValue?: HeaderSecretValueType;
   mode?: ValueMode;
   renderReference?: SecretReferenceRenderer;
+  modeSelect?: React.ReactNode;
 }) => {
   const { t } = useTranslation();
   const singleReference = getSingleReference(secretValue);
+  const hasModeSelect = !!modeSelect;
+
+  const showEditButton = mode === 'manual' && !showInput;
 
   return (
-    <Flex direction={'column'} gap={1}>
-      {renderReference && shouldRenderReferenceSelector({ mode, secretValue }) ? (
-        renderReference({
-          value: singleReference,
-          onChange: onReferenceChange || (() => undefined)
-        })
-      ) : mode === 'reference' ? (
-        <Box
-          flex={1}
-          borderRadius={'6px'}
-          border={'0.5px solid'}
-          borderColor={'primary.200'}
-          bg={'primary.50'}
-          h={10}
-          px={3}
-          alignItems={'center'}
-          display={'flex'}
-        >
-          {formatReferenceValue(secretValue) || 'Reference'}
+    <Flex w={'full'} minW={0} alignItems={'center'}>
+      <Flex flex={1} minW={0} alignItems={'center'}>
+        {modeSelect}
+        <Box flex={1} minW={0} mr={showEditButton ? 1 : 0}>
+          {renderReference && shouldRenderReferenceSelector({ mode, secretValue }) ? (
+            renderReference({
+              value: singleReference,
+              onChange: onReferenceChange || (() => undefined),
+              buttonProps: hasModeSelect
+                ? {
+                    borderRadius: 'sm',
+                    borderLeftRadius: 'none',
+                    borderColor: 'myGray.200',
+                    w: '100%'
+                  }
+                : undefined
+            })
+          ) : mode === 'reference' ? (
+            <Box
+              flex={1}
+              borderRadius={'6px'}
+              borderLeftRadius={hasModeSelect ? 'none' : undefined}
+              border={'0.5px solid'}
+              borderColor={'primary.200'}
+              bg={'primary.50'}
+              h={10}
+              px={3}
+              alignItems={'center'}
+              display={'flex'}
+              minW={0}
+              overflow={'hidden'}
+              textOverflow={'ellipsis'}
+              whiteSpace={'nowrap'}
+            >
+              {formatReferenceValue(secretValue) || 'Reference'}
+            </Box>
+          ) : showInput ? (
+            <Input
+              placeholder={'Value'}
+              bg={bg}
+              h={10}
+              maxLength={50000}
+              minW={0}
+              overflow={'hidden'}
+              textOverflow={'ellipsis'}
+              borderLeftRadius={hasModeSelect ? 'none' : undefined}
+              onFocus={() => onEdit(index)}
+              onBlur={() => onEdit(undefined)}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+            />
+          ) : (
+            <Flex
+              flex={1}
+              borderRadius={'6px'}
+              borderLeftRadius={hasModeSelect ? 'none' : undefined}
+              border={'0.5px solid'}
+              borderColor={'primary.200'}
+              bg={'primary.50'}
+              h={10}
+              px={3}
+              alignItems={'center'}
+              gap={1}
+              minW={0}
+              overflow={'hidden'}
+            >
+              <MyIcon name="checkCircle" w={'16px'} color={'primary.600'} />
+              <Box fontSize={'sm'} fontWeight={'medium'} color={'primary.600'}>
+                {t('common:had_auth_value')}
+              </Box>
+            </Flex>
+          )}
         </Box>
-      ) : showInput ? (
-        <Input
-          placeholder={'Value'}
-          bg={bg}
-          h={10}
-          maxLength={50000}
-          onFocus={() => onEdit(index)}
-          onBlur={() => onEdit(undefined)}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      ) : (
-        <Flex
-          flex={1}
-          borderRadius={'6px'}
-          border={'0.5px solid'}
-          borderColor={'primary.200'}
-          bg={'primary.50'}
-          h={10}
-          px={3}
-          alignItems={'center'}
-          gap={1}
-        >
-          <MyIcon name="checkCircle" w={'16px'} color={'primary.600'} />
-          <Box fontSize={'sm'} fontWeight={'medium'} color={'primary.600'}>
-            {t('common:had_auth_value')}
-          </Box>
-        </Flex>
-      )}
-      {mode === 'manual' && !showInput && (
+      </Flex>
+      {showEditButton && (
         <IconButton
           aria-label="Edit header"
           icon={<MyIcon name="edit" w={'16px'} />}
@@ -357,12 +437,16 @@ const HeaderAuthForm = ({
             <Box>
               {customHeaders?.map((item, index) => {
                 return (
-                  <Flex key={index} mb={2} align="center">
-                    <Flex w={1 / 3} alignItems={'center'}>
+                  <Flex key={index} mb={2} align="center" gap={2}>
+                    <Flex flex={'1 1 0'} minW={0} alignItems={'center'}>
                       <Input
                         flex={1}
-                        h={8}
+                        minW={0}
+                        w={'full'}
+                        h={10}
                         bg={bg}
+                        overflow={'hidden'}
+                        textOverflow={'ellipsis'}
                         placeholder="key"
                         maxLength={64}
                         value={item.key}
@@ -374,72 +458,77 @@ const HeaderAuthForm = ({
                           });
                         }}
                       />
-                      {renderReference && (
-                        <HeaderModeSelect
-                          mode={getValueMode(`custom-${index}`, item.value)}
-                          onChange={(mode) => {
-                            changeValueMode(`custom-${index}`, mode);
+                    </Flex>
+                    <Flex flex={'2 1 0'} minW={0} alignItems={'center'} gap={2}>
+                      <Box flex={1} minW={0}>
+                        <AuthValueDisplay
+                          showInput={getShowInput({
+                            secretValue: item.value,
+                            editingIndex,
+                            index
+                          })}
+                          value={getManualValue(item.value)}
+                          onChange={(value) => {
                             onChange({
                               customs: headerSecretValue.customs?.map((header, i) =>
-                                i === index ? { ...header, value: { value: '' } } : header
+                                i === index ? { ...header, value: { value } } : header
                               )
+                            });
+                          }}
+                          onReferenceChange={(value) => {
+                            const ref = toSecretReference(value);
+                            onChange({
+                              customs: headerSecretValue.customs?.map((header, i) =>
+                                i === index
+                                  ? {
+                                      ...header,
+                                      value: ref ? { ref } : { value: '' }
+                                    }
+                                  : header
+                              )
+                            });
+                          }}
+                          secretValue={item.value}
+                          mode={getValueMode(`custom-${index}`, item.value)}
+                          renderReference={renderReference}
+                          modeSelect={
+                            renderReference ? (
+                              <CustomHeaderModeSelect
+                                mode={getValueMode(`custom-${index}`, item.value)}
+                                onChange={(mode) => {
+                                  changeValueMode(`custom-${index}`, mode);
+                                  onChange({
+                                    customs: headerSecretValue.customs?.map((header, i) =>
+                                      i === index ? { ...header, value: { value: '' } } : header
+                                    )
+                                  });
+                                }}
+                              />
+                            ) : undefined
+                          }
+                          index={index}
+                          onEdit={setEditingIndex}
+                          bg={bg}
+                        />
+                      </Box>
+                      {customHeaders.length > 1 && (
+                        <IconButton
+                          aria-label="Remove header"
+                          icon={<MyIcon name="delete" w="16px" />}
+                          size="sm"
+                          variant="ghost"
+                          color={'myGray.500'}
+                          flexShrink={0}
+                          _hover={{ color: 'red.500' }}
+                          isDisabled={customHeaders.length <= 1}
+                          onClick={() => {
+                            onChange({
+                              customs: headerSecretValue.customs?.filter((_, i) => i !== index)
                             });
                           }}
                         />
                       )}
                     </Flex>
-                    <Box w={2 / 3} ml={2}>
-                      <AuthValueDisplay
-                        showInput={getShowInput({
-                          secretValue: item.value,
-                          editingIndex,
-                          index
-                        })}
-                        value={getManualValue(item.value)}
-                        onChange={(value) => {
-                          onChange({
-                            customs: headerSecretValue.customs?.map((header, i) =>
-                              i === index ? { ...header, value: { value } } : header
-                            )
-                          });
-                        }}
-                        onReferenceChange={(value) => {
-                          const ref = toSecretReference(value);
-                          onChange({
-                            customs: headerSecretValue.customs?.map((header, i) =>
-                              i === index
-                                ? {
-                                    ...header,
-                                    value: ref ? { ref } : { value: '' }
-                                  }
-                                : header
-                            )
-                          });
-                        }}
-                        secretValue={item.value}
-                        mode={getValueMode(`custom-${index}`, item.value)}
-                        renderReference={renderReference}
-                        index={index}
-                        onEdit={setEditingIndex}
-                        bg={bg}
-                      />
-                    </Box>
-                    {customHeaders.length > 1 && (
-                      <IconButton
-                        aria-label="Remove header"
-                        icon={<MyIcon name="delete" w="16px" />}
-                        size="sm"
-                        variant="ghost"
-                        color={'myGray.500'}
-                        _hover={{ color: 'red.500' }}
-                        isDisabled={customHeaders.length <= 1}
-                        onClick={() => {
-                          onChange({
-                            customs: headerSecretValue.customs?.filter((_, i) => i !== index)
-                          });
-                        }}
-                      />
-                    )}
                   </Flex>
                 );
               })}

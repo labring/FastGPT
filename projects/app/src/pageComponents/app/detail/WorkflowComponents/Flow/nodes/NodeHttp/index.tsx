@@ -334,13 +334,14 @@ export function RenderHttpProps({
           <Flex flex={1} />
           <HeaderAuthConfig
             storeHeaderSecretConfig={headerSecret?.value}
-            renderReference={({ value, onChange }) => (
+            renderReference={({ value, onChange, buttonProps }) => (
               <ReferSelector
                 list={referenceList}
                 value={value}
                 isArray={false}
                 onSelect={onChange}
                 popDirection={'bottom'}
+                ButtonProps={buttonProps}
               />
             )}
             onUpdate={(data) => {

@@ -113,7 +113,7 @@ const HeaderAuthConfig = ({
           iconSrc={'common/setting'}
           iconColor={'primary.600'}
           title={t('common:auth_config')}
-          w={480}
+          w={540}
         >
           <ModalBody px={9}>
             <HeaderAuthForm
