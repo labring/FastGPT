@@ -102,17 +102,7 @@ description: FastGPT 私有部署常见问题排查方式
 
 ### 如何修改 root 密码
 
-三种方式：
-
-1. **首次登录时**：使用初始密码 `123456` 登录后，系统会强制要求修改密码。
-2. **日常修改**（专业版）：进入 `账号 - 个人信息`，点击密码行的「修改」按钮，按提示完成身份验证后设置新密码。
-3. **忘记密码时**：在服务器上通过容器脚本重置，无需重启服务：
-
-   ```bash
-   docker exec -e ROOT_PSW='你的新密码' fastgpt-app node /app/scripts/reset-root-password.cjs
-   ```
-
-   容器名以 `docker ps` 输出为准。若新密码不满足强度要求，需追加 `--force`。
+修改环境变量中的 `DEFAULT_ROOT_PSW`，然后重启 FastGPT。
 
 ---
 
@@ -154,7 +144,7 @@ description: FastGPT 私有部署常见问题排查方式
 
 适用版本：已按 4.17.0 核实。浏览器上传文件用的地址取自 `FILE_DOMAIN`，没设置时取自 `FE_DOMAIN`。页面是 HTTPS、而这个地址是 `http://` 时，浏览器会把请求当作混合内容拦截，请求到不了服务端。
 
-怎么做：把对应配置改成可以访问的 HTTPS 地址（设置了 `FILE_DOMAIN` 就改它，否则改 `FE_DOMAIN`），然后重启。可以在浏览器控制台确认是否有 Mixed Content 报错。
+怎么做：把对应配置改成可以访问的 https 地址（设置了 `FILE_DOMAIN` 就改它，否则改 `FE_DOMAIN`），然后重启。可以在浏览器控制台确认是否有 Mixed Content 报错。
 
 ---
 

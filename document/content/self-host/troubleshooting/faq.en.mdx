@@ -95,17 +95,7 @@ Or FastGPT cannot request OneAPI (not in the same network).
 
 ### How to change the root password
 
-There are three ways:
-
-1. **On first login**: sign in with the initial password `123456`, and the system will force you to change it.
-2. **Routine change** (Pro edition): go to `Account - Profile`, click the "Change" button in the password row, and complete the identity verification before setting a new password.
-3. **If you forgot the password**: reset it from the server with the container script. No restart is needed:
-
-   ```bash
-   docker exec -e ROOT_PSW='your-new-password' fastgpt-app node /app/scripts/reset-root-password.cjs
-   ```
-
-   Use the container name shown by `docker ps`. If the new password does not meet the strength requirement, append `--force`.
+Modify the `DEFAULT_ROOT_PSW` environment variable, and then restart FastGPT.
 
 ---
 
