@@ -352,6 +352,25 @@ describe('checkWorkflowNodeIssues', () => {
     expect(result['user-select']?.map((issue) => issue.code) ?? []).toContain('invalid_reference');
   });
 
+  it('still checks the connection of a reference-mode user select', () => {
+    const userSelectNode = makeNode('user-select', FlowNodeTypeEnum.userSelect, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userSelectOptions,
+          label: 'Options',
+          valueType: WorkflowIOValueTypeEnum.any,
+          renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          value: [['start', NodeOutputKeyEnum.userChatInput]]
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({ nodes: [startNode, userSelectNode], edges: [] });
+
+    expect(result['user-select']?.map((issue) => issue.code) ?? []).toContain('no_upstream');
+  });
+
   it('rejects invalid global-variable dynamic options in user select and form input', () => {
     const userSelectNode = makeNode('user-select', FlowNodeTypeEnum.userSelect, {
       inputs: [
@@ -396,6 +415,86 @@ describe('checkWorkflowNodeIssues', () => {
       'invalid_reference'
     );
     expect(result.issueMap.form?.map((issue) => issue.code) ?? []).toContain('invalid_reference');
+  });
+
+  it('accepts dynamic options from unchecked global variables and system variables', () => {
+    const globalUserSelect = makeNode('global-user-select', FlowNodeTypeEnum.userSelect, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userSelectOptions,
+          label: 'Options',
+          valueType: WorkflowIOValueTypeEnum.any,
+          renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          value: [[VARIABLE_NODE_ID, 'configured-options']]
+        }
+      ]
+    });
+    const systemForm = makeNode('system-form', FlowNodeTypeEnum.formInput, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userInputForms,
+          value: [
+            {
+              key: 'user',
+              label: 'User',
+              listInputType: FlowNodeInputTypeEnum.reference,
+              listReference: [[VARIABLE_NODE_ID, 'userId']]
+            }
+          ]
+        }
+      ]
+    });
+    const edges = [
+      { id: 'e1', source: 'start', target: 'global-user-select', type: EDGE_TYPE },
+      { id: 'e2', source: 'start', target: 'system-form', type: EDGE_TYPE }
+    ];
+
+    const withoutChatConfig = checkWorkflowBeforeRunOrPublish({
+      nodes: [startNode, globalUserSelect],
+      edges: [edges[0]]
+    });
+    const withSystemVariable = checkWorkflowBeforeRunOrPublish({
+      nodes: [startNode, systemForm],
+      edges: [edges[1]],
+      chatConfig: { variables: [] } as any
+    });
+
+    expect(
+      withoutChatConfig.issueMap['global-user-select']?.map((issue) => issue.code) ?? []
+    ).not.toContain('invalid_reference');
+    expect(
+      withSystemVariable.issueMap['system-form']?.map((issue) => issue.code) ?? []
+    ).not.toContain('invalid_reference');
+  });
+
+  it('preserves manual user-select options while the node uses references', () => {
+    const userSelectNode = makeNode('user-select', FlowNodeTypeEnum.userSelect, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userSelectOptions,
+          label: 'Options',
+          valueType: WorkflowIOValueTypeEnum.any,
+          renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          value: [[VARIABLE_NODE_ID, 'options']],
+          userSelectManualOptions: [
+            { key: 'allow', value: 'Allow' },
+            { key: 'deny', value: 'Deny' }
+          ]
+        }
+      ]
+    });
+
+    const stored = uiWorkflow2StoreWorkflow({ nodes: [userSelectNode], edges: [] });
+
+    expect(stored.nodes[0]?.inputs[0]).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.reference,
+      userSelectManualOptions: [
+        { key: 'allow', value: 'Allow' },
+        { key: 'deny', value: 'Deny' }
+      ]
+    });
   });
 
   it('reports nodes without upstream connections', () => {

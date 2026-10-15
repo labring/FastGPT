@@ -53,12 +53,11 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
     };
   }
 
-  node.isEntry = false;
-
   const { text: userSelectedVal } = chatValue2RuntimePrompt(query);
 
   // Error status
   if (userSelectedVal === undefined) {
+    node.isEntry = false;
     return {
       [DispatchNodeResponseKeyEnum.skipHandleId]: isReferenceMode
         ? [getHandleId(nodeId, 'source', 'ref_default')]
@@ -66,19 +65,34 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
     };
   }
 
+  const selectedOption = userSelectOptions.find((item) => item.value === userSelectedVal);
+  if (!selectedOption) {
+    return {
+      [DispatchNodeResponseKeyEnum.interactive]: {
+        type: 'userSelect',
+        params: {
+          description,
+          userSelectOptions
+        }
+      }
+    };
+  }
+
+  node.isEntry = false;
+
   return {
     data: {
-      [NodeOutputKeyEnum.selectResult]: userSelectedVal
+      [NodeOutputKeyEnum.selectResult]: selectedOption.value
     },
     [DispatchNodeResponseKeyEnum.rewriteHistories]: histories.slice(0, -2), // Removes the current session record as the history of subsequent nodes
     [DispatchNodeResponseKeyEnum.skipHandleId]: isReferenceMode
       ? []
       : userSelectOptions
-          .filter((item) => item.value !== userSelectedVal)
+          .filter((item) => item.value !== selectedOption.value)
           .map((item) => getHandleId(nodeId, 'source', item.key)),
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      userSelectResult: userSelectedVal
+      userSelectResult: selectedOption.value
     },
-    [DispatchNodeResponseKeyEnum.toolResponse]: userSelectedVal
+    [DispatchNodeResponseKeyEnum.toolResponse]: selectedOption.value
   };
 };

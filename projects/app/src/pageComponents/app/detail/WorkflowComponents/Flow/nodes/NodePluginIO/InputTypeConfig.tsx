@@ -889,7 +889,6 @@ const InputTypeConfig = ({
                   list={referenceList}
                   value={listReference}
                   onSelect={(value) => setValue('listReference', value)}
-                  clearInvalid
                 />
               </Grid>
             )}

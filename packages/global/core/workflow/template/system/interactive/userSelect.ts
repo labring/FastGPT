@@ -52,6 +52,16 @@ export const UserSelectNode: FlowNodeTemplateType = {
           value: 'Cancel',
           key: 'option2'
         }
+      ],
+      userSelectManualOptions: [
+        {
+          value: 'Confirm',
+          key: 'option1'
+        },
+        {
+          value: 'Cancel',
+          key: 'option2'
+        }
       ]
     }
   ],

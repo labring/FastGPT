@@ -51,6 +51,7 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { getWorkflowModelDetails } from './modelData';
+import { workflowSystemVariables } from '../app/utils';
 import {
   filterSelectableWorkflowNodeOutputs,
   storeEdge2RenderEdge,
@@ -514,7 +515,15 @@ const dynamicOptionReferenceIsLive = (
   const [refNodeId, refOutputId] = value;
   if (!refNodeId || !refOutputId) return false;
   if (refNodeId === VARIABLE_NODE_ID) {
-    // variables 未提供时保持单节点增量校验的兼容性；运行/发布前会传入完整变量配置。
+    const systemVariable = workflowSystemVariables.find((item) => item.key === refOutputId);
+    if (systemVariable) {
+      return (
+        systemVariable.valueType === undefined ||
+        dynamicOptionValueTypes.has(systemVariable.valueType)
+      );
+    }
+
+    // variables 未提供时保持单节点增量校验的兼容性。
     if (!variables) return true;
 
     const variable = variables.find((item) => item.key === refOutputId);
@@ -968,23 +977,23 @@ export const checkWorkflowNodeIssues = ({
               inputKey: NodeInputKeyEnum.userSelectOptions
             });
           }
-          continue;
-        }
-        const configValue = optionInput?.value as Array<{ value?: string }> | undefined;
-        if (!configValue || configValue.length === 0) {
-          addIssue({
-            node,
-            code: 'user_select_empty',
-            message: getWorkflowCheckIssueMessage('user_select_empty', t),
-            inputKey: NodeInputKeyEnum.userSelectOptions
-          });
-        } else if (configValue.some((item) => !item.value)) {
-          addIssue({
-            node,
-            code: 'user_select_value_empty',
-            message: getWorkflowCheckIssueMessage('user_select_value_empty', t),
-            inputKey: NodeInputKeyEnum.userSelectOptions
-          });
+        } else {
+          const configValue = optionInput?.value as Array<{ value?: string }> | undefined;
+          if (!configValue || configValue.length === 0) {
+            addIssue({
+              node,
+              code: 'user_select_empty',
+              message: getWorkflowCheckIssueMessage('user_select_empty', t),
+              inputKey: NodeInputKeyEnum.userSelectOptions
+            });
+          } else if (configValue.some((item) => !item.value)) {
+            addIssue({
+              node,
+              code: 'user_select_value_empty',
+              message: getWorkflowCheckIssueMessage('user_select_value_empty', t),
+              inputKey: NodeInputKeyEnum.userSelectOptions
+            });
+          }
         }
       }
 
@@ -1427,7 +1436,7 @@ export const checkWorkflowBeforeRunOrPublish = ({
     nodes,
     edges,
     models,
-    variables: chatConfig?.variables ?? [],
+    variables: chatConfig?.variables,
     t
   });
   const chatConfigIssues = checkWorkflowChatConfigModelIssues({ chatConfig, models, t });
