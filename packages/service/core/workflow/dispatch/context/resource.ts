@@ -12,8 +12,8 @@ import {
   extractAppResources,
   getAppResourceKey,
   mergeAppResources
-} from '../../app/resource/utils';
-import { getWorkflowResourceContext } from '../utils/context';
+} from '../../../app/resource/utils';
+import { getWorkflowResourceContext } from './index';
 
 /** 按资源快照初始化内存白名单字典；纯内存操作，不执行数据库查询。 */
 export const createWorkflowResourceContext = ({

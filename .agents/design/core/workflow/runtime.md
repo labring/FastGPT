@@ -527,7 +527,7 @@ start → Agent ─┤                            ├──→ End
 
 ### 核心代码
 
-- `packages/service/core/workflow/dispatch/index.ts` - WorkflowQueue 类
+- `packages/service/core/workflow/dispatch/queue.ts` - WorkflowQueue 类
 - `packages/service/core/workflow/utils/tarjan.ts` - Tarjan 算法
 - `packages/global/core/workflow/runtime/type.ts` - 类型定义
 - `packages/global/core/workflow/runtime/utils.ts` - 工具函数

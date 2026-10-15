@@ -18,8 +18,8 @@ import { MongoAgentSkills } from '../../ai/skill/model/schema';
 import { MongoApp } from '../../app/schema';
 import { getAppVersionById } from '../../app/version/controller';
 import { MongoDataset } from '../../dataset/schema';
-import { getWorkflowResourceContext } from '../utils/context';
-import { hasWorkflowResource, createWorkflowResourceContext } from './context';
+import { getWorkflowResourceContext } from '../dispatch/context';
+import { hasWorkflowResource, createWorkflowResourceContext } from '../dispatch/context/resource';
 
 /** 静态资源快照实体不可用错误；不能被工具加载器降级为单个工具不可用。 */
 export class WorkflowResourceError extends UserError {}

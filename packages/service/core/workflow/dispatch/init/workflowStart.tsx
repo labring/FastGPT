@@ -1,3 +1,4 @@
+import { getWorkflowContext } from '@fastgpt/service/core/workflow/dispatch/context';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -14,9 +15,9 @@ type Response = DispatchNodeResultType<{
 export const dispatchWorkflowStart = async (props: Record<string, any>): Promise<Response> => {
   const {
     query,
-    variableState,
     params: { userChatInput }
   } = props as UserChatInputProps;
+  const { variableContext: variableState } = getWorkflowContext();
 
   const { text, files } = chatValue2RuntimePrompt(query);
 

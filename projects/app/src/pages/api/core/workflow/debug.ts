@@ -1,4 +1,4 @@
-import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/dispatch/context/resource';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -8,7 +8,6 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { createChatUsageRecord } from '@fastgpt/service/support/wallet/usage/controller';
@@ -115,7 +114,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
     chatConfig: workflowChatConfig,
     histories: history,
     stream: false,
-    maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
     nodeResponseWriteConfig: {
       persistToDb: false,
       retainInMemory: true

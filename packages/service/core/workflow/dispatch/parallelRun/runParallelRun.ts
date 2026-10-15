@@ -1,3 +1,4 @@
+import { createWorkflowRuntimeSummary } from '../utils/summary';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -18,7 +19,8 @@ import {
   type ParallelFullResultItem
 } from './service';
 import { pushSubWorkflowUsage } from '../utils';
-import { createContainerRunStateSnapshot, syncContainerRunState } from '../utils/containerRunState';
+import { WorkflowRunStateSnapshot } from '../utils/containerRunState';
+import { getWorkflowContext, runWithContext } from '../context';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.nestedInputArray]: Array<any>;
@@ -34,7 +36,12 @@ type Response = DispatchNodeResultType<{
 }>;
 
 export const dispatchParallelRun = async (props: Props): Promise<Response> => {
-  const { params, runtimeNodes, runtimeEdges, node, checkIsStopping } = props;
+  const {
+    checkIsStopping,
+    variableContext: parentVariableContext,
+    nodeResponseSink
+  } = getWorkflowContext();
+  const { params, runtimeNodes, runtimeEdges, node } = props;
   const { name } = node;
   const {
     loopInputArray = [],
@@ -88,19 +95,29 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
         const getRunningTime = () => +((Date.now() - startTime) / 1000).toFixed(2);
 
         try {
-          const taskVariableState = props.variableState.clone();
-          const taskStateSnapshot = createContainerRunStateSnapshot({
-            nodes: taskRuntimeNodes,
-            childrenNodeIdList,
-            variableState: taskVariableState
+          const taskStateSnapshot = new WorkflowRunStateSnapshot({
+            variableContext: parentVariableContext,
+            nodeOutputs: {
+              sourceNodes: taskRuntimeNodes,
+              targetNodes: runtimeNodes,
+              childrenNodeIdList
+            }
           });
-          const response = await runWorkflow({
-            ...props,
-            variableState: taskVariableState,
-            nodeResponseParentId: taskResponseId,
-            runtimeNodes: taskRuntimeNodes,
-            runtimeEdges: taskRuntimeEdges
+          const taskContext = getWorkflowContext().getChildContext({
+            variableContext: taskStateSnapshot.variableContext,
+            nodeResponseSink: getWorkflowContext().nodeResponseSink.getChildContext({
+              workflowRuntimeSummary: createWorkflowRuntimeSummary(),
+              defaultParentId: taskResponseId
+            })
           });
+          const response = await runWithContext(taskContext, () =>
+            runWorkflow({
+              ...props,
+              nodeResponseParentId: taskResponseId,
+              runtimeNodes: taskRuntimeNodes,
+              runtimeEdges: taskRuntimeEdges
+            })
+          );
           const runningTime = getRunningTime();
 
           // Push usage per attempt (resources were consumed regardless of success)
@@ -120,14 +137,9 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
 
           const result = parseTaskResponse({ index, response });
           if (result.success) {
-            await syncContainerRunState({
-              sourceNodes: taskRuntimeNodes,
-              targetNodes: runtimeNodes,
-              childrenNodeIdList,
-              stateSnapshot: taskStateSnapshot,
-              childVariableState: taskVariableState,
-              parentVariableState: props.variableState
-            });
+            await taskStateSnapshot.commit();
+          } else {
+            taskStateSnapshot.discard();
           }
           const attemptResult = {
             ...result,
@@ -191,18 +203,16 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
   );
   // 任务包装节点只通过 sink 输出；父 parallelRun 只保留轻量统计和业务摘要。
   const rootChildResponseCount = getNodeResponseChildResponseCount(attemptResponseDetails);
-  if (props.nodeResponseSink) {
-    for (const detail of attemptResponseDetails) {
-      await props.nodeResponseSink.publish([
-        {
-          response: {
-            ...detail,
-            childrenResponses: undefined
-          },
-          parentId: props.nodeResponseParentId
-        }
-      ]);
-    }
+  for (const detail of attemptResponseDetails) {
+    await nodeResponseSink.publish([
+      {
+        response: {
+          ...detail,
+          childrenResponses: undefined
+        },
+        parentId: props.nodeResponseParentId
+      }
+    ]);
   }
 
   const data = {

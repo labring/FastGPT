@@ -1,13 +1,7 @@
-import { prepareChatFiles, type ChatFileInput } from '../../chat/file/service';
 import { AsyncLocalStorage } from 'async_hooks';
-import type { MCPClient } from '../../app/mcp';
-import { getFileUrlIdentity } from '../../chat/file/utils';
-import type { WorkflowFileContext, WorkflowFileInput, WorkflowFileRegistrar } from './fileContext';
-import {
-  createExternalHttpFileSource,
-  materializeFileSource
-} from '../../../common/file/read/source';
-import { getFileMaxSize } from '../../../common/file/utils';
+import type { MCPClient } from '../../../app/mcp';
+import { getFileUrlIdentity } from '../../../chat/file/utils';
+import type { WorkflowFileContext, WorkflowFileInput } from './file';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type {
@@ -17,42 +11,103 @@ import type {
   UserChatItemFileItemType
 } from '@fastgpt/global/core/chat/type';
 import type { WorkflowResourceContext } from '@fastgpt/global/core/workflow/runtime/type';
+import type { WorkflowVariableStateLike } from './variables';
+import type { WorkflowNodeResponseContext } from './nodeResponse';
+import type { WorkflowRuntimeControl } from './runtimeControl';
 
-type ContextType = {
+type WorkflowContextData = {
+  /** 本层运行控制；派生 Context 时复制，不能与父层共享可变预算和深度。 */
+  runtimeControl: WorkflowRuntimeControl;
+  /** 本次运行的停止检查；子工作流继承同一个请求级控制能力。 */
+  checkIsStopping: () => boolean;
   mcpClientMemory: Record<string, MCPClient>;
-  fileContext?: WorkflowFileContext;
-  fileRegistrar?: WorkflowFileRegistrar;
+  fileContext: WorkflowFileContext;
+  /** 当前流程的变量能力；子 App 独立构建，容器分支克隆后按原有规则回写。 */
+  variableContext: WorkflowVariableStateLike;
+  /** 本次流程已初始化的响应 Scope；无输出时也必须提供 summary-only Context。 */
+  nodeResponseSink: WorkflowNodeResponseContext;
   resourceContext?: WorkflowResourceContext;
+};
+
+type WorkflowContextOverrides = Omit<Partial<WorkflowContextData>, 'runtimeControl'> & {
+  runtimeControl?: Partial<WorkflowRuntimeControl>;
+};
+
+type ContextType = WorkflowContextData & {
+  /** 只构建新 Context：控制状态独立复制，其余未覆盖能力共享引用，不激活作用域。 */
+  getChildContext: (overrides?: WorkflowContextOverrides) => ContextType;
 };
 
 export const WorkflowContext = new AsyncLocalStorage<ContextType>();
 
-export const runWithContext = <T>(value: ContextType, fn: (ctx: ContextType) => T): T =>
-  WorkflowContext.run(value, () => {
-    const store = WorkflowContext.getStore()!;
-    return fn(store);
+/** 构建完整运行 Context，保留入口对象身份；每一级派生均基于方法的实际接收者。 */
+const createWorkflowContext = (value: WorkflowContextData): ContextType => {
+  if (!value.fileContext) throw new Error('Workflow file context is unavailable');
+  if (!value.variableContext) throw new Error('Workflow variable context is unavailable');
+  if (typeof value.checkIsStopping !== 'function') {
+    throw new Error('Workflow stop checker is unavailable');
+  }
+  if (
+    !value.nodeResponseSink?.workflowRuntimeSummary ||
+    typeof value.nodeResponseSink.getChildContext !== 'function'
+  ) {
+    throw new Error('Workflow node response context is unavailable');
+  }
+  if (!value.runtimeControl) throw new Error('Workflow runtime control is unavailable');
+  return Object.assign(value, {
+    getChildContext(this: ContextType, overrides: WorkflowContextOverrides = {}): ContextType {
+      if ('runtimeControl' in overrides && !overrides.runtimeControl) {
+        throw new Error('Workflow runtime control is unavailable');
+      }
+      // 控制状态属于本层执行：复制预算、深度和标记；变量等能力仍由调用方决定是否克隆。
+      return createWorkflowContext({
+        ...this,
+        ...overrides,
+        runtimeControl: { ...this.runtimeControl, ...overrides.runtimeControl }
+      });
+    }
   });
-
-export const getWorkflowContext = (): ContextType => {
-  return WorkflowContext.getStore()!;
 };
 
-/** 获取当前 Workflow 的文件上下文，供读取已登记文件或登记新外链。 */
-export const getWorkflowFileContext = () => WorkflowContext.getStore()?.fileContext;
+/** 注入完整运行上下文；无文件也必须传入空文件 Context，禁止带缺失依赖启动节点。 */
+export const runWithContext = <T>(value: WorkflowContextData, fn: (ctx: ContextType) => T): T => {
+  const context = createWorkflowContext(value);
+  return WorkflowContext.run(context, () => fn(context));
+};
 
-/** 获取 Workflow 内部无独立配置的统一文件数量上限。 */
-export const getWorkflowFileMaxAmount = () => {
-  const maxFileAmount = getWorkflowFileContext()?.limits.maxFileAmount;
-  if (maxFileAmount === undefined) {
+/** 获取节点运行必需的完整上下文；统一检查作用域及文件限额已初始化，保留合法的零额度。 */
+export const getWorkflowContext = (): ContextType => {
+  const context = WorkflowContext.getStore();
+  if (!context) throw new Error('Workflow context is unavailable');
+  if (context.fileContext?.limits.maxFileAmount === undefined) {
     throw new Error('Workflow file context is unavailable');
   }
-  return maxFileAmount;
+  if (typeof context.checkIsStopping !== 'function') {
+    throw new Error('Workflow stop checker is unavailable');
+  }
+  if (!context.variableContext) throw new Error('Workflow variable context is unavailable');
+  if (
+    !context.nodeResponseSink?.workflowRuntimeSummary ||
+    typeof context.nodeResponseSink.getChildContext !== 'function'
+  ) {
+    throw new Error('Workflow node response context is unavailable');
+  }
+  if (!context.runtimeControl) throw new Error('Workflow runtime control is unavailable');
+  return context;
 };
 
-/** 获取只供 Workflow 输入适配器使用的文件登记能力。 */
-export const getWorkflowFileRegistrar = () => WorkflowContext.getStore()?.fileRegistrar;
-
-/** 获取当前 App 运行时的只读资源快照。非 App 来源返回 undefined。 */
+export const updateWorkflowContextVal = (val: Partial<WorkflowContextData>) => {
+  // 保留初始化阶段尚无运行作用域时不做更新的语义，不调用节点必需的 getter。
+  const context = WorkflowContext.getStore();
+  if (context) {
+    for (const key in val) {
+      // @ts-ignore
+      context[key] = val[key];
+    }
+  }
+};
+// 简化 context 导出
+export const getWorkflowFileContext = () => WorkflowContext.getStore()?.fileContext;
 export const getWorkflowResourceContext = () => WorkflowContext.getStore()?.resourceContext;
 
 /**
@@ -83,17 +138,14 @@ const cloneChildChatInputs = ({
     })) as ChatItemMiniType[]
   };
 };
-
 /** 为 Child 返回独立的文件对象引用，字符串 URL 作为不可变值直接复用。 */
 const cloneChildFile = (file: WorkflowFileInput): WorkflowFileInput =>
   typeof file === 'string' ? file : { ...file };
-
 const cloneChildFiles = <File extends WorkflowFileInput>(files: File[]): File[] =>
   files.map((file) => cloneChildFile(file) as File);
-
 /**
  * 先按父 Context 额度过滤 Child 的实际 query/history/其它文件输入，再派生隔离 Context。
- * Child 交互新增文件会通过父 registrar 鉴权，再同步加入当前派生 Context。
+ * Child 交互新增文件通过父 Context.register 鉴权，再同步加入当前派生 Context。
  */
 export const runWithDerivedWorkflowFileContext = async <T>({
   query = [],
@@ -108,31 +160,15 @@ export const runWithDerivedWorkflowFileContext = async <T>({
   /** 传入时子工作流切换到该资源上下文；省略时继承父级。 */
   resourceContext?: WorkflowResourceContext;
   fn: (scope: {
-    resolveInputFile?: (file: ChatFileStoreValue) => Promise<string | undefined>;
+    resolveInputFile: (file: ChatFileStoreValue) => Promise<string | undefined>;
     query: UserChatItemValueItemType[];
     histories: ChatItemMiniType[];
     filterFiles: <File extends WorkflowFileInput>(files: File[]) => File[];
   }) => Promise<T>;
 }): Promise<T> => {
-  const parentStore = WorkflowContext.getStore();
-  const parentFileContext = parentStore?.fileContext;
-  if (!parentStore || !parentFileContext) {
-    const childInputs = cloneChildChatInputs({ query, histories });
-    const runChild = () =>
-      fn({
-        ...childInputs,
-        filterFiles: (files) => cloneChildFiles(files)
-      });
-    if (!resourceContext) return runChild();
-
-    return runWithContext(
-      {
-        mcpClientMemory: parentStore?.mcpClientMemory ?? {},
-        resourceContext
-      },
-      runChild
-    );
-  }
+  // Child 必须继承已初始化的父文件 Context，不能在缺失时绕过文件筛选和额度规则。
+  const parentStore = getWorkflowContext();
+  const { fileContext: parentFileContext } = parentStore;
 
   const maxFileAmount = Math.max(parentFileContext.limits.maxFileAmount, 0);
   const seenFileIdentities = new Set<string>();
@@ -202,16 +238,20 @@ export const runWithDerivedWorkflowFileContext = async <T>({
     query: selectedQuery,
     histories: selectedHistories
   });
+  const childFileContext = await parentFileContext.derive(selectedFiles);
+  // 直接查询 Child 登记表，后续新增输入也能参与筛选；不维护另一份易失步的可见文件列表。
   const filterFiles = <File extends WorkflowFileInput>(inputFiles: File[]) =>
-    cloneChildFiles(inputFiles.filter(isSelectedFile));
-
-  let childFileContext = await parentFileContext.derive(selectedFiles);
-  const childStore: ContextType = {
-    ...parentStore,
+    cloneChildFiles(
+      inputFiles.filter((file) =>
+        typeof file === 'string'
+          ? Boolean(childFileContext.resolve(file))
+          : Boolean(childFileContext.resolveInputFile(file))
+      )
+    );
+  const childStore = parentStore.getChildContext({
     fileContext: childFileContext,
-    fileRegistrar: undefined,
     resourceContext: resourceContext ?? parentStore.resourceContext
-  };
+  });
 
   const resolveInputFile = async (file: ChatFileStoreValue) => {
     const ref = childFileContext.resolveInputFile(file);
@@ -219,36 +259,6 @@ export const runWithDerivedWorkflowFileContext = async <T>({
     if (rejectedFileIdentities.has(getFileIdentity(file) ?? '')) return;
     throw new UserError('Child workflow file is not selected in its file context');
   };
-
-  let registrationQueue = Promise.resolve();
-  const childRegistrar: WorkflowFileRegistrar | undefined = parentStore.fileRegistrar
-    ? {
-        registerInputFile: (params) => {
-          const registration = registrationQueue.then(async () => {
-            const existingRef = childFileContext.resolveInputFile(params.file);
-            if (existingRef) return existingRef;
-            if (selectedFiles.length >= maxFileAmount) return;
-
-            const ref = await parentStore.fileRegistrar!.registerInputFile(params);
-            if (!ref) return;
-            selectedFiles.push(ref.modelUrl);
-            const identity = parentFileContext.getIdentity(ref.modelUrl);
-            if (identity) acceptedFileIdentities.add(identity);
-            const currentParentFileContext = parentStore.fileContext ?? parentFileContext;
-            childFileContext = await currentParentFileContext.derive(selectedFiles);
-            childStore.fileContext = childFileContext;
-            return ref;
-          });
-          registrationQueue = registration.then(
-            () => undefined,
-            () => undefined
-          );
-          return registration;
-        }
-      }
-    : undefined;
-
-  childStore.fileRegistrar = childRegistrar;
 
   /** 子流程消息同步使用登记后的类型，避免历史消息仍携带兜底 file。 */
   const resolveMessageFile = (file: UserChatItemFileItemType) => {
@@ -276,55 +286,4 @@ export const runWithDerivedWorkflowFileContext = async <T>({
       filterFiles
     })
   );
-};
-
-/** 优先读取已登记文件，未登记外链复用相同的 SSRF-safe reader 和 Workflow 大小限制。 */
-export const readWorkflowFileBuffer = async ({ url }: { url: string }) => {
-  const fileContext = getWorkflowFileContext();
-  const ref = fileContext?.resolve(url);
-  const sourceResult =
-    fileContext && ref
-      ? await fileContext.getSource(ref)
-      : {
-          source: createExternalHttpFileSource({
-            url,
-            maxSizeBytes: fileContext?.limits.maxBytesPerFile ?? getFileMaxSize(),
-            metadata: {}
-          })
-        };
-
-  return (
-    await materializeFileSource(sourceResult.source, {
-      signal: new AbortController().signal
-    })
-  ).buffer;
-};
-
-export const updateWorkflowContextVal = (val: Partial<ContextType>) => {
-  const context = getWorkflowContext();
-  if (context) {
-    for (const key in val) {
-      // @ts-ignore
-      context[key] = val[key];
-    }
-  }
-};
-
-/** 节点输入准备：显式组合额度过滤、校验、分类和登记，保持单文件分类无登记副作用。 */
-export const prepareWorkflowFiles = ({
-  files,
-  maxFiles,
-  allowDataUrl
-}: {
-  files: ChatFileInput[];
-  maxFiles?: number;
-  allowDataUrl?: boolean;
-}) => {
-  const fileContext = getWorkflowFileContext();
-  return prepareChatFiles({
-    files,
-    maxFiles: maxFiles ?? fileContext?.limits.maxFileAmount ?? files.length,
-    fileContext,
-    allowDataUrl: allowDataUrl ?? !fileContext
-  });
 };

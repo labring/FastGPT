@@ -117,7 +117,12 @@ vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
   getAuthorizedModelIds: vi.fn(async () => new Set())
 }));
 
-import { dispatchAgentDatasetSearch } from '../../../../../../../core/workflow/dispatch/ai/agent/sub/dataset';
+import { dispatchAgentDatasetSearch as dispatchAgentDatasetSearchWithoutContext } from '../../../../../../../core/workflow/dispatch/ai/agent/sub/dataset';
+import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+
+const dispatchAgentDatasetSearch = createTestWorkflowDispatch(
+  dispatchAgentDatasetSearchWithoutContext
+);
 
 const llmModelData = (model: string) =>
   ({

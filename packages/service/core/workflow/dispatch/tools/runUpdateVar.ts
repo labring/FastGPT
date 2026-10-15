@@ -1,9 +1,5 @@
-import {
-  type NodeInputKeyEnum,
-  VARIABLE_NODE_ID,
-  WorkflowIOValueTypeEnum
-} from '@fastgpt/global/core/workflow/constants';
-
+import { getWorkflowContext } from '../context';
+import { type NodeInputKeyEnum, VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
@@ -68,7 +64,8 @@ type Props = ModuleDispatchProps<{
 type Response = DispatchNodeResultType<Record<string, never>>;
 
 export const dispatchUpdateVariable = async (props: Props): Promise<Response> => {
-  const { params, variableState, runtimeNodesMap, workflowStreamResponse, runningAppInfo } = props;
+  const { params, runtimeNodesMap, workflowStreamResponse, runningAppInfo } = props;
+  const { variableContext: variableState } = getWorkflowContext();
 
   const { updateList } = params;
   const nodeIds = Array.from(runtimeNodesMap.keys());

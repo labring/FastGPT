@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeDatasetSearchInput } from '../../../../../core/workflow/dispatch/dataset/utils';
+import { normalizeDatasetSearchInput as normalizeDatasetSearchInputWithoutContext } from '../../../../../core/workflow/dispatch/dataset/utils';
+import { runInTestWorkflowContext } from '../context/fixtures';
+
+const normalizeDatasetSearchInput: typeof normalizeDatasetSearchInputWithoutContext = (inputs) =>
+  runInTestWorkflowContext(() => normalizeDatasetSearchInputWithoutContext(inputs));
 
 describe('normalizeDatasetSearchInput', () => {
   it('should split text queries and image urls', async () => {
@@ -20,13 +24,10 @@ describe('normalizeDatasetSearchInput', () => {
       'chat/team-1/manual.pdf',
       'dataset/team-1/photo.webp'
     ]);
-    expect(result.imageQueries).toEqual([
-      'https://example.com/current.png',
-      'data:image/png;base64,abc'
-    ]);
+    expect(result.imageQueries).toEqual(['https://example.com/current.png']);
   });
 
-  it('should classify image Data URLs and discard other Data URLs', async () => {
+  it('运行 Context 默认拒绝 Data URL，不将它们降级为文本查询', async () => {
     const result = await normalizeDatasetSearchInput([
       'data:IMAGE/JPEG;base64,/9j/4AAQ',
       'data:IMAGE/JPEG;base64,/9j/4AAQ',
@@ -35,7 +36,7 @@ describe('normalizeDatasetSearchInput', () => {
     ]);
 
     expect(result.textQueries).toEqual([]);
-    expect(result.imageQueries).toEqual(['data:IMAGE/JPEG;base64,/9j/4AAQ']);
+    expect(result.imageQueries).toEqual([]);
   });
 
   it('should only classify http image urls by parsed file type', async () => {

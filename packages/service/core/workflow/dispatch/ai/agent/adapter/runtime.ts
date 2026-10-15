@@ -17,6 +17,7 @@ import {
 } from '../../agentLoopCore/interface';
 import { createWorkflowAgentToolProvider } from '../toolProvider';
 import type { AgentLoopCoreToolRunResult } from '../../agentLoopCore/interface';
+import { getWorkflowContext } from '../../../context';
 
 type WorkflowAgentLoopRuntimeContext = ToolDispatchContext & {
   node: {
@@ -153,7 +154,7 @@ export const createWorkflowAgentLoopRuntime = ({
             }
           : undefined
       },
-      checkIsStopping: context.checkIsStopping,
+      checkIsStopping: getWorkflowContext().checkIsStopping,
       toolRuntime: {
         toolProvider,
         batchToolSize: 5,

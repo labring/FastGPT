@@ -7,29 +7,39 @@ import type {
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type';
 import path from 'node:path';
-import { getFileMaxSize } from '../../../common/file/utils';
-import type { FileSource } from '../../../common/file/read/source';
-import { createExternalHttpFileSource, createS3FileSource } from '../../../common/file/read/source';
-import { getLogger, LogCategories } from '../../../common/logger';
-import { S3Buckets } from '../../../common/s3/config/constants';
-import { createChatFilePreviewUrlGetter } from '../../../common/s3/sources/chat';
-import { isAuthorizedChatFileS3Key } from '../../../common/s3/sources/chat/key';
-import type { ChatS3SourceType } from '../../../common/s3/sources/chat/type';
-import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator';
-import type { RawChatFileValue } from '../../chat/fileStoreValue';
+import { getFileMaxSize } from '../../../../common/file/utils';
+import type { FileSource } from '../../../../common/file/read/source';
+import {
+  createExternalHttpFileSource,
+  createS3FileSource,
+  materializeFileSource
+} from '../../../../common/file/read/source';
+import { getLogger, LogCategories } from '../../../../common/logger';
+import { S3Buckets } from '../../../../common/s3/config/constants';
+import { createChatFilePreviewUrlGetter } from '../../../../common/s3/sources/chat';
+import { isAuthorizedChatFileS3Key } from '../../../../common/s3/sources/chat/key';
+import type { ChatS3SourceType } from '../../../../common/s3/sources/chat/type';
+import { validateFileUrlDomain } from '../../../../common/security/fileUrlValidator';
+import type { RawChatFileValue } from '../../../chat/fileStoreValue';
 import {
   parseUrlToChatFileType,
   prepareChatFiles,
   type ChatFileInput,
   type PreparedChatFile
-} from '../../chat/file/service';
+} from '../../../chat/file/service';
 import {
   isAbsoluteHttpUrl,
   getFileUrlIdentity,
   getFileNameFromUrl,
   selectFileInputs
-} from '../../chat/file/utils';
-import { filterWorkflowQueryFiles, type WorkflowFileLimits } from './fileLimits';
+} from '../../../chat/file/utils';
+import { filterWorkflowQueryFiles } from '../../utils/fileLimits';
+
+/** 本次 Workflow 运行已经计算完成的文件限额，Context 和各文件消费者共用。 */
+export type WorkflowFileLimits = {
+  maxFileAmount: number;
+  maxBytesPerFile: number;
+};
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 const WORKFLOW_FILE_URL_EXPIRED_HOURS = 2;
@@ -61,12 +71,22 @@ export type WorkflowFileSourceResult = {
 
 export type WorkflowFileContext = {
   limits: WorkflowFileLimits;
+  /** 原始输入的鉴权、签名和分类；派生 Context 串行检查自身额度，再委托父 Context 鉴权。 */
+  register: WorkflowFileRegister;
   resolve: (url: string) => WorkflowFileRef | undefined;
   resolveChatFile: (url: string) => PreparedChatFile | undefined;
   getIdentity: (url: string) => string | undefined;
   resolveInputFile: (file: RawChatFileValue) => WorkflowFileRef | undefined;
   getSource: (target: string | WorkflowFileRef) => Promise<WorkflowFileSourceResult>;
-  /** 只登记已分类外链；输入准备通过 prepareChatFiles 完成。 */
+  /** 读取已登记文件或动态公网外链正文；动态外链读取不扩展登记表。 */
+  readBuffer: (params: { url: string; signal?: AbortSignal }) => Promise<Buffer>;
+  /** 按批次额度准备 URL 文件输入；默认使用当前用户额度，Data URL 必须显式允许。 */
+  prepareFiles: (params: {
+    files: ChatFileInput[];
+    maxFiles?: number;
+    allowDataUrl?: boolean;
+  }) => Promise<UserChatItemFileItemType[]>;
+  /** 只同步登记已校验、已分类的外链，不负责原始输入鉴权、签名或探测，不能创建私有文件权限。 */
   registerExternalFile: (file: PreparedChatFile) => WorkflowFileRef;
   derive: (files: WorkflowFileInput[]) => Promise<WorkflowFileContext>;
 };
@@ -87,12 +107,10 @@ export type WorkflowFileRegistrationSource =
   | 'interactive'
   | 'plugin';
 
-export type WorkflowFileRegistrar = {
-  registerInputFile: (params: {
-    file: ChatFileStoreValue | UserChatItemFileItemType;
-    source: WorkflowFileRegistrationSource;
-  }) => Promise<WorkflowFileRef | undefined>;
-};
+export type WorkflowFileRegister = (params: {
+  file: ChatFileStoreValue | UserChatItemFileItemType;
+  source: WorkflowFileRegistrationSource;
+}) => Promise<WorkflowFileRef | undefined>;
 
 type PrepareWorkflowFileContextParams = {
   query: UserChatItemValueItemType[];
@@ -105,10 +123,38 @@ type PrepareWorkflowFileContextParams = {
 
 export type PreparedWorkflowFileContext = {
   fileContext: WorkflowFileContext;
-  fileRegistrar: WorkflowFileRegistrar;
   getPreviewUrl: (key: string) => Promise<string>;
   query: UserChatItemValueItemType[];
   histories: ChatItemMiniType[];
+};
+
+/**
+ * 根和派生 Context 共用的文件操作实现。
+ * 通过实际接收者读取当前登记表和限额，不依赖 AsyncLocalStorage；派生、装饰后的 Context
+ * 仍使用自身权限范围。保留批次显式额度，不在能力迁移时额外改变准入规则。
+ */
+const workflowFileOperations: Pick<WorkflowFileContext, 'readBuffer' | 'prepareFiles'> = {
+  async readBuffer(this: WorkflowFileContext, { url, signal = new AbortController().signal }) {
+    const ref = this.resolve(url);
+    const sourceResult = ref
+      ? await this.getSource(ref)
+      : {
+          source: createExternalHttpFileSource({
+            url,
+            maxSizeBytes: this.limits.maxBytesPerFile,
+            metadata: {}
+          })
+        };
+    return (await materializeFileSource(sourceResult.source, { signal })).buffer;
+  },
+  prepareFiles(this: WorkflowFileContext, { files, maxFiles, allowDataUrl = false }) {
+    return prepareChatFiles({
+      files,
+      maxFiles: maxFiles ?? this.limits.maxFileAmount,
+      fileContext: this,
+      allowDataUrl
+    });
+  }
 };
 
 /**
@@ -177,6 +223,7 @@ const createWorkflowFileRegistry = () => {
     register,
     getByIdentity: (identity: string) => byIdentity.get(identity),
     hasRef: (ref: WorkflowFileRef) => refIdentity.has(ref),
+    getFileCount: () => byIdentity.size,
     context: { resolve, resolveInputFile, resolveChatFile, getIdentity, registerExternalFile }
   };
 };
@@ -231,6 +278,7 @@ const getChatImageParsePrefix = (objectKey: string) => {
  * 父 Context 命中的文件继承其可信 Ref；未命中的绝对外链以最多 5 并发在 Child 内准备。
  * Parent 进程提前准备的文件可登记在 Parent，Child 仅继承此次选中的输入。
  * 私有 key 只能从父 Context 继承，禁止通过 URL 结构或未知 key 推断内部对象权限。
+ * 返回完整登记能力；新增输入串行占用当前额度，父 Context 完成根级鉴权后再加入本地登记表。
  */
 const createDerivedWorkflowFileContext = async ({
   parent,
@@ -239,13 +287,45 @@ const createDerivedWorkflowFileContext = async ({
   parent: WorkflowFileContext;
   files: WorkflowFileInput[];
 }): Promise<WorkflowFileContext> => {
+  if (typeof parent.register !== 'function') {
+    throw new Error('Workflow file registration is unavailable');
+  }
   const registry = createWorkflowFileRegistry();
   const inheritedRefs = new WeakSet<WorkflowFileRef>();
   const { resolve } = registry.context;
+  let registrationQueue = Promise.resolve();
 
   const fileContext: WorkflowFileContext = {
     limits: parent.limits,
     ...registry.context,
+    ...workflowFileOperations,
+    register: (params) => {
+      // 同一 Child 的额度检查和新增登记串行执行，避免并发输入同时占用最后一个名额。
+      const registration = registrationQueue.then(async () => {
+        const existingRef = registry.context.resolveInputFile(params.file);
+        if (existingRef) return existingRef;
+        if (registry.getFileCount() >= Math.max(parent.limits.maxFileAmount, 0)) return;
+
+        const ref = await parent.register(params);
+        if (!ref) return;
+        const identity = parent.getIdentity(ref.modelUrl);
+        if (!identity) throw new Error('Parent workflow file identity is unavailable');
+        const originalUrl = 'url' in params.file ? params.file.url : undefined;
+        const registeredRef = registry.register({
+          ref,
+          identity,
+          aliases: isAbsoluteHttpUrl(originalUrl) ? [originalUrl] : []
+        });
+        inheritedRefs.add(registeredRef);
+        return registeredRef;
+      });
+      // 拒绝不占额度，也不能让队列中的后续输入一直跟随同一次失败。
+      registrationQueue = registration.then(
+        () => undefined,
+        () => undefined
+      );
+      return registration;
+    },
     getSource: async (target) => {
       const ref = typeof target === 'string' ? resolve(target) : target;
       if (!ref || !registry.hasRef(ref)) {
@@ -266,8 +346,9 @@ const createDerivedWorkflowFileContext = async ({
         sourceKind: 'external'
       };
     },
-    derive: (childFiles) =>
-      createDerivedWorkflowFileContext({ parent: fileContext, files: childFiles })
+    derive(childFiles) {
+      return createDerivedWorkflowFileContext({ parent: this, files: childFiles });
+    }
   };
 
   // 先完成继承与准入校验，再批量准备新外链，避免逐文件等待网络。
@@ -358,10 +439,7 @@ export const prepareWorkflowFileContext = async ({
     return previewUrlPromise;
   };
 
-  const registerInputFile: WorkflowFileRegistrar['registerInputFile'] = async ({
-    file,
-    source
-  }) => {
+  const registerInputFile: WorkflowFileRegister = async ({ file, source }) => {
     const originalUrl = 'url' in file ? file.url : undefined;
     const fileKey =
       'key' in file && typeof file.key === 'string' && file.key ? file.key : undefined;
@@ -514,11 +592,15 @@ export const prepareWorkflowFileContext = async ({
     };
   };
 
-  const fileContext: WorkflowFileContext = {
+  const fileContext: PreparedWorkflowFileContext['fileContext'] = {
     limits,
+    register: registerInputFile,
     ...registry.context,
+    ...workflowFileOperations,
     getSource,
-    derive: (files) => createDerivedWorkflowFileContext({ parent: fileContext, files })
+    derive(files) {
+      return createDerivedWorkflowFileContext({ parent: this, files });
+    }
   };
 
   const preparedQuery: UserChatItemValueItemType[] = await Promise.all(
@@ -568,9 +650,6 @@ export const prepareWorkflowFileContext = async ({
 
   return {
     getPreviewUrl,
-    fileRegistrar: {
-      registerInputFile
-    },
     fileContext,
     query: preparedQuery,
     histories: preparedHistories

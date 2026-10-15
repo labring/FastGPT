@@ -1,3 +1,4 @@
+import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { ContentTypes, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -21,7 +22,8 @@ vi.mock('@fastgpt/service/common/system/utils', async (importOriginal) => {
   };
 });
 
-import { dispatchHttp468Request } from '@fastgpt/service/core/workflow/dispatch/tools/http468';
+import { dispatchHttp468Request as dispatchHttp468RequestWithoutContext } from '@fastgpt/service/core/workflow/dispatch/tools/http468';
+const dispatchHttp468Request = createTestWorkflowDispatch(dispatchHttp468RequestWithoutContext);
 
 const buildProps = (httpContentType: ContentTypes) =>
   ({
@@ -31,7 +33,7 @@ const buildProps = (httpContentType: ContentTypes) =>
     },
     chatId: 'chat-1',
     responseChatItemId: 'response-1',
-    variableState: {
+    variableContext: {
       toRuntimeRecord: () => ({ emptyKey: '' })
     },
     node: {

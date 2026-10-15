@@ -1,3 +1,4 @@
+import { getWorkflowContext } from '../context';
 import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -10,15 +11,9 @@ import type {
   IfElseConditionType,
   IfElseListItemType
 } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
-import {
-  getIfElseBranchHandleKey,
-  getElseIFLabel
-} from '@fastgpt/global/common/workflow/condition';
-import type {
-  DispatchNodeResultType,
-  ModuleDispatchProps,
-  WorkflowVariableStateLike
-} from '../../types/runtime';
+import { getIfElseBranchHandleKey, getElseIFLabel } from '@fastgpt/global/common/workflow/condition';
+import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
+import type { WorkflowVariableStateLike } from '../context/variables';
 import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
@@ -159,9 +154,9 @@ export const dispatchIfElse = async (props: Props): Promise<Response> => {
     params,
     runtimeEdges,
     runtimeNodesMap,
-    variableState,
     node: { nodeId }
   } = props;
+  const { variableContext: variableState } = getWorkflowContext();
   const { ifElseList } = params;
 
   let selectedLabel = IfElseResultEnum.ELSE as string;

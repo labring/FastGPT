@@ -5,8 +5,8 @@ import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { getAgentLoopHistories } from '../../../utils';
 import { MongoDataset } from '../../../../../dataset/schema';
 import { filterDatasetsByTmbId } from '../../../../../dataset/utils';
-import { hasWorkflowResource } from '../../../../resource/context';
-import { getWorkflowResourceContext } from '../../../../utils/context';
+import { hasWorkflowResource } from '../../../context/resource';
+import { getWorkflowResourceContext } from '../../../context';
 import type { DeployedSkillInfo } from '../../../../../ai/sandbox/application/runtime/skill/types';
 import {
   buildWorkflowAICurrentInputFiles,

@@ -1,3 +1,4 @@
+import { createWorkflowRuntimeSummary } from '../utils/summary';
 import { cloneDeep } from 'lodash-es';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -24,7 +25,8 @@ import {
   pickCustomOutputInputs,
   readCustomOutputSnapshot
 } from './service';
-import { createContainerRunStateSnapshot, syncContainerRunState } from '../utils/containerRunState';
+import { WorkflowRunStateSnapshot } from '../utils/containerRunState';
+import { getWorkflowContext, runWithContext } from '../context';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum;
@@ -35,7 +37,12 @@ type Props = ModuleDispatchProps<{
 type Response = DispatchNodeResultType<Record<string, any>>;
 
 export const dispatchLoopRun = async (props: Props): Promise<Response> => {
-  const { params, runtimeNodes, runtimeEdges, node, lastInteractive, checkIsStopping } = props;
+  const {
+    checkIsStopping,
+    variableContext: parentVariableContext,
+    nodeResponseSink
+  } = getWorkflowContext();
+  const { params, runtimeNodes, runtimeEdges, node, lastInteractive } = props;
   const { name } = node;
   const mode = params[NodeInputKeyEnum.loopRunMode] ?? LoopRunModeEnum.array;
   const childrenNodeIdList = params[NodeInputKeyEnum.childrenNodeIdList] ?? [];
@@ -174,22 +181,33 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       });
     }
 
-    const iterationVariableState = props.variableState.clone();
-    const iterationStateSnapshot = createContainerRunStateSnapshot({
-      nodes: isolatedNodes,
-      childrenNodeIdList,
-      variableState: iterationVariableState
+    const iterationStateSnapshot = new WorkflowRunStateSnapshot({
+      variableContext: parentVariableContext,
+      nodeOutputs: {
+        sourceNodes: isolatedNodes,
+        targetNodes: runtimeNodes,
+        childrenNodeIdList
+      }
     });
-    const response = await runWorkflow({
-      ...props,
-      variableState: iterationVariableState,
-      lastInteractive: interactiveData?.childrenResponse,
-      nodeResponseParentId: iterationResponseId,
-      runtimeNodes: isolatedNodes,
-      runtimeEdges: cloneDeep(
-        storeEdges2RuntimeEdges(isolatedEdges, interactiveData?.childrenResponse)
-      )
+    const iterationVariableState = iterationStateSnapshot.variableContext;
+    const iterationContext = getWorkflowContext().getChildContext({
+      variableContext: iterationVariableState,
+      nodeResponseSink: getWorkflowContext().nodeResponseSink.getChildContext({
+        workflowRuntimeSummary: createWorkflowRuntimeSummary(),
+        defaultParentId: iterationResponseId
+      })
     });
+    const response = await runWithContext(iterationContext, () =>
+      runWorkflow({
+        ...props,
+        lastInteractive: interactiveData?.childrenResponse,
+        nodeResponseParentId: iterationResponseId,
+        runtimeNodes: isolatedNodes,
+        runtimeEdges: cloneDeep(
+          storeEdges2RuntimeEdges(isolatedEdges, interactiveData?.childrenResponse)
+        )
+      })
+    );
     // Merge pre-interrupt runtime summary so resumed iteration still sees the full
     // set of finished nodes and stats without keeping full child nodeResponse data.
     const { fullSummary: iterationSummary, wrapperSummary } = getWrapperSummary({
@@ -242,14 +260,12 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
         childResponseCount: iterationChildResponseCount
       };
       childResponseCount += 1 + (wrapper.childResponseCount || 0);
-      if (props.nodeResponseSink) {
-        await props.nodeResponseSink.publish([
-          {
-            response: wrapper,
-            parentId: props.nodeResponseParentId
-          }
-        ]);
-      }
+      await nodeResponseSink.publish([
+        {
+          response: wrapper,
+          parentId: props.nodeResponseParentId
+        }
+      ]);
     };
 
     // Pause: stash accumulated children so the next resume still sees pre-interrupt
@@ -260,19 +276,13 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       interactiveResponse = response.workflowInteractiveResponse;
       pendingIterationSummary = iterationSummary;
       // 交互暂停是可恢复 checkpoint，需要保留暂停前已完成节点的变量和外部 output 变更。
-      await syncContainerRunState({
-        sourceNodes: isolatedNodes,
-        targetNodes: runtimeNodes,
-        childrenNodeIdList,
-        stateSnapshot: iterationStateSnapshot,
-        childVariableState: iterationVariableState,
-        parentVariableState: props.variableState
-      });
+      await iterationStateSnapshot.commit();
       await pushIterationDetail({});
       break;
     }
 
     if (iterationSummary.hasError) {
+      iterationStateSnapshot.discard();
       const errText = getErrText(iterationSummary.errorText);
       await pushIterationDetail({ error: errText });
       loopHistory.push({
@@ -286,14 +296,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
 
     await pushIterationDetail({});
     loopHistory.push({ iteration, customOutputs, success: true });
-    await syncContainerRunState({
-      sourceNodes: isolatedNodes,
-      targetNodes: runtimeNodes,
-      childrenNodeIdList,
-      stateSnapshot: iterationStateSnapshot,
-      childVariableState: iterationVariableState,
-      parentVariableState: props.variableState
-    });
+    await iterationStateSnapshot.commit();
 
     if (iterationSummary.hasLoopRunBreak) break;
 

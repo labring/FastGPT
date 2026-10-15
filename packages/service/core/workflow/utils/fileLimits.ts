@@ -7,11 +7,7 @@ import {
   getUserFileAmountLimit
 } from '@fastgpt/global/core/workflow/fileLimit';
 import { getTeamPlanStatus } from '../../../support/wallet/sub/utils';
-
-export type WorkflowFileLimits = {
-  maxFileAmount: number;
-  maxBytesPerFile: number;
-};
+import type { WorkflowFileLimits } from '../dispatch/context/file';
 
 /** 分别计算用户可用的 Workflow 文件额度与应用 query 上传额度。 */
 export const getWorkflowFileAmountLimits = ({

@@ -7,7 +7,9 @@ import {
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchFormInput } from '@fastgpt/service/core/workflow/dispatch/interactive/formInput';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context/file';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const { mockCreateGetChatFileURL } = vi.hoisted(() => ({
   mockCreateGetChatFileURL: vi.fn()
@@ -36,42 +38,70 @@ describe('dispatchFormInput', () => {
     mockCreateGetChatFileURL.mockReset();
   });
 
+  it('缺少运行 Context 时明确失败，不回退到绕过登记的直接签名', async () => {
+    await expect(
+      dispatchFormInput({
+        histories: [],
+        node: { isEntry: true },
+        params: { [NodeInputKeyEnum.description]: '', [NodeInputKeyEnum.userInputForms]: [] },
+        query: [{ text: { content: '{}' } }],
+        lastInteractive: { type: 'userInput' }
+      } as any)
+    ).rejects.toThrow('Workflow context is unavailable');
+    expect(mockCreateGetChatFileURL).not.toHaveBeenCalled();
+  });
+
   it('presigns key-only fileSelect values before exposing form outputs', async () => {
     mockCreateGetChatFileURL.mockResolvedValueOnce({
       url: 'https://preview.example.com/upload.png'
     });
 
-    const result = await dispatchFormInput({
-      histories: [{ obj: 'Human', value: [] }],
-      node: { isEntry: true },
-      params: {
-        [NodeInputKeyEnum.description]: 'upload',
-        [NodeInputKeyEnum.userInputForms]: [
-          {
-            key: 'upload',
-            label: 'upload',
-            type: FlowNodeInputTypeEnum.fileSelect,
-            value: [],
-            valueType: WorkflowIOValueTypeEnum.arrayString,
-            required: false
-          }
-        ]
-      },
-      query: [
-        {
-          text: {
-            content: JSON.stringify({
-              upload: [
-                { key: 'chat/files/upload.png', name: 'upload.png' },
-                { url: 'https://external.example.com/file.pdf' },
-                'https://legacy.example.com/file.txt'
-              ]
-            })
-          }
-        }
-      ],
-      lastInteractive: { type: 'userInput' }
-    } as any);
+    const { fileContext } = await prepareWorkflowFileContext({
+      query: [],
+      histories: [],
+      maxFileAmount: 5,
+      scope: {
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app-1',
+        uid: 'user-1',
+        chatId: 'chat-1'
+      }
+    });
+    const result = await runWithContext(
+      { checkIsStopping: () => false, mcpClientMemory: {}, fileContext },
+      () =>
+        dispatchFormInput({
+          histories: [{ obj: 'Human', value: [] }],
+          node: { isEntry: true },
+          params: {
+            [NodeInputKeyEnum.description]: 'upload',
+            [NodeInputKeyEnum.userInputForms]: [
+              {
+                key: 'upload',
+                label: 'upload',
+                type: FlowNodeInputTypeEnum.fileSelect,
+                value: [],
+                valueType: WorkflowIOValueTypeEnum.arrayString,
+                required: false
+              }
+            ]
+          },
+          query: [
+            {
+              text: {
+                content: JSON.stringify({
+                  upload: [
+                    { key: 'chat/app/app-1/user-1/chat-1/upload.png', name: 'upload.png' },
+                    { url: 'https://external.example.com/file.pdf' },
+                    'https://legacy.example.com/file.txt'
+                  ]
+                })
+              }
+            }
+          ],
+          lastInteractive: { type: 'userInput' }
+        } as any)
+    );
 
     expect(result.data?.upload).toEqual([
       'https://preview.example.com/upload.png',
@@ -93,9 +123,9 @@ describe('dispatchFormInput', () => {
       ]
     });
     expect(mockCreateGetChatFileURL).toHaveBeenCalledWith({
-      key: 'chat/files/upload.png',
+      key: 'chat/app/app-1/user-1/chat-1/upload.png',
       external: true,
-      expiredHours: 1
+      expiredHours: 2
     });
   });
 
@@ -109,8 +139,12 @@ describe('dispatchFormInput', () => {
 
     const result = await runWithContext(
       {
+        checkIsStopping: () => false,
         mcpClientMemory: {},
-        fileRegistrar: { registerInputFile } as any
+        fileContext: {
+          limits: { maxFileAmount: 5, maxBytesPerFile: 1024 },
+          register: registerInputFile
+        } as any
       },
       () =>
         dispatchFormInput({
@@ -173,8 +207,12 @@ describe('dispatchFormInput', () => {
 
     const result = await runWithContext(
       {
+        checkIsStopping: () => false,
         mcpClientMemory: {},
-        fileRegistrar: { registerInputFile } as any
+        fileContext: {
+          limits: { maxFileAmount: 5, maxBytesPerFile: 1024 },
+          register: registerInputFile
+        } as any
       },
       () =>
         dispatchFormInput({
@@ -225,9 +263,12 @@ describe('dispatchFormInput', () => {
 
     const result = await runWithContext(
       {
+        checkIsStopping: () => false,
         mcpClientMemory: {},
-        fileContext: { limits: { maxFileAmount: 1 } } as any,
-        fileRegistrar: { registerInputFile } as any
+        fileContext: {
+          limits: { maxFileAmount: 1, maxBytesPerFile: 1024 },
+          register: registerInputFile
+        } as any
       },
       () =>
         dispatchFormInput({

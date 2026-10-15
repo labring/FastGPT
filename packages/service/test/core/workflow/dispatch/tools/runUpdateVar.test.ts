@@ -1,5 +1,7 @@
+import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, it, expect, vi } from 'vitest';
-import { dispatchUpdateVariable } from '@fastgpt/service/core/workflow/dispatch/tools/runUpdateVar';
+import { dispatchUpdateVariable as dispatchUpdateVariableWithoutContext } from '@fastgpt/service/core/workflow/dispatch/tools/runUpdateVar';
+const dispatchUpdateVariable = createTestWorkflowDispatch(dispatchUpdateVariableWithoutContext);
 import {
   VARIABLE_NODE_ID,
   VariableInputEnum,
@@ -8,7 +10,7 @@ import {
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { WorkflowVariableState } from '../../../../../core/workflow/dispatch/utils/variables';
+import { WorkflowVariableState } from '../../../../../core/workflow/dispatch/context/variables';
 
 // Logger 不走真实实现，避免 log 基础设施依赖
 vi.mock('../../../../../../../../packages/service/common/logger', () => ({
@@ -84,7 +86,7 @@ const buildProps = (
   return {
     chatConfig: opts.chatConfig ?? {},
     params: { updateList },
-    variableState: createTestVariableState({
+    variableContext: createTestVariableState({
       variables,
       storeVariables: opts.storeVariables,
       chatConfig: opts.chatConfig

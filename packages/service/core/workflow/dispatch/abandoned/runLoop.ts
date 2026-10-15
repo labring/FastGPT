@@ -11,7 +11,8 @@ import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/u
 import { serviceEnv } from '../../../../env';
 import { getNestedEndOutputValue } from '../loop/service';
 import { collectResponseFeedbacks, injectNestedStartInputs, pushSubWorkflowUsage } from '../utils';
-import { getWorkflowRuntimeSummary } from '../utils/summary';
+import { createWorkflowRuntimeSummary, getWorkflowRuntimeSummary } from '../utils/summary';
+import { getWorkflowContext, runWithContext } from '../context';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.nestedInputArray]: Array<any>;
@@ -22,12 +23,12 @@ type Response = DispatchNodeResultType<{
 }>;
 
 export const dispatchLoop = async (props: Props): Promise<Response> => {
+  const { checkIsStopping } = getWorkflowContext();
   const {
     params,
     runtimeEdges,
     lastInteractive,
     runtimeNodes,
-    checkIsStopping,
     node: { name }
   } = props;
   const { loopInputArray = [], childrenNodeIdList = [] } = params;
@@ -80,14 +81,26 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
 
     index++;
 
-    const response = await runWorkflow({
-      ...props,
-      lastInteractive: interactiveData?.childrenResponse,
-      runtimeNodes,
-      runtimeEdges: cloneDeep(
-        storeEdges2RuntimeEdges(runtimeEdges, interactiveData?.childrenResponse)
-      )
+    // 旧 Loop 保留共享变量兼容行为，仅为每轮执行派生独立的响应统计。
+    const parentContext = getWorkflowContext();
+    const iterationContext = parentContext.getChildContext({
+      nodeResponseSink: parentContext.nodeResponseSink.getChildContext({
+        workflowRuntimeSummary: createWorkflowRuntimeSummary(),
+        ...(props.nodeResponseParentId !== undefined
+          ? { defaultParentId: props.nodeResponseParentId }
+          : {})
+      })
     });
+    const response = await runWithContext(iterationContext, () =>
+      runWorkflow({
+        ...props,
+        lastInteractive: interactiveData?.childrenResponse,
+        runtimeNodes,
+        runtimeEdges: cloneDeep(
+          storeEdges2RuntimeEdges(runtimeEdges, interactiveData?.childrenResponse)
+        )
+      })
+    );
     const childSummary = getWorkflowRuntimeSummary(response);
 
     // Concat runtime response

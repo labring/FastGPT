@@ -1,3 +1,4 @@
+import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, expect, it, vi } from 'vitest';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -12,13 +13,12 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
-import {
-  DispatchNodeResponseKeyEnum,
-  SseResponseEventEnum
-} from '@fastgpt/global/core/workflow/runtime/constants';
-import { runWorkflow } from '@fastgpt/service/core/workflow/dispatch';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { runWorkflow as runWorkflowWithoutContext } from '@fastgpt/service/core/workflow/dispatch';
+
+const runWorkflow = createTestWorkflowDispatch(runWorkflowWithoutContext, { newWorkflow: true });
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
-import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
+import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/context/variables';
 import {
   composeNodeResponseDetail,
   createWorkflowNodeResponseWriter,
@@ -29,7 +29,9 @@ import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
-import { WorkflowNodeResponseSink } from '@fastgpt/service/core/workflow/dispatch/nodeResponseSink';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { createWorkflowEntryNodeResponseSink } from '@fastgpt/service/core/workflow/dispatch/context/nodeResponse';
+import { getWorkflowContext } from '@fastgpt/service/core/workflow/dispatch/context';
 
 const createTestNodeResponseSink = ({
   writer,
@@ -40,7 +42,7 @@ const createTestNodeResponseSink = ({
   apiVersion?: 'v1' | 'v2';
   workflowStreamResponse?: WorkflowResponseType;
 }) =>
-  new WorkflowNodeResponseSink({
+  createWorkflowEntryNodeResponseSink({
     writer,
     apiVersion,
     responseAllData: true,
@@ -215,36 +217,35 @@ describe('runWorkflow node response persistence', () => {
     options: { publishChildResponse?: boolean; includeInlineChild?: boolean } = {}
   ) => {
     const originalTextEditorDispatch = callbackMap[FlowNodeTypeEnum.textEditor];
-    callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn(
-      async ({ nodeResponseSink, nodeResponseParentId }) => {
-        const childResponse = {
-          id: 'module-child-response',
-          nodeId: 'module-child-node',
-          moduleName: 'Module Child',
-          moduleType: FlowNodeTypeEnum.agent,
-          runningTime: 1,
-          totalPoints: 2
-        } as ChatHistoryItemResType;
+    callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn(async ({ nodeResponseParentId }) => {
+      const { nodeResponseSink } = getWorkflowContext();
+      const childResponse = {
+        id: 'module-child-response',
+        nodeId: 'module-child-node',
+        moduleName: 'Module Child',
+        moduleType: FlowNodeTypeEnum.agent,
+        runningTime: 1,
+        totalPoints: 2
+      } as ChatHistoryItemResType;
 
-        if (options.publishChildResponse) {
-          await nodeResponseSink?.publish([
-            { response: childResponse, parentId: nodeResponseParentId }
-          ]);
-        }
-
-        return {
-          data: {
-            [NodeOutputKeyEnum.text]: 'parent output'
-          },
-          [DispatchNodeResponseKeyEnum.nodeResponse]: {
-            ...parentNodeResponse,
-            ...(options.includeInlineChild || !options.publishChildResponse
-              ? { childrenResponses: [childResponse] }
-              : {})
-          }
-        };
+      if (options.publishChildResponse) {
+        await nodeResponseSink?.publish([
+          { response: childResponse, parentId: nodeResponseParentId }
+        ]);
       }
-    );
+
+      return {
+        data: {
+          [NodeOutputKeyEnum.text]: 'parent output'
+        },
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          ...parentNodeResponse,
+          ...(options.includeInlineChild || !options.publishChildResponse
+            ? { childrenResponses: [childResponse] }
+            : {})
+        }
+      };
+    });
 
     return () => {
       callbackMap[FlowNodeTypeEnum.textEditor] = originalTextEditorDispatch;
@@ -316,7 +317,7 @@ describe('runWorkflow node response persistence', () => {
       chatConfig: {},
       runtimeNodes,
       runtimeEdges: [],
-      variableState: await WorkflowVariableState.create({
+      variableContext: await WorkflowVariableState.create({
         timezone: 'Asia/Shanghai',
         runningAppInfo: {
           id: appId,
@@ -343,8 +344,7 @@ describe('runWorkflow node response persistence', () => {
         apiVersion,
         workflowStreamResponse
       }),
-      workflowStreamResponse,
-      checkIsStopping: () => false
+      workflowStreamResponse
     } as any);
 
     await nodeResponseWriter.close();
@@ -705,7 +705,7 @@ describe('runWorkflow node response persistence', () => {
         chatConfig: {},
         runtimeNodes,
         runtimeEdges: [],
-        variableState: await WorkflowVariableState.create({
+        variableContext: await WorkflowVariableState.create({
           timezone: 'Asia/Shanghai',
           runningAppInfo,
           uid: 'test-user',
@@ -721,8 +721,7 @@ describe('runWorkflow node response persistence', () => {
         stream: false,
         responseAllData: true,
         responseDetail: true,
-        nodeResponseSink: createTestNodeResponseSink({ writer: nodeResponseWriter }),
-        checkIsStopping: () => false
+        nodeResponseSink: createTestNodeResponseSink({ writer: nodeResponseWriter })
       } as any);
       await nodeResponseWriter.close();
 
@@ -828,7 +827,7 @@ describe('runWorkflow node response persistence', () => {
         chatConfig: {},
         runtimeNodes,
         runtimeEdges,
-        variableState: await WorkflowVariableState.create({
+        variableContext: await WorkflowVariableState.create({
           timezone: 'Asia/Shanghai',
           runningAppInfo,
           uid: 'test-user',
@@ -846,8 +845,7 @@ describe('runWorkflow node response persistence', () => {
         isToolCall: true,
         responseAllData: true,
         responseDetail: true,
-        nodeResponseSink: createTestNodeResponseSink({ writer: nodeResponseWriter }),
-        checkIsStopping: () => false
+        nodeResponseSink: createTestNodeResponseSink({ writer: nodeResponseWriter })
       } as any);
       await nodeResponseWriter.close();
 
@@ -943,7 +941,7 @@ describe('runWorkflow node response persistence', () => {
       chatConfig: {},
       runtimeNodes,
       runtimeEdges: [],
-      variableState: await WorkflowVariableState.create({
+      variableContext: await WorkflowVariableState.create({
         timezone: 'Asia/Shanghai',
         runningAppInfo,
         uid: 'test-user',
@@ -960,8 +958,7 @@ describe('runWorkflow node response persistence', () => {
       stream: false,
       responseAllData: true,
       responseDetail: true,
-      nodeResponseSink: createTestNodeResponseSink({ writer: nodeResponseWriter }),
-      checkIsStopping: () => false
+      nodeResponseSink: createTestNodeResponseSink({ writer: nodeResponseWriter })
     } as any);
     await nodeResponseWriter.close();
 
@@ -1055,7 +1052,7 @@ describe('runWorkflow node response persistence', () => {
         chatConfig: {},
         runtimeNodes,
         runtimeEdges: [],
-        variableState: await WorkflowVariableState.create({
+        variableContext: await WorkflowVariableState.create({
           timezone: 'Asia/Shanghai',
           runningAppInfo,
           uid: 'test-user',
@@ -1072,8 +1069,7 @@ describe('runWorkflow node response persistence', () => {
         stream: false,
         responseAllData: true,
         responseDetail: true,
-        nodeResponseSink: createTestNodeResponseSink({ writer: nodeResponseWriter }),
-        checkIsStopping: () => false
+        nodeResponseSink: createTestNodeResponseSink({ writer: nodeResponseWriter })
       } as any);
       await nodeResponseWriter.close();
 
@@ -1108,7 +1104,7 @@ describe('runWorkflow node response persistence', () => {
       chatItemDataId: responseChatItemId
     });
     const responseEvents: ChatHistoryItemResType[] = [];
-    const nodeResponseSink = new WorkflowNodeResponseSink({
+    const nodeResponseSink = createWorkflowEntryNodeResponseSink({
       writer: nodeResponseWriter,
       apiVersion: 'v2',
       responseAllData: false,
@@ -1226,7 +1222,7 @@ describe('runWorkflow node response persistence', () => {
       chatConfig: {},
       runtimeNodes,
       runtimeEdges,
-      variableState: await WorkflowVariableState.create({
+      variableContext: await WorkflowVariableState.create({
         timezone: 'Asia/Shanghai',
         runningAppInfo: {
           id: '67e0d5535c02d1d5cdede71f',
@@ -1252,7 +1248,7 @@ describe('runWorkflow node response persistence', () => {
         writer: nodeResponseWriter,
         workflowStreamResponse
       }),
-      checkIsStopping: () => false,
+
       workflowStreamResponse
     } as any);
     await nodeResponseWriter.close();

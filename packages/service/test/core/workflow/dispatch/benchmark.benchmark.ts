@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { WorkflowQueue } from '@fastgpt/service/core/workflow/dispatch/index';
+import { WorkflowQueue } from '@fastgpt/service/core/workflow/dispatch/queue';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';

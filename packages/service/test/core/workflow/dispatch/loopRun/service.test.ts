@@ -6,7 +6,7 @@ import {
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/types/runtime';
+import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/dispatch/context/variables';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType

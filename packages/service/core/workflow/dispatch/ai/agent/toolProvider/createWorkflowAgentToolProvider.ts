@@ -11,7 +11,7 @@ import { dispatchWorkflowReadFiles } from '../../readFiles';
 import { getAgentDatasetParams, getExecuteTool } from '../sub/utils';
 import type { WorkflowAgentToolProvider, WorkflowAgentToolProviderContext } from './type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { getWorkflowFileMaxAmount } from '../../../../utils/context';
+import { getWorkflowContext } from '../../../context';
 
 /**
  * 创建 Workflow Agent 节点的工具 provider。
@@ -62,7 +62,8 @@ export const createWorkflowAgentToolProvider = ({
         });
       }
     : undefined;
-  const readFileMaxFileAmount = getWorkflowFileMaxAmount();
+  const { fileContext } = getWorkflowContext();
+  const readFileMaxFileAmount = fileContext.limits.maxFileAmount;
   const readFileExecutor = createAgentLoopCoreReadFileExecutor({
     enabled: true,
     execute: async ({ files }) =>

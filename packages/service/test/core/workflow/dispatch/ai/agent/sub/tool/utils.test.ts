@@ -1,3 +1,4 @@
+import { createTestWorkflowFileContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { hashStr } from '@fastgpt/global/common/string/tools';
@@ -12,7 +13,7 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { getAgentRuntimeTools } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import type { NodeToolConfigType } from '@fastgpt/global/core/workflow/type/node';
 
 const {
@@ -1069,6 +1070,8 @@ describe('getAgentRuntimeTools schema loading', () => {
   it('falls back to member permissions when an MCP tool is not in the resource snapshot', async () => {
     const tools = await runWithContext(
       {
+        checkIsStopping: () => false,
+        fileContext: await createTestWorkflowFileContext(),
         mcpClientMemory: {},
         resourceContext: {
           teamId: 'team_1',
@@ -1094,6 +1097,8 @@ describe('getAgentRuntimeTools schema loading', () => {
     const resource = { type: 'tool' as const, id: 'workflow_app' };
     const tools = await runWithContext(
       {
+        checkIsStopping: () => false,
+        fileContext: await createTestWorkflowFileContext(),
         mcpClientMemory: {},
         resourceContext: {
           teamId: 'team_1',

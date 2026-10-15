@@ -1,8 +1,13 @@
+import {
+  createTestWorkflowDispatch,
+  captureTestVariableContext,
+  getCapturedTestVariableContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, expect, it, vi } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
-import { WorkflowVariableState } from '../../../../../core/workflow/dispatch/utils/variables';
+import { WorkflowVariableState } from '../../../../../core/workflow/dispatch/context/variables';
 import {
   createNodeSummary,
   summarizeRuntimeNodeResponses
@@ -14,7 +19,7 @@ const getUserChatInfoMock = vi.fn();
 const getAppVersionByIdMock = vi.fn();
 
 vi.mock('../../../../../core/workflow/dispatch/index', () => ({
-  runWorkflow: (args: any) => runWorkflowMock(args)
+  runWorkflow: (args: any) => runWorkflowMock(captureTestVariableContext(args))
 }));
 
 vi.mock('../../../../../support/permission/app/auth', () => ({
@@ -30,7 +35,8 @@ vi.mock('../../../../../core/app/version/controller', () => ({
   getAppPublishedWorkflowMap: vi.fn(async () => new Map())
 }));
 
-import { dispatchAppRequest } from '../../../../../core/workflow/dispatch/abandoned/runApp';
+import { dispatchAppRequest as dispatchAppRequestWithoutContext } from '../../../../../core/workflow/dispatch/abandoned/runApp';
+const dispatchAppRequest = createTestWorkflowDispatch(dispatchAppRequestWithoutContext);
 
 const createParentVariableState = () =>
   WorkflowVariableState.create({
@@ -94,8 +100,8 @@ describe('abandoned dispatchAppRequest', () => {
       resources: []
     });
     runWorkflowMock.mockImplementation(async (args: any) => {
-      childInitialValue = args.variableState.get('shared');
-      await args.variableState.set('shared', 'child-value');
+      childInitialValue = getCapturedTestVariableContext(args).get('shared');
+      await getCapturedTestVariableContext(args).set('shared', 'child-value');
       return {
         flowResponses: [],
         flowUsages: [
@@ -133,7 +139,7 @@ describe('abandoned dispatchAppRequest', () => {
       workflowStreamResponse: vi.fn(),
       histories: [],
       query: [],
-      variableState: parentVariableState,
+      variableContext: parentVariableState,
       params: {
         [NodeInputKeyEnum.userChatInput]: 'hello',
         app: {
@@ -151,7 +157,7 @@ describe('abandoned dispatchAppRequest', () => {
       }
     } as any);
 
-    const childVariableState = runWorkflowMock.mock.calls[0][0].variableState;
+    const childVariableState = getCapturedTestVariableContext(runWorkflowMock.mock.calls[0][0]);
 
     expect(childVariableState).not.toBe(parentVariableState);
     expect(childInitialValue).toBe('parent-value');

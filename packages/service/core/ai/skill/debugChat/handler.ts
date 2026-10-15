@@ -44,15 +44,14 @@ import {
   updateInteractiveChat
 } from '../../../chat/saveChat';
 import { preChatRound, type PreChatRoundResult } from '../../../chat/utils/prepare';
-import { WORKFLOW_MAX_RUN_TIMES } from '../../../workflow/constants';
 import { dispatchWorkFlow } from '../../../workflow/dispatch';
 import type { AgentSandboxPrepareAction } from '../../../workflow/dispatch/ai/agent/sub/sandbox';
 import { prepareWorkflowFileQuery } from '../../../workflow/utils/fileLimits';
-import { createWorkflowResourceContext } from '../../../workflow/resource/context';
+import { createWorkflowResourceContext } from '../../../workflow/dispatch/context/resource';
 import {
   createWorkflowStreamResponseContext,
   type WorkflowStreamResponseContext
-} from '../../../workflow/utils/streamResponseContext';
+} from '../../../workflow/dispatch/context/streamResponse';
 import { getRunningSkillEditSandbox } from '../../sandbox/application/skillEdit/runtime';
 import { buildDebugRuntimeNodes } from './runtime';
 
@@ -253,7 +252,6 @@ export async function handleSkillDebugChat(
       chatConfig,
       histories: newHistories,
       stream: true,
-      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
       workflowStreamResponse: streamResponseContext.responseWrite,
       responseDetail: true,
       nodeResponseWriteConfig: {

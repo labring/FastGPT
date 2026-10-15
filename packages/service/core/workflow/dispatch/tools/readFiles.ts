@@ -8,7 +8,7 @@ import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { getNodeErrResponse } from '../utils';
 import { parseFileContentFromUrls } from '../../../chat/fileContext';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
-import { getWorkflowFileContext, getWorkflowFileMaxAmount } from '../../utils/context';
+import { getWorkflowContext } from '../context';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
@@ -46,7 +46,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
     params: { fileUrlList = [] },
     usageId
   } = props;
-  const maxFileAmount = getWorkflowFileMaxAmount();
+  const { fileContext } = getWorkflowContext();
   const customPdfParse = chatConfig?.fileSelectConfig?.customPdfParse || false;
 
   // Get files from histories
@@ -56,12 +56,12 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
     const readFilesResult = await parseFileContentFromUrls({
       // Concat fileUrlList and filesFromHistories; remove not supported files
       urls: [...fileUrlList, ...filesFromHistories],
-      maxFiles: maxFileAmount,
+      maxFiles: fileContext.limits.maxFileAmount,
       teamId,
       tmbId,
       customPdfParse,
       usageId,
-      fileContext: getWorkflowFileContext()
+      fileContext
     });
     const files = readFilesResult.map((item, index) => ({
       id: `${index}`,

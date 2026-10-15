@@ -432,8 +432,7 @@ token transfer，不能再从 parent 详情递归提取。
 `variableUpdate`、`code`、`textEditor`、`customFeedback`、`readFiles`、`userSelect`、
 `formInput`、`stopTool`、`toolParams`、`loopRunStart`、`loopRunBreak`、`nestedStart`、
 `nestedEnd`、`emptyNode`、`globalVariable`、`comment`、`toolSet`、`pluginInput`、
-`pluginOutput`、`internalRuntimeNode`（除非 runner 明确返回 token）以及不执行 child workflow
-的 `tool`。
+`pluginOutput` 以及不执行 child workflow 的 `tool`。
 
 `pluginOutput`、`loopRunBreak`、`nestedEnd`、`stopTool` 仍需要分别更新业务控制字段，不能因为
 没有 LLM token 就丢失运行信号。
@@ -643,7 +642,8 @@ id = `${loopRunNodeResponseId}:iter:${iteration}`;
 | `packages/service/core/workflow/types/runtime.ts` | `NodeSummary`、`NodeSummaryCollector`、节点 callback 类型 |
 | `packages/service/core/workflow/dispatch/type.ts` | `WorkflowRuntimeSummaryType`、dispatch 返回协议 |
 | `packages/service/core/workflow/dispatch/utils/summary.ts` | 创建、提取、去重、转换和合并 summary |
-| `packages/service/core/workflow/dispatch/index.ts` | WorkflowQueue、scope 初始化和 callback collector 合并 |
+| `packages/service/core/workflow/dispatch/index.ts` | 入口 Context 初始化和 workflow 执行生命周期 |
+| `packages/service/core/workflow/dispatch/queue.ts` | WorkflowQueue 节点调度和 callback collector 合并 |
 | `packages/service/core/workflow/dispatch/nodeResponseSink.ts` | 独立 summary scope、共享 output 和 SSE 过滤 |
 | `packages/service/core/chat/nodeResponseStorage.ts` | append-only row 写入和 child count 规范化 |
 | `packages/service/core/chat/saveChat.ts` | 使用根 workflow summary 更新 Chat.summary |
@@ -686,7 +686,7 @@ response token，wrapper 节点断言 child summary，mixed 节点同时断言�
 | response-owned | `chatNode`、`classifyQuestion`、`contentExtract`、`queryExtension`、`datasetSearchNode` |
 | child wrapper | `appModule`、`pluginModule`、`runApp`、`loop`、`loopRun`、`parallelRun`、`tool` |
 | mixed | `agent`、`toolCall` |
-| control/empty | `workflowStart`、`pluginInput`、`pluginOutput`、`answerNode`、`datasetConcatNode`、`httpRequest468`、`ifElseNode`、`variableUpdate`、`code`、`readFiles`、`textEditor`、`customFeedback`、`userSelect`、`formInput`、`stopTool`、`toolParams`、`loopRunStart`、`loopRunBreak`、`nestedStart`、`nestedEnd`、`emptyNode`、`globalVariable`、`comment`、`toolSet`、`internalRuntimeNode` |
+| control/empty | `workflowStart`、`pluginInput`、`pluginOutput`、`answerNode`、`datasetConcatNode`、`httpRequest468`、`ifElseNode`、`variableUpdate`、`code`、`readFiles`、`textEditor`、`customFeedback`、`userSelect`、`formInput`、`stopTool`、`toolParams`、`loopRunStart`、`loopRunBreak`、`nestedStart`、`nestedEnd`、`emptyNode`、`globalVariable`、`comment`、`toolSet` |
 
 ### 13.3 Wrapper、mixed 和嵌套场景
 

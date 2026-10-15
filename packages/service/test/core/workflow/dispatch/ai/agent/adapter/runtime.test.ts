@@ -3,7 +3,8 @@ import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { createWorkflowAgentLoopRuntime as createWorkflowAgentLoopRuntimeWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/runtime';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { createTestWorkflowFileContext } from '../../../context/fixtures';
 
 const { dispatchWorkflowReadFilesMock, dispatchAgentDatasetSearchMock } = vi.hoisted(() => ({
   dispatchWorkflowReadFilesMock: vi.fn(),
@@ -32,7 +33,6 @@ const tool = (name: string): ChatCompletionTool => ({
 
 const createContext = (overrides = {}) =>
   ({
-    checkIsStopping: vi.fn(() => false),
     externalProvider: {
       openaiAccount: { key: 'user-key' }
     },
@@ -78,6 +78,7 @@ const createWorkflowAgentLoopRuntime: typeof createWorkflowAgentLoopRuntimeWitho
 ) =>
   runWithContext(
     {
+      checkIsStopping: () => false,
       mcpClientMemory: {},
       fileContext: {
         limits: { maxFileAmount: 20, maxBytesPerFile: 1024 }
@@ -96,6 +97,24 @@ const toolCall = ({ id, name, args = '{}' }: { id: string; name: string; args?: 
 });
 
 describe('createWorkflowAgentLoopRuntime', () => {
+  it('从 WorkflowContext 向通用 AgentLoop 传入请求级停止检查', async () => {
+    let stopping = false;
+    const checkIsStopping = () => stopping;
+    const fileContext = await createTestWorkflowFileContext();
+    const { runtime } = runWithContext(
+      { mcpClientMemory: {}, fileContext, checkIsStopping, variableContext: {} as any },
+      () =>
+        createWorkflowAgentLoopRuntimeWithoutContext({
+          context: createContext(),
+          usagePush: vi.fn()
+        })
+    );
+    expect(runtime.checkIsStopping).toBe(checkIsStopping);
+    expect(runtime.checkIsStopping?.()).toBe(false);
+    stopping = true;
+    expect(runtime.checkIsStopping?.()).toBe(true);
+  });
+
   it('creates a generic agent loop runtime from workflow context', () => {
     const usagePush = vi.fn();
     const { runtime } = createWorkflowAgentLoopRuntime({
