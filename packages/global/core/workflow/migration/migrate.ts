@@ -3,6 +3,7 @@ import { CanonicalSelectedToolsValueSchema, CanonicalWorkflowDataSchema } from '
 import type { LegacyWorkflowDataInput } from './legacy/schema';
 import { migrateLegacyWorkflowStructureToCurrent } from './legacy/workflow';
 import { migrateLegacyWorkflowStructureData } from './legacy/structure';
+import { migrateWorkflowSecretValues } from './secret';
 import { FlowNodeTypeEnum } from '../node/constant';
 import { NodeInputKeyEnum } from '../constants';
 import { AgentToolInputModeEnum } from '../../app/tool/constants';
@@ -30,12 +31,16 @@ export const migrateWorkflowToCurrent = (input: LegacyWorkflowDataInput): Canoni
     throw new Error('V1 workflows are no longer supported');
   }
 
-  const workflow = migrateLegacyWorkflowStructureToCurrent(
-    migrateLegacyWorkflowStructureData({
-      nodes: input.nodes,
-      edges: input.edges,
-      chatConfig: input.chatConfig
-    })
+  const workflow = migrateWorkflowSecretValues(
+    migrateLegacyWorkflowStructureToCurrent(
+      migrateWorkflowSecretValues(
+        migrateLegacyWorkflowStructureData({
+          nodes: input.nodes,
+          edges: input.edges,
+          chatConfig: input.chatConfig
+        })
+      )
+    )
   );
 
   const nodes = workflow.nodes.map((node) => {
