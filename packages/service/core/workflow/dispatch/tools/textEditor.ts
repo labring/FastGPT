@@ -1,4 +1,4 @@
-import { getWorkflowContext } from '@fastgpt/service/core/workflow/dispatch/context';
+import { getWorkflowContext } from '../context';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';

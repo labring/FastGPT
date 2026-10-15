@@ -1,4 +1,4 @@
-import { getWorkflowContext } from '@fastgpt/service/core/workflow/dispatch/context';
+import { getWorkflowContext } from '../context';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';

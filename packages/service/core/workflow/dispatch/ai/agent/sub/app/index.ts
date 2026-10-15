@@ -1,8 +1,5 @@
 import { createWorkflowRuntimeSummary } from '../../../../utils/summary';
-import {
-  getWorkflowContext,
-  runWithContext
-} from '@fastgpt/service/core/workflow/dispatch/context';
+import { getWorkflowContext, runWithContext } from '../../../../context';
 import type { DispatchSubAppResponse } from '../../type';
 import { createSystemToolResourceContext } from '../../../../context/resource';
 import { loadChildWorkflowWithResource } from '../../../../../resource/service';
