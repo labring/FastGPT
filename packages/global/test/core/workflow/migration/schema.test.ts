@@ -159,6 +159,35 @@ describe('workflow migration boundary', () => {
     expect(result.nodes[0].inputs[1]).not.toHaveProperty('isToolParam');
   });
 
+  it('adds reference support to existing password inputs without changing their mode or value', () => {
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'plugin-input',
+          flowNodeType: 'pluginInput',
+          name: 'Plugin input',
+          inputs: [
+            {
+              key: 'apiKey',
+              label: 'API key',
+              renderTypeList: [FlowNodeInputTypeEnum.password],
+              selectedType: FlowNodeInputTypeEnum.password,
+              value: { secret: 'ciphertext' }
+            }
+          ],
+          outputs: []
+        }
+      ]
+    });
+
+    expect(result.nodes[0].inputs[0]).toMatchObject({
+      renderTypeList: [FlowNodeInputTypeEnum.password, FlowNodeInputTypeEnum.reference],
+      selectedType: FlowNodeInputTypeEnum.password,
+      value: { secret: 'ciphertext' }
+    });
+    expect(migrateWorkflowToCurrent(result)).toEqual(result);
+  });
+
   it('keeps node and input descriptions', async () => {
     const result = await migrateWorkflowToCurrent({
       nodes: [

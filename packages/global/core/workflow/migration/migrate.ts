@@ -4,7 +4,7 @@ import type { LegacyWorkflowDataInput } from './legacy/schema';
 import { migrateLegacyWorkflowStructureToCurrent } from './legacy/workflow';
 import { migrateLegacyWorkflowStructureData } from './legacy/structure';
 import { migrateWorkflowSecretValues } from './secret';
-import { FlowNodeTypeEnum } from '../node/constant';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../node/constant';
 import { NodeInputKeyEnum } from '../constants';
 import { AgentToolInputModeEnum } from '../../app/tool/constants';
 import { isToolInputValueConfigured } from '../../app/formEdit/utils';
@@ -44,11 +44,31 @@ export const migrateWorkflowToCurrent = (input: LegacyWorkflowDataInput): Canoni
   );
 
   const nodes = workflow.nodes.map((node) => {
-    if (node.flowNodeType !== FlowNodeTypeEnum.agent) return node;
-
-    return {
+    const nodeWithPasswordReference = {
       ...node,
       inputs: node.inputs.map((input) => {
+        if (
+          !input.renderTypeList.includes(FlowNodeInputTypeEnum.password) ||
+          input.renderTypeList.includes(FlowNodeInputTypeEnum.reference)
+        ) {
+          return input;
+        }
+
+        // 新增引用能力不改变旧节点的默认模式和已保存的密码值。
+        return {
+          ...input,
+          renderTypeList: [...input.renderTypeList, FlowNodeInputTypeEnum.reference]
+        };
+      })
+    };
+
+    if (nodeWithPasswordReference.flowNodeType !== FlowNodeTypeEnum.agent) {
+      return nodeWithPasswordReference;
+    }
+
+    return {
+      ...nodeWithPasswordReference,
+      inputs: nodeWithPasswordReference.inputs.map((input) => {
         if (input.key !== NodeInputKeyEnum.selectedTools || !Array.isArray(input.value)) {
           return input;
         }
