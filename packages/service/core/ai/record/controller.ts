@@ -46,8 +46,15 @@ const sanitizeString = (value: string, key?: string) => {
 /**
  * 清洗 LLM 日志与请求记录快照中的 base64，并显式保留 Error 的不可枚举诊断属性。
  * 只处理快照副本，不参与真实模型请求、token 统计或响应解析。
+ *
+ * omitErrorStack: 请求记录会通过接口展示给团队成员，写入时不保存调用栈（含服务端代码路径），
+ * 只保留 name、message、code 和 cause；日志场景默认保留 stack 便于排查。
  */
-export const sanitizeLLMRequestRecordPayload = <T>(payload: T, key?: string): T => {
+export const sanitizeLLMRequestRecordPayload = <T>(
+  payload: T,
+  key?: string,
+  options?: { omitErrorStack?: boolean }
+): T => {
   if (typeof payload === 'string') {
     return sanitizeString(payload, key) as T;
   }
@@ -58,13 +65,17 @@ export const sanitizeLLMRequestRecordPayload = <T>(payload: T, key?: string): T 
 
   if (payload instanceof Error) {
     // Object.entries(Error) 会丢掉 message、stack、cause，先展开再递归清洗诊断内容。
-    return sanitizeLLMRequestRecordPayload({
-      ...payload,
-      name: payload.name,
-      message: payload.message,
-      ...(payload.stack !== undefined && { stack: payload.stack }),
-      ...(payload.cause !== undefined && { cause: payload.cause })
-    }) as T;
+    return sanitizeLLMRequestRecordPayload(
+      {
+        ...payload,
+        name: payload.name,
+        message: payload.message,
+        ...(!options?.omitErrorStack && payload.stack !== undefined && { stack: payload.stack }),
+        ...(payload.cause !== undefined && { cause: payload.cause })
+      },
+      undefined,
+      options
+    ) as T;
   }
 
   if (payload instanceof Date) {
@@ -76,13 +87,13 @@ export const sanitizeLLMRequestRecordPayload = <T>(payload: T, key?: string): T 
   }
 
   if (Array.isArray(payload)) {
-    return payload.map((item) => sanitizeLLMRequestRecordPayload(item)) as T;
+    return payload.map((item) => sanitizeLLMRequestRecordPayload(item, undefined, options)) as T;
   }
 
   return Object.fromEntries(
     Object.entries(payload).map(([entryKey, entryValue]) => [
       entryKey,
-      sanitizeLLMRequestRecordPayload(entryValue, entryKey)
+      sanitizeLLMRequestRecordPayload(entryValue, entryKey, options)
     ])
   ) as T;
 };
@@ -101,8 +112,10 @@ export const saveLLMRequestRecord = async (params: {
     await MongoLLMRequestRecord.create({
       teamId: params.teamId,
       requestId: params.requestId,
-      body: sanitizeLLMRequestRecordPayload(params.body),
-      response: sanitizeLLMRequestRecordPayload(params.response)
+      body: sanitizeLLMRequestRecordPayload(params.body, undefined, { omitErrorStack: true }),
+      response: sanitizeLLMRequestRecordPayload(params.response, undefined, {
+        omitErrorStack: true
+      })
     });
   } catch (error) {
     // 记录错误但不影响主流程

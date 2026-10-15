@@ -120,6 +120,32 @@ describe('sanitizeLLMRequestRecordPayload', () => {
       message: 'no stack'
     });
   });
+
+  it('omits stacks from top-level, nested and array errors but keeps other diagnostics', () => {
+    const cause = Object.assign(new Error('provider failed'), { code: 'PROVIDER_ERROR' });
+    const error = Object.assign(new Error('tool failed', { cause: { original: cause } }), {
+      code: 'LLM_TOOL_CALL_ERROR'
+    });
+    const result = sanitizeLLMRequestRecordPayload({ error, errors: [cause] }, undefined, {
+      omitErrorStack: true
+    });
+    expect(result).toEqual({
+      error: {
+        name: 'Error',
+        message: 'tool failed',
+        code: 'LLM_TOOL_CALL_ERROR',
+        cause: {
+          original: { name: 'Error', message: 'provider failed', code: 'PROVIDER_ERROR' }
+        }
+      },
+      errors: [{ name: 'Error', message: 'provider failed', code: 'PROVIDER_ERROR' }]
+    });
+    // 原始 Error 不被修改，日志场景默认仍保留 stack。
+    expect(error.stack).toEqual(expect.any(String));
+    expect(sanitizeLLMRequestRecordPayload({ error })).toMatchObject({
+      error: { stack: expect.any(String) }
+    });
+  });
 });
 
 describe('LLM request record team isolation', () => {
@@ -173,7 +199,6 @@ describe('LLM request record team isolation', () => {
         name: 'LLMToolCallError',
         code: 'LLM_TOOL_CALL_ERROR',
         message: expect.stringContaining('no valid tool calls'),
-        stack: expect.any(String),
         cause: {
           finish_reason: 'tool_calls',
           expectedToolNames: ['search'],
@@ -188,6 +213,8 @@ describe('LLM request record team isolation', () => {
         }
       }
     });
+    // 请求记录会通过接口展示给团队成员，不保存包含服务端路径的调用栈。
+    expect(record?.response?.error).not.toHaveProperty('stack');
   });
 
   it('saves records with very large video data urls after redacting base64 payloads', async () => {
