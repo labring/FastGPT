@@ -13,6 +13,9 @@ import {
 } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { checkTeamSandboxPermission } from '@fastgpt/service/support/permission/teamLimit';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createTestWorkflowDispatch } from '../../context/fixtures';
+
+const dispatchRunTools = createTestWorkflowDispatch(dispatchRunToolsWithoutContext);
 
 const {
   getLLMModelDataMock,
@@ -262,7 +265,9 @@ describe('dispatchRunTools', () => {
   });
 
   it('does not restore history files when the node has no selected file link input', async () => {
-    await dispatchRunTools(createProps());
+    const result = await dispatchRunTools(createProps());
+
+    expect(result.error).toBeUndefined();
 
     expect(useToolMessagesMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -280,7 +285,7 @@ describe('dispatchRunTools', () => {
   });
 
   it('keeps file links when the node explicitly selects a file link input', async () => {
-    await dispatchRunTools(
+    const result = await dispatchRunTools(
       createProps({
         node: {
           nodeId: 'toolcall_node',
@@ -300,6 +305,7 @@ describe('dispatchRunTools', () => {
       })
     );
 
+    expect(result.error).toBeUndefined();
     expect(useToolMessagesMock).toHaveBeenCalledWith(
       expect.objectContaining({
         fileLinks: ['/current.pdf'],
@@ -397,7 +403,7 @@ describe('dispatchRunTools', () => {
       ]
     });
 
-    await dispatchRunTools(
+    const result = await dispatchRunTools(
       createProps({
         params: {
           ...createProps().params,
@@ -406,6 +412,7 @@ describe('dispatchRunTools', () => {
       })
     );
 
+    expect(result.error).toBeUndefined();
     expect(checkTeamSandboxPermission).toHaveBeenCalledWith('team_1');
     expect(getSandboxClientMock).toHaveBeenCalledWith({
       sourceType: createProps().runningAppInfo.sourceType,
