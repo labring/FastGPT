@@ -132,7 +132,7 @@ const isAbortByLeave = (reason: unknown) => {
  * - `generatingMessage` 仍只更新最后一条 AI 消息；如果最后一条不是 AI，则直接跳过。
  * - interactive 输入会改写上一轮交互结果，不创建新的普通会话轮次。
  * - 发送失败且后端没有返回 `responseText` 时恢复用户输入，并回滚本轮 human/AI placeholder。
- * - `abortRequest('leave')` 触发的异常不 toast，也不额外标记错误状态，保持页面切换语义。
+ * - `abortRequest('leave')` 后无论流正常返回或抛错，都保留服务端生成状态，不更新当前会话。
  */
 export const useChatGenerate = ({
   onStartChat,
@@ -789,6 +789,8 @@ export const useChatGenerate = ({
           scrollToBottom('smooth', 100);
 
           const abortSignal = new AbortController();
+          const isLeaveAborted = () =>
+            abortSignal.signal.aborted && isAbortByLeave(abortSignal.signal.reason);
 
           try {
             chatControllerRef.current = abortSignal;
@@ -814,6 +816,9 @@ export const useChatGenerate = ({
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
               variables: requestVariables
             });
+
+            // 离开只断开本地订阅，流可能正常返回；生成结果仍由服务端状态同步接管。
+            if (isLeaveAborted()) return;
 
             flushGeneratingMessageQueue();
 
@@ -878,7 +883,8 @@ export const useChatGenerate = ({
                 state.sourceKey === sourceKey && state.chatId === chatId
             });
           } catch (err: any) {
-            if (isAbortByLeave(err)) return;
+            // 流可能将中断包装为 AbortError，需同时检查 controller 上保留的离开原因。
+            if (isLeaveAborted() || isAbortByLeave(err)) return;
 
             flushGeneratingMessageQueue();
 

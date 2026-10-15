@@ -187,9 +187,14 @@ const ChatSliderList = () => {
                     bg={'primary.500'}
                     flexShrink={0}
                   />
-                ) : item.isTemporary ? null : (
+                ) : item.isTemporary &&
+                  item.chatGenerateStatus !== ChatGenerateStatusEnum.generating ? null : (
                   <Box
-                    className="time"
+                    className={
+                      item.chatGenerateStatus === ChatGenerateStatusEnum.generating
+                        ? 'generatingStatus'
+                        : 'time'
+                    }
                     display={'block'}
                     fontWeight={'400'}
                     fontSize={'mini'}
