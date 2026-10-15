@@ -35,7 +35,7 @@ import {
 } from '../../../../../../ai/sandbox/utils';
 import { getRunningSandboxId } from '../../../../../../ai/sandbox/utils/id';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { readWorkflowFileBuffer, WorkflowContext } from '../../../../../utils/context';
+import { getWorkflowContext } from '../../../../context';
 
 export type AgentSandboxPrepareContext = SandboxPrepareContext & {
   sandboxClient: SandboxClient;
@@ -94,8 +94,8 @@ export async function ensureAgentSandboxRuntime({
     };
   }
 
-  const readInputFile = (url: string) => readWorkflowFileBuffer({ url });
-  const workflowSandboxContext = WorkflowContext.getStore()?.sandboxContext;
+  const readInputFile = (url: string) => getWorkflowContext().fileContext.readBuffer({ url });
+  const workflowSandboxContext = getWorkflowContext().sandboxContext;
   const scopeKey = buildSandboxInputFileScopeKey({
     sourceType,
     sourceId,

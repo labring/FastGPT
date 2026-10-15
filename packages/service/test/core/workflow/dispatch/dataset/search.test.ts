@@ -8,9 +8,10 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
 import { WorkflowResourceError } from '@fastgpt/service/core/workflow/resource/service';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as modelGetters from '../../../../../core/ai/model/catalog/service';
+import { runInTestWorkflowContext } from '../context/fixtures';
 
 const {
   defaultSearchDatasetDataMock,
@@ -123,24 +124,24 @@ vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
   getAuthorizedModelIds: vi.fn(async () => new Set())
 }));
 
-import {
-  dispatchDatasetSearch,
-  isDatasetResourceMissingError
-} from '../../../../../core/workflow/dispatch/dataset/search';
+import { dispatchDatasetSearch as dispatchDatasetSearchWithoutContext, isDatasetResourceMissingError } from '../../../../../core/workflow/dispatch/dataset/search';
 import { serviceEnv } from '../../../../../env';
+const dispatchDatasetSearch: typeof dispatchDatasetSearchWithoutContext = (props) => runInTestWorkflowContext(() => dispatchDatasetSearchWithoutContext(props));
 
 describe('dispatchDatasetSearch', () => {
   const runSearch = (params: Record<string, unknown> = {}, nodeSummary = createNodeSummary()) =>
-    dispatchDatasetSearch({
-      runningAppInfo: { teamId: 'team_1' },
-      runningUserInfo: { tmbId: 'tmb_1' },
-      externalProvider: {},
-      histories: [],
-      node: { name: 'Dataset Search' },
-      params: { datasets: [{ datasetId: 'dataset_1' }], userChatInput: 'question', ...params },
-      nodeSummary,
-      usagePush: usagePushMock
-    } as any);
+    runInTestWorkflowContext(() =>
+      dispatchDatasetSearch({
+        runningAppInfo: { teamId: 'team_1' },
+        runningUserInfo: { tmbId: 'tmb_1' },
+        externalProvider: {},
+        histories: [],
+        node: { name: 'Dataset Search' },
+        params: { datasets: [{ datasetId: 'dataset_1' }], userChatInput: 'question', ...params },
+        nodeSummary,
+        usagePush: usagePushMock
+      } as any)
+    );
 
   /** 保留真实资源加载和快照判断，仅替换数据库查询，验证错误分类的完整路径。 */
   const runSnapshotSearch = async () => {

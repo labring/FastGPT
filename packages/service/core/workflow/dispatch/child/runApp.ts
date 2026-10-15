@@ -1,6 +1,8 @@
 import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
+import { createWorkflowRuntimeSummary } from '../utils/summary';
 
-import { runWorkflow, type RunWorkflowProps } from '../index';
+import { runWorkflow } from '../index';
+import type { RunWorkflowProps } from '../type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
@@ -21,10 +23,10 @@ import {
   removeUnfinishedInteractiveHistories,
   safePoints
 } from '../utils';
-import { getWorkflowFileVariableInputs, WorkflowVariableState } from '../utils/variables';
+import { getWorkflowFileVariableInputs, WorkflowVariableState } from '../context/variables';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { prepareWorkflowFiles, runWithDerivedWorkflowFileContext } from '../../utils/context';
+import { getWorkflowContext, runWithDerivedWorkflowFileContext, runWithContext } from '../context';
 import { loadChildWorkflowWithResource } from '../../resource/service';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getWorkflowRuntimeSummary } from '../utils/summary';
@@ -89,7 +91,7 @@ export const runChildAppWorkflow = async ({
   const { fileUrlList, ...childrenAppVariables } = resolvedVariables;
   const resolvedInputFiles =
     isTool && Array.isArray(fileUrlList)
-      ? await prepareWorkflowFiles({ files: fileUrlList.map((url: string) => ({ url })) })
+      ? await getWorkflowContext().fileContext.prepareFiles({ files: fileUrlList.map((url: string) => ({ url })) })
       : userInputFiles;
 
   const interactive = workflowProps.lastInteractive;
@@ -141,7 +143,7 @@ export const runChildAppWorkflow = async ({
         variablesConfig: chatConfig.variables,
         inputVariables: childrenAppVariables,
         externalVariables: externalProvider?.externalWorkflowVariables,
-        sourceVariableState: workflowProps.variableState,
+        sourceVariableState: getWorkflowContext().variableContext,
         resolveInputFile
       });
       // 应用工具按 appId 隔离记忆作用域；画布子应用按节点隔离，并在自定义历史切片时跳过继承父级记忆。
@@ -156,20 +158,30 @@ export const runChildAppWorkflow = async ({
             }
           );
 
-      const result = await runWorkflow({
+      // 统一入口同时服务画布子应用与 Agent 工具；继承根沙箱，独立变量和本层响应摘要。
+      const parentContext = getWorkflowContext();
+      const childContext = parentContext.getChildContext({
+        runtimeControl: { isToolCall: isTool || parentContext.runtimeControl.isToolCall },
+        variableContext: childrenVariableState,
+        nodeResponseSink: parentContext.nodeResponseSink.getChildContext({
+          workflowRuntimeSummary: createWorkflowRuntimeSummary(),
+          ...(workflowProps.nodeResponseParentId !== undefined
+            ? { defaultParentId: workflowProps.nodeResponseParentId }
+            : {})
+        })
+      });
+      const result = await runWithContext(childContext, () => runWorkflow({
         ...workflowProps,
         memoryState: childMemoryState,
-        isToolCall: isTool ? true : workflowProps.isToolCall,
         stream: forbidStream ? false : Boolean(workflowProps.stream),
         ...(forbidStream ? { workflowStreamResponse: undefined } : {}),
         runningAppInfo: childRunningAppInfo,
         runtimeNodes,
         runtimeEdges,
         histories: childHistories,
-        variableState: childrenVariableState,
         query: childQuery,
         chatConfig
-      });
+      }));
       return {
         ...result,
         completeMessages: childHistories.concat(
@@ -251,7 +263,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       ? lastInteractive.params.childrenResponse
       : undefined;
   const userInputFiles = fileUrlList
-    ? await prepareWorkflowFiles({ files: fileUrlList.map((url) => ({ url })) })
+    ? await getWorkflowContext().fileContext.prepareFiles({ files: fileUrlList.map((url) => ({ url })) })
     : files;
 
   if (!childrenInteractive && !userChatInput && userInputFiles.length === 0) {

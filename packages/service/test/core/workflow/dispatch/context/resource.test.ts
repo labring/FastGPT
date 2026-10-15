@@ -3,7 +3,7 @@ import {
   createWorkflowResourceContext,
   hasWorkflowResource,
   filterWorkflowToolList
-} from '@fastgpt/service/core/workflow/resource/context';
+} from '@fastgpt/service/core/workflow/dispatch/context/resource';
 
 describe('workflow resource snapshot selection', () => {
   it('distinguishes a selected child from a member-authorized child outside the snapshot', () => {

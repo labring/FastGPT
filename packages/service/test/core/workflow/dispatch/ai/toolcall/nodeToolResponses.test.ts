@@ -1,3 +1,4 @@
+import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
@@ -9,10 +10,11 @@ vi.mock('@fastgpt/service/thirdProvider/codeSandbox', () => ({
   codeSandbox: { runCode: (...args: any[]) => runCodeMock(...args) }
 }));
 
-import { runWorkflow } from '@fastgpt/service/core/workflow/dispatch';
+import { runWorkflow as runWorkflowWithoutContext } from '@fastgpt/service/core/workflow/dispatch';
+const runWorkflow = createTestWorkflowDispatch(runWorkflowWithoutContext, { newWorkflow: true });
 import { createToolCallToolProvider } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/toolProvider';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
-import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/context/variables';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -85,14 +87,13 @@ const runNodeAsTool = async (toolNode: RuntimeNodeItemType) => {
     chatConfig: {},
     runtimeNodes: [toolCallNode, toolNode],
     runtimeEdges,
-    variableState: await createVariableState(),
+    variableContext: await createVariableState(),
     externalProvider: {},
     workflowDispatchDeep: 0,
     maxRunTimes: 20,
     stream: false,
     isToolCall: true,
-    workflowStreamResponse: undefined,
-    checkIsStopping: () => false
+    workflowStreamResponse: undefined
   } as any);
 
   return result[DispatchNodeResponseKeyEnum.toolResponse];
@@ -197,23 +198,24 @@ describe('newly connectable nodes as tools', () => {
       query: [],
       variables: {},
       chatConfig: {},
-      variableState: await createVariableState(),
+      variableContext: await createVariableState(),
       externalProvider: {},
       workflowDispatchDeep: 0,
       maxRunTimes: 20,
       stream: false,
-      workflowStreamResponse: undefined,
-      checkIsStopping: () => false,
-      nodeResponseSink: undefined
+      workflowStreamResponse: undefined
     } as any;
 
-    const provider = await runWithContext(
+    const { variableContext, ...nodeWorkflowProps } = workflowProps;
+    const result = await runWithContext(
       {
+        checkIsStopping: () => false,
         mcpClientMemory: {},
+        variableContext,
         fileContext: { limits: { maxFileAmount: 20, maxBytesPerFile: 1024 } } as any
       },
-      () =>
-        createToolCallToolProvider({
+      async () => {
+        const provider = await createToolCallToolProvider({
           messages: [{ role: 'user' as any, content: 'hello' }],
           toolNodes: [
             {
@@ -227,21 +229,21 @@ describe('newly connectable nodes as tools', () => {
           ],
           useAgentSandbox: false,
           lang: 'zh-CN' as any,
-          workflowProps,
+          workflowProps: nodeWorkflowProps,
           runtimeNodes: [codeNode],
           runtimeEdges: [],
           cacheToolFlowResponse: vi.fn()
-        } as any)
+        } as any);
+        return provider.executeTool({
+          call: {
+            id: 'call_code',
+            type: 'function',
+            function: { name: 'codeNode', arguments: '{}' }
+          } as any,
+          messages: []
+        });
+      }
     );
-
-    const result = await provider.executeTool({
-      call: {
-        id: 'call_code',
-        type: 'function',
-        function: { name: 'codeNode', arguments: '{}' }
-      } as any,
-      messages: []
-    });
 
     expect(result.response).not.toBe('none');
     expect(result.response).toContain('sandbox boom');

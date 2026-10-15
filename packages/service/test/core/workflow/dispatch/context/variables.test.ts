@@ -3,16 +3,16 @@ import {
   VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { EntryPointItemType } from '@fastgpt/global/core/app/type';
 import {
   getEntryPointRuntimeVariables,
   getWorkflowFileVariableInputs,
   WorkflowVariableState
-} from '../../../../core/workflow/dispatch/utils/variables';
+} from '@fastgpt/service/core/workflow/dispatch/context/variables';
 import { ENTRY_POINT_VARIABLE_KEY } from '@fastgpt/global/core/app/constants';
-import { encryptSecret } from '../../../../common/secret/aes256gcm';
-import { anyValueDecrypt } from '../../../../common/secret/utils';
+import { encryptSecret } from '@fastgpt/service/common/secret/aes256gcm';
+import { anyValueDecrypt } from '@fastgpt/service/common/secret/utils';
 
 const mockGetChatFilePreviewUrl = vi.fn(async (key: string) => `http://preview.local/${key}`);
 vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
@@ -23,7 +23,8 @@ const createState = (props: Partial<Parameters<typeof WorkflowVariableState.crea
   WorkflowVariableState.create({
     timezone: 'Asia/Shanghai',
     runningAppInfo: {
-      id: 'appId',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'appId',
       teamId: 'teamId',
       tmbId: 'tmbId',
       name: 'app'
@@ -36,6 +37,32 @@ const createState = (props: Partial<Parameters<typeof WorkflowVariableState.crea
   });
 
 describe('WorkflowVariableState', () => {
+  it('deeply isolates runtime values, stored values and file metadata when cloned', async () => {
+    const state = await createState({
+      variablesConfig: [{ key: 'files', type: VariableInputEnum.file } as any],
+      inputVariables: {
+        files: [{ key: 'chat/app/a.pdf', name: 'a.pdf', type: ChatFileTypeEnum.file }]
+      }
+    });
+    await state.set('nested', { items: [{ count: 1 }] });
+    const child = state.clone();
+    (child.get('nested') as { items: { count: number }[] }).items[0].count = 2;
+    (child.get('files') as string[]).push('https://example.com/new.pdf');
+    (child.getStoreValue('files') as { name: string }[])[0].name = 'child.pdf';
+    const url = (state.get('files') as string[])[0];
+    child.getFileStoreValueByRuntimeUrl(url)!.name = 'child metadata.pdf';
+
+    expect(state.get('nested')).toEqual({ items: [{ count: 1 }] });
+    expect(state.getStoreValue('nested')).toEqual({ items: [{ count: 1 }] });
+    expect(state.get('files')).toEqual([url]);
+    expect(state.getStoreValue('files')).toEqual([
+      { key: 'chat/app/a.pdf', name: 'a.pdf', type: ChatFileTypeEnum.file }
+    ]);
+    expect(state.getFileStoreValueByRuntimeUrl(url)?.name).toBe('a.pdf');
+    expect(child.get('nested')).toEqual({ items: [{ count: 2 }] });
+    expect(child.getStoreValue('nested')).toEqual({ items: [{ count: 2 }] });
+  });
+
   it('should expose a configured entry point as a runtime-only variable', async () => {
     const runtimeOnlyVariables = getEntryPointRuntimeVariables({
       entryPoints: [
@@ -65,7 +92,7 @@ describe('WorkflowVariableState', () => {
     ).toEqual({});
     expect(
       getEntryPointRuntimeVariables({
-        entryPoints: null,
+        entryPoints: null as unknown as EntryPointItemType[],
         inputVariables: { [ENTRY_POINT_VARIABLE_KEY]: 'Knowledge Q&A' }
       })
     ).toEqual({});

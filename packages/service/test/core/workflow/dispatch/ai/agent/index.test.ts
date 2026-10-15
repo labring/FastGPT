@@ -12,20 +12,21 @@ import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
 import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/application/runtime';
 import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
-import { runWithContext as runWithWorkflowContext } from '@fastgpt/service/core/workflow/utils/context';
+import { runWithTestWorkflowContext as runWithWorkflowContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { createTestWorkflowFileContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { Readable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const runWithContext: typeof runWithWorkflowContext = (value, fn) =>
+let testFileContext: Awaited<ReturnType<typeof createTestWorkflowFileContext>>;
+
+const runWithContext = <T>(
+  value: Omit<Parameters<typeof runWithWorkflowContext>[0], 'fileContext'>,
+  fn: (ctx: Parameters<typeof runWithWorkflowContext>[0]) => T
+): T =>
   runWithWorkflowContext(
     {
       ...value,
-      fileContext: {
-        limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
-        resolve: () => undefined,
-        resolveChatFile: () => undefined,
-        getIdentity: () => undefined
-      } as any
+      fileContext: testFileContext
     },
     fn
   );
@@ -217,7 +218,6 @@ const getMessageTextForTest = (content: unknown) => {
 
 const createProps = () =>
   ({
-    checkIsStopping: vi.fn(() => false),
     node: {
       nodeId: 'agent_node',
       flowNodeType: FlowNodeTypeEnum.agent,
@@ -298,7 +298,7 @@ const createProps = () =>
     maxRunTimes: 10,
     workflowDispatchDeep: 0,
     workflowStreamResponse: vi.fn(),
-    variableState: {
+    variableContext: {
       get: vi.fn(),
       set: vi.fn(),
       getStoreValue: vi.fn(),
@@ -333,7 +333,8 @@ const createProps = () =>
 const getSandboxWorkDirectory = () => getSandboxRuntimeProfile().workDirectory;
 
 describe('dispatchRunAgent user context', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    testFileContext = await createTestWorkflowFileContext();
     vi.clearAllMocks();
     getLLMModelDataMock.mockImplementation(({ modelId, model }) => ({
       modelId: modelId ?? '68ad85a7463006c963799a41',
@@ -418,6 +419,7 @@ describe('dispatchRunAgent user context', () => {
     let result: any;
     runWithContext(
       {
+        checkIsStopping: () => false,
         mcpClientMemory: {}
       },
       () => {
@@ -457,14 +459,9 @@ describe('dispatchRunAgent user context', () => {
     ];
 
     let result: any;
-    runWithContext(
-      {
-        mcpClientMemory: {}
-      },
-      () => {
-        result = dispatchRunAgent(props);
-      }
-    );
+    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
+      result = dispatchRunAgent(props);
+    });
     await result;
 
     const loopInput = runAgentLoopMock.mock.calls[0][0].input;
@@ -506,14 +503,9 @@ describe('dispatchRunAgent user context', () => {
 
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     let resultPromise: Promise<any>;
-    runWithContext(
-      {
-        mcpClientMemory: {}
-      },
-      () => {
-        resultPromise = dispatchRunAgent(props);
-      }
-    );
+    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
+      resultPromise = dispatchRunAgent(props);
+    });
     await resultPromise!;
 
     const systemPrompt = runAgentLoopMock.mock.calls[0][0].input.systemPrompt;
@@ -527,14 +519,9 @@ describe('dispatchRunAgent user context', () => {
 
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     let resultPromise: Promise<any>;
-    runWithContext(
-      {
-        mcpClientMemory: {}
-      },
-      () => {
-        resultPromise = dispatchRunAgent(props);
-      }
-    );
+    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
+      resultPromise = dispatchRunAgent(props);
+    });
     const result = await resultPromise!;
 
     expect(result.error).toBeUndefined();
@@ -570,14 +557,9 @@ describe('dispatchRunAgent user context', () => {
     });
 
     let result: any;
-    runWithContext(
-      {
-        mcpClientMemory: {}
-      },
-      () => {
-        result = dispatchRunAgent(props);
-      }
-    );
+    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
+      result = dispatchRunAgent(props);
+    });
     await result;
 
     expect(getSandboxClientMock).toHaveBeenCalledWith({
@@ -639,6 +621,7 @@ describe('dispatchRunAgent user context', () => {
 
     const result = await runWithContext(
       {
+        checkIsStopping: () => false,
         mcpClientMemory: {}
       },
       () => dispatchRunAgent(props)
@@ -670,10 +653,7 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any> | undefined;
     runWithContext(
       {
-        queryUrlTypeMap: {
-          '/old.pdf': ChatFileTypeEnum.file,
-          '/current.pdf': ChatFileTypeEnum.file
-        },
+        checkIsStopping: () => false,
         mcpClientMemory: {}
       },
       () => {
@@ -711,15 +691,9 @@ describe('dispatchRunAgent user context', () => {
     ensureAppSandboxRuntimeReadyMock.mockRejectedValueOnce(new Error('archive upload failed'));
 
     let resultPromise: Promise<any> | undefined;
-    runWithContext(
-      {
-        queryUrlTypeMap: {},
-        mcpClientMemory: {}
-      },
-      () => {
-        resultPromise = dispatchRunAgent(props);
-      }
-    );
+    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
+      resultPromise = dispatchRunAgent(props);
+    });
     const result = await resultPromise!;
 
     expect(getSandboxClientMock).not.toHaveBeenCalled();
@@ -743,14 +717,9 @@ describe('dispatchRunAgent user context', () => {
     props.runningAppInfo.sourceId = 'edit_skill_1';
 
     let result: any;
-    runWithContext(
-      {
-        mcpClientMemory: {}
-      },
-      () => {
-        result = dispatchRunAgent(props);
-      }
-    );
+    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
+      result = dispatchRunAgent(props);
+    });
     await result;
 
     expect(getSandboxClientMock).toHaveBeenCalledWith({
@@ -809,14 +778,9 @@ describe('dispatchRunAgent user context', () => {
     });
 
     let resultPromise: Promise<any>;
-    runWithContext(
-      {
-        mcpClientMemory: {}
-      },
-      () => {
-        resultPromise = dispatchRunAgent(createProps());
-      }
-    );
+    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
+      resultPromise = dispatchRunAgent(createProps());
+    });
     const result = await resultPromise!;
 
     expect(result.data.answerText).toBe('我先查询工具。ok');
@@ -1048,7 +1012,7 @@ describe('dispatchRunAgent user context', () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const publishedResponses: any[] = [];
     const props = createProps();
-    props.nodeResponseSink = {
+    const nodeResponseSink = {
       publish: vi.fn(async (inputs: Array<{ response: any }>) => {
         publishedResponses.push(...inputs.map((input) => input.response));
         return inputs.map((input) => input.response);
@@ -1074,17 +1038,13 @@ describe('dispatchRunAgent user context', () => {
     });
 
     let resultPromise: Promise<any>;
-    runWithContext(
-      {
-        mcpClientMemory: {}
-      },
-      () => {
-        resultPromise = dispatchRunAgent(props);
-      }
-    );
+    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {}, nodeResponseSink }, () => {
+      resultPromise = dispatchRunAgent(props);
+    });
     await resultPromise!;
 
     expect(publishedResponses).toHaveLength(1);
+    expect(props).not.toHaveProperty('nodeResponseSink');
     expect(publishedResponses[0]).not.toHaveProperty('parentId');
   });
 
@@ -1113,14 +1073,9 @@ describe('dispatchRunAgent user context', () => {
     });
 
     let resultPromise: Promise<any>;
-    runWithContext(
-      {
-        mcpClientMemory: {}
-      },
-      () => {
-        resultPromise = dispatchRunAgent(props);
-      }
-    );
+    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
+      resultPromise = dispatchRunAgent(props);
+    });
     const result = await resultPromise!;
 
     expect(runAgentLoopMock).toHaveBeenCalledWith(
@@ -1580,14 +1535,9 @@ describe('dispatchRunAgent user context', () => {
     });
 
     let resultPromise: Promise<any>;
-    runWithContext(
-      {
-        mcpClientMemory: {}
-      },
-      () => {
-        resultPromise = dispatchRunAgent(props);
-      }
-    );
+    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
+      resultPromise = dispatchRunAgent(props);
+    });
     const result = await resultPromise!;
 
     expect(runAgentLoopMock).toHaveBeenCalledWith(
@@ -1659,14 +1609,9 @@ describe('dispatchRunAgent user context', () => {
     });
 
     let resultPromise: Promise<any>;
-    runWithContext(
-      {
-        mcpClientMemory: {}
-      },
-      () => {
-        resultPromise = dispatchRunAgent(props);
-      }
-    );
+    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
+      resultPromise = dispatchRunAgent(props);
+    });
     const result = await resultPromise!;
 
     expect(
@@ -1708,14 +1653,9 @@ describe('dispatchRunAgent user context', () => {
     configure(props);
 
     let promise: any;
-    runWithContext(
-      {
-        mcpClientMemory: {}
-      },
-      () => {
-        promise = dispatchRunAgent(props);
-      }
-    );
+    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
+      promise = dispatchRunAgent(props);
+    });
     const result = await promise;
 
     expect(result.error).toBeUndefined();
@@ -1741,15 +1681,9 @@ describe('dispatchRunAgent user context', () => {
     global.feConfigs = { ...global.feConfigs, show_agent_sandbox: false };
 
     let promise: Promise<any>;
-    runWithContext(
-      {
-        queryUrlTypeMap: {},
-        mcpClientMemory: {}
-      },
-      () => {
-        promise = dispatchRunAgent(props);
-      }
-    );
+    runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} }, () => {
+      promise = dispatchRunAgent(props);
+    });
     const result = await promise!;
 
     expect(result.error?.system_error_text).toBe(

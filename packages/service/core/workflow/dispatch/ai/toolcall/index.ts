@@ -15,7 +15,7 @@ import {
 } from '../../../../ai/sandbox/application/runtime/entrypoint';
 import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/application/toolCall';
 import { postTextCensor } from '../../../../chat/postTextCensor';
-import { readWorkflowFileBuffer, getWorkflowSandboxContext } from '../../../utils/context';
+import { getWorkflowContext, getWorkflowSandboxContext } from '../../context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import {
   getAgentLoopHistories,
@@ -160,7 +160,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
                   sourceId: sandboxSourceId,
                   userId: sandboxContext.userId,
                   chatId: sandboxContext.chatId,
-                  readInputFile: (url) => readWorkflowFileBuffer({ url }),
+                  readInputFile: (url) => getWorkflowContext().fileContext.readBuffer({ url }),
                   files: currentInputFiles.map((file) => ({
                     path: file.sandboxPath!,
                     url: file.url
@@ -238,7 +238,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       summarizeAgentLoopCoreToolRunFlowResponses(toolDispatchFlowResponses);
     // 有 sink 时 child workflow 和当前 ToolCall 的内部 response 已经独立发布；
     // 只在无 sink 的调试/单测路径把兼容详情挂回顶层 response。
-    const toolDetailForResponse = props.nodeResponseSink ? undefined : toolDetail;
+    const toolDetailForResponse = getWorkflowContext().nodeResponseSink ? undefined : toolDetail;
     const modelName = toolModel.name;
     const modelTotalPoints = toolCallTotalPoints;
     const nodeResponse = createAgentLoopCoreToolCallNodeResponse({

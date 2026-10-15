@@ -10,6 +10,7 @@ import {
 import type { ChatItemMiniType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { getFileMaxSize } from '@fastgpt/service/common/file/utils';
+import { getWorkflowContext } from '@fastgpt/service/core/workflow/dispatch/context';
 
 const axiosGetMock = vi.hoisted(() => vi.fn());
 const axiosHeadMock = vi.hoisted(() => vi.fn());
@@ -25,7 +26,7 @@ vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
   };
 });
 
-import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
+import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context/file';
 const scope = {
   sourceType: ChatSourceTypeEnum.app,
   sourceId: 'app-1',
@@ -48,6 +49,147 @@ const createFile = (
 const createHistory = (file: UserChatItemValueItemType): ChatItemMiniType => ({
   obj: ChatRoleEnum.Human,
   value: [file]
+});
+
+describe('WorkflowFileContext 文件操作', () => {
+  let originalSystemEnv: typeof global.systemEnv;
+  beforeEach(() => {
+    originalSystemEnv = global.systemEnv;
+    global.systemEnv = { ...originalSystemEnv, fileUrlWhitelist: [] };
+    axiosGetMock.mockReset();
+    axiosHeadMock.mockReset();
+  });
+  afterEach(() => {
+    global.systemEnv = originalSystemEnv;
+    vi.restoreAllMocks();
+  });
+
+  it.each(['root', 'child'] as const)(
+    'readBuffer 在 %s Context 中直读可信 Ref，并传递取消信号',
+    async (kind) => {
+      const { fileContext: root } = await prepareWorkflowFileContext({
+        query: [createFile({ key: privateKey })],
+        histories: [],
+        scope,
+        maxFileAmount: 2,
+        maxBytesPerFile: 7,
+        getPreviewUrl: vi.fn(async () => 'https://files.example.com/registered')
+      });
+      const fileContext =
+        kind === 'root' ? root : await root.derive(['https://files.example.com/registered']);
+      const materialize = vi
+        .fn()
+        .mockResolvedValue({ buffer: Buffer.from('internal'), metadata: {} });
+      const getSource = vi.spyOn(fileContext, 'getSource').mockResolvedValue({
+        source: { kind: 's3', sizeBytes: 8, metadata: {}, materialize },
+        sourceKind: 'internal'
+      });
+      const signal = new AbortController().signal;
+      expect(
+        await fileContext.readBuffer({ url: 'https://files.example.com/registered', signal })
+      ).toEqual(Buffer.from('internal'));
+      expect(getSource).toHaveBeenCalledWith(
+        fileContext.resolve('https://files.example.com/registered')
+      );
+      expect(materialize).toHaveBeenCalledWith({ signal });
+      expect(axiosGetMock).not.toHaveBeenCalled();
+      expect(() => getWorkflowContext()).toThrow('Workflow context is unavailable');
+    }
+  );
+
+  it.each(['root', 'child'] as const)(
+    'readBuffer 在 %s 中按自身额度读取动态外链，不登记新文件',
+    async (kind) => {
+      const { fileContext: root } = await prepareWorkflowFileContext({
+        query: [],
+        histories: [],
+        scope,
+        maxFileAmount: 2,
+        maxBytesPerFile: 7
+      });
+      const fileContext = kind === 'root' ? root : await root.derive([]);
+      const url = 'https://node.example.com/generated.pdf';
+      const signal = new AbortController().signal;
+      axiosGetMock.mockResolvedValueOnce({
+        data: Readable.from([Buffer.from('outside')]),
+        headers: {}
+      });
+      expect(await fileContext.readBuffer({ url, signal })).toEqual(Buffer.from('outside'));
+      expect(axiosGetMock).toHaveBeenCalledWith(
+        url,
+        expect.objectContaining({
+          maxContentLength: 7,
+          responseType: 'stream',
+          signal
+        })
+      );
+      expect(fileContext.resolve(url)).toBeUndefined();
+      axiosGetMock.mockResolvedValueOnce({
+        data: Readable.from([Buffer.from('12345678')]),
+        headers: {}
+      });
+      await expect(fileContext.readBuffer({ url })).rejects.toThrow('maximum allowed size');
+    }
+  );
+
+  it.each(['root', 'child'] as const)(
+    'prepareFiles 在 %s 中使用默认额度，保留显式额度和 Data URL 开关',
+    async (kind) => {
+      const files = [
+        { url: 'https://files.example.com/a.pdf' },
+        { url: 'https://files.example.com/b.pdf' },
+        { url: 'data:image/png;base64,abc' }
+      ];
+      const { fileContext: root } = await prepareWorkflowFileContext({
+        query: [],
+        histories: [],
+        scope,
+        maxFileAmount: 1
+      });
+      const fileContext = kind === 'root' ? root : await root.derive([]);
+      expect(await fileContext.prepareFiles({ files })).toHaveLength(1);
+      expect(fileContext.resolve(files[0].url)?.type).toBe(ChatFileTypeEnum.file);
+      expect(await fileContext.prepareFiles({ files, maxFiles: 0 })).toEqual([]);
+      expect(await fileContext.prepareFiles({ files, maxFiles: 3 })).toHaveLength(2);
+      expect(
+        await fileContext.prepareFiles({ files, maxFiles: 3, allowDataUrl: true })
+      ).toHaveLength(3);
+    }
+  );
+
+  it('prepareFiles 复用私有 Ref 与文件身份，并隔离父子外链登记表', async () => {
+    const url = 'https://files.example.com/private.pdf';
+    const { fileContext: root } = await prepareWorkflowFileContext({
+      query: [createFile({ key: privateKey })],
+      histories: [],
+      scope,
+      maxFileAmount: 2,
+      getPreviewUrl: vi.fn(async () => url)
+    });
+    const child = await root.derive([url]);
+    const prepared = await child.prepareFiles({ files: [{ url }, { url }], maxFiles: 2 });
+    expect(prepared).toEqual([
+      { name: 'report.pdf', type: ChatFileTypeEnum.file, key: privateKey, url }
+    ]);
+    const externalUrl = 'https://child.example.com/new.pdf';
+    await child.prepareFiles({ files: [{ url: externalUrl }] });
+    expect(child.resolve(externalUrl)?.source.type).toBe('externalHttp');
+    expect(root.resolve(externalUrl)).toBeUndefined();
+    expect(await child.prepareFiles({ files: [{ url: '/relative.pdf' }] })).toEqual([]);
+  });
+
+  it('prepareFiles 仍校验上传域名白名单', async () => {
+    const { fileContext } = await prepareWorkflowFileContext({
+      query: [],
+      histories: [],
+      scope,
+      maxFileAmount: 2
+    });
+    global.systemEnv.fileUrlWhitelist = ['allowed.example.com'];
+    await expect(
+      fileContext.prepareFiles({ files: [{ url: 'https://blocked.example.com/a.pdf' }] })
+    ).rejects.toThrow('Invalid file URL domain');
+  });
 });
 
 describe('prepareWorkflowFileContext', () => {
@@ -85,7 +227,7 @@ describe('prepareWorkflowFileContext', () => {
 
   it('同一私有 key 并发登记只生成一个 Ref，所有原始 URL 均可解析', async () => {
     const urls = ['https://files.example.com/one', 'https://files.example.com/two'];
-    const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
+    const { fileContext } = await prepareWorkflowFileContext({
       query: [],
       histories: [],
       scope,
@@ -94,12 +236,12 @@ describe('prepareWorkflowFileContext', () => {
     });
     const refs = await Promise.all([
       ...urls.map((url) =>
-        fileRegistrar.registerInputFile({
+        fileContext.register({
           file: { key: privateKey, url, name: '', type: ChatFileTypeEnum.file },
           source: 'variable'
         })
       ),
-      fileRegistrar.registerInputFile({
+      fileContext.register({
         file: { key: privateKey, name: '', type: ChatFileTypeEnum.file },
         source: 'interactive'
       })
@@ -244,14 +386,14 @@ describe('prepareWorkflowFileContext', () => {
   });
 
   it.each(['variable', 'interactive'] as const)('%s 登记拒绝无效外链', async (source) => {
-    const { fileRegistrar } = await prepareWorkflowFileContext({
+    const { fileContext } = await prepareWorkflowFileContext({
       query: [],
       histories: [],
       scope,
       maxFileAmount: 2
     });
     await expect(
-      fileRegistrar.registerInputFile({ file: { url: '', type: ChatFileTypeEnum.file }, source })
+      fileContext.register({ file: { url: '', type: ChatFileTypeEnum.file }, source })
     ).rejects.toThrow(`Invalid workflow ${source} file URL`);
   });
 
@@ -433,7 +575,7 @@ describe('prepareWorkflowFileContext', () => {
 
   it('registers trusted variable and interactive files after context creation', async () => {
     const getPreviewUrl = vi.fn().mockResolvedValue('https://files.example.com/signed-variable');
-    const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
+    const { fileContext } = await prepareWorkflowFileContext({
       query: [],
       histories: [],
       scope,
@@ -441,7 +583,7 @@ describe('prepareWorkflowFileContext', () => {
       getPreviewUrl
     });
 
-    const privateRef = await fileRegistrar.registerInputFile({
+    const privateRef = await fileContext.register({
       file: {
         key: privateKey,
         name: 'report.pdf',
@@ -449,7 +591,7 @@ describe('prepareWorkflowFileContext', () => {
       },
       source: 'variable'
     });
-    const externalRef = await fileRegistrar.registerInputFile({
+    const externalRef = await fileContext.register({
       file: {
         url: 'https://external.example.com/form.pdf',
         name: 'form.pdf',
@@ -467,7 +609,7 @@ describe('prepareWorkflowFileContext', () => {
     expect(fileContext.resolve('https://external.example.com/form.pdf')).toBe(externalRef);
 
     await expect(
-      fileRegistrar.registerInputFile({
+      fileContext.register({
         file: {
           key: 'chat/app/other-app/user-1/chat-1/report.pdf',
           name: 'report.pdf',
@@ -536,6 +678,100 @@ describe('prepareWorkflowFileContext', () => {
         }
       ])
     ).rejects.toThrow('not registered in the parent context');
+  });
+
+  it('直接派生即提供登记能力，并发登记去重且不超额，不替换 Context 和 register 引用', async () => {
+    const getPreviewUrl = vi.fn(async (key: string) => `https://files.example.com/${key}`);
+    const { fileContext } = await prepareWorkflowFileContext({
+      query: [],
+      histories: [],
+      scope,
+      maxFileAmount: 1,
+      getPreviewUrl
+    });
+    const child = await fileContext.derive([]);
+    const register = child.register;
+    expect(typeof register).toBe('function');
+    const file = { key: privateKey, name: 'report.pdf', type: ChatFileTypeEnum.file };
+    const [first, duplicate, overflow] = await Promise.all([
+      register({ file, source: 'interactive' }),
+      register({ file, source: 'interactive' }),
+      register({
+        file: { ...file, key: 'chat/app/app-1/user-1/chat-1/overflow.pdf' },
+        source: 'interactive'
+      })
+    ]);
+    expect(first).toBeDefined();
+    expect(duplicate).toBe(first);
+    expect(overflow).toBeUndefined();
+    expect(child.register).toBe(register);
+    expect(child.resolveInputFile(file)).toBe(first);
+    expect(child.resolve(first!.modelUrl)).toBe(fileContext.resolve(first!.modelUrl));
+    expect(getPreviewUrl).toHaveBeenCalledTimes(1);
+  });
+
+  it('孙级登记依次经过父级额度和根级鉴权，失败后仍可登记且可按可信来源读取', async () => {
+    const { fileContext } = await prepareWorkflowFileContext({
+      query: [],
+      histories: [],
+      scope,
+      maxFileAmount: 1,
+      getPreviewUrl: vi.fn(async (key: string) => `https://files.example.com/${key}`)
+    });
+    const child = await fileContext.derive([]);
+    const grandchild = await child.derive([]);
+    const file = { key: privateKey, name: 'report.pdf', type: ChatFileTypeEnum.file };
+    await expect(
+      grandchild.register({
+        file: { ...file, key: 'chat/app/app-1/user-1/other-chat/report.pdf' },
+        source: 'interactive'
+      })
+    ).rejects.toThrow('does not belong to the current workflow');
+    const ref = await grandchild.register({ file, source: 'interactive' });
+    expect(ref).toBeDefined();
+    expect(child.resolveInputFile(file)).toBe(ref);
+    expect(grandchild.resolveInputFile(file)).toBe(ref);
+    const getSource = vi.spyOn(fileContext, 'getSource').mockResolvedValue({
+      source: { kind: 's3' } as any,
+      sourceKind: 'internal'
+    });
+    expect(await grandchild.getSource(ref!)).toEqual(await fileContext.getSource(ref!));
+    expect(getSource).toHaveBeenCalledWith(ref);
+    const sibling = await child.derive([]);
+    expect(
+      await sibling.register({
+        file: { ...file, key: 'chat/app/app-1/user-1/chat-1/overflow.pdf' },
+        source: 'interactive'
+      })
+    ).toBeUndefined();
+    expect(sibling.resolveInputFile(file)).toBeUndefined();
+    getSource.mockRestore();
+  });
+
+  it('派生时选中的新外链和去重后的继承文件共同占用登记额度', async () => {
+    const { fileContext, query } = await prepareWorkflowFileContext({
+      query: [createFile({ key: privateKey })],
+      histories: [],
+      scope,
+      maxFileAmount: 2,
+      getPreviewUrl: vi.fn(async (key: string) => `https://files.example.com/${key}`)
+    });
+    const firstUrl = query[0].file!.url;
+    const externalUrl = 'https://child.example.com/new.pdf';
+    const child = await fileContext.derive([firstUrl, `${firstUrl}#alias`, externalUrl]);
+    expect(
+      await child.register({
+        file: { url: externalUrl, type: ChatFileTypeEnum.file },
+        source: 'interactive'
+      })
+    ).toBe(child.resolve(externalUrl));
+    expect(
+      await child.register({
+        file: { url: 'https://child.example.com/overflow.pdf', type: ChatFileTypeEnum.file },
+        source: 'interactive'
+      })
+    ).toBeUndefined();
+    expect(fileContext.resolve(externalUrl)).toBeUndefined();
   });
 
   it('propagates an invalid signer result as a system error for history files', async () => {
@@ -812,7 +1048,7 @@ describe('prepareWorkflowFileContext', () => {
 
 describe('prepareWorkflowFileContext — 外链登记与派生', () => {
   const prepareExternal = async (
-    fileContext: import('@fastgpt/service/core/workflow/utils/fileContext').WorkflowFileContext,
+    fileContext: import('@fastgpt/service/core/workflow/dispatch/context/file').WorkflowFileContext,
     file: ChatFileInput
   ) => {
     const [result] = await prepareChatFiles({ files: [file], maxFiles: 1, fileContext });

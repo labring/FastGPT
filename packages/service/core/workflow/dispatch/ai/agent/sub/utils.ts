@@ -76,7 +76,6 @@ export const getSubapps = async ({
 
 export type ToolDispatchContext = Pick<
   DispatchAgentModuleProps,
-  | 'checkIsStopping'
   | 'chatConfig'
   | 'runningUserInfo'
   | 'runningAppInfo'
@@ -84,20 +83,15 @@ export type ToolDispatchContext = Pick<
   | 'responseChatItemId'
   | 'usageId'
   | 'uid'
-  | 'variableState'
   | 'memoryState'
   | 'externalProvider'
   | 'lang'
   | 'requestOrigin'
-  | 'mode'
   | 'timezone'
   | 'retainDatasetCite'
-  | 'maxRunTimes'
-  | 'workflowDispatchDeep'
   | 'params'
   | 'query'
   | 'stream'
-  | 'nodeResponseSink'
 > & {
   runtimeNodesMap?: DispatchAgentModuleProps['runtimeNodesMap'];
   modelData: import('@fastgpt/global/core/ai/model/schema').LLMModelDataType;
@@ -159,26 +153,20 @@ export const getAgentDatasetParams = (
 export const getExecuteTool = ({
   getSubAppInfo,
   getSubApp,
-  checkIsStopping,
   runningUserInfo,
   runningAppInfo,
   chatId,
   responseChatItemId,
   usageId,
   uid,
-  variableState,
   memoryState,
   runtimeNodesMap,
   externalProvider,
   lang,
   requestOrigin,
-  mode,
   timezone,
   retainDatasetCite,
-  maxRunTimes,
-  workflowDispatchDeep,
-  query,
-  nodeResponseSink
+  query
 }: ToolDispatchContext) => {
   /**
    * 执行单次工具调用，并补齐节点响应的 id、运行时间和计费信息。
@@ -256,7 +244,6 @@ export const getExecuteTool = ({
             chatId,
             usageId,
             uid,
-            variableState,
             runtimeNodesMap,
             // Agent 统一负责外层流输出，子工具不得绕过 Agent 直接写入响应流。
             workflowStreamResponse: undefined
@@ -291,10 +278,8 @@ export const getExecuteTool = ({
             },
             userChatInput: userChatInput,
             customAppVariables: params,
-            checkIsStopping,
             lang,
             requestOrigin,
-            mode,
             timezone,
             externalProvider,
             chatId,
@@ -303,11 +288,7 @@ export const getExecuteTool = ({
             runningAppInfo,
             runningUserInfo,
             retainDatasetCite,
-            maxRunTimes,
-            workflowDispatchDeep,
-            nodeResponseSink,
             nodeResponseParentId: callId,
-            variableState,
             memoryState,
             lastInteractive,
             query
@@ -367,10 +348,8 @@ export const getExecuteTool = ({
             },
             userChatInput: '',
             customAppVariables,
-            checkIsStopping,
             lang,
             requestOrigin,
-            mode,
             timezone,
             externalProvider,
             chatId,
@@ -379,11 +358,7 @@ export const getExecuteTool = ({
             runningAppInfo,
             runningUserInfo,
             retainDatasetCite,
-            maxRunTimes,
-            workflowDispatchDeep,
-            nodeResponseSink,
             nodeResponseParentId: callId,
-            variableState,
             memoryState,
             lastInteractive,
             query

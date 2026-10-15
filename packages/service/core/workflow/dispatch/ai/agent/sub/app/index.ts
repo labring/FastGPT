@@ -1,8 +1,13 @@
+import { createWorkflowRuntimeSummary } from '../../../../utils/summary';
+import {
+  getWorkflowContext,
+  runWithContext
+} from '@fastgpt/service/core/workflow/dispatch/context';
 import type { DispatchSubAppResponse } from '../../type';
-import { createSystemToolResourceContext } from '../../../../../resource/context';
+import { createSystemToolResourceContext } from '../../../../context/resource';
 import { loadChildWorkflowWithResource } from '../../../../../resource/service';
 import { getUserChatInfo } from '../../../../../../../support/user/team/utils';
-import { runWorkflow, type RunWorkflowProps } from '../../../../../../../core/workflow/dispatch';
+import { runWorkflow } from '../../../../../../../core/workflow/dispatch';
 import {
   getWorkflowEntryNodeIds,
   rewriteNodeOutputByHistories,
@@ -19,17 +24,18 @@ import {
   filterWorkflowToolInputVariables,
   getWorkflowToolInputsFromStoreNodes
 } from '@fastgpt/global/core/app/tool/workflowTool/utils';
+import type { RunWorkflowProps } from '../../../../type';
 import { SystemToolRepo } from '../../../../../../app/tool/systemTool/systemTool.repo';
 import { anyValueDecrypt } from '../../../../../../../common/secret/utils';
 import {
   getWorkflowFileInputsFromValue,
   getWorkflowFileVariableInputs,
   WorkflowVariableState
-} from '../../../../utils/variables';
+} from '../../../../context/variables';
 import { getWorkflowRuntimeSummary, runtimeSummaryToNodeSummary } from '../../../../utils/summary';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { runChildAppWorkflow } from '../../../../child/runApp';
-import { runWithDerivedWorkflowFileContext } from '../../../../../utils/context';
+import { runWithDerivedWorkflowFileContext } from '../../../../context';
 import { WorkflowMemoryState } from '../../../../../memory/state';
 import {
   computedAppToolUsage,
@@ -39,10 +45,8 @@ import {
 
 type Props = Pick<
   RunWorkflowProps,
-  | 'checkIsStopping'
   | 'lang'
   | 'requestOrigin'
-  | 'mode'
   | 'timezone'
   | 'externalProvider'
   | 'uid'
@@ -51,13 +55,7 @@ type Props = Pick<
   | 'runningAppInfo'
   | 'runningUserInfo'
   | 'retainDatasetCite'
-  | 'maxRunTimes'
-  | 'workflowDispatchDeep'
-  | 'responseAllData'
-  | 'responseDetail'
-  | 'nodeResponseSink'
   | 'nodeResponseParentId'
-  | 'variableState'
   | 'memoryState'
   | 'lastInteractive'
   | 'query'
@@ -114,16 +112,10 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
 };
 
 export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppResponse> => {
-  const {
-    runningAppInfo,
-    runningUserInfo,
-    app,
-    variableState,
-    customAppVariables,
-    userChatInput,
-    ...data
-  } = props;
+  const { runningAppInfo, runningUserInfo, app, customAppVariables, userChatInput, ...data } =
+    props;
   const memoryState = WorkflowMemoryState.fromWorkflow(props);
+  const { variableContext: variableState } = getWorkflowContext();
   // plugin 子应用不接收普通 userChatInput；这里解构只为了避免透传给 runWorkflow。
   void userChatInput;
 
@@ -298,29 +290,39 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
       });
       const childMemoryState = memoryState.fork(`app:${childRunningAppInfo.sourceId}`);
 
-      return runWorkflow({
-        ...data,
-        memoryState: childMemoryState,
-        runningAppInfo: childRunningAppInfo,
-        runningUserInfo,
-        runtimeNodes,
-        runtimeEdges: storeEdges2RuntimeEdges(edges, data.lastInteractive),
-        chatConfig,
-        histories: [],
-        variableState: childrenVariableState,
-        isToolCall: true,
-        query: data.lastInteractive
-          ? data.query
-          : serverGetWorkflowToolRunUserQuery({
-              pluginInputs,
-              variables: {
-                ...runtimeVariables,
-                ...workflowToolVariables
-              }
-            }).value,
-        stream: false,
-        workflowStreamResponse: undefined
+      const childContext = getWorkflowContext().getChildContext({
+        runtimeControl: { isToolCall: true },
+        variableContext: childrenVariableState,
+        nodeResponseSink: getWorkflowContext().nodeResponseSink.getChildContext({
+          workflowRuntimeSummary: createWorkflowRuntimeSummary(),
+          ...(data.nodeResponseParentId !== undefined
+            ? { defaultParentId: data.nodeResponseParentId }
+            : {})
+        })
       });
+      return runWithContext(childContext, () =>
+        runWorkflow({
+          ...data,
+          memoryState: childMemoryState,
+          runningAppInfo: childRunningAppInfo,
+          runningUserInfo,
+          runtimeNodes,
+          runtimeEdges: storeEdges2RuntimeEdges(edges, data.lastInteractive),
+          chatConfig,
+          histories: [],
+          query: data.lastInteractive
+            ? data.query
+            : serverGetWorkflowToolRunUserQuery({
+                pluginInputs,
+                variables: {
+                  ...runtimeVariables,
+                  ...workflowToolVariables
+                }
+              }).value,
+          stream: false,
+          workflowStreamResponse: undefined
+        })
+      );
     }
   });
   memoryState.merge(system_memories);

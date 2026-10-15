@@ -1,3 +1,4 @@
+import { getWorkflowContext } from '../context';
 import {
   contentTypeMap,
   ContentTypes,
@@ -101,7 +102,6 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     runningAppInfo,
     chatId,
     responseChatItemId,
-    variableState,
     node,
     runtimeNodesMap,
     histories,
@@ -114,6 +114,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       ...body
     }
   } = props;
+  const { variableContext: variableState } = getWorkflowContext();
   const appId = getWorkflowAppId(runningAppInfo);
   const httpMethod = props.params.system_httpMethod || 'POST';
   const httpContentType = props.params.system_httpContentType || ContentTypes.json;

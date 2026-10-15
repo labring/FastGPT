@@ -23,10 +23,7 @@ import {
 } from '../../../../../../dataset/search';
 import { getDatasetSearchVlmModel } from '../../../../../../dataset/search/vlm';
 import { filterDatasetsByTmbId } from '../../../../../../dataset/utils';
-import {
-  loadWorkflowDatasetResource,
-  loadWorkflowModelResource
-} from '../../../../../resource/service';
+import { loadWorkflowDatasetResource, loadWorkflowModelResource } from '../../../../../resource/service';
 import {
   createChunkSelectionChildNodeResponse,
   createImageCaptionChildNodeResponse,

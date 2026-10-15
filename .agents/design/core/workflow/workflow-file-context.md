@@ -75,8 +75,9 @@ signed URL 不参与权限判断。私有 key 校验通过后，每个 key 在�
 
 ### 3.4 登记边界
 
-Workflow 输入适配器通过独立 `WorkflowFileRegistrar` 登记 query/history/全局变量、交互恢复入口
-和 Plugin Input 文件，私有对象必须校验根 scope。节点消费者通过 `prepareWorkflowFiles` 准备文件，
+Workflow 输入适配器通过 `fileContext.register({ file, source })` 登记 query/history/全局变量、交互恢复入口
+和 Plugin Input 文件，私有对象必须校验根 scope。登记能力与读取接口合并为同一个 Context，
+不再单独注入 Registrar；根和派生运行 Context 都必须提供 `register`。节点消费者通过 `fileContext.prepareFiles()` 准备文件，
 底层统一由 `prepareChatFiles` 编排：身份去重与数量截断 → 输入校验 → 分类 → 登记。
 `registerExternalFile` 只同步写入已分类外链，不探测、不创建私有 key 权限。
 同一 Context 内并发和后续调用复用远端类型和文件名结果（包括失败降级），探测并发上限为 5，
@@ -133,18 +134,25 @@ export type WorkflowFileLimits = {
 };
 
 export type WorkflowFileContext = {
+  register: WorkflowFileRegister;
   resolve: (url: string) => WorkflowFileRef | undefined;
   resolveInputFile: (file: RawChatFileValue) => WorkflowFileRef | undefined;
   resolveChatFile: (url: string) => UserChatItemFileItemType | undefined;
   getIdentity: (url: string) => string | undefined;
   getSource: (target: string | WorkflowFileRef) => Promise<WorkflowFileSourceResult>;
+  readBuffer: (params: { url: string; signal?: AbortSignal }) => Promise<Buffer>;
+  prepareFiles: (params: {
+    files: ChatFileInput[];
+    maxFiles?: number;
+    allowDataUrl?: boolean;
+  }) => Promise<UserChatItemFileItemType[]>;
   registerExternalFile: (file: UserChatItemFileItemType) => WorkflowFileRef;
   derive: (files: WorkflowFileInput[]) => Promise<WorkflowFileContext>;
   limits: WorkflowFileLimits;
 };
 ```
 
-Context 不暴露通用私有文件登记、`clone` 或文件枚举接口。内部至少维护：
+Context 不暴露绕过根 scope 校验的私有文件登记、`clone` 或文件枚举接口。内部至少维护：
 
 - `byRuntimeUrl`：本轮 `modelUrl` 到 Ref；
 - `byIdentity`：私有 key 或外部 URL（忽略 fragment）到 Ref，用于去重；
@@ -154,8 +162,27 @@ Context 不暴露通用私有文件登记、`clone` 或文件枚举接口。内�
 模型和节点之间只传递 URL。Context 不生成或解析 file id；`resolveInputFile` 仅供受控输入
 适配器根据原始文件对象中的 key 或 URL 查找已登记 Ref。
 
-私有文件登记能力通过独立的 `WorkflowFileRegistrar` 只传给受控输入适配器；下游
-`WorkflowFileContext` 仅开放经过校验的外链登记。
+`register` 负责输入鉴权、签名和分类；`registerExternalFile` 只同步登记已经分类的外链，
+二者职责保持独立。下游 chat/file 读取器继续只接收窄 Context 接口，不依赖输入登记能力。
+
+`readBuffer()` 和 `prepareFiles()` 由根和派生文件 Context 共用实现，使用实际接收者的登记表与限额，
+不依赖 AsyncLocalStorage。前者优先读取可信 Ref，未登记公网外链走 SSRF-safe reader，且不扩展登记表；
+后者保留批次显式额度，缺省时使用 Context 数量额度，Data URL 只有显式允许时才进入准备流程。
+运行调用方先获取完整 WorkflowContext，再调用文件方法，不因作用域缺失回退到系统限额或放宽准入。
+
+`WorkflowContext.fileContext` 必填：没有附件时也创建空登记表，并保留数量和大小限额。
+注入运行作用域时拒绝缺失文件 Context；Child 缺少父文件 Context 时直接报错，
+不再绕过文件筛选和额度规则继续执行。初始化阶段尚未进入运行作用域时，
+可选 getter 仍可返回 undefined，这与作用域内部字段必填是两个独立约束。
+
+`registerExternalFile` 供分类流程写入已准备的外链；`register` 是必填运行能力。
+`derive()` 直接返回完整 Context：登记操作串行检查当前登记表中去重后的文件数量，
+再委托父 `register` 完成根级鉴权，成功后把可信 Ref 同步加入本地登记表。
+`runWithDerivedWorkflowFileContext` 只负责实际 payload 筛选和运行作用域，不再补装登记能力。
+
+运行 Context 统一通过 `workflowContext.getChildContext(overrides)` 派生，再由 `runWithContext` 激活。
+文件适配器先完成 `fileContext.derive()` 的权限与登记表准备，再覆盖派生运行 Context 的 `fileContext`。
+普通 Context 派生只继承或覆盖能力引用，不深拷贝、不修改父 Context，也不替代文件准入或变量差量回写。
 
 ## 5. Workflow 入口
 
@@ -251,8 +278,8 @@ Form、Plugin 和全局文件变量则使用各自的模块额度，并与该用
 AI Chat、ToolCall、Agent、ReadFiles 和模型 `read_files` 等没有独立字段配置的消费者必须直接
 读取当前 `WorkflowFileContext.limits.maxFileAmount`，不得回退到应用 query 上传配置或硬编码数量。
 
-`dispatchWorkFlow` 接受可选的 `maxBytesPerFile`（字节）。调用入口可以根据团队套餐和系统限制
-计算后传入；未传入时使用系统 `getFileMaxSize()`。已登记外链和未登记动态外链复用同一个
+`dispatchWorkFlow` 的入口参数必须提供已经计算完成的 `maxFileAmount` 与 `maxBytesPerFile`（字节）。
+这两个值只用于构建 Context 和初始化变量，不再透传为节点 props。已登记外链和未登记动态外链复用同一个
 SSRF-safe reader，并使用同一请求级 `maxBytesPerFile`。
 
 该限制约束 FastGPT 服务端读取。模型提供商直接拉取外部 `modelUrl` 时，不经过 FastGPT
@@ -303,8 +330,10 @@ Loop 和 Parallel 共享当前 Context。Child 在父 Context 下先过滤实际
 不得通过冲突 URL 降级命中父 Ref。
 
 被额度裁掉的文件必须同时从 Child 的实际 payload 删除，不能只从派生 Context 中移除后继续作为
-普通绝对 URL 消费。Child 交互新增文件仍通过父 registrar 完成根 scope 鉴权，登记过程串行执行，
-成功后同步加入当前派生 Context。
+普通绝对 URL 消费。Child 交互新增文件通过父 `fileContext.register` 完成根 scope 鉴权；
+Child 的 `register` 由 `derive()` 完整构建，串行检查额度，成功后同步加入当前派生登记表。
+新增文件时不替换 Context 对象或登记方法，已持有 Context 的节点也能读取新增文件。
+父 Context 缺少登记能力时明确报错；Child 不会直接继承父级不受当前额度限制的登记方法。
 
 父子运行边界同时隔离输入引用：Child 收到的 query、history、消息 value 和对象型文件输入均由
 遍历构造的新对象组成，不直接复用 Parent payload 的可变对象。Loop 和 Parallel 属于同一 Workflow
@@ -377,7 +406,7 @@ Loop 和 Parallel 共享当前 Context。Child 在父 Context 下先过滤实际
 
 - [x] 新增 `WorkflowFileContext` 和入口准备函数，外链登记支持请求内分类复用；
 - [x] 为 `dispatchWorkFlow` 增加 `maxBytesPerFile`，创建并挂载 Context；
-- [x] `parseUrlToChatFileType` 统一类型规则，`prepareWorkflowFiles` 组合筛选、校验与登记；
+- [x] `parseUrlToChatFileType` 统一类型规则，`fileContext.prepareFiles()` 组合筛选、校验与登记；
 - [x] 统一 `core/chat/fileContext.ts` 的 Workflow 文件读取；
 - [x] 保持 AI Chat 多模态 Base64 与 Workflow Context 解耦；
 - [x] 迁移 ToolCall、Agent 和 ReadFiles；
@@ -397,8 +426,11 @@ Loop 和 Parallel 共享当前 Context。Child 在父 Context 下先过滤实际
 
 ## 11. 相关代码
 
-- `packages/service/core/workflow/utils/context.ts`
-- `packages/service/core/workflow/utils/fileContext.ts`
+- `packages/service/core/workflow/dispatch/context/index.ts`：运行作用域、MCP 连接缓存、统一 getters 与 Child 派生。
+- `packages/service/core/workflow/dispatch/context/file.ts`：文件 Context、登记、鉴权、读取与派生。
+- `packages/service/core/workflow/utils/fileLimits.ts`：文件额度计算与入口 query 裁剪。
+- `packages/service/core/workflow/dispatch/context/resource.ts`：资源快照与访问校验。
+- `packages/service/core/workflow/dispatch/context/streamResponse.ts`：入口 SSE 和续传 Context；HTTP 对象不进入节点上下文。
 - `packages/service/core/workflow/dispatch/index.ts`
 - `packages/service/core/chat/fileContext.ts`
 - `packages/service/core/workflow/dispatch/ai/chat/chatMessages.ts`

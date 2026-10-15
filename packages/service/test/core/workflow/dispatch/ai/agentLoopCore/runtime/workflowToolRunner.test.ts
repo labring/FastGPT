@@ -1,7 +1,10 @@
+import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAgentLoopCoreWorkflowToolRunner } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/workflowToolRunner';
-import { dispatchUpdateVariable } from '@fastgpt/service/core/workflow/dispatch/tools/runUpdateVar';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { dispatchUpdateVariable as dispatchUpdateVariableWithoutContext } from '@fastgpt/service/core/workflow/dispatch/tools/runUpdateVar';
+
+const dispatchUpdateVariable = createTestWorkflowDispatch(dispatchUpdateVariableWithoutContext);
 
 const createCall = ({
   id = 'call_1',
@@ -100,7 +103,7 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
             ].map((item) => ({ ...item, renderType: 'input' }))
           },
           runtimeNodesMap: new Map(childNodes.map((node: any) => [node.nodeId, node])),
-          variableState: { toRuntimeRecord: () => ({}), toStoreRecord: () => ({}) },
+          variableContext: { toRuntimeRecord: () => ({}), toStoreRecord: () => ({}) },
           runningAppInfo: {}
         } as any);
         childNodes[0].inputs.push({ key: 'leaked', value: 'bad' });
