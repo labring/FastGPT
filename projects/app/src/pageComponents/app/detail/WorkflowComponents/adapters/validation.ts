@@ -1,4 +1,4 @@
-import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/workflowCheck';
+import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/check/check';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';

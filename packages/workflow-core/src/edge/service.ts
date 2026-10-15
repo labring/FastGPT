@@ -6,7 +6,7 @@ import type { ExecutionSourcePortRef } from './type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
-import { getIfElseBranchHandleKey } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
+import { getIfElseBranchHandleKey } from '@fastgpt/global/common/workflow/condition';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { getDocumentNode } from '../nesting/service';
 import { NODE_TYPES_WITHOUT_NEXT_PORT, TOOL_TARGET_NODE_TYPES } from '../template/contract';

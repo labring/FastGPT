@@ -7,13 +7,16 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { EventEmitter } from 'node:events';
 
 vi.unmock('@fastgpt/service/common/response');
 
-const logger = {
-  info: vi.fn(),
-  error: vi.fn()
-};
+const { logger } = vi.hoisted(() => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn()
+  }
+}));
 
 vi.mock('@fastgpt/service/common/logger', () => ({
   getLogger: () => logger,
