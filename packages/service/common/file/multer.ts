@@ -76,7 +76,7 @@ export const multer = {
       preservePath: true,
       storage: this._storage,
       ...(fileFilter ? { fileFilter } : {})
-    }).array('file', global.feConfigs.uploadFileMaxAmount);
+    }).array('file', global.feConfigs.limit.uploadFileMaxAmount);
   },
 
   resolveFormData<T extends Record<string, any>>({

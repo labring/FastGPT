@@ -29,7 +29,6 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
   type ChannelInfoType,
   ChannelStatusEnum,
@@ -60,7 +59,6 @@ const ChannelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType:
   const { t, i18n } = useSafeTranslation();
   const { toast } = useToast();
   const { userInfo } = useUserStore();
-  const { aiproxyChannels } = useSystemStore();
 
   const isRoot = userInfo?.username === 'root';
   const [search, setSearch] = useState('');
@@ -85,9 +83,12 @@ const ChannelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType:
     refresh();
   }, [refresh]);
 
-  const { data: _channelProviders = {} } = useRequest(getChannelProviders, {
-    manual: false
-  });
+  const { data: channelProviders = {}, loading: loadingChannelProviders } = useRequest(
+    getChannelProviders,
+    {
+      manual: false
+    }
+  );
 
   const [editChannel, setEditChannel] = useState<ChannelInfoType>();
   const [channelMutationLoading, setChannelMutationLoading] = useState(false);
@@ -280,6 +281,7 @@ const ChannelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType:
 
   const isLoading =
     loadingChannelList ||
+    loadingChannelProviders ||
     loadingUpdateChannel ||
     loadingDeleteChannel ||
     channelMutationLoading ||
@@ -390,12 +392,7 @@ const ChannelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType:
                   </Tr>
                 )}
                 {channelList.map((item) => {
-                  const providerData = aiproxyChannels.find(
-                    (channel) => channel.channelId === item.type
-                  ) || {
-                    name: 'Invalid provider',
-                    avatar: 'model/huggingface'
-                  };
+                  const providerData = channelProviders[item.type];
                   return (
                     <Tr key={item.id} _hover={{ bg: 'myGray.100' }}>
                       <Td px={3}>
@@ -407,8 +404,13 @@ const ChannelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType:
                       <Td>{item.name}</Td>
                       <Td>
                         <HStack>
-                          <Avatar src={providerData.avatar} w={'1rem'} />
-                          <Box>{parseI18nString(providerData.name, i18n.language)}</Box>
+                          <Avatar src={providerData?.avatar ?? 'model/huggingface'} w={'1rem'} />
+                          <Box>
+                            {parseI18nString(
+                              providerData?.displayName ?? providerData?.name ?? 'Invalid provider',
+                              i18n.language
+                            )}
+                          </Box>
                         </HStack>
                       </Td>
                       <Td>{item.models.length}</Td>

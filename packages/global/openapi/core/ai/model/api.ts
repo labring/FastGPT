@@ -473,15 +473,7 @@ export const GetSystemModelConfigResponseSchema = z.object({
     description: '全部渠道摘要，供新增、编辑和关联渠道交互复用'
   }),
   providers: z.array(ModelProviderSchema),
-  defaultModelIds: ModelDefaultIdsSchema,
-  aiproxyChannels: z.array(
-    z.object({
-      channelId: z.number(),
-      name: z.object({ en: z.string(), 'zh-CN': z.string(), 'zh-Hant': z.string() }),
-      avatar: z.string(),
-      website: z.string().optional()
-    })
-  )
+  defaultModelIds: ModelDefaultIdsSchema
 });
 export type GetSystemModelConfigResponse = z.infer<typeof GetSystemModelConfigResponseSchema>;
 

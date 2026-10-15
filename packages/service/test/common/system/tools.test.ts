@@ -11,14 +11,34 @@ vi.mock('@fastgpt/service/env', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
-  getAgentSandboxArchiveMaxBytes: vi.fn(() => 1024),
-  getAgentSandboxMaxFileBytes: vi.fn(() => 512),
   getAgentSandboxSkillMaxBytes: vi.fn(() => 512)
 }));
 
+// setup 已加载过此模块，清缓存后才能使用本文件声明的环境与沙箱 mock。
+vi.resetModules();
 const { initFastGPTConfig } = await import('@fastgpt/service/common/system/tools');
 
 describe('initFastGPTConfig', () => {
+  it.each([false, true])(
+    'keeps SSO addresses exclusively in systemEnv when other configuration validation fails=%s',
+    (invalid) => {
+      initFastGPTConfig({
+        feConfigs: { sso: { url: 'http://legacy-sso.internal', title: 'SSO' } },
+        systemEnv: { ...(invalid && { datasetParseMaxProcess: 'invalid' }) }
+      } as any);
+      expect(global.systemEnv.sso).toEqual({ url: 'http://legacy-sso.internal' });
+      expect(global.feConfigs.sso).toEqual({ enabled: true, title: 'SSO' });
+    }
+  );
+
+  it('prefers explicit server SSO configuration and corrects stale capability flags', () => {
+    initFastGPTConfig({
+      feConfigs: { sso: { url: 'http://legacy-sso.internal', enabled: true } },
+      systemEnv: { sso: { url: '' } }
+    } as any);
+    expect(global.systemEnv.sso).toEqual({ url: '' });
+    expect(global.feConfigs.sso).toEqual({ enabled: false });
+  });
   beforeEach(() => {
     global.feConfigs = {} as any;
     global.systemEnv = {} as any;
@@ -42,9 +62,7 @@ describe('initFastGPTConfig', () => {
 
   it('配置校验失败时不中断，仍可降级挂载全局状态', () => {
     initFastGPTConfig({
-      feConfigs: {
-        uploadFileMaxSize: 'invalid_size' as any
-      },
+      feConfigs: {},
       systemEnv: {
         datasetParseMaxProcess: 'not_a_number' as any
       }
@@ -105,4 +123,28 @@ describe('initFastGPTConfig', () => {
       customSetting: 7
     });
   });
+  it.each([{ fileUrlWhitelist: ['private.internal'] }, { fileUrlWhitelist: [] }])(
+    'loads backend policies from systemEnv and computes nested upload limits with whitelist %j',
+    ({ fileUrlWhitelist }) => {
+      initFastGPTConfig({
+        feConfigs: {
+          limit: {
+            uploadFileMaxSize: 32,
+            uploadFileMaxAmount: 7,
+            workflowParallelRunMaxConcurrency: 20
+          }
+        },
+        systemEnv: { fileUrlWhitelist, ip_whitelist: '10.0.0.1' }
+      } as any);
+      expect(global.systemEnv.fileUrlWhitelist).toEqual(fileUrlWhitelist);
+      expect(global.systemEnv.ip_whitelist).toBe('10.0.0.1');
+      expect(global.feConfigs.limit).toMatchObject({
+        uploadFileMaxAmount: 1000,
+        uploadFileMaxSize: 1000,
+        skillSandboxMaxBytes: 512,
+        maxFolderDepth: 4,
+        workflowParallelRunMaxConcurrency: 20
+      });
+    }
+  );
 });

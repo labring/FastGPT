@@ -6,25 +6,38 @@ import {
 } from '@fastgpt/global/support/user/account/password/utils';
 import type { SsoPasswordPolicyConfig } from '@fastgpt/global/support/user/account/password/utils';
 
-/** 策略开启态：必须同时具备 sso.url 与显式开关，缺一不成立。 */
+/** 策略开启态：必须同时具备 SSO 接入能力与显式开关，缺一不成立。 */
 const policyOn: SsoPasswordPolicyConfig = {
-  url: 'https://sso.example.com',
+  enabled: true,
   disablePasswordForSsoUsers: true
 };
 
 describe('isSsoPasswordPolicyEnabled', () => {
-  it('requires both an SSO root URL and an explicit switch', () => {
+  it('uses client capabilities without requiring the server root address', () => {
+    expect(isSsoPasswordPolicyEnabled({ enabled: true, disablePasswordForSsoUsers: true })).toBe(
+      true
+    );
+    expect(isSsoPasswordPolicyEnabled({ enabled: false, disablePasswordForSsoUsers: true })).toBe(
+      false
+    );
+    expect(isSsoPasswordPolicyEnabled({ enabled: true })).toBe(false);
+  });
+  it('requires both an SSO capability and an explicit switch', () => {
     expect(isSsoPasswordPolicyEnabled(policyOn)).toBe(true);
     // 只开开关但未接入 SSO：用户名无法被分类为 sso，策略不成立
     expect(isSsoPasswordPolicyEnabled({ disablePasswordForSsoUsers: true })).toBe(false);
     // 只接入 SSO 未开开关：不应影响任何账号的密码能力
-    expect(isSsoPasswordPolicyEnabled({ url: 'https://sso.example.com' })).toBe(false);
+    expect(isSsoPasswordPolicyEnabled({ enabled: true })).toBe(false);
     expect(isSsoPasswordPolicyEnabled({})).toBe(false);
     expect(isSsoPasswordPolicyEnabled(undefined)).toBe(false);
   });
 });
 
 describe('isSsoUsername', () => {
+  it('classifies client SSO accounts with the same capability rule', () => {
+    expect(isSsoUsername('tenant-user', { enabled: true })).toBe(true);
+    expect(isSsoUsername('tenant-user', { enabled: false })).toBe(false);
+  });
   it('classifies hyphenated usernames as SSO only when SSO is configured', () => {
     expect(isSsoUsername('tenant-user', policyOn)).toBe(true);
     expect(isSsoUsername('tenant-user', { disablePasswordForSsoUsers: true })).toBe(false);
@@ -51,6 +64,13 @@ describe('isSsoUsername', () => {
 });
 
 describe('isPasswordAvailableForUsername', () => {
+  it('keeps administrator password controls consistent with client SSO capabilities', () => {
+    const sso = { enabled: true, disablePasswordForSsoUsers: true };
+    expect(isPasswordAvailableForUsername('tenant-user', sso)).toBe(false);
+    expect(isPasswordAvailableForUsername('root', sso)).toBe(true);
+    expect(isPasswordAvailableForUsername('user@example.com', sso)).toBe(true);
+    expect(isPasswordAvailableForUsername('tenant-user', { ...sso, enabled: false })).toBe(true);
+  });
   it('disables password only for SSO accounts while the policy is enabled', () => {
     expect(isPasswordAvailableForUsername('tenant-user', policyOn)).toBe(false);
     expect(isPasswordAvailableForUsername('root', policyOn)).toBe(true);
@@ -58,9 +78,7 @@ describe('isPasswordAvailableForUsername', () => {
   });
 
   it('keeps every account password-capable once the policy is off', () => {
-    expect(isPasswordAvailableForUsername('tenant-user', { url: 'https://sso.example.com' })).toBe(
-      true
-    );
+    expect(isPasswordAvailableForUsername('tenant-user', { enabled: true })).toBe(true);
     expect(isPasswordAvailableForUsername('tenant-user', undefined)).toBe(true);
   });
 });
