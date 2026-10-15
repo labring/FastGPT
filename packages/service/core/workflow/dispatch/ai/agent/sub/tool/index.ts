@@ -32,9 +32,8 @@ import { SystemToolRepo } from '../../../../../../app/tool/systemTool/systemTool
 import { computedSystemToolUsage } from '../../../../../../app/tool/runtime/utils';
 import { InvokeProcessor } from '../../../../../../../support/invoke/invoke';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
-import { filterWorkflowToolList } from '../../../../context/resource';
 import { isWorkflowResourceError, loadWorkflowAppResource } from '../../../../../resource/service';
-import { getWorkflowContext, getWorkflowResourceContext } from '../../../../context';
+import { getWorkflowContext } from '../../../../context';
 import { getWorkflowAppId } from '../../../../utils/source';
 import {
   assertTeamPluginSourceAccess,
@@ -73,7 +72,6 @@ export const dispatchTool = async ({
   workflowStreamResponse
 }: Props): Promise<DispatchSubAppResponse> => {
   const { variableContext: variableState } = getWorkflowContext();
-  const resourceContext = getWorkflowResourceContext();
   const getNodeResponse = ({
     result,
     response

@@ -69,14 +69,8 @@ type Props = Pick<
 };
 
 export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse> => {
-  const {
-    runningAppInfo,
-    runningUserInfo,
-    app,
-    customAppVariables,
-    userChatInput,
-    ...data
-  } = props;
+  const { runningAppInfo, runningUserInfo, app, customAppVariables, userChatInput, ...data } =
+    props;
   const { variableContext: variableState } = getWorkflowContext();
 
   const { appData, childVersion, resourceContext } = await loadChildWorkflowWithResource({
@@ -207,14 +201,8 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
 };
 
 export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppResponse> => {
-  const {
-    runningAppInfo,
-    runningUserInfo,
-    app,
-    customAppVariables,
-    userChatInput,
-    ...data
-  } = props;
+  const { runningAppInfo, runningUserInfo, app, customAppVariables, userChatInput, ...data } =
+    props;
   const { variableContext: variableState } = getWorkflowContext();
   // plugin 子应用不接收普通 userChatInput；这里解构只为了避免透传给 runWorkflow。
   void userChatInput;

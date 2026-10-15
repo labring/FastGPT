@@ -940,6 +940,9 @@ describe('getAgentRuntimeTools schema loading', () => {
       }
       const tools = await runWithContext(
         {
+          checkIsStopping: () => false,
+          fileContext: await createTestWorkflowFileContext(),
+
           mcpClientMemory: {},
           resourceContext: {
             isRoot: false,
@@ -982,6 +985,9 @@ describe('getAgentRuntimeTools schema loading', () => {
 
     const tools = await runWithContext(
       {
+        checkIsStopping: () => false,
+        fileContext: await createTestWorkflowFileContext(),
+
         mcpClientMemory: {},
         resourceContext: {
           isRoot: false,

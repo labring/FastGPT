@@ -70,10 +70,13 @@ import {
 
 /** 资源单测仍补齐真实文件 Context，不降低生产节点对完整运行依赖的要求。 */
 const runWithContext = async <T>(
-  value: Pick<Parameters<typeof runWithTestWorkflowContext>[0], 'mcpClientMemory' | 'resourceContext'>,
+  value: Pick<
+    Parameters<typeof runWithTestWorkflowContext>[0],
+    'mcpClientMemory' | 'resourceContext'
+  >,
   fn: () => T
 ): Promise<Awaited<T>> =>
-  runWithTestWorkflowContext(
+  await runWithTestWorkflowContext(
     {
       ...value,
       checkIsStopping: () => false,

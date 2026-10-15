@@ -387,34 +387,37 @@ describe('publish optional model defaults', () => {
         resolveInputFile: async () => ''
       });
 
-      await runWithContext({
-        checkIsStopping: () => false,
-        fileContext: await createTestWorkflowFileContext(),
-        mcpClientMemory: {},
-        resourceContext,
-        variableContext: variableState
-      }, async () => {
-        for (const node of runtimeNodes) {
-          const params = getWorkflowNodeRunParams({
-            node,
-            runtimeNodesMap,
-            variableState
-          });
-          if (params[NodeInputKeyEnum.datasetSearchUsingReRank]) {
-            await loadWorkflowModelResource({
-              appTeamId: String(root.teamId),
-              userInfo: {
-                teamId: String(root.teamId),
-                tmbId: String(root.tmbId)
-              },
-              type: 'rerank',
-              modelId: params[NodeInputKeyEnum.datasetSearchRerankModelId],
-              model: params[NodeInputKeyEnum.datasetSearchRerankModel],
-              fallbackToDefault: true
+      await runWithContext(
+        {
+          checkIsStopping: () => false,
+          fileContext: await createTestWorkflowFileContext(),
+          mcpClientMemory: {},
+          resourceContext,
+          variableContext: variableState
+        },
+        async () => {
+          for (const node of runtimeNodes) {
+            const params = getWorkflowNodeRunParams({
+              node,
+              runtimeNodesMap,
+              variableState
             });
+            if (params[NodeInputKeyEnum.datasetSearchUsingReRank]) {
+              await loadWorkflowModelResource({
+                appTeamId: String(root.teamId),
+                userInfo: {
+                  teamId: String(root.teamId),
+                  tmbId: String(root.tmbId)
+                },
+                type: 'rerank',
+                modelId: params[NodeInputKeyEnum.datasetSearchRerankModelId],
+                model: params[NodeInputKeyEnum.datasetSearchRerankModel],
+                fallbackToDefault: true
+              });
+            }
           }
         }
-      });
+      );
     };
 
     // 1. 预览链路：prepareAppWorkflowResources + 运行时节点模型校验通过
