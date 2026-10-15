@@ -29,6 +29,7 @@ const InputRender = (props: InputRenderProps) => {
     isDisabled,
     isInvalid,
     placeholder,
+    isSearchable,
     bg = 'white'
   } = props;
 
@@ -185,7 +186,15 @@ const InputRender = (props: InputRenderProps) => {
       description:
         typeof item.description === 'string' ? t(item.description as any) : item.description
     }));
-    return <MySelect {...commonProps} list={list} h={10} menuPlacement={props.menuPlacement} />;
+    return (
+      <MySelect
+        {...commonProps}
+        list={list}
+        h={10}
+        menuPlacement={props.menuPlacement}
+        isSearch={isSearchable && list.length > 8}
+      />
+    );
   }
 
   if (inputType === InputTypeEnum.multipleSelect) {
@@ -198,6 +207,7 @@ const InputRender = (props: InputRenderProps) => {
         onSelect={(e) => onChange?.(e)}
         isSelectAll={isSelectAll}
         itemWrap
+        isSearch={isSearchable && multipleSelectList.length > 8}
       />
     );
   }
