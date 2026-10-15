@@ -16,8 +16,10 @@ export type APIFileItemType = z.infer<typeof APIFileItemSchema>;
 // Api dataset config
 export const APIFileServerSchema = z
   .object({
-    // 只做规范化不做拒绝：该 schema 同时用于读取历史记录，缺失协议的老数据不应导致解析失败
-    baseUrl: z.string().transform((val) => ensureHttpProtocol(val)),
+    // 只做规范化不做拒绝：该 schema 同时用于读取历史记录，缺失协议的老数据不应导致解析失败。
+    // 用 overwrite 而非 transform：该 schema 会进入 /core/dataset/detail 等响应 schema，
+    // zod-openapi 禁止输出侧出现 pipe(transform)，overwrite 语义相同且类型仍是 string。
+    baseUrl: z.string().overwrite((val) => ensureHttpProtocol(val)),
     authorization: z.string().optional(),
     basePath: z.string().optional()
   })
