@@ -236,37 +236,53 @@ describe('LLM request record team isolation', () => {
     }
   );
 
-  it('saves records with very large video data urls after redacting base64 payloads', async () => {
-    const largeVideoBase64 = createBase64(10_000_000);
-
+  it('redacts image, audio and very large video payloads before saving the request to MongoDB', async () => {
+    const videoBase64 = createBase64(10_000_000);
+    const imageBase64 = createBase64();
+    const audioBase64 = createBase64();
+    const body = {
+      model: 'gpt-4o',
+      temperature: 0,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'analyze these media files' },
+            { type: 'image_url', image_url: { url: `data:image/png;base64,${imageBase64}` } },
+            { type: 'input_audio', input_audio: { data: audioBase64, format: 'wav' } },
+            { type: 'video_url', video_url: { url: `data:video/mp4;base64,${videoBase64}` } },
+            { type: 'image_url', image_url: { url: 'https://example.com/image.png' } }
+          ]
+        }
+      ]
+    };
     await saveLLMRequestRecord({
       teamId: '507f1f77bcf86cd799439011',
-      requestId: 'large_video_request',
-      body: {
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: 'analyze this video' },
-              {
-                type: 'video_url',
-                video_url: {
-                  url: `data:video/mp4;base64,${largeVideoBase64}`
-                }
-              }
-            ]
-          }
-        ]
-      },
+      requestId: 'media_request',
+      body,
       response: { answerText: 'done' }
     });
-
-    const record = await getLLMRequestRecord('large_video_request', '507f1f77bcf86cd799439011');
-
-    expect(record?.body.messages[0].content[1].video_url.url).toBe(
-      'data:video/mp4;base64,[base64 omitted]'
-    );
+    const record = await getLLMRequestRecord('media_request', '507f1f77bcf86cd799439011');
+    expect(record?.body).toEqual({
+      model: 'gpt-4o',
+      temperature: 0,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'analyze these media files' },
+            { type: 'image_url', image_url: { url: 'data:image/png;base64,[base64 omitted]' } },
+            { type: 'input_audio', input_audio: { data: '[base64 omitted]', format: 'wav' } },
+            { type: 'video_url', video_url: { url: 'data:video/mp4;base64,[base64 omitted]' } },
+            { type: 'image_url', image_url: { url: 'https://example.com/image.png' } }
+          ]
+        }
+      ]
+    });
     expect(record?.response).toEqual({ answerText: 'done' });
+    expect(JSON.stringify(record?.body)).not.toContain(videoBase64);
+    expect(JSON.stringify(body)).toContain(videoBase64);
+    expect(JSON.stringify(body)).toContain(imageBase64);
   });
 
   it('saves records with teamId and only reads them from the same team', async () => {

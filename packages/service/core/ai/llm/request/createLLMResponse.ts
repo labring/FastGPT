@@ -197,18 +197,20 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
      * 用户自定义 key 场景需要给出更明确的排查信息，系统 key 场景保持 i18n 文案。
      */
     const getEmptyResponseTip = () => {
+      const requestSnapshot = sanitizeLLMRequestRecordPayload(requestBody);
       if (aiRequestMeta.usedUserOpenAIKey) {
         logger.warn(`User LLM response empty`, {
           baseUrl: aiRequestMeta.baseUrl,
-          requestBody,
+          requestBody: requestSnapshot,
           finish_reason
         });
-        return `您的 OpenAI key 没有响应: ${JSON.stringify(body)}`;
+        // 提示也会写入请求记录，先清洗再序列化，避免媒体数据以 JSON 字符串绕过清洗。
+        return `您的 OpenAI key 没有响应: ${JSON.stringify(sanitizeLLMRequestRecordPayload(body))}`;
       }
 
       logger.error(`LLM response empty`, {
         message: '',
-        data: requestBody,
+        data: requestSnapshot,
         finish_reason
       });
       return i18nT('chat:LLM_model_response_empty');

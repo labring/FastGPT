@@ -403,6 +403,77 @@ describe('createLLMResponse', () => {
   });
 
   describe('Non-stream text output', () => {
+    it.each([false, true])(
+      'should redact empty-response logs and persisted hints with user key=%s',
+      async (usedUserOpenAIKey) => {
+        const logger = getLogger(LogCategories.MODULE.AI.LLM);
+        const log = vi
+          .spyOn(logger, usedUserOpenAIKey ? 'warn' : 'error')
+          .mockImplementation(() => {});
+        const base64 = 'A'.repeat(1_000_000);
+        const messages: ChatCompletionMessageParam[] = [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Analyze these media files.' },
+              { type: 'image_url', image_url: { url: `data:image/png;base64,${base64}` } },
+              { type: 'input_audio', input_audio: { data: base64, format: 'wav' } },
+              { type: 'video_url', video_url: { url: `data:video/mp4;base64,${base64}` } }
+            ]
+          }
+        ];
+        const create = vi.fn().mockResolvedValue({
+          choices: [{ message: { role: 'assistant', content: null }, finish_reason: 'stop' }],
+          usage: { prompt_tokens: 20, completion_tokens: 0, total_tokens: 20 }
+        });
+        mockGetAIApi.mockReturnValue(
+          createMockAIApiResult(
+            { chat: { completions: { create } } },
+            { usedUserOpenAIKey, baseUrl: 'https://system.example.com/v1' }
+          )
+        );
+        const result = await createLLMResponse({
+          body: { model: createMockModelData(), messages, stream: false }
+        });
+        const expectedMessages = [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Analyze these media files.' },
+              { type: 'image_url', image_url: { url: 'data:image/png;base64,[base64 omitted]' } },
+              { type: 'input_audio', input_audio: { data: '[base64 omitted]', format: 'wav' } },
+              { type: 'video_url', video_url: { url: 'data:video/mp4;base64,[base64 omitted]' } }
+            ]
+          }
+        ];
+        expect(log).toHaveBeenCalledExactlyOnceWith(
+          usedUserOpenAIKey ? 'User LLM response empty' : 'LLM response empty',
+          expect.objectContaining({
+            [usedUserOpenAIKey ? 'requestBody' : 'data']: expect.objectContaining({
+              messages: expectedMessages
+            }),
+            finish_reason: 'stop'
+          })
+        );
+        expect(JSON.stringify(log.mock.calls)).not.toContain(base64);
+        expect(result.responseEmptyTip).toEqual(
+          usedUserOpenAIKey
+            ? expect.stringContaining('[base64 omitted]')
+            : 'chat:LLM_model_response_empty'
+        );
+        expect(result.responseEmptyTip).not.toContain(base64);
+        expect(mockSaveLLMRequestRecord).toHaveBeenCalledExactlyOnceWith(
+          expect.objectContaining({
+            response: expect.objectContaining({ error: result.responseEmptyTip })
+          })
+        );
+        expect(JSON.stringify(mockSaveLLMRequestRecord.mock.calls[0][0].response)).not.toContain(
+          base64
+        );
+        expect(create.mock.calls[0][0].messages).toEqual(messages);
+      }
+    );
+
     it('should normalize split assistant fields before sending request', async () => {
       const mockResponse = {
         choices: [
