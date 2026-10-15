@@ -2,18 +2,20 @@ import type { ButtonProps } from '@chakra-ui/react';
 import { Box, Button, Flex, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
 import { HeaderSecretTypeEnum } from '@fastgpt/global/common/secret/constants';
 import type { SecretValueType, StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import HeaderAuthForm, { getSecretType } from './HeaderAuthForm';
+import HeaderAuthForm, { getSecretType, type SecretReferenceRenderer } from './HeaderAuthForm';
+
+export type HeaderSecretValueType = SecretValueType;
 
 export type HeaderSecretConfigType = {
-  Bearer?: SecretValueType;
-  Basic?: SecretValueType;
+  Bearer?: HeaderSecretValueType;
+  Basic?: HeaderSecretValueType;
   customs?: {
     key: string;
-    value: SecretValueType;
+    value: HeaderSecretValueType;
   }[];
 };
 
@@ -32,37 +34,25 @@ export const storeHeader2HeaderValue = (
     (key === HeaderSecretTypeEnum.Bearer || key === HeaderSecretTypeEnum.Basic)
   ) {
     return {
-      [key]: {
-        secret: value.secret,
-        value: value.value
-      }
+      [key]: value
     };
   }
 
   return {
     customs: entries.map(([key, value]) => ({
       key,
-      value: {
-        secret: value.secret,
-        value: value.value
-      }
+      value
     }))
   };
 };
 export const headerValue2StoreHeader = (data: HeaderSecretConfigType): StoreSecretValueType => {
-  const storeData: StoreSecretValueType = {};
+  const storeData = {} as StoreSecretValueType & Record<string, HeaderSecretValueType>;
   const currentAuthType = getSecretType(data);
 
   if (currentAuthType === HeaderSecretTypeEnum.Bearer) {
-    storeData.Bearer = {
-      value: data.Bearer?.value || '',
-      secret: data.Bearer?.secret || ''
-    };
+    if (data.Bearer) storeData.Bearer = data.Bearer;
   } else if (currentAuthType === HeaderSecretTypeEnum.Basic) {
-    storeData.Basic = {
-      value: data.Basic?.value || '',
-      secret: data.Basic?.secret || ''
-    };
+    if (data.Basic) storeData.Basic = data.Basic;
   } else if (currentAuthType === HeaderSecretTypeEnum.Custom) {
     data.customs?.forEach((item) => {
       storeData[item.key] = item.value;
@@ -75,11 +65,13 @@ export const headerValue2StoreHeader = (data: HeaderSecretConfigType): StoreSecr
 const HeaderAuthConfig = ({
   storeHeaderSecretConfig,
   onUpdate,
-  buttonProps
+  buttonProps,
+  renderReference
 }: {
   storeHeaderSecretConfig?: StoreSecretValueType;
   onUpdate: (data: StoreSecretValueType) => void;
   buttonProps?: ButtonProps;
+  renderReference?: SecretReferenceRenderer;
 }) => {
   const { t } = useTranslation();
 
@@ -91,12 +83,10 @@ const HeaderAuthConfig = ({
 
   const [formValues, setFormValues] = useState<HeaderSecretConfigType>({});
 
-  // 当模态框打开时，重置表单为最新的值
-  useEffect(() => {
-    if (isOpen) {
-      setFormValues(headerSecretValue);
-    }
-  }, [isOpen, headerSecretValue]);
+  const openConfig = () => {
+    setFormValues(headerSecretValue);
+    onOpen();
+  };
 
   const onSubmit = () => {
     const storeData = headerValue2StoreHeader(formValues);
@@ -111,7 +101,7 @@ const HeaderAuthConfig = ({
         borderRadius={'md'}
         {...buttonProps}
         leftIcon={<MyIcon name={'common/setting'} w={4} />}
-        onClick={onOpen}
+        onClick={openConfig}
       >
         {t('common:auth_config')}
       </Button>
@@ -126,7 +116,11 @@ const HeaderAuthConfig = ({
           w={480}
         >
           <ModalBody px={9}>
-            <HeaderAuthForm headerSecretValue={formValues} onChange={setFormValues} />
+            <HeaderAuthForm
+              headerSecretValue={formValues}
+              onChange={setFormValues}
+              renderReference={renderReference}
+            />
           </ModalBody>
           <ModalFooter px={9} display={'flex'} flexDirection={'column'}>
             <Flex justifyContent={'end'} w={'full'}>
