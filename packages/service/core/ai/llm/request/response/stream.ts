@@ -12,7 +12,7 @@ import type { CompleteParams, CompleteResponse, CreateLLMResponseProps } from '.
  * 解析 stream completion 响应。
  *
  * 三种分支分别处理：
- * - toolChoice：供应商原生返回 tool_calls delta。
+ * - toolChoice：供应商原生返回 tool_calls delta；以 tool_calls 结束时必须至少匹配一个有效工具。
  * - prompt tool：模型把工具协议输出在文本里，需要先控制可见流式输出，再在结束后解析 tool_calls。
  * - 普通文本：只转发 reasoning 与正文 delta。
  */
@@ -35,8 +35,18 @@ export const createStreamResponse = async ({
 
   if (tools?.length) {
     if (toolCallMode === 'toolChoice') {
-      let callingTool: ChatCompletionMessageToolCall['function'] | null = null;
-      const toolCalls: ChatCompletionMessageToolCall[] = [];
+      type ToolCallAccumulator = {
+        id: string;
+        name: string;
+        arguments: string;
+        hasEmittedStart: boolean;
+      };
+      // 按 index 隔离每个并发工具调用，避免多工具交替吐字时状态污染
+      const toolCallsMap = new Map<number, ToolCallAccumulator>();
+      const toolNames = new Set(tools.map((tool) => tool.function.name));
+
+      /** 还原供应商附加的 functions. 前缀，确保流式事件和最终工具调用使用相同名称。 */
+      const normalizeToolName = (name: string) => name.replace(/^functions\./, '');
 
       try {
         for await (const part of response) {
@@ -63,42 +73,47 @@ export const createStreamResponse = async ({
           const responseChoice = part.choices?.[0]?.delta;
           if (responseChoice?.tool_calls?.length) {
             responseChoice.tool_calls.forEach((toolCall, i) => {
-              // 多 tool 并发时必须按模型返回的 index 聚合参数，避免参数串到其他工具上。
               const index = toolCall.index ?? i;
-              const hasNewTool = toolCall?.function?.name || callingTool;
 
-              if (hasNewTool) {
-                // 有些供应商会把 function.name 和 arguments 分片返回，先缓存到 callingTool。
-                if (toolCall?.function?.name) {
-                  callingTool = {
-                    name: toolCall.function?.name || '',
-                    arguments: toolCall.function?.arguments || ''
-                  };
-                } else if (callingTool) {
-                  callingTool.name += toolCall.function?.name || '';
-                  callingTool.arguments += toolCall.function?.arguments || '';
-                }
+              if (!toolCallsMap.has(index)) {
+                toolCallsMap.set(index, {
+                  id: toolCall.id || getNanoid(6),
+                  name: '',
+                  arguments: '',
+                  hasEmittedStart: false
+                });
+              }
 
-                // 只有命中本轮请求传入的工具名时，才认为一个 tool call 已经开始。
-                if (tools.find((item) => item.function.name === callingTool!.name)) {
-                  const call: ChatCompletionMessageToolCall = {
-                    id: toolCall.id || getNanoid(6),
-                    type: 'function',
-                    function: callingTool!
-                  };
-                  toolCalls[index] = call;
-                  onToolCall?.({ call });
-                  callingTool = null;
-                }
-              } else {
-                const arg: string = toolCall?.function?.arguments ?? '';
-                const currentTool = toolCalls[index];
-                if (currentTool && arg) {
-                  // 后续 arguments delta 直接追加到已创建的 tool call，并把增量同步给上层。
-                  currentTool.function.arguments += arg;
+              const current = toolCallsMap.get(index)!;
+              if (toolCall.id) {
+                current.id = toolCall.id;
+              }
+              if (toolCall.function?.name) {
+                current.name += toolCall.function.name;
+              }
+              if (toolCall.function?.arguments) {
+                current.arguments += toolCall.function.arguments;
+              }
 
-                  onToolParam?.({ call: currentTool, argsDelta: arg });
-                }
+              // 工具名可能分片返回，命中本轮工具后才能派发事件，之前收到的参数先缓存。
+              const normalizedName = normalizeToolName(current.name);
+              if (!toolNames.has(normalizedName)) return;
+
+              const call: ChatCompletionMessageToolCall = {
+                id: current.id,
+                type: 'function',
+                function: { name: normalizedName, arguments: current.arguments }
+              };
+              if (!current.hasEmittedStart) {
+                current.hasEmittedStart = true;
+                // 开始事件包含全部已缓存参数，本块不能再作为增量重复发送。
+                onToolCall?.({ call });
+                return;
+              }
+
+              const argDelta = toolCall.function?.arguments;
+              if (argDelta) {
+                onToolParam?.({ call, argsDelta: argDelta });
               }
             });
           }
@@ -110,14 +125,56 @@ export const createStreamResponse = async ({
 
       const { reasoningContent, content, finish_reason, usage, error } = getResponseData();
 
-      return {
+      // 流结束统一规范化：容错 functions. 前缀，并将空 arguments 兜底为 "{}"
+      const finalToolCalls: ChatCompletionMessageToolCall[] = Array.from(toolCallsMap.entries())
+        .sort(([a], [b]) => a - b)
+        .map<ChatCompletionMessageToolCall>(([, item]) => {
+          const normalizedName = normalizeToolName(item.name);
+          return {
+            id: item.id,
+            type: 'function',
+            function: {
+              name: normalizedName,
+              arguments: item.arguments.trim() === '' ? '{}' : item.arguments
+            }
+          };
+        })
+        .filter((call) => toolNames.has(call.function.name));
+
+      const result: CompleteResponse = {
         error,
         answerText: content,
         reasoningText: reasoningContent,
         finish_reason,
         usage,
-        toolCalls: toolCalls.filter((call) => !!call)
+        toolCalls: finalToolCalls
       };
+
+      // 中途未匹配可能只是名称尚未收齐；只有模型明确以工具调用结束且全部无效时才报错。
+      // 保留原始名称、参数和 usage，由入口层统一记录日志并按 throwError 决定是否抛出。
+      if (!error && finish_reason === 'tool_calls' && finalToolCalls.length === 0) {
+        return {
+          ...result,
+          finish_reason: 'error',
+          error: new Error(
+            'LLM tool call error: finish_reason=tool_calls but no valid tool calls matched the requested tools.',
+            {
+              cause: {
+                finish_reason,
+                expectedToolNames: [...toolNames],
+                receivedToolCalls: Array.from(toolCallsMap, ([index, call]) => ({
+                  index,
+                  id: call.id,
+                  type: 'function',
+                  function: { name: call.name, arguments: call.arguments }
+                }))
+              }
+            }
+          )
+        };
+      }
+
+      return result;
     } else {
       let startResponseWrite = false;
       let answer = '';

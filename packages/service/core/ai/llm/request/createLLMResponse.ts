@@ -222,6 +222,28 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       (finish_reason === 'stop' || !finish_reason || isEmptyToolCallsFinish);
     const responseEmptyTip = isNotResponse ? getEmptyResponseTip() : undefined;
 
+    if (error) {
+      // 解析期错误已拿到响应，保留请求、原始工具诊断及消耗，避免抛错后只剩空响应记录。
+      logger.error('LLM response parsing failed', {
+        teamId,
+        requestId,
+        modelId: modelData.modelId,
+        provider: modelData.provider,
+        baseUrl: aiRequestMeta.baseUrl,
+        request: requestBody,
+        response: {
+          answerText,
+          reasoningText,
+          toolCalls,
+          finish_reason,
+          usage,
+          inputTokens,
+          outputTokens
+        },
+        error
+      });
+    }
+
     if (saveLLMResponseRecord && teamId) {
       // 保存详情只记录实际请求与模型响应，不把用于计费分支的 usedUserOpenAIKey 写入详情。
       persistLLMResponseRecord({

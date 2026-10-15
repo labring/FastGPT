@@ -1,509 +1,611 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { StreamResponseType } from '@fastgpt/global/core/ai/llm/type';
-import { parseLLMStreamResponse } from '@fastgpt/service/core/ai/utils';
-import { parsePromptToolCall } from '@fastgpt/service/core/ai/llm/promptCall';
+import { describe, expect, it, vi } from 'vitest';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type {
+  ChatCompletionChunk,
+  ChatCompletionTool,
+  CompletionFinishReason,
+  CompletionUsage,
+  StreamResponseType
+} from '@fastgpt/global/core/ai/llm/type';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { createStreamResponse } from '@fastgpt/service/core/ai/llm/request/response/stream';
+import { createAgentLoopCoreEventStream } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/eventStream/createEventStream';
 
-vi.mock('@fastgpt/service/core/ai/utils', () => ({
-  parseLLMStreamResponse: vi.fn()
-}));
-
-vi.mock('@fastgpt/service/core/ai/llm/promptCall', () => ({
-  parsePromptToolCall: vi.fn()
-}));
-
-const mockParseLLMStreamResponse = vi.mocked(parseLLMStreamResponse);
-const mockParsePromptToolCall = vi.mocked(parsePromptToolCall);
-
-async function* createAsyncGenerator<T>(items: T[]): AsyncGenerator<T, void, unknown> {
-  for (const item of items) {
-    yield item;
-  }
-}
-
-const createMockStreamResponse = (chunks: any[]): StreamResponseType => {
-  const generator = createAsyncGenerator(chunks);
-  return Object.assign(generator, {
-    controller: { abort: vi.fn() }
-  }) as unknown as StreamResponseType;
+type StreamParams = Parameters<typeof createStreamResponse>[0];
+type SDKDelta = ChatCompletionChunk['choices'][number]['delta'];
+type ToolDelta = Omit<NonNullable<SDKDelta['tool_calls']>[number], 'index'> & { index?: number };
+type Delta = Omit<SDKDelta, 'tool_calls'> & {
+  reasoning_content?: string;
+  tool_calls?: ToolDelta[];
+};
+// 兼容供应商可能省略 choices、delta、index 的传输边界，不放宽生产类型。
+type Chunk = {
+  choices?: { delta?: Delta; finish_reason?: CompletionFinishReason }[];
+  usage?: CompletionUsage;
+  error?: unknown;
 };
 
-const createModel = (overrides: Record<string, any> = {}) =>
-  ({
+const usage: CompletionUsage = { prompt_tokens: 5, completion_tokens: 3, total_tokens: 8 };
+const tool = (name: string): ChatCompletionTool => ({
+  type: 'function',
+  function: { name, parameters: { type: 'object' } }
+});
+const createBody = (overrides: Partial<StreamParams['body']> = {}): StreamParams['body'] => ({
+  model: {
     modelId: '68ad85a7463006c963799a64',
     type: ModelTypeEnum.llm,
+    scope: ModelScopeEnum.system,
     provider: 'openai',
     model: 'gpt-4o',
     name: 'GPT-4o',
-    maxContext: 128000,
-    maxResponse: 4096,
-    quoteMaxToken: 60000,
-    config: {
-      maxContext: 128000,
-      maxResponse: 4096,
-      quoteMaxToken: 60000,
-      reasoning: false,
-      ...overrides
-    }
-  }) as any;
+    config: { maxContext: 128000, maxResponse: 4096, quoteMaxToken: 60000, reasoning: false }
+  },
+  messages: [],
+  stream: true,
+  ...overrides
+});
+const chunk = (delta: Delta = {}, finishReason: CompletionFinishReason = null): Chunk => ({
+  choices: [{ delta, finish_reason: finishReason }]
+});
+
+/** 只模拟上游异步传输和关闭句柄；正文、工具协议、usage 和错误均交给真实解析器处理。 */
+const createStream = (
+  chunks: Chunk[],
+  { error, withController = true }: { error?: unknown; withController?: boolean } = {}
+) => {
+  const abort = vi.fn();
+  async function* generate() {
+    for (const part of chunks) yield part;
+    if (error !== undefined) throw error;
+  }
+  // SDK Stream 还带 HTTP 专用方法，测试只实现本函数实际消费的异步迭代和 controller。
+  const response = Object.assign(
+    generate(),
+    withController ? { controller: { abort } } : {}
+  ) as unknown as StreamResponseType;
+  return { response, abort };
+};
+const createCallbacks = () => ({
+  onStreaming: vi.fn<NonNullable<StreamParams['onStreaming']>>(),
+  onReasoning: vi.fn<NonNullable<StreamParams['onReasoning']>>(),
+  onToolCall: vi.fn<NonNullable<StreamParams['onToolCall']>>(),
+  onToolParam: vi.fn<NonNullable<StreamParams['onToolParam']>>()
+});
+const textOf = (callback: ReturnType<typeof createCallbacks>['onStreaming']) =>
+  callback.mock.calls.map(([event]) => event.text).join('');
 
 describe('createStreamResponse', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  const nativeBody = createBody({ tools: [tool('search')] });
+  const promptBody = createBody({ tools: [tool('search')], toolCallMode: 'prompt' });
+  const modes = [
+    { mode: 'text', body: createBody(), prefix: '' },
+    { mode: 'toolChoice', body: nativeBody, prefix: '' },
+    { mode: 'prompt', body: promptBody, prefix: '0: ' }
+  ];
 
-  it('should parse plain streamed text and emit streaming callback', async () => {
-    const chunks = [
-      { choices: [{ delta: { content: 'Hello' }, finish_reason: null }] },
-      { choices: [{ delta: { content: ' world' }, finish_reason: 'stop' }] }
-    ];
-
-    let contentBuffer = '';
-    mockParseLLMStreamResponse.mockReturnValue({
-      parsePart: ({ part }: { part: any }) => {
-        const content = part.choices?.[0]?.delta?.content || '';
-        contentBuffer += content;
-        return {
-          reasoningContent: '',
-          content,
-          responseContent: content,
-          finishReason: part.choices?.[0]?.finish_reason || null
-        };
-      },
-      getResponseData: () => ({
-        error: undefined,
-        reasoningContent: '',
-        content: contentBuffer,
-        finish_reason: 'stop' as const,
-        usage: { prompt_tokens: 5, completion_tokens: 3, total_tokens: 8 }
-      }),
-      updateFinishReason: vi.fn(),
-      updateError: vi.fn()
-    });
-
-    let streamedText = '';
-    const result = await createStreamResponse({
-      body: {
-        model: createModel(),
-        messages: [],
-        stream: true
-      },
-      response: createMockStreamResponse(chunks),
-      onStreaming: ({ text }) => {
-        streamedText += text;
-      }
-    });
-
-    expect(result.answerText).toBe('Hello world');
-    expect(result.reasoningText).toBe('');
-    expect(result.finish_reason).toBe('stop');
-    expect(streamedText).toBe('Hello world');
-  });
-
-  it('should parse streamed reasoning content and answer content separately', async () => {
-    const chunks = [
-      { choices: [{ delta: { reasoning_content: 'Thinking...' }, finish_reason: null }] },
-      { choices: [{ delta: { content: 'Answer' }, finish_reason: 'stop' }] }
-    ];
-
-    let contentBuffer = '';
-    let reasoningBuffer = '';
-    mockParseLLMStreamResponse.mockReturnValue({
-      parsePart: ({ part }: { part: any }) => {
-        const content = part.choices?.[0]?.delta?.content || '';
-        const reasoning = part.choices?.[0]?.delta?.reasoning_content || '';
-        contentBuffer += content;
-        reasoningBuffer += reasoning;
-        return {
-          reasoningContent: reasoning,
-          content,
-          responseContent: content,
-          finishReason: part.choices?.[0]?.finish_reason || null
-        };
-      },
-      getResponseData: () => ({
-        error: undefined,
-        reasoningContent: reasoningBuffer,
-        content: contentBuffer,
-        finish_reason: 'stop' as const,
-        usage: { prompt_tokens: 5, completion_tokens: 3, total_tokens: 8 }
-      }),
-      updateFinishReason: vi.fn(),
-      updateError: vi.fn()
-    });
-
-    let reasoningText = '';
-    let answerText = '';
-    const result = await createStreamResponse({
-      body: {
-        model: createModel({ reasoning: true }),
-        messages: [],
-        stream: true
-      },
-      response: createMockStreamResponse(chunks),
-      onReasoning: ({ text }) => {
-        reasoningText += text;
-      },
-      onStreaming: ({ text }) => {
-        answerText += text;
-      }
-    });
-
-    expect(result.reasoningText).toBe('Thinking...');
-    expect(result.answerText).toBe('Answer');
-    expect(reasoningText).toBe('Thinking...');
-    expect(answerText).toBe('Answer');
-  });
-
-  it('should parse toolChoice stream tool call and append argument deltas', async () => {
-    const updateError = vi.fn();
-    const chunks = [
-      {
-        choices: [
-          {
-            delta: {
-              content: 'visible',
-              tool_calls: [
-                {
-                  index: 0,
-                  id: 'call_1',
-                  function: {
-                    name: 'search',
-                    arguments: '{"q"'
-                  }
-                }
-              ]
-            }
-          }
-        ]
-      },
-      {
-        choices: [
-          {
-            delta: {
-              tool_calls: [
-                {
-                  index: 0,
-                  function: {
-                    arguments: ':"fastgpt"}'
-                  }
-                }
-              ]
-            }
-          }
-        ]
-      }
-    ];
-
-    mockParseLLMStreamResponse.mockReturnValue({
-      parsePart: ({ part }: { part: any }) => ({
-        reasoningContent: part.choices?.[0]?.delta?.reasoning_content || '',
-        content: part.choices?.[0]?.delta?.content || '',
-        responseContent: part.choices?.[0]?.delta?.content || ''
-      }),
-      getResponseData: () => ({
-        error: undefined,
-        reasoningContent: '',
-        content: 'visible',
-        finish_reason: 'tool_calls' as const,
-        usage: { prompt_tokens: 5, completion_tokens: 2, total_tokens: 7 }
-      }),
-      updateFinishReason: vi.fn(),
-      updateError
-    });
-
-    const onStreaming = vi.fn();
-    const onToolCall = vi.fn();
-    const onToolParam = vi.fn();
-    const result = await createStreamResponse({
-      body: {
-        model: createModel(),
-        messages: [],
-        stream: true,
-        tools: [
-          {
-            type: 'function',
-            function: {
-              name: 'search',
-              description: 'search',
-              parameters: { type: 'object' }
-            }
-          }
-        ],
-        toolCallMode: 'toolChoice'
-      },
-      response: createMockStreamResponse(chunks),
-      onStreaming,
-      onToolCall,
-      onToolParam
-    });
-
-    expect(onStreaming).toHaveBeenCalledWith({ text: 'visible' });
-    expect(onToolCall).toHaveBeenCalledTimes(1);
-    expect(onToolParam).toHaveBeenCalledWith({
-      call: expect.objectContaining({
-        id: 'call_1',
-        function: {
-          name: 'search',
-          arguments: '{"q":"fastgpt"}'
-        }
-      }),
-      argsDelta: ':"fastgpt"}'
-    });
-    expect(result.toolCalls).toEqual([
-      {
-        id: 'call_1',
-        type: 'function',
-        function: {
-          name: 'search',
-          arguments: '{"q":"fastgpt"}'
-        }
-      }
+  it.each([
+    { label: 'no tools', tools: undefined },
+    { label: 'an empty tool list', tools: [] },
+    { label: 'native tools', tools: [tool('search')] }
+  ])('should separate reasoning, text and usage with $label', async ({ tools }) => {
+    const callbacks = createCallbacks();
+    const { response } = createStream([
+      chunk({ reasoning_content: 'Thinking...' }),
+      chunk({ content: ' Hello' }),
+      chunk({ content: ' world' }, 'stop'),
+      { choices: [], usage }
     ]);
-    expect(result.finish_reason).toBe('tool_calls');
-    expect(updateError).not.toHaveBeenCalled();
+    const result = await createStreamResponse({
+      body: createBody({ tools }),
+      response,
+      ...callbacks
+    });
+
+    expect(result).toMatchObject({
+      answerText: 'Hello world',
+      reasoningText: 'Thinking...',
+      finish_reason: 'stop',
+      usage,
+      error: undefined
+    });
+    expect(callbacks.onStreaming.mock.calls).toEqual([[{ text: 'Hello' }], [{ text: ' world' }]]);
+    expect(callbacks.onReasoning).toHaveBeenCalledExactlyOnceWith({ text: 'Thinking...' });
+    expect(callbacks.onToolCall).not.toHaveBeenCalled();
   });
 
-  it('should parse prompt tool stream and emit parsed tool calls after stream ends', async () => {
-    const chunks = [
-      { choices: [{ delta: { content: '  0: hel' } }] },
-      { choices: [{ delta: { content: 'lo' } }] }
-    ];
-    mockParseLLMStreamResponse.mockReturnValue({
-      parsePart: ({ part }: { part: any }) => {
-        const content = part.choices?.[0]?.delta?.content || '';
-        return {
-          reasoningContent: '',
-          content,
-          responseContent: content
-        };
-      },
-      getResponseData: () => ({
-        error: undefined,
-        reasoningContent: 'reasoning',
-        content: '0: hello',
-        finish_reason: 'stop' as const,
-        usage: { prompt_tokens: 5, completion_tokens: 3, total_tokens: 8 }
-      }),
-      updateFinishReason: vi.fn(),
-      updateError: vi.fn()
-    });
-    mockParsePromptToolCall.mockReturnValue({
-      answer: 'hello',
-      streamAnswer: ' parsed-tail',
-      toolCalls: [
-        {
-          id: 'call_prompt',
-          type: 'function',
-          function: {
-            name: 'search',
-            arguments: '{"q":"fastgpt"}'
-          }
-        }
-      ]
-    });
+  it.each([true, false])('should respect model reasoning=%s for think tags', async (reasoning) => {
+    const body = createBody();
+    body.model.config.reasoning = reasoning;
+    const callbacks = createCallbacks();
+    const { response } = createStream([
+      chunk({ content: '<think>' }),
+      chunk({ content: 'thinking' }),
+      chunk({ content: '</think>' }),
+      chunk({ content: ' answer' }, 'stop')
+    ]);
+    const result = await createStreamResponse({ body, response, ...callbacks });
+    const answer = reasoning ? 'answer' : '<think>thinking</think> answer';
 
-    let streamedText = '';
-    const onToolCall = vi.fn();
-    const result = await createStreamResponse({
-      body: {
-        model: createModel(),
-        messages: [],
-        stream: true,
-        tools: [
-          {
-            type: 'function',
-            function: {
-              name: 'search',
-              description: 'search',
-              parameters: { type: 'object' }
-            }
-          }
-        ],
-        toolCallMode: 'prompt'
-      },
-      response: createMockStreamResponse(chunks),
-      onStreaming: ({ text }) => {
-        streamedText += text;
-      },
-      onToolCall
-    });
+    expect(result.answerText).toBe(answer);
+    expect(result.reasoningText).toBe(reasoning ? 'thinking' : '');
+    expect(textOf(callbacks.onStreaming)).toBe(answer);
+    expect(textOf(callbacks.onReasoning)).toBe(result.reasoningText);
+  });
 
-    expect(streamedText).toBe('hello parsed-tail');
-    expect(mockParsePromptToolCall).toHaveBeenCalledWith('0: hello');
-    expect(onToolCall).toHaveBeenCalledWith({
-      call: {
-        id: 'call_prompt',
-        type: 'function',
-        function: {
-          name: 'search',
-          arguments: '{"q":"fastgpt"}'
-        }
-      }
-    });
+  it.each(modes)(
+    'should handle an empty $mode stream without synthetic output',
+    async ({ body }) => {
+      const callbacks = createCallbacks();
+      const { response } = createStream([]);
+      const result = await createStreamResponse({ body, response, ...callbacks });
+
+      expect(result).toMatchObject({
+        answerText: '',
+        reasoningText: '',
+        finish_reason: null,
+        error: undefined
+      });
+      for (const callback of Object.values(callbacks)) expect(callback).not.toHaveBeenCalled();
+      expect(result.toolCalls ?? []).toEqual([]);
+    }
+  );
+
+  it.each(modes)('should allow omitted callbacks in $mode', async ({ body, prefix }) => {
+    const { response } = createStream([
+      chunk({ reasoning_content: 'thinking' }),
+      chunk({ content: `${prefix}hello` }),
+      chunk({ content: ' world' }, 'stop')
+    ]);
+    const result = await createStreamResponse({ body, response });
     expect(result).toMatchObject({
-      answerText: 'hello',
-      reasoningText: 'reasoning',
+      answerText: 'hello world',
+      reasoningText: 'thinking',
       finish_reason: 'stop'
     });
   });
 
-  it('should suppress prompt tool streaming before model declares tool mode', async () => {
-    const chunks = [{ choices: [{ delta: { content: '1: {"tool"' } }] }];
-    mockParseLLMStreamResponse.mockReturnValue({
-      parsePart: ({ part }: { part: any }) => {
-        const content = part.choices?.[0]?.delta?.content || '';
-        return {
-          reasoningContent: '',
-          content,
-          responseContent: content
-        };
-      },
-      getResponseData: () => ({
-        error: undefined,
-        reasoningContent: '',
-        content: '1: {"tool"}',
-        finish_reason: 'tool_calls' as const,
-        usage: { prompt_tokens: 5, completion_tokens: 3, total_tokens: 8 }
-      }),
-      updateFinishReason: vi.fn(),
-      updateError: vi.fn()
-    });
-    mockParsePromptToolCall.mockReturnValue({
-      answer: '',
-      streamAnswer: '',
-      toolCalls: []
-    });
-
-    const onStreaming = vi.fn();
+  it.each(modes)('should filter citation-only deltas in $mode', async ({ body, prefix }) => {
+    const callbacks = createCallbacks();
+    const { response } = createStream([
+      chunk({ content: `${prefix}visible` }),
+      chunk({ content: '[0123456789abcdef01234567](CITE)' }),
+      chunk({}, 'stop')
+    ]);
     const result = await createStreamResponse({
-      body: {
-        model: createModel(),
-        messages: [],
-        stream: true,
-        tools: [
-          {
-            type: 'function',
-            function: {
-              name: 'search',
-              description: 'search',
-              parameters: { type: 'object' }
-            }
-          }
-        ],
-        toolCallMode: 'prompt'
-      },
-      response: createMockStreamResponse(chunks),
-      onStreaming
+      body: { ...body, retainDatasetCite: false },
+      response,
+      ...callbacks
     });
-
-    expect(onStreaming).not.toHaveBeenCalled();
-    expect(result.toolCalls).toEqual([]);
-    expect(result.finish_reason).toBe('tool_calls');
+    expect(textOf(callbacks.onStreaming)).toBe('visible');
+    expect(result.answerText).toContain('visible');
+    expect(result.finish_reason).toBe('stop');
   });
 
-  it('should stream prompt tool text directly when response has no mode prefix', async () => {
-    const chunks = [{ choices: [{ delta: { content: 'abc', reasoning_content: 'think' } }] }];
-    mockParseLLMStreamResponse.mockReturnValue({
-      parsePart: ({ part }: { part: any }) => {
-        const content = part.choices?.[0]?.delta?.content || '';
-        return {
-          reasoningContent: part.choices?.[0]?.delta?.reasoning_content || '',
-          content,
-          responseContent: content
-        };
-      },
-      getResponseData: () => ({
-        error: undefined,
-        reasoningContent: 'think',
-        content: 'abc',
-        finish_reason: 'stop' as const,
-        usage: { prompt_tokens: 5, completion_tokens: 3, total_tokens: 8 }
-      }),
-      updateFinishReason: vi.fn(),
-      updateError: vi.fn()
-    });
-    mockParsePromptToolCall.mockReturnValue({
-      answer: 'abc',
-      streamAnswer: '',
-      toolCalls: undefined
-    });
+  describe('native tool calls', () => {
+    it.each([
+      ['functions.search', 'search', '', '{}'],
+      ['search', 'search', ' \t', '{}'],
+      ['functions_search', 'functions_search', '{}', '{}'],
+      ['functions', 'functions', '{}', '{}'],
+      ['search', 'search', '{"q":', '{"q":']
+    ])(
+      'should preserve %s as %s and arguments %j as %j',
+      async (rawName, name, args, finalArgs) => {
+        const callbacks = createCallbacks();
+        const { response } = createStream([
+          chunk(
+            {
+              tool_calls: [{ index: 0, id: 'call_1', function: { name: rawName, arguments: args } }]
+            },
+            'tool_calls'
+          )
+        ]);
+        const result = await createStreamResponse({
+          body: createBody({ tools: [tool(name)] }),
+          response,
+          ...callbacks
+        });
 
-    const onReasoning = vi.fn();
-    const onStreaming = vi.fn();
-    const result = await createStreamResponse({
-      body: {
-        model: createModel(),
-        messages: [],
-        stream: true,
-        tools: [
+        expect(callbacks.onToolCall).toHaveBeenCalledExactlyOnceWith({
+          call: { id: 'call_1', type: 'function', function: { name, arguments: args } }
+        });
+        expect(callbacks.onToolParam).not.toHaveBeenCalled();
+        expect(result.toolCalls).toEqual([
+          { id: 'call_1', type: 'function', function: { name, arguments: finalArgs } }
+        ]);
+        expect(result.finish_reason).toBe('tool_calls');
+      }
+    );
+
+    it('should preserve SSE order and isolate interleaved name and argument fragments by index', async () => {
+      const callbacks = createCallbacks();
+      const workflowStreamResponse = vi.fn();
+      const eventStream = createAgentLoopCoreEventStream({
+        workflowStreamResponse,
+        getToolInfo: (name) => (['tool_a', 'tool_b'].includes(name) ? { name } : undefined)
+      });
+      callbacks.onToolCall.mockImplementation(({ call }) => eventStream.streamToolCall(call));
+      callbacks.onToolParam.mockImplementation(({ call, argsDelta }) =>
+        eventStream.streamToolParams({ callId: call.id, argsDelta })
+      );
+      const { response } = createStream([
+        chunk({
+          tool_calls: [
+            { index: 1, id: 'call_b', function: { name: 'functions.', arguments: '{"b"' } },
+            { index: 0, function: { name: 'tool_', arguments: '{"a"' } }
+          ]
+        }),
+        chunk({
+          tool_calls: [{ index: 0, id: 'call_a', function: { name: 'a', arguments: ':1' } }]
+        }),
+        chunk({ tool_calls: [{ index: 1, function: { name: 'tool_b', arguments: ':2' } }] }),
+        chunk(
           {
-            type: 'function',
-            function: {
-              name: 'search',
-              description: 'search',
-              parameters: { type: 'object' }
-            }
-          }
-        ],
-        toolCallMode: 'prompt'
-      },
-      response: createMockStreamResponse(chunks),
-      onReasoning,
-      onStreaming
+            tool_calls: [
+              { index: 1, function: { arguments: '}' } },
+              { index: 0, function: { arguments: '}' } }
+            ]
+          },
+          'tool_calls'
+        )
+      ]);
+      const result = await createStreamResponse({
+        body: createBody({ tools: [tool('tool_a'), tool('tool_b')], toolCallMode: 'toolChoice' }),
+        response,
+        ...callbacks
+      });
+
+      expect(callbacks.onToolCall.mock.calls.map(([{ call }]) => call.function.name)).toEqual([
+        'tool_a',
+        'tool_b'
+      ]);
+      expect(callbacks.onToolParam.mock.calls.map(([{ call }]) => call.function.name)).toEqual([
+        'tool_b',
+        'tool_a'
+      ]);
+      // 真实适配器按初始参数建卡片，再追加增量；同一块参数不能通过两个事件重复下发。
+      expect(
+        workflowStreamResponse.mock.calls.map(([event]) => [
+          event.event,
+          event.id,
+          event.data.tool.params
+        ])
+      ).toEqual([
+        [SseResponseEventEnum.toolCall, 'call_a', '{"a":1'],
+        [SseResponseEventEnum.toolCall, 'call_b', '{"b":2'],
+        [SseResponseEventEnum.toolParams, 'call_b', '}'],
+        [SseResponseEventEnum.toolParams, 'call_a', '}']
+      ]);
+      expect(result.toolCalls).toEqual([
+        { id: 'call_a', type: 'function', function: { name: 'tool_a', arguments: '{"a":1}' } },
+        { id: 'call_b', type: 'function', function: { name: 'tool_b', arguments: '{"b":2}' } }
+      ]);
     });
 
-    expect(onReasoning).toHaveBeenCalledWith({ text: 'think' });
-    expect(onStreaming).toHaveBeenCalledWith({ text: 'abc' });
-    expect(result.answerText).toBe('abc');
+    it('should ignore empty frames and unknown, incomplete or missing tool names', async () => {
+      const callbacks = createCallbacks();
+      const { response } = createStream([
+        {},
+        { choices: [] },
+        { choices: [{}] },
+        chunk({ tool_calls: [] }),
+        chunk({
+          tool_calls: [
+            { index: 0, function: { name: 'missing_tool', arguments: '{}' } },
+            { index: 1, function: { name: 'sea', arguments: '{}' } },
+            { index: 2, function: { name: '', arguments: '{}' } },
+            { index: 3 }
+          ]
+        }),
+        chunk({}, 'stop')
+      ]);
+      const result = await createStreamResponse({ body: nativeBody, response, ...callbacks });
+      expect(result).toMatchObject({
+        toolCalls: [],
+        answerText: '',
+        error: undefined,
+        finish_reason: 'stop'
+      });
+      expect(callbacks.onToolCall).not.toHaveBeenCalled();
+      expect(callbacks.onToolParam).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      { label: 'unknown tool', name: 'missing_tool' },
+      { label: 'incomplete tool name', name: 'sea' },
+      { label: 'prefix without a tool name', name: 'functions.' },
+      { label: 'no tool deltas', name: undefined }
+    ])('should fail tool_calls ending with $label even when text is present', async ({ name }) => {
+      const callbacks = createCallbacks();
+      const { response } = createStream([
+        chunk({ reasoning_content: 'thinking', content: 'partial answer' }),
+        chunk(
+          {
+            tool_calls:
+              name === undefined
+                ? []
+                : [
+                    {
+                      index: 0,
+                      id: 'call_invalid',
+                      type: 'function',
+                      function: { name, arguments: '{"q":1}' }
+                    }
+                  ]
+          },
+          'tool_calls'
+        ),
+        { choices: [], usage }
+      ]);
+      const result = await createStreamResponse({ body: nativeBody, response, ...callbacks });
+
+      expect(result).toMatchObject({
+        finish_reason: 'error',
+        toolCalls: [],
+        usage,
+        answerText: 'partial answer',
+        reasoningText: 'thinking'
+      });
+      expect(result.error).toBeInstanceOf(Error);
+      expect(result.error).toMatchObject({
+        message: expect.stringContaining('no valid tool calls'),
+        cause: {
+          finish_reason: 'tool_calls',
+          expectedToolNames: ['search'],
+          receivedToolCalls:
+            name === undefined
+              ? []
+              : [
+                  {
+                    index: 0,
+                    id: 'call_invalid',
+                    type: 'function',
+                    function: { name, arguments: '{"q":1}' }
+                  }
+                ]
+        }
+      });
+      expect(callbacks.onToolCall).not.toHaveBeenCalled();
+      expect(callbacks.onToolParam).not.toHaveBeenCalled();
+    });
+
+    it('should keep valid calls when tool_calls also contains an unknown tool', async () => {
+      const callbacks = createCallbacks();
+      const { response } = createStream([
+        chunk(
+          {
+            tool_calls: [
+              { index: 0, id: 'call_invalid', function: { name: 'missing_tool', arguments: '{}' } },
+              { index: 1, id: 'call_valid', function: { name: 'search', arguments: '{}' } }
+            ]
+          },
+          'tool_calls'
+        )
+      ]);
+      const result = await createStreamResponse({ body: nativeBody, response, ...callbacks });
+      const call = {
+        id: 'call_valid',
+        type: 'function',
+        function: { name: 'search', arguments: '{}' }
+      };
+      expect(result).toMatchObject({
+        finish_reason: 'tool_calls',
+        error: undefined,
+        toolCalls: [call]
+      });
+      expect(callbacks.onToolCall).toHaveBeenCalledExactlyOnceWith({ call });
+    });
+
+    it('should preserve an upstream error instead of replacing it with an invalid-tool error', async () => {
+      const error = new Error('upstream disconnected');
+      const { response } = createStream([chunk({}, 'tool_calls')], { error });
+      const result = await createStreamResponse({ body: nativeBody, response });
+      expect(result.error).toBe(error);
+      expect(result.toolCalls).toEqual([]);
+    });
+
+    it('should fall back to array index and generated id without requiring tool callbacks', async () => {
+      const { response } = createStream([
+        chunk({ tool_calls: [{ function: { name: 'search', arguments: '{"q"' } }] }),
+        chunk({ tool_calls: [{ function: {} }] }),
+        chunk({ tool_calls: [{ function: { arguments: ':1}' } }] }, 'tool_calls')
+      ]);
+      const result = await createStreamResponse({ body: nativeBody, response });
+      expect(result.toolCalls).toEqual([
+        {
+          id: expect.any(String),
+          type: 'function',
+          function: { name: 'search', arguments: '{"q":1}' }
+        }
+      ]);
+      expect(result.toolCalls?.[0].id).toHaveLength(6);
+    });
   });
 
-  it('should keep parser errors on prompt tool stream response', async () => {
-    const updateError = vi.fn();
-    const parseError = new Error('parse failed');
-    mockParseLLMStreamResponse.mockReturnValue({
-      parsePart: () => {
-        throw parseError;
-      },
-      getResponseData: () => ({
-        error: parseError,
-        reasoningContent: '',
-        content: '',
-        finish_reason: 'error' as const,
-        usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
-      }),
-      updateFinishReason: vi.fn(),
-      updateError
-    });
-    mockParsePromptToolCall.mockReturnValue({
-      answer: '',
-      streamAnswer: '',
-      toolCalls: undefined
+  describe('prompt tool protocol', () => {
+    it.each([
+      { label: 'split ASCII prefix', parts: ['0', ':', ' hello', ' world'], callbacks: true },
+      { label: 'split full-width prefix', parts: ['0', '：', ' hello', ' world'], callbacks: true },
+      { label: 'missing prefix', parts: ['hello', ' world'], callbacks: true },
+      { label: 'missing prefix without callbacks', parts: ['hello', ' world'], callbacks: false }
+    ])('should stream an answer with $label', async ({ parts, callbacks: observe }) => {
+      const callbacks = createCallbacks();
+      const { response } = createStream([
+        ...parts.map((content) => chunk({ content })),
+        chunk({}, 'stop')
+      ]);
+      const result = await createStreamResponse({
+        body: promptBody,
+        response,
+        ...(observe ? callbacks : {})
+      });
+      expect(result).toMatchObject({
+        answerText: 'hello world',
+        toolCalls: undefined,
+        finish_reason: 'stop'
+      });
+      if (observe) expect(textOf(callbacks.onStreaming)).toBe('hello world');
     });
 
-    const result = await createStreamResponse({
-      body: {
-        model: createModel(),
-        messages: [],
-        stream: true,
-        tools: [
+    it.each([
+      { prefix: '1:', callbacks: true },
+      { prefix: '1：', callbacks: false }
+    ])(
+      'should suppress $prefix protocol text and emit the complete tool call',
+      async ({ prefix, callbacks: observe }) => {
+        const callbacks = createCallbacks();
+        const { response } = createStream([
+          chunk({ content: prefix }),
+          chunk({ content: '{"name":"search","arguments":{"q":"fastgpt"}}' }),
+          chunk({}, 'stop')
+        ]);
+        const result = await createStreamResponse({
+          body: promptBody,
+          response,
+          ...(observe ? callbacks : {})
+        });
+        expect(result.toolCalls).toEqual([
           {
+            id: expect.any(String),
             type: 'function',
-            function: {
-              name: 'search',
-              description: 'search',
-              parameters: { type: 'object' }
-            }
+            function: { name: 'search', arguments: '{"q":"fastgpt"}' }
           }
-        ],
-        toolCallMode: 'prompt'
-      },
-      response: createMockStreamResponse([{ choices: [{ delta: { content: 'abc' } }] }])
-    });
+        ]);
+        expect(result.answerText).toBe('');
+        expect(callbacks.onStreaming).not.toHaveBeenCalled();
+        if (observe)
+          expect(callbacks.onToolCall).toHaveBeenCalledExactlyOnceWith({
+            call: result.toolCalls?.[0]
+          });
+      }
+    );
 
-    expect(updateError).toHaveBeenCalledWith(parseError);
-    expect(result.error).toBe(parseError);
-    expect(result.finish_reason).toBe('error');
+    it.each([true, false])(
+      'should return malformed protocol as a visible error with callbacks=%s',
+      async (observe) => {
+        const callbacks = createCallbacks();
+        const { response } = createStream([chunk({ content: '1: {invalid' }, 'stop')]);
+        const result = await createStreamResponse({
+          body: promptBody,
+          response,
+          ...(observe ? callbacks : {})
+        });
+        expect(result.answerText).toBe('Tool call error: 1: {invalid');
+        expect(result.toolCalls).toBeUndefined();
+        if (observe)
+          expect(callbacks.onStreaming).toHaveBeenCalledExactlyOnceWith({
+            text: result.answerText
+          });
+      }
+    );
+  });
+
+  describe('stream lifecycle', () => {
+    it.each(['abort', 'error'] as const)(
+      'should retain unfinished tool arguments on %s without synthesizing parameters',
+      async (termination) => {
+        const callbacks = createCallbacks();
+        let stopping = false;
+        callbacks.onToolCall.mockImplementation(() => {
+          stopping = true;
+        });
+        const call = {
+          id: 'call_1',
+          type: 'function' as const,
+          function: { name: 'search', arguments: '{"q":' }
+        };
+        const error = new Error('upstream disconnected during tool arguments');
+        const { response, abort } = createStream(
+          [{ ...chunk({ tool_calls: [{ index: 0, ...call }] }), usage }, chunk({})],
+          { error }
+        );
+        const result = await createStreamResponse({
+          body: nativeBody,
+          response,
+          isAborted: termination === 'abort' ? () => stopping : undefined,
+          ...callbacks
+        });
+
+        expect(result.toolCalls).toEqual([call]);
+        expect(result.usage).toEqual(usage);
+        expect(result.finish_reason).toBe(termination === 'abort' ? 'close' : null);
+        expect(result.error).toBe(termination === 'abort' ? undefined : error);
+        expect(abort).toHaveBeenCalledTimes(termination === 'abort' ? 1 : 0);
+        expect(callbacks.onToolCall).toHaveBeenCalledExactlyOnceWith({ call });
+        expect(callbacks.onToolParam).not.toHaveBeenCalled();
+      }
+    );
+
+    it.each(
+      modes.flatMap((mode) => [
+        { ...mode, stage: 'before the first chunk', withController: false, stopImmediately: true },
+        { ...mode, stage: 'after partial output', withController: true, stopImmediately: false }
+      ])
+    )(
+      'should close $mode $stage without an error',
+      async ({ body, prefix, withController, stopImmediately }) => {
+        const callbacks = createCallbacks();
+        let stopping = stopImmediately;
+        callbacks.onStreaming.mockImplementation(() => {
+          stopping = true;
+        });
+        const { response, abort } = createStream(
+          [
+            chunk({ content: `${prefix}hello` }),
+            chunk({ content: 'discarded' }),
+            chunk({}, 'stop')
+          ],
+          { withController, error: new Error('must not read past cancellation') }
+        );
+        const result = await createStreamResponse({
+          body,
+          response,
+          isAborted: () => stopping,
+          ...callbacks
+        });
+
+        expect(result).toMatchObject({
+          answerText: stopImmediately ? '' : 'hello',
+          finish_reason: 'close',
+          error: undefined
+        });
+        expect(abort).toHaveBeenCalledTimes(withController ? 1 : 0);
+        expect(callbacks.onStreaming.mock.calls).toEqual(
+          stopImmediately ? [] : [[{ text: 'hello' }]]
+        );
+      }
+    );
+
+    it.each(
+      modes.flatMap((mode) => [
+        { ...mode, wrapped: false },
+        { ...mode, wrapped: true }
+      ])
+    )(
+      'should preserve partial $mode output and usage on wrapped=$wrapped upstream errors',
+      async ({ body, prefix, wrapped }) => {
+        const callbacks = createCallbacks();
+        const error = new Error('upstream disconnected');
+        const { response, abort } = createStream(
+          [
+            chunk({ reasoning_content: 'thinking' }),
+            chunk({ content: `${prefix}hello` }),
+            { choices: [], usage }
+          ],
+          { error: wrapped ? { error } : error }
+        );
+        const result = await createStreamResponse({ body, response, ...callbacks });
+
+        expect(result).toMatchObject({
+          answerText: 'hello',
+          reasoningText: 'thinking',
+          usage,
+          finish_reason: null
+        });
+        expect(result.error).toBe(error);
+        expect(textOf(callbacks.onStreaming)).toBe('hello');
+        expect(abort).not.toHaveBeenCalled();
+      }
+    );
   });
 });

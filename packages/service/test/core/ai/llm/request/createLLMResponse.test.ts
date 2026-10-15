@@ -6,7 +6,7 @@ import type {
 } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import type { LLMModelConfigType, LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 // Mock dependencies
 vi.mock('@fastgpt/service/core/ai/config', async (importOriginal) => ({
@@ -53,6 +53,9 @@ vi.mock('@fastgpt/global/core/ai/llm/utils', () => ({
   ),
   getLLMSupportParams: vi.fn(() => ({
     vision: false,
+    audio: false,
+    video: false,
+    multimodal: false,
     temperature: true,
     reasoning: false,
     topP: true,
@@ -77,6 +80,7 @@ import { parseLLMStreamResponse, parseReasoningContent } from '@fastgpt/service/
 import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
 import { promptToolCallMessageRewrite } from '@fastgpt/service/core/ai/llm/promptCall';
 import { saveLLMRequestRecord } from '@fastgpt/service/core/ai/record/controller';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
 import { createLLMResponse as rawCreateLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 
@@ -89,11 +93,10 @@ const mockGetLLMSupportParams = vi.mocked(getLLMSupportParams);
 const mockPromptToolCallMessageRewrite = vi.mocked(promptToolCallMessageRewrite);
 const mockSaveLLMRequestRecord = vi.mocked(saveLLMRequestRecord);
 
-const createLLMResponse: typeof rawCreateLLMResponse = ((args: any) =>
-  rawCreateLLMResponse({
-    teamId: 'team_1',
-    ...args
-  })) as typeof rawCreateLLMResponse;
+/** 为请求测试补齐默认团队，同时保留生产入口其余参数的真实类型约束。 */
+const createLLMResponse = (
+  args: Omit<Parameters<typeof rawCreateLLMResponse>[0], 'teamId'> & { teamId?: string }
+) => rawCreateLLMResponse({ ...args, teamId: args.teamId ?? 'team_1' });
 
 const createMockAIApiResult = (
   ai: any,
@@ -109,6 +112,9 @@ const createMockAIApiResult = (
 
 const defaultSupportParams = {
   vision: false,
+  audio: false,
+  video: false,
+  multimodal: false,
   temperature: true,
   reasoning: false,
   reasoningEffort: false,
@@ -130,7 +136,7 @@ const createMockModelData = (
   model: 'gpt-4',
   name: 'GPT-4',
   isActive: true,
-  scope: 'system' as const,
+  scope: ModelScopeEnum.system,
   ...overrides,
   config: {
     maxContext: 128000,
@@ -1420,93 +1426,141 @@ describe('createLLMResponse', () => {
       expect(toolCallResults.length).toBeGreaterThan(0);
     });
 
-    it('should mark stream tool_calls finish without parsed tool calls as empty response', async () => {
-      const chunks = [
-        {
-          choices: [{ delta: { role: 'assistant' }, finish_reason: 'tool_calls' }],
-          usage: { prompt_tokens: 20, completion_tokens: 5, total_tokens: 25 }
-        }
-      ];
-
-      const mockStreamResponse = createMockStreamResponse(chunks);
-      const mockAI = {
-        chat: {
-          completions: {
-            create: vi.fn().mockResolvedValue(mockStreamResponse)
-          }
-        }
-      };
-      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
-
-      mockParseLLMStreamResponse.mockReturnValue({
-        parsePart: ({ part }: { part: any }) => {
-          return {
-            reasoningContent: '',
-            content: '',
-            responseContent: '',
-            finishReason: part.choices?.[0]?.finish_reason || null
-          };
-        },
-        getResponseData: () => ({
-          error: undefined,
-          reasoningContent: '',
-          content: '',
-          finish_reason: 'tool_calls' as const,
-          usage: { prompt_tokens: 20, completion_tokens: 5, total_tokens: 25 }
-        }),
-        updateFinishReason: vi.fn(),
-        updateError: vi.fn()
-      });
-
-      const tools = [
-        {
-          type: 'function' as const,
-          function: {
-            name: 'get_weather',
-            description: 'Get weather information',
-            parameters: {
-              type: 'object',
-              properties: {
-                location: { type: 'string' }
+    it.each(
+      [undefined, 'unknown_tool'].flatMap((returnedName) => [
+        { returnedName, throwError: undefined },
+        { returnedName, throwError: false }
+      ])
+    )(
+      'should reject tool_calls without valid stream calls: returned=$returnedName, throwError=$throwError',
+      async ({ returnedName, throwError }) => {
+        const logError = vi
+          .spyOn(getLogger(LogCategories.MODULE.AI.LLM), 'error')
+          .mockImplementation(() => {});
+        const toolCalls = returnedName
+          ? [
+              {
+                index: 0,
+                id: 'call_invalid',
+                type: 'function',
+                function: { name: returnedName, arguments: '{"location":"Beijing"}' }
               }
+            ]
+          : [];
+        const content = returnedName ? 'Model text before the invalid tool call.' : '';
+        const reasoning = returnedName ? 'Model reasoning before the invalid tool call.' : '';
+        const mockAI = {
+          chat: {
+            completions: {
+              create: vi.fn().mockResolvedValue(
+                createMockStreamResponse([
+                  {
+                    choices: [
+                      { delta: { content, tool_calls: toolCalls }, finish_reason: 'tool_calls' }
+                    ]
+                  }
+                ])
+              )
             }
           }
-        }
-      ];
-
-      const messages: ChatCompletionMessageParam[] = [
-        {
-          role: ChatCompletionRequestMessageRoleEnum.User,
-          content: "What's the weather in Beijing?"
-        }
-      ];
-
-      const result = await createLLMResponse({
-        body: {
-          model: createMockModelData(),
-          messages,
-          tools,
-          stream: true
-        }
-      });
-
-      expect(result.finish_reason).toBe('tool_calls');
-      expect(result.toolCalls).toBeUndefined();
-      expect(result.responseEmptyTip).toBe('chat:LLM_model_response_empty');
-      expect(result.assistantMessage).not.toHaveProperty('tool_calls');
-      expect(mockSaveLLMRequestRecord).toHaveBeenCalledWith(
-        expect.objectContaining({
-          response: expect.objectContaining({
+        };
+        mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
+        mockParseLLMStreamResponse.mockReturnValue({
+          parsePart: () => ({
+            reasoningContent: reasoning,
+            content,
+            responseContent: content,
+            finishReason: 'tool_calls'
+          }),
+          getResponseData: () => ({
+            error: undefined,
+            reasoningContent: reasoning,
+            content,
             finish_reason: 'tool_calls',
-            usage: expect.objectContaining({
-              inputTokens: 20,
-              outputTokens: 5
+            usage: { prompt_tokens: 20, completion_tokens: 5, total_tokens: 25 }
+          }),
+          updateFinishReason: vi.fn(),
+          updateError: vi.fn()
+        });
+        const tools = [
+          {
+            type: 'function' as const,
+            function: {
+              name: 'get_weather',
+              parameters: { type: 'object' }
+            }
+          }
+        ];
+        const messages: ChatCompletionMessageParam[] = [
+          { role: 'user', content: 'Get the weather.' }
+        ];
+        const request = createLLMResponse({
+          teamId: 'team_1',
+          throwError,
+          body: {
+            model: createMockModelData(),
+            messages,
+            tools,
+            stream: true,
+            toolCallMode: 'toolChoice'
+          }
+        });
+        const expectedError = expect.objectContaining({
+          message: expect.stringContaining('no valid tool calls'),
+          cause: {
+            finish_reason: 'tool_calls',
+            expectedToolNames: ['get_weather'],
+            receivedToolCalls: toolCalls
+          }
+        });
+
+        if (throwError === false) {
+          const result = await request;
+          expect(result).toMatchObject({
+            error: expectedError,
+            finish_reason: 'error',
+            responseEmptyTip: undefined,
+            answerText: content,
+            reasoningText: reasoning,
+            usage: { inputTokens: 20, outputTokens: 5 }
+          });
+          expect(result.toolCalls).toBeUndefined();
+          expect(result.assistantMessage).not.toHaveProperty('tool_calls');
+        } else {
+          await expect(request).rejects.toThrow('no valid tool calls');
+        }
+
+        expect(logError).toHaveBeenCalledExactlyOnceWith(
+          'LLM response parsing failed',
+          expect.objectContaining({
+            teamId: 'team_1',
+            requestId: 'test-request-id',
+            modelId: '68ad85a7463006c963799a05',
+            provider: 'openai',
+            baseUrl: 'https://system.example.com/v1',
+            request: expect.objectContaining({ model: 'gpt-4', messages, tools }),
+            response: expect.objectContaining({
+              finish_reason: 'error',
+              answerText: content,
+              reasoningText: reasoning,
+              usage: expect.objectContaining({ prompt_tokens: 20, completion_tokens: 5 })
             }),
-            error: 'chat:LLM_model_response_empty'
+            error: expectedError
           })
-        })
-      );
-    });
+        );
+        expect(mockSaveLLMRequestRecord).toHaveBeenCalledTimes(1);
+        expect(mockSaveLLMRequestRecord).toHaveBeenCalledWith(
+          expect.objectContaining({
+            requestId: 'test-request-id',
+            response: expect.objectContaining({
+              finish_reason: 'error',
+              error: expectedError,
+              usage: expect.objectContaining({ inputTokens: 20, outputTokens: 5 })
+            })
+          })
+        );
+      }
+    );
 
     it('should handle multiple tool calls in non-stream response', async () => {
       const mockToolCalls: ChatCompletionMessageToolCall[] = [
