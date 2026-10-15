@@ -14,9 +14,8 @@ import {
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
 import {
   WorkflowStart,
@@ -38,7 +37,7 @@ import {
 } from '@fastgpt/global/core/workflow/template/input';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
+import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import {

@@ -5,8 +5,8 @@ import type {
   ToolModuleResponseItemType,
   UserChatItemType
 } from '@fastgpt/global/core/chat/type';
-import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import {
+  type ChatSourceEnum,
   ChatGenerateStatusEnum,
   ChatRoleEnum,
   ChatSourceTypeEnum
@@ -14,8 +14,8 @@ import {
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
-import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';

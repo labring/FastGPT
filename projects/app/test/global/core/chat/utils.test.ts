@@ -519,6 +519,40 @@ describe('addStatisticalDataToHistoryItem', () => {
     });
   });
 
+  it('preserves root toolCall node errors when flat tool responses are present', () => {
+    const responseData: NonNullable<ChatItemMiniType['responseData']> = [
+      {
+        id: 'tool-response',
+        nodeId: 'tool-node',
+        moduleName: '虚拟机/列出目录',
+        moduleType: FlowNodeTypeEnum.tool,
+        toolRes: 'Tool error: file not found',
+        errorText: 'Tool error: file not found'
+      },
+      {
+        id: 'main-toolcall-response',
+        nodeId: 'main-toolcall-node',
+        moduleName: '工具调用',
+        moduleType: FlowNodeTypeEnum.toolCall,
+        errorText: 'Sandbox capacity exceeded'
+      }
+    ];
+    const historyItem: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [{ text: { content: '' } }],
+      responseData
+    };
+
+    expect(getChatItemErrorText(responseData)).toEqual({
+      moduleName: '工具调用',
+      errorText: 'Sandbox capacity exceeded'
+    });
+    expect(addStatisticalDataToHistoryItem(historyItem).errorText).toEqual({
+      moduleName: '工具调用',
+      errorText: 'Sandbox capacity exceeded'
+    });
+  });
+
   it('does not use HTTP result error as chat bubble error text when node error is absent', () => {
     const historyItem: ChatItemMiniType = {
       obj: ChatRoleEnum.AI,

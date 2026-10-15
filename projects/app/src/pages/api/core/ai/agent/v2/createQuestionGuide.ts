@@ -10,6 +10,7 @@ import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import type { NextApiResponse } from 'next';
 
 import type { AppQGConfigType } from '@fastgpt/global/core/app/type';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   CreateQuestionGuideResponseSchema,
@@ -18,7 +19,8 @@ import {
   type CreateQuestionGuideV2BodyType
 } from '@fastgpt/global/openapi/core/ai/agent/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { authTargetModelResource } from '@fastgpt/service/support/permission/app/resource';
+import { authTargetModelResource } from '@fastgpt/service/core/app/resource/service';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 
 async function handler(
   req: ApiRequestProps<CreateQuestionGuideV2BodyType>,
@@ -73,35 +75,38 @@ async function handler(
   });
   const messages = chats2GPTMessages({ messages: histories, reserveId: false });
   const modelHandle = await getTeamModelHandle({ teamId });
-  const qgModelData = (() => {
-    if (inputQuestionGuide?.modelId !== undefined || inputQuestionGuide?.model !== undefined) {
-      return modelHandle.getLLMModelData({
-        modelId: inputQuestionGuide.modelId,
-        model: inputQuestionGuide.model
-      });
-    }
-    if (
-      persistedQuestionGuide?.modelId !== undefined ||
-      persistedQuestionGuide?.model !== undefined
-    ) {
-      return modelHandle.getLLMModelData({
-        modelId: persistedQuestionGuide.modelId,
-        model: persistedQuestionGuide.model
-      });
-    }
-    return modelHandle.getDefaultModelData('llm');
-  })();
-  await authTargetModelResource({
-    targetType: resolvedSourceType,
-    targetId: resolvedSourceId,
-    modelId: qgModelData.modelId,
-    teamId,
-    tmbId,
-    isRoot,
-    authType,
-    handle: modelHandle,
-    resources: appWorkflow?.resources
-  });
+  const targetQuestionGuide =
+    inputQuestionGuide?.modelId !== undefined || inputQuestionGuide?.model !== undefined
+      ? inputQuestionGuide
+      : persistedQuestionGuide;
+  const explicitModel = modelHandle.getModelData(
+    {
+      modelId: targetQuestionGuide?.modelId,
+      model: targetQuestionGuide?.model
+    },
+    { type: ModelTypeEnum.llm, optional: true }
+  );
+  if (explicitModel) {
+    await authTargetModelResource({
+      targetType: resolvedSourceType,
+      targetId: resolvedSourceId,
+      modelId: explicitModel.modelId,
+      teamId,
+      tmbId,
+      isRoot,
+      authType,
+      handle: modelHandle,
+      resources: appWorkflow?.resources
+    });
+  }
+  const qgModelData =
+    explicitModel ??
+    modelHandle.getDefaultModelData('llm', {
+      authorizedIds: await getAuthorizedModelIds({
+        actor: { teamId, tmbId, isRoot },
+        handle: modelHandle
+      })
+    });
 
   const { result, inputTokens, outputTokens } = await createQuestionGuide({
     messages,

@@ -1,5 +1,4 @@
 import { prepareChatFiles, type ChatFileInput } from '../../chat/file/service';
-
 import { AsyncLocalStorage } from 'async_hooks';
 import type { MCPClient } from '../../app/mcp';
 import { getFileUrlIdentity } from '../../chat/file/utils';
@@ -17,7 +16,7 @@ import type {
   UserChatItemValueItemType,
   UserChatItemFileItemType
 } from '@fastgpt/global/core/chat/type';
-import type { WorkflowResourceContext } from './resource';
+import type { WorkflowResourceContext } from '@fastgpt/global/core/workflow/runtime/type';
 
 type ContextType = {
   mcpClientMemory: Record<string, MCPClient>;

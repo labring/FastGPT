@@ -10,7 +10,7 @@ import {
   getReferenceVariableValue,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
+import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
 import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/search/tagFilter';
 import { replaceEditorVariable } from './replaceEditorVariable';
 

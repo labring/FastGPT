@@ -6,9 +6,16 @@
  *
  */
 
-import type { Klass, LexicalEditor, LexicalNode } from 'lexical';
+import {
+  type Klass,
+  type LexicalEditor,
+  type LexicalNode,
+  $createTextNode,
+  $isTextNode,
+  TextNode
+} from 'lexical';
 import type { EntityMatch } from '@lexical/text';
-import { $createTextNode, $isTextNode, TextNode } from 'lexical';
+
 import { useCallback } from 'react';
 import type { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
 import type { VariableNode } from './plugins/VariablePlugin/node';
@@ -91,7 +98,6 @@ export function registerLexicalTextEntity<
       }
     }
 
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       match = getMatch(text);
       let nextText = match === null ? '' : text.slice(match.end);

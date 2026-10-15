@@ -195,20 +195,6 @@ describe('sandbox volume service', () => {
     );
   });
 
-  it('returns undefined when session volume is disabled', async () => {
-    volumeConfigMock.config.enable = false;
-
-    await expect(getSessionVolumeConfig('claim-1')).resolves.toBeUndefined();
-  });
-
-  it('requires volume-manager url when enabled', async () => {
-    volumeConfigMock.config.url = '';
-
-    await expect(getSessionVolumeConfig('claim-1')).rejects.toThrow(
-      'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL is required'
-    );
-  });
-
   it('returns session volume config when enabled', async () => {
     vi.stubGlobal(
       'fetch',

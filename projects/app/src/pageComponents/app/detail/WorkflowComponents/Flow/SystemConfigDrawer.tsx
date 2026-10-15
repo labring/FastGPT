@@ -4,7 +4,7 @@ import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { AppContext } from '../../context';
-import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
+import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import { SystemConfigForm } from './components/SystemConfigForm';
 import { PluginConfigForm } from './nodes/NodePluginIO/PluginConfigForm';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';

@@ -14,11 +14,13 @@ vi.mock('@/service/core/sandbox/access', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
-  buildSandboxClientQueryFromChatSource: vi.fn(),
+  buildSandboxClientQueryFromChatSource: vi.fn()
+}));
+vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/client', () => ({
   getSandboxClient: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/interface/file', () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/application/file', () => ({
   addDirectoryToArchive: mocks.addDirectoryToArchive,
   isSandboxPathDirectory: vi.fn()
 }));

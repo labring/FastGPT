@@ -1,6 +1,5 @@
-// 工作流 Node/Edge 操作层
-import { getWorkflowModelDetails } from '@/web/core/workflow/modelData';
-import { checkWorkflowNodeIssues } from '@/web/core/workflow/workflowCheck';
+import { getWorkflowModelCheckData } from '@/web/core/workflow/modelData';
+import { checkWorkflowNodeIssues } from '@/web/core/workflow/check/check';
 import { collectWorkflowStartAutoFillRevertPatches } from '@/web/core/workflow/workflowStartAutoFill';
 import { migrateToolInputConfig } from '@fastgpt/global/core/app/formEdit/utils';
 import type {
@@ -11,7 +10,7 @@ import type {
   FlowNodeTemplateType,
   WorkflowCheckNodeIssueMap
 } from '@fastgpt/global/core/workflow/type/node';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -19,6 +18,8 @@ import type { OnConnectStartParams } from 'reactflow';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from './workflowInitContext';
 import { AppContext } from '../../context';
+
+// 工作流 Node/Edge 操作层
 
 type FlowNodeChangeProps = { nodeId: string } & (
   | {
@@ -241,12 +242,12 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
   const onRefreshSingleNodeWorkflowCheckIssues = useCallback(
     async (nodeId: string) => {
       const nodes = getNodes();
-      const models = await getWorkflowModelDetails({
+      const modelData = await getWorkflowModelCheckData({
         nodes: nodes.filter((node) => node.id === nodeId),
         appId
       }).catch(() => undefined);
       if (
-        !models ||
+        !modelData ||
         getNodes().find((node) => node.id === nodeId)?.data.inputs !==
           nodes.find((node) => node.id === nodeId)?.data.inputs
       )
@@ -254,7 +255,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       const issueMap = checkWorkflowNodeIssues({
         nodes,
         edges,
-        models,
+        modelData,
         nodeId,
         t
       });
@@ -313,16 +314,16 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
       const nodes = getNodes();
       if (nodes.length === 0) return;
 
-      const models = await getWorkflowModelDetails({ nodes, appId }).catch(() => undefined);
+      const modelData = await getWorkflowModelCheckData({ nodes, appId }).catch(() => undefined);
       if (
-        !models ||
+        !modelData ||
         nodes.some(
           (node) =>
             getNodes().find((current) => current.id === node.id)?.data.inputs !== node.data.inputs
         )
       )
         return;
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, models, t });
+      const issueMap = checkWorkflowNodeIssues({ nodes, edges, modelData, t });
       onSyncWorkflowCheckIssues(issueMap);
     }, 400);
   }, [appId, edges, getNodes, onSyncWorkflowCheckIssues, t]);

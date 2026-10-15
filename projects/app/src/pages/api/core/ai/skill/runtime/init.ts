@@ -7,7 +7,7 @@ import {
   getSkillEditRuntimeContext,
   getSkillEditRuntimeStatus,
   initSkillEditRuntimeSandbox
-} from '@fastgpt/service/core/ai/sandbox/interface/skillEdit';
+} from '@fastgpt/service/core/ai/sandbox/application/skillEdit/runtime';
 import { SkillRuntimeBodySchema } from '@fastgpt/global/core/ai/skill/api';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';

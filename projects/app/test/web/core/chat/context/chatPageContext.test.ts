@@ -1,166 +1,236 @@
+import { JSDOM } from 'jsdom';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useContextSelector } from 'use-context-selector';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ChatPageContext,
   ChatPageContextProvider,
   type ChatPageContextValue
 } from '@/web/core/chat/context/chatPageContext';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
+import { createJSONStorage } from '@fastgpt/web/common/zustand';
+import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/global/openapi/core/chat/api';
 
 const mocks = vi.hoisted(() => ({
-  getRecentlyUsedApps: vi.fn(),
-  clearRecentlyUsedApps: vi.fn(),
-  replace: vi.fn(),
-  setSource: vi.fn(),
-  setAppId: vi.fn(),
-  setLastPane: vi.fn(),
-  setLastChatAppId: vi.fn()
+  getRecent: vi.fn(),
+  clearRecent: vi.fn(),
+  getSetting: vi.fn(),
+  router: { query: { pane: 'ra' }, replace: vi.fn() },
+  toast: vi.fn()
 }));
-
 vi.mock('@/web/core/chat/api', () => ({
-  getRecentlyUsedApps: mocks.getRecentlyUsedApps,
-  clearRecentlyUsedApps: mocks.clearRecentlyUsedApps,
-  getChatSetting: vi.fn()
+  getRecentlyUsedApps: mocks.getRecent,
+  clearRecentlyUsedApps: mocks.clearRecent,
+  getChatSetting: mocks.getSetting
 }));
-vi.mock('@/web/common/system/useSystemStore', () => ({
-  useSystemStore: () => ({ feConfigs: { isPlus: false } })
-}));
-vi.mock('@/web/support/user/useUserStore', () => ({
-  useUserStore: () => ({ userInfo: { team: { tmbId: 'member' } } })
-}));
-vi.mock('@/web/core/chat/context/useChatStore', () => ({
-  useChatStore: () => ({ ...mocks, lastPane: 'aa', appId: '' })
-}));
-vi.mock('next/router', () => ({
-  useRouter: () => ({ query: { pane: 'aa' }, replace: mocks.replace })
-}));
-vi.mock('@fastgpt/web/hooks/useRequest', async () => {
-  const { useRequest } = await import('ahooks');
-  return {
-    useRequest: (
-      service: Parameters<typeof useRequest>[0],
-      options: Parameters<typeof useRequest>[1]
-    ) => useRequest(service, { manual: true, ...options })
-  };
-});
-vi.mock('@fastgpt/web/hooks/useMemoEnhance', async () => {
-  const { useMemo } = await import('react');
-  return { useMemoEnhance: useMemo };
-});
+vi.mock('next/router', () => ({ useRouter: () => mocks.router }));
+vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
 
-const recentApp = { appId: 'recent', name: 'Recent', avatar: 'recent.svg' };
-const placeholder = { appId: 'placeholder', name: 'Placeholder', avatar: 'placeholder.svg' };
+const app = (appId: string): GetRecentlyUsedAppsResponseType[number] => ({
+  appId,
+  name: appId,
+  avatar: 'avatar.svg'
+});
+const originalUser = useUserStore.getState();
+const originalSystem = useSystemStore.getState();
+const originalChat = useChatStore.getState();
+const originalUserStorage = useUserStore.persist?.getOptions().storage;
+const originalSystemStorage = useSystemStore.persist?.getOptions().storage;
+const originalChatStorage = useChatStore.persist?.getOptions().storage;
+const user = (tmbId: string) =>
+  ({ team: { tmbId } }) as NonNullable<ReturnType<typeof useUserStore.getState>['userInfo']>;
 
-describe('clearing recently used apps', () => {
+describe('ChatPageContext recently used apps', () => {
+  let dom: JSDOM;
   let root: Root;
-  let container: HTMLDivElement;
   let context: ChatPageContextValue;
 
-  const Observer = () => {
+  const Harness = () => {
     context = useContextSelector(ChatPageContext, (value) => value);
     return null;
   };
+  const render = async () =>
+    act(async () =>
+      root.render(
+        React.createElement(
+          ChatPageContextProvider,
+          { appId: 'A' } as React.ComponentProps<typeof ChatPageContextProvider>,
+          React.createElement(Harness)
+        )
+      )
+    );
+  const finishChat = async (appId: string) => act(async () => context.refreshRecentlyUsed(appId));
 
-  beforeEach(async () => {
-    vi.resetAllMocks();
-    vi.useFakeTimers();
+  beforeEach(() => {
+    dom = new JSDOM('<div id="root"></div>', { url: 'https://fastgpt.example' });
+    vi.stubGlobal('window', dom.window);
+    vi.stubGlobal('document', dom.window.document);
+    vi.stubGlobal('HTMLElement', dom.window.HTMLElement);
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-    mocks.getRecentlyUsedApps.mockResolvedValue([recentApp]);
-    mocks.clearRecentlyUsedApps.mockResolvedValue(null);
-    mocks.replace.mockResolvedValue(true);
-    container = document.createElement('div');
-    document.body.appendChild(container);
-    root = createRoot(container);
-    await act(async () => {
-      const providerProps = { appId: '', children: React.createElement(Observer) };
-      root.render(React.createElement(ChatPageContextProvider, providerProps));
+    // Node 的 Web Storage 占位对象不可写，持久化 store 使用真实 JSDOM storage。
+    useUserStore.persist?.setOptions({ storage: createJSONStorage(() => dom.window.localStorage) });
+    useSystemStore.persist?.setOptions({
+      storage: createJSONStorage(() => dom.window.localStorage)
     });
-    await act(async () => context.upsertRecentlyUsedAppPlaceholder(placeholder));
-    expect(context.myApps).toEqual([placeholder, recentApp]);
-    mocks.getRecentlyUsedApps.mockResolvedValue([]);
+    useChatStore.persist?.setOptions({
+      storage: createJSONStorage(() => dom.window.sessionStorage)
+    });
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+    mocks.getRecent.mockResolvedValue([app('A'), app('B')]);
+    mocks.getSetting.mockResolvedValue({ appId: 'hidden', enableHome: true, quickAppList: [] });
+    mocks.router.replace.mockResolvedValue(true);
+    useUserStore.setState({ userInfo: user('member') });
+    useSystemStore.setState({ feConfigs: { ...originalSystem.feConfigs, isPlus: false } });
+    useChatStore.setState({ appId: 'A', lastPane: ChatSidebarPaneEnum.RECENTLY_USED_APPS });
+    root = createRoot(document.getElementById('root')!);
   });
-
   afterEach(async () => {
     await act(async () => root.unmount());
-    container.remove();
+    useUserStore.setState(originalUser);
+    useSystemStore.setState(originalSystem);
+    useChatStore.setState(originalChat);
+    useUserStore.persist?.setOptions({ storage: originalUserStorage });
+    useSystemStore.persist?.setOptions({ storage: originalSystemStorage });
+    useChatStore.persist?.setOptions({ storage: originalChatStorage });
+    vi.clearAllTimers();
     vi.useRealTimers();
+    dom.window.close();
     vi.unstubAllGlobals();
   });
 
-  it('keeps the list until deletion succeeds, then clears records and placeholders', async () => {
-    let finish!: () => void;
-    mocks.clearRecentlyUsedApps.mockReturnValueOnce(
-      new Promise<void>((resolve) => {
-        finish = resolve;
-      })
-    );
-    const clearing = context.clearRecentlyUsed();
-    expect(context.myApps).toEqual([placeholder, recentApp]);
+  it('loads on entry without refreshing or reordering for clicks, existing apps or polling', async () => {
+    await render();
+    expect(mocks.getRecent).toHaveBeenCalledOnce();
+    expect(context.myApps.map((item) => item.appId)).toEqual(['A', 'B']);
+
     await act(async () => {
-      finish();
-      await clearing;
+      await context.handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, 'B');
+      await context.handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, 'C');
+      await vi.advanceTimersByTimeAsync(90000);
     });
-    expect(context.myApps).toEqual([]);
-    expect(mocks.replace).not.toHaveBeenCalled();
+    await finishChat('B');
+    await finishChat('A');
+    expect(mocks.getRecent).toHaveBeenCalledOnce();
+    expect(context.myApps.map((item) => item.appId)).toEqual(['A', 'B']);
   });
 
-  it('preserves both lists on failure and allows a later retry', async () => {
-    const error = new Error('offline');
-    mocks.clearRecentlyUsedApps.mockRejectedValueOnce(error);
-    await act(async () => {
-      await expect(context.clearRecentlyUsed()).rejects.toBe(error);
-    });
-    expect(context.myApps).toEqual([placeholder, recentApp]);
-    await act(async () => context.clearRecentlyUsed());
-    expect(context.myApps).toEqual([]);
+  it('refreshes a previously added app again after it falls outside the latest twenty apps', async () => {
+    let recentApps = [app('B')];
+    mocks.getRecent.mockImplementation(async () => recentApps);
+    await render();
+
+    recentApps = [app('A'), app('B')];
+    await finishChat('A');
+    expect(context.myApps[0].appId).toBe('A');
+
+    const otherApps = Array.from({ length: 20 }, (_, index) => app(`other-${index}`));
+    recentApps = otherApps;
+    await finishChat('other-0');
+    expect(context.myApps).toEqual(otherApps);
+
+    recentApps = [app('A'), ...otherApps.slice(0, 19)];
+    await finishChat('A');
+    expect(mocks.getRecent).toHaveBeenCalledTimes(4);
+    expect(context.myApps[0].appId).toBe('A');
+
+    await finishChat('A');
+    expect(mocks.getRecent).toHaveBeenCalledTimes(4);
   });
 
-  it('ignores an older fetch completing after a successful clear', async () => {
-    let finish!: (apps: (typeof recentApp)[]) => void;
-    mocks.getRecentlyUsedApps.mockReturnValueOnce(
-      new Promise<(typeof recentApp)[]>((resolve) => {
-        finish = resolve;
-      })
-    );
-    await act(async () => vi.advanceTimersByTimeAsync(501));
-    await act(async () => context.refreshRecentlyUsed());
-    expect(mocks.getRecentlyUsedApps).toHaveBeenCalledTimes(2);
-    expect(finish).toBeTypeOf('function');
-    await act(async () => context.clearRecentlyUsed());
-    expect(context.myApps).toEqual([]);
-    await act(async () => finish([recentApp]));
-    expect(context.myApps).toEqual([]);
+  it('uses current list membership for overlapping refreshes and ignores older responses', async () => {
+    await render();
+    const first = Promise.withResolvers<GetRecentlyUsedAppsResponseType>();
+    const latest = Promise.withResolvers<GetRecentlyUsedAppsResponseType>();
+    mocks.getRecent.mockReturnValueOnce(first.promise).mockReturnValueOnce(latest.promise);
+    await finishChat('C');
+    await finishChat('C');
+    expect(mocks.getRecent).toHaveBeenCalledTimes(3);
+    expect(context.myApps.map((item) => item.appId)).toEqual(['A', 'B']);
+
+    await act(async () => latest.resolve([app('C'), app('A'), app('B')]));
+    await finishChat('C');
+    expect(mocks.getRecent).toHaveBeenCalledTimes(3);
+    expect(context.myApps.map((item) => item.appId)).toEqual(['C', 'A', 'B']);
+
+    await act(async () => first.resolve([app('A'), app('B')]));
+    expect(context.myApps.map((item) => item.appId)).toEqual(['C', 'A', 'B']);
   });
 
-  it('can show newly used apps after clearing', async () => {
-    await act(async () => context.clearRecentlyUsed());
-    await act(async () => context.upsertRecentlyUsedAppPlaceholder(placeholder));
-    expect(context.myApps).toEqual([placeholder]);
+  it.each(['failed request', 'missing app'] as const)(
+    'allows the next conversation to retry after %s',
+    async (outcome) => {
+      await render();
+      if (outcome === 'failed request') mocks.getRecent.mockRejectedValueOnce(new Error('offline'));
+      await finishChat('C');
+      expect(context.myApps.map((item) => item.appId)).toEqual(['A', 'B']);
+      mocks.getRecent.mockResolvedValueOnce([app('C'), app('A')]);
+      await finishChat('C');
+      expect(mocks.getRecent).toHaveBeenCalledTimes(3);
+      expect(context.myApps[0].appId).toBe('C');
+    }
+  );
+
+  it('keeps the hidden home app out of the list and skips invalid app ids', async () => {
+    useSystemStore.setState({ feConfigs: { ...originalSystem.feConfigs, isPlus: true } });
+    mocks.getRecent.mockResolvedValueOnce([app('hidden'), app('A')]);
+    await render();
+    expect(context.myApps.map((item) => item.appId)).toEqual(['A']);
+    await finishChat('hidden');
+    await finishChat('');
+    expect(mocks.getRecent).toHaveBeenCalledOnce();
   });
 
-  it('keeps polling for apps used in another tab after clearing', async () => {
-    await act(async () => context.clearRecentlyUsed());
-    expect(context.myApps).toEqual([]);
-    mocks.getRecentlyUsedApps.mockResolvedValue([recentApp]);
-    await act(async () => vi.advanceTimersByTimeAsync(30001));
-    expect(context.myApps).toEqual([recentApp]);
-  });
-
-  it('does not restart polling if deletion finishes after leaving the page', async () => {
-    let finish!: () => void;
-    mocks.clearRecentlyUsedApps.mockReturnValueOnce(
-      new Promise<void>((resolve) => {
-        finish = resolve;
-      })
-    );
-    const clearing = context.clearRecentlyUsed();
+  it('reloads the list when entering the page again', async () => {
+    await render();
     await act(async () => root.unmount());
+    mocks.getRecent.mockResolvedValueOnce([app('B'), app('A')]);
+    root = createRoot(document.getElementById('root')!);
+    await render();
+    expect(mocks.getRecent).toHaveBeenCalledTimes(2);
+    expect(context.myApps.map((item) => item.appId)).toEqual(['B', 'A']);
+  });
+
+  it('loads for the new member and keeps missing-app refreshes isolated by member', async () => {
+    await render();
+    mocks.getRecent.mockResolvedValueOnce([app('C'), app('A')]);
+    await finishChat('C');
+    mocks.getRecent.mockResolvedValueOnce([app('D')]);
+    await act(async () => useUserStore.setState({ userInfo: user('other member') }));
+    expect(context.myApps.map((item) => item.appId)).toEqual(['D']);
+    mocks.getRecent.mockResolvedValueOnce([app('C'), app('D')]);
+    await finishChat('C');
+    expect(mocks.getRecent).toHaveBeenCalledTimes(4);
+    expect(context.myApps[0].appId).toBe('C');
+  });
+
+  it('waits for the signed-in member before loading', async () => {
+    useUserStore.setState({ userInfo: null });
+    await render();
+    await finishChat('C');
+    expect(mocks.getRecent).not.toHaveBeenCalled();
+    await act(async () => useUserStore.setState({ userInfo: user('member') }));
+    expect(mocks.getRecent).toHaveBeenCalledOnce();
+  });
+
+  it('preserves the new member list when a previous member clear finishes', async () => {
+    await render();
+    const clearing = Promise.withResolvers<void>();
+    mocks.clearRecent.mockReturnValueOnce(clearing.promise);
+    const result = context.clearRecentlyUsed();
+
+    mocks.getRecent.mockResolvedValueOnce([app('D')]);
+    await act(async () => useUserStore.setState({ userInfo: user('other member') }));
+    expect(context.myApps.map((item) => item.appId)).toEqual(['D']);
+
     await act(async () => {
-      finish();
-      await clearing;
-      await vi.advanceTimersByTimeAsync(30001);
+      clearing.resolve();
+      await result;
     });
-    expect(mocks.getRecentlyUsedApps).toHaveBeenCalledTimes(1);
+    expect(context.myApps.map((item) => item.appId)).toEqual(['D']);
   });
 });

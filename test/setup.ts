@@ -36,6 +36,7 @@ beforeAll(async () => {
   global.systemEnv = {} as any;
 
   global.feConfigs = {
+    limit: { uploadFileMaxAmount: 1000, uploadFileMaxSize: 1000 },
     isPlus: false
   } as any;
   await setupModels();

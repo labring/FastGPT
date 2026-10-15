@@ -1,7 +1,7 @@
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
-import { getSafeSandboxInputFilename } from '../../../ai/sandbox/interface/runtime';
+import { getSafeSandboxInputFilename } from '../../../ai/sandbox/utils';
 import { prepareWorkflowFiles } from '../../utils/context';
 import {
   rewriteAgentLoopCoreUserMessageWithFiles,

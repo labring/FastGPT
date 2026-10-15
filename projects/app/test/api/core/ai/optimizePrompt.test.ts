@@ -32,8 +32,8 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
-  getSystemModelHandle: async () => ({ getLLMModelData: mocks.getLLMModelData }),
-  getTeamModelHandle: async () => ({ getLLMModelData: mocks.getLLMModelData })
+  getSystemModelHandle: async () => ({ getModelData: mocks.getLLMModelData }),
+  getTeamModelHandle: async () => ({ getModelData: mocks.getLLMModelData })
 }));
 
 vi.mock('@fastgpt/service/common/logger', () => ({
@@ -72,8 +72,8 @@ describe('optimizePrompt SSE error handling', () => {
       modelId: '68ad85a7463006c963799a05'
     });
     mocks.assertAuthModels.mockResolvedValue({
-      handle: { getLLMModelData: mocks.getLLMModelData },
-      models: []
+      handle: { getModelData: mocks.getLLMModelData },
+      models: [{ modelId: '68ad85a7463006c963799a05', model: 'gpt-4o' }]
     });
   });
 
@@ -109,8 +109,10 @@ describe('optimizePrompt SSE error handling', () => {
         })
       })
     );
-    expect(mocks.getLLMModelData).toHaveBeenCalledWith({
-      modelId: '68ad85a7463006c963799a05'
+    expect(mocks.assertAuthModels).toHaveBeenCalledWith({
+      actor: { teamId: 'team-1', tmbId: 'member-1', isRoot: false },
+      modelIds: ['68ad85a7463006c963799a05'],
+      type: 'llm'
     });
     expect(res.end).toHaveBeenCalledTimes(1);
   });
@@ -204,7 +206,7 @@ describe('optimizePrompt SSE error handling', () => {
     expect(mocks.assertAuthModels).toHaveBeenCalledWith({
       actor: { teamId: 'team-1', tmbId: 'member-1', isRoot: false },
       modelIds: ['68ad85a7463006c963799a05'],
-      action: 'use'
+      type: 'llm'
     });
     expect(mocks.getLLMModelData).not.toHaveBeenCalled();
     expect(res.end).toHaveBeenCalled();

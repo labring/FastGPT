@@ -35,6 +35,7 @@ class TestAdapter extends BaseSandboxAdapter {
     return this.normalizePath(path);
   }
 
+  async connectRunning(): Promise<void> {}
   async ensureRunning(): Promise<void> {}
   async create(): Promise<void> {}
   async start(): Promise<void> {}

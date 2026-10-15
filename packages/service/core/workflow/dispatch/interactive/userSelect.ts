@@ -1,8 +1,7 @@
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import type { UserSelectOptionItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 

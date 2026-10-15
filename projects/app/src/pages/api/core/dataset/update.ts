@@ -107,27 +107,37 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   const chunkSettings = rawChunkSettings
     ? computedCollectionChunkSettings({
         ...rawChunkSettings,
-        llmModel: modelHandle.getLLMModelData({
-          modelId: dataset.agentModelId,
-          model: dataset.agentModel
-        }),
-        vectorModel: modelHandle.getEmbeddingModelData({
-          modelId: dataset.vectorModelId,
-          model: dataset.vectorModel
-        })
+        llmModel: modelHandle.getModelData(
+          {
+            modelId: dataset.agentModelId,
+            model: dataset.agentModel
+          },
+          { type: 'llm' }
+        ),
+        vectorModel: modelHandle.getModelData(
+          {
+            modelId: dataset.vectorModelId,
+            model: dataset.vectorModel
+          },
+          { type: 'embedding' }
+        )
       })
     : undefined;
 
-  const agentModelData = modelHandle.getLLMModelData(
+  const agentModelData = modelHandle.getModelData(
     { modelId: agentModelId, model: agentModel },
-    { optional: true }
+    { type: 'llm', optional: true }
   );
   // 新 ID（包括显式清空）优先，只有未传 ID 才兼容旧名称。
   const vlmReference = vlmModelId !== undefined ? { modelId: vlmModelId } : { model: vlmModel };
   const vlmValue = vlmModelId !== undefined ? vlmModelId : vlmModel;
   // undefined 表示不修改；显式 null/空字符串才是清空请求。
   const clearVlmModel = vlmValue !== undefined && isEmptyModelValue(vlmValue);
-  const vlmModelData = modelHandle.getVlmModelData(vlmReference, { optional: true });
+  const vlmModelData = modelHandle.getModelData(vlmReference, {
+    type: 'llm',
+    vision: true,
+    optional: true
+  });
   const selectedModels = [agentModelData, vlmModelData].filter((model) => model !== undefined);
   await assertAuthModels({
     actor: { teamId, tmbId, isRoot },

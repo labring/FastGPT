@@ -6,7 +6,12 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { DatasetCollectionTagTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTagTypeEnum,
+  DatasetTagFilterFieldEnum,
+  DatasetTagFilterLogicEnum,
+  DatasetTagFilterValueModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import {
   createEmptyTagFilterCondition,
   createEmptyTagFilterValue,
@@ -20,12 +25,10 @@ import {
   type DatasetTagFilterValue,
   type WorkflowTagFilterOption
 } from '@fastgpt/global/core/dataset/search/tagFilter';
-import {
-  DatasetTagFilterFieldEnum,
-  DatasetTagFilterLogicEnum,
-  DatasetTagFilterValueModeEnum
-} from '@fastgpt/global/core/dataset/constants';
-import type { ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
+import type {
+  ReferenceItemValueType,
+  EditorVariablePickerType
+} from '@fastgpt/global/core/workflow/type/io';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { getAllTags } from '@/web/core/dataset/api/collection';
 import { ReferSelector } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderInput/templates/Reference';
@@ -36,10 +39,7 @@ import {
   tagInputBaseStyles
 } from '@/pageComponents/dataset/detail/CollectionCard/TagValueInputs';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import type {
-  EditorVariableLabelPickerType,
-  EditorVariablePickerType
-} from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+import type { EditorVariableLabelPickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import { TagFilterFieldSelect, TagFilterOpSelect } from './TagFilterSelects';
 
 export type TagFilterReferenceList = {

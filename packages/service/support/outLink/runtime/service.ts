@@ -25,7 +25,7 @@ import {
 } from '@fastgpt/global/core/chat/utils';
 import type { OutlinkAppType, OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import { getAppLatestVersion } from '../../../core/app/version/controller';
-import { createWorkflowResourceContext } from '../../../core/workflow/utils/resource';
+import { createWorkflowResourceContext } from '../../../core/workflow/resource/context';
 import { MongoApp } from '../../../core/app/schema';
 import { getChatItems } from '../../../core/chat/controller';
 import {

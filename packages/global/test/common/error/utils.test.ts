@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { getErrText, ToastHandledError, UserError } from '@fastgpt/global/common/error/utils';
+import {
+  getErrorMessage,
+  getErrText,
+  ToastHandledError,
+  UserError
+} from '@fastgpt/global/common/error/utils';
 import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 
@@ -128,4 +133,52 @@ describe('ToastHandledError', () => {
     expect(err.name).toBe('ToastHandledError');
     expect(err.message).toBe('handled');
   });
+});
+
+describe('getErrorMessage', () => {
+  it.each([
+    { error: 'original error', expected: 'original error' },
+    {
+      error: {
+        response: {
+          data: { message: 'provider message', msg: 'fallback' },
+          statusText: 'Forbidden'
+        },
+        message: 'transport error'
+      },
+      expected: 'provider message'
+    },
+    { error: { response: { data: { msg: '飞书具体原因' } } }, expected: '飞书具体原因' },
+    { error: { response: { data: { errmsg: '钉钉具体原因' } } }, expected: '钉钉具体原因' },
+    {
+      error: { response: { data: { error: { message: 'nested reason' }, message: 'generic' } } },
+      expected: 'nested reason'
+    },
+    { error: { response: { data: { error: { msg: 'nested msg' } } } }, expected: 'nested msg' },
+    { error: { response: { data: { error: 'string error' } } }, expected: 'string error' },
+    { error: { response: { data: 'text response' } }, expected: 'text response' },
+    { error: { error: { message: 'nested message' } }, expected: 'nested message' },
+    { error: { error: { msg: 'nested msg' } }, expected: 'nested msg' },
+    { error: new Error('exception message'), expected: 'exception message' },
+    { error: { msg: 'business msg' }, expected: 'business msg' },
+    { error: { errmsg: 'business errmsg' }, expected: 'business errmsg' },
+    { error: { error: 'error string' }, expected: 'error string' },
+    { error: { data: 'legacy data' }, expected: 'legacy data' },
+    { error: { response: { statusText: 'Bad Gateway' } }, expected: 'Bad Gateway' }
+  ])('提取文本协议并优先保留具体原因：$expected', ({ error, expected }) => {
+    expect(getErrorMessage(error)).toBe(expected);
+  });
+
+  it.each([
+    null,
+    undefined,
+    123,
+    {},
+    { message: {}, msg: 123 },
+    { message: '  ', response: { data: {} } },
+    { displayMessage: 'override', errorText: 'override' }
+  ])('空值、非文本和显示覆盖字段 %j 使用调用方兜底', (error) => {
+    expect(getErrorMessage(error, 'fallback')).toBe('fallback');
+  });
+  it('默认兜底为空字符串', () => expect(getErrorMessage({})).toBe(''));
 });

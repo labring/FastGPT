@@ -10,7 +10,6 @@ import {
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
-import { resolveEffectiveDefaultModelIds } from '@fastgpt/service/core/ai/model/default/resolve';
 import { getModelProviderMetadata } from '@fastgpt/service/core/ai/model/provider/controller';
 import { desensitizeModel } from '@fastgpt/service/core/ai/model/transform';
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
@@ -47,10 +46,7 @@ export async function handler(
     data: {
       models: models.map(desensitizeModel),
       providers,
-      defaultModelIds: resolveEffectiveDefaultModelIds({
-        models,
-        configuredDefaults: modelHandle.configuredDefaultModelIds
-      })
+      defaultModelIds: modelHandle.getDefaultModelIds(authorizedIds)
     }
   });
 }

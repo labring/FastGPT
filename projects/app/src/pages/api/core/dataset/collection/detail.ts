@@ -124,6 +124,8 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionDetailRespons
 
   return GetCollectionDetailResponseSchema.parse({
     ...collection,
+    // 兼容旧层级校正写入的 null；响应仍遵循可选字符串协议。
+    apiFileParentId: collection.apiFileParentId ?? undefined,
     indexAmount: indexAmount ?? 0,
     ...getCollectionSourceData(collection),
     tags: await collectionTagsToTagLabel({

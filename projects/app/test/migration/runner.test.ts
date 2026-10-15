@@ -95,6 +95,57 @@ describe('system migration runner', () => {
     }
   });
 
+  it('holds an automatic dependent task after prerequisite failure and resumes after retry', async () => {
+    const prerequisiteRun = vi
+      .fn(async () => undefined)
+      .mockRejectedValueOnce(new Error('model references not migrated'));
+    const dependentRun = vi.fn(async () => undefined);
+    const independentRun = vi.fn(async () => undefined);
+    const prerequisite = {
+      ...createMigration('20260903_runner_auto_prerequisite', prerequisiteRun),
+      onFailure: SystemMigrationFailurePolicyEnum.continue
+    };
+    const dependent = {
+      ...createMigration('20260903_runner_auto_dependent', dependentRun),
+      dependsOn: [prerequisite.id],
+      onFailure: SystemMigrationFailurePolicyEnum.continue
+    };
+    const independent = createMigration('20260903_runner_auto_independent', independentRun);
+    const runner = createSystemMigrationRunner({
+      migrations: [prerequisite, dependent, independent],
+      logger
+    });
+
+    try {
+      await runner.start();
+      await runner.tick();
+
+      // continue 允许无依赖任务继续，但不能让快照任务越过失败的模型 ID 回填。
+      expect(prerequisiteRun).toHaveBeenCalledTimes(1);
+      expect(dependentRun).not.toHaveBeenCalled();
+      expect(independentRun).toHaveBeenCalledTimes(1);
+      expect(await MongoSystemMigrationState.findById(prerequisite.id).lean()).toMatchObject({
+        status: SystemMigrationStatusEnum.failed
+      });
+      expect(await MongoSystemMigrationState.findById(dependent.id).lean()).toMatchObject({
+        status: SystemMigrationStatusEnum.pending
+      });
+      expect(runner.hasBlockingMigrations).toBe(false);
+
+      // 管理员重试前置任务后，自动任务应恢复执行，无需再手动触发快照任务。
+      expect(await resetFailedMigration(prerequisite.id)).toBe(true);
+      await runner.wake();
+      expect(prerequisiteRun).toHaveBeenCalledTimes(2);
+      expect(dependentRun).toHaveBeenCalledTimes(1);
+      expect(independentRun).toHaveBeenCalledTimes(1);
+      expect(await MongoSystemMigrationState.findById(dependent.id).lean()).toMatchObject({
+        status: SystemMigrationStatusEnum.succeeded
+      });
+    } finally {
+      await runner.stop();
+    }
+  });
+
   it('skips waiting manual tasks, resumes after enqueue and recovers an expired manual lease', async () => {
     const manualRun = vi.fn(async () => undefined);
     const autoRun = vi.fn(async () => undefined);
@@ -532,11 +583,15 @@ describe('system migration runner', () => {
 
     try {
       await runner.start();
-      await vi.waitFor(async () => {
-        expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
-          SystemMigrationStatusEnum.failed
-        );
-      });
+      // CI 并发执行时真实 Mongo I/O 可能超过默认 1 秒，仍等待实际失败状态而非固定延时。
+      await vi.waitFor(
+        async () => {
+          expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
+            SystemMigrationStatusEnum.failed
+          );
+        },
+        { timeout: 5_000 }
+      );
 
       const state = await MongoSystemMigrationState.findById(migration.id).lean();
       expect(state?.lastError?.message).toContain('cannot access failed record details');
@@ -563,11 +618,14 @@ describe('system migration runner', () => {
 
     try {
       await runner.start();
-      await vi.waitFor(async () => {
-        expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
-          SystemMigrationStatusEnum.failed
-        );
-      });
+      await vi.waitFor(
+        async () => {
+          expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
+            SystemMigrationStatusEnum.failed
+          );
+        },
+        { timeout: 5_000 }
+      );
       expect(
         (await MongoSystemMigrationState.findById(migration.id).lean())?.lastError?.message
       ).toContain('cannot access failed record details');

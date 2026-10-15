@@ -495,13 +495,18 @@ describe('loginByPassword API', () => {
   // ===== Security: NoSQL injection prevention (GHSA-jxvr-h2vx-p73r) =====
 
   describe('SSO password policy', () => {
-    const originalFeConfigs = global.feConfigs;
+    let originalFeConfigs: typeof global.feConfigs;
+    let originalSystemEnv: typeof global.systemEnv;
+    beforeEach(() => {
+      originalFeConfigs = global.feConfigs;
+      originalSystemEnv = global.systemEnv;
+    });
 
     const enableSsoPasswordPolicy = () => {
+      global.systemEnv = { ...global.systemEnv, sso: { url: 'https://sso.example.com' } };
       global.feConfigs = {
         ...global.feConfigs,
         sso: {
-          url: 'https://sso.example.com',
           disablePasswordForSsoUsers: true
         }
       };
@@ -509,6 +514,7 @@ describe('loginByPassword API', () => {
 
     afterEach(() => {
       global.feConfigs = originalFeConfigs;
+      global.systemEnv = originalSystemEnv;
     });
 
     // disablePasswordForSsoUsers 开启后，受限 SSO 账号即便持有历史密码，

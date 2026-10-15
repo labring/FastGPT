@@ -1,13 +1,12 @@
-/**
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- */
-
-import type { CSSProperties } from 'react';
-import React, { Fragment, useEffect, useMemo, useState, useTransition, useRef } from 'react';
+import React, {
+  type CSSProperties,
+  Fragment,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+  useRef
+} from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
@@ -29,8 +28,8 @@ import VariablePlugin from './plugins/VariablePlugin';
 import { VariableNode } from './plugins/VariablePlugin/node';
 import type { LexicalEditor } from 'lexical';
 import OnBlurPlugin from './plugins/OnBlurPlugin';
-import type { FormPropsType } from './type';
-import { type EditorVariableLabelPickerType, type EditorVariablePickerType } from './type';
+import type { FormPropsType, EditorVariableLabelPickerType } from './type';
+import type { EditorVariablePickerType } from '@fastgpt/global/core/workflow/type/io';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import FocusPlugin from './plugins/FocusPlugin';
 import { textToEditorState, editorStateToText } from './utils';
@@ -47,6 +46,14 @@ import type { SkillLabelItemType } from './plugins/SkillLabelPlugin';
 import SkillLabelPlugin from './plugins/SkillLabelPlugin';
 import { SkillNode } from './plugins/SkillLabelPlugin/node';
 import type { SkillOptionItemType } from './plugins/SkillPickerPlugin';
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
 
 const Placeholder = ({ children, padding }: { children: React.ReactNode; padding: string }) => (
   <Box

@@ -8,8 +8,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import React, { type DragEvent, useCallback, useMemo, useState } from 'react';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
+import { useFileUploadLimits } from '@/web/common/file/hooks/useFileUploadLimits';
 
 export type SelectFileItemType = {
   file: File;
@@ -35,18 +34,10 @@ const FileSelector = ({
   const { t } = useTranslation();
 
   const { toast } = useToast();
-  const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
+  const { maxUploadFileSize, maxUploadFileCount } = useFileUploadLimits();
 
-  // 文件大小限制（B）：团队套餐 || 系统配置 || 默认值
-  const displayMaxSize = formatFileSize(
-    (teamPlanStatus?.standard?.maxUploadFileSize || feConfigs.uploadFileMaxSize) * 1024 * 1024
-  );
-  // 文件数量限制：组件传入的maxCount || 团队套餐 || 系统配置
-  const formatMaxCount = Math.min(
-    maxCount,
-    teamPlanStatus?.standard?.maxUploadFileCount || feConfigs.uploadFileMaxAmount
-  );
+  const displayMaxSize = formatFileSize(maxUploadFileSize * 1024 * 1024);
+  const formatMaxCount = Math.min(maxCount, maxUploadFileCount);
 
   const { File, onOpen } = useSelectFile({
     fileType,

@@ -51,7 +51,7 @@
   "feedback_unhelpful": "Not helpful",
   "file_amount_over": "Exceeded maximum file quantity {{max}}",
   "go_to_dataset": "Go to dataset",
-  "history_generating": "Thinking",
+  "history_generating": "Running",
   "history_slider.home.title": "chat",
   "home.chat_app": "Home chat",
   "home.select_tools": "Select Tool",

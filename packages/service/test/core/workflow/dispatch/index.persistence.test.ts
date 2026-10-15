@@ -12,7 +12,10 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 import { runWorkflow } from '@fastgpt/service/core/workflow/dispatch';
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
 import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
@@ -22,11 +25,10 @@ import {
   getChatItemResponseData
 } from '@fastgpt/service/core/chat/nodeResponseStorage';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { WorkflowNodeResponseSink } from '@fastgpt/service/core/workflow/dispatch/nodeResponseSink';
 
 const createTestNodeResponseSink = ({

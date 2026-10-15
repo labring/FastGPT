@@ -1,3 +1,4 @@
+import { JSDOM } from 'jsdom';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { ChakraProvider } from '@chakra-ui/react';
@@ -31,6 +32,7 @@ vi.mock('@fastgpt/web/components/common/Avatar', () => ({ default: () => null })
 vi.mock('@fastgpt/web/components/common/DeleteConfirmInput', () => ({ default: () => null }));
 
 describe('clear recently used apps button', () => {
+  let dom: JSDOM;
   let root: Root;
   let container: HTMLDivElement;
 
@@ -39,6 +41,16 @@ describe('clear recently used apps button', () => {
   const click = (label: string) => act(async () => button(label).click());
 
   beforeEach(async () => {
+    dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://fastgpt.example',
+      pretendToBeVisual: true
+    });
+    vi.stubGlobal('window', dom.window);
+    vi.stubGlobal('document', dom.window.document);
+    vi.stubGlobal('HTMLElement', dom.window.HTMLElement);
+    vi.stubGlobal('getComputedStyle', dom.window.getComputedStyle.bind(dom.window));
+    vi.stubGlobal('requestAnimationFrame', dom.window.requestAnimationFrame.bind(dom.window));
+    vi.stubGlobal('cancelAnimationFrame', dom.window.cancelAnimationFrame.bind(dom.window));
     vi.resetAllMocks();
     mocks.hasApps = true;
     mocks.clearRecentlyUsed.mockResolvedValue(undefined);
@@ -56,6 +68,7 @@ describe('clear recently used apps button', () => {
   afterEach(async () => {
     await act(async () => root.unmount());
     container.remove();
+    dom.window.close();
     vi.unstubAllGlobals();
   });
 

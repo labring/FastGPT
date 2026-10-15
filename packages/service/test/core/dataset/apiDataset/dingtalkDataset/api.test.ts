@@ -1,1079 +1,437 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-const { mockAxiosPost, mockRequest, mockGetRedisCache, mockSetRedisCache, mockDelRedisCache } =
-  vi.hoisted(() => ({
-    mockAxiosPost: vi.fn(),
-    mockRequest: vi.fn(),
-    mockGetRedisCache: vi.fn(),
-    mockSetRedisCache: vi.fn(),
-    mockDelRedisCache: vi.fn()
-  }));
-
-vi.mock('../../../../../common/api/axios', () => ({
-  axiosWithoutSSRF: {
-    post: mockAxiosPost
-  },
-  createProxyAxios: vi.fn(() => ({
-    request: mockRequest
-  }))
-}));
-
-vi.mock('@fastgpt/dal/redis/caches', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@fastgpt/dal/redis/caches')>();
-
-  return {
-    ...actual,
-    DingtalkAccessTokenCache: class MockDingtalkAccessTokenCache
-      extends actual.DingtalkAccessTokenCache
-    {
-      constructor({ logger }: Parameters<typeof actual.DingtalkAccessTokenCache>[0]) {
-        super({
-          logger,
-          redis: {
-            get: mockGetRedisCache,
-            set: mockSetRedisCache,
-            delete: mockDelRedisCache
-          }
-        });
-      }
-    }
-  };
-});
-
-vi.mock('../../../../../common/logger', () => ({
-  getLogger: () => ({
-    warn: vi.fn(),
-    error: vi.fn()
-  }),
-  LogCategories: {
-    MODULE: {
-      DATASET: {
-        API_DATASET: 'dataset.apiDataset'
-      },
-      OUTLINK: {
-        DINGTALK: 'outlink.dingtalk'
-      }
-    }
-  }
-}));
-
 import { useDingtalkDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/dingtalkDataset/api';
+import type { DingtalkServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 
-const server = {
-  appKey: 'ding-app',
-  appSecret: 'ding-secret',
-  userId: 'user-id'
-};
+const mocks = vi.hoisted(() => ({ post: vi.fn(), request: vi.fn() }));
+vi.mock('@fastgpt/service/common/api/axios', () => ({
+  axiosWithoutSSRF: { post: mocks.post },
+  createProxyAxios: () => ({ request: mocks.request })
+}));
 
-const mockTokenAndUser = () => {
-  mockAxiosPost.mockImplementation((url: string) => {
-    if (url.includes('/v1.0/oauth2/accessToken')) {
-      return Promise.resolve({
-        data: {
-          accessToken: 'access-token',
-          expireIn: 7200
-        }
-      });
-    }
+const server = { appKey: 'ding-app', appSecret: 'ding-secret', userId: 'user' };
+const provider = (config: Partial<DingtalkServerType> = {}) =>
+  useDingtalkDatasetRequest({ dingtalkServer: { ...server, ...config } });
+const doc = { nodeId: 'doc', title: 'Doc', docType: 'wiki_doc', parentNodeId: 'root' };
+const ok = (data: unknown) => ({ data });
+const nodePermissionError =
+  '读取钉钉目录失败，请检查 rootNodeId、Wiki.Node.Read 权限和知识库访问权限';
+const rateLimitError = '钉钉目录接口请求过快，请稍后重试或减少一次导入的文件夹规模';
 
-    return Promise.resolve({
-      data: {
-        errcode: 0,
-        result: {
-          unionid: 'operator-id'
-        }
-      }
-    });
-  });
-};
+beforeEach(() => {
+  mocks.request.mockReset();
+  mocks.post
+    .mockReset()
+    .mockImplementation(async (url: string) =>
+      ok(
+        url.includes('/oauth2/accessToken')
+          ? { accessToken: 'token', expireIn: 7200 }
+          : { errcode: 0, result: { unionid: 'operator' } }
+      )
+    );
+});
+afterEach(() => vi.useRealTimers());
 
-describe('useDingtalkDatasetRequest', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockGetRedisCache.mockResolvedValue(null);
-    mockSetRedisCache.mockResolvedValue(undefined);
-    mockDelRedisCache.mockResolvedValue(undefined);
-    mockTokenAndUser();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('should list workspaces with nextToken and cache accessToken', async () => {
-    mockRequest
-      .mockResolvedValueOnce({
-        data: {
-          workspaces: [
-            {
-              workspaceId: 'workspace-1',
-              workspaceName: 'Workspace 1',
-              rootNodeId: 'root-1'
-            }
-          ],
-          nextToken: 'next-1'
-        }
-      })
-      .mockResolvedValueOnce({
-        data: {
-          workspaces: [
-            {
-              workspaceId: 'workspace-2',
-              name: 'Workspace 2',
-              rootNodeId: 'root-2'
-            }
-          ]
-        }
-      });
-
-    const request = useDingtalkDatasetRequest({ dingtalkServer: server });
-    const result = await request.listFiles({});
-
-    expect(result).toEqual([
-      expect.objectContaining({
-        id: 'root-1',
-        rawId: 'root-1',
-        parentId: 'operator-id',
-        name: 'Workspace 1',
-        type: 'folder'
-      }),
-      expect.objectContaining({
-        id: 'root-2',
-        rawId: 'root-2',
-        parentId: 'operator-id',
-        name: 'Workspace 2',
-        type: 'folder'
-      })
-    ]);
-    expect(mockSetRedisCache).toHaveBeenCalledWith({
-      key: expect.stringContaining('cache:dataset:dingtalk:accessToken:ding-app:'),
-      value: 'access-token',
-      ttlMs: 6_900_000
-    });
-    expect(mockRequest).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        params: expect.objectContaining({
-          nextToken: 'next-1'
+describe('listFiles', () => {
+  it('无 rootNodeId 时列知识库，分页携带 nextToken 与鉴权头', async () => {
+    mocks.request
+      .mockResolvedValueOnce(
+        ok({
+          workspaces: [{ workspaceId: 'space1', workspaceName: 'Space', rootNodeId: 'root1' }],
+          nextToken: 'page2'
         })
-      })
-    );
-  });
-
-  it('should list folder children with nextToken and filter unsupported nodes', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
-    mockRequest
-      .mockResolvedValueOnce({
-        data: {
-          nodes: [
-            {
-              nodeId: 'folder-1',
-              title: 'Folder',
-              nodeType: 'folder',
-              hasChildren: true
-            },
-            {
-              nodeId: 'doc-1',
-              title: 'Doc',
-              docType: 'wiki_doc'
-            }
-          ],
-          nextToken: 'next-node'
-        }
-      })
-      .mockResolvedValueOnce({
-        data: {
-          nodes: [
-            {
-              nodeId: 'pdf-1',
-              title: 'PDF',
-              fileType: 'pdf'
-            }
-          ]
-        }
-      });
-
-    const request = useDingtalkDatasetRequest({
-      dingtalkServer: {
-        ...server,
-        operatorId: 'operator-id',
-        rootNodeId: 'root-1'
-      }
-    });
-    const result = await request.listFiles({});
-
-    expect(result).toHaveLength(2);
-    expect(result[0]).toMatchObject({
-      id: 'folder-1',
-      type: 'folder',
-      hasChild: true
-    });
-    expect(result[1]).toMatchObject({
-      id: 'doc-1',
-      type: 'file',
-      hasChild: false
-    });
-    expect(mockAxiosPost).toHaveBeenCalledWith(
-      expect.stringContaining('/topapi/v2/user/get'),
+      )
+      .mockResolvedValueOnce(
+        ok({ workspaces: [{ workspaceId: 'space2', name: 'Space 2', rootNodeId: 'root2' }] })
+      );
+    expect(await provider().listFiles({})).toEqual([
       expect.objectContaining({
-        userid: 'user-id'
+        id: 'root1',
+        rawId: 'root1',
+        name: 'Space',
+        parentId: 'operator',
+        type: 'folder',
+        hasChild: true
       }),
-      expect.any(Object)
-    );
+      expect.objectContaining({ id: 'root2', name: 'Space 2', type: 'folder' })
+    ]);
+    expect(mocks.request.mock.calls.map(([args]) => args.params)).toEqual([
+      { operatorId: 'operator', maxResults: 100 },
+      { operatorId: 'operator', maxResults: 100, nextToken: 'page2' }
+    ]);
+    expect(mocks.request.mock.calls[0][0]).toMatchObject({
+      url: '/v2.0/wiki/workspaces',
+      method: 'GET',
+      headers: { 'x-acs-dingtalk-access-token': 'token' }
+    });
   });
 
-  it('should read online document blocks content', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
-    mockRequest.mockImplementation(({ url }: { url: string }) => {
-      if (url.includes('/blocks')) {
-        return Promise.resolve({
-          data: {
-            blocks: [
-              {
-                paragraph: {
-                  elements: [{ text: 'hello' }, { text: 'world' }]
-                }
-              }
+  it.each([undefined, 'explicit'])(
+    '父级 %s 优先于配置根目录，分页过滤非文档节点',
+    async (parentId) => {
+      mocks.request
+        .mockResolvedValueOnce(
+          ok({
+            nodes: [
+              { nodeId: 'folder', title: 'Folder', nodeType: 'folder' },
+              { ...doc, hasChildren: true }
+            ],
+            nextToken: 'page2'
+          })
+        )
+        .mockResolvedValueOnce(
+          ok({
+            nodes: [
+              { nodeId: 'leaf', title: 'Leaf', docType: 'wiki_doc' },
+              { nodeId: 'pdf', title: 'PDF', fileType: 'pdf' },
+              { nodeId: 'nameless', nodeType: 'catalog' },
+              { title: 'No ID', type: 'folder' }
             ]
-          }
-        });
-      }
+          })
+        );
+      expect(await provider({ rootNodeId: 'root' }).listFiles({ parentId })).toEqual([
+        expect.objectContaining({ id: 'folder', type: 'folder', hasChild: true }),
+        expect.objectContaining({ id: 'doc', type: 'file', hasChild: true }),
+        expect.objectContaining({ id: 'leaf', type: 'file', hasChild: false })
+      ]);
+      expect(mocks.request.mock.calls.map(([args]) => args.params.parentNodeId)).toEqual([
+        parentId ?? 'root',
+        parentId ?? 'root'
+      ]);
+      expect(mocks.request.mock.calls[1][0].params.nextToken).toBe('page2');
+    }
+  );
 
-      return Promise.resolve({
-        data: {
-          node: {
-            nodeId: 'doc-1',
-            title: 'Doc',
-            docType: 'wiki_doc'
-          }
-        }
-      });
-    });
-
-    const request = useDingtalkDatasetRequest({
-      dingtalkServer: {
-        ...server,
-        operatorId: 'operator-id',
-        rootNodeId: 'root-1'
-      }
-    });
-    const result = await request.getFileContent({ apiFileId: 'doc-1' });
-
-    expect(result).toEqual({
-      title: 'Doc',
-      rawText: 'hello\nworld'
-    });
-  });
-
-  it('should read title from nested node detail response', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
-    mockRequest.mockImplementation(({ url }: { url: string }) => {
-      if (url.includes('/blocks')) {
-        return Promise.resolve({
-          data: {
-            result: {
-              data: [{ paragraph: { text: 'hello' } }]
-            },
-            success: true
-          }
-        });
-      }
-
-      return Promise.resolve({
-        data: {
-          node: {
-            nodeId: 'doc-1',
-            name: 'Doc From Node',
-            type: 'FILE',
-            extension: 'adoc'
-          }
-        }
-      });
-    });
-
-    const request = useDingtalkDatasetRequest({
-      dingtalkServer: {
-        ...server,
-        operatorId: 'operator-id',
-        rootNodeId: 'root-1'
-      }
-    });
-    const result = await request.getFileContent({ apiFileId: 'doc-1' });
-
-    expect(result).toEqual({
-      title: 'Doc From Node',
-      rawText: 'hello'
-    });
-  });
-
-  it('should reuse the same token refresh promise for concurrent requests', async () => {
-    let resolveToken: (value: any) => void = () => undefined;
-    const tokenPromise = new Promise((resolve) => {
-      resolveToken = resolve;
-    });
-    mockAxiosPost.mockImplementation((url: string) => {
-      if (url.includes('/v1.0/oauth2/accessToken')) {
-        return tokenPromise;
-      }
-
-      return Promise.resolve({
-        data: {
-          errcode: 0,
-          result: {
-            unionid: 'operator-id'
-          }
-        }
-      });
-    });
-    mockRequest.mockResolvedValue({
-      data: {
-        workspaces: []
-      }
-    });
-
-    const request = useDingtalkDatasetRequest({ dingtalkServer: server });
-    const p1 = request.listFiles({});
-    const p2 = request.listFiles({});
-
-    resolveToken({
-      data: {
-        accessToken: 'access-token',
-        expireIn: 7200
-      }
-    });
-
-    await Promise.all([p1, p2]);
-
-    const tokenCalls = mockAxiosPost.mock.calls.filter(([url]) =>
-      String(url).includes('/v1.0/oauth2/accessToken')
-    );
-    expect(tokenCalls).toHaveLength(1);
-  });
-
-  it('should return workspace root detail, preview url and raw id without requesting dingtalk', async () => {
-    const request = useDingtalkDatasetRequest({
-      dingtalkServer: {
-        ...server,
-        operatorId: 'operator-id',
-        workspaceId: 'workspace-1',
-        rootNodeId: 'root-1',
-        workspaceName: 'Workspace 1'
-      }
-    });
-
-    const detail = await request.getFileDetail({ apiFileId: 'root-1' });
-    const previewUrl = await request.getFilePreviewUrl({ apiFileId: 'doc-1' });
-
-    expect(detail).toMatchObject({
-      id: 'root-1',
-      rawId: 'root-1',
-      name: 'Workspace 1',
-      type: 'folder'
-    });
-    expect(previewUrl).toBe('https://alidocs.dingtalk.com/i/nodes/doc-1');
-    expect(request.getFileRawId('doc-1')).toBe('doc-1');
-    expect(mockRequest).not.toHaveBeenCalled();
-  });
-
-  it('should fetch node detail for non-root file', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
-    mockRequest.mockResolvedValueOnce({
-      data: {
-        node: {
-          nodeId: 'doc-1',
-          title: 'Doc',
-          docType: 'wiki_doc',
-          parentNodeId: 'root-1',
-          updatedAt: 1700000000000
-        }
-      }
-    });
-
-    const request = useDingtalkDatasetRequest({
-      dingtalkServer: {
-        ...server,
-        operatorId: 'operator-id',
-        rootNodeId: 'root-1'
-      }
-    });
-
-    const detail = await request.getFileDetail({ apiFileId: 'doc-1' });
-
-    expect(detail).toMatchObject({
-      id: 'doc-1',
-      rawId: 'doc-1',
-      parentId: 'root-1',
-      name: 'Doc',
-      type: 'file'
-    });
-  });
-
-  it('should filter workspaces by searchKey and ignore invalid workspace payloads', async () => {
-    mockRequest.mockResolvedValueOnce({
-      data: {
-        items: [
-          {
-            workspaceId: 'workspace-1',
-            workspaceName: 'Product Space',
-            rootDentryUuid: 'root-1',
-            createTime: '2024-01-01T00:00:00.000Z'
-          },
-          {
-            workspaceId: 'workspace-2',
-            workspaceName: 'Sales Space',
-            rootNodeId: 'root-2'
-          },
-          {
-            workspaceId: 'workspace-3',
-            workspaceName: 'Invalid Space'
-          }
+  it.each(['items', 'list'])('兼容 %s 列表字段与历史知识库 ID 字段', async (field) => {
+    mocks.request.mockResolvedValueOnce(
+      ok({
+        [field]: [
+          { id: 's1', rootDentryUuid: 'r1', name: 'One' },
+          { spaceId: 's2', rootDentryId: 'r2' },
+          { workspaceId: 's3', nodeId: 'r3' },
+          { workspaceId: 's4', dentryUuid: 'r4' },
+          { workspaceId: 'invalid' },
+          { rootNodeId: 'invalid' }
         ]
-      }
-    });
-
-    const request = useDingtalkDatasetRequest({ dingtalkServer: server });
-    const result = await request.listFiles({ searchKey: 'Product' });
-
-    expect(result).toEqual([
-      expect.objectContaining({
-        id: 'root-1',
-        rawId: 'root-1',
-        name: 'Product Space'
       })
+    );
+    expect((await provider().listFiles({})).map(({ id, name }) => ({ id, name }))).toEqual([
+      { id: 'r1', name: 'One' },
+      { id: 'r2', name: 's2' },
+      { id: 'r3', name: 's3' },
+      { id: 'r4', name: 's4' }
     ]);
   });
 
-  it('should map workspace and node fallback fields', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
-    mockRequest
-      .mockResolvedValueOnce({
-        data: {
+  it('兼容各节点 ID、在线文档类型、日期单位和父 ID 字段', async () => {
+    const timestamp = 1700000000000;
+    mocks.request.mockResolvedValueOnce(
+      ok({
+        nodes: [
+          {
+            dentryUuid: '1',
+            name: 'Directory',
+            type: 'directory',
+            parentId: 'parent',
+            modifiedTime: timestamp / 1000,
+            createTime: '2024-01-01'
+          },
+          {
+            dentryId: '2',
+            name: 'Catalog',
+            nodeType: 'catalog',
+            updatedAt: timestamp,
+            createdAt: timestamp
+          },
+          { uuid: '3', title: 'Document', docType: 'document', hasChild: true },
+          { id: '4', title: 'Doc', extension: 'doc' },
+          { nodeId: '5', name: 'Adoc', fileType: 'adoc' }
+        ]
+      })
+    );
+    const nodes = await provider().listFiles({ parentId: 'root' });
+    expect(nodes.map(({ id, type, hasChild }) => [id, type, hasChild])).toEqual([
+      ['1', 'folder', true],
+      ['2', 'folder', true],
+      ['3', 'file', true],
+      ['4', 'file', false],
+      ['5', 'file', false]
+    ]);
+    expect(nodes[0]).toMatchObject({
+      parentId: 'parent',
+      updateTime: new Date(timestamp),
+      createTime: new Date('2024-01-01')
+    });
+    expect(nodes[1]).toMatchObject({
+      updateTime: new Date(timestamp),
+      createTime: new Date(timestamp)
+    });
+    expect(nodes[2].createTime).toBeInstanceOf(Date);
+  });
+
+  it('按 workspaceName/name 与 title/name 搜索，缺少名称的节点不命中', async () => {
+    mocks.request
+      .mockResolvedValueOnce(
+        ok({
           workspaces: [
-            {
-              id: 'workspace-id',
-              rootDentryId: 'root-dentry-id'
-            },
-            {
-              spaceId: 'space-id',
-              dentryUuid: 'root-dentry-uuid',
-              name: 'Space Name'
-            }
+            { workspaceId: 's1', rootNodeId: 'r1', workspaceName: 'Product' },
+            { workspaceId: 's2', rootNodeId: 'r2', name: 'Sales' },
+            { workspaceId: 's3', rootNodeId: 'r3' }
           ]
-        }
-      })
-      .mockResolvedValueOnce({
-        data: {
-          nodes: [
-            {
-              dentryUuid: 'node-dentry-uuid',
-              name: 'Directory',
-              type: 'directory'
-            },
-            {
-              dentryId: 'node-dentry-id',
-              title: 'Document',
-              extension: 'doc'
-            },
-            {
-              uuid: 'node-uuid',
-              nodeType: 'catalog'
-            },
-            {
-              id: 'node-id',
-              name: 'Unknown',
-              fileType: 'unknown'
-            }
-          ]
-        }
-      });
-
-    const request = useDingtalkDatasetRequest({
-      dingtalkServer: {
-        ...server,
-        operatorId: 'operator-id'
-      }
-    });
-
-    const workspaces = await request.listFiles({});
-    const nodes = await request.listFiles({ parentId: 'root-dentry-id', searchKey: 'Doc' });
-
-    expect(workspaces).toEqual([
-      expect.objectContaining({
-        id: 'root-dentry-id',
-        rawId: 'root-dentry-id',
-        name: 'workspace-id'
-      }),
-      expect.objectContaining({
-        id: 'root-dentry-uuid',
-        rawId: 'root-dentry-uuid',
-        name: 'Space Name'
-      })
-    ]);
-    expect(nodes).toEqual([
-      expect.objectContaining({
-        id: 'node-dentry-id',
-        name: 'Document',
-        type: 'file'
-      })
-    ]);
+        })
+      )
+      .mockResolvedValueOnce(
+        ok({
+          nodes: [doc, { nodeId: 'folder', name: 'Folder', type: 'folder' }, { nodeId: 'none' }]
+        })
+      );
+    const api = provider();
+    expect((await api.listFiles({ searchKey: 'Product' })).map(({ id }) => id)).toEqual(['r1']);
+    expect(
+      (await api.listFiles({ parentId: 'root', searchKey: 'Doc' })).map(({ id }) => id)
+    ).toEqual(['doc']);
   });
 
-  it('should return empty list when parentId resolves to empty string', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
-
-    const request = useDingtalkDatasetRequest({
-      dingtalkServer: {
-        ...server,
-        operatorId: 'operator-id',
-        rootNodeId: ''
-      }
-    });
-    const result = await request.listFiles({ parentId: [] as any });
-
-    expect(result).toEqual([]);
-    expect(mockRequest).not.toHaveBeenCalled();
+  it.each([{}, { nodes: [] }])('空列表 %j 结束拉取', async (data) => {
+    mocks.request.mockResolvedValueOnce(ok(data));
+    await expect(provider({ rootNodeId: 'root' }).listFiles({})).resolves.toEqual([]);
   });
 
-  it('should retry rate limited node list once', async () => {
+  it('运行时错误父 ID 转为空字符串时不请求目录', async () => {
+    await expect(provider().listFiles({ parentId: [] as unknown as string })).resolves.toEqual([]);
+    expect(mocks.request).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { response: { status: 429 } },
+    { data: { code: '429' } },
+    { data: { errcode: 88 } },
+    { data: { errorCode: 90018 } },
+    { message: '请求频繁' }
+  ])('识别限流形态 %#，等待一次后重试', async (error) => {
     vi.useFakeTimers();
-    mockGetRedisCache.mockResolvedValue('cached-token');
-    mockRequest
-      .mockRejectedValueOnce({
-        response: {
-          status: 429,
-          data: {
-            message: 'too many requests'
-          }
-        }
-      })
-      .mockResolvedValueOnce({
-        data: {
-          list: [
-            {
-              nodeId: 'doc-1',
-              name: 'Doc',
-              fileType: 'adoc'
-            }
-          ]
-        }
-      });
-
-    const request = useDingtalkDatasetRequest({
-      dingtalkServer: {
-        ...server,
-        operatorId: 'operator-id',
-        rootNodeId: 'root-1'
-      }
-    });
-    const resultPromise = request.listFiles({});
-    await vi.advanceTimersByTimeAsync(1000);
-    const result = await resultPromise;
-
-    expect(result).toEqual([
-      expect.objectContaining({
-        id: 'doc-1',
-        type: 'file'
-      })
-    ]);
-    expect(mockRequest).toHaveBeenCalledTimes(2);
+    mocks.request.mockRejectedValueOnce(error).mockResolvedValueOnce(ok({ list: [doc] }));
+    const result = provider({ rootNodeId: 'root' }).listFiles({});
+    await vi.advanceTimersByTimeAsync(999);
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await result).toEqual([expect.objectContaining({ id: 'doc', type: 'file' })]);
+    expect(mocks.request).toHaveBeenCalledTimes(2);
   });
 
-  it('should reject with readable message when node list keeps being rate limited', async () => {
+  it.each([
+    [{ response: { status: 429 } }, rateLimitError],
+    [new Error('network down'), nodePermissionError],
+    ['specific failure', 'specific failure']
+  ])('重试仍失败 %# 时停止，保留可读错误', async (retryError, expected) => {
     vi.useFakeTimers();
-    mockGetRedisCache.mockResolvedValue('cached-token');
-    mockRequest.mockRejectedValue({
-      response: {
-        status: 429,
-        data: {
-          code: 429
-        }
-      }
-    });
-
-    const request = useDingtalkDatasetRequest({
-      dingtalkServer: {
-        ...server,
-        operatorId: 'operator-id',
-        rootNodeId: 'root-1'
-      }
-    });
-    const resultPromise = expect(request.listFiles({})).rejects.toBe(
-      '钉钉目录接口请求过快，请稍后重试或减少一次导入的文件夹规模'
-    );
+    mocks.request
+      .mockRejectedValueOnce({ response: { status: 429 } })
+      .mockRejectedValueOnce(retryError);
+    const rejected = expect(provider({ rootNodeId: 'root' }).listFiles({})).rejects.toBe(expected);
     await vi.advanceTimersByTimeAsync(1000);
-    await resultPromise;
+    await rejected;
+    expect(mocks.request).toHaveBeenCalledTimes(2);
   });
 
-  it('should reject permission message when node list retry fails without rate limit', async () => {
-    vi.useFakeTimers();
-    mockGetRedisCache.mockResolvedValue('cached-token');
-    mockRequest
-      .mockRejectedValueOnce({
-        response: {
-          status: 429
-        }
-      })
-      .mockRejectedValueOnce(new Error('network down'));
-
-    const request = useDingtalkDatasetRequest({
-      dingtalkServer: {
-        ...server,
-        operatorId: 'operator-id',
-        rootNodeId: 'root-1'
-      }
-    });
-    const resultPromise = expect(request.listFiles({})).rejects.toBe(
-      '读取钉钉目录失败，请检查 rootNodeId、Wiki.Node.Read 权限和知识库访问权限'
-    );
-    await vi.advanceTimersByTimeAsync(1000);
-    await resultPromise;
-  });
-
-  it('should read paged document blocks content', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
-    mockRequest.mockImplementation(
-      ({ url, params }: { url: string; params?: Record<string, any> }) => {
-        if (url.includes('/blocks') && !params?.nextToken) {
-          return Promise.resolve({
-            data: {
-              blocks: [{ text: 'page 1' }],
-              nextPageToken: 'next-page'
-            }
-          });
-        }
-
-        if (url.includes('/blocks') && params?.nextToken === 'next-page') {
-          return Promise.resolve({
-            data: {
-              blocks: [{ plainText: 'page 2' }]
-            }
-          });
-        }
-
-        return Promise.resolve({
-          data: {
-            node: {
-              nodeId: 'doc-1',
-              name: 'Doc',
-              docType: 'document'
-            }
-          }
-        });
-      }
-    );
-
-    const request = useDingtalkDatasetRequest({
-      dingtalkServer: {
-        ...server,
-        operatorId: 'operator-id',
-        rootNodeId: 'root-1'
-      }
-    });
-    const result = await request.getFileContent({ apiFileId: 'doc-1' });
-
-    expect(result).toEqual({
-      title: 'Doc',
-      rawText: 'page 1\npage 2'
-    });
-    expect(mockRequest.mock.calls.some(([args]) => args.params?.nextToken === 'next-page')).toBe(
-      true
-    );
-  });
-
-  it('should reject unsupported document content without leaking raw response', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
-    mockRequest
-      .mockResolvedValueOnce({
-        data: {
-          blocks: [{ image: { url: 'https://example.com/a.png' } }]
-        }
-      })
-      .mockResolvedValueOnce({
-        data: {
-          nodeId: 'doc-1',
-          name: 'Doc',
-          docType: 'wiki_doc'
-        }
-      });
-
-    const request = useDingtalkDatasetRequest({
-      dingtalkServer: {
-        ...server,
-        operatorId: 'operator-id',
-        rootNodeId: 'root-1'
-      }
-    });
-
-    await expect(request.getFileContent({ apiFileId: 'doc-1' })).rejects.toBe(
-      '当前仅支持钉钉在线文档文本，不支持该文件类型'
-    );
-  });
-
-  it('should reject when app secret is missing', async () => {
-    const request = useDingtalkDatasetRequest({
-      dingtalkServer: {
-        ...server,
-        appSecret: ''
-      }
-    });
-
-    await expect(request.listFiles({})).rejects.toBe(
-      '钉钉应用鉴权失败，请检查 AppKey/AppSecret 和应用权限'
-    );
-    expect(mockRequest).not.toHaveBeenCalled();
-  });
-
-  it('should continue when token cache read and write fail', async () => {
-    mockGetRedisCache.mockRejectedValueOnce(new Error('redis read failed'));
-    mockSetRedisCache.mockRejectedValueOnce(new Error('redis write failed'));
-    mockRequest.mockResolvedValueOnce({
-      data: {
-        workspaces: []
-      }
-    });
-
-    const request = useDingtalkDatasetRequest({ dingtalkServer: server });
-    const result = await request.listFiles({});
-
-    expect(result).toEqual([]);
-    expect(mockAxiosPost).toHaveBeenCalled();
-    expect(mockSetRedisCache).toHaveBeenCalled();
-  });
-
-  it('should reject readable message when accessToken request is rate limited', async () => {
-    mockAxiosPost.mockRejectedValueOnce({
-      response: {
-        status: 429,
-        data: {
-          errmsg: 'rate limit'
-        }
-      }
-    });
-
-    const request = useDingtalkDatasetRequest({ dingtalkServer: server });
-
-    await expect(request.listFiles({})).rejects.toBe('钉钉鉴权接口请求过快，请稍后重试');
-    expect(mockDelRedisCache).toHaveBeenCalled();
-  });
-
-  it('should reject readable message when accessToken response is empty', async () => {
-    mockAxiosPost.mockResolvedValueOnce({
-      data: {}
-    });
-
-    const request = useDingtalkDatasetRequest({ dingtalkServer: server });
-
-    await expect(request.listFiles({})).rejects.toBe(
-      '钉钉应用鉴权失败，请检查 AppKey/AppSecret 和应用权限'
-    );
-  });
-
-  it('should reject readable message when accessToken request fails without rate limit', async () => {
-    mockAxiosPost.mockRejectedValueOnce({
-      response: {
-        data: {
-          errmsg: 'invalid app secret'
-        }
-      }
-    });
-
-    const request = useDingtalkDatasetRequest({ dingtalkServer: server });
-
-    await expect(request.listFiles({})).rejects.toBe(
-      '钉钉应用鉴权失败，请检查 AppKey/AppSecret 和应用权限'
-    );
-  });
-
-  it('should reject readable message when workspace list fails', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
-    mockRequest.mockRejectedValueOnce(new Error('wiki permission denied'));
-
-    const request = useDingtalkDatasetRequest({
-      dingtalkServer: {
-        ...server,
-        operatorId: 'operator-id'
-      }
-    });
-
-    await expect(request.listFiles({})).rejects.toBe(
+  it.each([null, { data: { reason: 'denied' } }, { message: 'denied' }, { code: 'denied' }])(
+    '非限流异常 %# 不重试',
+    async (error) => {
+      mocks.request.mockRejectedValueOnce(error);
+      await expect(provider({ rootNodeId: 'root' }).listFiles({})).rejects.toBe(
+        nodePermissionError
+      );
+      expect(mocks.request).toHaveBeenCalledTimes(1);
+    }
+  );
+  it('知识库列表失败提供权限提示', async () => {
+    mocks.request.mockRejectedValueOnce({ response: { data: { code: 'Forbidden' } } });
+    await expect(provider().listFiles({})).rejects.toBe(
       '读取钉钉知识库列表失败，请检查 Wiki.Workspace.Read 权限'
     );
   });
+});
 
-  it('should reject readable message when document blocks request fails', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
-    mockRequest.mockImplementation(({ url }: { url: string }) => {
-      if (url.includes('/blocks')) {
-        return Promise.reject(new Error('doc permission denied'));
-      }
-
-      return Promise.resolve({
-        data: {
-          nodeId: 'doc-1',
-          name: 'Doc',
-          docType: 'wiki_doc'
-        }
-      });
-    });
-
-    const request = useDingtalkDatasetRequest({
-      dingtalkServer: {
-        ...server,
-        operatorId: 'operator-id',
-        rootNodeId: 'root-1'
-      }
-    });
-
-    await expect(request.getFileContent({ apiFileId: 'doc-1' })).rejects.toBe(
-      '读取钉钉在线文档失败，请检查文档类型和权限'
+describe('getDingtalkOperatorId（通过 listFiles 验证）', () => {
+  it.each([{ unionid: 'fresh' }, { userid: 'fresh' }])(
+    '每次使用当前用户的 operator ID，兼容 userid 回退 %j',
+    async (result) => {
+      mocks.post.mockImplementation(async (url: string) =>
+        ok(
+          url.includes('/oauth2/accessToken')
+            ? { accessToken: 'token', expireIn: 7200 }
+            : { result }
+        )
+      );
+      mocks.request.mockResolvedValueOnce(ok({ workspaces: [] }));
+      await provider({ operatorId: 'stale' }).listFiles({});
+      expect(mocks.post).toHaveBeenCalledWith(
+        expect.stringContaining('/topapi/v2/user/get'),
+        { userid: 'user' },
+        { params: { access_token: 'token' } }
+      );
+      expect(mocks.request.mock.calls[0][0].params.operatorId).toBe('fresh');
+    }
+  );
+  it.each([
+    [{ errcode: 500, errmsg: 'no permission' }, 'no permission'],
+    [{ errcode: 500 }, 'DingTalk user get failed'],
+    [{ errcode: 0, result: {} }, 'DingTalk operatorId is empty'],
+    [{}, 'DingTalk operatorId is empty']
+  ])('业务错误 %# 不请求知识库', async (data, expected) => {
+    mocks.post.mockImplementation(async (url: string) =>
+      ok(url.includes('/oauth2/accessToken') ? { accessToken: 'token', expireIn: 7200 } : data)
     );
+    await expect(provider().listFiles({})).rejects.toBe(expected);
+    expect(mocks.request).not.toHaveBeenCalled();
   });
-
-  it('should keep string error when document blocks request rejects with string', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
-    mockRequest.mockImplementation(({ url }: { url: string }) => {
-      if (url.includes('/blocks')) {
-        return Promise.reject('raw string error');
-      }
-
-      return Promise.resolve({
-        data: {
-          nodeId: 'doc-1',
-          name: 'Doc',
-          docType: 'wiki_doc'
-        }
-      });
+  it('用户 API 网络失败返回权限检查提示', async () => {
+    mocks.post.mockImplementation(async (url: string) => {
+      if (url.includes('/oauth2/accessToken')) return ok({ accessToken: 'token', expireIn: 7200 });
+      throw new Error('network failure');
     });
-
-    const request = useDingtalkDatasetRequest({
-      dingtalkServer: {
-        ...server,
-        operatorId: 'operator-id',
-        rootNodeId: 'root-1'
-      }
-    });
-
-    await expect(request.getFileContent({ apiFileId: 'doc-1' })).rejects.toBe('raw string error');
-  });
-
-  it('should ignore blank block text and unsupported primitive values', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
-    mockRequest.mockImplementation(({ url }: { url: string }) => {
-      if (url.includes('/blocks')) {
-        return Promise.resolve({
-          data: {
-            blocks: [{ text: '   ' }, 123, false]
-          }
-        });
-      }
-
-      return Promise.resolve({
-        data: {
-          nodeId: 'doc-1',
-          name: 'Doc',
-          docType: 'wiki_doc'
-        }
-      });
-    });
-
-    const request = useDingtalkDatasetRequest({
-      dingtalkServer: {
-        ...server,
-        operatorId: 'operator-id',
-        rootNodeId: 'root-1'
-      }
-    });
-
-    await expect(request.getFileContent({ apiFileId: 'doc-1' })).rejects.toBe(
-      '当前仅支持钉钉在线文档文本，不支持该文件类型'
-    );
-  });
-
-  it('should reject when node detail cannot be formatted', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
-    mockRequest.mockResolvedValueOnce({
-      data: {
-        node: {
-          nodeId: 'unknown-1',
-          title: 'Unknown',
-          fileType: 'pdf'
-        }
-      }
-    });
-
-    const request = useDingtalkDatasetRequest({
-      dingtalkServer: {
-        ...server,
-        operatorId: 'operator-id',
-        rootNodeId: 'root-1'
-      }
-    });
-
-    await expect(request.getFileDetail({ apiFileId: 'unknown-1' })).rejects.toBe('文件不存在');
-  });
-
-  it('should use root node id as rawId when workspace id is empty', async () => {
-    const request = useDingtalkDatasetRequest({
-      dingtalkServer: {
-        ...server,
-        operatorId: 'operator-id',
-        rootNodeId: 'root-1',
-        workspaceName: 'Workspace 1'
-      }
-    });
-
-    const detail = await request.getFileDetail({ apiFileId: 'root-1' });
-
-    expect(detail.rawId).toBe('root-1');
-  });
-
-  it('should reject when operatorId cannot be resolved from userId', async () => {
-    mockAxiosPost.mockImplementation((url: string) => {
-      if (url.includes('/v1.0/oauth2/accessToken')) {
-        return Promise.resolve({
-          data: {
-            accessToken: 'access-token',
-            expireIn: 7200
-          }
-        });
-      }
-
-      return Promise.resolve({
-        data: {
-          errcode: 500,
-          errmsg: 'no permission'
-        }
-      });
-    });
-
-    const request = useDingtalkDatasetRequest({ dingtalkServer: server });
-
-    await expect(request.listFiles({})).rejects.toBe('no permission');
-  });
-
-  it('should fallback to userid when unionid is empty', async () => {
-    mockAxiosPost.mockImplementation((url: string) => {
-      if (url.includes('/v1.0/oauth2/accessToken')) {
-        return Promise.resolve({
-          data: {
-            accessToken: 'access-token',
-            expireIn: 7200
-          }
-        });
-      }
-
-      return Promise.resolve({
-        data: {
-          errcode: 0,
-          result: {
-            userid: 'operator-user-id'
-          }
-        }
-      });
-    });
-    mockRequest.mockResolvedValueOnce({
-      data: {
-        workspaces: []
-      }
-    });
-
-    const request = useDingtalkDatasetRequest({ dingtalkServer: server });
-    await request.listFiles({});
-
-    expect(mockRequest).toHaveBeenCalledWith(
-      expect.objectContaining({
-        params: expect.objectContaining({
-          operatorId: 'operator-user-id'
-        })
-      })
-    );
-  });
-
-  it('should ignore cached operatorId and resolve operator from current userId', async () => {
-    mockAxiosPost.mockImplementation((url: string) => {
-      if (url.includes('/v1.0/oauth2/accessToken')) {
-        return Promise.resolve({
-          data: {
-            accessToken: 'access-token',
-            expireIn: 7200
-          }
-        });
-      }
-
-      return Promise.resolve({
-        data: {
-          errcode: 0,
-          result: {
-            unionid: 'fresh-operator-id'
-          }
-        }
-      });
-    });
-    mockRequest.mockResolvedValueOnce({
-      data: {
-        workspaces: []
-      }
-    });
-
-    const request = useDingtalkDatasetRequest({
-      dingtalkServer: {
-        ...server,
-        operatorId: 'stale-operator-id'
-      }
-    });
-    await request.listFiles({});
-
-    expect(mockRequest).toHaveBeenCalledWith(
-      expect.objectContaining({
-        params: expect.objectContaining({
-          operatorId: 'fresh-operator-id'
-        })
-      })
-    );
-  });
-
-  it('should reject when operator response has no operator id', async () => {
-    mockAxiosPost.mockImplementation((url: string) => {
-      if (url.includes('/v1.0/oauth2/accessToken')) {
-        return Promise.resolve({
-          data: {
-            accessToken: 'access-token',
-            expireIn: 7200
-          }
-        });
-      }
-
-      return Promise.resolve({
-        data: {
-          errcode: 0,
-          result: {}
-        }
-      });
-    });
-
-    const request = useDingtalkDatasetRequest({ dingtalkServer: server });
-
-    await expect(request.listFiles({})).rejects.toBe('DingTalk operatorId is empty');
-  });
-
-  it('should return user permission message when user api request fails', async () => {
-    mockAxiosPost.mockImplementation((url: string) => {
-      if (url.includes('/v1.0/oauth2/accessToken')) {
-        return Promise.resolve({
-          data: {
-            accessToken: 'access-token',
-            expireIn: 7200
-          }
-        });
-      }
-
-      return Promise.reject(new Error('network error'));
-    });
-
-    const request = useDingtalkDatasetRequest({ dingtalkServer: server });
-
-    await expect(request.listFiles({})).rejects.toBe(
+    await expect(provider().listFiles({})).rejects.toBe(
       '获取钉钉用户 unionId 失败，请检查 UserId、通讯录可见范围和 qyapi_get_member 权限'
     );
   });
+});
+
+describe('getFileDetail', () => {
+  it('已命名知识库根合成详情，不请求无法识别 workspace 的节点接口', async () => {
+    expect(
+      await provider({ rootNodeId: 'root', workspaceName: 'Space' }).getFileDetail({
+        apiFileId: 'root'
+      })
+    ).toMatchObject({
+      success: true,
+      data: {
+        id: 'root',
+        rawId: 'root',
+        parentId: null,
+        name: 'Space',
+        type: 'folder',
+        hasChild: true
+      }
+    });
+    expect(mocks.post).not.toHaveBeenCalled();
+    expect(mocks.request).not.toHaveBeenCalled();
+  });
+  it.each([{ rootNodeId: 'doc' }, { rootNodeId: 'root', workspaceName: 'Space' }])(
+    '未命名根或非根节点查询真实详情 %j',
+    async (config) => {
+      mocks.request.mockResolvedValueOnce(ok({ node: doc }));
+      expect(await provider(config).getFileDetail({ apiFileId: 'doc' })).toMatchObject({
+        success: true,
+        data: {
+          id: 'doc',
+          rawId: 'doc',
+          parentId: 'root',
+          name: 'Doc',
+          type: 'file',
+          hasChild: false
+        }
+      });
+      expect(mocks.request.mock.calls[0][0]).toMatchObject({
+        url: '/v2.0/wiki/nodes/doc',
+        params: { operatorId: 'operator' }
+      });
+    }
+  );
+  it('不支持的节点 resolve NOT_FOUND', async () => {
+    mocks.request.mockResolvedValueOnce(
+      ok({ node: { nodeId: 'pdf', title: 'PDF', fileType: 'pdf' } })
+    );
+    expect(await provider().getFileDetail({ apiFileId: 'pdf' })).toEqual({
+      success: false,
+      code: 'NOT_FOUND',
+      message: '文件不存在',
+      status: 404
+    });
+  });
+  it.each([
+    [404, 'NOT_FOUND'],
+    [503, 'SERVER_ERROR'],
+    [429, 'RATE_LIMIT'],
+    [403, 'UNAUTHORIZED']
+  ])('HTTP %i resolve 对应错误 %s', async (status, code) => {
+    mocks.request.mockRejectedValueOnce({ response: { status } });
+    expect(await provider().getFileDetail({ apiFileId: 'doc' })).toMatchObject({
+      success: false,
+      code,
+      status
+    });
+  });
+});
+
+describe('getFileContent', () => {
+  it('递归读取嵌套文本，忽略元数据和空值，支持两种分页字段', async () => {
+    mocks.request.mockImplementation(async ({ url, params }) => {
+      if (!url.endsWith('/blocks')) return ok({ node: doc });
+      if (params.nextToken === 'page2')
+        return ok({ blocks: [{ plainText: ' page 2 ' }], nextPageToken: 'page3' });
+      if (params.nextToken === 'page3') return ok({ blocks: [{ content: 'page 3' }] });
+      return ok({
+        blocks: [
+          { paragraph: { elements: [{ text: ' hello ' }, { text: 'world' }] } },
+          { text: ' ' },
+          123,
+          false,
+          null,
+          'ignored',
+          { url: 'ignored' }
+        ],
+        nextToken: 'page2'
+      });
+    });
+    await expect(provider().getFileContent({ apiFileId: 'doc' })).resolves.toEqual({
+      title: 'Doc',
+      rawText: 'hello\nworld\npage 2\npage 3'
+    });
+    expect(
+      mocks.request.mock.calls
+        .filter(([args]) => args.url.endsWith('/blocks'))
+        .map(([args]) => args.params.nextToken)
+    ).toEqual([undefined, 'page2', 'page3']);
+  });
+  it('标题查询失败不影响正文；空中间页仍继续分页', async () => {
+    mocks.request.mockImplementation(async ({ url, params }) => {
+      if (!url.endsWith('/blocks')) throw new Error('detail unavailable');
+      return ok(
+        params.nextToken
+          ? { result: { data: [{ content: 'body' }] } }
+          : { blocks: [], nextToken: 'next' }
+      );
+    });
+    await expect(provider().getFileContent({ apiFileId: 'doc' })).resolves.toEqual({
+      title: undefined,
+      rawText: 'body'
+    });
+  });
+  it('无有效文本时拒绝导入', async () => {
+    mocks.request.mockResolvedValue(
+      ok({ blocks: [{ text: ' ' }, { image: { url: 'https://example.com/a.png' } }] })
+    );
+    await expect(provider().getFileContent({ apiFileId: 'doc' })).rejects.toBe(
+      '当前仅支持钉钉在线文档文本，不支持该文件类型'
+    );
+  });
+  it.each([
+    ['explicit failure', 'explicit failure'],
+    [new Error('denied'), '读取钉钉在线文档失败，请检查文档类型和权限']
+  ])('正文请求异常 %#', async (error, expected) => {
+    mocks.request.mockRejectedValue(error);
+    await expect(provider().getFileContent({ apiFileId: 'doc' })).rejects.toBe(expected);
+  });
+});
+
+describe('getFilePreviewUrl', () => {
+  it('直接生成节点预览链接', async () => {
+    await expect(provider().getFilePreviewUrl({ apiFileId: 'doc' })).resolves.toBe(
+      'https://alidocs.dingtalk.com/i/nodes/doc'
+    );
+    expect(mocks.request).not.toHaveBeenCalled();
+  });
+});
+
+describe('getFileRawId', () => {
+  it('保留原始 ID', () => expect(provider().getFileRawId('doc')).toBe('doc'));
 });

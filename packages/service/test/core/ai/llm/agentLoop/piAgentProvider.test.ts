@@ -47,9 +47,9 @@ vi.mock('@fastgpt/service/core/ai/llm/compress', () => ({
   compressRequestMessages: compressRequestMessagesMock
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/interface/toolCall', async (importOriginal) => {
+vi.mock('@fastgpt/service/core/ai/sandbox/application/toolCall', async (importOriginal) => {
   const original =
-    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/interface/toolCall')>();
+    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/application/toolCall')>();
   return {
     ...original,
     runSandboxTools: runSandboxToolsMock,

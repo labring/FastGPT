@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { VARIABLE_NODE_ID, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
-import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
+import {
+  IfElseResultEnum,
+  VariableConditionEnum
+} from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { dispatchIfElse } from '@fastgpt/service/core/workflow/dispatch/tools/runIfElse';
 
 type DispatchProps = Parameters<typeof dispatchIfElse>[0];
@@ -166,6 +168,32 @@ describe('dispatchIfElse include / notInclude', () => {
       })
     );
 
+  // 右侧选择引用变量时，运行时得到的是变量原始值，可能不是字符串
+  const runReference = (value: unknown, condition: VariableConditionEnum, target: unknown) =>
+    dispatchIfElse(
+      buildProps({
+        value,
+        variables: { target },
+        ifElseList: [
+          {
+            condition: 'AND',
+            list: [
+              {
+                variable: ref('input'),
+                condition,
+                value: ref('target'),
+                valueType: 'reference'
+              }
+            ]
+          }
+        ],
+        sourceHandles: [
+          getHandleId('ifElse', 'source', IfElseResultEnum.IF),
+          getHandleId('ifElse', 'source', IfElseResultEnum.ELSE)
+        ]
+      })
+    );
+
   it('should compare a non-string value of an any-typed variable as text', async () => {
     const include = await run(2001, VariableConditionEnum.include, '001');
     expect(include.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
@@ -191,6 +219,36 @@ describe('dispatchIfElse include / notInclude', () => {
 
     const stringNotInclude = await run('abcdef', VariableConditionEnum.notInclude, 'xy');
     expect(stringNotInclude.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+  });
+
+  it('should match a non-string reference target against array items as text', async () => {
+    const numberInclude = await runReference([200, 404], VariableConditionEnum.include, 200);
+    expect(numberInclude.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+
+    const numberNotInclude = await runReference([200, 404], VariableConditionEnum.notInclude, 404);
+    expect(numberNotInclude.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
+
+    const booleanInclude = await runReference([true, false], VariableConditionEnum.include, true);
+    expect(booleanInclude.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+
+    const textInclude = await runReference(['200'], VariableConditionEnum.include, 200);
+    expect(textInclude.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+  });
+
+  it('should compare an object reference target against array items by reference', async () => {
+    const target = { id: 1 };
+    const includeSame = await runReference([target], VariableConditionEnum.include, target);
+    expect(includeSame.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+
+    const includeDifferent = await runReference([{ id: 1 }], VariableConditionEnum.include, {
+      id: 1
+    });
+    expect(includeDifferent.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
+  });
+
+  it('should not match a missing reference target against array items', async () => {
+    const result = await runReference([200], VariableConditionEnum.include, undefined);
+    expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
   });
 
   it('should not match a missing value', async () => {

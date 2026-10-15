@@ -3,11 +3,9 @@ import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../workflow/node/con
 import type { FlowNodeInputItemType } from '../../workflow/type/io';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
 import type { CanonicalFlowNodeInputItem } from '../../workflow/migration';
-import { getSelectedInputRenderType } from '../../workflow/utils';
+import { getSelectedInputRenderType } from '../../../common/workflow/reference';
 import type { SelectedToolItemType } from './type';
 import { AgentToolInputModeEnum } from '../tool/constants';
-
-export { getSelectedInputRenderType } from '../../workflow/utils';
 
 const formRenderTypesMap: Record<string, boolean> = {
   [FlowNodeInputTypeEnum.input]: true,

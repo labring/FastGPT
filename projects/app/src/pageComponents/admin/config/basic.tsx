@@ -12,11 +12,12 @@ import FormItem from '@/pageComponents/admin/settings/FormItem';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import NavbarItems from './components/FormField/NavbarItems';
 import ImageInput from '@/pageComponents/admin/settings/ImageInput';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 
-interface titleType {
+type titleType = {
   mainTitle: string;
   subTitles: string[];
-}
+};
 
 export const Settings = () => {
   const [rawData, setRawData] = useState<ConfigFormType>();
@@ -244,6 +245,40 @@ export const Settings = () => {
           {...register('limit.websiteSyncLimitMinuted', {
             valueAsNumber: true
           })}
+          placeholder=""
+        />
+      </FormItem>
+      <FormItem
+        title="沙箱实例系统总上限"
+        description="所有团队 Agent 沙箱活跃实例合计上限，留空表示使用环境变量配置；建议不低于单团队配额。"
+      >
+        <MyNumberInput
+          min={1}
+          step={1}
+          precision={0}
+          bg={'white'}
+          inputFieldProps={{ bg: 'white' }}
+          value={watch('systemEnv.agentSandboxMax') ?? ''}
+          onChange={(val) =>
+            setValue('systemEnv.agentSandboxMax', typeof val === 'number' ? val : undefined)
+          }
+          placeholder=""
+        />
+      </FormItem>
+      <FormItem
+        title="单团队沙箱实例配额"
+        description="单团队 Agent 沙箱活跃实例上限，留空表示使用环境变量配置，环境变量未配置时不限制；建议不超过系统总上限，超过时超出部分不会生效。"
+      >
+        <MyNumberInput
+          min={1}
+          step={1}
+          precision={0}
+          bg={'white'}
+          inputFieldProps={{ bg: 'white' }}
+          value={watch('systemEnv.agentSandboxMaxPerTeam') ?? ''}
+          onChange={(val) =>
+            setValue('systemEnv.agentSandboxMaxPerTeam', typeof val === 'number' ? val : undefined)
+          }
           placeholder=""
         />
       </FormItem>

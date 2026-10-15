@@ -4,18 +4,18 @@ import { pipeline } from 'node:stream/promises';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { authSandboxRuntimeSession } from '@/service/core/sandbox/access';
+import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
 import {
-  buildSandboxClientQueryFromChatSource,
   getSandboxClient,
   type SandboxClient
-} from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+} from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
 import archiver from 'archiver';
 import { SandboxDownloadBodySchema } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   isSandboxPathDirectory,
   addDirectoryToArchive
-} from '@fastgpt/service/core/ai/sandbox/interface/file';
+} from '@fastgpt/service/core/ai/sandbox/application/file';
 
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 

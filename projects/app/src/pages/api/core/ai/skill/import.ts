@@ -19,7 +19,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getAgentSandboxSkillMaxBytes } from '@fastgpt/service/core/ai/sandbox/interface/config';
+import { getAgentSandboxSkillMaxBytes } from '@fastgpt/service/core/ai/sandbox/config';
 
 export const config = {
   api: {

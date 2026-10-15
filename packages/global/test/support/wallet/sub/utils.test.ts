@@ -4,6 +4,21 @@ import type { SubPlanType } from '../../../../support/wallet/sub/type';
 import { getRuntimeSubPlansConfig } from '../../../../support/wallet/sub/utils';
 
 describe('getRuntimeSubPlansConfig', () => {
+  it('inherits upload limits for zero custom overrides while preserving other zero values', () => {
+    const source = {
+      standard: {
+        advanced: { maxUploadFileSize: 50, maxUploadFileCount: 10, customDomain: 3 },
+        custom: { maxUploadFileSize: 0, maxUploadFileCount: 0, customDomain: 0 }
+      }
+    } as SubPlanType;
+    expect(getRuntimeSubPlansConfig(source)?.standard?.custom).toMatchObject({
+      maxUploadFileSize: 50,
+      maxUploadFileCount: 10,
+      customDomain: 0
+    });
+    expect(source.standard?.custom?.maxUploadFileSize).toBe(0);
+  });
+
   it('returns a complete custom plan inherited from advanced without mutating source config', () => {
     const source = {
       standard: {

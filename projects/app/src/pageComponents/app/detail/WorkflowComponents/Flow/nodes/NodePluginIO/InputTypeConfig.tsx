@@ -40,8 +40,7 @@ import { useFieldArray, type UseFormReturn } from 'react-hook-form';
 
 import { DatasetSelectModal } from '@/components/core/app/DatasetSelectModal';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
+import { useFileUploadLimits } from '@/web/common/file/hooks/useFileUploadLimits';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { canInputBeAgentGenerated } from '@fastgpt/global/core/app/formEdit/utils';
@@ -80,8 +79,7 @@ const InputTypeConfig = ({
 }) => {
   const { t } = useTranslation();
   const defaultListValue = { label: t('common:None'), value: '' };
-  const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
+  const { maxUploadFileCount } = useFileUploadLimits();
 
   const typeLabels = useMemo(() => {
     return {
@@ -128,8 +126,7 @@ const InputTypeConfig = ({
   // 模块可配置上限不能超过用户配额，额外保留节点配置的 50 个上限。
   const maxSelectFiles = Math.min(
     getUserFileAmountLimit({
-      teamMaxFileAmount: teamPlanStatus?.standard?.maxUploadFileCount,
-      systemMaxFileAmount: feConfigs.uploadFileMaxAmount
+      systemMaxFileAmount: maxUploadFileCount
     }),
     50
   );

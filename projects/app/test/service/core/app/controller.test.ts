@@ -20,14 +20,12 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
-import { extractAppResources } from '@fastgpt/service/core/app/resources';
+import { extractAppResources } from '@fastgpt/service/core/app/resource/utils';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import {
-  checkAppResourceReadPermissions,
-  resolveAppResourcesByPermission
-} from '@fastgpt/service/support/permission/app/resource';
+import { checkAppResourceReadPermissions } from '@fastgpt/service/support/permission/app/resource';
+import { resolveAppResourcesByPermission } from '@fastgpt/service/core/app/resource/service';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getUser } from '@test/datas/users';
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';

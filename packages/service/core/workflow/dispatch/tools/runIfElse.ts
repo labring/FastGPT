@@ -1,25 +1,27 @@
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   IfElseResultEnum,
   VariableConditionEnum
 } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
-import {
-  type ConditionListItemType,
-  type IfElseConditionType,
-  type IfElseListItemType
+import type {
+  ConditionListItemType,
+  IfElseConditionType,
+  IfElseListItemType
 } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
-import { getIfElseBranchHandleKey } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
+import {
+  getIfElseBranchHandleKey,
+  getElseIFLabel
+} from '@fastgpt/global/common/workflow/condition';
 import type {
   DispatchNodeResultType,
   ModuleDispatchProps,
   WorkflowVariableStateLike
 } from '../../types/runtime';
-import { getElseIFLabel, getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
-import { type ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
+import type { ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.condition]: IfElseConditionType;
@@ -47,7 +49,12 @@ function isEmpty(value: any) {
 
 function isInclude(value: any, target: any) {
   if (Array.isArray(value)) {
-    return value.map((item: any) => String(item)).includes(target);
+    // 数组元素已转成字符串，而右侧引用变量运行时可能是数字、布尔等非字符串值（与下方非数组分支同类）；
+    // 右侧值与元素统一按文本比较，否则「包含」会静默返回 false、「不包含」恒为 true。
+    // 对象按引用比较，null/undefined 仍视为不匹配。
+    if (target === undefined || target === null) return false;
+    if (typeof target === 'object') return value.includes(target);
+    return value.map((item: any) => String(item)).includes(String(target));
   } else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
     // any 类型的变量也提供「包含/不包含」，运行时可能拿到数字、布尔等非字符串值；
     // 与 startWith/endWith 一样先转成字符串再匹配，直接返回 false 会让「不包含」恒真。
