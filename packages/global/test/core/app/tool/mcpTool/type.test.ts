@@ -86,8 +86,7 @@ describe('mcpTool type schemas', () => {
       const validData = {
         url: 'https://mcp.example.com/api',
         headerSecret: {
-          value: 'secret-value',
-          secret: ''
+          value: 'secret-value'
         },
         toolList: []
       };
@@ -151,8 +150,7 @@ describe('mcpTool type schemas', () => {
         inputSchema: { type: 'object', properties: {}, required: [] },
         url: 'https://mcp.example.com/secure',
         headerSecret: {
-          value: 'secret-value',
-          secret: ''
+          value: 'secret-value'
         }
       };
 
