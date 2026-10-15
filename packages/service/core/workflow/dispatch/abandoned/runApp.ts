@@ -1,8 +1,5 @@
 import { createWorkflowRuntimeSummary } from '../utils/summary';
-import {
-  getWorkflowContext,
-  runWithContext
-} from '@fastgpt/service/core/workflow/dispatch/context';
+import { getWorkflowContext, runWithContext } from '../context';
 /* Abandoned */
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 

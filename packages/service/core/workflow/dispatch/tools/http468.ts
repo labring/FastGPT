@@ -1,4 +1,4 @@
-import { getWorkflowContext } from '@fastgpt/service/core/workflow/dispatch/context';
+import { getWorkflowContext } from '../context';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
   contentTypeMap,
