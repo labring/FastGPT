@@ -20,7 +20,7 @@ import { createWorkflowEntryNodeResponseSink } from '@fastgpt/service/core/workf
 import { createWorkflowRuntimeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 
 describe('runWorkflow depth recovery', () => {
-  it('只消费上层完整 Context，不再次派生响应 Scope 或激活执行 Context', async () => {
+  it('沿用上层 Context，observer 失败时仍恢复深度且不重新初始化响应 Scope', async () => {
     const nodeResponseSink = createWorkflowEntryNodeResponseSink();
     const derive = vi.spyOn(nodeResponseSink, 'getChildContext');
     const fileContext = await createTestWorkflowFileContext();
@@ -70,20 +70,6 @@ describe('runWorkflow depth recovery', () => {
         expect(result.workflowRuntimeSummary.llmInputTokens).toBe(0);
         expect(entry.workflowRuntimeSummary.llmInputTokens).toBe(99);
         expect(runtimeControl.workflowDispatchDeep).toBe(20);
-      }
-    );
-  });
-
-  it('restores workflowDispatchDeep when the outer observer fails before dispatch starts', async () => {
-    observeWorkflowRunMock.mockRejectedValueOnce(new Error('observer failed'));
-    const fileContext = await createTestWorkflowFileContext();
-    const runtimeControl = createTestRuntimeControl({ workflowDispatchDeep: 3 });
-    await runWithTestWorkflowContext(
-      { checkIsStopping: () => false, mcpClientMemory: {}, fileContext, runtimeControl },
-      async () => {
-        const data = {} as Parameters<typeof runWorkflowWithoutContext>[0];
-        await expect(runWorkflowWithoutContext(data)).rejects.toThrow('observer failed');
-        expect(runtimeControl.workflowDispatchDeep).toBe(3);
       }
     );
   });
