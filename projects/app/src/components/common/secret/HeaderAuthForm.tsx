@@ -373,7 +373,7 @@ const HeaderAuthForm = ({
           fontSize={'14px'}
         >
           {currentAuthType === HeaderSecretTypeEnum.Custom && (
-            <Box lineHeight={1} w={1 / 3}>
+            <Box lineHeight={1} w={0.3}>
               {t('common:key')}
             </Box>
           )}
@@ -438,7 +438,7 @@ const HeaderAuthForm = ({
               {customHeaders?.map((item, index) => {
                 return (
                   <Flex key={index} mb={2} align="center" gap={2}>
-                    <Flex flex={'1 1 0'} minW={0} alignItems={'center'}>
+                    <Flex flex={'3 1 0'} minW={0} alignItems={'center'}>
                       <Input
                         flex={1}
                         minW={0}
@@ -459,7 +459,7 @@ const HeaderAuthForm = ({
                         }}
                       />
                     </Flex>
-                    <Flex flex={'2 1 0'} minW={0} alignItems={'center'} gap={2}>
+                    <Flex flex={'7 1 0'} minW={0} alignItems={'center'}>
                       <Box flex={1} minW={0}>
                         <AuthValueDisplay
                           showInput={getShowInput({
