@@ -45,7 +45,6 @@ import { createAppTypeMap } from '@/pageComponents/app/constants';
 import { getDashboardAppListScene } from './utils/appListTypes';
 import { getResourceListDisplayTime, hasAppListActiveFilter } from './filters/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
 import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
@@ -546,44 +545,24 @@ const List = () => {
           >
             {renderVirtualGridItems(renderAppCard)}
           </Grid>
-        ) : isEmpty && !folderDetail ? (
-          hasActiveFilter || isBatchMode ? (
-            <EmptyTip />
-          ) : isPc && hasCreatePer ? (
-            <CreateButton appType={appType} />
-          ) : (
-            <Grid
-              py={4}
-              gridTemplateColumns={
-                parentId
-                  ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
-                  : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
-              }
-              gridGap={5}
-              alignItems={'stretch'}
-            >
-              {!isBatchMode &&
-                (hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />)}
-            </Grid>
-          )
+        ) : isEmpty && !parentId && !hasActiveFilter && !isBatchMode && isPc && hasCreatePer ? (
+          <CreateButton appType={appType} />
         ) : (
-          <>
-            <Grid
-              ref={gridRef}
-              py={4}
-              gridTemplateColumns={
-                parentId
-                  ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
-                  : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
-              }
-              gridGap={5}
-              alignItems={'stretch'}
-            >
-              {!isBatchMode &&
-                (hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />)}
-              {renderVirtualGridItems(renderAppCard)}
-            </Grid>
-          </>
+          <Grid
+            ref={gridRef}
+            py={4}
+            gridTemplateColumns={
+              parentId
+                ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
+                : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
+            }
+            gridGap={5}
+            alignItems={'stretch'}
+          >
+            {!isBatchMode &&
+              (hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />)}
+            {renderVirtualGridItems(renderAppCard)}
+          </Grid>
         )}
         <DeleteConfirmModal />
         <ConfirmCopyModal />

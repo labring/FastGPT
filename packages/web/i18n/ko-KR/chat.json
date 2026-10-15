@@ -49,7 +49,7 @@
   "feedback_unhelpful": "도움이 안 됨",
   "file_amount_over": "최대 파일 수 {{max}}개를 초과했습니다",
   "go_to_dataset": "데이터셋로 이동",
-  "history_generating": "생각 중",
+  "history_generating": "실행 중",
   "history_slider.home.title": "대화",
   "home.chat_app": "홈 채팅",
   "home.select_tools": "도구 선택",

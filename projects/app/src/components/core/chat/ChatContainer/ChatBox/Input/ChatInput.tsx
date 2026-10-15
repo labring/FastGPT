@@ -35,6 +35,7 @@ type ChatInputProps = BoxProps & {
   enableVoiceInput: boolean;
   disableSend?: boolean;
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
+  textareaRef: React.RefCallback<HTMLTextAreaElement>;
   resetInputVal: (val: ChatBoxInputType) => void;
   chatForm: UseFormReturn<ChatBoxInputFormType>;
 };
@@ -47,6 +48,7 @@ const ChatInput = ({
   enableVoiceInput,
   disableSend,
   TextareaDom,
+  textareaRef,
   resetInputVal,
   chatForm,
   ...props
@@ -122,11 +124,11 @@ const ChatInput = ({
     showSelectAudio,
     showSelectCustomFileExtension,
     cancelUploadFile,
-    clearFiles,
     hasFileUploading
   } = useFileUpload({
     fileSelectConfig,
     fileCtrl,
+    getValues: chatForm.getValues,
     outLinkAuthData,
     sourceTarget,
     chatId
@@ -171,9 +173,8 @@ const ChatInput = ({
         interactive: lastInteractive,
         clearInput: true
       });
-      clearFiles();
     },
-    [inputValue, lastInteractive, canSendMessage, fileList, onSendMessage, clearFiles]
+    [inputValue, lastInteractive, canSendMessage, fileList, onSendMessage]
   );
   const { runAsync: handleStop, loading: isStopping } = useRequest(async () => {
     try {
@@ -192,7 +193,7 @@ const ChatInput = ({
         <Flex w={'100%'} position={'relative'}>
           {/* Prompt Container */}
           <Textarea
-            ref={TextareaDom}
+            ref={textareaRef}
             py={0}
             mx={0}
             px={0}
@@ -332,7 +333,7 @@ const ChatInput = ({
     ),
     [
       fileList.length,
-      TextareaDom,
+      textareaRef,
       dialogTips,
       appNamePlaceholderParts.prefix,
       appNamePlaceholderParts.suffix,
@@ -583,7 +584,6 @@ const ChatInput = ({
                   autoTTSResponse,
                   clearInput: true
                 });
-                clearFiles();
               }}
               resetInputVal={(val) => {
                 setMobilePreSpeak(false);
