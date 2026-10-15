@@ -36,15 +36,29 @@ export const normalizeNativeToolCalls = ({
   error?: unknown;
   protocolError?: { message: string; toolCall: unknown };
 }): Pick<CompleteResponse, 'toolCalls' | 'finish_reason' | 'error'> => {
+  /**
+   * 非 stream 工具调用直接来自供应商原始响应，name/arguments 可能缺失、为 null 或是对象。
+   * 统一转成字符串，避免校验阶段直接崩溃；对象参数序列化后仍可作为工具入参使用。
+   */
+  const toToolCallText = (value: unknown) => {
+    if (typeof value === 'string') return value;
+    if (value === undefined || value === null) return '';
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+  };
+
   const normalizedCalls = toolCalls
-    .map<ChatCompletionMessageToolCall>((call) => ({
-      id: call.id,
-      type: 'function',
-      function: {
-        name: normalizeToolName(call.function.name),
-        arguments: call.function.arguments.trim() === '' ? '{}' : call.function.arguments
-      }
-    }))
+    .map<ChatCompletionMessageToolCall>((call) => {
+      const args = toToolCallText(call.function?.arguments);
+      return {
+        id: call.id,
+        type: 'function',
+        function: {
+          name: normalizeToolName(toToolCallText(call.function?.name)),
+          arguments: args.trim() === '' ? '{}' : args
+        }
+      };
+    })
     .filter((call) => toolNames.has(call.function.name));
 
   if (error || (!protocolError && (finish_reason !== 'tool_calls' || normalizedCalls.length > 0))) {
