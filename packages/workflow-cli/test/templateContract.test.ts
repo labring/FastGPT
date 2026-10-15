@@ -19,9 +19,11 @@ describe('template contract commands', () => {
     };
 
     expect(output).toMatchObject({
-      total: 22,
-      counts: { builtin: 22, teamApp: 0, systemTool: 0, tool: 0 }
+      total: 21,
+      counts: { builtin: 21, teamApp: 0, systemTool: 0, tool: 0 }
     });
+    expect(output.items.map((item) => item.ref)).not.toContain('builtin:question-optimization');
+    expect(output.items.map((item) => item.ref)).toContain('builtin:call-app');
     expect(output.items).toContainEqual(
       expect.objectContaining({
         kind: 'builtin',

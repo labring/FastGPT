@@ -103,12 +103,56 @@ describe('ChatConfig descriptors', () => {
   it('returns one descriptor for every allowlisted configuration path', () => {
     const descriptors = listChatConfigDescriptors({ document: createWorkflowDocument() });
 
-    expect(descriptors).toHaveLength(14);
+    expect(descriptors).toHaveLength(17);
     expect(descriptors.every(({ description }) => description.length > 0)).toBe(true);
     expect(descriptors.find(({ path }) => path === 'autoExecute.open')?.valueSchema).toMatchObject({
       type: 'boolean'
     });
   });
+
+  it('supports generated welcome questions without replacing the welcome text', async () => {
+    const document = createWorkflowDocument({
+      chatConfig: { welcomeConfig: { welcomeText: '欢迎使用', welcomeQuestions: ['旧问题'] } }
+    });
+    const descriptor = getChatConfigDescriptor({
+      document,
+      path: 'welcomeConfig.welcomeQuestions'
+    });
+
+    expect(descriptor.value).toEqual(['旧问题']);
+    expect(descriptor.valueSchema).toMatchObject({ type: 'array' });
+
+    const result = await apply(document, {
+      type: 'config.set',
+      path: 'welcomeConfig.welcomeQuestions',
+      value: ['新问题一', '新问题二']
+    });
+
+    expect(result.document.chatConfig.welcomeConfig).toEqual({
+      welcomeText: '欢迎使用',
+      welcomeQuestions: ['新问题一', '新问题二']
+    });
+  });
+
+  it.each([
+    { value: '完整问题' },
+    { value: ['完整问题', 1] },
+    { value: [null] },
+    { value: [{ question: '完整问题' }] }
+  ])(
+    'rejects invalid welcome question values without changing existing configuration: $value',
+    async ({ value }) => {
+      const document = createWorkflowDocument({
+        chatConfig: { welcomeConfig: { welcomeText: '欢迎使用', welcomeQuestions: ['原问题'] } }
+      });
+      const before = structuredClone(document);
+
+      await expect(
+        apply(document, { type: 'config.set', path: 'welcomeConfig.welcomeQuestions', value })
+      ).rejects.toThrow();
+      expect(document).toEqual(before);
+    }
+  );
 });
 
 describe('fileSelectConfig output synchronization', () => {

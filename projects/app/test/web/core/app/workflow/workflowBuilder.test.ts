@@ -25,12 +25,10 @@ import {
   getWorkflowBuilderEntryAccess,
   getWorkflowBuilderErrorAttentionKey,
   getWorkflowBuilderEntryVisualState,
-  getWorkflowBuilderEvalAutoLayoutKey,
   getWorkflowBuilderInitialState,
   getWorkflowBuilderPendingInteractiveKey,
   getWorkflowBuilderWatchChatId,
   hasUnseenWorkflowBuilderAttention,
-  isWorkflowBuilderEvalApp,
   isWorkflowBuilderVersionGenerating,
   shouldPrewarmWorkflowBuilderRuntime
 } from '@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/uiState';
@@ -80,40 +78,6 @@ describe('Workflow Builder Web Adapter', () => {
     expect(getWorkflowBuilderWatchChatId(['chat-2', 'chat-3'])).toBe('chat-2');
     expect(getWorkflowBuilderWatchChatId('   ')).toBeUndefined();
     expect(getWorkflowBuilderWatchChatId()).toBeUndefined();
-  });
-
-  it('仅将评测运行器创建的 WBE 应用识别为自动旁观应用', () => {
-    expect(isWorkflowBuilderEvalApp('[WBE] WBE-006 attempt-1')).toBe(true);
-    expect(isWorkflowBuilderEvalApp('[WBE Judge] run-1')).toBe(false);
-    expect(isWorkflowBuilderEvalApp('普通工作流')).toBe(false);
-  });
-
-  it('仅为已加载节点的评测应用生成稳定的画布自动布局键', () => {
-    expect(
-      getWorkflowBuilderEvalAutoLayoutKey({
-        appName: '[WBE] WBE-006 attempt-1',
-        appId: 'app-1',
-        workflowDataRevision: 2,
-        nodeIds: ['node-b', 'node-a']
-      })
-    ).toBe('app-1:2:node-a,node-b');
-
-    expect(
-      getWorkflowBuilderEvalAutoLayoutKey({
-        appName: '普通工作流',
-        appId: 'app-1',
-        workflowDataRevision: 2,
-        nodeIds: ['node-a']
-      })
-    ).toBeUndefined();
-    expect(
-      getWorkflowBuilderEvalAutoLayoutKey({
-        appName: '[WBE] WBE-006 attempt-1',
-        appId: 'app-1',
-        workflowDataRevision: 2,
-        nodeIds: []
-      })
-    ).toBeUndefined();
   });
 
   it.each([

@@ -49,6 +49,8 @@
   "cli.config.scheduled_trigger": "当工作流需要定时运行时配置；应同时提供 Cron 表达式、时区和注入的默认问题。",
   "cli.config.tts": "当用户需要通过浏览器或语音模型播报应用回复时配置。",
   "cli.config.welcome_text": "当新会话需要展示预设引导、示例或快捷操作时配置。",
+  "cli.config.welcome_config": "配置新会话开始时展示的开场内容。",
+  "cli.config.welcome_questions": "设置用户可以在开场白后直接点击的问题；问题应简短完整并贴合当前工作流。",
   "cli.config.whisper": "当用户需要通过语音识别提交问题时配置。",
   "code.Reset template": "还原模板",
   "code.Reset template confirm": "确认还原代码模板？将会重置所有输入和输出至模板值，请注意保存当前代码。",

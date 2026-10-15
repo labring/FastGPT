@@ -109,8 +109,8 @@ describe('PR1 through PR4 CLI end to end', () => {
 
     const templateList = await invoke(jsonArgs(dir, ['template', 'list', '--kind', 'builtin']));
     expect(JSON.parse(templateList.stdout[0]).result).toMatchObject({
-      total: 22,
-      counts: { builtin: 22, teamApp: 0, systemTool: 0, tool: 0 }
+      total: 21,
+      counts: { builtin: 21, teamApp: 0, systemTool: 0, tool: 0 }
     });
     const nodeList = await invoke(jsonArgs(dir, ['node', 'list', '--type', 'chatNode']));
     expect(JSON.parse(nodeList.stdout[0]).result).toHaveLength(1);
@@ -645,6 +645,52 @@ describe('PR1 through PR4 CLI end to end', () => {
       FASTGPT_WORKFLOW_FORMAT: 'json'
     });
     expect(JSON.parse(envFailure.stderr[0])).toMatchObject({ ok: false, changed: false });
+  });
+
+  it('writes welcome questions through the CLI and rejects invalid values atomically', async () => {
+    const { cwd, invoke } = await createHarness();
+    const dir = join(cwd, 'welcome-questions');
+    await invoke(jsonArgs(dir, ['init']));
+    await invoke(
+      jsonArgs(dir, ['config', 'set', '--path', 'welcomeConfig.welcomeText', '--value', '退款助手'])
+    );
+    const welcomeQuestions = ['如何查询退款规则？', '申请退款需要哪些材料？'];
+    const updated = await invoke(
+      jsonArgs(dir, [
+        'config',
+        'set',
+        '--path',
+        'welcomeConfig.welcomeQuestions',
+        '--value-json',
+        JSON.stringify(welcomeQuestions)
+      ])
+    );
+    expect(updated.exitCode).toBe(0);
+    const queried = await invoke(
+      jsonArgs(dir, ['config', 'get', '--path', 'welcomeConfig.welcomeQuestions'])
+    );
+    expect(JSON.parse(queried.stdout[0]).result).toMatchObject({
+      value: welcomeQuestions,
+      valueSchema: { type: 'array', items: { type: 'string' } }
+    });
+    const before = await readFile(join(dir, 'workflow.json'), 'utf8');
+    expect(JSON.parse(before).chatConfig.welcomeConfig).toEqual({
+      welcomeText: '退款助手',
+      welcomeQuestions
+    });
+
+    const rejected = await invoke(
+      jsonArgs(dir, [
+        'config',
+        'set',
+        '--path',
+        'welcomeConfig.welcomeQuestions',
+        '--value-json',
+        JSON.stringify(['错误类型', 123])
+      ])
+    );
+    expect(rejected.exitCode).not.toBe(0);
+    expect(await readFile(join(dir, 'workflow.json'), 'utf8')).toBe(before);
   });
 
   it('supports the complete PR2 linear workflow command surface and import round-trip', async () => {

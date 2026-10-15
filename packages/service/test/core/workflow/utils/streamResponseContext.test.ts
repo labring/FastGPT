@@ -4,6 +4,13 @@ import { responseWrite } from '@fastgpt/service/common/response';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import * as streamResume from '@fastgpt/service/core/chat/resume';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import {
+  STREAM_RESUME_ACTIVITY_HEARTBEAT_INTERVAL_MS,
+  STREAM_RESUME_POST_COMPLETE_TTL_SECONDS,
+  getStreamResumeRedisKeys,
+  resetStreamResumeMirrorGuardForTest,
+  startStreamResumeActivityHeartbeat
+} from '@fastgpt/service/core/chat/resume';
 import { FASTGPT_REDIS_PREFIX } from '@fastgpt/dal/redis/runtime';
 import {
   createWorkflowStreamResponseContext,
@@ -84,6 +91,23 @@ describe('createWorkflowStreamResponseContext', () => {
     await redis.flushdb();
     redis.call = vi.fn(async () => '1-0');
     redis.info = vi.fn().mockResolvedValue('used_memory:10\r\nmaxmemory:100\r\n');
+  });
+
+  it('keeps activity heartbeat independent from the HTTP response lifecycle', async () => {
+    vi.useFakeTimers();
+    const touchActive = vi.fn().mockResolvedValue(undefined);
+    const stopHeartbeat = startStreamResumeActivityHeartbeat({
+      mirror: { touchActive },
+      intervalMs: STREAM_RESUME_ACTIVITY_HEARTBEAT_INTERVAL_MS
+    });
+
+    expect(touchActive).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(STREAM_RESUME_ACTIVITY_HEARTBEAT_INTERVAL_MS);
+    expect(touchActive).toHaveBeenCalledTimes(2);
+
+    stopHeartbeat();
+    await vi.advanceTimersByTimeAsync(STREAM_RESUME_ACTIVITY_HEARTBEAT_INTERVAL_MS * 2);
+    expect(touchActive).toHaveBeenCalledTimes(2);
   });
 
   afterEach(() => {

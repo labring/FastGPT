@@ -6,7 +6,11 @@ import { STREAM_RESUME_REQUEST_HEADER } from '@fastgpt/global/core/chat/constant
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { createSseStreamContext } from '../../../common/response/sse';
-import { getStreamResumeMirror } from '../../chat/resume';
+import {
+  getStreamResumeMirror,
+  getStreamResumeMirrorForBackgroundRun,
+  startStreamResumeActivityHeartbeat
+} from '../../chat/resume';
 import { getWorkflowResponseWrite } from '../dispatch/utils';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);
@@ -26,6 +30,8 @@ type CreateWorkflowStreamResponseContextBaseParams = {
 
 type CreateWorkflowStreamResponseContextParams = CreateWorkflowStreamResponseContextBaseParams & {
   enableStreamResume?: boolean;
+  /** 首次请求也创建镜像，供 Builder 断线后通过标准 resume endpoint 回放。 */
+  mirrorFromStart?: boolean;
 };
 
 export type WorkflowStreamResponseContext = {
@@ -126,18 +132,19 @@ export async function createWorkflowStreamResponseContext({
   chatId,
   responseId,
   showNodeStatus = true,
-  enableStreamResume = true
+  enableStreamResume = true,
+  mirrorFromStart = false
 }: CreateWorkflowStreamResponseContextParams): Promise<WorkflowStreamResponseContext> {
   const shouldEnableStreamResume = enableStreamResume !== false;
+  const streamResumeParams = { teamId, sourceType, sourceId, chatId };
   const mirror =
     stream && shouldEnableStreamResume
-      ? await getStreamResumeMirror({
-          resumeRequestHeaderValue: req.headers?.[STREAM_RESUME_REQUEST_HEADER],
-          teamId,
-          sourceType,
-          sourceId,
-          chatId
-        })
+      ? await (mirrorFromStart
+          ? getStreamResumeMirrorForBackgroundRun(streamResumeParams)
+          : getStreamResumeMirror({
+              ...streamResumeParams,
+              resumeRequestHeaderValue: req.headers?.[STREAM_RESUME_REQUEST_HEADER]
+            }))
       : undefined;
 
   const responseWrite = getWorkflowResponseWrite({
@@ -154,6 +161,7 @@ export async function createWorkflowStreamResponseContext({
     stream,
     responseWrite
   });
+  const stopActivityHeartbeat = startStreamResumeActivityHeartbeat({ mirror });
 
   const context: Omit<WorkflowStreamResponseContext, 'flushResume'> = {
     responseWrite,
@@ -176,6 +184,7 @@ export async function createWorkflowStreamResponseContext({
       ...context,
       async flushResume() {
         // no-op — stream resume is disabled
+        stopActivityHeartbeat();
       }
     };
   }
@@ -183,6 +192,7 @@ export async function createWorkflowStreamResponseContext({
   return {
     ...context,
     async flushResume() {
+      stopActivityHeartbeat();
       // 分别处理两步的异常，缓存写入失败时仍需尝试 TTL 收尾。
       await mirror?.flush().catch((error) => {
         logger.error('Failed to flush workflow stream resume cache', {

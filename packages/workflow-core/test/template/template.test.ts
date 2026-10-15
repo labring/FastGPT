@@ -20,7 +20,6 @@ describe('builtinTemplateProvider', () => {
       { kind: 'builtin', templateId: 'text-editor' },
       { kind: 'builtin', templateId: 'assigned-answer' },
       { kind: 'builtin', templateId: 'dataset-search' },
-      { kind: 'builtin', templateId: 'question-optimization' },
       { kind: 'builtin', templateId: 'content-extract' },
       { kind: 'builtin', templateId: 'http-request' },
       { kind: 'builtin', templateId: 'code' },
@@ -41,6 +40,16 @@ describe('builtinTemplateProvider', () => {
     await expect(
       builtinTemplateProvider.resolve(parseNodeTemplateRef('builtin:missing'), { locale: 'en' })
     ).rejects.toThrow(WorkflowCommandError);
+  });
+
+  it('excludes deprecated templates from listing but keeps them resolvable for compatibility', async () => {
+    const ref = parseNodeTemplateRef('builtin:question-optimization');
+    expect(
+      (await builtinTemplateProvider.list({ locale: 'en' })).map(formatNodeTemplateRef)
+    ).not.toContain('builtin:question-optimization');
+    await expect(builtinTemplateProvider.resolve(ref, { locale: 'en' })).resolves.toMatchObject({
+      template: { flowNodeType: 'cfr' }
+    });
   });
 
   it('publishes value schemas for common complex PR2 parameters', async () => {

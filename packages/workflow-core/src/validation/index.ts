@@ -1,4 +1,8 @@
-import { NodeInputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VARIABLE_NODE_ID
+} from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum,
@@ -8,7 +12,8 @@ import {
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
   areWorkflowValueTypesCompatible,
-  getSelectedInputRenderType
+  getSelectedInputRenderType,
+  nodeInputIsReference
 } from '@fastgpt/global/common/workflow/reference';
 import { WorkflowDocumentSchema, type WorkflowDocument } from '../domain/document';
 import { WorkflowCommandError, type WorkflowDiagnostic } from '../domain/diagnostic';
@@ -70,6 +75,50 @@ const getReachableNodeIds = (document: WorkflowDocument, startNodeId: string) =>
     }
   }
   return reachable;
+};
+
+/** 校验 Builder 生成的知识库问答链路是否把检索结果传入后续 AI 节点。 */
+export const validateWorkflowBuilderSemantics = (
+  document: WorkflowDocument
+): WorkflowDiagnostic[] => {
+  const datasetNodes = document.nodes.filter(
+    (node) =>
+      node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode ||
+      node.flowNodeType === FlowNodeTypeEnum.datasetConcatNode
+  );
+  const aiNodes = document.nodes.filter((node) => node.flowNodeType === FlowNodeTypeEnum.chatNode);
+
+  return aiNodes.flatMap((aiNode) => {
+    const upstreamDatasetNodeIds = new Set(
+      datasetNodes
+        .filter((datasetNode) =>
+          getReachableNodeIds(document, datasetNode.nodeId).has(aiNode.nodeId)
+        )
+        .map((datasetNode) => datasetNode.nodeId)
+    );
+    if (upstreamDatasetNodeIds.size === 0) return [];
+
+    const quoteInput = aiNode.inputs.find(
+      (input) => input.key === NodeInputKeyEnum.aiChatDatasetQuote
+    );
+    const references = getWorkflowReferenceValues(quoteInput?.value);
+    const hasUpstreamQuoteReference =
+      references?.some(
+        ([sourceNodeId, outputKey]) =>
+          upstreamDatasetNodeIds.has(sourceNodeId) && outputKey === NodeOutputKeyEnum.datasetQuoteQA
+      ) ?? false;
+    if (hasUpstreamQuoteReference) return [];
+
+    return [
+      {
+        code: 'WORKFLOW_DATASET_QUOTE_REFERENCE_REQUIRED',
+        severity: 'error' as const,
+        nodeId: aiNode.nodeId,
+        inputKey: NodeInputKeyEnum.aiChatDatasetQuote,
+        params: { upstreamDatasetNodeIds: [...upstreamDatasetNodeIds] }
+      }
+    ];
+  });
 };
 
 const validateReference = ({
@@ -228,7 +277,7 @@ const validateNodeIO = ({
     }
     if (!hasRequiredValue(input.value)) continue;
 
-    if (selectedType === FlowNodeInputTypeEnum.reference) {
+    if (nodeInputIsReference(input)) {
       validateReference({ document, node, input, diagnostics });
     } else if (!valueMatchesType(input.value, input.valueType)) {
       diagnostics.push({

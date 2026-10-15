@@ -225,7 +225,12 @@ export const setInputReference = ({
       ]);
     }
     input.value = [ref.nodeId, ref.outputKey];
-    setSelectedInputRenderType(input, FlowNodeInputTypeEnum.reference);
+    setSelectedInputRenderType(
+      input,
+      input.renderTypeList.includes(FlowNodeInputTypeEnum.settingDatasetQuotePrompt)
+        ? FlowNodeInputTypeEnum.settingDatasetQuotePrompt
+        : FlowNodeInputTypeEnum.reference
+    );
     return;
   }
 
@@ -291,7 +296,12 @@ export const setInputReference = ({
   }
 
   input.value = [ref.nodeId, ref.outputKey];
-  setSelectedInputRenderType(input, FlowNodeInputTypeEnum.reference);
+  setSelectedInputRenderType(
+    input,
+    input.renderTypeList.includes(FlowNodeInputTypeEnum.settingDatasetQuotePrompt)
+      ? FlowNodeInputTypeEnum.settingDatasetQuotePrompt
+      : FlowNodeInputTypeEnum.reference
+  );
 };
 
 /** 清空可选且可配置的节点输入。 */

@@ -2,60 +2,16 @@ import React from 'react';
 import { Box, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import WorkflowBuilderGuidePopover from './GuidePopover';
+import WorkflowBuilderGuidePopover from './presentation/GuidePopover';
 import { useWorkflowBuilderUI } from './context';
-import WorkflowToolbarTooltip from './WorkflowToolbarTooltip';
+import WorkflowToolbarTooltip from './presentation/WorkflowToolbarTooltip';
 import styles from './workflowBuilderEntry.module.scss';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '../../context';
-import {
-  getWorkflowBuilderAttentionKeys,
-  getWorkflowBuilderEntryAccess,
-  getWorkflowBuilderEntryVisualState,
-  hasUnseenWorkflowBuilderAttention,
-  useWorkflowBuilderVersionExpired
-} from './uiState';
+import { useWorkflowBuilderEntryVisual } from './hooks/useWorkflowBuilderEntryVisual';
 
 const WorkflowBuilderEntry = () => {
   const { t } = useTranslation('workflow');
-  const feConfigs = useSystemStore((state) => state.feConfigs);
-  const systemInitialized = useSystemStore((state) => state.initd);
-  const appDetail = useContextSelector(AppContext, (value) => value.appDetail);
-  const {
-    activeLeftPanel,
-    guideStep,
-    activity,
-    acknowledgedAttentionKeys,
-    openLeftPanel,
-    completeGuideStep,
-    requestInputFocus
-  } = useWorkflowBuilderUI();
-  const isOpen = activeLeftPanel === 'workflowBuilder';
-  const isLatestVersionExpired = useWorkflowBuilderVersionExpired(
-    activity.latestVersion?.version.expiresAt
-  );
-  const pendingVersionChecksum =
-    activity.latestVersion && !activity.latestVersion.version.appliedAt && !isLatestVersionExpired
-      ? activity.latestVersion.version.checksum
-      : undefined;
-  const attentionKeys = getWorkflowBuilderAttentionKeys({
-    pendingInteractiveKey: activity.pendingInteractiveKey,
-    pendingVersionChecksum,
-    errorAttentionKey: activity.errorAttentionKey
-  });
-  const { showGeneratingHalo, showAttentionDot } = getWorkflowBuilderEntryVisualState({
-    isChatGenerating: activity.isChatGenerating,
-    hasPendingAttention:
-      !isOpen && hasUnseenWorkflowBuilderAttention({ attentionKeys, acknowledgedAttentionKeys })
-  });
-  const entryAccess = getWorkflowBuilderEntryAccess({
-    systemInitialized,
-    isPlus: !!feConfigs?.isPlus,
-    showAgentSandbox: !!feConfigs?.show_agent_sandbox,
-    showWorkflowBuilder: feConfigs?.show_workflow_builder !== false,
-    canEdit: !!appDetail.permission?.hasWritePer
-  });
+  const { guideStep, openLeftPanel, completeGuideStep, requestInputFocus } = useWorkflowBuilderUI();
+  const { entryAccess, showGeneratingHalo, showAttentionDot } = useWorkflowBuilderEntryVisual();
 
   if (entryAccess === 'hidden') return null;
 

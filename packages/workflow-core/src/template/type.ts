@@ -86,6 +86,7 @@ export type NodeInputAutomationMeta = z.infer<typeof NodeInputAutomationMetaSche
 
 export const NodeTemplateAutomationMetaSchema = z
   .object({
+    availableForWorkflowBuilder: z.boolean().optional(),
     inputs: z.record(z.string(), NodeInputAutomationMetaSchema).optional()
   })
   .strict();

@@ -369,6 +369,8 @@
   "cli.config.scheduled_trigger": "워크플로를 예약 실행해야 하는 경우 구성합니다. Cron 표현식, 표준 시간대, 기본 질문을 함께 제공해야 합니다.",
   "cli.config.tts": "브라우저나 음성 모델을 통해 응답을 음성으로 읽어주어야 하는 경우 구성합니다.",
   "cli.config.welcome_text": "새 대화 시작 시 사전 설정된 가이드, 예시 또는 빠른 작업을 표시해야 하는 경우 구성합니다.",
+  "cli.config.welcome_config": "새 대화가 시작될 때 표시할 시작 콘텐츠를 구성합니다.",
+  "cli.config.welcome_questions": "환영 메시지 뒤에 사용자가 클릭할 수 있는 짧고 완전한 질문을 설정합니다.",
   "cli.config.whisper": "음성 인식을 통해 질문을 제출할 수 있어야 하는 경우 구성합니다.",
   "connection_invalid": "워크플로 규칙에 맞지 않는 연결입니다"
 }

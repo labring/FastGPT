@@ -29,6 +29,8 @@ export const STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS =
 export const STREAM_RESUME_BLOCK_MS = 30000;
 export const STREAM_RESUME_TTL_TOUCH_INTERVAL_MS = 1000;
 export const STREAM_RESUME_INACTIVE_MS = 2 * 60 * 1000;
+/** 后台任务没有输出时的活跃状态刷新周期，必须显著小于 inactive 阈值。 */
+export const STREAM_RESUME_ACTIVITY_HEARTBEAT_INTERVAL_MS = 30 * 1000;
 
 const streamResumeCache = new StreamResumeCache({
   logger,
@@ -168,6 +170,39 @@ export const resetStreamResumeMirrorGuardForTest = () => {
   lastLoggedMemoryPressureState = undefined;
 };
 
+/**
+ * 为仍在服务端执行的流维护 Redis 活跃状态。
+ *
+ * 该心跳只绑定任务生命周期，不绑定 HTTP response；客户端断开后仍会继续刷新 active，
+ * 直到请求完成、失败或主动停止。进程退出时不会恢复任务，交由现有 stale 清理逻辑处理。
+ */
+export const startStreamResumeActivityHeartbeat = ({
+  mirror,
+  intervalMs = STREAM_RESUME_ACTIVITY_HEARTBEAT_INTERVAL_MS
+}: {
+  mirror?: {
+    touchActive?: () => Promise<void> | void;
+  };
+  intervalMs?: number;
+}) => {
+  if (!mirror?.touchActive) return () => undefined;
+
+  let stopped = false;
+  const touch = () => {
+    if (stopped) return;
+    void Promise.resolve(mirror.touchActive?.()).catch(() => undefined);
+  };
+
+  touch();
+  const timer = setInterval(touch, intervalMs);
+
+  return () => {
+    if (stopped) return;
+    stopped = true;
+    clearInterval(timer);
+  };
+};
+
 const isResponseClosed = (res: NodeHttpResponse) =>
   !!(res.closed || res.writableEnded || res.destroyed);
 
@@ -197,6 +232,7 @@ export const mirrorChatStream = (params: StreamResumeRedisKeysParams) => {
     ...getStreamResumeRedisKeys(params),
     enqueueRaw: (chunk: string | Buffer | Uint8Array, encoding?: BufferEncoding) =>
       mirror.enqueueRaw(chunkToString(chunk, encoding)),
+    touchActive: mirror.touchActive,
     flush: mirror.flush,
     shrinkTTLAfterComplete: mirror.shrinkTTLAfterComplete
   };
@@ -208,6 +244,24 @@ export const getStreamResumeMirror = async ({
 }: StreamResumeRedisKeysParams & { resumeRequestHeaderValue?: ResumeRequestHeaderValue }) => {
   if (!isStreamResumeMirrorRequested(resumeRequestHeaderValue)) return;
 
+  if (await isRedisMemoryPressureBlockingStreamResume()) {
+    await streamResumeCache
+      .setUnavailable(params, {
+        reason: StreamResumeUnavailableReasonEnum.memoryPressure
+      })
+      .catch((error) => {
+        logger.warn('Failed to persist stream resume unavailable state', { params, error });
+      });
+    return;
+  }
+
+  return mirrorChatStream(params);
+};
+
+/** 为 Workflow Builder 等要求断线续跑的流，从首个请求开始建立相同的 Redis 重放镜像。 */
+export const getStreamResumeMirrorForBackgroundRun = async (
+  params: StreamResumeRedisKeysParams
+) => {
   if (await isRedisMemoryPressureBlockingStreamResume()) {
     await streamResumeCache
       .setUnavailable(params, {

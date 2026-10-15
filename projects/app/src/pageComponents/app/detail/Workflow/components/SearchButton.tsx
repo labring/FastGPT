@@ -7,7 +7,7 @@ import { useReactFlow } from 'reactflow';
 import { useKeyPress, useThrottleEffect } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import WorkflowToolbarTooltip from '../../WorkflowComponents/WorkflowBuilder/WorkflowToolbarTooltip';
+import WorkflowToolbarTooltip from '../../WorkflowComponents/WorkflowBuilder/presentation/WorkflowToolbarTooltip';
 
 type SearchButtonProps = ButtonProps & {
   inToolbar?: boolean;

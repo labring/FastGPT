@@ -272,3 +272,39 @@ describe('Provider error response messages', () => {
     expect(JSON.stringify(vi.mocked(res.json).mock.calls)).not.toContain('secret');
   });
 });
+
+describe('SSE stream resume mirror', () => {
+  it('keeps mirroring events after the original HTTP response is closed', async () => {
+    const { createSseStreamContext } = await import('../../../common/response/sse');
+    const response = Object.assign(new EventEmitter(), {
+      closed: true,
+      destroyed: true,
+      writableEnded: false,
+      headersSent: true,
+      setHeader: vi.fn(),
+      write: vi.fn(),
+      end: vi.fn()
+    });
+    const mirroredEvents: string[] = [];
+    const flushMirror = vi.fn();
+    const context = createSseStreamContext({
+      res: response as any,
+      streamResumeMirror: {
+        enqueueRaw: (event) => mirroredEvents.push(event),
+        flush: flushMirror,
+        shrinkTTLAfterComplete: vi.fn()
+      }
+    });
+
+    context.write({ event: 'answer', data: 'continued output' });
+    context.write({ event: 'done', data: '[DONE]' });
+    await context.flushResume();
+
+    expect(mirroredEvents).toEqual([
+      'event: answer\ndata: continued output\n\n',
+      'event: done\ndata: [DONE]\n\n'
+    ]);
+    expect(flushMirror).toHaveBeenCalledTimes(1);
+    expect(response.write).not.toHaveBeenCalled();
+  });
+});
