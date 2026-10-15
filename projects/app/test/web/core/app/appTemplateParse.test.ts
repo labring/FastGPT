@@ -3,11 +3,11 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { parseDashboardImportConfig } from '@/pageComponents/dashboard/agent/utils/appTemplateParse';
+import { parseWorkflowImportConfig } from '@/pageComponents/dashboard/agent/utils/appTemplateParse';
 
-describe('parseDashboardImportConfig', () => {
+describe('parseWorkflowImportConfig', () => {
   it('migrates workflow imports before the service boundary and remains idempotent', async () => {
-    const { workflow } = await parseDashboardImportConfig({
+    const workflow = await parseWorkflowImportConfig({
       config: {
         type: AppTypeEnum.workflowTool,
         nodes: [
@@ -36,7 +36,7 @@ describe('parseDashboardImportConfig', () => {
         edges: [],
         chatConfig: {}
       },
-      scene: 'tool',
+      appType: AppTypeEnum.workflowTool,
       t: (key: string) => key
     });
 
