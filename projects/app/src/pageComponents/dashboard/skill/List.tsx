@@ -13,7 +13,6 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import { SkillListContext } from './context';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import {
   AgentSkillSourceEnum,
@@ -76,7 +75,6 @@ const List = ({
     isEmpty,
     searchKey,
     setSearchKey,
-    folderDetail,
     ScrollData,
     listFilters,
     columnCount,
@@ -93,7 +91,6 @@ const List = ({
     isEmpty: v.isEmpty,
     searchKey: v.searchKey,
     setSearchKey: v.setSearchKey,
-    folderDetail: v.folderDetail,
     ScrollData: v.ScrollData,
     listFilters: v.listFilters,
     columnCount: v.columnCount,
@@ -509,27 +506,13 @@ const List = ({
           >
             {renderVirtualGridItems(renderSkillCard)}
           </Grid>
-        ) : skills.length === 0 && !folderDetail ? (
-          hasActiveFilter ? (
-            <EmptyTip />
-          ) : onClickCreate && onClickImport ? (
-            <SkillDashboardEmptyHero onClickImport={onClickImport} onClickCreate={onClickCreate} />
-          ) : (
-            <Grid
-              py={4}
-              gridTemplateColumns={[
-                '1fr',
-                'repeat(2,1fr)',
-                'repeat(2,1fr)',
-                'repeat(3,1fr)',
-                'repeat(4,1fr)'
-              ]}
-              gridGap={5}
-              alignItems={'stretch'}
-            >
-              <ForbiddenCreateButton />
-            </Grid>
-          )
+        ) : isEmpty &&
+          !parentId &&
+          !hasActiveFilter &&
+          !isBatchMode &&
+          onClickCreate &&
+          onClickImport ? (
+          <SkillDashboardEmptyHero onClickImport={onClickImport} onClickCreate={onClickCreate} />
         ) : (
           <Grid
             ref={gridRef}
