@@ -41,8 +41,7 @@ vi.mock('@fastgpt/service/core/dataset/utils', () => ({
 
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => {
   const createHandle = () => ({
-    getDefaultLLMModelData: vi.fn(),
-    getDefaultRerankModelData: vi.fn(),
+    getDefaultModelData: vi.fn(),
     getModelData: vi.fn(
       (
         { modelId, model }: { modelId?: string; model?: string },
@@ -112,6 +111,10 @@ vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
 // Collection 级权限解析依赖真实 DB 查询，单测只关心「是否按鉴权结果透传可读集合」。
 vi.mock('@fastgpt/service/support/permission/collection/auth', () => ({
   resolveReadableCollectionIds: resolveReadableCollectionIdsMock
+}));
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  assertAuthModels: vi.fn(async () => ({ handle: {}, models: [] })),
+  getAuthorizedModelIds: vi.fn(async () => new Set())
 }));
 
 import { dispatchAgentDatasetSearch } from '../../../../../../../core/workflow/dispatch/ai/agent/sub/dataset';

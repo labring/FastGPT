@@ -25,14 +25,17 @@ async function handler(
 ): Promise<CreateQuestionGuideResponseType> {
   const { messages } = parseApiInput({ req, bodySchema: CreateQuestionGuideBodySchema }).body;
 
-  const { tmbId, teamId } = await authChatCert({
+  const { tmbId, teamId, authType, isRoot } = await authChatCert({
     req,
     authToken: true,
     authApiKey: true
   });
   const modelHandle = await getTeamModelHandle({ teamId });
   const authorizedIds = await getAuthorizedModelIds({
-    actor: { teamId, tmbId },
+    actor:
+      authType === AuthUserTypeEnum.outLink
+        ? { source: 'outLink', teamId, tmbId }
+        : { teamId, tmbId, isRoot: Boolean(isRoot) },
     handle: modelHandle
   });
   const qgModel = modelHandle.getDefaultModelData('llm', { authorizedIds });
@@ -70,6 +73,7 @@ async function authChatCert(props: AuthModeType): Promise<{
   apikey: string;
   isOwner: boolean;
   canWrite: boolean;
+  isRoot?: boolean;
   outLinkUid?: string;
 }> {
   const { shareId, outLinkUid } =

@@ -94,8 +94,55 @@ export const getWorkflowCheckIssueMessage = ({
     : WORKFLOW_CHECK_MESSAGE_ALIASES[issueCode];
   if (!messageCode) return '';
 
-  const messageKey = workflowCheckMessageKeys[messageCode];
-  return t ? t(messageKey, params) : messageKey;
+  if (!t) return workflowCheckMessageKeys[messageCode];
+
+  // 有限文案逐项使用字面量翻译，确保清理脚本能直接识别实际调用的 key。
+  switch (messageCode) {
+    case 'required_input_empty':
+      return t('common:core.workflow.check.required_input_empty', params);
+    case 'no_upstream':
+      return t('common:core.workflow.check.no_upstream', params);
+    case 'invalid_reference':
+      return t('common:core.workflow.check.invalid_reference', params);
+    case 'if_else_incomplete':
+      return t('common:core.workflow.check.if_else_incomplete', params);
+    case 'user_select_empty':
+      return t('common:core.workflow.check.user_select_empty', params);
+    case 'user_select_value_empty':
+      return t('common:core.workflow.check.user_select_value_empty', params);
+    case 'form_input_empty':
+      return t('common:core.workflow.check.form_input_empty', params);
+    case 'classify_question_empty':
+      return t('common:core.workflow.check.classify_question_empty', params);
+    case 'classify_question_value_empty':
+      return t('common:core.workflow.check.classify_question_value_empty', params);
+    case 'code_input_incomplete':
+      return t('common:core.workflow.check.code_input_incomplete', params);
+    case 'http_url_empty':
+      return t('common:core.workflow.check.http_url_empty', params);
+    case 'context_extract_empty':
+      return t('common:core.workflow.check.context_extract_empty', params);
+    case 'tool_call_empty':
+      return t('common:core.workflow.check.tool_call_empty', params);
+    case 'tool_inactive':
+      return t('common:core.workflow.check.tool_inactive', params);
+    case 'tool_missing':
+      return t('common:core.workflow.check.tool_missing', params);
+    case 'tool_load_failed':
+      return t('common:core.workflow.check.tool_load_failed', params);
+    case 'tool_no_permission':
+      return t('common:core.workflow.check.tool_no_permission', params);
+    case 'model_unavailable':
+      return t('common:core.workflow.check.model_unavailable', params);
+    case 'model_unavailable_short':
+      return t('common:core.workflow.check.model_unavailable_short', params);
+    case 'model_required':
+      return t('common:core.workflow.check.model_required_short', params);
+    case 'resource_missing':
+      return t('common:core.workflow.check.resource_missing', params);
+    case 'resource_no_permission':
+      return t('common:core.workflow.check.resource_no_permission', params);
+  }
 };
 
 /**

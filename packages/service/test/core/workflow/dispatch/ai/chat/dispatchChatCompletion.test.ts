@@ -86,6 +86,10 @@ vi.mock('@fastgpt/service/core/workflow/utils/context', async (importOriginal) =
 vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   formatModelChars2Points: () => ({ totalPoints: 7 })
 }));
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  assertAuthModels: vi.fn(async () => ({ handle: {}, models: [] })),
+  getAuthorizedModelIds: vi.fn(async () => new Set())
+}));
 vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
   countGptMessagesTokens: vi.fn(async () => 1),
   countGptMessagesTokensBatch: vi.fn(async (groups: unknown[]) => groups.map(() => 1))

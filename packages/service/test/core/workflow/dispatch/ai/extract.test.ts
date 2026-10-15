@@ -38,6 +38,10 @@ vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
 vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   formatModelChars2Points: formatModelChars2PointsMock
 }));
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  assertAuthModels: vi.fn(async () => ({ handle: {}, models: [] })),
+  getAuthorizedModelIds: vi.fn(async () => new Set())
+}));
 
 import { dispatchContentExtract } from '@fastgpt/service/core/workflow/dispatch/ai/extract';
 

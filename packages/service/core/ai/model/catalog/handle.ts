@@ -13,15 +13,19 @@ import { assertModelAvailable } from '../../utils';
 type ModelSnapshot = {
   models: AIModelDataType[];
   defaultModels?: DefaultModelsBySlot;
-  configuredDefaultModelIds: ModelDefaultIds;
+  configuredDefaultModelIds: DefaultIdsBySlot;
   revision: number;
   version: string;
 };
 type OptionalResult<T, O extends boolean> = O extends true ? T | undefined : T;
+type ModelByType = {
+  [K in ModelTypeEnum as `${K}`]: Extract<AIModelDataType, { type: K }>;
+};
 type DefaultModelsBySlot = {
   [S in keyof SystemDefaultModelType as `${S}`]: SystemDefaultModelType[S];
 };
 type DefaultSlot = keyof DefaultModelsBySlot;
+type DefaultIdsBySlot = Partial<Record<DefaultSlot, string>>;
 type DefaultResult<S extends DefaultSlot> = S extends 'datasetImageLLM' | 'chatTitleLLM'
   ? DefaultModelsBySlot[S]
   : NonNullable<DefaultModelsBySlot[S]>;
@@ -48,7 +52,7 @@ export const resolveDefaultModelIds = ({
 }: {
   models: readonly AIModelDataType[];
   configuredDefaults: ModelDefaultIds;
-}): ModelDefaultIds => {
+}): DefaultIdsBySlot => {
   const candidates = models.filter((model) => model.isActive && isSystemModel(model));
   const modelMap = new Map(candidates.map((model) => [model.modelId, model]));
   const resolve = ({
@@ -131,7 +135,7 @@ export const createModelHandle = (input: ModelSnapshot) => {
   const activeModels = freeze(snapshot.models.filter((model) => model.isActive));
   const systemModels = freeze(snapshot.models.filter((model) => isSystemModel(model)));
   const teamModels = freeze(snapshot.models.filter((model) => isTeamModel(model)));
-  const effectiveConfiguredDefaults = freeze<ModelDefaultIds>(
+  const effectiveConfiguredDefaults = freeze<DefaultIdsBySlot>(
     Object.fromEntries(
       defaultSlots.map((slot) => [
         slot,
@@ -155,7 +159,7 @@ export const createModelHandle = (input: ModelSnapshot) => {
       ])
     ) as DefaultModelsBySlot
   );
-  const defaultIds = freeze<ModelDefaultIds>(
+  const defaultIds = freeze<DefaultIdsBySlot>(
     Object.fromEntries(defaultSlots.map((slot) => [slot, defaultModels[slot]?.modelId]))
   );
 
@@ -170,7 +174,7 @@ export const createModelHandle = (input: ModelSnapshot) => {
    * - 未传 `authorizedIds`：返回系统快照默认 ID；
    * - 传入 `authorizedIds`：仅在当前成员有权限的系统模型（不含团队模型）内按 `系统默认模型 -> 系统可用模型` 回退。
    */
-  const getDefaultModelIds = (authorizedIds?: ReadonlySet<string>): ModelDefaultIds => {
+  const getDefaultModelIds = (authorizedIds?: ReadonlySet<string>): DefaultIdsBySlot => {
     if (!authorizedIds) return defaultIds;
     return resolveDefaultModelIds({
       models: systemModels.filter((model) => authorizedIds.has(model.modelId)),
@@ -195,18 +199,15 @@ export const createModelHandle = (input: ModelSnapshot) => {
     const needVision = slot === 'datasetImageLLM';
     const isOptionalSlot =
       slot === 'datasetImageLLM' || slot === 'chatTitleLLM' || Boolean(options?.optional);
+    const configuredId = effectiveConfiguredDefaults[slot];
     const rawConfigured =
-      defaultModels[slot] ??
-      (effectiveConfiguredDefaults[slot]
-        ? modelsById.get(effectiveConfiguredDefaults[slot]!)
-        : undefined);
+      defaultModels[slot] ?? (configuredId ? modelsById.get(configuredId) : undefined);
 
     const isConfiguredValid =
-      Boolean(rawConfigured?.isActive) &&
-      isSystemModel(rawConfigured!) &&
-      rawConfigured!.type === expectedType &&
-      (!needVision ||
-        (rawConfigured!.type === ModelTypeEnum.llm && Boolean(rawConfigured!.config.vision)));
+      !!rawConfigured?.isActive &&
+      isSystemModel(rawConfigured) &&
+      rawConfigured.type === expectedType &&
+      (!needVision || (rawConfigured.type === ModelTypeEnum.llm && !!rawConfigured.config.vision));
 
     if (!options?.authorizedIds) {
       if (!isConfiguredValid && isOptionalSlot) return undefined as Result;
@@ -215,7 +216,7 @@ export const createModelHandle = (input: ModelSnapshot) => {
       return rawConfigured as Result;
     }
 
-    if (isConfiguredValid && options.authorizedIds.has(rawConfigured!.modelId)) {
+    if (isConfiguredValid && options.authorizedIds.has(rawConfigured.modelId)) {
       return rawConfigured as Result;
     }
     if (
@@ -261,8 +262,8 @@ export const createModelHandle = (input: ModelSnapshot) => {
       fallbackToDefault?: F;
       authorizedIds?: ReadonlySet<string>;
     }
-  ): OptionalResult<Extract<AIModelDataType, { type: T }>, O extends true ? true : F> => {
-    type Result = OptionalResult<Extract<AIModelDataType, { type: T }>, O extends true ? true : F>;
+  ): OptionalResult<ModelByType[T], O extends true ? true : F> => {
+    type Result = OptionalResult<ModelByType[T], O extends true ? true : F>;
     const resolveAndValidate = () => {
       if (isEmptyModelValue(getModelReferenceValue(reference))) {
         if (options?.optional && !options?.fallbackToDefault) {
@@ -275,7 +276,7 @@ export const createModelHandle = (input: ModelSnapshot) => {
       if (options?.authorizedIds && !options.authorizedIds.has(model!.modelId)) {
         throw new UserError(ModelErrEnum.unAuthModel);
       }
-      return model as Extract<AIModelDataType, { type: T }>;
+      return model as ModelByType[T];
     };
 
     if (!options?.fallbackToDefault) {
@@ -304,7 +305,7 @@ export const createModelHandle = (input: ModelSnapshot) => {
     findModelData: <T extends `${ModelTypeEnum}` = `${ModelTypeEnum}`>(
       reference: ModelReferenceType,
       options?: { type?: T; vision?: boolean }
-    ): Extract<AIModelDataType, { type: T }> | undefined => {
+    ): ModelByType[T] | undefined => {
       const model = resolve(reference);
       if (
         !model ||
@@ -312,7 +313,7 @@ export const createModelHandle = (input: ModelSnapshot) => {
         (options?.vision && !(model.type === ModelTypeEnum.llm && model.config.vision))
       )
         return;
-      return cloneDeep(model) as Extract<AIModelDataType, { type: T }>;
+      return cloneDeep(model) as ModelByType[T];
     },
     getDefaultModelData,
     getDefaultModelIds,

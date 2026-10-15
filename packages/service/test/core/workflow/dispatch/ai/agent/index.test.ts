@@ -78,6 +78,10 @@ vi.mock('@fastgpt/service/support/permission/skill/auth', async (importOriginal)
   ...(await importOriginal<typeof import('@fastgpt/service/support/permission/skill/auth')>()),
   authSkillByTmbId: authSkillByTmbIdMock
 }));
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  assertAuthModels: vi.fn(async () => ({ handle: {}, models: [] })),
+  getAuthorizedModelIds: vi.fn(async () => new Set())
+}));
 
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()),

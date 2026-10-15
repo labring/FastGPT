@@ -214,15 +214,15 @@ kept      = extracted 中已在 baseline 出现的部分（不重新鉴权）
 
 - `formatModels` 负责在写入/导入/调试边界（保存 `create.ts`、发布 `publish.ts`、模板解析 `appTemplateParse.ts`、调试 `prepareAppWorkflowResources`）将 legacy `model` 归一化为 canonical `modelId`、在 `preserve` 与 `validate` 模式下为已开启但留空的可选模型槽位物化默认 `modelId`，并在 `validate` 模式下校验模型存在性、启用状态和类型。调用方统一传入 `modelHandle.getActiveModels()`，不能先按当前成员权限过滤，否则 baseline 中已有模型会被错误阻断。
 - **团队模型与系统模型的兼容/回退边界**：显式 `modelId` 校验同时支持系统模型与团队模型；但旧 `model` 名称兼容提取（含跨环境 JSON 导入导出）以及默认模型回退（`defaultModelIds` 与同类型候选兜底）均通过 `isSystemModel` 严格限制为系统模型，绝不匹配或回退到团队模型。
-- `extractAppResources` 只提取已开启槽位的静态 canonical `*ModelId`（通过 `nodeInputIsReference(input)` 排除引用输入，通过 `resolveSystemModelId` 排除 `{{...}}` 模板与非字符串值，忽略 legacy `model` 字段）。
+- `extractAppResources` 提取已开启槽位的静态 canonical `*ModelId`，排除引用输入与 `{{...}}` 模板表达式。当 `modelId` 为 `undefined` 且存在 legacy `model` 时，通过进程内缓存的系统模型目录按名称和类型解析为 ID；不匹配团队模型，未命中目录时不生成模型资源。提取只声明资源，后续仍按快照基线或成员权限鉴权。
 - `resolveAppResourcesByPermission` 把 `model` 纳入 `added / kept`，新增模型通过现有 `PerResourceTypeEnum.model` 权限数据和 `getAuthorizedModelIds` 校验。
-- `modelId` 已唯一标识 `ai_models` 实体，资源快照统一存 `{ type: 'model', id: modelId }`，不再保存 `modelType`。模型类型仍由提取位置和现有 `getLLMModelData / getRerankModelData / getTTSModelData` 等 typed getter 校验，不进入资源身份。
-- 统一遵循“有 `modelId` 才校验，仅 legacy `model` 绕过”原则：
-  - 工作流各模型消费节点（`dispatchChatCompletion`、`classifyQuestion`、`extract`、`toolcall`、`queryExternsion`、`agent`、`dataset/search`、`agent/sub/dataset`）统一调用 `loadWorkflowModelResource`：先通过 `handle.getLLMModelData / getRerankModelData` 解析模型定义（可选槽位传 `fallbackToDefault: true` 时仅对 `isModelConfigError` 回退默认模型），再对非空 `modelId` 检查 `hasWorkflowResource`——命中快照直接放行，未命中快照按运行人 `assertAuthModels(use)` 校验；历史仅含 legacy `model`（无 `modelId`）的节点绕过快照与权限核对，仅在系统模型内兼容解析。
-  - `createQuestionGuide`、`getSpeech`（TTS）等独立于 Workflow dispatcher 的 App 辅助入口，仅在配置中存在非空 `modelId` 时调用 `authTargetModelResource` 走应用快照校验（命中正式 Version `resources` 直接放行；登录成员 Test/Debug 未命中时按 `resolveAppResourcesByPermission` 校验草稿基线与新增资源；外链 / API Key 只认正式 Version）；历史仅配置 legacy `model` 或空值回退默认系统模型时绕过快照校验。
-- Test / Debug（`prepareAppWorkflowResources`）先对请求体执行 `formatModels(preserve)` 将 legacy `model` 与已开启空槽位归一化为系统模型 `modelId`，返回授权后的资源列表，由 Test/Debug 入口构建临时资源上下文：baseline 内模型沿用 App 已有授权，新增模型按当前操作人校验。
+- `modelId` 已唯一标识 `ai_models` 实体，资源快照统一存 `{ type: 'model', id: modelId }`，不再保存 `modelType`。模型类型仍由提取位置和 `handle.getModelData(..., { type })` 校验，不进入资源身份。
+- 统一遵循“引用解析为实际模型 ID 后鉴权”原则，legacy `model` 不享有免鉴权豁免：
+  - 工作流各模型消费节点（`dispatchChatCompletion`、`classifyQuestion`、`extract`、`toolcall`、`queryExternsion`、`agent`、`dataset/search`、`agent/sub/dataset`）统一调用 `loadWorkflowModelResource`：通过 `handle.getModelData(..., { type })` 解析模型定义，并按实际模型 ID 检查 `hasWorkflowResource`——命中快照直接放行，未命中快照按运行人 `assertAuthModels(use)` 校验。历史仅含 legacy `model` 的节点只在系统模型内解析名称，仍遵循同一授权规则。可选槽位传 `fallbackToDefault: true` 时，仅对 `isModelConfigError` 在运行人有权限的系统模型内回退默认模型，无可用默认时返回 `undefined`；权限错误不降级。
+  - `createQuestionGuide`、`getSpeech`（TTS）等独立于 Workflow dispatcher 的 App 辅助入口，显式 `modelId` 或 legacy `model` 都先解析，再以实际模型 ID 调用 `authTargetModelResource` 走应用快照校验（命中正式 Version `resources` 直接放行；登录成员 Test/Debug 未命中时按 `resolveAppResourcesByPermission` 校验草稿基线与新增资源；外链 / API Key 只认正式 Version）。问题引导未配置模型时，通过 `getAuthorizedModelIds` 和 `handle.getDefaultModelData('llm', { authorizedIds })` 选择有权限的系统模型；TTS 仍要求模型引用和 voice。
+- Test / Debug（`prepareAppWorkflowResources`）先对请求体执行 `formatModels(preserve)` 将 legacy `model` 归一化为 `modelId`，已开启空槽位使用 `modelHandle.getDefaultModelIds(authorizedIds)` 提供的授权系统默认 ID。返回授权后的资源列表，由 Test/Debug 入口构建临时资源上下文：baseline 内模型沿用 App 已有授权，新增模型按当前操作人校验。
 - 未命中快照的模型或无 App 快照场景使用 `assertAuthModels(use)` 按运行人校验 `modelId`，并由 typed getter 校验模型存在、启用和类型。
-- App 来源请求携带客户端 `modelId` 时，服务端不得仅信任请求值：命中正式 Version 快照直接放行；未命中快照或非 App 来源按当前运行人权限校验。
+- App 辅助入口收到客户端 `modelId` 或 legacy `model` 时，服务端不得仅信任请求值：解析后命中正式 Version 快照直接放行；未命中时仅登录成员可走草稿基线与新增权限校验，外链 / API Key 直接拒绝；非 App 来源按当前运行人权限校验。
 - 当前 App 直接提取的模型来源仍是 LLM、rerank、TTS 等已有静态 `modelId` 入口。Embedding 模型属于 Dataset 自身配置，STT 当前没有 App 静态 `modelId`，不在本次提取范围；未来新增直接选择入口时只需让提取器产出同一种 `{ type: 'model', id }` 资源，不扩展资源 Schema。
 
 ### 7.4 `toolNames` 不是权限层
@@ -545,7 +545,7 @@ flowchart TD
 
 1. **模型（`loadWorkflowModelResource`）**：
    - 在具体使用模型的节点内调用，先通过 `ModelHandle` 解析模型定义（可选槽位支持 `fallbackToDefault: true`）；
-   - 非空 `modelId` 命中 `hasWorkflowResource({ type: 'model' })` 时直接放行；未命中时回退 `assertAuthModels(use)` 按运行人鉴权。
+   - `modelId` 或 legacy `model` 解析出的实际模型 ID 命中 `hasWorkflowResource({ type: 'model' })` 时直接放行；未命中时回退 `assertAuthModels(use)` 按运行人鉴权。
 2. **子应用与工具集（`loadWorkflowAppResource` / `loadChildWorkflowWithResource`）**：
    - 命中 `hasWorkflowResource` 时直接现场执行 `MongoApp.findOne`；未找到或格式非法统一抛出 `WorkflowResourceError`；
    - 未命中快照时回退按当前运行人读权限查询（`authAppByTmbId`）；

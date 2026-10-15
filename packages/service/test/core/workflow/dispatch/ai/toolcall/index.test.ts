@@ -38,6 +38,10 @@ vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
     getLLMModelData: getLLMModelDataMock
   })
 }));
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  assertAuthModels: vi.fn(async () => ({ handle: {}, models: [] })),
+  getAuthorizedModelIds: vi.fn(async () => new Set())
+}));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/toolcall/toolCall', () => ({
   runToolCall: runToolCallMock

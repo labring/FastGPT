@@ -189,7 +189,7 @@ export const onCreateApp = async ({
   });
   const modelHandle = await getTeamModelHandle({ teamId });
   const authorizedIds = await getAuthorizedModelIds({
-    actor: { teamId, tmbId, isRoot },
+    actor: { teamId, tmbId, isRoot: Boolean(isRoot) },
     handle: modelHandle
   });
   formatModels({
@@ -358,7 +358,7 @@ export const onUpdateAppWorkflow = async ({
   });
   const modelHandle = await getTeamModelHandle({ teamId });
   const authorizedIds = await getAuthorizedModelIds({
-    actor: { teamId, tmbId },
+    actor: { teamId, tmbId, isRoot: false },
     handle: modelHandle
   });
   formatModels({
