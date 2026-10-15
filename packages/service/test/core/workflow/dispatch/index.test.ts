@@ -1,4 +1,7 @@
-import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import {
+  createTestWorkflowDispatch,
+  createTestVariableContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { WorkflowContext } from '@fastgpt/service/core/workflow/dispatch/context';
 import * as WorkflowNodeResponse from '@fastgpt/service/core/workflow/dispatch/context/nodeResponse';
 import * as Tracing from '@fastgpt/service/common/tracing';
@@ -60,21 +63,6 @@ const waitWithTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label:
     }
   }
 };
-
-const createWorkflowVariableState = (
-  variables: Record<string, unknown> = {}
-): WorkflowVariableStateLike => ({
-  get: (key) => variables[key],
-  set: async (key, value) => {
-    variables[key] = value;
-    return value;
-  },
-  getStoreValue: (key) => variables[key],
-  getFileStoreValueByRuntimeUrl: () => undefined,
-  toRuntimeRecord: () => ({ ...variables }),
-  toStoreRecord: () => ({ ...variables }),
-  clone: () => createWorkflowVariableState({ ...variables })
-});
 
 describe('dispatchWorkFlow SSE initialization guard', () => {
   it('rejects stream responses when SSE was not initialized before dispatch', async () => {
@@ -990,7 +978,7 @@ describe('runWorkflow catchError', () => {
             status: 'waiting'
           }
         ],
-        variableContext: createWorkflowVariableState(),
+        variableContext: createTestVariableContext(),
         externalProvider: {},
         workflowDispatchDeep: 0,
         maxRunTimes: 10,
@@ -1063,7 +1051,7 @@ describe('runWorkflow assistant response aggregation', () => {
         chatConfig: {},
         runtimeNodes: [chatNode],
         runtimeEdges: [],
-        variableContext: createWorkflowVariableState(),
+        variableContext: createTestVariableContext(),
         externalProvider: {},
         workflowDispatchDeep: 0,
         maxRunTimes: 10,
@@ -1400,7 +1388,7 @@ describe('Workflow runtime LLM token summary', () => {
           chatConfig: {},
           runtimeNodes: [node],
           runtimeEdges: [],
-          variableContext: createWorkflowVariableState(),
+          variableContext: createTestVariableContext(),
           externalProvider: {},
           workflowDispatchDeep: 0,
           maxRunTimes: 10,

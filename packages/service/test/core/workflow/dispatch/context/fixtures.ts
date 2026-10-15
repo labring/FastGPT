@@ -172,40 +172,19 @@ export const createTestWorkflowDispatch =
       Awaited<Result>
     >;
 
-const capturedVariableContexts = new WeakMap<object, WorkflowVariableStateLike>();
-/** 子运行 mock 在调用时捕获 Context，而不是在 workflow props 中伪造变量字段。 */
-export const captureTestVariableContext = <Props extends object>(props: Props): Props => {
-  capturedVariableContexts.set(props, getWorkflowContext().variableContext);
+const capturedWorkflowContexts = new WeakMap<object, ReturnType<typeof getWorkflowContext>>();
+
+/** 子运行 mock 一次捕获当次 Context 的能力引用，避免重复包装或把依赖伪装成业务 props。 */
+export const captureTestWorkflowContext = <Props extends object>(props: Props): Props => {
+  capturedWorkflowContexts.set(props, { ...getWorkflowContext() });
   return props;
 };
-/** 读取某次子运行调用的变量 Context，以验证父子身份、隔离和回写行为。 */
-export const getCapturedTestVariableContext = (props: object): WorkflowVariableStateLike => {
-  const context = capturedVariableContexts.get(props);
-  if (!context) throw new Error('Test variable context was not captured');
+
+/** 读取调用发生时的 Context，统一验证变量、响应 Scope 与运行控制的身份和隔离行为。 */
+export const getCapturedTestWorkflowContext = (
+  props: object
+): ReturnType<typeof getWorkflowContext> => {
+  const context = capturedWorkflowContexts.get(props);
+  if (!context) throw new Error('Test workflow context was not captured');
   return context;
 };
-
-const capturedNodeResponseSinks = new WeakMap<object, WorkflowNodeResponseContext | undefined>();
-const capturedRuntimeControls = new WeakMap<object, WorkflowRuntimeControl>();
-
-/** 子流程 mock 捕获真实运行控制，避免将控制字段重新塞回业务 props 供断言。 */
-export const captureTestRuntimeControl = <Props extends object>(props: Props): Props => {
-  capturedRuntimeControls.set(props, getWorkflowContext().runtimeControl);
-  return props;
-};
-
-/** 返回子流程调用时的控制状态，用于校验模式、预算、深度及工具标记。 */
-export const getCapturedTestRuntimeControl = (props: object): WorkflowRuntimeControl => {
-  const control = capturedRuntimeControls.get(props);
-  if (!control) throw new Error('Test runtime control was not captured');
-  return control;
-};
-
-/** 子流程 mock 在调用时捕获响应 Scope，验证输出策略时不从节点 props 读取依赖。 */
-export const captureTestNodeResponseSink = <Props extends object>(props: Props): Props => {
-  capturedNodeResponseSinks.set(props, getWorkflowContext().nodeResponseSink);
-  return props;
-};
-/** 返回某次子流程调用实际使用的响应 Scope。 */
-export const getCapturedTestNodeResponseSink = (props: object) =>
-  capturedNodeResponseSinks.get(props);

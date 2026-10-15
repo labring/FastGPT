@@ -1,9 +1,7 @@
 import {
   createTestWorkflowDispatch,
-  captureTestVariableContext,
-  getCapturedTestVariableContext,
-  captureTestNodeResponseSink,
-  getCapturedTestNodeResponseSink
+  captureTestWorkflowContext,
+  getCapturedTestWorkflowContext
 } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import {
@@ -32,8 +30,7 @@ const getSystemToolWorkflowRuntimeMock = vi.fn();
 const computedAppToolUsageMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
-  runWorkflow: (args: any) =>
-    runWorkflowMock(captureTestNodeResponseSink(captureTestVariableContext(args)))
+  runWorkflow: (args: any) => runWorkflowMock(captureTestWorkflowContext(args))
 }));
 
 vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
@@ -399,17 +396,21 @@ describe('dispatchRunPlugin', () => {
     expect(runWorkflowMock).toHaveBeenCalledTimes(1);
     const childWorkflowProps = runWorkflowMock.mock.calls[0][0];
     expect(childWorkflowProps).not.toHaveProperty('nodeResponseSink');
-    expect(getCapturedTestNodeResponseSink(childWorkflowProps)).toEqual(
+    expect(getCapturedTestWorkflowContext(childWorkflowProps).nodeResponseSink).toEqual(
       expect.objectContaining({ publish: expect.any(Function) })
     );
-    expect(getCapturedTestNodeResponseSink(childWorkflowProps)).not.toBe(nodeResponseSink);
+    expect(getCapturedTestWorkflowContext(childWorkflowProps).nodeResponseSink).not.toBe(
+      nodeResponseSink
+    );
     expect(childWorkflowProps.runtimeNodes[0].inputs).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ key: 'internal', value: 'internal default' })
       ])
     );
     expect(childWorkflowProps.chatConfig.variables).toHaveLength(1);
-    expect(getCapturedTestVariableContext(childWorkflowProps).get('counter')).toBe(0);
+    expect(getCapturedTestWorkflowContext(childWorkflowProps).variableContext.get('counter')).toBe(
+      0
+    );
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
       moduleLogo: 'system-avatar',
       childResponseCount: 1
@@ -533,7 +534,9 @@ describe('dispatchRunPlugin', () => {
       });
       expect(childContext?.resolve(unselectedUrl)).toBeUndefined();
       expect(
-        getCapturedTestVariableContext(runWorkflowMock.mock.calls[0]?.[0]).get('defaultFiles')
+        getCapturedTestWorkflowContext(runWorkflowMock.mock.calls[0]?.[0]).variableContext.get(
+          'defaultFiles'
+        )
       ).toEqual([defaultUrl]);
 
       return {

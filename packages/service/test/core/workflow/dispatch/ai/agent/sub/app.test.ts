@@ -1,9 +1,7 @@
 import {
   createTestWorkflowDispatch,
-  captureTestVariableContext,
-  getCapturedTestVariableContext,
-  captureTestRuntimeControl,
-  getCapturedTestRuntimeControl
+  captureTestWorkflowContext,
+  getCapturedTestWorkflowContext
 } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -27,8 +25,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
-  runWorkflow: (args: any) =>
-    mocks.runWorkflow(captureTestVariableContext(captureTestRuntimeControl(args)))
+  runWorkflow: (args: any) => mocks.runWorkflow(captureTestWorkflowContext(args))
 }));
 
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
@@ -143,7 +140,7 @@ describe('agent sub app dispatchPlugin', () => {
     });
     await dispatchSystemWorkflow();
     const childProps = mocks.runWorkflow.mock.calls[0][0];
-    expect(getCapturedTestRuntimeControl(childProps)).toMatchObject({
+    expect(getCapturedTestWorkflowContext(childProps).runtimeControl).toMatchObject({
       mode: 'test',
       maxRunTimes: 20,
       workflowDispatchDeep: 0,
@@ -277,9 +274,11 @@ describe('agent sub app dispatchPlugin', () => {
         versionId: 'plugin-fixed-version'
       })
     );
-    expect(getCapturedTestVariableContext(mocks.runWorkflow.mock.calls[0][0]).get('counter')).toBe(
-      0
-    );
+    expect(
+      getCapturedTestWorkflowContext(mocks.runWorkflow.mock.calls[0][0]).variableContext.get(
+        'counter'
+      )
+    ).toBe(0);
     expect(mocks.serverGetWorkflowToolRunUserQuery).toHaveBeenCalledWith(
       expect.objectContaining({
         variables: expect.objectContaining({
@@ -494,7 +493,9 @@ describe('agent sub app dispatchPlugin', () => {
         type: 'chatObject',
         objectKey: defaultKey
       });
-      expect(getCapturedTestVariableContext(props).get('defaultFiles')).toEqual([defaultUrl]);
+      expect(getCapturedTestWorkflowContext(props).variableContext.get('defaultFiles')).toEqual([
+        defaultUrl
+      ]);
       return {
         flowUsages: [],
         workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, [
@@ -812,8 +813,10 @@ describe('agent sub app dispatchApp', () => {
       workflowDispatchDeep: 0
     } as any);
 
-    expect(getCapturedTestVariableContext(mocks.runWorkflow.mock.calls[0][0]).get('internal')).toBe(
-      'internal default'
-    );
+    expect(
+      getCapturedTestWorkflowContext(mocks.runWorkflow.mock.calls[0][0]).variableContext.get(
+        'internal'
+      )
+    ).toBe('internal default');
   });
 });

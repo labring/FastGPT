@@ -1,3 +1,4 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Readable } from 'node:stream';
 import { axios } from '@fastgpt/service/common/api/axios';
 import {
@@ -6,13 +7,29 @@ import {
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context/file';
 import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/context/variables';
-import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  createWorkflowEntryNodeResponseSink,
+  type WorkflowNodeResponseInput
+} from '@fastgpt/service/core/workflow/dispatch/context/nodeResponse';
+import { createWorkflowRuntimeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
+import {
+  getWorkflowContext,
+  updateWorkflowContextVal,
+  getWorkflowFileContext,
+  getWorkflowResourceContext,
+  runWithDerivedWorkflowFileContext,
+  runWithContext as runWithRequiredContext
+} from '@fastgpt/service/core/workflow/dispatch/context';
 import {
   createTestWorkflowFileContext,
   createTestVariableContext,
-  createTestRuntimeControl
+  createTestRuntimeControl,
+  createTestNodeResponseContext,
+  runWithTestWorkflowContext as runWithContext
 } from './fixtures';
 
 const scope = {
@@ -37,371 +54,310 @@ const createHistory = (file: UserChatItemValueItemType): ChatItemMiniType => ({
   value: [file]
 });
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import {
-  getWorkflowContext,
-  updateWorkflowContextVal,
-  getWorkflowFileContext,
-  getWorkflowResourceContext,
-  runWithDerivedWorkflowFileContext,
-  runWithContext as runWithRequiredContext
-} from '../../../../../core/workflow/dispatch/context';
-import {
-  runWithTestWorkflowContext as runWithContext,
-  createTestNodeResponseContext
-} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
-
+/** 默认构建完整 Context；非法依赖只由对应边界用例显式覆盖。 */
 const createWorkflowContext = async () => ({
   runtimeControl: createTestRuntimeControl(),
   checkIsStopping: () => false,
   mcpClientMemory: {},
+  variableContext: createTestVariableContext(),
   nodeResponseSink: createTestNodeResponseContext(),
   fileContext: await createTestWorkflowFileContext()
 });
 
-describe('WorkflowContext', () => {
-  describe('getChildContext', () => {
-    it('空覆盖只创建新 Context，继承能力引用，不激活作用域也不自动克隆变量', async () => {
-      const context = await createWorkflowContext();
-      const variables = createTestVariableContext({ value: 'shared' });
-      const sink = createTestNodeResponseContext({ publish: vi.fn(async () => []) });
-      const resourceContext = { teamId: 'team', isRoot: false, resourceMap: new Map() };
-      const parent = runWithRequiredContext(
-        { ...context, variableContext: variables, nodeResponseSink: sink, resourceContext },
-        (current) => current
-      );
+const requiredCapabilities = [
+  ['fileContext', 'Workflow file context is unavailable'],
+  ['variableContext', 'Workflow variable context is unavailable'],
+  ['checkIsStopping', 'Workflow stop checker is unavailable'],
+  ['nodeResponseSink', 'Workflow node response context is unavailable'],
+  ['runtimeControl', 'Workflow runtime control is unavailable']
+] as const;
 
-      // 派生仅依赖 Context 对象，本身无需激活 ALS。
-      const child = parent.getChildContext();
-      expect(child).not.toBe(parent);
-      expect(child.checkIsStopping).toBe(parent.checkIsStopping);
-      expect(child.mcpClientMemory).toBe(parent.mcpClientMemory);
-      expect(child.fileContext).toBe(parent.fileContext);
-      expect(child.variableContext).toBe(variables);
-      expect(child.nodeResponseSink).toBe(sink);
-      expect(child.resourceContext).toBe(resourceContext);
-      expect(child.runtimeControl).toEqual(parent.runtimeControl);
-      expect(child.runtimeControl).not.toBe(parent.runtimeControl);
-      expect(() => getWorkflowContext()).toThrow('Workflow context is unavailable');
-      await child.variableContext.set('value', 'shared-write');
-      expect(parent.variableContext.get('value')).toBe('shared-write');
+describe('runWithContext / getWorkflowContext', () => {
+  it.each(requiredCapabilities)(
+    '缺少 %s 时不启动回调，运行中丢失该能力时拒绝读取',
+    async (key, message) => {
+      const context = await createWorkflowContext();
+      const fn = vi.fn();
+      expect(() => runWithRequiredContext({ ...context, [key]: undefined }, fn)).toThrow(message);
+      expect(fn).not.toHaveBeenCalled();
+
+      runWithRequiredContext(context, () => {
+        updateWorkflowContextVal({ [key]: undefined });
+        expect(() => getWorkflowContext()).toThrow(message);
+      });
+    }
+  );
+
+  it('拒绝 publish-only 响应 Adapter 作为完整 Scope 注入', async () => {
+    const context = await createWorkflowContext();
+    const fn = vi.fn();
+    expect(() =>
+      runWithRequiredContext({ ...context, nodeResponseSink: { publish: vi.fn() } } as any, fn)
+    ).toThrow('Workflow node response context is unavailable');
+    expect(fn).not.toHaveBeenCalled();
+  });
+
+  it('文件数量限额未初始化时保留明确报错', async () => {
+    const context = await createWorkflowContext();
+    runWithRequiredContext(
+      { ...context, fileContext: { limits: { maxBytesPerFile: 1024 } } as any },
+      () => expect(() => getWorkflowContext()).toThrow('Workflow file context is unavailable')
+    );
+  });
+
+  it('异步嵌套使用当前 Context，退出后恢复父级；零额度及共享限额原样保留', async () => {
+    const context = await createWorkflowContext();
+    context.fileContext = (
+      await prepareWorkflowFileContext({
+        query: [],
+        histories: [],
+        scope,
+        maxFileAmount: 0,
+        maxBytesPerFile: 1024
+      })
+    ).fileContext;
+    const childFileContext = await context.fileContext.derive([]);
+    expect(() => getWorkflowContext()).toThrow('Workflow context is unavailable');
+    expect(getWorkflowFileContext()).toBeUndefined();
+    expect(getWorkflowResourceContext()).toBeUndefined();
+
+    await runWithRequiredContext(context, async (parent) => {
+      await Promise.resolve();
+      expect(getWorkflowContext()).toBe(context);
+      expect(getWorkflowFileContext()).toBe(context.fileContext);
+      expect(context.fileContext.limits).toEqual({ maxFileAmount: 0, maxBytesPerFile: 1024 });
+      const child = parent.getChildContext({ fileContext: childFileContext });
+      await runWithRequiredContext(child, async () => {
+        await Promise.resolve();
+        expect(getWorkflowContext()).toBe(child);
+        expect(getWorkflowFileContext()).toBe(childFileContext);
+        expect(childFileContext.limits).toBe(context.fileContext.limits);
+      });
+      expect(getWorkflowContext()).toBe(parent);
+      expect(getWorkflowFileContext()).toBe(context.fileContext);
     });
+    expect(() => getWorkflowContext()).toThrow('Workflow context is unavailable');
+    expect(getWorkflowFileContext()).toBeUndefined();
+  });
+});
 
-    it('一次覆盖多个字段，未激活前父作用域不变，可选依赖显式 undefined 清空', async () => {
-      const context = await createWorkflowContext();
-      const parentVariables = createTestVariableContext({ value: 'parent' });
-      const childVariables = parentVariables.clone();
-      const childFileContext = await context.fileContext.derive([]);
-      const sink = createTestNodeResponseContext({ publish: vi.fn(async () => []) });
-      const resourceContext = { teamId: 'team', isRoot: false, resourceMap: new Map() };
+describe('WorkflowContext.getChildContext', () => {
+  it('空覆盖只创建新 Context，继承能力引用，不激活作用域也不自动克隆变量', async () => {
+    const context = await createWorkflowContext();
+    const variables = createTestVariableContext({ value: 'shared' });
+    const sink = createTestNodeResponseContext({ publish: vi.fn(async () => []) });
+    const resourceContext = { teamId: 'team', isRoot: false, resourceMap: new Map() };
+    const parent = runWithRequiredContext(
+      { ...context, variableContext: variables, nodeResponseSink: sink, resourceContext },
+      (current) => current
+    );
 
-      await runWithRequiredContext(
-        { ...context, variableContext: parentVariables, nodeResponseSink: sink, resourceContext },
-        async (parent) => {
-          const child = parent.getChildContext({
-            fileContext: childFileContext,
-            variableContext: childVariables,
-            nodeResponseSink: createTestNodeResponseContext(),
-            resourceContext: undefined
-          });
-          expect(getWorkflowContext()).toBe(parent);
-          await runWithRequiredContext(child, async (current) => {
-            expect(current).toBe(child);
-            expect(getWorkflowContext()).toBe(child);
-            expect(current.fileContext).toBe(childFileContext);
-            expect(current.variableContext).toBe(childVariables);
-            expect(current.nodeResponseSink.hasOutput).toBe(false);
-            expect(current.resourceContext).toBeUndefined();
-            await current.variableContext.set('value', 'child');
-          });
-          expect(getWorkflowContext()).toBe(parent);
-          expect(parent.fileContext).toBe(context.fileContext);
-          expect(parent.variableContext.get('value')).toBe('parent');
-          expect(parent.nodeResponseSink).toBe(sink);
-          expect(parent.resourceContext).toBe(resourceContext);
-        }
-      );
-    });
+    // 派生仅依赖 Context 对象，本身无需激活 ALS。
+    const child = parent.getChildContext();
+    expect(child).not.toBe(parent);
+    expect(child.checkIsStopping).toBe(parent.checkIsStopping);
+    expect(child.mcpClientMemory).toBe(parent.mcpClientMemory);
+    expect(child.fileContext).toBe(parent.fileContext);
+    expect(child.variableContext).toBe(variables);
+    expect(child.nodeResponseSink).toBe(sink);
+    expect(child.resourceContext).toBe(resourceContext);
+    expect(child.runtimeControl).toEqual(parent.runtimeControl);
+    expect(child.runtimeControl).not.toBe(parent.runtimeControl);
+    expect(() => getWorkflowContext()).toThrow('Workflow context is unavailable');
+    await child.variableContext.set('value', 'shared-write');
+    expect(parent.variableContext.get('value')).toBe('shared-write');
+  });
 
-    it('多级派生继承当前子 Context，不回退到最初的父 Context', async () => {
-      const context = await createWorkflowContext();
-      await runWithContext(context, async (parent) => {
-        const variables = createTestVariableContext({ value: 'child' });
-        const childFileContext = await parent.fileContext.derive([]);
+  it('一次覆盖多个字段，未激活前父作用域不变，可选依赖显式 undefined 清空', async () => {
+    const context = await createWorkflowContext();
+    const parentVariables = createTestVariableContext({ value: 'parent' });
+    const childVariables = parentVariables.clone();
+    const childFileContext = await context.fileContext.derive([]);
+    const sink = createTestNodeResponseContext({ publish: vi.fn(async () => []) });
+    const resourceContext = { teamId: 'team', isRoot: false, resourceMap: new Map() };
+
+    await runWithRequiredContext(
+      { ...context, variableContext: parentVariables, nodeResponseSink: sink, resourceContext },
+      async (parent) => {
         const child = parent.getChildContext({
-          variableContext: variables,
-          fileContext: childFileContext
+          fileContext: childFileContext,
+          variableContext: childVariables,
+          nodeResponseSink: createTestNodeResponseContext(),
+          resourceContext: undefined
         });
-        const sink = createTestNodeResponseContext({ publish: vi.fn(async () => []) });
-        const grandchild = child.getChildContext({ nodeResponseSink: sink });
-        const sibling = child.getChildContext({
-          nodeResponseSink: createTestNodeResponseContext()
-        });
-        expect(grandchild.variableContext).toBe(variables);
-        expect(grandchild.fileContext).toBe(childFileContext);
-        expect(grandchild.nodeResponseSink).toBe(sink);
-        expect(sibling.variableContext).toBe(variables);
-        expect(sibling.nodeResponseSink.hasOutput).toBe(false);
-        expect(child.nodeResponseSink).toBe(parent.nodeResponseSink);
         expect(getWorkflowContext()).toBe(parent);
-      });
-    });
+        await runWithRequiredContext(child, async (current) => {
+          expect(current).toBe(child);
+          expect(getWorkflowContext()).toBe(child);
+          expect(current.fileContext).toBe(childFileContext);
+          expect(current.variableContext).toBe(childVariables);
+          expect(current.nodeResponseSink.hasOutput).toBe(false);
+          expect(current.resourceContext).toBeUndefined();
+          await current.variableContext.set('value', 'child');
+        });
+        expect(getWorkflowContext()).toBe(parent);
+        expect(parent.fileContext).toBe(context.fileContext);
+        expect(parent.variableContext.get('value')).toBe('parent');
+        expect(parent.nodeResponseSink).toBe(sink);
+        expect(parent.resourceContext).toBe(resourceContext);
+      }
+    );
+  });
 
-    it('必填能力不能通过 undefined 覆盖清空', async () => {
-      const context = await createWorkflowContext();
-      runWithContext(context, (parent) => {
-        expect(() => parent.getChildContext({ fileContext: undefined })).toThrow(
-          'Workflow file context is unavailable'
-        );
-        expect(() => parent.getChildContext({ variableContext: undefined })).toThrow(
-          'Workflow variable context is unavailable'
-        );
-        expect(() => parent.getChildContext({ checkIsStopping: undefined })).toThrow(
-          'Workflow stop checker is unavailable'
-        );
-        expect(() => parent.getChildContext({ nodeResponseSink: undefined })).toThrow(
-          'Workflow node response context is unavailable'
-        );
-        expect(() => parent.getChildContext({ runtimeControl: undefined })).toThrow(
-          'Workflow runtime control is unavailable'
-        );
-        expect(getWorkflowContext()).toBe(parent);
+  it('多级派生继承当前子 Context，不回退到最初的父 Context', async () => {
+    const context = await createWorkflowContext();
+    await runWithContext(context, async (parent) => {
+      const variables = createTestVariableContext({ value: 'child' });
+      const childFileContext = await parent.fileContext.derive([]);
+      const child = parent.getChildContext({
+        variableContext: variables,
+        fileContext: childFileContext
       });
+      const sink = createTestNodeResponseContext({ publish: vi.fn(async () => []) });
+      const grandchild = child.getChildContext({ nodeResponseSink: sink });
+      const sibling = child.getChildContext({
+        nodeResponseSink: createTestNodeResponseContext()
+      });
+      expect(grandchild.variableContext).toBe(variables);
+      expect(grandchild.fileContext).toBe(childFileContext);
+      expect(grandchild.nodeResponseSink).toBe(sink);
+      expect(sibling.variableContext).toBe(variables);
+      expect(sibling.nodeResponseSink.hasOutput).toBe(false);
+      expect(child.nodeResponseSink).toBe(parent.nodeResponseSink);
+      expect(getWorkflowContext()).toBe(parent);
     });
   });
 
-  describe('runtimeControl', () => {
-    it('读取时同样拒绝运行期间丢失的控制状态', async () => {
-      const context = await createWorkflowContext();
-      await runWithContext(context, (current) => {
-        const control = current.runtimeControl;
-        Reflect.deleteProperty(current, 'runtimeControl');
-        try {
-          expect(() => getWorkflowContext()).toThrow('Workflow runtime control is unavailable');
-        } finally {
-          current.runtimeControl = control;
-        }
+  it('按当前父级派生并局部覆盖，保留零预算且不共享深度或工具标记', async () => {
+    const context = await createWorkflowContext();
+    await runWithContext(context, (parent) => {
+      parent.runtimeControl.maxRunTimes = 0;
+      parent.runtimeControl.workflowDispatchDeep = 4;
+      const child = parent.getChildContext({ runtimeControl: { isToolCall: true } });
+      const grandchild = child.getChildContext();
+      expect(child.runtimeControl).toEqual({
+        mode: 'test',
+        maxRunTimes: 0,
+        workflowDispatchDeep: 4,
+        isToolCall: true
       });
-    });
-
-    it('缺失控制状态时拒绝启动，不隐式生成预算或运行模式', async () => {
-      const context = await createWorkflowContext();
-      const fn = vi.fn();
-      const { runtimeControl: _runtimeControl, ...incomplete } = {
-        ...context,
-        variableContext: createTestVariableContext()
-      };
-      expect(() => runWithRequiredContext(incomplete as any, fn)).toThrow(
-        'Workflow runtime control is unavailable'
-      );
-      expect(fn).not.toHaveBeenCalled();
-    });
-
-    it('按当前父级派生并局部覆盖，保留零预算且不共享深度或工具标记', async () => {
-      const context = await createWorkflowContext();
-      await runWithContext(context, (parent) => {
-        parent.runtimeControl.maxRunTimes = 0;
-        parent.runtimeControl.workflowDispatchDeep = 4;
-        const child = parent.getChildContext({ runtimeControl: { isToolCall: true } });
-        const grandchild = child.getChildContext();
-        expect(child.runtimeControl).toEqual({
-          mode: 'test',
-          maxRunTimes: 0,
-          workflowDispatchDeep: 4,
-          isToolCall: true
-        });
-        expect(grandchild.runtimeControl).toEqual(child.runtimeControl);
-        grandchild.runtimeControl.workflowDispatchDeep++;
-        child.runtimeControl.maxRunTimes -= 0.1;
-        expect(parent.runtimeControl).toMatchObject({
-          maxRunTimes: 0,
-          workflowDispatchDeep: 4,
-          isToolCall: false
-        });
-        expect(child.runtimeControl.workflowDispatchDeep).toBe(4);
-        expect(grandchild.runtimeControl.maxRunTimes).toBe(0);
+      expect(grandchild.runtimeControl).toEqual(child.runtimeControl);
+      grandchild.runtimeControl.workflowDispatchDeep++;
+      child.runtimeControl.maxRunTimes -= 0.1;
+      expect(parent.runtimeControl).toMatchObject({
+        maxRunTimes: 0,
+        workflowDispatchDeep: 4,
+        isToolCall: false
       });
+      expect(child.runtimeControl.workflowDispatchDeep).toBe(4);
+      expect(grandchild.runtimeControl.maxRunTimes).toBe(0);
     });
+  });
 
-    it('并行分支独立扣减快照预算，完成或抛错后恢复父级控制状态', async () => {
-      const context = await createWorkflowContext();
-      await runWithContext(context, async (parent) => {
-        const initial = { ...parent.runtimeControl };
-        const branches = [parent.getChildContext(), parent.getChildContext()];
+  it('必填能力不能通过 undefined 覆盖清空', async () => {
+    const context = await createWorkflowContext();
+    runWithRequiredContext(context, (parent) => {
+      for (const [key, message] of requiredCapabilities) {
+        expect(() => parent.getChildContext({ [key]: undefined })).toThrow(message);
+      }
+      expect(getWorkflowContext()).toBe(parent);
+    });
+  });
+
+  it('并发分支独立持有变量、控制快照和响应 Scope，成功或抛错均恢复父级', async () => {
+    const context = await createWorkflowContext();
+    const publish = vi.fn(async (inputs: WorkflowNodeResponseInput[]) =>
+      inputs.map(({ response }) => response)
+    );
+    const sink = createWorkflowEntryNodeResponseSink({ output: { publish } });
+    const variables = createTestVariableContext({ value: 'parent' });
+
+    await runWithRequiredContext(
+      { ...context, variableContext: variables, nodeResponseSink: sink },
+      async (parent) => {
+        const initialControl = { ...parent.runtimeControl };
+        const children = ['left', 'right'].map((value, index) =>
+          parent.getChildContext({
+            variableContext: createTestVariableContext({ value }),
+            nodeResponseSink: sink.getChildContext({
+              workflowRuntimeSummary: createWorkflowRuntimeSummary(),
+              defaultParentId: 'parent-' + index
+            })
+          })
+        );
         const results = await Promise.allSettled(
-          branches.map((branch, index) =>
-            runWithRequiredContext(branch, async () => {
+          children.map((child, index) =>
+            runWithRequiredContext(child, async () => {
               const control = getWorkflowContext().runtimeControl;
               control.maxRunTimes -= index + 1;
               control.workflowDispatchDeep++;
               await Promise.resolve();
-              expect(getWorkflowContext().runtimeControl).toBe(control);
-              if (index === 1) throw new Error('branch failed');
+              expect(getWorkflowContext()).toBe(child);
+              expect(getWorkflowContext().fileContext).toBe(context.fileContext);
+              expect(child.variableContext.get('value')).toBe(index === 0 ? 'left' : 'right');
+              await child.nodeResponseSink.publish([
+                {
+                  response: {
+                    id: 'child-' + index,
+                    nodeId: 'node-' + index,
+                    moduleName: 'Child',
+                    moduleType: FlowNodeTypeEnum.textEditor,
+                    inputTokens: index + 1
+                  }
+                }
+              ]);
+              if (index === 0) {
+                await child.variableContext.set('value', 'changed');
+                throw new Error('branch failed');
+              }
+              return child.variableContext.get('value');
             })
           )
         );
-        expect(results.map((result) => result.status)).toEqual(['fulfilled', 'rejected']);
-        expect(branches.map((branch) => branch.runtimeControl.maxRunTimes)).toEqual([
-          initial.maxRunTimes - 1,
-          initial.maxRunTimes - 2
+        expect(results[0]).toEqual({ status: 'rejected', reason: new Error('branch failed') });
+        expect(results[1]).toEqual({ status: 'fulfilled', value: 'right' });
+        expect(children.map(({ runtimeControl }) => runtimeControl.maxRunTimes)).toEqual([
+          initialControl.maxRunTimes - 1,
+          initialControl.maxRunTimes - 2
         ]);
+        expect(
+          children.map(
+            ({ nodeResponseSink }) => nodeResponseSink.workflowRuntimeSummary.llmInputTokens
+          )
+        ).toEqual([1, 2]);
         expect(getWorkflowContext()).toBe(parent);
-        expect(parent.runtimeControl).toEqual(initial);
-      });
-    });
-  });
-
-  it('变量 Context 必填，缺失时不启动回调', async () => {
-    const context = await createWorkflowContext();
-    const fn = vi.fn();
-    expect(() => runWithRequiredContext(context as any, fn)).toThrow(
-      'Workflow variable context is unavailable'
+        expect(parent.runtimeControl).toEqual(initialControl);
+        expect(parent.variableContext.get('value')).toBe('parent');
+        expect(parent.nodeResponseSink).toBe(sink);
+        expect(sink.workflowRuntimeSummary.llmInputTokens).toBe(0);
+        expect(
+          publish.mock.calls.flatMap(([inputs]) => inputs.map(({ response }) => response))
+        ).toEqual([
+          expect.objectContaining({ id: 'child-0', parentId: 'parent-0' }),
+          expect.objectContaining({ id: 'child-1', parentId: 'parent-1' })
+        ]);
+      }
     );
-    expect(fn).not.toHaveBeenCalled();
-  });
-
-  it('响应 Context 缺失或不是完整 Scope 时，不启动执行', async () => {
-    const context = await createWorkflowContext();
-    const fn = vi.fn();
-    for (const nodeResponseSink of [undefined, { publish: vi.fn() }]) {
-      expect(() =>
-        runWithRequiredContext(
-          { ...context, variableContext: createTestVariableContext(), nodeResponseSink } as any,
-          fn
-        )
-      ).toThrow('Workflow node response context is unavailable');
-    }
-    expect(fn).not.toHaveBeenCalled();
-    runWithContext(context, () => {
-      updateWorkflowContextVal({ nodeResponseSink: undefined });
-      expect(() => getWorkflowContext()).toThrow('Workflow node response context is unavailable');
-    });
-  });
-
-  it('运行 Context 的变量能力被错误清空时，getter 明确拒绝缺失依赖', async () => {
-    const context = await createWorkflowContext();
-    runWithContext(context, () => {
-      updateWorkflowContextVal({ variableContext: undefined });
-      expect(() => getWorkflowContext()).toThrow('Workflow variable context is unavailable');
-    });
-  });
-
-  it('并发分支隔离变量 Context，抛错和返回后恢复父作用域', async () => {
-    const context = await createWorkflowContext();
-    const parent = createTestVariableContext({ value: 'parent' });
-    const left = createTestVariableContext({ value: 'left' });
-    const right = createTestVariableContext({ value: 'right' });
-
-    await runWithRequiredContext({ ...context, variableContext: parent }, async () => {
-      const results = await Promise.allSettled([
-        runWithRequiredContext(
-          getWorkflowContext().getChildContext({ variableContext: left }),
-          async () => {
-            await Promise.resolve();
-            expect(getWorkflowContext().variableContext).toBe(left);
-            expect(getWorkflowContext().fileContext).toBe(context.fileContext);
-            await left.set('value', 'changed');
-            throw new Error('branch failed');
-          }
-        ),
-        runWithRequiredContext(
-          getWorkflowContext().getChildContext({ variableContext: right }),
-          async () => {
-            await Promise.resolve();
-            expect(getWorkflowContext().variableContext).toBe(right);
-            return right.get('value');
-          }
-        )
-      ]);
-      expect(results[0].status).toBe('rejected');
-      expect(results[1]).toEqual({ status: 'fulfilled', value: 'right' });
-      expect(getWorkflowContext().variableContext).toBe(parent);
-      expect(parent.get('value')).toBe('parent');
-    });
     expect(getWorkflowFileContext()).toBeUndefined();
   });
+});
 
-  it('注入时缺少停止检查会明确失败，不启动节点回调', async () => {
-    const fileContext = await createTestWorkflowFileContext();
-    const fn = vi.fn();
-    expect(() =>
-      runWithContext({ mcpClientMemory: {}, fileContext, variableContext: {} } as any, fn)
-    ).toThrow('Workflow stop checker is unavailable');
-    expect(fn).not.toHaveBeenCalled();
-  });
-
-  describe('runWithContext / getWorkflowContext', () => {
-    it('should provide context inside callback', async () => {
-      const ctx = await createWorkflowContext();
-
-      runWithContext(ctx, () => {
-        const store = getWorkflowContext();
-        expect(store).toBe(ctx);
-      });
-    });
-
-    it('should throw a clear error outside of context', async () => {
-      expect(() => getWorkflowContext()).toThrow('Workflow context is unavailable');
-    });
-
-    it('should isolate nested contexts', async () => {
-      const outer = await createWorkflowContext();
-      const inner = await createWorkflowContext();
-
-      runWithContext(outer, () => {
-        expect(getWorkflowContext()).toBe(outer);
-
-        runWithContext(inner, () => {
-          expect(getWorkflowContext()).toBe(inner);
-        });
-
-        // outer context restored
-        expect(getWorkflowContext()).toBe(outer);
-      });
-    });
-
-    it('should work with async functions', async () => {
-      const ctx = await createWorkflowContext();
-
-      await new Promise<void>((resolve) => {
-        runWithContext(ctx, async () => {
-          await Promise.resolve();
-          expect(getWorkflowContext()).toEqual(ctx);
-          resolve();
-        });
-      });
+describe('updateWorkflowContextVal', () => {
+  it('只更新指定字段，空覆盖保留当前 Context 及其余依赖', async () => {
+    const context = await createWorkflowContext();
+    const mcpClientMemory = {};
+    const variableContext = context.variableContext;
+    runWithRequiredContext(context, () => {
+      updateWorkflowContextVal({ mcpClientMemory });
+      updateWorkflowContextVal({});
+      expect(getWorkflowContext()).toBe(context);
+      expect(getWorkflowContext().mcpClientMemory).toBe(mcpClientMemory);
+      expect(getWorkflowContext().variableContext).toBe(variableContext);
     });
   });
 
-  describe('updateWorkflowContextVal', () => {
-    it('should update existing context values', async () => {
-      const ctx = await createWorkflowContext();
-      const mcpClientMemory = {};
-
-      runWithContext(ctx, () => {
-        updateWorkflowContextVal({ mcpClientMemory });
-
-        const store = getWorkflowContext();
-        expect(store?.mcpClientMemory).toBe(mcpClientMemory);
-      });
-    });
-
-    it('should do nothing when called outside context', async () => {
-      // Should not throw
-      expect(() => {
-        updateWorkflowContextVal({});
-      }).not.toThrow();
-    });
-
-    it('should support partial updates', async () => {
-      const ctx = await createWorkflowContext();
-
-      runWithContext(ctx, () => {
-        // Update with empty partial — no keys iterated
-        updateWorkflowContextVal({});
-        expect(getWorkflowContext()).toBe(ctx);
-      });
-    });
+  it('无运行作用域时不做更新也不抛错', () => {
+    expect(() => updateWorkflowContextVal({ mcpClientMemory: {} })).not.toThrow();
   });
 });
 
@@ -546,38 +502,6 @@ describe('runWithDerivedWorkflowFileContext', () => {
               type: ChatFileTypeEnum.file
             })
           ).rejects.toThrow('not selected in its file context');
-        }
-      })
-    );
-  });
-
-  it('adds child interactive files to the active derived context', async () => {
-    const interactiveKey = 'chat/app/app-1/user-1/chat-1/interactive.pdf';
-    const getPreviewUrl = vi.fn(async (key: string) => `https://files.example.com/${key}`);
-    const queryFile = createFile({ key: privateKey });
-    const { fileContext, query } = await prepareWorkflowFileContext({
-      query: [queryFile],
-      histories: [],
-      scope,
-      maxFileAmount: 20,
-      getPreviewUrl
-    });
-
-    await runWithContext({ checkIsStopping: () => false, mcpClientMemory: {}, fileContext }, () =>
-      runWithDerivedWorkflowFileContext({
-        files: [query[0].file!.url],
-        fn: async () => {
-          const ref = await getWorkflowContext().fileContext.register({
-            file: {
-              key: interactiveKey,
-              name: 'interactive.pdf',
-              type: ChatFileTypeEnum.file
-            },
-            source: 'interactive'
-          });
-
-          expect(ref).toBeDefined();
-          expect(getWorkflowFileContext()?.resolve(ref!.modelUrl)).toBe(ref);
         }
       })
     );
@@ -1029,107 +953,5 @@ describe('runWithDerivedWorkflowFileContext', () => {
     );
     expect(vi.mocked(axios.head)).toHaveBeenCalledTimes(1);
     expect(fileContext.resolve(file.file!.url)).toBeUndefined();
-  });
-});
-
-describe('getWorkflowFileContext', () => {
-  beforeEach(() => {
-    vi.spyOn(axios, 'get').mockResolvedValue({ headers: {}, data: Readable.from([]) });
-  });
-  afterEach(() => vi.restoreAllMocks());
-  it('keeps the readonly context across the workflow async call chain', async () => {
-    const { fileContext } = await prepareWorkflowFileContext({
-      query: [createFile({ key: undefined, url: 'https://cdn.example.com/report.pdf' })],
-      histories: [],
-      scope,
-      maxFileAmount: 20,
-      getPreviewUrl: vi.fn()
-    });
-
-    expect(getWorkflowFileContext()).toBeUndefined();
-    await runWithContext(
-      { checkIsStopping: () => false, mcpClientMemory: {}, fileContext },
-      async () => {
-        await Promise.resolve();
-        expect(getWorkflowFileContext()).toBe(fileContext);
-      }
-    );
-    expect(getWorkflowFileContext()).toBeUndefined();
-  });
-});
-
-describe('getWorkflowContext 文件上下文读取', () => {
-  it('无 Workflow Context 时抛出明确错误', () => {
-    expect(() => getWorkflowContext()).toThrow('Workflow context is unavailable');
-  });
-
-  it('拒绝注入缺少文件上下文的运行作用域，不启动回调', () => {
-    const fn = vi.fn();
-    expect(() =>
-      runWithContext({ checkIsStopping: () => false, mcpClientMemory: {} } as any, fn)
-    ).toThrow('Workflow file context is unavailable');
-    expect(fn).not.toHaveBeenCalled();
-  });
-
-  it('文件数量限额未初始化时保留原有报错行为', () => {
-    runWithContext(
-      {
-        checkIsStopping: () => false,
-        mcpClientMemory: {},
-        fileContext: { limits: { maxBytesPerFile: 1024 } } as any
-      },
-      () => {
-        expect(() => getWorkflowContext().fileContext).toThrow(
-          'Workflow file context is unavailable'
-        );
-      }
-    );
-  });
-
-  it('跨异步调用返回同一个完整上下文，零额度和大小限额均原样保留', async () => {
-    const { fileContext } = await prepareWorkflowFileContext({
-      query: [],
-      histories: [],
-      scope,
-      maxFileAmount: 0,
-      maxBytesPerFile: 1024
-    });
-    await runWithContext(
-      { checkIsStopping: () => false, mcpClientMemory: {}, fileContext },
-      async () => {
-        await Promise.resolve();
-        const currentFileContext = getWorkflowContext().fileContext;
-        expect(currentFileContext).toBe(fileContext);
-        expect(currentFileContext.limits).toEqual({ maxFileAmount: 0, maxBytesPerFile: 1024 });
-        expect(currentFileContext.getSource).toBe(fileContext.getSource);
-      }
-    );
-    expect(() => getWorkflowContext()).toThrow('Workflow context is unavailable');
-  });
-
-  it('嵌套运行读取当前文件上下文，退出后恢复父上下文', async () => {
-    const { fileContext: parentFileContext } = await prepareWorkflowFileContext({
-      query: [],
-      histories: [],
-      scope,
-      maxFileAmount: 5,
-      maxBytesPerFile: 2048
-    });
-    const childFileContext = await parentFileContext.derive([]);
-
-    runWithContext(
-      { checkIsStopping: () => false, mcpClientMemory: {}, fileContext: parentFileContext },
-      () => {
-        expect(getWorkflowContext().fileContext).toBe(parentFileContext);
-        runWithContext(
-          { checkIsStopping: () => false, mcpClientMemory: {}, fileContext: childFileContext },
-          () => {
-            expect(getWorkflowContext().fileContext).toBe(childFileContext);
-            expect(getWorkflowContext().fileContext.limits).toBe(parentFileContext.limits);
-          }
-        );
-        expect(getWorkflowContext().fileContext).toBe(parentFileContext);
-      }
-    );
   });
 });

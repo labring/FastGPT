@@ -8,8 +8,8 @@ import { runToolCall as runToolCallWithoutContext } from '@fastgpt/service/core/
 import {
   runWithTestWorkflowContext as runWithContext,
   runTestWorkflowDispatch,
-  captureTestRuntimeControl,
-  getCapturedTestRuntimeControl
+  captureTestWorkflowContext,
+  getCapturedTestWorkflowContext
 } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import {
   createNodeSummary,
@@ -43,7 +43,7 @@ vi.mock('@fastgpt/service/core/ai/llm/agentLoop/interface', async (importOrigina
 });
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
-  runWorkflow: (props: object) => runWorkflowMock(captureTestRuntimeControl(props))
+  runWorkflow: (props: object) => runWorkflowMock(captureTestWorkflowContext(props))
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/readFiles', () => ({
@@ -447,7 +447,9 @@ describe('runToolCall compression node responses', () => {
         workflowStreamResponse
       })
     );
-    expect(getCapturedTestRuntimeControl(runWorkflowMock.mock.calls[0][0]).isToolCall).toBe(true);
+    expect(
+      getCapturedTestWorkflowContext(runWorkflowMock.mock.calls[0][0]).runtimeControl.isToolCall
+    ).toBe(true);
     expect(workflowStreamResponse).toHaveBeenCalledWith({
       event: 'answer',
       data: 'child answer delta'
@@ -1227,7 +1229,7 @@ describe('runToolCall compression node responses', () => {
       status: 'active'
     });
     expect(workflowCall).not.toHaveProperty('isToolCall');
-    expect(getCapturedTestRuntimeControl(workflowCall).isToolCall).toBe(true);
+    expect(getCapturedTestWorkflowContext(workflowCall).runtimeControl.isToolCall).toBe(true);
     expect(workflowCall.runtimeNodes).not.toBe(runtimeNodes);
     expect(workflowCall.runtimeEdges).not.toBe(runtimeEdges);
     expect(runtimeNodes[0]).not.toHaveProperty('isEntry');

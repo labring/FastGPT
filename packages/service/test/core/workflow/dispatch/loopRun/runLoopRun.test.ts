@@ -1,7 +1,7 @@
 import {
   createTestWorkflowDispatch,
-  captureTestVariableContext,
-  getCapturedTestVariableContext
+  captureTestWorkflowContext,
+  getCapturedTestWorkflowContext
 } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
@@ -25,7 +25,7 @@ import {
 const runWorkflowMock = vi.fn();
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
-  runWorkflow: (args: any) => runWorkflowMock(captureTestVariableContext(args))
+  runWorkflow: (args: any) => runWorkflowMock(captureTestWorkflowContext(args))
 }));
 
 // Shrink max iterations so overflow tests run fast.
@@ -311,7 +311,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
 
   it('子运行返回的 newVariables 不再透出到 loopRun 节点结果', async () => {
     runWorkflowMock.mockImplementation((args: any) => {
-      void getCapturedTestVariableContext(args).set('runtimeOnly', 'runtime-value');
+      void getCapturedTestWorkflowContext(args).variableContext.set('runtimeOnly', 'runtime-value');
       return Promise.resolve(
         makeDispatchFlowResponse({
           [DispatchNodeResponseKeyEnum.newVariables]: {
@@ -339,13 +339,13 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
 
     runWorkflowMock.mockImplementation(async (args: any) => {
       iteration++;
-      expect(getCapturedTestVariableContext(args)).not.toBe(parentVariableState);
+      expect(getCapturedTestWorkflowContext(args).variableContext).not.toBe(parentVariableState);
       if (iteration === 1) {
-        expect(getCapturedTestVariableContext(args).get('count')).toBe(0);
-        await getCapturedTestVariableContext(args).set('count', 1);
+        expect(getCapturedTestWorkflowContext(args).variableContext.get('count')).toBe(0);
+        await getCapturedTestWorkflowContext(args).variableContext.set('count', 1);
       } else {
-        expect(getCapturedTestVariableContext(args).get('count')).toBe(1);
-        await getCapturedTestVariableContext(args).set('count', 2);
+        expect(getCapturedTestWorkflowContext(args).variableContext.get('count')).toBe(1);
+        await getCapturedTestWorkflowContext(args).variableContext.set('count', 2);
       }
 
       return makeDispatchFlowResponse({
@@ -488,7 +488,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     runWorkflowMock.mockImplementation(async (args: any) => {
       const externalNode = args.runtimeNodes.find((node: any) => node.nodeId === 'externalText');
       externalNode.outputs[0].value = 'failed-update';
-      await getCapturedTestVariableContext(args).set('count', 1);
+      await getCapturedTestWorkflowContext(args).variableContext.set('count', 1);
 
       return makeDispatchFlowResponse({
         nodeResponses: [makeResponseItem('startNode', { error: 'boom' })]
