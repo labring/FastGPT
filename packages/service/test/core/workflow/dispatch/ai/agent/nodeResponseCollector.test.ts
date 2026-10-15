@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { createAgentNodeResponseCollector } from '@fastgpt/service/core/workflow/dispatch/ai/agent/nodeResponseCollector';
+import { createWorkflowEntryNodeResponseSink } from '@fastgpt/service/core/workflow/dispatch/context/nodeResponse';
 
 const makeResponse = (id: string): ChatHistoryItemResType => ({
   id,
@@ -13,13 +14,14 @@ const makeResponse = (id: string): ChatHistoryItemResType => ({
 describe('createAgentNodeResponseCollector', () => {
   it('存在 sink 时逐条串行发布，不在 Agent 内保留完整数组', async () => {
     const publishOrder: string[] = [];
-    const nodeResponseSink = {
+    const output = {
       publish: vi.fn(async ([{ response }]: Array<{ response: ChatHistoryItemResType }>) => {
         publishOrder.push(response.id!);
         return [response];
       })
     };
     const nodeResponses: ChatHistoryItemResType[] = [];
+    const nodeResponseSink = createWorkflowEntryNodeResponseSink({ output });
     const collector = createAgentNodeResponseCollector({ nodeResponseSink, nodeResponses });
 
     collector.appendNodeResponse(makeResponse('first'));

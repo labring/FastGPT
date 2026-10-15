@@ -1,6 +1,6 @@
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isHttpUrl } from '@fastgpt/global/common/string/url';
-import { prepareWorkflowFiles } from '../../utils/context';
+import { getWorkflowContext } from '../context';
 
 export type NormalizeDatasetSearchInputResult = {
   textQueries: string[];
@@ -43,7 +43,9 @@ export const normalizeDatasetSearchInput = async (
     fileCandidates.push(input);
   }
 
-  const files = await prepareWorkflowFiles({ files: fileCandidates.map((url) => ({ url })) });
+  const files = await getWorkflowContext().fileContext.prepareFiles({
+    files: fileCandidates.map((url) => ({ url }))
+  });
   files.forEach((file) => {
     if (file.type === ChatFileTypeEnum.image) imageQueries.push(file.url);
   });

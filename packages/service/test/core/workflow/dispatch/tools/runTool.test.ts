@@ -1,14 +1,16 @@
+import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
-  dispatchRunTool,
+  dispatchRunTool as dispatchRunToolWithoutContext,
   parseToolId
 } from '@fastgpt/service/core/workflow/dispatch/child/runTool';
+const dispatchRunTool = createTestWorkflowDispatch(dispatchRunToolWithoutContext);
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { MCPClient } from '@fastgpt/service/core/app/mcp';
-import { getWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/context';
+import { getWorkflowResourceContext } from '@fastgpt/service/core/workflow/dispatch/context';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
@@ -96,11 +98,6 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/core/workflow/utils/context', () => ({
-  getWorkflowContext: vi.fn(() => workflowContextMock),
-  getWorkflowResourceContext: vi.fn(() => undefined)
-}));
-
 const createRunToolProps = (
   toolConfig: Record<string, any>,
   params: Record<string, any> = { keyword: 'fastgpt' }
@@ -122,7 +119,7 @@ const createRunToolProps = (
       // 调用者与应用创建者不同；工具引用按当前运行人鉴权。
       tmbId: 'caller-without-toolset-permission'
     },
-    variableState: {
+    variableContext: {
       get: vi.fn()
     },
     node: {

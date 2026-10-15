@@ -2,19 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { createTestWorkflowFileContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { useToolMessages as useToolMessagesWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolMessages';
 
-const useToolMessages: typeof useToolMessagesWithoutContext = (props) =>
+const useToolMessages: typeof useToolMessagesWithoutContext = async (props) =>
   runWithContext(
     {
+      checkIsStopping: () => false,
       mcpClientMemory: {},
-      fileContext: {
-        limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
-        resolve: () => undefined,
-        resolveChatFile: () => undefined,
-        getIdentity: () => undefined
-      } as any
+      fileContext: await createTestWorkflowFileContext()
     },
     () => useToolMessagesWithoutContext(props)
   );

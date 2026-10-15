@@ -14,9 +14,9 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { runWorkflow, type RunWorkflowProps } from '@fastgpt/service/core/workflow/dispatch';
-import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
-import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
+import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context/file';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/context/variables';
 
 /** 构造最小节点声明，输出默认使用 any，避免测试构造器提前改变待验证的数据。 */
 export const graphNode = ({

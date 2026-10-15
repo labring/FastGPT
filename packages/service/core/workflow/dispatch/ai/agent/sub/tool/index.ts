@@ -13,7 +13,7 @@ import {
 import { getSecretValue } from '../../../../../../../common/secret/utils';
 import { resolveToolInputValues } from '../../../../../../app/tool/secretConfig';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import type { ChatDispatchProps } from '../../../../../types/runtime';
+import type { WorkflowDispatchProps } from '../../../../../types/runtime';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
@@ -35,7 +35,9 @@ import { SystemToolRepo } from '../../../../../../app/tool/systemTool/systemTool
 import { computedSystemToolUsage } from '../../../../../../app/tool/runtime/utils';
 import { InvokeProcessor } from '../../../../../../../support/invoke/invoke';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
+import { filterWorkflowToolList } from '../../../../context/resource';
 import { isWorkflowResourceError, loadWorkflowAppResource } from '../../../../../resource/service';
+import { getWorkflowContext, getWorkflowResourceContext } from '../../../../context';
 import { getWorkflowAppId } from '../../../../utils/source';
 import {
   assertTeamPluginSourceAccess,
@@ -57,13 +59,12 @@ export type Props = {
     [NodeInputKeyEnum.systemInputConfig]?: SystemInputConfigType;
     [key: string]: any;
   };
-  runningUserInfo: ChatDispatchProps['runningUserInfo'];
-  runningAppInfo: ChatDispatchProps['runningAppInfo'];
-  chatId: ChatDispatchProps['chatId'];
-  uid: ChatDispatchProps['uid'];
-  variableState: ChatDispatchProps['variableState'];
+  runningUserInfo: WorkflowDispatchProps['runningUserInfo'];
+  runningAppInfo: WorkflowDispatchProps['runningAppInfo'];
+  chatId: WorkflowDispatchProps['chatId'];
+  uid: WorkflowDispatchProps['uid'];
   runtimeNodesMap?: Map<string, RuntimeNodeItemType>;
-  workflowStreamResponse: ChatDispatchProps['workflowStreamResponse'];
+  workflowStreamResponse: WorkflowDispatchProps['workflowStreamResponse'];
 };
 
 /** 执行 Agent 选择的工具；协议执行错误保留原结果，并返回模型可处理的错误标记。 */
@@ -74,17 +75,11 @@ export const dispatchTool = async ({
   runningAppInfo,
   chatId,
   uid,
-  variableState,
   runtimeNodesMap,
   workflowStreamResponse
 }: Props): Promise<DispatchSubAppResponse> => {
-  const resolveReference = (value: ReferenceValueType) =>
-    getReferenceVariableValue({
-      value,
-      nodesMap: runtimeNodesMap ?? new Map(),
-      variables: variableState.toRuntimeRecord(),
-      isReferenceVal: true
-    });
+  const { variableContext: variableState } = getWorkflowContext();
+  const resolveReference = (value: ReferenceValueType) => getReferenceVariableValue({ value, nodesMap: runtimeNodesMap ?? new Map(), variables: variableState.toRuntimeRecord(), isReferenceVal: true });
   const getNodeResponse = ({
     result,
     response

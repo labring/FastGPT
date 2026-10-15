@@ -10,11 +10,11 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { loadRequestMessages } from '@fastgpt/service/core/ai/llm/utils';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
-import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context/file';
 import { serviceEnv } from '@fastgpt/service/env';
 import { axios } from '@fastgpt/service/common/api/axios';
-import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
+import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/context/variables';
 
 const fixture = vi.hoisted(() => ({
   requestMock: vi.fn(),
@@ -79,10 +79,20 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/chat/fileContext', async (im
       fixture.useRealFileFlow ? mod.getInputFiles(props) : []
   };
 });
-vi.mock('@fastgpt/service/core/workflow/utils/context', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@fastgpt/service/core/workflow/utils/context')>()),
-  getWorkflowFileMaxAmount: () => 20
-}));
+vi.mock('@fastgpt/service/core/workflow/dispatch/context', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/core/workflow/dispatch/context')>();
+  return {
+    ...actual,
+    getWorkflowContext: () =>
+      fixture.useRealFileFlow
+        ? actual.getWorkflowContext()
+        : {
+            checkIsStopping: () => false,
+            fileContext: { limits: { maxFileAmount: 20, maxBytesPerFile: 1024 } }
+          }
+  };
+});
 vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   formatModelChars2Points: () => ({ totalPoints: 7 })
 }));
@@ -210,7 +220,7 @@ describe('dispatchChatCompletion media file inputs', () => {
         };
       });
 
-      const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
+      const { fileContext } = await prepareWorkflowFileContext({
         query: [],
         histories: [],
         scope: {
@@ -244,36 +254,38 @@ describe('dispatchChatCompletion media file inputs', () => {
         ],
         inputVariables: { file: [{ url, type: ChatFileTypeEnum.file }] },
         resolveInputFile: async (file) =>
-          (await fileRegistrar.registerInputFile({ file, source: 'variable' }))?.modelUrl
+          (await fileContext.register({ file, source: 'variable' }))?.modelUrl
       });
       expect(variableState.get('file')).toEqual([url]);
-      const result = await runWithContext({ mcpClientMemory: {}, fileContext }, () =>
-        dispatchChatCompletion({
-          node: {
-            name: 'Chat',
-            inputs: [{ key: NodeInputKeyEnum.fileUrlList, value: ['global', 'file'] }]
-          },
-          histories: [],
-          runningUserInfo: { teamId: 'team', tmbId: 'member' },
-          runningAppInfo: { teamId: 'team' },
-          externalProvider: {},
-          chatConfig: {
-            fileSelectConfig: {
-              canSelectAudio: uploadMedia,
-              canSelectVideo: uploadMedia,
-              maxFiles: 0
-            }
-          },
-          params: {
-            model: 'gemini-3.8-flash',
-            userChatInput: '识别一下文件内容',
-            fileUrlList: variableState.get('file'),
-            aiChatAudio: media === 'audio' && nodeMedia,
-            aiChatVideo: media === 'video' && nodeMedia
-          },
-          nodeSummary: createNodeSummary(),
-          usagePush: vi.fn()
-        } as any)
+      const result = await runWithContext(
+        { checkIsStopping: () => false, mcpClientMemory: {}, fileContext },
+        () =>
+          dispatchChatCompletion({
+            node: {
+              name: 'Chat',
+              inputs: [{ key: NodeInputKeyEnum.fileUrlList, value: ['global', 'file'] }]
+            },
+            histories: [],
+            runningUserInfo: { teamId: 'team', tmbId: 'member' },
+            runningAppInfo: { teamId: 'team' },
+            externalProvider: {},
+            chatConfig: {
+              fileSelectConfig: {
+                canSelectAudio: uploadMedia,
+                canSelectVideo: uploadMedia,
+                maxFiles: 0
+              }
+            },
+            params: {
+              model: 'gemini-3.8-flash',
+              userChatInput: '识别一下文件内容',
+              fileUrlList: variableState.get('file'),
+              aiChatAudio: media === 'audio' && nodeMedia,
+              aiChatVideo: media === 'video' && nodeMedia
+            },
+            nodeSummary: createNodeSummary(),
+            usagePush: vi.fn()
+          } as any)
       );
 
       expect(result.error).toBeUndefined();

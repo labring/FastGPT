@@ -10,8 +10,8 @@ import { serviceEnv } from '@fastgpt/service/env';
 import { loadRequestMessages } from '@fastgpt/service/core/ai/llm/utils';
 import { getChatMessages } from '@fastgpt/service/core/workflow/dispatch/ai/chat/chatMessages';
 import { getInputFiles } from '@fastgpt/service/core/workflow/dispatch/ai/chat/fileContext';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
-import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context/file';
 
 vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
   countGptMessagesTokens: vi.fn(async () => 1),
@@ -67,7 +67,7 @@ describe('getChatMessages', () => {
     vi.mocked(axios.head).mockResolvedValue({
       headers: { 'content-type': `${media}/${extension}` }
     });
-    const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
+    const { fileContext } = await prepareWorkflowFileContext({
       query: [],
       histories: [],
       scope: {
@@ -79,7 +79,7 @@ describe('getChatMessages', () => {
       maxFileAmount: 5,
       getPreviewUrl: async () => url
     });
-    await fileRegistrar.registerInputFile({
+    await fileContext.register({
       file: {
         url,
         name: '会议录音',
@@ -90,7 +90,7 @@ describe('getChatMessages', () => {
     });
     const context = kind === 'child' ? await fileContext.derive([url]) : fileContext;
     const requestMessages = await runWithContext(
-      { mcpClientMemory: {}, fileContext: context },
+      { checkIsStopping: () => false, mcpClientMemory: {}, fileContext: context },
       async () => {
         const userFiles = await getInputFiles({ fileLinks: [url] });
         expect(userFiles[0].type).toBe(media);

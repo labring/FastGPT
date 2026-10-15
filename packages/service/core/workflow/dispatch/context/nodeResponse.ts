@@ -7,9 +7,14 @@ import {
 } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
-import type { WorkflowNodeResponseWriter } from '../../chat/nodeResponseStorage';
-import type { WorkflowRuntimeSummaryType } from './type';
-import { createWorkflowRuntimeSummary, updateWorkflowRuntimeSummary } from './utils/summary';
+import {
+  createWorkflowNodeResponseWriter,
+  type WorkflowNodeResponseWriter
+} from '../../../chat/nodeResponseStorage';
+import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import type { WorkflowNodeResponseWriteConfig } from '../utils/entry';
+import type { WorkflowRuntimeSummaryType } from '../type';
+import { createWorkflowRuntimeSummary, updateWorkflowRuntimeSummary } from '../utils/summary';
 
 export type WorkflowNodeResponseInput = {
   response: ChatHistoryItemResType;
@@ -26,15 +31,11 @@ export type WorkflowNodeResponseActivity = {
 };
 
 type WorkflowNodeResponseScopeOptions = {
-  workflowRuntimeSummary: WorkflowRuntimeSummaryType;
+  workflowRuntimeSummary?: WorkflowRuntimeSummaryType;
   defaultParentId?: string;
   record?: boolean;
   emit?: boolean;
-};
-
-type WorkflowNodeResponseOutputPolicy = {
-  record?: boolean;
-  emit?: boolean;
+  activity?: WorkflowNodeResponseActivity;
 };
 
 /**
@@ -64,13 +65,20 @@ const removePublishedChildren = (
     return nextResponse;
   }, response);
 
-export type WorkflowNodeResponseSinkLike = {
+/** 请求级输出 Adapter；只在入口构建时注入，不直接放进节点的运行 Context。 */
+export type WorkflowNodeResponseOutputLike = {
   publish: (inputs: WorkflowNodeResponseInput[]) => Promise<ChatHistoryItemResType[]>;
-  /** 是否存在请求级 writer/SSE output；summary-only scope 为 false。 */
   hasOutput?: boolean;
-  createScope?: (options: WorkflowNodeResponseScopeOptions) => WorkflowNodeResponseSinkLike;
-  withActivity?: (activity: WorkflowNodeResponseActivity) => WorkflowNodeResponseSinkLike;
-  withOutputPolicy?: (policy: WorkflowNodeResponseOutputPolicy) => WorkflowNodeResponseSinkLike;
+  close?: () => Promise<void> | void;
+  getFlatNodeResponses?: () => ChatHistoryItemResType[];
+};
+
+/** 当前流程的完整响应能力；无输出时也保留独立 summary 和派生能力。 */
+export type WorkflowNodeResponseContext = {
+  publish: WorkflowNodeResponseOutputLike['publish'];
+  readonly hasOutput: boolean;
+  readonly workflowRuntimeSummary: WorkflowRuntimeSummaryType;
+  getChildContext: (overrides?: WorkflowNodeResponseScopeOptions) => WorkflowNodeResponseContext;
 };
 
 /** 为一次节点 callback 创建发布归属计数，child workflow 会继承同一个 activity。 */
@@ -79,84 +87,67 @@ export const createWorkflowNodeResponseActivity = (): WorkflowNodeResponseActivi
 });
 
 /**
- * 为当前 workflow 创建独立 response scope。
- *
- * scope 直接共享请求级 output，不经过 parent scope 转发，因此一条 response 只会更新
- * 当前 workflow summary 一次。child scope 会继承 activity 和已经收紧的输出策略。
+ * 唯一的响应 Context 入口工厂。业务入口传入写入配置，测试/受控调用可注入 writer 或 output；
+ * 没有输出目标时创建 summary-only Context。只有入口拥有关闭 writer 和读取 flat rows 的能力。
  */
-export const createWorkflowNodeResponseScope = ({
-  sink,
-  workflowRuntimeSummary,
-  defaultParentId,
-  record = true,
-  emit = true
-}: WorkflowNodeResponseScopeOptions & {
-  sink?: WorkflowNodeResponseSinkLike;
-}): WorkflowNodeResponseSinkLike => {
-  if (sink?.createScope) {
-    return sink.createScope({
-      workflowRuntimeSummary,
-      defaultParentId,
-      record,
-      emit
-    });
-  }
-
-  return new WorkflowNodeResponseScope({
-    output: sink,
-    workflowRuntimeSummary,
-    defaultParentId,
-    record,
-    emit
+export const createWorkflowEntryNodeResponseSink = (
+  props: WorkflowNodeResponseScopeOptions & {
+    apiVersion?: 'v1' | 'v2';
+    responseAllData?: boolean;
+    responseDetail?: boolean;
+    workflowStreamResponse?: WorkflowResponseType;
+  } & (
+      | { writer: WorkflowNodeResponseWriter }
+      | { output: WorkflowNodeResponseOutputLike }
+      | {
+          teamId: string;
+          sourceType: ChatSourceTypeEnum;
+          sourceId: string;
+          chatId: string;
+          chatItemDataId: string;
+          nodeResponseWriteConfig: WorkflowNodeResponseWriteConfig;
+        }
+      | { writer?: undefined; output?: undefined }
+    ) = {}
+): WorkflowNodeResponseContext & {
+  close: () => Promise<void>;
+  getFlatNodeResponses: () => ChatHistoryItemResType[];
+} => {
+  const output = (() => {
+    if ('output' in props && props.output) return props.output;
+    const writer = (() => {
+      if ('writer' in props && props.writer) return props.writer;
+      if ('nodeResponseWriteConfig' in props) {
+        return createWorkflowNodeResponseWriter({
+          teamId: props.teamId,
+          sourceType: props.sourceType,
+          sourceId: props.sourceId,
+          chatId: props.chatId,
+          chatItemDataId: props.chatItemDataId,
+          persistToDb: props.nodeResponseWriteConfig.persistToDb,
+          retainInMemory: props.nodeResponseWriteConfig.retainInMemory
+        });
+      }
+    })();
+    return writer ? new WorkflowNodeResponseOutput({ ...props, writer }) : undefined;
+  })();
+  const context = new WorkflowNodeResponseScope({
+    ...props,
+    output,
+    workflowRuntimeSummary: props.workflowRuntimeSummary ?? createWorkflowRuntimeSummary()
   });
-};
-
-/** 把 callback 及其派生 child workflow 的发布归到当前节点执行。 */
-export const bindWorkflowNodeResponseActivity = ({
-  sink,
-  activity
-}: {
-  sink?: WorkflowNodeResponseSinkLike;
-  activity: WorkflowNodeResponseActivity;
-}): WorkflowNodeResponseSinkLike | undefined => {
-  if (!sink) return undefined;
-  if (sink.withActivity) return sink.withActivity(activity);
-
-  return new WorkflowNodeResponseScope({
-    output: sink,
-    workflowRuntimeSummary: createWorkflowRuntimeSummary(),
-    activity
-  });
-};
-
-/**
- * 收紧当前分支的详情输出策略。
- *
- * policy 只能与 parent policy 做 AND，隐藏的 system workflow 不允许在更深层重新开启
- * writer 或 SSE。
- */
-export const withWorkflowNodeResponseOutputPolicy = ({
-  sink,
-  record = true,
-  emit = true
-}: WorkflowNodeResponseOutputPolicy & {
-  sink?: WorkflowNodeResponseSinkLike;
-}): WorkflowNodeResponseSinkLike | undefined => {
-  if (!sink) return undefined;
-  if (sink.withOutputPolicy) return sink.withOutputPolicy({ record, emit });
-
-  return new WorkflowNodeResponseScope({
-    output: sink,
-    workflowRuntimeSummary: createWorkflowRuntimeSummary(),
-    record,
-    emit
+  return Object.assign(context, {
+    close: async () => {
+      await output?.close?.();
+    },
+    getFlatNodeResponses: () => output?.getFlatNodeResponses?.() ?? []
   });
 };
 
 /** 当前 workflow 层的 summary 与 response 上下文；底层 output 在请求内共享。 */
-class WorkflowNodeResponseScope implements WorkflowNodeResponseSinkLike {
-  private readonly output?: WorkflowNodeResponseSinkLike;
-  private readonly workflowRuntimeSummary: WorkflowRuntimeSummaryType;
+class WorkflowNodeResponseScope implements WorkflowNodeResponseContext {
+  private readonly output?: WorkflowNodeResponseOutputLike;
+  readonly workflowRuntimeSummary: WorkflowRuntimeSummaryType;
   private readonly defaultParentId?: string;
   private readonly record: boolean;
   private readonly emit: boolean;
@@ -171,7 +162,7 @@ class WorkflowNodeResponseScope implements WorkflowNodeResponseSinkLike {
     emit = true,
     activity
   }: {
-    output?: WorkflowNodeResponseSinkLike;
+    output?: WorkflowNodeResponseOutputLike;
     workflowRuntimeSummary: WorkflowRuntimeSummaryType;
     defaultParentId?: string;
     record?: boolean;
@@ -221,44 +212,19 @@ class WorkflowNodeResponseScope implements WorkflowNodeResponseSinkLike {
     return outputResponses;
   }
 
-  createScope({
-    workflowRuntimeSummary,
-    defaultParentId,
-    record = true,
-    emit = true
-  }: WorkflowNodeResponseScopeOptions): WorkflowNodeResponseSinkLike {
+  /**
+   * 派生响应 Scope，不激活 ALS。新流程显式传入新 summary；策略/activity 视图继承当前 summary。
+   * 直接共享底层 output，不经过父 Scope 转发；输出策略只允许 AND 收紧。
+   */
+  getChildContext(overrides: WorkflowNodeResponseScopeOptions = {}): WorkflowNodeResponseContext {
     return new WorkflowNodeResponseScope({
       output: this.output,
-      workflowRuntimeSummary,
-      defaultParentId: defaultParentId ?? this.defaultParentId,
-      record: this.record && record,
-      emit: this.emit && emit,
-      activity: this.activity
-    });
-  }
-
-  withActivity(activity: WorkflowNodeResponseActivity): WorkflowNodeResponseSinkLike {
-    return new WorkflowNodeResponseScope({
-      output: this.output,
-      workflowRuntimeSummary: this.workflowRuntimeSummary,
-      defaultParentId: this.defaultParentId,
-      record: this.record,
-      emit: this.emit,
-      activity
-    });
-  }
-
-  withOutputPolicy({
-    record = true,
-    emit = true
-  }: WorkflowNodeResponseOutputPolicy): WorkflowNodeResponseSinkLike {
-    return new WorkflowNodeResponseScope({
-      output: this.output,
-      workflowRuntimeSummary: this.workflowRuntimeSummary,
-      defaultParentId: this.defaultParentId,
-      record: this.record && record,
-      emit: this.emit && emit,
-      activity: this.activity
+      workflowRuntimeSummary: overrides.workflowRuntimeSummary ?? this.workflowRuntimeSummary,
+      defaultParentId:
+        'defaultParentId' in overrides ? overrides.defaultParentId : this.defaultParentId,
+      record: this.record && overrides.record !== false,
+      emit: this.emit && overrides.emit !== false,
+      activity: 'activity' in overrides ? overrides.activity : this.activity
     });
   }
 }
@@ -269,7 +235,7 @@ class WorkflowNodeResponseScope implements WorkflowNodeResponseSinkLike {
  * 这个对象在一次请求内共享，不持有任何 workflow summary。每层 workflow 通过独立
  * WorkflowNodeResponseScope 更新自己的 summary，并直接调用这个 output。
  */
-export class WorkflowNodeResponseSink implements WorkflowNodeResponseSinkLike {
+class WorkflowNodeResponseOutput implements WorkflowNodeResponseOutputLike {
   readonly hasOutput = true;
   private readonly publishedResponseKeys = new Set<string>();
   private readonly writer: WorkflowNodeResponseWriter;
@@ -345,13 +311,6 @@ export class WorkflowNodeResponseSink implements WorkflowNodeResponseSinkLike {
     });
 
     return outputResponses;
-  }
-
-  createScope(options: WorkflowNodeResponseScopeOptions): WorkflowNodeResponseSinkLike {
-    return new WorkflowNodeResponseScope({
-      output: this,
-      ...options
-    });
   }
 
   async close() {

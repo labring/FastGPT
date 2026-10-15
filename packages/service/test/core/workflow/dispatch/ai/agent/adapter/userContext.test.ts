@@ -3,8 +3,8 @@ import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/consta
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
-import * as workflowContext from '@fastgpt/service/core/workflow/utils/context';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import * as workflowContext from '@fastgpt/service/core/workflow/dispatch/context';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { filterDatasetsByTmbId } from '@fastgpt/service/core/dataset/utils';
 import { useUserContext } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/userContext';

@@ -5,7 +5,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { runWorkflow } from '@fastgpt/service/core/workflow/dispatch';
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
-import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
+import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/context/variables';
 
 
 const langfuseMocks = vi.hoisted(() => ({

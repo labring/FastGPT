@@ -21,7 +21,7 @@ import {
 } from '@fastgpt/global/core/chat/utils';
 import type { OutlinkAppType, OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import { getAppLatestVersion } from '../../../core/app/version/controller';
-import { createWorkflowResourceContext } from '../../../core/workflow/resource/context';
+import { createWorkflowResourceContext } from '../../../core/workflow/dispatch/context/resource';
 import { MongoApp } from '../../../core/app/schema';
 import { getChatItems } from '../../../core/chat/controller';
 import {
@@ -31,7 +31,6 @@ import {
 } from '../../../core/chat/saveChat';
 import { preChatRound, type PreChatRoundResult } from '../../../core/chat/utils/prepare';
 import { dispatchWorkFlow } from '../../../core/workflow/dispatch';
-import { WORKFLOW_MAX_RUN_TIMES } from '../../../core/workflow/constants';
 import {
   filterWorkflowQueryFiles,
   getWorkflowFileLimits
@@ -427,7 +426,6 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       workflowStreamResponse,
       runtimeEdges: storeEdges2RuntimeEdges(edges),
       runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
-      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
       retainDatasetCite: false,
       nodeResponseWriteConfig: {
         persistToDb: true,
