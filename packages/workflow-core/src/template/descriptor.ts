@@ -75,11 +75,18 @@ const getInferredInputModes = (renderTypes: FlowNodeInputTypeEnum[]): NodeParame
     (type) =>
       type !== FlowNodeInputTypeEnum.reference &&
       type !== FlowNodeInputTypeEnum.addInputParam &&
-      type !== FlowNodeInputTypeEnum.agentGenerated
+      type !== FlowNodeInputTypeEnum.agentGenerated &&
+      type !== FlowNodeInputTypeEnum.settingDatasetQuotePrompt
   );
   const modes = [
     literalRenderTypes.length > 0 ? 'literal' : undefined,
-    renderTypes.includes(FlowNodeInputTypeEnum.reference) ? 'reference' : undefined,
+    renderTypes.some((type) =>
+      [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.settingDatasetQuotePrompt].includes(
+        type
+      )
+    )
+      ? 'reference'
+      : undefined,
     renderTypes.includes(FlowNodeInputTypeEnum.password) ? 'secret' : undefined
   ].filter((item): item is NodeParameterInputMode => item !== undefined);
   return [...new Set(modes)];

@@ -58,6 +58,13 @@ const builtinTemplates: Record<string, FlowNodeTemplateType> = {
 };
 
 export const builtinTemplateRefs: NodeTemplateRef[] = Object.keys(builtinTemplates)
+  .filter(
+    (value) =>
+      getAutomationMeta({
+        kind: 'builtin',
+        templateId: value.slice('builtin:'.length)
+      })?.availableForWorkflowBuilder !== false
+  )
   .filter((value) => !value.startsWith('builtin:__'))
   .map((value) => ({
     kind: 'builtin',

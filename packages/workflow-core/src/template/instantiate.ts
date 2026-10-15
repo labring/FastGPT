@@ -11,7 +11,7 @@ import { areWorkflowValueTypesCompatible } from '@fastgpt/global/common/workflow
 import type { WorkflowDocument } from '../domain/document';
 import { WorkflowCommandError, type WorkflowDiagnostic } from '../domain/diagnostic';
 import { hasConfiguredValue, resolveInitialInputValue } from './defaultValue';
-import type { NodeTemplateRef, WorkflowTemplateProvider } from './type';
+import { formatNodeTemplateRef, type NodeTemplateRef, type WorkflowTemplateProvider } from './type';
 
 /** 从原始 FastGPT 模板创建完整 StoreNode，Descriptor 元数据不会进入运行时对象。 */
 export const instantiateNodeFromTemplate = async ({
@@ -44,6 +44,15 @@ export const instantiateNodeFromTemplate = async ({
   const { template, automationMeta, validatedInputDefaults } = await provider.resolve(templateRef, {
     locale
   });
+  if (automationMeta?.availableForWorkflowBuilder === false) {
+    throw new WorkflowCommandError([
+      {
+        code: 'WORKFLOW_TEMPLATE_NOT_AVAILABLE_FOR_BUILDER',
+        severity: 'error',
+        params: { template: formatNodeTemplateRef(templateRef) }
+      }
+    ]);
+  }
   if (
     template.unique === true &&
     document.nodes.some(

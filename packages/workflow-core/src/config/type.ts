@@ -1,5 +1,8 @@
 export const CHAT_CONFIG_PATHS = [
   'welcomeText',
+  'welcomeConfig',
+  'welcomeConfig.welcomeText',
+  'welcomeConfig.welcomeQuestions',
   'autoExecute',
   'autoExecute.open',
   'autoExecute.defaultPrompt',

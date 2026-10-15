@@ -49,6 +49,8 @@
   "cli.config.scheduled_trigger": "當工作流程需要定時執行時設定；應同時提供 Cron 表達式、時區和注入的預設問題。",
   "cli.config.tts": "當使用者需要透過瀏覽器或語音模型播報應用程式回覆時設定。",
   "cli.config.welcome_text": "當新對話需要顯示預設引導、範例或快捷操作時設定。",
+  "cli.config.welcome_config": "設定新對話開始時顯示的開場內容。",
+  "cli.config.welcome_questions": "設定使用者可在開場白後直接點選的問題；問題應簡短完整並符合目前工作流程。",
   "cli.config.whisper": "當使用者需要透過語音識別提交問題時設定。",
   "code.Reset template": "重設範本",
   "code.Reset template confirm": "確定要重設程式碼範本嗎？這將會把所有輸入和輸出重設為範本值。請儲存您目前的程式碼。",

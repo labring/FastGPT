@@ -24,7 +24,7 @@ import { WorkflowUIContext } from '../context/workflowUIContext';
 import { useTranslation } from 'next-i18next';
 import WorkflowBuilderEntry from '../WorkflowBuilder/WorkflowBuilderEntry';
 import { useWorkflowBuilderUI } from '../WorkflowBuilder/context';
-import WorkflowToolbarTooltip from '../WorkflowBuilder/WorkflowToolbarTooltip';
+import WorkflowToolbarTooltip from '../WorkflowBuilder/presentation/WorkflowToolbarTooltip';
 
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
 const NodeStopTool = React.memo((props: NodeProps<FlowNodeItemType>) => (

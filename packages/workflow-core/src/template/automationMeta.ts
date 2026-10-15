@@ -133,6 +133,7 @@ const automationMetaMap: Record<string, NodeTemplateAutomationMeta> = {
     }
   },
   'builtin:question-optimization': {
+    availableForWorkflowBuilder: false,
     inputs: {
       [NodeInputKeyEnum.aiModelId]: remoteModelInput
     }
@@ -470,7 +471,12 @@ const templateRefByFlowNodeType: Partial<Record<FlowNodeTypeEnum, string>> = {
 export const getAutomationMeta = (ref: NodeTemplateRef) =>
   automationMetaMap[formatNodeTemplateRef(ref)];
 
-export const getInputAutomationMeta = (flowNodeType: string, inputKey: string) => {
+/** 根据节点运行类型读取内置模板元数据；历史或外部类型没有映射时不施加额外限制。 */
+export const getNodeAutomationMeta = (flowNodeType: string) => {
   const templateRef = templateRefByFlowNodeType[flowNodeType as FlowNodeTypeEnum];
-  return templateRef ? automationMetaMap[templateRef]?.inputs?.[inputKey] : undefined;
+  return templateRef ? automationMetaMap[templateRef] : undefined;
 };
+
+/** 读取节点输入的自动化契约，供引用校验和外部资源识别复用。 */
+export const getInputAutomationMeta = (flowNodeType: string, inputKey: string) =>
+  getNodeAutomationMeta(flowNodeType)?.inputs?.[inputKey];

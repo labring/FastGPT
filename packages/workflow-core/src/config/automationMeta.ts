@@ -6,6 +6,18 @@ export const configAutomationMetaMap = {
     agentHint: 'workflow:cli.config.welcome_text',
     capabilities: ['conversation-welcome']
   },
+  welcomeConfig: {
+    agentHint: 'workflow:cli.config.welcome_config',
+    capabilities: ['conversation-welcome']
+  },
+  'welcomeConfig.welcomeText': {
+    agentHint: 'workflow:cli.config.welcome_text',
+    capabilities: ['conversation-welcome']
+  },
+  'welcomeConfig.welcomeQuestions': {
+    agentHint: 'workflow:cli.config.welcome_questions',
+    capabilities: ['conversation-welcome']
+  },
   autoExecute: {
     agentHint: 'workflow:cli.config.auto_execute',
     capabilities: ['automatic-conversation-start']

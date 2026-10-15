@@ -8,6 +8,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { parseWorkflowImportConfig } from '@/pageComponents/dashboard/agent/utils/appTemplateParse';
 import { getModelList } from '@/web/core/ai/model/modelData';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { AppContext } from '../../context';
 import { WorkflowUtilsContext } from '../context/workflowUtilsContext';
 import { compileStoreWorkflow, parseCompatibleWorkflowDocument } from '@fastgpt/workflow-core';
@@ -21,12 +22,8 @@ import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/build
 import { loadWorkflowBuilderVersion, commitWorkflowBuilderVersion } from './api';
 import AppDetailPanelModal from '../../components/AppDetailPanelModal';
 import { useWorkflowBuilderUI } from './context';
-import {
-  getWorkflowBuilderAttentionKeys,
-  getWorkflowBuilderEvalAutoLayoutKey,
-  useWorkflowBuilderVersionExpired
-} from './uiState';
-import WorkflowBuilderCommercialInput from './CommercialInput';
+import { getWorkflowBuilderAttentionKeys, useWorkflowBuilderVersionExpired } from './uiState';
+import WorkflowBuilderCommercialInput from './presentation/CommercialInput';
 
 const WorkflowBuilderApplyToast = ({
   status,
@@ -107,7 +104,6 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
     (value) => value.flowData2StoreData
   );
   const chatPanelRef = useRef<WorkflowBuilderChatPanelRef>(null);
-  const evalAutoLayoutKeyRef = useRef('');
   const [builderChatId, setBuilderChatId] = useState('');
   const isOpen = activeLeftPanel === 'workflowBuilder';
   const showApplyResultToast = useCallback(
@@ -134,25 +130,6 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
     [showApplyResultToast, t]
   );
 
-  useEffect(() => {
-    const nodeIds = getNodes().map((node) => node.id);
-    const autoLayoutKey = getWorkflowBuilderEvalAutoLayoutKey({
-      appName: appDetail.name,
-      appId,
-      workflowDataRevision,
-      nodeIds
-    });
-    if (!autoLayoutKey || evalAutoLayoutKeyRef.current === autoLayoutKey) return;
-
-    // 评测应用由 API 直接写入，未经过 applyVersion；画布完成初始化后复用同一套节点布局能力。
-    evalAutoLayoutKeyRef.current = autoLayoutKey;
-    void requestAutoLayout({ nodeIds, workflowDataRevision }).then((result) => {
-      if (result === 'failed') {
-        console.warn('[Workflow Builder Eval] Auto layout failed, keeping imported positions');
-      }
-    });
-  }, [appDetail.name, appId, getNodes, requestAutoLayout, workflowDataRevision]);
-
   /** 加载归档版本、覆盖画布、记录“我的编辑”快照，最后幂等标记应用时间。 */
   const applyVersion = useCallback(
     async (version: WorkflowBuilderVersion, responseChatItemId: string) => {
@@ -170,6 +147,7 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
         previousWorkflow = flowData2StoreData();
         if (!previousWorkflow) throw new Error('Workflow Builder current canvas is unavailable');
         const modelList = await getModelList();
+        const defaultModelIds = useUserModelStore.getState().defaultModelIds;
         const workflowConfig = await parseWorkflowImportConfig({
           config: compileStoreWorkflow(targetDocument),
           appType:
@@ -178,6 +156,8 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
               : AppTypeEnum.workflow,
           t,
           models: modelList,
+          defaultModelIds,
+          modelReferencePolicy: 'fallback',
           modelCatalogLoaded: true
         });
         const workflowDataRevision = await initData(workflowConfig);
@@ -188,13 +168,6 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
             targetDocument
           })
         );
-        const evalAutoLayoutKey = getWorkflowBuilderEvalAutoLayoutKey({
-          appName: appDetail.name,
-          appId,
-          workflowDataRevision,
-          nodeIds: workflowConfig.nodes.map((node) => node.nodeId)
-        });
-        if (evalAutoLayoutKey) evalAutoLayoutKeyRef.current = evalAutoLayoutKey;
         const autoLayoutResult = await requestAutoLayout({
           nodeIds: workflowConfig.nodes.map((node) => node.nodeId),
           workflowDataRevision

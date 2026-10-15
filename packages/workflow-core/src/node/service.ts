@@ -9,6 +9,7 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import type { WorkflowDocument } from '../domain/document';
 import { WorkflowCommandError } from '../domain/diagnostic';
 import { syncContainerChildren } from '../nesting/service';
+import { getNodeAutomationMeta } from '../template/automationMeta';
 
 const getNode = (document: WorkflowDocument, nodeId: string) => {
   const node = document.nodes.find((item) => item.nodeId === nodeId);
@@ -55,7 +56,7 @@ const clearSecretInputs = (node: StoreNodeItemType) => {
   if (httpToolSet && 'headerSecret' in httpToolSet) httpToolSet.headerSecret = undefined;
 };
 
-/** 克隆节点运行态结构，但不复制密码类输入，避免生成可复用凭据副本。 */
+/** 克隆允许新建的节点运行态结构；保留历史节点，且不复制密码类输入。 */
 export const cloneNode = ({
   document,
   sourceNodeId,
@@ -82,6 +83,16 @@ export const cloneNode = ({
   ) {
     throw new WorkflowCommandError([
       { code: 'WORKFLOW_UNIQUE_NODE_CLONE_FORBIDDEN', severity: 'error', nodeId: sourceNodeId }
+    ]);
+  }
+  if (getNodeAutomationMeta(source.flowNodeType)?.availableForWorkflowBuilder === false) {
+    throw new WorkflowCommandError([
+      {
+        code: 'WORKFLOW_TEMPLATE_NOT_AVAILABLE_FOR_BUILDER',
+        severity: 'error',
+        nodeId: sourceNodeId,
+        params: { flowNodeType: source.flowNodeType }
+      }
     ]);
   }
 

@@ -1,3 +1,4 @@
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   VARIABLE_NODE_ID,
   FlowNodeInputTypeEnum,
@@ -9,6 +10,7 @@ import {
   createWorkflowDocument,
   parseNodeTemplateRef,
   type WorkflowDocument,
+  validateWorkflowBuilderSemantics,
   validateWorkflow
 } from '../../src';
 import aiWorkflow from '../fixtures/basic-ai/workflow.json';
@@ -102,6 +104,56 @@ describe('validateWorkflow', () => {
     });
 
     expect(validateWorkflow(search.document)).toEqual([]);
+  });
+
+  it('requires an upstream dataset quote reference for a downstream AI node', async () => {
+    const dependencies = { templateProvider: builtinTemplateProvider, locale: 'en' };
+    const start = await applyWorkflowCommand({
+      document: createWorkflowDocument(),
+      command: {
+        type: 'node.add',
+        nodeId: 'start',
+        template: parseNodeTemplateRef('builtin:workflow-start')
+      },
+      dependencies
+    });
+    const search = await applyWorkflowCommand({
+      document: start.document,
+      command: {
+        type: 'node.add',
+        nodeId: 'search',
+        template: parseNodeTemplateRef('builtin:dataset-search'),
+        connectFrom: { kind: 'next', nodeId: 'start' }
+      },
+      dependencies
+    });
+    const ai = await applyWorkflowCommand({
+      document: search.document,
+      command: {
+        type: 'node.add',
+        nodeId: 'ai',
+        template: parseNodeTemplateRef('builtin:ai-chat'),
+        connectFrom: { kind: 'next', nodeId: 'search' }
+      },
+      dependencies
+    });
+
+    expect(validateWorkflowBuilderSemantics(ai.document).map((item) => item.code)).toContain(
+      'WORKFLOW_DATASET_QUOTE_REFERENCE_REQUIRED'
+    );
+
+    const linked = await applyWorkflowCommand({
+      document: ai.document,
+      command: {
+        type: 'input.ref',
+        nodeId: 'ai',
+        inputKey: NodeInputKeyEnum.aiChatDatasetQuote,
+        ref: { nodeId: 'search', outputKey: NodeOutputKeyEnum.datasetQuoteQA }
+      },
+      dependencies
+    });
+
+    expect(validateWorkflowBuilderSemantics(linked.document)).toEqual([]);
   });
 
   it('returns schema diagnostics instead of throwing', () => {

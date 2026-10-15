@@ -49,6 +49,8 @@
   "cli.config.scheduled_trigger": "Configure this when the workflow must run on a schedule; provide the cron expression, timezone, and injected default prompt together.",
   "cli.config.tts": "Configure this when users need application replies to be read aloud by the browser or a speech model.",
   "cli.config.welcome_text": "Configure this when a new conversation should begin with predefined guidance, examples, or quick actions.",
+  "cli.config.welcome_config": "Configure the welcome content shown when a new conversation starts.",
+  "cli.config.welcome_questions": "Set short, complete questions users can click after the welcome message; keep them specific to the workflow.",
   "cli.config.whisper": "Configure this when users should be able to submit questions through speech recognition.",
   "code.Reset template": "Reset Template",
   "code.Reset template confirm": "Confirm reset code template? This will reset all inputs and outputs to template values. Please save your current code.",

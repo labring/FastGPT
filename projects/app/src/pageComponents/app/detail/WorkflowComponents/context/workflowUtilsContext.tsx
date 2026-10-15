@@ -384,11 +384,20 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
             t
           });
           onSyncWorkflowCheckIssues(issueMap);
-          if (hasError && firstErrorNodeId) {
-            const errorNode = checkNodes.find((node) => node.data.nodeId === firstErrorNodeId);
+          const firstErrorNode = checkNodes.find((node) => node.data.nodeId === firstErrorNodeId);
+          // 新建空白或初始画布时，起始节点尚未连线属于正常搭建前置状态。
+          // 保留节点底部 issue 待完善气泡提示，但跳过外层强报错大红框及自动 fitView 聚焦，避免初次进入产生压迫感。
+          const isStartNodeIsolatedOnly =
+            firstErrorNode &&
+            [FlowNodeTypeEnum.workflowStart, FlowNodeTypeEnum.pluginInput].includes(
+              firstErrorNode.data.flowNodeType
+            ) &&
+            issueMap[firstErrorNodeId]?.every((issue) => issue.code === 'isolated_node');
+
+          if (hasError && firstErrorNodeId && !isStartNodeIsolatedOnly) {
             onUpdateNodeError(firstErrorNodeId, true);
-            if (errorNode) {
-              fitView({ nodes: [errorNode], padding: 0.3 });
+            if (firstErrorNode) {
+              fitView({ nodes: [firstErrorNode], padding: 0.3 });
             }
           }
         }, 300);
