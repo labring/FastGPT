@@ -170,11 +170,9 @@ export const formatModels = ({
     const defaultModel = models.find(
       (item) => isSystemModel(item) && item.modelId === defaultModelId && item.type === type
     );
-    return (
-      defaultModel?.modelId ??
-      models.find((item) => isSystemModel(item) && item.type === type)?.modelId ??
-      ''
-    );
+    if (defaultModel) return defaultModel.modelId;
+    if (type in defaultModelIds && defaultModelId === undefined) return '';
+    return models.find((item) => isSystemModel(item) && item.type === type)?.modelId ?? '';
   };
   const isDynamicModelValue = (value: unknown) =>
     Array.isArray(value) || isWorkflowModelExpression(value);

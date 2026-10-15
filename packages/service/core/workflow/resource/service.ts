@@ -10,7 +10,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import mongoose, { Types } from '../../../common/mongo';
 import { authAppByTmbId } from '../../../support/permission/app/auth';
 import { authDatasetByTmbId } from '../../../support/permission/dataset/auth';
-import { assertAuthModels } from '../../../support/permission/model/auth';
+import { assertAuthModels, getAuthorizedModelIds } from '../../../support/permission/model/auth';
 import { authSkillByTmbId } from '../../../support/permission/skill/auth';
 import type { ModelHandle } from '../../ai/model/catalog/handle';
 import { getTeamModelHandle } from '../../ai/model/catalog/service';
@@ -49,11 +49,10 @@ type LoadWorkflowModelBaseParams = {
 /**
  * 在节点执行点加载并校验模型资源。
  *
- * 1. 先通过 `ModelHandle.getModelData` 解析模型对象，保持缺失、停用、类型不符等 `ModelConfigError` 语义；
- * 2. 若 `modelId` 命中当前 `WorkflowResourceContext` 快照，按 `appTeamId` 目录直接放行；
+ * 1. 先通过 `ModelHandle.getModelData` 解析模型对象（支持 `modelId` 与历史 `model`），保持缺失、停用、类型不符等 `ModelConfigError` 语义；
+ * 2. 以解析出的 `modelData.modelId` 作为统一资源标识：若命中当前 `WorkflowResourceContext` 快照，按 `appTeamId` 目录直接放行；
  * 3. 未命中快照（或无上下文）时，使用运行人 `userInfo`（`userInfo.teamId` + `userInfo.tmbId`）及对应团队目录执行 `use` 权限校验（`assertAuthModels`）；
- * 4. 仅含 legacy `model`（无 `modelId`）的历史节点仅在系统模型目录内解析，不做快照或成员 ACL 校验；
- * 5. `fallbackToDefault: true` 时（如知识库重排/问题优化辅助模型），仅对 `ModelConfigError` 回退系统默认模型，权限错误不降级。
+ * 4. `fallbackToDefault: true` 时（如知识库重排/问题优化辅助模型），仅对 `ModelConfigError` 按运行人可用系统模型回退默认模型，显式模型的权限错误不降级。
  */
 export const loadWorkflowModelResource = async <
   T extends 'llm' | 'rerank' = 'llm',
@@ -78,50 +77,54 @@ export const loadWorkflowModelResource = async <
     ? Extract<AIModelDataType, { type: T }> | undefined
     : Extract<AIModelDataType, { type: T }>;
   const appHandle = modelHandle ?? (await getTeamModelHandle({ teamId: appTeamId }));
+  const context = getWorkflowResourceContext();
+  const actor = {
+    teamId: userInfo.teamId,
+    tmbId: userInfo.tmbId,
+    isRoot: context?.isRoot ?? false
+  };
+  const getAuthHandle = async () =>
+    !userInfo.teamId || userInfo.teamId === appTeamId
+      ? appHandle
+      : getTeamModelHandle({ teamId: userInfo.teamId });
 
   try {
-    const id = typeof modelId === 'string' ? modelId.trim() : '';
-    const context = getWorkflowResourceContext();
-    const isSnapshotAuthorized = !id || hasWorkflowResource({ context, type: 'model', id });
-    const authHandle =
-      isSnapshotAuthorized || !userInfo.teamId || userInfo.teamId === appTeamId
-        ? appHandle
-        : await getTeamModelHandle({ teamId: userInfo.teamId });
+    const rawId = typeof modelId === 'string' ? modelId.trim() : '';
+    const candidateId = rawId || appHandle.findModelData?.({ model }, { type })?.modelId || '';
+    const isPreAuthorized = Boolean(
+      candidateId && hasWorkflowResource({ context, type: 'model', id: candidateId })
+    );
+    const authHandle = isPreAuthorized ? appHandle : await getAuthHandle();
     // 跨团队未命中快照时，若模型在运行人团队目录中存在则优先从运行人目录解析；
     // 否则在应用目录解析以保留已删除/停用等 ModelConfigError 语义，再由 assertAuthModels 阻断无权限访问。
     const resolveHandle =
-      authHandle !== appHandle && authHandle.findModelData?.({ modelId: id })
+      authHandle !== appHandle &&
+      candidateId &&
+      authHandle.findModelData?.({ modelId: candidateId })
         ? authHandle
         : appHandle;
     const modelData = resolveHandle.getModelData({ modelId, model }, { type });
+    const resolvedId = rawId || modelData.modelId;
 
-    if (!isSnapshotAuthorized) {
+    if (!isPreAuthorized && !hasWorkflowResource({ context, type: 'model', id: resolvedId })) {
       await assertAuthModels({
-        actor: {
-          teamId: userInfo.teamId,
-          tmbId: userInfo.tmbId,
-          isRoot: context?.isRoot ?? false
-        },
-        modelIds: [id],
+        actor,
+        modelIds: [resolvedId],
         action: 'use',
         handle: authHandle
       });
     }
-
     return modelData as Result;
   } catch (error) {
     if (!fallbackToDefault || !isModelConfigError(error)) {
       throw error;
     }
-
-    try {
-      return appHandle.getDefaultModelData(type) as Result;
-    } catch (fallbackError) {
-      if (!isModelConfigError(fallbackError)) {
-        throw fallbackError;
-      }
-      return undefined as Result;
-    }
+    const authHandle = await getAuthHandle();
+    const authorizedIds = await getAuthorizedModelIds({ actor, handle: authHandle });
+    return authHandle.getDefaultModelData(type, {
+      authorizedIds,
+      optional: true
+    }) as Result;
   }
 };
 

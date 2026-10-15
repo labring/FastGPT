@@ -1,8 +1,9 @@
 import {
+  getWorkflowNodeModelInputs,
   isWorkflowModelExpression,
-  isWorkflowModelSlotEnabled,
-  isWorkflowSystemModelInput
+  isWorkflowModelSlotEnabled
 } from '@fastgpt/global/common/workflow/model';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   AppResourcesSchema,
   type AppChatConfigType,
@@ -22,6 +23,7 @@ import {
   workflowDatasetParamModelSlots,
   workflowSystemModelSlots
 } from '@fastgpt/global/core/workflow/model/constants';
+import { getCachedSystemModelHandle } from '../../ai/model/catalog/cache';
 
 const getValueList = (value: unknown) =>
   Array.isArray(value) ? value : value === undefined || value === null ? [] : [value];
@@ -179,6 +181,7 @@ export const extractAppResources = ({
 }): AppResourcesType => {
   const resources: AppResource[] = [];
   const addResource = (resource: AppResource) => resources.push(resource);
+  const systemHandle = getCachedSystemModelHandle();
 
   const addTool = (toolId: unknown) => {
     const resource = normalizeAppToolResource(toolId);
@@ -206,20 +209,47 @@ export const extractAppResources = ({
     });
   };
 
-  const addModel = (value: unknown) => {
-    const id = getEntityId(value, 'modelId');
-    // 表达式尚未解析成真实模型 ID，不能固化为静态授权或在保存边界查目录。
-    if (isWorkflowModelExpression(id)) return;
-    if (id) addResource({ type: 'model', id });
+  /**
+   * 优先提取 canonical `modelId`；当 `modelId` 未设置且存在旧 `model` 标识时，
+   * 通过进程内系统模型目录映射为 `modelId`，保证未迁移草稿与系统工具静态资源能统一按 ID 校验。
+   */
+  const addModelReference = ({
+    modelId,
+    model,
+    type
+  }: {
+    modelId?: unknown;
+    model?: unknown;
+    type: ModelTypeEnum;
+  }) => {
+    const canonicalId = getEntityId(modelId, 'modelId');
+    if (canonicalId) {
+      // 表达式尚未解析成真实模型 ID，不能固化为静态授权或在保存边界查目录。
+      if (!isWorkflowModelExpression(canonicalId)) {
+        addResource({ type: 'model', id: canonicalId });
+      }
+      return;
+    }
+    if (modelId !== undefined) return;
+    const legacyModel = getStringValue(model);
+    if (!legacyModel || isWorkflowModelExpression(legacyModel)) return;
+    const resolvedId = systemHandle?.findModelData({ model: legacyModel }, { type })?.modelId;
+    if (resolvedId) {
+      addResource({ type: 'model', id: resolvedId });
+    }
   };
 
   /** 从知识库搜索配置中提取已开启的模型 ID（rerankModelId / datasetSearchExtensionModelId）。 */
   const addDatasetParamsModels = (params: unknown) => {
     if (!isRecord(params)) return;
     if (!Array.isArray(params.datasets) || params.datasets.length === 0) return;
-    for (const { featureKey, modelIdKey } of workflowDatasetParamModelSlots) {
+    for (const { featureKey, modelIdKey, legacyKey, type } of workflowDatasetParamModelSlots) {
       if (params[featureKey] === true) {
-        addModel(params[modelIdKey]);
+        addModelReference({
+          modelId: params[modelIdKey],
+          model: params[legacyKey],
+          type
+        });
       }
     }
   };
@@ -240,11 +270,22 @@ export const extractAppResources = ({
     addTool(node.toolConfig?.httpTool?.toolId);
 
     const inputs = node.inputs ?? [];
-    const enabledSystemModelKeys = new Set<string>(
-      workflowSystemModelSlots
-        .filter((slot) => isWorkflowModelSlotEnabled({ node, slot }))
-        .map(({ modelIdKey }) => modelIdKey)
-    );
+    for (const slot of workflowSystemModelSlots) {
+      if (!isWorkflowModelSlotEnabled({ node, slot })) continue;
+      const { modelIdInputs, legacyInputs } = getWorkflowNodeModelInputs({ node, slot });
+      const fallbackLegacy =
+        legacyInputs[0] && !nodeInputIsReference(legacyInputs[0])
+          ? legacyInputs[0].value
+          : undefined;
+      (modelIdInputs.length > 0 ? modelIdInputs : legacyInputs).forEach((input) => {
+        if (nodeInputIsReference(input)) return;
+        addModelReference({
+          modelId: input.key === slot.modelIdKey ? input.value : undefined,
+          model: input.key === slot.legacyKey ? input.value : fallbackLegacy,
+          type: slot.type
+        });
+      });
+    }
 
     inputs.forEach((input) => {
       if (nodeInputIsReference(input)) return;
@@ -268,17 +309,22 @@ export const extractAppResources = ({
         const id = getEntityId(input.value, 'appId');
         if (id) addResource({ type: 'agent', id });
       }
-      if (enabledSystemModelKeys.has(input.key) && isWorkflowSystemModelInput({ node, input })) {
-        addModel(input.value);
-      }
     });
   });
 
   if (chatConfig?.questionGuide?.open === true) {
-    addModel(chatConfig.questionGuide.modelId);
+    addModelReference({
+      modelId: chatConfig.questionGuide.modelId,
+      model: chatConfig.questionGuide.model,
+      type: ModelTypeEnum.llm
+    });
   }
   if (chatConfig?.ttsConfig?.type === 'model') {
-    addModel(chatConfig.ttsConfig.modelId);
+    addModelReference({
+      modelId: chatConfig.ttsConfig.modelId,
+      model: chatConfig.ttsConfig.model,
+      type: ModelTypeEnum.tts
+    });
   }
 
   return mergeAppResources(resources);

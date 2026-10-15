@@ -253,19 +253,19 @@ describe('extractAppResources', () => {
     ]);
   });
 
-  it('ignores legacy model fields when canonical modelId is absent', () => {
+  it('maps legacy model fields via system catalog when canonical modelId is absent and ignores unknown legacy names', () => {
     const resources = extractAppResources({
       nodes: [
         createNode({
           flowNodeType: FlowNodeTypeEnum.agent,
           inputs: [
-            createInput(NodeInputKeyEnum.aiModel, 'legacy-llm'),
+            createInput(NodeInputKeyEnum.aiModel, 'gpt-5'),
             createInput(NodeInputKeyEnum.datasetParams, {
               datasets: [{ datasetId: '65f000000000000000000001' }],
               [NodeInputKeyEnum.datasetSearchUsingReRank]: true,
               [NodeInputKeyEnum.datasetSearchRerankModel]: 'legacy-rerank',
               [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]: true,
-              [NodeInputKeyEnum.datasetSearchExtensionModel]: 'legacy-extension'
+              [NodeInputKeyEnum.datasetSearchExtensionModel]: 'gpt-5'
             })
           ]
         })
@@ -276,7 +276,9 @@ describe('extractAppResources', () => {
       } as any
     });
 
-    expect(resources.filter((resource) => resource.type === 'model')).toEqual([]);
+    expect(resources.filter((resource) => resource.type === 'model')).toEqual([
+      { type: 'model', id: '68ad85a7463006c963799a68' }
+    ]);
   });
 
   it('records selected workflow apps as tool resources', () => {

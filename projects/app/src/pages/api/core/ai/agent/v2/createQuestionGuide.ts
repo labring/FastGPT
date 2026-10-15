@@ -11,7 +11,6 @@ import type { NextApiResponse } from 'next';
 
 import type { AppQGConfigType } from '@fastgpt/global/core/app/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   CreateQuestionGuideResponseSchema,
@@ -21,6 +20,7 @@ import {
 } from '@fastgpt/global/openapi/core/ai/agent/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { authTargetModelResource } from '@fastgpt/service/core/app/resource/service';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 
 async function handler(
   req: ApiRequestProps<CreateQuestionGuideV2BodyType>,
@@ -79,21 +79,18 @@ async function handler(
     inputQuestionGuide?.modelId !== undefined || inputQuestionGuide?.model !== undefined
       ? inputQuestionGuide
       : persistedQuestionGuide;
-  const qgModelData =
-    targetQuestionGuide?.modelId !== undefined || targetQuestionGuide?.model !== undefined
-      ? modelHandle.getModelData(
-          {
-            modelId: targetQuestionGuide.modelId,
-            model: targetQuestionGuide.model
-          },
-          { type: ModelTypeEnum.llm }
-        )
-      : modelHandle.getDefaultModelData('llm');
-  if (!isEmptyModelValue(targetQuestionGuide?.modelId)) {
+  const explicitModel = modelHandle.getModelData(
+    {
+      modelId: targetQuestionGuide?.modelId,
+      model: targetQuestionGuide?.model
+    },
+    { type: ModelTypeEnum.llm, optional: true }
+  );
+  if (explicitModel) {
     await authTargetModelResource({
       targetType: resolvedSourceType,
       targetId: resolvedSourceId,
-      modelId: qgModelData.modelId,
+      modelId: explicitModel.modelId,
       teamId,
       tmbId,
       isRoot,
@@ -102,6 +99,14 @@ async function handler(
       resources: appWorkflow?.resources
     });
   }
+  const qgModelData =
+    explicitModel ??
+    modelHandle.getDefaultModelData('llm', {
+      authorizedIds: await getAuthorizedModelIds({
+        actor: { teamId, tmbId, isRoot },
+        handle: modelHandle
+      })
+    });
 
   const { result, inputTokens, outputTokens } = await createQuestionGuide({
     messages,

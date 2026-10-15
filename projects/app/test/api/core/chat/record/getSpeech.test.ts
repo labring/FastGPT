@@ -80,7 +80,7 @@ describe('getSpeech model resource permission', () => {
     expect(mocks.text2Speech).not.toHaveBeenCalled();
   });
 
-  it('bypasses model resource check when only legacy model is configured', async () => {
+  it('enforces model resource check when only legacy model is configured', async () => {
     await handler(
       {
         body: {
@@ -92,7 +92,21 @@ describe('getSpeech model resource permission', () => {
       { end: vi.fn() } as any
     );
 
-    expect(mocks.authTargetModelResource).not.toHaveBeenCalled();
-    expect(mocks.text2Speech).toHaveBeenCalledOnce();
+    expect(mocks.jsonRes).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ error: ERROR_ENUM.unAuthModel })
+    );
+    expect(mocks.authTargetModelResource).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetType: ChatSourceTypeEnum.app,
+        modelId: 'model-id',
+        teamId: 'team-id',
+        tmbId: 'tmb-id',
+        isRoot: false,
+        authType: 'token',
+        handle: expect.anything()
+      })
+    );
+    expect(mocks.text2Speech).not.toHaveBeenCalled();
   });
 });

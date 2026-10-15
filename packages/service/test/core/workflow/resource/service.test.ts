@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   mongoDatasetFindOne: vi.fn(),
   authDatasetByTmbId: vi.fn(),
   assertAuthModels: vi.fn(),
+  getAuthorizedModelIds: vi.fn(),
   resolveAppResourcesByPermission: vi.fn(),
   getSystemModelHandle: vi.fn()
 }));
@@ -50,7 +51,8 @@ vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
 }));
 
 vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
-  assertAuthModels: mocks.assertAuthModels
+  assertAuthModels: mocks.assertAuthModels,
+  getAuthorizedModelIds: mocks.getAuthorizedModelIds
 }));
 
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
@@ -78,9 +80,10 @@ describe('workflow resource context', () => {
     );
     mocks.mongoDatasetFindOne.mockReturnValue(createFindResult({ _id: 'dataset-2' }));
     mocks.assertAuthModels.mockResolvedValue({ handle: {}, models: [] });
+    mocks.getAuthorizedModelIds.mockResolvedValue(new Set(['default-llm', 'default-rerank']));
     mocks.getSystemModelHandle.mockResolvedValue({
       getActiveModels: () => [],
-      getSystemDefaultModelIds: () => ({}),
+      getDefaultModelIds: () => ({}),
       getModelData: vi.fn(
         (
           { modelId, model }: { modelId?: string; model?: string },
@@ -93,20 +96,6 @@ describe('workflow resource context', () => {
           config: {}
         })
       ),
-      getLLMModelData: vi.fn(({ modelId, model }: { modelId?: string; model?: string }) => ({
-        modelId: modelId ?? 'model-1',
-        model: model ?? modelId ?? 'model-1',
-        name: model ?? modelId ?? 'model-1',
-        type: 'llm',
-        config: {}
-      })),
-      getRerankModelData: vi.fn(({ modelId, model }: { modelId?: string; model?: string }) => ({
-        modelId: modelId ?? 'rerank-1',
-        model: model ?? modelId ?? 'rerank-1',
-        name: model ?? modelId ?? 'rerank-1',
-        type: 'rerank',
-        config: {}
-      })),
       getDefaultModelData: vi.fn((slot: string) => ({
         modelId: `default-${slot}`,
         model: `default-${slot}`,
@@ -164,6 +153,16 @@ describe('workflow resource context', () => {
       ).resolves.toMatchObject({ modelId: 'model-1' });
       expect(mocks.assertAuthModels).not.toHaveBeenCalled();
 
+      // legacy model 命中快照时直接放行
+      await expect(
+        loadWorkflowModelResource({
+          model: 'legacy-hit',
+          appTeamId: 'team-1',
+          userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
+        })
+      ).resolves.toMatchObject({ modelId: 'model-1' });
+      expect(mocks.assertAuthModels).not.toHaveBeenCalled();
+
       await expect(
         loadWorkflowModelResource({
           modelId: 'missing-model',
@@ -181,10 +180,31 @@ describe('workflow resource context', () => {
     });
   });
 
+  it('authorizes legacy model references against member permissions when snapshot misses', async () => {
+    const context = createWorkflowResourceContext({ resources: [] });
+
+    await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
+      await expect(
+        loadWorkflowModelResource({
+          model: 'legacy-llm',
+          appTeamId: 'team-1',
+          userInfo: { teamId: 'team-1', tmbId: 'tmb-1' }
+        })
+      ).resolves.toMatchObject({ modelId: 'model-1' });
+    });
+
+    expect(mocks.assertAuthModels).toHaveBeenCalledExactlyOnceWith({
+      actor: { teamId: 'team-1', tmbId: 'tmb-1', isRoot: false },
+      modelIds: ['model-1'],
+      action: 'use',
+      handle: expect.anything()
+    });
+  });
+
   it('authorizes snapshot-missed models against runner userInfo.teamId instead of appTeamId in cross-team calls', async () => {
     const appHandle = {
       getActiveModels: () => [],
-      getSystemDefaultModelIds: () => ({}),
+      getDefaultModelIds: () => ({}),
       findModelData: vi.fn(({ modelId }: { modelId?: string }) => ({
         modelId: modelId ?? 'sys-model',
         model: modelId ?? 'sys-model',
@@ -199,14 +219,6 @@ describe('workflow resource context', () => {
         type: 'llm',
         config: {}
       })),
-      getLLMModelData: vi.fn(({ modelId, model }: { modelId?: string; model?: string }) => ({
-        modelId: modelId ?? 'sys-model',
-        model: model ?? modelId ?? 'sys-model',
-        name: model ?? modelId ?? 'sys-model',
-        type: 'llm',
-        config: {}
-      })),
-      getRerankModelData: vi.fn(),
       getDefaultModelData: vi.fn()
     };
     const runnerHandle = {
@@ -219,13 +231,6 @@ describe('workflow resource context', () => {
         config: {}
       })),
       getModelData: vi.fn(({ modelId, model }: { modelId?: string; model?: string }) => ({
-        modelId: modelId ?? 'sys-model',
-        model: model ?? modelId ?? 'sys-model',
-        name: model ?? modelId ?? 'sys-model',
-        type: 'llm',
-        config: {}
-      })),
-      getLLMModelData: vi.fn(({ modelId, model }: { modelId?: string; model?: string }) => ({
         modelId: modelId ?? 'sys-model',
         model: model ?? modelId ?? 'sys-model',
         name: model ?? modelId ?? 'sys-model',

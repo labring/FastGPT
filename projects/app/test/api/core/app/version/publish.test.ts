@@ -154,15 +154,17 @@ describe('publish optional model defaults', () => {
     expect((await MongoApp.findById(app._id).lean())?.chatConfig?.questionGuide).toBeUndefined();
   });
 
-  it('does not replace a restricted system default with another member model', async () => {
-    const { member, app } = await createRestrictedModelScenario();
+  it('replaces a restricted system default with an authorized fallback model', async () => {
+    const { member, app, availableModel } = await createRestrictedModelScenario();
     const result = await Call(handler, {
       auth: member,
       query: { appId: String(app._id) },
       body: { isPublish: true, nodes: [], chatConfig: { questionGuide: { open: true } } }
     });
-    expect(result.code).not.toBe(200);
-    expect(await MongoAppVersion.countDocuments({ appId: app._id })).toBe(0);
+    expect(result.code).toBe(200);
+    const version = await MongoAppVersion.findOne({ appId: app._id, isPublish: true }).lean();
+    expect(version?.chatConfig?.questionGuide?.modelId).toBe(availableModel.modelId);
+    expect(version?.resources).toEqual([{ type: 'model', id: availableModel.modelId }]);
   });
 
   it('rejects publishing when no permitted fallback exists', async () => {

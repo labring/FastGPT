@@ -14,7 +14,7 @@ import { formatModels } from '@fastgpt/global/common/workflow/model';
 import type { ClientSession } from '../../../common/mongo';
 import type { ModelHandle } from '../../ai/model/catalog/handle';
 import { getTeamModelHandle } from '../../ai/model/catalog/service';
-import { assertAuthModels } from '../../../support/permission/model/auth';
+import { assertAuthModels, getAuthorizedModelIds } from '../../../support/permission/model/auth';
 import {
   filterAuthorizedAppResources,
   checkAppResourceReadPermissions
@@ -140,7 +140,7 @@ export const resolveAppResourcesByPermission = async ({
  *      与 chatTest/debug 中知识库等资源的 `resolveAppResourcesByPermission` 规则一致；
  *   3. 外链 / API Key 只能使用正式版本，未命中直接拒绝。
  * - 非 App（skillEdit、chatAgentHelper）：只有登录成员能进入，直接按成员 `use` 权限校验。
- * 模型类型与启用状态由调用方的 typed getter 校验；调用方必须传入读取模型时使用的 handle，避免重复读取目录。
+ * 模型类型与启用状态由调用方的 `getModelData` 校验；调用方必须传入读取模型时使用的 handle，避免重复读取目录。
  */
 export const authTargetModelResource = async ({
   targetType,
@@ -214,11 +214,15 @@ export const prepareAppWorkflowResources = async ({
   isRoot?: boolean;
 }) => {
   const modelHandle = await getTeamModelHandle({ teamId });
+  const authorizedIds = await getAuthorizedModelIds({
+    actor: { teamId, tmbId, isRoot },
+    handle: modelHandle
+  });
   formatModels({
     nodes: nodes as StoreNodeItemType[] | undefined,
     chatConfig,
     models: modelHandle.getActiveModels(),
-    defaultModelIds: modelHandle.getSystemDefaultModelIds(),
+    defaultModelIds: modelHandle.getDefaultModelIds(authorizedIds),
     modelReferencePolicy: 'preserve'
   });
   const extractedResources = extractAppResources({

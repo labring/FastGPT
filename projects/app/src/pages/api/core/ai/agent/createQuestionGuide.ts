@@ -16,6 +16,7 @@ import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { type AuthModeType } from '@fastgpt/service/support/permission/type';
 
 async function handler(
@@ -30,7 +31,11 @@ async function handler(
     authApiKey: true
   });
   const modelHandle = await getTeamModelHandle({ teamId });
-  const qgModel = modelHandle.getDefaultModelData('llm');
+  const authorizedIds = await getAuthorizedModelIds({
+    actor: { teamId, tmbId },
+    handle: modelHandle
+  });
+  const qgModel = modelHandle.getDefaultModelData('llm', { authorizedIds });
 
   const { result, inputTokens, outputTokens } = await createQuestionGuide({
     messages: messages as ChatCompletionMessageParam[],

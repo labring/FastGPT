@@ -42,6 +42,7 @@ import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { checkAppResourceReadPermissions } from '@fastgpt/service/support/permission/app/resource';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
@@ -187,11 +188,15 @@ export const onCreateApp = async ({
     chatConfig
   });
   const modelHandle = await getTeamModelHandle({ teamId });
+  const authorizedIds = await getAuthorizedModelIds({
+    actor: { teamId, tmbId, isRoot },
+    handle: modelHandle
+  });
   formatModels({
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig,
     models: modelHandle.getActiveModels(),
-    defaultModelIds: modelHandle.getSystemDefaultModelIds(),
+    defaultModelIds: modelHandle.getDefaultModelIds(authorizedIds),
     modelReferencePolicy: 'fallback'
   });
   await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
@@ -352,11 +357,15 @@ export const onUpdateAppWorkflow = async ({
     chatConfig
   });
   const modelHandle = await getTeamModelHandle({ teamId });
+  const authorizedIds = await getAuthorizedModelIds({
+    actor: { teamId, tmbId },
+    handle: modelHandle
+  });
   formatModels({
     nodes: workflow.nodes,
     chatConfig: workflow.chatConfig,
     models: modelHandle.getActiveModels(),
-    defaultModelIds: modelHandle.getSystemDefaultModelIds(),
+    defaultModelIds: modelHandle.getDefaultModelIds(authorizedIds),
     modelReferencePolicy: 'fallback'
   });
   await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });

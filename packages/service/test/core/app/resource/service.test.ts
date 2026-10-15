@@ -312,15 +312,21 @@ describe('getAppDraftResourceBaseline', () => {
 });
 
 describe('prepareAppWorkflowResources', () => {
+  const teamId = '65f000000000000000000002';
+  const tmbId = '65f000000000000000000001';
   const model = { modelId: 'resolved-model-id', model: 'legacy-llm', type: ModelTypeEnum.llm };
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.getTmbInfoByTmbId.mockResolvedValue({ teamId, permission: { hasManagePer: false } });
     mocks.getAppDraftVersion.mockResolvedValue({
       resources: [{ type: 'model', id: model.modelId }]
     });
     mocks.getTeamModelHandle.mockResolvedValue({
+      version: 'prepare-catalog',
       getActiveModels: () => [model],
-      getSystemDefaultModelIds: () => ({})
+      getSystemModels: () => [model],
+      getTeamModels: () => [],
+      getDefaultModelIds: () => ({})
     });
   });
   it.each([NodeInputKeyEnum.aiModel, NodeInputKeyEnum.aiModelId])(
@@ -329,8 +335,8 @@ describe('prepareAppWorkflowResources', () => {
       await expect(
         prepareAppWorkflowResources({
           appId: 'app',
-          teamId: 'team',
-          tmbId: 'member',
+          teamId,
+          tmbId,
           nodes: [
             {
               nodeId: 'chat',
@@ -363,8 +369,8 @@ describe('prepareAppWorkflowResources', () => {
     const resources = await prepareAppWorkflowResources({
       appId: 'app',
       nodes: nodes as any,
-      teamId: 'team',
-      tmbId: 'member'
+      teamId,
+      tmbId
     });
     expect(resources).toEqual([{ type: 'model', id: model.modelId }]);
     expect(nodes[0].inputs[0]).toMatchObject({

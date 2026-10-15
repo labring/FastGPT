@@ -172,4 +172,116 @@ describe('upstream model selection semantics', () => {
     copy.name = 'Draft';
     expect(resolved.name).toBe('Visual model');
   });
+
+  it('resolves default model IDs and data with authorized fallback (Option B)', () => {
+    const restrictedLlm: LLMModelDataType = { ...vlm, modelId: 'llm-restricted', model: 'llm-1' };
+    const availableLlm: LLMModelDataType = {
+      ...vlm,
+      modelId: 'llm-available',
+      model: 'llm-2',
+      config: { ...vlm.config, vision: false }
+    };
+    const teamLlm: LLMModelDataType = {
+      ...vlm,
+      modelId: 'llm-team',
+      model: 'llm-team',
+      scope: ModelScopeEnum.team,
+      tmbId: 'member-1'
+    };
+    const handle = createModelHandle({
+      models: [restrictedLlm, availableLlm, teamLlm],
+      defaultModels: {
+        llm: restrictedLlm,
+        datasetTextLLM: restrictedLlm,
+        datasetImageLLM: restrictedLlm,
+        chatTitleLLM: restrictedLlm
+      },
+      configuredDefaultModelIds: {
+        llm: restrictedLlm.modelId,
+        datasetTextLLM: restrictedLlm.modelId,
+        datasetImageLLM: restrictedLlm.modelId,
+        chatTitleLLM: restrictedLlm.modelId
+      },
+      revision: 1,
+      version: 'v1'
+    });
+
+    const authorizedForBoth = new Set([restrictedLlm.modelId, availableLlm.modelId]);
+    expect(handle.getDefaultModelIds(authorizedForBoth)).toMatchObject({
+      llm: restrictedLlm.modelId,
+      datasetTextLLM: restrictedLlm.modelId,
+      datasetImageLLM: restrictedLlm.modelId,
+      chatTitleLLM: restrictedLlm.modelId
+    });
+    expect(handle.getDefaultModelData('llm', { authorizedIds: authorizedForBoth }).modelId).toBe(
+      restrictedLlm.modelId
+    );
+    expect(
+      handle.getDefaultModelData('datasetImageLLM', { authorizedIds: authorizedForBoth })?.modelId
+    ).toBe(restrictedLlm.modelId);
+
+    const authorizedForAvailableOnly = new Set([availableLlm.modelId, teamLlm.modelId]);
+    expect(handle.getDefaultModelIds(authorizedForAvailableOnly)).toMatchObject({
+      llm: availableLlm.modelId,
+      datasetTextLLM: availableLlm.modelId,
+      datasetImageLLM: undefined,
+      chatTitleLLM: undefined
+    });
+    expect(
+      handle.getDefaultModelData('llm', { authorizedIds: authorizedForAvailableOnly }).modelId
+    ).toBe(availableLlm.modelId);
+    expect(
+      handle.getDefaultModelData('datasetImageLLM', { authorizedIds: authorizedForAvailableOnly })
+    ).toBeUndefined();
+    expect(
+      handle.getDefaultModelData('chatTitleLLM', { authorizedIds: authorizedForAvailableOnly })
+    ).toBeUndefined();
+
+    const unauthorizedAll = new Set([teamLlm.modelId]);
+    expect(() => handle.getDefaultModelData('llm', { authorizedIds: unauthorizedAll })).toThrow(
+      ModelErrEnum.unAuthModel
+    );
+    expect(
+      handle.getDefaultModelData('llm', { authorizedIds: unauthorizedAll, optional: true })
+    ).toBeUndefined();
+  });
+
+  it('supports fallbackToDefault and authorizedIds in getModelData', () => {
+    const defaultLlm: LLMModelDataType = { ...vlm, modelId: 'default-llm', model: 'default-llm' };
+    const selectedLlm: LLMModelDataType = {
+      ...vlm,
+      modelId: 'selected-llm',
+      model: 'selected-llm'
+    };
+    const disabledLlm: LLMModelDataType = {
+      ...vlm,
+      modelId: 'disabled-llm',
+      model: 'disabled-llm',
+      isActive: false
+    };
+    const handle = createModelHandle({
+      models: [defaultLlm, selectedLlm, disabledLlm],
+      defaultModels: { llm: defaultLlm },
+      configuredDefaultModelIds: { llm: defaultLlm.modelId },
+      revision: 1,
+      version: 'v1'
+    });
+    const authorizedIds = new Set([defaultLlm.modelId]);
+
+    for (const modelId of [undefined, '', 'missing-llm', 'disabled-llm']) {
+      expect(
+        handle.getModelData(
+          { modelId },
+          { type: ModelTypeEnum.llm, fallbackToDefault: true, authorizedIds }
+        )?.modelId
+      ).toBe(defaultLlm.modelId);
+    }
+
+    expect(() =>
+      handle.getModelData(
+        { modelId: selectedLlm.modelId },
+        { type: ModelTypeEnum.llm, fallbackToDefault: true, authorizedIds }
+      )
+    ).toThrow(ModelErrEnum.unAuthModel);
+  });
 });

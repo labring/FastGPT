@@ -19,9 +19,11 @@ const mockCreateExternalUrl = vi.hoisted(() => vi.fn());
 const mockTeamFrequencyLimit = vi.hoisted(() => vi.fn());
 const mockResolveReadableCollectionIds = vi.hoisted(() => vi.fn());
 const mockAssertAuthModels = vi.hoisted(() => vi.fn());
+const mockGetAuthorizedModelIds = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
-  assertAuthModels: mockAssertAuthModels
+  assertAuthModels: mockAssertAuthModels,
+  getAuthorizedModelIds: mockGetAuthorizedModelIds
 }));
 
 vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
@@ -49,12 +51,33 @@ vi.mock('@fastgpt/service/support/openapi/tools', () => ({
   updateApiKeyUsage: mockUpdateApiKeyUsage
 }));
 
-vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => {
-  const getModelData = (ref: unknown, options?: { type?: string; vision?: boolean }) => {
-    if (options?.vision) return mockGetOptionalVlmModelData(ref, options);
-    if (options?.type === 'rerank') return mockGetRerankModelData(ref, options);
-    if (options?.type === 'embedding') return mockGetEmbeddingModelData(ref, options);
-    return mockGetLLMModelData(ref, options);
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', async () => {
+  const { isModelConfigError } = await import('@fastgpt/global/common/error/model');
+  const getModelData = (
+    ref: unknown,
+    options?: {
+      type?: string;
+      vision?: boolean;
+      fallbackToDefault?: boolean;
+      authorizedIds?: ReadonlySet<string>;
+    }
+  ) => {
+    const resolve = () => {
+      if (options?.vision) return mockGetOptionalVlmModelData(ref, options);
+      if (options?.type === 'rerank') return mockGetRerankModelData(ref, options);
+      if (options?.type === 'embedding') return mockGetEmbeddingModelData(ref, options);
+      return mockGetLLMModelData(ref, options);
+    };
+    if (!options?.fallbackToDefault) return resolve();
+    try {
+      return resolve();
+    } catch (error) {
+      if (!isModelConfigError(error) || !options.type) throw error;
+      return mockGetDefaultModelData(options.type, {
+        authorizedIds: options.authorizedIds,
+        optional: true
+      });
+    }
   };
   return {
     getSystemModelHandle: async () => ({
@@ -62,16 +85,14 @@ vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => {
       version: 'test',
       getDefaultModelData: mockGetDefaultModelData,
       getModelData,
-      findModelData: mockGetOptionalVlmModelData,
-      getOptionalVlmModelData: mockGetOptionalVlmModelData
+      findModelData: mockGetOptionalVlmModelData
     }),
     getTeamModelHandle: async () => ({
       getAllModels: () => [],
       version: 'test',
       getDefaultModelData: mockGetDefaultModelData,
       getModelData,
-      findModelData: mockGetOptionalVlmModelData,
-      getOptionalVlmModelData: mockGetOptionalVlmModelData
+      findModelData: mockGetOptionalVlmModelData
     })
   };
 });
