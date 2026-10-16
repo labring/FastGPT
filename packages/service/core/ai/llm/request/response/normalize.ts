@@ -6,12 +6,21 @@ import type {
 } from '@fastgpt/global/core/ai/llm/type';
 import type { CompleteResponse } from '../types';
 
-/** 工具协议异常具有固定 code，诊断信息通过 cause 保留原始调用和冲突 delta。 */
+type LLMToolCallErrorContext = {
+  finish_reason: CompletionFinishReason;
+  expectedToolNames: string[];
+  receivedToolCalls: (ChatCompletionMessageToolCall & { index?: number; upstreamId?: string })[];
+  reason?: string;
+  conflictingToolCall?: unknown;
+};
+
+/** 对外固定错误消息；原始工具输出和具体协议异常只通过 cause 提供给日志与记录层。 */
 export class LLMToolCallError extends Error {
   readonly code = 'LLM_TOOL_CALL_ERROR';
+  declare readonly cause: LLMToolCallErrorContext;
 
-  constructor({ message, cause }: { message: string; cause: unknown }) {
-    super(message, { cause });
+  constructor(cause: LLMToolCallErrorContext) {
+    super('LLM tool call error: no valid tool calls matched the requested tools.', { cause });
     this.name = 'LLMToolCallError';
   }
 }
@@ -69,15 +78,13 @@ export const normalizeNativeToolCalls = ({
     toolCalls: protocolError ? [] : normalizedCalls,
     finish_reason: 'error',
     error: new LLMToolCallError({
-      message:
-        protocolError?.message ??
-        'LLM tool call error: finish_reason=tool_calls but no valid tool calls matched the requested tools.',
-      cause: {
-        finish_reason,
-        expectedToolNames: [...toolNames],
-        receivedToolCalls: toolCalls,
-        ...(protocolError && { conflictingToolCall: protocolError.toolCall })
-      }
+      finish_reason,
+      expectedToolNames: [...toolNames],
+      receivedToolCalls: toolCalls,
+      ...(protocolError && {
+        reason: protocolError.message,
+        conflictingToolCall: protocolError.toolCall
+      })
     })
   };
 };

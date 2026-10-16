@@ -72,6 +72,32 @@ describe('normalizeNativeToolCalls', () => {
       error: { code: 'LLM_TOOL_CALL_ERROR' }
     });
   });
+
+  it.each([undefined, 'tool name changed from search to private_provider_tool.'])(
+    'should return the same public error while keeping diagnostic=%s in the context',
+    (reason) => {
+      const toolCalls = [
+        { id: 'raw_call', type: 'function' as const, function: { name: 'unknown', arguments: '' } }
+      ];
+      const result = normalizeNativeToolCalls({
+        toolCalls,
+        toolNames: new Set(['search']),
+        finish_reason: 'tool_calls',
+        protocolError: reason ? { message: reason, toolCall: toolCalls[0] } : undefined
+      });
+
+      expect(result.finish_reason).toBe('error');
+      expect(result.error.message).toBe(
+        'LLM tool call error: no valid tool calls matched the requested tools.'
+      );
+      expect(result.error.cause).toMatchObject({
+        finish_reason: 'tool_calls',
+        receivedToolCalls: toolCalls
+      });
+      expect(result.error.cause.reason).toBe(reason);
+      expect(toolCalls[0].function.arguments).toBe('');
+    }
+  );
 });
 
 describe('normalizeCompletionFinishReason', () => {

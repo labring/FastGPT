@@ -20,7 +20,7 @@ import {
   saveLLMResponseRecord as persistLLMResponseRecord
 } from './records';
 import { createCompleteResponse } from './response/complete';
-import { normalizeCompletionFinishReason } from './response/normalize';
+import { LLMToolCallError, normalizeCompletionFinishReason } from './response/normalize';
 import { createStreamResponse } from './response/stream';
 import type { CreateLLMResponseProps, LLMResponse } from './types';
 
@@ -224,22 +224,32 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       (finish_reason === 'stop' || !finish_reason || isEmptyToolCallsFinish);
     const responseEmptyTip = isNotResponse ? getEmptyResponseTip() : undefined;
 
-    if (error) {
-      // 解析期错误已拿到响应，保留请求、原始工具诊断及消耗，避免抛错后只剩空响应记录。
+    const invalidToolResponse = (() => {
+      if (!(error instanceof LLMToolCallError)) return;
+      if (error.cause.finish_reason !== 'tool_calls') return;
+      return error.cause;
+    })();
+    // 连续输出时保留之前轮次的工具，失败轮次则使用过滤前的原始工具输出。
+    const recordToolCalls = invalidToolResponse
+      ? [...(toolCalls ?? []), ...invalidToolResponse.receivedToolCalls]
+      : toolCalls;
+
+    if (invalidToolResponse) {
+      // 仅记录 tool_calls 结束却没有可执行工具的异常；日志保留模型原始输出供排查。
       logger.error(
-        'LLM response parsing failed',
+        'LLM tool calls missing',
         sanitizeLLMRequestRecordPayload({
           teamId,
           requestId,
           modelId: modelData.modelId,
           provider: modelData.provider,
           baseUrl: aiRequestMeta.baseUrl,
-          request: requestBody,
+          request: { ...requestBody, messages: currentMessages },
           response: {
             answerText,
             reasoningText,
-            toolCalls,
-            finish_reason,
+            toolCalls: recordToolCalls,
+            finish_reason: invalidToolResponse.finish_reason,
             usage,
             inputTokens,
             outputTokens
@@ -257,12 +267,13 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         requestBody: requestBody as ChatCompletionCreateParams,
         answerText,
         reasoningText,
-        toolCalls,
-        finishReason: finish_reason,
+        // 系统错误归一化只影响返回值；Mongo 仍保存过滤前的模型工具输出与原始结束原因。
+        toolCalls: recordToolCalls,
+        finishReason: invalidToolResponse?.finish_reason ?? finish_reason,
         usage,
         inputTokens,
         outputTokens,
-        error: error ?? responseEmptyTip
+        error: invalidToolResponse ? undefined : (error ?? responseEmptyTip)
       });
       hasSavedLLMRequestRecord = true;
     }

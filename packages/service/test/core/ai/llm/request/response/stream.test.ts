@@ -490,8 +490,11 @@ describe('createStreamResponse', () => {
         expect(result.error).toMatchObject({
           name: 'LLMToolCallError',
           code: 'LLM_TOOL_CALL_ERROR',
-          message: expect.stringContaining(message),
-          cause: expect.objectContaining({ conflictingToolCall: conflict })
+          message: 'LLM tool call error: no valid tool calls matched the requested tools.',
+          cause: expect.objectContaining({
+            reason: expect.stringContaining(message),
+            conflictingToolCall: conflict
+          })
         });
         expect(callbacks.onToolParam).not.toHaveBeenCalled();
         expect(callbacks.onToolCall).toHaveBeenCalledTimes(

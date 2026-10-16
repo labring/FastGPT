@@ -1462,7 +1462,7 @@ describe('createLLMResponse', () => {
         const expectedError = expect.objectContaining({
           name: 'LLMToolCallError',
           code: 'LLM_TOOL_CALL_ERROR',
-          message: expect.stringContaining('no valid tool calls'),
+          message: 'LLM tool call error: no valid tool calls matched the requested tools.',
           cause: {
             finish_reason: 'tool_calls',
             expectedToolNames: ['get_weather'],
@@ -1487,7 +1487,7 @@ describe('createLLMResponse', () => {
         }
 
         expect(logError).toHaveBeenCalledExactlyOnceWith(
-          'LLM response parsing failed',
+          'LLM tool calls missing',
           expect.objectContaining({
             teamId: 'team_1',
             requestId: 'test-request-id',
@@ -1496,7 +1496,8 @@ describe('createLLMResponse', () => {
             baseUrl: 'https://system.example.com/v1',
             request: expect.objectContaining({ model: 'gpt-4', messages, tools }),
             response: expect.objectContaining({
-              finish_reason: 'error',
+              finish_reason: 'tool_calls',
+              toolCalls,
               answerText: content,
               reasoningText: reasoning,
               usage: expect.objectContaining({ prompt_tokens: 20, completion_tokens: 5 })
@@ -1508,17 +1509,26 @@ describe('createLLMResponse', () => {
         expect(mockSaveLLMRequestRecord).toHaveBeenCalledWith(
           expect.objectContaining({
             requestId: 'test-request-id',
+            body: expect.objectContaining({ messages, tools }),
             response: expect.objectContaining({
-              finish_reason: 'error',
-              error: expectedError,
+              finish_reason: 'tool_calls',
+              error: undefined,
               usage: expect.objectContaining({ inputTokens: 20, outputTokens: 5 })
             })
           })
         );
+        const record = mockSaveLLMRequestRecord.mock.calls[0][0];
+        expect(record.response.toolCalls).toEqual(toolCalls.length ? toolCalls : undefined);
+        expect(record.response.answerText).toEqual(content || undefined);
+        expect(record.response.reasoningText).toEqual(reasoning || undefined);
       }
     );
 
-    it('should redact large image payloads in parsing-error logs without changing the actual request', async () => {
+    it('should redact media while persisting the original invalid tool output instead of the public error', async () => {
+      const controller = await vi.importActual<
+        typeof import('@fastgpt/service/core/ai/record/controller')
+      >('@fastgpt/service/core/ai/record/controller');
+      mockSaveLLMRequestRecord.mockImplementationOnce(controller.saveLLMRequestRecord);
       const logError = vi
         .spyOn(getLogger(LogCategories.MODULE.AI.LLM), 'error')
         .mockImplementation(() => {});
@@ -1532,19 +1542,29 @@ describe('createLLMResponse', () => {
           ]
         }
       ];
-      const mockCreate = vi.fn().mockResolvedValue({
+      const toolCalls: ChatCompletionMessageToolCall[] = [
+        {
+          id: 'original_invalid_call',
+          type: 'function',
+          function: { name: 'unknown_tool', arguments: ' \t' }
+        }
+      ];
+      const response = {
         choices: [
           {
-            message: { role: 'assistant', content: null, tool_calls: [] },
+            message: { role: 'assistant', content: 'original model answer', tool_calls: toolCalls },
             finish_reason: 'tool_calls'
           }
         ],
         usage: { prompt_tokens: 20, completion_tokens: 5, total_tokens: 25 }
-      });
+      };
+      const originalResponse = structuredClone(response);
+      const mockCreate = vi.fn().mockResolvedValue(response);
       mockGetAIApi.mockReturnValue(
         createMockAIApiResult({ chat: { completions: { create: mockCreate } } })
       );
       const result = await createLLMResponse({
+        teamId: '507f1f77bcf86cd799439011',
         throwError: false,
         body: {
           model: createMockModelData(),
@@ -1557,7 +1577,7 @@ describe('createLLMResponse', () => {
       });
       expect(result.finish_reason).toBe('error');
       expect(logError).toHaveBeenCalledExactlyOnceWith(
-        'LLM response parsing failed',
+        'LLM tool calls missing',
         expect.objectContaining({
           request: expect.objectContaining({
             messages: [
@@ -1582,6 +1602,83 @@ describe('createLLMResponse', () => {
       );
       expect(mockCreate.mock.calls[0][0].messages).toEqual(messages);
       expect(JSON.stringify(logError.mock.calls)).not.toContain(imageUrl);
+      await mockSaveLLMRequestRecord.mock.results[0].value;
+      const record = await controller.getLLMRequestRecord(
+        result.requestId,
+        '507f1f77bcf86cd799439011'
+      );
+      expect(record?.response).toMatchObject({
+        answerText: 'original model answer',
+        toolCalls,
+        finish_reason: 'tool_calls',
+        usage: { inputTokens: 20, outputTokens: 5 }
+      });
+      expect(record?.response).not.toHaveProperty('error');
+      expect(record?.body.messages[0].content[1].image_url.url).toBe(
+        'data:image/png;base64,[base64 omitted]'
+      );
+      expect(response).toEqual(originalResponse);
+    });
+
+    it('should log the final continuation context and preserve all original tool outputs', async () => {
+      const logError = vi
+        .spyOn(getLogger(LogCategories.MODULE.AI.LLM), 'error')
+        .mockImplementation(() => {});
+      const calls = ['search', 'unknown_tool'].map<ChatCompletionMessageToolCall>((name, i) => ({
+        id: `call_${i}`,
+        type: 'function',
+        function: { name, arguments: i === 0 ? '{"q":1}' : ' \t' }
+      }));
+      const create = vi.fn();
+      calls.forEach((call, i) => {
+        create.mockResolvedValueOnce({
+          choices: [
+            {
+              message: { role: 'assistant', content: `part ${i}`, tool_calls: [call] },
+              finish_reason: i === 0 ? 'length' : 'tool_calls'
+            }
+          ],
+          usage: { prompt_tokens: 10, completion_tokens: 2, total_tokens: 12 }
+        });
+      });
+      mockGetAIApi.mockReturnValue(createMockAIApiResult({ chat: { completions: { create } } }));
+      const messages: ChatCompletionMessageParam[] = [{ role: 'user', content: 'Search.' }];
+      const result = await createLLMResponse({
+        throwError: false,
+        maxContinuations: 2,
+        body: {
+          model: createMockModelData(),
+          messages,
+          tools: [
+            { type: 'function', function: { name: 'search', parameters: { type: 'object' } } }
+          ],
+          stream: false
+        }
+      });
+
+      expect(result.finish_reason).toBe('error');
+      expect(result.error.message).toBe(
+        'LLM tool call error: no valid tool calls matched the requested tools.'
+      );
+      expect(create).toHaveBeenCalledTimes(2);
+      expect(logError).toHaveBeenCalledExactlyOnceWith(
+        'LLM tool calls missing',
+        expect.objectContaining({
+          request: expect.objectContaining({ messages: create.mock.calls[1][0].messages }),
+          response: expect.objectContaining({ toolCalls: calls, finish_reason: 'tool_calls' })
+        })
+      );
+      expect(mockSaveLLMRequestRecord).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          body: expect.objectContaining({ messages }),
+          response: expect.objectContaining({
+            toolCalls: calls,
+            finish_reason: 'tool_calls',
+            error: undefined,
+            usage: { inputTokens: 20, outputTokens: 4 }
+          })
+        })
+      );
     });
 
     it('should handle multiple tool calls in non-stream response', async () => {
@@ -1769,52 +1866,62 @@ describe('createLLMResponse', () => {
       ).rejects.toThrow();
     });
 
-    it('should keep usage from API error response with throwError=false', async () => {
-      const mockResponse = {
-        choices: [
-          {
-            message: {
-              role: 'assistant',
-              content: ''
-            },
-            finish_reason: 'stop'
+    it.each(['stop', 'tool_calls'] as const)(
+      'should preserve the upstream error and usage with raw finish reason=%s',
+      async (finishReason) => {
+        const logError = vi
+          .spyOn(getLogger(LogCategories.MODULE.AI.LLM), 'error')
+          .mockImplementation(() => {});
+        const mockResponse = {
+          choices: [
+            {
+              message: {
+                role: 'assistant',
+                content: ''
+              },
+              finish_reason: finishReason
+            }
+          ],
+          error: new Error('Some error'),
+          usage: {
+            prompt_tokens: 10,
+            completion_tokens: 2,
+            total_tokens: 12
           }
-        ],
-        error: new Error('Some error'),
-        usage: {
-          prompt_tokens: 10,
-          completion_tokens: 2,
-          total_tokens: 12
-        }
-      };
+        };
 
-      const mockAI = {
-        chat: {
-          completions: {
-            create: vi.fn().mockResolvedValue(mockResponse)
+        const mockAI = {
+          chat: {
+            completions: {
+              create: vi.fn().mockResolvedValue(mockResponse)
+            }
           }
-        }
-      };
-      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
+        };
+        mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
-      const messages: ChatCompletionMessageParam[] = [
-        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' }
-      ];
+        const messages: ChatCompletionMessageParam[] = [
+          { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' }
+        ];
 
-      const result = await createLLMResponse({
-        throwError: false,
-        body: {
-          model: createMockModelData(),
-          messages,
-          stream: false
-        }
-      });
+        const result = await createLLMResponse({
+          throwError: false,
+          body: {
+            model: createMockModelData(),
+            messages,
+            tools: [
+              { type: 'function', function: { name: 'search', parameters: { type: 'object' } } }
+            ],
+            stream: false
+          }
+        });
 
-      expect(result.error).toBeDefined();
-      expect(result.finish_reason).toBe('error');
-      expect(result.usage.inputTokens).toBe(10);
-      expect(result.usage.outputTokens).toBe(2);
-    });
+        expect(result.error).toBe(mockResponse.error);
+        expect(result.finish_reason).toBe('error');
+        expect(result.usage.inputTokens).toBe(10);
+        expect(result.usage.outputTokens).toBe(2);
+        expect(logError).not.toHaveBeenCalled();
+      }
+    );
 
     it('should not save duplicate error record when response error is rethrown', async () => {
       const mockResponse = {
@@ -1876,6 +1983,9 @@ describe('createLLMResponse', () => {
     });
 
     it('should keep usage when stream is interrupted with partial response', async () => {
+      const logError = vi
+        .spyOn(getLogger(LogCategories.MODULE.AI.LLM), 'error')
+        .mockImplementation(() => {});
       const errorChunks = [
         {
           choices: [{ delta: { content: 'Hello' }, finish_reason: null }]
@@ -1940,9 +2050,10 @@ describe('createLLMResponse', () => {
 
       expect(result.answerText).toBe('Hello');
       expect(result.finish_reason).toBe('error');
-      expect(result.error).toBeDefined();
+      expect(result.error).toBe(capturedError);
       expect(result.usage.inputTokens).toBe(5);
       expect(result.usage.outputTokens).toBe(1);
+      expect(logError).not.toHaveBeenCalled();
       expect(mockSaveLLMRequestRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           response: expect.objectContaining({
