@@ -6,9 +6,6 @@ import {
   saveLLMRequestRecord
 } from '@fastgpt/service/core/ai/record/controller';
 import { MongoLLMRequestRecord } from '@fastgpt/service/core/ai/record/schema';
-import { createStreamResponse } from '@fastgpt/service/core/ai/llm/request/response/stream';
-import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { StreamResponseType } from '@fastgpt/global/core/ai/llm/type';
 
 const createBase64 = (length = 320) => 'a'.repeat(length);
 
@@ -158,81 +155,37 @@ describe('sanitizeLLMRequestRecordPayload', () => {
 
 describe('LLM request record team isolation', () => {
   it.each([false, true])(
-    'persists actual tool diagnostics without stacks with enumerable=%s',
+    'persists upstream errors without stacks with enumerable=%s',
     async (enumerable) => {
-      async function* generate() {
-        yield {
-          choices: [
-            {
-              delta: {
-                tool_calls: [
-                  {
-                    index: 0,
-                    id: 'invalid',
-                    type: 'function',
-                    function: { name: 'unknown', arguments: '{}' }
-                  }
-                ]
-              },
-              finish_reason: 'tool_calls'
-            }
-          ]
-        };
-      }
-      const result = await createStreamResponse({
-        body: {
-          messages: [],
-          stream: true,
-          tools: [
-            { type: 'function', function: { name: 'search', parameters: { type: 'object' } } }
-          ],
-          model: {
-            modelId: '68ad85a7463006c963799a64',
-            type: ModelTypeEnum.llm,
-            scope: ModelScopeEnum.system,
-            provider: 'openai',
-            model: 'gpt-4o',
-            name: 'GPT-4o',
-            config: {
-              maxContext: 128000,
-              maxResponse: 4096,
-              quoteMaxToken: 60000,
-              reasoning: false
-            }
-          }
-        },
-        response: generate() as unknown as StreamResponseType
+      const cause = Object.assign(new Error('provider disconnected'), { code: 'PROVIDER_ERROR' });
+      const error = Object.assign(new Error('upstream failed', { cause }), {
+        code: 'UPSTREAM_ERROR'
       });
-      Object.defineProperty(result.error, 'stack', { enumerable });
+      Object.defineProperty(error, 'stack', { enumerable });
+      Object.defineProperty(cause, 'stack', { enumerable });
       await saveLLMRequestRecord({
         teamId: '507f1f77bcf86cd799439011',
-        requestId: 'invalid_tool',
+        requestId: 'upstream_error',
         body: {},
-        response: result
+        response: { error }
       });
-      const record = await getLLMRequestRecord('invalid_tool', '507f1f77bcf86cd799439011');
-      expect(record?.response).toMatchObject({
-        finish_reason: 'error',
+      const record = await getLLMRequestRecord('upstream_error', '507f1f77bcf86cd799439011');
+      expect(record?.response).toEqual({
         error: {
-          name: 'LLMToolCallError',
-          code: 'LLM_TOOL_CALL_ERROR',
-          message: expect.stringContaining('no valid tool calls'),
+          name: 'Error',
+          code: 'UPSTREAM_ERROR',
+          message: 'upstream failed',
           cause: {
-            finish_reason: 'tool_calls',
-            expectedToolNames: ['search'],
-            receivedToolCalls: [
-              {
-                index: 0,
-                id: 'invalid',
-                type: 'function',
-                function: { name: 'unknown', arguments: '{}' }
-              }
-            ]
+            name: 'Error',
+            code: 'PROVIDER_ERROR',
+            message: 'provider disconnected'
           }
         }
       });
-      // 请求记录会通过接口展示给团队成员，不保存包含服务端路径的调用栈。
-      expect(record?.response?.error).not.toHaveProperty('stack');
+      // 入库清理顶层及 cause 的调用栈，原始 Error 仍可用于系统日志。
+      expect(error.stack).toEqual(expect.any(String));
+      expect(cause.stack).toEqual(expect.any(String));
+      expect(error.cause).toBe(cause);
     }
   );
 
