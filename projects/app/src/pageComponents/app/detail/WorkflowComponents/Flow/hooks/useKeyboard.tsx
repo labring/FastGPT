@@ -7,17 +7,22 @@ import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
-import { useKeyPress as useKeyPressEffect } from 'ahooks';
 import { useTranslation } from 'next-i18next';
-import { useCallback } from 'react';
-import { type Node, useKeyPress, useReactFlow } from '@xyflow/react';
+import { useCallback, useEffect } from 'react';
+import { type Node, useReactFlow, useStoreApi } from '@xyflow/react';
 import { useWorkflowUIValue } from '../canvas/canvasState';
 import { useWorkflowCanvasRendererValue } from '../canvas/workflowCanvasContext';
-import { isWorkflowShortcutInputtingTarget } from './keyboard';
+import {
+  getWorkflowHistoryShortcut,
+  isExternalHistoryTarget,
+  isWorkflowShortcutInputtingTarget,
+  resetWorkflowModifierKeyPress
+} from './keyboard';
 import { useClearCanvasSelection } from '../canvas/useCanvasController';
 import { useWorkflowUtils } from './useUtils';
 import {
   useWorkflowIssueFocusRef,
+  useWorkflowHistory,
   useWorkflowRuntime
 } from '@/web/core/workflow/editor/session/workflowSession';
 
@@ -25,19 +30,21 @@ export const useKeyboard = () => {
   const { t } = useTranslation();
   const mouseInCanvas = useWorkflowUIValue((v) => v.mouseInCanvas);
   const getMousePosition = useWorkflowUIValue((v) => v.getMousePosition);
+  const presentationMode = useWorkflowUIValue((v) => v.presentationMode);
+  const setPresentationMode = useWorkflowUIValue((v) => v.setPresentationMode);
   const selectNodes = useWorkflowCanvasRendererValue((v) => v.selectNodes);
 
   const { copyData } = useCopyData();
   const { computedNewNodeName } = useWorkflowUtils();
   // 复制只碰 renderer 交互状态（选中、位置），直接读 reactflow store；
   // 清选中走 select 变更漏斗，不用 useReactFlow().setNodes（受控模式下会转成整份 reset 变更）。
-  const { screenToFlowPosition, getNodes } = useReactFlow();
+  const { screenToFlowPosition, getNodes, zoomIn, zoomOut } = useReactFlow();
+  const reactFlowStore = useStoreApi();
+  const { undo, redo } = useWorkflowHistory();
   const actions = useWorkflowActions();
   const clearCanvasSelection = useClearCanvasSelection();
   const runtime = useWorkflowRuntime();
   const issueFocusRef = useWorkflowIssueFocusRef();
-
-  const isDowningCtrl = useKeyPress(['Meta', 'Control']);
 
   const hasInputtingElement = useCallback((event?: KeyboardEvent) => {
     return isWorkflowShortcutInputtingTarget(event?.target);
@@ -147,22 +154,91 @@ export const useKeyboard = () => {
     selectNodes
   ]);
 
-  useKeyPressEffect(['ctrl.c', 'meta.c'], (e) => {
-    if (!mouseInCanvas) return;
-    if (hasInputtingElement(e)) return;
-    onCopy();
-  });
-  useKeyPressEffect(['ctrl.v', 'meta.v'], (e) => {
-    if (!mouseInCanvas) return;
-    if (hasInputtingElement(e)) return;
-    onPaste();
-  });
-  useKeyPressEffect(['ctrl.s', 'meta.s'], (e) => {
-    e.preventDefault();
-    if (!mouseInCanvas) return;
-  });
+  useEffect(() => {
+    /** 画布快捷键统一在捕获阶段处理，避免 ahooks 与 ReactFlow 各自维护一套事件入口。 */
+    const onKeyDown = (event: KeyboardEvent) => {
+      resetWorkflowModifierKeyPress(event, () =>
+        reactFlowStore.setState({ multiSelectionActive: false })
+      );
 
-  return {
-    isDowningCtrl
-  };
+      // Ctrl/Cmd + Z：撤销；Ctrl/Cmd + Shift + Z 或 Ctrl/Cmd + Y：重做。
+      const direction = getWorkflowHistoryShortcut(event);
+      if (direction) {
+        if (!isExternalHistoryTarget(event.target)) {
+          if (!mouseInCanvas || isWorkflowShortcutInputtingTarget(event.target)) return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        if (direction === 'redo') redo();
+        else undo();
+        return;
+      }
+
+      const hasCtrlOrMeta = event.ctrlKey || event.metaKey;
+      // Ctrl/Cmd + =/+（主键盘或小键盘 +）：放大画布。
+      if (hasCtrlOrMeta && (event.code === 'NumpadAdd' || event.code === 'Equal')) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (mouseInCanvas) zoomIn();
+        return;
+      }
+
+      // Ctrl/Cmd + -：缩小画布。
+      if (hasCtrlOrMeta && event.code === 'Minus') {
+        event.preventDefault();
+        if (mouseInCanvas) zoomOut();
+        return;
+      }
+
+      // Shift + Space：切换演示模式。
+      if (event.shiftKey && event.code === 'Space') {
+        event.preventDefault();
+        if (mouseInCanvas) setPresentationMode(!presentationMode);
+        return;
+      }
+
+      // Ctrl/Cmd + C：复制画布中选中的节点。
+      if (hasCtrlOrMeta && event.code === 'KeyC') {
+        if (mouseInCanvas && !hasInputtingElement(event)) void onCopy();
+        return;
+      }
+
+      // Ctrl/Cmd + V：在鼠标位置粘贴节点。
+      if (hasCtrlOrMeta && event.code === 'KeyV') {
+        if (mouseInCanvas && !hasInputtingElement(event)) void onPaste();
+        return;
+      }
+
+      // Ctrl/Cmd + S：拦截浏览器保存快捷键，不触发工作流保存。
+      if (hasCtrlOrMeta && event.code === 'KeyS') {
+        event.preventDefault();
+      }
+    };
+
+    const onPointerDown = (event: PointerEvent) => {
+      resetWorkflowModifierKeyPress(event, () =>
+        reactFlowStore.setState({ multiSelectionActive: false })
+      );
+    };
+
+    document.addEventListener('keydown', onKeyDown, true);
+    document.addEventListener('pointerdown', onPointerDown, true);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown, true);
+      document.removeEventListener('pointerdown', onPointerDown, true);
+    };
+  }, [
+    hasInputtingElement,
+    mouseInCanvas,
+    onCopy,
+    onPaste,
+    presentationMode,
+    reactFlowStore,
+    redo,
+    setPresentationMode,
+    undo,
+    zoomIn,
+    zoomOut
+  ]);
 };

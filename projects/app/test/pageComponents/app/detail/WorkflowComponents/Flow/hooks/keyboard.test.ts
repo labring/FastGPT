@@ -3,7 +3,8 @@ import {
   EXTERNAL_HISTORY_SELECTOR,
   getWorkflowHistoryShortcut,
   isExternalHistoryTarget,
-  isWorkflowShortcutInputtingTarget
+  isWorkflowShortcutInputtingTarget,
+  resetWorkflowModifierKeyPress
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/hooks/keyboard';
 
 const createElementMock = ({
@@ -115,6 +116,49 @@ describe('getWorkflowHistoryShortcut', () => {
     expect(shortcut('x', { ctrlKey: true })).toBeUndefined();
     expect(shortcut('y', { ctrlKey: true, shiftKey: true })).toBeUndefined();
     expect(shortcut('z', { ctrlKey: true, altKey: true })).toBeUndefined();
+  });
+});
+
+describe('resetWorkflowModifierKeyPress', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('releases stale Meta and Control state on an unmodified pointer event', () => {
+    const dispatchEvent = vi.fn();
+    const onReset = vi.fn();
+    vi.stubGlobal('document', { dispatchEvent });
+    vi.stubGlobal(
+      'KeyboardEvent',
+      vi.fn(function (this: unknown, type: string, init: Record<string, unknown>) {
+        return { type, ...init };
+      })
+    );
+
+    resetWorkflowModifierKeyPress({ metaKey: false, ctrlKey: false }, onReset);
+
+    expect(onReset).toHaveBeenCalledOnce();
+    expect(dispatchEvent).toHaveBeenCalledTimes(2);
+    expect(dispatchEvent).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ type: 'keyup', key: 'Meta', code: 'MetaLeft' })
+    );
+    expect(dispatchEvent).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ type: 'keyup', key: 'Control', code: 'ControlLeft' })
+    );
+  });
+
+  it('keeps modifier state while a modifier is still held', () => {
+    const dispatchEvent = vi.fn();
+    const onReset = vi.fn();
+    vi.stubGlobal('document', { dispatchEvent });
+
+    resetWorkflowModifierKeyPress({ metaKey: true, ctrlKey: false }, onReset);
+    resetWorkflowModifierKeyPress({ metaKey: false, ctrlKey: true }, onReset);
+
+    expect(onReset).not.toHaveBeenCalled();
+    expect(dispatchEvent).not.toHaveBeenCalled();
   });
 });
 

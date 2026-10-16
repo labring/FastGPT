@@ -1,19 +1,14 @@
-import React, { useEffect, useMemo } from 'react';
-import { Background, ControlButton, Panel, useReactFlow } from '@xyflow/react';
+import React, { useMemo } from 'react';
+import { Background, ControlButton, Panel } from '@xyflow/react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import styles from './index.module.scss';
-import { useKeyPress } from 'ahooks';
 import { useWorkflowHistory } from '@/web/core/workflow/editor/session/workflowSession';
 import { useWorkflowUIValue } from '../canvas/canvasState';
-import {
-  getWorkflowHistoryShortcut,
-  isExternalHistoryTarget,
-  isWorkflowShortcutInputtingTarget
-} from '../hooks/keyboard';
 import { useWorkflowCanvasValue } from '../canvas/workflowCanvasContext';
+import { useKeyboard } from '../hooks/useKeyboard';
 import WorkflowMiniMap from './WorkflowMiniMap';
 
 const buttonStyle = {
@@ -23,64 +18,17 @@ const buttonStyle = {
 };
 
 const FlowController = React.memo(function FlowController() {
-  const { zoomIn, zoomOut } = useReactFlow();
   const fitNodes = useWorkflowCanvasValue((v) => v.fitNodes);
   const { undo, redo, canUndo, canRedo } = useWorkflowHistory();
   // 按字段订阅：hover 会换 UI context 的值身份，控制器只读这五个字段，不该跟着刷新。
   const workflowControlMode = useWorkflowUIValue((v) => v.workflowControlMode);
   const setWorkflowControlMode = useWorkflowUIValue((v) => v.setWorkflowControlMode);
-  const mouseInCanvas = useWorkflowUIValue((v) => v.mouseInCanvas);
   const presentationMode = useWorkflowUIValue((v) => v.presentationMode);
   const setPresentationMode = useWorkflowUIValue((v) => v.setPresentationMode);
   const { t } = useTranslation();
 
   const isMac = !window ? false : window.navigator.userAgent.toLocaleLowerCase().includes('mac');
-
-  /**
-   * 撤销重做在捕获阶段接管：Lexical / Monaco 等编辑器会先在目标阶段跑自己的本地历史
-   * （Lexical 还按秒合并连续输入），事件再冒泡到全局回调触发 Runtime 撤销，
-   * 一次按键走两套历史，表现为撤销跳步并清空 redo 栈。
-   *
-   * 规则：Runtime 托管字段（data-workflow-history="external"）不论鼠标在哪都走画布历史；
-   * 其余沿用旧边界——鼠标在画布内才接管，且自带撤销栈的输入控件优先处理自己的历史。
-   */
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const direction = getWorkflowHistoryShortcut(event);
-      if (!direction) return;
-
-      if (!isExternalHistoryTarget(event.target)) {
-        if (!mouseInCanvas) return;
-        if (isWorkflowShortcutInputtingTarget(event.target)) return;
-      }
-
-      event.preventDefault();
-      event.stopPropagation();
-      if (direction === 'redo') redo();
-      else undo();
-    };
-
-    document.addEventListener('keydown', onKeyDown, true);
-    return () => document.removeEventListener('keydown', onKeyDown, true);
-  }, [mouseInCanvas, redo, undo]);
-
-  useKeyPress(['ctrl.add', 'meta.add', 'ctrl.equalsign', 'meta.equalsign'], (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!mouseInCanvas) return;
-    zoomIn();
-  });
-  useKeyPress(['ctrl.dash', 'meta.dash'], (e) => {
-    e.preventDefault();
-    if (!mouseInCanvas) return;
-    zoomOut();
-  });
-
-  useKeyPress(['shift.space'], (e) => {
-    e.preventDefault();
-    if (!mouseInCanvas) return;
-    setPresentationMode(!presentationMode);
-  });
+  useKeyboard();
 
   const Render = useMemo(() => {
     return (

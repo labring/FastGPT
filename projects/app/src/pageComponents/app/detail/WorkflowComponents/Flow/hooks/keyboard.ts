@@ -65,6 +65,26 @@ export const isWorkflowShortcutInputtingTarget = (target?: EventTarget | Node | 
   return isEditableElement(selection.anchorNode) || isEditableElement(selection.focusNode);
 };
 
+/**
+ * 系统级截图快捷键可能让浏览器丢失 Meta/Ctrl 的 keyup；下一次未带修饰键的指针或键盘事件到达时，
+ * 主动补齐释放事件，避免 xyflow 的按键状态粘滞。
+ */
+export const resetWorkflowModifierKeyPress = (
+  event: Pick<KeyboardEvent, 'metaKey' | 'ctrlKey'>,
+  onReset?: () => void
+) => {
+  if (event.metaKey || event.ctrlKey || typeof document === 'undefined') return;
+
+  onReset?.();
+
+  for (const [key, code] of [
+    ['Meta', 'MetaLeft'],
+    ['Control', 'ControlLeft']
+  ] as const) {
+    document.dispatchEvent(new KeyboardEvent('keyup', { key, code, bubbles: true }));
+  }
+};
+
 /** 撤销重做快捷键只需要修饰键与主键，不依赖完整 KeyboardEvent，便于单测。 */
 export type WorkflowHistoryShortcutEvent = Pick<
   KeyboardEvent,

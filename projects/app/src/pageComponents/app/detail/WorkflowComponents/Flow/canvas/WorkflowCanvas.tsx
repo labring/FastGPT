@@ -579,6 +579,7 @@ const WorkflowCanvas = () => {
           onPaneClick={onPaneClick}
           snapToGrid
           style={canvasStyle}
+          multiSelectionKeyCode={['Meta', 'Control']}
           {...(workflowControlMode === 'select'
             ? {
                 selectionMode: SelectionMode.Full,

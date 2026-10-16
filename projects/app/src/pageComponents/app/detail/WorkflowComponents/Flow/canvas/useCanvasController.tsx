@@ -21,7 +21,6 @@ import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/l
 import '@xyflow/react/dist/style.css';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
-import { useKeyboard } from '../hooks/useKeyboard';
 import { type THelperLine } from '@/web/core/workflow/type';
 import {
   useWorkflowIssueFocusAction,
@@ -540,7 +539,6 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
 
   const { flowToScreenPosition, getZoom, getNode, getEdge } = useReactFlow<CanvasNode, Edge>();
   const store = useStoreApi<CanvasNode, Edge>();
-  const { isDowningCtrl } = useKeyboard();
   const getNodeDimension = useWorkflowCanvasValue((v) => v.getNodeDimension);
 
   /*
@@ -694,8 +692,8 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
 
   /* node */
   const handleSelectNode = useMemoizedFn((change: NodeSelectionChange) => {
-    // If the node is not selected and the Ctrl key is pressed, select the node
-    if (change.selected === false && isDowningCtrl) {
+    // ReactFlow store 是修饰键状态的同步来源，避免截图丢失 keyup 时 hook 快照滞后一个事件。
+    if (change.selected === false && store.getState().multiSelectionActive) {
       change.selected = true;
     }
 
