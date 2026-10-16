@@ -1,8 +1,26 @@
 ---
-title: 自部署
-description: FastGPT 自部署
+title: 部署与运维
+description: 选择安装路径、配置依赖服务，并维护和升级 FastGPT。
 ---
 
-import { Redirect } from '@/components/docs/Redirect';
+## 选择安装路径
 
-<Redirect to="/self-host/deploy/docker" />
+| 任务 | 入口 | 完成标志 |
+| --- | --- | --- |
+| 使用 Docker Compose 安装 | [Docker 部署](/zh-CN/self-host/deploy/docker) | 依赖服务启动，能登录并完成一次模型调用 |
+| 使用 Sealos 部署 | [Sealos 部署](/zh-CN/self-host/deploy/sealos) | 应用地址可访问，存储与模型配置可用 |
+| 本地开发与调试 | [开发环境](/zh-CN/self-host/dev) | 服务启动并可修改、调试代码 |
+
+安装前按目标版本核对资源、端口、持久化目录和访问凭证。使用匹配版本的配置与镜像，升级前备份数据库和对象存储，并确认恢复方案。
+
+## 配置运行服务
+
+[模型与渠道](/zh-CN/self-host/config/model/intro)、[对象存储](/zh-CN/self-host/config/object-storage)、[Agent 虚拟机](/zh-CN/self-host/config/sandbox/opensandbox)及[环境变量](/zh-CN/self-host/config/env)分别说明依赖服务。Agent 的虚拟机与工作流代码沙盒具有各自的配置和用途，按所用能力核对。
+
+完成配置后执行[首个知识库问答](/zh-CN/guide/getting-started/knowledge-qa)，验证文件处理、索引与模型回答。
+
+## 管理与维护
+
+平台 root 管理部署级资源；团队成员和协作者权限控制团队内资源。商业能力需相应授权，参考[商业版](/zh-CN/guide/version/commercial)、[SSO](/zh-CN/guide/admin/sso)和[团队模式](/zh-CN/guide/admin/teamMode)。
+
+通过[监控](/zh-CN/self-host/config/signoz)观察服务，通过[迁移说明](/zh-CN/self-host/migration/docker_db)核对数据移动要求。开始升级前阅读[升级入口](/zh-CN/self-host/upgrading/upgrade-instruction)，再按[版本时间轴](/zh-CN/self-host/upgrading/version-timeline)选择适用版本；历史页面保留对应版本的步骤与限制。

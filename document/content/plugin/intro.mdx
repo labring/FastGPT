@@ -76,7 +76,7 @@ fastgpt-plugin/
 - `apps/*` 是组合根，负责装配依赖、注册路由、启动进程或提供开发命令。
 - `sdk/*` 面向外部使用者发布，提供服务调用和插件开发能力。
 
-系统工具开发结构可以参考 [系统工具开发指南](./system-tool-development.mdx)。模型预设维护可以参考 [增加模型预设](./model-presets.mdx)。
+系统工具开发结构可以参考 [系统工具开发指南](/zh-CN/plugin/system-tool-development)。模型预设维护可以参考 [增加模型预设](/zh-CN/plugin/model-presets)。
 
 ## 仓库分工
 
@@ -107,7 +107,7 @@ FastGPT Plugin 服务负责插件包管理、运行时注册、插件调用转�
 系统插件安装主要有两种方式：
 
 1. 系统级安装：root 用户在插件管理页面上传 `.pkg` 文件，或从插件市场安装。安装后全系统可见。
-2. 团队级安装：仅团队管理员可操作，安装后仅团队内可见。具体操作参见[团队安装与管理插件](./team-installation.mdx)。
+2. 团队级安装：仅团队管理员可操作，安装后仅团队内可见。具体操作参见[团队安装与管理插件](/zh-CN/plugin/team-installation)。
 
 插件安装后会保存插件包文件、解析插件元信息，并在插件启用时注册到运行时。系统管理员可以管理插件状态、系统密钥和运行时参数。
 
@@ -179,7 +179,7 @@ Pod 启动错误会被记录并分类。连续非超时启动失败达到阈值�
 
 开发者通过 CLI 创建单工具或工具集骨架，使用 SDK 声明 `manifest`、`inputSchema`、`outputSchema`、`secretSchema` 和 handler。插件开发完成后运行测试、构建、检查和打包，最终生成 `.pkg` 文件。
 
-开发系统工具可以继续阅读 [系统工具开发指南](./system-tool-development.mdx)。
+开发系统工具可以继续阅读 [系统工具开发指南](/zh-CN/plugin/system-tool-development)。
 
 ## 参考
 

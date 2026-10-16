@@ -1,0 +1,136 @@
+---
+title: "Case 1: Conversational Agent — Corporate Email Writing Assistant"
+description: "Case 1: Conversational Agent — Corporate Email Writing Assistant"
+---
+
+This example uses models and external services. Prepare the required permissions and quota, debug and verify results, then publish application configuration.
+
+## Case 1: Conversational Agent — Corporate Email Writing Assistant
+
+### 1.1 Use Cases
+
+Conversational Agents are suitable for lightweight Q&A, content generation, copy refinement, and standardized output. This case does not link a Dataset or rely on complex workflows; it simply uses model configuration, prompts, and an Email tool to build a corporate email writing assistant.
+
+Employees often need to handle emails for project updates, cross-departmental collaboration, customer replies, meeting minutes, and more. Using AI to standardize email formats and expression styles can improve writing efficiency and maintain the professionalism of external corporate communications.
+
+The focus of this case is not to have the AI randomly generate an email, but to consolidate the stable requirements of corporate email writing into the prompt, such as subject lines, salutations, body structure, action items, and risk reminders. For beginners, it also serves as a minimal closed loop for understanding FastGPT app configuration: first define the role, then constrain the output, and finally extend execution actions through tools.
+
+### 1.2 Configuration Steps
+
+1. **Create a Conversational Agent**
+
+   Click **New** in Studio, select **Conversational Agent**, and name the app `Corporate Email Writing Assistant`.
+
+2. **Open the App Configuration Page**
+
+   After creation, open the app configuration page. The page is usually divided into left and right columns: the left is AI configuration, and the right is Debug Preview.
+
+   ![1.2 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-02.png)
+
+3. **Select a Model**
+
+   In the AI configuration, select the base model for the Conversational Agent. This case uses GLM-5.1, but you can replace it with other available models configured in your current environment.
+
+   When selecting a model, prioritize two aspects: first, whether the model is good at business writing, and second, whether it consistently follows the required format. Email writing is a low-risk, low-structure task, so you usually do not need the strongest model available, but you should still choose one with a natural tone and reliable instruction following.
+
+   ![1.2 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-03.png)
+
+4. **Write the Prompt**
+
+   The prompt needs to clearly describe the assistant's role, output format, and constraints. You can use the following example:
+
+   ```md
+   You are a corporate email writing expert, helping employees write professional, clear, and appropriate work emails.
+
+   Output format:
+
+   - **Subject line**: Concise and clear
+   - **Salutation**: Choose "Dear Mr./Ms. XX" or "Hi XX" based on the relationship with the recipient
+   - **Body**: Three-part structure (Background → Core content → Action items)
+   - **Sign-off**: Name, Title, Department
+
+   Rules:
+
+   - Keep the body between 200-500 words
+   - List action items and to-dos with bullet points
+   - When involving sensitive content like salary, HR, or legal matters, remind the user to send with caution
+   - Use a neutral and polite tone when unsure of the relationship with the recipient
+   ```
+
+   Enter the prompt in the Prompt field.
+
+   This prompt consists of three parts: the role definition stabilizes the assistant's identity, the output format constrains the email structure, and the rules control risk boundaries. In actual business, you can continue to add corporate tone requirements, brand terminology, banned words, signature formats, and more to make the output more aligned with internal standards.
+
+   ![1.2 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-04.png)
+
+5. **Add the Email Tool**
+
+   Tools encapsulate complex operations. This case uses the Email sending tool to give the AI assistant the ability to send emails after generating them. Click the plus sign on the right side of the tools and select "Send Email".
+
+   You can think of tools as the AI's external capabilities. Without tools, the assistant can only generate the email body; after adding the Email tool, the assistant can execute the sending action after user confirmation. In a production environment, it is recommended to have the assistant generate an email draft first, and then have the user confirm the sending, to avoid accidental sending or sending to the wrong recipient.
+
+   ![1.2 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-05.png)
+
+6. **Configure the Email Tool**
+
+   Enter the tool configuration page and fill in the parameters related to the email service.
+
+   ![1.2 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-06.png)
+
+7. **Activate the Tool**
+
+   Click "Settings" to enter the tool activation page, then click "Activate Tool".
+
+   ![1.2 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-07.png)
+
+8. **Fill in the Email SMTP Information**
+
+   This case uses QQ Mail as an example. When testing, you can fill it out as follows:
+
+   ```text
+   SMTP Server Address: smtp.qq.com
+   SMTP Port: 465
+   Enable SSL
+   SMTP Username: Email address
+   SMTP Password: Authorization code
+   ```
+
+   For the authorization code, please refer to the [Authorization Code Acquisition Tutorial](https://cloud.tencent.com/developer/article/2177098).
+
+   ![1.2 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-08.png)
+
+9. **Set the Conversation Opening**
+
+   The conversation opening is used to tell users what this AI assistant can do. You can fill in:
+
+   ```text
+   Hello! I am the Email Writing Assistant 📧
+
+   Please tell me: Who is the recipient? What is the purpose of the email? What key information needs to be included?
+
+   I will help you generate a professional and appropriate email.
+   ```
+
+   After filling it out, you can see the effect in the preview area on the right.
+
+   ![1.2 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-09.png)
+
+10. **Validate the Result**
+
+    After configuration, enter your email requirements in the debug preview to check whether the assistant can generate an email with a clear structure and appropriate tone.
+
+    ![1.2 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-10.png)
+
+    If the user's information is insufficient, the assistant should proactively prompt to supplement the recipient, email purpose, key information, etc.
+
+    When verifying, it is recommended to test at least three types of inputs: an email requirement with complete information, a vague requirement missing the recipient or purpose, and an email requirement containing sensitive information. An email assistant ready for production not only needs to be able to "write", but also needs to be able to ask follow-up questions when information is insufficient, and remind users to send with caution in sensitive scenarios.
+
+### 1.3 Business Value
+
+- **Improve Writing Efficiency**: Transform high-frequency emails like project updates, customer follow-ups, and meeting minutes from "writing from scratch" to "generating after filling in key information", reducing repetitive labor.
+- **Unify Communication Standards**: Consolidate standards for salutations, body structure, action items, and sign-offs into the Prompt, reducing the communication costs caused by differences in writing styles among employees.
+- **Reduce Sending Risks**: Add sensitive information reminders, missing information follow-ups, and neutral tone constraints through the Prompt to reduce incomplete, inappropriate, or over-promising emails.
+- **Expand Office Automation**: Combined with the Email tool, you can continue to integrate office workflows such as notifications, approvals, Lark, DingTalk, and WeCom, extending email writing from content generation to business action execution.
+
+
+[Back to getting started](/en/guide/getting-started)

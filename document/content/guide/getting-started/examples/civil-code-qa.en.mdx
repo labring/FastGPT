@@ -1,0 +1,143 @@
+---
+title: "Case 2: Dataset + Conversational Agent — Civil Code Q&A Assistant"
+description: "Case 2: Dataset + Conversational Agent — Civil Code Q&A Assistant"
+---
+
+This example uses models and external services. Prepare the required permissions and quota, debug and verify results, then publish application configuration.
+
+## Case 2: Dataset + Conversational Agent — Civil Code Q&A Assistant
+
+### 2.1 Use Cases
+
+A Dataset is ideal for scenarios where answers must be based on provided materials, such as policy Q&A, product manual Q&A, legal article retrieval, and customer service knowledge support. Without a Dataset, the AI primarily relies on its own model capabilities to answer questions. Once a Dataset is connected, the AI first searches your materials and then organizes answers based on the search results.
+
+In this case, we import the _Civil Code of the People's Republic of China_ into the Dataset and create a Civil Code Q&A assistant. When users ask questions in natural language, the assistant should prioritize citing the original Civil Code text to reduce fabricated responses.
+
+Think of the Dataset as a "reference room" configured for the AI. The model itself has general knowledge but doesn't know your company policies, product details, internal processes, or specific regulatory versions. The Dataset turns these materials into searchable content, allowing the AI to look up information before organizing an answer. For legal, policy, customer service, and after-sales scenarios, this is more controllable than relying solely on the model's memory.
+
+### 2.2 Preparation
+
+- Example file: Prepare a copy of the _Civil Code of the People's Republic of China_ or another regulatory/documentation file.
+- A usable conversation model and vector model.
+- A legal question for testing, e.g., "My lease isn't up yet, but the landlord wants to sell the house. What should I do?"
+
+### 2.3 Configuration Steps
+
+1. **Create a Dataset**
+
+   Click **Dataset** on the left side of the homepage, then click **New** in the top right corner. Name the Dataset `Civil Code Q&A Assistant`. Keep the other default settings for this case.
+
+   ![2.3 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-12.png)
+
+2. **Create a Text Collection**
+
+   Click **New**, then select **Text Collection** to import local documents.
+
+   ![2.3 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-13.png)
+
+3. **Upload a Local File**
+
+   Click **Upload Local File** and select the example file. In real use, you can upload multiple files at once; for this case, we upload only one file as a demonstration.
+
+   ![2.3 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-14.png)
+
+4. **Set Parsing Parameters**
+
+   After entering the parameter settings page, choose the parsing method based on the file type.
+
+   ![2.3 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-15.png)
+
+   Recommended common settings:
+   - **File Parsing Settings**: Enable when uploading PDFs; for regular Word, Markdown, TXT files, start with the default configuration.
+   - **Processing Method**: For most scenarios, choose chunked storage — it's lower cost and faster for retrieval.
+   - **Chunking Conditions**: Controls how many tokens each chunk contains. Use the default values for quick testing.
+   - **Index Enhancement**: Keep the current interface defaults initially. Adjust available question, summary, or image-index enhancements using retrieval results, checking their model and quota requirements.
+
+   These parameters directly affect the quality of subsequent Q&A. If chunks are too large, search results may include too much irrelevant content, making answers verbose. If chunks are too small, key context may be split, causing answers to lack supporting evidence. For the quick-start phase, use the default configuration. When officially integrating enterprise policies, contracts, or product manuals, adjust these parameters gradually based on Q&A performance.
+
+5. **Preview Chunking Results**
+
+   After reaching the data preview step, check whether the chunks are complete and readable. If chunks are too long or too short, go back and adjust the parameters.
+
+   When previewing chunks, focus on three things: whether paragraphs are abnormally cut off, whether titles and body text remain within the same semantic range, and whether tables, clauses, or numbering are still readable. If the quality of these knowledge fragments is unstable, even a well-written Prompt in the app will struggle to consistently produce accurate answers.
+
+   ![2.3 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-16.png)
+
+6. **Wait for the Dataset to Be Ready**
+
+   Once the data status changes to "Ready," apps can use the Dataset.
+
+   ![2.3 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-17.png)
+
+7. **Create and Link a Conversational Agent**
+
+   Create a new Conversational Agent, also named `Civil Code Q&A Assistant`. After creation, link the Dataset you just created in the app configuration.
+
+   ![2.3 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-18.png)
+
+   After linking the Dataset, the app's response flow changes from simple chat to "user question → Dataset search → model summarizes answer." This is the key difference between Case 1 and Case 2: Case 1 emphasizes content generation, while Case 2 emphasizes answering based on provided materials.
+
+8. **Configure the Q&A Prompt**
+
+   The Civil Code Q&A assistant needs to emphasize "answer based on the Dataset" and "cite the original text." You can use the following Prompt:
+
+   ```md
+   You are a professional Civil Code Q&A assistant, answering legal questions based on the original text of the _Civil Code of the People's Republic of China_.
+
+   Rules:
+
+   - Strictly answer based on the Civil Code articles retrieved from the Dataset; do not fabricate legal provisions.
+   - Every answer must cite the original Civil Code text (book, chapter, article).
+   - If there is no directly corresponding provision in the Civil Code, state this honestly and do not give legal advice.
+   - When applying the law to specific cases, remind the user: "This answer is for reference only; please consult a professional lawyer."
+   - Provide plain-language explanations of legal terms so that users without a legal background can understand.
+
+   Output format:
+
+   1. **Legal Conclusion** (1–3 sentence summary)
+   2. **Relevant Article Citation** (original excerpt + book/chapter/article number)
+   3. **Plain-Language Explanation** (explain the meaning of the article in everyday language)
+   4. **Practical Advice** (2–3 actionable suggestions)
+   5. **Disclaimer** ("This answer is based on the original Civil Code text and does not constitute legal advice. For specific cases, please consult a professional lawyer.")
+   ```
+
+   For legal Q&A scenarios, it's especially important to define boundaries: what can be answered is a general explanation based on the materials; the model's output should never be packaged as formal legal advice. Requiring article citations, stating uncertainty, and adding disclaimers in the Prompt all aim to make the output more traceable and compliant with high-risk knowledge Q&A usage norms.
+
+9. **Configure the Opening Message**
+
+   The opening greeting can include a few example questions to help users quickly understand how to use this assistant:
+
+   ```text
+   Hello! I'm the Civil Code Q&A Assistant ⚖️
+
+   I answer legal questions based on the original text of the *Civil Code of the People's Republic of China*.
+
+   You can ask me:
+   ["My lease isn't up yet, but the landlord wants to sell the house. What should I do?"]
+   ["I received a product I bought online and it was broken, but the seller won't accept a return. What does the law say?"]
+   ["The upstairs neighbor's leak soaked my ceiling. Can I claim compensation?"]
+
+   ⚠️ Note: My answers are for reference only. For specific legal issues, please consult a professional lawyer.
+   ```
+
+   If you add `[question content]` in the opening greeting, users can click the question to ask it directly — useful for demonstrations and guidance.
+
+   ![2.3 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-19.png)
+
+10. **Verify Q&A Performance**
+
+    Ask a question related to the Civil Code and check whether the answer includes a legal conclusion, article citation, plain-language explanation, and disclaimer.
+
+    ![2.3 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-20.png)
+
+    When verifying, don't just check whether the answer "looks like a legal answer" — also check whether it actually cites Dataset content. Test with questions covered by the materials, questions outside the materials, and ambiguous questions: covered questions should cite the original text; out-of-scope questions should state that a direct confirmation is not possible; ambiguous questions should ask the user for more facts.
+
+### 2.4 Business Value
+
+- **Lower the barrier to material retrieval**: Turn lengthy regulations, policies, and manuals into a natural language Q&A entry point, allowing business users to quickly find relevant content without needing to know keywords or directory locations first.
+- **Improve answer credibility**: Through Dataset retrieval and original text citations, answers have a source basis, reducing the risk of the model fabricating or giving vague responses based on experience.
+- **Accumulate organizational knowledge**: Internal company policies, product FAQs, after-sales SOPs, contract templates, and other materials can be continuously added to the Dataset, forming maintainable and reusable knowledge assets.
+- **Adapt to high-frequency support scenarios**: Legal, HR, administrative, customer service, and delivery teams can all use a similar model to turn repetitive inquiries into self-service Q&A, improving response efficiency.
+
+
+[Back to getting started](/en/guide/getting-started)

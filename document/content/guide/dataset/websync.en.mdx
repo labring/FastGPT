@@ -3,7 +3,7 @@ title: Web Site Sync
 description: Introduction and usage of the FastGPT Web Site Sync feature
 ---
 
-![](/imgs/webSync1.jpg)
+![Web Site Sync — interface example](/imgs/webSync1.jpg)
 
 This feature is currently only available to commercial edition users.
 
@@ -21,25 +21,25 @@ curl https://doc.fastgpt.io/guide/getting-started
 
 ### 1. Create a New Dataset and Select Web Site Sync
 
-![](/imgs/webSync2.jpg)
+![1. Create a New Dataset and Select Web Site Sync — interface example](/imgs/webSync2.jpg)
 
-![](/imgs/webSync3.jpg)
+![1. Create a New Dataset and Select Web Site Sync — interface example](/imgs/webSync3.jpg)
 
 ### 2. Click to Configure Site Information
 
-![](/imgs/webSync4.jpg)
+![2. Click to Configure Site Information — interface example](/imgs/webSync4.jpg)
 
 ### 3. Enter the URL and Selector
 
-![](/imgs/webSync5.jpg)
+![3. Enter the URL and Selector — interface example](/imgs/webSync5.jpg)
 
-![](/imgs/webSync5-1.jpg)
+![3. Enter the URL and Selector — interface example](/imgs/webSync5-1.jpg)
 
 Click Start Sync and wait for the system to automatically crawl the site content.
 
 ## Create an App and Bind the Dataset
 
-![](/imgs/webSync6.jpg)
+![Create an App and Bind the Dataset — interface example](/imgs/webSync6.jpg)
 
 ## How to Use Selectors
 
@@ -47,9 +47,9 @@ Selectors are based on HTML/CSS/JS. You can use selectors to target specific con
 
 ### Open the Browser DevTools (usually F12, or Right-click > Inspect)
 
-![](/imgs/webSync7.webp)
+![Open the Browser DevTools (usually F12, or Right-click > Inspect) — interface example](/imgs/webSync7.webp)
 
-![](/imgs/webSync8.webp)
+![Open the Browser DevTools (usually F12, or Right-click > Inspect) — interface example](/imgs/webSync8.webp)
 
 ### Enter the Element Selector
 
@@ -60,7 +60,7 @@ In the image above, we selected an area corresponding to a `div` tag with three 
 
 Besides attribute selectors, class and ID selectors are also common. For example:
 
-![](/imgs/webSync9.webp)
+![Enter the Element Selector — interface example](/imgs/webSync9.webp)
 
 The `class` in the image contains class names (there may be multiple separated by spaces — just pick one). The selector would be: **`.docs-content`**
 
@@ -68,7 +68,7 @@ The `class` in the image contains class names (there may be multiple separated b
 
 In the earlier demo, we used multiple selectors for the FastGPT documentation site, separated by commas.
 
-![](/imgs/webSync10.webp)
+![Using Multiple Selectors — interface example](/imgs/webSync10.webp)
 
 We want to select content from the two tags shown above, which requires two selectors. The first is: `.docs-content .mb-0.d-flex`, meaning child elements under the `docs-content` class that have both the `mb-0` and `d-flex` classes.
 

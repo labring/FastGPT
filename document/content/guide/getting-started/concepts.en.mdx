@@ -1,0 +1,21 @@
+---
+title: Core concepts
+description: Understand applications, knowledge objects, tools, Skills, publishing, and permissions.
+---
+
+| Object | Responsibility and relationships |
+| --- | --- |
+| Application | A user experience created as Chat Agent, Chat Agent V2, or Workflow |
+| Agent node | A workflow step responsible for autonomous planning and tool use |
+| Knowledge base | Managed material for retrieval, organized into collections |
+| Collection | Content collections store chunks; folder collections organize other collections |
+| Data chunk and retrieval index | A chunk stores maintainable knowledge content; indexes provide searchable representations |
+| Tool | A callable operation with defined inputs and outputs; tool sets group related operations |
+| Workflow tool | A workflow that can run independently or be called by another application |
+| Skill | A resource that manages, versions, and publishes one or more instruction sets and supporting files together |
+| MCP tool / MCP service | The former imports external capabilities into FastGPT; the latter exposes FastGPT capabilities to external clients |
+| Published version / publishing channel | The former selects runtime configuration; the latter controls how users or systems access an application |
+
+Team roles control team-level administration. Resource collaborator permissions control operations on specific applications, knowledge bases, and other resources. Platform root administration controls deployment-level configuration. Version, license, plan, configuration, permissions, and model capabilities each affect availability.
+
+Next: [choose an application type](/en/guide/getting-started/application-types) and explore [the knowledge lifecycle](/en/guide/dataset/lifecycle).

@@ -22,7 +22,7 @@ FastGPT-pro includes a standard set of SSO and member sync interfaces. The syste
 
 FastGPT-SSO-Service aggregates SSO and member sync interfaces from different sources and converts them into the format recognized by fastgpt-pro.
 
-![](/imgs/sso2.png)
+![Overview — interface example](/imgs/sso2.png)
 
 ## System Configuration Tutorial
 
@@ -127,9 +127,9 @@ env:
 
 #### 3. Enable Member Sync (Optional)
 
-If you need to sync members from an external system, you can enable member sync. For team mode details, see: [Team Mode Documentation](./teamMode.en.mdx)
+If you need to sync members from an external system, you can enable member sync. For team mode details, see: [Team Mode Documentation](/en/guide/admin/teamMode)
 
-![](/imgs/sso1.png)
+![3. Enable Member Sync (Optional) — interface example](/imgs/sso1.png)
 
 #### 4. Optional Configuration
 
@@ -152,13 +152,13 @@ App ID and App Secret
 
 Go to the developer console, click on your enterprise self-built app, and view the app credentials on the Credentials & Basic Info page.
 
-![](/imgs/sso3.png)
+![1. Get Parameters — interface example](/imgs/sso3.png)
 
 #### 2. Permission Configuration
 
 Go to the developer console, click on your enterprise self-built app, and enable permissions on the Permission Management page under Development Configuration.
 
-![](/imgs/sso4.png)
+![2. Permission Configuration — interface example](/imgs/sso4.png)
 
 You can use the **Batch Import/Export Permissions** feature to import the following permission configuration:
 
@@ -186,7 +186,7 @@ Note: The accessible data scope must be set to visible to all members.
 
 Go to the developer console, click on your enterprise self-built app, and set the redirect URL in Security Settings under Development Configuration.
 The redirect URL should follow the format `https://www.fastgpt.cn/login/provider` — replace the domain with your publicly accessible FastGPT domain.
-![](/imgs/sso5.png)
+![3. Redirect URL — interface example](/imgs/sso5.png)
 
 #### 4. yml Configuration Example
 
@@ -221,7 +221,7 @@ fastgpt-sso:
 CLIENT_ID and CLIENT_SECRET
 
 Go to the DingTalk Open Platform, click App Development, select your app, and record the Client ID and Client Secret on the Credentials & Basic Info page.
-![](/imgs/sso6.png)
+![1. Get Parameters — interface example](/imgs/sso6.png)
 
 #### 2. Permission Configuration
 
@@ -278,7 +278,7 @@ fastgpt-sso:
 
     b. Go to the "My Enterprise" page and find the Enterprise ID
 
-    ![](/imgs/sso7.png)
+    ![1. Get Parameters — interface example](/imgs/sso7.png)
 
 2.  Create an internal app for FastGPT:
 
@@ -286,9 +286,9 @@ fastgpt-sso:
 
     b. The app's visibility scope determines the WeCom member sync scope. Include at least the departments that should be synchronized; to synchronize the entire enterprise, select the root department (all visible).
 
-    ![](/imgs/sso8.png)
+    ![1. Get Parameters — interface example](/imgs/sso8.png)
 
-    ![](/imgs/sso9.png)
+    ![1. Get Parameters — interface example](/imgs/sso9.png)
 
 3.  A domain name with the following requirements:
 
@@ -300,11 +300,11 @@ fastgpt-sso:
 
     d. You can set "Hide app in Studio" at the bottom of the WeCom Authorization Login page
 
-    ![](/imgs/sso10.png)
+    ![1. Get Parameters — interface example](/imgs/sso10.png)
 
-    ![](/imgs/sso11.png)
+    ![1. Get Parameters — interface example](/imgs/sso11.png)
 
-    ![](/imgs/sso12.png)
+    ![1. Get Parameters — interface example](/imgs/sso12.png)
 
 4.  Get the "Contact Sync Assistant" secret
 
@@ -312,7 +312,7 @@ fastgpt-sso:
 
     Security & Management -- Management Tools -- Contact Sync
 
-    ![](/imgs/sso13.png)
+    ![1. Get Parameters — interface example](/imgs/sso13.png)
 
 5.  Enable interface sync
 
@@ -320,7 +320,7 @@ fastgpt-sso:
 
 7.  Configure enterprise trusted IPs
 
-    ![](/imgs/sso14.png)
+    ![1. Get Parameters — interface example](/imgs/sso14.png)
 
 #### 2. Use the latest image to deploy the fastgpt-sso relay service
 
@@ -331,7 +331,7 @@ docker compose pull fastgpt-sso
 docker compose up -d --force-recreate fastgpt-sso
 ```
 
-#### 3. yml Configuration Example
+<span id="3-yml-configuration-example-1" />
 
 #### 3. yml Configuration Example
 
@@ -531,10 +531,10 @@ LDAP_MEMBERSHIP_MODE supports four modes:
 
 | Mode             | Relationship                                                    | Main configuration       |
 | ---------------- | --------------------------------------------------------------- | ------------------------ |
-| user_attribute   | A user attribute, usually ou, points to an organization         | LDAP*USER_ATTRIBUTE*\*   |
-| group_member_dn  | A group attribute, usually member, contains user DNs            | LDAP*GROUP_MEMBER_DN*\*  |
-| user_member_of   | A user attribute, usually memberOf, contains group DNs          | LDAP*USER_MEMBER_OF*\*   |
-| posix_member_uid | A group attribute, usually memberUid, contains user identifiers | LDAP*POSIX_MEMBER_UID*\* |
+| user_attribute   | A user attribute, usually ou, points to an organization         | `LDAP_USER_ATTRIBUTE_*`   |
+| group_member_dn  | A group attribute, usually member, contains user DNs            | `LDAP_GROUP_MEMBER_DN_*`  |
+| user_member_of   | A user attribute, usually memberOf, contains group DNs          | `LDAP_USER_MEMBER_OF_*`   |
+| posix_member_uid | A group attribute, usually memberUid, contains user identifiers | `LDAP_POSIX_MEMBER_UID_*` |
 
 **1. user_attribute: user attribute points to an organization**
 
@@ -620,7 +620,7 @@ curl -H 'Authorization: Bearer replace-with-a-sync-token' http://fastgpt-sso:300
 
 Below is the standard interface documentation for SSO and member sync in FastGPT-pro. If you need to integrate with a non-standard system, refer to this section for development.
 
-![](/imgs/sso18.png)
+![Standard Interface Documentation — interface example](/imgs/sso18.png)
 
 FastGPT provides the following standard interfaces:
 

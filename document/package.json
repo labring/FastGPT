@@ -13,7 +13,11 @@
     "initDocTime": "node ./script/initDocTime.js",
     "initDocToc": "node ./script/generateToc.js",
     "checkDocRefs": "node ./script/checkDocRefs.js",
-    "removeInvalidImg": "node ./script/removeInvalidImg.js"
+    "removeInvalidImg": "node ./script/removeInvalidImg.js",
+    "typecheck": "tsc --noEmit",
+    "check:docs": "node script/checkDocRefs.js && node script/checkEnglishDocs.mjs && node script/checkNavigation.mjs",
+    "test:checks": "node --test script/checkDocRefs.test.js script/checkEnglishDocs.test.mjs script/sitemap-locale.test.js script/api-examples.test.mjs",
+    "test:site": "node --test script/site.test.mjs"
   },
   "dependencies": {
     "@orama/orama": "^3.1.11",

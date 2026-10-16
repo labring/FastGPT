@@ -1,0 +1,55 @@
+---
+title: Build your first knowledge-base Q&A
+description: Import material, test retrieval, connect a Chat Agent, and publish verifiable answers.
+---
+
+Build an application that answers questions about a sample travel policy and make it available through a shared link.
+
+## Prerequisites
+
+- Permission to create knowledge bases, applications, and publishing channels.
+- An available chat model and an embedding model for the knowledge base. For self-hosting, complete [model configuration](/en/self-host/config/model/intro) first.
+- Save the following text as UTF-8 in `travel-policy.txt`. Processing and conversations consume the selected models' quota.
+
+```text
+Travel policy
+Employees must submit travel expenses within 15 calendar days after returning.
+Each claim must include an invoice and the approved travel request.
+Finance reviews complete claims within 5 business days.
+```
+
+## 1. Create and import knowledge
+
+Open Knowledge Bases, create a standard knowledge base named Travel Policy, and select an available embedding model. Open it, choose local-file import, and upload `travel-policy.txt`. Keep the default segmentation settings, preview the chunks, and verify that deadlines and required documents remain readable before submitting processing.
+
+Wait for collection processing to finish, then open the chunks to inspect the source. A file becomes a content collection containing one or more chunks. If processing fails, inspect the error and model quota, then retry the failed items.
+
+## 2. Verify retrieval
+
+Open the knowledge base's search test and ask “How soon after returning must I submit travel expenses?” Results should include the chunk containing `15 calendar days`. Ask “What documents does a claim require?” and confirm that the invoice and approved travel request appear.
+
+For empty results, check processing status, retrieval scope, and the question. See [knowledge-base search](/en/guide/build/workflow/nodes/dataset_search) for parameter details.
+
+## 3. Create and configure a Chat Agent
+
+In the workspace, create an Agent, select Chat Agent, and name it Travel Policy Q&A. Select an available chat model and associate the knowledge base. Use these instructions:
+
+```text
+Answer questions using the retrieved travel policy. State the deadline and
+required documents precisely. Cite the available sources. When the policy
+does not cover a question, explain what information is missing.
+```
+
+## 4. Debug and inspect the result
+
+Ask both questions in the debug preview on the right. Check the 15-calendar-day deadline, invoice, approved travel request, and citations to the sample material. Then ask “What is the hotel allowance?” The expected answer identifies the missing allowance policy.
+
+If retrieval succeeds but the answer changes the facts, inspect model input, instructions, and references. Keep the sample and configuration small, then change one setting at a time.
+
+## 5. Publish and verify access
+
+Application creation produces an initial published version. Publish the configuration you just edited, create a shared link under Publishing Channels, and open a new conversation to repeat the checks. Both debug and published access should satisfy the same factual expectations.
+
+After changing material, check processing and retrieval again. After changing application configuration, publish again. See [published versions and channels](/en/guide/build/publish/versions).
+
+Next: [the knowledge lifecycle](/en/guide/dataset/lifecycle) or [your first workflow](/en/guide/getting-started/first-workflow).

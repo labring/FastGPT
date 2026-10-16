@@ -8,10 +8,10 @@ description: FastGPT Self-Hosting Model Troubleshooting
 
 1. For privately deployed models, first confirm whether the deployed model is normal.
 2. Directly test whether the upstream model is running normally through CURL request (cloud model or private model are both tested).
-3. Request OneAPI through CURL request to test whether the model is normal.
+3. Test the AI Proxy channel in Model Providers. If that channel uses a relay such as OneAPI, inspect the relay separately.
 4. Use the model for testing in FastGPT.
 
-Here are a few test CURL examples:
+These examples call upstream services directly. Replace the endpoint, model, and credentials with values supported by your channel. Remove credentials from recorded errors. See [model configuration](/en/self-host/config/model/intro).
 
 <Tabs items={['LLM Model','Embedding Model','Rerank Model','TTS Model','Speech-to-Text Model']}>
   <Tab value="LLM Model">
@@ -88,31 +88,143 @@ curl https://api.openai.com/v1/audio/transcriptions \
 
 ### (2) Error - Model response is empty/Model error
 
-This error is due to the fact that under stream mode, oneapi directly ended the stream request and did not return any content.
+Empty output can result from upstream rejection, incompatible parameters, or an event stream ending early. Inspect model-call logs and compare the actual request with the upstream response. Test both JSON and streaming modes; `stream: false` may return a more complete error.
 
-Version 4.8.10 added error logs. When an error occurs, the actual Body parameters sent will be printed in the log. You can copy the parameters and send a request test to oneapi through curl.
+Check provider content policies, supported parameters, temperature and output constraints, context length, and streaming compatibility. Start with the model and messages plus required fields, then add optional parameters individually.
 
-Since oneapi cannot correctly capture errors in stream mode, sometimes you can set `stream=false` to get the exact error.
+### Test model tool calling
 
-Possible error issues:
+The model and channel must both support tool calling. Verify ordinary chat first, then the two-round protocol below. The sample address represents an OpenAI-compatible model endpoint or relay.
 
-1. Domestic models hit risk control.
-2. Unsupported model parameters: only keep messages and necessary parameters for testing, delete other parameters for testing.
+##### 1. Request a tool call
 
----
+```bash
+curl --location --request POST 'https://model.example.com/v1/chat/completions' \
+--header 'Authorization: Bearer sk-xxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "model": "gpt-5",
+  "temperature": 0.01,
+  "max_tokens": 8000,
+  "stream": true,
+  "messages": [
+    {
+      "role": "user",
+      "content": "What time is it?"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_time",
+        "description": "Get the current time in the user timezone.",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto"
+}'
+```
+
+
+##### 2. Inspect the response
+
+When the model selects a tool, `choices[0].delta.tool_calls` carries the call. Merge function-name and argument fragments by index and retain the actual `id`. This example shows a complete fragment shape:
+
+```json
+{
+  "id": "example-chat-id",
+  "object": "chat.completion.chunk",
+  "choices": [{
+    "index": 0,
+    "delta": {
+      "tool_calls": [{
+        "index": 0,
+        "id": "example-call-id",
+        "type": "function",
+        "function": { "name": "get_time", "arguments": "{}" }
+      }]
+    },
+    "finish_reason": null
+  }]
+}
+```
+
+
+
+##### 3. Send the tool result in a second streamed request
+
+Send the tool result using the actual call ID, function name, and arguments returned in the first round. `example-call-id` is a placeholder. Expect the model to continue using the tool result; it may request another tool.
+
+```bash
+curl --location --request POST 'https://model.example.com/v1/chat/completions' \
+--header 'Authorization: Bearer sk-xxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "model": "gpt-5",
+  "temperature": 0.01,
+  "max_tokens": 8000,
+  "stream": true,
+  "messages": [
+    {
+      "role": "user",
+      "content": "What time is it?"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "example-call-id",
+          "type": "function",
+          "function": {
+            "name": "get_time",
+            "arguments": "{}"
+          }
+        }
+      ]
+    },
+    {
+      "tool_call_id": "example-call-id",
+      "role": "tool",
+      "name": "get_time",
+      "content": "{\n  \"time\": \"2024-09-14 22:59:21 Sunday\"\n}"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_time",
+        "description": "Get the current time in the user timezone.",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto"
+}'
+```
+
+### Vector search scores exceed 1
+
+Check embedding normalization, the vector backend's similarity metric, and reranking. Score meaning depends on the backend and model. Verify ranking and thresholds against fixed samples; see [retrieval settings](/en/guide/dataset/dataset_engine).
 
 ### (3) "Current group upstream load is saturated, please try again later"
 
-If you encounter this error (e.g. `request id:xxx`) in the logs or response, this is typically an OneAPI channel issue. Try switching to a different model or a different relay provider.
-
----
+This error commonly comes from an upstream relay such as OneAPI. Check channel concurrency, rate limits, quota, and service health. Record request identifiers for the service administrator. Verify capabilities and application behavior before switching models.
 
 ### (4) "Connection Error" in logs when using the API
 
-Most likely the API key is pointing to OpenAI's endpoint, but the server is deployed in mainland China and can't reach overseas endpoints. Use a relay service or reverse proxy to resolve the connectivity issue.
-
----
+From the service making the request, check DNS, ports, TLS, proxy address, and network policy, then credentials. Test the upstream and AI Proxy channel separately to identify the failing hop.
 
 ### (5) Enable image indexing reports 400
 
-You need to correctly configure the OCR model in `Admin` -> `System Configuration`.
+Inspect the specific error and the visual/OCR capability, file format, model configuration, and quota required by image processing. Confirm availability according to the deployment's system configuration and import mode.

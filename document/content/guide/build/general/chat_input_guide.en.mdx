@@ -3,7 +3,7 @@ title: Chat Input Guide
 description: FastGPT chat input guide
 ---
 
-![](/imgs/questionGuide.png)
+![Chat Input Guide — interface example](/imgs/questionGuide.png)
 
 ## What is Custom Question Guidance?
 
@@ -13,7 +13,7 @@ You can configure the question list directly in FastGPT or provide a custom API 
 
 ## Custom Question List API
 
-The endpoint must be accessible from the user's browser.
+The endpoint must be accessible from the user's browser and allow requests from your FastGPT origin through its CORS policy.
 
 **Request:**
 
@@ -30,7 +30,7 @@ Where `appId` is the app ID and `searchKey` is the search keyword (max 50 charac
   "code": 200,
   "statusText": "",
   "message": "",
-  "data": ["it's you", "who are you", "you're great", "hello there", "who are you!", "hello"]
+  "data": ["it's you", "who are you", "you're great", "hello there", "hello"]
 }
 ```
 

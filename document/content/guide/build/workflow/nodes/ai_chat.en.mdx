@@ -11,21 +11,46 @@ import { Alert } from '@/components/docs/Alert';
 - Trigger-based execution
 - Core node
 
-![](/imgs/aichat.png)
+![Characteristics — interface example](/imgs/aichat.png)
 
 ## Parameters
 
 ## AI Model
 
-Configure available chat models via [config.json](../../../../self-host/config/model/intro.en.mdx)。
+Configure available chat models through [self-hosted model configuration](/en/self-host/config/model/intro).
 
 Click the AI model to configure its parameters.
 
-![](/imgs/aichat02.png)
+![AI Model — interface example](/imgs/aichat02.png)
 
-![](/imgs/aichat2.png)
+![AI Model — interface example](/imgs/aichat2.png)
 
 <Alert icon="🍅" context="success">
   For detailed parameter descriptions, see: [AI Parameter
-  Configuration](../../general/ai_settings.en.mdx)
+  Configuration](/en/guide/build/general/ai_settings)
 </Alert>
+
+## Inputs and outputs
+
+AI Chat calls a model with the current question, instructions, and selected context. You need an available model, permission to call it, and quota.
+
+| Input | Configuration |
+| --- | --- |
+| User question | Enter text or reference output from the start node or an upstream node |
+| System prompt | Define the task, response format, and permitted sources |
+| Chat history | Configure retained context or reference an upstream chat-history output |
+| Knowledge-base citations | Reference the citation output of a Dataset search node |
+| File links | Reference accessible file URLs; see [file input](/en/guide/build/general/fileInput) for document parsing and multimodal handling |
+
+The main outputs are **AI response content** as a string and **New context** as chat history. Models supporting reasoning can also provide **Reasoning content**, depending on model capabilities and reasoning settings. Error text supports node error handling. Use the variable selector in a downstream node to reference the required output.
+
+**Hide AI Output** controls direct display to the user. The AI response output remains available to downstream nodes when hidden. Images, audio, and video require a model supporting the corresponding capability and the matching AI setting.
+
+## Example: generate a summary
+
+1. Connect the start node to AI Chat. Select an available model and reference the start node's user input as the user question.
+2. Set the prompt to `Summarize the text in one sentence. Preserve the time and location.`
+3. Debug with `The meeting starts at 10:00 in Room 2.` Verify that the response preserves `10:00` and `Room 2`.
+4. Inspect input and AI response content in execution details. For further processing, reference that output in Text Concatenation or Specified Reply.
+
+For empty input, check the variable reference. For model failures, inspect permissions, quota, and request errors. For missing facts, inspect supplied citations, file content, and context length. Follow [your first workflow](/en/guide/getting-started/first-workflow) for creation and publishing steps.

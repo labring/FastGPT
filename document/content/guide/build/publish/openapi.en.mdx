@@ -7,7 +7,7 @@ import { Alert } from '@/components/docs/Alert';
 
 In FastGPT, the API entry under Publish Channels shows **API Keys** available to the current signed-in member. API Keys are member credentials for OpenAPI calls and are no longer created as app-scoped keys.
 
-When calling this app through `chat/completions`, passing `appId` in the request body is recommended. If a third-party app only supports OpenAI SDK-style key configuration, you can use the `apiKey-appId` compatibility format. For details, [see the OpenAPI Introduction](../../../openapi/intro.en.mdx).
+When calling this app through `chat/completions`, passing `appId` in the request body is recommended. If a third-party app only supports OpenAI SDK-style key configuration, you can use the `apiKey-appId` compatibility format. For details, [see the OpenAPI Introduction](/en/openapi/intro).
 
 ## Get an API Key
 
@@ -18,23 +18,19 @@ Go to App -> "Publish Channels" -> "API", then click "New" to create a key.
   copy it again later, use the copy button in the API list.
 </Alert>
 
-![](/imgs/fastgpt-api1.jpg)
-
 <Alert icon="🍅" context="success">
-  Tip: For security, you can set a quota or expiration time to prevent key abuse.
+  Quota and expiration controls depend on commercial capability configuration; see [API getting started](/en/openapi/intro). Store keys on a trusted server and revoke exposed credentials promptly.
 </Alert>
 
 ## Replace Variables in Third-Party Apps
 
-```bash
-OPENAI_API_BASE_URL: http://localhost:3000/api (replace with your deployed domain)
-OPENAI_API_KEY = the key obtained in the previous step (passing appId in the request body is recommended; if the third-party app only accepts a key, use the apiKey-appId compatibility format)
+OpenAI-compatible clients use your instance URL plus `/api/v1` as the SDK base URL, and `/chat/completions` as the request path. For example:
+
+```text
+Base URL: https://YOUR_FASTGPT_HOST/api/v1
+API key: YOUR_API_KEY-YOUR_APP_ID
 ```
 
-**[ChatGPT Next Web](https://github.com/Yidadaa/ChatGPT-Next-Web) Example:**
+Some clients expect a service origin and append `/api/v1` themselves. Follow that client’s version-specific configuration and inspect the final request URL. Test a short message and confirm the published application answers; credentials stay in a trusted server-side configuration.
 
-![](/imgs/chatgptnext.png)
-
-**[ChatGPT Web](https://github.com/Chanzhaoyu/chatgpt-web) Example:**
-
-![](/imgs/chatgptweb.png)
+For [ChatGPT Next Web](https://github.com/Yidadaa/ChatGPT-Next-Web) and [ChatGPT Web](https://github.com/Chanzhaoyu/chatgpt-web), consult the client’s current configuration guide.

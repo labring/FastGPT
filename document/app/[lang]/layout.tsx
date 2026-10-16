@@ -6,7 +6,7 @@ import CustomSearchDialog from '@/components/CustomSearchDialog';
 import Script from 'next/script';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getFastGPTDocsOrigin } from '@/lib/fastgpt-home-url';
+import { getFastGPTDocsOriginForLocale } from '@/lib/fastgpt-home-url';
 import { i18n } from '@/lib/i18n';
 
 const zh_CN: Partial<Translations> = {
@@ -46,7 +46,6 @@ const locales = [
 export function generateStaticParams() {
   return i18n.languages.map((lang) => ({ lang }));
 }
-export const dynamicParams = false;
 
 export async function generateMetadata({
   params
@@ -56,7 +55,7 @@ export async function generateMetadata({
   const { lang } = await params;
   if (!i18n.languages.includes(lang)) notFound();
 
-  const domain = getFastGPTDocsOrigin();
+  const domain = getFastGPTDocsOriginForLocale(lang === 'en' ? 'en' : 'zh-CN');
 
   const title =
     lang === 'zh-CN' ? 'FastGPT 文档 - 快速开始' : 'FastGPT Documentation - Getting Started';
@@ -77,10 +76,10 @@ export async function generateMetadata({
     publisher: 'Labring',
     metadataBase: new URL(domain),
     alternates: {
-      canonical: '/',
+      canonical: `${domain}/${lang}/guide/getting-started`,
       languages: {
-        en: '/en',
-        'zh-CN': '/zh-CN'
+        en: `${getFastGPTDocsOriginForLocale('en')}/en/guide/getting-started`,
+        'zh-CN': `${getFastGPTDocsOriginForLocale('zh-CN')}/zh-CN/guide/getting-started`
       }
     },
     openGraph: {

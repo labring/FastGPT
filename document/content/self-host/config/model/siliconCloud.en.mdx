@@ -5,7 +5,7 @@ description: SiliconCloud integration example for FastGPT
 
 [SiliconCloud](https://cloud.siliconflow.cn/i/TR9Ym0c4) is a platform focused on open source model inference, with its own acceleration engine. It helps users test and use open source models quickly at low cost. In our experience, their models offer solid speed and stability, with a wide variety covering language, embedding, reranking, TTS, STT, image generation, and video generation — meeting all model requirements in FastGPT.
 
-Before reading this guide, make sure you've read the [Model Configuration Guide](./intro.en.mdx).
+Before reading this guide, make sure you've read the [Model Configuration Guide](/en/self-host/config/model/intro).
 
 ## 1. Register an Account
 
@@ -14,23 +14,23 @@ Before reading this guide, make sure you've read the [Model Configuration Guide]
 
 ## 2. Add Models
 
-The system includes a few SiliconCloud models by default for quick testing. If you need additional models, you can [add them manually](./intro.en.mdx#add-a-custom-model).
+The system includes a few SiliconCloud models by default for quick testing. If you need additional models, you can [add them manually](/en/self-host/config/model/intro#add-a-custom-model).
 
 Here we enable `Qwen2.5 72b` for both text and vision; `bge-m3` as the embedding model; `bge-reranker-v2-m3` as the Rerank model; `fish-speech-1.5` as the TTS model; and `SenseVoiceSmall` as the STT model.
 
-![alt text](../../../../public/imgs/image-104.png)
+![2. Add Models — interface example](../../../../public/imgs/image-104.png)
 
 ## 3. Add a Model provider
 
 On the Model providers page, add a new SiliconCloud channel and select the models you just added.
 
-![alt text](../../../../public/imgs/image-126.png)
+![3. Add a Model provider — interface example](../../../../public/imgs/image-126.png)
 
 ## 4. Test Models
 
 First, verify that all SiliconCloud models are running properly.
 
-![alt text](../../../../public/imgs/image-127.png)
+![4. Test Models — interface example](../../../../public/imgs/image-127.png)
 
 ## 5. Test in an App
 
@@ -40,7 +40,7 @@ Create a simple app, select the corresponding model, enable image upload, and te
 
 |                                                   |                                                   |
 | ------------------------------------------------- | ------------------------------------------------- |
-| ![alt text](../../../../public/imgs/image-68.png) | ![alt text](../../../../public/imgs/image-70.png) |
+| ![Test Chat and Image Recognition — interface example](../../../../public/imgs/image-68.png) | ![Test Chat and Image Recognition — interface example](../../../../public/imgs/image-70.png) |
 
 The 72B model performs quite fast. Without several 4090 GPUs locally, just the output alone would take around 30 seconds — not to mention the environment setup.
 
@@ -50,7 +50,7 @@ Create a Dataset (since only one embedding model is configured, the embedding mo
 
 |                                                   |                                                   |
 | ------------------------------------------------- | ------------------------------------------------- |
-| ![alt text](../../../../public/imgs/image-72.png) | ![alt text](../../../../public/imgs/image-71.png) |
+| ![Test Dataset Import and Q&A — interface example](../../../../public/imgs/image-72.png) | ![Test Dataset Import and Q&A — interface example](../../../../public/imgs/image-71.png) |
 
 Import a local file — just select the file and click through the steps. 79 indexes were completed in about 20 seconds. Now let's test Dataset Q&A.
 
@@ -58,31 +58,31 @@ Go back to the app we just created, select the Dataset, adjust the parameters, a
 
 |                                                   |                                                   |                                                   |
 | ------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------- |
-| ![alt text](../../../../public/imgs/image-73.png) | ![alt text](../../../../public/imgs/image-75.png) | ![alt text](../../../../public/imgs/image-76.png) |
+| ![Test Dataset Import and Q&A — interface example](../../../../public/imgs/image-73.png) | ![Test Dataset Import and Q&A — interface example](../../../../public/imgs/image-75.png) | ![Test Dataset Import and Q&A — interface example](../../../../public/imgs/image-76.png) |
 
 After the conversation, click the citation at the bottom to view citation details, including search and reranking scores:
 
 |                                                   |                                                   |
 | ------------------------------------------------- | ------------------------------------------------- |
-| ![alt text](../../../../public/imgs/image-77.png) | ![alt text](../../../../public/imgs/image-78.png) |
+| ![Test Dataset Import and Q&A — interface example](../../../../public/imgs/image-77.png) | ![Test Dataset Import and Q&A — interface example](../../../../public/imgs/image-78.png) |
 
 ### Test Text-to-Speech
 
 In the same app, find "Voice Playback" in the left sidebar configuration. Click to select a voice model from the popup and preview it:
 
-![alt text](../../../../public/imgs/image-79.png)
+![Test Text-to-Speech — interface example](../../../../public/imgs/image-79.png)
 
 ### Test Speech-to-Text
 
 In the same app, find "Voice Input" in the left sidebar configuration. Click to enable voice input from the popup:
 
-![alt text](../../../../public/imgs/image-80.png)
+![Test Speech-to-Text — interface example](../../../../public/imgs/image-80.png)
 
 Once enabled, a microphone icon appears in the chat input box. Click it to start voice input:
 
 |                                                   |                                                   |
 | ------------------------------------------------- | ------------------------------------------------- |
-| ![alt text](../../../../public/imgs/image-81.png) | ![alt text](../../../../public/imgs/image-82.png) |
+| ![Test Speech-to-Text — interface example](../../../../public/imgs/image-81.png) | ![Test Speech-to-Text — interface example](../../../../public/imgs/image-82.png) |
 
 ## Summary
 

@@ -1,46 +1,27 @@
 ---
-title: Dataset Collection Tags
-description: How to use collection tags in FastGPT Dataset
+title: Collection tags and retrieval conditions
+description: Add typed collection tags and narrow knowledge retrieval with condition rows.
 ---
 
-Collection tags are a commercial-edition feature in FastGPT. They let you tag and categorize data collections within a Dataset for more efficient data management.
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="collection-filtering-in-dataset-search" />
 
-You can also use tags as collection filters during Dataset searches for more precise results.
+Collection tags classify material and constrain retrieval. You need knowledge-base management or appropriate write permission. Commercial-license and SaaS-plan availability follow your environment. The condition-row procedure applies to deployments providing the current tag-filter interface.
 
-|                                  |                                  |                                  |
-| -------------------------------- | -------------------------------- | -------------------------------- |
-| ![](/imgs/collection-tags-1.png) | ![](/imgs/collection-tags-2.png) | ![](/imgs/collection-tags-3.png) |
+## Basic tag operations
 
-## Basic Tag Operations
+Open tag management in knowledge-base details, create a tag with a type, and assign values to collections. The current interface supports number, date, and multiple-choice types; compatibility logic handles historical string tags. Renaming, deleting, or reassigning tags can affect retrieval conditions, so test after changes.
 
-On the Dataset detail page, you can manage tags with the following operations:
+## Collection filtering in knowledge search
 
-- Create a tag
-- Rename a tag
-- Delete a tag
-- Assign a tag to multiple collections
-- Add multiple tags to a single collection
+Open collection filtering in knowledge-search configuration and add a condition row: choose a tag or supported field, an operator, a value source, and a comparison value. Combine conditions using AND or OR. Variable references must resolve to values compatible with the tag type at runtime.
 
-You can also filter collections by tags.
+Example: create a multiple-choice Department tag and assign Finance and Support to two collections. Add a condition that Department contains Finance and test a finance question. Expect results from the Finance scope. Switch to Support and verify that the scope changes.
 
-## Collection Filtering in Dataset search
+For empty results, inspect assigned values, operator, AND/OR, resolved variables, collection permissions, and processing status. Conditions constrain the search scope; source content and retrieval parameters determine matches within it.
 
-Tags can be used to filter collections during Dataset searches by filling in the "Collection Filter" field. Here's an example:
+## Legacy JSON conditions
 
-```json
-{
-  "tags": {
-    "$and": ["Tag 1", "Tag 2"],
-    "$or": ["When $and tags are present, $and takes effect and $or is ignored"]
-  },
-  "createTime": {
-    "$gte": "YYYY-MM-DD HH:mm format, matches collections created after this time",
-    "$lte": "YYYY-MM-DD HH:mm format, matches collections created before this time. Can be used together with $gte"
-  }
-}
-```
+Older configurations may contain JSON fields such as `tags` and `createTime`; historical `tags` used `$and` or `$or`. Read retained workflows according to their filter version. After migrating to condition rows, save and compare the retrieval scope. Current conditions use `logic` and `conditions`; API integrations must follow the generated contract of the selected interface.
 
-Two important notes:
-
-- Tag values can be a `string` tag name or `null`, where `null` represents collections with no tags assigned
-- There are two filter condition types: `$and` and `$or`. When both are set, only `$and` takes effect
+Next: [collection permissions](/en/guide/dataset/collection_permission) and [retrieval testing](/en/guide/dataset/lifecycle).

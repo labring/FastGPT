@@ -1,7 +1,10 @@
 ---
-title: 接入 M3E 向量模型
+title: 接入 M3E 向量模型（旧版接入示例）
 description: ' 将 FastGPT 接入私有化模型 M3E'
 ---
+
+本页保留社区模型服务示例及历史 OneAPI/config.json 接入配置。当前部署请通过[模型配置](/zh-CN/self-host/config/model/intro)登记可访问的模型服务，并核对所用版本的模型类型、接口地址、权限和兼容性。
+
 
 ## 前言
 
@@ -24,7 +27,7 @@ FastGPT 默认使用了 openai 的 embedding 向量模型，如果你想私有�
 
 添加一个渠道，参数如下：
 
-![](../../../public/imgs/model-m3e1.png)
+![接入 One API：界面示例](../../../public/imgs/model-m3e1.png)
 
 ## 测试
 
@@ -71,15 +74,15 @@ Authorization 为 sk-key。model 为刚刚在 One API 填写的自定义模型�
 
       注意，一旦选择后，知识库将无法修改向量模型。
 
-      ![](../../../public/imgs/model-m3e2.png)
+      ![测试使用：界面示例](../../../public/imgs/model-m3e2.png)
 
 2. 导入数据
 3. 搜索测试
 
-      ![](../../../public/imgs/model-m3e3.png)
+      ![测试使用：界面示例](../../../public/imgs/model-m3e3.png)
 
 4. 应用绑定知识库
 
       注意，应用只能绑定同一个向量模型的知识库，不能跨模型绑定。并且，需要注意调整相似度，不同向量模型的相似度（距离）会有所区别，需要自行测试实验。
 
-      ![](../../../public/imgs/model-m3e4.png)
+      ![测试使用：界面示例](../../../public/imgs/model-m3e4.png)

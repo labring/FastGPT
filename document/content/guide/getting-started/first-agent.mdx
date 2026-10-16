@@ -1,0 +1,26 @@
+---
+title: 创建首个 Agent 任务
+description: 配置对话 Agent V2，观察它检索知识并生成带依据的任务结果。
+---
+
+目标：让 Agent 根据差旅制度生成报销检查清单。先完成[首个知识库问答](/zh-CN/guide/getting-started/knowledge-qa)的资料导入和检索测试。
+
+## 前置条件
+
+需要创建应用和使用知识库的权限，以及支持工具调用的可用模型。当前教程使用知识检索能力；代码执行、Skill 和文件系统操作依赖另外配置的虚拟机服务。自部署、商业授权及 SaaS 套餐的可用范围以当前环境为准。
+
+## 配置与运行
+
+1. 创建 Agent，类型选择“对话 Agent V2”，命名为“报销检查助手”。
+2. 选择支持工具调用的模型，关联“差旅制度”知识库。
+3. 提示词填写 `Use the travel policy to prepare an expense checklist. Retrieve evidence before answering. Include the submission deadline, required documents, and review time. Identify missing policy details.`。
+4. 在调试区输入“我刚出差回来，请生成报销检查清单，并说明财务审核时间”。
+5. 展开执行详情，检查知识检索的调用、返回内容和最终回答。
+
+## 预期结果
+
+清单包含返程后 15 个自然日内提交、发票、已批准的差旅申请；审核时间为资料齐全后 5 个工作日。模型可能采用不同步骤规划，验收以检索依据和事实完整性为准。
+
+工具调用失败时检查模型能力、资源权限和执行详情中的错误。回答缺少依据时检查关联知识库、处理状态和提示词。成功后发布当前修改，并在新对话中再次验证。
+
+下一步：[Agent V2 配置](/zh-CN/guide/build/agentv2/settings)、[工具与 Skill](/zh-CN/guide/build/tools/overview)、[工作流 Agent 节点](/zh-CN/guide/build/workflow/nodes/agent)。

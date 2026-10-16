@@ -21,7 +21,7 @@ You can use [SigNoz](https://signoz.io/) cloud service or self-host it. Here's h
 
 1. Click the card below to deploy SigNoz with one click.
 
-[![](../../../public/imgs/Deploy-on-Sealos.svg)](https://hzh.sealos.run/?uid=fnWRt09fZP&openapp=system-template%3FtemplateName%3Dsignoz)
+[![Deploy SigNoz — interface example](/imgs/Deploy-on-Sealos.svg)](https://hzh.sealos.run/?uid=fnWRt09fZP&openapp=system-template%3FtemplateName%3Dsignoz)
 
 2. Enable external access for SigNoz
 
@@ -29,13 +29,13 @@ After deployment, click **Details** in P1 to open the app details page, then cli
 
 | P1 | P2 | P3 |
 | --- | --- | --- |
-| ![alt text](../../../public/imgs/image-112.png) | ![alt text](../../../public/imgs/image-110.png) | ![alt text](../../../public/imgs/image-111.png) |
+| ![Deploy SigNoz — interface example](../../../public/imgs/image-112.png) | ![Deploy SigNoz — interface example](../../../public/imgs/image-110.png) | ![Deploy SigNoz — interface example](../../../public/imgs/image-111.png) |
 
 3. Get the SigNoz access address
 
 After the change completes, wait for the public address to be ready, copy it, and enter it in FastGPT. If using internal network, copy the internal address for port 4318 directly.
 
-![alt text](../../../public/imgs/image-113.png)
+![Deploy SigNoz — interface example](../../../public/imgs/image-113.png)
 
 ## Configure FastGPT
 
@@ -60,17 +60,17 @@ Go back to the Sealos app management list, open the SigNoz frontend project, and
 
 | | |
 | --- | --- |
-| ![alt text](../../../public/imgs/image-114.png) | ![alt text](../../../public/imgs/image-115.png) |
+| ![Verify the Setup — interface example](../../../public/imgs/image-114.png) | ![Verify the Setup — interface example](../../../public/imgs/image-115.png) |
 
 First-time access requires creating an account (data is stored in the local database) — fill in anything.
 
-![alt text](../../../public/imgs/image-116.png)
+![Verify the Setup — interface example](../../../public/imgs/image-116.png)
 
 After logging in, if `logs` and `traces` are lit up in the COMPLETED steps on the right side, the configuration is successful.
 
-![alt text](../../../public/imgs/image-117.png)
+![Verify the Setup — interface example](../../../public/imgs/image-117.png)
 
-![alt text](../../../public/imgs/image-118.png)
+![Verify the Setup — interface example](../../../public/imgs/image-118.png)
 
 ## Notes
 
@@ -78,4 +78,4 @@ After logging in, if `logs` and `traces` are lit up in the COMPLETED steps on th
 
 SigNoz monitoring is very disk-intensive. First, avoid storing FastGPT debug logs in SigNoz. Also consider setting the log retention period to 7 days. If SigNoz data stops growing while memory keeps increasing, the disk is full — expand capacity.
 
-![alt text](../../../public/imgs/image-119.png)
+![Notes — interface example](../../../public/imgs/image-119.png)

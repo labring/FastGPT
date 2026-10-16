@@ -1,8 +1,13 @@
 {
-  "title": "工作区",
+  "title": "团队与账号",
   "root": false,
   "pages": [
     "team",
-    "customDomain"
+    "models",
+    "customDomain",
+    "../version/cloud/intro",
+    "../version/cloud/faq",
+    "../version/cloud/terms",
+    "../version/cloud/privacy"
   ]
 }

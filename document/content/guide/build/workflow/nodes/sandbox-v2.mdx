@@ -89,8 +89,8 @@ def main(url):
 
 **限制：**
 - 每次执行最多 30 个请求
-- 单次请求超时 60s
-- 响应体最大 2MB
+- 单次请求默认超时 60s（`SANDBOX_REQUEST_TIMEOUT`，单位为毫秒）
+- 响应体默认最大 10 MB（`SANDBOX_REQUEST_MAX_RESPONSE_MB`）
 - 仅允许 http/https 协议
 - 自动拦截内网 IP（127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 等）
 

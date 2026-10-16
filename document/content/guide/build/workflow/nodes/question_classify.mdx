@@ -11,7 +11,7 @@ description: FastGPT 问题分类模块介绍
 - 触发执行
 - function_call 模块
 
-![](/imgs/cq1.png)
+![特点：界面示例](/imgs/cq1.png)
 
 ## 功能
 
@@ -60,7 +60,7 @@ const agentFunction = {
       properties: {
         type: {
           type: 'string',
-          description: `打招呼，返回: abc；计费常见问题，返回：vvv；其他问题，返回：aaa`
+          description: `打招呼，返回: abc；计费常见问题，返回：vvv；其他问题，返回：aaa`,
           enum: ["abc","vvv","aaa"]
         }
       },
@@ -69,4 +69,12 @@ const agentFunction = {
 };
 ```
 
-上面的 Function 必然会返回 `type = abc，vvv，aaa` 其中一个值，从而实现分类判断。
+上面的 Function 描述允许的分类 key；模型实际结果和最终分支应通过运行详情验证。
+
+## 连接、输出与验证
+
+选择可用模型，设置分类背景、历史记录和用户问题，并为每个类别填写清晰且互有区别的说明。每个类别连接对应的下游分支。成功分类后，字符串输出“分类结果”保存所选类别的显示文本，对应分支继续执行。当前实现对无法匹配类别 key 的模型结果使用列表最后一个类别兜底，因此建议把“其他问题”放在最后。
+
+示例：设置“打招呼”“计费常见问题”“其他问题”，分别连接回复 `Hello`、`Billing help`、`Please clarify` 的指定回复节点。调试输入“你好”“如何查看账单？”和“明天天气怎样？”，核对分类结果和实际执行分支。模型分类有不确定性；保留兜底类别，并检查模糊问题和连续对话。空问题或模型调用失败时查看运行错误。
+
+需要按确定值分支时，使用[判断器](/zh-CN/guide/build/workflow/nodes/tfswitch)。

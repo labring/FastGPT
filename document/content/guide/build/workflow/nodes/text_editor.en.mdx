@@ -10,14 +10,27 @@ description: FastGPT Text Concatenation node overview
 - Trigger-based execution
 - Manual configuration
 
-![](/imgs/string.png)
+![Features — interface example](/imgs/string.png)
 
 ## Function
 
-Applies fixed text processing to inputs. Input parameters only support string and number formats, and are used as variables in the text editing area.
+Applies fixed text processing to inputs. Insert variable references in the text editing area to produce a string for downstream nodes.
 
 In the example above, any input will have "The user's question is:" prepended to it.
 
 ## Use Cases
 
 Provide custom-formatted text to any node, or preprocess system prompts for AI nodes.
+
+## Configuration and output
+
+Write fixed text and use the editor's variable selector to insert upstream outputs or global variables. Execution returns **Concatenation result** as a string for AI Chat, HTTP, or Specified Reply. Let the editor generate node references so they identify the intended source.
+
+## Example: prefix the input
+
+1. Connect Start → Text Concatenation → Specified Reply.
+2. Enter `Question: ` in the concatenation text, then insert the start node's user question with the variable selector.
+3. Reference **Concatenation result** in Specified Reply.
+4. Debug with `Hello` and expect `Question: Hello`.
+
+For empty values or unresolved placeholders, inspect variable keys, upstream execution order, and input values. This node combines text from a template. Use [Code Run](/en/guide/build/workflow/nodes/sandbox-v2) for arithmetic or structured transformations.

@@ -1,103 +1,62 @@
 ---
-title: 快速了解 FastGPT
-description: FastGPT 的能力与优势
+title: 使用 FastGPT
+description: 从自己的资料创建知识库问答，再学习工作流、Agent、发布和维护。
 ---
 
-import { Alert } from '@/components/docs/Alert';
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="fastgpt-的优势" />
+<span id="1-简单灵活像搭积木一样简单-" />
+<span id="2-让数据更智能-" />
+<span id="3-开源开放易于集成-" />
+<span id="fastgpt-能做什么" />
+<span id="1-全能知识库" />
+<span id="2-可视化工作流" />
+<span id="3-数据智能解析" />
+<span id="4-工作流编排" />
+<span id="5-强大的-api-集成" />
+<span id="核心特性" />
+<span id="知识库核心流程图" />
+
 import FastGPTLink from '@/components/docs/linkFastGPT';
 
-FastGPT 是一个基于大语言模型的 AI Agent 应用开发平台，集知识库问答、可视化工作流、Agent 编排、工具调用和技能扩展于一体，让开发者和业务人员都能快速构建专属 AI 应用。
+FastGPT 将模型、知识库、工具和可视化工作流连接成可供用户访问的 AI 应用。
 
-<Alert icon="🤖" context="success">
+## 从一次成功的问答开始
 
-快速开始体验
+[**创建首个知识库问答 →**](/zh-CN/guide/getting-started/knowledge-qa)
 
-- 国际版：<FastGPTLink campaign="docs_getting_started" content="cloud_entry_io" site="io">{'https://fastgpt.io'}</FastGPTLink>
-- 中国大陆版：<FastGPTLink campaign="docs_getting_started" content="cloud_entry_cn" site="cn">{'https://fastgpt.cn'}</FastGPTLink>
+准备一份简短资料，导入知识库，关联对话 Agent，测试答案并发布修改。教程提供可直接复制的示例资料和验收问题。
 
-</Alert>
+<Cards>
+  <Card title="选择应用类型" href="/zh-CN/guide/getting-started/application-types">按任务选择对话 Agent、对话 Agent V2 或工作流。</Card>
+  <Card title="创建首个工作流" href="/zh-CN/guide/getting-started/first-workflow">连接输入、模型与输出，观察一次完整执行。</Card>
+  <Card title="创建首个 Agent 任务" href="/zh-CN/guide/getting-started/first-agent">让 Agent 根据问题检索资料并完成任务。</Card>
+</Cards>
 
-|                                                |                                                |
-| ---------------------------------------------- | ---------------------------------------------- |
-| ![alt text](../../../public/imgs/image-30.png) | ![alt text](../../../public/imgs/image-45.png) |
-| ![alt text](../../../public/imgs/image-46.png) | ![alt text](../../../public/imgs/image-47.png) |
+## 按任务继续
 
-## FastGPT 的优势
+<Cards>
+  <Card title="构建应用" href="/zh-CN/guide/build/general/ai_settings">配置模型、指令、变量和对话能力。</Card>
+  <Card title="管理知识库" href="/zh-CN/guide/dataset/lifecycle">创建、导入、预览分段、测试检索和维护资料。</Card>
+  <Card title="接入工具与 Skill" href="/zh-CN/guide/build/tools/overview">为应用配置外部操作与可复用指令。</Card>
+  <Card title="发布与集成" href="/zh-CN/guide/build/publish/versions">发布修改，选择分享链接、API 或 MCP 服务。</Card>
+  <Card title="观察与改进" href="/zh-CN/guide/build/logs">通过对话日志和执行详情定位问题。</Card>
+  <Card title="团队与账号" href="/zh-CN/guide/workspace/team/team_roles_permissions">管理成员和资源协作权限。</Card>
+</Cards>
 
-### 1. 简单灵活，像搭积木一样简单 🧱
+## 开发者与部署运维
 
-像搭乐高一样简单有趣，FastGPT 提供丰富的功能模块，通过简单拖拽就能搭建出个性化的 AI 应用，零代码也能实现复杂的业务流程。
+- [开发者入口](/zh-CN/developers)：凭证、首次请求、流式结果与当前生成的 API 参考。
+- [部署与运维入口](/zh-CN/self-host)：选择安装方式、配置服务、维护和升级。
+- [核心概念](/zh-CN/guide/getting-started/concepts)：应用、集合、数据块、工具、Skill 和发布版本的关系。
+- [完整案例](/zh-CN/guide/getting-started/quick-start)、[视频教程](https://video.fastgpt.cn/videos)与[最佳案例](https://solutions.fastgpt.cn/)。
 
-### 2. 让数据更智能 🧠
+## 开始使用云服务
 
-FastGPT 提供完整的数据智能化解决方案，从数据导入、预处理到知识匹配，再到智能问答，全流程自动化。配合可视化的工作流设计，轻松打造专业级 AI 应用。
+<FastGPTLink campaign="docs_getting_started" content="cloud_entry_cn" site="cn">中国大陆云服务</FastGPTLink> · <FastGPTLink campaign="docs_getting_started" content="cloud_entry_io" site="io">国际云服务</FastGPTLink>
 
-### 3. 开源开放，易于集成 🔗
-
-FastGPT 支持二次开发。通过标准 API 即可快速接入，无需修改源码。支持 ChatGPT、Claude、DeepSeek 和文心一言等主流模型，持续迭代优化，始终保持产品活力。
-
----
-
-## FastGPT 能做什么
-
-### 1. 全能知识库
-
-可轻松导入各式各样的文档及数据，能自动对其开展知识结构化处理工作。同时，具备支持多轮上下文理解的智能问答功能，还可为用户带来持续优化的知识库管理体验。
-
-![](/imgs/intro/image3.png)
-
-### 2. 可视化工作流
-
-FastGPT 直观的拖拽式界面设计，可零代码搭建复杂业务流程。还拥有丰富的功能节点组件，能应对多种业务需求，有着灵活的流程编排能力，按需定制业务流程。
-
-![](/imgs/intro/image4.png)
-
-### 3. 数据智能解析
-
-FastGPT 知识库系统对导入数据的处理极为灵活，可以智能处理 PDF 文档的复杂结构，保留图片、表格和 LaTeX 公式，自动识别扫描文件，并将内容结构化为清晰的 Markdown 格式。同时支持图片自动标注和索引，让视觉内容可被理解和检索，确保知识在 AI 问答中能被完整、准确地呈现和应用。
-
-![](/imgs/intro/image5.png)
-
-### 4. 工作流编排
-
-基于 Flow 模块的工作流编排，可以帮助你设计更加复杂的问答流程。例如查询数据库、查询库存、预约实验室等。
-
-![](/imgs/intro/image6.png)
-
-### 5. 强大的 API 集成
-
-FastGPT 完全对齐 OpenAI 官方接口，支持一键接入企业微信、公众号、飞书、钉钉等平台，让 AI 能力轻松融入您的业务场景。
-
-![](/imgs/intro/image7.png)
-
----
-
-## 核心特性
-
-- 开箱即用的知识库系统
-- 可视化的低代码工作流编排
-- 支持主流大模型
-- 简单易用的 API 接口
-- 灵活的数据处理能力
-
----
-
-## 知识库核心流程图
-
-![](/imgs/intro/image8.png)
-
----
+指南以当前界面为线索；自部署需要配置模型及相关服务。功能可用性由版本、授权、套餐、服务配置、资源权限和模型能力共同决定，具体条件见对应任务页。
 
 ## 社区交流群
 
-FastGPT 是一个由用户和贡献者参与推动的开源项目，如果您对产品使用存在疑问和建议，可尝试以下方式寻求支持。我们的团队与社区会竭尽所能为您提供帮助。
-
-- 📱 扫码加入飞书交流群👇
-
-  <img
-    width="400px"
-    src="https://oss.laf.run/otnvvf-imgs/fastgpt-feishu1.png"
-    className="medium-zoom-image"
-  />
-
-- 🐞 请将任何 FastGPT 的 Bug、问题和需求提交到 [GitHub Issue](https://github.com/labring/fastgpt/issues/new/choose)。
+通过 [GitHub Issues](https://github.com/labring/FastGPT/issues/new/choose)反馈问题。反馈时提供版本、任务步骤、预期结果和去除凭证后的错误信息。

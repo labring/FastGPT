@@ -7,7 +7,7 @@ Starting from V4.0, FastGPT adopted a new approach to building AI apps. It uses 
 
 [Watch the video tutorial](https://www.bilibili.com/video/BV1is421u7bQ/)
 
-![](/imgs/flow-intro1.png)
+![Workflows & Plugins — interface example](/imgs/flow-intro1.png)
 
 ## What is a Node?
 
@@ -15,7 +15,7 @@ In programming terms, a node is like a function or API endpoint — think of it 
 
 Below is the simplest AI conversation, consisting of a Workflow Start node and an AI Chat node.
 
-![](/imgs/flow-intro2.png)
+![What is a Node? — interface example](/imgs/flow-intro2.png)
 
 Execution flow:
 
@@ -27,14 +27,14 @@ Execution flow:
 
 Functionally, nodes fall into 2 categories:
 
-1. **System Nodes**: User guidance (configures dialog information) and user question (workflow entry point).
+1. **System Nodes**: System configuration (conversation settings) and Workflow Start (workflow entry point).
 2. **Function Nodes**: Dataset search, AI Chat, and all other nodes. These have inputs and outputs and can be freely combined.
 
 ### Node Components
 
 Each node has 3 core parts: inputs, outputs, and triggers.
 
-![](/imgs/flow-intro3.png)
+![Node Components — interface example](/imgs/flow-intro3.png)
 
 - AI model, Prompt, chat history, user question, and Dataset citation are inputs. Inputs can be manual entries or variable references, which include "global variables" and outputs from any previous node.
 - New context and AI reply content are outputs. Outputs can be referenced by any subsequent node.
@@ -46,7 +46,7 @@ FastGPT Workflows start from the [Workflow Start] node, triggered when the user 
 
 Let's look at how workflows execute and when each node is triggered.
 
-![](/imgs/flow-intro1.png)
+![Key Concept — How Workflows Execute — interface example](/imgs/flow-intro1.png)
 
 As shown above, nodes can "be connected to" and "connect to other nodes." We call incoming connections "predecessor lines" and outgoing connections "successor lines." In the example, the [Dataset search] node has one predecessor line on the left and one successor line on the right. The [AI Chat] node only has a predecessor line on the left.
 
@@ -78,7 +78,7 @@ Walking through the example:
 ## How to Read Workflows
 
 1. Read from left to right.
-2. Start from the **User Question** node, which represents the user sending text to trigger the workflow.
+2. Start from **Workflow Start** and inspect how the current question, files, and variables enter the workflow.
 3. Focus on [AI Chat] and [Specified Reply] nodes — these are where answers are output.
 
 ## FAQ
@@ -87,4 +87,4 @@ Walking through the example:
 
 1. Text Processing: can merge strings together.
 2. Dataset search Merge: can combine multiple Dataset search results.
-3. Other results: cannot be merged directly. Consider passing them to an `HTTP` node and merging them in your own service.
+3. Other structured results: transform or merge them with a Code Run node, or call an existing service through an HTTP node.

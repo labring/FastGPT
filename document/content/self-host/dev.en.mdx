@@ -14,8 +14,8 @@ Install and configure these dependencies on your machine to build <FastGPTLink c
 
 - [Git](https://git-scm.com/)
 - [Docker](https://www.docker.com/)
-- [Node.js v20.14.0](https://nodejs.org) (match this version closely; use [nvm](https://github.com/nvm-sh/nvm) to manage Node versions)
-- [pnpm](https://pnpm.io/) recommended version 9.4.0 (current official dev environment)
+- [Node.js >=20](https://nodejs.org) (use a version supported by the repository; use [nvm](https://github.com/nvm-sh/nvm) to manage Node versions)
+- [pnpm](https://pnpm.io/) 10.x, matching the repository packageManager version
 
 We recommend developing on \*nix environments (Linux, macOS, Windows WSL).
 
@@ -72,7 +72,7 @@ cp .env.template .env.local
 
 **2. config.json Configuration File**
 
-Copy `data/config.json` to create `data/config.local.json`. For detailed parameters, see [Configuration Guide](./config/model/intro.en.mdx).
+Copy `data/config.json` to create `data/config.local.json`. For detailed parameters, see [Configuration Guide](/en/self-host/config/model/intro).
 
 ```bash
 cp data/config.json data/config.local.json
@@ -144,7 +144,7 @@ _On Windows, use git bash to add execute permissions and run the script._
 
 ### TypeError: Cannot read properties of null (reading 'useMemo')
 
-Delete all `node_modules` and reinstall with Node 18 — newer Node versions may have issues. Local dev workflow:
+Verify the repository requirements (Node.js >=20 and pnpm 10.x), check React dependency consistency, and reinstall from the lockfile. Local dev workflow:
 
 1. Root directory: `pnpm i`
 2. Copy `config.json` -> `config.local.json`
@@ -162,6 +162,7 @@ Having trouble? Join the Lark group to connect with developers and users.
 
 <img
   width="400px"
+  alt="QR code for joining the FastGPT Lark community group"
   src="https://oss.laf.run/otnvvf-imgs/fastgpt-feishu1.png"
   className="medium-zoom-image"
 />

@@ -1,196 +1,45 @@
 ---
-title: App API
-sidebarTag: No longer maintained
-description: FastGPT OpenAPI App Interface
+title: Integrate applications and workflow tools
+description: Select an application, call its published version, and verify input, output, and permissions.
 ---
 
-## Prerequisites
+## Before calling
 
-1. Prepare your API Key: You can use the global API Key directly
-2. Get your app's AppId
+Complete [your first request](/en/openapi/intro) and confirm that the current member can read the target application. Editing and publishing have their own permissions. Actual calls use published runtime configuration; see [published versions](/en/guide/build/publish/versions).
 
-![alt text](../../public/imgs/image-120.png)
+## Conversational applications
 
-## Log API
+Call `/api/v1/chat/completions` with `appId` and a user question in `messages`. The interface supports Chat Agent, Chat Agent V2, and Workflow applications as implemented by your version. Product application types and API resource scope have separate purposes: this endpoint also recognizes workflow-tool resources.
 
-### Get App Overall Statistics
+Supply declared global variables through `variables` using matching keys and values. Compare API results with a fixed input tested in the application before adding business data.
 
-<Tabs items={["Request Example","Response Example","Parameters"]}>
+## Workflow tools
 
-<Tab value="Request Example">
+Workflow tools declare input and output contracts and can execute independently. Debug and publish the tool in the interface, then supply its `appId` and input variables according to the current generated reference. Inspect tool output in the detailed response; use your deployment's System OpenAPI for exact fields.
 
-```bash
-curl --location --request GET 'https://cloud.fastgpt.cn/api/proApi/core/app/logs/getTotalData?appId=68c46a70d950e8850ae564ba' \
---header 'Authorization: Bearer apikey'
-```
+## Runtime and management
 
-</Tab>
+For conversation reuse and streamed content, read [conversation integration](/en/openapi/chat). For statistics and log management, verify each generated operation's availability, version, and licensing requirements before calling it.
 
-<Tab value="Response Example">
+[Historical application parameters](/en/openapi/legacy/app) preserve earlier log-interface documentation for maintaining existing integrations.
 
-```bash
-  {
-      "code": 200,
-      "statusText": "",
-      "message": "",
-      "data": {
-          "totalUsers": 0,
-          "totalChats": 0,
-          "totalPoints": 0
-      }
-  }
-```
+<details>
+<summary>Earlier section links</summary>
 
-</Tab>
+<span id="prerequisites" />
 
-<Tab value="Parameters">
+[Prerequisites ](/en/openapi/legacy/app#prerequisites)
 
-**Request Parameters:**
+<span id="log-api" />
 
-- appId: App ID
+[Log API ](/en/openapi/legacy/app#log-api)
 
-**Response Parameters:**
+<span id="get-app-overall-statistics" />
 
-- totalUsers: Total number of users
-- totalChats: Total number of chats
-- totalPoints: Total points consumed
+[Get App Overall Statistics ](/en/openapi/legacy/app#get-app-overall-statistics)
 
-</Tab>
+<span id="get-app-chart-data" />
 
-</Tabs>
+[Get App Chart Data ](/en/openapi/legacy/app#get-app-chart-data)
 
-### Get App Chart Data
-
-<Tabs items={["Request Example","Response Example","Parameters"]}>
-
-<Tab value="Request Example">
-
-```bash
-curl --location --request POST 'https://cloud.fastgpt.cn/api/proApi/core/app/logs/getChartData' \
---header 'Authorization: Bearer apikey' \
---header 'Content-Type: application/json' \
---data-raw '{
-  "appId": "68c46a70d950e8850ae564ba",
-  "dateStart": "2025-09-19T16:00:00.000Z",
-  "dateEnd": "2025-09-27T15:59:59.999Z",
-  "offset": 1,
-  "source": [
-      "test",
-      "online",
-      "share",
-      "api",
-      "cronJob",
-      "team",
-      "feishu",
-      "official_account",
-      "wecom",
-      "mcp"
-  ],
-  "userTimespan": "day",
-  "chatTimespan": "day",
-  "appTimespan": "day"
-}'
-```
-
-</Tab>
-
-<Tab value="Response Example">
-
-```bash
-{
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": {
-        "userData": [
-            {
-                "timestamp": 1758585600000,
-                "summary": {
-                    "userCount": 1,
-                    "newUserCount": 0,
-                    "retentionUserCount": 0,
-                    "points": 1.1132600000000001,
-                    "sourceCountMap": {
-                        "test": 1,
-                        "online": 0,
-                        "share": 0,
-                        "api": 0,
-                        "cronJob": 0,
-                        "team": 0,
-                        "feishu": 0,
-                        "official_account": 0,
-                        "wecom": 0,
-                        "mcp": 0
-                  }
-                }
-            }
-        ],
-        "chatData": [
-            {
-                "timestamp": 1758585600000,
-                "summary": {
-                    "chatItemCount": 1,
-                    "chatCount": 1,
-                    "errorCount": 0,
-                    "points": 1.1132600000000001
-                }
-            }
-        ],
-        "appData": [
-            {
-                "timestamp": 1758585600000,
-                "summary": {
-                    "goodFeedBackCount": 0,
-                    "badFeedBackCount": 0,
-                    "chatCount": 1,
-                    "totalResponseTime": 22.31
-                }
-            }
-        ]
-    }
-}
-```
-
-</Tab>
-
-<Tab value="Parameters">
-
-**Request Parameters:**
-
-- appId: App ID
-- dateStart: Start time
-- dateEnd: End time
-- source: Log source
-- offset: User retention offset. The unit follows userTimespan
-- userTimespan: User data timespan //day|week|month|quarter
-- chatTimespan: Chat data timespan //day|week|month|quarter
-- appTimespan: App data timespan //day|week|month|quarter
-
-**Response Parameters:**
-
-- userData: User data array
-  - timestamp: Timestamp
-  - summary: Summary data object
-    - userCount: Active user count
-    - newUserCount: New user count
-    - retentionUserCount: Retained user count
-    - points: Total points consumed
-    - sourceCountMap: User count by source
-- chatData: Chat data array
-  - timestamp: Timestamp
-  - summary: Summary data object
-    - chatItemCount: Chat message count
-    - chatCount: Session count
-    - errorCount: Error count
-    - points: Total points consumed
-- appData: App data array
-  - timestamp: Timestamp
-  - summary: Summary data object
-    - goodFeedBackCount: Positive feedback count
-    - badFeedBackCount: Negative feedback count
-    - chatCount: Chat count
-    - totalResponseTime: Total response time
-
-</Tab>
-
-</Tabs>
+</details>

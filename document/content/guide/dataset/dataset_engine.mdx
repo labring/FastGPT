@@ -30,19 +30,19 @@ FastGPT 采用了 RAG 中的 Embedding 方案构建知识库，要使用好 Fast
 
 ### 数据存储结构
 
-在 FastGPT 中，整个知识库由库、集合和数据 3 部分组成。集合可以简单理解为一个 `文件`。一个 `库` 中可以包含多个 `集合`，一个 `集合` 中可以包含多组 `数据`。最小的搜索单位是 `库`，也就是说，知识库搜索时，是对整个 `库` 进行搜索，而集合仅是为了对数据进行分类管理，与搜索效果无关。（起码目前还是）
+知识库包含集合；内容集合保存数据块，文件夹集合组织其他集合。检索时先选择知识库，再按配置的集合、标签条件以及适用的成员权限限制召回范围。集合既承载来源信息，也参与检索范围控制，参见[集合标签](/zh-CN/guide/dataset/collection_tags)与[集合权限](/zh-CN/guide/dataset/collection_permission)。
 
-![](/imgs/dataset_tree.png)
+![数据存储结构：界面示例](/imgs/dataset_tree.png)
 
 ### 向量存储结构
 
-FastGPT 采用了 `PostgresSQL` 的 `PG Vector` 插件作为向量检索器，索引为 `HNSW`。且 `PostgresSQL` 仅用于向量检索（该引擎可以替换成其它数据库），`MongoDB` 用于其他数据的存取。
+向量索引存放在部署所选的向量后端。以 PostgreSQL/pgvector 为例，可以使用 HNSW 索引；其他受支持后端按自身实现存储和检索。知识库、集合及数据块正文等业务记录保存在 MongoDB，原文件由文件存储服务管理。
 
-在 `MongoDB` 的 `dataset.datas` 表中，会存储向量原数据的信息，同时有一个 `indexes` 字段，会记录其对应的向量 ID，这是一个数组，也就是说，一组数据可以对应多个向量。除默认文本索引外，如果模型能力支持，图片内容也可以生成图片描述索引或图片向量索引。
+在 `MongoDB` 的 `dataset_datas` 表中，会存储向量原数据的信息，同时有一个 `indexes` 字段，会记录其对应的向量 ID，这是一个数组，也就是说，一组数据可以对应多个向量。除默认文本索引外，如果模型能力支持，图片内容也可以生成图片描述索引或图片向量索引。
 
-在 `PostgresSQL` 的表中，设置一个 `vector` 字段用于存储向量。在检索时，会先召回向量，再根据向量的 ID，去 `MongoDB` 中寻找原数据内容，如果对应了同一组原数据，则进行合并，向量得分取最高得分。
+在 `PostgreSQL` 的表中，设置一个 `vector` 字段用于存储向量。在检索时，会先召回向量，再根据向量的 ID，去 `MongoDB` 中寻找原数据内容，如果对应了同一组原数据，则进行合并，向量得分取最高得分。
 
-![](/imgs/datasetSetting1.png)
+![向量存储结构：界面示例](/imgs/datasetSetting1.png)
 
 ### 多向量的目的和使用方式
 
@@ -63,7 +63,7 @@ FastGPT 采用了 `PostgresSQL` 的 `PG Vector` 插件作为向量检索器，�
 5. 通过 `Rerank` 来二次排序，提高文本结果的相关性。
 6. 最终经过相似度过滤和引用上限裁剪，得到返回给模型的引用内容。
 
-![](/imgs/dataset_search_process.png)
+![整体检索方案：界面示例](/imgs/dataset_search_process.png)
 
 ### 图片检索方案
 
@@ -113,7 +113,7 @@ FastGPT 会把不同召回路径的结果进行融合，而不是简单采用某
 
 |                                       |                                       |                                       |
 | ------------------------------------- | ------------------------------------- | ------------------------------------- |
-| ![](/imgs/dataset_search_params1.png) | ![](/imgs/dataset_search_params2.png) | ![](/imgs/dataset_search_params3.png) |
+| ![搜索参数：界面示例](/imgs/dataset_search_params1.png) | ![搜索参数：界面示例](/imgs/dataset_search_params2.png) | ![搜索参数：界面示例](/imgs/dataset_search_params3.png) |
 
 ### 搜索模式
 
@@ -176,11 +176,11 @@ FastGPT 会使用 `RRF` 对重排结果、向量搜索结果、全文检索结�
 
 在搜索的过程中，尤其是连续对话的搜索，我们通常会发现后续的问题难以搜索到合适的内容，其中一个原因是知识库搜索只会使用“当前”的问题去执行。看下面的例子：
 
-![](/imgs/coreferenceResolution2.webp)
+![背景：界面示例](/imgs/coreferenceResolution2.webp)
 
 用户在提问“第二点是什么”的时候，只会去知识库里查找“第二点是什么”，压根查不到内容。实际上需要查询的是“QA 结构是什么”。因此我们需要引入一个【问题优化】模块，来对用户当前的问题进行补全，从而使得知识库搜索能够搜索到合适的内容。使用补全后效果如下：
 
-![](/imgs/coreferenceResolution3.webp)
+![背景：界面示例](/imgs/coreferenceResolution3.webp)
 
 #### 实现方式
 

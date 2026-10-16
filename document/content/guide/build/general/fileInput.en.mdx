@@ -7,7 +7,7 @@ Starting from version 4.8.9, FastGPT supports configuring file uploads in both `
 
 ## Using in Basic Mode
 
-When file upload is enabled in Basic Mode, it uses tool-calling mode — the model decides whether to read the file content.
+Chat Agent (formerly Basic Mode) reads ordinary documents through its document-parsing path and uses their text in the conversation. Releases 4.8.9–4.8.12 let the model decide through tool calling; version 4.8.13 introduced the forced-parsing behavior described below.
 
 Find the file upload option on the left panel and click the `Enable`/`Disable` toggle to open the configuration dialog.
 
@@ -31,7 +31,7 @@ There are many ways to use files in Workflows. The simplest approach, shown belo
 
 |                        |                        |
 | ---------------------- | ---------------------- |
-| ![](/imgs/image-5.png) | ![](/imgs/image-6.png) |
+| ![Using in Workflows — interface example](/imgs/image-5.png) | ![Using in Workflows — interface example](/imgs/image-6.png) |
 
 You can also use Workflows to extract or analyze document content, then pass the results to HTTP requests or other nodes to build a document processing pipeline.
 
@@ -39,7 +39,7 @@ You can also use Workflows to extract or analyze document content, then pass the
 
 ## How Document Parsing Works
 
-Unlike multimodal recognition, LLMs currently cannot parse regular documents directly. All document "understanding" is achieved by converting documents to text and injecting it into the prompt. The following FAQs explain how this works — understanding the mechanics helps you use document parsing more effectively in Workflows.
+FastGPT’s ordinary-document parsing path converts files to text before passing them to the model. Multimodal handling follows the selected model’s capabilities and file-input settings. The following FAQs explain how this works — understanding the mechanics helps you use document parsing more effectively in Workflows.
 
 ### How are uploaded files stored in the database?
 
@@ -64,7 +64,7 @@ Uploaded files are stored as URLs — parsed document content is not stored.
 
 ### How are images, audio, and video handled?
 
-The document parsing node does not parse multimodal files such as images, audio, or video. These files should be handled by an LLM that supports the corresponding multimodal capability, with multimodal recognition enabled in [AI Settings](./ai_settings).
+The document parsing node does not parse multimodal files such as images, audio, or video. These files should be handled by an LLM that supports the corresponding multimodal capability, with multimodal recognition enabled in [AI Settings](/en/guide/build/general/ai_settings).
 
 In practice, file input has two different handling paths:
 

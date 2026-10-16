@@ -1,0 +1,19 @@
+---
+title: Historical API parameters and migration
+description: Find handwritten legacy parameters and migrate to team-level keys, explicit application IDs, and generated references.
+---
+
+These archives preserve handwritten documentation from before the generated-reference migration. Check each old endpoint against your deployed version.
+
+- [Historical application parameters](/en/openapi/legacy/app)
+- [Historical conversation parameters](/en/openapi/legacy/chat)
+- [Historical knowledge-base parameters](/en/openapi/legacy/dataset)
+
+## Migration checklist
+
+1. Find the operation in your deployment's `/apidoc/systemopenapi` and verify method, path, authentication, and parameters.
+2. Create a team-level API key for the current member and provide `body.appId` explicitly when calling an application.
+3. For clients accepting only a key, use `<apiKey>-<appId>` compatibility syntax. Selection priority is request body, Bearer suffix, then legacy key binding.
+4. Verify fixed inputs, conversation ownership, and error handling before moving business traffic.
+
+Legacy application-bound keys can continue supplying a compatibility application selection. Identity proxy requires an enabled team-level credential; see [identity proxy](/en/openapi/identity-proxy).

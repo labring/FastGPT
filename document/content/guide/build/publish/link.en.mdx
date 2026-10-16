@@ -15,13 +15,11 @@ Go to `App Details` -> `Publish Channels` -> `Share Link`, then create a new lin
 
 Enter a name to create the link. The name is only used for display in the record list.
 
-![alt text](/imgs/image.png)
+![1. Create a Link — interface example](/imgs/image.png)
 
 ### 2. Copy the Link
 
 Click Start Using to open the share link, then copy and share it as needed.
-
-![alt text](/imgs/image-1.png)
 
 ## Parameter Configuration
 
@@ -68,13 +66,13 @@ In the share link configuration, you can optionally fill in the `Identity Verifi
 
 #### Flow Diagram
 
-![](/imgs/sharelink_process.png)
+![Flow Diagram — interface example](/imgs/sharelink_process.png)
 
 ### Configuration Guide
 
 #### 1. Configure the Identity Verification URL
 
-![](/imgs/share-setlink.png)
+![1. Configure the Identity Verification URL — interface example](/imgs/share-setlink.png)
 
 Once configured, every time the share link is used, verification and reporting requests will be sent to the corresponding endpoints.
 
@@ -142,7 +140,7 @@ curl --location --request POST '{{host}}/shareAuth/start' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "token": "[authToken]",
-    "question": "User question",
+    "question": "User question"
 }'
 ```
 
@@ -184,9 +182,9 @@ curl --location --request POST '{{host}}/shareAuth/start' \
 
 This endpoint has no required response format.
 
-The response data follows the same format as the [chat endpoint](../../../openapi/intro.en.mdx#response), with an additional `token` field.
+The response data follows the same format as the [chat endpoint](/en/openapi/intro#response), with an additional `token` field.
 
-Key fields to note: `totalPoints` (total AI points consumed), `token` (total token consumption)
+Inspect `totalPoints` (AI points) and `tokens` (model context tokens) within `responseData`. The top-level `token` is the business authentication credential.
 
 ```bash
 curl --location --request POST '{{host}}/shareAuth/finish' \
@@ -313,7 +311,7 @@ We'll use [Laf as the server](https://laf.dev/) to demonstrate how these 3 endpo
 
 #### 1. Create 3 Laf Endpoints
 
-![](/imgs/share-auth1.png)
+![1. Create 3 Laf Endpoints — interface example](/imgs/share-auth1.png)
 
 <Tabs items={['/shareAuth/init','/shareAuth/start','/shareAuth/finish']}>
   <Tab value="/shareAuth/init" >
@@ -372,12 +370,11 @@ import cloud from '@lafjs/cloud';
 export default async function (ctx: FunctionContext) {
   const { token, responseData } = ctx.body;
 
-  const total = responseData.reduce((sum, item) => sum + item.price, 0);
-  const amount = total / 100000;
+  const totalPoints = responseData.reduce((sum, item) => sum + (item.totalPoints ?? 0), 0);
 
-  // Database operations omitted
-
-  return {};
+  // Authenticate the callback and record points with an idempotency key.
+  // Currency conversion follows your own billing contract.
+  return { totalPoints };
 }
 ```
 
@@ -388,7 +385,7 @@ export default async function (ctx: FunctionContext) {
 
 Copy any of the 3 endpoint URLs, e.g. `https://d8dns0.laf.dev/shareAuth/finish`, remove the `/shareAuth/finish` part, and enter the root URL `https://d8dns0.laf.dev` in the `Identity Verification` field.
 
-![](/imgs/share-auth2.jpg)
+![2. Configure the Verification URL — interface example](/imgs/share-auth2.jpg)
 
 #### 3. Modify the Share Link Parameters
 

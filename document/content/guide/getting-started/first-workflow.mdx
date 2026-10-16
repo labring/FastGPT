@@ -1,0 +1,31 @@
+---
+title: 创建首个工作流
+description: 将用户输入交给模型处理，检查节点输出并发布一个摘要流程。
+---
+
+目标：输入一段文字，返回三条摘要。需要应用创建权限、可用对话模型及模型额度。
+
+## 创建流程
+
+1. 在工作台创建 Agent，类型选择“工作流”，命名为“摘要助手”。
+2. 在画布保留工作流开始节点，添加 AI 对话节点。把开始节点的执行连接线连到 AI 对话节点。
+3. 在 AI 对话节点选择模型，将用户问题输入引用到开始节点的用户输入。执行连线控制运行顺序，输入引用传递实际数据。
+4. 提示词填写 `Summarize the user's text in exactly three bullet points. Preserve names, dates, and quantities.`。
+5. 开启该节点的回复文本输出。检查画布中其他会输出文本的节点，保证预期的回复顺序。
+
+## 运行与验收
+
+在调试中输入：`The workshop is on Friday. It starts at 10:00 and lasts two hours. Bring a laptop.`
+
+预期回复为三条摘要，保留 Friday、10:00、two hours 和 laptop。打开执行详情，确认开始节点接收原文、AI 对话节点收到输入并输出摘要。
+
+| 现象 | 检查 |
+| --- | --- |
+| 节点没有运行 | 开始节点与 AI 对话节点的执行连线 |
+| 模型收到空内容 | 用户输入的引用来源 |
+| 有输出却没有对话回复 | 节点的回复文本配置 |
+| 模型请求失败 | 模型配置、额度与请求错误 |
+
+发布当前修改，在实际访问的新对话中重复测试。[发布版本](/zh-CN/guide/build/publish/versions)说明草稿和线上配置的关系。
+
+下一步：[工作流原理与变量](/zh-CN/guide/build/workflow/intro)、[条件分支](/zh-CN/guide/build/workflow/nodes/tfswitch)、[文档解析](/zh-CN/guide/build/workflow/nodes/document_parsing)。

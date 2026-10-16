@@ -11,20 +11,20 @@ The Configuration Panel is used to configure and bind all the core capabilities 
 
 ## AI Configuration & Virtual Machine
 
-- **AI Model**: Choose the chat model and configure its parameters. For general LLM parameters, see [AI Settings](../general/ai_settings).
+- **AI Model**: Choose the chat model and configure its parameters. For general LLM parameters, see [AI Settings](/en/guide/build/general/ai_settings).
 - **Prompt**: Define the core persona, objectives, and specific rules for the Agent. The editor supports rich text, and you can type `@` to quickly reference and bind tools, etc.
 
   |                                                             |                                                                   |
   | :---------------------------------------------------------: | :---------------------------------------------------------------: |
   | ![`@` Tool Quick Binding](/imgs/agent_prompt_editor_at.png) | ![Rich Text Prompt Editor](/imgs/agent_prompt_editor_mention.png) |
 
-- **Virtual Machine**: Once enabled, the system assigns a dedicated Linux sandbox environment for each session, supporting code execution, file operations, and startup command configuration. For architecture and debugging details, refer to [Virtual Machine](./vm). For startup script details and execution limits, see [Virtual Machine Lifecycle](./vm#virtual-machine-lifecycle).
+- **Virtual Machine**: The virtual machine supports code execution, file operations, and startup scripts. The runtime instance is scoped by source, application, and user; conversations use separate session work directories. Lifecycle and persistence depend on the execution service and storage configuration. For architecture and debugging details, refer to [Virtual Machine](/en/guide/build/agentv2/vm). For startup script details and execution limits, see [Virtual Machine Lifecycle](/en/guide/build/agentv2/vm#virtual-machine-lifecycle).
 
 ---
 
 ## Associate SKILL & Tools
 
-- **Associated SKILLs**: Select and bind published SKILL packages from the skill library. The entrypoint script in the SKILL package will execute automatically when the VM spins up. If you associate SKILLs without enabling the VM sandbox, a warning "Virtual Machine Not Ready" will be displayed. To learn how to write and package custom SKILLs, please refer to [Development & Debugging](../skill/development).
+- **Associated SKILLs**: Select and bind published SKILL packages from the skill library. The runtime prepares the selected published version and records successful initialization; see [Skill initialization](/en/guide/build/skill/initialization) for execution and retry behavior. If you associate SKILLs without enabling the VM sandbox, a warning "Virtual Machine Not Ready" will be displayed. To learn how to write and package custom SKILLs, please refer to [Development & Debugging](/en/guide/build/skill/development).
 
   ![Virtual Machine Not Ready Warning](/imgs/agent_skill_vm_not_ready.png)
 
@@ -37,4 +37,4 @@ The Configuration Panel is used to configure and bind all the core capabilities 
 ## Dataset & File Uploads
 
 - **Dataset**: Associate specific corporate documents and adjust search settings (Hybrid search, Reranking, etc.). It also supports configuring team member permissions.
-- **File Uploads**: Toggle file uploads for end-users, permitting images, audio, video, or custom file extensions. File upload capabilities automatically adapt based on the multimodal features of the selected LLM. For detailed configurations, see [File Input](../general/fileInput).
+- **File Uploads**: Toggle file uploads for end-users, permitting images, audio, video, or custom file extensions. File upload capabilities automatically adapt based on the multimodal features of the selected LLM. For detailed configurations, see [File Input](/en/guide/build/general/fileInput).

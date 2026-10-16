@@ -11,23 +11,20 @@ description: FastGPT Self-Hosting Common S3 Issues Troubleshooting
 
 Example
 
-- ![](../../../public/imgs/faq4.png)
+- ![1.1 Error Stack Display — interface example](../../../public/imgs/faq4.png)
 
 ### Possible Errors
 
-- STORAGE_S3_FORCE_PATH_STYLE configuration error
+- The endpoint hostname cannot be resolved, or the client uses a virtual-hosted bucket address unsupported by the service
 
 ### Solution
 
-- Turn on the STORAGE_S3_FORCE_PATH_STYLE option to `true`, otherwise the client cannot find the target service
+- Check endpoint DNS resolution and network access from the FastGPT container; correct the endpoint or DNS configuration.
+- For a service that uses path-style addressing, set `STORAGE_S3_FORCE_PATH_STYLE` to `true` so the client avoids an unresolvable bucket subdomain.
 
 ---
 
 ## 2. Upload conversation file / Dataset file error
-
-Example
-
-- ![](../../../public/imgs/faq5.png)
 
 ### 2.1 SignatureDoesNotMatched
 

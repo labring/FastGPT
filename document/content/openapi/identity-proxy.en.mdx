@@ -1,0 +1,45 @@
+---
+title: API and MCP identity proxy
+description: Execute as a member of the same team through a trusted server and that member’s resource permissions.
+---
+
+Identity proxy attributes an execution to a selected team member. The integration server authenticates the business user, resolves the member from a trusted mapping, and verifies the permitted delegation scope.
+
+## Enablement requirements
+
+- A team Owner can enable proxying on a team-level API key or MCP publication they manage. Creators can disable proxying on their own credentials or publications.
+- The target must be an `active` member of the same team with application read permission and the relevant conversation permissions.
+- API proxying requires a team-level API key with `authProxy` enabled. Legacy application-bound keys, login tokens, and shared-link credentials have their own access purposes.
+
+## API request body
+
+The conversation endpoint accepts `authProxy.username` or `authProxy.tmbId` in the request body:
+
+```json
+{
+  "appId": "YOUR_APP_ID",
+  "authProxy": { "username": "member@example.com" },
+  "messages": [{ "role": "user", "content": "Summarize the travel policy." }],
+  "stream": false
+}
+```
+
+The username is the member's login username. When both identifiers are supplied, they must resolve to the same member. Omitting proxy fields uses the credential's member. Server-side permission checks determine access after membership or conversation ownership changes.
+
+## MCP headers
+
+MCP uses transport request headers:
+
+```json
+{
+  "x-fastgpt-auth-proxy-username": "member@example.com"
+}
+```
+
+Alternatively, use `x-fastgpt-auth-proxy-tmb-id`. Both headers must identify the same member when supplied together. SSE stores identity at connection time, so reconnect after changing identity. Streamable HTTP reads headers per request. See [MCP service publishing](/en/guide/build/publish/mcp_server) for complete connection examples.
+
+## Verify and troubleshoot
+
+Call as a member with read access and inspect conversation ownership. Then verify rejection using a test member lacking access. Check enablement, team, member status, identifier agreement, and resource permissions. An MCP tool list establishes metadata visibility; execution performs further permission checks.
+
+The trusted server holds credentials and generates proxy fields. The user-facing client supplies business identity and the server authorizes its mapping. Current generated MCP references may omit proxy-header declarations; this guide preserves verified names. Check them against the deployed implementation and returned errors.

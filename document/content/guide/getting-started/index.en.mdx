@@ -1,103 +1,62 @@
 ---
-title: Quick Overview of FastGPT
-description: FastGPT's capabilities and advantages
+title: Use FastGPT
+description: Build a knowledge-base question-answering application, then explore workflows, Agents, publishing, and maintenance.
 ---
 
-import { Alert } from '@/components/docs/Alert';
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="why-fastgpt" />
+<span id="1-simple-and-flexible-like-building-blocks-" />
+<span id="2-make-your-data-smarter-" />
+<span id="3-open-source-and-easy-to-integrate-" />
+<span id="what-can-fastgpt-do" />
+<span id="1-comprehensive-dataset" />
+<span id="2-visual-workflow" />
+<span id="3-intelligent-data-parsing" />
+<span id="4-workflow-orchestration" />
+<span id="5-powerful-api-integration" />
+<span id="core-features" />
+<span id="dataset-core-process-diagram" />
+
 import FastGPTLink from '@/components/docs/linkFastGPT';
 
-FastGPT is an AI Agent app development platform built on large language models. It combines Dataset Q&A, visual Workflows, Agent orchestration, tool calling, and Skill extensions so developers and business users can quickly build custom AI apps.
+FastGPT connects models, knowledge bases, tools, and visual workflows into AI applications that people can use.
 
-<Alert icon="🤖" context="success">
+## Start with a successful answer
 
-Try FastGPT now
+[**Build your first knowledge-base Q&A application →**](/en/guide/getting-started/knowledge-qa)
 
-- International: <FastGPTLink campaign="docs_getting_started" content="cloud_entry_io" site="io">{'https://fastgpt.io'}</FastGPTLink>
-- China Mainland: <FastGPTLink campaign="docs_getting_started" content="cloud_entry_cn" site="cn">{'https://fastgpt.cn'}</FastGPTLink>
+Import a short document, connect it to a Chat Agent, test the answer, and publish your changes. The tutorial includes sample material and questions with expected answers.
 
-</Alert>
+<Cards>
+  <Card title="Choose an application type" href="/en/guide/getting-started/application-types">Choose Chat Agent, Chat Agent V2, or Workflow for your task.</Card>
+  <Card title="Build your first workflow" href="/en/guide/getting-started/first-workflow">Connect input, model, and output, then inspect a complete execution.</Card>
+  <Card title="Run your first Agent task" href="/en/guide/getting-started/first-agent">Let an Agent retrieve material and complete a task.</Card>
+</Cards>
 
-|                                                |                                                |
-| ---------------------------------------------- | ---------------------------------------------- |
-| ![alt text](../../../public/imgs/image-30.png) | ![alt text](../../../public/imgs/image-45.png) |
-| ![alt text](../../../public/imgs/image-46.png) | ![alt text](../../../public/imgs/image-47.png) |
+## Continue with a task
 
-## Why FastGPT
+<Cards>
+  <Card title="Build applications" href="/en/guide/build/general/ai_settings">Configure models, instructions, variables, and conversation capabilities.</Card>
+  <Card title="Manage knowledge" href="/en/guide/dataset/lifecycle">Create, import, preview chunks, test retrieval, and maintain material.</Card>
+  <Card title="Connect tools and Skills" href="/en/guide/build/tools/overview">Add external operations and reusable instructions.</Card>
+  <Card title="Publish and integrate" href="/en/guide/build/publish/versions">Publish changes and choose a shared link, API, or MCP service.</Card>
+  <Card title="Observe and improve" href="/en/guide/build/logs">Investigate answers through conversation logs and execution details.</Card>
+  <Card title="Team and account" href="/en/guide/workspace/team/team_roles_permissions">Manage members and resource collaboration permissions.</Card>
+</Cards>
 
-### 1. Simple and Flexible, Like Building Blocks 🧱
+## Developers and operators
 
-Build AI apps as easily as snapping LEGO bricks together. FastGPT provides a rich set of Workflow nodes that let you create personalized AI apps through simple drag-and-drop — no coding required, even for complex business processes.
+- [Developers](/en/developers): credentials, a first request, streaming, and current generated API references.
+- [Deploy and operate](/en/self-host): installation choices, service configuration, maintenance, and upgrades.
+- [Core concepts](/en/guide/getting-started/concepts): applications, collections, chunks, tools, Skills, and published versions.
+- [Complete examples](/en/guide/getting-started/quick-start), [video tutorials](https://video.fastgpt.cn/videos), and [solutions](https://solutions.fastgpt.cn/) (external resources may use Chinese).
 
-### 2. Make Your Data Smarter 🧠
+## Start with the cloud service
 
-FastGPT provides a complete data intelligence solution — from data import and processing to knowledge matching and intelligent Q&A — fully automated. Combined with visual Workflow design, you can easily build professional-grade AI apps.
+<FastGPTLink campaign="docs_getting_started" content="cloud_entry_cn" site="cn">Mainland China cloud</FastGPTLink> · <FastGPTLink campaign="docs_getting_started" content="cloud_entry_io" site="io">International cloud</FastGPTLink>
 
-### 3. Open Source and Easy to Integrate 🔗
-
-FastGPT supports custom development. Integrate quickly through standard APIs without modifying source code. It supports mainstream models including ChatGPT, Claude, DeepSeek, and ERNIE Bot, with continuous iteration to keep the product evolving.
-
----
-
-## What Can FastGPT Do
-
-### 1. Comprehensive Dataset
-
-Import documents and data with automatic knowledge structuring. Features intelligent Q&A with multi-turn context understanding and a continuously improving Dataset management experience.
-
-![](/imgs/intro/image3.png)
-
-### 2. Visual Workflow
-
-FastGPT's intuitive drag-and-drop interface lets you build complex business processes with zero code. Rich functional node components handle diverse business needs with flexible process orchestration.
-
-![](/imgs/intro/image4.png)
-
-### 3. Intelligent Data Parsing
-
-FastGPT's Dataset system handles imported data with great flexibility — intelligently processing complex PDF structures while preserving images, tables, and LaTeX formulas. It automatically recognizes scanned files and structures content into clean Markdown format. It also supports automatic image annotation and indexing, making visual content searchable and ensuring knowledge is presented accurately in AI Q&A.
-
-![](/imgs/intro/image5.png)
-
-### 4. Workflow Orchestration
-
-Visual Workflow orchestration lets you design complex Q&A processes — such as querying databases, checking inventory, or booking lab resources.
-
-![](/imgs/intro/image6.png)
-
-### 5. Powerful API Integration
-
-FastGPT is fully compatible with the OpenAI API interface, supporting one-click integration with WeCom, WeChat Official Account, Lark, DingTalk, and more — bringing AI capabilities into your business workflows.
-
-![](/imgs/intro/image7.png)
-
----
-
-## Core Features
-
-- Out-of-the-box Dataset system
-- Visual low-code workflow orchestration
-- Support for mainstream LLMs
-- Simple and easy-to-use API interface
-- Flexible data processing capabilities
-
----
-
-## Dataset Core Process Diagram
-
-![](/imgs/intro/image8.png)
-
----
+Guides follow the current interface. Self-hosted installations require configured models and supporting services. Availability depends on version, license, plan, service configuration, resource permissions, and model capabilities; each task explains its relevant requirements.
 
 ## Community
 
-FastGPT is an open source project driven by users and contributors. If you have questions or suggestions, try the following support channels. Our team and community will do our best to help.
-
-- 📱 Scan to join the Lark community group 👇
-
-  <img
-    width="400px"
-    src="https://oss.laf.run/otnvvf-imgs/fastgpt-feishu1.png"
-    className="medium-zoom-image"
-  />
-
-- 🐞 Submit any FastGPT bugs, issues, or feature requests to [GitHub Issues](https://github.com/labring/fastgpt/issues/new/choose).
+Report issues through [GitHub Issues](https://github.com/labring/FastGPT/issues/new/choose). Include your version, steps, expected result, and error details with credentials removed.

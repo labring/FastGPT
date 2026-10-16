@@ -30,19 +30,19 @@ Retriever precision is relatively straightforward to address, and training vecto
 
 ### Data Storage Structure
 
-In FastGPT, a Dataset contains Collections, and each Collection contains data entries. A Collection can be thought of as a file. Dataset search runs across the entire Dataset; Collections organize and manage data but do not currently limit the search scope.
+A knowledge base contains collections. Content collections hold chunks; folder collections organize child collections. Retrieval first selects knowledge bases, then constrains recall using configured collections, tag conditions, and applicable member permissions. Collections carry source information and participate in scope control; see [collection tags](/en/guide/dataset/collection_tags) and [collection permissions](/en/guide/dataset/collection_permission).
 
-![](/imgs/dataset_tree.png)
+![Data Storage Structure — interface example](/imgs/dataset_tree.png)
 
 ### Vector Storage Structure
 
-FastGPT uses `PostgreSQL`'s `PG Vector` extension as the vector retriever, with `HNSW` indexing. `PostgreSQL` is used solely for vector search (this engine can be swapped for other databases), while `MongoDB` handles all other data storage.
+Vector indexes use the backend selected for the deployment. PostgreSQL/pgvector can use HNSW indexes; other supported backends use their own storage and retrieval implementations. MongoDB stores knowledge bases, collections, chunk text, and related business records. File-storage services manage original files.
 
-In `MongoDB`'s `dataset.datas` collection, vector source data is stored along with an `indexes` field that records corresponding vector IDs. This is an array, meaning a single data entry can map to multiple vectors. In addition to default text indexes, image content can also generate image description indexes or image vector indexes when the configured models support it.
+In `MongoDB`'s `dataset_datas` collection, vector source data is stored along with an `indexes` field that records corresponding vector IDs. This is an array, meaning a single data entry can map to multiple vectors. In addition to default text indexes, image content can also generate image description indexes or image vector indexes when the configured models support it.
 
 In `PostgreSQL`, a `vector` field stores the vectors. During search, vectors are recalled first, then their IDs are used to look up the original data in `MongoDB`. If multiple vectors map to the same source data, they are merged and the highest vector score is used.
 
-![](/imgs/datasetSetting1.png)
+![Vector Storage Structure — interface example](/imgs/datasetSetting1.png)
 
 ### Purpose and Usage of Multi-Vector Mapping
 
@@ -63,7 +63,7 @@ A Dataset search is not simply "user question -> vector database -> result." Dep
 5. Use `Rerank` for secondary sorting to improve text result relevance.
 6. Apply similarity filtering and the citation limit to produce the final cited content sent to the model.
 
-![](/imgs/dataset_search_process.png)
+![Overall Search Strategy — interface example](/imgs/dataset_search_process.png)
 
 ### Image Search Method
 
@@ -113,7 +113,7 @@ This means the final cited content may not be strictly sorted by a single vector
 
 |                                       |                                       |                                       |
 | ------------------------------------- | ------------------------------------- | ------------------------------------- |
-| ![](/imgs/dataset_search_params1.png) | ![](/imgs/dataset_search_params2.png) | ![](/imgs/dataset_search_params3.png) |
+| ![Search Parameters — interface example](/imgs/dataset_search_params1.png) | ![Search Parameters — interface example](/imgs/dataset_search_params2.png) | ![Search Parameters — interface example](/imgs/dataset_search_params3.png) |
 
 ### Search Modes
 
@@ -176,11 +176,11 @@ In RAG, we need to perform embedding searches against the database based on the 
 
 During search — especially in multi-turn conversations — follow-up questions often fail to find relevant content because Dataset search only uses the "current" question. Consider this example:
 
-![](/imgs/coreferenceResolution2.webp)
+![Background — interface example](/imgs/coreferenceResolution2.webp)
 
 When the user asks "What's the second point?", the system searches for "What's the second point?" in the Dataset, which returns nothing useful. The actual query should be "What is the QA structure?" This is why the Query Rewriting node expands the user's current question so Dataset search can find relevant content. Here's the result after rewriting:
 
-![](/imgs/coreferenceResolution3.webp)
+![Background — interface example](/imgs/coreferenceResolution3.webp)
 
 #### How It Works
 

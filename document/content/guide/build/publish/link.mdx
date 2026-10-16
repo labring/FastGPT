@@ -17,13 +17,11 @@ description: FastGPT 免登录窗口发布
 
 填写名称后即可创建，该名称仅用于记录展示。
 
-![alt text](/imgs/image.png)
+![1. 创建链接：界面示例](/imgs/image.png)
 
 ### 2. 复制链接
 
 点击开始使用，即可打开使用链接，复制后即可使用。
-
-![alt text](/imgs/image-1.png)
 
 ## 参数配置
 
@@ -66,13 +64,13 @@ description: FastGPT 免登录窗口发布
 
 #### 触发流程
 
-![](/imgs/sharelink_process.png)
+![触发流程：界面示例](/imgs/sharelink_process.png)
 
 ### 配置教程
 
 #### 1. 配置身份校验地址
 
-![](/imgs/share-setlink.png)
+![1. 配置身份校验地址：界面示例](/imgs/share-setlink.png)
 
 配置校验地址后，在每次分享链接使用时，都会向对应的地址发起校验和上报请求。
 
@@ -140,7 +138,7 @@ curl --location --request POST '{{host}}/shareAuth/start' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "token": "[authToken]",
-    "question": "用户问题",
+    "question": "用户问题"
 }'
 ```
 
@@ -182,9 +180,9 @@ curl --location --request POST '{{host}}/shareAuth/start' \
 
 该接口无规定返回值。
 
-响应值与 [chat 接口格式相同](../../../openapi/intro.mdx#响应)，仅多了一个 `token`。
+响应值与 [chat 接口格式相同](/zh-CN/openapi/intro#响应)，仅多了一个 `token`。
 
-重点关注：`totalPoints` (总消耗 AI 积分)，`token` (Token 消耗总数)
+重点关注 `responseData` 中的 `totalPoints`（AI 积分）与 `tokens`（模型上下文 token 数）。顶层 `token` 是业务身份凭证，按鉴权约定处理。
 
 ```bash
 curl --location --request POST '{{host}}/shareAuth/finish' \
@@ -311,7 +309,7 @@ type ResponseType = {
 
 #### 1. 创建 3 个 Laf 接口
 
-![](/imgs/share-auth1.png)
+![1. 创建 3 个 Laf 接口：界面示例](/imgs/share-auth1.png)
 
 <Tabs items={['/shareAuth/init','/shareAuth/start','/shareAuth/finish']}>
   <Tab value="/shareAuth/init" >
@@ -370,12 +368,11 @@ import cloud from '@lafjs/cloud';
 export default async function (ctx: FunctionContext) {
   const { token, responseData } = ctx.body;
 
-  const total = responseData.reduce((sum, item) => sum + item.price, 0);
-  const amount = total / 100000;
+  const totalPoints = responseData.reduce((sum, item) => sum + (item.totalPoints ?? 0), 0);
 
-  // 省略数据库操作
-
-  return {};
+  // Authenticate the callback and record points with an idempotency key.
+  // Currency conversion follows your own billing contract.
+  return { totalPoints };
 }
 ```
 
@@ -386,7 +383,7 @@ export default async function (ctx: FunctionContext) {
 
 我们随便复制 3 个地址中一个接口: `https://d8dns0.laf.dev/shareAuth/finish` , 去除 `/shareAuth/finish` 后填入 `身份校验` : `https://d8dns0.laf.dev`
 
-![](/imgs/share-auth2.jpg)
+![2. 配置校验地址：界面示例](/imgs/share-auth2.jpg)
 
 #### 3. 修改分享链接参数
 

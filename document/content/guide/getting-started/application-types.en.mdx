@@ -1,0 +1,18 @@
+---
+title: Choose an application type
+description: Choose Chat Agent, Chat Agent V2, or Workflow based on the task.
+---
+
+Start with a Chat Agent and a knowledge base for your first document Q&A application. In the workspace, select Create Agent, explicitly select the Agent type, enter a name, and create it.
+
+| Task | Type | Configuration and requirements |
+| --- | --- | --- |
+| Document Q&A, email drafts, consistent response formats | Chat Agent | Model, instructions, knowledge, and any required tools |
+| Autonomous planning, dynamic tool selection, multiple steps | Chat Agent V2 | A model supporting tool calls, task instructions, knowledge, and tools; configure a virtual machine for Skills or code execution |
+| Fixed sequences, branching, transformations, human interaction | Workflow | Nodes, input/output references, connections, and branch conditions |
+
+Creation requires permission to create resources in the current team. Administrators configure models and execution services for self-hosted installations. Plan and license prompts in the interface identify availability for the current account.
+
+A workflow can contain an [Agent node](/en/guide/build/workflow/nodes/agent) to delegate a step to autonomous planning. A [workflow tool](/en/guide/build/tools/overview) exposes a workflow with defined inputs and outputs to other applications and can also run independently.
+
+Continue with [your first knowledge-base Q&A](/en/guide/getting-started/knowledge-qa), [your first Agent task](/en/guide/getting-started/first-agent), or [your first workflow](/en/guide/getting-started/first-workflow).

@@ -10,21 +10,21 @@ description: FastGPT 变量更新模块介绍
 - 触发执行
 - 手动配置
 
-![](/imgs/variable_update1.png)
+![特点 ：界面示例](/imgs/variable_update1.png)
 
 ## 功能 
 
 - 更新指定节点的输出值
 
-![](/imgs/variable_update2.png)
+![功能 ：界面示例](/imgs/variable_update2.png)
 
-![](/imgs/variable_update3.png)
+![功能 ：界面示例](/imgs/variable_update3.png)
 
 - 更新全局变量
 
-![](/imgs/variable_update4.png)
+![功能 ：界面示例](/imgs/variable_update4.png)
 
-![](/imgs/variable_update5.png)
+![功能 ：界面示例](/imgs/variable_update5.png)
 
 ## 作用
 
@@ -32,3 +32,18 @@ description: FastGPT 变量更新模块介绍
 
 - 给一个「自定义变量」类型的全局变量赋值，从而实现全局变量无需用户输入
 - 更新「变量更新」节点前的工作流节点输出，在后续使用中，使用的节点输出值为新的输出
+
+## 配置、顺序与边界
+
+每条更新先选择目标全局变量或节点输出，再选择手动值或上游引用。手动输入的操作取决于目标类型：数字支持赋值和计算，布尔支持设值和取反，数组支持替换、追加单项和清空。引用模式把所引用的完整值赋给目标。
+
+同一节点内的多条更新按顺序执行，后一条可读取前一条更新后的值。该节点模板没有独立的数据输出；后续节点引用被更新的目标。运行详情记录更新结果。
+
+## 示例：记录处理状态
+
+1. 在全局变量中添加字符串类型的自定义变量 `status`。
+2. 连接开始节点 → 变量更新 → 指定回复。
+3. 更新目标选择 `status`，使用手动输入，值填 `ready`。
+4. 指定回复引用全局变量 `status`。调试后应显示 `ready`，运行详情应记录该值。
+
+值未改变时检查目标引用与类型；并行任务写同一目标时结果与完成顺序有关，确定的汇总结果应通过并行节点输出获得。容器内写回规则见[循环](/zh-CN/guide/build/workflow/nodes/loop_run)和[并行执行](/zh-CN/guide/build/workflow/nodes/parallel_run)。

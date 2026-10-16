@@ -1,8 +1,26 @@
 ---
-title: Self-Host
-description: FastGPT Self-Host
+title: Deploy and operate
+description: Choose an installation path, configure supporting services, and maintain and upgrade FastGPT.
 ---
 
-import { Redirect } from '@/components/docs/Redirect';
+## Choose an installation path
 
-<Redirect to="/self-host/deploy/docker" />
+| Task | Guide | Success check |
+| --- | --- | --- |
+| Install with Docker Compose | [Docker deployment](/en/self-host/deploy/docker) | Dependencies start, login works, and a model call succeeds |
+| Deploy with Sealos | [Sealos deployment](/en/self-host/deploy/sealos) | Application URL, storage, and model configuration work |
+| Develop and debug locally | [Development environment](/en/self-host/dev) | Services start and code can be edited and debugged |
+
+Before installation, check resources, ports, persistent directories, and credentials for the target version. Use matching configuration and images. Before upgrading, back up databases and object storage and establish a restoration procedure.
+
+## Configure runtime services
+
+See [models and channels](/en/self-host/config/model/intro), [object storage](/en/self-host/config/object-storage), [Agent virtual machine](/en/self-host/config/sandbox/opensandbox), and [environment variables](/en/self-host/config/env). Agent virtual machines and workflow code sandboxes have separate configuration and purposes; verify the services required by the capability you use.
+
+Run [your first knowledge-base Q&A](/en/guide/getting-started/knowledge-qa) after configuration to verify file processing, indexing, and model answers.
+
+## Administer and maintain
+
+Platform root administration manages deployment-level resources. Team roles and collaborator permissions control team resources. Commercial features require appropriate licensing; see [commercial edition](/en/guide/version/commercial), [SSO](/en/guide/admin/sso), and [team mode](/en/guide/admin/teamMode).
+
+Use [monitoring](/en/self-host/config/signoz) to observe services and [migration guidance](/en/self-host/migration/docker_db) when moving data. Before an upgrade, read [upgrade instructions](/en/self-host/upgrading/upgrade-instruction) and select the applicable release from the [version timeline](/en/self-host/upgrading/version-timeline). Historical pages retain the instructions and limitations for their versions.

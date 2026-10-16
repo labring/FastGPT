@@ -10,7 +10,7 @@ There are many document libraries available online, such as Lark, Yuque, and oth
 
 ## Unified API Specification
 
-To provide a unified interface for different document libraries, FastGPT defines a standard API specification with 4 endpoints. See the [API File Library endpoints](./api_dataset.en.mdx).
+To provide a unified interface for different document libraries, FastGPT defines a standard API specification with 4 endpoints. See the [API File Library endpoints](/en/guide/dataset/third-party/api_dataset).
 
 All built-in document libraries are extensions of the standard API File Library. Refer to the code in `FastGPT/packages/service/core/dataset/apiDataset/yuqueDataset/api.ts` to build extensions for other document libraries. You need to implement 4 endpoints:
 
@@ -25,7 +25,9 @@ For this walkthrough, we'll use adding a Lark Knowledge Dataset (FeishuKnowledge
 
 ### 1. Add Third-Party Document Library Parameters
 
-First, go to `FastGPT\packages\global\core\dataset\apiDataset.d.ts` in the FastGPT project and add the third-party document library server type. Design the fields based on your needs. For example, the Yuque Dataset requires `userId` and `token` for authentication.
+The screenshots below show an earlier implementation. Use the current files and text instructions as the implementation reference.
+
+First, go to `FastGPT\packages\global\core\dataset\apiDataset\type.ts` in the FastGPT project and add a Zod schema for the provider configuration and infer its TypeScript type. Include the schema in `ApiDatasetServerSchema`. Design the fields based on your needs. For example, the Yuque Dataset requires `userId` and `token` for authentication.
 
 ```ts
 export type YuqueServer = {
@@ -37,51 +39,50 @@ export type YuqueServer = {
 
 <Alert icon="🤖" context="success">
 
-If the document library supports a `root directory` selection feature, add a `basePath` field. [See the root directory feature](./third_dataset.en.mdx#adding-the-configuration-form)
+If the document library supports a `root directory` selection feature, add a `basePath` field. [See the root directory feature](/en/guide/dataset/third-party/third_dataset#adding-the-configuration-form)
 
 </Alert>
 
-![](/imgs/thirddataset-1.png)
+![1. Add Third-Party Document Library Parameters — interface example](/imgs/thirddataset-1.png)
 
 ### 2. Create the Hook File
 
-Each third-party document library uses a Hook pattern to maintain a set of API endpoints. The Hook contains 5 functions to implement.
+Each third-party document library uses a Hook pattern to maintain a set of API endpoints. The adapter returns four methods; follow the current `yuqueDataset/api.ts` contract.
 
 - Create a folder for your document library under `FastGPT\packages\service\core\dataset\apiDataset\`, then create an `api.ts` file inside it
-- In `api.ts`, define the following 5 functions:
+- In `api.ts`, define the following four methods:
   - `listFiles`: Get the file list
   - `getFileContent`: Get file content / file link
   - `getFileDetail`: Get file detail information
   - `getFilePreviewUrl`: Get the original file preview URL
-  - `getFileId`: Get the original file's real ID
 
 ### 3. Add the Dataset Type
 
-In `FastGPT\packages\global\core\dataset\type.d.ts`, import your new Dataset type.
+In `FastGPT\packages\global\core\dataset\type.ts`, import your new Dataset type.
 
-![](/imgs/thirddataset-2.png)
+![3. Add the Dataset Type — interface example](/imgs/thirddataset-2.png)
 
 ### 4. Add Dataset Data Retrieval
 
-In `FastGPT\packages\global\core\dataset\apiDataset\utils.ts`, add the following content.
+In `packages/global/core/dataset/apiDataset/utils.ts`, extend `filterApiDatasetServerPublicData` to expose safe configuration fields while removing credentials. Use the existing `ApiDatasetResult` success/error contract and error classification helpers; distinguish missing files from authorization, rate-limit, and network failures so sync can handle each correctly.
 
-![](/imgs/thirddataset-3.png)
+![4. Add Dataset Data Retrieval — interface example](/imgs/thirddataset-3.png)
 
 ### 5. Add Dataset Invocation Method
 
-In `FastGPT\packages\service\core\dataset\apiDataset\index.ts`, add the following content.
+In `packages/service/core/dataset/apiDataset/index.ts`, add a branch in `getApiDatasetRequest` that selects the new adapter from its server configuration. Propagate optional browse-cache settings only where the adapter supports them.
 
-![](/imgs/thirddataset-4.png)
+![5. Add Dataset Invocation Method — interface example](/imgs/thirddataset-4.png)
 
 ## Adding the Frontend
 
 Add your i18n translations in `FastGPT\packages\web\i18n\zh-CN\dataset.json`, `FastGPT\packages\web\i18n\en\dataset.json`, and `FastGPT\packages\web\i18n\zh-Hant\dataset.json`. Using Chinese translations as an example, you'll generally need the following:
 
-![](/imgs/thirddataset-5.png)
+![Adding the Frontend — interface example](/imgs/thirddataset-5.png)
 
 In `FastGPT\packages\service\support\user/audit\util.ts`, add the following to support i18n translation retrieval.
 
-![](/imgs/thirddataset-6.png)
+![Adding the Frontend — interface example](/imgs/thirddataset-6.png)
 
 <Alert icon="🤖" context="success">
 
@@ -91,22 +92,22 @@ The i18n translation content is stored in `FastGPT\packages\web\i18n\zh-Hant\acc
 
 Add your Dataset icons under `FastGPT\packages\web\components\common\Icon\icons\core\dataset\`. You need two icons: `Outline` (monochrome) and `Color` (colored), as shown below.
 
-![](/imgs/thirddataset-7.png)
+![Adding the Frontend — interface example](/imgs/thirddataset-7.png)
 
 In `FastGPT\packages\web\components\common\Icon\constants.ts`, register your icons. The `import` path points to where the icons are stored.
 
-![](/imgs/thirddataset-8.png)
+![Adding the Frontend — interface example](/imgs/thirddataset-8.png)
 
 In `FastGPT\packages\global\core\dataset\constants.ts`, add your Dataset type to both `DatasetTypeEnum` and `ApiDatasetTypeMap`.
 
 |                               |                                |
 | ----------------------------- | ------------------------------ |
-| ![](/imgs/thirddataset-9.png) | ![](/imgs/thirddataset-10.png) |
+| ![Adding the Frontend — interface example](/imgs/thirddataset-9.png) | ![Adding the Frontend — interface example](/imgs/thirddataset-10.png) |
 
 <Alert icon="🤖" context="success">
 
 The `courseUrl` field links to the relevant documentation — add it if available.
-Documentation goes in `FastGPT/document/content/guide/build/workflow/nodes/knowledge_base_search_merge.mdx`.
+Place provider documentation under `document/content/guide/dataset/third-party/`, with Chinese and English pages and navigation entries.
 The `label` value is the Dataset name you added via i18n translations.
 `icon` and `avatar` are the two icons you added earlier.
 
@@ -114,13 +115,13 @@ The `label` value is the Dataset name you added via i18n translations.
 
 In `FastGPT\projects\app\src\pages\dataset\list\index.tsx`, add the following. This file handles the menu that appears when clicking the "New" button on the Dataset list page. Your Dataset must be added here to be creatable.
 
-![](/imgs/thirddataset-11.png)
+![Adding the Frontend — interface example](/imgs/thirddataset-11.png)
 
 In `FastGPT\projects\app\src\pageComponents\dataset\detail\Info\index.tsx`, add the following. This configuration corresponds to the UI shown below.
 
 |                                |                                |
 | ------------------------------ | ------------------------------ |
-| ![](/imgs/thirddataset-12.png) | ![](/imgs/thirddataset-13.png) |
+| ![Adding the Frontend — interface example](/imgs/thirddataset-12.png) | ![Adding the Frontend — interface example](/imgs/thirddataset-13.png) |
 
 ## Adding the Configuration Form
 
@@ -128,7 +129,7 @@ In `FastGPT\projects\app\src\pageComponents\dataset\ApiDatasetForm.tsx`, add the
 
 |                                |                                |                                |
 | ------------------------------ | ------------------------------ | ------------------------------ |
-| ![](/imgs/thirddataset-14.png) | ![](/imgs/thirddataset-15.png) | ![](/imgs/thirddataset-16.png) |
+| ![Adding the Configuration Form — interface example](/imgs/thirddataset-14.png) | ![Adding the Configuration Form — interface example](/imgs/thirddataset-15.png) | ![Adding the Configuration Form — interface example](/imgs/thirddataset-16.png) |
 
 The two components added in the code render the root directory selector, corresponding to the `getFileDetail` API method. If your Dataset doesn't support this, you can omit them.
 
@@ -139,7 +140,7 @@ The two components added in the code render the root directory selector, corresp
 
 |                                |                                |
 | ------------------------------ | ------------------------------ |
-| ![](/imgs/thirddataset-17.png) | ![](/imgs/thirddataset-18.png) |
+| ![Adding the Configuration Form — interface example](/imgs/thirddataset-17.png) |  |
 
 If the Dataset needs root directory support, also add the following in the `ApiDatasetForm` file.
 
@@ -147,20 +148,20 @@ If the Dataset needs root directory support, also add the following in the `ApiD
 
 Parse your Dataset type from `apiDatasetServer`, as shown:
 
-![](/imgs/thirddataset-19.png)
+![1. Parse the Dataset Type — interface example](/imgs/thirddataset-19.png)
 
 ### 2. Add Root Directory Selection Logic and `parentId` Assignment
 
 Add root directory selection logic to ensure the user has filled in all required fields for the API methods, such as the Token.
 
-![](/imgs/thirddataset-20.png)
+![2. Add Root Directory Selection Logic and parentId Assignment — interface example](/imgs/thirddataset-20.png)
 
 ### 3. Add Field Validation and Assignment Logic
 
 Verify that all required fields are present before calling the API, and assign the root directory value to the corresponding field after selection.
 
-![](/imgs/thirddataset-21.png)
+![3. Add Field Validation and Assignment Logic — interface example](/imgs/thirddataset-21.png)
 
 ## Tips
 
-After creating the Dataset, we recommend running a full test of all Dataset features to check for issues. If you encounter problems that aren't covered in this documentation, it's likely that some configuration was missed. Do a global search for `YuqueServer` and `yuqueServer` to verify that your type has been added everywhere it's needed.
+After creating the Dataset, verify listing, folder navigation, import, preview, updates, and missing-file handling. Include invalid credentials, 429 responses, and network failures in scoped adapter tests. If you encounter problems that aren't covered in this documentation, it's likely that some configuration was missed. Do a global search for `YuqueServer` and `yuqueServer` to verify that your type has been added everywhere it's needed.

@@ -1,0 +1,22 @@
+{
+  "title": "Developers",
+  "root": true,
+  "pages": [
+    "index",
+    "---API Getting Started---",
+    "../openapi/intro",
+    "../openapi/identity-proxy",
+    "---Integration Tasks---",
+    "../openapi/app",
+    "../openapi/chat",
+    "../openapi/dataset",
+    "../guide/dataset/third-party/third_dataset",
+    "---Extension Development---",
+    "../plugin/intro",
+    "../plugin/system-tool-development",
+    "../plugin/model-presets",
+    "../guide/build/skill/development",
+    "---Historical references---",
+    "../openapi/legacy"
+  ]
+}

@@ -1,81 +1,68 @@
-# FastGPT 文档
+# FastGPT documentation
 
-这是FastGPT的官方文档，采用 fumadoc 框架。
-## 运行项目
+The documentation uses Next.js, Fumadocs, and paired Chinese/English MDX content. The reader entrances are **Use FastGPT**, **Developers**, and **Deploy and Operate**.
 
-要运行文档，首先需要进行环境变量配置，在文档的根目录下创建`.env.local`文件，填写以下环境变量:
+## Run locally
+
+Use the repository's Node and pnpm versions. From the repository root:
 
 ```bash
-FASTGPT_HOME_DOMAIN=https://fastgpt.io # 只填写 origin，不携带路径或查询参数
+pnpm install --frozen-lockfile
+pnpm --dir document dev
 ```
 
-你可以在FastGPT项目根目录下执行以下命令来运行文档。
+Set `FASTGPT_HOME_DOMAIN` in `document/.env.local` to `https://fastgpt.cn` or `https://fastgpt.io` to select the deployment's primary locale. The Chinese production owner is `https://doc.fastgpt.cn`; the English owner is `https://doc.fastgpt.io`. Local previews support both `/zh-CN/` and `/en/` paths.
 
-```bash
-pnpm install
-pnpm dev
-```
-项目会默认跑在`http:localhost:3000`端口
+## Write paired content
 
-## 书写文档
+Content lives in `document/content/`. Pair `topic.mdx` with `topic.en.mdx`, and pair `meta.json` with `meta.en.json`. Keep technical prerequisites, procedures, examples, limits, and expected outcomes equivalent. English instructions must remain understandable when a shared screenshot uses Chinese labels.
 
-文档采用`mdx`格式，大体和`md`一致，但是现在文档的元数据只支持`title` `description`和`icon`三个字段，参考以下示例代码：
+Follow [the domain glossary](./CONTEXT.md). Use these page contracts:
 
-```bash
+- Task: goal, prerequisites, interface path and steps, expected outcome, troubleshooting, next task.
+- Reference: responsibility, inputs, configuration, outputs, boundaries, verified example.
+- Concept: object relationships, selection criteria, links to tasks and references.
+
+Frontmatter supports `title`, `description`, `icon`, `releaseTime`, `sidebarTag`, and `upgradeTags`. Quote values containing a colon. Use descriptive image alt text, inspect media for credentials and private data, and keep research screenshots separate from approved public assets.
+
+```mdx
 ---
-title: FastGPT 文档
-description: FastGPT 官方文档
-icon: menu #icon采用`lucide-react`第三方库。
+title: Choose an application type
+description: Choose Chat Agent, Chat Agent V2, or Workflow for a task.
 ---
 
-import { Alert } from '@/components/docs/Alert'; #高亮块组件
-import FastGPTLink from '@/components/docs/linkFastGPT';
-
-<Alert icon="🤖" context="success">
-快速开始体验
-- 海外版：<FastGPTLink campaign="docs_getting_started" content="cloud_entry_io" site="io">{'https://fastgpt.io'}</FastGPTLink>
-- 中国大陆：<FastGPTLink campaign="docs_getting_started" content="cloud_entry_cn" site="cn">{'https://fastgpt.cn'}</FastGPTLink>
-</Alert>
-
-import {Redirect} from '@/components/docs/Redirect' #重定向组件，如果你希望用户点击这个文件跳转到别的文件的话，详情参考 `FAQ`的`Docker 部署问题`文档。
-
-<Redirect to="/docs/self-host/deploy/docker/#faq" />
-
-<Tabs items={['Javascript', 'Rust']}> #tabs组件用法，渲染效果参考`introduction`下`development`的`faq`文档
-  <Tab value="Javascript">Javascript is weird</Tab>
-  <Tab value="Rust">Rust is fast</Tab>
-
-
-import FastGPTLink from '@/components/docs/linkFastGPT'; #FastGPT跳转链接组件，根据域名环境变量和传入的归因参数生成链接
-
-本文档介绍了如何设置开发环境以构建和测试 <FastGPTLink campaign="docs_self_host_dev" content="intro_product_link">FastGPT</FastGPTLink>。
-</Tabs>
-
+[Continue to your first workflow](/en/guide/getting-started/first-workflow)
 ```
 
-新增跳转 FastGPT 官网的链接时，请同步登记并复用 [UTM 归因规范](./UTM_ATTRIBUTION.md) 中的 `utm_campaign` 和 `utm_content`。
+Use explicit locale routes for internal content links. Preserve useful heading IDs when reorganizing sections. Existing links should reach the same topic or a precise successor. For a justified consolidation, add a direct permanent redirect in `document/middleware.ts` and update callers. Deployment YAML edits require explicit user confirmation.
 
-在书写完文档后，需要在对应的目录下的`meta.json`文件的`pages`字段合适位置添加自己的文件名。例如在`content/docs`(默认这是所有文档的根目录)的`introduction`目录下书写了一个`hello.mdx`文件。则需要去`introduction`目录下的`meta.json`添加以下内容:
+## Navigation and discovery
+
+`content/meta.json` and `content/meta.en.json` own the three section roots. Fumadocs metadata supports cross-directory references, `...folder` expansion, and `!entry` exclusions. Put each substantive page in one section. The normalized source tree supplies sidebar, section selection, breadcrumbs, and adjacent-page navigation.
+
+Keep historical release pages at their existing URLs with version-specific titles and descriptions. Current API task guides link to application-generated System OpenAPI and Dev API. Frozen handwritten parameters live in `content/openapi/legacy/` with reciprocal current-guide links.
+
+Canonical URLs and language alternates use each locale's production host. The sitemap follows the configured primary locale; `/<locale>/llms.txt` exports the requested language. Search uses Fumadocs's locale-aware index.
+
+## Validate changes
 
 ```bash
-{
-  "title": "FastGPT Docs",
-  "root": true,
-  "pages": ["[Handshake][联系我们](https://fastgpt.cn/zh/contact?source=docs&utm_source=docs&utm_medium=referral&utm_campaign=docs_navigation&utm_content=business_consultation)","index","guide","development","FAQ","shopping_cart","community","hello"], #"hello"原本没有，此外，这里的顺序就是最后文档的展示顺序，现在"hello"文档将会在`introduction`的最后展示
-  "order": 1
-}
+pnpm --dir document check:docs
+pnpm --dir document test:checks
+pnpm --dir document typecheck
+pnpm --dir document build
 ```
 
-## i18n
+The local checks include shell expansion of the API curl examples with a stubbed curl function; they make no API request.
 
-在`content/docs`下的所有`.mdx`文件为默认语言文件(当前默认语言中文)，`.en.mdx`文件为`i18n`支持的英文文件，例如，你可以将`hello.mdx`文档翻译后，写一个`hello.en.mdx`,同时，在对应目录的`meta.en.json`的`"pages"`字段写下对应的文件名来支持英文文档。
+For HTTP acceptance, start the site, then run:
 
-## 特殊配置
+```bash
+DOCS_TEST_ORIGIN=http://localhost:3210 pnpm --dir document test:site
+```
 
-### 增加顶层导航栏
+Use a browser to inspect both editions: first-task links, cross-directory section ownership, search results, language switching, keyboard access, mobile navigation, tables, and media. Production-host routing tests send explicit Host headers to the local server.
 
-1. 在 `FastGPT/document/app/[lang]/docs/layout.tsx` 文件中新增导航。
+Record per-topic disposition, semantic review, evidence, and runtime limitations with the [reconstruction inventory](../.agents/design/documentation/reconstruction-pages.csv). Published-media inspection levels and removals are tracked in the [media inventory](../.agents/design/documentation/reconstruction-public-media.csv). A structural check establishes structural coverage; source review and a successful product execution are separate evidence levels. Full repository tests follow final user acceptance.
 
-### 重定向
-
-在`FastGPT/document/components/docs/not-found.tsx`文件中新增重定向规则。
+Reuse the [UTM attribution contract](./UTM_ATTRIBUTION.md) for links to the FastGPT marketing sites.

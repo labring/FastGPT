@@ -9,20 +9,18 @@ description: FastGPT 私有部署存储桶问题排查方式
 - error: Error: getaddrinfo ENOTFOUND
 
 示例
-- ![](../../../public/imgs/faq4.png)
+- ![1.1 错误栈显示：界面示例](../../../public/imgs/faq4.png)
 
 ### 可能的错误
-- STORAGE_S3_FORCE_PATH_STYLE 配置错误
+- 端点主机名无法解析，或客户端使用了服务端不支持的虚拟主机式桶地址
 
 ### 解决
-- 将 STORAGE_S3_FORCE_PATH_STYLE 选项开启为 `true`，否则客户端无法找到目标服务
+- 从 FastGPT 容器检查 S3 端点主机名的 DNS 与网络连通性；修正端点或 DNS 配置。
+- 如果端点采用路径式寻址，将 `STORAGE_S3_FORCE_PATH_STYLE` 设为 `true`，避免客户端拼接无法解析的桶子域名。
 
 ---
 
 ## 2. 上传对话文件 / 知识库文件报错
-
-示例
-- ![](../../../public/imgs/faq5.png)
 
 ### 2.1 SignatureDoesNotMatched
 - 签名不一致，大部分情况是因为 Nginx 配置错误

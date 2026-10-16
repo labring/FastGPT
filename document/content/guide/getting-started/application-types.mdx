@@ -1,0 +1,18 @@
+---
+title: 选择应用类型
+description: 按任务选择对话 Agent、对话 Agent V2 或工作流。
+---
+
+首次搭建资料问答，推荐从对话 Agent 与知识库开始。进入工作台，点击创建 Agent，在“Agent 类型”中明确选择所需类型，再填写名称并创建。
+
+| 任务 | 类型 | 配置与要求 |
+| --- | --- | --- |
+| 资料问答、邮件草稿、固定格式回复 | 对话 Agent | 模型、提示词、知识库及所需工具 |
+| 自主规划、动态选择工具、多步骤任务 | 对话 Agent V2 | 支持工具调用的模型、任务指令、知识与工具；使用 Skill 或代码执行时配置虚拟机 |
+| 固定顺序、分支、转换与人工交互 | 工作流 | 节点、输入输出引用、连线和分支条件 |
+
+创建入口需要当前团队的资源创建权限。自部署的模型和执行服务由管理员配置；界面中的套餐或授权提示说明当前账号的可用范围。
+
+工作流可包含 [Agent 节点](/zh-CN/guide/build/workflow/nodes/agent)，把自主规划的步骤放入固定流程。[工作流工具](/zh-CN/guide/build/tools/overview)把输入输出明确的流程提供给其他应用调用，也支持独立运行。
+
+选择后进入对应教程：[首个知识库问答](/zh-CN/guide/getting-started/knowledge-qa)、[首个 Agent 任务](/zh-CN/guide/getting-started/first-agent)、[首个工作流](/zh-CN/guide/getting-started/first-workflow)。

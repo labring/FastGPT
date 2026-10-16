@@ -21,21 +21,14 @@ const processor = remark()
   // .use(your remark plugins)
   .use(remarkStringify); // to string
 
-export async function GET() {
-  // all scanned content
-  // Select files based on the default language
-  const defaultLanguage = i18n.defaultLanguage;
-  let globPattern;
+/** Export the requested edition, with deterministic ordering and no language fallback. */
+export async function GET(_request: Request, { params }: { params: Promise<{ lang: string }> }) {
+  const { lang } = await params;
+  if (!i18n.languages.includes(lang)) return new Response('Unknown language', { status: 404 });
 
-  if (defaultLanguage === 'zh-CN') {
-    // For Chinese, select *.mdx files
-    globPattern = ['./content/**/*.mdx'];
-  } else {
-    // For other languages (default English), select *.en.mdx files that don't have .mdx. in their path
-    globPattern = ['./content/**/*.en.mdx'];
-  }
-
-  const files = await fg(globPattern);
+  const files = (await fg('./content/**/*.mdx'))
+    .filter((file) => file.endsWith('.en.mdx') === (lang === 'en'))
+    .sort();
 
   const scan = files.map(async (file: string) => {
     const fileContent = await fs.readFile(file);
@@ -54,5 +47,7 @@ ${processed}`;
 
   const scanned = await Promise.all(scan);
 
-  return new Response(scanned.join('\n\n'));
+  return new Response(scanned.join('\n\n'), {
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+  });
 }

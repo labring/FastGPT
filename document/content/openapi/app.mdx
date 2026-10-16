@@ -1,196 +1,45 @@
 ---
-title: 应用接口
-sidebarTag: 不再维护
-description: FastGPT OpenAPI 应用接口
+title: 集成应用与工作流工具
+description: 选择应用、调用发布版本，并验证输入输出和资源权限。
 ---
 
-## 前置准备
+## 调用前检查
 
-1. 准备 API key: 可用直接使用全局 apikey
-2. 准备应用的 AppId
+完成[首次请求](/zh-CN/openapi/intro)，确认当前成员拥有目标应用的读取权限。应用编辑与发布管理有各自权限要求。实际调用使用发布的运行配置，详情见[发布版本](/zh-CN/guide/build/publish/versions)。
 
-![alt text](../../public/imgs/image-120.png)
+## 对话应用
 
-## 日志接口
+通过 `/api/v1/chat/completions` 指定 `appId`，在 `messages` 中传入用户问题。适用于当前接口支持的对话 Agent、对话 Agent V2 和工作流应用。界面选型与 API 中的资源标识分开理解：接口还识别工作流工具类型。
 
-### 获取应用总体数据统计
+需要全局变量时在 `variables` 中提供与应用声明匹配的键和值。先用应用中的固定测试输入比对 API 结果，再加入业务侧数据。
 
-<Tabs items={["请求示例","响应示例","参数说明"]}>
+## 工作流工具
 
-<Tab value="请求示例">
+工作流工具通过声明的工具输入和输出定义调用契约，也可独立执行。调用前在界面调试该工具，发布配置，再按当前生成参考提供 `appId` 与输入变量。检查详细返回结构中的工具输出，完整字段以部署实例的 System OpenAPI 为准。
 
-```bash
-curl --location --request GET 'https://cloud.fastgpt.cn/api/proApi/core/app/logs/getTotalData?appId=68c46a70d950e8850ae564ba' \
---header 'Authorization: Bearer apikey'
-```
+## 运行与管理
 
-</Tab>
+需要会话复用和流式内容时阅读[对话集成](/zh-CN/openapi/chat)。需要应用统计或日志管理时，在生成参考中确认相应接口的开放范围、版本和授权条件，再调用目标接口。
 
-<Tab value="响应示例">
+[历史应用参数](/zh-CN/openapi/legacy/app)保留旧日志接口说明，供维护已有集成时对照。
 
-```bash
-  {
-      "code": 200,
-      "statusText": "",
-      "message": "",
-      "data": {
-          "totalUsers": 0,
-          "totalChats": 0,
-          "totalPoints": 0
-      }
-  }
-```
+<details>
+<summary>原有章节入口</summary>
 
-</Tab>
+<span id="前置准备" />
 
-<Tab value="参数说明">
+[前置准备 ](/zh-CN/openapi/legacy/app#前置准备)
 
-**入参：**
+<span id="日志接口" />
 
-- appId: 应用 ID
+[日志接口 ](/zh-CN/openapi/legacy/app#日志接口)
 
-**出参：**
+<span id="获取应用总体数据统计" />
 
-- totalUsers: 累积使用用户数量
-- totalChats: 累积对话数量
-- totalPoints: 累积积分消耗
+[获取应用总体数据统计 ](/zh-CN/openapi/legacy/app#获取应用总体数据统计)
 
-</Tab>
+<span id="获取应用图表数据" />
 
-</Tabs>
+[获取应用图表数据 ](/zh-CN/openapi/legacy/app#获取应用图表数据)
 
-### 获取应用图表数据
-
-<Tabs items={["请求示例","响应示例","参数说明"]}>
-
-<Tab value="请求示例">
-
-```bash
-curl --location --request POST 'https://cloud.fastgpt.cn/api/proApi/core/app/logs/getChartData' \
---header 'Authorization: Bearer apikey' \
---header 'Content-Type: application/json' \
---data-raw '{
-  "appId": "68c46a70d950e8850ae564ba",
-  "dateStart": "2025-09-19T16:00:00.000Z",
-  "dateEnd": "2025-09-27T15:59:59.999Z",
-  "offset": 1,
-  "source": [
-      "test",
-      "online",
-      "share",
-      "api",
-      "cronJob",
-      "team",
-      "feishu",
-      "official_account",
-      "wecom",
-      "mcp"
-  ],
-  "userTimespan": "day",
-  "chatTimespan": "day",
-  "appTimespan": "day"
-}'
-```
-
-</Tab>
-
-<Tab value="响应示例">
-
-```bash
-{
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": {
-        "userData": [
-            {
-                "timestamp": 1758585600000,
-                "summary": {
-                    "userCount": 1,
-                    "newUserCount": 0,
-                    "retentionUserCount": 0,
-                    "points": 1.1132600000000001,
-                    "sourceCountMap": {
-                        "test": 1,
-                        "online": 0,
-                        "share": 0,
-                        "api": 0,
-                        "cronJob": 0,
-                        "team": 0,
-                        "feishu": 0,
-                        "official_account": 0,
-                        "wecom": 0,
-                        "mcp": 0
-                  }
-                }
-            }
-        ],
-        "chatData": [
-            {
-                "timestamp": 1758585600000,
-                "summary": {
-                    "chatItemCount": 1,
-                    "chatCount": 1,
-                    "errorCount": 0,
-                    "points": 1.1132600000000001
-                }
-            }
-        ],
-        "appData": [
-            {
-                "timestamp": 1758585600000,
-                "summary": {
-                    "goodFeedBackCount": 0,
-                    "badFeedBackCount": 0,
-                    "chatCount": 1,
-                    "totalResponseTime": 22.31
-                }
-            }
-        ]
-    }
-}
-```
-
-</Tab>
-
-<Tab value="参数说明">
-
-**入参：**
-
-- appId: 应用 ID
-- dateStart: 开始时间
-- dateEnd: 结束时间
-- source: 日志来源
-- offset: 用户留存偏移量，单位随 userTimespan 变化
-- userTimespan: 用户数据时间跨度 //day｜week｜month｜quarter
-- chatTimespan: 对话数据时间跨度 //day｜week｜month｜quarter
-- appTimespan: 应用数据时间跨度 //day｜week｜month｜quarter
-
-**出参：**
-
-- userData: 用户数据数组
-  - timestamp: 时间戳
-  - summary: 汇总数据对象
-    - userCount: 活跃用户数量
-    - newUserCount: 新用户数量
-    - retentionUserCount: 留存用户数量
-    - points: 总积分消耗
-    - sourceCountMap: 各来源用户数量
-- chatData: 对话数据数组
-  - timestamp: 时间戳
-  - summary: 汇总数据对象
-    - chatItemCount: 对话次数
-    - chatCount - 会话次数
-    - errorCount - 错误对话次数
-    - points - 总积分消耗
-- appData: 应用数据数组
-  - timestamp - 时间戳
-  - summary - 汇总数据对象
-    - goodFeedBackCount - 好评反馈数量
-    - badFeedBackCount - 差评反馈数量
-    - chatCount - 对话次数
-    - totalResponseTime - 总响应时间
-
-</Tab>
-
-</Tabs>
+</details>

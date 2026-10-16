@@ -1,74 +1,51 @@
 ---
-title: Dataset Usage
-description: Common Dataset usage questions
+title: Knowledge-base troubleshooting
+description: Diagnose parsing, model configuration, retrieval, and context limits, and check retention conditions.
 ---
+
+Record the knowledge base, collection, processing stage, and error. Reproduce with a small file before following the checks below, then rerun [retrieval testing](/en/guide/dataset/lifecycle).
+
+## File parsing fails
+
+Check that the file format is supported, the file opens normally, and its text can be extracted. Scanned PDFs or images require available enhanced parsing. Inspect the import settings, deployed parsing service, and returned error. Verify plain text with a small sample first. Self-hosted operators can consult [MinerU configuration](/en/self-host/custom-models/mineru) and [environment variables](/en/self-host/config/env).
 
 ## Garbled File Content
 
-Re-save the file with UTF-8 encoding.
+Save text or CSV files as UTF-8 and import again. For PDFs, Word files, and other formats, inspect the source and parsed output first. Confirm how existing collection data will be retained before reprocessing.
 
 ## Processing Model vs. Embedding model
 
-- **File Processing Model**: Used for **Enhanced Processing** and **Q&A Splitting** during data ingestion. Enhanced Processing generates related questions and summaries; Q&A Splitting generates question-answer pairs.
-- **Embedding model**: Used for vectorization — it processes and organizes text data into a structure optimized for fast retrieval.
+- **File processing model**: performs enhanced processing, summarization, question generation, or Q&A splitting according to the selected mode. It needs an available language model and quota.
+- **Embedding model**: vectorizes chunks for semantic retrieval and requires an available embedding service.
+
+Check the model and channel corresponding to the failed stage. Verify catalog visibility, member access, and the actual request result; see [team models](/en/guide/workspace/models).
 
 ## Excel File Import
 
-Yes. You can upload xlsx and other spreadsheet formats, not just CSV.
+Choose the format supported by your import entrance. Use [template import](/en/guide/dataset/template) for prepared Q&A pairs in `.csv` or `.xlsx`, follow the required headers, and test a few rows first. For ordinary file parsing, use the formats listed by the current upload interface.
 
 ## Token Calculation
 
-All token counts use the GPT-3.5 tokenizer as the standard.
+Displayed length estimates support processing and context controls. Model services may tokenize text differently. Check consumption against actual requests and usage records, and reserve space for instructions, retrieved content, and output when configuring context and chunk sizes.
 
 ## Restore a Rerank Model
 
-![](/imgs/dataset3.png)
-
-Add the rerank model configuration in your `config.json` file, then you'll be able to select it again.
+Confirm an available reranker is configured and check member access, its channel, and service connectivity. Self-hosted administrators should inspect the model-provider interface using [model configuration](/en/self-host/config/model/intro). Cloud users should check the available catalog and plan. Select the restored model and rerun retrieval testing.
 
 ## Data Retention After Expiration
 
-On the free plan, Dataset data is cleared after 30 days of inactivity (no login). Apps are not affected. Paid plans automatically downgrade to the free plan upon expiration.
-![](/imgs/dataset4.png)
+Cloud retention, quota, and expiration behavior follow the current account plan, service agreement, and notices. Review renewal or migration arrangements before expiration and retain required source material. Self-hosted operators define their own storage and backup policies.
 
 ## Too Many Results Interrupt Answers
 
-FastGPT calculates the maximum response length as:
+Inspect retrieved-content length, instructions, history, and the model output limit in execution details. The context budget includes these inputs and the expected output; the model and channel determine the exact limits.
 
-Max Response = min(Configured Max Response, Max Context Window - History)
-
-For example, with an 18K context model, input + output share the same window. As output grows, available input shrinks.
-
-To fix this:
-
-1. Check your configured max response (response limit) setting.
-2. Reduce input to free up space for output — specifically, reduce the number of chat history turns included in the workflow.
-
-Where to find the max response setting:
-
-![](/imgs/dataset1.png)
-
-![](/imgs/dataset2.png)
-
-For self-hosted deployments, you can reserve headroom when configuring model context limits. For example, set a 128K model to 120K — the remaining space will be allocated to output.
+Reduce retrieved-content length or message history, rerun the same question, and check that essential material is still retrieved. For model errors, follow [model troubleshooting](/en/self-host/troubleshooting/model-errors).
 
 ## Chat History Context Limits
 
-FastGPT calculates the maximum response length as:
+Check the application's history range and the model's context and output limits. Compare a new conversation with an existing long conversation. After adjusting history, verify that required multi-turn information remains available. Apply configuration changes to actual access through [published versions](/en/guide/build/publish/versions).
 
-Max Response = min(Configured Max Response, Max Context Window - History)
+## Knowledge-base page flickers
 
-For example, with an 18K context model, input + output share the same window. As output grows, available input shrinks.
-
-To fix this:
-
-1. Check your configured max response (response limit) setting.
-2. Reduce input to free up space for output — specifically, reduce the number of chat history turns included in the workflow.
-
-Where to find the max response setting:
-
-![](/imgs/dataset1.png)
-
-![](/imgs/dataset2.png)
-
-For self-hosted deployments, you can reserve headroom when configuring model context limits. For example, set a 128K model to 120K — the remaining space will be allocated to output.
+Inspect page or network-request errors, member permissions, and knowledge-base configuration. Confirm the selected embedding model exists and is available, then use the error to investigate its channel or service connection. Retain reproduction steps and errors for the administrator.

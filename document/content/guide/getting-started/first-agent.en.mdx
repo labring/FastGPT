@@ -1,0 +1,26 @@
+---
+title: Run your first Agent task
+description: Configure Chat Agent V2 and inspect how it retrieves knowledge and produces an evidence-based result.
+---
+
+Goal: ask an Agent to turn a travel policy into an expense checklist. Complete the import and retrieval checks in [your first knowledge-base Q&A](/en/guide/getting-started/knowledge-qa) first.
+
+## Prerequisites
+
+You need application creation and knowledge-base access permissions, plus an available model supporting tool calls. This tutorial uses knowledge retrieval. Code execution, Skills, and filesystem operations require a separately configured virtual-machine service. Availability depends on the self-hosted configuration, commercial license, or SaaS plan.
+
+## Configure and run
+
+1. Create an Agent, select Chat Agent V2, and name it Expense Checklist Assistant.
+2. Select a model supporting tool calls and associate the Travel Policy knowledge base.
+3. Set instructions to `Use the travel policy to prepare an expense checklist. Retrieve evidence before answering. Include the submission deadline, required documents, and review time. Identify missing policy details.`
+4. In debug preview, ask “I have just returned from a trip. Prepare an expense checklist and explain the finance review time.”
+5. Expand execution details and inspect the retrieval call, returned material, and final answer.
+
+## Expected result
+
+The checklist includes submission within 15 calendar days after returning, an invoice, and the approved travel request. Review takes 5 business days after a complete claim is submitted. Planning steps can vary by model; assess the retrieved evidence and factual completeness.
+
+For failed calls, inspect model capabilities, resource permissions, and the execution error. For unsupported answers, inspect the associated knowledge base, processing status, and instructions. Once successful, publish changes and verify again in a new conversation.
+
+Next: [Agent V2 settings](/en/guide/build/agentv2/settings), [tools and Skills](/en/guide/build/tools/overview), or [the workflow Agent node](/en/guide/build/workflow/nodes/agent).

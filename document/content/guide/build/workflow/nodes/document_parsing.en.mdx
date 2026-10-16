@@ -1,14 +1,35 @@
 ---
-title: Document Parsing
-description: FastGPT Document Parsing node overview
+title: Document parsing
+description: Parse file links into text and pass the result to downstream nodes.
 ---
 
-| | |
-| --- | --- |
-| ![](/imgs/document_analysis1.png) | ![](/imgs/document_analysis2.png) |
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="features" />
+<span id="use-cases" />
 
-The Document Parsing component becomes available after enabling file upload.
+## Function
 
-## Features
+The document-parsing node reads a list of file links and outputs text for a model or another node. Enable application file uploads or supply links accessible to the service from an upstream node. File types and size limits follow your deployment's upload and parsing configuration.
 
-## Use Cases
+## Inputs, configuration, and outputs
+
+| Item | Type | Meaning |
+| --- | --- | --- |
+| File links | String array | URLs to parse, referencing uploaded files or upstream results |
+| Parsed result | String | Text for downstream nodes |
+| Raw response | Object array | Original per-file parsing results for further processing |
+| Error message | String | Failure information for troubleshooting or an error branch |
+
+## Purpose
+
+Use parsing before summarization, extraction, or question answering. Knowledge-base retrieval requires its own import and indexing process; this node reads files for the current workflow.
+
+## Example: summarize an uploaded file
+
+1. Enable uploads in application file-input settings and prepare a short document containing readable text.
+2. Connect the start node to Document Parsing and then to AI Chat.
+3. Reference the start node's file-link list as the parsing input.
+4. Reference the parsed result in AI Chat and set instructions to `Summarize the supplied document in three bullet points. Preserve dates and amounts.`
+5. Upload the file in debug preview. Inspect the parsed text before checking the summary.
+
+Compare every date and amount with the source. For empty text, inspect scans, source content, and parsing services. For reading failures, check URL reachability, expiration, and upload limits. See [file input](/en/guide/build/general/fileInput) for the full capability guide.

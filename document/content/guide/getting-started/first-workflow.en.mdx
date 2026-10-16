@@ -1,0 +1,31 @@
+---
+title: Build your first workflow
+description: Pass user input to a model, inspect node output, and publish a summarization workflow.
+---
+
+Goal: accept a paragraph and return three summary bullets. You need application creation permission, an available chat model, and model quota.
+
+## Build the flow
+
+1. Create an Agent in the workspace, select Workflow, and name it Summary Assistant.
+2. Keep the workflow start node and add an AI Chat node. Connect the start node's execution output to AI Chat.
+3. Select a model in AI Chat. Reference the start node's user input as its user question. Execution connections control order; input references carry data.
+4. Set the instructions to `Summarize the user's text in exactly three bullet points. Preserve names, dates, and quantities.`
+5. Enable the node's response-text output. Check any other nodes that produce visible replies so the response order matches your intention.
+
+## Run and verify
+
+In debug preview, enter: `The workshop is on Friday. It starts at 10:00 and lasts two hours. Bring a laptop.`
+
+Expect three bullets preserving Friday, 10:00, two hours, and laptop. Open execution details and confirm that the start node received the paragraph and AI Chat received it and produced the summary.
+
+| Symptom | Check |
+| --- | --- |
+| Node never runs | Execution connection from start to AI Chat |
+| Model receives empty text | Source of the user-input reference |
+| Output exists but no reply appears | Response-text setting |
+| Model request fails | Model configuration, quota, and request error |
+
+Publish your changes and repeat the test in a new conversation through actual access. [Published versions](/en/guide/build/publish/versions) explains drafts and live configuration.
+
+Next: [workflow concepts and variables](/en/guide/build/workflow/intro), [conditional branches](/en/guide/build/workflow/nodes/tfswitch), or [document parsing](/en/guide/build/workflow/nodes/document_parsing).

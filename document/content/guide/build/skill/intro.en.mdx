@@ -39,7 +39,7 @@ Following the industry-standard design of Skills, FastGPT provides you with a "*
 
 ### 1. Isolated Secure Runtime Sandbox
 
-Each created skill during editing runs in a fully isolated, secure sandbox environment (powered by Sealos Devbox, OpenSandbox, etc., in the backend). All operations are restricted within this workspace to ensure safety.
+Skill editing uses a sandbox workspace supplied by the configured execution service, such as Sealos Devbox or OpenSandbox. Isolation, network access, filesystem permissions, and resource limits depend on that service and its deployment configuration.
 
 ### 2. Instant Hot-Reloading Debugging
 
@@ -51,4 +51,4 @@ Edits in the workspace will only take effect instantly in the "Debug Chat" area.
 
 ### 4. Auto-Sleep & Seamless Invocation
 
-For long-inactive skills, the system automatically shuts down the sandbox and performs cold-archiving to storage. When edit or agent invocation resumes, the sandbox is automatically re-instantiated and restored from the archive in the background. You are only billed when the skill is active, dramatically reducing your runtime costs.
+Idle-workspace archiving and restoration depend on the execution service and storage configuration. Reopening an archived workspace may require initialization. Check the service or subscription terms for compute and storage charges, and save required artifacts before cleanup.

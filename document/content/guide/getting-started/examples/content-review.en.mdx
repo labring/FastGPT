@@ -1,0 +1,222 @@
+---
+title: "Case 3: Workflow — Content Review and Automatic Rewriting"
+description: "Case 3: Workflow — Content Review and Automatic Rewriting"
+---
+
+This example uses models and external services. Prepare the required permissions and quota, debug and verify results, then publish application configuration.
+
+## Case 3: Workflow — Content Review and Automatic Rewriting
+
+### 3.1 Use Cases
+
+Workflows are ideal for tasks with fixed steps, clear logic, and the need for branching decisions or human confirmation. This case breaks down content compliance review into several stages: Dataset retrieval, AI classification, conditional branching, automatic rewriting, rejection explanation, and human confirmation, simulating the review process before enterprise content is published.
+
+Its core value lies in two aspects:
+
+1. **Automation**: Once triggered, the system automatically executes multiple steps according to the preset workflow.
+2. **Standardization**: The same input goes through the same judgment and processing, reducing human variability.
+
+To determine whether a task is suitable for a workflow, check if it has three characteristics: "stable steps, clear rules, and repeatable execution." Content review is a typical scenario: the input is content to be published, the rules come from a compliance Dataset, and the output is usually pass, rewrite, or reject, with the option to add human confirmation in between. This improves processing efficiency while retaining risk control.
+
+### 3.2 Preparation
+
+First, create a "Content Compliance Rules" Dataset and upload a simple text file. You can directly use the following rule template:
+
+```text
+Content Compliance Rules
+
+Safe Content (can be published directly)
+- Objective factual statements
+- Normal event notifications, meeting arrangements
+- Product feature descriptions (based on real data)
+- Industry knowledge sharing
+
+Sensitive Wording (needs rewriting)
+- Absolute language: "best," "first," "100%," "absolute," "only"
+- Exaggerated claims: "disrupting the industry," "unprecedented," "unmatched"
+- Unverified data: conversion rates, satisfaction rates, growth rates without sources
+- Comparative disparagement: directly naming competitors and belittling them
+
+Prohibited Content (must not be published)
+- Illegal information: involving pornography, gambling, drugs, fraud, pyramid schemes
+- Personal attacks: insults, defamation against individuals or groups
+- False information: fabricated data, forged qualifications, impersonating official sources
+- Sensitive topics: political sensitivity, religious discrimination, regional attacks
+```
+
+The rule base does not need to be complex at the start. For quick validation, split the rules into three categories: "safe, needs rewriting, prohibited." For formal use, you can continue adding rules by industry, brand, channel, or region, such as advertising-sensitive terms, medical compliance requirements, prohibited financial marketing claims, brand tone guidelines, and so on.
+
+### 3.3 Workflow Design
+
+Before configuring nodes, it's recommended to confirm the complete workflow. This case can be designed as follows:
+
+1. **User Input**: As the workflow starting point, receives the content to be reviewed.
+2. **Dataset Retrieval**: Recalls relevant rules from the content compliance rules base. Keep the default citation token limit initially, then adjust it using retrieval previews.
+3. **AI Content Compliance Classification**: Combines user input and retrieval results to classify the content as "Safe / Sensitive but Rewritable / Prohibited."
+4. **Conditional Branching**: Enters different branches based on the classification result.
+5. **Safe Branch**: Directly outputs the original text, indicating it can be published.
+6. **Sensitive but Rewritable Branch**: Calls AI to rewrite the content, then submits it for user confirmation.
+7. **Prohibited Branch**: Outputs a rejection explanation and provides revision suggestions.
+8. **Final Output**: Returns the original text, rewritten version, or rejection explanation.
+
+When designing a workflow, first determine the responsibility of each node to avoid having a single AI node simultaneously handle "retrieving rules, judging classification, rewriting content, explaining reasons," etc. Once responsibilities are clearly separated, each node's prompt will be shorter and more stable, making it easier to locate issues later: whether the Dataset failed to recall rules, the review node misclassified, or the condition in the decision node didn't match.
+
+### 3.4 Configuration Steps
+
+1. **Create a Workflow**
+
+   Go to the workflow homepage, click "New Workflow," and name it `Content Review and Automatic Rewriting`.
+
+   ![3.4 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-21.png)
+
+   After creation, enter the workflow editing page.
+
+   ![3.4 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-22.png)
+
+   The complete workflow diagram for this case is as follows:
+
+   ![Content Compliance Review Workflow](/imgs/guide/getting-started/quick-start/image-23.png)
+
+2. **Configure the Opening Message**
+
+   In the system configuration, fill in the opening statement to explain the assistant's review rules and usage.
+
+   ```md
+   Hello! I am the Content Compliance Review Assistant 🛡️
+
+   Please send me the content you need reviewed, and I will automatically judge it according to the rules:
+
+   - **✅ Safe** — Content has no sensitive information and can be published directly
+   - **⚠️ Sensitive but Rewritable** — Contains correctable wording; I will rewrite it and send it back for your confirmation
+   - **🚫 Prohibited** — Contains red-line content and is rejected with an explanation
+
+   Supports single text review or batch submission (multiple items separated by line breaks).
+
+   **Let's get started.**
+   ```
+
+3. **Call the Dataset**
+
+   Add a Dataset retrieval node in the workflow, select the previously created content compliance rules base. The input for this node uses the user input, and the output is referenced by subsequent AI nodes.
+
+   This node passes relevant rule fragments to the review node. The citation limit is measured in tokens. Keep the default initially, inspect relevance and context length in retrieval results, and then adjust the limit and similarity threshold.
+
+   ![3.4 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-24.png)
+
+   ![3.4 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-25.png)
+
+4. **Configure the Content Review Node**
+
+   Add an AI Chat node and rename it to "Content Review Node." This node is responsible for outputting the classification result based on the user input and Dataset rules.
+
+   ```md
+   You are a content compliance review expert. Based on the compliance rules retrieved from the Dataset, determine the compliance level of the user's input content.
+
+   Classification criteria:
+
+   - Safe: Content has no sensitive information and can be published directly
+   - Sensitive but Rewritable: Contains correctable sensitive wording; can be published after rewriting
+   - Prohibited: Contains red-line content and cannot be published
+
+   Output format:
+   Output only one of three labels: Safe / Sensitive but Rewritable / Prohibited
+   ```
+
+   Note: The Dataset citation must select the previously created Dataset, otherwise the AI cannot read the rule content.
+
+   The output of the review node should be as stable as possible, because it directly affects the decision node's branching. For a quick demo, you can output only the three labels "Safe / Sensitive but Rewritable / Prohibited"; if you need stricter automation integration later, you can switch to structured output, such as returning the classification, reason, and matched rules together, making it easier for downstream nodes to perform precise matching and logging.
+
+   ![3.4 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-26.png)
+
+5. **Test the Review Node**
+
+   Click "Run" in the top right corner, input a piece of content to be reviewed, and confirm that the review node returns a stable classification result.
+
+   Test this node individually instead of waiting until the entire workflow is built. Input a normal event announcement, marketing copy containing absolute language, and clearly prohibited text, and observe whether the classification meets expectations. If the classification is unstable, first adjust the rule base wording and the review prompt before continuing to configure subsequent branches.
+
+   ![3.4 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-27.png)
+
+6. **Hide Intermediate Output**
+
+   Click the settings button on the right side of the model to adjust the node's basic settings. Since the user only needs the final result, it is recommended to hide the intermediate output of the content review node.
+
+   ![3.4 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-28.png)
+
+7. **Configure the Decision Node**
+
+   Add a decision node to branch based on the "Safe / Sensitive but Rewritable / Prohibited" output from the content review node.
+
+   The decision node acts as a switch in the workflow. The more stable the output from the previous step, the easier it is to configure the decision node; if the review node's output contains explanatory text, the condition may fail to match. Therefore, in branching workflows, it is common to first constrain the output format of the upstream node before configuring the decision node conditions.
+
+   ![3.4 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-29.png)
+
+8. **Configure the Safe Branch**
+
+   When the review result is "Safe," directly output the original text. In a production scenario, you could also add spot-checking or human confirmation.
+
+   ![3.4 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-30.png)
+
+   The output effect is as follows:
+
+   ![3.4 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-31.png)
+
+9. **Configure the Sensitive but Rewritable Branch**
+
+   When the review result is "Sensitive but Rewritable," add an AI Chat node to automatically rewrite the content. You can use the following prompt:
+
+   ```md
+   You are a content rewriting expert. Rewrite the user's input content into a compliant version.
+
+   Rewriting principles:
+
+   - Preserve the original meaning and information, do not change the core expression
+   - Replace absolute claims with specific capabilities supported by available evidence; remove claims that lack evidence
+   - Remove unsupported data claims and retain verifiable facts; mark claims requiring evidence for verification
+   - Replace sensitive wording with neutral expressions
+   - Maintain the original style and tone
+   ```
+
+   After rewriting, you can add a user choice node to let the user accept the rewrite, continue rewriting, or abandon it.
+
+   The human confirmation node is suitable for paths that are risky but correctable. AI can propose rewrite suggestions, but whether to publish is still left to the business personnel to confirm. This reduces the time spent on initial screening and repeated revisions while not handing over the final publishing decision entirely to the automated workflow.
+
+   ![3.4 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-32.png)
+
+   ![3.4 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-33.png)
+
+   If the user accepts the rewrite, output the rewritten result; if the user chooses to continue rewriting, it can be connected back to the content rewriting node; if the user abandons it, output the original text.
+
+   ![3.4 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-34.png)
+
+10. **Configure the Prohibited Branch**
+
+    When the review result is "Prohibited," add an AI Chat node to output a rejection explanation. You can use the following prompt:
+
+    ```md
+    The content submitted by the user cannot be published because it contains prohibited information. Please explain the reason in a polite and professional tone.
+
+    Output format:
+
+    1. One sentence stating that the content cannot be published
+    2. List specific violation points (1-3 items)
+    3. Provide alternative suggestions (e.g., suggest which aspects to modify before resubmitting)
+    ```
+
+11. **Verify the Complete Workflow**
+
+    Input safe content, sensitive content, and prohibited content separately, and confirm that all three branches return the expected results.
+
+    ![3.4 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-35.png)
+
+    When verifying the complete workflow, it is recommended to record the input, review classification, branch entered, and final output for each test case. If the output does not meet expectations, troubleshoot node by node: first check whether the Dataset recalled the correct rules, then whether the review node classified accurately, and finally whether the decision node conditions and branch output are configured correctly.
+
+### 3.5 Business Value
+
+- **Standardize review rules into a workflow**: Embed the judgment criteria for pre-publication content review into a Dataset and node configuration, reducing reliance on personal experience passed down verbally.
+- **Improve processing efficiency**: Safe content can pass quickly, sensitive content is automatically rewritten, and prohibited content receives a direct explanation, allowing reviewers to focus on content that requires judgment.
+- **Retain human control points**: Add user confirmation for gray-area scenarios like "sensitive but rewritable," preventing the automated workflow from making publishing decisions directly for business personnel.
+- **Easy to reuse and extend**: The same workflow can be applied to marketing copy, customer service scripts, announcements, event pages, short video scripts, and other content review scenarios by replacing the rule base and a few prompts.
+- **Reduce compliance risk**: Through fixed branches and rejection explanations, high-risk content has a clear interception path, reducing the risk of accidental publication, exaggerated claims, or non-compliant expressions.
+
+
+[Back to getting started](/en/guide/getting-started)

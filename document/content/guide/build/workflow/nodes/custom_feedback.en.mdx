@@ -8,22 +8,30 @@ This is a temporary node that will receive a more comprehensive redesign in the 
 ## Characteristics
 
 - Can be added multiple times
-- No external input
-- Auto-executed
+- Supports feedback text or variable input
+- Triggered through execution connections
 
 |                                |                                |
 | ------------------------------ | ------------------------------ |
-| ![](/imgs/customfeedback1.jpg) | ![](/imgs/customfeedback2.jpg) |
-| ![](/imgs/customfeedback3.jpg) | ![](/imgs/customfeedback4.jpg) |
+| ![Characteristics — interface example](/imgs/customfeedback1.jpg) | ![Characteristics — interface example](/imgs/customfeedback2.jpg) |
+| ![Characteristics — interface example](/imgs/customfeedback3.jpg) | ![Characteristics — interface example](/imgs/customfeedback4.jpg) |
 
 ## Overview
 
 The Custom Feedback node adds a feedback tag to conversations, making it easier to analyze conversation data from the admin panel.
 
-In debug mode, feedback content is not recorded. Instead it displays: `Auto feedback test: feedback content`.
+Inspect feedback text in debug execution details to verify the branch and input.
 
-In chat mode (chat, shared window, or API calls with chatId), feedback content is recorded in the chat log with a 60-second delay.
+When an actual conversation is saved, feedback is stored with the response in conversation logs.
 
 ## Use Cases
 
 The Custom Feedback node works like event tracking in software development, letting you observe and monitor data within conversations.
+
+## Configuration, results, and example
+
+The required input is **Feedback text**, a string entered directly or referenced from an upstream variable. The node adds it to this run's custom feedback for saved conversation logs. The template exposes execution connections and has no declared data-output fields.
+
+For example, add Custom Feedback to a branch needing human review, set the text to `needs_review`, then connect Specified Reply with `Your request is awaiting review.` Inspect the feedback text in debug execution details. After publishing, complete a new conversation through an actual channel and check its log for the marker.
+
+Use short, searchable business markers. For missing feedback, verify that the branch ran, the input reference had a value, and the conversation saved successfully. Continue with [conversation logs](/en/guide/build/logs).

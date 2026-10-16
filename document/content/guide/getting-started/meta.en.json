@@ -1,10 +1,14 @@
 {
-  "title": "Getting Started",
+  "title": "Get Started",
   "root": false,
   "pages": [
     "index",
+    "application-types",
+    "knowledge-qa",
+    "first-workflow",
+    "first-agent",
+    "concepts",
     "quick-start",
-    "[Video Tutorials](https://video.fastgpt.cn/videos)",
-    "[Best Practices](https://solutions.fastgpt.cn/)"
+    "examples"
   ]
 }
