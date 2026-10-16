@@ -1,6 +1,9 @@
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import type { NodeInputAutomationMeta, WorkflowResourceKind } from './type';
+import type {
+  NodeInputAutomationMeta,
+  WorkflowResourceKind
+} from '@fastgpt/global/core/workflow/template/type';
 
 const arrayValueTypes = new Set<string>([
   WorkflowIOValueTypeEnum.arrayString,

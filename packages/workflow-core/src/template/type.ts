@@ -1,33 +1,9 @@
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
-import z from 'zod';
-
-export const NodeTemplateRefSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('builtin'), templateId: z.string().min(1) }).strict(),
-  z
-    .object({
-      kind: z.literal('teamApp'),
-      appId: z.string().min(1),
-      versionId: z.string().optional()
-    })
-    .strict(),
-  z
-    .object({
-      kind: z.literal('systemTool'),
-      toolId: z.string().min(1),
-      source: z.string().min(1),
-      versionId: z.string().optional()
-    })
-    .strict(),
-  z
-    .object({
-      kind: z.literal('tool'),
-      toolId: z.string().min(1),
-      parentId: z.string().optional(),
-      versionId: z.string().optional()
-    })
-    .strict()
-]);
-export type NodeTemplateRef = z.infer<typeof NodeTemplateRefSchema>;
+import {
+  NodeTemplateRefSchema,
+  type NodeTemplateRef,
+  type NodeTemplateAutomationMeta
+} from '@fastgpt/global/core/workflow/template/type';
 
 /** CLI 字符串只在适配边界解析，Core 始终接收结构化 TemplateRef。 */
 export const parseNodeTemplateRef = (value: string): NodeTemplateRef => {
@@ -66,31 +42,6 @@ export const formatNodeTemplateRef = (ref: NodeTemplateRef) => {
   }
   return `${ref.kind}:${ref.toolId}`;
 };
-
-export type WorkflowInputDefaultPolicy = 'template' | 'userRequired' | 'remoteValidated';
-export type WorkflowResourceKind = 'dataset' | 'model' | 'app' | 'tool' | 'secret';
-
-export const NodeInputAutomationMetaSchema = z
-  .object({
-    configurable: z.boolean().optional(),
-    agentHint: z.string().optional(),
-    valueSchema: z.record(z.string(), z.unknown()).optional(),
-    examples: z.array(z.unknown()).optional(),
-    defaultPolicy: z.enum(['template', 'userRequired', 'remoteValidated']).optional(),
-    resourceKind: z.enum(['dataset', 'model', 'app', 'tool', 'secret']).optional(),
-    bindingRequired: z.boolean().optional(),
-    inputModes: z.array(z.enum(['literal', 'reference', 'secret'])).optional()
-  })
-  .strict();
-export type NodeInputAutomationMeta = z.infer<typeof NodeInputAutomationMetaSchema>;
-
-export const NodeTemplateAutomationMetaSchema = z
-  .object({
-    availableForWorkflowBuilder: z.boolean().optional(),
-    inputs: z.record(z.string(), NodeInputAutomationMetaSchema).optional()
-  })
-  .strict();
-export type NodeTemplateAutomationMeta = z.infer<typeof NodeTemplateAutomationMetaSchema>;
 
 export type ResolvedWorkflowTemplate = {
   template: FlowNodeTemplateType;

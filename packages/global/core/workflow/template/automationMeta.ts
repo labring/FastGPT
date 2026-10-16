@@ -1,14 +1,7 @@
-import {
-  formatNodeTemplateRef,
-  type NodeTemplateAutomationMeta,
-  type NodeTemplateRef
-} from './type';
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
-import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
+import type { NodeTemplateAutomationMeta } from './type';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../constants';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../node/constant';
+import { VariableConditionEnum } from './system/ifElse/constant';
 
 const remoteModelInput = {
   defaultPolicy: 'remoteValidated',
@@ -443,7 +436,8 @@ const automationMetaMap: Record<string, NodeTemplateAutomationMeta> = {
   }
 };
 
-const templateRefByFlowNodeType: Partial<Record<FlowNodeTypeEnum, string>> = {
+/** Builder 已发布的系统模板标识和展示顺序；内部模板也在此登记以统一解析入口。 */
+export const workflowBuilderTemplateIds: Partial<Record<FlowNodeTypeEnum, string>> = {
   [FlowNodeTypeEnum.workflowStart]: 'builtin:workflow-start',
   [FlowNodeTypeEnum.chatNode]: 'builtin:ai-chat',
   [FlowNodeTypeEnum.textEditor]: 'builtin:text-editor',
@@ -458,22 +452,25 @@ const templateRefByFlowNodeType: Partial<Record<FlowNodeTypeEnum, string>> = {
   [FlowNodeTypeEnum.classifyQuestion]: 'builtin:question-classification',
   [FlowNodeTypeEnum.userSelect]: 'builtin:user-select',
   [FlowNodeTypeEnum.formInput]: 'builtin:form-input',
-  [FlowNodeTypeEnum.variableUpdate]: 'builtin:variable-update',
   [FlowNodeTypeEnum.toolCall]: 'builtin:tool-call',
   [FlowNodeTypeEnum.readFiles]: 'builtin:read-files',
+  [FlowNodeTypeEnum.variableUpdate]: 'builtin:variable-update',
   [FlowNodeTypeEnum.parallelRun]: 'builtin:parallel-run',
   [FlowNodeTypeEnum.loopRun]: 'builtin:loop-run',
   [FlowNodeTypeEnum.loopRunBreak]: 'builtin:loop-run-break',
   [FlowNodeTypeEnum.datasetConcatNode]: 'builtin:dataset-concat',
-  [FlowNodeTypeEnum.customFeedback]: 'builtin:custom-feedback'
+  [FlowNodeTypeEnum.customFeedback]: 'builtin:custom-feedback',
+  [FlowNodeTypeEnum.nestedStart]: 'builtin:__nested-start',
+  [FlowNodeTypeEnum.nestedEnd]: 'builtin:__nested-end',
+  [FlowNodeTypeEnum.loopRunStart]: 'builtin:__loop-run-start'
 };
 
-export const getAutomationMeta = (ref: NodeTemplateRef) =>
-  automationMetaMap[formatNodeTemplateRef(ref)];
+/** 按稳定模板标识读取 Builder 自动化策略；无元数据的内部模板沿用原始契约。 */
+export const getAutomationMeta = (templateId: string) => automationMetaMap[templateId];
 
 /** 根据节点运行类型读取内置模板元数据；历史或外部类型没有映射时不施加额外限制。 */
 export const getNodeAutomationMeta = (flowNodeType: string) => {
-  const templateRef = templateRefByFlowNodeType[flowNodeType as FlowNodeTypeEnum];
+  const templateRef = workflowBuilderTemplateIds[flowNodeType as FlowNodeTypeEnum];
   return templateRef ? automationMetaMap[templateRef] : undefined;
 };
 

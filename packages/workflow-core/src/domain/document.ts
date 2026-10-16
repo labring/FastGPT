@@ -1,27 +1,11 @@
-import { AppChatConfigTypeSchema } from '@fastgpt/global/core/app/type';
-import { StoreNodeItemTypeSchema } from '@fastgpt/global/core/workflow/type/node';
-import z from 'zod';
-import { WorkflowExecutionEdgeSchema } from '../edge/type';
+import {
+  WORKFLOW_DOCUMENT_SCHEMA_VERSION,
+  WorkflowDocumentSchema,
+  type WorkflowDocument
+} from '@fastgpt/global/core/workflow/type/document';
 
-export const WORKFLOW_DOCUMENT_SCHEMA_VERSION = 'fastgpt-workflow/v1' as const;
 export const WORKFLOW_DOCUMENT_MIGRATION_GUIDANCE =
   'Use a CLI version that supports the source schema, migrate one version at a time, and never remove or rewrite schemaVersion manually.';
-
-export const WorkflowDocumentSchema = z.object({
-  schemaVersion: z.literal(WORKFLOW_DOCUMENT_SCHEMA_VERSION),
-  app: z.object({
-    appId: z.string().optional(),
-    name: z.string().optional(),
-    intro: z.string().optional(),
-    appType: z.string().optional(),
-    baseVersionId: z.string().optional()
-  }),
-  nodes: z.array(StoreNodeItemTypeSchema),
-  executionEdges: z.array(WorkflowExecutionEdgeSchema),
-  chatConfig: AppChatConfigTypeSchema
-});
-
-export type WorkflowDocument = z.infer<typeof WorkflowDocumentSchema>;
 
 export class WorkflowDocumentVersionError extends Error {
   readonly code = 'WORKFLOW_DOCUMENT_VERSION_UNSUPPORTED';

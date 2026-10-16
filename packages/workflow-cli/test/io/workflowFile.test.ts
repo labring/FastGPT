@@ -4,7 +4,7 @@ import {
   serializeWorkflowDocument,
   writeFileAtomic,
   writeWorkflowFileAtomic
-} from '../../src';
+} from '../../src/io/workflowFile';
 import aiWorkflow from '../../../workflow-core/test/fixtures/basic-ai/workflow.json';
 import { mkdtemp, mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

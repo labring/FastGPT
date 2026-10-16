@@ -1,18 +1,21 @@
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
   VARIABLE_NODE_ID,
-  FlowNodeInputTypeEnum,
   VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
+
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
   WorkflowDocumentSchema,
-  WorkflowIOValueTypeEnum,
-  applyWorkflowCommand,
-  builtinTemplateProvider,
-  createWorkflowDocument,
-  parseNodeTemplateRef,
-  type WorkflowDocument,
-  validateWorkflowBuilderSemantics,
-  validateWorkflow
-} from '../../src';
+  type WorkflowDocument
+} from '@fastgpt/global/core/workflow/type/document';
+import { applyWorkflowCommand } from '../../src/command/apply';
+import { builtinTemplateProvider } from '../template/provider';
+import { createWorkflowDocument } from '../../src/domain/document';
+import { parseNodeTemplateRef } from '../../src/template/type';
+import { validateWorkflowBuilderSemantics, validateWorkflow } from '../../src/validation/index';
 import aiWorkflow from '../fixtures/basic-ai/workflow.json';
 import staticWorkflow from '../fixtures/basic-static/workflow.json';
 import commonLinearWorkflow from '../fixtures/common-linear/workflow.json';

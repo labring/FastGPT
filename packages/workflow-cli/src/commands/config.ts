@@ -1,7 +1,18 @@
-import { getChatConfigDescriptor, listChatConfigDescriptors } from '@fastgpt/workflow-core';
-import { createTranslator } from '../i18n';
+import {
+  option,
+  emptySchema,
+  valueOptionShape,
+  valueOptions,
+  getValueOptionCount
+} from '../commandOptions';
+import z from 'zod';
+import {
+  getChatConfigDescriptor,
+  listChatConfigDescriptors
+} from '@fastgpt/workflow-core/config/descriptor';
+import { createTranslator } from '@fastgpt/web/i18n/workflowTemplate';
 import { readWorkflowFile } from '../io/workflowFile';
-import type { CliContext, CliResult } from '../type';
+import type { CliContext, CliResult, CliCommandDefinition } from '../type';
 import { readInputValue, requireString, runMutation } from './helpers';
 
 export const listConfig = async (
@@ -56,3 +67,61 @@ export const unsetConfig = async (
     context,
     command: { type: 'config.unset', path: requireString(input, 'path') }
   });
+
+/** config 命令定义与执行逻辑在同一模块维护；注册器只负责收集。 */
+export const configCommands: CliCommandDefinition[] = [
+  {
+    path: ['config', 'list'],
+    introducedIn: 'PR2',
+    kind: 'query',
+    inputSchema: emptySchema,
+    options: [],
+    supportsDryRun: false,
+    confirm: 'none',
+    handler: listConfig
+  },
+  {
+    path: ['config', 'get'],
+    introducedIn: 'PR2',
+    kind: 'query',
+    inputSchema: z.object({ path: z.string().min(1) }).strict(),
+    options: [option('--path', 'Allowlisted ChatConfig path', { required: true })],
+    supportsDryRun: false,
+    confirm: 'none',
+    handler: getConfig
+  },
+  {
+    path: ['config', 'set'],
+    introducedIn: 'PR2',
+    kind: 'localMutation',
+    inputSchema: z
+      .object({
+        path: z.string().min(1),
+        ...valueOptionShape,
+        dryRun: z.literal(true).optional()
+      })
+      .strict()
+      .refine((value) => getValueOptionCount(value) === 1),
+    options: [
+      option('--path', 'Allowlisted ChatConfig path', { required: true }),
+      ...valueOptions,
+      option('--dry-run', 'Return changes without writing', { value: false })
+    ],
+    supportsDryRun: true,
+    confirm: 'none',
+    handler: setConfig
+  },
+  {
+    path: ['config', 'unset'],
+    introducedIn: 'PR2',
+    kind: 'localMutation',
+    inputSchema: z.object({ path: z.string().min(1), dryRun: z.literal(true).optional() }).strict(),
+    options: [
+      option('--path', 'Allowlisted ChatConfig path', { required: true }),
+      option('--dry-run', 'Return changes without writing', { value: false })
+    ],
+    supportsDryRun: true,
+    confirm: 'none',
+    handler: unsetConfig
+  }
+];

@@ -1,10 +1,10 @@
 import {
   WORKFLOW_DOCUMENT_MIGRATION_GUIDANCE,
-  WORKFLOW_DOCUMENT_SCHEMA_VERSION,
   WorkflowDocumentVersionError,
   createWorkflowDocument,
   parseCompatibleWorkflowDocument
-} from '../../src';
+} from '../../src/domain/document';
+import { WORKFLOW_DOCUMENT_SCHEMA_VERSION } from '@fastgpt/global/core/workflow/type/document';
 import { describe, expect, it } from 'vitest';
 
 describe('WorkflowDocument compatibility', () => {

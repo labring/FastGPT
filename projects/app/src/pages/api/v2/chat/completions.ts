@@ -510,8 +510,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       streamResponseContext.responseWrite(
         workflowSseEvent.done(detail ? SseResponseEventEnum.answer : undefined)
       );
-
-      await streamResponseContext.flushResume();
     } else {
       const generatedTitle = await titleSender.send();
       const formatResponseContent = removeAIResponseCite(assistantResponses, jsonRetainDatasetCite);
@@ -595,7 +593,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       } else {
         sseErrRes(res, err);
       }
-      await streamResponseContext?.flushResume();
     } else {
       const errKey = typeof err === 'string' ? err : (err as Error)?.message;
       jsonRes(res, {
@@ -605,7 +602,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   } finally {
     if (stream) {
-      res.end();
+      // 清理不能依赖 catch 中的数据库写入成功，断线期间后台执行仍保留心跳。
+      try {
+        await streamResponseContext?.flushResume();
+      } catch (error) {
+        logger.error('Chat stream cleanup failed', { error });
+      } finally {
+        res.end();
+      }
     }
   }
 }

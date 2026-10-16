@@ -19,7 +19,7 @@ import {
   FlowNodeTypeEnum,
   isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
-import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
+import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import 'reactflow/dist/style.css';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';

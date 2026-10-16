@@ -15,14 +15,17 @@ import {
   getSelectedInputRenderType,
   nodeInputIsReference
 } from '@fastgpt/global/common/workflow/reference';
-import { WorkflowDocumentSchema, type WorkflowDocument } from '../domain/document';
+import {
+  WorkflowDocumentSchema,
+  type WorkflowDocument
+} from '@fastgpt/global/core/workflow/type/document';
 import { WorkflowCommandError, type WorkflowDiagnostic } from '../domain/diagnostic';
-import { assertExecutionEdge } from '../edge/service';
-import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
+import { assertExecutionEdge } from '../edge/validation';
+import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { assertParentAssignment } from '../nesting/service';
 import { getWorkflowReferenceValues, valueMatchesType } from '../reference/service';
-import { getInputAutomationMeta } from '../template/automationMeta';
+import { getInputAutomationMeta } from '@fastgpt/global/core/workflow/template/automationMeta';
 import { inputValueNeedsSchema, valueMatchesSchema } from '../template/valueSchema';
 
 const hasRequiredValue = (value: unknown) =>

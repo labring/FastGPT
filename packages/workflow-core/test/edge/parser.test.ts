@@ -1,9 +1,6 @@
-import {
-  WorkflowCommandError,
-  parseExecutionSourcePortRef,
-  parseExecutionTargetPortRef,
-  parseVariableRef
-} from '../../src';
+import { WorkflowCommandError } from '../../src/domain/diagnostic';
+import { parseExecutionSourcePortRef, parseExecutionTargetPortRef } from '../../src/edge/parser';
+import { parseVariableRef } from '../../src/reference/type';
 import { describe, expect, it } from 'vitest';
 
 describe('parseExecutionSourcePortRef', () => {

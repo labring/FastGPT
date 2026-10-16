@@ -1,8 +1,12 @@
 import z from 'zod';
-import { ExecutionSourcePortRefSchema } from '../edge/type';
+import {
+  ExecutionSourcePortRefSchema,
+  WorkflowExecutionEdgeSchema
+} from '@fastgpt/global/core/workflow/type/edge';
 import { VariableRefSchema, parseVariableRef } from '../reference/type';
-import { NodeTemplateRefSchema, parseNodeTemplateRef } from '../template/type';
-import { WorkflowExecutionEdgeSchema } from '../edge/type';
+import { parseNodeTemplateRef } from '../template/type';
+import { NodeTemplateRefSchema } from '@fastgpt/global/core/workflow/template/type';
+
 import { VariableItemTypeSchema } from '@fastgpt/global/core/app/variable/type';
 import {
   FlowNodeInputItemTypeSchema,

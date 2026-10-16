@@ -2,9 +2,9 @@ import { reactFlowStateToWorkflowDocument } from '@/pageComponents/app/detail/Wo
 import { storeEdge2RenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
 import {
   WorkflowDocumentSchema,
-  compileStoreWorkflow,
   type WorkflowDocument
-} from '@fastgpt/workflow-core';
+} from '@fastgpt/global/core/workflow/type/document';
+import { compileStoreWorkflow } from '@fastgpt/workflow-core/store/compile';
 import basicAiWorkflowFixture from '@fastgpt/workflow-core/test/fixtures/basic-ai/workflow.json';
 import { describe, expect, it } from 'vitest';
 

@@ -176,22 +176,17 @@ export async function createWorkflowStreamResponseContext({
     }
   };
 
-  if (!shouldEnableStreamResume) {
-    return {
-      ...context,
-      async flushResume() {
-        // no-op — stream resume is disabled
-        stopActivityHeartbeat();
-      }
-    };
-  }
-
+  let flushPromise: Promise<void> | undefined;
   return {
     ...context,
-    async flushResume() {
-      stopActivityHeartbeat();
-      await mirror?.flush();
-      await mirror?.shrinkTTLAfterComplete();
+    flushResume() {
+      // 完成与 finally 可重复调用；先同步停心跳，再等待缓存写入，避免异常遗留定时器。
+      flushPromise ??= (async () => {
+        stopActivityHeartbeat();
+        await mirror?.flush();
+        await mirror?.shrinkTTLAfterComplete();
+      })();
+      return flushPromise;
     }
   };
 }

@@ -16,7 +16,7 @@ import VariableEdit from '@/components/core/app/VariableEdit';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import WelcomeTextConfig from '@/components/core/app/WelcomeTextConfig';
 import FileSelect from '@/components/core/app/FileSelect';
-import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { userFilesInput } from '@fastgpt/global/core/workflow/template/output';
 import AutoExecConfig from '@/components/core/app/AutoExecConfig';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import {

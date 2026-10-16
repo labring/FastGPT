@@ -1,4 +1,5 @@
-import { getAutomationMeta, parseNodeTemplateRef, valueMatchesSchema } from '../../src';
+import { getAutomationMeta } from '@fastgpt/global/core/workflow/template/automationMeta';
+import { valueMatchesSchema } from '../../src/template/valueSchema';
 import { describe, expect, it } from 'vitest';
 
 describe('valueMatchesSchema', () => {
@@ -67,8 +68,10 @@ describe('valueMatchesSchema', () => {
 
   it('validates the complete branching, form and variable-update contracts', () => {
     const getInputSchema = (templateId: string, inputKey: string) =>
-      getAutomationMeta(parseNodeTemplateRef(`builtin:${templateId}`))?.inputs?.[inputKey]
-        ?.valueSchema as Record<string, unknown>;
+      getAutomationMeta(`builtin:${templateId}`)?.inputs?.[inputKey]?.valueSchema as Record<
+        string,
+        unknown
+      >;
 
     const ifElseSchema = getInputSchema('if-else', 'ifElseList');
     expect(

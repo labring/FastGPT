@@ -2,11 +2,12 @@ import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/check/check
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { validateWorkflow } from '@fastgpt/workflow-core/validation';
 import {
-  validateWorkflow,
   WorkflowCommandError,
   type WorkflowDiagnostic
-} from '@fastgpt/workflow-core';
+} from '@fastgpt/workflow-core/domain/diagnostic';
+import { type WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import type { Edge, Node } from 'reactflow';
 import { reactFlowStateToWorkflowDocument } from './document';
 
@@ -97,8 +98,20 @@ export const validateWorkflowForWeb = ({
     return { nodeIds: validateWorkflowWithWebRules({ nodes, edges }), source: 'legacy' };
   }
 
+  let document: WorkflowDocument;
   try {
-    const document = reactFlowStateToWorkflowDocument({ nodes, edges, chatConfig });
+    document = reactFlowStateToWorkflowDocument({ nodes, edges, chatConfig });
+  } catch (error) {
+    // 存量画布的投影异常不能直接视为业务错误，继续使用原有 Web 发布校验。
+    console.error('[Workflow Core Adapter] Failed to create WorkflowDocument', error);
+    return {
+      nodeIds: validateWorkflowWithWebRules({ nodes, edges }),
+      source: 'legacy',
+      adapterError: error
+    };
+  }
+
+  try {
     const diagnostics = validateWorkflow(document);
     const nodeIds = diagnosticsToNodeIds({ diagnostics, nodes });
     return {
@@ -115,7 +128,7 @@ export const validateWorkflowForWeb = ({
       };
     }
 
-    console.error('[Workflow Core Adapter] Failed to create WorkflowDocument', error);
+    console.error('[Workflow Core Adapter] Failed to validate WorkflowDocument', error);
     return {
       nodeIds: validateWorkflowWithWebRules({ nodes, edges }),
       source: 'legacy',

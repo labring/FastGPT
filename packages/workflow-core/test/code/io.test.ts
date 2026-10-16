@@ -2,7 +2,7 @@ import {
   extractCodeInputDefinitions,
   extractCodeOutputDefinitions,
   extractReturnedObjectKeys
-} from '../../src';
+} from '../../src/code/io';
 import { describe, expect, it } from 'vitest';
 
 describe('code IO parser', () => {

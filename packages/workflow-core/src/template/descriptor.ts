@@ -13,7 +13,7 @@ import type {
   NodeTemplateRef,
   WorkflowInputDefaultPolicy,
   WorkflowResourceKind
-} from './type';
+} from '@fastgpt/global/core/workflow/template/type';
 import { getNodeRuntimeContract, type NodeRuntimeContract } from './contract';
 
 export type NodeParameterInputMode = 'literal' | 'reference' | 'secret';

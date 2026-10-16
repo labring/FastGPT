@@ -1,12 +1,10 @@
-import {
-  WorkflowValidationError,
-  applyWorkflowCommand,
-  type WorkflowCommand
-} from '@fastgpt/workflow-core';
+import { WorkflowValidationError } from '@fastgpt/workflow-core/domain/diagnostic';
+import { applyWorkflowCommand } from '@fastgpt/workflow-core/command/apply';
+import { type WorkflowCommand } from '@fastgpt/workflow-core/command/type';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { CliArgumentError } from '../error';
-import { createTranslator } from '../i18n';
+import { createTranslator } from '@fastgpt/web/i18n/workflowTemplate';
 import { readWorkflowFile, writeWorkflowFileAtomic } from '../io/workflowFile';
 import type { CliContext, CliResult } from '../type';
 
@@ -50,7 +48,7 @@ export const runMutation = async ({
 };
 
 export const assertNoValidationErrors = (
-  diagnostics: ReturnType<typeof import('@fastgpt/workflow-core').validateWorkflow>
+  diagnostics: ReturnType<typeof import('@fastgpt/workflow-core/validation').validateWorkflow>
 ) => {
   if (diagnostics.some((item) => item.severity === 'error')) {
     throw new WorkflowValidationError(diagnostics);

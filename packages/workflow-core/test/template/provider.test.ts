@@ -1,17 +1,15 @@
 import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { WorkflowCommandError } from '../../src/domain/diagnostic';
 import {
-  WorkflowCommandError,
-  WorkflowTemplateBundleSchema,
-  builtinTemplateProvider,
   composeWorkflowTemplateProviders,
-  createWorkflowTemplateBundleProvider,
-  createWorkflowDocument,
-  formatNodeTemplateRef,
-  instantiateNodeFromTemplate,
-  parseNodeTemplateRef,
-  withTemplateInputDefaults
-} from '../../src';
+  createWorkflowTemplateBundleProvider
+} from '../../src/template/provider';
+import { WorkflowTemplateBundleSchema } from '@fastgpt/global/core/workflow/template/type';
+import { builtinTemplateProvider } from '../template/provider';
+import { createWorkflowDocument } from '../../src/domain/document';
+import { formatNodeTemplateRef, parseNodeTemplateRef } from '../../src/template/type';
+import { instantiateNodeFromTemplate } from '../../src/template/instantiate';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { describe, expect, it } from 'vitest';
 
@@ -134,26 +132,17 @@ describe('workflow template provider', () => {
     ).toThrow();
   });
 
-  it('injects validated remote defaults into builtin templates via withTemplateInputDefaults', async () => {
-    const builtinDefaults = {
-      'builtin:ai-chat': {
-        [NodeInputKeyEnum.aiModelId]: {
-          provided: true as const,
-          value: 'test-llm-model-id'
-        }
-      }
+  it('uses validated defaults and hidden templates directly from the injected bundle', async () => {
+    const ref = { kind: 'builtin' as const, templateId: 'ai-chat' };
+    const resolved = await builtinTemplateProvider.resolve(ref, { locale: 'en' });
+    const validatedInputDefaults = {
+      [NodeInputKeyEnum.aiModelId]: { provided: true as const, value: 'test-llm-model-id' }
     };
-
-    const bundle = WorkflowTemplateBundleSchema.parse({
+    const providerWithDefaults = createWorkflowTemplateBundleProvider({
       ...createBundle(),
-      builtinDefaults
+      items: [{ ref, ...resolved, listed: false, validatedInputDefaults }]
     });
-    expect(bundle.builtinDefaults).toEqual(builtinDefaults);
-
-    const providerWithDefaults = withTemplateInputDefaults(
-      builtinTemplateProvider,
-      bundle.builtinDefaults
-    );
+    await expect(providerWithDefaults.list({ locale: 'en' })).resolves.toEqual([]);
 
     const resolvedAiChat = await providerWithDefaults.resolve(
       { kind: 'builtin', templateId: 'ai-chat' },

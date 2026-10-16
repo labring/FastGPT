@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import type { WorkflowTemplateProvider } from '@fastgpt/workflow-core';
+import type { WorkflowTemplateProvider } from '@fastgpt/workflow-core/template/type';
 
 export type CliFormat = 'text' | 'json';
 

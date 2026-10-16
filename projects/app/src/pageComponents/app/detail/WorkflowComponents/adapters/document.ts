@@ -1,6 +1,7 @@
 import type { AppChatConfigType, AppDetailType } from '@fastgpt/global/core/app/type';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { decompileStoreWorkflow, type WorkflowDocument } from '@fastgpt/workflow-core';
+import { decompileStoreWorkflow } from '@fastgpt/workflow-core/store/decompile';
+import { type WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import type { Edge, Node } from 'reactflow';
 import { uiWorkflow2StoreWorkflow } from '../utils';
 

@@ -1,4 +1,4 @@
-import { createSuccessEnvelope, renderError, renderSuccess } from '../src';
+import { createSuccessEnvelope, renderError, renderSuccess } from '../src/output/render';
 import { describe, expect, it } from 'vitest';
 
 describe('CLI output', () => {

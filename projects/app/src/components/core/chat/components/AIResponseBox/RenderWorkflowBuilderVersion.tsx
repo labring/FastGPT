@@ -7,7 +7,10 @@ import {
   ChatItemContext,
   type WorkflowBuilderVersionActions
 } from '@/web/core/chat/context/chatItemContext';
-import { getWorkflowBuilderVersionDisplayState } from '@fastgpt/global/core/workflow/builder/utils';
+import {
+  getWorkflowBuilderVersionDisplayState,
+  isWorkflowBuilderVersionExpiredError
+} from '@fastgpt/global/core/workflow/builder/utils';
 import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
 import {
   getWorkflowBuilderVersionButtonState,
@@ -95,7 +98,7 @@ const RenderWorkflowBuilderVersion = ({
         setDisplayVersion(await actions.applyVersion(displayVersion, responseChatItemId));
         markApplied();
       } catch (error) {
-        if (error instanceof Error && /expired/i.test(error.message)) {
+        if (isWorkflowBuilderVersionExpiredError(error)) {
           markExpired(false);
         }
         throw error;

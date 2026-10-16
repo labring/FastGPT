@@ -1,8 +1,6 @@
-import {
-  extractCodeFromMarkdown,
-  extractReturnedObjectKeys
-} from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeCode/parser';
+import { extractCodeFromMarkdown } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeCode/parser';
 import { describe, expect, it } from 'vitest';
+import { extractReturnedObjectKeys } from '@fastgpt/workflow-core/code/io';
 
 describe('extractReturnedObjectKeys', () => {
   it('extracts JavaScript shorthand and explicit keys from the returned object', () => {

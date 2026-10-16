@@ -31,7 +31,7 @@ import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/syst
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
 import { ClassifyQuestionModule } from '@fastgpt/global/core/workflow/template/system/classifyQuestion';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
-import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
+import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { Input_Template_Dataset_Tag_Filter_Version } from '@fastgpt/global/core/workflow/template/input';
 
 describe('nodeTemplate2FlowNode', () => {

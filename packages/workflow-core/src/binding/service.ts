@@ -1,6 +1,6 @@
-import type { WorkflowDocument } from '../domain/document';
+import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import type { WorkflowDiagnostic } from '../domain/diagnostic';
-import { getInputAutomationMeta } from '../template/automationMeta';
+import { getInputAutomationMeta } from '@fastgpt/global/core/workflow/template/automationMeta';
 import { hasConfiguredValue } from '../template/defaultValue';
 import type { WorkflowBindingRequirement } from './type';
 

@@ -1,15 +1,12 @@
-import {
-  FlowNodeInputTypeEnum,
-  WorkflowIOValueTypeEnum,
-  WorkflowCommandError,
-  builtinTemplateProvider,
-  createWorkflowDocument,
-  formatNodeTemplateRef,
-  instantiateNodeFromTemplate,
-  normalizeNodeTemplateDescriptor,
-  parseNodeTemplateRef
-} from '../../src';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { WorkflowIOValueTypeEnum, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { WorkflowCommandError } from '../../src/domain/diagnostic';
+import { builtinTemplateProvider } from '../template/provider';
+import { createWorkflowDocument } from '../../src/domain/document';
+import { formatNodeTemplateRef, parseNodeTemplateRef } from '../../src/template/type';
+import { instantiateNodeFromTemplate } from '../../src/template/instantiate';
+import { normalizeNodeTemplateDescriptor } from '../../src/template/descriptor';
+
 import { describe, expect, it } from 'vitest';
 
 describe('builtinTemplateProvider', () => {

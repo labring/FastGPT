@@ -1,6 +1,4 @@
-import { extractCodeOutputDefinitions } from '@fastgpt/workflow-core';
-
-export { extractReturnedObjectKeys } from '@fastgpt/workflow-core';
+import { extractCodeOutputDefinitions } from '@fastgpt/workflow-core/code/io';
 
 export const extractCodeFromMarkdown = (
   markdownContent: string

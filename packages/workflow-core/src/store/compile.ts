@@ -1,5 +1,5 @@
 import { WorkflowTemplateBasicTypeSchema } from '@fastgpt/global/core/workflow/type';
-import type { WorkflowDocument } from '../domain/document';
+import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import { compileExecutionEdge } from '../edge/compiler';
 import { encodeWorkflowNodeReferences } from '../reference/codec';
 

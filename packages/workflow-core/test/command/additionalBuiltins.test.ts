@@ -1,18 +1,17 @@
 import {
   FlowNodeInputTypeEnum,
-  WorkflowCommandError,
-  WorkflowIOValueTypeEnum,
-  applyWorkflowCommand,
-  builtinTemplateProvider,
-  compileStoreWorkflow,
-  createWorkflowDocument,
-  decompileStoreWorkflow,
-  parseNodeTemplateRef
-} from '../../src';
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { WorkflowCommandError } from '../../src/domain/diagnostic';
+import { WorkflowIOValueTypeEnum, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { applyWorkflowCommand } from '../../src/command/apply';
+import { builtinTemplateProvider } from '../template/provider';
+import { compileStoreWorkflow } from '../../src/store/compile';
+import { createWorkflowDocument } from '../../src/domain/document';
+import { decompileStoreWorkflow } from '../../src/store/decompile';
+import { parseNodeTemplateRef } from '../../src/template/type';
 import { describe, expect, it } from 'vitest';
 import { validateWorkflow } from '../../src/validation';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const dependencies = { templateProvider: builtinTemplateProvider, locale: 'en' };
 

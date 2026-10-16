@@ -1,19 +1,23 @@
+import { option } from '../commandOptions';
+import z from 'zod';
 import {
   WorkflowChangeSetSchema,
-  WorkflowCommandError,
   WorkflowPlanSchema,
-  WorkflowValidationError,
-  getWorkflowChecksum,
-  planWorkflowChangeSet,
-  type WorkflowDocument,
   type WorkflowPlan
-} from '@fastgpt/workflow-core';
+} from '@fastgpt/workflow-core/command/type';
+import {
+  WorkflowCommandError,
+  WorkflowValidationError
+} from '@fastgpt/workflow-core/domain/diagnostic';
+import { getWorkflowChecksum } from '@fastgpt/workflow-core/domain/checksum';
+import { planWorkflowChangeSet } from '@fastgpt/workflow-core/command/applyChangeSet';
+import { type WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { CliArgumentError } from '../error';
-import { createTranslator } from '../i18n';
+import { createTranslator } from '@fastgpt/web/i18n/workflowTemplate';
 import { readWorkflowFile, writeJsonFileAtomic, writeWorkflowFileAtomic } from '../io/workflowFile';
-import type { CliAuditEvent, CliContext, CliResult } from '../type';
+import type { CliAuditEvent, CliContext, CliResult, CliCommandDefinition } from '../type';
 import { requireString } from './helpers';
 
 const readJsonInput = async ({
@@ -230,3 +234,42 @@ export const applyChangeSetPlan = async (
     })
   };
 };
+
+/** changeSet 命令定义与执行逻辑在同一模块维护；注册器只负责收集。 */
+export const changeSetCommands: CliCommandDefinition[] = [
+  {
+    path: ['changeset', 'plan'],
+    introducedIn: 'PR4',
+    kind: 'artifact',
+    inputSchema: z
+      .object({ input: z.string().min(1), output: z.string().min(1).optional() })
+      .strict(),
+    options: [
+      option('--input', 'ChangeSet JSON path or - for stdin', { required: true }),
+      option('--output', 'Optional plan output path')
+    ],
+    supportsDryRun: false,
+    confirm: 'none',
+    handler: planChangeSet
+  },
+  {
+    path: ['changeset', 'apply'],
+    introducedIn: 'PR4',
+    kind: 'localMutation',
+    inputSchema: z
+      .object({
+        plan: z.string().min(1),
+        dryRun: z.literal(true).optional(),
+        confirm: z.string().min(1).optional()
+      })
+      .strict(),
+    options: [
+      option('--plan', 'Workflow plan JSON path or - for stdin', { required: true }),
+      option('--dry-run', 'Recompute and validate without writing', { value: false }),
+      option('--confirm', 'Recomputed target checksum')
+    ],
+    supportsDryRun: true,
+    confirm: 'checksum',
+    handler: applyChangeSetPlan
+  }
+];

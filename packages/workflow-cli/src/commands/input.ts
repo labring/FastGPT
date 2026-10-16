@@ -1,12 +1,12 @@
-import type { WorkflowIOValueTypeEnum } from '@fastgpt/workflow-core';
-import {
-  FlowNodeInputTypeEnum,
-  getAvailableInputReferences,
-  parseVariableRef
-} from '@fastgpt/workflow-core';
+import { option } from '../commandOptions';
+import z from 'zod';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { getAvailableInputReferences } from '@fastgpt/workflow-core/reference/query';
+import { parseVariableRef } from '@fastgpt/workflow-core/reference/type';
 import { CliArgumentError } from '../error';
 import { readWorkflowFile } from '../io/workflowFile';
-import type { CliContext, CliResult } from '../type';
+import type { CliContext, CliResult, CliCommandDefinition } from '../type';
 import { readInputValue, requireString, runMutation } from './helpers';
 
 export const listInputs = async (
@@ -147,3 +147,174 @@ export const listAvailableInputReferences = async (
     result: getAvailableInputReferences({ document, nodeId, inputKey })
   };
 };
+
+/** input 命令定义与执行逻辑在同一模块维护；注册器只负责收集。 */
+export const inputCommands: CliCommandDefinition[] = [
+  {
+    path: ['input', 'list'],
+    introducedIn: 'PR3',
+    kind: 'query',
+    inputSchema: z.object({ node: z.string().min(1) }).strict(),
+    options: [option('--node', 'Node ID', { required: true })],
+    supportsDryRun: false,
+    confirm: 'none',
+    handler: listInputs
+  },
+  {
+    path: ['input', 'show'],
+    introducedIn: 'PR2',
+    kind: 'query',
+    inputSchema: z.object({ node: z.string().min(1), key: z.string().min(1) }).strict(),
+    options: [
+      option('--node', 'Node ID', { required: true }),
+      option('--key', 'Input key', { required: true })
+    ],
+    supportsDryRun: false,
+    confirm: 'none',
+    handler: showInput
+  },
+  {
+    path: ['input', 'add'],
+    introducedIn: 'PR3',
+    kind: 'localMutation',
+    inputSchema: z
+      .object({
+        node: z.string().min(1),
+        key: z.string().min(1),
+        valueType: z.enum(WorkflowIOValueTypeEnum),
+        mode: z.enum(['literal', 'reference', 'both']),
+        label: z.string().min(1).optional(),
+        description: z.string().optional(),
+        required: z.literal(true).optional(),
+        dryRun: z.literal(true).optional()
+      })
+      .strict(),
+    options: [
+      option('--node', 'Node ID', { required: true }),
+      option('--key', 'New input key', { required: true }),
+      option('--value-type', 'Workflow value type', { required: true }),
+      option('--mode', 'Input mode: literal, reference or both', { required: true }),
+      option('--label', 'Input label'),
+      option('--description', 'Input description'),
+      option('--required', 'Mark the input as required', { value: false }),
+      option('--dry-run', 'Return changes without writing', { value: false })
+    ],
+    supportsDryRun: true,
+    confirm: 'none',
+    handler: addInput
+  },
+  {
+    path: ['input', 'remove'],
+    introducedIn: 'PR3',
+    kind: 'localMutation',
+    inputSchema: z
+      .object({
+        node: z.string().min(1),
+        key: z.string().min(1),
+        dryRun: z.literal(true).optional()
+      })
+      .strict(),
+    options: [
+      option('--node', 'Node ID', { required: true }),
+      option('--key', 'Dynamic input key', { required: true }),
+      option('--dry-run', 'Return changes without writing', { value: false })
+    ],
+    supportsDryRun: true,
+    confirm: 'none',
+    handler: removeInput
+  },
+  {
+    path: ['input', 'set'],
+    introducedIn: 'PR1',
+    kind: 'localMutation',
+    inputSchema: z
+      .object({
+        node: z.string().min(1),
+        key: z.string().min(1),
+        value: z.string().optional(),
+        valueJson: z.string().optional(),
+        valueFile: z.string().optional(),
+        valueEnv: z.string().optional(),
+        dryRun: z.literal(true).optional()
+      })
+      .strict()
+      .superRefine((value, context) => {
+        const count = [value.value, value.valueJson, value.valueFile, value.valueEnv].filter(
+          (item) => item !== undefined
+        ).length;
+        if (count !== 1) {
+          context.addIssue({
+            code: 'custom',
+            message: 'Exactly one of --value, --value-json, --value-file or --value-env is required'
+          });
+        }
+      }),
+    options: [
+      option('--node', 'Node ID', { required: true }),
+      option('--key', 'Input key', { required: true }),
+      option('--value', 'Scalar value'),
+      option('--value-json', 'JSON value'),
+      option('--value-file', 'Read a UTF-8 value from a file'),
+      option('--value-env', 'Read a value from an environment variable'),
+      option('--dry-run', 'Return changes without writing', { value: false })
+    ],
+    supportsDryRun: true,
+    confirm: 'none',
+    handler: setInput
+  },
+  {
+    path: ['input', 'ref'],
+    introducedIn: 'PR1',
+    kind: 'localMutation',
+    inputSchema: z
+      .object({
+        node: z.string().min(1),
+        key: z.string().min(1),
+        from: z.string().min(1),
+        dryRun: z.literal(true).optional()
+      })
+      .strict(),
+    options: [
+      option('--node', 'Node ID', { required: true }),
+      option('--key', 'Input key', { required: true }),
+      option('--from', 'Variable reference as node.output', { required: true }),
+      option('--dry-run', 'Return changes without writing', { value: false })
+    ],
+    supportsDryRun: true,
+    confirm: 'none',
+    handler: refInput
+  },
+  {
+    path: ['input', 'unset'],
+    introducedIn: 'PR2',
+    kind: 'localMutation',
+    inputSchema: z
+      .object({
+        node: z.string().min(1),
+        key: z.string().min(1),
+        dryRun: z.literal(true).optional()
+      })
+      .strict(),
+    options: [
+      option('--node', 'Node ID', { required: true }),
+      option('--key', 'Input key', { required: true }),
+      option('--dry-run', 'Return changes without writing', { value: false })
+    ],
+    supportsDryRun: true,
+    confirm: 'none',
+    handler: unsetInputValue
+  },
+  {
+    path: ['input', 'available'],
+    introducedIn: 'PR2',
+    kind: 'query',
+    inputSchema: z.object({ node: z.string().min(1), key: z.string().min(1) }).strict(),
+    options: [
+      option('--node', 'Node ID', { required: true }),
+      option('--key', 'Input key', { required: true })
+    ],
+    supportsDryRun: false,
+    confirm: 'none',
+    handler: listAvailableInputReferences
+  }
+];

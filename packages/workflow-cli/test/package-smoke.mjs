@@ -72,6 +72,19 @@ try {
 
   install(tarballPath);
   assert.equal(run(binPath, ['--version']), '0.3.0-beta.1');
+  run(
+    process.execPath,
+    [
+      '--input-type=module',
+      '-e',
+      [
+        "const root = await import('@fastgpt/workflow-cli');",
+        "const entry = await import('@fastgpt/workflow-cli/run');",
+        "if (typeof entry.runCli !== 'function' || root.runCli !== entry.runCli) throw new Error('Invalid CLI package entry');"
+      ].join('\n')
+    ],
+    { cwd: installDirectory }
+  );
   const inspected = JSON.parse(
     run(binPath, ['inspect', '--dir', workflowDirectory, '--format', 'json'])
   );

@@ -1,10 +1,8 @@
-import {
-  WorkflowCommandError,
-  applyWorkflowCommand,
-  builtinTemplateProvider,
-  createWorkflowDocument,
-  parseNodeTemplateRef
-} from '../../src';
+import { WorkflowCommandError } from '../../src/domain/diagnostic';
+import { applyWorkflowCommand } from '../../src/command/apply';
+import { builtinTemplateProvider } from '../template/provider';
+import { createWorkflowDocument } from '../../src/domain/document';
+import { parseNodeTemplateRef } from '../../src/template/type';
 import { describe, expect, it } from 'vitest';
 
 const dependencies = { templateProvider: builtinTemplateProvider, locale: 'en' };

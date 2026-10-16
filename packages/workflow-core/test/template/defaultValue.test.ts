@@ -1,7 +1,11 @@
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { getResourceSafeEmptyValue, hasConfiguredValue, resolveInitialInputValue } from '../../src';
+import {
+  getResourceSafeEmptyValue,
+  hasConfiguredValue,
+  resolveInitialInputValue
+} from '../../src/template/defaultValue';
 import { describe, expect, it } from 'vitest';
 
 const createInput = (patch: Partial<FlowNodeInputItemType> = {}): FlowNodeInputItemType => ({

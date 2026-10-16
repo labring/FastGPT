@@ -1,7 +1,7 @@
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
+import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum;
