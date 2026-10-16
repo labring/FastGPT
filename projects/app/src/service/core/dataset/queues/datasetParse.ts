@@ -35,6 +35,7 @@ import {
   claimTrainingTask,
   TrainingLeaseLostError
 } from '@fastgpt/service/core/dataset/training/service';
+import { createTrainingAuditTaskFlusher } from '@fastgpt/service/core/dataset/training/auditTaskFlusher';
 import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
@@ -113,6 +114,7 @@ export const datasetParseQueue = async (): Promise<any> => {
   logger.debug('Parse queue size check', { queueSize: global.datasetParseQueueLen, max });
   if (global.datasetParseQueueLen >= max) return;
   global.datasetParseQueueLen++;
+  const auditTaskFlusher = createTrainingAuditTaskFlusher();
 
   try {
     while (true) {
@@ -134,6 +136,7 @@ export const datasetParseQueue = async (): Promise<any> => {
       }
       if (!claimed) break;
       const { data, lease: taskLease } = claimed;
+      auditTaskFlusher.add(data.auditTaskId);
 
       try {
         taskLease.start();
@@ -340,6 +343,7 @@ export const datasetParseQueue = async (): Promise<any> => {
                 indexSize: collection.indexSize,
                 mode: TrainingModeEnum.qa,
                 billId: data.billId,
+                auditTaskId: data.auditTaskId,
                 data: trainingData,
                 session
               });
@@ -356,6 +360,7 @@ export const datasetParseQueue = async (): Promise<any> => {
                 indexSize: collection.indexSize,
                 mode: trainingMode,
                 billId: data.billId,
+                auditTaskId: data.auditTaskId,
                 data: trainingData,
                 session
               });
@@ -396,11 +401,16 @@ export const datasetParseQueue = async (): Promise<any> => {
         }
       } finally {
         await taskLease.stop();
+        // 任务可能在周期 flush 期间仍处于 active；完成租约后重新排队一次，确保最终状态会被检查。
+        auditTaskFlusher.add(data.auditTaskId);
       }
     }
   } catch (error) {
     logger.error('Parse queue loop failed', { error });
   } finally {
+    // 周期性 flush 负责持续运行的队列，stop 会再做最终 flush，避免审计依赖全局队列 drain。
+    await auditTaskFlusher.stop();
+
     if (reduceQueue()) {
       logger.info('Parse queue drained', { queueSize: global.datasetParseQueueLen });
     }

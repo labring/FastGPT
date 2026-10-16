@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type {
   ApiCreateDatasetCollectionParams,
   CreateApiCollectionV2BodyType,
@@ -26,10 +27,13 @@ import { planApiFileFolders, createApiFileFolders } from './folder';
 import { assertParentPlanAcyclic } from '../../../common/parentFolder/parentPlan';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { Types, type ClientSession } from '../../../common/mongo';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { lockDatasetCollectionPermissionState } from '../../../support/permission/collection/datasetSwitch';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { startDatasetImportAudit } from '../audit';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import type { TeamAuditDetail } from '@fastgpt/global/support/user/audit/type';
+import { refreshTrainingAuditTask } from '../training/audit';
 import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 
@@ -119,6 +123,7 @@ export const createApiDatasetCollection = async ({
   targetParentId,
   // 内部调用的权限标记单独取出：它只作用于显式选中的节点，混进 ...body 会落到整棵展开树
   inheritPermission: requestInheritPermission,
+  auditTaskId: externalAuditTaskId,
   ...body
 }: CreateApiCollectionV2BodyType &
   Pick<ApiCreateDatasetCollectionParams, 'inheritPermission'> & {
@@ -128,10 +133,14 @@ export const createApiDatasetCollection = async ({
     tmbId: string;
     /** 仅供 V1 内部调用指定落位，V2 HTTP 入参不开放此字段。 */
     targetParentId?: CreateApiCollectionV2BodyType['parentId'];
+    /** 可信内部调用可复用上层 audit task；HTTP 导入未传时由本服务创建。 */
+    auditTaskId?: string;
     dataset: DatasetSchemaType & {
       permission: DatasetPermission;
     };
   }): Promise<CreateApiCollectionV2ResponseType> => {
+  const auditTaskId = externalAuditTaskId ?? randomUUID();
+  const auditDetails: TeamAuditDetail[] = [];
   const startId =
     dataset.apiDatasetServer?.apiServer?.basePath ||
     dataset.apiDatasetServer?.yuqueServer?.basePath ||
@@ -143,7 +152,7 @@ export const createApiDatasetCollection = async ({
   // 1. 本地快照同时用于幂等匹配、旧目录识别与后续移动计划。
   const localCollections = await MongoDatasetCollection.find(
     { teamId, datasetId: dataset._id },
-    '_id apiFileId apiFileParentId parentId type inheritPermission metadata'
+    'name _id apiFileId apiFileParentId parentId type inheritPermission metadata'
   ).lean();
   const localByApiId = new Map(localCollections.map((item) => [item.apiFileId, item]));
   const legacySourceIds = new Set(
@@ -338,14 +347,95 @@ export const createApiDatasetCollection = async ({
       : {})
   });
 
+  let successCount = 0;
+  let failedCount = 0;
+  const fileRecords = records.filter((record) => record.type === 'file');
+  const initialAuditDetails: TeamAuditDetail[] = records.map((record) => ({
+    resourceName: record.name,
+    resourceType: record.type === 'folder' ? 'folder' : 'collection',
+    sourceType: 'api',
+    sourceName: record.name,
+    action: 'import',
+    result: 'processing'
+  }));
+  // 必须先落 processing 主审计，再执行任何会创建训练任务的事务；提交后的明细和 sourceFinished
+  // 通过 CAS 回填，进程在提交与收口之间退出时仍保留可供补偿扫描的审计锚点。
+  const importAudit = await startDatasetImportAudit({
+    taskId: auditTaskId,
+    teamId,
+    tmbId,
+    datasetId: String(dataset._id),
+    datasetName: dataset.name,
+    collectionName: 'api_files',
+    sourceType: 'api',
+    insertLen: String(records.length),
+    details: initialAuditDetails
+  });
+
   await applyLegacyApiFileFolders({
     teamId,
     datasetId: String(dataset._id),
     migrations: legacyPlan.migrations
   });
 
-  let successCount = 0;
-  let failedCount = 0;
+  /**
+   * 写入 API 文件导入的源阶段快照；事务失败也必须留下 terminal failed 事件，不能让审计只依赖训练队列。
+   * 预先创建的主审计通过 CAS 更新，旁路失败不能反向覆盖真实业务结果。
+   */
+  const writeImportAudit = async ({
+    terminal = false,
+    failureReason
+  }: {
+    terminal?: boolean;
+    failureReason?: string;
+  } = {}) => {
+    // 审计总量按本轮完整 records 统计；幂等命中的节点视为本次操作成功。
+    // API 返回的 successCount 仍只统计实际新建节点，保持创建接口的幂等语义不变。
+    const auditSuccessCount = Math.max(records.length - failedCount, 0);
+    const result = terminal
+      ? 'failed'
+      : auditSuccessCount === 0 && failedCount > 0
+        ? 'failed'
+        : failedCount > 0
+          ? 'processing'
+          : auditSuccessCount > 0
+            ? 'processing'
+            : 'success';
+
+    await importAudit.finish({
+      result,
+      // insertLen、successCount、failedCount 统一覆盖 folder 与 file，且满足总量 = 成功 + 失败。
+      insertLen: String(records.length),
+      successCount: String(auditSuccessCount),
+      failedCount: String(failedCount),
+      sourceFailedCount: String(failedCount),
+      failureReason,
+      details: auditDetails
+    });
+  };
+
+  /** 追加一条源阶段失败明细；数量字段负责完整统计，details 会由审计工具按上限截断。 */
+  const addSourceFailureDetail = ({
+    resourceId,
+    resourceName,
+    resourceType = 'collection',
+    action = 'import'
+  }: {
+    resourceId: string;
+    resourceName: string;
+    resourceType?: string;
+    action?: string;
+  }) => {
+    auditDetails.push({
+      resourceId,
+      resourceName,
+      resourceType,
+      sourceType: 'api',
+      sourceName: resourceName,
+      action,
+      result: 'failed'
+    });
+  };
 
   // 4. 与同步共用按层补建流程；仅成功提交的目录会进入 idMap。
   const folderResult = await createApiFileFolders({
@@ -355,8 +445,29 @@ export const createApiDatasetCollection = async ({
     insertFolders: (docs) =>
       bulkInsertFolderCollections({ teamId, tmbId, datasetId: String(dataset._id), docs })
   });
+  const folderFailedIds = new Set([...folderResult.failedIds, ...folderResult.skippedIds]);
+  const createdFolderIds = new Set(folderResult.createdIds);
   successCount += folderResult.createdIds.length;
-  failedCount += folderResult.failedIds.length + folderResult.skippedIds.length;
+  failedCount += folderFailedIds.size;
+  for (const { record, id } of folderPlan) {
+    if (createdFolderIds.has(record.apiFileId)) {
+      auditDetails.push({
+        resourceId: String(id),
+        resourceName: record.name,
+        resourceType: 'folder',
+        sourceType: 'api',
+        sourceName: record.name,
+        action: 'import',
+        result: 'success'
+      });
+    } else if (folderFailedIds.has(record.apiFileId)) {
+      addSourceFailureDetail({
+        resourceId: String(id),
+        resourceName: record.name,
+        resourceType: 'folder'
+      });
+    }
+  }
 
   // 5. 校正已存在节点的层级。
   // 必须在上面目录逐层落库的循环之后调用：idMap 在该循环里才补入新目录的 _id。
@@ -365,35 +476,108 @@ export const createApiDatasetCollection = async ({
   const corrections = buildCorrections();
 
   if (corrections.length > 0) {
-    // ACL 迁移必须先于 parentId 写入（要读变更前的父级），两者同一事务
-    const correctionResult = await mongoSessionRun((session) =>
-      bulkMoveCollectionsParent({ teamId, items: corrections, session })
+    const collectionNameById = new Map(
+      localCollections.map((collection) => [String(collection._id), collection.name])
     );
+    /** 将显式失败与 matchedCount 未命中统一计入源阶段失败，并保留逐项明细。 */
+    const recordCorrectionFailures = (input: {
+      failedIds?: string[];
+      successIds?: string[];
+      matchedCount?: number;
+      allFailed?: boolean;
+    }) => {
+      const correctionIds = new Set(corrections.map((item) => item._id));
+      const failedIds = input.allFailed
+        ? correctionIds
+        : new Set((input.failedIds ?? []).filter((id) => correctionIds.has(id)));
+      const unmatchedCount = Math.max(
+        0,
+        corrections.length - (input.matchedCount ?? corrections.length)
+      );
+      const expectedFailedCount = input.allFailed
+        ? corrections.length
+        : Math.min(corrections.length, failedIds.size + unmatchedCount);
+      const successIds = new Set(input.successIds ?? []);
 
-    if (correctionResult.failedIds.length) {
-      // 40k 文件规模下 failedIds 可能极长，只带前 10 条做样本，完整数量见 failedCount
-      logger.warn('Create api file collection parent update failed', {
+      // 某些 Mongo 写入异常只返回 matchedCount，无法定位具体未命中的行；用未报告成功的条目补齐数量。
+      for (const item of corrections) {
+        if (failedIds.size >= expectedFailedCount) break;
+        if (!successIds.has(item._id)) failedIds.add(item._id);
+      }
+      for (const item of corrections) {
+        if (failedIds.size >= expectedFailedCount) break;
+        failedIds.add(item._id);
+      }
+
+      const failedItems = corrections.filter((item) => failedIds.has(item._id));
+      failedCount += failedItems.length;
+      failedItems.forEach((item) => {
+        addSourceFailureDetail({
+          resourceId: item._id,
+          resourceName: collectionNameById.get(item._id) ?? item._id,
+          action: 'update'
+        });
+      });
+      return failedItems;
+    };
+
+    try {
+      // ACL 迁移必须先于 parentId 写入（要读变更前的父级），两者同一事务
+      const correctionResult = await mongoSessionRun((session) =>
+        bulkMoveCollectionsParent({ teamId, items: corrections, session })
+      );
+      const failedItems = recordCorrectionFailures(correctionResult);
+
+      if (correctionResult.failedIds.length) {
+        // 40k 文件规模下 failedIds 可能极长，只带前 10 条做样本，完整数量见 failedCount
+        logger.warn('Create api file collection parent update failed', {
+          teamId,
+          datasetId: String(dataset._id),
+          failedCount: correctionResult.failedIds.length,
+          failedIdsSample: correctionResult.failedIds.slice(0, 10)
+        });
+      }
+      // matchedCount < 实际提交数：目标行在读取快照后被删/重建，$set 命中 0 条且驱动不报错
+      if (correctionResult.matchedCount < corrections.length) {
+        logger.warn('Create api file collection parent correction not fully matched', {
+          teamId,
+          datasetId: String(dataset._id),
+          correctionCount: corrections.length,
+          matchedCount: correctionResult.matchedCount,
+          failedCount: failedItems.length
+        });
+      }
+    } catch (error) {
+      // bulkMoveCollectionsParent 的事务失败会整体回滚；后续 file 写入也不会执行，必须把这些文件补记为失败。
+      recordCorrectionFailures({ allFailed: true });
+      const correctedFileIds = new Set(
+        corrections.flatMap((correction) => {
+          const collection = existCollections.find((item) => String(item._id) === correction._id);
+          return collection?.apiFileId ? [collection.apiFileId] : [];
+        })
+      );
+      for (const record of fileRecords) {
+        if (correctedFileIds.has(record.apiFileId)) continue;
+        failedCount++;
+        addSourceFailureDetail({
+          resourceId: record.apiFileId,
+          resourceName: record.name
+        });
+      }
+      await writeImportAudit({ terminal: true, failureReason: getErrText(error) });
+      logger.warn('Create api file collection parent correction transaction failed', {
         teamId,
         datasetId: String(dataset._id),
-        failedCount: correctionResult.failedIds.length,
-        failedIdsSample: correctionResult.failedIds.slice(0, 10)
+        failedCount: corrections.length,
+        error
       });
-    }
-    // matchedCount < 实际提交数：目标行在读取快照后被删/重建，$set 命中 0 条且驱动不报错
-    if (correctionResult.matchedCount < corrections.length) {
-      logger.warn('Create api file collection parent correction not fully matched', {
-        teamId,
-        datasetId: String(dataset._id),
-        correctionCount: corrections.length,
-        matchedCount: correctionResult.matchedCount
-      });
+      throw error;
     }
   }
 
   // 6. file 单事务整批写入：全部落库或全部回滚，不做部分成功。
   //    目标环境已用 10 万条完整数据验证该路径；保持单事务是明确的原子性取舍，事务生命周期配置
   //    必须与压测环境一致。maxCommitTimeMS 只放宽提交阶段，不替代服务端事务生命周期配置。
-  const fileRecords = records.filter((record) => record.type === 'file');
   const writable: Array<{ record: ApiFileRecord; parentId: Types.ObjectId | null }> = [];
 
   for (const record of fileRecords) {
@@ -405,6 +589,10 @@ export const createApiDatasetCollection = async ({
     // null 是合法值（顶层记录 → 落在知识库根）
     if (parentId === undefined) {
       failedCount++;
+      addSourceFailureDetail({
+        resourceId: record.apiFileId,
+        resourceName: record.name
+      });
       continue;
     }
     writable.push({ record, parentId });
@@ -412,9 +600,9 @@ export const createApiDatasetCollection = async ({
 
   if (writable.length > 0) {
     try {
-      await mongoSessionRun(
+      const created = await mongoSessionRun(
         async (session) => {
-          await createApiFileCollectionsBatch({
+          return createApiFileCollectionsBatch({
             dataset,
             files: writable.map(({ record, parentId }) => ({
               name: record.name,
@@ -433,22 +621,46 @@ export const createApiDatasetCollection = async ({
               type: DatasetCollectionTypeEnum.apiFile,
               customPdfParse
             },
+            auditTaskId,
             session
           });
         },
         // 整批（4w 量级）一个事务，默认 60s 提交上限不够
         { maxCommitTimeMS: API_FILE_FILE_COMMIT_TIMEOUT_MS }
       );
-      successCount += writable.length;
+      const createdCollectionIds =
+        created.collectionIds.length > 0
+          ? created.collectionIds
+          : writable.map(({ record }) => record.apiFileId);
+      successCount += createdCollectionIds.length;
+      writable.forEach(({ record }, index) => {
+        auditDetails.push({
+          resourceId: createdCollectionIds[index] ?? record.apiFileId,
+          resourceName: record.name,
+          resourceType: 'collection',
+          sourceType: 'api',
+          sourceName: record.name,
+          action: 'import',
+          result: 'processing'
+        });
+      });
     } catch (error) {
       // 事务已整体回滚，无部分成功（含配额不足、模型解析失败、事务超时）：整批计入失败。
-      // 必须抛出让调用方感知 —— 客户端只在请求 reject 时才把文件标为失败，返回 200 会让
-      // 用户看到「导入成功」而实际一个文件都没进去（最坏只剩目录骨架）
+      // 必须抛出让调用方感知，同时先落一条 terminal failed 审计，不能只依赖训练队列推断结果。
+      failedCount += writable.length;
+      writable.forEach(({ record }) => {
+        addSourceFailureDetail({
+          resourceId: record.apiFileId,
+          resourceName: record.name
+        });
+      });
+      await writeImportAudit({ terminal: true, failureReason: getErrText(error) });
       logger.warn('Create api file collection batch failed', {
         teamId,
         datasetId: String(dataset._id),
         batchSize: writable.length,
         succeededCount: successCount,
+        failedCount: writable.length,
         error
       });
       throw error;
@@ -464,6 +676,9 @@ export const createApiDatasetCollection = async ({
     successCount,
     failedCount
   });
+
+  await writeImportAudit();
+  await refreshTrainingAuditTask(auditTaskId);
 
   return { successCount, failedCount };
 };

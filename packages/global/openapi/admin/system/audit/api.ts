@@ -41,6 +41,10 @@ export const AdminAuditListItemSchema = z
       example: AdminAuditEventEnum.ADMIN_LOGIN,
       description: '管理员操作事件类型'
     }),
+    scope: z.enum(['member', 'system']).optional().meta({
+      example: 'member',
+      description: '执行主体范围；历史记录缺省时按成员处理'
+    }),
     timestamp: z.coerce.date().meta({
       example: '2026-01-02T00:00:00.000Z',
       description: '操作发生时间'

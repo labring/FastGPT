@@ -9,7 +9,9 @@ const {
   mockBulkMoveCollectionsParent,
   mockCollectionFind,
   mockMongoSessionRun,
-  mockLoggerWarn
+  mockLoggerWarn,
+  mockAddAuditLog,
+  mockUpdateAuditLogByTaskId
 } = vi.hoisted(() => ({
   mockListFiles: vi.fn(),
   mockCreateApiFileCollectionsBatch: vi.fn(),
@@ -17,7 +19,9 @@ const {
   mockBulkMoveCollectionsParent: vi.fn(),
   mockCollectionFind: vi.fn(),
   mockMongoSessionRun: vi.fn(),
-  mockLoggerWarn: vi.fn()
+  mockLoggerWarn: vi.fn(),
+  mockAddAuditLog: vi.fn(),
+  mockUpdateAuditLogByTaskId: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
@@ -49,6 +53,15 @@ vi.mock('@fastgpt/service/core/dataset/collection/controller', () => ({
   bulkMoveCollectionsParent: mockBulkMoveCollectionsParent,
   // 整批事务的提交上限；数值本身由 controller 的单测覆盖，这里只要求被显式传入
   API_FILE_FILE_COMMIT_TIMEOUT_MS: 5 * 60 * 1000
+}));
+
+vi.mock('@fastgpt/service/support/user/audit/util', () => ({
+  addAuditLog: mockAddAuditLog,
+  updateAuditLogByTaskId: mockUpdateAuditLogByTaskId
+}));
+
+vi.mock('@fastgpt/service/core/dataset/training/audit', () => ({
+  refreshTrainingAuditTask: vi.fn()
 }));
 
 import { createApiDatasetCollection } from '@fastgpt/service/core/dataset/apiDataset/service';
@@ -127,6 +140,8 @@ beforeEach(() => {
     matchedCount: items.length
   }));
   mockMongoSessionRun.mockImplementation((fn: any) => fn('session'));
+  mockAddAuditLog.mockResolvedValue(true);
+  mockUpdateAuditLogByTaskId.mockResolvedValue(undefined);
   mockCreateApiFileCollectionsBatch.mockResolvedValue({ collectionIds: [] });
 });
 
@@ -190,6 +205,16 @@ describe('createApiDatasetCollection', () => {
     expect(createdFileParams()[0].apiFileParentId).toBe('l3');
 
     expect(result).toEqual({ successCount: 4, failedCount: 0 });
+    expect(mockUpdateAuditLogByTaskId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          insertLen: '4',
+          successCount: '4',
+          failedCount: '0',
+          sourceFinished: true
+        })
+      })
+    );
   });
 
   it('中间层 folder 已存在：不重复创建，子级挂到已存在 _id', async () => {
@@ -305,6 +330,17 @@ describe('createApiDatasetCollection', () => {
     // 校正为空时不发起 ACL 迁移/parentId 写入：无变更就不该开事务
     expect(mockBulkMoveCollectionsParent).not.toHaveBeenCalled();
     expect(result).toEqual({ successCount: 0, failedCount: 0 });
+    // API 返回仍保持幂等跳过不计数，但审计把本轮 records 作为成功处理的节点，避免出现 1 个导入、0 个成功。
+    expect(mockUpdateAuditLogByTaskId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          insertLen: '4',
+          successCount: '4',
+          failedCount: '0',
+          sourceFinished: true
+        })
+      })
+    );
     // 校正未失败：不得出现校正失败告警（防止把 warn 写成无条件）
     expect(mockLoggerWarn).not.toHaveBeenCalledWith(
       'Create api file collection parent update failed',
@@ -344,7 +380,23 @@ describe('createApiDatasetCollection', () => {
 
     // 超时/失败后无法判断批内哪些已落库，故全部计入失败（服务端整批回滚）
     expect(mockMongoSessionRun).toHaveBeenCalledTimes(1);
-    // 整批失败必须留下服务端信号，否则静默丢失
+    // 整批失败必须留下终态服务端信号，否则静默丢失
+    expect(mockUpdateAuditLogByTaskId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'IMPORT_DATASET_CONTENT',
+        result: 'failed',
+        metadata: expect.objectContaining({
+          insertLen: '550',
+          successCount: '0',
+          failedCount: '550',
+          sourceFailedCount: '550',
+          sourceFinished: true,
+          details: expect.arrayContaining([
+            expect.objectContaining({ resourceId: 'f0', result: 'failed' })
+          ])
+        })
+      })
+    );
     expect(mockLoggerWarn).toHaveBeenCalledWith(
       'Create api file collection batch failed',
       expect.objectContaining({ datasetId: 'dataset-id', batchSize: 550 })
@@ -364,6 +416,19 @@ describe('createApiDatasetCollection', () => {
     mockBulkMoveCollectionsParent.mockRejectedValueOnce(error);
     await expect(call({ apiFiles: [apiFile('p', 'folder', true)] })).rejects.toBe(error);
     expect(mockCreateApiFileCollectionsBatch).not.toHaveBeenCalled();
+    expect(mockUpdateAuditLogByTaskId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: 'failed',
+        metadata: expect.objectContaining({
+          failedCount: '2',
+          sourceFailedCount: '2',
+          details: expect.arrayContaining([
+            expect.objectContaining({ action: 'update', result: 'failed' }),
+            expect.objectContaining({ resourceId: 'new', result: 'failed' })
+          ])
+        })
+      })
+    );
   });
 
   it('实际落位鉴权失败时，在目录、层级和正文写入之前中止', async () => {
@@ -460,6 +525,20 @@ describe('createApiDatasetCollection', () => {
 
     // top + land + land-child + land-file 成功；fail + fail-child + fail-file 失败
     expect(result).toEqual({ successCount: 4, failedCount: 3 });
+    expect(mockUpdateAuditLogByTaskId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          successCount: '4',
+          failedCount: '3',
+          sourceFailedCount: '3',
+          details: expect.arrayContaining([
+            expect.objectContaining({ resourceName: 'fail', result: 'failed' }),
+            expect.objectContaining({ resourceName: 'fail-child', result: 'failed' }),
+            expect.objectContaining({ resourceName: 'fail-file', result: 'failed' })
+          ])
+        })
+      })
+    );
   });
 
   it('已存在节点的新父级本轮失败：保留原父级（不重挂），同批落库的父级仍校正', async () => {
@@ -533,7 +612,7 @@ describe('createApiDatasetCollection', () => {
     const result = await call({ apiFiles: [apiFile('p', 'folder', true)] });
 
     expect(correctionUpdates()).toHaveLength(12);
-    expect(result.failedCount).toBe(0);
+    expect(result.failedCount).toBe(12);
     expect(createdBatchFiles().map((file: any) => file.apiFileId)).toEqual(['new-file']);
     // 40k 规模下 failedIds 可能上万条，日志只带 count + 前 10 条样本
     expect(mockLoggerWarn).toHaveBeenCalledWith(

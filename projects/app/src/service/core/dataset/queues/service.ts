@@ -11,12 +11,19 @@ import {
   claimTrainingTask,
   TrainingLeaseLostError
 } from '@fastgpt/service/core/dataset/training/service';
+import { createTrainingAuditTaskFlusher } from '@fastgpt/service/core/dataset/training/auditTaskFlusher';
 import { checkTeamAiPointsAndLock } from './utils';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
 type RebuildMode = TrainingModeEnum.rebuildIndex | TrainingModeEnum.rebuildSynonym;
-type RebuildContext = { teamId: string; tmbId: string; datasetId: string; billId: string };
+type RebuildContext = {
+  teamId: string;
+  tmbId: string;
+  datasetId: string;
+  billId: string;
+  auditTaskId?: string;
+};
 type PopulateType = {
   dataset: Pick<DatasetSchemaType, 'vectorModelId' | 'vectorModel'>;
   collection: { _id: string };
@@ -43,6 +50,7 @@ export const runDatasetRebuildQueue = async ({
   // 检查和占用名额之间没有 await，防止同一进程的多次调度同时进入。
   global[queueKey] = 1;
   const synonymCleanupContexts = new Map<string, RebuildContext>();
+  const auditTaskFlusher = createTrainingAuditTaskFlusher();
   try {
     while (isEnabled()) {
       const start = Date.now();
@@ -68,8 +76,10 @@ export const runDatasetRebuildQueue = async ({
         teamId: String(data.teamId),
         tmbId: String(data.tmbId),
         datasetId: String(data.datasetId),
-        billId: data.billId
+        billId: data.billId,
+        auditTaskId: data.auditTaskId
       };
+      auditTaskFlusher.add(data.auditTaskId);
       if (mode === TrainingModeEnum.rebuildSynonym) {
         synonymCleanupContexts.set(context.datasetId, context);
       }
@@ -83,7 +93,9 @@ export const runDatasetRebuildQueue = async ({
           await lease.complete();
           continue;
         }
-        if (!(await checkTeamAiPointsAndLock(data.teamId, String(data._id)))) continue;
+        if (!(await checkTeamAiPointsAndLock(data.teamId, String(data._id)))) {
+          continue;
+        }
 
         logger.info('Rebuild queue task started', {
           mode,
@@ -130,16 +142,23 @@ export const runDatasetRebuildQueue = async ({
             datasetId: data.datasetId,
             dataId: data.dataId
           });
-          if (!(error instanceof TrainingLeaseLostError)) await lease.fail(error);
+          if (!(error instanceof TrainingLeaseLostError)) {
+            await lease.fail(error);
+          }
           await delay(100);
         }
       } finally {
         await lease.stop();
+        // 任务可能在周期 flush 期间仍处于 active；完成租约后重新排队一次，确保最终状态会被检查。
+        auditTaskFlusher.add(data.auditTaskId);
       }
     }
   } catch (error) {
     logger.error('Rebuild queue loop failed', { mode, error });
   } finally {
+    // 周期性 flush 负责持续运行的队列，stop 会再做最终 flush，避免审计依赖全局队列 drain。
+    await auditTaskFlusher.stop();
+
     // 每轮消费结束后按知识库回收一次，避免逐条查询，也覆盖并行 worker 乱序完成的情况。
     for (const context of synonymCleanupContexts.values()) {
       await cleanupUnusedDatasetSynonymMappings(context).catch((error) => {

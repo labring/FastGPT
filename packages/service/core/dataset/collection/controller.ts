@@ -55,6 +55,7 @@ import {
 } from '../training/controller';
 import { getDatasetImageIndexCapability } from '../utils';
 import { getTrainingModeByCollection } from './utils';
+import { startCollectionImportAudit, type CollectionImportSourceType } from '../audit';
 
 const logger = getLogger(LogCategories.MODULE.DATASET);
 
@@ -465,7 +466,10 @@ export const createCollectionAndInsertData = async ({
   createCollectionParams,
   backupParse = false,
   billId,
-  session
+  session,
+  audit = true,
+  auditSourceType,
+  auditTaskId
 }: {
   dataset: DatasetSchemaType;
   rawText?: string;
@@ -476,6 +480,9 @@ export const createCollectionAndInsertData = async ({
 
   billId?: string;
   session?: ClientSession;
+  audit?: boolean;
+  auditSourceType?: CollectionImportSourceType;
+  auditTaskId?: string;
 }): Promise<CreateCollectionWithResultResponseType> => {
   const {
     agentModelData,
@@ -551,6 +558,26 @@ export const createCollectionAndInsertData = async ({
     insertLen: predictDataLimitLength(trainingMode, chunks)
   });
 
+  const importAudit = await startCollectionImportAudit({
+    enabled: audit,
+    taskId: auditTaskId,
+    teamId,
+    tmbId,
+    datasetId: String(dataset._id),
+    datasetName: dataset.name,
+    collectionName: createCollectionParams.name,
+    sourceType: auditSourceType,
+    trainingType,
+    imageIds,
+    rawText,
+    rawLink: createCollectionParams.rawLink,
+    externalFileId: createCollectionParams.externalFileId,
+    externalFileUrl: createCollectionParams.externalFileUrl,
+    apiFileId: createCollectionParams.apiFileId,
+    chunkSize,
+    indexSize
+  });
+
   const fn = async (session: ClientSession): Promise<CreateCollectionWithResultResponseType> => {
     // 3. Create collection
     const { _id: collectionId } = await createOneCollection({
@@ -597,6 +624,7 @@ export const createCollectionAndInsertData = async ({
           indexSize,
           mode: trainingMode,
           billId: traingUsageId,
+          auditTaskId: importAudit.taskId,
           data: chunks.map((item, index) => ({
             ...item,
             indexes: item.indexes?.map((text) => ({
@@ -631,6 +659,7 @@ export const createCollectionAndInsertData = async ({
             indexSize,
             mode: trainingMode,
             billId: traingUsageId,
+            auditTaskId: importAudit.taskId,
             data: formattedData,
             session
           });
@@ -648,6 +677,7 @@ export const createCollectionAndInsertData = async ({
           indexSize,
           mode: trainingMode,
           billId: traingUsageId,
+          auditTaskId: importAudit.taskId,
           data: formattedData,
           session
         });
@@ -658,6 +688,7 @@ export const createCollectionAndInsertData = async ({
         datasetId: dataset._id,
         collectionId,
         billId: traingUsageId,
+        auditTaskId: importAudit.taskId,
         session
       });
       return {
@@ -673,10 +704,13 @@ export const createCollectionAndInsertData = async ({
     };
   };
 
-  if (session) {
-    return fn(session);
-  }
-  return mongoSessionRun(fn);
+  const result = await (session ? fn(session) : mongoSessionRun(fn)).catch(async (error) => {
+    await importAudit.fail(error);
+    throw error;
+  });
+
+  await importAudit.bindCollection(result.collectionId);
+  return result;
 };
 
 export type CreateOneCollectionParams = ApiCreateDatasetCollectionParams & {
@@ -873,6 +907,7 @@ export const createApiFileCollectionsBatch = async ({
   createCollectionParams,
   billing = { mode: 'shared' },
   indexLimitEstimate,
+  auditTaskId,
   session
 }: {
   dataset: DatasetSchemaType;
@@ -885,6 +920,8 @@ export const createApiFileCollectionsBatch = async ({
   billing?: { mode: 'shared'; billId?: string } | { mode: 'perFile' };
   /** 缺省按文件数预估；同步的旧解析路径没有已知分块，传 0 保留其原估算契约。 */
   indexLimitEstimate?: number;
+  /** 将批量创建的解析任务关联到上层 API dataset 同步审计。 */
+  auditTaskId?: string;
   session?: ClientSession;
 }): Promise<{ collectionIds: string[] }> => {
   if (files.length === 0) return { collectionIds: [] };
@@ -960,6 +997,7 @@ export const createApiFileCollectionsBatch = async ({
       tmbId,
       datasetId: String(dataset._id),
       items: collectionIds.map((collectionId, index) => ({ collectionId, billId: billIds[index] })),
+      auditTaskId,
       session: s
     });
     return { collectionIds };

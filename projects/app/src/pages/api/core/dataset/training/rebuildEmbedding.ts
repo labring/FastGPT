@@ -25,6 +25,9 @@ import {
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { startDatasetTaskAudit } from '@fastgpt/service/core/dataset/audit';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> {
   const { datasetId, vectorModelId } = parseApiInput({
@@ -74,6 +77,12 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     vectorModelId: vectorModelData.modelId!
   });
 
+  const rebuildCount = await MongoDatasetData.countDocuments({
+    teamId,
+    datasetId,
+    ...rebuildableDatasetDataMatch
+  });
+
   // update vector model and dataset.data rebuild field
   await mongoSessionRun(async (session) => {
     await MongoDataset.findByIdAndUpdate(
@@ -119,12 +128,58 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     );
   });
 
-  await seedDatasetRebuildTasks({
-    teamId,
-    tmbId,
-    datasetId,
-    billId: String(usageId)
-  });
+  let auditTask: Awaited<ReturnType<typeof startDatasetTaskAudit>> | undefined;
+
+  try {
+    auditTask = await startDatasetTaskAudit({
+      teamId,
+      tmbId,
+      event: AuditEventEnum.REBUILD_DATASET_INDEX,
+      params: {
+        datasetId,
+        datasetName: dataset.name,
+        oldModel: String(dataset.vectorModelId ?? ''),
+        newModel: vectorModelData.modelId,
+        count: String(rebuildCount)
+      }
+    });
+
+    const seededCount = await seedDatasetRebuildTasks({
+      teamId,
+      tmbId,
+      datasetId,
+      billId: String(usageId),
+      auditTaskId: auditTask.taskId
+    });
+    // seedDatasetRebuildTasks 在这里完成所有初始种子事务后，才解除生产阶段屏障。
+    // worker 可以并行消费前面的任务，但不能在该标记落库前把审计收口；旁路失败留给补偿扫描。
+    await auditTask.finish({ result: 'processing' });
+
+    if (seededCount === 0) {
+      const pendingRebuildCount = await MongoDatasetData.countDocuments({
+        teamId,
+        datasetId,
+        indexStatus: {
+          $in: [
+            DatasetDataIndexStatusEnum.rebuildIndexPending,
+            DatasetDataIndexStatusEnum.rebuildIndexRunning
+          ]
+        }
+      });
+      if (pendingRebuildCount > 0) {
+        // seed 失败时不会再有 worker 触发收口，不能把仍待重建的数据误报为成功。
+        await auditTask.fail('Failed to enqueue dataset rebuild tasks');
+      } else {
+        await auditTask.refresh();
+      }
+    } else {
+      // 即使 worker 尚未启动，也让当前请求在解除屏障后主动检查一次空队列场景。
+      await auditTask.refresh();
+    }
+  } catch (error) {
+    await auditTask?.fail(getErrText(error));
+    throw error;
+  }
 
   return RebuildEmbeddingResponseSchema.parse(undefined);
 }

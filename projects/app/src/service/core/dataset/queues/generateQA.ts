@@ -23,6 +23,7 @@ import {
   claimTrainingTask,
   TrainingLeaseLostError
 } from '@fastgpt/service/core/dataset/training/service';
+import { createTrainingAuditTaskFlusher } from '@fastgpt/service/core/dataset/training/auditTaskFlusher';
 import { text2Chunks } from '@fastgpt/service/worker/function';
 import { checkTeamAiPointsAndLock } from './utils';
 
@@ -49,6 +50,7 @@ export async function generateQA(): Promise<any> {
 
   if (global.qaQueueLen >= max) return;
   global.qaQueueLen++;
+  const auditTaskFlusher = createTrainingAuditTaskFlusher();
 
   try {
     while (true) {
@@ -77,6 +79,7 @@ export async function generateQA(): Promise<any> {
 
       if (!claimed) break;
       const { data, lease } = claimed;
+      auditTaskFlusher.add(data.auditTaskId);
       try {
         lease.start();
         const text = data.q;
@@ -146,7 +149,7 @@ export async function generateQA(): Promise<any> {
 
           // QA 成功后才创建最终数据。数据和后续 index 任务在同一事务中提交，
           // 避免 QA 处理中出现用户可见的临时数据。
-          const result = await lease.complete(async (session) => {
+          await lease.complete(async (session) => {
             const result = await preCreateDatasetDataAndPushToTrainingQueue({
               teamId: data.teamId,
               tmbId: data.tmbId,
@@ -162,6 +165,7 @@ export async function generateQA(): Promise<any> {
               vectorModel: embeddingModelData,
               agentModel: modelData,
               vlmModel: vlmModelData,
+              auditTaskId: data.auditTaskId,
               session
             });
 
@@ -205,11 +209,16 @@ export async function generateQA(): Promise<any> {
         }
       } finally {
         await lease.stop();
+        // 任务可能在周期 flush 期间仍处于 active；完成租约后重新排队一次，确保最终状态会被检查。
+        auditTaskFlusher.add(data.auditTaskId);
       }
     }
   } catch (error) {
     logger.error('QA queue loop failed', { error });
   } finally {
+    // 周期性 flush 负责持续运行的队列，stop 会再做最终 flush，避免审计依赖全局队列 drain。
+    await auditTaskFlusher.stop();
+
     if (reduceQueue()) {
       logger.info('QA queue drained', { queueSize: global.qaQueueLen });
     }

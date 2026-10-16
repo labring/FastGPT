@@ -328,8 +328,23 @@ export const collectionTagsToTagLabel = async ({
     .filter((item): item is CollectionTagLabelType => item !== null);
 };
 
-export const syncCollection = async (collection: CollectionWithDatasetType) => {
+type SyncCollectionResult = {
+  result: DatasetCollectionSyncResultEnum;
+  /** 内容变化时为重建后的新 collection ID，其余场景为原 collection ID。 */
+  collectionId: string;
+};
+
+/**
+ * 重新读取可同步集合的原始内容，并在内容变化时重建集合及训练任务。
+ * auditTaskId 仅用于把异步训练关联到上层同步审计；单集合手动同步可不传。
+ * 返回最终生效的 collectionId，确保调用方的审计明细与训练任务引用同一资源。
+ */
+export const syncCollection = async (
+  collection: CollectionWithDatasetType,
+  auditTaskId?: string
+): Promise<SyncCollectionResult> => {
   const dataset = collection.dataset;
+  const currentCollectionId = String(collection._id);
 
   if (!collectionCanSync(collection.type)) {
     return Promise.reject(DatasetErrEnum.notSupportSync);
@@ -365,17 +380,21 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
   });
 
   if (!rawText) {
-    return DatasetCollectionSyncResultEnum.failed;
+    return {
+      result: DatasetCollectionSyncResultEnum.failed,
+      collectionId: currentCollectionId
+    };
   }
 
   // Check if the original text is the same: skip if same
   const hashRawText = hashStr(rawText);
   if (collection.hashRawText && hashRawText !== collection.hashRawText) {
-    await mongoSessionRun(async (session) => {
+    // 重建会产生新的 _id；事务返回该 ID，供上层审计明细与训练任务保持一致。
+    const newCollectionId = await mongoSessionRun(async (session) => {
       // 同步同样以新 _id 重建 collection：删除前留存权限快照，创建后写回，避免协作者配置丢失。
       const collaborators = await getCollectionCollaborators({
         teamId: collection.teamId,
-        collectionId: String(collection._id),
+        collectionId: currentCollectionId,
         session
       });
 
@@ -400,7 +419,10 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
             datasetId: collection.datasetId,
             tags: collection.tags
           })
-        }
+        },
+        // 集合同步的审计由 SYNC_DATASET 事件统一记录，导入路径不再单独写 IMPORT_DATASET_CONTENT
+        audit: false,
+        auditTaskId
       });
 
       await carryOverCollectionPermission({
@@ -409,14 +431,25 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
         collaborators,
         session
       });
+
+      return collectionId;
     });
 
-    return DatasetCollectionSyncResultEnum.success;
+    return {
+      result: DatasetCollectionSyncResultEnum.success,
+      collectionId: newCollectionId
+    };
   } else if (title && collection.name !== title) {
     await MongoDatasetCollection.updateOne({ _id: collection._id }, { $set: { name: title } });
-    return DatasetCollectionSyncResultEnum.success;
+    return {
+      result: DatasetCollectionSyncResultEnum.success,
+      collectionId: currentCollectionId
+    };
   }
-  return DatasetCollectionSyncResultEnum.sameRaw;
+  return {
+    result: DatasetCollectionSyncResultEnum.sameRaw,
+    collectionId: currentCollectionId
+  };
 };
 
 /*

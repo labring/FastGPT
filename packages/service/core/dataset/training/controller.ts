@@ -229,6 +229,7 @@ export const pushDataListToTrainingQueue = async ({
   billId,
   mode = TrainingModeEnum.index,
   indexSize,
+  auditTaskId,
   session
 }: {
   teamId: string;
@@ -246,6 +247,7 @@ export const pushDataListToTrainingQueue = async ({
   vlmModelConfigured?: boolean;
 
   indexSize?: number;
+  auditTaskId?: string;
 
   billId: string;
   session?: ClientSession;
@@ -296,7 +298,8 @@ export const pushDataListToTrainingQueue = async ({
           indexSize,
           weight: weight ?? 0,
           indexes: item.indexes,
-          retryCount: 3
+          retryCount: 3,
+          ...(auditTaskId && { auditTaskId })
         })),
         {
           session,
@@ -398,6 +401,7 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
   billId,
   mode = TrainingModeEnum.index,
   indexSize,
+  auditTaskId,
   session
 }: {
   teamId: string;
@@ -414,6 +418,7 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
   vlmModelConfigured?: boolean;
 
   indexSize?: number;
+  auditTaskId?: string;
 
   billId: string;
   session: ClientSession;
@@ -485,6 +490,7 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
     data: dataWithIds,
     mode,
     indexSize,
+    auditTaskId,
     billId,
     session
   });
@@ -500,12 +506,14 @@ export const pushDatasetToParseQueue = async ({
   teamId,
   tmbId,
   datasetId,
+  auditTaskId,
   session,
   ...input
 }: {
   teamId: string;
   tmbId: string;
   datasetId: string;
+  auditTaskId?: string;
   session: ClientSession;
 } & (
   | { collectionId: string | string[]; billId: string }
@@ -526,7 +534,8 @@ export const pushDatasetToParseQueue = async ({
       datasetId,
       collectionId,
       billId,
-      mode: TrainingModeEnum.parse
+      mode: TrainingModeEnum.parse,
+      ...(auditTaskId && { auditTaskId })
     })),
     { session, ordered: true }
   );

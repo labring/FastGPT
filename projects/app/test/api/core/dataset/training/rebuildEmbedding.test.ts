@@ -15,6 +15,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { updateAuditLogByTaskId } from '@fastgpt/service/support/user/audit/util';
 import { getRootUser } from '@test/datas/users';
 import { addModelTestModel, getModelTestDefaults } from '@test/modelCache';
 import { Call } from '@test/utils/request';
@@ -127,6 +128,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       (await getSystemModelHandle()).getModelData({ modelId: agentModel.modelId }, { type: 'llm' })
     ).toEqual(agentModel);
 
+    vi.mocked(updateAuditLogByTaskId).mockClear();
     const res = await Call(handler, {
       auth: root,
       body: {
@@ -151,6 +153,38 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       })
     );
     expect(training?.indexes).toEqual([]);
+    expect(updateAuditLogByTaskId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: 'processing',
+        metadata: { sourceFinished: true }
+      })
+    );
+  });
+
+  it('should not fail after the committed rebuild when source audit update fails', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'audit update failure'
+    });
+
+    vi.mocked(updateAuditLogByTaskId).mockRejectedValueOnce(new Error('audit unavailable'));
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.code).toBe(200);
+    await expect(MongoDataset.findById(dataset._id).lean()).resolves.toMatchObject({
+      vectorModelId: visionEmbeddingModel.modelId
+    });
   });
 
   it('should disable image index and enqueue rebuild mode when the new embedding model has no image capability', async () => {

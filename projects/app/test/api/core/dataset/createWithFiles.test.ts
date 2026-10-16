@@ -1,5 +1,5 @@
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import handler from '@/pages/api/core/dataset/createWithFiles';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -9,7 +9,9 @@ import type {
   CreateDatasetWithFilesResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
+import { addAuditLog, updateAuditLogByTaskId } from '@fastgpt/service/support/user/audit/util';
 import type { parseHeaderCertRet } from '@test/mocks/request';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
@@ -90,6 +92,73 @@ describe('create dataset with files temp key ownership', () => {
     expect(result.code).toBe(500);
     expect(result.error).toBe(CommonErrEnum.unAuthFileKey);
     await expect(MongoDataset.countDocuments({ teamId: owner.teamId })).resolves.toBe(0);
+  });
+
+  it('records a terminal failed import audit without masking the source error', async () => {
+    const users = await getFakeUsers(1);
+    const owner = users.members[0];
+    await grantDatasetCreatePermission(owner);
+    vi.mocked(addAuditLog).mockClear();
+    vi.mocked(updateAuditLogByTaskId).mockClear();
+    const move = vi
+      .spyOn(S3PrivateBucket.prototype, 'move')
+      .mockRejectedValue(new Error('file move failed'));
+
+    try {
+      const result = await Call<
+        CreateDatasetWithFilesBody,
+        Record<string, never>,
+        CreateDatasetWithFilesResponse
+      >(handler, {
+        auth: owner,
+        body: {
+          datasetParams: { name: 'failed-file-import', avatar: '' },
+          files: [{ fileId: `temp/${owner.teamId}/failed.pdf`, name: 'failed.pdf' }]
+        }
+      });
+
+      expect(result.code).toBe(500);
+      expect(result.error).toMatchObject({ message: 'file move failed' });
+      expect(updateAuditLogByTaskId).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: AuditEventEnum.IMPORT_DATASET_CONTENT,
+          result: 'failed',
+          metadata: expect.objectContaining({
+            insertLen: '1',
+            successCount: '0',
+            failedCount: '1',
+            sourceFailedCount: '1',
+            sourceFinished: true,
+            failureReason: 'file move failed',
+            details: [
+              expect.objectContaining({
+                resourceName: 'failed.pdf',
+                sourceType: 'file',
+                action: 'import',
+                result: 'failed'
+              })
+            ]
+          })
+        })
+      );
+
+      vi.mocked(addAuditLog).mockRejectedValueOnce(new Error('audit unavailable'));
+      const auditFailureResult = await Call<
+        CreateDatasetWithFilesBody,
+        Record<string, never>,
+        CreateDatasetWithFilesResponse
+      >(handler, {
+        auth: owner,
+        body: {
+          datasetParams: { name: 'failed-audit-write', avatar: '' },
+          files: [{ fileId: `temp/${owner.teamId}/failed-again.pdf`, name: 'failed-again.pdf' }]
+        }
+      });
+      expect(auditFailureResult.code).toBe(500);
+      expect(auditFailureResult.error).toMatchObject({ message: 'file move failed' });
+    } finally {
+      move.mockRestore();
+    }
   });
 
   it('moves a temp key owned by the caller team into the new dataset', async () => {

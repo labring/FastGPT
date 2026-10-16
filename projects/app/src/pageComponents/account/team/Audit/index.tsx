@@ -1,5 +1,22 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
-import { Box, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Flex,
+  Modal,
+  ModalBody,
+  ModalCloseButton,
+  ModalContent,
+  ModalHeader,
+  ModalOverlay,
+  Table,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr,
+  useDisclosure
+} from '@chakra-ui/react';
 import { useMemo, useCallback, useRef, useState } from 'react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -7,6 +24,10 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getOperationLogs } from '@/web/support/user/team/operantionLog/api';
 import { auditLogMap } from '@fastgpt/web/support/user/audit/constants';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import {
+  TeamAuditDetailSchema,
+  type TeamAuditDetail
+} from '@fastgpt/global/support/user/audit/type';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import {
@@ -26,6 +47,8 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
   const [memberFilter, setMemberFilter] = useState(createMultiSelectFilter());
   const [eventFilter, setEventFilter] =
     useState<MultiSelectFilterValue<AuditEventEnum>>(createMultiSelectFilter());
+  const [selectedDetails, setSelectedDetails] = useState<TeamAuditDetail[]>([]);
+  const { isOpen: isDetailsOpen, onOpen: onOpenDetails, onClose: onCloseDetails } = useDisclosure();
 
   const eventOptions = useMemo(
     () =>
@@ -44,6 +67,15 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
     },
     [t]
   );
+
+  const getAuditDetails = (value: unknown): TeamAuditDetail[] => {
+    if (!Array.isArray(value)) return [];
+
+    return value.flatMap((detail) => {
+      const parsed = TeamAuditDetailSchema.safeParse(detail);
+      return parsed.success ? [parsed.data] : [];
+    });
+  };
 
   const searchParams = useMemo(
     () => ({
@@ -153,6 +185,7 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
               {auditLog.map((log) => {
                 const i18nData = auditLogMap[log.event];
                 const metadata = processMetadataByEvent(log.event, { ...log.metadata });
+                const details = getAuditDetails(log.metadata.details);
 
                 return i18nData ? (
                   <Tr key={log._id} overflow={'unset'}>
@@ -171,7 +204,21 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                       wordBreak={['normal', 'break-word']}
                       overflowWrap={['normal', 'anywhere']}
                     >
-                      {t(i18nData.content as any, metadata)}
+                      <Flex alignItems="center" gap={2} flexWrap="wrap">
+                        <Box>{t(i18nData.content as any, metadata)}</Box>
+                        {details.length > 0 && (
+                          <Button
+                            variant="link"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedDetails(details);
+                              onOpenDetails();
+                            }}
+                          >
+                            {t('account_team:log_details')} ({details.length})
+                          </Button>
+                        )}
+                      </Flex>
                     </Td>
                   </Tr>
                 ) : null;
@@ -180,6 +227,38 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
           </Table>
         </FixedTableContainer>
       </MyBox>
+
+      <Modal isOpen={isDetailsOpen} onClose={onCloseDetails} size="4xl">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>{t('account_team:log_details')}</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pb={6} overflowX="auto">
+            <Table size="sm" minW="700px">
+              <Thead>
+                <Tr>
+                  <Th>{t('account_team:audit_detail_resource')}</Th>
+                  <Th>{t('account_team:audit_detail_action')}</Th>
+                  <Th>{t('account_team:audit_detail_result')}</Th>
+                  <Th>{t('account_team:audit_detail_failure_reason')}</Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {selectedDetails.map((detail, index) => (
+                  <Tr key={`${detail.resourceId ?? detail.resourceName}-${index}`}>
+                    <Td>{detail.resourceName}</Td>
+                    <Td>{detail.action}</Td>
+                    <Td>{detail.result}</Td>
+                    <Td whiteSpace="normal" wordBreak="break-word">
+                      {detail.failureReason ?? '-'}
+                    </Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </>
   );
 }
