@@ -1,6 +1,6 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
-import { NumSchema } from '../../../../common/zod';
+import { NumSchema, optionalEmptyToUndefined } from '../../../../common/zod';
 import { PaginationResponseSchema, PaginationSchema } from '../../../api';
 import { SubTypeEnum, StandardSubLevelEnum } from '../../../../support/wallet/sub/constants';
 
@@ -90,19 +90,19 @@ export const UpdatePlanBodySchema = z.discriminatedUnion('type', [
     level: z.enum(StandardSubLevelEnum).meta({ description: '套餐等级' }),
     totalPoints: NumSchema.optional().meta({ description: '总积分' }),
     surplusPoints: NumSchema.optional().meta({ description: '剩余积分' }),
-    maxTeamMember: NumSchema.optional().meta({ description: '最大团队成员数' }),
-    maxApp: NumSchema.optional().meta({ description: '最大应用数' }),
-    maxDataset: NumSchema.optional().meta({ description: '最大知识库数' }),
-    maxDatasetSize: NumSchema.optional().meta({ description: '最大知识库容量' }),
-    requestsPerMinute: NumSchema.optional().meta({ description: '每分钟请求数' }),
-    websiteSyncPerDataset: NumSchema.optional().meta({ description: '每知识库站点同步数' }),
-    chatHistoryStoreDuration: NumSchema.optional().meta({ description: '聊天记录保存天数' }),
-    appRegistrationCount: NumSchema.optional().meta({ description: '应用注册数' }),
-    auditLogStoreDuration: NumSchema.optional().meta({ description: '审计日志保存天数' }),
-    ticketResponseTime: NumSchema.optional().meta({ description: '工单响应时间' }),
-    customDomain: NumSchema.optional().meta({ description: '自定义域名数' }),
-    maxUploadFileSize: NumSchema.optional().meta({ description: '最大上传文件大小' }),
-    maxUploadFileCount: NumSchema.optional().meta({ description: '最大上传文件数' }),
+    maxTeamMember: optionalEmptyToUndefined(NumSchema).meta({ description: '最大团队成员数' }),
+    maxApp: optionalEmptyToUndefined(NumSchema).meta({ description: '最大应用数' }),
+    maxDataset: optionalEmptyToUndefined(NumSchema).meta({ description: '最大知识库数' }),
+    maxDatasetSize: optionalEmptyToUndefined(NumSchema).meta({ description: '最大知识库容量' }),
+    requestsPerMinute: optionalEmptyToUndefined(NumSchema).meta({ description: '每分钟请求数' }),
+    websiteSyncPerDataset: optionalEmptyToUndefined(NumSchema).meta({ description: '每知识库站点同步数' }),
+    chatHistoryStoreDuration: optionalEmptyToUndefined(NumSchema).meta({ description: '聊天记录保存天数' }),
+    appRegistrationCount: optionalEmptyToUndefined(NumSchema).meta({ description: '应用注册数' }),
+    auditLogStoreDuration: optionalEmptyToUndefined(NumSchema).meta({ description: '审计日志保存天数' }),
+    ticketResponseTime: optionalEmptyToUndefined(NumSchema).meta({ description: '工单响应时间' }),
+    customDomain: optionalEmptyToUndefined(NumSchema).meta({ description: '自定义域名数' }),
+    maxUploadFileSize: optionalEmptyToUndefined(NumSchema).meta({ description: '最大上传文件大小' }),
+    maxUploadFileCount: optionalEmptyToUndefined(NumSchema).meta({ description: '最大上传文件数' }),
     enableSandbox: z.boolean().optional().meta({ description: '是否启用沙盒' })
   }),
   UpdatePlanBaseSchema.extend({
