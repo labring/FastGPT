@@ -1,9 +1,11 @@
 import {
+  assertTeamFrequencyLimit,
   createNodeApiLimitResponse,
   LimitTypeEnum,
   teamFrequencyLimit
 } from '@fastgpt/service/common/api/frequencyLimit';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { RedisInvalidArgumentError } from '@fastgpt/dal/redis';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -161,5 +163,113 @@ describe('createNodeApiLimitResponse', () => {
     limitResponse({ status: 'rejected', code: 429, error });
 
     expect(jsonRes).toHaveBeenCalledWith(res, { code: 429, error });
+  });
+});
+
+describe('assertTeamFrequencyLimit', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('团队未配置 QPM 限制时直接返回空对象', async () => {
+    mocks.getTeamQPMLimit.mockResolvedValueOnce(undefined);
+
+    const result = await assertTeamFrequencyLimit({
+      teamId: 'team-1',
+      type: LimitTypeEnum.chat
+    });
+
+    expect(result).toEqual({});
+    expect(mocks.consumeTeamChatRateLimit).not.toHaveBeenCalled();
+  });
+
+  it('团队配置 QPM 限制且未超限时返回限流状态', async () => {
+    mocks.getTeamQPMLimit.mockResolvedValueOnce(60);
+    mocks.consumeTeamChatRateLimit.mockResolvedValueOnce({
+      allowed: true,
+      currentCount: 1,
+      remaining: 59,
+      resetAt: 1700000060,
+      ttlSeconds: 60
+    });
+
+    const result = await assertTeamFrequencyLimit({
+      teamId: 'team-1',
+      type: LimitTypeEnum.chat
+    });
+
+    expect(mocks.consumeTeamChatRateLimit).toHaveBeenCalledWith({
+      teamId: 'team-1',
+      limit: 60,
+      seconds: 60
+    });
+    expect(result).toEqual({
+      limit: 60,
+      remaining: 59,
+      resetAt: 1700000060
+    });
+  });
+
+  it('团队 QPM 超限时抛出携带 tooManyRequest 和详细提示的 UserError', async () => {
+    mocks.getTeamQPMLimit.mockResolvedValueOnce(60);
+    mocks.consumeTeamChatRateLimit.mockResolvedValueOnce({
+      allowed: false,
+      currentCount: 61,
+      remaining: 0,
+      resetAt: 1700000060,
+      ttlSeconds: 25
+    });
+
+    const errPromise = assertTeamFrequencyLimit({
+      teamId: 'team-1',
+      type: LimitTypeEnum.chat
+    });
+
+    await expect(errPromise).rejects.toBeInstanceOf(UserError);
+    await expect(errPromise).rejects.toMatchObject({
+      message: ERROR_ENUM.tooManyRequest,
+      displayMessage:
+        'Rate limit exceeded. Maximum 60 requests per 60 seconds for this team. Please try again in 25 seconds.'
+    });
+  });
+
+  it('获取限流配置异常时跳过限流检查（fail open）', async () => {
+    mocks.getTeamQPMLimit.mockRejectedValueOnce(new Error('redis connection failed'));
+
+    const result = await assertTeamFrequencyLimit({
+      teamId: 'team-1',
+      type: LimitTypeEnum.chat
+    });
+
+    expect(result).toEqual({});
+    expect(mocks.consumeTeamChatRateLimit).not.toHaveBeenCalled();
+  });
+
+  it('执行限流消耗异常时跳过限流检查（fail open）', async () => {
+    mocks.getTeamQPMLimit.mockResolvedValueOnce(60);
+    mocks.consumeTeamChatRateLimit.mockRejectedValueOnce(new Error('redis error'));
+
+    const result = await assertTeamFrequencyLimit({
+      teamId: 'team-1',
+      type: LimitTypeEnum.chat
+    });
+
+    expect(result).toEqual({});
+  });
+
+  it('遇到 RedisInvalidArgumentError 时直接抛出原始错误', async () => {
+    mocks.getTeamQPMLimit.mockResolvedValueOnce(60);
+    const redisError = new RedisInvalidArgumentError({
+      operation: 'rateLimit.consume',
+      message: 'invalid key'
+    });
+    mocks.consumeTeamChatRateLimit.mockRejectedValueOnce(redisError);
+
+    await expect(
+      assertTeamFrequencyLimit({
+        teamId: 'team-1',
+        type: LimitTypeEnum.chat
+      })
+    ).rejects.toThrow(redisError);
   });
 });

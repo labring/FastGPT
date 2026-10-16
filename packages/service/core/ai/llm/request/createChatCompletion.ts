@@ -6,6 +6,7 @@ import { normalizeRelayNoChannelError } from '../../../../thirdProvider/aiproxy/
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { isStreamCompletionResponse } from './response/normalize';
 import type { CreateChatCompletionProps, CreateChatCompletionResult } from './types';
+import { sanitizeLLMRequestRecordPayload } from '../../record/controller';
 
 const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
@@ -25,6 +26,7 @@ const isAbortedRequestError = (error: unknown): boolean =>
  * getAIApi 会根据 userKey 返回实际使用的 OpenAI 客户端和 requestMeta。
  * 当 requestMeta.usedUserOpenAIKey=true 时，说明请求已经走用户 key，
  * 这里必须避免继续叠加模型配置里的 requestUrl/requestAuth，防止覆盖用户自己的配置。
+ * 失败日志与 Mongo 请求记录共用 base64 清洗快照，不修改实际请求或抛出的原始错误。
  */
 export const createChatCompletion = async ({
   modelData,
@@ -85,17 +87,18 @@ export const createChatCompletion = async ({
       return Promise.reject(error);
     }
 
+    const errorSnapshot = sanitizeLLMRequestRecordPayload({
+      ...(requestMeta.usedUserOpenAIKey && { baseUrl: requestMeta.baseUrl }),
+      request: body,
+      error
+    });
     if (requestMeta.usedUserOpenAIKey) {
       // 用户 key 错误需要转成面向用户的提示，避免直接暴露底层 SDK 错误结构。
-      logger.warn('User AI API error', {
-        baseUrl: requestMeta.baseUrl,
-        request: body,
-        error
-      });
+      logger.warn('User AI API error', errorSnapshot);
       return Promise.reject(`您的 OpenAI key 出错了: ${getErrText(error)}`);
     }
 
-    logger.error('LLM response error', { request: body, error });
+    logger.error('LLM response error', errorSnapshot);
     return Promise.reject(normalizeRelayNoChannelError(error));
   }
 };
