@@ -617,13 +617,37 @@ describe('createStreamResponse', () => {
       expect(callbacks.onToolCall).toHaveBeenCalledExactlyOnceWith({ call });
     });
 
-    it('should preserve an upstream error instead of replacing it with an invalid-tool error', async () => {
-      const error = new Error('upstream disconnected');
-      const { response } = createStream([chunk({}, 'tool_calls')], { error });
-      const result = await createStreamResponse({ body: nativeBody, response });
-      expect(result.error).toBe(error);
-      expect(result.toolCalls).toEqual([]);
-    });
+    it.each(
+      [
+        { kind: 'Error instance', error: new Error('upstream disconnected') },
+        { kind: 'API object', error: { message: 'upstream disconnected', code: 'provider_error' } },
+        { kind: 'API string', error: 'upstream disconnected' }
+      ].flatMap((scenario) => [false, true].map((conflict) => ({ ...scenario, conflict })))
+    )(
+      'should preserve $kind after invalid tools with protocol conflict=$conflict',
+      async ({ error, conflict }) => {
+        const { response } = createStream(
+          [
+            chunk({
+              content: 'partial answer',
+              tool_calls: [{ index: 0, function: { name: 'unknown', arguments: '{}' } }]
+            }),
+            ...(conflict
+              ? [chunk({ tool_calls: [{ index: 0, function: { name: 'conflicting_name' } }] })]
+              : []),
+            chunk({}, 'tool_calls'),
+            { choices: [], usage }
+          ],
+          { error }
+        );
+        const result = await createStreamResponse({ body: nativeBody, response });
+
+        expect(result.error).toBe(error);
+        expect(result.toolCalls).toEqual([]);
+        expect(result.answerText).toBe('partial answer');
+        expect(result.usage).toEqual(usage);
+      }
+    );
 
     it.each([
       { index: undefined, id: undefined },

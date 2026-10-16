@@ -14,7 +14,7 @@ type LLMToolCallErrorContext = {
   conflictingToolCall?: unknown;
 };
 
-/** 对外固定错误消息；原始工具输出和具体协议异常只通过 cause 提供给日志与记录层。 */
+/** 无接口错误时的工具错误兜底；固定对外消息，原始输出和协议诊断通过 cause 保留。 */
 export class LLMToolCallError extends Error {
   readonly code = 'LLM_TOOL_CALL_ERROR';
   declare readonly cause: LLMToolCallErrorContext;
@@ -30,7 +30,8 @@ export const normalizeToolName = (name: string) => name.replace(/^functions\./, 
 
 /**
  * stream 和非 stream 共用的原生工具校验；必须在非 stream 派发工具回调前执行。
- * 保留上游错误，过滤未声明工具；明确以 tool_calls 结束却没有有效调用时返回协议错误。
+ * 接口错误优先于已知工具错误，原样保留其 message/code/cause；没有接口错误时才使用固定错误兜底。
+ * 过滤未声明工具；明确以 tool_calls 结束却没有有效调用时返回协议错误。
  */
 export const normalizeNativeToolCalls = ({
   toolCalls,
@@ -70,7 +71,12 @@ export const normalizeNativeToolCalls = ({
     })
     .filter((call) => toolNames.has(call.function.name));
 
-  if (error || (!protocolError && (finish_reason !== 'tool_calls' || normalizedCalls.length > 0))) {
+  if (error) {
+    // 即使同时出现空工具或身份冲突，也不能用已知工具错误覆盖接口返回的实际错误。
+    return { toolCalls: normalizedCalls, finish_reason, error };
+  }
+
+  if (!protocolError && (finish_reason !== 'tool_calls' || normalizedCalls.length > 0)) {
     return { toolCalls: normalizedCalls, finish_reason, error };
   }
 

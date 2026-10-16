@@ -5,6 +5,7 @@ import type {
   StreamResponseType
 } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { LLMModelConfigType, LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
@@ -1866,45 +1867,45 @@ describe('createLLMResponse', () => {
       ).rejects.toThrow();
     });
 
-    it.each(['stop', 'tool_calls'] as const)(
-      'should preserve the upstream error and usage with raw finish reason=%s',
-      async (finishReason) => {
+    it.each(
+      [
+        { kind: 'Error instance', error: new Error('upstream quota exhausted') },
+        {
+          kind: 'API object',
+          error: { message: 'upstream quota exhausted', code: 'quota_exceeded' }
+        },
+        { kind: 'API string', error: 'upstream quota exhausted' }
+      ].flatMap((scenario) => [undefined, false].map((throwError) => ({ ...scenario, throwError })))
+    )(
+      'should expose $kind ahead of the known tool error with throwError=$throwError',
+      async ({ error, throwError }) => {
         const logError = vi
           .spyOn(getLogger(LogCategories.MODULE.AI.LLM), 'error')
           .mockImplementation(() => {});
-        const mockResponse = {
+        const create = vi.fn().mockResolvedValue({
           choices: [
             {
               message: {
                 role: 'assistant',
-                content: ''
+                content: 'partial model answer',
+                tool_calls: [
+                  {
+                    id: 'invalid_call',
+                    type: 'function',
+                    function: { name: 'unknown_tool', arguments: '{}' }
+                  }
+                ]
               },
-              finish_reason: finishReason
+              finish_reason: 'tool_calls'
             }
           ],
-          error: new Error('Some error'),
-          usage: {
-            prompt_tokens: 10,
-            completion_tokens: 2,
-            total_tokens: 12
-          }
-        };
-
-        const mockAI = {
-          chat: {
-            completions: {
-              create: vi.fn().mockResolvedValue(mockResponse)
-            }
-          }
-        };
-        mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
-
-        const messages: ChatCompletionMessageParam[] = [
-          { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' }
-        ];
-
-        const result = await createLLMResponse({
-          throwError: false,
+          error,
+          usage: { prompt_tokens: 10, completion_tokens: 2, total_tokens: 12 }
+        });
+        mockGetAIApi.mockReturnValue(createMockAIApiResult({ chat: { completions: { create } } }));
+        const messages: ChatCompletionMessageParam[] = [{ role: 'user', content: 'Search.' }];
+        const request = createLLMResponse({
+          throwError,
           body: {
             model: createMockModelData(),
             messages,
@@ -1915,10 +1916,24 @@ describe('createLLMResponse', () => {
           }
         });
 
-        expect(result.error).toBe(mockResponse.error);
-        expect(result.finish_reason).toBe('error');
-        expect(result.usage.inputTokens).toBe(10);
-        expect(result.usage.outputTokens).toBe(2);
+        if (throwError === false) {
+          const result = await request;
+          expect(result.error).toBe(error);
+          expect(getErrText(result.error)).toBe('upstream quota exhausted');
+          expect(result.finish_reason).toBe('error');
+          expect(result.answerText).toBe('partial model answer');
+          expect(result.usage).toMatchObject({ inputTokens: 10, outputTokens: 2 });
+        } else {
+          await expect(request).rejects.toBe(error);
+        }
+        expect(mockSaveLLMRequestRecord).toHaveBeenCalledExactlyOnceWith(
+          expect.objectContaining({
+            response: expect.objectContaining({
+              error,
+              usage: { inputTokens: 10, outputTokens: 2 }
+            })
+          })
+        );
         expect(logError).not.toHaveBeenCalled();
       }
     );

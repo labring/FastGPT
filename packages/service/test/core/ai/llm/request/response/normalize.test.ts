@@ -73,6 +73,33 @@ describe('normalizeNativeToolCalls', () => {
     });
   });
 
+  it.each(
+    [
+      { kind: 'Error instance', error: new Error('upstream quota exhausted') },
+      {
+        kind: 'API object',
+        error: { message: 'upstream quota exhausted', code: 'quota_exceeded' }
+      },
+      { kind: 'API string', error: 'upstream quota exhausted' }
+    ].flatMap((scenario) => [false, true].map((conflict) => ({ ...scenario, conflict })))
+  )(
+    'should prefer $kind over missing tools with protocol conflict=$conflict',
+    ({ error, conflict }) => {
+      const result = normalizeNativeToolCalls({
+        toolCalls: [
+          { id: 'invalid', type: 'function', function: { name: 'unknown', arguments: '{}' } }
+        ],
+        toolNames: new Set(['search']),
+        finish_reason: 'tool_calls',
+        error,
+        protocolError: conflict ? { message: 'tool identity conflict', toolCall: {} } : undefined
+      });
+
+      expect(result.error).toBe(error);
+      expect(result.toolCalls).toEqual([]);
+    }
+  );
+
   it.each([undefined, 'tool name changed from search to private_provider_tool.'])(
     'should return the same public error while keeping diagnostic=%s in the context',
     (reason) => {
