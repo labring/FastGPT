@@ -1157,6 +1157,63 @@ describe('createLLMResponse', () => {
       expect(toolCallResults).toHaveLength(1);
     });
 
+    it('should retry once when a provider omits tool_calls for a tool_calls finish', async () => {
+      const mockToolCall: ChatCompletionMessageToolCall = {
+        id: 'call_retry',
+        type: 'function',
+        function: {
+          name: 'get_weather',
+          arguments: '{"location":"Beijing"}'
+        }
+      };
+      const emptyResponse = {
+        choices: [
+          {
+            message: { role: 'assistant', content: null, tool_calls: [] },
+            finish_reason: 'tool_calls'
+          }
+        ],
+        usage: { prompt_tokens: 20, completion_tokens: 5, total_tokens: 25 }
+      };
+      const recoveredResponse = {
+        choices: [
+          {
+            message: { role: 'assistant', content: null, tool_calls: [mockToolCall] },
+            finish_reason: 'tool_calls'
+          }
+        ],
+        usage: { prompt_tokens: 21, completion_tokens: 6, total_tokens: 27 }
+      };
+      const create = vi
+        .fn()
+        .mockResolvedValueOnce(emptyResponse)
+        .mockResolvedValueOnce(recoveredResponse);
+      mockGetAIApi.mockReturnValue(createMockAIApiResult({ chat: { completions: { create } } }));
+
+      const result = await createLLMResponse({
+        body: {
+          model: createMockModelData(),
+          messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'weather?' }],
+          tools: [
+            {
+              type: 'function' as const,
+              function: {
+                name: 'get_weather',
+                description: 'Get weather information',
+                parameters: { type: 'object', properties: { location: { type: 'string' } } }
+              }
+            }
+          ],
+          stream: false
+        }
+      });
+
+      expect(create).toHaveBeenCalledTimes(2);
+      expect(result.toolCalls).toEqual([mockToolCall]);
+      expect(result.responseEmptyTip).toBeUndefined();
+      expect(result.finish_reason).toBe('tool_calls');
+    });
+
     it('should mark non-stream tool_calls finish without tool calls as empty response', async () => {
       const mockResponse = {
         choices: [
