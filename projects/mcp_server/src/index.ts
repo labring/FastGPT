@@ -79,8 +79,13 @@ app.get('/:key/sse', async (req, res) => {
       };
     } catch (error) {
       return {
+        content: [
+          {
+            type: 'text',
+            text: getErrText(error)
+          }
+        ],
         message: getErrText(error),
-        content: [],
         isError: true
       };
     }

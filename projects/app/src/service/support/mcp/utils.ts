@@ -416,7 +416,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
 
   // 校验所属团队的对话 QPM 频次限制，防止无限制调用打满集群或下游模型并发
   await assertTeamFrequencyLimit({
-    teamId: String(app.teamId || mcp.teamId),
+    teamId: String(app.teamId),
     type: LimitTypeEnum.chat
   });
 

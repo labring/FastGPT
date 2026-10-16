@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { RedisInvalidArgumentError } from '@fastgpt/dal/redis';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 
 const { mockGetTeamQPMLimit, mockConsumeTeamChatRateLimit, mockJsonRes } = vi.hoisted(() => ({
   mockGetTeamQPMLimit: vi.fn(),
@@ -73,7 +74,7 @@ describe('frequencyLimit', () => {
       });
     });
 
-    it('团队 QPM 超限时抛出 UserError', async () => {
+    it('团队 QPM 超限时抛出携带 tooManyRequest 和详细提示的 UserError', async () => {
       mockGetTeamQPMLimit.mockResolvedValueOnce(60);
       mockConsumeTeamChatRateLimit.mockResolvedValueOnce({
         allowed: false,
@@ -83,43 +84,41 @@ describe('frequencyLimit', () => {
         ttlSeconds: 25
       });
 
-      await expect(
-        assertTeamFrequencyLimit({
-          teamId: 'team-1',
-          type: LimitTypeEnum.chat
-        })
-      ).rejects.toThrowError(
-        new UserError(
+      const errPromise = assertTeamFrequencyLimit({
+        teamId: 'team-1',
+        type: LimitTypeEnum.chat
+      });
+
+      await expect(errPromise).rejects.toBeInstanceOf(UserError);
+      await expect(errPromise).rejects.toMatchObject({
+        message: ERROR_ENUM.tooManyRequest,
+        displayMessage:
           'Rate limit exceeded. Maximum 60 requests per 60 seconds for this team. Please try again in 25 seconds.'
-        )
-      );
+      });
     });
 
-    it('获取限流配置异常时抛出限流服务不可用错误', async () => {
+    it('获取限流配置异常时跳过限流检查（fail open）', async () => {
       mockGetTeamQPMLimit.mockRejectedValueOnce(new Error('redis connection failed'));
 
-      await expect(
-        assertTeamFrequencyLimit({
-          teamId: 'team-1',
-          type: LimitTypeEnum.chat
-        })
-      ).rejects.toThrowError(
-        new UserError('Rate limit service unavailable. Please try again later.')
-      );
+      const result = await assertTeamFrequencyLimit({
+        teamId: 'team-1',
+        type: LimitTypeEnum.chat
+      });
+
+      expect(result).toEqual({});
+      expect(mockConsumeTeamChatRateLimit).not.toHaveBeenCalled();
     });
 
-    it('执行限流消耗异常时抛出限流服务不可用错误', async () => {
+    it('执行限流消耗异常时跳过限流检查（fail open）', async () => {
       mockGetTeamQPMLimit.mockResolvedValueOnce(60);
       mockConsumeTeamChatRateLimit.mockRejectedValueOnce(new Error('redis error'));
 
-      await expect(
-        assertTeamFrequencyLimit({
-          teamId: 'team-1',
-          type: LimitTypeEnum.chat
-        })
-      ).rejects.toThrowError(
-        new UserError('Rate limit service unavailable. Please try again later.')
-      );
+      const result = await assertTeamFrequencyLimit({
+        teamId: 'team-1',
+        type: LimitTypeEnum.chat
+      });
+
+      expect(result).toEqual({});
     });
 
     it('遇到 RedisInvalidArgumentError 时直接抛出原始错误', async () => {
@@ -214,6 +213,39 @@ describe('frequencyLimit', () => {
           error: expect.any(UserError)
         })
       );
+    });
+
+    it('遇到 RedisInvalidArgumentError 时直接抛出原始错误而不吞为 429', async () => {
+      mockGetTeamQPMLimit.mockResolvedValueOnce(60);
+      const redisError = new RedisInvalidArgumentError('invalid key', {
+        operation: 'rateLimit.consume'
+      });
+      mockConsumeTeamChatRateLimit.mockRejectedValueOnce(redisError);
+
+      const res = createRes();
+      await expect(
+        teamFrequencyLimit({
+          teamId: 'team-1',
+          type: LimitTypeEnum.chat,
+          res
+        })
+      ).rejects.toThrow(redisError);
+      expect(mockJsonRes).not.toHaveBeenCalled();
+    });
+
+    it('Redis 异常时安全放行（fail open）返回 true', async () => {
+      mockGetTeamQPMLimit.mockResolvedValueOnce(60);
+      mockConsumeTeamChatRateLimit.mockRejectedValueOnce(new Error('redis connection timeout'));
+
+      const res = createRes();
+      const allowed = await teamFrequencyLimit({
+        teamId: 'team-1',
+        type: LimitTypeEnum.chat,
+        res
+      });
+
+      expect(allowed).toBe(true);
+      expect(mockJsonRes).not.toHaveBeenCalled();
     });
   });
 });

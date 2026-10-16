@@ -7,6 +7,7 @@ import z from 'zod';
 import { getLogger, LogCategories } from '../logger';
 import { consumeTeamChatRateLimit } from '../rateLimit/interface/team';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 
 const logger = getLogger(LogCategories.HTTP.RESPONSE);
 
@@ -40,7 +41,9 @@ const getLimitData = async (data: FrequencyLimitOption) => {
 /**
  * 校验团队频次限制（无 HTTP 依赖）。
  * 未配置限流时静默放行；未超限时返回限流元数据；
- * 超限或限流服务异常时抛出 UserError。
+ * Redis 运行时异常时记录日志并跳过检查（fail open），避免阻塞工作流；
+ * Redis 参数非法（RedisInvalidArgumentError）为代码层错误，继续抛出；
+ * 达到频次限制时抛出携带 ERROR_ENUM.tooManyRequest 的 UserError。
  */
 export const assertTeamFrequencyLimit = async ({
   teamId,
@@ -54,8 +57,12 @@ export const assertTeamFrequencyLimit = async ({
   try {
     data = await getLimitData({ type, teamId });
   } catch (error) {
-    logger.error('Team QPM configuration lookup failed closed', { teamId, type, error });
-    throw new UserError('Rate limit service unavailable. Please try again later.');
+    logger.error('Team QPM configuration lookup failed, skipping rate limit', {
+      teamId,
+      type,
+      error
+    });
+    return {};
   }
   if (!data) return {};
 
@@ -71,8 +78,12 @@ export const assertTeamFrequencyLimit = async ({
   } catch (error) {
     if (error instanceof RedisInvalidArgumentError) throw error;
 
-    logger.error('Team QPM rate limit failed closed', { teamId, type, error });
-    throw new UserError('Rate limit service unavailable. Please try again later.');
+    logger.error('Team QPM rate limit check failed, skipping rate limit (fail open)', {
+      teamId,
+      type,
+      error
+    });
+    return {};
   }
 
   if (!result.allowed) {
@@ -83,6 +94,7 @@ export const assertTeamFrequencyLimit = async ({
       ttlSeconds: result.ttlSeconds
     });
     throw new UserError(
+      ERROR_ENUM.tooManyRequest,
       `Rate limit exceeded. Maximum ${limit} requests per ${seconds} seconds for this team. Please try again in ${result.ttlSeconds} seconds.`
     );
   }
@@ -114,6 +126,8 @@ export const teamFrequencyLimit = async ({
     }
     return true;
   } catch (error) {
+    if (error instanceof RedisInvalidArgumentError) throw error;
+
     jsonRes(res, {
       code: 429,
       error
