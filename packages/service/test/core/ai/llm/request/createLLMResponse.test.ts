@@ -1479,25 +1479,10 @@ describe('createLLMResponse', () => {
           await expect(request).rejects.toThrow('no valid tool calls');
         }
 
-        expect(logError).toHaveBeenCalledExactlyOnceWith(
-          'LLM tool calls missing',
-          expect.objectContaining({
-            teamId: 'team_1',
-            requestId: 'test-request-id',
-            modelId: '68ad85a7463006c963799a05',
-            provider: 'openai',
-            baseUrl: 'https://system.example.com/v1',
-            request: expect.objectContaining({ model: 'gpt-4', messages, tools }),
-            response: expect.objectContaining({
-              finish_reason: 'tool_calls',
-              toolCalls,
-              answerText: content,
-              reasoningText: reasoning,
-              usage: expect.objectContaining({ prompt_tokens: 20, completion_tokens: 5 })
-            }),
-            error: expectedError
-          })
-        );
+        expect(logError).toHaveBeenCalledExactlyOnceWith('LLM tool calls missing', {
+          requestBody: expect.objectContaining({ model: 'gpt-4', messages, tools }),
+          message: 'LLM tool call error: no valid tool calls matched the requested tools.'
+        });
         expect(mockSaveLLMRequestRecord).toHaveBeenCalledExactlyOnceWith(
           expect.objectContaining({
             requestId: 'test-request-id',
@@ -1548,7 +1533,10 @@ describe('createLLMResponse', () => {
         'LLM tool call error: no valid tool calls matched the requested tools.'
       );
       expect(result.responseEmptyTip).toBeUndefined();
-      expect(logError).toHaveBeenCalledExactlyOnceWith('LLM tool calls missing', expect.anything());
+      expect(logError).toHaveBeenCalledExactlyOnceWith('LLM tool calls missing', {
+        requestBody: expect.any(Object),
+        message: result.error.message
+      });
       expect(mockSaveLLMRequestRecord).not.toHaveBeenCalled();
     });
 
@@ -1604,29 +1592,23 @@ describe('createLLMResponse', () => {
         }
       });
       expect(result.finish_reason).toBe('error');
-      expect(logError).toHaveBeenCalledExactlyOnceWith(
-        'LLM tool calls missing',
-        expect.objectContaining({
-          request: expect.objectContaining({
-            messages: [
-              {
-                role: 'user',
-                content: [
-                  { type: 'text', text: 'Describe this image.' },
-                  {
-                    type: 'image_url',
-                    image_url: { url: 'data:image/png;base64,[base64 omitted]' }
-                  }
-                ]
-              }
-            ]
-          }),
-          error: expect.objectContaining({
-            name: 'Error',
-            message: expect.stringContaining('no valid tool calls')
-          })
-        })
-      );
+      expect(logError).toHaveBeenCalledExactlyOnceWith('LLM tool calls missing', {
+        requestBody: expect.objectContaining({
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: 'Describe this image.' },
+                {
+                  type: 'image_url',
+                  image_url: { url: 'data:image/png;base64,[base64 omitted]' }
+                }
+              ]
+            }
+          ]
+        }),
+        message: result.error.message
+      });
       expect(mockCreate.mock.calls[0][0].messages).toEqual(messages);
       expect(JSON.stringify(logError.mock.calls)).not.toContain(imageUrl);
       await mockSaveLLMRequestRecord.mock.results[0].value;
@@ -1647,7 +1629,7 @@ describe('createLLMResponse', () => {
       expect(response).toEqual(originalResponse);
     });
 
-    it('should log the final continuation context and preserve all original tool outputs', async () => {
+    it('should log only the request body and message while preserving continued tool outputs', async () => {
       const logError = vi
         .spyOn(getLogger(LogCategories.MODULE.AI.LLM), 'error')
         .mockImplementation(() => {});
@@ -1688,13 +1670,10 @@ describe('createLLMResponse', () => {
         'LLM tool call error: no valid tool calls matched the requested tools.'
       );
       expect(create).toHaveBeenCalledTimes(2);
-      expect(logError).toHaveBeenCalledExactlyOnceWith(
-        'LLM tool calls missing',
-        expect.objectContaining({
-          request: expect.objectContaining({ messages: create.mock.calls[1][0].messages }),
-          response: expect.objectContaining({ toolCalls: calls, finish_reason: 'tool_calls' })
-        })
-      );
+      expect(logError).toHaveBeenCalledExactlyOnceWith('LLM tool calls missing', {
+        requestBody: expect.objectContaining({ messages }),
+        message: result.error.message
+      });
       expect(mockSaveLLMRequestRecord).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining({
           body: expect.objectContaining({ messages }),

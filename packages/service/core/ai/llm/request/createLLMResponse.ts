@@ -251,27 +251,10 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       // 接口错误优先；仅对末轮 tool_calls 却没有有效工具的情况记录日志并兜底。
       error = new Error('LLM tool call error: no valid tool calls matched the requested tools.');
       finish_reason = 'error';
-      logger.error(
-        'LLM tool calls missing',
-        sanitizeLLMRequestRecordPayload({
-          teamId,
-          requestId,
-          modelId: modelData.modelId,
-          provider: modelData.provider,
-          baseUrl: aiRequestMeta.baseUrl,
-          request: { ...requestBody, messages: currentMessages },
-          response: {
-            answerText,
-            reasoningText,
-            toolCalls: rawToolCalls,
-            finish_reason: rawFinishReason,
-            usage,
-            inputTokens,
-            outputTokens
-          },
-          error
-        })
-      );
+      logger.error('LLM tool calls missing', {
+        requestBody: sanitizeLLMRequestRecordPayload(requestBody),
+        message: error.message
+      });
     }
 
     if (error && throwError) {
