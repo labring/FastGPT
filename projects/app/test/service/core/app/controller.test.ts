@@ -197,6 +197,7 @@ describe('beforeUpdateAppFormat', () => {
       appId: 'systemTool-weather',
       versionId: undefined,
       source: 'teamId:team-1',
+      lang: 'en',
       teamId: 'team-1'
     });
   });
