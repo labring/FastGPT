@@ -31,6 +31,11 @@ const UserSchema = new Schema({
     select: false
   },
   passwordUpdateTime: Date,
+  // 标记账号必须先修改密码才能正常使用。
+  mustChangePassword: {
+    type: Boolean,
+    default: false
+  },
   createTime: {
     type: Date,
     default: () => new Date()

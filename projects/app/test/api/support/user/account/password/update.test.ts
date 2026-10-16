@@ -273,7 +273,7 @@ describe('password/update API', () => {
     expect(invalidPasswordResponse.code).toBe(500);
   });
 
-  it('rejects root even with a valid password change session', async () => {
+  it('allows root to change password with a valid password change session', async () => {
     const body = await getBody();
     const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
       updatePasswordApi,
@@ -283,9 +283,10 @@ describe('password/update API', () => {
       }
     );
 
-    expect(response.code).toBe(500);
+    // root 不再被 isRoot 拦在入口：密码改由运行期维护，页面改密路径与普通用户一致。
+    expect(response.code).toBe(200);
     expect(
-      await MongoUser.exists({ _id: testUser._id, password: hashStr('old-password') })
+      await MongoUser.exists({ _id: testUser._id, password: hashStr('new-password') })
     ).toBeTruthy();
   });
 

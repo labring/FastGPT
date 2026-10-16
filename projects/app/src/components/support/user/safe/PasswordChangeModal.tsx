@@ -1,22 +1,10 @@
 import { useCallback, useEffect, useState, type KeyboardEvent } from 'react';
-import {
-  Box,
-  Button,
-  Center,
-  Flex,
-  FormControl,
-  FormErrorMessage,
-  Input,
-  Spinner,
-  Text,
-  VStack
-} from '@chakra-ui/react';
+import { Box, Button, Center, Flex, Spinner, Text, VStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { getErrResponse } from '@fastgpt/global/common/error/utils';
-import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 import type {
   PasswordAuthorizationResponse,
   SensitiveAccountVerificationBody
@@ -43,6 +31,7 @@ import {
   type VerificationSubmitResult,
   type WechatVerificationMaterial
 } from './AccountVerificationPanel';
+import PasswordForm, { type PasswordFormType } from './PasswordForm';
 
 type Authorization = Extract<PasswordAuthorizationResponse, { status: 'authorized' }>;
 type Stage =
@@ -51,11 +40,6 @@ type Stage =
   | { type: 'verification'; method: AccountVerificationMethod }
   | { type: 'password'; authorization: Authorization }
   | { type: 'unavailable' };
-
-type FormType = {
-  newPassword: string;
-  confirmPassword: string;
-};
 
 const isOAuthMethod = (
   method: AccountVerificationMethod
@@ -66,18 +50,6 @@ type Props = {
   showExpiredPrompt?: boolean;
   onClose?: () => void;
   onSuccess?: () => void | Promise<void>;
-};
-
-const invalidInputStyles = {
-  borderColor: 'red.500',
-  _focus: {
-    borderColor: 'red.500',
-    boxShadow: '0 0 0 1px var(--chakra-colors-red-500)'
-  },
-  _focusVisible: {
-    borderColor: 'red.500',
-    boxShadow: '0 0 0 1px var(--chakra-colors-red-500)'
-  }
 };
 
 /** 统一承接设置、修改和过期重置密码的短期授权状态机。 */
@@ -108,13 +80,7 @@ const PasswordChangeModal = ({
     return showExpiredPrompt ? { type: 'prompt' } : { type: 'authorizing' };
   });
   const [submitting, setSubmitting] = useState(false);
-  const {
-    register,
-    handleSubmit,
-    getValues,
-    reset,
-    formState: { errors }
-  } = useForm<FormType>({
+  const form = useForm<PasswordFormType>({
     defaultValues: { newPassword: '', confirmPassword: '' }
   });
 
@@ -233,12 +199,12 @@ const PasswordChangeModal = ({
 
   const closeFlow = () => {
     if (required) return;
-    reset();
+    form.reset();
     setStoredSession(undefined);
     onClose?.();
   };
 
-  const submitNewPassword = async ({ newPassword }: FormType) => {
+  const submitNewPassword = async ({ newPassword }: PasswordFormType) => {
     if (stage.type !== 'password') return;
     setSubmitting(true);
     try {
@@ -246,7 +212,7 @@ const PasswordChangeModal = ({
         newPassword,
         passwordChangeSession: stage.authorization.sessionId
       });
-      reset();
+      form.reset();
       setStoredSession(undefined);
       await initUserInfo();
       toast({ status: 'success', title: t('common:password_set_success') });
@@ -254,7 +220,7 @@ const PasswordChangeModal = ({
     } catch (error) {
       const errorResponse = getErrResponse(error);
       if (errorResponse?.statusText === UserErrEnum.passwordChangeAuthorizationInvalid) {
-        reset();
+        form.reset();
         setStoredSession(undefined);
         toast({
           status: 'error',
@@ -283,7 +249,7 @@ const PasswordChangeModal = ({
     ) {
       return;
     }
-    handleSubmit(submitNewPassword)();
+    form.handleSubmit(submitNewPassword)();
   };
 
   const title = (() => {
@@ -396,60 +362,12 @@ const PasswordChangeModal = ({
           <Text fontSize="lg" fontWeight="medium" lineHeight="26px">
             {title}
           </Text>
-          <VStack align="stretch" spacing={6} mt={6} onKeyDown={handlePasswordEnterKeyDown}>
-            <FormControl isInvalid={!!errors.newPassword}>
-              <Input
-                size="lg"
-                type="password"
-                bg="myGray.50"
-                _invalid={invalidInputStyles}
-                placeholder={t('common:password_new_placeholder')}
-                aria-label={t('common:password_new_placeholder')}
-                {...register('newPassword', {
-                  required: t('common:password_new_placeholder'),
-                  validate: (value) => checkPasswordRule(value) || t('common:password_tip')
-                })}
-              />
-              <Text
-                mt={2}
-                color={errors.newPassword ? 'red.500' : 'myGray.400'}
-                fontSize="mini"
-                fontWeight="medium"
-                lineHeight={4}
-              >
-                {t('common:password_tip')}
-              </Text>
-            </FormControl>
-            <FormControl isInvalid={!!errors.confirmPassword}>
-              <Input
-                size="lg"
-                type="password"
-                bg="myGray.50"
-                _invalid={invalidInputStyles}
-                placeholder={t('common:password_confirm_placeholder')}
-                aria-label={t('common:password_confirm_placeholder')}
-                {...register('confirmPassword', {
-                  required: t('common:password_confirm_placeholder'),
-                  validate: (value) =>
-                    value === getValues('newPassword') || t('common:password_not_match')
-                })}
-              />
-              {errors.confirmPassword?.message && (
-                <FormErrorMessage mt={2} fontSize="mini" lineHeight={4}>
-                  {errors.confirmPassword.message}
-                </FormErrorMessage>
-              )}
-            </FormControl>
-            <Button
-              size="lg"
-              w="100%"
-              fontSize="sm"
-              isLoading={submitting}
-              onClick={handleSubmit(submitNewPassword)}
-            >
-              {t('common:password_confirm_action')}
-            </Button>
-          </VStack>
+          <PasswordForm
+            form={form}
+            submitting={submitting}
+            onSubmit={form.handleSubmit(submitNewPassword)}
+            onKeyDown={handlePasswordEnterKeyDown}
+          />
         </Box>
       )}
     </MyModal>

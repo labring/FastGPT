@@ -38,8 +38,7 @@ export async function registerNodeInstrumentation() {
       { InitialErrorEnum },
       { validateAgentSandboxProxyEnv },
       { getReadableSystemResourceInfo },
-      { startSystemMigrationRunner },
-      { appEnv }
+      { startSystemMigrationRunner }
     ] = await Promise.all([
       import('@fastgpt/service/common/mongo/init'),
       import('@fastgpt/service/common/mongo/index'),
@@ -66,8 +65,7 @@ export async function registerNodeInstrumentation() {
       import('@fastgpt/service/common/system/constants'),
       import('@fastgpt/service/env.util'),
       import('@fastgpt/service/common/system/resource'),
-      import('@/migration/runner'),
-      import('@/env')
+      import('@/migration/runner')
     ]);
 
     console.log('System resources detected', getReadableSystemResourceInfo());
@@ -180,7 +178,7 @@ export async function registerNodeInstrumentation() {
     // 初始化系统用户
     await runInitializationStep({
       step: 'init-system-user',
-      action: () => initSystemUser({ defaultRootPassword: appEnv.DEFAULT_ROOT_PSW }),
+      action: () => initSystemUser(),
       logger,
       getErrText
     });

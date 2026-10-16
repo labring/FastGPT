@@ -13,7 +13,9 @@ import { createOAuthVerificationSchemaTuple } from '../../../../../support/user/
  * Routes: POST /proApi/support/user/account/password/verification/create
  *         POST /proApi/support/user/account/password/authorization
  *         POST /support/user/account/password/update
- * Description: 创建身份验证材料、一次性改密 Session 并更新当前用户密码
+ *         POST /support/user/account/password/forceUpdate
+ * Description: 创建身份验证材料、一次性改密 Session 并更新当前用户密码；
+ *              强制改密走独立端点，由服务端按 mustChangePassword 标记授权
  * Tags: ['User Login', 'Account Verification']
  * ============================================================================ */
 
@@ -223,6 +225,21 @@ export const UpdatePasswordBodySchema = z
   })
   .strict();
 export type UpdatePasswordBody = z.infer<typeof UpdatePasswordBodySchema>;
+
+// ===== Force update password（强制改密）=====
+/** 强制改密的提交体：只提交新密码，授权由服务端的 mustChangePassword 标记决定。 */
+export const ForceUpdatePasswordBodySchema = z
+  .object({
+    newPsw: z
+      .string()
+      .length(64)
+      .meta({
+        description: '客户端 SHA-256 处理后的新密码摘要',
+        example: 'a'.repeat(64)
+      })
+  })
+  .strict();
+export type ForceUpdatePasswordBody = z.infer<typeof ForceUpdatePasswordBodySchema>;
 
 // ===== Find Password (update by code) =====
 export const UpdatePasswordByCodeBodySchema = z.object({

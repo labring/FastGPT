@@ -28,3 +28,8 @@ export const updatePassword = ({
     newPsw: hashStr(newPassword),
     passwordChangeSession
   });
+
+export const forceUpdatePassword = ({ newPassword }: { newPassword: string }) =>
+  POST<void>('/support/user/account/password/forceUpdate', {
+    newPsw: hashStr(newPassword)
+  });

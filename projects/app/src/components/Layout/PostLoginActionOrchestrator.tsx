@@ -35,6 +35,10 @@ const ResetExpiredPswModal = dynamic(
   () => import('@/components/support/user/safe/ResetExpiredPswModal'),
   { ssr: false }
 );
+const ForceChangePasswordModal = dynamic(
+  () => import('@/components/support/user/safe/ForceChangePasswordModal'),
+  { ssr: false }
+);
 const SystemMsgModal = dynamic(() => import('@/components/support/user/inform/SystemMsgModal'), {
   ssr: false
 });
@@ -124,6 +128,9 @@ const POST_LOGIN_ACTION_VIEWS: Record<
   memberName: ({ onFinishOneTimeAction }) => (
     <ForceMemberNameModal onSuccess={() => onFinishOneTimeAction('memberName')} />
   ),
+  forcePasswordChange: ({ onFinishOneTimeAction }) => (
+    <ForceChangePasswordModal onFinish={() => onFinishOneTimeAction('forcePasswordChange')} />
+  ),
   resetExpiredPassword: ({ onFinishOneTimeAction }) => (
     <ResetExpiredPswModal enabled onFinish={() => onFinishOneTimeAction('resetExpiredPassword')} />
   ),
@@ -199,11 +206,12 @@ const PostLoginActionOrchestrator = ({
     contact: userInfo?.contact
   });
 
-  const baseReady = isPlus && !!userId && !!teamId;
+  const mustChangePassword = userInfo?.mustChangePassword === true;
+  const baseReady = !!userId && !!teamId;
   // 强制补齐不依赖未读通知数据，不能等该查询 settle；
   // 可选通知类动作需要查询结果判断 hasImportantInform，所以必须等 isFetched。
-  const canStartMandatory = baseReady && canRunMandatoryActions;
-  const canStartOptional = baseReady && canRunOptionalActions && unreadQueryFetched;
+  const canStartMandatory = (isPlus || mustChangePassword) && baseReady && canRunMandatoryActions;
+  const canStartOptional = isPlus && baseReady && canRunOptionalActions && unreadQueryFetched;
 
   const finishOneTimeAction = useCallback(
     (action: OneTimePostLoginAction) => {
@@ -234,7 +242,8 @@ const PostLoginActionOrchestrator = ({
     shouldShowContact,
     contactHandled,
     isPlus,
-    hasImportantInform: importantInforms.length > 0
+    hasImportantInform: importantInforms.length > 0,
+    mustChangePassword
   });
 
   useEffect(() => {
