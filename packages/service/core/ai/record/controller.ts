@@ -8,7 +8,6 @@ export const createLLMRequestId = () => {
 };
 
 const base64OmittedPlaceholder = '[base64 omitted]';
-const base64LikeKeySet = new Set(['base64', 'data']);
 const fullBase64Regex = /^[A-Za-z0-9+/=_-]+$/;
 const dataUrlPrefix = 'data:';
 const base64UrlMarker = ';base64,';
@@ -33,13 +32,8 @@ const sanitizeDataUrlBase64 = (value: string) => {
   return `${value.slice(0, markerIndex + base64UrlMarker.length)}${base64OmittedPlaceholder}`;
 };
 
-const sanitizeString = (value: string, key?: string) => {
+const sanitizeString = (value: string) => {
   const sanitizedDataUrl = sanitizeDataUrlBase64(value);
-
-  if (base64LikeKeySet.has(key?.toLowerCase() ?? '') && isBase64LikeString(sanitizedDataUrl)) {
-    return base64OmittedPlaceholder;
-  }
-
   return isBase64LikeString(sanitizedDataUrl) ? base64OmittedPlaceholder : sanitizedDataUrl;
 };
 
@@ -54,10 +48,10 @@ export const sanitizeLLMRequestRecordPayload = <T>(
   payload: T,
   { omitErrorStack = false }: { omitErrorStack?: boolean } = {}
 ): T => {
-  /** 递归只携带字段上下文，整个快照共享同一组日志/入库选项，避免嵌套 cause 漏清理。 */
-  const sanitize = (value: unknown, key?: string): unknown => {
+  /** 整个快照共享同一组日志/入库选项，避免嵌套 cause 漏清理。 */
+  const sanitize = (value: unknown): unknown => {
     if (typeof value === 'string') {
-      return sanitizeString(value, key);
+      return sanitizeString(value);
     }
 
     if (!value || typeof value !== 'object') {
@@ -85,14 +79,11 @@ export const sanitizeLLMRequestRecordPayload = <T>(
     }
 
     if (Array.isArray(value)) {
-      return value.map((item) => sanitize(item));
+      return value.map(sanitize);
     }
 
     return Object.fromEntries(
-      Object.entries(value).map(([entryKey, entryValue]) => [
-        entryKey,
-        sanitize(entryValue, entryKey)
-      ])
+      Object.entries(value).map(([entryKey, entryValue]) => [entryKey, sanitize(entryValue)])
     );
   };
 

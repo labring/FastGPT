@@ -1506,8 +1506,7 @@ describe('createLLMResponse', () => {
             error: expectedError
           })
         );
-        expect(mockSaveLLMRequestRecord).toHaveBeenCalledTimes(1);
-        expect(mockSaveLLMRequestRecord).toHaveBeenCalledWith(
+        expect(mockSaveLLMRequestRecord).toHaveBeenCalledExactlyOnceWith(
           expect.objectContaining({
             requestId: 'test-request-id',
             body: expect.objectContaining({ messages, tools }),
@@ -1981,8 +1980,7 @@ describe('createLLMResponse', () => {
         })
       ).rejects.toThrow('Some error');
 
-      expect(mockSaveLLMRequestRecord).toHaveBeenCalledTimes(1);
-      expect(mockSaveLLMRequestRecord).toHaveBeenCalledWith(
+      expect(mockSaveLLMRequestRecord).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining({
           requestId: 'test-request-id',
           response: expect.objectContaining({

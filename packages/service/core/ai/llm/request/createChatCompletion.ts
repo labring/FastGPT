@@ -87,21 +87,18 @@ export const createChatCompletion = async ({
       return Promise.reject(error);
     }
 
+    const errorSnapshot = sanitizeLLMRequestRecordPayload({
+      ...(requestMeta.usedUserOpenAIKey && { baseUrl: requestMeta.baseUrl }),
+      request: body,
+      error
+    });
     if (requestMeta.usedUserOpenAIKey) {
       // 用户 key 错误需要转成面向用户的提示，避免直接暴露底层 SDK 错误结构。
-      logger.warn(
-        'User AI API error',
-        sanitizeLLMRequestRecordPayload({
-          baseUrl: requestMeta.baseUrl,
-          request: body,
-          error
-        })
-      );
+      logger.warn('User AI API error', errorSnapshot);
       return Promise.reject(`您的 OpenAI key 出错了: ${getErrText(error)}`);
     }
 
-    // 与请求记录共用清洗，只缩减日志快照中的媒体内容，真实请求和原始错误保持不变。
-    logger.error('LLM response error', sanitizeLLMRequestRecordPayload({ request: body, error }));
+    logger.error('LLM response error', errorSnapshot);
     return Promise.reject(normalizeRelayNoChannelError(error));
   }
 };

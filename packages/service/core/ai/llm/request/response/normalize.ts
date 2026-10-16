@@ -40,7 +40,7 @@ export const normalizeNativeToolCalls = ({
   error,
   protocolError
 }: {
-  toolCalls: (ChatCompletionMessageToolCall & { index?: number; upstreamId?: string })[];
+  toolCalls: LLMToolCallErrorContext['receivedToolCalls'];
   toolNames: Set<string>;
   finish_reason: CompletionFinishReason;
   error?: unknown;
@@ -51,10 +51,8 @@ export const normalizeNativeToolCalls = ({
    * 统一转成字符串，避免校验阶段直接崩溃；对象参数序列化后仍可作为工具入参使用。
    */
   const toToolCallText = (value: unknown) => {
-    if (typeof value === 'string') return value;
     if (value === undefined || value === null) return '';
-    if (typeof value === 'object') return JSON.stringify(value);
-    return String(value);
+    return typeof value === 'object' ? JSON.stringify(value) : String(value);
   };
 
   const normalizedCalls = toolCalls
@@ -71,28 +69,27 @@ export const normalizeNativeToolCalls = ({
     })
     .filter((call) => toolNames.has(call.function.name));
 
-  if (error) {
-    // 即使同时出现空工具或身份冲突，也不能用已知工具错误覆盖接口返回的实际错误。
-    return { toolCalls: normalizedCalls, finish_reason, error };
-  }
-
-  if (!protocolError && (finish_reason !== 'tool_calls' || normalizedCalls.length > 0)) {
-    return { toolCalls: normalizedCalls, finish_reason, error };
-  }
-
-  return {
-    toolCalls: protocolError ? [] : normalizedCalls,
-    finish_reason: 'error',
-    error: new LLMToolCallError({
-      finish_reason,
-      expectedToolNames: [...toolNames],
-      receivedToolCalls: toolCalls,
-      ...(protocolError && {
-        reason: protocolError.message,
-        conflictingToolCall: protocolError.toolCall
+  // 接口错误优先；仅在没有接口错误且命中已知工具异常时生成兜底。
+  if (
+    !error &&
+    (protocolError || (finish_reason === 'tool_calls' && normalizedCalls.length === 0))
+  ) {
+    return {
+      toolCalls: [],
+      finish_reason: 'error',
+      error: new LLMToolCallError({
+        finish_reason,
+        expectedToolNames: [...toolNames],
+        receivedToolCalls: toolCalls,
+        ...(protocolError && {
+          reason: protocolError.message,
+          conflictingToolCall: protocolError.toolCall
+        })
       })
-    })
-  };
+    };
+  }
+
+  return { toolCalls: normalizedCalls, finish_reason, error };
 };
 
 /**

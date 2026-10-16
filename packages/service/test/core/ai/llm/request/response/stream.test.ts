@@ -752,6 +752,27 @@ describe('createStreamResponse', () => {
   });
 
   describe('stream lifecycle', () => {
+    it.each(modes)(
+      'should retain parsed output and usage when a consumer callback throws in $mode',
+      async ({ body, prefix }) => {
+        const error = new Error('consumer callback failed');
+        const callbacks = createCallbacks();
+        callbacks.onStreaming.mockImplementation(() => {
+          throw error;
+        });
+        const { response } = createStream([
+          { ...chunk({ content: `${prefix}hello` }), usage },
+          chunk({ content: 'must not be read' }, 'stop')
+        ]);
+        const result = await createStreamResponse({ body, response, ...callbacks });
+
+        expect(result.error).toBe(error);
+        expect(result.answerText).toBe('hello');
+        expect(result.usage).toEqual(usage);
+        expect(callbacks.onStreaming).toHaveBeenCalledExactlyOnceWith({ text: 'hello' });
+      }
+    );
+
     it.each(['abort', 'error'] as const)(
       'should retain unfinished tool arguments on %s without synthesizing parameters',
       async (termination) => {

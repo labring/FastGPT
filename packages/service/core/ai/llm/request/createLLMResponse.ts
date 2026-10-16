@@ -215,20 +215,18 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       });
       return i18nT('chat:LLM_model_response_empty');
     };
-    const isEmptyToolCallsFinish = finish_reason === 'tool_calls' && !toolCalls?.length;
     const isNotResponse =
       !answerText &&
       !reasoningText &&
       !toolCalls?.length &&
       !error &&
-      (finish_reason === 'stop' || !finish_reason || isEmptyToolCallsFinish);
+      (finish_reason === 'stop' || !finish_reason || finish_reason === 'tool_calls');
     const responseEmptyTip = isNotResponse ? getEmptyResponseTip() : undefined;
 
-    const invalidToolResponse = (() => {
-      if (!(error instanceof LLMToolCallError)) return;
-      if (error.cause.finish_reason !== 'tool_calls') return;
-      return error.cause;
-    })();
+    const invalidToolResponse =
+      error instanceof LLMToolCallError && error.cause.finish_reason === 'tool_calls'
+        ? error.cause
+        : undefined;
     // 连续输出时保留之前轮次的工具，失败轮次则使用过滤前的原始工具输出。
     const recordToolCalls = invalidToolResponse
       ? [...(toolCalls ?? []), ...invalidToolResponse.receivedToolCalls]
