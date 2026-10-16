@@ -4,7 +4,11 @@ import { setImmediate } from 'node:timers/promises';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import type { ChatCompletionMessageToolCall } from '@fastgpt/global/core/ai/llm/type';
+import type {
+  ChatCompletionMessageToolCall,
+  CompletionFinishReason,
+  CompletionUsage
+} from '@fastgpt/global/core/ai/llm/type';
 import type { LLMRequestRecordSchemaType } from '@fastgpt/global/openapi/core/ai/api';
 
 // 只替换客户端目的地和 tokenizer worker；请求、SDK、解析器、记录和 loop 均运行真实实现。
@@ -56,12 +60,37 @@ const call = (name: string): ChatCompletionMessageToolCall => ({
   type: 'function',
   function: { name, arguments: '{"q":"FastGPT"}' }
 });
+type ToolDelta = {
+  index?: number | null;
+  id?: string | null;
+  type?: 'function';
+  function?: { name?: string; arguments?: string };
+};
+type Delta = {
+  role?: string;
+  content?: string | null;
+  reasoning_content?: string;
+  tool_calls?: ToolDelta[] | null;
+};
+type Chunk = {
+  choices?: { index?: number; delta?: Delta; finish_reason?: CompletionFinishReason }[];
+  usage?: CompletionUsage;
+};
+const chunk = (delta: Delta = {}, finish_reason: CompletionFinishReason = null): Chunk => ({
+  choices: [{ index: 0, delta, finish_reason }]
+});
+const usageChunk: Chunk = { choices: [], usage };
 type Round = {
   toolCalls?: ChatCompletionMessageToolCall[] | null;
   text?: string;
   reasoning?: string;
   finish?: 'tool_calls' | 'length' | 'stop';
   upstreamError?: boolean;
+  chunks?: Chunk[];
+  wireMode?: 'fragmented' | 'bytewise' | 'coalesced';
+  omitDone?: boolean;
+  malformedTail?: boolean;
+  disconnect?: Promise<void>;
 };
 type Request = { stream?: boolean; model?: string; tools?: unknown[]; messages?: unknown[] };
 let server: Server;
@@ -110,38 +139,55 @@ beforeEach(async () => {
     }
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' });
     const frames = [
-      {
-        ...metadata,
-        object: 'chat.completion.chunk',
-        choices: [
-          {
-            index: 0,
-            delta: {
-              ...output,
-              ...(round.toolCalls !== undefined && {
-                tool_calls: round.toolCalls?.map((tool, index) => ({ ...tool, index })) ?? null
-              })
-            },
-            finish_reason: null
-          }
-        ]
-      },
-      {
-        ...metadata,
-        object: 'chat.completion.chunk',
-        choices: [{ index: 0, delta: {}, finish_reason: finish }]
-      },
-      { ...metadata, object: 'chat.completion.chunk', choices: [], usage },
+      ...(round.chunks ?? [
+        chunk({
+          ...output,
+          ...(round.toolCalls !== undefined && {
+            tool_calls: round.toolCalls?.map((tool, index) => ({ ...tool, index })) ?? null
+          })
+        }),
+        chunk({}, finish),
+        usageChunk
+      ]),
       ...(round.upstreamError ? [{ error }] : [])
     ];
-    for (const frame of frames) {
-      // 刻意把 SSE JSON 跨两次异步 write 发送，验证 SDK 的缓冲与帧解析。
-      const encoded = `data: ${JSON.stringify(frame)}\n\n`;
-      res.write(encoded.slice(0, 19));
-      await setImmediate();
-      res.write(encoded.slice(19));
+    const bytewise = round.wireMode === 'bytewise';
+    const newline = bytewise ? '\r\n' : '\n';
+    const encodedFrames = frames.map((frame) => {
+      const json = JSON.stringify(
+        { ...metadata, object: 'chat.completion.chunk', ...frame },
+        null,
+        bytewise ? 2 : undefined
+      );
+      // bytewise 同时覆盖 CRLF、多行 data、心跳和 UTF-8 跨字节边界的解码。
+      return `${bytewise ? `: heartbeat${newline}` : ''}${json
+        .split('\n')
+        .map((line) => `data: ${line}`)
+        .join(newline)}${newline}${newline}`;
+    });
+    if (round.malformedTail) encodedFrames.push(`data: {invalid json${newline}${newline}`);
+    const done = round.omitDone ? '' : `data: [DONE]${newline}${newline}`;
+    if (round.wireMode === 'coalesced' && !round.disconnect) {
+      res.end(encodedFrames.join('') + done);
+      return;
     }
-    res.end('data: [DONE]\n\n');
+    for (const encoded of encodedFrames) {
+      const bytes = Buffer.from(encoded);
+      for (let offset = 0; offset < bytes.length; ) {
+        if (res.destroyed) return;
+        const end = bytewise ? offset + 1 : offset === 0 ? 19 : bytes.length;
+        res.write(bytes.subarray(offset, end));
+        offset = end;
+        await setImmediate();
+      }
+    }
+    if (round.disconnect) {
+      // 等待测试确认客户端已消费前面的帧，避免连接过早断开而退化成建连失败。
+      await round.disconnect;
+      res.destroy();
+      return;
+    }
+    res.end(done);
   });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -375,4 +421,579 @@ describe('createLLMResponse HTTP/SSE contract', () => {
       for (const id of result.requestIds) await readRecord(id);
     }
   );
+
+  describe('stream chunk boundaries', () => {
+    const streamTools = [
+      ...tools,
+      {
+        type: 'function' as const,
+        function: { name: 'search_content', parameters: { type: 'object' } }
+      }
+    ];
+    const toolDelta = ({
+      index,
+      id,
+      name,
+      args
+    }: {
+      index?: number | null;
+      id?: string | null;
+      name?: string;
+      args?: string;
+    }): ToolDelta => ({ index, id, function: { name, arguments: args } });
+    const toolChunk = (fields: Parameters<typeof toolDelta>[0]) =>
+      chunk({ tool_calls: [toolDelta(fields)] });
+    const end = chunk({}, 'tool_calls');
+    const payload = JSON.stringify({ q: '中文😊 "quote"\\path\nline', values: [0, false, null] });
+    const conflict = [
+      toolChunk({ index: 0, id: 'a', name: 'search', args: '{' }),
+      toolChunk({ index: 0, name: 'other', args: '}' }),
+      chunk({
+        content: 'After conflict.',
+        tool_calls: [toolDelta({ index: 1, id: 'b', name: 'search', args: '{}' })]
+      }),
+      end,
+      usageChunk
+    ];
+    type StreamCase = {
+      label: string;
+      chunks: Chunk[];
+      expectedTools: { id?: string; name?: string; args: string }[];
+      text?: string;
+      reasoning?: string;
+      finishReason?: CompletionFinishReason;
+      error?: 'missing' | 'protocol' | 'upstream';
+      startedCalls?: number;
+      upstreamError?: boolean;
+      wireMode?: Round['wireMode'];
+    };
+
+    /** 同时核对最终结果、流事件重放和真实 Mongo 记录，防止串参、漏参或重复派发。 */
+    const assertStreamCase = async (scenario: StreamCase) => {
+      rounds.push(scenario);
+      const log = vi
+        .spyOn(getLogger(LogCategories.MODULE.AI.LLM), 'error')
+        .mockImplementation(() => {});
+      const replay = new Map<string, string>();
+      const onToolCall = vi.fn(({ call }: { call: ChatCompletionMessageToolCall }) => {
+        expect(replay.has(call.id)).toBe(false);
+        replay.set(call.id, call.function.arguments);
+      });
+      const onToolParam = vi.fn(
+        ({ call, argsDelta }: { call: ChatCompletionMessageToolCall; argsDelta: string }) => {
+          expect(replay.has(call.id)).toBe(true);
+          replay.set(call.id, replay.get(call.id)! + argsDelta);
+        }
+      );
+      const onStreaming = vi.fn();
+      const onReasoning = vi.fn();
+      const result = await createLLMResponse({
+        teamId,
+        throwError: false,
+        maxRetries: 0,
+        body: { ...body(true), tools: streamTools },
+        onToolCall,
+        onToolParam,
+        onStreaming,
+        onReasoning
+      });
+      expect(received).toHaveLength(1);
+      expect(result.answerText).toBe(scenario.text ?? '');
+      expect(result.reasoningText).toBe(scenario.reasoning ?? '');
+      expect(onStreaming.mock.calls.map(([event]) => event.text).join('')).toBe(result.answerText);
+      expect(onReasoning.mock.calls.map(([event]) => event.text).join('')).toBe(
+        result.reasoningText
+      );
+      expect(result.responseEmptyTip).toBeUndefined();
+      expect(result.usage).toMatchObject({ inputTokens: 17, outputTokens: 4 });
+      const parsedError = scenario.error === 'protocol' || scenario.error === 'upstream';
+      expect(result.finish_reason).toBe(
+        scenario.finishReason ?? (parsedError ? 'error' : 'tool_calls')
+      );
+      expect(result.toolCalls ?? []).toEqual(
+        scenario.expectedTools.map((tool) => ({
+          id: tool.id ?? expect.any(String),
+          type: 'function',
+          function: { name: tool.name ?? 'search', arguments: tool.args }
+        }))
+      );
+      const missingLogs = log.mock.calls.filter(
+        ([message]) => String(message) === 'LLM tool calls missing'
+      );
+      if (scenario.error) {
+        if (scenario.error === 'upstream') {
+          // SDK 的 error.error 会按现有链路保留为普通对象，验证原始信息而非错误类。
+          expect(result.error).toEqual({
+            message: 'upstream simulated failure',
+            code: 'UPSTREAM_SIMULATED'
+          });
+        } else {
+          expect(result.error).toBeInstanceOf(Error);
+        }
+        if (scenario.error === 'missing') {
+          expect(result.error.message).toBe(fixedError);
+          expect(missingLogs).toHaveLength(1);
+          expect(onToolCall).not.toHaveBeenCalled();
+        } else {
+          expect(result.error.message).toContain(
+            scenario.error === 'protocol' ? 'tool name changed' : 'upstream simulated failure'
+          );
+          expect(missingLogs).toEqual([]);
+          expect(onToolCall).toHaveBeenCalledTimes(scenario.startedCalls ?? 1);
+          expect(onToolParam).not.toHaveBeenCalled();
+        }
+      } else {
+        expect(result.error).toBeUndefined();
+        expect(missingLogs).toEqual([]);
+        expect(onToolCall).toHaveBeenCalledTimes(scenario.expectedTools.length);
+        for (const tool of result.toolCalls ?? []) {
+          const args = replay.get(tool.id)!;
+          expect(args.trim() ? args : '{}').toBe(tool.function.arguments);
+        }
+      }
+      const record = await readRecord(result.requestId);
+      expect(record.response.finish_reason).toBe(result.finish_reason);
+      expect(record.response.toolCalls ?? []).toEqual(result.toolCalls ?? []);
+      expect(record.response.answerText).toBe(result.answerText || undefined);
+      expect(record.response.reasoningText).toBe(result.reasoningText || undefined);
+      expect(record.response.usage).toMatchObject({ inputTokens: 17, outputTokens: 4 });
+      if (parsedError) expect(record.response.error.message).toBe(result.error.message);
+      else expect(record.response.error).toBeUndefined();
+    };
+
+    const cases: StreamCase[] = [
+      {
+        label: 'arguments split at every UTF-16 code unit',
+        chunks: [
+          toolChunk({ index: 0, id: 'a', name: 'search' }),
+          ...payload.split('').map((args) => toolChunk({ index: 0, args })),
+          end,
+          usageChunk
+        ],
+        expectedTools: [{ id: 'a', args: payload }]
+      },
+      {
+        label: 'arguments buffered before the complete name',
+        chunks: [
+          toolChunk({ index: 0, id: 'a', args: '{"q":' }),
+          toolChunk({ index: 0, args: '1}' }),
+          toolChunk({ index: 0, name: 'functions.search' }),
+          end,
+          usageChunk
+        ],
+        expectedTools: [{ id: 'a', args: '{"q":1}' }]
+      },
+      {
+        label: 'final arguments, finish and cumulative usage share one frame',
+        chunks: [
+          toolChunk({ index: 0, id: 'a', name: 'search', args: '{"q":' }),
+          { choices: [], usage: { prompt_tokens: 17, completion_tokens: 1, total_tokens: 18 } },
+          {
+            ...chunk({ tool_calls: [toolDelta({ index: 0, args: '1}' })] }, 'tool_calls'),
+            usage
+          }
+        ],
+        expectedTools: [{ id: 'a', args: '{"q":1}' }]
+      },
+      {
+        label: 'upstream id arrives after the start event',
+        chunks: [
+          chunk({ tool_calls: [{ index: 0 }] }),
+          toolChunk({ index: 0, name: 'search', args: '{"q":' }),
+          toolChunk({ index: 0, id: 'late', args: '1' }),
+          toolChunk({ index: 0, args: '}' }),
+          end,
+          usageChunk
+        ],
+        expectedTools: [{ args: '{"q":1}' }]
+      },
+      {
+        label: 'upstream id arrives before the name',
+        chunks: [
+          toolChunk({ index: 0, args: '{"q":' }),
+          toolChunk({ index: 0, id: 'late', name: 'search', args: '1' }),
+          toolChunk({ index: 0, args: '}' }),
+          end,
+          usageChunk
+        ],
+        expectedTools: [{ id: 'late', args: '{"q":1}' }]
+      },
+      {
+        label: 'repeated full names with empty and null ids',
+        chunks: [
+          toolChunk({ index: 0, id: 'a', name: 'functions.search', args: '{"q":' }),
+          toolChunk({ index: 0, id: '', name: 'search', args: '1' }),
+          toolChunk({ index: 0, id: null, name: 'functions.search', args: '}' }),
+          end,
+          usageChunk
+        ],
+        expectedTools: [{ id: 'a', args: '{"q":1}' }]
+      },
+      {
+        label: 'whitespace arguments normalize once',
+        chunks: [
+          toolChunk({ index: 0, id: 'a', name: 'search', args: ' ' }),
+          toolChunk({ index: 0, args: '\t' }),
+          end,
+          usageChunk
+        ],
+        expectedTools: [{ id: 'a', args: '{}' }]
+      },
+      {
+        label: 'parallel tools and reversed array positions',
+        chunks: [
+          chunk({
+            tool_calls: [
+              toolDelta({ index: 1, id: 'b', name: 'search_content', args: '{"b":' }),
+              toolDelta({ index: 0, id: 'a', name: 'search', args: '{"a":' })
+            ]
+          }),
+          chunk({
+            tool_calls: [toolDelta({ index: 0, args: '1}' }), toolDelta({ index: 1, args: '2}' })]
+          }),
+          end,
+          usageChunk
+        ],
+        expectedTools: [
+          { id: 'a', args: '{"a":1}' },
+          { id: 'b', name: 'search_content', args: '{"b":2}' }
+        ]
+      },
+      {
+        label: 'same index switches to a new id',
+        chunks: [
+          toolChunk({ index: 0, id: 'a', name: 'search', args: '{"a":' }),
+          toolChunk({ index: 0, args: '1}' }),
+          toolChunk({ index: 0, id: 'b', name: 'search_content', args: '{"b":' }),
+          toolChunk({ index: 0, args: '2}' }),
+          end,
+          usageChunk
+        ],
+        expectedTools: [
+          { id: 'a', args: '{"a":1}' },
+          { id: 'b', name: 'search_content', args: '{"b":2}' }
+        ]
+      },
+      {
+        label: 'explicit old id returns to the old call after a switch',
+        chunks: [
+          toolChunk({ index: 0, id: 'a', name: 'search', args: '{"a":' }),
+          toolChunk({ index: 0, id: 'b', name: 'search_content', args: '{"b":' }),
+          toolChunk({ index: 0, id: 'a', args: '1}' }),
+          toolChunk({ index: 0, args: '2}' }),
+          end,
+          usageChunk
+        ],
+        expectedTools: [
+          { id: 'a', args: '{"a":1}' },
+          { id: 'b', name: 'search_content', args: '{"b":2}' }
+        ]
+      },
+      {
+        label: 'parallel calls without indexes use ids',
+        chunks: [
+          toolChunk({ index: null, id: 'a', name: 'search', args: '{"a":' }),
+          toolChunk({ id: 'b', name: 'search_content', args: '{"b":' }),
+          chunk({
+            tool_calls: [toolDelta({ id: 'b', args: '2}' }), toolDelta({ id: 'a', args: '1}' })]
+          }),
+          end,
+          usageChunk
+        ],
+        expectedTools: [
+          { id: 'a', args: '{"a":1}' },
+          { id: 'b', name: 'search_content', args: '{"b":2}' }
+        ]
+      },
+      {
+        label: 'sparse indexes sort independently of start order',
+        chunks: [
+          toolChunk({ index: 7, id: 'a', name: 'search', args: '{"a":1}' }),
+          toolChunk({ index: 2, id: 'b', name: 'search_content', args: '{"b":2}' }),
+          end,
+          usageChunk
+        ],
+        expectedTools: [
+          { id: 'b', name: 'search_content', args: '{"b":2}' },
+          { id: 'a', args: '{"a":1}' }
+        ]
+      },
+      {
+        label: 'empty frames and unknown tools do not consume valid deltas',
+        chunks: [
+          {},
+          { choices: [] },
+          { choices: [{}] },
+          chunk({ tool_calls: [] }),
+          toolChunk({ index: 1, id: 'unknown', name: 'other', args: '{' }),
+          toolChunk({ index: 0, id: 'a', name: 'search', args: '{"q":' }),
+          toolChunk({ index: 1, args: '}' }),
+          toolChunk({ index: 0, args: '1}' }),
+          end,
+          {},
+          usageChunk
+        ],
+        expectedTools: [{ id: 'a', args: '{"q":1}' }]
+      },
+      {
+        label: 'reasoning, text and parameters interleave',
+        chunks: [
+          chunk({ reasoning_content: '思考' }),
+          toolChunk({ index: 0, id: 'a', name: 'search', args: '{"q":' }),
+          chunk({ reasoning_content: '继续' }),
+          chunk({ content: '答案😊', tool_calls: [toolDelta({ index: 0, args: '"中文😊"}' })] }),
+          end,
+          usageChunk
+        ],
+        text: '答案😊',
+        reasoning: '思考继续',
+        expectedTools: [{ id: 'a', args: '{"q":"中文😊"}' }]
+      },
+      {
+        label: 'think tags span multiple chunks',
+        chunks: [
+          chunk({ content: '<thi' }),
+          chunk({ content: 'nk>思考' }),
+          chunk({ content: '过程</th' }),
+          chunk({ content: 'ink>答案😊' }),
+          chunk({}, 'stop'),
+          usageChunk
+        ],
+        text: '答案😊',
+        reasoning: '思考过程',
+        finishReason: 'stop',
+        expectedTools: []
+      },
+      {
+        label: 'unknown tool parameters are still rejected at tool_calls finish',
+        chunks: [
+          toolChunk({ index: 0, id: 'a', name: 'other', args: '{"q":' }),
+          toolChunk({ index: 0, args: '1}' }),
+          end,
+          usageChunk
+        ],
+        expectedTools: [],
+        error: 'missing'
+      },
+      {
+        label: 'changed name suppresses later tool events but retains text and usage',
+        chunks: conflict,
+        text: 'After conflict.',
+        expectedTools: [],
+        error: 'protocol'
+      },
+      {
+        label: 'name fragments are protocol errors',
+        chunks: [
+          toolChunk({ index: 0, id: 'a', name: 'sea', args: '{' }),
+          toolChunk({ index: 0, name: 'rch', args: '}' }),
+          end,
+          usageChunk
+        ],
+        expectedTools: [],
+        error: 'protocol',
+        startedCalls: 0
+      },
+      {
+        label: 'upstream error takes priority over a tool name conflict',
+        chunks: conflict,
+        text: 'After conflict.',
+        expectedTools: [],
+        error: 'upstream',
+        upstreamError: true
+      },
+      {
+        label: 'anonymous fragments are not guessed into one call',
+        chunks: [
+          toolChunk({ name: 'search', args: '{"q":' }),
+          toolChunk({ args: '1}' }),
+          end,
+          usageChunk
+        ],
+        expectedTools: [{ args: '{"q":' }]
+      },
+      {
+        label: 'length preserves incomplete arguments without synthetic braces',
+        chunks: [
+          toolChunk({ index: 0, id: 'a', name: 'search', args: '{"q":' }),
+          chunk({}, 'length'),
+          usageChunk
+        ],
+        expectedTools: [{ id: 'a', args: '{"q":' }],
+        finishReason: 'length'
+      }
+    ];
+
+    it.each(
+      cases.flatMap((scenario) =>
+        (['fragmented', 'bytewise'] as const).map((wireMode) => ({ ...scenario, wireMode }))
+      )
+    )('$label, wire=$wireMode', assertStreamCase);
+
+    it.each([1, 2, 3, 4, 5, 6, 7, 8])(
+      'reassembles six parallel calls with deterministic seed=%s',
+      async (seed) => {
+        // 固定种子同时改变参数分片、调用交错和数组批次；失败时可按 seed 精确重放。
+        let state = seed;
+        const random = () => (state = (Math.imul(state, 1664525) + 1013904223) >>> 0);
+        const tasks = Array.from({ length: 6 }, (_, index) => {
+          const args = JSON.stringify({
+            q: `call ${index}: 中文😊 "quote"\\path\nline`,
+            values: [index, false, null]
+          });
+          const parts: string[] = [];
+          for (let offset = 0; offset < args.length; ) {
+            const length = (random() % 7) + 1;
+            parts.push(args.slice(offset, offset + length));
+            offset += length;
+          }
+          return { id: `seed_${seed}_${index}`, index: index * 3 + 1, args, parts, next: 0 };
+        });
+        const chunks: Chunk[] = [];
+        while (tasks.some((task) => task.next < task.parts.length)) {
+          const deltas: ToolDelta[] = [];
+          const batchSize = (random() % 3) + 1;
+          for (let i = 0; i < batchSize; i++) {
+            const pending = tasks.filter((task) => task.next < task.parts.length);
+            if (!pending.length) break;
+            const task = pending[random() % pending.length];
+            const first = task.next === 0;
+            deltas.push(
+              toolDelta({
+                index: task.index,
+                ...(first && { id: task.id }),
+                ...((first || random() % 5 === 0) && {
+                  name: first ? 'functions.search' : 'search'
+                }),
+                args: task.parts[task.next++]
+              })
+            );
+          }
+          chunks.push(chunk({ tool_calls: deltas }));
+          if (chunks.length % 7 === 0) chunks.push({ choices: [] });
+        }
+        await assertStreamCase({
+          label: `seed ${seed}`,
+          chunks: [...chunks, end, usageChunk],
+          wireMode: 'coalesced',
+          expectedTools: tasks.map((task) => ({ id: task.id, args: task.args }))
+        });
+      }
+    );
+
+    it.each([
+      {
+        label: 'missing DONE with explicit finish',
+        finish: true,
+        done: false,
+        expected: 'tool_calls'
+      },
+      { label: 'missing finish with DONE', finish: false, done: true, expected: 'abnormal_close' },
+      {
+        label: 'missing both finish and DONE',
+        finish: false,
+        done: false,
+        expected: 'abnormal_close'
+      }
+    ])('$label preserves generated tools', async ({ finish, done, expected }) => {
+      rounds.push({
+        chunks: [
+          toolChunk({ index: 0, id: 'a', name: 'search', args: '{}' }),
+          ...(finish ? [end] : []),
+          usageChunk
+        ],
+        omitDone: !done
+      });
+      const result = await createLLMResponse({ teamId, throwError: false, body: body(true) });
+      expect(result.error).toBeUndefined();
+      expect(result.finish_reason).toBe(expected);
+      expect(result.toolCalls?.[0].function.arguments).toBe('{}');
+      expect(result.usage).toMatchObject({ inputTokens: 17, outputTokens: 4 });
+      const record = await readRecord(result.requestId);
+      expect(record.response.finish_reason).toBe(expected);
+      expect(record.response.toolCalls).toEqual(result.toolCalls);
+      expect(record.response.usage).toMatchObject({ inputTokens: 17, outputTokens: 4 });
+    });
+
+    it('keeps an upstream stream failure instead of generating a missing-tools error', async () => {
+      const receivedContent = Promise.withResolvers<void>();
+      rounds.push({
+        chunks: [usageChunk, chunk({ content: 'Partial answer.' })],
+        disconnect: receivedContent.promise
+      });
+      const log = vi
+        .spyOn(getLogger(LogCategories.MODULE.AI.LLM), 'error')
+        .mockImplementation(() => {});
+      const result = await createLLMResponse({
+        teamId,
+        throwError: false,
+        maxRetries: 0,
+        body: body(true),
+        onStreaming: () => receivedContent.resolve()
+      });
+      expect(received).toHaveLength(1);
+      expect(result.error).toBeInstanceOf(Error);
+      expect(result.error.message).not.toBe(fixedError);
+      expect(result.finish_reason).toBe('error');
+      expect(result.answerText).toBe('Partial answer.');
+      expect(result.usage).toMatchObject({ inputTokens: 17, outputTokens: 4 });
+      expect(log.mock.calls.some(([message]) => String(message) === 'LLM tool calls missing')).toBe(
+        false
+      );
+      const record = await readRecord(result.requestId);
+      expect(record.response.error).toBeDefined();
+      expect(record.response.answerText).toBe(result.answerText);
+      expect(record.response.usage).toMatchObject({ inputTokens: 17, outputTokens: 4 });
+    });
+
+    it('retains received text and usage when an SSE JSON frame is malformed', async () => {
+      rounds.push({
+        chunks: [chunk({ content: 'Partial answer.' }), usageChunk],
+        malformedTail: true
+      });
+      const result = await createLLMResponse({ teamId, throwError: false, body: body(true) });
+      expect(result.error.name).toBe('SyntaxError');
+      expect(result.error.message).not.toBe(fixedError);
+      expect(result.finish_reason).toBe('error');
+      expect(result.answerText).toBe('Partial answer.');
+      expect(result.usage).toMatchObject({ inputTokens: 17, outputTokens: 4 });
+      const record = await readRecord(result.requestId);
+      expect(record.response.error.name).toBe('SyntaxError');
+    });
+
+    it('cancels after the start event without appending queued parameters', async () => {
+      rounds.push({
+        chunks: [
+          usageChunk,
+          toolChunk({ index: 0, id: 'a', name: 'search', args: '{"q":' }),
+          toolChunk({ index: 0, args: '1}' }),
+          end
+        ],
+        wireMode: 'coalesced'
+      });
+      let aborted = false;
+      const onToolCall = vi.fn(() => {
+        aborted = true;
+      });
+      const onToolParam = vi.fn();
+      const result = await createLLMResponse({
+        teamId,
+        throwError: false,
+        body: body(true),
+        isAborted: () => aborted,
+        onToolCall,
+        onToolParam
+      });
+      expect(result.error).toBeUndefined();
+      expect(result.finish_reason).toBe('close');
+      expect(result.toolCalls?.[0].function.arguments).toBe('{"q":');
+      expect(result.usage).toMatchObject({ inputTokens: 17, outputTokens: 4 });
+      expect(onToolCall).toHaveBeenCalledTimes(1);
+      expect(onToolParam).not.toHaveBeenCalled();
+      const record = await readRecord(result.requestId);
+      expect(record.response.finish_reason).toBe('close');
+      expect(record.response.toolCalls).toEqual(result.toolCalls);
+      expect(record.response.usage).toMatchObject({ inputTokens: 17, outputTokens: 4 });
+    });
+  });
 });
