@@ -14,7 +14,7 @@ import { normalizeNativeToolCalls, normalizeToolName } from './normalize';
  * 解析 stream completion 响应。
  *
  * 三种分支分别处理：
- * - toolChoice：供应商原生返回 tool_calls delta；以 tool_calls 结束时必须至少匹配一个有效工具。
+ * - toolChoice：按身份聚合原生 tool_calls delta，同时保留过滤前的工具输出。
  * - prompt tool：模型把工具协议输出在文本里，需要先控制可见流式输出，再在结束后解析 tool_calls。
  * - 普通文本：只转发 reasoning 与正文 delta。
  */
@@ -67,7 +67,7 @@ export const createStreamResponse = async ({
       // 优先按 index 合并；仅当双方都缺 index 时按 id 匹配，不猜测无身份片段的归属。
       const toolCalls: ToolCallAccumulator[] = [];
       const toolNames = new Set(tools.map((tool) => tool.function.name));
-      let protocolError: Parameters<typeof normalizeNativeToolCalls>[0]['protocolError'];
+      let toolCallError: Error | undefined;
 
       await consumeStream(({ reasoningContent, responseContent }, part) => {
         if (reasoningContent) {
@@ -81,7 +81,7 @@ export const createStreamResponse = async ({
         if (responseChoice?.tool_calls?.length) {
           responseChoice.tool_calls.forEach((toolCall) => {
             // 协议冲突后继续读取正文和 usage，但不再派发可能串到其他工具的事件。
-            if (protocolError) return;
+            if (toolCallError) return;
             const index = toolCall.index ?? undefined;
             const id = toolCall.id || undefined;
             const existing = toolCalls.find((call) => {
@@ -101,10 +101,10 @@ export const createStreamResponse = async ({
             if (toolCall.function?.name) {
               const nextName = toolCall.function.name;
               if (current.name && normalizeToolName(current.name) !== normalizeToolName(nextName)) {
-                protocolError = {
-                  message: `LLM tool call error: tool name changed from ${current.name} to ${nextName}.`,
-                  toolCall
-                };
+                toolCallError = new Error(
+                  `LLM tool call error: tool name changed from ${current.name} to ${nextName}.`,
+                  { cause: toolCall }
+                );
                 return;
               }
               // name 是完整身份字段；重复下发可忽略，arguments 才按 delta 拼接。
@@ -140,28 +140,27 @@ export const createStreamResponse = async ({
       });
 
       const { reasoningContent, content, finish_reason, usage, error } = getResponseData();
+      const rawToolCalls = toolCalls
+        .sort((a, b) => (a.index ?? Number.MAX_SAFE_INTEGER) - (b.index ?? Number.MAX_SAFE_INTEGER))
+        .map((call) => ({
+          ...(call.index !== undefined && { index: call.index }),
+          id: call.eventId ?? call.id ?? getNanoid(6),
+          ...(call.eventId && call.id && call.eventId !== call.id && { upstreamId: call.id }),
+          type: 'function' as const,
+          function: { name: call.name, arguments: call.arguments }
+        }));
 
       return {
+        // 接口错误优先；工具名称冲突仅作为普通解析错误返回，不承担原始记录的传递。
+        error: error ?? toolCallError,
         answerText: content,
         reasoningText: reasoningContent,
         usage,
-        ...normalizeNativeToolCalls({
-          toolCalls: toolCalls
-            .sort(
-              (a, b) => (a.index ?? Number.MAX_SAFE_INTEGER) - (b.index ?? Number.MAX_SAFE_INTEGER)
-            )
-            .map((call) => ({
-              ...(call.index !== undefined && { index: call.index }),
-              id: call.eventId ?? call.id ?? getNanoid(6),
-              ...(call.eventId && call.id && call.eventId !== call.id && { upstreamId: call.id }),
-              type: 'function',
-              function: { name: call.name, arguments: call.arguments }
-            })),
-          toolNames,
-          finish_reason,
-          error,
-          protocolError
-        })
+        finish_reason,
+        rawToolCalls,
+        toolCalls: toolCallError
+          ? []
+          : normalizeNativeToolCalls({ toolCalls: rawToolCalls, toolNames })
       };
     } else {
       let startResponseWrite = false;

@@ -6,7 +6,7 @@ import {
 } from '@fastgpt/service/core/ai/llm/request/response/normalize';
 
 describe('normalizeNativeToolCalls', () => {
-  it('should normalize copies and keep only declared tools without hiding an upstream error', () => {
+  it('should normalize copies and keep only declared tools', () => {
     const toolCalls = [
       {
         id: 'a',
@@ -15,17 +15,11 @@ describe('normalizeNativeToolCalls', () => {
       },
       { id: 'b', type: 'function' as const, function: { name: 'unknown', arguments: '{}' } }
     ];
-    const error = new Error('upstream failed');
     const result = normalizeNativeToolCalls({
       toolCalls,
-      toolNames: new Set(['search']),
-      finish_reason: 'length',
-      error,
-      protocolError: { message: 'identity conflict', toolCall: toolCalls[1] }
+      toolNames: new Set(['search'])
     });
-    expect(result.error).toBe(error);
-    expect(result.finish_reason).toBe('length');
-    expect(result.toolCalls).toEqual([
+    expect(result).toEqual([
       { id: 'a', type: 'function', function: { name: 'search', arguments: '{}' } }
     ]);
     expect(toolCalls[0].function).toEqual({ name: 'functions.search', arguments: ' \t' });
@@ -43,13 +37,10 @@ describe('normalizeNativeToolCalls', () => {
 
     const result = normalizeNativeToolCalls({
       toolCalls,
-      toolNames: new Set(['search']),
-      finish_reason: 'tool_calls'
+      toolNames: new Set(['search'])
     });
 
-    expect(result.error).toBeUndefined();
-    expect(result.finish_reason).toBe('tool_calls');
-    expect(result.toolCalls).toEqual([
+    expect(result).toEqual([
       { id: 'null_args', type: 'function', function: { name: 'search', arguments: '{}' } },
       { id: 'missing_args', type: 'function', function: { name: 'search', arguments: '{}' } },
       { id: 'object_args', type: 'function', function: { name: 'search', arguments: '{"q":1}' } },
@@ -57,74 +48,16 @@ describe('normalizeNativeToolCalls', () => {
     ]);
   });
 
-  it('should report an invalid-tool error instead of crashing when every raw call is malformed', () => {
+  it('should filter malformed tools without modifying the raw calls', () => {
     const result = normalizeNativeToolCalls({
       toolCalls: [
         { id: 'broken', type: 'function', function: { name: null, arguments: null } }
       ] as any,
-      toolNames: new Set(['search']),
-      finish_reason: 'tool_calls'
+      toolNames: new Set(['search'])
     });
 
-    expect(result).toMatchObject({
-      finish_reason: 'error',
-      toolCalls: [],
-      error: { code: 'LLM_TOOL_CALL_ERROR' }
-    });
+    expect(result).toEqual([]);
   });
-
-  it.each(
-    [
-      { kind: 'Error instance', error: new Error('upstream quota exhausted') },
-      {
-        kind: 'API object',
-        error: { message: 'upstream quota exhausted', code: 'quota_exceeded' }
-      },
-      { kind: 'API string', error: 'upstream quota exhausted' }
-    ].flatMap((scenario) => [false, true].map((conflict) => ({ ...scenario, conflict })))
-  )(
-    'should prefer $kind over missing tools with protocol conflict=$conflict',
-    ({ error, conflict }) => {
-      const result = normalizeNativeToolCalls({
-        toolCalls: [
-          { id: 'invalid', type: 'function', function: { name: 'unknown', arguments: '{}' } }
-        ],
-        toolNames: new Set(['search']),
-        finish_reason: 'tool_calls',
-        error,
-        protocolError: conflict ? { message: 'tool identity conflict', toolCall: {} } : undefined
-      });
-
-      expect(result.error).toBe(error);
-      expect(result.toolCalls).toEqual([]);
-    }
-  );
-
-  it.each([undefined, 'tool name changed from search to private_provider_tool.'])(
-    'should return the same public error while keeping diagnostic=%s in the context',
-    (reason) => {
-      const toolCalls = [
-        { id: 'raw_call', type: 'function' as const, function: { name: 'unknown', arguments: '' } }
-      ];
-      const result = normalizeNativeToolCalls({
-        toolCalls,
-        toolNames: new Set(['search']),
-        finish_reason: 'tool_calls',
-        protocolError: reason ? { message: reason, toolCall: toolCalls[0] } : undefined
-      });
-
-      expect(result.finish_reason).toBe('error');
-      expect(result.error.message).toBe(
-        'LLM tool call error: no valid tool calls matched the requested tools.'
-      );
-      expect(result.error.cause).toMatchObject({
-        finish_reason: 'tool_calls',
-        receivedToolCalls: toolCalls
-      });
-      expect(result.error.cause.reason).toBe(reason);
-      expect(toolCalls[0].function.arguments).toBe('');
-    }
-  );
 });
 
 describe('normalizeCompletionFinishReason', () => {

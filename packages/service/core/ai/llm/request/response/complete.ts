@@ -81,11 +81,9 @@ export const createCompleteResponse = async ({
     tools?.length && toolCallMode === 'toolChoice'
       ? normalizeNativeToolCalls({
           toolCalls: toolCalls ?? [],
-          toolNames: new Set(tools.map((tool) => tool.function.name)),
-          finish_reason,
-          error: response.error
+          toolNames: new Set(tools.map((tool) => tool.function.name))
         })
-      : { toolCalls, finish_reason, error: response.error };
+      : toolCalls;
 
   if (formatReasonContent) {
     onReasoning?.({ text: formatReasonContent });
@@ -93,17 +91,20 @@ export const createCompleteResponse = async ({
   if (formatContent) {
     onStreaming?.({ text: formatContent });
   }
-  if (!normalizedTools.error) {
+  if (!response.error) {
     // 保持与 stream 分支一致：解析出每个 tool call 后逐个回调给上层。
-    normalizedTools.toolCalls?.forEach((call) => {
+    normalizedTools?.forEach((call) => {
       onToolCall?.({ call });
     });
   }
 
   return {
+    error: response.error,
     reasoningText: formatReasonContent,
     answerText: formatContent,
-    ...normalizedTools,
+    toolCalls: normalizedTools,
+    rawToolCalls: toolCalls,
+    finish_reason,
     usage
   };
 };

@@ -399,20 +399,16 @@ describe('createStreamResponse', () => {
       ]);
       const result = await createStreamResponse({ body: nativeBody, response, ...callbacks });
       const startedId = callbacks.onToolCall.mock.calls[0][0].call.id;
-      expect(result.error).toMatchObject({
-        cause: {
-          receivedToolCalls: [
-            {
-              index: 0,
-              id: startedId,
-              upstreamId: 'real_id',
-              type: 'function',
-              function: { name: 'search', arguments: '{"q":1' }
-            }
-          ],
-          conflictingToolCall: { id: 'real_id', function: { name: 'other' } }
+      expect(result.rawToolCalls).toEqual([
+        {
+          index: 0,
+          id: startedId,
+          upstreamId: 'real_id',
+          type: 'function',
+          function: { name: 'search', arguments: '{"q":1' }
         }
-      });
+      ]);
+      expect(result.error.cause).toMatchObject({ id: 'real_id', function: { name: 'other' } });
     });
 
     it.each([
@@ -450,19 +446,15 @@ describe('createStreamResponse', () => {
           ...callbacks
         });
         expect(result).toMatchObject({
-          finish_reason: 'error',
+          finish_reason: 'tool_calls',
           toolCalls: [],
           answerText: 'partial answer',
           usage
         });
+        expect(result.error).toBeInstanceOf(Error);
         expect(result.error).toMatchObject({
-          name: 'LLMToolCallError',
-          code: 'LLM_TOOL_CALL_ERROR',
-          message: 'LLM tool call error: no valid tool calls matched the requested tools.',
-          cause: expect.objectContaining({
-            reason: expect.stringContaining(message),
-            conflictingToolCall: conflict
-          })
+          message: expect.stringContaining(message),
+          cause: conflict
         });
         expect(callbacks.onToolParam).not.toHaveBeenCalled();
         expect(callbacks.onToolCall).toHaveBeenCalledTimes(
@@ -563,7 +555,7 @@ describe('createStreamResponse', () => {
       { label: 'incomplete tool name', name: 'sea' },
       { label: 'prefix without a tool name', name: 'functions.' },
       { label: 'no tool deltas', name: undefined }
-    ])('should fail tool_calls ending with $label even when text is present', async ({ name }) => {
+    ])('should retain tool_calls ending with $label for entry validation', async ({ name }) => {
       const callbacks = createCallbacks();
       const { response } = createStream([
         chunk({ reasoning_content: 'thinking', content: 'partial answer' }),
@@ -588,31 +580,25 @@ describe('createStreamResponse', () => {
       const result = await createStreamResponse({ body: nativeBody, response, ...callbacks });
 
       expect(result).toMatchObject({
-        finish_reason: 'error',
+        finish_reason: 'tool_calls',
         toolCalls: [],
         usage,
         answerText: 'partial answer',
         reasoningText: 'thinking'
       });
-      expect(result.error).toBeInstanceOf(Error);
-      expect(result.error).toMatchObject({
-        message: expect.stringContaining('no valid tool calls'),
-        cause: {
-          finish_reason: 'tool_calls',
-          expectedToolNames: ['search'],
-          receivedToolCalls:
-            name === undefined
-              ? []
-              : [
-                  {
-                    index: 0,
-                    id: 'call_invalid',
-                    type: 'function',
-                    function: { name, arguments: '{"q":1}' }
-                  }
-                ]
-        }
-      });
+      expect(result.error).toBeUndefined();
+      expect(result.rawToolCalls).toEqual(
+        name === undefined
+          ? []
+          : [
+              {
+                index: 0,
+                id: 'call_invalid',
+                type: 'function',
+                function: { name, arguments: '{"q":1}' }
+              }
+            ]
+      );
       expect(callbacks.onToolCall).not.toHaveBeenCalled();
       expect(callbacks.onToolParam).not.toHaveBeenCalled();
     });

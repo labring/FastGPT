@@ -20,7 +20,7 @@ import {
   saveLLMResponseRecord as persistLLMResponseRecord
 } from './records';
 import { createCompleteResponse } from './response/complete';
-import { LLMToolCallError, normalizeCompletionFinishReason } from './response/normalize';
+import { normalizeCompletionFinishReason } from './response/normalize';
 import { createStreamResponse } from './response/stream';
 import type { CreateLLMResponseProps, LLMResponse } from './types';
 
@@ -158,13 +158,16 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       answerText,
       reasoningText,
       toolCalls,
+      rawToolCalls,
+      lastToolCalls,
       finish_reason: rawFinishReason,
       usage,
-      error,
+      error: responseError,
       isStreamResponse
     } = accumulator.getResponse();
+    let error = responseError;
     // 底层供应商有时会漏 finish_reason。stream 有内容但没结束标记时记录 abnormal_close，非 stream 补 stop。
-    const finish_reason = normalizeCompletionFinishReason({
+    let finish_reason = normalizeCompletionFinishReason({
       rawFinishReason,
       isStreamResponse,
       hasResponse: !!answerText || !!reasoningText || !!toolCalls?.length,
@@ -204,36 +207,50 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
           requestBody: requestSnapshot,
           finish_reason
         });
-        // 提示也会写入请求记录，先清洗再序列化，避免媒体数据以 JSON 字符串绕过清洗。
-        return `您的 OpenAI key 没有响应: ${JSON.stringify(sanitizeLLMRequestRecordPayload(body))}`;
+        // 详细请求写入清洗后的日志，用户提示保持固定文案。
+        return `您的 OpenAI key 没有响应`;
+      } else {
+        logger.error(`LLM response empty`, {
+          message: '',
+          data: requestSnapshot,
+          finish_reason
+        });
       }
 
-      logger.error(`LLM response empty`, {
-        message: '',
-        data: requestSnapshot,
-        finish_reason
-      });
       return i18nT('chat:LLM_model_response_empty');
     };
+    const isEmptyToolCallsFinish =
+      !error && rawFinishReason === 'tool_calls' && !lastToolCalls?.length;
     const isNotResponse =
       !answerText &&
       !reasoningText &&
       !toolCalls?.length &&
       !error &&
-      (finish_reason === 'stop' || !finish_reason || finish_reason === 'tool_calls');
+      (finish_reason === 'stop' || !finish_reason);
     const responseEmptyTip = isNotResponse ? getEmptyResponseTip() : undefined;
 
-    const invalidToolResponse =
-      error instanceof LLMToolCallError && error.cause.finish_reason === 'tool_calls'
-        ? error.cause
-        : undefined;
-    // 连续输出时保留之前轮次的工具，失败轮次则使用过滤前的原始工具输出。
-    const recordToolCalls = invalidToolResponse
-      ? [...(toolCalls ?? []), ...invalidToolResponse.receivedToolCalls]
-      : toolCalls;
+    if (saveLLMResponseRecord && teamId) {
+      // 先保存模型结果，再生成系统兜底错误，避免覆盖 Mongo 原始输出与结束原因。
+      persistLLMResponseRecord({
+        teamId,
+        requestId,
+        requestBody: requestBody as ChatCompletionCreateParams,
+        answerText,
+        reasoningText,
+        toolCalls: isEmptyToolCallsFinish ? rawToolCalls : toolCalls,
+        finishReason: finish_reason,
+        usage,
+        inputTokens,
+        outputTokens,
+        error: error ?? responseEmptyTip
+      });
+      hasSavedLLMRequestRecord = true;
+    }
 
-    if (invalidToolResponse) {
-      // 仅记录 tool_calls 结束却没有可执行工具的异常；日志保留模型原始输出供排查。
+    if (isEmptyToolCallsFinish) {
+      // 接口错误优先；仅对末轮 tool_calls 却没有有效工具的情况记录日志并兜底。
+      error = new Error('LLM tool call error: no valid tool calls matched the requested tools.');
+      finish_reason = 'error';
       logger.error(
         'LLM tool calls missing',
         sanitizeLLMRequestRecordPayload({
@@ -246,8 +263,8 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
           response: {
             answerText,
             reasoningText,
-            toolCalls: recordToolCalls,
-            finish_reason: invalidToolResponse.finish_reason,
+            toolCalls: rawToolCalls,
+            finish_reason: rawFinishReason,
             usage,
             inputTokens,
             outputTokens
@@ -255,25 +272,6 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
           error
         })
       );
-    }
-
-    if (saveLLMResponseRecord && teamId) {
-      // 保存详情只记录实际请求与模型响应，不把用于计费分支的 usedUserOpenAIKey 写入详情。
-      persistLLMResponseRecord({
-        teamId,
-        requestId,
-        requestBody: requestBody as ChatCompletionCreateParams,
-        answerText,
-        reasoningText,
-        // 系统错误归一化只影响返回值；Mongo 仍保存过滤前的模型工具输出与原始结束原因。
-        toolCalls: recordToolCalls,
-        finishReason: invalidToolResponse?.finish_reason ?? finish_reason,
-        usage,
-        inputTokens,
-        outputTokens,
-        error: invalidToolResponse ? undefined : (error ?? responseEmptyTip)
-      });
-      hasSavedLLMRequestRecord = true;
     }
 
     if (error && throwError) {

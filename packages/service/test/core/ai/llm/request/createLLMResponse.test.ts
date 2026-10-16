@@ -458,9 +458,7 @@ describe('createLLMResponse', () => {
         );
         expect(JSON.stringify(log.mock.calls)).not.toContain(base64);
         expect(result.responseEmptyTip).toEqual(
-          usedUserOpenAIKey
-            ? expect.stringContaining('[base64 omitted]')
-            : 'chat:LLM_model_response_empty'
+          usedUserOpenAIKey ? '您的 OpenAI key 没有响应' : 'chat:LLM_model_response_empty'
         );
         expect(result.responseEmptyTip).not.toContain(base64);
         expect(mockSaveLLMRequestRecord).toHaveBeenCalledExactlyOnceWith(
@@ -1461,14 +1459,8 @@ describe('createLLMResponse', () => {
           }
         });
         const expectedError = expect.objectContaining({
-          name: 'LLMToolCallError',
-          code: 'LLM_TOOL_CALL_ERROR',
-          message: 'LLM tool call error: no valid tool calls matched the requested tools.',
-          cause: {
-            finish_reason: 'tool_calls',
-            expectedToolNames: ['get_weather'],
-            receivedToolCalls: toolCalls
-          }
+          name: 'Error',
+          message: 'LLM tool call error: no valid tool calls matched the requested tools.'
         });
 
         if (throwError === false) {
@@ -1523,6 +1515,42 @@ describe('createLLMResponse', () => {
         expect(record.response.reasoningText).toEqual(reasoning || undefined);
       }
     );
+
+    it('should log missing tool calls even when request records are disabled', async () => {
+      const logError = vi
+        .spyOn(getLogger(LogCategories.MODULE.AI.LLM), 'error')
+        .mockImplementation(() => {});
+      mockGetAIApi.mockReturnValue(
+        createMockAIApiResult({
+          chat: {
+            completions: {
+              create: vi.fn().mockResolvedValue({
+                choices: [
+                  {
+                    message: { role: 'assistant', content: null, tool_calls: [] },
+                    finish_reason: 'tool_calls'
+                  }
+                ]
+              })
+            }
+          }
+        })
+      );
+
+      const result = await createLLMResponse({
+        throwError: false,
+        saveLLMResponseRecord: false,
+        body: { model: createMockModelData(), messages: [], stream: false }
+      });
+
+      expect(result.finish_reason).toBe('error');
+      expect(result.error.message).toBe(
+        'LLM tool call error: no valid tool calls matched the requested tools.'
+      );
+      expect(result.responseEmptyTip).toBeUndefined();
+      expect(logError).toHaveBeenCalledExactlyOnceWith('LLM tool calls missing', expect.anything());
+      expect(mockSaveLLMRequestRecord).not.toHaveBeenCalled();
+    });
 
     it('should redact media while persisting the original invalid tool output instead of the public error', async () => {
       const controller = await vi.importActual<
@@ -1594,9 +1622,8 @@ describe('createLLMResponse', () => {
             ]
           }),
           error: expect.objectContaining({
-            code: 'LLM_TOOL_CALL_ERROR',
-            message: expect.stringContaining('no valid tool calls'),
-            cause: expect.objectContaining({ expectedToolNames: ['search'] })
+            name: 'Error',
+            message: expect.stringContaining('no valid tool calls')
           })
         })
       );

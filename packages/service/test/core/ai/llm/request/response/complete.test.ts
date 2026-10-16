@@ -276,7 +276,7 @@ describe('createCompleteResponse', () => {
   });
 
   it.each([false, true])(
-    'should reject invalid native calls without callbacks: upstream error=%s',
+    'should retain invalid native output for entry validation without callbacks: upstream error=%s',
     async (withUpstreamError) => {
       const error = new Error('upstream failed');
       const onToolCall = vi.fn();
@@ -306,12 +306,11 @@ describe('createCompleteResponse', () => {
       expect(onToolCall).not.toHaveBeenCalled();
       expect(result.answerText).toBe('partial answer');
       expect(result.toolCalls).toEqual([]);
-      if (withUpstreamError) expect(result.error).toBe(error);
-      else
-        expect(result).toMatchObject({
-          finish_reason: 'error',
-          error: { code: 'LLM_TOOL_CALL_ERROR', cause: { expectedToolNames: ['search'] } }
-        });
+      expect(result.finish_reason).toBe('tool_calls');
+      expect(result.error).toBe(withUpstreamError ? error : undefined);
+      expect(result.rawToolCalls).toEqual([
+        { id: 'invalid', type: 'function', function: { name: 'unknown', arguments: '{}' } }
+      ]);
     }
   );
 

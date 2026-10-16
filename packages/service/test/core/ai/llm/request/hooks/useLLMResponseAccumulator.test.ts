@@ -90,6 +90,35 @@ describe('useLLMResponseAccumulator', () => {
     ]);
   });
 
+  it('should retain raw tools and distinguish the last round from earlier valid tools', () => {
+    const accumulator = useLLMResponseAccumulator();
+    const rawToolCalls = [
+      createToolCall('call_1', 'functions.search'),
+      createToolCall('call_2', 'unknown', ' \t')
+    ];
+    accumulator.appendResponse({
+      answerText: 'first',
+      reasoningText: '',
+      finish_reason: 'length',
+      toolCalls: [createToolCall('call_1', 'search', '{}')],
+      rawToolCalls: [rawToolCalls[0]]
+    });
+    accumulator.appendResponse({
+      answerText: 'second',
+      reasoningText: '',
+      finish_reason: 'tool_calls',
+      toolCalls: [],
+      rawToolCalls: [rawToolCalls[1]]
+    });
+
+    const response = accumulator.getResponse();
+    expect(response.finish_reason).toBe('tool_calls');
+    expect(response.lastToolCalls).toEqual([]);
+    expect(response.toolCalls).toEqual([createToolCall('call_1', 'search', '{}')]);
+    expect(response.rawToolCalls).toEqual(rawToolCalls);
+    expect(rawToolCalls.map((call) => call.function.arguments)).toEqual(['', ' \t']);
+  });
+
   it('should stop continuation when the length response has error', () => {
     const accumulator = useLLMResponseAccumulator();
     const error = new Error('stream failed');

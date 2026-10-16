@@ -28,6 +28,8 @@ export const useLLMResponseAccumulator = () => {
   let answerText = '';
   let reasoningText = '';
   let toolCalls: ChatCompletionMessageToolCall[] | undefined;
+  let rawToolCalls: ChatCompletionMessageToolCall[] | undefined;
+  let lastToolCalls: ChatCompletionMessageToolCall[] | undefined;
   let finishReason: CompletionFinishReason = 'stop';
   let error: any = undefined;
   let isStreamResponse = false;
@@ -50,6 +52,12 @@ export const useLLMResponseAccumulator = () => {
     appendResponse(response: CompleteResponse) {
       answerText += response.answerText;
       reasoningText += response.reasoningText;
+      // 原始工具单独累积，末轮工具用于判断本轮 tool_calls 结束是否有效。
+      const originalToolCalls = response.rawToolCalls ?? response.toolCalls;
+      if (originalToolCalls) {
+        rawToolCalls = [...(rawToolCalls ?? []), ...originalToolCalls];
+      }
+      lastToolCalls = response.toolCalls;
       const formatToolCalls = response.toolCalls?.map((tool) => ({
         ...tool,
         function: {
@@ -109,13 +117,15 @@ export const useLLMResponseAccumulator = () => {
     },
 
     /**
-     * 返回归一后的聚合结果，由 createLLMResponse 继续补 finish reason、token 和保存详情。
+     * 返回聚合结果、原始工具和末轮工具，由入口判断异常结束、补 token 并保存详情。
      */
     getResponse() {
       return {
         answerText,
         reasoningText,
         toolCalls,
+        rawToolCalls,
+        lastToolCalls,
         finish_reason: finishReason,
         usage,
         error,
