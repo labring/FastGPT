@@ -1467,7 +1467,7 @@ describe('createLLMResponse', () => {
           const result = await request;
           expect(result).toMatchObject({
             error: expectedError,
-            finish_reason: 'error',
+            finish_reason: 'tool_calls',
             responseEmptyTip: undefined,
             answerText: content,
             reasoningText: reasoning,
@@ -1528,7 +1528,7 @@ describe('createLLMResponse', () => {
         body: { model: createMockModelData(), messages: [], stream: false }
       });
 
-      expect(result.finish_reason).toBe('error');
+      expect(result.finish_reason).toBe('tool_calls');
       expect(result.error.message).toBe(
         'LLM tool call error: no valid tool calls matched the requested tools.'
       );
@@ -1591,7 +1591,7 @@ describe('createLLMResponse', () => {
           stream: false
         }
       });
-      expect(result.finish_reason).toBe('error');
+      expect(result.finish_reason).toBe('tool_calls');
       expect(logError).toHaveBeenCalledExactlyOnceWith('LLM tool calls missing', {
         requestBody: expect.objectContaining({
           messages: [
@@ -1667,7 +1667,7 @@ describe('createLLMResponse', () => {
         }
       });
 
-      expect(result.finish_reason).toBe('error');
+      expect(result.finish_reason).toBe('tool_calls');
       expect(result.error.message).toBe(
         'LLM tool call error: no valid tool calls matched the requested tools.'
       );
@@ -2238,7 +2238,7 @@ describe('createLLMResponse', () => {
         expect(result.usage).toMatchObject({ inputTokens: 20, outputTokens: 4 });
 
         if (finishReason === 'tool_calls' && previousOutput !== 'tool') {
-          expect(result.finish_reason).toBe('error');
+          expect(result.finish_reason).toBe('tool_calls');
           expect(result.error).toBeInstanceOf(Error);
           expect(result.error.message).toBe(
             'LLM tool call error: no valid tool calls matched the requested tools.'

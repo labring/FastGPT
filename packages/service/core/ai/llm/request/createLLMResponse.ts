@@ -166,7 +166,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     } = accumulator.getResponse();
     let error = responseError;
     // 底层供应商有时会漏 finish_reason。stream 有内容但没结束标记时记录 abnormal_close，非 stream 补 stop。
-    let finish_reason = normalizeCompletionFinishReason({
+    const finish_reason = normalizeCompletionFinishReason({
       rawFinishReason,
       isStreamResponse,
       hasResponse: !!answerText || !!reasoningText || !!toolCalls?.length,
@@ -247,9 +247,8 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     }
 
     if (isEmptyToolCallsFinish) {
-      // 接口错误优先；仅对 tool_calls 结束且累计没有有效工具的情况记录日志并兜底。
+      // 接口错误优先；累计没有有效工具时补充错误，保留模型结束原因。
       error = new Error('LLM tool call error: no valid tool calls matched the requested tools.');
-      finish_reason = 'error';
       logger.error('LLM tool calls missing', {
         requestBody: sanitizeLLMRequestRecordPayload(requestBody),
         message: error.message
