@@ -8,7 +8,7 @@ import {
   getReferenceVariableValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import type { WorkflowVariableStateLike } from '../../types/runtime';
+import type { WorkflowVariableStateLike } from '../context/variables';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType

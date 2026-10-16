@@ -1,3 +1,7 @@
+import {
+  createTestWorkflowFileContext,
+  runWithTestWorkflowContext as runWithContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 
 import {
@@ -22,11 +26,10 @@ import {
   runtimeSummaryToNodeSummary,
   stripNodeSummaryErrorFields
 } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
-import { WorkflowVariableState } from '../../../../core/workflow/dispatch/utils/variables';
 import { responseWrite } from '@fastgpt/service/common/response';
-import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatHistoryItemResType, ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   SseResponseEventEnum,
   DispatchNodeResponseKeyEnum
@@ -38,7 +41,6 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 
 const mockGetSystemToolRunTimeNodeFromSystemToolset = vi.fn();
 vi.mock('@fastgpt/service/core/workflow/utils', () => ({
@@ -69,16 +71,6 @@ vi.mock('@fastgpt/service/core/app/mcp', () => ({
 const mockGetHTTPToolList = vi.fn();
 vi.mock('@fastgpt/service/core/app/http', () => ({
   getHTTPToolList: (...args: any[]) => mockGetHTTPToolList(...args)
-}));
-
-const mockPresignVariablesFileUrls = vi.fn();
-vi.mock('@fastgpt/service/core/chat/utils', () => ({
-  presignVariablesFileUrls: (...args: any[]) => mockPresignVariablesFileUrls(...args)
-}));
-
-const mockGetChatFilePreviewUrl = vi.fn(async (key: string) => `http://example.com/${key}`);
-vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
-  createChatFilePreviewUrlGetter: () => mockGetChatFilePreviewUrl
 }));
 
 describe('getWorkflowResponseWrite', () => {
@@ -801,70 +793,6 @@ describe('checkQuoteQAValue', () => {
   });
 });
 
-describe('WorkflowVariableState file store conversion', () => {
-  const createFileVariableState = (inputVariables: Record<string, unknown> = {}) =>
-    WorkflowVariableState.create({
-      timezone: 'Asia/Shanghai',
-      runningAppInfo: {
-        id: 'appId',
-        teamId: 'teamId',
-        tmbId: 'tmbId',
-        name: 'app'
-      },
-      uid: 'uid',
-      chatId: 'chatId',
-      variablesConfig: [
-        {
-          key: 'files',
-          type: VariableInputEnum.file
-        } as any
-      ],
-      inputVariables
-    });
-
-  it('should convert unknown runtime urls to external file store values', async () => {
-    const state = await createFileVariableState();
-
-    await state.set('files', ['https://preview.example.com/doc.pdf']);
-
-    expect(state.toStoreRecord().files).toEqual([
-      {
-        url: 'https://preview.example.com/doc.pdf',
-        name: 'doc.pdf',
-        type: ChatFileTypeEnum.file
-      }
-    ]);
-  });
-
-  it('should preserve private file metadata when updating with its runtime url', async () => {
-    const state = await createFileVariableState({
-      files: [
-        {
-          key: 'chat/app/a.png',
-          name: 'a.png',
-          type: ChatFileTypeEnum.image
-        }
-      ]
-    });
-    const runtimeUrls = state.get('files') as string[];
-
-    await state.set('files', [runtimeUrls[0], 'https://external.example.com/report.unknown']);
-
-    expect(state.toStoreRecord().files).toEqual([
-      {
-        key: 'chat/app/a.png',
-        name: 'a.png',
-        type: ChatFileTypeEnum.image
-      },
-      {
-        url: 'https://external.example.com/report.unknown',
-        name: 'report.unknown',
-        type: ChatFileTypeEnum.file
-      }
-    ]);
-  });
-});
-
 describe('filterSystemVariables', () => {
   it('should return only system variables', () => {
     const variables = {
@@ -1029,6 +957,9 @@ describe('rewriteRuntimeWorkFlow', () => {
 
       await runWithContext(
         {
+          checkIsStopping: () => false,
+          fileContext: await createTestWorkflowFileContext(),
+
           mcpClientMemory: {},
           resourceContext: {
             isRoot: false,

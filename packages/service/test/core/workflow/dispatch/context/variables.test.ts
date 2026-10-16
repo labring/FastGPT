@@ -3,31 +3,34 @@ import {
   VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { EntryPointItemType } from '@fastgpt/global/core/app/type';
 import {
   getEntryPointRuntimeVariables,
   getWorkflowFileVariableInputs,
   WorkflowVariableState
-} from '../../../../core/workflow/dispatch/utils/variables';
+} from '@fastgpt/service/core/workflow/dispatch/context/variables';
 import { ENTRY_POINT_VARIABLE_KEY } from '@fastgpt/global/core/app/constants';
-import { encryptSecret } from '../../../../common/secret/aes256gcm';
-import { anyValueDecrypt } from '../../../../common/secret/utils';
+import { encryptSecret } from '@fastgpt/service/common/secret/aes256gcm';
+import { anyValueDecrypt } from '@fastgpt/service/common/secret/utils';
 
 const mockGetChatFilePreviewUrl = vi.fn(async (key: string) => `http://preview.local/${key}`);
 vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
   createChatFilePreviewUrlGetter: () => mockGetChatFilePreviewUrl
 }));
 
+const runningAppInfo: Parameters<typeof WorkflowVariableState.create>[0]['runningAppInfo'] = {
+  sourceType: ChatSourceTypeEnum.app,
+  sourceId: 'appId',
+  teamId: 'teamId',
+  tmbId: 'tmbId',
+  name: 'app'
+};
+
 const createState = (props: Partial<Parameters<typeof WorkflowVariableState.create>[0]> = {}) =>
   WorkflowVariableState.create({
     timezone: 'Asia/Shanghai',
-    runningAppInfo: {
-      id: 'appId',
-      teamId: 'teamId',
-      tmbId: 'tmbId',
-      name: 'app'
-    },
+    runningAppInfo,
     uid: 'uid',
     chatId: 'chatId',
     variablesConfig: [],
@@ -36,6 +39,129 @@ const createState = (props: Partial<Parameters<typeof WorkflowVariableState.crea
   });
 
 describe('WorkflowVariableState', () => {
+  describe('create', () => {
+    it.each([
+      {
+        name: 'label takes precedence over key and default',
+        inputVariables: { displayName: 'label-value', value: 'key-value' },
+        expected: 'label-value'
+      },
+      {
+        name: 'zero is an explicit label value',
+        inputVariables: { displayName: 0, value: 'key-value' },
+        expected: 0
+      },
+      {
+        name: 'false is an explicit label value',
+        inputVariables: { displayName: false, value: 'key-value' },
+        expected: false
+      },
+      {
+        name: 'an empty string is an explicit label value',
+        inputVariables: { displayName: '', value: 'key-value' },
+        expected: ''
+      },
+      {
+        name: 'null is an explicit label value',
+        inputVariables: { displayName: null, value: 'key-value' },
+        expected: null
+      },
+      {
+        name: 'an undefined label falls back to key without discarding zero',
+        inputVariables: { displayName: undefined, value: 0 },
+        expected: 0
+      },
+      {
+        name: 'undefined inputs fall back to default',
+        inputVariables: { displayName: undefined, value: undefined },
+        expected: 'default-value'
+      }
+    ])('$name', async ({ inputVariables, expected }) => {
+      const state = await createState({
+        variablesConfig: [
+          {
+            key: 'value',
+            label: 'displayName',
+            description: '',
+            type: VariableInputEnum.input,
+            valueType: WorkflowIOValueTypeEnum.any,
+            defaultValue: 'default-value'
+          }
+        ],
+        inputVariables
+      });
+
+      expect(state.get('value')).toBe(expected);
+      expect(state.getStoreValue('value')).toBe(expected);
+      expect(state.toStoreRecord()).toEqual({ value: expected });
+      expect(state.toRuntimeRecord()).not.toHaveProperty('displayName');
+    });
+  });
+
+  describe('set', () => {
+    it.each(['chatId', 'externalToken', 'ephemeral'])(
+      'updates runtime-only %s without persisting it',
+      async (key) => {
+        const state = await createState({
+          variablesConfig: [
+            {
+              key: 'persisted',
+              label: 'Persisted variable',
+              description: '',
+              type: VariableInputEnum.input,
+              valueType: WorkflowIOValueTypeEnum.string,
+              defaultValue: 'stored-value'
+            },
+            {
+              key: 'externalToken',
+              label: 'External variable',
+              description: '',
+              type: VariableInputEnum.custom,
+              valueType: WorkflowIOValueTypeEnum.string,
+              defaultValue: 'must-not-persist'
+            }
+          ],
+          externalVariables: { externalToken: 'provider-value' },
+          runtimeOnlyVariables: { ephemeral: 'runtime-value' }
+        });
+
+        for (const value of ['updated-value', 0, false, '', null, undefined]) {
+          expect(await state.set(key, value)).toBe(value);
+          expect(state.get(key)).toBe(value);
+          expect(state.toRuntimeRecord()).toHaveProperty(key, value);
+          expect(state.getStoreValue(key)).toBeUndefined();
+          expect(state.toStoreRecord()).toEqual({ persisted: 'stored-value' });
+        }
+      }
+    );
+  });
+
+  it('deeply isolates runtime values, stored values and file metadata when cloned', async () => {
+    const state = await createState({
+      variablesConfig: [{ key: 'files', type: VariableInputEnum.file } as any],
+      inputVariables: {
+        files: [{ key: 'chat/app/a.pdf', name: 'a.pdf', type: ChatFileTypeEnum.file }]
+      }
+    });
+    await state.set('nested', { items: [{ count: 1 }] });
+    const child = state.clone();
+    (child.get('nested') as { items: { count: number }[] }).items[0].count = 2;
+    (child.get('files') as string[]).push('https://example.com/new.pdf');
+    (child.getStoreValue('files') as { name: string }[])[0].name = 'child.pdf';
+    const url = (state.get('files') as string[])[0];
+    child.getFileStoreValueByRuntimeUrl(url)!.name = 'child metadata.pdf';
+
+    expect(state.get('nested')).toEqual({ items: [{ count: 1 }] });
+    expect(state.getStoreValue('nested')).toEqual({ items: [{ count: 1 }] });
+    expect(state.get('files')).toEqual([url]);
+    expect(state.getStoreValue('files')).toEqual([
+      { key: 'chat/app/a.pdf', name: 'a.pdf', type: ChatFileTypeEnum.file }
+    ]);
+    expect(state.getFileStoreValueByRuntimeUrl(url)?.name).toBe('a.pdf');
+    expect(child.get('nested')).toEqual({ items: [{ count: 2 }] });
+    expect(child.getStoreValue('nested')).toEqual({ items: [{ count: 2 }] });
+  });
+
   it('should expose a configured entry point as a runtime-only variable', async () => {
     const runtimeOnlyVariables = getEntryPointRuntimeVariables({
       entryPoints: [
@@ -65,7 +191,7 @@ describe('WorkflowVariableState', () => {
     ).toEqual({});
     expect(
       getEntryPointRuntimeVariables({
-        entryPoints: null,
+        entryPoints: null as unknown as EntryPointItemType[],
         inputVariables: { [ENTRY_POINT_VARIABLE_KEY]: 'Knowledge Q&A' }
       })
     ).toEqual({});
@@ -110,9 +236,20 @@ describe('WorkflowVariableState', () => {
     });
 
     expect(state.get('name')).toBe('123');
+    expect(state.get('appId')).toBe('appId');
     expect(state.get('userId')).toBe('uid');
     expect(state.get('externalOnly')).toBe('external');
     expect(state.toStoreRecord()).toEqual({ name: '123' });
+  });
+
+  it('非 App 来源不注入 appId 系统变量', async () => {
+    const state = await createState({
+      runningAppInfo: { ...runningAppInfo, sourceType: ChatSourceTypeEnum.skillEdit }
+    });
+
+    expect(state.get('appId')).toBeUndefined();
+    expect(state.toRuntimeRecord()).not.toHaveProperty('appId');
+    expect(state.toStoreRecord()).not.toHaveProperty('appId');
   });
 
   it('should allow parent input to override internal variable defaults', async () => {
@@ -577,27 +714,65 @@ describe('WorkflowVariableState', () => {
     ]);
   });
 
-  it('should infer unknown external runtime urls and reject non-array file updates', async () => {
+  it('更新文件变量时保留已有私有元数据，并为新增外链推断元数据', async () => {
     const state = await createState({
       variablesConfig: [
         {
           key: 'files',
           type: VariableInputEnum.file
         } as any
-      ]
+      ],
+      inputVariables: {
+        files: [{ key: 'chat/app/a.png', name: 'a.png', type: ChatFileTypeEnum.image }]
+      }
     });
 
-    await state.set('files', ['https://example.com/report.unknown']);
+    const [privateUrl] = state.get('files') as string[];
+    const externalUrl = 'https://example.com/report.unknown';
+    await expect(state.set('files', [privateUrl, externalUrl])).resolves.toEqual([
+      privateUrl,
+      externalUrl
+    ]);
 
     expect(state.toStoreRecord().files).toEqual([
+      { key: 'chat/app/a.png', name: 'a.png', type: ChatFileTypeEnum.image },
       {
         url: 'https://example.com/report.unknown',
         name: 'report.unknown',
         type: ChatFileTypeEnum.file
       }
     ]);
-    await expect(state.set('files', 'https://example.com/report.pdf')).rejects.toThrow(
-      'File variable value must be an array'
-    );
+  });
+
+  it.each([
+    {
+      name: '非数组',
+      value: 'https://example.com/report.pdf',
+      error: 'File variable value must be an array'
+    },
+    {
+      name: '私有 Key 对象',
+      value: [{ key: 'chat/app/new.png', name: 'new.png', type: ChatFileTypeEnum.image }],
+      error: 'only accept absolute HTTP(S) URLs'
+    },
+    {
+      name: '相对 URL',
+      value: ['/api/system/file/d/local'],
+      error: 'only accept absolute HTTP(S) URLs'
+    }
+  ])('拒绝用 $name 更新文件变量，保留原值', async ({ value, error }) => {
+    const existingUrl = 'https://example.com/existing.pdf';
+    const state = await createState({
+      variablesConfig: [{ key: 'files', type: VariableInputEnum.file } as any],
+      inputVariables: { files: [existingUrl] }
+    });
+    const before = state.toStoreRecord();
+
+    await expect(
+      state.set('files', Array.isArray(value) ? [existingUrl, ...value] : value)
+    ).rejects.toThrow(error);
+
+    expect(state.get('files')).toEqual([existingUrl]);
+    expect(state.toStoreRecord()).toEqual(before);
   });
 });

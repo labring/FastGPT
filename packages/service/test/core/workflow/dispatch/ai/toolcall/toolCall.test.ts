@@ -5,7 +5,12 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AgentUsageModuleName } from '@fastgpt/service/core/ai/llm/agentLoop/interface';
 import { createToolSchema } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolCatalog';
 import { runToolCall as runToolCallWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/toolCall';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import {
+  runWithTestWorkflowContext as runWithContext,
+  runTestWorkflowDispatch,
+  captureTestWorkflowContext,
+  getCapturedTestWorkflowContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import {
   createNodeSummary,
   createWorkflowRuntimeSummary
@@ -38,7 +43,7 @@ vi.mock('@fastgpt/service/core/ai/llm/agentLoop/interface', async (importOrigina
 });
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
-  runWorkflow: runWorkflowMock
+  runWorkflow: (props: object) => runWorkflowMock(captureTestWorkflowContext(props))
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/readFiles', () => ({
@@ -47,7 +52,6 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/readFiles', () => ({
 
 const createProps = (overrides = {}) =>
   ({
-    checkIsStopping: vi.fn(() => false),
     requestOrigin: 'https://fastgpt.example.com',
     runtimeNodes: [],
     runtimeNodesMap: new Map(),
@@ -112,12 +116,13 @@ const createProps = (overrides = {}) =>
 const runToolCall: typeof runToolCallWithoutContext = (props) =>
   runWithContext(
     {
+      checkIsStopping: () => false,
       mcpClientMemory: {},
       fileContext: {
         limits: { maxFileAmount: 20, maxBytesPerFile: 1024 }
       } as any
     },
-    () => runToolCallWithoutContext(props)
+    () => runTestWorkflowDispatch(props, { dispatch: runToolCallWithoutContext })
   );
 
 const createLoopResult = ({
@@ -211,6 +216,29 @@ describe('runToolCall compression node responses', () => {
 
   afterEach(() => {
     delete (global as any).feConfigs;
+  });
+
+  it('从 WorkflowContext 向通用 AgentLoop 传入同一个停止检查', async () => {
+    let stopping = false;
+    const checkIsStopping = () => stopping;
+    const props = createProps();
+    runAgentLoopMock.mockResolvedValue(createLoopResult());
+
+    await runWithContext(
+      {
+        checkIsStopping,
+        mcpClientMemory: {},
+        fileContext: { limits: { maxFileAmount: 20, maxBytesPerFile: 1024 } } as any
+      },
+      () => runToolCallWithoutContext(props)
+    );
+
+    const runtime = runAgentLoopMock.mock.calls[0][0].runtime;
+    expect(runtime.checkIsStopping).toBe(checkIsStopping);
+    expect(runtime.checkIsStopping()).toBe(false);
+    stopping = true;
+    expect(runtime.checkIsStopping()).toBe(true);
+    expect(props).not.toHaveProperty('checkIsStopping');
   });
 
   it('passes the extracted system prompt separately from conversation messages', async () => {
@@ -415,11 +443,13 @@ describe('runToolCall compression node responses', () => {
 
     expect(runWorkflowMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        isToolCall: true,
         stream: true,
         workflowStreamResponse
       })
     );
+    expect(
+      getCapturedTestWorkflowContext(runWorkflowMock.mock.calls[0][0]).runtimeControl.isToolCall
+    ).toBe(true);
     expect(workflowStreamResponse).toHaveBeenCalledWith({
       event: 'answer',
       data: 'child answer delta'
@@ -1198,7 +1228,8 @@ describe('runToolCall compression node responses', () => {
       target: 'dataset_node',
       status: 'active'
     });
-    expect(workflowCall).toEqual(expect.objectContaining({ isToolCall: true }));
+    expect(workflowCall).not.toHaveProperty('isToolCall');
+    expect(getCapturedTestWorkflowContext(workflowCall).runtimeControl.isToolCall).toBe(true);
     expect(workflowCall.runtimeNodes).not.toBe(runtimeNodes);
     expect(workflowCall.runtimeEdges).not.toBe(runtimeEdges);
     expect(runtimeNodes[0]).not.toHaveProperty('isEntry');

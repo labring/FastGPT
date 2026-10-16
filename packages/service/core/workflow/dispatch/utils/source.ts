@@ -1,7 +1,7 @@
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatDispatchProps } from '../../types/runtime';
+import type { WorkflowDispatchProps } from '../../types/runtime';
 
-type RunningAppInfo = ChatDispatchProps['runningAppInfo'];
+type RunningAppInfo = WorkflowDispatchProps['runningAppInfo'];
 
 /** 返回 workflow 运行态标准 source identity，禁止再从 runningAppInfo 派生旧 appId 语义。 */
 export const getWorkflowSource = ({ sourceType, sourceId }: RunningAppInfo) => ({

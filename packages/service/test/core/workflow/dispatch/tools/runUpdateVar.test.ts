@@ -1,5 +1,7 @@
+import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, it, expect, vi } from 'vitest';
-import { dispatchUpdateVariable } from '@fastgpt/service/core/workflow/dispatch/tools/runUpdateVar';
+import { dispatchUpdateVariable as dispatchUpdateVariableWithoutContext } from '@fastgpt/service/core/workflow/dispatch/tools/runUpdateVar';
+const dispatchUpdateVariable = createTestWorkflowDispatch(dispatchUpdateVariableWithoutContext);
 import {
   VARIABLE_NODE_ID,
   VariableInputEnum,
@@ -7,30 +9,6 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
-import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { WorkflowVariableState } from '../../../../../core/workflow/dispatch/utils/variables';
-
-// Logger 不走真实实现，避免 log 基础设施依赖
-vi.mock('../../../../../../../../packages/service/common/logger', () => ({
-  getLogger: () => ({
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn()
-  }),
-  LogCategories: {
-    MODULE: {
-      WORKFLOW: {
-        DISPATCH: ['workflow', 'dispatch']
-      }
-    }
-  }
-}));
-
-const mockGetChatFilePreviewUrl = vi.fn(async (key: string) => `http://example.com/${key}`);
-vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
-  createChatFilePreviewUrlGetter: () => mockGetChatFilePreviewUrl
-}));
 
 type AnyProps = Parameters<typeof dispatchUpdateVariable>[0];
 
@@ -84,7 +62,7 @@ const buildProps = (
   return {
     chatConfig: opts.chatConfig ?? {},
     params: { updateList },
-    variableState: createTestVariableState({
+    variableContext: createTestVariableState({
       variables,
       storeVariables: opts.storeVariables,
       chatConfig: opts.chatConfig
@@ -97,106 +75,6 @@ const buildProps = (
 };
 
 const ref = (key: string) => [VARIABLE_NODE_ID, key] as [string, string];
-
-describe('WorkflowVariableState file variable updates', () => {
-  const createFileState = (inputVariables: Record<string, unknown> = {}) =>
-    WorkflowVariableState.create({
-      timezone: 'Asia/Shanghai',
-      runningAppInfo: {
-        id: 'appId',
-        teamId: 'teamId',
-        tmbId: 'tmbId',
-        name: 'app'
-      },
-      uid: 'uid',
-      chatId: 'chatId',
-      variablesConfig: [
-        {
-          key: 'files',
-          type: VariableInputEnum.file
-        } as any
-      ],
-      inputVariables
-    });
-
-  it('should preserve private file metadata when updating with its runtime url', async () => {
-    const state = await createFileState({
-      files: [
-        {
-          key: 'chat/app/a.png',
-          name: 'a.png',
-          type: ChatFileTypeEnum.image
-        }
-      ]
-    });
-    const runtimeUrls = state.get('files') as string[];
-
-    const result = await state.set('files', [runtimeUrls[0]]);
-
-    expect(result).toEqual(['http://example.com/chat/app/a.png']);
-    expect(state.toStoreRecord().files).toEqual([
-      {
-        key: 'chat/app/a.png',
-        name: 'a.png',
-        type: ChatFileTypeEnum.image
-      }
-    ]);
-  });
-
-  it('should infer store metadata for unknown external urls', async () => {
-    const state = await createFileState();
-
-    await state.set('files', ['https://external.example.com/report.unknown']);
-
-    expect(state.toStoreRecord().files).toEqual([
-      {
-        url: 'https://external.example.com/report.unknown',
-        name: 'report.unknown',
-        type: ChatFileTypeEnum.file
-      }
-    ]);
-  });
-
-  it('should reject key objects when updating file variables', async () => {
-    const state = await createFileState({
-      files: [
-        {
-          key: 'chat/app/old.pdf',
-          name: 'old.pdf',
-          type: ChatFileTypeEnum.file
-        }
-      ]
-    });
-    const runtimeUrls = state.get('files') as string[];
-
-    await expect(
-      state.set('files', [
-        runtimeUrls[0],
-        {
-          key: 'chat/app/new.png',
-          name: 'new.png',
-          type: ChatFileTypeEnum.image
-        }
-      ])
-    ).rejects.toThrow('only accept absolute HTTP(S) URLs');
-  });
-
-  it('should throw when file variable update value is not an array', async () => {
-    const state = await createFileState();
-
-    await expect(state.set('files', 'https://external.example.com/report.pdf')).rejects.toThrow(
-      'File variable value must be an array'
-    );
-  });
-
-  it('should reject relative urls when updating file variables', async () => {
-    const state = await createFileState();
-
-    await expect(state.set('files', ['/api/system/file/d/local'])).rejects.toThrow(
-      'only accept absolute HTTP(S) URLs'
-    );
-  });
-});
 
 describe('dispatchUpdateVariable — Number 公式', () => {
   it.each([

@@ -9,7 +9,7 @@ import {
 } from '@fastgpt/global/core/app/tool/utils';
 import { getSecretValue } from '../../../../../../../common/secret/utils';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import type { ChatDispatchProps } from '../../../../../types/runtime';
+import type { WorkflowDispatchProps } from '../../../../../types/runtime';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
@@ -33,6 +33,7 @@ import { computedSystemToolUsage } from '../../../../../../app/tool/runtime/util
 import { InvokeProcessor } from '../../../../../../../support/invoke/invoke';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import { isWorkflowResourceError, loadWorkflowAppResource } from '../../../../../resource/service';
+import { getWorkflowContext } from '../../../../context';
 import { getWorkflowAppId } from '../../../../utils/source';
 import {
   assertTeamPluginSourceAccess,
@@ -54,12 +55,11 @@ export type Props = {
     [NodeInputKeyEnum.systemInputConfig]?: SystemInputConfigType;
     [key: string]: any;
   };
-  runningUserInfo: ChatDispatchProps['runningUserInfo'];
-  runningAppInfo: ChatDispatchProps['runningAppInfo'];
-  chatId: ChatDispatchProps['chatId'];
-  uid: ChatDispatchProps['uid'];
-  variableState: ChatDispatchProps['variableState'];
-  workflowStreamResponse: ChatDispatchProps['workflowStreamResponse'];
+  runningUserInfo: WorkflowDispatchProps['runningUserInfo'];
+  runningAppInfo: WorkflowDispatchProps['runningAppInfo'];
+  chatId: WorkflowDispatchProps['chatId'];
+  uid: WorkflowDispatchProps['uid'];
+  workflowStreamResponse: WorkflowDispatchProps['workflowStreamResponse'];
 };
 
 export const dispatchTool = async ({
@@ -69,9 +69,9 @@ export const dispatchTool = async ({
   runningAppInfo,
   chatId,
   uid,
-  variableState,
   workflowStreamResponse
 }: Props): Promise<DispatchSubAppResponse> => {
+  const { variableContext: variableState } = getWorkflowContext();
   const getNodeResponse = ({
     result,
     response

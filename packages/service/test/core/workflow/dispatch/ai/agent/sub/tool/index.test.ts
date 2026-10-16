@@ -1,10 +1,15 @@
+import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { dispatchTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool';
+import { dispatchTool as dispatchToolWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool';
+const dispatchTool = createTestWorkflowDispatch(dispatchToolWithoutContext);
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import {
+  createTestWorkflowFileContext,
+  runWithTestWorkflowContext as runWithContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 
 const {
   authAppByTmbIdMock,
@@ -111,7 +116,7 @@ const createDispatchToolProps = (
     },
     chatId: 'chat',
     uid: 'uid',
-    variableState: {
+    variableContext: {
       get: vi.fn()
     }
   }) as any;
@@ -151,6 +156,8 @@ describe('dispatchTool runtime toolset auth', () => {
 
       await runWithContext(
         {
+          checkIsStopping: () => false,
+          fileContext: await createTestWorkflowFileContext(),
           mcpClientMemory: {},
           resourceContext: {
             isRoot: false,

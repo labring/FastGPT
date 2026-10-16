@@ -677,7 +677,7 @@ export class WorkflowNodeResponseWriter {
 /**
  * 创建 workflow nodeResponse writer。
  */
-export const createWorkflowNodeResponseWriter = async ({
+export const createWorkflowNodeResponseWriter = ({
   session,
   model = MongoChatItemResponse,
   persistToDb = true,

@@ -20,9 +20,12 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controlle
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
-import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
-import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
+import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/context/variables';
+import {
+  createTestWorkflowFileContext,
+  runWithTestWorkflowContext as runWithContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/dispatch/context/resource';
 import { loadWorkflowModelResource } from '@fastgpt/service/core/workflow/resource/service';
 import { prepareAppWorkflowResources } from '@fastgpt/service/core/app/resource/service';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -384,28 +387,37 @@ describe('publish optional model defaults', () => {
         resolveInputFile: async () => ''
       });
 
-      await runWithContext({ mcpClientMemory: {}, resourceContext }, async () => {
-        for (const node of runtimeNodes) {
-          const params = getWorkflowNodeRunParams({
-            node,
-            runtimeNodesMap,
-            variableState
-          });
-          if (params[NodeInputKeyEnum.datasetSearchUsingReRank]) {
-            await loadWorkflowModelResource({
-              appTeamId: String(root.teamId),
-              userInfo: {
-                teamId: String(root.teamId),
-                tmbId: String(root.tmbId)
-              },
-              type: 'rerank',
-              modelId: params[NodeInputKeyEnum.datasetSearchRerankModelId],
-              model: params[NodeInputKeyEnum.datasetSearchRerankModel],
-              fallbackToDefault: true
+      await runWithContext(
+        {
+          checkIsStopping: () => false,
+          fileContext: await createTestWorkflowFileContext(),
+          mcpClientMemory: {},
+          resourceContext,
+          variableContext: variableState
+        },
+        async () => {
+          for (const node of runtimeNodes) {
+            const params = getWorkflowNodeRunParams({
+              node,
+              runtimeNodesMap,
+              variableState
             });
+            if (params[NodeInputKeyEnum.datasetSearchUsingReRank]) {
+              await loadWorkflowModelResource({
+                appTeamId: String(root.teamId),
+                userInfo: {
+                  teamId: String(root.teamId),
+                  tmbId: String(root.tmbId)
+                },
+                type: 'rerank',
+                modelId: params[NodeInputKeyEnum.datasetSearchRerankModelId],
+                model: params[NodeInputKeyEnum.datasetSearchRerankModel],
+                fallbackToDefault: true
+              });
+            }
           }
         }
-      });
+      );
     };
 
     // 1. 预览链路：prepareAppWorkflowResources + 运行时节点模型校验通过

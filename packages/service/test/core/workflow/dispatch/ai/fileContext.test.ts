@@ -3,11 +3,21 @@ import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/consta
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import {
-  parseWorkflowAIInputFiles,
-  rewriteWorkflowAIUserMessageWithFiles
+  parseWorkflowAIInputFiles as parseWorkflowAIInputFilesWithoutContext,
+  rewriteWorkflowAIUserMessageWithFiles as rewriteWorkflowAIUserMessageWithFilesWithoutContext
 } from '@fastgpt/service/core/workflow/dispatch/ai/fileContext';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
-import type { WorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import type { WorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context/file';
+import {
+  createTestWorkflowFileContext,
+  runInTestWorkflowContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+
+const parseWorkflowAIInputFiles: typeof parseWorkflowAIInputFilesWithoutContext = (params) =>
+  runInTestWorkflowContext(() => parseWorkflowAIInputFilesWithoutContext(params));
+const rewriteWorkflowAIUserMessageWithFiles: typeof rewriteWorkflowAIUserMessageWithFilesWithoutContext =
+  (params) =>
+    runInTestWorkflowContext(() => rewriteWorkflowAIUserMessageWithFilesWithoutContext(params));
 
 describe('parseWorkflowAIInputFiles', () => {
   it('returns no files when maxFileAmount is zero', async () => {
@@ -75,6 +85,7 @@ describe('parseWorkflowAIInputFiles', () => {
     const inputUrl = 'https://app.example.com/api/system/file/d/signed';
     const modelUrl = 'https://model-files.example.com/report.pdf?signature=1';
     const fileContext = {
+      ...(await createTestWorkflowFileContext()),
       limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
       resolve: vi.fn((url: string) =>
         url === inputUrl
@@ -102,26 +113,29 @@ describe('parseWorkflowAIInputFiles', () => {
       derive: vi.fn()
     } as unknown as WorkflowFileContext;
 
-    await runWithContext({ mcpClientMemory: {}, fileContext }, async () => {
-      expect(
-        await parseWorkflowAIInputFiles({
-          files: [
-            {
-              type: ChatFileTypeEnum.file,
-              name: '',
-              url: inputUrl
-            }
-          ],
-          maxFileAmount: 20
-        })
-      ).toEqual([
-        {
-          name: 'report.pdf',
-          type: ChatFileTypeEnum.file,
-          url: modelUrl
-        }
-      ]);
-    });
+    await runWithContext(
+      { checkIsStopping: () => false, mcpClientMemory: {}, fileContext },
+      async () => {
+        expect(
+          await parseWorkflowAIInputFiles({
+            files: [
+              {
+                type: ChatFileTypeEnum.file,
+                name: '',
+                url: inputUrl
+              }
+            ],
+            maxFileAmount: 20
+          })
+        ).toEqual([
+          {
+            name: 'report.pdf',
+            type: ChatFileTypeEnum.file,
+            url: modelUrl
+          }
+        ]);
+      }
+    );
   });
 });
 

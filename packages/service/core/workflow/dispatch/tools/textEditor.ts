@@ -1,3 +1,4 @@
+import { getWorkflowContext } from '../context';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -15,7 +16,6 @@ type Response = DispatchNodeResultType<{
 
 export const dispatchTextEditor = (props: Record<string, any>): Response => {
   const {
-    variableState,
     params: { system_textareaInput: text = '', system_addInputParam: customVariables = {} }
   } = props as Props;
 
@@ -31,7 +31,7 @@ export const dispatchTextEditor = (props: Record<string, any>): Response => {
     };
   }
 
-  const runtimeVariables = variableState.toRuntimeRecord();
+  const runtimeVariables = getWorkflowContext().variableContext.toRuntimeRecord();
   const variables = new Proxy(runtimeVariables, {
     has(target, key) {
       if (typeof key !== 'string') return key in target;

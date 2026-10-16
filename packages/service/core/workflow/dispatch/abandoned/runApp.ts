@@ -1,3 +1,5 @@
+import { createWorkflowRuntimeSummary } from '../utils/summary';
+import { getWorkflowContext, runWithContext } from '../context';
 /* Abandoned */
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 
@@ -14,11 +16,11 @@ import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/w
 
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getHistories, safePoints } from '../utils';
-import { getWorkflowFileVariableInputs, WorkflowVariableState } from '../utils/variables';
+import { getWorkflowFileVariableInputs, WorkflowVariableState } from '../context/variables';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
-import { runWithDerivedWorkflowFileContext } from '../../utils/context';
+import { runWithDerivedWorkflowFileContext } from '../context';
 import { loadChildWorkflowWithResource } from '../../resource/service';
 import { getWorkflowRuntimeSummary } from '../utils/summary';
 
@@ -37,9 +39,9 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     workflowStreamResponse,
     histories,
     query,
-    variableState,
     params: { userChatInput, history, app }
   } = props;
+  const { variableContext: variableState } = getWorkflowContext();
 
   if (!userChatInput) {
     return Promise.reject('Input is empty');
@@ -98,19 +100,29 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
           resolveInputFile
         });
 
-        return runWorkflow({
-          ...props,
-          runningAppInfo: childRunningAppInfo,
-          runtimeNodes: storeNodes2RuntimeNodes(
-            childVersion.nodes,
-            getWorkflowEntryNodeIds(childVersion.nodes)
-          ),
-          runtimeEdges: storeEdges2RuntimeEdges(childVersion.edges),
-          variableState: childVariableState,
-          chatConfig: childVersion.chatConfig,
-          histories: filteredHistories,
-          query: filteredQuery
+        const childContext = getWorkflowContext().getChildContext({
+          variableContext: childVariableState,
+          nodeResponseSink: getWorkflowContext().nodeResponseSink.getChildContext({
+            workflowRuntimeSummary: createWorkflowRuntimeSummary(),
+            ...(props.nodeResponseParentId !== undefined
+              ? { defaultParentId: props.nodeResponseParentId }
+              : {})
+          })
         });
+        return runWithContext(childContext, () =>
+          runWorkflow({
+            ...props,
+            runningAppInfo: childRunningAppInfo,
+            runtimeNodes: storeNodes2RuntimeNodes(
+              childVersion.nodes,
+              getWorkflowEntryNodeIds(childVersion.nodes)
+            ),
+            runtimeEdges: storeEdges2RuntimeEdges(childVersion.edges),
+            chatConfig: childVersion.chatConfig,
+            histories: filteredHistories,
+            query: filteredQuery
+          })
+        );
       }
     });
 

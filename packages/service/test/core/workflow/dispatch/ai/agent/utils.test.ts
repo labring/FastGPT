@@ -88,7 +88,6 @@ describe('Agent read_files tool protocol', () => {
     });
 
     const executeTool = getExecuteTool({
-      checkIsStopping: vi.fn(),
       chatConfig: {},
       runningUserInfo: {
         teamId: 'team_1',
@@ -99,7 +98,7 @@ describe('Agent read_files tool protocol', () => {
       },
       chatId: 'chat_1',
       uid: 'user_1',
-      variableState: {} as any,
+      variableContext: {} as any,
       externalProvider: {
         openaiAccount: userKey
       } as any,
@@ -139,13 +138,12 @@ describe('Agent read_files tool protocol', () => {
     const streamResponseFn = vi.fn();
     dispatchToolMock.mockResolvedValue({ response: 'ok' });
     const executeTool = getExecuteTool({
-      checkIsStopping: vi.fn(),
       chatConfig: {},
       runningUserInfo: { teamId: 'team_1', tmbId: 'tmb_1' },
       runningAppInfo: { id: 'app_1' },
       chatId: 'chat_1',
       uid: 'user_1',
-      variableState: {} as any,
+      variableContext: {} as any,
       externalProvider: {} as any,
       lang: 'zh-CN',
       requestOrigin: '',

@@ -20,6 +20,7 @@ import {
 } from '../agentLoopCore/interface';
 import { createToolCallToolProvider } from './toolProvider';
 import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
+import { getWorkflowContext } from '../../context';
 
 type ResponseType = {
   requestIds: string[];
@@ -36,9 +37,9 @@ type ResponseType = {
 };
 
 export const runToolCall = async (props: DispatchToolModuleProps): Promise<ResponseType> => {
+  const { checkIsStopping } = getWorkflowContext();
   const { messages, toolNodes, toolModel, childrenInteractiveParams, ...workflowProps } = props;
   const {
-    checkIsStopping,
     runtimeNodes,
     runtimeEdges,
     stream,

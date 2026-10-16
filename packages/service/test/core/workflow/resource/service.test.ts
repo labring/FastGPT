@@ -57,13 +57,33 @@ vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
 
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import {
+  createTestWorkflowFileContext,
+  runWithTestWorkflowContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import {
   createSystemToolResourceContext,
   filterWorkflowToolList,
   hasWorkflowResource,
   createWorkflowResourceContext
-} from '@fastgpt/service/core/workflow/resource/context';
+} from '@fastgpt/service/core/workflow/dispatch/context/resource';
+
+/** 资源单测仍补齐真实文件 Context，不降低生产节点对完整运行依赖的要求。 */
+const runWithContext = async <T>(
+  value: Pick<
+    Parameters<typeof runWithTestWorkflowContext>[0],
+    'mcpClientMemory' | 'resourceContext'
+  >,
+  fn: () => T
+): Promise<Awaited<T>> =>
+  await runWithTestWorkflowContext(
+    {
+      ...value,
+      checkIsStopping: () => false,
+      fileContext: await createTestWorkflowFileContext()
+    },
+    fn
+  );
 
 const createFindResult = (documents: unknown = []) => ({
   lean: vi.fn().mockResolvedValue(documents)

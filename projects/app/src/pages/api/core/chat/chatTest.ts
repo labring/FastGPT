@@ -1,4 +1,4 @@
-import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/dispatch/context/resource';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { sseErrRes } from '@fastgpt/service/common/response';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -26,7 +26,6 @@ import {
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -55,7 +54,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   createWorkflowStreamResponseContext,
   type WorkflowStreamResponseContext
-} from '@fastgpt/service/core/workflow/utils/streamResponseContext';
+} from '@fastgpt/service/core/workflow/dispatch/context/streamResponse';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { APP_SANDBOX_ENABLED_CHAT_METADATA_KEY } from '@fastgpt/global/core/ai/sandbox/constants';
 import { isAppSandboxEnabledInNodes } from '@fastgpt/global/common/app/workflow';
@@ -282,10 +281,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       chatConfig,
       histories: newHistories,
       stream: true,
-      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
       workflowStreamResponse: streamResponseContext.responseWrite,
       responseDetail: true,
-      showSkillReferences: true,
       nodeResponseWriteConfig: {
         persistToDb: preparedRound.shouldPersistChatRound,
         retainInMemory: false

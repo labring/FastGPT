@@ -20,10 +20,7 @@ import { normalizeAgentLoopCoreDatasetSearchResult } from './systemToolHelpers';
 import { cloneDeep } from 'lodash-es';
 import { compileToolRuntime, mergeToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
 import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runtime/utils';
-import {
-  createContainerRunStateSnapshot,
-  syncContainerRunState
-} from '../../../../utils/containerRunState';
+import { WorkflowRunStateSnapshot } from '../../../../utils/containerRunState';
 
 export type AgentLoopCoreWorkflowToolRunResponse<TChildrenResponse = unknown> = {
   flowResponses: NonNullable<DispatchFlowResponse['flatNodeResponses']>;
@@ -321,7 +318,7 @@ export const createAgentLoopCoreWorkflowSystemToolExecutor = <TChildrenResponse 
  * 节点外壳只负责提供实际 runWorkflow 函数、展示信息和缓存/流式回调。
  *
  * 普通调用和交互恢复均隔离输入、入口和连线状态；本次改变的节点输出显式回写父图。
- * 全局变量继续使用调用方传入的共享 variableState，不随 runtime graph 复制。
+ * 变量作用域及提交策略由实际 runWorkflowTool 适配器管理，不随 runtime graph 在此处复制。
  */
 export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknown>({
   runtimeNodes,
@@ -348,9 +345,11 @@ export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknow
   }) => {
     const isolatedRuntimeNodes = cloneDeep(runtimeNodes);
     const isolatedRuntimeEdges = cloneDeep(runtimeEdges);
-    const stateSnapshot = createContainerRunStateSnapshot({
-      nodes: isolatedRuntimeNodes,
-      childrenNodeIdList: []
+    const stateSnapshot = new WorkflowRunStateSnapshot({
+      nodeOutputs: {
+        sourceNodes: isolatedRuntimeNodes,
+        targetNodes: runtimeNodes
+      }
     });
     if (lastInteractive) {
       const interactive = lastInteractive as {
@@ -378,13 +377,8 @@ export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknow
         ...(lastInteractive !== undefined ? { lastInteractive } : {})
       });
     } finally {
-      // 暂停或后续执行失败也保留已经发生的输出更新，与全局变量的即时写入语义一致。
-      await syncContainerRunState({
-        sourceNodes: isolatedRuntimeNodes,
-        targetNodes: runtimeNodes,
-        childrenNodeIdList: [],
-        stateSnapshot
-      });
+      // 暂停或后续执行失败也保留已完成的节点输出；变量提交由适配器按成功策略独立处理。
+      await stateSnapshot.commit();
     }
   };
 

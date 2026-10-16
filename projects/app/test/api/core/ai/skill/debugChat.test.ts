@@ -90,7 +90,7 @@ vi.mock('@fastgpt/service/support/user/team/utils', () => ({
   getRunningUserInfoByTmbId: debugChatMocks.getRunningUserInfoByTmbId
 }));
 
-vi.mock('@fastgpt/service/core/workflow/utils/streamResponseContext', () => ({
+vi.mock('@fastgpt/service/core/workflow/dispatch/context/streamResponse', () => ({
   createWorkflowStreamResponseContext: debugChatMocks.createWorkflowStreamResponseContext
 }));
 

@@ -29,6 +29,7 @@ FastGPT/
 │       ├── constants.ts               # 服务常量
 │       ├── dispatch/                  # 调度器核心
 │       │   ├── index.ts               # 工作流执行引擎 ⭐
+│       │   ├── queue.ts               # WorkflowQueue 节点调度队列
 │       │   ├── constants.ts           # 节点调度映射表
 │       │   ├── type.d.ts              # 调度器类型
 │       │   ├── ai/                    # AI相关节点
@@ -45,7 +46,7 @@ FastGPT/
 
 ### 2. 执行引擎核心 (dispatch/index.ts)
 
-#### 核心类：WorkflowQueue
+#### 核心类：WorkflowQueue（dispatch/queue.ts）
 
 工作流执行引擎采用队列式架构，主要特点：
 

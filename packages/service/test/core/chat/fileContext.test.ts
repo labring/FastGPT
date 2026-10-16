@@ -4,6 +4,7 @@ import type { ChatItemMiniType, UserChatItemValueItemType } from '@fastgpt/globa
 import { PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { Readable } from 'node:stream';
+import { createTestWorkflowFileContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 
 const mockGetRawTextBuffer = vi.hoisted(() => vi.fn());
 const mockAddRawTextBuffer = vi.hoisted(() => vi.fn());
@@ -86,7 +87,7 @@ import {
 import type {
   WorkflowFileContext,
   WorkflowFileRef
-} from '@fastgpt/service/core/workflow/utils/fileContext';
+} from '@fastgpt/service/core/workflow/dispatch/context/file';
 import {
   createExternalHttpFileSource,
   createS3FileSource,
@@ -407,7 +408,9 @@ describe('parseFileContentFromUrls (external fetch)', () => {
       imageParsePrefix: 'chat/app/app-1/user-1/chat-1/private-parsed'
     });
     const fileContext: WorkflowFileContext = {
+      ...(await createTestWorkflowFileContext()),
       limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
+      register: vi.fn(),
       resolve: (value) => (value === url ? ref : undefined),
       resolveInputFile: (file) => ('url' in file && file.url === url ? ref : undefined),
       resolveChatFile: () => ({

@@ -1,3 +1,4 @@
+import { createWorkflowRuntimeSummary } from '../utils/summary';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 
 import { runWorkflow } from '../index';
@@ -13,10 +14,10 @@ import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/w
 
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getNodeErrResponse, getHistories } from '../utils';
-import { getWorkflowFileVariableInputs, WorkflowVariableState } from '../utils/variables';
+import { getWorkflowFileVariableInputs, WorkflowVariableState } from '../context/variables';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { prepareWorkflowFiles, runWithDerivedWorkflowFileContext } from '../../utils/context';
+import { getWorkflowContext, runWithDerivedWorkflowFileContext, runWithContext } from '../context';
 import { loadChildWorkflowWithResource } from '../../resource/service';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getWorkflowRuntimeSummary } from '../utils/summary';
@@ -40,9 +41,9 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     lastInteractive,
     node: { pluginId: appId, version },
     workflowStreamResponse,
-    params,
-    variableState
+    params
   } = props;
+  const { variableContext: variableState } = getWorkflowContext();
 
   const {
     system_forbid_stream = false,
@@ -60,7 +61,9 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
 
   const userInputFiles = await (async () => {
     if (fileUrlList) {
-      return prepareWorkflowFiles({ files: fileUrlList.map((url) => ({ url })) });
+      return getWorkflowContext().fileContext.prepareFiles({
+        files: fileUrlList.map((url) => ({ url }))
+      });
     }
     // Adapt version 4.8.13 upgrade
     return files;
@@ -149,31 +152,41 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
           resolveInputFile
         });
 
-        return runWorkflow({
-          ...props,
-          lastInteractive: childrenInteractive,
-          // Rewrite stream mode
-          ...(system_forbid_stream
-            ? {
-                stream: false,
-                workflowStreamResponse: undefined
-              }
-            : {}),
-          runningAppInfo: {
-            sourceType: ChatSourceTypeEnum.app,
-            sourceId: String(appData._id),
-            name: appData.name,
-            teamId: String(appData.teamId),
-            tmbId: String(appData.tmbId),
-            isChildApp: true
-          },
-          runtimeNodes,
-          runtimeEdges,
-          histories: childHistories,
-          variableState: childrenVariableState,
-          query: childQuery,
-          chatConfig
+        const childContext = getWorkflowContext().getChildContext({
+          variableContext: childrenVariableState,
+          nodeResponseSink: getWorkflowContext().nodeResponseSink.getChildContext({
+            workflowRuntimeSummary: createWorkflowRuntimeSummary(),
+            ...(props.nodeResponseParentId !== undefined
+              ? { defaultParentId: props.nodeResponseParentId }
+              : {})
+          })
         });
+        return runWithContext(childContext, () =>
+          runWorkflow({
+            ...props,
+            lastInteractive: childrenInteractive,
+            // Rewrite stream mode
+            ...(system_forbid_stream
+              ? {
+                  stream: false,
+                  workflowStreamResponse: undefined
+                }
+              : {}),
+            runningAppInfo: {
+              sourceType: ChatSourceTypeEnum.app,
+              sourceId: String(appData._id),
+              name: appData.name,
+              teamId: String(appData.teamId),
+              tmbId: String(appData.tmbId),
+              isChildApp: true
+            },
+            runtimeNodes,
+            runtimeEdges,
+            histories: childHistories,
+            query: childQuery,
+            chatConfig
+          })
+        );
       }
     });
 

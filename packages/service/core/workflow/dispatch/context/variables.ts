@@ -5,7 +5,7 @@ import type { EntryPointItemType } from '@fastgpt/global/core/app/type';
 import { ENTRY_POINT_VARIABLE_KEY } from '@fastgpt/global/core/app/constants';
 import type { ChatFileStoreValue } from '@fastgpt/global/core/chat/type';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
-import type { ChatDispatchProps, WorkflowVariableStateLike } from '../../types/runtime';
+import type { WorkflowDispatchProps } from '../../types/runtime';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -18,11 +18,23 @@ import {
   assertChatFileRuntimeValue,
   normalizeChatFileStoreValue
 } from '../../../chat/fileStoreValue';
-import { getWorkflowFileContext } from '../../utils/context';
+import { getWorkflowFileContext } from './index';
 import { isAbsoluteHttpUrl } from '../../../chat/file/utils';
 import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
+import { cloneDeep } from 'lodash-es';
 
 const DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES = 5;
+
+/** 运行作用域中的变量能力；实现统一维护运行值、存储值和文件原始 metadata。 */
+export type WorkflowVariableStateLike = {
+  get: (key: string) => unknown;
+  set: (key: string, value: unknown) => Promise<unknown>;
+  getStoreValue: (key: string) => unknown;
+  getFileStoreValueByRuntimeUrl: (url: string) => ChatFileStoreValue | undefined;
+  toRuntimeRecord: () => Record<string, unknown>;
+  toStoreRecord: () => Record<string, unknown>;
+  clone: () => WorkflowVariableStateLike;
+};
 
 export const getEntryPointRuntimeVariables = ({
   entryPoints = [],
@@ -76,11 +88,11 @@ export type WorkflowVariableStateItem = {
 export type WorkflowVariableStateCreateProps = {
   // 系统级别变量，不需要额外加工
   timezone: string;
-  runningAppInfo: ChatDispatchProps['runningAppInfo'];
-  uid: ChatDispatchProps['uid'];
-  chatId: ChatDispatchProps['chatId'];
-  responseChatItemId?: ChatDispatchProps['responseChatItemId'];
-  histories?: ChatDispatchProps['histories'];
+  runningAppInfo: WorkflowDispatchProps['runningAppInfo'];
+  uid: WorkflowDispatchProps['uid'];
+  chatId: WorkflowDispatchProps['chatId'];
+  responseChatItemId?: WorkflowDispatchProps['responseChatItemId'];
+  histories?: WorkflowDispatchProps['histories'];
   externalVariables?: Record<string, unknown>;
   // 运行时级别变量，不需要额外加工
   runtimeOnlyVariables?: Record<string, unknown>;
@@ -347,20 +359,11 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
     }, {});
   }
 
-  /** 克隆当前状态，主要用于子运行/分支运行时隔离运行态修改。 */
+  /** 深拷贝变量值及文件 metadata，避免子运行原地修改对象或数组时提前污染父状态。 */
   clone() {
-    return new WorkflowVariableState(
-      new Map(
-        Array.from(this.state.entries()).map(([key, item]) => [
-          key,
-          {
-            ...item
-          }
-        ])
-      ),
-      new Map(this.fileMetaMap),
-      this.sourceVariableState
-    );
+    // 一次复制保留本实例中 store/runtime 值与 metadata 的内部引用关系。
+    const { state, fileMetaMap } = cloneDeep({ state: this.state, fileMetaMap: this.fileMetaMap });
+    return new WorkflowVariableState(state, fileMetaMap, this.sourceVariableState);
   }
 
   /** 根据变量配置初始化单个用户变量，并完成特殊类型的 store/runtime 转换。 */

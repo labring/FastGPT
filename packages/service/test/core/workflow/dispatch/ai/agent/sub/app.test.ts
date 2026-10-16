@@ -1,17 +1,20 @@
+import {
+  createTestWorkflowDispatch,
+  captureTestWorkflowContext,
+  getCapturedTestWorkflowContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
+import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/context/variables';
 import { summarizeRuntimeNodeResponses } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
-import {
-  getWorkflowFileContext,
-  runWithContext
-} from '@fastgpt/service/core/workflow/utils/context';
+import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context/file';
+import { getWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 
 const mocks = vi.hoisted(() => ({
   runWorkflow: vi.fn(),
@@ -22,7 +25,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
-  runWorkflow: (args: any) => mocks.runWorkflow(args)
+  runWorkflow: (args: any) => mocks.runWorkflow(captureTestWorkflowContext(args))
 }));
 
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
@@ -51,9 +54,12 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
 }));
 
 import {
-  dispatchApp,
-  dispatchPlugin
+  dispatchApp as dispatchAppWithoutContext,
+  dispatchPlugin as dispatchPluginWithoutContext
 } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/app';
+
+const dispatchApp = createTestWorkflowDispatch(dispatchAppWithoutContext);
+const dispatchPlugin = createTestWorkflowDispatch(dispatchPluginWithoutContext);
 
 const createVariableState = () =>
   WorkflowVariableState.create({
@@ -115,8 +121,8 @@ describe('agent sub app dispatchPlugin', () => {
       chatId: 'chat',
       responseChatItemId: 'response',
       histories: [],
-      variableState: await createVariableState(),
-      checkIsStopping: vi.fn(() => false),
+      variableContext: await createVariableState(),
+
       maxRunTimes: 20,
       workflowDispatchDeep: 0,
       stream: true
@@ -133,6 +139,16 @@ describe('agent sub app dispatchPlugin', () => {
       currentCost: 0
     });
     await dispatchSystemWorkflow();
+    const childProps = mocks.runWorkflow.mock.calls[0][0];
+    expect(getCapturedTestWorkflowContext(childProps).runtimeControl).toMatchObject({
+      mode: 'test',
+      maxRunTimes: 20,
+      workflowDispatchDeep: 0,
+      isToolCall: true
+    });
+    for (const key of ['mode', 'maxRunTimes', 'workflowDispatchDeep', 'isToolCall']) {
+      expect(childProps).not.toHaveProperty(key);
+    }
     expect(mocks.runWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
         stream: false,
@@ -245,8 +261,8 @@ describe('agent sub app dispatchPlugin', () => {
       chatId: 'chat',
       responseChatItemId: 'response',
       histories: [],
-      variableState: await createVariableState(),
-      checkIsStopping: vi.fn(() => false),
+      variableContext: await createVariableState(),
+
       maxRunTimes: 20,
       workflowDispatchDeep: 0
     } as any);
@@ -258,7 +274,11 @@ describe('agent sub app dispatchPlugin', () => {
         versionId: 'plugin-fixed-version'
       })
     );
-    expect(mocks.runWorkflow.mock.calls[0][0].variableState.get('counter')).toBe(0);
+    expect(
+      getCapturedTestWorkflowContext(mocks.runWorkflow.mock.calls[0][0]).variableContext.get(
+        'counter'
+      )
+    ).toBe(0);
     expect(mocks.serverGetWorkflowToolRunUserQuery).toHaveBeenCalledWith(
       expect.objectContaining({
         variables: expect.objectContaining({
@@ -416,7 +436,7 @@ describe('agent sub app dispatchPlugin', () => {
       name: 'default.pdf',
       type: ChatFileTypeEnum.file
     };
-    const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
+    const { fileContext } = await prepareWorkflowFileContext({
       query: [{ file: { ...defaultFile, url: '' } }],
       histories: [],
       scope: {
@@ -473,7 +493,9 @@ describe('agent sub app dispatchPlugin', () => {
         type: 'chatObject',
         objectKey: defaultKey
       });
-      expect(props.variableState.get('defaultFiles')).toEqual([defaultUrl]);
+      expect(getCapturedTestWorkflowContext(props).variableContext.get('defaultFiles')).toEqual([
+        defaultUrl
+      ]);
       return {
         flowUsages: [],
         workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, [
@@ -489,35 +511,29 @@ describe('agent sub app dispatchPlugin', () => {
     });
     const variableState = await createVariableState();
 
-    await runWithContext(
-      {
-        mcpClientMemory: {},
-        fileContext,
-        fileRegistrar
-      },
-      () =>
-        dispatchPlugin({
-          app: { id: 'child-app', name: 'Child Workflow Tool' },
-          runningAppInfo: {
-            sourceType: 'app',
-            sourceId: 'parent-app',
-            teamId: 'team',
-            tmbId: 'member',
-            name: 'parent'
-          },
-          runningUserInfo: { teamId: 'team', tmbId: 'member' },
-          customAppVariables: {},
-          userChatInput: '',
-          timezone: 'Asia/Shanghai',
-          uid: 'user',
-          chatId: 'chat',
-          responseChatItemId: 'response',
-          histories: [],
-          variableState,
-          checkIsStopping: vi.fn(() => false),
-          maxRunTimes: 20,
-          workflowDispatchDeep: 0
-        } as any)
+    await runWithContext({ checkIsStopping: () => false, mcpClientMemory: {}, fileContext }, () =>
+      dispatchPlugin({
+        app: { id: 'child-app', name: 'Child Workflow Tool' },
+        runningAppInfo: {
+          sourceType: 'app',
+          sourceId: 'parent-app',
+          teamId: 'team',
+          tmbId: 'member',
+          name: 'parent'
+        },
+        runningUserInfo: { teamId: 'team', tmbId: 'member' },
+        customAppVariables: {},
+        userChatInput: '',
+        timezone: 'Asia/Shanghai',
+        uid: 'user',
+        chatId: 'chat',
+        responseChatItemId: 'response',
+        histories: [],
+        variableContext: variableState,
+
+        maxRunTimes: 20,
+        workflowDispatchDeep: 0
+      } as any)
     );
   });
 
@@ -585,8 +601,8 @@ describe('agent sub app dispatchPlugin', () => {
       uid: 'user',
       chatId: 'chat',
       responseChatItemId: 'response',
-      variableState: await createVariableState(),
-      checkIsStopping: vi.fn(() => false),
+      variableContext: await createVariableState(),
+
       maxRunTimes: 20,
       workflowDispatchDeep: 0,
       lastInteractive: previousInteractive,
@@ -707,8 +723,8 @@ describe('agent sub app dispatchApp', () => {
       uid: 'user',
       chatId: 'chat',
       responseChatItemId: 'response',
-      variableState: await createVariableState(),
-      checkIsStopping: vi.fn(() => false),
+      variableContext: await createVariableState(),
+
       maxRunTimes: 20,
       workflowDispatchDeep: 0,
       lastInteractive: previousInteractive,
@@ -791,14 +807,16 @@ describe('agent sub app dispatchApp', () => {
       uid: 'user',
       chatId: 'chat',
       responseChatItemId: 'response',
-      variableState: await createVariableState(),
-      checkIsStopping: vi.fn(() => false),
+      variableContext: await createVariableState(),
+
       maxRunTimes: 20,
       workflowDispatchDeep: 0
     } as any);
 
-    expect(mocks.runWorkflow.mock.calls[0][0].variableState.get('internal')).toBe(
-      'internal default'
-    );
+    expect(
+      getCapturedTestWorkflowContext(mocks.runWorkflow.mock.calls[0][0]).variableContext.get(
+        'internal'
+      )
+    ).toBe('internal default');
   });
 });

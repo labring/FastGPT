@@ -6,7 +6,7 @@ import {
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/types/runtime';
+import { createTestVariableContext } from '../context/fixtures';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
@@ -53,18 +53,6 @@ const makeNode = (
     valueType: 'any' as any,
     value: o.value
   }))
-});
-
-const makeVariableState = (variables: Record<string, unknown> = {}): WorkflowVariableStateLike => ({
-  get: (key: string) => variables[key],
-  set: async (key: string, value: unknown) => {
-    variables[key] = value;
-    return value;
-  },
-  getStoreValue: (key: string) => variables[key],
-  getFileStoreValueByRuntimeUrl: () => undefined,
-  toRuntimeRecord: () => ({ ...variables }),
-  toStoreRecord: () => ({ ...variables })
 });
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -141,7 +129,7 @@ describe('loopRun/service', () => {
       const snapshot = readCustomOutputSnapshot({
         customOutputInputs,
         runtimeNodes: [nodeA, nodeB],
-        variableState: makeVariableState()
+        variableState: createTestVariableContext()
       });
       expect(snapshot).toEqual({ a: 'valueFromA', b: 'valueFromB' });
     });
@@ -154,7 +142,7 @@ describe('loopRun/service', () => {
       const snapshot = readCustomOutputSnapshot({
         customOutputInputs,
         runtimeNodes: [nodeA, nodeB],
-        variableState: makeVariableState(),
+        variableState: createTestVariableContext(),
         finishedNodeIds: new Set(['A']) // 只有 A 跑过
       });
       expect(snapshot).toEqual({ a: 'valueFromA', b: undefined });
@@ -167,7 +155,7 @@ describe('loopRun/service', () => {
       const snapshot = readCustomOutputSnapshot({
         customOutputInputs,
         runtimeNodes: [nodeA],
-        variableState: makeVariableState(),
+        variableState: createTestVariableContext(),
         finishedNodeIds: new Set()
       });
       expect(snapshot).toEqual({ a: undefined });
@@ -180,7 +168,7 @@ describe('loopRun/service', () => {
       const snapshot = readCustomOutputSnapshot({
         customOutputInputs,
         runtimeNodes: [],
-        variableState: makeVariableState({ globalKey: 'globalValue' }),
+        variableState: createTestVariableContext({ globalKey: 'globalValue' }),
         finishedNodeIds: new Set()
       });
       expect(snapshot).toEqual({ g: 'globalValue' });
@@ -190,7 +178,7 @@ describe('loopRun/service', () => {
       const snapshot = readCustomOutputSnapshot({
         customOutputInputs: [],
         runtimeNodes: [],
-        variableState: makeVariableState()
+        variableState: createTestVariableContext()
       });
       expect(snapshot).toEqual({});
     });
@@ -205,7 +193,7 @@ describe('loopRun/service', () => {
       const snapshot = readCustomOutputSnapshot({
         customOutputInputs,
         runtimeNodes: [nodeA, nodeB],
-        variableState: makeVariableState(),
+        variableState: createTestVariableContext(),
         finishedNodeIds: new Set(['B']), // 只有 B（循环体内）跑过
         childrenNodeIdList: ['B'] // A 在循环体外
       });
@@ -220,7 +208,7 @@ describe('loopRun/service', () => {
       const snapshot = readCustomOutputSnapshot({
         customOutputInputs,
         runtimeNodes: [nodeA, nodeB],
-        variableState: makeVariableState(),
+        variableState: createTestVariableContext(),
         finishedNodeIds: new Set(['B']),
         childrenNodeIdList: ['A', 'B'] // 都在循环体内，A 本轮未跑
       });

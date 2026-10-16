@@ -1,29 +1,18 @@
+import {
+  createTestWorkflowDispatch,
+  createTestVariableContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, expect, it } from 'vitest';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { dispatchTextEditor } from '@fastgpt/service/core/workflow/dispatch/tools/textEditor';
-import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/types/runtime';
-
-const createVariableState = (
-  variables: Record<string, unknown> = {}
-): WorkflowVariableStateLike => ({
-  get: (key) => variables[key],
-  set: async (key, value) => {
-    variables[key] = value;
-    return value;
-  },
-  getStoreValue: (key) => variables[key],
-  getFileStoreValueByRuntimeUrl: () => undefined,
-  toRuntimeRecord: () => ({ ...variables }),
-  toStoreRecord: () => ({ ...variables }),
-  clone: () => createVariableState({ ...variables })
-});
+import { dispatchTextEditor as dispatchTextEditorWithoutContext } from '@fastgpt/service/core/workflow/dispatch/tools/textEditor';
+const dispatchTextEditor = createTestWorkflowDispatch(dispatchTextEditorWithoutContext);
 
 describe('dispatchTextEditor', () => {
-  it('纯文本不构造 runtime variables', () => {
-    const result = dispatchTextEditor({
-      variableState: {
-        ...createVariableState(),
+  it('纯文本不构造 runtime variables', async () => {
+    const result = await dispatchTextEditor({
+      variableContext: {
+        ...createTestVariableContext(),
         toRuntimeRecord: () => {
           throw new Error('should not build runtime variables');
         }
@@ -38,7 +27,7 @@ describe('dispatchTextEditor', () => {
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.textOutput).toBe('plain text');
   });
 
-  it('只 stringify 模板实际引用的 custom variable', () => {
+  it('只 stringify 模板实际引用的 custom variable', async () => {
     let stringifyCount = 0;
     const unusedObject = {
       toJSON() {
@@ -47,8 +36,8 @@ describe('dispatchTextEditor', () => {
       }
     };
 
-    const result = dispatchTextEditor({
-      variableState: createVariableState(),
+    const result = await dispatchTextEditor({
+      variableContext: createTestVariableContext(),
       params: {
         [NodeInputKeyEnum.textareaInput]: 'Hello {{name}}',
         [NodeInputKeyEnum.addInputParam]: {
@@ -63,9 +52,9 @@ describe('dispatchTextEditor', () => {
     expect(stringifyCount).toBe(0);
   });
 
-  it('保持 custom variable object 的 pretty JSON 输出兼容行为', () => {
-    const result = dispatchTextEditor({
-      variableState: createVariableState(),
+  it('保持 custom variable object 的 pretty JSON 输出兼容行为', async () => {
+    const result = await dispatchTextEditor({
+      variableContext: createTestVariableContext(),
       params: {
         [NodeInputKeyEnum.textareaInput]: '{{payload}}',
         [NodeInputKeyEnum.addInputParam]: {
@@ -77,9 +66,9 @@ describe('dispatchTextEditor', () => {
     expect(result.data?.[NodeOutputKeyEnum.text]).toBe('{\n  "a": 1\n}');
   });
 
-  it('不把 Object 原型字段误当作变量', () => {
-    const result = dispatchTextEditor({
-      variableState: createVariableState(),
+  it('不把 Object 原型字段误当作变量', async () => {
+    const result = await dispatchTextEditor({
+      variableContext: createTestVariableContext(),
       params: {
         [NodeInputKeyEnum.textareaInput]: '{{toString}}',
         [NodeInputKeyEnum.addInputParam]: {}

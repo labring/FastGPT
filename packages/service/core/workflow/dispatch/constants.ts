@@ -33,12 +33,8 @@ import { dispatchIfElse } from './tools/runIfElse';
 import { dispatchUpdateVariable } from './tools/runUpdateVar';
 import { dispatchTextEditor } from './tools/textEditor';
 import { dispatchRunAgent } from './ai/agent';
-import { dispatchInternalRuntimeNode, internalRuntimeNodeType } from './internal/runtimeNode';
 
-export const callbackMap: Record<
-  FlowNodeTypeEnum | typeof internalRuntimeNodeType,
-  (...args: any[]) => unknown
-> = {
+export const callbackMap: Record<FlowNodeTypeEnum, (...args: any[]) => unknown> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
 
   // Child
@@ -76,7 +72,6 @@ export const callbackMap: Record<
   [FlowNodeTypeEnum.nestedEnd]: dispatchLoopEnd,
   [FlowNodeTypeEnum.formInput]: dispatchFormInput,
   [FlowNodeTypeEnum.tool]: dispatchRunTool,
-  [internalRuntimeNodeType]: dispatchInternalRuntimeNode,
 
   // none
   [FlowNodeTypeEnum.emptyNode]: () => Promise.resolve(),
