@@ -13,8 +13,9 @@ import { createAgentLoopCoreEventStream } from '@fastgpt/service/core/workflow/d
 
 type StreamParams = Parameters<typeof createStreamResponse>[0];
 type SDKDelta = ChatCompletionChunk['choices'][number]['delta'];
-type ToolDelta = Omit<NonNullable<SDKDelta['tool_calls']>[number], 'index'> & {
+type ToolDelta = Omit<NonNullable<SDKDelta['tool_calls']>[number], 'index' | 'id'> & {
   index?: number | null;
+  id?: string | null;
 };
 type Delta = Omit<SDKDelta, 'tool_calls'> & {
   reasoning_content?: string;
@@ -295,10 +296,12 @@ describe('createStreamResponse', () => {
           ]
         }),
         chunk({
-          tool_calls: [{ index: 0, function: { name: 'functions.get_file', arguments: '1' } }]
+          tool_calls: [
+            { index: 0, id: '', function: { name: 'functions.get_file', arguments: '1' } }
+          ]
         }),
         chunk(
-          { tool_calls: [{ index: 0, function: { name: 'get_file', arguments: '}' } }] },
+          { tool_calls: [{ index: 0, id: null, function: { name: 'get_file', arguments: '}' } }] },
           'tool_calls'
         )
       ]);
@@ -332,8 +335,7 @@ describe('createStreamResponse', () => {
           chunk({
             tool_calls: [{ index: 0, id: 'real_id', function: { name: 'search', arguments: '1' } }]
           }),
-          // 后续缺 index 时仍能通过晚到的真实 id 找到同一个累积器。
-          chunk({ tool_calls: [{ id: 'real_id', function: { arguments: '}' } }] }, 'tool_calls')
+          chunk({ tool_calls: [{ index: 0, function: { arguments: '}' } }] }, 'tool_calls')
         ]);
         const result = await createStreamResponse({ body: nativeBody, response, ...callbacks });
         const startedId = callbacks.onToolCall.mock.calls[0][0].call.id;
@@ -383,13 +385,15 @@ describe('createStreamResponse', () => {
       ]);
     });
 
-    it('should retain both event and upstream ids in diagnostics after a late id conflicts', async () => {
+    it('should retain event and upstream ids when a later tool name conflicts', async () => {
       const callbacks = createCallbacks();
       const { response } = createStream([
         chunk({ tool_calls: [{ index: 0, function: { name: 'search', arguments: '{"q":' } }] }),
         chunk({ tool_calls: [{ index: 0, id: 'real_id', function: { arguments: '1' } }] }),
         chunk(
-          { tool_calls: [{ index: 0, id: 'conflicting_id', function: { arguments: '}' } }] },
+          {
+            tool_calls: [{ index: 0, id: 'real_id', function: { name: 'other', arguments: '}' } }]
+          },
           'tool_calls'
         )
       ]);
@@ -406,7 +410,7 @@ describe('createStreamResponse', () => {
               function: { name: 'search', arguments: '{"q":1' }
             }
           ],
-          conflictingToolCall: { id: 'conflicting_id' }
+          conflictingToolCall: { id: 'real_id', function: { name: 'other' } }
         }
       });
     });
@@ -423,42 +427,6 @@ describe('createStreamResponse', () => {
         calls: [{ index: 0, id: 'a', function: { name: 'sea' } }],
         conflict: { index: 0, function: { name: 'rch' } },
         message: 'tool name changed'
-      },
-      {
-        label: 'different ids at the same index',
-        calls: [{ index: 0, id: 'a', function: { name: 'search' } }],
-        conflict: { index: 0, id: 'b', function: { arguments: '{}' } },
-        message: 'index and id'
-      },
-      {
-        label: 'different indexes for the same id',
-        calls: [{ index: 0, id: 'a', function: { name: 'search' } }],
-        conflict: { index: 1, id: 'a', function: { arguments: '{}' } },
-        message: 'index and id'
-      },
-      {
-        label: 'index and id selecting different calls',
-        calls: [
-          { index: 0, id: 'a', function: { name: 'search' } },
-          { index: 1, id: 'b', function: { name: 'search' } }
-        ],
-        conflict: { index: 0, id: 'b', function: { arguments: '{}' } },
-        message: 'index and id'
-      },
-      {
-        label: 'unknown id without an index for a pending anonymous call',
-        calls: [{ index: 0, function: { name: 'search', arguments: '{"q":' } }],
-        conflict: { id: 'new_id', function: { name: 'search', arguments: '1}' } },
-        message: 'requires an index'
-      },
-      {
-        label: 'parallel delta with no identity',
-        calls: [
-          { id: 'a', function: { name: 'search' } },
-          { id: 'b', function: { name: 'search' } }
-        ],
-        conflict: { function: { arguments: '{}' } },
-        message: 'missing both index and id'
       }
     ])(
       'should reject $label without further tool events and still read usage',
@@ -502,6 +470,65 @@ describe('createStreamResponse', () => {
         );
       }
     );
+
+    it.each([
+      {
+        label: 'the same index with different ids',
+        first: { index: 0, id: 'a' },
+        second: { index: 0, id: 'b' }
+      },
+      {
+        label: 'the same id with different indexes',
+        first: { index: 0, id: 'a' },
+        second: { index: 1, id: 'a' }
+      },
+      {
+        label: 'an indexed call followed by an unindexed call with the same id',
+        first: { index: 0, id: 'a' },
+        second: { id: 'a' }
+      },
+      {
+        label: 'an unindexed call followed by an indexed call with the same id',
+        first: { id: 'a' },
+        second: { index: 0, id: 'a' }
+      },
+      {
+        label: 'an anonymous call followed by an id without an index',
+        first: {},
+        second: { id: 'a' }
+      }
+    ])('should keep $label separate', async ({ first, second }) => {
+      const callbacks = createCallbacks();
+      const { response } = createStream([
+        chunk({
+          tool_calls: [{ ...first, function: { name: 'search', arguments: '{"first":1}' } }]
+        }),
+        chunk(
+          {
+            tool_calls: [
+              { ...second, function: { name: 'search_content', arguments: '{"second":2}' } }
+            ]
+          },
+          'tool_calls'
+        )
+      ]);
+      const result = await createStreamResponse({
+        body: createBody({ tools: [tool('search'), tool('search_content')] }),
+        response,
+        ...callbacks
+      });
+
+      expect(result.error).toBeUndefined();
+      expect(result.toolCalls).toHaveLength(2);
+      expect(result.toolCalls?.map((call) => call.function)).toEqual(
+        expect.arrayContaining([
+          { name: 'search', arguments: '{"first":1}' },
+          { name: 'search_content', arguments: '{"second":2}' }
+        ])
+      );
+      expect(callbacks.onToolCall).toHaveBeenCalledTimes(2);
+      expect(callbacks.onToolParam).not.toHaveBeenCalled();
+    });
 
     it('should ignore empty frames and unknown, incomplete or missing tool names', async () => {
       const callbacks = createCallbacks();
@@ -653,22 +680,27 @@ describe('createStreamResponse', () => {
       { index: undefined, id: undefined },
       { index: null, id: '' }
     ])(
-      'should fall back for missing index=$index and id=$id without tool callbacks',
+      'should not guess anonymous argument ownership for index=$index and id=$id',
       async ({ index, id }) => {
+        const callbacks = createCallbacks();
         const { response } = createStream([
-          chunk({ tool_calls: [{ index, id, function: { name: 'search', arguments: '{"q"' } }] }),
-          chunk({ tool_calls: [{ index, id, function: {} }] }),
-          chunk({ tool_calls: [{ index, id, function: { arguments: ':1}' } }] }, 'tool_calls')
+          chunk({ tool_calls: [{ index, id, function: { arguments: '{"q":' } }] }),
+          chunk({ tool_calls: [{ index, id, function: { name: 'search', arguments: '{}' } }] }),
+          chunk({ tool_calls: [{ index, id, function: { arguments: '1}' } }] }, 'tool_calls')
         ]);
-        const result = await createStreamResponse({ body: nativeBody, response });
+        const result = await createStreamResponse({ body: nativeBody, response, ...callbacks });
         expect(result.toolCalls).toEqual([
           {
             id: expect.any(String),
             type: 'function',
-            function: { name: 'search', arguments: '{"q":1}' }
+            function: { name: 'search', arguments: '{}' }
           }
         ]);
         expect(result.toolCalls?.[0].id).toHaveLength(6);
+        expect(callbacks.onToolCall).toHaveBeenCalledExactlyOnceWith({
+          call: result.toolCalls?.[0]
+        });
+        expect(callbacks.onToolParam).not.toHaveBeenCalled();
       }
     );
   });

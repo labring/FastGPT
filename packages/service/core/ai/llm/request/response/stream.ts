@@ -58,18 +58,14 @@ export const createStreamResponse = async ({
   if (tools?.length) {
     if (toolCallMode === 'toolChoice') {
       type ToolCallAccumulator = {
-        id: string;
-        upstreamId?: string;
         index?: number;
-        arrayIndex: number;
+        id?: string;
         name: string;
         arguments: string;
-        hasEmittedStart: boolean;
+        eventId?: string;
       };
-      // index 是标准协议身份；缺 index 的兼容响应仅在稳定 id 能消歧时支持并行交错。
+      // 优先按 index 合并；仅当双方都缺 index 时按 id 匹配，不猜测无身份片段的归属。
       const toolCalls: ToolCallAccumulator[] = [];
-      const callsByIndex = new Map<number, ToolCallAccumulator>();
-      const callsById = new Map<string, ToolCallAccumulator>();
       const toolNames = new Set(tools.map((tool) => tool.function.name));
       let protocolError: Parameters<typeof normalizeNativeToolCalls>[0]['protocolError'];
 
@@ -83,76 +79,25 @@ export const createStreamResponse = async ({
 
         const responseChoice = part.choices?.[0]?.delta;
         if (responseChoice?.tool_calls?.length) {
-          responseChoice.tool_calls.forEach((toolCall, i) => {
+          responseChoice.tool_calls.forEach((toolCall) => {
             // 协议冲突后继续读取正文和 usage，但不再派发可能串到其他工具的事件。
             if (protocolError) return;
             const index = toolCall.index ?? undefined;
-            const upstreamId = toolCall.id ? toolCall.id : undefined;
-            const indexedCall = index === undefined ? undefined : callsByIndex.get(index);
-            const identifiedCall = upstreamId ? callsById.get(upstreamId) : undefined;
-            const fallbackCalls =
-              index === undefined && !identifiedCall
-                ? toolCalls.filter((call) => call.arrayIndex === i)
-                : [];
-            const fallbackCall = fallbackCalls.length === 1 ? fallbackCalls[0] : undefined;
-
-            if (index === undefined && !upstreamId && toolCalls.length > 1) {
-              protocolError = {
-                message:
-                  'LLM tool call error: parallel tool call delta is missing both index and id.',
-                toolCall
-              };
-              return;
-            }
-
-            if (
-              index === undefined &&
-              upstreamId &&
-              !identifiedCall &&
-              fallbackCalls.some((call) => !call.upstreamId)
-            ) {
-              // 未知 id 可能是晚到身份，也可能是另一个并发调用，不能凭数组位置合并。
-              protocolError = {
-                message:
-                  'LLM tool call error: late tool call id requires an index to identify the pending call.',
-                toolCall
-              };
-              return;
-            }
-
-            const existing =
-              identifiedCall ?? indexedCall ?? (!upstreamId ? fallbackCall : undefined);
+            const id = toolCall.id || undefined;
+            const existing = toolCalls.find((call) => {
+              if (index !== undefined && call.index !== undefined) {
+                return call.index === index && (!call.id || !id || call.id === id);
+              }
+              return index === undefined && call.index === undefined && !!id && call.id === id;
+            });
             const current: ToolCallAccumulator = existing ?? {
-              id: upstreamId ?? getNanoid(6),
-              arrayIndex: i,
+              index,
+              id,
               name: '',
-              arguments: '',
-              hasEmittedStart: false
+              arguments: ''
             };
-
-            if (
-              (identifiedCall && indexedCall && identifiedCall !== indexedCall) ||
-              (current.upstreamId && upstreamId && current.upstreamId !== upstreamId) ||
-              (current.index !== undefined && index !== undefined && current.index !== index)
-            ) {
-              protocolError = {
-                message: 'LLM tool call error: tool call index and id identify conflicting calls.',
-                toolCall
-              };
-              return;
-            }
-
             if (!existing) toolCalls.push(current);
-            if (index !== undefined) {
-              current.index = index;
-              callsByIndex.set(index, current);
-            }
-            if (upstreamId) {
-              current.upstreamId = upstreamId;
-              callsById.set(upstreamId, current);
-              // 晚到 id 仅补充上游身份映射，开始事件发出后对外 id 必须保持不变。
-              if (!current.hasEmittedStart) current.id = upstreamId;
-            }
+            if (id) current.id = id;
             if (toolCall.function?.name) {
               const nextName = toolCall.function.name;
               if (current.name && normalizeToolName(current.name) !== normalizeToolName(nextName)) {
@@ -174,12 +119,13 @@ export const createStreamResponse = async ({
             if (!toolNames.has(normalizedName)) return;
 
             const call: ChatCompletionMessageToolCall = {
-              id: current.id,
+              id: current.eventId ?? current.id ?? getNanoid(6),
               type: 'function',
               function: { name: normalizedName, arguments: current.arguments }
             };
-            if (!current.hasEmittedStart) {
-              current.hasEmittedStart = true;
+            if (!current.eventId) {
+              // eventId 同时标记开始事件已发送；上游 id 晚到时也保持对外身份不变。
+              current.eventId = call.id;
               // 开始事件包含全部已缓存参数，本块不能再作为增量重复发送。
               onToolCall?.({ call });
               return;
@@ -201,12 +147,13 @@ export const createStreamResponse = async ({
         usage,
         ...normalizeNativeToolCalls({
           toolCalls: toolCalls
-            .sort((a, b) => (a.index ?? a.arrayIndex) - (b.index ?? b.arrayIndex))
+            .sort(
+              (a, b) => (a.index ?? Number.MAX_SAFE_INTEGER) - (b.index ?? Number.MAX_SAFE_INTEGER)
+            )
             .map((call) => ({
               ...(call.index !== undefined && { index: call.index }),
-              id: call.id,
-              ...(call.upstreamId &&
-                call.upstreamId !== call.id && { upstreamId: call.upstreamId }),
+              id: call.eventId ?? call.id ?? getNanoid(6),
+              ...(call.eventId && call.id && call.eventId !== call.id && { upstreamId: call.id }),
               type: 'function',
               function: { name: call.name, arguments: call.arguments }
             })),
