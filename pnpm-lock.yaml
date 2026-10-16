@@ -970,6 +970,9 @@ importers:
 
   packages/workflow-cli:
     devDependencies:
+      '@fastgpt/global':
+        specifier: workspace:*
+        version: link:../global
       '@fastgpt/web':
         specifier: workspace:*
         version: link:../web

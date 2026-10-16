@@ -1,16 +1,11 @@
 import staticWorkflowFixture from '../fixtures/basic-static/workflow.json';
-import {
-  WORKFLOW_CHANGESET_SCHEMA_VERSION,
-  WorkflowDocumentSchema,
-  applyWorkflowChangeSet,
-  applyWorkflowCommand,
-  builtinTemplateProvider,
-  getWorkflowChecksum,
-  normalizeWorkflowDocument,
-  parseNodeTemplateRef,
-  planWorkflowChangeSet,
-  type WorkflowChangeSet
-} from '../../src';
+import { WORKFLOW_CHANGESET_SCHEMA_VERSION, type WorkflowChangeSet } from '../../src/command/type';
+import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
+import { applyWorkflowChangeSet, planWorkflowChangeSet } from '../../src/command/applyChangeSet';
+import { applyWorkflowCommand } from '../../src/command/apply';
+import { builtinTemplateProvider } from '../template/provider';
+import { getWorkflowChecksum, normalizeWorkflowDocument } from '../../src/domain/checksum';
+import { parseNodeTemplateRef } from '../../src/template/type';
 import { describe, expect, it } from 'vitest';
 
 const dependencies = { templateProvider: builtinTemplateProvider };

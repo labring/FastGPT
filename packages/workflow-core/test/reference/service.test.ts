@@ -1,20 +1,19 @@
 import { areWorkflowValueTypesCompatible } from '@fastgpt/global/common/workflow/reference';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
-  FlowNodeInputTypeEnum,
   VARIABLE_NODE_ID,
   VariableInputEnum,
-  WorkflowCommandError,
-  WorkflowDocumentSchema,
-  WorkflowIOValueTypeEnum,
-  builtinTemplateProvider,
-  createWorkflowDocument,
-  getAvailableInputReferences,
-  instantiateNodeFromTemplate,
-  parseNodeTemplateRef,
-  setInputReference,
-  setInputValue,
-  validateWorkflow
-} from '../../src';
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
+import { WorkflowCommandError } from '../../src/domain/diagnostic';
+import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
+import { builtinTemplateProvider } from '../template/provider';
+import { createWorkflowDocument } from '../../src/domain/document';
+import { getAvailableInputReferences } from '../../src/reference/query';
+import { instantiateNodeFromTemplate } from '../../src/template/instantiate';
+import { parseNodeTemplateRef } from '../../src/template/type';
+import { setInputReference, setInputValue } from '../../src/reference/service';
+import { validateWorkflow } from '../../src/validation/index';
 import aiWorkflow from '../fixtures/basic-ai/workflow.json';
 import { beforeEach, describe, expect, it } from 'vitest';
 

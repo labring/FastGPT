@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,6 +23,29 @@ const invoke = (args, input) => {
 };
 
 try {
+  // 使用实际包解析验证入口，避免测试别名掩盖错误的 exports 或缺失的构建文件。
+  const coreManifest = JSON.parse(
+    await readFile(join(packageRoot, '..', 'workflow-core', 'package.json'), 'utf8')
+  );
+  for (const [subpath, entry] of Object.entries(coreManifest.exports)) {
+    await access(fileURLToPath(import.meta.resolve('@fastgpt/workflow-core' + subpath.slice(1))));
+    await access(join(packageRoot, '..', 'workflow-core', entry.types));
+  }
+  for (const subpath of [
+    'node/service',
+    'node/add',
+    'edge/service',
+    'reference/service',
+    'nesting/service',
+    'config/service',
+    'io/service',
+    'src/node/service'
+  ]) {
+    assert.throws(() => import.meta.resolve('@fastgpt/workflow-core/' + subpath), {
+      code: 'ERR_PACKAGE_PATH_NOT_EXPORTED'
+    });
+  }
+
   invoke(['init', '--dir', workflowDir, '--name', 'Bin smoke']);
   invoke([
     'node',

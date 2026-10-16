@@ -14,7 +14,7 @@ import {
   FlowNodeOutputItemTypeSchema,
   type FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
-import type { WorkflowDocument } from '../domain/document';
+import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import { WorkflowCommandError } from '../domain/diagnostic';
 import { getDocumentNode } from '../nesting/service';
 import { extractCodeInputDefinitions, extractCodeOutputDefinitions } from '../code/io';

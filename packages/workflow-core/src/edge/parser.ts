@@ -1,5 +1,8 @@
 import { WorkflowCommandError } from '../domain/diagnostic';
-import type { ExecutionSourcePortRef, ExecutionTargetPortRef } from './type';
+import type {
+  ExecutionSourcePortRef,
+  ExecutionTargetPortRef
+} from '@fastgpt/global/core/workflow/type/edge';
 
 /** 解析 `node@port` 形式的执行源端口。 */
 export const parseExecutionSourcePortRef = (value: string): ExecutionSourcePortRef => {

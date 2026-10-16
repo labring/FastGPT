@@ -1,11 +1,8 @@
-import {
-  applyWorkflowCommand,
-  builtinTemplateProvider,
-  collectWorkflowBindings,
-  createWorkflowDocument,
-  getWorkflowBindingDiagnostics,
-  parseNodeTemplateRef
-} from '../../src';
+import { applyWorkflowCommand } from '../../src/command/apply';
+import { builtinTemplateProvider } from '../template/provider';
+import { collectWorkflowBindings, getWorkflowBindingDiagnostics } from '../../src/binding/service';
+import { createWorkflowDocument } from '../../src/domain/document';
+import { parseNodeTemplateRef } from '../../src/template/type';
 import { describe, expect, it } from 'vitest';
 
 const dependencies = { templateProvider: builtinTemplateProvider, locale: 'en' };

@@ -3,13 +3,16 @@
   "version": "0.3.0-beta.1",
   "private": true,
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist/run.js",
   "bin": {
     "fastgpt-workflow": "./dist/cli.js"
   },
   "exports": {
     ".": {
-      "import": "./dist/index.js"
+      "import": "./dist/run.js"
+    },
+    "./run": {
+      "import": "./dist/run.js"
     }
   },
   "files": [
@@ -32,6 +35,7 @@
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",
-    "@vitest/coverage-v8": "catalog:"
+    "@vitest/coverage-v8": "catalog:",
+    "@fastgpt/global": "workspace:*"
   }
 }

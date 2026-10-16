@@ -1,4 +1,7 @@
-import type { WorkflowInputDefaultPolicy, WorkflowResourceKind } from '../template/type';
+import type {
+  WorkflowInputDefaultPolicy,
+  WorkflowResourceKind
+} from '@fastgpt/global/core/workflow/template/type';
 
 export type WorkflowBindingStatus = 'missing' | 'unverified';
 

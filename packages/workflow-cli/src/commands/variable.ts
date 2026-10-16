@@ -1,18 +1,49 @@
 import {
+  option,
+  emptySchema,
+  valueOptionShape,
+  valueOptions,
+  getValueOptionCount
+} from '../commandOptions';
+import z, { ZodError } from 'zod';
+import {
   VariableItemTypeSchema,
+  type VariableItemType
+} from '@fastgpt/global/core/app/variable/type';
+import {
   VariableInputEnum,
   WorkflowIOValueTypeEnum,
   textInputVariableValueTypes,
-  variableMap,
-  type VariableItemType
-} from '@fastgpt/workflow-core';
+  variableMap
+} from '@fastgpt/global/core/workflow/constants';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { ZodError } from 'zod';
+
 import { CliArgumentError } from '../error';
 import { readWorkflowFile } from '../io/workflowFile';
-import type { CliContext, CliResult } from '../type';
+import type { CliContext, CliResult, CliCommandDefinition } from '../type';
 import { readInputValue, requireString, runMutation } from './helpers';
+const variableTypeSchema = z.enum([...Object.values(VariableInputEnum), 'external']);
+const variableConfigOptionShape = {
+  configJson: z.string().min(1).optional(),
+  configFile: z.string().min(1).optional(),
+  optionsJson: z.string().min(1).optional(),
+  min: z.string().min(1).optional(),
+  max: z.string().min(1).optional(),
+  maxLength: z.string().min(1).optional(),
+  timeGranularity: z.enum(['day', 'hour', 'minute', 'second']).optional()
+};
+const variableConfigOptions = [
+  option('--config-json', 'Type-specific variable config as JSON'),
+  option('--config-file', 'Read type-specific variable config from a JSON file'),
+  option('--options-json', 'Select options as a JSON array'),
+  option('--min', 'Minimum numeric value'),
+  option('--max', 'Maximum numeric value'),
+  option('--max-length', 'Maximum text length'),
+  option('--time-granularity', 'Time granularity: day, hour, minute or second')
+];
+const getVariableConfigFileOptionCount = (value: Record<string, unknown>) =>
+  [value.configJson, value.configFile].filter((item) => item !== undefined).length;
 
 const valueOptionKeys = ['value', 'valueJson', 'valueFile', 'valueEnv'] as const;
 const hasValueOption = (input: Record<string, unknown>) =>
@@ -245,3 +276,141 @@ export const removeVariable = async (
     context,
     command: { type: 'variable.remove', key: requireString(input, 'key') }
   });
+
+/** variable 命令定义与执行逻辑在同一模块维护；注册器只负责收集。 */
+export const variableCommands: CliCommandDefinition[] = [
+  {
+    path: ['variable', 'list'],
+    introducedIn: 'PR2',
+    kind: 'query',
+    inputSchema: emptySchema,
+    options: [],
+    supportsDryRun: false,
+    confirm: 'none',
+    handler: listVariables
+  },
+  {
+    path: ['variable', 'add'],
+    introducedIn: 'PR2',
+    kind: 'localMutation',
+    inputSchema: z
+      .object({
+        key: z.string().min(1),
+        type: variableTypeSchema.optional(),
+        valueType: z.enum(WorkflowIOValueTypeEnum),
+        label: z.string().min(1).optional(),
+        description: z.string().optional(),
+        required: z.literal(true).optional(),
+        ...variableConfigOptionShape,
+        ...valueOptionShape,
+        dryRun: z.literal(true).optional()
+      })
+      .strict()
+      .superRefine((value, context) => {
+        if (getValueOptionCount(value) > 1) {
+          context.addIssue({ code: 'custom', message: 'Value options are exclusive' });
+        }
+        if (getVariableConfigFileOptionCount(value) > 1) {
+          context.addIssue({ code: 'custom', message: 'Config options are exclusive' });
+        }
+      }),
+    options: [
+      option('--key', 'Variable key', { required: true }),
+      option('--type', 'Variable input type; external is an alias for custom'),
+      option('--value-type', 'Workflow value type', { required: true }),
+      option('--label', 'Variable label'),
+      option('--description', 'Variable description'),
+      option('--required', 'Mark the variable as required', { value: false }),
+      ...variableConfigOptions,
+      ...valueOptions,
+      option('--dry-run', 'Return changes without writing', { value: false })
+    ],
+    supportsDryRun: true,
+    confirm: 'none',
+    handler: addVariable
+  },
+  {
+    path: ['variable', 'update'],
+    introducedIn: 'PR2',
+    kind: 'localMutation',
+    inputSchema: z
+      .object({
+        key: z.string().min(1),
+        newKey: z.string().min(1).optional(),
+        type: variableTypeSchema.optional(),
+        valueType: z.enum(WorkflowIOValueTypeEnum).optional(),
+        label: z.string().min(1).optional(),
+        description: z.string().optional(),
+        required: z.literal(true).optional(),
+        optional: z.literal(true).optional(),
+        ...variableConfigOptionShape,
+        ...valueOptionShape,
+        dryRun: z.literal(true).optional()
+      })
+      .strict()
+      .superRefine((value, context) => {
+        if (value.required && value.optional) {
+          context.addIssue({ code: 'custom', message: '--required and --optional are exclusive' });
+        }
+        if (getValueOptionCount(value) > 1) {
+          context.addIssue({ code: 'custom', message: 'Value options are exclusive' });
+        }
+        if (getVariableConfigFileOptionCount(value) > 1) {
+          context.addIssue({ code: 'custom', message: 'Config options are exclusive' });
+        }
+        if (
+          [
+            value.newKey,
+            value.type,
+            value.valueType,
+            value.label,
+            value.description,
+            value.required,
+            value.optional,
+            value.configJson,
+            value.configFile,
+            value.optionsJson,
+            value.min,
+            value.max,
+            value.maxLength,
+            value.timeGranularity,
+            value.value,
+            value.valueJson,
+            value.valueFile,
+            value.valueEnv
+          ].every((item) => item === undefined)
+        ) {
+          context.addIssue({ code: 'custom', message: 'At least one update field is required' });
+        }
+      }),
+    options: [
+      option('--key', 'Existing variable key', { required: true }),
+      option('--new-key', 'New variable key'),
+      option('--type', 'Variable input type; external is an alias for custom'),
+      option('--value-type', 'Workflow value type'),
+      option('--label', 'Variable label'),
+      option('--description', 'Variable description'),
+      option('--required', 'Mark the variable as required', { value: false }),
+      option('--optional', 'Mark the variable as optional', { value: false }),
+      ...variableConfigOptions,
+      ...valueOptions,
+      option('--dry-run', 'Return changes without writing', { value: false })
+    ],
+    supportsDryRun: true,
+    confirm: 'none',
+    handler: updateVariable
+  },
+  {
+    path: ['variable', 'remove'],
+    introducedIn: 'PR2',
+    kind: 'localMutation',
+    inputSchema: z.object({ key: z.string().min(1), dryRun: z.literal(true).optional() }).strict(),
+    options: [
+      option('--key', 'Variable key', { required: true }),
+      option('--dry-run', 'Return changes without writing', { value: false })
+    ],
+    supportsDryRun: true,
+    confirm: 'none',
+    handler: removeVariable
+  }
+];

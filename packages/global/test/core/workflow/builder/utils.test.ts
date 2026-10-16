@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { getWorkflowBuilderVersionDisplayState } from '@fastgpt/global/core/workflow/builder/utils';
+import {
+  getWorkflowBuilderVersionDisplayState,
+  isWorkflowBuilderVersionExpiredError
+} from '@fastgpt/global/core/workflow/builder/utils';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
 
 const version: WorkflowBuilderVersion = {
@@ -9,6 +14,37 @@ const version: WorkflowBuilderVersion = {
   checksum: `sha256:${'0'.repeat(64)}`,
   generatedAt: '2026-08-12T10:00:00.000Z'
 };
+
+describe('isWorkflowBuilderVersionExpiredError', () => {
+  const expiredResponse = {
+    code: 502005,
+    statusText: AppErrEnum.workflowBuilderVersionExpired,
+    message: '该工作流已过期，无法应用，请重新生成'
+  };
+
+  it('recognizes the stable API code independently of the message and wrapper', () => {
+    expect(ERROR_RESPONSE[AppErrEnum.workflowBuilderVersionExpired].code).toBe(502005);
+    expect(isWorkflowBuilderVersionExpiredError(expiredResponse)).toBe(true);
+    expect(
+      isWorkflowBuilderVersionExpiredError({
+        response: { data: { ...expiredResponse, message: 'Version is no longer available' } }
+      })
+    ).toBe(true);
+  });
+
+  it.each([
+    undefined,
+    null,
+    'expired',
+    new Error('Workflow Builder version has expired'),
+    { message: 'expired' },
+    { code: 500, message: 'expired' },
+    { code: '502005' },
+    { response: { data: { code: 502000, message: 'expired' } } }
+  ])('does not misclassify unrelated errors as expired (%s)', (error) => {
+    expect(isWorkflowBuilderVersionExpiredError(error)).toBe(false);
+  });
+});
 
 describe('getWorkflowBuilderVersionDisplayState', () => {
   it('returns ready for a version that has not been applied', () => {

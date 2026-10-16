@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import staticWorkflowFixture from '../fixtures/basic-static/workflow.json';
+import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
+import { applyWorkflowChangeSet } from '../../src/command/applyChangeSet';
+import { builtinTemplateProvider } from '../template/provider';
+import { getWorkflowChecksum } from '../../src/domain/checksum';
 import {
-  WorkflowDocumentSchema,
-  applyWorkflowChangeSet,
-  builtinTemplateProvider,
-  getWorkflowChecksum,
   mergeWorkflowChangeSetChunks,
-  WorkflowChangeSetMergeError,
-  type WorkflowChangeSetChunk
-} from '../../src';
+  WorkflowChangeSetMergeError
+} from '../../src/command/mergeChangeSet';
+import { type WorkflowChangeSetChunk } from '../../src/command/type';
 
 const baseChecksum = `sha256:${'a'.repeat(64)}`;
 const chunk = (value: Partial<WorkflowChangeSetChunk>): WorkflowChangeSetChunk => ({

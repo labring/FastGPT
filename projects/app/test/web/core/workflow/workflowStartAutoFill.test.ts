@@ -24,7 +24,7 @@ import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiCh
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import { ClassifyQuestionModule } from '@fastgpt/global/core/workflow/template/system/classifyQuestion';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
-import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { userFilesInput } from '@fastgpt/global/core/workflow/template/output';
 
 const startNode: Node<FlowNodeItemType> = {
   id: 'start',

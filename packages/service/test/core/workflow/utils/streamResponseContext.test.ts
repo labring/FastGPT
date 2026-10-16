@@ -8,6 +8,7 @@ import {
   STREAM_RESUME_ACTIVITY_HEARTBEAT_INTERVAL_MS,
   STREAM_RESUME_POST_COMPLETE_TTL_SECONDS,
   getStreamResumeRedisKeys,
+  getStreamResumeActiveState,
   resetStreamResumeMirrorGuardForTest,
   startStreamResumeActivityHeartbeat
 } from '@fastgpt/service/core/chat/resume';
@@ -113,6 +114,50 @@ describe('createWorkflowStreamResponseContext', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.useRealTimers();
+  });
+
+  it('continues background activity after disconnect and stops it when flushed once', async () => {
+    vi.useFakeTimers();
+    const res = createRes();
+    const params = { teamId, sourceType: ChatSourceTypeEnum.app, sourceId, chatId };
+    const redis = getRedisRuntime().getCommandConnection() as any;
+    const set = vi.spyOn(redis, 'set');
+    const context = await createWorkflowStreamResponseContext({
+      ...params,
+      req: createReq(),
+      res,
+      stream: true,
+      detail: true,
+      mirrorFromStart: true
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    const initialActive = await getStreamResumeActiveState(params);
+    expect(initialActive).toBeDefined();
+
+    res.closed = true;
+    res.emit('close');
+    await vi.advanceTimersByTimeAsync(STREAM_RESUME_ACTIVITY_HEARTBEAT_INTERVAL_MS);
+    const disconnectedActive = await getStreamResumeActiveState(params);
+    expect(disconnectedActive!.updatedAt).toBeGreaterThan(initialActive!.updatedAt);
+
+    context.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
+    const flush = context.flushResume();
+    expect(context.flushResume()).toBe(flush);
+    await flush;
+    const completionExpirations = redis.expire.mock.calls.filter(
+      ([, ttl]: [string, number]) => ttl === STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+    );
+    expect(completionExpirations).toHaveLength(2);
+
+    set.mockClear();
+    await vi.advanceTimersByTimeAsync(STREAM_RESUME_ACTIVITY_HEARTBEAT_INTERVAL_MS * 2);
+    expect(set).not.toHaveBeenCalled();
+    await context.flushResume();
+    expect(
+      redis.expire.mock.calls.filter(
+        ([, ttl]: [string, number]) => ttl === STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+      )
+    ).toHaveLength(2);
   });
 
   it('should bind heartbeat cleanup to response lifecycle and keep init idempotent', async () => {

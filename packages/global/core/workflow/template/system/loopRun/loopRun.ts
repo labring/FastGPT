@@ -1,7 +1,8 @@
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum
+  FlowNodeTypeEnum,
+  LoopRunModeEnum
 } from '../../../node/constant';
 import { type FlowNodeTemplateType } from '../../../type/node';
 import {
@@ -18,11 +19,6 @@ import {
   Input_Template_Node_Height,
   Input_Template_Node_Width
 } from '../../input';
-
-export enum LoopRunModeEnum {
-  array = 'array',
-  conditional = 'conditional'
-}
 
 export const LoopRunNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.loopRun,

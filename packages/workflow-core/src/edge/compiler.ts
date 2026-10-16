@@ -4,10 +4,14 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { getHandleId } from '@fastgpt/global/common/workflow/reference';
-import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import type { WorkflowDocument } from '../domain/document';
+import {
+  type StoreEdgeItemType,
+  type ExecutionSourcePortRef,
+  type ExecutionTargetPortRef,
+  type WorkflowExecutionEdge
+} from '@fastgpt/global/core/workflow/type/edge';
+import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import { WorkflowCommandError } from '../domain/diagnostic';
-import type { ExecutionSourcePortRef, ExecutionTargetPortRef, WorkflowExecutionEdge } from './type';
 
 const assertNode = (document: WorkflowDocument, nodeId: string) => {
   const node = document.nodes.find((item) => item.nodeId === nodeId);
@@ -132,7 +136,11 @@ const parseTargetHandle = (edge: StoreEdgeItemType): ExecutionTargetPortRef => {
   if (edge.targetHandle === NodeOutputKeyEnum.selectedTools) {
     return { kind: 'selectedTools', nodeId: edge.target };
   }
-  if (edge.targetHandle === getHandleId(edge.target, 'target', 'left')) {
+  // 旧画布允许从右侧接入；两侧都表示普通目标端口，编译时统一输出 left。
+  if (
+    edge.targetHandle === getHandleId(edge.target, 'target', 'left') ||
+    edge.targetHandle === getHandleId(edge.target, 'target', 'right')
+  ) {
     return { kind: 'target', nodeId: edge.target };
   }
 

@@ -1,13 +1,12 @@
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
-  FlowNodeTypeEnum,
   VariableInputEnum,
-  WorkflowIOValueTypeEnum,
-  applyWorkflowCommand,
-  builtinTemplateProvider,
-  createDefaultWorkflowDocument,
-  createWorkflowDocument,
-  ensureSystemConfigNode
-} from '../../src';
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
+import { applyWorkflowCommand } from '../../src/command/apply';
+import { builtinTemplateProvider } from '../template/provider';
+import { createDefaultWorkflowDocument, ensureSystemConfigNode } from '../../src/domain/defaults';
+import { createWorkflowDocument } from '../../src/domain/document';
 import { describe, expect, it } from 'vitest';
 
 const dependencies = { templateProvider: builtinTemplateProvider, locale: 'en' };

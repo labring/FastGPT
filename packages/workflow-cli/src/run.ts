@@ -1,4 +1,7 @@
-import { WorkflowCommandError, WorkflowValidationError } from '@fastgpt/workflow-core';
+import {
+  WorkflowCommandError,
+  WorkflowValidationError
+} from '@fastgpt/workflow-core/domain/diagnostic';
 import { ZodError } from 'zod';
 import { createInterface } from 'node:readline/promises';
 import { CliArgumentError } from './error';
@@ -51,7 +54,7 @@ export const runCli = async ({
     }
 
     const parsed = parseCliArgs({ argv, cwd, env });
-    const templateProvider = await loadCliTemplateProvider(env);
+    const templateProvider = await loadCliTemplateProvider(env, parsed.context.locale);
     const context = {
       ...parsed.context,
       templateProvider,

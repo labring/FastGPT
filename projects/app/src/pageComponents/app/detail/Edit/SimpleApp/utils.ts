@@ -17,10 +17,8 @@ import {
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
-import {
-  WorkflowStart,
-  userFilesInput
-} from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { userFilesInput } from '@fastgpt/global/core/workflow/template/output';
 import {
   AiChatModule,
   AiChatQuotePrompt,

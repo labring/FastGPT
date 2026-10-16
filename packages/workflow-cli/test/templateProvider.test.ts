@@ -1,5 +1,12 @@
-import { builtinTemplateProvider } from '@fastgpt/workflow-core';
-import { runCli } from '../src';
+import { builtinTemplateProvider } from '@fastgpt/workflow-core/test/template/provider';
+import { createWorkflowTemplateBundle } from '@fastgpt/web/core/workflow/template/bundle';
+import {
+  FlowNodeTypeEnum,
+  FlowNodeInputTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { loadCliTemplateProvider } from '../src/template/provider';
+import { runCli } from '../src/run';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -18,35 +25,37 @@ describe('request-scoped CLI template provider', () => {
     );
     await writeFile(
       bundleFile,
-      JSON.stringify({
-        schemaVersion: 'fastgpt-workflow-template-bundle/v1',
-        items: [
-          {
-            ref: { kind: 'systemTool', source, toolId },
-            template: {
-              ...workflowStartTemplate,
-              id: toolId,
-              pluginId: toolId,
-              flowNodeType: 'tool',
-              unique: false,
-              name: 'Weather forecast',
-              source,
-              inputs: [
-                {
-                  key: 'userChatInput',
-                  label: 'Query',
-                  valueType: 'string',
-                  renderTypeList: ['input', 'reference'],
-                  selectedType: 'input',
-                  required: true
-                }
-              ],
-              outputs: [],
-              toolConfig: { systemTool: { toolId, source } }
+      JSON.stringify(
+        createWorkflowTemplateBundle({
+          locale: 'en',
+          items: [
+            {
+              ref: { kind: 'systemTool', source, toolId },
+              template: {
+                ...workflowStartTemplate,
+                id: toolId,
+                pluginId: toolId,
+                flowNodeType: FlowNodeTypeEnum.tool,
+                unique: false,
+                name: 'Weather forecast',
+                source,
+                inputs: [
+                  {
+                    key: 'userChatInput',
+                    label: 'Query',
+                    valueType: WorkflowIOValueTypeEnum.string,
+                    renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+                    selectedType: FlowNodeInputTypeEnum.input,
+                    required: true
+                  }
+                ],
+                outputs: [],
+                toolConfig: { systemTool: { toolId, source } }
+              }
             }
-          }
-        ]
-      })
+          ]
+        })
+      )
     );
 
     const invoke = async (argv: string[]) => {
@@ -89,6 +98,16 @@ describe('request-scoped CLI template provider', () => {
         template: { kind: 'systemTool', source, toolId },
         name: 'Weather forecast'
       });
+      const unavailable = await invoke([
+        'template',
+        'show',
+        '--template',
+        'systemTool:system/not-authorized'
+      ]);
+      expect(unavailable.exitCode).toBe(3);
+      expect(JSON.parse(unavailable.stderr[0]).errors[0].diagnostics).toContainEqual(
+        expect.objectContaining({ code: 'WORKFLOW_TEMPLATE_UNAVAILABLE' })
+      );
 
       const initialized = await invoke(['init', '--name', 'System tool workflow']);
       expect(initialized.exitCode, JSON.stringify(initialized)).toBe(0);
@@ -118,6 +137,30 @@ describe('request-scoped CLI template provider', () => {
         ]
       });
       expect(weatherNode.inputs[0]).not.toHaveProperty('selectedTypeIndex');
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('does not supplement an injected bundle with local builtin templates', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'workflow-cli-no-fallback-'));
+    const bundleFile = join(directory, 'template-bundle.json');
+    try {
+      await writeFile(
+        bundleFile,
+        JSON.stringify({
+          schemaVersion: 'fastgpt-workflow-template-bundle/v1',
+          items: []
+        })
+      );
+      const provider = await loadCliTemplateProvider(
+        { FASTGPT_WORKFLOW_TEMPLATE_BUNDLE: bundleFile },
+        'en'
+      );
+      await expect(provider.list({ locale: 'en' })).resolves.toEqual([]);
+      await expect(
+        provider.resolve({ kind: 'builtin', templateId: 'ai-chat' }, { locale: 'en' })
+      ).rejects.toMatchObject({ diagnostics: [{ code: 'WORKFLOW_TEMPLATE_UNAVAILABLE' }] });
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

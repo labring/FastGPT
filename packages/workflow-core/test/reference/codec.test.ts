@@ -1,5 +1,5 @@
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
-import { WorkflowDocumentSchema } from '../../src';
+import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
 import {
   decodeWorkflowNodeReferences,
   encodeWorkflowNodeReferences

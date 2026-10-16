@@ -6,7 +6,8 @@ export enum AppErrEnum {
   unAuthApp = 'unAuthApp',
   invalidOwner = 'invalidOwner',
   invalidAppType = 'invalidAppType',
-  canNotEditAdminPermission = 'canNotEditAdminPermission'
+  canNotEditAdminPermission = 'canNotEditAdminPermission',
+  workflowBuilderVersionExpired = 'workflowBuilderVersionExpired'
 }
 const appErrList = [
   {
@@ -28,6 +29,11 @@ const appErrList = [
   {
     statusText: AppErrEnum.canNotEditAdminPermission,
     message: i18nT('common:code_error.app_error.can_not_edit_admin_permission')
+  },
+  {
+    statusText: AppErrEnum.workflowBuilderVersionExpired,
+    message: i18nT('workflow:workflow_builder_version_expired_toast'),
+    httpStatus: 410
   }
 ];
 export default appErrList.reduce((acc, cur, index) => {
@@ -37,7 +43,8 @@ export default appErrList.reduce((acc, cur, index) => {
       code: 502000 + index,
       statusText: cur.statusText,
       message: cur.message,
-      data: null
+      data: null,
+      ...('httpStatus' in cur ? { httpStatus: cur.httpStatus } : {})
     }
   };
 }, {} as ErrType<`${AppErrEnum}`>);

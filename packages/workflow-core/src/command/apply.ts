@@ -1,14 +1,13 @@
+import { assertExecutionEdge, getDefaultExecutionSourcePort } from '../edge/validation';
 import { getWorkflowChecksum } from '../domain/checksum';
-import type { WorkflowDocument } from '../domain/document';
-import type { WorkflowDiagnostic } from '../domain/diagnostic';
+import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
+import { type WorkflowDiagnostic, WorkflowCommandError } from '../domain/diagnostic';
 import {
-  assertExecutionEdge,
   connectExecutionEdge,
   disconnectExecutionEdge,
-  getDefaultExecutionSourcePort,
   reconnectExecutionEdge
 } from '../edge/service';
-import type { WorkflowExecutionEdge } from '../edge/type';
+import type { WorkflowExecutionEdge } from '@fastgpt/global/core/workflow/type/edge';
 import { setInputReference, setInputValue, unsetInput } from '../reference/service';
 import { cloneNode, removeNode, updateNode } from '../node/service';
 import {
@@ -18,7 +17,7 @@ import {
   unsetChatConfigValue,
   updateGlobalVariable
 } from '../config/service';
-import { WorkflowCommandError } from '../domain/diagnostic';
+
 import type { WorkflowTemplateProvider } from '../template/type';
 import { WorkflowCommandSchema, type WorkflowChangeSummary, type WorkflowCommand } from './type';
 import { addNodeFromTemplate } from '../node/add';

@@ -1,92 +1,14 @@
-import { FlowNodeTemplateTypeSchema } from '@fastgpt/global/core/workflow/type/node';
-import z from 'zod';
+import {
+  WorkflowTemplateBundleSchema,
+  type WorkflowTemplateBundle,
+  type NodeTemplateRef
+} from '@fastgpt/global/core/workflow/template/type';
 import { WorkflowCommandError } from '../domain/diagnostic';
 import {
-  NodeTemplateAutomationMetaSchema,
-  NodeTemplateRefSchema,
   formatNodeTemplateRef,
-  type NodeTemplateRef,
   type ResolvedWorkflowTemplate,
   type WorkflowTemplateProvider
 } from './type';
-
-export const WorkflowTemplateBundleItemSchema = z
-  .object({
-    ref: NodeTemplateRefSchema,
-    template: FlowNodeTemplateTypeSchema.strict(),
-    automationMeta: NodeTemplateAutomationMetaSchema.optional()
-  })
-  .strict()
-  .superRefine((item, context) => {
-    if (item.ref.kind !== 'systemTool') return;
-    if (item.template.pluginId !== item.ref.toolId) {
-      context.addIssue({
-        code: 'custom',
-        path: ['template', 'pluginId'],
-        message: 'System tool template pluginId must match ref.toolId'
-      });
-    }
-    if (item.template.source && item.template.source !== item.ref.source) {
-      context.addIssue({
-        code: 'custom',
-        path: ['template', 'source'],
-        message: 'System tool template source must match ref.source'
-      });
-    }
-  });
-
-export const WorkflowTemplateBundleSchema = z
-  .object({
-    schemaVersion: z.literal('fastgpt-workflow-template-bundle/v1'),
-    items: z.array(WorkflowTemplateBundleItemSchema),
-    builtinDefaults: z
-      .record(
-        z.string(),
-        z.record(
-          z.string(),
-          z
-            .object({
-              provided: z.literal(true),
-              value: z.unknown()
-            })
-            .strict()
-        )
-      )
-      .optional()
-  })
-  .strict();
-
-export type WorkflowTemplateBundle = z.infer<typeof WorkflowTemplateBundleSchema>;
-
-/**
- * 用外部提供的默认值包装已有 Provider，在 resolve 时合并到 validatedInputDefaults。
- * 供宿主服务在启动时向离线/内建节点注入系统默认模型等运行时受控资源。
- */
-export const withTemplateInputDefaults = (
-  provider: WorkflowTemplateProvider,
-  defaults?: Record<string, Record<string, { provided: true; value: unknown }>>
-): WorkflowTemplateProvider => {
-  if (!defaults || Object.keys(defaults).length === 0) return provider;
-
-  return {
-    list: provider.list.bind(provider),
-    async resolve(ref, context) {
-      const resolved = await provider.resolve(ref, context);
-      const key = formatNodeTemplateRef(ref);
-      const templateDefaults = defaults[key];
-      if (!templateDefaults || Object.keys(templateDefaults).length === 0) {
-        return resolved;
-      }
-      return {
-        ...resolved,
-        validatedInputDefaults: {
-          ...resolved.validatedInputDefaults,
-          ...templateDefaults
-        }
-      };
-    }
-  };
-};
 
 const throwTemplateUnavailable = (ref: NodeTemplateRef): never => {
   throw new WorkflowCommandError([
@@ -98,12 +20,15 @@ const throwTemplateUnavailable = (ref: NodeTemplateRef): never => {
   ]);
 };
 
-/** 用严格校验后的请求级模板包构造只读 Provider。 */
+/** 仅使用完整模板包构造只读 Provider；隐藏项可解析，缺失项不会回退到本地模板。 */
 export const createWorkflowTemplateBundleProvider = (
   input: WorkflowTemplateBundle
 ): WorkflowTemplateProvider => {
   const bundle = WorkflowTemplateBundleSchema.parse(input);
-  const entries = new Map<string, { ref: NodeTemplateRef; resolved: ResolvedWorkflowTemplate }>();
+  const entries = new Map<
+    string,
+    { ref: NodeTemplateRef; resolved: ResolvedWorkflowTemplate; listed: boolean }
+  >();
 
   for (const item of bundle.items) {
     const key = formatNodeTemplateRef(item.ref);
@@ -118,16 +43,18 @@ export const createWorkflowTemplateBundleProvider = (
     }
     entries.set(key, {
       ref: item.ref,
+      listed: item.listed !== false,
       resolved: {
         template: item.template,
-        automationMeta: item.automationMeta
+        automationMeta: item.automationMeta,
+        validatedInputDefaults: item.validatedInputDefaults
       }
     });
   }
 
   return {
     async list() {
-      return [...entries.values()].map(({ ref }) => ref);
+      return [...entries.values()].filter(({ listed }) => listed).map(({ ref }) => ref);
     },
     async resolve(ref) {
       return entries.get(formatNodeTemplateRef(ref))?.resolved ?? throwTemplateUnavailable(ref);

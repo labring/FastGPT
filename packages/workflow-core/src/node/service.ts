@@ -1,15 +1,17 @@
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { planNodeRemoval } from './removal';
 import {
+  FlowNodeInputTypeEnum,
   FlowNodeTypeEnum,
   isNestedChildSystemNodeType,
   isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
+
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { WorkflowDocument } from '../domain/document';
+import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import { WorkflowCommandError } from '../domain/diagnostic';
 import { syncContainerChildren } from '../nesting/service';
-import { getNodeAutomationMeta } from '../template/automationMeta';
+import { getNodeAutomationMeta } from '@fastgpt/global/core/workflow/template/automationMeta';
 
 const getNode = (document: WorkflowDocument, nodeId: string) => {
   const node = document.nodes.find((item) => item.nodeId === nodeId);
@@ -128,49 +130,8 @@ export const removeNode = ({
   document: WorkflowDocument;
   nodeId: string;
 }) => {
-  const node = getNode(document, nodeId);
-  const parentNodeId = node.parentNodeId;
-  if (
-    node.flowNodeType === FlowNodeTypeEnum.workflowStart ||
-    isNestedChildSystemNodeType(node.flowNodeType)
-  ) {
-    throw new WorkflowCommandError([
-      { code: 'WORKFLOW_NODE_DELETE_FORBIDDEN', severity: 'error', nodeId }
-    ]);
-  }
-  if (node.flowNodeType === FlowNodeTypeEnum.loopRunBreak && parentNodeId) {
-    const parent = getNode(document, parentNodeId);
-    const mode = parent.inputs.find((item) => item.key === NodeInputKeyEnum.loopRunMode)?.value;
-    const breakCount = document.nodes.filter(
-      (item) =>
-        item.parentNodeId === parentNodeId && item.flowNodeType === FlowNodeTypeEnum.loopRunBreak
-    ).length;
-    if (mode === 'conditional' && breakCount <= 1) {
-      throw new WorkflowCommandError([
-        {
-          code: 'WORKFLOW_CONDITIONAL_LOOP_BREAK_REQUIRED',
-          severity: 'error',
-          nodeId: parentNodeId
-        }
-      ]);
-    }
-  }
-
-  const deletedNodeIds = new Set([nodeId]);
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const item of document.nodes) {
-      if (
-        item.parentNodeId &&
-        deletedNodeIds.has(item.parentNodeId) &&
-        !deletedNodeIds.has(item.nodeId)
-      ) {
-        deletedNodeIds.add(item.nodeId);
-        changed = true;
-      }
-    }
-  }
+  const { parentNodeId } = getNode(document, nodeId);
+  const deletedNodeIds = new Set(planNodeRemoval({ document, nodeId }).deletedNodeIds);
 
   const removedEdges = document.executionEdges.filter(
     (edge) => deletedNodeIds.has(edge.source.nodeId) || deletedNodeIds.has(edge.target.nodeId)

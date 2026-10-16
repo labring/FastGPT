@@ -397,3 +397,8 @@ export const NESTED_CHILD_SYSTEM_NODE_TYPES: ReadonlySet<FlowNodeTypeEnum> = new
 
 export const isNestedChildSystemNodeType = (flowNodeType: FlowNodeTypeEnum | string): boolean =>
   NESTED_CHILD_SYSTEM_NODE_TYPES.has(flowNodeType as FlowNodeTypeEnum);
+
+export enum LoopRunModeEnum {
+  array = 'array',
+  conditional = 'conditional'
+}

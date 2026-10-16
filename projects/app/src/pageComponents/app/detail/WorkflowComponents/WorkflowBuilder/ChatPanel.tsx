@@ -28,7 +28,7 @@ import {
   appDetailToWorkflowDocumentApp,
   reactFlowStateToWorkflowDocument
 } from '../adapters/document';
-import { getWorkflowChecksum } from '@fastgpt/workflow-core';
+import { getWorkflowChecksum } from '@fastgpt/workflow-core/domain/checksum';
 import {
   clearWorkflowBuilderChatHistory,
   prewarmWorkflowBuilderRuntime,

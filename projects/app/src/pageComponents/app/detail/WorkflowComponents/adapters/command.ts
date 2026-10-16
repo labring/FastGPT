@@ -3,11 +3,12 @@ import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge'
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
   WorkflowCommandError,
-  connectExecutionEdge,
-  decompileStoreEdge,
-  removeNode,
   type WorkflowDiagnostic
-} from '@fastgpt/workflow-core';
+} from '@fastgpt/workflow-core/domain/diagnostic';
+import { assertExecutionConnection } from '@fastgpt/workflow-core/edge/validation';
+import { decompileStoreEdge } from '@fastgpt/workflow-core/edge/compiler';
+import { planNodeRemoval } from '@fastgpt/workflow-core/node/removal';
+import { type WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import type { Connection, Edge, Node } from 'reactflow';
 import { reactFlowStateToWorkflowDocument } from './document';
 
@@ -16,9 +17,25 @@ export type WorkflowCoreAdapterResult<T> =
   | { status: 'domain-error'; diagnostics: WorkflowDiagnostic[] }
   | { status: 'adapter-error'; error: unknown };
 
-const executeWorkflowCoreAction = <T>(action: () => T): WorkflowCoreAdapterResult<T> => {
+/** 旧画布无法投影时允许 Web 回退；只有新命令本身的领域错误才阻断操作。 */
+const executeWorkflowCoreAction = <T>({
+  graph,
+  action
+}: {
+  graph: Parameters<typeof reactFlowStateToWorkflowDocument>[0];
+  action: (document: WorkflowDocument) => T;
+}): WorkflowCoreAdapterResult<T> => {
+  const projected = (() => {
+    try {
+      return { status: 'success' as const, data: reactFlowStateToWorkflowDocument(graph) };
+    } catch (error) {
+      return { status: 'adapter-error' as const, error };
+    }
+  })();
+  if (projected.status === 'adapter-error') return projected;
+
   try {
-    return { status: 'success', data: action() };
+    return { status: 'success', data: action(projected.data) };
   } catch (error) {
     if (error instanceof WorkflowCommandError) {
       return { status: 'domain-error', diagnostics: error.diagnostics };
@@ -51,19 +68,21 @@ export const validateConnectionWithCore = ({
     };
   }
 
-  return executeWorkflowCoreAction(() => {
-    const document = reactFlowStateToWorkflowDocument({ nodes, edges, chatConfig });
-    const storeEdge: StoreEdgeItemType = {
-      source: connection.source!,
-      sourceHandle: connection.sourceHandle!,
-      target: connection.target!,
-      targetHandle: connection.targetHandle!
-    };
-    connectExecutionEdge({
-      document,
-      edge: decompileStoreEdge(storeEdge, document)
-    });
-    return undefined;
+  return executeWorkflowCoreAction({
+    graph: { nodes, edges, chatConfig },
+    action: (document) => {
+      const storeEdge: StoreEdgeItemType = {
+        source: connection.source!,
+        sourceHandle: connection.sourceHandle!,
+        target: connection.target!,
+        targetHandle: connection.targetHandle!
+      };
+      assertExecutionConnection({
+        document,
+        edge: decompileStoreEdge(storeEdge, document)
+      });
+      return undefined;
+    }
   });
 };
 
@@ -79,7 +98,7 @@ export const getRemovalNodeIdsWithCore = ({
   nodeId: string;
   chatConfig?: AppChatConfigType;
 }): WorkflowCoreAdapterResult<string[]> =>
-  executeWorkflowCoreAction(() => {
-    const document = reactFlowStateToWorkflowDocument({ nodes, edges, chatConfig });
-    return removeNode({ document, nodeId }).deletedNodeIds;
+  executeWorkflowCoreAction({
+    graph: { nodes, edges, chatConfig },
+    action: (document) => planNodeRemoval({ document, nodeId }).deletedNodeIds
   });

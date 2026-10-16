@@ -4,7 +4,8 @@ import {
   WorkflowBuilderAppliedSchema,
   WorkflowBuilderChatBodySchema
 } from '@fastgpt/global/openapi/core/workflow/builder/api';
-import { WorkflowDocumentSchema, getWorkflowChecksum } from '@fastgpt/workflow-core/src/index';
+import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
+import { getWorkflowChecksum } from '@fastgpt/workflow-core/domain/checksum';
 import fixture from '@fastgpt/workflow-core/test/fixtures/basic-static/workflow.json';
 import { buildStreamFetchBody, handleEventSourceData } from '@/web/common/api/fetch';
 import {

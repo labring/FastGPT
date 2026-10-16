@@ -1,24 +1,28 @@
+import { option, emptySchema } from '../commandOptions';
+import z from 'zod';
 import {
   collectWorkflowBindings,
-  compileStoreWorkflow,
+  getWorkflowBindingDiagnostics
+} from '@fastgpt/workflow-core/binding/service';
+import { compileStoreWorkflow } from '@fastgpt/workflow-core/store/compile';
+import {
   createDefaultWorkflowDocument,
-  decompileStoreWorkflow,
-  ensureSystemConfigNode,
-  getWorkflowBindingDiagnostics,
-  getWorkflowChecksum,
-  validateWorkflow
-} from '@fastgpt/workflow-core';
+  ensureSystemConfigNode
+} from '@fastgpt/workflow-core/domain/defaults';
+import { decompileStoreWorkflow } from '@fastgpt/workflow-core/store/decompile';
+import { getWorkflowChecksum } from '@fastgpt/workflow-core/domain/checksum';
+import { validateWorkflow } from '@fastgpt/workflow-core/validation';
 import { access, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { CliArgumentError } from '../error';
-import { createTranslator } from '../i18n';
+import { createTranslator } from '@fastgpt/web/i18n/workflowTemplate';
 import {
   getWorkflowFilePath,
   readWorkflowFile,
   writeJsonFileAtomic,
   writeWorkflowFileAtomic
 } from '../io/workflowFile';
-import type { CliContext, CliResult } from '../type';
+import type { CliContext, CliResult, CliCommandDefinition } from '../type';
 import { assertNoValidationErrors, requireString } from './helpers';
 
 export const initDocument = async (
@@ -150,3 +154,57 @@ export const inspectDocument = async (
     warnings: bindingDiagnostics
   };
 };
+
+/** document 命令定义与执行逻辑在同一模块维护；注册器只负责收集。 */
+export const documentCommands: CliCommandDefinition[] = [
+  {
+    path: ['init'],
+    introducedIn: 'PR1',
+    kind: 'localMutation',
+    inputSchema: z
+      .object({ name: z.string().min(1).optional(), dryRun: z.literal(true).optional() })
+      .strict(),
+    options: [
+      option('--name', 'Workflow name'),
+      option('--dry-run', 'Return the initialized document without writing', { value: false })
+    ],
+    supportsDryRun: true,
+    confirm: 'none',
+    handler: initDocument
+  },
+  {
+    path: ['build'],
+    introducedIn: 'PR1',
+    kind: 'artifact',
+    inputSchema: z.object({ output: z.string().min(1) }).strict(),
+    options: [option('--output', 'StoreWorkflow output path', { required: true })],
+    supportsDryRun: false,
+    confirm: 'none',
+    handler: buildDocument
+  },
+  {
+    path: ['import'],
+    introducedIn: 'PR2',
+    kind: 'localMutation',
+    inputSchema: z
+      .object({ input: z.string().min(1), dryRun: z.literal(true).optional() })
+      .strict(),
+    options: [
+      option('--input', 'StoreWorkflow input path', { required: true }),
+      option('--dry-run', 'Return the imported document without writing', { value: false })
+    ],
+    supportsDryRun: true,
+    confirm: 'none',
+    handler: importDocument
+  },
+  {
+    path: ['inspect'],
+    introducedIn: 'PR2',
+    kind: 'query',
+    inputSchema: emptySchema,
+    options: [],
+    supportsDryRun: false,
+    confirm: 'none',
+    handler: inspectDocument
+  }
+];

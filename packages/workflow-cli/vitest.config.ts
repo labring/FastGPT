@@ -4,7 +4,8 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   resolve: {
     alias: {
-      '@fastgpt/workflow-core': resolve('../workflow-core/src/index.ts'),
+      '@fastgpt/workflow-core/test': resolve('../workflow-core/test'),
+      '@fastgpt/workflow-core': resolve('../workflow-core/src'),
       '@fastgpt': resolve('..')
     }
   },

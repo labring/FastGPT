@@ -5,14 +5,11 @@ import {
   VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import {
-  applyWorkflowCommand,
-  builtinTemplateProvider,
-  createWorkflowDocument,
-  getChatConfigDescriptor,
-  listChatConfigDescriptors,
-  parseNodeTemplateRef
-} from '../../src';
+import { applyWorkflowCommand } from '../../src/command/apply';
+import { builtinTemplateProvider } from '../template/provider';
+import { createWorkflowDocument } from '../../src/domain/document';
+import { getChatConfigDescriptor, listChatConfigDescriptors } from '../../src/config/descriptor';
+import { parseNodeTemplateRef } from '../../src/template/type';
 import { describe, expect, it } from 'vitest';
 
 const dependencies = { templateProvider: builtinTemplateProvider, locale: 'en' };

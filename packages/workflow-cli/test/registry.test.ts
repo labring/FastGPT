@@ -1,4 +1,5 @@
-import { cliCommandRegistry, renderHelp } from '../src';
+import { cliCommandRegistry } from '../src/registry';
+import { renderHelp } from '../src/help';
 import { describe, expect, it } from 'vitest';
 
 describe('cliCommandRegistry', () => {

@@ -1,11 +1,10 @@
-import {
-  normalizeNodeTemplateDescriptor,
-  formatNodeTemplateRef,
-  parseNodeTemplateRef,
-  type NodeTemplateRef
-} from '@fastgpt/workflow-core';
-import { createTranslator } from '../i18n';
-import type { CliContext, CliResult } from '../type';
+import { option } from '../commandOptions';
+import z from 'zod';
+import { normalizeNodeTemplateDescriptor } from '@fastgpt/workflow-core/template/descriptor';
+import { formatNodeTemplateRef, parseNodeTemplateRef } from '@fastgpt/workflow-core/template/type';
+import { type NodeTemplateRef } from '@fastgpt/global/core/workflow/template/type';
+import { createTranslator } from '@fastgpt/web/i18n/workflowTemplate';
+import type { CliContext, CliResult, CliCommandDefinition } from '../type';
 import { requireString } from './helpers';
 
 const resolveDescriptor = async (ref: NodeTemplateRef, context: CliContext) => {
@@ -14,6 +13,7 @@ const resolveDescriptor = async (ref: NodeTemplateRef, context: CliContext) => {
     template: resolved.template,
     templateRef: ref,
     automationMeta: resolved.automationMeta,
+    validatedInputDefaults: resolved.validatedInputDefaults,
     translate: createTranslator(context.locale)
   });
 };
@@ -72,3 +72,29 @@ export const findDescriptorForNode = async (flowNodeType: string, context: CliCo
     if (descriptor.flowNodeType === flowNodeType) return descriptor;
   }
 };
+
+/** template 命令定义与执行逻辑在同一模块维护；注册器只负责收集。 */
+export const templateCommands: CliCommandDefinition[] = [
+  {
+    path: ['template', 'list'],
+    introducedIn: 'PR1',
+    kind: 'query',
+    inputSchema: z
+      .object({ kind: z.enum(['builtin', 'teamApp', 'systemTool', 'tool']).optional() })
+      .strict(),
+    options: [option('--kind', 'Filter by template kind')],
+    supportsDryRun: false,
+    confirm: 'none',
+    handler: listTemplates
+  },
+  {
+    path: ['template', 'show'],
+    introducedIn: 'PR1',
+    kind: 'query',
+    inputSchema: z.object({ template: z.string().min(1) }).strict(),
+    options: [option('--template', 'Explicit template reference', { required: true })],
+    supportsDryRun: false,
+    confirm: 'none',
+    handler: showTemplate
+  }
+];

@@ -1,7 +1,6 @@
 import { z } from 'zod';
-import { AppChatConfigTypeSchema } from '../../../../core/app/type';
+import { WorkflowDocumentSchema } from '../../../../core/workflow/type/document';
 import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
-import { StoreNodeItemTypeSchema } from '../../../../core/workflow/type/node';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { AgentPlanAskResponseSchema } from '../../../../core/workflow/template/system/interactive/type';
 import { OpenAPIAppChatConfigSchema } from '../../app/common/api';
@@ -19,60 +18,8 @@ import { OpenAPIStoreNodeItemTypeSchema } from '../node';
  * Tags: ['Workflow Builder']
  * ============================================================================ */
 
-const ExecutionSourcePortRefSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('next'), nodeId: z.string().min(1) }),
-  z.object({
-    kind: z.literal('branch'),
-    nodeId: z.string().min(1),
-    branchKey: z.string().min(1)
-  }),
-  z.object({
-    kind: z.literal('sourceOutput'),
-    nodeId: z.string().min(1),
-    outputKey: z.string().min(1)
-  }),
-  z.object({ kind: z.literal('catch'), nodeId: z.string().min(1) }),
-  z.object({ kind: z.literal('selectedTools'), nodeId: z.string().min(1) })
-]);
-
-const ExecutionTargetPortRefSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('target'), nodeId: z.string().min(1) }),
-  z.object({ kind: z.literal('selectedTools'), nodeId: z.string().min(1) })
-]);
-
-/**
- * Workflow Builder 请求的传输层 Document Schema。
- *
- * Handler 还会用 workflow-core 再次执行版本和领域校验；这里只负责 API
- * 边界的完整结构约束，避免 global package 反向依赖 workflow-core。
- */
-export const WorkflowBuilderDocumentSchema = z
-  .object({
-    schemaVersion: z.literal('fastgpt-workflow/v1').meta({
-      description: 'WorkflowDocument schema 版本',
-      example: 'fastgpt-workflow/v1'
-    }),
-    app: z
-      .object({
-        appId: z.string().optional(),
-        name: z.string().optional(),
-        intro: z.string().optional(),
-        appType: z.string().optional(),
-        baseVersionId: z.string().optional()
-      })
-      .meta({ description: '应用元数据' }),
-    nodes: z.array(StoreNodeItemTypeSchema).meta({ description: '工作流节点' }),
-    executionEdges: z
-      .array(
-        z.object({
-          source: ExecutionSourcePortRefSchema,
-          target: ExecutionTargetPortRefSchema
-        })
-      )
-      .meta({ description: '语义执行边' }),
-    chatConfig: AppChatConfigTypeSchema.meta({ description: '工作流对话配置' })
-  })
-  .strict();
+/** API 边界拒绝文档顶层未知字段；其余字段复用领域契约，保留 Core 的清理语义。 */
+export const WorkflowBuilderDocumentSchema = WorkflowDocumentSchema.strict();
 
 export const WorkflowBuilderChatBodySchema = z
   .object({

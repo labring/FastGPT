@@ -6,7 +6,7 @@ import {
   isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { WorkflowDocument } from '../domain/document';
+import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import { WorkflowCommandError } from '../domain/diagnostic';
 import { ROOT_ONLY_NODE_TYPES } from '../template/contract';
 
@@ -142,14 +142,4 @@ export const moveNodeToParent = ({
   }
 
   return { previousParentNodeId, parentNodeId, removedEdgeCount };
-};
-
-export const listContainerChildren = (document: WorkflowDocument, parentNodeId: string) => {
-  const parent = getDocumentNode(document, parentNodeId);
-  if (!isNestedParentNodeType(parent.flowNodeType)) {
-    throw new WorkflowCommandError([
-      { code: 'WORKFLOW_PARENT_NOT_CONTAINER', severity: 'error', nodeId: parentNodeId }
-    ]);
-  }
-  return document.nodes.filter((item) => item.parentNodeId === parentNodeId);
 };

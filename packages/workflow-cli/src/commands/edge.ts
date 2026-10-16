@@ -1,10 +1,12 @@
+import { option } from '../commandOptions';
+import z from 'zod';
 import {
   parseExecutionSourcePortRef,
-  parseExecutionTargetPortRef,
-  type WorkflowExecutionEdge
-} from '@fastgpt/workflow-core';
+  parseExecutionTargetPortRef
+} from '@fastgpt/workflow-core/edge/parser';
+import { type WorkflowExecutionEdge } from '@fastgpt/global/core/workflow/type/edge';
 import { readWorkflowFile } from '../io/workflowFile';
-import type { CliContext, CliResult } from '../type';
+import type { CliContext, CliResult, CliCommandDefinition } from '../type';
 import { requireString, runMutation } from './helpers';
 
 const parseEdge = (from: string, to: string): WorkflowExecutionEdge => ({
@@ -70,3 +72,79 @@ export const reconnectEdge = async (
     }
   });
 };
+
+/** edge 命令定义与执行逻辑在同一模块维护；注册器只负责收集。 */
+export const edgeCommands: CliCommandDefinition[] = [
+  {
+    path: ['edge', 'list'],
+    introducedIn: 'PR2',
+    kind: 'query',
+    inputSchema: z.object({ node: z.string().optional(), kind: z.string().optional() }).strict(),
+    options: [option('--node', 'Filter by node ID'), option('--kind', 'Filter by source kind')],
+    supportsDryRun: false,
+    confirm: 'none',
+    handler: listEdges
+  },
+  {
+    path: ['edge', 'connect'],
+    introducedIn: 'PR2',
+    kind: 'localMutation',
+    inputSchema: z
+      .object({
+        from: z.string().min(1),
+        to: z.string().min(1),
+        dryRun: z.literal(true).optional()
+      })
+      .strict(),
+    options: [
+      option('--from', 'Execution source port', { required: true }),
+      option('--to', 'Execution target port', { required: true }),
+      option('--dry-run', 'Return changes without writing', { value: false })
+    ],
+    supportsDryRun: true,
+    confirm: 'none',
+    handler: connectEdge
+  },
+  {
+    path: ['edge', 'disconnect'],
+    introducedIn: 'PR2',
+    kind: 'localMutation',
+    inputSchema: z
+      .object({
+        from: z.string().min(1),
+        to: z.string().min(1),
+        dryRun: z.literal(true).optional()
+      })
+      .strict(),
+    options: [
+      option('--from', 'Execution source port', { required: true }),
+      option('--to', 'Execution target port', { required: true }),
+      option('--dry-run', 'Return changes without writing', { value: false })
+    ],
+    supportsDryRun: true,
+    confirm: 'none',
+    handler: disconnectEdge
+  },
+  {
+    path: ['edge', 'reconnect'],
+    introducedIn: 'PR2',
+    kind: 'localMutation',
+    inputSchema: z
+      .object({
+        from: z.string().min(1),
+        oldTo: z.string().min(1),
+        to: z.string().min(1),
+        dryRun: z.literal(true).optional()
+      })
+      .strict(),
+    options: [
+      option('--from', 'Execution source port', { required: true }),
+      option('--old-to', 'Existing execution target port', { required: true }),
+      option('--to', 'Replacement execution target port', { required: true }),
+      option('--dry-run', 'Return changes without writing', { value: false })
+    ],
+    supportsDryRun: true,
+    confirm: 'none',
+    handler: reconnectEdge
+  }
+];

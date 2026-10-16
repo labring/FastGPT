@@ -1,6 +1,6 @@
 import { getWorkflowChecksum } from '../domain/checksum';
 import { WorkflowCommandError, type WorkflowDiagnostic } from '../domain/diagnostic';
-import type { WorkflowDocument } from '../domain/document';
+import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import type { WorkflowTemplateProvider } from '../template/type';
 import { validateWorkflow } from '../validation';
 import { applyWorkflowCommand } from './apply';

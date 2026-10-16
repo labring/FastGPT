@@ -8,10 +8,11 @@ import {
   type StoreNodeItemType
 } from '@fastgpt/global/core/workflow/type/node';
 import { areWorkflowValueTypesCompatible } from '@fastgpt/global/common/workflow/reference';
-import type { WorkflowDocument } from '../domain/document';
+import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import { WorkflowCommandError, type WorkflowDiagnostic } from '../domain/diagnostic';
 import { hasConfiguredValue, resolveInitialInputValue } from './defaultValue';
-import { formatNodeTemplateRef, type NodeTemplateRef, type WorkflowTemplateProvider } from './type';
+import { formatNodeTemplateRef, type WorkflowTemplateProvider } from './type';
+import { type NodeTemplateRef } from '@fastgpt/global/core/workflow/template/type';
 
 /** 从原始 FastGPT 模板创建完整 StoreNode，Descriptor 元数据不会进入运行时对象。 */
 export const instantiateNodeFromTemplate = async ({

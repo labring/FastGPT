@@ -5,14 +5,12 @@ import {
 } from '@fastgpt/global/core/app/variable/type';
 import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { userFilesInput } from '@fastgpt/global/core/workflow/template/output';
 import { areWorkflowValueTypesCompatible } from '@fastgpt/global/common/workflow/reference';
-import type { WorkflowDocument } from '../domain/document';
+import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import { WorkflowCommandError } from '../domain/diagnostic';
 import { getWorkflowReferenceValues } from '../reference/service';
 import { CHAT_CONFIG_PATHS } from './type';
-
-export { CHAT_CONFIG_PATHS } from './type';
 
 const assertConfigPath = (path: string) => {
   if (!(CHAT_CONFIG_PATHS as readonly string[]).includes(path)) {

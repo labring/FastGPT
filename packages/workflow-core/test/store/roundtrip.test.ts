@@ -1,11 +1,8 @@
-import {
-  WorkflowDocumentSchema,
-  compileStoreWorkflow,
-  decompileStoreWorkflow,
-  getWorkflowChecksum,
-  normalizeWorkflowDocument,
-  validateWorkflow
-} from '../../src';
+import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
+import { compileStoreWorkflow } from '../../src/store/compile';
+import { decompileStoreWorkflow } from '../../src/store/decompile';
+import { getWorkflowChecksum, normalizeWorkflowDocument } from '../../src/domain/checksum';
+import { validateWorkflow } from '../../src/validation/index';
 import { WorkflowTemplateBasicTypeSchema } from '@fastgpt/global/core/workflow/type';
 import aiStore from '../fixtures/basic-ai/store-workflow.json';
 import aiWorkflow from '../fixtures/basic-ai/workflow.json';

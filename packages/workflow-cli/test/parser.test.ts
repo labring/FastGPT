@@ -1,4 +1,5 @@
-import { CliArgumentError, parseCliArgs } from '../src';
+import { CliArgumentError } from '../src/error';
+import { parseCliArgs } from '../src/parser';
 import { describe, expect, it } from 'vitest';
 
 const parse = (argv: string[]) => parseCliArgs({ argv, cwd: '/tmp', env: { NODE_ENV: 'test' } });

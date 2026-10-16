@@ -1,10 +1,11 @@
+import { emptySchema } from '../commandOptions';
 import {
   collectWorkflowBindings,
-  getWorkflowBindingDiagnostics,
-  validateWorkflow
-} from '@fastgpt/workflow-core';
+  getWorkflowBindingDiagnostics
+} from '@fastgpt/workflow-core/binding/service';
+import { validateWorkflow } from '@fastgpt/workflow-core/validation';
 import { readWorkflowFile } from '../io/workflowFile';
-import type { CliContext, CliResult } from '../type';
+import type { CliContext, CliResult, CliCommandDefinition } from '../type';
 import { assertNoValidationErrors } from './helpers';
 
 export const validateDocument = async (
@@ -22,3 +23,17 @@ export const validateDocument = async (
     warnings: bindingDiagnostics
   };
 };
+
+/** validate 命令定义与执行逻辑在同一模块维护；注册器只负责收集。 */
+export const validateCommands: CliCommandDefinition[] = [
+  {
+    path: ['validate'],
+    introducedIn: 'PR1',
+    kind: 'query',
+    inputSchema: emptySchema,
+    options: [],
+    supportsDryRun: false,
+    confirm: 'none',
+    handler: validateDocument
+  }
+];

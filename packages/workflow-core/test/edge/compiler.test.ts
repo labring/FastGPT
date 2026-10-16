@@ -1,10 +1,7 @@
-import {
-  WorkflowDocumentSchema,
-  WorkflowCommandError,
-  compileExecutionEdge,
-  createWorkflowDocument,
-  decompileStoreEdge
-} from '../../src';
+import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
+import { WorkflowCommandError } from '../../src/domain/diagnostic';
+import { compileExecutionEdge, decompileStoreEdge } from '../../src/edge/compiler';
+import { createWorkflowDocument } from '../../src/domain/document';
 import aiWorkflow from '../fixtures/basic-ai/workflow.json';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { describe, expect, it } from 'vitest';
@@ -22,6 +19,21 @@ describe('compileExecutionEdge', () => {
       targetHandle: 'ai-target-left'
     });
     expect(decompileStoreEdge(stored, document)).toEqual(edge);
+  });
+
+  it('imports historical right target handles and normalizes them on export', () => {
+    const stored = {
+      source: 'start',
+      sourceHandle: 'start-source-right',
+      target: 'ai',
+      targetHandle: 'ai-target-right'
+    };
+    const edge = decompileStoreEdge(stored, document);
+    expect(edge).toEqual(document.executionEdges[0]);
+    expect(compileExecutionEdge(edge, document)).toEqual({
+      ...stored,
+      targetHandle: 'ai-target-left'
+    });
   });
 
   it('rejects missing nodes and unsupported handles', () => {

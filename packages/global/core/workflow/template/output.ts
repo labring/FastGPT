@@ -24,3 +24,12 @@ export const Output_Template_Error_Message: FlowNodeOutputItemType = {
   valueType: WorkflowIOValueTypeEnum.string,
   label: i18nT('workflow:error_text')
 };
+
+export const userFilesInput: FlowNodeOutputItemType = {
+  id: NodeOutputKeyEnum.userFiles,
+  key: NodeOutputKeyEnum.userFiles,
+  label: i18nT('app:workflow.user_file_input'),
+  description: i18nT('app:workflow.user_file_input_desc'),
+  type: FlowNodeOutputTypeEnum.static,
+  valueType: WorkflowIOValueTypeEnum.arrayString
+};

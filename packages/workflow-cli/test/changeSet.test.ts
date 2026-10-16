@@ -1,4 +1,4 @@
-import { runCli } from '../src';
+import { runCli } from '../src/run';
 import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

@@ -1,10 +1,10 @@
 import {
   WORKFLOW_DOCUMENT_MIGRATION_GUIDANCE,
   WorkflowDocumentVersionError,
-  normalizeWorkflowDocument,
-  parseCompatibleWorkflowDocument,
-  type WorkflowDocument
-} from '@fastgpt/workflow-core';
+  parseCompatibleWorkflowDocument
+} from '@fastgpt/workflow-core/domain/document';
+import { normalizeWorkflowDocument } from '@fastgpt/workflow-core/domain/checksum';
+import { type WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import { mkdir, open, readFile, rename, rm } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { CliArgumentError } from '../error';

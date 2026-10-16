@@ -1,6 +1,6 @@
 import { AppChatConfigTypeSchema } from '@fastgpt/global/core/app/type';
 import z from 'zod';
-import type { WorkflowDocument } from '../domain/document';
+import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import { configAutomationMetaMap } from './automationMeta';
 import { getChatConfigValue } from './service';
 import { CHAT_CONFIG_PATHS, type ChatConfigPath, type ConfigDescriptor } from './type';

@@ -22,7 +22,7 @@ import type {
 import { isReferenceOptionFormItem } from '@fastgpt/global/core/workflow/template/system/interactive/constants';
 import type { UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
-import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
+import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import type { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';

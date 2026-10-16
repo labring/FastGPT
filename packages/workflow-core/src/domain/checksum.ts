@@ -1,5 +1,5 @@
 import CryptoJS from 'crypto-js';
-import type { WorkflowDocument } from './document';
+import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 
 const sortRecord = (value: unknown): unknown => {
   if (Array.isArray(value)) return value.map(sortRecord);

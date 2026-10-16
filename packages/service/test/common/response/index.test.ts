@@ -7,6 +7,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { EventEmitter } from 'node:events';
 
 vi.unmock('@fastgpt/service/common/response');
@@ -157,7 +158,8 @@ describe('jsonRes HTTP status mapping', () => {
     [UserErrEnum.verifyCodeTooFrequently, 429],
     [SandboxErrEnum.agentSandboxInitializing, 409],
     [SandboxErrEnum.agentSandboxLimitReached, 409],
-    [SandboxErrEnum.agentSandboxTeamLimitReached, 409]
+    [SandboxErrEnum.agentSandboxTeamLimitReached, 409],
+    [AppErrEnum.workflowBuilderVersionExpired, 410]
   ] as const)('uses the configured HTTP status for %s', (errorKey, httpStatus) => {
     const res = createResponse();
 

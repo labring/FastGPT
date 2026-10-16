@@ -11,7 +11,8 @@ import { getModelList } from '@/web/core/ai/model/modelData';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { AppContext } from '../../context';
 import { WorkflowUtilsContext } from '../context/workflowUtilsContext';
-import { compileStoreWorkflow, parseCompatibleWorkflowDocument } from '@fastgpt/workflow-core';
+import { compileStoreWorkflow } from '@fastgpt/workflow-core/store/compile';
+import { parseCompatibleWorkflowDocument } from '@fastgpt/workflow-core/domain/document';
 import ChatPanel, { type WorkflowBuilderChatPanelRef } from './ChatPanel';
 import { mergeWorkflowBuilderAppliedAppDetail } from './utils';
 import { useWorkflowAutoLayout } from '../Flow/hooks/useWorkflowAutoLayout';
@@ -19,6 +20,7 @@ import { WorkflowSnapshotContext } from '../context/workflowSnapshotContext';
 import { WorkflowBufferDataContext } from '../context/workflowInitContext';
 import type { WorkflowBuilderVersionActions } from '@/web/core/chat/context/chatItemContext';
 import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
+import { isWorkflowBuilderVersionExpiredError } from '@fastgpt/global/core/workflow/builder/utils';
 import { loadWorkflowBuilderVersion, commitWorkflowBuilderVersion } from './api';
 import AppDetailPanelModal from '../../components/AppDetailPanelModal';
 import { useWorkflowBuilderUI } from './context';
@@ -207,12 +209,7 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
         });
         return archivedVersion;
       } catch (error) {
-        const errorText =
-          error instanceof Error
-            ? error.message
-            : JSON.stringify(error ?? 'Workflow Builder apply failed');
-        const isExpired = /expired/i.test(errorText);
-        if (isExpired) {
+        if (isWorkflowBuilderVersionExpiredError(error)) {
           notifyVersionExpired();
         } else {
           console.error('[Workflow Builder] Apply failed', error);

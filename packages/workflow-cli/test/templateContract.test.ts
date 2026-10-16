@@ -1,6 +1,6 @@
 import { listTemplates, showTemplate } from '../src/commands/template';
 import type { CliContext } from '../src/type';
-import { builtinTemplateProvider } from '@fastgpt/workflow-core';
+import { builtinTemplateProvider } from '@fastgpt/workflow-core/test/template/provider';
 import { describe, expect, it } from 'vitest';
 
 const context = {
