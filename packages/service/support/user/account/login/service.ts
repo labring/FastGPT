@@ -7,7 +7,6 @@ import { getUserDetail } from '../../controller';
 import { createUserLoginTeam } from '../../team/controller';
 import { assertUserCanLogin } from '../cancellation/guard';
 import type { ClientSession } from '../../../../common/mongo';
-import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 import type { PasswordVerificationUser } from '../verification/password/type';
 import { reportCRMVisitorIdentity, resolveCRMVisitorId } from '../../../marketing/attribution';
 import { createUserSession } from '../../session';
@@ -65,8 +64,7 @@ export const getPasswordLoginUser = async ({
 };
 
 /**
- * 更新登录偏好和 CRM 访客归属；团队兜底创建及详情读取不复用密码验证事务。
- * 团队先在独立事务中提交，再读取包含权限和默认组信息的用户详情，避免读取未提交的默认组时触发重复创建等待。
+ * 在登录事务中加载用户团队、更新登录偏好和 CRM 访客归属。
  * 不创建 Session 或 Cookie，调用方可在 Challenge 验证成功后复用该事务逻辑。
  */
 export const completePasswordLogin = async ({
@@ -84,7 +82,6 @@ export const completePasswordLogin = async ({
 }) => {
   await assertPasswordLoginUser({ user });
 
-  // 团队创建和详情读取不使用密码验证事务的 session：先提交兜底团队，再读取默认组和权限。
   const userDetail = await getUserDetail({
     tmbId: user.lastLoginTmbId,
     userId: user._id,
@@ -92,13 +89,10 @@ export const completePasswordLogin = async ({
     createTeamIfUnavailable:
       username !== 'root' && global.feConfigs?.teamMode === 'multi'
         ? ({ userId }) =>
-            mongoSessionRun((teamSession) =>
-              createUserLoginTeam({
-                userId,
-                username: user.username,
-                session: teamSession
-              })
-            )
+            createUserLoginTeam({
+              userId,
+              username: user.username
+            })
         : undefined
   });
 
