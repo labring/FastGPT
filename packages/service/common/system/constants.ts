@@ -2,8 +2,6 @@ import { serviceEnv } from '../../env';
 
 export const FastGPTProUrl = serviceEnv.PRO_URL ? `${serviceEnv.PRO_URL}/api` : '';
 export const FastGPTPluginUrl = serviceEnv.PLUGIN_BASE_URL ?? '';
-// @ts-ignore
-export const isFastGPTProService = () => !!global.systemConfig;
 
 export const isProVersion = () => {
   return !!global.feConfigs?.isPlus;
