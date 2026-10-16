@@ -4,6 +4,11 @@ import {
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import {
+  updateAuditLogByTaskId,
+  upsertAuditLogByTaskId
+} from '@fastgpt/service/support/user/audit/util';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { BLOCKED_LOCK_TIME } from '@fastgpt/service/core/dataset/training/query';
@@ -12,7 +17,7 @@ import { getUser } from '@test/datas/users';
 import { createDatasetCollectionFixture } from '@test/datas/dataset';
 import { Call } from '@test/utils/request';
 import { Types } from '@fastgpt/service/common/mongo';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 describe('updateTrainingData', () => {
   it.each([TrainingModeEnum.index, TrainingModeEnum.imageParse])(
@@ -181,6 +186,60 @@ describe('updateTrainingData', () => {
     }
   );
 
+  it('records item details for a successful batch retry audit', async () => {
+    const { root, collection, scope } = await createDatasetCollectionFixture();
+    const [firstTask, secondTask] = await MongoDatasetTraining.create([
+      {
+        ...scope,
+        billId: 'test',
+        mode: TrainingModeEnum.index,
+        retryCount: 0,
+        errorMsg: 'first failed'
+      },
+      {
+        ...scope,
+        billId: 'test',
+        mode: TrainingModeEnum.qa,
+        retryCount: 0,
+        errorMsg: 'second failed'
+      }
+    ]);
+    vi.mocked(upsertAuditLogByTaskId).mockClear();
+
+    const response = await Call(handler, {
+      auth: root,
+      body: { collectionId: collection._id }
+    });
+
+    expect(response.code).toBe(200);
+    expect(upsertAuditLogByTaskId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: AuditEventEnum.RETRY_TRAINING,
+        taskId: expect.any(String),
+        params: expect.objectContaining({
+          count: '2',
+          result: 'processing',
+          details: expect.arrayContaining([
+            {
+              resourceId: String(firstTask._id),
+              resourceName: collection.name,
+              resourceType: 'training_record',
+              action: 'retry',
+              result: 'processing'
+            },
+            {
+              resourceId: String(secondTask._id),
+              resourceName: collection.name,
+              resourceType: 'training_record',
+              action: 'retry',
+              result: 'processing'
+            }
+          ])
+        })
+      })
+    );
+  });
+
   it.each(['single', 'collection', 'dataset'] as const)(
     'restores failed data to indexing on %s retry',
     async (target) => {
@@ -204,7 +263,27 @@ describe('updateTrainingData', () => {
         if (target === 'collection') return { collectionId: collection._id };
         return { datasetId: dataset._id };
       })();
+      vi.mocked(upsertAuditLogByTaskId).mockClear();
+      vi.mocked(updateAuditLogByTaskId).mockClear();
       expect((await Call(handler, { auth: root, body })).code).toBe(200);
+      expect(upsertAuditLogByTaskId).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: AuditEventEnum.RETRY_TRAINING,
+          taskId: expect.any(String),
+          params: expect.objectContaining({
+            result: 'processing',
+            sourceFinished: false
+          })
+        })
+      );
+      expect(updateAuditLogByTaskId).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: AuditEventEnum.RETRY_TRAINING,
+          result: 'processing',
+          expectedResult: 'processing',
+          metadata: { sourceFinished: true }
+        })
+      );
       const updated = await MongoDatasetData.findById(data._id).lean();
       expect(updated?.indexStatus).toBe(DatasetDataIndexStatusEnum.indexing);
       expect(updated?.indexErrorMsg).toBeUndefined();

@@ -16,6 +16,8 @@ import {
   type ResumeInheritPermissionQueryType,
   type ResumeInheritPermissionResponseType
 } from '@fastgpt/global/openapi/core/app/permission/api';
+import { addAuditLog, getI18nAuditResourceType } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 // resume the app's inherit permission.
 async function handler(
@@ -25,21 +27,36 @@ async function handler(
     req,
     querySchema: ResumeInheritPermissionQuerySchema
   }).query;
-  const { app } = await authApp({
+  const { teamId, tmbId, app } = await authApp({
     appId,
     req,
     authToken: true,
     per: ManagePermissionVal
   });
 
-  if (app.parentId) {
-    await resumeInheritPermission({
-      resource: app,
-      folderTypeList: AppFolderTypeList,
-      resourceType: PerResourceTypeEnum.app,
-      resourceModel: MongoApp
-    });
-  } else {
+  // 审计展示需要完整资源路径；只查询直接父级会在嵌套目录下丢失祖先。
+  const parentResourceNames = await (async function findParentNames(
+    parentId: typeof app.parentId
+  ): Promise<string[]> {
+    if (!parentId) return [];
+
+    const parent = await MongoApp.findById(parentId, 'name parentId').lean();
+    if (!parent) return [];
+
+    return [...(await findParentNames(parent.parentId)), parent.name];
+  })(app.parentId);
+  const parentResourceName = parentResourceNames.at(-1);
+
+  const affectedResourceCount = await (async () => {
+    if (app.parentId) {
+      return resumeInheritPermission({
+        resource: app,
+        folderTypeList: AppFolderTypeList,
+        resourceType: PerResourceTypeEnum.app,
+        resourceModel: MongoApp
+      });
+    }
+
     await MongoApp.updateOne(
       {
         _id: appId
@@ -48,7 +65,25 @@ async function handler(
         inheritPermission: true
       }
     );
-  }
+    return 1;
+  })();
+
+  await addAuditLog({
+    teamId,
+    tmbId,
+    scope: 'member',
+    event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
+    params: {
+      resourceType: getI18nAuditResourceType('app'),
+      datasetId: appId,
+      datasetName: app.name,
+      targetPath: [...parentResourceNames, app.name].join('/'),
+      parentDatasetName: parentResourceName ?? '-',
+      oldPermissionSource: 'self',
+      newPermissionSource: app.parentId ? 'parent' : 'team',
+      affectedResourceCount
+    }
+  });
 
   return ResumeInheritPermissionResponseSchema.parse(undefined);
 }

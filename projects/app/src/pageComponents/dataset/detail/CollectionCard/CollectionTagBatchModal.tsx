@@ -11,10 +11,8 @@ import { postBatchSetCollectionTags } from '@/web/core/dataset/api/collection';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { type DatasetCollectionsListItemType } from '@fastgpt/global/openapi/core/dataset/collection/api';
-import {
-  BatchCollectionTagModeEnum,
-  type BatchSetCollectionTagItem
-} from '@fastgpt/global/openapi/core/dataset/collection/tagApi';
+import { BatchCollectionTagModeEnum } from '@fastgpt/global/core/dataset/constants';
+import type { BatchSetCollectionTagItem } from '@fastgpt/global/openapi/core/dataset/collection/tagApi';
 import {
   DatasetCollectionTagTypeEnum,
   type CollectionTagValueType,

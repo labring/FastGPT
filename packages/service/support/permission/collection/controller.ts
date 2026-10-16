@@ -206,6 +206,7 @@ export async function moveCollectionPermission({
 /**
  * 恢复 Collection 继承（全快照模型）：保留相对当前父级独有的权限位并同步子树。
  * 根 collection（parentId 空）父级 = dataset，经 parentResourceType/parentResourceId 覆盖。
+ * 返回受影响的资源总数（包含当前 collection），供上层审计展示。
  */
 export async function resumeCollectionInheritPermission({
   collection,
@@ -216,7 +217,7 @@ export async function resumeCollectionInheritPermission({
     '_id' | 'tmbId' | 'parentId' | 'datasetId' | 'type' | 'teamId'
   >;
   session?: ClientSession;
-}): Promise<void> {
+}): Promise<number> {
   // resume 只对独立态有意义，而独立态只存在于启用态；关闭态直接拒绝，不隐式开启开关。
   await assertDatasetCollectionPermissionEnabled({
     teamId: collection.teamId,

@@ -6,10 +6,14 @@ import {
   ReadRoleVal
 } from '@fastgpt/global/support/permission/constant';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.unmock('@fastgpt/service/support/user/audit/util');
 
 describe('resume agent skill inherit permission api', () => {
   it('restores inheritance for a root skill and persists the flag', async () => {
@@ -31,6 +35,19 @@ describe('resume agent skill inherit permission api', () => {
     expect(res.code).toBe(200);
     await expect(MongoAgentSkills.findById(skill._id).lean()).resolves.toMatchObject({
       inheritPermission: true
+    });
+    const audit = await MongoTeamAudit.findOne({
+      teamId: users.owner.teamId,
+      event: AuditEventEnum.RESUME_INHERIT_PERMISSION
+    }).lean();
+    expect(audit).not.toBeNull();
+    expect(String(audit?.tmbId)).toBe(String(users.owner.tmbId));
+    expect(audit?.metadata).toMatchObject({
+      resourceType: 'account_team:resource_type.skill',
+      datasetId: String(skill._id),
+      datasetName: 'resume-skill',
+      oldPermissionSource: 'self',
+      newPermissionSource: 'team'
     });
   });
 
@@ -58,12 +75,20 @@ describe('resume agent skill inherit permission api', () => {
 
   it('restores inheritance for a child skill and materializes the parent ACL', async () => {
     const users = await getFakeUsers(2);
+    const grandParent = await MongoAgentSkills.create({
+      name: 'resume-child-skill-grandparent',
+      type: AgentSkillTypeEnum.folder,
+      source: AgentSkillSourceEnum.personal,
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId
+    });
     const parent = await MongoAgentSkills.create({
       name: 'resume-child-skill-parent',
       type: AgentSkillTypeEnum.folder,
       source: AgentSkillSourceEnum.personal,
       teamId: users.owner.teamId,
-      tmbId: users.owner.tmbId
+      tmbId: users.owner.tmbId,
+      parentId: grandParent._id
     });
     const child = await MongoAgentSkills.create({
       name: 'resume-child-skill',
@@ -119,5 +144,15 @@ describe('resume agent skill inherit permission api', () => {
         expect.objectContaining({ tmbId: users.members[0].tmbId, permission: ReadRoleVal })
       ])
     );
+
+    const audit = await MongoTeamAudit.findOne({
+      teamId: users.owner.teamId,
+      event: AuditEventEnum.RESUME_INHERIT_PERMISSION
+    }).lean();
+    expect(audit?.metadata).toMatchObject({
+      resourceType: 'account_team:resource_type.skill',
+      targetPath: 'resume-child-skill-grandparent/resume-child-skill-parent/resume-child-skill',
+      parentDatasetName: 'resume-child-skill-parent'
+    });
   });
 });

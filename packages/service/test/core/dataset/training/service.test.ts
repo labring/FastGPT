@@ -430,12 +430,17 @@ describe('retryFailedTrainingTasks', () => {
     update.mockImplementationOnce((...args) => updateData(...args));
     update.mockRejectedValueOnce(new Error('second batch failed'));
     try {
-      await expect(retryFailedTrainingTasks(scope)).rejects.toThrow('second batch failed');
+      await expect(
+        retryFailedTrainingTasks({ ...scope, auditTaskId: 'audit-task' })
+      ).rejects.toThrow('second batch failed');
     } finally {
       update.mockRestore();
     }
     expect(await MongoDatasetTraining.countDocuments({ ...scope, retryCount: 3 })).toBe(500);
     expect(await MongoDatasetTraining.countDocuments({ ...scope, retryCount: 0 })).toBe(1);
+    expect(await MongoDatasetTraining.countDocuments({ ...scope, auditTaskId: 'audit-task' })).toBe(
+      501
+    );
     expect(
       await MongoDatasetData.countDocuments({
         ...scope,

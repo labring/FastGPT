@@ -21,9 +21,15 @@ import {
   getTrainingTaskReadyUpdate
 } from '@fastgpt/service/core/dataset/training/utils';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { finalErrorTrainingMatch } from '@fastgpt/service/core/dataset/training/query';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import type { TeamAuditDetail } from '@fastgpt/global/support/user/audit/type';
+import { randomUUID } from 'node:crypto';
+import { startDatasetTaskAudit } from '@fastgpt/service/core/dataset/audit';
+import { recoverRetryTrainingAuditAfterProducerFailure } from '@fastgpt/service/core/dataset/training/audit';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 /** 重试训练任务；首次训练允许编辑正文，rebuild 只重试已存索引。 */
 async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse> {
@@ -33,7 +39,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
   if (!body.dataId) {
     const retryMatch = await (async () => {
       if (body.collectionId) {
-        const { collection } = await authDatasetCollection({
+        const { collection, teamId, tmbId } = await authDatasetCollection({
           req,
           authToken: true,
           authApiKey: true,
@@ -42,13 +48,16 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
         });
 
         return {
-          teamId: collection.teamId,
+          teamId,
+          tmbId,
           datasetId: collection.datasetId,
-          collectionId: collection._id
+          collectionId: collection._id,
+          datasetName: collection.dataset.name,
+          collectionName: collection.name
         };
       }
 
-      const { teamId, dataset } = await authDataset({
+      const { teamId, tmbId, dataset } = await authDataset({
         req,
         authToken: true,
         authApiKey: true,
@@ -58,11 +67,78 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
 
       return {
         teamId,
-        datasetId: dataset._id
+        tmbId,
+        datasetId: dataset._id,
+        datasetName: dataset.name,
+        collectionName: undefined
       };
     })();
 
-    await retryFailedTrainingTasks(retryMatch);
+    const auditTaskId = randomUUID();
+    const retryTasks = await MongoDatasetTraining.find(
+      {
+        teamId: retryMatch.teamId,
+        datasetId: retryMatch.datasetId,
+        ...(retryMatch.collectionId ? { collectionId: retryMatch.collectionId } : {}),
+        ...finalErrorTrainingMatch
+      },
+      '_id collectionId'
+    )
+      .populate<{ collection?: { name?: string } }>({ path: 'collection', select: 'name' })
+      .lean();
+    const retryCount = retryTasks.length;
+    const retryDetails: TeamAuditDetail[] = retryTasks.map((task) => ({
+      resourceId: String(task._id),
+      resourceName: task.collection?.name ?? retryMatch.collectionName ?? String(task.collectionId),
+      resourceType: 'training_record',
+      action: 'retry',
+      result: 'processing'
+    }));
+
+    const auditTask = await startDatasetTaskAudit({
+      taskId: auditTaskId,
+      teamId: retryMatch.teamId,
+      tmbId: retryMatch.tmbId,
+      event: AuditEventEnum.RETRY_TRAINING,
+      params: {
+        datasetId: String(retryMatch.datasetId),
+        datasetName: retryMatch.datasetName,
+        ...(retryMatch.collectionName ? { collectionName: retryMatch.collectionName } : {}),
+        count: String(retryCount),
+        ...(retryDetails.length > 0 ? { details: retryDetails } : {})
+      }
+    });
+
+    try {
+      await retryFailedTrainingTasks({
+        teamId: retryMatch.teamId,
+        datasetId: retryMatch.datasetId,
+        ...(retryMatch.collectionId ? { collectionId: retryMatch.collectionId } : {}),
+        auditTaskId: auditTask.taskId
+      });
+      if (retryCount > 0) {
+        // 生产阶段完成后再解除屏障；finish 与 refresh 都使用 processing CAS，避免覆盖 worker 已收口的结果。
+        await auditTask.finish({ result: 'processing' });
+        await auditTask.refresh();
+      } else {
+        await auditTask.finish({ result: 'success' });
+      }
+    } catch (error) {
+      if (auditTask.created) {
+        await recoverRetryTrainingAuditAfterProducerFailure({
+          teamId: retryMatch.teamId,
+          auditTaskId: auditTask.taskId,
+          taskIds: retryTasks.map((task) => String(task._id)),
+          trainingScope: {
+            teamId: retryMatch.teamId,
+            datasetId: retryMatch.datasetId,
+            ...(retryMatch.collectionId ? { collectionId: retryMatch.collectionId } : {})
+          },
+          failureReason: getErrText(error)
+        });
+      }
+      throw error;
+    }
 
     return UpdateTrainingDataResponseSchema.parse(undefined);
   }
@@ -75,7 +151,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
     return Promise.reject('data not found');
   }
 
-  const { collection } = await authDatasetCollection({
+  const { collection, tmbId } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
@@ -111,42 +187,77 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
       ? await getDatasetIndexTrainingMode(data)
       : undefined;
 
+  const auditTaskId = randomUUID();
+
+  const auditTask = await startDatasetTaskAudit({
+    taskId: auditTaskId,
+    teamId: String(collection.teamId),
+    tmbId,
+    event: AuditEventEnum.RETRY_TRAINING,
+    params: {
+      datasetId: String(collection.datasetId),
+      datasetName: collection.dataset.name,
+      collectionName: collection.name,
+      count: '1',
+      details: [
+        {
+          resourceId: String(data._id),
+          resourceName: collection.name,
+          resourceType: 'training_record',
+          action: 'retry',
+          result: 'processing'
+        }
+      ]
+    }
+  });
+
   const readyUpdate = getTrainingTaskReadyUpdate();
-  await mongoSessionRun(async (session) => {
-    if (data.dataId) {
-      await MongoDatasetData.updateOne(
-        {
-          _id: data.dataId,
-          teamId: data.teamId,
-          datasetId: data.datasetId,
-          collectionId: data.collectionId,
-          indexStatus: getTrainingDataIndexStatuses(data.mode).failed
-        },
-        {
-          $set: {
-            indexStatus: getTrainingDataIndexStatuses(data.mode).running
+  try {
+    await mongoSessionRun(async (session) => {
+      if (data.dataId) {
+        await MongoDatasetData.updateOne(
+          {
+            _id: data.dataId,
+            teamId: data.teamId,
+            datasetId: data.datasetId,
+            collectionId: data.collectionId,
+            indexStatus: getTrainingDataIndexStatuses(data.mode).failed
           },
-          $unset: { indexErrorMsg: '' }
+          {
+            $set: {
+              indexStatus: getTrainingDataIndexStatuses(data.mode).running
+            },
+            $unset: { indexErrorMsg: '' }
+          },
+          { session }
+        );
+      }
+
+      await MongoDatasetTraining.updateOne(
+        trainingMatch,
+        {
+          ...readyUpdate,
+          $set: {
+            ...readyUpdate.$set,
+            ...(nextMode && { mode: nextMode }),
+            ...(q !== undefined && { q }),
+            ...(a !== undefined && { a }),
+            ...(chunkIndex !== undefined && { chunkIndex }),
+            auditTaskId: auditTask.taskId
+          }
         },
         { session }
       );
+    });
+    if (auditTask.created) {
+      // 事务成功后再解除生产屏障；finish 与 refresh 都使用 processing CAS，避免覆盖 worker 已收口的结果。
+      await auditTask.finish({ result: 'processing' });
+      await auditTask.refresh();
     }
-
-    await MongoDatasetTraining.updateOne(
-      trainingMatch,
-      {
-        ...readyUpdate,
-        $set: {
-          ...readyUpdate.$set,
-          ...(nextMode && { mode: nextMode }),
-          ...(q !== undefined && { q }),
-          ...(a !== undefined && { a }),
-          ...(chunkIndex !== undefined && { chunkIndex })
-        }
-      },
-      { session }
-    );
-  });
+  } catch (error) {
+    await auditTask.fail(getErrText(error));
+    throw error;
+  }
 
   return UpdateTrainingDataResponseSchema.parse(undefined);
 }

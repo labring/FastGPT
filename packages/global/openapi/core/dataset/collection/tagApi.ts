@@ -1,15 +1,13 @@
 import z from 'zod';
 import {
-  DatasetCollectionTagTypeEnum,
+  BatchCollectionTagModeEnum,
+  DatasetCollectionTagTypeEnum
+} from '../../../../core/dataset/constants';
+import {
   CollectionTagValueSchema,
   CollectionTagValueFieldSchema,
   DatasetCollectionTagOptionsSchema
 } from '../../../../core/dataset/type';
-
-export const BatchCollectionTagModeEnum = {
-  add: 'add',
-  remove: 'remove'
-} as const;
 const BatchCollectionTagModeSchema = z.enum([
   BatchCollectionTagModeEnum.add,
   BatchCollectionTagModeEnum.remove

@@ -194,6 +194,14 @@ export const DEFAULT_TAG = 'default_tag';
 /** 迁移承载标签在条件表达式中的内部专用标识符；身份只由 fromMigration: true 标识，不依赖可修改的标签名称。 */
 export const FROM_MIGRATION_CARRIER = '$fromMigration';
 
+/** 批量设置集合标签的操作模式；接口 schema 与业务 service 共用。 */
+export const BatchCollectionTagModeEnum = {
+  add: 'add',
+  remove: 'remove'
+} as const;
+export type BatchCollectionTagMode =
+  (typeof BatchCollectionTagModeEnum)[keyof typeof BatchCollectionTagModeEnum];
+
 /* ------------ collection tag filter operators -------------- */
 export type DatasetTagCompareOp =
   | '$eq'

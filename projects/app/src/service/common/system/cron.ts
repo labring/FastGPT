@@ -10,6 +10,7 @@ import { cronJob as sandboxCronJob } from '@fastgpt/service/core/ai/sandbox/appl
 import { clearExpiredS3FilesCron } from '@fastgpt/service/common/s3/lifecycle/cleanup';
 import { cleanStaleGeneratingChats } from '@fastgpt/service/core/chat/cleanStaleGeneratingChats';
 import { checkAndRunModelStatusProbe } from '@fastgpt/service/core/ai/modelStatus/service';
+import { reconcileStaleTrainingAudits } from '@fastgpt/service/core/dataset/training/auditReconcile';
 
 // Try to run train every minute
 const setTrainingQueueCron = () => {
@@ -79,6 +80,20 @@ const cleanStaleGeneratingChatCron = () => {
   });
 };
 
+/** 每 5 分钟补偿源阶段崩溃后未回填 sourceFinished 的训练审计。 */
+const datasetTrainingAuditReconcileCron = () => {
+  setCron('*/5 * * * *', async () => {
+    if (
+      await checkTimerLock({
+        timerId: TimerIdEnum.datasetTrainingAuditReconcile,
+        lockMinuted: 4
+      })
+    ) {
+      await reconcileStaleTrainingAudits();
+    }
+  });
+};
+
 /** 每分钟先获取 timer lock，进入后由服务层统一校验开关与探测间隔。 */
 const modelStatusProbeCron = () => {
   setCron('*/1 * * * *', async () => {
@@ -106,5 +121,6 @@ export const startCron = () => {
   clearExpiredS3FilesCron();
   sandboxCronJob();
   cleanStaleGeneratingChatCron();
+  datasetTrainingAuditReconcileCron();
   modelStatusProbeCron();
 };
