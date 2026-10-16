@@ -78,6 +78,9 @@ AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
 AGENT_SANDBOX_CPU_COUNT=1
 AGENT_SANDBOX_MEMORY_MIB=2048
 AGENT_SANDBOX_STORAGE_SIZE_GI=1
+# Kubernetes runtime overcommit factors (cpu / memory): requests = limits / factor (1 = no overcommit)
+AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR=1
+AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR=1
 ```
 
 ### Runtime Images and CPU Architectures
@@ -143,6 +146,8 @@ FastGPT reads `/etc/os-release` and generates or overwrites `/etc/apt/sources.li
 | `AGENT_SANDBOX_CPU_COUNT`             | `1`        | Maximum CPU count for each Agent Sandbox.               |
 | `AGENT_SANDBOX_MEMORY_MIB`            | `2048`     | Maximum memory for each Agent Sandbox, in MiB.          |
 | `AGENT_SANDBOX_STORAGE_SIZE_GI`       | `1`        | Sandbox storage capacity, in Gi.                        |
+| `AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR`    | `1`        | Kubernetes runtime CPU overcommit factor: cpu requests = limits / factor. Values greater than 1 create Burstable QoS pods. Only applies to the opensandbox provider. |
+| `AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR` | `1`        | Kubernetes runtime memory overcommit factor: memory requests = limits / factor. Values greater than 1 create Burstable QoS pods. Only applies to the opensandbox provider. |
 | `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES`  | `67108864` | Maximum IDE Agent WebSocket message size.               |
 | `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`    | `16777216` | Maximum IDE Agent WebSocket frame size.                 |
 | `AGENT_SANDBOX_SUSPEND_MINUTES`       | `60`       | Inactive minutes before a running sandbox is suspended. |

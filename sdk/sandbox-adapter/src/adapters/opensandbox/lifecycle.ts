@@ -126,6 +126,21 @@ export class OpenSandboxLifecycle {
     };
   }
 
+  /**
+   * Convert Kubernetes-style resource requests to lifecycle API quantities.
+   *
+   * Only cpu/memory are requests; `storageSize` maps to a partition size (`disk`) in
+   * limits and must not leak into requests.
+   */
+  private convertResourceRequests(requests?: ResourceLimits): Record<string, string> | undefined {
+    if (!requests) return undefined;
+
+    return {
+      ...(requests.cpuCount === undefined ? {} : { cpu: String(requests.cpuCount) }),
+      ...(requests.memoryMiB === undefined ? {} : { memory: `${requests.memoryMiB}Mi` })
+    };
+  }
+
   private convertNetworkPolicy(
     policy?: OpenSandboxConfigType['networkPolicy']
   ): SdkNetworkPolicy | undefined {
@@ -412,6 +427,7 @@ export class OpenSandboxLifecycle {
         entrypoint: config.entrypoint,
         timeoutSeconds: config.timeoutSeconds ?? null,
         resource: this.convertResourceLimits(config.resourceLimits),
+        resourceRequests: this.convertResourceRequests(config.resourceRequests),
         env: config.env,
         metadata: { ...config.metadata, sessionId: this.connectionConfig.sessionId },
         networkPolicy: this.convertNetworkPolicy(config.networkPolicy),

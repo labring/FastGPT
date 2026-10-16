@@ -148,6 +148,13 @@ export type SandboxCreateSpec = {
   /** CPU, memory, and disk limits, mapped only by providers with native resource controls. */
   resourceLimits?: ResourceLimits;
 
+  /**
+   * Guaranteed minimum resources (requests <= limits).
+   * OpenSandbox forwards these to the lifecycle API as `resourceRequests` to create
+   * Burstable QoS pods on Kubernetes; omitted when unset.
+   */
+  resourceRequests?: ResourceLimits;
+
   /** Environment variables injected when the sandbox is created. */
   env?: Record<string, string>;
 

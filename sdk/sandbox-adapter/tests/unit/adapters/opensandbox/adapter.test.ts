@@ -146,6 +146,60 @@ describe('OpenSandboxAdapter', () => {
     expect(adapter.id).toBe('sandbox-1');
   });
 
+  it('forwards resource requests separately from limits', async () => {
+    const created = createSdkSandbox();
+    const create = vi.spyOn(Sandbox, 'create').mockResolvedValue(created.sandbox);
+    const adapter = new OpenSandboxAdapter(CONNECTION, {
+      image: { repository: 'node', tag: '20' },
+      resourceLimits: { cpuCount: 2, memoryMiB: 4096 },
+      resourceRequests: { cpuCount: 0.2, memoryMiB: 409 }
+    });
+
+    await adapter.create();
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resource: { cpu: '2', memory: '4096Mi' },
+        resourceRequests: { cpu: '0.2', memory: '409Mi' }
+      })
+    );
+  });
+
+  it('omits resource requests when none are configured', async () => {
+    const created = createSdkSandbox();
+    const create = vi.spyOn(Sandbox, 'create').mockResolvedValue(created.sandbox);
+    const adapter = new OpenSandboxAdapter(CONNECTION, {
+      image: { repository: 'node', tag: '20' },
+      resourceLimits: { cpuCount: 2, memoryMiB: 512 }
+    });
+
+    await adapter.create();
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resource: { cpu: '2', memory: '512Mi' },
+        resourceRequests: undefined
+      })
+    );
+  });
+
+  it('never maps storageSize into resource requests', async () => {
+    const created = createSdkSandbox();
+    const create = vi.spyOn(Sandbox, 'create').mockResolvedValue(created.sandbox);
+    const adapter = new OpenSandboxAdapter(CONNECTION, {
+      image: { repository: 'node', tag: '20' },
+      resourceRequests: { cpuCount: 0.5, storageSize: '5G' }
+    });
+
+    await adapter.create();
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resourceRequests: { cpu: '0.5' }
+      })
+    );
+  });
+
   it('requires an image only when create is requested', async () => {
     const adapter = new OpenSandboxAdapter(CONNECTION);
     await expect(adapter.create()).rejects.toThrow('createConfig.image');
