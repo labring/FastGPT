@@ -14,7 +14,6 @@ import {
   getIfElseBranchHandleKey,
   getElseIFLabel
 } from '@fastgpt/global/common/workflow/condition';
-import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import type {
   DispatchNodeResultType,
   ModuleDispatchProps,
@@ -65,6 +64,10 @@ function isInclude(value: any, target: any) {
   }
 }
 
+/**
+ * 比较已解析的条件值。正则条件不区分手输或引用来源，均保留表达式语义；
+ * 仅移除成对的 /.../ 包装，非法模式交给节点调度器处理，普通文本匹配使用包含条件。
+ */
 function checkCondition(condition: VariableConditionEnum, inputValue: any, value: any) {
   // any 类型的变量也提供「开始为/结束为」，运行时可能拿到数字、布尔等非字符串值；
   // 与 equalTo 一样先转成字符串，直接调用 trim 会抛 TypeError 导致整个判断器报错。
@@ -99,20 +102,26 @@ function checkCondition(condition: VariableConditionEnum, inputValue: any, value
       if (inputText === undefined || value === undefined || value === null || value === '') {
         return false;
       }
-      let pattern = String(value);
-      if (pattern.startsWith('/')) {
-        pattern = pattern.slice(1);
-      }
-      if (pattern.endsWith('/')) {
-        pattern = pattern.slice(0, -1);
-      }
+      const rawPattern = String(value);
+      const pattern = (() => {
+        if (rawPattern.length < 2 || !rawPattern.startsWith('/') || !rawPattern.endsWith('/')) {
+          return rawPattern;
+        }
+
+        // 结尾 / 前有奇数个反斜杠时属于正则内容；偶数个反斜杠彼此转义，/ 才是包装符。
+        let trailingBackslashes = 0;
+        for (let i = rawPattern.length - 2; rawPattern[i] === '\\'; i--) {
+          trailingBackslashes++;
+        }
+        return trailingBackslashes % 2 === 0 ? rawPattern.slice(1, -1) : rawPattern;
+      })();
       // 空数组等引用值字符串化后为空模式；空模式会匹配任意输入，
       // 不能把缺失模式当成成功条件。
       if (pattern === '') {
         return false;
       }
 
-      // 手输正则是用户配置，非法模式直接抛错暴露问题；引用变量值已在解析时清洗，不会因数据报错。
+      // 手输和引用的正则配置遵循相同约定，不能静默转义或吞掉语法错误。
       const reg = new RegExp(pattern, 'g');
       return reg.test(inputText);
     },
@@ -146,22 +155,14 @@ function getResult(
       nodesMap: runtimeNodesMap
     });
 
-    const conditionRightValue = (() => {
-      if (valueType !== 'reference') return value;
-
-      const referenceValue = getReferenceVariableValue({
-        value: value as ReferenceItemValueType,
-        variables: runtimeVariables,
-        nodesMap: runtimeNodesMap
-      });
-
-      // 引用变量是任意运行时数据，不是正则配置：reg 条件在使用前先清洗特殊字符，
-      // 避免数据被当作正则执行（报错或按正则语义误匹配）。
-      if (variableCondition === VariableConditionEnum.reg && referenceValue != null) {
-        return replaceRegChars(String(referenceValue));
-      }
-      return referenceValue;
-    })();
+    const conditionRightValue =
+      valueType === 'reference'
+        ? getReferenceVariableValue({
+            value: value as ReferenceItemValueType,
+            variables: runtimeVariables,
+            nodesMap: runtimeNodesMap
+          })
+        : value;
 
     return checkCondition(variableCondition, conditionLeftValue, conditionRightValue);
   });

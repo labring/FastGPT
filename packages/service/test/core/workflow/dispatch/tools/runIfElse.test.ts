@@ -221,6 +221,23 @@ describe('dispatchIfElse include / notInclude', () => {
     expect(stringNotInclude.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
   });
 
+  it.each([
+    { input: 'order [x] done', target: '[x', expected: IfElseResultEnum.IF },
+    { input: 'axb', target: 'a.b', expected: IfElseResultEnum.ELSE },
+    { input: 'abc', target: '/abc/', expected: IfElseResultEnum.ELSE }
+  ])(
+    'should match reference text $target literally in $input',
+    async ({ input, target, expected }) => {
+      const include = await runReference(input, VariableConditionEnum.include, target);
+      expect(include.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(expected);
+
+      const notInclude = await runReference(input, VariableConditionEnum.notInclude, target);
+      expect(notInclude.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(
+        expected === IfElseResultEnum.IF ? IfElseResultEnum.ELSE : IfElseResultEnum.IF
+      );
+    }
+  );
+
   it('should match a non-string reference target against array items as text', async () => {
     const numberInclude = await runReference([200, 404], VariableConditionEnum.include, 200);
     expect(numberInclude.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
@@ -329,28 +346,57 @@ describe('dispatchIfElse regex', () => {
     expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
   });
 
-  it('should throw on an invalid typed pattern (user config error)', async () => {
-    await expect(run('abc', '[')).rejects.toThrow();
-    await expect(run('abc', '(abc')).rejects.toThrow();
-    // 编辑器占位符使用 /.../ 包裹写法，剥掉斜杠后仍可能是非法正则
-    await expect(run('abc', '/[/')).rejects.toThrow();
+  it.each([
+    { pattern: String.raw`/^\d+$/`, input: '123', expected: IfElseResultEnum.IF },
+    { pattern: 'a.b', input: 'axb', expected: IfElseResultEnum.IF },
+    { pattern: String.raw`a\.b`, input: 'a.b', expected: IfElseResultEnum.IF },
+    { pattern: String.raw`a\.b`, input: 'axb', expected: IfElseResultEnum.ELSE }
+  ])(
+    'should preserve regex semantics for reference $pattern',
+    async ({ pattern, input, expected }) => {
+      const result = await runReferencePattern(input, pattern);
+      expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(expected);
+    }
+  );
+
+  it('should throw on an invalid typed pattern', async () => {
+    await expect(run('abc', '[')).rejects.toThrow(SyntaxError);
+    await expect(run('abc', '(abc')).rejects.toThrow(SyntaxError);
+    await expect(run('abc', '/[/')).rejects.toThrow(SyntaxError);
   });
 
-  it('should clean a reference pattern into literal matching', async () => {
-    // 引用值是数据不是正则：特殊字符按字面量匹配
-    const literalSpecial = await runReferencePattern('order [x] done', '[x');
-    expect(literalSpecial.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+  it.each(['[x', '(abc', 'a{2,1}', '/[/'])(
+    'should reject invalid reference regex %s instead of converting it to text',
+    async (pattern) => {
+      await expect(runReferencePattern(pattern, pattern)).rejects.toThrow(SyntaxError);
+    }
+  );
 
-    const literalQuantifier = await runReferencePattern('a{2,1}', 'a{2,1}');
-    expect(literalQuantifier.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
-
-    // 正则元字符不再被当作正则执行
-    const regexLooking = await runReferencePattern('axb', 'a.b');
-    expect(regexLooking.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
-
-    const sameDot = await runReferencePattern('a.b', 'a.b');
-    expect(sameDot.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+  it.each([
+    { pattern: '/', input: '/', expected: IfElseResultEnum.IF },
+    { pattern: '/abc', input: 'abc', expected: IfElseResultEnum.ELSE },
+    { pattern: 'abc/', input: 'abc', expected: IfElseResultEnum.ELSE },
+    { pattern: String.raw`\/`, input: '/', expected: IfElseResultEnum.IF },
+    { pattern: String.raw`/^\/$/`, input: '/', expected: IfElseResultEnum.IF },
+    { pattern: String.raw`/abc\/`, input: '/abc/', expected: IfElseResultEnum.IF },
+    { pattern: String.raw`/path\\/`, input: 'path\\', expected: IfElseResultEnum.IF }
+  ])('should preserve content slashes in $pattern', async ({ pattern, input, expected }) => {
+    const result = await run(input, pattern);
+    expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(expected);
   });
+
+  it('should preserve an escaped slash from a reference pattern', async () => {
+    const result = await runReferencePattern('/', String.raw`\/`);
+    expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+  });
+
+  it.each([{ pattern: '' }, { pattern: '//' }, { pattern: null }])(
+    'should not match an empty or missing pattern $pattern',
+    async ({ pattern }) => {
+      const result = await run('anything', pattern);
+      expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
+    }
+  );
 
   it('should match the phone number example shown in the editor', async () => {
     const pattern = '/^((\\+|00)86)?1[3-9]\\d{9}$/';
