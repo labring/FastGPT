@@ -4,6 +4,8 @@ import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { MongoMemberGroupModel } from '@fastgpt/service/support/permission/memberGroup/memberGroupSchema';
+import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
 import { getDataId } from '@fastgpt/service/support/tmpData/verification';
 import { setCookie } from '@fastgpt/service/support/permission/auth/common';
@@ -30,6 +32,7 @@ const saveLoginCode = (username: string, code = '123456') =>
 
 describe('loginByPassword API', () => {
   const originalSystemConfig = global.systemConfig;
+  const originalFeConfigs = global.feConfigs;
   let testUser: any;
   let testTeam: any;
   let testTmb: any;
@@ -69,6 +72,7 @@ describe('loginByPassword API', () => {
 
   afterEach(() => {
     global.systemConfig = originalSystemConfig;
+    global.feConfigs = originalFeConfigs;
   });
 
   it('should login successfully with valid credentials', async () => {
@@ -205,7 +209,8 @@ describe('loginByPassword API', () => {
   });
 
   it('should create and use a personal team when multi-team login has no usable team', async () => {
-    global.systemConfig = { teamMode: 'multi' };
+    global.systemConfig = undefined;
+    global.feConfigs = { ...global.feConfigs, teamMode: 'multi' };
     const loginUser = await MongoUser.create({
       username: 'multi-orphan-user',
       password: 'testpassword',
@@ -229,10 +234,17 @@ describe('loginByPassword API', () => {
     await expect(
       MongoTeamMember.countDocuments({ userId: loginUser._id, status: 'active' })
     ).resolves.toBe(1);
+    await expect(
+      MongoMemberGroupModel.countDocuments({
+        teamId: res.data.user.team.teamId,
+        name: DefaultGroupName
+      })
+    ).resolves.toBe(1);
   });
 
   it('should keep the user lock until a fallback login consumes its verification material', async () => {
-    global.systemConfig = { teamMode: 'multi' };
+    global.systemConfig = undefined;
+    global.feConfigs = { ...global.feConfigs, teamMode: 'multi' };
     const loginUser = await MongoUser.create({
       username: 'concurrent-orphan-user',
       password: 'testpassword',
@@ -303,7 +315,8 @@ describe('loginByPassword API', () => {
   });
 
   it('should not create a team for a pending cancellation user without a usable team', async () => {
-    global.systemConfig = { teamMode: 'multi' };
+    global.systemConfig = undefined;
+    global.feConfigs = { ...global.feConfigs, teamMode: 'multi' };
     const loginUser = await MongoUser.create({
       username: 'pending-orphan-user',
       password: 'testpassword',
@@ -330,7 +343,8 @@ describe('loginByPassword API', () => {
   });
 
   it('should keep single-team login failure when the user has no usable team', async () => {
-    global.systemConfig = { teamMode: 'single' };
+    global.systemConfig = undefined;
+    global.feConfigs = { ...global.feConfigs, teamMode: 'single' };
     const loginUser = await MongoUser.create({
       username: 'single-orphan-user',
       password: 'testpassword',
