@@ -221,6 +221,23 @@ describe('dispatchIfElse include / notInclude', () => {
     expect(stringNotInclude.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
   });
 
+  it.each([
+    { input: 'order [x] done', target: '[x', expected: IfElseResultEnum.IF },
+    { input: 'axb', target: 'a.b', expected: IfElseResultEnum.ELSE },
+    { input: 'abc', target: '/abc/', expected: IfElseResultEnum.ELSE }
+  ])(
+    'should match reference text $target literally in $input',
+    async ({ input, target, expected }) => {
+      const include = await runReference(input, VariableConditionEnum.include, target);
+      expect(include.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(expected);
+
+      const notInclude = await runReference(input, VariableConditionEnum.notInclude, target);
+      expect(notInclude.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(
+        expected === IfElseResultEnum.IF ? IfElseResultEnum.ELSE : IfElseResultEnum.IF
+      );
+    }
+  );
+
   it('should match a non-string reference target against array items as text', async () => {
     const numberInclude = await runReference([200, 404], VariableConditionEnum.include, 200);
     expect(numberInclude.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
@@ -328,6 +345,58 @@ describe('dispatchIfElse regex', () => {
     const result = await runReferencePattern('anything', undefined);
     expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
   });
+
+  it.each([
+    { pattern: String.raw`/^\d+$/`, input: '123', expected: IfElseResultEnum.IF },
+    { pattern: 'a.b', input: 'axb', expected: IfElseResultEnum.IF },
+    { pattern: String.raw`a\.b`, input: 'a.b', expected: IfElseResultEnum.IF },
+    { pattern: String.raw`a\.b`, input: 'axb', expected: IfElseResultEnum.ELSE }
+  ])(
+    'should preserve regex semantics for reference $pattern',
+    async ({ pattern, input, expected }) => {
+      const result = await runReferencePattern(input, pattern);
+      expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(expected);
+    }
+  );
+
+  it('should throw on an invalid typed pattern', async () => {
+    await expect(run('abc', '[')).rejects.toThrow(SyntaxError);
+    await expect(run('abc', '(abc')).rejects.toThrow(SyntaxError);
+    await expect(run('abc', '/[/')).rejects.toThrow(SyntaxError);
+  });
+
+  it.each(['[x', '(abc', 'a{2,1}', '/[/'])(
+    'should reject invalid reference regex %s instead of converting it to text',
+    async (pattern) => {
+      await expect(runReferencePattern(pattern, pattern)).rejects.toThrow(SyntaxError);
+    }
+  );
+
+  it.each([
+    { pattern: '/', input: '/', expected: IfElseResultEnum.IF },
+    { pattern: '/abc', input: 'abc', expected: IfElseResultEnum.ELSE },
+    { pattern: 'abc/', input: 'abc', expected: IfElseResultEnum.ELSE },
+    { pattern: String.raw`\/`, input: '/', expected: IfElseResultEnum.IF },
+    { pattern: String.raw`/^\/$/`, input: '/', expected: IfElseResultEnum.IF },
+    { pattern: String.raw`/abc\/`, input: '/abc/', expected: IfElseResultEnum.IF },
+    { pattern: String.raw`/path\\/`, input: 'path\\', expected: IfElseResultEnum.IF }
+  ])('should preserve content slashes in $pattern', async ({ pattern, input, expected }) => {
+    const result = await run(input, pattern);
+    expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(expected);
+  });
+
+  it('should preserve an escaped slash from a reference pattern', async () => {
+    const result = await runReferencePattern('/', String.raw`\/`);
+    expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+  });
+
+  it.each([{ pattern: '' }, { pattern: '//' }, { pattern: null }])(
+    'should not match an empty or missing pattern $pattern',
+    async ({ pattern }) => {
+      const result = await run('anything', pattern);
+      expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
+    }
+  );
 
   it('should match the phone number example shown in the editor', async () => {
     const pattern = '/^((\\+|00)86)?1[3-9]\\d{9}$/';
