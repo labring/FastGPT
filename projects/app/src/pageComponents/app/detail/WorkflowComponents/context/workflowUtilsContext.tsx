@@ -17,6 +17,7 @@ import {
 } from '@fastgpt/global/core/app/formEdit/utils';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { checkWorkflowNodeAndConnection } from '../adapters/validation';
 import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
@@ -44,7 +45,7 @@ type WorkflowUtilsContextValue = {
       chatConfig?: AppChatConfigType;
     },
     isInit?: boolean
-  ) => Promise<void>;
+  ) => Promise<number>;
   flowData2StoreData: () =>
     | {
         nodes: StoreNodeItemType[];
@@ -134,7 +135,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
 
   const { appDetail, setAppDetail } = useContextSelector(AppContext, (v) => v);
-  const { edges, setEdges, setNodes, getNodes, toolNodesMap } = useContextSelector(
+  const { edges, getNodes, replaceWorkflowData, toolNodesMap } = useContextSelector(
     WorkflowBufferDataContext,
     (v) => v
   );
@@ -236,14 +237,25 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         if (!hideTip) toast({ status: 'error', title: t('common:model_catalog_load_failed') });
         return;
       }
-      const { issueMap, hasError, firstErrorNodeId, chatConfigIssues } =
-        checkWorkflowBeforeRunOrPublish({
-          nodes,
-          edges,
-          modelData,
-          chatConfig: appDetail.chatConfig,
-          t
-        });
+      const coreErrorNodeIds = checkWorkflowNodeAndConnection({
+        nodes,
+        edges,
+        chatConfig: appDetail.chatConfig
+      });
+      const {
+        issueMap,
+        hasError: hasWebError,
+        firstErrorNodeId: firstWebErrorNodeId,
+        chatConfigIssues
+      } = checkWorkflowBeforeRunOrPublish({
+        nodes,
+        edges,
+        modelData,
+        chatConfig: appDetail.chatConfig,
+        t
+      });
+      const hasError = hasWebError || !!coreErrorNodeIds?.length;
+      const firstErrorNodeId = firstWebErrorNodeId ?? coreErrorNodeIds?.[0];
 
       if (!hasError) {
         onRemoveError();
@@ -372,11 +384,20 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
             t
           });
           onSyncWorkflowCheckIssues(issueMap);
-          if (hasError && firstErrorNodeId) {
-            const errorNode = checkNodes.find((node) => node.data.nodeId === firstErrorNodeId);
+          const firstErrorNode = checkNodes.find((node) => node.data.nodeId === firstErrorNodeId);
+          // 新建空白或初始画布时，起始节点尚未连线属于正常搭建前置状态。
+          // 保留节点底部 issue 待完善气泡提示，但跳过外层强报错大红框及自动 fitView 聚焦，避免初次进入产生压迫感。
+          const isStartNodeIsolatedOnly =
+            firstErrorNode &&
+            [FlowNodeTypeEnum.workflowStart, FlowNodeTypeEnum.pluginInput].includes(
+              firstErrorNode.data.flowNodeType
+            ) &&
+            issueMap[firstErrorNodeId]?.every((issue) => issue.code === 'isolated_node');
+
+          if (hasError && firstErrorNodeId && !isStartNodeIsolatedOnly) {
             onUpdateNodeError(firstErrorNodeId, true);
-            if (errorNode) {
-              fitView({ nodes: [errorNode], padding: 0.3 });
+            if (firstErrorNode) {
+              fitView({ nodes: [firstErrorNode], padding: 0.3 });
             }
           }
         }, 300);
@@ -385,11 +406,13 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       // 有历史记录，直接用历史记录覆盖
       if (isInit && past.length > 0) {
         const firstPast = past[0];
-        setNodes(firstPast.nodes);
-        setEdges(firstPast.edges);
+        const revision = replaceWorkflowData({
+          nodes: firstPast.nodes,
+          edges: firstPast.edges
+        });
         setAppDetail((state) => ({ ...state, chatConfig: firstPast.chatConfig }));
         scheduleEntryCheck(firstPast.nodes, firstPast.edges);
-        return;
+        return revision;
       }
       // 初始化一个历史记录
       if (isInit && past.length === 0) {
@@ -405,17 +428,16 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       }
 
       // Init memory data
-      setNodes(nodes);
-      setEdges(edges);
+      const revision = replaceWorkflowData({ nodes, edges });
       setAppDetail((state) => ({ ...state, chatConfig: workflow.chatConfig }));
       scheduleEntryCheck(nodes, edges);
+      return revision;
     },
     [
       appDetail.chatConfig,
       past,
+      replaceWorkflowData,
       setAppDetail,
-      setEdges,
-      setNodes,
       setPast,
       t,
       fitView,

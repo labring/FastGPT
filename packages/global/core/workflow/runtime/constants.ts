@@ -24,7 +24,11 @@ export enum SseResponseEventEnum {
 
   // Sandbox lifecycle
   sandboxStatus = 'sandboxStatus', // sandbox lifecycle phase notification
-  skillCall = 'skillCall' // skill invocation announce (when SKILL.md is loaded)
+  skillCall = 'skillCall', // skill invocation announce (when SKILL.md is loaded)
+
+  // Workflow Builder
+  workflowBuilderApplied = 'workflowBuilderApplied',
+  workflowBuilderVersion = 'workflowBuilderVersion'
 }
 
 export const StreamResumePhaseEvent = 'resumePhase';

@@ -7,6 +7,7 @@ import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/Chat
 import {
   getInteractiveByHistories,
   isPendingAgentAsk,
+  isPendingWorkflowBuilderPreview,
   isUserInputInteractiveSubmitted,
   persistAgentAskAnswersToHistories,
   resolveInteractiveResponseChatItemId,
@@ -175,6 +176,38 @@ describe('getInteractiveByHistories', () => {
       canSendQuery: true
     });
     expect(isPendingAgentAsk(result.interactive)).toBe(true);
+  });
+
+  it('blocks the normal input while a workflow builder preview awaits confirmation', () => {
+    const interactive = {
+      ...baseInteractive,
+      type: 'workflowBuilderPreview',
+      previewId: 'preview-1',
+      params: {
+        title: 'Confirm workflow',
+        mermaid: 'flowchart LR\n  A --> B',
+        sections: [],
+        actions: [
+          { value: 'confirm', label: 'Confirm', inputMode: 'none' },
+          { value: 'revise', label: 'Revise', inputMode: 'text' },
+          { value: 'cancel', label: 'Cancel', inputMode: 'none' }
+        ]
+      }
+    } as WorkflowInteractiveResponseType;
+
+    const pending = getInteractiveByHistories([createAiRecord(interactive)]);
+    expect(pending).toEqual({ interactive, canSendQuery: false });
+    expect(isPendingWorkflowBuilderPreview(pending.interactive)).toBe(true);
+
+    const answered = {
+      ...interactive,
+      params: { ...interactive.params, answerValue: 'confirm' as const }
+    };
+    expect(getInteractiveByHistories([createAiRecord(answered)])).toEqual({
+      interactive: undefined,
+      canSendQuery: true
+    });
+    expect(isPendingWorkflowBuilderPreview(answered)).toBe(false);
   });
 });
 
@@ -407,6 +440,40 @@ describe('rewriteHistoriesByInteractiveResponse', () => {
     expect(result[2]).toEqual({
       ...histories[2],
       status: ChatStatusEnum.loading
+    });
+  });
+
+  it('persists the stable option value and revision text separately from the visible answer', () => {
+    const interactive = {
+      ...baseInteractive,
+      type: 'workflowBuilderPreview',
+      previewId: 'ask-preview',
+      params: {
+        title: 'Confirm this workflow?',
+        mermaid: 'flowchart LR\n  A --> B',
+        sections: [],
+        actions: [
+          { value: 'confirm', label: 'Confirm', inputMode: 'none' },
+          { value: 'revise', label: 'Revise', inputMode: 'text' },
+          { value: 'cancel', label: 'Cancel', inputMode: 'none' }
+        ]
+      }
+    } as WorkflowInteractiveResponseType;
+
+    const result = rewriteHistoriesByInteractiveResponse({
+      histories: [createAiRecord(interactive), createHumanRecord(), createAiPlaceholder()],
+      interactive,
+      interactiveVal: 'Add a review branch',
+      agentPlanAskResponse: {
+        askId: 'ask-preview',
+        optionValue: 'revise',
+        text: 'Add a review branch'
+      }
+    });
+
+    expect((result[0].value[0] as any).interactive.params).toMatchObject({
+      answerValue: 'revise',
+      answerText: 'Add a review branch'
     });
   });
 

@@ -10,7 +10,11 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
+import {
+  createNodeApiLimitResponse,
+  LimitTypeEnum,
+  teamFrequencyLimit
+} from '@fastgpt/service/common/api/frequencyLimit';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { isAuthorizedTempFileS3Key } from '@fastgpt/service/common/s3/sources/temp/key';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -69,7 +73,14 @@ export async function handler(
     datasetId,
     per: ReadPermissionVal
   });
-  if (!(await teamFrequencyLimit({ teamId, type: LimitTypeEnum.chat, res }))) return;
+  if (
+    !(await teamFrequencyLimit({
+      teamId,
+      type: LimitTypeEnum.chat,
+      limitResponse: createNodeApiLimitResponse(res)
+    }))
+  )
+    return;
   // auth balance
   await checkTeamAIPoints(teamId);
 

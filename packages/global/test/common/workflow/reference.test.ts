@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  areWorkflowValueTypesCompatible,
+  getWorkflowReferenceSourceValueTypes,
   getSelectedInputRenderType,
   nodeInputIsReference,
   isValidReferenceValueFormat,
@@ -187,5 +189,34 @@ describe('getHandleId', () => {
   it('should handle empty strings', () => {
     const result = getHandleId('', 'source', '');
     expect(result).toBe('-source-');
+  });
+});
+
+describe('workflow reference value type compatibility', () => {
+  it('matches the reference selector contract for scalar, array and special values', () => {
+    expect(getWorkflowReferenceSourceValueTypes(WorkflowIOValueTypeEnum.arrayString)).toEqual([
+      WorkflowIOValueTypeEnum.string,
+      WorkflowIOValueTypeEnum.arrayString,
+      WorkflowIOValueTypeEnum.arrayAny,
+      WorkflowIOValueTypeEnum.any
+    ]);
+    expect(
+      areWorkflowValueTypesCompatible({
+        expected: WorkflowIOValueTypeEnum.arrayString,
+        actual: WorkflowIOValueTypeEnum.string
+      })
+    ).toBe(true);
+    expect(
+      areWorkflowValueTypesCompatible({
+        expected: WorkflowIOValueTypeEnum.arrayObject,
+        actual: WorkflowIOValueTypeEnum.datasetQuote
+      })
+    ).toBe(true);
+    expect(
+      areWorkflowValueTypesCompatible({
+        expected: WorkflowIOValueTypeEnum.string,
+        actual: WorkflowIOValueTypeEnum.arrayString
+      })
+    ).toBe(false);
   });
 });

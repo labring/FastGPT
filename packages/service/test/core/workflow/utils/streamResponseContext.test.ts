@@ -3,9 +3,12 @@ import { getRedisRuntime } from '@fastgpt/dal/redis/runtime';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import {
+  STREAM_RESUME_ACTIVITY_HEARTBEAT_INTERVAL_MS,
   STREAM_RESUME_POST_COMPLETE_TTL_SECONDS,
   getStreamResumeRedisKeys,
-  resetStreamResumeMirrorGuardForTest
+  getStreamResumeActiveState,
+  resetStreamResumeMirrorGuardForTest,
+  startStreamResumeActivityHeartbeat
 } from '@fastgpt/service/core/chat/resume';
 import { FASTGPT_REDIS_PREFIX } from '@fastgpt/dal/redis/runtime';
 import {
@@ -89,8 +92,69 @@ describe('createWorkflowStreamResponseContext', () => {
     redis.info = vi.fn().mockResolvedValue('used_memory:10\r\nmaxmemory:100\r\n');
   });
 
+  it('keeps activity heartbeat independent from the HTTP response lifecycle', async () => {
+    vi.useFakeTimers();
+    const touchActive = vi.fn().mockResolvedValue(undefined);
+    const stopHeartbeat = startStreamResumeActivityHeartbeat({
+      mirror: { touchActive },
+      intervalMs: STREAM_RESUME_ACTIVITY_HEARTBEAT_INTERVAL_MS
+    });
+
+    expect(touchActive).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(STREAM_RESUME_ACTIVITY_HEARTBEAT_INTERVAL_MS);
+    expect(touchActive).toHaveBeenCalledTimes(2);
+
+    stopHeartbeat();
+    await vi.advanceTimersByTimeAsync(STREAM_RESUME_ACTIVITY_HEARTBEAT_INTERVAL_MS * 2);
+    expect(touchActive).toHaveBeenCalledTimes(2);
+  });
+
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('continues background activity after disconnect and stops it when flushed once', async () => {
+    vi.useFakeTimers();
+    const res = createRes();
+    const params = { teamId, sourceType: ChatSourceTypeEnum.app, sourceId, chatId };
+    const redis = getRedisRuntime().getCommandConnection() as any;
+    const set = vi.spyOn(redis, 'set');
+    const context = await createWorkflowStreamResponseContext({
+      ...params,
+      req: createReq(),
+      res,
+      stream: true,
+      detail: true,
+      mirrorFromStart: true
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    const initialActive = await getStreamResumeActiveState(params);
+    expect(initialActive).toBeDefined();
+
+    res.closed = true;
+    res.emit('close');
+    await vi.advanceTimersByTimeAsync(STREAM_RESUME_ACTIVITY_HEARTBEAT_INTERVAL_MS);
+    const disconnectedActive = await getStreamResumeActiveState(params);
+    expect(disconnectedActive!.updatedAt).toBeGreaterThan(initialActive!.updatedAt);
+
+    context.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
+    const flush = context.flushResume();
+    expect(context.flushResume()).toBe(flush);
+    await flush;
+    const completionExpirations = redis.expire.mock.calls.filter(
+      ([, ttl]: [string, number]) => ttl === STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+    );
+    expect(completionExpirations).toHaveLength(2);
+
+    set.mockClear();
+    await vi.advanceTimersByTimeAsync(STREAM_RESUME_ACTIVITY_HEARTBEAT_INTERVAL_MS * 2);
+    expect(set).not.toHaveBeenCalled();
+    await context.flushResume();
+    expect(
+      redis.expire.mock.calls.filter(
+        ([, ttl]: [string, number]) => ttl === STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+      )
+    ).toHaveLength(2);
   });
 
   it('should bind heartbeat cleanup to response lifecycle and keep init idempotent', async () => {

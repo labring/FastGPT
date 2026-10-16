@@ -12,6 +12,8 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useCallback, useMemo, useState } from 'react';
 import { useReactFlow } from 'reactflow';
 import { uiWorkflow2StoreWorkflow } from '../../utils';
+import { checkWorkflowNodeAndConnection } from '../../adapters/validation';
+
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
@@ -109,18 +111,29 @@ export const useDebug = () => {
   const flowData2StoreDataAndCheck = useCallback(async () => {
     const nodes = getNodes();
 
-    const { issueMap, hasError, firstErrorNodeId, chatConfigIssues } =
-      checkWorkflowBeforeRunOrPublish({
+    const coreErrorNodeIds = checkWorkflowNodeAndConnection({
+      nodes,
+      edges,
+      chatConfig: appDetail.chatConfig
+    });
+    const {
+      issueMap,
+      hasError: hasWebError,
+      firstErrorNodeId: firstWebErrorNodeId,
+      chatConfigIssues
+    } = checkWorkflowBeforeRunOrPublish({
+      nodes,
+      edges,
+      modelData: await getWorkflowModelCheckData({
         nodes,
-        edges,
-        modelData: await getWorkflowModelCheckData({
-          nodes,
-          chatConfig: appDetail.chatConfig,
-          appId: appDetail._id
-        }),
         chatConfig: appDetail.chatConfig,
-        t: workflowT
-      });
+        appId: appDetail._id
+      }),
+      chatConfig: appDetail.chatConfig,
+      t: workflowT
+    });
+    const hasError = hasWebError || !!coreErrorNodeIds?.length;
+    const firstErrorNodeId = firstWebErrorNodeId ?? coreErrorNodeIds?.[0];
 
     if (!hasError) {
       onRemoveError();
@@ -132,7 +145,6 @@ export const useDebug = () => {
 
       return JSON.stringify(storeNodes);
     }
-
     onSyncWorkflowCheckIssues(issueMap);
 
     if (firstErrorNodeId) {

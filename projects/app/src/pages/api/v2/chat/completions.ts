@@ -63,7 +63,11 @@ import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/to
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
-import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
+import {
+  createNodeApiLimitResponse,
+  LimitTypeEnum,
+  teamFrequencyLimit
+} from '@fastgpt/service/common/api/frequencyLimit';
 import { getIpFromRequest } from '@fastgpt/service/common/geo';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import {
@@ -183,7 +187,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       !(await teamFrequencyLimit({
         teamId,
         type: LimitTypeEnum.chat,
-        res
+        limitResponse: createNodeApiLimitResponse(res)
       }))
     ) {
       return;
@@ -506,8 +510,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       streamResponseContext.responseWrite(
         workflowSseEvent.done(detail ? SseResponseEventEnum.answer : undefined)
       );
-
-      await streamResponseContext.flushResume();
     } else {
       const generatedTitle = await titleSender.send();
       const formatResponseContent = removeAIResponseCite(assistantResponses, jsonRetainDatasetCite);
@@ -591,7 +593,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       } else {
         sseErrRes(res, err);
       }
-      await streamResponseContext?.flushResume();
     } else {
       const errKey = typeof err === 'string' ? err : (err as Error)?.message;
       jsonRes(res, {
@@ -601,7 +602,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   } finally {
     if (stream) {
-      res.end();
+      // 清理不能依赖 catch 中的数据库写入成功，断线期间后台执行仍保留心跳。
+      try {
+        await streamResponseContext?.flushResume();
+      } catch (error) {
+        logger.error('Chat stream cleanup failed', { error });
+      } finally {
+        res.end();
+      }
     }
   }
 }

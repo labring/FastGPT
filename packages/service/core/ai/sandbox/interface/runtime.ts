@@ -9,6 +9,50 @@ import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '../../skill/edit/config';
 import { getRunningSandboxId, getSandboxUserId } from '../utils/id';
 import type { SandboxClientQuery } from '../application/runtime/type';
 
+export {
+  checkSandboxRuntimeInstanceExists,
+  getSandboxClient,
+  SandboxClient
+} from '../application/runtime/client';
+export {
+  createAgentSandboxInitializingError,
+  createAgentSandboxPermissionDeniedError,
+  createSandboxRuntimeUpgradeFailedError
+} from '../error';
+export type { SandboxClientQuery } from '../application/runtime/type';
+export { prepareAgentSandboxRuntime } from '../application/runtime';
+export type { AgentSandboxRuntimeContext } from '../application/runtime';
+export { assertSandboxAvailable, resolveAppSandboxAvailability } from '../application/availability';
+export type { AppSandboxAvailability } from '../application/availability';
+export { getRunningSandboxId } from '../utils/id';
+export { getSandboxRuntimeProfile } from '../application/runtime';
+export type { SandboxRuntimeProfile } from '../infrastructure/provider/runtimeProfile/types';
+export { ensureAppSandboxRuntimeReady } from '../application/runtime/upgrade';
+export {
+  runAgentSandboxEntrypoint,
+  runSandboxEntrypoint,
+  withAgentSandboxInitLease
+} from '../application/runtime/entrypoint';
+export {
+  injectCurrentInputFiles,
+  preparePackageMirrors,
+  prepareSandbox
+} from '../application/runtime/prepare';
+export { getSandboxRuntimeMirrorsConfig } from '../application/runtime/mirrors';
+export type { SandboxPrepareContext, SandboxPrepareStep } from '../application/runtime/prepare';
+export { resolveSandboxHome } from '../application/runtime/home';
+export { getSafeSandboxInputFilename, joinSandboxPath } from '../utils';
+export type { DeployedSkillInfo, DeployedSkillVersion } from '../application/runtime/skill/types';
+export {
+  getAgentSkillInfos,
+  injectAgentSkillFilesToSandbox
+} from '../application/runtime/skill/core';
+export {
+  getBuiltinSkillsRootPath,
+  syncBuiltinSkillsToSandbox
+} from '../application/runtime/skill/builtin';
+export { runAgentSkillVersionEntrypoints } from '../application/runtime/skill/entrypoint';
+
 type SandboxClientQueryWithId = SandboxClientQuery & { sandboxId: string; chatId: string };
 
 /**
@@ -34,7 +78,7 @@ export function buildSandboxClientQueryFromChatSource({
     userId: sandboxUserId
   });
 
-  if (sourceType === ChatSourceTypeEnum.app) {
+  if (sourceType === ChatSourceTypeEnum.app || sourceType === ChatSourceTypeEnum.workflowBuilder) {
     return {
       sandboxId,
       sourceType,

@@ -16,7 +16,7 @@ import {
   NodeOutputKeyEnum,
   VARIABLE_NODE_ID
 } from '@fastgpt/global/core/workflow/constants';
-import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
+import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   checkWorkflowNodeIssues,
   checkWorkflowBeforeRunOrPublish,
@@ -1509,6 +1509,58 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
           }
         ])
       ).toEqual(['u1']);
+    });
+  });
+
+  describe('workflowStart isolation check', () => {
+    it('produces isolated_node issue for standalone workflowStart to show bottom hint', () => {
+      const startNode: Node<FlowNodeItemType> = {
+        id: 'start-1',
+        type: 'custom',
+        position: { x: 0, y: 0 },
+        data: {
+          nodeId: 'start-1',
+          name: '流程开始',
+          flowNodeType: FlowNodeTypeEnum.workflowStart,
+          avatar: 'avatar',
+          inputs: [],
+          outputs: []
+        }
+      };
+
+      const result = checkWorkflowBeforeRunOrPublish({
+        nodes: [startNode],
+        edges: []
+      });
+
+      expect(result.hasError).toBe(true);
+      expect(result.firstErrorNodeId).toBe('start-1');
+      expect(result.issueMap['start-1']?.some((i) => i.code === 'isolated_node')).toBe(true);
+    });
+
+    it('marks non-start nodes as isolated when they have no edges', () => {
+      const otherNode: Node<FlowNodeItemType> = {
+        id: 'node-2',
+        type: 'custom',
+        position: { x: 100, y: 100 },
+        data: {
+          nodeId: 'node-2',
+          name: '文本编辑',
+          flowNodeType: FlowNodeTypeEnum.textEditor,
+          avatar: 'avatar',
+          inputs: [],
+          outputs: []
+        }
+      };
+
+      const result = checkWorkflowBeforeRunOrPublish({
+        nodes: [otherNode],
+        edges: []
+      });
+
+      expect(result.hasError).toBe(true);
+      expect(result.firstErrorNodeId).toBe('node-2');
+      expect(result.issueMap['node-2']?.some((i) => i.code === 'no_upstream')).toBe(true);
     });
   });
 
