@@ -50,6 +50,10 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { resolveMcpEffectiveTmbId } from './auth';
 import { assertCancellation } from '@fastgpt/service/support/user/account/cancellation/guard';
 import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
+import {
+  LimitTypeEnum,
+  assertTeamFrequencyLimit
+} from '@fastgpt/service/common/api/frequencyLimit';
 
 const assertMcpTeamUsable = async (mcp: { teamId?: string; tmbId?: string }) => {
   if (!mcp.teamId || !mcp.tmbId) return;
@@ -408,6 +412,12 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
     tmbId: effectiveTmbId,
     appId: String(app._id),
     per: ReadPermissionVal
+  });
+
+  // 校验所属团队的对话 QPM 频次限制，防止无限制调用打满集群或下游模型并发
+  await assertTeamFrequencyLimit({
+    teamId: String(app.teamId || mcp.teamId),
+    type: LimitTypeEnum.chat
   });
 
   return await dispatchApp(app, inputs, effectiveTmbId);

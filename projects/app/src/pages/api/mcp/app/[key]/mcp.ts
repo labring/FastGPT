@@ -95,8 +95,13 @@ const handlePost = async (req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiRespo
         };
       } catch (error) {
         return {
+          content: [
+            {
+              type: 'text',
+              text: getErrText(error)
+            }
+          ],
           message: getErrText(error),
-          content: [],
           isError: true
         };
       }

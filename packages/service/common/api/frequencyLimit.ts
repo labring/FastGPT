@@ -37,29 +37,27 @@ const getLimitData = async (data: FrequencyLimitOption) => {
   return;
 };
 
-/*
-  true: 未达到限制
-  false: 达到了限制
-*/
-export const teamFrequencyLimit = async ({
+/**
+ * 校验团队频次限制（无 HTTP 依赖）。
+ * 未配置限流时静默放行；未超限时返回限流元数据；
+ * 超限或限流服务异常时抛出 UserError。
+ */
+export const assertTeamFrequencyLimit = async ({
   teamId,
-  type,
-  res
-}: FrequencyLimitOption & {
-  res: NodeApiResponse;
-}) => {
+  type
+}: FrequencyLimitOption): Promise<{
+  limit?: number;
+  remaining?: number;
+  resetAt?: number;
+}> => {
   let data: Awaited<ReturnType<typeof getLimitData>>;
   try {
     data = await getLimitData({ type, teamId });
   } catch (error) {
     logger.error('Team QPM configuration lookup failed closed', { teamId, type, error });
-    jsonRes(res, {
-      code: 429,
-      error: 'Rate limit service unavailable. Please try again later.'
-    });
-    return false;
+    throw new UserError('Rate limit service unavailable. Please try again later.');
   }
-  if (!data) return true;
+  if (!data) return {};
 
   const { limit, seconds } = data;
 
@@ -74,11 +72,7 @@ export const teamFrequencyLimit = async ({
     if (error instanceof RedisInvalidArgumentError) throw error;
 
     logger.error('Team QPM rate limit failed closed', { teamId, type, error });
-    jsonRes(res, {
-      code: 429,
-      error: new UserError('Rate limit service unavailable. Please try again later.')
-    });
-    return false;
+    throw new UserError('Rate limit service unavailable. Please try again later.');
   }
 
   if (!result.allowed) {
@@ -88,18 +82,42 @@ export const teamFrequencyLimit = async ({
       limit,
       ttlSeconds: result.ttlSeconds
     });
+    throw new UserError(
+      `Rate limit exceeded. Maximum ${limit} requests per ${seconds} seconds for this team. Please try again in ${result.ttlSeconds} seconds.`
+    );
+  }
+
+  return {
+    limit,
+    remaining: result.remaining,
+    resetAt: result.resetAt
+  };
+};
+
+/*
+  true: 未达到限制
+  false: 达到了限制
+*/
+export const teamFrequencyLimit = async ({
+  teamId,
+  type,
+  res
+}: FrequencyLimitOption & {
+  res: NodeApiResponse;
+}) => {
+  try {
+    const { limit, remaining, resetAt } = await assertTeamFrequencyLimit({ teamId, type });
+    if (limit !== undefined && remaining !== undefined && resetAt !== undefined) {
+      res.setHeader('X-RateLimit-Limit', limit);
+      res.setHeader('X-RateLimit-Remaining', remaining);
+      res.setHeader('X-RateLimit-Reset', resetAt);
+    }
+    return true;
+  } catch (error) {
     jsonRes(res, {
       code: 429,
-      error: new UserError(
-        `Rate limit exceeded. Maximum ${limit} requests per ${seconds} seconds for this team. Please try again in ${result.ttlSeconds} seconds.`
-      )
+      error
     });
     return false;
   }
-
-  // 在响应头中添加限流信息
-  res.setHeader('X-RateLimit-Limit', limit);
-  res.setHeader('X-RateLimit-Remaining', result.remaining);
-  res.setHeader('X-RateLimit-Reset', result.resetAt);
-  return true;
 };
