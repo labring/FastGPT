@@ -1495,7 +1495,7 @@ describe('createLLMResponse', () => {
           })
         );
         const record = mockSaveLLMRequestRecord.mock.calls[0][0];
-        expect(record.response.toolCalls).toEqual(toolCalls.length ? toolCalls : undefined);
+        expect(record.response.toolCalls).toBeUndefined();
         expect(record.response.answerText).toEqual(content || undefined);
         expect(record.response.reasoningText).toEqual(reasoning || undefined);
       }
@@ -1540,7 +1540,7 @@ describe('createLLMResponse', () => {
       expect(mockSaveLLMRequestRecord).not.toHaveBeenCalled();
     });
 
-    it('should redact media while persisting the original invalid tool output instead of the public error', async () => {
+    it('should redact media and persist only the final tool result for invalid tool output', async () => {
       const controller = await vi.importActual<
         typeof import('@fastgpt/service/core/ai/record/controller')
       >('@fastgpt/service/core/ai/record/controller');
@@ -1618,18 +1618,18 @@ describe('createLLMResponse', () => {
       );
       expect(record?.response).toMatchObject({
         answerText: 'original model answer',
-        toolCalls,
         finish_reason: 'tool_calls',
         usage: { inputTokens: 20, outputTokens: 5 }
       });
       expect(record?.response).not.toHaveProperty('error');
+      expect(record?.response).not.toHaveProperty('toolCalls');
       expect(record?.body.messages[0].content[1].image_url.url).toBe(
         'data:image/png;base64,[base64 omitted]'
       );
       expect(response).toEqual(originalResponse);
     });
 
-    it('should log only the request body and message while preserving continued tool outputs', async () => {
+    it('should log only the request body and message when continued tool outputs are invalid', async () => {
       const logError = vi
         .spyOn(getLogger(LogCategories.MODULE.AI.LLM), 'error')
         .mockImplementation(() => {});
@@ -1680,13 +1680,13 @@ describe('createLLMResponse', () => {
         expect.objectContaining({
           body: expect.objectContaining({ messages }),
           response: expect.objectContaining({
-            toolCalls: calls,
             finish_reason: 'tool_calls',
             error: undefined,
             usage: { inputTokens: 20, outputTokens: 4 }
           })
         })
       );
+      expect(mockSaveLLMRequestRecord.mock.calls[0][0].response).not.toHaveProperty('toolCalls');
     });
 
     it('should handle multiple tool calls in non-stream response', async () => {

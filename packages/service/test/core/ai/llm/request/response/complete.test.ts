@@ -308,9 +308,6 @@ describe('createCompleteResponse', () => {
       expect(result.toolCalls).toEqual([]);
       expect(result.finish_reason).toBe('tool_calls');
       expect(result.error).toBe(withUpstreamError ? error : undefined);
-      expect(result.rawToolCalls).toEqual([
-        { id: 'invalid', type: 'function', function: { name: 'unknown', arguments: '{}' } }
-      ]);
     }
   );
 

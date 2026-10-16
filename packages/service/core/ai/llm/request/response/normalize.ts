@@ -10,7 +10,7 @@ export const normalizeToolName = (name: string) => name.replace(/^functions\./, 
 
 /**
  * stream 和非 stream 共用的原生工具规范化：复制后统一名称、参数，过滤未声明工具。
- * 原始输出由调用方保留；这里只转换工具，不修改结束原因或接口错误。
+ * 这里只转换工具，不修改结束原因或接口错误。
  */
 export const normalizeNativeToolCalls = ({
   toolCalls,

@@ -385,7 +385,7 @@ describe('createStreamResponse', () => {
       ]);
     });
 
-    it('should retain event and upstream ids when a later tool name conflicts', async () => {
+    it('should keep the started event id when a late upstream id has a conflicting tool name', async () => {
       const callbacks = createCallbacks();
       const { response } = createStream([
         chunk({ tool_calls: [{ index: 0, function: { name: 'search', arguments: '{"q":' } }] }),
@@ -399,15 +399,9 @@ describe('createStreamResponse', () => {
       ]);
       const result = await createStreamResponse({ body: nativeBody, response, ...callbacks });
       const startedId = callbacks.onToolCall.mock.calls[0][0].call.id;
-      expect(result.rawToolCalls).toEqual([
-        {
-          index: 0,
-          id: startedId,
-          upstreamId: 'real_id',
-          type: 'function',
-          function: { name: 'search', arguments: '{"q":1' }
-        }
-      ]);
+      expect(callbacks.onToolCall).toHaveBeenCalledTimes(1);
+      expect(callbacks.onToolParam.mock.calls[0][0].call.id).toBe(startedId);
+      expect(result.toolCalls).toEqual([]);
       expect(result.error.cause).toMatchObject({ id: 'real_id', function: { name: 'other' } });
     });
 
@@ -587,18 +581,6 @@ describe('createStreamResponse', () => {
         reasoningText: 'thinking'
       });
       expect(result.error).toBeUndefined();
-      expect(result.rawToolCalls).toEqual(
-        name === undefined
-          ? []
-          : [
-              {
-                index: 0,
-                id: 'call_invalid',
-                type: 'function',
-                function: { name, arguments: '{"q":1}' }
-              }
-            ]
-      );
       expect(callbacks.onToolCall).not.toHaveBeenCalled();
       expect(callbacks.onToolParam).not.toHaveBeenCalled();
     });

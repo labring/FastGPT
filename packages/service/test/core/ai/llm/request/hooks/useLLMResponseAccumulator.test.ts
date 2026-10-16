@@ -90,32 +90,24 @@ describe('useLLMResponseAccumulator', () => {
     ]);
   });
 
-  it('should preserve raw and normalized tools across rounds', () => {
+  it('should preserve earlier valid tools when the last round has no tools', () => {
     const accumulator = useLLMResponseAccumulator();
-    const rawToolCalls = [
-      createToolCall('call_1', 'functions.search'),
-      createToolCall('call_2', 'unknown', ' \t')
-    ];
     accumulator.appendResponse({
       answerText: 'first',
       reasoningText: '',
       finish_reason: 'length',
-      toolCalls: [createToolCall('call_1', 'search', '{}')],
-      rawToolCalls: [rawToolCalls[0]]
+      toolCalls: [createToolCall('call_1', 'search', '{}')]
     });
     accumulator.appendResponse({
       answerText: 'second',
       reasoningText: '',
       finish_reason: 'tool_calls',
-      toolCalls: [],
-      rawToolCalls: [rawToolCalls[1]]
+      toolCalls: []
     });
 
     const response = accumulator.getResponse();
     expect(response.finish_reason).toBe('tool_calls');
     expect(response.toolCalls).toEqual([createToolCall('call_1', 'search', '{}')]);
-    expect(response.rawToolCalls).toEqual(rawToolCalls);
-    expect(rawToolCalls.map((call) => call.function.arguments)).toEqual(['', ' \t']);
   });
 
   it('should stop continuation when the length response has error', () => {

@@ -140,27 +140,24 @@ export const createStreamResponse = async ({
       });
 
       const { reasoningContent, content, finish_reason, usage, error } = getResponseData();
-      const rawToolCalls = toolCalls
+      const mergedToolCalls = toolCalls
         .sort((a, b) => (a.index ?? Number.MAX_SAFE_INTEGER) - (b.index ?? Number.MAX_SAFE_INTEGER))
         .map((call) => ({
-          ...(call.index !== undefined && { index: call.index }),
           id: call.eventId ?? call.id ?? getNanoid(6),
-          ...(call.eventId && call.id && call.eventId !== call.id && { upstreamId: call.id }),
           type: 'function' as const,
           function: { name: call.name, arguments: call.arguments }
         }));
 
       return {
-        // 接口错误优先；工具名称冲突仅作为普通解析错误返回，不承担原始记录的传递。
+        // 接口错误优先，工具名称冲突作为普通解析错误返回。
         error: error ?? toolCallError,
         answerText: content,
         reasoningText: reasoningContent,
         usage,
         finish_reason,
-        rawToolCalls,
         toolCalls: toolCallError
           ? []
-          : normalizeNativeToolCalls({ toolCalls: rawToolCalls, toolNames })
+          : normalizeNativeToolCalls({ toolCalls: mergedToolCalls, toolNames })
       };
     } else {
       let startResponseWrite = false;

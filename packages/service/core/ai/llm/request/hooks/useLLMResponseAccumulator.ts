@@ -28,7 +28,6 @@ export const useLLMResponseAccumulator = () => {
   let answerText = '';
   let reasoningText = '';
   let toolCalls: ChatCompletionMessageToolCall[] | undefined;
-  let rawToolCalls: ChatCompletionMessageToolCall[] | undefined;
   let finishReason: CompletionFinishReason = 'stop';
   let error: any = undefined;
   let isStreamResponse = false;
@@ -51,11 +50,6 @@ export const useLLMResponseAccumulator = () => {
     appendResponse(response: CompleteResponse) {
       answerText += response.answerText;
       reasoningText += response.reasoningText;
-      // 原始工具单独累积，避免日志记录丢失被过滤或格式化前的模型输出。
-      const originalToolCalls = response.rawToolCalls ?? response.toolCalls;
-      if (originalToolCalls) {
-        rawToolCalls = [...(rawToolCalls ?? []), ...originalToolCalls];
-      }
       const formatToolCalls = response.toolCalls?.map((tool) => ({
         ...tool,
         function: {
@@ -115,14 +109,13 @@ export const useLLMResponseAccumulator = () => {
     },
 
     /**
-     * 返回聚合结果和原始工具，由入口判断异常结束、补 token 并保存详情。
+     * 返回聚合结果，由入口判断异常结束、补 token 并保存详情。
      */
     getResponse() {
       return {
         answerText,
         reasoningText,
         toolCalls,
-        rawToolCalls,
         finish_reason: finishReason,
         usage,
         error,

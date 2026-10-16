@@ -103,7 +103,6 @@ export const createCompleteResponse = async ({
     reasoningText: formatReasonContent,
     answerText: formatContent,
     toolCalls: normalizedTools,
-    rawToolCalls: toolCalls,
     finish_reason,
     usage
   };

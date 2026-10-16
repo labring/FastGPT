@@ -113,8 +113,6 @@ export type CompleteResponse = Pick<
 > & {
   usage?: CompletionUsage;
   error?: any;
-  /** 过滤、规范化前的工具输出，仅供日志和 Mongo 请求记录保留原始模型结果。 */
-  rawToolCalls?: ChatCompletionMessageToolCall[];
 };
 
 export type LLMAccumulatedUsage = {
