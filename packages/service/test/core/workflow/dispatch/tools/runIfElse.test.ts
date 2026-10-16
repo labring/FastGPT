@@ -329,6 +329,23 @@ describe('dispatchIfElse regex', () => {
     expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
   });
 
+  it('should not match an invalid pattern instead of throwing', async () => {
+    const missingBracket = await run('abc', '[');
+    expect(missingBracket.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
+
+    const unclosedGroup = await run('abc', '(abc');
+    expect(unclosedGroup.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
+
+    // 编辑器占位符使用 /.../ 包裹写法，剥掉斜杠后仍可能是非法正则
+    const slashWrapped = await run('abc', '/[/');
+    expect(slashWrapped.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
+  });
+
+  it('should not match an invalid reference pattern instead of throwing', async () => {
+    const result = await runReferencePattern('abc', 'a{2,1}');
+    expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
+  });
+
   it('should match the phone number example shown in the editor', async () => {
     const pattern = '/^((\\+|00)86)?1[3-9]\\d{9}$/';
     const phone = await run('+8613812345678', pattern);

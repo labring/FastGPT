@@ -111,8 +111,14 @@ function checkCondition(condition: VariableConditionEnum, inputValue: any, value
         return false;
       }
 
-      const reg = new RegExp(pattern, 'g');
-      return reg.test(inputText);
+      try {
+        const reg = new RegExp(pattern, 'g');
+        return reg.test(inputText);
+      } catch {
+        // 模式可能来自引用变量的任意运行时数据（或输入笔误），非法正则按不匹配处理，
+        // 不能让整个判断器节点报错；与数据集筛选的 $regex 处理一致。
+        return false;
+      }
     },
 
     // array
