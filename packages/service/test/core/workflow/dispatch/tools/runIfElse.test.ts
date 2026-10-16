@@ -329,28 +329,27 @@ describe('dispatchIfElse regex', () => {
     expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
   });
 
-  it('should fall back to literal matching for an invalid pattern instead of throwing', async () => {
-    const missingBracket = await run('abc', '[');
-    expect(missingBracket.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
-
-    const unclosedGroup = await run('abc', '(abc');
-    expect(unclosedGroup.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
-
+  it('should throw on an invalid typed pattern (user config error)', async () => {
+    await expect(run('abc', '[')).rejects.toThrow();
+    await expect(run('abc', '(abc')).rejects.toThrow();
     // 编辑器占位符使用 /.../ 包裹写法，剥掉斜杠后仍可能是非法正则
-    const slashWrapped = await run('abc', '/[/');
-    expect(slashWrapped.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
-
-    // 非法模式清洗转义后按字面量匹配：输入包含字面量文本时命中
-    const literalMatch = await run('amount [12] due', '[');
-    expect(literalMatch.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+    await expect(run('abc', '/[/')).rejects.toThrow();
   });
 
-  it('should fall back to literal matching for an invalid reference pattern instead of throwing', async () => {
-    const missing = await runReferencePattern('abc', 'a{2,1}');
-    expect(missing.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
+  it('should clean a reference pattern into literal matching', async () => {
+    // 引用值是数据不是正则：特殊字符按字面量匹配
+    const literalSpecial = await runReferencePattern('order [x] done', '[x');
+    expect(literalSpecial.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
 
-    const literalMatch = await runReferencePattern('order [x] done', '[x');
-    expect(literalMatch.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+    const literalQuantifier = await runReferencePattern('a{2,1}', 'a{2,1}');
+    expect(literalQuantifier.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+
+    // 正则元字符不再被当作正则执行
+    const regexLooking = await runReferencePattern('axb', 'a.b');
+    expect(regexLooking.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
+
+    const sameDot = await runReferencePattern('a.b', 'a.b');
+    expect(sameDot.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
   });
 
   it('should match the phone number example shown in the editor', async () => {

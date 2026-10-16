@@ -112,14 +112,9 @@ function checkCondition(condition: VariableConditionEnum, inputValue: any, value
         return false;
       }
 
-      try {
-        const reg = new RegExp(pattern, 'g');
-        return reg.test(inputText);
-      } catch {
-        // 非法模式（输入笔误，或引用变量提供了任意文本）：使用系统清洗函数转义后按字面量匹配，
-        // 不能让整个判断器节点报错。
-        return new RegExp(replaceRegChars(pattern), 'g').test(inputText);
-      }
+      // 手输正则是用户配置，非法模式直接抛错暴露问题；引用变量值已在解析时清洗，不会因数据报错。
+      const reg = new RegExp(pattern, 'g');
+      return reg.test(inputText);
     },
 
     // array
@@ -151,14 +146,22 @@ function getResult(
       nodesMap: runtimeNodesMap
     });
 
-    const conditionRightValue =
-      valueType === 'reference'
-        ? getReferenceVariableValue({
-            value: value as ReferenceItemValueType,
-            variables: runtimeVariables,
-            nodesMap: runtimeNodesMap
-          })
-        : value;
+    const conditionRightValue = (() => {
+      if (valueType !== 'reference') return value;
+
+      const referenceValue = getReferenceVariableValue({
+        value: value as ReferenceItemValueType,
+        variables: runtimeVariables,
+        nodesMap: runtimeNodesMap
+      });
+
+      // 引用变量是任意运行时数据，不是正则配置：reg 条件在使用前先清洗特殊字符，
+      // 避免数据被当作正则执行（报错或按正则语义误匹配）。
+      if (variableCondition === VariableConditionEnum.reg && referenceValue != null) {
+        return replaceRegChars(String(referenceValue));
+      }
+      return referenceValue;
+    })();
 
     return checkCondition(variableCondition, conditionLeftValue, conditionRightValue);
   });
