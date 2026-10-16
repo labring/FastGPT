@@ -120,6 +120,42 @@ describe('validateUploadFile', () => {
     });
   });
 
+  it('accepts an svg with an xml prolog when the extension is a text rule', async () => {
+    // file-type 把以 `<?xml` 开头的文本判为 application/xml；这是前缀启发式而非 magic
+    // bytes，不能据此否决显式声明为 text 的 .svg（系统配置的品牌 logo 上传即此场景）。
+    await expect(
+      validateUploadFile({
+        buffer: Buffer.from(
+          '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M0 0h24v24H0z"/></svg>',
+          'utf8'
+        ),
+        filename: 'logo.svg',
+        uploadConstraints: {
+          allowedExtensions: ['.png', '.svg'],
+          extensionRules: [{ extension: '.svg', source: 'builtin', verification: 'text' }]
+        }
+      })
+    ).resolves.toMatchObject({
+      filename: 'logo.svg',
+      contentType: 'image/svg+xml',
+      extension: '.svg',
+      detectionSource: 'text'
+    });
+  });
+
+  it('still rejects binary content renamed as a text-rule svg', async () => {
+    await expect(
+      validateUploadFile({
+        buffer: pngBuffer,
+        filename: 'logo.svg',
+        uploadConstraints: {
+          allowedExtensions: ['.png', '.svg'],
+          extensionRules: [{ extension: '.svg', source: 'builtin', verification: 'text' }]
+        }
+      })
+    ).rejects.toThrow('UploadFileTypeMismatch');
+  });
+
   it('decodes encoded filenames before MIME resolution', async () => {
     await expect(
       validateUploadFile({

@@ -257,6 +257,17 @@ export const detectUploadFileEvidence = async ({
   const detectedMime = officeFormat?.mime || detected?.mime;
 
   if (detectedMime) {
+    // file-type 对以 `<?xml` 开头的文本会返回 application/xml。这只是前缀启发式，不是
+    // magic bytes，和 isLikelyTextBuffer 同属文本类弱证据。若当作 magic 证据，显式声明
+    // 的 text 后缀（如 .svg）会因「检测类型与后缀不一致」被误拒，因此这里仍然按文本证据返回。
+    if (!officeFormat && isTextLikeMime(detectedMime)) {
+      const isTextLike = isLikelyTextBuffer(buffer);
+      return {
+        isTextLike,
+        source: isTextLike ? 'text' : 'unknown'
+      };
+    }
+
     return {
       detectedMime,
       detectedExtension: officeFormat?.extension || normalizeFileExtension(detected?.ext),
