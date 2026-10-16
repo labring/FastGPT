@@ -1215,11 +1215,12 @@ describe('getAgentRuntimeTools schema loading', () => {
     );
   });
 
-  it('uses the locale-resolved plugin intro as its model description', async () => {
+  it('uses plugin intro instead of legacy toolDescription for model descriptions', async () => {
     getSystemToolDetailMock.mockResolvedValue({
       id: 'systemTool-search',
       name: { en: 'Document search', 'zh-CN': '文档搜索' },
       intro: { en: 'Search summary', 'zh-CN': '搜索简介' },
+      toolDescription: { en: 'Legacy tool description', 'zh-CN': '旧工具级描述' },
       avatar: 'search.png',
       isToolSet: false,
       hasSystemSecret: false,
@@ -1255,6 +1256,31 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.parameters?.properties?.query).toEqual({
       type: 'string'
     });
+
+    getSystemToolDetailMock.mockResolvedValue({
+      id: 'systemTool-empty-intro',
+      name: 'Search',
+      intro: '',
+      toolDescription: 'Legacy tool description',
+      avatar: 'search.png',
+      isToolSet: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      tags: [],
+      author: '',
+      version: '1.0.0',
+      inputSchema: { type: 'object', properties: {} }
+    });
+
+    const emptyIntroTools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'systemTool-empty-intro', config: {} }]
+    });
+
+    expect(emptyIntroTools[0].requestSchema.function.description).toBe('Search');
   });
 
   it('uses saved modes before recommendations and recommends modes for new inputs', async () => {
