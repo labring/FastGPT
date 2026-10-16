@@ -44,18 +44,6 @@ type UpdateBranch = (
   update: (branch: IfElseListItemType) => IfElseListItemType
 ) => void;
 
-const conditionItemKeys = new WeakMap<object, string>();
-let nextConditionItemKey = 0;
-
-/** 保留未修改条件项的 React identity；数据结构暂无持久化 conditionId。 */
-const getConditionItemKey = (item: ConditionListItemType) => {
-  const existing = conditionItemKeys.get(item);
-  if (existing) return existing;
-  const key = `ifelse-condition-${nextConditionItemKey++}`;
-  conditionItemKeys.set(item, key);
-  return key;
-};
-
 const ListItem = ({
   provided,
   snapshot,
@@ -139,7 +127,7 @@ const ListItem = ({
           <Box>
             {conditionItem.list.map((item, itemIndex) => (
               <ConditionItem
-                key={getConditionItemKey(item)}
+                key={itemIndex}
                 conditionIndex={conditionIndex}
                 itemIndex={itemIndex}
                 item={item}

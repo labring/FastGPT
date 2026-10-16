@@ -6,6 +6,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import {
   getNodeHandleRenderMode,
+  getNodeShellHandleOffset,
   getNodeShellHandleModel,
   type NodeShellHandleData
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/utils/nodeHandle';
@@ -19,6 +20,11 @@ const createNode = (patch: Partial<NodeShellHandleData> = {}): NodeShellHandleDa
 });
 
 describe('workflow shell handle topology', () => {
+  it('offsets measured handles to the card right edge', () => {
+    expect(getNodeShellHandleOffset({ cardWidth: 300, centerX: 260 })).toBe(40);
+    expect(getNodeShellHandleOffset({ cardWidth: 300 })).toBe(0);
+  });
+
   it('keeps shell handles while a folded node is being measured', () => {
     expect(
       getNodeHandleRenderMode({

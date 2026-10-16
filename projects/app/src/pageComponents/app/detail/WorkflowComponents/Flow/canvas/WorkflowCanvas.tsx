@@ -50,6 +50,7 @@ import { ToolSourceHandle, ToolTargetHandle } from '../nodes/render/Handle/ToolH
 import { useIsToolNode } from '../nodes/render/useWorkflowDocument';
 import {
   getNodeHandleRenderMode,
+  getNodeShellHandleOffset,
   getNodeShellHandleModel,
   type NodeShellHandleModel
 } from '../utils/nodeHandle';
@@ -293,13 +294,29 @@ const NodeShell = React.memo(
               {sourceHandles.map(({ handleId, topPercent, translate }) => {
                 const center = sourceHandleCenters?.get(handleId);
                 const top = center ? `${center.y}px` : `${topPercent}%`;
+                // 测量位置仍保留输出定义的挂载点，补水平差值后把视觉位置推到卡片右边缘。
+                const handleOffset = getNodeShellHandleOffset({
+                  cardWidth: dimensions.card.width,
+                  centerX: center?.x
+                });
+                const handleTranslate = [translate[0] + handleOffset, translate[1]] as [
+                  number,
+                  number
+                ];
                 return (
-                  <Box key={handleId} position={'absolute'} top={top} right={0} w={0} h={0}>
+                  <Box
+                    key={handleId}
+                    position={'absolute'}
+                    top={top}
+                    {...(center ? { left: `${center.x}px` } : { right: 0 })}
+                    w={0}
+                    h={0}
+                  >
                     <MySourceHandle
                       nodeId={props.id}
                       handleId={handleId}
                       position={Position.Right}
-                      translate={translate}
+                      translate={handleTranslate}
                     />
                   </Box>
                 );

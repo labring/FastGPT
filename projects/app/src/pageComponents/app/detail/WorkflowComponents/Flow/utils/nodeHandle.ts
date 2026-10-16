@@ -38,6 +38,15 @@ export type NodeShellHandleModel = {
   replacesDefaultSource: boolean;
 };
 
+/** 根据测量到的输出柄横坐标，计算把视觉位置推到卡片右边缘所需的偏移。 */
+export const getNodeShellHandleOffset = ({
+  cardWidth,
+  centerX
+}: {
+  cardWidth: number;
+  centerX?: number;
+}) => (centerX === undefined ? 0 : cardWidth - centerX);
+
 /** 根据折叠与测量状态选择唯一的 handle 宿主，避免拓扑缺失或重复挂载。 */
 export const getNodeHandleRenderMode = ({
   isFolded,
