@@ -84,7 +84,8 @@ export const createStreamResponse = async ({
             if (toolCallError) return;
             const index = toolCall.index ?? undefined;
             const id = toolCall.id || undefined;
-            const existing = toolCalls.find((call) => {
+            // 同一 index 换 id 时会新建累加器，后续无 id 片段应归属最近开始的调用。
+            const existing = toolCalls.findLast((call) => {
               if (index !== undefined && call.index !== undefined) {
                 return call.index === index && (!call.id || !id || call.id === id);
               }

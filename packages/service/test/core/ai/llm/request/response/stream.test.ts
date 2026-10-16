@@ -516,6 +516,39 @@ describe('createStreamResponse', () => {
       expect(callbacks.onToolParam).not.toHaveBeenCalled();
     });
 
+    it('should route id-less deltas to the latest call sharing the same index', async () => {
+      const callbacks = createCallbacks();
+      const { response } = createStream([
+        chunk({
+          tool_calls: [{ index: 0, id: 'a', function: { name: 'search', arguments: '{"q":' } }]
+        }),
+        chunk({ tool_calls: [{ index: 0, function: { arguments: '1}' } }] }),
+        chunk({
+          tool_calls: [
+            { index: 0, id: 'b', function: { name: 'search_content', arguments: '{"u":' } }
+          ]
+        }),
+        chunk({ tool_calls: [{ index: 0, function: { arguments: '2}' } }] }, 'tool_calls')
+      ]);
+      const result = await createStreamResponse({
+        body: createBody({ tools: [tool('search'), tool('search_content')] }),
+        response,
+        ...callbacks
+      });
+
+      expect(result.error).toBeUndefined();
+      expect(result.toolCalls).toEqual([
+        { id: 'a', type: 'function', function: { name: 'search', arguments: '{"q":1}' } },
+        { id: 'b', type: 'function', function: { name: 'search_content', arguments: '{"u":2}' } }
+      ]);
+      expect(
+        callbacks.onToolParam.mock.calls.map(([event]) => [event.call.id, event.argsDelta])
+      ).toEqual([
+        ['a', '1}'],
+        ['b', '2}']
+      ]);
+    });
+
     it('should ignore empty frames and unknown, incomplete or missing tool names', async () => {
       const callbacks = createCallbacks();
       const { response } = createStream([
