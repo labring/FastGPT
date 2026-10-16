@@ -329,7 +329,7 @@ describe('dispatchIfElse regex', () => {
     expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
   });
 
-  it('should not match an invalid pattern instead of throwing', async () => {
+  it('should fall back to literal matching for an invalid pattern instead of throwing', async () => {
     const missingBracket = await run('abc', '[');
     expect(missingBracket.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
 
@@ -339,11 +339,18 @@ describe('dispatchIfElse regex', () => {
     // 编辑器占位符使用 /.../ 包裹写法，剥掉斜杠后仍可能是非法正则
     const slashWrapped = await run('abc', '/[/');
     expect(slashWrapped.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
+
+    // 非法模式清洗转义后按字面量匹配：输入包含字面量文本时命中
+    const literalMatch = await run('amount [12] due', '[');
+    expect(literalMatch.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
   });
 
-  it('should not match an invalid reference pattern instead of throwing', async () => {
-    const result = await runReferencePattern('abc', 'a{2,1}');
-    expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
+  it('should fall back to literal matching for an invalid reference pattern instead of throwing', async () => {
+    const missing = await runReferencePattern('abc', 'a{2,1}');
+    expect(missing.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
+
+    const literalMatch = await runReferencePattern('order [x] done', '[x');
+    expect(literalMatch.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
   });
 
   it('should match the phone number example shown in the editor', async () => {

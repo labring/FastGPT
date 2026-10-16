@@ -14,6 +14,7 @@ import {
   getIfElseBranchHandleKey,
   getElseIFLabel
 } from '@fastgpt/global/common/workflow/condition';
+import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import type {
   DispatchNodeResultType,
   ModuleDispatchProps,
@@ -115,9 +116,9 @@ function checkCondition(condition: VariableConditionEnum, inputValue: any, value
         const reg = new RegExp(pattern, 'g');
         return reg.test(inputText);
       } catch {
-        // 模式可能来自引用变量的任意运行时数据（或输入笔误），非法正则按不匹配处理，
-        // 不能让整个判断器节点报错；与数据集筛选的 $regex 处理一致。
-        return false;
+        // 非法模式（输入笔误，或引用变量提供了任意文本）：使用系统清洗函数转义后按字面量匹配，
+        // 不能让整个判断器节点报错。
+        return new RegExp(replaceRegChars(pattern), 'g').test(inputText);
       }
     },
 
