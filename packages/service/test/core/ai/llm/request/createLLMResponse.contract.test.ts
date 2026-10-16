@@ -995,5 +995,181 @@ describe('createLLMResponse HTTP/SSE contract', () => {
       expect(record.response.toolCalls).toEqual(result.toolCalls);
       expect(record.response.usage).toMatchObject({ inputTokens: 17, outputTokens: 4 });
     });
+
+    describe('disconnect while tool arguments are streaming', () => {
+      /** 工具开始事件到达后再断开连接，确保失败发生在参数流中途而不是建连阶段。 */
+      const pushCutOffRound = (wireMode?: Round['wireMode']) => {
+        const started = Promise.withResolvers<void>();
+        rounds.push({
+          chunks: [usageChunk, toolChunk({ index: 0, id: 'a', name: 'search', args: '{"q":' })],
+          wireMode,
+          disconnect: started.promise
+        });
+        return () => started.resolve();
+      };
+
+      it.each(['fragmented', 'bytewise'] as const)(
+        'keeps the upstream failure and the truncated call, wire=%s',
+        async (wireMode) => {
+          const onStarted = pushCutOffRound(wireMode);
+          const log = vi
+            .spyOn(getLogger(LogCategories.MODULE.AI.LLM), 'error')
+            .mockImplementation(() => {});
+          const onToolParam = vi.fn();
+          const result = await createLLMResponse({
+            teamId,
+            throwError: false,
+            maxRetries: 0,
+            body: body(true),
+            onToolCall: onStarted,
+            onToolParam
+          });
+
+          expect(received).toHaveLength(1);
+          expect(result.error).toBeInstanceOf(Error);
+          expect(result.error.message).not.toBe(fixedError);
+          expect(result.finish_reason).toBe('error');
+          // 已开始的工具保留残缺参数用于排查；是否执行由调用方依据 error 决定。
+          expect(result.toolCalls).toEqual([
+            { id: 'a', type: 'function', function: { name: 'search', arguments: '{"q":' } }
+          ]);
+          expect(onToolParam).not.toHaveBeenCalled();
+          expect(result.usage).toMatchObject({ inputTokens: 17, outputTokens: 4 });
+          expect(
+            log.mock.calls.some(([message]) => String(message) === 'LLM tool calls missing')
+          ).toBe(false);
+          const record = await readRecord(result.requestId);
+          expect(record.response.finish_reason).toBe('error');
+          expect(record.response.error).toBeDefined();
+          expect(record.response.toolCalls).toEqual(result.toolCalls);
+        }
+      );
+
+      it('agent loop stops without running the truncated tool', async () => {
+        const onStarted = pushCutOffRound();
+        const onRunTool = vi.fn();
+        const result = await runAgentLoop({
+          teamId,
+          maxRunAgentTimes: 5,
+          body: body(true),
+          isAborted: () => false,
+          onRunTool,
+          onRunInteractiveTool: vi.fn(),
+          onToolCall: onStarted
+        });
+
+        expect(received).toHaveLength(1);
+        expect(onRunTool).not.toHaveBeenCalled();
+        expect(result.error).toBeInstanceOf(Error);
+        expect(result.error.message).not.toBe(fixedError);
+        expect(result.finish_reason).toBe('error');
+        expect(result.requestIds).toHaveLength(1);
+        expect(result.inputTokens).toBe(17);
+        expect(result.outputTokens).toBe(4);
+        await readRecord(result.requestIds[0]);
+      });
+    });
+
+    it.each([
+      {
+        label: 'parallel tools with reversed array positions',
+        chunks: [
+          chunk({
+            tool_calls: [
+              toolDelta({ index: 1, id: 'b', name: 'search_content', args: '{"b":' }),
+              toolDelta({ index: 0, id: 'a', name: 'search', args: '{"a":' })
+            ]
+          }),
+          chunk({
+            tool_calls: [toolDelta({ index: 0, args: '1}' }), toolDelta({ index: 1, args: '2}' })]
+          })
+        ],
+        expected: [
+          { id: 'a', name: 'search', args: '{"a":1}' },
+          { id: 'b', name: 'search_content', args: '{"b":2}' }
+        ]
+      },
+      {
+        label: 'same index switches to a new id',
+        chunks: [
+          toolChunk({ index: 0, id: 'a', name: 'search', args: '{"a":' }),
+          toolChunk({ index: 0, args: '1}' }),
+          toolChunk({ index: 0, id: 'b', name: 'search_content', args: '{"b":' }),
+          toolChunk({ index: 0, args: '2}' })
+        ],
+        expected: [
+          { id: 'a', name: 'search', args: '{"a":1}' },
+          { id: 'b', name: 'search_content', args: '{"b":2}' }
+        ]
+      },
+      {
+        label: 'upstream id arrives after the start event',
+        chunks: [
+          chunk({ tool_calls: [{ index: 0 }] }),
+          toolChunk({ index: 0, name: 'search', args: '{"q":' }),
+          toolChunk({ index: 0, id: 'late', args: '1' }),
+          toolChunk({ index: 0, args: '}' })
+        ],
+        // 开始事件已生成对外 id，晚到的上游 id 不能替换它。
+        expected: [{ name: 'search', args: '{"q":1}' }]
+      }
+    ])('agent loop runs streamed tools with stable ids: $label', async ({ chunks, expected }) => {
+      rounds.push(
+        { chunks: [...chunks, end, usageChunk], wireMode: 'bytewise' },
+        { text: 'Done.', finish: 'stop' }
+      );
+      const startedIds: string[] = [];
+      const onRunTool = vi.fn(async ({ call }: { call: ChatCompletionMessageToolCall }) => ({
+        response: `result of ${call.id}`,
+        assistantMessages: [],
+        usages: []
+      }));
+      const result = await runAgentLoop({
+        teamId,
+        maxRunAgentTimes: 5,
+        body: { ...body(true), tools: streamTools },
+        isAborted: () => false,
+        onRunTool,
+        onRunInteractiveTool: vi.fn(),
+        onToolCall: ({ call }) => startedIds.push(call.id)
+      });
+
+      expect(result.error).toBeUndefined();
+      expect(received).toHaveLength(2);
+      const ran = onRunTool.mock.calls.map(([{ call }]) => ({
+        id: call.id,
+        name: call.function.name,
+        args: call.function.arguments
+      }));
+      expect(ran).toEqual(
+        expected.map((tool) => ({ id: expect.not.stringMatching(/^late$/), ...tool }))
+      );
+      // 同一个对外 id 贯穿开始事件、工具执行和下一轮请求上下文。
+      expect([...startedIds].sort()).toEqual(ran.map((tool) => tool.id).sort());
+
+      type LoopMessage = {
+        role: string;
+        content?: unknown;
+        tool_call_id?: string;
+        tool_calls?: ChatCompletionMessageToolCall[];
+      };
+      const nextMessages = received[1].messages as LoopMessage[];
+      const assistant = nextMessages.find(
+        (item) => item.role === 'assistant' && item.tool_calls?.length
+      );
+      expect(
+        assistant?.tool_calls?.map((call) => ({
+          id: call.id,
+          name: call.function.name,
+          args: call.function.arguments
+        }))
+      ).toEqual(ran);
+      const toolMessages = nextMessages.filter((item) => item.role === 'tool');
+      expect(toolMessages.map((item) => item.tool_call_id)).toEqual(ran.map((tool) => tool.id));
+      expect(toolMessages.map((item) => item.content)).toEqual(
+        ran.map((tool) => `result of ${tool.id}`)
+      );
+      for (const id of result.requestIds) await readRecord(id);
+    });
   });
 });
