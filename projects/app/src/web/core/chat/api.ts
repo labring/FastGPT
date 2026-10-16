@@ -18,6 +18,8 @@ import { toChatAuthQueryInput } from '@/web/core/chat/utils';
 export const getRecentlyUsedApps = () =>
   GET<GetRecentlyUsedAppsResponseType>('/core/chat/recentlyUsed', undefined, { maxQuantity: 1 });
 
+export const clearRecentlyUsedApps = () => DELETE<null>('/core/chat/recentlyUsed');
+
 /**
  * 获取初始化聊天内容
  */

@@ -13,9 +13,9 @@ import { useRouter } from 'next/router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { getRecentlyUsedApps } from '@/web/core/chat/api';
+import { getRecentlyUsedApps, clearRecentlyUsedApps } from '@/web/core/chat/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { useLatest, useMemoizedFn, useMount } from 'ahooks';
+import { useLatest, useMemoizedFn, useMount, useUnmountedRef } from 'ahooks';
 import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/global/openapi/core/chat/api';
 import type { UserType } from '@fastgpt/global/support/user/type';
 
@@ -39,6 +39,7 @@ export type ChatPageContextValue = {
   userInfo: UserType | null;
   myApps: GetRecentlyUsedAppsResponseType;
   refreshRecentlyUsed: (appId: string) => void;
+  clearRecentlyUsed: () => Promise<void>;
 };
 
 export const ChatPageContext = createContext<ChatPageContextValue>({
@@ -54,7 +55,8 @@ export const ChatPageContext = createContext<ChatPageContextValue>({
   isInitedUser: false,
   userInfo: null,
   myApps: [],
-  refreshRecentlyUsed: () => {}
+  refreshRecentlyUsed: () => {},
+  clearRecentlyUsed: async () => {}
 });
 
 export const ChatPageContextProvider = ({
@@ -75,6 +77,8 @@ export const ChatPageContextProvider = ({
     lastPane
   } = useChatStore();
   const { userInfo } = useUserStore();
+  const unmountedRef = useUnmountedRef();
+  const latestMemberId = useLatest(userInfo?.team?.tmbId);
 
   const { pane = lastPane || ChatSidebarPaneEnum.HOME } = router.query as {
     pane: ChatSidebarPaneEnum;
@@ -85,15 +89,27 @@ export const ChatPageContextProvider = ({
   const [cachedHomeAppId, setCachedHomeAppId] = useState('');
 
   // 进入页面或切换成员时拉取一次，已在列表中的应用不因点击、对话或计时而刷新。
-  const { data: myApps = [], refreshAsync: requestRecentlyUsed } = useRequest(
-    () => getRecentlyUsedApps(),
-    {
-      manual: false,
-      ready: !!userInfo,
-      errorToast: '',
-      refreshDeps: [userInfo?.team?.tmbId]
-    }
-  );
+  const {
+    data: myApps = [],
+    refreshAsync: requestRecentlyUsed,
+    cancel: cancelRecentlyUsed,
+    mutate: mutateRecentlyUsed
+  } = useRequest(() => getRecentlyUsedApps(), {
+    manual: false,
+    ready: !!userInfo,
+    errorToast: '',
+    refreshDeps: [userInfo?.team?.tmbId]
+  });
+
+  /** 删除成功后清空列表并取消旧请求，避免迟到的响应恢复已清除的记录。 */
+  const clearRecentlyUsed = useCallback(async () => {
+    const memberId = latestMemberId.current;
+    await clearRecentlyUsedApps();
+    if (unmountedRef.current || latestMemberId.current !== memberId) return;
+
+    cancelRecentlyUsed();
+    mutateRecentlyUsed([]);
+  }, [cancelRecentlyUsed, latestMemberId, mutateRecentlyUsed, unmountedRef]);
 
   // Initialize chat page state
   useMount(async () => {
@@ -250,7 +266,8 @@ export const ChatPageContextProvider = ({
       isInitedUser: true,
       userInfo,
       myApps: displayedMyApps,
-      refreshRecentlyUsed
+      refreshRecentlyUsed,
+      clearRecentlyUsed
     }),
     [
       pane,
@@ -262,7 +279,8 @@ export const ChatPageContextProvider = ({
       logos,
       userInfo,
       displayedMyApps,
-      refreshRecentlyUsed
+      refreshRecentlyUsed,
+      clearRecentlyUsed
     ]
   );
 

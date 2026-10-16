@@ -17,12 +17,14 @@ import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/global/openapi/co
 
 const mocks = vi.hoisted(() => ({
   getRecent: vi.fn(),
+  clearRecent: vi.fn(),
   getSetting: vi.fn(),
   router: { query: { pane: 'ra' }, replace: vi.fn() },
   toast: vi.fn()
 }));
 vi.mock('@/web/core/chat/api', () => ({
   getRecentlyUsedApps: mocks.getRecent,
+  clearRecentlyUsedApps: mocks.clearRecent,
   getChatSetting: mocks.getSetting
 }));
 vi.mock('next/router', () => ({ useRouter: () => mocks.router }));
@@ -213,5 +215,22 @@ describe('ChatPageContext recently used apps', () => {
     expect(mocks.getRecent).not.toHaveBeenCalled();
     await act(async () => useUserStore.setState({ userInfo: user('member') }));
     expect(mocks.getRecent).toHaveBeenCalledOnce();
+  });
+
+  it('preserves the new member list when a previous member clear finishes', async () => {
+    await render();
+    const clearing = Promise.withResolvers<void>();
+    mocks.clearRecent.mockReturnValueOnce(clearing.promise);
+    const result = context.clearRecentlyUsed();
+
+    mocks.getRecent.mockResolvedValueOnce([app('D')]);
+    await act(async () => useUserStore.setState({ userInfo: user('other member') }));
+    expect(context.myApps.map((item) => item.appId)).toEqual(['D']);
+
+    await act(async () => {
+      clearing.resolve();
+      await result;
+    });
+    expect(context.myApps.map((item) => item.appId)).toEqual(['D']);
   });
 });

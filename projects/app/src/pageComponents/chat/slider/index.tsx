@@ -19,6 +19,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useContextSelector } from 'use-context-selector';
 import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import { usePathname } from 'next/navigation';
+import ClearRecentlyUsedApps from '../ClearRecentlyUsedApps';
 
 type Props = {
   activeAppId: string;
@@ -508,6 +509,7 @@ const ChatSlider = ({ activeAppId }: Props) => {
           >
             {t('common:core.chat.Recent use')}
           </Box>
+          <ClearRecentlyUsedApps />
         </HStack>
 
         <MyBox

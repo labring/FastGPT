@@ -31,6 +31,7 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
 
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
+import ClearRecentlyUsedApps from './ClearRecentlyUsedApps';
 
 const ChatHeader = ({
   history,
@@ -195,6 +196,9 @@ const MobileDrawer = ({ onCloseDrawer, appId }: { onCloseDrawer: () => void; app
         {/* history */}
         {currentTab === TabEnum.recently && (
           <Box px={3} overflow={'auto'} h={'100%'}>
+            <Flex justify={'flex-end'} pb={2}>
+              <ClearRecentlyUsedApps />
+            </Flex>
             {Array.isArray(myApps) &&
               myApps.map((item) => (
                 <Flex justify={'center'} key={item.appId}>

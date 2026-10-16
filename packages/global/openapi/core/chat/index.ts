@@ -27,6 +27,16 @@ export const ChatPath: OpenAPIPath = {
   ...ChatCompletionPath,
 
   '/core/chat/recentlyUsed': {
+    delete: {
+      summary: '清空最近使用的应用',
+      description: '清空当前成员的应用使用记录，不删除应用或对话历史',
+      tags: [DevApiTagsMap.chatPage],
+      responses: {
+        200: {
+          description: '成功清空最近使用的应用'
+        }
+      }
+    },
     get: {
       summary: '获取最近使用的应用',
       description: '获取最近使用的应用',
