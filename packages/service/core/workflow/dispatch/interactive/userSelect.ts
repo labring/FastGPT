@@ -1,16 +1,17 @@
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { getHandleId, getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
+import { getHandleId, nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
 import type { UserSelectOptionItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
+import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import type { ReferenceArrayValueType } from '@fastgpt/global/core/workflow/type/io';
-import { resolveInteractiveDynamicOptions } from './dynamicOptions';
+import { resolveDynamicOptionStrings } from './dynamicOptions';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.description]: string;
-  [NodeInputKeyEnum.userSelectOptions]: UserSelectOptionItemType[] | ReferenceArrayValueType;
+  [NodeInputKeyEnum.userSelectOptions]: UserSelectOptionItemType[] | ReferenceValueType;
 }>;
 type UserSelectResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.selectResult]?: string;
@@ -20,59 +21,44 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
   const {
     histories,
     node,
-    params: { description, userSelectOptions: rawOptions },
-    query,
-    lastInteractive,
     runtimeNodesMap,
     variableState,
-    chatConfig
+    params: { description, userSelectOptions },
+    query,
+    lastInteractive
   } = props;
   const { nodeId, isEntry } = node;
-  const optionInput = node.inputs.find((input) => input.key === NodeInputKeyEnum.userSelectOptions);
-  const isReferenceMode =
-    optionInput && getSelectedInputRenderType(optionInput) === FlowNodeInputTypeEnum.reference;
-  const userSelectOptions = isReferenceMode
-    ? resolveInteractiveDynamicOptions({
-        references: rawOptions as ReferenceArrayValueType,
-        runtimeNodesMap,
-        variableState,
-        variablesConfig: chatConfig?.variables
-      }).map((value, index) => ({ key: `reference_${index}`, value }))
-    : (rawOptions as UserSelectOptionItemType[]);
+
+  const userSelectOptionInput = node.inputs?.find(
+    (input) => input.key === NodeInputKeyEnum.userSelectOptions
+  );
+  const isReferenceMode = userSelectOptionInput
+    ? nodeInputIsReference(userSelectOptionInput)
+    : Array.isArray(userSelectOptions) && userSelectOptions.some((item) => Array.isArray(item));
 
   // Interactive node is not the entry node, return interactive result
   if (!isEntry || lastInteractive?.type !== 'userSelect') {
+    const resolvedOptions: UserSelectOptionItemType[] = isReferenceMode
+      ? resolveDynamicOptionStrings({
+          value: userSelectOptions,
+          runtimeNodesMap,
+          variables: variableState?.toRuntimeRecord?.() ?? {}
+        }).map((value, index) => ({
+          key: `option_${index + 1}`,
+          value
+        }))
+      : (userSelectOptions as UserSelectOptionItemType[]);
+
+    if (isReferenceMode && resolvedOptions.length === 0) {
+      throw new Error(i18nT('workflow:user_select_no_available_options'));
+    }
+
     return {
       [DispatchNodeResponseKeyEnum.interactive]: {
         type: 'userSelect',
         params: {
           description,
-          userSelectOptions
-        }
-      }
-    };
-  }
-
-  const { text: userSelectedVal } = chatValue2RuntimePrompt(query);
-
-  // Error status
-  if (userSelectedVal === undefined) {
-    node.isEntry = false;
-    return {
-      [DispatchNodeResponseKeyEnum.skipHandleId]: isReferenceMode
-        ? [getHandleId(nodeId, 'source', 'ref_default')]
-        : userSelectOptions.map((item) => getHandleId(nodeId, 'source', item.key))
-    };
-  }
-
-  const selectedOption = userSelectOptions.find((item) => item.value === userSelectedVal);
-  if (!selectedOption) {
-    return {
-      [DispatchNodeResponseKeyEnum.interactive]: {
-        type: 'userSelect',
-        params: {
-          description,
-          userSelectOptions
+          userSelectOptions: resolvedOptions
         }
       }
     };
@@ -80,19 +66,33 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
 
   node.isEntry = false;
 
+  const { text: userSelectedVal } = chatValue2RuntimePrompt(query);
+  const manualOptions = Array.isArray(userSelectOptions)
+    ? (userSelectOptions as UserSelectOptionItemType[])
+    : [];
+
+  // Error status
+  if (userSelectedVal === undefined) {
+    return {
+      [DispatchNodeResponseKeyEnum.skipHandleId]: isReferenceMode
+        ? [getHandleId(nodeId, 'source', USER_SELECT_REFERENCE_HANDLE_KEY)]
+        : manualOptions.map((item) => getHandleId(nodeId, 'source', item.value))
+    };
+  }
+
   return {
     data: {
-      [NodeOutputKeyEnum.selectResult]: selectedOption.value
+      [NodeOutputKeyEnum.selectResult]: userSelectedVal
     },
     [DispatchNodeResponseKeyEnum.rewriteHistories]: histories.slice(0, -2), // Removes the current session record as the history of subsequent nodes
     [DispatchNodeResponseKeyEnum.skipHandleId]: isReferenceMode
       ? []
-      : userSelectOptions
-          .filter((item) => item.value !== selectedOption.value)
-          .map((item) => getHandleId(nodeId, 'source', item.key)),
+      : manualOptions
+          .filter((item) => item.value !== userSelectedVal)
+          .map((item: any) => getHandleId(nodeId, 'source', item.key)),
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      userSelectResult: selectedOption.value
+      userSelectResult: userSelectedVal
     },
-    [DispatchNodeResponseKeyEnum.toolResponse]: selectedOption.value
+    [DispatchNodeResponseKeyEnum.toolResponse]: userSelectedVal
   };
 };

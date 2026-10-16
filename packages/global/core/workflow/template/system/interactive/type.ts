@@ -3,6 +3,7 @@ import { FlowNodeInputTypeEnum } from '../../../../../core/workflow/node/constan
 import { WorkflowIOValueTypeEnum } from '../../../../../core/workflow/constants';
 import { AppFileSelectConfigTypeSchema } from '../../../../app/type/config.schema';
 import { RuntimeEdgeItemTypeSchema } from '../../../type/edge';
+import { ReferenceArrayValueTypeSchema } from '../../../type/io';
 import z from 'zod';
 import { JsonValueOpenApiMeta, OpenObjectOpenApiMeta } from '../../../../../common/zod/openapi';
 import { ChatCompletionMessageParamSchema } from '../../../../ai/llm/type';
@@ -180,10 +181,8 @@ export const UserInputFormItemSchema = AppFileSelectConfigTypeSchema.extend({
   max: z.number().optional(), // numberInput
   min: z.number().optional(), // numberInput
   list: z.array(z.object({ label: z.string(), value: z.string() })).optional(), // select
-  listInputType: z.enum([FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.custom]).optional(),
-  listReference: z
-    .union([z.tuple([z.string(), z.string()]), z.array(z.tuple([z.string(), z.string()]))])
-    .optional(),
+  listInputType: z.enum(FlowNodeInputTypeEnum).optional(),
+  listReference: ReferenceArrayValueTypeSchema.optional(),
 
   canLocalUpload: z.boolean().optional(),
   canUrlUpload: z.boolean().optional()

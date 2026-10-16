@@ -15,7 +15,8 @@ import {
 import { getWorkflowFileContext, getWorkflowFileRegistrar } from '../../utils/context';
 import type { WorkflowFileRegistrar } from '../../utils/fileContext';
 import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
-import { resolveInteractiveDynamicOptions } from './dynamicOptions';
+import { resolveDynamicOptionStrings } from './dynamicOptions';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.INTERACTIVE);
 const DEFAULT_FORM_FILE_INPUT_MAX_FILES = 5;
@@ -78,48 +79,65 @@ const formatFileSelectRuntimeValue = async ({
   return urls.filter((url): url is string => typeof url === 'string' && !!url);
 };
 
-/* 
-  用户输入都内容，将会以 JSON 字符串格式进入工作流，可以从 query 的 text 中获取。
-*/
+/**
+ * 首次执行时解析表单动态选项并返回交互；空选项交由工作流异常链路处理。
+ * 恢复执行时从 query 的 JSON 文本读取用户提交内容，并转换文件和密码字段。
+ */
 export const dispatchFormInput = async (props: Props): Promise<FormInputResponse> => {
   const {
     histories,
     node,
-    params: { description, userInputForms },
-    query,
-    lastInteractive,
     runtimeNodesMap,
     variableState,
-    chatConfig
+    params: { description, userInputForms },
+    query,
+    lastInteractive
   } = props;
   const { isEntry } = node;
-  const resolvedUserInputForms = userInputForms.map((form) => {
-    const isOptionInput = [
-      FlowNodeInputTypeEnum.select,
-      FlowNodeInputTypeEnum.multipleSelect
-    ].includes(form.type);
-    if (!isOptionInput || form.listInputType !== FlowNodeInputTypeEnum.reference) return form;
-
-    return {
-      ...form,
-      defaultValue: form.type === FlowNodeInputTypeEnum.multipleSelect ? [] : '',
-      list: resolveInteractiveDynamicOptions({
-        references: form.listReference,
-        runtimeNodesMap,
-        variableState,
-        variablesConfig: chatConfig?.variables
-      }).map((value) => ({ label: value, value }))
-    };
-  });
 
   // Interactive node is not the entry node, return interactive result
   if (!isEntry || lastInteractive?.type !== 'userInput') {
+    let runtimeVariables: Record<string, unknown> | undefined;
+    const getRuntimeVariables = () => {
+      runtimeVariables ??= variableState?.toRuntimeRecord?.() ?? {};
+      return runtimeVariables;
+    };
+
+    const resolvedInputForms = userInputForms.map((item) => {
+      const isOptionField =
+        item.type === FlowNodeInputTypeEnum.select ||
+        item.type === FlowNodeInputTypeEnum.multipleSelect;
+      if (!isOptionField || item.listInputType !== FlowNodeInputTypeEnum.reference) {
+        return item;
+      }
+
+      const list = resolveDynamicOptionStrings({
+        value: item.listReference,
+        runtimeNodesMap,
+        variables: getRuntimeVariables()
+      }).map((value) => ({
+        label: value,
+        value
+      }));
+
+      // 与用户选择节点一致，避免返回没有可选值、用户无法完成的交互表单。
+      if (list.length === 0) {
+        throw new Error(i18nT('workflow:form_input_no_available_options'));
+      }
+
+      return {
+        ...item,
+        defaultValue: undefined,
+        list
+      };
+    });
+
     return {
       [DispatchNodeResponseKeyEnum.interactive]: {
         type: 'userInput',
         params: {
           description,
-          inputForm: resolvedUserInputForms
+          inputForm: resolvedInputForms
         }
       }
     };
@@ -141,7 +159,7 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
   const userMaxFileAmount =
     getWorkflowFileContext()?.limits.maxFileAmount ?? DEFAULT_FORM_FILE_INPUT_MAX_FILES;
   const fileRegistrar = getWorkflowFileRegistrar();
-  const inputConfigMap = new Map(resolvedUserInputForms.map((form) => [form.key, form]));
+  const inputConfigMap = new Map(userInputForms.map((form) => [form.key, form]));
   const userInputEntries = await Promise.all(
     Object.entries(rawUserInputVal).map(async ([key, value]) => {
       const inputConfig = inputConfigMap.get(key);

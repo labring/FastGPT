@@ -306,5 +306,11 @@
   "workflow_local_draft_auth_expired_notice": "로그인이 만료되어 현재 편집 내용이 로컬에 자동으로 저장되었습니다. 페이지를 닫지 마세요. 이 탭에서 다시 로그인하면 워크플로 편집 내용을 복원할 수 있습니다.",
   "workflow_local_draft_auth_expired_title": "자동 저장됨",
   "workflow_local_draft_relogin": "다시 로그인",
-  "workflow.exit_tips": "변경 사항이 저장되지 않았습니다. '바로 나가기'를 선택하면 편집 내용이 저장되지 않습니다."
+  "workflow.exit_tips": "변경 사항이 저장되지 않았습니다. '바로 나가기'를 선택하면 편집 내용이 저장되지 않습니다.",
+  "option_config": "옵션 설정",
+  "option_variable": "옵션 변수",
+  "please_input_option": "옵션을 입력하세요",
+  "please_select_variable": "변수를 선택하세요",
+  "form_input_no_available_options": "폼 입력 노드의 동적 옵션 필드에 사용 가능한 옵션이 없습니다. 참조 변수를 확인하세요.",
+  "user_select_no_available_options": "사용자 선택 노드에 사용 가능한 옵션이 없습니다. 참조 변수를 확인하세요."
 }

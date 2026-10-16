@@ -132,171 +132,59 @@ describe('checkWorkflowNodeIssues', () => {
     );
   });
 
-  it('rejects invalid dynamic user-select option references', () => {
-    const userSelectNode = makeNode('user-select', FlowNodeTypeEnum.userSelect, {
+  it('reports empty or all-stale reference issues for userSelect and formInput dynamic options without duplicate required errors', () => {
+    const emptySelect = makeNode('select-empty', FlowNodeTypeEnum.userSelect, {
       inputs: [
         {
           key: NodeInputKeyEnum.userSelectOptions,
-          label: 'Options',
-          valueType: WorkflowIOValueTypeEnum.any,
           renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
           selectedType: FlowNodeInputTypeEnum.reference,
-          value: [['start', 'deleted-output']]
+          valueType: WorkflowIOValueTypeEnum.any,
+          required: true,
+          value: [['deleted-node', 'out']]
         }
       ]
     });
-
-    const result = checkWorkflowNodeIssues({
-      nodes: [startNode, userSelectNode],
-      edges: [{ id: 'e1', source: 'start', target: 'user-select', type: EDGE_TYPE }]
-    });
-
-    expect(result['user-select']?.map((issue) => issue.code) ?? []).toContain('invalid_reference');
-  });
-
-  it('still checks the connection of a reference-mode user select', () => {
-    const userSelectNode = makeNode('user-select', FlowNodeTypeEnum.userSelect, {
-      inputs: [
-        {
-          key: NodeInputKeyEnum.userSelectOptions,
-          label: 'Options',
-          valueType: WorkflowIOValueTypeEnum.any,
-          renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
-          selectedType: FlowNodeInputTypeEnum.reference,
-          value: [['start', NodeOutputKeyEnum.userChatInput]]
-        }
-      ]
-    });
-
-    const result = checkWorkflowNodeIssues({ nodes: [startNode, userSelectNode], edges: [] });
-
-    expect(result['user-select']?.map((issue) => issue.code) ?? []).toContain('no_upstream');
-  });
-
-  it('rejects invalid global-variable dynamic options in user select and form input', () => {
-    const userSelectNode = makeNode('user-select', FlowNodeTypeEnum.userSelect, {
-      inputs: [
-        {
-          key: NodeInputKeyEnum.userSelectOptions,
-          label: 'Options',
-          valueType: WorkflowIOValueTypeEnum.any,
-          renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
-          selectedType: FlowNodeInputTypeEnum.reference,
-          value: [[VARIABLE_NODE_ID, 'number-options']]
-        }
-      ]
-    });
-    const formNode = makeNode('form', FlowNodeTypeEnum.formInput, {
+    const formNode = makeNode('form-ref', FlowNodeTypeEnum.formInput, {
       inputs: [
         {
           key: NodeInputKeyEnum.userInputForms,
           value: [
             {
-              key: 'role',
-              label: 'Role',
+              key: 'city',
+              type: FlowNodeInputTypeEnum.select,
               listInputType: FlowNodeInputTypeEnum.reference,
-              listReference: [[VARIABLE_NODE_ID, 'deleted-options']]
+              listReference: [['deleted-node', 'out']]
+            },
+            {
+              key: 'tags',
+              type: FlowNodeInputTypeEnum.multipleSelect,
+              listInputType: FlowNodeInputTypeEnum.reference,
+              listReference: []
             }
           ]
         }
       ]
     });
 
-    const result = checkWorkflowBeforeRunOrPublish({
-      nodes: [startNode, userSelectNode, formNode],
+    const issues = checkWorkflowNodeIssues({
+      nodes: [startNode, emptySelect, formNode],
       edges: [
-        { id: 'e1', source: 'start', target: 'user-select', type: EDGE_TYPE },
-        { id: 'e2', source: 'start', target: 'form', type: EDGE_TYPE }
-      ],
-      chatConfig: {
-        variables: [{ key: 'number-options', valueType: WorkflowIOValueTypeEnum.arrayNumber }]
-      } as any
-    });
-
-    expect(result.issueMap['user-select']?.map((issue) => issue.code) ?? []).toContain(
-      'invalid_reference'
-    );
-    expect(result.issueMap.form?.map((issue) => issue.code) ?? []).toContain('invalid_reference');
-  });
-
-  it('accepts dynamic options from unchecked global variables and system variables', () => {
-    const globalUserSelect = makeNode('global-user-select', FlowNodeTypeEnum.userSelect, {
-      inputs: [
-        {
-          key: NodeInputKeyEnum.userSelectOptions,
-          label: 'Options',
-          valueType: WorkflowIOValueTypeEnum.any,
-          renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
-          selectedType: FlowNodeInputTypeEnum.reference,
-          value: [[VARIABLE_NODE_ID, 'configured-options']]
-        }
+        { id: 'e1', source: 'start', target: 'select-empty', type: EDGE_TYPE },
+        { id: 'e2', source: 'start', target: 'form-ref', type: EDGE_TYPE }
       ]
-    });
-    const systemForm = makeNode('system-form', FlowNodeTypeEnum.formInput, {
-      inputs: [
-        {
-          key: NodeInputKeyEnum.userInputForms,
-          value: [
-            {
-              key: 'user',
-              label: 'User',
-              listInputType: FlowNodeInputTypeEnum.reference,
-              listReference: [[VARIABLE_NODE_ID, 'userId']]
-            }
-          ]
-        }
-      ]
-    });
-    const edges = [
-      { id: 'e1', source: 'start', target: 'global-user-select', type: EDGE_TYPE },
-      { id: 'e2', source: 'start', target: 'system-form', type: EDGE_TYPE }
-    ];
-
-    const withoutChatConfig = checkWorkflowBeforeRunOrPublish({
-      nodes: [startNode, globalUserSelect],
-      edges: [edges[0]]
-    });
-    const withSystemVariable = checkWorkflowBeforeRunOrPublish({
-      nodes: [startNode, systemForm],
-      edges: [edges[1]],
-      chatConfig: { variables: [] } as any
     });
 
     expect(
-      withoutChatConfig.issueMap['global-user-select']?.map((issue) => issue.code) ?? []
-    ).not.toContain('invalid_reference');
+      issues['select-empty']
+        ?.filter((i) => i.inputKey === NodeInputKeyEnum.userSelectOptions)
+        .map((i) => i.code)
+    ).toEqual(['user_select_empty']);
     expect(
-      withSystemVariable.issueMap['system-form']?.map((issue) => issue.code) ?? []
-    ).not.toContain('invalid_reference');
-  });
-
-  it('preserves manual user-select options while the node uses references', () => {
-    const userSelectNode = makeNode('user-select', FlowNodeTypeEnum.userSelect, {
-      inputs: [
-        {
-          key: NodeInputKeyEnum.userSelectOptions,
-          label: 'Options',
-          valueType: WorkflowIOValueTypeEnum.any,
-          renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
-          selectedType: FlowNodeInputTypeEnum.reference,
-          value: [[VARIABLE_NODE_ID, 'options']],
-          userSelectManualOptions: [
-            { key: 'allow', value: 'Allow' },
-            { key: 'deny', value: 'Deny' }
-          ]
-        }
-      ]
-    });
-
-    const stored = uiWorkflow2StoreWorkflow({ nodes: [userSelectNode], edges: [] });
-
-    expect(stored.nodes[0]?.inputs[0]).toMatchObject({
-      selectedType: FlowNodeInputTypeEnum.reference,
-      userSelectManualOptions: [
-        { key: 'allow', value: 'Allow' },
-        { key: 'deny', value: 'Deny' }
-      ]
-    });
+      issues['form-ref']
+        ?.filter((i) => i.inputKey === NodeInputKeyEnum.userInputForms)
+        .map((i) => i.code)
+    ).toEqual(['required_input_empty', 'required_input_empty']);
   });
 
   it('reports nodes without upstream connections', () => {

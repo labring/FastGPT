@@ -17,14 +17,12 @@ export const checkWorkflowNodeIssues = ({
   edges,
   modelData,
   nodeId,
-  variables,
   t
 }: {
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge[];
   modelData?: WorkflowModelCheckData;
   nodeId?: string;
-  variables?: AppChatConfigType['variables'];
   t?: TFunction;
 }): WorkflowCheckNodeIssueMap => {
   // 1. 构造单次校验复用的图索引与可达性集合。
@@ -45,7 +43,6 @@ export const checkWorkflowNodeIssues = ({
         data,
         inputMap,
         context,
-        variables,
         modelIssues: [...models.customIssues, ...models.systemIssues]
       }),
       ...checkWorkflowNodeConnections({ data, context })
@@ -107,13 +104,7 @@ export const checkWorkflowBeforeRunOrPublish = ({
   t?: TFunction;
   chatConfig?: AppChatConfigType;
 }) => {
-  const issueMap = checkWorkflowNodeIssues({
-    nodes,
-    edges,
-    modelData,
-    variables: chatConfig?.variables,
-    t
-  });
+  const issueMap = checkWorkflowNodeIssues({ nodes, edges, modelData, t });
   const chatConfigIssues = checkWorkflowChatConfigModelIssues({ chatConfig, modelData, t });
 
   const nodeOrder = nodes.map((node) => node.data.nodeId);

@@ -305,12 +305,6 @@ export const FlowNodeInputItemTypeSchema = InputComponentPropsTypeSchema.extend(
       description: '节点输入当前值',
       ...JsonValueOpenApiMeta
     }),
-  userSelectManualOptions: z
-    .array(z.object({ key: z.string(), value: z.string() }))
-    .optional()
-    .meta({
-      description: '用户选择节点在引用模式下保留的手动选项'
-    }),
 
   debugLabel: z.string().optional().meta({
     description: '调试模式下展示的输入名称'

@@ -12,6 +12,20 @@ import {
 } from '../../../node/constant';
 import { createHideInContext } from '../../context';
 import { type FlowNodeTemplateType } from '../../../type/node';
+import { type UserSelectOptionItemType } from './type';
+
+export const USER_SELECT_REFERENCE_HANDLE_KEY = 'ref_default';
+
+export const USER_SELECT_DEFAULT_OPTIONS: UserSelectOptionItemType[] = [
+  {
+    value: 'Confirm',
+    key: 'option1'
+  },
+  {
+    value: 'Cancel',
+    key: 'option2'
+  }
+];
 
 export const UserSelectNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.userSelect,
@@ -40,29 +54,9 @@ export const UserSelectNode: FlowNodeTemplateType = {
     {
       key: NodeInputKeyEnum.userSelectOptions,
       renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
-      selectedType: FlowNodeInputTypeEnum.custom,
       valueType: WorkflowIOValueTypeEnum.any,
-      label: i18nT('app:workflow.select_options_mode_label'),
-      value: [
-        {
-          value: 'Confirm',
-          key: 'option1'
-        },
-        {
-          value: 'Cancel',
-          key: 'option2'
-        }
-      ],
-      userSelectManualOptions: [
-        {
-          value: 'Confirm',
-          key: 'option1'
-        },
-        {
-          value: 'Cancel',
-          key: 'option2'
-        }
-      ]
+      label: i18nT('common:core.module.variable.variable options'),
+      value: USER_SELECT_DEFAULT_OPTIONS
     }
   ],
   outputs: [

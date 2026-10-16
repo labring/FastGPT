@@ -6,8 +6,6 @@ import {
   Flex,
   Menu,
   MenuButton,
-  MenuItem,
-  type MenuItemProps,
   MenuList,
   useDisclosure
 } from '@chakra-ui/react';
@@ -27,16 +25,17 @@ import FilterSearchInput, { filterSelectOptionsBySearch } from '../TagFilter/Fil
 import { useStaticVirtualList } from '../../../hooks/useVirtualList';
 import MyIconButton from '../Icon/button';
 
-const menuItemStyles: MenuItemProps = {
-  borderRadius: 'sm',
-  py: 2,
-  display: 'flex',
+const menuItemStyles: FlexProps = {
+  borderRadius: 'xs',
+  px: 1,
+  py: '6px',
   alignItems: 'center',
+  cursor: 'pointer',
+  fontSize: 'xs',
+  lineHeight: '16px',
+  fontWeight: 'medium',
   _hover: {
-    backgroundColor: 'myGray.100'
-  },
-  _notLast: {
-    mb: 2
+    bg: 'myGray.05'
   }
 };
 
@@ -208,12 +207,16 @@ const MultipleSelect = <T = any,>({
   }, [formatValue, list, t]);
   const selectedTagSizeStyle = selectedTagSizeStyleMap[size];
   const tagWidth = tagStyle?.w;
+  const uniqueListValues = useMemo(
+    () => Array.from(new Set(list.map((item) => item.value))),
+    [list]
+  );
   const canInferSelectAll = !ScrollData && (isSelectAll !== undefined || !!setIsSelectAll);
   const isFullSelected = useMemo(() => {
-    if (list.length === 0 || formatValue.length !== list.length) return false;
+    if (uniqueListValues.length === 0 || formatValue.length < uniqueListValues.length) return false;
 
-    return list.every((item) => formatValue.includes(item.value));
-  }, [formatValue, list]);
+    return uniqueListValues.every((itemValue) => formatValue.includes(itemValue));
+  }, [formatValue, uniqueListValues]);
   const isAllSelected = !!isSelectAll || (canInferSelectAll && isFullSelected);
   const openedMenuButtonStyle: Pick<ButtonProps, 'bg' | 'borderColor' | 'boxShadow'> =
     isOpen && !isDisabled
@@ -233,7 +236,7 @@ const MultipleSelect = <T = any,>({
   const onclickItem = useCallback(
     (val: T) => {
       if (isAllSelected) {
-        onSelect(list.map((item) => item.value).filter((i) => i !== val));
+        onSelect(uniqueListValues.filter((i) => i !== val));
         setIsSelectAll?.(false);
         return;
       }
@@ -244,19 +247,19 @@ const MultipleSelect = <T = any,>({
       onSelect(nextValue);
       setIsSelectAll?.(
         !ScrollData &&
-          list.length > 0 &&
-          nextValue.length === list.length &&
-          list.every((item) => nextValue.includes(item.value))
+          uniqueListValues.length > 0 &&
+          nextValue.length >= uniqueListValues.length &&
+          uniqueListValues.every((itemValue) => nextValue.includes(itemValue))
       );
     },
-    [isAllSelected, formatValue, onSelect, setIsSelectAll, ScrollData, list]
+    [isAllSelected, formatValue, onSelect, setIsSelectAll, ScrollData, uniqueListValues]
   );
 
   const onSelectAll = useCallback(() => {
-    onSelect(isAllSelected ? [] : list.map((item) => item.value));
+    onSelect(isAllSelected ? [] : uniqueListValues);
 
     setIsSelectAll?.(!isAllSelected);
-  }, [isAllSelected, onSelect, list, setIsSelectAll]);
+  }, [isAllSelected, onSelect, uniqueListValues, setIsSelectAll]);
 
   // 动态长度计算器 - 计算一行能展示多少个tag，剩余用+n表示
   const calculateLayout = useCallback(() => {
@@ -397,7 +400,7 @@ const MultipleSelect = <T = any,>({
     (item: (typeof list)[number], index: number, virtual = false) => {
       const isSelected = isAllSelected || formatValue.includes(item.value);
       return (
-        <MenuItem
+        <Flex
           key={index}
           onClick={(e) => {
             e.stopPropagation();
@@ -405,24 +408,36 @@ const MultipleSelect = <T = any,>({
             onclickItem(item.value);
           }}
           whiteSpace={'pre-wrap'}
-          fontSize={'sm'}
           gap={2}
+          color={'myGray.600'}
           {...menuItemStyles}
           {...(virtual
             ? {
                 h: '40px',
                 minH: '40px',
                 py: 0,
-                mb: 0,
-                _notLast: { mb: 0 }
+                mb: 0
               }
             : {})}
-          color={isSelected ? 'primary.600' : 'myGray.900'}
         >
-          <Checkbox isChecked={isSelected} />
-          {item.icon && <MyAvatar src={item.icon} w={'1rem'} borderRadius={'0'} />}
-          <Box flex={'1 0 0'}>{item.label}</Box>
-        </MenuItem>
+          <Checkbox
+            isChecked={isSelected}
+            pointerEvents={'none'}
+            size={'sm'}
+            flexShrink={0}
+            icon={<MyIcon name={'common/check'} w={'12px'} />}
+            sx={{
+              // 自定义勾图标不会走 Chakra 未选中时的隐藏，悬浮会露出白勾
+              '.chakra-checkbox__control:not([data-checked]) svg': { opacity: 0 }
+            }}
+          />
+          {item.icon && (
+            <MyAvatar src={item.icon} w={'16px'} h={'16px'} borderRadius={'0'} flexShrink={0} />
+          )}
+          <Box flex={'1 0 0'} minW={0}>
+            {item.label}
+          </Box>
+        </Flex>
       );
     },
     [formatValue, isAllSelected, onclickItem]
@@ -581,37 +596,41 @@ const MultipleSelect = <T = any,>({
           overflowY={shouldUseVirtualList ? 'hidden' : 'auto'}
           position={'relative'}
         >
-          {canSearch && (
-            <Box mb={1}>
-              <FilterSearchInput
-                value={searchValue}
-                placeholder={searchPlaceholder ?? t('common:Search')}
-                onChange={setSearchValue}
-              />
-            </Box>
-          )}
+          {(setIsSelectAll || canSearch) && (
+            <Flex direction={'column'} gap={'4px'} mb={1}>
+              {setIsSelectAll && (
+                <Flex
+                  alignItems={'center'}
+                  px={1}
+                  py={'6px'}
+                  cursor={'pointer'}
+                  borderRadius={'xs'}
+                  bg={isAllSelected ? 'myGray.05' : 'transparent'}
+                  color={isAllSelected ? 'primary.700' : 'myGray.600'}
+                  fontSize={'xs'}
+                  lineHeight={'16px'}
+                  fontWeight={'medium'}
+                  _hover={{ bg: 'myGray.05' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    onSelectAll();
+                  }}
+                >
+                  {t('common:All')}
+                </Flex>
+              )}
 
-          {setIsSelectAll && (
-            <>
-              <MenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  onSelectAll();
-                }}
-                whiteSpace={'pre-wrap'}
-                fontSize={'sm'}
-                gap={2}
-                mb={1}
-                {...menuItemStyles}
-                color={isAllSelected ? 'primary.600' : 'myGray.900'}
-              >
-                <Checkbox isChecked={isAllSelected} />
-                <Box flex={'1 0 0'}>{t('common:All')}</Box>
-              </MenuItem>
-
-              <MyDivider my={1} />
-            </>
+              {canSearch ? (
+                <FilterSearchInput
+                  value={searchValue}
+                  placeholder={searchPlaceholder ?? t('common:Search')}
+                  onChange={setSearchValue}
+                />
+              ) : (
+                setIsSelectAll && visibleList.length > 0 && <Box h={'1px'} bg={'myGray.200'} />
+              )}
+            </Flex>
           )}
 
           {ScrollData ? (
@@ -622,7 +641,7 @@ const MultipleSelect = <T = any,>({
             <Box
               ref={virtualListRef}
               h={`min(${Math.min(visibleList.length * 40, virtualListHeight)}px, calc(40vh - ${
-                canSearch ? 44 : 12
+                (canSearch ? 36 : 0) + (setIsSelectAll ? 32 : 0) + 12
               }px))`}
               overflowY={'auto'}
             >

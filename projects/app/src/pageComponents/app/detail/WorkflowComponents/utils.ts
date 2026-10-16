@@ -1,4 +1,8 @@
-import { getNodeAllSource, workflowReferenceValueIsSelectable } from '@/web/core/workflow/utils';
+import {
+  DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES,
+  getNodeAllSource,
+  workflowReferenceValueIsSelectable
+} from '@/web/core/workflow/utils';
 import { workflowSystemVariables } from '@/web/core/app/utils';
 import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
 import {
@@ -7,9 +11,11 @@ import {
   VARIABLE_NODE_ID
 } from '@fastgpt/global/core/workflow/constants';
 import {
+  FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
+import type { UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
   type FlowNodeItemType,
@@ -159,7 +165,64 @@ const filterUnselectableReferenceInputs = ({
   childrenNodeIdListMap: Record<string, string[]>;
 }) => {
   return inputs.map((input) => {
-    if (!nodeInputIsReference(input)) return input;
+    if (input.key === NodeInputKeyEnum.userInputForms && Array.isArray(input.value)) {
+      const formList = input.value as UserInputFormItemType[];
+      const hasReferenceOptionField = formList.some(
+        (formItem) =>
+          (formItem.type === FlowNodeInputTypeEnum.select ||
+            formItem.type === FlowNodeInputTypeEnum.multipleSelect) &&
+          formItem.listInputType === FlowNodeInputTypeEnum.reference &&
+          Array.isArray(formItem.listReference)
+      );
+      if (!hasReferenceOptionField) return input;
+
+      const sourceNodes = getNodeAllSource({
+        nodeId: node.nodeId,
+        getNodeById,
+        edges,
+        chatConfig: chatConfig ?? ({} as AppChatConfigType),
+        t: emptyT,
+        includeChildren: false,
+        childrenNodeIdListMap
+      });
+
+      let hasChanged = false;
+      const nextFormList = formList.map((formItem) => {
+        const isReferenceOptionField =
+          (formItem.type === FlowNodeInputTypeEnum.select ||
+            formItem.type === FlowNodeInputTypeEnum.multipleSelect) &&
+          formItem.listInputType === FlowNodeInputTypeEnum.reference &&
+          Array.isArray(formItem.listReference);
+        if (!isReferenceOptionField) return formItem;
+
+        const prevRefList = formItem.listReference as ReferenceItemValueType[];
+        const filteredRefList = prevRefList.filter((item) =>
+          workflowReferenceValueIsSelectable({
+            value: item,
+            sourceNodes,
+            excludeValueTypes: DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES
+          })
+        );
+        if (filteredRefList.length === prevRefList.length) return formItem;
+
+        hasChanged = true;
+        return {
+          ...formItem,
+          listReference: filteredRefList
+        };
+      });
+
+      return hasChanged
+        ? {
+            ...input,
+            value: nextFormList
+          }
+        : input;
+    }
+
+    if (!nodeInputIsReference(input)) {
+      return input;
+    }
 
     const sourceNodes = getNodeAllSource({
       nodeId: node.nodeId,
@@ -174,11 +237,17 @@ const filterUnselectableReferenceInputs = ({
     const value = input.value as ReferenceValueType | undefined;
     if (!Array.isArray(value)) return input;
 
+    const excludeValueTypes =
+      input.key === NodeInputKeyEnum.userSelectOptions
+        ? DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES
+        : undefined;
+
     if (typeof value[0] === 'string') {
       const keepValue = workflowReferenceValueIsSelectable({
         value,
         sourceNodes,
-        valueType: input.valueType
+        valueType: input.valueType,
+        excludeValueTypes
       });
       return keepValue
         ? input
@@ -192,7 +261,8 @@ const filterUnselectableReferenceInputs = ({
       workflowReferenceValueIsSelectable({
         value: item,
         sourceNodes,
-        valueType: input.valueType
+        valueType: input.valueType,
+        excludeValueTypes
       })
     );
 

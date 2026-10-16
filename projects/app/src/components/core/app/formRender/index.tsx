@@ -29,13 +29,13 @@ const InputRender = (props: InputRenderProps) => {
     isDisabled,
     isInvalid,
     placeholder,
-    isSearchable,
     bg = 'white'
   } = props;
 
   const { t } = useSafeTranslation();
   // Password
   const [isPasswordEditing, setIsPasswordEditing] = useState(false);
+  const [, setIsSelectAll] = useState(false);
 
   const multipleSelectList = useMemo(() => {
     if (inputType !== InputTypeEnum.multipleSelect) return [];
@@ -43,13 +43,6 @@ const InputRender = (props: InputRenderProps) => {
       props.list ?? props.enums?.map((item) => ({ label: item.value, value: item.value })) ?? []
     );
   }, [inputType, props.list, props.enums]);
-
-  const isSelectAll = useMemo(() => {
-    if (inputType !== InputTypeEnum.multipleSelect) return false;
-    if (!Array.isArray(value) || multipleSelectList.length === 0) return false;
-    const valueSet = new Set(value);
-    return multipleSelectList.every((item) => valueSet.has(item.value));
-  }, [inputType, value, multipleSelectList]);
 
   const commonProps = useMemoEnhance(
     () => ({
@@ -191,8 +184,8 @@ const InputRender = (props: InputRenderProps) => {
         {...commonProps}
         list={list}
         h={10}
+        isSearch={list.length > 10}
         menuPlacement={props.menuPlacement}
-        isSearch={isSearchable && list.length > 8}
       />
     );
   }
@@ -205,9 +198,9 @@ const InputRender = (props: InputRenderProps) => {
         list={multipleSelectList}
         value={value}
         onSelect={(e) => onChange?.(e)}
-        isSelectAll={isSelectAll}
+        isSearch={multipleSelectList.length > 10}
+        setIsSelectAll={multipleSelectList.length >= 5 ? setIsSelectAll : undefined}
         itemWrap
-        isSearch={isSearchable && multipleSelectList.length > 8}
       />
     );
   }

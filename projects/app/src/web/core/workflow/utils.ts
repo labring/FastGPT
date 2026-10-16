@@ -551,6 +551,10 @@ export type WorkflowReferenceSourceNode = {
   catchError?: boolean;
 };
 
+export const DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES: WorkflowIOValueTypeEnum[] = [
+  WorkflowIOValueTypeEnum.arrayBoolean
+];
+
 /**
  * 过滤引用选择器中真正可选的输出。
  * ReferenceSelector 和节点 debug 的引用有效性判断必须共用这套规则，避免已删除、类型不匹配、
@@ -559,14 +563,24 @@ export type WorkflowReferenceSourceNode = {
 export const filterSelectableWorkflowNodeOutputs = ({
   outputs,
   valueType,
-  catchError
+  catchError,
+  excludeValueTypes
 }: {
   outputs: FlowNodeOutputItemType[];
   valueType?: WorkflowIOValueTypeEnum;
   catchError?: boolean;
+  excludeValueTypes?: WorkflowIOValueTypeEnum[];
 }) => {
   return filterWorkflowNodeOutputsByType(outputs, valueType ?? WorkflowIOValueTypeEnum.any).filter(
     (output) => {
+      if (
+        excludeValueTypes?.length &&
+        output.valueType &&
+        excludeValueTypes.includes(output.valueType)
+      ) {
+        return false;
+      }
+
       if (output.type === FlowNodeOutputTypeEnum.error) {
         return catchError === true;
       }

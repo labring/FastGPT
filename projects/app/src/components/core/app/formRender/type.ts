@@ -44,7 +44,6 @@ export type SpecificProps = {
   list?: { label: string; value: string; icon?: string; description?: string }[];
   enums?: { value: string }[]; // old version
   menuPlacement?: MenuProps['placement'];
-  isSearchable?: boolean;
 
   // selectDataset
   datasetOptions?: SelectedDatasetType[];

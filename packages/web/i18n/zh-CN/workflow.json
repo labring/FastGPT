@@ -307,9 +307,10 @@
   "workflow_local_draft_auth_expired_title": "已自动保存",
   "workflow_local_draft_relogin": "重新登录",
   "workflow.exit_tips": "您的更改尚未保存，「直接退出」将不会保存您的编辑记录。",
-  "list_options": "选项",
-  "list_options_mode_manual": "手动填写",
-  "list_options_mode_reference": "引用变量",
-  "list_options_variable": "选项变量",
-  "no_available_options": "暂无可选项"
+  "option_config": "选项配置",
+  "option_variable": "选项变量",
+  "please_input_option": "请输入选项",
+  "please_select_variable": "请选择变量",
+  "form_input_no_available_options": "表单输入节点的动态选项字段没有可用选项，请检查引用变量。",
+  "user_select_no_available_options": "用户选择节点没有可用选项，请检查引用变量。"
 }

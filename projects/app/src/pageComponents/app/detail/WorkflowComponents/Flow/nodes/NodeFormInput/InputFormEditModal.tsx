@@ -26,22 +26,24 @@ export const defaultFormInput: UserInputFormItemType = {
   defaultValue: '',
   valueType: WorkflowIOValueTypeEnum.string,
   required: false,
-  list: [{ label: '', value: '' }]
+  list: [{ label: '', value: '' }],
+  listInputType: FlowNodeInputTypeEnum.custom,
+  listReference: []
 };
 
 // Modal for add or edit user input form items
 const InputFormEditModal = ({
+  nodeId,
   defaultValue,
   onClose,
   onSubmit,
-  keys,
-  nodeId
+  keys
 }: {
+  nodeId: string;
   defaultValue: UserInputFormItemType;
   onClose: () => void;
   onSubmit: (data: UserInputFormItemType) => void;
   keys: string[];
-  nodeId: string;
 }) => {
   const isEdit = !!defaultValue.key;
   const { t } = useTranslation();
@@ -72,6 +74,19 @@ const InputFormEditModal = ({
       });
 
       if (!isValid) {
+        return;
+      }
+
+      if (
+        (data.type === FlowNodeInputTypeEnum.select ||
+          data.type === FlowNodeInputTypeEnum.multipleSelect) &&
+        data.listInputType === FlowNodeInputTypeEnum.reference &&
+        !data.listReference?.length
+      ) {
+        toast({
+          status: 'warning',
+          title: t('workflow:please_select_variable')
+        });
         return;
       }
 
@@ -123,9 +138,10 @@ const InputFormEditModal = ({
             inputTypeList={inputTypeList}
             selectedType={inputType}
             onTypeChange={(type) => {
+              if (type === inputType) return;
+
               setValue('type', type as FlowNodeInputTypeEnum);
-              setValue('defaultValue', '');
-              setValue('listReference', undefined);
+              setValue('defaultValue', type === FlowNodeInputTypeEnum.multipleSelect ? [] : '');
               if (
                 (type === FlowNodeInputTypeEnum.select ||
                   type === FlowNodeInputTypeEnum.multipleSelect) &&
@@ -137,11 +153,11 @@ const InputFormEditModal = ({
           />
         </Stack>
         <InputTypeConfig
+          nodeId={nodeId}
           form={form}
           type={'formInput'}
           isEdit={isEdit}
           inputType={inputType}
-          nodeId={nodeId}
           onClose={onClose}
           onSubmitSuccess={onSubmitSuccess}
           onSubmitError={onSubmitError}
