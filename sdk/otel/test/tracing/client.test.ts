@@ -47,4 +47,31 @@ describe('addSpanProcessor', () => {
 
     expect(processor.shutdown).toHaveBeenCalledTimes(1);
   });
+
+  it('exports processors registered by another module instance', async () => {
+    const tracingGlobal = globalThis as typeof globalThis & {
+      otelTracingState?: unknown;
+    };
+    delete tracingGlobal.otelTracingState;
+
+    vi.resetModules();
+    const first = await import('../../src/tracing/client');
+    const processor: SpanProcessor = {
+      onStart: vi.fn(),
+      onEnd: vi.fn(),
+      forceFlush: vi.fn(async () => undefined),
+      shutdown: vi.fn(async () => undefined)
+    };
+    first.addSpanProcessor(processor);
+
+    vi.resetModules();
+    const second = await import('../../src/tracing/client');
+    try {
+      await second.configureTracing({ tracing: false });
+      await second.disposeTracing();
+      expect(processor.shutdown).toHaveBeenCalledTimes(1);
+    } finally {
+      delete tracingGlobal.otelTracingState;
+    }
+  });
 });
