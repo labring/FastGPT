@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname } from 'next/navigation';
 import { i18n, getLocalizedPath } from './i18n';
+import { getSiteDefaultLocale } from './site';
 
 /**
  * Get current language from pathname
@@ -18,7 +19,8 @@ export function useCurrentLang(): string {
     return firstSegment;
   }
   
-  return i18n.defaultLanguage;
+  // Unprefixed path => this domain's default locale
+  return getSiteDefaultLocale();
 }
 
 /**

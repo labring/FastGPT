@@ -6,7 +6,8 @@ import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { getMDXComponents } from '@/mdx-components';
 import { i18n } from '@/lib/i18n';
 import { generateArticleSchema, generateBreadcrumbSchema } from '@/lib/schema';
-import { getFastGPTDocsOrigin } from '@/lib/fastgpt-home-url';
+import { getOgLocale, getOwnedDocUrl, localizeDocHref, X_DEFAULT_LOCALE } from '@/lib/site';
+import type { ComponentProps } from 'react';
 import { CalendarDays } from 'lucide-react';
 import {
   UpgradeVersionTimeline,
@@ -37,6 +38,10 @@ export default async function Page({
   }
 
   const MDXContent = page.data.body;
+  const RelativeLink = createRelativeLink(source, page);
+  const DocLink = (props: ComponentProps<'a'>) => (
+    <RelativeLink {...props} href={props.href ? localizeDocHref(props.href, lang) : props.href} />
+  );
   const releaseTime = page.data.releaseTime;
   const isUpgradeTimeline = page.path.includes('self-host/upgrading/version-timeline');
   const upgradeVersionTimeline: UpgradeVersionTimelineItem[] = isUpgradeTimeline
@@ -61,17 +66,16 @@ export default async function Page({
   const lastModifiedData = docLastModifiedData as Record<string, string>;
   const lastModified = lastModifiedData[filePath] ?? page.data.lastModified;
 
-  const domain = getFastGPTDocsOrigin();
-  const url = `${domain}${page.url}`;
+  const url = getOwnedDocUrl(lang, slug);
 
-  // 生成面包屑导航
+  // 生成面包屑导航（使用该语言归属域名的无前缀 URL）
   const breadcrumbItems = [
-    { name: 'FastGPT', url: domain },
-    { name: 'Docs', url: `${domain}/${lang}` }
+    { name: 'FastGPT', url: getOwnedDocUrl(lang) },
+    { name: 'Docs', url: getOwnedDocUrl(lang) }
   ];
   if (slug && slug.length > 0) {
     slug.forEach((segment, index) => {
-      const segmentUrl = `${domain}/${lang}/${slug.slice(0, index + 1).join('/')}`;
+      const segmentUrl = getOwnedDocUrl(lang, slug.slice(0, index + 1));
       breadcrumbItems.push({ name: segment, url: segmentUrl });
     });
   }
@@ -127,7 +131,7 @@ export default async function Page({
         <DocsBody>
           <MDXContent
             components={getMDXComponents({
-              a: createRelativeLink(source, page)
+              a: DocLink
             })}
           />
           {isUpgradeTimeline && (
@@ -150,17 +154,23 @@ export async function generateMetadata(props: {
   const page = source.getPage(slug, lang);
   if (!page || !page.data) notFound();
 
-  const domain = getFastGPTDocsOrigin();
-  const url = `${domain}${page.url}`;
+  // canonical 指向该语言的归属域名（zh-CN -> doc.fastgpt.cn，en -> doc.fastgpt.io）
+  const url = getOwnedDocUrl(lang, slug);
 
-  // 构建多语言 alternates
+  // hreflang：跨域对称，两站输出一致；x-default 指向 io 英文
   const languages: Record<string, string> = {};
   i18n.languages.forEach((locale) => {
     const localePage = source.getPage(slug, locale);
     if (localePage) {
-      languages[locale] = `${domain}/${locale}/${slug?.join('/') || ''}`;
+      languages[locale] = getOwnedDocUrl(locale, slug);
     }
   });
+  if (languages[X_DEFAULT_LOCALE]) {
+    languages['x-default'] = languages[X_DEFAULT_LOCALE];
+  }
+  const alternateLocale = Object.keys(languages)
+    .filter((locale) => locale !== 'x-default' && locale !== lang)
+    .map(getOgLocale);
 
   return {
     title: page.data.title,
@@ -174,7 +184,8 @@ export async function generateMetadata(props: {
       description: page.data.description,
       url,
       siteName: 'FastGPT',
-      locale: lang,
+      locale: getOgLocale(lang),
+      alternateLocale,
       type: 'article',
       publishedTime: page.data.releaseTime
         ? new Date(`${page.data.releaseTime}T00:00:00.000+08:00`).toISOString()

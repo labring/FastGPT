@@ -1,6 +1,6 @@
-import { createI18nMiddleware } from 'fumadocs-core/i18n';
 import { defaultHomePath, i18n } from '@/lib/i18n';
 import { type NextRequest, NextResponse } from 'next/server';
+import { getHostLocalePath, getSiteDefaultLocale } from '@/lib/site';
 
 // Old path redirects mapping. Keys/values are POST-strip (no /docs prefix).
 // Old links like /docs/foo are first stripped to /foo, then matched here.
@@ -91,7 +91,9 @@ const prefixMap: Record<string, string> = {
   '/introduction': '/guide'
 };
 
-const i18nMiddleware = createI18nMiddleware(i18n);
+// Per-domain default locale (io -> en, cn -> zh-CN), fixed at build time.
+// Like fastgpt-home, the default locale is served WITHOUT a prefix; the other locale keeps it.
+const siteDefaultLocale = getSiteDefaultLocale();
 const documentCacheControl = 'public, max-age=0, must-revalidate';
 
 function normalizePath(path: string) {
@@ -113,22 +115,32 @@ function createRedirectUrl(target: string, request: NextRequest, lang: string) {
     return new URL(target);
   }
 
-  return new URL(`/${lang}${target || '/'}`, request.url);
+  const url = new URL(getHostLocalePath(lang, target || '/'), request.url);
+  url.search = request.nextUrl.search;
+  return url;
+}
+
+function getPathLocale(pathname: string): string | undefined {
+  const first = pathname.split('/')[1];
+  return first && i18n.languages.includes(first) ? first : undefined;
 }
 
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Extract language from pathname
-  let lang = i18n.defaultLanguage;
-  let pathWithoutLang = pathname;
+  const pathLocale = getPathLocale(pathname);
+  const lang: string = pathLocale ?? siteDefaultLocale;
+  const pathWithoutLang = pathLocale ? pathname.slice(`/${pathLocale}`.length) : pathname;
 
-  for (const language of i18n.languages) {
-    if (pathname.startsWith(`/${language}`)) {
-      lang = language;
-      pathWithoutLang = pathname.slice(`/${language}`.length);
-      break;
-    }
+  // Static public files (images, etc.) are served as-is.
+  if (!pathLocale && /\.[a-z0-9]+$/i.test(pathname) && !pathname.endsWith('/llms.txt')) {
+    return NextResponse.next();
+  }
+
+  // Root path: permanent redirect to the default-locale landing page (no cookie /
+  // Accept-Language sniffing, matching fastgpt-home). There is no docs index page.
+  if (pathname === '/') {
+    return NextResponse.redirect(createRedirectUrl(defaultHomePath, request, lang), 301);
   }
 
   // Legacy /docs/* URLs: strip the /docs prefix and run redirect-match.
@@ -148,43 +160,28 @@ export default function middleware(request: NextRequest) {
     return NextResponse.redirect(createRedirectUrl(mapped, request, lang), 301);
   }
 
+  // Old prefixed URLs of the domain's default locale (io /en/*, cn /zh-CN/*) -> unprefixed.
+  if (pathLocale === siteDefaultLocale) {
+    return NextResponse.redirect(createRedirectUrl(pathWithoutLang || '/', request, lang), 301);
+  }
+
+  // Internal path always carries the locale segment ([lang] route).
+  const internalPath = pathLocale ? pathname : `/${siteDefaultLocale}${pathname}`;
+
   // Build enhanced request headers so server components (e.g. (docs)/layout)
   // can read the current pathname via `headers().get('x-pathname')`.
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set('x-pathname', pathname);
+  requestHeaders.set('x-pathname', internalPath);
 
-  // Check if URL has a language prefix
-  const hasLangPrefix = i18n.languages.some(
-    (l) => pathname.startsWith(`/${l}/`) || pathname === `/${l}`
-  );
-
-  if (hasLangPrefix) {
-    // Pass through with x-pathname; sync FD_LOCALE cookie if mismatched.
-    const response = NextResponse.next({ request: { headers: requestHeaders } });
-    // Static HTML references build-hashed chunks. Reusing HTML across image rollouts can
-    // point the browser at chunks that only exist in the previous deployment.
-    response.headers.set('Cache-Control', documentCacheControl);
-    const currentCookie = request.cookies.get('FD_LOCALE')?.value;
-    if (currentCookie !== lang) {
-      response.cookies.set('FD_LOCALE', lang, {
-        path: '/',
-        maxAge: 60 * 60 * 24 * 365
+  const response = pathLocale
+    ? NextResponse.next({ request: { headers: requestHeaders } })
+    : NextResponse.rewrite(new URL(`${internalPath}${request.nextUrl.search}`, request.url), {
+        request: { headers: requestHeaders }
       });
-    }
-    return response;
-  }
-
-  // No language prefix — check cookie for user's language preference
-  const cookieLocale = request.cookies.get('FD_LOCALE')?.value;
-  if (cookieLocale && i18n.languages.includes(cookieLocale)) {
-    const newUrl = new URL(`/${cookieLocale}${pathname}`, request.url);
-    newUrl.search = request.nextUrl.search;
-    return NextResponse.redirect(newUrl);
-  }
-
-  // Fall back to fumadocs i18n (Accept-Language detection / redirect)
-  // @ts-expect-error - Fumadocs middleware signature mismatch
-  return i18nMiddleware(request);
+  // Static HTML references build-hashed chunks. Reusing HTML across image rollouts can
+  // point the browser at chunks that only exist in the previous deployment.
+  response.headers.set('Cache-Control', documentCacheControl);
+  return response;
 }
 
 export const config = {

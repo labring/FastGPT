@@ -147,6 +147,9 @@ jobs:
             FASTGPT_HOME_DOMAIN=${{ matrix.domain_config.domain }}
             DOC_TRACK_SRC=${{ secrets.DOC_TRACK_SRC }}
             DOC_TRACK_SITE_ID=${{ secrets.DOC_TRACK_CN }}
+            DOC_SITE_VARIANT=cn
+            BAIDU_VERIFICATION_ID=${{ secrets.DOC_BAIDU_VERIFICATION_ID }}
+            BAIDU_TONGJI_ID=${{ secrets.DOC_BAIDU_TONGJI_ID }}
 
       - name: Build and push Docker images (IO)
         if: matrix.domain_config.suffix == 'io'
@@ -164,6 +167,10 @@ jobs:
             FASTGPT_HOME_DOMAIN=${{ matrix.domain_config.domain }}
             DOC_TRACK_SRC=${{ secrets.DOC_TRACK_SRC }}
             DOC_TRACK_SITE_ID=${{ secrets.DOC_TRACK_IO }}
+            DOC_SITE_VARIANT=io
+            GOOGLE_VERIFICATION_ID=${{ secrets.DOC_GOOGLE_VERIFICATION_ID }}
+            BING_VERIFICATION_ID=${{ secrets.DOC_BING_VERIFICATION_ID }}
+            GOOGLE_ANALYTICS_ID=${{ secrets.DOC_GOOGLE_ANALYTICS_ID }}
 
   update-images:
     needs: [generate-timestamp, build-images]

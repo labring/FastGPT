@@ -1,5 +1,8 @@
 import type { I18nConfig } from 'fumadocs-core/i18n';
+import { getHostLocalePath } from './site';
 
+// NOTE: defaultLanguage here is the *content* default (un-suffixed .mdx files are zh-CN) and
+// must stay zh-CN. URL prefixing per domain is handled by lib/site.ts (getHostLocalePath).
 export const i18n: I18nConfig = {
   defaultLanguage: 'zh-CN',
   languages: ['zh-CN', 'en'],
@@ -46,29 +49,13 @@ export function t(key: string, locale?: string) {
 }
 
 /**
- * Get localized URL path based on i18n configuration
+ * Get localized URL path for the current domain.
+ * The domain's default locale (io: en, cn: zh-CN) is unprefixed; the other locale is prefixed.
  * @param path - The base path (e.g., '/guide')
  * @param lang - The language code
- * @returns Localized path with language prefix if needed
  */
 export function getLocalizedPath(path: string, lang: string): string {
-  // If hideLocale is 'never', always add language prefix
-  if (i18n.hideLocale === 'never') {
-    return `/${lang}${path}`;
-  }
-
-  // If hideLocale is 'always', never add language prefix
-  if (i18n.hideLocale === 'always') {
-    return path;
-  }
-
-  // If hideLocale is 'default-locale', only add prefix for non-default languages
-  if (i18n.hideLocale === 'default-locale') {
-    return lang === i18n.defaultLanguage ? path : `/${lang}${path}`;
-  }
-
-  // Fallback: no prefix
-  return path;
+  return getHostLocalePath(lang, path);
 }
 
 /**
