@@ -136,12 +136,14 @@ export async function rewriteAppWorkflowToDetail({
     id,
     versionId,
     source,
-    resourceType = 'tool'
+    resourceType = 'tool',
+    metadataLocale
   }: {
     id: string;
     versionId?: string;
     source?: string;
     resourceType?: 'agent' | 'tool';
+    metadataLocale?: localeType;
   }) => {
     const authError = await authSnapshotExternalTool({ id, resourceType });
     if (authError) {
@@ -155,7 +157,7 @@ export async function rewriteAppWorkflowToDetail({
       const preview = await getClientToolPreviewNode({
         appId: id,
         versionId,
-        lang,
+        lang: metadataLocale ?? 'en',
         source,
         teamId
       });
@@ -283,6 +285,9 @@ export async function rewriteAppWorkflowToDetail({
     const normalizedInput = normalizeFlowNodeInputType(
       {
         ...previewInput,
+        label: savedInput?.label ?? previewInput.label,
+        description: savedInput?.description ?? previewInput.description,
+        placeholder: savedInput?.placeholder ?? previewInput.placeholder,
         renderTypeList,
         selectedType: savedInput?.selectedType,
         defaultToAgentGenerated:
@@ -391,6 +396,7 @@ export async function rewriteAppWorkflowToDetail({
           id: toolId,
           versionId: node.version ?? '',
           resourceType: node.flowNodeType === FlowNodeTypeEnum.appModule ? 'agent' : 'tool',
+          metadataLocale: node.metadataLocale,
           source:
             node.source ??
             node.toolConfig?.systemTool?.source ??
@@ -402,13 +408,13 @@ export async function rewriteAppWorkflowToDetail({
           node.avatar = preview.avatar ?? node.avatar;
           node.isFolder = preview.isFolder;
           node.pluginData = {
-            name: preview.name,
+            name: node.pluginData?.name ?? preview.name,
             avatar: preview.avatar,
             status: preview.status,
             diagram: preview.diagram,
             userGuide: preview.userGuide,
             courseUrl: preview.courseUrl,
-            readmeUrl: preview.readmeUrl
+            readmeUrl: node.pluginData?.readmeUrl ?? preview.readmeUrl
           };
           node.versionLabel = preview.versionLabel;
           node.isLatestVersion = preview.isLatestVersion;
@@ -448,6 +454,8 @@ export async function rewriteAppWorkflowToDetail({
               const output = outputsMap.get(item.key);
               return {
                 ...item,
+                label: output?.label ?? item.label,
+                description: output?.description ?? item.description,
                 value: output?.value
               };
             });
@@ -483,7 +491,8 @@ export async function rewriteAppWorkflowToDetail({
                 id: tool.id,
                 versionId: tool.version,
                 source: tool.source,
-                resourceType: 'tool'
+                resourceType: 'tool',
+                metadataLocale: tool.metadataLocale
               });
               if (result.success) {
                 const data = result.data!;
@@ -522,9 +531,16 @@ export async function rewriteAppWorkflowToDetail({
                 });
 
                 formatToolInputSecrets({ inputs: mergedInputs });
+                // 旧工具用英文重建缺失文案，但不把回退语言写成历史 metadataLocale。
+                const { metadataLocale: previewLocale, ...toolData } = data;
+                void previewLocale;
 
                 return {
-                  ...data,
+                  ...toolData,
+                  ...(tool.metadataLocale !== undefined
+                    ? { metadataLocale: tool.metadataLocale }
+                    : {}),
+                  name: tool.name ?? data.name,
                   source: tool.source ?? data.source,
                   toolConfig:
                     (tool.toolConfig?.mcpToolSet && 'toolId' in tool.toolConfig.mcpToolSet) ||

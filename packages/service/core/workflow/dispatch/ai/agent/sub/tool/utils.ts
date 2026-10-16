@@ -53,7 +53,7 @@ import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type
 import { getAppVersionById } from '../../../../../../app/version/controller';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { parseI18nString, selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import { SystemToolRepo } from '../../../../../../app/tool/systemTool/systemTool.repo';
 import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
 import {
@@ -149,14 +149,17 @@ export const getAgentRuntimeTools = async ({
     nodeId,
     idSource,
     runtimeSource,
-    versionId
+    versionId,
+    metadataLocale
   }: {
     toolId: string;
     nodeId: string;
     idSource: AppToolSourceEnum.systemTool | AppToolSourceEnum.commercial;
     runtimeSource?: string;
     versionId?: string;
+    metadataLocale?: localeType;
   }): Promise<AgentRuntimeNode> => {
+    const uiLocale = metadataLocale ?? 'en';
     const systemToolRepo = SystemToolRepo.getInstance();
     const toolConfigSource = (() => {
       if (isDebugToolSource(runtimeSource)) return runtimeSource;
@@ -180,16 +183,20 @@ export const getAgentRuntimeTools = async ({
     const toolDetail = await systemToolRepo.getSystemToolDetail({
       pluginId: toolId,
       version: versionId || undefined,
-      lang,
+      lang: uiLocale,
       source: detailSource
     });
     const isWorkflowTool = !!toolDetail.associatedPluginId;
-    const secrets = jsonSchema2SecretInput({ jsonSchema: toolDetail.secretSchema });
+    const secrets = jsonSchema2SecretInput({ jsonSchema: toolDetail.secretSchema, lang: uiLocale });
     const schemaInputs = jsonSchema2NodeInput({
       jsonSchema: toolDetail.inputSchema,
-      schemaType: 'systemTool'
+      schemaType: 'systemTool',
+      lang: uiLocale
     });
-    const schemaOutputs = jsonSchema2NodeOutput({ jsonSchema: toolDetail.outputSchema });
+    const schemaOutputs = jsonSchema2NodeOutput({
+      jsonSchema: toolDetail.outputSchema,
+      lang: uiLocale
+    });
     // secrets 是运行时私密配置，只放进隐藏 input，不能暴露成模型可填写参数。
     const inputs = [
       ...(secrets?.length
@@ -214,8 +221,9 @@ export const getAgentRuntimeTools = async ({
           ? FlowNodeTypeEnum.toolSet
           : FlowNodeTypeEnum.tool,
       avatar: toolDetail.avatar,
-      name: toolDetail.name,
-      intro: toolDetail.intro,
+      name: selectPluginText(toolDetail.name, uiLocale),
+      intro: selectPluginText(toolDetail.intro, uiLocale),
+      metadataLocale: uiLocale,
       version: versionId ?? '',
       inputs,
       outputs: appendErrorOutput(schemaOutputs),
@@ -235,8 +243,8 @@ export const getAgentRuntimeTools = async ({
                       ...(toolConfigSource ? { source: toolConfigSource } : {}),
                       toolList:
                         toolDetail.children?.map((child) => ({
-                          description: child.description ?? '',
-                          name: child.name,
+                          description: selectPluginText(child.description, uiLocale),
+                          name: selectPluginText(child.name, uiLocale),
                           toolId: child.id
                         })) ?? []
                     }
@@ -433,6 +441,7 @@ export const getAgentRuntimeTools = async ({
     pluginId,
     toolId,
     versionId,
+    metadataLocale,
     app
   }: {
     idSource: AppToolSourceEnum | string;
@@ -440,6 +449,7 @@ export const getAgentRuntimeTools = async ({
     pluginId: string;
     toolId: string;
     versionId?: string;
+    metadataLocale?: localeType;
     app?: AppSchemaType;
   }): Promise<AgentRuntimeNode> => {
     // Agent 运行时只需要节点执行和 schema 信息，不能依赖面向前端展示的 preview controller。
@@ -449,7 +459,8 @@ export const getAgentRuntimeTools = async ({
         nodeId: pluginId,
         idSource,
         runtimeSource,
-        versionId
+        versionId,
+        metadataLocale
       });
     }
     if (!app) return Promise.reject(PluginErrEnum.unExist);
@@ -478,13 +489,13 @@ export const getAgentRuntimeTools = async ({
     jsonSchema?: JSONSchemaInputType;
     fixedInputBindings?: Record<string, unknown>;
   }) => {
-    const description = [name, intro].filter(Boolean).join(': ');
     // 仅数字开头的工具名需要补前缀，避免破坏 runtime 使用原始 tool id 反查工具。
     const formatToolId = /^\d/.test(toolId) ? `t${toolId}` : toolId;
 
     return compileToolRuntime({
       toolId: formatToolId,
-      name: description,
+      name,
+      description: intro,
       inputs,
       jsonSchema,
       fixedInputBindings
@@ -517,27 +528,37 @@ export const getAgentRuntimeTools = async ({
           tool.toolConfig?.systemTool?.source ??
           tool.toolConfig?.systemToolSet?.source;
         // 工具间整体并发；单个 App 类工具必须先鉴权拿到 app，才能读取对应版本节点。
-        const authApp = authAppId
-          ? await loadWorkflowAppResource({
+        const authAppPromise = authAppId
+          ? loadWorkflowAppResource({
               tmbId,
               appId: authAppId,
               type: 'tool',
               ...(idSource === AppToolSourceEnum.mcp || idSource === AppToolSourceEnum.http
                 ? { toolName: splitToolsetToolPluginId(pluginId).toolName }
                 : {})
+            }).then((app) => ({ app }))
+          : Promise.resolve(undefined);
+
+        const [authResult, toolNode] = await Promise.all([
+          authAppPromise,
+          authAppPromise.then((authResult) =>
+            getRuntimeToolNode({
+              idSource,
+              runtimeSource,
+              pluginId,
+              app: authResult?.app,
+              toolId: tool.id,
+              metadataLocale: tool.metadataLocale,
+              versionId:
+                authResult?.app?.type === AppTypeEnum.mcpToolSet ||
+                authResult?.app?.type === AppTypeEnum.httpToolSet
+                  ? undefined
+                  : tool.version
             })
-          : undefined;
-        const toolNode = await getRuntimeToolNode({
-          idSource,
-          runtimeSource,
-          pluginId,
-          app: authApp,
-          toolId: tool.id,
-          versionId:
-            authApp?.type === AppTypeEnum.mcpToolSet || authApp?.type === AppTypeEnum.httpToolSet
-              ? undefined
-              : tool.version
-        });
+          )
+        ]);
+        const authApp = authResult?.app;
+        toolNode.name = tool.name ?? toolNode.name;
         if (
           !validateToolConfiguration({
             toolTemplate: toolNode,
@@ -712,10 +733,10 @@ export const getAgentRuntimeTools = async ({
                 toolConfig: toolNode.toolConfig,
                 inputs: toolNode.inputs,
                 nodeId: pluginId,
+                metadataLocale: toolNode.metadataLocale,
                 version: toolNode.version
               },
               teamId: isTeamPluginSource(runtimeSource) ? await getCurrentTeamId() : undefined,
-              lang
             });
 
             return children.map((child) => buildSubApp(child));

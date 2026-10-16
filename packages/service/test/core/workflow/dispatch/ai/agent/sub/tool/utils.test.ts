@@ -1215,6 +1215,74 @@ describe('getAgentRuntimeTools schema loading', () => {
     );
   });
 
+  it('uses plugin intro instead of legacy toolDescription for model descriptions', async () => {
+    getSystemToolDetailMock.mockResolvedValue({
+      id: 'systemTool-search',
+      name: { en: 'Document search', 'zh-CN': '文档搜索' },
+      intro: { en: 'Search summary', 'zh-CN': '搜索简介' },
+      toolDescription: { en: 'Legacy tool description', 'zh-CN': '旧工具级描述' },
+      avatar: 'search.png',
+      isToolSet: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      tags: [],
+      author: '',
+      version: '1.0.0',
+      inputSchema: {
+        type: 'object',
+        required: ['query'],
+        properties: {
+          query: {
+            type: 'string',
+            isToolParam: true,
+            'x-i18n': { title: { en: 'Query', 'zh-CN': '查询' } }
+          }
+        }
+      }
+    });
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      lang: 'zh-CN',
+      tools: [{ id: 'systemTool-search', metadataLocale: 'en', config: {} }]
+    });
+
+    expect(tools[0].name).toBe('Document search');
+    expect(tools[0].inputs.find((input) => input.key === 'query')?.label).toBe('Query');
+    expect(tools[0].requestSchema.function.description).toBe('Document search: Search summary');
+    expect(tools[0].requestSchema.function.parameters?.properties?.query).toEqual({
+      type: 'string'
+    });
+
+    getSystemToolDetailMock.mockResolvedValue({
+      id: 'systemTool-empty-intro',
+      name: 'Search',
+      intro: '',
+      toolDescription: 'Legacy tool description',
+      avatar: 'search.png',
+      isToolSet: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      tags: [],
+      author: '',
+      version: '1.0.0',
+      inputSchema: { type: 'object', properties: {} }
+    });
+
+    const emptyIntroTools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'systemTool-empty-intro', config: {} }]
+    });
+
+    expect(emptyIntroTools[0].requestSchema.function.description).toBe('Search');
+  });
+
   it('uses saved modes before recommendations and recommends modes for new inputs', async () => {
     getSystemToolDetailMock.mockResolvedValue({
       id: 'systemTool-search',
@@ -1663,7 +1731,7 @@ describe('getAgentRuntimeTools schema loading', () => {
 
     expect(getSystemToolDetailMock).toHaveBeenCalledWith({
       pluginId: 'systemTool-gpjj5s',
-      lang: undefined,
+      lang: 'en',
       source: 'debug:tmbId:tmb-1'
     });
     expect(tools[0].toolConfig?.systemTool).toEqual({

@@ -119,6 +119,15 @@ Plugin statuses include:
 
 System-level plugins can configure system secrets for other users in the system to reuse when invoking the plugin. Secrets are hosted by the plugin service. Callers reference them through plugin configuration and never access plaintext secrets directly.
 
+### Localized Plugin Metadata
+
+FastGPT preserves localized plugin metadata and selects text at the UI presentation boundary, falling back from the active locale to Simplified Chinese and then English. Legacy string values remain supported for older plugins and cached responses.
+
+- Plugin names, introductions, toolkit child metadata, and `x-i18n` text in input, output, and secret schemas are used in the UI; ordinary schema text remains the fallback for older plugins.
+- A tool's model function description combines its name with the introduction resolved for the UI/metadata locale; FastGPT no longer selects a separate description by dispatch request language.
+- README selection prefers the active locale in `readmeUrls`, then Simplified Chinese, English, and the legacy `readmeUrl`.
+- Workflow nodes and Agent tool selections retain the metadata locale snapshot from when the plugin tool was added; changing the UI locale does not rewrite existing snapshots. Built-in Workflow templates remain unchanged.
+
 ## `.pkg` Plugin Package Protocol
 
 New system tools no longer depend on the legacy built-in source directory `modules/tool/packages`; they are delivered through unified `.pkg` files.

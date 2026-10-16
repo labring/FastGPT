@@ -1,4 +1,4 @@
-import { LangEnum, LocaleList, type localeType } from './type';
+import { LangEnum, LocaleList, type I18nStringType, type localeType } from './type';
 
 /**
  * 文案解析器接受的宽松结构。插件 SDK 仍可能返回缺少 zh-CN 的旧版文案，解析时统一回退英文；
@@ -64,6 +64,39 @@ export const parseI18nString = (str: I18nStringLikeType | string = '', lang = 'e
 
   // 最后回退到英文
   return str['en'] || '';
+};
+
+/**
+ * 选择插件元数据文案：优先当前支持的语言，再回退简体中文和英文；空字符串视为有效翻译。
+ */
+export const selectPluginText = (
+  value: string | Partial<I18nStringType> | undefined,
+  locale?: string
+): string => {
+  if (typeof value === 'string') return value;
+  if (!value) return '';
+
+  const selectedLocale = parseLocale(locale) ?? LangEnum.en;
+  return value[selectedLocale] ?? value[LangEnum.zh_CN] ?? value[LangEnum.en] ?? '';
+};
+
+/**
+ * 按当前语言选择插件 README 地址，并兼容旧版单地址字段。
+ */
+export const selectReadmeUrl = (
+  plugin: {
+    readmeUrls?: Partial<Record<localeType, string>>;
+    readmeUrl?: string;
+  },
+  locale?: string
+): string | undefined => {
+  const selectedLocale = parseLocale(locale) ?? LangEnum.en;
+  return (
+    plugin.readmeUrls?.[selectedLocale] ??
+    plugin.readmeUrls?.[LangEnum.zh_CN] ??
+    plugin.readmeUrls?.[LangEnum.en] ??
+    plugin.readmeUrl
+  );
 };
 
 export const formatI18nLocationToZhEn = (locale: localeType = 'zh-CN'): 'zh' | 'en' => {

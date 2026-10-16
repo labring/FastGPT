@@ -50,6 +50,7 @@ import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSele
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
+import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import { getAppVersionList } from '@/web/core/app/api/version';
 import { getTeamToolVersions } from '@/web/core/plugin/team/api';
 import type { SystemToolVersionType } from '@fastgpt/global/core/app/tool/systemTool/type/base';
@@ -265,6 +266,9 @@ const mergeConfiguredTool = ({
 
   return {
     ...mergedTool,
+    name: prevTool.name ?? mergedTool.name,
+    intro: prevTool.intro ?? mergedTool.intro,
+    metadataLocale: prevTool.metadataLocale ?? mergedTool.metadataLocale,
     configStatus: getToolConfigStatus({ tool: mergedTool }).status
   };
 };
@@ -761,7 +765,7 @@ const ToolVersionSelect = ({
   getValues: UseFormGetValues<Record<string, any>>;
   onChangeTool: (tool: SelectedToolItemType) => void;
 }) => {
-  const { t } = useSafeTranslation();
+  const { t, i18n } = useSafeTranslation();
   const toolSource = useMemo(
     () => (tool.pluginId ? splitCombineToolId(tool.pluginId).source : undefined),
     [tool.pluginId]
@@ -809,7 +813,8 @@ const ToolVersionSelect = ({
       const nextTool = await getClientToolPreviewNode({
         appId: tool.pluginId,
         versionId,
-        source: tool.source
+        source: tool.source,
+        lang: tool.metadataLocale ?? 'en'
       });
       const mergedTool = mergeConfiguredTool({
         nextTool,
@@ -832,11 +837,14 @@ const ToolVersionSelect = ({
         value: ''
       },
       ...versionList.map((item) => ({
-        label: item.versionDescription || item.version,
+        label:
+          item.versionDescription !== undefined
+            ? selectPluginText(item.versionDescription, i18n.language)
+            : item.version,
         value: item.version
       }))
     ],
-    [t, versionList]
+    [i18n.language, t, versionList]
   );
 
   const valueLabel = useMemo(

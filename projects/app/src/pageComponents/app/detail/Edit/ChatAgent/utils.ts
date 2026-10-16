@@ -323,6 +323,7 @@ export function agentForm2AppWorkflow(
                   avatar: tool.avatar,
                   version: tool.version,
                   source: tool.source,
+                  metadataLocale: tool.metadataLocale,
                   toolConfig: tool.toolConfig,
                   inputs: tool.inputs.filter(canInputBeAgentGenerated).map((input) => ({
                     key: input.key,

@@ -32,7 +32,6 @@ export const createAgentSubAppLookup = ({
         return {
           name: userToolNode.name || '',
           avatar: userToolNode.avatar || '',
-          toolDescription: userToolNode.toolDescription || userToolNode.name || ''
         };
       }
 
@@ -42,7 +41,6 @@ export const createAgentSubAppLookup = ({
       return {
         name: systemToolNode?.name || '',
         avatar: systemToolNode?.avatar || '',
-        toolDescription: systemToolNode?.toolDescription || systemToolNode?.name || ''
       };
     },
     getSubApp: (id: string) => {

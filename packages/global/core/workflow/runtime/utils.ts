@@ -287,6 +287,7 @@ export const storeNodes2RuntimeNodes = (
         outputs: node.outputs,
         pluginId: node.pluginId,
         version: node.version,
+        ...(node.metadataLocale !== undefined ? { metadataLocale: node.metadataLocale } : {}),
         toolConfig: node.toolConfig,
         catchError: node.catchError
       };

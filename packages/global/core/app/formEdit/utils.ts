@@ -424,6 +424,7 @@ export const serializeAgentTool = ({
   return {
     id: tool.pluginId ?? tool.id,
     version: tool.version,
+    ...(tool.metadataLocale !== undefined ? { metadataLocale: tool.metadataLocale } : {}),
     source: tool.source,
     toolConfig: tool.toolConfig,
     inputs: tool.inputs.filter(canInputBeAgentGenerated).map((input) => ({

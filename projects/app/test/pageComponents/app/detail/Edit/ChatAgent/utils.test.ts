@@ -203,11 +203,13 @@ describe('agentForm2AppWorkflow model reference', () => {
       {
         id: 'tool-node-1',
         pluginId: 'plugin-app-1',
+        flowNodeType: FlowNodeTypeEnum.tool,
         name: 'My Custom Tool',
         avatar: 'custom-avatar.svg',
         inputs: [],
+        metadataLocale: 'en',
         outputs: []
-      } as any
+      },
     ];
 
     const workflow = agentForm2AppWorkflow(form, (key: string) => key);
@@ -219,8 +221,14 @@ describe('agentForm2AppWorkflow model reference', () => {
       expect.objectContaining({
         id: 'plugin-app-1',
         name: 'My Custom Tool',
-        avatar: 'custom-avatar.svg'
+        avatar: 'custom-avatar.svg',
+        metadataLocale: 'en'
       })
     ]);
+    const restored = appWorkflow2AgentForm({
+      nodes: workflow.nodes,
+      chatConfig: workflow.chatConfig
+    });
+    expect(restored.selectedTools[0].metadataLocale).toBe('en');
   });
 });

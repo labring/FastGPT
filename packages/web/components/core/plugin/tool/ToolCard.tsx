@@ -4,8 +4,9 @@ import MyBox from '../../../common/MyBox';
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../../../common/Icon';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
+import type { PluginTextType } from '@fastgpt/global/core/plugin/type';
 import DebugToolTag from './DebugToolTag';
 import SystemToolTag from './SystemToolTag';
 import { normalizeToolCardTags } from './utils';
@@ -15,8 +16,8 @@ const marketplaceOfficialSource = 'official';
 
 export type ToolCardItemType = {
   id: string;
-  name: string;
-  description?: string;
+  name: PluginTextType;
+  description?: PluginTextType;
   icon?: string;
   author?: string;
   tags?: string[] | null;
@@ -139,7 +140,7 @@ const ToolCard = ({
     if (mode === 'marketplace') return null;
 
     const pluginStatusMap: Partial<
-      Record<PluginStatusType, { label: string; color: string; icon?: string } | null>
+      Record<PluginStatusType, { label: string; color: string } | null>
     > = {
       [PluginStatusEnum.Offline]: {
         label: t('common:error.tool_not_exist'),
@@ -243,7 +244,7 @@ const ToolCard = ({
             flex={'0 1 auto'}
             className={'textEllipsis'}
           >
-            {parseI18nString(item.name, i18n.language)}
+            {selectPluginText(item.name, i18n.language)}
           </Box>
           {shouldShowRegistrySourceBadge && item.registrySource === 'system' && <SystemToolTag />}
         </Flex>
@@ -303,7 +304,6 @@ const ToolCard = ({
             color={statusLabel.color}
             gap={1}
           >
-            {statusLabel.icon && <MyIcon name={statusLabel.icon as any} w={4} />}
             {statusLabel.label}
           </Flex>
         )}
@@ -320,7 +320,7 @@ const ToolCard = ({
         color={isMarketplaceVariant ? '#667085' : 'myGray.500'}
       >
         <Box className={'textEllipsis2'}>
-          {parseI18nString(item.description || '', i18n.language) ||
+          {selectPluginText(item.description, i18n.language) ||
             t('app:templateMarket.no_intro')}
         </Box>
       </Box>

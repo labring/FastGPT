@@ -258,6 +258,9 @@ export const InputConfigTypeSchema = z.object({
   description: z.string().optional().meta({
     description: '输入配置说明'
   }),
+  placeholder: z.string().optional().meta({
+    description: '输入配置占位提示'
+  }),
   required: BoolSchema.optional().meta({
     description: '该输入配置是否必填'
   }),
