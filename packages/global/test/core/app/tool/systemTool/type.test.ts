@@ -93,7 +93,28 @@ describe('SystemToolDetailSchema', () => {
     expect(result.outputSchema).toBeUndefined();
     expect(result.secretSchema).toBeUndefined();
   });
+
+  it('ignores legacy tool-level descriptions on parent and child DTOs', () => {
+    const result = SystemToolDetailSchema.parse({
+      ...createAdminToolDetail(),
+      toolDescription: 'Legacy parent description',
+      children: [
+        {
+          id: 'child',
+          name: 'Child tool',
+          status: PluginStatusEnum.Normal,
+          currentCost: 0,
+          systemKeyCost: 0,
+          toolDescription: 'Legacy child description'
+        }
+      ]
+    });
+
+    expect(result).not.toHaveProperty('toolDescription');
+    expect(result.children?.[0]).not.toHaveProperty('toolDescription');
+  });
 });
+
 describe('plugin metadata response schemas', () => {
   it('accepts legacy strings and preserves partial translations with localized readme URLs', () => {
     const detail = SystemToolDetailSchema.parse({
