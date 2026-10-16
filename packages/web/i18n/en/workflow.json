@@ -363,6 +363,7 @@
   "workflow_builder_apply_failed": "Application failed. Please try again.",
   "workflow_builder_canvas_changed": "The canvas changed while the workflow was being built. Please run the builder again.",
   "workflow_builder_applied": "{{name}} applied successfully",
+  "workflow_builder_version_name": "AI Version {{versionNo}}",
   "workflow_builder_version_apply": "Apply to canvas",
   "workflow_builder_version_applied": "Applied",
   "workflow_builder_version_expired": "Expired",
