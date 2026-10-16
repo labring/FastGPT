@@ -50,6 +50,7 @@ import { getLogger, LogCategories } from '../../../common/logger';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { authOutLinkLimit } from './auth';
+import { assertTeamFrequencyLimit, LimitTypeEnum } from '../../../common/api/frequencyLimit';
 import { assertCancellation } from '../../user/account/cancellation/guard';
 import type {
   OutlinkMessageHandleResult,
@@ -332,6 +333,11 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       outLinkUid: chatUserId,
       outLink: outLinkConfig as OutLinkSchemaType,
       question: userQuestion
+    });
+    // 外部渠道消息同样消费团队对话 QPM，避免绕过租户配额；放在去重之后，平台重试不重复计数
+    await assertTeamFrequencyLimit({
+      teamId: String(outLinkConfig.teamId),
+      type: LimitTypeEnum.chat
     });
 
     const workflowFileLimits = await getWorkflowFileLimits({
