@@ -365,7 +365,11 @@ export const formatVariableValByType = (val: any, valueType?: WorkflowIOValueTyp
   if (val === undefined || val === null) return;
   // Value type check, If valueType invalid, return undefined
   if (valueType.startsWith('array') && !Array.isArray(val)) return undefined;
-  if (valueType === WorkflowIOValueTypeEnum.boolean) return Boolean(val);
+  // 字符串 'false' 直接 Boolean() 会得到 true；与 valueTypeFormat 的布尔解析约定保持一致
+  if (valueType === WorkflowIOValueTypeEnum.boolean) {
+    if (typeof val === 'string') return val.toLowerCase() === 'true';
+    return Boolean(val);
+  }
   if (valueType === WorkflowIOValueTypeEnum.number) return Number(val);
   if (valueType === WorkflowIOValueTypeEnum.string) {
     return typeof val === 'object' ? JSON.stringify(val) : String(val);

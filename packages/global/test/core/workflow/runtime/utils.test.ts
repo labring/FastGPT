@@ -1567,6 +1567,10 @@ describe('formatVariableValByType', () => {
     expect(formatVariableValByType(1, WorkflowIOValueTypeEnum.boolean)).toBe(true);
     expect(formatVariableValByType(0, WorkflowIOValueTypeEnum.boolean)).toBe(false);
     expect(formatVariableValByType('', WorkflowIOValueTypeEnum.boolean)).toBe(false);
+    // Boolean('false') 为 true，字符串需按文本解析，与 valueTypeFormat 的布尔约定保持一致
+    expect(formatVariableValByType('false', WorkflowIOValueTypeEnum.boolean)).toBe(false);
+    expect(formatVariableValByType('FALSE', WorkflowIOValueTypeEnum.boolean)).toBe(false);
+    expect(formatVariableValByType('true', WorkflowIOValueTypeEnum.boolean)).toBe(true);
   });
 
   it('should convert to number', () => {

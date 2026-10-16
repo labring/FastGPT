@@ -125,6 +125,33 @@ describe('replaceEditorVariable', () => {
     expect(result).toBe('Result: outputValue');
   });
 
+  it('should render a string boolean output by its text value', () => {
+    const nodesMap: Record<string, RuntimeNodeItemType> = {
+      node1: {
+        nodeId: 'node1',
+        name: 'test',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        inputs: [],
+        outputs: [
+          {
+            id: 'out1',
+            key: 'output1',
+            type: FlowNodeOutputTypeEnum.static,
+            // HTTP 节点提取输出不做类型转换，响应里的 "false" 字符串会原样存入 boolean 类型的输出
+            value: 'false',
+            valueType: WorkflowIOValueTypeEnum.boolean
+          }
+        ]
+      }
+    };
+    const result = replaceEditorVariable({
+      text: 'Flag: {{$node1.out1$}}',
+      nodesMap,
+      variables: {}
+    });
+    expect(result).toBe('Flag: false');
+  });
+
   it('should replace VARIABLE_NODE_ID variables', () => {
     const result = replaceEditorVariable({
       text: `Value: {{$${VARIABLE_NODE_ID}.myVar$}}`,
