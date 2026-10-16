@@ -159,7 +159,6 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       reasoningText,
       toolCalls,
       rawToolCalls,
-      lastToolCalls,
       finish_reason: rawFinishReason,
       usage,
       error: responseError,
@@ -219,8 +218,8 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
 
       return i18nT('chat:LLM_model_response_empty');
     };
-    const isEmptyToolCallsFinish =
-      !error && rawFinishReason === 'tool_calls' && !lastToolCalls?.length;
+    // 空工具和空响应均依据多轮累计结果，避免忽略此前已生成的内容。
+    const isEmptyToolCallsFinish = !error && rawFinishReason === 'tool_calls' && !toolCalls?.length;
     const isNotResponse =
       !answerText &&
       !reasoningText &&
@@ -248,7 +247,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     }
 
     if (isEmptyToolCallsFinish) {
-      // 接口错误优先；仅对末轮 tool_calls 却没有有效工具的情况记录日志并兜底。
+      // 接口错误优先；仅对 tool_calls 结束且累计没有有效工具的情况记录日志并兜底。
       error = new Error('LLM tool call error: no valid tool calls matched the requested tools.');
       finish_reason = 'error';
       logger.error('LLM tool calls missing', {

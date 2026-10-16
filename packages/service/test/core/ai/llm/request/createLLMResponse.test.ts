@@ -1633,11 +1633,13 @@ describe('createLLMResponse', () => {
       const logError = vi
         .spyOn(getLogger(LogCategories.MODULE.AI.LLM), 'error')
         .mockImplementation(() => {});
-      const calls = ['search', 'unknown_tool'].map<ChatCompletionMessageToolCall>((name, i) => ({
-        id: `call_${i}`,
-        type: 'function',
-        function: { name, arguments: i === 0 ? '{"q":1}' : ' \t' }
-      }));
+      const calls = ['unknown_first', 'unknown_tool'].map<ChatCompletionMessageToolCall>(
+        (name, i) => ({
+          id: `call_${i}`,
+          type: 'function',
+          function: { name, arguments: i === 0 ? '{"q":1}' : ' \t' }
+        })
+      );
       const create = vi.fn();
       calls.forEach((call, i) => {
         create.mockResolvedValueOnce({
@@ -2174,6 +2176,85 @@ describe('createLLMResponse', () => {
   });
 
   describe('Message continuation (length limit)', () => {
+    it.each(
+      (['text', 'reasoning', 'tool'] as const).flatMap((previousOutput) =>
+        (['stop', 'tool_calls'] as const).map((finishReason) => ({
+          previousOutput,
+          finishReason
+        }))
+      )
+    )(
+      'should consider accumulated $previousOutput when the last round is empty with $finishReason',
+      async ({ previousOutput, finishReason }) => {
+        const logError = vi
+          .spyOn(getLogger(LogCategories.MODULE.AI.LLM), 'error')
+          .mockImplementation(() => {});
+        const previousToolCalls: ChatCompletionMessageToolCall[] = [
+          { id: 'call_1', type: 'function', function: { name: 'search', arguments: '{"q":1}' } }
+        ];
+        const create = vi.fn().mockResolvedValueOnce({
+          choices: [
+            {
+              message: {
+                role: 'assistant',
+                content: previousOutput === 'text' ? 'prior answer' : null,
+                reasoning_content: previousOutput === 'reasoning' ? 'prior thought' : undefined,
+                tool_calls: previousOutput === 'tool' ? previousToolCalls : undefined
+              },
+              finish_reason: 'length'
+            }
+          ],
+          usage: { prompt_tokens: 10, completion_tokens: 2, total_tokens: 12 }
+        });
+        create.mockResolvedValueOnce({
+          choices: [
+            {
+              message: { role: 'assistant', content: null, tool_calls: [] },
+              finish_reason: finishReason
+            }
+          ],
+          usage: { prompt_tokens: 10, completion_tokens: 2, total_tokens: 12 }
+        });
+        mockGetAIApi.mockReturnValue(createMockAIApiResult({ chat: { completions: { create } } }));
+
+        const result = await createLLMResponse({
+          throwError: false,
+          maxContinuations: 2,
+          body: {
+            model: createMockModelData(),
+            messages: [{ role: 'user', content: 'Search.' }],
+            tools: [
+              { type: 'function', function: { name: 'search', parameters: { type: 'object' } } }
+            ],
+            stream: false
+          }
+        });
+
+        expect(create).toHaveBeenCalledTimes(2);
+        expect(result.answerText).toBe(previousOutput === 'text' ? 'prior answer' : '');
+        expect(result.reasoningText).toBe(previousOutput === 'reasoning' ? 'prior thought' : '');
+        expect(result.toolCalls ?? []).toEqual(previousOutput === 'tool' ? previousToolCalls : []);
+        expect(result.responseEmptyTip).toBeUndefined();
+        expect(result.usage).toMatchObject({ inputTokens: 20, outputTokens: 4 });
+
+        if (finishReason === 'tool_calls' && previousOutput !== 'tool') {
+          expect(result.finish_reason).toBe('error');
+          expect(result.error).toBeInstanceOf(Error);
+          expect(result.error.message).toBe(
+            'LLM tool call error: no valid tool calls matched the requested tools.'
+          );
+          expect(logError).toHaveBeenCalledExactlyOnceWith('LLM tool calls missing', {
+            requestBody: expect.any(Object),
+            message: result.error.message
+          });
+        } else {
+          expect(result.finish_reason).toBe(finishReason);
+          expect(result.error).toBeUndefined();
+          expect(logError).not.toHaveBeenCalled();
+        }
+      }
+    );
+
     it('should continue when finish_reason is length', async () => {
       const mockResponse1 = {
         choices: [

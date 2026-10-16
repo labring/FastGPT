@@ -90,7 +90,7 @@ describe('useLLMResponseAccumulator', () => {
     ]);
   });
 
-  it('should retain raw tools and distinguish the last round from earlier valid tools', () => {
+  it('should preserve raw and normalized tools across rounds', () => {
     const accumulator = useLLMResponseAccumulator();
     const rawToolCalls = [
       createToolCall('call_1', 'functions.search'),
@@ -113,7 +113,6 @@ describe('useLLMResponseAccumulator', () => {
 
     const response = accumulator.getResponse();
     expect(response.finish_reason).toBe('tool_calls');
-    expect(response.lastToolCalls).toEqual([]);
     expect(response.toolCalls).toEqual([createToolCall('call_1', 'search', '{}')]);
     expect(response.rawToolCalls).toEqual(rawToolCalls);
     expect(rawToolCalls.map((call) => call.function.arguments)).toEqual(['', ' \t']);
