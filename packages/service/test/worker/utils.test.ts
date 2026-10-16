@@ -18,7 +18,8 @@ vi.mock('@fastgpt/service/env', () => ({
   serviceEnv: mockEnv
 }));
 
-const { getSafeEnv, WorkerPool, WorkerNameEnum } = await import('@fastgpt/service/worker/utils');
+const { getSafeEnv, WorkerPool, WorkerNameEnum, isExpectedWorkerTaskError } =
+  await import('@fastgpt/service/worker/utils');
 
 const workerScript = `
 const { parentPort } = require('worker_threads');
@@ -195,6 +196,55 @@ describe('worker/utils WorkerPool', () => {
       'Worker task failed',
       expect.objectContaining({ eventName: 'worker.task.failed', error: uploadError })
     );
+  });
+
+  it('loadFile handler 遇外部 DNS 错误时使用 warn 记录并不掩盖任务失败', async () => {
+    const logger = createLogger();
+    const pool = createPool<{ payload: string }, { key: string; src: string }>({
+      name: WorkerNameEnum.readFile,
+      maxReservedThreads: 1,
+      logger
+    });
+    const dnsError = Object.assign(new Error('getaddrinfo ENOTFOUND www.lntour.gov.cn'), {
+      code: 'ENOTFOUND'
+    });
+    const loadFile = vi.fn().mockRejectedValue(dnsError);
+
+    await expect(pool.run({ loadFile: true } as any, undefined, { loadFile })).rejects.toThrow(
+      'getaddrinfo ENOTFOUND www.lntour.gov.cn'
+    );
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Worker task failed',
+      expect.objectContaining({ eventName: 'worker.task.failed' })
+    );
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it('loadFile handler 遇未配置的占位符域名保留 error 记录', async () => {
+    const logger = createLogger();
+    const pool = createPool<{ payload: string }, { key: string; src: string }>({
+      name: WorkerNameEnum.readFile,
+      maxReservedThreads: 1,
+      logger
+    });
+    const placeholderError = Object.assign(
+      new Error('getaddrinfo ENOTFOUND seedream.example.com'),
+      {
+        code: 'ENOTFOUND'
+      }
+    );
+    const loadFile = vi.fn().mockRejectedValue(placeholderError);
+
+    await expect(pool.run({ loadFile: true } as any, undefined, { loadFile })).rejects.toThrow(
+      'getaddrinfo ENOTFOUND seedream.example.com'
+    );
+
+    expect(logger.error).toHaveBeenCalledWith(
+      'Worker task failed',
+      expect.objectContaining({ eventName: 'worker.task.failed' })
+    );
+    expect(logger.warn).not.toHaveBeenCalledWith('Worker task failed', expect.anything());
   });
 
   it('预估资源超过单任务安全上限时立即拒绝且不创建 worker', async () => {
@@ -722,5 +772,48 @@ describe('worker/utils WorkerPool', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('worker/utils isExpectedWorkerTaskError', () => {
+  it('正确识别网络和 DNS 故障为预期错误', () => {
+    expect(isExpectedWorkerTaskError({ code: 'ENOTFOUND' })).toBe(true);
+    expect(isExpectedWorkerTaskError({ code: 'ECONNREFUSED' })).toBe(true);
+    expect(isExpectedWorkerTaskError({ code: 'ETIMEDOUT' })).toBe(true);
+    expect(isExpectedWorkerTaskError({ code: 'ECONNRESET' })).toBe(true);
+    expect(isExpectedWorkerTaskError({ code: 'EAI_AGAIN' })).toBe(true);
+    expect(isExpectedWorkerTaskError({ code: 'EHOSTUNREACH' })).toBe(true);
+    expect(isExpectedWorkerTaskError(new Error('getaddrinfo ENOTFOUND www.lntour.gov.cn'))).toBe(
+      true
+    );
+    expect(isExpectedWorkerTaskError(new Error('connect ECONNREFUSED 127.0.0.1:80'))).toBe(true);
+    expect(isExpectedWorkerTaskError(new Error('file exceeded maximum allowed size'))).toBe(true);
+    expect(
+      isExpectedWorkerTaskError(new Error('fetch failed', { cause: { code: 'ENOTFOUND' } }))
+    ).toBe(true);
+    // notexample.com 是正常的外部域名，不应被占位符规则误杀
+    expect(isExpectedWorkerTaskError(new Error('getaddrinfo ENOTFOUND notexample.com'))).toBe(true);
+  });
+
+  it('占位符域名 example.com 不降级，保留为非预期错误', () => {
+    expect(
+      isExpectedWorkerTaskError(
+        Object.assign(new Error('getaddrinfo ENOTFOUND seedream.example.com'), {
+          code: 'ENOTFOUND'
+        })
+      )
+    ).toBe(false);
+    expect(
+      isExpectedWorkerTaskError(
+        Object.assign(new Error('getaddrinfo ENOTFOUND api.example.com'), {
+          code: 'ENOTFOUND'
+        })
+      )
+    ).toBe(false);
+  });
+
+  it('普通代码异常或内部崩溃不降级', () => {
+    expect(isExpectedWorkerTaskError(new Error('Cannot read properties of undefined'))).toBe(false);
+    expect(isExpectedWorkerTaskError(new Error('upload failed'))).toBe(false);
   });
 });
