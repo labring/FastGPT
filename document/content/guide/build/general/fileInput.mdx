@@ -11,11 +11,11 @@ description: FastGPT 文件输入功能介绍
 
 可以找到左侧文件上传的配置项，点击其右侧的 `开启` / `关闭` 按键，即可打开配置弹窗。
 
-![打开文件上传](/imgs/fileinpu-1.png)
+![打开文件上传](/imgs/current/file-upload-settings.png)
 
 随后，你的调试对话框中，就会出现一个文件选择的 icon，可以点击文件选择 icon，选择你需要上传的文件。
 
-![打开文件上传](/imgs/fileinpu-2.png)
+![打开文件上传](/imgs/current/file-input-attachment.png)
 
 **工作模式**
 
@@ -25,17 +25,13 @@ description: FastGPT 文件输入功能介绍
 
 工作流中，可以在系统配置中，找到 `文件输入` 配置项，点击其右侧的 `开启` / `关闭` 按键，即可打开配置弹窗。
 
-![打开文件上传](/imgs/fileinpu-4.jpg)
+![打开文件上传](/imgs/current/file-upload-settings.png)
 
-在工作流中，使用文件的方式很多，最简单的就是类似下图中，直接通过工具调用接入文档解析，实现和简易模式一样的效果。
+将 **流程开始 → 文件链接** 连接到 **文档解析 → 文档链接**，再将解析结果传给 AI 对话、内容提取或 HTTP 请求等节点。上传 TXT 文件运行后，检查解析输出是否包含文件正文。
 
-|                        |                        |
-| ---------------------- | ---------------------- |
-| ![工作流中使用：界面示例](/imgs/image-5.png) | ![工作流中使用：界面示例](/imgs/image-6.png) |
+![文档解析节点与运行结果](/imgs/current/document-parse-result.png)
 
-当然，你也可以在工作流中，对文档进行内容提取、内容分析等，然后将分析的结果传递给 HTTP 或者其他模块，从而实现文件处理的 SOP。
-
-![文档解析](/imgs/image-7.png)
+![文档解析输入与输出](/imgs/current/document-parse-node.png)
 
 ## 文档解析工作原理
 

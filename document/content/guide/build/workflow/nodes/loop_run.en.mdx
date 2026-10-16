@@ -7,7 +7,7 @@ description: FastGPT Loop node overview and usage (applicable to version 4.15.0 
 
 The **Loop Node** allows you to repeatedly execute a sub-workflow. Whether you want to process a batch of data item by item (Array Loop), or iteratively optimize a task until it meets a specific standard (Conditional Loop), the Loop Node makes it easy.
 
-![Loop Node](/imgs/fastgpt-loop-run-node.png)
+![Loop Node](/imgs/current/node-loop.png)
 
 Ideal for scenarios such as:
 
@@ -85,31 +85,24 @@ For self-hosted developers or operators, you can adjust the execution limits of 
 
 ## Example Scenario: AI Copy Refinement Until Approval
 
-This example demonstrates how to use the **Conditional Loop** mode to allow the AI to optimize copy over multiple rounds, evaluating it through scoring logic at each iteration until the score passes a set threshold. This represents a key advantage of the Loop node—correcting drafts based on feedback from previous runs.
+Validate the data flow with an array loop before extending it to AI rewriting. The verified configuration below uses a global array `captureItems = ["alpha", "beta"]`, replies with each item, and records the final item.
 
-![AI Copy Refinement Scenario Example](/imgs/fastgpt-loop-run-example.png)
+![Array loop replying to each item and returning lastItem](/imgs/current/loop-array-example.png)
 
 #### Implementation Steps
 
-1. **Set Loop Type**
-   - Loop Type: `Conditional Loop`.
-
-2. **Configure Sub-Workflow inside the Loop Body**
-   - **【AI Chat】(Copy Refinement)**: Receives the draft inputs.
-   - **【AI Chat#2】(Evaluation)**: Grades the refined draft, outputting a numeric score.
-   - **【Condition】**:
-     - If the score meets the requirements: Route to the **【Assigned Reply】** node (to output the final copy to the user), then connect it to the **【Loop Break】** node to exit the loop.
-     - If the score does not meet the requirements: Do not trigger any subsequent connections. The loop will automatically start the next iteration using the draft polished in this round.
-
-3. **Configure Outputs**
-   - Add a custom output `final_text` in the **Outputs** panel of the Loop Node, referencing the reply of the 【AI Chat (Copy Refinement)】 node inside.
-   - Once the loop exits, downstream nodes can reference this `final_text` variable to receive the final polished copy.
+1. Add an array variable `captureItems` in system configuration and enter `["alpha", "beta"]`.
+2. Select **Array Loop** and reference `captureItems` as the input array.
+3. Connect **Loop Start** to **Specified Reply** inside the loop. Reference the current item as the reply content.
+4. Add a custom output `lastItem` and reference the current item from Loop Start. Its final value is `beta`.
+5. To extend this to AI rewriting, select **Conditional Loop** and connect rewriting, scoring, and condition nodes inside the body. The passing branch outputs the text and reaches **Loop Break**; the other branch continues the next iteration. Store text and scores needed across iterations in variables.
 
 #### Execution Flow & Details
 
-After the execution completes, you can expand and inspect the detailed execution path of each iteration in the "Complete Response" panel:
+This screenshot records two successful iterations of the array validation example. Expand the loop in **Full Response** to inspect the iteration count, history, and per-iteration custom outputs:
 
-![Execution Flow Details](/imgs/fastgpt-loop-run-detail.png)
+![Two array-loop iterations and the final output](/imgs/current/loop-array-detail.png)
 
-1. **First Optimization Round**: Runs `Loop Start` ➡️ `AI Chat` ➡️ `AI Chat#2` ➡️ `Condition`. Since the score did not meet the requirements, the break node was not triggered, and the system automatically proceeded to the next iteration.
-2. **Second Optimization Round**: Continues running `AI Chat` ➡️ `AI Chat#2` ➡️ `Condition`. This time the score meets the requirements, routing to the `Assigned Reply` and triggering the `Loop Break` node. The entire loop exits safely.
+1. The first current item is `alpha`; Specified Reply outputs `alpha`.
+2. The second current item is `beta`; Specified Reply outputs `beta`.
+3. The loop finishes with `lastItem = "beta"`. AI scoring in a conditional loop depends on the model and prompt; test its passing and termination paths separately.

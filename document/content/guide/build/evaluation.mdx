@@ -11,13 +11,13 @@ FastGPT v4.11.0 版本开始支持应用批量评测功能。通过传入多组�
 
 ### 进入评测页面
 
-![创建应用评测](/imgs/evaluation1.png)
+![创建应用评测](/imgs/current/evaluation-entry.png)
 
-进入工作台下的应用评测目录，点击右上角的"创建任务"按钮。
+进入工作台下的 **Agent 评测（Beta）**，点击右上角的"创建任务"按钮。
 
 ### 填写评测信息
 
-![创建应用评测](/imgs/evaluation2.png)
+![创建应用评测](/imgs/current/evaluation-create.png)
 
 在创建任务页面中，需要填写以下信息：
 
@@ -27,7 +27,7 @@ FastGPT v4.11.0 版本开始支持应用批量评测功能。通过传入多组�
 
 ### 准备评测数据
 
-![创建应用评测](/imgs/evaluation2.png)
+![创建应用评测](/imgs/current/evaluation-create.png)
 
 选择评测应用后，系统会弹出下载CSV模板的按钮。模板包含以下字段：
 
@@ -47,7 +47,7 @@ FastGPT v4.11.0 版本开始支持应用批量评测功能。通过传入多组�
 
 ### 评测列表
 
-![查看应用评测](/imgs/evaluation4.png)
+![查看应用评测](/imgs/current/evaluation-list.png)
 
 评测列表页面显示所有评测任务，包含以下关键信息：
 
@@ -61,7 +61,9 @@ FastGPT v4.11.0 版本开始支持应用批量评测功能。通过传入多组�
 
 ### 评测详情
 
-![查看应用评测](/imgs/evaluation5.png)
+![查看应用评测](/imgs/current/evaluation-error-detail.png)
+
+上图为一次模型返回 429 限流的异常示例。异常记录会显示错误原因；修复模型限流或额度问题后重试，再比较有效评分。
 
 点击"查看详情"可进入评测任务的详情页面：
 

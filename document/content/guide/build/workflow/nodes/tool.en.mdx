@@ -3,7 +3,7 @@ title: Tool Calling & Termination
 description: FastGPT Tool Calling node overview
 ---
 
-![Tool Calling & Termination — interface example](/imgs/flow-tool1.png)
+![Tool Calling & Termination — interface example](/imgs/current/node-tool-call.png)
 
 ### What is a Tool
 
@@ -38,23 +38,19 @@ Models that support `function calling` can invoke multiple tools in a single tur
 
 ### How to Use
 
-|                           |                           |
-| ------------------------- | ------------------------- |
-| ![How to Use — interface example](/imgs/flow-tool3.png) | ![How to Use — interface example](/imgs/flow-tool4.png) |
+Connect the tool-call node's bottom diamond to the top diamond of a tool. The example below connects **Custom Tool Variables** as a tool, then passes the generated `service` value to **Specified Reply** and **Tool Call Stop**.
 
-In the advanced workflow editor, drag from the tool calling connection point. Eligible tools display a diamond icon at the top, which you can connect to the diamond at the bottom of the tool calling node.
+![Tool connection and termination workflow](/imgs/current/tool-connections.png)
 
-Connected tools automatically separate tool inputs from regular inputs. You can also edit the `description` to fine-tune when the tool gets called.
-
-Debugging tool calling is still more art than science, so start with a small number of tools, optimize them, then gradually add more.
+Give the tool a clear description and define required arguments. This example asks the model to choose `support` or `sales`. Inspect the generated argument during debugging before adding more tools.
 
 #### Use Cases
 
-By default, after the tool calling node invokes a tool, it returns the tool's output to the AI for summarization. If you don't need the AI to summarize, place this node at the end of the tool's workflow branch.
+A tool-call node normally returns tool results to the model for a final answer. Connect **Tool Call Stop** at the end of a tool branch to finish the call after that branch runs.
 
-In the example below, after the Dataset search runs, results are sent to an HTTP request. The search results are not returned to the tool calling node for AI summarization.
+In this verified example, the request `Please call support.` produces `support` through Specified Reply and then reaches Tool Call Stop:
 
-![Use Cases — interface example](/imgs/flow-tool5.png)
+![Reply followed by Tool Call Stop](/imgs/current/tool-connections.png)
 
 ### Additional Nodes
 
@@ -64,13 +60,13 @@ When you use the tool calling node, a Tool Calling Termination node and a Custom
 
 Tool Calling Termination ends the current call cycle. Place it after a tool node. When the workflow reaches this node, it forcibly ends the current tool call -- no further tools are invoked, and the AI won't generate a summary based on tool results.
 
-![Tool Calling Termination — interface example](/imgs/flow-tool6.png)
+![Tool Calling Termination — interface example](/imgs/current/tool-stop.png)
 
 ### Custom Tool Variables
 
 Custom variables extend tool input capabilities. For nodes that aren't recognized as tool parameters or can't be directly tool-called, you can define custom tool variables with appropriate parameter descriptions. The tool calling node will then invoke this node and its downstream workflow accordingly.
 
-![Custom Tool Variables — interface example](/imgs/flow-tool7.png)
+![Custom Tool Variables — interface example](/imgs/current/tool-variables.png)
 
 ## Inputs, outputs, and boundaries
 

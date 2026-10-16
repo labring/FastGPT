@@ -42,7 +42,7 @@ FastGPT 采用了 RAG 中的 Embedding 方案构建知识库，要使用好 Fast
 
 在 `PostgreSQL` 的表中，设置一个 `vector` 字段用于存储向量。在检索时，会先召回向量，再根据向量的 ID，去 `MongoDB` 中寻找原数据内容，如果对应了同一组原数据，则进行合并，向量得分取最高得分。
 
-![向量存储结构：界面示例](/imgs/datasetSetting1.png)
+![向量存储结构：界面示例](/imgs/current/dataset-multiple-indexes.png)
 
 ### 多向量的目的和使用方式
 
@@ -113,7 +113,7 @@ FastGPT 会把不同召回路径的结果进行融合，而不是简单采用某
 
 |                                       |                                       |                                       |
 | ------------------------------------- | ------------------------------------- | ------------------------------------- |
-| ![搜索参数：界面示例](/imgs/dataset_search_params1.png) | ![搜索参数：界面示例](/imgs/dataset_search_params2.png) | ![搜索参数：界面示例](/imgs/dataset_search_params3.png) |
+| ![搜索参数：界面示例](/imgs/current/dataset-search-mode.png) | ![搜索参数：界面示例](/imgs/current/dataset-search-filter.png) | ![搜索参数：界面示例](/imgs/current/dataset-question-optimization.png) |
 
 ### 搜索模式
 

@@ -42,7 +42,7 @@ In `MongoDB`'s `dataset_datas` collection, vector source data is stored along wi
 
 In `PostgreSQL`, a `vector` field stores the vectors. During search, vectors are recalled first, then their IDs are used to look up the original data in `MongoDB`. If multiple vectors map to the same source data, they are merged and the highest vector score is used.
 
-![Vector Storage Structure — interface example](/imgs/datasetSetting1.png)
+![Vector Storage Structure — interface example](/imgs/current/dataset-multiple-indexes.png)
 
 ### Purpose and Usage of Multi-Vector Mapping
 
@@ -113,7 +113,7 @@ This means the final cited content may not be strictly sorted by a single vector
 
 |                                       |                                       |                                       |
 | ------------------------------------- | ------------------------------------- | ------------------------------------- |
-| ![Search Parameters — interface example](/imgs/dataset_search_params1.png) | ![Search Parameters — interface example](/imgs/dataset_search_params2.png) | ![Search Parameters — interface example](/imgs/dataset_search_params3.png) |
+| ![Search Parameters — interface example](/imgs/current/dataset-search-mode.png) | ![Search Parameters — interface example](/imgs/current/dataset-search-filter.png) | ![Search Parameters — interface example](/imgs/current/dataset-question-optimization.png) |
 
 ### Search Modes
 

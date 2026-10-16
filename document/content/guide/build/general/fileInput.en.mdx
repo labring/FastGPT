@@ -11,11 +11,11 @@ Chat Agent (formerly Basic Mode) reads ordinary documents through its document-p
 
 Find the file upload option on the left panel and click the `Enable`/`Disable` toggle to open the configuration dialog.
 
-![Enable file upload](/imgs/fileinpu-1.png)
+![Enable file upload](/imgs/current/file-upload-settings.png)
 
 Once enabled, a file selection icon appears in the chat input area. Click it to select files for upload.
 
-![Enable file upload](/imgs/fileinpu-2.png)
+![Enable file upload](/imgs/current/file-input-attachment.png)
 
 **Behavior**
 
@@ -25,17 +25,13 @@ Starting from version 4.8.13, Basic Mode forces file parsing and injects the con
 
 In Workflows, find the `File Input` option in the system configuration panel and click the `Enable`/`Disable` toggle to open the configuration dialog.
 
-![Enable file upload](/imgs/fileinpu-4.jpg)
+![Enable file upload](/imgs/current/file-upload-settings.png)
 
-There are many ways to use files in Workflows. The simplest approach, shown below, connects document parsing via tool calling — achieving the same result as Basic Mode.
+Connect **Start → File URLs** to **Document Parse → Document URLs**, then pass the parsed text to AI Chat, content extraction, or HTTP nodes. Upload a TXT file, run the workflow, and check that the parsed output contains its content.
 
-|                        |                        |
-| ---------------------- | ---------------------- |
-| ![Using in Workflows — interface example](/imgs/image-5.png) | ![Using in Workflows — interface example](/imgs/image-6.png) |
+![Document parsing workflow and result](/imgs/current/document-parse-result.png)
 
-You can also use Workflows to extract or analyze document content, then pass the results to HTTP requests or other nodes to build a document processing pipeline.
-
-![Document parsing](/imgs/image-7.png)
+![Document parsing inputs and outputs](/imgs/current/document-parse-node.png)
 
 ## How Document Parsing Works
 
