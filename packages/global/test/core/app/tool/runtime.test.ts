@@ -421,6 +421,8 @@ describe('JSON Schema runtime validation', () => {
 
     expect(result).toEqual({ success: true, errors: [] });
 
+    // 显式 additionalProperties: false 时剔除未声明字段，而不是让整次调用失败
+    const paramsWithUnknown: Record<string, unknown> = { query: 'fastgpt', unknown: true };
     expect(
       validateToolRuntimeParams({
         jsonSchema: {
@@ -428,9 +430,84 @@ describe('JSON Schema runtime validation', () => {
           properties: { query: propertySchema },
           additionalProperties: false
         },
-        params: { query: 'fastgpt', unknown: true }
-      }).success
-    ).toBe(false);
+        params: paramsWithUnknown
+      })
+    ).toEqual({ success: true, errors: [] });
+    // 就地剔除，调用方持有的同一对象即为合法入参
+    expect(paramsWithUnknown).toEqual({ query: 'fastgpt' });
+  });
+
+  it('keeps undeclared properties when additionalProperties is not false', () => {
+    const params: Record<string, unknown> = { query: 'fastgpt', unknown: true };
+
+    expect(
+      validateToolRuntimeParams({
+        jsonSchema: {
+          type: 'object',
+          properties: { query: propertySchema }
+        },
+        params
+      })
+    ).toEqual({ success: true, errors: [] });
+    expect(params).toEqual({ query: 'fastgpt', unknown: true });
+  });
+
+  it('does not strip fields for root union schemas', () => {
+    // 联合 schema 不做剔除：曾出现参数被清空成 {} 却仍判定通过、工具收到空参数的情况
+    const params: Record<string, unknown> = { query: 'fastgpt', unknown: true };
+
+    const result = validateToolRuntimeParams({
+      jsonSchema: {
+        oneOf: [
+          {
+            type: 'object',
+            properties: { query: { type: 'string', minLength: 3 } },
+            required: ['query'],
+            additionalProperties: false
+          }
+        ]
+      },
+      params
+    });
+
+    // 保留字段并如实报错，而不是静默清空
+    expect(params).toEqual({ query: 'fastgpt', unknown: true });
+    expect(result.success).toBe(false);
+    expect(result.errors.join(' ')).toContain('must NOT have additional properties');
+  });
+
+  it('keeps patternProperties fields alongside properties', () => {
+    // patternProperties 命中的键也是合法参数，不能按 properties 白名单剔除（否则静默丢参）
+    const params: Record<string, unknown> = { a: 1, x_foo: 2 };
+
+    const result = validateToolRuntimeParams({
+      jsonSchema: {
+        type: 'object',
+        properties: { a: { type: 'number' } },
+        patternProperties: { '^x_': { type: 'number' } },
+        additionalProperties: false
+      },
+      params
+    });
+
+    expect(result).toEqual({ success: true, errors: [] });
+    expect(params).toEqual({ a: 1, x_foo: 2 });
+  });
+
+  it('strips undeclared fields for nullable object root schemas', () => {
+    const params: Record<string, unknown> = { query: 'fastgpt', unknown: true };
+
+    expect(
+      validateToolRuntimeParams({
+        jsonSchema: {
+          type: ['object', 'null'],
+          properties: { query: { type: 'string' } },
+          additionalProperties: false
+        },
+        params
+      })
+    ).toEqual({ success: true, errors: [] });
+    expect(params).toEqual({ query: 'fastgpt' });
   });
 
   it('validates root union schemas', () => {
