@@ -29,6 +29,7 @@ The existing `20260916_backfill_app_resource_snapshots` task to backfill App res
 3. Added support for dedicated AI models and model providers for team members, improving multi-tenant and member-level model resource isolation and authorization with deep AI Proxy integration.
 4. Added configurable system-wide and per-team limits for active Agent sandbox instances.
 5. App chats now cache input drafts separately for each member, App, and chat. Text and successfully uploaded attachment references can be restored after switching chats or refreshing the page. Drafts stay in the current browser tab, with up to 10 drafts retained for one hour after the last edit. A draft is cleared once its message is accepted for sending.
+6. MCP App Tool calls and external channel messages now share the team's chat QPM (requests per minute) limit. Requests over the limit receive quota details and a retry wait time. External channel messages are counted after deduplication so platform retries do not consume the quota again.
 
 ## ⚙️ Optimizations
 
@@ -43,6 +44,10 @@ The existing `20260916_backfill_app_resource_snapshots` task to backfill App res
 9. Unified shared pagination validation. Model provider call logs now support up to 500 entries per page.
 10. Important notifications older than 30 days no longer trigger priority alerts.
 11. Unified fallback rules for default and auxiliary models. Fallbacks use only system models the current member is authorized to use. Permission errors for explicitly selected models do not trigger a fallback, preventing unintended use of private team models or authorization bypasses.
+12. Team chat rate limiting now logs and skips checks when configuration lookup or Redis operations fail, preventing rate limit service outages from blocking chats.
+13. Failed MCP Tool calls now include error details in the response's text content so clients can display specific causes, such as rate limits.
+14. Model request logs and records now consistently remove base64 content, including images and audio, while preserving error names, messages, and causes. Request records visible to team members omit server stack traces. Empty-response messages for personal OpenAI API keys no longer include the full request payload.
+15. Fixed native model Tool call streams mixing arguments across parallel calls or failing when arguments arrive before names or names are repeated. Tool names with the `functions.` prefix and empty arguments are also supported. Responses that end with a Tool call status but contain no valid Tool calls now return an explicit error instead of being treated as normal completion.
 
 ## 🐛 Fixes
 
@@ -59,6 +64,9 @@ The existing `20260916_backfill_app_resource_snapshots` task to backfill App res
 11. Fixed CSV data imported through templates or backups being treated as regular documents during reprocessing. Row-level questions, answers, custom indexes, and metadata are now preserved.
 12. Fixed automatically generated system indexes being included in custom index columns in Dataset CSV exports, preventing extra columns and duplicate indexes after reimporting.
 13. Fixed inconsistent Workflow model reference detection. Duplicate model inputs, legacy model names, and model IDs now follow the same rules, and external Tool parameters with matching names are no longer mistaken for system model settings.
+14. Fixed optional quotas being converted to `0` when left blank in the admin plan editor. Blank fields now use the plan's standard values, while explicitly entered `0` values are preserved.
+15. Fixed Workflow regular expression conditions incorrectly stripping unpaired or escaped slashes. Only paired `/.../` delimiters are removed. Both manually entered patterns and variable references retain regular expression semantics, and invalid expressions are reported as errors.
+16. Fixed Agent usage totals omitting tokens and points consumed by a failed model request. Any usage already incurred is now counted before returning the error.
 
 ## 🛠️ Code improvements
 
