@@ -17,7 +17,7 @@ description: FastGPT 免登录窗口发布
 
 填写名称后即可创建，该名称仅用于记录展示。
 
-![1. 创建链接：界面示例](/imgs/image.png)
+![创建分享链接并配置访问限制](/imgs/current/publish-link.png)
 
 ### 2. 复制链接
 
@@ -69,8 +69,6 @@ description: FastGPT 免登录窗口发布
 ### 配置教程
 
 #### 1. 配置身份校验地址
-
-![1. 配置身份校验地址：界面示例](/imgs/share-setlink.png)
 
 配置校验地址后，在每次分享链接使用时，都会向对应的地址发起校验和上报请求。
 
@@ -252,7 +250,6 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
         }
     ]
 
-
 }'
 ```
 
@@ -308,8 +305,6 @@ type ResponseType = {
 我们以 [Laf 作为服务器为例](https://laf.dev/)，简单展示这 3 个接口的使用方式。
 
 #### 1. 创建 3 个 Laf 接口
-
-![1. 创建 3 个 Laf 接口：界面示例](/imgs/share-auth1.png)
 
 <Tabs items={['/shareAuth/init','/shareAuth/start','/shareAuth/finish']}>
   <Tab value="/shareAuth/init" >
@@ -382,8 +377,6 @@ export default async function (ctx: FunctionContext) {
 #### 2. 配置校验地址
 
 我们随便复制 3 个地址中一个接口: `https://d8dns0.laf.dev/shareAuth/finish` , 去除 `/shareAuth/finish` 后填入 `身份校验` : `https://d8dns0.laf.dev`
-
-![2. 配置校验地址：界面示例](/imgs/share-auth2.jpg)
 
 #### 3. 修改分享链接参数
 

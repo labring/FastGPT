@@ -30,11 +30,11 @@ The switch is the only entry point for creating collection-level permissions. Wh
 - **Effect**: you can then assign permissions per file/folder. Permission-related operations become slower because snapshots must be maintained.
 - **Duration and safety**: materialization runs synchronously within the request and can take a while for large Datasets. The switch is flipped only after materialization succeeds; on failure it stays disabled and you can simply run it again (the operation is idempotent).
 
-Once enabled, the Dataset info panel shows the enabled notice and the disable entry:
+The confirmation dialog explains the effect of enabling collection permissions:
 
-![Enable — interface example](/imgs/collection-permission-1.png)
+![Enable — interface example](/imgs/current/collection-permission-enable.png)
 
-> The collaborators shown here are the Dataset-level ones; the disable entry is `Click to disable` after the notice.
+After enabling, the knowledge-base info panel shows the enabled notice and the `Click to disable` entry.
 
 ### Disable
 
@@ -52,7 +52,7 @@ There are three equivalent entry points:
 2. Right sidebar after opening a file → `Collaborator`;
 3. Right sidebar after entering a folder → `Collaborator`.
 
-![Configuring a single file or folder — interface example](/imgs/collection-permission-2.webp)
+![Configuring a single file or folder — interface example](/imgs/current/collection-collaborators.png)
 
 The dialog lets you pick members, member groups, or organizations and assign one of these roles (matching the UI wording):
 

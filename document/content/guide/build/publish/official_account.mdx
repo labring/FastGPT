@@ -7,11 +7,13 @@ description: FastGPT 接入微信公众号教程
 
 **注意⚠️: 目前只支持通过验证的公众号（服务号和订阅号都可以）**
 
+![FastGPT 渠道配置表单，凭据字段为空](/imgs/current/publish-official-account.png)
+
+图中展示 FastGPT 当前渠道配置。凭据从你自己的平台应用获取；第三方后台的菜单位置以正文链接的官方管理后台为准。
+
 ## 1. 在 FastGPT 新建发布渠道
 
 在 FastGPT 中选择想要接入的应用，在 _发布渠道_ 页面，新建一个接入微信公众号的发布渠道，填写好基础信息。
-
-![图片](/imgs/offiaccount-1.png)
 
 ## 2. 获取 AppID 、 Secret和Token
 
@@ -21,17 +23,11 @@ description: FastGPT 接入微信公众号教程
 
 **只支持通过验证的公众号，未通过验证的公众号暂不支持。**
 
-开发者可以从这个链接申请微信公众号的测试号进行测试，测试号可以正常使用，但不能配置 AES Key
-
-![图片](/imgs/offiaccount-2.png)
+开发者可以使用[微信公众平台接口测试号](https://mp.weixin.qq.com/debug/cgi-bin/sandbox?t=sandbox/login)核验接入。测试号的可用能力与生产公众号不同，请按平台展示的字段配置加密方式。
 
 ### 2. 把3个参数填入 FastGPT 配置弹窗中。
 
-![图片](/imgs/offiaccount-3.png)
-
 ## 3. 在 IP 白名单中加入 FastGPT 的 IP
-
-![图片](/imgs/offiaccount-4.png)
 
 私有部署的用户可自行查阅自己的 IP 地址。
 
@@ -95,10 +91,6 @@ description: FastGPT 接入微信公众号教程
 
 ## 4. 获取AES Key，选择加密方式
 
-![图片](/imgs/offiaccount-5.png)
-
-![图片](/imgs/offiaccount-6.png)
-
 1. 随机生成AESKey，填入 FastGPT 配置弹窗中。
 
 2. 选择加密方式为安全模式。
@@ -107,15 +99,11 @@ description: FastGPT 接入微信公众号教程
 
 1. 在FastGPT确认创建，获取URL。
 
-![图片](/imgs/offiaccount-7.png)
-
 2.  填入微信公众平台的 URL 处，然后提交保存
-
-![图片](/imgs/offiaccount-8.png)
 
 ## 6. 启用服务器配置（如已自动启用，请忽略）
 
-![图片](/imgs/offiaccount-9.png)
+在微信公众平台启用已保存的服务器配置，核对页面显示的启用状态。验证失败时，检查回调 URL、Token、加密配置和地址连通性，修正后重新提交。
 
 ## 7. 开始使用
 

@@ -1,133 +1,63 @@
 ---
-title: "Case 4: Agent V2 — Intelligent Data Analysis Agent"
-description: "Case 4: Agent V2 — Intelligent Data Analysis Agent"
+title: "Example 4: Agent V2 — Intelligent Data Analysis Agent"
+description: Analyze a reproducible sales sample, calculate product units and channel advertising ROI, and inspect downloadable artifacts.
 ---
 
-This example uses models and external services. Prepare the required permissions and quota, debug and verify results, then publish application configuration.
+<span id="case-4-agent-v2--intelligent-data-analysis-agent" />
 
-## Case 4: Agent V2 — Intelligent Data Analysis Agent
+## Example 4: Agent V2 — Intelligent Data Analysis Agent
 
 ### 4.1 Use Cases
 
-Agent V2 is ideal for open-ended, multi-step tasks that require dynamic planning. Unlike workflows, where every step must be predefined, Agent V2 is better suited for tasks with “unfixed steps,” such as data analysis, file processing, multi-tool collaboration, and complex problems that require follow-up clarification.
-
-This case simulates the daily data analysis needs of operations, product, or sales teams: upload an Excel file, ask questions in natural language, and let the Agent autonomously read the file, formulate an analysis plan, and execute the analysis in a virtual machine.
-
-In Case 3, the workflow required you to design a fixed path of “retrieval rules → classification → branching → rewriting or rejection.” Agent V2, on the other hand, acts more like an autonomous executor. You don’t need to define every step in advance; just provide the goal and the file. The Agent decides whether to read the file first, perform statistics, ask follow-up questions, or run code based on the data structure and problem complexity.
-
-Data analysis is a great way to experience Agent V2 because it naturally has three characteristics: the analysis path is not fixed, it often requires multi-step reasoning, and the requirements may need clarification. With the same Excel file, different users might care about product sales, channel ROI, regional trends, or anomalous orders. A fixed workflow can hardly cover all paths in advance, but Agent V2 can dynamically plan based on the question.
+Agent V2 chooses processing steps from the task and data. This example runs Python in the virtual machine to produce a sales summary and channel revenue chart.
 
 ### 4.2 Preparation
 
-- Sample file: Prepare a sales data Excel or CSV table.
-- A conversation model that supports Agent V2.
-- Virtual machine capability is available in the current environment.
+Download [sales.csv](/examples/sales.csv). The four fictional sales records use one consistent currency unit:
+
+```csv
+product,channel,units,revenue,ad_cost
+A,Search,10,1000,200
+B,Search,5,750,150
+A,Social,8,800,400
+B,Social,12,1800,600
+```
+
+You need application creation permission, a model supporting tool calls, an available virtual-machine service, and model quota. The captured run uses qwen3.8-flash. The execution environment must provide or install Python plotting dependencies. Network access, resource limits, and isolation follow the execution-service configuration.
 
 ### 4.3 Configuration Steps
 
-1. **Create an Agent V2 App**
-
-   In Studio, click **Create App**, select `Conversational Agent V2`, and name it `Intelligent Data Analysis Agent`.
-
-   ![4.3 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-36.png)
-
-2. **Configure Model and Prompt**
-
-   Choose an available model with tool calling; the example screenshots use GLM-5.1. The system prompt can refer to:
-
-   ```md
-   You are a senior data analyst Agent. You can read data files uploaded by users, run Python analysis code in the sandbox, and proactively ask users for clarification.
-
-   Tools:
-
-   - 📄 **Read File** — Read Excel/CSV data uploaded by the user
-   - 💻 **Sandbox Execution** — Run Python scripts (pandas/matplotlib/numpy)
-   - ❓ **Proactive Follow-up** — Confirm with the user when analysis requirements are unclear
-
-   Workflow:
-
-   1. After receiving data and a question, first read the file to understand the data structure and content
-   2. Formulate an analysis plan and present it to the user as a list of steps
-   3. Execute step by step according to the plan, showing key findings at each step
-   4. Proactively ask follow-up questions when encountering ambiguous requirements, such as unclear metric definitions or missing comparison baselines
-   5. Dynamically update the plan based on follow-up results
-   6. Output an analysis report containing data overview, core findings, visual charts, and business recommendations
-
-   Security Rules:
-
-   - Only data analysis is allowed in the sandbox; no network access, no writing files to the host machine
-   - Data is used only for this analysis; do not expose raw sensitive data in the report
-   - Label uncertain conclusions with confidence levels
-
-   Output Format:
-
-   1. 📋 Analysis Plan (automatically generated based on data)
-   2. 📊 Data Overview (row count, column names, missing values, basic statistics)
-   3. 🔍 Core Findings (3-5 key insights, supported by charts)
-   4. 💡 Business Recommendations (actionable suggestions based on data)
-   ```
-
-   The key point of this prompt is to have the Agent plan before executing, rather than jumping straight to conclusions. For data analysis tasks, first reading the data structure, confirming field meanings, and formulating an analysis plan can significantly reduce the risk of misunderstanding requirements or misusing metrics. In production use, you can continue to supplement internal metric definitions, such as GMV, ROI, conversion rate, active customers, repurchase rate, etc.
-
-3. **Configure the Opening Message**
-
-   The opening remarks guide the user to upload a data file and ask analysis questions:
+1. Create a Chat Agent V2 in the workspace and name it Intelligent Data Analysis Agent.
+2. Choose a model supporting tool calls and enable Virtual Machine. This example uses built-in file and command tools; Associated Skills can remain empty.
+3. Enter this prompt:
 
    ```text
-   Hello! I am the Intelligent Data Analysis Agent 📊
-
-   Just drag and drop your Excel or CSV file here and tell me what you want to analyze.
-
-   For example:
-   - "Analyze this sales data and find the best-selling products and trends"
-   - "Help me look at changes in user activity and find the reasons for the decline"
-   - "Compare the conversion rates of three channels, which one has the highest ROI?"
-
-   I will first understand your data, formulate an analysis plan, and then run the analysis code in the sandbox.
-   I will proactively ask you for clarification when needed.
+   Use Python in the virtual machine to analyze the uploaded sales CSV. Calculate units by product and revenue, ad_cost, and ROI by channel. ROI = (revenue - ad_cost) / ad_cost. Save channel_summary.csv and a revenue chart as revenue.png. Return download links and concise results.
    ```
 
-4. **Enable Virtual Machine Capability**
+4. Upload `sales.csv` in debug preview and wait for completion. Ask: “Analyze the attached file: aggregate units by product and revenue, advertising cost, and advertising ROI by channel. Generate a summary CSV and revenue chart.”
+5. Expand Processed to inspect file reads, commands, and their results. For missing dependencies, check installation output or configure a [startup script](/en/guide/build/agentv2/vm#virtual-machine-lifecycle).
+6. Select View virtual-machine files at the upper right of debug preview. Check `channel_summary.csv` and `revenue.png`. Preview and download the image in the file panel; use the file link in the answer to download the CSV.
 
-   Data analysis usually requires reading files and executing code, so the virtual machine configuration needs to be enabled.
+![Sales analysis configuration and results: product units and channel advertising ROI](/imgs/current/data-analysis-result.png)
 
-   The virtual machine isolates the code execution environment. The Agent can run data analysis scripts, read uploaded files, and generate statistical results within it. Isolation and access boundaries depend on the execution service and deployment configuration. For use cases that require running Python, processing Excel, drawing charts, or performing batch calculations, this is an important feature that distinguishes Agent V2 from standard chat apps.
-
-   ![4.3 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-37.png)
-
-5. **Upload File and Test**
-
-   Upload the sample sales data file and enter the question:
-
-   ```text
-   Help me analyze this sales data to see which products sell well and which channel has the highest ROI
-   ```
-
-   The Agent will first break down the task and then execute the analysis step by step.
-
-   ![4.3 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-38.png)
-
-   During execution, inspect the task in the virtual machine and verify network, file access, and resource limits against the service configuration.
-
-   ![4.3 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-39.png)
-
-   When testing, focus on whether the Agent has a complete analysis process: does it first identify the table fields, explain the analysis plan, run code when needed, and give business recommendations based on the results? If the problem description is unclear, the ideal behavior is not to force an analysis but to first ask the user for key definitions.
+![Generated files and revenue chart in the virtual-machine file panel](/imgs/current/vm-files.png)
 
 ### 4.4 Verification of Results
 
-The final result should include the analysis plan, data overview, core findings, and business recommendations.
+| Metric | Expected value |
+| --- | --- |
+| Product A units | 18 |
+| Product B units | 17 |
+| Search: revenue / ad cost / ROI | 1750 / 350 / 4.00 (400%) |
+| Social: revenue / ad cost / ROI | 2600 / 1000 / 1.60 (160%) |
 
-![4.4 Verification of Results — interface example](/imgs/guide/getting-started/quick-start/image-40.png)
+ROI is `(revenue - ad_cost) / ad_cost` and includes advertising cost only. Search has higher advertising efficiency; Social has higher revenue. These four rows validate calculations; business decisions require a larger sample and complete costs. Report zero-cost groups separately because this ROI formula would divide by zero.
 
-When verifying results, it is recommended to focus on four dimensions: whether the conclusions come from actual data, whether the metric definitions are clear, whether the charts or statistics support the conclusions, and whether the business recommendations are actionable. The value of a data analysis Agent is not just to output a summary, but to connect the process of “reading data, calculating metrics, explaining results, and proposing recommendations.”
+The captured run was checked against the answer, downloaded CSV, and chart. The CSV has two channel summaries; the chart bars are 1750 and 2600. Planning steps and wording may vary, so verify the calculations and artifacts. Save and publish the configuration, then repeat the test in a new conversation.
 
 ### 4.5 Business Value
 
-- **Lower the barrier to data analysis**: Business users can directly upload Excel or CSV files and ask questions in natural language, without needing to write SQL, Python, or complex formulas first.
-- **Support open-ended exploration**: The same data can be repeatedly queried around sales, channels, regions, customers, trends, outliers, etc., suitable for scenarios without a fixed analysis path.
-- **Increase analysis transparency**: The Agent shows the analysis plan and key steps, so users can see how it understands the data, calculates metrics, and draws conclusions.
-- **Isolate code execution risk**: By executing analysis scripts in a virtual machine, risks of local environment contamination, dependency conflicts, and permission misuse are reduced.
-- **Consolidate business analysis capabilities**: Scenarios such as sales reviews, weekly operations reports, campaign attribution, and product metric diagnostics can all reuse this type of Agent, turning data analysis from an expert task into a daily workflow.
+Keep the input, metric definitions, and independently calculated expected values as a regression sample. Repeat it after model, prompt, or execution-image changes to check file handling, calculations, and usable artifacts.
 
-
-[Back to getting started](/en/guide/getting-started)
+[Return to getting started](/en/guide/getting-started)

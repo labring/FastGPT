@@ -15,7 +15,7 @@ Go to `App Details` -> `Publish Channels` -> `Share Link`, then create a new lin
 
 Enter a name to create the link. The name is only used for display in the record list.
 
-![1. Create a Link — interface example](/imgs/image.png)
+![Create a sharing link and configure access limits](/imgs/current/publish-link.png)
 
 ### 2. Copy the Link
 
@@ -71,8 +71,6 @@ In the share link configuration, you can optionally fill in the `Identity Verifi
 ### Configuration Guide
 
 #### 1. Configure the Identity Verification URL
-
-![1. Configure the Identity Verification URL — interface example](/imgs/share-setlink.png)
 
 Once configured, every time the share link is used, verification and reporting requests will be sent to the corresponding endpoints.
 
@@ -254,7 +252,6 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
         }
     ]
 
-
 }'
 ```
 
@@ -310,8 +307,6 @@ type ResponseType = {
 We'll use [Laf as the server](https://laf.dev/) to demonstrate how these 3 endpoints work.
 
 #### 1. Create 3 Laf Endpoints
-
-![1. Create 3 Laf Endpoints — interface example](/imgs/share-auth1.png)
 
 <Tabs items={['/shareAuth/init','/shareAuth/start','/shareAuth/finish']}>
   <Tab value="/shareAuth/init" >
@@ -384,8 +379,6 @@ export default async function (ctx: FunctionContext) {
 #### 2. Configure the Verification URL
 
 Copy any of the 3 endpoint URLs, e.g. `https://d8dns0.laf.dev/shareAuth/finish`, remove the `/shareAuth/finish` part, and enter the root URL `https://d8dns0.laf.dev` in the `Identity Verification` field.
-
-![2. Configure the Verification URL — interface example](/imgs/share-auth2.jpg)
 
 #### 3. Modify the Share Link Parameters
 

@@ -118,19 +118,11 @@ FastGPT 提供三种权限管理维度：
 
 必须先添加**协作者**，才能对其进行权限管理：
 
-![协作者：界面示例](/imgs/guide/team_permissions/team_roles_permissions/image2.png)
-
 管理团队权限时，需先选择成员/组织/群组，再进行权限配置。
-
-![协作者：界面示例](/imgs/guide/team_permissions/team_roles_permissions/image3.png)
 
 对于应用和知识库等资源，可直接修改成员权限。
 
-![协作者：界面示例](/imgs/guide/team_permissions/team_roles_permissions/image4.png)
-
 团队权限在专门的权限页面进行设置
-
-![协作者：界面示例](/imgs/guide/team_permissions/team_roles_permissions/image5.png)
 
 ## 特殊权限说明
 
@@ -223,3 +215,7 @@ export const ResourcePermissionSchema = new Schema({
   }
 });
 ```
+
+![团队权限页面按成员、部门、群组配置资源创建和管理能力](/imgs/current/team-permissions.png)
+
+入口为“账号 → 团队管理 → 权限”。图中搜索演示成员，展示权限列与分类；具体授权项随当前角色和部署变化。应用或知识库的协作者入口负责对应资源权限，见[集合权限](/zh-CN/guide/dataset/collection_permission)。

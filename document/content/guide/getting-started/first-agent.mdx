@@ -13,9 +13,11 @@ description: 配置对话 Agent V2，观察它检索知识并生成带依据的�
 
 1. 创建 Agent，类型选择“对话 Agent V2”，命名为“报销检查助手”。
 2. 选择支持工具调用的模型，关联“差旅制度”知识库。
-3. 提示词填写 `Use the travel policy to prepare an expense checklist. Retrieve evidence before answering. Include the submission deadline, required documents, and review time. Identify missing policy details.`。
+3. 提示词填写 `Retrieve the travel policy before answering. Return exactly four short bullet points: submission deadline, required documents, Finance review time, and missing policy information. Use only explicit policy facts. Do not calculate dates or introduce additional requirements.`。
 4. 在调试区输入“我刚出差回来，请生成报销检查清单，并说明财务审核时间”。
 5. 展开执行详情，检查知识检索的调用、返回内容和最终回答。
+
+![报销检查助手引用差旅制度返回四条清单](/imgs/current/agent-answer.png)
 
 ## 预期结果
 

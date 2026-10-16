@@ -18,17 +18,25 @@ Each claim must include an invoice and the approved travel request.
 Finance reviews complete claims within 5 business days.
 ```
 
+![创建差旅制度知识库并选择当前环境可用的模型](/imgs/current/knowledge-create.png)
+
+图中的模型是本次演示环境的选择，请使用自己团队可用的模型。
+
 ## 1. 创建并导入知识库
 
-进入“知识库”，新建普通知识库并命名为“差旅制度”。选择可用的向量模型。进入知识库，选择本地文件导入，上传 `travel-policy.txt`。使用默认分段方式，查看预览，确认期限和所需材料保持完整后提交处理。
+进入“知识库”，新建普通知识库并命名为“差旅制度”。选择可用的向量模型。进入知识库，依次选择“新建/导入 → 文本数据集 → 本地文件”，上传 `travel-policy.txt`。使用默认分段方式，查看预览，确认期限和所需材料保持完整后提交处理。
 
 等待集合处理完成，打开数据块检查原文。文件对应内容集合；一个集合中可包含多个数据块。处理失败时先查看失败原因和模型额度，再重新处理失败项。
+
+![导入前预览 travel-policy.txt，期限和所需材料保持在同一分块](/imgs/current/knowledge-preview.png)
 
 ## 2. 验证检索
 
 进入知识库的搜索测试，输入“出差回来后多久提交报销？”。结果应包含 `15 calendar days` 所在数据块。再问“报销需要哪些材料？”，确认返回发票和已批准差旅申请的信息。
 
 检索为空时先核对处理状态、检索范围和测试问题。具体参数见[知识库搜索](/zh-CN/guide/build/workflow/nodes/dataset_search)。
+
+![搜索测试命中包含 15 个自然日报销期限的原文](/imgs/current/knowledge-search.png)
 
 ## 3. 创建并配置对话 Agent
 
@@ -40,11 +48,15 @@ required documents precisely. Cite the available sources. When the policy
 does not cover a question, explain what information is missing.
 ```
 
+![选择对话 Agent 并填写差旅制度问答](/imgs/current/app-create.png)
+
 ## 4. 调试并检查结果
 
 在右侧调试区分别询问上述两个问题。核对回答中的 15 个自然日、发票和已批准差旅申请，并检查引用是否来自示例资料。再问“酒店住宿补贴是多少？”，预期回答说明资料缺少补贴标准。
 
 检索有结果但回答失真时，检查模型输入、提示词和引用；先保持示例资料与配置简单，再逐项调整。
+
+![调试回答给出期限、材料和资料引用](/imgs/current/knowledge-answer.png)
 
 ## 5. 发布并验证访问
 
@@ -53,3 +65,5 @@ does not cover a question, explain what information is missing.
 修改资料后重新检查处理和检索；修改应用配置后再次发布。详见[发布版本与渠道](/zh-CN/guide/build/publish/versions)。
 
 下一步：[知识库生命周期](/zh-CN/guide/dataset/lifecycle)或[创建首个工作流](/zh-CN/guide/getting-started/first-workflow)。
+
+![发布后的分享窗口返回 15 个自然日期限与必需材料](/imgs/current/knowledge-published.png)

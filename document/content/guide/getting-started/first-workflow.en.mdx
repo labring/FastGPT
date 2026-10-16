@@ -11,13 +11,17 @@ Goal: accept a paragraph and return three summary bullets. You need application 
 2. Keep the workflow start node and add an AI Chat node. Connect the start node's execution output to AI Chat.
 3. Select a model in AI Chat. Reference the start node's user input as its user question. Execution connections control order; input references carry data.
 4. Set the instructions to `Summarize the user's text in exactly three bullet points. Preserve names, dates, and quantities.`
-5. Enable the node's response-text output. Check any other nodes that produce visible replies so the response order matches your intention.
+5. Open the settings beside the model and leave Hide AI output disabled. Check any other nodes that produce visible replies so the response order matches your intention.
+
+![Execution connection and user-question reference in the configured workflow](/imgs/current/workflow-config.png)
 
 ## Run and verify
 
 In debug preview, enter: `The workshop is on Friday. It starts at 10:00 and lasts two hours. Bring a laptop.`
 
 Expect three bullets preserving Friday, 10:00, two hours, and laptop. Open execution details and confirm that the start node received the paragraph and AI Chat received it and produced the summary.
+
+![The workflow returns three bullets preserving the required facts](/imgs/current/workflow-answer.png)
 
 | Symptom | Check |
 | --- | --- |

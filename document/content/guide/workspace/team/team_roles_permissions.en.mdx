@@ -119,19 +119,11 @@ The table below shows the manageable permissions for different resources.
 
 You must add **collaborators** before managing their permissions:
 
-![Collaborators — interface example](/imgs/guide/team_permissions/team_roles_permissions/image2.png)
-
 When managing team permissions, first select members/organizations/groups, then configure permissions.
-
-![Collaborators — interface example](/imgs/guide/team_permissions/team_roles_permissions/image3.png)
 
 For resources like apps and datasets, you can directly modify member permissions.
 
-![Collaborators — interface example](/imgs/guide/team_permissions/team_roles_permissions/image4.png)
-
 Team permissions are set on a dedicated permissions page.
-
-![Collaborators — interface example](/imgs/guide/team_permissions/team_roles_permissions/image5.png)
 
 ## Special Permissions
 
@@ -219,3 +211,7 @@ export const ResourcePermissionSchema = new Schema({
   }
 });
 ```
+
+![Team permissions grouped by members, departments, and groups](/imgs/current/team-permissions.png)
+
+Open Account → Team management → Permissions. The screenshot filters for a demo member and shows columns for creating applications, Skills, knowledge bases, API keys, installing models, and administration. Available controls depend on your role and deployment. Application and knowledge-base collaborator dialogs manage their resource permissions; see [collection permissions](/en/guide/dataset/collection_permission).

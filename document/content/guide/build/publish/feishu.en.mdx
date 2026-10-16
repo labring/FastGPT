@@ -5,13 +5,15 @@ description: FastGPT Lark Bot Integration Tutorial
 
 Starting from version 4.8.10, FastGPT commercial edition supports direct Lark bot integration without additional APIs.
 
+![FastGPT feishu channel configuration with empty credentials](/imgs/current/publish-feishu.png)
+
+The screenshot shows the FastGPT configuration form. Enter credentials from your own platform application. Follow the official platform console linked below for its current console layout.
+
 ## 1. Create a Lark App
 
 Creating a free test enterprise makes debugging easier.
 
 1. Create a custom enterprise app in the [Lark Open Platform](https://open.feishu.cn/app) developer console.
-
-![1. Create a Lark App — interface example](/imgs/feishu-bot-1.png)
 
 Add a **Bot** capability to the app.
 
@@ -19,21 +21,13 @@ Add a **Bot** capability to the app.
 
 In FastGPT, select the app you want to integrate. On the Publishing Channels page, create a new Lark bot publishing channel and fill in the basic information.
 
-![2. Create a Publishing Channel in FastGPT — interface example](/imgs/feishu-bot-2.png)
-
 ## 3. Get App ID and App Secret
 
 In the Lark Open Platform developer console, find the App ID and App Secret for the custom enterprise app you just created, and enter them in the FastGPT publishing channel dialog.
 
-![3. Get App ID and App Secret — interface example](/imgs/feishu-bot-3.png)
-
 Enter both parameters in the FastGPT configuration dialog.
 
-![3. Get App ID and App Secret — interface example](/imgs/feishu-bot-4.png)
-
 (Optional) In the Lark Open Platform developer console, go to Events & Callbacks -> Encryption Strategy to get the Encrypt Key, and enter it in the Lark bot integration dialog.
-
-![3. Get App ID and App Secret — interface example](/imgs/feishu-bot-5.png)
 
 The Encrypt Key encrypts communication between Lark servers and FastGPT.
 If using HTTPS, the Encrypt Key is not needed. If using HTTP, the Encrypt Key is recommended.
@@ -45,10 +39,6 @@ After creating the publishing channel, click **Request URL** and copy the corres
 
 In the Lark console, click `Events & Callbacks` on the left sidebar, click the edit icon next to `Configure Subscription Method`, and paste the copied request URL into the input field.
 
-|  |  |
-| --------------------------------- | --------------------------------- |
-| ![4. Configure Callback URL — interface example](/imgs/feishu-bot-10.jpg) | ![4. Configure Callback URL — interface example](/imgs/feishu-bot-11.jpg) |
-
 ## 5. Configure Bot Callback Events and Permissions
 
 - Add the `Receive Message` event
@@ -57,13 +47,7 @@ On the `Events & Callbacks` page, click `Add Event`.
 
 Search for `Receive Message`, or directly search for `im.message.receive_v1`, find the `Receive Message v2.0` event, check it, and click `Confirm Add`.
 
-After adding the event, add two permissions: click the corresponding permission, and a popup will prompt you to add permissions. Add the two permissions shown above.
-
-|                                  |                                  |
-| -------------------------------- | -------------------------------- |
-| ![5. Configure Bot Callback Events and Permissions — interface example](/imgs/feishu-bot-7.png) | ![5. Configure Bot Callback Events and Permissions — interface example](/imgs/feishu-bot-8.png) |
-
-It is not recommended to enable the two "legacy versions" shown above -- use the new version permissions instead.
+After adding the event, enable the permissions below for the messages you intend to receive. Select the current permission versions offered by the platform.
 
 - If "Read messages users send to the bot in private chats" is enabled, private messages sent to the bot will be forwarded to FastGPT
 - If "Receive @bot message events in group chats" is enabled, messages @mentioning the bot in group chats will be forwarded to FastGPT
@@ -75,17 +59,11 @@ It is not recommended to enable the two "legacy versions" shown above -- use the
 
 In the Lark console, click `Permission Management` on the left sidebar, enter `send message` in the search box, find the `Send messages as the app` permission, and enable it. Also search for group messages and enable **Get private and group messages**, then confirm the requested permissions.
 
-![6. Configure Message Read and Reply Permissions — interface example](/imgs/feishu-bot-13.jpg)
-
 ## 7. Publish the Bot
 
 Click `Version Management & Publishing` on the left side of the Lark console to publish the bot.
 
-![7. Publish the Bot — interface example](/imgs/feishu-bot-12.jpg)
-
 You can then find your bot in Lark Workplace. Next, add the bot to a group or chat with it privately.
-
-![7. Publish the Bot — interface example](/imgs/feishu-bot-9.png)
 
 ## FAQ
 

@@ -17,7 +17,7 @@ Think of the Dataset as a "reference room" configured for the AI. The model itse
 
 ### 2.2 Preparation
 
-- Example file: Prepare a copy of the _Civil Code of the People's Republic of China_ or another regulatory/documentation file.
+- Example file: [civil-code-lease.txt](/examples/civil-code-lease.txt), containing Articles 725–728 from Book III, Contracts, Chapter XIV, Lease Contracts. It uses the Civil Code adopted on May 28, 2020, effective January 1, 2021, from the [full text republished by the Supreme People’s Court](https://www.court.gov.cn/zixun/xiangqing/233181.html). The Chinese excerpt demonstrates retrieval; check current law and applicable interpretations for production use.
 - A usable conversation model and vector model.
 - A legal question for testing, e.g., "My lease isn't up yet, but the landlord wants to sell the house. What should I do?"
 
@@ -27,25 +27,17 @@ Think of the Dataset as a "reference room" configured for the AI. The model itse
 
    Click **Dataset** on the left side of the homepage, then click **New** in the top right corner. Name the Dataset `Civil Code Q&A Assistant`. Keep the other default settings for this case.
 
-   ![2.3 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-12.png)
-
 2. **Create a Text Collection**
 
    Click **New**, then select **Text Collection** to import local documents.
-
-   ![2.3 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-13.png)
 
 3. **Upload a Local File**
 
    Click **Upload Local File** and select the example file. In real use, you can upload multiple files at once; for this case, we upload only one file as a demonstration.
 
-   ![2.3 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-14.png)
-
 4. **Set Parsing Parameters**
 
    After entering the parameter settings page, choose the parsing method based on the file type.
-
-   ![2.3 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-15.png)
 
    Recommended common settings:
    - **File Parsing Settings**: Enable when uploading PDFs; for regular Word, Markdown, TXT files, start with the default configuration.
@@ -61,19 +53,13 @@ Think of the Dataset as a "reference room" configured for the AI. The model itse
 
    When previewing chunks, focus on three things: whether paragraphs are abnormally cut off, whether titles and body text remain within the same semantic range, and whether tables, clauses, or numbering are still readable. If the quality of these knowledge fragments is unstable, even a well-written Prompt in the app will struggle to consistently produce accurate answers.
 
-   ![2.3 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-16.png)
-
 6. **Wait for the Dataset to Be Ready**
 
    Once the data status changes to "Ready," apps can use the Dataset.
 
-   ![2.3 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-17.png)
-
 7. **Create and Link a Conversational Agent**
 
    Create a new Conversational Agent, also named `Civil Code Q&A Assistant`. After creation, link the Dataset you just created in the app configuration.
-
-   ![2.3 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-18.png)
 
    After linking the Dataset, the app's response flow changes from simple chat to "user question → Dataset search → model summarizes answer." This is the key difference between Case 1 and Case 2: Case 1 emphasizes content generation, while Case 2 emphasizes answering based on provided materials.
 
@@ -120,17 +106,23 @@ Think of the Dataset as a "reference room" configured for the AI. The model itse
    ⚠️ Note: My answers are for reference only. For specific legal issues, please consult a professional lawyer.
    ```
 
-   If you add `[question content]` in the opening greeting, users can click the question to ask it directly — useful for demonstrations and guidance.
-
-   ![2.3 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-19.png)
+   Use Add preset question in the greeting configuration to add the example questions.
 
 10. **Verify Q&A Performance**
 
     Ask a question related to the Civil Code and check whether the answer includes a legal conclusion, article citation, plain-language explanation, and disclaimer.
 
-    ![2.3 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-20.png)
-
     When verifying, don't just check whether the answer "looks like a legal answer" — also check whether it actually cites Dataset content. Test with questions covered by the materials, questions outside the materials, and ambiguous questions: covered questions should cite the original text; out-of-scope questions should state that a direct confirmation is not possible; ambiguous questions should ask the user for more facts.
+
+### Sample acceptance
+
+![Lease article source, version, and chunk preview](/imgs/current/civil-code-preview.png)
+
+![The Civil Code assistant answers a landlord-sale question using the lease excerpt](/imgs/current/civil-code-answer.png)
+
+Ask: “My landlord wants to sell the property before my lease ends. What should I do?” Expect Article 725 on ownership changes and lease validity, plus Article 726 on the right of first refusal and its exceptions. Check Articles 727 and 728 for auction notice and compensation. An out-of-scope question such as “What is the longest employment probation period?” should identify the missing evidence in this lease-only sample.
+
+The captured run uses a concise prompt: answer from the retrieved lease articles, give a short conclusion, cite article numbers and key text, explain conditions, exceptions, and missing evidence, and recommend professional advice based on the contract and case facts. Keep the Chinese answer within 300 characters.
 
 ### 2.4 Business Value
 
@@ -138,6 +130,5 @@ Think of the Dataset as a "reference room" configured for the AI. The model itse
 - **Improve answer credibility**: Through Dataset retrieval and original text citations, answers have a source basis, reducing the risk of the model fabricating or giving vague responses based on experience.
 - **Accumulate organizational knowledge**: Internal company policies, product FAQs, after-sales SOPs, contract templates, and other materials can be continuously added to the Dataset, forming maintainable and reusable knowledge assets.
 - **Adapt to high-frequency support scenarios**: Legal, HR, administrative, customer service, and delivery teams can all use a similar model to turn repetitive inquiries into self-service Q&A, improving response efficiency.
-
 
 [Back to getting started](/en/guide/getting-started)

@@ -13,9 +13,11 @@ You need application creation and knowledge-base access permissions, plus an ava
 
 1. Create an Agent, select Chat Agent V2, and name it Expense Checklist Assistant.
 2. Select a model supporting tool calls and associate the Travel Policy knowledge base.
-3. Set instructions to `Use the travel policy to prepare an expense checklist. Retrieve evidence before answering. Include the submission deadline, required documents, and review time. Identify missing policy details.`
+3. Set instructions to `Retrieve the travel policy before answering. Return exactly four short bullet points: submission deadline, required documents, Finance review time, and missing policy information. Use only explicit policy facts. Do not calculate dates or introduce additional requirements.`
 4. In debug preview, ask “I have just returned from a trip. Prepare an expense checklist and explain the finance review time.”
 5. Expand execution details and inspect the retrieval call, returned material, and final answer.
+
+![Chat Agent V2 returns four checklist items with a travel-policy citation](/imgs/current/agent-answer.png)
 
 ## Expected result
 

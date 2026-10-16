@@ -1,8 +1,23 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { get } from 'node:http';
+import { readFile } from 'node:fs/promises';
 
 const origin = process.env.DOCS_TEST_ORIGIN ?? 'http://localhost:3210';
+
+test('tutorial downloads preserve their bytes for both language preferences', async () => {
+  for (const filename of ['sales.csv', 'civil-code-lease.txt', 'content-review-workflow.json', 'content-review-workflow.en.json']) {
+    const expected = await readFile(new URL(`../public/examples/${filename}`, import.meta.url), 'utf8');
+    for (const locale of ['zh-CN', 'en']) {
+      const response = await fetch(`${origin}/examples/${filename}`, {
+        redirect: 'manual',
+        headers: { cookie: `FD_LOCALE=${locale}` }
+      });
+      assert.equal(response.status, 200, `${locale}: ${filename}`);
+      assert.equal(await response.text(), expected);
+    }
+  }
+});
 
 for (const locale of ['zh-CN', 'en']) {
   test(`${locale} machine-readable export contains only the requested language`, async () => {

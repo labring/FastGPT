@@ -10,15 +10,39 @@ Collection tags classify material and constrain retrieval. You need knowledge-ba
 
 ## Basic tag operations
 
-Open tag management in knowledge-base details, create a tag with a type, and assign values to collections. The current interface supports number, date, and multiple-choice types; compatibility logic handles historical string tags. Renaming, deleting, or reassigning tags can affect retrieval conditions, so test after changes.
+Open tag management in knowledge-base details, create a tag with a type, and assign values to collections. The current interface supports Number, Date, and Option types (supports multiple values); compatibility logic handles historical string tags. Renaming, deleting, or reassigning tags can affect retrieval conditions, so test after changes.
 
 ## Collection filtering in knowledge search
 
-Open collection filtering in knowledge-search configuration and add a condition row: choose a tag or supported field, an operator, a value source, and a comparison value. Combine conditions using AND or OR. Variable references must resolve to values compatible with the tag type at runtime.
+In the Chat Agent editor, associate a knowledge base and scroll to **Tag filter** beneath the knowledge cards. Open the condition controls and add a condition row: choose a tag or supported field, an operator, a value source, and a comparison value. Combine conditions using AND or OR. Variable references must resolve to values compatible with the tag type at runtime.
 
 Example: create a multiple-choice Department tag and assign Finance and Support to two collections. Add a condition that Department contains Finance and test a finance question. Expect results from the Finance scope. Switch to Support and verify that the scope changes.
 
 For empty results, inspect assigned values, operator, AND/OR, resolved variables, collection permissions, and processing status. Conditions constrain the search scope; source content and retrieval parameters determine matches within it.
+
+### Reproduce the Finance / Support comparison
+
+Use `travel-policy.txt` from [the first Q&A tutorial](/en/guide/getting-started/knowledge-qa). Add `support-policy.txt` containing:
+
+```text
+Support policy
+Support responds to customer questions within 2 business days.
+For expense questions, contact Finance and include the travel request.
+```
+
+Create an **Option** tag named Department. From each collection's **… → Tag settings**, choose the tag, type a value, and select **Create option**. Assign Finance to the travel policy and Support to the support policy, then confirm.
+
+![Department values assigned to two processed collections](/imgs/current/tags-collections.png)
+
+![Assign Finance to the Department tag](/imgs/current/tags-finance.png)
+
+Set **Department → Contains → Finance** in the application. Start a fresh debug conversation and ask “How soon after returning must I submit travel expenses?” The example returns `travel-policy.txt` and the 15-calendar-day deadline.
+
+![Finance filter with the travel-policy.txt citation](/imgs/current/tags-finance-result.png)
+
+Replace Finance with Support and start another fresh conversation with the same question. The example cites only `support-policy.txt` and identifies the missing expense deadline. Fresh conversations prevent earlier answers from influencing the comparison.
+
+![Support filter with the support-policy.txt citation and missing-deadline explanation](/imgs/current/tags-support-result.png)
 
 ## Legacy JSON conditions
 

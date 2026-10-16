@@ -9,14 +9,13 @@ import { Alert } from '@/components/docs/Alert';
 
 Before writing code, you need to create a development project in the skills list. The platform supports two ways to create or load a skill:
 
-![Creating & Importing Skills](/imgs/create_import_skill.png)
+![New Skill workspace: enter requirements on the left and manage files on the right](/imgs/current/skill-workspace.png)
 
 ### 1.1 Click the Create Area to Create a Skill
 
-Click the "Create" card (the dashed box area with a plus icon) on the page. In the popup, set the skill name, icon, description, and **requirements**. When the system initializes the skill in the background, it takes different approaches based on your input:
+Open **Workspace → Skills → New**, then enter the name, icon, and description. This example uses Extract Emails. Confirm and wait for the sandbox and files to load. The initial workspace contains a `skills/` directory and `.gitignore`.
 
-- **Using Default Template**: If you leave the default "Goal/Process/Requirements" template unchanged, the system will use the built-in basic structure and boilerplate code to generate the skill workspace (without invoking AI models, consuming no points).
-- **AI-Assisted Generation**: If you input custom functional requirements here (e.g., "help me write a skill that extracts all email addresses from a text"), the system will invoke the **configured default system LLM model** in the background to automatically generate the `SKILL.md` scheme and initialize the code, which will consume points.
+Enter your requirements in the chat panel on the left: extract email addresses, remove duplicates while preserving first appearance, use the Python standard library, and generate `SKILL.md` plus a script under `skills/extract-emails/`. AI-assisted generation uses the selected model and consumes points. Answer planning questions according to this goal, then inspect the generated files.
 
 ### 1.2 Import an Existing Skill ZIP Archive
 
@@ -28,7 +27,7 @@ If you have a skill backed up or shared by others, click the "Import Skill" butt
 
 When you open the skill details page, the system initializes and provisions an isolated run workspace in a secure sandbox container, loading your project via the file tree on the right.
 
-![Workspace File Management](/imgs/workspace_file_management.png)
+![Extract emails: file tree, SKILL.md editor, and successful terminal execution](/imgs/current/skill-result.png)
 
 ### 2.1 Multi-file Management
 
@@ -55,7 +54,14 @@ The command line terminal at the bottom right connects directly to the backend s
 
 The agent debug panel on the left provides a testing environment, allowing you to test and call your custom skill logic in real time by chatting with the agent:
 
-![Agent Debug Chat](/imgs/agent_debug_chat.png)
+Use `Contact alice@example.com and bob@example.org; CC alice@example.com` as the test input. Run the generated script in the terminal. The expected output contains two unique addresses in this order:
+
+```text
+alice@example.com
+bob@example.org
+```
+
+The terminal at the lower right of the screenshot shows this actual execution. Check the generated code, output, and ordering before publishing. Generated file layouts and model responses may vary.
 
 ### 3.1 Immediate Effect
 

@@ -17,6 +17,10 @@ Prepare a published Skill, resource access permissions, a model supporting tool 
 
 Open the application editor and select published resources under Associated Skills. Confirm the virtual-machine settings. Associating Skills enables the required virtual machine and keeps that capability enabled while Skills remain associated. Set clear task instructions, save, and debug.
 
+Associate Extract Emails from the [development tutorial](/en/guide/build/skill/development). Instruct the Agent to run the Skill's Python script, then enter `Contact alice@example.com and bob@example.org; CC alice@example.com`. Expect two unique addresses: `alice@example.com` and `bob@example.org`. Expand Processed, then Virtual machine / Execute command to inspect the script input and result.
+
+![Agent with the published Extract Emails Skill returns two unique addresses](/imgs/current/skill-agent-result.png)
+
 ### Workflow Agent node
 
 Open the workflow canvas, add or select an Agent node, and choose published Skills in its Skill configuration. Confirm the model, user question, and virtual-machine settings. Reference the upstream task in the node input and inspect its output. See [Agent node](/en/guide/build/workflow/nodes/agent).

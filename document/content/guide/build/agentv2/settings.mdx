@@ -5,21 +5,16 @@ description: 详细介绍对话 Agent V2 中提示词、虚拟机与技能的专
 
 专项配置用于调整 Agent 的核心指令、运行环境与技能扩展能力。
 
-![配置面板](/imgs/agent_settings_panel.png)
-
 ---
 
 ## 提示词
 
 提示词用于定义 Agent 的核心人设、工作目标和具体规则。编辑器支持富文本，并支持通过 `@` 快速唤起并绑定部分工具等上下文能力。
-
-|                                                        |                                                            |
-| :----------------------------------------------------: | :--------------------------------------------------------: |
-| ![提示词 @ 快速绑定](/imgs/agent_prompt_editor_at.png) | ![提示词富文本编辑](/imgs/agent_prompt_editor_mention.png) |
-
 如果需要配置对话大模型、回复长度、推理内容展示等通用模型参数，请参考 [AI 配置说明](/zh-CN/guide/build/general/ai_settings)。
 
 ---
+
+![提示词编辑器的资源引用菜单](/imgs/current/agent-prompt-reference.png)
 
 ## 虚拟机
 
@@ -33,6 +28,6 @@ description: 详细介绍对话 Agent V2 中提示词、虚拟机与技能的专
 
 技能配置用于选择已发布的技能插件包。运行时按所选发布版本准备技能，并记录成功初始化状态。
 
-如果未开启虚拟机但关联了技能，系统会展示“虚拟机未就绪”的警告。若需了解如何自定义编写与打包技能，请参考 [开发与调试](/zh-CN/guide/build/skill/development)。
+选择技能后，界面会自动启用虚拟机并显示提示；仍需确认执行服务可用。若需了解如何自定义编写与打包技能，请参考 [开发与调试](/zh-CN/guide/build/skill/development)。
 
-![虚拟机未就绪警告](/imgs/agent_skill_vm_not_ready.png)
+![关联 Skill 后启用虚拟机并完成调试](/imgs/current/skill-agent-result.png)

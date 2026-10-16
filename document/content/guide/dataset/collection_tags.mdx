@@ -7,15 +7,39 @@ description: 为集合添加类型化标签，并用条件行限制知识库检�
 
 ## 标签基础操作说明
 
-进入知识库详情的标签管理，创建标签并选择类型，再给集合填写对应值。当前界面支持数值、日期和多选类型；历史字符串标签由兼容逻辑处理。标签重命名、删除和集合赋值会影响使用这些标签的检索条件，修改后重新测试。
+进入知识库详情的标签管理，创建标签并选择类型，再给集合填写对应值。当前界面支持“数字”“日期”和“选项”类型（选项可多选）；历史字符串标签由兼容逻辑处理。标签重命名、删除和集合赋值会影响使用这些标签的检索条件，修改后重新测试。
 
 ## 知识库搜索-集合过滤说明
 
-在知识库搜索配置中打开集合过滤，添加条件行：选择标签或支持的字段、操作符、值来源及比较值。多个条件按 AND 或 OR 组合；变量引用需要在运行时提供与标签类型匹配的值。
+在对话 Agent 编辑页关联知识库后，向下滚动至知识库卡片下方的“标签过滤”，添加条件行：选择标签或支持的字段、操作符、值来源及比较值。多个条件按 AND 或 OR 组合；变量引用需要在运行时提供与标签类型匹配的值。
 
 示例：创建多选标签“部门”，给两份资料分别设置 Finance 和 Support。添加“部门包含 Finance”的条件，使用一个财务问题测试。预期结果来自 Finance 范围；再切换 Support，确认检索范围随条件改变。
 
 检查空结果时，依次核对集合标签值、操作符、AND/OR、变量实际值、集合权限及处理状态。条件只约束检索范围，资料内容与检索参数共同决定最终命中。
+
+### 复现 Finance / Support 对照
+
+使用[首个问答教程](/zh-CN/guide/getting-started/knowledge-qa)的 `travel-policy.txt`，再导入以下 `support-policy.txt`：
+
+```text
+Support policy
+Support responds to customer questions within 2 business days.
+For expense questions, contact Finance and include the travel request.
+```
+
+创建“部门”标签，属性选“选项”。在每个集合的“··· → 标签设置”中选择部门，输入值并点击“创建选项”：差旅资料选 Finance，支持资料选 Support，最后确认。
+
+![两份已处理资料分别设置部门标签](/imgs/current/tags-collections.png)
+
+![为差旅资料设置部门 Finance](/imgs/current/tags-finance.png)
+
+在应用中设置“部门 → 包含 → Finance”，重开调试对话并询问“出差回来后多久提交报销？”。本例引用 `travel-policy.txt`，回答 15 个自然日。
+
+![Finance 条件下只引用差旅制度](/imgs/current/tags-finance-result.png)
+
+将 Finance 替换为 Support，重开对话后询问同一问题。本例只引用 `support-policy.txt`，回答说明资料缺少报销期限。每次重开对话可避免前文答案干扰对照。
+
+![Support 条件下只引用支持资料并说明报销期限缺失](/imgs/current/tags-support-result.png)
 
 ## 旧版 JSON 条件
 

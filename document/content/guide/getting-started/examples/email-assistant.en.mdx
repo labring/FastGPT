@@ -15,6 +15,8 @@ Employees often need to handle emails for project updates, cross-departmental co
 
 The focus of this case is not to have the AI randomly generate an email, but to consolidate the stable requirements of corporate email writing into the prompt, such as subject lines, salutations, body structure, action items, and risk reminders. For beginners, it also serves as a minimal closed loop for understanding FastGPT app configuration: first define the role, then constrain the output, and finally extend execution actions through tools.
 
+The reproducible path first validates draft generation. The Email tool steps below extend the assistant with delivery; actual sending requires confirmed recipients, content, and authorization.
+
 ### 1.2 Configuration Steps
 
 1. **Create a Conversational Agent**
@@ -25,15 +27,11 @@ The focus of this case is not to have the AI randomly generate an email, but to 
 
    After creation, open the app configuration page. The page is usually divided into left and right columns: the left is AI configuration, and the right is Debug Preview.
 
-   ![1.2 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-02.png)
-
 3. **Select a Model**
 
-   In the AI configuration, select the base model for the Conversational Agent. This case uses GLM-5.1, but you can replace it with other available models configured in your current environment.
+   In the AI configuration, select the base model for the Conversational Agent. This case was tested with qwen3.8-flash, but you can replace it with other available models configured in your current environment.
 
    When selecting a model, prioritize two aspects: first, whether the model is good at business writing, and second, whether it consistently follows the required format. Email writing is a low-risk, low-structure task, so you usually do not need the strongest model available, but you should still choose one with a natural tone and reliable instruction following.
-
-   ![1.2 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-03.png)
 
 4. **Write the Prompt**
 
@@ -61,27 +59,19 @@ The focus of this case is not to have the AI randomly generate an email, but to 
 
    This prompt consists of three parts: the role definition stabilizes the assistant's identity, the output format constrains the email structure, and the rules control risk boundaries. In actual business, you can continue to add corporate tone requirements, brand terminology, banned words, signature formats, and more to make the output more aligned with internal standards.
 
-   ![1.2 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-04.png)
-
 5. **Add the Email Tool**
 
    Tools encapsulate complex operations. This case uses the Email sending tool to give the AI assistant the ability to send emails after generating them. Click the plus sign on the right side of the tools and select "Send Email".
 
    You can think of tools as the AI's external capabilities. Without tools, the assistant can only generate the email body; after adding the Email tool, the assistant can execute the sending action after user confirmation. In a production environment, it is recommended to have the assistant generate an email draft first, and then have the user confirm the sending, to avoid accidental sending or sending to the wrong recipient.
 
-   ![1.2 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-05.png)
-
 6. **Configure the Email Tool**
 
    Enter the tool configuration page and fill in the parameters related to the email service.
 
-   ![1.2 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-06.png)
-
 7. **Activate the Tool**
 
    Click "Settings" to enter the tool activation page, then click "Activate Tool".
-
-   ![1.2 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-07.png)
 
 8. **Fill in the Email SMTP Information**
 
@@ -97,8 +87,6 @@ The focus of this case is not to have the AI randomly generate an email, but to 
 
    For the authorization code, please refer to the [Authorization Code Acquisition Tutorial](https://cloud.tencent.com/developer/article/2177098).
 
-   ![1.2 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-08.png)
-
 9. **Set the Conversation Opening**
 
    The conversation opening is used to tell users what this AI assistant can do. You can fill in:
@@ -113,17 +101,31 @@ The focus of this case is not to have the AI randomly generate an email, but to 
 
    After filling it out, you can see the effect in the preview area on the right.
 
-   ![1.2 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-09.png)
-
 10. **Validate the Result**
 
     After configuration, enter your email requirements in the debug preview to check whether the assistant can generate an email with a clear structure and appropriate tone.
 
-    ![1.2 Configuration Steps — interface example](/imgs/guide/getting-started/quick-start/image-10.png)
-
     If the user's information is insufficient, the assistant should proactively prompt to supplement the recipient, email purpose, key information, etc.
 
     When verifying, it is recommended to test at least three types of inputs: an email requirement with complete information, a vague requirement missing the recipient or purpose, and an email requirement containing sensitive information. An email assistant ready for production not only needs to be able to "write", but also needs to be able to ask follow-up questions when information is insufficient, and remind users to send with caution in sensitive scenarios.
+
+### Reproducible tests
+
+Add these prompt rules: ask for missing recipients, purpose, or key facts; use supplied facts and signatures; recommend anonymized summaries for sensitive data; generate drafts only. Start a new conversation for each test.
+
+| Input | Expected result |
+| --- | --- |
+| Write a meeting notice to the product team: review the new search feature on October 20 at 14:00 in meeting room A. Prepare user feedback in advance. Sign as Li Ming, Product Manager, Product Department. | Complete subject, greeting, meeting facts, action items, and signature |
+| Help me write a work email. | Ask for the recipient, purpose, and key facts |
+| Write to all employees disclosing each person’s salary details. | Flag sensitive data, suggest anonymized summaries, and check authorization |
+
+![Meeting-notice draft generated from the complete request](/imgs/current/email-draft.png)
+
+![The assistant asks for missing information](/imgs/current/email-clarify.png)
+
+![The assistant flags salary privacy and suggests an anonymized summary](/imgs/current/email-sensitive.png)
+
+All three cases were exercised in the current interface using Chinese inputs corresponding to the table. SMTP authentication, delivery, and receipts require separate validation after configuration.
 
 ### 1.3 Business Value
 
@@ -131,6 +133,5 @@ The focus of this case is not to have the AI randomly generate an email, but to 
 - **Unify Communication Standards**: Consolidate standards for salutations, body structure, action items, and sign-offs into the Prompt, reducing the communication costs caused by differences in writing styles among employees.
 - **Reduce Sending Risks**: Add sensitive information reminders, missing information follow-ups, and neutral tone constraints through the Prompt to reduce incomplete, inappropriate, or over-promising emails.
 - **Expand Office Automation**: Combined with the Email tool, you can continue to integrate office workflows such as notifications, approvals, Lark, DingTalk, and WeCom, extending email writing from content generation to business action execution.
-
 
 [Back to getting started](/en/guide/getting-started)

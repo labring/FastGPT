@@ -18,17 +18,25 @@ Each claim must include an invoice and the approved travel request.
 Finance reviews complete claims within 5 business days.
 ```
 
+![Create the Travel Policy knowledge base and select available models](/imgs/current/knowledge-create.png)
+
+The shared screenshots use Chinese interface labels. The example knowledge base is named Travel Policy; select the models available in your own environment.
+
 ## 1. Create and import knowledge
 
-Open Knowledge Bases, create a standard knowledge base named Travel Policy, and select an available embedding model. Open it, choose local-file import, and upload `travel-policy.txt`. Keep the default segmentation settings, preview the chunks, and verify that deadlines and required documents remain readable before submitting processing.
+Open Knowledge Bases, create a standard knowledge base named Travel Policy, and select an available embedding model. Open it, choose **New / Import → Text dataset → Local file**, and upload `travel-policy.txt`. Keep the default segmentation settings, preview the chunks, and verify that deadlines and required documents remain readable before submitting processing.
 
 Wait for collection processing to finish, then open the chunks to inspect the source. A file becomes a content collection containing one or more chunks. If processing fails, inspect the error and model quota, then retry the failed items.
+
+![Preview travel-policy.txt as one complete chunk before importing.](/imgs/current/knowledge-preview.png)
 
 ## 2. Verify retrieval
 
 Open the knowledge base's search test and ask “How soon after returning must I submit travel expenses?” Results should include the chunk containing `15 calendar days`. Ask “What documents does a claim require?” and confirm that the invoice and approved travel request appear.
 
 For empty results, check processing status, retrieval scope, and the question. See [knowledge-base search](/en/guide/build/workflow/nodes/dataset_search) for parameter details.
+
+![Search test returns the travel-policy.txt chunk containing the 15-calendar-day deadline.](/imgs/current/knowledge-search.png)
 
 ## 3. Create and configure a Chat Agent
 
@@ -40,11 +48,15 @@ required documents precisely. Cite the available sources. When the policy
 does not cover a question, explain what information is missing.
 ```
 
+![Choose Chat Agent and name the application Travel Policy Q&A.](/imgs/current/app-create.png)
+
 ## 4. Debug and inspect the result
 
 Ask both questions in the debug preview on the right. Check the 15-calendar-day deadline, invoice, approved travel request, and citations to the sample material. Then ask “What is the hotel allowance?” The expected answer identifies the missing allowance policy.
 
 If retrieval succeeds but the answer changes the facts, inspect model input, instructions, and references. Keep the sample and configuration small, then change one setting at a time.
+
+![The debug answer includes the deadline and required documents with source citations.](/imgs/current/knowledge-answer.png)
 
 ## 5. Publish and verify access
 
@@ -53,3 +65,5 @@ Application creation produces an initial published version. Publish the configur
 After changing material, check processing and retrieval again. After changing application configuration, publish again. See [published versions and channels](/en/guide/build/publish/versions).
 
 Next: [the knowledge lifecycle](/en/guide/dataset/lifecycle) or [your first workflow](/en/guide/getting-started/first-workflow).
+
+![Published sharing window returns the 15-calendar-day deadline and required documents](/imgs/current/knowledge-published.png)

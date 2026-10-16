@@ -11,13 +11,17 @@ description: 将用户输入交给模型处理，检查节点输出并发布一�
 2. 在画布保留工作流开始节点，添加 AI 对话节点。把开始节点的执行连接线连到 AI 对话节点。
 3. 在 AI 对话节点选择模型，将用户问题输入引用到开始节点的用户输入。执行连线控制运行顺序，输入引用传递实际数据。
 4. 提示词填写 `Summarize the user's text in exactly three bullet points. Preserve names, dates, and quantities.`。
-5. 开启该节点的回复文本输出。检查画布中其他会输出文本的节点，保证预期的回复顺序。
+5. 打开模型旁的参数设置，保持“隐藏 AI 输出”关闭。检查画布中其他会输出文本的节点，保证预期的回复顺序。
+
+![执行连线与用户问题引用配置](/imgs/current/workflow-config.png)
 
 ## 运行与验收
 
 在调试中输入：`The workshop is on Friday. It starts at 10:00 and lasts two hours. Bring a laptop.`
 
 预期回复为三条摘要，保留 Friday、10:00、two hours 和 laptop。打开执行详情，确认开始节点接收原文、AI 对话节点收到输入并输出摘要。
+
+![摘要工作流返回三条保留关键信息的结果](/imgs/current/workflow-answer.png)
 
 | 现象 | 检查 |
 | --- | --- |

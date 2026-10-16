@@ -9,6 +9,10 @@ In FastGPT, the API entry under Publish Channels shows **API Keys** available to
 
 When calling this app through `chat/completions`, passing `appId` in the request body is recommended. If a third-party app only supports OpenAI SDK-style key configuration, you can use the `apiKey-appId` compatibility format. For details, [see the OpenAPI Introduction](/en/openapi/intro).
 
+![API channel: APIKey list and New action](/imgs/current/publish-api.png)
+
+The APIKey list is empty in this example. The displayed service root ends in `/api`; an OpenAI-compatible SDK uses `/api/v1` as described below.
+
 ## Get an API Key
 
 Go to App -> "Publish Channels" -> "API", then click "New" to create a key.
