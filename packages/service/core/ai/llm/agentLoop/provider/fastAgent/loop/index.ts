@@ -451,7 +451,8 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         });
         return createToolResponse(sandboxResult.response, {
           skipResponseCompress: true,
-          errorMessage: sandboxResult.success ? undefined : sandboxResult.response
+          errorMessage: sandboxResult.success ? undefined : sandboxResult.response,
+          content: sandboxResult.content
         });
       }
 

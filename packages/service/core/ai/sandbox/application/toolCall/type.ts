@@ -5,6 +5,7 @@
  */
 import type { z } from 'zod';
 import type { SandboxClient } from '../runtime/client';
+import type { ChatCompletionToolMessageContentPart } from '@fastgpt/global/core/ai/llm/type';
 
 type ToolExecuteContext<P> = {
   sandboxInstance: SandboxClient;
@@ -15,12 +16,15 @@ type ToolExecuteContext<P> = {
  * sandbox 工具的声明式定义。
  *
  * zodSchema 负责约束 LLM 工具参数，execute 只接收已校验的 params 和运行态 SandboxClient。
+ * 工具可返回结构化 content（text / image_url parts）作为下一轮模型的视觉输入。
  */
 export type ToolDefinition<
   S extends z.ZodType<Record<string, unknown>> = z.ZodType<Record<string, unknown>>
 > = {
   zodSchema: S;
-  execute: (ctx: ToolExecuteContext<z.infer<S>>) => Promise<{ response: string }>;
+  execute: (
+    ctx: ToolExecuteContext<z.infer<S>>
+  ) => Promise<{ response: string; content?: ChatCompletionToolMessageContentPart[] }>;
 };
 
 export type ToolRunResult =
@@ -29,6 +33,7 @@ export type ToolRunResult =
       success: true;
       input: Record<string, unknown>;
       response: string;
+      content?: ChatCompletionToolMessageContentPart[];
     };
 
 /**
@@ -55,6 +60,7 @@ export const createToolRunner =
     return {
       success: true,
       input: parsed.data,
-      response: result.response
+      response: result.response,
+      ...(result.content?.length ? { content: result.content } : {})
     };
   };
