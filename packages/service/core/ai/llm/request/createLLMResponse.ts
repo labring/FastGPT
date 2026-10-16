@@ -210,7 +210,6 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         return `您的 OpenAI key 没有响应`;
       } else {
         logger.error(`LLM response empty`, {
-          message: '',
           data: requestSnapshot,
           finish_reason
         });
