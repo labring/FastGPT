@@ -170,7 +170,14 @@ export const parseFileExtensionFromUrl = (url = '') => {
     const queryFilename =
       parsedUrl.searchParams.get('filename') || parsedUrl.searchParams.get('name');
     if (queryFilename) {
-      const extFromQuery = path.extname(decodeURIComponent(queryFilename));
+      // searchParams has already decoded the value once. Decoding again only matters for
+      // double-encoded names, and a plain `%` in a name (`100%.pdf`) would throw here and
+      // drop the filename entirely, so fall back to the value as given.
+      let decodedFilename = queryFilename;
+      try {
+        decodedFilename = decodeURIComponent(queryFilename);
+      } catch {}
+      const extFromQuery = path.extname(decodedFilename);
       if (extFromQuery.startsWith('.')) {
         return extFromQuery.slice(1).toLowerCase();
       }
