@@ -1,8 +1,13 @@
 import { DOMParser } from '@xmldom/xmldom';
+import { posix } from 'path';
 import { type Entry, fromBuffer, type ZipFile } from 'yauzl';
 
 const powerPointXmlPathRegex = /^ppt\/(?:notesSlides\/notesSlide|slides\/slide)\d+\.xml$/;
 const powerPointSlidePathRegex = /^ppt\/slides\/slide\d+\.xml$/;
+const powerPointNotesPathRegex = /^ppt\/notesSlides\/notesSlide\d+\.xml$/;
+const powerPointSlideRelsPathRegex = /^ppt\/slides\/_rels\/slide\d+\.xml\.rels$/;
+const notesSlideRelationshipType =
+  'http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide';
 const maxPowerPointEntries = 10000;
 const maxPowerPointXmlFileBytes = 10 * 1024 * 1024;
 const maxPowerPointXmlBytes = 100 * 1024 * 1024;
@@ -133,7 +138,13 @@ const parsePowerPoint = async ({
         (!createdOnUnix || unixFileType === 0 || unixFileType === 0x8000);
 
       // yauzl 在 entry 事件前校验原始路径；这里只读取锚定 OOXML 路径下的普通文件。
-      if (!isRegularFile || !powerPointXmlPathRegex.test(entry.fileName)) {
+      if (
+        !isRegularFile ||
+        !(
+          powerPointXmlPathRegex.test(entry.fileName) ||
+          powerPointSlideRelsPathRegex.test(entry.fileName)
+        )
+      ) {
         zip.readEntry();
         return;
       }
@@ -164,14 +175,46 @@ const parsePowerPoint = async ({
     zip.readEntry();
   });
 
-  const sortedFiles = files.sort((a, b) => {
-    const getSlideNumber = (path: string) => {
-      const match = path.match(/\d+/);
-      return match ? parseInt(match[0]) : 0;
-    };
-    return getSlideNumber(a.path) - getSlideNumber(b.path);
-  });
   const parser = new DOMParser();
+  const getPartNumber = (path: string) => {
+    const match = path.match(/\d+/);
+    return match ? parseInt(match[0]) : 0;
+  };
+
+  // PowerPoint numbers notes parts in the order the notes were written, not by
+  // slide: when only slide 2 has notes, they are notesSlide1.xml. The slide's
+  // relationships name its notes part, so notes are placed after that slide.
+  // Notes no slide points at keep their own number.
+  const slideOfNotes = new Map<string, number>();
+  files
+    .filter(({ path }) => powerPointSlideRelsPathRegex.test(path))
+    .forEach(({ path, content }) => {
+      const relationships = parser
+        .parseFromString(content, 'text/xml')
+        .getElementsByTagName('Relationship');
+      Array.from(relationships).forEach((relationship) => {
+        const target = relationship.getAttribute('Target');
+        if (relationship.getAttribute('Type') !== notesSlideRelationshipType || !target) return;
+        const notesPath = target.startsWith('/')
+          ? target.slice(1)
+          : posix.normalize(posix.join('ppt/slides', target));
+        if (powerPointNotesPathRegex.test(notesPath)) {
+          slideOfNotes.set(notesPath, getPartNumber(path));
+        }
+      });
+    });
+
+  const getOrder = (path: string) => {
+    if (!powerPointNotesPathRegex.test(path)) return { slide: getPartNumber(path), notes: 0 };
+    return { slide: slideOfNotes.get(path) ?? getPartNumber(path), notes: 1 };
+  };
+  const sortedFiles = files
+    .filter(({ path }) => powerPointXmlPathRegex.test(path))
+    .sort((a, b) => {
+      const orderA = getOrder(a.path);
+      const orderB = getOrder(b.path);
+      return orderA.slide - orderB.slide || orderA.notes - orderB.notes;
+    });
 
   return sortedFiles
     .map(({ content }) => {
