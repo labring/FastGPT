@@ -51,6 +51,28 @@ const keepWholeNumberDigits = (worksheet: XLSX.WorkSheet) => {
 };
 
 /**
+ * Excel 默认的短日期（内置格式 14）和日期时间（内置格式 22）按操作系统的区域设置显示，
+ * 中文 Excel 显示为 2026/10/17。SheetJS 却固定按美国格式 m/d/yy 写出，同一个日期读出来是
+ * "10/17/26"：年份只剩两位，日和月的顺序也无法判断。对这两个内置格式改写为 ISO 日期，
+ * 用户显式设置的日期格式保持 SheetJS 原有文本。
+ */
+const ISO_FOR_LOCALE_DATE_FORMATS = new Map<string, string>([
+  [XLSX.SSF.get_table()[14] as string, 'yyyy-mm-dd'],
+  [XLSX.SSF.get_table()[22] as string, 'yyyy-mm-dd hh:mm']
+]);
+
+const writeLocaleDatesAsIso = (worksheet: XLSX.WorkSheet) => {
+  for (const address of Object.keys(worksheet)) {
+    if (address.startsWith('!')) continue;
+    const cell = worksheet[address] as XLSX.CellObject;
+    const isoFormat = typeof cell.z === 'string' ? ISO_FOR_LOCALE_DATE_FORMATS.get(cell.z) : '';
+    if (isoFormat && (cell.t === 'd' || cell.t === 'n') && cell.v !== undefined) {
+      cell.w = XLSX.SSF.format(isoFormat, cell.v);
+    }
+  }
+};
+
+/**
  * 将 XLSX 转换为 CSV 原文和 Markdown 表格。
  *
  * 工作簿会在生成二维数组和回填合并单元格前完成范围校验；任何工作表范围、
@@ -160,6 +182,7 @@ export const readXlsxRawText = async ({
 
   const result = worksheets.map(({ name, worksheet, merges, sheetRange }) => {
     keepWholeNumberDigits(worksheet);
+    writeLocaleDatesAsIso(worksheet);
     const data = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
       header: 1,
       defval: '',

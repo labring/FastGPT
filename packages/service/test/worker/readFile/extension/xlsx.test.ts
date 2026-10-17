@@ -115,6 +115,39 @@ describe('readXlsxRawText', () => {
     ]);
   });
 
+  it('writes dates in the default date formats as ISO dates', async () => {
+    // Excel shows its default short date (format 14) and date-time (format 22) in the
+    // system's locale, 2026/10/17 in a Chinese Excel. SheetJS writes them as the US
+    // m/d/yy, "10/17/26", which drops the century and leaves day and month ambiguous.
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      ['短日期', '日期时间', '中文日期', '日/月/年', '时间'],
+      [46312, 46312.75, 46312, 46312, 0.5]
+    ]);
+    worksheet['A2'].z = XLSX.SSF.get_table()[14] as string;
+    worksheet['B2'].z = XLSX.SSF.get_table()[22] as string;
+    // Formats the author chose are kept as they are.
+    worksheet['C2'].z = 'yyyy"年"m"月"d"日"';
+    worksheet['D2'].z = 'dd/mm/yyyy';
+    worksheet['E2'].z = 'h:mm';
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    const result = await readXlsxRawText({
+      extension: 'xlsx',
+      buffer,
+      encoding: 'utf-8'
+    });
+
+    expect(Papa.parse(result.rawText).data).toEqual([
+      ['短日期', '日期时间', '中文日期', '日/月/年', '时间'],
+      ['2026-10-17', '2026-10-17 18:00', '2026年10月17日', '17/10/2026', '12:00']
+    ]);
+    expect(result.formatText).toContain(
+      '| 2026-10-17 | 2026-10-17 18:00 | 2026年10月17日 | 17/10/2026 | 12:00 |'
+    );
+  });
+
   it('should fill merged cells before formatting xlsx content', async () => {
     const worksheet = XLSX.utils.aoa_to_sheet([
       ['部门', '姓名', '区域', '', ''],
