@@ -76,6 +76,32 @@ describe('parseOffice', () => {
     await expect(parsePptx(buffer)).resolves.toBe('Slide 1\nNote 1\nSlide 2');
   });
 
+  it.each([
+    ['相对路径', '../notesSlides/notesSlide1.xml'],
+    ['绝对路径', '/ppt/notesSlides/notesSlide1.xml']
+  ])('备注跟在引用它的幻灯片后面，而不是按备注编号排列（%s）', async (_, target) => {
+    // PowerPoint 按写备注的先后编号：只有第 2 页有备注时，备注是 notesSlide1.xml。
+    const buffer = await createPptxWithEntries([
+      { path: 'ppt/slides/slide1.xml', content: '<a:p><a:t>Slide 1</a:t></a:p>' },
+      { path: 'ppt/slides/slide2.xml', content: '<a:p><a:t>Slide 2</a:t></a:p>' },
+      { path: 'ppt/slides/slide3.xml', content: '<a:p><a:t>Slide 3</a:t></a:p>' },
+      {
+        path: 'ppt/slides/_rels/slide2.xml.rels',
+        content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout2.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" Target="${target}"/>
+</Relationships>`
+      },
+      {
+        path: 'ppt/notesSlides/notesSlide1.xml',
+        content: '<a:p><a:t>Note for slide 2</a:t></a:p>'
+      }
+    ]);
+
+    await expect(parsePptx(buffer)).resolves.toBe('Slide 1\nSlide 2\nNote for slide 2\nSlide 3');
+  });
+
   it('段落内的软换行还原成换行符', async () => {
     const buffer = await createPptx({
       path: 'ppt/slides/slide1.xml',
