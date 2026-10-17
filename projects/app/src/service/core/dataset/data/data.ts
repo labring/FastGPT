@@ -260,6 +260,8 @@ export class DatasetDataOperation {
                 ...(metadata && { metadata }),
                 chunkIndex,
                 indexes: results,
+                // 同步写完向量和全文即已就绪；显式置状态，避免落入历史数据 missing 的兼容语义。
+                indexStatus: DatasetDataIndexStatusEnum.indexed,
                 ...(synonymContext && { synonymVersion: synonymContext.version })
               }
             ],
@@ -608,7 +610,7 @@ export class DatasetDataOperation {
           );
           if (result.matchedCount !== 1) throw new Error('数据已变化，请重试索引更新');
 
-          // 历史全文可能来自 q/a，不能仅凭词表 diff 跳过写入；统一从已存文本索引派生。
+          // 历史全文可能来自 q/a；从已存索引派生目标全文，在存储层比较实际 token 而非词表 diff。
           const fullText = indexes
             .filter((index) => index.type !== DatasetDataIndexTypeEnum.imageEmbedding)
             .map((index) => index.text)
@@ -620,7 +622,8 @@ export class DatasetDataOperation {
                 datasetId: String(mongoData.datasetId),
                 collectionId: String(mongoData.collectionId),
                 dataId: String(mongoData._id),
-                fullText: synonymContext?.transformText(fullText) ?? fullText
+                fullText: synonymContext?.transformText(fullText) ?? fullText,
+                skipUnchanged: diffSynonym
               }
             ],
             session

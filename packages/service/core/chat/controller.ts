@@ -27,6 +27,8 @@ const defaultNodeResponsePreviewProjection = {
   'data.moduleType': 1,
   'data.moduleName': 1,
   'data.quoteList.id': 1,
+  'data.quoteList.synonymMappings': 1,
+  'data.quoteList.synonymMappingsTruncated': 1,
   'data.quoteList.collectionId': 1,
   'data.quoteList.datasetId': 1,
   'data.quoteList.sourceId': 1,
@@ -290,10 +292,10 @@ export async function getChatItems({
           chatItemDataId: { $in: chatItemDataIds }
         },
         {
-          chatItemDataId: 1,
           ...(isPreview
             ? nodeResponsePreviewProjection || defaultNodeResponsePreviewProjection
-            : { data: 1 })
+            : { data: 1 }),
+          chatItemDataId: 1
         }
       )
         .sort({ _id: 1 })

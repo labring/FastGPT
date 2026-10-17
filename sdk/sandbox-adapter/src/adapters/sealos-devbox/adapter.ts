@@ -24,10 +24,14 @@ import type {
 import { BaseSandboxAdapter } from '../base';
 import { DevboxClient, DevboxClientError } from './client';
 import { DevboxPhaseEnum, type DevboxCreateRequest, type DevboxInfoData } from './types';
-import { formatImageSpec, parseImageSpec } from '@/utils/image';
-import { joinUrlPath } from '@/utils/url';
-import { fileDataToUint8Array, isReadableStreamData, posixModeToOctalNumber } from '@/utils/files';
-import { BoundedOutputBuffer } from '@/utils/outputBuffer';
+import { formatImageSpec, parseImageSpec } from '../../utils/image';
+import { joinUrlPath } from '../../utils/url';
+import {
+  fileDataToUint8Array,
+  isReadableStreamData,
+  posixModeToOctalNumber
+} from '../../utils/files';
+import { BoundedOutputBuffer } from '../../utils/outputBuffer';
 
 const GET_INFO_RETRY_TIMEOUT_MS = 30_000;
 const GET_INFO_RETRY_INTERVAL_MS = 1_000;

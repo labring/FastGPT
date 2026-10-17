@@ -10,7 +10,7 @@ import {
   type UploadFileParams,
   type UploadResponseData
 } from './types';
-import { isReadableStreamData } from '@/utils/files';
+import { isReadableStreamData } from '../../utils/files';
 
 type StreamingRequestInit = RequestInit & {
   /**

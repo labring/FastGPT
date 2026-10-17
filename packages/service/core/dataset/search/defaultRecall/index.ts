@@ -15,6 +15,7 @@ import {
 } from './result';
 import { countRecallLimit, filterDatasetDataByMaxTokens } from './utils';
 import { serviceEnv } from '../../../../env';
+import { attachSynonymMappingsToSearchResults } from '../../synonym/searchResult';
 
 /**
  * 执行默认知识库召回主流程。
@@ -134,6 +135,7 @@ export async function searchDatasetData(
     inputTokens: reRankInputTokens,
     usingReRank: finalUsingReRank
   } = await reRankSearchResults({
+    teamId,
     usingReRank,
     textRecallResults,
     rerankModel,
@@ -182,11 +184,20 @@ export async function searchDatasetData(
   // 被前面过滤掉的候选不会产生 alias 查询；最终输出也不暴露仅供格式化使用的 imageId。
   // 白名单绑定本次召回授权的 datasetIds：结果里内嵌的外库图片 key 不签发短链，
   // 避免检索输出成为跨库预览签名的旁路。
+  const decorated = await attachSynonymMappingsToSearchResults({
+    teamId,
+    datasetIds,
+    results: [...filterMaxTokensResult, ...(retrievalResults ?? [])]
+  });
+  const decoratedFinal = decorated.slice(0, filterMaxTokensResult.length);
+  const decoratedRetrieval = retrievalResults
+    ? decorated.slice(filterMaxTokensResult.length)
+    : undefined;
   const formattedValues = await formatDatasetDataValues(
-    filterMaxTokensResult.map(({ q, a, imageId }) => ({ q, a, imageId })),
+    decoratedFinal.map(({ q, a, imageId }) => ({ q, a, imageId })),
     { datasetIds }
   );
-  const finalResult = filterMaxTokensResult.map((item, index) => {
+  const finalResult = decoratedFinal.map((item, index) => {
     const result = { ...item };
     delete result.imageId;
     return {
@@ -207,6 +218,6 @@ export async function searchDatasetData(
     usingReRank: finalUsingReRank,
     usingSimilarityFilter,
     imageCaptionResult,
-    retrievalResults
+    retrievalResults: decoratedRetrieval
   };
 }

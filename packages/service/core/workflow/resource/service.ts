@@ -18,6 +18,8 @@ import { MongoAgentSkills } from '../../ai/skill/model/schema';
 import { MongoApp } from '../../app/schema';
 import { getAppVersionById } from '../../app/version/controller';
 import { MongoDataset } from '../../dataset/schema';
+import type { AppSchemaType } from '@fastgpt/global/core/app/type';
+import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { getWorkflowResourceContext } from '../utils/context';
 import { hasWorkflowResource, createWorkflowResourceContext } from './context';
 
@@ -164,7 +166,7 @@ export const loadWorkflowDatasetResource = async ({
   const firstIndex = uncheckedDatasetIds.indexOf(datasetId);
   if (firstIndex !== -1) return authorizedDatasets[firstIndex];
 
-  let dataset = null;
+  let dataset: DatasetSchemaType | null = null;
   try {
     dataset = await MongoDataset.findOne({
       _id: datasetId,
@@ -206,7 +208,7 @@ export const loadWorkflowAppResource = async ({
     ).app;
   }
 
-  let app = null;
+  let app: AppSchemaType | null = null;
   try {
     app = await MongoApp.findOne({
       _id: appId,

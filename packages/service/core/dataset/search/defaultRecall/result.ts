@@ -8,6 +8,8 @@ import type {
   SearchDataResponseItemType
 } from '@fastgpt/global/core/dataset/type';
 import { formatDatasetDataTextValue } from '../../data/controller';
+import { searchSynonymSnapshot } from '../../synonym/searchResult';
+import { isDatasetSynonymEnabled } from '../../synonym/entity';
 
 /**
  * 把召回命中的 data 与 collection 统一整理成搜索结果。
@@ -32,6 +34,17 @@ export const buildSearchResultItem = ({
 
   return {
     id: String(data._id),
+    ...(isDatasetSynonymEnabled()
+      ? {
+          [searchSynonymSnapshot]: {
+            teamId: String(data.teamId),
+            datasetId: String(data.datasetId),
+            synonymVersion: data.synonymVersion,
+            q: data.q,
+            a: data.a
+          }
+        }
+      : {}),
     updateTime: data.updateTime,
     ...formattedValue,
     imageId: data.imageId,

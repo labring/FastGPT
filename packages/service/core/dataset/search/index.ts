@@ -5,6 +5,7 @@ import type {
 } from './type';
 import { searchDatasetData } from './defaultRecall';
 import { datasetSearchQueryExtension } from './utils';
+import { attachSynonymMappingsToSearchResults } from '../synonym/searchResult';
 
 export * from './type';
 
@@ -69,5 +70,20 @@ export const defaultSearchDatasetData = async ({
 /**
  * Deep RAG 搜索入口由搜索分发层统一暴露，避免具体 recall 实现持有全局 handler 适配。
  */
-export const deepRagSearch = (data: DeepRagSearchProps): Promise<SearchDatasetDataResponse> =>
-  global.deepRagHandler(data);
+export const deepRagSearch = async (
+  data: DeepRagSearchProps
+): Promise<SearchDatasetDataResponse> => {
+  const result = await global.deepRagHandler(data);
+  const decorated = await attachSynonymMappingsToSearchResults({
+    teamId: data.teamId,
+    datasetIds: data.datasetIds,
+    results: [...result.searchRes, ...(result.retrievalResults ?? [])]
+  });
+  return {
+    ...result,
+    searchRes: decorated.slice(0, result.searchRes.length),
+    ...(result.retrievalResults
+      ? { retrievalResults: decorated.slice(result.searchRes.length) }
+      : {})
+  };
+};

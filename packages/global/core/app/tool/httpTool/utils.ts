@@ -270,7 +270,8 @@ export const pathData2ToolList = async (
       const inputRequired: string[] = [];
       const outputProperties: Record<string, JsonSchemaPropertiesItemType> = {};
       const outputRequired: string[] = [];
-      let requestSchema = undefined;
+      // Keep the empty state explicit so strict TypeScript does not infer never[]-like shapes.
+      let requestSchema: JSONSchemaInputType | undefined;
 
       if (pathItem.params && Array.isArray(pathItem.params)) {
         pathItem.params.forEach((param) => {
@@ -303,8 +304,10 @@ export const pathData2ToolList = async (
           };
         }
       }
-      if (pathItem.request?.content?.['application/json']?.schema) {
-        requestSchema = pathItem.request.content['application/json'].schema;
+      const bodySchema: JSONSchemaInputType | undefined =
+        pathItem.request?.content?.['application/json']?.schema;
+      if (bodySchema) {
+        requestSchema = bodySchema;
 
         if (requestSchema.properties) {
           Object.entries(requestSchema.properties).forEach(([key, value]: [string, any]) => {
