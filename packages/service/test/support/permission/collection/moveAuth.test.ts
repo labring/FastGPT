@@ -253,6 +253,19 @@ describe('authDatasetCollectionMoves', () => {
       authDatasetCollectionMoves({ ...auth, req: { auth: owner } as any, moves: [selectedMove] })
     ).resolves.toBeDefined();
   });
+  it('HTTP 层以空串表示根目录，等价于 null', async () => {
+    const { auth, move, owner } = await fixture();
+    await expect(
+      authDatasetCollectionMoves({ ...auth, moves: [{ ...move, targetParentId: '' }] })
+    ).rejects.toBe(TeamErrEnum.unAuthTeam);
+    await expect(
+      authDatasetCollectionMoves({
+        ...auth,
+        req: { auth: owner } as any,
+        moves: [{ ...move, targetParentId: '' }]
+      })
+    ).resolves.toBeDefined();
+  });
   it('系统 root 可旁路资源 ACL；普通成员不能伪造团队归属', async () => {
     const { auth, move, source, grant } = await fixture();
     await grant(String(source._id), 0);
