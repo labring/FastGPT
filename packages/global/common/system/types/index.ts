@@ -57,6 +57,10 @@ export const FastGPTTeamModeSchema = z.enum(['multi', 'single', 'sync']);
 export type FastGPTTeamModeType = z.infer<typeof FastGPTTeamModeSchema>;
 
 export const FastGPTFeConfigsSchema = z.looseObject({
+  datasetSynonymEnabled: z
+    .boolean()
+    .optional()
+    .meta({ description: '检索服务是否启用同义词映射能力' }),
   show_workorder: z.boolean().optional().meta({ description: '是否展示工单入口' }),
   isPlus: z
     .boolean()

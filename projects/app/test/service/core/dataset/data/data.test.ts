@@ -441,8 +441,50 @@ describe('Dataset data service', () => {
 
       const data = await MongoDatasetData.findById(insertId).lean();
       expect(data).not.toHaveProperty('synonymVersion');
+      // 同步写完向量与全文即已就绪，创建时必须显式落 indexStatus。
+      expect(data?.indexStatus).toBe(DatasetDataIndexStatusEnum.indexed);
       expect(findSynonymSpy).not.toHaveBeenCalled();
       findSynonymSpy.mockRestore();
+    });
+
+    it('should persist indexed status and synonym version when the feature is enabled', async () => {
+      const { root, dataset, collection } = await createDatasetContext();
+      const synonym = await MongoDatasetSynonym.create({
+        teamId: root.teamId,
+        datasetId: dataset._id,
+        version: 1,
+        enabled: true,
+        schemaVersion: DatasetSynonymSchemaVersion
+      });
+      await MongoDatasetSynonymMapping.create({
+        logicalMappingId: new Types.ObjectId(),
+        teamId: root.teamId,
+        datasetId: dataset._id,
+        synonymFileId: synonym._id,
+        fileVersion: 1,
+        standardizedTerm: '退款',
+        normalizedStandardizedTerm: '退款',
+        synonymTerms: ['退钱'],
+        normalizedSynonymTerms: ['退钱'],
+        allTerms: '退款 退钱',
+        fingerprint: 'refund'
+      });
+
+      const { insertId } = await mongoSessionRun((session) =>
+        createDatasetData({
+          teamId: String(root.teamId),
+          tmbId: String(root.tmbId),
+          datasetId: String(dataset._id),
+          collectionId: String(collection._id),
+          q: '我要退钱',
+          embeddingModel,
+          session
+        })
+      );
+
+      const data = await MongoDatasetData.findById(insertId).lean();
+      expect(data?.indexStatus).toBe(DatasetDataIndexStatusEnum.indexed);
+      expect(data?.synonymVersion).toBe(1);
     });
 
     it('should reuse the initial empty synonym snapshot and only query once per final validation', async () => {
@@ -1168,6 +1210,69 @@ describe('Dataset data service', () => {
           })
         );
       }
+    });
+
+    it.each([
+      { name: 'identical tokens', storedText: '退款\n稳定文本', expectedWrites: 0 },
+      { name: 'legacy body tokens', storedText: 'old question\nold answer', expectedWrites: 1 },
+      { name: 'missing record', storedText: undefined, expectedWrites: 1 }
+    ])(
+      'compares actual full-text storage during synonym rebuild: $name',
+      async ({ storedText, expectedWrites }) => {
+        const { data } = await createSynonymRebuildData({ previousVersion: 1 });
+        if (storedText !== undefined) {
+          await MongoDatasetDataText.updateOne(
+            { dataId: data._id },
+            {
+              $set: { fullTextToken: await jiebaSplit({ text: storedText }) }
+            }
+          );
+        } else {
+          await MongoDatasetDataText.deleteMany({ dataId: data._id });
+        }
+        const writeSpy = vi.spyOn(MongoDatasetDataText, 'bulkWrite');
+        try {
+          await rebuildDatasetDataIndexes({
+            dataId: String(data._id),
+            model: visionEmbeddingModel,
+            diffSynonym: true
+          });
+          expect(writeSpy).toHaveBeenCalledTimes(expectedWrites);
+          expect(
+            (await MongoDatasetDataText.findOne({ dataId: data._id }).lean())?.fullTextToken
+          ).toBe(await jiebaSplit({ text: '退款\n稳定文本' }));
+          expect((await MongoDatasetData.findById(data._id).lean())?.synonymVersion).toBe(2);
+        } finally {
+          writeSpy.mockRestore();
+        }
+      }
+    );
+
+    it('rolls back full-text changes together with the synonym version', async () => {
+      const { data } = await createSynonymRebuildData({ previousVersion: 1 });
+      const oldTokens = await jiebaSplit({ text: 'legacy body' });
+      await MongoDatasetDataText.updateOne(
+        { dataId: data._id },
+        {
+          $set: { fullTextToken: oldTokens }
+        }
+      );
+      await expect(
+        rebuildDatasetDataIndexes({
+          dataId: String(data._id),
+          model: visionEmbeddingModel,
+          diffSynonym: true,
+          commit: (write) =>
+            mongoSessionRun(async (session) => {
+              await write(session);
+              throw new Error('abort after full-text write');
+            })
+        })
+      ).rejects.toThrow('abort after full-text write');
+      expect((await MongoDatasetDataText.findOne({ dataId: data._id }).lean())?.fullTextToken).toBe(
+        oldTokens
+      );
+      expect((await MongoDatasetData.findById(data._id).lean())?.synonymVersion).toBe(1);
     });
 
     it.each([true, false])(

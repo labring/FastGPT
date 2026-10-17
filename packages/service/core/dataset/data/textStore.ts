@@ -81,7 +81,7 @@ export class MongoFullTextStore implements FullTextStore {
 
   /**
    * 批量写入全文 token,按 dataId bulkWrite upsert(幂等,重复写安全)。
-   * 支持事务内传 session,与主数据一并提交。
+   * 支持事务内传 session,与主数据一并提交；skipUnchanged 仅在事务内比较实际已存 token。
    */
   async write(props: FullTextWriteProps[], session?: ClientSession): Promise<void> {
     const tokenized = await Promise.all(
@@ -90,14 +90,48 @@ export class MongoFullTextStore implements FullTextStore {
         datasetId: item.datasetId,
         collectionId: item.collectionId,
         dataId: item.dataId,
-        fullTextToken: await jiebaSplit({ text: item.fullText })
+        fullTextToken: await jiebaSplit({ text: item.fullText }),
+        skipUnchanged: item.skipUnchanged ?? false
       }))
     );
 
     for (let i = 0; i < tokenized.length; i += FULL_TEXT_WRITE_BATCH_SIZE) {
       const chunk = tokenized.slice(i, i + FULL_TEXT_WRITE_BATCH_SIZE);
+      const comparisonItems =
+        chunk.some((item) => item.skipUnchanged) && session?.inTransaction()
+          ? chunk.filter((item) => item.skipUnchanged)
+          : [];
+      const existingRows = comparisonItems.length
+        ? await MongoDatasetDataText.find(
+            {
+              $or: comparisonItems.map(({ dataId, teamId, datasetId, collectionId }) => ({
+                dataId,
+                teamId,
+                datasetId,
+                collectionId
+              }))
+            },
+            'dataId teamId datasetId collectionId fullTextToken'
+          )
+            .session(session ?? null)
+            .lean()
+        : [];
+      const existingById = new Map(existingRows.map((row) => [String(row.dataId), row]));
+      const changedItems = chunk.filter((item) => {
+        const existing = existingById.get(item.dataId);
+        return (
+          !item.skipUnchanged ||
+          !existing ||
+          String(existing.teamId) !== item.teamId ||
+          String(existing.datasetId) !== item.datasetId ||
+          String(existing.collectionId) !== item.collectionId ||
+          existing.fullTextToken !== item.fullTextToken
+        );
+      });
+      if (changedItems.length === 0) continue;
+
       await MongoDatasetDataText.bulkWrite(
-        chunk.map((item) => ({
+        changedItems.map(({ skipUnchanged, ...item }) => ({
           updateOne: {
             filter: { dataId: item.dataId },
             update: { $set: item },
