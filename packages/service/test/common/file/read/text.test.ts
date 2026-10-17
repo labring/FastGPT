@@ -2,10 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { isLikelyTextBuffer } from '@fastgpt/service/common/file/read/text';
 
 const utf16le = (text: string, bom = false) =>
-  Buffer.concat([
-    ...(bom ? [Buffer.from([0xff, 0xfe])] : []),
-    Buffer.from(text, 'utf16le')
-  ]);
+  Buffer.concat([...(bom ? [Buffer.from([0xff, 0xfe])] : []), Buffer.from(text, 'utf16le')]);
 const utf16be = (text: string, bom = false) => {
   const body = Buffer.from(text, 'utf16le');
   body.swap16();

@@ -1,6 +1,5 @@
 /**
- * 文本判定的可疑字符阈值：低于该比例才认为是文本串。控制字符（保留 \t \n \v \f \r）
- * 一旦过半就说明更像二进制。
+ * 文本判定的可疑字符阈值：控制字符（保留 \t \n \v \f \r）占比超过该值就认为更像二进制。
  */
 const suspiciousRatioLimit = 0.1;
 
@@ -24,20 +23,23 @@ const isLikelyTextString = (text: string) => {
 };
 
 /**
- * UTF-16 文本的裸字节里每两个字节就夹一个 0x00，逐字节扫描会直接判成二进制。
- * 这里只做编码识别，不做内容断言：有 BOM 时以 BOM 为准，否则看 0x00 的奇偶分布。
+ * 识别 UTF-16 文本并返回编码与正文起点。
+ *
+ * UTF-16 的裸字节里每两个字节就夹一个 0x00，逐字节扫描会直接判成二进制。有 BOM 时以
+ * BOM 为准；没有 BOM 时无法确定码元边界，只能看 0x00 的奇偶分布（以 ASCII 为主的
+ * UTF-16 高位字节几乎恒为 0x00，低位字节几乎不为 0x00）。纯非 ASCII 的无 BOM UTF-16
+ * （如整段中文）没有可用的 NUL 分布特征，这里识别不出来，会退回通用的文本/编码探测。
+ * 返回的 offset 指向跳过 BOM 后的正文起点，供文本判定与编码探测共用同一份识别结果。
  */
-const utf16View = (
+export const detectUtf16Text = (
   buffer: Buffer
-): { encoding: 'utf16le' | 'utf16be'; offset: number } | undefined => {
+): { encoding: 'utf-16le' | 'utf-16be'; offset: number } | undefined => {
   if (buffer.length >= 2) {
-    if (buffer[0] === 0xff && buffer[1] === 0xfe) return { encoding: 'utf16le', offset: 2 };
-    if (buffer[0] === 0xfe && buffer[1] === 0xff) return { encoding: 'utf16be', offset: 2 };
+    if (buffer[0] === 0xff && buffer[1] === 0xfe) return { encoding: 'utf-16le', offset: 2 };
+    if (buffer[0] === 0xfe && buffer[1] === 0xff) return { encoding: 'utf-16be', offset: 2 };
   }
   if (buffer.length < 4) return undefined;
 
-  // 无 BOM 时无法确定码元边界，只能靠 0x00 的位置分布推断：以 ASCII 为主的 UTF-16
-  // 里高位字节几乎恒为 0x00，低位字节几乎不为 0x00。
   const pairs = Math.floor(buffer.length / 2);
   let evenNulBytes = 0;
   let oddNulBytes = 0;
@@ -47,28 +49,26 @@ const utf16View = (
   }
 
   if (oddNulBytes / pairs > 0.8 && evenNulBytes / pairs < 0.2) {
-    return { encoding: 'utf16le', offset: 0 };
+    return { encoding: 'utf-16le', offset: 0 };
   }
   if (evenNulBytes / pairs > 0.8 && oddNulBytes / pairs < 0.2) {
-    return { encoding: 'utf16be', offset: 0 };
+    return { encoding: 'utf-16be', offset: 0 };
   }
 
   return undefined;
 };
 
-const decodeUtf16 = (
-  buffer: Buffer,
-  encoding: 'utf16le' | 'utf16be',
-  offset: number
-): string => {
-  const body = buffer.subarray(offset);
-  // 探测窗口会按固定字节数截断，可能留下半个码元，先丢弃末尾的残字节。
-  const evenBody = body.subarray(0, body.length - (body.length % 2));
-  if (encoding === 'utf16le') return evenBody.toString('utf16le');
-
-  const swapped = Buffer.from(evenBody);
-  swapped.swap16();
-  return swapped.toString('utf16le');
+const decodeUtf16 = ({
+  buffer,
+  encoding,
+  offset
+}: {
+  buffer: Buffer;
+  encoding: 'utf-16le' | 'utf-16be';
+  offset: number;
+}): string => {
+  // TextDecoder 会把探测窗口截断留下的半个码元解码成替换字符，不影响文本判定。
+  return new TextDecoder(encoding).decode(buffer.subarray(offset));
 };
 
 /**
@@ -78,9 +78,9 @@ const decodeUtf16 = (
 export const isLikelyTextBuffer = (buffer: Buffer) => {
   if (buffer.length === 0) return true;
 
-  const utf16 = utf16View(buffer);
+  const utf16 = detectUtf16Text(buffer);
   if (utf16) {
-    return isLikelyTextString(decodeUtf16(buffer, utf16.encoding, utf16.offset));
+    return isLikelyTextString(decodeUtf16({ buffer, ...utf16 }));
   }
 
   let suspiciousBytes = 0;

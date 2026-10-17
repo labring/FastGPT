@@ -255,29 +255,22 @@ export const detectUploadFileEvidence = async ({
     detectedMime: detected?.mime
   });
   const detectedMime = officeFormat?.mime || detected?.mime;
+  // 内容是否真的是文本必须由内容本身判断：file-type 的文本类结果（如 `<?xml` 前缀对应
+  // 的 application/xml）只是启发式，不能证明后续字节不是二进制。
+  const isTextLike = isLikelyTextBuffer(buffer);
 
   if (detectedMime) {
-    // file-type 对以 `<?xml` 开头的文本会返回 application/xml。这只是前缀启发式，不是
-    // magic bytes，和 isLikelyTextBuffer 同属文本类弱证据。若当作 magic 证据，显式声明
-    // 的 text 后缀（如 .svg）会因「检测类型与后缀不一致」被误拒，因此这里仍然按文本证据返回。
-    if (!officeFormat && isTextLikeMime(detectedMime)) {
-      const isTextLike = isLikelyTextBuffer(buffer);
-      return {
-        isTextLike,
-        source: isTextLike ? 'text' : 'unknown'
-      };
-    }
-
+    // 保留 detectedMime / detectedExtension 作为类型提示：无后缀、无 MIME hint 且没有
+    // 扩展名白名单时，resolveUploadFile 要靠它推断出 file.xml / application/xml 这类结果。
     return {
       detectedMime,
       detectedExtension: officeFormat?.extension || normalizeFileExtension(detected?.ext),
-      isTextLike: false,
+      isTextLike,
       ...(officeFormat ? { officeExtension: officeFormat.extension } : {}),
       source: officeFormat ? 'office-zip' : 'magic'
     };
   }
 
-  const isTextLike = isLikelyTextBuffer(buffer);
   return {
     isTextLike,
     source: isTextLike ? 'text' : 'unknown'
@@ -377,12 +370,20 @@ export const resolveUploadFile = ({
       expectedMime !== DEFAULT_CONTENT_TYPE &&
       mimesMatchForUpload(expectedMime, evidence.detectedMime);
 
+    // 显式声明为 text 的后缀只要求内容本身是文本（evidence.isTextLike 来自字节内容，
+    // 而不是 file-type 的 MIME 名称判断）。这样 `<?xml` 前缀 + 二进制的文件仍会被拒绝，
+    // 同时 BOM 的 UTF-16 文本即使被 file-type 误判成 audio/mpeg 也能按后缀收下。
+    const textRuleAcceptsDetectedText =
+      explicitRule?.verification === 'text' && evidence.isTextLike;
+
     // 显式的可验证后缀必须与内容一致，不能因为检测出的另一种类型也在白名单中就静默改名。
-    if (explicitExtension && !detectedMatchesExpected) {
+    if (explicitExtension && !detectedMatchesExpected && !textRuleAcceptsDetectedText) {
       throw new Error(S3ErrEnum.uploadFileTypeMismatch);
     }
 
     const detectedMatchesPolicy = (() => {
+      if (textRuleAcceptsDetectedText) return true;
+
       if (!allowedExtensions.length) {
         return expectedMime === DEFAULT_CONTENT_TYPE || detectedMatchesExpected;
       }
@@ -399,9 +400,13 @@ export const resolveUploadFile = ({
       : matchedAllowedExtension || evidence.officeExtension || evidence.detectedExtension || '';
     return {
       filename: resolveAcceptedFilename({ filename, extension: resolvedExtension }),
-      contentType: evidence.detectedMime,
+      contentType: textRuleAcceptsDetectedText ? expectedMime : evidence.detectedMime,
       extension: resolvedExtension,
-      detectionSource: evidence.source === 'office-zip' ? 'office-zip' : 'magic',
+      detectionSource: textRuleAcceptsDetectedText
+        ? 'text'
+        : evidence.source === 'office-zip'
+          ? 'office-zip'
+          : 'magic',
       correctedFilename: Boolean(resolvedExtension && resolvedExtension !== filenameExtension)
     };
   }
