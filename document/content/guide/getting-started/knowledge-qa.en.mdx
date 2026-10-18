@@ -24,7 +24,7 @@ The shared screenshots use Chinese labels and show an example interface. The Kno
 
 ## 1. Create and import knowledge
 
-Open Knowledge Bases, create a standard knowledge base named Travel Policy, and select an available embedding model. Open it, choose **New / Import → Text collection → Local file**, and upload `travel-policy.txt`. Keep the default segmentation settings, preview the chunks, and verify that deadlines and required documents remain readable before submitting processing.
+Open Knowledge Bases, create a general Knowledge base named Travel Policy, and select an available embedding model. Open it, choose **New / Import → Text collection → Local file**, and upload `travel-policy.txt`. Wait for the upload to reach 100%, select **Next**, and keep the default processing settings. Select **Next** again, then select the filename on the left to load its chunk preview. Verify the deadline and required documents, then select **Next → Start uploading** to submit processing.
 
 Wait for Collection processing and indexing to finish, confirm that the Collection is enabled, then open the chunks to inspect the source. A file becomes a content collection containing one or more chunks. If processing fails, inspect the error and model quota, then retry the failed items.
 
@@ -60,7 +60,7 @@ If retrieval succeeds but the answer changes the facts, inspect model input, ins
 
 ## 5. Publish and verify access
 
-Application creation produces an initial published version. Publish the configuration you just edited, create a shared link under Publishing Channels, and open a new conversation to repeat the checks. Both debug and published access should satisfy the same factual expectations.
+Application creation produces an initial published version. Open **Save → Save and Publish** at the top right of the editor, enter a version name, and confirm. After the success notification, create a link under **Publishing Channels → Share Link** and enable **View cited snippets**. Open the link, wait for the new conversation to finish loading, repeat the questions, and open the citations to check the source text. Both debug and published access should satisfy the same factual expectations.
 
 After changing material, check processing and retrieval again. After changing application configuration, publish again. See [published versions and channels](/en/guide/build/publish/versions).
 

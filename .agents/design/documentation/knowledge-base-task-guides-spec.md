@@ -2,7 +2,7 @@
 
 Date: 2026-10-18 (Asia/Shanghai)
 
-Status: Implementation authorized by the user on 2026-10-18. Twelve bilingual page pairs are implemented and locally validated. Product acceptance retains a pending team-selection prerequisite, tracked below. Tracker publication remains pending project setup.
+Status: Implementation authorized by the user on 2026-10-18. Twelve bilingual page pairs are implemented and locally validated. All four key product scenarios passed in the user-authorized isolated SaaS resources, tracked below. Tracker publication remains pending project setup.
 
 ## Problem Statement
 
@@ -189,7 +189,7 @@ Validate the key tasks by following the guides in an independent test team on of
 - **Inherited decisions:** application builders are the primary audience, with dedicated developer and operator entrances; Chinese and English are maintained together; effective topic URLs remain stable; existing product terminology and version-specific historical material are preserved.
 - **Page-level scope:** the eight-plus-four page-pair plan captures the implementation proposal discussed immediately before the request for this specification. This document provides the concrete delivery and acceptance scope for implementation authorization.
 - **Evidence baseline:** the inspected official content contains 281 Chinese/English page pairs, including 137 historical upgrade pairs. The private engineering documentation was sourced at revision 32918084743600bc255a988b55103bf4660b6037. The public procedures will carry the conditions of the actual SaaS acceptance environment.
-- **Current evidence:** planning involved read-only documentation and source investigation. The four product scenarios in this specification are future acceptance work. Existing screenshots and source-backed behavior retain their recorded evidence boundaries.
+- **Current evidence:** planning involved read-only documentation and source investigation. The four product scenarios subsequently passed on 2026-10-18; the execution ledger below records their scope. Existing screenshots and source-backed behavior retain their recorded evidence boundaries.
 - **Operational prerequisites:** the exact SaaS test-team entry, access method, usable model configuration, permissions, and available quota are established at execution time. Use fictional material and clearly identifiable test resources.
 - **Tracker publication:** the existing draft identifies GitHub Issues in yangchuansheng/FastGPT as the intended destination. Completed tracker and triage-label configuration remains pending in the repository instructions. Run `/setup-matt-pocock-skills` to record the project configuration, then publish this specification to the configured tracker with `ready-for-agent`. Publication remains pending.
 - **Implementation authorization:** the user invoked `implement` for this specification on 2026-10-18, authorizing the scoped documentation changes, product-task acceptance, review, and a local commit. Website publication and Git push remain outside this delivery.
@@ -201,18 +201,18 @@ This ledger accompanies the specification and the existing reconstruction invent
 
 | Page pair (under `document/content/`) | Primary purpose / owner | Evidence and disposition |
 | --- | --- | --- |
-| `guide/getting-started/knowledge-qa` | Tutorial / official documentation | Existing fixture and media retained; processing, citation, missing-information, and published-result checkpoints added. Product execution pending. |
+| `guide/getting-started/knowledge-qa` | Tutorial / official documentation | Existing fixture and media retained; import, retrieval, debug, publication, shared answers, citations, and missing-information handling executed successfully. |
 | `guide/dataset/lifecycle` | Task navigation / official documentation | Links import → retrieval → integration → publication → maintenance, with completion checkpoints. |
-| `guide/dataset/import-data` | How-to / official documentation | New local-file procedure, source choices, progress states, recovery, and same-name upload boundary. |
-| `guide/dataset/test-retrieval` | How-to / official documentation | New fixed-question baseline, one-factor changes, effective parameters, and reversible recovery exercise. |
-| `guide/dataset/connect-application` | How-to / official documentation | New Chat Agent procedure, known and uncovered questions, citation checks, and Workflow handoff. |
-| `guide/dataset/update-data` | How-to / official documentation | New chunk-edit, replacement-upload, and stored-source reprocessing paths; permissions and freshness checks. |
+| `guide/dataset/import-data` | How-to / official documentation | Local TXT upload, preview selection, processing submission, and ready/indexed states executed. Other formats, failed processing, and same-name replacement remain source-backed. |
+| `guide/dataset/test-retrieval` | How-to / official documentation | Semantic retrieval of both known facts executed; disabling the sole Collection produced an empty-search notification and enabling restored the passage. Other modes and tuning remain source-backed. |
+| `guide/dataset/connect-application` | How-to / official documentation | Chat Agent configuration, both known facts, uncovered question, and citation passages executed. Workflow handoff remains source-backed. |
+| `guide/dataset/update-data` | How-to / official documentation | Chunk edit from 15 to 30, default-index update, retrieval, shared new-conversation answer, and citation executed. Replacement-upload and reprocessing remain source-backed. |
 | `guide/dataset/dataset_engine` | Reference / official documentation | Effective score conditions, rerank fallback, citation budget, modes, scope, and model-dependent image behavior. Legacy headings retained as aliases. |
 | `guide/dataset/template` | Reference / official documentation | Canonical CSV/XLSX examples retained; header normalization, compatible index column, single-column expansion, empty rows, and verification added. |
 | `guide/dataset/rag` | Explanation / official documentation | Relationships and decision consequences; legacy heading aliases preserve bookmarks. |
-| `guide/dataset/faq` | Troubleshooting how-to / official documentation | Empty results, incorrect answers, stale data, recovery verification, and sanitized escalation details. |
-| `guide/build/publish/versions` | How-to / official documentation | Distinguishes content indexing from configuration publication and checks a new channel conversation. |
-| `guide/build/publish/link` | How-to / official documentation | Basic access and citation verification; authentication/callback material retains its existing scope. |
+| `guide/dataset/faq` | Troubleshooting how-to / official documentation | Disabled-Collection empty result and restoration executed. Remaining symptoms and escalation checks remain source-backed. |
+| `guide/build/publish/versions` | How-to / official documentation | Save → Save and Publish executed as 差旅制度验收 v1. Shared new-conversation checks passed; subsequent content update reached this version without another configuration publish. Other channels remain source-backed. |
+| `guide/build/publish/link` | How-to / official documentation | Link creation, citation visibility, expiry/limit persistence, new-conversation answers, and cited snippets executed. Authentication/callback material retains its existing scope. |
 
 Source evidence at baseline `32918084743600bc255a988b55103bf4660b6037`:
 
@@ -222,22 +222,37 @@ Source evidence at baseline `32918084743600bc255a988b55103bf4660b6037`:
 - Permissions: `packages/service/support/permission/dataset/auth.ts`, `projects/app/src/pages/api/core/dataset/collection/delete.ts`, and the maintained Collection-permission guide. Public instructions retain identity-dependent access conditions.
 - Template parsing and publication evidence remain linked by topic in `reconstruction-pages.csv`; this batch extends those records rather than replacing previous evidence.
 
-Product acceptance environment: `https://cloud.fastgpt.cn`, accessed through user-requested `ego-browser`, displayed version 4.17.3 on 2026-10-18. Existing login works. The current team is `fastgpt 团队`, member label `QA test`. Team authorization for newly isolated test resources is pending the user's response; no product mutations have been made. Models will be recorded when selected. Account identifiers and credentials are excluded from this ledger.
+Product acceptance environment: `https://cloud.fastgpt.cn`, accessed through user-requested `ego-browser`, displayed version 4.17.3 on 2026-10-18. The user explicitly authorized newly isolated resources in `fastgpt 团队`, member label `QA test`. Execution followed the Chinese task procedures between approximately 19:38 and 19:58 Asia/Shanghai. English counterparts received semantic and reading-path review. Account identifiers, credentials, and the bearer share URL are excluded from this ledger.
 
-| Product scenario | Status | Required evidence |
+- Knowledge base: `文档验收-差旅制度-20261018`, ID `6ad4aecaaed818822036fbe3`; general Knowledge base, embedding model `阿里-emb4`, text/image understanding model `qwen3.8-flash`.
+- Collection: `travel-policy.txt`, ID `6ad4afaa7dd42b9d984a3cfe`; one chunk (`6ad4afaae8c9ba1dd12094f5`) and one default index, chunk size 1000, index size 512, chunk storage, automatic supplementary indexes off. The original English tutorial fixture was uploaded. Its server-held source retains 15 days; the maintained chunk and index now contain 30 days.
+- Application: `文档验收-差旅问答-20261018`, ID `6ad4b0237dd42b9d984a686a`; Chat Agent, `qwen3.8-flash`, only the test Knowledge base associated. Prompt: “Answer questions using the retrieved travel policy. State the deadline and required documents precisely. Cite the available sources. When the policy does not cover a question, explain what information is missing.”
+- Search-test and Application parameters: semantic search, citation budget 5000, minimum relevance 0, reranking off, question optimization off. Published once as `差旅制度验收 v1`.
+- Share record: `文档验收-差旅分享-20261018`; QPM 10, points limit 1000, expiry **2026-10-19 23:58 Asia/Shanghai**, confirmed in the saved list. Cited snippets and runtime status enabled; full-text/source-download switches remain off. No authentication hook configured. The shared link was exercised in the existing browser session; independent logged-out-session behavior was not tested.
+
+| Product scenario | Status | Observed evidence |
 | --- | --- | --- |
-| First usable published answer | Pending team selection | Imported fixture, completed indexes, known retrieval, Chat Agent answer, shared-link new conversation, supporting citations |
-| Missing information | Pending team selection | Hotel-allowance question and answer checked against the actual source |
-| Update from 15 to 30 days | Pending team selection | Chunk update, index completion, new retrieval, answer, and cited passage |
-| Disable and restore test Collection | Pending team selection | Failure symptom, identified disabled state, restored retrieval and answer |
+| First usable published answer | Passed | Upload reached 100%; selecting the preview filename exposed the fixture; Start uploading returned one ready Collection and indexed chunk. Deadline/material searches returned the full fixture (scores 0.6602/0.4215). Debug answered 15 calendar days, invoice, and approved request (10.05 s). Shared new conversation repeated both facts (8.71 s); opened citation contained the complete supporting passage. |
+| Missing information | Passed | Hotel-allowance question in debug (4.65 s) and sharing (6.16 s) explicitly said the policy lacks an allowance amount/standard and requested the missing policy. No numeric allowance was supplied. After the 30-day update the same missing-information behavior remained (5.04 s). |
+| Update from 15 to 30 days | Passed | Edited the chunk, selected Update indexes, observed updated default-index text and indexed state, reopened the chunk to confirm persistence. Retrieval returned 30 calendar days (0.6557, 0.423 s). A shared new conversation answered 30 days with unchanged material requirements (5.40 s); opened citation contained 30 days. The Application configuration remained at v1. |
+| Disable and restore test Collection | Passed | Switched Enabled off in the Collection list. Search displayed “搜索结果为空”; the result area retained its initial placeholder. Returned to the list, confirmed the disabled state, enabled it, and searched again: 30-day source returned (0.6557, 0.420 s). A new shared conversation answered 30 days, both required documents, and 5-business-day review (7.26 s); opened citation supported the facts. |
 
-Local validation: documentation reference, bilingual, and three-entrance navigation checks passed (285 pairs); all 12 existing documentation check tests and all 12 HTTP acceptance tests passed; TypeScript check and the final production build passed (579 generated pages). All 24 affected article routes rendered through ego-browser with matching localized headings and no private links. A focused MDX-parser check preserved all 203 existing heading IDs and verified edited fragment destinations. Desktop Chinese import and English retrieval layouts, tables, loaded media, and contextual links were inspected. At a 390 × 844 viewport, the English mobile navigation displayed all four new guides with readable wrapping and the correct active page; the viewport override was cleared afterwards. Full repository business tests are deferred until final user acceptance. Existing public screenshots retain their previous evidence level; this batch has produced local-site review screenshots only. Build output retains pre-existing workspace-root and standalone-start warnings; production deployment remains outside this task.
+Observed UI corrections are reflected in paired public instructions: general Knowledge base; wait for upload completion; select the filename in the preview; Next → Start uploading; Save → Save and Publish; enable cited snippets when creating the link; inspect persisted expiry and limits; wait for a new conversation to load before typing. One automated input sent during conversation navigation resulted in a blank view; repeating after the new conversation finished loading succeeded. Date-field automation initially failed to persist the intended expiry; editing the native field and inspecting the saved row confirmed the final expiry above. These automation observations do not establish product defects.
+
+Final resource state: the test Collection is enabled and indexed with the 30-day chunk; the test Application remains published at v1 and the bounded share record is retained for review until expiry. Existing business resources were untouched. Temporary screenshots were inspected as supporting observations and are not durable evidence links. Existing public screenshots remain illustrative assets from their recorded media audit; no replacement screenshot was needed for these textual procedure corrections.
+
+Evidence limits: model wording can vary. CSV/XLSX template imports, alternate file formats, replacement uploads, reprocessing, supplementary-index changes, reranking failure, other search modes, Workflow filters, permission matrices, authentication callbacks, API/MCP channels, and self-hosted environments were not executed in this run; their guidance retains the earlier source-review evidence.
+
+Local validation: documentation reference, bilingual, and three-entrance navigation checks passed (285 pairs); all 12 existing documentation check tests and all 12 HTTP acceptance tests passed; TypeScript check and the final production build passed (579 generated pages). All 24 affected article routes rendered through ego-browser with matching localized headings and no private links. A focused MDX-parser check preserved all 203 existing heading IDs and verified edited fragment destinations. Desktop Chinese import and English retrieval layouts, tables, loaded media, and contextual links were inspected. At a 390 × 844 viewport, the English mobile navigation displayed all four new guides with readable wrapping and the correct active page; the viewport override was cleared afterwards. Full repository business tests are deferred until final user acceptance. Existing public screenshots retain their previous evidence level; this batch includes local-site review and SaaS observation screenshots; public media was retained. Build output retains pre-existing workspace-root and standalone-start warnings; production deployment remains outside this task.
+
+SaaS follow-up validation: `pnpm --dir document check:docs` passed for 570 MDX files / 285 bilingual pairs; the final production build, including type validation, passed with 579 generated pages. The ten changed public routes were reopened through ego-browser and their corrected instructions were confirmed in both languages. `git diff --check` passed. Existing documentation test suites were already green in the implementation baseline; no runtime code changed in this follow-up.
 
 Review outcomes, kept as separate axes:
 
 - **Standards:** two findings, both fixed in Chinese and English. Recovery now requires Collection write permission; general import and integration guides explicitly distinguish the travel fixture from the reader's own question set.
 - **Spec:** three findings, all fixed in Chinese and English. Search testing starts from the target Knowledge base without assuming a Collection selector; reprocessing uses the opened Collection's top action with the correct English label; rebuilding requires reselecting a fixed Collection filter and republishing affected Workflow configuration.
-- **Remaining acceptance prerequisite:** the four product scenarios require confirmation of the current team's isolated test resources or identification of another test team. Login and read-only inspection succeeded. No SaaS mutations or model requests were performed.
+- **Product acceptance:** the user authorized isolated resources in the current team; all four scenarios passed with the evidence limits above.
+- **SaaS follow-up review:** separate Standards and Spec reviewers inspected the follow-up working diff against `2b34cda8f`; each reported zero actionable findings. Their read-only reviews checked recorded evidence and bilingual procedures; product execution was performed by the implementing agent.
 
 Implementation checklist:
 
@@ -245,6 +260,6 @@ Implementation checklist:
 - [x] Preserve existing topic URLs and legacy headings in the rewritten references.
 - [x] Keep private engineering references outside public MDX.
 - [x] Complete production build and rendered bilingual reading paths.
-- [x] Retain the concrete team-selection prerequisite for each SaaS scenario; execution remains pending.
+- [x] Execute all four SaaS scenarios using the authorized isolated resources and record the observations and final resource state.
 - [x] Resolve Standards and Spec review findings.
 - [x] Prepare the scoped local commit on `documentation/reconstruction`; the Git history records the completed commit.
