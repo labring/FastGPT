@@ -12,7 +12,7 @@ import {
 } from '@fastgpt/global/openapi/core/plugin/marketplace/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
-export type ToolListQuery = {};
+export type ToolListQuery = Record<string, never>;
 export type ToolListBody = PaginationProps<{
   searchKey?: string;
   tags?: string[];
@@ -44,7 +44,7 @@ const matchSource = (itemSource: string | undefined, source: MarketplaceSourceFi
 
 async function handler(
   req: ApiRequestProps<ToolListBody, ToolListQuery>,
-  res: ApiResponseType<any>
+  _res: ApiResponseType<any>
 ): Promise<ToolListResponse> {
   const { body } = parseApiInput({
     req,

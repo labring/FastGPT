@@ -55,13 +55,21 @@ describe('/api/tool/list', () => {
     s3Mocks.getPkgdownloadURL.mockClear();
   });
 
-  it.each(['suno', 'SUNO', ' Suno '])('finds a service-name card with %j', async (searchKey) => {
+  it.each([
+    ['Suno', 'suno'],
+    ['Suno', 'SUNO'],
+    ['Suno', ' Suno '],
+    ['Seedance', 'seedance'],
+    ['HappyHorse', 'happyhorse'],
+    ['GPT Image', 'gpt image'],
+    ['Nano Banana', 'nano banana']
+  ])('finds %s with query %j', async (service, searchKey) => {
     toolDataMocks.getToolList.mockResolvedValue([
       createTool({
-        pluginId: 'acedataSuno',
-        toolId: 'acedataSuno',
-        id: 'acedataSuno',
-        name: { en: 'Suno by Ace Data Cloud' },
+        pluginId: 'acedataService',
+        toolId: 'acedataService',
+        id: 'acedataService',
+        name: { en: `${service} by Ace Data Cloud` },
         description: { en: 'Generate music through Ace Data Cloud.' }
       }),
       createTool({ toolId: 'unrelated' })
@@ -74,7 +82,7 @@ describe('/api/tool/list', () => {
     );
     expect(res.body).toMatchObject({
       code: 200,
-      data: { total: 1, list: [{ toolId: 'acedataSuno' }] }
+      data: { total: 1, list: [{ toolId: 'acedataService' }] }
     });
   });
 
