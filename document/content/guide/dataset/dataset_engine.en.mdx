@@ -1,204 +1,91 @@
 ---
-title: Dataset Search Methods and Parameters
-description: This section covers FastGPT's Dataset architecture, including its QA
-  storage format and multi-vector mapping, to help you build better datasets. It also explains each search parameter. This guide focuses on practical usage rather than in-depth theory.
+title: Knowledge base search modes and parameters
+description: Look up search modes, reranking, thresholds, citation budgets, and query rewriting.
 ---
 
-## Understanding Vectors
+Use this reference to interpret search settings and results. Follow [Test retrieval](/en/guide/dataset/test-retrieval) for tuning steps and [RAG fundamentals](/en/guide/dataset/rag) for concepts. Available models and capabilities depend on your team, deployment version, and configuration. Use the numeric defaults shown in the current search-test or Application interface.
 
-FastGPT uses an embedding-based RAG approach to build Datasets. To use FastGPT effectively, you need a basic understanding of how embedding vectors work and their characteristics.
+## Search parameters
 
-Human text, images, and other media cannot be directly understood by computers. To determine whether two pieces of text are similar or related, they typically need to be converted into a computer-readable format — vectors are one such method.
+#<span id="semantic-search" />
+<span id="full-text-search" />
+<span id="hybrid-search" />
 
-A vector is essentially an array of numbers. The "distance" between two vectors can be calculated using mathematical formulas — the smaller the distance, the more similar the vectors. This maps back to text, images, and other media to measure similarity between them. Vector search leverages this principle.
+## Search modes
 
-Since text comes in many types with countless combinations, exact matching is hard to guarantee when converting it to vectors for similarity comparison. Vector-based Datasets typically use a `top-k` recall approach: find the top `k` most similar results, then pass them to an LLM for semantic evaluation, logical reasoning, and summarization. This makes vector search one of the most critical steps in Dataset Q&A.
+| Mode | Input and effect | Useful questions | Conditions |
+| --- | --- | --- | --- |
+| Semantic search | Embeds the query to retrieve semantically related chunks | Natural language and paraphrases; cross-language results depend on the model | Available vector indexes and embedding model |
+| Full-text search | Retrieves candidates through term matching | Identifiers, model numbers, specialized terms | Completed full-text indexes; matching depends on the deployment backend |
+| Hybrid search | Fuses semantic and full-text candidates with an adjustable semantic weight | Questions combining meaning and keywords | Both paths available; compare with fixed questions |
 
-Many factors affect vector search accuracy, including: vector model quality, data quality (length, completeness, diversity), and retriever precision (the speed vs. accuracy tradeoff). Search query quality is equally important.
+### Result reranking
 
-Retriever precision is relatively straightforward to address, and training vector models is more complex, so optimizing data and query quality becomes a key focus.
+Reranking is a toggle that requires an available rerank model. It scores retrieved text candidates again and contributes to result fusion. Results depend on candidate coverage, the question, and the model. Missing material must first be included in retrieval.
 
-### Improving Vector Search Accuracy
+If the rerank call fails, text results fall back to the original retrieved list and this run reports reranking as unused. Inspect errors, run details, and results exposed by the interface. If actual usage status is missing, ask an administrator to inspect the model call. The toggle expresses the requested configuration; actual execution determines threshold behavior.
 
-1. Better tokenization and chunking: When a text segment has complete and singular structure and semantics, accuracy improves. Many systems optimize their tokenizers to preserve data completeness.
-2. Streamline `index` content by reducing vector content length: Shorter, more precise `index` content improves search accuracy, though it may narrow the search scope. Best suited for scenarios requiring strict answers.
-3. Increase `index` quantity: Add multiple `index` entries for the same `chunk` to improve recall.
-4. Optimize search queries: In practice, user questions are often vague or incomplete. Refining the query (search term) can significantly improve accuracy.
-5. Fine-tune vector models: Off-the-shelf vector models are general-purpose and may underperform in specific domains. Fine-tuning can greatly improve domain-specific search results.
+### Search filters
 
-## FastGPT Dataset Architecture
+#### Citation limit
 
-### Data Storage Structure
+A **token** budget controls returned citation content. Fusion, deduplication, and applicable threshold filtering happen before budget trimming. Whole-chunk retention includes the last chunk that crosses the budget, so actual content can exceed the configured limit. Reserve room for the system prompt, message history, and answer, and check the model's context limit.
 
-A knowledge base contains collections. Content collections hold chunks; folder collections organize child collections. Retrieval first selects knowledge bases, then constrains recall using configured collections, tag conditions, and applicable member permissions. Collections carry source information and participate in scope control; see [collection tags](/en/guide/dataset/collection_tags) and [collection permissions](/en/guide/dataset/collection_permission).
+A larger budget may retain more clauses while increasing context use and distraction. Use [fixed questions](/en/guide/dataset/test-retrieval) to check that required conditions survive.
 
-![Data Storage Structure — interface example](/imgs/dataset_tree.png)
+#### Minimum relevance
 
-### Vector Storage Structure
+A numeric setting from **0 to 1**. Filtering depends on the scores actually available in this run:
 
-Vector indexes use the backend selected for the deployment. PostgreSQL/pgvector can use HNSW indexes; other supported backends use their own storage and retrieval implementations. MongoDB stores knowledge bases, collections, chunk text, and related business records. File-storage services manage original files.
+| Actual execution | Threshold basis |
+| --- | --- |
+| Text reranking succeeds and is used | Rerank scores |
+| Pure semantic search with reranking unused | Vector scores |
+| Full-text or hybrid search with reranking unused | Results may be returned without threshold filtering |
 
-In `MongoDB`'s `dataset_datas` collection, vector source data is stored along with an `indexes` field that records corresponding vector IDs. This is an array, meaning a single data entry can map to multiple vectors. In addition to default text indexes, image content can also generate image description indexes or image vector indexes when the configured models support it.
+Candidates lacking the target score are retained, so inspect their text. In hybrid search, a rerank-service failure may change both ordering and threshold applicability. Confirm the effective conditions before comparing thresholds. Raising the threshold can also remove useful clauses.
 
-In `PostgreSQL`, a `vector` field stores the vectors. During search, vectors are recalled first, then their IDs are used to look up the original data in `MongoDB`. If multiple vectors map to the same source data, they are merged and the highest vector score is used.
+#<span id="background" />
+<span id="how-it-works" />
 
-![Vector Storage Structure — interface example](/imgs/current/dataset-multiple-indexes.png)
+## Query rewriting
 
-### Purpose and Usage of Multi-Vector Mapping
+Query rewriting is an optional model step that uses the configured message history to resolve references and expand a query. “Which documents do I need for that?” requires the preceding reimbursement topic. It adds a model call and latency; its model and history scope follow the Application configuration.
 
-In a single vector, content length and semantic richness are often at odds. FastGPT uses multi-vector mapping to map a single data entry to multiple vectors, preserving both data completeness and semantic richness.
+When run details expose the rewritten query, check its subject, identifiers, and dates. Test complete single-turn questions, exact identifiers, and follow-ups separately, then retain settings that meet coverage and latency needs.
 
-You can add multiple vectors to a longer text so that if any one vector is matched during search, the entire data entry is recalled.
+<span id="overall-search-strategy" />
 
-This means you can continuously improve data chunk accuracy through annotation.
+## Result ranking and fusion
 
-### Overall Search Strategy
+Multiple retrieval paths contribute through reciprocal rank fusion (RRF). Reranking and image paths may also affect order. A score describes matching for its model or retrieval path, final order reflects fusion, and answer correctness requires fact and citation checks.
 
-A Dataset search is not simply "user question -> vector database -> result." Depending on the input and search parameters, FastGPT combines text, images, semantic recall, full-text recall, query rewriting, and reranking, then fuses multiple result paths into the final cited content.
+| Result information | What it establishes |
+| --- | --- |
+| Source Collection and text | Correct version and conditions needed for the answer |
+| Score and score type | Matching and threshold basis for this run; assess scores separately across models |
+| Result order | The position of relevant clauses in context |
+| Actual usage status or errors, when exposed | Whether reranking, filtering, and relevant models ran as expected |
 
-1. Use `Query rewriting` for coreference resolution and query expansion, improving multi-turn conversation search capability and semantic richness.
-2. Use `Semantic Search`, `Full-Text Search`, or `Hybrid Search` to recall candidate content.
-3. If the input contains images, use image description search or image vector search depending on model capability.
-4. Use `RRF` (Reciprocal Rank Fusion) to merge results from multiple search channels.
-5. Use `Rerank` for secondary sorting to improve text result relevance.
-6. Apply similarity filtering and the citation limit to produce the final cited content sent to the model.
+<span id="understanding-vectors" />
+<span id="improving-vector-search-accuracy" />
+<span id="fastgpt-dataset-architecture" />
+<span id="data-storage-structure" />
+<span id="vector-storage-structure" />
+<span id="purpose-and-usage-of-multi-vector-mapping" />
 
-![Overall Search Strategy — interface example](/imgs/dataset_search_process.png)
+## Retrieval scope and indexes
 
-### Image Search Method
+Scope depends on selected Knowledge bases, enabled Collections, tag filters, and applicable readable-Collection permissions. See [Collection tags](/en/guide/dataset/collection_tags) and [Collection permissions](/en/guide/dataset/collection_permission).
 
-In Dataset search, images can participate in retrieval in addition to text questions. FastGPT handles images differently depending on the configured model capabilities.
+A Data chunk can have multiple search indexes. Supplementary indexes help different questions find the same text; the text must still contain the complete evidence for the answer. See [Update material](/en/guide/dataset/update-data).
 
-Image search mainly works in two ways:
+## Image search method
 
-1. Image description search: If an available vision model is configured, the system can understand the image first, generate a text description, and use that description in regular text retrieval.
-2. Image vector search: If the selected embedding model supports image input, the system can generate vectors for images directly and match them against image vectors in the Dataset.
+Image-description search requires an available vision model and corresponding description indexes. Image-vector search requires an embedding model that accepts images and completed image-vector indexes. Combined text-image queries use available paths; results depend on imported content, model capabilities, and the query.
 
-Image search is not a separate system outside the Dataset. It adds an image-input path to the existing Dataset search pipeline.
+For weak image matching, check image clarity, completed indexes, and model support, then compare image-only and combined input. See [RAG fundamentals](/en/guide/dataset/rag).
 
-Common usage patterns include:
+## Common tuning tips
 
-- Text-to-image search: enter text to find semantically related image content.
-- Image-to-image search: enter an image to find visually or semantically similar image content.
-- Text + image search: enter both text and an image, using the text question as an additional constraint on image search results.
-
-Image search quality usually depends on image clarity, whether the image content is easy for the model to understand, whether a vision model is configured, and whether the embedding model supports image vectors.
-
-Whether an image can be retrieved does not only depend on uploading an image at search time. It also depends on which indexes were created during ingestion:
-
-| Dataset capability                                | Text-only query                              | Image-only query                                                | Text + image query                                |
-| ------------------------------------------------- | -------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------- |
-| Regular embedding model, no vision model          | Normal text retrieval                        | Usually unavailable                                             | Mainly uses the text part                         |
-| Regular embedding model with a vision model       | Normal text retrieval                        | Converts the image into a description, then uses text retrieval | Text + image description participate in retrieval |
-| Image-capable embedding model, no vision model    | Normal text retrieval                        | Image vector retrieval                                          | Text retrieval + image vector retrieval           |
-| Image-capable embedding model with a vision model | Text retrieval, including image descriptions | Image description + image vector retrieval                      | Text + image description + image vector retrieval |
-
-So when image-to-image search performs poorly, do not only adjust search parameters. Also check whether the Dataset is configured with a vision model or an image-capable embedding model, and whether valid image indexes were generated during ingestion.
-
-### Result Ranking and Fusion
-
-FastGPT fuses results from different recall paths instead of using only one path. Common paths include text vector recall, full-text recall, image description recall, image vector recall, and reranked results.
-
-Keep these points in mind:
-
-1. `Semantic Search` relies more on vector similarity and is better for natural-language questions and semantically related content.
-2. `Full-Text Search` relies more on keyword matches and is better for IDs, model numbers, proper nouns, error codes, and other exact queries.
-3. `Hybrid Search` uses both semantic recall and full-text recall, then merges the results with `RRF`.
-4. `Rerank` re-sorts candidate text results and works best when the question is clear and there are enough candidates.
-5. Image search adds image description or image vector results, which are then fused with text-side results.
-
-This means the final cited content may not be strictly sorted by a single vector similarity score. Content matched by multiple recall paths is usually more likely to rank higher.
-
-## Search Parameters
-
-|                                       |                                       |                                       |
-| ------------------------------------- | ------------------------------------- | ------------------------------------- |
-| ![Search Parameters — interface example](/imgs/current/dataset-search-mode.png) | ![Search Parameters — interface example](/imgs/current/dataset-search-filter.png) | ![Search Parameters — interface example](/imgs/current/dataset-question-optimization.png) |
-
-### Search Modes
-
-#### Semantic Search
-
-Semantic search calculates the vector distance between the user's query and Dataset content to determine "similarity" — mathematical similarity, not linguistic.
-
-Pros:
-
-- Understands similar semantics
-- Cross-language understanding (e.g., Chinese query matching English content)
-- Multimodal understanding (text, images, etc., depending on model capability)
-
-Cons:
-
-- Depends on model training quality
-- Inconsistent accuracy
-- Affected by keywords and sentence completeness
-
-#### Full-Text Search
-
-Uses traditional full-text search. Best for finding key subjects, predicates, and other specific terms.
-
-- When the vector store is **Milvus (≥ 2.5.16)**: full-text search uses Milvus **BM25** (vectors and full-text live in the single `modeldata_v2` collection); language identification defaults to `lingua` (switchable via `MILVUS_LANGUAGE_IDENTIFIER=whatlang`; `lingua` is more accurate, while `whatlang` is faster).
-- Other vector stores (PG / OceanBase / SeekDB / openGauss): full-text search uses MongoDB `$text` + jieba tokenization.
-
-#### Hybrid Search
-
-Combines vector search and full-text search, merging results using the RRF formula. Generally produces richer and more accurate results.
-
-Since hybrid search covers a large range and cannot directly filter by similarity, a rerank model is typically used to re-sort results and filter by rerank scores.
-
-#### Result Reranking
-
-Uses a `Rerank` model to re-sort search results. In most cases, this significantly improves accuracy. Rerank models work better with complete questions (with proper subjects and predicates), so query rewriting is usually applied before search and reranking. Reranking produces a score between `0-1` representing the relevance between the search content and the query — this score is typically more accurate than vector similarity scores and can be used for filtering.
-
-FastGPT uses `RRF` to merge rerank results, vector search results, and full-text search results into the final output.
-
-### Search Filters
-
-#### Citation Limit
-
-The maximum number of `tokens` that citations can contain per search.
-
-Instead of using `top k`, we found that in mixed datasets (Q&A + document), different `chunk` lengths vary significantly, making `top k` results unstable. Using a `token` limit provides more consistent control.
-
-#### Minimum Relevance
-
-A value between `0-1` that filters out low-relevance search results.
-
-This only takes effect when using `Semantic Search` or `Result Reranking`.
-
-Note that minimum relevance is a filtering threshold, not the final sorting rule. After query rewriting, hybrid search, image search, or result reranking is enabled, final results may be fused from multiple recall paths and may not be strictly sorted by a single vector similarity score.
-
-### Query Rewriting
-
-#### Background
-
-In RAG, we need to perform embedding searches against the database based on the input query to find similar content (i.e., Dataset search).
-
-During search — especially in multi-turn conversations — follow-up questions often fail to find relevant content because Dataset search only uses the "current" question. Consider this example:
-
-![Background — interface example](/imgs/coreferenceResolution2.webp)
-
-When the user asks "What's the second point?", the system searches for "What's the second point?" in the Dataset, which returns nothing useful. The actual query should be "What is the QA structure?" This is why the Query Rewriting node expands the user's current question so Dataset search can find relevant content. Here's the result after rewriting:
-
-![Background — interface example](/imgs/coreferenceResolution3.webp)
-
-#### How It Works
-
-Before performing `data retrieval`, the model first performs `coreference resolution` and `query expansion`. This resolves ambiguous references and enriches the query's semantic content. You can view the optimized query in the conversation details after each interaction.
-
-Query rewriting adds an extra model call before the actual search. It often improves retrieval in multi-turn conversations, but it also increases total latency. If the current question is already clear, or response speed is more important, decide whether to enable it based on actual results.
-
-### Common Tuning Tips
-
-If search results are not as expected, start from the symptom. Avoid changing every parameter at once.
-
-| Symptom                                            | What to check or adjust first                                                                                                                                               |
-| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| No results found                                   | Confirm the data has finished indexing; lower the minimum relevance; increase the citation limit; check whether the question is too short or missing a subject              |
-| Results are too broad or off-topic                 | Raise the minimum relevance; reduce the citation limit; improve chunking; check whether recalled content contains too many unrelated chunks                                 |
-| IDs, model numbers, or proper nouns are inaccurate | Use full-text or hybrid search; reduce semantic search weight; avoid overusing query rewriting for exact ID queries                                                         |
-| Natural-language questions do not retrieve well    | Use semantic or hybrid search; enable query rewriting; add more accurate indexes to the data                                                                                |
-| Query rewriting makes search slower                | Query rewriting adds an extra model call. Use a faster optimization model, or enable it only for follow-up questions and short queries                                      |
-| Rerank still gives poor ordering                   | Check whether the user question is complete; make sure enough candidates are recalled; adjust minimum relevance and citation limit                                          |
-| Image-to-image search is weak                      | Confirm the embedding model supports image input; confirm image vector indexes were generated during ingestion; check whether the image is clear and has an obvious subject |
-| Text + image search is unstable                    | Clarify whether text or image should be more important; if you only want visual similarity, reduce extra text constraints                                                   |
+Check processing and scope first, then adjust search mode, query rewriting, reranking, effective thresholds, and citation budget one at a time. Use the checklist in [Test retrieval](/en/guide/dataset/test-retrieval) and recovery steps in [troubleshooting](/en/guide/dataset/faq).

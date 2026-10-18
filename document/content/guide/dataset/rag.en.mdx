@@ -1,123 +1,90 @@
 ---
-title: Dataset Fundamentals
-description: This section covers the core mechanisms, use cases, advantages, and limitations of RAG in generation tasks.
+title: Knowledge bases and RAG fundamentals
+description: Understand how sources, Collections, chunks, indexes, retrieval, citations, and answers relate.
 ---
 
-# 1. Introduction
+Retrieval-augmented generation (RAG) places relevant material into a language model's context to help it answer using that material. It suits policy lookup, product support, and frequently updated internal knowledge. Start practicing with [your first knowledge-backed Q&A](/en/guide/getting-started/knowledge-qa).
 
-When answers depend on company documents, product manuals, or changing information, retrieve relevant material before asking a language model to answer. This page explains that process and its boundaries in FastGPT.
+<span id="1-introduction" />
+<span id="11-definition-of-rag" />
+<span id="21-retriever" />
+<span id="51-data-collection-and-dataset-construction" />
+<span id="52-data-chunking-and-content-management" />
 
-## 1.1 Definition of RAG
+## How material becomes searchable
 
-Retrieval-Augmented Generation (RAG) supplies retrieved material as context for a generative model. Answer quality depends on source quality, retrieval coverage, prompts, and model capability. Generated answers still require verification.
+A Knowledge base organizes material for Applications. An imported file becomes a content Collection holding Data chunks; folder Collections organize other Collections. Parsing determines which text can be read, chunking determines which conditions stay together, and indexing creates searchable representations.
 
-# 2. Core Mechanisms of RAG
+A Data chunk can have several indexes, such as different questions that lead to the same clause. Its text holds the complete facts; indexes locate that text. Assess chunking by whether the deadline, conditions, and exceptions can be retrieved together.
 
-A basic RAG pipeline contains a retriever and a generator. Document parsing, permission filters, and evaluation also affect the outcome.
+An embedding model represents queries and content numerically for semantic matching; full-text search matches terms. The embedding model and storage backend both affect retrieval. See [search parameters](/en/guide/dataset/dataset_engine) for choices and [Import material](/en/guide/dataset/import-data) for steps.
 
-## 2.1 Retriever
+<span id="2-core-mechanisms-of-rag" />
+<span id="22-generator" />
+<span id="23-rag-workflow" />
+<span id="3-how-rag-works" />
+<span id="31-retrieval-phase" />
+<span id="32-generation-phase" />
+<span id="33-multi-turn-interaction-and-feedback" />
 
-The retriever returns candidate chunks for a question. Vector search uses an Embedding model to encode queries and content, then compares vectors. Full-text search matches terms. Hybrid search combines both result sets. See [Dataset Search](/en/guide/dataset/dataset_engine) for FastGPT settings.
+## The stages behind an answer
 
-## 2.2 Generator
+1. **Select readable scope.** Knowledge bases, enabled Collections, tags, and applicable permissions constrain candidate material.
+2. **Form the query and retrieve.** Query rewriting can use history to resolve references. Semantic, full-text, or hybrid search returns candidate chunks.
+3. **Prepare context.** An available rerank model scores text candidates. Results are fused, deduplicated, filtered by applicable scores, and trimmed to a citation budget.
+4. **Generate an answer.** The chat model combines the question, prompt, history, and retrieved passages.
+5. **Check the evidence.** Read cited passages to confirm facts, conditions, and dates in the answer.
 
-The generator receives the user question, system prompt, history, and retrieved chunks. Its context window limits the combined input and output budget. Reserve enough space for the answer.
+A vision model can describe images for text retrieval. Embedding models that support images can also retrieve image vectors. Both paths require corresponding indexes from ingestion and available model capabilities.
 
-## 2.3 RAG Workflow
+<span id="4-advantages-and-limitations-of-rag" />
+<span id="41-advantages" />
+<span id="42-limitations" />
+<span id="421-retriever-dependency-and-quality-issues" />
+<span id="424-generated-content-controllability-and-transparency" />
 
-1. Import documents and complete parsing, chunking, and indexing.
-2. Retrieve chunks using the question and search configuration.
-3. Pass the selected chunks to AI Chat.
-4. Check the answer, citations, and Run Details.
+## Retrieval, ranking, and answer correctness
 
-# 3. How RAG Works
+“How long after returning must I submit travel expenses?” needs the clause containing `15 calendar days`. Retrieval scores describe matching for a model or search path; ordering places material in context. The final deadline and citation establish whether the question was answered correctly.
 
-The following describes the current default FastGPT retrieval pipeline. Behavior depends on search mode, model capabilities, and node configuration.
+“What is the hotel accommodation allowance?” may retrieve the same travel policy, while that example source lacks an allowance standard. The prompt should require the model to explain the gap, and maintainers must check compliance. A citation provides an inspection point; reading the passage establishes whether it supports the answer.
 
-## 3.1 Retrieval Phase
+Assess scores separately across models and search paths. A reranking failure can change order and threshold conditions; see [minimum relevance](/en/guide/dataset/dataset_engine#minimum-relevance).
 
-FastGPT optionally expands the query, runs vector or full-text recall, combines candidates, and optionally reranks user-text recall. It then removes duplicates, applies score filtering, and trims results to the token budget. Collection scope, tag conditions, and readable-Collection permissions constrain candidate data. A vision model can describe image queries; an Embedding model supporting images can also retrieve by image vectors.
+<span id="423-dataset-updates-and-maintenance" />
 
-## 3.2 Generation Phase
+## Content updates and published configuration
 
-Connect Dataset Search results to the Dataset quote input of AI Chat and define answer rules in the prompt. When evidence is missing, state its limits and provide clarification or a human handoff path. Retrieval scores measure matching; answer accuracy needs separate evaluation.
+Source text, indexes, Application configuration, and existing conversations each hold different information. Editing a chunk requires updating its indexes; uploading a local file again creates a new Collection; reprocessing rebuilds chunks from the original file stored on the server. See the three paths in [Update material](/en/guide/dataset/update-data).
 
-## 3.3 Multi-Turn Interaction and Feedback
+Editing and debugging use the draft configuration, while published versions serve actual channels. Content updates affect subsequent retrieval; changes to Knowledge base selection, parameters, and prompts take effect through publishing. A new conversation helps separate historical messages from verification of a new clause. See [published versions](/en/guide/build/publish/versions).
 
-History can help query expansion resolve references and context. Maintainers use user feedback to update documents, retrieval settings, or prompts, then validate changes with regression questions. Model training and fine-tuning require a separately configured process.
+<span id="422-generator-computational-complexity-and-performance-bottlenecks" />
+<span id="5-rag-improvement-directions" />
+<span id="53-retrieval-optimization" />
+<span id="54-answer-generation-and-optimization" />
+<span id="55-rag-pipeline" />
 
-# 4. Advantages and Limitations of RAG
+## Quality, latency, and maintenance ownership
 
-Evaluate both the retrieved evidence and the final answer.
+| Observation | Maintenance focus |
+| --- | --- |
+| Missing, conflicting, or outdated clauses | Assign source owners, update dates, and retained versions |
+| Existing clauses are missed | Check scope, chunks, indexes, and query method |
+| Complete material produces inaccurate answers | Inspect the prompt, context budget, and model interpretation |
+| Follow-ups are slow or drift | Inspect content and latency for rewriting, reranking, and generation |
 
-## 4.1 Advantages
+Query rewriting, reranking, and generation add model calls. Citation content and history share the context budget. Compare retrieval, answers, citations, and latency with the same questions after each change. Use feedback to revise material, configuration, and prompts; model training or fine-tuning requires a separate process.
 
-RAG lets maintainers update the material available to a model and expose cited sources. It suits company-specific information, source verification, and continuously maintained knowledge.
+<span id="6-rag-case-studies" />
+<span id="7-rag-use-cases" />
+<span id="71-intelligent-qa-systems" />
+<span id="72-information-retrieval-and-text-generation" />
+<span id="73-other-use-cases" />
+<span id="8-summary" />
 
-## 4.2 Limitations
+## Application scope
 
-Incorrect sources, missed retrieval, permissions, context truncation, and model interpretation can all affect an answer. Prepare test questions and handling paths for these cases.
+Help centers and policy Q&A can be evaluated against fixed clauses. Cross-document summaries also require source-coverage and conflict checks. Image tasks require corresponding models and indexes. Qualified professionals should review medical, legal, and similar specialist conclusions.
 
-#### 4.2.1 Retriever Dependency and Quality Issues
-
-Check that the target document finished importing, then inspect search scope and recall results. Embedding models generate vectors; vector indexes store and retrieve them. Validate both configurations and their compatibility.
-
-#### 4.2.2 Generator Computational Complexity and Performance Bottlenecks
-
-Query expansion, reranking, and generation can add latency and cost. Locate the slow stage in Run Details before adjusting chunk count, quote budget, concurrency, or model selection.
-
-#### 4.2.3 Dataset Updates and Maintenance
-
-After updating documents, confirm that parsing and indexing finish, then verify related questions. See [Dataset Lifecycle](/en/guide/dataset/lifecycle). Freshness depends on the source and sync frequency.
-
-#### 4.2.4 Generated Content Controllability and Transparency
-
-Citations help users verify evidence. Check that the cited chunk supports the answer and retain relevant version, date, and source information. Sensitive workflows also need human review and access control.
-
-# 5. RAG Improvement Directions
-
-Use a stable set of real questions to compare changes. Record expected evidence, retrieved chunks, the final answer, and latency.
-
-## 5.1 Data Collection and Dataset Construction
-
-Choose authorized, reliable, maintainable sources. Remove duplicates, outdated content, and contradictions, and record the owner and update time.
-
-## 5.2 Data Chunking and Content Management
-
-Chunk according to document structure while retaining headings, conditions, and necessary context. Test representative questions to detect information split across chunks.
-
-## 5.3 Retrieval Optimization
-
-Validate permissions and search scope, then compare vector, full-text, hybrid, and reranked results. Score thresholds depend on the model and search mode; tune them using test results.
-
-## 5.4 Answer Generation and Optimization
-
-Define how the prompt uses evidence, presents citations, and handles missing information. Diagnose retrieval omissions and generation mistakes separately before changing settings.
-
-## 5.5 RAG Pipeline
-
-Complete [Your First Dataset Q&A](/en/guide/getting-started/knowledge-qa), then inspect matches with [Dataset Search](/en/guide/dataset/dataset_engine). Review logs and feedback after publishing, and repeat acceptance checks when documents change.
-
-# 6. RAG Case Studies
-
-Example: import a product refund policy and test three questions: the refund deadline, special-product exceptions, and a policy absent from the document. Check normal retrieval, conditional rules, and the response to missing evidence.
-
-# 7. RAG Use Cases
-
-Document coverage, permissions, and acceptance results determine suitability.
-
-## 7.1 Intelligent Q&A Systems
-
-Company help centers, internal-policy lookup, and product support can retrieve relevant clauses and provide sources for users to verify.
-
-## 7.2 Information Retrieval and Text Generation
-
-Retrieve relevant chunks before producing a summary or draft report. Cross-document tasks require checks for coverage, conflicting information, and citation support.
-
-## 7.3 Other Use Cases
-
-Image documents can use vision models and image-capable Embedding models. Capabilities depend on the selected model and import method. Medical and legal workflows require review by qualified professionals.
-
-## 8. Summary
-
-Start with one trusted document and a testable question set. Verify import, retrieval, answers, and citations before expanding the Dataset.
+Next: [Test retrieval](/en/guide/dataset/test-retrieval), then [connect an Application](/en/guide/dataset/connect-application).

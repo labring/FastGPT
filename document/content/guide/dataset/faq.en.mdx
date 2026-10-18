@@ -3,15 +3,38 @@ title: Knowledge-base troubleshooting
 description: Diagnose parsing, model configuration, retrieval, and context limits, and check retention conditions.
 ---
 
-Record the knowledge base, collection, processing stage, and error. Reproduce with a small file before following the checks below, then rerun [retrieval testing](/en/guide/dataset/lifecycle).
+Record the knowledge base, collection, processing stage, and error. Reproduce with a small file before following the checks below, then rerun the [fixed retrieval questions](/en/guide/dataset/test-retrieval).
+
+You need access to the target Knowledge base. Editing content or enabled state requires the corresponding write permission; an administrator handles model-service issues. Check the available entry points, version, permissions, and models for your SaaS team or self-hosted deployment.
+
+## Empty retrieval results
+
+1. Check Collection processing and index completion; recover failed items first.
+2. Check whether the Collection is enabled, then the Knowledge base, Collection, and [tag scope](/en/guide/dataset/collection_tags).
+3. Check the current member’s [Collection permissions](/en/guide/dataset/collection_permission).
+4. Confirm effective threshold conditions in [search parameters](/en/guide/dataset/dataset_engine#search-parameters) before adjusting the threshold or citation budget.
+
+After recovery, repeat the same question and confirm that the intended passage returns. An isolated test Collection can reproduce “disabled → empty results or missing target source → enabled → original passage restored.”
+
+## Incorrect answers or unsupported citations
+
+Inspect Application run details and cited passages. For missing clauses, check retrieval scope and parameters. For complete clauses, inspect the prompt and model output. Follow [Connect an Application](/en/guide/dataset/connect-application) to rerun known-answer and missing-information questions, verifying both answers and citations.
+
+## Stale answers after an update
+
+Follow [Update material](/en/guide/dataset/update-data) to check text, indexes, and duplicate Collections. A new upload creates a new Collection; reprocessing uses the original file stored on the server. Once retrieval returns the new clause, check whether Application configuration needs publishing and verify the answer and citation in a new conversation through the actual channel.
 
 ## File parsing fails
 
 Check that the file format is supported, the file opens normally, and its text can be extracted. Scanned PDFs or images require available enhanced parsing. Inspect the import settings, deployed parsing service, and returned error. Verify plain text with a small sample first. Self-hosted operators can consult [MinerU configuration](/en/self-host/custom-models/mineru) and [environment variables](/en/self-host/config/env).
 
+After recovery, confirm that the preview contains readable text and that a question from the source retrieves it.
+
 ## Garbled File Content
 
 Save text or CSV files as UTF-8 and import again. For PDFs, Word files, and other formats, inspect the source and parsed output first. Confirm how existing collection data will be retained before reprocessing.
+
+After recovery, inspect the preview and Data chunks. Manage old and newly imported Collections through [Update material](/en/guide/dataset/update-data).
 
 ## Processing Model vs. Embedding model
 
@@ -19,6 +42,8 @@ Save text or CSV files as UTF-8 and import again. For PDFs, Word files, and othe
 - **Embedding model**: vectorizes chunks for semantic retrieval and requires an available embedding service.
 
 Check the model and channel corresponding to the failed stage. Verify catalog visibility, member access, and the actual request result; see [team models](/en/guide/workspace/models).
+
+After restoring the affected service, retry failed items, wait for indexing, and check a known question.
 
 ## Excel File Import
 
@@ -31,6 +56,8 @@ Displayed length estimates support processing and context controls. Model servic
 ## Restore a Rerank Model
 
 Confirm an available reranker is configured and check member access, its channel, and service connectivity. Self-hosted administrators should inspect the model-provider interface using [model configuration](/en/self-host/config/model/intro). Cloud users should check the available catalog and plan. Select the restored model and rerun retrieval testing.
+
+Failed reranking falls back to the original text results, and the threshold may become inactive in hybrid search. After recovery, repeat the same question and inspect actual results and any execution information exposed by the interface.
 
 ## Data Retention After Expiration
 
@@ -49,3 +76,7 @@ Check the application's history range and the model's context and output limits.
 ## Knowledge-base page flickers
 
 Inspect page or network-request errors, member permissions, and knowledge-base configuration. Confirm the selected embedding model exists and is available, then use the error to investigate its channel or service connection. Retain reproduction steps and errors for the administrator.
+
+## Ask an administrator for help
+
+Provide the time, version, processing stage, sanitized error, file format, model, retrieval settings, and a minimal reproduction question. Remove account details, keys, and sensitive material from evidence screenshots. After recovery, rerun that question and check the source, answer, and citation.

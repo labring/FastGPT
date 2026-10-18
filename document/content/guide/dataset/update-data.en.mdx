@@ -1,0 +1,53 @@
+---
+title: Update material and verify the change
+description: Choose chunk editing, replacement upload, or reprocessing, then verify retrieval and a new conversation.
+---
+
+After changing material, use retrieval and a new conversation to verify the content in effect. This guide changes the [travel example](/en/guide/getting-started/knowledge-qa) submission deadline from 15 to 30 calendar days.
+
+## Choose an update method
+
+You need write permission on the target Collection. A new upload also requires write permission on the Knowledge base or destination folder. Deleting the old Collection requires owner permission. Check which Applications use the material and preserve the source file and any manual edits you need.
+
+| Goal | Method | Effect on existing content |
+| --- | --- | --- |
+| Correct a few clauses | Edit Data chunks and update indexes | Updates the chunk's text and searchable representation |
+| Replace local file content | Upload again, verify the new Collection, then disable the old one | Same-name uploads also create a new Collection |
+| Change chunking or processing settings | Adjust processing parameters and reprocess | Rebuilds chunks from the stored original file; manual edits may be overwritten |
+| Refresh a web or external source | Use its synchronization capability | Follows the source and synchronization job's processing results |
+
+## Edit a Data chunk
+
+1. Open the test Knowledge base → `travel-policy.txt` Collection → the Data chunk containing the deadline.
+2. Change `15 calendar days` to `30 calendar days`, retaining the other clauses.
+3. Select **Update indexes** and wait for completion. Index updates or rebuilding may temporarily block writes; continue editing after completion.
+4. Reopen the chunk and confirm the 30-day text and completed indexes. Existing supplementary indexes are retained; inspect them for the old deadline and correct them as needed.
+5. Verify retrieval and the actual Application using the checks below.
+
+If the update fails, inspect the error and embedding model availability. After recovery, update indexes again and inspect the result.
+
+## Replace a local file
+
+1. Edit the source file on your computer and save any version you need to retain.
+2. Choose **New/Import → Text collection → Local file** in the Knowledge base and upload it again. Follow the [import guide](/en/guide/dataset/import-data) to preview and confirm processing.
+3. Identify the new Collection and inspect its text and retrieval results. For duplicate names, use creation time and content; a same-name upload coexists with the old Collection.
+4. Once the new Collection works, disable the old one. Check that [tags](/en/guide/dataset/collection_tags), [permissions](/en/guide/dataset/collection_permission), and Application scope include the new Collection.
+5. Repeat verification and confirm that the effective scope contains the intended version. Keep the disabled old Collection for rollback when needed; an owner can permanently delete it after a retention decision.
+
+Keep the old Collection available if the new one fails. Correct the cause and verify the new one again. Old and new clauses may both appear during replacement, so include this conflict in your final check.
+
+## Reprocess the stored source
+
+For an ordinary text Collection with a configured chunk size and write permission, open the Collection and select **Adjust Indexing Parameters** in the top action area. Check chunking and processing settings, submit, and wait for chunks and indexes to rebuild.
+
+This operation reads the original uploaded file stored on the server. Reprocessing deletes old data and rebuilds it from that file; hand-edited chunks may return to the original content. Rebuilding creates a new Collection identifier. If a Workflow filters by specific Collections, select the rebuilt Collection and publish the configuration, then verify it in a new conversation through the actual channel. Changes to a file on your computer require a new upload. Web and API files use their respective synchronization features; see [web synchronization](/en/guide/dataset/websync) and [third-party knowledge sources](/en/guide/dataset/third-party/third_dataset).
+
+If the action is missing, check the Collection type, chunk settings, and permissions. For failed rebuilding, restore the affected service and follow the interface's retry action. Then recheck every changed clause.
+
+## Verify the update
+
+1. In the Knowledge base search test, ask “How long after returning must I submit travel expenses?” Check for `30 calendar days` and inspect whether another Collection still returns the old 15-day clause.
+2. Start a new conversation in the connected Application. Ask the same question, check for 30 calendar days, and open the citation to verify its source and deadline.
+3. Repeat through the actual [Publishing channel](/en/guide/build/publish/versions) in a new conversation. Retest the required documents and missing-policy question to check that the other rules still hold.
+
+Content updates affect subsequent retrieval after processing and indexing finish. Changing the connected Knowledge base, retrieval parameters, or prompt changes Application configuration and requires publishing. For stale answers, check source text, indexes, Collection scope, published version, and a new conversation in that order; see [troubleshooting](/en/guide/dataset/faq).

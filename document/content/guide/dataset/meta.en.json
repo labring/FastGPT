@@ -3,6 +3,10 @@
   "root": false,
   "pages": [
     "lifecycle",
+    "import-data",
+    "test-retrieval",
+    "connect-application",
+    "update-data",
     "dataset_engine",
     "template",
     "third-party",

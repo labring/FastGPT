@@ -1,39 +1,38 @@
 ---
-title: Create and maintain a knowledge base
-description: Connect creation, import, chunk preview, retrieval testing, application association, and maintenance.
+title: Create and maintain a Knowledge base
+description: Follow checkpoints for import, retrieval, Application integration, publishing, and updates.
 ---
 
-A knowledge base stores material for application retrieval. Verify the complete path with one short document before expanding the dataset; follow [your first knowledge-base Q&A](/en/guide/getting-started/knowledge-qa).
+Start with your current task. For a first visit, follow [your first knowledge-backed Q&A](/en/guide/getting-started/knowledge-qa) to complete the journey with a fictional travel policy.
 
 ## Create and choose an import method
 
-You need creation or write permission and an available embedding model. Create a knowledge base from the list and choose a model appropriate for the language and material. Team or deployment administrators manage model configuration and quota.
+Prepare creation or write permission, an available embedding model, and quota. Use [Import material](/en/guide/dataset/import-data) to choose local files, templates, web pages, or external sources.
 
-| Source | Method |
-| --- | --- |
-| Local material | Upload a supported file and inspect parsing and chunk previews |
-| Small amounts of curated knowledge | Add chunks or Q&A pairs manually, keeping each independently understandable |
-| Web pages | Import accessible pages; see [web synchronization](/en/guide/dataset/websync) for recurring updates |
-| Enterprise content systems | Choose a [third-party knowledge source](/en/guide/dataset/third-party/third_dataset) and its connection guide; verify authorization and network access |
-| Programmatic ingestion | Follow [knowledge-base API integration](/en/openapi/dataset) and the generated request contract |
+**Checkpoint:** The preview preserves complete clauses, and the target Collection has been submitted for processing.
 
 ## Segmentation and processing
 
-An imported file or page becomes a content collection containing data chunks. Folder collections organize other collections. Retrieval indexes provide searchable representations of chunks.
+Content Collections hold Data chunks; folder Collections organize other Collections. Indexed chunks become available to retrieval. See [RAG fundamentals](/en/guide/dataset/rag) for the relationships.
 
-Preview segmentation before submitting: headings should supply context, conditions should stay with their conclusions, and tables or scans should contain readable text. After submitting, inspect processing status and failures. Wait for indexing before testing retrieval. Parsing and indexing can call separate models or services and consume quota according to your configuration.
+Follow the [retrieval-readiness checks](/en/guide/dataset/import-data#3-confirm-retrieval-readiness) for progress, failures, and indexes.
+
+**Checkpoint:** The Collection is enabled, source text is readable, processing is complete, and a known question retrieves the expected clause.
 
 ## Retrieval and application association
 
-First test retrieval in the knowledge base using a question with a known answer. Inspect matched text, similarity, scope, and ranking. Associate the knowledge base with an application and repeat the question, checking retrieved material, generated answer, and citations. This separates source, retrieval, and generation problems.
+| Current task | Guide | Completion check |
+| --- | --- | --- |
+| Improve matching | [Test retrieval](/en/guide/dataset/test-retrieval) | Fixed questions retrieve correct material and parameter changes are recorded |
+| Generate answers | [Connect an Application](/en/guide/dataset/connect-application) | Answers, citations, and missing-information behavior pass |
+| Provide actual access | [Published versions](/en/guide/build/publish/versions) and [shared links](/en/guide/build/publish/link) | A new conversation passes the same fact checks |
 
-References: [retrieval engine](/en/guide/dataset/dataset_engine) and [RAG concepts](/en/guide/dataset/rag).
+See [search parameters](/en/guide/dataset/dataset_engine#search-parameters) for meanings and effective conditions.
 
 ## Maintenance
 
-- After updating files or synchronizing a source, inspect processing and rerun a fixed set of questions.
-- Use [collection tags](/en/guide/dataset/collection_tags) to narrow retrieval and [collection permissions](/en/guide/dataset/collection_permission) to control access.
-- Deleting collections or chunks changes material available to associated applications; inspect dependent applications first.
-- For empty results, parsing failures, or quota errors, record the collection, processing stage, and error, then follow [troubleshooting](/en/guide/dataset/faq).
+Use [Update material](/en/guide/dataset/update-data) to choose chunk editing, file replacement, or reprocessing. Verify the update in retrieval and a new conversation.
 
-Material updates affect later retrieval. Apply application configuration changes to actual access through [published versions](/en/guide/build/publish/versions).
+Manage scope with [Collection tags](/en/guide/dataset/collection_tags) and access with [Collection permissions](/en/guide/dataset/collection_permission). Check connected Applications before deleting content. For failed processing, empty results, or stale answers, follow [troubleshooting](/en/guide/dataset/faq), then rerun the fixed questions.
+
+**Checkpoint:** New clauses take effect, old clauses leave the intended scope, and the remaining questions still pass.

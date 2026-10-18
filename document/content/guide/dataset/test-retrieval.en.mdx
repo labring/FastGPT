@@ -1,0 +1,54 @@
+---
+title: Test retrieval and improve matching
+description: Compare retrieved passages with fixed questions, change one factor at a time, and verify recovery.
+---
+
+Use this guide to check whether the intended material can be retrieved and identify settings that affect matching. You need read and search access to the Knowledge base, available models, and [indexed material](/en/guide/dataset/import-data). Saving Application settings also requires editing permission. Disabling and enabling a Collection in the recovery exercise requires write permission on that Collection.
+
+## 1. Fix the questions and expected passages
+
+Use this set with the [travel example](/en/guide/getting-started/knowledge-qa). For your own material, identify the expected clause for each question.
+
+| Question | Retrieval check | Answer check |
+| --- | --- | --- |
+| How long after returning must I submit travel expenses? | Passage containing `15 calendar days` | 15 calendar days, supported by the citation |
+| Which documents does a claim require? | Invoice and approved travel request | Both documents included |
+| What is the hotel accommodation allowance? | Inspect whether the returned material actually contains an allowance | Explains that the material lacks this policy |
+
+The third question may retrieve related travel content. Read the passage to determine whether it contains the answer.
+
+## 2. Record a baseline
+
+1. Open the target Knowledge base search test and enter the first complete question. Use a dedicated test Knowledge base when you need isolated sources, then check source Collections in the results.
+2. Record the search mode, minimum relevance, citation limit, and reranking and query rewriting settings. Use the values shown in your interface as the defaults for this test.
+3. Open the results and inspect the source Collection, text, scores, and order. Check that the required conditions appear in the returned passages.
+4. Repeat for the other questions, recording retrieved clauses and omissions. Once retrieval works, [connect an Application](/en/guide/dataset/connect-application) and inspect its answers and citations.
+
+![Search test returning the original reimbursement deadline](/imgs/current/knowledge-search.png)
+
+The shared screenshot uses Chinese labels; inspect the returned passage containing `15 calendar days`.
+
+## 3. Change one factor at a time
+
+| Symptom | Change and check |
+| --- | --- |
+| Empty results | Check Collection status, completed processing, scope, and permissions, then whether the threshold is effective |
+| Missing identifiers, model numbers, or exact terms | Compare full-text or hybrid search with the other settings and questions held constant |
+| Paraphrases miss the passage | Compare semantic or hybrid search and check chunk completeness |
+| Follow-up questions lose their subject | Inspect the rewritten query in the Application; compare matching and latency with rewriting enabled |
+| Correct clauses rank low | Compare reranking when a model is available; inspect this run's results and relevant errors |
+| Required passages are trimmed | Increase the citation limit within the model's context budget and check for added irrelevant content |
+
+Rerun the entire question set after each change. Keep settings that improve the target question while preserving the other known answers. Check search-test and Application parameters separately. Verify Application changes through [publishing](/en/guide/build/publish/versions).
+
+## 4. Check effective settings
+
+Minimum relevance depends on the scores available in this run. Successful reranking uses rerank scores; pure semantic search can use vector scores; hybrid search with failed reranking may return results without threshold filtering. See [search parameters](/en/guide/dataset/dataset_engine#search-parameters).
+
+Inspect the run details, errors, and results exposed by your interface. If it omits whether reranking ran, record that as requiring administrator verification against model-service and call records. Scores describe matching, order describes context priority, and final answers require separate fact and citation checks.
+
+## Recover and verify
+
+A maintainer with Collection write permission can use isolated test material to temporarily disable the test Collection and repeat a known question. Observe the missing target source. Check processing status, enabled state, scope, and permissions, then enable it again. Confirm that the same question retrieves the original passage. For other failures, follow [troubleshooting](/en/guide/dataset/faq) and rerun the fixed questions.
+
+Next: [Connect a Knowledge base to an Application](/en/guide/dataset/connect-application).

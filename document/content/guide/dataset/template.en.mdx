@@ -1,9 +1,9 @@
 ---
 title: Template Import
-description: Batch-import Dataset data from a CSV or Excel template
+description: Batch-import Knowledge base data from a CSV or Excel template
 ---
 
-Template import lets you add prepared content or question-answer pairs to a Dataset in batches. FastGPT accepts `.csv` and `.xlsx` files and creates Dataset entries from the questions, answers, indexes, and metadata in the template.
+Template import lets you add prepared content or question-answer pairs to a Knowledge base in batches. FastGPT accepts `.csv` and `.xlsx` files and creates Data chunks from the questions, answers, indexes, and metadata in the template.
 
 ## File Structure
 
@@ -16,14 +16,16 @@ The first row must contain the headers. The following columns are supported:
 | `index`    | No       | Repeatable | A custom index. A row can contain multiple indexes              |
 | `metadata` | No       | At most 1  | A JSON object for custom information such as source or category |
 
-Each row represents one Dataset entry. `q` and `a` should not both be empty. Headers can appear in any order, but do not add unsupported headers.
+Each row represents a Data chunk. Rows with both `q` and `a` empty are filtered out; a header-only file can create an empty Collection. Header matching trims surrounding whitespace and converts names to lowercase. Use the lowercase names above consistently.
+
+`indexes` is a compatible alias for `index`. When there is exactly one `index` or `indexes` column and no `metadata` column, index values are read from that column through the end of the row. A later `q` or `a` can therefore also become index content. Use `q,a,index`, or `q,a,index,metadata` when metadata is needed. Repeat `index` for multiple index columns. Use the canonical examples below for new files.
 
 ### CSV Example
 
 ```csv
 q,a,index,index,metadata
 "What is FastGPT?","FastGPT is an AI agent development platform.","FastGPT overview","AI agent platform","{""source"":""product-doc"",""category"":""overview""}"
-"How do I import Dataset data?","Use a CSV or Excel template.","Dataset import","template import","{""source"":""help-center""}"
+"How do I import Knowledge base data?","Use a CSV or Excel template.","Dataset import","template import","{""source"":""help-center""}"
 ```
 
 Use UTF-8 encoding for CSV files. Cells that contain commas, line breaks, or double quotes must be escaped according to CSV rules.
@@ -35,7 +37,7 @@ Excel files use the same headers and data structure as CSV files:
 | q                             | a                                            | index            | index             | metadata                                         |
 | ----------------------------- | -------------------------------------------- | ---------------- | ----------------- | ------------------------------------------------ |
 | What is FastGPT?              | FastGPT is an AI agent development platform. | FastGPT overview | AI agent platform | `{"source":"product-doc","category":"overview"}` |
-| How do I import Dataset data? | Use a CSV or Excel template.                 | Dataset import   | template import   | `{"source":"help-center"}`                       |
+| How do I import Knowledge base data? | Use a CSV or Excel template.                 | Dataset import   | template import   | `{"source":"help-center"}`                       |
 
 Excel files must meet these requirements:
 
@@ -46,14 +48,16 @@ Excel files must meet these requirements:
 
 ## Import a Template
 
-1. Open the target Dataset and select **Template Import** from the import menu.
+You need write permission on the destination Knowledge base or folder, an available embedding model, and quota. Processing capabilities depend on the team and deployment version.
+
+1. Open the target Knowledge base and select **Template Import** from the import menu.
 
    ![Template Import dialog](/imgs/current/dataset-template-import.png)
 
 2. Select **Download CSV Template** for an example, or prepare an `.xlsx` file with the same structure.
 3. Add your data and verify the headers, cell contents, and file format.
 4. Select the file and confirm the import. You can import one file at a time.
-5. After the import finishes, review the data and indexing status in the Dataset Collection.
+5. After import, check valid rows and indexing status in the Collection. Search the example question “What is FastGPT?” and confirm the corresponding text and answer, then follow [retrieval testing](/en/guide/dataset/test-retrieval).
 
    ![Dataset collection after a template import](/imgs/current/dataset-template-result.png)
 
@@ -77,4 +81,4 @@ If FastGPT reports an invalid file format, check the following:
 - Quotes, commas, and line breaks are correctly escaped in CSV files.
 - The Excel file contains exactly one worksheet and no merged cells.
 
-Start with a small test file. After confirming the format, import larger datasets in batches.
+After correcting the file, import a small sample and check valid chunk count, text, indexes, and a known question before importing larger batches. A new upload creates a new Collection; see [Update material](/en/guide/dataset/update-data) to replace old content.

@@ -1,0 +1,47 @@
+---
+title: 将知识库接入应用
+description: 关联对话 Agent，核对答案与引用，并验证发布后的访问。
+---
+
+将已经通过[检索测试](/zh-CN/guide/dataset/test-retrieval)的知识库关联到对话 Agent，完成回答与引用核对后发布。需要应用创建或编辑权限、知识库读取权限、可用对话模型与额度；创建分享渠道还需要相应管理权限。
+
+## 1. 关联知识库
+
+1. 在工作台创建类型为 **对话 Agent** 的应用，或打开已有对话 Agent。
+2. 选择团队可用的对话模型，在知识库配置中关联目标知识库。核对集合、标签等检索范围，避免遗漏需要的来源。
+3. 检查应用的搜索模式、重排、最低相关度和引用上限，使其与已验证的检索条件一致。
+4. 填写资料使用规则。差旅示例可采用以下提示词：
+
+```text
+Answer questions using the retrieved travel policy. State the deadline and
+required documents precisely. Cite the available sources. When the policy
+does not cover a question, explain what information is missing.
+```
+
+知识库选择项缺失时，检查当前团队、[集合权限](/zh-CN/guide/dataset/collection_permission)和知识库访问权限。模型无法调用时检查[团队模型](/zh-CN/guide/workspace/models)与额度。
+
+## 2. 调试答案与引用
+
+在调试区开启新对话。使用 `travel-policy.txt` 时逐项输入下表的问题；使用自有资料时，沿用已通过检索测试的问题与预期条款，再加入一个资料未覆盖的问题。
+
+| 问题 | 通过条件 |
+| --- | --- |
+| 出差回来后多久提交报销？ | 回答为 15 个自然日，引用原文包含该期限 |
+| 报销需要哪些材料？ | 包含发票和已批准差旅申请，引用支持两项要求 |
+| 酒店住宿补贴是多少？ | 说明资料缺少住宿补贴标准 |
+
+打开引用片段，检查实际来源和正文。只显示来源名称时，按可用的引用查看能力继续核对；可见范围取决于渠道设置和权限。
+
+如果答案错误，先在运行详情中检查传给模型的资料。缺少目标条款时返回[检索测试](/zh-CN/guide/dataset/test-retrieval)核对范围与参数；条款完整时检查提示词和对话模型的理解。每次调整后在新对话重跑所选的固定问题。
+
+## 3. 发布并复核
+
+保存并[发布当前配置](/zh-CN/guide/build/publish/versions)，再创建或打开[分享链接](/zh-CN/guide/build/publish/link)。在渠道内新建对话，重复同一组问题，并检查答案与引用。已有初始发布版本的应用，也需要发布本次关联知识库的配置修改。
+
+发布后仍有差异时核对渠道关联的应用、当前发布版本、历史消息和知识库处理状态。完成标准是调试与实际访问均满足相同事实检查。
+
+## 使用工作流时
+
+工作流需要把搜索结果连接到 AI 对话的知识库引用输入。连接方法和节点参数见[知识库搜索节点](/zh-CN/guide/build/workflow/nodes/dataset_search)；学习完整工作流见[首个工作流](/zh-CN/guide/getting-started/first-workflow)。
+
+下一步：[更新资料并确认生效](/zh-CN/guide/dataset/update-data)。

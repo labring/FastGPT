@@ -1,0 +1,53 @@
+---
+title: Import material and confirm processing
+description: Choose an import method, inspect chunks and indexes, and recover failed items.
+---
+
+Use this guide to turn a local file into a searchable Collection. For a small example, use `travel-policy.txt` from [your first knowledge-backed Q&A](/en/guide/getting-started/knowledge-qa).
+
+## Before you begin
+
+You need permission to create a Knowledge base or write to the destination Knowledge base and folder, plus an available embedding model and quota. Enhanced parsing and Q&A extraction also need their corresponding services or models. SaaS capabilities depend on the team configuration. For self-hosted deployments, check [model configuration](/en/self-host/config/model/intro) and the import options in your version.
+
+## 1. Choose a source
+
+| Source | Entry and check |
+| --- | --- |
+| Local file | New/Import → Text collection → Local file; use a format listed by the upload control |
+| Prepared question-answer pairs | [Template import](/en/guide/dataset/template); test a few CSV or XLSX rows first |
+| Small manually maintained material | Add Data chunks to a Collection, retaining conditions and complete answers |
+| Web page | Use web import; see [web synchronization](/en/guide/dataset/websync) for ongoing updates |
+| Enterprise content system | Check authorization and connectivity in [third-party knowledge sources](/en/guide/dataset/third-party/third_dataset) |
+| Programmatic writes | Follow [Knowledge base API integration](/en/openapi/dataset) and its current API reference |
+
+## 2. Upload and preview
+
+1. Create a standard Knowledge base from the list, name it, and choose an embedding model available to your team. Open the destination directly when it already exists.
+2. Open the destination folder and choose **New/Import → Text collection → Local file**. Upload the material.
+3. Start with the default processing settings and open the preview. Check headings, body text, tables, and chunk boundaries. Keep the meaning of `15 calendar days`, the invoice, and the approved travel request intact in the example.
+4. For corrupted text, save the file as UTF-8. For scanned material with missing text, check enhanced parsing. Preview again after correcting the source or settings, then submit.
+
+![Import preview with the travel deadline and required documents](/imgs/current/knowledge-preview.png)
+
+The screenshot uses Chinese labels. Follow the upload, preview, and submit actions described above; available model names depend on your team.
+
+## 3. Confirm retrieval readiness
+
+After upload, the Collection still needs parsing, chunking, and indexing. Open it to check progress and errors, then inspect the Data chunks and index status.
+
+| Observed state | Next action |
+| --- | --- |
+| Queued or processing | Wait for this Collection and check that progress advances |
+| Failed items | Record the stage and error; follow recovery below |
+| Processing finished with an empty Collection | Check that the source has text; templates need valid data rows |
+| Readable chunks with completed indexes | Ask a known-answer question from your source; for the travel example, ask “How long after returning must I submit travel expenses?” |
+
+Success means the target Collection is enabled, expected Data chunks are readable, processing is complete, and a known question retrieves the correct passage. Collection creation is an intermediate checkpoint.
+
+## Recover a failure
+
+Check the file, parsing service, or embedding model for the failed stage, including [team model](/en/guide/workspace/models) access and quota. Correct the cause and use the available failed-item retry action. If uploading again is necessary, record the old Collection name to manage duplicate sources. Reopen the chunks and repeat the known question to verify recovery.
+
+Uploading a same-name file creates a new Collection. Follow [Update material](/en/guide/dataset/update-data) to handle the old and new Collections. For persistent failures, give your administrator the sanitized error, time, format, and processing settings; see [troubleshooting](/en/guide/dataset/faq).
+
+Next: [Test retrieval and improve matching](/en/guide/dataset/test-retrieval).
