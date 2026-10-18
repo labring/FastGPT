@@ -5,7 +5,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
@@ -13,12 +13,15 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { getChannelProviders, postCreateChannel, putChannel } from '@/web/core/ai/model/channel';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { useModelConfig } from '@/web/core/ai/model/useModelConfig';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { useLockFn } from 'ahooks';
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
+import {
+  getChannelProviderOption,
+  getChannelProviderOptions,
+  getChannelProviderSelection
+} from './providerOptions';
 
 const LabelStyles: BoxProps = {
   fontSize: 'sm',
@@ -70,36 +73,24 @@ const EditChannelModal = ({
     { manual: false }
   );
   const providerList = useMemo(
-    () =>
-      Object.entries(channelProviderMetas)
-        .sort(
-          ([, a], [, b]) =>
-            (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER)
-        )
-        .flatMap(([channelId, mapData]) => {
-          if (!mapData.canCreate) return [];
-
-          return [
-            {
-              defaultBaseUrl: mapData.defaultBaseUrl,
-              keyHelp: mapData.keyHelp,
-              icon: mapData.avatar,
-              label: parseI18nString(
-                mapData.displayName ?? mapData.name,
-                i18n.language as localeType
-              ),
-              value: Number(channelId)
-            }
-          ];
-        }),
+    () => getChannelProviderOptions(channelProviderMetas, i18n.language),
     [channelProviderMetas, i18n.language]
   );
+  const [providerOption, setProviderOption] = useState<number | string>(() =>
+    getChannelProviderOption(defaultConfig)
+  );
+  const selectedProvider = providerList.find((item) => item.value === providerOption);
+  const selectedChannel = selectedProvider ?? channelProviderMetas[providerType];
 
-  const selectedChannel = channelProviderMetas[providerType];
-  const selectedProvider = useMemo(() => {
-    const res = providerList.find((item) => item.value === providerType);
-    return res;
-  }, [providerList, providerType]);
+  /** 品牌预设仅改变表单字段，写入仍使用真实协议 ID。切换时不复用旧服务的密钥。 */
+  const selectProvider = (value: number | string) => {
+    const selection = getChannelProviderSelection(value, providerList);
+    if (!selection) return;
+    setProviderOption(value);
+    setValue('type', selection.type);
+    setValue('base_url', selection.base_url, { shouldDirty: true });
+    setValue('key', selection.key, { shouldDirty: true });
+  };
 
   const models = useWatch({ control, name: 'models' });
   const modelList = useMemo(() => {
@@ -190,9 +181,9 @@ const EditChannelModal = ({
                 h="36px"
                 list={providerList}
                 placeholder={t('config_model:select_provider_placeholder')}
-                value={providerType}
+                value={providerOption}
                 isSearch
-                onChange={(val) => setValue('type', val)}
+                onChange={selectProvider}
               />
             </Box>
           </Flex>
@@ -280,11 +271,9 @@ const EditChannelModal = ({
               <MySelect
                 list={providerList}
                 placeholder={t('config_model:select_provider_placeholder')}
-                value={providerType}
+                value={providerOption}
                 isSearch
-                onChange={(val) => {
-                  setValue('type', val);
-                }}
+                onChange={selectProvider}
               />
             </Box>
           </Box>

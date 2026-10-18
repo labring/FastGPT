@@ -1,0 +1,36 @@
+---
+title: Ace Data Cloud
+description: 在原生连接选项中选择 Ace Data Cloud，并配置应用 API Token。
+---
+
+Ace Data Cloud 使用你自己的应用 API Token 提供模型接口。原生 **Ace Data Cloud** 选项复用 FastGPT 已支持的 OpenAI 协议，并自动填入服务地址；不会创建虚构协议或替你开通账户。
+
+## 1. 注册并取得应用 Token
+
+1. 在 [Ace Data Cloud Applications](https://platform.acedata.cloud/console/applications?utm_source=opensource&utm_medium=referral&utm_campaign=evergreen&utm_content=fastgpt_provider_api_key) 注册或登录，打开 **General application**；没有通用应用时先点 **Initialize General Application**。
+2. 确认模型权限、余额和[当期价格](https://platform.acedata.cloud/models?utm_source=opensource&utm_medium=referral&utm_campaign=evergreen&utm_content=fastgpt_provider_pricing)。用复制按钮取得现有应用 API Token，或点 **Manage Keys → Create** 新建 FastGPT 专用 Token。
+
+![Ace Console 应用 Token 真实界面，密钥已遮挡](../../../../public/imgs/acedatacloud-api-key.png)
+
+3. 名称可填 `FastGPT models`，按需设置有效期与 Allowed APIs 后创建、复制。聊天允许 `/openai/chat/completions`；使用向量模型时另允许 `/openai/embeddings`。
+
+![Ace Console 创建凭据真实界面](../../../../public/imgs/acedatacloud-create-api-key.png)
+
+两图复用 [Ace Suno Dify 源教程](https://github.com/AceDataCloud/SunoDify/blob/8d3d03570e73324220f111f7fe343da0792a8071/README.md) 的真实 Ace Console 截图（2026-10-08/09）。`Dify tutorial` 只是示例名称，请使用自己的 FastGPT 名称；没有展示真实密钥。这些是密钥操作图，不代表当前 FastGPT 已安装。
+
+## 2. 直接选择 Ace 连接
+
+在 **管理员 → 模型提供商 → 模型渠道 → 新建渠道**，或团队模型的 **新建渠道** 弹窗：
+
+- 提供商下拉选择 **Ace Data Cloud**。
+- 地址自动填为 `https://api.acedata.cloud/openai`；提交仍使用已支持的 OpenAI 协议。
+- 填连接名称，API Key 只粘贴应用 Token，不加 `Bearer`、引号或图中遮挡字符。
+- 选择账户可用的模型 ID 后保存。切换提供商会清空旧 Token，避免发给另一个端点。
+
+模型模板与连接预设是两层配置。如果当前 FastGPT/plugin 版本已带入 Ace 模板，可选 **从模板创建 → Ace Data Cloud**；否则管理员通过标准模型编辑器配置已开通模型。模板投稿：[fastgpt-plugin #565](https://github.com/labring/fastgpt-plugin/pull/565)。待审投稿不等于正式版已包含。
+
+## 3. 在许可范围验证
+
+保存渠道不会发模型请求。点击连接测试或聊天可能计费，请先确认价格和使用上限；只做一次短回复，失败先检查原请求记录再决定是否重试。401/403检查Token与服务/API权限；429降低并发。不要把Token放进提示词、截图或工作流导出。
+
+本贡献没有当前新界面截图或新增收费测试；原生选项、正式版本、真实调用及唯一账单分别验收。

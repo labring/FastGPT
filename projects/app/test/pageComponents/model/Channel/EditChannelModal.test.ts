@@ -9,7 +9,7 @@ import { getChannelProviders } from '@/web/core/ai/model/channel';
 const mocks = vi.hoisted(() => ({
   metadata: {} as ProviderMetasResponse,
   language: 'zh-CN',
-  options: [] as { label: string; value: number; icon?: string }[]
+  options: [] as { label: string; value: number | string; icon?: string }[]
 }));
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
   useSafeTranslation: () => ({ t: (key: string) => key, i18n: { language: mocks.language } })
@@ -81,7 +81,8 @@ describe('EditChannelModal channel metadata', () => {
     (channelType) => {
       const html = render(channelType);
       expect(mocks.options).toEqual([
-        expect.objectContaining({ label: '展示协议', value: 1, icon: 'display.svg' })
+        expect.objectContaining({ label: '展示协议', value: 1, icon: 'display.svg' }),
+        expect.objectContaining({ label: 'Ace Data Cloud', value: 'aceDataCloud' })
       ]);
       expect(html).toContain('https://provider.example.com');
       expect(html).toContain('https://api.example.com');
@@ -111,7 +112,7 @@ describe('EditChannelModal channel metadata', () => {
       99: { name: 'Unranked', defaultBaseUrl: '', keyHelp: '', canCreate: true }
     };
     render('team');
-    expect(mocks.options.map(({ value }) => value)).toEqual([23, 8, 1, 2, 99]);
+    expect(mocks.options.map(({ value }) => value)).toEqual([23, 8, 1, 2, 99, 'aceDataCloud']);
     expect(mocks.metadata[23].order).toBe(0);
   });
 });

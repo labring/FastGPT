@@ -1,0 +1,36 @@
+---
+title: Ace Data Cloud
+description: Choose the Ace Data Cloud connection preset and configure your application token.
+---
+
+Ace Data Cloud provides model APIs with your own application token. The native **Ace Data Cloud** option uses FastGPT's existing OpenAI protocol and fills the service URL automatically; it does not create a new protocol adapter or configure an account for you.
+
+## 1. Register and get an application token
+
+1. Register or sign in at [Ace Data Cloud Applications](https://platform.acedata.cloud/console/applications?utm_source=opensource&utm_medium=referral&utm_campaign=evergreen&utm_content=fastgpt_provider_api_key). Open **General application**. If it is missing, choose **Initialize General Application** first.
+2. Check that the required models are available to your account, your balance, and [current prices](https://platform.acedata.cloud/models?utm_source=opensource&utm_medium=referral&utm_campaign=evergreen&utm_content=fastgpt_provider_pricing). Copy an existing application API token with the copy button, or open **Manage Keys → Create** for a separate FastGPT token.
+
+![Ace Console application token, redacted](../../../../public/imgs/acedatacloud-api-key.png)
+
+3. Give a dedicated token a name such as `FastGPT models`, set expiration/Allowed APIs only as needed, and create/copy it. For chat allow `/openai/chat/completions`; for vectors also allow `/openai/embeddings`.
+
+![Real Ace Console create-credential dialog](../../../../public/imgs/acedatacloud-create-api-key.png)
+
+These are real Ace Console screenshots reused from the [Ace Suno Dify tutorial](https://github.com/AceDataCloud/SunoDify/blob/8d3d03570e73324220f111f7fe343da0792a8071/README.md), 2026-10-08/09. `Dify tutorial` is an example credential name; use your own FastGPT name. No live token is visible. These are credential screenshots, not proof of current FastGPT installation.
+
+## 2. Select the native connection
+
+In **Admin → Model provider → Model Channels → Add Channel**, or in a team model's **Create Channel** dialog:
+
+- Choose **Ace Data Cloud** from the provider selector.
+- The address is filled as `https://api.acedata.cloud/openai` and the submitted protocol remains the supported OpenAI type.
+- Give the connection a name and paste only your application API token, without `Bearer`, quotation marks or redacted screenshot text.
+- Select the model IDs your account can use, then save. Selecting another provider clears the old token to avoid sending it to a different endpoint.
+
+The model template catalog and channel presets are separate. If the Ace templates are available in your FastGPT/plugin version, choose **Create from Template → Ace Data Cloud**; otherwise an administrator can configure an entitled model through the normal model editor. Template contribution: [fastgpt-plugin #565](https://github.com/labring/fastgpt-plugin/pull/565). A pending contribution does not mean it is in the stable release.
+
+## 3. Validate a permitted call
+
+Saving a channel makes no model request. A connection test or chat can be billed: check your account price and limits before clicking **Test**. Use a single short reply, then inspect the original request record before any retry. `401/403` means check token/service restrictions; `429` means reduce concurrency. Never paste the token into prompts, screenshots or exported workflows.
+
+This guide describes the connection UI change. There is no current UI screenshot or new billable test in this contribution; native selection, a deployed release, successful real calls and billing are separate validation stages.

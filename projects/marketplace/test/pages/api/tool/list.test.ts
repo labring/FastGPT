@@ -55,6 +55,29 @@ describe('/api/tool/list', () => {
     s3Mocks.getPkgdownloadURL.mockClear();
   });
 
+  it.each(['suno', 'SUNO', ' Suno '])('finds a service-name card with %j', async (searchKey) => {
+    toolDataMocks.getToolList.mockResolvedValue([
+      createTool({
+        pluginId: 'acedataSuno',
+        toolId: 'acedataSuno',
+        id: 'acedataSuno',
+        name: { en: 'Suno by Ace Data Cloud' },
+        description: { en: 'Generate music through Ace Data Cloud.' }
+      }),
+      createTool({ toolId: 'unrelated' })
+    ]);
+    const { default: handler } = await import('../../../../../src/pages/api/tool/list');
+    const res = createResponse();
+    await handler(
+      { method: 'POST', query: {}, body: { pageNum: 1, pageSize: 10, searchKey } } as any,
+      res as any
+    );
+    expect(res.body).toMatchObject({
+      code: 200,
+      data: { total: 1, list: [{ toolId: 'acedataSuno' }] }
+    });
+  });
+
   it('filters by tag without crashing when a marketplace tool has no tags', async () => {
     toolDataMocks.getToolList.mockResolvedValue([
       createTool({
@@ -141,7 +164,12 @@ describe('/api/tool/list', () => {
     toolDataMocks.getToolList.mockResolvedValue([
       createTool({ toolId: 'legacy', id: 'legacy', pluginId: 'legacy', source: undefined }),
       createTool({ toolId: 'official', id: 'official', pluginId: 'official', source: 'official' }),
-      createTool({ toolId: 'community', id: 'community', pluginId: 'community', source: 'community' })
+      createTool({
+        toolId: 'community',
+        id: 'community',
+        pluginId: 'community',
+        source: 'community'
+      })
     ]);
 
     const { default: handler } = await import('../../../../../src/pages/api/tool/list');

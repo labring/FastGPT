@@ -52,6 +52,7 @@ async function handler(
   });
   const { pageSize, offset } = parsePaginationRequest(req);
   const { searchKey, tags, source } = body;
+  const normalizedSearchKey = searchKey?.trim().toLocaleLowerCase();
 
   const data = await getToolList();
   const filteredData = data.filter((item) => {
@@ -59,12 +60,10 @@ async function handler(
       return false;
     }
     if (
-      searchKey &&
-      !(
-        Object.values(item.name).join('') +
-        Object.values(item.description).join('') +
-        item.toolId
-      ).includes(searchKey)
+      normalizedSearchKey &&
+      !(Object.values(item.name).join('') + Object.values(item.description).join('') + item.toolId)
+        .toLocaleLowerCase()
+        .includes(normalizedSearchKey)
     )
       return false;
     if (tags && !tags.some((tag) => getToolTags(item).includes(tag))) return false;
