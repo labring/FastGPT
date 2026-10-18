@@ -1,51 +1,63 @@
 ---
-title: Collection tags and retrieval conditions
-description: Add typed collection tags and narrow knowledge retrieval with condition rows.
+title: "Collection Tag System and Scope Filtering"
+description: Master creating knowledge base tags, assigning multidimensional attributes, and filtering retrieval scopes in applications.
 ---
 
 {/* Preserve incoming bookmarks for reorganized sections. */}
 <span id="collection-filtering-in-dataset-search" />
+<span id="basic-tag-operations" />
+<span id="collection-filtering-in-knowledge-search" />
+<span id="reproduce-the-finance--support-comparison" />
+<span id="legacy-json-conditions" />
 
-Collection tags classify material and constrain retrieval. You need knowledge-base management or appropriate write permission. Commercial-license and SaaS-plan availability follow your environment. The condition-row procedure applies to deployments providing the current tag-filter interface.
+In complex knowledge bases containing documentation from different departments, product lines, or sensitivity levels, collection tags enable pre-retrieval filtering, isolating distinct business domains cleanly.
 
-## Basic tag operations
+## Tag Architecture Planning
 
-Open tag management in knowledge-base details, create a tag with a type, and assign values to collections. The current interface supports Number, Date, and Option types (supports multiple values); compatibility logic handles historical string tags. Renaming, deleting, or reassigning tags can affect retrieval conditions, so test after changes.
+Organize orthogonal tag dimensions around organizational governance:
+- **Organizational Structure**: `Finance`, `HR`, `Legal`, `Engineering`.
+- **Product Lines**: `Product-A`, `Product-B`, `Enterprise-Cloud`.
+- **Confidentiality Tiers**: `Public`, `Internal`, `Confidential`.
 
-## Collection filtering in knowledge search
+![Assign department tags to processed collections](/imgs/current/tags-collections.png)
 
-In the Chat Agent editor, associate a knowledge base and scroll to **Tag filter** beneath the knowledge cards. Open the condition controls and add a condition row: choose a tag or supported field, an operator, a value source, and a comparison value. Combine conditions using AND or OR. Variable references must resolve to values compatible with the tag type at runtime.
+## Step 1: Create and Manage Tag Definitions
 
-Example: create a multiple-choice Department tag and assign Finance and Support to two collections. Add a condition that Department contains Finance and test a finance question. Expect results from the Finance scope. Switch to Support and verify that the scope changes.
+1. Open your target knowledge base and click "Tag Management" in the top navigation.
+2. Create a tag such as `Department` and choose its type: number, date, or option.
+3. For an option tag, create values such as `Finance` and `Support` when assigning the tag to collections.
 
-For empty results, inspect assigned values, operator, AND/OR, resolved variables, collection permissions, and processing status. Conditions constrain the search scope; source content and retrieval parameters determine matches within it.
+## Step 2: Assign Tags to Collections
 
-### Reproduce the Finance / Support comparison
+1. In the knowledge base collection list, select the target file or folder collection.
+2. Click "Edit Tags" from the collection action menu.
+3. Check the tags applicable to this collection, such as tagging `travel-policy.txt` with `Department: Finance`.
+4. Click "Save". Retrieval uses collection metadata to select eligible chunks.
 
-Use `travel-policy.txt` from [the first Q&A tutorial](/en/guide/getting-started/knowledge-qa). Add `support-policy.txt` containing:
+![Assign Finance tag to travel policy collection](/imgs/current/tags-finance.png)
 
-```text
-Support policy
-Support responds to customer questions within 2 business days.
-For expense questions, contact Finance and include the travel request.
-```
+## Step 3: Configure Tag Filtering in Applications
 
-Create an **Option** tag named Department. From each collection's **… → Tag settings**, choose the tag, type a value, and select **Create option**. Assign Finance to the travel policy and Support to the support policy, then confirm.
+By scoping searches with tags, applications isolate domain-specific queries accurately:
 
-![Department values assigned to two processed collections](/imgs/current/tags-collections.png)
+### 1. Tag Filtering in Chat Agents
+In the application editor, find **Tag Filter** below the attached knowledge base cards. Add a condition row and select the tag, operator, value source, and comparison value. For example, use `Department → contains → Finance`. Combine conditions with AND or OR, and provide variable values matching the tag type.
 
-![Assign Finance to the Department tag](/imgs/current/tags-finance.png)
+![Finance filter admits only travel policy citations](/imgs/current/tags-finance-result.png)
 
-Set **Department → Contains → Finance** in the application. Start a fresh debug conversation and ask “How soon after returning must I submit travel expenses?” The example returns `travel-policy.txt` and the 15-calendar-day deadline.
+### 2. Dynamic Tag Routing in Workflows
+Pass a business category from a question classifier into the search node's filter to route topic-specific queries. User identity must come from a trusted backend authentication flow. Enforce sensitive-document access through member authentication and collection permissions; tags describe the retrieval scope.
 
-![Finance filter with the travel-policy.txt citation](/imgs/current/tags-finance-result.png)
+![Support filter admits only customer support material](/imgs/current/tags-support-result.png)
 
-Replace Finance with Support and start another fresh conversation with the same question. The example cites only `support-policy.txt` and identifies the missing expense deadline. Fresh conversations prevent earlier answers from influencing the comparison.
+## Acceptance Checklist
 
-![Support filter with the support-policy.txt citation and missing-deadline explanation](/imgs/current/tags-support-result.png)
+- [ ] Verify collection tag names, types, and assigned values.
+- [ ] Applications configured with a tag filter return chunks belonging exclusively to that tag.
+- [ ] Switch between Finance and Support filters, then verify the returned sources and the application's handling of insufficient evidence.
 
-## Legacy JSON conditions
+## Next Steps
 
-Older configurations may contain JSON fields such as `tags` and `createTime`; historical `tags` used `$and` or `$or`. Read retained workflows according to their filter version. After migrating to condition rows, save and compare the retrieval scope. Current conditions use `logic` and `conditions`; API integrations must follow the generated contract of the selected interface.
-
-Next: [collection permissions](/en/guide/dataset/collection_permission) and [retrieval testing](/en/guide/dataset/lifecycle).
+- Access permissions: Study [Collection Permission Control](/en/guide/dataset/collection_permission).
+- Connect to chat models: Follow [Connecting Knowledge Bases to Applications](/en/guide/dataset/connect-application).
+- Maintain assets: Review [Data Maintenance and Incremental Updates](/en/guide/dataset/update-data).

@@ -3,12 +3,12 @@
   "root": false,
   "pages": [
     "index",
+    "quick-start",
+    "first-agent",
+    "first-workflow",
+    "concepts",
     "application-types",
     "knowledge-qa",
-    "first-workflow",
-    "first-agent",
-    "concepts",
-    "quick-start",
     "examples"
   ]
 }

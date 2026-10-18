@@ -1,33 +1,57 @@
 ---
-title: Configuration Panel
-description: Detailed configuration guide for LLM parameters, virtual machine environment, and skill integration in Chat Agent V2.
+title: "Chat Agent V2 Dedicated Configuration"
+description: Master authoring system prompts, attaching toolsets, configuring virtual machine sandboxes, and mounting skills in Chat Agent V2.
 ---
 
-The Configuration Panel is used to configure and bind all the core capabilities and execution environments required by your Agent.
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="ai-configuration--virtual-machine" />
+<span id="associate-skill--tools" />
+<span id="dataset--file-uploads" />
+
+Chat Agent V2 is an autonomous agent application equipped with dynamic planning and tool execution capabilities. Through the dedicated settings panel, builders define the agent's persona boundaries, tool availability, isolated runtime environments, and skill bundles.
+
+![System prompt editor resource reference menu](/imgs/current/agent-prompt-reference.png)
+
+## 1. Structured System Prompts
+
+System prompts provide the operational blueprint guiding the agent's goal decomposition and decision loops:
+- **Role and Boundaries**: Define the agent's domain expertise, tone, and service scope explicitly.
+- **Decision Workflow**: Instruct the model to execute tasks following the ReAct sequence: "Reason → Select Tool → Observe Output → Conclude".
+- **Formatting Standards**: Establish structured presentation criteria (such as enumerated bullet points, preserved quantitative data, and markdown tables).
+- **In-Prompt Resource Citations**: Type `@` within the prompt input to open the resource menu, allowing direct references to enabled tools and attached knowledge bases.
+
+For general model settings (such as model selection, temperature, token limits, and reasoning content toggles), refer to [AI Settings](/en/guide/build/general/ai_settings).
 
 ---
 
-## AI Configuration & Virtual Machine
+## 2. Toolsets and Execution Step Quotas
 
-- **AI Model**: Choose the chat model and configure its parameters. For general LLM parameters, see [AI Settings](/en/guide/build/general/ai_settings).
-- **Prompt**: Define the core persona, objectives, and specific rules for the Agent. The editor supports rich text, and you can type `@` to quickly reference and bind tools, etc.
-- **Virtual Machine**: The virtual machine supports code execution, file operations, and startup scripts. The runtime instance is scoped by source, application, and user; conversations use separate session work directories. Lifecycle and persistence depend on the execution service and storage configuration. For architecture and debugging details, refer to [Virtual Machine](/en/guide/build/agentv2/vm). For startup script details and execution limits, see [Virtual Machine Lifecycle](/en/guide/build/agentv2/vm#virtual-machine-lifecycle).
-
----
-
-![Resource-reference menu in the prompt editor; choose a configured resource to insert it](/imgs/current/agent-prompt-reference.png)
-
-## Associate SKILL & Tools
-
-- **Associated SKILLs**: Select and bind published SKILL packages from the skill library. The runtime prepares the selected published version and records successful initialization; see [Skill initialization](/en/guide/build/skill/initialization) for execution and retry behavior. Associating a Skill automatically enables the virtual machine and shows a notification. Confirm that the execution service is available. To learn how to write and package custom SKILLs, please refer to [Development & Debugging](/en/guide/build/skill/development).
-
-- **Tools**: You can choose to bind system built-in tools (e.g., search engines, charts), custom tools created by yourself or the team (including HTTP/MCP tools), or created apps.
+Under the "Tools" section, builders grant the agent external execution powers:
+- **Attaching Tools**: Attach knowledge base search tools, system utilities (such as web search or calculators), custom workflow tools, or third-party MCP endpoints.
+- **Maximum Step Quota**: Execution limits follow the parameters supported by the deployed version. Test a multi-step task and inspect tool calls, completion status, latency, and usage before setting a production budget.
 
 ---
 
-## Dataset & File Uploads
+## 3. Virtual Machine Execution Sandbox
 
-- **Dataset**: Associate specific corporate documents and adjust search settings (Hybrid search, Reranking, etc.). It also supports configuring team member permissions.
-- **File Uploads**: Toggle file uploads for end-users, permitting images, audio, video, or custom file extensions. File upload capabilities automatically adapt based on the multimodal features of the selected LLM. For detailed configurations, see [File Input](/en/guide/build/general/fileInput).
+Enabling the Virtual Machine (VM) grants the agent programmatic code execution, persistent file I/O, and container isolation:
+- **Prerequisites**: A connected backend sandbox service (such as OpenSandbox or Sealos Devbox) and active virtual machine quotas in your workspace.
+- **Execution Characteristics**: The platform allocates a dedicated session directory `sessions/<chatId>` per conversation. Files uploaded by users mount directly into the sandbox for Python/Node analysis.
+- For detailed lifecycle and startup script setup, review the [Virtual Machine Sandbox Guide](/en/guide/build/agentv2/vm).
 
-![Associated Skill, enabled virtual machine, and successful debug result; the left panel contains the model and instructions](/imgs/current/skill-agent-result.png)
+---
+
+## 4. Skill Extension Packages
+
+Skills are versioned bundles combining expert instructions, reference templates, and executable scripts:
+- **Attaching Published Skills**: Check published skill versions available in your workspace team.
+- **Environment Automation**: Attaching a skill activates the virtual machine sandbox automatically and injects the corresponding skill package.
+- To author, debug, and publish custom skills, consult [Skill Development and Debugging](/en/guide/build/skill/development).
+
+![Attach skills, activate virtual machine, and inspect debug execution](/imgs/current/skill-agent-result.png)
+
+## Next Steps
+
+- Debugging and tracing: Explore [Agent Debugging and Trace Inspection](/en/guide/build/agentv2/debug).
+- Sandbox architecture: Study [Virtual Machine Lifecycle](/en/guide/build/agentv2/vm).
+- Workflow orchestration: Review [Workflow Agent Node](/en/guide/build/workflow/nodes/agent).

@@ -1,48 +1,62 @@
 ---
-title: 集合标签与检索条件
-description: 为集合添加类型化标签，并用条件行限制知识库检索范围。
+title: 集合标签体系与范围过滤
+description: 掌握知识库集合标签创建、多维属性挂载，以及在应用中通过标签限定检索范围。
 ---
 
-集合标签用于分类资料和限制检索范围。需要知识库管理或相应写入权限；商业授权与 SaaS 套餐的可用范围以当前环境为准。当前条件行界面适用于提供新版标签筛选的部署。
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="标签基础操作说明" />
+<span id="知识库搜索-集合过滤说明" />
+<span id="复现-finance--support-对照" />
+<span id="旧版-json-条件" />
 
-## 标签基础操作说明
+在包含大量不同部门、产品线或密级资料的综合知识库中，使用集合标签能够实现检索范围的前置精准过滤，避免无关业务数据相互干扰。
 
-进入知识库详情的标签管理，创建标签并选择类型，再给集合填写对应值。当前界面支持“数字”“日期”和“选项”类型（选项可多选）；历史字符串标签由兼容逻辑处理。标签重命名、删除和集合赋值会影响使用这些标签的检索条件，修改后重新测试。
+## 标签体系规划原则
 
-## 知识库搜索-集合过滤说明
-
-在对话 Agent 编辑页关联知识库后，向下滚动至知识库卡片下方的“标签过滤”，添加条件行：选择标签或支持的字段、操作符、值来源及比较值。多个条件按 AND 或 OR 组合；变量引用需要在运行时提供与标签类型匹配的值。
-
-示例：创建多选标签“部门”，给两份资料分别设置 Finance 和 Support。添加“部门包含 Finance”的条件，使用一个财务问题测试。预期结果来自 Finance 范围；再切换 Support，确认检索范围随条件改变。
-
-检查空结果时，依次核对集合标签值、操作符、AND/OR、变量实际值、集合权限及处理状态。条件只约束检索范围，资料内容与检索参数共同决定最终命中。
-
-### 复现 Finance / Support 对照
-
-使用[首个问答教程](/zh-CN/guide/getting-started/knowledge-qa)的 `travel-policy.txt`，再导入以下 `support-policy.txt`：
-
-```text
-Support policy
-Support responds to customer questions within 2 business days.
-For expense questions, contact Finance and include the travel request.
-```
-
-创建“部门”标签，属性选“选项”。在每个集合的“··· → 标签设置”中选择部门，输入值并点击“创建选项”：差旅资料选 Finance，支持资料选 Support，最后确认。
+建议根据组织管理维度建立正交的标签集合：
+- **组织架构维度**：`Finance`（财务部）、`HR`（人力资源部）、`Legal`（法务部）、`Tech`（技术研发部）。
+- **业务产品维度**：`Product-A`、`Product-B`、`Global-SaaS`。
+- **安全密级维度**：`Public`（公开）、`Internal`（内部）、`Confidential`（机密）。
 
 ![两份已处理资料分别设置部门标签](/imgs/current/tags-collections.png)
 
-![为差旅资料设置部门 Finance](/imgs/current/tags-finance.png)
+## 步骤一：创建与管理标签定义
 
-在应用中设置“部门 → 包含 → Finance”，重开调试对话并询问“出差回来后多久提交报销？”。本例引用 `travel-policy.txt`，回答 15 个自然日。
+1. 进入目标知识库，点击顶部或操作栏的“标签管理”。
+2. 新建标签（例如“部门”），选择数字、日期或选项类型。
+3. 选项类型可在集合赋值时创建 `Finance`、`Support` 等选项。
 
-![Finance 条件下只引用差旅制度](/imgs/current/tags-finance-result.png)
+## 步骤二：为集合挂载标签
 
-将 Finance 替换为 Support，重开对话后询问同一问题。本例只引用 `support-policy.txt`，回答说明资料缺少报销期限。每次重开对话可避免前文答案干扰对照。
+1. 进入知识库集合列表，选择目标文件或目录集合。
+2. 点击操作项中的“编辑标签”按钮。
+3. 勾选适用于该集合的标签条目，例如将《企业差旅制度.txt》打上 `Department: Finance` 标签。
+4. 点击“保存”，检索通过集合元数据筛选可用的数据块。
 
-![Support 条件下只引用支持资料并说明报销期限缺失](/imgs/current/tags-support-result.png)
+![为差旅资料设置部门 Finance 标签](/imgs/current/tags-finance.png)
 
-## 旧版 JSON 条件
+## 步骤三：在应用中配置标签检索过滤
 
-旧配置可能保存 `tags`、`createTime` 等 JSON 字段，历史 `tags` 使用 `$and` 或 `$or`。保留旧工作流时按其过滤版本读取；迁移到条件行后，保存并对照原范围测试。当前条件结构使用 `logic` 和 `conditions`；编写 API 集成时按所用接口的生成契约确认字段。
+通过为应用限定检索标签，实现跨业务线的精准数据隔离：
 
-下一步：[集合权限](/zh-CN/guide/dataset/collection_permission)与[检索测试](/zh-CN/guide/dataset/lifecycle)。
+### 1. 在对话 Agent 中配置标签过滤
+在应用编辑页的知识库卡片下方找到 **标签过滤**。添加条件行，选择标签、操作符、值来源与比较值，例如“部门 → 包含 → Finance”。多个条件按 AND 或 OR 组合；引用变量时，传入值应符合标签类型。
+
+![Finance 标签条件下只引用差旅制度](/imgs/current/tags-finance-result.png)
+
+### 2. 在工作流中实现动态标签路由
+将问题分类节点输出的业务类别传入知识库搜索节点，用于按主题选择检索范围。用户身份由可信后端鉴权流程提供；敏感资料的访问控制应通过成员鉴权与集合权限实施，标签用于描述检索范围。
+
+![Support 条件下只引用支持资料](/imgs/current/tags-support-result.png)
+
+## 标签过滤验收检查
+
+- [ ] 核对集合的标签名称、类型与实际赋值。
+- [ ] 在应用端配置特定标签后，提问仅召回属于该标签集合的知识分块。
+- [ ] 切换 Finance 与 Support 条件，核对返回来源，并测试应用在依据不足时的处理。
+
+## 下一步
+
+- 团队权限控制：学习 [集合权限控制与协作](/zh-CN/guide/dataset/collection_permission)。
+- 挂载应用实操：查阅 [将知识库接入应用](/zh-CN/guide/dataset/connect-application)。
+- 日常维护：学习 [数据维护与增量更新](/zh-CN/guide/dataset/update-data)。

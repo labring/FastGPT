@@ -4,16 +4,16 @@
   "pages": [
     "lifecycle",
     "import-data",
+    "template",
+    "websync",
+    "third-party",
+    "dataset_engine",
     "test-retrieval",
+    "rag",
     "connect-application",
     "update-data",
-    "dataset_engine",
-    "template",
-    "third-party",
     "collection_tags",
     "collection_permission",
-    "websync",
-    "faq",
-    "rag"
+    "faq"
   ]
 }

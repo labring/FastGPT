@@ -1,26 +1,71 @@
 ---
 title: Deploy and operate
-description: Choose an installation path, configure supporting services, and maintain and upgrade FastGPT.
+description: FastGPT self-hosted architecture overview, capacity planning, configuration, and operations.
 ---
 
-## Choose an installation path
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="choose-an-installation-path" />
+<span id="configure-runtime-services" />
+<span id="administer-and-maintain" />
 
-| Task | Guide | Success check |
-| --- | --- | --- |
-| Install with Docker Compose | [Docker deployment](/en/self-host/deploy/docker) | Dependencies start, login works, and a model call succeeds |
-| Deploy with Sealos | [Sealos deployment](/en/self-host/deploy/sealos) | Application URL, storage, and model configuration work |
-| Develop and debug locally | [Development environment](/en/self-host/dev) | Services start and code can be edited and debugged |
+## System Architecture and Components
 
-Before installation, check resources, ports, persistent directories, and credentials for the target version. Use matching configuration and images. Before upgrading, back up databases and object storage and establish a restoration procedure.
+The FastGPT self-hosted deployment consists of the core application layer, runtime execution sandboxes, and a four-pillar data infrastructure:
 
-## Configure runtime services
+```mermaid
+graph TB
+    Client[Client / Browser / API Caller] --> Ingress[Reverse Proxy / Ingress Gateway]
+    Ingress --> App[FastGPT Core Service<br/>Next.js Web / API / Worker]
 
-See [models and channels](/en/self-host/config/model/intro), [object storage](/en/self-host/config/object-storage), [Agent virtual machine](/en/self-host/config/sandbox/opensandbox), and [environment variables](/en/self-host/config/env). Agent virtual machines and workflow code sandboxes have separate configuration and purposes; verify the services required by the capability you use.
+    subgraph Execution and Proxy Layer
+        App --> AIProxy[AI Proxy Model Router]
+        App --> CodeSandbox[Code Sandbox<br/>Python / JS Quick Execution]
+        App --> Provider[Agent Sandbox Provider API]
+        Provider --> OpenSandbox[OpenSandbox / Sealos Devbox Workspace]
+        Client --> SandboxProxy[Agent Sandbox Proxy]
+        SandboxProxy --> OpenSandbox
+    end
 
-Run [your first knowledge-base Q&A](/en/guide/getting-started/knowledge-qa) after configuration to verify file processing, indexing, and model answers.
+    subgraph Four-Pillar Data Infrastructure
+        App --> Mongo[(MongoDB Replica Set<br/>App / Collection / Chunk Metadata)]
+        App --> VectorDB[(Vector Database<br/>PGVector / Milvus / OceanBase / SeekDB)]
+        App --> S3[(S3 / MinIO Object Storage<br/>Public Avatars & Private Files)]
+        App --> Redis[(Redis Cache and Queue<br/>BullMQ / Lease Locks / Cross-Node Sync)]
+    end
+```
 
-## Administer and maintain
+## Capacity Planning and Baseline Specifications
 
-Platform root administration manages deployment-level resources. Team roles and collaborator permissions control team resources. Commercial features require appropriate licensing; see [commercial edition](/en/guide/version/commercial), [SSO](/en/guide/admin/sso), and [team mode](/en/guide/admin/teamMode).
+Size the deployment with representative documents and queries. Capacity depends on vector dimensions, chunk count, model latency, ingestion concurrency, and retention. Measure before setting production limits:
 
-Use [monitoring](/en/self-host/config/signoz) to observe services and [migration guidance](/en/self-host/migration/docker_db) when moving data. Before an upgrade, read [upgrade instructions](/en/self-host/upgrading/upgrade-instruction) and select the applicable release from the [version timeline](/en/self-host/upgrading/version-timeline). Historical pages retain the instructions and limitations for their versions.
+| Workload | Measurements | Acceptance Check |
+|---|---|---|
+| Evaluation | Peak memory and disk use across required services | Complete import, retrieval, and conversation flows |
+| Production | Concurrent requests, queue delay, p95 latency, vector index size | Meet the service target under a representative load |
+| High availability | Replica topology, recovery time, backup storage | Verify failover and restore in a staging environment |
+
+## Vector Database Selection and Priority
+
+FastGPT reads environment variables at startup and chooses the first configured driver in this fixed order:
+
+1. **SeekDB** (`SEEKDB_URL`): MySQL-compatible vector driver.
+2. **OceanBase** (`OCEANBASE_URL`): OceanBase vector driver; configure compatible server features.
+3. **PostgreSQL** (`PG_URL`): Built-in default driver using the pgvector extension.
+4. **Milvus** (`MILVUS_ADDRESS`): Requires version 2.5.16+, using the `modeldata_v2` collection for unified vector and BM25 full-text storage.
+5. **OpenGauss** (`OPENGAUSS_URL`): Enterprise openGauss vector driver.
+
+## Deployment Pathways
+
+| Pathway | Scenario | Guide |
+|---|---|---|
+| **Docker Compose** | Single-host private deployment, quick staging, and testing | [Docker Compose Deployment Guide](/en/self-host/deploy/docker) |
+| **Sealos Cloud Native** | Container deployment; validate scaling and redundancy separately | [Sealos Deployment Guide](/en/self-host/deploy/sealos) |
+| **Source Development** | Platform extension, debugging, and plugin development | [Local Source Development Guide](/en/self-host/dev) |
+
+## Core Configuration and Operations
+
+- **System Configuration**: Review [Environment Variables](/en/self-host/config/env), [Object Storage Configuration](/en/self-host/config/object-storage), and [Persistent Sandboxes](/en/self-host/config/sandbox/opensandbox).
+- **Model Integration**: Configure models through [AI Proxy Integration](/en/self-host/config/model/intro) or connect [Local Models via Ollama / Xinference](/en/self-host/custom-models/ollama).
+- **Observability**: Set up [SigNoz Tracing](/en/self-host/config/signoz) for API latency and telemetry metrics.
+- **Data and Upgrades**: Review [Storage Architecture](/en/self-host/design/dataset), [Data Backup and Migration](/en/self-host/migration/docker_db), and [Upgrade Instructions](/en/self-host/upgrading/upgrade-instruction).
+- **Troubleshooting**: Use the [Troubleshooting Manual](/en/self-host/troubleshooting/methods) to diagnose startup and runtime errors.

@@ -1,90 +1,86 @@
 ---
-title: Workflows & Plugins
-description: A quick overview of FastGPT Workflows and Plugins
+title: "Workflow Core Mechanics and Scheduling Principles"
+description: An in-depth explanation of FastGPT's graph scheduling engine, in-edge readiness groupings, skip propagation, and interactive checkpoints.
 ---
 
-Starting from V4.0, FastGPT adopted a new approach to building AI apps. It uses Workflow node orchestration to implement complex processes, improving flexibility and extensibility. This does raise the learning curve — users with development experience will find it easier to pick up.
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="what-is-a-node" />
+<span id="node-categories" />
+<span id="node-components" />
+<span id="key-concept--how-workflows-execute" />
+<span id="how-to-connect-nodes" />
+<span id="how-to-read-workflows" />
+<span id="faq" />
+<span id="how-do-i-merge-multiple-outputs" />
 
-[Watch the video tutorial](https://www.bilibili.com/video/BV1is421u7bQ/)
+FastGPT Workflows are powered by a graph execution engine. Visual node orchestration allows builders to decompose complex multi-step business logic into deterministic, auditable, and easily debugged execution pipelines.
 
-![Workflows & Plugins — interface example](/imgs/current/workflow-start-chat.png)
+![Initial canvas state with workflow start node](/imgs/current/workflow-start-chat.png)
 
-## What is a Node?
+## Graph Dispatch Engine Mechanics
 
-In programming terms, a node is like a function or API endpoint — think of it as a **step**. By connecting multiple nodes together, you build a step-by-step process that produces the final AI output.
+Workflows initiate execution from the "Workflow Start" node. The scheduler drives graph traversal based on in-edge dependencies:
 
-Below is the simplest AI conversation, consisting of a Workflow Start node and an AI Chat node.
+```
+[Workflow Start] ──(active)──► [Intent Classifier] ──(active)──► [Knowledge Search] ──(active)──► [AI Chat Generation]
+                                      │
+                                      └──(skipped)────────► [Ticket Form] ──(cascading skipped)──► [Ticket Response]
+```
 
-![What is a Node? — interface example](/imgs/current/workflow-start-chat.png)
+### 1. In-Edge Grouping Readiness Evaluation
+The scheduler evaluates node execution conditions against incoming edges:
+- **Execution Ready**: When all predecessor edges in a dependency group complete waiting and at least one edge is `active`, the node joins the ready queue and begins execution immediately.
+- **Concurrent Dispatch**: Independent nodes that reach readiness simultaneously execute concurrently, maximizing I/O efficiency.
 
-Execution flow:
+### 2. The Three-State Edge Model
+Every edge on the canvas assumes one of three discrete states during execution:
 
-1. The user inputs a question. The [Workflow Start] node executes and saves the user's question.
-2. The [AI Chat] node executes. It has two required parameters: "Chat History" and "User Question." Chat history defaults to 6 messages, representing the context length. The user question comes from the [Workflow Start] node.
-3. The [AI Chat] node calls the conversation API with the chat history and user question to generate a response.
+| Edge State | Meaning and System Behavior |
+| --- | --- |
+| `waiting` | Initial pending state. Upstream predecessor nodes have not finished executing; downstream nodes wait. |
+| `active` | Activated state. Upstream nodes executed successfully and met branch criteria; downstream nodes are triggered. |
+| `skipped` | Skipped state. Upstream conditional branches omitted this route, propagating skips downstream. |
 
-### Node Categories
+### 3. Skip Propagation Mechanics
+When upstream nodes (such as Condition Switch or Question Classifier) activate a single route, unselected output edges are marked `skipped`. The scheduling engine cascades `skipped` markers downstream. Any node whose in-edges are all marked `skipped` skips its own execution cleanly, eliminating hanging deadlocks.
 
-Functionally, nodes fall into 2 categories:
+![Workflow node structure and connection ports](/imgs/current/node-ai-chat.png)
 
-1. **System Nodes**: System configuration (conversation settings) and Workflow Start (workflow entry point).
-2. **Function Nodes**: Dataset search, AI Chat, and all other nodes. These have inputs and outputs and can be freely combined.
+---
 
-### Node Components
+## Exception Branches and Circuit Breakers
 
-Each node has 3 core parts: inputs, outputs, and triggers.
+To maintain workflow resilience against upstream service degradation, the platform provides explicit exception paths:
 
-![Node Components — interface example](/imgs/current/node-ai-chat.png)
+1. **Explicit Exception Outlets**: For nodes equipped with exception ports (such as HTTP Request or Code Sandbox), execution errors or timeouts trigger the exception edge immediately, skipping standard business outputs and routing error diagnostics to fallback nodes.
+2. **Default Error Interception**: When nodes lacking exception outlets encounter errors, the system skips downstream edges automatically while recording execution traces, allowing parallel branches to finalize cleanly.
+3. **Execution Step Quotas**: To guard against infinite loops, each request enforces a maximum step limit. Upon reaching this quota, the scheduler halts further node execution and records the termination in the execution result.
 
-- AI model, Prompt, chat history, user question, and Dataset citation are inputs. Inputs can be manual entries or variable references, which include "global variables" and outputs from any previous node.
-- New context and AI reply content are outputs. Outputs can be referenced by any subsequent node.
-- Each node has four "triggers" (top, bottom, left, right) for connections. Connected nodes execute sequentially based on conditions.
+---
 
-## Key Concept — How Workflows Execute
+## Interactive Checkpoints
 
-FastGPT Workflows start from the [Workflow Start] node, triggered when the user inputs a question. There is no **fixed exit point** — the workflow ends when all nodes stop running. If no nodes execute in a given cycle, the workflow completes.
+FastGPT supports human-in-the-loop interactions and state checkpoints during workflow runs:
 
-Let's look at how workflows execute and when each node is triggered.
+```
+[Upstream Execution] ──► [User Selection / Form Input] ──► (Workflow Suspends & Saves Checkpoint)
+                                                                 │
+                                                                 ▼ (Awaits User Input)
+[Next Turn Resumes]  ◄── [Load Checkpoint & Restore] ◄───────────┘
+```
 
-![Key Concept — How Workflows Execute — interface example](/imgs/current/workflow-start-chat.png)
+1. **Execution Suspension**: When reaching a "User Selection" or "Form Input" node, the system returns the interactive payload to the client, while persisting conversation context, pending edges, and variable snapshots into an operational checkpoint.
+2. **State Restoration**: When the user submits their selection or form in chat, the next request loads the checkpoint, reconstructing the execution context and driving downstream nodes to completion.
+3. **Cooperative Cancellation**: When users click "Stop" during streamed responses, the system writes a cancellation flag. The scheduler exits cooperatively at the next scheduling cycle and persists all generated records.
 
-As shown above, nodes can "be connected to" and "connect to other nodes." We call incoming connections "predecessor lines" and outgoing connections "successor lines." In this example, [Workflow Start] has one successor line on the right, connected to the predecessor line on the left of [AI Chat].
+## Orchestration Best Practices
 
-Lines in FastGPT Workflows have these states:
+1. **Left-to-Right Layout**: Structure pipelines to flow naturally from "Workflow Start" on the left toward response nodes on the right.
+2. **Single-Exit Aggregation**: Use a "Specified Response" node to govern final message presentation, avoiding fragmented outputs from scattered nodes.
+3. **Standard Variable Naming**: Define clean identifiers in start nodes and global settings to support reliable downstream variable referencing.
 
-- `waiting`: The connected node is waiting to execute.
-- `active`: The connected node is ready to execute.
-- `skip`: The connected node should be skipped.
+## Next Steps
 
-Node execution rules:
-
-1. If any predecessor line has `waiting` status, the node waits.
-2. If any predecessor line has `active` status, the node executes.
-3. If no predecessor lines are `waiting` or `active`, the node is skipped.
-4. After execution, successor lines are updated to `active` or `skip`, and predecessor lines reset to `waiting` for the next cycle.
-
-Walking through the example:
-
-1. [Workflow Start] completes and sets its successor line to `active`.
-2. [AI Chat] sees its predecessor line is `active`, reads the question, and generates a reply.
-3. This example has no downstream nodes. The turn finishes when both nodes have completed.
-
-## How to Connect Nodes
-
-1. Each node has connection points on all four sides for convenience. Left and top are predecessor connection points; right and bottom are successor connection points.
-2. Click the x in the middle of a connection line to delete it.
-3. Left-click to select a connection line.
-
-## How to Read Workflows
-
-1. Read from left to right.
-2. Start from **Workflow Start** and inspect how the current question, files, and variables enter the workflow.
-3. Focus on [AI Chat] and [Specified Reply] nodes — these are where answers are output.
-
-## FAQ
-
-### How do I merge multiple outputs?
-
-1. Text Processing: can merge strings together.
-2. Dataset search Merge: can combine multiple Dataset search results.
-3. Other structured results: transform or merge them with a Code Run node, or call an existing service through an HTTP node.
+- Node contract specifications: [Node Reference Manual](/en/guide/build/workflow/nodes/ai_chat).
+- Autonomous agents: [Chat Agent V2 Settings](/en/guide/build/agentv2/settings).
+- Automation pipelines: [Scheduled Triggers](/en/guide/build/scheduled-triggers).

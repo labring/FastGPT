@@ -1,7 +1,14 @@
 ---
-title: Use FastGPT
-description: Build a knowledge-base question-answering application, then explore workflows, Agents, publishing, and maintenance.
+title: "Use FastGPT"
+description: Master FastGPT core concepts, hands-on tutorials, deep guides, and practical cases to build enterprise-grade AI applications.
 ---
+
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="start-with-a-successful-answer" />
+<span id="continue-with-a-task" />
+<span id="developers-and-operators" />
+<span id="start-with-the-cloud-service" />
+<span id="community" />
 
 {/* Preserve incoming bookmarks for reorganized sections. */}
 <span id="why-fastgpt" />
@@ -19,44 +26,49 @@ description: Build a knowledge-base question-answering application, then explore
 
 import FastGPTLink from '@/components/docs/linkFastGPT';
 
-FastGPT connects models, knowledge bases, tools, and visual workflows into AI applications that people can use.
+FastGPT is an AI application orchestration platform providing out-of-the-box model orchestration, accurate knowledge base retrieval, autonomous Agent planning, and visual workflow development.
 
-## Start with a successful answer
+## Quick Start and Tutorials
 
-[**Build your first knowledge-base Q&A application →**](/en/guide/getting-started/knowledge-qa)
-
-Import a short document, connect it to a Chat Agent, test the answer, and publish your changes. The tutorial includes sample material and questions with expected answers.
+Follow structured tutorials to build operational AI systems in 5 to 10 minutes:
 
 <Cards>
-  <Card title="Choose an application type" href="/en/guide/getting-started/application-types">Choose Chat Agent, Chat Agent V2, or Workflow for your task.</Card>
-  <Card title="Build your first workflow" href="/en/guide/getting-started/first-workflow">Connect input, model, and output, then inspect a complete execution.</Card>
-  <Card title="Run your first Agent task" href="/en/guide/getting-started/first-agent">Let an Agent retrieve material and complete a task.</Card>
+  <Card title="5-Minute Quick Start" href="/en/guide/getting-started/quick-start">Import documents, connect a Chat Agent, test responses, and generate a public share link.</Card>
+  <Card title="Build Chat Agent V2" href="/en/guide/getting-started/first-agent">Configure an autonomous agent with dynamic planning, tool calling, and multi-step reasoning.</Card>
+  <Card title="Build Your First Workflow" href="/en/guide/getting-started/first-workflow">Master canvas connections, variable references, conditional branching, and end-to-end testing.</Card>
 </Cards>
 
-## Continue with a task
+## Core Architecture and Concepts (Explanation)
+
+Build an accurate mental model of FastGPT core mechanics and selection criteria:
 
 <Cards>
-  <Card title="Build applications" href="/en/guide/build/general/ai_settings">Configure models, instructions, variables, and conversation capabilities.</Card>
-  <Card title="Manage knowledge" href="/en/guide/dataset/lifecycle">Create, import, preview chunks, test retrieval, and maintain material.</Card>
-  <Card title="Connect tools and Skills" href="/en/guide/build/tools/overview">Add external operations and reusable instructions.</Card>
-  <Card title="Publish and integrate" href="/en/guide/build/publish/versions">Publish changes and choose a shared link, API, or MCP service.</Card>
-  <Card title="Observe and improve" href="/en/guide/build/logs">Investigate answers through conversation logs and execution details.</Card>
-  <Card title="Team and account" href="/en/guide/workspace/team/team_roles_permissions">Manage members and resource collaboration permissions.</Card>
+  <Card title="Core Concepts and Topology" href="/en/guide/getting-started/concepts">Understand applications, collections, chunks, tools, Skills, version snapshots, and permissions.</Card>
+  <Card title="Application Types and Selection" href="/en/guide/getting-started/application-types">Compare Chat Agent, Chat Agent V2, and Workflow across execution models and decision trade-offs.</Card>
 </Cards>
 
-## Developers and operators
+## Practical Guides and Case Studies (How-to Guides)
 
-- [Developers](/en/developers): credentials, a first request, streaming, and current generated API references.
-- [Deploy and operate](/en/self-host): installation choices, service configuration, maintenance, and upgrades.
-- [Core concepts](/en/guide/getting-started/concepts): applications, collections, chunks, tools, Skills, and published versions.
-- [Complete examples](/en/guide/getting-started/quick-start), [video tutorials](https://video.fastgpt.cn/videos), and [solutions](https://solutions.fastgpt.cn/) (external resources may use Chinese).
+Follow standardized recipes and enterprise blueprints for concrete business goals:
 
-## Start with the cloud service
+<Cards>
+  <Card title="Accurate Knowledge-Base Q&A" href="/en/guide/getting-started/knowledge-qa">Master text chunking, vector retrieval with reranking, prompt constraints, and citations.</Card>
+  <Card title="Enterprise Case Library" href="/en/guide/getting-started/quick-start#complete-examples">Explore legal code Q&A, corporate email assistants, review workflows, and data analysis agents.</Card>
+</Cards>
 
-<FastGPTLink campaign="docs_getting_started" content="cloud_entry_cn" site="cn">Mainland China cloud</FastGPTLink> · <FastGPTLink campaign="docs_getting_started" content="cloud_entry_io" site="io">International cloud</FastGPTLink>
+## Role-Specific Entry Points
 
-Guides follow the current interface. Self-hosted installations require configured models and supporting services. Availability depends on version, license, plan, service configuration, resource permissions, and model capabilities; each task explains its relevant requirements.
+- [Developer Portal](/en/developers): Obtain API credentials, make your first call, handle streaming responses, and inspect OpenAPI specifications.
+- [Deployment and Operations](/en/self-host): Deploy via Docker or Sealos, configure vector stores and models, monitor workloads, and upgrade versions.
+- [Knowledge Base Lifecycle](/en/guide/dataset/lifecycle): Study text chunking, indexing maintenance, incremental sync, and tag management.
+- [Extensions and Tool Ecosystem](/en/guide/build/tools/overview): Connect HTTP tools, system plugins, code execution sandboxes, and MCP services.
 
-## Community
+## Cloud Services
 
-Report issues through [GitHub Issues](https://github.com/labring/FastGPT/issues/new/choose). Include your version, steps, expected result, and error details with credentials removed.
+<FastGPTLink campaign="docs_getting_started" content="cloud_entry_cn" site="cn">Mainland China Cloud</FastGPTLink> · <FastGPTLink campaign="docs_getting_started" content="cloud_entry_io" site="io">International Cloud</FastGPTLink>
+
+Documentation follows the current user interface. In self-hosted environments, capability availability depends on version licensing, infrastructure services, team resource permissions, and backend model support.
+
+## Community and Technical Support
+
+Report technical issues through [GitHub Issues](https://github.com/labring/FastGPT/issues/new/choose). When reporting bugs, provide the software version, step-by-step reproduction instructions, expected outcomes, and sanitized log output.

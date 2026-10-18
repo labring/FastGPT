@@ -1,54 +1,63 @@
 ---
-title: Test retrieval and improve matching
-description: Compare retrieved passages with fixed questions, change one factor at a time, and verify recovery.
+title: "Search Testing and Retrieval Parameters"
+description: Master knowledge base search testing, hybrid search modes, similarity score analysis, and zero-recall troubleshooting.
 ---
 
-Use this guide to check whether the intended material can be retrieved and identify settings that affect matching. You need read and search access to the Knowledge base, available models, and [indexed material](/en/guide/dataset/import-data). Saving Application settings also requires editing permission. Disabling and enabling a Collection in the recovery exercise requires write permission on that Collection.
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="1-fix-the-questions-and-expected-passages" />
+<span id="2-record-a-baseline" />
+<span id="3-change-one-factor-at-a-time" />
+<span id="4-check-effective-settings" />
+<span id="recover-and-verify" />
 
-## 1. Fix the questions and expected passages
+Before attaching a knowledge base to conversational applications, use the standalone "Search Test" interface to isolate prompt and generation noise, verifying vector and full-text retrieval precision directly.
 
-Use this set with the [travel example](/en/guide/getting-started/knowledge-qa). For your own material, identify the expected clause for each question.
+## Step 1: Open the Search Test Interface
 
-| Question | Retrieval check | Answer check |
+1. Navigate to your target knowledge base and click the "Search Test" tab in the top navigation bar.
+2. The view displays a test query input, search mode selectors, similarity score sliders, and candidate result cards.
+3. Enter a representative operational inquiry, such as: `How many days do I have to submit travel expenses after returning?`.
+
+![Search test returns original text containing reimbursement deadline](/imgs/current/knowledge-search.png)
+
+## Step 2: Compare Retrieval Modes
+
+Switch between retrieval modes at the top of the testing panel to observe differences across candidate ranks:
+
+1. **Vector Search (Semantic Matching)**:
+   Enter a query with synonymous phrasing (e.g., `What is the deadline for filing trip expenses?`). The engine uses geometric distance in dense vector space to recall chunks containing "15 calendar days".
+2. **Full-Text Search (Keyword Matching)**:
+   Enter a query featuring specialized codes or exact references (e.g., `Policy Rule FIN-2026-03 Section 15`). Check whether full-text search retrieves the document section containing the identifier.
+3. **Hybrid Search (Recommended)**:
+   Combines semantic generalization and exact term matching. The engine merges multi-route candidates and optionally reranks them when a rerank model is configured.
+
+![Search mode selection and reranking scores](/imgs/current/dataset-result-scores.png)
+
+## Step 3: Analyze Scores and Calibrate Similarity Floors
+
+Use scores to compare candidates within the same model and retrieval configuration. Build a labeled test set containing answerable questions, paraphrases, exact identifiers, and questions outside the knowledge base. Record the expected source chunk for each answerable question.
+
+### Calibration Guidelines
+
+1. Start with a low threshold and check whether expected chunks enter the candidate list.
+2. Adjust one setting at a time. Compare relevant hits, missed references, and irrelevant results before selecting a threshold.
+3. Repeat after changing the embedding model, rerank model, or chunking strategy. Inspect actual reranking and filtering status when the interface exposes it.
+
+![Search parameters and score threshold configuration](/imgs/current/dataset-search-filter.png)
+
+## Step 4: Step-by-Step Zero-Recall Troubleshooting
+
+When an expected query fails to return target chunks, follow this four-step diagnostic procedure:
+
+| Step | Diagnostic Focus | Actionable Fix |
 | --- | --- | --- |
-| How long after returning must I submit travel expenses? | Passage containing `15 calendar days` | 15 calendar days, supported by the citation |
-| Which documents does a claim require? | Invoice and approved travel request | Both documents included |
-| What is the hotel accommodation allowance? | Inspect whether the returned material actually contains an allowance | Explains that the material lacks this policy |
+| **1. Chunk Completeness** | Search for the clause in the collection's data chunk list | Confirm the fact is ingested and was not split awkwardly across boundaries |
+| **2. Index Readiness** | Inspect the collection's index status in the file list | Verify the collection status is "Ready"; if in "Error", click retry |
+| **3. Tokenization Coverage** | Check if proper nouns were fragmented during full-text tokenization | Query using complete standardized terms, or configure specialized dictionaries |
+| **4. Supplementary Indexes** | Add query variations to the target chunk | Edit the chunk and add 3 to 5 common user question patterns under "Supplementary Indexes" |
 
-The third question may retrieve related travel content. Read the passage to determine whether it contains the answer.
+## Next Steps
 
-## 2. Record a baseline
-
-1. Open the target Knowledge base search test and enter the first complete question. Use a dedicated test Knowledge base when you need isolated sources, then check source Collections in the results.
-2. Record the search mode, minimum relevance, citation limit, and reranking and query rewriting settings. Use the values shown in your interface as the defaults for this test.
-3. Open the results and inspect the source Collection, text, scores, and order. Check that the required conditions appear in the returned passages.
-4. Repeat for the other questions, recording retrieved clauses and omissions. Once retrieval works, [connect an Application](/en/guide/dataset/connect-application) and inspect its answers and citations.
-
-![Search test returning the original reimbursement deadline](/imgs/current/knowledge-search.png)
-
-The shared screenshot uses Chinese labels; inspect the returned passage containing `15 calendar days`.
-
-## 3. Change one factor at a time
-
-| Symptom | Change and check |
-| --- | --- |
-| Empty results | Check Collection status, completed processing, scope, and permissions, then whether the threshold is effective |
-| Missing identifiers, model numbers, or exact terms | Compare full-text or hybrid search with the other settings and questions held constant |
-| Paraphrases miss the passage | Compare semantic or hybrid search and check chunk completeness |
-| Follow-up questions lose their subject | Inspect the rewritten query in the Application; compare matching and latency with rewriting enabled |
-| Correct clauses rank low | Compare reranking when a model is available; inspect this run's results and relevant errors |
-| Required passages are trimmed | Increase the citation limit within the model's context budget and check for added irrelevant content |
-
-Rerun the entire question set after each change. Keep settings that improve the target question while preserving the other known answers. Check search-test and Application parameters separately. Verify Application changes through [publishing](/en/guide/build/publish/versions).
-
-## 4. Check effective settings
-
-Minimum relevance depends on the scores available in this run. Successful reranking uses rerank scores; pure semantic search can use vector scores; hybrid search with failed reranking may return results without threshold filtering. See [search parameters](/en/guide/dataset/dataset_engine#search-parameters).
-
-Inspect the run details, errors, and results exposed by your interface. If it omits whether reranking ran, record that as requiring administrator verification against model-service and call records. Scores describe matching, order describes context priority, and final answers require separate fact and citation checks.
-
-## Recover and verify
-
-A maintainer with Collection write permission can open the Knowledge base’s Collection list, turn off **Enabled** for an isolated test Collection, and repeat the same search test. Disabling the only searchable Collection produces an empty-search notification. When other Collections are available, check that the target source disappears. Check processing status, enabled state, scope, and permissions, then enable it again. Confirm that the same question retrieves the original passage. For other failures, follow [troubleshooting](/en/guide/dataset/faq) and rerun the fixed questions.
-
-Next: [Connect a Knowledge base to an Application](/en/guide/dataset/connect-application).
+- Integrate into chat: Follow [Connecting Knowledge Bases to Applications](/en/guide/dataset/connect-application).
+- Metadata-scoped search: Learn [Collection Tag System](/en/guide/dataset/collection_tags).
+- Data maintenance: Review [Data Maintenance and Incremental Updates](/en/guide/dataset/update-data).

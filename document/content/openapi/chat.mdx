@@ -15,7 +15,35 @@ description: 管理 chatId，消费 SSE 内容，并区分请求错误和运行�
 
 在首次请求中改为 `"stream": true`，并给 curl 加 `--no-buffer`。成功建立流后，按 SSE 帧处理 `event:` 与 `data:`，跨网络读取保留未完成的帧；文本片段通常位于 `choices[0].delta.content`。遇到 `[DONE]` 完成读取。
 
-详细模式可能包含命名事件、运行状态与 `flowResponses`。客户端按事件类型分派，分别处理文本、状态和结构化数据。仅消费文本的客户端也应处理错误和连接中断。
+设置 `detail: true` 可接收详细事件。运行时定义以下 17 类事件，具体返回内容取决于接口、运行时版本和应用配置。`detail: false` 时，回答帧使用 SSE 默认消息事件。客户端应兼容未知事件类型。
+
+| 事件名称 | `data` 载荷内容 | 业务含义与消费方式 |
+|---|---|---|
+| `answer` | `WorkflowAnswerChunk` 或纯文本 `[DONE]` | 模型文本片段、思考内容增量、心跳包与流结束信号 |
+| `fastAnswer` | `WorkflowAnswerChunk` | 指定快速回答节点的直出文本 |
+| `chatTitle` | `{ title: string }` | 本轮对话生成的标题建议（每轮至多发送一次） |
+| `flowNodeStatus` | `{ status: 'running', name: string }` | 节点进入执行阶段，驱动前端节点高亮 |
+| `flowNodeResponse` | `ChatHistoryItemResType` | v2 节点发布执行结果树，包含各节点执行耗时与调试数据 |
+| `flowResponses` | `ChatHistoryItemResType[]` | v1 详细流结束前的节点执行结果数组 |
+| `updateVariables` | `Record<string, any>` | 更新变量节点输出的持久化变量键值对 |
+| `interactive` | `{ interactive: { type, params } }` | 面向用户的交互展示配置；运行状态保存在服务端 |
+| `workflowDuration` | `{ durationSeconds: number }` | 工作流全流程执行耗时（秒） |
+| `toolCall` | `{ tool: ToolModuleResponseItemType }` | Agent 触发工具调用，包含工具标识与入参结构 |
+| `toolParams` | `{ tool: { id: string, params: string } }` | 工具入参流式片段 |
+| `toolResponse` | `{ tool: { id: string, response: string } }` | 工具执行返回结果 |
+| `planStatus` | `{ planStatus: { status: 'generating' \| 'updating' } }` | Agent 规划生成或状态变更 |
+| `plan` | `{ plan: AgentPlanType }` | Agent 当前步骤规划完整快照 |
+| `error` | `Record<string, any>` | 运行错误，客户端标记本次执行失败 |
+| `skillCall` | `{ skill: SkillModuleResponseItemType }` | 运行时发送的技能调用通知 |
+| `sandboxStatus` | `SandboxStatusItemType` | Agent 虚拟机沙箱生命周期状态（预热、挂载、升级） |
+
+生成期间，服务端每隔 10 秒发送空回答块作为心跳。反向代理仍需配置流式转发和空闲超时。错误或断网可能使流在 `[DONE]` 前关闭，客户端需分别跟踪完成与失败状态。
+
+### 交互节点挂起与恢复运行
+
+使用 `detail: true` 时，交互节点返回包含 `type` 和 `params` 的展示配置。客户端据此渲染选项或表单，并保存当前 `chatId`。
+
+用户完成交互后，向同一应用、同一 `chatId` 发起下一次请求：用户选择节点将选中结果作为 user 消息内容；表单输入节点将输入对象序列化为 JSON 字符串作为 user 消息内容。服务端从会话历史中恢复检查点。
 
 ## 错误与重试
 

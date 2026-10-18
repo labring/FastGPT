@@ -1,77 +1,103 @@
 ---
-title: Build your first knowledge-base Q&A
-description: Import material, test retrieval, connect a Chat Agent, and publish verifiable answers.
+title: "How-to Guide: Build an Accurate Knowledge-Base Q&A Application"
+description: Master knowledge ingestion chunking, multi-route retrieval and reranking, prompt constraints, and citation transparency.
 ---
 
-Build an application that answers questions about a sample travel policy and make it available through a shared link.
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="prerequisites" />
+<span id="1-create-and-import-knowledge" />
+<span id="2-verify-retrieval" />
+<span id="3-create-and-configure-a-chat-agent" />
+<span id="4-debug-and-inspect-the-result" />
+<span id="5-publish-and-verify-access" />
+<span id="completion-checks" />
 
-## Prerequisites
+This guide provides a standardized recipe for building high-precision knowledge-base Q&A applications that deliver dependable answers with explicit citations.
 
-- Permission to create knowledge bases, applications, and publishing channels.
-- An available chat model and an embedding model for the knowledge base. For self-hosting, complete [model configuration](/en/self-host/config/model/intro) first.
-- Save the following text as UTF-8 in `travel-policy.txt`. Processing and conversations consume the selected models' quota.
+## Scenario and Prerequisites
 
-```text
-Travel policy
-Employees must submit travel expenses within 15 calendar days after returning.
-Each claim must include an invoice and the approved travel request.
-Finance reviews complete claims within 5 business days.
-```
+This guide addresses a core problem: transforming structured or unstructured policy documentation into an operational Q&A system that adheres strictly to source facts and exposes verifiable citations.
 
-![Create the Travel Policy knowledge base and select available models](/imgs/current/knowledge-create.png)
-
-The shared screenshots use Chinese labels and show an example interface. The Knowledge base is named Travel Policy. Use the models and capabilities available to your team; self-hosted readers should match the steps to their deployment version.
-
-## 1. Create and import knowledge
-
-Open Knowledge Bases, create a general Knowledge base named Travel Policy, and select an available embedding model. Open it, choose **New / Import → Text collection → Local file**, and upload `travel-policy.txt`. Wait for the upload to reach 100%, select **Next**, and keep the default processing settings. Select **Next** again, then select the filename on the left to load its chunk preview. Verify the deadline and required documents, then select **Next → Start uploading** to submit processing.
-
-Wait for Collection processing and indexing to finish, confirm that the Collection is enabled, then open the chunks to inspect the source. A file becomes a content collection containing one or more chunks. If processing fails, inspect the error and model quota, then retry the failed items.
-
-![Preview travel-policy.txt as one complete chunk before importing.](/imgs/current/knowledge-preview.png)
-
-## 2. Verify retrieval
-
-Open the knowledge base's search test and ask “How soon after returning must I submit travel expenses?” Results should include the chunk containing `15 calendar days`. Ask “What documents does a claim require?” and confirm that the invoice and approved travel request appear.
-
-For empty results, check processing status, retrieval scope, and the question. See [knowledge-base search](/en/guide/dataset/test-retrieval) for the complete retrieval checks.
-
-![Search test returns the travel-policy.txt chunk containing the 15-calendar-day deadline.](/imgs/current/knowledge-search.png)
-
-## 3. Create and configure a Chat Agent
-
-In the Studio, create an Agent, select Chat Agent, and name it Travel Policy Q&A. Select an available chat model and associate the knowledge base. Use these instructions:
+Before starting, confirm the following prerequisites:
+- Permissions to create datasets, manage applications, and publish channels in your active team.
+- An available embedding model and chat model configured in the environment (refer to [Model Configuration](/en/self-host/config/model/intro)).
+- A clean UTF-8 text document prepared locally, such as `travel-policy.txt` containing:
 
 ```text
-Answer questions using the retrieved travel policy. State the deadline and
-required documents precisely. Cite the available sources. When the policy
-does not cover a question, explain what information is missing.
+FastGPT Example Travel Policy
+1. Submission deadline: Employees must submit expense reports within 15 calendar days after returning from a business trip.
+2. Mandatory receipts: Every claim must attach an official tax invoice and an approved travel request form.
+3. Finance review SLA: The finance department completes review and disbursement within 5 business days after receiving complete valid receipts.
 ```
 
-![Choose Chat Agent and name the application Travel Policy Q&A.](/imgs/current/app-create.png)
+![Create travel policy knowledge base and choose available model](/imgs/current/knowledge-create.png)
 
-## 4. Debug and inspect the result
+## Step 1: Create a Knowledge Base and Configure Chunking
 
-Ask both questions in the debug preview on the right. Check the 15-calendar-day deadline, invoice, approved travel request, and citations to the sample material. Then ask “What is the hotel allowance?” The expected answer identifies the missing allowance policy.
+1. Open the "Knowledge Base" console, click "New", name it `Corporate Travel Policy`, and select your team's embedding model.
+2. Open the knowledge base, click "New / Import → Text Dataset → Local Files", and upload `travel-policy.txt`.
+3. **Chunking Strategy**:
+   - For policy clauses, start with the default chunking parameters and inspect complete clauses in the preview before adjusting boundaries.
+   - For structured Q&A catalogs: Use QA segmentation to automatically derive query-answer pairs for higher semantic matching.
+4. In the preview view, click the file on the left to confirm that time limits and documentation requirements remain grouped in single chunks. Click "Start Import".
 
-If retrieval succeeds but the answer changes the facts, inspect model input, instructions, and references. Keep the sample and configuration small, then change one setting at a time.
+![Previewing text chunks preserves core factual context](/imgs/current/knowledge-preview.png)
 
-![The debug answer includes the deadline and required documents with source citations.](/imgs/current/knowledge-answer.png)
+## Step 2: Validate Search Recall and Reranking
 
-## 5. Publish and verify access
+Before connecting the knowledge base to an application, verify retrieval quality using standalone search testing:
+1. Navigate to the "Search Test" tab at the top of the knowledge base.
+2. In the query box, enter a representative question: "Within how many days must an employee file expenses after returning?".
+3. Inspect returned chunks and their similarity scores.
+4. Verify that the top candidate chunk contains `15 calendar days`. If a reranker is active, confirm that high-relevance chunks rank highest after the second-pass scoring.
 
-Application creation produces an initial published version. Open **Save → Save and Publish** at the top right of the editor, enter a version name, and confirm. After the success notification, create a link under **Publishing Channels → Share Link** and enable **View cited snippets**. Open the link, wait for the new conversation to finish loading, repeat the questions, and open the citations to check the source text. Both debug and published access should satisfy the same factual expectations.
+![Search test hits original text containing 15 calendar days deadline](/imgs/current/knowledge-search.png)
 
-After changing material, check processing and retrieval again. After changing application configuration, publish again. See [published versions and channels](/en/guide/build/publish/versions).
+## Step 3: Create a Chat Agent with Grounding Prompts
 
-## Completion checks
+1. Navigate to "Applications", create a new application, choose "Chat Agent", and name it `Travel Policy Assistant`.
+2. Pick an active chat model.
+3. In the "Knowledge Base" configuration section, attach the validated `Corporate Travel Policy`.
+4. Compose a system prompt enforcing strict factual adherence:
 
-- Processing is complete and known questions retrieve the travel policy.
-- New conversations in debug and the shared link return 15 calendar days, an invoice, and the approved travel request.
-- Cited passages support the answers; the hotel allowance question receives a missing-information response.
+```text
+You are a corporate travel policy assistant.
+Answer user questions strictly using the retrieved reference text.
 
-Use [Import material](/en/guide/dataset/import-data) for your own files, [Connect an Application](/en/guide/dataset/connect-application) to repeat integration, and [Update material](/en/guide/dataset/update-data) to change the deadline.
+Operational rules:
+1. State deadlines, processes, and mandatory documentation as explicitly recorded in the policy.
+2. Append source citations at the end of each answer.
+3. For information not recorded in the references, state that the current policy contains no record and direct the user to HR or Finance.
+```
 
-Next: [the knowledge lifecycle](/en/guide/dataset/lifecycle) or [your first workflow](/en/guide/getting-started/first-workflow).
+![Choose Chat Agent and fill out application details](/imgs/current/app-create.png)
 
-![Published sharing window returns the 15-calendar-day deadline and required documents](/imgs/current/knowledge-published.png)
+## Step 4: Test in Workspace and Verify Edge Cases
+
+Run two distinct tests in the right-hand testing drawer:
+1. **Factual Recall Test**: Ask "What receipts are required for reimbursement?". Confirm that the assistant lists invoices and approved request forms with accurate citations.
+2. **Boundary Test**: Ask "What is the daily hotel lodging allowance?". Confirm that the model states the policy lacks records on lodging rates, preventing hallucinated numbers.
+
+![Testing chat returns deadline, receipts, and source references](/imgs/current/knowledge-answer.png)
+
+## Step 5: Configure Citation Visibility and Publish
+
+1. Click "Save" in the workspace header and publish a production release.
+2. Open the "Publishing Channels" tab and add a "Public Share Link".
+3. Toggle on "Show Source Citations". This lets end users click citation pills at the bottom of answers to inspect original source chunks.
+4. Copy the URL and test the experience in an external browser tab.
+
+![Published share window returns 15 calendar days deadline and required documents](/imgs/current/knowledge-published.png)
+
+## Acceptance Checklist
+
+- [ ] Knowledge base collection status is ready and vector indexing is active.
+- [ ] Standalone search tests recall target chunks with high confidence scores.
+- [ ] The assistant answers grounded facts reliably and explicitly marks unrecorded questions.
+- [ ] Public share links display expandable citation pills that reveal source material.
+
+## Next Steps
+
+- Maintenance: Read [Knowledge Base Lifecycle](/en/guide/dataset/lifecycle) and [Incremental Data Updates](/en/guide/dataset/update-data).
+- Search tuning: Study [Retrieval Testing and Parameters](/en/guide/dataset/test-retrieval).
+- Advanced orchestration: Mount datasets into visual pipelines in [Build Your First Workflow](/en/guide/getting-started/first-workflow).

@@ -3,21 +3,55 @@ title: 开发者
 description: 从首次 API 请求进入应用、对话、知识库集成和扩展开发。
 ---
 
-先建立一次成功调用，再接入业务系统。需要目标团队的凭证及对应资源权限。
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="扩展能力" />
 
-1. [API 入门](/zh-CN/openapi/intro)：地址、密钥、应用选择和首次请求。
-2. [应用集成](/zh-CN/openapi/app)：调用已发布的应用与工作流工具。
-3. [会话与流式响应](/zh-CN/openapi/chat)：会话标识、流式事件和错误处理。
-4. [知识库集成](/zh-CN/openapi/dataset)：导入、处理状态与检索。
-5. [身份代理](/zh-CN/openapi/identity-proxy)：可信服务端代表团队成员执行。
+## 开发者集成全景
 
-当前生成的 System OpenAPI 提供明确开放给 API Key 的接口契约；Dev API 提供内部开发接口。打开自己的 FastGPT 地址下 `/apidoc/systemopenapi` 或 `/apidoc/devapi`，按部署版本核对参数。云服务链接见 [API 入门](/zh-CN/openapi/intro)。
+FastGPT 面向业务系统与开发者提供完整的开放能力矩阵：
 
-## 扩展能力
+```mermaid
+graph LR
+    Client[Web 前端 / 移动端] --> Backend[可信业务后端]
+    Backend --> API[FastGPT 开放接口]
+    SDK[服务端 SDK] --> API
+    API --> Apps[应用执行与会话]
+    API --> Knowledge[知识库操作]
+```
 
-- [系统工具开发](/zh-CN/plugin/system-tool-development)
-- [模型预设](/zh-CN/plugin/model-presets)
-- [Skill 开发](/zh-CN/guide/build/skill/development)
-- [外部知识来源](/zh-CN/guide/dataset/third-party/third_dataset)
+API Key 保存在可信服务端。身份代理按需启用，要求接口支持并建立同团队成员的可信身份映射。MCP 客户端通过单独配置的 MCP 服务及其认证方式接入。
 
-维护旧集成时，先阅读[历史参数与迁移](/zh-CN/openapi/legacy)。
+## 凭证体系与鉴权方式
+
+各接口分别声明接受的凭证类型，接入前按生成契约确认鉴权要求。
+
+| 凭证类型 | 传输位置 | 权限作用域 | 适用场景 |
+|---|---|---|---|
+| **团队 API Key** | `Authorization: Bearer <apiKey>` | 绑定创建成员在所属团队中的可用资源权限 | 业务系统对接、自动化任务、模型调用 |
+| **用户登录会话** | Cookie `fastgpt_token` 或 `token` 头 | 当前成员的资源权限，受接口授权与会话校验约束 | 前端界面通信、同源管理接口 |
+| **Root 管理密钥** | 请求头 `rootkey: <ROOT_KEY>` | 明确启用 Root 鉴权的管理接口，具体资源约束由接口决定 | 跨团队运维、模型探测与自动化迁移任务 |
+
+## 核心集成任务
+
+1. [API 极速入门](/zh-CN/openapi/intro)：获取团队 API Key，执行首次端到端请求，使用 OpenAI 官方 SDK 接入。
+2. [身份代理机制](/zh-CN/openapi/identity-proxy)：可信服务端通过 `authProxy` 代表真实用户发起调用，实现细粒度权限控制与操作审计。
+3. [应用与工作流集成](/zh-CN/openapi/app)：调用已发布的对话 Agent、Agent V2 与可视化工作流应用，动态注入全局变量。
+4. [会话与 17 类流式事件](/zh-CN/openapi/chat)：管理持久化 `chatId`，深度解析回答、思考、节点状态、计划与交互挂起事件帧。
+5. [知识库全生命周期集成](/zh-CN/openapi/dataset)：通过 API 创建集合、异步推送文档到训练队列、检索测试与命中调优。
+
+## 扩展开发与生态
+
+- [插件系统概览](/zh-CN/plugin/intro)：FastGPT Plugin 独立微服务架构与 `.pkg` 插件包标准化规范。
+- [系统工具开发](/zh-CN/plugin/system-tool-development)：使用 `@fastgpt-plugin/cli` 研发单工具（`defineTool`）与工具集（`defineToolSet`）。
+- [模型预设扩展](/zh-CN/plugin/model-presets)：为新模型供应商添加静态配置与 AIProxy 渠道映射。
+- [Skill 技能研发](/zh-CN/guide/build/skill/development)：在沙箱环境中实现带持久上下文的 Agent 技能。
+- [外部知识库对接](/zh-CN/guide/dataset/third-party/third_dataset)：通过标准 HTTP 接口接入企业自建向量检索与知识源。
+
+## 机器可读 OpenAPI 契约
+
+FastGPT 每个部署实例均在本地动态生成最新的 OpenAPI 3.1 规范文档：
+
+- **System OpenAPI（API Key 开放接口）**：访问 `/apidoc/systemopenapi`（页面）或 `/api/apidoc/systemopenapi.json`（JSON 契约）。
+- **Dev API（完整开发接口）**：访问 `/apidoc/devapi`（页面）或 `/api/apidoc/devapi.json`（JSON 契约）。
+
+维护历史已有集成时，参考 [历史 API 参数与迁移](/zh-CN/openapi/legacy)。

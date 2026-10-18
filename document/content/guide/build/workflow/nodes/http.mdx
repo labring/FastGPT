@@ -112,7 +112,7 @@ HTTP 模块会向对应的地址发送一个 `HTTP` 请求，实际操作与 Pos
 
 ### 如何获取返回值
 
-从图中可以看出，FastGPT 可以添加多个返回值，这个返回值并不代表接口的返回值，而是代表 `如何解析接口返回值`，可以通过 `JSON path` 的语法，来 `提取` 接口响应的值。
+FastGPT 支持添加多个自定义返回值。这些返回值定义了如何解析接口响应，通过 `JSON path` 语法精准提取接口返回数据中的目标字段。
 
 语法可以参考: https://github.com/JSONPath-Plus/JSONPath?tab=readme-ov-file
 

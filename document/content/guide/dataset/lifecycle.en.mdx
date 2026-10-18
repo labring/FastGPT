@@ -1,38 +1,82 @@
 ---
-title: Create and maintain a Knowledge base
-description: Follow checkpoints for import, retrieval, Application integration, publishing, and updates.
+title: "Knowledge Base Full Lifecycle"
+description: Understand the three-tier asset topology, asynchronous training pipeline, status transitions, and end-to-end lifecycle maintenance.
 ---
 
-Start with your current task. For a first visit, follow [your first knowledge-backed Q&A](/en/guide/getting-started/knowledge-qa) to complete the journey with a fictional travel policy.
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="create-and-choose-an-import-method" />
+<span id="segmentation-and-processing" />
+<span id="retrieval-and-application-association" />
+<span id="maintenance" />
 
-## Create and choose an import method
+The knowledge base is FastGPT's core repository for structured and unstructured business information. Mastering its three-tier topology, background processing workflows, and status machines enables clean data organization and reliable question-answering quality.
 
-Prepare creation or write permission, an available embedding model, and quota. Use [Import material](/en/guide/dataset/import-data) to choose local files, templates, web pages, or external sources.
+## Three-Tier Asset Topology
 
-**Checkpoint:** The preview preserves complete clauses, and the target Collection has been submitted for processing.
+The platform manages knowledge assets across three distinct layers:
 
-## Segmentation and processing
+```
+Knowledge Base
+  ├── Embedding model, full-text search, and global access configuration
+  └── Collection
+        ├── Folder Collection: Organizes and groups child collections
+        └── Content Collection: Represents a specific file, website, or external library
+              └── Data Chunk: The granular unit holding embedding and text indexes
+```
 
-Content Collections hold Data chunks; folder Collections organize other Collections. Indexed chunks become available to retrieval. See [RAG fundamentals](/en/guide/dataset/rag) for the relationships.
+1. **Knowledge Base**: The top-level root configuring the embedding model, BM25 tokenizer settings, database persistence, and team-level collaborator permissions.
+2. **Collection**: The organizational container for assets. **Content Collections** store ingested files, scraped web pages, or synchronized platform records; **Folder Collections** establish nested hierarchical trees for batch authorization and tag categorization.
+3. **Data Chunk**: The granular unit produced by chunking algorithms. Each chunk preserves source text, tokenized keywords, and dense vector embeddings, supporting standalone edits and vector recalculation.
 
-Follow the [retrieval-readiness checks](/en/guide/dataset/import-data#3-confirm-retrieval-readiness) for progress, failures, and indexes.
+---
 
-**Checkpoint:** The Collection is enabled, source text is readable, processing is complete, and a known question retrieves the expected clause.
+## Five Lifecycle Stages
 
-## Retrieval and application association
+Knowledge assets advance through five sequential lifecycle stages:
 
-| Current task | Guide | Completion check |
+| Stage | Core Responsibility | System Actions and Deliverables |
 | --- | --- | --- |
-| Improve matching | [Test retrieval](/en/guide/dataset/test-retrieval) | Fixed questions retrieve correct material and parameter changes are recorded |
-| Generate answers | [Connect an Application](/en/guide/dataset/connect-application) | Answers, citations, and missing-information behavior pass |
-| Provide actual access | [Published versions](/en/guide/build/publish/versions) and [shared links](/en/guide/build/publish/link) | A new conversation passes the same fact checks |
+| **1. Ingestion** | Upload files, import spreadsheets, crawl URLs, or connect external sources | Security checks, upload to S3 storage, create collection records |
+| **2. Text Parsing** | Extract unstructured text and segment content by semantic boundaries | Generate pending data chunk records for worker queue consumption |
+| **3. Indexing** | Invoke models to generate embeddings and build inverted full-text indexes | Persist to vector database and Mongo index store; mark status Ready |
+| **4. Retrieval** | Respond to user queries with multi-route recall and reranking | Retrieve top candidate chunks; deliver grounded context with citations |
+| **5. Maintenance** | Fine-tune chunks, overwrite updated files, filter by tags, and clean up obsolete data | Trigger localized vector rebuilding or cascade deletion to keep data fresh |
 
-See [search parameters](/en/guide/dataset/dataset_engine#search-parameters) for meanings and effective conditions.
+---
 
-## Maintenance
+## Background Processing Pipeline and State Machine
 
-Use [Update material](/en/guide/dataset/update-data) to choose chunk editing, file replacement, or reprocessing. Verify the update in retrieval and a new conversation.
+Once file upload succeeds, the system processes assets asynchronously using a distributed queue (BullMQ and Mongo task records):
 
-Manage scope with [Collection tags](/en/guide/dataset/collection_tags) and access with [Collection permissions](/en/guide/dataset/collection_permission). Check connected Applications before deleting content. For failed processing, empty results, or stale answers, follow [troubleshooting](/en/guide/dataset/faq), then rerun the fixed questions.
+```
+[Raw File Uploaded] ──► [Queued] ──► [Chunk Parsing] ──► [Embedding Gen] ──► [Dual Index Stored] ──► [Ready]
+                              │                │                  │
+                              ▼                ▼                  ▼
+                         [Queue Lag]      [Parse Error]      [Quota Exceeded]
+                              │                │                  │
+                              └────────────────┴──────────────────┴──► [Failed / Retry]
+```
 
-**Checkpoint:** New clauses take effect, old clauses leave the intended scope, and the remaining questions still pass.
+### Collection Status Transitions
+
+- **Pending**: The raw file is stored in S3 and waiting for an available background worker slot.
+- **Parsing**: The document parser is actively extracting text and applying chunk boundaries.
+- **Training**: Workers are calling the embedding model in batches and generating full-text indexes.
+- **Ready**: All chunks and indexes are persisted, making the collection searchable online.
+- **Error**: Processing halted due to corrupted files, exhausted model balances, or network timeouts. The system stores error diagnostics and supports manual retries after fixing upstream constraints.
+
+---
+
+## Stage Verification Checkpoints
+
+- [ ] **Ingestion Check**: Inspect preview chunks to verify that key rules and tables remain intact across boundaries.
+- [ ] **Readiness Check**: Collection status displays "Ready" and data chunk text is readable online.
+- [ ] **Retrieval Check**: Standalone "Search Test" places expected reference chunks at the top of the candidate list.
+- [ ] **Production Check**: Attached applications return grounded answers with verified citation pills in fresh sessions.
+
+## Next Steps
+
+- Import procedures: Read [Document Ingestion and Chunking](/en/guide/dataset/import-data).
+- Spreadsheet contracts: Read [Structured Dataset Template Specifications](/en/guide/dataset/template).
+- Search optimization: Explore [Search Testing and Retrieval Parameters](/en/guide/dataset/test-retrieval).
+- Application integration: Follow [Connecting Knowledge Bases to Applications](/en/guide/dataset/connect-application).

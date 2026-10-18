@@ -147,7 +147,7 @@ What to do: in Docker Desktop (version 4.34 or later, signed in), go to Settings
 
 Applies to: 4.15.2 and later. `MULTIPLE_DATA_TO_BASE64` defaults to `true` in 4.15.2 and to `false` from 4.15.3. When it is `false`, FastGPT passes file download short links that start with `http(s)://` to the model provider, which downloads them itself. The short link prefix is the first one set among `FILE_DOWNLOAD_PUBLIC_URL_PREFIX`, `FILE_DOMAIN`, and `FE_DOMAIN`. If it is an internal address, the provider cannot reach it and the download times out (it may return `Download multimodal file timed out`).
 
-What to do (either one): set `MULTIPLE_DATA_TO_BASE64=true` so FastGPT converts the file to base64 before sending it (larger requests); or set `FILE_DOMAIN` to a FastGPT address the provider can reach from the public internet, rather than changing `FE_DOMAIN`, which is the address your users use to access FastGPT.
+Solutions: either set `MULTIPLE_DATA_TO_BASE64=true` so FastGPT transmits base64 data payloads directly; or set `FILE_DOMAIN` to a public FastGPT endpoint reachable by the upstream model provider, keeping `FE_DOMAIN` for user browser access.
 
 ---
 

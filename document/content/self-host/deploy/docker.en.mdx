@@ -106,7 +106,7 @@ Or [download the installer](https://orbstack.dev/download) directly.
 
   </Tab>
   <Tab value="Windows">
-We recommend storing source code and data in the Linux filesystem when binding to Linux containers, not the Windows filesystem.
+We recommend storing source code and data in the WSL 2 Linux filesystem when binding to Linux containers to maintain optimal I/O throughput and correct file permissions.
 
 You can [install Docker Desktop with WSL 2 backend on Windows](https://docs.docker.com/desktop/wsl/).
 
@@ -147,8 +147,8 @@ FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.cn bash <(curl -fsSL https://doc.fas
 
 <CurrentOriginCodeBlockUpdater />
 
-Non-interactive mode also requires `FASTGPT_FE_DOMAIN`, the full URL users use to access FastGPT, such as `https://fastgpt.example.com`.  
-Versions with Agent/Skill Sandbox also require `FASTGPT_SANDBOX_PROXY_URL`, the Sandbox WebSocket URL, such as `wss://sandbox-proxy.example.com`;  
+Non-interactive mode also requires `FASTGPT_FE_DOMAIN`, the full URL users use to access FastGPT, such as `https://fastgpt.example.com`.
+Versions with Agent/Skill Sandbox also require `FASTGPT_SANDBOX_PROXY_URL`, the Sandbox WebSocket URL, such as `wss://sandbox-proxy.example.com`;
 Versions 4.16 and later also require `FASTGPT_SANDBOX_PREVIEW_PROXY_URL` for the HTTP preview URL.
 
 Access URLs and host ports are configured independently. For direct access, set `FASTGPT_PORT` for the FastGPT host port (default `3000`) and `FASTGPT_SANDBOX_PROXY_PORT` for the Sandbox Proxy host port (default `3006`); the container ports remain `3000` and `1006`. With a reverse proxy, public ports in `FASTGPT_FE_DOMAIN`, `FASTGPT_SANDBOX_PROXY_URL`, and the preview URL (for example, `443`) are not treated as host ports, so the script keeps the default Compose mappings.
@@ -233,7 +233,7 @@ If Agent/Skill Sandbox is enabled, also replace the sandbox-related images in th
 
 ### 2. Modify Environment Variables
 
-You must set `FE_DOMAIN` in `fastgpt-app` to the full URL users use to access FastGPT, such as `https://fastgpt.example.com`. It must include a scheme, host, and optional port; do not leave it empty or use an internal container address.
+You must set `FE_DOMAIN` in `fastgpt-app` to the complete external URL accessible to client browsers, such as `https://fastgpt.example.com`. It includes a scheme, host, and optional port.
 
 When Agent/Skill Sandbox is enabled, also configure:
 
@@ -296,13 +296,9 @@ Use the component image versions bundled in the Compose template for your target
 
 ### S3 Connection Issues
 
-Check the `STORAGE_EXTERNAL_ENDPOINT` variable — it must be accessible by both the client and FastGPT service.
+Check the storage endpoint reachable from FastGPT first. With the default `short-proxy` mode, FastGPT validates short links and proxies private-file downloads. For `short-redirect` and directly served public resources such as plugin logos, configure an external address reachable by the required clients and services. Verify signing hosts and proxy paths when diagnosing 403 responses.
 
-**Important:**
-
-> Don't use `127.0.0.1` or `localhost` or other loopback addresses. Use the host machine's local IP when deploying with Docker, but set it to a static IP; or use a fixed domain name. This prevents 403 errors caused by URL mismatches when signing object storage URLs.
->
-> See [Object Storage Configuration & Common Issues](/en/self-host/config/object-storage)
+See [Object Storage Configuration](/en/self-host/config/object-storage).
 
 ### Browser Unresponsive After Login
 
@@ -317,9 +313,9 @@ Inspect `docker compose ps` and the MongoDB initialization logs. Verify the repl
 Starting with V4.17.0, **you must deploy or connect to AI Proxy** and set these environment variables in the FastGPT container:
 
 - `AIPROXY_API_ENDPOINT`: The AI Proxy service root URL reachable from FastGPT, such as `http://aiproxy:3000`. Do not append `/v1`; FastGPT adds the path required by each API.
-- `AIPROXY_API_TOKEN`: A nonempty AI Proxy administrator token that matches the administrator credentials configured on the AI Proxy server.
+- `AIPROXY_API_TOKEN`: The AI Proxy administrator token matching credentials configured on the AI Proxy server.
 
-Startup validation fails if either setting is missing. `OPENAI_BASE_URL` and `CHAT_API_KEY` do not replace these required settings. AI Proxy is still required when a model uses `requestUrl/requestAuth`. Configure model service endpoints and keys in the Admin provider settings.
+AI Proxy supplies model routing and channel management. Configure upstream provider endpoints and keys in the Admin channel interface; verify any model-specific request overrides separately.
 
 To update the AI Proxy connection, edit the FastGPT container's environment variables in `docker-compose.yml`. Commercial Admin services that share App/Service configuration also need both variables.
 

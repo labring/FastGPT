@@ -1,91 +1,99 @@
 ---
-title: Knowledge base search modes and parameters
-description: Look up search modes, reranking, thresholds, citation budgets, and query rewriting.
+title: "Knowledge Base Dual-Engine Principles"
+description: Understand storage decoupling, vector retrieval, BM25 full-text indexing, hybrid search, and two-stage reranking mechanisms.
 ---
 
-Use this reference to interpret search settings and results. Follow [Test retrieval](/en/guide/dataset/test-retrieval) for tuning steps and [RAG fundamentals](/en/guide/dataset/rag) for concepts. Available models and capabilities depend on your team, deployment version, and configuration. Use the numeric defaults shown in the current search-test or Application interface.
-
-## Search parameters
-
-#<span id="semantic-search" />
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="semantic-search" />
 <span id="full-text-search" />
 <span id="hybrid-search" />
-
-## Search modes
-
-| Mode | Input and effect | Useful questions | Conditions |
-| --- | --- | --- | --- |
-| Semantic search | Embeds the query to retrieve semantically related chunks | Natural language and paraphrases; cross-language results depend on the model | Available vector indexes and embedding model |
-| Full-text search | Retrieves candidates through term matching | Identifiers, model numbers, specialized terms | Completed full-text indexes; matching depends on the deployment backend |
-| Hybrid search | Fuses semantic and full-text candidates with an adjustable semantic weight | Questions combining meaning and keywords | Both paths available; compare with fixed questions |
-
-### Result reranking
-
-Reranking is a toggle that requires an available rerank model. It scores retrieved text candidates again and contributes to result fusion. Results depend on candidate coverage, the question, and the model. Missing material must first be included in retrieval.
-
-If the rerank call fails, text results fall back to the original retrieved list and this run reports reranking as unused. Inspect errors, run details, and results exposed by the interface. If actual usage status is missing, ask an administrator to inspect the model call. The toggle expresses the requested configuration; actual execution determines threshold behavior.
-
-### Search filters
-
-#### Citation limit
-
-A **token** budget controls returned citation content. Fusion, deduplication, and applicable threshold filtering happen before budget trimming. Whole-chunk retention includes the last chunk that crosses the budget, so actual content can exceed the configured limit. Reserve room for the system prompt, message history, and answer, and check the model's context limit.
-
-A larger budget may retain more clauses while increasing context use and distraction. Use [fixed questions](/en/guide/dataset/test-retrieval) to check that required conditions survive.
-
-#### Minimum relevance
-
-A numeric setting from **0 to 1**. Filtering depends on the scores actually available in this run:
-
-| Actual execution | Threshold basis |
-| --- | --- |
-| Text reranking succeeds and is used | Rerank scores |
-| Pure semantic search with reranking unused | Vector scores |
-| Full-text or hybrid search with reranking unused | Results may be returned without threshold filtering |
-
-Candidates lacking the target score are retained, so inspect their text. In hybrid search, a rerank-service failure may change both ordering and threshold applicability. Confirm the effective conditions before comparing thresholds. Raising the threshold can also remove useful clauses.
-
-#<span id="background" />
+<span id="background" />
 <span id="how-it-works" />
-
-## Query rewriting
-
-Query rewriting is an optional model step that uses the configured message history to resolve references and expand a query. “Which documents do I need for that?” requires the preceding reimbursement topic. It adds a model call and latency; its model and history scope follow the Application configuration.
-
-When run details expose the rewritten query, check its subject, identifiers, and dates. Test complete single-turn questions, exact identifiers, and follow-ups separately, then retain settings that meet coverage and latency needs.
-
 <span id="overall-search-strategy" />
-
-## Result ranking and fusion
-
-Multiple retrieval paths contribute through reciprocal rank fusion (RRF). Reranking and image paths may also affect order. A score describes matching for its model or retrieval path, final order reflects fusion, and answer correctness requires fact and citation checks.
-
-| Result information | What it establishes |
-| --- | --- |
-| Source Collection and text | Correct version and conditions needed for the answer |
-| Score and score type | Matching and threshold basis for this run; assess scores separately across models |
-| Result order | The position of relevant clauses in context |
-| Actual usage status or errors, when exposed | Whether reranking, filtering, and relevant models ran as expected |
-
 <span id="understanding-vectors" />
 <span id="improving-vector-search-accuracy" />
 <span id="fastgpt-dataset-architecture" />
 <span id="data-storage-structure" />
 <span id="vector-storage-structure" />
 <span id="purpose-and-usage-of-multi-vector-mapping" />
+<span id="search-modes" />
+<span id="result-reranking" />
+<span id="search-filters" />
+<span id="citation-limit" />
+<span id="minimum-relevance" />
+<span id="query-rewriting" />
+<span id="result-ranking-and-fusion" />
+<span id="retrieval-scope-and-indexes" />
+<span id="image-search-method" />
+<span id="common-tuning-tips" />
 
-## Retrieval scope and indexes
+FastGPT employs a dual-engine retrieval architecture, combining semantic vector search with keyword-based full-text indexing to achieve strong generalized understanding alongside exact keyword precision.
 
-Scope depends on selected Knowledge bases, enabled Collections, tag filters, and applicable readable-Collection permissions. See [Collection tags](/en/guide/dataset/collection_tags) and [Collection permissions](/en/guide/dataset/collection_permission).
+## Storage Layer Architecture
 
-A Data chunk can have multiple search indexes. Supplementary indexes help different questions find the same text; the text must still contain the complete evidence for the answer. See [Update material](/en/guide/dataset/update-data).
+The platform decouples and partitions knowledge data across distinct physical infrastructure services:
 
-## Image search method
+| Storage Component | Technology | Primary Content Stored |
+| --- | --- | --- |
+| **Operational Store** | MongoDB | Knowledge base metadata, collection trees, raw chunk texts, background tasks, lease states, and ACL permissions |
+| **Vector Store** | PGVector / Milvus / Zilliz / OceanBase | Dense vector embeddings generated by models and associated chunk ID mappings |
+| **Full-Text Index** | MongoDB Text / Milvus BM25 | Tokenization dictionaries, inverted indexes, and term-frequency statistical weights |
 
-Image-description search requires an available vision model and corresponding description indexes. Image-vector search requires an embedding model that accepts images and completed image-vector indexes. Combined text-image queries use available paths; results depend on imported content, model capabilities, and the query.
+---
 
-For weak image matching, check image clarity, completed indexes, and model support, then compare image-only and combined input. See [RAG fundamentals](/en/guide/dataset/rag).
+## Dual Retrieval Engine Mechanics
 
-## Common tuning tips
+### 1. Vector Search Engine
+- **Core Mechanism**: Embedding models map text into high-dimensional vector spaces (such as 1536 or 3072 dimensions), using the configured backend metric to rank semantic matches. Dimensions and score distributions depend on the model and vector backend.
+- **Key Advantage**: Excels at synonymous phrasing, contextual paraphrasing, intent generalization, and cross-lingual queries. Chunks match reliably whenever semantic intent aligns.
 
-Check processing and scope first, then adjust search mode, query rewriting, reranking, effective thresholds, and citation budget one at a time. Use the checklist in [Test retrieval](/en/guide/dataset/test-retrieval) and recovery steps in [troubleshooting](/en/guide/dataset/faq).
+### 2. Full-Text Search Engine
+- **Core Mechanism**: Tokenizes text and ranks keyword matches. The implementation depends on the backend: MongoDB uses text indexes, while the supported Milvus path uses BM25.
+- **Key Advantage**: Delivers high recall for serial numbers, legal article numbers, specialized terminology, proper names, and exact error codes.
+
+![Select knowledge base retrieval mode](/imgs/current/dataset-search-mode.png)
+
+---
+
+## Hybrid Search and Two-Stage Reranking
+
+In enterprise knowledge Q&A systems, the platform executes a two-stage hybrid retrieval pipeline:
+
+```
+[User Query]
+    │
+    ├──► Stage 1: Vector Search    ──► Recall Top-N Semantic Chunks   ──┐
+    │                                                                   ├──► Merge & Deduplicate ──► Stage 2: Rerank Model ──► Token-Budgeted Context
+    └──► Stage 1: Full-Text Search ──► Recall Top-N Keyword Chunks    ──┘
+```
+
+1. **Stage 1: Multi-Route Recall**:
+   The engine initiates parallel queries to both the vector database and the full-text index, recalling the top-scoring candidate chunks from each channel (e.g., 20 candidates per route), then merges and deduplicates them in memory.
+2. **Stage 2: Cross-Encoder Reranking**:
+   The system passes candidate chunks alongside the original user query to a specialized Rerank model. Reranking is optional. Score semantics depend on the selected model and provider; calibrate thresholds against labeled examples.
+3. **Threshold Filtering and Selection**:
+   The engine applies the supported score filter, then selects ranked chunks within a token budget. A returned chunk can take the accumulated size beyond the budget boundary.
+
+![Multi-route recall and reranking score distribution](/imgs/current/dataset-result-scores.png)
+
+---
+
+<span id="search-parameters" />
+
+## Key Search Parameters
+
+In search testing and application configuration, these parameters govern retrieval quality:
+
+| Parameter | Valid Range | Recommendation and Behavior |
+| --- | --- | --- |
+| **Search Mode** | Vector / Full-Text / Hybrid | Hybrid search is the recommended default, providing semantic generalization and exact term matching. |
+| **Citation Limit (`limit`)** | Token budget | Controls retrieved context size; tune with chunk size and the application context window. |
+| **Minimum Similarity** | Follow the current UI or contract | Uses rerank scores when reranking succeeds, or embedding scores in pure vector mode. Other modes may skip score filtering; inspect `usingReRank` and `usingSimilarityFilter` where exposed. |
+
+![Search parameters and score threshold configuration](/imgs/current/dataset-search-filter.png)
+
+## Next Steps
+
+- Practice parameter tuning: Follow [Search Testing and Retrieval Parameters](/en/guide/dataset/test-retrieval).
+- Attach to applications: Follow [Connecting Knowledge Bases to Applications](/en/guide/dataset/connect-application).
+- Engineering RAG pipelines: Explore [RAG Architecture and Anti-Hallucination](/en/guide/dataset/rag).

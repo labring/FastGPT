@@ -196,7 +196,7 @@ curl http://connection-gateway:3000/health
 
 ### 页面可以开启调试，但 CLI 连接失败
 
-检查 `CONNECTION_GATEWAY_PUBLIC_URL` 是否为开发者本地可访问地址。浏览器和 CLI 在开发者电脑上运行，不能使用 Docker 内网域名。
+检查 `CONNECTION_GATEWAY_PUBLIC_URL` 是否为开发者本地可访问地址。浏览器和 CLI 在开发者电脑上运行，必须配置宿主机 IP 或公网域名。
 
 ### CLI 已连接，但 FastGPT 显示 disconnected
 

@@ -1,24 +1,14 @@
 ---
-title: Knowledge bases and RAG fundamentals
-description: Understand how sources, Collections, chunks, indexes, retrieval, citations, and answers relate.
+title: "RAG Architecture and Anti-Hallucination"
+description: Master the RAG execution loop, context assembly, truncation strategies, evaluation metrics, and anti-hallucination engineering controls.
 ---
 
-Retrieval-augmented generation (RAG) places relevant material into a language model's context to help it answer using that material. It suits policy lookup, product support, and frequently updated internal knowledge. Start practicing with [your first knowledge-backed Q&A](/en/guide/getting-started/knowledge-qa).
-
+{/* Preserve incoming bookmarks for reorganized sections. */}
 <span id="1-introduction" />
 <span id="11-definition-of-rag" />
 <span id="21-retriever" />
 <span id="51-data-collection-and-dataset-construction" />
 <span id="52-data-chunking-and-content-management" />
-
-## How material becomes searchable
-
-A Knowledge base organizes material for Applications. An imported file becomes a content Collection holding Data chunks; folder Collections organize other Collections. Parsing determines which text can be read, chunking determines which conditions stay together, and indexing creates searchable representations.
-
-A Data chunk can have several indexes, such as different questions that lead to the same clause. Its text holds the complete facts; indexes locate that text. Assess chunking by whether the deadline, conditions, and exceptions can be retrieved together.
-
-An embedding model represents queries and content numerically for semantic matching; full-text search matches terms. The embedding model and storage backend both affect retrieval. See [search parameters](/en/guide/dataset/dataset_engine) for choices and [Import material](/en/guide/dataset/import-data) for steps.
-
 <span id="2-core-mechanisms-of-rag" />
 <span id="22-generator" />
 <span id="23-rag-workflow" />
@@ -26,65 +16,105 @@ An embedding model represents queries and content numerically for semantic match
 <span id="31-retrieval-phase" />
 <span id="32-generation-phase" />
 <span id="33-multi-turn-interaction-and-feedback" />
-
-## The stages behind an answer
-
-1. **Select readable scope.** Knowledge bases, enabled Collections, tags, and applicable permissions constrain candidate material.
-2. **Form the query and retrieve.** Query rewriting can use history to resolve references. Semantic, full-text, or hybrid search returns candidate chunks.
-3. **Prepare context.** An available rerank model scores text candidates. Results are fused, deduplicated, filtered by applicable scores, and trimmed to a citation budget.
-4. **Generate an answer.** The chat model combines the question, prompt, history, and retrieved passages.
-5. **Check the evidence.** Read cited passages to confirm facts, conditions, and dates in the answer.
-
-A vision model can describe images for text retrieval. Embedding models that support images can also retrieve image vectors. Both paths require corresponding indexes from ingestion and available model capabilities.
-
 <span id="4-advantages-and-limitations-of-rag" />
 <span id="41-advantages" />
 <span id="42-limitations" />
 <span id="421-retriever-dependency-and-quality-issues" />
 <span id="424-generated-content-controllability-and-transparency" />
-
-## Retrieval, ranking, and answer correctness
-
-“How long after returning must I submit travel expenses?” needs the clause containing `15 calendar days`. Retrieval scores describe matching for a model or search path; ordering places material in context. The final deadline and citation establish whether the question was answered correctly.
-
-“What is the hotel accommodation allowance?” may retrieve the same travel policy, while that example source lacks an allowance standard. The prompt should require the model to explain the gap, and maintainers must check compliance. A citation provides an inspection point; reading the passage establishes whether it supports the answer.
-
-Assess scores separately across models and search paths. A reranking failure can change order and threshold conditions; see [minimum relevance](/en/guide/dataset/dataset_engine#minimum-relevance).
-
 <span id="423-dataset-updates-and-maintenance" />
-
-## Content updates and published configuration
-
-Source text, indexes, Application configuration, and existing conversations each hold different information. Editing a chunk requires updating its indexes; uploading a local file again creates a new Collection; reprocessing rebuilds chunks from the original file stored on the server. See the three paths in [Update material](/en/guide/dataset/update-data).
-
-Editing and debugging use the draft configuration, while published versions serve actual channels. Content updates affect subsequent retrieval; changes to Knowledge base selection, parameters, and prompts take effect through publishing. A new conversation helps separate historical messages from verification of a new clause. See [published versions](/en/guide/build/publish/versions).
-
 <span id="422-generator-computational-complexity-and-performance-bottlenecks" />
 <span id="5-rag-improvement-directions" />
 <span id="53-retrieval-optimization" />
 <span id="54-answer-generation-and-optimization" />
 <span id="55-rag-pipeline" />
-
-## Quality, latency, and maintenance ownership
-
-| Observation | Maintenance focus |
-| --- | --- |
-| Missing, conflicting, or outdated clauses | Assign source owners, update dates, and retained versions |
-| Existing clauses are missed | Check scope, chunks, indexes, and query method |
-| Complete material produces inaccurate answers | Inspect the prompt, context budget, and model interpretation |
-| Follow-ups are slow or drift | Inspect content and latency for rewriting, reranking, and generation |
-
-Query rewriting, reranking, and generation add model calls. Citation content and history share the context budget. Compare retrieval, answers, citations, and latency with the same questions after each change. Use feedback to revise material, configuration, and prompts; model training or fine-tuning requires a separate process.
-
 <span id="6-rag-case-studies" />
 <span id="7-rag-use-cases" />
 <span id="71-intelligent-qa-systems" />
 <span id="72-information-retrieval-and-text-generation" />
 <span id="73-other-use-cases" />
 <span id="8-summary" />
+<span id="how-material-becomes-searchable" />
+<span id="the-stages-behind-an-answer" />
+<span id="retrieval-ranking-and-answer-correctness" />
+<span id="content-updates-and-published-configuration" />
+<span id="quality-latency-and-maintenance-ownership" />
+<span id="application-scope" />
 
-## Application scope
+Retrieval-Augmented Generation (RAG) is a critical architectural pattern combining static knowledge assets with large language models. FastGPT combines retrieval, reference prompts, and citations to reduce unsupported answers. Validate factual accuracy with a representative test set.
 
-Help centers and policy Q&A can be evaluated against fixed clauses. Cross-document summaries also require source-coverage and conflict checks. Image tasks require corresponding models and indexes. Qualified professionals should review medical, legal, and similar specialist conclusions.
+## The Complete RAG Execution Loop
 
-Next: [Test retrieval](/en/guide/dataset/test-retrieval), then [connect an Application](/en/guide/dataset/connect-application).
+A configured RAG pipeline can contain the following phases. Query rewriting, hybrid search, and reranking depend on application settings:
+
+```
+[User Query]
+    │
+    ▼
+[1. Query Analysis & Rewrite]  ──► Resolve pronouns using conversation history and extract search terms
+    │
+    ▼
+[2. Dual-Engine Hybrid Search] ──► Query vector and full-text indexes; optionally rerank candidates
+    │
+    ▼
+[3. Context Filtering & Cut]   ──► Apply minimum similarity thresholds and enforce citation token budgets
+    │
+    ▼
+[4. Dynamic Prompt Assembly]   ──► Inject factual chunks into the prompt template with grounding instructions
+    │
+    ▼
+[5. Grounded Generation]       ──► Stream structured answers to clients alongside verifiable citation links
+```
+
+---
+
+## Core Evaluation Metric Framework
+
+Evaluating knowledge base RAG performance centers around four key dimensions:
+
+| Metric | Definition and Focus | Optimization Levers |
+| --- | --- | --- |
+| **Recall** | Whether the chunk containing the ground truth was successfully retrieved | Adjust chunk boundaries, enable hybrid search, tune embedding models |
+| **Precision** | Proportion of retrieved chunks that provide direct factual value | Integrate Rerank models for second-pass scoring; increase minimum similarity thresholds |
+| **Context Redundancy** | Density of irrelevant information in the model context | Refine chunk size limits, lower citation token budgets, eliminate duplicate data chunks |
+| **Factual Faithfulness** | Degree of alignment between model statements and cited reference material | Strengthen prompt constraints, select models with strong instruction-following capabilities |
+
+---
+
+## Context Assembly and Token Budgeting
+
+Large language models feature maximum context window boundaries, and model attention degrades across lengthy prompts. FastGPT enforces structured context assembly rules:
+
+1. **Token Allocation**: The system partitions context into four allocations: global system prompt, multi-turn history, retrieved knowledge chunks, and completion token headroom.
+2. **Relevance Ordering**: Candidate order follows the active retrieval and reranking configuration. Inspect the returned references to confirm that relevant evidence survives selection.
+3. **Safe Boundary Truncation**: Retrieval keeps whole chunks and can cross the token-budget boundary with its final chunk. The AI Chat stage applies its own reference limits; inspect the final assembled context.
+
+![Prompt context assembly and parameter configuration](/imgs/current/citation-prompt-settings.png)
+
+---
+
+## Three Pillars of Anti-Hallucination Engineering
+
+Use the following controls and verify their behavior in the published application:
+
+### 1. Grounded System Instructions
+Define explicit operational boundaries within the prompt:
+```text
+You are a corporate policy assistant.
+Answer user questions strictly using the retrieved reference material below.
+When the references do not record the requested information, respond that the documentation contains no record, identify the missing details, and direct the user to the appropriate department.
+Do not infer unrecorded figures, deadlines, or promises from external knowledge.
+```
+
+### 2. Hard Similarity Threshold Filtering (Min Score)
+Calibrate similarity thresholds using labeled queries and verify the active score-filter mode. Configure and test an empty-result branch or insufficient-evidence prompt in the application.
+
+### 3. End-to-End Citation Transparency
+During response generation, the engine tracks and outputs the source file name, chunk text, and collection ID for each used candidate. Front-end chat widgets render clickable citation pills, enabling business users to verify statements against source text.
+
+![Citation verification against source material](/imgs/current/citation-reader-full-text.png)
+
+## Next Steps
+
+- Test retrieval scores: Follow [Search Testing and Retrieval Parameters](/en/guide/dataset/test-retrieval).
+- Connect to conversational models: Follow [Connecting Knowledge Bases to Applications](/en/guide/dataset/connect-application).
+- Granular search filtering: Review [Collection Tag System](/en/guide/dataset/collection_tags).

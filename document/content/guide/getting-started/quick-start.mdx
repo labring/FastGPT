@@ -1,9 +1,79 @@
 ---
-title: 快速上手与完整案例
-description: 选择一个完整任务，按前置条件、操作步骤和预期结果学习 FastGPT。
+title: 快速上手：5 分钟搭建发布首个问答应用
+description: 按照确定步骤导入示例数据、关联对话 Agent、调试回答并生成公开分享链接。
 ---
 
-第一次使用推荐[创建首个知识库问答](/zh-CN/guide/getting-started/knowledge-qa)，随后选择[首个工作流](/zh-CN/guide/getting-started/first-workflow)或[首个 Agent 任务](/zh-CN/guide/getting-started/first-agent)。
+本教程面向初次使用 FastGPT 的构建者，引导你在 5 分钟内完成一个具备依据的知识库问答助手，并生成对外可访问的分享链接。
+
+## 学习目标与准备工作
+
+完成本教程后，你将拥有一个能够准确回答企业差旅报销规则的在线助手，掌握“知识库导入 → Agent 关联 → 实时调试 → 发布生效”的完整工作流程。
+
+在开始前，准备以下环境与素材：
+- 拥有当前团队的资源创建权限。
+- 团队内配置了可用的对话模型与向量模型（SaaS 版本默认已就绪；私有化部署参考[模型配置](/zh-CN/self-host/config/model/intro)）。
+- 复制下方文本，保存为本地 UTF-8 编码的 `travel-policy.txt` 文件：
+
+```text
+FastGPT 示例企业差旅制度
+1. 报销提交时限：员工必须在出差行程结束返程后的 15 个自然日内提交报销申请。
+2. 必备报销凭证：每笔申请必须附带增值税普通发票或专用发票，以及已审批通过的差旅审批单。
+3. 财务审核周期：财务部门在收齐全部合规凭据后的 5 个工作日内完成审核与款项发放。
+```
+
+## 第一步：创建知识库并导入示例数据
+
+1. 登录 FastGPT 工作台，点击顶部或左侧导航的“知识库”，点击右上角“新建”。
+2. 知识库名称填写 `企业差旅制度`，选用系统推荐的向量索引模型，点击“确认”。
+3. 进入新建的知识库，点击“新建/导入 → 文本数据集 → 本地文件”，选择保存好的 `travel-policy.txt`。
+4. 在数据解析页面保留系统默认的直接切分策略，点击“下一步”。
+5. 在数据预览界面确认报销时限与凭证要求完整呈现在分块中，点击“开始导入”。
+6. 等待索引构建状态转为“已就绪”。
+
+![创建差旅制度知识库并选择当前环境可用的模型](/imgs/current/knowledge-create.png)
+
+## 第二步：创建对话 Agent 并绑定知识库
+
+1. 点击左侧导航的“应用”，点击右上角“创建应用”。
+2. 应用类型选择“对话 Agent”，名称填写 `差旅问答助手`，点击“创建”。
+3. 在应用配置面板中，选择当前团队可用的对话模型。
+4. 在“知识库”挂载区域点击添加，勾选上一步创建的 `企业差旅制度` 知识库。
+5. 在系统提示词区域输入清晰的任务指令：
+
+```text
+你是一个专业的差旅报销助手。根据引用的差旅制度回答用户提问。
+直接陈述规则明确的截止时间与必需文件，标明具体依据。
+规则未提及的信息，直接说明当前制度暂无记录。
+```
+
+## 第三步：工作区即时调试
+
+在右侧调试对话窗口中输入验证问题：
+
+```text
+出差回来后必须几天内提交报销？需要哪些材料？
+```
+
+观察右侧回复。AI 回复明确标出“15 个自然日内提交”，列出发票与差旅审批单，同时在回答下方显示知识引用的来源分块。
+
+![知识问答助手引用差旅制度给出准确答案](/imgs/current/knowledge-answer.png)
+
+## 第四步：发布公开分享链接
+
+1. 点击工作区右上角的“发布”按钮，确认保存当前正式版本。
+2. 点击应用配置顶部的“发布渠道”，选择“免登录分享链接”。
+3. 开启分享链接并复制生成的 URL。
+4. 在浏览器新标签页打开该链接，即可作为最终访客与问答助手进行独立对话。
+
+![发布分享链接以便最终用户访问](/imgs/current/app-publish.png)
+
+## 进阶学习路径
+
+完成首个问答应用后，可以按以下路径继续深入探索：
+- 进阶教程：学习支持自主规划与工具调用的 [创建首个 Agent 任务](/zh-CN/guide/getting-started/first-agent)。
+- 流程编排：学习使用节点连线编排复杂逻辑的 [创建首个工作流](/zh-CN/guide/getting-started/first-workflow)。
+- 概念图谱：阅读 [核心概念](/zh-CN/guide/getting-started/concepts) 与 [应用选型](/zh-CN/guide/getting-started/application-types)。
+- 生产案例：查阅 [完整案例集](/zh-CN/guide/getting-started/quick-start#完整案例)。
 
 ## 完整案例
 
@@ -12,97 +82,36 @@ description: 选择一个完整任务，按前置条件、操作步骤和预期�
 - [案例三：工作流—内容审核与自动改写](/zh-CN/guide/getting-started/examples/content-review)
 - [案例四：Agent V2—智能数据分析 Agent](/zh-CN/guide/getting-started/examples/data-analysis)
 
-应用分为对话 Agent、对话 Agent V2 和工作流。知识库为应用提供资料，详细选择见[应用类型](/zh-CN/guide/getting-started/application-types)。
-
 <details>
-<summary>原有章节入口</summary>
+<summary>原有章节入口与历史书签</summary>
 
 <span id="案例一对话-agent企业邮件撰写助手" />
-
-[案例一：对话 Agent—企业邮件撰写助手 ](/zh-CN/guide/getting-started/examples/email-assistant#案例一对话-agent企业邮件撰写助手)
-
 <span id="11-适用场景" />
-
-[1.1 适用场景 ](/zh-CN/guide/getting-started/examples/email-assistant#11-适用场景)
-
 <span id="12-配置步骤" />
-
-[1.2 配置步骤 ](/zh-CN/guide/getting-started/examples/email-assistant#12-配置步骤)
-
 <span id="13-业务价值" />
-
-[1.3 业务价值 ](/zh-CN/guide/getting-started/examples/email-assistant#13-业务价值)
-
 <span id="案例二知识库--对话-agent民法典问答助手" />
-
-[案例二：知识库 + 对话 Agent—民法典问答助手 ](/zh-CN/guide/getting-started/examples/civil-code-qa#案例二知识库--对话-agent民法典问答助手)
-
 <span id="21-适用场景" />
-
-[2.1 适用场景 ](/zh-CN/guide/getting-started/examples/civil-code-qa#21-适用场景)
-
 <span id="22-准备内容" />
-
-[2.2 准备内容 ](/zh-CN/guide/getting-started/examples/civil-code-qa#22-准备内容)
-
 <span id="23-配置步骤" />
-
-[2.3 配置步骤 ](/zh-CN/guide/getting-started/examples/civil-code-qa#23-配置步骤)
-
 <span id="24-业务价值" />
-
-[2.4 业务价值 ](/zh-CN/guide/getting-started/examples/civil-code-qa#24-业务价值)
-
 <span id="案例三工作流内容审核与自动改写" />
-
-[案例三：工作流—内容审核与自动改写 ](/zh-CN/guide/getting-started/examples/content-review#案例三工作流内容审核与自动改写)
-
 <span id="31-适用场景" />
-
-[3.1 适用场景 ](/zh-CN/guide/getting-started/examples/content-review#31-适用场景)
-
 <span id="32-准备内容" />
-
-[3.2 准备内容 ](/zh-CN/guide/getting-started/examples/content-review#32-准备内容)
-
 <span id="33-流程设计" />
-
-[3.3 流程设计 ](/zh-CN/guide/getting-started/examples/content-review#33-流程设计)
-
 <span id="34-配置步骤" />
-
-[3.4 配置步骤 ](/zh-CN/guide/getting-started/examples/content-review#34-配置步骤)
-
 <span id="35-业务价值" />
-
-[3.5 业务价值 ](/zh-CN/guide/getting-started/examples/content-review#35-业务价值)
-
 <span id="案例四agent-v2智能数据分析-agent" />
-
-[案例四：Agent V2—智能数据分析 Agent ](/zh-CN/guide/getting-started/examples/data-analysis#案例四agent-v2智能数据分析-agent)
-
 <span id="41-适用场景" />
-
-[4.1 适用场景 ](/zh-CN/guide/getting-started/examples/data-analysis#41-适用场景)
-
 <span id="42-准备内容" />
-
-[4.2 准备内容 ](/zh-CN/guide/getting-started/examples/data-analysis#42-准备内容)
-
 <span id="43-配置步骤" />
-
-[4.3 配置步骤 ](/zh-CN/guide/getting-started/examples/data-analysis#43-配置步骤)
-
 <span id="44-验证效果" />
-
-[4.4 验证效果 ](/zh-CN/guide/getting-started/examples/data-analysis#44-验证效果)
-
 <span id="45-业务价值" />
-
-[4.5 业务价值 ](/zh-CN/guide/getting-started/examples/data-analysis#45-业务价值)
-
 <span id="四种类型选型回顾" />
 
-[四种类型选型回顾 ](/zh-CN/guide/getting-started/application-types)
+- [案例一：对话 Agent—企业邮件撰写助手](/zh-CN/guide/getting-started/examples/email-assistant)
+- [案例二：知识库 + 对话 Agent—民法典问答助手](/zh-CN/guide/getting-started/examples/civil-code-qa)
+- [案例三：工作流—内容审核与自动改写](/zh-CN/guide/getting-started/examples/content-review)
+- [案例四：Agent V2—智能数据分析 Agent](/zh-CN/guide/getting-started/examples/data-analysis)
+- [应用选型回顾](/zh-CN/guide/getting-started/application-types)
 
 </details>

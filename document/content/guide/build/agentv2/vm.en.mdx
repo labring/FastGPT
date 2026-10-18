@@ -1,7 +1,13 @@
 ---
-title: Virtual machine
-description: Configure Agent execution, understand work directories and state, and diagnose initialization.
+title: "Virtual Machine Sandbox Environment"
+description: Master Agent virtual machine execution environments, session directory isolation, persistent volume mounts, startup scripts, and troubleshooting.
 ---
+
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="what-is-virtual-machine" />
+<span id="virtual-machine-design" />
+<span id="using-the-virtual-machine" />
+<span id="virtual-machine-debugging" />
 
 {/* Preserve incoming bookmarks for reorganized sections. */}
 <span id="1-session-level-isolation-and-lifecycle-management" />
@@ -18,40 +24,73 @@ description: Configure Agent execution, understand work directories and state, a
 <span id="script-execution-sequence-and-scope" />
 <span id="lifecycle-flowchart" />
 <span id="status-deduplication" />
+<span id="using-virtual-machines" />
 
-## What is Virtual Machine
+The Virtual Machine (VM) provides Chat Agent V2 with an isolated code execution sandbox, persistent file I/O, and runtime dependency management.
 
-An Agent uses a virtual machine to execute code, read and write files, and use Skills. Your deployment needs an appropriate sandbox service, and your account needs access and quota. Language runtimes, network access, and resource limits depend on the selected service and image.
+## What is a Virtual Machine
 
-## Virtual Machine Design
+When analyzing complex spreadsheets, performing mathematical computations, rendering dynamic charts, or executing Skills, agents require a genuine operational runtime. The virtual machine provides an isolated containerized environment (e.g., Python 3.11, Node.js 20), allowing agents to write and run scripts, handle errors, and generate downloadable file assets.
 
-The current implementation locates a runtime instance by source, application, and user identity. Application conversations use session work directories shaped as `sessions/<chatId>`; shared Skills live under the workspace's `projects/<versionId>`. Older versions may use different instance scoping. Check the deployment version and actual file-manager paths when troubleshooting.
+Virtual machine execution relies on backend sandbox services (such as OpenSandbox or Sealos Devbox). Self-hosted operators must configure sandboxes according to the [Deployment Guide](/en/self-host).
 
-Runtime instances, session directories, and persistent storage have different lifecycles. Restarting a conversation creates new conversation context. File and dependency retention, archiving, and restoration depend on the execution service and storage configuration. Save required artifacts before cleanup or reset operations.
+---
 
-## Using the virtual machine
+## Architecture and Directory Layout
 
-Enable the virtual machine in Agent V2 settings or associate a Skill requiring execution with a workflow Agent node. Debug a small file and a simple task, observe initialization status, and inspect input files, generated files, and execution logs in the virtual-machine file manager.
+The platform isolates virtual machine files by tenant, application, and session identifiers:
 
-Example task: upload a small CSV, ask for a column total, and save the result. Verify column names, row count, a manually calculated total, and file download. Analysis depends on the image's languages and libraries; prepare missing dependencies with a startup script.
+```
+<workspaceRoot>/
+  ├── sessions/
+  │     └── <chatId>/             # Session-specific directory isolating uploaded and generated files
+  └── projects/
+        └── <versionId>/          # Shared directory mounting published Skill version bundles
+```
+
+- **Session-Level Isolation**: Each conversation uses a dedicated workspace path `sessions/<chatId>`, where user-uploaded files mount automatically.
+- **State Persistence and Reset**: The same `chatId` reuses its session directory. Sandbox instances are scoped by source, application, and user. Restarting a chat changes its context and directory; sandbox lifecycle policies govern instance recycling and volume retention.
+
+---
+
+<span id="virtual-machine-lifecycle" />
 
 ## Virtual Machine Lifecycle
 
-The application startup script runs while preparing the environment. Successful execution is recorded by script content. The same successful script reuses that record within an instance; changing the script causes another execution. Skill initialization records published version IDs; see [initialization scripts](/en/guide/build/skill/initialization).
+During environment initialization and execution, the platform manages the sandbox through discrete phases:
 
-### Execution Constraints & Fault Tolerance
+```
+[Prepare Workspace] ──► [Connect / Create / Recover Sandbox] ──► [Workspace Mounted] ──► [Startup Script Run] ──► [Ready]
+                                                                              │
+                                                                              ▼ (State Cache)
+                                                                 [~/.fastgpt/runtime/state.json]
+```
 
-`AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS` configures initialization timeout; the current implementation clamps it to 1–600 seconds. Execution output has size limits, and service logs further truncate long text. Initialization errors and timeouts are logged while later task processing may continue. Verify dependencies and results even when task execution starts successfully.
+### Startup Scripts and Dependency Management
+The "Startup Script" configured in the application runs immediately upon container launch to pre-install Python packages (e.g., `pip install matplotlib pandas`) or system binaries:
+- **Deduplication Mechanism**: Upon successful execution, the platform caches a script content hash in `~/.fastgpt/runtime/state.json`. Subsequent turns in the same session reuse the initialized environment, avoiding redundant installation delays.
+- **Update Triggers**: Modifying startup script content updates the recorded hash, triggering a clean execution on the next turn.
 
-## Virtual Machine Debugging
+<span id="execution-constraints--fault-tolerance" />
 
-1. Inspect preparation status and the specific error. Verify service, image, quota, and storage availability.
-2. Confirm actual work directories and input files in the file manager.
-3. Inspect script exit status, network, dependencies, and permissions. Runtime state is under the virtual-machine user's HOME at `~/.fastgpt/runtime/state.json`.
-4. Repeat the small input before increasing task size.
+### Execution Constraints and Fault Tolerance
 
-The execution provider supplies isolation, egress controls, and quotas; verify deployment settings. Code, dependencies, and tools affect the runtime environment, so configure the minimum access needed.
+- **Startup Timeout Protection**: Script execution duration is bounded by the `AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS` environment variable (defaults to 30 seconds; configurable from 1 to 600 seconds).
+- **Non-blocking Resilience**: Non-zero exit codes or timeouts during script execution log warnings without crashing the conversational flow, allowing builders to inspect missing dependencies in debug panels.
+- **Buffer Output Limits**: Output limits depend on the execution service. Logs may be truncated; write large results to files and inspect the generated artifacts.
 
-![Virtual-machine file manager with the sales summary and revenue chart](/imgs/current/vm-files.png)
+---
 
-Use the reproducible sample and expected values in the [data analysis example](/en/guide/getting-started/examples/data-analysis). After execution, select View virtual-machine files at the top right of debug preview, select an artifact, and download it. Check that the downloaded content matches the answer.
+## Sandbox Debugging and File Manager
+
+1. **Real-Time Status Tracking**: In the preview drawer, the interface visualizes container readiness (provisioning, executing startup scripts, and ready states).
+2. **Virtual Machine File Manager**: Click "View VM Files" in the upper right corner of the debug drawer to browse files, preview images (such as `revenue.png`), or download generated datasets (such as `channel_summary.csv`).
+3. **Diagnostics**: When scripts fail with missing module errors, inspect the startup script logs and return codes to verify that dependencies installed successfully.
+
+![Virtual machine file manager displaying generated CSV and chart files](/imgs/current/vm-files.png)
+
+## Next Steps
+
+- Real-world data analysis: Follow [Intelligent Data Analysis Agent Case](/en/guide/getting-started/examples/data-analysis).
+- Custom skill packages: Learn [Skill Initialization and Development](/en/guide/build/skill/initialization).
+- Trace decision paths: Follow [Agent Debugging and Trace Inspection](/en/guide/build/agentv2/debug).

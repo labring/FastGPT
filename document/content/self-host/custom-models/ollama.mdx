@@ -7,7 +7,7 @@ description: ' 采用 Ollama 部署自己的模型'
 
 ## 安装 Ollama
 
-Ollama 本身支持多种安装方式，但是推荐使用 Docker 拉取镜像部署。如果是个人设备上安装了 Ollama 后续需要解决如何让 Docker 中 FastGPT 容器访问宿主机 Ollama 的问题，较为麻烦。
+推荐使用 Docker 拉取镜像部署 Ollama，便于和 FastGPT 容器置于同一 Docker 虚拟网络内直接通信。
 
 ### Docker 安装（推荐）
 
@@ -56,7 +56,7 @@ ollama serve #安装完成并启动服务后，你可以在浏览器中访问 ht
 
 #### 补充说明
 
-如果你是采用的主机应用 Ollama 而不是镜像，需要确保你的 Ollama 可以监听 0.0.0.0。
+若采用宿主机本地应用方式运行 Ollama，需确保 Ollama 服务监听 0.0.0.0。
 
 ##### 1. Linxu 系统
 
@@ -111,7 +111,7 @@ ollama ls
 
 
 
-以及在确保你的 FastGPT 可以直接访问 Ollama 容器的情况下，无法访问，参考上文[点此跳转](#安装-ollama)的安装过程，检测是不是主机不能监测 0.0.0.0，或者容器不在同一个网络。
+若出现连接超时或拒绝访问，请检查 Ollama 监听地址是否绑定至 0.0.0.0，以及 FastGPT 与 Ollama 容器是否加入了相同的 Docker 网络。
 
 ![2. AI Proxy 接入：界面示例](../../../public/imgs/Ollama-aiproxy2.png)
 

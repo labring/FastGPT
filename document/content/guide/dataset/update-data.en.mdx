@@ -1,53 +1,64 @@
 ---
-title: Update material and verify the change
-description: Choose chunk editing, replacement upload, or reprocessing, then verify retrieval and a new conversation.
+title: "Data Maintenance and Incremental Updates"
+description: Master data chunk fine-tuning, whole-file overwriting, hash-based content diffing, and batch index rebuilding.
 ---
 
-After changing material, use retrieval and a new conversation to verify the content in effect. This guide changes the [travel example](/en/guide/getting-started/knowledge-qa) submission deadline from 15 to 30 calendar days.
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="choose-an-update-method" />
+<span id="edit-a-data-chunk" />
+<span id="replace-a-local-file" />
+<span id="reprocess-the-stored-source" />
+<span id="verify-the-update" />
 
-## Choose an update method
+Enterprise knowledge assets evolve continuously as policies update and business workflows iterate. FastGPT supports inline chunk fine-tuning, file replacement, and full-library index rebuilding, keeping knowledge bases synchronized with production reality.
 
-You need write permission on the target Collection. A new upload also requires write permission on the Knowledge base or destination folder. Deleting the old Collection requires owner permission. Check which Applications use the material and preserve the source file and any manual edits you need.
+## Scenario 1: Fine-Tune Individual Data Chunks Online
 
-| Goal | Method | Effect on existing content |
-| --- | --- | --- |
-| Correct a few clauses | Edit Data chunks and update indexes | Updates the chunk's text and searchable representation |
-| Replace local file content | Upload again, verify the new Collection, then disable the old one | Same-name uploads also create a new Collection |
-| Change chunking or processing settings | Adjust processing parameters and reprocess | Rebuilds chunks from the stored original file; manual edits may be overwritten |
-| Refresh a web or external source | Use its synchronization capability | Follows the source and synchronization job's processing results |
+When a specific policy clause requires minor phrasing adjustments or demands supplementary query variations, use inline chunk editing:
 
-## Edit a Data chunk
+1. Open your target knowledge base and click a collection to expand its data chunk list.
+2. Locate the chunk requiring edits and click "Edit" on the right side of the card.
+3. **Update Chunk Content**: Modify the primary text directly. The platform recalculates textual representations upon saving.
+4. **Add Supplementary Indexes (Query Variants)**: In the "Supplementary Indexes" area, enter alternative phrasing that end users frequently submit. These entries act as independent retrieval anchors in vector space.
+5. **Save Changes**: Click "Save". Wait for the save and indexing operations to complete, then verify the updated chunk in Search Test.
 
-1. Open the test Knowledge base → `travel-policy.txt` Collection → the Data chunk containing the deadline.
-2. Change `15 calendar days` to `30 calendar days`, retaining the other clauses.
-3. Select **Update indexes** and wait for completion. Index updates or rebuilding may temporarily block writes; continue editing after completion.
-4. Reopen the chunk and confirm the 30-day text and completed indexes. Existing supplementary indexes are retained; inspect them for the old deadline and correct them as needed.
-5. Verify retrieval and the actual Application using the checks below.
+![Edit individual chunk text and supplementary query variants](/imgs/current/citation-edit-data.png)
 
-If the update fails, inspect the error and embedding model availability. After recovery, update indexes again and inspect the result.
+## Scenario 2: Whole-File Overwrites and Hash-Based Updates
 
-## Replace a local file
+Choose the update path according to the source type:
 
-1. Edit the source file on your computer and save any version you need to retain.
-2. Choose **New/Import → Text collection → Local file** in the Knowledge base and upload it again. Follow the [import guide](/en/guide/dataset/import-data) to preview and confirm processing.
-3. Identify the new Collection and inspect its text and retrieval results. For duplicate names, use creation time and content; a same-name upload coexists with the old Collection.
-4. Once the new Collection works, disable the old one. Check that [tags](/en/guide/dataset/collection_tags), [permissions](/en/guide/dataset/collection_permission), and Application scope include the new Collection.
-5. Repeat verification and confirm that the effective scope contains the intended version. Keep the disabled old Collection for rollback when needed; an owner can permanently delete it after a retention decision.
+1. **Uploaded files**: Keep a copy of the previous document, import the revision, wait for processing, and verify it in Search Test. Review tags and permissions before retiring the old collection; overlapping versions can both appear in results.
+2. **Synchronizable web or API sources**: Trigger the collection's synchronization operation. The server reads the source text and compares its hash; unchanged text can retain its vectors while the title is updated.
+3. **Changed source text**: When a stored hash detects a change, synchronization deletes the old collection and recreates it with a new ID, carrying over tags and permission records. Training runs asynchronously, so plan for a retrieval gap and verify completion.
 
-Keep the old Collection available if the new one fails. Correct the cause and verify the new one again. Old and new clauses may both appear during replacement, so include this conflict in your final check.
+Record collection IDs used by external integrations and update references after replacement.
 
-## Reprocess the stored source
+## Scenario 3: Batch Data Chunk State Management
 
-For an ordinary text Collection with a configured chunk size and write permission, open the Collection and select **Adjust Indexing Parameters** in the top action area. Check chunking and processing settings, submit, and wait for chunks and indexes to rebuild.
+Knowledge bases support discrete operational toggles on every data chunk:
 
-This operation reads the original uploaded file stored on the server. Reprocessing deletes old data and rebuilds it from that file; hand-edited chunks may return to the original content. Rebuilding creates a new Collection identifier. If a Workflow filters by specific Collections, select the rebuilt Collection and publish the configuration, then verify it in a new conversation through the actual channel. Changes to a file on your computer require a new upload. Web and API files use their respective synchronization features; see [web synchronization](/en/guide/dataset/websync) and [third-party knowledge sources](/en/guide/dataset/third-party/third_dataset).
+- **Disable Chunks**: Toggle a chunk status to "Disabled". Disabled chunks exit the active retrieval candidate pool immediately while remaining visible in the admin console for later re-enablement.
+- **Delete Chunks**: For permanently obsolete clauses, click "Delete" to execute physical cleanup. The platform cascades removals through both the vector database and the full-text search index.
 
-If the action is missing, check the Collection type, chunk settings, and permissions. For failed rebuilding, restore the affected service and follow the interface's retry action. Then recheck every changed clause.
+## Scenario 4: Rebuild Vector and Supplementary Indexes
 
-## Verify the update
+Use the rebuild operation supported by the current knowledge base when refreshing vector or supplementary indexes. Follow the deployed version's migration instructions when changing embedding models or dimensions:
 
-1. In the Knowledge base search test, ask “How long after returning must I submit travel expenses?” Check for `30 calendar days` and inspect whether another Collection still returns the old 15-day clause.
-2. Start a new conversation in the connected Application. Ask the same question, check for 30 calendar days, and open the citation to verify its source and deadline.
-3. Repeat through the actual [Publishing channel](/en/guide/build/publish/versions) in a new conversation. Retest the required documents and missing-policy question to check that the other rules still hold.
+1. Navigate to knowledge base settings and open the "Advanced Settings" tab.
+2. Select "Rebuild Vector Index" or "Rebuild Synonym Index".
+3. Confirm the operation. The platform generates batch task records in the background for all ready data chunks.
+4. Workers recompute and commit indexes per chunk, checking that source content still matches the task snapshot. Old vectors are cleaned up after each successful commit. Monitor partial completion and retry failed tasks.
 
-Content updates affect subsequent retrieval after processing and indexing finish. Changing the connected Knowledge base, retrieval parameters, or prompt changes Application configuration and requires publishing. For stale answers, check source text, indexes, Collection scope, published version, and a new conversation in that order; see [troubleshooting](/en/guide/dataset/faq).
+## Maintenance Checklist
+
+- [ ] After indexing completes, edited chunks match expected queries in Search Test.
+- [ ] Replacement collections finish processing; tags, permissions, and external IDs are verified.
+- [ ] Disabled chunks no longer appear in search testing results.
+- [ ] Full rebuild tasks display "Ready" with zero unhandled errors.
+
+## Next Steps
+
+- Multidimensional tagging: Explore [Collection Tag System](/en/guide/dataset/collection_tags).
+- Access governance: Study [Collection Permission Control](/en/guide/dataset/collection_permission).
+- Error recovery: Review [Knowledge Base Troubleshooting](/en/guide/dataset/faq).

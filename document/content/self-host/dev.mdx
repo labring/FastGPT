@@ -82,7 +82,7 @@ cp data/config.json data/config.local.json
 - `vectorMaxProcess` : 向量生成最大进程，根据数据库和 key 的并发数来决定，通常单个 120 号，2c4g 服务器设置 10~15。
 - `qaMaxProcess` : QA 生成最大进程
 - `vlmMaxProcess` : 图片理解模型最大进程
-- `hnswEfSearch` : 向量搜索参数，仅对 PG 和 OB 生效，越大搜索精度越高但是速度越慢。
+- `hnswEfSearch` : 向量搜索参数，仅对 PG 和 OB 生效；数值越大搜索精度越高，相应检索延迟也会增加。
 
 ### 5. 运行
 

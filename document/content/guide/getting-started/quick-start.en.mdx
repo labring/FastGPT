@@ -1,108 +1,117 @@
 ---
-title: Quick start and complete examples
-description: Choose a complete task and follow its prerequisites, steps, and expected results.
+title: "Quick Start: Build and Publish Your First Q&A Application in 5 Minutes"
+description: Follow definite steps to import sample data, connect a Chat Agent, verify responses, and generate a public share link.
 ---
 
-Start with [your first knowledge-base Q&A](/en/guide/getting-started/knowledge-qa), then choose [your first workflow](/en/guide/getting-started/first-workflow) or [your first Agent task](/en/guide/getting-started/first-agent).
+This tutorial guides first-time builders through creating a grounded knowledge-base Q&A assistant in 5 minutes and generating an externally accessible share link.
 
-## Complete examples
+## Learning Goals and Preparation
+
+By completing this tutorial, you will build an online assistant capable of answering corporate travel expense policies accurately, mastering the end-to-end workflow of "import knowledge base → attach to Agent → test in workspace → publish to production".
+
+Before starting, prepare the following resources:
+- Resource creation permissions in your current workspace team.
+- Configured chat models and embedding models (SaaS accounts include default models; for self-hosted instances, refer to [Model Configuration](/en/self-host/config/model/intro)).
+- Save the following sample text locally as a UTF-8 encoded file named `travel-policy.txt`:
+
+```text
+FastGPT Example Travel Policy
+1. Submission deadline: Employees must submit expense reports within 15 calendar days after returning from a business trip.
+2. Mandatory receipts: Every claim must attach an official tax invoice and an approved travel request form.
+3. Finance review SLA: The finance department completes review and disbursement within 5 business days after receiving complete valid receipts.
+```
+
+## Step 1: Create a Knowledge Base and Import Sample Data
+
+1. Log in to the FastGPT console, navigate to "Knowledge Base", and click "New" in the upper right corner.
+2. Set the knowledge base name to `Corporate Travel Policy`, select the recommended embedding model, and confirm.
+3. Open the newly created knowledge base, click "New / Import → Text Dataset → Local Files", and upload your `travel-policy.txt` file.
+4. Keep the default chunking strategy on the data parsing screen, then click "Next".
+5. In the data preview screen, verify that the submission deadlines and receipt requirements remain intact within the chunks, then click "Start Import".
+6. Wait until the index status displays "Ready".
+
+![Create travel policy knowledge base and choose available model](/imgs/current/knowledge-create.png)
+
+## Step 2: Create a Chat Agent and Attach the Knowledge Base
+
+1. Click "Application" in the navigation bar, then click "Create Application" in the upper right corner.
+2. Select "Chat Agent" as the application type, enter `Travel Assistant` as the name, and click "Create".
+3. In the application settings panel, pick an available chat model.
+4. In the "Knowledge Base" section, click add and select the `Corporate Travel Policy` knowledge base created earlier.
+5. In the system prompt area, enter the operational instructions:
+
+```text
+You are a corporate travel expense assistant. Answer questions based on the referenced travel policy.
+State explicit deadlines and required documents clearly with references.
+When a requested item is not mentioned in the policy, state that the current documentation contains no record.
+```
+
+## Step 3: Test Responses in Workspace
+
+In the right-hand testing chat drawer, submit a test query:
+
+```text
+How many days do I have to submit my travel expenses after returning? What documents are required?
+```
+
+Inspect the response. The assistant clearly identifies the "15 calendar days" deadline, lists invoices and approved request forms, and provides citations linked to the original knowledge chunk.
+
+![Knowledge Q&A assistant answers query with grounded citations](/imgs/current/knowledge-answer.png)
+
+## Step 4: Publish a Public Share Link
+
+1. Click the "Publish" button in the top right corner to freeze the active version.
+2. Open the "Publishing Channels" tab at the top and select "Public Share Link".
+3. Enable the share link and copy the generated URL.
+4. Open the link in a separate browser tab to verify the standalone user experience.
+
+![Publish share link for end users](/imgs/current/app-publish.png)
+
+## Next Steps
+
+After publishing your first assistant, explore these advanced capabilities:
+- Multi-step tasks: Learn autonomous tool execution in [Create Your First Agent Task](/en/guide/getting-started/first-agent).
+- Process orchestration: Connect nodes and variables in [Build Your First Workflow](/en/guide/getting-started/first-workflow).
+- Conceptual map: Read [Core Concepts](/en/guide/getting-started/concepts) and [Application Types](/en/guide/getting-started/application-types).
+- Real-world solutions: Check the [Complete Examples](/en/guide/getting-started/quick-start#complete-examples).
+
+## Complete Examples
 
 - [Case 1: Conversational Agent — Corporate Email Writing Assistant](/en/guide/getting-started/examples/email-assistant)
 - [Case 2: Dataset + Conversational Agent — Civil Code Q&A Assistant](/en/guide/getting-started/examples/civil-code-qa)
 - [Case 3: Workflow — Content Review and Automatic Rewriting](/en/guide/getting-started/examples/content-review)
 - [Case 4: Agent V2 — Intelligent Data Analysis Agent](/en/guide/getting-started/examples/data-analysis)
 
-Applications are Chat Agent, Chat Agent V2, or Workflow. Knowledge bases provide material to applications. See [application types](/en/guide/getting-started/application-types).
-
 <details>
 <summary>Earlier section links</summary>
 
 <span id="case-1-conversational-agent--corporate-email-writing-assistant" />
-
-[Case 1: Conversational Agent — Corporate Email Writing Assistant ](/en/guide/getting-started/examples/email-assistant#case-1-conversational-agent--corporate-email-writing-assistant)
-
 <span id="11-use-cases" />
-
-[1.1 Use Cases ](/en/guide/getting-started/examples/email-assistant#11-use-cases)
-
 <span id="12-configuration-steps" />
-
-[1.2 Configuration Steps ](/en/guide/getting-started/examples/email-assistant#12-configuration-steps)
-
 <span id="13-business-value" />
-
-[1.3 Business Value ](/en/guide/getting-started/examples/email-assistant#13-business-value)
-
 <span id="case-2-dataset--conversational-agent--civil-code-qa-assistant" />
-
-[Case 2: Dataset + Conversational Agent — Civil Code Q&A Assistant ](/en/guide/getting-started/examples/civil-code-qa#case-2-dataset--conversational-agent--civil-code-qa-assistant)
-
 <span id="21-use-cases" />
-
-[2.1 Use Cases ](/en/guide/getting-started/examples/civil-code-qa#21-use-cases)
-
 <span id="22-preparation" />
-
-[2.2 Preparation ](/en/guide/getting-started/examples/civil-code-qa#22-preparation)
-
 <span id="23-configuration-steps" />
-
-[2.3 Configuration Steps ](/en/guide/getting-started/examples/civil-code-qa#23-configuration-steps)
-
 <span id="24-business-value" />
-
-[2.4 Business Value ](/en/guide/getting-started/examples/civil-code-qa#24-business-value)
-
 <span id="case-3-workflow--content-review-and-automatic-rewriting" />
-
-[Case 3: Workflow — Content Review and Automatic Rewriting ](/en/guide/getting-started/examples/content-review#case-3-workflow--content-review-and-automatic-rewriting)
-
 <span id="31-use-cases" />
-
-[3.1 Use Cases ](/en/guide/getting-started/examples/content-review#31-use-cases)
-
 <span id="32-preparation" />
-
-[3.2 Preparation ](/en/guide/getting-started/examples/content-review#32-preparation)
-
 <span id="33-workflow-design" />
-
-[3.3 Workflow Design ](/en/guide/getting-started/examples/content-review#33-workflow-design)
-
 <span id="34-configuration-steps" />
-
-[3.4 Configuration Steps ](/en/guide/getting-started/examples/content-review#34-configuration-steps)
-
 <span id="35-business-value" />
-
-[3.5 Business Value ](/en/guide/getting-started/examples/content-review#35-business-value)
-
 <span id="case-4-agent-v2--intelligent-data-analysis-agent" />
-
-[Case 4: Agent V2 — Intelligent Data Analysis Agent ](/en/guide/getting-started/examples/data-analysis#case-4-agent-v2--intelligent-data-analysis-agent)
-
 <span id="41-use-cases" />
-
-[4.1 Use Cases ](/en/guide/getting-started/examples/data-analysis#41-use-cases)
-
 <span id="42-preparation" />
-
-[4.2 Preparation ](/en/guide/getting-started/examples/data-analysis#42-preparation)
-
 <span id="43-configuration-steps" />
-
-[4.3 Configuration Steps ](/en/guide/getting-started/examples/data-analysis#43-configuration-steps)
-
 <span id="44-verification-of-results" />
-
-[4.4 Verification of Results ](/en/guide/getting-started/examples/data-analysis#44-verification-of-results)
-
 <span id="45-business-value" />
-
-[4.5 Business Value ](/en/guide/getting-started/examples/data-analysis#45-business-value)
-
 <span id="choosing-between-the-four-types" />
 
-[Choosing Between the Four Types ](/en/guide/getting-started/application-types)
+- [Case 1: Conversational Agent — Corporate Email Writing Assistant](/en/guide/getting-started/examples/email-assistant)
+- [Case 2: Dataset + Conversational Agent — Civil Code Q&A Assistant](/en/guide/getting-started/examples/civil-code-qa)
+- [Case 3: Workflow — Content Review and Automatic Rewriting](/en/guide/getting-started/examples/content-review)
+- [Case 4: Agent V2 — Intelligent Data Analysis Agent](/en/guide/getting-started/examples/data-analysis)
+- [Choosing Application Types](/en/guide/getting-started/application-types)
 
 </details>

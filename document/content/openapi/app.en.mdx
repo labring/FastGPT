@@ -13,6 +13,20 @@ Call `/api/v1/chat/completions` with `appId` and a user question in `messages`. 
 
 Supply declared global variables through `variables` using matching keys and values. Compare API results with a fixed input tested in the application before adding business data.
 
+```json
+{
+  "appId": "YOUR_APP_ID",
+  "messages": [
+    { "role": "user", "content": "Analyze expense reports for this quarter" }
+  ],
+  "variables": {
+    "department": "Engineering",
+    "fiscalYear": 2026
+  },
+  "stream": false
+}
+```
+
 ## Workflow tools
 
 Workflow tools declare input and output contracts and can execute independently. Debug and publish the tool in the interface, then supply its `appId` and input variables according to the current generated reference. Inspect tool output in the detailed response; use your deployment's System OpenAPI for exact fields.

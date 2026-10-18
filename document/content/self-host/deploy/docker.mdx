@@ -106,7 +106,7 @@ brew install orbstack
 
   </Tab>
   <Tab value="Windows">
-我们建议将源代码和其他数据绑定到 Linux 容器中时，将其存储在 Linux 文件系统中，而不是 Windows 文件系统中。
+我们建议将源代码和其他数据绑定到 Linux 容器中时，将其存储在 WSL 2 的 Linux 文件系统中，确保最佳的文件 I/O 性能和文件权限兼容性。
 
 可以选择直接[使用 WSL 2 后端在 Windows 中安装 Docker Desktop](https://docs.docker.com/desktop/wsl/)。
 
@@ -139,8 +139,8 @@ FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.cn bash <(curl -fsSL https://doc.fas
 
 <CurrentOriginCodeBlockUpdater />
 
-非交互模式还必须通过 `FASTGPT_FE_DOMAIN` 指定用户访问 FastGPT 的完整地址，例如 `https://fastgpt.example.com`。  
-启用 Agent/Skill 沙盒的版本还需要通过 `FASTGPT_SANDBOX_PROXY_URL` 指定沙盒 WebSocket 地址，例如 `wss://sandbox-proxy.example.com`；  
+非交互模式还必须通过 `FASTGPT_FE_DOMAIN` 指定用户访问 FastGPT 的完整地址，例如 `https://fastgpt.example.com`。
+启用 Agent/Skill 沙盒的版本还需要通过 `FASTGPT_SANDBOX_PROXY_URL` 指定沙盒 WebSocket 地址，例如 `wss://sandbox-proxy.example.com`；
 4.16 及以上版本还需要通过 `FASTGPT_SANDBOX_PREVIEW_PROXY_URL` 指定 HTTP 预览地址。
 
 访问地址和宿主机端口是独立配置。需要直连时，可通过 `FASTGPT_PORT` 设置 FastGPT 宿主机端口（默认 `3000`），通过 `FASTGPT_SANDBOX_PROXY_PORT` 设置 Sandbox Proxy 宿主机端口（默认 `3006`）；容器端口仍分别为 `3000` 和 `1006`。如果使用反向代理，`FASTGPT_FE_DOMAIN`、`FASTGPT_SANDBOX_PROXY_URL` 及预览地址中的公网端口（例如 `443`）不会被当作宿主机端口，脚本会保留 Compose 中的默认映射。
@@ -217,7 +217,7 @@ FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash install.sh
 
 ### 2. 修改环境变量
 
-必须填写 `fastgpt-app` 中的 `FE_DOMAIN`，设置为用户实际访问 FastGPT 的完整地址，例如 `https://fastgpt.example.com`。该地址由协议、主机和可选端口组成，不能留空，也不要填写容器内部地址。
+必须填写 `fastgpt-app` 中的 `FE_DOMAIN`，设置为用户实际访问 FastGPT 的完整公网或局域网地址，例如 `https://fastgpt.example.com`。该地址必须由客户端浏览器直接访问，由协议、主机和可选端口组成。
 
 启用 Agent/Skill 沙盒时还必须配置：
 
@@ -279,13 +279,9 @@ docker compose up -d
 
 ### S3 无法正常连接
 
-检查 `STORAGE_EXTERNAL_ENDPOINT` 变量，需设置成客户端和 FastGPT 服务均可访问的地址。
+先核对 FastGPT 可访问的对象存储地址。默认 `short-proxy` 模式由 FastGPT 校验短链并代理私有文件下载；使用 `short-redirect` 或插件 Logo 等公开直连资源时，应配置相关客户端与服务可访问的外部地址。遇到 403 时核对签名主机名与代理路径。
 
-**重要：**
-
-> 填入的地址不可为 `127.0.0.1` 或者 `localhost` 等本地回环地址，可填 Docker 部署时的宿主机本地 IP，但是需要把宿主机固定为静态 IP；或者统一为一个固定域名；目的是为了避免对象存储签名 URL 时，签发与上传的 URL 不一致导致的 403 错误。
->
-> 具体查看 [对象存储配置及常见问题](/zh-CN/self-host/config/object-storage)
+详见[对象存储配置](/zh-CN/self-host/config/object-storage)。
 
 ### 登录系统后，浏览器无法响应
 
@@ -300,9 +296,9 @@ docker compose up -d
 从 V4.17.0 起，**必须部署或接入 AI Proxy**，并在 FastGPT 容器中配置以下环境变量：
 
 - `AIPROXY_API_ENDPOINT`：FastGPT 可访问的 AI Proxy 服务根地址，例如 `http://aiproxy:3000`，不要附加 `/v1`；FastGPT 会按接口补充路径。
-- `AIPROXY_API_TOKEN`：AI Proxy 管理员 Token，必须与 AI Proxy 服务端的管理员凭证一致，不能为空。
+- `AIPROXY_API_TOKEN`：AI Proxy 管理员 Token，必须与 AI Proxy 服务端的管理员凭证一致。
 
-缺少上述任一配置会导致启动校验失败。`OPENAI_BASE_URL` 和 `CHAT_API_KEY` 不能替代这两个必填项；即使模型配置了 `requestUrl/requestAuth`，也不能省略 AI Proxy。模型服务商的地址和密钥在管理员渠道配置中维护。
+AI Proxy 提供模型路由与渠道管理。模型服务商的地址和密钥在管理员渠道配置中维护；模型级请求覆盖配置应单独核对。
 
 可以通过修改 `docker-compose.yml` 中 FastGPT 容器的环境变量更新 AI Proxy 连接配置；商业版 Admin 服务若复用 App/Service 配置，也需要设置这两个变量。
 
@@ -342,7 +338,7 @@ docker compose up -d
 
 docker-compose 端口定义为：`映射端口:运行端口`。
 
-桥接模式下，容器运行端口不会有冲突，但是会有映射端口冲突，只需将映射端口修改成不同端口即可。
+在桥接网络模式下，只需调整 Compose 中的宿主机映射端口（左侧端口）即可规避宿主机端口冲突。
 
 如果 `容器1` 需要连接 `容器2`，使用 `容器2:运行端口` 来进行连接即可。
 

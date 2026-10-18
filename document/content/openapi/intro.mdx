@@ -4,6 +4,10 @@ description: 配置服务地址、成员密钥和应用 ID，调用已发布应�
 ---
 
 {/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="api-文档地址" />
+<span id="下一步" />
+
+{/* Preserve incoming bookmarks for reorganized sections. */}
 <span id="云服务-api-文档地址" />
 <span id="使用说明" />
 <span id="如何获取-api-key" />
@@ -48,7 +52,59 @@ EOF
 
 ## 应用选择与 SDK
 
-推荐团队级密钥和请求体 `appId`。兼容 OpenAI SDK 形态时，Bearer 可以使用 `<apiKey>-<appId>`，SDK 的 `baseURL` 设置为实例地址加 `/api/v1`。当前选择顺序为 `body.appId` → Bearer 后缀 → 旧密钥绑定应用。
+对话补全接口支持 OpenAI 兼容请求与普通文本响应；详细事件及其他接口遵循 FastGPT 自身契约。通过标准 OpenAI SDK 接入时，可将 `baseURL` 设置为 FastGPT 实例地址加 `/api/v1`，并在请求体中显式传递 `appId`：
+
+<Tabs items={['Python SDK', 'Node.js SDK']}>
+  <Tab value="Python SDK">
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    api_key=os.environ["FASTGPT_API_KEY"],
+    base_url=f"{os.environ['FASTGPT_ORIGIN'].rstrip('/')}/api/v1"
+)
+
+response = client.chat.completions.create(
+    model="fastgpt",  # The published application selects the model.
+    messages=[{"role": "user", "content": "Introduce yourself"}],
+    stream=False,
+    extra_body={"appId": os.environ["FASTGPT_APP_ID"]}
+)
+
+print(response.choices[0].message.content)
+```
+
+  </Tab>
+  <Tab value="Node.js SDK">
+```typescript
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  apiKey: process.env.FASTGPT_API_KEY!,
+  baseURL: `${process.env.FASTGPT_ORIGIN!.replace(/\/$/, '')}/api/v1`
+});
+
+async function main() {
+  const request: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming & {
+    appId: string;
+  } = {
+    model: 'fastgpt',
+    messages: [{ role: 'user', content: 'Introduce yourself' }],
+    appId: process.env.FASTGPT_APP_ID!,
+    stream: false
+  };
+  const response = await client.chat.completions.create(request);
+  console.log(response.choices[0].message.content);
+}
+
+main().catch(console.error);
+```
+
+  </Tab>
+</Tabs>
+
+对于只支持配置 API Key 的第三方客户端工具，可使用 `<apiKey>-<appId>` 格式组合。服务端解析应用 ID 的优先级为：请求体 `body.appId` → Authorization 请求头后缀 → 密钥历史绑定的单一应用。
 
 ## API 文档地址
 

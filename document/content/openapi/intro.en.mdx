@@ -4,6 +4,10 @@ description: Configure a service address, member API key, and application ID, th
 ---
 
 {/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="api-reference-addresses" />
+<span id="next-steps" />
+
+{/* Preserve incoming bookmarks for reorganized sections. */}
 <span id="api-documentation-url" />
 <span id="cloud-api-documentation-url" />
 <span id="usage-notes" />
@@ -49,7 +53,59 @@ A successful call returns JSON. Plain-text output is in `choices[0].message.cont
 
 ## Application selection and SDKs
 
-Use a team-level key with `appId` in the body. For OpenAI-style SDK compatibility, the Bearer value can be `<apiKey>-<appId>` and the SDK `baseURL` is your instance plus `/api/v1`. Selection priority is `body.appId`, then the Bearer suffix, then the legacy key's application binding.
+The chat completions endpoint supports OpenAI-compatible requests and ordinary text responses. Detailed events and other endpoints follow FastGPT contracts. When integrating via the official OpenAI SDK, set `baseURL` to your FastGPT instance address plus `/api/v1` and supply `appId`:
+
+<Tabs items={['Python SDK', 'Node.js SDK']}>
+  <Tab value="Python SDK">
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    api_key=os.environ["FASTGPT_API_KEY"],
+    base_url=f"{os.environ['FASTGPT_ORIGIN'].rstrip('/')}/api/v1"
+)
+
+response = client.chat.completions.create(
+    model="fastgpt",  # The published application selects the model.
+    messages=[{"role": "user", "content": "Introduce yourself"}],
+    stream=False,
+    extra_body={"appId": os.environ["FASTGPT_APP_ID"]}
+)
+
+print(response.choices[0].message.content)
+```
+
+  </Tab>
+  <Tab value="Node.js SDK">
+```typescript
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  apiKey: process.env.FASTGPT_API_KEY!,
+  baseURL: `${process.env.FASTGPT_ORIGIN!.replace(/\/$/, '')}/api/v1`
+});
+
+async function main() {
+  const request: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming & {
+    appId: string;
+  } = {
+    model: 'fastgpt',
+    messages: [{ role: 'user', content: 'Introduce yourself' }],
+    appId: process.env.FASTGPT_APP_ID!,
+    stream: false
+  };
+  const response = await client.chat.completions.create(request);
+  console.log(response.choices[0].message.content);
+}
+
+main().catch(console.error);
+```
+
+  </Tab>
+</Tabs>
+
+For third-party tools that only accept an API Key string, use the `<apiKey>-<appId>` composite format. FastGPT resolves target applications in this order: request body `body.appId` -> Bearer header suffix -> legacy key-bound application.
 
 ## API reference addresses
 

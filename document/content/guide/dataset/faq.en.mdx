@@ -1,82 +1,80 @@
 ---
-title: Knowledge-base troubleshooting
-description: Diagnose parsing, model configuration, retrieval, and context limits, and check retention conditions.
+title: "Knowledge Base Troubleshooting"
+description: Comprehensive troubleshooting reference for document parsing, asynchronous training, index building, retrieval recall, and storage errors.
 ---
 
-Record the knowledge base, collection, processing stage, and error. Reproduce with a small file before following the checks below, then rerun the [fixed retrieval questions](/en/guide/dataset/test-retrieval).
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="empty-retrieval-results" />
+<span id="incorrect-answers-or-unsupported-citations" />
+<span id="stale-answers-after-an-update" />
+<span id="file-parsing-fails" />
+<span id="garbled-file-content" />
+<span id="processing-model-vs-embedding-model" />
+<span id="excel-file-import" />
+<span id="token-calculation" />
+<span id="restore-a-rerank-model" />
+<span id="data-retention-after-expiration" />
+<span id="too-many-results-interrupt-answers" />
+<span id="chat-history-context-limits" />
+<span id="knowledge-base-page-flickers" />
+<span id="ask-an-administrator-for-help" />
 
-You need access to the target Knowledge base. Editing content or enabled state requires the corresponding write permission; an administrator handles model-service issues. Check the available entry points, version, permissions, and models for your SaaS team or self-hosted deployment.
+This manual compiles typical issues encountered during knowledge base ingestion, training, retrieval, and runtime execution, along with standardized resolution steps.
 
-## Empty retrieval results
+## 1. File Upload and Document Parsing
 
-1. Check Collection processing and index completion; recover failed items first.
-2. Check whether the Collection is enabled, then the Knowledge base, Collection, and [tag scope](/en/guide/dataset/collection_tags).
-3. Check the current member’s [Collection permissions](/en/guide/dataset/collection_permission).
-4. Confirm effective threshold conditions in [search parameters](/en/guide/dataset/dataset_engine#search-parameters) before adjusting the threshold or citation budget.
+### Issue: Parsing fails after uploading PDF or Word files
+- **Diagnostic Focus**: Check whether the document is password-protected or restricted against copying; verify whether the PDF is a scanned image without a text layer.
+- **Actionable Fix**: Decrypt encrypted files prior to upload. For scanned PDFs, run optical character recognition (OCR) locally to embed a searchable text layer before importing.
 
-After recovery, repeat the same question and confirm that the intended passage returns. An isolated test Collection can reproduce “disabled → empty results or missing target source → enabled → original passage restored.”
+### Issue: Table import reports "Missing required column q or a"
+- **Diagnostic Focus**: Spreadsheet headers contain leading or trailing whitespace, typos, or multiple worksheets containing merged cells.
+- **Actionable Fix**: Review [Structured Dataset Template Specifications](/en/guide/dataset/template). Ensure the workbook contains exactly one worksheet, the first two columns in the header row are named `q` and `a`, and no merged cells exist.
 
-## Incorrect answers or unsupported citations
+---
 
-Inspect Application run details and cited passages. For missing clauses, check retrieval scope and parameters. For complete clauses, inspect the prompt and model output. Follow [Connect an Application](/en/guide/dataset/connect-application) to rerun known-answer and missing-information questions, verifying both answers and citations.
+## 2. Background Training and Index Construction
 
-## Stale answers after an update
+### Issue: Collection status remains stuck on "Processing (0%)"
+- **Diagnostic Focus**: Background worker consumers are inactive, Redis task queues are backed up, or model API keys have expired.
+- **Actionable Fix**:
+  1. Check your team's model quota and account balance.
+  2. Verify network connectivity to upstream AI proxies or model providers.
+  3. In self-hosted environments, inspect worker logs for BullMQ consumer health.
 
-Follow [Update material](/en/guide/dataset/update-data) to check text, indexes, and duplicate Collections. A new upload creates a new Collection; reprocessing uses the original file stored on the server. Once retrieval returns the new clause, check whether Application configuration needs publishing and verify the answer and citation in a new conversation through the actual channel.
+### Issue: Training fails with "Lease Expired" and retries repeatedly
+- **Diagnostic Focus**: Chunk batch sizes are too large or remote embedding endpoints exhibit high latency, causing workers to exceed lease windows before committing.
+- **Actionable Fix**: Inspect worker health, model latency, and lease-renewal logs. Reduce supported training concurrency settings when overloaded, then retry failed tasks after recovery.
 
-## File parsing fails
+---
 
-Check that the file format is supported, the file opens normally, and its text can be extracted. Scanned PDFs or images require available enhanced parsing. Inspect the import settings, deployed parsing service, and returned error. Verify plain text with a small sample first. Self-hosted operators can consult [MinerU configuration](/en/self-host/custom-models/mineru) and [environment variables](/en/self-host/config/env).
+## 3. Retrieval Recall and Answer Quality
 
-After recovery, confirm that the preview contains readable text and that a question from the source retrieves it.
+### Issue: Search test returns zero results (empty recall)
+- **Diagnostic Focus**: Similarity thresholds are set too high, collections are not yet in a ready state, or an unmatched tag filter is active.
+- **Actionable Fix**:
+  1. Lower the "Minimum Similarity (Min Score)" slider to 0.1 to probe candidate boundaries.
+  2. Confirm collection status displays a green "Ready" badge and chunk text is readable.
+  3. Check whether tag filters are active; clear tags temporarily and rerun the search.
 
-## Garbled File Content
+### Issue: Search hits target chunks, but the model answers "Information not mentioned"
+- **Diagnostic Focus**: Search results may be missing from the AI Chat knowledge input, or reference and context budgets may truncate the evidence.
+- **Actionable Fix**: Follow [Connecting Knowledge Bases to Applications](/en/guide/dataset/connect-application). Check the knowledge input and dedicated reference template, then balance reference, history, and output budgets within the model context window.
 
-Save text or CSV files as UTF-8 and import again. For PDFs, Word files, and other formats, inspect the source and parsed output first. Confirm how existing collection data will be retained before reprocessing.
+---
 
-After recovery, inspect the preview and Data chunks. Manage old and newly imported Collections through [Update material](/en/guide/dataset/update-data).
+## 4. Storage and Infrastructure
 
-## Processing Model vs. Embedding model
+### Issue: Vector database exhausts connections or times out
+- **Diagnostic Focus**: High-concurrency write batches deplete PGVector or Milvus connection pools.
+- **Actionable Fix**: Increase database connection pool caps and slow query timeout limits in self-hosted settings; consult [Deployment and Operations](/en/self-host).
 
-- **File processing model**: performs enhanced processing, summarization, question generation, or Q&A splitting according to the selected mode. It needs an available language model and quota.
-- **Embedding model**: vectorizes chunks for semantic retrieval and requires an available embedding service.
+### Issue: Uploaded source files vanish from object storage
+- **Diagnostic Focus**: S3 / MinIO bucket lifecycle policies enforce aggressive expiration, or persistent volume mounts are missing.
+- **Actionable Fix**: Review bucket retention policies and confirm persistent volume claims map to durable host storage.
 
-Check the model and channel corresponding to the failed stage. Verify catalog visibility, member access, and the actual request result; see [team models](/en/guide/workspace/models).
+## Next Steps
 
-After restoring the affected service, retry failed items, wait for indexing, and check a known question.
-
-## Excel File Import
-
-Choose the format supported by your import entrance. Use [template import](/en/guide/dataset/template) for prepared Q&A pairs in `.csv` or `.xlsx`, follow the required headers, and test a few rows first. For ordinary file parsing, use the formats listed by the current upload interface.
-
-## Token Calculation
-
-Displayed length estimates support processing and context controls. Model services may tokenize text differently. Check consumption against actual requests and usage records, and reserve space for instructions, retrieved content, and output when configuring context and chunk sizes.
-
-## Restore a Rerank Model
-
-Confirm an available reranker is configured and check member access, its channel, and service connectivity. Self-hosted administrators should inspect the model-provider interface using [model configuration](/en/self-host/config/model/intro). Cloud users should check the available catalog and plan. Select the restored model and rerun retrieval testing.
-
-Failed reranking falls back to the original text results, and the threshold may become inactive in hybrid search. After recovery, repeat the same question and inspect actual results and any execution information exposed by the interface.
-
-## Data Retention After Expiration
-
-Cloud retention, quota, and expiration behavior follow the current account plan, service agreement, and notices. Review renewal or migration arrangements before expiration and retain required source material. Self-hosted operators define their own storage and backup policies.
-
-## Too Many Results Interrupt Answers
-
-Inspect retrieved-content length, instructions, history, and the model output limit in execution details. The context budget includes these inputs and the expected output; the model and channel determine the exact limits.
-
-Reduce retrieved-content length or message history, rerun the same question, and check that essential material is still retrieved. For model errors, follow [model troubleshooting](/en/self-host/troubleshooting/model-errors).
-
-## Chat History Context Limits
-
-Check the application's history range and the model's context and output limits. Compare a new conversation with an existing long conversation. After adjusting history, verify that required multi-turn information remains available. Apply configuration changes to actual access through [published versions](/en/guide/build/publish/versions).
-
-## Knowledge-base page flickers
-
-Inspect page or network-request errors, member permissions, and knowledge-base configuration. Confirm the selected embedding model exists and is available, then use the error to investigate its channel or service connection. Retain reproduction steps and errors for the administrator.
-
-## Ask an administrator for help
-
-Provide the time, version, processing stage, sanitized error, file format, model, retrieval settings, and a minimal reproduction question. Remove account details, keys, and sensitive material from evidence screenshots. After recovery, rerun that question and check the source, answer, and citation.
+- Holistic overview: Read [Knowledge Base Full Lifecycle](/en/guide/dataset/lifecycle).
+- Practice tuning: Explore [Search Testing and Retrieval Parameters](/en/guide/dataset/test-retrieval).
+- Data maintenance: Review [Data Maintenance and Incremental Updates](/en/guide/dataset/update-data).

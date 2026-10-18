@@ -1,73 +1,64 @@
 ---
-title: Web Site Sync
-description: Introduction and usage of the FastGPT Web Site Sync feature
+title: "Web Scraping and Scheduled Synchronization"
+description: Master website ingestion rules, CSS selector extraction, chunk index configuration, and automated scheduled syncing.
 ---
 
-A website dataset discovers pages on the same domain from a root URL and synchronizes their content into a knowledge base. This feature requires the corresponding commercial entitlement.
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="article-content" />
+<span id="what-is-web-site-sync" />
+<span id="how-to-use" />
+<span id="1-create-a-new-dataset-and-select-web-site-sync" />
+<span id="2-click-to-configure-site-information" />
+<span id="3-enter-the-url-and-selector" />
+<span id="create-an-app-and-bind-the-dataset" />
+<span id="how-to-use-selectors" />
+<span id="open-the-browser-devtools-usually-f12-or-right-click--inspect" />
+<span id="enter-the-element-selector" />
+<span id="using-multiple-selectors" />
 
-## What is Web Site Sync
+Website knowledge bases discover pages under the same domain and ingest their text. This feature requires the corresponding commercial entitlement. Use accessible static pages and confirm permission to retrieve and use the content.
 
-Web Site Sync suits publicly readable static documentation and blogs. It currently discovers up to 200 child pages. Authentication, client-side rendering, or access restrictions can prevent crawling. Confirm permission to access and use the target content before syncing.
+## Step 1: Create a Website Dataset
 
-## How to Use
-
-
-
-### 1. Create a New Dataset and Select Web Site Sync
-
-Open **Knowledge → New**, select a website dataset, enter a name, and choose the index and text-understanding models. Select an image-understanding model when needed.
+1. Open **Knowledge Bases → New** and select the website knowledge base type.
+2. Enter a name and choose the indexing and text-understanding models; select an image-understanding model when needed.
+3. Open the new knowledge base and click **Start Configuration**.
 
 ![Create a website dataset](/imgs/current/website-dataset-create.png)
 
-### 2. Click to Configure Site Information
+## Step 2: Configure the Root URL
 
-Open the new website dataset and click **Start configuration** (`开始配置`).
+Enter the starting page URL, such as `https://docs.example.com/guide`. The site-sync flow discovers same-domain child pages, with a current discovery limit of 200 pages. Review the discovered collections to verify coverage. Use the web-link import flow for individual pages.
+
+![Configure root URL and content selector](/imgs/current/website-dataset-url.png)
+
+## Step 3: Select the Article Body
+
+Inspect the target page's HTML and enter a CSS selector such as `article`, `main`, or `#content`. Choose a container holding the useful body text. Combine selectors with commas when the title and article are separate, for example `h1.page-title, article`.
+
+Check the selected elements in browser developer tools, then inspect imported chunks for complete text and repeated navigation. Recheck selectors after a website redesign.
+
+## Step 4: Configure Processing and Verify Synchronization
+
+1. Click **Next**, choose chunk storage or Q&A extraction, and configure the processing and index options supported by the current UI.
+2. Start synchronization and wait for collection creation and training to finish.
+3. Test a question with a known answer and inspect the cited source.
+4. Follow the current deployment's automatic-sync controls for recurring updates. Verify the last sync result and processing status after source changes. Hash-based updates can recreate collections and require retraining; see [Data Maintenance](/en/guide/dataset/update-data).
+
+![Website dataset chunk and index settings](/imgs/current/website-dataset-settings.png)
 
 ![Website dataset configuration entry](/imgs/current/website-dataset-empty.png)
 
-### 3. Enter the URL and Selector
+## Scraping Troubleshooting
 
-Enter a root URL such as `https://doc.fastgpt.io/guide/getting-started`. The selector limits extraction to the article. Start with `article` and verify it against the target site's HTML.
+| Issue | Resolution Focus |
+| --- | --- |
+| Crawled content is empty | The target page relies on client-side single-page JavaScript (SPA); provide server-rendered (SSR) or static URLs |
+| Extracted text contains sidebar links | Refine the Content Selector to target the specific HTML class or ID containing the article text |
+| Crawler encounters HTTP 403 Forbidden | Confirm the site allows crawler access and request an authorized access method from its administrator |
 
-![Root URL and content selector](/imgs/current/website-dataset-url.png)
+## Next Steps
 
-Click **Next**, choose chunk storage or QA extraction, and configure chunking, index enhancement, and processing parameters. Review the scope, click **Start sync**, and wait for collections to finish processing.
-
-![Chunk and index settings before syncing](/imgs/current/website-dataset-settings.png)
-
-These screenshots show configuration before submission. Crawling results depend on the target site, network, and model service.
-
-## Create an App and Bind the Dataset
-
-Associate the synchronized dataset in the app editor's **Knowledge** section. Ask a question answered by a source page, then inspect the citation. Follow [Your first knowledge chat](/en/guide/getting-started/knowledge-qa) for the complete sequence.
-
-## How to Use Selectors
-
-CSS selectors identify the content to extract. Prefer stable tags, IDs, or attributes and keep navigation, footers, and repeated sidebars outside the selection.
-
-### Open the Browser DevTools (usually F12, or Right-click > Inspect)
-
-Open the target webpage and use the browser's **Inspect** command on its article. In Elements, inspect the content container's tag, ID, and class. This verifies the structure of the target site itself.
-
-### Enter the Element Selector
-
-For the HTML below, use `#article-content` or `article.docs-content`:
-
-```html
-<article id="article-content" class="docs-content">
-  <h1>User guide</h1>
-  <p>The content to synchronize.</p>
-</article>
-```
-
-Run `document.querySelectorAll('#article-content').length` in the DevTools Console and check that it selects the expected element. Recheck selectors after the target site changes its layout.
-
-### Using Multiple Selectors
-
-Separate selectors with a comma to extract multiple regions. For a title in `h1.page-title` and content in `article`, use:
-
-```css
-h1.page-title, article
-```
-
-After syncing, inspect the generated chunks for complete titles and content, and exclude repeated menus and footers.
+- Test search recall: Explore [Search Testing and Retrieval Parameters](/en/guide/dataset/test-retrieval).
+- Attach to applications: Follow [Connecting Knowledge Bases to Applications](/en/guide/dataset/connect-application).
+- Maintain assets: Review [Data Maintenance and Incremental Updates](/en/guide/dataset/update-data).

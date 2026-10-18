@@ -3,6 +3,9 @@ title: 通用问题排查
 description: FastGPT 私有部署常见问题排查方式
 ---
 
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="修改了-vectormodels-但是没有生效" />
+
 ### 前端页面崩溃
 
 1. 记录复现步骤、FastGPT 版本，以及浏览器控制台和失败请求的错误信息。
@@ -81,7 +84,7 @@ description: FastGPT 私有部署常见问题排查方式
 
 ---
 
-### 修改了 vectorModels 但是没有生效
+### 修改了 vectorModels 未生效
 
 `vectorModels` 属于旧配置方式。当前版本在管理员模型配置中管理 Embedding 模型；先确认模型测试通过，再刷新客户端。已有知识库的向量与所用模型绑定，更换模型时应按知识库页面支持的流程重新处理并验收检索结果，保留原始资料和可恢复备份。
 
@@ -147,7 +150,7 @@ description: FastGPT 私有部署常见问题排查方式
 
 适用版本：4.15.2 及以后。`MULTIPLE_DATA_TO_BASE64` 默认值在 4.15.2 是 `true`，4.15.3 起是 `false`。为 `false` 时，FastGPT 把 `http(s)://` 开头的文件下载短链交给模型服务商去下载。短链前缀依次取 `FILE_DOWNLOAD_PUBLIC_URL_PREFIX`、`FILE_DOMAIN`、`FE_DOMAIN` 中第一个设置了的；如果是内网地址，模型服务商访问不到，就会下载超时（可能返回 `Download multimodal file timed out`）。
 
-怎么做（二选一）：设置 `MULTIPLE_DATA_TO_BASE64=true`，让 FastGPT 转成 base64 再发给模型（请求体会变大）；或者把 `FILE_DOMAIN` 配置成模型服务商能从公网访问到的 FastGPT 地址，而不是改 `FE_DOMAIN`（它是用户访问 FastGPT 的地址）。
+可选方案：其一，设置 `MULTIPLE_DATA_TO_BASE64=true`，由 FastGPT 编码为 base64 发送；其二，将 `FILE_DOMAIN` 配置为模型服务商可从公网访问的 FastGPT 服务地址，`FE_DOMAIN` 专用于用户浏览器访问。
 
 ---
 

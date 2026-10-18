@@ -1,7 +1,13 @@
 ---
 title: 使用 FastGPT
-description: 从自己的资料创建知识库问答，再学习工作流、Agent、发布和维护。
+description: 掌握 FastGPT 核心概念、新手教程、深度指南与实操案例，构建企业级 AI 应用。
 ---
+
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="从一次成功的问答开始" />
+<span id="按任务继续" />
+<span id="开发者与部署运维" />
+<span id="社区交流群" />
 
 {/* Preserve incoming bookmarks for reorganized sections. */}
 <span id="fastgpt-的优势" />
@@ -19,44 +25,49 @@ description: 从自己的资料创建知识库问答，再学习工作流、Agen
 
 import FastGPTLink from '@/components/docs/linkFastGPT';
 
-FastGPT 将模型、知识库、工具和可视化工作流连接成可供用户访问的 AI 应用。
+FastGPT 是一个大模型应用编排平台，提供开箱即用的大模型调用、精准知识库检索、Agent 自主规划与可视化工作流编排能力。
 
-## 从一次成功的问答开始
+## 快速上手与新手教程（Tutorials）
 
-[**创建首个知识库问答 →**](/zh-CN/guide/getting-started/knowledge-qa)
-
-准备一份简短资料，导入知识库，关联对话 Agent，测试答案并发布修改。教程提供可直接复制的示例资料和验收问题。
+跟随结构化教程，在 5 到 10 分钟内完成确定性的系统构建：
 
 <Cards>
-  <Card title="选择应用类型" href="/zh-CN/guide/getting-started/application-types">按任务选择对话 Agent、对话 Agent V2 或工作流。</Card>
-  <Card title="创建首个工作流" href="/zh-CN/guide/getting-started/first-workflow">连接输入、模型与输出，观察一次完整执行。</Card>
-  <Card title="创建首个 Agent 任务" href="/zh-CN/guide/getting-started/first-agent">让 Agent 根据问题检索资料并完成任务。</Card>
+  <Card title="5 分钟极速上手" href="/zh-CN/guide/getting-started/quick-start">导入文档、关联对话 Agent、调试回答并生成可访问的公开分享链接。</Card>
+  <Card title="构建对话 Agent V2" href="/zh-CN/guide/getting-started/first-agent">配置具备自主规划、工具调用与复杂推理能力的智能体助手。</Card>
+  <Card title="编排首个可视化工作流" href="/zh-CN/guide/getting-started/first-workflow">掌握画布连线、变量输入输出引用、条件分支与端到端调试。</Card>
 </Cards>
 
-## 按任务继续
+## 核心架构与原理认知（Explanation）
+
+建立系统全局心智模型，掌握 FastGPT 核心机制与选型原则：
 
 <Cards>
-  <Card title="构建应用" href="/zh-CN/guide/build/general/ai_settings">配置模型、指令、变量和对话能力。</Card>
-  <Card title="管理知识库" href="/zh-CN/guide/dataset/lifecycle">创建、导入、预览分段、测试检索和维护资料。</Card>
-  <Card title="接入工具与 Skill" href="/zh-CN/guide/build/tools/overview">为应用配置外部操作与可复用指令。</Card>
-  <Card title="发布与集成" href="/zh-CN/guide/build/publish/versions">发布修改，选择分享链接、API 或 MCP 服务。</Card>
-  <Card title="观察与改进" href="/zh-CN/guide/build/logs">通过对话日志和执行详情定位问题。</Card>
-  <Card title="团队与账号" href="/zh-CN/guide/workspace/team/team_roles_permissions">管理成员和资源协作权限。</Card>
+  <Card title="核心概念与实体拓扑" href="/zh-CN/guide/getting-started/concepts">全景理解应用、集合、数据块、工具、Skill、版本快照与权限体系。</Card>
+  <Card title="应用类型与选型策略" href="/zh-CN/guide/getting-started/application-types">横向对比对话 Agent、对话 Agent V2 与工作流的运行机制与决策矩阵。</Card>
 </Cards>
 
-## 开发者与部署运维
+## 实操指南与进阶案例（How-to Guides）
 
-- [开发者入口](/zh-CN/developers)：凭证、首次请求、流式结果与当前生成的 API 参考。
-- [部署与运维入口](/zh-CN/self-host)：选择安装方式、配置服务、维护和升级。
-- [核心概念](/zh-CN/guide/getting-started/concepts)：应用、集合、数据块、工具、Skill 和发布版本的关系。
-- [完整案例](/zh-CN/guide/getting-started/quick-start)、[视频教程](https://video.fastgpt.cn/videos)与[最佳案例](https://solutions.fastgpt.cn/)。
+按具体业务目标查阅标准化实操方案与企业级案例：
+
+<Cards>
+  <Card title="精准知识库问答实操" href="/zh-CN/guide/getting-started/knowledge-qa">掌握文档切片选型、向量检索与重排配置、提示词事实约束与引用展示。</Card>
+  <Card title="企业级实战案例库" href="/zh-CN/guide/getting-started/quick-start#完整案例">涵盖民法典法条问答、邮件助手、内容审核流与数据分析 Agent。</Card>
+</Cards>
+
+## 面向不同角色的专用入口
+
+- [开发者入口](/zh-CN/developers)：获取 API 凭证、掌握首次请求、流式响应接收与 OpenAPI 契约。
+- [部署与运维入口](/zh-CN/self-host)：选择 Docker 或 Sealos 安装方案、配置向量库与模型、掌握系统监控与版本升级。
+- [知识库全生命周期](/zh-CN/guide/dataset/lifecycle)：深入学习数据切片、索引维护、增量同步与标签管理。
+- [扩展与工具生态](/zh-CN/guide/build/tools/overview)：学习接入 HTTP 工具、系统插件、代码沙箱与 MCP 协议服务。
 
 ## 开始使用云服务
 
 <FastGPTLink campaign="docs_getting_started" content="cloud_entry_cn" site="cn">中国大陆云服务</FastGPTLink> · <FastGPTLink campaign="docs_getting_started" content="cloud_entry_io" site="io">国际云服务</FastGPTLink>
 
-指南以当前界面为线索；自部署需要配置模型及相关服务。功能可用性由版本、授权、套餐、服务配置、资源权限和模型能力共同决定，具体条件见对应任务页。
+文档指南以当前界面为基准。私有化部署环境下，功能可用性由版本授权、部署服务配置、团队资源权限与后端模型能力共同决定。
 
-## 社区交流群
+## 社区与技术支持
 
-通过 [GitHub Issues](https://github.com/labring/FastGPT/issues/new/choose)反馈问题。反馈时提供版本、任务步骤、预期结果和去除凭证后的错误信息。
+通过 [GitHub Issues](https://github.com/labring/FastGPT/issues/new/choose) 反馈技术问题。提交问题时，请附带环境版本、操作复现步骤、预期结果以及清洗凭证后的关键日志信息。

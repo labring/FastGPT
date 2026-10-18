@@ -1,47 +1,77 @@
 ---
-title: Connect a Knowledge base to an Application
-description: Configure a Chat Agent, check answers and citations, and verify published access.
+title: "Connecting Knowledge Bases to Applications"
+description: Master attaching knowledge bases to Chat Agents, Chat Agent V2, and Workflows, configuring retrieval parameters, and authoring grounding templates.
 ---
 
-Connect a Knowledge base that has passed [retrieval testing](/en/guide/dataset/test-retrieval) to a Chat Agent, then check its answers and citations before publishing. You need Application creation or editing permission, read access to the Knowledge base, and an available chat model with quota. Creating a sharing channel also requires the corresponding management permission.
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="1-connect-the-knowledge-base" />
+<span id="2-debug-answers-and-citations" />
+<span id="3-publish-and-verify" />
+<span id="using-a-workflow" />
 
-## 1. Connect the Knowledge base
+Connecting a validated knowledge base to an application allows models to retrieve relevant context chunks before answering user queries, using source documentation as grounding evidence.
 
-1. Create a **Chat Agent** in the Studio, or open an existing Chat Agent.
-2. Choose a chat model available to your team and select the target Knowledge base in its knowledge configuration. Check Collection and tag filters so they include the required sources.
-3. Check the Application's search mode, reranking, minimum relevance, and citation limit against the retrieval settings you verified.
-4. Define how to use the material. For the travel example, use this prompt:
+## Scenario 1: Mount Knowledge Bases into Chat Agents
+
+Chat Agents (both standard Chat Agent and Chat Agent V2) support mounting single or multiple knowledge bases directly:
+
+1. Open the "Applications" console and navigate to your target Chat Agent.
+2. In the application settings panel on the left, locate the "Knowledge Base" section and click "Add".
+3. Check the target knowledge bases you want to connect. FastGPT supports multi-dataset attachments (for example, simultaneously attaching both a Product Manual and a Service Policy).
+4. **Configure Search Parameters**:
+   - **Citation Limit**: Set the retrieved-context token budget according to chunk size and model context capacity.
+   - **Minimum Similarity**: Calibrate the threshold with labeled questions and verify that score filtering is active.
+   - **Search Mode**: Select "Hybrid Search" to combine semantic generalization and keyword matching.
+
+![Attach knowledge bases in Chat Agent](/imgs/current/agent-prompt-reference.png)
+
+## Scenario 2: Orchestrate Knowledge Retrieval in Workflows
+
+In workflows, knowledge base search operates as a discrete functional node, connecting with upstream and downstream components across the visual canvas:
+
+1. Open your target workflow canvas, then drag a "Knowledge Base Search" node from the node library onto the canvas.
+2. Connect an incoming execution edge from an upstream node (such as "Workflow Start" or a "Question Classifier" node).
+3. **Configure Node Inputs**:
+   - **User Query Input**: Click the reference selector and bind to the "User Input" parameter of "Workflow Start", or link to rewritten query output from an upstream intent extraction node.
+   - **Connected Datasets**: Select one or more target knowledge bases.
+   - **Search Settings**: Set the citation token budget and similarity threshold.
+4. **Merge Multi-Dataset Searches**:
+   When parallel retrieval branches query multiple datasets, add a "Dataset Search Merge" node downstream to consolidate, deduplicate, and align similarity scores.
+5. **Downstream Execution Flow**:
+   Connect the execution output of the search node to an "AI Chat" node, and bind the search node's retrieved context to the "Referenced Knowledge" input of the AI Chat node.
+
+![Workflow knowledge base search node configuration](/imgs/current/node-dataset-search.png)
+
+## Step 3: Author Grounded System Prompt Templates
+
+To maximize the accuracy of knowledge base integration, compose strict grounding instructions in your prompt template:
 
 ```text
-Answer questions using the retrieved travel policy. State the deadline and
-required documents precisely. Cite the available sources. When the policy
-does not cover a question, explain what information is missing.
+You are an enterprise knowledge specialist. Your duty is to answer user inquiries strictly using the reference material below.
+
+Reference Documentation:
+
+Operational Principles:
+1. Extract and state facts directly supported by the reference material.
+2. Maintain an objective, disciplined tone, outlining specific policies and procedures clearly.
+3. If the reference material does not contain the required facts, state that the current knowledge base contains no record and advise contacting customer support.
 ```
 
-If the Knowledge base is missing from the selector, check the current team, [Collection permissions](/en/guide/dataset/collection_permission), and Knowledge base access. For failed model calls, check [team models](/en/guide/workspace/models) and quota.
+Bind search results to the AI Chat node's knowledge input. The dedicated knowledge reference prompt uses `{{quote}}` to insert formatted chunks; keep its default template or edit it in the reference settings.
 
-## 2. Debug answers and citations
+![Prompt reference template and parameter configuration](/imgs/current/citation-prompt-settings.png)
 
-Start a new conversation in the debug panel. For `travel-policy.txt`, use the questions below. For your own material, reuse the questions and expected clauses already verified in retrieval, plus one question outside the source’s coverage.
+## Step 4: End-to-End Testing and Publication
 
-| Question | Passing result |
-| --- | --- |
-| How long after returning must I submit travel expenses? | 15 calendar days, with that deadline in the cited passage |
-| Which documents does a claim require? | Invoice and approved travel request, both supported by the citation |
-| What is the hotel accommodation allowance? | Explains that the material lacks the allowance policy |
+1. In the right-hand testing drawer, submit a representative business query.
+2. Open "Execution Details" and review each step:
+   - Verify that the knowledge base search node triggered successfully.
+   - Confirm that recalled chunks align closely with the query topic.
+   - Verify that the generated answer incorporates the retrieved facts faithfully.
+3. Once the output meets production standards, click "Publish" in the workspace header to freeze the configuration into the active production version.
 
-Open the cited passage and check its source and text. If only the source name appears, continue through the citation-viewing options available to you; visibility depends on channel settings and permissions.
+## Next Steps
 
-For an incorrect answer, inspect the material passed to the model in the run details. Missing clauses require [retrieval checks](/en/guide/dataset/test-retrieval) for scope and parameters. When the clauses are present, inspect the prompt and the chat model's interpretation. Rerun your fixed question set in a new conversation after each change.
-
-## 3. Publish and verify
-
-Save and [publish the current configuration](/en/guide/build/publish/versions), then create or open a [shared link](/en/guide/build/publish/link). Start a new conversation through the channel, repeat the questions, and inspect answers and citations. An Application with an initial published version still needs this new Knowledge base configuration published.
-
-For differences after publishing, check the channel's Application, current published version, message history, and knowledge processing status. Success means debug and actual access pass the same fact checks.
-
-## Using a Workflow
-
-Connect the search output to the AI Chat node's knowledge citation input. See the [Knowledge base search node](/en/guide/build/workflow/nodes/dataset_search) for connections and parameters, or [your first Workflow](/en/guide/getting-started/first-workflow) for a complete lesson.
-
-Next: [Update material and verify the change](/en/guide/dataset/update-data).
+- Tag-based filtering: Learn [Collection Tag System](/en/guide/dataset/collection_tags).
+- Collaborator permissions: Study [Collection Permission Control](/en/guide/dataset/collection_permission).
+- Automated sync: Review [Data Maintenance and Incremental Updates](/en/guide/dataset/update-data).

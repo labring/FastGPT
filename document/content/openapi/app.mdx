@@ -13,6 +13,20 @@ description: 选择应用、调用发布版本，并验证输入输出和资源�
 
 需要全局变量时在 `variables` 中提供与应用声明匹配的键和值。先用应用中的固定测试输入比对 API 结果，再加入业务侧数据。
 
+```json
+{
+  "appId": "YOUR_APP_ID",
+  "messages": [
+    { "role": "user", "content": "请分析本季度的报销数据" }
+  ],
+  "variables": {
+    "department": "技术研发部",
+    "fiscalYear": 2026
+  },
+  "stream": false
+}
+```
+
 ## 工作流工具
 
 工作流工具通过声明的工具输入和输出定义调用契约，也可独立执行。调用前在界面调试该工具，发布配置，再按当前生成参考提供 `appId` 与输入变量。检查详细返回结构中的工具输出，完整字段以部署实例的 System OpenAPI 为准。

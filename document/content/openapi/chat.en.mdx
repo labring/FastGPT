@@ -15,7 +15,35 @@ Access to an existing conversation checks team and conversation permissions. [Id
 
 Change the first request to `"stream": true` and add curl's `--no-buffer`. After the stream opens, parse SSE frames containing `event:` and `data:`. Retain incomplete frames across network reads. Text fragments typically appear in `choices[0].delta.content`. Finish when `[DONE]` arrives.
 
-Detailed mode may include named events, execution status, and `flowResponses`. Dispatch by event type and handle text, status, and structured data separately. Text-only consumers still need error and disconnection handling.
+Set `detail: true` to receive detailed events. The runtime defines the following 17 event types; the endpoint, runtime version, and application determine which are emitted. With `detail: false`, answer frames use the default SSE message event. Clients should tolerate unknown event types.
+
+| Event Name | `data` Payload | Business Meaning and Processing |
+|---|---|---|
+| `answer` | `WorkflowAnswerChunk` or text `[DONE]` | Model text delta, thought delta, heartbeat, or stream completion |
+| `fastAnswer` | `WorkflowAnswerChunk` | Direct text output from designated fast-answer nodes |
+| `chatTitle` | `{ title: string }` | Suggested title generated for this conversation turn |
+| `flowNodeStatus` | `{ status: 'running', name: string }` | Node execution started, used to highlight running UI nodes |
+| `flowNodeResponse` | `ChatHistoryItemResType` | v2 single-node execution result tree with node latency and debug metadata |
+| `flowResponses` | `ChatHistoryItemResType[]` | v1 array of node execution responses emitted before completion |
+| `updateVariables` | `Record<string, any>` | Updated persistent workflow variables |
+| `interactive` | `{ interactive: { type, params } }` | User-facing interaction configuration; execution state stays on the server |
+| `workflowDuration` | `{ durationSeconds: number }` | Overall workflow execution duration in seconds |
+| `toolCall` | `{ tool: ToolModuleResponseItemType }` | Agent tool call initialization with tool identity and schema |
+| `toolParams` | `{ tool: { id: string, params: string } }` | Streamed parameter fragments for the tool call |
+| `toolResponse` | `{ tool: { id: string, response: string } }` | Output string returned by the tool execution |
+| `planStatus` | `{ planStatus: { status: 'generating' \| 'updating' } }` | Agent plan generation or status transition |
+| `plan` | `{ plan: AgentPlanType }` | Full snapshot of current Agent plan steps and execution progress |
+| `error` | `Record<string, any>` | Runtime error; mark the run as failed |
+| `skillCall` | `{ skill: SkillModuleResponseItemType }` | Skill invocation notification, when emitted by the runtime |
+| `sandboxStatus` | `SandboxStatusItemType` | Agent sandbox lifecycle status (provisioning, mount, upgrading) |
+
+During generation, the server sends an empty answer chunk every 10 seconds as a heartbeat. Configure proxy buffering and idle timeouts accordingly. Errors and network failures may close the stream before `[DONE]`; track completion and failure separately.
+
+### Interactive Node Suspension and Resumption
+
+With `detail: true`, an interactive node returns display configuration containing `type` and `params`. Render the choice or form and retain the conversation's `chatId`.
+
+Continue with a new request to the same application and `chatId`. For user selection, send the selected value as the user message content. For a form, JSON-serialize the input object into the user message content. The server restores the checkpoint from conversation history.
 
 ## Errors and retries
 
