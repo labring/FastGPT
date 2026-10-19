@@ -6,8 +6,11 @@ const powerPointXmlPathRegex = /^ppt\/(?:notesSlides\/notesSlide|slides\/slide)\
 const powerPointSlidePathRegex = /^ppt\/slides\/slide\d+\.xml$/;
 const powerPointNotesPathRegex = /^ppt\/notesSlides\/notesSlide\d+\.xml$/;
 const powerPointSlideRelsPathRegex = /^ppt\/slides\/_rels\/slide\d+\.xml\.rels$/;
-const notesSlideRelationshipType =
-  'http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide';
+const relationshipsNamespace = 'http://schemas.openxmlformats.org/package/2006/relationships';
+const notesSlideRelationshipTypes = new Set([
+  'http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide',
+  'http://purl.oclc.org/ooxml/officeDocument/relationships/notesSlide'
+]);
 const maxPowerPointEntries = 10000;
 const maxPowerPointXmlFileBytes = 10 * 1024 * 1024;
 const maxPowerPointXmlBytes = 100 * 1024 * 1024;
@@ -42,6 +45,10 @@ const readParagraphText = (paragraphNode: Element) => {
   return text;
 };
 
+/**
+ * 提取 PPTX 正文与备注，通过幻灯片关系确定备注归属。
+ * 兼容 Transitional/Strict 关系和包内相对、绝对路径；无有效关系的备注沿用编号排序。
+ */
 const parsePowerPoint = async ({
   buffer,
   encoding
@@ -181,23 +188,30 @@ const parsePowerPoint = async ({
     return match ? parseInt(match[0]) : 0;
   };
 
-  // PowerPoint numbers notes parts in the order the notes were written, not by
-  // slide: when only slide 2 has notes, they are notesSlide1.xml. The slide's
-  // relationships name its notes part, so notes are placed after that slide.
-  // Notes no slide points at keep their own number.
+  // 备注按创建顺序编号，不能与幻灯片编号直接配对；有效包内关系优先于编号回退。
   const slideOfNotes = new Map<string, number>();
   files
     .filter(({ path }) => powerPointSlideRelsPathRegex.test(path))
     .forEach(({ path, content }) => {
       const relationships = parser
         .parseFromString(content, 'text/xml')
-        .getElementsByTagName('Relationship');
+        .getElementsByTagNameNS(relationshipsNamespace, 'Relationship');
       Array.from(relationships).forEach((relationship) => {
+        const relationshipType = relationship.getAttribute('Type');
         const target = relationship.getAttribute('Target');
-        if (relationship.getAttribute('Type') !== notesSlideRelationshipType || !target) return;
-        const notesPath = target.startsWith('/')
-          ? target.slice(1)
-          : posix.normalize(posix.join('ppt/slides', target));
+        if (
+          !relationshipType ||
+          !notesSlideRelationshipTypes.has(relationshipType) ||
+          !target ||
+          relationship.getAttribute('TargetMode') === 'External'
+        ) {
+          return;
+        }
+
+        // 两种目标都规范化为包内路径，再由固定备注目录校验拒绝越界目标。
+        const notesPath = posix.normalize(
+          target.startsWith('/') ? target.slice(1) : posix.join('ppt/slides', target)
+        );
         if (powerPointNotesPathRegex.test(notesPath)) {
           slideOfNotes.set(notesPath, getPartNumber(path));
         }

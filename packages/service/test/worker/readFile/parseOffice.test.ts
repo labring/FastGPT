@@ -9,6 +9,12 @@ type PptxEntry = {
   unixPermissions?: number;
 };
 
+const relationshipsNamespace = 'http://schemas.openxmlformats.org/package/2006/relationships';
+const notesRelationshipType =
+  'http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide';
+const strictNotesRelationshipType =
+  'http://purl.oclc.org/ooxml/officeDocument/relationships/notesSlide';
+
 const createPptxWithEntries = async (entries: PptxEntry[]) => {
   const zip = new JSZip();
   entries.forEach(({ path, content, unixPermissions }) => {
@@ -23,6 +29,19 @@ const createPptxWithEntries = async (entries: PptxEntry[]) => {
 
 const createPptx = async ({ path, content, unixPermissions }: PptxEntry) =>
   createPptxWithEntries([{ path, content, unixPermissions }]);
+
+/** 构造备注编号与所属页不一致的归档，验证关系解析能覆盖按编号排序的回退。 */
+const createPptxWithSlide2Notes = (relationshipsXml: string) =>
+  createPptxWithEntries([
+    { path: 'ppt/slides/slide1.xml', content: '<a:p><a:t>Slide 1</a:t></a:p>' },
+    { path: 'ppt/slides/slide2.xml', content: '<a:p><a:t>Slide 2</a:t></a:p>' },
+    { path: 'ppt/slides/slide3.xml', content: '<a:p><a:t>Slide 3</a:t></a:p>' },
+    { path: 'ppt/slides/_rels/slide2.xml.rels', content: relationshipsXml },
+    {
+      path: 'ppt/notesSlides/notesSlide1.xml',
+      content: '<a:p><a:t>Note for slide 2</a:t></a:p>'
+    }
+  ]);
 
 const parsePptx = (buffer: Buffer) =>
   parseOffice({
@@ -77,29 +96,105 @@ describe('parseOffice', () => {
   });
 
   it.each([
-    ['相对路径', '../notesSlides/notesSlide1.xml'],
-    ['绝对路径', '/ppt/notesSlides/notesSlide1.xml']
-  ])('备注跟在引用它的幻灯片后面，而不是按备注编号排列（%s）', async (_, target) => {
-    // PowerPoint 按写备注的先后编号：只有第 2 页有备注时，备注是 notesSlide1.xml。
+    { name: '相对路径' },
+    { name: '绝对路径', target: '/ppt/notesSlides/notesSlide1.xml' },
+    { name: '相对路径规范化', target: '../notesSlides/./notesSlide1.xml' },
+    { name: '绝对路径规范化', target: '/ppt/notesSlides/../notesSlides/notesSlide1.xml' },
+    { name: '关系节点带命名空间前缀', prefix: 'pkg:' },
+    { name: 'Strict OOXML', relationshipType: strictNotesRelationshipType },
+    {
+      name: 'Strict OOXML 带前缀及绝对路径',
+      prefix: 'pkg:',
+      relationshipType: strictNotesRelationshipType,
+      target: '/ppt/notesSlides/notesSlide1.xml'
+    },
+    { name: '显式内部关系', targetMode: 'Internal' }
+  ])(
+    '备注跟在引用它的幻灯片后面（$name）',
+    async ({
+      target = '../notesSlides/notesSlide1.xml',
+      prefix = '',
+      relationshipType = notesRelationshipType,
+      targetMode = ''
+    }) => {
+      const namespaceAttribute = prefix ? `xmlns:${prefix.slice(0, -1)}` : 'xmlns';
+      const buffer = await createPptxWithSlide2Notes(`<?xml version="1.0" encoding="UTF-8"?>
+<${prefix}Relationships ${namespaceAttribute}="${relationshipsNamespace}">
+  <${prefix}Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout2.xml"/>
+  <${prefix}Relationship Id="rId2" Type="${relationshipType}" Target="${target}" ${targetMode ? `TargetMode="${targetMode}"` : ''}/>
+</${prefix}Relationships>`);
+
+      await expect(parsePptx(buffer)).resolves.toBe('Slide 1\nSlide 2\nNote for slide 2\nSlide 3');
+    }
+  );
+
+  it.each([
+    { name: '错误命名空间', namespace: 'urn:unrelated' },
+    {
+      name: '其他关系类型',
+      attributes:
+        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../notesSlides/notesSlide1.xml"'
+    },
+    { name: '缺少关系类型', attributes: 'Target="../notesSlides/notesSlide1.xml"' },
+    { name: '缺少目标', attributes: `Type="${notesRelationshipType}"` },
+    {
+      name: '外部关系',
+      attributes: `Type="${notesRelationshipType}" Target="../notesSlides/notesSlide1.xml" TargetMode="External"`
+    },
+    {
+      name: '目标不在备注目录',
+      attributes: `Type="${notesRelationshipType}" Target="../slides/slide1.xml"`
+    },
+    {
+      name: '目标越过包根目录',
+      attributes: `Type="${notesRelationshipType}" Target="../../../ppt/notesSlides/notesSlide1.xml"`
+    }
+  ])(
+    '忽略无效备注关系并保留编号回退（$name）',
+    async ({
+      namespace = relationshipsNamespace,
+      attributes = `Type="${notesRelationshipType}" Target="../notesSlides/notesSlide1.xml"`
+    }) => {
+      const buffer = await createPptxWithSlide2Notes(
+        `<Relationships xmlns="${namespace}"><Relationship Id="rId1" ${attributes}/></Relationships>`
+      );
+
+      await expect(parsePptx(buffer)).resolves.toBe('Slide 1\nNote for slide 2\nSlide 2\nSlide 3');
+    }
+  );
+
+  it('多页备注按所属页数字排序，未引用备注保留编号回退', async () => {
+    // 故意让备注先进入 ZIP，并混入两位数页码，避免排序依赖归档顺序或字典序。
     const buffer = await createPptxWithEntries([
-      { path: 'ppt/slides/slide1.xml', content: '<a:p><a:t>Slide 1</a:t></a:p>' },
-      { path: 'ppt/slides/slide2.xml', content: '<a:p><a:t>Slide 2</a:t></a:p>' },
-      { path: 'ppt/slides/slide3.xml', content: '<a:p><a:t>Slide 3</a:t></a:p>' },
-      {
-        path: 'ppt/slides/_rels/slide2.xml.rels',
-        content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout2.xml"/>
-  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" Target="${target}"/>
-</Relationships>`
-      },
       {
         path: 'ppt/notesSlides/notesSlide1.xml',
+        content: '<a:p><a:t>Note for slide 10</a:t></a:p>'
+      },
+      { path: 'ppt/slides/slide10.xml', content: '<a:p><a:t>Slide 10</a:t></a:p>' },
+      {
+        path: 'ppt/notesSlides/notesSlide2.xml',
         content: '<a:p><a:t>Note for slide 2</a:t></a:p>'
+      },
+      { path: 'ppt/slides/slide2.xml', content: '<a:p><a:t>Slide 2</a:t></a:p>' },
+      { path: 'ppt/slides/slide1.xml', content: '<a:p><a:t>Slide 1</a:t></a:p>' },
+      {
+        path: 'ppt/notesSlides/notesSlide3.xml',
+        content: '<a:p><a:t>Unreferenced note 3</a:t></a:p>'
+      },
+      { path: 'ppt/slides/slide3.xml', content: '<a:p><a:t>Slide 3</a:t></a:p>' },
+      {
+        path: 'ppt/slides/_rels/slide10.xml.rels',
+        content: `<Relationships xmlns="${relationshipsNamespace}"><Relationship Id="rId1" Type="${notesRelationshipType}" Target="/ppt/notesSlides/notesSlide1.xml"/></Relationships>`
+      },
+      {
+        path: 'ppt/slides/_rels/slide2.xml.rels',
+        content: `<Relationships xmlns="${relationshipsNamespace}"><Relationship Id="rId1" Type="${notesRelationshipType}" Target="../notesSlides/notesSlide2.xml"/></Relationships>`
       }
     ]);
 
-    await expect(parsePptx(buffer)).resolves.toBe('Slide 1\nSlide 2\nNote for slide 2\nSlide 3');
+    await expect(parsePptx(buffer)).resolves.toBe(
+      'Slide 1\nSlide 2\nNote for slide 2\nSlide 3\nUnreferenced note 3\nSlide 10\nNote for slide 10'
+    );
   });
 
   it('段落内的软换行还原成换行符', async () => {
@@ -170,21 +265,26 @@ describe('parseOffice', () => {
     await expect(parsePptx(buffer)).rejects.toThrow();
   });
 
-  it('拒绝伪造 uncompressedSize 的高膨胀归档', async () => {
-    const zip = new JSZip();
-    zip.file('ppt/slides/slide1.xml', `<a:p><a:t>${'x'.repeat(10 * 1024 * 1024 + 1)}</a:t></a:p>`);
-    const buffer = await zip.generateAsync({
-      type: 'nodebuffer',
-      platform: 'UNIX',
-      compression: 'DEFLATE',
-      compressionOptions: { level: 9 }
-    });
-    const forgedBuffer = Buffer.from(buffer);
-    const centralDirectoryOffset = findZipRecord(forgedBuffer, 0x02014b50, true);
-    forgedBuffer.writeUInt32LE(1, centralDirectoryOffset + 24);
+  it.each(['ppt/slides/slide1.xml', 'ppt/slides/_rels/slide1.xml.rels'])(
+    '拒绝伪造 uncompressedSize 的高膨胀归档（%s）',
+    async (path) => {
+      const zip = new JSZip();
+      zip.file('ppt/slides/slide1.xml', '<a:p><a:t>Hello</a:t></a:p>');
+      zip.file(path, `<a:p><a:t>${'x'.repeat(10 * 1024 * 1024 + 1)}</a:t></a:p>`);
+      const buffer = await zip.generateAsync({
+        type: 'nodebuffer',
+        platform: 'UNIX',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 9 }
+      });
+      const forgedBuffer = Buffer.from(buffer);
+      const centralDirectoryOffset = findZipRecord(forgedBuffer, 0x02014b50, true);
+      forgedBuffer.writeUInt32LE(1, centralDirectoryOffset + 24);
 
-    await expect(parsePptx(forgedBuffer)).rejects.toThrow();
-  }, 15000);
+      await expect(parsePptx(forgedBuffer)).rejects.toThrow();
+    },
+    15000
+  );
 
   it('在读取 entry 前拒绝超过数量限制的归档', async () => {
     const buffer = await createPptx({
