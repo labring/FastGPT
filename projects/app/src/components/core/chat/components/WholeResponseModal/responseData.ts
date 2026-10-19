@@ -1,7 +1,7 @@
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getChildrenResponses } from '@fastgpt/global/core/chat/utils/mergeNode';
 import type { SideTabItemType } from './types';
-import { getWorkflowBuilderToolPresentation } from '../AIResponseBox/utils';
+import { getWorkflowBuilderToolPresentation } from '../AIResponseBox/WorkflowBuilder/utils';
 
 /**
  * 将 Workflow Builder 工具的运行元数据转换为聊天区统一使用的中文名称和 Figma 图标。

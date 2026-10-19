@@ -5,10 +5,7 @@ import { useContextSelector } from 'use-context-selector';
 import { useLocalStorageState, useMemoizedFn } from 'ahooks';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import type {
-  StartChatFnProps,
-  generatingMessageProps
-} from '@/components/core/chat/ChatContainer/type';
+import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import ChatAIModelSelector from '@/pageComponents/chat/ChatWindow/ChatAIModelSelector';
@@ -289,8 +286,6 @@ const WorkflowBuilderChatContent = ({
     }
   );
 
-  const onStreamMessage = useMemoizedFn((_event: generatingMessageProps) => undefined);
-
   const ModelSelector = useMemo(
     () => (
       <ChatAIModelSelector
@@ -337,7 +332,6 @@ const WorkflowBuilderChatContent = ({
           }}
           InputLeftComponent={ModelSelector}
           onStartChat={onStartChat}
-          onStreamMessage={onStreamMessage}
           px={0}
           maxW={'100%'}
           boxBodyProps={{ px: '16px', pt: 0, maxW: '100%', mx: 0 }}

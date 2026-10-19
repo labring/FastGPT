@@ -27,7 +27,6 @@ import type {
   ReferenceItemValueType,
   ReferenceValueType
 } from '@fastgpt/global/core/workflow/type/io';
-import { StoreNodeOutputItemTypeSchema } from '@fastgpt/global/core/workflow/type/io';
 import {
   getSelectedInputRenderType,
   nodeInputIsReference
@@ -118,9 +117,7 @@ export const uiWorkflow2StoreWorkflow = ({
         childrenNodeIdListMap
       }),
       // 仅用于画布的函数不能持久化，也不属于严格 API Schema。
-      outputs: item.data.outputs.map(({ invalidCondition: _, ...output }) =>
-        StoreNodeOutputItemTypeSchema.parse(output)
-      ),
+      outputs: item.data.outputs.map(({ invalidCondition: _, ...output }) => output),
       isFolded: item.data.isFolded,
       pluginId: item.data.pluginId,
       toolConfig: item.data.toolConfig,

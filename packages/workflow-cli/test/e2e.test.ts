@@ -31,6 +31,50 @@ const createHarness = async () => {
 const jsonArgs = (dir: string, args: string[]) => [...args, '--dir', dir, '--format', 'json'];
 
 describe('PR1 through PR4 CLI end to end', () => {
+  it('rejects validating and building an isolated entry until a connected workflow is configured', async () => {
+    const { cwd, invoke } = await createHarness();
+    const dir = join(cwd, 'isolated-entry');
+    expect((await invoke(jsonArgs(dir, ['init']))).exitCode).toBe(0);
+    const before = await readFile(join(dir, 'workflow.json'), 'utf8');
+    const output = join(cwd, 'isolated-store.json');
+
+    for (const args of [['validate'], ['build', '--output', output]]) {
+      const result = await invoke(jsonArgs(dir, args));
+      expect(result.exitCode).toBe(4);
+      expect(JSON.parse(result.stderr[0]).errors[0].diagnostics).toEqual([
+        { code: 'WORKFLOW_NODE_ISOLATED', severity: 'error', nodeId: 'start' }
+      ]);
+    }
+    expect(await readFile(join(dir, 'workflow.json'), 'utf8')).toBe(before);
+    await expect(access(output)).rejects.toThrow();
+
+    expect(
+      (
+        await invoke(
+          jsonArgs(dir, [
+            'node',
+            'add',
+            '--node',
+            'answer',
+            '--template',
+            'builtin:assigned-answer',
+            '--after',
+            'start@next'
+          ])
+        )
+      ).exitCode
+    ).toBe(0);
+    expect(
+      (
+        await invoke(
+          jsonArgs(dir, ['input', 'set', '--node', 'answer', '--key', 'text', '--value', 'Ready'])
+        )
+      ).exitCode
+    ).toBe(0);
+    expect((await invoke(jsonArgs(dir, ['validate']))).exitCode).toBe(0);
+    expect((await invoke(jsonArgs(dir, ['build', '--output', output]))).exitCode).toBe(0);
+  });
+
   it('builds basic-ai with pure JSON stdout and deterministic output', async () => {
     const { cwd, invoke } = await createHarness();
     const dir = join(cwd, 'basic-ai');
@@ -1026,6 +1070,30 @@ describe('PR1 through PR4 CLI end to end', () => {
     const { cwd, invoke } = await createHarness();
     const sourceDir = join(cwd, 'legacy-source');
     await invoke(jsonArgs(sourceDir, ['init']));
+    await invoke(
+      jsonArgs(sourceDir, [
+        'node',
+        'add',
+        '--node',
+        'text',
+        '--template',
+        'builtin:text-editor',
+        '--after',
+        'start@next'
+      ])
+    );
+    await invoke(
+      jsonArgs(sourceDir, [
+        'input',
+        'set',
+        '--node',
+        'text',
+        '--key',
+        'system_textareaInput',
+        '--value',
+        'Ready'
+      ])
+    );
     await invoke(
       jsonArgs(sourceDir, ['config', 'set', '--path', 'welcomeText', '--value', 'Legacy welcome'])
     );

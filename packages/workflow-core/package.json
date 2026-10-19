@@ -123,6 +123,10 @@
     "./validation": {
       "types": "./dist/validation.d.ts",
       "import": "./dist/validation.js"
+    },
+    "./validation/model": {
+      "types": "./dist/validation/model.d.ts",
+      "import": "./dist/validation/model.js"
     }
   },
   "files": [

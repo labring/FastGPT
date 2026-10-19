@@ -243,6 +243,66 @@ describe('runFastAgentLoop', () => {
     expect(systemMessage.content).not.toContain('<tool_constraint>');
   });
 
+  it('returns an injected ask validation error to the model without pausing', async () => {
+    const validate = vi.fn(() => 'Preview markdown is required.');
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({
+        id: 'call_invalid_preview',
+        name: 'ask_user',
+        content: '```mermaid\nflowchart LR\n  A --> B\n```',
+        args: {
+          reason: 'Need workflow confirmation',
+          blockerType: 'user_choice',
+          questions: [
+            {
+              question: 'Confirm this workflow?',
+              options: [
+                { summary: 'Confirm', value: 'Confirm the workflow.' },
+                { summary: 'Revise', value: 'Revise the workflow.' }
+              ]
+            }
+          ]
+        }
+      }),
+      text({
+        requestId: 'req_after_preview_validation',
+        content: 'Recovered after preview validation.'
+      })
+    ]);
+
+    const result = await runFastAgentLoop({
+      runtime: createRuntime({
+        systemTools: {
+          ask: { enabled: true, validate }
+        }
+      }),
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'Build a workflow'
+          }
+        ]
+      }
+    });
+
+    expect(result.status).toBe('done');
+    expect(validate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        questions: [expect.objectContaining({ question: 'Confirm this workflow?' })]
+      })
+    );
+    expect(result.completeMessages).toContainEqual({
+      role: 'tool',
+      tool_call_id: 'call_invalid_preview',
+      content: 'Preview markdown is required.'
+    });
+    expect(result.assistantMessages.at(-1)).toMatchObject({
+      role: ChatCompletionRequestMessageRoleEnum.Assistant,
+      content: 'Recovered after preview validation.'
+    });
+  });
+
   it('validates sandbox calls before executing through the client', async () => {
     const sandboxClient = { exec: vi.fn() };
     const validate = vi.fn(() => 'Private workspace access denied.');

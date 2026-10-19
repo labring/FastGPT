@@ -87,7 +87,7 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
     completionPolicy: runtime.completionPolicy,
     batchToolSize: runtime.toolCatalog.batchToolSize,
     checkIsStopping: runtime.checkIsStopping,
-    validateAsk: runtime.systemTools?.ask?.validate,
+    systemTools: runtime.systemTools,
     toolCatalog: {
       runtimeTools: runtime.toolCatalog.runtimeTools,
       ...(runtime.systemTools?.ask?.enabled ? { askTool: createAskUserAgentTool() } : {}),

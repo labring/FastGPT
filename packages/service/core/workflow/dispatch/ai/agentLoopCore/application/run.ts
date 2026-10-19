@@ -10,16 +10,11 @@ import { summarizeAgentLoopCoreResult, type AgentLoopCoreOutputSummary } from '.
 import { compactAgentLoopCorePlanSnapshots } from './output/assistantResponses';
 import type { AgentLoopCoreResult } from '../domain/result';
 import type { AgentLoopCoreToolDisplayInfo } from '../domain/toolInfo';
-import {
-  createAgentLoopCoreToolEventFilter,
-  type AgentLoopCoreToolEventFilterPolicy
-} from '../adapter/toolEventFilter';
 
 export type RunAgentLoopCoreParams<TChildrenResponse = unknown> = {
   provider?: AgentLoopProviderName;
   input: AgentLoopInput<TChildrenResponse>;
   runtime: AgentLoopRuntime<TChildrenResponse>;
-  bufferedToolEventFilter?: AgentLoopCoreToolEventFilterPolicy;
   assistantResponses?: {
     extraResponses?: AIChatItemValueItemType[];
     eventTarget?: AIChatItemValueItemType[];
@@ -44,7 +39,6 @@ export const runAgentLoopCore = async <TChildrenResponse = unknown>({
   provider,
   input,
   runtime,
-  bufferedToolEventFilter,
   assistantResponses
 }: RunAgentLoopCoreParams<TChildrenResponse>): Promise<AgentLoopCoreResult<TChildrenResponse>> => {
   const eventAssistantResponses = assistantResponses?.eventTarget ?? [];
@@ -55,34 +49,28 @@ export const runAgentLoopCore = async <TChildrenResponse = unknown>({
     metaEventNames: assistantResponses?.metaEventNames
   });
   let firstTokenTime: number | undefined;
-  const toolEventFilter = createAgentLoopCoreToolEventFilter({
-    policy: bufferedToolEventFilter,
-    emitEvent: (event) => {
-      if (event.type === 'llm_request_end' && firstTokenTime === undefined) {
-        firstTokenTime = event.firstTokenTime;
-      }
-      assistantEventCollector.emitEvent(event);
-      runtime.emitEvent?.(event);
-    }
-  });
   const result = await runAgentLoop<TChildrenResponse>({
     provider,
     input,
-    runtime: { ...runtime, emitEvent: toolEventFilter.emitEvent }
+    runtime: {
+      ...runtime,
+      emitEvent: (event) => {
+        if (event.type === 'llm_request_end' && firstTokenTime === undefined) {
+          firstTokenTime = event.firstTokenTime;
+        }
+        assistantEventCollector.emitEvent(event);
+        runtime.emitEvent?.(event);
+      }
+    }
   });
-  const publicResult = {
-    ...result,
-    completeMessages: toolEventFilter.filterMessages(result.completeMessages),
-    assistantMessages: toolEventFilter.filterMessages(result.assistantMessages)
-  };
   const assistantResponseValues = compactAgentLoopCorePlanSnapshots([
     ...(assistantResponses?.extraResponses ?? []),
     ...eventAssistantResponses
   ]);
 
-  if (publicResult.status === 'paused') {
+  if (result.status === 'paused') {
     return {
-      ...publicResult,
+      ...result,
       firstTokenTime,
       status: 'interactive',
       assistantResponses: assistantResponseValues
@@ -90,7 +78,7 @@ export const runAgentLoopCore = async <TChildrenResponse = unknown>({
   }
 
   return {
-    ...publicResult,
+    ...result,
     firstTokenTime,
     assistantResponses: assistantResponseValues
   };

@@ -2,12 +2,13 @@ import { JSDOM } from 'jsdom';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import RenderWorkflowBuilderVersion from '@/components/core/chat/components/AIResponseBox/RenderWorkflowBuilderVersion';
+import RenderWorkflowBuilderVersion from '@/components/core/chat/components/AIResponseBox/WorkflowBuilder/RenderWorkflowBuilderVersion';
 import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 
 const mocks = vi.hoisted(() => ({
+  isApplying: false,
   applyVersion: vi.fn(),
   notifyVersionExpired: vi.fn()
 }));
@@ -50,6 +51,7 @@ describe('RenderWorkflowBuilderVersion', () => {
     vi.stubGlobal('document', dom.window.document);
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     vi.resetAllMocks();
+    mocks.isApplying = false;
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -102,5 +104,20 @@ describe('RenderWorkflowBuilderVersion', () => {
 
     expect(container.querySelector('button')!.textContent).toBe('workflow_builder_version_applied');
     expect(container.querySelector('button')!.disabled).toBe(true);
+  });
+
+  it('disables other version cards until the shared application finishes', async () => {
+    mocks.isApplying = true;
+    await renderAndApply();
+
+    expect(container.querySelector('button')!.disabled).toBe(true);
+    expect(mocks.applyVersion).not.toHaveBeenCalled();
+
+    mocks.isApplying = false;
+    mocks.applyVersion.mockResolvedValue({ ...version, appliedAt: new Date().toISOString() });
+    await renderAndApply({ ...version });
+
+    expect(mocks.applyVersion).toHaveBeenCalledOnce();
+    expect(container.querySelector('button')!.textContent).toBe('workflow_builder_version_applied');
   });
 });

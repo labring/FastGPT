@@ -6,12 +6,12 @@ import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo, useState } from 'react';
 import AgentAskComposer, {
   type AgentAskAnswerDetail
-} from '../../ChatContainer/ChatBox/Input/AgentAskComposer';
-import { ChatBoxContext } from '../../ChatContainer/ChatBox/Provider';
+} from '../../../ChatContainer/ChatBox/Input/AgentAskComposer';
+import { ChatBoxContext } from '../../../ChatContainer/ChatBox/Provider';
 import { useContextSelector } from 'use-context-selector';
-import { SelectedAnswerText } from '../Interactive/InteractiveChoiceCollapse';
+import { SelectedAnswerText } from '../../Interactive/InteractiveChoiceCollapse';
 import { resolveWorkflowBuilderPreviewAnswerAction } from './utils';
-import { useChatInstanceActions } from '../../ChatContainer/context/chatInstanceActionsContext';
+import { useChatInstanceActions } from '../../../ChatContainer/context/chatInstanceActionsContext';
 
 const getPreviewQuestion = (interactive: WorkflowBuilderPreviewInteractive) => {
   const { title, actions } = interactive.params;

@@ -6,6 +6,14 @@ import {
   type AgentLoopRuntime,
   type AgentLoopUsage
 } from '../domain';
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionMessageToolCall
+} from '@fastgpt/global/core/ai/llm/type';
+import type { AgentLoopEvent } from '../domain/event';
+import { isAgentLoopSandboxToolName } from '../domain/systemTool/sandbox';
+import { READ_FILES_TOOL_NAME } from '../domain/systemTool/readFile';
+import { DATASET_SEARCH_TOOL_NAME } from '../domain/systemTool/datasetSearch';
 
 export type RunAgentLoopApplicationParams<TChildrenResponse = unknown> = {
   provider: AgentLoopProvider;
@@ -19,6 +27,7 @@ export type RunAgentLoopApplicationParams<TChildrenResponse = unknown> = {
  * provider 产生 usage 时仍只调用一次 `runtime.usagePush`。这里在转发账单回调的同时
  * 收集同一批 usage，并将其作为只读 result 返回，避免 provider 另行拼装汇总后遗漏
  * 工具/压缩用量，或由业务层为了补汇总再次触发计费。
+ * 工具 visibility 在此统一作用于事件和对外消息；provider 内部上下文及恢复状态不做裁剪。
  */
 export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
   provider,
@@ -28,11 +37,130 @@ export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
   AgentLoopResult<TChildrenResponse>
 > => {
   const pushedUsages: AgentLoopUsage[] = [];
+  const systemTools = runtime.systemTools;
+  const hasVisibilityPolicy = [
+    systemTools?.sandbox,
+    systemTools?.readFile,
+    systemTools?.datasetSearch
+  ].some((tool) => tool?.enabled && tool.visibility && tool.visibility !== 'public');
+  const bufferedToolEvents = new Map<string, AgentLoopEvent[]>();
+  const internalToolCallIds = new Map<string, boolean>();
+
+  /** 只读取实际启用的系统工具配置，普通业务工具和未配置项默认公开。 */
+  const getVisibility = (toolName: string) => {
+    const tool = (() => {
+      if (isAgentLoopSandboxToolName(toolName)) return systemTools?.sandbox;
+      if (toolName === READ_FILES_TOOL_NAME) return systemTools?.readFile;
+      if (toolName === DATASET_SEARCH_TOOL_NAME) return systemTools?.datasetSearch;
+      return undefined;
+    })();
+    return tool?.enabled ? (tool.visibility ?? 'public') : 'public';
+  };
+
+  /** 完整参数边界只计算一次，后续事件和返回消息复用同一次决定。 */
+  const isInternalToolCall = (call: ChatCompletionMessageToolCall) => {
+    const cached = internalToolCallIds.get(call.id);
+    if (cached !== undefined) return cached;
+    const visibility = getVisibility(call.function.name);
+    const internal =
+      (typeof visibility === 'function'
+        ? visibility({ toolName: call.function.name, args: call.function.arguments ?? '' })
+        : visibility) === 'internal';
+    internalToolCallIds.set(call.id, internal);
+    return internal;
+  };
+
+  /** 动态策略等待完整参数；静态可见性无需延迟普通工具的流式输出。 */
+  const emitEvent = (event: AgentLoopEvent) => {
+    if (!hasVisibilityPolicy) {
+      runtime.emitEvent?.(event);
+      return;
+    }
+
+    if (event.type === 'tool_call') {
+      if (
+        typeof getVisibility(event.call.function.name) === 'function' &&
+        !internalToolCallIds.has(event.call.id)
+      ) {
+        bufferedToolEvents.set(event.call.id, [event]);
+        return;
+      }
+      if (!isInternalToolCall(event.call)) runtime.emitEvent?.(event);
+      return;
+    }
+    if (event.type === 'tool_params') {
+      if (internalToolCallIds.get(event.callId)) return;
+      const buffered = bufferedToolEvents.get(event.callId);
+      if (buffered) {
+        buffered.push(event);
+        return;
+      }
+      runtime.emitEvent?.(event);
+      return;
+    }
+    if (event.type === 'llm_request_end' && event.toolCalls?.length) {
+      const visibleToolCalls = event.toolCalls.filter((call) => {
+        const internal = isInternalToolCall(call);
+        const buffered = bufferedToolEvents.get(call.id);
+        bufferedToolEvents.delete(call.id);
+        if (!internal) buffered?.forEach((item) => runtime.emitEvent?.(item));
+        return !internal;
+      });
+      runtime.emitEvent?.(
+        visibleToolCalls.length === event.toolCalls.length
+          ? event
+          : { ...event, toolCalls: visibleToolCalls }
+      );
+      return;
+    }
+    if (event.type === 'tool_run_start' || event.type === 'tool_run_end') {
+      const buffered = bufferedToolEvents.get(event.call.id);
+      bufferedToolEvents.delete(event.call.id);
+      if (isInternalToolCall(event.call)) return;
+      buffered?.forEach((item) => runtime.emitEvent?.(item));
+      runtime.emitEvent?.(event);
+      return;
+    }
+    runtime.emitEvent?.(event);
+  };
+
+  /** 成对移除内部调用和响应；返回副本，保留 provider 的原始上下文及同条消息中的正文。 */
+  const filterMessages = (messages: ChatCompletionMessageParam[]): ChatCompletionMessageParam[] => {
+    if (!hasVisibilityPolicy) return messages;
+    // 恢复/非流式路径可能没有重放调用事件，仍按消息里的完整参数统一识别。
+    for (const message of messages) {
+      if (message.role === 'assistant') message.tool_calls?.forEach(isInternalToolCall);
+    }
+    return messages.flatMap((message) => {
+      if (message.role === 'tool' && internalToolCallIds.get(message.tool_call_id)) return [];
+      if (message.role !== 'assistant' || !message.tool_calls?.length) return [message];
+      const visibleToolCalls = message.tool_calls.filter(
+        (call) => !internalToolCallIds.get(call.id)
+      );
+      if (visibleToolCalls.length === message.tool_calls.length) return [message];
+      if (visibleToolCalls.length > 0) return [{ ...message, tool_calls: visibleToolCalls }];
+
+      const { tool_calls: _toolCalls, ...messageWithoutToolCalls } = message;
+      const hasOtherOutput =
+        message.content !== null && message.content !== undefined
+          ? true
+          : Boolean(
+              message.reasoning_content ||
+              message.interactive ||
+              message.audio ||
+              message.function_call ||
+              message.refusal
+            );
+      return hasOtherOutput ? [messageWithoutToolCalls] : [];
+    });
+  };
+
   try {
     const result = await provider.run({
       input,
       runtime: {
         ...runtime,
+        emitEvent,
         usagePush: (usages) => {
           const normalizedUsages = normalizeAgentLoopUsages(usages);
           pushedUsages.push(...normalizedUsages);
@@ -43,6 +171,8 @@ export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
 
     return {
       ...result,
+      completeMessages: filterMessages(result.completeMessages),
+      assistantMessages: filterMessages(result.assistantMessages),
       usages: pushedUsages.length > 0 ? pushedUsages : normalizeAgentLoopUsages(result.usages)
     };
   } catch (error) {
@@ -52,7 +182,7 @@ export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
       error,
       activePlan: input.activePlan,
       providerState: input.providerState,
-      completeMessages: input.messages,
+      completeMessages: filterMessages(input.messages),
       assistantMessages: [],
       requestIds: [],
       finishReason: 'error',

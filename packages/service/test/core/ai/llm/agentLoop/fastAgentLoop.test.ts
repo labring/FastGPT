@@ -192,6 +192,37 @@ describe('runFastAgentMainLoop', () => {
     });
   });
 
+  it('does not continue when cancelled while completion policy is pending', async () => {
+    let isStopping = false;
+    const continuationMessage = 'Continue until terminal facts exist.';
+    const completionPolicy = vi.fn(async () => {
+      await Promise.resolve();
+      isStopping = true;
+      return { action: 'continue' as const, message: continuationMessage };
+    });
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      text({ requestId: 'req_cancelled', content: 'phase summary' })
+    ]);
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({
+        completionPolicy,
+        checkIsStopping: () => isStopping
+      }),
+      input: {
+        messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'build it' }]
+      }
+    });
+
+    expect(result.status).toBe('aborted');
+    expect(completionPolicy).toHaveBeenCalledTimes(1);
+    expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
+    expect(result.completeMessages).not.toContainEqual({
+      role: ChatCompletionRequestMessageRoleEnum.System,
+      content: continuationMessage
+    });
+  });
+
   it('returns an error when completion policy cannot reach terminal facts within the run budget', async () => {
     mockCreateLLMResponseQueue(createLLMResponseMock, [
       text({ requestId: 'req_budget', content: 'still incomplete' })
@@ -698,59 +729,6 @@ describe('runFastAgentMainLoop', () => {
     expect(result.status).toBe('done');
     expect(getFinalAssistantText(result)).toBe('Recovered after invalid ask args.');
     expect(createLLMResponseMock).toHaveBeenCalledTimes(2);
-  });
-
-  it('returns an injected ask validation error to the model without pausing', async () => {
-    const validateAsk = vi.fn(() => 'Preview markdown is required.');
-    mockCreateLLMResponseQueue(createLLMResponseMock, [
-      toolCall({
-        id: 'call_invalid_preview',
-        name: 'ask_user',
-        content: '```mermaid\nflowchart LR\n  A --> B\n```',
-        args: {
-          reason: 'Need workflow confirmation',
-          blockerType: 'user_choice',
-          questions: [
-            {
-              question: 'Confirm this workflow?',
-              options: [
-                { summary: 'Confirm', value: 'Confirm the workflow.' },
-                { summary: 'Revise', value: 'Revise the workflow.' }
-              ]
-            }
-          ]
-        }
-      }),
-      text({
-        requestId: 'req_after_preview_validation',
-        content: 'Recovered after preview validation.'
-      })
-    ]);
-
-    const result = await runFastAgentMainLoop({
-      runtime: createRuntime({ validateAsk }),
-      input: {
-        messages: [
-          {
-            role: ChatCompletionRequestMessageRoleEnum.User,
-            content: 'Build a workflow'
-          }
-        ]
-      }
-    });
-
-    expect(result.status).toBe('done');
-    expect(validateAsk).toHaveBeenCalledWith(
-      expect.objectContaining({
-        questions: [expect.objectContaining({ question: 'Confirm this workflow?' })]
-      })
-    );
-    expect(result.completeMessages).toContainEqual({
-      role: 'tool',
-      tool_call_id: 'call_invalid_preview',
-      content: 'Preview markdown is required.'
-    });
-    expect(getFinalAssistantText(result)).toBe('Recovered after preview validation.');
   });
 
   it('normalizes empty ask_agent resume answer to none in tool message', async () => {

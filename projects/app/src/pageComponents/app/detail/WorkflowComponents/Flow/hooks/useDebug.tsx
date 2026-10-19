@@ -12,7 +12,6 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useCallback, useMemo, useState } from 'react';
 import { useReactFlow } from 'reactflow';
 import { uiWorkflow2StoreWorkflow } from '../../utils';
-import { checkWorkflowNodeAndConnection } from '../../adapters/validation';
 
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
@@ -111,29 +110,19 @@ export const useDebug = () => {
   const flowData2StoreDataAndCheck = useCallback(async () => {
     const nodes = getNodes();
 
-    const coreErrorNodeIds = checkWorkflowNodeAndConnection({
-      nodes,
-      edges,
-      chatConfig: appDetail.chatConfig
-    });
-    const {
-      issueMap,
-      hasError: hasWebError,
-      firstErrorNodeId: firstWebErrorNodeId,
-      chatConfigIssues
-    } = checkWorkflowBeforeRunOrPublish({
-      nodes,
-      edges,
-      modelData: await getWorkflowModelCheckData({
+    const { issueMap, hasError, firstErrorNodeId, errorMessages } = checkWorkflowBeforeRunOrPublish(
+      {
         nodes,
+        edges,
+        modelData: await getWorkflowModelCheckData({
+          nodes,
+          chatConfig: appDetail.chatConfig,
+          appId: appDetail._id
+        }),
         chatConfig: appDetail.chatConfig,
-        appId: appDetail._id
-      }),
-      chatConfig: appDetail.chatConfig,
-      t: workflowT
-    });
-    const hasError = hasWebError || !!coreErrorNodeIds?.length;
-    const firstErrorNodeId = firstWebErrorNodeId ?? coreErrorNodeIds?.[0];
+        t: workflowT
+      }
+    );
 
     if (!hasError) {
       onRemoveError();
@@ -161,11 +150,7 @@ export const useDebug = () => {
     toast({
       status: 'warning',
       title: t('common:core.workflow.Check Failed'),
-      description: [...Object.values(issueMap).flat(), ...chatConfigIssues]
-        .filter((issue) => issue.level === 'error')
-        .map((issue) => issue.message)
-        .filter(Boolean)
-        .join('\n')
+      description: errorMessages.join('\n')
     });
     return Promise.reject();
   }, [

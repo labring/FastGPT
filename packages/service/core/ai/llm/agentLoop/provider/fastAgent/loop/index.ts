@@ -374,7 +374,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
           return createToolResponse(parsed.error, { skipResponseCompress: true });
         }
 
-        const validationError = await runtime.validateAsk?.(parsed.ask);
+        const validationError = await runtime.systemTools?.ask?.validate?.(parsed.ask);
         if (validationError) {
           return createToolResponse(validationError, { skipResponseCompress: true });
         }

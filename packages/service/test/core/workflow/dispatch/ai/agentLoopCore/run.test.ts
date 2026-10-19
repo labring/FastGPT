@@ -1,4 +1,5 @@
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import { runAgentLoopApplication } from '@fastgpt/service/core/ai/llm/agentLoop/application/run';
 import {
   runAgentLoopCore,
   runAgentLoopCoreWithSummary
@@ -346,7 +347,7 @@ describe('runAgentLoopCore', () => {
     expect(result.assistantResponses).toEqual(eventTarget);
   });
 
-  it('keeps discarded buffered tool calls out of outward events and transcripts', async () => {
+  it('uses tool visibility from agent-loop for outward events and persisted responses', async () => {
     const forwardedEvents: any[] = [];
     const privateCall = {
       id: 'call_private',
@@ -365,84 +366,98 @@ describe('runAgentLoopCore', () => {
       }
     };
 
-    runAgentLoopMock.mockImplementation(async ({ runtime }) => {
-      runtime.emitEvent({
-        type: 'llm_request_end',
-        requestIndex: 1,
-        modelName: 'gpt-4',
-        requestId: 'req_1',
-        finishReason: 'tool_calls',
-        toolCalls: [privateCall, publicCall],
-        seconds: 0.1
-      });
-      for (const call of [privateCall, publicCall]) {
-        runtime.emitEvent({
-          type: 'tool_call',
-          call: {
-            ...call,
-            function: { ...call.function, arguments: '' }
-          }
-        });
-        runtime.emitEvent({
-          type: 'tool_params',
-          callId: call.id,
-          argsDelta: call.function.arguments
-        });
-        runtime.emitEvent({ type: 'tool_run_start', call });
-        runtime.emitEvent({
-          type: 'tool_run_end',
-          call,
-          rawResponse: call === privateCall ? 'internal access denied' : 'public result',
-          response: call === privateCall ? 'internal access denied' : 'public result',
-          errorMessage: call === privateCall ? 'INTERNAL_ACCESS_DENIED' : undefined,
-          seconds: 0.1
-        });
-      }
+    runAgentLoopMock.mockImplementation(async ({ runtime, input }) =>
+      runAgentLoopApplication({
+        runtime,
+        input,
+        provider: {
+          name: 'fastAgent',
+          run: async ({ runtime }) => {
+            runtime.emitEvent?.({
+              type: 'llm_request_end',
+              requestIndex: 1,
+              modelName: 'gpt-4',
+              requestId: 'req_1',
+              finishReason: 'tool_calls',
+              toolCalls: [privateCall, publicCall],
+              seconds: 0.1
+            });
+            for (const call of [privateCall, publicCall]) {
+              runtime.emitEvent?.({
+                type: 'tool_call',
+                call: {
+                  ...call,
+                  function: { ...call.function, arguments: '' }
+                }
+              });
+              runtime.emitEvent?.({
+                type: 'tool_params',
+                callId: call.id,
+                argsDelta: call.function.arguments
+              });
+              runtime.emitEvent?.({ type: 'tool_run_start', call });
+              runtime.emitEvent?.({
+                type: 'tool_run_end',
+                call,
+                rawResponse: call === privateCall ? 'internal access denied' : 'public result',
+                response: call === privateCall ? 'internal access denied' : 'public result',
+                errorMessage: call === privateCall ? 'INTERNAL_ACCESS_DENIED' : undefined,
+                seconds: 0.1
+              });
+            }
 
-      return {
-        status: 'done',
-        completeMessages: [
-          {
-            role: ChatCompletionRequestMessageRoleEnum.Assistant,
-            content: null,
-            tool_calls: [privateCall, publicCall]
-          },
-          {
-            role: ChatCompletionRequestMessageRoleEnum.Tool,
-            tool_call_id: privateCall.id,
-            content: 'internal access denied'
-          },
-          {
-            role: ChatCompletionRequestMessageRoleEnum.Tool,
-            tool_call_id: publicCall.id,
-            content: 'public result'
+            return {
+              status: 'done',
+              completeMessages: [
+                {
+                  role: ChatCompletionRequestMessageRoleEnum.Assistant,
+                  content: null,
+                  tool_calls: [privateCall, publicCall]
+                },
+                {
+                  role: ChatCompletionRequestMessageRoleEnum.Tool,
+                  tool_call_id: privateCall.id,
+                  content: 'internal access denied'
+                },
+                {
+                  role: ChatCompletionRequestMessageRoleEnum.Tool,
+                  tool_call_id: publicCall.id,
+                  content: 'public result'
+                }
+              ],
+              assistantMessages: [
+                {
+                  role: ChatCompletionRequestMessageRoleEnum.Tool,
+                  tool_call_id: privateCall.id,
+                  content: 'internal access denied'
+                }
+              ],
+              requestIds: ['req_1'],
+              finishReason: 'stop',
+              usages: []
+            };
           }
-        ],
-        assistantMessages: [
-          {
-            role: ChatCompletionRequestMessageRoleEnum.Tool,
-            tool_call_id: privateCall.id,
-            content: 'internal access denied'
-          }
-        ],
-        requestIds: ['req_1'],
-        finishReason: 'stop',
-        usages: []
-      };
-    });
+        }
+      })
+    );
 
     const result = await runAgentLoopCore({
       input: { messages: [] },
       runtime: {
+        teamId: 'team',
         llmParams: { model: 'gpt-4' },
         toolCatalog: { runtimeTools: [] },
         executeTool: vi.fn(),
+        systemTools: {
+          sandbox: {
+            enabled: true,
+            client: {},
+            visibility: ({ args }: { args: string }) =>
+              args.includes('/transaction/') ? 'internal' : 'public'
+          }
+        },
         emitEvent: (event) => forwardedEvents.push(event)
       } as any,
-      bufferedToolEventFilter: {
-        shouldBuffer: (call) => call.function.name.startsWith('sandbox_'),
-        shouldDiscard: (call) => call.function.arguments.includes('/transaction/')
-      },
       assistantResponses: {
         getEventToolInfo: () => ({ name: 'Sandbox read file' })
       }

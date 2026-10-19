@@ -15,7 +15,10 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useMemo, useState } from 'react';
 import { accordionButtonStyle } from './constants';
-import { getToolDisplayName, getWorkflowBuilderToolPresentation } from './utils';
+import {
+  getWorkflowBuilderToolDisplayName,
+  getWorkflowBuilderToolPresentation
+} from './WorkflowBuilder/utils';
 
 const formatJson = (value: string) => {
   try {
@@ -116,7 +119,7 @@ const RenderTool = React.memo(function RenderTool({
   const isToolGenerating = showAnimation && tool.response === undefined;
   const workflowBuilderPresentation = getWorkflowBuilderToolPresentation(tool.functionName);
   const displayAvatar = tool.toolAvatar || workflowBuilderPresentation?.avatar || '';
-  const displayName = getToolDisplayName({ ...tool, t });
+  const displayName = getWorkflowBuilderToolDisplayName({ ...tool, t });
 
   return (
     <Accordion

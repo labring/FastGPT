@@ -16,7 +16,7 @@ export const collectWorkflowBindings = (document: WorkflowDocument): WorkflowBin
         return [];
 
       const defaultPolicy = meta.defaultPolicy;
-      const configured = hasConfiguredValue(input.value);
+      const configured = hasConfiguredValue(input.value ?? input.defaultValue);
       const bindingRequired = input.required === true || meta.bindingRequired === true;
       const status = (() => {
         if (!configured && bindingRequired) return 'missing' as const;

@@ -1,9 +1,7 @@
 import { Box } from '@chakra-ui/react';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import i18next from 'i18next';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import React, { useEffect, useMemo, useRef } from 'react';
-import { getToolDisplayName } from './utils';
+import { getWorkflowBuilderToolDisplayName } from './WorkflowBuilder/utils';
 
 const PROCESSING_PREVIEW_MAX_LENGTH = 8192;
 
@@ -96,22 +94,17 @@ const ProcessingPreviewBody = React.memo(function ProcessingPreviewBody({
   );
 });
 
+/** 使用调用方当前语言生成预览标题，翻译函数必须显式传入。 */
 export const getProcessingPreviewLabel = (
   value: AIChatItemValueItemType,
-  t?: (key: any) => string
+  t: (key: string) => string
 ) => {
   const tool = value.tools?.[value.tools.length - 1] ?? value.tool;
   if (tool) {
-    return getToolDisplayName({ ...tool, t });
+    return getWorkflowBuilderToolDisplayName({ ...tool, t });
   }
   if (value.reasoning?.content && !value.hideReason) {
-    const rawKey = 'chat:history_generating';
-    if (t) return t(rawKey);
-    if (i18next.isInitialized) {
-      const translated = i18next.t(rawKey);
-      if (translated && translated !== rawKey) return translated;
-    }
-    return i18nT(rawKey);
+    return t('chat:history_generating');
   }
 
   return '';

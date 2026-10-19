@@ -17,7 +17,6 @@ import {
 } from '@fastgpt/global/core/app/formEdit/utils';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { checkWorkflowNodeAndConnection } from '../adapters/validation';
 import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
@@ -237,25 +236,14 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         if (!hideTip) toast({ status: 'error', title: t('common:model_catalog_load_failed') });
         return;
       }
-      const coreErrorNodeIds = checkWorkflowNodeAndConnection({
-        nodes,
-        edges,
-        chatConfig: appDetail.chatConfig
-      });
-      const {
-        issueMap,
-        hasError: hasWebError,
-        firstErrorNodeId: firstWebErrorNodeId,
-        chatConfigIssues
-      } = checkWorkflowBeforeRunOrPublish({
-        nodes,
-        edges,
-        modelData,
-        chatConfig: appDetail.chatConfig,
-        t
-      });
-      const hasError = hasWebError || !!coreErrorNodeIds?.length;
-      const firstErrorNodeId = firstWebErrorNodeId ?? coreErrorNodeIds?.[0];
+      const { issueMap, hasError, firstErrorNodeId, errorMessages } =
+        checkWorkflowBeforeRunOrPublish({
+          nodes,
+          edges,
+          modelData,
+          chatConfig: appDetail.chatConfig,
+          t
+        });
 
       if (!hasError) {
         onRemoveError();
@@ -285,11 +273,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         toast({
           status: 'warning',
           title: t('common:core.workflow.Check Failed'),
-          description: [...Object.values(issueMap).flat(), ...chatConfigIssues]
-            .filter((issue) => issue.level === 'error')
-            .map((issue) => issue.message)
-            .filter(Boolean)
-            .join('\n')
+          description: errorMessages.join('\n')
         });
       }
     },
@@ -333,8 +317,8 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         nodes,
         edges,
         modelData,
-        t,
-        chatConfig: appDetail.chatConfig
+        chatConfig: appDetail.chatConfig,
+        t
       });
       onSyncWorkflowCheckIssues(issueMap);
     };

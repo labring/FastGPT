@@ -55,7 +55,7 @@ const RenderWorkflowBuilderVersion = ({
   );
 
   const run = async (callback: () => Promise<void>) => {
-    if (loading) return;
+    if (loading || actions?.isApplying) return;
     setLoading(true);
     try {
       await callback();
@@ -108,7 +108,8 @@ const RenderWorkflowBuilderVersion = ({
   const isUnavailable = buttonState === 'expired';
   const buttonBackground =
     buttonState === 'loading' || isUnavailable ? 'rgba(51, 112, 255, 0.30)' : '#3370FF';
-  const isActionDisabled = !actions || isUnavailable || buttonState === 'applied';
+  const isActionDisabled =
+    !actions || actions.isApplying || isUnavailable || buttonState === 'applied';
 
   return (
     <Flex

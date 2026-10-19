@@ -1,14 +1,13 @@
 import type { AppDetailType } from '@fastgpt/global/core/app/type';
-import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 
-/** 合并 Builder 应用后的系统配置；应用名称和简介始终由用户管理。 */
+/** 合并导入流程归一化后的聊天配置，保留用户管理的应用名称与简介。 */
 export const mergeWorkflowBuilderAppliedAppDetail = ({
   current,
-  targetDocument
+  chatConfig
 }: {
   current: AppDetailType;
-  targetDocument: WorkflowDocument;
+  chatConfig: AppDetailType['chatConfig'];
 }): AppDetailType => ({
   ...current,
-  chatConfig: targetDocument.chatConfig
+  chatConfig
 });

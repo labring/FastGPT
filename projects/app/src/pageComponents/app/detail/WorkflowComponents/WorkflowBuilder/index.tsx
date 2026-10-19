@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { Box, Button, Flex, IconButton, Portal, Text } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
+import { useMemoizedFn } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -102,6 +103,12 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
   );
   const chatPanelRef = useRef<WorkflowBuilderChatPanelRef>(null);
   const [builderChatId, setBuilderChatId] = useState('');
+  const applyingVersionRef = useRef(false);
+  const [isApplyingVersion, setIsApplyingVersion] = useState(false);
+  const getCurrentWorkflow = useMemoizedFn(() => {
+    const workflow = flowData2StoreData();
+    return workflow ? { ...workflow, chatConfig: appDetail.chatConfig } : undefined;
+  });
   const showApplyResultToast = useCallback(
     ({ status, message }: { status: 'success' | 'error'; message: string }) =>
       toast({
@@ -126,13 +133,17 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
     [showApplyResultToast, t]
   );
 
-  /** 加载归档版本、覆盖画布、记录“我的编辑”快照，最后幂等标记应用时间。 */
+  /** 同一画布串行应用版本；锁覆盖加载、写入和失败恢复，避免旧请求回滚较新的版本。 */
   const applyVersion = useCallback(
     async (version: WorkflowBuilderVersion, responseChatItemId: string) => {
       if (!builderChatId) throw new Error('Workflow Builder chat is not ready');
-      let previousWorkflow: ReturnType<typeof flowData2StoreData>;
+      // ref 在首次 await 前同步上锁，防止按钮状态刷新前的连续点击绕过互斥。
+      if (applyingVersionRef.current) throw new Error('Workflow Builder version is being applied');
+      applyingVersionRef.current = true;
+      setIsApplyingVersion(true);
+      let previousWorkflow: ReturnType<typeof getCurrentWorkflow> | undefined;
+      let hasAppliedWorkflow = false;
       let hasCommittedVersion = false;
-      const previousChatConfig = appDetail.chatConfig;
       try {
         const loaded = await loadWorkflowBuilderVersion({
           appId,
@@ -140,8 +151,6 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
           responseChatItemId
         });
         const targetDocument = parseCompatibleWorkflowDocument(loaded.document);
-        previousWorkflow = flowData2StoreData();
-        if (!previousWorkflow) throw new Error('Workflow Builder current canvas is unavailable');
         const modelList = await getModelList();
         const defaultModelIds = useUserModelStore.getState().defaultModelIds;
         const workflowConfig = await parseWorkflowImportConfig({
@@ -156,12 +165,17 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
           modelReferencePolicy: 'fallback',
           modelCatalogLoaded: true
         });
+        // 预加载不修改画布；写入前再取最新快照，失败时保留用户等待期间的编辑。
+        previousWorkflow = getCurrentWorkflow();
+        if (!previousWorkflow) throw new Error('Workflow Builder current canvas is unavailable');
         const workflowDataRevision = await initData(workflowConfig);
-        const appliedChatConfig = workflowConfig.chatConfig ?? previousChatConfig;
+        hasAppliedWorkflow = true;
+        const appliedChatConfig = workflowConfig.chatConfig ?? previousWorkflow.chatConfig;
         setAppDetail((current) =>
           mergeWorkflowBuilderAppliedAppDetail({
             current,
-            targetDocument
+            // 归档用于提交与校验 checksum；画布必须保留导入时解析后的模型配置。
+            chatConfig: appliedChatConfig
           })
         );
         const autoLayoutResult = await requestAutoLayout({
@@ -213,14 +227,18 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
           });
         }
         try {
-          if (previousWorkflow && !hasCommittedVersion) {
-            await initData({ ...previousWorkflow, chatConfig: previousChatConfig });
+          if (previousWorkflow && hasAppliedWorkflow && !hasCommittedVersion) {
+            const previousChatConfig = previousWorkflow.chatConfig;
+            await initData(previousWorkflow);
             setAppDetail((current) => ({ ...current, chatConfig: previousChatConfig }));
           }
         } catch {
           // 恢复失败不覆盖原始应用错误。
         }
         throw error;
+      } finally {
+        applyingVersionRef.current = false;
+        setIsApplyingVersion(false);
       }
     },
     [
@@ -229,7 +247,7 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
       builderChatId,
       getEdges,
       getNodes,
-      flowData2StoreData,
+      getCurrentWorkflow,
       initData,
       pushPastSnapshot,
       requestAutoLayout,
@@ -242,6 +260,7 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
   );
 
   const versionActions: WorkflowBuilderVersionActions = {
+    isApplying: isApplyingVersion,
     applyVersion,
     notifyVersionExpired
   };
@@ -300,6 +319,7 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
                 letterSpacing="0.5px"
                 boxShadow="0 0 1px rgba(19, 51, 107, 0.08), 0 1px 2px rgba(19, 51, 107, 0.05)"
                 _hover={{ bg: '#2B5FD9' }}
+                isDisabled={isApplyingVersion}
                 onClick={() => {
                   dismissBanner();
                   void applyVersion(latestTarget.version, latestTarget.responseChatItemId).catch(

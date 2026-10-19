@@ -2,9 +2,8 @@ import {
   getRemovalNodeIdsWithCore,
   validateConnectionWithCore
 } from '@/pageComponents/app/detail/WorkflowComponents/adapters/command';
-import { validateWorkflowForWeb } from '@/pageComponents/app/detail/WorkflowComponents/adapters/validation';
+import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/check/check';
 import { storeEdge2RenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
-import { WorkflowCommandError } from '@fastgpt/workflow-core/domain/diagnostic';
 import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
 import { compileStoreWorkflow } from '@fastgpt/workflow-core/store/compile';
 import fixture from '@fastgpt/workflow-core/test/fixtures/basic-static/workflow.json';
@@ -36,9 +35,9 @@ describe('Workflow Core command adapters', () => {
         connection: graph.edges[0]
       })
     ).toEqual({ status: 'success', data: undefined });
-    expect(validateWorkflowForWeb(graph)).toMatchObject({
-      source: 'shared',
-      nodeIds: undefined
+    expect(checkWorkflowBeforeRunOrPublish(graph)).toMatchObject({
+      hasError: false,
+      errorNodeIds: []
     });
   });
 
@@ -65,26 +64,29 @@ describe('Workflow Core command adapters', () => {
   });
 });
 
-describe('validateWorkflowForWeb', () => {
-  it('uses legacy validation when an existing edge cannot be projected', () => {
+describe('shared Web workflow checks', () => {
+  it('reports an unsupported historical edge through the shared diagnostic pipeline', () => {
     const graph = createGraph();
     graph.edges[0].targetHandle = 'legacy-handle';
 
-    expect(validateWorkflowForWeb(graph)).toMatchObject({
-      source: 'legacy',
-      nodeIds: undefined,
-      adapterError: expect.any(WorkflowCommandError)
+    expect(checkWorkflowBeforeRunOrPublish(graph)).toMatchObject({
+      hasError: true,
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({ code: 'WORKFLOW_EDGE_HANDLE_UNSUPPORTED' })
+      ])
     });
   });
 
-  it('still rejects missing required inputs after falling back to legacy validation', () => {
+  it('continues checking required inputs after an edge projection error', () => {
     const graph = createGraph();
     graph.edges[0].targetHandle = 'legacy-handle';
     graph.nodes.find((node) => node.data.nodeId === 'text')!.data.inputs[0].value = '';
 
-    expect(validateWorkflowForWeb(graph)).toMatchObject({
-      source: 'legacy',
-      nodeIds: ['text']
+    expect(checkWorkflowBeforeRunOrPublish(graph)).toMatchObject({
+      hasError: true,
+      issueMap: {
+        text: expect.arrayContaining([expect.objectContaining({ code: 'required_input_empty' })])
+      }
     });
   });
 
@@ -92,9 +94,9 @@ describe('validateWorkflowForWeb', () => {
     const graph = createGraph();
     graph.edges.push({ ...graph.edges[0], id: 'duplicate-edge' });
 
-    expect(validateWorkflowForWeb(graph)).toMatchObject({
-      source: 'shared',
-      nodeIds: expect.arrayContaining(['start', 'text']),
+    expect(checkWorkflowBeforeRunOrPublish(graph)).toMatchObject({
+      hasError: true,
+      errorNodeIds: expect.arrayContaining(['start', 'text']),
       diagnostics: expect.arrayContaining([
         expect.objectContaining({ code: 'WORKFLOW_EDGE_DUPLICATED', severity: 'error' })
       ])

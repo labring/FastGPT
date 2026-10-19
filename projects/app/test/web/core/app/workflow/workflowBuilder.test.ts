@@ -757,7 +757,7 @@ describe('Workflow Builder Web Adapter', () => {
     expect(
       mergeWorkflowBuilderAppliedAppDetail({
         current,
-        targetDocument: document
+        chatConfig: document.chatConfig
       })
     ).toMatchObject({
       name: 'Old Name',

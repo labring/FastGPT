@@ -11,6 +11,7 @@ import QuickQuestionButton from '@/components/core/chat/QuickQuestionButton';
 import { useContextSelector } from 'use-context-selector';
 import { QuickReplyContext } from '../../context/quickReplyContext';
 import { useChatInstanceActions } from '../../context/chatInstanceActionsContext';
+import { useMemoizedFn } from 'ahooks';
 
 type ScrollDataComponent = ({
   children,
@@ -63,6 +64,8 @@ const AppChatMain = ({
   // 由 sendPrompt 内部校验变量，行为与旧版 welcomeText 内嵌的 quick-replies 一致。
   const onQuickReplyClick = useContextSelector(QuickReplyContext, (v) => v.onQuickReplyClick);
   const { sendMessage } = useChatInstanceActions();
+  const onSendQuestion = useMemoizedFn((text: string) => sendMessage({ text }));
+  const enableQuickReplies = useContextSelector(QuickReplyContext, (v) => v.enableQuickReplies);
 
   return (
     <ScrollData
@@ -93,7 +96,13 @@ const AppChatMain = ({
           maxW={workflowBuilderStyle ? '100%' : ['calc(100% - 25px)', ChatBoxContentMaxWidth]}
           mx={workflowBuilderStyle ? 0 : 'auto'}
         >
-          {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
+          {!!welcomeText && (
+            <WelcomeBox
+              welcomeText={welcomeText}
+              onSendQuestion={onSendQuestion}
+              onQuickReplyClick={enableQuickReplies ? onQuickReplyClick : undefined}
+            />
+          )}
           {visibleWelcomeQuestions.length > 0 && (
             <Flex w={'100%'} flexDirection={'column'} alignItems={'flex-start'} gap={2}>
               {visibleWelcomeQuestions.map((text, index) => (

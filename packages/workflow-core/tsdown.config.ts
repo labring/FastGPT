@@ -31,7 +31,8 @@ export default defineConfig({
     'template/provider': 'src/template/provider.ts',
     'template/type': 'src/template/type.ts',
     'template/valueSchema': 'src/template/valueSchema.ts',
-    validation: 'src/validation/index.ts'
+    validation: 'src/validation/index.ts',
+    'validation/model': 'src/validation/model.ts'
   },
   format: 'esm',
   dts: {

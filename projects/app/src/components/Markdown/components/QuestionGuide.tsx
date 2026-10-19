@@ -5,12 +5,15 @@ import ChatBoxDivider from '@/components/core/chat/Divider';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useChatInstanceActions } from '../../core/chat/ChatContainer/context/chatInstanceActionsContext';
+import type { MarkdownActionProps } from '../type';
 
-const QuestionGuide = ({ text }: { text: string }) => {
+const QuestionGuide = ({
+  text,
+  onSendQuestion,
+  onEditQuestion
+}: { text: string } & Pick<MarkdownActionProps, 'onSendQuestion' | 'onEditQuestion'>) => {
   const theme = useTheme();
   const { t } = useTranslation();
-  const { fillInput, sendMessage } = useChatInstanceActions();
   const questionGuides = useMemo(() => {
     try {
       const json = JSON.parse(text);
@@ -61,27 +64,31 @@ const QuestionGuide = ({ text }: { text: string }) => {
               lineHeight={0}
               bg={`linear-gradient(to left, white,white min(60px,100%),rgba(255,255,255,0) 80%)`}
             >
-              <MyTooltip label={t('common:core.chat.markdown.Edit Question')}>
-                <MyIcon
-                  name={'edit'}
-                  w={'14px'}
-                  cursor={'pointer'}
-                  _hover={{
-                    color: 'green.600'
-                  }}
-                  onClick={() => fillInput({ text })}
-                />
-              </MyTooltip>
-              <MyTooltip label={t('common:core.chat.markdown.Send Question')}>
-                <MyIcon
-                  ml={4}
-                  name={'core/chat/sendLight'}
-                  w={'14px'}
-                  cursor={'pointer'}
-                  _hover={{ color: 'primary.500' }}
-                  onClick={() => sendMessage({ text })}
-                />
-              </MyTooltip>
+              {onEditQuestion && (
+                <MyTooltip label={t('common:core.chat.markdown.Edit Question')}>
+                  <MyIcon
+                    name={'edit'}
+                    w={'14px'}
+                    cursor={'pointer'}
+                    _hover={{
+                      color: 'green.600'
+                    }}
+                    onClick={() => onEditQuestion(text)}
+                  />
+                </MyTooltip>
+              )}
+              {onSendQuestion && (
+                <MyTooltip label={t('common:core.chat.markdown.Send Question')}>
+                  <MyIcon
+                    ml={4}
+                    name={'core/chat/sendLight'}
+                    w={'14px'}
+                    cursor={'pointer'}
+                    _hover={{ color: 'primary.500' }}
+                    onClick={() => onSendQuestion(text)}
+                  />
+                </MyTooltip>
+              )}
             </Box>
           </Flex>
         ))}

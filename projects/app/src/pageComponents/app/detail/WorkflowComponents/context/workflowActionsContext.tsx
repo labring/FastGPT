@@ -257,8 +257,8 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         nodes,
         edges,
         modelData,
-        nodeId,
         chatConfig,
+        nodeId,
         t
       });
 
@@ -325,7 +325,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         )
       )
         return;
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, modelData, t, chatConfig });
+      const issueMap = checkWorkflowNodeIssues({ nodes, edges, modelData, chatConfig, t });
       onSyncWorkflowCheckIssues(issueMap);
     }, 400);
   }, [appId, chatConfig, edges, getNodes, onSyncWorkflowCheckIssues, t]);

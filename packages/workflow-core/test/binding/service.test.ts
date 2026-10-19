@@ -4,6 +4,11 @@ import { collectWorkflowBindings, getWorkflowBindingDiagnostics } from '../../sr
 import { createWorkflowDocument } from '../../src/domain/document';
 import { parseNodeTemplateRef } from '../../src/template/type';
 import { describe, expect, it } from 'vitest';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 const dependencies = { templateProvider: builtinTemplateProvider, locale: 'en' };
 
@@ -111,6 +116,36 @@ describe('collectWorkflowBindings', () => {
         inputKey: 'system_httpReqUrl',
         params: { defaultPolicy: 'userRequired' }
       }
+    ]);
+  });
+
+  it('uses runtime defaults to determine whether a binding is configured', () => {
+    const document = createWorkflowDocument({
+      nodes: [
+        {
+          nodeId: 'http',
+          name: 'HTTP',
+          flowNodeType: FlowNodeTypeEnum.httpRequest468,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.httpReqUrl,
+              label: '',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              defaultValue: 'https://example.com'
+            }
+          ],
+          outputs: []
+        }
+      ]
+    });
+    expect(collectWorkflowBindings(document)).toEqual([]);
+    document.nodes[0].inputs[0].value = '';
+    expect(collectWorkflowBindings(document)).toEqual([
+      expect.objectContaining({
+        nodeId: 'http',
+        inputKey: NodeInputKeyEnum.httpReqUrl,
+        status: 'missing'
+      })
     ]);
   });
 });

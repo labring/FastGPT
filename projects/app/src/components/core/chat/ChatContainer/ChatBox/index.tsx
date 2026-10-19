@@ -60,7 +60,7 @@ import { useChatGenerate } from './hooks/useChatGenerate';
 import { useChatRecordActions } from './hooks/useChatRecordActions';
 import { useChatFeedbackActions } from './hooks/useChatFeedbackActions';
 import ChatBoxModals from './components/ChatBoxModals';
-import { WorkflowBuilderPreviewComposer } from '../../components/AIResponseBox/RenderWorkflowBuilderPreviewInteractive';
+import { WorkflowBuilderPreviewComposer } from '../../components/AIResponseBox/WorkflowBuilder/RenderWorkflowBuilderPreviewInteractive';
 import type { ChatRecordsListProps } from './components/ChatRecordsList';
 import AppChatMain from './components/AppChatMain';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -100,8 +100,6 @@ type Props = OutLinkChatAuthProps &
         isNewChat?: boolean;
       }
     >;
-    /** 监听普通生成和恢复生成的原始 SSE 消息，不介入 ChatBox 内部渲染。 */
-    onStreamMessage?: (message: Parameters<StartChatFnProps['generatingMessage']>[0]) => void;
     onTriggerRefresh?: () => void;
     /** 已读标记由外部页面注入，ChatBox 不直接耦合普通 App history 接口。 */
     onMarkChatRead?: (data: MarkChatReadBodyType) => Promise<unknown>;
@@ -165,7 +163,6 @@ const ChatBox = ({
   active = true,
   disabledSendTip,
   onStartChat,
-  onStreamMessage,
   chatType,
   onTriggerRefresh,
   onMarkChatRead,
@@ -383,7 +380,6 @@ const ChatBox = ({
 
   const { abortRequest, flushGeneratingMessages, generatingMessage, sendPrompt } = useChatGenerate({
     onStartChat,
-    onStreamMessage,
     isRoundPending,
     chatControllerRef: chatController,
     questionGuideControllerRef: questionGuideController,

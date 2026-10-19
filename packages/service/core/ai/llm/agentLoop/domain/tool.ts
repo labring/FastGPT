@@ -68,6 +68,15 @@ export type AgentLoopAskValidator = (
   ask: AgentAskPayload
 ) => string | undefined | Promise<string | undefined>;
 
+/**
+ * 普通系统工具默认对外可见；动态策略在完整参数到达后同步决定本次调用的可见性。
+ * internal 仅隐藏事件与对外 transcript，模型上下文、工具执行和用量保持完整。
+ */
+type AgentLoopToolVisibility =
+  | 'public'
+  | 'internal'
+  | ((params: { toolName: string; args: string }) => 'public' | 'internal');
+
 export type AgentLoopSystemTools = {
   plan?: {
     enabled: boolean;
@@ -82,15 +91,18 @@ export type AgentLoopSystemTools = {
     client: SandboxClient;
     /** 业务访问限制在执行前校验，所有工具仍统一通过 client 执行。 */
     validate?: SandboxToolCallValidator;
+    visibility?: AgentLoopToolVisibility;
   };
   readFile?: {
     enabled: boolean;
     maxFileAmount: number;
     execute: AgentLoopReadFileExecutor;
+    visibility?: AgentLoopToolVisibility;
   };
   datasetSearch?: {
     enabled: boolean;
     execute: AgentLoopDatasetSearchExecutor;
     currentInputFiles?: string[];
+    visibility?: AgentLoopToolVisibility;
   };
 };

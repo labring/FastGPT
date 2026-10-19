@@ -93,7 +93,6 @@ type QueuedGeneratingMessage = generatingMessageProps & {
 
 type UseChatGenerateProps = {
   onStartChat?: (e: StartChatFnProps) => Promise<{ responseText: string; isNewChat?: boolean }>;
-  onStreamMessage?: (message: generatingMessageProps) => void;
   isRoundPending: boolean;
   chatControllerRef: MutableRefObject<AbortController>;
   questionGuideControllerRef: MutableRefObject<AbortController>;
@@ -141,7 +140,6 @@ const isAbortByLeave = (reason: unknown) => {
  */
 export const useChatGenerate = ({
   onStartChat,
-  onStreamMessage,
   isRoundPending,
   chatControllerRef,
   questionGuideControllerRef,
@@ -621,8 +619,6 @@ export const useChatGenerate = ({
 
   const generatingMessage = useMemoizedFn(
     (message: generatingMessageProps & { autoTTSResponse?: boolean }) => {
-      onStreamMessage?.(message);
-
       if (message.event === SseResponseEventEnum.chatTitle && message.title) {
         setChatBoxData((state) =>
           state.sourceKey === sourceKey && state.chatId === chatId

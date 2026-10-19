@@ -11,10 +11,10 @@ import type { SandboxClient } from '../../../../../sandbox/application/runtime/c
 import type { SandboxToolCallValidator } from '../../../../../sandbox/application/toolCall/type';
 import type { AgentLoopToolCatalog } from '../tools';
 import type { AgentLoopDatasetSearchExecutor } from '../../../domain/systemTool/datasetSearch';
+import type { AgentLoopSystemTools } from '../../../domain/tool';
 import type {
   AgentLoopChildrenInteractiveParams,
   AgentLoopCompletionPolicy,
-  AgentLoopAskValidator,
   AgentLoopEvent,
   AgentLoopInteractiveToolExecuteParams,
   AgentLoopPendingMainContext,
@@ -55,7 +55,7 @@ export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   completionPolicy?: AgentLoopCompletionPolicy;
   batchToolSize?: number;
   checkIsStopping?: () => boolean;
-  validateAsk?: AgentLoopAskValidator;
+  systemTools?: AgentLoopSystemTools;
   toolCatalog: AgentLoopToolCatalog;
   executeTool: (e: {
     call: ChatCompletionMessageToolCall;

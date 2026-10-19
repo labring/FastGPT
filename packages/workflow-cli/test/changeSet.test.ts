@@ -37,6 +37,30 @@ const createHarness = async () => {
     };
   };
   await invoke({ args: ['init', '--name', 'Initial'] });
+  // 确认门禁的样例从可运行工作流开始，避免孤立入口先触发完整性校验。
+  expect(
+    (
+      await invoke({
+        args: [
+          'node',
+          'add',
+          '--node',
+          'answer',
+          '--template',
+          'builtin:assigned-answer',
+          '--after',
+          'start@next'
+        ]
+      })
+    ).exitCode
+  ).toBe(0);
+  expect(
+    (
+      await invoke({
+        args: ['input', 'set', '--node', 'answer', '--key', 'text', '--value', 'Ready']
+      })
+    ).exitCode
+  ).toBe(0);
   return { cwd, dir, invoke };
 };
 
@@ -66,6 +90,37 @@ const plan = async ({
   });
 
 describe('PR4 ChangeSet CLI', () => {
+  it('rejects applying a plan that leaves an isolated entry without writing', async () => {
+    const { dir, invoke } = await createHarness();
+    const before = await readFile(join(dir, 'workflow.json'), 'utf8');
+    const planned = await invoke({
+      args: ['changeset', 'plan', '--input', '-'],
+      stdin: JSON.stringify({
+        schemaVersion: 'fastgpt-workflow-changeset/v1',
+        baseChecksum: (await inspect(invoke)).stdout.checksum,
+        commands: [{ type: 'node.remove', nodeId: 'answer' }]
+      })
+    });
+    expect(planned.exitCode).toBe(0);
+    expect(planned.stdout.result.diagnostics).toEqual([
+      { code: 'WORKFLOW_NODE_ISOLATED', severity: 'error', nodeId: 'start' }
+    ]);
+    const applied = await invoke({
+      args: [
+        'changeset',
+        'apply',
+        '--plan',
+        '-',
+        '--confirm',
+        planned.stdout.result.targetChecksum
+      ],
+      stdin: JSON.stringify(planned.stdout.result)
+    });
+    expect(applied.exitCode).toBe(4);
+    expect(applied.stderr.errors[0].diagnostics).toEqual(planned.stdout.result.diagnostics);
+    expect(await readFile(join(dir, 'workflow.json'), 'utf8')).toBe(before);
+  });
+
   it('plans through stdin, supports an optional file, and applies only after checksum confirmation', async () => {
     const { cwd, dir, invoke } = await createHarness();
     const before = await readFile(join(dir, 'workflow.json'), 'utf8');

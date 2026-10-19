@@ -138,7 +138,7 @@ describe('workflow model validation', () => {
         nodeId: 'model-node',
         flowNodeType,
         name: 'Model node',
-        inputs,
+        inputs: inputs.map((input) => ({ label: '', ...input })),
         outputs: []
       }
     }) as Node<FlowNodeItemType>;

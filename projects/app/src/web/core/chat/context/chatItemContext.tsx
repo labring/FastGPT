@@ -10,12 +10,13 @@ import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { type SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
-import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import type { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
 import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
 
 export type WorkflowBuilderVersionActions = {
+  /** 所有版本卡与画布横幅共享的应用状态。 */
+  isApplying: boolean;
   applyVersion: (
     version: WorkflowBuilderVersion,
     responseChatItemId: string
@@ -130,10 +131,10 @@ export const ChatItemContext = createContext<ChatItemContextType>({
   // @ts-ignore
   variablesForm: undefined,
   pluginRunTab: PluginRunBoxTabEnum.input,
-  setPluginRunTab: function (value: React.SetStateAction<PluginRunBoxTabEnum>): void {
+  setPluginRunTab: function (_value: React.SetStateAction<PluginRunBoxTabEnum>): void {
     throw new Error('Function not implemented.');
   },
-  resetVariables: function (props?: {
+  resetVariables: function (_props?: {
     variables: Record<string, any> | undefined;
     variableList?: VariableItemType[];
   }): void {
@@ -144,11 +145,11 @@ export const ChatItemContext = createContext<ChatItemContextType>({
   },
 
   datasetCiteData: undefined,
-  setCiteModalData: function (value: React.SetStateAction<QuoteDataType | undefined>): void {
+  setCiteModalData: function (_value: React.SetStateAction<QuoteDataType | undefined>): void {
     throw new Error('Function not implemented.');
   },
   isVariableVisible: true,
-  setIsVariableVisible: function (value: React.SetStateAction<boolean>): void {
+  setIsVariableVisible: function (_value: React.SetStateAction<boolean>): void {
     throw new Error('Function not implemented.');
   },
   resetUIState: function (): void {
