@@ -24,6 +24,7 @@ vi.mock('@fastgpt/service/common/response', () => ({
 }));
 
 import {
+  createNodeApiLimitResponse,
   LimitTypeEnum,
   assertTeamFrequencyLimit,
   teamFrequencyLimit
@@ -123,8 +124,9 @@ describe('frequencyLimit', () => {
 
     it('遇到 RedisInvalidArgumentError 时直接抛出原始错误', async () => {
       mockGetTeamQPMLimit.mockResolvedValueOnce(60);
-      const redisError = new RedisInvalidArgumentError('invalid key', {
-        operation: 'rateLimit.consume'
+      const redisError = new RedisInvalidArgumentError({
+        operation: 'rateLimit.consume',
+        message: 'invalid key'
       });
       mockConsumeTeamChatRateLimit.mockRejectedValueOnce(redisError);
 
@@ -217,8 +219,9 @@ describe('frequencyLimit', () => {
 
     it('遇到 RedisInvalidArgumentError 时直接抛出原始错误而不吞为 429', async () => {
       mockGetTeamQPMLimit.mockResolvedValueOnce(60);
-      const redisError = new RedisInvalidArgumentError('invalid key', {
-        operation: 'rateLimit.consume'
+      const redisError = new RedisInvalidArgumentError({
+        operation: 'rateLimit.consume',
+        message: 'invalid key'
       });
       mockConsumeTeamChatRateLimit.mockRejectedValueOnce(redisError);
 
@@ -246,6 +249,141 @@ describe('frequencyLimit', () => {
 
       expect(allowed).toBe(true);
       expect(mockJsonRes).not.toHaveBeenCalled();
+    });
+
+    describe('limitResponse 回调', () => {
+      it('向响应适配器传递限流元数据，并保留 Next 响应头', async () => {
+        mockGetTeamQPMLimit.mockResolvedValueOnce(60);
+        mockConsumeTeamChatRateLimit.mockResolvedValueOnce({
+          allowed: true,
+          remaining: 59,
+          resetAt: 1700000060
+        });
+        const res = createRes();
+        const limitResponse = vi.fn(createNodeApiLimitResponse(res));
+
+        await expect(
+          teamFrequencyLimit({ teamId: 'team-1', type: LimitTypeEnum.chat, limitResponse })
+        ).resolves.toBe(true);
+
+        expect(limitResponse).toHaveBeenCalledExactlyOnceWith({
+          status: 'allowed',
+          limit: 60,
+          remaining: 59,
+          resetAt: 1700000060
+        });
+        expect(res.headers).toEqual({
+          'X-RateLimit-Limit': 60,
+          'X-RateLimit-Remaining': 59,
+          'X-RateLimit-Reset': 1700000060
+        });
+        expect(mockJsonRes).not.toHaveBeenCalled();
+      });
+
+      it('未配置限流时直接放行，不调用响应适配器', async () => {
+        mockGetTeamQPMLimit.mockResolvedValueOnce(undefined);
+        const limitResponse = vi.fn();
+
+        await expect(
+          teamFrequencyLimit({ teamId: 'team-1', type: LimitTypeEnum.chat, limitResponse })
+        ).resolves.toBe(true);
+
+        expect(limitResponse).not.toHaveBeenCalled();
+        expect(mockConsumeTeamChatRateLimit).not.toHaveBeenCalled();
+      });
+
+      it('超限时将原始错误交给响应适配器，保留 429 响应', async () => {
+        mockGetTeamQPMLimit.mockResolvedValueOnce(60);
+        mockConsumeTeamChatRateLimit.mockResolvedValueOnce({
+          allowed: false,
+          currentCount: 61,
+          ttlSeconds: 20
+        });
+        const res = createRes();
+        const limitResponse = vi.fn(createNodeApiLimitResponse(res));
+
+        await expect(
+          teamFrequencyLimit({ teamId: 'team-1', type: LimitTypeEnum.chat, limitResponse })
+        ).resolves.toBe(false);
+
+        expect(limitResponse).toHaveBeenCalledExactlyOnceWith({
+          status: 'rejected',
+          code: 429,
+          error: expect.objectContaining({
+            message: ERROR_ENUM.tooManyRequest,
+            displayMessage:
+              'Rate limit exceeded. Maximum 60 requests per 60 seconds for this team. Please try again in 20 seconds.'
+          })
+        });
+        expect(mockJsonRes).toHaveBeenCalledWith(res, {
+          code: 429,
+          error: expect.any(UserError)
+        });
+        expect(res.setHeader).not.toHaveBeenCalled();
+      });
+
+      it.each(['configuration', 'redis'] as const)('%s 异常时放行，不发送 429', async (stage) => {
+        if (stage === 'configuration') {
+          mockGetTeamQPMLimit.mockRejectedValueOnce(new Error('configuration unavailable'));
+        } else {
+          mockGetTeamQPMLimit.mockResolvedValueOnce(60);
+          mockConsumeTeamChatRateLimit.mockRejectedValueOnce(new Error('redis unavailable'));
+        }
+        const limitResponse = vi.fn();
+
+        await expect(
+          teamFrequencyLimit({ teamId: 'team-1', type: LimitTypeEnum.chat, limitResponse })
+        ).resolves.toBe(true);
+
+        expect(limitResponse).not.toHaveBeenCalled();
+        expect(mockJsonRes).not.toHaveBeenCalled();
+      });
+
+      it('Redis 参数错误继续抛出，不转换成限流响应', async () => {
+        mockGetTeamQPMLimit.mockResolvedValueOnce(60);
+        const error = new RedisInvalidArgumentError({
+          operation: 'rateLimit.consume',
+          message: 'invalid key'
+        });
+        mockConsumeTeamChatRateLimit.mockRejectedValueOnce(error);
+        const limitResponse = vi.fn();
+
+        await expect(
+          teamFrequencyLimit({ teamId: 'team-1', type: LimitTypeEnum.chat, limitResponse })
+        ).rejects.toBe(error);
+
+        expect(limitResponse).not.toHaveBeenCalled();
+      });
+
+      it.each([true, false])('等待异步响应适配器结束后返回 allowed=%s', async (allowed) => {
+        mockGetTeamQPMLimit.mockResolvedValueOnce(60);
+        mockConsumeTeamChatRateLimit.mockResolvedValueOnce({
+          allowed,
+          remaining: 59,
+          resetAt: 1700000060,
+          currentCount: allowed ? 1 : 61,
+          ttlSeconds: 20
+        });
+        let finishResponse!: () => void;
+        const response = new Promise<void>((resolve) => {
+          finishResponse = resolve;
+        });
+        const limitResponse = vi.fn(() => response);
+        let settled = false;
+        const result = teamFrequencyLimit({
+          teamId: 'team-1',
+          type: LimitTypeEnum.chat,
+          limitResponse
+        }).then((value) => {
+          settled = true;
+          return value;
+        });
+
+        await vi.waitFor(() => expect(limitResponse).toHaveBeenCalledOnce());
+        expect(settled).toBe(false);
+        finishResponse();
+        await expect(result).resolves.toBe(allowed);
+      });
     });
   });
 });

@@ -23,6 +23,27 @@ const _FrequencyLimitOptionSchema = z.union([
 ]);
 type FrequencyLimitOption = z.infer<typeof _FrequencyLimitOptionSchema>;
 
+type TeamFrequencyLimitResponse =
+  | {
+      status: 'allowed';
+      limit: number;
+      remaining: number;
+      resetAt: number;
+    }
+  | {
+      status: 'rejected';
+      code: 429;
+      error: unknown;
+    };
+
+type TeamFrequencyLimitResponseHandler = (
+  response: TeamFrequencyLimitResponse
+) => void | Promise<void>;
+
+type TeamFrequencyLimitTransport =
+  | { limitResponse: TeamFrequencyLimitResponseHandler; res?: never }
+  | { res: NodeApiResponse; limitResponse?: never };
+
 const getLimitData = async (data: FrequencyLimitOption) => {
   if (data.type === LimitTypeEnum.chat) {
     const qpm = await teamQPM.getTeamQPMLimit(data.teamId);
@@ -106,32 +127,48 @@ export const assertTeamFrequencyLimit = async ({
   };
 };
 
-/*
-  true: 未达到限制
-  false: 达到了限制
-*/
-export const teamFrequencyLimit = async ({
-  teamId,
-  type,
-  res
-}: FrequencyLimitOption & {
-  res: NodeApiResponse;
-}) => {
+/**
+ * 校验团队频率并由调用方处理响应，返回值仍表示是否放行。
+ * 复用 assertTeamFrequencyLimit，保留配置或 Redis 运行时异常时放行的策略。
+ * 未配置限流或异常放行时不发送响应；res 入口兼容尚未迁移的 Next/Pro 调用方。
+ */
+export const teamFrequencyLimit = async (
+  params: FrequencyLimitOption & TeamFrequencyLimitTransport
+): Promise<boolean> => {
+  const { teamId, type } = params;
+  const limitResponse =
+    params.limitResponse !== undefined
+      ? params.limitResponse
+      : createNodeApiLimitResponse(params.res);
+
   try {
     const { limit, remaining, resetAt } = await assertTeamFrequencyLimit({ teamId, type });
     if (limit !== undefined && remaining !== undefined && resetAt !== undefined) {
-      res.setHeader('X-RateLimit-Limit', limit);
-      res.setHeader('X-RateLimit-Remaining', remaining);
-      res.setHeader('X-RateLimit-Reset', resetAt);
+      await limitResponse({ status: 'allowed', limit, remaining, resetAt });
     }
     return true;
   } catch (error) {
     if (error instanceof RedisInvalidArgumentError) throw error;
 
-    jsonRes(res, {
+    await limitResponse({
+      status: 'rejected',
       code: 429,
       error
     });
     return false;
   }
 };
+
+/** 将限流结果转换为既有 Next API 响应头或 429 JSON，供新旧调用入口共用。 */
+export const createNodeApiLimitResponse =
+  (res: NodeApiResponse): TeamFrequencyLimitResponseHandler =>
+  (response) => {
+    if (response.status === 'allowed') {
+      res.setHeader('X-RateLimit-Limit', response.limit);
+      res.setHeader('X-RateLimit-Remaining', response.remaining);
+      res.setHeader('X-RateLimit-Reset', response.resetAt);
+      return;
+    }
+
+    jsonRes(res, { code: response.code, error: response.error });
+  };
