@@ -65,6 +65,11 @@ type WorkerRunTaskType<T> = WorkerTaskLogContext & {
   queueTimeoutId?: NodeJS.Timeout;
   abortController?: AbortController;
   lastLoggedResourceBytes: number;
+  /**
+   * 主线程在失败发生处（此时错误尚未跨线程、仍是原始对象）判定的「预期内客户端错误」。
+   * 只用主线程状态传递，不放进 worker 消息：结构化克隆会把自定义 Error 压平成普通 Error。
+   */
+  expectedClientError?: boolean;
   resolve: (e: any) => void;
   reject: (e: any) => void;
 };
@@ -192,48 +197,71 @@ const WORKER_NETWORK_ERROR_CODES = [
 
 const WORKER_PLACEHOLDER_DOMAIN_PATTERN = /(?:^|[^a-zA-Z0-9-])example\.com(?=$|[^a-zA-Z0-9-])/i;
 
+const toSafeString = (value: unknown): string => (typeof value === 'string' ? value : '');
+
 /**
  * 校验 Worker 任务执行错误是否属于预期的外部网络/DNS 故障或用户业务异常。
- * 针对用户提供的外部链接失效（如 ENOTFOUND、ECONNREFUSED 等）降级为 warn，避免污染系统 error 指标；
- * 但如果涉及 example.com 等未替换的配置占位符，仍保留为 error 便于定位系统配置缺陷。
+ *
+ * 只在**主线程发生失败的位置**调用（此时拿到的是未跨线程的原始错误对象，`instanceof` 与自定义字段都有效），
+ * 判定结果记录到 task 上供 completeTask 使用。不要对跨线程克隆后的对象调用：
+ * 结构化克隆会把 `UserError` 压平成 `name: 'Error'` 的普通 Error。
+ *
+ * 针对用户提供的外部链接失效（ENOTFOUND、ECONNREFUSED 等）允许降级为 warn；
+ * 但涉及 example.com 等未替换的配置占位符时保留 error，便于定位系统配置缺陷。
+ *
+ * 该函数必须对任意输入安全返回（不得抛错）：它运行在 completeTask 的日志决策路径上，
+ * 一旦抛出会让本应 reject 的任务 Promise 悬挂。
  */
 export const isExpectedWorkerTaskError = (error: unknown): boolean => {
-  if (!error) return false;
+  try {
+    if (!error) return false;
 
-  const errObj = error as {
-    code?: string;
-    message?: string;
-    name?: string;
-    cause?: unknown;
-  };
+    const errObj =
+      typeof error === 'object' && error !== null
+        ? (error as {
+            code?: unknown;
+            message?: unknown;
+            name?: unknown;
+            cause?: unknown;
+          })
+        : undefined;
 
-  const message = typeof error === 'string' ? error : errObj.message || '';
+    // 只接受字符串形态的 message：Worker 可能回传 { message: 123 } 这类脏数据
+    const message = typeof error === 'string' ? error : toSafeString(errObj?.message);
 
-  // 配置类占位符错误（如 example.com / seedream.example.com 未替换）仍属于系统配置缺陷，保留 error
-  if (WORKER_PLACEHOLDER_DOMAIN_PATTERN.test(message)) {
+    const cause =
+      typeof errObj?.cause === 'object' && errObj.cause !== null
+        ? (errObj.cause as { code?: unknown; message?: unknown })
+        : undefined;
+    const causeMessage = toSafeString(cause?.message);
+
+    // 占位符检查必须覆盖参与分类的 cause，否则 cause 里的占位域名会被误降级
+    if (
+      WORKER_PLACEHOLDER_DOMAIN_PATTERN.test(message) ||
+      WORKER_PLACEHOLDER_DOMAIN_PATTERN.test(causeMessage)
+    ) {
+      return false;
+    }
+
+    if (error instanceof UserError || errObj?.name === 'UserError') return true;
+
+    const code = toSafeString(errObj?.code) || toSafeString(cause?.code);
+    if (WORKER_NETWORK_ERROR_CODES.includes(code)) {
+      return true;
+    }
+
+    return (
+      WORKER_NETWORK_ERROR_CODES.some(
+        (networkCode) => message.includes(networkCode) || causeMessage.includes(networkCode)
+      ) ||
+      message.includes('getaddrinfo') ||
+      causeMessage.includes('getaddrinfo') ||
+      message.includes('maximum allowed size')
+    );
+  } catch {
+    // 分类失败时保守地按未知异常处理（保持 error 级别）
     return false;
   }
-
-  if (error instanceof UserError || errObj.name === 'UserError') return true;
-
-  const causeCode =
-    typeof errObj.cause === 'object' && errObj.cause !== null
-      ? (errObj.cause as { code?: string }).code
-      : undefined;
-  const code = errObj.code || causeCode;
-  if (typeof code === 'string' && WORKER_NETWORK_ERROR_CODES.includes(code)) {
-    return true;
-  }
-
-  if (
-    WORKER_NETWORK_ERROR_CODES.some((networkCode) => message.includes(networkCode)) ||
-    message.includes('getaddrinfo') ||
-    message.includes('maximum allowed size')
-  ) {
-    return true;
-  }
-
-  return false;
 };
 
 /*
@@ -863,7 +891,8 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     const resourceSnapshot = this.resourcePolicy?.getResourceSnapshot();
 
     if (result.type === 'error') {
-      const isExpected = isExpectedWorkerTaskError(result.data);
+      // 使用主线程在失败处判定的结果，而不是在这里猜测跨线程克隆后的错误形态
+      const isExpected = task.expectedClientError === true;
       const logFn = isExpected
         ? this.logger.warn.bind(this.logger)
         : this.logger.error.bind(this.logger);
@@ -1091,6 +1120,12 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
         reply('loadFileResult', result, [result.buffer]);
       })
       .catch((error) => {
+        // 只有「用户提供的外部资源」下载失败才允许降级为 warn。
+        // 内部 S3 读取失败（sourceKind === 's3'）与解析/上传阶段的失败都属于系统故障，必须保留 error，
+        // 否则会把内部存储故障一并掩盖。判定在此进行：此刻 error 尚未跨线程，instanceof 与 cause 都有效。
+        task.expectedClientError =
+          this.getTaskSourceKind(task.data) === 'externalHttp' && isExpectedWorkerTaskError(error);
+
         this.logger.warn('Worker task file source failed', {
           eventName:
             error instanceof Error && error.message.includes('maximum allowed size')
@@ -1106,6 +1141,12 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
         });
         reply('loadFileError', error);
       });
+  }
+
+  /** readFile 任务会把来源类型带在入参里；其他 worker 没有该字段，返回 undefined。 */
+  private getTaskSourceKind(data: Props): string | undefined {
+    const sourceKind = (data as { sourceKind?: unknown } | undefined)?.sourceKind;
+    return typeof sourceKind === 'string' ? sourceKind : undefined;
   }
 
   private deleteWorker(

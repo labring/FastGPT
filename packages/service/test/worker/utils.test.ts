@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import type { WorkerPoolLogger } from '@fastgpt/service/worker/utils';
 
 const { mockEnv } = vi.hoisted(() => ({
@@ -210,15 +211,40 @@ describe('worker/utils WorkerPool', () => {
     });
     const loadFile = vi.fn().mockRejectedValue(dnsError);
 
-    await expect(pool.run({ loadFile: true } as any, undefined, { loadFile })).rejects.toThrow(
-      'getaddrinfo ENOTFOUND www.lntour.gov.cn'
-    );
+    // 只有用户提供的外部资源才允许降级，因此任务需带 sourceKind: 'externalHttp'
+    await expect(
+      pool.run({ loadFile: true, sourceKind: 'externalHttp' } as any, undefined, { loadFile })
+    ).rejects.toThrow('getaddrinfo ENOTFOUND www.lntour.gov.cn');
 
     expect(logger.warn).toHaveBeenCalledWith(
       'Worker task failed',
       expect.objectContaining({ eventName: 'worker.task.failed' })
     );
     expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it('loadFile handler 遇内部 S3 网络故障时保留 error，不因错误码相同而降级', async () => {
+    const logger = createLogger();
+    const pool = createPool<{ payload: string }, { key: string; src: string }>({
+      name: WorkerNameEnum.readFile,
+      maxReservedThreads: 1,
+      logger
+    });
+    // 内部存储不可达：错误码与外部死链相同，但不能降级，否则会掩盖真实存储故障
+    const s3Error = Object.assign(new Error('connect ECONNREFUSED 10.0.0.5:9000'), {
+      code: 'ECONNREFUSED'
+    });
+    const loadFile = vi.fn().mockRejectedValue(s3Error);
+
+    await expect(
+      pool.run({ loadFile: true, sourceKind: 's3' } as any, undefined, { loadFile })
+    ).rejects.toThrow('connect ECONNREFUSED 10.0.0.5:9000');
+
+    expect(logger.error).toHaveBeenCalledWith(
+      'Worker task failed',
+      expect.objectContaining({ eventName: 'worker.task.failed' })
+    );
+    expect(logger.warn).not.toHaveBeenCalledWith('Worker task failed', expect.anything());
   });
 
   it('loadFile handler 遇未配置的占位符域名保留 error 记录', async () => {
@@ -236,9 +262,9 @@ describe('worker/utils WorkerPool', () => {
     );
     const loadFile = vi.fn().mockRejectedValue(placeholderError);
 
-    await expect(pool.run({ loadFile: true } as any, undefined, { loadFile })).rejects.toThrow(
-      'getaddrinfo ENOTFOUND seedream.example.com'
-    );
+    await expect(
+      pool.run({ loadFile: true, sourceKind: 'externalHttp' } as any, undefined, { loadFile })
+    ).rejects.toThrow('getaddrinfo ENOTFOUND seedream.example.com');
 
     expect(logger.error).toHaveBeenCalledWith(
       'Worker task failed',
@@ -815,5 +841,36 @@ describe('worker/utils isExpectedWorkerTaskError', () => {
   it('普通代码异常或内部崩溃不降级', () => {
     expect(isExpectedWorkerTaskError(new Error('Cannot read properties of undefined'))).toBe(false);
     expect(isExpectedWorkerTaskError(new Error('upload failed'))).toBe(false);
+  });
+
+  it('对脏输入不抛错（否则会让任务 Promise 悬挂）', () => {
+    // Worker 可能回传 message 非字符串的对象；分类器必须安全返回而非抛出
+    expect(() => isExpectedWorkerTaskError({ message: 123 })).not.toThrow();
+    expect(isExpectedWorkerTaskError({ message: 123 })).toBe(false);
+    expect(isExpectedWorkerTaskError({ message: null, code: 42 })).toBe(false);
+    expect(isExpectedWorkerTaskError({ cause: 'not-an-object' })).toBe(false);
+    expect(isExpectedWorkerTaskError(123)).toBe(false);
+  });
+
+  it('占位符保护覆盖 cause 中的域名', () => {
+    // cause 参与分类（cause.code），因此 cause 里的占位域名也必须阻断降级
+    expect(
+      isExpectedWorkerTaskError(
+        new Error('fetch failed', {
+          cause: { code: 'ENOTFOUND', message: 'getaddrinfo ENOTFOUND seedream.example.com' }
+        })
+      )
+    ).toBe(false);
+    expect(
+      isExpectedWorkerTaskError(
+        new Error('fetch failed', {
+          cause: { code: 'ENOTFOUND', message: 'getaddrinfo ENOTFOUND real.example.org' }
+        })
+      )
+    ).toBe(true);
+  });
+
+  it('识别 UserError（仅在未跨线程的原始对象上有效）', () => {
+    expect(isExpectedWorkerTaskError(new UserError('modelUnExist'))).toBe(true);
   });
 });
