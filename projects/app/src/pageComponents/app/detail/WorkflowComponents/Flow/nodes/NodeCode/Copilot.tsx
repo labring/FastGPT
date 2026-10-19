@@ -115,7 +115,7 @@ const NodeCopilot = ({
             })
             .join('\n'),
           outputs: dynamicOutputs
-            .map((output) => `- ${output.label} (${output.valueType})`)
+            .map((output) => `- ${output.key} (${output.valueType})`)
             .join('\n')
         })
       };
@@ -244,25 +244,25 @@ const NodeCopilot = ({
         });
       });
       const existingOutputIdMap = new Map(dynamicOutputs.map((output) => [output.key, output.id]));
-      const nextOutputKeys = new Set(outputs.map((output) => output.label));
+      const nextOutputKeys = new Set(outputs.map((output) => output.key));
       dynamicOutputs.forEach((output) => {
         if (!nextOutputKeys.has(output.key)) {
           onChangeNode({ nodeId, type: 'delOutput', key: output.key });
         }
       });
       outputs.forEach((output) => {
-        const existingId = existingOutputIdMap.get(output.label);
+        const existingId = existingOutputIdMap.get(output.key);
         if (existingId) {
           onChangeNode({
             nodeId,
             type: 'updateOutput',
-            key: output.label,
+            key: output.key,
             value: {
               id: existingId,
               type: FlowNodeOutputTypeEnum.dynamic,
-              key: output.label,
+              key: output.key,
               valueType: output.type as WorkflowIOValueTypeEnum,
-              label: output.label,
+              label: output.key,
               valueDesc: '',
               description: ''
             }
@@ -274,9 +274,9 @@ const NodeCopilot = ({
             value: {
               id: nanoid(),
               type: FlowNodeOutputTypeEnum.dynamic,
-              key: output.label,
+              key: output.key,
               valueType: output.type as WorkflowIOValueTypeEnum,
-              label: output.label,
+              label: output.key,
               valueDesc: '',
               description: ''
             }
@@ -289,7 +289,7 @@ const NodeCopilot = ({
         status: 'success',
         title: t('app:code_applied_successfully')
       });
-    } catch (error) {
+    } catch {
       toast({
         status: 'error',
         title: t('app:apply_code_failed')
