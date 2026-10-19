@@ -1,8 +1,7 @@
-import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import {
   NodeTemplateRefSchema,
   type NodeTemplateRef,
-  type NodeTemplateAutomationMeta
+  type WorkflowTemplateBundle
 } from '@fastgpt/global/core/workflow/template/type';
 
 /** CLI 字符串只在适配边界解析，Core 始终接收结构化 TemplateRef。 */
@@ -43,11 +42,11 @@ export const formatNodeTemplateRef = (ref: NodeTemplateRef) => {
   return `${ref.kind}:${ref.toolId}`;
 };
 
-export type ResolvedWorkflowTemplate = {
-  template: FlowNodeTemplateType;
-  automationMeta?: NodeTemplateAutomationMeta;
-  validatedInputDefaults?: Record<string, { provided: true; value: unknown }>;
-};
+/** 内核模板直接复用注入包的数据契约，避免混入画布输出回调。 */
+export type ResolvedWorkflowTemplate = Pick<
+  WorkflowTemplateBundle['items'][number],
+  'template' | 'automationMeta' | 'validatedInputDefaults'
+>;
 
 export type TemplateResolveContext = {
   locale: string;

@@ -1,4 +1,3 @@
-import type { LLMModelDataType } from '../../ai/model/schema';
 import { WorkflowIOValueTypeEnum, NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
 import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../node/constant';
 import { SecretValueTypeSchema } from '../../../common/secret/type';
@@ -358,7 +357,7 @@ export const ToolReferenceNodeInputTypeSchema = FlowNodeInputItemTypeSchema.omit
   customJsonSchema: true
 });
 
-// Workflow node output
+/** 工作流输出的纯数据契约，供存储、运行时、Core、CLI 和 API 共用。 */
 export const FlowNodeOutputItemTypeSchema = z.object({
   id: z.string().meta({
     description: '节点输出 ID'
@@ -403,25 +402,6 @@ export const FlowNodeOutputItemTypeSchema = z.object({
   invalid: BoolSchema.optional().meta({
     description: '该输出当前是否不可用'
   }),
-  invalidCondition: z
-    .function({
-      input: z.tuple([
-        z.object({
-          inputs: z.custom<FlowNodeInputItemType[]>(),
-          llmModelMap:
-            z.custom<Record<string, Pick<LLMModelDataType, 'model' | 'modelId' | 'config'>>>()
-        })
-      ]),
-      output: BoolSchema
-    })
-    .optional()
-    .meta({
-      override: {
-        type: 'string',
-        description: 'Function placeholder; not represented in JSON payloads'
-      }
-    }),
-
   customFieldConfig: CustomFieldConfigTypeSchema.optional().meta({
     description: '动态输出项编辑配置'
   }),
@@ -430,15 +410,6 @@ export const FlowNodeOutputItemTypeSchema = z.object({
   })
 });
 export type FlowNodeOutputItemType = z.infer<typeof FlowNodeOutputItemTypeSchema>;
-
-/**
- * 工作流持久化输出结构。`invalidCondition` 只用于 Web 模板的可用性计算，不能进入
- * StoreWorkflow 或 WorkflowDocument。
- */
-export const StoreNodeOutputItemTypeSchema = FlowNodeOutputItemTypeSchema.omit({
-  invalidCondition: true
-});
-export type StoreNodeOutputItemType = z.infer<typeof StoreNodeOutputItemTypeSchema>;
 
 /* Reference */
 export const ReferenceItemValueTypeSchema = z.tuple([z.string(), z.string().optional()]);

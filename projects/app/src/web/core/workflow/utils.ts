@@ -15,6 +15,7 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
+import type { FlowNodeTemplateOutputItemType } from '@fastgpt/global/core/workflow/template/output';
 import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNode';
 import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflow/template/system/classifyQuestion/type';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
@@ -342,7 +343,7 @@ export const storeNode2FlowNode = ({
           })
       ),
     outputs: staticTemplateOutputs
-      .map<FlowNodeOutputItemType>((outputTemplate) => {
+      .map<FlowNodeTemplateOutputItemType>((outputTemplate) => {
         const storeOutput =
           storeNode.outputs.find((item) => item.key === outputTemplate.key) || outputTemplate;
         const outputDescription = storeOutput.description ?? outputTemplate.description;

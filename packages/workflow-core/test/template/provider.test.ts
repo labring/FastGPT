@@ -1,4 +1,5 @@
 import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowCommandError } from '../../src/domain/diagnostic';
 import {
@@ -49,7 +50,7 @@ describe('workflow template provider', () => {
     expect(() => parseNodeTemplateRef('systemTool:systemTool-weather')).toThrow();
   });
 
-  it('loads a strict request-scoped template bundle', async () => {
+  it('loads a request-scoped template bundle', async () => {
     const provider = createWorkflowTemplateBundleProvider(createBundle());
 
     await expect(provider.list({ locale: 'en' })).resolves.toEqual([systemToolRef]);
@@ -96,7 +97,64 @@ describe('workflow template provider', () => {
     });
   });
 
-  it('rejects duplicate identities and unknown transport fields', async () => {
+  it('strips canvas output callbacks before resolving and instantiating injected templates', async () => {
+    const ref = { kind: 'builtin' as const, templateId: 'ai-chat' };
+    const provider = createWorkflowTemplateBundleProvider({
+      schemaVersion: 'fastgpt-workflow-template-bundle/v1',
+      items: [{ ref, template: AiChatModule }]
+    });
+    const { template } = await provider.resolve(ref, { locale: 'en' });
+    expect(template.outputs.some((output) => 'invalidCondition' in output)).toBe(false);
+    expect(() => structuredClone(template)).not.toThrow();
+
+    const { node } = await instantiateNodeFromTemplate({
+      document: createWorkflowDocument(),
+      templateRef: ref,
+      nodeId: 'ai',
+      provider,
+      locale: 'en'
+    });
+    expect(node.outputs).toEqual(template.outputs);
+    expect(
+      AiChatModule.outputs.find((output) => output.key === 'reasoningText')?.invalidCondition
+    ).toBeTypeOf('function');
+  });
+
+  it('strips unknown transport fields while retaining opaque schema and default values', () => {
+    const bundle = createBundle();
+    const item = bundle.items[0];
+    const inputMeta = { valueSchema: { type: 'string', customKeyword: true } };
+    const inputDefault = { provided: true as const, value: { customValue: true } };
+    const parsed = WorkflowTemplateBundleSchema.parse({
+      ...bundle,
+      extra: true,
+      items: [
+        {
+          ...item,
+          extra: true,
+          ref: { ...item.ref, extra: true },
+          template: { ...item.template, secretsVal: { token: 'secret' } },
+          automationMeta: {
+            extra: true,
+            inputs: { input: { ...inputMeta, extra: true } }
+          },
+          validatedInputDefaults: { input: { ...inputDefault, extra: true } }
+        }
+      ]
+    });
+    expect(parsed).toEqual({
+      ...bundle,
+      items: [
+        {
+          ...item,
+          automationMeta: { inputs: { input: inputMeta } },
+          validatedInputDefaults: { input: inputDefault }
+        }
+      ]
+    });
+  });
+
+  it('rejects duplicate identities and inconsistent tool references', async () => {
     const duplicateProvider = composeWorkflowTemplateProviders([
       createWorkflowTemplateBundleProvider(createBundle()),
       createWorkflowTemplateBundleProvider(createBundle())
@@ -105,20 +163,6 @@ describe('workflow template provider', () => {
     await expect(duplicateProvider.list({ locale: 'en' })).rejects.toBeInstanceOf(
       WorkflowCommandError
     );
-    expect(() =>
-      WorkflowTemplateBundleSchema.parse({
-        ...createBundle(),
-        items: [
-          {
-            ...createBundle().items[0],
-            template: {
-              ...createBundle().items[0].template,
-              secretsVal: { token: 'secret' }
-            }
-          }
-        ]
-      })
-    ).toThrow();
     expect(() =>
       WorkflowTemplateBundleSchema.parse({
         ...createBundle(),

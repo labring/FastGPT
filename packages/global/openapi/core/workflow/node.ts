@@ -1,7 +1,7 @@
 import z from 'zod';
 import {
   FlowNodeInputItemTypeSchema,
-  StoreNodeOutputItemTypeSchema
+  FlowNodeOutputItemTypeSchema
 } from '../../../core/workflow/type/io';
 import {
   NodeToolConfigTypeSchema,
@@ -58,7 +58,7 @@ export const OpenAPIFlowNodeInputItemTypeSchema = FlowNodeInputItemTypeSchema.om
     description: '工作流节点输入配置'
   });
 
-export const OpenAPIFlowNodeOutputItemTypeSchema = StoreNodeOutputItemTypeSchema.meta({
+export const OpenAPIFlowNodeOutputItemTypeSchema = FlowNodeOutputItemTypeSchema.meta({
   description: '工作流节点输出配置'
 });
 

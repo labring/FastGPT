@@ -10,6 +10,7 @@ import {
   FlowNodeInputItemTypeSchema,
   FlowNodeOutputItemTypeSchema
 } from '@fastgpt/global/core/workflow/type/io';
+import { FlowNodeTemplateOutputItemTypeSchema } from '@fastgpt/global/core/workflow/template/output';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -52,7 +53,7 @@ describe('BoolSchema', () => {
       }).required
     ).toBe(true);
 
-    const output = FlowNodeOutputItemTypeSchema.parse({
+    const output = FlowNodeTemplateOutputItemTypeSchema.parse({
       id: 'output',
       key: 'output',
       type: FlowNodeOutputTypeEnum.static,
@@ -64,6 +65,13 @@ describe('BoolSchema', () => {
     expect(output.required).toBe(true);
     expect(output.invalid).toBe(false);
     expect(output.invalidCondition?.({ inputs: [], llmModelMap: {} })).toBe(true);
+    expect(FlowNodeOutputItemTypeSchema.parse(output)).toEqual({
+      id: 'output',
+      key: 'output',
+      type: FlowNodeOutputTypeEnum.static,
+      required: true,
+      invalid: false
+    });
   });
 });
 

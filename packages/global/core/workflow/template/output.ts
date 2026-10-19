@@ -1,8 +1,32 @@
-import type { FlowNodeOutputItemType } from '../type/io';
+import {
+  FlowNodeOutputItemTypeSchema,
+  type FlowNodeInputItemType,
+  type FlowNodeOutputItemType
+} from '../type/io';
+import type { LLMModelDataType } from '../../ai/model/schema';
+import z from 'zod';
+import { BoolSchema } from '../../../common/zod';
 import { NodeOutputKeyEnum } from '../constants';
 import { FlowNodeOutputTypeEnum } from '../node/constant';
 import { WorkflowIOValueTypeEnum } from '../constants';
 import { i18nT } from '../../../common/i18n/utils';
+
+/** 画布模板在通用输出数据上附加可用性计算；回调只供客户端使用，不参与持久化。 */
+export const FlowNodeTemplateOutputItemTypeSchema = FlowNodeOutputItemTypeSchema.extend({
+  invalidCondition: z
+    .function({
+      input: z.tuple([
+        z.object({
+          inputs: z.custom<FlowNodeInputItemType[]>(),
+          llmModelMap:
+            z.custom<Record<string, Pick<LLMModelDataType, 'model' | 'modelId' | 'config'>>>()
+        })
+      ]),
+      output: BoolSchema
+    })
+    .optional()
+});
+export type FlowNodeTemplateOutputItemType = z.infer<typeof FlowNodeTemplateOutputItemTypeSchema>;
 
 export const Output_Template_AddOutput: FlowNodeOutputItemType = {
   id: NodeOutputKeyEnum.addOutputParam,
