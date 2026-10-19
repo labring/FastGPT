@@ -5,21 +5,38 @@ upgradeTags:
   - IN PROGRESS
 ---
 
-## Upgrade Guide
+## Upgrade guide
 
 ### Image updates
 
 - AI Proxy: v0.7.5
+- Code execution sandbox (`fastgpt-code-sandbox`): v4.17.0, replacing the unavailable v4.17.2 tag.
 
 ### Upgrade scripts
 
 This upgrade does not include new system migration scripts. Simply update the image tags and restart the services.
 
-## 🚀 New Features
+The existing `20260916_backfill_app_resource_snapshots` task to backfill App resource snapshots now depends on the `20260903_backfill_app_model_references` task to migrate App model references. If these tasks are still pending, complete the model reference migration before backfilling resource snapshots so the snapshots include all model IDs.
+
+### Configuration and API compatibility
+
+- `AGENT_SANDBOX_MAX` sets the total number of active Agent sandbox instances and defaults to 100. App sessions and Skill editing share this quota. If the new variable is unset, the legacy `AGENT_SANDBOX_MAX_EDIT_DEBUG` variable is still supported. Use `AGENT_SANDBOX_MAX_PER_TEAM` to set a per-team limit; it is unlimited by default. The admin system settings `agentSandboxMax` and `agentSandboxMaxPerTeam` take precedence over environment variables.
+- The shared pagination schemas now limit `pageSize` to 500. Some endpoints enforce smaller limits. Update custom API calls to stay within the limit for each endpoint.
+- OpenSandbox adds `AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR` and `AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR`. Both default to 1 and must be at least 1. They apply only to the Kubernetes runtime with OpenSandbox Server v0.2.1 or later, reducing resource requests while keeping limits unchanged. Changes apply only to newly created or recreated sandboxes, not when connecting to or resuming existing sandboxes.
+- Names, descriptions, and other system plugin metadata fields now support either strings or localized objects. Clients calling these APIs directly must handle both formats. Model Tool descriptions are generated from the name and localized introduction; the legacy `toolDescription` field has been removed from system plugin metadata.
+
+## 🚀 New features
 
 1. Added support for limited HTML rendering in the Markdown component and optimized interactions across components.
 2. Added an option to inherit parent permissions when creating App, Tool, and Dataset folders.
-3. Added support for dedicated AI models and channels for team members, improving multi-tenant and member-level model resource isolation and authorization with deep AI Proxy integration.
+3. Added support for dedicated AI models and model providers for team members, improving multi-tenant and member-level model resource isolation and authorization with deep AI Proxy integration.
+4. Added configurable system-wide and per-team limits for active Agent sandbox instances.
+5. App chats now cache input drafts separately for each member, App, and chat. Text and successfully uploaded attachment references can be restored after switching chats or refreshing the page. Drafts stay in the current browser tab, with up to 10 drafts retained for one hour after the last edit. A draft is cleared once its message is accepted for sending.
+6. MCP App Tool calls and external channel messages now share the team's chat QPM (requests per minute) limit. Requests over the limit receive quota details and a retry wait time. External channel messages are counted after deduplication so platform retries do not consume the quota again.
+7. Added [Workflow assisted generation](/guide/build/workflow/assisted-generation) for Commercial and Cloud editions. Create or modify Workflows using natural language, confirm a plan, then generate a candidate version. Apply it manually to replace and automatically arrange the canvas. Review, debug, save, and publish the Workflow after applying it. App edit permission is required, and an administrator must enable assisted generation and virtual machines (sandboxes).
+8. User selection Nodes and single-select or multi-select fields in form input Nodes now support dynamic options from variable references. Empty dynamic option lists return a clear error.
+9. System plugins now support localized names, introductions, Toolkit child Tools, input and output parameters, secret schemas, and READMEs. Existing Workflow Nodes and fixed Agent Tools retain the language snapshot captured when they were added.
+10. The OpenSandbox Kubernetes runtime now supports separate CPU and memory overcommit factors, reducing scheduling reservations while keeping resource limits unchanged.
 
 ## ⚙️ Optimizations
 
@@ -29,12 +46,67 @@ This upgrade does not include new system migration scripts. Simply update the im
 4. System migration dependency errors now identify the prerequisite task in the current interface language, making it easier to run or retry tasks in the required order.
 5. Changed the "username" label to "member name" in team member management to distinguish it from the login account.
 6. Improved classification of external file URLs in Workflows. URLs without a filename or extension can now be classified using response headers and a limited content probe. AI Chat, Agents, Tool calls, and document reading share the same classification results, and document parsing reuses the detected filename.
+7. Improved API file library synchronization. The remote tree is fetched and structural changes are validated before folders are created and names and parent folders are updated in batches, with permission inheritance kept consistent. Rate limits, network failures, and remote service errors stop the sync instead of being mistaken for file deletions.
+8. System initialization now filters public configuration by login status and fetches model provider metadata and sandbox connection details on demand. Configuration refreshes after login, logout, or account changes to avoid reusing a previous session's cache.
+9. Unified shared pagination validation. Model provider call logs now support up to 500 entries per page.
+10. Important notifications older than 30 days no longer trigger priority alerts.
+11. Unified fallback rules for default and auxiliary models. Fallbacks use only system models the current member is authorized to use. Permission errors for explicitly selected models do not trigger a fallback, preventing unintended use of private team models or authorization bypasses.
+12. Team chat rate limiting now logs and skips checks when configuration lookup or Redis operations fail, preventing rate limit service outages from blocking chats.
+13. Failed MCP Tool calls now include error details in the response's text content so clients can display specific causes, such as rate limits.
+14. Model request logs and records now consistently remove base64 content, including images and audio, while preserving error names, messages, and causes. Request records visible to team members omit server stack traces. Empty-response messages for personal OpenAI API keys no longer include the full request payload.
+15. Fixed native model Tool call streams mixing arguments across parallel calls or failing when arguments arrive before names or names are repeated. Tool names with the `functions.` prefix and empty arguments are also supported. Responses that end with a Tool call status but contain no valid Tool calls now return an explicit error instead of being treated as normal completion.
+16. The Dataset list API `listV2` now supports `withFileCount` to return `fileCount` on request. It counts non-folder Collections at every level within each Dataset; folder entries omit this field.
+17. The chat page now supports direct links to team Apps through `/chat?pane=aa&tab=ta`. Switching tabs updates the URL so refreshing or sharing the link preserves the selected tab.
+18. Unified Workflow Node dimensions and canvas layout. Default categories in the question classification Node now use the current interface language.
+19. Improved Mermaid streaming rendering and diagram preview interactions, including zooming, dragging, and touch controls.
+20. Workflow references to deleted Datasets or Datasets missing from the App resource snapshot now log expected resource errors as warnings, reducing unnecessary error alerts.
 
-## 🐛 Bug Fixes
+## 🐛 Fixes
 
 1. Fixed SeekDB data loss when containers are restarted or recreated.
 2. Fixed an incorrect active background color for the billing cycle toggle (monthly/annual) on the pricing page.
-3. Fixed JSON serialization errors when MCP tool input schemas contain recursive circular references (such as `{ $ref: '#' }`).
+3. Fixed JSON serialization errors when MCP tool input schemas contain recursive circular references (such as schemas using `{ $ref: '#' }` to reference themselves).
 4. Fixed a maximum call stack size exceeded error caused by self-recursion in the `InvokeProcessor` session getter.
 5. Fixed batch creation failures for Agent team members caused by unordered concurrency.
 6. Fixed an issue where NextAPI proxying Pro API streamed or raw responses without Content-Type (such as WeChat login callbacks) would append a default JSON envelope before the stream finished, corrupting the response.
+7. Fixed creation limits being bypassed when copying Agents or creating Apps through conversion. Agent creation quotas, License limits, and account resource usage now use consistent counts.
+8. Fixed Agent system Tool calls generating credentials with the App owner's identity. They now use the member running the Agent so Tools receive the correct user information.
+9. Fixed inconsistent file size and count limits between the frontend and backend. Limits now resolve in order from team overrides, plan settings, system configuration, and defaults, with legacy `0` values treated as unset.
+10. Fixed incorrect "contains/does not contain" results in Workflow `If/Else` conditions when comparing arrays with referenced numbers, booleans, or other non-string values. Primitive values are now compared as text.
+11. Fixed CSV data imported through templates or backups being treated as regular documents during reprocessing. Row-level questions, answers, custom indexes, and metadata are now preserved.
+12. Fixed automatically generated system indexes being included in custom index columns in Dataset CSV exports, preventing extra columns and duplicate indexes after reimporting.
+13. Fixed inconsistent Workflow model reference detection. Duplicate model inputs, legacy model names, and model IDs now follow the same rules, and external Tool parameters with matching names are no longer mistaken for system model settings.
+14. Fixed optional quotas being converted to `0` when left blank in the admin plan editor. Blank fields now use the plan's standard values, while explicitly entered `0` values are preserved.
+15. Fixed Workflow regular expression conditions incorrectly stripping unpaired or escaped slashes. Only paired `/.../` delimiters are removed. Both manually entered patterns and variable references retain regular expression semantics, and invalid expressions are reported as errors.
+16. Fixed Agent usage totals omitting tokens and points consumed by a failed model request. Any usage already incurred is now counted before returning the error.
+17. Fixed speaker notes in PowerPoint (PPTX) document parsing being placed out of order, ensuring notes are strictly sorted right after the slide they belong to based on relationships.
+18. Fixed default system date and date-time formats in Excel (XLSX) document parsing losing centuries and becoming ambiguous, consistently rewriting them to standard ISO date and date-time formats.
+19. Fixed `parseFileExtensionFromUrl` returning an empty extension when file URLs contain `%` characters in query parameters.
+20. Fixed file size formatting rounding errors displaying values like `1024 KB` or `1024 MB`, correctly promoting them to the next unit.
+21. Fixed missing transaction session pass-through when creating a fallback personal team during multi-team logins, preventing duplicate creation or permission resolution errors caused by concurrently reading uncommitted default all-member groups.
+22. Fixed document parsing failing when a Markdown table header exceeds the chunk size limit. Row content is now split by length so Dataset imports can continue.
+23. Fixed text files such as SVGs with XML declarations being rejected as type mismatches during upload, and UTF-16 text being misclassified as binary or parsed as garbled text. Text classification and encoding detection now use consistent results.
+24. Fixed the Workflow code assistant generating input or output names that differ from the parameter keys used in code. Existing output IDs are preserved to keep downstream variable references intact.
+25. Fixed stream resume requests interrupting other chats and error paths skipping resume cache finalization or response closure. This covers App chats, debugging, home chats, and assistants.
+26. Fixed repeated local storage writes when chat state synchronizes across browser tabs, while preserving each tab's independent session state.
+27. Fixed empty parent IDs causing BSON conversion errors or permission update failures when moving Apps, Skills, Datasets, or Dataset files to the root folder.
+28. Fixed pipe characters in Doc2x table cells creating extra columns after conversion to Markdown, while preserving LaTeX semantics in table code and formulas.
+29. Fixed line break tags producing invalid XML in Mermaid SVGs, causing previews or image exports to fail.
+30. Fixed Tool version selectors displaying version descriptions in place of version numbers. Tool details, batch updates, and Workflow settings now show the actual version number.
+31. Fixed the delete button failing to appear on hover or respond to clicks in the Workflow multiple-variable reference selector.
+32. Fixed team member management showing the restore action for ineligible members. It now appears only for disabled members in synchronization mode.
+33. Restored missing setup illustrations for Apps, payments, external channels, and other admin configuration pages.
+34. Fixed PostgreSQL vector recall omitting the team filter. Searches now use team, Dataset, and Collection scopes in line with the compound index.
+35. Fixed required ObjectId request parameters being marked as optional in OpenAPI documentation, including parameter requirements and minimal request examples.
+36. Fixed Langfuse and OpenTelemetry state being isolated across Next.js module instances, causing inconsistent span attributes or processor state.
+37. Fixed incorrect session IDs for Lark messages without a thread ID. Messages without a thread now use the group chat ID for their session.
+38. Fixed paid bank transfer orders being unavailable for online invoice requests. The eligible-order list and submission checks now use the same rules. Submissions validate order ownership, status, count, and amount in a transaction, rejecting invalid orders, duplicate IDs, zero amounts, and concurrent duplicate requests.
+
+## 🛠️ Code improvements
+
+1. The SSO backend connection URL has moved from the `feConfigs.sso.url` field to the `systemEnv.sso.url` field. The legacy field is handled when configuration loads. Pro deployments continue to use the `EXTERNAL_USER_SYSTEM_BASE_URL` environment variable, so no manual migration is required.
+2. Requests using invalid or deleted MCP App access keys now return a JSON-RPC error with the original request ID instead of HTTP 500, and are logged as warnings.
+3. Separated App resource extraction, save and publish authorization, Workflow runtime loading, and frontend validation. Resources load only when needed during Workflow execution. References included in the version snapshot use the App's authorization; other references are checked against the member running the Workflow.
+4. Extracted shared `workflow-core` and `workflow-cli` packages to unify Node, reference, conditional branch, system configuration, and semantic validation for the canvas and AI Workflow builder.
+5. Separated Skill debugging logic from the HTTP adapter, sharing permission checks, Workflow dispatch, usage tracking, and error finalization.
+6. Added the base data model for a WeCom WebSocket publishing channel, including bot credentials, configuration revisions, connection status, a unique Bot ID constraint, and chat and billing source mappings.
