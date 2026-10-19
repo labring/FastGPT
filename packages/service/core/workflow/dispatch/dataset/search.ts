@@ -1,3 +1,4 @@
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
@@ -15,7 +16,6 @@ import { getTeamModelHandle } from '../../../ai/model/catalog/service';
 import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search';
 import { getDatasetSearchVlmModel } from '../../../dataset/search/vlm';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import {
   isWorkflowResourceError,
@@ -64,8 +64,8 @@ export type DatasetSearchResponse = DispatchNodeResultType<{
 }>;
 
 /**
- * 判断错误是否属于知识库资源未在版本快照中声明、或已被删除/不存在的业务配置问题。
- * 这类问题属于用户配置引用失效，不属于调度运行时的系统故障，降级为 warn 避免污染 error 指标。
+ * 识别知识库缺失及兼容的工作流资源错误，只对已知资源问题降级日志。
+ * 加载器须原样抛出数据库等系统异常，避免将查询失败误判为资源不存在。
  */
 export const isDatasetResourceMissingError = (error: unknown): boolean => {
   if (isWorkflowResourceError(error)) return true;
