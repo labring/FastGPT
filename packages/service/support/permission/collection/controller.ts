@@ -146,7 +146,7 @@ export type CollectionMoveResourceType = Pick<
  */
 export async function moveCollectionPermission({
   collection,
-  targetParentId,
+  targetParentId: rawTargetParentId,
   session
 }: {
   collection: CollectionMoveResourceType;
@@ -155,6 +155,7 @@ export async function moveCollectionPermission({
   session: ClientSession;
 }): Promise<void> {
   const teamId = collection.teamId;
+  const targetParentId = rawTargetParentId || null;
 
   // 保持独立配置：仅更新 parentId，快照与 inheritPermission=false 保持不变
   if (collection.inheritPermission === false) {
@@ -166,7 +167,7 @@ export async function moveCollectionPermission({
     });
     await MongoDatasetCollection.updateOne(
       { _id: collection._id },
-      { $set: { parentId: targetParentId || null, inheritPermission: false } },
+      { $set: { parentId: targetParentId, inheritPermission: false } },
       { session }
     );
     return;
@@ -198,7 +199,7 @@ export async function moveCollectionPermission({
 
   await MongoDatasetCollection.updateOne(
     { _id: collection._id },
-    { $set: { parentId: targetParentId || null, inheritPermission: true } },
+    { $set: { parentId: targetParentId, inheritPermission: true } },
     { session }
   );
 }
