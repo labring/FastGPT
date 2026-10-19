@@ -313,18 +313,38 @@ export const skipDatasetTrainingEnhancement = async (
  */
 export const retryFailedTrainingTasks = async (
   scope: Pick<DatasetTrainingSchemaType, 'teamId' | 'datasetId'> &
-    Partial<Pick<DatasetTrainingSchemaType, 'collectionId'>>
+    Partial<Pick<DatasetTrainingSchemaType, 'collectionId'>> & {
+      auditTaskId?: string;
+    }
 ) => {
-  const lastTask = await MongoDatasetTraining.findOne({ ...scope, ...finalErrorTrainingMatch })
+  const { auditTaskId, ...trainingScope } = scope;
+  const lastTask = await MongoDatasetTraining.findOne({
+    ...trainingScope,
+    ...finalErrorTrainingMatch
+  })
     .sort({ _id: -1 })
     .select('_id')
     .lean();
   if (!lastTask) return;
+
+  if (auditTaskId) {
+    // 先绑定整个固定快照，避免生产者分批提交期间 worker 误以为未绑定的后续任务已经成功。
+    // 这里只更新最终失败任务，不改变任务状态；真正恢复仍由下面的分批事务完成。
+    await MongoDatasetTraining.updateMany(
+      {
+        ...trainingScope,
+        ...finalErrorTrainingMatch,
+        _id: { $lte: lastTask._id }
+      },
+      { $set: { auditTaskId } }
+    );
+  }
+
   let afterId: string | undefined;
   while (true) {
     const batch = await mongoSessionRun(async (session) => {
       const tasks = await MongoDatasetTraining.find({
-        ...scope,
+        ...trainingScope,
         ...finalErrorTrainingMatch,
         _id: { $lte: lastTask._id, ...(afterId ? { $gt: afterId } : {}) }
       })
@@ -334,9 +354,20 @@ export const retryFailedTrainingTasks = async (
         .session(session)
         .lean();
       if (!tasks.length) return tasks;
+      const readyUpdate = getTrainingTaskReadyUpdate();
       await MongoDatasetTraining.updateMany(
-        { ...scope, _id: { $in: tasks.map((task) => task._id) }, ...finalErrorTrainingMatch },
-        getTrainingTaskReadyUpdate(),
+        {
+          ...trainingScope,
+          _id: { $in: tasks.map((task) => task._id) },
+          ...finalErrorTrainingMatch
+        },
+        {
+          ...readyUpdate,
+          $set: {
+            ...readyUpdate.$set,
+            ...(auditTaskId && { auditTaskId })
+          }
+        },
         { session }
       );
       // 按任务类型恢复对应 data；同义词失败不能被改成普通索引重建中。
@@ -347,7 +378,7 @@ export const retryFailedTrainingTasks = async (
           {
             updateOne: {
               filter: {
-                ...scope,
+                ...trainingScope,
                 collectionId: task.collectionId,
                 _id: task.dataId,
                 indexStatus: statuses.failed

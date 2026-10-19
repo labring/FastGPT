@@ -18,6 +18,7 @@ import {
   TrainingLeaseLostError,
   type TrainingTaskLease
 } from '@fastgpt/service/core/dataset/training/service';
+import { createTrainingAuditTaskFlusher } from '@fastgpt/service/core/dataset/training/auditTaskFlusher';
 import { getIndexTrainingUpdateInput } from './indexInput';
 import { checkTeamAiPointsAndLock } from './utils';
 
@@ -57,6 +58,7 @@ export async function generatePreCreatedData(): Promise<any> {
   // 首次索引使用自己的并发预算；两类重建分别以并发 1 独立运行。
   if (global.preCreatedQueueLen >= max) return;
   global.preCreatedQueueLen++;
+  const auditTaskFlusher = createTrainingAuditTaskFlusher();
 
   try {
     while (true) {
@@ -88,6 +90,7 @@ export async function generatePreCreatedData(): Promise<any> {
 
       if (!claimed) break;
       const { data, lease } = claimed;
+      auditTaskFlusher.add(data.auditTaskId);
       try {
         lease.start();
         if (!data.dataset || !data.collection || !data.data) {
@@ -149,16 +152,23 @@ export async function generatePreCreatedData(): Promise<any> {
             collectionId: data.collectionId,
             dataId: data.dataId
           });
-          if (!(err instanceof TrainingLeaseLostError)) await lease.fail(err);
+          if (!(err instanceof TrainingLeaseLostError)) {
+            await lease.fail(err);
+          }
           await delay(100);
         }
       } finally {
         await lease.stop();
+        // 任务可能在周期 flush 期间仍处于 active；完成租约后重新排队一次，确保最终状态会被检查。
+        auditTaskFlusher.add(data.auditTaskId);
       }
     }
   } catch (error) {
     logger.error('Pre-created data queue loop failed', { error });
   } finally {
+    // 周期性 flush 负责持续运行的队列，stop 会再做最终 flush，避免审计依赖全局队列 drain。
+    await auditTaskFlusher.stop();
+
     if (reduceQueue()) {
       logger.info('Pre-created data queue drained', { queueSize: global.preCreatedQueueLen });
     }

@@ -7,9 +7,13 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.unmock('@fastgpt/service/support/user/audit/util');
 
 describe('resume app inherit permission api', () => {
   it('restores inheritance for a root app and persists the flag', async () => {
@@ -56,11 +60,18 @@ describe('resume app inherit permission api', () => {
 
   it('restores inheritance for a child app and materializes the parent ACL', async () => {
     const users = await getFakeUsers(2);
+    const grandParent = await MongoApp.create({
+      name: 'resume-child-grandparent',
+      type: AppTypeEnum.folder,
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId
+    });
     const parent = await MongoApp.create({
       name: 'resume-child-parent',
       type: AppTypeEnum.folder,
       teamId: users.owner.teamId,
-      tmbId: users.owner.tmbId
+      tmbId: users.owner.tmbId,
+      parentId: grandParent._id
     });
     const child = await MongoApp.create({
       name: 'resume-child-app',
@@ -115,5 +126,15 @@ describe('resume app inherit permission api', () => {
         expect.objectContaining({ tmbId: users.members[0].tmbId, permission: ReadRoleVal })
       ])
     );
+
+    const audit = await MongoTeamAudit.findOne({
+      teamId: users.owner.teamId,
+      event: AuditEventEnum.RESUME_INHERIT_PERMISSION
+    }).lean();
+    expect(audit?.metadata).toMatchObject({
+      resourceType: 'account_team:resource_type.app',
+      targetPath: 'resume-child-grandparent/resume-child-parent/resume-child-app',
+      parentDatasetName: 'resume-child-parent'
+    });
   });
 });

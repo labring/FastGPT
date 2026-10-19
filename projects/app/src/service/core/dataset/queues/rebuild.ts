@@ -11,6 +11,7 @@ type DatasetRebuildContext = {
   tmbId: string;
   datasetId: string;
   billId: string;
+  auditTaskId?: string;
 };
 
 /**
@@ -66,7 +67,8 @@ export const enqueueNextDatasetRebuildTask = async (
             mode: TrainingModeEnum.rebuildIndex,
             dataId: data._id,
             chunkIndex: data.chunkIndex,
-            retryCount: 3
+            retryCount: 3,
+            ...(context.auditTaskId && { auditTaskId: context.auditTaskId })
           }
         ],
         { session, ordered: true }

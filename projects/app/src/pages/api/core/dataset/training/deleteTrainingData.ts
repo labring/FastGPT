@@ -14,6 +14,11 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+const logger = getLogger(LogCategories.MODULE.DATASET);
 
 /** 删除训练任务；重建任务同时删除原始数据及其索引，首次训练维持原有取消行为。 */
 async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse> {
@@ -22,7 +27,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
     bodySchema: DeleteTrainingDataBodySchema
   }).body;
 
-  const { collection } = await authDatasetCollection({
+  const { collection, teamId, tmbId } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
@@ -36,6 +41,25 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
     collectionId: collection._id,
     _id: dataId
   };
+
+  /** 训练记录清理是成员主动操作，审计失败不得影响删除主流程。 */
+  const writeCleanAudit = (deletedCount: number) =>
+    void addAuditLog({
+      teamId,
+      tmbId,
+      event: AuditEventEnum.CLEAN_TRAINING_RECORD,
+      params: {
+        datasetId: String(collection.datasetId),
+        datasetName: collection.dataset.name,
+        collectionName: collection.name,
+        count: String(deletedCount),
+        result: deletedCount > 0 ? 'success' : 'skipped'
+      }
+    }).catch((error) => {
+      logger.warn('Training record audit write failed', { error, teamId, collectionId, dataId });
+    });
+
+  let deletedCount = 0;
   await mongoSessionRun(async (session) => {
     const training = await MongoDatasetTraining.findOne(trainingMatch).session(session);
     if (!training) return;
@@ -64,7 +88,8 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
           session
         );
       }
-      await MongoDatasetTraining.deleteOne(trainingMatch, { session });
+      const result = await MongoDatasetTraining.deleteOne(trainingMatch, { session });
+      deletedCount = result.deletedCount;
       return;
     }
 
@@ -88,8 +113,10 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
       );
     }
 
-    await MongoDatasetTraining.deleteOne(trainingMatch, { session });
+    const result = await MongoDatasetTraining.deleteOne(trainingMatch, { session });
+    deletedCount = result.deletedCount;
   });
+  writeCleanAudit(deletedCount);
 
   return DeleteTrainingDataResponseSchema.parse(undefined);
 }

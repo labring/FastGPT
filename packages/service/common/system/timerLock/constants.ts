@@ -14,6 +14,8 @@ export enum TimerIdEnum {
   auditLogCleanup = 'auditLogCleanup',
   chatHistoryCleanup = 'chatHistoryCleanup',
   datasetSyncSchedulerReconcile = 'datasetSyncSchedulerReconcile',
+  /** 修复源阶段未回填完成状态的训练审计 */
+  datasetTrainingAuditReconcile = 'datasetTrainingAuditReconcile',
   stopInactiveSandboxes = 'stopInactiveSandboxes',
   archiveInactiveSandboxes = 'archiveInactiveSandboxes',
   recoverStaleSandboxOperations = 'recoverStaleSandboxOperations',
