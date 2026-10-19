@@ -10,7 +10,7 @@ import { Alert } from '@/components/docs/Alert';
 - Can be added multiple times
 - Manual configuration
 - Trigger-based execution
-- Core of core nodes
+- Core node for integrating external services
 
 ![Characteristics — interface example](/imgs/optimized/current/node-http.png.webp)
 
@@ -61,7 +61,7 @@ Write a custom JSON body and use `{{key}}` to reference variables. For example:
 
 ```json
 {
-  "string": "字符串",
+  "string": "string",
   "number": 123,
   "boolean": true,
   "array": [1, 2, 3],
@@ -94,11 +94,11 @@ When referencing a `string` in the Body, wrap it in quotes: `"{{string}}"`.
 
 ```json
 {
-  "string": "字符串",
-  "token": "Bearer 字符串",
+  "string": "string",
+  "token": "Bearer string",
   "number": 123,
   "boolean": true,
-  "array": [123, "字符串"],
+  "array": [123, "string"],
   "array2": [1, 2, 3],
   "object": {
     "name": "FastGPT",
@@ -112,16 +112,16 @@ When referencing a `string` in the Body, wrap it in quotes: `"{{string}}"`.
 
 ### Extracting Return Values
 
-FastGPT allows you to add multiple custom return values. These define `how to parse the API response`, using `JSON path` syntax to `extract` specific fields from the response data.
+FastGPT lets you define multiple outputs, each with a rule for extracting a value from the API response. Use `JSONPath` syntax to select the values you need.
 
-Syntax reference: https://github.com/JSONPath-Plus/JSONPath?tab=readme-ov-file
+See the [JSONPath-Plus syntax reference](https://github.com/JSONPath-Plus/JSONPath?tab=readme-ov-file).
 
 <Tabs items={['API response example','Extraction example']}>
   <Tab value="API response example" >
 
 ```json
 {
-  "message": "测试",
+  "message": "test",
   "data": {
     "user": {
       "name": "xxx",
@@ -144,7 +144,7 @@ Syntax reference: https://github.com/JSONPath-Plus/JSONPath?tab=readme-ov-file
 
 ```json
 {
-  "$.message": "测试",
+  "$.message": "test",
   "$.data.user": { "name": "xxx", "age": 12 },
   "$.data.user.name": "xxx",
   "$.data.user.age": 12,

@@ -9,7 +9,7 @@ The **Parallel Run** node takes an array as input and runs the same sub-workflow
 
 ![Parallel Run node](/imgs/optimized/current/node-parallel.png.webp)
 
-It fits batch tasks where each item is **independent and does not depend on the others** — for example:
+It fits batch tasks where each item can be completed **independently**, such as:
 
 - Translating a batch of text snippets
 - Scraping multiple web pages and extracting information
@@ -18,7 +18,7 @@ It fits batch tasks where each item is **independent and does not depend on the 
 ## Core Features
 
 1. **Runs in parallel, finishes faster**
-   - Items are processed at the same time instead of queuing one by one
+   - Multiple items are processed at the same time
    - You can set "how many to run at once" to balance speed against resource usage
 
 2. **A single failure does not break the batch**
@@ -55,7 +55,7 @@ It fits batch tasks where each item is **independent and does not depend on the 
 - **No interactive nodes**: form input, user selection, and other interactive nodes cannot run inside the Execution Logic — the editor blocks dropping them in
 - **Variable and output races**: global variable changes from successful tasks are written back to the main flow. If a Variable Update node changes an output on a node outside the parallel container, that output is also written back after the task succeeds. When multiple tasks write the same variable or external node output, the final value depends on task completion order and is not guaranteed to be stable. For deterministic results, return values through the End node and use the Parallel Run aggregate outputs
 - **Array length cap**: the input array is capped at 100 items by default (adjustable by the deployment — see below)
-- **Turn off streaming for AI nodes inside the Execution Logic**: it is strongly recommended to disable **"Return AI content"** on AI Chat nodes placed inside the parallel body. Otherwise multiple tasks will stream to the same chat window at once and the text will interleave into a garbled mess. Usually you only want a final **Specified Reply** node *after* the parallel node to emit the aggregated result.
+- **Turn off streaming for AI nodes inside the Execution Logic**: it is strongly recommended to disable **"Return AI content"** on AI Chat nodes placed inside the parallel body. Otherwise multiple tasks will stream to the same chat window at once and their output may interleave and become difficult to read. Usually you only want a final **Specified Reply** node *after* the parallel node to emit the aggregated result.
 
 ### Deployment Settings
 

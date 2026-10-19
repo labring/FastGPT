@@ -45,7 +45,7 @@ export default async function Page({
         }))
     : [];
 
-  // 使用构建时导入的静态数据
+  // Use the physical locale file; the route path omits the language suffix.
   const filePath = `content/${page.data._file.path}`;
   const lastModifiedData = docLastModifiedData as Record<string, string>;
   const lastModified = lastModifiedData[filePath] ?? page.data.lastModified;

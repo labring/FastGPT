@@ -1,3 +1,4 @@
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
@@ -16,7 +17,11 @@ import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search
 import { getDatasetSearchVlmModel } from '../../../dataset/search/vlm';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { loadWorkflowDatasetResource, loadWorkflowModelResource } from '../../resource/service';
+import {
+  isWorkflowResourceError,
+  loadWorkflowDatasetResource,
+  loadWorkflowModelResource
+} from '../../resource/service';
 import { getNodeErrResponse } from '../utils';
 import {
   createImageCaptionChildNodeResponse,
@@ -57,6 +62,24 @@ type DatasetSearchProps = ModuleDispatchProps<{
 export type DatasetSearchResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.datasetQuoteQA]: SearchDataResponseItemType[];
 }>;
+
+/**
+ * 识别知识库缺失及兼容的工作流资源错误，只对已知资源问题降级日志。
+ * 加载器须原样抛出数据库等系统异常，避免将查询失败误判为资源不存在。
+ */
+export const isDatasetResourceMissingError = (error: unknown): boolean => {
+  if (isWorkflowResourceError(error)) return true;
+  if (error === DatasetErrEnum.unExist) return true;
+
+  const errObj = error as { message?: string; statusText?: string } | null;
+  if (typeof errObj === 'object' && errObj !== null) {
+    if (errObj.message === DatasetErrEnum.unExist || errObj.statusText === DatasetErrEnum.unExist) {
+      return true;
+    }
+  }
+
+  return false;
+};
 
 /** 知识库检索工作流节点执行入口 */
 export const dispatchDatasetSearch = async (
@@ -402,7 +425,11 @@ export const dispatchDatasetSearch = async (
           : 'No results'
     };
   } catch (error) {
-    logger.error('Dataset search dispatch failed', { error });
+    if (isDatasetResourceMissingError(error)) {
+      logger.warn('Dataset search dispatch failed', { error });
+    } else {
+      logger.error('Dataset search dispatch failed', { error });
+    }
     return getNodeErrResponse({ error });
   }
 };

@@ -17,18 +17,16 @@ FastGPT uses OpenAI's LLM and embedding models by default. For private deploymen
 - Port: 6006
 
 ```
-# Set the security token (used as the channel key in AI Proxy)
+# Set the security token (used as the provider key in AI Proxy)
 Default: sk-aaabbbcccdddeeefffggghhhiiijjjkkk
 You can also set it via the environment variable: sk-key. Refer to Docker documentation for how to pass environment variables.
 ```
 
 <span id="connect-to-oneapi" />
 
-## Connect to AI Proxy
+For the current AI Proxy setup, see the [Model Configuration Guide](/en/self-host/config/model/intro). The legacy One API screenshot below illustrates the equivalent channel settings.
 
-Documentation: [One API](/en/self-host/config/model/intro)
-
-Add a channel for chatglm2 and m3e-large respectively, with the following parameters:
+Add model connections for both models, using the deployed service URL and its security token. Register `m3e` for embeddings and `chatglm2` for chat. In the One API interface shown below, use **Custom Channel**, enter the service in **Base URL**, and add each name to the custom model list.
 
 ![Connect to AI Proxy — interface example](/imgs/optimized/model-m3e1.png.webp)
 
@@ -44,7 +42,7 @@ curl --location --request POST 'https://domain/v1/embeddings' \
 --header 'Content-Type: application/json' \
 --data-raw '{
   "model": "m3e",
-  "input": ["What is FastGPT"]
+  "input": ["What is Laf?"]
 }'
 ```
 

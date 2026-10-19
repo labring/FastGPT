@@ -15,8 +15,11 @@ To reduce code duplication, we've made some changes to the configuration file. T
 1. Update the commercial edition image to version 4.6.6.
 2. Move `SystemParams.pluginBaseUrl` from the old configuration file to an environment variable:
 
-   PRO_URL=commercial edition image address (no longer needs to end with /api), for example:
+   Set `PRO_URL` to the commercial edition service URL, omitting the trailing `/api`. For example:
+
+   ```dotenv
    PRO_URL=http://fastgpt-plugin.ns-hsss5d.svc.cluster.local:3000
+   ```
 
 3. The `FeConfig` section has been removed from the configuration file. You can now configure it directly through the commercial edition's web interface. All FastGPT parameters and models can be configured from the commercial edition dashboard — no need to modify `config.json` anymore.
 

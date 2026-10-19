@@ -5,7 +5,9 @@ description: Create a shared link and verify published configuration, answers, a
 
 ## Introduction
 
-A share link creates a temporary public URL that lets anyone on the internet use your app. FastGPT creates a temporary identity for each visitor to isolate users from each other. Usage is billed to the team that owns the app, so avoid sharing the link publicly unless intended.
+A share link creates a temporary public URL that lets anyone on the internet use your app. Usage is billed to the team that owns the app, so share the link only with its intended audience.
+
+FastGPT generates a `localId` for each visitor to retrieve chat history from the cloud. This identity is tied to the same device and browser. Switching devices or clearing browser storage loses access to that history. Visitors can retrieve up to `20` conversations from the past `30 days`.
 
 ## Before you begin
 
@@ -53,13 +55,11 @@ Some parameters are only available in the commercial edition.
 
 ### Introduction
 
-In FastGPT V4.6.4, we changed how share links read data. A `localId` is generated for each user to identify them and pull chat history from the cloud. However, this only works on the same device and browser -- switching devices or clearing browser cache will lose those records. Due to this limitation, we only allow users to pull the last `20` records from the past `30 days`.
-
 Share link authentication is designed to quickly and securely integrate FastGPT's chat interface into your existing system with just 2 endpoints. This feature is only available in the commercial edition.
 
 ### Usage Guide
 
-In the share link configuration, you can optionally fill in the `Identity Verification` field. This is the root URL for a `POST` request. Once configured, share link initialization, chat start, and chat completion will all send requests to specific endpoints under this URL. Below, we use `host` to represent the `identity verification root URL`. Your server only needs to return whether verification succeeded -- no other data is required. The format is as follows:
+In the share link configuration, you can optionally fill in the `Identity Verification` field. This is the root URL for a `POST` request. Once configured, share link initialization, chat start, and chat completion will all send requests to specific endpoints under this URL. Below, we use `host` to represent the `identity verification root URL`. For the initialization and pre-chat checks, return `success` and the required `data.uid`. You can include `message` or `msg` to explain a failed check. Use this response format:
 
 #### Unified Response Format
 
@@ -80,7 +80,9 @@ In the share link configuration, you can optionally fill in the `Identity Verifi
 
 #### Flow Diagram
 
-![Flow Diagram — interface example](/imgs/optimized/sharelink_process.png.webp)
+When a visitor opens the link, FastGPT sends `authToken` to the initialization check. A successful check loads the app; a failed check blocks access. Each submitted message then passes through the pre-chat check. After an allowed conversation finishes, FastGPT sends its results to the optional reporting endpoint.
+
+![Share link initialization, pre-chat verification, and result reporting](/imgs/optimized/sharelink_process.png.webp)
 
 ### Configuration Guide
 
@@ -126,7 +128,7 @@ curl --location --request POST '{{host}}/shareAuth/init' \
 }
 ```
 
-The system will pull chat history for uid `username123` under this share link.
+The system retrieves chat history for the returned `uid` under this share link.
 
   </Tab>
 
@@ -208,7 +210,7 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
             "moduleName": "core.module.template.Dataset search",
             "moduleType": "datasetSearchNode",
             "totalPoints": 1.5278,
-            "query": "导演是谁\n《铃芽之旅》的导演是谁？\n这部电影的导演是谁？\n谁是《铃芽之旅》的导演？",
+            "query": "Who is the director\nWho is the director of Suzume?\nWho directed this film?\nWho directed Suzume?",
             "model": "Embedding-2(旧版，不推荐使用)",
             "tokens": 1524,
             "similarity": 0.83,
@@ -216,7 +218,7 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
             "searchMode": "embedding",
             "searchUsingReRank": false,
             "extensionModel": "FastAI-4k",
-            "extensionResult": "《铃芽之旅》的导演是谁？\n这部电影的导演是谁？\n谁是《铃芽之旅》的导演？",
+            "extensionResult": "Who is the director of Suzume?\nWho directed this film?\nWho directed Suzume?",
             "runningTime": 2.15
         },
         {
@@ -225,13 +227,13 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
             "totalPoints": 0.593,
             "model": "FastAI-4k",
             "tokens": 593,
-            "query": "导演是谁",
+            "query": "Who is the director",
             "maxToken": 2000,
             "quoteList": [
                 {
                     "id": "65bb346a53698398479a8854",
-                    "q": "导演是谁？",
-                    "a": "电影《铃芽之旅》的导演是新海诚。",
+                    "q": "Who is the director?",
+                    "a": "The director of Suzume is Makoto Shinkai.",
                     "chunkIndex": 0,
                     "datasetId": "65af9b947916ae0e47c834d2",
                     "collectionId": "65bb345c53698398479a868f",
@@ -254,11 +256,11 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
             "historyPreview": [
                 {
                     "obj": "Human",
-                    "value": "使用 <Data></Data> 标记中的内容作为本次对话的参考:\n\n<Data>\n导演是谁？\n电影《铃芽之旅》的导演是新海诚。\n------\n电影《铃芽之旅》的编剧是谁？22\n新海诚是本片的编剧。\n------\n电影《铃芽之旅》的女主角是谁？\n电影的女主角是铃芽。\n------\n电影《铃芽之旅》的制作团队中有哪位著名人士？2\n川村元气是本片的制作团队成员之一。\n------\n你是谁？\n我是电影《铃芽之旅》助手\n------\n电影《铃芽之旅》男主角是谁？\n电影《铃芽之旅》男主角是宗像草太，由松村北斗配音。\n------\n电影《铃芽之旅》的作者新海诚写了一本小说，叫什么名字？\n小说名字叫《铃芽之旅》。\n------\n电影《铃芽之旅》的女主角是谁？\n电影《铃芽之旅》的女主角是岩户铃芽，由原菜乃华配音。\n------\n电影《铃芽之旅》的故事背景是什么？\n日本\n------\n谁担任电影《铃芽之旅》中岩户环的配音？\n深津绘里担任电影《铃芽之旅》中岩户环的配音。\n</Data>\n\n回答要求：\n- 如果你不清楚答案，你需要澄清。\n- 避免提及你是从 <Data></Data> 获取的知识。\n- 保持答案与 <Data></Data> 中描述的一致。\n- 使用 Markdown 语法优化回答格式。\n- 使用与问题相同的语言回答。\n\n问题:\"\"\"导演是谁\"\"\""
+                    "value": "Use the content inside the <Data></Data> tags as a reference for this conversation:\n\n<Data>\nWho is the director?\nThe director of Suzume is Makoto Shinkai.\n------\nWho is the screenwriter of Suzume?22\nMakoto Shinkai is the screenwriter of this film.\n------\nWho is the female lead in Suzume?\nThe female lead is Suzume.\n------\nWhich well-known person is part of the production team for Suzume?2\nGenki Kawamura is a member of the production team for this film.\n------\nWho are you?\nI am an assistant for the film Suzume\n------\nWho is the male lead in Suzume?\nThe male lead in Suzume is Souta Munakata, voiced by Hokuto Matsumura.\n------\nWhat is the name of the novel written by Makoto Shinkai, the creator of Suzume?\nThe novel is titled Suzume.\n------\nWho is the female lead in Suzume?\nThe female lead in Suzume is Suzume Iwato, voiced by Nanoka Hara.\n------\nWhere is the story of Suzume set?\nJapan\n------\nWho voices Tamaki Iwato in Suzume?\nEri Fukatsu voices Tamaki Iwato in Suzume.\n</Data>\n\nResponse requirements:\n- Ask for clarification when you are unsure of the answer.\n- Avoid mentioning that your knowledge comes from <Data></Data>.\n- Keep answers consistent with the content in <Data></Data>.\n- Use Markdown to format your answer.\n- Respond in the same language as the question.\n\nQuestion:\"\"\"Who is the director\"\"\""
                 },
                 {
                     "obj": "AI",
-                    "value": "电影《铃芽之旅》的导演是新海诚。"
+                    "value": "The director of Suzume is Makoto Shinkai."
                 }
             ],
             "contextTotalLen": 2,
@@ -346,7 +348,7 @@ export default async function (ctx: FunctionContext) {
 
   <Tab value="/shareAuth/start" >
 
-In this endpoint, we require `token` to equal `fastgpt` to pass verification. Additionally, if the question contains a specific character, it returns an error to simulate content moderation.
+In this endpoint, we require `token` to equal `fastgpt` to pass verification. The example also rejects questions containing the Chinese character `你` ("you") to demonstrate content moderation.
 
 ```ts
 import cloud from '@lafjs/cloud';
@@ -371,7 +373,7 @@ export default async function (ctx: FunctionContext) {
 
   <Tab value="/shareAuth/finish" >
 
-The result reporting endpoint can handle custom logic as needed.
+The result reporting endpoint can handle custom logic as needed. The historical example below uses `price` and its corresponding conversion factor. Check your version's payload before adapting billing logic; the payload shown earlier on this page uses `totalPoints`.
 
 ```ts
 import cloud from '@lafjs/cloud';
@@ -403,7 +405,7 @@ Modified: `https://share.fastgpt.io/chat/share?shareId=64be36376a438af0311e599c&
 #### 4. Test the Result
 
 1. Opening the original link or a link where `authToken` does not equal `fastgpt` will show an authentication error.
-2. Sending content that contains the filtered character will show a content policy violation error.
+2. Sending a message containing `你` will show a content policy violation error.
 
 ### Use Cases
 

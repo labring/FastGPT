@@ -9,6 +9,8 @@ upgradeTags:
 
 ## 📦 Upgrade Guide
 
+This is the final beta before 4.15.0 stable. Deployments running a 4.15.0 beta must first upgrade to this version and complete every upgrade step from the beta cycle. Then update all images to the [4.15.0 stable release](/en/self-host/upgrading/4-15/41500).
+
 ### 1. Open-source config.json Configuration Removed
 
 The `config.json` configuration file has been removed. All configuration is now provided through environment variables:
@@ -67,7 +69,7 @@ See the [4.15.0 stable image tags](/en/self-host/upgrading/4-15/41500) and updat
 
 ### 5. Run the Workflow V1 to V2 Migration (Optional)
 
-Only users who have deployed a FastGPT version earlier than `<4.8` need to run this step.
+Only users who have deployed a FastGPT version earlier than `4.8` need to run this step.
 
 Starting from V4.15.0-beta7, workflow save payloads use the V2 structure consistently. Historical `apps.modules` and `app_versions.nodes` records may still use the V1 structure. After upgrading, run the V1 -> V2 migration first, then run the V2 dirty-data cleanup in the next step.
 
@@ -202,9 +204,14 @@ Cleanup behavior:
 3. In non-dry-run mode, deletes only duplicate `chats` headers. Messages in `chatitems` and `chat_item_responses` are not deleted.
 4. The response includes duplicate group count, estimated delete count, actual delete count, and duplicate group samples.
 
+## ⚙️ Improvements
+
+1. Sandbox file URLs now use the new API.
+
 ## 🐛 Fixes
 
 1. Fixed historical V1 workflow data that could fail validation under the new save payload structure.
 2. Fixed dirty `FlowNodeInputTypeEnum.*`, `FlowNodeOutputTypeEnum.*`, and `WorkflowIOValueTypeEnum.*` expression strings in workflow node configuration that could break input rendering and IO type checks.
 3. Fixed AgentV2 MCP not being able to retrieve schemas.
-4. Fixed workflow text boxes where pressing Ctrl+C while selecting text could be intercepted by node copy handling, preventing text from being copied.
+4. Fixed variable updates not being written back when the batch execution node finished.
+5. Fixed workflow text boxes where pressing Ctrl+C while selecting text could be intercepted by node copy handling, preventing text from being copied.

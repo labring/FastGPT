@@ -3,7 +3,20 @@ title: Upgrade Guide
 description: FastGPT version upgrade guide
 ---
 
-Upgrading FastGPT involves two steps:
+## Version Policy
+
+Starting with 4.14.11, FastGPT uses separate version names for stable releases and rapid-development releases:
+
+1. Two stable release lines are maintained. For example, while new features are developed in 4.16.x, fixes are maintained for 4.14.x and 4.15.x.
+2. Stable releases have no suffix, such as 4.14.11, 4.14.12, 4.15.0, and 4.15.1. A fix for 4.14.11 is released as 4.14.12 and applied to the 4.15.x stable line. These maintenance releases contain fixes and preserve the existing feature set.
+3. Rapid-development releases use a beta suffix, such as 4.16.0-beta.1, 4.16.0-beta.2, and 4.16.0-beta.3.
+4. A development line becomes a stable release approximately every 2 months. A consolidated upgrade script lets you apply all migrations from that development cycle with one request.
+
+For stable deployments, choose releases without a beta suffix. Dedicated maintenance releases provide fixes while preserving the existing feature set.
+
+## Upgrade Steps
+
+Upgrading FastGPT usually involves two steps:
 
 1. Update the image
 2. Run the upgrade initialization script
@@ -32,17 +45,17 @@ Pin each service to the image tag specified in the target release deployment tem
 
 1. Open [Sealos Cloud](https://cloud.sealos.io?uid=fnWRt09fZP) and find App Management on the desktop.
 
-![](/imgs/optimized/updateImageSealos1.jpg.webp)
+![Sealos desktop with App Management](/imgs/optimized/updateImageSealos1.jpg.webp)
 
 2. Select the corresponding app - click the three dots on the right - Update.
 
-![](/imgs/optimized/updateImageSealos2.png.webp)
+![App menu for changing a deployment](/imgs/optimized/updateImageSealos2.png.webp)
 
 3. Update the image - Confirm changes.
 
    If you need to modify the configuration file, scroll down to the `Configuration File` section to make changes.
 
-![](/imgs/optimized/updateImageSealos3.png.webp)
+![Image and configuration settings](/imgs/optimized/updateImageSealos3.png.webp)
 
 ## Updating Images with Docker Compose
 
@@ -67,9 +80,9 @@ Starting with FastGPT 4.17+, the application automatically runs a distributed st
 
 `{{}}` denotes a variable. `{{host}}` refers to a variable named "host", which is your server's domain name or IP address.
 
-On Sealos, you can find your domain name as shown below:
+On Sealos, open the app details and look under **Network Configuration**. The **External Address** column shows the public URL; use its domain name for `{{host}}` when the request already includes `https://`.
 
-![](/imgs/optimized/updateImageSealos4.png.webp)
+![App details showing the external address and environment variables](/imgs/optimized/updateImageSealos4.png.webp)
 
 ### How to get the rootkey
 

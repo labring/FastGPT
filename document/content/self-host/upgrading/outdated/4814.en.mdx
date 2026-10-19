@@ -20,11 +20,13 @@ For Milvus users: use the v4.8.14-milvus-fix image.
 
 ### Auto-trigger Workflow
 
-You can configure a workflow to automatically trigger once when a user loads a conversation. This is useful for CRM systems where you want to proactively guide users without waiting for them to initiate.
+You can configure a workflow to automatically trigger once when a user loads a conversation. This can guide users through a CRM onboarding flow as soon as they arrive.
+
+Open the workflow’s **Auto-execute** setting to configure this behavior. The sequence is: conversation opener, global variables, then automatic workflow execution. The example below starts with a choice between first-time and experienced users, followed by a required phone-number field and a **Submit** button.
 
 |                                                  |                                                  |
 | ------------------------------------------------ | ------------------------------------------------ |
-| ![alt text](/imgs/optimized/image-8.png.webp) | ![alt text](/imgs/optimized/image-9.png.webp) |
+| ![Auto-execute configuration and the order of the conversation opener, global variables and workflow execution](/imgs/optimized/image-8.png.webp) | ![Automatically started onboarding workflow with an experience selector and phone-number form](/imgs/optimized/image-9.png.webp) |
 
 ## Full Release Notes
 

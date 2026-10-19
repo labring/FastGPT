@@ -20,7 +20,7 @@ System plugins have therefore been split into a standalone repository:
 
 [FastGPT Plugin](https://github.com/labring/fastgpt-plugin)
 
-FastGPT Plugin v1.0.0 systematically refactors the plugin project so plugin installation, version management, runtime isolation, and operations configuration share one model.
+FastGPT Plugin v1.0.0 redesigns the plugin project around a consistent approach to installation, version management, runtime isolation, and operational configuration.
 
 ## Design Goals
 
@@ -46,7 +46,7 @@ The main goals of FastGPT Plugin are:
 
 ## Repository Structure
 
-`fastgpt-plugin` is a pnpm workspace Monorepo designed with Clean Architecture and DDD as references.
+`fastgpt-plugin` is a pnpm workspace monorepo that follows Clean Architecture and domain-driven design (DDD).
 
 ```text
 fastgpt-plugin/
@@ -85,7 +85,7 @@ The FastGPT Plugin ecosystem mainly involves these repositories:
 | Repository                  | Purpose                                                                |
 | --------------------------- | ---------------------------------------------------------------------- |
 | `labring/fastgpt-plugin`    | Plugin service, SDK, CLI, debug monitor, and infrastructure code.      |
-| `fastgpt-official-plugins`  | Plugins maintained or reviewed by FastGPT officials.                   |
+| `fastgpt-official-plugins`  | Plugins maintained or reviewed by the FastGPT team.                    |
 | `fastgpt-community-plugins` | Community third-party plugins.                                         |
 | `fastgpt-business-plugins`  | Private plugins, customer-customized plugins, and commercial delivery. |
 

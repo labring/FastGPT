@@ -5,7 +5,7 @@ description: Common FastGPT app building questions, including Chat Agent, workfl
 
 ## Multi-Turn Classification
 
-The Question Classification node has access to conversation context. When two consecutive questions are closely related, the model can usually classify them accurately based on their connection. For example, if a user asks "How do I use this feature?" followed by "What are the limitations?", the model leverages context to understand and respond correctly.
+The Question Classification node has access to conversation context. When two consecutive questions are closely related, the model can usually classify them accurately based on their connection. For example, if a user asks "How do I use this feature?" followed by "What are the limitations?", the model uses that context to interpret the follow-up.
 
 However, when consecutive questions have little relation to each other, classification accuracy may drop. To handle this, you can use a global variable to store the classification result. In subsequent classification steps, check the global variable first — if a result exists, reuse it; otherwise, let the model classify on its own.
 

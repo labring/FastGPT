@@ -42,12 +42,12 @@ After sending a question about `fastgpt`, you'll see Cursor invoke an MCP tool (
 
 ## Configure Identity Proxy
 
-Identity proxy lets a caller select the team member who executes an MCP tool. FastGPT checks that member's read permission for the target application and attributes chat and runtime records to that member. Use it when a gateway or shared MCP client sends requests on behalf of different team members.
+Identity proxy lets a caller select the team member who executes an MCP tool. FastGPT checks that member's read permission for the target app and attributes chat and runtime records to that member. Use it when a gateway or shared MCP client sends requests on behalf of different team members.
 
 ### Prerequisites
 
 - Only a team owner can enable identity proxy for an MCP Server.
-- The proxied user must be an active member of the same team and have read permission for the target application.
+- The proxied user must be an active member of the same team and have read permission for the target app.
 - The key in the published MCP URL is an execution credential. Do not commit it to public code or share it with unrelated users.
 
 ### 1. Enable identity proxy
@@ -94,7 +94,7 @@ SSE URLs use the same headers. The SSE service captures the proxy identity when 
 
 ### 3. Verify the configuration
 
-Call a published tool from the MCP client. A successful call confirms that the proxied user is still an active team member and has read permission for the target application.
+Call a published tool from the MCP client. A successful call confirms that the proxied user is still an active team member and has read permission for the target app.
 
 If the tool list loads but a tool call returns an authorization error, check the following:
 
@@ -102,9 +102,9 @@ If the tool list loads but a tool call returns an authorization error, check the
 2. The username or team member ID in the request header is correct.
 3. If both headers are present, they identify the same member.
 4. The member is still active in the team that published the MCP Server.
-5. The member has read permission for the application being called.
+5. The member has read permission for the app being called.
 
-The tool list exposes only metadata such as tool names and parameters. FastGPT rechecks team membership and application permission for every tool call.
+The tool list exposes only metadata such as tool names and parameters. FastGPT rechecks team membership and app permission for every tool call.
 
 ## Self-Hosted MCP Server Setup
 

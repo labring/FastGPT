@@ -134,7 +134,7 @@ curl --location --request POST 'http://localhost:3003/api/channels/import/oneapi
 
 #### 5. Verify AI Proxy is Running in FastGPT
 
-Log in with the root account. On the `Account - Model Providers` page, you should see two new options: `Model providers` and `Call Logs`. Open Model providers to verify that your previous OneAPI channels are listed, confirming the migration was successful. You can then manually check that each channel is working properly.
+Log in with the root account. On the `Account - Model Providers` page, you should see two new options: `Model Channels` and `Call Logs`. Open Model Channels to verify that your previous OneAPI channels are listed, confirming the migration was successful. You can then manually check that each channel is working properly.
 
 #### 6. Remove the OneAPI Service
 
@@ -160,7 +160,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv490' \
 
 1. Upgrades the PG Vector extension version.
 2. Updates all Dataset collection fields.
-3. Updates the index `type` field across all Dataset data. (This takes a while — you may see a timeout at the end, which can be ignored. The process will continue incrementally as long as the database is running.)
+3. Updates the index `type` field across all Dataset data. This can take a long time. The HTTP request may time out while the migration continues incrementally in the background. Check the migration logs and database progress to confirm completion.
 
 ## Compatibility & Deprecations
 

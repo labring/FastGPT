@@ -9,7 +9,7 @@ description: FastGPT Tool Calling node overview
 
 A tool can be a built-in node (e.g., AI Chat, Dataset search, HTTP) or a plugin.
 
-Tool calling lets the LLM dynamically decide the workflow path instead of following a fixed sequence. (The trade-off is higher token consumption.)
+Tool calling lets the LLM dynamically choose the workflow path. This flexibility increases token consumption.
 
 ### Tool Components
 
@@ -46,7 +46,7 @@ Give the tool a clear description and define required arguments. This example as
 
 #### Use Cases
 
-A tool-call node normally returns tool results to the model for a final answer. Connect **Tool Call Stop** at the end of a tool branch to finish the call after that branch runs.
+By default, after the tool calling node invokes a tool, it returns the tool's output to the AI for summarization. To finish immediately after the tool branch, place a **Tool Calling Termination** node at its end.
 
 In this verified example, the request `Please call support.` produces `support` through Specified Reply and then reaches Tool Call Stop:
 

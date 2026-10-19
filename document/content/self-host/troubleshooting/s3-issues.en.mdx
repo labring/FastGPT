@@ -1,6 +1,6 @@
 ---
 title: S3 Issues Troubleshooting
-description: FastGPT Self-Hosting Common S3 Issues Troubleshooting
+description: Diagnose object storage connection and upload errors in self-hosted FastGPT
 ---
 
 ## 1. Log shows ERR level "Failed to ensure external public/private bucket exists", resulting in inability to connect to object storage
@@ -28,14 +28,14 @@ Example
 
 ### 2.1 SignatureDoesNotMatched
 
-- Signature inconsistency, mostly due to Nginx configuration error
+- A signature mismatch is often caused by the Nginx proxy configuration.
 
 ### Possible Errors
 
-- Necessary request headers (such as Headers, Host) were not passed during Nginx forwarding
+- Check whether Nginx forwards the required request headers, especially `Host`.
 
 ### Solution
 
-- Configure proxy_set_header Host $http_host, do not set to $host, Nginx's $host built-in variable will remove the port, set to $http_host
+- Set `proxy_set_header Host $http_host;` in Nginx to preserve the original host and port used to sign the request. Nginx's `$host` variable strips the port.
 
 ---

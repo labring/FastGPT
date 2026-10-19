@@ -24,7 +24,9 @@ FastGPT uses the `AI Proxy` service to connect to different model providers. AI 
 
 ### Architecture Diagram
 
-![Architecture Diagram — interface example](/imgs/optimized/image-95.png.webp)
+When FastGPT requests a model such as `gpt-5`, AI Proxy finds the channels configured for that model, selects an available channel, and forwards the request to its upstream provider. The provider's response returns through AI Proxy to FastGPT.
+
+![alt text](/imgs/optimized/image-95.png.webp)
 
 ### Model Types
 
@@ -125,6 +127,8 @@ If the built-in models don't meet your needs, you can add custom models. If the 
 
 1. **Add via Form**
 
+In `Model Configuration`, click `Add Model` in the top-right corner and select the model type. Enter the provider, a unique model ID, display name, pricing, and supported capabilities, then click `Confirm`.
+
 |                                                   |                                                   |
 | ------------------------------------------------- | ------------------------------------------------- |
 | ![Add a Custom Model — interface example](/imgs/optimized/image-96.png.webp) | ![Add a Custom Model — interface example](/imgs/optimized/image-97.png.webp) |
@@ -132,6 +136,8 @@ If the built-in models don't meet your needs, you can add custom models. If the 
 2. **Add via Configuration File**
 
 If you find it tedious to configure models through the UI, you can use a configuration file instead. This is also useful for quickly replicating the configuration from one system to another.
+
+Click `Configuration File` in the top-right corner of `Model Configuration` to open the JSON editor. Copy the existing configuration as a backup, edit the model array, and click `Confirm` to apply it. Confirming replaces the entire current model configuration, so include every model you want to retain.
 
 |                                                   |                                                   |
 | ------------------------------------------------- | ------------------------------------------------- |

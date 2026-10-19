@@ -15,7 +15,8 @@ Add the `CHAT_TITLE_MODEL` environment variable to `fastgpt` and `fastgpt-pro`. 
 
 ```shell
 CHAT_TITLE_MODEL=deepseek-v4-flash
-INVOKE_TOKEN_SECRET=For keys with more than 32 bits, reverse call the interface jwt key
+# JWT secret for reverse calls; use at least 32 characters.
+INVOKE_TOKEN_SECRET=replace_with_32_chars_random_secret
 ```
 
 If Agent Sandbox is enabled, also add the following environment variables to `fastgpt`:

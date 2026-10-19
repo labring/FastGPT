@@ -22,10 +22,19 @@ import { getWorkflowResourceContext } from '../utils/context';
 import { hasWorkflowResource, createWorkflowResourceContext } from './context';
 
 /** 静态资源快照实体不可用错误；不能被工具加载器降级为单个工具不可用。 */
-export class WorkflowResourceError extends UserError {}
+export class WorkflowResourceError extends UserError {
+  constructor(message: string, displayMessage?: string) {
+    super(message, displayMessage);
+    this.name = 'WorkflowResourceError';
+  }
+}
 
+/** 识别资源错误及序列化后的同名对象，保持工具加载器的异常传播约定。 */
 export const isWorkflowResourceError = (error: unknown): error is WorkflowResourceError =>
-  error instanceof WorkflowResourceError;
+  error instanceof WorkflowResourceError ||
+  (typeof error === 'object' &&
+    error !== null &&
+    (error as { name?: string }).name === 'WorkflowResourceError');
 
 /** 普通工作流的快照资源限定所属团队；系统工具和 root 调试允许按 ID 读取。 */
 const getSnapshotTeamFilter = (context: WorkflowResourceContext) =>

@@ -26,7 +26,7 @@ This example uses a root `entrypoint.sh` that prints `Ready`. The terminal shows
 
 ## 2. Smart Deduplication Mechanism
 
-To prevent running environment initialization scripts repeatedly in subsequent conversations (e.g., executing dependency installation packages on every turn would cause severe latency), FastGPT designs a deduplication mechanism for skill scripts.
+To prevent running environment initialization scripts repeatedly in subsequent conversations (for example, reinstalling dependencies on every turn would add substantial latency), FastGPT tracks successful initialization and skips repeated runs.
 
 The execution state is stored in the `~/.fastgpt/runtime/state.json` file inside the virtual machine.
 

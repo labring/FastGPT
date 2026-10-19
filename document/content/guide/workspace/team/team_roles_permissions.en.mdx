@@ -23,15 +23,13 @@ FastGPT offers three permission management levels:
 
 Permission evaluation follows this logic:
 
-First, check the user's individual member permissions
-
-Then, check permissions from the user's departments and groups (union)
-
-Final permissions are the combination of the above
+1. Use individually assigned member permissions when present.
+2. Otherwise, combine the permissions granted through the user's departments and groups.
+3. Use the default permissions when neither source has an explicit assignment.
 
 Authorization logic:
 
-![Permission Management — interface example](/imgs/optimized/guide/team_permissions/team_roles_permissions/image1.jpeg.webp)
+![Member permissions take precedence over department and group permissions](/imgs/optimized/guide/team_permissions/team_roles_permissions/image1.jpeg.webp)
 
 ### Resource Permissions
 
@@ -117,7 +115,7 @@ The table below shows the manageable permissions for different resources.
 
 ### Collaborators
 
-You must add **collaborators** before managing their permissions:
+Open **Add Collaborators**, select the members, departments, or groups, choose a permission level, and click **Confirm**. You can then manage their permissions on the resource.
 
 When managing team permissions, first select members/organizations/groups, then configure permissions.
 
@@ -149,7 +147,7 @@ Root is the system's only super admin account, with complete access and manageme
 
 Use the "All Members Group" to quickly set baseline permissions for the entire team. For example, grant everyone access to an app.
 
-**Note**: Individual member permissions override all-member group permissions. For example, if App A has all-member edit permissions, but User M is individually set to use-only, User M can only use the app, not edit it.
+**Note**: Individual member permissions override all-member group permissions. For example, if App A has all-member edit permissions, but User M is individually set to use-only, User M receives use-only access.
 
 ### 2. Batch Permission Management
 
