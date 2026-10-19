@@ -136,11 +136,11 @@
   },
   "dependencies": {
     "@fastgpt/global": "workspace:*",
-    "@types/crypto-js": "catalog:",
-    "crypto-js": "catalog:",
+    "crypto-js": "4.2.0",
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@types/crypto-js": "4.2.2",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "tsdown": "catalog:",

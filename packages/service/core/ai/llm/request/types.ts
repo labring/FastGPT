@@ -51,7 +51,6 @@ export type LLMRequestBodyType<T> = Omit<
   useVision?: boolean;
   useAudio?: boolean;
   useVideo?: boolean;
-  forceMediaToBase64?: boolean;
   extractFiles?: boolean;
   requestOrigin?: string;
 };

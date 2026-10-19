@@ -277,7 +277,6 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       useVision: runtime.useVision,
       useAudio: runtime.useAudio,
       useVideo: runtime.useVideo,
-      forceMediaToBase64: runtime.forceMediaToBase64,
       extractFiles: runtime.extractFiles,
       messages,
       tools: getToolsForFastAgentLoop({

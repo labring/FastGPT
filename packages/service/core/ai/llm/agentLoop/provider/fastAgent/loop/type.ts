@@ -51,7 +51,6 @@ export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   useVision?: boolean;
   useAudio?: boolean;
   useVideo?: boolean;
-  forceMediaToBase64?: boolean;
   extractFiles?: boolean;
   lang?: localeType;
   hasExecutableTools: boolean;

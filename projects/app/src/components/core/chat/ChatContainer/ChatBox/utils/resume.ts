@@ -142,7 +142,6 @@ export const shouldCreateResumeAiPlaceholder = (event: string) => {
     SseResponseEventEnum.interactive,
     SseResponseEventEnum.plan,
     SseResponseEventEnum.planStatus,
-    SseResponseEventEnum.workflowBuilderApplied,
     SseResponseEventEnum.workflowBuilderVersion,
     SseResponseEventEnum.workflowDuration
   ]).has(event);

@@ -72,9 +72,6 @@ catalogs:
     '@tanstack/react-table':
       specifier: ^8.21.3
       version: 8.21.3
-    '@types/crypto-js':
-      specifier: 4.2.2
-      version: 4.2.2
     '@types/js-yaml':
       specifier: ^4.0.9
       version: 4.0.9
@@ -123,9 +120,6 @@ catalogs:
     chalk:
       specifier: ^5.6.2
       version: 5.6.2
-    crypto-js:
-      specifier: 4.2.0
-      version: 4.2.0
     date-fns:
       specifier: ^3.6.0
       version: 3.6.0
@@ -1003,16 +997,16 @@ importers:
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../global
-      '@types/crypto-js':
-        specifier: 'catalog:'
-        version: 4.2.2
       crypto-js:
-        specifier: 'catalog:'
+        specifier: 4.2.0
         version: 4.2.0
       zod:
         specifier: 'catalog:'
         version: 4.4.3
     devDependencies:
+      '@types/crypto-js':
+        specifier: 4.2.2
+        version: 4.2.2
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.3
@@ -1151,9 +1145,6 @@ importers:
       dns-packet:
         specifier: ^5.6.1
         version: 5.6.1
-      dompurify:
-        specifier: ^3.4.2
-        version: 3.4.2
       fast-xml-parser:
         specifier: ^4.4.1
         version: 4.5.7
@@ -1296,6 +1287,9 @@ importers:
       '@types/xml2js':
         specifier: ^0.4.14
         version: 0.4.14
+      dompurify:
+        specifier: ^3.4.2
+        version: 3.4.2
       esbuild:
         specifier: ^0.25.11
         version: 0.25.12

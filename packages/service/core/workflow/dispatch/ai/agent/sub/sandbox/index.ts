@@ -1,6 +1,5 @@
 export {
   createBuiltinSkillPrepareAction,
   ensureAgentSandboxRuntime,
-  type AgentSandboxPrepareAction,
-  type AgentSandboxPrepareContext
+  type AgentSandboxPrepareAction
 } from './prepare';

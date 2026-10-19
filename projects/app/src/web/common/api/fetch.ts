@@ -189,11 +189,6 @@ export function handleEventSourceData(params: HandleEventSourceDataParams) {
         break;
       }
 
-      case SseResponseEventEnum.workflowBuilderApplied: {
-        onmessage({ responseValueId, event, workflowBuilderApplied: obj });
-        break;
-      }
-
       case SseResponseEventEnum.workflowBuilderVersion: {
         onmessage({ responseValueId, event, workflowBuilderVersion: obj.version });
         break;

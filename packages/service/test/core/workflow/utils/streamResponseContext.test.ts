@@ -4,11 +4,6 @@ import { responseWrite } from '@fastgpt/service/common/response';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import * as streamResume from '@fastgpt/service/core/chat/resume';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import {
-  STREAM_RESUME_POST_COMPLETE_TTL_SECONDS,
-  getStreamResumeRedisKeys,
-  resetStreamResumeMirrorGuardForTest
-} from '@fastgpt/service/core/chat/resume';
 import { FASTGPT_REDIS_PREFIX } from '@fastgpt/dal/redis/runtime';
 import {
   createWorkflowStreamResponseContext,
@@ -101,7 +96,7 @@ describe('createWorkflowStreamResponseContext', () => {
     const res = createRes();
     const params = { teamId, sourceType: ChatSourceTypeEnum.app, sourceId, chatId };
     const redis = getRedisRuntime().getCommandConnection() as any;
-    const keys = getStreamResumeRedisKeys(params);
+    const keys = streamResume.getStreamResumeRedisKeys(params);
     const context = await createWorkflowStreamResponseContext({
       ...params,
       req: createReq(),
@@ -126,14 +121,14 @@ describe('createWorkflowStreamResponseContext', () => {
     );
     expect(responseWrite).not.toHaveBeenCalled();
     const completionExpirations = redis.expire.mock.calls.filter(
-      ([, ttl]: [string, number]) => ttl === STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+      ([, ttl]: [string, number]) => ttl === streamResume.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
     );
     expect(completionExpirations).toHaveLength(2);
 
     await context.flushResume();
     expect(
       redis.expire.mock.calls.filter(
-        ([, ttl]: [string, number]) => ttl === STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+        ([, ttl]: [string, number]) => ttl === streamResume.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
       )
     ).toHaveLength(2);
   });

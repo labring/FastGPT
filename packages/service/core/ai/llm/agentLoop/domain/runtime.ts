@@ -27,7 +27,6 @@ export type AgentLoopLLMParams = {
   useVision?: boolean;
   useAudio?: boolean;
   useVideo?: boolean;
-  forceMediaToBase64?: boolean;
   extractFiles?: boolean;
 };
 

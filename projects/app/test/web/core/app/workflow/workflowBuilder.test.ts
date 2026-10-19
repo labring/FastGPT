@@ -1,9 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import {
-  WorkflowBuilderAppliedSchema,
-  WorkflowBuilderChatBodySchema
-} from '@fastgpt/global/openapi/core/workflow/builder/api';
+import { WorkflowBuilderChatBodySchema } from '@fastgpt/global/openapi/core/workflow/builder/api';
+import { WorkflowBuilderVersionSchema } from '@fastgpt/global/core/workflow/builder/type';
 import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
 import { getWorkflowChecksum } from '@fastgpt/workflow-core/domain/checksum';
 import fixture from '@fastgpt/workflow-core/test/fixtures/basic-static/workflow.json';
@@ -717,19 +715,20 @@ describe('Workflow Builder Web Adapter', () => {
     });
   });
 
-  it('delivers the validated applied document event without mixing it into answer text', async () => {
-    const document = WorkflowDocumentSchema.parse(structuredClone(fixture));
-    const applied = WorkflowBuilderAppliedSchema.parse({
-      baseChecksum: await getWorkflowChecksum(document),
-      document,
-      checksum: await getWorkflowChecksum(document)
+  it('delivers the generated version event without mixing it into answer text', () => {
+    const version = WorkflowBuilderVersionSchema.parse({
+      versionNo: 1,
+      name: 'AI 生成版本 1',
+      filename: 'AI 生成版本 1.json',
+      checksum: `sha256:${'0'.repeat(64)}`,
+      generatedAt: '2026-08-12T10:00:00.000Z'
     });
     const onmessage = vi.fn();
     const enqueue = vi.fn();
 
     handleEventSourceData({
-      event: SseResponseEventEnum.workflowBuilderApplied,
-      data: JSON.stringify(applied),
+      event: SseResponseEventEnum.workflowBuilderVersion,
+      data: JSON.stringify({ version }),
       onmessage,
       enqueue,
       onerror: vi.fn()
@@ -737,8 +736,8 @@ describe('Workflow Builder Web Adapter', () => {
 
     expect(onmessage).toHaveBeenCalledWith({
       responseValueId: undefined,
-      event: SseResponseEventEnum.workflowBuilderApplied,
-      workflowBuilderApplied: applied
+      event: SseResponseEventEnum.workflowBuilderVersion,
+      workflowBuilderVersion: version
     });
     expect(enqueue).not.toHaveBeenCalled();
   });

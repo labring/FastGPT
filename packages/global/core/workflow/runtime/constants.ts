@@ -27,7 +27,6 @@ export enum SseResponseEventEnum {
   skillCall = 'skillCall', // skill invocation announce (when SKILL.md is loaded)
 
   // Workflow Builder
-  workflowBuilderApplied = 'workflowBuilderApplied',
   workflowBuilderVersion = 'workflowBuilderVersion'
 }
 
