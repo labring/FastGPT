@@ -30,7 +30,7 @@ FastGPT Example Travel Policy
 3. Finance review SLA: The finance department completes review and disbursement within 5 business days after receiving complete valid receipts.
 ```
 
-![Create travel policy knowledge base and choose available model](/imgs/current/knowledge-create.png)
+![Create travel policy knowledge base and choose available model](/imgs/optimized/current/knowledge-create.png.webp)
 
 ## Step 1: Create a Knowledge Base and Configure Chunking
 
@@ -41,7 +41,7 @@ FastGPT Example Travel Policy
    - For structured Q&A catalogs: Use QA segmentation to automatically derive query-answer pairs for higher semantic matching.
 4. In the preview view, click the file on the left to confirm that time limits and documentation requirements remain grouped in single chunks. Click "Start Import".
 
-![Previewing text chunks preserves core factual context](/imgs/current/knowledge-preview.png)
+![Previewing text chunks preserves core factual context](/imgs/optimized/current/knowledge-preview.png.webp)
 
 ## Step 2: Validate Search Recall and Reranking
 
@@ -51,7 +51,7 @@ Before connecting the knowledge base to an application, verify retrieval quality
 3. Inspect returned chunks and their similarity scores.
 4. Verify that the top candidate chunk contains `15 calendar days`. If a reranker is active, confirm that high-relevance chunks rank highest after the second-pass scoring.
 
-![Search test hits original text containing 15 calendar days deadline](/imgs/current/knowledge-search.png)
+![Search test hits original text containing 15 calendar days deadline](/imgs/optimized/current/knowledge-search.png.webp)
 
 ## Step 3: Create a Chat Agent with Grounding Prompts
 
@@ -70,7 +70,7 @@ Operational rules:
 3. For information not recorded in the references, state that the current policy contains no record and direct the user to HR or Finance.
 ```
 
-![Choose Chat Agent and fill out application details](/imgs/current/app-create.png)
+![Choose Chat Agent and fill out application details](/imgs/optimized/current/app-create.png.webp)
 
 ## Step 4: Test in Workspace and Verify Edge Cases
 
@@ -78,7 +78,7 @@ Run two distinct tests in the right-hand testing drawer:
 1. **Factual Recall Test**: Ask "What receipts are required for reimbursement?". Confirm that the assistant lists invoices and approved request forms with accurate citations.
 2. **Boundary Test**: Ask "What is the daily hotel lodging allowance?". Confirm that the model states the policy lacks records on lodging rates, preventing hallucinated numbers.
 
-![Testing chat returns deadline, receipts, and source references](/imgs/current/knowledge-answer.png)
+![Testing chat returns deadline, receipts, and source references](/imgs/optimized/current/knowledge-answer.png.webp)
 
 ## Step 5: Configure Citation Visibility and Publish
 
@@ -87,7 +87,7 @@ Run two distinct tests in the right-hand testing drawer:
 3. Toggle on "Show Source Citations". This lets end users click citation pills at the bottom of answers to inspect original source chunks.
 4. Copy the URL and test the experience in an external browser tab.
 
-![Published share window returns 15 calendar days deadline and required documents](/imgs/current/knowledge-published.png)
+![Published share window returns 15 calendar days deadline and required documents](/imgs/optimized/current/knowledge-published.png.webp)
 
 ## Acceptance Checklist
 

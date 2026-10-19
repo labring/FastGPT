@@ -85,7 +85,7 @@ After starting Xinference, open `http://127.0.0.1:9997` in your browser to acces
 
 Go to the "Launch Model" tab, search for qwen-chat, select the launch parameters, then click the rocket button in the lower left of the model card to deploy. The default Model UID is qwen-chat (used to access the model later).
 
-![1. Launch via WebUI — interface example](../../../public/imgs/xinference-launch-model.png)
+![1. Launch via WebUI — interface example](/imgs/optimized/xinference-launch-model.png.webp)
 
 On first launch, Xinference downloads model parameters from HuggingFace, which takes a few minutes. Model files are cached locally for subsequent launches. Xinference also supports downloading from other sources like [modelscope](https://inference.readthedocs.io/en/latest/models/sources/sources.html).
 
@@ -105,7 +105,7 @@ For One API deployment and setup, refer to [here](/en/self-host/config/model/int
 
 Add a channel for qwen1.5-chat. Set the Base URL to the Xinference service endpoint and register qwen-chat (the model's UID).
 
-![Integrate Local Models with One API — interface example](../../../public/imgs/one-api-add-xinference-models.jpg)
+![Integrate Local Models with One API — interface example](/imgs/optimized/one-api-add-xinference-models.jpg.webp)
 
 Test with this command:
 
@@ -152,6 +152,6 @@ Add the qwen-chat model to the `llmModels` section of FastGPT's `config.json`:
 
 Restart FastGPT to select the Qwen model in app configuration:
 
-## ![!(../../../public/imgs/fastgpt-list-models.png) — interface example](../../../public/imgs/fastgpt-list-models.png)
+## ![!(../../../public/imgs/fastgpt-list-models.png) — interface example](/imgs/optimized/fastgpt-list-models.png.webp)
 
 - Reference: [FastGPT + Xinference: One-Stop Local LLM Private Deployment and Application Development](https://xorbits.cn/blogs/fastgpt-weather-chat)

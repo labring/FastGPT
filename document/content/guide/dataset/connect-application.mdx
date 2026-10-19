@@ -23,7 +23,7 @@ description: 掌握在对话 Agent、Agent V2 以及工作流中挂载知识库�
    - **最低相似度**：用标注问题校准阈值，并核对得分过滤是否实际启用。
    - **搜索模式**：选择“混合检索”，兼顾泛化理解与专名匹配。
 
-![在对话 Agent 中挂载知识库](/imgs/current/agent-prompt-reference.png)
+![在对话 Agent 中挂载知识库](/imgs/optimized/current/agent-prompt-reference.png.webp)
 
 ## 场景二：在工作流中编排知识库检索节点
 
@@ -40,7 +40,7 @@ description: 掌握在对话 Agent、Agent V2 以及工作流中挂载知识库�
 5. **下游连接**：
    将“知识库搜索”节点的执行输出连接至“AI 对话”节点，并在 AI 对话节点的“引用知识”输入中绑定该检索节点输出的上下文内容。
 
-![工作流中的知识库搜索节点配置](/imgs/current/node-dataset-search.png)
+![工作流中的知识库搜索节点配置](/imgs/optimized/current/node-dataset-search.png.webp)
 
 ## 步骤三：编写包含事实约束的提示词模板
 
@@ -59,7 +59,7 @@ description: 掌握在对话 Agent、Agent V2 以及工作流中挂载知识库�
 
 将检索结果绑定到 AI 对话节点的知识输入。专用的知识库引用提示词通过 `{{quote}}` 注入格式化分块，可保留默认模板或在引用设置中编辑。
 
-![提示词引用模板与参数设计](/imgs/current/citation-prompt-settings.png)
+![提示词引用模板与参数设计](/imgs/optimized/current/citation-prompt-settings.png.webp)
 
 ## 步骤四：端到端验证与发布
 

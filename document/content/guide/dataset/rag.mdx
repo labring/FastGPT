@@ -88,7 +88,7 @@ RAG 管线可包含以下环节；问题改写、混合检索与重排按应用�
 2. **相关性倒序排列**：候选顺序取决于实际检索和重排配置，应检查最终引用是否保留关键依据。
 3. **安全边界截断**：检索阶段保留完整分块，最后一块可能使累计内容越过 Token 预算。AI 对话阶段另有引用限制，应核对最终装配的上下文。
 
-![提示词上下文装配与参数设置](/imgs/current/citation-prompt-settings.png)
+![提示词上下文装配与参数设置](/imgs/optimized/current/citation-prompt-settings.png.webp)
 
 ---
 
@@ -111,7 +111,7 @@ RAG 管线可包含以下环节；问题改写、混合检索与重排按应用�
 ### 3. 全链路引用溯源透明化
 系统在生成回答的同时，记录并输出每个候选块的原始文本、来源文件名与对应集合 ID。前端聊天窗口呈现可点击展开的引用标签，让业务用户能够随时穿透核对原始依据。
 
-![引用片段溯源与原文比对](/imgs/current/citation-reader-full-text.png)
+![引用片段溯源与原文比对](/imgs/optimized/current/citation-reader-full-text.png.webp)
 
 ## 下一步
 

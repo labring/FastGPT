@@ -51,7 +51,7 @@ FastGPT 知识库采用双引擎检索架构，将基于语义理解的高维向
 - **核心原理**：对文本分词后按关键词相关度排序。实现取决于后端：MongoDB 使用文本索引，支持的 Milvus 路径使用 BM25。
 - **核心优势**：在型号代码、法律法条条号、专业术语、人名专名与特定错误码查询中表现优异。
 
-![知识库检索模式选择](/imgs/current/dataset-search-mode.png)
+![知识库检索模式选择](/imgs/optimized/current/dataset-search-mode.png.webp)
 
 ---
 
@@ -74,7 +74,7 @@ FastGPT 知识库采用双引擎检索架构，将基于语义理解的高维向
 3. **截断输出（Selection）**：
    系统按当前模式支持的得分类型过滤候选，再按 Token 预算选取排序后的分块。保留完整数据块时，累计内容可能越过预算边界。
 
-![多路召回与重排结果得分分布](/imgs/current/dataset-result-scores.png)
+![多路召回与重排结果得分分布](/imgs/optimized/current/dataset-result-scores.png.webp)
 
 ---
 
@@ -90,7 +90,7 @@ FastGPT 知识库采用双引擎检索架构，将基于语义理解的高维向
 | **引用上限（`limit`）** | Token 预算 | 控制检索上下文的体积，结合分块大小与应用上下文窗口调节。 |
 | **最低相似度** | 以当前界面或契约为准 | 重排成功时使用重排得分；纯向量模式使用向量得分。其他模式可能跳过得分过滤，可通过返回的 `usingReRank` 和 `usingSimilarityFilter` 核对实际行为。 |
 
-![搜索参数设置与阈值配置](/imgs/current/dataset-search-filter.png)
+![搜索参数设置与阈值配置](/imgs/optimized/current/dataset-search-filter.png.webp)
 
 ## 下一步
 

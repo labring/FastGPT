@@ -13,13 +13,13 @@ description: FastGPT 分块阅读器功能介绍
 
 仅查看被引用的片段适合验证局部事实。需要上下文时，可在权限允许的全文阅读器中查看原文。
 
-![访客仅查看引用片段](/imgs/current/citation-excerpt-only.png)
+![访客仅查看引用片段](/imgs/optimized/current/citation-excerpt-only.png.webp)
 
 ## FastGPT 分块阅读器：精准定位，无缝阅读
 
 阅读器高亮当前引用，并提供引用序号和导航。先检查回答中的事实与高亮内容是否一致。
 
-![回答与全文引用阅读器](/imgs/current/citation-reader-full-text.png)
+![回答与全文引用阅读器](/imgs/optimized/current/citation-reader-full-text.png.webp)
 
 # 核心功能
 
@@ -29,25 +29,25 @@ description: FastGPT 分块阅读器功能介绍
 
 在回答下方点击来源文件名，打开阅读器并查看高亮片段。全文权限开启时，可以同时阅读附近上下文。
 
-![第一条引用及其上下文](/imgs/current/citation-first-chunk.png)
+![第一条引用及其上下文](/imgs/optimized/current/citation-first-chunk.png.webp)
 
 ## 便捷引用导航
 
 使用右上角的上一条、下一条按钮切换命中的分块。序号显示当前位置，例如 `1/2` 与 `2/2`；到达边界时对应按钮不可用。
 
-![切换到第二条引用](/imgs/current/citation-second-chunk.png)
+![切换到第二条引用](/imgs/optimized/current/citation-second-chunk.png.webp)
 
 ## 引用质量评分
 
 在知识库 **搜索测试** 或对话的知识库搜索运行详情中检查检索得分。不同检索通道具有不同分值含义；将鼠标悬停在标签上查看说明。下图为搜索测试中的重排得分提示。
 
-![搜索结果与得分说明](/imgs/current/dataset-result-scores.png)
+![搜索结果与得分说明](/imgs/optimized/current/dataset-result-scores.png.webp)
 
 ## 文档内容一键导出
 
 在阅读器右上角打开来源菜单。具备对应权限时，可选择 **下载数据**、**打开原文** 或 **前往知识库**；入口是否显示取决于来源和权限。
 
-![引用来源操作菜单](/imgs/current/citation-source-menu.png)
+![引用来源操作菜单](/imgs/optimized/current/citation-source-menu.png.webp)
 
 # 进阶特性
 
@@ -57,13 +57,13 @@ description: FastGPT 分块阅读器功能介绍
 
 在[免登录链接](/zh-CN/guide/build/publish/link)的配置中设置引用可见范围。仅引用内容可见时，访客查看引用片段；全文可见时，可查看全文并定位引用；原文访问还需对应的可见性配置。请用访客身份验证最终效果。
 
-![仅引用内容可见的访客阅读器](/imgs/current/citation-excerpt-only.png)
+![仅引用内容可见的访客阅读器](/imgs/optimized/current/citation-excerpt-only.png.webp)
 
 ## 即时标注优化
 
 有知识库编辑权限的用户可通过 **前往知识库** 打开数据编辑界面，调整正文和索引。保存后等待处理完成，使用新问题重新检索，检查新结果是否采用更新内容。
 
-![知识库数据及索引编辑](/imgs/current/citation-edit-data.png)
+![知识库数据及索引编辑](/imgs/optimized/current/citation-edit-data.png.webp)
 
 ## 智能文档性能优化
 

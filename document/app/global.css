@@ -116,6 +116,29 @@ html.dark [data-rmiz-modal-overlay='visible'] {
 /* Content */
 
 /* img */
+.docs-screenshot {
+  display: block;
+  width: 100%;
+  margin: 1.5em auto;
+}
+
+/* Padding resolves against the outer span, preserving 6% of the image's short side. */
+.docs-screenshot > [data-rmiz] {
+  display: block;
+  padding: var(--screenshot-padding);
+  background: url('/screenshot-background.webp') center / cover;
+  border-radius: 8px;
+}
+
+.docs-screenshot [data-rmiz-content] {
+  display: block;
+}
+
+#nd-page article .docs-screenshot img {
+  width: 100%;
+  margin: 0;
+}
+
 #nd-page article img {
   object-fit: contain;
   display: block;

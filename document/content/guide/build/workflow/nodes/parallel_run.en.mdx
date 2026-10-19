@@ -7,7 +7,7 @@ description: FastGPT Parallel Run node overview and usage (available in 4.14.11+
 
 The **Parallel Run** node takes an array as input and runs the same sub-workflow for **every element at the same time**, then aggregates the results.
 
-![Parallel Run node](/imgs/current/node-parallel.png)
+![Parallel Run node](/imgs/optimized/current/node-parallel.png.webp)
 
 It fits batch tasks where each item is **independent and does not depend on the others** — for example:
 
@@ -70,7 +70,7 @@ The following environment variables can be tuned on self-hosted deployments:
 
 Validate parallel input and output with two strings before adding AI translation. This verified run returns `captureItems = ["alpha", "beta"]` unchanged to confirm the array and output references.
 
-![Parallel input array and successful results](/imgs/current/parallel-array-results.png)
+![Parallel input array and successful results](/imgs/optimized/current/parallel-array-results.png.webp)
 
 #### Steps
 
@@ -82,6 +82,6 @@ Validate parallel input and output with two strings before adding AI translation
 
 #### Execution Flow
 
-![Successful details for both array items](/imgs/current/parallel-array-detail.png)
+![Successful details for both array items](/imgs/optimized/current/parallel-array-detail.png.webp)
 
 The two tasks process `alpha` and `beta` and aggregate the results in input order. The two `success: true` entries shown here belong to the unchanged-value validation run. After adding AI or an external service, configure retries as needed and inspect each item's success flag and error message.

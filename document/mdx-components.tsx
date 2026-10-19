@@ -5,34 +5,65 @@ import * as TabsComponents from 'fumadocs-ui/components/tabs';
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { LocalizedLink } from '@/components/docs/LocalizedLink';
 import { MermaidDiagram } from '@/components/docs/MermaidDiagram';
-import type { ComponentProps, ComponentType } from 'react';
+import type { ComponentProps, ComponentType, CSSProperties } from 'react';
 
-/**
- * 兼容 Fumadocs/MDX 对本地图片的静态资源对象输出。
- * 原生 img 只能接收字符串 src；如果直接透传对象，浏览器会请求 [object Object]。
- */
-function getMdxImageSrc(src: unknown): string | undefined {
-  if (typeof src === 'string') return src;
+/** Normalize Fumadocs static imports while retaining dimensions for screenshot padding. */
+function getMdxImage(src: unknown): { src: string; width?: number; height?: number } | undefined {
+  if (typeof src === 'string') return { src };
 
   if (src && typeof src === 'object') {
     const image = 'default' in src ? src.default : src;
 
     if (image && typeof image === 'object' && 'src' in image && typeof image.src === 'string') {
-      return image.src;
+      return {
+        src: image.src,
+        width: 'width' in image && typeof image.width === 'number' ? image.width : undefined,
+        height: 'height' in image && typeof image.height === 'number' ? image.height : undefined
+      };
     }
   }
 }
 
-function MdxImage(props: ComponentProps<'img'>) {
-  const src = getMdxImageSrc(props.src);
+/** Frame prepared screenshots in the page while keeping zoom pointed at the original file. */
+function MdxImage({
+  'data-original-src': originalSrc,
+  ...props
+}: ComponentProps<'img'> & { 'data-original-src'?: string }) {
+  const image = getMdxImage(props.src);
 
-  if (!src) return null;
+  if (!image) return null;
 
-  // 文档中的多数 Markdown 图片没有 width/height，使用自定义 img 保留现有布局，并只复用预览能力。
-  return (
-    <ImageZoom {...(props as any)} src={src} zoomInProps={{ alt: props.alt ?? '' }}>
-      <img {...props} src={src} alt={props.alt ?? ''} loading={props.loading ?? 'lazy'} />
+  const content = (
+    <ImageZoom
+      {...(props as any)}
+      src={image.src}
+      zoomInProps={{ src: originalSrc ?? image.src, alt: props.alt ?? '' }}
+    >
+      <img {...props} src={image.src} alt={props.alt ?? ''} loading={props.loading ?? 'lazy'} />
     </ImageZoom>
+  );
+  if (!originalSrc) return content;
+
+  const width = image.width ?? Number(props.width);
+  const height = image.height ?? Number(props.height);
+  const padding = Math.min(width, height) * 0.06;
+  const hasDimensions = width > 0 && height > 0;
+  return (
+    <span
+      className="docs-screenshot"
+      style={
+        {
+          '--screenshot-padding': hasDimensions
+            ? `${(padding / (width + padding * 2)) * 100}%`
+            : '6%',
+          maxWidth: hasDimensions
+            ? (Number(props.width) || width) * (1 + (padding * 2) / width)
+            : undefined
+        } as CSSProperties
+      }
+    >
+      {content}
+    </span>
   );
 }
 

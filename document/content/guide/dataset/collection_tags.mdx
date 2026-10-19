@@ -18,7 +18,7 @@ description: 掌握知识库集合标签创建、多维属性挂载，以及在�
 - **业务产品维度**：`Product-A`、`Product-B`、`Global-SaaS`。
 - **安全密级维度**：`Public`（公开）、`Internal`（内部）、`Confidential`（机密）。
 
-![两份已处理资料分别设置部门标签](/imgs/current/tags-collections.png)
+![两份已处理资料分别设置部门标签](/imgs/optimized/current/tags-collections.png.webp)
 
 ## 步骤一：创建与管理标签定义
 
@@ -33,7 +33,7 @@ description: 掌握知识库集合标签创建、多维属性挂载，以及在�
 3. 勾选适用于该集合的标签条目，例如将《企业差旅制度.txt》打上 `Department: Finance` 标签。
 4. 点击“保存”，检索通过集合元数据筛选可用的数据块。
 
-![为差旅资料设置部门 Finance 标签](/imgs/current/tags-finance.png)
+![为差旅资料设置部门 Finance 标签](/imgs/optimized/current/tags-finance.png.webp)
 
 ## 步骤三：在应用中配置标签检索过滤
 
@@ -42,12 +42,12 @@ description: 掌握知识库集合标签创建、多维属性挂载，以及在�
 ### 1. 在对话 Agent 中配置标签过滤
 在应用编辑页的知识库卡片下方找到 **标签过滤**。添加条件行，选择标签、操作符、值来源与比较值，例如“部门 → 包含 → Finance”。多个条件按 AND 或 OR 组合；引用变量时，传入值应符合标签类型。
 
-![Finance 标签条件下只引用差旅制度](/imgs/current/tags-finance-result.png)
+![Finance 标签条件下只引用差旅制度](/imgs/optimized/current/tags-finance-result.png.webp)
 
 ### 2. 在工作流中实现动态标签路由
 将问题分类节点输出的业务类别传入知识库搜索节点，用于按主题选择检索范围。用户身份由可信后端鉴权流程提供；敏感资料的访问控制应通过成员鉴权与集合权限实施，标签用于描述检索范围。
 
-![Support 条件下只引用支持资料](/imgs/current/tags-support-result.png)
+![Support 条件下只引用支持资料](/imgs/optimized/current/tags-support-result.png.webp)
 
 ## 标签过滤验收检查
 

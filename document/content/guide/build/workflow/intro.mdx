@@ -15,7 +15,7 @@ description: 深入解析 FastGPT 工作流图调度引擎、入边就绪分组�
 
 FastGPT 工作流基于图调度引擎构建。通过可视化的节点连线，开发者能够将复杂的多步骤业务拆解为确定性、可追踪、易调试的处理管线。
 
-![工作流初始画布与流程开始节点](/imgs/current/workflow-start-chat.png)
+![工作流初始画布与流程开始节点](/imgs/optimized/current/workflow-start-chat.png.webp)
 
 ## 图调度引擎核心运行机制
 
@@ -44,7 +44,7 @@ FastGPT 工作流基于图调度引擎构建。通过可视化的节点连线，
 ### 3. 跳过传播机制（Skip Propagation）
 当上游节点（如条件分支或问题分类）仅激活了特定分支时，未选中的分支输出边被标记为 `skipped`。调度引擎将 `skipped` 状态沿连线方向向下游依次广播，所有前置入边均被标记为 `skipped` 的下游节点将安全跳过自身执行，避免出现未完成的挂起死锁。
 
-![工作流节点结构与连线机制](/imgs/current/node-ai-chat.png)
+![工作流节点结构与连线机制](/imgs/optimized/current/node-ai-chat.png.webp)
 
 ---
 

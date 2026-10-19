@@ -47,7 +47,7 @@ docker run --gpus all -itd -p 7231:7232 --name model_pdf_v2 -e PROCESSES_PER_GPU
 
 通过知识库上传一个 pdf 文件，并勾选上 `PDF 增强解析`。
 
-![3. 测试效果：界面示例](../../../public/imgs/marker2.png)
+![3. 测试效果：界面示例](/imgs/optimized/marker2.png.webp)
 
 确认上传后，可以在日志中看到 LOG （LOG_LEVEL需要设置 info 或者 debug）：
 
@@ -58,11 +58,11 @@ docker run --gpus all -itd -p 7231:7232 --name model_pdf_v2 -e PROCESSES_PER_GPU
 
 然后你就可以发现，通过 Marker 解析出来的 pdf 会携带图片链接：
 
-![3. 测试效果：界面示例](../../../public/imgs/image-10.png)
+![3. 测试效果：界面示例](/imgs/optimized/image-10.png.webp)
 
 同样的，在应用中，你可以在文件上传配置里，勾选上 `PDF 增强解析`。
 
-![3. 测试效果：界面示例](../../../public/imgs/marker3.png)
+![3. 测试效果：界面示例](/imgs/optimized/marker3.png.webp)
 
 ## 效果展示
 
@@ -70,8 +70,8 @@ docker run --gpus all -itd -p 7231:7232 --name model_pdf_v2 -e PROCESSES_PER_GPU
 
 |                                 |                                 |                                 |
 | ------------------------------- | ------------------------------- | ------------------------------- |
-| ![效果展示：界面示例](../../../public/imgs/image-11.png) | ![效果展示：界面示例](../../../public/imgs/image-12.png) | ![效果展示：界面示例](../../../public/imgs/image-13.png) |
-| ![效果展示：界面示例](../../../public/imgs/image-14.png) | ![效果展示：界面示例](../../../public/imgs/image-15.png) | ![效果展示：界面示例](../../../public/imgs/image-16.png) |
+| ![效果展示：界面示例](/imgs/optimized/image-11.png.webp) | ![效果展示：界面示例](/imgs/optimized/image-12.png.webp) | ![效果展示：界面示例](/imgs/optimized/image-13.png.webp) |
+| ![效果展示：界面示例](/imgs/optimized/image-14.png.webp) | ![效果展示：界面示例](/imgs/optimized/image-15.png.webp) | ![效果展示：界面示例](/imgs/optimized/image-16.png.webp) |
 
 上图是分块后的结果，下图是 pdf 原文。整体图片、公式、表格都可以提取出来，效果还是杠杠的。
 

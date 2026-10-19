@@ -7,7 +7,7 @@ description: FastGPT 并行执行节点介绍和使用（适用于 4.14.11 及�
 
 【**并行执行**】节点接收一个数组，对每个元素**同时**执行同一段子工作流，最后把所有结果汇总输出。
 
-![并行执行节点](/imgs/current/node-parallel.png)
+![并行执行节点](/imgs/optimized/current/node-parallel.png.webp)
 
 适合那些**每一项都可以独立完成、互不依赖**的批量任务，比如：
 
@@ -70,7 +70,7 @@ description: FastGPT 并行执行节点介绍和使用（适用于 4.14.11 及�
 
 先用两个字符串验证并行输入输出，再加入 AI 翻译。以下实测将 `captureItems = ["alpha", "beta"]` 原样返回，用于确认数组和结果引用。
 
-![并行输入数组与成功结果](/imgs/current/parallel-array-results.png)
+![并行输入数组与成功结果](/imgs/optimized/current/parallel-array-results.png.webp)
 
 #### 实现步骤
 
@@ -82,6 +82,6 @@ description: FastGPT 并行执行节点介绍和使用（适用于 4.14.11 及�
 
 #### 执行流程
 
-![两个数组元素的成功明细](/imgs/current/parallel-array-detail.png)
+![两个数组元素的成功明细](/imgs/optimized/current/parallel-array-detail.png.webp)
 
 两个任务分别处理 `alpha` 和 `beta`，完成后按输入顺序汇总。截图中的两个 `success: true` 对应上述原样返回验证。接入 AI 或外部服务后，可按需要开启重试，并检查每项的成功标记和错误信息。

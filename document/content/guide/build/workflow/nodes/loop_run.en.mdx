@@ -7,7 +7,7 @@ description: FastGPT Loop node overview and usage (applicable to version 4.15.0 
 
 The **Loop Node** allows you to repeatedly execute a sub-workflow. Whether you want to process a batch of data item by item (Array Loop), or iteratively optimize a task until it meets a specific standard (Conditional Loop), the Loop Node makes it easy.
 
-![Loop Node](/imgs/current/node-loop.png)
+![Loop Node](/imgs/optimized/current/node-loop.png.webp)
 
 Ideal for scenarios such as:
 
@@ -87,7 +87,7 @@ For self-hosted developers or operators, you can adjust the execution limits of 
 
 Validate the data flow with an array loop before extending it to AI rewriting. The verified configuration below uses a global array `captureItems = ["alpha", "beta"]`, replies with each item, and records the final item.
 
-![Array loop replying to each item and returning lastItem](/imgs/current/loop-array-example.png)
+![Array loop replying to each item and returning lastItem](/imgs/optimized/current/loop-array-example.png.webp)
 
 #### Implementation Steps
 
@@ -101,7 +101,7 @@ Validate the data flow with an array loop before extending it to AI rewriting. T
 
 This screenshot records two successful iterations of the array validation example. Expand the loop in **Full Response** to inspect the iteration count, history, and per-iteration custom outputs:
 
-![Two array-loop iterations and the final output](/imgs/current/loop-array-detail.png)
+![Two array-loop iterations and the final output](/imgs/optimized/current/loop-array-detail.png.webp)
 
 1. The first current item is `alpha`; Specified Reply outputs `alpha`.
 2. The second current item is `beta`; Specified Reply outputs `beta`.

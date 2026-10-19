@@ -7,7 +7,7 @@ import { Alert } from '@/components/docs/Alert';
 
 ## 部署架构图
 
-![部署架构图：界面示例](../../../public/imgs/sealos-fastgpt.webp)
+![部署架构图：界面示例](/imgs/optimized/sealos-fastgpt.webp.webp)
 
 ## 多模型支持
 
@@ -55,17 +55,17 @@ import { Alert } from '@/components/docs/Alert';
 
 核对模板中的管理员初始凭证、数据库、对象存储、AI Proxy 等参数。历史模板可能提供 `root_password`、`openai` / `oneapi` 字段；当前字段以选定模板为准。
 
-![1. 开始部署：界面示例](../../../public/imgs/sealos1.png)
+![1. 开始部署：界面示例](/imgs/optimized/sealos1.png.webp)
 
 点击部署后，会跳转到应用管理页面。可以点击 `fastgpt` 主应用右侧的详情按键（名字为 fastgpt-xxxx），如下图所示。
 
-![1. 开始部署：界面示例](../../../public/imgs/sealos-deploy1.jpg)
+![1. 开始部署：界面示例](/imgs/optimized/sealos-deploy1.jpg.webp)
 
 点击详情后，会跳转到 fastgpt 的部署管理页面，点击外网访问地址中的链接，即可打开 fastgpt 服务。
 
 如需绑定自定义域名、修改部署参数，可以点击右上角变更，根据 sealos 的指引完成。
 
-![1. 开始部署：界面示例](../../../public/imgs/sealos2.png)
+![1. 开始部署：界面示例](/imgs/optimized/sealos2.png.webp)
 
 ### 2. 登录
 
@@ -93,7 +93,7 @@ Sealos 采用按量计费的方式，也就是申请了多少 cpu、内存、磁
 
 在应用管理与数据库页面核对模板创建的全部服务，记录镜像、持久化存储和依赖关系。商业版通常还包含商业服务；实际组件数量由模板与已启用能力决定。
 
-![简介：界面示例](../../../public/imgs/onSealos1.png)
+![简介：界面示例](/imgs/optimized/onSealos1.png.webp)
 
 点击右侧的详情，可以查看对应应用的详细信息。
 
@@ -103,7 +103,7 @@ Sealos 采用按量计费的方式，也就是申请了多少 cpu、内存、磁
 
 在 `应用管理` 中，选中 FastGPT，点击变更，可以看到对应的环境变量和配置文件。
 
-![修改配置文件和环境变量：界面示例](../../../public/imgs/fastgptonsealos1.png)
+![修改配置文件和环境变量：界面示例](/imgs/optimized/fastgptonsealos1.png.webp)
 
 <Alert icon="🤖" context="success">
   暂停或删除前检查完整依赖与持久化数据清单，先验证备份和恢复流程，再处理各服务。
@@ -123,7 +123,7 @@ Sealos 采用按量计费的方式，也就是申请了多少 cpu、内存、磁
 4. 点击对应应用右边 3 个点，变更。或者点详情后右上角的变更。
 5. 修改镜像的版本号
 
-![如何更新/升级 FastGPT：界面示例](../../../public/imgs/onsealos2.png)
+![如何更新/升级 FastGPT：界面示例](/imgs/optimized/onsealos2.png.webp)
 
 6. 点击变更/重启，会自动拉取最新镜像进行更新
 7. 执行对应版本的初始化脚本(如果有)
@@ -132,19 +132,19 @@ Sealos 采用按量计费的方式，也就是申请了多少 cpu、内存、磁
 
 打开对应的应用，点击外网访问地址。
 
-![如何获取 FastGPT 访问链接：界面示例](../../../public/imgs/onsealos3.png)
+![如何获取 FastGPT 访问链接：界面示例](/imgs/optimized/onsealos3.png.webp)
 
 ### 配置自定义域名
 
 点击对应应用的变更 ->点击自定义域名 ->填写域名 -> 操作域名 Cname -> 确认 -> 确认变。
 
-![配置自定义域名：界面示例](../../../public/imgs/onsealos4.png)
+![配置自定义域名：界面示例](/imgs/optimized/onsealos4.png.webp)
 
 ### 如何修改环境变量
 
 打开 Sealos 的应用管理 -> 找到对应的应用 -> 变更 -> 修改环境变量 -> 点击右上角确认变。
 
-![如何修改环境变量：界面示例](../../../public/imgs/onsealos5.png)
+![如何修改环境变量：界面示例](/imgs/optimized/onsealos5.png.webp)
 
 [环境变量说明](/zh-CN/self-host/config/env)
 
@@ -167,9 +167,9 @@ SYSTEM_FAVICON 可以是一个网络地址
 
 品牌定制先核对[许可证条件](/zh-CN/guide/version/opensource/license)与当前商业管理界面。以下旧版 SVG 挂载示例仅适用于保留该路径的镜像：`/app/projects/app/public/icon/logo.svg`。
 
-![挂载 logo：界面示例](../../../public/imgs/onsealos7.png)
+![挂载 logo：界面示例](/imgs/optimized/onsealos7.png.webp)
 
-![挂载 logo：界面示例](../../../public/imgs/onsealos8.png)
+![挂载 logo：界面示例](/imgs/optimized/onsealos8.png.webp)
 
 ### 商业版镜像配置文件
 

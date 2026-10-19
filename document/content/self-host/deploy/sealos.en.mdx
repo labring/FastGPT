@@ -7,7 +7,7 @@ import { Alert } from '@/components/docs/Alert';
 
 ## Deployment Architecture
 
-![Deployment Architecture — interface example](../../../public/imgs/sealos-fastgpt.webp)
+![Deployment Architecture — interface example](/imgs/optimized/sealos-fastgpt.webp.webp)
 
 ## Multi-Model Support
 
@@ -55,17 +55,17 @@ Since databases need to be deployed, wait 2–4 minutes after deployment before 
 
 Inspect initial administrator credentials, databases, object storage, and AI Proxy settings. Older templates may expose `root_password` and `openai`/`oneapi` fields; the selected template defines the current parameters.
 
-![1. Start Deployment — interface example](../../../public/imgs/sealos1.png)
+![1. Start Deployment — interface example](/imgs/optimized/sealos1.png.webp)
 
 After clicking deploy, you'll be redirected to the app management page. Click the details button on the right side of the `fastgpt` main app (named fastgpt-xxxx), as shown below.
 
-![1. Start Deployment — interface example](../../../public/imgs/sealos-deploy1.jpg)
+![1. Start Deployment — interface example](/imgs/optimized/sealos-deploy1.jpg.webp)
 
 After clicking details, you'll see the FastGPT deployment management page. Click the link in the external access address to open the FastGPT service.
 
 To bind a custom domain or modify deployment parameters, click **Change** in the top right and follow Sealos' instructions.
 
-![1. Start Deployment — interface example](../../../public/imgs/sealos2.png)
+![1. Start Deployment — interface example](/imgs/optimized/sealos2.png.webp)
 
 ### 2. Log In
 
@@ -93,7 +93,7 @@ Sealos uses pay-as-you-go billing based on allocated CPU, memory, and disk. For 
 
 Inspect all template services in App Launchpad and Database. Record images, persistent storage, and dependencies. Commercial deployments commonly include an additional commercial service; the template and enabled capabilities determine the actual component count.
 
-![Overview — interface example](../../../public/imgs/onSealos1.png)
+![Overview — interface example](/imgs/optimized/onSealos1.png.webp)
 
 Click details on the right to view each app's information.
 
@@ -103,7 +103,7 @@ In Sealos, open **App Launchpad** to see deployed FastGPT apps, and open **Datab
 
 In **App Launchpad**, select FastGPT, click **Change**, and you'll see environment variables and config files.
 
-![Modifying Config Files and Environment Variables — interface example](../../../public/imgs/fastgptonsealos1.png)
+![Modifying Config Files and Environment Variables — interface example](/imgs/optimized/fastgptonsealos1.png.webp)
 
 <Alert icon="🤖" context="success">
   Before pausing or deleting services, inspect the complete dependency and persistent-data inventory. Verify backups and restoration before handling individual services.
@@ -123,7 +123,7 @@ Upgrade steps:
 4. Click the 3 dots on the right side of the app, then **Change**. Or click details, then **Change** in the top right.
 5. Modify the image version number
 
-![How to Update/Upgrade FastGPT — interface example](../../../public/imgs/onsealos2.png)
+![How to Update/Upgrade FastGPT — interface example](/imgs/optimized/onsealos2.png.webp)
 
 6. Click **Change/Restart** to automatically pull the latest image and update
 7. Run the initialization script for the corresponding version (if applicable)
@@ -132,19 +132,19 @@ Upgrade steps:
 
 Open the corresponding app and click the external access address.
 
-![How to Get the FastGPT Access Link — interface example](../../../public/imgs/onsealos3.png)
+![How to Get the FastGPT Access Link — interface example](/imgs/optimized/onsealos3.png.webp)
 
 ### Configure a Custom Domain
 
 Click **Change** on the app -> **Custom Domain** -> enter domain -> configure domain CNAME -> confirm -> confirm change.
 
-![Configure a Custom Domain — interface example](../../../public/imgs/onsealos4.png)
+![Configure a Custom Domain — interface example](/imgs/optimized/onsealos4.png.webp)
 
 ### How to Modify Environment Variables
 
 Open Sealos app management -> find the app -> **Change** -> edit environment variables -> click confirm change in the top right.
 
-![How to Modify Environment Variables — interface example](../../../public/imgs/onsealos5.png)
+![How to Modify Environment Variables — interface example](/imgs/optimized/onsealos5.png.webp)
 
 [Environment Variables](/en/self-host/config/env)
 
@@ -169,9 +169,9 @@ Check [license conditions](/en/guide/version/opensource/license) and the current
 
 Add a mounted file with path: `/app/projects/app/public/icon/logo.svg`, with the SVG content as the value.
 
-![Mount a Logo — interface example](../../../public/imgs/onsealos7.png)
+![Mount a Logo — interface example](/imgs/optimized/onsealos7.png.webp)
 
-![Mount a Logo — interface example](../../../public/imgs/onsealos8.png)
+![Mount a Logo — interface example](/imgs/optimized/onsealos8.png.webp)
 
 ### Commercial Edition Config File
 

@@ -95,6 +95,13 @@ function extractReferencedImages(docContents) {
     }
   }
 
+  // Optimized assets retain their original extension before .webp for source preservation.
+  for (const image of [...referencedImages]) {
+    if (image.startsWith('optimized/') && image.endsWith('.webp')) {
+      referencedImages.add(image.slice('optimized/'.length, -'.webp'.length));
+    }
+  }
+
   return referencedImages;
 }
 
@@ -206,4 +213,6 @@ function cleanEmptyDirs(dirPath) {
   }
 }
 
-main();
+module.exports = { extractReferencedImages };
+
+if (require.main === module) main();

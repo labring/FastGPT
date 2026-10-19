@@ -3,7 +3,7 @@ title: Tool Calling & Termination
 description: FastGPT Tool Calling node overview
 ---
 
-![Tool Calling & Termination — interface example](/imgs/current/node-tool-call.png)
+![Tool Calling & Termination — interface example](/imgs/optimized/current/node-tool-call.png.webp)
 
 ### What is a Tool
 
@@ -34,13 +34,13 @@ Based on the tool description, parameter descriptions, and whether parameters ar
 
 Models that support `function calling` can invoke multiple tools in a single turn. The calling logic:
 
-![Tool Calling Logic — interface example](/imgs/flow-tool2.png)
+![Tool Calling Logic — interface example](/imgs/optimized/flow-tool2.png.webp)
 
 ### How to Use
 
 Connect the tool-call node's bottom diamond to the top diamond of a tool. The example below connects **Custom Tool Variables** as a tool, then passes the generated `service` value to **Specified Reply** and **Tool Call Stop**.
 
-![Tool connection and termination workflow](/imgs/current/tool-connections.png)
+![Tool connection and termination workflow](/imgs/optimized/current/tool-connections.png.webp)
 
 Give the tool a clear description and define required arguments. This example asks the model to choose `support` or `sales`. Inspect the generated argument during debugging before adding more tools.
 
@@ -50,7 +50,7 @@ A tool-call node normally returns tool results to the model for a final answer. 
 
 In this verified example, the request `Please call support.` produces `support` through Specified Reply and then reaches Tool Call Stop:
 
-![Reply followed by Tool Call Stop](/imgs/current/tool-connections.png)
+![Reply followed by Tool Call Stop](/imgs/optimized/current/tool-connections.png.webp)
 
 ### Additional Nodes
 
@@ -60,13 +60,13 @@ When you use the tool calling node, a Tool Calling Termination node and a Custom
 
 Tool Calling Termination ends the current call cycle. Place it after a tool node. When the workflow reaches this node, it forcibly ends the current tool call -- no further tools are invoked, and the AI won't generate a summary based on tool results.
 
-![Tool Calling Termination — interface example](/imgs/current/tool-stop.png)
+![Tool Calling Termination — interface example](/imgs/optimized/current/tool-stop.png.webp)
 
 ### Custom Tool Variables
 
 Custom variables extend tool input capabilities. For nodes that aren't recognized as tool parameters or can't be directly tool-called, you can define custom tool variables with appropriate parameter descriptions. The tool calling node will then invoke this node and its downstream workflow accordingly.
 
-![Custom Tool Variables — interface example](/imgs/current/tool-variables.png)
+![Custom Tool Variables — interface example](/imgs/optimized/current/tool-variables.png.webp)
 
 ## Inputs, outputs, and boundaries
 

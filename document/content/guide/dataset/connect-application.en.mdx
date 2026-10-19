@@ -23,7 +23,7 @@ Chat Agents (both standard Chat Agent and Chat Agent V2) support mounting single
    - **Minimum Similarity**: Calibrate the threshold with labeled questions and verify that score filtering is active.
    - **Search Mode**: Select "Hybrid Search" to combine semantic generalization and keyword matching.
 
-![Attach knowledge bases in Chat Agent](/imgs/current/agent-prompt-reference.png)
+![Attach knowledge bases in Chat Agent](/imgs/optimized/current/agent-prompt-reference.png.webp)
 
 ## Scenario 2: Orchestrate Knowledge Retrieval in Workflows
 
@@ -40,7 +40,7 @@ In workflows, knowledge base search operates as a discrete functional node, conn
 5. **Downstream Execution Flow**:
    Connect the execution output of the search node to an "AI Chat" node, and bind the search node's retrieved context to the "Referenced Knowledge" input of the AI Chat node.
 
-![Workflow knowledge base search node configuration](/imgs/current/node-dataset-search.png)
+![Workflow knowledge base search node configuration](/imgs/optimized/current/node-dataset-search.png.webp)
 
 ## Step 3: Author Grounded System Prompt Templates
 
@@ -59,7 +59,7 @@ Operational Principles:
 
 Bind search results to the AI Chat node's knowledge input. The dedicated knowledge reference prompt uses `{{quote}}` to insert formatted chunks; keep its default template or edit it in the reference settings.
 
-![Prompt reference template and parameter configuration](/imgs/current/citation-prompt-settings.png)
+![Prompt reference template and parameter configuration](/imgs/optimized/current/citation-prompt-settings.png.webp)
 
 ## Step 4: End-to-End Testing and Publication
 

@@ -3,7 +3,7 @@ title: 工具调用&终止
 description: FastGPT 工具调用模块介绍
 ---
 
-![工具调用&终止：界面示例](/imgs/current/node-tool-call.png)
+![工具调用&终止：界面示例](/imgs/optimized/current/node-tool-call.png.webp)
 
 ### **什么是工具**
 
@@ -34,13 +34,13 @@ description: FastGPT 工具调用模块介绍
 
 在支持 `函数调用` 的模型中，可以一次性调用多个工具，调用逻辑如下：
 
-![工具调用逻辑：界面示例](/imgs/flow-tool2.png)
+![工具调用逻辑：界面示例](/imgs/optimized/flow-tool2.png.webp)
 
 ### **怎么用**
 
 将工具调用节点底部的菱形连接到工具顶部的菱形。下图将【自定义工具变量】作为工具接入，再把生成的 `service` 传给【指定回复】，最后连接【工具调用终止】。
 
-![工具连接与终止流程](/imgs/current/tool-connections.png)
+![工具连接与终止流程](/imgs/optimized/current/tool-connections.png.webp)
 
 为工具填写清晰的介绍，并定义必填参数。本例让模型选择 `support` 或 `sales`；调试时检查实际生成的参数，再逐步增加工具。
 
@@ -50,7 +50,7 @@ description: FastGPT 工具调用模块介绍
 
 本例实测输入 `Please call support.`，通过【指定回复】输出 `support`，再由【工具调用终止】结束调用：
 
-![指定回复后终止工具调用](/imgs/current/tool-connections.png)
+![指定回复后终止工具调用](/imgs/optimized/current/tool-connections.png.webp)
 
 ### 附加节点
 
@@ -60,13 +60,13 @@ description: FastGPT 工具调用模块介绍
 
 工具调用终止可用于结束本次调用，即可以接在某个工具后面，当工作流执行到这个节点时，便会强制结束本次工具调用，不再调用其他工具，也不会再调用 AI 针对工具调用结果回答问题。
 
-![工具调用终止：界面示例](/imgs/current/tool-stop.png)
+![工具调用终止：界面示例](/imgs/optimized/current/tool-stop.png.webp)
 
 ### 自定义工具变量
 
 自定义变量可以扩展工具的变量输入，即对于一些未被视作工具参数或无法工具调用的节点，可以自定义工具变量，填上对应的参数描述，那么工具调用便会相对应的调用这个节点，进而调用其之后的工作流。
 
-![自定义工具变量：界面示例](/imgs/current/tool-variables.png)
+![自定义工具变量：界面示例](/imgs/optimized/current/tool-variables.png.webp)
 
 ## 输入、输出与使用边界
 

@@ -7,7 +7,7 @@ description: FastGPT 循环节点介绍和使用（适用于 4.15.0 及以上版
 
 【**循环节点**】用于在工作流中重复执行同一段子工作流。无论您是想对一批数据逐个进行处理（数组循环），还是需要把一个任务反复迭代优化直到符合特定标准为止（条件循环），循环节点都能帮您轻松实现。
 
-![循环节点](/imgs/current/node-loop.png)
+![循环节点](/imgs/optimized/current/node-loop.png.webp)
 
 适合以下任务场景：
 
@@ -89,7 +89,7 @@ description: FastGPT 循环节点介绍和使用（适用于 4.15.0 及以上版
 
 先用数组循环验证数据流，再扩展为条件循环的 AI 润色场景。下面的实测配置使用全局数组 `captureItems = ["alpha", "beta"]`，逐项回复并记录最后一项。
 
-![数组循环配置：逐项回复并输出 lastItem](/imgs/current/loop-array-example.png)
+![数组循环配置：逐项回复并输出 lastItem](/imgs/optimized/current/loop-array-example.png.webp)
 
 #### 实现步骤
 
@@ -103,7 +103,7 @@ description: FastGPT 循环节点介绍和使用（适用于 4.15.0 及以上版
 
 以下截图记录数组验证例的两轮成功执行。展开“完整响应”中的循环节点，核对轮数、历史记录和每轮自定义输出：
 
-![数组循环两轮历史与末轮输出](/imgs/current/loop-array-detail.png)
+![数组循环两轮历史与末轮输出](/imgs/optimized/current/loop-array-detail.png.webp)
 
 1. 第一轮当前元素为 `alpha`，指定回复输出 `alpha`。
 2. 第二轮当前元素为 `beta`，指定回复输出 `beta`。

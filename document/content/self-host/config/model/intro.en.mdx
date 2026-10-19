@@ -24,7 +24,7 @@ FastGPT uses the `AI Proxy` service to connect to different model providers. AI 
 
 ### Architecture Diagram
 
-![Architecture Diagram — interface example](../../../../public/imgs/image-95.png)
+![Architecture Diagram — interface example](/imgs/optimized/image-95.png.webp)
 
 ### Model Types
 
@@ -49,15 +49,15 @@ You can configure models from `Admin - Model provider` in FastGPT.
 
 Switch to the `Model Channels` tab. Note that you can only add models that already exist in `Model Configuration`. The system only includes mainstream models by default — if you need additional models, add them in `Model Configuration` first.
 
-![aiproxy1](../../../../public/imgs/aiproxy-1.png)
+![aiproxy1](/imgs/optimized/aiproxy-1.png.webp)
 
 Click "Add Channel" in the top-right corner to open the channel configuration page.
 
-![1. Create a Channel — interface example](../../../../public/imgs/image-122.png)
+![1. Create a Channel — interface example](/imgs/optimized/image-122.png.webp)
 
 Using Alibaba Bailian models as an example:
 
-![1. Create a Channel — interface example](../../../../public/imgs/image-123.png)
+![1. Create a Channel — interface example](/imgs/optimized/image-123.png.webp)
 
 1. Channel Name: A display label for the channel, used for identification only.
 2. Protocol Type: The API protocol for the model. Generally, select the provider that offers the model. Most providers support the OpenAI protocol, so you can also choose OpenAI as the protocol type.
@@ -77,21 +77,21 @@ In FastGPT, the model is `gpt-4o-test`, and requests to AI Proxy also use `gpt-4
 
 Click "Add" to save. The new channel will appear under "Model Channels".
 
-![aiproxy4](../../../../public/imgs/aiproxy-4.png)
+![aiproxy4](/imgs/optimized/aiproxy-4.png.webp)
 
 ### 2. Channel Testing
 
 You can test the channel to verify that the configured models are working properly.
 
-![aiproxy5](../../../../public/imgs/aiproxy-5.png)
+![aiproxy5](/imgs/optimized/aiproxy-5.png.webp)
 
 Click "Model Test" to see the list of configured models, then click "Start Test".
 
-![aiproxy6](../../../../public/imgs/aiproxy-6.png)
+![aiproxy6](/imgs/optimized/aiproxy-6.png.webp)
 
 Once testing completes, you'll see the results and response times for each model.
 
-![aiproxy7](../../../../public/imgs/aiproxy-7.png)
+![aiproxy7](/imgs/optimized/aiproxy-7.png.webp)
 
 ### 3. Enable Models
 
@@ -101,13 +101,13 @@ Click "Enable" to activate the model.
 
 | Enable Models                                     | Model ID Mapping                                   |
 | ------------------------------------------------- | -------------------------------------------------- |
-| ![3. Enable Models — interface example](../../../../public/imgs/image-92.png) | ![3. Enable Models — interface example](../../../../public/imgs/image-124.png) |
+| ![3. Enable Models — interface example](/imgs/optimized/image-92.png.webp) | ![3. Enable Models — interface example](/imgs/optimized/image-124.png.webp) |
 
 ### 4. Test Models
 
 FastGPT provides simple tests for each model type on the UI to verify that models are working correctly. Each test sends an actual request using a template.
 
-![4. Test Models — interface example](../../../../public/imgs/image-105.png)
+![4. Test Models — interface example](/imgs/optimized/image-105.png.webp)
 
 ## Model Configuration
 
@@ -117,7 +117,7 @@ Click the gear icon next to a model to open its configuration. Different model t
 
 |                                                   |                                                   |
 | ------------------------------------------------- | ------------------------------------------------- |
-| ![Edit Model Configuration — interface example](../../../../public/imgs/image-93.png) | ![Edit Model Configuration — interface example](../../../../public/imgs/image-94.png) |
+| ![Edit Model Configuration — interface example](/imgs/optimized/image-93.png.webp) | ![Edit Model Configuration — interface example](/imgs/optimized/image-94.png.webp) |
 
 ### Add a Custom Model
 
@@ -127,7 +127,7 @@ If the built-in models don't meet your needs, you can add custom models. If the 
 
 |                                                   |                                                   |
 | ------------------------------------------------- | ------------------------------------------------- |
-| ![Add a Custom Model — interface example](../../../../public/imgs/image-96.png) | ![Add a Custom Model — interface example](../../../../public/imgs/image-97.png) |
+| ![Add a Custom Model — interface example](/imgs/optimized/image-96.png.webp) | ![Add a Custom Model — interface example](/imgs/optimized/image-97.png.webp) |
 
 2. **Add via Configuration File**
 
@@ -135,7 +135,7 @@ If you find it tedious to configure models through the UI, you can use a configu
 
 |                                                   |                                                   |
 | ------------------------------------------------- | ------------------------------------------------- |
-| ![Add a Custom Model — interface example](../../../../public/imgs/image-98.png) | ![Add a Custom Model — interface example](../../../../public/imgs/image-99.png) |
+| ![Add a Custom Model — interface example](/imgs/optimized/image-98.png.webp) | ![Add a Custom Model — interface example](/imgs/optimized/image-99.png.webp) |
 
 <Accordions>
 <Accordion title="Language Model Fields">
@@ -264,7 +264,7 @@ If you find it tedious to configure models through the UI, you can use a configu
 
 FastGPT provides built-in model health checking and monitoring. When enabled, the system periodically tests all active models, plots a 48-hour stability timeline, and sends real-time Webhook alerts when a model encounters failures or recovers.
 
-![Model Status Dashboard](../../../../public/imgs/model-probe-status.png)
+![Model Status Dashboard](/imgs/optimized/model-probe-status.png.webp)
 
 1. **Scope**: Only active models (`isActive = true`) in the system catalog are probed. Inactive models do not generate records.
 2. **Retry Mechanism**: If an initial probe request fails, the system automatically retries up to 3 times (up to 4 attempts total). A single successful response marks the probe as passed; the model is marked as failed only when all 4 attempts fail. This prevents false alarms caused by intermittent network glitches.
@@ -285,7 +285,7 @@ Administrators can configure and toggle model probing directly in the admin cons
 1. **Navigate to Status**: Go to **System Models** in the left navigation and switch to the **Model Probes** tab.
 2. **Open Configuration**: Click **Probe Configuration** in the top right corner.
 
-![Model Probe Configuration Modal](../../../../public/imgs/model-probe-config.png)
+![Model Probe Configuration Modal](/imgs/optimized/model-probe-config.png.webp)
 
 3. **Configure Settings**:
    - **Enable Automatic Probes**: Toggle on to schedule automatic background health checks for all active models. When toggled off, the page displays an empty state ("Automatic probe is disabled"), and background probing and alerts are paused.
@@ -385,19 +385,19 @@ When an Alert Webhook URL is configured, notifications are dispatched on **state
 
 Range: 1–100. Higher values are prioritized.
 
-![aiproxy9](../../../../public/imgs/aiproxy-9.png)
+![aiproxy9](/imgs/optimized/aiproxy-9.png.webp)
 
 ### Enable / Disable Channels
 
 In the control menu on the right side of each channel, you can enable or disable it. Disabled channels will no longer serve model requests.
 
-![aiproxy10](../../../../public/imgs/aiproxy-10.png)
+![aiproxy10](/imgs/optimized/aiproxy-10.png.webp)
 
 ### Model Call Logs
 
 Model calls made through channels are logged on the `Call Logs` page. Logs include input/output tokens, request time, latency, request URL, and more. Failed requests show detailed parameters and error messages for debugging, but logs are retained for only 1 hour by default (configurable via environment variables).
 
-![aiproxy11](../../../../public/imgs/aiproxy-11.png)
+![aiproxy11](/imgs/optimized/aiproxy-11.png.webp)
 
 ### Self-Hosted Models
 

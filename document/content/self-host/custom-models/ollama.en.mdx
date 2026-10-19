@@ -79,7 +79,7 @@ After installing Ollama, no models are available locally -- you need to pull the
 ollama pull [model name]
 ```
 
-![Pull Model Images — interface example](../../../public/imgs/Ollama-pull.png)
+![Pull Model Images — interface example](/imgs/optimized/Ollama-pull.png.webp)
 
 ### Test Communication
 
@@ -103,7 +103,7 @@ First, check which models Ollama has:
 ollama ls
 ```
 
-![1. Check Available Models — interface example](../../../public/imgs/Ollama-models1.png)
+![1. Check Available Models — interface example](/imgs/optimized/Ollama-models1.png.webp)
 
 ### 2. AI Proxy Integration
 
@@ -113,21 +113,21 @@ If you're using FastGPT's default configuration from [here](/en/self-host/deploy
 
 Make sure your FastGPT can access the Ollama container. If not, refer to the [installation section](#installing-ollama) above -- check whether the host isn't listening on 0.0.0.0 or the containers aren't on the same network.
 
-![2. AI Proxy Integration — interface example](../../../public/imgs/Ollama-aiproxy2.png)
+![2. AI Proxy Integration — interface example](/imgs/optimized/Ollama-aiproxy2.png.webp)
 
 In FastGPT, go to Admin -> Model provider -> Model configuration -> Add model. Make sure the model ID matches the model name in OneAPI. See details [here](/en/self-host/config/model/intro).
 
-![2. AI Proxy Integration — interface example](../../../public/imgs/Ollama-models2.png)
+![2. AI Proxy Integration — interface example](/imgs/optimized/Ollama-models2.png.webp)
 
-![2. AI Proxy Integration — interface example](../../../public/imgs/Ollama-models3.png)
+![2. AI Proxy Integration — interface example](/imgs/optimized/Ollama-models3.png.webp)
 
 Run FastGPT, then go to Admin -> Model provider -> Model providers -> Add channel. Select Ollama as the channel type, add your pulled model, and fill in the proxy address. For container-deployed Ollama, the address is http://address:port. Note: container deployment uses "http://[container name]:[port]", host installation uses "http://[host IP]:[port]" (host IP cannot be localhost).
 
-![2. AI Proxy Integration — interface example](../../../public/imgs/Ollama-aiproxy3.png)
+![2. AI Proxy Integration — interface example](/imgs/optimized/Ollama-aiproxy3.png.webp)
 
 Create an app in Studio and select the model you added. The model name shown is the alias you set. Note: the same model cannot be added multiple times -- the system uses the alias from the most recent addition.
 
-![2. AI Proxy Integration — interface example](../../../public/imgs/Ollama-models4.png)
+![2. AI Proxy Integration — interface example](/imgs/optimized/Ollama-models4.png.webp)
 
 ### 3. OneAPI Integration
 
@@ -143,11 +143,11 @@ docker run -it --network [FastGPT network] --name container_name intel/oneapi-hp
 
 In the OneAPI page, add a new channel with type Ollama. Enter your Ollama model name (must match exactly), then fill in the Ollama proxy address below -- default is http://address:port, without /v1. Test the channel after adding. This example uses Docker-deployed Ollama; for host-installed Ollama, use http://[host IP]:[port].
 
-![3. OneAPI Integration — interface example](../../../public/imgs/Ollama-oneapi1.png)
+![3. OneAPI Integration — interface example](/imgs/optimized/Ollama-oneapi1.png.webp)
 
 After adding the channel, click Token -> Add Token, fill in the name, and configure as needed.
 
-![3. OneAPI Integration — interface example](../../../public/imgs/Ollama-oneapi2.png)
+![3. OneAPI Integration — interface example](/imgs/optimized/Ollama-oneapi2.png.webp)
 
 FastGPT routes model requests through AI Proxy. Keep `AIPROXY_API_ENDPOINT` and `AIPROXY_API_TOKEN` configured. In Admin, add an OpenAI-compatible model provider with your OneAPI endpoint (`http://address:port/v1`) and OneAPI token, then associate the models.
 
@@ -167,13 +167,13 @@ After completing the setup, [click here](#5-model-addition-and-usage) to add and
 
 In FastGPT, go to Admin -> Model provider -> Model configuration -> Add model. Make sure the model ID matches the model name in OneAPI.
 
-![5. Model Addition and Usage — interface example](../../../public/imgs/Ollama-models2.png)
+![5. Model Addition and Usage — interface example](/imgs/optimized/Ollama-models2.png.webp)
 
-![5. Model Addition and Usage — interface example](../../../public/imgs/Ollama-models3.png)
+![5. Model Addition and Usage — interface example](/imgs/optimized/Ollama-models3.png.webp)
 
 Create an app in Studio and select the model you added. The model name shown is the alias you set. Note: the same model cannot be added multiple times -- the system uses the alias from the most recent addition.
 
-![5. Model Addition and Usage — interface example](../../../public/imgs/Ollama-models4.png)
+![5. Model Addition and Usage — interface example](/imgs/optimized/Ollama-models4.png.webp)
 
 ### 6. Additional Notes
 

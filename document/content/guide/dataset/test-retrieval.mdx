@@ -18,7 +18,7 @@ description: 掌握知识库搜索测试工具、混合检索模式切换、相�
 2. 页面包含测试输入框、检索模式选择器、相似度阈值滑块以及候选结果列表。
 3. 输入代表真实业务场景的测试提问，例如：`出差报销必须在返程后多少天内提交？`。
 
-![搜索测试返回包含报销期限的原文](/imgs/current/knowledge-search.png)
+![搜索测试返回包含报销期限的原文](/imgs/optimized/current/knowledge-search.png.webp)
 
 ## 步骤二：切换检索模式并对比召回
 
@@ -31,7 +31,7 @@ description: 掌握知识库搜索测试工具、混合检索模式切换、相�
 3. **混合检索（Hybrid Search，推荐）**：
    结合向量召回与全文召回的各自优势。系统合并多路候选；配置并启用重排模型后，可进一步重排。
 
-![搜索模式选择与重排得分](/imgs/current/dataset-result-scores.png)
+![搜索模式选择与重排得分](/imgs/optimized/current/dataset-result-scores.png.webp)
 
 ## 步骤三：分析得分并校准最低相似度阈值
 
@@ -43,7 +43,7 @@ description: 掌握知识库搜索测试工具、混合检索模式切换、相�
 2. 每次调整一个参数，比较正确命中、遗漏依据和无关结果，再选择阈值。
 3. 更换向量模型、重排模型或分块策略后重新校准。界面提供实际重排和过滤状态时，一并核对。
 
-![搜索参数设置与阈值微调](/imgs/current/dataset-search-filter.png)
+![搜索参数设置与阈值微调](/imgs/optimized/current/dataset-search-filter.png.webp)
 
 ## 步骤四：检索未命中排查流程
 

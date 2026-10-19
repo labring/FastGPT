@@ -51,7 +51,7 @@ The platform decouples and partitions knowledge data across distinct physical in
 - **Core Mechanism**: Tokenizes text and ranks keyword matches. The implementation depends on the backend: MongoDB uses text indexes, while the supported Milvus path uses BM25.
 - **Key Advantage**: Delivers high recall for serial numbers, legal article numbers, specialized terminology, proper names, and exact error codes.
 
-![Select knowledge base retrieval mode](/imgs/current/dataset-search-mode.png)
+![Select knowledge base retrieval mode](/imgs/optimized/current/dataset-search-mode.png.webp)
 
 ---
 
@@ -74,7 +74,7 @@ In enterprise knowledge Q&A systems, the platform executes a two-stage hybrid re
 3. **Threshold Filtering and Selection**:
    The engine applies the supported score filter, then selects ranked chunks within a token budget. A returned chunk can take the accumulated size beyond the budget boundary.
 
-![Multi-route recall and reranking score distribution](/imgs/current/dataset-result-scores.png)
+![Multi-route recall and reranking score distribution](/imgs/optimized/current/dataset-result-scores.png.webp)
 
 ---
 
@@ -90,7 +90,7 @@ In search testing and application configuration, these parameters govern retriev
 | **Citation Limit (`limit`)** | Token budget | Controls retrieved context size; tune with chunk size and the application context window. |
 | **Minimum Similarity** | Follow the current UI or contract | Uses rerank scores when reranking succeeds, or embedding scores in pure vector mode. Other modes may skip score filtering; inspect `usingReRank` and `usingSimilarityFilter` where exposed. |
 
-![Search parameters and score threshold configuration](/imgs/current/dataset-search-filter.png)
+![Search parameters and score threshold configuration](/imgs/optimized/current/dataset-search-filter.png.webp)
 
 ## Next Steps
 

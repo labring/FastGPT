@@ -19,7 +19,7 @@ Organize orthogonal tag dimensions around organizational governance:
 - **Product Lines**: `Product-A`, `Product-B`, `Enterprise-Cloud`.
 - **Confidentiality Tiers**: `Public`, `Internal`, `Confidential`.
 
-![Assign department tags to processed collections](/imgs/current/tags-collections.png)
+![Assign department tags to processed collections](/imgs/optimized/current/tags-collections.png.webp)
 
 ## Step 1: Create and Manage Tag Definitions
 
@@ -34,7 +34,7 @@ Organize orthogonal tag dimensions around organizational governance:
 3. Check the tags applicable to this collection, such as tagging `travel-policy.txt` with `Department: Finance`.
 4. Click "Save". Retrieval uses collection metadata to select eligible chunks.
 
-![Assign Finance tag to travel policy collection](/imgs/current/tags-finance.png)
+![Assign Finance tag to travel policy collection](/imgs/optimized/current/tags-finance.png.webp)
 
 ## Step 3: Configure Tag Filtering in Applications
 
@@ -43,12 +43,12 @@ By scoping searches with tags, applications isolate domain-specific queries accu
 ### 1. Tag Filtering in Chat Agents
 In the application editor, find **Tag Filter** below the attached knowledge base cards. Add a condition row and select the tag, operator, value source, and comparison value. For example, use `Department → contains → Finance`. Combine conditions with AND or OR, and provide variable values matching the tag type.
 
-![Finance filter admits only travel policy citations](/imgs/current/tags-finance-result.png)
+![Finance filter admits only travel policy citations](/imgs/optimized/current/tags-finance-result.png.webp)
 
 ### 2. Dynamic Tag Routing in Workflows
 Pass a business category from a question classifier into the search node's filter to route topic-specific queries. User identity must come from a trusted backend authentication flow. Enforce sensitive-document access through member authentication and collection permissions; tags describe the retrieval scope.
 
-![Support filter admits only customer support material](/imgs/current/tags-support-result.png)
+![Support filter admits only customer support material](/imgs/optimized/current/tags-support-result.png.webp)
 
 ## Acceptance Checklist
 

@@ -11,7 +11,7 @@ description: Historical Query Rewriting guidance for existing workflows; use cur
 - Has external input
 - Trigger-based execution
 
-![Characteristics — interface example](/imgs/coreferenceResolution1.jpg)
+![Characteristics — interface example](/imgs/optimized/coreferenceResolution1.jpg.webp)
 
 ## Background
 
@@ -19,11 +19,11 @@ In RAG, we perform embedding searches against the database based on the input qu
 
 During search -- especially in multi-turn conversations -- follow-up questions often fail to retrieve useful results. One reason is that Dataset search only uses the "current" question. Consider this example:
 
-![Background — interface example](/imgs/coreferenceResolution2.webp)
+![Background — interface example](/imgs/optimized/coreferenceResolution2.webp.webp)
 
 When the user asks "What is the second point?", the system searches the Dataset for exactly that phrase and finds nothing. The actual intended query is "What is the QA structure?". This is why we need a Query Rewriting node to complete the user's current question so the Dataset search can return relevant results. With query rewriting applied:
 
-![Background — interface example](/imgs/coreferenceResolution3.webp)
+![Background — interface example](/imgs/optimized/coreferenceResolution3.webp.webp)
 
 ## What It Does
 

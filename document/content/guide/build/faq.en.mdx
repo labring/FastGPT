@@ -23,9 +23,9 @@ After changing an app, click **Publish**. Chat and published channels only use t
 
 Open AI configuration in the application editor and inspect formatting rules in the main prompt and knowledge-reference prompt. Remove the Markdown instruction, test the same question in preview, then publish and repeat through the shared link:
 
-![Disable Markdown Formatting — interface example](/imgs/current/node-ai-chat.png)
+![Disable Markdown Formatting — interface example](/imgs/optimized/current/node-ai-chat.png.webp)
 
-![Disable Markdown Formatting — interface example](/imgs/current/citation-prompt-settings.png)
+![Disable Markdown Formatting — interface example](/imgs/optimized/current/citation-prompt-settings.png.webp)
 
 ## Inconsistent App Results
 
@@ -33,9 +33,9 @@ Q: The app produces different results in debug mode vs. production, or when call
 
 A: Open conversation logs and locate both executions by conversation and request time. Compare published version, input, history, variables, retrieved passages, model settings, and tool results in run details. Repeat with fixed inputs; see [log troubleshooting](/en/guide/build/logs).
 
-![Inconsistent App Results — interface example](/imgs/current/feedback-log.png)
+![Inconsistent App Results — interface example](/imgs/optimized/current/feedback-log.png.webp)
 
-![Inconsistent App Results — interface example](/imgs/current/model-request-response.png)
+![Inconsistent App Results — interface example](/imgs/optimized/current/model-request-response.png.webp)
 
 The Dataset response settings require a custom prompt. Without one, the default prompt (which includes Markdown formatting instructions) is used.
 

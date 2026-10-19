@@ -43,7 +43,7 @@ If the document library supports a `root directory` selection feature, add a `ba
 
 </Alert>
 
-![1. Add Third-Party Document Library Parameters — interface example](/imgs/thirddataset-1.png)
+![1. Add Third-Party Document Library Parameters — interface example](/imgs/optimized/thirddataset-1.png.webp)
 
 ### 2. Create the Hook File
 
@@ -60,29 +60,29 @@ Each third-party document library uses a Hook pattern to maintain a set of API e
 
 In `FastGPT\packages\global\core\dataset\type.ts`, import your new Dataset type.
 
-![3. Add the Dataset Type — interface example](/imgs/thirddataset-2.png)
+![3. Add the Dataset Type — interface example](/imgs/optimized/thirddataset-2.png.webp)
 
 ### 4. Add Dataset Data Retrieval
 
 In `packages/global/core/dataset/apiDataset/utils.ts`, extend `filterApiDatasetServerPublicData` to expose safe configuration fields while removing credentials. Use the existing `ApiDatasetResult` success/error contract and error classification helpers; distinguish missing files from authorization, rate-limit, and network failures so sync can handle each correctly.
 
-![4. Add Dataset Data Retrieval — interface example](/imgs/thirddataset-3.png)
+![4. Add Dataset Data Retrieval — interface example](/imgs/optimized/thirddataset-3.png.webp)
 
 ### 5. Add Dataset Invocation Method
 
 In `packages/service/core/dataset/apiDataset/index.ts`, add a branch in `getApiDatasetRequest` that selects the new adapter from its server configuration. Propagate optional browse-cache settings only where the adapter supports them.
 
-![5. Add Dataset Invocation Method — interface example](/imgs/thirddataset-4.png)
+![5. Add Dataset Invocation Method — interface example](/imgs/optimized/thirddataset-4.png.webp)
 
 ## Adding the Frontend
 
 Add your i18n translations in `FastGPT\packages\web\i18n\zh-CN\dataset.json`, `FastGPT\packages\web\i18n\en\dataset.json`, and `FastGPT\packages\web\i18n\zh-Hant\dataset.json`. Using Chinese translations as an example, you'll generally need the following:
 
-![Adding the Frontend — interface example](/imgs/thirddataset-5.png)
+![Adding the Frontend — interface example](/imgs/optimized/thirddataset-5.png.webp)
 
 In `FastGPT\packages\service\support\user/audit\util.ts`, add the following to support i18n translation retrieval.
 
-![Adding the Frontend — interface example](/imgs/thirddataset-6.png)
+![Adding the Frontend — interface example](/imgs/optimized/thirddataset-6.png.webp)
 
 <Alert icon="🤖" context="success">
 
@@ -92,17 +92,17 @@ The i18n translation content is stored in `FastGPT\packages\web\i18n\zh-Hant\acc
 
 Add your Dataset icons under `FastGPT\packages\web\components\common\Icon\icons\core\dataset\`. You need two icons: `Outline` (monochrome) and `Color` (colored), as shown below.
 
-![Adding the Frontend — interface example](/imgs/thirddataset-7.png)
+![Adding the Frontend — interface example](/imgs/optimized/thirddataset-7.png.webp)
 
 In `FastGPT\packages\web\components\common\Icon\constants.ts`, register your icons. The `import` path points to where the icons are stored.
 
-![Adding the Frontend — interface example](/imgs/thirddataset-8.png)
+![Adding the Frontend — interface example](/imgs/optimized/thirddataset-8.png.webp)
 
 In `FastGPT\packages\global\core\dataset\constants.ts`, add your Dataset type to both `DatasetTypeEnum` and `ApiDatasetTypeMap`.
 
 |                               |                                |
 | ----------------------------- | ------------------------------ |
-| ![Adding the Frontend — interface example](/imgs/thirddataset-9.png) | ![Adding the Frontend — interface example](/imgs/thirddataset-10.png) |
+| ![Adding the Frontend — interface example](/imgs/optimized/thirddataset-9.png.webp) | ![Adding the Frontend — interface example](/imgs/optimized/thirddataset-10.png.webp) |
 
 <Alert icon="🤖" context="success">
 
@@ -115,13 +115,13 @@ The `label` value is the Dataset name you added via i18n translations.
 
 In `FastGPT\projects\app\src\pages\dataset\list\index.tsx`, add the following. This file handles the menu that appears when clicking the "New" button on the Dataset list page. Your Dataset must be added here to be creatable.
 
-![Adding the Frontend — interface example](/imgs/thirddataset-11.png)
+![Adding the Frontend — interface example](/imgs/optimized/thirddataset-11.png.webp)
 
 In `FastGPT\projects\app\src\pageComponents\dataset\detail\Info\index.tsx`, add the following. This configuration corresponds to the UI shown below.
 
 |                                |                                |
 | ------------------------------ | ------------------------------ |
-| ![Adding the Frontend — interface example](/imgs/thirddataset-12.png) | ![Adding the Frontend — interface example](/imgs/thirddataset-13.png) |
+| ![Adding the Frontend — interface example](/imgs/optimized/thirddataset-12.png.webp) | ![Adding the Frontend — interface example](/imgs/optimized/thirddataset-13.png.webp) |
 
 ## Adding the Configuration Form
 
@@ -129,7 +129,7 @@ In `FastGPT\projects\app\src\pageComponents\dataset\ApiDatasetForm.tsx`, add the
 
 |                                |                                |                                |
 | ------------------------------ | ------------------------------ | ------------------------------ |
-| ![Adding the Configuration Form — interface example](/imgs/thirddataset-14.png) | ![Adding the Configuration Form — interface example](/imgs/thirddataset-15.png) | ![Adding the Configuration Form — interface example](/imgs/thirddataset-16.png) |
+| ![Adding the Configuration Form — interface example](/imgs/optimized/thirddataset-14.png.webp) | ![Adding the Configuration Form — interface example](/imgs/optimized/thirddataset-15.png.webp) | ![Adding the Configuration Form — interface example](/imgs/optimized/thirddataset-16.png.webp) |
 
 The two components added in the code render the root directory selector, corresponding to the `getFileDetail` API method. If your Dataset doesn't support this, you can omit them.
 
@@ -140,7 +140,7 @@ The two components added in the code render the root directory selector, corresp
 
 |                                |                                |
 | ------------------------------ | ------------------------------ |
-| ![Adding the Configuration Form — interface example](/imgs/thirddataset-17.png) |  |
+| ![Adding the Configuration Form — interface example](/imgs/optimized/thirddataset-17.png.webp) |  |
 
 If the Dataset needs root directory support, also add the following in the `ApiDatasetForm` file.
 
@@ -148,19 +148,19 @@ If the Dataset needs root directory support, also add the following in the `ApiD
 
 Parse your Dataset type from `apiDatasetServer`, as shown:
 
-![1. Parse the Dataset Type — interface example](/imgs/thirddataset-19.png)
+![1. Parse the Dataset Type — interface example](/imgs/optimized/thirddataset-19.png.webp)
 
 ### 2. Add Root Directory Selection Logic and `parentId` Assignment
 
 Add root directory selection logic to ensure the user has filled in all required fields for the API methods, such as the Token.
 
-![2. Add Root Directory Selection Logic and parentId Assignment — interface example](/imgs/thirddataset-20.png)
+![2. Add Root Directory Selection Logic and parentId Assignment — interface example](/imgs/optimized/thirddataset-20.png.webp)
 
 ### 3. Add Field Validation and Assignment Logic
 
 Verify that all required fields are present before calling the API, and assign the root directory value to the corresponding field after selection.
 
-![3. Add Field Validation and Assignment Logic — interface example](/imgs/thirddataset-21.png)
+![3. Add Field Validation and Assignment Logic — interface example](/imgs/optimized/thirddataset-21.png.webp)
 
 ## Tips
 

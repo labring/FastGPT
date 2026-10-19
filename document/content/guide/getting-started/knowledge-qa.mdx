@@ -30,7 +30,7 @@ FastGPT 示例企业差旅制度
 3. 财务审核周期：财务部门在收齐全部合规凭据后的 5 个工作日内完成审核与款项发放。
 ```
 
-![创建差旅制度知识库并选择当前环境可用的模型](/imgs/current/knowledge-create.png)
+![创建差旅制度知识库并选择当前环境可用的模型](/imgs/optimized/current/knowledge-create.png.webp)
 
 ## 步骤一：创建知识库与数据切分
 
@@ -41,7 +41,7 @@ FastGPT 示例企业差旅制度
    - 常见问答类文本：推荐选用 QA 问答拆分模式，系统会自动将文档转换为一问一答对以提高语义匹配率。
 4. 在数据预览界面中点击左侧文件条目，核对关键时限与凭证要求是否完整保留在单个数据块内。确认无误后点击“开始导入”。
 
-![导入前预览文本分块保持核心语义完整](/imgs/current/knowledge-preview.png)
+![导入前预览文本分块保持核心语义完整](/imgs/optimized/current/knowledge-preview.png.webp)
 
 ## 步骤二：验证检索召回与重排效果
 
@@ -51,7 +51,7 @@ FastGPT 示例企业差旅制度
 3. 观察返回的数据块列表及其相似度得分。
 4. 验证相似度最高的候选块包含 `15 个自然日`。若存在重排模型（Rerank），同时核对重排后的得分分布，确认高相关分块排在首位。
 
-![搜索测试命中包含 15 个自然日报销期限的原文](/imgs/current/knowledge-search.png)
+![搜索测试命中包含 15 个自然日报销期限的原文](/imgs/optimized/current/knowledge-search.png.webp)
 
 ## 步骤三：创建对话 Agent 并绑定提示词约束
 
@@ -70,7 +70,7 @@ FastGPT 示例企业差旅制度
 3. 对于参考文档中未记录的信息，直接回复“当前差旅制度中未收录相关规定”，提示用户联系人力资源或财务部门核实。
 ```
 
-![选择对话 Agent 并填写差旅制度问答](/imgs/current/app-create.png)
+![选择对话 Agent 并填写差旅制度问答](/imgs/optimized/current/app-create.png.webp)
 
 ## 步骤四：工作区即时调试与极端情况验证
 
@@ -78,7 +78,7 @@ FastGPT 示例企业差旅制度
 1. **基准事实测试**：输入“报销需要提供哪些材料？”，核对回答是否准确列出发票与已审批差旅申请单，并检查引用条目。
 2. **知识外溢测试**：输入“员工差旅的酒店住宿补贴标准是多少？”，确认模型如实说明制度未记录相关标准，避免自由推演。
 
-![调试回答给出期限、材料和资料引用](/imgs/current/knowledge-answer.png)
+![调试回答给出期限、材料和资料引用](/imgs/optimized/current/knowledge-answer.png.webp)
 
 ## 步骤五：配置引用透明度与发布
 
@@ -87,7 +87,7 @@ FastGPT 示例企业差旅制度
 3. 在渠道配置中开启“显示引用片段”开关。用户在最终使用时，能够点击回答底部的引用标签展开查看知识库中的对应原文。
 4. 复制分享链接并在外部浏览器中完成最终验证。
 
-![发布后的分享窗口返回 15 个自然日期限与必需材料](/imgs/current/knowledge-published.png)
+![发布后的分享窗口返回 15 个自然日期限与必需材料](/imgs/optimized/current/knowledge-published.png.webp)
 
 ## 质量验收清单
 

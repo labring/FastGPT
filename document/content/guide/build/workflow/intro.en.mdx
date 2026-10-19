@@ -15,7 +15,7 @@ description: An in-depth explanation of FastGPT's graph scheduling engine, in-ed
 
 FastGPT Workflows are powered by a graph execution engine. Visual node orchestration allows builders to decompose complex multi-step business logic into deterministic, auditable, and easily debugged execution pipelines.
 
-![Initial canvas state with workflow start node](/imgs/current/workflow-start-chat.png)
+![Initial canvas state with workflow start node](/imgs/optimized/current/workflow-start-chat.png.webp)
 
 ## Graph Dispatch Engine Mechanics
 
@@ -44,7 +44,7 @@ Every edge on the canvas assumes one of three discrete states during execution:
 ### 3. Skip Propagation Mechanics
 When upstream nodes (such as Condition Switch or Question Classifier) activate a single route, unselected output edges are marked `skipped`. The scheduling engine cascades `skipped` markers downstream. Any node whose in-edges are all marked `skipped` skips its own execution cleanly, eliminating hanging deadlocks.
 
-![Workflow node structure and connection ports](/imgs/current/node-ai-chat.png)
+![Workflow node structure and connection ports](/imgs/optimized/current/node-ai-chat.png.webp)
 
 ---
 

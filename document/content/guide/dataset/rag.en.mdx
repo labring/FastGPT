@@ -88,7 +88,7 @@ Large language models feature maximum context window boundaries, and model atten
 2. **Relevance Ordering**: Candidate order follows the active retrieval and reranking configuration. Inspect the returned references to confirm that relevant evidence survives selection.
 3. **Safe Boundary Truncation**: Retrieval keeps whole chunks and can cross the token-budget boundary with its final chunk. The AI Chat stage applies its own reference limits; inspect the final assembled context.
 
-![Prompt context assembly and parameter configuration](/imgs/current/citation-prompt-settings.png)
+![Prompt context assembly and parameter configuration](/imgs/optimized/current/citation-prompt-settings.png.webp)
 
 ---
 
@@ -111,7 +111,7 @@ Calibrate similarity thresholds using labeled queries and verify the active scor
 ### 3. End-to-End Citation Transparency
 During response generation, the engine tracks and outputs the source file name, chunk text, and collection ID for each used candidate. Front-end chat widgets render clickable citation pills, enabling business users to verify statements against source text.
 
-![Citation verification against source material](/imgs/current/citation-reader-full-text.png)
+![Citation verification against source material](/imgs/optimized/current/citation-reader-full-text.png.webp)
 
 ## Next Steps
 
