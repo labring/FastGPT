@@ -64,12 +64,13 @@ async function generateToc() {
   const enUrls = enFiles
     .map((file) => filePathToUrl(file, 'en'))
     .filter((url) => !isBlacklisted(url))
+    .map((url) => url.replace(/\/index$/, ''))
     .sort();
 
   const makeMdxContent = (urls, title, isChinese = true) =>
     `---
 title: ${title}
-description: ${isChinese ? 'FastGPT 文档目录' : 'FastGPT Toc'}
+description: ${isChinese ? 'FastGPT 文档目录' : 'Browse the FastGPT documentation by topic.'}
 ---
 
 ${urls.map((url) => `- [${url}](${url})`).join('\n')}
@@ -82,7 +83,7 @@ ${urls.map((url) => `- [${url}](${url})`).join('\n')}
   // 写入文件
   await fs.mkdir(baseDir, { recursive: true });
   await fs.writeFile(zhOutputPath, makeMdxContent(zhUrls, 'FastGPT 文档目录', true), 'utf8');
-  await fs.writeFile(enOutputPath, makeMdxContent(enUrls, 'FastGPT Toc', false), 'utf8');
+  await fs.writeFile(enOutputPath, makeMdxContent(enUrls, 'FastGPT Documentation Index', false), 'utf8');
 
   console.log(`✅ 写入中文目录 ${zhOutputPath}`);
   console.log(`✅ 写入英文目录 ${enOutputPath}`);

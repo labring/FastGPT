@@ -5,16 +5,16 @@ description: FastGPT Self-Hosting General Troubleshooting
 
 ### Frontend Page Crash
 
-1. 90% of cases are due to incorrect model configuration: ensure that at least one model is enabled for each category; check if some `object` parameters in the model are abnormal (arrays and objects). If empty, try giving an empty array or empty object.
-2. A small part is due to browser compatibility issues. Since the project contains some high-level syntax, lower version browsers may not be compatible. You can provide specific operation steps and error information in the console to the issue.
-3. Turn off the browser translation function. If the browser has translation enabled, it may cause the page to crash.
+1. The troubleshooting guidance attributes 90% of cases to model configuration. Enable at least one model in each category, then check parameters that expect arrays or objects. Use an empty array or object where an empty value is required.
+2. Older browsers may lack support for JavaScript features used by FastGPT. Include the steps to reproduce the crash and browser console errors in a GitHub issue.
+3. Disable the browser's automatic translation, which can interfere with the page.
 
 ---
 
 ### If deployed via sealos, are there no limitations of local deployment?
 
 ![](../../../public/imgs/faq1.png)
-This is the length limit of the embedding model. It is the same regardless of the deployment method, but the configuration of different embedding models is different, and parameters can be modified in the background.
+The screenshot shows an embedding model input-length limit. This limit applies to every deployment method. Each embedding model has its own settings, which you can adjust in the admin panel.
 
 ---
 
@@ -44,52 +44,57 @@ Yes. You need to prepare the vector model and LLM model.
 
 ### Other models cannot perform question classification/content extraction
 
-1. Check the logs. If it prompts JSON invalid, not support tool, etc., it means that the model does not support tool calling or function calling. You need to set `toolChoice=false` and `functionCall=false`, and it will default to the prompt mode. Currently, the built-in prompts are only tested for commercial model APIs. Question classification is basically usable, but content extraction is not very good.
-2. If the configuration is normal and there are no error logs, it means that the prompt may not be suitable for the model. You can customize the prompt by modifying `customCQPrompt`.
+1. Check the logs for errors such as `JSON invalid` or `not support tool`. For a model without tool or function calling support, set `toolChoice=false` and `functionCall=false` to use prompt mode. The built-in prompts have been tested with commercial model APIs; question classification generally works, while content extraction remains limited.
+2. If the configuration is correct and the logs show no errors, adapt the classification prompt to the model using `customCQPrompt`.
 
 ---
 
 ### Page Crash
 
-1. Turn off translation.
-2. Check if the configuration file is loaded normally. If it is not loaded normally, system information will be missing, and it will cause a null pointer in some operations.
+1. Disable automatic browser translation.
+2. Check that the configuration file loaded successfully. Missing system settings can cause null-reference errors during some operations.
 
-- 95% of cases are incorrect configuration files. It will prompt xxx undefined.
-- Prompt `URI malformed`, please Issue feedback specific operations and pages, this is due to special string encoding parsing errors.
+- The troubleshooting guidance attributes 95% of these cases to configuration errors, often reported as `xxx undefined`.
+- For `URI malformed`, report the affected page and steps in a GitHub issue. This error indicates a problem decoding an encoded string.
 
-3. Some api incompatibility issues (rare).
+3. Check for API compatibility issues, which are a less common cause.
 
 ---
 
 ### After enabling content completion, the response speed becomes slow
 
-1. Question completion requires a round of AI generation.
-2. 3~5 rounds of queries will be performed. If the database performance is insufficient, there will be a significant impact.
+1. Query rewriting requires an additional model call.
+2. It also performs 3–5 search queries, so database performance can significantly affect response time.
 
 ---
 
 ### Normal reply in the page, API error
 
-The page uses stream=true mode, so the API also needs to set stream=true for testing. Some model interfaces (mostly domestic) are a bit garbage in non-Stream compatibility.
-Same as the previous question, curl test.
+The chat page uses `stream=true`. Test the API with the same setting using `curl`, because some model APIs have limited support for non-streaming requests.
 
 ---
 
 ### Dataset indexing has no progress/indexing is very slow
 
-First look at the log error information. There are several situations:
+Check the error logs and identify the matching case:
 
-1. Can verify, but indexing has no progress: vector model (vectorModels) is not configured.
-2. Cannot verify, nor index: API call failed. Maybe not connected to OneAPI or OpenAI.
-3. Has progress, but very slow: api key is not good, OpenAI free account, only 3 times or 60 times a minute. 200 times a day limit.
+1. Chat works but indexing stalls: check that an embedding model is configured in `vectorModels`.
+2. Both chat and indexing fail: model API requests may be failing. Check connectivity to OneAPI or OpenAI.
+3. Indexing progresses slowly: check the API key's rate limits. The historical example in this guide cites free OpenAI account limits of 3 or 60 requests per minute and 200 per day; verify the limits that apply to your current account.
 
 ---
 
 ### Connection error
 
-Network exception. Domestic servers cannot request OpenAI, check whether the connection with the AI model is normal.
+Check connectivity from the FastGPT server to the model API. A server in mainland China may be unable to reach OpenAI. For OneAPI, also check that its container and FastGPT can communicate on the same network.
 
-Or FastGPT cannot request OneAPI (not in the same network).
+---
+
+### Changes to vectorModels have no effect
+
+1. Enable the new Embedding model in the admin panel's **Model Configuration**, then refresh the page. For older versions that configure models through `vectorModels` in `config.json`, restart the service after editing the file.
+2. Existing Datasets do not automatically switch models. As the Dataset owner, open its **Configuration** page, select the new **Embedding model**, and confirm reindexing. You do not need to delete the Dataset.
+3. If processing or reindexing is in progress, wait for it to finish before switching. Reindexing calls the selected model and is billed according to its pricing.
 
 ---
 

@@ -7,7 +7,7 @@ import { Alert } from '@/components/docs/Alert';
 
 In FastGPT, the API entry under Publish Channels shows **API Keys** available to the current signed-in member. API Keys are member credentials for OpenAPI calls and are no longer created as app-scoped keys.
 
-When calling this app through `chat/completions`, passing `appId` in the request body is recommended. If a third-party app only supports OpenAI SDK-style key configuration, you can use the `apiKey-appId` compatibility format. For details, [see the OpenAPI Introduction](../../../openapi/intro.en.mdx).
+When calling this app through `chat/completions`, passing `appId` in the request body is recommended. If a third-party app only supports OpenAI SDK-style key configuration, you can use the `apiKey-appId` compatibility format. For details, [see the OpenAPI Introduction](/en/openapi/intro).
 
 ## Get an API Key
 
@@ -18,7 +18,7 @@ Go to App -> "Publish Channels" -> "API", then click "New" to create a key.
   copy it again later, use the copy button in the API list.
 </Alert>
 
-![](/imgs/fastgpt-api1.jpg)
+![Create or copy a member API Key](/imgs/fastgpt-api1.jpg)
 
 <Alert icon="🍅" context="success">
   Tip: For security, you can set a quota or expiration time to prevent key abuse.
@@ -33,8 +33,8 @@ OPENAI_API_KEY = the key obtained in the previous step (passing appId in the req
 
 **[ChatGPT Next Web](https://github.com/Yidadaa/ChatGPT-Next-Web) Example:**
 
-![](/imgs/chatgptnext.png)
+![ChatGPT Next Web API configuration](/imgs/chatgptnext.png)
 
 **[ChatGPT Web](https://github.com/Chanzhaoyu/chatgpt-web) Example:**
 
-![](/imgs/chatgptweb.png)
+![ChatGPT Web API configuration](/imgs/chatgptweb.png)

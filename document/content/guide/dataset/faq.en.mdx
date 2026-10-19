@@ -3,6 +3,10 @@ title: Dataset Usage
 description: Common Dataset usage questions
 ---
 
+## File Parsing Fails
+
+Check the **Enhanced PDF Parsing** setting when uploading the file. Enhanced parsing also requires a correctly configured OCR module in the Admin console.
+
 ## Garbled File Content
 
 Re-save the file with UTF-8 encoding.
@@ -14,7 +18,7 @@ Re-save the file with UTF-8 encoding.
 
 ## Excel File Import
 
-Yes. You can upload xlsx and other spreadsheet formats, not just CSV.
+You can upload XLSX files and other supported spreadsheet formats, including CSV.
 
 ## Token Calculation
 
@@ -22,14 +26,14 @@ All token counts use the GPT-3.5 tokenizer as the standard.
 
 ## Restore a Rerank Model
 
-![](/imgs/dataset3.png)
+![Rerank model selection in Dataset search settings](/imgs/dataset3.png)
 
 Add the rerank model configuration in your `config.json` file, then you'll be able to select it again.
 
 ## Data Retention After Expiration
 
 On the free plan, Dataset data is cleared after 30 days of inactivity (no login). Apps are not affected. Paid plans automatically downgrade to the free plan upon expiration.
-![](/imgs/dataset4.png)
+![Plan information and Dataset retention settings](/imgs/dataset4.png)
 
 ## Too Many Results Interrupt Answers
 
@@ -46,9 +50,9 @@ To fix this:
 
 Where to find the max response setting:
 
-![](/imgs/dataset1.png)
+![Maximum response length setting](/imgs/dataset1.png)
 
-![](/imgs/dataset2.png)
+![Chat history limit in the Workflow](/imgs/dataset2.png)
 
 For self-hosted deployments, you can reserve headroom when configuring model context limits. For example, set a 128K model to 120K — the remaining space will be allocated to output.
 
@@ -67,8 +71,12 @@ To fix this:
 
 Where to find the max response setting:
 
-![](/imgs/dataset1.png)
+![Maximum response length setting](/imgs/dataset1.png)
 
-![](/imgs/dataset2.png)
+![Chat history limit in the Workflow](/imgs/dataset2.png)
 
 For self-hosted deployments, you can reserve headroom when configuring model context limits. For example, set a 128K model to 120K — the remaining space will be allocated to output.
+
+## Dataset Page Flickers
+
+Configure an Embedding model for the Dataset to resolve this issue.
