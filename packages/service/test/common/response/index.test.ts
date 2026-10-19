@@ -291,13 +291,15 @@ describe('SSE stream resume mirror', () => {
       end: vi.fn()
     });
     const mirroredEvents: string[] = [];
-    const flushMirror = vi.fn();
+    const flushMirror = vi.fn(async () => undefined);
     const context = createSseStreamContext({
       res: response as any,
       streamResumeMirror: {
-        enqueueRaw: (event) => mirroredEvents.push(event),
+        enqueueRaw: (event) => {
+          mirroredEvents.push(event);
+        },
         flush: flushMirror,
-        shrinkTTLAfterComplete: vi.fn()
+        shrinkTTLAfterComplete: vi.fn(async () => undefined)
       }
     });
 
