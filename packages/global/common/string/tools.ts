@@ -154,14 +154,9 @@ export const sliceStrStartEnd = (str: string | null = '', start: number, end: nu
   return `${startContent}${overSize ? `\n\n...[hide ${str.length - start - end} chars]...\n\n` : ''}${endContent}`;
 };
 
-/*
-  Parse file extension from url
-  Test：
-  1. https://xxx.com/file.pdf?token=123
-    => pdf
-  2. https://xxx.com/file.pdf
-    => pdf
-*/
+/**
+ * 优先从查询参数中的文件名提取小写扩展名，无后缀或 URL 解析失败时回退到原始链接。
+ */
 export const parseFileExtensionFromUrl = (url = '') => {
   // Prefer explicit filename in query params for proxy links:
   // e.g. /api/system/file/d/<alias>, or a legacy proxy URL carrying filename in query.
@@ -170,14 +165,8 @@ export const parseFileExtensionFromUrl = (url = '') => {
     const queryFilename =
       parsedUrl.searchParams.get('filename') || parsedUrl.searchParams.get('name');
     if (queryFilename) {
-      // searchParams has already decoded the value once. Decoding again only matters for
-      // double-encoded names, and a plain `%` in a name (`100%.pdf`) would throw here and
-      // drop the filename entirely, so fall back to the value as given.
-      let decodedFilename = queryFilename;
-      try {
-        decodedFilename = decodeURIComponent(queryFilename);
-      } catch {}
-      const extFromQuery = path.extname(decodedFilename);
+      // URLSearchParams 已完成解码，保留文件名中的字面量 %xx。
+      const extFromQuery = path.extname(queryFilename);
       if (extFromQuery.startsWith('.')) {
         return extFromQuery.slice(1).toLowerCase();
       }
