@@ -2,13 +2,13 @@ import { extractCodeFromMarkdown } from '@/pageComponents/app/detail/WorkflowCom
 import { describe, expect, it } from 'vitest';
 
 describe('extractCodeFromMarkdown', () => {
-  it('uses return keys as output names and JSDoc only as the type source', () => {
+  it('reads input and output keys from JSDoc while preserving input references', () => {
     const result = extractCodeFromMarkdown(`
 \`\`\`javascript
 /**
- * @param {string} question [start.question] - Question
- * @property {arrayString} 题目计划 - 业务说明
- * @property {string} 返回文本 - 业务说明
+ * @param {string} question [start.question] - 问题
+ * @property {arrayString} plan - 题目计划
+ * @property {string} result - 返回文本
  */
 function main({ question }) {
   const plan = [question];
@@ -22,13 +22,13 @@ function main({ question }) {
       { key: 'result', type: 'string' }
     ]);
     expect(result.inputs).toEqual([
-      { label: 'question', type: 'string', reference: 'start.question' }
+      { key: 'question', type: 'string', reference: 'start.question' }
     ]);
     expect(result.code).toContain('return { plan, result: JSON.stringify(plan) };');
     expect(result.code).not.toContain('@property');
   });
 
-  it('keeps documented outputs as a compatibility fallback for a dynamic return expression', () => {
+  it('reads documented output keys for a dynamic return expression', () => {
     expect(
       extractCodeFromMarkdown(`
         /** @property {number} total - Total */
@@ -37,24 +37,44 @@ function main({ question }) {
     ).toEqual([{ key: 'total', type: 'number' }]);
   });
 
-  it('does not create obsolete outputs for an explicit empty return object', () => {
+  it('keeps Unicode and hyphenated output keys unchanged', () => {
     expect(
       extractCodeFromMarkdown(`
-        /** @property {number} oldValue - Obsolete */
-        function main() { return {}; }
+        /**
+         * @property {string} 返回文本 - 文本
+         * @property {number} result-count - 数量
+         */
+        function main() { return { 返回文本: 'ok', 'result-count': 1 }; }
       `).outputs
-    ).toEqual([]);
-  });
-
-  it('uses any for actual output keys without type documentation', () => {
-    expect(extractCodeFromMarkdown('function main() { return { result: 1 }; }').outputs).toEqual([
-      { key: 'result', type: 'any' }
+    ).toEqual([
+      { key: '返回文本', type: 'string' },
+      { key: 'result-count', type: 'number' }
     ]);
   });
 
-  it('extracts output keys from a Python code block', () => {
+  it('does not infer undocumented inputs or outputs from code', () => {
     expect(
-      extractCodeFromMarkdown('\`\`\`python\ndef main():\n    return {"result": 1}\n\`\`\`').outputs
-    ).toEqual([{ key: 'result', type: 'any' }]);
+      extractCodeFromMarkdown('function main({ question }) { return { result: 1 }; }')
+    ).toEqual({
+      code: 'function main({ question }) { return { result: 1 }; }',
+      inputs: [],
+      outputs: []
+    });
+  });
+
+  it('reads Python parameter keys without requiring a reference', () => {
+    expect(
+      extractCodeFromMarkdown(`
+\`\`\`python
+# @param {number} amount - 金额
+# @property {number} total - 总额
+def main(amount):
+    return {"total": amount}
+\`\`\`
+      `)
+    ).toMatchObject({
+      inputs: [{ key: 'amount', type: 'number', reference: undefined }],
+      outputs: [{ key: 'total', type: 'number' }]
+    });
   });
 });
