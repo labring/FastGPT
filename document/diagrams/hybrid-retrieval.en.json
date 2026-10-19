@@ -7,21 +7,24 @@
       "label": "Text query",
       "row": 0,
       "col": 0,
-      "kind": "input"
+      "kind": "input",
+      "illustration": "browser"
     },
     {
       "id": "vector",
       "label": "Vector recall",
       "row": 1,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "vector"
     },
     {
       "id": "text",
       "label": "Full-text recall",
       "row": 1,
       "col": 1,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "files"
     },
     {
       "id": "fusion",
@@ -29,7 +32,8 @@
       "row": 2,
       "col": 0,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "workflow"
     },
     {
       "id": "rerank",
@@ -37,7 +41,8 @@
       "row": 3,
       "col": 0,
       "kind": "backend",
-      "sub": "Fallback on failure"
+      "sub": "Fallback on failure",
+      "illustration": "workflow"
     },
     {
       "id": "filter",
@@ -45,7 +50,8 @@
       "row": 4,
       "col": 0,
       "kind": "backend",
-      "sub": "Supported score types"
+      "sub": "Supported score types",
+      "illustration": "shield"
     },
     {
       "id": "tokens",
@@ -53,14 +59,16 @@
       "row": 5,
       "col": 0,
       "kind": "backend",
-      "sub": "Keep complete chunks"
+      "sub": "Keep complete chunks",
+      "illustration": "workflow"
     },
     {
       "id": "context",
       "label": "Retrieved context",
       "row": 6,
       "col": 0,
-      "kind": "store"
+      "kind": "store",
+      "illustration": "files"
     }
   ],
   "edges": [

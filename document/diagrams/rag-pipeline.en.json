@@ -7,14 +7,16 @@
       "label": "User question",
       "row": 0,
       "col": 0,
-      "kind": "input"
+      "kind": "input",
+      "illustration": "browser"
     },
     {
       "id": "rewrite",
       "label": "Optional rewrite",
       "row": 1,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "model"
     },
     {
       "id": "search",
@@ -22,7 +24,8 @@
       "row": 2,
       "col": 0,
       "kind": "backend",
-      "sub": "Vector / text / hybrid"
+      "sub": "Vector / text / hybrid",
+      "illustration": "vector"
     },
     {
       "id": "context",
@@ -30,7 +33,8 @@
       "row": 3,
       "col": 0,
       "kind": "backend",
-      "sub": "Rerank / filter / budget"
+      "sub": "Rerank / filter / budget",
+      "illustration": "files"
     },
     {
       "id": "prompt",
@@ -38,7 +42,8 @@
       "row": 4,
       "col": 0,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "code"
     },
     {
       "id": "answer",
@@ -46,7 +51,8 @@
       "row": 5,
       "col": 0,
       "kind": "backend",
-      "sub": "Citations per app settings"
+      "sub": "Citations per app settings",
+      "illustration": "model"
     }
   ],
   "edges": [

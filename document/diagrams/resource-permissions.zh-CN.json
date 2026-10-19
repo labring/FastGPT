@@ -7,7 +7,8 @@
       "label": "解析成员权限",
       "row": 0,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "shield"
     },
     {
       "id": "personal",
@@ -15,7 +16,8 @@
       "row": 1,
       "col": 0,
       "kind": "backend",
-      "shape": "decision"
+      "shape": "decision",
+      "illustration": "shield"
     },
     {
       "id": "value",
@@ -23,7 +25,8 @@
       "row": 1,
       "col": 1,
       "kind": "backend",
-      "sub": "显式 0 同样生效"
+      "sub": "显式 0 同样生效",
+      "illustration": "shield"
     },
     {
       "id": "groups",
@@ -31,7 +34,8 @@
       "row": 2,
       "col": 0,
       "kind": "backend",
-      "sub": "含默认组和祖先组织"
+      "sub": "含默认组和祖先组织",
+      "illustration": "shield"
     },
     {
       "id": "matches",
@@ -39,21 +43,24 @@
       "row": 3,
       "col": 0,
       "kind": "backend",
-      "shape": "decision"
+      "shape": "decision",
+      "illustration": "shield"
     },
     {
       "id": "union",
       "label": "权限按位并集",
       "row": 4,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "workflow"
     },
     {
       "id": "fallback",
       "label": "调用方默认值",
       "row": 3,
       "col": 1,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "shield"
     },
     {
       "id": "return",
@@ -61,7 +68,8 @@
       "row": 5,
       "col": 0,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "shield"
     }
   ],
   "edges": [

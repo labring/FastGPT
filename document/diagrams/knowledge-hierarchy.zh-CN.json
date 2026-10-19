@@ -8,14 +8,16 @@
       "row": 0,
       "col": 0,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "files"
     },
     {
       "id": "config",
       "label": "配置与权限",
       "row": 0,
       "col": 1,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "shield"
     },
     {
       "id": "folder",
@@ -23,14 +25,16 @@
       "row": 1,
       "col": 1,
       "kind": "backend",
-      "sub": "组织子集合"
+      "sub": "组织子集合",
+      "illustration": "files"
     },
     {
       "id": "collection",
       "label": "内容集合",
       "row": 1,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "files"
     },
     {
       "id": "chunk",
@@ -38,7 +42,8 @@
       "row": 2,
       "col": 0,
       "kind": "backend",
-      "sub": "原文与索引关联"
+      "sub": "原文与索引关联",
+      "illustration": "files"
     },
     {
       "id": "indexes",
@@ -46,7 +51,8 @@
       "row": 3,
       "col": 0,
       "kind": "store",
-      "sub": "向量 / 全文"
+      "sub": "向量 / 全文",
+      "illustration": "vector"
     }
   ],
   "edges": [

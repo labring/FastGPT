@@ -7,7 +7,8 @@
       "label": "需要沙箱",
       "row": 0,
       "col": 0,
-      "kind": "input"
+      "kind": "input",
+      "illustration": "code"
     },
     {
       "id": "runtime",
@@ -15,14 +16,16 @@
       "row": 1,
       "col": 0,
       "kind": "backend",
-      "sub": "连接 / 创建 / 恢复"
+      "sub": "连接 / 创建 / 恢复",
+      "illustration": "code"
     },
     {
       "id": "lock",
       "label": "获取初始化锁",
       "row": 2,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "shield"
     },
     {
       "id": "files",
@@ -30,7 +33,8 @@
       "row": 3,
       "col": 0,
       "kind": "backend",
-      "sub": "镜像源 / Skill / 输入"
+      "sub": "镜像源 / Skill / 输入",
+      "illustration": "files"
     },
     {
       "id": "check",
@@ -38,7 +42,8 @@
       "row": 4,
       "col": 0,
       "kind": "backend",
-      "shape": "decision"
+      "shape": "decision",
+      "illustration": "code"
     },
     {
       "id": "script",
@@ -46,7 +51,8 @@
       "row": 4,
       "col": 1,
       "kind": "backend",
-      "sub": "成功后保存实例 hash"
+      "sub": "成功后保存实例 hash",
+      "illustration": "code"
     },
     {
       "id": "skills",
@@ -54,7 +60,8 @@
       "row": 5,
       "col": 0,
       "kind": "backend",
-      "sub": "运行入口并扫描"
+      "sub": "运行入口并扫描",
+      "illustration": "workflow"
     },
     {
       "id": "ready",
@@ -62,7 +69,8 @@
       "row": 6,
       "col": 0,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "workflow"
     }
   ],
   "edges": [

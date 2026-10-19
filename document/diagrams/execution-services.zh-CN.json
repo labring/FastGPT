@@ -8,21 +8,24 @@
       "row": 0,
       "col": 1,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "core"
     },
     {
       "id": "plugin",
       "label": "Plugin 服务",
       "row": 1,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "code"
     },
     {
       "id": "code",
       "label": "Code Sandbox",
       "row": 1,
       "col": 1,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "code"
     },
     {
       "id": "provider",
@@ -30,21 +33,24 @@
       "row": 1,
       "col": 2,
       "kind": "backend",
-      "sub": "按配置启用"
+      "sub": "按配置启用",
+      "illustration": "code"
     },
     {
       "id": "workspace",
       "label": "工作空间",
       "row": 2,
       "col": 2,
-      "kind": "store"
+      "kind": "store",
+      "illustration": "files"
     },
     {
       "id": "browser",
       "label": "浏览器",
       "row": 3,
       "col": 0,
-      "kind": "external"
+      "kind": "external",
+      "illustration": "browser"
     },
     {
       "id": "proxy",
@@ -52,7 +58,8 @@
       "row": 3,
       "col": 2,
       "kind": "backend",
-      "sub": "受控文件访问"
+      "sub": "受控文件访问",
+      "illustration": "gateway"
     }
   ],
   "edges": [

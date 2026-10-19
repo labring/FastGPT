@@ -7,7 +7,8 @@
       "label": "来源入库",
       "row": 0,
       "col": 1,
-      "kind": "input"
+      "kind": "input",
+      "illustration": "files"
     },
     {
       "id": "queue",
@@ -15,14 +16,16 @@
       "row": 1,
       "col": 1,
       "kind": "backend",
-      "sub": "积压时继续等待"
+      "sub": "积压时继续等待",
+      "illustration": "cache"
     },
     {
       "id": "parse",
       "label": "解析与分块",
       "row": 2,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "code"
     },
     {
       "id": "enhance",
@@ -30,7 +33,8 @@
       "row": 3,
       "col": 0,
       "kind": "backend",
-      "sub": "按处理配置"
+      "sub": "按处理配置",
+      "illustration": "model"
     },
     {
       "id": "index",
@@ -38,14 +42,16 @@
       "row": 4,
       "col": 0,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "vector"
     },
     {
       "id": "ready",
       "label": "可检索",
       "row": 5,
       "col": 0,
-      "kind": "store"
+      "kind": "store",
+      "illustration": "files"
     },
     {
       "id": "error",
@@ -53,7 +59,8 @@
       "row": 3,
       "col": 1,
       "kind": "backend",
-      "sub": "退避 / 阻塞 / 排障"
+      "sub": "退避 / 阻塞 / 排障",
+      "illustration": "shield"
     }
   ],
   "edges": [

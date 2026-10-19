@@ -45,10 +45,15 @@ function MdxImage({
   );
   // CSS follows the site's manual theme selection and keeps the hidden variant out of accessibility.
   if (darkSrc) {
+    const diagramStyle = {
+      '--diagram-min-width': `${Math.max(520, Math.round(Number(image.width ?? props.width ?? 1040) * 0.64))}px`
+    } as CSSProperties;
     return (
       <>
-        <span className="docs-diagram docs-diagram-light">{content}</span>
-        <span className="docs-diagram docs-diagram-dark">
+        <span className="docs-diagram docs-diagram-light" style={diagramStyle}>
+          {content}
+        </span>
+        <span className="docs-diagram docs-diagram-dark" style={diagramStyle}>
           <MdxImage
             {...props}
             src={darkSrc}

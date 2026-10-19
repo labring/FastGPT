@@ -6,71 +6,80 @@
       "id": "client",
       "label": "客户端",
       "row": 0,
-      "col": 1,
-      "kind": "external"
+      "col": 0,
+      "kind": "external",
+      "illustration": "browser"
     },
     {
       "id": "gateway",
       "label": "访问入口",
-      "row": 1,
+      "row": 0,
       "col": 1,
       "kind": "backend",
-      "sub": "按部署配置"
+      "sub": "按部署配置",
+      "illustration": "gateway"
     },
     {
       "id": "app",
       "label": "FastGPT",
-      "row": 2,
-      "col": 1,
+      "row": 0,
+      "col": 2,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "core"
     },
     {
       "id": "mongo",
       "label": "MongoDB",
-      "row": 2,
-      "col": 0,
+      "row": 1,
+      "col": 0.5,
       "kind": "store",
-      "sub": "业务与知识数据"
+      "sub": "业务与知识数据",
+      "illustration": "database"
     },
     {
       "id": "redis",
       "label": "Redis",
-      "row": 2,
-      "col": 2,
+      "row": 1,
+      "col": 1.5,
       "kind": "store",
-      "sub": "缓存 / 队列"
+      "sub": "缓存 / 队列",
+      "illustration": "cache"
     },
     {
       "id": "vector",
       "label": "向量数据库",
-      "row": 3,
-      "col": 0,
+      "row": 1,
+      "col": 2.5,
       "kind": "store",
-      "sub": "选择一种后端"
+      "sub": "选择一种后端",
+      "illustration": "vector"
     },
     {
       "id": "s3",
       "label": "S3 对象存储",
-      "row": 3,
-      "col": 2,
+      "row": 1,
+      "col": 3.5,
       "kind": "store",
-      "sub": "文件与对象"
+      "sub": "文件与对象",
+      "illustration": "files"
     },
     {
       "id": "proxy",
       "label": "AI Proxy",
-      "row": 3,
-      "col": 1,
-      "kind": "backend"
+      "row": 0,
+      "col": 3,
+      "kind": "backend",
+      "illustration": "gateway"
     },
     {
       "id": "model",
       "label": "模型服务",
-      "row": 4,
-      "col": 1,
+      "row": 0,
+      "col": 4,
       "kind": "external",
-      "sub": "云端或自托管"
+      "sub": "云端或自托管",
+      "illustration": "model"
     }
   ],
   "edges": [

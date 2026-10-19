@@ -8,7 +8,8 @@
       "row": 0,
       "col": 0,
       "kind": "backend",
-      "sub": "指定 model ID"
+      "sub": "指定 model ID",
+      "illustration": "core"
     },
     {
       "id": "proxy",
@@ -16,7 +17,8 @@
       "row": 1,
       "col": 0,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "gateway"
     },
     {
       "id": "pool",
@@ -24,21 +26,24 @@
       "row": 2,
       "col": 0,
       "kind": "backend",
-      "sub": "系统 / 成员私有范围"
+      "sub": "系统 / 成员私有范围",
+      "illustration": "gateway"
     },
     {
       "id": "channel",
       "label": "选定渠道",
       "row": 3,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "gateway"
     },
     {
       "id": "model",
       "label": "模型提供商",
       "row": 4,
       "col": 0,
-      "kind": "external"
+      "kind": "external",
+      "illustration": "model"
     }
   ],
   "edges": [

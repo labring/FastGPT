@@ -7,7 +7,8 @@
       "label": "Ingest source",
       "row": 0,
       "col": 1,
-      "kind": "input"
+      "kind": "input",
+      "illustration": "files"
     },
     {
       "id": "queue",
@@ -15,14 +16,16 @@
       "row": 1,
       "col": 1,
       "kind": "backend",
-      "sub": "Backlog stays queued"
+      "sub": "Backlog stays queued",
+      "illustration": "cache"
     },
     {
       "id": "parse",
       "label": "Parse and chunk",
       "row": 2,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "code"
     },
     {
       "id": "enhance",
@@ -30,7 +33,8 @@
       "row": 3,
       "col": 0,
       "kind": "backend",
-      "sub": "When configured"
+      "sub": "When configured",
+      "illustration": "model"
     },
     {
       "id": "index",
@@ -38,14 +42,16 @@
       "row": 4,
       "col": 0,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "vector"
     },
     {
       "id": "ready",
       "label": "Searchable",
       "row": 5,
       "col": 0,
-      "kind": "store"
+      "kind": "store",
+      "illustration": "files"
     },
     {
       "id": "error",
@@ -53,7 +59,8 @@
       "row": 3,
       "col": 1,
       "kind": "backend",
-      "sub": "Backoff / unblock / fix"
+      "sub": "Backoff / unblock / fix",
+      "illustration": "shield"
     }
   ],
   "edges": [

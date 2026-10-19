@@ -7,7 +7,8 @@
       "label": "工作流开始",
       "row": 0,
       "col": 0,
-      "kind": "input"
+      "kind": "input",
+      "illustration": "workflow"
     },
     {
       "id": "classify",
@@ -15,35 +16,40 @@
       "row": 1,
       "col": 0,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "model"
     },
     {
       "id": "search",
       "label": "知识库检索",
       "row": 2,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "vector"
     },
     {
       "id": "answer",
       "label": "AI 回答",
       "row": 3,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "model"
     },
     {
       "id": "form",
       "label": "工单表单",
       "row": 2,
       "col": 1,
-      "kind": "muted"
+      "kind": "muted",
+      "illustration": "browser"
     },
     {
       "id": "reply",
       "label": "工单回复",
       "row": 3,
       "col": 1,
-      "kind": "muted"
+      "kind": "muted",
+      "illustration": "browser"
     }
   ],
   "edges": [

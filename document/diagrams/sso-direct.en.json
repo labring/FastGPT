@@ -6,19 +6,22 @@
       "id": "browser",
       "label": "Browser",
       "kind": "external",
-      "focal": false
+      "focal": false,
+      "illustration": "browser"
     },
     {
       "id": "app",
       "label": "FastGPT",
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "core"
     },
     {
       "id": "idp",
       "label": "Provider system",
       "kind": "external",
-      "focal": false
+      "focal": false,
+      "illustration": "shield"
     }
   ],
   "messages": [

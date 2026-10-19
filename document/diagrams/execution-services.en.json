@@ -8,21 +8,24 @@
       "row": 0,
       "col": 1,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "core"
     },
     {
       "id": "plugin",
       "label": "Plugin service",
       "row": 1,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "code"
     },
     {
       "id": "code",
       "label": "Code Sandbox",
       "row": 1,
       "col": 1,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "code"
     },
     {
       "id": "provider",
@@ -30,21 +33,24 @@
       "row": 1,
       "col": 2,
       "kind": "backend",
-      "sub": "Configured provider"
+      "sub": "Configured provider",
+      "illustration": "code"
     },
     {
       "id": "workspace",
       "label": "Workspace",
       "row": 2,
       "col": 2,
-      "kind": "store"
+      "kind": "store",
+      "illustration": "files"
     },
     {
       "id": "browser",
       "label": "Browser",
       "row": 3,
       "col": 0,
-      "kind": "external"
+      "kind": "external",
+      "illustration": "browser"
     },
     {
       "id": "proxy",
@@ -52,7 +58,8 @@
       "row": 3,
       "col": 2,
       "kind": "backend",
-      "sub": "Controlled file access"
+      "sub": "Controlled file access",
+      "illustration": "gateway"
     }
   ],
   "edges": [

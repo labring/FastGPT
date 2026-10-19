@@ -7,7 +7,8 @@
       "label": "Sandbox needed",
       "row": 0,
       "col": 0,
-      "kind": "input"
+      "kind": "input",
+      "illustration": "code"
     },
     {
       "id": "runtime",
@@ -15,14 +16,16 @@
       "row": 1,
       "col": 0,
       "kind": "backend",
-      "sub": "Connect / create / restore"
+      "sub": "Connect / create / restore",
+      "illustration": "code"
     },
     {
       "id": "lock",
       "label": "Acquire init lock",
       "row": 2,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "shield"
     },
     {
       "id": "files",
@@ -30,7 +33,8 @@
       "row": 3,
       "col": 0,
       "kind": "backend",
-      "sub": "Mirror / Skills / input"
+      "sub": "Mirror / Skills / input",
+      "illustration": "files"
     },
     {
       "id": "check",
@@ -38,7 +42,8 @@
       "row": 4,
       "col": 0,
       "kind": "backend",
-      "shape": "decision"
+      "shape": "decision",
+      "illustration": "code"
     },
     {
       "id": "script",
@@ -46,7 +51,8 @@
       "row": 4,
       "col": 1,
       "kind": "backend",
-      "sub": "Save hash on success"
+      "sub": "Save hash on success",
+      "illustration": "code"
     },
     {
       "id": "skills",
@@ -54,7 +60,8 @@
       "row": 5,
       "col": 0,
       "kind": "backend",
-      "sub": "Run entries and scan"
+      "sub": "Run entries and scan",
+      "illustration": "workflow"
     },
     {
       "id": "ready",
@@ -62,7 +69,8 @@
       "row": 6,
       "col": 0,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "workflow"
     }
   ],
   "edges": [

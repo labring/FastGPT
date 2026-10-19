@@ -8,14 +8,16 @@
       "row": 0,
       "col": 0,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "files"
     },
     {
       "id": "config",
       "label": "Settings and access",
       "row": 0,
       "col": 1,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "shield"
     },
     {
       "id": "folder",
@@ -23,14 +25,16 @@
       "row": 1,
       "col": 1,
       "kind": "backend",
-      "sub": "Organize collections"
+      "sub": "Organize collections",
+      "illustration": "files"
     },
     {
       "id": "collection",
       "label": "Content collection",
       "row": 1,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "files"
     },
     {
       "id": "chunk",
@@ -38,7 +42,8 @@
       "row": 2,
       "col": 0,
       "kind": "backend",
-      "sub": "Source and index refs"
+      "sub": "Source and index refs",
+      "illustration": "files"
     },
     {
       "id": "indexes",
@@ -46,7 +51,8 @@
       "row": 3,
       "col": 0,
       "kind": "store",
-      "sub": "Vector / full text"
+      "sub": "Vector / full text",
+      "illustration": "vector"
     }
   ],
   "edges": [

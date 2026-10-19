@@ -7,14 +7,16 @@
       "label": "用户提问",
       "row": 0,
       "col": 0,
-      "kind": "input"
+      "kind": "input",
+      "illustration": "browser"
     },
     {
       "id": "rewrite",
       "label": "可选问题改写",
       "row": 1,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "model"
     },
     {
       "id": "search",
@@ -22,7 +24,8 @@
       "row": 2,
       "col": 0,
       "kind": "backend",
-      "sub": "向量 / 全文 / 混合"
+      "sub": "向量 / 全文 / 混合",
+      "illustration": "vector"
     },
     {
       "id": "context",
@@ -30,7 +33,8 @@
       "row": 3,
       "col": 0,
       "kind": "backend",
-      "sub": "重排 / 过滤 / 预算"
+      "sub": "重排 / 过滤 / 预算",
+      "illustration": "files"
     },
     {
       "id": "prompt",
@@ -38,7 +42,8 @@
       "row": 4,
       "col": 0,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "code"
     },
     {
       "id": "answer",
@@ -46,7 +51,8 @@
       "row": 5,
       "col": 0,
       "kind": "backend",
-      "sub": "按应用配置展示引用"
+      "sub": "按应用配置展示引用",
+      "illustration": "model"
     }
   ],
   "edges": [

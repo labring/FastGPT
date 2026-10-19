@@ -7,14 +7,16 @@
       "label": "执行上游",
       "row": 0,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "workflow"
     },
     {
       "id": "node",
       "label": "到达交互节点",
       "row": 1,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "browser"
     },
     {
       "id": "save",
@@ -22,28 +24,32 @@
       "row": 2,
       "col": 0,
       "kind": "store",
-      "sub": "入口 / 连线 / 输出"
+      "sub": "入口 / 连线 / 输出",
+      "illustration": "files"
     },
     {
       "id": "show",
       "label": "展示选择或表单",
       "row": 3,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "browser"
     },
     {
       "id": "submit",
       "label": "下一请求提交",
       "row": 4,
       "col": 0,
-      "kind": "input"
+      "kind": "input",
+      "illustration": "browser"
     },
     {
       "id": "load",
       "label": "恢复会话状态",
       "row": 5,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "files"
     },
     {
       "id": "input",
@@ -51,14 +57,16 @@
       "row": 6,
       "col": 0,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "workflow"
     },
     {
       "id": "downstream",
       "label": "继续执行下游",
       "row": 7,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "workflow"
     }
   ],
   "edges": [

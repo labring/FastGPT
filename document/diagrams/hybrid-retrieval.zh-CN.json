@@ -7,21 +7,24 @@
       "label": "文本查询",
       "row": 0,
       "col": 0,
-      "kind": "input"
+      "kind": "input",
+      "illustration": "browser"
     },
     {
       "id": "vector",
       "label": "向量召回",
       "row": 1,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "vector"
     },
     {
       "id": "text",
       "label": "全文召回",
       "row": 1,
       "col": 1,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "files"
     },
     {
       "id": "fusion",
@@ -29,7 +32,8 @@
       "row": 2,
       "col": 0,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "workflow"
     },
     {
       "id": "rerank",
@@ -37,7 +41,8 @@
       "row": 3,
       "col": 0,
       "kind": "backend",
-      "sub": "失败时沿用召回结果"
+      "sub": "失败时沿用召回结果",
+      "illustration": "workflow"
     },
     {
       "id": "filter",
@@ -45,7 +50,8 @@
       "row": 4,
       "col": 0,
       "kind": "backend",
-      "sub": "按支持的得分类型"
+      "sub": "按支持的得分类型",
+      "illustration": "shield"
     },
     {
       "id": "tokens",
@@ -53,14 +59,16 @@
       "row": 5,
       "col": 0,
       "kind": "backend",
-      "sub": "按完整数据块选取"
+      "sub": "按完整数据块选取",
+      "illustration": "workflow"
     },
     {
       "id": "context",
       "label": "检索上下文",
       "row": 6,
       "col": 0,
-      "kind": "store"
+      "kind": "store",
+      "illustration": "files"
     }
   ],
   "edges": [

@@ -6,25 +6,29 @@
       "id": "browser",
       "label": "Browser",
       "kind": "external",
-      "focal": false
+      "focal": false,
+      "illustration": "browser"
     },
     {
       "id": "app",
       "label": "FastGPT",
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "core"
     },
     {
       "id": "adapter",
       "label": "SSO adapter",
       "kind": "external",
-      "focal": false
+      "focal": false,
+      "illustration": "gateway"
     },
     {
       "id": "idp",
       "label": "Identity provider",
       "kind": "external",
-      "focal": false
+      "focal": false,
+      "illustration": "shield"
     }
   ],
   "messages": [

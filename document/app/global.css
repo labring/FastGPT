@@ -136,6 +136,12 @@ html.dark .docs-diagram-dark {
   min-width: 520px;
 }
 
+@media (max-width: 767px) {
+  .docs-diagram > [data-rmiz] {
+    min-width: var(--diagram-min-width, 520px);
+  }
+}
+
 #nd-page article .docs-diagram img {
   width: 100%;
   margin: 0;

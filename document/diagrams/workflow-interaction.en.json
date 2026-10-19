@@ -7,14 +7,16 @@
       "label": "Run upstream",
       "row": 0,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "workflow"
     },
     {
       "id": "node",
       "label": "Reach interaction",
       "row": 1,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "browser"
     },
     {
       "id": "save",
@@ -22,28 +24,32 @@
       "row": 2,
       "col": 0,
       "kind": "store",
-      "sub": "Entries / edges / outputs"
+      "sub": "Entries / edges / outputs",
+      "illustration": "files"
     },
     {
       "id": "show",
       "label": "Show choice/form",
       "row": 3,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "browser"
     },
     {
       "id": "submit",
       "label": "Submit next request",
       "row": 4,
       "col": 0,
-      "kind": "input"
+      "kind": "input",
+      "illustration": "browser"
     },
     {
       "id": "load",
       "label": "Restore chat state",
       "row": 5,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "files"
     },
     {
       "id": "input",
@@ -51,14 +57,16 @@
       "row": 6,
       "col": 0,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "workflow"
     },
     {
       "id": "downstream",
       "label": "Continue downstream",
       "row": 7,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "workflow"
     }
   ],
   "edges": [

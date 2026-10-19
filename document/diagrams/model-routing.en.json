@@ -8,7 +8,8 @@
       "row": 0,
       "col": 0,
       "kind": "backend",
-      "sub": "Select model ID"
+      "sub": "Select model ID",
+      "illustration": "core"
     },
     {
       "id": "proxy",
@@ -16,7 +17,8 @@
       "row": 1,
       "col": 0,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "gateway"
     },
     {
       "id": "pool",
@@ -24,21 +26,24 @@
       "row": 2,
       "col": 0,
       "kind": "backend",
-      "sub": "System / member scope"
+      "sub": "System / member scope",
+      "illustration": "gateway"
     },
     {
       "id": "channel",
       "label": "Selected channel",
       "row": 3,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "gateway"
     },
     {
       "id": "model",
       "label": "Model provider",
       "row": 4,
       "col": 0,
-      "kind": "external"
+      "kind": "external",
+      "illustration": "model"
     }
   ],
   "edges": [

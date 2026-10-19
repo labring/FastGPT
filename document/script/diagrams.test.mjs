@@ -6,6 +6,7 @@ import { remark } from 'remark';
 import remarkMdx from 'remark-mdx';
 import { remarkImage } from 'fumadocs-core/mdx-plugins';
 import { remarkDiagrams } from '../lib/remark-diagrams.mjs';
+import { layoutDiagram, renderDiagram } from './renderDiagrams.mjs';
 
 const require = createRequire(import.meta.url);
 const { extractReferencedImages } = require('./removeInvalidImg.js');
@@ -79,14 +80,19 @@ test('every published diagram has localized sources, HTML, and theme assets unde
   }
 });
 
-test('localized diagrams share topology and remain within SeeCode readability budgets', async () => {
+test('localized diagrams share topology and remain within readability budgets', async () => {
   const directory = new URL('../diagrams/', import.meta.url);
   for (const file of (await readdir(directory)).filter((file) => file.endsWith('.en.json'))) {
     const english = JSON.parse(await readFile(new URL(file, directory)));
     const chinese = JSON.parse(await readFile(new URL(file.replace('.en.', '.zh-CN.'), directory)));
     const topology = (spec) => ({
       type: spec.type,
-      nodes: (spec.nodes ?? spec.participants ?? []).map(({ id, row, col }) => ({ id, row, col })),
+      nodes: (spec.nodes ?? spec.participants ?? []).map(({ id, row, col, illustration }) => ({
+        id,
+        row,
+        col,
+        illustration
+      })),
       edges: (spec.edges ?? spec.messages ?? []).map(([from, to]) => [from, to])
     });
     assert.deepEqual(topology(english), topology(chinese), file);
@@ -99,4 +105,110 @@ test('localized diagrams share topology and remain within SeeCode readability bu
       assert.ok(spec.evidence.length > 0, file);
     }
   }
+});
+
+test('published SVGs reproduce their sources, embed illustrations, and preserve every labeled edge', async () => {
+  const sources = new URL('../diagrams/', import.meta.url);
+  const illustrations = {};
+  for (const file of (await readdir(new URL('illustrations/', sources))).filter((file) =>
+    file.endsWith('.webp')
+  )) {
+    illustrations[file.slice(0, -5)] = (
+      await readFile(new URL(`illustrations/${file}`, sources))
+    ).toString('base64');
+  }
+  const decode = (value) =>
+    value.replace(
+      /&(amp|lt|gt|quot|apos);/g,
+      (_, entity) => ({ amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" })[entity]
+    );
+  for (const file of (await readdir(sources)).filter((file) => /\.(en|zh-CN)\.json$/.test(file))) {
+    const spec = JSON.parse(await readFile(new URL(file, sources)));
+    for (const theme of ['light', 'dark']) {
+      const svg = await readFile(
+        new URL(`../public/imgs/diagrams/${file.slice(0, -5)}.${theme}.svg`, import.meta.url),
+        'utf8'
+      );
+      assert.equal(
+        svg,
+        renderDiagram(spec, { theme, illustrations }),
+        `${file}: stale ${theme} output`
+      );
+      const nodes = [
+        ...svg.matchAll(/class="node" data-node="([^"]+)" data-label="([^"]*)" data-sub="([^"]*)"/g)
+      ].map(([, id, label, sub]) => ({ id, label: decode(label), sub: decode(sub) }));
+      assert.deepEqual(
+        nodes,
+        (spec.nodes ?? spec.participants).map(({ id, label, sub = '' }) => ({ id, label, sub })),
+        file
+      );
+      const edges = [
+        ...svg.matchAll(
+          /class="edge" data-from="([^"]+)" data-to="([^"]+)" data-kind="([^"]*)" data-label="([^"]*)"/g
+        )
+      ].map(([, from, to, kind, label]) => [from, to, decode(label), decode(kind)]);
+      assert.deepEqual(edges, spec.edges ?? spec.messages, file);
+      assert.equal((svg.match(/marker-end="url\(#arrow\)"/g) ?? []).length, edges.length, file);
+      assert.ok(svg.includes('data:image/webp;base64,'), file);
+      assert.ok(!/<script|https?:\/\/[^"\s]+\.(webp|png)/.test(svg), file);
+      assert.ok(svg.includes(theme === 'dark' ? '#F0F5FF' : '#162B50'), file);
+    }
+  }
+});
+
+test('connectors avoid unrelated nodes and remain inside the canvas', async () => {
+  const sources = new URL('../diagrams/', import.meta.url);
+  for (const file of (await readdir(sources)).filter((file) => file.endsWith('.en.json'))) {
+    const spec = JSON.parse(await readFile(new URL(file, sources)));
+    const { nodes, edges, width, height } = layoutDiagram(spec);
+    for (const edge of edges) {
+      for (let i = 1; i < edge.points.length; i++) {
+        const [a, b] = [edge.points[i - 1], edge.points[i]];
+        assert.ok(
+          [a, b].every(([x, y]) => x >= 0 && x <= width && y >= 0 && y <= height),
+          file
+        );
+        assert.ok(a[0] === b[0] || a[1] === b[1], `${file}: non-orthogonal edge`);
+        for (const node of nodes.filter(({ id }) => ![edge.from, edge.to].includes(id))) {
+          const intersects =
+            a[0] === b[0]
+              ? a[0] > node.x &&
+                a[0] < node.x + node.w &&
+                Math.max(a[1], b[1]) > node.y &&
+                Math.min(a[1], b[1]) < node.y + node.h
+              : a[1] > node.y &&
+                a[1] < node.y + node.h &&
+                Math.max(a[0], b[0]) > node.x &&
+                Math.min(a[0], b[0]) < node.x + node.w;
+          assert.equal(intersects, false, `${file}: ${edge.from} → ${edge.to} crosses ${node.id}`);
+        }
+      }
+    }
+  }
+});
+
+test('renderer rejects broken topology and missing illustrations and escapes label markup', () => {
+  const spec = {
+    type: 'flowchart',
+    title: 'Example <flow>',
+    lang: 'en',
+    nodes: [
+      { id: 'a', label: '<script>alert(1)</script>', row: 0, col: 0, illustration: 'browser' },
+      { id: 'b', label: 'Result', row: 1, col: 0, illustration: 'browser' }
+    ],
+    edges: [['a', 'b', 'a & b', 'primary']]
+  };
+  const options = { theme: 'light', illustrations: { browser: 'AA==' } };
+  assert.throws(
+    () => layoutDiagram({ ...spec, edges: [['a', 'missing', '', 'primary']] }),
+    /Unknown endpoint/
+  );
+  assert.throws(
+    () => renderDiagram(spec, { ...options, illustrations: {} }),
+    /Missing illustration asset/
+  );
+  const svg = renderDiagram(spec, options);
+  assert.ok(svg.includes('&lt;script&gt;alert(1)&lt;/script&gt;'));
+  assert.ok(svg.includes('a &amp; b'));
+  assert.ok(!svg.includes('<script>'));
 });

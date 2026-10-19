@@ -6,31 +6,36 @@
       "id": "user",
       "label": "Developer",
       "kind": "external",
-      "focal": false
+      "focal": false,
+      "illustration": "browser"
     },
     {
       "id": "app",
       "label": "FastGPT",
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "core"
     },
     {
       "id": "plugin",
       "label": "Plugin service",
       "kind": "backend",
-      "focal": false
+      "focal": false,
+      "illustration": "code"
     },
     {
       "id": "cli",
       "label": "Local CLI",
       "kind": "external",
-      "focal": false
+      "focal": false,
+      "illustration": "code"
     },
     {
       "id": "gateway",
       "label": "Gateway",
       "kind": "external",
-      "focal": false
+      "focal": false,
+      "illustration": "gateway"
     }
   ],
   "messages": [

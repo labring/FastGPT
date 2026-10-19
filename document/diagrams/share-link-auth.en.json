@@ -7,7 +7,8 @@
       "label": "Open share link",
       "row": 0,
       "col": 0,
-      "kind": "input"
+      "kind": "input",
+      "illustration": "browser"
     },
     {
       "id": "init",
@@ -16,14 +17,16 @@
       "col": 0,
       "kind": "backend",
       "shape": "decision",
-      "sub": "/shareAuth/init"
+      "sub": "/shareAuth/init",
+      "illustration": "shield"
     },
     {
       "id": "app",
       "label": "Enter app",
       "row": 2,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "core"
     },
     {
       "id": "limits",
@@ -32,7 +35,8 @@
       "col": 0,
       "kind": "backend",
       "shape": "decision",
-      "sub": "Expiry / usage / QPM"
+      "sub": "Expiry / usage / QPM",
+      "illustration": "shield"
     },
     {
       "id": "start",
@@ -41,7 +45,8 @@
       "col": 0,
       "kind": "backend",
       "shape": "decision",
-      "sub": "/shareAuth/start"
+      "sub": "/shareAuth/start",
+      "illustration": "shield"
     },
     {
       "id": "chat",
@@ -49,7 +54,8 @@
       "row": 5,
       "col": 0,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "browser"
     },
     {
       "id": "report",
@@ -57,7 +63,8 @@
       "row": 6,
       "col": 0,
       "kind": "backend",
-      "sub": "/shareAuth/finish"
+      "sub": "/shareAuth/finish",
+      "illustration": "workflow"
     },
     {
       "id": "reject",
@@ -65,7 +72,8 @@
       "row": 3,
       "col": 1,
       "kind": "muted",
-      "shape": "terminal"
+      "shape": "terminal",
+      "illustration": "shield"
     }
   ],
   "edges": [

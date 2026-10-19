@@ -7,7 +7,8 @@
       "label": "Resolve member access",
       "row": 0,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "shield"
     },
     {
       "id": "personal",
@@ -15,7 +16,8 @@
       "row": 1,
       "col": 0,
       "kind": "backend",
-      "shape": "decision"
+      "shape": "decision",
+      "illustration": "shield"
     },
     {
       "id": "value",
@@ -23,7 +25,8 @@
       "row": 1,
       "col": 1,
       "kind": "backend",
-      "sub": "Explicit zero is valid"
+      "sub": "Explicit zero is valid",
+      "illustration": "shield"
     },
     {
       "id": "groups",
@@ -31,7 +34,8 @@
       "row": 2,
       "col": 0,
       "kind": "backend",
-      "sub": "Default group / ancestors"
+      "sub": "Default group / ancestors",
+      "illustration": "shield"
     },
     {
       "id": "matches",
@@ -39,21 +43,24 @@
       "row": 3,
       "col": 0,
       "kind": "backend",
-      "shape": "decision"
+      "shape": "decision",
+      "illustration": "shield"
     },
     {
       "id": "union",
       "label": "Bitwise permission OR",
       "row": 4,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "workflow"
     },
     {
       "id": "fallback",
       "label": "Caller default",
       "row": 3,
       "col": 1,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "shield"
     },
     {
       "id": "return",
@@ -61,7 +68,8 @@
       "row": 5,
       "col": 0,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "shield"
     }
   ],
   "edges": [

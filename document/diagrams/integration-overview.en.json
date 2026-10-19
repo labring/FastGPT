@@ -8,7 +8,8 @@
       "row": 0,
       "col": 0,
       "kind": "external",
-      "sub": "Web / mobile"
+      "sub": "Web / mobile",
+      "illustration": "browser"
     },
     {
       "id": "backend",
@@ -16,7 +17,8 @@
       "row": 1,
       "col": 0,
       "kind": "backend",
-      "sub": "Keep API keys here"
+      "sub": "Keep API keys here",
+      "illustration": "code"
     },
     {
       "id": "sdk",
@@ -24,7 +26,8 @@
       "row": 1,
       "col": 1,
       "kind": "backend",
-      "sub": "OpenAI SDK / HTTP"
+      "sub": "OpenAI SDK / HTTP",
+      "illustration": "code"
     },
     {
       "id": "api",
@@ -32,21 +35,24 @@
       "row": 2,
       "col": 0,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "core"
     },
     {
       "id": "chat",
       "label": "Apps and chats",
       "row": 3,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "browser"
     },
     {
       "id": "dataset",
       "label": "Dataset APIs",
       "row": 3,
       "col": 1,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "files"
     }
   ],
   "edges": [

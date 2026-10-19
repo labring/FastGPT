@@ -7,7 +7,8 @@
       "label": "触发并组装上下文",
       "row": 0,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "files"
     },
     {
       "id": "model",
@@ -15,7 +16,8 @@
       "row": 1,
       "col": 0,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "model"
     },
     {
       "id": "calls",
@@ -23,7 +25,8 @@
       "row": 2,
       "col": 0,
       "kind": "backend",
-      "shape": "decision"
+      "shape": "decision",
+      "illustration": "workflow"
     },
     {
       "id": "tools",
@@ -31,7 +34,8 @@
       "row": 3,
       "col": 0,
       "kind": "backend",
-      "sub": "普通错误回传模型"
+      "sub": "普通错误回传模型",
+      "illustration": "code"
     },
     {
       "id": "result",
@@ -39,14 +43,16 @@
       "row": 4,
       "col": 0,
       "kind": "backend",
-      "shape": "decision"
+      "shape": "decision",
+      "illustration": "shield"
     },
     {
       "id": "append",
       "label": "追加工具结果",
       "row": 3,
       "col": 1,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "files"
     },
     {
       "id": "pause",
@@ -54,7 +60,8 @@
       "row": 5,
       "col": 1,
       "kind": "optional",
-      "shape": "terminal"
+      "shape": "terminal",
+      "illustration": "browser"
     },
     {
       "id": "end",
@@ -62,7 +69,8 @@
       "row": 5,
       "col": 0,
       "kind": "backend",
-      "shape": "terminal"
+      "shape": "terminal",
+      "illustration": "workflow"
     }
   ],
   "edges": [

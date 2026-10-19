@@ -6,71 +6,80 @@
       "id": "client",
       "label": "Clients",
       "row": 0,
-      "col": 1,
-      "kind": "external"
+      "col": 0,
+      "kind": "external",
+      "illustration": "browser"
     },
     {
       "id": "gateway",
       "label": "Ingress",
-      "row": 1,
+      "row": 0,
       "col": 1,
       "kind": "backend",
-      "sub": "Deployment-specific"
+      "sub": "Deployment-specific",
+      "illustration": "gateway"
     },
     {
       "id": "app",
       "label": "FastGPT",
-      "row": 2,
-      "col": 1,
+      "row": 0,
+      "col": 2,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "core"
     },
     {
       "id": "mongo",
       "label": "MongoDB",
-      "row": 2,
-      "col": 0,
+      "row": 1,
+      "col": 0.5,
       "kind": "store",
-      "sub": "Records and chunks"
+      "sub": "Records and chunks",
+      "illustration": "database"
     },
     {
       "id": "redis",
       "label": "Redis",
-      "row": 2,
-      "col": 2,
+      "row": 1,
+      "col": 1.5,
       "kind": "store",
-      "sub": "Cache / queues"
+      "sub": "Cache / queues",
+      "illustration": "cache"
     },
     {
       "id": "vector",
       "label": "Vector database",
-      "row": 3,
-      "col": 0,
+      "row": 1,
+      "col": 2.5,
       "kind": "store",
-      "sub": "Choose one backend"
+      "sub": "Choose one backend",
+      "illustration": "vector"
     },
     {
       "id": "s3",
       "label": "S3 storage",
-      "row": 3,
-      "col": 2,
+      "row": 1,
+      "col": 3.5,
       "kind": "store",
-      "sub": "Files and objects"
+      "sub": "Files and objects",
+      "illustration": "files"
     },
     {
       "id": "proxy",
       "label": "AI Proxy",
-      "row": 3,
-      "col": 1,
-      "kind": "backend"
+      "row": 0,
+      "col": 3,
+      "kind": "backend",
+      "illustration": "gateway"
     },
     {
       "id": "model",
       "label": "Model providers",
-      "row": 4,
-      "col": 1,
+      "row": 0,
+      "col": 4,
       "kind": "external",
-      "sub": "Cloud or self-hosted"
+      "sub": "Cloud or self-hosted",
+      "illustration": "model"
     }
   ],
   "edges": [

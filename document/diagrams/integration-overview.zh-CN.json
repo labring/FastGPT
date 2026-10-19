@@ -8,7 +8,8 @@
       "row": 0,
       "col": 0,
       "kind": "external",
-      "sub": "网页 / 移动端"
+      "sub": "网页 / 移动端",
+      "illustration": "browser"
     },
     {
       "id": "backend",
@@ -16,7 +17,8 @@
       "row": 1,
       "col": 0,
       "kind": "backend",
-      "sub": "安全保存 API Key"
+      "sub": "安全保存 API Key",
+      "illustration": "code"
     },
     {
       "id": "sdk",
@@ -24,7 +26,8 @@
       "row": 1,
       "col": 1,
       "kind": "backend",
-      "sub": "OpenAI SDK / HTTP"
+      "sub": "OpenAI SDK / HTTP",
+      "illustration": "code"
     },
     {
       "id": "api",
@@ -32,21 +35,24 @@
       "row": 2,
       "col": 0,
       "kind": "backend",
-      "focal": true
+      "focal": true,
+      "illustration": "core"
     },
     {
       "id": "chat",
       "label": "应用与会话",
       "row": 3,
       "col": 0,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "browser"
     },
     {
       "id": "dataset",
       "label": "知识库操作",
       "row": 3,
       "col": 1,
-      "kind": "backend"
+      "kind": "backend",
+      "illustration": "files"
     }
   ],
   "edges": [
