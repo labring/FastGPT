@@ -17,7 +17,7 @@
       "row": 0,
       "col": 1,
       "kind": "backend",
-      "illustration": "shield"
+      "illustration": "settings"
     },
     {
       "id": "folder",
@@ -26,7 +26,7 @@
       "col": 1,
       "kind": "backend",
       "sub": "组织子集合",
-      "illustration": "files"
+      "illustration": "folder"
     },
     {
       "id": "collection",
@@ -34,7 +34,7 @@
       "row": 1,
       "col": 0,
       "kind": "backend",
-      "illustration": "files"
+      "illustration": "document"
     },
     {
       "id": "chunk",
@@ -43,7 +43,7 @@
       "col": 0,
       "kind": "backend",
       "sub": "原文与索引关联",
-      "illustration": "files"
+      "illustration": "chunk"
     },
     {
       "id": "indexes",

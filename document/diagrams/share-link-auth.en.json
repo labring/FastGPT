@@ -18,7 +18,7 @@
       "kind": "backend",
       "shape": "decision",
       "sub": "/shareAuth/init",
-      "illustration": "shield"
+      "illustration": "user"
     },
     {
       "id": "app",
@@ -36,7 +36,7 @@
       "kind": "backend",
       "shape": "decision",
       "sub": "Expiry / usage / QPM",
-      "illustration": "shield"
+      "illustration": "gauge"
     },
     {
       "id": "start",
@@ -55,7 +55,7 @@
       "col": 0,
       "kind": "backend",
       "focal": true,
-      "illustration": "browser"
+      "illustration": "chat"
     },
     {
       "id": "report",
@@ -64,7 +64,7 @@
       "col": 0,
       "kind": "backend",
       "sub": "/shareAuth/finish",
-      "illustration": "workflow"
+      "illustration": "ready"
     },
     {
       "id": "reject",
@@ -73,7 +73,7 @@
       "col": 1,
       "kind": "muted",
       "shape": "terminal",
-      "illustration": "shield"
+      "illustration": "error"
     }
   ],
   "edges": [

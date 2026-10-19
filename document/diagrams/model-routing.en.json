@@ -18,7 +18,7 @@
       "col": 0,
       "kind": "backend",
       "focal": true,
-      "illustration": "gateway"
+      "illustration": "router"
     },
     {
       "id": "pool",
@@ -27,7 +27,7 @@
       "col": 0,
       "kind": "backend",
       "sub": "System / member scope",
-      "illustration": "gateway"
+      "illustration": "workflow"
     },
     {
       "id": "channel",

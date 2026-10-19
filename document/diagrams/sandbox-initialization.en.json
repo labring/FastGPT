@@ -8,7 +8,7 @@
       "row": 0,
       "col": 0,
       "kind": "input",
-      "illustration": "code"
+      "illustration": "workflow"
     },
     {
       "id": "runtime",
@@ -17,7 +17,7 @@
       "col": 0,
       "kind": "backend",
       "sub": "Connect / create / restore",
-      "illustration": "code"
+      "illustration": "runtime"
     },
     {
       "id": "lock",
@@ -25,7 +25,7 @@
       "row": 2,
       "col": 0,
       "kind": "backend",
-      "illustration": "shield"
+      "illustration": "lock"
     },
     {
       "id": "files",
@@ -43,7 +43,7 @@
       "col": 0,
       "kind": "backend",
       "shape": "decision",
-      "illustration": "code"
+      "illustration": "check"
     },
     {
       "id": "script",
@@ -61,7 +61,7 @@
       "col": 0,
       "kind": "backend",
       "sub": "Run entries and scan",
-      "illustration": "workflow"
+      "illustration": "skills"
     },
     {
       "id": "ready",
@@ -70,7 +70,7 @@
       "col": 0,
       "kind": "backend",
       "focal": true,
-      "illustration": "workflow"
+      "illustration": "ready"
     }
   ],
   "edges": [

@@ -18,7 +18,7 @@
       "col": 0,
       "kind": "backend",
       "sub": "安全保存 API Key",
-      "illustration": "code"
+      "illustration": "runtime"
     },
     {
       "id": "sdk",
@@ -44,7 +44,7 @@
       "row": 3,
       "col": 0,
       "kind": "backend",
-      "illustration": "browser"
+      "illustration": "chat"
     },
     {
       "id": "dataset",

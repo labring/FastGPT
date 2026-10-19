@@ -70,7 +70,7 @@
       "row": 0,
       "col": 3,
       "kind": "backend",
-      "illustration": "gateway"
+      "illustration": "router"
     },
     {
       "id": "model",

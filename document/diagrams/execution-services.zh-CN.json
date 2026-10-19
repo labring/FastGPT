@@ -17,7 +17,7 @@
       "row": 1,
       "col": 0,
       "kind": "backend",
-      "illustration": "code"
+      "illustration": "plugin"
     },
     {
       "id": "code",
@@ -34,7 +34,7 @@
       "col": 2,
       "kind": "backend",
       "sub": "按配置启用",
-      "illustration": "code"
+      "illustration": "runtime"
     },
     {
       "id": "workspace",
@@ -59,7 +59,7 @@
       "col": 2,
       "kind": "backend",
       "sub": "受控文件访问",
-      "illustration": "gateway"
+      "illustration": "router"
     }
   ],
   "edges": [

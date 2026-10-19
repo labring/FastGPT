@@ -8,7 +8,7 @@
       "row": 0,
       "col": 0,
       "kind": "input",
-      "illustration": "browser"
+      "illustration": "chat"
     },
     {
       "id": "vector",
@@ -24,7 +24,7 @@
       "row": 1,
       "col": 1,
       "kind": "backend",
-      "illustration": "files"
+      "illustration": "search"
     },
     {
       "id": "fusion",
@@ -33,7 +33,7 @@
       "col": 0,
       "kind": "backend",
       "focal": true,
-      "illustration": "workflow"
+      "illustration": "fusion"
     },
     {
       "id": "rerank",
@@ -42,7 +42,7 @@
       "col": 0,
       "kind": "backend",
       "sub": "Fallback on failure",
-      "illustration": "workflow"
+      "illustration": "sort"
     },
     {
       "id": "filter",
@@ -51,7 +51,7 @@
       "col": 0,
       "kind": "backend",
       "sub": "Supported score types",
-      "illustration": "shield"
+      "illustration": "filter"
     },
     {
       "id": "tokens",
@@ -60,7 +60,7 @@
       "col": 0,
       "kind": "backend",
       "sub": "Keep complete chunks",
-      "illustration": "workflow"
+      "illustration": "gauge"
     },
     {
       "id": "context",
@@ -68,7 +68,7 @@
       "row": 6,
       "col": 0,
       "kind": "store",
-      "illustration": "files"
+      "illustration": "document"
     }
   ],
   "edges": [

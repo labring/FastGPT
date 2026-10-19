@@ -14,7 +14,7 @@
       "label": "Plugin 服务",
       "kind": "backend",
       "focal": false,
-      "illustration": "code"
+      "illustration": "plugin"
     },
     {
       "id": "gateway",

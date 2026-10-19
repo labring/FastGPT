@@ -65,8 +65,8 @@ export function layoutDiagram(spec) {
   });
   const width = Math.max(...nodes.map(({ x, w }) => x + w)) + (sequence ? 80 : wide ? 60 : 180);
   const height = sequence
-    ? 430 + spec.messages.length * 76
-    : Math.max(...nodes.map(({ y, h }) => y + h)) + 100;
+    ? 400 + spec.messages.length * 76
+    : Math.max(...nodes.map(({ y, h }) => y + h)) + 60;
   const byId = new Map(nodes.map((node) => [node.id, node]));
   let leftLane = 0;
   let rightLane = 0;
@@ -329,20 +329,6 @@ export function renderDiagram(spec, { theme, illustrations }) {
     }
     parts.push('</g>');
   }
-  parts.push(`<path d="M38 ${height - 54}H${width - 38}" stroke="${color.border}"/>`);
-  text({
-    value:
-      spec.lang === 'en'
-        ? `${nodes.length} components · ${edges.length} connections`
-        : `${nodes.length} 个节点 · ${edges.length} 条连线`,
-    x: 40,
-    y: height - 26,
-    size: 15,
-    maxWidth: width - 80,
-    fill: color.muted,
-    weight: 400,
-    anchor: 'start'
-  });
   parts.push('</g></svg>');
   return parts.join('\n');
 }

@@ -17,7 +17,7 @@
       "col": 0,
       "kind": "backend",
       "shape": "decision",
-      "illustration": "shield"
+      "illustration": "user"
     },
     {
       "id": "value",
@@ -26,7 +26,7 @@
       "col": 1,
       "kind": "backend",
       "sub": "Explicit zero is valid",
-      "illustration": "shield"
+      "illustration": "key"
     },
     {
       "id": "groups",
@@ -35,7 +35,7 @@
       "col": 0,
       "kind": "backend",
       "sub": "Default group / ancestors",
-      "illustration": "shield"
+      "illustration": "groups"
     },
     {
       "id": "matches",
@@ -44,7 +44,7 @@
       "col": 0,
       "kind": "backend",
       "shape": "decision",
-      "illustration": "shield"
+      "illustration": "search"
     },
     {
       "id": "union",
@@ -52,7 +52,7 @@
       "row": 4,
       "col": 0,
       "kind": "backend",
-      "illustration": "workflow"
+      "illustration": "fusion"
     },
     {
       "id": "fallback",
@@ -60,7 +60,7 @@
       "row": 3,
       "col": 1,
       "kind": "backend",
-      "illustration": "shield"
+      "illustration": "defaults"
     },
     {
       "id": "return",
@@ -69,7 +69,7 @@
       "col": 0,
       "kind": "backend",
       "focal": true,
-      "illustration": "shield"
+      "illustration": "ready"
     }
   ],
   "edges": [

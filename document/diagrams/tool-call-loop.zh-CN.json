@@ -8,7 +8,7 @@
       "row": 0,
       "col": 0,
       "kind": "backend",
-      "illustration": "files"
+      "illustration": "document"
     },
     {
       "id": "model",
@@ -35,7 +35,7 @@
       "col": 0,
       "kind": "backend",
       "sub": "普通错误回传模型",
-      "illustration": "code"
+      "illustration": "plugin"
     },
     {
       "id": "result",
@@ -44,7 +44,7 @@
       "col": 0,
       "kind": "backend",
       "shape": "decision",
-      "illustration": "shield"
+      "illustration": "check"
     },
     {
       "id": "append",
@@ -61,7 +61,7 @@
       "col": 1,
       "kind": "optional",
       "shape": "terminal",
-      "illustration": "browser"
+      "illustration": "pause"
     },
     {
       "id": "end",
@@ -70,7 +70,7 @@
       "col": 0,
       "kind": "backend",
       "shape": "terminal",
-      "illustration": "workflow"
+      "illustration": "ready"
     }
   ],
   "edges": [

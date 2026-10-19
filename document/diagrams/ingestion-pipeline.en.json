@@ -17,7 +17,7 @@
       "col": 1,
       "kind": "backend",
       "sub": "Backlog stays queued",
-      "illustration": "cache"
+      "illustration": "queue"
     },
     {
       "id": "parse",
@@ -25,7 +25,7 @@
       "row": 2,
       "col": 0,
       "kind": "backend",
-      "illustration": "code"
+      "illustration": "chunk"
     },
     {
       "id": "enhance",
@@ -34,7 +34,7 @@
       "col": 0,
       "kind": "backend",
       "sub": "When configured",
-      "illustration": "model"
+      "illustration": "enrich"
     },
     {
       "id": "index",
@@ -51,7 +51,7 @@
       "row": 5,
       "col": 0,
       "kind": "store",
-      "illustration": "files"
+      "illustration": "ready"
     },
     {
       "id": "error",
@@ -60,7 +60,7 @@
       "col": 1,
       "kind": "backend",
       "sub": "Backoff / unblock / fix",
-      "illustration": "shield"
+      "illustration": "error"
     }
   ],
   "edges": [

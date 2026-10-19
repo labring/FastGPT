@@ -8,7 +8,7 @@
       "row": 0,
       "col": 0,
       "kind": "input",
-      "illustration": "browser"
+      "illustration": "chat"
     },
     {
       "id": "rewrite",
@@ -16,7 +16,7 @@
       "row": 1,
       "col": 0,
       "kind": "backend",
-      "illustration": "model"
+      "illustration": "enrich"
     },
     {
       "id": "search",
@@ -25,7 +25,7 @@
       "col": 0,
       "kind": "backend",
       "sub": "Vector / text / hybrid",
-      "illustration": "vector"
+      "illustration": "search"
     },
     {
       "id": "context",
@@ -43,7 +43,7 @@
       "col": 0,
       "kind": "backend",
       "focal": true,
-      "illustration": "code"
+      "illustration": "document"
     },
     {
       "id": "answer",

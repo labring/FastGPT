@@ -96,6 +96,8 @@ test('localized diagrams share topology and remain within readability budgets', 
       edges: (spec.edges ?? spec.messages ?? []).map(([from, to]) => [from, to])
     });
     assert.deepEqual(topology(english), topology(chinese), file);
+    const icons = (english.nodes ?? english.participants).map(({ illustration }) => illustration);
+    assert.equal(new Set(icons).size, icons.length, `${file}: distinct roles need distinct icons`);
     for (const spec of [english, chinese]) {
       assert.ok((spec.nodes?.length ?? 0) <= 9, file);
       assert.ok((spec.edges?.length ?? 0) <= 12, file);
@@ -150,6 +152,7 @@ test('published SVGs reproduce their sources, embed illustrations, and preserve 
       assert.deepEqual(edges, spec.edges ?? spec.messages, file);
       assert.equal((svg.match(/marker-end="url\(#arrow\)"/g) ?? []).length, edges.length, file);
       assert.ok(svg.includes('data:image/webp;base64,'), file);
+      assert.doesNotMatch(svg, /\d+ components · \d+ connections|\d+ 个节点 · \d+ 条连线/, file);
       assert.ok(!/<script|https?:\/\/[^"\s]+\.(webp|png)/.test(svg), file);
       assert.ok(svg.includes(theme === 'dark' ? '#F0F5FF' : '#162B50'), file);
     }

@@ -7,7 +7,7 @@
       "label": "Developer",
       "kind": "external",
       "focal": false,
-      "illustration": "browser"
+      "illustration": "user"
     },
     {
       "id": "app",
@@ -21,7 +21,7 @@
       "label": "Plugin service",
       "kind": "backend",
       "focal": false,
-      "illustration": "code"
+      "illustration": "plugin"
     },
     {
       "id": "cli",
