@@ -20,13 +20,18 @@ describe('OpenAPI ObjectId generation', () => {
   it('preserves required, optional and default semantics in nested request schemas', () => {
     const schema = z.object({ body: fields, rows: z.array(fields) });
     const generated = createSchema(schema, { io: 'input', opts: openApiDocumentOptions });
-    expect(generated.schema).toMatchObject({
-      required: ['body', 'rows'],
-      properties: {
-        body: { required: ['title', 'appId', 'nullableId'] },
-        rows: { items: { required: ['title', 'appId', 'nullableId'] } }
-      }
-    });
+    if ('$ref' in generated.schema) throw new Error('Unexpected schema reference');
+    const body = generated.schema.properties!.body;
+    const rows = generated.schema.properties!.rows;
+    if ('$ref' in body || '$ref' in rows || !rows.items || '$ref' in rows.items) {
+      throw new Error('Expected inline body and row schemas');
+    }
+
+    // required 只表示字段集合；排序后完整比较，避免 Zod 版本间的顺序差异影响断言。
+    expect(generated.schema.required?.slice().sort()).toEqual(['body', 'rows']);
+    expect(body.required?.slice().sort()).toEqual(['appId', 'nullableId', 'title']);
+    expect(rows.items.required?.slice().sort()).toEqual(['appId', 'nullableId', 'title']);
+
     const objectId = { toString: () => id };
     expect(fields.parse({ appId: objectId, nullableId: null, title: 'test' })).toMatchObject({
       appId: id,
