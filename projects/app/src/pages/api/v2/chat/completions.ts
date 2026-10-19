@@ -598,14 +598,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   } finally {
     if (stream) {
-      // 失败状态写入再次报错时，也必须等待续流缓存收尾；清理失败不改变对话结果。
-      try {
-        await streamResponseContext?.flushResume().catch((error) => {
-          logger.error('Failed to finalize chat stream resume cache', { error });
-        });
-      } finally {
-        res.end();
-      }
+      // 失败状态写入再次报错时，也必须等待续流缓存收尾后再关闭响应。
+      await streamResponseContext?.flushResume();
+      res.end();
     }
   }
 }

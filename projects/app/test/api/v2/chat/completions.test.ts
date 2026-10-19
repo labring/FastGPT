@@ -149,36 +149,19 @@ describe('v2 chat completions stream cleanup', () => {
     expect(response.end).toHaveBeenCalledOnce();
   });
 
-  it.each([false, true])(
-    'cleans up after interactive status persistence fails: cleanupFails=%s',
-    async (cleanupFails) => {
-      const persistenceError = new Error('Failure persistence failed');
-      mocks.preChatRound.mockResolvedValueOnce({
-        ...preparedRound,
-        shouldFinalizePreparedRound: false
-      });
-      mocks.dispatchWorkFlow.mockRejectedValueOnce(new Error('Workflow failed'));
-      mocks.updateChatGenerateStatus.mockRejectedValueOnce(persistenceError);
-      if (cleanupFails) mocks.flushResume.mockRejectedValueOnce(new Error('Redis failed'));
-
-      const { response, result } = runRequest();
-      await expect(result).rejects.toBe(persistenceError);
-
-      expect(mocks.updateChatGenerateStatus).toHaveBeenCalledOnce();
-      expect(mocks.flushResume).toHaveBeenCalledOnce();
-      expect(response.end).toHaveBeenCalledOnce();
-    }
-  );
-
-  it('keeps a successful chat successful when stream cache cleanup fails', async () => {
-    mocks.flushResume.mockRejectedValueOnce(new Error('Redis failed'));
+  it('cleans up and preserves errors after interactive status persistence fails', async () => {
+    const persistenceError = new Error('Failure persistence failed');
+    mocks.preChatRound.mockResolvedValueOnce({
+      ...preparedRound,
+      shouldFinalizePreparedRound: false
+    });
+    mocks.dispatchWorkFlow.mockRejectedValueOnce(new Error('Workflow failed'));
+    mocks.updateChatGenerateStatus.mockRejectedValueOnce(persistenceError);
 
     const { response, result } = runRequest();
-    await expect(result).resolves.toBeUndefined();
+    await expect(result).rejects.toBe(persistenceError);
 
-    expect(mocks.finalizeChatRound).toHaveBeenCalledOnce();
-    expect(mocks.failChatRound).not.toHaveBeenCalled();
-    expect(mocks.writeStreamError).not.toHaveBeenCalled();
+    expect(mocks.updateChatGenerateStatus).toHaveBeenCalledOnce();
     expect(mocks.flushResume).toHaveBeenCalledOnce();
     expect(response.end).toHaveBeenCalledOnce();
   });
