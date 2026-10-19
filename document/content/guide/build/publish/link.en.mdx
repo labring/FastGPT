@@ -82,7 +82,9 @@ In the share link configuration, you can optionally fill in the `Identity Verifi
 
 When a visitor opens the link, FastGPT sends `authToken` to the initialization check. A successful check loads the app; a failed check blocks access. Each submitted message then passes through the pre-chat check. After an allowed conversation finishes, FastGPT sends its results to the optional reporting endpoint.
 
-![Share link initialization, pre-chat verification, and result reporting](/imgs/optimized/sharelink_process.png.webp)
+![Share link with identity verification](/imgs/diagrams/share-link-auth.en.light.svg)
+
+Initialization requires `success=true` and a valid string `uid`. The commercial chat entry checks expiration, usage, and QPM before the start callback; the finish callback reports results. Protected links also verify the signed-in member and application read access.
 
 ### Configuration Guide
 

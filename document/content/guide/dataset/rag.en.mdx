@@ -46,24 +46,7 @@ Retrieval-Augmented Generation (RAG) is a critical architectural pattern combini
 
 A configured RAG pipeline can contain the following phases. Query rewriting, hybrid search, and reranking depend on application settings:
 
-```
-[User Query]
-    │
-    ▼
-[1. Query Analysis & Rewrite]  ──► Resolve pronouns using conversation history and extract search terms
-    │
-    ▼
-[2. Dual-Engine Hybrid Search] ──► Query vector and full-text indexes; optionally rerank candidates
-    │
-    ▼
-[3. Context Filtering & Cut]   ──► Apply minimum similarity thresholds and enforce citation token budgets
-    │
-    ▼
-[4. Dynamic Prompt Assembly]   ──► Inject factual chunks into the prompt template with grounding instructions
-    │
-    ▼
-[5. Grounded Generation]       ──► Stream structured answers to clients alongside verifiable citation links
-```
+![RAG question-answering flow](/imgs/diagrams/rag-pipeline.en.light.svg)
 
 ---
 

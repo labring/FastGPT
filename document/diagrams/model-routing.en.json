@@ -1,0 +1,90 @@
+{
+  "type": "architecture",
+  "title": "Model requests and channel routing",
+  "nodes": [
+    {
+      "id": "app",
+      "label": "FastGPT request",
+      "row": 0,
+      "col": 0,
+      "kind": "backend",
+      "sub": "Select model ID"
+    },
+    {
+      "id": "proxy",
+      "label": "AI Proxy",
+      "row": 1,
+      "col": 0,
+      "kind": "backend",
+      "focal": true
+    },
+    {
+      "id": "pool",
+      "label": "Available channels",
+      "row": 2,
+      "col": 0,
+      "kind": "backend",
+      "sub": "System / member scope"
+    },
+    {
+      "id": "channel",
+      "label": "Selected channel",
+      "row": 3,
+      "col": 0,
+      "kind": "backend"
+    },
+    {
+      "id": "model",
+      "label": "Model provider",
+      "row": 4,
+      "col": 0,
+      "kind": "external"
+    }
+  ],
+  "edges": [
+    [
+      "app",
+      "proxy",
+      "Request / response",
+      "primary"
+    ],
+    [
+      "proxy",
+      "pool",
+      "Scope",
+      "primary"
+    ],
+    [
+      "pool",
+      "channel",
+      "Select",
+      "primary"
+    ],
+    [
+      "channel",
+      "model",
+      "Invoke",
+      "primary"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "app",
+      "file": "packages/service/core/ai/config.ts",
+      "line": 39
+    },
+    {
+      "id": "pool",
+      "file": "packages/service/core/ai/config.ts",
+      "line": 82
+    }
+  ],
+  "dir": "TB",
+  "lang": "en",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

@@ -21,11 +21,7 @@ FastGPT Workflows are powered by a graph execution engine. Visual node orchestra
 
 Workflows initiate execution from the "Workflow Start" node. The scheduler drives graph traversal based on in-edge dependencies:
 
-```
-[Workflow Start] ──(active)──► [Intent Classifier] ──(active)──► [Knowledge Search] ──(active)──► [AI Chat Generation]
-                                      │
-                                      └──(skipped)────────► [Ticket Form] ──(cascading skipped)──► [Ticket Response]
-```
+![Branch execution and skip propagation](/imgs/diagrams/workflow-branches.en.light.svg)
 
 ### 1. In-Edge Grouping Readiness Evaluation
 The scheduler evaluates node execution conditions against incoming edges:
@@ -42,7 +38,7 @@ Every edge on the canvas assumes one of three discrete states during execution:
 | `skipped` | Skipped state. Upstream conditional branches omitted this route, propagating skips downstream. |
 
 ### 3. Skip Propagation Mechanics
-When upstream nodes (such as Condition Switch or Question Classifier) activate a single route, unselected output edges are marked `skipped`. The scheduling engine cascades `skipped` markers downstream. Any node whose in-edges are all marked `skipped` skips its own execution cleanly, eliminating hanging deadlocks.
+When an upstream condition or classifier selects a route, its other outlets become `skipped`. A node skips execution and propagates `skipped` through its outlets when every incoming edge group is skipped. A qualifying incoming group makes the node runnable; remaining states keep it waiting.
 
 ![Workflow node structure and connection ports](/imgs/optimized/current/node-ai-chat.png.webp)
 
@@ -62,15 +58,10 @@ To maintain workflow resilience against upstream service degradation, the platfo
 
 FastGPT supports human-in-the-loop interactions and state checkpoints during workflow runs:
 
-```
-[Upstream Execution] ──► [User Selection / Form Input] ──► (Workflow Suspends & Saves Checkpoint)
-                                                                 │
-                                                                 ▼ (Awaits User Input)
-[Next Turn Resumes]  ◄── [Load Checkpoint & Restore] ◄───────────┘
-```
+![Pause and resume on the next request](/imgs/diagrams/workflow-interaction.en.light.svg)
 
-1. **Execution Suspension**: When reaching a "User Selection" or "Form Input" node, the system returns the interactive payload to the client, while persisting conversation context, pending edges, and variable snapshots into an operational checkpoint.
-2. **State Restoration**: When the user submits their selection or form in chat, the next request loads the checkpoint, reconstructing the execution context and driving downstream nodes to completion.
+1. **Execution Suspension**: On the first visit to a "User Selection" or "Form Input" node, the system returns the interactive payload and saves entry nodes, edge states, node outputs, the skip queue, and usage identifiers in the chat interaction record.
+2. **State Restoration**: After the user submits a selection or form, the next request restores the saved conversation state. The interaction node consumes the new input, then downstream execution continues.
 3. **Cooperative Cancellation**: When users click "Stop" during streamed responses, the system writes a cancellation flag. The scheduler exits cooperatively at the next scheduling cycle and persists all generated records.
 
 ## Orchestration Best Practices

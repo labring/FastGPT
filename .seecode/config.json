@@ -1,0 +1,25 @@
+{
+  "skin": "light",
+  "motion": "auto",
+  "exportFormats": ["html", "svg"],
+  "size": "auto",
+  "scale": "auto",
+  "fps": 30,
+  "duration": "auto",
+  "outputDir": "document/diagrams",
+  "profile": "fastgpt-docs",
+  "watermark": false,
+  "fonts": "system",
+  "brand": {
+    "paper": "#fafafa",
+    "ink": "#0a0a0a",
+    "accent": "#3370ff",
+    "link": "#214291",
+    "dark": {
+      "paper": "#1a1a1a",
+      "ink": "#fafafa",
+      "accent": "#3370ff",
+      "link": "#79a0fd"
+    }
+  }
+}

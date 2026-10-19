@@ -1,0 +1,133 @@
+{
+  "type": "flowchart",
+  "title": "交互暂停与后续请求恢复",
+  "nodes": [
+    {
+      "id": "upstream",
+      "label": "执行上游",
+      "row": 0,
+      "col": 0,
+      "kind": "backend"
+    },
+    {
+      "id": "node",
+      "label": "到达交互节点",
+      "row": 1,
+      "col": 0,
+      "kind": "backend"
+    },
+    {
+      "id": "save",
+      "label": "保存恢复状态",
+      "row": 2,
+      "col": 0,
+      "kind": "store",
+      "sub": "入口 / 连线 / 输出"
+    },
+    {
+      "id": "show",
+      "label": "展示选择或表单",
+      "row": 3,
+      "col": 0,
+      "kind": "backend"
+    },
+    {
+      "id": "submit",
+      "label": "下一请求提交",
+      "row": 4,
+      "col": 0,
+      "kind": "input"
+    },
+    {
+      "id": "load",
+      "label": "恢复会话状态",
+      "row": 5,
+      "col": 0,
+      "kind": "backend"
+    },
+    {
+      "id": "input",
+      "label": "交互节点取值",
+      "row": 6,
+      "col": 0,
+      "kind": "backend",
+      "focal": true
+    },
+    {
+      "id": "downstream",
+      "label": "继续执行下游",
+      "row": 7,
+      "col": 0,
+      "kind": "backend"
+    }
+  ],
+  "edges": [
+    [
+      "upstream",
+      "node",
+      "",
+      "primary"
+    ],
+    [
+      "node",
+      "save",
+      "",
+      "primary"
+    ],
+    [
+      "save",
+      "show",
+      "",
+      "primary"
+    ],
+    [
+      "show",
+      "submit",
+      "等待用户",
+      "async"
+    ],
+    [
+      "submit",
+      "load",
+      "",
+      "primary"
+    ],
+    [
+      "load",
+      "input",
+      "",
+      "primary"
+    ],
+    [
+      "input",
+      "downstream",
+      "",
+      "primary"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "save",
+      "file": "packages/service/core/workflow/dispatch/index.ts",
+      "line": 1498
+    },
+    {
+      "id": "load",
+      "file": "projects/app/src/pages/api/v1/chat/completions.ts",
+      "line": 277
+    },
+    {
+      "id": "input",
+      "file": "packages/service/core/workflow/dispatch/interactive/userSelect.ts",
+      "line": 28
+    }
+  ],
+  "dir": "TB",
+  "lang": "zh-CN",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

@@ -1,0 +1,320 @@
+<svg width="758" height="516" class="sc-svg sc-still" id="远程调试-建立连接-od0hh" xmlns="http://www.w3.org/2000/svg" viewBox="-32 -24 758 516" role="img" aria-labelledby="远程调试-建立连接-od0hh-title 远程调试-建立连接-od0hh-desc" lang="zh-CN" data-sc-type="sequence" data-sc-slug="远程调试-建立连接" data-sc-steps="10"><title id="远程调试-建立连接-od0hh-title">远程调试：建立连接</title><style>#远程调试-建立连接-od0hh{--sc-paper:#fafafa;--sc-paper-2:#eeeeee;--sc-ink:#0a0a0a;--sc-ink-strong:#050505;--sc-muted:#575757;--sc-soft:#878787;--sc-rule:rgba(10,10,10,0.12);--sc-rule-solid:#bcbcbc;--sc-accent:#3370ff;--sc-accent-tint:rgba(51,112,255,0.1);--sc-link:#214291;--sc-node:#fdfdfd;--sc-store:rgba(10,10,10,0.05);--sc-external:rgba(10,10,10,0.025);--sc-series-1:#6b8f71;--sc-series-2:#c08a3e;--sc-series-3:#8a6fb0;--sc-series-4:#b5604b;--sc-series-5:#5f7f9e;--sc-ax-shade:#0a0a0a;--sc-ax-lift:#ffffff;--sc-ax-screen:#1b1d25;--sc-ax-dark-edge:rgba(255,255,255,0);--sc-ax-t-o:0;--sc-ax-l-o:0.07;--sc-ax-r-o:0.16;--sc-on-v00:#000000;--sc-on-v01:#000000;--sc-on-v10:#ffffff;--sc-on-v11:#ffffff;--sc-font-serif:'Fraunces', 'Noto Serif', Georgia, serif;--sc-font-sans:'IBM Plex Sans', 'Noto Sans', system-ui, sans-serif;--sc-font-mono:'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;}
+#远程调试-建立连接-od0hh.sc-svg{font-family:var(--sc-font-sans);color:var(--sc-ink);direction:ltr}
+#远程调试-建立连接-od0hh .sc-mark{opacity:.88;pointer-events:none}
+#远程调试-建立连接-od0hh .sc-mark-word{fill:var(--sc-ink)}
+#远程调试-建立连接-od0hh .sc-bg{fill:var(--sc-paper)}
+#远程调试-建立连接-od0hh .n-mask{fill:var(--sc-paper)}
+#远程调试-建立连接-od0hh .n-box{fill:var(--sc-node);stroke:var(--sc-ink);stroke-width:1}
+#远程调试-建立连接-od0hh .k-focal .n-box{fill:var(--sc-accent-tint);stroke:var(--sc-accent);stroke-width:1.2}
+#远程调试-建立连接-od0hh .k-store .n-box{fill:var(--sc-store);stroke:var(--sc-muted)}
+#远程调试-建立连接-od0hh .k-external .n-box{fill:var(--sc-external);stroke:var(--sc-soft)}
+#远程调试-建立连接-od0hh .k-input .n-box{fill:var(--sc-external);stroke:var(--sc-soft)}
+#远程调试-建立连接-od0hh .k-optional .n-box{fill:transparent;stroke:var(--sc-soft);stroke-dasharray:4 3}
+#远程调试-建立连接-od0hh .k-security .n-box{fill:var(--sc-accent-tint);stroke:var(--sc-accent);stroke-opacity:.55;stroke-dasharray:4 4}
+#远程调试-建立连接-od0hh .k-muted .n-box{fill:var(--sc-store);stroke:var(--sc-rule-solid)}
+#远程调试-建立连接-od0hh .n-label{fill:var(--sc-ink);font-size:12px;font-weight:600}
+#远程调试-建立连接-od0hh .n-sub{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}
+#远程调试-建立连接-od0hh .n-icon{fill:none;stroke:var(--sc-muted);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+#远程调试-建立连接-od0hh .k-focal .n-icon{stroke:var(--sc-accent)}
+#远程调试-建立连接-od0hh .n-tag{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:7px;letter-spacing:.12em;text-transform:uppercase}
+#远程调试-建立连接-od0hh .n-tag-box{fill:none;stroke:var(--sc-rule-solid);stroke-width:.8}
+#远程调试-建立连接-od0hh .k-focal .n-tag{fill:var(--sc-accent)}
+#远程调试-建立连接-od0hh .k-focal .n-tag-box{stroke:var(--sc-accent);stroke-opacity:.5}
+#远程调试-建立连接-od0hh .e-line{fill:none;stroke:var(--sc-muted);stroke-width:1.1}
+#远程调试-建立连接-od0hh .ek-primary .e-line{stroke:var(--sc-accent);stroke-width:1.4}
+#远程调试-建立连接-od0hh .ek-link .e-line{stroke:var(--sc-link);stroke-width:1.2}
+#远程调试-建立连接-od0hh .ek-async .e-line,#远程调试-建立连接-od0hh .ek-return .e-line{stroke-width:1}
+#远程调试-建立连接-od0hh .ek-muted .e-line{stroke:var(--sc-soft);stroke-width:1}
+#远程调试-建立连接-od0hh .e-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.06em;text-transform:uppercase}
+#远程调试-建立连接-od0hh .ek-primary .e-label{fill:var(--sc-accent)}
+#远程调试-建立连接-od0hh .ek-link .e-label{fill:var(--sc-link)}
+#远程调试-建立连接-od0hh .e-label-bg{fill:var(--sc-paper)}
+#远程调试-建立连接-od0hh .m-default{fill:var(--sc-muted)}#远程调试-建立连接-od0hh .m-primary{fill:var(--sc-accent)}#远程调试-建立连接-od0hh .m-link{fill:var(--sc-link)}#远程调试-建立连接-od0hh .m-muted{fill:var(--sc-soft)}
+#远程调试-建立连接-od0hh .g-box{fill:var(--sc-ink);fill-opacity:.018;stroke:var(--sc-rule);stroke-width:.8}
+#远程调试-建立连接-od0hh .g-box.g-dashed{stroke-dasharray:4 4;stroke:var(--sc-soft);stroke-opacity:.6}
+#远程调试-建立连接-od0hh .g-label{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:7px;letter-spacing:.16em;text-transform:uppercase}
+#远程调试-建立连接-od0hh .g-label-bg{fill:var(--sc-paper)}
+#远程调试-建立连接-od0hh .lg-rule{stroke:var(--sc-rule);stroke-width:.8}
+#远程调试-建立连接-od0hh .lg-title{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.18em}
+#远程调试-建立连接-od0hh .lg-text{fill:var(--sc-muted);font-size:9px}
+#远程调试-建立连接-od0hh .ax-line{stroke:var(--sc-rule-solid);stroke-width:1}
+#远程调试-建立连接-od0hh .ax-grid{stroke:var(--sc-rule);stroke-width:.8}
+#远程调试-建立连接-od0hh .ax-text{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.04em}
+#远程调试-建立连接-od0hh .ax-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase}
+#远程调试-建立连接-od0hh .c-cat{fill:var(--sc-muted);font-size:10px}
+#远程调试-建立连接-od0hh .c-val{fill:var(--sc-ink);font-family:var(--sc-font-mono);font-size:9px}
+#远程调试-建立连接-od0hh .c-bar{fill:var(--sc-muted);fill-opacity:.38}
+#远程调试-建立连接-od0hh .c-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#远程调试-建立连接-od0hh .c-val.is-focal{fill:var(--sc-accent);font-weight:500}
+#远程调试-建立连接-od0hh .s-1{fill:var(--sc-series-1)}#远程调试-建立连接-od0hh .s-2{fill:var(--sc-series-2)}#远程调试-建立连接-od0hh .s-3{fill:var(--sc-series-3)}#远程调试-建立连接-od0hh .s-4{fill:var(--sc-series-4)}#远程调试-建立连接-od0hh .s-5{fill:var(--sc-series-5)}
+#远程调试-建立连接-od0hh .sk-node{fill:var(--sc-muted)}
+#远程调试-建立连接-od0hh .sk-node.is-focal{fill:var(--sc-accent)}
+#远程调试-建立连接-od0hh .sk-link{fill:var(--sc-muted);fill-opacity:.14}
+#远程调试-建立连接-od0hh .sk-link.is-focal{fill:var(--sc-accent);fill-opacity:.28}
+#远程调试-建立连接-od0hh .sk-label{fill:var(--sc-ink);font-size:11px;font-weight:500;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#远程调试-建立连接-od0hh .sk-val{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#远程调试-建立连接-od0hh .q-life{stroke:var(--sc-rule-solid);stroke-width:1;stroke-dasharray:3 4}
+#远程调试-建立连接-od0hh .q-frag{fill:none;stroke:var(--sc-soft);stroke-width:.8}
+#远程调试-建立连接-od0hh .q-frag-tag{fill:var(--sc-paper-2);stroke:var(--sc-soft);stroke-width:.8}
+#远程调试-建立连接-od0hh .q-frag-text{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase}
+#远程调试-建立连接-od0hh .q-num{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8px}
+#远程调试-建立连接-od0hh .q-note{fill:var(--sc-paper-2);stroke:var(--sc-rule-solid);stroke-width:.8}
+#远程调试-建立连接-od0hh .q-note-text{fill:var(--sc-muted);font-size:10px;font-style:italic;font-family:var(--sc-font-serif)}
+#远程调试-建立连接-od0hh .n-head{fill:var(--sc-ink);fill-opacity:.035;stroke:none}
+#远程调试-建立连接-od0hh .k-focal .n-head{fill:var(--sc-accent);fill-opacity:.08}
+#远程调试-建立连接-od0hh .n-rule{stroke:var(--sc-rule-solid);stroke-width:.8}
+#远程调试-建立连接-od0hh .n-field{fill:var(--sc-ink);font-size:10px}
+#远程调试-建立连接-od0hh .n-field-t{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}
+#远程调试-建立连接-od0hh .n-key{font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.06em;fill:var(--sc-soft)}
+#远程调试-建立连接-od0hh .n-key-pk{fill:var(--sc-accent)}#远程调试-建立连接-od0hh .n-key-fk{fill:var(--sc-link)}
+#远程调试-建立连接-od0hh .sh-start .n-box{fill:var(--sc-ink);stroke:none}
+#远程调试-建立连接-od0hh .sh-end .n-box{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.2}
+#远程调试-建立连接-od0hh .n-dot{fill:var(--sc-ink)}
+#远程调试-建立连接-od0hh .n-status{stroke:var(--sc-paper);stroke-width:1.5}
+#远程调试-建立连接-od0hh .st-ok{fill:var(--sc-series-1)}#远程调试-建立连接-od0hh .st-risk{fill:var(--sc-series-2)}#远程调试-建立连接-od0hh .st-legacy{fill:var(--sc-series-5)}#远程调试-建立连接-od0hh .st-retire{fill:var(--sc-series-4)}
+#远程调试-建立连接-od0hh .n-change{fill:var(--sc-accent);font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.12em}
+#远程调试-建立连接-od0hh .ch-added .n-box{stroke:var(--sc-accent);stroke-width:1.3}
+#远程调试-建立连接-od0hh .ch-removed{opacity:.55}#远程调试-建立连接-od0hh .ch-removed .n-box{stroke-dasharray:4 3;stroke:var(--sc-soft)}#远程调试-建立连接-od0hh .ch-removed .n-label{text-decoration:line-through}
+#远程调试-建立连接-od0hh .ch-removed .n-change{fill:var(--sc-soft)}
+#远程调试-建立连接-od0hh .ch-changed .n-box{stroke:var(--sc-accent);stroke-dasharray:6 2}
+#远程调试-建立连接-od0hh .sc-edge.ch-added .e-line{stroke:var(--sc-accent)}#远程调试-建立连接-od0hh .sc-edge.ch-removed .e-line{stroke-dasharray:3 3}
+#远程调试-建立连接-od0hh .e-line.dashed{stroke-dasharray:4 3}
+#远程调试-建立连接-od0hh .ek-rel .e-line{stroke:var(--sc-muted);stroke-width:1}
+#远程调试-建立连接-od0hh .e-glyph.stroke{fill:none;stroke:var(--sc-muted);stroke-width:1}
+#远程调试-建立连接-od0hh .e-glyph.hollow{fill:var(--sc-paper);stroke:var(--sc-muted);stroke-width:1}
+#远程调试-建立连接-od0hh .e-glyph.filled{fill:var(--sc-muted);stroke:var(--sc-muted);stroke-width:1}
+#远程调试-建立连接-od0hh .lane-band{fill:var(--sc-ink);fill-opacity:.022}
+#远程调试-建立连接-od0hh .lane-band.alt{fill-opacity:0}
+#远程调试-建立连接-od0hh .lane-rule{stroke:var(--sc-rule);stroke-width:.8}
+#远程调试-建立连接-od0hh .lane-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase}
+#远程调试-建立连接-od0hh .loop-center{fill:var(--sc-ink);font-family:var(--sc-font-serif);font-size:20px}
+#远程调试-建立连接-od0hh .nest-mask{fill:var(--sc-paper)}
+#远程调试-建立连接-od0hh .nest-box{fill:var(--sc-ink);fill-opacity:.025;stroke:var(--sc-rule-solid);stroke-width:.9}
+#远程调试-建立连接-od0hh .nest-d0 .nest-box{fill-opacity:.012}#远程调试-建立连接-od0hh .nest-d2 .nest-box{fill-opacity:.04}#远程调试-建立连接-od0hh .nest-d3 .nest-box{fill-opacity:.055}
+#远程调试-建立连接-od0hh .k-focal .nest-box{fill:var(--sc-accent-tint);fill-opacity:1;stroke:var(--sc-accent)}
+#远程调试-建立连接-od0hh .nest-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.14em;text-transform:uppercase}
+#远程调试-建立连接-od0hh .chip{fill:var(--sc-paper-2);stroke:var(--sc-rule);stroke-width:.8}
+#远程调试-建立连接-od0hh .chip-text{fill:var(--sc-ink);font-size:10px}
+#远程调试-建立连接-od0hh .k-focal .chip{fill:var(--sc-paper);stroke:var(--sc-accent);stroke-opacity:.4}
+#远程调试-建立连接-od0hh .venn-c{fill:var(--sc-muted);fill-opacity:.07;stroke:var(--sc-muted);stroke-width:1}
+#远程调试-建立连接-od0hh .vs-2 .venn-c{fill:var(--sc-series-2);stroke:var(--sc-series-2);fill-opacity:.09}
+#远程调试-建立连接-od0hh .vs-3 .venn-c{fill:var(--sc-series-1);stroke:var(--sc-series-1);fill-opacity:.09}
+#远程调试-建立连接-od0hh .venn.k-focal .venn-c{fill:var(--sc-accent);stroke:var(--sc-accent);fill-opacity:.09}
+#远程调试-建立连接-od0hh .venn-label{fill:var(--sc-ink);font-size:13px;font-weight:600}
+#远程调试-建立连接-od0hh .venn-ov{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:13px}
+#远程调试-建立连接-od0hh .venn-ov.is-focal{fill:var(--sc-accent)}
+#远程调试-建立连接-od0hh .fb-spine{stroke-width:1.6}
+#远程调试-建立连接-od0hh .fb-tick{stroke:var(--sc-rule-solid);stroke-width:.8}
+#远程调试-建立连接-od0hh .fb-cat{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;letter-spacing:.14em}
+#远程调试-建立连接-od0hh .fb-cat.is-focal{fill:var(--sc-accent)}
+#远程调试-建立连接-od0hh .fb-cause{fill:var(--sc-ink);font-size:10px}
+#远程调试-建立连接-od0hh .kb-col{fill:var(--sc-ink);fill-opacity:.025;stroke:var(--sc-rule);stroke-width:.8;rx:8}
+#远程调试-建立连接-od0hh .kb-col.is-over{stroke:var(--sc-accent);stroke-opacity:.6}
+#远程调试-建立连接-od0hh .kb-head{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#远程调试-建立连接-od0hh .kb-count{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:9px}
+#远程调试-建立连接-od0hh .kb-count.is-over{fill:var(--sc-accent)}
+#远程调试-建立连接-od0hh .kb-card{fill:var(--sc-ink);font-size:11px;font-weight:500}
+#远程调试-建立连接-od0hh .sm-act{fill:var(--sc-ink)}
+#远程调试-建立连接-od0hh .sm-activity.k-focal .sm-act{fill:var(--sc-accent)}
+#远程调试-建立连接-od0hh .sm-act-text{fill:var(--sc-paper);font-size:11px;font-weight:600}
+#远程调试-建立连接-od0hh .q-frame{fill:none;stroke:var(--sc-rule-solid);stroke-width:1}
+#远程调试-建立连接-od0hh .q-focal{fill:var(--sc-accent-tint)}
+#远程调试-建立连接-od0hh .q-title{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#远程调试-建立连接-od0hh .quad.k-focal .q-title,#远程调试-建立连接-od0hh .quad.k-focal .q-title-big{fill:var(--sc-accent)}
+#远程调试-建立连接-od0hh .q-title-big{fill:var(--sc-ink);font-family:var(--sc-font-serif);font-size:19px}
+#远程调试-建立连接-od0hh .q-item{fill:var(--sc-muted);font-size:11px}
+#远程调试-建立连接-od0hh .q-dot{fill:var(--sc-muted)}
+#远程调试-建立连接-od0hh .q-pt.k-focal .q-dot{fill:var(--sc-accent)}
+#远程调试-建立连接-od0hh .q-pt-label{fill:var(--sc-ink);font-size:10.5px;font-weight:500}
+#远程调试-建立连接-od0hh .q-pt.k-focal .q-pt-label{fill:var(--sc-accent)}
+#远程调试-建立连接-od0hh .mx-col{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.08em}
+#远程调试-建立连接-od0hh .mx-row{fill:var(--sc-ink);font-size:11px;font-weight:500}
+#远程调试-建立连接-od0hh .mx-band{fill:var(--sc-ink);fill-opacity:.025}
+#远程调试-建立连接-od0hh .mx-g.fill{fill:var(--sc-ink)}#远程调试-建立连接-od0hh .mx-g.ring{fill:none;stroke:var(--sc-ink);stroke-width:1}
+#远程调试-建立连接-od0hh .mx-g.dashed{stroke-dasharray:2 2}#远程调试-建立连接-od0hh .mx-g.admin{fill:var(--sc-accent)}#远程调试-建立连接-od0hh .mx-g.none{fill:var(--sc-soft)}
+#远程调试-建立连接-od0hh .mx-r.k-focal .mx-row{fill:var(--sc-accent)}
+#远程调试-建立连接-od0hh .tl-axis{stroke:var(--sc-ink);stroke-width:1.2}
+#远程调试-建立连接-od0hh .tl-stem{stroke:var(--sc-rule-solid);stroke-width:.8}
+#远程调试-建立连接-od0hh .tl-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}
+#远程调试-建立连接-od0hh .tl-ev.k-focal .tl-dot{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#远程调试-建立连接-od0hh .tl-ev.k-focal .tl-label{fill:var(--sc-accent)}
+#远程调试-建立连接-od0hh .tl-label{font-size:11px}
+#远程调试-建立连接-od0hh .tl-when{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;letter-spacing:.04em}
+#远程调试-建立连接-od0hh .tl-period{fill:var(--sc-ink);fill-opacity:.07}
+#远程调试-建立连接-od0hh .tl-period.is-focal{fill:var(--sc-accent);fill-opacity:.16}
+#远程调试-建立连接-od0hh .tl-period-text{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.08em}
+#远程调试-建立连接-od0hh .g-task{fill:var(--sc-ink);font-size:11px}
+#远程调试-建立连接-od0hh .g-bar{fill:var(--sc-muted);fill-opacity:.45}
+#远程调试-建立连接-od0hh .g-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#远程调试-建立连接-od0hh .g-bar.is-done{fill-opacity:.2}
+#远程调试-建立连接-od0hh .g-done{fill:var(--sc-muted);font-size:10px}
+#远程调试-建立连接-od0hh .g-mile{fill:var(--sc-ink)}
+#远程调试-建立连接-od0hh .k-focal .g-mile{fill:var(--sc-accent)}
+#远程调试-建立连接-od0hh .g-today{stroke:var(--sc-accent);stroke-width:1;stroke-dasharray:3 3}
+#远程调试-建立连接-od0hh .g-today-text{fill:var(--sc-accent);font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.14em}
+#远程调试-建立连接-od0hh .jr-band{fill:var(--sc-ink);fill-opacity:.025}#远程调试-建立连接-od0hh .jr-band.alt{fill-opacity:0}
+#远程调试-建立连接-od0hh .jr-stage{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#远程调试-建立连接-od0hh .jr-curve{stroke:var(--sc-ink);stroke-width:1.6}
+#远程调试-建立连接-od0hh .jr-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}
+#远程调试-建立连接-od0hh .jr-dot.is-pain,#远程调试-建立连接-od0hh .jr-dot.is-focal{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#远程调试-建立连接-od0hh .jr-step{fill:var(--sc-ink);font-size:10.5px;font-weight:500}
+#远程调试-建立连接-od0hh .jr-note{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:11px;paint-order:stroke;stroke:var(--sc-paper);stroke-width:4px;stroke-linejoin:round}
+#远程调试-建立连接-od0hh .jr-note.is-pain{fill:var(--sc-accent)}
+#远程调试-建立连接-od0hh .ln{fill:none;stroke-width:1.6;stroke:var(--sc-muted)}
+#远程调试-建立连接-od0hh .ln.is-focal{stroke:var(--sc-accent);stroke-width:2.2}#远程调试-建立连接-od0hh .ln.is-muted{stroke:var(--sc-soft);stroke-opacity:.55}
+#远程调试-建立连接-od0hh .ln-1{stroke:var(--sc-series-1)}#远程调试-建立连接-od0hh .ln-2{stroke:var(--sc-series-2)}#远程调试-建立连接-od0hh .ln-3{stroke:var(--sc-series-3)}#远程调试-建立连接-od0hh .ln-4{stroke:var(--sc-series-4)}#远程调试-建立连接-od0hh .ln-5{stroke:var(--sc-series-5)}
+#远程调试-建立连接-od0hh .ln-pt{fill:var(--sc-paper);stroke-width:1.4}
+#远程调试-建立连接-od0hh .ln-pt.is-focal{fill:var(--sc-accent)}
+#远程调试-建立连接-od0hh .ln-label{font-size:10.5px;font-weight:500;fill:var(--sc-muted)}
+#远程调试-建立连接-od0hh .is-muted-t{fill:var(--sc-soft)}
+#远程调试-建立连接-od0hh .ln-1-t{fill:var(--sc-series-1)}#远程调试-建立连接-od0hh .ln-2-t{fill:var(--sc-series-2)}#远程调试-建立连接-od0hh .ln-3-t{fill:var(--sc-series-3)}#远程调试-建立连接-od0hh .ln-4-t{fill:var(--sc-series-4)}#远程调试-建立连接-od0hh .ln-5-t{fill:var(--sc-series-5)}
+#远程调试-建立连接-od0hh .ln-area{fill:var(--sc-muted);fill-opacity:.08}#远程调试-建立连接-od0hh .ln-area.is-focal{fill:var(--sc-accent);fill-opacity:.1}
+#远程调试-建立连接-od0hh .rg-area{fill:var(--sc-muted);fill-opacity:.18}#远程调试-建立连接-od0hh .rg-area.is-focal{fill:var(--sc-accent);fill-opacity:.28}
+#远程调试-建立连接-od0hh .rg-line{fill:none;stroke:var(--sc-ink);stroke-width:1.1}#远程调试-建立连接-od0hh .rg-line.is-focal{stroke:var(--sc-accent)}
+#远程调试-建立连接-od0hh .st-area{fill-opacity:.55;stroke:var(--sc-paper);stroke-width:1}
+#远程调试-建立连接-od0hh .st-area.is-focal{fill:var(--sc-accent);fill-opacity:.75}
+#远程调试-建立连接-od0hh .st-label{fill:var(--sc-ink-strong);font-size:10px;font-weight:600}
+#远程调试-建立连接-od0hh .is-focal-t{fill:var(--sc-accent)!important}
+#远程调试-建立连接-od0hh .sp-dot{fill:var(--sc-muted);fill-opacity:.55;stroke:var(--sc-paper);stroke-width:.8}
+#远程调试-建立连接-od0hh .sp-dot.is-bubble{fill-opacity:.25;stroke:var(--sc-muted);stroke-opacity:.7}
+#远程调试-建立连接-od0hh .sp-dot.is-focal{fill:var(--sc-accent);fill-opacity:.9;stroke:var(--sc-accent)}
+#远程调试-建立连接-od0hh .sp-label{fill:var(--sc-ink);font-size:10px;font-weight:500}
+#远程调试-建立连接-od0hh .rd-area{fill:var(--sc-muted);fill-opacity:.1}#远程调试-建立连接-od0hh .rd-line{fill:none;stroke:var(--sc-muted);stroke-width:1.4}
+#远程调试-建立连接-od0hh .rd-area.is-focal{fill:var(--sc-accent);fill-opacity:.16}#远程调试-建立连接-od0hh .rd-line.is-focal{stroke:var(--sc-accent);stroke-width:2}
+#远程调试-建立连接-od0hh .rd-area.is-muted{fill-opacity:.04}#远程调试-建立连接-od0hh .rd-line.is-muted{stroke:var(--sc-soft)}
+#远程调试-建立连接-od0hh .rd-area.s-1,#远程调试-建立连接-od0hh .rd-area.s-2,#远程调试-建立连接-od0hh .rd-area.s-3,#远程调试-建立连接-od0hh .rd-area.s-4,#远程调试-建立连接-od0hh .rd-area.s-5{fill-opacity:.14}
+#远程调试-建立连接-od0hh .rd-line.s-1{stroke:var(--sc-series-1)}#远程调试-建立连接-od0hh .rd-line.s-2{stroke:var(--sc-series-2)}#远程调试-建立连接-od0hh .rd-line.s-3{stroke:var(--sc-series-3)}#远程调试-建立连接-od0hh .rd-line.s-4{stroke:var(--sc-series-4)}#远程调试-建立连接-od0hh .rd-line.s-5{stroke:var(--sc-series-5)}
+#远程调试-建立连接-od0hh .rd-pt{fill:var(--sc-paper);stroke:var(--sc-muted)}#远程调试-建立连接-od0hh .rd-pt.is-focal{stroke:var(--sc-accent)}
+#远程调试-建立连接-od0hh .rd-key{fill:var(--sc-muted)}#远程调试-建立连接-od0hh .rd-key.is-focal{fill:var(--sc-accent)}#远程调试-建立连接-od0hh .rd-key.is-muted{fill:var(--sc-soft)}
+#远程调试-建立连接-od0hh .rd-ring{fill:none}
+#远程调试-建立连接-od0hh .pl-stem{stroke:var(--sc-muted);stroke-width:1.4}#远程调试-建立连接-od0hh .pl-stem.is-focal{stroke:var(--sc-accent);stroke-width:2}
+#远程调试-建立连接-od0hh .pl-dot{fill:var(--sc-muted)}#远程调试-建立连接-od0hh .pl-dot.is-focal{fill:var(--sc-accent)}
+#远程调试-建立连接-od0hh .wf-bar{fill:var(--sc-muted);fill-opacity:.4}
+#远程调试-建立连接-od0hh .wf-up{fill:var(--sc-series-1);fill-opacity:.75}#远程调试-建立连接-od0hh .wf-down{fill:var(--sc-series-4);fill-opacity:.75}
+#远程调试-建立连接-od0hh .wf-total{fill:var(--sc-ink);fill-opacity:.82}
+#远程调试-建立连接-od0hh .wf-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#远程调试-建立连接-od0hh .wf-link{stroke:var(--sc-soft);stroke-width:.8;stroke-dasharray:2 2}
+#远程调试-建立连接-od0hh .tm-cell{fill:var(--sc-muted);fill-opacity:.16;stroke:var(--sc-paper);stroke-width:1}
+#远程调试-建立连接-od0hh .tm-cell.is-focal{fill:var(--sc-accent);fill-opacity:.85}
+#远程调试-建立连接-od0hh .tm-sub{fill:var(--sc-paper);fill-opacity:.55}
+#远程调试-建立连接-od0hh .tm-label{fill:var(--sc-ink);font-size:11px;font-weight:600}#远程调试-建立连接-od0hh .tm-label.is-focal{fill:var(--sc-paper)}
+#远程调试-建立连接-od0hh .tm-val{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}#远程调试-建立连接-od0hh .tm-val.is-focal{fill:var(--sc-paper);fill-opacity:.85}
+#远程调试-建立连接-od0hh .tm-sub-label{fill:var(--sc-muted);font-size:9.5px}
+#远程调试-建立连接-od0hh .hm-cell.hm-pos{fill:var(--sc-accent)}#远程调试-建立连接-od0hh .hm-cell.hm-neg{fill:var(--sc-series-4)}
+#远程调试-建立连接-od0hh .hm-val{fill:var(--sc-ink);font-family:var(--sc-font-mono);font-size:8.5px}#远程调试-建立连接-od0hh .hm-val.v00{fill:var(--sc-on-v00)}#远程调试-建立连接-od0hh .hm-val.v01{fill:var(--sc-on-v01)}#远程调试-建立连接-od0hh .hm-val.v10{fill:var(--sc-on-v10)}#远程调试-建立连接-od0hh .hm-val.v11{fill:var(--sc-on-v11)}
+#远程调试-建立连接-od0hh .db-line{stroke:var(--sc-rule-solid);stroke-width:2.4}#远程调试-建立连接-od0hh .db-line.is-focal{stroke:var(--sc-accent);stroke-opacity:.45}
+#远程调试-建立连接-od0hh .db-a{fill:var(--sc-paper);stroke:var(--sc-muted);stroke-width:1.4}#远程调试-建立连接-od0hh .db-b{fill:var(--sc-muted)}#远程调试-建立连接-od0hh .db-b.is-focal{fill:var(--sc-accent)}
+#远程调试-建立连接-od0hh .mk-seg{fill-opacity:.7;stroke:var(--sc-paper)}
+#远程调试-建立连接-od0hh .mk-pct{fill:var(--sc-ink-strong);font-family:var(--sc-font-mono);font-size:8.5px}
+#远程调试-建立连接-od0hh .wm-link{stroke:var(--sc-soft)!important;stroke-width:1!important}
+#远程调试-建立连接-od0hh .wm-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}#远程调试-建立连接-od0hh .wm-dot.is-focal{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#远程调试-建立连接-od0hh .wm-label{fill:var(--sc-ink);font-size:10.5px;font-weight:500;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#远程调试-建立连接-od0hh .wm-label.is-anchor{font-weight:700;font-size:12px}
+#远程调试-建立连接-od0hh .wm-move{stroke:var(--sc-accent);stroke-width:1.2;stroke-dasharray:4 3;fill:none}#远程调试-建立连接-od0hh .wm-move-head{fill:var(--sc-accent)}
+#远程调试-建立连接-od0hh .wm-ghost{fill:none;stroke:var(--sc-accent);stroke-dasharray:2 2}
+#远程调试-建立连接-od0hh .wm-inertia{stroke:var(--sc-ink);stroke-width:3}
+#远程调试-建立连接-od0hh .callout{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:13px}
+
+#远程调试-建立连接-od0hh .iso-base{fill:var(--sc-node)}
+#远程调试-建立连接-od0hh .iso-t{fill:var(--sc-ax-lift);fill-opacity:var(--sc-ax-t-o)}
+#远程调试-建立连接-od0hh .iso-l{fill:var(--sc-ax-shade);fill-opacity:var(--sc-ax-l-o)}
+#远程调试-建立连接-od0hh .iso-r{fill:var(--sc-ax-shade);fill-opacity:var(--sc-ax-r-o)}
+#远程调试-建立连接-od0hh .k-focal .iso-t{fill:var(--sc-accent);fill-opacity:.12}
+#远程调试-建立连接-od0hh .k-focal .iso-l{fill:var(--sc-accent);fill-opacity:.22}
+#远程调试-建立连接-od0hh .k-focal .iso-r{fill:var(--sc-accent);fill-opacity:.34}
+#远程调试-建立连接-od0hh .iso-edge{fill:none;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.8;stroke-linejoin:round}
+#远程调试-建立连接-od0hh .iso-sil{fill:none;stroke:var(--sc-ink);stroke-width:1.2;stroke-linejoin:round}
+#远程调试-建立连接-od0hh .k-focal .iso-sil{stroke:var(--sc-accent)}
+#远程调试-建立连接-od0hh .iso-inset{fill:var(--sc-ink);fill-opacity:.06;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.7}
+#远程调试-建立连接-od0hh .k-focal .iso-inset{fill:var(--sc-accent);fill-opacity:.16;stroke:var(--sc-accent)}
+#远程调试-建立连接-od0hh .iso-trace{fill:none;stroke:var(--sc-ink);stroke-opacity:.3;stroke-width:.8;stroke-dasharray:4 3}
+#远程调试-建立连接-od0hh .iso-leader{stroke:var(--sc-ink);stroke-opacity:.4;stroke-width:.8}
+#远程调试-建立连接-od0hh .iso-dot{fill:var(--sc-ink)}
+#远程调试-建立连接-od0hh .k-focal .iso-leader{stroke:var(--sc-accent);stroke-opacity:1}#远程调试-建立连接-od0hh .k-focal .iso-dot{fill:var(--sc-accent)}
+#远程调试-建立连接-od0hh .iso-name{fill:var(--sc-ink);font-size:14px;font-weight:600}
+#远程调试-建立连接-od0hh .iso-sub{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9.5px;letter-spacing:.06em}
+#远程调试-建立连接-od0hh .k-focal .iso-sub{fill:var(--sc-accent)}
+#远程调试-建立连接-od0hh .iso-contour{fill:none;stroke:var(--sc-ink);stroke-opacity:.22;stroke-width:.7}
+#远程调试-建立连接-od0hh .iso-plate .iso-t{fill-opacity:0}
+#远程调试-建立连接-od0hh .iso-mark{fill:var(--sc-ink);fill-opacity:.07}
+#远程调试-建立连接-od0hh .iso-floor{fill:var(--sc-ink);fill-opacity:.035}
+#远程调试-建立连接-od0hh .k-focal .iso-floor,#远程调试-建立连接-od0hh .iso-floor.k-focal{fill:var(--sc-accent);fill-opacity:.1}
+#远程调试-建立连接-od0hh .iso-canopy .iso-t{fill:var(--sc-series-1);fill-opacity:.55}
+#远程调试-建立连接-od0hh .iso-canopy .iso-l,#远程调试-建立连接-od0hh .iso-canopy .iso-r{fill:var(--sc-series-1);fill-opacity:.35}
+#远程调试-建立连接-od0hh .iso-tag rect{fill:var(--sc-paper);stroke:var(--sc-rule-solid);stroke-width:.8}
+#远程调试-建立连接-od0hh .k-focal.iso-tag rect,#远程调试-建立连接-od0hh .k-focal .iso-tag rect{stroke:var(--sc-accent)}
+#远程调试-建立连接-od0hh .iso-tag .iso-name{font-size:11px}#远程调试-建立连接-od0hh .iso-tag .iso-sub{font-size:8px}
+
+#远程调试-建立连接-od0hh .it-light .iso-base{fill:var(--sc-node)}
+#远程调试-建立连接-od0hh .it-dark .iso-base,#远程调试-建立连接-od0hh .it-black .iso-base{fill:var(--sc-ax-screen)}
+#远程调试-建立连接-od0hh .it-dark .iso-t,#远程调试-建立连接-od0hh .it-black .iso-t{fill:#fff;fill-opacity:.07}
+#远程调试-建立连接-od0hh .it-dark .iso-edge,#远程调试-建立连接-od0hh .it-black .iso-edge{stroke:#fff;stroke-opacity:.18}
+#远程调试-建立连接-od0hh .it-accent .iso-base{fill:var(--sc-node)}#远程调试-建立连接-od0hh .it-accent .iso-t,#远程调试-建立连接-od0hh .it-accent .iso-l,#远程调试-建立连接-od0hh .it-accent .iso-r{fill:var(--sc-accent)}
+#远程调试-建立连接-od0hh .it-accent .iso-t{fill-opacity:.25}#远程调试-建立连接-od0hh .it-accent .iso-l{fill-opacity:.4}#远程调试-建立连接-od0hh .it-accent .iso-r{fill-opacity:.55}
+#远程调试-建立连接-od0hh .it-accent .iso-sil{stroke:var(--sc-accent)}
+#远程调试-建立连接-od0hh .it-mid .iso-base{fill:var(--sc-node)}
+#远程调试-建立连接-od0hh .it-solid .iso-sil{stroke-width:.9}
+#远程调试-建立连接-od0hh path.it-dark{fill:var(--sc-ax-screen)}
+#远程调试-建立连接-od0hh path.it-black{fill:#000;fill-opacity:.85}
+#远程调试-建立连接-od0hh /* dark panels and solids keep an edge where they sit on dark walls (dark themes) */
+path.it-dark,#远程调试-建立连接-od0hh path.it-black{stroke:var(--sc-ax-dark-edge);stroke-width:.7}
+#远程调试-建立连接-od0hh .it-dark .iso-sil,#远程调试-建立连接-od0hh .it-black .iso-sil{stroke:var(--sc-ink)}
+#远程调试-建立连接-od0hh path.it-line.it-stroke-dark{stroke:var(--sc-ax-screen);stroke-opacity:.8}
+#远程调试-建立连接-od0hh path.it-light{fill:var(--sc-node);stroke:var(--sc-ink);stroke-opacity:.45;stroke-width:.6}
+#远程调试-建立连接-od0hh path.it-accent{fill:var(--sc-accent);fill-opacity:.9}
+#远程调试-建立连接-od0hh path.it-mid{fill:var(--sc-ink);fill-opacity:.08}
+#远程调试-建立连接-od0hh path.it-cut{fill:var(--sc-ink);fill-opacity:.13;stroke:var(--sc-ink);stroke-opacity:.45;stroke-width:.5}
+#远程调试-建立连接-od0hh path.it-line{fill:none;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.8;stroke-linecap:round}
+#远程调试-建立连接-od0hh path.it-text{fill:none;stroke:var(--sc-ink);stroke-opacity:.35;stroke-width:1.4;stroke-linecap:round}
+#远程调试-建立连接-od0hh path.it-line.it-stroke-accent,#远程调试-建立连接-od0hh path.it-text.it-stroke-accent{stroke:var(--sc-accent);stroke-opacity:1}
+#远程调试-建立连接-od0hh path.it-stroke-light{stroke:#fff;stroke-opacity:.7}
+#远程调试-建立连接-od0hh path.it-line.it-stroke-dark{stroke-width:2.2}
+#远程调试-建立连接-od0hh path.it-dash{stroke-dasharray:4 3}
+#远程调试-建立连接-od0hh path.it-button{fill:var(--sc-node);stroke:var(--sc-ink);stroke-opacity:.6;stroke-width:.8}
+#远程调试-建立连接-od0hh path.it-cavity{fill:var(--sc-ink);fill-opacity:.07}
+#远程调试-建立连接-od0hh path.it-floor{fill:var(--sc-ink);fill-opacity:.04;stroke:var(--sc-ink);stroke-opacity:.35;stroke-width:.7}
+
+#远程调试-建立连接-od0hh .iso-beam-o{fill:none;stroke:var(--sc-ink);stroke-linecap:round}
+#远程调试-建立连接-od0hh .iso-beam{fill:none;stroke:var(--sc-node);stroke-linecap:round}
+#远程调试-建立连接-od0hh .iso-beam-dark{stroke:var(--sc-ax-screen)}
+#远程调试-建立连接-od0hh .iso-beam-accent,#远程调试-建立连接-od0hh .k-focal .iso-beam{stroke:var(--sc-accent);stroke-opacity:.55}
+#远程调试-建立连接-od0hh .iso-leader{fill:none;stroke:var(--sc-ink);stroke-opacity:.4;stroke-width:.8}
+#远程调试-建立连接-od0hh .k-focal .iso-leader{stroke:var(--sc-accent);stroke-opacity:1}
+
+@keyframes sc-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes sc-fade{from{opacity:0}to{opacity:1}}
+@keyframes sc-draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes sc-grow-y{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes sc-grow-x{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes sc-wipe{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes sc-wipe-down{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes sc-pop{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:scale(1)}}
+@keyframes sc-token{from{offset-distance:0%;opacity:0}8%{opacity:1}92%{opacity:1}to{offset-distance:100%;opacity:0}}
+@keyframes sc-pulse{0%,100%{stroke-opacity:1}50%{stroke-opacity:.35}}
+@keyframes sc-lift{from{transform:translateY(var(--lift))}to{transform:none}}
+@keyframes sc-drop{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:none}}
+#远程调试-建立连接-od0hh .e-token{display:none}
+@media (prefers-reduced-motion: no-preference){
+#远程调试-建立连接-od0hh.sc-svg[data-sc-motion]:not(.sc-still) [data-sc-step]{--d:calc(var(--step) * var(--sc-stagger))}
+#远程调试-建立连接-od0hh.sc-svg[data-sc-motion]:not(.sc-still) .sc-node[data-sc-step],#远程调试-建立连接-od0hh.sc-svg[data-sc-motion]:not(.sc-still) .sc-enter[data-sc-step]{animation:sc-in var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#远程调试-建立连接-od0hh.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step]{animation:sc-fade 240ms ease-out var(--d) both}
+#远程调试-建立连接-od0hh.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-head,#远程调试-建立连接-od0hh.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-glyph,#远程调试-建立连接-od0hh.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-label-g{animation:sc-fade 200ms ease-out calc(var(--d) + var(--sc-draw) * .8) both}
+#远程调试-建立连接-od0hh.sc-svg:is([data-sc-motion="trace"],#远程调试-建立连接-od0hh [data-sc-motion="loop"]):not(.sc-still) .sc-edge[data-sc-step] .e-line.sc-draw{stroke-dasharray:1;animation:sc-draw var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#远程调试-建立连接-od0hh.sc-svg[data-sc-motion]:not(.sc-still) .sc-grow-y[data-sc-step]{transform-box:fill-box;transform-origin:50% 100%;animation:sc-grow-y var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#远程调试-建立连接-od0hh.sc-svg[data-sc-motion]:not(.sc-still) .sc-grow-x[data-sc-step]{transform-box:fill-box;transform-origin:0 50%;animation:sc-grow-x var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#远程调试-建立连接-od0hh.sc-svg[data-sc-motion]:not(.sc-still) .sc-wipe[data-sc-step]{animation:sc-wipe var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#远程调试-建立连接-od0hh.sc-svg[data-sc-motion]:not(.sc-still) .sc-wipe-down[data-sc-step]{animation:sc-wipe-down var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#远程调试-建立连接-od0hh.sc-svg[data-sc-motion]:not(.sc-still) .sc-pop[data-sc-step]{transform-box:fill-box;transform-origin:50% 50%;animation:sc-pop var(--sc-enter) cubic-bezier(.2,.9,.3,1.2) var(--d) both}
+#远程调试-建立连接-od0hh.sc-svg[data-sc-motion]:not(.sc-still) .sc-fade[data-sc-step]{animation:sc-fade var(--sc-enter) ease-out var(--d) both}
+#远程调试-建立连接-od0hh.sc-svg[data-sc-motion]:not(.sc-still) .iso-part[data-sc-step]{animation:none}
+#远程调试-建立连接-od0hh.sc-svg[data-sc-motion]:not(.sc-still) .iso-part.sc-lift[data-sc-step]{animation:sc-lift calc(var(--sc-enter) * 1.6) cubic-bezier(.3,.6,.2,1) var(--d) both}
+#远程调试-建立连接-od0hh.sc-svg[data-sc-motion]:not(.sc-still) .iso-label[data-sc-step]{animation:sc-fade var(--sc-enter) ease-out calc(var(--d) + var(--sc-enter) * 1.2) both}
+#远程调试-建立连接-od0hh.sc-svg[data-sc-motion]:not(.sc-still) .sc-drop[data-sc-step]{animation:sc-drop var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#远程调试-建立连接-od0hh.sc-svg:is([data-sc-motion="trace"],#远程调试-建立连接-od0hh [data-sc-motion="loop"]):not(.sc-still) .e-token{display:inline;offset-rotate:0deg;animation:sc-token var(--tok-dur,1800ms) linear calc(var(--sc-settle) + var(--tok-delay,0ms)) infinite both}
+#远程调试-建立连接-od0hh.sc-svg[data-sc-motion]:not(.sc-still) .k-change .n-box{animation:sc-pulse 1.6s ease-in-out var(--sc-settle) 3}
+}
+@media print{#远程调试-建立连接-od0hh.sc-svg *{animation:none!important}#远程调试-建立连接-od0hh .e-token{display:none!important}}
+#远程调试-建立连接-od0hh .sc-still .e-token{display:none}
+#远程调试-建立连接-od0hh .e-token{fill:var(--sc-accent)}
+#远程调试-建立连接-od0hh .ek-link .e-token,#远程调试-建立连接-od0hh .e-token.t-link{fill:var(--sc-link)}
+</style><desc id="远程调试-建立连接-od0hh-desc">Sequence diagram with 5 elements.</desc><rect class="sc-bg" x="-32" y="-24" width="758" height="516"/><g class="sc-lifelines"><line class="q-life" x1="52" y1="40" x2="52" y2="476"/><line class="q-life" x1="192" y1="40" x2="192" y2="476"/><line class="q-life" x1="332" y1="40" x2="332" y2="476"/><line class="q-life" x1="472" y1="40" x2="472" y2="476"/><line class="q-life" x1="612" y1="40" x2="612" y2="476"/></g><g class="sc-frags"></g><g class="sc-edges"><g class="sc-edge ek-primary" data-sc-edge="m0" data-from="user" data-to="app" data-sc-step="1" style="--step:1"><path class="e-line sc-draw" d="M52,76 L184,76" pathLength="1"/><path class="e-head m-primary" d="M191,76 L183,72.8 L183,79.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="121.5" y="69" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">开启调试</text></g><text class="q-num" x="58" y="69" text-anchor="start">1</text></g><g class="sc-edge ek-default" data-sc-edge="m1" data-from="app" data-to="plugin" data-sc-step="2" style="--step:2"><path class="e-line sc-draw" d="M192,116 L324,116" pathLength="1"/><path class="e-head m-default" d="M331,116 L323,112.8 L323,119.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="261.5" y="109" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">创建会话</text></g><text class="q-num" x="198" y="109" text-anchor="start">2</text></g><g class="sc-edge ek-return" data-sc-edge="m2" data-from="plugin" data-to="app" data-sc-step="3" style="--step:3"><path class="e-line" d="M332,156 L200,156"/><path class="e-head m-default" d="M193,156 L201,152.8 L201,159.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="262.5" y="149" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">连接凭据</text></g><text class="q-num" x="326" y="149" text-anchor="end">3</text></g><g class="sc-edge ek-return" data-sc-edge="m3" data-from="app" data-to="user" data-sc-step="4" style="--step:4"><path class="e-line" d="M192,196 L60,196"/><path class="e-head m-default" d="M53,196 L61,192.8 L61,199.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="122.5" y="189" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">连接 URL</text></g><text class="q-num" x="186" y="189" text-anchor="end">4</text></g><g class="sc-edge ek-default" data-sc-edge="m4" data-from="user" data-to="cli" data-sc-step="5" style="--step:5"><path class="e-line sc-draw" d="M52,236 L464,236" pathLength="1"/><path class="e-head m-default" d="M471,236 L463,232.8 L463,239.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="261.5" y="229" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">dev --connect</text></g><text class="q-num" x="58" y="229" text-anchor="start">5</text></g><g class="sc-edge ek-primary" data-sc-edge="m5" data-from="cli" data-to="app" data-sc-step="6" style="--step:6"><path class="e-line sc-draw" d="M472,276 L200,276" pathLength="1"/><path class="e-head m-primary" d="M193,276 L201,272.8 L201,279.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="332.5" y="269" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">请求连接 URL</text></g><text class="q-num" x="466" y="269" text-anchor="end">6</text></g><g class="sc-edge ek-default" data-sc-edge="m6" data-from="app" data-to="plugin" data-sc-step="7" style="--step:7"><path class="e-line sc-draw" d="M192,316 L324,316" pathLength="1"/><path class="e-head m-default" d="M331,316 L323,312.8 L323,319.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="261.5" y="309" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">兑换 connectionKey</text></g><text class="q-num" x="198" y="309" text-anchor="start">7</text></g><g class="sc-edge ek-return" data-sc-edge="m7" data-from="plugin" data-to="app" data-sc-step="8" style="--step:8"><path class="e-line" d="M332,356 L200,356"/><path class="e-head m-default" d="M193,356 L201,352.8 L201,359.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="262.5" y="349" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">网关与短期 token</text></g><text class="q-num" x="326" y="349" text-anchor="end">8</text></g><g class="sc-edge ek-return" data-sc-edge="m8" data-from="app" data-to="cli" data-sc-step="9" style="--step:9"><path class="e-line" d="M192,396 L464,396"/><path class="e-head m-default" d="M471,396 L463,392.8 L463,399.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="331.5" y="389" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">返回连接信息</text></g><text class="q-num" x="198" y="389" text-anchor="start">9</text></g><g class="sc-edge ek-primary" data-sc-edge="m9" data-from="cli" data-to="gateway" data-sc-step="10" style="--step:10"><path class="e-line sc-draw" d="M472,436 L604,436" pathLength="1"/><path class="e-head m-primary" d="M611,436 L603,432.8 L603,439.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="541.5" y="429" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">WebSocket 绑定</text></g><text class="q-num" x="478" y="429" text-anchor="start">10</text></g></g><g class="sc-notes"></g><g class="sc-nodes"><g class="sc-node k-external sh-box" data-sc-node="user" data-sc-step="0" style="--step:0" tabindex="0" role="group" aria-label="开发者"><rect class="n-mask" x="0" y="0" width="104" height="40" rx="6"/><rect class="n-box" x="0" y="0" width="104" height="40" rx="6"/><text class="n-label" x="52" y="25" text-anchor="middle">开发者</text></g><g class="sc-node k-focal sh-box" data-sc-node="app" data-sc-step="0" style="--step:0" tabindex="0" role="group" aria-label="FastGPT"><rect class="n-mask" x="140" y="0" width="104" height="40" rx="6"/><rect class="n-box" x="140" y="0" width="104" height="40" rx="6"/><text class="n-label" x="192" y="25" text-anchor="middle">FastGPT</text></g><g class="sc-node k-backend sh-box" data-sc-node="plugin" data-sc-step="0" style="--step:0" tabindex="0" role="group" aria-label="Plugin 服务"><rect class="n-mask" x="280" y="0" width="104" height="40" rx="6"/><rect class="n-box" x="280" y="0" width="104" height="40" rx="6"/><text class="n-label" x="332" y="25" text-anchor="middle">Plugin 服务</text></g><g class="sc-node k-external sh-box" data-sc-node="cli" data-sc-step="0" style="--step:0" tabindex="0" role="group" aria-label="本地 CLI"><rect class="n-mask" x="420" y="0" width="104" height="40" rx="6"/><rect class="n-box" x="420" y="0" width="104" height="40" rx="6"/><text class="n-label" x="472" y="25" text-anchor="middle">本地 CLI</text></g><g class="sc-node k-external sh-box" data-sc-node="gateway" data-sc-step="0" style="--step:0" tabindex="0" role="group" aria-label="网关"><rect class="n-mask" x="560" y="0" width="104" height="40" rx="6"/><rect class="n-box" x="560" y="0" width="104" height="40" rx="6"/><text class="n-label" x="612" y="25" text-anchor="middle">网关</text></g></g></svg>

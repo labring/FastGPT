@@ -16,7 +16,8 @@
     "removeInvalidImg": "node ./script/removeInvalidImg.js",
     "typecheck": "tsc --noEmit",
     "check:docs": "node script/checkDocRefs.js && node script/checkEnglishDocs.mjs && node script/checkNavigation.mjs",
-    "test:checks": "node --test script/checkDocRefs.test.js script/checkEnglishDocs.test.mjs script/sitemap-locale.test.js script/api-examples.test.mjs script/prepareScreenshots.test.mjs",
+    "test:checks": "node --test script/checkDocRefs.test.js script/checkEnglishDocs.test.mjs script/sitemap-locale.test.js script/api-examples.test.mjs script/prepareScreenshots.test.mjs script/diagrams.test.mjs",
+    "render:diagrams": "node script/renderDiagrams.mjs",
     "test:site": "node --test script/site.test.mjs",
     "checkDocEnglish": "node --test ./script/checkEnglishDocs.test.mjs && node ./script/checkEnglishDocs.mjs",
     "test:sitemap-locale": "node --test ./script/sitemap-locale.test.js"

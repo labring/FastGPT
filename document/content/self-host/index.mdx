@@ -12,27 +12,11 @@ description: FastGPT 自部署架构概览、资源规划、依赖配置与运�
 
 FastGPT 私有化部署由核心应用层、辅助执行层与四维数据底座协同构成：
 
-```mermaid
-graph TB
-    Client[客户端 / 浏览器 / API 调用方] --> Ingress[反向代理 / Nginx / 域名网关]
-    Ingress --> App[FastGPT Core 主服务<br/>Next.js Web / API / Worker]
+![FastGPT 核心部署拓扑](/imgs/diagrams/deployment-core.zh-CN.light.svg)
 
-    subgraph 执行与代理层
-        App --> AIProxy[AI Proxy 统一模型路由]
-        App --> CodeSandbox[Code Sandbox 代码沙箱<br/>Python / JS 轻量快速执行]
-        App --> Provider[Agent Sandbox Provider API]
-        Provider --> OpenSandbox[OpenSandbox / Sealos Devbox Workspace]
-        Client --> SandboxProxy[Agent Sandbox Proxy]
-        SandboxProxy --> OpenSandbox
-    end
+访问入口与外围服务按部署方案配置，向量数据库选用一种受支持的后端。
 
-    subgraph 四维数据底座
-        App --> Mongo[(MongoDB 副本集<br/>应用/集合/分块元数据)]
-        App --> VectorDB[(向量数据库<br/>PGVector / Milvus / OceanBase / SeekDB)]
-        App --> S3[(S3 / MinIO 对象存储<br/>Public 头像与 Private 原始文件)]
-        App --> Redis[(Redis 缓存与消息队列<br/>BullMQ / 租约锁 / 跨节点同步)]
-    end
-```
+![插件与沙箱执行服务](/imgs/diagrams/execution-services.zh-CN.light.svg)
 
 ## 资源规划与基准配置
 

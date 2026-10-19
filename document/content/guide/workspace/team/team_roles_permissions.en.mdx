@@ -23,13 +23,15 @@ FastGPT offers three permission management levels:
 
 Permission evaluation follows this logic:
 
-1. Use individually assigned member permissions when present.
-2. Otherwise, combine the permissions granted through the user's departments and groups.
-3. Use the default permissions when neither source has an explicit assignment.
+1. Use an individual permission record when present, including an explicit value of `0`.
+2. When the individual record is absent, combine matching permissions from member groups, the default all-members group, the member's departments, and ancestor departments using bitwise OR.
+3. When all sources lack matching records, use the resource default supplied by the caller.
 
 Authorization logic:
 
-![Member permissions take precedence over department and group permissions](/imgs/optimized/guide/team_permissions/team_roles_permissions/image1.jpeg.webp)
+![Resolve resource collaborator access](/imgs/diagrams/resource-permissions.en.light.svg)
+
+This diagram covers collaborator permission resolution for one resource. Surrounding authorization handles resource owners, folder inheritance, and hidden applications.
 
 ### Resource Permissions
 

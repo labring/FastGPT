@@ -1,0 +1,320 @@
+<svg width="478" height="516" class="sc-svg sc-still" id="第三方直接实现-sso-标准接口-umhwiv" xmlns="http://www.w3.org/2000/svg" viewBox="-32 -24 478 516" role="img" aria-labelledby="第三方直接实现-sso-标准接口-umhwiv-title 第三方直接实现-sso-标准接口-umhwiv-desc" lang="zh-CN" data-sc-type="sequence" data-sc-slug="第三方直接实现-sso-标准接口" data-sc-steps="10"><title id="第三方直接实现-sso-标准接口-umhwiv-title">第三方直接实现 SSO 标准接口</title><style>#第三方直接实现-sso-标准接口-umhwiv{--sc-paper:#fafafa;--sc-paper-2:#eeeeee;--sc-ink:#0a0a0a;--sc-ink-strong:#050505;--sc-muted:#575757;--sc-soft:#878787;--sc-rule:rgba(10,10,10,0.12);--sc-rule-solid:#bcbcbc;--sc-accent:#3370ff;--sc-accent-tint:rgba(51,112,255,0.1);--sc-link:#214291;--sc-node:#fdfdfd;--sc-store:rgba(10,10,10,0.05);--sc-external:rgba(10,10,10,0.025);--sc-series-1:#6b8f71;--sc-series-2:#c08a3e;--sc-series-3:#8a6fb0;--sc-series-4:#b5604b;--sc-series-5:#5f7f9e;--sc-ax-shade:#0a0a0a;--sc-ax-lift:#ffffff;--sc-ax-screen:#1b1d25;--sc-ax-dark-edge:rgba(255,255,255,0);--sc-ax-t-o:0;--sc-ax-l-o:0.07;--sc-ax-r-o:0.16;--sc-on-v00:#000000;--sc-on-v01:#000000;--sc-on-v10:#ffffff;--sc-on-v11:#ffffff;--sc-font-serif:'Fraunces', 'Noto Serif', Georgia, serif;--sc-font-sans:'IBM Plex Sans', 'Noto Sans', system-ui, sans-serif;--sc-font-mono:'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;}
+#第三方直接实现-sso-标准接口-umhwiv.sc-svg{font-family:var(--sc-font-sans);color:var(--sc-ink);direction:ltr}
+#第三方直接实现-sso-标准接口-umhwiv .sc-mark{opacity:.88;pointer-events:none}
+#第三方直接实现-sso-标准接口-umhwiv .sc-mark-word{fill:var(--sc-ink)}
+#第三方直接实现-sso-标准接口-umhwiv .sc-bg{fill:var(--sc-paper)}
+#第三方直接实现-sso-标准接口-umhwiv .n-mask{fill:var(--sc-paper)}
+#第三方直接实现-sso-标准接口-umhwiv .n-box{fill:var(--sc-node);stroke:var(--sc-ink);stroke-width:1}
+#第三方直接实现-sso-标准接口-umhwiv .k-focal .n-box{fill:var(--sc-accent-tint);stroke:var(--sc-accent);stroke-width:1.2}
+#第三方直接实现-sso-标准接口-umhwiv .k-store .n-box{fill:var(--sc-store);stroke:var(--sc-muted)}
+#第三方直接实现-sso-标准接口-umhwiv .k-external .n-box{fill:var(--sc-external);stroke:var(--sc-soft)}
+#第三方直接实现-sso-标准接口-umhwiv .k-input .n-box{fill:var(--sc-external);stroke:var(--sc-soft)}
+#第三方直接实现-sso-标准接口-umhwiv .k-optional .n-box{fill:transparent;stroke:var(--sc-soft);stroke-dasharray:4 3}
+#第三方直接实现-sso-标准接口-umhwiv .k-security .n-box{fill:var(--sc-accent-tint);stroke:var(--sc-accent);stroke-opacity:.55;stroke-dasharray:4 4}
+#第三方直接实现-sso-标准接口-umhwiv .k-muted .n-box{fill:var(--sc-store);stroke:var(--sc-rule-solid)}
+#第三方直接实现-sso-标准接口-umhwiv .n-label{fill:var(--sc-ink);font-size:12px;font-weight:600}
+#第三方直接实现-sso-标准接口-umhwiv .n-sub{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}
+#第三方直接实现-sso-标准接口-umhwiv .n-icon{fill:none;stroke:var(--sc-muted);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+#第三方直接实现-sso-标准接口-umhwiv .k-focal .n-icon{stroke:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .n-tag{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:7px;letter-spacing:.12em;text-transform:uppercase}
+#第三方直接实现-sso-标准接口-umhwiv .n-tag-box{fill:none;stroke:var(--sc-rule-solid);stroke-width:.8}
+#第三方直接实现-sso-标准接口-umhwiv .k-focal .n-tag{fill:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .k-focal .n-tag-box{stroke:var(--sc-accent);stroke-opacity:.5}
+#第三方直接实现-sso-标准接口-umhwiv .e-line{fill:none;stroke:var(--sc-muted);stroke-width:1.1}
+#第三方直接实现-sso-标准接口-umhwiv .ek-primary .e-line{stroke:var(--sc-accent);stroke-width:1.4}
+#第三方直接实现-sso-标准接口-umhwiv .ek-link .e-line{stroke:var(--sc-link);stroke-width:1.2}
+#第三方直接实现-sso-标准接口-umhwiv .ek-async .e-line,#第三方直接实现-sso-标准接口-umhwiv .ek-return .e-line{stroke-width:1}
+#第三方直接实现-sso-标准接口-umhwiv .ek-muted .e-line{stroke:var(--sc-soft);stroke-width:1}
+#第三方直接实现-sso-标准接口-umhwiv .e-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.06em;text-transform:uppercase}
+#第三方直接实现-sso-标准接口-umhwiv .ek-primary .e-label{fill:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .ek-link .e-label{fill:var(--sc-link)}
+#第三方直接实现-sso-标准接口-umhwiv .e-label-bg{fill:var(--sc-paper)}
+#第三方直接实现-sso-标准接口-umhwiv .m-default{fill:var(--sc-muted)}#第三方直接实现-sso-标准接口-umhwiv .m-primary{fill:var(--sc-accent)}#第三方直接实现-sso-标准接口-umhwiv .m-link{fill:var(--sc-link)}#第三方直接实现-sso-标准接口-umhwiv .m-muted{fill:var(--sc-soft)}
+#第三方直接实现-sso-标准接口-umhwiv .g-box{fill:var(--sc-ink);fill-opacity:.018;stroke:var(--sc-rule);stroke-width:.8}
+#第三方直接实现-sso-标准接口-umhwiv .g-box.g-dashed{stroke-dasharray:4 4;stroke:var(--sc-soft);stroke-opacity:.6}
+#第三方直接实现-sso-标准接口-umhwiv .g-label{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:7px;letter-spacing:.16em;text-transform:uppercase}
+#第三方直接实现-sso-标准接口-umhwiv .g-label-bg{fill:var(--sc-paper)}
+#第三方直接实现-sso-标准接口-umhwiv .lg-rule{stroke:var(--sc-rule);stroke-width:.8}
+#第三方直接实现-sso-标准接口-umhwiv .lg-title{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.18em}
+#第三方直接实现-sso-标准接口-umhwiv .lg-text{fill:var(--sc-muted);font-size:9px}
+#第三方直接实现-sso-标准接口-umhwiv .ax-line{stroke:var(--sc-rule-solid);stroke-width:1}
+#第三方直接实现-sso-标准接口-umhwiv .ax-grid{stroke:var(--sc-rule);stroke-width:.8}
+#第三方直接实现-sso-标准接口-umhwiv .ax-text{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.04em}
+#第三方直接实现-sso-标准接口-umhwiv .ax-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase}
+#第三方直接实现-sso-标准接口-umhwiv .c-cat{fill:var(--sc-muted);font-size:10px}
+#第三方直接实现-sso-标准接口-umhwiv .c-val{fill:var(--sc-ink);font-family:var(--sc-font-mono);font-size:9px}
+#第三方直接实现-sso-标准接口-umhwiv .c-bar{fill:var(--sc-muted);fill-opacity:.38}
+#第三方直接实现-sso-标准接口-umhwiv .c-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#第三方直接实现-sso-标准接口-umhwiv .c-val.is-focal{fill:var(--sc-accent);font-weight:500}
+#第三方直接实现-sso-标准接口-umhwiv .s-1{fill:var(--sc-series-1)}#第三方直接实现-sso-标准接口-umhwiv .s-2{fill:var(--sc-series-2)}#第三方直接实现-sso-标准接口-umhwiv .s-3{fill:var(--sc-series-3)}#第三方直接实现-sso-标准接口-umhwiv .s-4{fill:var(--sc-series-4)}#第三方直接实现-sso-标准接口-umhwiv .s-5{fill:var(--sc-series-5)}
+#第三方直接实现-sso-标准接口-umhwiv .sk-node{fill:var(--sc-muted)}
+#第三方直接实现-sso-标准接口-umhwiv .sk-node.is-focal{fill:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .sk-link{fill:var(--sc-muted);fill-opacity:.14}
+#第三方直接实现-sso-标准接口-umhwiv .sk-link.is-focal{fill:var(--sc-accent);fill-opacity:.28}
+#第三方直接实现-sso-标准接口-umhwiv .sk-label{fill:var(--sc-ink);font-size:11px;font-weight:500;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#第三方直接实现-sso-标准接口-umhwiv .sk-val{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#第三方直接实现-sso-标准接口-umhwiv .q-life{stroke:var(--sc-rule-solid);stroke-width:1;stroke-dasharray:3 4}
+#第三方直接实现-sso-标准接口-umhwiv .q-frag{fill:none;stroke:var(--sc-soft);stroke-width:.8}
+#第三方直接实现-sso-标准接口-umhwiv .q-frag-tag{fill:var(--sc-paper-2);stroke:var(--sc-soft);stroke-width:.8}
+#第三方直接实现-sso-标准接口-umhwiv .q-frag-text{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase}
+#第三方直接实现-sso-标准接口-umhwiv .q-num{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8px}
+#第三方直接实现-sso-标准接口-umhwiv .q-note{fill:var(--sc-paper-2);stroke:var(--sc-rule-solid);stroke-width:.8}
+#第三方直接实现-sso-标准接口-umhwiv .q-note-text{fill:var(--sc-muted);font-size:10px;font-style:italic;font-family:var(--sc-font-serif)}
+#第三方直接实现-sso-标准接口-umhwiv .n-head{fill:var(--sc-ink);fill-opacity:.035;stroke:none}
+#第三方直接实现-sso-标准接口-umhwiv .k-focal .n-head{fill:var(--sc-accent);fill-opacity:.08}
+#第三方直接实现-sso-标准接口-umhwiv .n-rule{stroke:var(--sc-rule-solid);stroke-width:.8}
+#第三方直接实现-sso-标准接口-umhwiv .n-field{fill:var(--sc-ink);font-size:10px}
+#第三方直接实现-sso-标准接口-umhwiv .n-field-t{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}
+#第三方直接实现-sso-标准接口-umhwiv .n-key{font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.06em;fill:var(--sc-soft)}
+#第三方直接实现-sso-标准接口-umhwiv .n-key-pk{fill:var(--sc-accent)}#第三方直接实现-sso-标准接口-umhwiv .n-key-fk{fill:var(--sc-link)}
+#第三方直接实现-sso-标准接口-umhwiv .sh-start .n-box{fill:var(--sc-ink);stroke:none}
+#第三方直接实现-sso-标准接口-umhwiv .sh-end .n-box{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.2}
+#第三方直接实现-sso-标准接口-umhwiv .n-dot{fill:var(--sc-ink)}
+#第三方直接实现-sso-标准接口-umhwiv .n-status{stroke:var(--sc-paper);stroke-width:1.5}
+#第三方直接实现-sso-标准接口-umhwiv .st-ok{fill:var(--sc-series-1)}#第三方直接实现-sso-标准接口-umhwiv .st-risk{fill:var(--sc-series-2)}#第三方直接实现-sso-标准接口-umhwiv .st-legacy{fill:var(--sc-series-5)}#第三方直接实现-sso-标准接口-umhwiv .st-retire{fill:var(--sc-series-4)}
+#第三方直接实现-sso-标准接口-umhwiv .n-change{fill:var(--sc-accent);font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.12em}
+#第三方直接实现-sso-标准接口-umhwiv .ch-added .n-box{stroke:var(--sc-accent);stroke-width:1.3}
+#第三方直接实现-sso-标准接口-umhwiv .ch-removed{opacity:.55}#第三方直接实现-sso-标准接口-umhwiv .ch-removed .n-box{stroke-dasharray:4 3;stroke:var(--sc-soft)}#第三方直接实现-sso-标准接口-umhwiv .ch-removed .n-label{text-decoration:line-through}
+#第三方直接实现-sso-标准接口-umhwiv .ch-removed .n-change{fill:var(--sc-soft)}
+#第三方直接实现-sso-标准接口-umhwiv .ch-changed .n-box{stroke:var(--sc-accent);stroke-dasharray:6 2}
+#第三方直接实现-sso-标准接口-umhwiv .sc-edge.ch-added .e-line{stroke:var(--sc-accent)}#第三方直接实现-sso-标准接口-umhwiv .sc-edge.ch-removed .e-line{stroke-dasharray:3 3}
+#第三方直接实现-sso-标准接口-umhwiv .e-line.dashed{stroke-dasharray:4 3}
+#第三方直接实现-sso-标准接口-umhwiv .ek-rel .e-line{stroke:var(--sc-muted);stroke-width:1}
+#第三方直接实现-sso-标准接口-umhwiv .e-glyph.stroke{fill:none;stroke:var(--sc-muted);stroke-width:1}
+#第三方直接实现-sso-标准接口-umhwiv .e-glyph.hollow{fill:var(--sc-paper);stroke:var(--sc-muted);stroke-width:1}
+#第三方直接实现-sso-标准接口-umhwiv .e-glyph.filled{fill:var(--sc-muted);stroke:var(--sc-muted);stroke-width:1}
+#第三方直接实现-sso-标准接口-umhwiv .lane-band{fill:var(--sc-ink);fill-opacity:.022}
+#第三方直接实现-sso-标准接口-umhwiv .lane-band.alt{fill-opacity:0}
+#第三方直接实现-sso-标准接口-umhwiv .lane-rule{stroke:var(--sc-rule);stroke-width:.8}
+#第三方直接实现-sso-标准接口-umhwiv .lane-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase}
+#第三方直接实现-sso-标准接口-umhwiv .loop-center{fill:var(--sc-ink);font-family:var(--sc-font-serif);font-size:20px}
+#第三方直接实现-sso-标准接口-umhwiv .nest-mask{fill:var(--sc-paper)}
+#第三方直接实现-sso-标准接口-umhwiv .nest-box{fill:var(--sc-ink);fill-opacity:.025;stroke:var(--sc-rule-solid);stroke-width:.9}
+#第三方直接实现-sso-标准接口-umhwiv .nest-d0 .nest-box{fill-opacity:.012}#第三方直接实现-sso-标准接口-umhwiv .nest-d2 .nest-box{fill-opacity:.04}#第三方直接实现-sso-标准接口-umhwiv .nest-d3 .nest-box{fill-opacity:.055}
+#第三方直接实现-sso-标准接口-umhwiv .k-focal .nest-box{fill:var(--sc-accent-tint);fill-opacity:1;stroke:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .nest-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.14em;text-transform:uppercase}
+#第三方直接实现-sso-标准接口-umhwiv .chip{fill:var(--sc-paper-2);stroke:var(--sc-rule);stroke-width:.8}
+#第三方直接实现-sso-标准接口-umhwiv .chip-text{fill:var(--sc-ink);font-size:10px}
+#第三方直接实现-sso-标准接口-umhwiv .k-focal .chip{fill:var(--sc-paper);stroke:var(--sc-accent);stroke-opacity:.4}
+#第三方直接实现-sso-标准接口-umhwiv .venn-c{fill:var(--sc-muted);fill-opacity:.07;stroke:var(--sc-muted);stroke-width:1}
+#第三方直接实现-sso-标准接口-umhwiv .vs-2 .venn-c{fill:var(--sc-series-2);stroke:var(--sc-series-2);fill-opacity:.09}
+#第三方直接实现-sso-标准接口-umhwiv .vs-3 .venn-c{fill:var(--sc-series-1);stroke:var(--sc-series-1);fill-opacity:.09}
+#第三方直接实现-sso-标准接口-umhwiv .venn.k-focal .venn-c{fill:var(--sc-accent);stroke:var(--sc-accent);fill-opacity:.09}
+#第三方直接实现-sso-标准接口-umhwiv .venn-label{fill:var(--sc-ink);font-size:13px;font-weight:600}
+#第三方直接实现-sso-标准接口-umhwiv .venn-ov{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:13px}
+#第三方直接实现-sso-标准接口-umhwiv .venn-ov.is-focal{fill:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .fb-spine{stroke-width:1.6}
+#第三方直接实现-sso-标准接口-umhwiv .fb-tick{stroke:var(--sc-rule-solid);stroke-width:.8}
+#第三方直接实现-sso-标准接口-umhwiv .fb-cat{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;letter-spacing:.14em}
+#第三方直接实现-sso-标准接口-umhwiv .fb-cat.is-focal{fill:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .fb-cause{fill:var(--sc-ink);font-size:10px}
+#第三方直接实现-sso-标准接口-umhwiv .kb-col{fill:var(--sc-ink);fill-opacity:.025;stroke:var(--sc-rule);stroke-width:.8;rx:8}
+#第三方直接实现-sso-标准接口-umhwiv .kb-col.is-over{stroke:var(--sc-accent);stroke-opacity:.6}
+#第三方直接实现-sso-标准接口-umhwiv .kb-head{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#第三方直接实现-sso-标准接口-umhwiv .kb-count{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:9px}
+#第三方直接实现-sso-标准接口-umhwiv .kb-count.is-over{fill:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .kb-card{fill:var(--sc-ink);font-size:11px;font-weight:500}
+#第三方直接实现-sso-标准接口-umhwiv .sm-act{fill:var(--sc-ink)}
+#第三方直接实现-sso-标准接口-umhwiv .sm-activity.k-focal .sm-act{fill:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .sm-act-text{fill:var(--sc-paper);font-size:11px;font-weight:600}
+#第三方直接实现-sso-标准接口-umhwiv .q-frame{fill:none;stroke:var(--sc-rule-solid);stroke-width:1}
+#第三方直接实现-sso-标准接口-umhwiv .q-focal{fill:var(--sc-accent-tint)}
+#第三方直接实现-sso-标准接口-umhwiv .q-title{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#第三方直接实现-sso-标准接口-umhwiv .quad.k-focal .q-title,#第三方直接实现-sso-标准接口-umhwiv .quad.k-focal .q-title-big{fill:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .q-title-big{fill:var(--sc-ink);font-family:var(--sc-font-serif);font-size:19px}
+#第三方直接实现-sso-标准接口-umhwiv .q-item{fill:var(--sc-muted);font-size:11px}
+#第三方直接实现-sso-标准接口-umhwiv .q-dot{fill:var(--sc-muted)}
+#第三方直接实现-sso-标准接口-umhwiv .q-pt.k-focal .q-dot{fill:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .q-pt-label{fill:var(--sc-ink);font-size:10.5px;font-weight:500}
+#第三方直接实现-sso-标准接口-umhwiv .q-pt.k-focal .q-pt-label{fill:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .mx-col{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.08em}
+#第三方直接实现-sso-标准接口-umhwiv .mx-row{fill:var(--sc-ink);font-size:11px;font-weight:500}
+#第三方直接实现-sso-标准接口-umhwiv .mx-band{fill:var(--sc-ink);fill-opacity:.025}
+#第三方直接实现-sso-标准接口-umhwiv .mx-g.fill{fill:var(--sc-ink)}#第三方直接实现-sso-标准接口-umhwiv .mx-g.ring{fill:none;stroke:var(--sc-ink);stroke-width:1}
+#第三方直接实现-sso-标准接口-umhwiv .mx-g.dashed{stroke-dasharray:2 2}#第三方直接实现-sso-标准接口-umhwiv .mx-g.admin{fill:var(--sc-accent)}#第三方直接实现-sso-标准接口-umhwiv .mx-g.none{fill:var(--sc-soft)}
+#第三方直接实现-sso-标准接口-umhwiv .mx-r.k-focal .mx-row{fill:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .tl-axis{stroke:var(--sc-ink);stroke-width:1.2}
+#第三方直接实现-sso-标准接口-umhwiv .tl-stem{stroke:var(--sc-rule-solid);stroke-width:.8}
+#第三方直接实现-sso-标准接口-umhwiv .tl-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}
+#第三方直接实现-sso-标准接口-umhwiv .tl-ev.k-focal .tl-dot{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .tl-ev.k-focal .tl-label{fill:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .tl-label{font-size:11px}
+#第三方直接实现-sso-标准接口-umhwiv .tl-when{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;letter-spacing:.04em}
+#第三方直接实现-sso-标准接口-umhwiv .tl-period{fill:var(--sc-ink);fill-opacity:.07}
+#第三方直接实现-sso-标准接口-umhwiv .tl-period.is-focal{fill:var(--sc-accent);fill-opacity:.16}
+#第三方直接实现-sso-标准接口-umhwiv .tl-period-text{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.08em}
+#第三方直接实现-sso-标准接口-umhwiv .g-task{fill:var(--sc-ink);font-size:11px}
+#第三方直接实现-sso-标准接口-umhwiv .g-bar{fill:var(--sc-muted);fill-opacity:.45}
+#第三方直接实现-sso-标准接口-umhwiv .g-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#第三方直接实现-sso-标准接口-umhwiv .g-bar.is-done{fill-opacity:.2}
+#第三方直接实现-sso-标准接口-umhwiv .g-done{fill:var(--sc-muted);font-size:10px}
+#第三方直接实现-sso-标准接口-umhwiv .g-mile{fill:var(--sc-ink)}
+#第三方直接实现-sso-标准接口-umhwiv .k-focal .g-mile{fill:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .g-today{stroke:var(--sc-accent);stroke-width:1;stroke-dasharray:3 3}
+#第三方直接实现-sso-标准接口-umhwiv .g-today-text{fill:var(--sc-accent);font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.14em}
+#第三方直接实现-sso-标准接口-umhwiv .jr-band{fill:var(--sc-ink);fill-opacity:.025}#第三方直接实现-sso-标准接口-umhwiv .jr-band.alt{fill-opacity:0}
+#第三方直接实现-sso-标准接口-umhwiv .jr-stage{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#第三方直接实现-sso-标准接口-umhwiv .jr-curve{stroke:var(--sc-ink);stroke-width:1.6}
+#第三方直接实现-sso-标准接口-umhwiv .jr-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}
+#第三方直接实现-sso-标准接口-umhwiv .jr-dot.is-pain,#第三方直接实现-sso-标准接口-umhwiv .jr-dot.is-focal{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .jr-step{fill:var(--sc-ink);font-size:10.5px;font-weight:500}
+#第三方直接实现-sso-标准接口-umhwiv .jr-note{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:11px;paint-order:stroke;stroke:var(--sc-paper);stroke-width:4px;stroke-linejoin:round}
+#第三方直接实现-sso-标准接口-umhwiv .jr-note.is-pain{fill:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .ln{fill:none;stroke-width:1.6;stroke:var(--sc-muted)}
+#第三方直接实现-sso-标准接口-umhwiv .ln.is-focal{stroke:var(--sc-accent);stroke-width:2.2}#第三方直接实现-sso-标准接口-umhwiv .ln.is-muted{stroke:var(--sc-soft);stroke-opacity:.55}
+#第三方直接实现-sso-标准接口-umhwiv .ln-1{stroke:var(--sc-series-1)}#第三方直接实现-sso-标准接口-umhwiv .ln-2{stroke:var(--sc-series-2)}#第三方直接实现-sso-标准接口-umhwiv .ln-3{stroke:var(--sc-series-3)}#第三方直接实现-sso-标准接口-umhwiv .ln-4{stroke:var(--sc-series-4)}#第三方直接实现-sso-标准接口-umhwiv .ln-5{stroke:var(--sc-series-5)}
+#第三方直接实现-sso-标准接口-umhwiv .ln-pt{fill:var(--sc-paper);stroke-width:1.4}
+#第三方直接实现-sso-标准接口-umhwiv .ln-pt.is-focal{fill:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .ln-label{font-size:10.5px;font-weight:500;fill:var(--sc-muted)}
+#第三方直接实现-sso-标准接口-umhwiv .is-muted-t{fill:var(--sc-soft)}
+#第三方直接实现-sso-标准接口-umhwiv .ln-1-t{fill:var(--sc-series-1)}#第三方直接实现-sso-标准接口-umhwiv .ln-2-t{fill:var(--sc-series-2)}#第三方直接实现-sso-标准接口-umhwiv .ln-3-t{fill:var(--sc-series-3)}#第三方直接实现-sso-标准接口-umhwiv .ln-4-t{fill:var(--sc-series-4)}#第三方直接实现-sso-标准接口-umhwiv .ln-5-t{fill:var(--sc-series-5)}
+#第三方直接实现-sso-标准接口-umhwiv .ln-area{fill:var(--sc-muted);fill-opacity:.08}#第三方直接实现-sso-标准接口-umhwiv .ln-area.is-focal{fill:var(--sc-accent);fill-opacity:.1}
+#第三方直接实现-sso-标准接口-umhwiv .rg-area{fill:var(--sc-muted);fill-opacity:.18}#第三方直接实现-sso-标准接口-umhwiv .rg-area.is-focal{fill:var(--sc-accent);fill-opacity:.28}
+#第三方直接实现-sso-标准接口-umhwiv .rg-line{fill:none;stroke:var(--sc-ink);stroke-width:1.1}#第三方直接实现-sso-标准接口-umhwiv .rg-line.is-focal{stroke:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .st-area{fill-opacity:.55;stroke:var(--sc-paper);stroke-width:1}
+#第三方直接实现-sso-标准接口-umhwiv .st-area.is-focal{fill:var(--sc-accent);fill-opacity:.75}
+#第三方直接实现-sso-标准接口-umhwiv .st-label{fill:var(--sc-ink-strong);font-size:10px;font-weight:600}
+#第三方直接实现-sso-标准接口-umhwiv .is-focal-t{fill:var(--sc-accent)!important}
+#第三方直接实现-sso-标准接口-umhwiv .sp-dot{fill:var(--sc-muted);fill-opacity:.55;stroke:var(--sc-paper);stroke-width:.8}
+#第三方直接实现-sso-标准接口-umhwiv .sp-dot.is-bubble{fill-opacity:.25;stroke:var(--sc-muted);stroke-opacity:.7}
+#第三方直接实现-sso-标准接口-umhwiv .sp-dot.is-focal{fill:var(--sc-accent);fill-opacity:.9;stroke:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .sp-label{fill:var(--sc-ink);font-size:10px;font-weight:500}
+#第三方直接实现-sso-标准接口-umhwiv .rd-area{fill:var(--sc-muted);fill-opacity:.1}#第三方直接实现-sso-标准接口-umhwiv .rd-line{fill:none;stroke:var(--sc-muted);stroke-width:1.4}
+#第三方直接实现-sso-标准接口-umhwiv .rd-area.is-focal{fill:var(--sc-accent);fill-opacity:.16}#第三方直接实现-sso-标准接口-umhwiv .rd-line.is-focal{stroke:var(--sc-accent);stroke-width:2}
+#第三方直接实现-sso-标准接口-umhwiv .rd-area.is-muted{fill-opacity:.04}#第三方直接实现-sso-标准接口-umhwiv .rd-line.is-muted{stroke:var(--sc-soft)}
+#第三方直接实现-sso-标准接口-umhwiv .rd-area.s-1,#第三方直接实现-sso-标准接口-umhwiv .rd-area.s-2,#第三方直接实现-sso-标准接口-umhwiv .rd-area.s-3,#第三方直接实现-sso-标准接口-umhwiv .rd-area.s-4,#第三方直接实现-sso-标准接口-umhwiv .rd-area.s-5{fill-opacity:.14}
+#第三方直接实现-sso-标准接口-umhwiv .rd-line.s-1{stroke:var(--sc-series-1)}#第三方直接实现-sso-标准接口-umhwiv .rd-line.s-2{stroke:var(--sc-series-2)}#第三方直接实现-sso-标准接口-umhwiv .rd-line.s-3{stroke:var(--sc-series-3)}#第三方直接实现-sso-标准接口-umhwiv .rd-line.s-4{stroke:var(--sc-series-4)}#第三方直接实现-sso-标准接口-umhwiv .rd-line.s-5{stroke:var(--sc-series-5)}
+#第三方直接实现-sso-标准接口-umhwiv .rd-pt{fill:var(--sc-paper);stroke:var(--sc-muted)}#第三方直接实现-sso-标准接口-umhwiv .rd-pt.is-focal{stroke:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .rd-key{fill:var(--sc-muted)}#第三方直接实现-sso-标准接口-umhwiv .rd-key.is-focal{fill:var(--sc-accent)}#第三方直接实现-sso-标准接口-umhwiv .rd-key.is-muted{fill:var(--sc-soft)}
+#第三方直接实现-sso-标准接口-umhwiv .rd-ring{fill:none}
+#第三方直接实现-sso-标准接口-umhwiv .pl-stem{stroke:var(--sc-muted);stroke-width:1.4}#第三方直接实现-sso-标准接口-umhwiv .pl-stem.is-focal{stroke:var(--sc-accent);stroke-width:2}
+#第三方直接实现-sso-标准接口-umhwiv .pl-dot{fill:var(--sc-muted)}#第三方直接实现-sso-标准接口-umhwiv .pl-dot.is-focal{fill:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .wf-bar{fill:var(--sc-muted);fill-opacity:.4}
+#第三方直接实现-sso-标准接口-umhwiv .wf-up{fill:var(--sc-series-1);fill-opacity:.75}#第三方直接实现-sso-标准接口-umhwiv .wf-down{fill:var(--sc-series-4);fill-opacity:.75}
+#第三方直接实现-sso-标准接口-umhwiv .wf-total{fill:var(--sc-ink);fill-opacity:.82}
+#第三方直接实现-sso-标准接口-umhwiv .wf-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#第三方直接实现-sso-标准接口-umhwiv .wf-link{stroke:var(--sc-soft);stroke-width:.8;stroke-dasharray:2 2}
+#第三方直接实现-sso-标准接口-umhwiv .tm-cell{fill:var(--sc-muted);fill-opacity:.16;stroke:var(--sc-paper);stroke-width:1}
+#第三方直接实现-sso-标准接口-umhwiv .tm-cell.is-focal{fill:var(--sc-accent);fill-opacity:.85}
+#第三方直接实现-sso-标准接口-umhwiv .tm-sub{fill:var(--sc-paper);fill-opacity:.55}
+#第三方直接实现-sso-标准接口-umhwiv .tm-label{fill:var(--sc-ink);font-size:11px;font-weight:600}#第三方直接实现-sso-标准接口-umhwiv .tm-label.is-focal{fill:var(--sc-paper)}
+#第三方直接实现-sso-标准接口-umhwiv .tm-val{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}#第三方直接实现-sso-标准接口-umhwiv .tm-val.is-focal{fill:var(--sc-paper);fill-opacity:.85}
+#第三方直接实现-sso-标准接口-umhwiv .tm-sub-label{fill:var(--sc-muted);font-size:9.5px}
+#第三方直接实现-sso-标准接口-umhwiv .hm-cell.hm-pos{fill:var(--sc-accent)}#第三方直接实现-sso-标准接口-umhwiv .hm-cell.hm-neg{fill:var(--sc-series-4)}
+#第三方直接实现-sso-标准接口-umhwiv .hm-val{fill:var(--sc-ink);font-family:var(--sc-font-mono);font-size:8.5px}#第三方直接实现-sso-标准接口-umhwiv .hm-val.v00{fill:var(--sc-on-v00)}#第三方直接实现-sso-标准接口-umhwiv .hm-val.v01{fill:var(--sc-on-v01)}#第三方直接实现-sso-标准接口-umhwiv .hm-val.v10{fill:var(--sc-on-v10)}#第三方直接实现-sso-标准接口-umhwiv .hm-val.v11{fill:var(--sc-on-v11)}
+#第三方直接实现-sso-标准接口-umhwiv .db-line{stroke:var(--sc-rule-solid);stroke-width:2.4}#第三方直接实现-sso-标准接口-umhwiv .db-line.is-focal{stroke:var(--sc-accent);stroke-opacity:.45}
+#第三方直接实现-sso-标准接口-umhwiv .db-a{fill:var(--sc-paper);stroke:var(--sc-muted);stroke-width:1.4}#第三方直接实现-sso-标准接口-umhwiv .db-b{fill:var(--sc-muted)}#第三方直接实现-sso-标准接口-umhwiv .db-b.is-focal{fill:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .mk-seg{fill-opacity:.7;stroke:var(--sc-paper)}
+#第三方直接实现-sso-标准接口-umhwiv .mk-pct{fill:var(--sc-ink-strong);font-family:var(--sc-font-mono);font-size:8.5px}
+#第三方直接实现-sso-标准接口-umhwiv .wm-link{stroke:var(--sc-soft)!important;stroke-width:1!important}
+#第三方直接实现-sso-标准接口-umhwiv .wm-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}#第三方直接实现-sso-标准接口-umhwiv .wm-dot.is-focal{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .wm-label{fill:var(--sc-ink);font-size:10.5px;font-weight:500;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#第三方直接实现-sso-标准接口-umhwiv .wm-label.is-anchor{font-weight:700;font-size:12px}
+#第三方直接实现-sso-标准接口-umhwiv .wm-move{stroke:var(--sc-accent);stroke-width:1.2;stroke-dasharray:4 3;fill:none}#第三方直接实现-sso-标准接口-umhwiv .wm-move-head{fill:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .wm-ghost{fill:none;stroke:var(--sc-accent);stroke-dasharray:2 2}
+#第三方直接实现-sso-标准接口-umhwiv .wm-inertia{stroke:var(--sc-ink);stroke-width:3}
+#第三方直接实现-sso-标准接口-umhwiv .callout{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:13px}
+
+#第三方直接实现-sso-标准接口-umhwiv .iso-base{fill:var(--sc-node)}
+#第三方直接实现-sso-标准接口-umhwiv .iso-t{fill:var(--sc-ax-lift);fill-opacity:var(--sc-ax-t-o)}
+#第三方直接实现-sso-标准接口-umhwiv .iso-l{fill:var(--sc-ax-shade);fill-opacity:var(--sc-ax-l-o)}
+#第三方直接实现-sso-标准接口-umhwiv .iso-r{fill:var(--sc-ax-shade);fill-opacity:var(--sc-ax-r-o)}
+#第三方直接实现-sso-标准接口-umhwiv .k-focal .iso-t{fill:var(--sc-accent);fill-opacity:.12}
+#第三方直接实现-sso-标准接口-umhwiv .k-focal .iso-l{fill:var(--sc-accent);fill-opacity:.22}
+#第三方直接实现-sso-标准接口-umhwiv .k-focal .iso-r{fill:var(--sc-accent);fill-opacity:.34}
+#第三方直接实现-sso-标准接口-umhwiv .iso-edge{fill:none;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.8;stroke-linejoin:round}
+#第三方直接实现-sso-标准接口-umhwiv .iso-sil{fill:none;stroke:var(--sc-ink);stroke-width:1.2;stroke-linejoin:round}
+#第三方直接实现-sso-标准接口-umhwiv .k-focal .iso-sil{stroke:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .iso-inset{fill:var(--sc-ink);fill-opacity:.06;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.7}
+#第三方直接实现-sso-标准接口-umhwiv .k-focal .iso-inset{fill:var(--sc-accent);fill-opacity:.16;stroke:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .iso-trace{fill:none;stroke:var(--sc-ink);stroke-opacity:.3;stroke-width:.8;stroke-dasharray:4 3}
+#第三方直接实现-sso-标准接口-umhwiv .iso-leader{stroke:var(--sc-ink);stroke-opacity:.4;stroke-width:.8}
+#第三方直接实现-sso-标准接口-umhwiv .iso-dot{fill:var(--sc-ink)}
+#第三方直接实现-sso-标准接口-umhwiv .k-focal .iso-leader{stroke:var(--sc-accent);stroke-opacity:1}#第三方直接实现-sso-标准接口-umhwiv .k-focal .iso-dot{fill:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .iso-name{fill:var(--sc-ink);font-size:14px;font-weight:600}
+#第三方直接实现-sso-标准接口-umhwiv .iso-sub{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9.5px;letter-spacing:.06em}
+#第三方直接实现-sso-标准接口-umhwiv .k-focal .iso-sub{fill:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .iso-contour{fill:none;stroke:var(--sc-ink);stroke-opacity:.22;stroke-width:.7}
+#第三方直接实现-sso-标准接口-umhwiv .iso-plate .iso-t{fill-opacity:0}
+#第三方直接实现-sso-标准接口-umhwiv .iso-mark{fill:var(--sc-ink);fill-opacity:.07}
+#第三方直接实现-sso-标准接口-umhwiv .iso-floor{fill:var(--sc-ink);fill-opacity:.035}
+#第三方直接实现-sso-标准接口-umhwiv .k-focal .iso-floor,#第三方直接实现-sso-标准接口-umhwiv .iso-floor.k-focal{fill:var(--sc-accent);fill-opacity:.1}
+#第三方直接实现-sso-标准接口-umhwiv .iso-canopy .iso-t{fill:var(--sc-series-1);fill-opacity:.55}
+#第三方直接实现-sso-标准接口-umhwiv .iso-canopy .iso-l,#第三方直接实现-sso-标准接口-umhwiv .iso-canopy .iso-r{fill:var(--sc-series-1);fill-opacity:.35}
+#第三方直接实现-sso-标准接口-umhwiv .iso-tag rect{fill:var(--sc-paper);stroke:var(--sc-rule-solid);stroke-width:.8}
+#第三方直接实现-sso-标准接口-umhwiv .k-focal.iso-tag rect,#第三方直接实现-sso-标准接口-umhwiv .k-focal .iso-tag rect{stroke:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .iso-tag .iso-name{font-size:11px}#第三方直接实现-sso-标准接口-umhwiv .iso-tag .iso-sub{font-size:8px}
+
+#第三方直接实现-sso-标准接口-umhwiv .it-light .iso-base{fill:var(--sc-node)}
+#第三方直接实现-sso-标准接口-umhwiv .it-dark .iso-base,#第三方直接实现-sso-标准接口-umhwiv .it-black .iso-base{fill:var(--sc-ax-screen)}
+#第三方直接实现-sso-标准接口-umhwiv .it-dark .iso-t,#第三方直接实现-sso-标准接口-umhwiv .it-black .iso-t{fill:#fff;fill-opacity:.07}
+#第三方直接实现-sso-标准接口-umhwiv .it-dark .iso-edge,#第三方直接实现-sso-标准接口-umhwiv .it-black .iso-edge{stroke:#fff;stroke-opacity:.18}
+#第三方直接实现-sso-标准接口-umhwiv .it-accent .iso-base{fill:var(--sc-node)}#第三方直接实现-sso-标准接口-umhwiv .it-accent .iso-t,#第三方直接实现-sso-标准接口-umhwiv .it-accent .iso-l,#第三方直接实现-sso-标准接口-umhwiv .it-accent .iso-r{fill:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .it-accent .iso-t{fill-opacity:.25}#第三方直接实现-sso-标准接口-umhwiv .it-accent .iso-l{fill-opacity:.4}#第三方直接实现-sso-标准接口-umhwiv .it-accent .iso-r{fill-opacity:.55}
+#第三方直接实现-sso-标准接口-umhwiv .it-accent .iso-sil{stroke:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .it-mid .iso-base{fill:var(--sc-node)}
+#第三方直接实现-sso-标准接口-umhwiv .it-solid .iso-sil{stroke-width:.9}
+#第三方直接实现-sso-标准接口-umhwiv path.it-dark{fill:var(--sc-ax-screen)}
+#第三方直接实现-sso-标准接口-umhwiv path.it-black{fill:#000;fill-opacity:.85}
+#第三方直接实现-sso-标准接口-umhwiv /* dark panels and solids keep an edge where they sit on dark walls (dark themes) */
+path.it-dark,#第三方直接实现-sso-标准接口-umhwiv path.it-black{stroke:var(--sc-ax-dark-edge);stroke-width:.7}
+#第三方直接实现-sso-标准接口-umhwiv .it-dark .iso-sil,#第三方直接实现-sso-标准接口-umhwiv .it-black .iso-sil{stroke:var(--sc-ink)}
+#第三方直接实现-sso-标准接口-umhwiv path.it-line.it-stroke-dark{stroke:var(--sc-ax-screen);stroke-opacity:.8}
+#第三方直接实现-sso-标准接口-umhwiv path.it-light{fill:var(--sc-node);stroke:var(--sc-ink);stroke-opacity:.45;stroke-width:.6}
+#第三方直接实现-sso-标准接口-umhwiv path.it-accent{fill:var(--sc-accent);fill-opacity:.9}
+#第三方直接实现-sso-标准接口-umhwiv path.it-mid{fill:var(--sc-ink);fill-opacity:.08}
+#第三方直接实现-sso-标准接口-umhwiv path.it-cut{fill:var(--sc-ink);fill-opacity:.13;stroke:var(--sc-ink);stroke-opacity:.45;stroke-width:.5}
+#第三方直接实现-sso-标准接口-umhwiv path.it-line{fill:none;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.8;stroke-linecap:round}
+#第三方直接实现-sso-标准接口-umhwiv path.it-text{fill:none;stroke:var(--sc-ink);stroke-opacity:.35;stroke-width:1.4;stroke-linecap:round}
+#第三方直接实现-sso-标准接口-umhwiv path.it-line.it-stroke-accent,#第三方直接实现-sso-标准接口-umhwiv path.it-text.it-stroke-accent{stroke:var(--sc-accent);stroke-opacity:1}
+#第三方直接实现-sso-标准接口-umhwiv path.it-stroke-light{stroke:#fff;stroke-opacity:.7}
+#第三方直接实现-sso-标准接口-umhwiv path.it-line.it-stroke-dark{stroke-width:2.2}
+#第三方直接实现-sso-标准接口-umhwiv path.it-dash{stroke-dasharray:4 3}
+#第三方直接实现-sso-标准接口-umhwiv path.it-button{fill:var(--sc-node);stroke:var(--sc-ink);stroke-opacity:.6;stroke-width:.8}
+#第三方直接实现-sso-标准接口-umhwiv path.it-cavity{fill:var(--sc-ink);fill-opacity:.07}
+#第三方直接实现-sso-标准接口-umhwiv path.it-floor{fill:var(--sc-ink);fill-opacity:.04;stroke:var(--sc-ink);stroke-opacity:.35;stroke-width:.7}
+
+#第三方直接实现-sso-标准接口-umhwiv .iso-beam-o{fill:none;stroke:var(--sc-ink);stroke-linecap:round}
+#第三方直接实现-sso-标准接口-umhwiv .iso-beam{fill:none;stroke:var(--sc-node);stroke-linecap:round}
+#第三方直接实现-sso-标准接口-umhwiv .iso-beam-dark{stroke:var(--sc-ax-screen)}
+#第三方直接实现-sso-标准接口-umhwiv .iso-beam-accent,#第三方直接实现-sso-标准接口-umhwiv .k-focal .iso-beam{stroke:var(--sc-accent);stroke-opacity:.55}
+#第三方直接实现-sso-标准接口-umhwiv .iso-leader{fill:none;stroke:var(--sc-ink);stroke-opacity:.4;stroke-width:.8}
+#第三方直接实现-sso-标准接口-umhwiv .k-focal .iso-leader{stroke:var(--sc-accent);stroke-opacity:1}
+
+@keyframes sc-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes sc-fade{from{opacity:0}to{opacity:1}}
+@keyframes sc-draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes sc-grow-y{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes sc-grow-x{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes sc-wipe{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes sc-wipe-down{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes sc-pop{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:scale(1)}}
+@keyframes sc-token{from{offset-distance:0%;opacity:0}8%{opacity:1}92%{opacity:1}to{offset-distance:100%;opacity:0}}
+@keyframes sc-pulse{0%,100%{stroke-opacity:1}50%{stroke-opacity:.35}}
+@keyframes sc-lift{from{transform:translateY(var(--lift))}to{transform:none}}
+@keyframes sc-drop{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:none}}
+#第三方直接实现-sso-标准接口-umhwiv .e-token{display:none}
+@media (prefers-reduced-motion: no-preference){
+#第三方直接实现-sso-标准接口-umhwiv.sc-svg[data-sc-motion]:not(.sc-still) [data-sc-step]{--d:calc(var(--step) * var(--sc-stagger))}
+#第三方直接实现-sso-标准接口-umhwiv.sc-svg[data-sc-motion]:not(.sc-still) .sc-node[data-sc-step],#第三方直接实现-sso-标准接口-umhwiv.sc-svg[data-sc-motion]:not(.sc-still) .sc-enter[data-sc-step]{animation:sc-in var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#第三方直接实现-sso-标准接口-umhwiv.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step]{animation:sc-fade 240ms ease-out var(--d) both}
+#第三方直接实现-sso-标准接口-umhwiv.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-head,#第三方直接实现-sso-标准接口-umhwiv.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-glyph,#第三方直接实现-sso-标准接口-umhwiv.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-label-g{animation:sc-fade 200ms ease-out calc(var(--d) + var(--sc-draw) * .8) both}
+#第三方直接实现-sso-标准接口-umhwiv.sc-svg:is([data-sc-motion="trace"],#第三方直接实现-sso-标准接口-umhwiv [data-sc-motion="loop"]):not(.sc-still) .sc-edge[data-sc-step] .e-line.sc-draw{stroke-dasharray:1;animation:sc-draw var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#第三方直接实现-sso-标准接口-umhwiv.sc-svg[data-sc-motion]:not(.sc-still) .sc-grow-y[data-sc-step]{transform-box:fill-box;transform-origin:50% 100%;animation:sc-grow-y var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#第三方直接实现-sso-标准接口-umhwiv.sc-svg[data-sc-motion]:not(.sc-still) .sc-grow-x[data-sc-step]{transform-box:fill-box;transform-origin:0 50%;animation:sc-grow-x var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#第三方直接实现-sso-标准接口-umhwiv.sc-svg[data-sc-motion]:not(.sc-still) .sc-wipe[data-sc-step]{animation:sc-wipe var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#第三方直接实现-sso-标准接口-umhwiv.sc-svg[data-sc-motion]:not(.sc-still) .sc-wipe-down[data-sc-step]{animation:sc-wipe-down var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#第三方直接实现-sso-标准接口-umhwiv.sc-svg[data-sc-motion]:not(.sc-still) .sc-pop[data-sc-step]{transform-box:fill-box;transform-origin:50% 50%;animation:sc-pop var(--sc-enter) cubic-bezier(.2,.9,.3,1.2) var(--d) both}
+#第三方直接实现-sso-标准接口-umhwiv.sc-svg[data-sc-motion]:not(.sc-still) .sc-fade[data-sc-step]{animation:sc-fade var(--sc-enter) ease-out var(--d) both}
+#第三方直接实现-sso-标准接口-umhwiv.sc-svg[data-sc-motion]:not(.sc-still) .iso-part[data-sc-step]{animation:none}
+#第三方直接实现-sso-标准接口-umhwiv.sc-svg[data-sc-motion]:not(.sc-still) .iso-part.sc-lift[data-sc-step]{animation:sc-lift calc(var(--sc-enter) * 1.6) cubic-bezier(.3,.6,.2,1) var(--d) both}
+#第三方直接实现-sso-标准接口-umhwiv.sc-svg[data-sc-motion]:not(.sc-still) .iso-label[data-sc-step]{animation:sc-fade var(--sc-enter) ease-out calc(var(--d) + var(--sc-enter) * 1.2) both}
+#第三方直接实现-sso-标准接口-umhwiv.sc-svg[data-sc-motion]:not(.sc-still) .sc-drop[data-sc-step]{animation:sc-drop var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#第三方直接实现-sso-标准接口-umhwiv.sc-svg:is([data-sc-motion="trace"],#第三方直接实现-sso-标准接口-umhwiv [data-sc-motion="loop"]):not(.sc-still) .e-token{display:inline;offset-rotate:0deg;animation:sc-token var(--tok-dur,1800ms) linear calc(var(--sc-settle) + var(--tok-delay,0ms)) infinite both}
+#第三方直接实现-sso-标准接口-umhwiv.sc-svg[data-sc-motion]:not(.sc-still) .k-change .n-box{animation:sc-pulse 1.6s ease-in-out var(--sc-settle) 3}
+}
+@media print{#第三方直接实现-sso-标准接口-umhwiv.sc-svg *{animation:none!important}#第三方直接实现-sso-标准接口-umhwiv .e-token{display:none!important}}
+#第三方直接实现-sso-标准接口-umhwiv .sc-still .e-token{display:none}
+#第三方直接实现-sso-标准接口-umhwiv .e-token{fill:var(--sc-accent)}
+#第三方直接实现-sso-标准接口-umhwiv .ek-link .e-token,#第三方直接实现-sso-标准接口-umhwiv .e-token.t-link{fill:var(--sc-link)}
+</style><desc id="第三方直接实现-sso-标准接口-umhwiv-desc">Sequence diagram with 3 elements.</desc><rect class="sc-bg" x="-32" y="-24" width="478" height="516"/><g class="sc-lifelines"><line class="q-life" x1="52" y1="40" x2="52" y2="476"/><line class="q-life" x1="192" y1="40" x2="192" y2="476"/><line class="q-life" x1="332" y1="40" x2="332" y2="476"/></g><g class="sc-frags"></g><g class="sc-edges"><g class="sc-edge ek-primary" data-sc-edge="m0" data-from="browser" data-to="app" data-sc-step="1" style="--step:1"><path class="e-line sc-draw" d="M52,76 L184,76" pathLength="1"/><path class="e-head m-primary" d="M191,76 L183,72.8 L183,79.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="121.5" y="69" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">获取授权地址</text></g><text class="q-num" x="58" y="69" text-anchor="start">1</text></g><g class="sc-edge ek-default" data-sc-edge="m1" data-from="app" data-to="idp" data-sc-step="2" style="--step:2"><path class="e-line sc-draw" d="M192,116 L324,116" pathLength="1"/><path class="e-head m-default" d="M331,116 L323,112.8 L323,119.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="261.5" y="109" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">GET getAuthURL</text></g><text class="q-num" x="198" y="109" text-anchor="start">2</text></g><g class="sc-edge ek-return" data-sc-edge="m2" data-from="idp" data-to="app" data-sc-step="3" style="--step:3"><path class="e-line" d="M332,156 L200,156"/><path class="e-head m-default" d="M193,156 L201,152.8 L201,159.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="262.5" y="149" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">authURL</text></g><text class="q-num" x="326" y="149" text-anchor="end">3</text></g><g class="sc-edge ek-return" data-sc-edge="m3" data-from="app" data-to="browser" data-sc-step="4" style="--step:4"><path class="e-line" d="M192,196 L60,196"/><path class="e-head m-default" d="M53,196 L61,192.8 L61,199.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="122.5" y="189" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">授权地址</text></g><text class="q-num" x="186" y="189" text-anchor="end">4</text></g><g class="sc-edge ek-primary" data-sc-edge="m4" data-from="browser" data-to="idp" data-sc-step="5" style="--step:5"><path class="e-line sc-draw" d="M52,236 L324,236" pathLength="1"/><path class="e-head m-primary" d="M331,236 L323,232.8 L323,239.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="191.5" y="229" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">跳转并登录</text></g><text class="q-num" x="58" y="229" text-anchor="start">5</text></g><g class="sc-edge ek-return" data-sc-edge="m5" data-from="idp" data-to="browser" data-sc-step="6" style="--step:6"><path class="e-line" d="M332,276 L60,276"/><path class="e-head m-default" d="M53,276 L61,272.8 L61,279.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="192.5" y="269" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">回调 /login/provider</text></g><text class="q-num" x="326" y="269" text-anchor="end">6</text></g><g class="sc-edge ek-primary" data-sc-edge="m6" data-from="browser" data-to="app" data-sc-step="7" style="--step:7"><path class="e-line sc-draw" d="M52,316 L184,316" pathLength="1"/><path class="e-head m-primary" d="M191,316 L183,312.8 L183,319.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="121.5" y="309" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">提交 code 等参数</text></g><text class="q-num" x="58" y="309" text-anchor="start">7</text></g><g class="sc-edge ek-default" data-sc-edge="m7" data-from="app" data-to="idp" data-sc-step="8" style="--step:8"><path class="e-line sc-draw" d="M192,356 L324,356" pathLength="1"/><path class="e-head m-default" d="M331,356 L323,352.8 L323,359.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="261.5" y="349" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">GET getUserInfo</text></g><text class="q-num" x="198" y="349" text-anchor="start">8</text></g><g class="sc-edge ek-return" data-sc-edge="m8" data-from="idp" data-to="app" data-sc-step="9" style="--step:9"><path class="e-line" d="M332,396 L200,396"/><path class="e-head m-default" d="M193,396 L201,392.8 L201,399.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="262.5" y="389" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">标准用户信息</text></g><text class="q-num" x="326" y="389" text-anchor="end">9</text></g><g class="sc-edge ek-return" data-sc-edge="m9" data-from="app" data-to="browser" data-sc-step="10" style="--step:10"><path class="e-line" d="M192,436 L60,436"/><path class="e-head m-default" d="M53,436 L61,432.8 L61,439.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="122.5" y="429" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">登录结果</text></g><text class="q-num" x="186" y="429" text-anchor="end">10</text></g></g><g class="sc-notes"></g><g class="sc-nodes"><g class="sc-node k-external sh-box" data-sc-node="browser" data-sc-step="0" style="--step:0" tabindex="0" role="group" aria-label="用户浏览器"><rect class="n-mask" x="0" y="0" width="104" height="40" rx="6"/><rect class="n-box" x="0" y="0" width="104" height="40" rx="6"/><text class="n-label" x="52" y="25" text-anchor="middle">用户浏览器</text></g><g class="sc-node k-focal sh-box" data-sc-node="app" data-sc-step="0" style="--step:0" tabindex="0" role="group" aria-label="FastGPT"><rect class="n-mask" x="140" y="0" width="104" height="40" rx="6"/><rect class="n-box" x="140" y="0" width="104" height="40" rx="6"/><text class="n-label" x="192" y="25" text-anchor="middle">FastGPT</text></g><g class="sc-node k-external sh-box" data-sc-node="idp" data-sc-step="0" style="--step:0" tabindex="0" role="group" aria-label="第三方系统"><rect class="n-mask" x="280" y="0" width="104" height="40" rx="6"/><rect class="n-box" x="280" y="0" width="104" height="40" rx="6"/><text class="n-label" x="332" y="25" text-anchor="middle">第三方系统</text></g></g></svg>

@@ -12,27 +12,11 @@ description: FastGPT self-hosted architecture overview, capacity planning, confi
 
 The FastGPT self-hosted deployment consists of the core application layer, runtime execution sandboxes, and a four-pillar data infrastructure:
 
-```mermaid
-graph TB
-    Client[Client / Browser / API Caller] --> Ingress[Reverse Proxy / Ingress Gateway]
-    Ingress --> App[FastGPT Core Service<br/>Next.js Web / API / Worker]
+![FastGPT core deployment](/imgs/diagrams/deployment-core.en.light.svg)
 
-    subgraph Execution and Proxy Layer
-        App --> AIProxy[AI Proxy Model Router]
-        App --> CodeSandbox[Code Sandbox<br/>Python / JS Quick Execution]
-        App --> Provider[Agent Sandbox Provider API]
-        Provider --> OpenSandbox[OpenSandbox / Sealos Devbox Workspace]
-        Client --> SandboxProxy[Agent Sandbox Proxy]
-        SandboxProxy --> OpenSandbox
-    end
+Configure the access gateway and surrounding services for your deployment, and select one supported vector database backend.
 
-    subgraph Four-Pillar Data Infrastructure
-        App --> Mongo[(MongoDB Replica Set<br/>App / Collection / Chunk Metadata)]
-        App --> VectorDB[(Vector Database<br/>PGVector / Milvus / OceanBase / SeekDB)]
-        App --> S3[(S3 / MinIO Object Storage<br/>Public Avatars & Private Files)]
-        App --> Redis[(Redis Cache and Queue<br/>BullMQ / Lease Locks / Cross-Node Sync)]
-    end
-```
+![Plugin and sandbox execution](/imgs/diagrams/execution-services.en.light.svg)
 
 ## Capacity Planning and Baseline Specifications
 

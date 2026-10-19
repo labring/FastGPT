@@ -1,0 +1,143 @@
+{
+  "type": "flowchart",
+  "title": "Agent 沙箱初始化",
+  "nodes": [
+    {
+      "id": "need",
+      "label": "需要沙箱",
+      "row": 0,
+      "col": 0,
+      "kind": "input"
+    },
+    {
+      "id": "runtime",
+      "label": "获取运行态",
+      "row": 1,
+      "col": 0,
+      "kind": "backend",
+      "sub": "连接 / 创建 / 恢复"
+    },
+    {
+      "id": "lock",
+      "label": "获取初始化锁",
+      "row": 2,
+      "col": 0,
+      "kind": "backend"
+    },
+    {
+      "id": "files",
+      "label": "注入配置与文件",
+      "row": 3,
+      "col": 0,
+      "kind": "backend",
+      "sub": "镜像源 / Skill / 输入"
+    },
+    {
+      "id": "check",
+      "label": "脚本需运行？",
+      "row": 4,
+      "col": 0,
+      "kind": "backend",
+      "shape": "decision"
+    },
+    {
+      "id": "script",
+      "label": "执行启动脚本",
+      "row": 4,
+      "col": 1,
+      "kind": "backend",
+      "sub": "成功后保存实例 hash"
+    },
+    {
+      "id": "skills",
+      "label": "Skill 初始化",
+      "row": 5,
+      "col": 0,
+      "kind": "backend",
+      "sub": "运行入口并扫描"
+    },
+    {
+      "id": "ready",
+      "label": "本轮可用",
+      "row": 6,
+      "col": 0,
+      "kind": "backend",
+      "focal": true
+    }
+  ],
+  "edges": [
+    [
+      "need",
+      "runtime",
+      "",
+      "primary"
+    ],
+    [
+      "runtime",
+      "lock",
+      "",
+      "primary"
+    ],
+    [
+      "lock",
+      "files",
+      "",
+      "primary"
+    ],
+    [
+      "files",
+      "check",
+      "",
+      "primary"
+    ],
+    [
+      "check",
+      "script",
+      "hash 变化",
+      "default"
+    ],
+    [
+      "check",
+      "skills",
+      "空 / 相同",
+      "primary"
+    ],
+    [
+      "script",
+      "skills",
+      "完成或警告",
+      "default"
+    ],
+    [
+      "skills",
+      "ready",
+      "",
+      "primary"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "runtime",
+      "file": "packages/service/core/ai/sandbox/application/runtime/service.ts",
+      "line": 127
+    },
+    {
+      "id": "files",
+      "file": "packages/service/core/workflow/dispatch/ai/agent/sub/sandbox/prepare.ts",
+      "line": 118
+    },
+    {
+      "id": "script",
+      "file": "packages/service/core/ai/sandbox/application/runtime/entrypoint.ts",
+      "line": 76
+    }
+  ],
+  "dir": "TB",
+  "lang": "zh-CN",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

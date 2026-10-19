@@ -1,0 +1,320 @@
+<svg width="336" height="452" class="sc-svg sc-still" id="知识资产层级-1yemdt" xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 336 452" role="img" aria-labelledby="知识资产层级-1yemdt-title 知识资产层级-1yemdt-desc" lang="zh-CN" data-sc-type="architecture" data-sc-slug="知识资产层级" data-sc-steps="7"><title id="知识资产层级-1yemdt-title">知识资产层级</title><style>#知识资产层级-1yemdt{--sc-paper:#1a1a1a;--sc-paper-2:#272727;--sc-ink:#fafafa;--sc-ink-strong:#fdfdfd;--sc-muted:#b2b2b2;--sc-soft:#868686;--sc-rule:rgba(250,250,250,0.12);--sc-rule-solid:#545454;--sc-accent:#3370ff;--sc-accent-tint:rgba(51,112,255,0.14);--sc-link:#79a0fd;--sc-node:#222222;--sc-store:rgba(250,250,250,0.05);--sc-external:rgba(250,250,250,0.025);--sc-series-1:#8fb394;--sc-series-2:#d9a95f;--sc-series-3:#a993cc;--sc-series-4:#d0806b;--sc-series-5:#86a5c4;--sc-ax-shade:#000000;--sc-ax-lift:#ffffff;--sc-ax-screen:#07080b;--sc-ax-dark-edge:rgba(255,255,255,0.34);--sc-ax-t-o:0.06;--sc-ax-l-o:0.2;--sc-ax-r-o:0.42;--sc-on-v00:#000000;--sc-on-v01:#ffffff;--sc-on-v10:#000000;--sc-on-v11:#ffffff;--sc-font-serif:'Fraunces', 'Noto Serif', Georgia, serif;--sc-font-sans:'IBM Plex Sans', 'Noto Sans', system-ui, sans-serif;--sc-font-mono:'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;}
+#知识资产层级-1yemdt.sc-svg{font-family:var(--sc-font-sans);color:var(--sc-ink);direction:ltr}
+#知识资产层级-1yemdt .sc-mark{opacity:.88;pointer-events:none}
+#知识资产层级-1yemdt .sc-mark-word{fill:var(--sc-ink)}
+#知识资产层级-1yemdt .sc-bg{fill:var(--sc-paper)}
+#知识资产层级-1yemdt .n-mask{fill:var(--sc-paper)}
+#知识资产层级-1yemdt .n-box{fill:var(--sc-node);stroke:var(--sc-ink);stroke-width:1}
+#知识资产层级-1yemdt .k-focal .n-box{fill:var(--sc-accent-tint);stroke:var(--sc-accent);stroke-width:1.2}
+#知识资产层级-1yemdt .k-store .n-box{fill:var(--sc-store);stroke:var(--sc-muted)}
+#知识资产层级-1yemdt .k-external .n-box{fill:var(--sc-external);stroke:var(--sc-soft)}
+#知识资产层级-1yemdt .k-input .n-box{fill:var(--sc-external);stroke:var(--sc-soft)}
+#知识资产层级-1yemdt .k-optional .n-box{fill:transparent;stroke:var(--sc-soft);stroke-dasharray:4 3}
+#知识资产层级-1yemdt .k-security .n-box{fill:var(--sc-accent-tint);stroke:var(--sc-accent);stroke-opacity:.55;stroke-dasharray:4 4}
+#知识资产层级-1yemdt .k-muted .n-box{fill:var(--sc-store);stroke:var(--sc-rule-solid)}
+#知识资产层级-1yemdt .n-label{fill:var(--sc-ink);font-size:12px;font-weight:600}
+#知识资产层级-1yemdt .n-sub{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}
+#知识资产层级-1yemdt .n-icon{fill:none;stroke:var(--sc-muted);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+#知识资产层级-1yemdt .k-focal .n-icon{stroke:var(--sc-accent)}
+#知识资产层级-1yemdt .n-tag{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:7px;letter-spacing:.12em;text-transform:uppercase}
+#知识资产层级-1yemdt .n-tag-box{fill:none;stroke:var(--sc-rule-solid);stroke-width:.8}
+#知识资产层级-1yemdt .k-focal .n-tag{fill:var(--sc-accent)}
+#知识资产层级-1yemdt .k-focal .n-tag-box{stroke:var(--sc-accent);stroke-opacity:.5}
+#知识资产层级-1yemdt .e-line{fill:none;stroke:var(--sc-muted);stroke-width:1.1}
+#知识资产层级-1yemdt .ek-primary .e-line{stroke:var(--sc-accent);stroke-width:1.4}
+#知识资产层级-1yemdt .ek-link .e-line{stroke:var(--sc-link);stroke-width:1.2}
+#知识资产层级-1yemdt .ek-async .e-line,#知识资产层级-1yemdt .ek-return .e-line{stroke-width:1}
+#知识资产层级-1yemdt .ek-muted .e-line{stroke:var(--sc-soft);stroke-width:1}
+#知识资产层级-1yemdt .e-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.06em;text-transform:uppercase}
+#知识资产层级-1yemdt .ek-primary .e-label{fill:var(--sc-accent)}
+#知识资产层级-1yemdt .ek-link .e-label{fill:var(--sc-link)}
+#知识资产层级-1yemdt .e-label-bg{fill:var(--sc-paper)}
+#知识资产层级-1yemdt .m-default{fill:var(--sc-muted)}#知识资产层级-1yemdt .m-primary{fill:var(--sc-accent)}#知识资产层级-1yemdt .m-link{fill:var(--sc-link)}#知识资产层级-1yemdt .m-muted{fill:var(--sc-soft)}
+#知识资产层级-1yemdt .g-box{fill:var(--sc-ink);fill-opacity:.018;stroke:var(--sc-rule);stroke-width:.8}
+#知识资产层级-1yemdt .g-box.g-dashed{stroke-dasharray:4 4;stroke:var(--sc-soft);stroke-opacity:.6}
+#知识资产层级-1yemdt .g-label{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:7px;letter-spacing:.16em;text-transform:uppercase}
+#知识资产层级-1yemdt .g-label-bg{fill:var(--sc-paper)}
+#知识资产层级-1yemdt .lg-rule{stroke:var(--sc-rule);stroke-width:.8}
+#知识资产层级-1yemdt .lg-title{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.18em}
+#知识资产层级-1yemdt .lg-text{fill:var(--sc-muted);font-size:9px}
+#知识资产层级-1yemdt .ax-line{stroke:var(--sc-rule-solid);stroke-width:1}
+#知识资产层级-1yemdt .ax-grid{stroke:var(--sc-rule);stroke-width:.8}
+#知识资产层级-1yemdt .ax-text{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.04em}
+#知识资产层级-1yemdt .ax-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase}
+#知识资产层级-1yemdt .c-cat{fill:var(--sc-muted);font-size:10px}
+#知识资产层级-1yemdt .c-val{fill:var(--sc-ink);font-family:var(--sc-font-mono);font-size:9px}
+#知识资产层级-1yemdt .c-bar{fill:var(--sc-muted);fill-opacity:.38}
+#知识资产层级-1yemdt .c-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#知识资产层级-1yemdt .c-val.is-focal{fill:var(--sc-accent);font-weight:500}
+#知识资产层级-1yemdt .s-1{fill:var(--sc-series-1)}#知识资产层级-1yemdt .s-2{fill:var(--sc-series-2)}#知识资产层级-1yemdt .s-3{fill:var(--sc-series-3)}#知识资产层级-1yemdt .s-4{fill:var(--sc-series-4)}#知识资产层级-1yemdt .s-5{fill:var(--sc-series-5)}
+#知识资产层级-1yemdt .sk-node{fill:var(--sc-muted)}
+#知识资产层级-1yemdt .sk-node.is-focal{fill:var(--sc-accent)}
+#知识资产层级-1yemdt .sk-link{fill:var(--sc-muted);fill-opacity:.14}
+#知识资产层级-1yemdt .sk-link.is-focal{fill:var(--sc-accent);fill-opacity:.28}
+#知识资产层级-1yemdt .sk-label{fill:var(--sc-ink);font-size:11px;font-weight:500;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#知识资产层级-1yemdt .sk-val{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#知识资产层级-1yemdt .q-life{stroke:var(--sc-rule-solid);stroke-width:1;stroke-dasharray:3 4}
+#知识资产层级-1yemdt .q-frag{fill:none;stroke:var(--sc-soft);stroke-width:.8}
+#知识资产层级-1yemdt .q-frag-tag{fill:var(--sc-paper-2);stroke:var(--sc-soft);stroke-width:.8}
+#知识资产层级-1yemdt .q-frag-text{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase}
+#知识资产层级-1yemdt .q-num{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8px}
+#知识资产层级-1yemdt .q-note{fill:var(--sc-paper-2);stroke:var(--sc-rule-solid);stroke-width:.8}
+#知识资产层级-1yemdt .q-note-text{fill:var(--sc-muted);font-size:10px;font-style:italic;font-family:var(--sc-font-serif)}
+#知识资产层级-1yemdt .n-head{fill:var(--sc-ink);fill-opacity:.035;stroke:none}
+#知识资产层级-1yemdt .k-focal .n-head{fill:var(--sc-accent);fill-opacity:.08}
+#知识资产层级-1yemdt .n-rule{stroke:var(--sc-rule-solid);stroke-width:.8}
+#知识资产层级-1yemdt .n-field{fill:var(--sc-ink);font-size:10px}
+#知识资产层级-1yemdt .n-field-t{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}
+#知识资产层级-1yemdt .n-key{font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.06em;fill:var(--sc-soft)}
+#知识资产层级-1yemdt .n-key-pk{fill:var(--sc-accent)}#知识资产层级-1yemdt .n-key-fk{fill:var(--sc-link)}
+#知识资产层级-1yemdt .sh-start .n-box{fill:var(--sc-ink);stroke:none}
+#知识资产层级-1yemdt .sh-end .n-box{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.2}
+#知识资产层级-1yemdt .n-dot{fill:var(--sc-ink)}
+#知识资产层级-1yemdt .n-status{stroke:var(--sc-paper);stroke-width:1.5}
+#知识资产层级-1yemdt .st-ok{fill:var(--sc-series-1)}#知识资产层级-1yemdt .st-risk{fill:var(--sc-series-2)}#知识资产层级-1yemdt .st-legacy{fill:var(--sc-series-5)}#知识资产层级-1yemdt .st-retire{fill:var(--sc-series-4)}
+#知识资产层级-1yemdt .n-change{fill:var(--sc-accent);font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.12em}
+#知识资产层级-1yemdt .ch-added .n-box{stroke:var(--sc-accent);stroke-width:1.3}
+#知识资产层级-1yemdt .ch-removed{opacity:.55}#知识资产层级-1yemdt .ch-removed .n-box{stroke-dasharray:4 3;stroke:var(--sc-soft)}#知识资产层级-1yemdt .ch-removed .n-label{text-decoration:line-through}
+#知识资产层级-1yemdt .ch-removed .n-change{fill:var(--sc-soft)}
+#知识资产层级-1yemdt .ch-changed .n-box{stroke:var(--sc-accent);stroke-dasharray:6 2}
+#知识资产层级-1yemdt .sc-edge.ch-added .e-line{stroke:var(--sc-accent)}#知识资产层级-1yemdt .sc-edge.ch-removed .e-line{stroke-dasharray:3 3}
+#知识资产层级-1yemdt .e-line.dashed{stroke-dasharray:4 3}
+#知识资产层级-1yemdt .ek-rel .e-line{stroke:var(--sc-muted);stroke-width:1}
+#知识资产层级-1yemdt .e-glyph.stroke{fill:none;stroke:var(--sc-muted);stroke-width:1}
+#知识资产层级-1yemdt .e-glyph.hollow{fill:var(--sc-paper);stroke:var(--sc-muted);stroke-width:1}
+#知识资产层级-1yemdt .e-glyph.filled{fill:var(--sc-muted);stroke:var(--sc-muted);stroke-width:1}
+#知识资产层级-1yemdt .lane-band{fill:var(--sc-ink);fill-opacity:.022}
+#知识资产层级-1yemdt .lane-band.alt{fill-opacity:0}
+#知识资产层级-1yemdt .lane-rule{stroke:var(--sc-rule);stroke-width:.8}
+#知识资产层级-1yemdt .lane-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase}
+#知识资产层级-1yemdt .loop-center{fill:var(--sc-ink);font-family:var(--sc-font-serif);font-size:20px}
+#知识资产层级-1yemdt .nest-mask{fill:var(--sc-paper)}
+#知识资产层级-1yemdt .nest-box{fill:var(--sc-ink);fill-opacity:.025;stroke:var(--sc-rule-solid);stroke-width:.9}
+#知识资产层级-1yemdt .nest-d0 .nest-box{fill-opacity:.012}#知识资产层级-1yemdt .nest-d2 .nest-box{fill-opacity:.04}#知识资产层级-1yemdt .nest-d3 .nest-box{fill-opacity:.055}
+#知识资产层级-1yemdt .k-focal .nest-box{fill:var(--sc-accent-tint);fill-opacity:1;stroke:var(--sc-accent)}
+#知识资产层级-1yemdt .nest-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.14em;text-transform:uppercase}
+#知识资产层级-1yemdt .chip{fill:var(--sc-paper-2);stroke:var(--sc-rule);stroke-width:.8}
+#知识资产层级-1yemdt .chip-text{fill:var(--sc-ink);font-size:10px}
+#知识资产层级-1yemdt .k-focal .chip{fill:var(--sc-paper);stroke:var(--sc-accent);stroke-opacity:.4}
+#知识资产层级-1yemdt .venn-c{fill:var(--sc-muted);fill-opacity:.07;stroke:var(--sc-muted);stroke-width:1}
+#知识资产层级-1yemdt .vs-2 .venn-c{fill:var(--sc-series-2);stroke:var(--sc-series-2);fill-opacity:.09}
+#知识资产层级-1yemdt .vs-3 .venn-c{fill:var(--sc-series-1);stroke:var(--sc-series-1);fill-opacity:.09}
+#知识资产层级-1yemdt .venn.k-focal .venn-c{fill:var(--sc-accent);stroke:var(--sc-accent);fill-opacity:.09}
+#知识资产层级-1yemdt .venn-label{fill:var(--sc-ink);font-size:13px;font-weight:600}
+#知识资产层级-1yemdt .venn-ov{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:13px}
+#知识资产层级-1yemdt .venn-ov.is-focal{fill:var(--sc-accent)}
+#知识资产层级-1yemdt .fb-spine{stroke-width:1.6}
+#知识资产层级-1yemdt .fb-tick{stroke:var(--sc-rule-solid);stroke-width:.8}
+#知识资产层级-1yemdt .fb-cat{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;letter-spacing:.14em}
+#知识资产层级-1yemdt .fb-cat.is-focal{fill:var(--sc-accent)}
+#知识资产层级-1yemdt .fb-cause{fill:var(--sc-ink);font-size:10px}
+#知识资产层级-1yemdt .kb-col{fill:var(--sc-ink);fill-opacity:.025;stroke:var(--sc-rule);stroke-width:.8;rx:8}
+#知识资产层级-1yemdt .kb-col.is-over{stroke:var(--sc-accent);stroke-opacity:.6}
+#知识资产层级-1yemdt .kb-head{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#知识资产层级-1yemdt .kb-count{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:9px}
+#知识资产层级-1yemdt .kb-count.is-over{fill:var(--sc-accent)}
+#知识资产层级-1yemdt .kb-card{fill:var(--sc-ink);font-size:11px;font-weight:500}
+#知识资产层级-1yemdt .sm-act{fill:var(--sc-ink)}
+#知识资产层级-1yemdt .sm-activity.k-focal .sm-act{fill:var(--sc-accent)}
+#知识资产层级-1yemdt .sm-act-text{fill:var(--sc-paper);font-size:11px;font-weight:600}
+#知识资产层级-1yemdt .q-frame{fill:none;stroke:var(--sc-rule-solid);stroke-width:1}
+#知识资产层级-1yemdt .q-focal{fill:var(--sc-accent-tint)}
+#知识资产层级-1yemdt .q-title{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#知识资产层级-1yemdt .quad.k-focal .q-title,#知识资产层级-1yemdt .quad.k-focal .q-title-big{fill:var(--sc-accent)}
+#知识资产层级-1yemdt .q-title-big{fill:var(--sc-ink);font-family:var(--sc-font-serif);font-size:19px}
+#知识资产层级-1yemdt .q-item{fill:var(--sc-muted);font-size:11px}
+#知识资产层级-1yemdt .q-dot{fill:var(--sc-muted)}
+#知识资产层级-1yemdt .q-pt.k-focal .q-dot{fill:var(--sc-accent)}
+#知识资产层级-1yemdt .q-pt-label{fill:var(--sc-ink);font-size:10.5px;font-weight:500}
+#知识资产层级-1yemdt .q-pt.k-focal .q-pt-label{fill:var(--sc-accent)}
+#知识资产层级-1yemdt .mx-col{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.08em}
+#知识资产层级-1yemdt .mx-row{fill:var(--sc-ink);font-size:11px;font-weight:500}
+#知识资产层级-1yemdt .mx-band{fill:var(--sc-ink);fill-opacity:.025}
+#知识资产层级-1yemdt .mx-g.fill{fill:var(--sc-ink)}#知识资产层级-1yemdt .mx-g.ring{fill:none;stroke:var(--sc-ink);stroke-width:1}
+#知识资产层级-1yemdt .mx-g.dashed{stroke-dasharray:2 2}#知识资产层级-1yemdt .mx-g.admin{fill:var(--sc-accent)}#知识资产层级-1yemdt .mx-g.none{fill:var(--sc-soft)}
+#知识资产层级-1yemdt .mx-r.k-focal .mx-row{fill:var(--sc-accent)}
+#知识资产层级-1yemdt .tl-axis{stroke:var(--sc-ink);stroke-width:1.2}
+#知识资产层级-1yemdt .tl-stem{stroke:var(--sc-rule-solid);stroke-width:.8}
+#知识资产层级-1yemdt .tl-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}
+#知识资产层级-1yemdt .tl-ev.k-focal .tl-dot{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#知识资产层级-1yemdt .tl-ev.k-focal .tl-label{fill:var(--sc-accent)}
+#知识资产层级-1yemdt .tl-label{font-size:11px}
+#知识资产层级-1yemdt .tl-when{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;letter-spacing:.04em}
+#知识资产层级-1yemdt .tl-period{fill:var(--sc-ink);fill-opacity:.07}
+#知识资产层级-1yemdt .tl-period.is-focal{fill:var(--sc-accent);fill-opacity:.16}
+#知识资产层级-1yemdt .tl-period-text{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.08em}
+#知识资产层级-1yemdt .g-task{fill:var(--sc-ink);font-size:11px}
+#知识资产层级-1yemdt .g-bar{fill:var(--sc-muted);fill-opacity:.45}
+#知识资产层级-1yemdt .g-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#知识资产层级-1yemdt .g-bar.is-done{fill-opacity:.2}
+#知识资产层级-1yemdt .g-done{fill:var(--sc-muted);font-size:10px}
+#知识资产层级-1yemdt .g-mile{fill:var(--sc-ink)}
+#知识资产层级-1yemdt .k-focal .g-mile{fill:var(--sc-accent)}
+#知识资产层级-1yemdt .g-today{stroke:var(--sc-accent);stroke-width:1;stroke-dasharray:3 3}
+#知识资产层级-1yemdt .g-today-text{fill:var(--sc-accent);font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.14em}
+#知识资产层级-1yemdt .jr-band{fill:var(--sc-ink);fill-opacity:.025}#知识资产层级-1yemdt .jr-band.alt{fill-opacity:0}
+#知识资产层级-1yemdt .jr-stage{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#知识资产层级-1yemdt .jr-curve{stroke:var(--sc-ink);stroke-width:1.6}
+#知识资产层级-1yemdt .jr-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}
+#知识资产层级-1yemdt .jr-dot.is-pain,#知识资产层级-1yemdt .jr-dot.is-focal{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#知识资产层级-1yemdt .jr-step{fill:var(--sc-ink);font-size:10.5px;font-weight:500}
+#知识资产层级-1yemdt .jr-note{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:11px;paint-order:stroke;stroke:var(--sc-paper);stroke-width:4px;stroke-linejoin:round}
+#知识资产层级-1yemdt .jr-note.is-pain{fill:var(--sc-accent)}
+#知识资产层级-1yemdt .ln{fill:none;stroke-width:1.6;stroke:var(--sc-muted)}
+#知识资产层级-1yemdt .ln.is-focal{stroke:var(--sc-accent);stroke-width:2.2}#知识资产层级-1yemdt .ln.is-muted{stroke:var(--sc-soft);stroke-opacity:.55}
+#知识资产层级-1yemdt .ln-1{stroke:var(--sc-series-1)}#知识资产层级-1yemdt .ln-2{stroke:var(--sc-series-2)}#知识资产层级-1yemdt .ln-3{stroke:var(--sc-series-3)}#知识资产层级-1yemdt .ln-4{stroke:var(--sc-series-4)}#知识资产层级-1yemdt .ln-5{stroke:var(--sc-series-5)}
+#知识资产层级-1yemdt .ln-pt{fill:var(--sc-paper);stroke-width:1.4}
+#知识资产层级-1yemdt .ln-pt.is-focal{fill:var(--sc-accent)}
+#知识资产层级-1yemdt .ln-label{font-size:10.5px;font-weight:500;fill:var(--sc-muted)}
+#知识资产层级-1yemdt .is-muted-t{fill:var(--sc-soft)}
+#知识资产层级-1yemdt .ln-1-t{fill:var(--sc-series-1)}#知识资产层级-1yemdt .ln-2-t{fill:var(--sc-series-2)}#知识资产层级-1yemdt .ln-3-t{fill:var(--sc-series-3)}#知识资产层级-1yemdt .ln-4-t{fill:var(--sc-series-4)}#知识资产层级-1yemdt .ln-5-t{fill:var(--sc-series-5)}
+#知识资产层级-1yemdt .ln-area{fill:var(--sc-muted);fill-opacity:.08}#知识资产层级-1yemdt .ln-area.is-focal{fill:var(--sc-accent);fill-opacity:.1}
+#知识资产层级-1yemdt .rg-area{fill:var(--sc-muted);fill-opacity:.18}#知识资产层级-1yemdt .rg-area.is-focal{fill:var(--sc-accent);fill-opacity:.28}
+#知识资产层级-1yemdt .rg-line{fill:none;stroke:var(--sc-ink);stroke-width:1.1}#知识资产层级-1yemdt .rg-line.is-focal{stroke:var(--sc-accent)}
+#知识资产层级-1yemdt .st-area{fill-opacity:.55;stroke:var(--sc-paper);stroke-width:1}
+#知识资产层级-1yemdt .st-area.is-focal{fill:var(--sc-accent);fill-opacity:.75}
+#知识资产层级-1yemdt .st-label{fill:var(--sc-ink-strong);font-size:10px;font-weight:600}
+#知识资产层级-1yemdt .is-focal-t{fill:var(--sc-accent)!important}
+#知识资产层级-1yemdt .sp-dot{fill:var(--sc-muted);fill-opacity:.55;stroke:var(--sc-paper);stroke-width:.8}
+#知识资产层级-1yemdt .sp-dot.is-bubble{fill-opacity:.25;stroke:var(--sc-muted);stroke-opacity:.7}
+#知识资产层级-1yemdt .sp-dot.is-focal{fill:var(--sc-accent);fill-opacity:.9;stroke:var(--sc-accent)}
+#知识资产层级-1yemdt .sp-label{fill:var(--sc-ink);font-size:10px;font-weight:500}
+#知识资产层级-1yemdt .rd-area{fill:var(--sc-muted);fill-opacity:.1}#知识资产层级-1yemdt .rd-line{fill:none;stroke:var(--sc-muted);stroke-width:1.4}
+#知识资产层级-1yemdt .rd-area.is-focal{fill:var(--sc-accent);fill-opacity:.16}#知识资产层级-1yemdt .rd-line.is-focal{stroke:var(--sc-accent);stroke-width:2}
+#知识资产层级-1yemdt .rd-area.is-muted{fill-opacity:.04}#知识资产层级-1yemdt .rd-line.is-muted{stroke:var(--sc-soft)}
+#知识资产层级-1yemdt .rd-area.s-1,#知识资产层级-1yemdt .rd-area.s-2,#知识资产层级-1yemdt .rd-area.s-3,#知识资产层级-1yemdt .rd-area.s-4,#知识资产层级-1yemdt .rd-area.s-5{fill-opacity:.14}
+#知识资产层级-1yemdt .rd-line.s-1{stroke:var(--sc-series-1)}#知识资产层级-1yemdt .rd-line.s-2{stroke:var(--sc-series-2)}#知识资产层级-1yemdt .rd-line.s-3{stroke:var(--sc-series-3)}#知识资产层级-1yemdt .rd-line.s-4{stroke:var(--sc-series-4)}#知识资产层级-1yemdt .rd-line.s-5{stroke:var(--sc-series-5)}
+#知识资产层级-1yemdt .rd-pt{fill:var(--sc-paper);stroke:var(--sc-muted)}#知识资产层级-1yemdt .rd-pt.is-focal{stroke:var(--sc-accent)}
+#知识资产层级-1yemdt .rd-key{fill:var(--sc-muted)}#知识资产层级-1yemdt .rd-key.is-focal{fill:var(--sc-accent)}#知识资产层级-1yemdt .rd-key.is-muted{fill:var(--sc-soft)}
+#知识资产层级-1yemdt .rd-ring{fill:none}
+#知识资产层级-1yemdt .pl-stem{stroke:var(--sc-muted);stroke-width:1.4}#知识资产层级-1yemdt .pl-stem.is-focal{stroke:var(--sc-accent);stroke-width:2}
+#知识资产层级-1yemdt .pl-dot{fill:var(--sc-muted)}#知识资产层级-1yemdt .pl-dot.is-focal{fill:var(--sc-accent)}
+#知识资产层级-1yemdt .wf-bar{fill:var(--sc-muted);fill-opacity:.4}
+#知识资产层级-1yemdt .wf-up{fill:var(--sc-series-1);fill-opacity:.75}#知识资产层级-1yemdt .wf-down{fill:var(--sc-series-4);fill-opacity:.75}
+#知识资产层级-1yemdt .wf-total{fill:var(--sc-ink);fill-opacity:.82}
+#知识资产层级-1yemdt .wf-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#知识资产层级-1yemdt .wf-link{stroke:var(--sc-soft);stroke-width:.8;stroke-dasharray:2 2}
+#知识资产层级-1yemdt .tm-cell{fill:var(--sc-muted);fill-opacity:.16;stroke:var(--sc-paper);stroke-width:1}
+#知识资产层级-1yemdt .tm-cell.is-focal{fill:var(--sc-accent);fill-opacity:.85}
+#知识资产层级-1yemdt .tm-sub{fill:var(--sc-paper);fill-opacity:.55}
+#知识资产层级-1yemdt .tm-label{fill:var(--sc-ink);font-size:11px;font-weight:600}#知识资产层级-1yemdt .tm-label.is-focal{fill:var(--sc-paper)}
+#知识资产层级-1yemdt .tm-val{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}#知识资产层级-1yemdt .tm-val.is-focal{fill:var(--sc-paper);fill-opacity:.85}
+#知识资产层级-1yemdt .tm-sub-label{fill:var(--sc-muted);font-size:9.5px}
+#知识资产层级-1yemdt .hm-cell.hm-pos{fill:var(--sc-accent)}#知识资产层级-1yemdt .hm-cell.hm-neg{fill:var(--sc-series-4)}
+#知识资产层级-1yemdt .hm-val{fill:var(--sc-ink);font-family:var(--sc-font-mono);font-size:8.5px}#知识资产层级-1yemdt .hm-val.v00{fill:var(--sc-on-v00)}#知识资产层级-1yemdt .hm-val.v01{fill:var(--sc-on-v01)}#知识资产层级-1yemdt .hm-val.v10{fill:var(--sc-on-v10)}#知识资产层级-1yemdt .hm-val.v11{fill:var(--sc-on-v11)}
+#知识资产层级-1yemdt .db-line{stroke:var(--sc-rule-solid);stroke-width:2.4}#知识资产层级-1yemdt .db-line.is-focal{stroke:var(--sc-accent);stroke-opacity:.45}
+#知识资产层级-1yemdt .db-a{fill:var(--sc-paper);stroke:var(--sc-muted);stroke-width:1.4}#知识资产层级-1yemdt .db-b{fill:var(--sc-muted)}#知识资产层级-1yemdt .db-b.is-focal{fill:var(--sc-accent)}
+#知识资产层级-1yemdt .mk-seg{fill-opacity:.7;stroke:var(--sc-paper)}
+#知识资产层级-1yemdt .mk-pct{fill:var(--sc-ink-strong);font-family:var(--sc-font-mono);font-size:8.5px}
+#知识资产层级-1yemdt .wm-link{stroke:var(--sc-soft)!important;stroke-width:1!important}
+#知识资产层级-1yemdt .wm-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}#知识资产层级-1yemdt .wm-dot.is-focal{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#知识资产层级-1yemdt .wm-label{fill:var(--sc-ink);font-size:10.5px;font-weight:500;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#知识资产层级-1yemdt .wm-label.is-anchor{font-weight:700;font-size:12px}
+#知识资产层级-1yemdt .wm-move{stroke:var(--sc-accent);stroke-width:1.2;stroke-dasharray:4 3;fill:none}#知识资产层级-1yemdt .wm-move-head{fill:var(--sc-accent)}
+#知识资产层级-1yemdt .wm-ghost{fill:none;stroke:var(--sc-accent);stroke-dasharray:2 2}
+#知识资产层级-1yemdt .wm-inertia{stroke:var(--sc-ink);stroke-width:3}
+#知识资产层级-1yemdt .callout{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:13px}
+
+#知识资产层级-1yemdt .iso-base{fill:var(--sc-node)}
+#知识资产层级-1yemdt .iso-t{fill:var(--sc-ax-lift);fill-opacity:var(--sc-ax-t-o)}
+#知识资产层级-1yemdt .iso-l{fill:var(--sc-ax-shade);fill-opacity:var(--sc-ax-l-o)}
+#知识资产层级-1yemdt .iso-r{fill:var(--sc-ax-shade);fill-opacity:var(--sc-ax-r-o)}
+#知识资产层级-1yemdt .k-focal .iso-t{fill:var(--sc-accent);fill-opacity:.12}
+#知识资产层级-1yemdt .k-focal .iso-l{fill:var(--sc-accent);fill-opacity:.22}
+#知识资产层级-1yemdt .k-focal .iso-r{fill:var(--sc-accent);fill-opacity:.34}
+#知识资产层级-1yemdt .iso-edge{fill:none;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.8;stroke-linejoin:round}
+#知识资产层级-1yemdt .iso-sil{fill:none;stroke:var(--sc-ink);stroke-width:1.2;stroke-linejoin:round}
+#知识资产层级-1yemdt .k-focal .iso-sil{stroke:var(--sc-accent)}
+#知识资产层级-1yemdt .iso-inset{fill:var(--sc-ink);fill-opacity:.06;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.7}
+#知识资产层级-1yemdt .k-focal .iso-inset{fill:var(--sc-accent);fill-opacity:.16;stroke:var(--sc-accent)}
+#知识资产层级-1yemdt .iso-trace{fill:none;stroke:var(--sc-ink);stroke-opacity:.3;stroke-width:.8;stroke-dasharray:4 3}
+#知识资产层级-1yemdt .iso-leader{stroke:var(--sc-ink);stroke-opacity:.4;stroke-width:.8}
+#知识资产层级-1yemdt .iso-dot{fill:var(--sc-ink)}
+#知识资产层级-1yemdt .k-focal .iso-leader{stroke:var(--sc-accent);stroke-opacity:1}#知识资产层级-1yemdt .k-focal .iso-dot{fill:var(--sc-accent)}
+#知识资产层级-1yemdt .iso-name{fill:var(--sc-ink);font-size:14px;font-weight:600}
+#知识资产层级-1yemdt .iso-sub{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9.5px;letter-spacing:.06em}
+#知识资产层级-1yemdt .k-focal .iso-sub{fill:var(--sc-accent)}
+#知识资产层级-1yemdt .iso-contour{fill:none;stroke:var(--sc-ink);stroke-opacity:.22;stroke-width:.7}
+#知识资产层级-1yemdt .iso-plate .iso-t{fill-opacity:0}
+#知识资产层级-1yemdt .iso-mark{fill:var(--sc-ink);fill-opacity:.07}
+#知识资产层级-1yemdt .iso-floor{fill:var(--sc-ink);fill-opacity:.035}
+#知识资产层级-1yemdt .k-focal .iso-floor,#知识资产层级-1yemdt .iso-floor.k-focal{fill:var(--sc-accent);fill-opacity:.1}
+#知识资产层级-1yemdt .iso-canopy .iso-t{fill:var(--sc-series-1);fill-opacity:.55}
+#知识资产层级-1yemdt .iso-canopy .iso-l,#知识资产层级-1yemdt .iso-canopy .iso-r{fill:var(--sc-series-1);fill-opacity:.35}
+#知识资产层级-1yemdt .iso-tag rect{fill:var(--sc-paper);stroke:var(--sc-rule-solid);stroke-width:.8}
+#知识资产层级-1yemdt .k-focal.iso-tag rect,#知识资产层级-1yemdt .k-focal .iso-tag rect{stroke:var(--sc-accent)}
+#知识资产层级-1yemdt .iso-tag .iso-name{font-size:11px}#知识资产层级-1yemdt .iso-tag .iso-sub{font-size:8px}
+
+#知识资产层级-1yemdt .it-light .iso-base{fill:var(--sc-node)}
+#知识资产层级-1yemdt .it-dark .iso-base,#知识资产层级-1yemdt .it-black .iso-base{fill:var(--sc-ax-screen)}
+#知识资产层级-1yemdt .it-dark .iso-t,#知识资产层级-1yemdt .it-black .iso-t{fill:#fff;fill-opacity:.07}
+#知识资产层级-1yemdt .it-dark .iso-edge,#知识资产层级-1yemdt .it-black .iso-edge{stroke:#fff;stroke-opacity:.18}
+#知识资产层级-1yemdt .it-accent .iso-base{fill:var(--sc-node)}#知识资产层级-1yemdt .it-accent .iso-t,#知识资产层级-1yemdt .it-accent .iso-l,#知识资产层级-1yemdt .it-accent .iso-r{fill:var(--sc-accent)}
+#知识资产层级-1yemdt .it-accent .iso-t{fill-opacity:.25}#知识资产层级-1yemdt .it-accent .iso-l{fill-opacity:.4}#知识资产层级-1yemdt .it-accent .iso-r{fill-opacity:.55}
+#知识资产层级-1yemdt .it-accent .iso-sil{stroke:var(--sc-accent)}
+#知识资产层级-1yemdt .it-mid .iso-base{fill:var(--sc-node)}
+#知识资产层级-1yemdt .it-solid .iso-sil{stroke-width:.9}
+#知识资产层级-1yemdt path.it-dark{fill:var(--sc-ax-screen)}
+#知识资产层级-1yemdt path.it-black{fill:#000;fill-opacity:.85}
+#知识资产层级-1yemdt /* dark panels and solids keep an edge where they sit on dark walls (dark themes) */
+path.it-dark,#知识资产层级-1yemdt path.it-black{stroke:var(--sc-ax-dark-edge);stroke-width:.7}
+#知识资产层级-1yemdt .it-dark .iso-sil,#知识资产层级-1yemdt .it-black .iso-sil{stroke:var(--sc-ink)}
+#知识资产层级-1yemdt path.it-line.it-stroke-dark{stroke:var(--sc-ax-screen);stroke-opacity:.8}
+#知识资产层级-1yemdt path.it-light{fill:var(--sc-node);stroke:var(--sc-ink);stroke-opacity:.45;stroke-width:.6}
+#知识资产层级-1yemdt path.it-accent{fill:var(--sc-accent);fill-opacity:.9}
+#知识资产层级-1yemdt path.it-mid{fill:var(--sc-ink);fill-opacity:.08}
+#知识资产层级-1yemdt path.it-cut{fill:var(--sc-ink);fill-opacity:.13;stroke:var(--sc-ink);stroke-opacity:.45;stroke-width:.5}
+#知识资产层级-1yemdt path.it-line{fill:none;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.8;stroke-linecap:round}
+#知识资产层级-1yemdt path.it-text{fill:none;stroke:var(--sc-ink);stroke-opacity:.35;stroke-width:1.4;stroke-linecap:round}
+#知识资产层级-1yemdt path.it-line.it-stroke-accent,#知识资产层级-1yemdt path.it-text.it-stroke-accent{stroke:var(--sc-accent);stroke-opacity:1}
+#知识资产层级-1yemdt path.it-stroke-light{stroke:#fff;stroke-opacity:.7}
+#知识资产层级-1yemdt path.it-line.it-stroke-dark{stroke-width:2.2}
+#知识资产层级-1yemdt path.it-dash{stroke-dasharray:4 3}
+#知识资产层级-1yemdt path.it-button{fill:var(--sc-node);stroke:var(--sc-ink);stroke-opacity:.6;stroke-width:.8}
+#知识资产层级-1yemdt path.it-cavity{fill:var(--sc-ink);fill-opacity:.07}
+#知识资产层级-1yemdt path.it-floor{fill:var(--sc-ink);fill-opacity:.04;stroke:var(--sc-ink);stroke-opacity:.35;stroke-width:.7}
+
+#知识资产层级-1yemdt .iso-beam-o{fill:none;stroke:var(--sc-ink);stroke-linecap:round}
+#知识资产层级-1yemdt .iso-beam{fill:none;stroke:var(--sc-node);stroke-linecap:round}
+#知识资产层级-1yemdt .iso-beam-dark{stroke:var(--sc-ax-screen)}
+#知识资产层级-1yemdt .iso-beam-accent,#知识资产层级-1yemdt .k-focal .iso-beam{stroke:var(--sc-accent);stroke-opacity:.55}
+#知识资产层级-1yemdt .iso-leader{fill:none;stroke:var(--sc-ink);stroke-opacity:.4;stroke-width:.8}
+#知识资产层级-1yemdt .k-focal .iso-leader{stroke:var(--sc-accent);stroke-opacity:1}
+
+@keyframes sc-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes sc-fade{from{opacity:0}to{opacity:1}}
+@keyframes sc-draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes sc-grow-y{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes sc-grow-x{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes sc-wipe{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes sc-wipe-down{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes sc-pop{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:scale(1)}}
+@keyframes sc-token{from{offset-distance:0%;opacity:0}8%{opacity:1}92%{opacity:1}to{offset-distance:100%;opacity:0}}
+@keyframes sc-pulse{0%,100%{stroke-opacity:1}50%{stroke-opacity:.35}}
+@keyframes sc-lift{from{transform:translateY(var(--lift))}to{transform:none}}
+@keyframes sc-drop{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:none}}
+#知识资产层级-1yemdt .e-token{display:none}
+@media (prefers-reduced-motion: no-preference){
+#知识资产层级-1yemdt.sc-svg[data-sc-motion]:not(.sc-still) [data-sc-step]{--d:calc(var(--step) * var(--sc-stagger))}
+#知识资产层级-1yemdt.sc-svg[data-sc-motion]:not(.sc-still) .sc-node[data-sc-step],#知识资产层级-1yemdt.sc-svg[data-sc-motion]:not(.sc-still) .sc-enter[data-sc-step]{animation:sc-in var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#知识资产层级-1yemdt.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step]{animation:sc-fade 240ms ease-out var(--d) both}
+#知识资产层级-1yemdt.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-head,#知识资产层级-1yemdt.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-glyph,#知识资产层级-1yemdt.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-label-g{animation:sc-fade 200ms ease-out calc(var(--d) + var(--sc-draw) * .8) both}
+#知识资产层级-1yemdt.sc-svg:is([data-sc-motion="trace"],#知识资产层级-1yemdt [data-sc-motion="loop"]):not(.sc-still) .sc-edge[data-sc-step] .e-line.sc-draw{stroke-dasharray:1;animation:sc-draw var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#知识资产层级-1yemdt.sc-svg[data-sc-motion]:not(.sc-still) .sc-grow-y[data-sc-step]{transform-box:fill-box;transform-origin:50% 100%;animation:sc-grow-y var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#知识资产层级-1yemdt.sc-svg[data-sc-motion]:not(.sc-still) .sc-grow-x[data-sc-step]{transform-box:fill-box;transform-origin:0 50%;animation:sc-grow-x var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#知识资产层级-1yemdt.sc-svg[data-sc-motion]:not(.sc-still) .sc-wipe[data-sc-step]{animation:sc-wipe var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#知识资产层级-1yemdt.sc-svg[data-sc-motion]:not(.sc-still) .sc-wipe-down[data-sc-step]{animation:sc-wipe-down var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#知识资产层级-1yemdt.sc-svg[data-sc-motion]:not(.sc-still) .sc-pop[data-sc-step]{transform-box:fill-box;transform-origin:50% 50%;animation:sc-pop var(--sc-enter) cubic-bezier(.2,.9,.3,1.2) var(--d) both}
+#知识资产层级-1yemdt.sc-svg[data-sc-motion]:not(.sc-still) .sc-fade[data-sc-step]{animation:sc-fade var(--sc-enter) ease-out var(--d) both}
+#知识资产层级-1yemdt.sc-svg[data-sc-motion]:not(.sc-still) .iso-part[data-sc-step]{animation:none}
+#知识资产层级-1yemdt.sc-svg[data-sc-motion]:not(.sc-still) .iso-part.sc-lift[data-sc-step]{animation:sc-lift calc(var(--sc-enter) * 1.6) cubic-bezier(.3,.6,.2,1) var(--d) both}
+#知识资产层级-1yemdt.sc-svg[data-sc-motion]:not(.sc-still) .iso-label[data-sc-step]{animation:sc-fade var(--sc-enter) ease-out calc(var(--d) + var(--sc-enter) * 1.2) both}
+#知识资产层级-1yemdt.sc-svg[data-sc-motion]:not(.sc-still) .sc-drop[data-sc-step]{animation:sc-drop var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#知识资产层级-1yemdt.sc-svg:is([data-sc-motion="trace"],#知识资产层级-1yemdt [data-sc-motion="loop"]):not(.sc-still) .e-token{display:inline;offset-rotate:0deg;animation:sc-token var(--tok-dur,1800ms) linear calc(var(--sc-settle) + var(--tok-delay,0ms)) infinite both}
+#知识资产层级-1yemdt.sc-svg[data-sc-motion]:not(.sc-still) .k-change .n-box{animation:sc-pulse 1.6s ease-in-out var(--sc-settle) 3}
+}
+@media print{#知识资产层级-1yemdt.sc-svg *{animation:none!important}#知识资产层级-1yemdt .e-token{display:none!important}}
+#知识资产层级-1yemdt .sc-still .e-token{display:none}
+#知识资产层级-1yemdt .e-token{fill:var(--sc-accent)}
+#知识资产层级-1yemdt .ek-link .e-token,#知识资产层级-1yemdt .e-token.t-link{fill:var(--sc-link)}
+</style><desc id="知识资产层级-1yemdt-desc">Architecture diagram with 6 elements.</desc><rect class="sc-bg" x="-24" y="-24" width="336" height="452"/><g class="sc-groups"></g><g class="sc-edges"><g class="sc-edge ek-default" data-sc-edge="dataset-config" data-from="dataset" data-to="config" data-sc-step="2" style="--step:2"><path class="e-line sc-draw" d="M112,19 L169,19" pathLength="1"/><path class="e-head m-default" d="M176,19 L168,22.2 L168,15.8 Z"/></g><g class="sc-edge ek-default" data-sc-edge="dataset-folder" data-from="dataset" data-to="folder" data-sc-step="2" style="--step:2"><path class="e-line sc-draw" d="M112,33 L151,33 Q158,33 158,40 L158,108 Q158,113.5 163.5,113.5 L169,113.5" pathLength="1"/><path class="e-head m-default" d="M176,113.5 L168,116.7 L168,110.3 Z"/></g><g class="sc-edge ek-primary" data-sc-edge="dataset-collection" data-from="dataset" data-to="collection" data-sc-step="2" style="--step:2"><path class="e-line sc-draw" d="M56,40 L56,103" pathLength="1"/><path class="e-head m-primary" d="M56,110 L52.8,102 L59.2,102 Z"/></g><g class="sc-edge ek-default" data-sc-edge="folder-collection" data-from="folder" data-to="collection" data-sc-step="4" style="--step:4"><path class="e-line sc-draw" d="M176,130 L119,130" pathLength="1"/><path class="e-head m-default" d="M112,130 L120,126.8 L120,133.2 Z"/><g class="e-label-g"><rect class="e-label-bg" x="130" y="124" width="28" height="12" rx="2"/><text class="e-label" x="144" y="132.6" text-anchor="middle">包含</text></g></g><g class="sc-edge ek-primary" data-sc-edge="collection-chunk" data-from="collection" data-to="chunk" data-sc-step="4" style="--step:4"><path class="e-line sc-draw" d="M56,150 L56,213" pathLength="1"/><path class="e-head m-primary" d="M56,220 L52.8,212 L59.2,212 Z"/></g><g class="sc-edge ek-primary" data-sc-edge="chunk-indexes" data-from="chunk" data-to="indexes" data-sc-step="6" style="--step:6"><path class="e-line sc-draw" d="M56,272 L56,329" pathLength="1"/><path class="e-head m-primary" d="M56,336 L52.8,328 L59.2,328 Z"/><g class="e-label-g"><rect class="e-label-bg" x="42" y="298" width="28" height="12" rx="2"/><text class="e-label" x="56" y="306.6" text-anchor="middle">关联</text></g></g></g><circle class="e-token" r="3.2" data-sc-step="7" style="--step:7;offset-path:path('M56,40 L56,110 L56,150 L56,220 L56,272 L56,336');--tok-dur:1600ms"/><g class="sc-nodes"><g class="sc-node k-focal sh-box" data-sc-node="dataset" data-sc-step="1" style="--step:1" tabindex="0" role="group" aria-label="知识库"><rect class="n-mask" x="0" y="0" width="112" height="40" rx="6"/><rect class="n-box" x="0" y="0" width="112" height="40" rx="6"/><text class="n-label" x="56" y="25" text-anchor="middle">知识库</text></g><g class="sc-node k-backend sh-box" data-sc-node="config" data-sc-step="3" style="--step:3" tabindex="0" role="group" aria-label="配置与权限"><rect class="n-mask" x="176" y="0" width="112" height="40" rx="6"/><rect class="n-box" x="176" y="0" width="112" height="40" rx="6"/><text class="n-label" x="232" y="25" text-anchor="middle">配置与权限</text></g><g class="sc-node k-backend sh-box" data-sc-node="folder" data-sc-step="3" style="--step:3" tabindex="0" role="group" aria-label="目录集合, 组织子集合"><rect class="n-mask" x="176" y="104" width="112" height="52" rx="6"/><rect class="n-box" x="176" y="104" width="112" height="52" rx="6"/><text class="n-label" x="232" y="128" text-anchor="middle">目录集合</text><text class="n-sub" x="232" y="143.5" text-anchor="middle">组织子集合</text></g><g class="sc-node k-backend sh-box" data-sc-node="collection" data-sc-step="3" style="--step:3" tabindex="0" role="group" aria-label="内容集合"><rect class="n-mask" x="0" y="110" width="112" height="40" rx="6"/><rect class="n-box" x="0" y="110" width="112" height="40" rx="6"/><text class="n-label" x="56" y="135" text-anchor="middle">内容集合</text></g><g class="sc-node k-backend sh-box" data-sc-node="chunk" data-sc-step="5" style="--step:5" tabindex="0" role="group" aria-label="数据块, 原文与索引关联"><rect class="n-mask" x="0" y="220" width="112" height="52" rx="6"/><rect class="n-box" x="0" y="220" width="112" height="52" rx="6"/><text class="n-label" x="56" y="244" text-anchor="middle">数据块</text><text class="n-sub" x="56" y="259.5" text-anchor="middle">原文与索引关联</text></g><g class="sc-node k-store sh-box" data-sc-node="indexes" data-sc-step="7" style="--step:7" tabindex="0" role="group" aria-label="检索索引, 向量 / 全文"><rect class="n-mask" x="0" y="336" width="112" height="52" rx="6"/><rect class="n-box" x="0" y="336" width="112" height="52" rx="6"/><text class="n-label" x="56" y="360" text-anchor="middle">检索索引</text><text class="n-sub" x="56" y="375.5" text-anchor="middle">向量 / 全文</text></g></g></svg>

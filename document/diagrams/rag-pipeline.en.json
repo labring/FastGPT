@@ -1,0 +1,104 @@
+{
+  "type": "flowchart",
+  "title": "RAG question-answering flow",
+  "nodes": [
+    {
+      "id": "query",
+      "label": "User question",
+      "row": 0,
+      "col": 0,
+      "kind": "input"
+    },
+    {
+      "id": "rewrite",
+      "label": "Optional rewrite",
+      "row": 1,
+      "col": 0,
+      "kind": "backend"
+    },
+    {
+      "id": "search",
+      "label": "Configured retrieval",
+      "row": 2,
+      "col": 0,
+      "kind": "backend",
+      "sub": "Vector / text / hybrid"
+    },
+    {
+      "id": "context",
+      "label": "Select context",
+      "row": 3,
+      "col": 0,
+      "kind": "backend",
+      "sub": "Rerank / filter / budget"
+    },
+    {
+      "id": "prompt",
+      "label": "Build cited prompt",
+      "row": 4,
+      "col": 0,
+      "kind": "backend",
+      "focal": true
+    },
+    {
+      "id": "answer",
+      "label": "Generate answer",
+      "row": 5,
+      "col": 0,
+      "kind": "backend",
+      "sub": "Citations per app settings"
+    }
+  ],
+  "edges": [
+    [
+      "query",
+      "rewrite",
+      "",
+      "primary"
+    ],
+    [
+      "rewrite",
+      "search",
+      "",
+      "primary"
+    ],
+    [
+      "search",
+      "context",
+      "",
+      "primary"
+    ],
+    [
+      "context",
+      "prompt",
+      "",
+      "primary"
+    ],
+    [
+      "prompt",
+      "answer",
+      "",
+      "primary"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "rewrite",
+      "file": "packages/service/core/dataset/search/index.ts",
+      "line": 18
+    },
+    {
+      "id": "prompt",
+      "file": "packages/service/core/workflow/dispatch/ai/chat/datasetCite.ts",
+      "line": 33
+    }
+  ],
+  "dir": "TB",
+  "lang": "en",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

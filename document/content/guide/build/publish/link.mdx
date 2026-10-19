@@ -78,7 +78,9 @@ description: 创建分享链接，在新会话核对发布配置、答案和引�
 
 #### 触发流程
 
-![触发流程：界面示例](/imgs/optimized/sharelink_process.png.webp)
+![配置身份验证后的分享链接流程](/imgs/diagrams/share-link-auth.zh-CN.light.svg)
+
+初始化要求 `success=true` 且 `uid` 为有效字符串。商业版对话入口会在开始回调前校验到期时间、用量和 QPM；完成回调用于结果通知。受保护链接还会验证登录成员与应用读取权限。
 
 ### 配置教程
 

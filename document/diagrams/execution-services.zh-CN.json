@@ -1,0 +1,116 @@
+{
+  "type": "architecture",
+  "title": "插件与沙箱执行服务",
+  "nodes": [
+    {
+      "id": "app",
+      "label": "FastGPT",
+      "row": 0,
+      "col": 1,
+      "kind": "backend",
+      "focal": true
+    },
+    {
+      "id": "plugin",
+      "label": "Plugin 服务",
+      "row": 1,
+      "col": 0,
+      "kind": "backend"
+    },
+    {
+      "id": "code",
+      "label": "Code Sandbox",
+      "row": 1,
+      "col": 1,
+      "kind": "backend"
+    },
+    {
+      "id": "provider",
+      "label": "Agent 沙箱",
+      "row": 1,
+      "col": 2,
+      "kind": "backend",
+      "sub": "按配置启用"
+    },
+    {
+      "id": "workspace",
+      "label": "工作空间",
+      "row": 2,
+      "col": 2,
+      "kind": "store"
+    },
+    {
+      "id": "browser",
+      "label": "浏览器",
+      "row": 3,
+      "col": 0,
+      "kind": "external"
+    },
+    {
+      "id": "proxy",
+      "label": "Sandbox Proxy",
+      "row": 3,
+      "col": 2,
+      "kind": "backend",
+      "sub": "受控文件访问"
+    }
+  ],
+  "edges": [
+    [
+      "app",
+      "plugin",
+      "",
+      "default"
+    ],
+    [
+      "app",
+      "code",
+      "",
+      "default"
+    ],
+    [
+      "app",
+      "provider",
+      "",
+      "primary"
+    ],
+    [
+      "provider",
+      "workspace",
+      "",
+      "primary"
+    ],
+    [
+      "browser",
+      "proxy",
+      "访问",
+      "link"
+    ],
+    [
+      "proxy",
+      "workspace",
+      "代理",
+      "link"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "app",
+      "file": "deploy/version/main/docker-compose.template.yml",
+      "line": 232
+    },
+    {
+      "id": "provider",
+      "file": "deploy/version/main/docker-compose.template.yml",
+      "line": 56
+    }
+  ],
+  "dir": "TB",
+  "lang": "zh-CN",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

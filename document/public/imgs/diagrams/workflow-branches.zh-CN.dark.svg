@@ -1,0 +1,320 @@
+<svg width="348" height="416" class="sc-svg sc-still" id="分支执行与跳过传播-18jxew" xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 348 416" role="img" aria-labelledby="分支执行与跳过传播-18jxew-title 分支执行与跳过传播-18jxew-desc" lang="zh-CN" data-sc-type="flowchart" data-sc-slug="分支执行与跳过传播" data-sc-steps="7"><title id="分支执行与跳过传播-18jxew-title">分支执行与跳过传播</title><style>#分支执行与跳过传播-18jxew{--sc-paper:#1a1a1a;--sc-paper-2:#272727;--sc-ink:#fafafa;--sc-ink-strong:#fdfdfd;--sc-muted:#b2b2b2;--sc-soft:#868686;--sc-rule:rgba(250,250,250,0.12);--sc-rule-solid:#545454;--sc-accent:#3370ff;--sc-accent-tint:rgba(51,112,255,0.14);--sc-link:#79a0fd;--sc-node:#222222;--sc-store:rgba(250,250,250,0.05);--sc-external:rgba(250,250,250,0.025);--sc-series-1:#8fb394;--sc-series-2:#d9a95f;--sc-series-3:#a993cc;--sc-series-4:#d0806b;--sc-series-5:#86a5c4;--sc-ax-shade:#000000;--sc-ax-lift:#ffffff;--sc-ax-screen:#07080b;--sc-ax-dark-edge:rgba(255,255,255,0.34);--sc-ax-t-o:0.06;--sc-ax-l-o:0.2;--sc-ax-r-o:0.42;--sc-on-v00:#000000;--sc-on-v01:#ffffff;--sc-on-v10:#000000;--sc-on-v11:#ffffff;--sc-font-serif:'Fraunces', 'Noto Serif', Georgia, serif;--sc-font-sans:'IBM Plex Sans', 'Noto Sans', system-ui, sans-serif;--sc-font-mono:'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;}
+#分支执行与跳过传播-18jxew.sc-svg{font-family:var(--sc-font-sans);color:var(--sc-ink);direction:ltr}
+#分支执行与跳过传播-18jxew .sc-mark{opacity:.88;pointer-events:none}
+#分支执行与跳过传播-18jxew .sc-mark-word{fill:var(--sc-ink)}
+#分支执行与跳过传播-18jxew .sc-bg{fill:var(--sc-paper)}
+#分支执行与跳过传播-18jxew .n-mask{fill:var(--sc-paper)}
+#分支执行与跳过传播-18jxew .n-box{fill:var(--sc-node);stroke:var(--sc-ink);stroke-width:1}
+#分支执行与跳过传播-18jxew .k-focal .n-box{fill:var(--sc-accent-tint);stroke:var(--sc-accent);stroke-width:1.2}
+#分支执行与跳过传播-18jxew .k-store .n-box{fill:var(--sc-store);stroke:var(--sc-muted)}
+#分支执行与跳过传播-18jxew .k-external .n-box{fill:var(--sc-external);stroke:var(--sc-soft)}
+#分支执行与跳过传播-18jxew .k-input .n-box{fill:var(--sc-external);stroke:var(--sc-soft)}
+#分支执行与跳过传播-18jxew .k-optional .n-box{fill:transparent;stroke:var(--sc-soft);stroke-dasharray:4 3}
+#分支执行与跳过传播-18jxew .k-security .n-box{fill:var(--sc-accent-tint);stroke:var(--sc-accent);stroke-opacity:.55;stroke-dasharray:4 4}
+#分支执行与跳过传播-18jxew .k-muted .n-box{fill:var(--sc-store);stroke:var(--sc-rule-solid)}
+#分支执行与跳过传播-18jxew .n-label{fill:var(--sc-ink);font-size:12px;font-weight:600}
+#分支执行与跳过传播-18jxew .n-sub{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}
+#分支执行与跳过传播-18jxew .n-icon{fill:none;stroke:var(--sc-muted);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+#分支执行与跳过传播-18jxew .k-focal .n-icon{stroke:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .n-tag{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:7px;letter-spacing:.12em;text-transform:uppercase}
+#分支执行与跳过传播-18jxew .n-tag-box{fill:none;stroke:var(--sc-rule-solid);stroke-width:.8}
+#分支执行与跳过传播-18jxew .k-focal .n-tag{fill:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .k-focal .n-tag-box{stroke:var(--sc-accent);stroke-opacity:.5}
+#分支执行与跳过传播-18jxew .e-line{fill:none;stroke:var(--sc-muted);stroke-width:1.1}
+#分支执行与跳过传播-18jxew .ek-primary .e-line{stroke:var(--sc-accent);stroke-width:1.4}
+#分支执行与跳过传播-18jxew .ek-link .e-line{stroke:var(--sc-link);stroke-width:1.2}
+#分支执行与跳过传播-18jxew .ek-async .e-line,#分支执行与跳过传播-18jxew .ek-return .e-line{stroke-width:1}
+#分支执行与跳过传播-18jxew .ek-muted .e-line{stroke:var(--sc-soft);stroke-width:1}
+#分支执行与跳过传播-18jxew .e-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.06em;text-transform:uppercase}
+#分支执行与跳过传播-18jxew .ek-primary .e-label{fill:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .ek-link .e-label{fill:var(--sc-link)}
+#分支执行与跳过传播-18jxew .e-label-bg{fill:var(--sc-paper)}
+#分支执行与跳过传播-18jxew .m-default{fill:var(--sc-muted)}#分支执行与跳过传播-18jxew .m-primary{fill:var(--sc-accent)}#分支执行与跳过传播-18jxew .m-link{fill:var(--sc-link)}#分支执行与跳过传播-18jxew .m-muted{fill:var(--sc-soft)}
+#分支执行与跳过传播-18jxew .g-box{fill:var(--sc-ink);fill-opacity:.018;stroke:var(--sc-rule);stroke-width:.8}
+#分支执行与跳过传播-18jxew .g-box.g-dashed{stroke-dasharray:4 4;stroke:var(--sc-soft);stroke-opacity:.6}
+#分支执行与跳过传播-18jxew .g-label{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:7px;letter-spacing:.16em;text-transform:uppercase}
+#分支执行与跳过传播-18jxew .g-label-bg{fill:var(--sc-paper)}
+#分支执行与跳过传播-18jxew .lg-rule{stroke:var(--sc-rule);stroke-width:.8}
+#分支执行与跳过传播-18jxew .lg-title{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.18em}
+#分支执行与跳过传播-18jxew .lg-text{fill:var(--sc-muted);font-size:9px}
+#分支执行与跳过传播-18jxew .ax-line{stroke:var(--sc-rule-solid);stroke-width:1}
+#分支执行与跳过传播-18jxew .ax-grid{stroke:var(--sc-rule);stroke-width:.8}
+#分支执行与跳过传播-18jxew .ax-text{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.04em}
+#分支执行与跳过传播-18jxew .ax-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase}
+#分支执行与跳过传播-18jxew .c-cat{fill:var(--sc-muted);font-size:10px}
+#分支执行与跳过传播-18jxew .c-val{fill:var(--sc-ink);font-family:var(--sc-font-mono);font-size:9px}
+#分支执行与跳过传播-18jxew .c-bar{fill:var(--sc-muted);fill-opacity:.38}
+#分支执行与跳过传播-18jxew .c-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#分支执行与跳过传播-18jxew .c-val.is-focal{fill:var(--sc-accent);font-weight:500}
+#分支执行与跳过传播-18jxew .s-1{fill:var(--sc-series-1)}#分支执行与跳过传播-18jxew .s-2{fill:var(--sc-series-2)}#分支执行与跳过传播-18jxew .s-3{fill:var(--sc-series-3)}#分支执行与跳过传播-18jxew .s-4{fill:var(--sc-series-4)}#分支执行与跳过传播-18jxew .s-5{fill:var(--sc-series-5)}
+#分支执行与跳过传播-18jxew .sk-node{fill:var(--sc-muted)}
+#分支执行与跳过传播-18jxew .sk-node.is-focal{fill:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .sk-link{fill:var(--sc-muted);fill-opacity:.14}
+#分支执行与跳过传播-18jxew .sk-link.is-focal{fill:var(--sc-accent);fill-opacity:.28}
+#分支执行与跳过传播-18jxew .sk-label{fill:var(--sc-ink);font-size:11px;font-weight:500;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#分支执行与跳过传播-18jxew .sk-val{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#分支执行与跳过传播-18jxew .q-life{stroke:var(--sc-rule-solid);stroke-width:1;stroke-dasharray:3 4}
+#分支执行与跳过传播-18jxew .q-frag{fill:none;stroke:var(--sc-soft);stroke-width:.8}
+#分支执行与跳过传播-18jxew .q-frag-tag{fill:var(--sc-paper-2);stroke:var(--sc-soft);stroke-width:.8}
+#分支执行与跳过传播-18jxew .q-frag-text{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase}
+#分支执行与跳过传播-18jxew .q-num{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8px}
+#分支执行与跳过传播-18jxew .q-note{fill:var(--sc-paper-2);stroke:var(--sc-rule-solid);stroke-width:.8}
+#分支执行与跳过传播-18jxew .q-note-text{fill:var(--sc-muted);font-size:10px;font-style:italic;font-family:var(--sc-font-serif)}
+#分支执行与跳过传播-18jxew .n-head{fill:var(--sc-ink);fill-opacity:.035;stroke:none}
+#分支执行与跳过传播-18jxew .k-focal .n-head{fill:var(--sc-accent);fill-opacity:.08}
+#分支执行与跳过传播-18jxew .n-rule{stroke:var(--sc-rule-solid);stroke-width:.8}
+#分支执行与跳过传播-18jxew .n-field{fill:var(--sc-ink);font-size:10px}
+#分支执行与跳过传播-18jxew .n-field-t{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}
+#分支执行与跳过传播-18jxew .n-key{font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.06em;fill:var(--sc-soft)}
+#分支执行与跳过传播-18jxew .n-key-pk{fill:var(--sc-accent)}#分支执行与跳过传播-18jxew .n-key-fk{fill:var(--sc-link)}
+#分支执行与跳过传播-18jxew .sh-start .n-box{fill:var(--sc-ink);stroke:none}
+#分支执行与跳过传播-18jxew .sh-end .n-box{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.2}
+#分支执行与跳过传播-18jxew .n-dot{fill:var(--sc-ink)}
+#分支执行与跳过传播-18jxew .n-status{stroke:var(--sc-paper);stroke-width:1.5}
+#分支执行与跳过传播-18jxew .st-ok{fill:var(--sc-series-1)}#分支执行与跳过传播-18jxew .st-risk{fill:var(--sc-series-2)}#分支执行与跳过传播-18jxew .st-legacy{fill:var(--sc-series-5)}#分支执行与跳过传播-18jxew .st-retire{fill:var(--sc-series-4)}
+#分支执行与跳过传播-18jxew .n-change{fill:var(--sc-accent);font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.12em}
+#分支执行与跳过传播-18jxew .ch-added .n-box{stroke:var(--sc-accent);stroke-width:1.3}
+#分支执行与跳过传播-18jxew .ch-removed{opacity:.55}#分支执行与跳过传播-18jxew .ch-removed .n-box{stroke-dasharray:4 3;stroke:var(--sc-soft)}#分支执行与跳过传播-18jxew .ch-removed .n-label{text-decoration:line-through}
+#分支执行与跳过传播-18jxew .ch-removed .n-change{fill:var(--sc-soft)}
+#分支执行与跳过传播-18jxew .ch-changed .n-box{stroke:var(--sc-accent);stroke-dasharray:6 2}
+#分支执行与跳过传播-18jxew .sc-edge.ch-added .e-line{stroke:var(--sc-accent)}#分支执行与跳过传播-18jxew .sc-edge.ch-removed .e-line{stroke-dasharray:3 3}
+#分支执行与跳过传播-18jxew .e-line.dashed{stroke-dasharray:4 3}
+#分支执行与跳过传播-18jxew .ek-rel .e-line{stroke:var(--sc-muted);stroke-width:1}
+#分支执行与跳过传播-18jxew .e-glyph.stroke{fill:none;stroke:var(--sc-muted);stroke-width:1}
+#分支执行与跳过传播-18jxew .e-glyph.hollow{fill:var(--sc-paper);stroke:var(--sc-muted);stroke-width:1}
+#分支执行与跳过传播-18jxew .e-glyph.filled{fill:var(--sc-muted);stroke:var(--sc-muted);stroke-width:1}
+#分支执行与跳过传播-18jxew .lane-band{fill:var(--sc-ink);fill-opacity:.022}
+#分支执行与跳过传播-18jxew .lane-band.alt{fill-opacity:0}
+#分支执行与跳过传播-18jxew .lane-rule{stroke:var(--sc-rule);stroke-width:.8}
+#分支执行与跳过传播-18jxew .lane-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase}
+#分支执行与跳过传播-18jxew .loop-center{fill:var(--sc-ink);font-family:var(--sc-font-serif);font-size:20px}
+#分支执行与跳过传播-18jxew .nest-mask{fill:var(--sc-paper)}
+#分支执行与跳过传播-18jxew .nest-box{fill:var(--sc-ink);fill-opacity:.025;stroke:var(--sc-rule-solid);stroke-width:.9}
+#分支执行与跳过传播-18jxew .nest-d0 .nest-box{fill-opacity:.012}#分支执行与跳过传播-18jxew .nest-d2 .nest-box{fill-opacity:.04}#分支执行与跳过传播-18jxew .nest-d3 .nest-box{fill-opacity:.055}
+#分支执行与跳过传播-18jxew .k-focal .nest-box{fill:var(--sc-accent-tint);fill-opacity:1;stroke:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .nest-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.14em;text-transform:uppercase}
+#分支执行与跳过传播-18jxew .chip{fill:var(--sc-paper-2);stroke:var(--sc-rule);stroke-width:.8}
+#分支执行与跳过传播-18jxew .chip-text{fill:var(--sc-ink);font-size:10px}
+#分支执行与跳过传播-18jxew .k-focal .chip{fill:var(--sc-paper);stroke:var(--sc-accent);stroke-opacity:.4}
+#分支执行与跳过传播-18jxew .venn-c{fill:var(--sc-muted);fill-opacity:.07;stroke:var(--sc-muted);stroke-width:1}
+#分支执行与跳过传播-18jxew .vs-2 .venn-c{fill:var(--sc-series-2);stroke:var(--sc-series-2);fill-opacity:.09}
+#分支执行与跳过传播-18jxew .vs-3 .venn-c{fill:var(--sc-series-1);stroke:var(--sc-series-1);fill-opacity:.09}
+#分支执行与跳过传播-18jxew .venn.k-focal .venn-c{fill:var(--sc-accent);stroke:var(--sc-accent);fill-opacity:.09}
+#分支执行与跳过传播-18jxew .venn-label{fill:var(--sc-ink);font-size:13px;font-weight:600}
+#分支执行与跳过传播-18jxew .venn-ov{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:13px}
+#分支执行与跳过传播-18jxew .venn-ov.is-focal{fill:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .fb-spine{stroke-width:1.6}
+#分支执行与跳过传播-18jxew .fb-tick{stroke:var(--sc-rule-solid);stroke-width:.8}
+#分支执行与跳过传播-18jxew .fb-cat{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;letter-spacing:.14em}
+#分支执行与跳过传播-18jxew .fb-cat.is-focal{fill:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .fb-cause{fill:var(--sc-ink);font-size:10px}
+#分支执行与跳过传播-18jxew .kb-col{fill:var(--sc-ink);fill-opacity:.025;stroke:var(--sc-rule);stroke-width:.8;rx:8}
+#分支执行与跳过传播-18jxew .kb-col.is-over{stroke:var(--sc-accent);stroke-opacity:.6}
+#分支执行与跳过传播-18jxew .kb-head{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#分支执行与跳过传播-18jxew .kb-count{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:9px}
+#分支执行与跳过传播-18jxew .kb-count.is-over{fill:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .kb-card{fill:var(--sc-ink);font-size:11px;font-weight:500}
+#分支执行与跳过传播-18jxew .sm-act{fill:var(--sc-ink)}
+#分支执行与跳过传播-18jxew .sm-activity.k-focal .sm-act{fill:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .sm-act-text{fill:var(--sc-paper);font-size:11px;font-weight:600}
+#分支执行与跳过传播-18jxew .q-frame{fill:none;stroke:var(--sc-rule-solid);stroke-width:1}
+#分支执行与跳过传播-18jxew .q-focal{fill:var(--sc-accent-tint)}
+#分支执行与跳过传播-18jxew .q-title{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#分支执行与跳过传播-18jxew .quad.k-focal .q-title,#分支执行与跳过传播-18jxew .quad.k-focal .q-title-big{fill:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .q-title-big{fill:var(--sc-ink);font-family:var(--sc-font-serif);font-size:19px}
+#分支执行与跳过传播-18jxew .q-item{fill:var(--sc-muted);font-size:11px}
+#分支执行与跳过传播-18jxew .q-dot{fill:var(--sc-muted)}
+#分支执行与跳过传播-18jxew .q-pt.k-focal .q-dot{fill:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .q-pt-label{fill:var(--sc-ink);font-size:10.5px;font-weight:500}
+#分支执行与跳过传播-18jxew .q-pt.k-focal .q-pt-label{fill:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .mx-col{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.08em}
+#分支执行与跳过传播-18jxew .mx-row{fill:var(--sc-ink);font-size:11px;font-weight:500}
+#分支执行与跳过传播-18jxew .mx-band{fill:var(--sc-ink);fill-opacity:.025}
+#分支执行与跳过传播-18jxew .mx-g.fill{fill:var(--sc-ink)}#分支执行与跳过传播-18jxew .mx-g.ring{fill:none;stroke:var(--sc-ink);stroke-width:1}
+#分支执行与跳过传播-18jxew .mx-g.dashed{stroke-dasharray:2 2}#分支执行与跳过传播-18jxew .mx-g.admin{fill:var(--sc-accent)}#分支执行与跳过传播-18jxew .mx-g.none{fill:var(--sc-soft)}
+#分支执行与跳过传播-18jxew .mx-r.k-focal .mx-row{fill:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .tl-axis{stroke:var(--sc-ink);stroke-width:1.2}
+#分支执行与跳过传播-18jxew .tl-stem{stroke:var(--sc-rule-solid);stroke-width:.8}
+#分支执行与跳过传播-18jxew .tl-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}
+#分支执行与跳过传播-18jxew .tl-ev.k-focal .tl-dot{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .tl-ev.k-focal .tl-label{fill:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .tl-label{font-size:11px}
+#分支执行与跳过传播-18jxew .tl-when{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;letter-spacing:.04em}
+#分支执行与跳过传播-18jxew .tl-period{fill:var(--sc-ink);fill-opacity:.07}
+#分支执行与跳过传播-18jxew .tl-period.is-focal{fill:var(--sc-accent);fill-opacity:.16}
+#分支执行与跳过传播-18jxew .tl-period-text{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.08em}
+#分支执行与跳过传播-18jxew .g-task{fill:var(--sc-ink);font-size:11px}
+#分支执行与跳过传播-18jxew .g-bar{fill:var(--sc-muted);fill-opacity:.45}
+#分支执行与跳过传播-18jxew .g-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#分支执行与跳过传播-18jxew .g-bar.is-done{fill-opacity:.2}
+#分支执行与跳过传播-18jxew .g-done{fill:var(--sc-muted);font-size:10px}
+#分支执行与跳过传播-18jxew .g-mile{fill:var(--sc-ink)}
+#分支执行与跳过传播-18jxew .k-focal .g-mile{fill:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .g-today{stroke:var(--sc-accent);stroke-width:1;stroke-dasharray:3 3}
+#分支执行与跳过传播-18jxew .g-today-text{fill:var(--sc-accent);font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.14em}
+#分支执行与跳过传播-18jxew .jr-band{fill:var(--sc-ink);fill-opacity:.025}#分支执行与跳过传播-18jxew .jr-band.alt{fill-opacity:0}
+#分支执行与跳过传播-18jxew .jr-stage{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#分支执行与跳过传播-18jxew .jr-curve{stroke:var(--sc-ink);stroke-width:1.6}
+#分支执行与跳过传播-18jxew .jr-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}
+#分支执行与跳过传播-18jxew .jr-dot.is-pain,#分支执行与跳过传播-18jxew .jr-dot.is-focal{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .jr-step{fill:var(--sc-ink);font-size:10.5px;font-weight:500}
+#分支执行与跳过传播-18jxew .jr-note{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:11px;paint-order:stroke;stroke:var(--sc-paper);stroke-width:4px;stroke-linejoin:round}
+#分支执行与跳过传播-18jxew .jr-note.is-pain{fill:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .ln{fill:none;stroke-width:1.6;stroke:var(--sc-muted)}
+#分支执行与跳过传播-18jxew .ln.is-focal{stroke:var(--sc-accent);stroke-width:2.2}#分支执行与跳过传播-18jxew .ln.is-muted{stroke:var(--sc-soft);stroke-opacity:.55}
+#分支执行与跳过传播-18jxew .ln-1{stroke:var(--sc-series-1)}#分支执行与跳过传播-18jxew .ln-2{stroke:var(--sc-series-2)}#分支执行与跳过传播-18jxew .ln-3{stroke:var(--sc-series-3)}#分支执行与跳过传播-18jxew .ln-4{stroke:var(--sc-series-4)}#分支执行与跳过传播-18jxew .ln-5{stroke:var(--sc-series-5)}
+#分支执行与跳过传播-18jxew .ln-pt{fill:var(--sc-paper);stroke-width:1.4}
+#分支执行与跳过传播-18jxew .ln-pt.is-focal{fill:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .ln-label{font-size:10.5px;font-weight:500;fill:var(--sc-muted)}
+#分支执行与跳过传播-18jxew .is-muted-t{fill:var(--sc-soft)}
+#分支执行与跳过传播-18jxew .ln-1-t{fill:var(--sc-series-1)}#分支执行与跳过传播-18jxew .ln-2-t{fill:var(--sc-series-2)}#分支执行与跳过传播-18jxew .ln-3-t{fill:var(--sc-series-3)}#分支执行与跳过传播-18jxew .ln-4-t{fill:var(--sc-series-4)}#分支执行与跳过传播-18jxew .ln-5-t{fill:var(--sc-series-5)}
+#分支执行与跳过传播-18jxew .ln-area{fill:var(--sc-muted);fill-opacity:.08}#分支执行与跳过传播-18jxew .ln-area.is-focal{fill:var(--sc-accent);fill-opacity:.1}
+#分支执行与跳过传播-18jxew .rg-area{fill:var(--sc-muted);fill-opacity:.18}#分支执行与跳过传播-18jxew .rg-area.is-focal{fill:var(--sc-accent);fill-opacity:.28}
+#分支执行与跳过传播-18jxew .rg-line{fill:none;stroke:var(--sc-ink);stroke-width:1.1}#分支执行与跳过传播-18jxew .rg-line.is-focal{stroke:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .st-area{fill-opacity:.55;stroke:var(--sc-paper);stroke-width:1}
+#分支执行与跳过传播-18jxew .st-area.is-focal{fill:var(--sc-accent);fill-opacity:.75}
+#分支执行与跳过传播-18jxew .st-label{fill:var(--sc-ink-strong);font-size:10px;font-weight:600}
+#分支执行与跳过传播-18jxew .is-focal-t{fill:var(--sc-accent)!important}
+#分支执行与跳过传播-18jxew .sp-dot{fill:var(--sc-muted);fill-opacity:.55;stroke:var(--sc-paper);stroke-width:.8}
+#分支执行与跳过传播-18jxew .sp-dot.is-bubble{fill-opacity:.25;stroke:var(--sc-muted);stroke-opacity:.7}
+#分支执行与跳过传播-18jxew .sp-dot.is-focal{fill:var(--sc-accent);fill-opacity:.9;stroke:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .sp-label{fill:var(--sc-ink);font-size:10px;font-weight:500}
+#分支执行与跳过传播-18jxew .rd-area{fill:var(--sc-muted);fill-opacity:.1}#分支执行与跳过传播-18jxew .rd-line{fill:none;stroke:var(--sc-muted);stroke-width:1.4}
+#分支执行与跳过传播-18jxew .rd-area.is-focal{fill:var(--sc-accent);fill-opacity:.16}#分支执行与跳过传播-18jxew .rd-line.is-focal{stroke:var(--sc-accent);stroke-width:2}
+#分支执行与跳过传播-18jxew .rd-area.is-muted{fill-opacity:.04}#分支执行与跳过传播-18jxew .rd-line.is-muted{stroke:var(--sc-soft)}
+#分支执行与跳过传播-18jxew .rd-area.s-1,#分支执行与跳过传播-18jxew .rd-area.s-2,#分支执行与跳过传播-18jxew .rd-area.s-3,#分支执行与跳过传播-18jxew .rd-area.s-4,#分支执行与跳过传播-18jxew .rd-area.s-5{fill-opacity:.14}
+#分支执行与跳过传播-18jxew .rd-line.s-1{stroke:var(--sc-series-1)}#分支执行与跳过传播-18jxew .rd-line.s-2{stroke:var(--sc-series-2)}#分支执行与跳过传播-18jxew .rd-line.s-3{stroke:var(--sc-series-3)}#分支执行与跳过传播-18jxew .rd-line.s-4{stroke:var(--sc-series-4)}#分支执行与跳过传播-18jxew .rd-line.s-5{stroke:var(--sc-series-5)}
+#分支执行与跳过传播-18jxew .rd-pt{fill:var(--sc-paper);stroke:var(--sc-muted)}#分支执行与跳过传播-18jxew .rd-pt.is-focal{stroke:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .rd-key{fill:var(--sc-muted)}#分支执行与跳过传播-18jxew .rd-key.is-focal{fill:var(--sc-accent)}#分支执行与跳过传播-18jxew .rd-key.is-muted{fill:var(--sc-soft)}
+#分支执行与跳过传播-18jxew .rd-ring{fill:none}
+#分支执行与跳过传播-18jxew .pl-stem{stroke:var(--sc-muted);stroke-width:1.4}#分支执行与跳过传播-18jxew .pl-stem.is-focal{stroke:var(--sc-accent);stroke-width:2}
+#分支执行与跳过传播-18jxew .pl-dot{fill:var(--sc-muted)}#分支执行与跳过传播-18jxew .pl-dot.is-focal{fill:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .wf-bar{fill:var(--sc-muted);fill-opacity:.4}
+#分支执行与跳过传播-18jxew .wf-up{fill:var(--sc-series-1);fill-opacity:.75}#分支执行与跳过传播-18jxew .wf-down{fill:var(--sc-series-4);fill-opacity:.75}
+#分支执行与跳过传播-18jxew .wf-total{fill:var(--sc-ink);fill-opacity:.82}
+#分支执行与跳过传播-18jxew .wf-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#分支执行与跳过传播-18jxew .wf-link{stroke:var(--sc-soft);stroke-width:.8;stroke-dasharray:2 2}
+#分支执行与跳过传播-18jxew .tm-cell{fill:var(--sc-muted);fill-opacity:.16;stroke:var(--sc-paper);stroke-width:1}
+#分支执行与跳过传播-18jxew .tm-cell.is-focal{fill:var(--sc-accent);fill-opacity:.85}
+#分支执行与跳过传播-18jxew .tm-sub{fill:var(--sc-paper);fill-opacity:.55}
+#分支执行与跳过传播-18jxew .tm-label{fill:var(--sc-ink);font-size:11px;font-weight:600}#分支执行与跳过传播-18jxew .tm-label.is-focal{fill:var(--sc-paper)}
+#分支执行与跳过传播-18jxew .tm-val{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}#分支执行与跳过传播-18jxew .tm-val.is-focal{fill:var(--sc-paper);fill-opacity:.85}
+#分支执行与跳过传播-18jxew .tm-sub-label{fill:var(--sc-muted);font-size:9.5px}
+#分支执行与跳过传播-18jxew .hm-cell.hm-pos{fill:var(--sc-accent)}#分支执行与跳过传播-18jxew .hm-cell.hm-neg{fill:var(--sc-series-4)}
+#分支执行与跳过传播-18jxew .hm-val{fill:var(--sc-ink);font-family:var(--sc-font-mono);font-size:8.5px}#分支执行与跳过传播-18jxew .hm-val.v00{fill:var(--sc-on-v00)}#分支执行与跳过传播-18jxew .hm-val.v01{fill:var(--sc-on-v01)}#分支执行与跳过传播-18jxew .hm-val.v10{fill:var(--sc-on-v10)}#分支执行与跳过传播-18jxew .hm-val.v11{fill:var(--sc-on-v11)}
+#分支执行与跳过传播-18jxew .db-line{stroke:var(--sc-rule-solid);stroke-width:2.4}#分支执行与跳过传播-18jxew .db-line.is-focal{stroke:var(--sc-accent);stroke-opacity:.45}
+#分支执行与跳过传播-18jxew .db-a{fill:var(--sc-paper);stroke:var(--sc-muted);stroke-width:1.4}#分支执行与跳过传播-18jxew .db-b{fill:var(--sc-muted)}#分支执行与跳过传播-18jxew .db-b.is-focal{fill:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .mk-seg{fill-opacity:.7;stroke:var(--sc-paper)}
+#分支执行与跳过传播-18jxew .mk-pct{fill:var(--sc-ink-strong);font-family:var(--sc-font-mono);font-size:8.5px}
+#分支执行与跳过传播-18jxew .wm-link{stroke:var(--sc-soft)!important;stroke-width:1!important}
+#分支执行与跳过传播-18jxew .wm-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}#分支执行与跳过传播-18jxew .wm-dot.is-focal{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .wm-label{fill:var(--sc-ink);font-size:10.5px;font-weight:500;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#分支执行与跳过传播-18jxew .wm-label.is-anchor{font-weight:700;font-size:12px}
+#分支执行与跳过传播-18jxew .wm-move{stroke:var(--sc-accent);stroke-width:1.2;stroke-dasharray:4 3;fill:none}#分支执行与跳过传播-18jxew .wm-move-head{fill:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .wm-ghost{fill:none;stroke:var(--sc-accent);stroke-dasharray:2 2}
+#分支执行与跳过传播-18jxew .wm-inertia{stroke:var(--sc-ink);stroke-width:3}
+#分支执行与跳过传播-18jxew .callout{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:13px}
+
+#分支执行与跳过传播-18jxew .iso-base{fill:var(--sc-node)}
+#分支执行与跳过传播-18jxew .iso-t{fill:var(--sc-ax-lift);fill-opacity:var(--sc-ax-t-o)}
+#分支执行与跳过传播-18jxew .iso-l{fill:var(--sc-ax-shade);fill-opacity:var(--sc-ax-l-o)}
+#分支执行与跳过传播-18jxew .iso-r{fill:var(--sc-ax-shade);fill-opacity:var(--sc-ax-r-o)}
+#分支执行与跳过传播-18jxew .k-focal .iso-t{fill:var(--sc-accent);fill-opacity:.12}
+#分支执行与跳过传播-18jxew .k-focal .iso-l{fill:var(--sc-accent);fill-opacity:.22}
+#分支执行与跳过传播-18jxew .k-focal .iso-r{fill:var(--sc-accent);fill-opacity:.34}
+#分支执行与跳过传播-18jxew .iso-edge{fill:none;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.8;stroke-linejoin:round}
+#分支执行与跳过传播-18jxew .iso-sil{fill:none;stroke:var(--sc-ink);stroke-width:1.2;stroke-linejoin:round}
+#分支执行与跳过传播-18jxew .k-focal .iso-sil{stroke:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .iso-inset{fill:var(--sc-ink);fill-opacity:.06;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.7}
+#分支执行与跳过传播-18jxew .k-focal .iso-inset{fill:var(--sc-accent);fill-opacity:.16;stroke:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .iso-trace{fill:none;stroke:var(--sc-ink);stroke-opacity:.3;stroke-width:.8;stroke-dasharray:4 3}
+#分支执行与跳过传播-18jxew .iso-leader{stroke:var(--sc-ink);stroke-opacity:.4;stroke-width:.8}
+#分支执行与跳过传播-18jxew .iso-dot{fill:var(--sc-ink)}
+#分支执行与跳过传播-18jxew .k-focal .iso-leader{stroke:var(--sc-accent);stroke-opacity:1}#分支执行与跳过传播-18jxew .k-focal .iso-dot{fill:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .iso-name{fill:var(--sc-ink);font-size:14px;font-weight:600}
+#分支执行与跳过传播-18jxew .iso-sub{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9.5px;letter-spacing:.06em}
+#分支执行与跳过传播-18jxew .k-focal .iso-sub{fill:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .iso-contour{fill:none;stroke:var(--sc-ink);stroke-opacity:.22;stroke-width:.7}
+#分支执行与跳过传播-18jxew .iso-plate .iso-t{fill-opacity:0}
+#分支执行与跳过传播-18jxew .iso-mark{fill:var(--sc-ink);fill-opacity:.07}
+#分支执行与跳过传播-18jxew .iso-floor{fill:var(--sc-ink);fill-opacity:.035}
+#分支执行与跳过传播-18jxew .k-focal .iso-floor,#分支执行与跳过传播-18jxew .iso-floor.k-focal{fill:var(--sc-accent);fill-opacity:.1}
+#分支执行与跳过传播-18jxew .iso-canopy .iso-t{fill:var(--sc-series-1);fill-opacity:.55}
+#分支执行与跳过传播-18jxew .iso-canopy .iso-l,#分支执行与跳过传播-18jxew .iso-canopy .iso-r{fill:var(--sc-series-1);fill-opacity:.35}
+#分支执行与跳过传播-18jxew .iso-tag rect{fill:var(--sc-paper);stroke:var(--sc-rule-solid);stroke-width:.8}
+#分支执行与跳过传播-18jxew .k-focal.iso-tag rect,#分支执行与跳过传播-18jxew .k-focal .iso-tag rect{stroke:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .iso-tag .iso-name{font-size:11px}#分支执行与跳过传播-18jxew .iso-tag .iso-sub{font-size:8px}
+
+#分支执行与跳过传播-18jxew .it-light .iso-base{fill:var(--sc-node)}
+#分支执行与跳过传播-18jxew .it-dark .iso-base,#分支执行与跳过传播-18jxew .it-black .iso-base{fill:var(--sc-ax-screen)}
+#分支执行与跳过传播-18jxew .it-dark .iso-t,#分支执行与跳过传播-18jxew .it-black .iso-t{fill:#fff;fill-opacity:.07}
+#分支执行与跳过传播-18jxew .it-dark .iso-edge,#分支执行与跳过传播-18jxew .it-black .iso-edge{stroke:#fff;stroke-opacity:.18}
+#分支执行与跳过传播-18jxew .it-accent .iso-base{fill:var(--sc-node)}#分支执行与跳过传播-18jxew .it-accent .iso-t,#分支执行与跳过传播-18jxew .it-accent .iso-l,#分支执行与跳过传播-18jxew .it-accent .iso-r{fill:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .it-accent .iso-t{fill-opacity:.25}#分支执行与跳过传播-18jxew .it-accent .iso-l{fill-opacity:.4}#分支执行与跳过传播-18jxew .it-accent .iso-r{fill-opacity:.55}
+#分支执行与跳过传播-18jxew .it-accent .iso-sil{stroke:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .it-mid .iso-base{fill:var(--sc-node)}
+#分支执行与跳过传播-18jxew .it-solid .iso-sil{stroke-width:.9}
+#分支执行与跳过传播-18jxew path.it-dark{fill:var(--sc-ax-screen)}
+#分支执行与跳过传播-18jxew path.it-black{fill:#000;fill-opacity:.85}
+#分支执行与跳过传播-18jxew /* dark panels and solids keep an edge where they sit on dark walls (dark themes) */
+path.it-dark,#分支执行与跳过传播-18jxew path.it-black{stroke:var(--sc-ax-dark-edge);stroke-width:.7}
+#分支执行与跳过传播-18jxew .it-dark .iso-sil,#分支执行与跳过传播-18jxew .it-black .iso-sil{stroke:var(--sc-ink)}
+#分支执行与跳过传播-18jxew path.it-line.it-stroke-dark{stroke:var(--sc-ax-screen);stroke-opacity:.8}
+#分支执行与跳过传播-18jxew path.it-light{fill:var(--sc-node);stroke:var(--sc-ink);stroke-opacity:.45;stroke-width:.6}
+#分支执行与跳过传播-18jxew path.it-accent{fill:var(--sc-accent);fill-opacity:.9}
+#分支执行与跳过传播-18jxew path.it-mid{fill:var(--sc-ink);fill-opacity:.08}
+#分支执行与跳过传播-18jxew path.it-cut{fill:var(--sc-ink);fill-opacity:.13;stroke:var(--sc-ink);stroke-opacity:.45;stroke-width:.5}
+#分支执行与跳过传播-18jxew path.it-line{fill:none;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.8;stroke-linecap:round}
+#分支执行与跳过传播-18jxew path.it-text{fill:none;stroke:var(--sc-ink);stroke-opacity:.35;stroke-width:1.4;stroke-linecap:round}
+#分支执行与跳过传播-18jxew path.it-line.it-stroke-accent,#分支执行与跳过传播-18jxew path.it-text.it-stroke-accent{stroke:var(--sc-accent);stroke-opacity:1}
+#分支执行与跳过传播-18jxew path.it-stroke-light{stroke:#fff;stroke-opacity:.7}
+#分支执行与跳过传播-18jxew path.it-line.it-stroke-dark{stroke-width:2.2}
+#分支执行与跳过传播-18jxew path.it-dash{stroke-dasharray:4 3}
+#分支执行与跳过传播-18jxew path.it-button{fill:var(--sc-node);stroke:var(--sc-ink);stroke-opacity:.6;stroke-width:.8}
+#分支执行与跳过传播-18jxew path.it-cavity{fill:var(--sc-ink);fill-opacity:.07}
+#分支执行与跳过传播-18jxew path.it-floor{fill:var(--sc-ink);fill-opacity:.04;stroke:var(--sc-ink);stroke-opacity:.35;stroke-width:.7}
+
+#分支执行与跳过传播-18jxew .iso-beam-o{fill:none;stroke:var(--sc-ink);stroke-linecap:round}
+#分支执行与跳过传播-18jxew .iso-beam{fill:none;stroke:var(--sc-node);stroke-linecap:round}
+#分支执行与跳过传播-18jxew .iso-beam-dark{stroke:var(--sc-ax-screen)}
+#分支执行与跳过传播-18jxew .iso-beam-accent,#分支执行与跳过传播-18jxew .k-focal .iso-beam{stroke:var(--sc-accent);stroke-opacity:.55}
+#分支执行与跳过传播-18jxew .iso-leader{fill:none;stroke:var(--sc-ink);stroke-opacity:.4;stroke-width:.8}
+#分支执行与跳过传播-18jxew .k-focal .iso-leader{stroke:var(--sc-accent);stroke-opacity:1}
+
+@keyframes sc-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes sc-fade{from{opacity:0}to{opacity:1}}
+@keyframes sc-draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes sc-grow-y{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes sc-grow-x{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes sc-wipe{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes sc-wipe-down{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes sc-pop{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:scale(1)}}
+@keyframes sc-token{from{offset-distance:0%;opacity:0}8%{opacity:1}92%{opacity:1}to{offset-distance:100%;opacity:0}}
+@keyframes sc-pulse{0%,100%{stroke-opacity:1}50%{stroke-opacity:.35}}
+@keyframes sc-lift{from{transform:translateY(var(--lift))}to{transform:none}}
+@keyframes sc-drop{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:none}}
+#分支执行与跳过传播-18jxew .e-token{display:none}
+@media (prefers-reduced-motion: no-preference){
+#分支执行与跳过传播-18jxew.sc-svg[data-sc-motion]:not(.sc-still) [data-sc-step]{--d:calc(var(--step) * var(--sc-stagger))}
+#分支执行与跳过传播-18jxew.sc-svg[data-sc-motion]:not(.sc-still) .sc-node[data-sc-step],#分支执行与跳过传播-18jxew.sc-svg[data-sc-motion]:not(.sc-still) .sc-enter[data-sc-step]{animation:sc-in var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#分支执行与跳过传播-18jxew.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step]{animation:sc-fade 240ms ease-out var(--d) both}
+#分支执行与跳过传播-18jxew.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-head,#分支执行与跳过传播-18jxew.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-glyph,#分支执行与跳过传播-18jxew.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-label-g{animation:sc-fade 200ms ease-out calc(var(--d) + var(--sc-draw) * .8) both}
+#分支执行与跳过传播-18jxew.sc-svg:is([data-sc-motion="trace"],#分支执行与跳过传播-18jxew [data-sc-motion="loop"]):not(.sc-still) .sc-edge[data-sc-step] .e-line.sc-draw{stroke-dasharray:1;animation:sc-draw var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#分支执行与跳过传播-18jxew.sc-svg[data-sc-motion]:not(.sc-still) .sc-grow-y[data-sc-step]{transform-box:fill-box;transform-origin:50% 100%;animation:sc-grow-y var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#分支执行与跳过传播-18jxew.sc-svg[data-sc-motion]:not(.sc-still) .sc-grow-x[data-sc-step]{transform-box:fill-box;transform-origin:0 50%;animation:sc-grow-x var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#分支执行与跳过传播-18jxew.sc-svg[data-sc-motion]:not(.sc-still) .sc-wipe[data-sc-step]{animation:sc-wipe var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#分支执行与跳过传播-18jxew.sc-svg[data-sc-motion]:not(.sc-still) .sc-wipe-down[data-sc-step]{animation:sc-wipe-down var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#分支执行与跳过传播-18jxew.sc-svg[data-sc-motion]:not(.sc-still) .sc-pop[data-sc-step]{transform-box:fill-box;transform-origin:50% 50%;animation:sc-pop var(--sc-enter) cubic-bezier(.2,.9,.3,1.2) var(--d) both}
+#分支执行与跳过传播-18jxew.sc-svg[data-sc-motion]:not(.sc-still) .sc-fade[data-sc-step]{animation:sc-fade var(--sc-enter) ease-out var(--d) both}
+#分支执行与跳过传播-18jxew.sc-svg[data-sc-motion]:not(.sc-still) .iso-part[data-sc-step]{animation:none}
+#分支执行与跳过传播-18jxew.sc-svg[data-sc-motion]:not(.sc-still) .iso-part.sc-lift[data-sc-step]{animation:sc-lift calc(var(--sc-enter) * 1.6) cubic-bezier(.3,.6,.2,1) var(--d) both}
+#分支执行与跳过传播-18jxew.sc-svg[data-sc-motion]:not(.sc-still) .iso-label[data-sc-step]{animation:sc-fade var(--sc-enter) ease-out calc(var(--d) + var(--sc-enter) * 1.2) both}
+#分支执行与跳过传播-18jxew.sc-svg[data-sc-motion]:not(.sc-still) .sc-drop[data-sc-step]{animation:sc-drop var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#分支执行与跳过传播-18jxew.sc-svg:is([data-sc-motion="trace"],#分支执行与跳过传播-18jxew [data-sc-motion="loop"]):not(.sc-still) .e-token{display:inline;offset-rotate:0deg;animation:sc-token var(--tok-dur,1800ms) linear calc(var(--sc-settle) + var(--tok-delay,0ms)) infinite both}
+#分支执行与跳过传播-18jxew.sc-svg[data-sc-motion]:not(.sc-still) .k-change .n-box{animation:sc-pulse 1.6s ease-in-out var(--sc-settle) 3}
+}
+@media print{#分支执行与跳过传播-18jxew.sc-svg *{animation:none!important}#分支执行与跳过传播-18jxew .e-token{display:none!important}}
+#分支执行与跳过传播-18jxew .sc-still .e-token{display:none}
+#分支执行与跳过传播-18jxew .e-token{fill:var(--sc-accent)}
+#分支执行与跳过传播-18jxew .ek-link .e-token,#分支执行与跳过传播-18jxew .e-token.t-link{fill:var(--sc-link)}
+</style><desc id="分支执行与跳过传播-18jxew-desc">Flowchart diagram with 6 elements.</desc><rect class="sc-bg" x="-24" y="-24" width="348" height="416"/><g class="sc-groups"></g><g class="sc-edges"><g class="sc-edge ek-primary" data-sc-edge="start-classify" data-from="start" data-to="classify" data-sc-step="2" style="--step:2"><path class="e-line sc-draw" d="M56,40 L56,97" pathLength="1"/><path class="e-head m-primary" d="M56,104 L52.8,96 L59.2,96 Z"/></g><g class="sc-edge ek-primary" data-sc-edge="classify-search" data-from="classify" data-to="search" data-sc-step="4" style="--step:4"><path class="e-line sc-draw" d="M56,144 L56,201" pathLength="1"/><path class="e-head m-primary" d="M56,208 L52.8,200 L59.2,200 Z"/><g class="e-label-g"><rect class="e-label-bg" x="34" y="170" width="44" height="12" rx="2"/><text class="e-label" x="56" y="178.6" text-anchor="middle">active</text></g></g><g class="sc-edge ek-primary" data-sc-edge="search-answer" data-from="search" data-to="answer" data-sc-step="6" style="--step:6"><path class="e-line sc-draw" d="M56,248 L56,305" pathLength="1"/><path class="e-head m-primary" d="M56,312 L52.8,304 L59.2,304 Z"/><g class="e-label-g"><rect class="e-label-bg" x="34" y="274" width="44" height="12" rx="2"/><text class="e-label" x="56" y="282.6" text-anchor="middle">active</text></g></g><g class="sc-edge ek-async" data-sc-edge="classify-form" data-from="classify" data-to="form" data-sc-step="4" style="--step:4"><path class="e-line dashed" d="M112,124 L237,124 Q244,124 244,131 L244,201"/><path class="e-head m-default" d="M244,208 L240.8,200 L247.2,200 Z"/><g class="e-label-g"><rect class="e-label-bg" x="154" y="118" width="48" height="12" rx="2"/><text class="e-label" x="178" y="126.6" text-anchor="middle">skipped</text></g></g><g class="sc-edge ek-async" data-sc-edge="form-reply" data-from="form" data-to="reply" data-sc-step="6" style="--step:6"><path class="e-line dashed" d="M244,248 L244,305"/><path class="e-head m-default" d="M244,312 L240.8,304 L247.2,304 Z"/><g class="e-label-g"><rect class="e-label-bg" x="220" y="274" width="48" height="12" rx="2"/><text class="e-label" x="244" y="282.6" text-anchor="middle">skipped</text></g></g></g><circle class="e-token" r="3.2" data-sc-step="7" style="--step:7;offset-path:path('M56,40 L56,104 L56,144 L56,208 L56,248 L56,312');--tok-dur:1600ms"/><g class="sc-nodes"><g class="sc-node k-input sh-box" data-sc-node="start" data-sc-step="1" style="--step:1" tabindex="0" role="group" aria-label="工作流开始"><rect class="n-mask" x="0" y="0" width="112" height="40" rx="6"/><rect class="n-box" x="0" y="0" width="112" height="40" rx="6"/><text class="n-label" x="56" y="25" text-anchor="middle">工作流开始</text></g><g class="sc-node k-focal sh-box" data-sc-node="classify" data-sc-step="3" style="--step:3" tabindex="0" role="group" aria-label="意图分类"><rect class="n-mask" x="0" y="104" width="112" height="40" rx="6"/><rect class="n-box" x="0" y="104" width="112" height="40" rx="6"/><text class="n-label" x="56" y="129" text-anchor="middle">意图分类</text></g><g class="sc-node k-backend sh-box" data-sc-node="search" data-sc-step="5" style="--step:5" tabindex="0" role="group" aria-label="知识库检索"><rect class="n-mask" x="0" y="208" width="112" height="40" rx="6"/><rect class="n-box" x="0" y="208" width="112" height="40" rx="6"/><text class="n-label" x="56" y="233" text-anchor="middle">知识库检索</text></g><g class="sc-node k-backend sh-box" data-sc-node="answer" data-sc-step="7" style="--step:7" tabindex="0" role="group" aria-label="AI 回答"><rect class="n-mask" x="0" y="312" width="112" height="40" rx="6"/><rect class="n-box" x="0" y="312" width="112" height="40" rx="6"/><text class="n-label" x="56" y="337" text-anchor="middle">AI 回答</text></g><g class="sc-node k-muted sh-box" data-sc-node="form" data-sc-step="5" style="--step:5" tabindex="0" role="group" aria-label="工单表单"><rect class="n-mask" x="188" y="208" width="112" height="40" rx="6"/><rect class="n-box" x="188" y="208" width="112" height="40" rx="6"/><text class="n-label" x="244" y="233" text-anchor="middle">工单表单</text></g><g class="sc-node k-muted sh-box" data-sc-node="reply" data-sc-step="7" style="--step:7" tabindex="0" role="group" aria-label="工单回复"><rect class="n-mask" x="188" y="312" width="112" height="40" rx="6"/><rect class="n-box" x="188" y="312" width="112" height="40" rx="6"/><text class="n-label" x="244" y="337" text-anchor="middle">工单回复</text></g></g></svg>

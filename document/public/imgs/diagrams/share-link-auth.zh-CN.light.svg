@@ -1,0 +1,320 @@
+<svg width="396" height="876" class="sc-svg sc-still" id="配置身份验证后的分享链接流程-1m26qb" xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 396 876" role="img" aria-labelledby="配置身份验证后的分享链接流程-1m26qb-title 配置身份验证后的分享链接流程-1m26qb-desc" lang="zh-CN" data-sc-type="flowchart" data-sc-slug="配置身份验证后的分享链接流程" data-sc-steps="12"><title id="配置身份验证后的分享链接流程-1m26qb-title">配置身份验证后的分享链接流程</title><style>#配置身份验证后的分享链接流程-1m26qb{--sc-paper:#fafafa;--sc-paper-2:#eeeeee;--sc-ink:#0a0a0a;--sc-ink-strong:#050505;--sc-muted:#575757;--sc-soft:#878787;--sc-rule:rgba(10,10,10,0.12);--sc-rule-solid:#bcbcbc;--sc-accent:#3370ff;--sc-accent-tint:rgba(51,112,255,0.1);--sc-link:#214291;--sc-node:#fdfdfd;--sc-store:rgba(10,10,10,0.05);--sc-external:rgba(10,10,10,0.025);--sc-series-1:#6b8f71;--sc-series-2:#c08a3e;--sc-series-3:#8a6fb0;--sc-series-4:#b5604b;--sc-series-5:#5f7f9e;--sc-ax-shade:#0a0a0a;--sc-ax-lift:#ffffff;--sc-ax-screen:#1b1d25;--sc-ax-dark-edge:rgba(255,255,255,0);--sc-ax-t-o:0;--sc-ax-l-o:0.07;--sc-ax-r-o:0.16;--sc-on-v00:#000000;--sc-on-v01:#000000;--sc-on-v10:#ffffff;--sc-on-v11:#ffffff;--sc-font-serif:'Fraunces', 'Noto Serif', Georgia, serif;--sc-font-sans:'IBM Plex Sans', 'Noto Sans', system-ui, sans-serif;--sc-font-mono:'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;}
+#配置身份验证后的分享链接流程-1m26qb.sc-svg{font-family:var(--sc-font-sans);color:var(--sc-ink);direction:ltr}
+#配置身份验证后的分享链接流程-1m26qb .sc-mark{opacity:.88;pointer-events:none}
+#配置身份验证后的分享链接流程-1m26qb .sc-mark-word{fill:var(--sc-ink)}
+#配置身份验证后的分享链接流程-1m26qb .sc-bg{fill:var(--sc-paper)}
+#配置身份验证后的分享链接流程-1m26qb .n-mask{fill:var(--sc-paper)}
+#配置身份验证后的分享链接流程-1m26qb .n-box{fill:var(--sc-node);stroke:var(--sc-ink);stroke-width:1}
+#配置身份验证后的分享链接流程-1m26qb .k-focal .n-box{fill:var(--sc-accent-tint);stroke:var(--sc-accent);stroke-width:1.2}
+#配置身份验证后的分享链接流程-1m26qb .k-store .n-box{fill:var(--sc-store);stroke:var(--sc-muted)}
+#配置身份验证后的分享链接流程-1m26qb .k-external .n-box{fill:var(--sc-external);stroke:var(--sc-soft)}
+#配置身份验证后的分享链接流程-1m26qb .k-input .n-box{fill:var(--sc-external);stroke:var(--sc-soft)}
+#配置身份验证后的分享链接流程-1m26qb .k-optional .n-box{fill:transparent;stroke:var(--sc-soft);stroke-dasharray:4 3}
+#配置身份验证后的分享链接流程-1m26qb .k-security .n-box{fill:var(--sc-accent-tint);stroke:var(--sc-accent);stroke-opacity:.55;stroke-dasharray:4 4}
+#配置身份验证后的分享链接流程-1m26qb .k-muted .n-box{fill:var(--sc-store);stroke:var(--sc-rule-solid)}
+#配置身份验证后的分享链接流程-1m26qb .n-label{fill:var(--sc-ink);font-size:12px;font-weight:600}
+#配置身份验证后的分享链接流程-1m26qb .n-sub{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}
+#配置身份验证后的分享链接流程-1m26qb .n-icon{fill:none;stroke:var(--sc-muted);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+#配置身份验证后的分享链接流程-1m26qb .k-focal .n-icon{stroke:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .n-tag{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:7px;letter-spacing:.12em;text-transform:uppercase}
+#配置身份验证后的分享链接流程-1m26qb .n-tag-box{fill:none;stroke:var(--sc-rule-solid);stroke-width:.8}
+#配置身份验证后的分享链接流程-1m26qb .k-focal .n-tag{fill:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .k-focal .n-tag-box{stroke:var(--sc-accent);stroke-opacity:.5}
+#配置身份验证后的分享链接流程-1m26qb .e-line{fill:none;stroke:var(--sc-muted);stroke-width:1.1}
+#配置身份验证后的分享链接流程-1m26qb .ek-primary .e-line{stroke:var(--sc-accent);stroke-width:1.4}
+#配置身份验证后的分享链接流程-1m26qb .ek-link .e-line{stroke:var(--sc-link);stroke-width:1.2}
+#配置身份验证后的分享链接流程-1m26qb .ek-async .e-line,#配置身份验证后的分享链接流程-1m26qb .ek-return .e-line{stroke-width:1}
+#配置身份验证后的分享链接流程-1m26qb .ek-muted .e-line{stroke:var(--sc-soft);stroke-width:1}
+#配置身份验证后的分享链接流程-1m26qb .e-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.06em;text-transform:uppercase}
+#配置身份验证后的分享链接流程-1m26qb .ek-primary .e-label{fill:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .ek-link .e-label{fill:var(--sc-link)}
+#配置身份验证后的分享链接流程-1m26qb .e-label-bg{fill:var(--sc-paper)}
+#配置身份验证后的分享链接流程-1m26qb .m-default{fill:var(--sc-muted)}#配置身份验证后的分享链接流程-1m26qb .m-primary{fill:var(--sc-accent)}#配置身份验证后的分享链接流程-1m26qb .m-link{fill:var(--sc-link)}#配置身份验证后的分享链接流程-1m26qb .m-muted{fill:var(--sc-soft)}
+#配置身份验证后的分享链接流程-1m26qb .g-box{fill:var(--sc-ink);fill-opacity:.018;stroke:var(--sc-rule);stroke-width:.8}
+#配置身份验证后的分享链接流程-1m26qb .g-box.g-dashed{stroke-dasharray:4 4;stroke:var(--sc-soft);stroke-opacity:.6}
+#配置身份验证后的分享链接流程-1m26qb .g-label{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:7px;letter-spacing:.16em;text-transform:uppercase}
+#配置身份验证后的分享链接流程-1m26qb .g-label-bg{fill:var(--sc-paper)}
+#配置身份验证后的分享链接流程-1m26qb .lg-rule{stroke:var(--sc-rule);stroke-width:.8}
+#配置身份验证后的分享链接流程-1m26qb .lg-title{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.18em}
+#配置身份验证后的分享链接流程-1m26qb .lg-text{fill:var(--sc-muted);font-size:9px}
+#配置身份验证后的分享链接流程-1m26qb .ax-line{stroke:var(--sc-rule-solid);stroke-width:1}
+#配置身份验证后的分享链接流程-1m26qb .ax-grid{stroke:var(--sc-rule);stroke-width:.8}
+#配置身份验证后的分享链接流程-1m26qb .ax-text{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.04em}
+#配置身份验证后的分享链接流程-1m26qb .ax-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase}
+#配置身份验证后的分享链接流程-1m26qb .c-cat{fill:var(--sc-muted);font-size:10px}
+#配置身份验证后的分享链接流程-1m26qb .c-val{fill:var(--sc-ink);font-family:var(--sc-font-mono);font-size:9px}
+#配置身份验证后的分享链接流程-1m26qb .c-bar{fill:var(--sc-muted);fill-opacity:.38}
+#配置身份验证后的分享链接流程-1m26qb .c-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#配置身份验证后的分享链接流程-1m26qb .c-val.is-focal{fill:var(--sc-accent);font-weight:500}
+#配置身份验证后的分享链接流程-1m26qb .s-1{fill:var(--sc-series-1)}#配置身份验证后的分享链接流程-1m26qb .s-2{fill:var(--sc-series-2)}#配置身份验证后的分享链接流程-1m26qb .s-3{fill:var(--sc-series-3)}#配置身份验证后的分享链接流程-1m26qb .s-4{fill:var(--sc-series-4)}#配置身份验证后的分享链接流程-1m26qb .s-5{fill:var(--sc-series-5)}
+#配置身份验证后的分享链接流程-1m26qb .sk-node{fill:var(--sc-muted)}
+#配置身份验证后的分享链接流程-1m26qb .sk-node.is-focal{fill:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .sk-link{fill:var(--sc-muted);fill-opacity:.14}
+#配置身份验证后的分享链接流程-1m26qb .sk-link.is-focal{fill:var(--sc-accent);fill-opacity:.28}
+#配置身份验证后的分享链接流程-1m26qb .sk-label{fill:var(--sc-ink);font-size:11px;font-weight:500;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#配置身份验证后的分享链接流程-1m26qb .sk-val{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#配置身份验证后的分享链接流程-1m26qb .q-life{stroke:var(--sc-rule-solid);stroke-width:1;stroke-dasharray:3 4}
+#配置身份验证后的分享链接流程-1m26qb .q-frag{fill:none;stroke:var(--sc-soft);stroke-width:.8}
+#配置身份验证后的分享链接流程-1m26qb .q-frag-tag{fill:var(--sc-paper-2);stroke:var(--sc-soft);stroke-width:.8}
+#配置身份验证后的分享链接流程-1m26qb .q-frag-text{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase}
+#配置身份验证后的分享链接流程-1m26qb .q-num{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8px}
+#配置身份验证后的分享链接流程-1m26qb .q-note{fill:var(--sc-paper-2);stroke:var(--sc-rule-solid);stroke-width:.8}
+#配置身份验证后的分享链接流程-1m26qb .q-note-text{fill:var(--sc-muted);font-size:10px;font-style:italic;font-family:var(--sc-font-serif)}
+#配置身份验证后的分享链接流程-1m26qb .n-head{fill:var(--sc-ink);fill-opacity:.035;stroke:none}
+#配置身份验证后的分享链接流程-1m26qb .k-focal .n-head{fill:var(--sc-accent);fill-opacity:.08}
+#配置身份验证后的分享链接流程-1m26qb .n-rule{stroke:var(--sc-rule-solid);stroke-width:.8}
+#配置身份验证后的分享链接流程-1m26qb .n-field{fill:var(--sc-ink);font-size:10px}
+#配置身份验证后的分享链接流程-1m26qb .n-field-t{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}
+#配置身份验证后的分享链接流程-1m26qb .n-key{font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.06em;fill:var(--sc-soft)}
+#配置身份验证后的分享链接流程-1m26qb .n-key-pk{fill:var(--sc-accent)}#配置身份验证后的分享链接流程-1m26qb .n-key-fk{fill:var(--sc-link)}
+#配置身份验证后的分享链接流程-1m26qb .sh-start .n-box{fill:var(--sc-ink);stroke:none}
+#配置身份验证后的分享链接流程-1m26qb .sh-end .n-box{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.2}
+#配置身份验证后的分享链接流程-1m26qb .n-dot{fill:var(--sc-ink)}
+#配置身份验证后的分享链接流程-1m26qb .n-status{stroke:var(--sc-paper);stroke-width:1.5}
+#配置身份验证后的分享链接流程-1m26qb .st-ok{fill:var(--sc-series-1)}#配置身份验证后的分享链接流程-1m26qb .st-risk{fill:var(--sc-series-2)}#配置身份验证后的分享链接流程-1m26qb .st-legacy{fill:var(--sc-series-5)}#配置身份验证后的分享链接流程-1m26qb .st-retire{fill:var(--sc-series-4)}
+#配置身份验证后的分享链接流程-1m26qb .n-change{fill:var(--sc-accent);font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.12em}
+#配置身份验证后的分享链接流程-1m26qb .ch-added .n-box{stroke:var(--sc-accent);stroke-width:1.3}
+#配置身份验证后的分享链接流程-1m26qb .ch-removed{opacity:.55}#配置身份验证后的分享链接流程-1m26qb .ch-removed .n-box{stroke-dasharray:4 3;stroke:var(--sc-soft)}#配置身份验证后的分享链接流程-1m26qb .ch-removed .n-label{text-decoration:line-through}
+#配置身份验证后的分享链接流程-1m26qb .ch-removed .n-change{fill:var(--sc-soft)}
+#配置身份验证后的分享链接流程-1m26qb .ch-changed .n-box{stroke:var(--sc-accent);stroke-dasharray:6 2}
+#配置身份验证后的分享链接流程-1m26qb .sc-edge.ch-added .e-line{stroke:var(--sc-accent)}#配置身份验证后的分享链接流程-1m26qb .sc-edge.ch-removed .e-line{stroke-dasharray:3 3}
+#配置身份验证后的分享链接流程-1m26qb .e-line.dashed{stroke-dasharray:4 3}
+#配置身份验证后的分享链接流程-1m26qb .ek-rel .e-line{stroke:var(--sc-muted);stroke-width:1}
+#配置身份验证后的分享链接流程-1m26qb .e-glyph.stroke{fill:none;stroke:var(--sc-muted);stroke-width:1}
+#配置身份验证后的分享链接流程-1m26qb .e-glyph.hollow{fill:var(--sc-paper);stroke:var(--sc-muted);stroke-width:1}
+#配置身份验证后的分享链接流程-1m26qb .e-glyph.filled{fill:var(--sc-muted);stroke:var(--sc-muted);stroke-width:1}
+#配置身份验证后的分享链接流程-1m26qb .lane-band{fill:var(--sc-ink);fill-opacity:.022}
+#配置身份验证后的分享链接流程-1m26qb .lane-band.alt{fill-opacity:0}
+#配置身份验证后的分享链接流程-1m26qb .lane-rule{stroke:var(--sc-rule);stroke-width:.8}
+#配置身份验证后的分享链接流程-1m26qb .lane-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase}
+#配置身份验证后的分享链接流程-1m26qb .loop-center{fill:var(--sc-ink);font-family:var(--sc-font-serif);font-size:20px}
+#配置身份验证后的分享链接流程-1m26qb .nest-mask{fill:var(--sc-paper)}
+#配置身份验证后的分享链接流程-1m26qb .nest-box{fill:var(--sc-ink);fill-opacity:.025;stroke:var(--sc-rule-solid);stroke-width:.9}
+#配置身份验证后的分享链接流程-1m26qb .nest-d0 .nest-box{fill-opacity:.012}#配置身份验证后的分享链接流程-1m26qb .nest-d2 .nest-box{fill-opacity:.04}#配置身份验证后的分享链接流程-1m26qb .nest-d3 .nest-box{fill-opacity:.055}
+#配置身份验证后的分享链接流程-1m26qb .k-focal .nest-box{fill:var(--sc-accent-tint);fill-opacity:1;stroke:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .nest-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.14em;text-transform:uppercase}
+#配置身份验证后的分享链接流程-1m26qb .chip{fill:var(--sc-paper-2);stroke:var(--sc-rule);stroke-width:.8}
+#配置身份验证后的分享链接流程-1m26qb .chip-text{fill:var(--sc-ink);font-size:10px}
+#配置身份验证后的分享链接流程-1m26qb .k-focal .chip{fill:var(--sc-paper);stroke:var(--sc-accent);stroke-opacity:.4}
+#配置身份验证后的分享链接流程-1m26qb .venn-c{fill:var(--sc-muted);fill-opacity:.07;stroke:var(--sc-muted);stroke-width:1}
+#配置身份验证后的分享链接流程-1m26qb .vs-2 .venn-c{fill:var(--sc-series-2);stroke:var(--sc-series-2);fill-opacity:.09}
+#配置身份验证后的分享链接流程-1m26qb .vs-3 .venn-c{fill:var(--sc-series-1);stroke:var(--sc-series-1);fill-opacity:.09}
+#配置身份验证后的分享链接流程-1m26qb .venn.k-focal .venn-c{fill:var(--sc-accent);stroke:var(--sc-accent);fill-opacity:.09}
+#配置身份验证后的分享链接流程-1m26qb .venn-label{fill:var(--sc-ink);font-size:13px;font-weight:600}
+#配置身份验证后的分享链接流程-1m26qb .venn-ov{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:13px}
+#配置身份验证后的分享链接流程-1m26qb .venn-ov.is-focal{fill:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .fb-spine{stroke-width:1.6}
+#配置身份验证后的分享链接流程-1m26qb .fb-tick{stroke:var(--sc-rule-solid);stroke-width:.8}
+#配置身份验证后的分享链接流程-1m26qb .fb-cat{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;letter-spacing:.14em}
+#配置身份验证后的分享链接流程-1m26qb .fb-cat.is-focal{fill:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .fb-cause{fill:var(--sc-ink);font-size:10px}
+#配置身份验证后的分享链接流程-1m26qb .kb-col{fill:var(--sc-ink);fill-opacity:.025;stroke:var(--sc-rule);stroke-width:.8;rx:8}
+#配置身份验证后的分享链接流程-1m26qb .kb-col.is-over{stroke:var(--sc-accent);stroke-opacity:.6}
+#配置身份验证后的分享链接流程-1m26qb .kb-head{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#配置身份验证后的分享链接流程-1m26qb .kb-count{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:9px}
+#配置身份验证后的分享链接流程-1m26qb .kb-count.is-over{fill:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .kb-card{fill:var(--sc-ink);font-size:11px;font-weight:500}
+#配置身份验证后的分享链接流程-1m26qb .sm-act{fill:var(--sc-ink)}
+#配置身份验证后的分享链接流程-1m26qb .sm-activity.k-focal .sm-act{fill:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .sm-act-text{fill:var(--sc-paper);font-size:11px;font-weight:600}
+#配置身份验证后的分享链接流程-1m26qb .q-frame{fill:none;stroke:var(--sc-rule-solid);stroke-width:1}
+#配置身份验证后的分享链接流程-1m26qb .q-focal{fill:var(--sc-accent-tint)}
+#配置身份验证后的分享链接流程-1m26qb .q-title{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#配置身份验证后的分享链接流程-1m26qb .quad.k-focal .q-title,#配置身份验证后的分享链接流程-1m26qb .quad.k-focal .q-title-big{fill:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .q-title-big{fill:var(--sc-ink);font-family:var(--sc-font-serif);font-size:19px}
+#配置身份验证后的分享链接流程-1m26qb .q-item{fill:var(--sc-muted);font-size:11px}
+#配置身份验证后的分享链接流程-1m26qb .q-dot{fill:var(--sc-muted)}
+#配置身份验证后的分享链接流程-1m26qb .q-pt.k-focal .q-dot{fill:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .q-pt-label{fill:var(--sc-ink);font-size:10.5px;font-weight:500}
+#配置身份验证后的分享链接流程-1m26qb .q-pt.k-focal .q-pt-label{fill:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .mx-col{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.08em}
+#配置身份验证后的分享链接流程-1m26qb .mx-row{fill:var(--sc-ink);font-size:11px;font-weight:500}
+#配置身份验证后的分享链接流程-1m26qb .mx-band{fill:var(--sc-ink);fill-opacity:.025}
+#配置身份验证后的分享链接流程-1m26qb .mx-g.fill{fill:var(--sc-ink)}#配置身份验证后的分享链接流程-1m26qb .mx-g.ring{fill:none;stroke:var(--sc-ink);stroke-width:1}
+#配置身份验证后的分享链接流程-1m26qb .mx-g.dashed{stroke-dasharray:2 2}#配置身份验证后的分享链接流程-1m26qb .mx-g.admin{fill:var(--sc-accent)}#配置身份验证后的分享链接流程-1m26qb .mx-g.none{fill:var(--sc-soft)}
+#配置身份验证后的分享链接流程-1m26qb .mx-r.k-focal .mx-row{fill:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .tl-axis{stroke:var(--sc-ink);stroke-width:1.2}
+#配置身份验证后的分享链接流程-1m26qb .tl-stem{stroke:var(--sc-rule-solid);stroke-width:.8}
+#配置身份验证后的分享链接流程-1m26qb .tl-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}
+#配置身份验证后的分享链接流程-1m26qb .tl-ev.k-focal .tl-dot{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .tl-ev.k-focal .tl-label{fill:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .tl-label{font-size:11px}
+#配置身份验证后的分享链接流程-1m26qb .tl-when{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;letter-spacing:.04em}
+#配置身份验证后的分享链接流程-1m26qb .tl-period{fill:var(--sc-ink);fill-opacity:.07}
+#配置身份验证后的分享链接流程-1m26qb .tl-period.is-focal{fill:var(--sc-accent);fill-opacity:.16}
+#配置身份验证后的分享链接流程-1m26qb .tl-period-text{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.08em}
+#配置身份验证后的分享链接流程-1m26qb .g-task{fill:var(--sc-ink);font-size:11px}
+#配置身份验证后的分享链接流程-1m26qb .g-bar{fill:var(--sc-muted);fill-opacity:.45}
+#配置身份验证后的分享链接流程-1m26qb .g-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#配置身份验证后的分享链接流程-1m26qb .g-bar.is-done{fill-opacity:.2}
+#配置身份验证后的分享链接流程-1m26qb .g-done{fill:var(--sc-muted);font-size:10px}
+#配置身份验证后的分享链接流程-1m26qb .g-mile{fill:var(--sc-ink)}
+#配置身份验证后的分享链接流程-1m26qb .k-focal .g-mile{fill:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .g-today{stroke:var(--sc-accent);stroke-width:1;stroke-dasharray:3 3}
+#配置身份验证后的分享链接流程-1m26qb .g-today-text{fill:var(--sc-accent);font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.14em}
+#配置身份验证后的分享链接流程-1m26qb .jr-band{fill:var(--sc-ink);fill-opacity:.025}#配置身份验证后的分享链接流程-1m26qb .jr-band.alt{fill-opacity:0}
+#配置身份验证后的分享链接流程-1m26qb .jr-stage{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#配置身份验证后的分享链接流程-1m26qb .jr-curve{stroke:var(--sc-ink);stroke-width:1.6}
+#配置身份验证后的分享链接流程-1m26qb .jr-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}
+#配置身份验证后的分享链接流程-1m26qb .jr-dot.is-pain,#配置身份验证后的分享链接流程-1m26qb .jr-dot.is-focal{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .jr-step{fill:var(--sc-ink);font-size:10.5px;font-weight:500}
+#配置身份验证后的分享链接流程-1m26qb .jr-note{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:11px;paint-order:stroke;stroke:var(--sc-paper);stroke-width:4px;stroke-linejoin:round}
+#配置身份验证后的分享链接流程-1m26qb .jr-note.is-pain{fill:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .ln{fill:none;stroke-width:1.6;stroke:var(--sc-muted)}
+#配置身份验证后的分享链接流程-1m26qb .ln.is-focal{stroke:var(--sc-accent);stroke-width:2.2}#配置身份验证后的分享链接流程-1m26qb .ln.is-muted{stroke:var(--sc-soft);stroke-opacity:.55}
+#配置身份验证后的分享链接流程-1m26qb .ln-1{stroke:var(--sc-series-1)}#配置身份验证后的分享链接流程-1m26qb .ln-2{stroke:var(--sc-series-2)}#配置身份验证后的分享链接流程-1m26qb .ln-3{stroke:var(--sc-series-3)}#配置身份验证后的分享链接流程-1m26qb .ln-4{stroke:var(--sc-series-4)}#配置身份验证后的分享链接流程-1m26qb .ln-5{stroke:var(--sc-series-5)}
+#配置身份验证后的分享链接流程-1m26qb .ln-pt{fill:var(--sc-paper);stroke-width:1.4}
+#配置身份验证后的分享链接流程-1m26qb .ln-pt.is-focal{fill:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .ln-label{font-size:10.5px;font-weight:500;fill:var(--sc-muted)}
+#配置身份验证后的分享链接流程-1m26qb .is-muted-t{fill:var(--sc-soft)}
+#配置身份验证后的分享链接流程-1m26qb .ln-1-t{fill:var(--sc-series-1)}#配置身份验证后的分享链接流程-1m26qb .ln-2-t{fill:var(--sc-series-2)}#配置身份验证后的分享链接流程-1m26qb .ln-3-t{fill:var(--sc-series-3)}#配置身份验证后的分享链接流程-1m26qb .ln-4-t{fill:var(--sc-series-4)}#配置身份验证后的分享链接流程-1m26qb .ln-5-t{fill:var(--sc-series-5)}
+#配置身份验证后的分享链接流程-1m26qb .ln-area{fill:var(--sc-muted);fill-opacity:.08}#配置身份验证后的分享链接流程-1m26qb .ln-area.is-focal{fill:var(--sc-accent);fill-opacity:.1}
+#配置身份验证后的分享链接流程-1m26qb .rg-area{fill:var(--sc-muted);fill-opacity:.18}#配置身份验证后的分享链接流程-1m26qb .rg-area.is-focal{fill:var(--sc-accent);fill-opacity:.28}
+#配置身份验证后的分享链接流程-1m26qb .rg-line{fill:none;stroke:var(--sc-ink);stroke-width:1.1}#配置身份验证后的分享链接流程-1m26qb .rg-line.is-focal{stroke:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .st-area{fill-opacity:.55;stroke:var(--sc-paper);stroke-width:1}
+#配置身份验证后的分享链接流程-1m26qb .st-area.is-focal{fill:var(--sc-accent);fill-opacity:.75}
+#配置身份验证后的分享链接流程-1m26qb .st-label{fill:var(--sc-ink-strong);font-size:10px;font-weight:600}
+#配置身份验证后的分享链接流程-1m26qb .is-focal-t{fill:var(--sc-accent)!important}
+#配置身份验证后的分享链接流程-1m26qb .sp-dot{fill:var(--sc-muted);fill-opacity:.55;stroke:var(--sc-paper);stroke-width:.8}
+#配置身份验证后的分享链接流程-1m26qb .sp-dot.is-bubble{fill-opacity:.25;stroke:var(--sc-muted);stroke-opacity:.7}
+#配置身份验证后的分享链接流程-1m26qb .sp-dot.is-focal{fill:var(--sc-accent);fill-opacity:.9;stroke:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .sp-label{fill:var(--sc-ink);font-size:10px;font-weight:500}
+#配置身份验证后的分享链接流程-1m26qb .rd-area{fill:var(--sc-muted);fill-opacity:.1}#配置身份验证后的分享链接流程-1m26qb .rd-line{fill:none;stroke:var(--sc-muted);stroke-width:1.4}
+#配置身份验证后的分享链接流程-1m26qb .rd-area.is-focal{fill:var(--sc-accent);fill-opacity:.16}#配置身份验证后的分享链接流程-1m26qb .rd-line.is-focal{stroke:var(--sc-accent);stroke-width:2}
+#配置身份验证后的分享链接流程-1m26qb .rd-area.is-muted{fill-opacity:.04}#配置身份验证后的分享链接流程-1m26qb .rd-line.is-muted{stroke:var(--sc-soft)}
+#配置身份验证后的分享链接流程-1m26qb .rd-area.s-1,#配置身份验证后的分享链接流程-1m26qb .rd-area.s-2,#配置身份验证后的分享链接流程-1m26qb .rd-area.s-3,#配置身份验证后的分享链接流程-1m26qb .rd-area.s-4,#配置身份验证后的分享链接流程-1m26qb .rd-area.s-5{fill-opacity:.14}
+#配置身份验证后的分享链接流程-1m26qb .rd-line.s-1{stroke:var(--sc-series-1)}#配置身份验证后的分享链接流程-1m26qb .rd-line.s-2{stroke:var(--sc-series-2)}#配置身份验证后的分享链接流程-1m26qb .rd-line.s-3{stroke:var(--sc-series-3)}#配置身份验证后的分享链接流程-1m26qb .rd-line.s-4{stroke:var(--sc-series-4)}#配置身份验证后的分享链接流程-1m26qb .rd-line.s-5{stroke:var(--sc-series-5)}
+#配置身份验证后的分享链接流程-1m26qb .rd-pt{fill:var(--sc-paper);stroke:var(--sc-muted)}#配置身份验证后的分享链接流程-1m26qb .rd-pt.is-focal{stroke:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .rd-key{fill:var(--sc-muted)}#配置身份验证后的分享链接流程-1m26qb .rd-key.is-focal{fill:var(--sc-accent)}#配置身份验证后的分享链接流程-1m26qb .rd-key.is-muted{fill:var(--sc-soft)}
+#配置身份验证后的分享链接流程-1m26qb .rd-ring{fill:none}
+#配置身份验证后的分享链接流程-1m26qb .pl-stem{stroke:var(--sc-muted);stroke-width:1.4}#配置身份验证后的分享链接流程-1m26qb .pl-stem.is-focal{stroke:var(--sc-accent);stroke-width:2}
+#配置身份验证后的分享链接流程-1m26qb .pl-dot{fill:var(--sc-muted)}#配置身份验证后的分享链接流程-1m26qb .pl-dot.is-focal{fill:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .wf-bar{fill:var(--sc-muted);fill-opacity:.4}
+#配置身份验证后的分享链接流程-1m26qb .wf-up{fill:var(--sc-series-1);fill-opacity:.75}#配置身份验证后的分享链接流程-1m26qb .wf-down{fill:var(--sc-series-4);fill-opacity:.75}
+#配置身份验证后的分享链接流程-1m26qb .wf-total{fill:var(--sc-ink);fill-opacity:.82}
+#配置身份验证后的分享链接流程-1m26qb .wf-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#配置身份验证后的分享链接流程-1m26qb .wf-link{stroke:var(--sc-soft);stroke-width:.8;stroke-dasharray:2 2}
+#配置身份验证后的分享链接流程-1m26qb .tm-cell{fill:var(--sc-muted);fill-opacity:.16;stroke:var(--sc-paper);stroke-width:1}
+#配置身份验证后的分享链接流程-1m26qb .tm-cell.is-focal{fill:var(--sc-accent);fill-opacity:.85}
+#配置身份验证后的分享链接流程-1m26qb .tm-sub{fill:var(--sc-paper);fill-opacity:.55}
+#配置身份验证后的分享链接流程-1m26qb .tm-label{fill:var(--sc-ink);font-size:11px;font-weight:600}#配置身份验证后的分享链接流程-1m26qb .tm-label.is-focal{fill:var(--sc-paper)}
+#配置身份验证后的分享链接流程-1m26qb .tm-val{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}#配置身份验证后的分享链接流程-1m26qb .tm-val.is-focal{fill:var(--sc-paper);fill-opacity:.85}
+#配置身份验证后的分享链接流程-1m26qb .tm-sub-label{fill:var(--sc-muted);font-size:9.5px}
+#配置身份验证后的分享链接流程-1m26qb .hm-cell.hm-pos{fill:var(--sc-accent)}#配置身份验证后的分享链接流程-1m26qb .hm-cell.hm-neg{fill:var(--sc-series-4)}
+#配置身份验证后的分享链接流程-1m26qb .hm-val{fill:var(--sc-ink);font-family:var(--sc-font-mono);font-size:8.5px}#配置身份验证后的分享链接流程-1m26qb .hm-val.v00{fill:var(--sc-on-v00)}#配置身份验证后的分享链接流程-1m26qb .hm-val.v01{fill:var(--sc-on-v01)}#配置身份验证后的分享链接流程-1m26qb .hm-val.v10{fill:var(--sc-on-v10)}#配置身份验证后的分享链接流程-1m26qb .hm-val.v11{fill:var(--sc-on-v11)}
+#配置身份验证后的分享链接流程-1m26qb .db-line{stroke:var(--sc-rule-solid);stroke-width:2.4}#配置身份验证后的分享链接流程-1m26qb .db-line.is-focal{stroke:var(--sc-accent);stroke-opacity:.45}
+#配置身份验证后的分享链接流程-1m26qb .db-a{fill:var(--sc-paper);stroke:var(--sc-muted);stroke-width:1.4}#配置身份验证后的分享链接流程-1m26qb .db-b{fill:var(--sc-muted)}#配置身份验证后的分享链接流程-1m26qb .db-b.is-focal{fill:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .mk-seg{fill-opacity:.7;stroke:var(--sc-paper)}
+#配置身份验证后的分享链接流程-1m26qb .mk-pct{fill:var(--sc-ink-strong);font-family:var(--sc-font-mono);font-size:8.5px}
+#配置身份验证后的分享链接流程-1m26qb .wm-link{stroke:var(--sc-soft)!important;stroke-width:1!important}
+#配置身份验证后的分享链接流程-1m26qb .wm-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}#配置身份验证后的分享链接流程-1m26qb .wm-dot.is-focal{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .wm-label{fill:var(--sc-ink);font-size:10.5px;font-weight:500;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#配置身份验证后的分享链接流程-1m26qb .wm-label.is-anchor{font-weight:700;font-size:12px}
+#配置身份验证后的分享链接流程-1m26qb .wm-move{stroke:var(--sc-accent);stroke-width:1.2;stroke-dasharray:4 3;fill:none}#配置身份验证后的分享链接流程-1m26qb .wm-move-head{fill:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .wm-ghost{fill:none;stroke:var(--sc-accent);stroke-dasharray:2 2}
+#配置身份验证后的分享链接流程-1m26qb .wm-inertia{stroke:var(--sc-ink);stroke-width:3}
+#配置身份验证后的分享链接流程-1m26qb .callout{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:13px}
+
+#配置身份验证后的分享链接流程-1m26qb .iso-base{fill:var(--sc-node)}
+#配置身份验证后的分享链接流程-1m26qb .iso-t{fill:var(--sc-ax-lift);fill-opacity:var(--sc-ax-t-o)}
+#配置身份验证后的分享链接流程-1m26qb .iso-l{fill:var(--sc-ax-shade);fill-opacity:var(--sc-ax-l-o)}
+#配置身份验证后的分享链接流程-1m26qb .iso-r{fill:var(--sc-ax-shade);fill-opacity:var(--sc-ax-r-o)}
+#配置身份验证后的分享链接流程-1m26qb .k-focal .iso-t{fill:var(--sc-accent);fill-opacity:.12}
+#配置身份验证后的分享链接流程-1m26qb .k-focal .iso-l{fill:var(--sc-accent);fill-opacity:.22}
+#配置身份验证后的分享链接流程-1m26qb .k-focal .iso-r{fill:var(--sc-accent);fill-opacity:.34}
+#配置身份验证后的分享链接流程-1m26qb .iso-edge{fill:none;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.8;stroke-linejoin:round}
+#配置身份验证后的分享链接流程-1m26qb .iso-sil{fill:none;stroke:var(--sc-ink);stroke-width:1.2;stroke-linejoin:round}
+#配置身份验证后的分享链接流程-1m26qb .k-focal .iso-sil{stroke:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .iso-inset{fill:var(--sc-ink);fill-opacity:.06;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.7}
+#配置身份验证后的分享链接流程-1m26qb .k-focal .iso-inset{fill:var(--sc-accent);fill-opacity:.16;stroke:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .iso-trace{fill:none;stroke:var(--sc-ink);stroke-opacity:.3;stroke-width:.8;stroke-dasharray:4 3}
+#配置身份验证后的分享链接流程-1m26qb .iso-leader{stroke:var(--sc-ink);stroke-opacity:.4;stroke-width:.8}
+#配置身份验证后的分享链接流程-1m26qb .iso-dot{fill:var(--sc-ink)}
+#配置身份验证后的分享链接流程-1m26qb .k-focal .iso-leader{stroke:var(--sc-accent);stroke-opacity:1}#配置身份验证后的分享链接流程-1m26qb .k-focal .iso-dot{fill:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .iso-name{fill:var(--sc-ink);font-size:14px;font-weight:600}
+#配置身份验证后的分享链接流程-1m26qb .iso-sub{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9.5px;letter-spacing:.06em}
+#配置身份验证后的分享链接流程-1m26qb .k-focal .iso-sub{fill:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .iso-contour{fill:none;stroke:var(--sc-ink);stroke-opacity:.22;stroke-width:.7}
+#配置身份验证后的分享链接流程-1m26qb .iso-plate .iso-t{fill-opacity:0}
+#配置身份验证后的分享链接流程-1m26qb .iso-mark{fill:var(--sc-ink);fill-opacity:.07}
+#配置身份验证后的分享链接流程-1m26qb .iso-floor{fill:var(--sc-ink);fill-opacity:.035}
+#配置身份验证后的分享链接流程-1m26qb .k-focal .iso-floor,#配置身份验证后的分享链接流程-1m26qb .iso-floor.k-focal{fill:var(--sc-accent);fill-opacity:.1}
+#配置身份验证后的分享链接流程-1m26qb .iso-canopy .iso-t{fill:var(--sc-series-1);fill-opacity:.55}
+#配置身份验证后的分享链接流程-1m26qb .iso-canopy .iso-l,#配置身份验证后的分享链接流程-1m26qb .iso-canopy .iso-r{fill:var(--sc-series-1);fill-opacity:.35}
+#配置身份验证后的分享链接流程-1m26qb .iso-tag rect{fill:var(--sc-paper);stroke:var(--sc-rule-solid);stroke-width:.8}
+#配置身份验证后的分享链接流程-1m26qb .k-focal.iso-tag rect,#配置身份验证后的分享链接流程-1m26qb .k-focal .iso-tag rect{stroke:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .iso-tag .iso-name{font-size:11px}#配置身份验证后的分享链接流程-1m26qb .iso-tag .iso-sub{font-size:8px}
+
+#配置身份验证后的分享链接流程-1m26qb .it-light .iso-base{fill:var(--sc-node)}
+#配置身份验证后的分享链接流程-1m26qb .it-dark .iso-base,#配置身份验证后的分享链接流程-1m26qb .it-black .iso-base{fill:var(--sc-ax-screen)}
+#配置身份验证后的分享链接流程-1m26qb .it-dark .iso-t,#配置身份验证后的分享链接流程-1m26qb .it-black .iso-t{fill:#fff;fill-opacity:.07}
+#配置身份验证后的分享链接流程-1m26qb .it-dark .iso-edge,#配置身份验证后的分享链接流程-1m26qb .it-black .iso-edge{stroke:#fff;stroke-opacity:.18}
+#配置身份验证后的分享链接流程-1m26qb .it-accent .iso-base{fill:var(--sc-node)}#配置身份验证后的分享链接流程-1m26qb .it-accent .iso-t,#配置身份验证后的分享链接流程-1m26qb .it-accent .iso-l,#配置身份验证后的分享链接流程-1m26qb .it-accent .iso-r{fill:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .it-accent .iso-t{fill-opacity:.25}#配置身份验证后的分享链接流程-1m26qb .it-accent .iso-l{fill-opacity:.4}#配置身份验证后的分享链接流程-1m26qb .it-accent .iso-r{fill-opacity:.55}
+#配置身份验证后的分享链接流程-1m26qb .it-accent .iso-sil{stroke:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .it-mid .iso-base{fill:var(--sc-node)}
+#配置身份验证后的分享链接流程-1m26qb .it-solid .iso-sil{stroke-width:.9}
+#配置身份验证后的分享链接流程-1m26qb path.it-dark{fill:var(--sc-ax-screen)}
+#配置身份验证后的分享链接流程-1m26qb path.it-black{fill:#000;fill-opacity:.85}
+#配置身份验证后的分享链接流程-1m26qb /* dark panels and solids keep an edge where they sit on dark walls (dark themes) */
+path.it-dark,#配置身份验证后的分享链接流程-1m26qb path.it-black{stroke:var(--sc-ax-dark-edge);stroke-width:.7}
+#配置身份验证后的分享链接流程-1m26qb .it-dark .iso-sil,#配置身份验证后的分享链接流程-1m26qb .it-black .iso-sil{stroke:var(--sc-ink)}
+#配置身份验证后的分享链接流程-1m26qb path.it-line.it-stroke-dark{stroke:var(--sc-ax-screen);stroke-opacity:.8}
+#配置身份验证后的分享链接流程-1m26qb path.it-light{fill:var(--sc-node);stroke:var(--sc-ink);stroke-opacity:.45;stroke-width:.6}
+#配置身份验证后的分享链接流程-1m26qb path.it-accent{fill:var(--sc-accent);fill-opacity:.9}
+#配置身份验证后的分享链接流程-1m26qb path.it-mid{fill:var(--sc-ink);fill-opacity:.08}
+#配置身份验证后的分享链接流程-1m26qb path.it-cut{fill:var(--sc-ink);fill-opacity:.13;stroke:var(--sc-ink);stroke-opacity:.45;stroke-width:.5}
+#配置身份验证后的分享链接流程-1m26qb path.it-line{fill:none;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.8;stroke-linecap:round}
+#配置身份验证后的分享链接流程-1m26qb path.it-text{fill:none;stroke:var(--sc-ink);stroke-opacity:.35;stroke-width:1.4;stroke-linecap:round}
+#配置身份验证后的分享链接流程-1m26qb path.it-line.it-stroke-accent,#配置身份验证后的分享链接流程-1m26qb path.it-text.it-stroke-accent{stroke:var(--sc-accent);stroke-opacity:1}
+#配置身份验证后的分享链接流程-1m26qb path.it-stroke-light{stroke:#fff;stroke-opacity:.7}
+#配置身份验证后的分享链接流程-1m26qb path.it-line.it-stroke-dark{stroke-width:2.2}
+#配置身份验证后的分享链接流程-1m26qb path.it-dash{stroke-dasharray:4 3}
+#配置身份验证后的分享链接流程-1m26qb path.it-button{fill:var(--sc-node);stroke:var(--sc-ink);stroke-opacity:.6;stroke-width:.8}
+#配置身份验证后的分享链接流程-1m26qb path.it-cavity{fill:var(--sc-ink);fill-opacity:.07}
+#配置身份验证后的分享链接流程-1m26qb path.it-floor{fill:var(--sc-ink);fill-opacity:.04;stroke:var(--sc-ink);stroke-opacity:.35;stroke-width:.7}
+
+#配置身份验证后的分享链接流程-1m26qb .iso-beam-o{fill:none;stroke:var(--sc-ink);stroke-linecap:round}
+#配置身份验证后的分享链接流程-1m26qb .iso-beam{fill:none;stroke:var(--sc-node);stroke-linecap:round}
+#配置身份验证后的分享链接流程-1m26qb .iso-beam-dark{stroke:var(--sc-ax-screen)}
+#配置身份验证后的分享链接流程-1m26qb .iso-beam-accent,#配置身份验证后的分享链接流程-1m26qb .k-focal .iso-beam{stroke:var(--sc-accent);stroke-opacity:.55}
+#配置身份验证后的分享链接流程-1m26qb .iso-leader{fill:none;stroke:var(--sc-ink);stroke-opacity:.4;stroke-width:.8}
+#配置身份验证后的分享链接流程-1m26qb .k-focal .iso-leader{stroke:var(--sc-accent);stroke-opacity:1}
+
+@keyframes sc-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes sc-fade{from{opacity:0}to{opacity:1}}
+@keyframes sc-draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes sc-grow-y{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes sc-grow-x{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes sc-wipe{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes sc-wipe-down{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes sc-pop{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:scale(1)}}
+@keyframes sc-token{from{offset-distance:0%;opacity:0}8%{opacity:1}92%{opacity:1}to{offset-distance:100%;opacity:0}}
+@keyframes sc-pulse{0%,100%{stroke-opacity:1}50%{stroke-opacity:.35}}
+@keyframes sc-lift{from{transform:translateY(var(--lift))}to{transform:none}}
+@keyframes sc-drop{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:none}}
+#配置身份验证后的分享链接流程-1m26qb .e-token{display:none}
+@media (prefers-reduced-motion: no-preference){
+#配置身份验证后的分享链接流程-1m26qb.sc-svg[data-sc-motion]:not(.sc-still) [data-sc-step]{--d:calc(var(--step) * var(--sc-stagger))}
+#配置身份验证后的分享链接流程-1m26qb.sc-svg[data-sc-motion]:not(.sc-still) .sc-node[data-sc-step],#配置身份验证后的分享链接流程-1m26qb.sc-svg[data-sc-motion]:not(.sc-still) .sc-enter[data-sc-step]{animation:sc-in var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#配置身份验证后的分享链接流程-1m26qb.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step]{animation:sc-fade 240ms ease-out var(--d) both}
+#配置身份验证后的分享链接流程-1m26qb.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-head,#配置身份验证后的分享链接流程-1m26qb.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-glyph,#配置身份验证后的分享链接流程-1m26qb.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-label-g{animation:sc-fade 200ms ease-out calc(var(--d) + var(--sc-draw) * .8) both}
+#配置身份验证后的分享链接流程-1m26qb.sc-svg:is([data-sc-motion="trace"],#配置身份验证后的分享链接流程-1m26qb [data-sc-motion="loop"]):not(.sc-still) .sc-edge[data-sc-step] .e-line.sc-draw{stroke-dasharray:1;animation:sc-draw var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#配置身份验证后的分享链接流程-1m26qb.sc-svg[data-sc-motion]:not(.sc-still) .sc-grow-y[data-sc-step]{transform-box:fill-box;transform-origin:50% 100%;animation:sc-grow-y var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#配置身份验证后的分享链接流程-1m26qb.sc-svg[data-sc-motion]:not(.sc-still) .sc-grow-x[data-sc-step]{transform-box:fill-box;transform-origin:0 50%;animation:sc-grow-x var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#配置身份验证后的分享链接流程-1m26qb.sc-svg[data-sc-motion]:not(.sc-still) .sc-wipe[data-sc-step]{animation:sc-wipe var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#配置身份验证后的分享链接流程-1m26qb.sc-svg[data-sc-motion]:not(.sc-still) .sc-wipe-down[data-sc-step]{animation:sc-wipe-down var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#配置身份验证后的分享链接流程-1m26qb.sc-svg[data-sc-motion]:not(.sc-still) .sc-pop[data-sc-step]{transform-box:fill-box;transform-origin:50% 50%;animation:sc-pop var(--sc-enter) cubic-bezier(.2,.9,.3,1.2) var(--d) both}
+#配置身份验证后的分享链接流程-1m26qb.sc-svg[data-sc-motion]:not(.sc-still) .sc-fade[data-sc-step]{animation:sc-fade var(--sc-enter) ease-out var(--d) both}
+#配置身份验证后的分享链接流程-1m26qb.sc-svg[data-sc-motion]:not(.sc-still) .iso-part[data-sc-step]{animation:none}
+#配置身份验证后的分享链接流程-1m26qb.sc-svg[data-sc-motion]:not(.sc-still) .iso-part.sc-lift[data-sc-step]{animation:sc-lift calc(var(--sc-enter) * 1.6) cubic-bezier(.3,.6,.2,1) var(--d) both}
+#配置身份验证后的分享链接流程-1m26qb.sc-svg[data-sc-motion]:not(.sc-still) .iso-label[data-sc-step]{animation:sc-fade var(--sc-enter) ease-out calc(var(--d) + var(--sc-enter) * 1.2) both}
+#配置身份验证后的分享链接流程-1m26qb.sc-svg[data-sc-motion]:not(.sc-still) .sc-drop[data-sc-step]{animation:sc-drop var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#配置身份验证后的分享链接流程-1m26qb.sc-svg:is([data-sc-motion="trace"],#配置身份验证后的分享链接流程-1m26qb [data-sc-motion="loop"]):not(.sc-still) .e-token{display:inline;offset-rotate:0deg;animation:sc-token var(--tok-dur,1800ms) linear calc(var(--sc-settle) + var(--tok-delay,0ms)) infinite both}
+#配置身份验证后的分享链接流程-1m26qb.sc-svg[data-sc-motion]:not(.sc-still) .k-change .n-box{animation:sc-pulse 1.6s ease-in-out var(--sc-settle) 3}
+}
+@media print{#配置身份验证后的分享链接流程-1m26qb.sc-svg *{animation:none!important}#配置身份验证后的分享链接流程-1m26qb .e-token{display:none!important}}
+#配置身份验证后的分享链接流程-1m26qb .sc-still .e-token{display:none}
+#配置身份验证后的分享链接流程-1m26qb .e-token{fill:var(--sc-accent)}
+#配置身份验证后的分享链接流程-1m26qb .ek-link .e-token,#配置身份验证后的分享链接流程-1m26qb .e-token.t-link{fill:var(--sc-link)}
+</style><desc id="配置身份验证后的分享链接流程-1m26qb-desc">Flowchart diagram with 8 elements.</desc><rect class="sc-bg" x="-24" y="-24" width="396" height="876"/><g class="sc-groups"></g><g class="sc-edges"><g class="sc-edge ek-primary" data-sc-edge="open-init" data-from="open" data-to="init" data-sc-step="2" style="--step:2"><path class="e-line sc-draw" d="M86,40 L86,97" pathLength="1"/><path class="e-head m-primary" d="M86,104 L82.8,96 L89.2,96 Z"/></g><g class="sc-edge ek-primary" data-sc-edge="init-app" data-from="init" data-to="app" data-sc-step="4" style="--step:4"><path class="e-line sc-draw" d="M86,188 L86,245" pathLength="1"/><path class="e-head m-primary" d="M86,252 L82.8,244 L89.2,244 Z"/><g class="e-label-g"><rect class="e-label-bg" x="46" y="214" width="80" height="12" rx="2"/><text class="e-label" x="86" y="222.6" text-anchor="middle">成功且 uid 有效</text></g></g><g class="sc-edge ek-async" data-sc-edge="init-reject" data-from="init" data-to="reject" data-sc-step="4" style="--step:4"><path class="e-line dashed" d="M168,146 L285,146 Q292,146 292,153 L292,373"/><path class="e-head m-default" d="M292,380 L288.8,372 L295.2,372 Z"/><g class="e-label-g"><rect class="e-label-bg" x="216" y="140" width="28" height="12" rx="2"/><text class="e-label" x="230" y="148.6" text-anchor="middle">失败</text></g></g><g class="sc-edge ek-primary" data-sc-edge="app-limits" data-from="app" data-to="limits" data-sc-step="6" style="--step:6"><path class="e-line sc-draw" d="M86,292 L86,349" pathLength="1"/><path class="e-head m-primary" d="M86,356 L82.8,348 L89.2,348 Z"/></g><g class="sc-edge ek-primary" data-sc-edge="limits-start" data-from="limits" data-to="start" data-sc-step="7" style="--step:7"><path class="e-line sc-draw" d="M86,440 L86,497" pathLength="1"/><path class="e-head m-primary" d="M86,504 L82.8,496 L89.2,496 Z"/><g class="e-label-g"><rect class="e-label-bg" x="72" y="466" width="28" height="12" rx="2"/><text class="e-label" x="86" y="474.6" text-anchor="middle">通过</text></g></g><g class="sc-edge ek-async" data-sc-edge="limits-reject" data-from="limits" data-to="reject" data-sc-step="7" style="--step:7"><path class="e-line dashed" d="M170,398 L229,398"/><path class="e-head m-default" d="M236,398 L228,401.2 L228,394.8 Z"/><g class="e-label-g"><rect class="e-label-bg" x="189" y="392" width="28" height="12" rx="2"/><text class="e-label" x="203" y="400.6" text-anchor="middle">失败</text></g></g><g class="sc-edge ek-primary" data-sc-edge="start-chat" data-from="start" data-to="chat" data-sc-step="9" style="--step:9"><path class="e-line sc-draw" d="M86,592 L86,649" pathLength="1"/><path class="e-head m-primary" d="M86,656 L82.8,648 L89.2,648 Z"/><g class="e-label-g"><rect class="e-label-bg" x="48" y="618" width="76" height="12" rx="2"/><text class="e-label" x="86" y="626.6" text-anchor="middle">success=true</text></g></g><g class="sc-edge ek-async" data-sc-edge="start-reject" data-from="start" data-to="reject" data-sc-step="9" style="--step:9"><path class="e-line dashed" d="M172,548 L285,548 Q292,548 292,541 L292,423"/><path class="e-head m-default" d="M292,416 L295.2,424 L288.8,424 Z"/><g class="e-label-g"><rect class="e-label-bg" x="218" y="542" width="28" height="12" rx="2"/><text class="e-label" x="232" y="550.6" text-anchor="middle">失败</text></g></g><g class="sc-edge ek-primary" data-sc-edge="chat-report" data-from="chat" data-to="report" data-sc-step="11" style="--step:11"><path class="e-line sc-draw" d="M86,696 L86,753" pathLength="1"/><path class="e-head m-primary" d="M86,760 L82.8,752 L89.2,752 Z"/><g class="e-label-g"><rect class="e-label-bg" x="72" y="722" width="28" height="12" rx="2"/><text class="e-label" x="86" y="730.6" text-anchor="middle">完成</text></g></g></g><circle class="e-token" r="3.2" data-sc-step="12" style="--step:12;offset-path:path('M86,40 L86,104 L86,188 L86,252 L86,292 L86,356 L86,440 L86,504 L86,592 L86,656 L86,696 L86,760');--tok-dur:3240ms"/><g class="sc-nodes"><g class="sc-node k-input sh-box" data-sc-node="open" data-sc-step="1" style="--step:1" tabindex="0" role="group" aria-label="打开分享链接"><rect class="n-mask" x="30" y="0" width="112" height="40" rx="6"/><rect class="n-box" x="30" y="0" width="112" height="40" rx="6"/><text class="n-label" x="86" y="25" text-anchor="middle">打开分享链接</text></g><g class="sc-node k-backend sh-decision" data-sc-node="init" data-sc-step="3" style="--step:3" tabindex="0" role="group" aria-label="初始化校验, /shareAuth/init"><path class="n-mask" d="M86,104 L168,146 L86,188 L4,146 Z"/><path class="n-box" d="M86,104 L168,146 L86,188 L4,146 Z"/><text class="n-label" x="86" y="144" text-anchor="middle">初始化校验</text><text class="n-sub" x="86" y="159.5" text-anchor="middle">/shareAuth/init</text></g><g class="sc-node k-backend sh-box" data-sc-node="app" data-sc-step="5" style="--step:5" tabindex="0" role="group" aria-label="进入应用"><rect class="n-mask" x="30" y="252" width="112" height="40" rx="6"/><rect class="n-box" x="30" y="252" width="112" height="40" rx="6"/><text class="n-label" x="86" y="277" text-anchor="middle">进入应用</text></g><g class="sc-node k-backend sh-decision" data-sc-node="limits" data-sc-step="7" style="--step:7" tabindex="0" role="group" aria-label="提交并检查限制, 到期 / 用量 / QPM"><path class="n-mask" d="M86,356 L170,398 L86,440 L2,398 Z"/><path class="n-box" d="M86,356 L170,398 L86,440 L2,398 Z"/><text class="n-label" x="86" y="396" text-anchor="middle">提交并检查限制</text><text class="n-sub" x="86" y="411.5" text-anchor="middle">到期 / 用量 / QPM</text></g><g class="sc-node k-backend sh-decision" data-sc-node="start" data-sc-step="8" style="--step:8" tabindex="0" role="group" aria-label="对话前校验, /shareAuth/start"><path class="n-mask" d="M86,504 L172,548 L86,592 L0,548 Z"/><path class="n-box" d="M86,504 L172,548 L86,592 L0,548 Z"/><text class="n-label" x="86" y="546" text-anchor="middle">对话前校验</text><text class="n-sub" x="86" y="561.5" text-anchor="middle">/shareAuth/start</text></g><g class="sc-node k-focal sh-box" data-sc-node="chat" data-sc-step="10" style="--step:10" tabindex="0" role="group" aria-label="执行对话"><rect class="n-mask" x="30" y="656" width="112" height="40" rx="6"/><rect class="n-box" x="30" y="656" width="112" height="40" rx="6"/><text class="n-label" x="86" y="681" text-anchor="middle">执行对话</text></g><g class="sc-node k-backend sh-box" data-sc-node="report" data-sc-step="12" style="--step:12" tabindex="0" role="group" aria-label="上报完成结果, /shareAuth/finish"><rect class="n-mask" x="24" y="760" width="124" height="52" rx="6"/><rect class="n-box" x="24" y="760" width="124" height="52" rx="6"/><text class="n-label" x="86" y="784" text-anchor="middle">上报完成结果</text><text class="n-sub" x="86" y="799.5" text-anchor="middle">/shareAuth/finish</text></g><g class="sc-node k-muted sh-terminal" data-sc-node="reject" data-sc-step="5" style="--step:5" tabindex="0" role="group" aria-label="拒绝本次操作"><rect class="n-mask" x="236" y="380" width="112" height="36" rx="18"/><rect class="n-box" x="236" y="380" width="112" height="36" rx="18"/><text class="n-label" x="292" y="403" text-anchor="middle">拒绝本次操作</text></g></g></svg>

@@ -10,14 +10,7 @@ description: Start with an API request, then integrate applications, conversatio
 
 FastGPT provides an open capability matrix for enterprise systems and developers:
 
-```mermaid
-graph LR
-    Client[Web / Mobile Clients] --> Backend[Trusted Backend]
-    Backend --> API[FastGPT Open APIs]
-    SDK[Server-Side SDK] --> API
-    API --> Apps[Applications and Conversations]
-    API --> Knowledge[Knowledge Base Operations]
-```
+![Integrate through a trusted backend](/imgs/diagrams/integration-overview.en.light.svg)
 
 Keep API keys on a trusted server. Identity proxy is optional and requires endpoint support and a trusted mapping to a member in the same team. MCP clients use the separately configured MCP service and its authentication.
 

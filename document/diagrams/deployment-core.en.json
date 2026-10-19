@@ -1,0 +1,146 @@
+{
+  "type": "architecture",
+  "title": "FastGPT core deployment",
+  "nodes": [
+    {
+      "id": "client",
+      "label": "Clients",
+      "row": 0,
+      "col": 1,
+      "kind": "external"
+    },
+    {
+      "id": "gateway",
+      "label": "Ingress",
+      "row": 1,
+      "col": 1,
+      "kind": "backend",
+      "sub": "Deployment-specific"
+    },
+    {
+      "id": "app",
+      "label": "FastGPT",
+      "row": 2,
+      "col": 1,
+      "kind": "backend",
+      "focal": true
+    },
+    {
+      "id": "mongo",
+      "label": "MongoDB",
+      "row": 2,
+      "col": 0,
+      "kind": "store",
+      "sub": "Records and chunks"
+    },
+    {
+      "id": "redis",
+      "label": "Redis",
+      "row": 2,
+      "col": 2,
+      "kind": "store",
+      "sub": "Cache / queues"
+    },
+    {
+      "id": "vector",
+      "label": "Vector database",
+      "row": 3,
+      "col": 0,
+      "kind": "store",
+      "sub": "Choose one backend"
+    },
+    {
+      "id": "s3",
+      "label": "S3 storage",
+      "row": 3,
+      "col": 2,
+      "kind": "store",
+      "sub": "Files and objects"
+    },
+    {
+      "id": "proxy",
+      "label": "AI Proxy",
+      "row": 3,
+      "col": 1,
+      "kind": "backend"
+    },
+    {
+      "id": "model",
+      "label": "Model providers",
+      "row": 4,
+      "col": 1,
+      "kind": "external",
+      "sub": "Cloud or self-hosted"
+    }
+  ],
+  "edges": [
+    [
+      "client",
+      "gateway",
+      "",
+      "primary"
+    ],
+    [
+      "gateway",
+      "app",
+      "",
+      "primary"
+    ],
+    [
+      "app",
+      "mongo",
+      "",
+      "default"
+    ],
+    [
+      "app",
+      "redis",
+      "",
+      "default"
+    ],
+    [
+      "app",
+      "vector",
+      "",
+      "default"
+    ],
+    [
+      "app",
+      "s3",
+      "",
+      "default"
+    ],
+    [
+      "app",
+      "proxy",
+      "",
+      "primary"
+    ],
+    [
+      "proxy",
+      "model",
+      "",
+      "primary"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "app",
+      "file": "deploy/version/main/docker-compose.template.yml",
+      "line": 27
+    },
+    {
+      "id": "proxy",
+      "file": "packages/service/core/ai/config.ts",
+      "line": 9
+    }
+  ],
+  "dir": "TB",
+  "lang": "en",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

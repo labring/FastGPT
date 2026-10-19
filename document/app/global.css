@@ -116,6 +116,31 @@ html.dark [data-rmiz-modal-overlay='visible'] {
 /* Content */
 
 /* img */
+.docs-diagram {
+  display: block;
+  margin: 1.5em 0;
+  overflow-x: auto;
+}
+
+.docs-diagram-dark,
+html.dark .docs-diagram-light {
+  display: none;
+}
+
+html.dark .docs-diagram-dark {
+  display: block;
+}
+
+.docs-diagram > [data-rmiz] {
+  display: block;
+  min-width: 520px;
+}
+
+#nd-page article .docs-diagram img {
+  width: 100%;
+  margin: 0;
+}
+
 .docs-screenshot {
   display: block;
   width: 100%;

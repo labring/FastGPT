@@ -1,0 +1,148 @@
+{
+  "type": "flowchart",
+  "title": "Resolve resource collaborator access",
+  "nodes": [
+    {
+      "id": "start",
+      "label": "Resolve member access",
+      "row": 0,
+      "col": 0,
+      "kind": "backend"
+    },
+    {
+      "id": "personal",
+      "label": "Personal record?",
+      "row": 1,
+      "col": 0,
+      "kind": "backend",
+      "shape": "decision"
+    },
+    {
+      "id": "value",
+      "label": "Use personal value",
+      "row": 1,
+      "col": 1,
+      "kind": "backend",
+      "sub": "Explicit zero is valid"
+    },
+    {
+      "id": "groups",
+      "label": "Load groups/orgs",
+      "row": 2,
+      "col": 0,
+      "kind": "backend",
+      "sub": "Default group / ancestors"
+    },
+    {
+      "id": "matches",
+      "label": "Matching records?",
+      "row": 3,
+      "col": 0,
+      "kind": "backend",
+      "shape": "decision"
+    },
+    {
+      "id": "union",
+      "label": "Bitwise permission OR",
+      "row": 4,
+      "col": 0,
+      "kind": "backend"
+    },
+    {
+      "id": "fallback",
+      "label": "Caller default",
+      "row": 3,
+      "col": 1,
+      "kind": "backend"
+    },
+    {
+      "id": "return",
+      "label": "Return access",
+      "row": 5,
+      "col": 0,
+      "kind": "backend",
+      "focal": true
+    }
+  ],
+  "edges": [
+    [
+      "start",
+      "personal",
+      "",
+      "primary"
+    ],
+    [
+      "personal",
+      "value",
+      "Yes",
+      "default"
+    ],
+    [
+      "personal",
+      "groups",
+      "No",
+      "primary"
+    ],
+    [
+      "groups",
+      "matches",
+      "",
+      "primary"
+    ],
+    [
+      "matches",
+      "union",
+      "Yes",
+      "primary"
+    ],
+    [
+      "matches",
+      "fallback",
+      "No",
+      "default"
+    ],
+    [
+      "value",
+      "return",
+      "",
+      "default"
+    ],
+    [
+      "union",
+      "return",
+      "",
+      "primary"
+    ],
+    [
+      "fallback",
+      "return",
+      "",
+      "default"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "personal",
+      "file": "packages/service/support/permission/controller.ts",
+      "line": 46
+    },
+    {
+      "id": "groups",
+      "file": "packages/service/support/permission/controller.ts",
+      "line": 62
+    },
+    {
+      "id": "union",
+      "file": "packages/global/support/permission/utils.ts",
+      "line": 13
+    }
+  ],
+  "dir": "TB",
+  "lang": "en",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

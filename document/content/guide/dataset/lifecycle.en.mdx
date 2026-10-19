@@ -15,18 +15,11 @@ The knowledge base is FastGPT's core repository for structured and unstructured 
 
 The platform manages knowledge assets across three distinct layers:
 
-```
-Knowledge Base
-  ├── Embedding model, full-text search, and global access configuration
-  └── Collection
-        ├── Folder Collection: Organizes and groups child collections
-        └── Content Collection: Represents a specific file, website, or external library
-              └── Data Chunk: The granular unit holding embedding and text indexes
-```
+![Knowledge asset hierarchy](/imgs/diagrams/knowledge-hierarchy.en.light.svg)
 
 1. **Knowledge Base**: The top-level root configuring the embedding model, BM25 tokenizer settings, database persistence, and team-level collaborator permissions.
 2. **Collection**: The organizational container for assets. **Content Collections** store ingested files, scraped web pages, or synchronized platform records; **Folder Collections** establish nested hierarchical trees for batch authorization and tag categorization.
-3. **Data Chunk**: The granular unit produced by chunking algorithms. Each chunk preserves source text, tokenized keywords, and dense vector embeddings, supporting standalone edits and vector recalculation.
+3. **Data Chunk**: The granular unit produced by chunking algorithms. Each chunk preserves source text and index references such as index IDs and text. The vector backend stores embeddings, supporting standalone edits and index rebuilding.
 
 ---
 
@@ -48,22 +41,17 @@ Knowledge assets advance through five sequential lifecycle stages:
 
 Once file upload succeeds, the system processes assets asynchronously using a distributed queue (BullMQ and Mongo task records):
 
-```
-[Raw File Uploaded] ──► [Queued] ──► [Chunk Parsing] ──► [Embedding Gen] ──► [Dual Index Stored] ──► [Ready]
-                              │                │                  │
-                              ▼                ▼                  ▼
-                         [Queue Lag]      [Parse Error]      [Quota Exceeded]
-                              │                │                  │
-                              └────────────────┴──────────────────┴──► [Failed / Retry]
-```
+![File processing and retries](/imgs/diagrams/ingestion-pipeline.en.light.svg)
 
-### Collection Status Transitions
+### Processing Stages and Collection Status
 
-- **Pending**: The raw file is stored in S3 and waiting for an available background worker slot.
-- **Parsing**: The document parser is actively extracting text and applying chunk boundaries.
-- **Training**: Workers are calling the embedding model in batches and generating full-text indexes.
-- **Ready**: All chunks and indexes are persisted, making the collection searchable online.
-- **Error**: Processing halted due to corrupted files, exhausted model balances, or network timeouts. The system stores error diagnostics and supports manual retries after fixing upstream constraints.
+Waiting, parsing and chunking, optional enhancement, and indexing describe processing stages in the diagram. Queued tasks wait for consumption; processing failures enter retry or troubleshooting paths.
+
+The collection summary uses three status values:
+
+- **Processing (`running`)**: Tasks remain in progress, including waiting, parsing, enhancement, and indexing.
+- **Ready (`ready`)**: Processing is complete and chunks are available for retrieval.
+- **Error (`error`)**: Processing errors require inspection. Fix file, model balance, or network prerequisites using the recorded diagnostics, then retry.
 
 ---
 

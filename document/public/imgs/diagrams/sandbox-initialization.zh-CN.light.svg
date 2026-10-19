@@ -1,0 +1,320 @@
+<svg width="404" height="800" class="sc-svg sc-still" id="agent-沙箱初始化-ykl5vn" xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 404 800" role="img" aria-labelledby="agent-沙箱初始化-ykl5vn-title agent-沙箱初始化-ykl5vn-desc" lang="zh-CN" data-sc-type="flowchart" data-sc-slug="agent-沙箱初始化" data-sc-steps="12"><title id="agent-沙箱初始化-ykl5vn-title">Agent 沙箱初始化</title><style>#agent-沙箱初始化-ykl5vn{--sc-paper:#fafafa;--sc-paper-2:#eeeeee;--sc-ink:#0a0a0a;--sc-ink-strong:#050505;--sc-muted:#575757;--sc-soft:#878787;--sc-rule:rgba(10,10,10,0.12);--sc-rule-solid:#bcbcbc;--sc-accent:#3370ff;--sc-accent-tint:rgba(51,112,255,0.1);--sc-link:#214291;--sc-node:#fdfdfd;--sc-store:rgba(10,10,10,0.05);--sc-external:rgba(10,10,10,0.025);--sc-series-1:#6b8f71;--sc-series-2:#c08a3e;--sc-series-3:#8a6fb0;--sc-series-4:#b5604b;--sc-series-5:#5f7f9e;--sc-ax-shade:#0a0a0a;--sc-ax-lift:#ffffff;--sc-ax-screen:#1b1d25;--sc-ax-dark-edge:rgba(255,255,255,0);--sc-ax-t-o:0;--sc-ax-l-o:0.07;--sc-ax-r-o:0.16;--sc-on-v00:#000000;--sc-on-v01:#000000;--sc-on-v10:#ffffff;--sc-on-v11:#ffffff;--sc-font-serif:'Fraunces', 'Noto Serif', Georgia, serif;--sc-font-sans:'IBM Plex Sans', 'Noto Sans', system-ui, sans-serif;--sc-font-mono:'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;}
+#agent-沙箱初始化-ykl5vn.sc-svg{font-family:var(--sc-font-sans);color:var(--sc-ink);direction:ltr}
+#agent-沙箱初始化-ykl5vn .sc-mark{opacity:.88;pointer-events:none}
+#agent-沙箱初始化-ykl5vn .sc-mark-word{fill:var(--sc-ink)}
+#agent-沙箱初始化-ykl5vn .sc-bg{fill:var(--sc-paper)}
+#agent-沙箱初始化-ykl5vn .n-mask{fill:var(--sc-paper)}
+#agent-沙箱初始化-ykl5vn .n-box{fill:var(--sc-node);stroke:var(--sc-ink);stroke-width:1}
+#agent-沙箱初始化-ykl5vn .k-focal .n-box{fill:var(--sc-accent-tint);stroke:var(--sc-accent);stroke-width:1.2}
+#agent-沙箱初始化-ykl5vn .k-store .n-box{fill:var(--sc-store);stroke:var(--sc-muted)}
+#agent-沙箱初始化-ykl5vn .k-external .n-box{fill:var(--sc-external);stroke:var(--sc-soft)}
+#agent-沙箱初始化-ykl5vn .k-input .n-box{fill:var(--sc-external);stroke:var(--sc-soft)}
+#agent-沙箱初始化-ykl5vn .k-optional .n-box{fill:transparent;stroke:var(--sc-soft);stroke-dasharray:4 3}
+#agent-沙箱初始化-ykl5vn .k-security .n-box{fill:var(--sc-accent-tint);stroke:var(--sc-accent);stroke-opacity:.55;stroke-dasharray:4 4}
+#agent-沙箱初始化-ykl5vn .k-muted .n-box{fill:var(--sc-store);stroke:var(--sc-rule-solid)}
+#agent-沙箱初始化-ykl5vn .n-label{fill:var(--sc-ink);font-size:12px;font-weight:600}
+#agent-沙箱初始化-ykl5vn .n-sub{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}
+#agent-沙箱初始化-ykl5vn .n-icon{fill:none;stroke:var(--sc-muted);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+#agent-沙箱初始化-ykl5vn .k-focal .n-icon{stroke:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .n-tag{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:7px;letter-spacing:.12em;text-transform:uppercase}
+#agent-沙箱初始化-ykl5vn .n-tag-box{fill:none;stroke:var(--sc-rule-solid);stroke-width:.8}
+#agent-沙箱初始化-ykl5vn .k-focal .n-tag{fill:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .k-focal .n-tag-box{stroke:var(--sc-accent);stroke-opacity:.5}
+#agent-沙箱初始化-ykl5vn .e-line{fill:none;stroke:var(--sc-muted);stroke-width:1.1}
+#agent-沙箱初始化-ykl5vn .ek-primary .e-line{stroke:var(--sc-accent);stroke-width:1.4}
+#agent-沙箱初始化-ykl5vn .ek-link .e-line{stroke:var(--sc-link);stroke-width:1.2}
+#agent-沙箱初始化-ykl5vn .ek-async .e-line,#agent-沙箱初始化-ykl5vn .ek-return .e-line{stroke-width:1}
+#agent-沙箱初始化-ykl5vn .ek-muted .e-line{stroke:var(--sc-soft);stroke-width:1}
+#agent-沙箱初始化-ykl5vn .e-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.06em;text-transform:uppercase}
+#agent-沙箱初始化-ykl5vn .ek-primary .e-label{fill:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .ek-link .e-label{fill:var(--sc-link)}
+#agent-沙箱初始化-ykl5vn .e-label-bg{fill:var(--sc-paper)}
+#agent-沙箱初始化-ykl5vn .m-default{fill:var(--sc-muted)}#agent-沙箱初始化-ykl5vn .m-primary{fill:var(--sc-accent)}#agent-沙箱初始化-ykl5vn .m-link{fill:var(--sc-link)}#agent-沙箱初始化-ykl5vn .m-muted{fill:var(--sc-soft)}
+#agent-沙箱初始化-ykl5vn .g-box{fill:var(--sc-ink);fill-opacity:.018;stroke:var(--sc-rule);stroke-width:.8}
+#agent-沙箱初始化-ykl5vn .g-box.g-dashed{stroke-dasharray:4 4;stroke:var(--sc-soft);stroke-opacity:.6}
+#agent-沙箱初始化-ykl5vn .g-label{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:7px;letter-spacing:.16em;text-transform:uppercase}
+#agent-沙箱初始化-ykl5vn .g-label-bg{fill:var(--sc-paper)}
+#agent-沙箱初始化-ykl5vn .lg-rule{stroke:var(--sc-rule);stroke-width:.8}
+#agent-沙箱初始化-ykl5vn .lg-title{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.18em}
+#agent-沙箱初始化-ykl5vn .lg-text{fill:var(--sc-muted);font-size:9px}
+#agent-沙箱初始化-ykl5vn .ax-line{stroke:var(--sc-rule-solid);stroke-width:1}
+#agent-沙箱初始化-ykl5vn .ax-grid{stroke:var(--sc-rule);stroke-width:.8}
+#agent-沙箱初始化-ykl5vn .ax-text{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.04em}
+#agent-沙箱初始化-ykl5vn .ax-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase}
+#agent-沙箱初始化-ykl5vn .c-cat{fill:var(--sc-muted);font-size:10px}
+#agent-沙箱初始化-ykl5vn .c-val{fill:var(--sc-ink);font-family:var(--sc-font-mono);font-size:9px}
+#agent-沙箱初始化-ykl5vn .c-bar{fill:var(--sc-muted);fill-opacity:.38}
+#agent-沙箱初始化-ykl5vn .c-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#agent-沙箱初始化-ykl5vn .c-val.is-focal{fill:var(--sc-accent);font-weight:500}
+#agent-沙箱初始化-ykl5vn .s-1{fill:var(--sc-series-1)}#agent-沙箱初始化-ykl5vn .s-2{fill:var(--sc-series-2)}#agent-沙箱初始化-ykl5vn .s-3{fill:var(--sc-series-3)}#agent-沙箱初始化-ykl5vn .s-4{fill:var(--sc-series-4)}#agent-沙箱初始化-ykl5vn .s-5{fill:var(--sc-series-5)}
+#agent-沙箱初始化-ykl5vn .sk-node{fill:var(--sc-muted)}
+#agent-沙箱初始化-ykl5vn .sk-node.is-focal{fill:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .sk-link{fill:var(--sc-muted);fill-opacity:.14}
+#agent-沙箱初始化-ykl5vn .sk-link.is-focal{fill:var(--sc-accent);fill-opacity:.28}
+#agent-沙箱初始化-ykl5vn .sk-label{fill:var(--sc-ink);font-size:11px;font-weight:500;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#agent-沙箱初始化-ykl5vn .sk-val{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#agent-沙箱初始化-ykl5vn .q-life{stroke:var(--sc-rule-solid);stroke-width:1;stroke-dasharray:3 4}
+#agent-沙箱初始化-ykl5vn .q-frag{fill:none;stroke:var(--sc-soft);stroke-width:.8}
+#agent-沙箱初始化-ykl5vn .q-frag-tag{fill:var(--sc-paper-2);stroke:var(--sc-soft);stroke-width:.8}
+#agent-沙箱初始化-ykl5vn .q-frag-text{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase}
+#agent-沙箱初始化-ykl5vn .q-num{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8px}
+#agent-沙箱初始化-ykl5vn .q-note{fill:var(--sc-paper-2);stroke:var(--sc-rule-solid);stroke-width:.8}
+#agent-沙箱初始化-ykl5vn .q-note-text{fill:var(--sc-muted);font-size:10px;font-style:italic;font-family:var(--sc-font-serif)}
+#agent-沙箱初始化-ykl5vn .n-head{fill:var(--sc-ink);fill-opacity:.035;stroke:none}
+#agent-沙箱初始化-ykl5vn .k-focal .n-head{fill:var(--sc-accent);fill-opacity:.08}
+#agent-沙箱初始化-ykl5vn .n-rule{stroke:var(--sc-rule-solid);stroke-width:.8}
+#agent-沙箱初始化-ykl5vn .n-field{fill:var(--sc-ink);font-size:10px}
+#agent-沙箱初始化-ykl5vn .n-field-t{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}
+#agent-沙箱初始化-ykl5vn .n-key{font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.06em;fill:var(--sc-soft)}
+#agent-沙箱初始化-ykl5vn .n-key-pk{fill:var(--sc-accent)}#agent-沙箱初始化-ykl5vn .n-key-fk{fill:var(--sc-link)}
+#agent-沙箱初始化-ykl5vn .sh-start .n-box{fill:var(--sc-ink);stroke:none}
+#agent-沙箱初始化-ykl5vn .sh-end .n-box{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.2}
+#agent-沙箱初始化-ykl5vn .n-dot{fill:var(--sc-ink)}
+#agent-沙箱初始化-ykl5vn .n-status{stroke:var(--sc-paper);stroke-width:1.5}
+#agent-沙箱初始化-ykl5vn .st-ok{fill:var(--sc-series-1)}#agent-沙箱初始化-ykl5vn .st-risk{fill:var(--sc-series-2)}#agent-沙箱初始化-ykl5vn .st-legacy{fill:var(--sc-series-5)}#agent-沙箱初始化-ykl5vn .st-retire{fill:var(--sc-series-4)}
+#agent-沙箱初始化-ykl5vn .n-change{fill:var(--sc-accent);font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.12em}
+#agent-沙箱初始化-ykl5vn .ch-added .n-box{stroke:var(--sc-accent);stroke-width:1.3}
+#agent-沙箱初始化-ykl5vn .ch-removed{opacity:.55}#agent-沙箱初始化-ykl5vn .ch-removed .n-box{stroke-dasharray:4 3;stroke:var(--sc-soft)}#agent-沙箱初始化-ykl5vn .ch-removed .n-label{text-decoration:line-through}
+#agent-沙箱初始化-ykl5vn .ch-removed .n-change{fill:var(--sc-soft)}
+#agent-沙箱初始化-ykl5vn .ch-changed .n-box{stroke:var(--sc-accent);stroke-dasharray:6 2}
+#agent-沙箱初始化-ykl5vn .sc-edge.ch-added .e-line{stroke:var(--sc-accent)}#agent-沙箱初始化-ykl5vn .sc-edge.ch-removed .e-line{stroke-dasharray:3 3}
+#agent-沙箱初始化-ykl5vn .e-line.dashed{stroke-dasharray:4 3}
+#agent-沙箱初始化-ykl5vn .ek-rel .e-line{stroke:var(--sc-muted);stroke-width:1}
+#agent-沙箱初始化-ykl5vn .e-glyph.stroke{fill:none;stroke:var(--sc-muted);stroke-width:1}
+#agent-沙箱初始化-ykl5vn .e-glyph.hollow{fill:var(--sc-paper);stroke:var(--sc-muted);stroke-width:1}
+#agent-沙箱初始化-ykl5vn .e-glyph.filled{fill:var(--sc-muted);stroke:var(--sc-muted);stroke-width:1}
+#agent-沙箱初始化-ykl5vn .lane-band{fill:var(--sc-ink);fill-opacity:.022}
+#agent-沙箱初始化-ykl5vn .lane-band.alt{fill-opacity:0}
+#agent-沙箱初始化-ykl5vn .lane-rule{stroke:var(--sc-rule);stroke-width:.8}
+#agent-沙箱初始化-ykl5vn .lane-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase}
+#agent-沙箱初始化-ykl5vn .loop-center{fill:var(--sc-ink);font-family:var(--sc-font-serif);font-size:20px}
+#agent-沙箱初始化-ykl5vn .nest-mask{fill:var(--sc-paper)}
+#agent-沙箱初始化-ykl5vn .nest-box{fill:var(--sc-ink);fill-opacity:.025;stroke:var(--sc-rule-solid);stroke-width:.9}
+#agent-沙箱初始化-ykl5vn .nest-d0 .nest-box{fill-opacity:.012}#agent-沙箱初始化-ykl5vn .nest-d2 .nest-box{fill-opacity:.04}#agent-沙箱初始化-ykl5vn .nest-d3 .nest-box{fill-opacity:.055}
+#agent-沙箱初始化-ykl5vn .k-focal .nest-box{fill:var(--sc-accent-tint);fill-opacity:1;stroke:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .nest-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.14em;text-transform:uppercase}
+#agent-沙箱初始化-ykl5vn .chip{fill:var(--sc-paper-2);stroke:var(--sc-rule);stroke-width:.8}
+#agent-沙箱初始化-ykl5vn .chip-text{fill:var(--sc-ink);font-size:10px}
+#agent-沙箱初始化-ykl5vn .k-focal .chip{fill:var(--sc-paper);stroke:var(--sc-accent);stroke-opacity:.4}
+#agent-沙箱初始化-ykl5vn .venn-c{fill:var(--sc-muted);fill-opacity:.07;stroke:var(--sc-muted);stroke-width:1}
+#agent-沙箱初始化-ykl5vn .vs-2 .venn-c{fill:var(--sc-series-2);stroke:var(--sc-series-2);fill-opacity:.09}
+#agent-沙箱初始化-ykl5vn .vs-3 .venn-c{fill:var(--sc-series-1);stroke:var(--sc-series-1);fill-opacity:.09}
+#agent-沙箱初始化-ykl5vn .venn.k-focal .venn-c{fill:var(--sc-accent);stroke:var(--sc-accent);fill-opacity:.09}
+#agent-沙箱初始化-ykl5vn .venn-label{fill:var(--sc-ink);font-size:13px;font-weight:600}
+#agent-沙箱初始化-ykl5vn .venn-ov{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:13px}
+#agent-沙箱初始化-ykl5vn .venn-ov.is-focal{fill:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .fb-spine{stroke-width:1.6}
+#agent-沙箱初始化-ykl5vn .fb-tick{stroke:var(--sc-rule-solid);stroke-width:.8}
+#agent-沙箱初始化-ykl5vn .fb-cat{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;letter-spacing:.14em}
+#agent-沙箱初始化-ykl5vn .fb-cat.is-focal{fill:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .fb-cause{fill:var(--sc-ink);font-size:10px}
+#agent-沙箱初始化-ykl5vn .kb-col{fill:var(--sc-ink);fill-opacity:.025;stroke:var(--sc-rule);stroke-width:.8;rx:8}
+#agent-沙箱初始化-ykl5vn .kb-col.is-over{stroke:var(--sc-accent);stroke-opacity:.6}
+#agent-沙箱初始化-ykl5vn .kb-head{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#agent-沙箱初始化-ykl5vn .kb-count{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:9px}
+#agent-沙箱初始化-ykl5vn .kb-count.is-over{fill:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .kb-card{fill:var(--sc-ink);font-size:11px;font-weight:500}
+#agent-沙箱初始化-ykl5vn .sm-act{fill:var(--sc-ink)}
+#agent-沙箱初始化-ykl5vn .sm-activity.k-focal .sm-act{fill:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .sm-act-text{fill:var(--sc-paper);font-size:11px;font-weight:600}
+#agent-沙箱初始化-ykl5vn .q-frame{fill:none;stroke:var(--sc-rule-solid);stroke-width:1}
+#agent-沙箱初始化-ykl5vn .q-focal{fill:var(--sc-accent-tint)}
+#agent-沙箱初始化-ykl5vn .q-title{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#agent-沙箱初始化-ykl5vn .quad.k-focal .q-title,#agent-沙箱初始化-ykl5vn .quad.k-focal .q-title-big{fill:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .q-title-big{fill:var(--sc-ink);font-family:var(--sc-font-serif);font-size:19px}
+#agent-沙箱初始化-ykl5vn .q-item{fill:var(--sc-muted);font-size:11px}
+#agent-沙箱初始化-ykl5vn .q-dot{fill:var(--sc-muted)}
+#agent-沙箱初始化-ykl5vn .q-pt.k-focal .q-dot{fill:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .q-pt-label{fill:var(--sc-ink);font-size:10.5px;font-weight:500}
+#agent-沙箱初始化-ykl5vn .q-pt.k-focal .q-pt-label{fill:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .mx-col{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.08em}
+#agent-沙箱初始化-ykl5vn .mx-row{fill:var(--sc-ink);font-size:11px;font-weight:500}
+#agent-沙箱初始化-ykl5vn .mx-band{fill:var(--sc-ink);fill-opacity:.025}
+#agent-沙箱初始化-ykl5vn .mx-g.fill{fill:var(--sc-ink)}#agent-沙箱初始化-ykl5vn .mx-g.ring{fill:none;stroke:var(--sc-ink);stroke-width:1}
+#agent-沙箱初始化-ykl5vn .mx-g.dashed{stroke-dasharray:2 2}#agent-沙箱初始化-ykl5vn .mx-g.admin{fill:var(--sc-accent)}#agent-沙箱初始化-ykl5vn .mx-g.none{fill:var(--sc-soft)}
+#agent-沙箱初始化-ykl5vn .mx-r.k-focal .mx-row{fill:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .tl-axis{stroke:var(--sc-ink);stroke-width:1.2}
+#agent-沙箱初始化-ykl5vn .tl-stem{stroke:var(--sc-rule-solid);stroke-width:.8}
+#agent-沙箱初始化-ykl5vn .tl-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}
+#agent-沙箱初始化-ykl5vn .tl-ev.k-focal .tl-dot{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .tl-ev.k-focal .tl-label{fill:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .tl-label{font-size:11px}
+#agent-沙箱初始化-ykl5vn .tl-when{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;letter-spacing:.04em}
+#agent-沙箱初始化-ykl5vn .tl-period{fill:var(--sc-ink);fill-opacity:.07}
+#agent-沙箱初始化-ykl5vn .tl-period.is-focal{fill:var(--sc-accent);fill-opacity:.16}
+#agent-沙箱初始化-ykl5vn .tl-period-text{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.08em}
+#agent-沙箱初始化-ykl5vn .g-task{fill:var(--sc-ink);font-size:11px}
+#agent-沙箱初始化-ykl5vn .g-bar{fill:var(--sc-muted);fill-opacity:.45}
+#agent-沙箱初始化-ykl5vn .g-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#agent-沙箱初始化-ykl5vn .g-bar.is-done{fill-opacity:.2}
+#agent-沙箱初始化-ykl5vn .g-done{fill:var(--sc-muted);font-size:10px}
+#agent-沙箱初始化-ykl5vn .g-mile{fill:var(--sc-ink)}
+#agent-沙箱初始化-ykl5vn .k-focal .g-mile{fill:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .g-today{stroke:var(--sc-accent);stroke-width:1;stroke-dasharray:3 3}
+#agent-沙箱初始化-ykl5vn .g-today-text{fill:var(--sc-accent);font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.14em}
+#agent-沙箱初始化-ykl5vn .jr-band{fill:var(--sc-ink);fill-opacity:.025}#agent-沙箱初始化-ykl5vn .jr-band.alt{fill-opacity:0}
+#agent-沙箱初始化-ykl5vn .jr-stage{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#agent-沙箱初始化-ykl5vn .jr-curve{stroke:var(--sc-ink);stroke-width:1.6}
+#agent-沙箱初始化-ykl5vn .jr-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}
+#agent-沙箱初始化-ykl5vn .jr-dot.is-pain,#agent-沙箱初始化-ykl5vn .jr-dot.is-focal{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .jr-step{fill:var(--sc-ink);font-size:10.5px;font-weight:500}
+#agent-沙箱初始化-ykl5vn .jr-note{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:11px;paint-order:stroke;stroke:var(--sc-paper);stroke-width:4px;stroke-linejoin:round}
+#agent-沙箱初始化-ykl5vn .jr-note.is-pain{fill:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .ln{fill:none;stroke-width:1.6;stroke:var(--sc-muted)}
+#agent-沙箱初始化-ykl5vn .ln.is-focal{stroke:var(--sc-accent);stroke-width:2.2}#agent-沙箱初始化-ykl5vn .ln.is-muted{stroke:var(--sc-soft);stroke-opacity:.55}
+#agent-沙箱初始化-ykl5vn .ln-1{stroke:var(--sc-series-1)}#agent-沙箱初始化-ykl5vn .ln-2{stroke:var(--sc-series-2)}#agent-沙箱初始化-ykl5vn .ln-3{stroke:var(--sc-series-3)}#agent-沙箱初始化-ykl5vn .ln-4{stroke:var(--sc-series-4)}#agent-沙箱初始化-ykl5vn .ln-5{stroke:var(--sc-series-5)}
+#agent-沙箱初始化-ykl5vn .ln-pt{fill:var(--sc-paper);stroke-width:1.4}
+#agent-沙箱初始化-ykl5vn .ln-pt.is-focal{fill:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .ln-label{font-size:10.5px;font-weight:500;fill:var(--sc-muted)}
+#agent-沙箱初始化-ykl5vn .is-muted-t{fill:var(--sc-soft)}
+#agent-沙箱初始化-ykl5vn .ln-1-t{fill:var(--sc-series-1)}#agent-沙箱初始化-ykl5vn .ln-2-t{fill:var(--sc-series-2)}#agent-沙箱初始化-ykl5vn .ln-3-t{fill:var(--sc-series-3)}#agent-沙箱初始化-ykl5vn .ln-4-t{fill:var(--sc-series-4)}#agent-沙箱初始化-ykl5vn .ln-5-t{fill:var(--sc-series-5)}
+#agent-沙箱初始化-ykl5vn .ln-area{fill:var(--sc-muted);fill-opacity:.08}#agent-沙箱初始化-ykl5vn .ln-area.is-focal{fill:var(--sc-accent);fill-opacity:.1}
+#agent-沙箱初始化-ykl5vn .rg-area{fill:var(--sc-muted);fill-opacity:.18}#agent-沙箱初始化-ykl5vn .rg-area.is-focal{fill:var(--sc-accent);fill-opacity:.28}
+#agent-沙箱初始化-ykl5vn .rg-line{fill:none;stroke:var(--sc-ink);stroke-width:1.1}#agent-沙箱初始化-ykl5vn .rg-line.is-focal{stroke:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .st-area{fill-opacity:.55;stroke:var(--sc-paper);stroke-width:1}
+#agent-沙箱初始化-ykl5vn .st-area.is-focal{fill:var(--sc-accent);fill-opacity:.75}
+#agent-沙箱初始化-ykl5vn .st-label{fill:var(--sc-ink-strong);font-size:10px;font-weight:600}
+#agent-沙箱初始化-ykl5vn .is-focal-t{fill:var(--sc-accent)!important}
+#agent-沙箱初始化-ykl5vn .sp-dot{fill:var(--sc-muted);fill-opacity:.55;stroke:var(--sc-paper);stroke-width:.8}
+#agent-沙箱初始化-ykl5vn .sp-dot.is-bubble{fill-opacity:.25;stroke:var(--sc-muted);stroke-opacity:.7}
+#agent-沙箱初始化-ykl5vn .sp-dot.is-focal{fill:var(--sc-accent);fill-opacity:.9;stroke:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .sp-label{fill:var(--sc-ink);font-size:10px;font-weight:500}
+#agent-沙箱初始化-ykl5vn .rd-area{fill:var(--sc-muted);fill-opacity:.1}#agent-沙箱初始化-ykl5vn .rd-line{fill:none;stroke:var(--sc-muted);stroke-width:1.4}
+#agent-沙箱初始化-ykl5vn .rd-area.is-focal{fill:var(--sc-accent);fill-opacity:.16}#agent-沙箱初始化-ykl5vn .rd-line.is-focal{stroke:var(--sc-accent);stroke-width:2}
+#agent-沙箱初始化-ykl5vn .rd-area.is-muted{fill-opacity:.04}#agent-沙箱初始化-ykl5vn .rd-line.is-muted{stroke:var(--sc-soft)}
+#agent-沙箱初始化-ykl5vn .rd-area.s-1,#agent-沙箱初始化-ykl5vn .rd-area.s-2,#agent-沙箱初始化-ykl5vn .rd-area.s-3,#agent-沙箱初始化-ykl5vn .rd-area.s-4,#agent-沙箱初始化-ykl5vn .rd-area.s-5{fill-opacity:.14}
+#agent-沙箱初始化-ykl5vn .rd-line.s-1{stroke:var(--sc-series-1)}#agent-沙箱初始化-ykl5vn .rd-line.s-2{stroke:var(--sc-series-2)}#agent-沙箱初始化-ykl5vn .rd-line.s-3{stroke:var(--sc-series-3)}#agent-沙箱初始化-ykl5vn .rd-line.s-4{stroke:var(--sc-series-4)}#agent-沙箱初始化-ykl5vn .rd-line.s-5{stroke:var(--sc-series-5)}
+#agent-沙箱初始化-ykl5vn .rd-pt{fill:var(--sc-paper);stroke:var(--sc-muted)}#agent-沙箱初始化-ykl5vn .rd-pt.is-focal{stroke:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .rd-key{fill:var(--sc-muted)}#agent-沙箱初始化-ykl5vn .rd-key.is-focal{fill:var(--sc-accent)}#agent-沙箱初始化-ykl5vn .rd-key.is-muted{fill:var(--sc-soft)}
+#agent-沙箱初始化-ykl5vn .rd-ring{fill:none}
+#agent-沙箱初始化-ykl5vn .pl-stem{stroke:var(--sc-muted);stroke-width:1.4}#agent-沙箱初始化-ykl5vn .pl-stem.is-focal{stroke:var(--sc-accent);stroke-width:2}
+#agent-沙箱初始化-ykl5vn .pl-dot{fill:var(--sc-muted)}#agent-沙箱初始化-ykl5vn .pl-dot.is-focal{fill:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .wf-bar{fill:var(--sc-muted);fill-opacity:.4}
+#agent-沙箱初始化-ykl5vn .wf-up{fill:var(--sc-series-1);fill-opacity:.75}#agent-沙箱初始化-ykl5vn .wf-down{fill:var(--sc-series-4);fill-opacity:.75}
+#agent-沙箱初始化-ykl5vn .wf-total{fill:var(--sc-ink);fill-opacity:.82}
+#agent-沙箱初始化-ykl5vn .wf-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#agent-沙箱初始化-ykl5vn .wf-link{stroke:var(--sc-soft);stroke-width:.8;stroke-dasharray:2 2}
+#agent-沙箱初始化-ykl5vn .tm-cell{fill:var(--sc-muted);fill-opacity:.16;stroke:var(--sc-paper);stroke-width:1}
+#agent-沙箱初始化-ykl5vn .tm-cell.is-focal{fill:var(--sc-accent);fill-opacity:.85}
+#agent-沙箱初始化-ykl5vn .tm-sub{fill:var(--sc-paper);fill-opacity:.55}
+#agent-沙箱初始化-ykl5vn .tm-label{fill:var(--sc-ink);font-size:11px;font-weight:600}#agent-沙箱初始化-ykl5vn .tm-label.is-focal{fill:var(--sc-paper)}
+#agent-沙箱初始化-ykl5vn .tm-val{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}#agent-沙箱初始化-ykl5vn .tm-val.is-focal{fill:var(--sc-paper);fill-opacity:.85}
+#agent-沙箱初始化-ykl5vn .tm-sub-label{fill:var(--sc-muted);font-size:9.5px}
+#agent-沙箱初始化-ykl5vn .hm-cell.hm-pos{fill:var(--sc-accent)}#agent-沙箱初始化-ykl5vn .hm-cell.hm-neg{fill:var(--sc-series-4)}
+#agent-沙箱初始化-ykl5vn .hm-val{fill:var(--sc-ink);font-family:var(--sc-font-mono);font-size:8.5px}#agent-沙箱初始化-ykl5vn .hm-val.v00{fill:var(--sc-on-v00)}#agent-沙箱初始化-ykl5vn .hm-val.v01{fill:var(--sc-on-v01)}#agent-沙箱初始化-ykl5vn .hm-val.v10{fill:var(--sc-on-v10)}#agent-沙箱初始化-ykl5vn .hm-val.v11{fill:var(--sc-on-v11)}
+#agent-沙箱初始化-ykl5vn .db-line{stroke:var(--sc-rule-solid);stroke-width:2.4}#agent-沙箱初始化-ykl5vn .db-line.is-focal{stroke:var(--sc-accent);stroke-opacity:.45}
+#agent-沙箱初始化-ykl5vn .db-a{fill:var(--sc-paper);stroke:var(--sc-muted);stroke-width:1.4}#agent-沙箱初始化-ykl5vn .db-b{fill:var(--sc-muted)}#agent-沙箱初始化-ykl5vn .db-b.is-focal{fill:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .mk-seg{fill-opacity:.7;stroke:var(--sc-paper)}
+#agent-沙箱初始化-ykl5vn .mk-pct{fill:var(--sc-ink-strong);font-family:var(--sc-font-mono);font-size:8.5px}
+#agent-沙箱初始化-ykl5vn .wm-link{stroke:var(--sc-soft)!important;stroke-width:1!important}
+#agent-沙箱初始化-ykl5vn .wm-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}#agent-沙箱初始化-ykl5vn .wm-dot.is-focal{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .wm-label{fill:var(--sc-ink);font-size:10.5px;font-weight:500;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#agent-沙箱初始化-ykl5vn .wm-label.is-anchor{font-weight:700;font-size:12px}
+#agent-沙箱初始化-ykl5vn .wm-move{stroke:var(--sc-accent);stroke-width:1.2;stroke-dasharray:4 3;fill:none}#agent-沙箱初始化-ykl5vn .wm-move-head{fill:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .wm-ghost{fill:none;stroke:var(--sc-accent);stroke-dasharray:2 2}
+#agent-沙箱初始化-ykl5vn .wm-inertia{stroke:var(--sc-ink);stroke-width:3}
+#agent-沙箱初始化-ykl5vn .callout{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:13px}
+
+#agent-沙箱初始化-ykl5vn .iso-base{fill:var(--sc-node)}
+#agent-沙箱初始化-ykl5vn .iso-t{fill:var(--sc-ax-lift);fill-opacity:var(--sc-ax-t-o)}
+#agent-沙箱初始化-ykl5vn .iso-l{fill:var(--sc-ax-shade);fill-opacity:var(--sc-ax-l-o)}
+#agent-沙箱初始化-ykl5vn .iso-r{fill:var(--sc-ax-shade);fill-opacity:var(--sc-ax-r-o)}
+#agent-沙箱初始化-ykl5vn .k-focal .iso-t{fill:var(--sc-accent);fill-opacity:.12}
+#agent-沙箱初始化-ykl5vn .k-focal .iso-l{fill:var(--sc-accent);fill-opacity:.22}
+#agent-沙箱初始化-ykl5vn .k-focal .iso-r{fill:var(--sc-accent);fill-opacity:.34}
+#agent-沙箱初始化-ykl5vn .iso-edge{fill:none;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.8;stroke-linejoin:round}
+#agent-沙箱初始化-ykl5vn .iso-sil{fill:none;stroke:var(--sc-ink);stroke-width:1.2;stroke-linejoin:round}
+#agent-沙箱初始化-ykl5vn .k-focal .iso-sil{stroke:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .iso-inset{fill:var(--sc-ink);fill-opacity:.06;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.7}
+#agent-沙箱初始化-ykl5vn .k-focal .iso-inset{fill:var(--sc-accent);fill-opacity:.16;stroke:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .iso-trace{fill:none;stroke:var(--sc-ink);stroke-opacity:.3;stroke-width:.8;stroke-dasharray:4 3}
+#agent-沙箱初始化-ykl5vn .iso-leader{stroke:var(--sc-ink);stroke-opacity:.4;stroke-width:.8}
+#agent-沙箱初始化-ykl5vn .iso-dot{fill:var(--sc-ink)}
+#agent-沙箱初始化-ykl5vn .k-focal .iso-leader{stroke:var(--sc-accent);stroke-opacity:1}#agent-沙箱初始化-ykl5vn .k-focal .iso-dot{fill:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .iso-name{fill:var(--sc-ink);font-size:14px;font-weight:600}
+#agent-沙箱初始化-ykl5vn .iso-sub{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9.5px;letter-spacing:.06em}
+#agent-沙箱初始化-ykl5vn .k-focal .iso-sub{fill:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .iso-contour{fill:none;stroke:var(--sc-ink);stroke-opacity:.22;stroke-width:.7}
+#agent-沙箱初始化-ykl5vn .iso-plate .iso-t{fill-opacity:0}
+#agent-沙箱初始化-ykl5vn .iso-mark{fill:var(--sc-ink);fill-opacity:.07}
+#agent-沙箱初始化-ykl5vn .iso-floor{fill:var(--sc-ink);fill-opacity:.035}
+#agent-沙箱初始化-ykl5vn .k-focal .iso-floor,#agent-沙箱初始化-ykl5vn .iso-floor.k-focal{fill:var(--sc-accent);fill-opacity:.1}
+#agent-沙箱初始化-ykl5vn .iso-canopy .iso-t{fill:var(--sc-series-1);fill-opacity:.55}
+#agent-沙箱初始化-ykl5vn .iso-canopy .iso-l,#agent-沙箱初始化-ykl5vn .iso-canopy .iso-r{fill:var(--sc-series-1);fill-opacity:.35}
+#agent-沙箱初始化-ykl5vn .iso-tag rect{fill:var(--sc-paper);stroke:var(--sc-rule-solid);stroke-width:.8}
+#agent-沙箱初始化-ykl5vn .k-focal.iso-tag rect,#agent-沙箱初始化-ykl5vn .k-focal .iso-tag rect{stroke:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .iso-tag .iso-name{font-size:11px}#agent-沙箱初始化-ykl5vn .iso-tag .iso-sub{font-size:8px}
+
+#agent-沙箱初始化-ykl5vn .it-light .iso-base{fill:var(--sc-node)}
+#agent-沙箱初始化-ykl5vn .it-dark .iso-base,#agent-沙箱初始化-ykl5vn .it-black .iso-base{fill:var(--sc-ax-screen)}
+#agent-沙箱初始化-ykl5vn .it-dark .iso-t,#agent-沙箱初始化-ykl5vn .it-black .iso-t{fill:#fff;fill-opacity:.07}
+#agent-沙箱初始化-ykl5vn .it-dark .iso-edge,#agent-沙箱初始化-ykl5vn .it-black .iso-edge{stroke:#fff;stroke-opacity:.18}
+#agent-沙箱初始化-ykl5vn .it-accent .iso-base{fill:var(--sc-node)}#agent-沙箱初始化-ykl5vn .it-accent .iso-t,#agent-沙箱初始化-ykl5vn .it-accent .iso-l,#agent-沙箱初始化-ykl5vn .it-accent .iso-r{fill:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .it-accent .iso-t{fill-opacity:.25}#agent-沙箱初始化-ykl5vn .it-accent .iso-l{fill-opacity:.4}#agent-沙箱初始化-ykl5vn .it-accent .iso-r{fill-opacity:.55}
+#agent-沙箱初始化-ykl5vn .it-accent .iso-sil{stroke:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .it-mid .iso-base{fill:var(--sc-node)}
+#agent-沙箱初始化-ykl5vn .it-solid .iso-sil{stroke-width:.9}
+#agent-沙箱初始化-ykl5vn path.it-dark{fill:var(--sc-ax-screen)}
+#agent-沙箱初始化-ykl5vn path.it-black{fill:#000;fill-opacity:.85}
+#agent-沙箱初始化-ykl5vn /* dark panels and solids keep an edge where they sit on dark walls (dark themes) */
+path.it-dark,#agent-沙箱初始化-ykl5vn path.it-black{stroke:var(--sc-ax-dark-edge);stroke-width:.7}
+#agent-沙箱初始化-ykl5vn .it-dark .iso-sil,#agent-沙箱初始化-ykl5vn .it-black .iso-sil{stroke:var(--sc-ink)}
+#agent-沙箱初始化-ykl5vn path.it-line.it-stroke-dark{stroke:var(--sc-ax-screen);stroke-opacity:.8}
+#agent-沙箱初始化-ykl5vn path.it-light{fill:var(--sc-node);stroke:var(--sc-ink);stroke-opacity:.45;stroke-width:.6}
+#agent-沙箱初始化-ykl5vn path.it-accent{fill:var(--sc-accent);fill-opacity:.9}
+#agent-沙箱初始化-ykl5vn path.it-mid{fill:var(--sc-ink);fill-opacity:.08}
+#agent-沙箱初始化-ykl5vn path.it-cut{fill:var(--sc-ink);fill-opacity:.13;stroke:var(--sc-ink);stroke-opacity:.45;stroke-width:.5}
+#agent-沙箱初始化-ykl5vn path.it-line{fill:none;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.8;stroke-linecap:round}
+#agent-沙箱初始化-ykl5vn path.it-text{fill:none;stroke:var(--sc-ink);stroke-opacity:.35;stroke-width:1.4;stroke-linecap:round}
+#agent-沙箱初始化-ykl5vn path.it-line.it-stroke-accent,#agent-沙箱初始化-ykl5vn path.it-text.it-stroke-accent{stroke:var(--sc-accent);stroke-opacity:1}
+#agent-沙箱初始化-ykl5vn path.it-stroke-light{stroke:#fff;stroke-opacity:.7}
+#agent-沙箱初始化-ykl5vn path.it-line.it-stroke-dark{stroke-width:2.2}
+#agent-沙箱初始化-ykl5vn path.it-dash{stroke-dasharray:4 3}
+#agent-沙箱初始化-ykl5vn path.it-button{fill:var(--sc-node);stroke:var(--sc-ink);stroke-opacity:.6;stroke-width:.8}
+#agent-沙箱初始化-ykl5vn path.it-cavity{fill:var(--sc-ink);fill-opacity:.07}
+#agent-沙箱初始化-ykl5vn path.it-floor{fill:var(--sc-ink);fill-opacity:.04;stroke:var(--sc-ink);stroke-opacity:.35;stroke-width:.7}
+
+#agent-沙箱初始化-ykl5vn .iso-beam-o{fill:none;stroke:var(--sc-ink);stroke-linecap:round}
+#agent-沙箱初始化-ykl5vn .iso-beam{fill:none;stroke:var(--sc-node);stroke-linecap:round}
+#agent-沙箱初始化-ykl5vn .iso-beam-dark{stroke:var(--sc-ax-screen)}
+#agent-沙箱初始化-ykl5vn .iso-beam-accent,#agent-沙箱初始化-ykl5vn .k-focal .iso-beam{stroke:var(--sc-accent);stroke-opacity:.55}
+#agent-沙箱初始化-ykl5vn .iso-leader{fill:none;stroke:var(--sc-ink);stroke-opacity:.4;stroke-width:.8}
+#agent-沙箱初始化-ykl5vn .k-focal .iso-leader{stroke:var(--sc-accent);stroke-opacity:1}
+
+@keyframes sc-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes sc-fade{from{opacity:0}to{opacity:1}}
+@keyframes sc-draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes sc-grow-y{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes sc-grow-x{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes sc-wipe{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes sc-wipe-down{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes sc-pop{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:scale(1)}}
+@keyframes sc-token{from{offset-distance:0%;opacity:0}8%{opacity:1}92%{opacity:1}to{offset-distance:100%;opacity:0}}
+@keyframes sc-pulse{0%,100%{stroke-opacity:1}50%{stroke-opacity:.35}}
+@keyframes sc-lift{from{transform:translateY(var(--lift))}to{transform:none}}
+@keyframes sc-drop{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:none}}
+#agent-沙箱初始化-ykl5vn .e-token{display:none}
+@media (prefers-reduced-motion: no-preference){
+#agent-沙箱初始化-ykl5vn.sc-svg[data-sc-motion]:not(.sc-still) [data-sc-step]{--d:calc(var(--step) * var(--sc-stagger))}
+#agent-沙箱初始化-ykl5vn.sc-svg[data-sc-motion]:not(.sc-still) .sc-node[data-sc-step],#agent-沙箱初始化-ykl5vn.sc-svg[data-sc-motion]:not(.sc-still) .sc-enter[data-sc-step]{animation:sc-in var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#agent-沙箱初始化-ykl5vn.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step]{animation:sc-fade 240ms ease-out var(--d) both}
+#agent-沙箱初始化-ykl5vn.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-head,#agent-沙箱初始化-ykl5vn.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-glyph,#agent-沙箱初始化-ykl5vn.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-label-g{animation:sc-fade 200ms ease-out calc(var(--d) + var(--sc-draw) * .8) both}
+#agent-沙箱初始化-ykl5vn.sc-svg:is([data-sc-motion="trace"],#agent-沙箱初始化-ykl5vn [data-sc-motion="loop"]):not(.sc-still) .sc-edge[data-sc-step] .e-line.sc-draw{stroke-dasharray:1;animation:sc-draw var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#agent-沙箱初始化-ykl5vn.sc-svg[data-sc-motion]:not(.sc-still) .sc-grow-y[data-sc-step]{transform-box:fill-box;transform-origin:50% 100%;animation:sc-grow-y var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#agent-沙箱初始化-ykl5vn.sc-svg[data-sc-motion]:not(.sc-still) .sc-grow-x[data-sc-step]{transform-box:fill-box;transform-origin:0 50%;animation:sc-grow-x var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#agent-沙箱初始化-ykl5vn.sc-svg[data-sc-motion]:not(.sc-still) .sc-wipe[data-sc-step]{animation:sc-wipe var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#agent-沙箱初始化-ykl5vn.sc-svg[data-sc-motion]:not(.sc-still) .sc-wipe-down[data-sc-step]{animation:sc-wipe-down var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#agent-沙箱初始化-ykl5vn.sc-svg[data-sc-motion]:not(.sc-still) .sc-pop[data-sc-step]{transform-box:fill-box;transform-origin:50% 50%;animation:sc-pop var(--sc-enter) cubic-bezier(.2,.9,.3,1.2) var(--d) both}
+#agent-沙箱初始化-ykl5vn.sc-svg[data-sc-motion]:not(.sc-still) .sc-fade[data-sc-step]{animation:sc-fade var(--sc-enter) ease-out var(--d) both}
+#agent-沙箱初始化-ykl5vn.sc-svg[data-sc-motion]:not(.sc-still) .iso-part[data-sc-step]{animation:none}
+#agent-沙箱初始化-ykl5vn.sc-svg[data-sc-motion]:not(.sc-still) .iso-part.sc-lift[data-sc-step]{animation:sc-lift calc(var(--sc-enter) * 1.6) cubic-bezier(.3,.6,.2,1) var(--d) both}
+#agent-沙箱初始化-ykl5vn.sc-svg[data-sc-motion]:not(.sc-still) .iso-label[data-sc-step]{animation:sc-fade var(--sc-enter) ease-out calc(var(--d) + var(--sc-enter) * 1.2) both}
+#agent-沙箱初始化-ykl5vn.sc-svg[data-sc-motion]:not(.sc-still) .sc-drop[data-sc-step]{animation:sc-drop var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#agent-沙箱初始化-ykl5vn.sc-svg:is([data-sc-motion="trace"],#agent-沙箱初始化-ykl5vn [data-sc-motion="loop"]):not(.sc-still) .e-token{display:inline;offset-rotate:0deg;animation:sc-token var(--tok-dur,1800ms) linear calc(var(--sc-settle) + var(--tok-delay,0ms)) infinite both}
+#agent-沙箱初始化-ykl5vn.sc-svg[data-sc-motion]:not(.sc-still) .k-change .n-box{animation:sc-pulse 1.6s ease-in-out var(--sc-settle) 3}
+}
+@media print{#agent-沙箱初始化-ykl5vn.sc-svg *{animation:none!important}#agent-沙箱初始化-ykl5vn .e-token{display:none!important}}
+#agent-沙箱初始化-ykl5vn .sc-still .e-token{display:none}
+#agent-沙箱初始化-ykl5vn .e-token{fill:var(--sc-accent)}
+#agent-沙箱初始化-ykl5vn .ek-link .e-token,#agent-沙箱初始化-ykl5vn .e-token.t-link{fill:var(--sc-link)}
+</style><desc id="agent-沙箱初始化-ykl5vn-desc">Flowchart diagram with 8 elements.</desc><rect class="sc-bg" x="-24" y="-24" width="404" height="800"/><g class="sc-groups"></g><g class="sc-edges"><g class="sc-edge ek-primary" data-sc-edge="need-runtime" data-from="need" data-to="runtime" data-sc-step="2" style="--step:2"><path class="e-line sc-draw" d="M74,40 L74,97" pathLength="1"/><path class="e-head m-primary" d="M74,104 L70.8,96 L77.2,96 Z"/></g><g class="sc-edge ek-primary" data-sc-edge="runtime-lock" data-from="runtime" data-to="lock" data-sc-step="4" style="--step:4"><path class="e-line sc-draw" d="M74,156 L74,213" pathLength="1"/><path class="e-head m-primary" d="M74,220 L70.8,212 L77.2,212 Z"/></g><g class="sc-edge ek-primary" data-sc-edge="lock-files" data-from="lock" data-to="files" data-sc-step="6" style="--step:6"><path class="e-line sc-draw" d="M74,260 L74,317" pathLength="1"/><path class="e-head m-primary" d="M74,324 L70.8,316 L77.2,316 Z"/></g><g class="sc-edge ek-primary" data-sc-edge="files-check" data-from="files" data-to="check" data-sc-step="7" style="--step:7"><path class="e-line sc-draw" d="M74,376 L74,433" pathLength="1"/><path class="e-head m-primary" d="M74,440 L70.8,432 L77.2,432 Z"/></g><g class="sc-edge ek-default" data-sc-edge="check-script" data-from="check" data-to="script" data-sc-step="9" style="--step:9"><path class="e-line sc-draw" d="M148,478 L225,478" pathLength="1"/><path class="e-head m-default" d="M232,478 L224,481.2 L224,474.8 Z"/><g class="e-label-g"><rect class="e-label-bg" x="162" y="472" width="56" height="12" rx="2"/><text class="e-label" x="190" y="480.6" text-anchor="middle">hash 变化</text></g></g><g class="sc-edge ek-primary" data-sc-edge="check-skills" data-from="check" data-to="skills" data-sc-step="9" style="--step:9"><path class="e-line sc-draw" d="M74,516 L74,573" pathLength="1"/><path class="e-head m-primary" d="M74,580 L70.8,572 L77.2,572 Z"/><g class="e-label-g"><rect class="e-label-bg" x="48" y="542" width="52" height="12" rx="2"/><text class="e-label" x="74" y="550.6" text-anchor="middle">空 / 相同</text></g></g><g class="sc-edge ek-default" data-sc-edge="script-skills" data-from="script" data-to="skills" data-sc-step="11" style="--step:11"><path class="e-line sc-draw" d="M294,504 L294,599 Q294,606 287,606 L137,606" pathLength="1"/><path class="e-head m-default" d="M130,606 L138,602.8 L138,609.2 Z"/><g class="e-label-g"><rect class="e-label-bg" x="186" y="600" width="52" height="12" rx="2"/><text class="e-label" x="212" y="608.6" text-anchor="middle">完成或警告</text></g></g><g class="sc-edge ek-primary" data-sc-edge="skills-ready" data-from="skills" data-to="ready" data-sc-step="11" style="--step:11"><path class="e-line sc-draw" d="M74,632 L74,689" pathLength="1"/><path class="e-head m-primary" d="M74,696 L70.8,688 L77.2,688 Z"/></g></g><circle class="e-token" r="3.2" data-sc-step="12" style="--step:12;offset-path:path('M74,40 L74,104 L74,156 L74,220 L74,260 L74,324 L74,376 L74,440 L74,516 L74,580 L74,632 L74,696');--tok-dur:2952ms"/><g class="sc-nodes"><g class="sc-node k-input sh-box" data-sc-node="need" data-sc-step="1" style="--step:1" tabindex="0" role="group" aria-label="需要沙箱"><rect class="n-mask" x="18" y="0" width="112" height="40" rx="6"/><rect class="n-box" x="18" y="0" width="112" height="40" rx="6"/><text class="n-label" x="74" y="25" text-anchor="middle">需要沙箱</text></g><g class="sc-node k-backend sh-box" data-sc-node="runtime" data-sc-step="3" style="--step:3" tabindex="0" role="group" aria-label="获取运行态, 连接 / 创建 / 恢复"><rect class="n-mask" x="14" y="104" width="120" height="52" rx="6"/><rect class="n-box" x="14" y="104" width="120" height="52" rx="6"/><text class="n-label" x="74" y="128" text-anchor="middle">获取运行态</text><text class="n-sub" x="74" y="143.5" text-anchor="middle">连接 / 创建 / 恢复</text></g><g class="sc-node k-backend sh-box" data-sc-node="lock" data-sc-step="5" style="--step:5" tabindex="0" role="group" aria-label="获取初始化锁"><rect class="n-mask" x="18" y="220" width="112" height="40" rx="6"/><rect class="n-box" x="18" y="220" width="112" height="40" rx="6"/><text class="n-label" x="74" y="245" text-anchor="middle">获取初始化锁</text></g><g class="sc-node k-backend sh-box" data-sc-node="files" data-sc-step="7" style="--step:7" tabindex="0" role="group" aria-label="注入配置与文件, 镜像源 / Skill / 输入"><rect class="n-mask" x="4" y="324" width="140" height="52" rx="6"/><rect class="n-box" x="4" y="324" width="140" height="52" rx="6"/><text class="n-label" x="74" y="348" text-anchor="middle">注入配置与文件</text><text class="n-sub" x="74" y="363.5" text-anchor="middle">镜像源 / Skill / 输入</text></g><g class="sc-node k-backend sh-decision" data-sc-node="check" data-sc-step="8" style="--step:8" tabindex="0" role="group" aria-label="脚本需运行？"><path class="n-mask" d="M74,440 L148,478 L74,516 L0,478 Z"/><path class="n-box" d="M74,440 L148,478 L74,516 L0,478 Z"/><text class="n-label" x="74" y="483" text-anchor="middle">脚本需运行？</text></g><g class="sc-node k-backend sh-box" data-sc-node="script" data-sc-step="10" style="--step:10" tabindex="0" role="group" aria-label="执行启动脚本, 成功后保存实例 hash"><rect class="n-mask" x="232" y="452" width="124" height="52" rx="6"/><rect class="n-box" x="232" y="452" width="124" height="52" rx="6"/><text class="n-label" x="294" y="476" text-anchor="middle">执行启动脚本</text><text class="n-sub" x="294" y="491.5" text-anchor="middle">成功后保存实例 hash</text></g><g class="sc-node k-backend sh-box" data-sc-node="skills" data-sc-step="10" style="--step:10" tabindex="0" role="group" aria-label="Skill 初始化, 运行入口并扫描"><rect class="n-mask" x="18" y="580" width="112" height="52" rx="6"/><rect class="n-box" x="18" y="580" width="112" height="52" rx="6"/><text class="n-label" x="74" y="604" text-anchor="middle">Skill 初始化</text><text class="n-sub" x="74" y="619.5" text-anchor="middle">运行入口并扫描</text></g><g class="sc-node k-focal sh-box" data-sc-node="ready" data-sc-step="12" style="--step:12" tabindex="0" role="group" aria-label="本轮可用"><rect class="n-mask" x="18" y="696" width="112" height="40" rx="6"/><rect class="n-box" x="18" y="696" width="112" height="40" rx="6"/><text class="n-label" x="74" y="721" text-anchor="middle">本轮可用</text></g></g></svg>

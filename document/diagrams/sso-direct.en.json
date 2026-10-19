@@ -1,0 +1,111 @@
+{
+  "type": "sequence",
+  "title": "SSO through standard provider endpoints",
+  "participants": [
+    {
+      "id": "browser",
+      "label": "Browser",
+      "kind": "external",
+      "focal": false
+    },
+    {
+      "id": "app",
+      "label": "FastGPT",
+      "kind": "backend",
+      "focal": true
+    },
+    {
+      "id": "idp",
+      "label": "Provider system",
+      "kind": "external",
+      "focal": false
+    }
+  ],
+  "messages": [
+    [
+      "browser",
+      "app",
+      "Get authorization URL",
+      "primary"
+    ],
+    [
+      "app",
+      "idp",
+      "GET getAuthURL",
+      "sync"
+    ],
+    [
+      "idp",
+      "app",
+      "authURL",
+      "reply"
+    ],
+    [
+      "app",
+      "browser",
+      "Authorization URL",
+      "reply"
+    ],
+    [
+      "browser",
+      "idp",
+      "Redirect and log in",
+      "primary"
+    ],
+    [
+      "idp",
+      "browser",
+      "Redirect to callback",
+      "reply"
+    ],
+    [
+      "browser",
+      "app",
+      "Submit callback params",
+      "primary"
+    ],
+    [
+      "app",
+      "idp",
+      "GET getUserInfo",
+      "sync"
+    ],
+    [
+      "idp",
+      "app",
+      "Standard user info",
+      "reply"
+    ],
+    [
+      "app",
+      "browser",
+      "Login result",
+      "reply"
+    ]
+  ],
+  "numbered": true,
+  "evidence": [
+    {
+      "id": "browser",
+      "file": "projects/app/src/pages/login/provider.tsx",
+      "line": 139
+    },
+    {
+      "id": "app",
+      "file": "projects/app/src/pages/api/proApi/[...path].ts",
+      "line": 19
+    },
+    {
+      "id": "idp",
+      "file": "document/content/guide/admin/sso.mdx",
+      "line": 644
+    }
+  ],
+  "lang": "en",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

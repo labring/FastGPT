@@ -1,0 +1,146 @@
+{
+  "type": "architecture",
+  "title": "FastGPT 核心部署拓扑",
+  "nodes": [
+    {
+      "id": "client",
+      "label": "客户端",
+      "row": 0,
+      "col": 1,
+      "kind": "external"
+    },
+    {
+      "id": "gateway",
+      "label": "访问入口",
+      "row": 1,
+      "col": 1,
+      "kind": "backend",
+      "sub": "按部署配置"
+    },
+    {
+      "id": "app",
+      "label": "FastGPT",
+      "row": 2,
+      "col": 1,
+      "kind": "backend",
+      "focal": true
+    },
+    {
+      "id": "mongo",
+      "label": "MongoDB",
+      "row": 2,
+      "col": 0,
+      "kind": "store",
+      "sub": "业务与知识数据"
+    },
+    {
+      "id": "redis",
+      "label": "Redis",
+      "row": 2,
+      "col": 2,
+      "kind": "store",
+      "sub": "缓存 / 队列"
+    },
+    {
+      "id": "vector",
+      "label": "向量数据库",
+      "row": 3,
+      "col": 0,
+      "kind": "store",
+      "sub": "选择一种后端"
+    },
+    {
+      "id": "s3",
+      "label": "S3 对象存储",
+      "row": 3,
+      "col": 2,
+      "kind": "store",
+      "sub": "文件与对象"
+    },
+    {
+      "id": "proxy",
+      "label": "AI Proxy",
+      "row": 3,
+      "col": 1,
+      "kind": "backend"
+    },
+    {
+      "id": "model",
+      "label": "模型服务",
+      "row": 4,
+      "col": 1,
+      "kind": "external",
+      "sub": "云端或自托管"
+    }
+  ],
+  "edges": [
+    [
+      "client",
+      "gateway",
+      "",
+      "primary"
+    ],
+    [
+      "gateway",
+      "app",
+      "",
+      "primary"
+    ],
+    [
+      "app",
+      "mongo",
+      "",
+      "default"
+    ],
+    [
+      "app",
+      "redis",
+      "",
+      "default"
+    ],
+    [
+      "app",
+      "vector",
+      "",
+      "default"
+    ],
+    [
+      "app",
+      "s3",
+      "",
+      "default"
+    ],
+    [
+      "app",
+      "proxy",
+      "",
+      "primary"
+    ],
+    [
+      "proxy",
+      "model",
+      "",
+      "primary"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "app",
+      "file": "deploy/version/main/docker-compose.template.yml",
+      "line": 27
+    },
+    {
+      "id": "proxy",
+      "file": "packages/service/core/ai/config.ts",
+      "line": 9
+    }
+  ],
+  "dir": "TB",
+  "lang": "zh-CN",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

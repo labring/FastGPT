@@ -1,0 +1,320 @@
+<svg width="348" height="440" class="sc-svg sc-still" id="通过可信后端集成-fastgpt-1plfe4" xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 348 440" role="img" aria-labelledby="通过可信后端集成-fastgpt-1plfe4-title 通过可信后端集成-fastgpt-1plfe4-desc" lang="zh-CN" data-sc-type="architecture" data-sc-slug="通过可信后端集成-fastgpt" data-sc-steps="5"><title id="通过可信后端集成-fastgpt-1plfe4-title">通过可信后端集成 FastGPT</title><style>#通过可信后端集成-fastgpt-1plfe4{--sc-paper:#1a1a1a;--sc-paper-2:#272727;--sc-ink:#fafafa;--sc-ink-strong:#fdfdfd;--sc-muted:#b2b2b2;--sc-soft:#868686;--sc-rule:rgba(250,250,250,0.12);--sc-rule-solid:#545454;--sc-accent:#3370ff;--sc-accent-tint:rgba(51,112,255,0.14);--sc-link:#79a0fd;--sc-node:#222222;--sc-store:rgba(250,250,250,0.05);--sc-external:rgba(250,250,250,0.025);--sc-series-1:#8fb394;--sc-series-2:#d9a95f;--sc-series-3:#a993cc;--sc-series-4:#d0806b;--sc-series-5:#86a5c4;--sc-ax-shade:#000000;--sc-ax-lift:#ffffff;--sc-ax-screen:#07080b;--sc-ax-dark-edge:rgba(255,255,255,0.34);--sc-ax-t-o:0.06;--sc-ax-l-o:0.2;--sc-ax-r-o:0.42;--sc-on-v00:#000000;--sc-on-v01:#ffffff;--sc-on-v10:#000000;--sc-on-v11:#ffffff;--sc-font-serif:'Fraunces', 'Noto Serif', Georgia, serif;--sc-font-sans:'IBM Plex Sans', 'Noto Sans', system-ui, sans-serif;--sc-font-mono:'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;}
+#通过可信后端集成-fastgpt-1plfe4.sc-svg{font-family:var(--sc-font-sans);color:var(--sc-ink);direction:ltr}
+#通过可信后端集成-fastgpt-1plfe4 .sc-mark{opacity:.88;pointer-events:none}
+#通过可信后端集成-fastgpt-1plfe4 .sc-mark-word{fill:var(--sc-ink)}
+#通过可信后端集成-fastgpt-1plfe4 .sc-bg{fill:var(--sc-paper)}
+#通过可信后端集成-fastgpt-1plfe4 .n-mask{fill:var(--sc-paper)}
+#通过可信后端集成-fastgpt-1plfe4 .n-box{fill:var(--sc-node);stroke:var(--sc-ink);stroke-width:1}
+#通过可信后端集成-fastgpt-1plfe4 .k-focal .n-box{fill:var(--sc-accent-tint);stroke:var(--sc-accent);stroke-width:1.2}
+#通过可信后端集成-fastgpt-1plfe4 .k-store .n-box{fill:var(--sc-store);stroke:var(--sc-muted)}
+#通过可信后端集成-fastgpt-1plfe4 .k-external .n-box{fill:var(--sc-external);stroke:var(--sc-soft)}
+#通过可信后端集成-fastgpt-1plfe4 .k-input .n-box{fill:var(--sc-external);stroke:var(--sc-soft)}
+#通过可信后端集成-fastgpt-1plfe4 .k-optional .n-box{fill:transparent;stroke:var(--sc-soft);stroke-dasharray:4 3}
+#通过可信后端集成-fastgpt-1plfe4 .k-security .n-box{fill:var(--sc-accent-tint);stroke:var(--sc-accent);stroke-opacity:.55;stroke-dasharray:4 4}
+#通过可信后端集成-fastgpt-1plfe4 .k-muted .n-box{fill:var(--sc-store);stroke:var(--sc-rule-solid)}
+#通过可信后端集成-fastgpt-1plfe4 .n-label{fill:var(--sc-ink);font-size:12px;font-weight:600}
+#通过可信后端集成-fastgpt-1plfe4 .n-sub{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}
+#通过可信后端集成-fastgpt-1plfe4 .n-icon{fill:none;stroke:var(--sc-muted);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+#通过可信后端集成-fastgpt-1plfe4 .k-focal .n-icon{stroke:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .n-tag{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:7px;letter-spacing:.12em;text-transform:uppercase}
+#通过可信后端集成-fastgpt-1plfe4 .n-tag-box{fill:none;stroke:var(--sc-rule-solid);stroke-width:.8}
+#通过可信后端集成-fastgpt-1plfe4 .k-focal .n-tag{fill:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .k-focal .n-tag-box{stroke:var(--sc-accent);stroke-opacity:.5}
+#通过可信后端集成-fastgpt-1plfe4 .e-line{fill:none;stroke:var(--sc-muted);stroke-width:1.1}
+#通过可信后端集成-fastgpt-1plfe4 .ek-primary .e-line{stroke:var(--sc-accent);stroke-width:1.4}
+#通过可信后端集成-fastgpt-1plfe4 .ek-link .e-line{stroke:var(--sc-link);stroke-width:1.2}
+#通过可信后端集成-fastgpt-1plfe4 .ek-async .e-line,#通过可信后端集成-fastgpt-1plfe4 .ek-return .e-line{stroke-width:1}
+#通过可信后端集成-fastgpt-1plfe4 .ek-muted .e-line{stroke:var(--sc-soft);stroke-width:1}
+#通过可信后端集成-fastgpt-1plfe4 .e-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.06em;text-transform:uppercase}
+#通过可信后端集成-fastgpt-1plfe4 .ek-primary .e-label{fill:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .ek-link .e-label{fill:var(--sc-link)}
+#通过可信后端集成-fastgpt-1plfe4 .e-label-bg{fill:var(--sc-paper)}
+#通过可信后端集成-fastgpt-1plfe4 .m-default{fill:var(--sc-muted)}#通过可信后端集成-fastgpt-1plfe4 .m-primary{fill:var(--sc-accent)}#通过可信后端集成-fastgpt-1plfe4 .m-link{fill:var(--sc-link)}#通过可信后端集成-fastgpt-1plfe4 .m-muted{fill:var(--sc-soft)}
+#通过可信后端集成-fastgpt-1plfe4 .g-box{fill:var(--sc-ink);fill-opacity:.018;stroke:var(--sc-rule);stroke-width:.8}
+#通过可信后端集成-fastgpt-1plfe4 .g-box.g-dashed{stroke-dasharray:4 4;stroke:var(--sc-soft);stroke-opacity:.6}
+#通过可信后端集成-fastgpt-1plfe4 .g-label{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:7px;letter-spacing:.16em;text-transform:uppercase}
+#通过可信后端集成-fastgpt-1plfe4 .g-label-bg{fill:var(--sc-paper)}
+#通过可信后端集成-fastgpt-1plfe4 .lg-rule{stroke:var(--sc-rule);stroke-width:.8}
+#通过可信后端集成-fastgpt-1plfe4 .lg-title{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.18em}
+#通过可信后端集成-fastgpt-1plfe4 .lg-text{fill:var(--sc-muted);font-size:9px}
+#通过可信后端集成-fastgpt-1plfe4 .ax-line{stroke:var(--sc-rule-solid);stroke-width:1}
+#通过可信后端集成-fastgpt-1plfe4 .ax-grid{stroke:var(--sc-rule);stroke-width:.8}
+#通过可信后端集成-fastgpt-1plfe4 .ax-text{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.04em}
+#通过可信后端集成-fastgpt-1plfe4 .ax-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase}
+#通过可信后端集成-fastgpt-1plfe4 .c-cat{fill:var(--sc-muted);font-size:10px}
+#通过可信后端集成-fastgpt-1plfe4 .c-val{fill:var(--sc-ink);font-family:var(--sc-font-mono);font-size:9px}
+#通过可信后端集成-fastgpt-1plfe4 .c-bar{fill:var(--sc-muted);fill-opacity:.38}
+#通过可信后端集成-fastgpt-1plfe4 .c-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#通过可信后端集成-fastgpt-1plfe4 .c-val.is-focal{fill:var(--sc-accent);font-weight:500}
+#通过可信后端集成-fastgpt-1plfe4 .s-1{fill:var(--sc-series-1)}#通过可信后端集成-fastgpt-1plfe4 .s-2{fill:var(--sc-series-2)}#通过可信后端集成-fastgpt-1plfe4 .s-3{fill:var(--sc-series-3)}#通过可信后端集成-fastgpt-1plfe4 .s-4{fill:var(--sc-series-4)}#通过可信后端集成-fastgpt-1plfe4 .s-5{fill:var(--sc-series-5)}
+#通过可信后端集成-fastgpt-1plfe4 .sk-node{fill:var(--sc-muted)}
+#通过可信后端集成-fastgpt-1plfe4 .sk-node.is-focal{fill:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .sk-link{fill:var(--sc-muted);fill-opacity:.14}
+#通过可信后端集成-fastgpt-1plfe4 .sk-link.is-focal{fill:var(--sc-accent);fill-opacity:.28}
+#通过可信后端集成-fastgpt-1plfe4 .sk-label{fill:var(--sc-ink);font-size:11px;font-weight:500;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#通过可信后端集成-fastgpt-1plfe4 .sk-val{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#通过可信后端集成-fastgpt-1plfe4 .q-life{stroke:var(--sc-rule-solid);stroke-width:1;stroke-dasharray:3 4}
+#通过可信后端集成-fastgpt-1plfe4 .q-frag{fill:none;stroke:var(--sc-soft);stroke-width:.8}
+#通过可信后端集成-fastgpt-1plfe4 .q-frag-tag{fill:var(--sc-paper-2);stroke:var(--sc-soft);stroke-width:.8}
+#通过可信后端集成-fastgpt-1plfe4 .q-frag-text{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase}
+#通过可信后端集成-fastgpt-1plfe4 .q-num{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8px}
+#通过可信后端集成-fastgpt-1plfe4 .q-note{fill:var(--sc-paper-2);stroke:var(--sc-rule-solid);stroke-width:.8}
+#通过可信后端集成-fastgpt-1plfe4 .q-note-text{fill:var(--sc-muted);font-size:10px;font-style:italic;font-family:var(--sc-font-serif)}
+#通过可信后端集成-fastgpt-1plfe4 .n-head{fill:var(--sc-ink);fill-opacity:.035;stroke:none}
+#通过可信后端集成-fastgpt-1plfe4 .k-focal .n-head{fill:var(--sc-accent);fill-opacity:.08}
+#通过可信后端集成-fastgpt-1plfe4 .n-rule{stroke:var(--sc-rule-solid);stroke-width:.8}
+#通过可信后端集成-fastgpt-1plfe4 .n-field{fill:var(--sc-ink);font-size:10px}
+#通过可信后端集成-fastgpt-1plfe4 .n-field-t{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}
+#通过可信后端集成-fastgpt-1plfe4 .n-key{font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.06em;fill:var(--sc-soft)}
+#通过可信后端集成-fastgpt-1plfe4 .n-key-pk{fill:var(--sc-accent)}#通过可信后端集成-fastgpt-1plfe4 .n-key-fk{fill:var(--sc-link)}
+#通过可信后端集成-fastgpt-1plfe4 .sh-start .n-box{fill:var(--sc-ink);stroke:none}
+#通过可信后端集成-fastgpt-1plfe4 .sh-end .n-box{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.2}
+#通过可信后端集成-fastgpt-1plfe4 .n-dot{fill:var(--sc-ink)}
+#通过可信后端集成-fastgpt-1plfe4 .n-status{stroke:var(--sc-paper);stroke-width:1.5}
+#通过可信后端集成-fastgpt-1plfe4 .st-ok{fill:var(--sc-series-1)}#通过可信后端集成-fastgpt-1plfe4 .st-risk{fill:var(--sc-series-2)}#通过可信后端集成-fastgpt-1plfe4 .st-legacy{fill:var(--sc-series-5)}#通过可信后端集成-fastgpt-1plfe4 .st-retire{fill:var(--sc-series-4)}
+#通过可信后端集成-fastgpt-1plfe4 .n-change{fill:var(--sc-accent);font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.12em}
+#通过可信后端集成-fastgpt-1plfe4 .ch-added .n-box{stroke:var(--sc-accent);stroke-width:1.3}
+#通过可信后端集成-fastgpt-1plfe4 .ch-removed{opacity:.55}#通过可信后端集成-fastgpt-1plfe4 .ch-removed .n-box{stroke-dasharray:4 3;stroke:var(--sc-soft)}#通过可信后端集成-fastgpt-1plfe4 .ch-removed .n-label{text-decoration:line-through}
+#通过可信后端集成-fastgpt-1plfe4 .ch-removed .n-change{fill:var(--sc-soft)}
+#通过可信后端集成-fastgpt-1plfe4 .ch-changed .n-box{stroke:var(--sc-accent);stroke-dasharray:6 2}
+#通过可信后端集成-fastgpt-1plfe4 .sc-edge.ch-added .e-line{stroke:var(--sc-accent)}#通过可信后端集成-fastgpt-1plfe4 .sc-edge.ch-removed .e-line{stroke-dasharray:3 3}
+#通过可信后端集成-fastgpt-1plfe4 .e-line.dashed{stroke-dasharray:4 3}
+#通过可信后端集成-fastgpt-1plfe4 .ek-rel .e-line{stroke:var(--sc-muted);stroke-width:1}
+#通过可信后端集成-fastgpt-1plfe4 .e-glyph.stroke{fill:none;stroke:var(--sc-muted);stroke-width:1}
+#通过可信后端集成-fastgpt-1plfe4 .e-glyph.hollow{fill:var(--sc-paper);stroke:var(--sc-muted);stroke-width:1}
+#通过可信后端集成-fastgpt-1plfe4 .e-glyph.filled{fill:var(--sc-muted);stroke:var(--sc-muted);stroke-width:1}
+#通过可信后端集成-fastgpt-1plfe4 .lane-band{fill:var(--sc-ink);fill-opacity:.022}
+#通过可信后端集成-fastgpt-1plfe4 .lane-band.alt{fill-opacity:0}
+#通过可信后端集成-fastgpt-1plfe4 .lane-rule{stroke:var(--sc-rule);stroke-width:.8}
+#通过可信后端集成-fastgpt-1plfe4 .lane-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase}
+#通过可信后端集成-fastgpt-1plfe4 .loop-center{fill:var(--sc-ink);font-family:var(--sc-font-serif);font-size:20px}
+#通过可信后端集成-fastgpt-1plfe4 .nest-mask{fill:var(--sc-paper)}
+#通过可信后端集成-fastgpt-1plfe4 .nest-box{fill:var(--sc-ink);fill-opacity:.025;stroke:var(--sc-rule-solid);stroke-width:.9}
+#通过可信后端集成-fastgpt-1plfe4 .nest-d0 .nest-box{fill-opacity:.012}#通过可信后端集成-fastgpt-1plfe4 .nest-d2 .nest-box{fill-opacity:.04}#通过可信后端集成-fastgpt-1plfe4 .nest-d3 .nest-box{fill-opacity:.055}
+#通过可信后端集成-fastgpt-1plfe4 .k-focal .nest-box{fill:var(--sc-accent-tint);fill-opacity:1;stroke:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .nest-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.14em;text-transform:uppercase}
+#通过可信后端集成-fastgpt-1plfe4 .chip{fill:var(--sc-paper-2);stroke:var(--sc-rule);stroke-width:.8}
+#通过可信后端集成-fastgpt-1plfe4 .chip-text{fill:var(--sc-ink);font-size:10px}
+#通过可信后端集成-fastgpt-1plfe4 .k-focal .chip{fill:var(--sc-paper);stroke:var(--sc-accent);stroke-opacity:.4}
+#通过可信后端集成-fastgpt-1plfe4 .venn-c{fill:var(--sc-muted);fill-opacity:.07;stroke:var(--sc-muted);stroke-width:1}
+#通过可信后端集成-fastgpt-1plfe4 .vs-2 .venn-c{fill:var(--sc-series-2);stroke:var(--sc-series-2);fill-opacity:.09}
+#通过可信后端集成-fastgpt-1plfe4 .vs-3 .venn-c{fill:var(--sc-series-1);stroke:var(--sc-series-1);fill-opacity:.09}
+#通过可信后端集成-fastgpt-1plfe4 .venn.k-focal .venn-c{fill:var(--sc-accent);stroke:var(--sc-accent);fill-opacity:.09}
+#通过可信后端集成-fastgpt-1plfe4 .venn-label{fill:var(--sc-ink);font-size:13px;font-weight:600}
+#通过可信后端集成-fastgpt-1plfe4 .venn-ov{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:13px}
+#通过可信后端集成-fastgpt-1plfe4 .venn-ov.is-focal{fill:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .fb-spine{stroke-width:1.6}
+#通过可信后端集成-fastgpt-1plfe4 .fb-tick{stroke:var(--sc-rule-solid);stroke-width:.8}
+#通过可信后端集成-fastgpt-1plfe4 .fb-cat{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;letter-spacing:.14em}
+#通过可信后端集成-fastgpt-1plfe4 .fb-cat.is-focal{fill:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .fb-cause{fill:var(--sc-ink);font-size:10px}
+#通过可信后端集成-fastgpt-1plfe4 .kb-col{fill:var(--sc-ink);fill-opacity:.025;stroke:var(--sc-rule);stroke-width:.8;rx:8}
+#通过可信后端集成-fastgpt-1plfe4 .kb-col.is-over{stroke:var(--sc-accent);stroke-opacity:.6}
+#通过可信后端集成-fastgpt-1plfe4 .kb-head{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#通过可信后端集成-fastgpt-1plfe4 .kb-count{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:9px}
+#通过可信后端集成-fastgpt-1plfe4 .kb-count.is-over{fill:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .kb-card{fill:var(--sc-ink);font-size:11px;font-weight:500}
+#通过可信后端集成-fastgpt-1plfe4 .sm-act{fill:var(--sc-ink)}
+#通过可信后端集成-fastgpt-1plfe4 .sm-activity.k-focal .sm-act{fill:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .sm-act-text{fill:var(--sc-paper);font-size:11px;font-weight:600}
+#通过可信后端集成-fastgpt-1plfe4 .q-frame{fill:none;stroke:var(--sc-rule-solid);stroke-width:1}
+#通过可信后端集成-fastgpt-1plfe4 .q-focal{fill:var(--sc-accent-tint)}
+#通过可信后端集成-fastgpt-1plfe4 .q-title{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#通过可信后端集成-fastgpt-1plfe4 .quad.k-focal .q-title,#通过可信后端集成-fastgpt-1plfe4 .quad.k-focal .q-title-big{fill:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .q-title-big{fill:var(--sc-ink);font-family:var(--sc-font-serif);font-size:19px}
+#通过可信后端集成-fastgpt-1plfe4 .q-item{fill:var(--sc-muted);font-size:11px}
+#通过可信后端集成-fastgpt-1plfe4 .q-dot{fill:var(--sc-muted)}
+#通过可信后端集成-fastgpt-1plfe4 .q-pt.k-focal .q-dot{fill:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .q-pt-label{fill:var(--sc-ink);font-size:10.5px;font-weight:500}
+#通过可信后端集成-fastgpt-1plfe4 .q-pt.k-focal .q-pt-label{fill:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .mx-col{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.08em}
+#通过可信后端集成-fastgpt-1plfe4 .mx-row{fill:var(--sc-ink);font-size:11px;font-weight:500}
+#通过可信后端集成-fastgpt-1plfe4 .mx-band{fill:var(--sc-ink);fill-opacity:.025}
+#通过可信后端集成-fastgpt-1plfe4 .mx-g.fill{fill:var(--sc-ink)}#通过可信后端集成-fastgpt-1plfe4 .mx-g.ring{fill:none;stroke:var(--sc-ink);stroke-width:1}
+#通过可信后端集成-fastgpt-1plfe4 .mx-g.dashed{stroke-dasharray:2 2}#通过可信后端集成-fastgpt-1plfe4 .mx-g.admin{fill:var(--sc-accent)}#通过可信后端集成-fastgpt-1plfe4 .mx-g.none{fill:var(--sc-soft)}
+#通过可信后端集成-fastgpt-1plfe4 .mx-r.k-focal .mx-row{fill:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .tl-axis{stroke:var(--sc-ink);stroke-width:1.2}
+#通过可信后端集成-fastgpt-1plfe4 .tl-stem{stroke:var(--sc-rule-solid);stroke-width:.8}
+#通过可信后端集成-fastgpt-1plfe4 .tl-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}
+#通过可信后端集成-fastgpt-1plfe4 .tl-ev.k-focal .tl-dot{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .tl-ev.k-focal .tl-label{fill:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .tl-label{font-size:11px}
+#通过可信后端集成-fastgpt-1plfe4 .tl-when{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;letter-spacing:.04em}
+#通过可信后端集成-fastgpt-1plfe4 .tl-period{fill:var(--sc-ink);fill-opacity:.07}
+#通过可信后端集成-fastgpt-1plfe4 .tl-period.is-focal{fill:var(--sc-accent);fill-opacity:.16}
+#通过可信后端集成-fastgpt-1plfe4 .tl-period-text{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.08em}
+#通过可信后端集成-fastgpt-1plfe4 .g-task{fill:var(--sc-ink);font-size:11px}
+#通过可信后端集成-fastgpt-1plfe4 .g-bar{fill:var(--sc-muted);fill-opacity:.45}
+#通过可信后端集成-fastgpt-1plfe4 .g-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#通过可信后端集成-fastgpt-1plfe4 .g-bar.is-done{fill-opacity:.2}
+#通过可信后端集成-fastgpt-1plfe4 .g-done{fill:var(--sc-muted);font-size:10px}
+#通过可信后端集成-fastgpt-1plfe4 .g-mile{fill:var(--sc-ink)}
+#通过可信后端集成-fastgpt-1plfe4 .k-focal .g-mile{fill:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .g-today{stroke:var(--sc-accent);stroke-width:1;stroke-dasharray:3 3}
+#通过可信后端集成-fastgpt-1plfe4 .g-today-text{fill:var(--sc-accent);font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.14em}
+#通过可信后端集成-fastgpt-1plfe4 .jr-band{fill:var(--sc-ink);fill-opacity:.025}#通过可信后端集成-fastgpt-1plfe4 .jr-band.alt{fill-opacity:0}
+#通过可信后端集成-fastgpt-1plfe4 .jr-stage{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#通过可信后端集成-fastgpt-1plfe4 .jr-curve{stroke:var(--sc-ink);stroke-width:1.6}
+#通过可信后端集成-fastgpt-1plfe4 .jr-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}
+#通过可信后端集成-fastgpt-1plfe4 .jr-dot.is-pain,#通过可信后端集成-fastgpt-1plfe4 .jr-dot.is-focal{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .jr-step{fill:var(--sc-ink);font-size:10.5px;font-weight:500}
+#通过可信后端集成-fastgpt-1plfe4 .jr-note{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:11px;paint-order:stroke;stroke:var(--sc-paper);stroke-width:4px;stroke-linejoin:round}
+#通过可信后端集成-fastgpt-1plfe4 .jr-note.is-pain{fill:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .ln{fill:none;stroke-width:1.6;stroke:var(--sc-muted)}
+#通过可信后端集成-fastgpt-1plfe4 .ln.is-focal{stroke:var(--sc-accent);stroke-width:2.2}#通过可信后端集成-fastgpt-1plfe4 .ln.is-muted{stroke:var(--sc-soft);stroke-opacity:.55}
+#通过可信后端集成-fastgpt-1plfe4 .ln-1{stroke:var(--sc-series-1)}#通过可信后端集成-fastgpt-1plfe4 .ln-2{stroke:var(--sc-series-2)}#通过可信后端集成-fastgpt-1plfe4 .ln-3{stroke:var(--sc-series-3)}#通过可信后端集成-fastgpt-1plfe4 .ln-4{stroke:var(--sc-series-4)}#通过可信后端集成-fastgpt-1plfe4 .ln-5{stroke:var(--sc-series-5)}
+#通过可信后端集成-fastgpt-1plfe4 .ln-pt{fill:var(--sc-paper);stroke-width:1.4}
+#通过可信后端集成-fastgpt-1plfe4 .ln-pt.is-focal{fill:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .ln-label{font-size:10.5px;font-weight:500;fill:var(--sc-muted)}
+#通过可信后端集成-fastgpt-1plfe4 .is-muted-t{fill:var(--sc-soft)}
+#通过可信后端集成-fastgpt-1plfe4 .ln-1-t{fill:var(--sc-series-1)}#通过可信后端集成-fastgpt-1plfe4 .ln-2-t{fill:var(--sc-series-2)}#通过可信后端集成-fastgpt-1plfe4 .ln-3-t{fill:var(--sc-series-3)}#通过可信后端集成-fastgpt-1plfe4 .ln-4-t{fill:var(--sc-series-4)}#通过可信后端集成-fastgpt-1plfe4 .ln-5-t{fill:var(--sc-series-5)}
+#通过可信后端集成-fastgpt-1plfe4 .ln-area{fill:var(--sc-muted);fill-opacity:.08}#通过可信后端集成-fastgpt-1plfe4 .ln-area.is-focal{fill:var(--sc-accent);fill-opacity:.1}
+#通过可信后端集成-fastgpt-1plfe4 .rg-area{fill:var(--sc-muted);fill-opacity:.18}#通过可信后端集成-fastgpt-1plfe4 .rg-area.is-focal{fill:var(--sc-accent);fill-opacity:.28}
+#通过可信后端集成-fastgpt-1plfe4 .rg-line{fill:none;stroke:var(--sc-ink);stroke-width:1.1}#通过可信后端集成-fastgpt-1plfe4 .rg-line.is-focal{stroke:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .st-area{fill-opacity:.55;stroke:var(--sc-paper);stroke-width:1}
+#通过可信后端集成-fastgpt-1plfe4 .st-area.is-focal{fill:var(--sc-accent);fill-opacity:.75}
+#通过可信后端集成-fastgpt-1plfe4 .st-label{fill:var(--sc-ink-strong);font-size:10px;font-weight:600}
+#通过可信后端集成-fastgpt-1plfe4 .is-focal-t{fill:var(--sc-accent)!important}
+#通过可信后端集成-fastgpt-1plfe4 .sp-dot{fill:var(--sc-muted);fill-opacity:.55;stroke:var(--sc-paper);stroke-width:.8}
+#通过可信后端集成-fastgpt-1plfe4 .sp-dot.is-bubble{fill-opacity:.25;stroke:var(--sc-muted);stroke-opacity:.7}
+#通过可信后端集成-fastgpt-1plfe4 .sp-dot.is-focal{fill:var(--sc-accent);fill-opacity:.9;stroke:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .sp-label{fill:var(--sc-ink);font-size:10px;font-weight:500}
+#通过可信后端集成-fastgpt-1plfe4 .rd-area{fill:var(--sc-muted);fill-opacity:.1}#通过可信后端集成-fastgpt-1plfe4 .rd-line{fill:none;stroke:var(--sc-muted);stroke-width:1.4}
+#通过可信后端集成-fastgpt-1plfe4 .rd-area.is-focal{fill:var(--sc-accent);fill-opacity:.16}#通过可信后端集成-fastgpt-1plfe4 .rd-line.is-focal{stroke:var(--sc-accent);stroke-width:2}
+#通过可信后端集成-fastgpt-1plfe4 .rd-area.is-muted{fill-opacity:.04}#通过可信后端集成-fastgpt-1plfe4 .rd-line.is-muted{stroke:var(--sc-soft)}
+#通过可信后端集成-fastgpt-1plfe4 .rd-area.s-1,#通过可信后端集成-fastgpt-1plfe4 .rd-area.s-2,#通过可信后端集成-fastgpt-1plfe4 .rd-area.s-3,#通过可信后端集成-fastgpt-1plfe4 .rd-area.s-4,#通过可信后端集成-fastgpt-1plfe4 .rd-area.s-5{fill-opacity:.14}
+#通过可信后端集成-fastgpt-1plfe4 .rd-line.s-1{stroke:var(--sc-series-1)}#通过可信后端集成-fastgpt-1plfe4 .rd-line.s-2{stroke:var(--sc-series-2)}#通过可信后端集成-fastgpt-1plfe4 .rd-line.s-3{stroke:var(--sc-series-3)}#通过可信后端集成-fastgpt-1plfe4 .rd-line.s-4{stroke:var(--sc-series-4)}#通过可信后端集成-fastgpt-1plfe4 .rd-line.s-5{stroke:var(--sc-series-5)}
+#通过可信后端集成-fastgpt-1plfe4 .rd-pt{fill:var(--sc-paper);stroke:var(--sc-muted)}#通过可信后端集成-fastgpt-1plfe4 .rd-pt.is-focal{stroke:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .rd-key{fill:var(--sc-muted)}#通过可信后端集成-fastgpt-1plfe4 .rd-key.is-focal{fill:var(--sc-accent)}#通过可信后端集成-fastgpt-1plfe4 .rd-key.is-muted{fill:var(--sc-soft)}
+#通过可信后端集成-fastgpt-1plfe4 .rd-ring{fill:none}
+#通过可信后端集成-fastgpt-1plfe4 .pl-stem{stroke:var(--sc-muted);stroke-width:1.4}#通过可信后端集成-fastgpt-1plfe4 .pl-stem.is-focal{stroke:var(--sc-accent);stroke-width:2}
+#通过可信后端集成-fastgpt-1plfe4 .pl-dot{fill:var(--sc-muted)}#通过可信后端集成-fastgpt-1plfe4 .pl-dot.is-focal{fill:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .wf-bar{fill:var(--sc-muted);fill-opacity:.4}
+#通过可信后端集成-fastgpt-1plfe4 .wf-up{fill:var(--sc-series-1);fill-opacity:.75}#通过可信后端集成-fastgpt-1plfe4 .wf-down{fill:var(--sc-series-4);fill-opacity:.75}
+#通过可信后端集成-fastgpt-1plfe4 .wf-total{fill:var(--sc-ink);fill-opacity:.82}
+#通过可信后端集成-fastgpt-1plfe4 .wf-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#通过可信后端集成-fastgpt-1plfe4 .wf-link{stroke:var(--sc-soft);stroke-width:.8;stroke-dasharray:2 2}
+#通过可信后端集成-fastgpt-1plfe4 .tm-cell{fill:var(--sc-muted);fill-opacity:.16;stroke:var(--sc-paper);stroke-width:1}
+#通过可信后端集成-fastgpt-1plfe4 .tm-cell.is-focal{fill:var(--sc-accent);fill-opacity:.85}
+#通过可信后端集成-fastgpt-1plfe4 .tm-sub{fill:var(--sc-paper);fill-opacity:.55}
+#通过可信后端集成-fastgpt-1plfe4 .tm-label{fill:var(--sc-ink);font-size:11px;font-weight:600}#通过可信后端集成-fastgpt-1plfe4 .tm-label.is-focal{fill:var(--sc-paper)}
+#通过可信后端集成-fastgpt-1plfe4 .tm-val{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}#通过可信后端集成-fastgpt-1plfe4 .tm-val.is-focal{fill:var(--sc-paper);fill-opacity:.85}
+#通过可信后端集成-fastgpt-1plfe4 .tm-sub-label{fill:var(--sc-muted);font-size:9.5px}
+#通过可信后端集成-fastgpt-1plfe4 .hm-cell.hm-pos{fill:var(--sc-accent)}#通过可信后端集成-fastgpt-1plfe4 .hm-cell.hm-neg{fill:var(--sc-series-4)}
+#通过可信后端集成-fastgpt-1plfe4 .hm-val{fill:var(--sc-ink);font-family:var(--sc-font-mono);font-size:8.5px}#通过可信后端集成-fastgpt-1plfe4 .hm-val.v00{fill:var(--sc-on-v00)}#通过可信后端集成-fastgpt-1plfe4 .hm-val.v01{fill:var(--sc-on-v01)}#通过可信后端集成-fastgpt-1plfe4 .hm-val.v10{fill:var(--sc-on-v10)}#通过可信后端集成-fastgpt-1plfe4 .hm-val.v11{fill:var(--sc-on-v11)}
+#通过可信后端集成-fastgpt-1plfe4 .db-line{stroke:var(--sc-rule-solid);stroke-width:2.4}#通过可信后端集成-fastgpt-1plfe4 .db-line.is-focal{stroke:var(--sc-accent);stroke-opacity:.45}
+#通过可信后端集成-fastgpt-1plfe4 .db-a{fill:var(--sc-paper);stroke:var(--sc-muted);stroke-width:1.4}#通过可信后端集成-fastgpt-1plfe4 .db-b{fill:var(--sc-muted)}#通过可信后端集成-fastgpt-1plfe4 .db-b.is-focal{fill:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .mk-seg{fill-opacity:.7;stroke:var(--sc-paper)}
+#通过可信后端集成-fastgpt-1plfe4 .mk-pct{fill:var(--sc-ink-strong);font-family:var(--sc-font-mono);font-size:8.5px}
+#通过可信后端集成-fastgpt-1plfe4 .wm-link{stroke:var(--sc-soft)!important;stroke-width:1!important}
+#通过可信后端集成-fastgpt-1plfe4 .wm-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}#通过可信后端集成-fastgpt-1plfe4 .wm-dot.is-focal{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .wm-label{fill:var(--sc-ink);font-size:10.5px;font-weight:500;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#通过可信后端集成-fastgpt-1plfe4 .wm-label.is-anchor{font-weight:700;font-size:12px}
+#通过可信后端集成-fastgpt-1plfe4 .wm-move{stroke:var(--sc-accent);stroke-width:1.2;stroke-dasharray:4 3;fill:none}#通过可信后端集成-fastgpt-1plfe4 .wm-move-head{fill:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .wm-ghost{fill:none;stroke:var(--sc-accent);stroke-dasharray:2 2}
+#通过可信后端集成-fastgpt-1plfe4 .wm-inertia{stroke:var(--sc-ink);stroke-width:3}
+#通过可信后端集成-fastgpt-1plfe4 .callout{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:13px}
+
+#通过可信后端集成-fastgpt-1plfe4 .iso-base{fill:var(--sc-node)}
+#通过可信后端集成-fastgpt-1plfe4 .iso-t{fill:var(--sc-ax-lift);fill-opacity:var(--sc-ax-t-o)}
+#通过可信后端集成-fastgpt-1plfe4 .iso-l{fill:var(--sc-ax-shade);fill-opacity:var(--sc-ax-l-o)}
+#通过可信后端集成-fastgpt-1plfe4 .iso-r{fill:var(--sc-ax-shade);fill-opacity:var(--sc-ax-r-o)}
+#通过可信后端集成-fastgpt-1plfe4 .k-focal .iso-t{fill:var(--sc-accent);fill-opacity:.12}
+#通过可信后端集成-fastgpt-1plfe4 .k-focal .iso-l{fill:var(--sc-accent);fill-opacity:.22}
+#通过可信后端集成-fastgpt-1plfe4 .k-focal .iso-r{fill:var(--sc-accent);fill-opacity:.34}
+#通过可信后端集成-fastgpt-1plfe4 .iso-edge{fill:none;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.8;stroke-linejoin:round}
+#通过可信后端集成-fastgpt-1plfe4 .iso-sil{fill:none;stroke:var(--sc-ink);stroke-width:1.2;stroke-linejoin:round}
+#通过可信后端集成-fastgpt-1plfe4 .k-focal .iso-sil{stroke:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .iso-inset{fill:var(--sc-ink);fill-opacity:.06;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.7}
+#通过可信后端集成-fastgpt-1plfe4 .k-focal .iso-inset{fill:var(--sc-accent);fill-opacity:.16;stroke:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .iso-trace{fill:none;stroke:var(--sc-ink);stroke-opacity:.3;stroke-width:.8;stroke-dasharray:4 3}
+#通过可信后端集成-fastgpt-1plfe4 .iso-leader{stroke:var(--sc-ink);stroke-opacity:.4;stroke-width:.8}
+#通过可信后端集成-fastgpt-1plfe4 .iso-dot{fill:var(--sc-ink)}
+#通过可信后端集成-fastgpt-1plfe4 .k-focal .iso-leader{stroke:var(--sc-accent);stroke-opacity:1}#通过可信后端集成-fastgpt-1plfe4 .k-focal .iso-dot{fill:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .iso-name{fill:var(--sc-ink);font-size:14px;font-weight:600}
+#通过可信后端集成-fastgpt-1plfe4 .iso-sub{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9.5px;letter-spacing:.06em}
+#通过可信后端集成-fastgpt-1plfe4 .k-focal .iso-sub{fill:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .iso-contour{fill:none;stroke:var(--sc-ink);stroke-opacity:.22;stroke-width:.7}
+#通过可信后端集成-fastgpt-1plfe4 .iso-plate .iso-t{fill-opacity:0}
+#通过可信后端集成-fastgpt-1plfe4 .iso-mark{fill:var(--sc-ink);fill-opacity:.07}
+#通过可信后端集成-fastgpt-1plfe4 .iso-floor{fill:var(--sc-ink);fill-opacity:.035}
+#通过可信后端集成-fastgpt-1plfe4 .k-focal .iso-floor,#通过可信后端集成-fastgpt-1plfe4 .iso-floor.k-focal{fill:var(--sc-accent);fill-opacity:.1}
+#通过可信后端集成-fastgpt-1plfe4 .iso-canopy .iso-t{fill:var(--sc-series-1);fill-opacity:.55}
+#通过可信后端集成-fastgpt-1plfe4 .iso-canopy .iso-l,#通过可信后端集成-fastgpt-1plfe4 .iso-canopy .iso-r{fill:var(--sc-series-1);fill-opacity:.35}
+#通过可信后端集成-fastgpt-1plfe4 .iso-tag rect{fill:var(--sc-paper);stroke:var(--sc-rule-solid);stroke-width:.8}
+#通过可信后端集成-fastgpt-1plfe4 .k-focal.iso-tag rect,#通过可信后端集成-fastgpt-1plfe4 .k-focal .iso-tag rect{stroke:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .iso-tag .iso-name{font-size:11px}#通过可信后端集成-fastgpt-1plfe4 .iso-tag .iso-sub{font-size:8px}
+
+#通过可信后端集成-fastgpt-1plfe4 .it-light .iso-base{fill:var(--sc-node)}
+#通过可信后端集成-fastgpt-1plfe4 .it-dark .iso-base,#通过可信后端集成-fastgpt-1plfe4 .it-black .iso-base{fill:var(--sc-ax-screen)}
+#通过可信后端集成-fastgpt-1plfe4 .it-dark .iso-t,#通过可信后端集成-fastgpt-1plfe4 .it-black .iso-t{fill:#fff;fill-opacity:.07}
+#通过可信后端集成-fastgpt-1plfe4 .it-dark .iso-edge,#通过可信后端集成-fastgpt-1plfe4 .it-black .iso-edge{stroke:#fff;stroke-opacity:.18}
+#通过可信后端集成-fastgpt-1plfe4 .it-accent .iso-base{fill:var(--sc-node)}#通过可信后端集成-fastgpt-1plfe4 .it-accent .iso-t,#通过可信后端集成-fastgpt-1plfe4 .it-accent .iso-l,#通过可信后端集成-fastgpt-1plfe4 .it-accent .iso-r{fill:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .it-accent .iso-t{fill-opacity:.25}#通过可信后端集成-fastgpt-1plfe4 .it-accent .iso-l{fill-opacity:.4}#通过可信后端集成-fastgpt-1plfe4 .it-accent .iso-r{fill-opacity:.55}
+#通过可信后端集成-fastgpt-1plfe4 .it-accent .iso-sil{stroke:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .it-mid .iso-base{fill:var(--sc-node)}
+#通过可信后端集成-fastgpt-1plfe4 .it-solid .iso-sil{stroke-width:.9}
+#通过可信后端集成-fastgpt-1plfe4 path.it-dark{fill:var(--sc-ax-screen)}
+#通过可信后端集成-fastgpt-1plfe4 path.it-black{fill:#000;fill-opacity:.85}
+#通过可信后端集成-fastgpt-1plfe4 /* dark panels and solids keep an edge where they sit on dark walls (dark themes) */
+path.it-dark,#通过可信后端集成-fastgpt-1plfe4 path.it-black{stroke:var(--sc-ax-dark-edge);stroke-width:.7}
+#通过可信后端集成-fastgpt-1plfe4 .it-dark .iso-sil,#通过可信后端集成-fastgpt-1plfe4 .it-black .iso-sil{stroke:var(--sc-ink)}
+#通过可信后端集成-fastgpt-1plfe4 path.it-line.it-stroke-dark{stroke:var(--sc-ax-screen);stroke-opacity:.8}
+#通过可信后端集成-fastgpt-1plfe4 path.it-light{fill:var(--sc-node);stroke:var(--sc-ink);stroke-opacity:.45;stroke-width:.6}
+#通过可信后端集成-fastgpt-1plfe4 path.it-accent{fill:var(--sc-accent);fill-opacity:.9}
+#通过可信后端集成-fastgpt-1plfe4 path.it-mid{fill:var(--sc-ink);fill-opacity:.08}
+#通过可信后端集成-fastgpt-1plfe4 path.it-cut{fill:var(--sc-ink);fill-opacity:.13;stroke:var(--sc-ink);stroke-opacity:.45;stroke-width:.5}
+#通过可信后端集成-fastgpt-1plfe4 path.it-line{fill:none;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.8;stroke-linecap:round}
+#通过可信后端集成-fastgpt-1plfe4 path.it-text{fill:none;stroke:var(--sc-ink);stroke-opacity:.35;stroke-width:1.4;stroke-linecap:round}
+#通过可信后端集成-fastgpt-1plfe4 path.it-line.it-stroke-accent,#通过可信后端集成-fastgpt-1plfe4 path.it-text.it-stroke-accent{stroke:var(--sc-accent);stroke-opacity:1}
+#通过可信后端集成-fastgpt-1plfe4 path.it-stroke-light{stroke:#fff;stroke-opacity:.7}
+#通过可信后端集成-fastgpt-1plfe4 path.it-line.it-stroke-dark{stroke-width:2.2}
+#通过可信后端集成-fastgpt-1plfe4 path.it-dash{stroke-dasharray:4 3}
+#通过可信后端集成-fastgpt-1plfe4 path.it-button{fill:var(--sc-node);stroke:var(--sc-ink);stroke-opacity:.6;stroke-width:.8}
+#通过可信后端集成-fastgpt-1plfe4 path.it-cavity{fill:var(--sc-ink);fill-opacity:.07}
+#通过可信后端集成-fastgpt-1plfe4 path.it-floor{fill:var(--sc-ink);fill-opacity:.04;stroke:var(--sc-ink);stroke-opacity:.35;stroke-width:.7}
+
+#通过可信后端集成-fastgpt-1plfe4 .iso-beam-o{fill:none;stroke:var(--sc-ink);stroke-linecap:round}
+#通过可信后端集成-fastgpt-1plfe4 .iso-beam{fill:none;stroke:var(--sc-node);stroke-linecap:round}
+#通过可信后端集成-fastgpt-1plfe4 .iso-beam-dark{stroke:var(--sc-ax-screen)}
+#通过可信后端集成-fastgpt-1plfe4 .iso-beam-accent,#通过可信后端集成-fastgpt-1plfe4 .k-focal .iso-beam{stroke:var(--sc-accent);stroke-opacity:.55}
+#通过可信后端集成-fastgpt-1plfe4 .iso-leader{fill:none;stroke:var(--sc-ink);stroke-opacity:.4;stroke-width:.8}
+#通过可信后端集成-fastgpt-1plfe4 .k-focal .iso-leader{stroke:var(--sc-accent);stroke-opacity:1}
+
+@keyframes sc-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes sc-fade{from{opacity:0}to{opacity:1}}
+@keyframes sc-draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes sc-grow-y{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes sc-grow-x{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes sc-wipe{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes sc-wipe-down{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes sc-pop{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:scale(1)}}
+@keyframes sc-token{from{offset-distance:0%;opacity:0}8%{opacity:1}92%{opacity:1}to{offset-distance:100%;opacity:0}}
+@keyframes sc-pulse{0%,100%{stroke-opacity:1}50%{stroke-opacity:.35}}
+@keyframes sc-lift{from{transform:translateY(var(--lift))}to{transform:none}}
+@keyframes sc-drop{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:none}}
+#通过可信后端集成-fastgpt-1plfe4 .e-token{display:none}
+@media (prefers-reduced-motion: no-preference){
+#通过可信后端集成-fastgpt-1plfe4.sc-svg[data-sc-motion]:not(.sc-still) [data-sc-step]{--d:calc(var(--step) * var(--sc-stagger))}
+#通过可信后端集成-fastgpt-1plfe4.sc-svg[data-sc-motion]:not(.sc-still) .sc-node[data-sc-step],#通过可信后端集成-fastgpt-1plfe4.sc-svg[data-sc-motion]:not(.sc-still) .sc-enter[data-sc-step]{animation:sc-in var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#通过可信后端集成-fastgpt-1plfe4.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step]{animation:sc-fade 240ms ease-out var(--d) both}
+#通过可信后端集成-fastgpt-1plfe4.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-head,#通过可信后端集成-fastgpt-1plfe4.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-glyph,#通过可信后端集成-fastgpt-1plfe4.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-label-g{animation:sc-fade 200ms ease-out calc(var(--d) + var(--sc-draw) * .8) both}
+#通过可信后端集成-fastgpt-1plfe4.sc-svg:is([data-sc-motion="trace"],#通过可信后端集成-fastgpt-1plfe4 [data-sc-motion="loop"]):not(.sc-still) .sc-edge[data-sc-step] .e-line.sc-draw{stroke-dasharray:1;animation:sc-draw var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#通过可信后端集成-fastgpt-1plfe4.sc-svg[data-sc-motion]:not(.sc-still) .sc-grow-y[data-sc-step]{transform-box:fill-box;transform-origin:50% 100%;animation:sc-grow-y var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#通过可信后端集成-fastgpt-1plfe4.sc-svg[data-sc-motion]:not(.sc-still) .sc-grow-x[data-sc-step]{transform-box:fill-box;transform-origin:0 50%;animation:sc-grow-x var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#通过可信后端集成-fastgpt-1plfe4.sc-svg[data-sc-motion]:not(.sc-still) .sc-wipe[data-sc-step]{animation:sc-wipe var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#通过可信后端集成-fastgpt-1plfe4.sc-svg[data-sc-motion]:not(.sc-still) .sc-wipe-down[data-sc-step]{animation:sc-wipe-down var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#通过可信后端集成-fastgpt-1plfe4.sc-svg[data-sc-motion]:not(.sc-still) .sc-pop[data-sc-step]{transform-box:fill-box;transform-origin:50% 50%;animation:sc-pop var(--sc-enter) cubic-bezier(.2,.9,.3,1.2) var(--d) both}
+#通过可信后端集成-fastgpt-1plfe4.sc-svg[data-sc-motion]:not(.sc-still) .sc-fade[data-sc-step]{animation:sc-fade var(--sc-enter) ease-out var(--d) both}
+#通过可信后端集成-fastgpt-1plfe4.sc-svg[data-sc-motion]:not(.sc-still) .iso-part[data-sc-step]{animation:none}
+#通过可信后端集成-fastgpt-1plfe4.sc-svg[data-sc-motion]:not(.sc-still) .iso-part.sc-lift[data-sc-step]{animation:sc-lift calc(var(--sc-enter) * 1.6) cubic-bezier(.3,.6,.2,1) var(--d) both}
+#通过可信后端集成-fastgpt-1plfe4.sc-svg[data-sc-motion]:not(.sc-still) .iso-label[data-sc-step]{animation:sc-fade var(--sc-enter) ease-out calc(var(--d) + var(--sc-enter) * 1.2) both}
+#通过可信后端集成-fastgpt-1plfe4.sc-svg[data-sc-motion]:not(.sc-still) .sc-drop[data-sc-step]{animation:sc-drop var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#通过可信后端集成-fastgpt-1plfe4.sc-svg:is([data-sc-motion="trace"],#通过可信后端集成-fastgpt-1plfe4 [data-sc-motion="loop"]):not(.sc-still) .e-token{display:inline;offset-rotate:0deg;animation:sc-token var(--tok-dur,1800ms) linear calc(var(--sc-settle) + var(--tok-delay,0ms)) infinite both}
+#通过可信后端集成-fastgpt-1plfe4.sc-svg[data-sc-motion]:not(.sc-still) .k-change .n-box{animation:sc-pulse 1.6s ease-in-out var(--sc-settle) 3}
+}
+@media print{#通过可信后端集成-fastgpt-1plfe4.sc-svg *{animation:none!important}#通过可信后端集成-fastgpt-1plfe4 .e-token{display:none!important}}
+#通过可信后端集成-fastgpt-1plfe4 .sc-still .e-token{display:none}
+#通过可信后端集成-fastgpt-1plfe4 .e-token{fill:var(--sc-accent)}
+#通过可信后端集成-fastgpt-1plfe4 .ek-link .e-token,#通过可信后端集成-fastgpt-1plfe4 .e-token.t-link{fill:var(--sc-link)}
+</style><desc id="通过可信后端集成-fastgpt-1plfe4-desc">Architecture diagram with 6 elements.</desc><rect class="sc-bg" x="-24" y="-24" width="348" height="440"/><g class="sc-groups"></g><g class="sc-edges"><g class="sc-edge ek-primary" data-sc-edge="client-backend" data-from="client" data-to="backend" data-sc-step="2" style="--step:2"><path class="e-line sc-draw" d="M56,52 L56,109" pathLength="1"/><path class="e-head m-primary" d="M56,116 L52.8,108 L59.2,108 Z"/></g><g class="sc-edge ek-primary" data-sc-edge="backend-api" data-from="backend" data-to="api" data-sc-step="4" style="--step:4"><path class="e-line sc-draw" d="M56,168 L56,225" pathLength="1"/><path class="e-head m-primary" d="M56,232 L52.8,224 L59.2,224 Z"/></g><g class="sc-edge ek-link" data-sc-edge="sdk-api" data-from="sdk" data-to="api" data-sc-step="2" style="--step:2"><path class="e-line sc-draw" d="M238,168 L238,232 Q238,239 231,239 L119,239" pathLength="1"/><path class="e-head m-link" d="M112,239 L120,235.8 L120,242.2 Z"/><g class="e-label-g"><rect class="e-label-bg" x="161" y="233" width="28" height="12" rx="2"/><text class="e-label" x="175" y="241.6" text-anchor="middle">调用</text></g></g><g class="sc-edge ek-default" data-sc-edge="api-chat" data-from="api" data-to="chat" data-sc-step="4" style="--step:4"><path class="e-line sc-draw" d="M56,272 L56,329" pathLength="1"/><path class="e-head m-default" d="M56,336 L52.8,328 L59.2,328 Z"/></g><g class="sc-edge ek-default" data-sc-edge="api-dataset" data-from="api" data-to="dataset" data-sc-step="4" style="--step:4"><path class="e-line sc-draw" d="M112,265 L231,265 Q238,265 238,272 L238,329" pathLength="1"/><path class="e-head m-default" d="M238,336 L234.8,328 L241.2,328 Z"/></g></g><circle class="e-token" r="3.2" data-sc-step="5" style="--step:5;offset-path:path('M56,52 L56,116 L56,168 L56,232');--tok-dur:1600ms"/><g class="sc-nodes"><g class="sc-node k-external sh-box" data-sc-node="client" data-sc-step="1" style="--step:1" tabindex="0" role="group" aria-label="用户端, 网页 / 移动端"><rect class="n-mask" x="0" y="0" width="112" height="52" rx="6"/><rect class="n-box" x="0" y="0" width="112" height="52" rx="6"/><text class="n-label" x="56" y="24" text-anchor="middle">用户端</text><text class="n-sub" x="56" y="39.5" text-anchor="middle">网页 / 移动端</text></g><g class="sc-node k-backend sh-box" data-sc-node="backend" data-sc-step="3" style="--step:3" tabindex="0" role="group" aria-label="业务后端, 安全保存 API Key"><rect class="n-mask" x="0" y="116" width="112" height="52" rx="6"/><rect class="n-box" x="0" y="116" width="112" height="52" rx="6"/><text class="n-label" x="56" y="140" text-anchor="middle">业务后端</text><text class="n-sub" x="56" y="155.5" text-anchor="middle">安全保存 API Key</text></g><g class="sc-node k-backend sh-box" data-sc-node="sdk" data-sc-step="1" style="--step:1" tabindex="0" role="group" aria-label="服务端客户端, OpenAI SDK / HTTP"><rect class="n-mask" x="176" y="116" width="124" height="52" rx="6"/><rect class="n-box" x="176" y="116" width="124" height="52" rx="6"/><text class="n-label" x="238" y="140" text-anchor="middle">服务端客户端</text><text class="n-sub" x="238" y="155.5" text-anchor="middle">OpenAI SDK / HTTP</text></g><g class="sc-node k-focal sh-box" data-sc-node="api" data-sc-step="3" style="--step:3" tabindex="0" role="group" aria-label="FastGPT API"><rect class="n-mask" x="0" y="232" width="112" height="40" rx="6"/><rect class="n-box" x="0" y="232" width="112" height="40" rx="6"/><text class="n-label" x="56" y="257" text-anchor="middle">FastGPT API</text></g><g class="sc-node k-backend sh-box" data-sc-node="chat" data-sc-step="5" style="--step:5" tabindex="0" role="group" aria-label="应用与会话"><rect class="n-mask" x="0" y="336" width="112" height="40" rx="6"/><rect class="n-box" x="0" y="336" width="112" height="40" rx="6"/><text class="n-label" x="56" y="361" text-anchor="middle">应用与会话</text></g><g class="sc-node k-backend sh-box" data-sc-node="dataset" data-sc-step="5" style="--step:5" tabindex="0" role="group" aria-label="知识库操作"><rect class="n-mask" x="182" y="336" width="112" height="40" rx="6"/><rect class="n-box" x="182" y="336" width="112" height="40" rx="6"/><text class="n-label" x="238" y="361" text-anchor="middle">知识库操作</text></g></g></svg>

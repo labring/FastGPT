@@ -10,14 +10,7 @@ description: 从首次 API 请求进入应用、对话、知识库集成和扩�
 
 FastGPT 面向业务系统与开发者提供完整的开放能力矩阵：
 
-```mermaid
-graph LR
-    Client[Web 前端 / 移动端] --> Backend[可信业务后端]
-    Backend --> API[FastGPT 开放接口]
-    SDK[服务端 SDK] --> API
-    API --> Apps[应用执行与会话]
-    API --> Knowledge[知识库操作]
-```
+![通过可信后端集成 FastGPT](/imgs/diagrams/integration-overview.zh-CN.light.svg)
 
 API Key 保存在可信服务端。身份代理按需启用，要求接口支持并建立同团队成员的可信身份映射。MCP 客户端通过单独配置的 MCP 服务及其认证方式接入。
 

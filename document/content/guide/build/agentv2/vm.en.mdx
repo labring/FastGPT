@@ -59,22 +59,18 @@ The platform isolates virtual machine files by tenant, application, and session 
 
 During environment initialization and execution, the platform manages the sandbox through discrete phases:
 
-```
-[Prepare Workspace] ──► [Connect / Create / Recover Sandbox] ──► [Workspace Mounted] ──► [Startup Script Run] ──► [Ready]
-                                                                              │
-                                                                              ▼ (State Cache)
-                                                                 [~/.fastgpt/runtime/state.json]
-```
+![Agent sandbox initialization](/imgs/diagrams/sandbox-initialization.en.light.svg)
 
 ### Startup Scripts and Dependency Management
-The "Startup Script" configured in the application runs immediately upon container launch to pre-install Python packages (e.g., `pip install matplotlib pandas`) or system binaries:
-- **Deduplication Mechanism**: Upon successful execution, the platform caches a script content hash in `~/.fastgpt/runtime/state.json`. Subsequent turns in the same session reuse the initialized environment, avoiding redundant installation delays.
+The application "Startup Script" runs after runtime acquisition, the initialization lock, and configuration and file preparation. It can install Python packages (e.g., `pip install matplotlib pandas`) or system binaries:
+- **Deduplication Mechanism**: Upon successful execution, the platform records the script content hash in `~/.fastgpt/runtime/state.json`. The same sandbox instance reuses completed initialization when the hash matches; the session identifier selects the current working directory.
 - **Update Triggers**: Modifying startup script content updates the recorded hash, triggering a clean execution on the next turn.
 
 <span id="execution-constraints--fault-tolerance" />
 
 ### Execution Constraints and Fault Tolerance
 
+- **Preparation Failures**: Runtime acquisition or initialization lock failures return an error for the current preparation. Skill editor debugging uses a separate preparation branch.
 - **Startup Timeout Protection**: Script execution duration is bounded by the `AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS` environment variable (defaults to 30 seconds; configurable from 1 to 600 seconds).
 - **Non-blocking Resilience**: Non-zero exit codes or timeouts during script execution log warnings without crashing the conversational flow, allowing builders to inspect missing dependencies in debug panels.
 - **Buffer Output Limits**: Output limits depend on the execution service. Logs may be truncated; write large results to files and inspect the generated artifacts.

@@ -29,7 +29,7 @@ The login flow is:
 3. FastGPT sends the code to the adapter. The adapter retrieves the external user information and converts it into FastGPT's standard response format.
 4. FastGPT uses that response to register or sign in the user.
 
-![SSO login flow through the FastGPT-SSO-Service adapter](/imgs/optimized/sso2.png.webp)
+![SSO through an adapter](/imgs/diagrams/sso-adapter.en.light.svg)
 
 ## System Configuration Tutorial
 
@@ -631,7 +631,7 @@ Below is the standard interface documentation for SSO and member sync in FastGPT
 
 With a custom integration, your external system implements the standard endpoints directly. FastGPT requests the authorization URL, redirects the user to sign in, and then exchanges the returned `code` for user information. It uses that information to register or sign in the user. The adapter-based flow described above performs the same exchange through FastGPT-SSO-Service.
 
-![SSO flow for an external system that implements the standard endpoints](/imgs/optimized/sso18.png.webp)
+![SSO through standard provider endpoints](/imgs/diagrams/sso-direct.en.light.svg)
 
 FastGPT provides the following standard interfaces:
 

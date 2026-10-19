@@ -1,0 +1,320 @@
+<svg width="775" height="516" class="sc-svg sc-still" id="remote-debugging-connect-gscl66" xmlns="http://www.w3.org/2000/svg" viewBox="-32 -24 775 516" role="img" aria-labelledby="remote-debugging-connect-gscl66-title remote-debugging-connect-gscl66-desc" lang="en" data-sc-type="sequence" data-sc-slug="remote-debugging-connect" data-sc-steps="10"><title id="remote-debugging-connect-gscl66-title">Remote debugging: connect</title><style>#remote-debugging-connect-gscl66{--sc-paper:#1a1a1a;--sc-paper-2:#272727;--sc-ink:#fafafa;--sc-ink-strong:#fdfdfd;--sc-muted:#b2b2b2;--sc-soft:#868686;--sc-rule:rgba(250,250,250,0.12);--sc-rule-solid:#545454;--sc-accent:#3370ff;--sc-accent-tint:rgba(51,112,255,0.14);--sc-link:#79a0fd;--sc-node:#222222;--sc-store:rgba(250,250,250,0.05);--sc-external:rgba(250,250,250,0.025);--sc-series-1:#8fb394;--sc-series-2:#d9a95f;--sc-series-3:#a993cc;--sc-series-4:#d0806b;--sc-series-5:#86a5c4;--sc-ax-shade:#000000;--sc-ax-lift:#ffffff;--sc-ax-screen:#07080b;--sc-ax-dark-edge:rgba(255,255,255,0.34);--sc-ax-t-o:0.06;--sc-ax-l-o:0.2;--sc-ax-r-o:0.42;--sc-on-v00:#000000;--sc-on-v01:#ffffff;--sc-on-v10:#000000;--sc-on-v11:#ffffff;--sc-font-serif:'Fraunces', 'Noto Serif', Georgia, serif;--sc-font-sans:'IBM Plex Sans', 'Noto Sans', system-ui, sans-serif;--sc-font-mono:'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;}
+#remote-debugging-connect-gscl66.sc-svg{font-family:var(--sc-font-sans);color:var(--sc-ink);direction:ltr}
+#remote-debugging-connect-gscl66 .sc-mark{opacity:.88;pointer-events:none}
+#remote-debugging-connect-gscl66 .sc-mark-word{fill:var(--sc-ink)}
+#remote-debugging-connect-gscl66 .sc-bg{fill:var(--sc-paper)}
+#remote-debugging-connect-gscl66 .n-mask{fill:var(--sc-paper)}
+#remote-debugging-connect-gscl66 .n-box{fill:var(--sc-node);stroke:var(--sc-ink);stroke-width:1}
+#remote-debugging-connect-gscl66 .k-focal .n-box{fill:var(--sc-accent-tint);stroke:var(--sc-accent);stroke-width:1.2}
+#remote-debugging-connect-gscl66 .k-store .n-box{fill:var(--sc-store);stroke:var(--sc-muted)}
+#remote-debugging-connect-gscl66 .k-external .n-box{fill:var(--sc-external);stroke:var(--sc-soft)}
+#remote-debugging-connect-gscl66 .k-input .n-box{fill:var(--sc-external);stroke:var(--sc-soft)}
+#remote-debugging-connect-gscl66 .k-optional .n-box{fill:transparent;stroke:var(--sc-soft);stroke-dasharray:4 3}
+#remote-debugging-connect-gscl66 .k-security .n-box{fill:var(--sc-accent-tint);stroke:var(--sc-accent);stroke-opacity:.55;stroke-dasharray:4 4}
+#remote-debugging-connect-gscl66 .k-muted .n-box{fill:var(--sc-store);stroke:var(--sc-rule-solid)}
+#remote-debugging-connect-gscl66 .n-label{fill:var(--sc-ink);font-size:12px;font-weight:600}
+#remote-debugging-connect-gscl66 .n-sub{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}
+#remote-debugging-connect-gscl66 .n-icon{fill:none;stroke:var(--sc-muted);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+#remote-debugging-connect-gscl66 .k-focal .n-icon{stroke:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .n-tag{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:7px;letter-spacing:.12em;text-transform:uppercase}
+#remote-debugging-connect-gscl66 .n-tag-box{fill:none;stroke:var(--sc-rule-solid);stroke-width:.8}
+#remote-debugging-connect-gscl66 .k-focal .n-tag{fill:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .k-focal .n-tag-box{stroke:var(--sc-accent);stroke-opacity:.5}
+#remote-debugging-connect-gscl66 .e-line{fill:none;stroke:var(--sc-muted);stroke-width:1.1}
+#remote-debugging-connect-gscl66 .ek-primary .e-line{stroke:var(--sc-accent);stroke-width:1.4}
+#remote-debugging-connect-gscl66 .ek-link .e-line{stroke:var(--sc-link);stroke-width:1.2}
+#remote-debugging-connect-gscl66 .ek-async .e-line,#remote-debugging-connect-gscl66 .ek-return .e-line{stroke-width:1}
+#remote-debugging-connect-gscl66 .ek-muted .e-line{stroke:var(--sc-soft);stroke-width:1}
+#remote-debugging-connect-gscl66 .e-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.06em;text-transform:uppercase}
+#remote-debugging-connect-gscl66 .ek-primary .e-label{fill:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .ek-link .e-label{fill:var(--sc-link)}
+#remote-debugging-connect-gscl66 .e-label-bg{fill:var(--sc-paper)}
+#remote-debugging-connect-gscl66 .m-default{fill:var(--sc-muted)}#remote-debugging-connect-gscl66 .m-primary{fill:var(--sc-accent)}#remote-debugging-connect-gscl66 .m-link{fill:var(--sc-link)}#remote-debugging-connect-gscl66 .m-muted{fill:var(--sc-soft)}
+#remote-debugging-connect-gscl66 .g-box{fill:var(--sc-ink);fill-opacity:.018;stroke:var(--sc-rule);stroke-width:.8}
+#remote-debugging-connect-gscl66 .g-box.g-dashed{stroke-dasharray:4 4;stroke:var(--sc-soft);stroke-opacity:.6}
+#remote-debugging-connect-gscl66 .g-label{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:7px;letter-spacing:.16em;text-transform:uppercase}
+#remote-debugging-connect-gscl66 .g-label-bg{fill:var(--sc-paper)}
+#remote-debugging-connect-gscl66 .lg-rule{stroke:var(--sc-rule);stroke-width:.8}
+#remote-debugging-connect-gscl66 .lg-title{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.18em}
+#remote-debugging-connect-gscl66 .lg-text{fill:var(--sc-muted);font-size:9px}
+#remote-debugging-connect-gscl66 .ax-line{stroke:var(--sc-rule-solid);stroke-width:1}
+#remote-debugging-connect-gscl66 .ax-grid{stroke:var(--sc-rule);stroke-width:.8}
+#remote-debugging-connect-gscl66 .ax-text{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.04em}
+#remote-debugging-connect-gscl66 .ax-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase}
+#remote-debugging-connect-gscl66 .c-cat{fill:var(--sc-muted);font-size:10px}
+#remote-debugging-connect-gscl66 .c-val{fill:var(--sc-ink);font-family:var(--sc-font-mono);font-size:9px}
+#remote-debugging-connect-gscl66 .c-bar{fill:var(--sc-muted);fill-opacity:.38}
+#remote-debugging-connect-gscl66 .c-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#remote-debugging-connect-gscl66 .c-val.is-focal{fill:var(--sc-accent);font-weight:500}
+#remote-debugging-connect-gscl66 .s-1{fill:var(--sc-series-1)}#remote-debugging-connect-gscl66 .s-2{fill:var(--sc-series-2)}#remote-debugging-connect-gscl66 .s-3{fill:var(--sc-series-3)}#remote-debugging-connect-gscl66 .s-4{fill:var(--sc-series-4)}#remote-debugging-connect-gscl66 .s-5{fill:var(--sc-series-5)}
+#remote-debugging-connect-gscl66 .sk-node{fill:var(--sc-muted)}
+#remote-debugging-connect-gscl66 .sk-node.is-focal{fill:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .sk-link{fill:var(--sc-muted);fill-opacity:.14}
+#remote-debugging-connect-gscl66 .sk-link.is-focal{fill:var(--sc-accent);fill-opacity:.28}
+#remote-debugging-connect-gscl66 .sk-label{fill:var(--sc-ink);font-size:11px;font-weight:500;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#remote-debugging-connect-gscl66 .sk-val{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#remote-debugging-connect-gscl66 .q-life{stroke:var(--sc-rule-solid);stroke-width:1;stroke-dasharray:3 4}
+#remote-debugging-connect-gscl66 .q-frag{fill:none;stroke:var(--sc-soft);stroke-width:.8}
+#remote-debugging-connect-gscl66 .q-frag-tag{fill:var(--sc-paper-2);stroke:var(--sc-soft);stroke-width:.8}
+#remote-debugging-connect-gscl66 .q-frag-text{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase}
+#remote-debugging-connect-gscl66 .q-num{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8px}
+#remote-debugging-connect-gscl66 .q-note{fill:var(--sc-paper-2);stroke:var(--sc-rule-solid);stroke-width:.8}
+#remote-debugging-connect-gscl66 .q-note-text{fill:var(--sc-muted);font-size:10px;font-style:italic;font-family:var(--sc-font-serif)}
+#remote-debugging-connect-gscl66 .n-head{fill:var(--sc-ink);fill-opacity:.035;stroke:none}
+#remote-debugging-connect-gscl66 .k-focal .n-head{fill:var(--sc-accent);fill-opacity:.08}
+#remote-debugging-connect-gscl66 .n-rule{stroke:var(--sc-rule-solid);stroke-width:.8}
+#remote-debugging-connect-gscl66 .n-field{fill:var(--sc-ink);font-size:10px}
+#remote-debugging-connect-gscl66 .n-field-t{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}
+#remote-debugging-connect-gscl66 .n-key{font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.06em;fill:var(--sc-soft)}
+#remote-debugging-connect-gscl66 .n-key-pk{fill:var(--sc-accent)}#remote-debugging-connect-gscl66 .n-key-fk{fill:var(--sc-link)}
+#remote-debugging-connect-gscl66 .sh-start .n-box{fill:var(--sc-ink);stroke:none}
+#remote-debugging-connect-gscl66 .sh-end .n-box{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.2}
+#remote-debugging-connect-gscl66 .n-dot{fill:var(--sc-ink)}
+#remote-debugging-connect-gscl66 .n-status{stroke:var(--sc-paper);stroke-width:1.5}
+#remote-debugging-connect-gscl66 .st-ok{fill:var(--sc-series-1)}#remote-debugging-connect-gscl66 .st-risk{fill:var(--sc-series-2)}#remote-debugging-connect-gscl66 .st-legacy{fill:var(--sc-series-5)}#remote-debugging-connect-gscl66 .st-retire{fill:var(--sc-series-4)}
+#remote-debugging-connect-gscl66 .n-change{fill:var(--sc-accent);font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.12em}
+#remote-debugging-connect-gscl66 .ch-added .n-box{stroke:var(--sc-accent);stroke-width:1.3}
+#remote-debugging-connect-gscl66 .ch-removed{opacity:.55}#remote-debugging-connect-gscl66 .ch-removed .n-box{stroke-dasharray:4 3;stroke:var(--sc-soft)}#remote-debugging-connect-gscl66 .ch-removed .n-label{text-decoration:line-through}
+#remote-debugging-connect-gscl66 .ch-removed .n-change{fill:var(--sc-soft)}
+#remote-debugging-connect-gscl66 .ch-changed .n-box{stroke:var(--sc-accent);stroke-dasharray:6 2}
+#remote-debugging-connect-gscl66 .sc-edge.ch-added .e-line{stroke:var(--sc-accent)}#remote-debugging-connect-gscl66 .sc-edge.ch-removed .e-line{stroke-dasharray:3 3}
+#remote-debugging-connect-gscl66 .e-line.dashed{stroke-dasharray:4 3}
+#remote-debugging-connect-gscl66 .ek-rel .e-line{stroke:var(--sc-muted);stroke-width:1}
+#remote-debugging-connect-gscl66 .e-glyph.stroke{fill:none;stroke:var(--sc-muted);stroke-width:1}
+#remote-debugging-connect-gscl66 .e-glyph.hollow{fill:var(--sc-paper);stroke:var(--sc-muted);stroke-width:1}
+#remote-debugging-connect-gscl66 .e-glyph.filled{fill:var(--sc-muted);stroke:var(--sc-muted);stroke-width:1}
+#remote-debugging-connect-gscl66 .lane-band{fill:var(--sc-ink);fill-opacity:.022}
+#remote-debugging-connect-gscl66 .lane-band.alt{fill-opacity:0}
+#remote-debugging-connect-gscl66 .lane-rule{stroke:var(--sc-rule);stroke-width:.8}
+#remote-debugging-connect-gscl66 .lane-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase}
+#remote-debugging-connect-gscl66 .loop-center{fill:var(--sc-ink);font-family:var(--sc-font-serif);font-size:20px}
+#remote-debugging-connect-gscl66 .nest-mask{fill:var(--sc-paper)}
+#remote-debugging-connect-gscl66 .nest-box{fill:var(--sc-ink);fill-opacity:.025;stroke:var(--sc-rule-solid);stroke-width:.9}
+#remote-debugging-connect-gscl66 .nest-d0 .nest-box{fill-opacity:.012}#remote-debugging-connect-gscl66 .nest-d2 .nest-box{fill-opacity:.04}#remote-debugging-connect-gscl66 .nest-d3 .nest-box{fill-opacity:.055}
+#remote-debugging-connect-gscl66 .k-focal .nest-box{fill:var(--sc-accent-tint);fill-opacity:1;stroke:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .nest-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.14em;text-transform:uppercase}
+#remote-debugging-connect-gscl66 .chip{fill:var(--sc-paper-2);stroke:var(--sc-rule);stroke-width:.8}
+#remote-debugging-connect-gscl66 .chip-text{fill:var(--sc-ink);font-size:10px}
+#remote-debugging-connect-gscl66 .k-focal .chip{fill:var(--sc-paper);stroke:var(--sc-accent);stroke-opacity:.4}
+#remote-debugging-connect-gscl66 .venn-c{fill:var(--sc-muted);fill-opacity:.07;stroke:var(--sc-muted);stroke-width:1}
+#remote-debugging-connect-gscl66 .vs-2 .venn-c{fill:var(--sc-series-2);stroke:var(--sc-series-2);fill-opacity:.09}
+#remote-debugging-connect-gscl66 .vs-3 .venn-c{fill:var(--sc-series-1);stroke:var(--sc-series-1);fill-opacity:.09}
+#remote-debugging-connect-gscl66 .venn.k-focal .venn-c{fill:var(--sc-accent);stroke:var(--sc-accent);fill-opacity:.09}
+#remote-debugging-connect-gscl66 .venn-label{fill:var(--sc-ink);font-size:13px;font-weight:600}
+#remote-debugging-connect-gscl66 .venn-ov{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:13px}
+#remote-debugging-connect-gscl66 .venn-ov.is-focal{fill:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .fb-spine{stroke-width:1.6}
+#remote-debugging-connect-gscl66 .fb-tick{stroke:var(--sc-rule-solid);stroke-width:.8}
+#remote-debugging-connect-gscl66 .fb-cat{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;letter-spacing:.14em}
+#remote-debugging-connect-gscl66 .fb-cat.is-focal{fill:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .fb-cause{fill:var(--sc-ink);font-size:10px}
+#remote-debugging-connect-gscl66 .kb-col{fill:var(--sc-ink);fill-opacity:.025;stroke:var(--sc-rule);stroke-width:.8;rx:8}
+#remote-debugging-connect-gscl66 .kb-col.is-over{stroke:var(--sc-accent);stroke-opacity:.6}
+#remote-debugging-connect-gscl66 .kb-head{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#remote-debugging-connect-gscl66 .kb-count{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:9px}
+#remote-debugging-connect-gscl66 .kb-count.is-over{fill:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .kb-card{fill:var(--sc-ink);font-size:11px;font-weight:500}
+#remote-debugging-connect-gscl66 .sm-act{fill:var(--sc-ink)}
+#remote-debugging-connect-gscl66 .sm-activity.k-focal .sm-act{fill:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .sm-act-text{fill:var(--sc-paper);font-size:11px;font-weight:600}
+#remote-debugging-connect-gscl66 .q-frame{fill:none;stroke:var(--sc-rule-solid);stroke-width:1}
+#remote-debugging-connect-gscl66 .q-focal{fill:var(--sc-accent-tint)}
+#remote-debugging-connect-gscl66 .q-title{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#remote-debugging-connect-gscl66 .quad.k-focal .q-title,#remote-debugging-connect-gscl66 .quad.k-focal .q-title-big{fill:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .q-title-big{fill:var(--sc-ink);font-family:var(--sc-font-serif);font-size:19px}
+#remote-debugging-connect-gscl66 .q-item{fill:var(--sc-muted);font-size:11px}
+#remote-debugging-connect-gscl66 .q-dot{fill:var(--sc-muted)}
+#remote-debugging-connect-gscl66 .q-pt.k-focal .q-dot{fill:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .q-pt-label{fill:var(--sc-ink);font-size:10.5px;font-weight:500}
+#remote-debugging-connect-gscl66 .q-pt.k-focal .q-pt-label{fill:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .mx-col{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.08em}
+#remote-debugging-connect-gscl66 .mx-row{fill:var(--sc-ink);font-size:11px;font-weight:500}
+#remote-debugging-connect-gscl66 .mx-band{fill:var(--sc-ink);fill-opacity:.025}
+#remote-debugging-connect-gscl66 .mx-g.fill{fill:var(--sc-ink)}#remote-debugging-connect-gscl66 .mx-g.ring{fill:none;stroke:var(--sc-ink);stroke-width:1}
+#remote-debugging-connect-gscl66 .mx-g.dashed{stroke-dasharray:2 2}#remote-debugging-connect-gscl66 .mx-g.admin{fill:var(--sc-accent)}#remote-debugging-connect-gscl66 .mx-g.none{fill:var(--sc-soft)}
+#remote-debugging-connect-gscl66 .mx-r.k-focal .mx-row{fill:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .tl-axis{stroke:var(--sc-ink);stroke-width:1.2}
+#remote-debugging-connect-gscl66 .tl-stem{stroke:var(--sc-rule-solid);stroke-width:.8}
+#remote-debugging-connect-gscl66 .tl-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}
+#remote-debugging-connect-gscl66 .tl-ev.k-focal .tl-dot{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .tl-ev.k-focal .tl-label{fill:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .tl-label{font-size:11px}
+#remote-debugging-connect-gscl66 .tl-when{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;letter-spacing:.04em}
+#remote-debugging-connect-gscl66 .tl-period{fill:var(--sc-ink);fill-opacity:.07}
+#remote-debugging-connect-gscl66 .tl-period.is-focal{fill:var(--sc-accent);fill-opacity:.16}
+#remote-debugging-connect-gscl66 .tl-period-text{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.08em}
+#remote-debugging-connect-gscl66 .g-task{fill:var(--sc-ink);font-size:11px}
+#remote-debugging-connect-gscl66 .g-bar{fill:var(--sc-muted);fill-opacity:.45}
+#remote-debugging-connect-gscl66 .g-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#remote-debugging-connect-gscl66 .g-bar.is-done{fill-opacity:.2}
+#remote-debugging-connect-gscl66 .g-done{fill:var(--sc-muted);font-size:10px}
+#remote-debugging-connect-gscl66 .g-mile{fill:var(--sc-ink)}
+#remote-debugging-connect-gscl66 .k-focal .g-mile{fill:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .g-today{stroke:var(--sc-accent);stroke-width:1;stroke-dasharray:3 3}
+#remote-debugging-connect-gscl66 .g-today-text{fill:var(--sc-accent);font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.14em}
+#remote-debugging-connect-gscl66 .jr-band{fill:var(--sc-ink);fill-opacity:.025}#remote-debugging-connect-gscl66 .jr-band.alt{fill-opacity:0}
+#remote-debugging-connect-gscl66 .jr-stage{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#remote-debugging-connect-gscl66 .jr-curve{stroke:var(--sc-ink);stroke-width:1.6}
+#remote-debugging-connect-gscl66 .jr-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}
+#remote-debugging-connect-gscl66 .jr-dot.is-pain,#remote-debugging-connect-gscl66 .jr-dot.is-focal{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .jr-step{fill:var(--sc-ink);font-size:10.5px;font-weight:500}
+#remote-debugging-connect-gscl66 .jr-note{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:11px;paint-order:stroke;stroke:var(--sc-paper);stroke-width:4px;stroke-linejoin:round}
+#remote-debugging-connect-gscl66 .jr-note.is-pain{fill:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .ln{fill:none;stroke-width:1.6;stroke:var(--sc-muted)}
+#remote-debugging-connect-gscl66 .ln.is-focal{stroke:var(--sc-accent);stroke-width:2.2}#remote-debugging-connect-gscl66 .ln.is-muted{stroke:var(--sc-soft);stroke-opacity:.55}
+#remote-debugging-connect-gscl66 .ln-1{stroke:var(--sc-series-1)}#remote-debugging-connect-gscl66 .ln-2{stroke:var(--sc-series-2)}#remote-debugging-connect-gscl66 .ln-3{stroke:var(--sc-series-3)}#remote-debugging-connect-gscl66 .ln-4{stroke:var(--sc-series-4)}#remote-debugging-connect-gscl66 .ln-5{stroke:var(--sc-series-5)}
+#remote-debugging-connect-gscl66 .ln-pt{fill:var(--sc-paper);stroke-width:1.4}
+#remote-debugging-connect-gscl66 .ln-pt.is-focal{fill:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .ln-label{font-size:10.5px;font-weight:500;fill:var(--sc-muted)}
+#remote-debugging-connect-gscl66 .is-muted-t{fill:var(--sc-soft)}
+#remote-debugging-connect-gscl66 .ln-1-t{fill:var(--sc-series-1)}#remote-debugging-connect-gscl66 .ln-2-t{fill:var(--sc-series-2)}#remote-debugging-connect-gscl66 .ln-3-t{fill:var(--sc-series-3)}#remote-debugging-connect-gscl66 .ln-4-t{fill:var(--sc-series-4)}#remote-debugging-connect-gscl66 .ln-5-t{fill:var(--sc-series-5)}
+#remote-debugging-connect-gscl66 .ln-area{fill:var(--sc-muted);fill-opacity:.08}#remote-debugging-connect-gscl66 .ln-area.is-focal{fill:var(--sc-accent);fill-opacity:.1}
+#remote-debugging-connect-gscl66 .rg-area{fill:var(--sc-muted);fill-opacity:.18}#remote-debugging-connect-gscl66 .rg-area.is-focal{fill:var(--sc-accent);fill-opacity:.28}
+#remote-debugging-connect-gscl66 .rg-line{fill:none;stroke:var(--sc-ink);stroke-width:1.1}#remote-debugging-connect-gscl66 .rg-line.is-focal{stroke:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .st-area{fill-opacity:.55;stroke:var(--sc-paper);stroke-width:1}
+#remote-debugging-connect-gscl66 .st-area.is-focal{fill:var(--sc-accent);fill-opacity:.75}
+#remote-debugging-connect-gscl66 .st-label{fill:var(--sc-ink-strong);font-size:10px;font-weight:600}
+#remote-debugging-connect-gscl66 .is-focal-t{fill:var(--sc-accent)!important}
+#remote-debugging-connect-gscl66 .sp-dot{fill:var(--sc-muted);fill-opacity:.55;stroke:var(--sc-paper);stroke-width:.8}
+#remote-debugging-connect-gscl66 .sp-dot.is-bubble{fill-opacity:.25;stroke:var(--sc-muted);stroke-opacity:.7}
+#remote-debugging-connect-gscl66 .sp-dot.is-focal{fill:var(--sc-accent);fill-opacity:.9;stroke:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .sp-label{fill:var(--sc-ink);font-size:10px;font-weight:500}
+#remote-debugging-connect-gscl66 .rd-area{fill:var(--sc-muted);fill-opacity:.1}#remote-debugging-connect-gscl66 .rd-line{fill:none;stroke:var(--sc-muted);stroke-width:1.4}
+#remote-debugging-connect-gscl66 .rd-area.is-focal{fill:var(--sc-accent);fill-opacity:.16}#remote-debugging-connect-gscl66 .rd-line.is-focal{stroke:var(--sc-accent);stroke-width:2}
+#remote-debugging-connect-gscl66 .rd-area.is-muted{fill-opacity:.04}#remote-debugging-connect-gscl66 .rd-line.is-muted{stroke:var(--sc-soft)}
+#remote-debugging-connect-gscl66 .rd-area.s-1,#remote-debugging-connect-gscl66 .rd-area.s-2,#remote-debugging-connect-gscl66 .rd-area.s-3,#remote-debugging-connect-gscl66 .rd-area.s-4,#remote-debugging-connect-gscl66 .rd-area.s-5{fill-opacity:.14}
+#remote-debugging-connect-gscl66 .rd-line.s-1{stroke:var(--sc-series-1)}#remote-debugging-connect-gscl66 .rd-line.s-2{stroke:var(--sc-series-2)}#remote-debugging-connect-gscl66 .rd-line.s-3{stroke:var(--sc-series-3)}#remote-debugging-connect-gscl66 .rd-line.s-4{stroke:var(--sc-series-4)}#remote-debugging-connect-gscl66 .rd-line.s-5{stroke:var(--sc-series-5)}
+#remote-debugging-connect-gscl66 .rd-pt{fill:var(--sc-paper);stroke:var(--sc-muted)}#remote-debugging-connect-gscl66 .rd-pt.is-focal{stroke:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .rd-key{fill:var(--sc-muted)}#remote-debugging-connect-gscl66 .rd-key.is-focal{fill:var(--sc-accent)}#remote-debugging-connect-gscl66 .rd-key.is-muted{fill:var(--sc-soft)}
+#remote-debugging-connect-gscl66 .rd-ring{fill:none}
+#remote-debugging-connect-gscl66 .pl-stem{stroke:var(--sc-muted);stroke-width:1.4}#remote-debugging-connect-gscl66 .pl-stem.is-focal{stroke:var(--sc-accent);stroke-width:2}
+#remote-debugging-connect-gscl66 .pl-dot{fill:var(--sc-muted)}#remote-debugging-connect-gscl66 .pl-dot.is-focal{fill:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .wf-bar{fill:var(--sc-muted);fill-opacity:.4}
+#remote-debugging-connect-gscl66 .wf-up{fill:var(--sc-series-1);fill-opacity:.75}#remote-debugging-connect-gscl66 .wf-down{fill:var(--sc-series-4);fill-opacity:.75}
+#remote-debugging-connect-gscl66 .wf-total{fill:var(--sc-ink);fill-opacity:.82}
+#remote-debugging-connect-gscl66 .wf-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#remote-debugging-connect-gscl66 .wf-link{stroke:var(--sc-soft);stroke-width:.8;stroke-dasharray:2 2}
+#remote-debugging-connect-gscl66 .tm-cell{fill:var(--sc-muted);fill-opacity:.16;stroke:var(--sc-paper);stroke-width:1}
+#remote-debugging-connect-gscl66 .tm-cell.is-focal{fill:var(--sc-accent);fill-opacity:.85}
+#remote-debugging-connect-gscl66 .tm-sub{fill:var(--sc-paper);fill-opacity:.55}
+#remote-debugging-connect-gscl66 .tm-label{fill:var(--sc-ink);font-size:11px;font-weight:600}#remote-debugging-connect-gscl66 .tm-label.is-focal{fill:var(--sc-paper)}
+#remote-debugging-connect-gscl66 .tm-val{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}#remote-debugging-connect-gscl66 .tm-val.is-focal{fill:var(--sc-paper);fill-opacity:.85}
+#remote-debugging-connect-gscl66 .tm-sub-label{fill:var(--sc-muted);font-size:9.5px}
+#remote-debugging-connect-gscl66 .hm-cell.hm-pos{fill:var(--sc-accent)}#remote-debugging-connect-gscl66 .hm-cell.hm-neg{fill:var(--sc-series-4)}
+#remote-debugging-connect-gscl66 .hm-val{fill:var(--sc-ink);font-family:var(--sc-font-mono);font-size:8.5px}#remote-debugging-connect-gscl66 .hm-val.v00{fill:var(--sc-on-v00)}#remote-debugging-connect-gscl66 .hm-val.v01{fill:var(--sc-on-v01)}#remote-debugging-connect-gscl66 .hm-val.v10{fill:var(--sc-on-v10)}#remote-debugging-connect-gscl66 .hm-val.v11{fill:var(--sc-on-v11)}
+#remote-debugging-connect-gscl66 .db-line{stroke:var(--sc-rule-solid);stroke-width:2.4}#remote-debugging-connect-gscl66 .db-line.is-focal{stroke:var(--sc-accent);stroke-opacity:.45}
+#remote-debugging-connect-gscl66 .db-a{fill:var(--sc-paper);stroke:var(--sc-muted);stroke-width:1.4}#remote-debugging-connect-gscl66 .db-b{fill:var(--sc-muted)}#remote-debugging-connect-gscl66 .db-b.is-focal{fill:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .mk-seg{fill-opacity:.7;stroke:var(--sc-paper)}
+#remote-debugging-connect-gscl66 .mk-pct{fill:var(--sc-ink-strong);font-family:var(--sc-font-mono);font-size:8.5px}
+#remote-debugging-connect-gscl66 .wm-link{stroke:var(--sc-soft)!important;stroke-width:1!important}
+#remote-debugging-connect-gscl66 .wm-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}#remote-debugging-connect-gscl66 .wm-dot.is-focal{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .wm-label{fill:var(--sc-ink);font-size:10.5px;font-weight:500;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#remote-debugging-connect-gscl66 .wm-label.is-anchor{font-weight:700;font-size:12px}
+#remote-debugging-connect-gscl66 .wm-move{stroke:var(--sc-accent);stroke-width:1.2;stroke-dasharray:4 3;fill:none}#remote-debugging-connect-gscl66 .wm-move-head{fill:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .wm-ghost{fill:none;stroke:var(--sc-accent);stroke-dasharray:2 2}
+#remote-debugging-connect-gscl66 .wm-inertia{stroke:var(--sc-ink);stroke-width:3}
+#remote-debugging-connect-gscl66 .callout{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:13px}
+
+#remote-debugging-connect-gscl66 .iso-base{fill:var(--sc-node)}
+#remote-debugging-connect-gscl66 .iso-t{fill:var(--sc-ax-lift);fill-opacity:var(--sc-ax-t-o)}
+#remote-debugging-connect-gscl66 .iso-l{fill:var(--sc-ax-shade);fill-opacity:var(--sc-ax-l-o)}
+#remote-debugging-connect-gscl66 .iso-r{fill:var(--sc-ax-shade);fill-opacity:var(--sc-ax-r-o)}
+#remote-debugging-connect-gscl66 .k-focal .iso-t{fill:var(--sc-accent);fill-opacity:.12}
+#remote-debugging-connect-gscl66 .k-focal .iso-l{fill:var(--sc-accent);fill-opacity:.22}
+#remote-debugging-connect-gscl66 .k-focal .iso-r{fill:var(--sc-accent);fill-opacity:.34}
+#remote-debugging-connect-gscl66 .iso-edge{fill:none;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.8;stroke-linejoin:round}
+#remote-debugging-connect-gscl66 .iso-sil{fill:none;stroke:var(--sc-ink);stroke-width:1.2;stroke-linejoin:round}
+#remote-debugging-connect-gscl66 .k-focal .iso-sil{stroke:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .iso-inset{fill:var(--sc-ink);fill-opacity:.06;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.7}
+#remote-debugging-connect-gscl66 .k-focal .iso-inset{fill:var(--sc-accent);fill-opacity:.16;stroke:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .iso-trace{fill:none;stroke:var(--sc-ink);stroke-opacity:.3;stroke-width:.8;stroke-dasharray:4 3}
+#remote-debugging-connect-gscl66 .iso-leader{stroke:var(--sc-ink);stroke-opacity:.4;stroke-width:.8}
+#remote-debugging-connect-gscl66 .iso-dot{fill:var(--sc-ink)}
+#remote-debugging-connect-gscl66 .k-focal .iso-leader{stroke:var(--sc-accent);stroke-opacity:1}#remote-debugging-connect-gscl66 .k-focal .iso-dot{fill:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .iso-name{fill:var(--sc-ink);font-size:14px;font-weight:600}
+#remote-debugging-connect-gscl66 .iso-sub{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9.5px;letter-spacing:.06em}
+#remote-debugging-connect-gscl66 .k-focal .iso-sub{fill:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .iso-contour{fill:none;stroke:var(--sc-ink);stroke-opacity:.22;stroke-width:.7}
+#remote-debugging-connect-gscl66 .iso-plate .iso-t{fill-opacity:0}
+#remote-debugging-connect-gscl66 .iso-mark{fill:var(--sc-ink);fill-opacity:.07}
+#remote-debugging-connect-gscl66 .iso-floor{fill:var(--sc-ink);fill-opacity:.035}
+#remote-debugging-connect-gscl66 .k-focal .iso-floor,#remote-debugging-connect-gscl66 .iso-floor.k-focal{fill:var(--sc-accent);fill-opacity:.1}
+#remote-debugging-connect-gscl66 .iso-canopy .iso-t{fill:var(--sc-series-1);fill-opacity:.55}
+#remote-debugging-connect-gscl66 .iso-canopy .iso-l,#remote-debugging-connect-gscl66 .iso-canopy .iso-r{fill:var(--sc-series-1);fill-opacity:.35}
+#remote-debugging-connect-gscl66 .iso-tag rect{fill:var(--sc-paper);stroke:var(--sc-rule-solid);stroke-width:.8}
+#remote-debugging-connect-gscl66 .k-focal.iso-tag rect,#remote-debugging-connect-gscl66 .k-focal .iso-tag rect{stroke:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .iso-tag .iso-name{font-size:11px}#remote-debugging-connect-gscl66 .iso-tag .iso-sub{font-size:8px}
+
+#remote-debugging-connect-gscl66 .it-light .iso-base{fill:var(--sc-node)}
+#remote-debugging-connect-gscl66 .it-dark .iso-base,#remote-debugging-connect-gscl66 .it-black .iso-base{fill:var(--sc-ax-screen)}
+#remote-debugging-connect-gscl66 .it-dark .iso-t,#remote-debugging-connect-gscl66 .it-black .iso-t{fill:#fff;fill-opacity:.07}
+#remote-debugging-connect-gscl66 .it-dark .iso-edge,#remote-debugging-connect-gscl66 .it-black .iso-edge{stroke:#fff;stroke-opacity:.18}
+#remote-debugging-connect-gscl66 .it-accent .iso-base{fill:var(--sc-node)}#remote-debugging-connect-gscl66 .it-accent .iso-t,#remote-debugging-connect-gscl66 .it-accent .iso-l,#remote-debugging-connect-gscl66 .it-accent .iso-r{fill:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .it-accent .iso-t{fill-opacity:.25}#remote-debugging-connect-gscl66 .it-accent .iso-l{fill-opacity:.4}#remote-debugging-connect-gscl66 .it-accent .iso-r{fill-opacity:.55}
+#remote-debugging-connect-gscl66 .it-accent .iso-sil{stroke:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .it-mid .iso-base{fill:var(--sc-node)}
+#remote-debugging-connect-gscl66 .it-solid .iso-sil{stroke-width:.9}
+#remote-debugging-connect-gscl66 path.it-dark{fill:var(--sc-ax-screen)}
+#remote-debugging-connect-gscl66 path.it-black{fill:#000;fill-opacity:.85}
+#remote-debugging-connect-gscl66 /* dark panels and solids keep an edge where they sit on dark walls (dark themes) */
+path.it-dark,#remote-debugging-connect-gscl66 path.it-black{stroke:var(--sc-ax-dark-edge);stroke-width:.7}
+#remote-debugging-connect-gscl66 .it-dark .iso-sil,#remote-debugging-connect-gscl66 .it-black .iso-sil{stroke:var(--sc-ink)}
+#remote-debugging-connect-gscl66 path.it-line.it-stroke-dark{stroke:var(--sc-ax-screen);stroke-opacity:.8}
+#remote-debugging-connect-gscl66 path.it-light{fill:var(--sc-node);stroke:var(--sc-ink);stroke-opacity:.45;stroke-width:.6}
+#remote-debugging-connect-gscl66 path.it-accent{fill:var(--sc-accent);fill-opacity:.9}
+#remote-debugging-connect-gscl66 path.it-mid{fill:var(--sc-ink);fill-opacity:.08}
+#remote-debugging-connect-gscl66 path.it-cut{fill:var(--sc-ink);fill-opacity:.13;stroke:var(--sc-ink);stroke-opacity:.45;stroke-width:.5}
+#remote-debugging-connect-gscl66 path.it-line{fill:none;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.8;stroke-linecap:round}
+#remote-debugging-connect-gscl66 path.it-text{fill:none;stroke:var(--sc-ink);stroke-opacity:.35;stroke-width:1.4;stroke-linecap:round}
+#remote-debugging-connect-gscl66 path.it-line.it-stroke-accent,#remote-debugging-connect-gscl66 path.it-text.it-stroke-accent{stroke:var(--sc-accent);stroke-opacity:1}
+#remote-debugging-connect-gscl66 path.it-stroke-light{stroke:#fff;stroke-opacity:.7}
+#remote-debugging-connect-gscl66 path.it-line.it-stroke-dark{stroke-width:2.2}
+#remote-debugging-connect-gscl66 path.it-dash{stroke-dasharray:4 3}
+#remote-debugging-connect-gscl66 path.it-button{fill:var(--sc-node);stroke:var(--sc-ink);stroke-opacity:.6;stroke-width:.8}
+#remote-debugging-connect-gscl66 path.it-cavity{fill:var(--sc-ink);fill-opacity:.07}
+#remote-debugging-connect-gscl66 path.it-floor{fill:var(--sc-ink);fill-opacity:.04;stroke:var(--sc-ink);stroke-opacity:.35;stroke-width:.7}
+
+#remote-debugging-connect-gscl66 .iso-beam-o{fill:none;stroke:var(--sc-ink);stroke-linecap:round}
+#remote-debugging-connect-gscl66 .iso-beam{fill:none;stroke:var(--sc-node);stroke-linecap:round}
+#remote-debugging-connect-gscl66 .iso-beam-dark{stroke:var(--sc-ax-screen)}
+#remote-debugging-connect-gscl66 .iso-beam-accent,#remote-debugging-connect-gscl66 .k-focal .iso-beam{stroke:var(--sc-accent);stroke-opacity:.55}
+#remote-debugging-connect-gscl66 .iso-leader{fill:none;stroke:var(--sc-ink);stroke-opacity:.4;stroke-width:.8}
+#remote-debugging-connect-gscl66 .k-focal .iso-leader{stroke:var(--sc-accent);stroke-opacity:1}
+
+@keyframes sc-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes sc-fade{from{opacity:0}to{opacity:1}}
+@keyframes sc-draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes sc-grow-y{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes sc-grow-x{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes sc-wipe{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes sc-wipe-down{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes sc-pop{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:scale(1)}}
+@keyframes sc-token{from{offset-distance:0%;opacity:0}8%{opacity:1}92%{opacity:1}to{offset-distance:100%;opacity:0}}
+@keyframes sc-pulse{0%,100%{stroke-opacity:1}50%{stroke-opacity:.35}}
+@keyframes sc-lift{from{transform:translateY(var(--lift))}to{transform:none}}
+@keyframes sc-drop{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:none}}
+#remote-debugging-connect-gscl66 .e-token{display:none}
+@media (prefers-reduced-motion: no-preference){
+#remote-debugging-connect-gscl66.sc-svg[data-sc-motion]:not(.sc-still) [data-sc-step]{--d:calc(var(--step) * var(--sc-stagger))}
+#remote-debugging-connect-gscl66.sc-svg[data-sc-motion]:not(.sc-still) .sc-node[data-sc-step],#remote-debugging-connect-gscl66.sc-svg[data-sc-motion]:not(.sc-still) .sc-enter[data-sc-step]{animation:sc-in var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#remote-debugging-connect-gscl66.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step]{animation:sc-fade 240ms ease-out var(--d) both}
+#remote-debugging-connect-gscl66.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-head,#remote-debugging-connect-gscl66.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-glyph,#remote-debugging-connect-gscl66.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-label-g{animation:sc-fade 200ms ease-out calc(var(--d) + var(--sc-draw) * .8) both}
+#remote-debugging-connect-gscl66.sc-svg:is([data-sc-motion="trace"],#remote-debugging-connect-gscl66 [data-sc-motion="loop"]):not(.sc-still) .sc-edge[data-sc-step] .e-line.sc-draw{stroke-dasharray:1;animation:sc-draw var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#remote-debugging-connect-gscl66.sc-svg[data-sc-motion]:not(.sc-still) .sc-grow-y[data-sc-step]{transform-box:fill-box;transform-origin:50% 100%;animation:sc-grow-y var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#remote-debugging-connect-gscl66.sc-svg[data-sc-motion]:not(.sc-still) .sc-grow-x[data-sc-step]{transform-box:fill-box;transform-origin:0 50%;animation:sc-grow-x var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#remote-debugging-connect-gscl66.sc-svg[data-sc-motion]:not(.sc-still) .sc-wipe[data-sc-step]{animation:sc-wipe var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#remote-debugging-connect-gscl66.sc-svg[data-sc-motion]:not(.sc-still) .sc-wipe-down[data-sc-step]{animation:sc-wipe-down var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#remote-debugging-connect-gscl66.sc-svg[data-sc-motion]:not(.sc-still) .sc-pop[data-sc-step]{transform-box:fill-box;transform-origin:50% 50%;animation:sc-pop var(--sc-enter) cubic-bezier(.2,.9,.3,1.2) var(--d) both}
+#remote-debugging-connect-gscl66.sc-svg[data-sc-motion]:not(.sc-still) .sc-fade[data-sc-step]{animation:sc-fade var(--sc-enter) ease-out var(--d) both}
+#remote-debugging-connect-gscl66.sc-svg[data-sc-motion]:not(.sc-still) .iso-part[data-sc-step]{animation:none}
+#remote-debugging-connect-gscl66.sc-svg[data-sc-motion]:not(.sc-still) .iso-part.sc-lift[data-sc-step]{animation:sc-lift calc(var(--sc-enter) * 1.6) cubic-bezier(.3,.6,.2,1) var(--d) both}
+#remote-debugging-connect-gscl66.sc-svg[data-sc-motion]:not(.sc-still) .iso-label[data-sc-step]{animation:sc-fade var(--sc-enter) ease-out calc(var(--d) + var(--sc-enter) * 1.2) both}
+#remote-debugging-connect-gscl66.sc-svg[data-sc-motion]:not(.sc-still) .sc-drop[data-sc-step]{animation:sc-drop var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#remote-debugging-connect-gscl66.sc-svg:is([data-sc-motion="trace"],#remote-debugging-connect-gscl66 [data-sc-motion="loop"]):not(.sc-still) .e-token{display:inline;offset-rotate:0deg;animation:sc-token var(--tok-dur,1800ms) linear calc(var(--sc-settle) + var(--tok-delay,0ms)) infinite both}
+#remote-debugging-connect-gscl66.sc-svg[data-sc-motion]:not(.sc-still) .k-change .n-box{animation:sc-pulse 1.6s ease-in-out var(--sc-settle) 3}
+}
+@media print{#remote-debugging-connect-gscl66.sc-svg *{animation:none!important}#remote-debugging-connect-gscl66 .e-token{display:none!important}}
+#remote-debugging-connect-gscl66 .sc-still .e-token{display:none}
+#remote-debugging-connect-gscl66 .e-token{fill:var(--sc-accent)}
+#remote-debugging-connect-gscl66 .ek-link .e-token,#remote-debugging-connect-gscl66 .e-token.t-link{fill:var(--sc-link)}
+</style><desc id="remote-debugging-connect-gscl66-desc">Sequence diagram with 5 elements.</desc><rect class="sc-bg" x="-32" y="-24" width="775" height="516"/><g class="sc-lifelines"><line class="q-life" x1="52" y1="40" x2="52" y2="476"/><line class="q-life" x1="192" y1="40" x2="192" y2="476"/><line class="q-life" x1="343" y1="40" x2="343" y2="476"/><line class="q-life" x1="489" y1="40" x2="489" y2="476"/><line class="q-life" x1="629" y1="40" x2="629" y2="476"/></g><g class="sc-frags"></g><g class="sc-edges"><g class="sc-edge ek-primary" data-sc-edge="m0" data-from="user" data-to="app" data-sc-step="1" style="--step:1"><path class="e-line sc-draw" d="M52,76 L184,76" pathLength="1"/><path class="e-head m-primary" d="M191,76 L183,72.8 L183,79.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="121.5" y="69" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">Enable debug</text></g><text class="q-num" x="58" y="69" text-anchor="start">1</text></g><g class="sc-edge ek-default" data-sc-edge="m1" data-from="app" data-to="plugin" data-sc-step="2" style="--step:2"><path class="e-line sc-draw" d="M192,116 L335,116" pathLength="1"/><path class="e-head m-default" d="M342,116 L334,112.8 L334,119.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="267" y="109" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">Create session</text></g><text class="q-num" x="198" y="109" text-anchor="start">2</text></g><g class="sc-edge ek-return" data-sc-edge="m2" data-from="plugin" data-to="app" data-sc-step="3" style="--step:3"><path class="e-line" d="M343,156 L200,156"/><path class="e-head m-default" d="M193,156 L201,152.8 L201,159.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="268" y="149" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">Connection key</text></g><text class="q-num" x="337" y="149" text-anchor="end">3</text></g><g class="sc-edge ek-return" data-sc-edge="m3" data-from="app" data-to="user" data-sc-step="4" style="--step:4"><path class="e-line" d="M192,196 L60,196"/><path class="e-head m-default" d="M53,196 L61,192.8 L61,199.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="122.5" y="189" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">Connection URL</text></g><text class="q-num" x="186" y="189" text-anchor="end">4</text></g><g class="sc-edge ek-default" data-sc-edge="m4" data-from="user" data-to="cli" data-sc-step="5" style="--step:5"><path class="e-line sc-draw" d="M52,236 L481,236" pathLength="1"/><path class="e-head m-default" d="M488,236 L480,232.8 L480,239.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="270" y="229" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">dev --connect</text></g><text class="q-num" x="58" y="229" text-anchor="start">5</text></g><g class="sc-edge ek-primary" data-sc-edge="m5" data-from="cli" data-to="app" data-sc-step="6" style="--step:6"><path class="e-line sc-draw" d="M489,276 L200,276" pathLength="1"/><path class="e-head m-primary" d="M193,276 L201,272.8 L201,279.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="341" y="269" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">GET connection URL</text></g><text class="q-num" x="483" y="269" text-anchor="end">6</text></g><g class="sc-edge ek-default" data-sc-edge="m6" data-from="app" data-to="plugin" data-sc-step="7" style="--step:7"><path class="e-line sc-draw" d="M192,316 L335,316" pathLength="1"/><path class="e-head m-default" d="M342,316 L334,312.8 L334,319.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="267" y="309" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">Exchange connectionKey</text></g><text class="q-num" x="198" y="309" text-anchor="start">7</text></g><g class="sc-edge ek-return" data-sc-edge="m7" data-from="plugin" data-to="app" data-sc-step="8" style="--step:8"><path class="e-line" d="M343,356 L200,356"/><path class="e-head m-default" d="M193,356 L201,352.8 L201,359.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="268" y="349" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">Gateway and token</text></g><text class="q-num" x="337" y="349" text-anchor="end">8</text></g><g class="sc-edge ek-return" data-sc-edge="m8" data-from="app" data-to="cli" data-sc-step="9" style="--step:9"><path class="e-line" d="M192,396 L481,396"/><path class="e-head m-default" d="M488,396 L480,392.8 L480,399.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="340" y="389" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">Connection details</text></g><text class="q-num" x="198" y="389" text-anchor="start">9</text></g><g class="sc-edge ek-primary" data-sc-edge="m9" data-from="cli" data-to="gateway" data-sc-step="10" style="--step:10"><path class="e-line sc-draw" d="M489,436 L621,436" pathLength="1"/><path class="e-head m-primary" d="M628,436 L620,432.8 L620,439.2 Z"/><g class="e-label-g"><text class="e-label q-label" x="558.5" y="429" text-anchor="middle" style="text-transform:none;letter-spacing:0;font-size:9px">Bind WebSocket</text></g><text class="q-num" x="495" y="429" text-anchor="start">10</text></g></g><g class="sc-notes"></g><g class="sc-nodes"><g class="sc-node k-external sh-box" data-sc-node="user" data-sc-step="0" style="--step:0" tabindex="0" role="group" aria-label="Developer"><rect class="n-mask" x="0" y="0" width="104" height="40" rx="6"/><rect class="n-box" x="0" y="0" width="104" height="40" rx="6"/><text class="n-label" x="52" y="25" text-anchor="middle">Developer</text></g><g class="sc-node k-focal sh-box" data-sc-node="app" data-sc-step="0" style="--step:0" tabindex="0" role="group" aria-label="FastGPT"><rect class="n-mask" x="140" y="0" width="104" height="40" rx="6"/><rect class="n-box" x="140" y="0" width="104" height="40" rx="6"/><text class="n-label" x="192" y="25" text-anchor="middle">FastGPT</text></g><g class="sc-node k-backend sh-box" data-sc-node="plugin" data-sc-step="0" style="--step:0" tabindex="0" role="group" aria-label="Plugin service"><rect class="n-mask" x="285" y="0" width="116" height="40" rx="6"/><rect class="n-box" x="285" y="0" width="116" height="40" rx="6"/><text class="n-label" x="343" y="25" text-anchor="middle">Plugin service</text></g><g class="sc-node k-external sh-box" data-sc-node="cli" data-sc-step="0" style="--step:0" tabindex="0" role="group" aria-label="Local CLI"><rect class="n-mask" x="437" y="0" width="104" height="40" rx="6"/><rect class="n-box" x="437" y="0" width="104" height="40" rx="6"/><text class="n-label" x="489" y="25" text-anchor="middle">Local CLI</text></g><g class="sc-node k-external sh-box" data-sc-node="gateway" data-sc-step="0" style="--step:0" tabindex="0" role="group" aria-label="Gateway"><rect class="n-mask" x="577" y="0" width="104" height="40" rx="6"/><rect class="n-box" x="577" y="0" width="104" height="40" rx="6"/><text class="n-label" x="629" y="25" text-anchor="middle">Gateway</text></g></g></svg>

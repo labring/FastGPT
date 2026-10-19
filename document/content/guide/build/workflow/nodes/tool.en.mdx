@@ -32,9 +32,11 @@ Based on the tool description, parameter descriptions, and whether parameters ar
 
 #### Tool Calling Logic
 
-Models that support `function calling` can invoke multiple tools in a single turn. The calling logic:
+Models supporting `function calling` can return several tool calls in one turn; the ToolCall node executes them sequentially. Model text and tool calls can appear in the same turn:
 
-![Tool Calling Logic — interface example](/imgs/optimized/flow-tool2.png.webp)
+![ToolCall execution loop](/imgs/diagrams/tool-call-loop.en.light.svg)
+
+The loop runs for at most 50 rounds and returns ordinary tool errors to the model as tool results. Interaction requests pause execution; a tool termination signal, user cancellation, or model request error ends the loop. The client receives tool status updates during execution.
 
 ### How to Use
 

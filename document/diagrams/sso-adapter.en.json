@@ -1,0 +1,129 @@
+{
+  "type": "sequence",
+  "title": "SSO through an adapter",
+  "participants": [
+    {
+      "id": "browser",
+      "label": "Browser",
+      "kind": "external",
+      "focal": false
+    },
+    {
+      "id": "app",
+      "label": "FastGPT",
+      "kind": "backend",
+      "focal": true
+    },
+    {
+      "id": "adapter",
+      "label": "SSO adapter",
+      "kind": "external",
+      "focal": false
+    },
+    {
+      "id": "idp",
+      "label": "Identity provider",
+      "kind": "external",
+      "focal": false
+    }
+  ],
+  "messages": [
+    [
+      "browser",
+      "app",
+      "Get authorization URL",
+      "primary"
+    ],
+    [
+      "app",
+      "adapter",
+      "GET getAuthURL",
+      "sync"
+    ],
+    [
+      "adapter",
+      "app",
+      "authURL",
+      "reply"
+    ],
+    [
+      "app",
+      "browser",
+      "Authorization URL",
+      "reply"
+    ],
+    [
+      "browser",
+      "idp",
+      "Redirect and log in",
+      "primary"
+    ],
+    [
+      "idp",
+      "browser",
+      "Redirect to callback",
+      "reply"
+    ],
+    [
+      "browser",
+      "app",
+      "Submit callback params",
+      "primary"
+    ],
+    [
+      "app",
+      "adapter",
+      "GET getUserInfo",
+      "sync"
+    ],
+    [
+      "adapter",
+      "idp",
+      "Provider user lookup",
+      "sync"
+    ],
+    [
+      "idp",
+      "adapter",
+      "User information",
+      "reply"
+    ],
+    [
+      "adapter",
+      "app",
+      "Standard user info",
+      "reply"
+    ],
+    [
+      "app",
+      "browser",
+      "Login result",
+      "reply"
+    ]
+  ],
+  "numbered": true,
+  "evidence": [
+    {
+      "id": "browser",
+      "file": "projects/app/src/pageComponents/login/LoginForm/useLoginMethods.ts",
+      "line": 73
+    },
+    {
+      "id": "app",
+      "file": "projects/app/src/web/support/user/api.ts",
+      "line": 48
+    },
+    {
+      "id": "adapter",
+      "file": "document/content/guide/admin/sso.mdx",
+      "line": 644
+    }
+  ],
+  "lang": "en",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

@@ -24,11 +24,12 @@ function getMdxImage(src: unknown): { src: string; width?: number; height?: numb
   }
 }
 
-/** Frame prepared screenshots in the page while keeping zoom pointed at the original file. */
+/** Render themed diagrams and frame screenshots while retaining original zoom targets. */
 function MdxImage({
   'data-original-src': originalSrc,
+  'data-dark-src': darkSrc,
   ...props
-}: ComponentProps<'img'> & { 'data-original-src'?: string }) {
+}: ComponentProps<'img'> & { 'data-original-src'?: string; 'data-dark-src'?: string }) {
   const image = getMdxImage(props.src);
 
   if (!image) return null;
@@ -42,6 +43,22 @@ function MdxImage({
       <img {...props} src={image.src} alt={props.alt ?? ''} loading={props.loading ?? 'lazy'} />
     </ImageZoom>
   );
+  // CSS follows the site's manual theme selection and keeps the hidden variant out of accessibility.
+  if (darkSrc) {
+    return (
+      <>
+        <span className="docs-diagram docs-diagram-light">{content}</span>
+        <span className="docs-diagram docs-diagram-dark">
+          <MdxImage
+            {...props}
+            src={darkSrc}
+            width={image.width ?? props.width}
+            height={image.height ?? props.height}
+          />
+        </span>
+      </>
+    );
+  }
   if (!originalSrc) return content;
 
   const width = image.width ?? Number(props.width);

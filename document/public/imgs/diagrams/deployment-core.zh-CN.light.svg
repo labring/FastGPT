@@ -1,0 +1,320 @@
+<svg width="512" height="568" class="sc-svg sc-still" id="fastgpt-核心部署拓扑-1l9779" xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 512 568" role="img" aria-labelledby="fastgpt-核心部署拓扑-1l9779-title fastgpt-核心部署拓扑-1l9779-desc" lang="zh-CN" data-sc-type="architecture" data-sc-slug="fastgpt-核心部署拓扑" data-sc-steps="9"><title id="fastgpt-核心部署拓扑-1l9779-title">FastGPT 核心部署拓扑</title><style>#fastgpt-核心部署拓扑-1l9779{--sc-paper:#fafafa;--sc-paper-2:#eeeeee;--sc-ink:#0a0a0a;--sc-ink-strong:#050505;--sc-muted:#575757;--sc-soft:#878787;--sc-rule:rgba(10,10,10,0.12);--sc-rule-solid:#bcbcbc;--sc-accent:#3370ff;--sc-accent-tint:rgba(51,112,255,0.1);--sc-link:#214291;--sc-node:#fdfdfd;--sc-store:rgba(10,10,10,0.05);--sc-external:rgba(10,10,10,0.025);--sc-series-1:#6b8f71;--sc-series-2:#c08a3e;--sc-series-3:#8a6fb0;--sc-series-4:#b5604b;--sc-series-5:#5f7f9e;--sc-ax-shade:#0a0a0a;--sc-ax-lift:#ffffff;--sc-ax-screen:#1b1d25;--sc-ax-dark-edge:rgba(255,255,255,0);--sc-ax-t-o:0;--sc-ax-l-o:0.07;--sc-ax-r-o:0.16;--sc-on-v00:#000000;--sc-on-v01:#000000;--sc-on-v10:#ffffff;--sc-on-v11:#ffffff;--sc-font-serif:'Fraunces', 'Noto Serif', Georgia, serif;--sc-font-sans:'IBM Plex Sans', 'Noto Sans', system-ui, sans-serif;--sc-font-mono:'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;}
+#fastgpt-核心部署拓扑-1l9779.sc-svg{font-family:var(--sc-font-sans);color:var(--sc-ink);direction:ltr}
+#fastgpt-核心部署拓扑-1l9779 .sc-mark{opacity:.88;pointer-events:none}
+#fastgpt-核心部署拓扑-1l9779 .sc-mark-word{fill:var(--sc-ink)}
+#fastgpt-核心部署拓扑-1l9779 .sc-bg{fill:var(--sc-paper)}
+#fastgpt-核心部署拓扑-1l9779 .n-mask{fill:var(--sc-paper)}
+#fastgpt-核心部署拓扑-1l9779 .n-box{fill:var(--sc-node);stroke:var(--sc-ink);stroke-width:1}
+#fastgpt-核心部署拓扑-1l9779 .k-focal .n-box{fill:var(--sc-accent-tint);stroke:var(--sc-accent);stroke-width:1.2}
+#fastgpt-核心部署拓扑-1l9779 .k-store .n-box{fill:var(--sc-store);stroke:var(--sc-muted)}
+#fastgpt-核心部署拓扑-1l9779 .k-external .n-box{fill:var(--sc-external);stroke:var(--sc-soft)}
+#fastgpt-核心部署拓扑-1l9779 .k-input .n-box{fill:var(--sc-external);stroke:var(--sc-soft)}
+#fastgpt-核心部署拓扑-1l9779 .k-optional .n-box{fill:transparent;stroke:var(--sc-soft);stroke-dasharray:4 3}
+#fastgpt-核心部署拓扑-1l9779 .k-security .n-box{fill:var(--sc-accent-tint);stroke:var(--sc-accent);stroke-opacity:.55;stroke-dasharray:4 4}
+#fastgpt-核心部署拓扑-1l9779 .k-muted .n-box{fill:var(--sc-store);stroke:var(--sc-rule-solid)}
+#fastgpt-核心部署拓扑-1l9779 .n-label{fill:var(--sc-ink);font-size:12px;font-weight:600}
+#fastgpt-核心部署拓扑-1l9779 .n-sub{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}
+#fastgpt-核心部署拓扑-1l9779 .n-icon{fill:none;stroke:var(--sc-muted);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+#fastgpt-核心部署拓扑-1l9779 .k-focal .n-icon{stroke:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .n-tag{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:7px;letter-spacing:.12em;text-transform:uppercase}
+#fastgpt-核心部署拓扑-1l9779 .n-tag-box{fill:none;stroke:var(--sc-rule-solid);stroke-width:.8}
+#fastgpt-核心部署拓扑-1l9779 .k-focal .n-tag{fill:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .k-focal .n-tag-box{stroke:var(--sc-accent);stroke-opacity:.5}
+#fastgpt-核心部署拓扑-1l9779 .e-line{fill:none;stroke:var(--sc-muted);stroke-width:1.1}
+#fastgpt-核心部署拓扑-1l9779 .ek-primary .e-line{stroke:var(--sc-accent);stroke-width:1.4}
+#fastgpt-核心部署拓扑-1l9779 .ek-link .e-line{stroke:var(--sc-link);stroke-width:1.2}
+#fastgpt-核心部署拓扑-1l9779 .ek-async .e-line,#fastgpt-核心部署拓扑-1l9779 .ek-return .e-line{stroke-width:1}
+#fastgpt-核心部署拓扑-1l9779 .ek-muted .e-line{stroke:var(--sc-soft);stroke-width:1}
+#fastgpt-核心部署拓扑-1l9779 .e-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.06em;text-transform:uppercase}
+#fastgpt-核心部署拓扑-1l9779 .ek-primary .e-label{fill:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .ek-link .e-label{fill:var(--sc-link)}
+#fastgpt-核心部署拓扑-1l9779 .e-label-bg{fill:var(--sc-paper)}
+#fastgpt-核心部署拓扑-1l9779 .m-default{fill:var(--sc-muted)}#fastgpt-核心部署拓扑-1l9779 .m-primary{fill:var(--sc-accent)}#fastgpt-核心部署拓扑-1l9779 .m-link{fill:var(--sc-link)}#fastgpt-核心部署拓扑-1l9779 .m-muted{fill:var(--sc-soft)}
+#fastgpt-核心部署拓扑-1l9779 .g-box{fill:var(--sc-ink);fill-opacity:.018;stroke:var(--sc-rule);stroke-width:.8}
+#fastgpt-核心部署拓扑-1l9779 .g-box.g-dashed{stroke-dasharray:4 4;stroke:var(--sc-soft);stroke-opacity:.6}
+#fastgpt-核心部署拓扑-1l9779 .g-label{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:7px;letter-spacing:.16em;text-transform:uppercase}
+#fastgpt-核心部署拓扑-1l9779 .g-label-bg{fill:var(--sc-paper)}
+#fastgpt-核心部署拓扑-1l9779 .lg-rule{stroke:var(--sc-rule);stroke-width:.8}
+#fastgpt-核心部署拓扑-1l9779 .lg-title{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.18em}
+#fastgpt-核心部署拓扑-1l9779 .lg-text{fill:var(--sc-muted);font-size:9px}
+#fastgpt-核心部署拓扑-1l9779 .ax-line{stroke:var(--sc-rule-solid);stroke-width:1}
+#fastgpt-核心部署拓扑-1l9779 .ax-grid{stroke:var(--sc-rule);stroke-width:.8}
+#fastgpt-核心部署拓扑-1l9779 .ax-text{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.04em}
+#fastgpt-核心部署拓扑-1l9779 .ax-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase}
+#fastgpt-核心部署拓扑-1l9779 .c-cat{fill:var(--sc-muted);font-size:10px}
+#fastgpt-核心部署拓扑-1l9779 .c-val{fill:var(--sc-ink);font-family:var(--sc-font-mono);font-size:9px}
+#fastgpt-核心部署拓扑-1l9779 .c-bar{fill:var(--sc-muted);fill-opacity:.38}
+#fastgpt-核心部署拓扑-1l9779 .c-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#fastgpt-核心部署拓扑-1l9779 .c-val.is-focal{fill:var(--sc-accent);font-weight:500}
+#fastgpt-核心部署拓扑-1l9779 .s-1{fill:var(--sc-series-1)}#fastgpt-核心部署拓扑-1l9779 .s-2{fill:var(--sc-series-2)}#fastgpt-核心部署拓扑-1l9779 .s-3{fill:var(--sc-series-3)}#fastgpt-核心部署拓扑-1l9779 .s-4{fill:var(--sc-series-4)}#fastgpt-核心部署拓扑-1l9779 .s-5{fill:var(--sc-series-5)}
+#fastgpt-核心部署拓扑-1l9779 .sk-node{fill:var(--sc-muted)}
+#fastgpt-核心部署拓扑-1l9779 .sk-node.is-focal{fill:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .sk-link{fill:var(--sc-muted);fill-opacity:.14}
+#fastgpt-核心部署拓扑-1l9779 .sk-link.is-focal{fill:var(--sc-accent);fill-opacity:.28}
+#fastgpt-核心部署拓扑-1l9779 .sk-label{fill:var(--sc-ink);font-size:11px;font-weight:500;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#fastgpt-核心部署拓扑-1l9779 .sk-val{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#fastgpt-核心部署拓扑-1l9779 .q-life{stroke:var(--sc-rule-solid);stroke-width:1;stroke-dasharray:3 4}
+#fastgpt-核心部署拓扑-1l9779 .q-frag{fill:none;stroke:var(--sc-soft);stroke-width:.8}
+#fastgpt-核心部署拓扑-1l9779 .q-frag-tag{fill:var(--sc-paper-2);stroke:var(--sc-soft);stroke-width:.8}
+#fastgpt-核心部署拓扑-1l9779 .q-frag-text{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase}
+#fastgpt-核心部署拓扑-1l9779 .q-num{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8px}
+#fastgpt-核心部署拓扑-1l9779 .q-note{fill:var(--sc-paper-2);stroke:var(--sc-rule-solid);stroke-width:.8}
+#fastgpt-核心部署拓扑-1l9779 .q-note-text{fill:var(--sc-muted);font-size:10px;font-style:italic;font-family:var(--sc-font-serif)}
+#fastgpt-核心部署拓扑-1l9779 .n-head{fill:var(--sc-ink);fill-opacity:.035;stroke:none}
+#fastgpt-核心部署拓扑-1l9779 .k-focal .n-head{fill:var(--sc-accent);fill-opacity:.08}
+#fastgpt-核心部署拓扑-1l9779 .n-rule{stroke:var(--sc-rule-solid);stroke-width:.8}
+#fastgpt-核心部署拓扑-1l9779 .n-field{fill:var(--sc-ink);font-size:10px}
+#fastgpt-核心部署拓扑-1l9779 .n-field-t{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}
+#fastgpt-核心部署拓扑-1l9779 .n-key{font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.06em;fill:var(--sc-soft)}
+#fastgpt-核心部署拓扑-1l9779 .n-key-pk{fill:var(--sc-accent)}#fastgpt-核心部署拓扑-1l9779 .n-key-fk{fill:var(--sc-link)}
+#fastgpt-核心部署拓扑-1l9779 .sh-start .n-box{fill:var(--sc-ink);stroke:none}
+#fastgpt-核心部署拓扑-1l9779 .sh-end .n-box{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.2}
+#fastgpt-核心部署拓扑-1l9779 .n-dot{fill:var(--sc-ink)}
+#fastgpt-核心部署拓扑-1l9779 .n-status{stroke:var(--sc-paper);stroke-width:1.5}
+#fastgpt-核心部署拓扑-1l9779 .st-ok{fill:var(--sc-series-1)}#fastgpt-核心部署拓扑-1l9779 .st-risk{fill:var(--sc-series-2)}#fastgpt-核心部署拓扑-1l9779 .st-legacy{fill:var(--sc-series-5)}#fastgpt-核心部署拓扑-1l9779 .st-retire{fill:var(--sc-series-4)}
+#fastgpt-核心部署拓扑-1l9779 .n-change{fill:var(--sc-accent);font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.12em}
+#fastgpt-核心部署拓扑-1l9779 .ch-added .n-box{stroke:var(--sc-accent);stroke-width:1.3}
+#fastgpt-核心部署拓扑-1l9779 .ch-removed{opacity:.55}#fastgpt-核心部署拓扑-1l9779 .ch-removed .n-box{stroke-dasharray:4 3;stroke:var(--sc-soft)}#fastgpt-核心部署拓扑-1l9779 .ch-removed .n-label{text-decoration:line-through}
+#fastgpt-核心部署拓扑-1l9779 .ch-removed .n-change{fill:var(--sc-soft)}
+#fastgpt-核心部署拓扑-1l9779 .ch-changed .n-box{stroke:var(--sc-accent);stroke-dasharray:6 2}
+#fastgpt-核心部署拓扑-1l9779 .sc-edge.ch-added .e-line{stroke:var(--sc-accent)}#fastgpt-核心部署拓扑-1l9779 .sc-edge.ch-removed .e-line{stroke-dasharray:3 3}
+#fastgpt-核心部署拓扑-1l9779 .e-line.dashed{stroke-dasharray:4 3}
+#fastgpt-核心部署拓扑-1l9779 .ek-rel .e-line{stroke:var(--sc-muted);stroke-width:1}
+#fastgpt-核心部署拓扑-1l9779 .e-glyph.stroke{fill:none;stroke:var(--sc-muted);stroke-width:1}
+#fastgpt-核心部署拓扑-1l9779 .e-glyph.hollow{fill:var(--sc-paper);stroke:var(--sc-muted);stroke-width:1}
+#fastgpt-核心部署拓扑-1l9779 .e-glyph.filled{fill:var(--sc-muted);stroke:var(--sc-muted);stroke-width:1}
+#fastgpt-核心部署拓扑-1l9779 .lane-band{fill:var(--sc-ink);fill-opacity:.022}
+#fastgpt-核心部署拓扑-1l9779 .lane-band.alt{fill-opacity:0}
+#fastgpt-核心部署拓扑-1l9779 .lane-rule{stroke:var(--sc-rule);stroke-width:.8}
+#fastgpt-核心部署拓扑-1l9779 .lane-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase}
+#fastgpt-核心部署拓扑-1l9779 .loop-center{fill:var(--sc-ink);font-family:var(--sc-font-serif);font-size:20px}
+#fastgpt-核心部署拓扑-1l9779 .nest-mask{fill:var(--sc-paper)}
+#fastgpt-核心部署拓扑-1l9779 .nest-box{fill:var(--sc-ink);fill-opacity:.025;stroke:var(--sc-rule-solid);stroke-width:.9}
+#fastgpt-核心部署拓扑-1l9779 .nest-d0 .nest-box{fill-opacity:.012}#fastgpt-核心部署拓扑-1l9779 .nest-d2 .nest-box{fill-opacity:.04}#fastgpt-核心部署拓扑-1l9779 .nest-d3 .nest-box{fill-opacity:.055}
+#fastgpt-核心部署拓扑-1l9779 .k-focal .nest-box{fill:var(--sc-accent-tint);fill-opacity:1;stroke:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .nest-label{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.14em;text-transform:uppercase}
+#fastgpt-核心部署拓扑-1l9779 .chip{fill:var(--sc-paper-2);stroke:var(--sc-rule);stroke-width:.8}
+#fastgpt-核心部署拓扑-1l9779 .chip-text{fill:var(--sc-ink);font-size:10px}
+#fastgpt-核心部署拓扑-1l9779 .k-focal .chip{fill:var(--sc-paper);stroke:var(--sc-accent);stroke-opacity:.4}
+#fastgpt-核心部署拓扑-1l9779 .venn-c{fill:var(--sc-muted);fill-opacity:.07;stroke:var(--sc-muted);stroke-width:1}
+#fastgpt-核心部署拓扑-1l9779 .vs-2 .venn-c{fill:var(--sc-series-2);stroke:var(--sc-series-2);fill-opacity:.09}
+#fastgpt-核心部署拓扑-1l9779 .vs-3 .venn-c{fill:var(--sc-series-1);stroke:var(--sc-series-1);fill-opacity:.09}
+#fastgpt-核心部署拓扑-1l9779 .venn.k-focal .venn-c{fill:var(--sc-accent);stroke:var(--sc-accent);fill-opacity:.09}
+#fastgpt-核心部署拓扑-1l9779 .venn-label{fill:var(--sc-ink);font-size:13px;font-weight:600}
+#fastgpt-核心部署拓扑-1l9779 .venn-ov{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:13px}
+#fastgpt-核心部署拓扑-1l9779 .venn-ov.is-focal{fill:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .fb-spine{stroke-width:1.6}
+#fastgpt-核心部署拓扑-1l9779 .fb-tick{stroke:var(--sc-rule-solid);stroke-width:.8}
+#fastgpt-核心部署拓扑-1l9779 .fb-cat{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;letter-spacing:.14em}
+#fastgpt-核心部署拓扑-1l9779 .fb-cat.is-focal{fill:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .fb-cause{fill:var(--sc-ink);font-size:10px}
+#fastgpt-核心部署拓扑-1l9779 .kb-col{fill:var(--sc-ink);fill-opacity:.025;stroke:var(--sc-rule);stroke-width:.8;rx:8}
+#fastgpt-核心部署拓扑-1l9779 .kb-col.is-over{stroke:var(--sc-accent);stroke-opacity:.6}
+#fastgpt-核心部署拓扑-1l9779 .kb-head{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#fastgpt-核心部署拓扑-1l9779 .kb-count{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:9px}
+#fastgpt-核心部署拓扑-1l9779 .kb-count.is-over{fill:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .kb-card{fill:var(--sc-ink);font-size:11px;font-weight:500}
+#fastgpt-核心部署拓扑-1l9779 .sm-act{fill:var(--sc-ink)}
+#fastgpt-核心部署拓扑-1l9779 .sm-activity.k-focal .sm-act{fill:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .sm-act-text{fill:var(--sc-paper);font-size:11px;font-weight:600}
+#fastgpt-核心部署拓扑-1l9779 .q-frame{fill:none;stroke:var(--sc-rule-solid);stroke-width:1}
+#fastgpt-核心部署拓扑-1l9779 .q-focal{fill:var(--sc-accent-tint)}
+#fastgpt-核心部署拓扑-1l9779 .q-title{fill:var(--sc-soft);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#fastgpt-核心部署拓扑-1l9779 .quad.k-focal .q-title,#fastgpt-核心部署拓扑-1l9779 .quad.k-focal .q-title-big{fill:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .q-title-big{fill:var(--sc-ink);font-family:var(--sc-font-serif);font-size:19px}
+#fastgpt-核心部署拓扑-1l9779 .q-item{fill:var(--sc-muted);font-size:11px}
+#fastgpt-核心部署拓扑-1l9779 .q-dot{fill:var(--sc-muted)}
+#fastgpt-核心部署拓扑-1l9779 .q-pt.k-focal .q-dot{fill:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .q-pt-label{fill:var(--sc-ink);font-size:10.5px;font-weight:500}
+#fastgpt-核心部署拓扑-1l9779 .q-pt.k-focal .q-pt-label{fill:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .mx-col{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.08em}
+#fastgpt-核心部署拓扑-1l9779 .mx-row{fill:var(--sc-ink);font-size:11px;font-weight:500}
+#fastgpt-核心部署拓扑-1l9779 .mx-band{fill:var(--sc-ink);fill-opacity:.025}
+#fastgpt-核心部署拓扑-1l9779 .mx-g.fill{fill:var(--sc-ink)}#fastgpt-核心部署拓扑-1l9779 .mx-g.ring{fill:none;stroke:var(--sc-ink);stroke-width:1}
+#fastgpt-核心部署拓扑-1l9779 .mx-g.dashed{stroke-dasharray:2 2}#fastgpt-核心部署拓扑-1l9779 .mx-g.admin{fill:var(--sc-accent)}#fastgpt-核心部署拓扑-1l9779 .mx-g.none{fill:var(--sc-soft)}
+#fastgpt-核心部署拓扑-1l9779 .mx-r.k-focal .mx-row{fill:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .tl-axis{stroke:var(--sc-ink);stroke-width:1.2}
+#fastgpt-核心部署拓扑-1l9779 .tl-stem{stroke:var(--sc-rule-solid);stroke-width:.8}
+#fastgpt-核心部署拓扑-1l9779 .tl-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}
+#fastgpt-核心部署拓扑-1l9779 .tl-ev.k-focal .tl-dot{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .tl-ev.k-focal .tl-label{fill:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .tl-label{font-size:11px}
+#fastgpt-核心部署拓扑-1l9779 .tl-when{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px;letter-spacing:.04em}
+#fastgpt-核心部署拓扑-1l9779 .tl-period{fill:var(--sc-ink);fill-opacity:.07}
+#fastgpt-核心部署拓扑-1l9779 .tl-period.is-focal{fill:var(--sc-accent);fill-opacity:.16}
+#fastgpt-核心部署拓扑-1l9779 .tl-period-text{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8px;letter-spacing:.08em}
+#fastgpt-核心部署拓扑-1l9779 .g-task{fill:var(--sc-ink);font-size:11px}
+#fastgpt-核心部署拓扑-1l9779 .g-bar{fill:var(--sc-muted);fill-opacity:.45}
+#fastgpt-核心部署拓扑-1l9779 .g-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#fastgpt-核心部署拓扑-1l9779 .g-bar.is-done{fill-opacity:.2}
+#fastgpt-核心部署拓扑-1l9779 .g-done{fill:var(--sc-muted);font-size:10px}
+#fastgpt-核心部署拓扑-1l9779 .g-mile{fill:var(--sc-ink)}
+#fastgpt-核心部署拓扑-1l9779 .k-focal .g-mile{fill:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .g-today{stroke:var(--sc-accent);stroke-width:1;stroke-dasharray:3 3}
+#fastgpt-核心部署拓扑-1l9779 .g-today-text{fill:var(--sc-accent);font-family:var(--sc-font-mono);font-size:7.5px;letter-spacing:.14em}
+#fastgpt-核心部署拓扑-1l9779 .jr-band{fill:var(--sc-ink);fill-opacity:.025}#fastgpt-核心部署拓扑-1l9779 .jr-band.alt{fill-opacity:0}
+#fastgpt-核心部署拓扑-1l9779 .jr-stage{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:8.5px;letter-spacing:.14em}
+#fastgpt-核心部署拓扑-1l9779 .jr-curve{stroke:var(--sc-ink);stroke-width:1.6}
+#fastgpt-核心部署拓扑-1l9779 .jr-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}
+#fastgpt-核心部署拓扑-1l9779 .jr-dot.is-pain,#fastgpt-核心部署拓扑-1l9779 .jr-dot.is-focal{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .jr-step{fill:var(--sc-ink);font-size:10.5px;font-weight:500}
+#fastgpt-核心部署拓扑-1l9779 .jr-note{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:11px;paint-order:stroke;stroke:var(--sc-paper);stroke-width:4px;stroke-linejoin:round}
+#fastgpt-核心部署拓扑-1l9779 .jr-note.is-pain{fill:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .ln{fill:none;stroke-width:1.6;stroke:var(--sc-muted)}
+#fastgpt-核心部署拓扑-1l9779 .ln.is-focal{stroke:var(--sc-accent);stroke-width:2.2}#fastgpt-核心部署拓扑-1l9779 .ln.is-muted{stroke:var(--sc-soft);stroke-opacity:.55}
+#fastgpt-核心部署拓扑-1l9779 .ln-1{stroke:var(--sc-series-1)}#fastgpt-核心部署拓扑-1l9779 .ln-2{stroke:var(--sc-series-2)}#fastgpt-核心部署拓扑-1l9779 .ln-3{stroke:var(--sc-series-3)}#fastgpt-核心部署拓扑-1l9779 .ln-4{stroke:var(--sc-series-4)}#fastgpt-核心部署拓扑-1l9779 .ln-5{stroke:var(--sc-series-5)}
+#fastgpt-核心部署拓扑-1l9779 .ln-pt{fill:var(--sc-paper);stroke-width:1.4}
+#fastgpt-核心部署拓扑-1l9779 .ln-pt.is-focal{fill:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .ln-label{font-size:10.5px;font-weight:500;fill:var(--sc-muted)}
+#fastgpt-核心部署拓扑-1l9779 .is-muted-t{fill:var(--sc-soft)}
+#fastgpt-核心部署拓扑-1l9779 .ln-1-t{fill:var(--sc-series-1)}#fastgpt-核心部署拓扑-1l9779 .ln-2-t{fill:var(--sc-series-2)}#fastgpt-核心部署拓扑-1l9779 .ln-3-t{fill:var(--sc-series-3)}#fastgpt-核心部署拓扑-1l9779 .ln-4-t{fill:var(--sc-series-4)}#fastgpt-核心部署拓扑-1l9779 .ln-5-t{fill:var(--sc-series-5)}
+#fastgpt-核心部署拓扑-1l9779 .ln-area{fill:var(--sc-muted);fill-opacity:.08}#fastgpt-核心部署拓扑-1l9779 .ln-area.is-focal{fill:var(--sc-accent);fill-opacity:.1}
+#fastgpt-核心部署拓扑-1l9779 .rg-area{fill:var(--sc-muted);fill-opacity:.18}#fastgpt-核心部署拓扑-1l9779 .rg-area.is-focal{fill:var(--sc-accent);fill-opacity:.28}
+#fastgpt-核心部署拓扑-1l9779 .rg-line{fill:none;stroke:var(--sc-ink);stroke-width:1.1}#fastgpt-核心部署拓扑-1l9779 .rg-line.is-focal{stroke:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .st-area{fill-opacity:.55;stroke:var(--sc-paper);stroke-width:1}
+#fastgpt-核心部署拓扑-1l9779 .st-area.is-focal{fill:var(--sc-accent);fill-opacity:.75}
+#fastgpt-核心部署拓扑-1l9779 .st-label{fill:var(--sc-ink-strong);font-size:10px;font-weight:600}
+#fastgpt-核心部署拓扑-1l9779 .is-focal-t{fill:var(--sc-accent)!important}
+#fastgpt-核心部署拓扑-1l9779 .sp-dot{fill:var(--sc-muted);fill-opacity:.55;stroke:var(--sc-paper);stroke-width:.8}
+#fastgpt-核心部署拓扑-1l9779 .sp-dot.is-bubble{fill-opacity:.25;stroke:var(--sc-muted);stroke-opacity:.7}
+#fastgpt-核心部署拓扑-1l9779 .sp-dot.is-focal{fill:var(--sc-accent);fill-opacity:.9;stroke:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .sp-label{fill:var(--sc-ink);font-size:10px;font-weight:500}
+#fastgpt-核心部署拓扑-1l9779 .rd-area{fill:var(--sc-muted);fill-opacity:.1}#fastgpt-核心部署拓扑-1l9779 .rd-line{fill:none;stroke:var(--sc-muted);stroke-width:1.4}
+#fastgpt-核心部署拓扑-1l9779 .rd-area.is-focal{fill:var(--sc-accent);fill-opacity:.16}#fastgpt-核心部署拓扑-1l9779 .rd-line.is-focal{stroke:var(--sc-accent);stroke-width:2}
+#fastgpt-核心部署拓扑-1l9779 .rd-area.is-muted{fill-opacity:.04}#fastgpt-核心部署拓扑-1l9779 .rd-line.is-muted{stroke:var(--sc-soft)}
+#fastgpt-核心部署拓扑-1l9779 .rd-area.s-1,#fastgpt-核心部署拓扑-1l9779 .rd-area.s-2,#fastgpt-核心部署拓扑-1l9779 .rd-area.s-3,#fastgpt-核心部署拓扑-1l9779 .rd-area.s-4,#fastgpt-核心部署拓扑-1l9779 .rd-area.s-5{fill-opacity:.14}
+#fastgpt-核心部署拓扑-1l9779 .rd-line.s-1{stroke:var(--sc-series-1)}#fastgpt-核心部署拓扑-1l9779 .rd-line.s-2{stroke:var(--sc-series-2)}#fastgpt-核心部署拓扑-1l9779 .rd-line.s-3{stroke:var(--sc-series-3)}#fastgpt-核心部署拓扑-1l9779 .rd-line.s-4{stroke:var(--sc-series-4)}#fastgpt-核心部署拓扑-1l9779 .rd-line.s-5{stroke:var(--sc-series-5)}
+#fastgpt-核心部署拓扑-1l9779 .rd-pt{fill:var(--sc-paper);stroke:var(--sc-muted)}#fastgpt-核心部署拓扑-1l9779 .rd-pt.is-focal{stroke:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .rd-key{fill:var(--sc-muted)}#fastgpt-核心部署拓扑-1l9779 .rd-key.is-focal{fill:var(--sc-accent)}#fastgpt-核心部署拓扑-1l9779 .rd-key.is-muted{fill:var(--sc-soft)}
+#fastgpt-核心部署拓扑-1l9779 .rd-ring{fill:none}
+#fastgpt-核心部署拓扑-1l9779 .pl-stem{stroke:var(--sc-muted);stroke-width:1.4}#fastgpt-核心部署拓扑-1l9779 .pl-stem.is-focal{stroke:var(--sc-accent);stroke-width:2}
+#fastgpt-核心部署拓扑-1l9779 .pl-dot{fill:var(--sc-muted)}#fastgpt-核心部署拓扑-1l9779 .pl-dot.is-focal{fill:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .wf-bar{fill:var(--sc-muted);fill-opacity:.4}
+#fastgpt-核心部署拓扑-1l9779 .wf-up{fill:var(--sc-series-1);fill-opacity:.75}#fastgpt-核心部署拓扑-1l9779 .wf-down{fill:var(--sc-series-4);fill-opacity:.75}
+#fastgpt-核心部署拓扑-1l9779 .wf-total{fill:var(--sc-ink);fill-opacity:.82}
+#fastgpt-核心部署拓扑-1l9779 .wf-bar.is-focal{fill:var(--sc-accent);fill-opacity:1}
+#fastgpt-核心部署拓扑-1l9779 .wf-link{stroke:var(--sc-soft);stroke-width:.8;stroke-dasharray:2 2}
+#fastgpt-核心部署拓扑-1l9779 .tm-cell{fill:var(--sc-muted);fill-opacity:.16;stroke:var(--sc-paper);stroke-width:1}
+#fastgpt-核心部署拓扑-1l9779 .tm-cell.is-focal{fill:var(--sc-accent);fill-opacity:.85}
+#fastgpt-核心部署拓扑-1l9779 .tm-sub{fill:var(--sc-paper);fill-opacity:.55}
+#fastgpt-核心部署拓扑-1l9779 .tm-label{fill:var(--sc-ink);font-size:11px;font-weight:600}#fastgpt-核心部署拓扑-1l9779 .tm-label.is-focal{fill:var(--sc-paper)}
+#fastgpt-核心部署拓扑-1l9779 .tm-val{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9px}#fastgpt-核心部署拓扑-1l9779 .tm-val.is-focal{fill:var(--sc-paper);fill-opacity:.85}
+#fastgpt-核心部署拓扑-1l9779 .tm-sub-label{fill:var(--sc-muted);font-size:9.5px}
+#fastgpt-核心部署拓扑-1l9779 .hm-cell.hm-pos{fill:var(--sc-accent)}#fastgpt-核心部署拓扑-1l9779 .hm-cell.hm-neg{fill:var(--sc-series-4)}
+#fastgpt-核心部署拓扑-1l9779 .hm-val{fill:var(--sc-ink);font-family:var(--sc-font-mono);font-size:8.5px}#fastgpt-核心部署拓扑-1l9779 .hm-val.v00{fill:var(--sc-on-v00)}#fastgpt-核心部署拓扑-1l9779 .hm-val.v01{fill:var(--sc-on-v01)}#fastgpt-核心部署拓扑-1l9779 .hm-val.v10{fill:var(--sc-on-v10)}#fastgpt-核心部署拓扑-1l9779 .hm-val.v11{fill:var(--sc-on-v11)}
+#fastgpt-核心部署拓扑-1l9779 .db-line{stroke:var(--sc-rule-solid);stroke-width:2.4}#fastgpt-核心部署拓扑-1l9779 .db-line.is-focal{stroke:var(--sc-accent);stroke-opacity:.45}
+#fastgpt-核心部署拓扑-1l9779 .db-a{fill:var(--sc-paper);stroke:var(--sc-muted);stroke-width:1.4}#fastgpt-核心部署拓扑-1l9779 .db-b{fill:var(--sc-muted)}#fastgpt-核心部署拓扑-1l9779 .db-b.is-focal{fill:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .mk-seg{fill-opacity:.7;stroke:var(--sc-paper)}
+#fastgpt-核心部署拓扑-1l9779 .mk-pct{fill:var(--sc-ink-strong);font-family:var(--sc-font-mono);font-size:8.5px}
+#fastgpt-核心部署拓扑-1l9779 .wm-link{stroke:var(--sc-soft)!important;stroke-width:1!important}
+#fastgpt-核心部署拓扑-1l9779 .wm-dot{fill:var(--sc-paper);stroke:var(--sc-ink);stroke-width:1.4}#fastgpt-核心部署拓扑-1l9779 .wm-dot.is-focal{fill:var(--sc-accent);stroke:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .wm-label{fill:var(--sc-ink);font-size:10.5px;font-weight:500;paint-order:stroke;stroke:var(--sc-paper);stroke-width:3px;stroke-linejoin:round}
+#fastgpt-核心部署拓扑-1l9779 .wm-label.is-anchor{font-weight:700;font-size:12px}
+#fastgpt-核心部署拓扑-1l9779 .wm-move{stroke:var(--sc-accent);stroke-width:1.2;stroke-dasharray:4 3;fill:none}#fastgpt-核心部署拓扑-1l9779 .wm-move-head{fill:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .wm-ghost{fill:none;stroke:var(--sc-accent);stroke-dasharray:2 2}
+#fastgpt-核心部署拓扑-1l9779 .wm-inertia{stroke:var(--sc-ink);stroke-width:3}
+#fastgpt-核心部署拓扑-1l9779 .callout{fill:var(--sc-muted);font-family:var(--sc-font-serif);font-style:italic;font-size:13px}
+
+#fastgpt-核心部署拓扑-1l9779 .iso-base{fill:var(--sc-node)}
+#fastgpt-核心部署拓扑-1l9779 .iso-t{fill:var(--sc-ax-lift);fill-opacity:var(--sc-ax-t-o)}
+#fastgpt-核心部署拓扑-1l9779 .iso-l{fill:var(--sc-ax-shade);fill-opacity:var(--sc-ax-l-o)}
+#fastgpt-核心部署拓扑-1l9779 .iso-r{fill:var(--sc-ax-shade);fill-opacity:var(--sc-ax-r-o)}
+#fastgpt-核心部署拓扑-1l9779 .k-focal .iso-t{fill:var(--sc-accent);fill-opacity:.12}
+#fastgpt-核心部署拓扑-1l9779 .k-focal .iso-l{fill:var(--sc-accent);fill-opacity:.22}
+#fastgpt-核心部署拓扑-1l9779 .k-focal .iso-r{fill:var(--sc-accent);fill-opacity:.34}
+#fastgpt-核心部署拓扑-1l9779 .iso-edge{fill:none;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.8;stroke-linejoin:round}
+#fastgpt-核心部署拓扑-1l9779 .iso-sil{fill:none;stroke:var(--sc-ink);stroke-width:1.2;stroke-linejoin:round}
+#fastgpt-核心部署拓扑-1l9779 .k-focal .iso-sil{stroke:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .iso-inset{fill:var(--sc-ink);fill-opacity:.06;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.7}
+#fastgpt-核心部署拓扑-1l9779 .k-focal .iso-inset{fill:var(--sc-accent);fill-opacity:.16;stroke:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .iso-trace{fill:none;stroke:var(--sc-ink);stroke-opacity:.3;stroke-width:.8;stroke-dasharray:4 3}
+#fastgpt-核心部署拓扑-1l9779 .iso-leader{stroke:var(--sc-ink);stroke-opacity:.4;stroke-width:.8}
+#fastgpt-核心部署拓扑-1l9779 .iso-dot{fill:var(--sc-ink)}
+#fastgpt-核心部署拓扑-1l9779 .k-focal .iso-leader{stroke:var(--sc-accent);stroke-opacity:1}#fastgpt-核心部署拓扑-1l9779 .k-focal .iso-dot{fill:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .iso-name{fill:var(--sc-ink);font-size:14px;font-weight:600}
+#fastgpt-核心部署拓扑-1l9779 .iso-sub{fill:var(--sc-muted);font-family:var(--sc-font-mono);font-size:9.5px;letter-spacing:.06em}
+#fastgpt-核心部署拓扑-1l9779 .k-focal .iso-sub{fill:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .iso-contour{fill:none;stroke:var(--sc-ink);stroke-opacity:.22;stroke-width:.7}
+#fastgpt-核心部署拓扑-1l9779 .iso-plate .iso-t{fill-opacity:0}
+#fastgpt-核心部署拓扑-1l9779 .iso-mark{fill:var(--sc-ink);fill-opacity:.07}
+#fastgpt-核心部署拓扑-1l9779 .iso-floor{fill:var(--sc-ink);fill-opacity:.035}
+#fastgpt-核心部署拓扑-1l9779 .k-focal .iso-floor,#fastgpt-核心部署拓扑-1l9779 .iso-floor.k-focal{fill:var(--sc-accent);fill-opacity:.1}
+#fastgpt-核心部署拓扑-1l9779 .iso-canopy .iso-t{fill:var(--sc-series-1);fill-opacity:.55}
+#fastgpt-核心部署拓扑-1l9779 .iso-canopy .iso-l,#fastgpt-核心部署拓扑-1l9779 .iso-canopy .iso-r{fill:var(--sc-series-1);fill-opacity:.35}
+#fastgpt-核心部署拓扑-1l9779 .iso-tag rect{fill:var(--sc-paper);stroke:var(--sc-rule-solid);stroke-width:.8}
+#fastgpt-核心部署拓扑-1l9779 .k-focal.iso-tag rect,#fastgpt-核心部署拓扑-1l9779 .k-focal .iso-tag rect{stroke:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .iso-tag .iso-name{font-size:11px}#fastgpt-核心部署拓扑-1l9779 .iso-tag .iso-sub{font-size:8px}
+
+#fastgpt-核心部署拓扑-1l9779 .it-light .iso-base{fill:var(--sc-node)}
+#fastgpt-核心部署拓扑-1l9779 .it-dark .iso-base,#fastgpt-核心部署拓扑-1l9779 .it-black .iso-base{fill:var(--sc-ax-screen)}
+#fastgpt-核心部署拓扑-1l9779 .it-dark .iso-t,#fastgpt-核心部署拓扑-1l9779 .it-black .iso-t{fill:#fff;fill-opacity:.07}
+#fastgpt-核心部署拓扑-1l9779 .it-dark .iso-edge,#fastgpt-核心部署拓扑-1l9779 .it-black .iso-edge{stroke:#fff;stroke-opacity:.18}
+#fastgpt-核心部署拓扑-1l9779 .it-accent .iso-base{fill:var(--sc-node)}#fastgpt-核心部署拓扑-1l9779 .it-accent .iso-t,#fastgpt-核心部署拓扑-1l9779 .it-accent .iso-l,#fastgpt-核心部署拓扑-1l9779 .it-accent .iso-r{fill:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .it-accent .iso-t{fill-opacity:.25}#fastgpt-核心部署拓扑-1l9779 .it-accent .iso-l{fill-opacity:.4}#fastgpt-核心部署拓扑-1l9779 .it-accent .iso-r{fill-opacity:.55}
+#fastgpt-核心部署拓扑-1l9779 .it-accent .iso-sil{stroke:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .it-mid .iso-base{fill:var(--sc-node)}
+#fastgpt-核心部署拓扑-1l9779 .it-solid .iso-sil{stroke-width:.9}
+#fastgpt-核心部署拓扑-1l9779 path.it-dark{fill:var(--sc-ax-screen)}
+#fastgpt-核心部署拓扑-1l9779 path.it-black{fill:#000;fill-opacity:.85}
+#fastgpt-核心部署拓扑-1l9779 /* dark panels and solids keep an edge where they sit on dark walls (dark themes) */
+path.it-dark,#fastgpt-核心部署拓扑-1l9779 path.it-black{stroke:var(--sc-ax-dark-edge);stroke-width:.7}
+#fastgpt-核心部署拓扑-1l9779 .it-dark .iso-sil,#fastgpt-核心部署拓扑-1l9779 .it-black .iso-sil{stroke:var(--sc-ink)}
+#fastgpt-核心部署拓扑-1l9779 path.it-line.it-stroke-dark{stroke:var(--sc-ax-screen);stroke-opacity:.8}
+#fastgpt-核心部署拓扑-1l9779 path.it-light{fill:var(--sc-node);stroke:var(--sc-ink);stroke-opacity:.45;stroke-width:.6}
+#fastgpt-核心部署拓扑-1l9779 path.it-accent{fill:var(--sc-accent);fill-opacity:.9}
+#fastgpt-核心部署拓扑-1l9779 path.it-mid{fill:var(--sc-ink);fill-opacity:.08}
+#fastgpt-核心部署拓扑-1l9779 path.it-cut{fill:var(--sc-ink);fill-opacity:.13;stroke:var(--sc-ink);stroke-opacity:.45;stroke-width:.5}
+#fastgpt-核心部署拓扑-1l9779 path.it-line{fill:none;stroke:var(--sc-ink);stroke-opacity:.5;stroke-width:.8;stroke-linecap:round}
+#fastgpt-核心部署拓扑-1l9779 path.it-text{fill:none;stroke:var(--sc-ink);stroke-opacity:.35;stroke-width:1.4;stroke-linecap:round}
+#fastgpt-核心部署拓扑-1l9779 path.it-line.it-stroke-accent,#fastgpt-核心部署拓扑-1l9779 path.it-text.it-stroke-accent{stroke:var(--sc-accent);stroke-opacity:1}
+#fastgpt-核心部署拓扑-1l9779 path.it-stroke-light{stroke:#fff;stroke-opacity:.7}
+#fastgpt-核心部署拓扑-1l9779 path.it-line.it-stroke-dark{stroke-width:2.2}
+#fastgpt-核心部署拓扑-1l9779 path.it-dash{stroke-dasharray:4 3}
+#fastgpt-核心部署拓扑-1l9779 path.it-button{fill:var(--sc-node);stroke:var(--sc-ink);stroke-opacity:.6;stroke-width:.8}
+#fastgpt-核心部署拓扑-1l9779 path.it-cavity{fill:var(--sc-ink);fill-opacity:.07}
+#fastgpt-核心部署拓扑-1l9779 path.it-floor{fill:var(--sc-ink);fill-opacity:.04;stroke:var(--sc-ink);stroke-opacity:.35;stroke-width:.7}
+
+#fastgpt-核心部署拓扑-1l9779 .iso-beam-o{fill:none;stroke:var(--sc-ink);stroke-linecap:round}
+#fastgpt-核心部署拓扑-1l9779 .iso-beam{fill:none;stroke:var(--sc-node);stroke-linecap:round}
+#fastgpt-核心部署拓扑-1l9779 .iso-beam-dark{stroke:var(--sc-ax-screen)}
+#fastgpt-核心部署拓扑-1l9779 .iso-beam-accent,#fastgpt-核心部署拓扑-1l9779 .k-focal .iso-beam{stroke:var(--sc-accent);stroke-opacity:.55}
+#fastgpt-核心部署拓扑-1l9779 .iso-leader{fill:none;stroke:var(--sc-ink);stroke-opacity:.4;stroke-width:.8}
+#fastgpt-核心部署拓扑-1l9779 .k-focal .iso-leader{stroke:var(--sc-accent);stroke-opacity:1}
+
+@keyframes sc-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes sc-fade{from{opacity:0}to{opacity:1}}
+@keyframes sc-draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes sc-grow-y{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes sc-grow-x{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes sc-wipe{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes sc-wipe-down{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes sc-pop{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:scale(1)}}
+@keyframes sc-token{from{offset-distance:0%;opacity:0}8%{opacity:1}92%{opacity:1}to{offset-distance:100%;opacity:0}}
+@keyframes sc-pulse{0%,100%{stroke-opacity:1}50%{stroke-opacity:.35}}
+@keyframes sc-lift{from{transform:translateY(var(--lift))}to{transform:none}}
+@keyframes sc-drop{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:none}}
+#fastgpt-核心部署拓扑-1l9779 .e-token{display:none}
+@media (prefers-reduced-motion: no-preference){
+#fastgpt-核心部署拓扑-1l9779.sc-svg[data-sc-motion]:not(.sc-still) [data-sc-step]{--d:calc(var(--step) * var(--sc-stagger))}
+#fastgpt-核心部署拓扑-1l9779.sc-svg[data-sc-motion]:not(.sc-still) .sc-node[data-sc-step],#fastgpt-核心部署拓扑-1l9779.sc-svg[data-sc-motion]:not(.sc-still) .sc-enter[data-sc-step]{animation:sc-in var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#fastgpt-核心部署拓扑-1l9779.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step]{animation:sc-fade 240ms ease-out var(--d) both}
+#fastgpt-核心部署拓扑-1l9779.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-head,#fastgpt-核心部署拓扑-1l9779.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-glyph,#fastgpt-核心部署拓扑-1l9779.sc-svg[data-sc-motion]:not(.sc-still) .sc-edge[data-sc-step] .e-label-g{animation:sc-fade 200ms ease-out calc(var(--d) + var(--sc-draw) * .8) both}
+#fastgpt-核心部署拓扑-1l9779.sc-svg:is([data-sc-motion="trace"],#fastgpt-核心部署拓扑-1l9779 [data-sc-motion="loop"]):not(.sc-still) .sc-edge[data-sc-step] .e-line.sc-draw{stroke-dasharray:1;animation:sc-draw var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#fastgpt-核心部署拓扑-1l9779.sc-svg[data-sc-motion]:not(.sc-still) .sc-grow-y[data-sc-step]{transform-box:fill-box;transform-origin:50% 100%;animation:sc-grow-y var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#fastgpt-核心部署拓扑-1l9779.sc-svg[data-sc-motion]:not(.sc-still) .sc-grow-x[data-sc-step]{transform-box:fill-box;transform-origin:0 50%;animation:sc-grow-x var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#fastgpt-核心部署拓扑-1l9779.sc-svg[data-sc-motion]:not(.sc-still) .sc-wipe[data-sc-step]{animation:sc-wipe var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#fastgpt-核心部署拓扑-1l9779.sc-svg[data-sc-motion]:not(.sc-still) .sc-wipe-down[data-sc-step]{animation:sc-wipe-down var(--sc-draw) cubic-bezier(.4,0,.2,1) var(--d) both}
+#fastgpt-核心部署拓扑-1l9779.sc-svg[data-sc-motion]:not(.sc-still) .sc-pop[data-sc-step]{transform-box:fill-box;transform-origin:50% 50%;animation:sc-pop var(--sc-enter) cubic-bezier(.2,.9,.3,1.2) var(--d) both}
+#fastgpt-核心部署拓扑-1l9779.sc-svg[data-sc-motion]:not(.sc-still) .sc-fade[data-sc-step]{animation:sc-fade var(--sc-enter) ease-out var(--d) both}
+#fastgpt-核心部署拓扑-1l9779.sc-svg[data-sc-motion]:not(.sc-still) .iso-part[data-sc-step]{animation:none}
+#fastgpt-核心部署拓扑-1l9779.sc-svg[data-sc-motion]:not(.sc-still) .iso-part.sc-lift[data-sc-step]{animation:sc-lift calc(var(--sc-enter) * 1.6) cubic-bezier(.3,.6,.2,1) var(--d) both}
+#fastgpt-核心部署拓扑-1l9779.sc-svg[data-sc-motion]:not(.sc-still) .iso-label[data-sc-step]{animation:sc-fade var(--sc-enter) ease-out calc(var(--d) + var(--sc-enter) * 1.2) both}
+#fastgpt-核心部署拓扑-1l9779.sc-svg[data-sc-motion]:not(.sc-still) .sc-drop[data-sc-step]{animation:sc-drop var(--sc-enter) cubic-bezier(.2,.7,.2,1) var(--d) both}
+#fastgpt-核心部署拓扑-1l9779.sc-svg:is([data-sc-motion="trace"],#fastgpt-核心部署拓扑-1l9779 [data-sc-motion="loop"]):not(.sc-still) .e-token{display:inline;offset-rotate:0deg;animation:sc-token var(--tok-dur,1800ms) linear calc(var(--sc-settle) + var(--tok-delay,0ms)) infinite both}
+#fastgpt-核心部署拓扑-1l9779.sc-svg[data-sc-motion]:not(.sc-still) .k-change .n-box{animation:sc-pulse 1.6s ease-in-out var(--sc-settle) 3}
+}
+@media print{#fastgpt-核心部署拓扑-1l9779.sc-svg *{animation:none!important}#fastgpt-核心部署拓扑-1l9779 .e-token{display:none!important}}
+#fastgpt-核心部署拓扑-1l9779 .sc-still .e-token{display:none}
+#fastgpt-核心部署拓扑-1l9779 .e-token{fill:var(--sc-accent)}
+#fastgpt-核心部署拓扑-1l9779 .ek-link .e-token,#fastgpt-核心部署拓扑-1l9779 .e-token.t-link{fill:var(--sc-link)}
+</style><desc id="fastgpt-核心部署拓扑-1l9779-desc">Architecture diagram with 9 elements.</desc><rect class="sc-bg" x="-24" y="-24" width="512" height="568"/><g class="sc-groups"></g><g class="sc-edges"><g class="sc-edge ek-primary" data-sc-edge="client-gateway" data-from="client" data-to="gateway" data-sc-step="2" style="--step:2"><path class="e-line sc-draw" d="M232,40 L232,97" pathLength="1"/><path class="e-head m-primary" d="M232,104 L228.8,96 L235.2,96 Z"/></g><g class="sc-edge ek-primary" data-sc-edge="gateway-app" data-from="gateway" data-to="app" data-sc-step="4" style="--step:4"><path class="e-line sc-draw" d="M232,156 L232,219" pathLength="1"/><path class="e-head m-primary" d="M232,226 L228.8,218 L235.2,218 Z"/></g><g class="sc-edge ek-default" data-sc-edge="app-mongo" data-from="app" data-to="mongo" data-sc-step="6" style="--step:6"><path class="e-line sc-draw" d="M176,245 L119,245" pathLength="1"/><path class="e-head m-default" d="M112,245 L120,241.8 L120,248.2 Z"/></g><g class="sc-edge ek-default" data-sc-edge="app-redis" data-from="app" data-to="redis" data-sc-step="6" style="--step:6"><path class="e-line sc-draw" d="M288,245 L345,245" pathLength="1"/><path class="e-head m-default" d="M352,245 L344,248.2 L344,241.8 Z"/></g><g class="sc-edge ek-default" data-sc-edge="app-vector" data-from="app" data-to="vector" data-sc-step="6" style="--step:6"><path class="e-line sc-draw" d="M176,259 L137,259 Q130,259 130,266 L130,356.5 Q130,362 124.5,362 L119,362" pathLength="1"/><path class="e-head m-default" d="M112,362 L120,358.8 L120,365.2 Z"/></g><g class="sc-edge ek-default" data-sc-edge="app-s3" data-from="app" data-to="s3" data-sc-step="6" style="--step:6"><path class="e-line sc-draw" d="M288,259 L327,259 Q334,259 334,266 L334,356.5 Q334,362 339.5,362 L345,362" pathLength="1"/><path class="e-head m-default" d="M352,362 L344,365.2 L344,358.8 Z"/></g><g class="sc-edge ek-primary" data-sc-edge="app-proxy" data-from="app" data-to="proxy" data-sc-step="6" style="--step:6"><path class="e-line sc-draw" d="M232,266 L232,335" pathLength="1"/><path class="e-head m-primary" d="M232,342 L228.8,334 L235.2,334 Z"/></g><g class="sc-edge ek-primary" data-sc-edge="proxy-model" data-from="proxy" data-to="model" data-sc-step="8" style="--step:8"><path class="e-line sc-draw" d="M232,382 L232,445" pathLength="1"/><path class="e-head m-primary" d="M232,452 L228.8,444 L235.2,444 Z"/></g></g><circle class="e-token" r="3.2" data-sc-step="9" style="--step:9;offset-path:path('M232,40 L232,104 L232,156 L232,226 L232,266 L232,342 L232,382 L232,452');--tok-dur:1854ms"/><g class="sc-nodes"><g class="sc-node k-external sh-box" data-sc-node="client" data-sc-step="1" style="--step:1" tabindex="0" role="group" aria-label="客户端"><rect class="n-mask" x="176" y="0" width="112" height="40" rx="6"/><rect class="n-box" x="176" y="0" width="112" height="40" rx="6"/><text class="n-label" x="232" y="25" text-anchor="middle">客户端</text></g><g class="sc-node k-backend sh-box" data-sc-node="gateway" data-sc-step="3" style="--step:3" tabindex="0" role="group" aria-label="访问入口, 按部署配置"><rect class="n-mask" x="176" y="104" width="112" height="52" rx="6"/><rect class="n-box" x="176" y="104" width="112" height="52" rx="6"/><text class="n-label" x="232" y="128" text-anchor="middle">访问入口</text><text class="n-sub" x="232" y="143.5" text-anchor="middle">按部署配置</text></g><g class="sc-node k-focal sh-box" data-sc-node="app" data-sc-step="5" style="--step:5" tabindex="0" role="group" aria-label="FastGPT"><rect class="n-mask" x="176" y="226" width="112" height="40" rx="6"/><rect class="n-box" x="176" y="226" width="112" height="40" rx="6"/><text class="n-label" x="232" y="251" text-anchor="middle">FastGPT</text></g><g class="sc-node k-store sh-box" data-sc-node="mongo" data-sc-step="7" style="--step:7" tabindex="0" role="group" aria-label="MongoDB, 业务与知识数据"><rect class="n-mask" x="0" y="220" width="112" height="52" rx="6"/><rect class="n-box" x="0" y="220" width="112" height="52" rx="6"/><text class="n-label" x="56" y="244" text-anchor="middle">MongoDB</text><text class="n-sub" x="56" y="259.5" text-anchor="middle">业务与知识数据</text></g><g class="sc-node k-store sh-box" data-sc-node="redis" data-sc-step="7" style="--step:7" tabindex="0" role="group" aria-label="Redis, 缓存 / 队列"><rect class="n-mask" x="352" y="220" width="112" height="52" rx="6"/><rect class="n-box" x="352" y="220" width="112" height="52" rx="6"/><text class="n-label" x="408" y="244" text-anchor="middle">Redis</text><text class="n-sub" x="408" y="259.5" text-anchor="middle">缓存 / 队列</text></g><g class="sc-node k-store sh-box" data-sc-node="vector" data-sc-step="7" style="--step:7" tabindex="0" role="group" aria-label="向量数据库, 选择一种后端"><rect class="n-mask" x="0" y="336" width="112" height="52" rx="6"/><rect class="n-box" x="0" y="336" width="112" height="52" rx="6"/><text class="n-label" x="56" y="360" text-anchor="middle">向量数据库</text><text class="n-sub" x="56" y="375.5" text-anchor="middle">选择一种后端</text></g><g class="sc-node k-store sh-box" data-sc-node="s3" data-sc-step="7" style="--step:7" tabindex="0" role="group" aria-label="S3 对象存储, 文件与对象"><rect class="n-mask" x="352" y="336" width="112" height="52" rx="6"/><rect class="n-box" x="352" y="336" width="112" height="52" rx="6"/><text class="n-label" x="408" y="360" text-anchor="middle">S3 对象存储</text><text class="n-sub" x="408" y="375.5" text-anchor="middle">文件与对象</text></g><g class="sc-node k-backend sh-box" data-sc-node="proxy" data-sc-step="7" style="--step:7" tabindex="0" role="group" aria-label="AI Proxy"><rect class="n-mask" x="176" y="342" width="112" height="40" rx="6"/><rect class="n-box" x="176" y="342" width="112" height="40" rx="6"/><text class="n-label" x="232" y="367" text-anchor="middle">AI Proxy</text></g><g class="sc-node k-external sh-box" data-sc-node="model" data-sc-step="9" style="--step:9" tabindex="0" role="group" aria-label="模型服务, 云端或自托管"><rect class="n-mask" x="176" y="452" width="112" height="52" rx="6"/><rect class="n-box" x="176" y="452" width="112" height="52" rx="6"/><text class="n-label" x="232" y="476" text-anchor="middle">模型服务</text><text class="n-sub" x="232" y="491.5" text-anchor="middle">云端或自托管</text></g></g></svg>

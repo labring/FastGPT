@@ -22,7 +22,7 @@ FastGPT-pro 中，有一套标准的 SSO 和成员同步接口，系统会根据
 
 FastGPT-SSO-Service 是为了聚合不同来源的 SSO 和成员同步接口，将他们转成 fastgpt-pro 可识别的接口。
 
-![介绍：界面示例](/imgs/optimized/sso2.png.webp)
+![通过适配服务完成 SSO 登录](/imgs/diagrams/sso-adapter.zh-CN.light.svg)
 
 ## 系统配置教程
 
@@ -639,7 +639,7 @@ curl -H 'Authorization: Bearer replace-with-a-sync-token' http://fastgpt-sso:300
 
 以下是 FastGPT-pro 中，SSO 和成员同步的标准接口文档，如果需要对接非标准系统，可以参考该章节进行开发。
 
-![标准接口文档：界面示例](/imgs/optimized/sso18.png.webp)
+![第三方直接实现 SSO 标准接口](/imgs/diagrams/sso-direct.zh-CN.light.svg)
 
 FastGPT 提供如下标准接口支持：
 

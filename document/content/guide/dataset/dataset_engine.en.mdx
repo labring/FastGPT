@@ -57,22 +57,16 @@ The platform decouples and partitions knowledge data across distinct physical in
 
 ## Hybrid Search and Two-Stage Reranking
 
-In enterprise knowledge Q&A systems, the platform executes a two-stage hybrid retrieval pipeline:
+Text hybrid search follows this pipeline, with reranking controlled by application settings:
 
-```
-[User Query]
-    │
-    ├──► Stage 1: Vector Search    ──► Recall Top-N Semantic Chunks   ──┐
-    │                                                                   ├──► Merge & Deduplicate ──► Stage 2: Rerank Model ──► Token-Budgeted Context
-    └──► Stage 1: Full-Text Search ──► Recall Top-N Keyword Chunks    ──┘
-```
+![Text hybrid retrieval](/imgs/diagrams/hybrid-retrieval.en.light.svg)
 
 1. **Stage 1: Multi-Route Recall**:
-   The engine initiates parallel queries to both the vector database and the full-text index, recalling the top-scoring candidate chunks from each channel (e.g., 20 candidates per route), then merges and deduplicates them in memory.
+   The engine queries the vector database and full-text index in parallel, then combines candidate chunks using the configured route weights.
 2. **Stage 2: Cross-Encoder Reranking**:
-   The system passes candidate chunks alongside the original user query to a specialized Rerank model. Reranking is optional. Score semantics depend on the selected model and provider; calibrate thresholds against labeled examples.
+   When enabled, the system passes the query and candidate text to a Rerank model and blends the reranked results. Rerank failures preserve the original recall results. Score semantics depend on the model and provider; calibrate thresholds against labeled examples.
 3. **Threshold Filtering and Selection**:
-   The engine applies the supported score filter, then selects ranked chunks within a token budget. A returned chunk can take the accumulated size beyond the budget boundary.
+   The engine performs final deduplication, applies the supported score filter, and selects whole ranked chunks within a token budget. The final chunk can take the accumulated size beyond the budget boundary.
 
 ![Multi-route recall and reranking score distribution](/imgs/optimized/current/dataset-result-scores.png.webp)
 
