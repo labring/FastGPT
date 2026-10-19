@@ -19,22 +19,20 @@ import { MongoOrgModel } from './org/orgSchema';
 import { MongoMemberGroupModel } from './memberGroup/memberGroupSchema';
 import { DEFAULT_ORG_AVATAR, DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
 
-/** get resource permission for a team member
- * If there is no permission for the team member, it will return undefined
- * @param resourceType: PerResourceTypeEnum
- * @param teamId
- * @param tmbId
- * @param resourceId
- * @returns PermissionValueType | undefined
+/**
+ * 解析成员的资源权限，个人权限（包括 0）优先，否则合并成员组与组织权限。
+ * 传入 session 时所有读取复用调用方事务，避免漏读尚未提交的默认组并重复创建。
  */
 export const getTmbPermission = async ({
   resourceType,
   teamId,
   tmbId,
-  resourceId
+  resourceId,
+  session
 }: {
   teamId: string;
   tmbId: string;
+  session?: ClientSession;
 } & (
   | {
       resourceType: 'team';
@@ -51,7 +49,8 @@ export const getTmbPermission = async ({
       resourceType: resourceType as PerResourceTypeEnum,
       teamId,
       resourceId,
-      collaborator: { tmbId }
+      collaborator: { tmbId },
+      session
     })
   )?.permission;
 
@@ -61,10 +60,18 @@ export const getTmbPermission = async ({
   }
 
   // If there is no personal permission, get the group permission
-  const [groups, orgIds] = await Promise.all([
-    getGroupsByTmbId({ tmbId, teamId }),
-    getOrgIdSetWithParentByTmbId({ tmbId, teamId })
-  ]);
+  const [groups, orgIds] = await (async () => {
+    if (session) {
+      // 同一个事务 session 不支持并行查询；无事务时仍保留原有并发读取。
+      const groups = await getGroupsByTmbId({ tmbId, teamId, session });
+      const orgIds = await getOrgIdSetWithParentByTmbId({ tmbId, teamId, session });
+      return [groups, orgIds] as const;
+    }
+    return Promise.all([
+      getGroupsByTmbId({ tmbId, teamId }),
+      getOrgIdSetWithParentByTmbId({ tmbId, teamId })
+    ]);
+  })();
   const permissions = await resourcePermissionRepo.findByCollaborators({
     resourceType: resourceType as PerResourceTypeEnum,
     teamId,
@@ -72,7 +79,8 @@ export const getTmbPermission = async ({
     collaborators: [
       ...groups.map((group) => ({ groupId: String(group._id) })),
       ...Array.from(orgIds).map((orgId) => ({ orgId: String(orgId) }))
-    ]
+    ],
+    session
   });
 
   return sumPer(...permissions.map((item) => item.permission));

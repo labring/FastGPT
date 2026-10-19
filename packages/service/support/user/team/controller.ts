@@ -56,7 +56,8 @@ async function getTeamMember(
     (await getTmbPermission({
       resourceType: PerResourceTypeEnum.team,
       teamId: tmb.teamId,
-      tmbId: tmb._id
+      tmbId: tmb._id,
+      session
     })) ?? TeamDefaultRoleVal;
 
   return {
@@ -135,9 +136,9 @@ export async function getUserDefaultTeam({
 }
 
 /**
- * 在登录流程中为没有任何可用团队的用户创建个人团队。
- * 调用方必须在覆盖本次团队创建事务完整生命周期的用户锁中调用；函数内部再次检查团队，
- * 避免已提交的团队被重复创建。未传入 session 时由函数自行开启事务。
+ * 在登录事务中为没有任何可用团队的用户创建个人团队。
+ * 调用方必须在覆盖完整登录事务生命周期的用户锁中调用；函数内部再次检查团队，
+ * 避免已提交的团队被重复创建。
  */
 export async function createUserLoginTeam({
   userId,
@@ -150,58 +151,54 @@ export async function createUserLoginTeam({
   username: string;
   memberName?: string;
   memberAvatar?: string;
-  session?: ClientSession;
+  session: ClientSession;
 }) {
-  const create = async (activeSession: ClientSession) => {
-    await assertAccountCancellationUserCanOwnTeam(userId);
+  await assertAccountCancellationUserCanOwnTeam(userId);
 
-    const fallback = await getUserFallbackTeam({ userId, session: activeSession });
-    if (fallback) return fallback.tmbId;
+  const fallback = await getUserFallbackTeam({ userId, session });
+  if (fallback) return fallback.tmbId;
 
-    const [team] = await MongoTeam.create(
-      [
-        {
-          ownerId: userId,
-          name: getUserDefaultTeamName(username),
-          avatar: LOGO_ICON,
-          defaultPermission: TeamDefaultPermissionVal
-        }
-      ],
-      { session: activeSession, ordered: true }
-    );
-    const [tmb] = await MongoTeamMember.create(
-      [
-        {
-          teamId: team._id,
-          userId,
-          name: memberName ?? username,
-          // 登录兜底建队创建的是 owner，owner 不强制补齐成员名，回落写也记为已设置
-          isSetMemberName: true,
-          role: TeamMemberRoleEnum.owner,
-          status: TeamMemberStatusEnum.active,
-          avatar: memberAvatar ?? LOGO_ICON
-        }
-      ],
-      { session: activeSession, ordered: true }
-    );
+  const [team] = await MongoTeam.create(
+    [
+      {
+        ownerId: userId,
+        name: getUserDefaultTeamName(username),
+        avatar: LOGO_ICON,
+        defaultPermission: TeamDefaultPermissionVal
+      }
+    ],
+    { session, ordered: true }
+  );
+  const [tmb] = await MongoTeamMember.create(
+    [
+      {
+        teamId: team._id,
+        userId,
+        name: memberName ?? username,
+        // 登录兜底建队创建的是 owner，owner 不强制补齐成员名，回落写也记为已设置
+        isSetMemberName: true,
+        role: TeamMemberRoleEnum.owner,
+        status: TeamMemberStatusEnum.active,
+        avatar: memberAvatar ?? LOGO_ICON
+      }
+    ],
+    { session, ordered: true }
+  );
 
-    await MongoMemberGroupModel.create(
-      [{ teamId: team._id, name: DefaultGroupName, avatar: LOGO_ICON }],
-      { session: activeSession, ordered: true }
-    );
-    await initTeamFreePlan({ teamId: String(team._id), session: activeSession });
-    await createRootOrg({ teamId: String(team._id), session: activeSession });
+  await MongoMemberGroupModel.create(
+    [{ teamId: team._id, name: DefaultGroupName, avatar: LOGO_ICON }],
+    { session, ordered: true }
+  );
+  await initTeamFreePlan({ teamId: String(team._id), session });
+  await createRootOrg({ teamId: String(team._id), session });
 
-    logger.info('Login fallback team created', {
-      userId,
-      teamId: team._id,
-      tmbId: tmb._id
-    });
+  logger.info('Login fallback team created', {
+    userId,
+    teamId: team._id,
+    tmbId: tmb._id
+  });
 
-    return String(tmb._id);
-  };
-
-  return session ? create(session) : mongoSessionRun(create);
+  return String(tmb._id);
 }
 
 export async function createDefaultTeam({
