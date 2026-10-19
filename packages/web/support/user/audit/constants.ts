@@ -1,3 +1,4 @@
+import type { DatasetContentAuditActionEnum } from '@fastgpt/global/core/dataset/constants';
 import { AuditEventEnum, AdminAuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
@@ -459,6 +460,22 @@ export const auditLogMap = {
       collectionName: string;
       datasetName: string;
       datasetType: string;
+    }
+  },
+  [AuditEventEnum.UPDATE_DATASET_CONTENT_OBJECT]: {
+    content: i18nT('account_team:log_update_dataset_content_object'),
+    typeLabel: i18nT('account_team:update_dataset_content_object'),
+    params: {} as {
+      name?: string;
+      datasetId: string;
+      datasetName: string;
+      collectionId: string;
+      collectionName: string;
+      objectType: string;
+      action: `${DatasetContentAuditActionEnum}`;
+      changeItem: string;
+      oldValue: string;
+      newValue: string;
     }
   },
   [AuditEventEnum.DELETE_COLLECTION]: {

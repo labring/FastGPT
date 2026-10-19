@@ -11,18 +11,22 @@ import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTypeEnum,
+  DatasetCollectionTypeMap,
+  DatasetContentAuditActionEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { type CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { addAuditLogs } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { UpdateDatasetCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { checkMoveFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
 import { moveCollectionPermission } from '@fastgpt/service/support/permission/collection/controller';
 import { authDatasetCollectionMove } from '@fastgpt/service/support/permission/collection/moveAuth';
+import { getDatasetCollectionPaths } from './paths';
 
 // Set folder collection children forbid status
 const updateFolderChildrenForbid = async ({
@@ -112,6 +116,67 @@ async function handler(req: ApiRequestProps) {
     ? await authDatasetCollectionMove({ ...auth, targetParentId })
     : await authDatasetCollection({ ...auth, per: WritePermissionVal });
 
+  type CollectionAuditChange = {
+    action: `${DatasetContentAuditActionEnum}`;
+    changeItem: string;
+    oldValue: string;
+    newValue: string;
+  };
+
+  const normalizeParentId = (value: unknown) => (value ? String(value) : null);
+  const oldParentId = normalizeParentId(collection.parentId);
+  const newParentId = normalizeParentId(parentId);
+  const actualMove = isMove && oldParentId !== newParentId;
+  const actualRename = Boolean(name) && name !== collection.name;
+  const actualForbidChange = forbid !== undefined && Boolean(forbid) !== Boolean(collection.forbid);
+  const auditChanges: CollectionAuditChange[] = [];
+
+  const getCollectionPath = async ({
+    parentId: pathParentId,
+    name: pathName
+  }: {
+    parentId: string | null;
+    name: string;
+  }) => {
+    try {
+      const paths = await getDatasetCollectionPaths({
+        parentId: pathParentId ?? undefined
+      });
+      return [collection.dataset?.name, ...paths.map((path) => path.parentName), pathName]
+        .filter((item): item is string => Boolean(item))
+        .join('/');
+    } catch {
+      // 路径只用于审计展示，查询失败不能阻断已经鉴权的主更新流程。
+      return pathName;
+    }
+  };
+
+  if (actualRename) {
+    auditChanges.push({
+      action: DatasetContentAuditActionEnum.rename,
+      changeItem: 'account_team:dataset_content_change_item_name',
+      oldValue: collection.name,
+      newValue: name!
+    });
+  }
+
+  if (actualForbidChange) {
+    auditChanges.push({
+      action: forbid ? DatasetContentAuditActionEnum.disable : DatasetContentAuditActionEnum.enable,
+      changeItem: 'account_team:dataset_content_change_item_status',
+      oldValue: collection.forbid
+        ? 'account_team:dataset_content_status_disabled'
+        : 'account_team:dataset_content_status_enabled',
+      newValue: forbid
+        ? 'account_team:dataset_content_status_disabled'
+        : 'account_team:dataset_content_status_enabled'
+    });
+  }
+
+  const oldCollectionPath = actualMove
+    ? await getCollectionPath({ parentId: oldParentId, name: collection.name })
+    : undefined;
+
   // Move collection：parentId 显式提供时在事务前校验深度/环
   if (isMove) {
     await checkMoveFolderDepth({
@@ -177,18 +242,36 @@ async function handler(req: ApiRequestProps) {
     }
   });
 
-  (async () => {
-    addAuditLog({
+  if (actualMove) {
+    const newCollectionPath = await getCollectionPath({
+      parentId: newParentId,
+      name: actualRename ? name! : collection.name
+    });
+    auditChanges.push({
+      action: DatasetContentAuditActionEnum.move,
+      changeItem: 'account_team:dataset_content_change_item_location',
+      oldValue: oldCollectionPath ?? collection.name,
+      newValue: newCollectionPath
+    });
+  }
+
+  if (auditChanges.length === 0) return;
+
+  await addAuditLogs(
+    auditChanges.map((change) => ({
       tmbId,
       teamId,
-      event: AuditEventEnum.UPDATE_COLLECTION,
+      event: AuditEventEnum.UPDATE_DATASET_CONTENT_OBJECT,
       params: {
+        datasetId: String(collection.datasetId),
+        datasetName: collection.dataset?.name ?? '',
+        collectionId: String(collection._id),
         collectionName: collection.name,
-        datasetName: collection.dataset?.name || '',
-        datasetType: getI18nDatasetType(collection.dataset?.type || '')
+        objectType: DatasetCollectionTypeMap[collection.type]?.name ?? collection.type,
+        ...change
       }
-    });
-  })();
+    }))
+  );
 }
 
 export default NextAPI(handler);
