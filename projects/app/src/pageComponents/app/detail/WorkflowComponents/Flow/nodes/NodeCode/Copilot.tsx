@@ -111,11 +111,11 @@ const NodeCopilot = ({
                 input.value && Array.isArray(input.value) && input.value.length === 2
                   ? `[${input.value[0]}.${input.value[1]}]`
                   : '';
-              return `- ${input.label} (${input.valueType}): ${referenceInfo}`;
+              return `- ${input.key} (${input.valueType}): ${referenceInfo}`;
             })
             .join('\n'),
           outputs: dynamicOutputs
-            .map((output) => `- ${output.label} (${output.valueType})`)
+            .map((output) => `- ${output.key} (${output.valueType})`)
             .join('\n')
         })
       };
@@ -150,8 +150,10 @@ const NodeCopilot = ({
         const outputVar = currentNode?.outputs?.find((output) => output.id === variable.key);
         const inputVar = currentNode?.inputs?.find((input) => input.key === variable.key);
         const variableType = outputVar?.valueType || inputVar?.valueType;
+        // 选择器用输出 id 定位端口；提示词使用业务 key，原有引用标识保持不变。
+        const parameterKey = outputVar?.key ?? inputVar?.key ?? variable.key;
 
-        return `[param: {paramName:${variable.parent.label}.${variable.label}, paramRefer:${cleanRef}, paramType:${variableType}}]`;
+        return `[param: {paramName:${parameterKey}, paramRefer:${cleanRef}, paramType:${variableType}}]`;
       }
       return match;
     });
@@ -231,8 +233,8 @@ const NodeCopilot = ({
             renderTypeList: [FlowNodeInputTypeEnum.reference],
             valueType: input.type as WorkflowIOValueTypeEnum,
             canEdit: true,
-            key: input.label,
-            label: input.label,
+            key: input.key,
+            label: input.key,
             value: referenceValue,
             customInputConfig: {
               selectValueTypeList: Object.values(ArrayTypeMap),
@@ -244,25 +246,25 @@ const NodeCopilot = ({
         });
       });
       const existingOutputIdMap = new Map(dynamicOutputs.map((output) => [output.key, output.id]));
-      const nextOutputKeys = new Set(outputs.map((output) => output.label));
+      const nextOutputKeys = new Set(outputs.map((output) => output.key));
       dynamicOutputs.forEach((output) => {
         if (!nextOutputKeys.has(output.key)) {
           onChangeNode({ nodeId, type: 'delOutput', key: output.key });
         }
       });
       outputs.forEach((output) => {
-        const existingId = existingOutputIdMap.get(output.label);
+        const existingId = existingOutputIdMap.get(output.key);
         if (existingId) {
           onChangeNode({
             nodeId,
             type: 'updateOutput',
-            key: output.label,
+            key: output.key,
             value: {
               id: existingId,
               type: FlowNodeOutputTypeEnum.dynamic,
-              key: output.label,
+              key: output.key,
               valueType: output.type as WorkflowIOValueTypeEnum,
-              label: output.label,
+              label: output.key,
               valueDesc: '',
               description: ''
             }
@@ -274,9 +276,9 @@ const NodeCopilot = ({
             value: {
               id: nanoid(),
               type: FlowNodeOutputTypeEnum.dynamic,
-              key: output.label,
+              key: output.key,
               valueType: output.type as WorkflowIOValueTypeEnum,
-              label: output.label,
+              label: output.key,
               valueDesc: '',
               description: ''
             }
@@ -289,7 +291,7 @@ const NodeCopilot = ({
         status: 'success',
         title: t('app:code_applied_successfully')
       });
-    } catch (error) {
+    } catch {
       toast({
         status: 'error',
         title: t('app:apply_code_failed')
