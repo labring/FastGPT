@@ -20,7 +20,7 @@ export const reactFlowStateToWorkflowDocument = ({
   chatConfig?: AppChatConfigType;
   app?: WorkflowDocument['app'];
 }): WorkflowDocument => {
-  const storeWorkflow = uiWorkflow2StoreWorkflow({ nodes, edges });
+  const storeWorkflow = uiWorkflow2StoreWorkflow({ nodes, edges, chatConfig });
   const document = decompileStoreWorkflow({ workflow: { ...storeWorkflow, chatConfig } });
   return app ? { ...document, app: structuredClone(app) } : document;
 };

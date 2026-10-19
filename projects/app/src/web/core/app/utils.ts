@@ -1,8 +1,5 @@
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { chatHistoryValueDesc } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import type { EditorVariablePickerType } from '@fastgpt/global/core/workflow/type/io';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
@@ -88,43 +85,3 @@ export function addModelNamesToAppForm({
 
   return appForm;
 }
-
-export const workflowSystemVariables: EditorVariablePickerType[] = [
-  {
-    key: 'userId',
-    label: i18nT('workflow:use_user_id'),
-    required: true,
-    valueType: WorkflowIOValueTypeEnum.string
-  },
-  {
-    key: 'appId',
-    label: i18nT('common:core.module.http.AppId'),
-    required: true,
-    valueType: WorkflowIOValueTypeEnum.string
-  },
-  {
-    key: 'chatId',
-    label: i18nT('common:core.module.http.ChatId'),
-    valueType: WorkflowIOValueTypeEnum.string,
-    required: true
-  },
-  {
-    key: 'responseChatItemId',
-    label: i18nT('common:core.module.http.ResponseChatItemId'),
-    valueType: WorkflowIOValueTypeEnum.string,
-    required: true
-  },
-  {
-    key: 'histories',
-    label: i18nT('common:core.module.http.Histories'),
-    required: true,
-    valueType: WorkflowIOValueTypeEnum.chatHistory,
-    valueDesc: chatHistoryValueDesc
-  },
-  {
-    key: 'cTime',
-    label: i18nT('common:core.module.http.Current time'),
-    required: true,
-    valueType: WorkflowIOValueTypeEnum.string
-  }
-];

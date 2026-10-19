@@ -122,7 +122,8 @@ const sortChunks = (chunks: WorkflowChangeSetChunk[]) => {
 };
 
 /**
- * 按依赖关系合并分片，并拒绝会让结果依赖到达顺序的冲突命令。
+ * 按依赖关系合并分片，保留执行顺序，仅折叠相邻的等价命令或不相交补丁。
+ * 对同一目标保留全部贡献者用于冲突校验，避免未折叠的补丁掩盖前面的字段冲突。
  * 该函数只产生完整 ChangeSet，不执行任何工作流写入。
  */
 export const mergeWorkflowChangeSetChunks = ({
@@ -141,17 +142,20 @@ export const mergeWorkflowChangeSetChunks = ({
   const parsedChunks = chunks.map((chunk) => WorkflowChangeSetChunkSchema.parse(chunk));
   const sortedChunks = sortChunks(parsedChunks);
   const commands: WorkflowCommand[] = [];
-  const commandIndexes = new Map<string, number>();
-  const commandContributors = new Map<
+  const commandStates = new Map<
     string,
     {
-      command: WorkflowCommand;
-      origin: {
-        chunkId: string;
-        commandIndex: number;
-        commandType: WorkflowCommand['type'];
-      };
-    }[]
+      outputIndex: number;
+      contributors: {
+        command: WorkflowCommand;
+        outputIndex: number;
+        origin: {
+          chunkId: string;
+          commandIndex: number;
+          commandType: WorkflowCommand['type'];
+        };
+      }[];
+    }
   >();
 
   for (const chunk of sortedChunks) {
@@ -163,39 +167,59 @@ export const mergeWorkflowChangeSetChunks = ({
         commandIndex,
         commandType: command.type
       };
-      const existingIndex = commandIndexes.get(identity);
-      if (existingIndex === undefined) {
-        commandIndexes.set(identity, commands.length);
-        commandContributors.set(identity, [{ command, origin: incomingOrigin }]);
+      const state = commandStates.get(identity);
+      if (!state) {
+        commandStates.set(identity, {
+          outputIndex: commands.length,
+          contributors: [{ command, outputIndex: commands.length, origin: incomingOrigin }]
+        });
         commands.push(command);
         continue;
       }
-      const existing = commands[existingIndex];
-      const contributors = commandContributors.get(identity) ?? [];
+      const existing = commands[state.outputIndex];
+      const isAdjacent = state.outputIndex === commands.length - 1;
+      const isEquivalent = stableJson(existing) === stableJson(command);
       if (
-        stableJson(existing) === stableJson(command) ||
-        contributors.some((contributor) => stableJson(contributor.command) === stableJson(command))
+        isAdjacent &&
+        (isEquivalent ||
+          state.contributors.some(
+            (contributor) =>
+              contributor.outputIndex === state.outputIndex &&
+              stableJson(contributor.command) === stableJson(command)
+          ))
       ) {
         continue;
       }
-      const merged = mergePatchCommand(existing, command);
-      if (merged) {
-        commands[existingIndex] = merged;
-        contributors.push({ command, origin: incomingOrigin });
+      const conflictingContributor = isEquivalent
+        ? undefined
+        : state.contributors.find(
+            (contributor) =>
+              contributor.command.type !== command.type ||
+              (stableJson(contributor.command) !== stableJson(command) &&
+                mergePatchCommand(contributor.command, command) === undefined)
+          );
+      if (!conflictingContributor) {
+        // 不跨越中间命令折叠补丁，否则会提前改变克隆读取的状态或清理副作用。
+        const merged = isAdjacent ? mergePatchCommand(existing, command) : undefined;
+        if (merged) {
+          commands[state.outputIndex] = merged;
+        } else {
+          state.outputIndex = commands.length;
+          commands.push(command);
+        }
+        state.contributors.push({
+          command,
+          outputIndex: state.outputIndex,
+          origin: incomingOrigin
+        });
         continue;
       }
-      const conflictingContributor =
-        contributors.find(
-          (contributor) =>
-            contributor.command.type !== command.type ||
-            mergePatchCommand(contributor.command, command) === undefined
-        ) ?? contributors[0];
       throw new WorkflowChangeSetMergeError(
         'WORKFLOW_CHANGESET_COMMAND_CONFLICT',
         `Conflicting commands target ${target ?? identity}`,
         {
           target: target ?? identity,
-          existing: conflictingContributor?.origin,
+          existing: conflictingContributor.origin,
           incoming: incomingOrigin
         }
       );

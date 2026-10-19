@@ -3,7 +3,7 @@ import {
   getNodeAllSource,
   workflowReferenceValueIsSelectable
 } from '@/web/core/workflow/utils';
-import { workflowSystemVariables } from '@/web/core/app/utils';
+import { workflowSystemVariables } from '@fastgpt/global/core/workflow/node/constant';
 import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
 import {
   NodeInputKeyEnum,

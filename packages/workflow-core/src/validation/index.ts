@@ -13,6 +13,7 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import {
   areWorkflowValueTypesCompatible,
   getSelectedInputRenderType,
+  getWorkflowReferenceVariables,
   nodeInputIsReference
 } from '@fastgpt/global/common/workflow/reference';
 import {
@@ -24,7 +25,11 @@ import { assertExecutionEdge } from '../edge/validation';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { assertParentAssignment } from '../nesting/service';
-import { getWorkflowReferenceValues, valueMatchesType } from '../reference/service';
+import {
+  getInputReferenceSourceNodes,
+  getWorkflowReferenceValues,
+  valueMatchesType
+} from '../reference/service';
 import { getInputAutomationMeta } from '@fastgpt/global/core/workflow/template/automationMeta';
 import { inputValueNeedsSchema, valueMatchesSchema } from '../template/valueSchema';
 
@@ -147,7 +152,9 @@ const validateReference = ({
   }
   for (const [sourceNodeId, outputKey] of references) {
     if (sourceNodeId === VARIABLE_NODE_ID) {
-      const variable = document.chatConfig.variables?.find((item) => item.key === outputKey);
+      const variable = getWorkflowReferenceVariables({ chatConfig: document.chatConfig }).find(
+        (item) => item.key === outputKey
+      );
       if (!variable) {
         diagnostics.push({
           code: 'WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND',
@@ -202,8 +209,12 @@ const validateReference = ({
       });
     }
 
-    const downstream = getReachableNodeIds(document, sourceNodeId);
-    if (sourceNodeId === node.nodeId || !downstream.has(node.nodeId)) {
+    const sourceIsVisible = getInputReferenceSourceNodes({
+      document,
+      nodeId: node.nodeId,
+      input
+    }).some((source) => source.nodeId === sourceNodeId);
+    if (!sourceIsVisible) {
       diagnostics.push({
         code: 'WORKFLOW_REFERENCE_SOURCE_NOT_UPSTREAM',
         severity: 'error',
@@ -216,8 +227,9 @@ const validateReference = ({
           reason:
             sourceNodeId === node.nodeId
               ? 'Self-reference is not allowed'
-              : 'Target node is not reachable from source node via execution edges. Ensure edge.connect connects upstream source to this node before referencing.',
-          remediation: `Connect execution edge from source node '${sourceNodeId}' to target node '${node.nodeId}' using 'edge.connect' instead of removing the reference`
+              : 'Source output is outside the reference scope of the target input.',
+          remediation:
+            'Use an upstream source in the same scope or a visible parent-container source; container outputs may reference their own children. Do not add cross-scope execution edges.'
         }
       });
     }

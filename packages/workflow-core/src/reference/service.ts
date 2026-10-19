@@ -3,7 +3,9 @@ import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/consta
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import {
   areWorkflowValueTypesCompatible,
-  getSelectedInputRenderType
+  getSelectedInputRenderType,
+  getWorkflowReferenceSourceNodes,
+  getWorkflowReferenceVariables
 } from '@fastgpt/global/common/workflow/reference';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import { WorkflowCommandError } from '../domain/diagnostic';
@@ -30,6 +32,33 @@ export const getWorkflowReferenceValues = (
   if (isWorkflowReferenceValue(value)) return [value];
   if (Array.isArray(value) && value.every(isWorkflowReferenceValue)) return value;
   return undefined;
+};
+
+/** 将领域图投影到共享引用规则；只有可编辑的容器输出允许引用直接子节点。 */
+export const getInputReferenceSourceNodes = ({
+  document,
+  nodeId,
+  input
+}: {
+  document: WorkflowDocument;
+  nodeId: string;
+  input: FlowNodeInputItemType;
+}) => {
+  const nodesById = new Map(document.nodes.map((node) => [node.nodeId, node]));
+  return getWorkflowReferenceSourceNodes({
+    nodeId,
+    getNodeById: (id) => nodesById.get(id),
+    edges: document.executionEdges.map((edge) => ({
+      source: edge.source.nodeId,
+      target: edge.target.nodeId
+    })),
+    includeChildren: input.canEdit === true,
+    childrenNodeIdListMap: {
+      [nodeId]: document.nodes
+        .filter((node) => node.parentNodeId === nodeId)
+        .map((node) => node.nodeId)
+    }
+  });
 };
 
 export const getInput = ({
@@ -196,7 +225,9 @@ export const setInputReference = ({
   assertInputMode({ inputKey, inputModes, nodeId, mode: 'reference' });
 
   if (ref.nodeId === VARIABLE_NODE_ID) {
-    const variable = document.chatConfig.variables?.find((item) => item.key === ref.outputKey);
+    const variable = getWorkflowReferenceVariables({ chatConfig: document.chatConfig }).find(
+      (item) => item.key === ref.outputKey
+    );
     if (!variable) {
       throw new WorkflowCommandError([
         {
@@ -248,18 +279,10 @@ export const setInputReference = ({
     ]);
   }
 
-  const reachableNodeIds = new Set([sourceNode.nodeId]);
-  const pendingNodeIds = [sourceNode.nodeId];
-  while (pendingNodeIds.length > 0) {
-    const currentNodeId = pendingNodeIds.shift()!;
-    for (const edge of document.executionEdges) {
-      if (edge.source.nodeId !== currentNodeId || reachableNodeIds.has(edge.target.nodeId))
-        continue;
-      reachableNodeIds.add(edge.target.nodeId);
-      pendingNodeIds.push(edge.target.nodeId);
-    }
-  }
-  if (sourceNode.nodeId === nodeId || !reachableNodeIds.has(nodeId)) {
+  const sourceIsVisible = getInputReferenceSourceNodes({ document, nodeId, input }).some(
+    (node) => node.nodeId === sourceNode.nodeId
+  );
+  if (!sourceIsVisible) {
     throw new WorkflowCommandError([
       {
         code: 'WORKFLOW_REFERENCE_SOURCE_NOT_UPSTREAM',
@@ -272,8 +295,9 @@ export const setInputReference = ({
           reason:
             sourceNode.nodeId === nodeId
               ? 'Self-reference is not allowed'
-              : 'Target node is not reachable from source node via execution edges. Ensure edge.connect connects upstream source to this node before referencing.',
-          remediation: `Connect execution edge from source node '${ref.nodeId}' to target node '${nodeId}' using 'edge.connect' instead of removing the reference`
+              : 'Source output is outside the reference scope of the target input.',
+          remediation:
+            'Use an upstream source in the same scope or a visible parent-container source; container outputs may reference their own children. Do not add cross-scope execution edges.'
         }
       }
     ]);

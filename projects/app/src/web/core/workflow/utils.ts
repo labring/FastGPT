@@ -6,7 +6,6 @@ import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
-  VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -38,14 +37,14 @@ import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import {
   areWorkflowValueTypesCompatible,
   getSelectedInputRenderType,
-  nodeInputIsReference
+  getWorkflowReferenceSourceNodes,
+  getWorkflowReferenceVariables
 } from '@fastgpt/global/common/workflow/reference';
 import { isWorkflowSystemModelInput } from '@fastgpt/global/common/workflow/model';
 import { workflowModelKeyMappings } from '@fastgpt/global/core/workflow/model/constants';
 import { cloneDeep, isEqual } from 'lodash-es';
 import type { TFunction } from 'next-i18next';
 import type { Edge, Node, XYPosition } from 'reactflow';
-import { workflowSystemVariables } from '../app/utils';
 import { getGlobalVariableNode } from './adapt';
 import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/constants';
 import { resolveDatasetTagFilterVersion } from '@fastgpt/global/core/dataset/search/tagFilter';
@@ -652,69 +651,15 @@ export const getNodeAllSource = ({
     return [];
   }
 
-  const parentId = node.parentNodeId;
-  const sourceNodes = new Map<string, FlowNodeItemType>();
-  const searchedTargetNodeIds = new Set<string>();
-
-  // 按入边层级遍历，避免深度优先递归把更远的上游节点排到直接来源前面。
-  const collectSourceNodesByEdgeDistance = (targetNodeIds: string[]) => {
-    const queue = targetNodeIds.filter(Boolean);
-
-    while (queue.length > 0) {
-      const targetNodeId = queue.shift();
-      if (!targetNodeId || searchedTargetNodeIds.has(targetNodeId)) continue;
-      searchedTargetNodeIds.add(targetNodeId);
-
-      const targetEdges = edges.filter((item) => item.target === targetNodeId);
-      targetEdges.forEach((edge) => {
-        const sourceNode = getNodeById(edge.source);
-        if (!sourceNode) return;
-
-        if (!sourceNodes.has(sourceNode.nodeId)) {
-          sourceNodes.set(sourceNode.nodeId, sourceNode);
-        }
-
-        queue.push(sourceNode.nodeId);
-      });
-    }
-  };
-
-  collectSourceNodesByEdgeDistance([nodeId]);
-
-  if (parentId) {
-    collectSourceNodesByEdgeDistance([parentId]);
-  }
-
-  // 对于嵌套在容器（Loop/ParallelRun）内的节点，容器的 reference 类型输入
-  // 是通过引用选择器设置的（存在 input.value = [nodeId, outputId]），不产生 ReactFlow edge。
-  // 因此需要额外扫描父容器的 reference 输入，将被引用的外部节点补充到可选来源中。
-  if (parentId) {
-    const parentNode = getNodeById(parentId);
-    if (parentNode) {
-      parentNode.inputs.forEach((input) => {
-        if (!nodeInputIsReference(input)) return;
-        const val = input.value as ReferenceItemValueType | undefined;
-        if (!Array.isArray(val) || val.length < 2) return;
-        const [refNodeId] = val;
-        if (!refNodeId || refNodeId === VARIABLE_NODE_ID) return;
-        const refNode = getNodeById(refNodeId);
-        if (!refNode || sourceNodes.has(refNode.nodeId)) return;
-        sourceNodes.set(refNode.nodeId, refNode);
-        collectSourceNodesByEdgeDistance([refNode.nodeId]);
-      });
-    }
-  }
-
-  // Edge traversal only reaches upstream; children must be added explicitly.
-  if (includeChildren && childrenNodeIdListMap) {
-    const childIds = childrenNodeIdListMap[nodeId] ?? [];
-    childIds.forEach((childId) => {
-      if (sourceNodes.has(childId)) return;
-      const childNode = getNodeById(childId);
-      if (!childNode) return;
-      sourceNodes.set(childId, childNode);
-    });
-  }
+  const sourceNodes = new Map(
+    getWorkflowReferenceSourceNodes({
+      nodeId,
+      getNodeById,
+      edges,
+      includeChildren,
+      childrenNodeIdListMap
+    }).map((source) => [source.nodeId, source])
+  );
 
   sourceNodes.set(
     'system_global_variable',
@@ -734,14 +679,11 @@ export const getWorkflowGlobalVariables = ({
 }: {
   chatConfig: AppChatConfigType;
 }): EditorVariablePickerType[] => {
-  const globalVariables = formatEditorVariablePickerIcon(
-    getAppChatConfig({
-      chatConfig,
-      isPublicFetch: true
-    })?.variables || []
+  return formatEditorVariablePickerIcon(
+    getWorkflowReferenceVariables({
+      chatConfig: getAppChatConfig({ chatConfig, isPublicFetch: true })
+    })
   );
-
-  return [...globalVariables, ...workflowSystemVariables];
 };
 
 /* ====== Snapshot ======= */

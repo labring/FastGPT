@@ -44,7 +44,7 @@ import DatasetTagFilterRows, {
   TagFilterLogicToggle
 } from '@/components/core/dataset/DatasetTagFilterRows';
 import { formatEditorVariablePickerIcon } from '@fastgpt/web/core/workflow/utils';
-import { workflowSystemVariables } from '@/web/core/app/utils';
+import { workflowSystemVariables } from '@fastgpt/global/core/workflow/node/constant';
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import {
   isDatasetTagFilterValue,

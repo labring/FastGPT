@@ -1,11 +1,116 @@
-import { FlowNodeInputTypeEnum } from '../../core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  isNestedParentNodeType,
+  workflowSystemVariables
+} from '../../core/workflow/node/constant';
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '../../core/workflow/constants';
 import type {
+  EditorVariablePickerType,
   FlowNodeInputItemType,
   ReferenceArrayValueType,
   ReferenceItemValueType
 } from '../../core/workflow/type/io';
 import type { StoreNodeItemType } from '../../core/workflow/type/node';
+import type { AppChatConfigType } from '../../core/app/type';
+import type { StoreEdgeItemType } from '../../core/workflow/type/edge';
+
+/** 合并可引用的变量；系统变量覆盖同名用户配置，与运行时注入顺序一致。 */
+export const getWorkflowReferenceVariables = ({
+  chatConfig
+}: {
+  chatConfig: AppChatConfigType;
+}): EditorVariablePickerType[] => {
+  const variables = new Map<string, EditorVariablePickerType>(
+    (chatConfig.variables ?? []).map((variable) => [variable.key, variable])
+  );
+  for (const variable of workflowSystemVariables) variables.set(variable.key, variable);
+  return [...variables.values()];
+};
+
+/**
+ * 返回引用可见的节点，按当前作用域入边距离、父容器来源、可选子节点的顺序排列。
+ * 引用可见性独立于执行边：容器内可读父容器上游，容器的动态输出可读直接子节点，
+ * 但不开放跨作用域执行边，也不允许自引用或读取其他容器内部节点。
+ */
+export const getWorkflowReferenceSourceNodes = <
+  T extends Pick<StoreNodeItemType, 'nodeId' | 'parentNodeId' | 'flowNodeType' | 'inputs'>
+>({
+  nodeId,
+  getNodeById,
+  edges,
+  includeChildren = false,
+  childrenNodeIdListMap
+}: {
+  nodeId: string;
+  getNodeById: (nodeId: string) => T | undefined;
+  edges: Pick<StoreEdgeItemType, 'source' | 'target'>[];
+  includeChildren?: boolean;
+  childrenNodeIdListMap?: Record<string, string[]>;
+}): T[] => {
+  const node = getNodeById(nodeId);
+  if (!node) return [];
+
+  const sourceNodes = new Map<string, T>();
+  const searchedTargetNodeIds = new Set<string>();
+
+  /** 仅沿同作用域入边遍历；visited 同时避免非法循环图造成无限递归。 */
+  const collectSources = (targetNodeId: string) => {
+    const queue = [targetNodeId];
+    while (queue.length > 0) {
+      const currentId = queue.shift()!;
+      if (searchedTargetNodeIds.has(currentId)) continue;
+      searchedTargetNodeIds.add(currentId);
+      const target = getNodeById(currentId);
+      if (!target) continue;
+
+      for (const edge of edges) {
+        if (edge.target !== currentId) continue;
+        const source = getNodeById(edge.source);
+        if (!source || source.nodeId === nodeId || source.parentNodeId !== target.parentNodeId)
+          continue;
+        sourceNodes.set(source.nodeId, source);
+        queue.push(source.nodeId);
+      }
+    }
+  };
+
+  collectSources(nodeId);
+
+  const parent = node.parentNodeId ? getNodeById(node.parentNodeId) : undefined;
+  if (parent) {
+    collectSources(parent.nodeId);
+
+    // 父容器引用输入不会生成执行边，仍需继承其引用来源及上游。
+    for (const input of parent.inputs) {
+      if (!nodeInputIsReference(input)) continue;
+      const references = isValidReferenceValueFormat(input.value) ? [input.value] : input.value;
+      if (!Array.isArray(references)) continue;
+      for (const ref of references) {
+        if (!isValidReferenceValueFormat(ref) || ref[0] === VARIABLE_NODE_ID) continue;
+        const source = getNodeById(ref[0]);
+        if (
+          !source ||
+          source.nodeId === nodeId ||
+          source.nodeId === parent.nodeId ||
+          source.parentNodeId !== parent.parentNodeId
+        )
+          continue;
+        sourceNodes.set(source.nodeId, source);
+        collectSources(source.nodeId);
+      }
+    }
+  }
+
+  if (includeChildren && isNestedParentNodeType(node.flowNodeType)) {
+    for (const childId of childrenNodeIdListMap?.[nodeId] ?? []) {
+      const child = getNodeById(childId);
+      if (child && child.nodeId !== nodeId && child.parentNodeId === nodeId) {
+        sourceNodes.set(childId, child);
+      }
+    }
+  }
+  return [...sourceNodes.values()];
+};
 
 export const getSelectedInputRenderType = (input: {
   renderTypeList?: FlowNodeInputItemType['renderTypeList'];

@@ -8,7 +8,7 @@ import {
   mergeWorkflowChangeSetChunks,
   WorkflowChangeSetMergeError
 } from '../../src/command/mergeChangeSet';
-import { type WorkflowChangeSetChunk } from '../../src/command/type';
+import { type WorkflowChangeSetChunk, type WorkflowCommand } from '../../src/command/type';
 
 const baseChecksum = `sha256:${'a'.repeat(64)}`;
 const chunk = (value: Partial<WorkflowChangeSetChunk>): WorkflowChangeSetChunk => ({
@@ -57,6 +57,46 @@ describe('mergeWorkflowChangeSetChunks', () => {
     ).toBe('Changed in dependency');
   });
 
+  it.each(['single chunk', 'dependent chunks'])(
+    'keeps patches on either side of a clone in their execution order for %s',
+    async (mode) => {
+      const document = WorkflowDocumentSchema.parse(staticWorkflowFixture);
+      const source = document.nodes.find((node) => node.nodeId === 'text')!;
+      source.position = { x: 10, y: 20 };
+      const commands: WorkflowCommand[] = [
+        { type: 'node.update', nodeId: 'text', name: 'Renamed before cloning' },
+        { type: 'node.clone', sourceNodeId: 'text', nodeId: 'text-copy' },
+        { type: 'node.update', nodeId: 'text', position: { x: 300, y: 400 } }
+      ];
+      const chunks =
+        mode === 'single chunk'
+          ? [chunk({ chunkId: 'sequence', commands })]
+          : [
+              chunk({ chunkId: 'move', dependsOn: ['clone'], commands: [commands[2]] }),
+              chunk({ chunkId: 'clone', dependsOn: ['rename'], commands: [commands[1]] }),
+              chunk({ chunkId: 'rename', commands: [commands[0]] })
+            ];
+      const changeSet = mergeWorkflowChangeSetChunks({
+        baseChecksum: await getWorkflowChecksum(document),
+        chunks
+      });
+
+      expect(changeSet.commands).toEqual(commands);
+      const result = await applyWorkflowChangeSet({
+        document,
+        changeSet,
+        dependencies: { templateProvider: builtinTemplateProvider }
+      });
+      expect(result.document.nodes.find((node) => node.nodeId === 'text-copy')).toMatchObject({
+        name: 'Renamed before cloning',
+        position: { x: 50, y: 60 }
+      });
+      expect(result.document.nodes.find((node) => node.nodeId === 'text')).toMatchObject({
+        position: { x: 300, y: 400 }
+      });
+    }
+  );
+
   it('orders dependencies deterministically and merges disjoint metadata patches', () => {
     const result = mergeWorkflowChangeSetChunks({
       baseChecksum,
@@ -73,12 +113,48 @@ describe('mergeWorkflowChangeSetChunks', () => {
     expect(result.commands).toEqual([{ type: 'meta.update', name: 'workflow', intro: 'intro' }]);
   });
 
-  it('deduplicates identical commands but rejects conflicting commands', () => {
+  it('deduplicates adjacent commands but rejects conflicting commands', () => {
     const same = chunk({ chunkId: 'same' });
     expect(
       mergeWorkflowChangeSetChunks({ baseChecksum, chunks: [same, { ...same, chunkId: 'copy' }] })
         .commands
     ).toHaveLength(1);
+    expect(
+      mergeWorkflowChangeSetChunks({
+        baseChecksum,
+        chunks: [
+          same,
+          chunk({ chunkId: 'intro', commands: [{ type: 'meta.update', intro: 'intro' }] }),
+          { ...same, chunkId: 'copy' },
+          chunk({
+            chunkId: 'combined',
+            commands: [{ type: 'meta.update', name: 'name', intro: 'intro' }]
+          })
+        ]
+      }).commands
+    ).toEqual([{ type: 'meta.update', name: 'name', intro: 'intro' }]);
+
+    const combinedPatch: WorkflowCommand = { type: 'meta.update', name: 'name', intro: 'intro' };
+    const divider: WorkflowCommand = {
+      type: 'config.set',
+      path: 'welcomeConfig.welcomeText',
+      value: 'Welcome'
+    };
+    expect(
+      mergeWorkflowChangeSetChunks({
+        baseChecksum,
+        chunks: [
+          chunk({
+            commands: [
+              ...same.commands,
+              { type: 'meta.update', intro: 'intro' },
+              divider,
+              combinedPatch
+            ]
+          })
+        ]
+      }).commands
+    ).toEqual([combinedPatch, divider, combinedPatch]);
 
     try {
       mergeWorkflowChangeSetChunks({
@@ -159,43 +235,110 @@ describe('mergeWorkflowChangeSetChunks', () => {
     );
   });
 
-  it('reports the actual patch contributor when a merged field conflicts', () => {
-    expect(() =>
-      mergeWorkflowChangeSetChunks({
-        baseChecksum,
-        chunks: [
-          chunk({
-            chunkId: 'name',
-            commands: [{ type: 'meta.update', name: 'Workflow' }]
-          }),
-          chunk({
-            chunkId: 'intro',
-            commands: [{ type: 'meta.update', intro: 'First intro' }]
-          }),
-          chunk({
-            chunkId: 'intro-conflict',
-            commands: [{ type: 'meta.update', intro: 'Second intro' }]
-          })
-        ]
-      })
-    ).toThrowError(
-      expect.objectContaining({
-        code: 'WORKFLOW_CHANGESET_COMMAND_CONFLICT',
-        params: expect.objectContaining({
-          existing: {
-            chunkId: 'intro',
-            commandIndex: 0,
-            commandType: 'meta.update'
-          },
-          incoming: {
-            chunkId: 'intro-conflict',
-            commandIndex: 0,
-            commandType: 'meta.update'
-          }
-        })
-      })
-    );
+  it('retains repeated commands separated by operations that change their effect', async () => {
+    const document = WorkflowDocumentSchema.parse(staticWorkflowFixture);
+    const commands: WorkflowCommand[] = [
+      { type: 'edge.disconnect', edge: document.executionEdges[1] },
+      {
+        type: 'edge.reconnect',
+        oldEdge: document.executionEdges[0],
+        newEdge: document.executionEdges[1]
+      },
+      { type: 'edge.disconnect', edge: document.executionEdges[1] }
+    ];
+    const changeSet = mergeWorkflowChangeSetChunks({
+      baseChecksum: await getWorkflowChecksum(document),
+      chunks: [
+        chunk({ chunkId: 'disconnect-last', dependsOn: ['reconnect'], commands: [commands[2]] }),
+        chunk({ chunkId: 'reconnect', dependsOn: ['disconnect-first'], commands: [commands[1]] }),
+        chunk({ chunkId: 'disconnect-first', commands: [commands[0]] })
+      ]
+    });
+
+    expect(changeSet.commands).toEqual(commands);
+    const result = await applyWorkflowChangeSet({
+      document,
+      changeSet,
+      dependencies: { templateProvider: builtinTemplateProvider }
+    });
+    expect(result.document.executionEdges).toEqual([]);
   });
+
+  it('keeps a repeated node patch around a clone in its original position', async () => {
+    const document = WorkflowDocumentSchema.parse(staticWorkflowFixture);
+    const source = document.nodes.find((node) => node.nodeId === 'text')!;
+    source.position = { x: 10, y: 20 };
+    const commands: WorkflowCommand[] = [
+      { type: 'node.update', nodeId: 'text', position: { x: 300, y: 400 } },
+      { type: 'node.clone', sourceNodeId: 'text', nodeId: 'text-copy' },
+      { type: 'node.update', nodeId: 'text', position: { x: 300, y: 400 } }
+    ];
+    const changeSet = mergeWorkflowChangeSetChunks({
+      baseChecksum: await getWorkflowChecksum(document),
+      chunks: [chunk({ commands })]
+    });
+
+    expect(changeSet.commands).toEqual(commands);
+    const result = await applyWorkflowChangeSet({
+      document,
+      changeSet,
+      dependencies: { templateProvider: builtinTemplateProvider }
+    });
+    expect(result.document.nodes.find((node) => node.nodeId === 'text-copy')?.position).toEqual({
+      x: 340,
+      y: 440
+    });
+  });
+
+  it.each([
+    { field: 'name', value: 'Second name', conflictingChunkId: 'name' },
+    { field: 'intro', value: 'Second intro', conflictingChunkId: 'intro' }
+  ])(
+    'reports the actual contributor when a separated $field patch conflicts',
+    ({ field, value, conflictingChunkId }) => {
+      expect(() =>
+        mergeWorkflowChangeSetChunks({
+          baseChecksum,
+          chunks: [
+            chunk({
+              chunkId: 'name',
+              commands: [{ type: 'meta.update', name: 'Workflow' }]
+            }),
+            chunk({
+              chunkId: 'config',
+              commands: [
+                { type: 'config.set', path: 'welcomeConfig.welcomeText', value: 'Welcome' }
+              ]
+            }),
+            chunk({
+              chunkId: 'intro',
+              commands: [{ type: 'meta.update', intro: 'First intro' }]
+            }),
+            chunk({
+              chunkId: 'conflict',
+              commands: [{ type: 'meta.update', [field]: value }]
+            })
+          ]
+        })
+      ).toThrowError(
+        expect.objectContaining({
+          code: 'WORKFLOW_CHANGESET_COMMAND_CONFLICT',
+          params: expect.objectContaining({
+            existing: {
+              chunkId: conflictingChunkId,
+              commandIndex: 0,
+              commandType: 'meta.update'
+            },
+            incoming: {
+              chunkId: 'conflict',
+              commandIndex: 0,
+              commandType: 'meta.update'
+            }
+          })
+        })
+      );
+    }
+  );
 
   it('rejects missing dependencies and cycles', () => {
     expect(() =>
