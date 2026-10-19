@@ -36,8 +36,9 @@ export const simpleText = (text = '') => {
 export const replaceSensitiveText = (text: string) => {
   // 1. http link
   text = text.replace(/(?<=https?:\/\/)[^\s]+/g, 'xxx');
-  // 2. nx-xxx 全部替换成xxx
-  text = text.replace(/ns-[\w-]+/g, 'xxx');
+  // 2. nx-xxx 全部替换成xxx。只替换以 ns- 开头的完整片段，
+  // 不能把 tokens-per-minute、dns-server 这类普通单词里的 ns- 也换掉。
+  text = text.replace(/(?<![\w-])ns-[\w-]+/g, 'xxx');
 
   return text;
 };
