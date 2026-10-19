@@ -264,6 +264,12 @@ const refineChatAuthTargetInput = (
   }
 };
 
+/** 只解析资源来源；必填、互斥和外链组合继续由各 raw schema 校验。 */
+const resolveChatSourceType = ({ skillId, sourceType }: ChatTargetInput) => {
+  if (skillId) return ChatSourceTypeEnum.skillEdit;
+  return isAuxiliaryGenerationSourceType(sourceType) ? sourceType : ChatSourceTypeEnum.app;
+};
+
 /**
  * 将对外 API 的 chat target 互斥入参转换为内部标准 chat source。
  *
@@ -276,16 +282,7 @@ export const transformChatTargetInput = <T extends ChatTargetInput>(data: T) => 
 
   return {
     ...rest,
-    sourceType: (() => {
-      if (skillId) return ChatSourceTypeEnum.skillEdit;
-      if (rawSourceType === ChatSourceTypeEnum.chatAgentHelper) {
-        return ChatSourceTypeEnum.chatAgentHelper;
-      }
-      if (rawSourceType === ChatSourceTypeEnum.workflowBuilder) {
-        return ChatSourceTypeEnum.workflowBuilder;
-      }
-      return ChatSourceTypeEnum.app;
-    })(),
+    sourceType: resolveChatSourceType({ skillId, sourceType: rawSourceType }),
     sourceId
   };
 };
@@ -317,16 +314,7 @@ export const transformChatAuthTargetInput = <T extends ChatTargetInput>(data: T)
   return {
     ...rest,
     ...(normalizedOutLinkAuthData ? { outLinkAuthData: normalizedOutLinkAuthData } : {}),
-    sourceType: (() => {
-      if (skillId) return ChatSourceTypeEnum.skillEdit;
-      if (rawSourceType === ChatSourceTypeEnum.chatAgentHelper) {
-        return ChatSourceTypeEnum.chatAgentHelper;
-      }
-      if (rawSourceType === ChatSourceTypeEnum.workflowBuilder) {
-        return ChatSourceTypeEnum.workflowBuilder;
-      }
-      return ChatSourceTypeEnum.app;
-    })(),
+    sourceType: resolveChatSourceType({ skillId, sourceType: rawSourceType }),
     sourceId: sourceId!
   };
 };
@@ -360,16 +348,7 @@ export const transformOptionalChatTargetInput = <T extends ChatTargetInput>(data
     ...(normalizedOutLinkAuthData ? { outLinkAuthData: normalizedOutLinkAuthData } : {}),
     ...(appId || skillId
       ? {
-          sourceType: (() => {
-            if (skillId) return ChatSourceTypeEnum.skillEdit;
-            if (rawSourceType === ChatSourceTypeEnum.chatAgentHelper) {
-              return ChatSourceTypeEnum.chatAgentHelper;
-            }
-            if (rawSourceType === ChatSourceTypeEnum.workflowBuilder) {
-              return ChatSourceTypeEnum.workflowBuilder;
-            }
-            return ChatSourceTypeEnum.app;
-          })(),
+          sourceType: resolveChatSourceType({ skillId, sourceType: rawSourceType }),
           sourceId: sourceId!
         }
       : {

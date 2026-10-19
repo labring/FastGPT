@@ -53,6 +53,33 @@ export enum ChatSourceTypeEnum {
   chatAgentHelper = 'chatAgentHelper'
 }
 
+const defaultChatResponseOptions = {
+  showCite: true,
+  showRunningStatus: true,
+  showSkillReferences: true,
+  showFullText: true,
+  canDownloadSource: true
+};
+
+/** 各来源的默认展示能力；外链发布配置中的访问限制仍须由鉴权单独覆盖。 */
+export const chatSourceResponseOptions = {
+  [ChatSourceTypeEnum.app]: defaultChatResponseOptions,
+  [ChatSourceTypeEnum.skillEdit]: defaultChatResponseOptions,
+  [ChatSourceTypeEnum.chatAgentHelper]: {
+    showCite: false,
+    showRunningStatus: false,
+    showSkillReferences: false,
+    showFullText: false,
+    canDownloadSource: false
+  },
+  [ChatSourceTypeEnum.workflowBuilder]: {
+    ...defaultChatResponseOptions,
+    showCite: false,
+    showFullText: false,
+    canDownloadSource: false
+  }
+};
+
 export const ChatSourceMap = {
   [ChatSourceEnum.test]: {
     name: i18nT('common:core.chat.logs.test'),

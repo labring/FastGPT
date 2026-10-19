@@ -30,19 +30,13 @@ const WorkflowEdit = () => {
 
   const initData = useContextSelector(WorkflowUtilsContext, (v) => v.initData);
   const canEdit = !!appDetail.permission?.hasWritePer;
-  const workflowBuilderEnabled =
-    !!feConfigs?.isPlus &&
-    !!feConfigs?.show_agent_sandbox &&
-    feConfigs?.show_workflow_builder !== false &&
-    canEdit;
-  const workflowBuilderEntryVisible =
-    getWorkflowBuilderEntryAccess({
-      systemInitialized,
-      isPlus: !!feConfigs?.isPlus,
-      showAgentSandbox: !!feConfigs?.show_agent_sandbox,
-      showWorkflowBuilder: feConfigs?.show_workflow_builder !== false,
-      canEdit
-    }) !== 'hidden';
+  const entryAccess = getWorkflowBuilderEntryAccess({
+    systemInitialized,
+    isPlus: !!feConfigs?.isPlus,
+    showAgentSandbox: !!feConfigs?.show_agent_sandbox,
+    showWorkflowBuilder: feConfigs?.show_workflow_builder !== false,
+    canEdit
+  });
 
   useMount(() => {
     initData(
@@ -59,19 +53,16 @@ const WorkflowEdit = () => {
       <Header />
 
       {currentTab === TabEnum.appEdit ? (
-        <>
-          <WorkflowBuilderUIProvider
-            appId={appDetail._id}
-            canEdit={canEdit}
-            workflowBuilderEntryVisible={workflowBuilderEntryVisible}
-            workflowBuilderEnabled={workflowBuilderEnabled}
-            systemInitialized={systemInitialized}
-          >
-            <WorkflowBuilderUIInitializer />
-            <Flow />
-            <WorkflowBuilder workflowBuilderEnabled={workflowBuilderEnabled} />
-          </WorkflowBuilderUIProvider>
-        </>
+        <WorkflowBuilderUIProvider
+          appId={appDetail._id}
+          canEdit={canEdit}
+          entryAccess={entryAccess}
+          systemInitialized={systemInitialized}
+        >
+          <WorkflowBuilderUIInitializer />
+          <Flow />
+          <WorkflowBuilder />
+        </WorkflowBuilderUIProvider>
       ) : (
         <Flex
           flexDirection={'column'}

@@ -72,7 +72,7 @@ const WorkflowBuilderApplyToast = ({
   );
 };
 
-const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: boolean }) => {
+const WorkflowBuilder = () => {
   const { t } = useTranslation('workflow');
   const { toast } = useToast();
   const { requestAutoLayout } = useWorkflowAutoLayout();
@@ -80,6 +80,7 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
   const appDetail = useContextSelector(AppContext, (value) => value.appDetail);
   const setAppDetail = useContextSelector(AppContext, (value) => value.setAppDetail);
   const {
+    entryAccess,
     workflowCanvasRef,
     focusRequestId,
     isOpen,
@@ -90,6 +91,7 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
     setActivity,
     dismissBanner
   } = useWorkflowBuilderUI();
+  const workflowBuilderEnabled = entryAccess === 'enabled';
   const getNodes = useContextSelector(WorkflowBufferDataContext, (value) => value.getNodes);
   const getEdges = useContextSelector(WorkflowBufferDataContext, (value) => value.getEdges);
   const pushPastSnapshot = useContextSelector(

@@ -51,8 +51,7 @@ describe('useWorkflowBuilderUI', () => {
           {
             appId: 'app-1',
             canEdit: true,
-            workflowBuilderEntryVisible: true,
-            workflowBuilderEnabled: true,
+            entryAccess: 'enabled',
             systemInitialized: true,
             ...props
           },
@@ -233,13 +232,14 @@ describe('useWorkflowBuilderUI', () => {
     expect(consumers.every((ui) => !ui.showAttentionDot && !ui.showLatestBanner)).toBe(true);
   });
 
-  it.each([true, false])(
-    'initializes the guide once and preserves enabled=%s auto-open behavior',
-    async (enabled) => {
+  it.each(['enabled', 'upgrade'] as const)(
+    'initializes the guide once and preserves %s auto-open behavior',
+    async (entryAccess) => {
+      const enabled = entryAccess === 'enabled';
       mocks.editor.hasCompletedWorkflowBuilderFirstEntryGuide = false;
       mocks.router.query = { [WORKFLOW_BUILDER_AUTO_OPEN_QUERY_KEY]: ['1'] };
-      await render({ workflowBuilderEnabled: enabled }, true);
-      expect(consumers[0].entryAccess).toBe(enabled ? 'enabled' : 'upgrade');
+      await render({ entryAccess }, true);
+      expect(consumers[0].entryAccess).toBe(entryAccess);
       await act(async () => vi.advanceTimersByTimeAsync(0));
       expect(mocks.router.replace).toHaveBeenCalledTimes(1);
       expect(consumers[0].guideStep).toBe('systemConfig');
@@ -256,15 +256,33 @@ describe('useWorkflowBuilderUI', () => {
     }
   );
 
+  it.each(['upgrade', 'hidden'] as const)(
+    'does not auto-open Builder if access changes to %s during its guide',
+    async (entryAccess) => {
+      mocks.editor.hasCompletedWorkflowBuilderFirstEntryGuide = false;
+      mocks.router.query = { [WORKFLOW_BUILDER_AUTO_OPEN_QUERY_KEY]: '1' };
+      await render({}, true);
+      await act(async () => vi.advanceTimersByTimeAsync(0));
+      await act(async () => consumers[0].completeGuideStep('systemConfig'));
+      expect(consumers[1].guideStep).toBe('workflowBuilder');
+
+      await render({ entryAccess }, true);
+      await act(async () => consumers[1].completeGuideStep('workflowBuilder'));
+      expect(consumers.every((ui) => ui.entryAccess === entryAccess && !ui.isOpen)).toBe(true);
+      expect(consumers.every((ui) => ui.focusRequestId === 0)).toBe(true);
+      expect(mocks.editor.completeWorkflowBuilderFirstEntryGuide).toHaveBeenCalledTimes(1);
+    }
+  );
+
   it('waits for initialization readiness and preserves the system-config fallback', async () => {
     mocks.router.isReady = false;
     mocks.editor.hasCompletedSystemConfigFirstEntryGuide = false;
-    await render({ systemInitialized: false, workflowBuilderEntryVisible: false }, true);
+    await render({ systemInitialized: false, entryAccess: 'hidden' }, true);
     expect(consumers[0].entryAccess).toBe('hidden');
     await act(async () => vi.advanceTimersByTimeAsync(0));
     expect(consumers[0].activeLeftPanel).toBeUndefined();
     mocks.router.isReady = true;
-    await render({ workflowBuilderEntryVisible: false }, true);
+    await render({ entryAccess: 'hidden' }, true);
     await act(async () => vi.advanceTimersByTimeAsync(0));
     expect(consumers[1].activeLeftPanel).toBe('systemConfig');
     expect(mocks.editor.completeSystemConfigFirstEntryGuide).toHaveBeenCalledTimes(1);

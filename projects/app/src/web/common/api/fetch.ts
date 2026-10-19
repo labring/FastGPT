@@ -36,7 +36,6 @@ type StreamFetchProps = {
   data: Record<string, any>;
   onMessage: StartChatFnProps['generatingMessage'];
   abortCtrl: AbortController;
-  requestMode?: 'chat' | 'raw';
 };
 export type StreamResponseType = {
   responseText: string;
@@ -698,15 +697,8 @@ function $resumefetch({
   });
 }
 
-/**
- * 构造 SSE 请求体。普通聊天保留运行参数注入；独立辅助模块使用 raw 模式原样发送契约数据。
- */
-export const buildStreamFetchBody = ({
-  data,
-  requestMode = 'chat'
-}: Pick<StreamFetchProps, 'data' | 'requestMode'>) => {
-  if (requestMode === 'raw') return data;
-
+/** 构造通用 SSE 请求体，补充聊天运行参数并保留调用方的变量。 */
+export const buildStreamFetchBody = ({ data }: Pick<StreamFetchProps, 'data'>) => {
   const rawVars = data?.variables;
   const variables = {
     ...(rawVars && typeof rawVars === 'object' && !Array.isArray(rawVars)
@@ -728,8 +720,7 @@ export const streamFetch = ({
   url = '/api/v2/chat/completions',
   data,
   onMessage,
-  abortCtrl,
-  requestMode = 'chat'
+  abortCtrl
 }: StreamFetchProps) => {
   const shouldEnableStreamResume = shouldSendStreamResumeHeader(url);
 
@@ -744,16 +735,12 @@ export const streamFetch = ({
           [STREAM_RESUME_REQUEST_HEADER]: STREAM_RESUME_REQUEST_HEADER_ENABLED
         })
       },
-      body: JSON.stringify(buildStreamFetchBody({ data, requestMode }))
+      body: JSON.stringify(buildStreamFetchBody({ data }))
     },
     onmessage: onMessage,
     abortController: abortCtrl
   });
 };
-
-/** 使用共享 SSE 生命周期，但不注入普通聊天的 Workflow 运行参数。 */
-export const streamRawFetch = (props: Omit<StreamFetchProps, 'requestMode'>) =>
-  streamFetch({ ...props, requestMode: 'raw' });
 
 type StreamResumeFetchParams = ChatAuthTargetInput & {
   chatId: string;

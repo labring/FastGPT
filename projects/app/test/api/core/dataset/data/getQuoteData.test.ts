@@ -94,7 +94,7 @@ describe('GetQuoteDataBodySchema', () => {
 
 /**
  * Handler 分支测试：mock 所有数据层依赖，确认
- * - 对话模式：走 authChatCrud / authCollectionInChat
+ * - 对话模式：走 authChatTargetCrud / authCollectionInChat
  * - API 模式：走 authDatasetData
  * 并且字段会完整传给下游鉴权函数（防止上游 schema 剥字段后神不知鬼不觉）。
  */
@@ -105,8 +105,11 @@ const findByIdDatasetDataMock = vi.fn();
 const findByIdCollectionMock = vi.fn();
 const formatDatasetDataValueMock = vi.fn();
 
+vi.mock('@fastgpt/service/core/chat/auth', () => ({
+  authChatTargetCrud: (props: any) => authChatTargetCrudMock(props)
+}));
+
 vi.mock('@/service/support/permission/auth/chat', () => ({
-  authChatTargetCrud: (props: any) => authChatTargetCrudMock(props),
   authCollectionInChat: (props: any) => authCollectionInChatMock(props)
 }));
 
@@ -152,7 +155,7 @@ describe('getQuoteData handler', () => {
     formatDatasetDataValueMock.mockImplementation(({ q, a }: any) => ({ q, a }));
   });
 
-  it('chat mode: forwards outLinkAuthData to authChatCrud', async () => {
+  it('chat mode: forwards outLinkAuthData to authChatTargetCrud', async () => {
     findByIdDatasetDataMock.mockResolvedValue({
       _id: VALID_ID,
       collectionId: 'col_1',

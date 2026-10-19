@@ -1,13 +1,17 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { authOutLinkValid } from '@fastgpt/service/support/permission/publish/authLink';
 import { authOutLinkInit, authOutLinkLimit } from '@fastgpt/service/support/outLink/runtime/auth';
-import { authOutLink, authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
+import {
+  authOutLink,
+  authOutLinkChatStart
+} from '@fastgpt/service/support/permission/publish/authChat';
 import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { notLeaveStatus } from '@fastgpt/global/support/user/team/constant';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
 import {
   OutLinkCreateBodySchema,
   ShareOutLinkEditSchema
@@ -91,6 +95,14 @@ describe('authOutLink', () => {
     expect(result.uid).toBe('verified-uid');
   });
 
+  it('rejects an empty external UID before loading or initializing the link', async () => {
+    await expect(authOutLink({ shareId: 'share-id', outLinkUid: '', req: {} as any })).rejects.toBe(
+      OutLinkErrEnum.linkUnInvalid
+    );
+    expect(authOutLinkValid).not.toHaveBeenCalled();
+    expect(authOutLinkInit).not.toHaveBeenCalled();
+  });
+
   it('requires app read permission for protected links', async () => {
     vi.mocked(authOutLinkValid).mockResolvedValue({
       outLinkConfig: { ...outLinkConfig, allowAnonymous: false },
@@ -115,6 +127,32 @@ describe('authOutLink', () => {
       per: ReadPermissionVal,
       isRoot: false
     });
+  });
+
+  it('checks app permission for root access without resolving another team membership', async () => {
+    vi.mocked(authOutLinkValid).mockResolvedValueOnce({
+      outLinkConfig: { ...outLinkConfig, allowAnonymous: false },
+      appId: 'app-id'
+    } as any);
+    vi.mocked(parseHeaderCert).mockResolvedValueOnce({
+      tmbId: 'root-member-id',
+      isRoot: true
+    } as any);
+
+    const result = await authOutLink({
+      shareId: 'share-id',
+      outLinkUid: 'raw-uid',
+      req: {} as any
+    });
+
+    expect(authAppByTmbId).toHaveBeenCalledExactlyOnceWith({
+      tmbId: 'root-member-id',
+      appId: 'app-id',
+      per: ReadPermissionVal,
+      isRoot: true
+    });
+    expect(MongoTeamMember.findOne).not.toHaveBeenCalled();
+    expect(result.uid).toBe('root-member-id');
   });
 
   it('binds a protected link to the member in the link team, not the submitted UID', async () => {

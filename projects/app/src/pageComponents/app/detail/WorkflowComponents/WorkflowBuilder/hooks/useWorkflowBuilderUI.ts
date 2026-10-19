@@ -19,8 +19,7 @@ import {
 export const useWorkflowBuilderUI = () => {
   const {
     appId,
-    workflowBuilderEntryVisible,
-    workflowBuilderEnabled,
+    entryAccess,
     workflowCanvasRef,
     autoOpenAfterGuideRef,
     activeLeftPanel,
@@ -37,10 +36,6 @@ export const useWorkflowBuilderUI = () => {
     setAcknowledgedAttentionKeys
   } = useContextSelector(WorkflowBuilderUIContext, (value) => value);
   const { completeWorkflowBuilderFirstEntryGuide } = useAppEditorUIState(appId);
-  const entryAccess = (() => {
-    if (!workflowBuilderEntryVisible) return 'hidden';
-    return workflowBuilderEnabled ? 'enabled' : 'upgrade';
-  })();
   const isOpen = activeLeftPanel === 'workflowBuilder';
   const latestTarget = activity.latestVersion;
   const isLatestVersionExpired = useWorkflowBuilderVersionExpired(latestTarget?.version.expiresAt);
@@ -119,20 +114,19 @@ export const useWorkflowBuilderUI = () => {
   const completeGuideStep = useCallback(
     (step: NonNullable<typeof guideStep>) => {
       if (step === 'systemConfig') {
-        setGuideStep(workflowBuilderEntryVisible ? 'workflowBuilder' : undefined);
+        setGuideStep(entryAccess !== 'hidden' ? 'workflowBuilder' : undefined);
         return;
       }
 
       setGuideStep(undefined);
       completeWorkflowBuilderFirstEntryGuide();
-      if (workflowBuilderEnabled && autoOpenAfterGuideRef.current) {
+      if (entryAccess === 'enabled' && autoOpenAfterGuideRef.current) {
         setActiveLeftPanel('workflowBuilder');
         requestInputFocus();
       }
     },
     [
-      workflowBuilderEntryVisible,
-      workflowBuilderEnabled,
+      entryAccess,
       autoOpenAfterGuideRef,
       completeWorkflowBuilderFirstEntryGuide,
       requestInputFocus,
@@ -172,8 +166,7 @@ export const WorkflowBuilderUIInitializer = () => {
   const {
     appId,
     canEdit,
-    workflowBuilderEntryVisible,
-    workflowBuilderEnabled,
+    entryAccess,
     systemInitialized,
     autoOpenAfterGuideRef,
     setActiveLeftPanel,
@@ -197,7 +190,7 @@ export const WorkflowBuilderUIInitializer = () => {
       handledAppIdRef.current = appId;
       const rawFlag = router.query[WORKFLOW_BUILDER_AUTO_OPEN_QUERY_KEY];
       const shouldAutoOpen = Array.isArray(rawFlag) ? rawFlag.includes('1') : rawFlag === '1';
-      autoOpenAfterGuideRef.current = workflowBuilderEnabled && shouldAutoOpen;
+      autoOpenAfterGuideRef.current = entryAccess === 'enabled' && shouldAutoOpen;
 
       if (shouldAutoOpen) {
         const nextQuery = { ...router.query };
@@ -209,8 +202,7 @@ export const WorkflowBuilderUIInitializer = () => {
 
       const initialState = getWorkflowBuilderInitialState({
         canEdit,
-        workflowBuilderEntryVisible,
-        workflowBuilderEnabled,
+        entryAccess,
         shouldAutoOpen,
         hasCompletedSystemConfigFirstEntryGuide,
         hasCompletedWorkflowBuilderFirstEntryGuide
@@ -227,8 +219,7 @@ export const WorkflowBuilderUIInitializer = () => {
   }, [
     appId,
     canEdit,
-    workflowBuilderEntryVisible,
-    workflowBuilderEnabled,
+    entryAccess,
     systemInitialized,
     autoOpenAfterGuideRef,
     router,

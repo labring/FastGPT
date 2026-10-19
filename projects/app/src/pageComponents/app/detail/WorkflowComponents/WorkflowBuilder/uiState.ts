@@ -18,7 +18,8 @@ type WorkflowBuilderInitialState = {
   shouldFocusWorkflowBuilder: boolean;
 };
 
-type WorkflowBuilderEntryAccess = 'hidden' | 'upgrade' | 'enabled';
+/** 入口唯一状态：隐藏、商业升级入口或已启用，避免可见性与可用性组合冲突。 */
+export type WorkflowBuilderEntryAccess = 'hidden' | 'upgrade' | 'enabled';
 
 /** 从路由参数中读取需要旁观的 Builder 会话；空值不覆盖当前成员自己的会话。 */
 export const getWorkflowBuilderWatchChatId = (value?: string | string[]) => {
@@ -75,15 +76,13 @@ export const getWorkflowBuilderEntryAccess = ({
  */
 export const getWorkflowBuilderInitialState = ({
   canEdit,
-  workflowBuilderEntryVisible,
-  workflowBuilderEnabled,
+  entryAccess,
   shouldAutoOpen,
   hasCompletedSystemConfigFirstEntryGuide,
   hasCompletedWorkflowBuilderFirstEntryGuide
 }: {
   canEdit: boolean;
-  workflowBuilderEntryVisible: boolean;
-  workflowBuilderEnabled: boolean;
+  entryAccess: WorkflowBuilderEntryAccess;
   shouldAutoOpen: boolean;
   hasCompletedSystemConfigFirstEntryGuide: boolean;
   hasCompletedWorkflowBuilderFirstEntryGuide: boolean;
@@ -95,7 +94,7 @@ export const getWorkflowBuilderInitialState = ({
     };
   }
 
-  if (!workflowBuilderEntryVisible) {
+  if (entryAccess === 'hidden') {
     const shouldOpenSystemConfig = shouldAutoOpen || !hasCompletedSystemConfigFirstEntryGuide;
 
     return {
@@ -113,7 +112,7 @@ export const getWorkflowBuilderInitialState = ({
     };
   }
 
-  const shouldOpenWorkflowBuilder = workflowBuilderEnabled && shouldAutoOpen;
+  const shouldOpenWorkflowBuilder = entryAccess === 'enabled' && shouldAutoOpen;
 
   return {
     activeLeftPanel: shouldOpenWorkflowBuilder ? 'workflowBuilder' : undefined,

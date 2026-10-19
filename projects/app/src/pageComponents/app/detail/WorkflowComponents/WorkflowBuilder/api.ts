@@ -1,4 +1,4 @@
-import { streamRawFetch } from '@/web/common/api/fetch';
+import { streamFetch } from '@/web/common/api/fetch';
 import { batchDeleteChatHistories, getChatHistories } from '@/web/core/chat/history/api';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
@@ -25,7 +25,7 @@ export const streamWorkflowBuilderChat = ({
   onMessage: StartChatFnProps['generatingMessage'];
   abortCtrl: AbortController;
 }) =>
-  streamRawFetch({
+  streamFetch({
     url: '/api/proApi/core/workflow/builder/chat',
     data,
     onMessage,

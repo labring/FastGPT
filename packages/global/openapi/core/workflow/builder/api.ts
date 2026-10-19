@@ -21,39 +21,38 @@ import { OpenAPIStoreNodeItemTypeSchema } from '../node';
 /** API 边界拒绝文档顶层未知字段；其余字段复用领域契约，保留 Core 的清理语义。 */
 export const WorkflowBuilderDocumentSchema = WorkflowDocumentSchema.strict();
 
-export const WorkflowBuilderChatBodySchema = z
-  .object({
-    appId: ObjectIdSchema.meta({
-      description: '当前 Workflow 应用 ID',
-      example: '67f4c91c79a4d61b1f116b2a'
-    }),
-    chatId: z.string().min(1).meta({
-      description: '工作流辅助生成独立会话 ID',
-      example: 'workflow-builder-chat-id'
-    }),
-    responseChatItemId: z.string().min(1).optional().meta({
-      description: '当前轮 AI 消息 ID',
-      example: 'response-chat-item-id'
-    }),
-    messages: z.array(ChatCompletionMessageParamSchema).min(1).meta({
-      description: '当前轮 ChatBox 消息'
-    }),
-    model: z.string().min(1).optional().meta({
-      description: '工作流辅助生成使用的 LLM 模型',
-      example: 'gpt-5'
-    }),
-    agentPlanAskResponse: AgentPlanAskResponseSchema.optional().meta({
-      description: '用户对当前 Agent 结构化选项的回答'
-    }),
-    workflowContext: z
-      .object({
-        document: WorkflowBuilderDocumentSchema,
-        checksum: WorkflowChecksumSchema
-      })
-      .strict()
-      .meta({ description: '当前画布事实和对应 checksum' })
-  })
-  .strict();
+/** 复用通用聊天传输层，过滤其附带的运行参数，仅保留 Builder 业务字段。 */
+export const WorkflowBuilderChatBodySchema = z.object({
+  appId: ObjectIdSchema.meta({
+    description: '当前 Workflow 应用 ID',
+    example: '67f4c91c79a4d61b1f116b2a'
+  }),
+  chatId: z.string().min(1).meta({
+    description: '工作流辅助生成独立会话 ID',
+    example: 'workflow-builder-chat-id'
+  }),
+  responseChatItemId: z.string().min(1).optional().meta({
+    description: '当前轮 AI 消息 ID',
+    example: 'response-chat-item-id'
+  }),
+  messages: z.array(ChatCompletionMessageParamSchema).min(1).meta({
+    description: '当前轮 ChatBox 消息'
+  }),
+  model: z.string().min(1).optional().meta({
+    description: '工作流辅助生成使用的 LLM 模型',
+    example: 'gpt-5'
+  }),
+  agentPlanAskResponse: AgentPlanAskResponseSchema.optional().meta({
+    description: '用户对当前 Agent 结构化选项的回答'
+  }),
+  workflowContext: z
+    .object({
+      document: WorkflowBuilderDocumentSchema,
+      checksum: WorkflowChecksumSchema
+    })
+    .strict()
+    .meta({ description: '当前画布事实和对应 checksum' })
+});
 
 export type WorkflowBuilderChatBody = z.infer<typeof WorkflowBuilderChatBodySchema>;
 

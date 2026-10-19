@@ -69,6 +69,7 @@ vi.mock(
   '@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/hooks/useWorkflowBuilderUI',
   () => ({
     useWorkflowBuilderUI: () => ({
+      entryAccess: 'enabled',
       isOpen: true,
       showLatestBanner: true,
       latestTarget: { version: mocks.latestVersion, responseChatItemId: 'response-2' },
@@ -170,9 +171,7 @@ describe('WorkflowBuilder applyVersion', () => {
     root = createRoot(dom.window.document.getElementById('root')!);
     toastRoot = createRoot(dom.window.document.getElementById('toast')!);
     mocks.toast.mockImplementation(({ render }) => toastRoot.render(render()));
-    await act(async () =>
-      root.render(React.createElement(WorkflowBuilder, { workflowBuilderEnabled: true }))
-    );
+    await act(async () => root.render(React.createElement(WorkflowBuilder)));
   });
 
   afterEach(async () => {

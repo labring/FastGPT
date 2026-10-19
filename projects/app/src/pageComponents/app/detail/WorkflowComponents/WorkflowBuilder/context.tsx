@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
+import type { WorkflowBuilderEntryAccess } from './uiState';
 
 type WorkflowBuilderLeftPanel = 'workflowBuilder' | 'nodeTemplates' | 'systemConfig';
 type WorkflowBuilderGuideStep = 'systemConfig' | 'workflowBuilder';
@@ -19,8 +20,7 @@ export type WorkflowBuilderActivity = {
 type WorkflowBuilderUIConfig = {
   appId: string;
   canEdit: boolean;
-  workflowBuilderEntryVisible: boolean;
-  workflowBuilderEnabled: boolean;
+  entryAccess: WorkflowBuilderEntryAccess;
   systemInitialized: boolean;
 };
 
@@ -49,8 +49,7 @@ const DEFAULT_ACTIVITY: WorkflowBuilderActivity = {
 export const WorkflowBuilderUIContext = createContext<WorkflowBuilderUIState>({
   appId: '',
   canEdit: false,
-  workflowBuilderEntryVisible: false,
-  workflowBuilderEnabled: false,
+  entryAccess: 'hidden',
   systemInitialized: false,
   workflowCanvasRef: { current: null },
   autoOpenAfterGuideRef: { current: false },
@@ -72,8 +71,7 @@ export const WorkflowBuilderUIContext = createContext<WorkflowBuilderUIState>({
 export const WorkflowBuilderUIProvider = ({
   appId,
   canEdit,
-  workflowBuilderEntryVisible,
-  workflowBuilderEnabled,
+  entryAccess,
   systemInitialized,
   children
 }: React.PropsWithChildren<WorkflowBuilderUIConfig>) => {
@@ -90,8 +88,7 @@ export const WorkflowBuilderUIProvider = ({
     () => ({
       appId,
       canEdit,
-      workflowBuilderEntryVisible,
-      workflowBuilderEnabled,
+      entryAccess,
       systemInitialized,
       workflowCanvasRef,
       autoOpenAfterGuideRef,
@@ -111,8 +108,7 @@ export const WorkflowBuilderUIProvider = ({
     [
       appId,
       canEdit,
-      workflowBuilderEntryVisible,
-      workflowBuilderEnabled,
+      entryAccess,
       systemInitialized,
       activeLeftPanel,
       guideStep,

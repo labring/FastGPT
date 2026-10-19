@@ -199,8 +199,7 @@ describe('Workflow Builder Web Adapter', () => {
     expect(
       getWorkflowBuilderInitialState({
         canEdit: true,
-        workflowBuilderEntryVisible: false,
-        workflowBuilderEnabled: false,
+        entryAccess: 'hidden',
         shouldAutoOpen: true,
         hasCompletedSystemConfigFirstEntryGuide: true,
         hasCompletedWorkflowBuilderFirstEntryGuide: false
@@ -216,8 +215,7 @@ describe('Workflow Builder Web Adapter', () => {
     expect(
       getWorkflowBuilderInitialState({
         canEdit: true,
-        workflowBuilderEntryVisible: false,
-        workflowBuilderEnabled: false,
+        entryAccess: 'hidden',
         shouldAutoOpen: false,
         hasCompletedSystemConfigFirstEntryGuide: false,
         hasCompletedWorkflowBuilderFirstEntryGuide: false
@@ -233,8 +231,7 @@ describe('Workflow Builder Web Adapter', () => {
     expect(
       getWorkflowBuilderInitialState({
         canEdit: false,
-        workflowBuilderEntryVisible: false,
-        workflowBuilderEnabled: false,
+        entryAccess: 'hidden',
         shouldAutoOpen: true,
         hasCompletedSystemConfigFirstEntryGuide: false,
         hasCompletedWorkflowBuilderFirstEntryGuide: false
@@ -249,8 +246,7 @@ describe('Workflow Builder Web Adapter', () => {
     expect(
       getWorkflowBuilderInitialState({
         canEdit: true,
-        workflowBuilderEntryVisible: true,
-        workflowBuilderEnabled: false,
+        entryAccess: 'upgrade',
         shouldAutoOpen: true,
         hasCompletedSystemConfigFirstEntryGuide: true,
         hasCompletedWorkflowBuilderFirstEntryGuide: false
@@ -266,8 +262,7 @@ describe('Workflow Builder Web Adapter', () => {
     expect(
       getWorkflowBuilderInitialState({
         canEdit: true,
-        workflowBuilderEntryVisible: true,
-        workflowBuilderEnabled: false,
+        entryAccess: 'upgrade',
         shouldAutoOpen: true,
         hasCompletedSystemConfigFirstEntryGuide: true,
         hasCompletedWorkflowBuilderFirstEntryGuide: true
@@ -283,8 +278,7 @@ describe('Workflow Builder Web Adapter', () => {
     expect(
       getWorkflowBuilderInitialState({
         canEdit: true,
-        workflowBuilderEntryVisible: true,
-        workflowBuilderEnabled: true,
+        entryAccess: 'enabled',
         shouldAutoOpen: true,
         hasCompletedSystemConfigFirstEntryGuide: true,
         hasCompletedWorkflowBuilderFirstEntryGuide: false
@@ -300,8 +294,7 @@ describe('Workflow Builder Web Adapter', () => {
     expect(
       getWorkflowBuilderInitialState({
         canEdit: true,
-        workflowBuilderEntryVisible: true,
-        workflowBuilderEnabled: true,
+        entryAccess: 'enabled',
         shouldAutoOpen: true,
         hasCompletedSystemConfigFirstEntryGuide: true,
         hasCompletedWorkflowBuilderFirstEntryGuide: true
@@ -687,7 +680,7 @@ describe('Workflow Builder Web Adapter', () => {
     expect(restartChat).not.toHaveBeenCalled();
   });
 
-  it('sends only the strict Builder contract while ordinary chat keeps runtime fields', async () => {
+  it('accepts the shared chat transport body and strips extra runtime fields', async () => {
     const appId = '67f4c91c79a4d61b1f116b2a';
     const document = WorkflowDocumentSchema.parse(structuredClone(fixture));
     document.app.appId = appId;
@@ -701,11 +694,15 @@ describe('Workflow Builder Web Adapter', () => {
       }
     };
 
-    const builderBody = buildStreamFetchBody({ data: requestBody, requestMode: 'raw' });
+    const builderBody = buildStreamFetchBody({ data: requestBody });
+    expect(builderBody).toMatchObject({
+      ...requestBody,
+      variables: { cTime: expect.any(String) },
+      detail: true,
+      stream: true,
+      retainDatasetCite: true
+    });
     expect(WorkflowBuilderChatBodySchema.parse(builderBody)).toEqual(requestBody);
-    expect(builderBody).not.toHaveProperty('variables');
-    expect(builderBody).not.toHaveProperty('detail');
-    expect(builderBody).not.toHaveProperty('stream');
 
     expect(buildStreamFetchBody({ data: { variables: { input: 'value' } } })).toMatchObject({
       variables: { input: 'value', cTime: expect.any(String) },

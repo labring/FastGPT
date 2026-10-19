@@ -1,19 +1,20 @@
 import type { AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { type ShareChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { authOutLinkValid } from '@fastgpt/service/support/permission/publish/authLink';
+import { authOutLinkValid } from './authLink';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
 import { type ShareOutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
-import { authOutLinkInit, authOutLinkLimit } from '@fastgpt/service/support/outLink/runtime/auth';
-import { isProVersion } from '@fastgpt/service/common/system/constants';
-import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
+import { authOutLinkInit, authOutLinkLimit } from '../../outLink/runtime/auth';
+import { isProVersion } from '../../../common/system/constants';
+import { authAppByTmbId } from '../app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import type { NodeHttpRequest } from '@fastgpt/service/types/http';
-import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import type { NodeHttpRequest } from '../../../types/http';
+import { parseHeaderCert } from '../auth/common';
+import { MongoTeamMember } from '../../user/team/teamMemberSchema';
 import { notLeaveStatus } from '@fastgpt/global/support/user/team/constant';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 
+/** 受保护外链按链接所属团队解析登录成员，并校验应用读取权限。 */
 const authOutLinkAppAccess = async ({
   req,
   outLinkConfig
@@ -55,6 +56,7 @@ const authOutLinkAppAccess = async ({
   return { tmbId: memberTmbId };
 };
 
+/** 校验外链及应用访问资格，再通过发布配置中的身份钩子解析可信会话 UID。 */
 export const authOutLink = async ({
   shareId,
   outLinkUid,
