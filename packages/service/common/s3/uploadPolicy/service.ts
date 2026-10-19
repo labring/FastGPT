@@ -375,14 +375,22 @@ export const resolveUploadFile = ({
     // 同时 BOM 的 UTF-16 文本即使被 file-type 误判成 audio/mpeg 也能按后缀收下。
     const textRuleAcceptsDetectedText =
       explicitRule?.verification === 'text' && evidence.isTextLike;
+    // 无声明后缀时需要让文本兜底先于 file-type 的 MIME 结论：BOM 是 UTF-16 文本的
+    // 强特征，但 file-type 会把 `FF FE` 误判成 audio/mpeg。
+    const textFallbackExtension =
+      !explicitExtension && evidence.isTextLike ? policy.textFallbackExtension || '' : '';
+    const textFallbackAcceptsDetectedText =
+      Boolean(textFallbackExtension) &&
+      (!allowedExtensions.length || allowedExtensions.includes(textFallbackExtension));
+    const acceptedAsText = textRuleAcceptsDetectedText || textFallbackAcceptsDetectedText;
 
     // 显式的可验证后缀必须与内容一致，不能因为检测出的另一种类型也在白名单中就静默改名。
-    if (explicitExtension && !detectedMatchesExpected && !textRuleAcceptsDetectedText) {
+    if (explicitExtension && !detectedMatchesExpected && !acceptedAsText) {
       throw new Error(S3ErrEnum.uploadFileTypeMismatch);
     }
 
     const detectedMatchesPolicy = (() => {
-      if (textRuleAcceptsDetectedText) return true;
+      if (acceptedAsText) return true;
 
       if (!allowedExtensions.length) {
         return expectedMime === DEFAULT_CONTENT_TYPE || detectedMatchesExpected;
@@ -397,12 +405,16 @@ export const resolveUploadFile = ({
 
     const resolvedExtension = explicitExtension
       ? explicitExtension
-      : matchedAllowedExtension || evidence.officeExtension || evidence.detectedExtension || '';
+      : textFallbackAcceptsDetectedText
+        ? textFallbackExtension
+        : matchedAllowedExtension || evidence.officeExtension || evidence.detectedExtension || '';
     return {
       filename: resolveAcceptedFilename({ filename, extension: resolvedExtension }),
-      contentType: textRuleAcceptsDetectedText ? expectedMime : evidence.detectedMime,
+      contentType: acceptedAsText
+        ? resolveMimeType([resolvedExtension], expectedMime)
+        : evidence.detectedMime,
       extension: resolvedExtension,
-      detectionSource: textRuleAcceptsDetectedText
+      detectionSource: acceptedAsText
         ? 'text'
         : evidence.source === 'office-zip'
           ? 'office-zip'

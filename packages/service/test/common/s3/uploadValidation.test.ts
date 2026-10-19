@@ -212,6 +212,25 @@ describe('validateUploadFile', () => {
     });
   });
 
+  it('accepts extensionless bom-prefixed utf-16 text when text fallback is allowed', async () => {
+    const utf16 = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from('hello world', 'utf16le')]);
+    await expect(
+      validateUploadFile({
+        buffer: utf16,
+        filename: 'notes',
+        uploadConstraints: {
+          allowedExtensions: ['.txt']
+        }
+      })
+    ).resolves.toMatchObject({
+      filename: 'notes.txt',
+      contentType: 'text/plain',
+      extension: '.txt',
+      detectionSource: 'text',
+      correctedFilename: true
+    });
+  });
+
   it('keeps the detected type hint for an extensionless vcard file', async () => {
     await expect(
       validateUploadFile({
