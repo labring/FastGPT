@@ -51,26 +51,13 @@ const keepWholeNumberDigits = (worksheet: XLSX.WorkSheet) => {
 };
 
 /**
- * Excel 默认的短日期（内置格式 14）和日期时间（内置格式 22）按操作系统的区域设置显示，
- * 中文 Excel 显示为 2026/10/17。SheetJS 却固定按美国格式 m/d/yy 写出，同一个日期读出来是
- * "10/17/26"：年份只剩两位，日和月的顺序也无法判断。对这两个内置格式改写为 ISO 日期，
- * 用户显式设置的日期格式保持 SheetJS 原有文本。
+ * SheetJS 将默认短日期和日期时间写成有歧义的两位年份格式。
+ * 按解析后的格式串匹配，因此采用相同格式串的自定义格式也统一处理。
  */
 const ISO_FOR_LOCALE_DATE_FORMATS = new Map<string, string>([
   [XLSX.SSF.get_table()[14] as string, 'yyyy-mm-dd'],
   [XLSX.SSF.get_table()[22] as string, 'yyyy-mm-dd hh:mm']
 ]);
-
-const writeLocaleDatesAsIso = (worksheet: XLSX.WorkSheet) => {
-  for (const address of Object.keys(worksheet)) {
-    if (address.startsWith('!')) continue;
-    const cell = worksheet[address] as XLSX.CellObject;
-    const isoFormat = typeof cell.z === 'string' ? ISO_FOR_LOCALE_DATE_FORMATS.get(cell.z) : '';
-    if (isoFormat && (cell.t === 'd' || cell.t === 'n') && cell.v !== undefined) {
-      cell.w = XLSX.SSF.format(isoFormat, cell.v);
-    }
-  }
-};
 
 /**
  * 将 XLSX 转换为 CSV 原文和 Markdown 表格。
@@ -89,8 +76,9 @@ export const readXlsxRawText = async ({
 
   const workbook = XLSX.read(buffer, {
     type: 'buffer',
-    cellDates: true,
-    // 保留单元格数字格式，用于识别被“常规”格式改写为科学计数法的整数。
+    // 保留 Excel 日期序列值；转成 Date 会丢失 1904 日期系统信息并引入本地时区转换。
+    cellDates: false,
+    // 保留格式串，用于识别默认日期格式和被“常规”格式改写为科学计数法的整数。
     cellNF: true,
     // 预检已验证真实坐标；这里继续截断，避免后续依赖升级意外绕过纵深保护。
     sheetRows: XLSX_PARSE_LIMITS.maxRows
@@ -179,6 +167,25 @@ export const readXlsxRawText = async ({
       sheetRange
     };
   });
+
+  /**
+   * 用原始日期序列值和工作簿日期系统生成无歧义的文本，避免 Date 往返导致日期或时间偏移。
+   * 只覆盖目标格式数值单元格的显示文本；其他日期格式、纯时间和文本单元格保持原样。
+   */
+  const writeLocaleDatesAsIso = (worksheet: XLSX.WorkSheet) => {
+    const formatOptions = { date1904: workbook.Workbook?.WBProps?.date1904 ?? false };
+
+    for (const address of Object.keys(worksheet)) {
+      if (address.startsWith('!')) continue;
+      const cell = worksheet[address] as XLSX.CellObject;
+      if (cell.t !== 'n' || typeof cell.v !== 'number' || typeof cell.z !== 'string') continue;
+
+      const isoFormat = ISO_FOR_LOCALE_DATE_FORMATS.get(cell.z);
+      if (isoFormat) {
+        cell.w = XLSX.SSF.format(isoFormat, cell.v, formatOptions);
+      }
+    }
+  };
 
   const result = worksheets.map(({ name, worksheet, merges, sheetRange }) => {
     keepWholeNumberDigits(worksheet);
