@@ -27,6 +27,18 @@ describe('parseFileExtensionFromUrl', () => {
     );
   });
 
+  it('should parse extension from filename query param containing a percent sign', () => {
+    expect(
+      parseFileExtensionFromUrl('/api/system/file/download/token123?filename=100%25%20done.pdf')
+    ).toBe('pdf');
+    expect(parseFileExtensionFromUrl('/api/system/file/d/abc?name=50%25off.xlsx')).toBe('xlsx');
+  });
+
+  it('should preserve literal percent escapes in query filenames', () => {
+    expect(parseFileExtensionFromUrl('/api/system/file/d/abc?filename=report%252Epdf')).toBe('');
+    expect(parseFileExtensionFromUrl('/api/system/file/d/abc?name=report.%2570df')).toBe('%70df');
+  });
+
   it('should not handle hash in URL (returns extension with hash)', () => {
     expect(parseFileExtensionFromUrl('http://example.com/file.pdf#page=1')).toBe('pdf');
     expect(parseFileExtensionFromUrl('https://example.com/image.jpg#section')).toBe('jpg');

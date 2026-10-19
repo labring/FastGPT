@@ -17,12 +17,14 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { deepRagSearch, defaultSearchDatasetData } from '@fastgpt/service/core/dataset/search';
-import { getDatasetSearchAuxiliaryModels } from '@fastgpt/service/core/dataset/search/auxiliaryModels';
 import { findFirstDatasetSearchVlmModel } from '@fastgpt/service/core/dataset/search/vlm';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { resolveReadableCollectionIds } from '@fastgpt/service/support/permission/collection/auth';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { assertAuthModels } from '@fastgpt/service/support/permission/model/auth';
+import {
+  assertAuthModels,
+  getAuthorizedModelIds
+} from '@fastgpt/service/support/permission/model/auth';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import type { NextApiResponse } from 'next';
@@ -100,22 +102,33 @@ export async function handler(
   );
 
   const modelHandle = await getTeamModelHandle({ teamId });
-  const { rerankModelData, extensionModelData } = getDatasetSearchAuxiliaryModels(
-    {
-      usingReRank,
-      rerankModelId,
-      rerankModel,
-      datasetSearchUsingExtensionQuery,
-      datasetSearchExtensionModelId,
-      datasetSearchExtensionModel
-    },
-    modelHandle
-  );
+  const authorizedIds = await getAuthorizedModelIds({
+    actor: { teamId, tmbId, isRoot },
+    handle: modelHandle
+  });
+  const rerankModelData = usingReRank
+    ? modelHandle.getModelData(
+        { modelId: rerankModelId, model: rerankModel },
+        { type: 'rerank', fallbackToDefault: true, authorizedIds }
+      )
+    : undefined;
+  const extensionModelData = datasetSearchUsingExtensionQuery
+    ? modelHandle.getModelData(
+        {
+          modelId: datasetSearchExtensionModelId,
+          model: datasetSearchExtensionModel
+        },
+        { type: 'llm', fallbackToDefault: true, authorizedIds }
+      )
+    : undefined;
   const deepSearchModelData = datasetDeepSearch
-    ? modelHandle.getLLMModelData({
-        modelId: datasetDeepSearchModelId,
-        model: datasetDeepSearchModel
-      })
+    ? modelHandle.getModelData(
+        {
+          modelId: datasetDeepSearchModelId,
+          model: datasetDeepSearchModel
+        },
+        { type: 'llm', authorizedIds }
+      )
     : undefined;
 
   const auxiliaryModels = [rerankModelData, extensionModelData, deepSearchModelData].filter(
@@ -128,8 +141,9 @@ export async function handler(
     handle: modelHandle
   });
 
-  const embeddingModelData = modelHandle.getEmbeddingModelData(
-    getDatasetModelReference(dataset, 'embedding')
+  const embeddingModelData = modelHandle.getModelData(
+    getDatasetModelReference(dataset, 'embedding'),
+    { type: 'embedding' }
   );
   const vlmModelData = findFirstDatasetSearchVlmModel([dataset], modelHandle);
 

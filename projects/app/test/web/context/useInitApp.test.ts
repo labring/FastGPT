@@ -3,6 +3,9 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useInitApp } from '@/web/context/useInitApp';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest as ahooksUseRequest } from 'ahooks';
+import { clientInitData } from '@/web/common/system/staticData';
 import ClientRouteReadyGate from '@/web/context/ClientRouteReadyGate';
 
 const mocks = vi.hoisted(() => ({
@@ -18,7 +21,8 @@ const mocks = vi.hoisted(() => ({
   initFastGPTSemSourceDomain: vi.fn(),
   setUtmParams: vi.fn(),
   setFastGPTSem: vi.fn(),
-  setCouponCode: vi.fn()
+  setCouponCode: vi.fn(),
+  userInfo: null as { username: string } | null
 }));
 
 vi.mock('next/router', () => ({
@@ -42,7 +46,7 @@ vi.mock('@/web/common/system/useSystemStore', () => ({
 }));
 
 vi.mock('@/web/support/user/useUserStore', () => ({
-  useUserStore: () => ({ userInfo: null })
+  useUserStore: () => ({ userInfo: mocks.userInfo })
 }));
 
 vi.mock('@/web/support/marketing/utils', () => ({
@@ -85,6 +89,7 @@ describe('useInitApp marketing params inside AppShell', () => {
     vi.clearAllMocks();
     mocks.router.isReady = false;
     mocks.router.query = {};
+    mocks.userInfo = null;
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -95,6 +100,7 @@ describe('useInitApp marketing params inside AppShell', () => {
     container.remove();
     window.close();
     vi.unstubAllGlobals();
+    vi.mocked(useRequest).mockReset();
   });
 
   it('waits for CSR query restoration at the application gate before consuming params', async () => {
@@ -162,5 +168,25 @@ describe('useInitApp marketing params inside AppShell', () => {
       shortUrlMedium: 'email',
       shortUrlContent: 'chat'
     });
+  });
+  it('refreshes initialization once after login and preserves the original username dependency', async () => {
+    vi.mocked(useRequest).mockImplementation(ahooksUseRequest);
+    mocks.router.isReady = true;
+    await render();
+    expect(clientInitData).toHaveBeenCalledTimes(1);
+
+    mocks.userInfo = { username: 'member' };
+    await render();
+    expect(clientInitData).toHaveBeenCalledTimes(2);
+
+    // 资料更新和页面切换不改变用户名，因此不增加初始化请求。
+    mocks.userInfo = { username: 'member' };
+    mocks.router.pathname = '/price';
+    await render();
+    expect(clientInitData).toHaveBeenCalledTimes(2);
+
+    mocks.userInfo = null;
+    await render();
+    expect(clientInitData).toHaveBeenCalledTimes(3);
   });
 });

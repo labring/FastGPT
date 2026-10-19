@@ -13,6 +13,7 @@ import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import type { TeamPlanStandardType } from '@fastgpt/global/support/wallet/sub/type';
+import { getFileUploadLimits } from '@fastgpt/global/common/file/limit';
 
 const ModelPriceModal = dynamic(() =>
   import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
@@ -41,6 +42,17 @@ const StandardPlanContentList = ({
     const plan = subPlans?.standard?.[effectiveLevel];
 
     if (!plan) return;
+    const uploadLimits = getFileUploadLimits({
+      teamPlan: {
+        maxUploadFileSize: standplan?.maxUploadFileSize,
+        maxUploadFileCount: standplan?.maxUploadFileCount
+      },
+      plan,
+      systemLimit: {
+        uploadFileMaxSize: feConfigs.limit.uploadFileMaxSize,
+        uploadFileMaxAmount: feConfigs.limit.uploadFileMaxAmount
+      }
+    });
     // For wecom free plan (trial), use WecomFreePlan constants
 
     return {
@@ -68,12 +80,8 @@ const StandardPlanContentList = ({
       appRegistrationCount: standplan?.appRegistrationCount ?? plan.appRegistrationCount,
       ticketResponseTime: standplan?.ticketResponseTime ?? plan.ticketResponseTime,
       customDomain: standplan?.customDomain ?? plan.customDomain,
-      maxUploadFileSize: formatFileSize(
-        (standplan?.maxUploadFileSize || plan.maxUploadFileSize || feConfigs.uploadFileMaxSize) *
-          1024 ** 2
-      ),
-      maxUploadFileCount:
-        standplan?.maxUploadFileCount || plan.maxUploadFileCount || feConfigs.uploadFileMaxAmount,
+      maxUploadFileSize: formatFileSize(uploadLimits.maxUploadFileSize * 1024 ** 2),
+      maxUploadFileCount: uploadLimits.maxUploadFileCount,
       enableSandbox: standplan?.enableSandbox ?? plan.enableSandbox
     };
   }, [
@@ -97,8 +105,8 @@ const StandardPlanContentList = ({
     standplan?.maxUploadFileSize,
     standplan?.maxUploadFileCount,
     standplan?.enableSandbox,
-    feConfigs?.uploadFileMaxSize,
-    feConfigs?.uploadFileMaxAmount
+    feConfigs.limit.uploadFileMaxSize,
+    feConfigs.limit.uploadFileMaxAmount
   ]);
 
   return planContent ? (

@@ -1,10 +1,10 @@
 import {
   AppFormEditFormV1TypeSchema,
   type SelectedAgentSkillItemType,
-  type SelectedToolItemType
+  type SelectedToolItemType,
+  type AppFormEditFormType
 } from '@fastgpt/global/core/app/formEdit/type';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
-import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type {
   FlowNodeTemplateType,
   StoreNodeItemType
@@ -18,8 +18,7 @@ import {
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-
-import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
   WorkflowStart,
   userFilesInput
@@ -29,7 +28,7 @@ import { workflowStartNodeId } from '@/web/core/app/constants';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent/index';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
+import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import { Input_Template_File_Link } from '@fastgpt/global/core/workflow/template/input';
 import {
   canInputBeAgentGenerated,

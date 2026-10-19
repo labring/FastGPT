@@ -3,6 +3,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
+import { clearChatInputDrafts } from '../inputDraft/storage';
 
 export enum AgentChatTestTabEnum {
   helper = 'helper',
@@ -283,6 +284,7 @@ export const useChatStore = create<State>()(
           });
         },
         resetChatCache() {
+          clearChatInputDrafts();
           set((state) => {
             state.source = undefined;
             state.appId = '';

@@ -5,7 +5,11 @@ import type {
   ChatHistoryItemResType,
   ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type';
-import type { NodeOutputItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type {
+  NodeOutputItemType,
+  RuntimeNodeItemType,
+  WorkflowResourceContext
+} from '@fastgpt/global/core/workflow/runtime/type';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -18,7 +22,6 @@ import type {
   NodeEdgeGroups,
   NodeEdgeGroupsMap
 } from '../types/runtime';
-import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { filterWorkflowEdges, valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import type {
@@ -41,7 +44,7 @@ import {
   mergeWorkflowRuntimeSummary
 } from './utils/summary';
 import { getEntryPointRuntimeVariables, WorkflowVariableState } from './utils/variables';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { callbackMap } from './constants';
 import { getUserChatInfo } from '../../../support/user/team/utils';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
@@ -72,7 +75,6 @@ import {
 import { createWorkflowNodeResponseScope } from './nodeResponseSink';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isWorkflowSseResponseInitialized } from '../utils/streamResponseContext';
-import { assertWorkflowNodeModelResources } from '../utils/resource';
 import {
   addWorkflowStepEvent,
   getWorkflowStepStatus,
@@ -83,7 +85,6 @@ import { getWorkflowNodeRunParams } from './utils/runtime';
 import type { AgentSandboxPrepareAction } from './ai/agent/sub/sandbox';
 import { getWorkflowSource } from './utils/source';
 import { prepareWorkflowFileContext } from '../utils/fileContext';
-import type { WorkflowResourceContext } from '../utils/resource';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -188,7 +189,12 @@ export async function dispatchWorkFlow({
   };
 
   const [{ timezone, externalProvider }, newUsageId, runtimeHistories] = await Promise.all([
-    getUserChatInfo(runningUserInfo.tmbId),
+    runningUserInfo.externalProvider
+      ? {
+          timezone: runningUserInfo.timezone ?? 'Asia/Shanghai',
+          externalProvider: runningUserInfo.externalProvider
+        }
+      : getUserChatInfo(runningUserInfo.tmbId),
     (() => {
       if (lastInteractive?.usageId) {
         return lastInteractive.usageId;
@@ -876,14 +882,6 @@ export class WorkflowQueue {
           const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
 
           try {
-            // 模型资源校验必须在 try 内：失败时走节点错误分支（支持 catchError），
-            // 否则异常会冲出调度循环，导致整个工作流无输出。
-            await assertWorkflowNodeModelResources({
-              node,
-              params,
-              teamId: this.data.runningUserInfo.teamId,
-              tmbId: this.data.runningUserInfo.tmbId
-            });
             const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
 
             if (result.error) {

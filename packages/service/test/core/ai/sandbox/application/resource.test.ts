@@ -146,6 +146,27 @@ describe('sandbox resource lifecycle', () => {
     );
   });
 
+  it.each(['provisioning', 'restoring'])(
+    'does not delete a recent failed %s operation whose remote call may still be active',
+    async (status) => {
+      mocks.findSandboxInstanceBySandboxId.mockResolvedValue(
+        createResource({
+          status,
+          operation: {
+            id: 'failed',
+            type: status === 'provisioning' ? 'provision' : 'restore',
+            phase: 'claimed',
+            heartbeatAt: new Date(),
+            error: 'request timed out'
+          }
+        })
+      );
+      await expect(deleteSandboxResource(createResource())).rejects.toThrow('isolation window');
+      expect(mocks.buildSandboxResourceAdapter).not.toHaveBeenCalled();
+      expect(mocks.claimSandboxOperation).not.toHaveBeenCalled();
+    }
+  );
+
   it('uses the cron candidate timestamp so a concurrent touch wins the stop CAS', async () => {
     const candidate = createResource({
       lastActiveAt: new Date('2026-07-01T00:00:00.000Z')
@@ -187,6 +208,7 @@ describe('sandbox resource lifecycle', () => {
 
   it('re-fences stale stopping operations before replaying provider stop', async () => {
     const stale = createClaimed('stopping', 'stop');
+    stale.operation.heartbeatAt = new Date(0);
     mocks.findStaleSandboxOperations.mockResolvedValueOnce([stale]);
     mocks.findSandboxInstanceBySandboxId.mockResolvedValueOnce(stale);
 
@@ -194,7 +216,8 @@ describe('sandbox resource lifecycle', () => {
 
     expect(mocks.findStaleSandboxOperations).toHaveBeenCalledWith({
       statuses: ['stopping'],
-      heartbeatBefore: new Date('2026-07-09T23:45:00.000Z')
+      now: new Date('2026-07-10T00:00:00.000Z'),
+      heartbeatBefore: new Date('2026-07-09T23:55:00.000Z')
     });
     expect(mocks.claimSandboxOperation).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -238,6 +261,7 @@ describe('sandbox resource lifecycle', () => {
   it('finishes archiveDeleted delete phase without replaying remote side effects', async () => {
     const deleting = createClaimed('deleting', 'delete');
     deleting.operation.phase = 'archiveDeleted';
+    deleting.operation.heartbeatAt = new Date(0);
     const reclaimed = createClaimed('deleting', 'delete');
     reclaimed.operation.id = 'resumed-delete';
     reclaimed.operation.phase = 'archiveDeleted';

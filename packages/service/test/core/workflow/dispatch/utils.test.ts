@@ -993,6 +993,71 @@ describe('rewriteRuntimeWorkFlow', () => {
       ...opts
     }) as any;
 
+  it.each(['mcp', 'http'] as const)(
+    'fills a standalone %s child schema outside the snapshot tool selection',
+    async (source) => {
+      const schema = {
+        type: 'object',
+        properties: { query: { type: 'string', isToolParam: true } }
+      };
+      const node = makeNode('child', FlowNodeTypeEnum.tool, {
+        toolConfig: {
+          [source === 'mcp' ? 'mcpTool' : 'httpTool']: { toolId: `${source}-toolset-1/memberTool` }
+        }
+      });
+      mockMongoAppFindOne.mockReturnValue({
+        lean: vi.fn().mockResolvedValue({
+          _id: 'toolset-1',
+          modules: [
+            {
+              toolConfig: {
+                [source === 'mcp' ? 'mcpToolSet' : 'httpToolSet']: {
+                  toolList: [
+                    {
+                      name: 'memberTool',
+                      description: 'Member tool',
+                      inputSchema: schema,
+                      requestSchema: schema
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        })
+      });
+
+      await runWithContext(
+        {
+          mcpClientMemory: {},
+          resourceContext: {
+            isRoot: false,
+            resourceMap: new Map([
+              [
+                'tool:toolset-1',
+                {
+                  type: 'tool',
+                  id: 'toolset-1',
+                  data: { toolNames: ['staticTool'] }
+                }
+              ]
+            ])
+          }
+        },
+        () =>
+          rewriteRuntimeWorkFlow({
+            teamId: 'team1',
+            tmbId: 'tmb1',
+            nodes: [node],
+            edges: []
+          })
+      );
+
+      expect(node.jsonSchema).toEqual(schema);
+      expect(node.inputs).toContainEqual(expect.objectContaining({ key: 'query' }));
+    }
+  );
+
   it('should return early when no toolSet nodes', async () => {
     const nodes = [makeNode('n1', FlowNodeTypeEnum.chatNode)];
     const edges = [makeEdge('n1', 'n2')];

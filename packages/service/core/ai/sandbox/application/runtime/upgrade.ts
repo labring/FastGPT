@@ -2,27 +2,17 @@ import type {
   SandboxImageConfigType,
   SandboxRuntimeStatusResponse
 } from '@fastgpt/global/core/ai/sandbox/type';
-import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
-import { subMinutes } from 'date-fns';
 import {
   findSandboxInstanceBySandboxId,
-  findSandboxResourcesBySource,
   type SandboxResourceDoc
 } from '../../infrastructure/instance/repository';
-import { getConfiguredSandboxProvider } from '../../infrastructure/provider/config';
 import type { SandboxProviderType } from '../../type';
-import { SandboxInstanceStatusEnum } from '../../type';
-import {
-  archiveSandboxResourceNow,
-  SANDBOX_STALE_ARCHIVING_MINUTES,
-  startSandboxRuntimeUpgradeArchive
-} from '../archive';
-import { migrateSandboxProviderBeforeUse } from '../providerMigration';
-import { isRedisLeaseError } from '@fastgpt/dal/redis/caches';
+import { SandboxInstanceStatusEnum } from '../../constants';
+import { startSandboxRuntimeUpgradeArchive } from '../archive';
 import { createSandboxRuntimeUpgradeFailedError } from '../../error';
-import type { SandboxClientQuery } from './client';
-import { SANDBOX_PROVISIONING_STALE_MS } from './constants';
-import { isSandboxRuntimeImageMatched, resolveSandboxRuntimeImage } from './image';
+import type { SandboxClientQuery } from './type';
+import { isSandboxActivationRecoverable, canResumeSandboxOperation } from '../lifecycle/utils';
+import { isSandboxRuntimeImageMatched } from './image';
 
 export type SandboxRuntimeUpgradeTarget = {
   sandboxId: string;
@@ -31,9 +21,6 @@ export type SandboxRuntimeUpgradeTarget = {
   statusInstance?: SandboxResourceDoc | null;
   upgradeInstance?: SandboxResourceDoc | null;
 };
-
-const APP_RUNTIME_MIGRATION_POLL_INTERVAL_MS = 1000;
-const APP_RUNTIME_MIGRATION_WAIT_TIMEOUT_MS = SANDBOX_STALE_ARCHIVING_MINUTES * 60 * 1000;
 
 /** 判断生命周期状态是否正在占用 runtime，调用方只能轮询，不能并发连接实例。 */
 export const isSandboxRuntimeUpgradeBusyState = (state?: string) =>
@@ -81,7 +68,7 @@ export function resolveSandboxRuntimeUpgradeTarget({
   const isOutdatedStableInstance = (instance: SandboxResourceDoc) =>
     isStableInstance(instance) && !isSandboxRuntimeImageMatched(targetImage, instance.image);
   const isFailedArchivePrerequisite = (instance: SandboxResourceDoc) =>
-    Boolean(instance.operation?.error) &&
+    canResumeSandboxOperation(instance) &&
     (instance.status === SandboxInstanceStatusEnum.stopping ||
       instance.status === SandboxInstanceStatusEnum.archiving);
   const canStartRuntimeUpgradeArchive = (instance: SandboxResourceDoc) =>
@@ -119,34 +106,23 @@ const buildRuntimeStatusResponse = (
 export function getSandboxRuntimeUpgradeStatus(
   context: SandboxRuntimeUpgradeTarget
 ): SandboxRuntimeStatusResponse {
-  const { targetProvider, targetImage, statusInstance } = context;
+  const { targetImage, statusInstance } = context;
   const lifecycleStatus = statusInstance?.status;
   const operationError = statusInstance?.operation?.error;
-  const operationHeartbeatAt = statusInstance?.operation?.heartbeatAt;
-  const isCurrentProviderInstance = statusInstance?.provider === targetProvider;
   const isRuntimeImageOutdated =
     !!statusInstance && !isSandboxRuntimeImageMatched(targetImage, statusInstance.image ?? null);
-  const canRetryArchiveIsolationOperation =
-    Boolean(operationError) ||
-    !operationHeartbeatAt ||
-    operationHeartbeatAt < subMinutes(new Date(), SANDBOX_STALE_ARCHIVING_MINUTES);
-  const canRetryProvisioning =
-    Boolean(operationError) ||
-    Boolean(
-      operationHeartbeatAt &&
-      operationHeartbeatAt.getTime() < Date.now() - SANDBOX_PROVISIONING_STALE_MS
-    );
+  const canRecoverActivation = statusInstance && isSandboxActivationRecoverable(statusInstance);
 
   if (statusInstance && lifecycleStatus === SandboxInstanceStatusEnum.restoring) {
-    // 当前 provider 直接续跑 restore；旧 provider 由 provider migration 先回滚再迁移。
-    if (canRetryArchiveIsolationOperation) {
+    // 所有入口先收敛已有回滚；旧 Provider 的半成品回到 archived 后再迁移。
+    if (canRecoverActivation) {
       return buildRuntimeStatusResponse('readyToInit');
     }
     return buildRuntimeStatusResponse('upgrading');
   }
 
   if (statusInstance && lifecycleStatus === SandboxInstanceStatusEnum.provisioning) {
-    if (isCurrentProviderInstance && canRetryProvisioning) {
+    if (canRecoverActivation) {
       return buildRuntimeStatusResponse('readyToInit');
     }
     return buildRuntimeStatusResponse('upgrading', operationError);
@@ -157,9 +133,9 @@ export function getSandboxRuntimeUpgradeStatus(
     (lifecycleStatus === SandboxInstanceStatusEnum.stopping ||
       lifecycleStatus === SandboxInstanceStatusEnum.archiving)
   ) {
-    return operationError
+    return canResumeSandboxOperation(statusInstance)
       ? buildRuntimeStatusResponse('upgradeRequired', operationError)
-      : buildRuntimeStatusResponse('upgrading');
+      : buildRuntimeStatusResponse('upgrading', operationError);
   }
 
   if (statusInstance && isSandboxRuntimeUpgradeBusyState(lifecycleStatus)) {
@@ -178,144 +154,24 @@ export function getSandboxRuntimeUpgradeStatus(
   return buildRuntimeStatusResponse('upgradeRequired');
 }
 
-/**
- * 从标准 App runtime query 构建镜像升级上下文。
- * 逻辑实例按 sourceType/sourceId/userId 查询，兼容实例仍位于旧 provider 的迁移前状态。
- */
-async function getAppSandboxRuntimeUpgradeContext(query: SandboxClientQuery) {
-  const targetProvider = getConfiguredSandboxProvider();
-  const targetImage = resolveSandboxRuntimeImage({
-    provider: targetProvider,
-    sandboxId: query.sandboxId
-  });
-  const instances = await findSandboxResourcesBySource({
-    sourceType: query.sourceType,
-    sourceId: query.sourceId,
-    userId: query.userId
-  });
-
-  return resolveSandboxRuntimeUpgradeTarget({
-    sandboxId: query.sandboxId,
-    targetProvider,
-    targetImage,
-    instances
-  });
-}
-
-const waitForAppRuntimeMigrationProgress = () =>
-  new Promise<void>((resolve) => {
-    setTimeout(resolve, APP_RUNTIME_MIGRATION_POLL_INTERVAL_MS);
-  });
-
-const isRuntimeMigrationLeaseContention = (error: unknown) =>
-  isRedisLeaseError(error) ||
-  (error instanceof Error && error.message === SandboxErrEnum.agentSandboxInitializing);
-
-const isRuntimeConfigurationChanged = (context: SandboxRuntimeUpgradeTarget) => {
-  const instance = context.statusInstance;
-  return (
-    !!instance &&
-    (instance.provider !== context.targetProvider ||
-      !isSandboxRuntimeImageMatched(context.targetImage, instance.image ?? null))
-  );
-};
-
-/**
- * 在 App runtime 真正初始化前静默收敛镜像和 provider。
- *
- * 只有稳定旧资源会被归档；其他请求持有生命周期 operation 时，本请求等待同一状态机完成，
- * 不启动第二条迁移链。返回值表示本轮是否观察到配置迁移，用于 Workflow 切换进度文案。
- */
-export async function ensureAppSandboxRuntimeReady({
-  query,
-  onUpgrade
-}: {
+/** 配置准备复用运行编排，状态展示不再决定恢复或迁移。 */
+export async function ensureAppSandboxRuntimeReady(params: {
   query: SandboxClientQuery;
   onUpgrade?: () => void;
 }): Promise<boolean> {
-  const waitDeadline = Date.now() + APP_RUNTIME_MIGRATION_WAIT_TIMEOUT_MS;
-  let hasReportedUpgrade = false;
-
-  const reportUpgrade = () => {
-    if (hasReportedUpgrade) return;
-    hasReportedUpgrade = true;
-    onUpgrade?.();
-  };
-  const waitForProgress = async (status: string) => {
-    if (Date.now() >= waitDeadline) {
-      throw new Error(`Sandbox runtime migration timed out while sandbox is ${status}`);
+  const { ensureSandboxRuntimeConfiguration } = await import('./service');
+  let upgraded = false;
+  await ensureSandboxRuntimeConfiguration({
+    query: params.query,
+    onUpgrade: () => {
+      if (upgraded) return;
+      upgraded = true;
+      params.onUpgrade?.();
     }
-    await waitForAppRuntimeMigrationProgress();
-  };
-
-  try {
-    while (true) {
-      const context = await getAppSandboxRuntimeUpgradeContext(query);
-      const instance = context.statusInstance;
-      const runtimeStatus = getSandboxRuntimeUpgradeStatus(context);
-      const configurationChanged = isRuntimeConfigurationChanged(context);
-
-      if (configurationChanged) reportUpgrade();
-      if (!instance) return hasReportedUpgrade;
-      if (!configurationChanged) return hasReportedUpgrade;
-
-      if (runtimeStatus.status === 'upgrading') {
-        if (runtimeStatus.lastError) throw new Error(runtimeStatus.lastError);
-        await waitForProgress(instance.status);
-        continue;
-      }
-
-      if (instance.provider !== context.targetProvider) {
-        if (instance.status === SandboxInstanceStatusEnum.stopping) {
-          const { stopSandboxResource } = await import('../resource');
-          await stopSandboxResource(instance);
-          continue;
-        }
-
-        try {
-          await migrateSandboxProviderBeforeUse({
-            provider: context.targetProvider,
-            sandboxId: context.sandboxId,
-            sourceType: query.sourceType,
-            sourceId: query.sourceId,
-            userId: query.userId
-          });
-        } catch (error) {
-          if (!isRuntimeMigrationLeaseContention(error)) throw error;
-          await waitForProgress(instance.status);
-        }
-        continue;
-      }
-
-      if (runtimeStatus.status === 'readyToInit') {
-        return hasReportedUpgrade;
-      }
-
-      const runtimeUpgradeInstance = context.upgradeInstance;
-      if (!runtimeUpgradeInstance) {
-        throw new Error(`Sandbox runtime cannot resume upgrade from ${instance.status}`);
-      }
-
-      if (runtimeUpgradeInstance.status === SandboxInstanceStatusEnum.stopping) {
-        const { stopSandboxResource } = await import('../resource');
-        await stopSandboxResource(runtimeUpgradeInstance);
-        continue;
-      }
-
-      try {
-        const archiveResult = await archiveSandboxResourceNow(runtimeUpgradeInstance);
-        if (archiveResult.status === 'failed') throw new Error(archiveResult.error);
-        if (archiveResult.status === 'skipped') {
-          await waitForProgress(runtimeUpgradeInstance.status);
-        }
-      } catch (error) {
-        if (!isRuntimeMigrationLeaseContention(error)) throw error;
-        await waitForProgress(runtimeUpgradeInstance.status);
-      }
-    }
-  } catch (error) {
+  }).catch((error) => {
     throw createSandboxRuntimeUpgradeFailedError(error);
-  }
+  });
+  return upgraded;
 }
 
 /** 恢复失败的前置 stop 并启动镜像升级归档；抢占失败时返回重新读取的真实状态。 */

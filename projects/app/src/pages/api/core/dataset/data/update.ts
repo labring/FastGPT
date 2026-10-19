@@ -47,9 +47,9 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
 
   const dataset = collection.dataset;
   const modelHandle = await getTeamModelHandle({ teamId });
-  const vectorModel = modelHandle.getEmbeddingModelData(
-    getDatasetModelReference(dataset, 'embedding')
-  );
+  const vectorModel = modelHandle.getModelData(getDatasetModelReference(dataset, 'embedding'), {
+    type: 'embedding'
+  });
   const nextQ = q ?? datasetData.q ?? '';
   const nextA = a ?? datasetData.a ?? '';
   const pushUpdateDataAuditLog = () => {

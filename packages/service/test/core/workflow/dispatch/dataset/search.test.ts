@@ -34,7 +34,8 @@ vi.mock('@fastgpt/service/core/dataset/search/vlm', () => ({
   getDatasetSearchVlmModel: getDatasetSearchVlmModelMock
 }));
 
-vi.mock('@fastgpt/service/core/workflow/utils/resource', () => ({
+vi.mock('@fastgpt/service/core/workflow/resource/service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/workflow/resource/service')>()),
   loadWorkflowDatasetResource: loadWorkflowDatasetResourceMock
 }));
 
@@ -67,6 +68,17 @@ vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => {
       config: {}
     })),
     getRerankModelData: vi.fn(() => undefined),
+    getModelData: vi.fn(
+      (
+        reference: { modelId?: string; model?: string },
+        options?: { type?: string; vision?: boolean }
+      ) => {
+        if (options?.vision) return (handle.getVlmModelData as any)(reference);
+        if (options?.type === 'rerank') return (handle.getRerankModelData as any)(reference);
+        if (options?.type === 'embedding') return (handle.getEmbeddingModelData as any)(reference);
+        return (handle.getLLMModelData as any)(reference);
+      }
+    ),
     getVlmModelData: vi.fn(() => ({
       modelId: '68ad85a7463006c963799a03',
       model: 'vision-model',
@@ -91,6 +103,10 @@ vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => {
 
 vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   formatModelChars2Points: formatModelChars2PointsMock
+}));
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  assertAuthModels: vi.fn(async () => ({ handle: {}, models: [] })),
+  getAuthorizedModelIds: vi.fn(async () => new Set())
 }));
 
 import { dispatchDatasetSearch } from '../../../../../core/workflow/dispatch/dataset/search';

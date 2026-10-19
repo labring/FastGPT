@@ -2,18 +2,27 @@ import type {
   APIFileItemType,
   ApiFileReadContentResponseType,
   YuqueServerType,
-  ApiDatasetDetailResponse
+  ApiDatasetDetailResponse,
+  ApiDatasetResult
 } from '@fastgpt/global/core/dataset/apiDataset/type';
+import {
+  classifyApiDatasetError,
+  toApiDatasetError,
+  toApiDatasetSuccess
+} from '@fastgpt/global/core/dataset/apiDataset/utils';
 import { type Method } from 'axios';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { createProxyAxios } from '../../../../common/api/axios';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { serviceEnv } from '../../../../env';
+import type { AsyncCache } from '../../../../common/cache/type';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 
 type ResponseDataType = {
   success: boolean;
   message: string;
   data: any;
+  error?: unknown;
 };
 
 type YuqueRepoListResponse = {
@@ -41,9 +50,18 @@ type YuqueTocListResponse = {
   parent_uuid: string;
 }[];
 
-const yuqueBaseUrl = serviceEnv.YUQUE_DATASET_BASE_URL;
+// 同一进程内，使用同一个缓存对象的浏览请求合并首次加载；结束后清除，不保存长期内存快照。
+const pendingSnapshots = new WeakMap<AsyncCache, Map<string, Promise<unknown>>>();
 
-export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServerType }) => {
+/** 语雀 Provider 可注入浏览缓存；默认只复用本轮快照，不依赖缓存后端或持久化 TTL。 */
+export const useYuqueDatasetRequest = ({
+  yuqueServer,
+  cache
+}: {
+  yuqueServer: YuqueServerType;
+  cache?: AsyncCache;
+}) => {
+  const yuqueBaseUrl = serviceEnv.YUQUE_DATASET_BASE_URL;
   const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
   // YUQUE_DATASET_BASE_URL 由部署方配置，可能指向内网代理，不使用 SSRF 拦截器。
   const instance = createProxyAxios(
@@ -65,6 +83,10 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
       logger.warn('Yuque dataset response data is empty');
       return Promise.reject('服务器异常');
     }
+    // 代理或旧协议可能用 HTTP 200 返回失败；不能把它当作空知识库列表。
+    if (data.success === false || data.error) {
+      return Promise.reject(data);
+    }
     return data.data;
   };
   const responseError = (err: any) => {
@@ -76,16 +98,85 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
     if (typeof err === 'string') {
       return Promise.reject({ message: err });
     }
-    if (typeof err.message === 'string') {
-      return Promise.reject({ message: err.message });
-    }
-    if (typeof err.data === 'string') {
-      return Promise.reject({ message: err.data });
-    }
-    if (err?.response?.data) {
-      return Promise.reject(err?.response?.data);
-    }
+    // 保留 HTTP 状态、网络错误码和响应体，详情层统一分类时不能丢失删除判断依据。
     return Promise.reject(err);
+  };
+
+  /** 缓存不可用时继续访问来源；只保存完整有效快照，Provider 失败仍原样向外抛出。 */
+  const getSnapshot = async <T>({
+    resource,
+    load,
+    isValid
+  }: {
+    resource: string;
+    load: () => Promise<T>;
+    isValid: (value: unknown) => value is T;
+  }): Promise<T> => {
+    if (!cache) return load();
+    const key = JSON.stringify([
+      yuqueBaseUrl,
+      yuqueServer.userId,
+      hashStr(yuqueServer.token ?? ''),
+      resource
+    ]);
+    const pending = pendingSnapshots.get(cache) ?? new Map<string, Promise<unknown>>();
+    pendingSnapshots.set(cache, pending);
+    const existing = pending.get(key);
+    if (existing) return existing as Promise<T>;
+
+    const promise = (async () => {
+      const value = await cache.get(key).catch((error) => {
+        logger.warn('Yuque snapshot cache read failed', { error });
+        return undefined;
+      });
+      if (isValid(value)) return value;
+
+      const data = await load();
+      if (isValid(data)) {
+        await cache.set(key, data).catch((error) => {
+          logger.warn('Yuque snapshot cache write failed', { error });
+        });
+      }
+      return data;
+    })();
+    pending.set(key, promise);
+    try {
+      return await promise;
+    } finally {
+      pending.delete(key);
+      if (pending.size === 0) pendingSnapshots.delete(cache);
+    }
+  };
+
+  const tocCache = new Map<string, Promise<YuqueTocListResponse>>();
+  const getRepoToc = (repoId: string | number) => {
+    const key = String(repoId);
+    if (!tocCache.has(key)) {
+      tocCache.set(
+        key,
+        getSnapshot({
+          resource: `toc:${key}`,
+          load: () => request<YuqueTocListResponse>(`/api/v2/repos/${key}/toc`, {}, 'GET'),
+          isValid: (value): value is YuqueTocListResponse =>
+            Array.isArray(value) &&
+            value.every(
+              (item) =>
+                item &&
+                (typeof item.id === 'string' || typeof item.id === 'number') &&
+                String(item.id).length > 0 &&
+                typeof item.uuid === 'string' &&
+                item.uuid.length > 0 &&
+                typeof item.type === 'string' &&
+                typeof item.title === 'string' &&
+                typeof item.parent_uuid === 'string'
+            )
+        }).catch((err) => {
+          tocCache.delete(key);
+          return Promise.reject(err);
+        })
+      );
+    }
+    return tocCache.get(key)!;
   };
 
   const request = <T>(url: string, data: any, method: Method): Promise<T> => {
@@ -107,6 +198,44 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
       .catch((err) => responseError(err));
   };
 
+  let repoList: Promise<YuqueRepoListResponse> | undefined;
+  /** 全部分页完成后才缓存；列表和知识库根详情共用本实例快照，失败后可重试。 */
+  const getRepoList = () => {
+    repoList ??= getSnapshot({
+      resource: 'repos',
+      load: async () => {
+        const limit = 100;
+        const allData: YuqueRepoListResponse = [];
+        for (let offset = 0; ; offset += limit) {
+          const data = await request<YuqueRepoListResponse>(
+            `/api/v2/groups/${yuqueServer.userId}/repos`,
+            { offset, limit },
+            'GET'
+          );
+          if (!data || data.length === 0) break;
+          if (!Array.isArray(data)) return Promise.reject('Invalid file data format');
+          allData.push(...data);
+          if (data.length < limit) break;
+        }
+        return allData;
+      },
+      isValid: (value): value is YuqueRepoListResponse =>
+        Array.isArray(value) &&
+        value.every(
+          (item) =>
+            item &&
+            (typeof item.id === 'string' || typeof item.id === 'number') &&
+            String(item.id).length > 0 &&
+            typeof item.name === 'string' &&
+            item.name.length > 0
+        )
+    }).catch((error) => {
+      repoList = undefined;
+      return Promise.reject(error);
+    });
+    return repoList;
+  };
+
   const listFiles = async ({ parentId }: { parentId?: ParentIdType }) => {
     // Auto set baseurl to parentId
     if (!parentId) {
@@ -116,28 +245,7 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
     let files: APIFileItemType[] = [];
 
     if (!parentId) {
-      const limit = 100;
-      let offset = 0;
-      let allData: YuqueRepoListResponse = [];
-
-      while (true) {
-        const data = await request<YuqueRepoListResponse>(
-          `/api/v2/groups/${yuqueServer.userId}/repos`,
-          {
-            offset,
-            limit
-          },
-          'GET'
-        );
-
-        if (!data || data.length === 0) break;
-
-        allData = [...allData, ...data];
-        if (data.length < limit) break;
-
-        offset += limit;
-      }
-
+      const allData = await getRepoList();
       files = allData.map((item) => {
         return {
           id: String(item.id),
@@ -154,11 +262,8 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
     } else {
       const numParentId = Number(parentId);
       if (!isNaN(numParentId)) {
-        const data = await request<YuqueTocListResponse>(
-          `/api/v2/repos/${parentId}/toc`,
-          {},
-          'GET'
-        );
+        // 获取目录树
+        const data = await getRepoToc(parentId);
 
         return data
           .filter((item) => !item.parent_uuid && item.type !== 'LINK')
@@ -176,7 +281,7 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
           }));
       } else {
         const [repoId, uuid, parentUuid] = parentId.split(/-(.*?)-(.*)/);
-        const data = await request<YuqueTocListResponse>(`/api/v2/repos/${repoId}/toc`, {}, 'GET');
+        const data = await getRepoToc(repoId);
         return data
           .filter((item) => item.parent_uuid === parentUuid)
           .map((item) => ({
@@ -250,79 +355,67 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
     apiFileId
   }: {
     apiFileId: string;
-  }): Promise<ApiDatasetDetailResponse> => {
-    //如果id是数字，认为是知识库，获取知识库列表
-    if (typeof apiFileId === 'number' || !isNaN(Number(apiFileId))) {
-      const limit = 100;
-      let offset = 0;
-      let allData: YuqueRepoListResponse = [];
-
-      while (true) {
-        const data = await request<YuqueRepoListResponse>(
-          `/api/v2/groups/${yuqueServer.userId}/repos`,
-          {
-            offset,
-            limit
-          },
-          'GET'
-        );
-
-        if (!data || data.length === 0) break;
-
-        allData = [...allData, ...data];
-        if (data.length < limit) break;
-
-        offset += limit;
-      }
-
-      const file = allData.find((item) => Number(item.id) === Number(apiFileId));
-      if (!file) {
-        return Promise.reject('文件不存在');
-      }
-      return {
-        id: file.id,
-        rawId: file.id,
-        name: file.name,
-        parentId: null,
-        type: file.type === 'TITLE' ? ('folder' as const) : ('file' as const),
-        updateTime: file.updated_at,
-        createTime: file.created_at,
-        hasChild: true
-      };
-    } else {
-      const [repoId, parentUuid, fileId] = apiFileId.split(/-(.*?)-(.*)/);
-      const data = await request<YuqueTocListResponse>(`/api/v2/repos/${repoId}/toc`, {}, 'GET');
-      const file = data.find((item) => item.uuid === fileId);
-      if (!file) {
-        return Promise.reject('文件不存在');
-      }
-      const parentfile = data.find((item) => item.uuid === file.parent_uuid);
-      const parentId = `${repoId}-${parentfile?.id}-${parentfile?.uuid}`;
-
-      //判断如果parent_uuid为空，则认为是知识库的根目录，返回知识库
-      if (file.parent_uuid) {
-        return {
-          id: file.id,
-          rawId: file.id,
-          name: file.title,
-          parentId: parentId,
-          type: file.type === 'TITLE' ? ('folder' as const) : ('file' as const),
-          updateTime: new Date(),
-          createTime: new Date(),
-          hasChild: !!file.child_uuid
-        };
+  }): Promise<ApiDatasetResult<ApiDatasetDetailResponse>> => {
+    try {
+      // 数字 ID 表示知识库，复用本轮已完整加载的列表。
+      if (typeof apiFileId === 'number' || !isNaN(Number(apiFileId))) {
+        const allData = await getRepoList();
+        const file = allData.find((item) => Number(item.id) === Number(apiFileId));
+        if (!file) {
+          return toApiDatasetError({ code: 'NOT_FOUND', message: '文件不存在', status: 404 });
+        }
+        return toApiDatasetSuccess({
+          id: String(file.id),
+          rawId: String(file.id),
+          name: file.name,
+          parentId: null,
+          type: 'folder' as const,
+          updateTime: file.updated_at,
+          createTime: file.created_at,
+          hasChild: true
+        });
       } else {
-        return {
-          id: file.id,
-          rawId: file.id,
-          name: file.title,
-          parentId: repoId,
-          type: file.type === 'TITLE' ? ('folder' as const) : ('file' as const),
-          updateTime: new Date(),
-          createTime: new Date(),
-          hasChild: !!file.child_uuid
-        };
+        // 语雀特殊：一个 TOC 节点有三套 id（repoId / docId / uuid），单用 docId 在同 repo 内唯一但跨 repo 会撞。
+        // 因此 `listFiles` 统一用复合 id `repoId-docId-uuid` 作为 `id`，`getFileDetail`/`getFileContent` 必须按同一
+        // 复合形态返回/解析 —— 否则 buildSeeds 拿到裸 docId 去比对本地 apiFileId 会全部落空，
+        // 把本地已有 collection 误判为「远端已删除」后删掉重建。
+        const [repoId, parentUuid, fileId] = apiFileId.split(/-(.*?)-(.*)/);
+        const data = await getRepoToc(repoId);
+        const file = data.find((item) => item.uuid === fileId);
+        if (!file) {
+          return toApiDatasetError({ code: 'NOT_FOUND', message: '文件不存在', status: 404 });
+        }
+        const parentfile = data.find((item) => item.uuid === file.parent_uuid);
+        const parentId = `${repoId}-${parentfile?.id}-${parentfile?.uuid}`;
+        const id = `${repoId}-${file.id}-${file.uuid}`;
+
+        //判断如果parent_uuid为空，则认为是知识库的根目录，返回知识库
+        if (file.parent_uuid) {
+          return toApiDatasetSuccess({
+            id,
+            rawId: String(file.uuid),
+            name: file.title,
+            parentId: parentId,
+            type: file.type === 'TITLE' ? ('folder' as const) : ('file' as const),
+            updateTime: new Date(),
+            createTime: new Date(),
+            hasChild: !!file.child_uuid
+          });
+        } else {
+          return toApiDatasetSuccess({
+            id,
+            rawId: String(file.uuid),
+            name: file.title,
+            parentId: repoId,
+            type: file.type === 'TITLE' ? ('folder' as const) : ('file' as const),
+            updateTime: new Date(),
+            createTime: new Date(),
+            hasChild: !!file.child_uuid
+          });
+        }
       }
+    } catch (err: any) {
+      return classifyApiDatasetError(err);
     }
   };
 

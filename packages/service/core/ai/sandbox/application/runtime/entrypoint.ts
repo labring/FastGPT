@@ -3,6 +3,14 @@
  *
  * 负责脚本 hash 状态、输出裁剪和 Redis 临界区保护，不处理具体 Skill 版本部署。
  */
+import {
+  MAX_LOG_OUTPUT_LENGTH,
+  SANDBOX_ENTRYPOINT_STATE_HASH_KEY,
+  MAX_ENTRYPOINT_OUTPUT_BYTES,
+  SANDBOX_INIT_LEASE_TTL_MS,
+  SANDBOX_INIT_LEASE_RENEW_INTERVAL_MS
+} from '../../constants';
+
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { LeaseCache, isRedisLeaseError } from '@fastgpt/dal/redis/caches';
@@ -19,12 +27,6 @@ import {
 } from './state';
 
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
-
-export const SANDBOX_ENTRYPOINT_STATE_HASH_KEY = 'sandboxEntrypoint';
-const MAX_LOG_OUTPUT_LENGTH = 4000;
-export const MAX_ENTRYPOINT_OUTPUT_BYTES = 8 * 1024;
-const SANDBOX_INIT_LEASE_TTL_MS = 3 * 60 * 1000;
-const SANDBOX_INIT_LEASE_RENEW_INTERVAL_MS = SANDBOX_INIT_LEASE_TTL_MS / 6;
 const leaseCache = new LeaseCache({ logger });
 
 /**

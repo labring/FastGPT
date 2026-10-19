@@ -11,7 +11,8 @@ export const CommonSystemPath: OpenAPIPath = {
   '/common/system/getInitData': {
     get: {
       summary: '获取系统初始化数据',
-      description: '根据登录状态和缓存标识返回前端初始化配置、模型和套餐信息',
+      description:
+        '按会话鉴权返回公开前端配置，SSO 只返回能力标志；includeSubPlans=true 时返回公开套餐，不依赖 Referer 或页面路径；缓存标识包含匿名过滤规则版本',
       tags: [DevApiTagsMap.commonSystem],
       requestParams: {
         query: GetSystemInitDataQuerySchema

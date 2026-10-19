@@ -1,4 +1,5 @@
 import {
+  TeamApikeyCreateRoleVal,
   TeamAppCreateRoleVal,
   TeamDatasetCreateRoleVal,
   TeamSkillCreateRoleVal
@@ -11,7 +12,10 @@ import { updateTeamCollaborator } from '../resourcePermissionService';
 import { MongoMemberGroupModel } from './memberGroupSchema';
 
 const defaultTeamBasicRole =
-  TeamAppCreateRoleVal | TeamSkillCreateRoleVal | TeamDatasetCreateRoleVal;
+  TeamAppCreateRoleVal |
+  TeamSkillCreateRoleVal |
+  TeamDatasetCreateRoleVal |
+  TeamApikeyCreateRoleVal;
 
 /**
  * 创建团队默认全员组，并按环境配置初始化团队级基础权限。

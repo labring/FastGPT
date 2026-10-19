@@ -118,13 +118,14 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     });
 
     expect(
-      (await getSystemModelHandle()).getEmbeddingModelData({
-        modelId: visionEmbeddingModel.modelId
-      })
+      (await getSystemModelHandle()).getModelData(
+        { modelId: visionEmbeddingModel.modelId },
+        { type: 'embedding' }
+      )
     ).toEqual(visionEmbeddingModel);
-    expect((await getSystemModelHandle()).getLLMModelData({ modelId: agentModel.modelId })).toEqual(
-      agentModel
-    );
+    expect(
+      (await getSystemModelHandle()).getModelData({ modelId: agentModel.modelId }, { type: 'llm' })
+    ).toEqual(agentModel);
 
     const res = await Call(handler, {
       auth: root,
@@ -204,7 +205,10 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     });
 
     expect(
-      (await getSystemModelHandle()).getVlmModelData({ modelId: datasetVlmModel.modelId })
+      (await getSystemModelHandle()).getModelData(
+        { modelId: datasetVlmModel.modelId },
+        { type: 'llm', vision: true }
+      )
     ).toEqual(datasetVlmModel);
 
     const res = await Call(handler, {

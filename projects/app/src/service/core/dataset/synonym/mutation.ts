@@ -101,9 +101,9 @@ export const createDatasetSynonymMutation = async ({
   const now = new Date();
   const normalizedFileName = path.basename(fileName) || 'synonyms.csv';
   const modelHandle = await getTeamModelHandle({ teamId });
-  const vectorModelData = modelHandle.getEmbeddingModelData(
-    getDatasetModelReference(dataset, 'embedding')
-  );
+  const vectorModelData = modelHandle.getModelData(getDatasetModelReference(dataset, 'embedding'), {
+    type: 'embedding'
+  });
   const { usageId } = await createTrainingUsage({
     teamId,
     tmbId,

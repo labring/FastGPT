@@ -92,9 +92,9 @@ Check connectivity from the FastGPT server to the model API. A server in mainlan
 
 ### Changes to vectorModels have no effect
 
-1. Restart the container and confirm that the model configuration loaded. Check the logs or the model selector when creating a Dataset.
-2. Refresh the browser.
-3. An existing Dataset keeps the embedding model selected when it was created. Applying the new model requires deleting and recreating that Dataset. Preserve the source data before deleting it so you can import it again.
+1. Enable the new Embedding model in the admin panel's **Model Configuration**, then refresh the page. For older versions that configure models through `vectorModels` in `config.json`, restart the service after editing the file.
+2. Existing Datasets do not automatically switch models. As the Dataset owner, open its **Configuration** page, select the new **Embedding model**, and confirm reindexing. You do not need to delete the Dataset.
+3. If processing or reindexing is in progress, wait for it to finish before switching. Reindexing calls the selected model and is billed according to its pricing.
 
 ---
 

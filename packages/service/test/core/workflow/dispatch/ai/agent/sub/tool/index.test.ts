@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { dispatchTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 
 const {
   authAppByTmbIdMock,
@@ -114,6 +117,72 @@ const createDispatchToolProps = (
   }) as any;
 
 describe('dispatchTool runtime toolset auth', () => {
+  it.each(['mcp', 'http'] as const)(
+    'executes an authorized %s child outside the snapshot selection and rejects denied calls',
+    async (source) => {
+      const tool = {
+        name: 'search',
+        description: 'Search documents',
+        path: '/search',
+        method: 'GET',
+        inputSchema: { type: 'object', properties: { keyword: { type: 'string' } } },
+        requestSchema: { type: 'object', properties: { keyword: { type: 'string' } } }
+      };
+      getAppVersionByIdMock.mockResolvedValue({
+        nodes: [
+          {
+            toolConfig: {
+              [source === 'mcp' ? 'mcpToolSet' : 'httpToolSet']: {
+                url: 'https://example.com/mcp',
+                baseUrl: 'https://example.com',
+                toolList: [tool]
+              }
+            }
+          }
+        ]
+      });
+      getMCPChildrenMock.mockResolvedValue([tool]);
+      getHTTPToolListMock.mockResolvedValue([tool]);
+      mcpToolCallMock.mockResolvedValue({ ok: true });
+      runHTTPToolMock.mockResolvedValue({ data: { ok: true } });
+      const props = createDispatchToolProps({
+        [source === 'mcp' ? 'mcpTool' : 'httpTool']: { toolId: `${source}-victim-toolset/search` }
+      });
+
+      await runWithContext(
+        {
+          mcpClientMemory: {},
+          resourceContext: {
+            isRoot: false,
+            resourceMap: new Map([
+              [
+                'tool:victim-toolset',
+                {
+                  type: 'tool',
+                  id: 'victim-toolset',
+                  data: { toolNames: ['staticTool'] }
+                }
+              ]
+            ])
+          }
+        },
+        async () => {
+          const accepted = await dispatchTool(props);
+          expect(accepted.errorMessage).toBeUndefined();
+          const execute = source === 'mcp' ? mcpToolCallMock : runHTTPToolMock;
+          expect(execute).toHaveBeenCalledOnce();
+          expect(authAppByTmbIdMock).toHaveBeenCalledOnce();
+
+          execute.mockClear();
+          authAppByTmbIdMock.mockRejectedValueOnce(AppErrEnum.unAuthApp);
+          const denied = await dispatchTool(props);
+          expect(denied.errorMessage).toBeTruthy();
+          expect(execute).not.toHaveBeenCalled();
+        }
+      );
+    }
+  );
+
   it.each([
     { name: 'scalar string', requestSchema: { type: 'string' } },
     { name: 'scalar number', requestSchema: { type: 'number' } },
@@ -295,6 +364,35 @@ describe('dispatchTool runtime toolset auth', () => {
       secretsVal: {}
     });
     runToolStreamMock.mockResolvedValue({ output: { ok: true } });
+  });
+
+  it('signs the system-tool invoke token as the runtime caller, not the app owner', async () => {
+    const props = createDispatchToolProps({ systemTool: { toolId: 'systemTool-search' } });
+    props.runningAppInfo = {
+      ...props.runningAppInfo,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app-id',
+      teamId: 'owner-team',
+      tmbId: 'app-owner-tmb'
+    };
+    props.runningUserInfo = {
+      ...props.runningUserInfo,
+      teamId: 'caller-team',
+      tmbId: 'caller-tmb'
+    };
+
+    await dispatchTool(props);
+
+    const token = runToolStreamMock.mock.calls[0][0].systemVar.invokeToken as string;
+    const [, payload] = token.split('.');
+    const tokenPayload = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+
+    expect(tokenPayload).toMatchObject({
+      teamId: 'caller-team',
+      tmbId: 'caller-tmb',
+      uId: 'uid',
+      appId: 'app-id'
+    });
   });
 
   it.each([

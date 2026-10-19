@@ -490,6 +490,11 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       requestError = error;
       requestIds.push(requestId);
 
+      // 错误响应也可能产生消耗，退出前先累计；每轮单独计价以兼容梯度计费。
+      inputTokens += usage.inputTokens;
+      outputTokens += usage.outputTokens;
+      llmTotalPoints += totalPoints;
+
       if (requestError) {
         break;
       }
@@ -509,10 +514,6 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         }
       }
 
-      // Record usage
-      inputTokens += usage.inputTokens;
-      outputTokens += usage.outputTokens;
-      llmTotalPoints += totalPoints; // 每次调用单独计价后累加，保证梯度计费正确
       if (responseEmptyTip) {
         requestError = responseEmptyTip;
         break;

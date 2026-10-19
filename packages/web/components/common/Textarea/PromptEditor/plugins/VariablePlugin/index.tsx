@@ -2,10 +2,9 @@ import type { TextNode } from 'lexical';
 import { mergeRegister } from '@lexical/utils';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { useCallback, useEffect, useMemo } from 'react';
-
 import { getHashtagRegexString } from './utils';
 import { registerLexicalTextEntity } from '../../utils';
-import { type EditorVariablePickerType } from '../../type';
+import type { EditorVariablePickerType } from '@fastgpt/global/core/workflow/type/io';
 import { $createVariableNode, VariableNode } from './node';
 
 const REGEX = new RegExp(getHashtagRegexString(), 'i');

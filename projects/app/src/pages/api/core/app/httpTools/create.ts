@@ -8,7 +8,6 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
-import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { getHTTPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
@@ -35,8 +34,6 @@ async function handler(
   const { teamId, tmbId, userId } = parentId
     ? await authApp({ req, appId: parentId, per: TeamAppCreatePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
-
-  await checkTeamAppTypeLimit({ teamId, appCheckType: 'tool' });
 
   const httpToolsetId = await mongoSessionRun(async (session) => {
     const toolSetRuntimeNode = getHTTPToolSetRuntimeNode({

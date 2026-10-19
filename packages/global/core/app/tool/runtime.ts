@@ -10,7 +10,7 @@ import {
   canInputBeManuallyConfigured,
   isAgentGeneratedToolInput
 } from '../formEdit/utils';
-import { getSelectedInputRenderType } from '../../workflow/utils';
+import { getSelectedInputRenderType } from '../../../common/workflow/reference';
 import {
   buildModelVisibleToolJsonSchema,
   type JSONSchemaInputType,

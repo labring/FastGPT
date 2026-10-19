@@ -27,6 +27,7 @@ import { getIpFromRequest } from '../../../../common/geo';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { getLocale } from '../../../../common/middle/i18n';
 import { sseErrRes } from '../../../../common/response';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { assertAuthModels } from '../../../../support/permission/model/auth';
 import { authSkill } from '../../../../support/permission/skill/auth';
 import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
@@ -47,12 +48,12 @@ import { WORKFLOW_MAX_RUN_TIMES } from '../../../workflow/constants';
 import { dispatchWorkFlow } from '../../../workflow/dispatch';
 import type { AgentSandboxPrepareAction } from '../../../workflow/dispatch/ai/agent/sub/sandbox';
 import { prepareWorkflowFileQuery } from '../../../workflow/utils/fileLimits';
-import { createWorkflowResourceContext } from '../../../workflow/utils/resource';
+import { createWorkflowResourceContext } from '../../../workflow/resource/context';
 import {
   createWorkflowStreamResponseContext,
   type WorkflowStreamResponseContext
 } from '../../../workflow/utils/streamResponseContext';
-import { getRunningSkillEditSandbox } from '../../sandbox/interface/skillEdit';
+import { getRunningSkillEditSandbox } from '../../sandbox/application/skillEdit/runtime';
 import { buildDebugRuntimeNodes } from './runtime';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS);
@@ -121,12 +122,14 @@ export async function handleSkillDebugChat(
       per: WritePermissionVal
     });
     // Skill 编辑权限不包含任意模型的使用权限，创建对话和调用沙盒前单独校验。
-    const { handle: modelHandle } = await assertAuthModels({
+    const {
+      handle: modelHandle,
+      models: [modelData]
+    } = await assertAuthModels({
       actor: { teamId, tmbId, isRoot },
       modelIds: [modelId],
-      action: 'use'
+      type: ModelTypeEnum.llm
     });
-    const modelData = modelHandle.getLLMModelData({ modelId });
 
     if (!(await teamFrequencyLimit({ teamId, type: LimitTypeEnum.chat, res }))) {
       return ChatWorkflowSseResponseSchema.parse('');

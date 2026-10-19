@@ -3,14 +3,15 @@ import { getTeamModelHandle } from '../../../ai/model/catalog/service';
 
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { queryExtension } from '../../../../core/ai/functions/queryExtension';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
+import { loadWorkflowModelResource } from '../../resource/service';
 import { getHistories } from '../utils';
 
 type Props = ModuleDispatchProps<{
@@ -38,7 +39,13 @@ export const dispatchQueryExtension = async (props: Props): Promise<Response> =>
     return Promise.reject('Question is empty');
   }
   const modelHandle = await getTeamModelHandle({ teamId: props.runningAppInfo.teamId });
-  const queryExtensionModel = modelHandle.getLLMModelData({ modelId, model });
+  const queryExtensionModel = await loadWorkflowModelResource({
+    appTeamId: props.runningAppInfo.teamId,
+    userInfo: runningUserInfo,
+    modelId,
+    model,
+    modelHandle
+  });
   const embeddingModel = modelHandle.getDefaultModelData('embedding');
   const chatHistories = getHistories(history, histories);
 

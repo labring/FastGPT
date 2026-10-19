@@ -4,9 +4,11 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
 import { buildSameOriginUrl } from '@fastgpt/service/common/security/network';
 import { Readable } from 'stream';
+import { finished, pipeline } from 'node:stream/promises';
 import { FASTGPT_PRO_TOKEN_HEADER } from '@fastgpt/global/common/system/constants';
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+/** 原样转发 Pro API 的请求和响应流；等待回包结束，避免 NextAPI 抢先生成默认 JSON。 */
+async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void> {
   try {
     const { path = [], ...query } = req.query as any;
     const requestPath = `/api/${path?.join('/')}?${new URLSearchParams(query).toString()}`;
@@ -56,11 +58,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     if (response.body) {
       const nodeStream = Readable.fromWeb(response.body as any);
-      nodeStream.pipe(res);
+      await pipeline(nodeStream, res);
     } else {
       res.end();
+      await finished(res, { cleanup: true });
     }
   } catch (error) {
+    // pipeline 失败可能已发送部分上游响应或销毁连接，交由入口记录错误，不能追加 JSON。
+    if (res.headersSent || res.writableEnded || res.destroyed) {
+      throw error;
+    }
+
     jsonRes(res, {
       code: 500,
       error

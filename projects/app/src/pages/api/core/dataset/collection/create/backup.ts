@@ -27,7 +27,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
   try {
     const result = await multer.resolveFormData({
       request: req,
-      maxFileSize: global.feConfigs.uploadFileMaxSize
+      maxFileSize: global.feConfigs.limit.uploadFileMaxSize
     });
     filepaths.push(result.fileMetadata.path);
     const filename = decodeMultipartFilename(result.fileMetadata.originalname);

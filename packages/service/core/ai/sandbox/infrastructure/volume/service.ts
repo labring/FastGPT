@@ -3,6 +3,7 @@
  *
  * 只负责 volume API 调用和 provider 卷配置转换，不管理 sandbox 生命周期。
  */
+import { SESSION_VOLUME_GENERATION_LENGTH } from '../../constants';
 import { randomUUID } from 'node:crypto';
 import {
   OPEN_SANDBOX_DEFAULT_ROOT_PATH,
@@ -15,8 +16,6 @@ import {
 } from '@fastgpt/global/core/ai/sandbox/volume';
 import type { SandboxStorageType } from '../../type';
 import { getVolumeManagerEnvConfig } from './config';
-
-const SESSION_VOLUME_GENERATION_LENGTH = 8;
 
 export type VolumeManagerResult = {
   volumes: OpenSandboxConfigType['volumes'];
@@ -122,13 +121,12 @@ export const ensureSessionVolume = async (claimName: string): Promise<string> =>
 /**
  * 删除指定 sandbox 会话关联的持久卷。
  *
- * 未启用 volume-manager 时直接跳过；删除目标始终使用 Mongo 中持久化的完整 claimName。
+ * 删除目标始终使用 Mongo 中持久化的完整 claimName。
  * 404 视为已清理，volume-manager 的成功响应表示 driver 已完成对应 runtime 的删除语义
  * （Kubernetes 会等待目标 PVC generation 结束）。
  */
 export const deleteSessionVolume = async (claimName: string): Promise<void> => {
   const vmConfig = getVolumeManagerEnvConfig();
-  if (!vmConfig.enable) return;
   const headers: Record<string, string> = {};
   if (vmConfig.token) headers['Authorization'] = `Bearer ${vmConfig.token}`;
 
@@ -144,16 +142,9 @@ export const deleteSessionVolume = async (claimName: string): Promise<void> => {
 /**
  * 为运行态 sandbox 准备持久卷配置。
  *
- * volume-manager 未开启时返回 undefined，调用方可直接透传给 provider 配置构造。
+ * 确保指定 claim 后返回必需的卷配置；连接配置缺失由 config 边界报错。
  */
-export const getSessionVolumeConfig = async (
-  claimName: string
-): Promise<VolumeManagerResult | undefined> => {
-  const vmConfig = getVolumeManagerEnvConfig();
-  if (!vmConfig.enable) return undefined;
-  if (!vmConfig.url) {
-    throw new Error('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL is required');
-  }
+export const getSessionVolumeConfig = async (claimName: string): Promise<VolumeManagerResult> => {
   const ensuredClaimName = await ensureSessionVolume(claimName);
   const volumeResult = buildVolumeConfig(ensuredClaimName);
 

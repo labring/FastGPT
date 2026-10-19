@@ -2,7 +2,7 @@ import type { WorkflowDataContextType } from '@/pageComponents/app/detail/Workfl
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
-import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -17,31 +17,31 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNode';
-import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
-import { initNewIfElseList } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
-import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import {
-  type FlowNodeInputItemType,
-  type FlowNodeOutputItemType,
-  type ReferenceItemValueType,
-  type ReferenceValueType
+import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
+import { initNewIfElseList } from '@fastgpt/global/common/workflow/condition';
+import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import type {
+  FlowNodeInputItemType,
+  FlowNodeOutputItemType,
+  ReferenceItemValueType,
+  ReferenceValueType,
+  EditorVariablePickerType
 } from '@fastgpt/global/core/workflow/type/io';
 import type {
   FlowNodeItemType,
   FlowNodeTemplateType,
   StoreNodeItemType
 } from '@fastgpt/global/core/workflow/type/node';
+import { formatEditorVariablePickerIcon } from '@fastgpt/web/core/workflow/utils';
+import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import {
-  formatEditorVariablePickerIcon,
-  getAppChatConfig,
   getSelectedInputRenderType,
-  isWorkflowSystemModelInput,
-  nodeInputIsReference,
-  workflowModelKeyMappings
-} from '@fastgpt/global/core/workflow/utils';
-import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+  nodeInputIsReference
+} from '@fastgpt/global/common/workflow/reference';
+import { isWorkflowSystemModelInput } from '@fastgpt/global/common/workflow/model';
+import { workflowModelKeyMappings } from '@fastgpt/global/core/workflow/model/constants';
 import { cloneDeep, isEqual } from 'lodash-es';
-import { type TFunction } from 'next-i18next';
+import type { TFunction } from 'next-i18next';
 import type { Edge, Node, XYPosition } from 'reactflow';
 import { workflowSystemVariables } from '../app/utils';
 import { getGlobalVariableNode } from './adapt';

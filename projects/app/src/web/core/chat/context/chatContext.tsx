@@ -21,6 +21,8 @@ import type {
 import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { normalizeHistoryTitle, upsertHistoryTitle } from './historyTitleUtils';
 import { toChatAuthApiTarget, type ChatSourceTarget } from '../utils';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { clearChatInputDrafts, removeChatInputDraft } from '../inputDraft/storage';
 
 type UpdateHistoryParams = Pick<UpdateHistoryBodyType, 'chatId' | 'customTitle' | 'top'>;
 
@@ -91,6 +93,7 @@ const ChatContextProvider = ({
   const forbidLoadChat = useRef(false);
   const { chatId, setChatId, outLinkAuthData } = useChatStore();
   const historyAppId = typeof params.appId === 'string' ? params.appId : '';
+  const tmbId = useUserStore((state) => state.userInfo?.team?.tmbId);
   const historySkillId = typeof params.skillId === 'string' ? params.skillId : '';
   const historyOutLinkAuthData = useMemo(() => {
     const paramsOutLinkAuthData =
@@ -239,11 +242,16 @@ const ChatContextProvider = ({
   );
 
   const { runAsync: onDelHistory, loading: isDeletingHistory } = useRequest(
-    (chatId: string) =>
-      delChatHistoryById({
+    async (chatId: string) => {
+      // 删除请求完成时可能已切换成员或应用，草稿必须清理发起请求时的身份。
+      const identity = tmbId && historyAppId ? { tmbId, appId: historyAppId, chatId } : undefined;
+      const result = await delChatHistoryById({
         ...historyTargetParams,
         chatId
-      }),
+      });
+      if (identity) removeChatInputDraft({ identity });
+      return result;
+    },
     {
       onSuccess(data, params) {
         const chatId = params[0];
@@ -259,10 +267,14 @@ const ChatContextProvider = ({
   );
 
   const { runAsync: onClearHistories, loading: isClearingHistory } = useRequest(
-    () =>
-      delClearChatHistories({
+    async () => {
+      const scope = tmbId && historyAppId ? { tmbId, appId: historyAppId } : undefined;
+      const result = await delClearChatHistories({
         ...historyTargetParams
-      }),
+      });
+      if (scope) clearChatInputDrafts(scope);
+      return result;
+    },
     {
       refreshDeps: [historyTargetParams],
       onSuccess() {
