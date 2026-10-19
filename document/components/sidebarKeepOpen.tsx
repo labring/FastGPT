@@ -3,11 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { useRef } from 'react';
 import { useSidebar } from 'fumadocs-ui/provider';
-
-const getCategoryKey = (path: string): string => {
-  const segments = path.split('/').filter(Boolean);
-  return segments[1] ?? '';
-};
+import { getDocCategoryKey } from '@/lib/i18n';
 
 /**
  * 移动端：点击一级 tab 切换时不关闭 sidebar，点击二级路由时正常关闭。
@@ -24,9 +20,9 @@ export function SidebarKeepOpen({ tabUrls }: { tabUrls: string[] }) {
     prevPathname.current = pathname;
 
     // 判断是否是 tab 间切换（从一个 tab 根路径跳到另一个 tab 根路径）
-    const prevCategory = getCategoryKey(prev);
-    const currCategory = getCategoryKey(pathname);
-    const tabCategories = new Set(tabUrls.map(getCategoryKey));
+    const prevCategory = getDocCategoryKey(prev);
+    const currCategory = getDocCategoryKey(pathname);
+    const tabCategories = new Set(tabUrls.map(getDocCategoryKey));
     const prevTab = tabCategories.has(prevCategory) ? prevCategory : null;
     const currTab = tabCategories.has(currCategory) ? currCategory : null;
 

@@ -49,6 +49,16 @@ export function t(key: string, locale?: string) {
 }
 
 /**
+ * 提取文档路径的一级栏目，兼容有无语言前缀；根路径和仅语言前缀返回空字符串。
+ * 仅移除已配置的语言段，避免把无前缀路径中的栏目误当成语言。
+ */
+export function getDocCategoryKey(path: string): string {
+  const segments = path.split('/').filter(Boolean);
+  const categoryIndex = i18n.languages.includes(segments[0]) ? 1 : 0;
+  return segments[categoryIndex] ?? '';
+}
+
+/**
  * Get localized URL path for the current domain.
  * The domain's default locale (io: en, cn: zh-CN) is unprefixed; the other locale is prefixed.
  * @param path - The base path (e.g., '/guide')

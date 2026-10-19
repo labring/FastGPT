@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
+import { getDocCategoryKey } from '@/lib/i18n';
 import { SwitcherDropdown } from '@/components/docs/switcherDropdown';
 import {
   CommercialContactDialog,
@@ -22,11 +23,6 @@ type CategorySwitcherProps = {
   className?: string;
 };
 
-const getCategoryKey = (path: string): string => {
-  const segments = path.split('/').filter(Boolean);
-  return segments[1] ?? '';
-};
-
 export function CategorySwitcher({ options, className }: CategorySwitcherProps) {
   const pathname = usePathname();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -34,10 +30,10 @@ export function CategorySwitcher({ options, className }: CategorySwitcherProps) 
 
   const selected = useMemo(() => {
     const lookup = pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
-    const currentCategory = getCategoryKey(lookup);
+    const currentCategory = getDocCategoryKey(lookup);
     return (
       options.find((item) => item.urls?.has(lookup)) ??
-      options.find((item) => getCategoryKey(item.url) === currentCategory) ??
+      options.find((item) => getDocCategoryKey(item.url) === currentCategory) ??
       options[0]
     );
   }, [options, pathname]);
