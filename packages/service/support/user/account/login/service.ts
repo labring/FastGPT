@@ -88,12 +88,12 @@ export const completePasswordLogin = async ({
     isRoot: username === 'root',
     session,
     createTeamIfUnavailable:
-      username !== 'root' && global.systemConfig?.teamMode === 'multi'
-        ? ({ userId, session: teamSession }) =>
+      username !== 'root' && global.feConfigs?.teamMode === 'multi'
+        ? ({ userId }) =>
             createUserLoginTeam({
               userId,
               username: user.username,
-              session: teamSession as ClientSession
+              session
             })
         : undefined
   });

@@ -58,7 +58,19 @@ describe('createTeamDefaultGroup', () => {
     setDefaultPermissionsEnabled(true);
     const teamId = String(new Types.ObjectId());
 
-    const group = await mongoSessionRun((session) => createTeamDefaultGroup({ teamId, session }));
+    const group = await mongoSessionRun(async (session) => {
+      const group = await createTeamDefaultGroup({ teamId, session });
+      const role = await getTmbPermission({
+        resourceType: PerResourceTypeEnum.team,
+        teamId,
+        tmbId: String(new Types.ObjectId()),
+        session
+      });
+
+      // 权限读取必须能看到事务内新建的默认组和 ACL，且不会在事务外补建默认组。
+      expect(role).toBe(defaultBasicRole);
+      return group;
+    });
     const permissionRow = await MongoResourcePermission.findOne({
       teamId,
       groupId: group._id,
