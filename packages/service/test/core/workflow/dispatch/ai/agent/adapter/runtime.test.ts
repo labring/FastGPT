@@ -56,7 +56,6 @@ const createContext = (overrides = {}) =>
     getSubAppInfo: (id: string) => ({
       name: id,
       avatar: '',
-      toolDescription: ''
     }),
     getSubApp: vi.fn(),
     currentFiles: [],

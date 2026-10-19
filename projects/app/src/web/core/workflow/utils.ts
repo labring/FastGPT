@@ -72,13 +72,13 @@ export const nodeTemplate2FlowNode = ({
   /** 新建业务显式解析后的默认 ID；恢复和复制不传。 */
   initialModelId?: string;
 }): Node<FlowNodeItemType> => {
-  const name = t(template.name as any);
+  const name = t(template.name);
 
   // 用持久化节点数据覆盖模板默认值。
   const moduleItem: FlowNodeItemType = {
     ...template,
     name: formatName?.(name) ?? name,
-    intro: template.intro ? t(template.intro as any) : template.intro,
+    intro: template.intro ? t(template.intro) : template.intro,
     nodeId: getNanoid(),
     parentNodeId
   };
@@ -236,6 +236,7 @@ export const storeNode2FlowNode = ({
   const usesLegacyDatasetSearchFilter =
     storeNode.flowNodeType === FlowNodeTypeEnum.datasetSearchNode &&
     collectionFilterVersion === DatasetTagFilterVersionEnum.legacy;
+  const isPluginNode = Boolean(storeNode.pluginId);
 
   // replace item data
   const nodeItem: FlowNodeItemType = {
@@ -244,8 +245,8 @@ export const storeNode2FlowNode = ({
     ...storeNode,
     // 连接柄由当前模板控制，避免存量数据重新开启已禁用的 source。
     showSourceHandle: nodeTemplate.showSourceHandle,
-    name: t(storeNode.name as any),
-    intro: storeNode.intro ? t(storeNode.intro as any) : storeNode.intro,
+    name: isPluginNode ? storeNode.name : t(storeNode.name),
+    intro: isPluginNode || !storeNode.intro ? storeNode.intro : t(storeNode.intro),
     avatar: nodeTemplate.avatar ?? storeNode.avatar,
     version: nodeTemplate.version || storeNode.version,
     catchError: storeNode.catchError ?? nodeTemplate.catchError,
@@ -253,24 +254,37 @@ export const storeNode2FlowNode = ({
     inputs: orderedTemplateInputs
       .map<FlowNodeInputItemType>((inputTemplate) => {
         const storeInput = getStoredInputForTemplate(inputTemplate);
+        const debugLabel = isPluginNode
+          ? (storeInput.debugLabel ?? inputTemplate.debugLabel)
+          : (inputTemplate.debugLabel ?? storeInput.debugLabel);
+        const toolDescription = isPluginNode
+          ? (storeInput.toolDescription ?? inputTemplate.toolDescription)
+          : (inputTemplate.toolDescription ?? storeInput.toolDescription);
+        const label = usesLegacyDatasetSearchFilter &&
+          inputTemplate.key === NodeInputKeyEnum.collectionFilterMatch
+            ? 'workflow:collection_metadata_filter'
+            : isPluginNode
+              ? (storeInput.label ?? inputTemplate.label)
+              : inputTemplate.label;
+        const description = usesLegacyDatasetSearchFilter &&
+          inputTemplate.key === NodeInputKeyEnum.collectionFilterMatch
+            ? 'workflow:filter_description'
+            : isPluginNode
+              ? (storeInput.description ?? inputTemplate.description)
+              : inputTemplate.description;
 
         return {
           ...storeInput,
-          // 迁移层不写入 locale 相关的展示字段；恢复画布时以当前模板为准，避免旧语言文本残留。
+          // 插件节点保留实例 IO 文案快照；内部节点继续使用当前模板和 i18n key。
           ...inputTemplate,
-          debugLabel: t(inputTemplate.debugLabel ?? (storeInput.debugLabel as any)),
-          toolDescription: t(inputTemplate.toolDescription ?? (storeInput.toolDescription as any)),
+          debugLabel: isPluginNode || !debugLabel ? debugLabel : t(debugLabel),
+          toolDescription: isPluginNode || !toolDescription ? toolDescription : t(toolDescription),
           key: storeInput.key,
-          label:
-            usesLegacyDatasetSearchFilter &&
-            inputTemplate.key === NodeInputKeyEnum.collectionFilterMatch
-              ? 'workflow:collection_metadata_filter'
-              : inputTemplate.label,
-          description:
-            usesLegacyDatasetSearchFilter &&
-            inputTemplate.key === NodeInputKeyEnum.collectionFilterMatch
-              ? 'workflow:filter_description'
-              : inputTemplate.description,
+          label,
+          description,
+          placeholder: isPluginNode
+            ? (storeInput.placeholder ?? inputTemplate.placeholder)
+            : inputTemplate.placeholder,
           selectedType: (() => {
             // 旧节点用 textarea 手写 JSON；切到条件行渲染类型，但保留字符串 value 以便展示升级 UI。
             if (
@@ -315,11 +329,17 @@ export const storeNode2FlowNode = ({
       .map<FlowNodeOutputItemType>((outputTemplate) => {
         const storeOutput =
           storeNode.outputs.find((item) => item.key === outputTemplate.key) || outputTemplate;
+        const outputDescription = storeOutput.description ?? outputTemplate.description;
+        const outputLabel = isPluginNode
+          ? (storeOutput.label ?? outputTemplate.label)
+          : outputTemplate.label;
 
         return {
           ...storeOutput,
           ...outputTemplate,
-          description: t(outputTemplate.description ?? (storeOutput.description as any)),
+          label: outputLabel,
+          description:
+            isPluginNode || !outputDescription ? outputDescription : t(outputDescription),
           id: storeOutput.id ?? outputTemplate.id,
           value: storeOutput.value ?? outputTemplate.value
         };
