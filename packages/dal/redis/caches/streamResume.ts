@@ -211,23 +211,9 @@ export class StreamResumeCache {
       return queue;
     };
 
-    const touchActive = () => {
-      queue = queue
-        .then(() => this.touchState(keys))
-        .catch((error) => {
-          this.logger.error('Failed to touch stream resume activity', {
-            params: parsedParams,
-            error
-          });
-        });
-
-      return queue;
-    };
-
     return {
       ...keys,
       enqueueRaw,
-      touchActive,
       flush: async () => {
         await queue;
       },

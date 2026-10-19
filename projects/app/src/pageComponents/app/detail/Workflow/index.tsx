@@ -15,6 +15,7 @@ import { ReactFlowCustomProvider } from '../WorkflowComponents/context/index';
 import { WorkflowUtilsContext } from '../WorkflowComponents/context/workflowUtilsContext';
 import WorkflowBuilder from '../WorkflowComponents/WorkflowBuilder';
 import { WorkflowBuilderUIProvider } from '../WorkflowComponents/WorkflowBuilder/context';
+import { WorkflowBuilderUIInitializer } from '../WorkflowComponents/WorkflowBuilder/hooks/useWorkflowBuilderUI';
 import { getWorkflowBuilderEntryAccess } from '../WorkflowComponents/WorkflowBuilder/uiState';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
@@ -66,6 +67,7 @@ const WorkflowEdit = () => {
             workflowBuilderEnabled={workflowBuilderEnabled}
             systemInitialized={systemInitialized}
           >
+            <WorkflowBuilderUIInitializer />
             <Flow />
             <WorkflowBuilder workflowBuilderEnabled={workflowBuilderEnabled} />
           </WorkflowBuilderUIProvider>

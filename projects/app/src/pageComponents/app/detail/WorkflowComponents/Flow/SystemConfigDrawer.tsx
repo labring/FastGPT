@@ -13,7 +13,7 @@ import AppDetailPanelModal, {
 } from '../../components/AppDetailPanelModal';
 import { useAppEditorUIState } from '@/components/core/app/useAppEditorUIState';
 import WorkflowBuilderGuidePopover from '../WorkflowBuilder/presentation/GuidePopover';
-import { useWorkflowBuilderUI } from '../WorkflowBuilder/context';
+import { useWorkflowBuilderUI } from '../WorkflowBuilder/hooks/useWorkflowBuilderUI';
 import WorkflowToolbarTooltip from '../WorkflowBuilder/presentation/WorkflowToolbarTooltip';
 
 /** 画布左侧工具栏中的系统配置入口，同时承载首次引导的第一步。 */

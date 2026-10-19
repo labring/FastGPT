@@ -6,11 +6,7 @@ import { STREAM_RESUME_REQUEST_HEADER } from '@fastgpt/global/core/chat/constant
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { createSseStreamContext } from '../../../common/response/sse';
-import {
-  getStreamResumeMirror,
-  getStreamResumeMirrorForBackgroundRun,
-  startStreamResumeActivityHeartbeat
-} from '../../chat/resume';
+import { getStreamResumeMirror, getStreamResumeMirrorForBackgroundRun } from '../../chat/resume';
 import { getWorkflowResponseWrite } from '../dispatch/utils';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);
@@ -161,7 +157,6 @@ export async function createWorkflowStreamResponseContext({
     stream,
     responseWrite
   });
-  const stopActivityHeartbeat = startStreamResumeActivityHeartbeat({ mirror });
 
   const context: Omit<WorkflowStreamResponseContext, 'flushResume'> = {
     responseWrite,
@@ -185,7 +180,6 @@ export async function createWorkflowStreamResponseContext({
     flushResume() {
       // 完成与 finally 可重复调用，共享同一次缓存写入等待与 TTL 收尾。
       flushPromise ??= (async () => {
-        stopActivityHeartbeat();
         // 分别处理两步的异常，缓存写入失败时仍需尝试 TTL 收尾。
         await mirror?.flush().catch((error) => {
           logger.error('Failed to flush workflow stream resume cache', {

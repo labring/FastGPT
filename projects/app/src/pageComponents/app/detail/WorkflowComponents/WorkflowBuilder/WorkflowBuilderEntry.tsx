@@ -3,15 +3,21 @@ import { Box, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import WorkflowBuilderGuidePopover from './presentation/GuidePopover';
-import { useWorkflowBuilderUI } from './context';
+import { useWorkflowBuilderUI } from './hooks/useWorkflowBuilderUI';
 import WorkflowToolbarTooltip from './presentation/WorkflowToolbarTooltip';
 import styles from './workflowBuilderEntry.module.scss';
-import { useWorkflowBuilderEntryVisual } from './hooks/useWorkflowBuilderEntryVisual';
 
 const WorkflowBuilderEntry = () => {
   const { t } = useTranslation('workflow');
-  const { guideStep, openLeftPanel, completeGuideStep, requestInputFocus } = useWorkflowBuilderUI();
-  const { entryAccess, showGeneratingHalo, showAttentionDot } = useWorkflowBuilderEntryVisual();
+  const {
+    guideStep,
+    openLeftPanel,
+    completeGuideStep,
+    requestInputFocus,
+    entryAccess,
+    showGeneratingHalo,
+    showAttentionDot
+  } = useWorkflowBuilderUI();
 
   if (entryAccess === 'hidden') return null;
 

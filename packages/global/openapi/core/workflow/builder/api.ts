@@ -2,9 +2,9 @@ import { z } from 'zod';
 import { WorkflowDocumentSchema } from '../../../../core/workflow/type/document';
 import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
-import { AgentPlanAskResponseSchema } from '../../../../core/workflow/template/system/interactive/type';
 import { OpenAPIAppChatConfigSchema } from '../../app/common/api';
 import {
+  AgentPlanAskResponseSchema,
   WorkflowBuilderVersionSchema,
   WorkflowChecksumSchema
 } from '../../../../core/workflow/builder/type';

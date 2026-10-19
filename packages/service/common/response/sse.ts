@@ -8,8 +8,6 @@ export type SseStreamWriter = (params: { event?: string; data: string }) => void
 
 export type SseStreamResumeMirror = {
   enqueueRaw?: (chunk: string) => Promise<void> | void;
-  /** 在没有新 SSE 事件时刷新后台任务的活跃状态。 */
-  touchActive?: () => Promise<void> | void;
   flush?: () => Promise<void>;
   shrinkTTLAfterComplete?: () => Promise<void>;
 };

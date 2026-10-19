@@ -9,10 +9,8 @@ import type {
   ChatItemObjItemType,
   ResponseTagItemType
 } from '@fastgpt/global/core/chat/type';
-import type {
-  AgentPlanAskResponse,
-  WorkflowInteractiveResponseType
-} from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { AgentPlanAskResponse } from '@fastgpt/global/core/workflow/builder/type';
 
 export type UserInputFileItemType = {
   id: string;

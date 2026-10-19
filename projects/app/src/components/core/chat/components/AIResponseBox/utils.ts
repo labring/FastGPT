@@ -1,10 +1,12 @@
 import type {
   AgentAskInteractive,
-  AgentPlanAskQueryInteractive,
-  WorkflowBuilderPreviewAction
+  AgentPlanAskQueryInteractive
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { AgentAskAnswerDetail } from '../../ChatContainer/ChatBox/Input/AgentAskComposer';
-import type { WorkflowBuilderVersionDisplayState } from '@fastgpt/global/core/workflow/builder/type';
+import type {
+  WorkflowBuilderPreviewAction,
+  WorkflowBuilderVersionDisplayState
+} from '@fastgpt/global/core/workflow/builder/type';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import i18next from 'i18next';
 
@@ -28,33 +30,25 @@ export const getWorkflowBuilderVersionButtonState = ({
   return 'apply';
 };
 
-const workflowBuilderToolPresentationMap: Record<
-  string,
-  { nameKey: string; getName: () => string; avatar: string }
-> = {
+const workflowBuilderToolPresentationMap: Record<string, { nameKey: string; avatar: string }> = {
   workflow_cli_query: {
-    nameKey: 'workflow:workflow_builder_tool_query',
-    getName: () => i18nT('workflow:workflow_builder_tool_query'),
+    nameKey: i18nT('workflow:workflow_builder_tool_query'),
     avatar: 'core/chat/workflowBuilder/query'
   },
   workflow_cli_stage: {
-    nameKey: 'workflow:workflow_builder_tool_stage',
-    getName: () => i18nT('workflow:workflow_builder_tool_stage'),
+    nameKey: i18nT('workflow:workflow_builder_tool_stage'),
     avatar: 'core/chat/workflowBuilder/stage'
   },
   workflow_cli_commit: {
-    nameKey: 'workflow:workflow_builder_tool_commit',
-    getName: () => i18nT('workflow:workflow_builder_tool_commit'),
+    nameKey: i18nT('workflow:workflow_builder_tool_commit'),
     avatar: 'core/chat/workflowBuilder/commit'
   },
   workflow_builder_present_preview: {
-    nameKey: 'workflow:workflow_builder_tool_preview',
-    getName: () => i18nT('workflow:workflow_builder_tool_preview'),
+    nameKey: i18nT('workflow:workflow_builder_tool_preview'),
     avatar: 'core/chat/workflowBuilder/preview'
   },
   workflow_builder_cancel: {
-    nameKey: 'workflow:workflow_builder_tool_cancel',
-    getName: () => i18nT('workflow:workflow_builder_tool_cancel'),
+    nameKey: i18nT('workflow:workflow_builder_tool_cancel'),
     avatar: 'core/chat/workflowBuilder/cancel'
   }
 };
@@ -82,7 +76,7 @@ export const getWorkflowBuilderToolDisplayName = (
     const translated = i18next.t(presentation.nameKey);
     if (translated && translated !== presentation.nameKey) return translated;
   }
-  return presentation.getName();
+  return presentation.nameKey;
 };
 
 /**
@@ -175,10 +169,9 @@ export const adaptLegacyAgentPlanAskToReadonlyAgentAsk = (
     questions: [
       {
         question: interactive.params.content,
-        // AgentPlanAskOption 同时支持纯字符串与带 label/inputMode 的对象形式
         options: interactive.params.options.map((option) => ({
-          summary: typeof option === 'string' ? option : option.label,
-          value: typeof option === 'string' ? option : option.value
+          summary: option,
+          value: option
         })),
         answer: interactive.params.answer ?? ''
       }

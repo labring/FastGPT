@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Box, Button, Flex, IconButton, Portal, Text } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
@@ -23,8 +23,7 @@ import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/build
 import { isWorkflowBuilderVersionExpiredError } from '@fastgpt/global/core/workflow/builder/utils';
 import { loadWorkflowBuilderVersion, commitWorkflowBuilderVersion } from './api';
 import AppDetailPanelModal from '../../components/AppDetailPanelModal';
-import { useWorkflowBuilderUI } from './context';
-import { getWorkflowBuilderAttentionKeys, useWorkflowBuilderVersionExpired } from './uiState';
+import { useWorkflowBuilderUI } from './hooks/useWorkflowBuilderUI';
 import WorkflowBuilderCommercialInput from './presentation/CommercialInput';
 
 const WorkflowBuilderApplyToast = ({
@@ -81,10 +80,10 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
   const setAppDetail = useContextSelector(AppContext, (value) => value.setAppDetail);
   const {
     workflowCanvasRef,
-    activeLeftPanel,
     focusRequestId,
-    activity,
-    dismissedBannerChecksum,
+    isOpen,
+    latestTarget,
+    showLatestBanner,
     closeLeftPanel,
     acknowledgeAttention,
     setActivity,
@@ -92,10 +91,6 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
   } = useWorkflowBuilderUI();
   const getNodes = useContextSelector(WorkflowBufferDataContext, (value) => value.getNodes);
   const getEdges = useContextSelector(WorkflowBufferDataContext, (value) => value.getEdges);
-  const workflowDataRevision = useContextSelector(
-    WorkflowBufferDataContext,
-    (value) => value.workflowDataRevision
-  );
   const pushPastSnapshot = useContextSelector(
     WorkflowSnapshotContext,
     (value) => value.pushPastSnapshot
@@ -107,7 +102,6 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
   );
   const chatPanelRef = useRef<WorkflowBuilderChatPanelRef>(null);
   const [builderChatId, setBuilderChatId] = useState('');
-  const isOpen = activeLeftPanel === 'workflowBuilder';
   const showApplyResultToast = useCallback(
     ({ status, message }: { status: 'success' | 'error'; message: string }) =>
       toast({
@@ -252,25 +246,6 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
     notifyVersionExpired
   };
 
-  const latestTarget = activity.latestVersion;
-  const isLatestVersionExpired = useWorkflowBuilderVersionExpired(latestTarget?.version.expiresAt);
-  const pendingVersionChecksum =
-    latestTarget && !latestTarget.version.appliedAt && !isLatestVersionExpired
-      ? latestTarget.version.checksum
-      : undefined;
-  const attentionKeys = getWorkflowBuilderAttentionKeys({
-    pendingInteractiveKey: activity.pendingInteractiveKey,
-    pendingVersionChecksum,
-    errorAttentionKey: activity.errorAttentionKey
-  });
-  const showLatestBanner = Boolean(
-    !isOpen &&
-    latestTarget &&
-    !latestTarget.version.appliedAt &&
-    latestTarget.version.checksum !== dismissedBannerChecksum &&
-    !isLatestVersionExpired
-  );
-
   return (
     <>
       {showLatestBanner && latestTarget && (
@@ -291,7 +266,7 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
             borderWidth="1px"
             borderColor="#E8EBF0"
             borderRadius="9999px"
-            onClick={() => acknowledgeAttention(attentionKeys)}
+            onClick={acknowledgeAttention}
           >
             <Flex alignItems="center" gap="8px" minW={0}>
               <Flex boxSize="24px" flexShrink={0} alignItems="center" justifyContent="center">
@@ -326,7 +301,7 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
                 boxShadow="0 0 1px rgba(19, 51, 107, 0.08), 0 1px 2px rgba(19, 51, 107, 0.05)"
                 _hover={{ bg: '#2B5FD9' }}
                 onClick={() => {
-                  dismissBanner(latestTarget.version.checksum);
+                  dismissBanner();
                   void applyVersion(latestTarget.version, latestTarget.responseChatItemId).catch(
                     () => {
                       // applyVersion 已统一展示错误并回滚画布，这里只消费已处理的异常。
@@ -348,7 +323,7 @@ const WorkflowBuilder = ({ workflowBuilderEnabled }: { workflowBuilderEnabled: b
                 color="#485264"
                 borderRadius="9999px"
                 _hover={{ bg: 'rgba(72, 82, 100, 0.08)' }}
-                onClick={() => dismissBanner(latestTarget.version.checksum)}
+                onClick={dismissBanner}
               />
             </Flex>
           </Flex>

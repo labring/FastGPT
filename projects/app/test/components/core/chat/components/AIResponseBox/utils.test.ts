@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import type { WorkflowBuilderPreviewAction } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { WorkflowBuilderPreviewAction } from '@fastgpt/global/core/workflow/builder/type';
 import {
   adaptLegacyAgentPlanAskToReadonlyAgentAsk,
   getToolDisplayName,

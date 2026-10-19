@@ -1,9 +1,7 @@
 import Markdown from '@/components/Markdown';
 import { Box, Flex } from '@chakra-ui/react';
-import type {
-  AgentAskQuestionInteractive,
-  WorkflowBuilderPreviewInteractive
-} from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { AgentAskQuestionInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { WorkflowBuilderPreviewInteractive } from '@fastgpt/global/core/workflow/builder/type';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo, useState } from 'react';
 import AgentAskComposer, {
@@ -110,10 +108,7 @@ const RenderWorkflowBuilderPreviewInteractive = React.memo(
 
     return (
       <Flex flexDirection={'column'} gap={4} maxW={boxBodyProps?.maxW ?? '760px'}>
-        <Markdown
-          source={`\`\`\`mermaid\n${mermaid}\n\`\`\``}
-          showAnimation={false}
-        />
+        <Markdown source={`\`\`\`mermaid\n${mermaid}\n\`\`\``} showAnimation={false} />
         {sections.map((section, index) => (
           <Box key={`${section.title}-${index}`}>
             <Box mb={1.5} fontWeight={'semibold'}>

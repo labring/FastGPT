@@ -1,10 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/router';
-import { createContext, useContextSelector } from 'use-context-selector';
-import { useAppEditorUIState } from '@/components/core/app/useAppEditorUIState';
-import { WORKFLOW_BUILDER_AUTO_OPEN_QUERY_KEY } from '@/web/core/app/utils';
+import React, { useMemo, useRef, useState } from 'react';
+import { createContext } from 'use-context-selector';
 import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
-import { getWorkflowBuilderAttentionKeys, getWorkflowBuilderInitialState } from './uiState';
 
 type WorkflowBuilderLeftPanel = 'workflowBuilder' | 'nodeTemplates' | 'systemConfig';
 type WorkflowBuilderGuideStep = 'systemConfig' | 'workflowBuilder';
@@ -20,22 +16,29 @@ export type WorkflowBuilderActivity = {
   latestVersion?: WorkflowBuilderVersionTarget;
 };
 
-type WorkflowBuilderUIContextValue = {
+type WorkflowBuilderUIConfig = {
+  appId: string;
+  canEdit: boolean;
+  workflowBuilderEntryVisible: boolean;
+  workflowBuilderEnabled: boolean;
+  systemInitialized: boolean;
+};
+
+type WorkflowBuilderUIState = WorkflowBuilderUIConfig & {
   workflowCanvasRef: React.MutableRefObject<HTMLDivElement | null>;
+  autoOpenAfterGuideRef: React.MutableRefObject<boolean>;
   activeLeftPanel?: WorkflowBuilderLeftPanel;
+  setActiveLeftPanel: React.Dispatch<React.SetStateAction<WorkflowBuilderLeftPanel | undefined>>;
   guideStep?: WorkflowBuilderGuideStep;
+  setGuideStep: React.Dispatch<React.SetStateAction<WorkflowBuilderGuideStep | undefined>>;
   focusRequestId: number;
+  setFocusRequestId: React.Dispatch<React.SetStateAction<number>>;
   activity: WorkflowBuilderActivity;
-  dismissedBannerChecksum?: string;
-  acknowledgedAttentionKeys: string[];
-  openLeftPanel: (panel: WorkflowBuilderLeftPanel) => void;
-  closeLeftPanel: (panel?: WorkflowBuilderLeftPanel) => void;
-  toggleLeftPanel: (panel: WorkflowBuilderLeftPanel) => void;
-  completeGuideStep: (step: WorkflowBuilderGuideStep) => void;
-  requestInputFocus: () => void;
   setActivity: React.Dispatch<React.SetStateAction<WorkflowBuilderActivity>>;
-  acknowledgeAttention: (keys: readonly string[]) => void;
-  dismissBanner: (checksum: string) => void;
+  dismissedBannerChecksum?: string;
+  setDismissedBannerChecksum: React.Dispatch<React.SetStateAction<string | undefined>>;
+  acknowledgedAttentionKeys: string[];
+  setAcknowledgedAttentionKeys: React.Dispatch<React.SetStateAction<string[]>>;
 };
 
 const DEFAULT_ACTIVITY: WorkflowBuilderActivity = {
@@ -43,24 +46,28 @@ const DEFAULT_ACTIVITY: WorkflowBuilderActivity = {
   isBuildingWorkflow: false
 };
 
-const WorkflowBuilderUIContext = createContext<WorkflowBuilderUIContextValue>({
+export const WorkflowBuilderUIContext = createContext<WorkflowBuilderUIState>({
+  appId: '',
+  canEdit: false,
+  workflowBuilderEntryVisible: false,
+  workflowBuilderEnabled: false,
+  systemInitialized: false,
   workflowCanvasRef: { current: null },
+  autoOpenAfterGuideRef: { current: false },
+  setActiveLeftPanel: () => undefined,
+  setGuideStep: () => undefined,
   focusRequestId: 0,
+  setFocusRequestId: () => undefined,
   activity: DEFAULT_ACTIVITY,
-  acknowledgedAttentionKeys: [],
-  openLeftPanel: () => undefined,
-  closeLeftPanel: () => undefined,
-  toggleLeftPanel: () => undefined,
-  completeGuideStep: () => undefined,
-  requestInputFocus: () => undefined,
   setActivity: () => undefined,
-  acknowledgeAttention: () => undefined,
-  dismissBanner: () => undefined
+  setDismissedBannerChecksum: () => undefined,
+  acknowledgedAttentionKeys: [],
+  setAcknowledgedAttentionKeys: () => undefined
 });
 
 /**
- * 统一编排 Workflow 编辑页左侧主面板、首次引导和 Builder 聊天派生状态。
- * 新建路由标记只决定引导结束后是否自动打开，不参与后续持久化。
+ * 保存编辑页共享 UI 状态及原始 setter；面板操作、提醒计算和首次引导由 UI Hook 统一处理。
+ * 同一 Provider 内的按钮、横幅和面板共享已读记录，避免多次调用 Hook 时各自维护一份状态。
  */
 export const WorkflowBuilderUIProvider = ({
   appId,
@@ -69,197 +76,50 @@ export const WorkflowBuilderUIProvider = ({
   workflowBuilderEnabled,
   systemInitialized,
   children
-}: {
-  appId: string;
-  canEdit: boolean;
-  workflowBuilderEntryVisible: boolean;
-  workflowBuilderEnabled: boolean;
-  systemInitialized: boolean;
-  children: React.ReactNode;
-}) => {
-  const router = useRouter();
+}: React.PropsWithChildren<WorkflowBuilderUIConfig>) => {
   const workflowCanvasRef = useRef<HTMLDivElement>(null);
-  const {
-    hasCompletedSystemConfigFirstEntryGuide,
-    completeSystemConfigFirstEntryGuide,
-    hasCompletedWorkflowBuilderFirstEntryGuide,
-    completeWorkflowBuilderFirstEntryGuide
-  } = useAppEditorUIState(appId);
+  const autoOpenAfterGuideRef = useRef(false);
   const [activeLeftPanel, setActiveLeftPanel] = useState<WorkflowBuilderLeftPanel>();
   const [guideStep, setGuideStep] = useState<WorkflowBuilderGuideStep>();
   const [focusRequestId, setFocusRequestId] = useState(0);
   const [activity, setActivity] = useState(DEFAULT_ACTIVITY);
   const [dismissedBannerChecksum, setDismissedBannerChecksum] = useState<string>();
   const [acknowledgedAttentionKeys, setAcknowledgedAttentionKeys] = useState<string[]>([]);
-  const handledAppIdRef = useRef<string>();
-  const autoOpenAfterGuideRef = useRef(false);
 
-  const requestInputFocus = useCallback(() => setFocusRequestId((value) => value + 1), []);
-  const acknowledgeAttention = useCallback((keys: readonly string[]) => {
-    if (keys.length === 0) return;
-
-    setAcknowledgedAttentionKeys((current) => {
-      const unseenKeys = keys.filter((key) => !current.includes(key));
-      return unseenKeys.length > 0 ? [...current, ...unseenKeys] : current;
-    });
-  }, []);
-  const currentAttentionKeys = useMemo(
-    () =>
-      getWorkflowBuilderAttentionKeys({
-        pendingInteractiveKey: activity.pendingInteractiveKey,
-        pendingVersionChecksum: activity.latestVersion?.version.checksum,
-        errorAttentionKey: activity.errorAttentionKey
-      }),
-    [
-      activity.errorAttentionKey,
-      activity.latestVersion?.version.checksum,
-      activity.pendingInteractiveKey
-    ]
-  );
-
-  const acknowledgeWorkflowBuilderView = useCallback(() => {
-    acknowledgeAttention(currentAttentionKeys);
-    const latestVersionChecksum = activity.latestVersion?.version.checksum;
-    if (latestVersionChecksum) setDismissedBannerChecksum(latestVersionChecksum);
-  }, [acknowledgeAttention, activity.latestVersion?.version.checksum, currentAttentionKeys]);
-
-  useEffect(() => {
-    if (!systemInitialized || !router.isReady || !appId || handledAppIdRef.current === appId) {
-      return;
-    }
-
-    // Router 就绪属于外部状态变化，延后一拍初始化可避免在 Effect 主体内级联渲染。
-    const timer = window.setTimeout(() => {
-      handledAppIdRef.current = appId;
-      const rawFlag = router.query[WORKFLOW_BUILDER_AUTO_OPEN_QUERY_KEY];
-      const shouldAutoOpen = Array.isArray(rawFlag) ? rawFlag.includes('1') : rawFlag === '1';
-      autoOpenAfterGuideRef.current = workflowBuilderEnabled && shouldAutoOpen;
-
-      if (shouldAutoOpen) {
-        const nextQuery = { ...router.query };
-        delete nextQuery[WORKFLOW_BUILDER_AUTO_OPEN_QUERY_KEY];
-        void router.replace({ pathname: router.pathname, query: nextQuery }, undefined, {
-          shallow: true
-        });
-      }
-
-      const initialState = getWorkflowBuilderInitialState({
-        canEdit,
-        workflowBuilderEntryVisible,
-        workflowBuilderEnabled,
-        shouldAutoOpen,
-        hasCompletedSystemConfigFirstEntryGuide,
-        hasCompletedWorkflowBuilderFirstEntryGuide
-      });
-
-      if (initialState.activeLeftPanel) {
-        setActiveLeftPanel(initialState.activeLeftPanel);
-      }
-      if (initialState.guideStep) {
-        setGuideStep(initialState.guideStep);
-      }
-      if (initialState.shouldCompleteSystemConfigFirstEntryGuide) {
-        completeSystemConfigFirstEntryGuide();
-      }
-      if (initialState.shouldFocusWorkflowBuilder) {
-        requestInputFocus();
-      }
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [
-    appId,
-    canEdit,
-    completeSystemConfigFirstEntryGuide,
-    hasCompletedSystemConfigFirstEntryGuide,
-    hasCompletedWorkflowBuilderFirstEntryGuide,
-    requestInputFocus,
-    router,
-    systemInitialized,
-    workflowBuilderEntryVisible,
-    workflowBuilderEnabled
-  ]);
-
-  const openLeftPanel = useCallback(
-    (panel: WorkflowBuilderLeftPanel) => {
-      // 进入或离开 Builder 都表示用户已经看过面板内容，红点和当前版本横幅必须一起确认。
-      if (panel === 'workflowBuilder' || activeLeftPanel === 'workflowBuilder') {
-        acknowledgeWorkflowBuilderView();
-      }
-      setActiveLeftPanel(panel);
-    },
-    [acknowledgeWorkflowBuilderView, activeLeftPanel]
-  );
-  const closeLeftPanel = useCallback(
-    (panel?: WorkflowBuilderLeftPanel) => {
-      if (panel === 'workflowBuilder' || (!panel && activeLeftPanel === 'workflowBuilder')) {
-        acknowledgeWorkflowBuilderView();
-      }
-      setActiveLeftPanel((current) => (!panel || current === panel ? undefined : current));
-    },
-    [acknowledgeWorkflowBuilderView, activeLeftPanel]
-  );
-  const toggleLeftPanel = useCallback(
-    (panel: WorkflowBuilderLeftPanel) => {
-      if (panel === 'workflowBuilder') acknowledgeWorkflowBuilderView();
-      setActiveLeftPanel((current) => (current === panel ? undefined : panel));
-    },
-    [acknowledgeWorkflowBuilderView]
-  );
-
-  const completeGuideStep = useCallback(
-    (step: WorkflowBuilderGuideStep) => {
-      if (step === 'systemConfig') {
-        setGuideStep(workflowBuilderEntryVisible ? 'workflowBuilder' : undefined);
-        return;
-      }
-
-      setGuideStep(undefined);
-      completeWorkflowBuilderFirstEntryGuide();
-      if (workflowBuilderEnabled && autoOpenAfterGuideRef.current) {
-        setActiveLeftPanel('workflowBuilder');
-        requestInputFocus();
-      }
-    },
-    [
-      completeWorkflowBuilderFirstEntryGuide,
-      requestInputFocus,
-      workflowBuilderEnabled,
-      workflowBuilderEntryVisible
-    ]
-  );
-
-  const value = useMemo<WorkflowBuilderUIContextValue>(
+  const value = useMemo<WorkflowBuilderUIState>(
     () => ({
+      appId,
+      canEdit,
+      workflowBuilderEntryVisible,
+      workflowBuilderEnabled,
+      systemInitialized,
       workflowCanvasRef,
+      autoOpenAfterGuideRef,
       activeLeftPanel,
+      setActiveLeftPanel,
       guideStep,
+      setGuideStep,
       focusRequestId,
+      setFocusRequestId,
       activity,
-      dismissedBannerChecksum,
-      acknowledgedAttentionKeys,
-      openLeftPanel,
-      closeLeftPanel,
-      toggleLeftPanel,
-      completeGuideStep,
-      requestInputFocus,
       setActivity,
-      acknowledgeAttention,
-      dismissBanner: setDismissedBannerChecksum
+      dismissedBannerChecksum,
+      setDismissedBannerChecksum,
+      acknowledgedAttentionKeys,
+      setAcknowledgedAttentionKeys
     }),
     [
+      appId,
+      canEdit,
+      workflowBuilderEntryVisible,
+      workflowBuilderEnabled,
+      systemInitialized,
       activeLeftPanel,
-      acknowledgeAttention,
-      acknowledgedAttentionKeys,
-      activity,
-      closeLeftPanel,
-      completeGuideStep,
-      dismissedBannerChecksum,
-      focusRequestId,
       guideStep,
-      openLeftPanel,
-      requestInputFocus,
-      toggleLeftPanel
+      focusRequestId,
+      activity,
+      dismissedBannerChecksum,
+      acknowledgedAttentionKeys
     ]
   );
 
@@ -267,6 +127,3 @@ export const WorkflowBuilderUIProvider = ({
     <WorkflowBuilderUIContext.Provider value={value}>{children}</WorkflowBuilderUIContext.Provider>
   );
 };
-
-export const useWorkflowBuilderUI = () =>
-  useContextSelector(WorkflowBuilderUIContext, (value) => value);

@@ -157,31 +157,6 @@ describe('StreamResumeCache', () => {
     });
   });
 
-  it('touches active state without requiring a new stream event', async () => {
-    const redis = createRedis();
-    const cache = new StreamResumeCache({
-      redis,
-      logger,
-      streamTtlSeconds: 300,
-      postCompleteTtlSeconds: 30,
-      ttlTouchIntervalMs: 1_000
-    });
-    const mirror = cache.createMirror(params);
-
-    await mirror.touchActive();
-    await mirror.flush();
-
-    expect(redis.expireStream).toHaveBeenCalledWith({
-      key: asRedisLogicalKey('stream:resume:data:team-1:app:app-1:chat-1'),
-      ttlSeconds: 300
-    });
-    expect(redis.set).toHaveBeenCalledWith({
-      key: asRedisLogicalKey('stream:resume:active:team-1:app:app-1:chat-1'),
-      value: expect.stringMatching(/^\{"updatedAt":\d+\}$/),
-      ttlMs: 300_000
-    });
-  });
-
   it('logs a failed mirror cleanup and continues with the write queue', async () => {
     const redis = createRedis();
     const clearError = new Error('cleanup failed');

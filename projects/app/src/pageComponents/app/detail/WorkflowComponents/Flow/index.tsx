@@ -23,7 +23,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { WorkflowUIContext } from '../context/workflowUIContext';
 import { useTranslation } from 'next-i18next';
 import WorkflowBuilderEntry from '../WorkflowBuilder/WorkflowBuilderEntry';
-import { useWorkflowBuilderUI } from '../WorkflowBuilder/context';
+import { useWorkflowBuilderUI } from '../WorkflowBuilder/hooks/useWorkflowBuilderUI';
 import WorkflowToolbarTooltip from '../WorkflowBuilder/presentation/WorkflowToolbarTooltip';
 
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));

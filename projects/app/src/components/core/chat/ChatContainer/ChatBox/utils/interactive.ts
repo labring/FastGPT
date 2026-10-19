@@ -5,10 +5,10 @@ import {
   getLastInteractiveValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import type {
-  AgentPlanAskResponse,
   UserInputInteractive,
   WorkflowInteractiveResponseType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { AgentPlanAskResponse } from '@fastgpt/global/core/workflow/builder/type';
 import { parseAgentAskAnswers } from '@fastgpt/global/core/ai/agent/utils';
 import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -144,10 +144,9 @@ export const persistAgentAskAnswersToHistories = ({
               questions: [
                 {
                   question: val.interactive.params.content,
-                  // AgentPlanAskOption 同时支持纯字符串与带 label/inputMode 的对象形式
                   options: val.interactive.params.options.map((option) => ({
-                    summary: typeof option === 'string' ? option : option.label,
-                    value: typeof option === 'string' ? option : option.value
+                    summary: option,
+                    value: option
                   })),
                   answer: submittedAnswers[0] ?? ''
                 }

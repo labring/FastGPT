@@ -20,7 +20,6 @@ on:
       - 'eslint.config.mjs'
       - '.npmrc'
       - '.github/workflows/test-fastgpt.yaml'
-      - '.forgejo/workflows/test-fastgpt.yaml'
   workflow_dispatch:
 
     # Only one build per PR branch at a time
@@ -94,8 +93,7 @@ jobs:
               '.npmrc',
               'test',
               'scripts/test',
-              '.github/workflows/test-fastgpt.yaml',
-              '.forgejo/workflows/test-fastgpt.yaml'
+              '.github/workflows/test-fastgpt.yaml'
             ]);
 
             const runGlobal = affectsAll || hasPath(['packages/global']);
