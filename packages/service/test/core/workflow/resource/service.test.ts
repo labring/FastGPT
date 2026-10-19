@@ -8,6 +8,7 @@ import {
   loadWorkflowAppResource,
   loadWorkflowDatasetResource,
   loadWorkflowModelResource,
+  isWorkflowResourceError,
   WorkflowResourceError
 } from '@fastgpt/service/core/workflow/resource/service';
 import { getUser } from '@test/datas/users';
@@ -67,6 +68,33 @@ import {
 
 const createFindResult = (documents: unknown = []) => ({
   lean: vi.fn().mockResolvedValue(documents)
+});
+
+describe('WorkflowResourceError', () => {
+  it('preserves the error name, message and optional display message', () => {
+    const error = new WorkflowResourceError('resource missing', '资源不存在');
+
+    expect(error).toBeInstanceOf(UserError);
+    expect(error.name).toBe('WorkflowResourceError');
+    expect(error.message).toBe('resource missing');
+    expect(error.displayMessage).toBe('资源不存在');
+  });
+});
+
+describe('isWorkflowResourceError', () => {
+  it('recognizes real instances and their serialized representations', () => {
+    const error = new WorkflowResourceError('resource missing');
+
+    expect(isWorkflowResourceError(error)).toBe(true);
+    expect(isWorkflowResourceError(JSON.parse(JSON.stringify(error)))).toBe(true);
+  });
+
+  it.each([new Error('runtime failure'), 'WorkflowResourceError', null, undefined, {}])(
+    'rejects unrelated errors and empty values: %s',
+    (error) => {
+      expect(isWorkflowResourceError(error)).toBe(false);
+    }
+  );
 });
 
 describe('workflow resource context', () => {
