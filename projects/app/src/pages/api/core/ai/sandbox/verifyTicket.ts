@@ -1,10 +1,10 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
+import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
 import {
-  buildSandboxClientQueryFromChatSource,
   getSandboxClient,
   type SandboxClient
-} from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+} from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
@@ -19,7 +19,7 @@ import {
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { serviceEnv } from '@fastgpt/service/env';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { resolveSandboxPreviewSession } from '@fastgpt/service/core/ai/sandbox/interface/preview';
+import { resolveSandboxPreviewSession } from '@fastgpt/service/core/ai/sandbox/application/preview';
 
 const IDE_AGENT_PORT = 1318;
 const IDE_AGENT_PREVIEW_PORT = 1319;

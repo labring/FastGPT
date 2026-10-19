@@ -42,15 +42,17 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
     per: WritePermissionVal
   });
   const modelHandle = await getTeamModelHandle({ teamId });
-  const vectorModelData = modelHandle.getEmbeddingModelData(
-    getDatasetModelReference(collection.dataset, 'embedding')
+  const vectorModelData = modelHandle.getModelData(
+    getDatasetModelReference(collection.dataset, 'embedding'),
+    { type: 'embedding' }
   );
-  const agentModelData = modelHandle.getLLMModelData(
-    getDatasetModelReference(collection.dataset, 'agent')
+  const agentModelData = modelHandle.getModelData(
+    getDatasetModelReference(collection.dataset, 'agent'),
+    { type: 'llm' }
   );
-  const vlmModelData = modelHandle.getVlmModelData(
+  const vlmModelData = modelHandle.getModelData(
     getDatasetModelReference(collection.dataset, 'vlm'),
-    { optional: true }
+    { type: 'llm', vision: true, optional: true }
   );
 
   const mode = getTrainingModeByCollection({

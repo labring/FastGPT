@@ -7,6 +7,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { assertAuthModels } from '@fastgpt/service/support/permission/model/auth';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
@@ -38,12 +39,13 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     datasetId,
     per: OwnerPermissionVal
   });
-  const { handle: modelHandle } = await assertAuthModels({
+  const {
+    models: [vectorModelData]
+  } = await assertAuthModels({
     actor: { teamId, tmbId, isRoot },
     modelIds: [vectorModelId],
-    action: 'use'
+    type: ModelTypeEnum.embedding
   });
-  const vectorModelData = modelHandle.getEmbeddingModelData({ modelId: vectorModelId });
 
   // check vector model
   if (String(dataset.vectorModelId || '') === vectorModelData.modelId) {

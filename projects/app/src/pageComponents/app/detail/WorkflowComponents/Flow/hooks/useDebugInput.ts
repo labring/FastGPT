@@ -7,7 +7,7 @@ import {
 import {
   getSelectedInputRenderType,
   nodeInputIsReference
-} from '@fastgpt/global/core/workflow/utils';
+} from '@fastgpt/global/common/workflow/reference';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import {
   FlowNodeInputTypeEnum,

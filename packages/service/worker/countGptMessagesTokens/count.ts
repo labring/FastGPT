@@ -46,7 +46,8 @@ const contentPartToText = (part: CountableContentPart) => {
   if (part.type === 'image_url') {
     return `[image${part.image_url.detail ? `:${part.image_url.detail}` : ''}]`;
   }
-  if (part.type === 'input_audio') return `[audio:${part.input_audio.format}]`;
+  if (part.type === 'input_audio')
+    return part.input_audio.format ? `[audio:${part.input_audio.format}]` : '[audio]';
   if (part.type === 'video_url') return '[video]';
   if (part.type === 'file')
     return [part.file.filename, part.file.file_id, part.file.file_data ? '[file]' : '']

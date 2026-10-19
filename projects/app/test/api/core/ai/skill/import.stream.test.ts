@@ -5,7 +5,7 @@ import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
 import { downloadSkillPackage } from '@fastgpt/service/core/ai/skill/package';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
-import { getAgentSandboxSkillMaxBytes } from '@fastgpt/service/core/ai/sandbox/interface/config';
+import { getAgentSandboxSkillMaxBytes } from '@fastgpt/service/core/ai/sandbox/config';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getUser } from '@test/datas/users';
 import type { MockReqType } from '@test/mocks/request';

@@ -15,7 +15,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
+import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 import { datasetSearchUsesLegacyFilter } from '@/web/core/workflow/datasetSearchNodeUpgrade';
 
 const RenderList: Record<

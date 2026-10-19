@@ -4,7 +4,7 @@ import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
-import { formatModels } from '@fastgpt/global/core/workflow/utils';
+import { formatModels } from '@fastgpt/global/common/workflow/model';
 import {
   PublishAppBodySchema,
   PublishAppQuerySchema,
@@ -20,11 +20,12 @@ import {
   beforeUpdateAppFormat,
   updateParentFoldersUpdateTime
 } from '@fastgpt/service/core/app/controller';
-import { extractAppResources } from '@fastgpt/service/core/app/resources';
+import { extractAppResources } from '@fastgpt/service/core/app/resource/utils';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { resolveAppResourcesByPermission } from '@fastgpt/service/support/permission/app/resource';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
+import { resolveAppResourcesByPermission } from '@fastgpt/service/core/app/resource/service';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 
 async function handler(req: ApiRequestProps<PostPublishAppProps>) {
@@ -46,11 +47,15 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
 
   const normalizedWorkflow = migrateWorkflowToCurrent({ nodes, edges, chatConfig });
   const modelHandle = await getTeamModelHandle({ teamId });
+  const authorizedIds = await getAuthorizedModelIds({
+    actor: { teamId, tmbId, isRoot },
+    handle: modelHandle
+  });
   formatModels({
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig,
     models: modelHandle.getActiveModels(),
-    defaultModelIds: modelHandle.getSystemDefaultModelIds(),
+    defaultModelIds: modelHandle.getDefaultModelIds(authorizedIds),
     modelReferencePolicy: isPublish ? 'validate' : 'preserve'
   });
   await beforeUpdateAppFormat({
@@ -59,8 +64,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   });
   const extracted = extractAppResources({
     nodes: normalizedWorkflow.nodes,
-    chatConfig: normalizedWorkflow.chatConfig,
-    models: modelHandle.getAllModels()
+    chatConfig: normalizedWorkflow.chatConfig
   });
   if (autoSave) {
     await mongoSessionRun(async (session) => {
@@ -71,6 +75,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
         tmbId,
         isRoot,
         blockOnUnauthorized: false,
+        modelHandle,
         session
       });
       await MongoAppVersion.findOneAndUpdate(
@@ -128,6 +133,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       tmbId,
       isRoot,
       blockOnUnauthorized: !!isPublish,
+      modelHandle,
       session
     });
 

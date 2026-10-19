@@ -5,7 +5,7 @@ import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import SandboxConfigButton from '@/pageComponents/app/detail/components/SandboxConfigButton';
 import InputLabel from '../render/RenderInput/Label';
-import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
+import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 
 const getRenderType = (input: FlowNodeInputItemType) =>
   getSelectedInputRenderType(input) || FlowNodeInputTypeEnum.custom;

@@ -155,7 +155,7 @@ Cache 拥有 key、TTL、codec、miss、read-through、single-flight 和故障�
 | `WechatQrLoginCache` | QR JSON；480 秒 | miss 表示过期；损坏数据和 Redis 错误 fail-closed |
 | `DailyActiveDedupeCache` | `1`；86400 秒 | `SET NX EX` 原子声明；Redis 故障 fail-open |
 | `SystemVersionCache` | UUID；永久 | 原子初始化；错误 fail-closed；wildcard 只删除子 key |
-| `FixedWindowRateLimitCache` | count 和剩余 TTL | 原子固定窗口；Redis 错误由调用方 fail-closed |
+| `FixedWindowRateLimitCache` | count 和剩余 TTL | 原子固定窗口；Redis 错误由调用方按场景决定放行或拒绝（团队 QPM fail-open） |
 | `TeamQpmCache` | positive integer；1 小时 | 损坏值按 miss；Redis 错误传播 |
 | `TeamPointCache` | total/surplus 双 key；60 秒 | 成对读写；异常回源 Mongo；写入 best-effort |
 | `SessionCache` | hash；7 天 | hash 与 TTL 原子写；损坏记录清理 |

@@ -25,7 +25,7 @@ AGENT_SANDBOX_OPENSANDBOX_IMAGE=ghcr.io/labring/fastgpt-agent-sandbox-root:v0.3.
 AGENT_SANDBOX_APT_MIRROR=https://archive.ubuntu.com/ubuntu
 ```
 
-For the complete image list for China Mainland and global registries, root/non-root image selection, and custom package registry settings, see [OpenSandbox Configuration](../../config/sandbox/opensandbox).
+For the complete image list for China Mainland and global registries, root/non-root image selection, and custom package registry settings, see [OpenSandbox Configuration](/en/self-host/config/sandbox/opensandbox).
 
 ### 2. Update images
 
@@ -45,18 +45,18 @@ Environments that already completed `initHttpToolSchema` on 4.16.0 do not need t
 V4.16.1 stores MCP/HTTP tool JSON Schemas as strings. Run a dry run first:
 
 ```bash
-curl -X POST 'https://你的域名/api/admin/4161/initToolJsonSchemaStorage' \
+curl -X POST 'https://your-domain/api/admin/4161/initToolJsonSchemaStorage' \
   -H 'Content-Type: application/json' \
-  -H 'rootkey: 你的ROOT_KEY' \
+  -H 'rootkey: YOUR_ROOT_KEY' \
   -d '{"dryRun":true}'
 ```
 
 After confirming `total.changedDocumentCount`, run the migration:
 
 ```bash
-curl -X POST 'https://你的域名/api/admin/4161/initToolJsonSchemaStorage' \
+curl -X POST 'https://your-domain/api/admin/4161/initToolJsonSchemaStorage' \
   -H 'Content-Type: application/json' \
-  -H 'rootkey: 你的ROOT_KEY' \
+  -H 'rootkey: YOUR_ROOT_KEY' \
   -d '{"dryRun":false}'
 ```
 

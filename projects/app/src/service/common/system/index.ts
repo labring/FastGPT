@@ -22,11 +22,7 @@ import type {
 } from '@fastgpt/global/support/wallet/usage/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import {
-  getAgentSandboxArchiveMaxBytes,
-  getAgentSandboxMaxFileBytes,
-  getAgentSandboxSkillMaxBytes
-} from '@fastgpt/service/core/ai/sandbox/interface/config';
+import { getAgentSandboxSkillMaxBytes } from '@fastgpt/service/core/ai/sandbox/config';
 import { serviceEnv } from '@fastgpt/service/env';
 import { appEnv } from '@/env';
 import { pluginTagList } from '@fastgpt/global/sdk/fastgpt-plugin';
@@ -109,18 +105,15 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   limit: {
     exportDatasetLimitMinutes: 0,
     websiteSyncLimitMinuted: 0,
-    agentSandboxMaxEditDebug: serviceEnv.AGENT_SANDBOX_MAX_EDIT_DEBUG,
-    agentSandboxArchiveMaxBytes: getAgentSandboxArchiveMaxBytes(),
+    uploadFileMaxSize: serviceEnv.UPLOAD_FILE_MAX_SIZE,
+    uploadFileMaxAmount: serviceEnv.UPLOAD_FILE_MAX_AMOUNT,
     skillSandboxMaxBytes: getAgentSandboxSkillMaxBytes(),
-    agentSandboxMaxFileBytes: getAgentSandboxMaxFileBytes(),
     workflowParallelRunMaxConcurrency: serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY,
     maxFolderDepth: serviceEnv.MAX_FOLDER_DEPTH
   },
   scripts: [],
   favicon: '/favicon.ico',
-  chineseRedirectUrl: appEnv.CHINESE_IP_REDIRECT_URL,
-  uploadFileMaxSize: serviceEnv.UPLOAD_FILE_MAX_SIZE,
-  uploadFileMaxAmount: serviceEnv.UPLOAD_FILE_MAX_AMOUNT
+  chineseRedirectUrl: appEnv.CHINESE_IP_REDIRECT_URL
 };
 
 async function getPluginRemoteDebugEnabled() {
@@ -171,11 +164,12 @@ export async function initSystemConfig() {
 
       agentSandboxFree: appEnv.AGENT_SANDBOX_SHOW_FREE_TIP || appEnv.AGENT_SANDBOX_FREE_TIP,
       show_agent_sandbox_free_tip:
-        appEnv.AGENT_SANDBOX_SHOW_FREE_TIP || appEnv.AGENT_SANDBOX_FREE_TIP,
-      agentSandboxProxyUrl: serviceEnv.AGENT_SANDBOX_PROXY_URL || ''
+        appEnv.AGENT_SANDBOX_SHOW_FREE_TIP || appEnv.AGENT_SANDBOX_FREE_TIP
     },
     systemEnv: Object.assign(
       {
+        agentSandboxMax: serviceEnv.AGENT_SANDBOX_MAX,
+        agentSandboxMaxPerTeam: serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM,
         datasetParseMaxProcess: serviceEnv.DATASET_PARSE_MAX_PROCESS,
         vectorMaxProcess: serviceEnv.VECTOR_MAX_PROCESS,
         qaMaxProcess: serviceEnv.QA_MAX_PROCESS,

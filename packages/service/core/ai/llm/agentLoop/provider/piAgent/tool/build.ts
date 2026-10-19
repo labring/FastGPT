@@ -31,7 +31,7 @@ import {
   type AgentLoopRuntime,
   type AgentLoopUsage
 } from '../../../domain';
-import { runSandboxTools } from '../../../../../sandbox/interface/toolCall';
+import { runSandboxTools } from '../../../../../sandbox/application/toolCall';
 import { createToolCall, normalizeToolArgs, stringifyJson } from '../message';
 import { getPiAgentRuntimeTools } from './catalog';
 

@@ -1,11 +1,10 @@
 /**
  * 沙盒业务层：列出目录条目并输出稳定的纯文本列表。
  */
+import { DEFAULT_LS_LIMIT, SANDBOX_TOOL_MAX_BYTES, SANDBOX_TOOL_MAX_LINES } from '../../constants';
 import z from 'zod';
 import { defineTool } from './type';
-import { SANDBOX_TOOL_MAX_BYTES, SANDBOX_TOOL_MAX_LINES, truncateSandboxToolOutput } from './utils';
-
-const DEFAULT_LS_LIMIT = 500;
+import { truncateSandboxToolOutput } from './utils';
 
 export const SandboxLsToolSchema = z.object({
   path: z.string().optional(),

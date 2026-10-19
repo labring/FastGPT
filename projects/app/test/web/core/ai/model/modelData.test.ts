@@ -1,6 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import {
+  getModelDefault,
+  getModelDetail,
+  getModelList,
+  peekModelCatalog
+} from '@/web/core/ai/model/modelData';
+import { getModelSummary } from '@/web/core/ai/model/useModelSummary';
+import { getWorkflowModelCheckData } from '@/web/core/workflow/modelData';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 
 const mocks = vi.hoisted(() => ({ catalog: vi.fn(), summary: vi.fn(), member: 'member' }));
 vi.mock('@/web/core/ai/model/catalogApi', async (importOriginal) => {
@@ -16,15 +30,6 @@ vi.mock('@/web/support/user/useUserStore', () => ({
     getState: () => ({ userInfo: { team: { teamId: 'team', tmbId: mocks.member } } })
   })
 }));
-
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
-import {
-  getModelDefault,
-  getModelDetail,
-  getModelList,
-  peekModelCatalog
-} from '@/web/core/ai/model/modelData';
-import { getModelSummary } from '@/web/core/ai/model/useModelSummary';
 
 const makeModel = (modelId: string, vision = false): MyLLMModelItemType => ({
   modelId,
@@ -63,6 +68,71 @@ beforeEach(() => {
   mocks.summary.mockImplementation(async ({ modelIds }) => ({
     models: modelIds.map((modelId: string) => ({ modelId, status: 'deleted' }))
   }));
+});
+
+describe('getWorkflowModelCheckData', () => {
+  it.each([undefined, 'missing-static-model'])(
+    'excludes expressions from catalog and summary requests while retaining static ID %s',
+    async (staticModelId) => {
+      const data = await getWorkflowModelCheckData({
+        appId: 'app-1',
+        nodes: [
+          {
+            data: {
+              id: 'agent',
+              nodeId: 'agent',
+              name: 'Agent',
+              flowNodeType: FlowNodeTypeEnum.agent,
+              inputs: [
+                {
+                  key: NodeInputKeyEnum.aiModelId,
+                  value: '{{selectedModel}}',
+                  renderTypeList: [FlowNodeInputTypeEnum.hidden]
+                },
+                {
+                  key: NodeInputKeyEnum.datasetParams,
+                  renderTypeList: [FlowNodeInputTypeEnum.hidden],
+                  value: {
+                    datasets: [{ datasetId: 'dataset-id' }],
+                    usingReRank: true,
+                    rerankModelId: '{{rerankModelId}}',
+                    datasetSearchUsingExtensionQuery: true,
+                    datasetSearchExtensionModelId: '{{extensionModelId}}'
+                  }
+                },
+                ...(staticModelId
+                  ? [
+                      {
+                        key: 'customModel',
+                        value: staticModelId,
+                        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+                      }
+                    ]
+                  : [])
+              ],
+              outputs: []
+            }
+          }
+        ],
+        chatConfig: {
+          questionGuide: { open: true, modelId: '{{guideModelId}}' },
+          ttsConfig: { type: 'model', modelId: '{{ttsModelId}}' }
+        }
+      });
+
+      expect(data).toEqual({ references: [], defaultModelIds: {} });
+      if (staticModelId) {
+        expect(mocks.catalog).toHaveBeenCalledOnce();
+        expect(mocks.summary).toHaveBeenCalledExactlyOnceWith({
+          appId: 'app-1',
+          modelIds: [staticModelId]
+        });
+      } else {
+        expect(mocks.catalog).not.toHaveBeenCalled();
+        expect(mocks.summary).not.toHaveBeenCalled();
+      }
+    }
+  );
 });
 
 describe('getModelSummary', () => {
@@ -184,6 +254,29 @@ describe('catalog consumers', () => {
     ).toMatchObject({ modelId: 'first' });
   });
 
+  it('never resolves legacy model names or system default fallbacks to team models', async () => {
+    const teamModel: MyLLMModelItemType = {
+      ...makeModel('team-only'),
+      scope: 'team' as any
+    };
+    mocks.catalog.mockResolvedValueOnce({
+      version: 'v-team',
+      data: {
+        models: [teamModel],
+        providers: [],
+        defaultModelIds: { llm: 'team-only' }
+      }
+    });
+
+    expect(await getModelDetail({ model: 'legacy-team-only' })).toBeUndefined();
+    expect((await getModelDetail({ modelId: 'team-only' }))?.modelId).toBe('team-only');
+    expect(await getModelDefault({ modelType: ModelTypeEnum.llm })).toBeUndefined();
+    expect(
+      (await getModelDefault({ modelType: ModelTypeEnum.llm, businessDefaultModelId: 'team-only' }))
+        ?.modelId
+    ).toBe('team-only');
+  });
+
   it('propagates network failure and retries instead of treating it as an empty catalog', async () => {
     mocks.catalog.mockRejectedValueOnce(new Error('offline'));
     await expect(getModelDetail({ modelId: 'first' })).rejects.toThrow('offline');
@@ -216,5 +309,62 @@ describe('catalog consumers', () => {
     expect(peekModelCatalog({ outLinkAuthData: next })).toBeUndefined();
     await getModelDetail({ modelId: 'first', outLinkAuthData: next });
     expect(mocks.catalog).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps app baseline references separate from empty chat model defaults', async () => {
+    const { getWorkflowModelCheckData } = await import('@/web/core/workflow/modelData');
+    const { checkWorkflowChatConfigModelIssues } = await import('@/web/core/workflow/check/check');
+    const { FlowNodeInputTypeEnum, FlowNodeTypeEnum } =
+      await import('@fastgpt/global/core/workflow/node/constant');
+    const { NodeInputKeyEnum } = await import('@fastgpt/global/core/workflow/constants');
+
+    mocks.catalog.mockResolvedValueOnce({
+      version: 'v-empty-system',
+      data: {
+        models: [],
+        providers: [],
+        defaultModelIds: {}
+      }
+    });
+    mocks.summary.mockResolvedValueOnce({
+      models: [{ modelId: 'baseline-team-llm', status: 'active', type: ModelTypeEnum.llm }]
+    });
+
+    const chatConfig = {
+      questionGuide: { open: true }
+    };
+    const loadedModels = await getWorkflowModelCheckData({
+      appId: 'app-1',
+      nodes: [
+        {
+          data: {
+            nodeId: 'chat-node',
+            flowNodeType: FlowNodeTypeEnum.chatNode,
+            name: 'Chat',
+            inputs: [
+              {
+                key: NodeInputKeyEnum.aiModelId,
+                label: 'model',
+                value: 'baseline-team-llm',
+                renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+              }
+            ],
+            outputs: []
+          } as any
+        }
+      ],
+      chatConfig
+    });
+
+    expect(loadedModels).toEqual({
+      references: [{ modelId: 'baseline-team-llm', type: ModelTypeEnum.llm }],
+      defaultModelIds: {}
+    });
+    expect(
+      checkWorkflowChatConfigModelIssues({
+        chatConfig,
+        modelData: loadedModels
+      })
+    ).toEqual([expect.objectContaining({ code: 'model_required' })]);
   });
 });

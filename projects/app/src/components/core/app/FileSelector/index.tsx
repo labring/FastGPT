@@ -20,8 +20,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
+import { useFileUploadLimits } from '@/web/common/file/hooks/useFileUploadLimits';
 import { getUploadFileType } from '@fastgpt/global/core/app/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
@@ -60,6 +59,8 @@ import {
   useChatApiTarget
 } from '@/web/core/chat/utils';
 import { getFileAmountLimit, getFileSizeLimitBytes } from '@fastgpt/global/core/workflow/fileLimit';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { useFileSelectorLinkIcons } from './useLinkIcons';
 
 type WebkitFileSystemFileEntry = {
   isFile: true;
@@ -191,8 +192,7 @@ const FileSelector = ({
   isDisabled?: boolean;
   isInvalid?: boolean;
 }) => {
-  const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
+  const { maxUploadFileCount, maxUploadFileSize } = useFileUploadLimits();
   const { toast } = useToast();
   const { t } = useSafeTranslation();
 
@@ -218,6 +218,7 @@ const FileSelector = ({
   const [fileList, setFileList] = useState<FileSelectorRenderItemType[]>(() =>
     formatFileSelectorInternalValue(value)
   );
+  const linkIcons = useFileSelectorLinkIcons(fileList);
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -391,12 +392,10 @@ const FileSelector = ({
   const maxSelectFiles = getFileAmountLimit({
     moduleMaxFileAmount: maxFiles,
     defaultModuleMaxFileAmount: 5,
-    teamMaxFileAmount: teamPlanStatus?.standard?.maxUploadFileCount,
-    systemMaxFileAmount: feConfigs?.uploadFileMaxAmount ?? 10
+    systemMaxFileAmount: maxUploadFileCount
   });
   const maxSize = getFileSizeLimitBytes({
-    teamMaxFileSize: teamPlanStatus?.standard?.maxUploadFileSize,
-    systemMaxFileSize: feConfigs?.uploadFileMaxSize ?? 500
+    systemMaxFileSize: maxUploadFileSize
   });
   const canSelectFileAmount = Math.max(maxSelectFiles - fileList.length, 0);
   const isMaxSelected = canSelectFileAmount <= 0;
@@ -798,23 +797,28 @@ const FileSelector = ({
           <MyDivider />
           <VStack>
             {fileList.map((file) => {
-              const fileIcon = getFileSelectorDisplayIcon(file);
+              const linkIcon = linkIcons.get(file.id);
+              const fileIcon = getFileSelectorDisplayIcon({
+                ...file,
+                icon: !file.key && linkIcon && linkIcon.url === file.url ? linkIcon.icon : file.icon
+              });
               const isUploadingFile = isFileSelectorUploading(file);
               return (
                 <Box key={file?.id} w={'full'}>
                   <HStack py={1} px={3} bg={'white'} borderRadius={'md'} border={'sm'}>
                     <MyAvatar src={fileIcon} w={'1.2rem'} />
-                    <Box
-                      fontSize={'sm'}
-                      flex={'1 0 0'}
-                      className="textEllipsis"
-                      title={file?.name}
-                      {...(file?.error && {
-                        color: 'red.600'
-                      })}
-                    >
-                      {file?.name}
-                    </Box>
+                    <MyTooltip label={file?.name} showOnlyWhenOverflow>
+                      <Box
+                        fontSize={'sm'}
+                        flex={'1 0 0'}
+                        className="textEllipsis"
+                        {...(file?.error && {
+                          color: 'red.600'
+                        })}
+                      >
+                        {file?.name}
+                      </Box>
+                    </MyTooltip>
 
                     {/* Status icon */}
                     {!isUploadingFile ? (

@@ -30,8 +30,7 @@ export const getSystemModelConfigService = async (): Promise<GetSystemModelConfi
     })),
     channels: channelItems.map((channel) => channel.summary),
     providers: metadata.providers,
-    defaultModelIds: modelHandle.configuredDefaultModelIds,
-    aiproxyChannels: metadata.aiproxyChannels
+    defaultModelIds: modelHandle.configuredDefaultModelIds
   });
 };
 

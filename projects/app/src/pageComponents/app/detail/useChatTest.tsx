@@ -21,7 +21,7 @@ import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/const
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getAppChatSourceKey } from '@/web/core/chat/utils';
 import { Box, type BoxProps } from '@chakra-ui/react';
-import { checkStoreWorkflowBeforeRunOrPublish } from '@/web/core/workflow/workflowCheck';
+import { checkStoreWorkflowBeforeRunOrPublish } from '@/web/core/workflow/service';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 

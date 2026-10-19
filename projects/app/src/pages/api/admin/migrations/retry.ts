@@ -1,4 +1,5 @@
-import type { ApiRequestProps } from '@fastgpt/next/type';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
+import { respondSystemMigrationDependencyError } from '@/migration/error';
 import {
   RetrySystemMigrationBodySchema,
   type RetrySystemMigrationBody
@@ -10,14 +11,22 @@ import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { NextAPI } from '@/service/middleware/entry';
 
 /** Root 管理员修复数据后，将非阻塞 failed 任务重新放回串行队列。 */
-async function handler(req: ApiRequestProps<RetrySystemMigrationBody>): Promise<void> {
+async function handler(
+  req: ApiRequestProps<RetrySystemMigrationBody>,
+  res: ApiResponseType
+): Promise<void> {
   await authSystemAdmin({ req });
   const { migrationId } = parseApiInput({
     req,
     bodySchema: RetrySystemMigrationBodySchema
   }).body;
 
-  await retryNonBlockingSystemMigration(migrationId);
+  try {
+    await retryNonBlockingSystemMigration(migrationId);
+  } catch (error) {
+    respondSystemMigrationDependencyError(res, error);
+    return;
+  }
   // failed 是终态，后台扫描器可能已经停掉；重置成功后立即恢复本节点扫描。
   wakeSystemMigrationRunner();
 }

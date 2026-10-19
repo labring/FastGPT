@@ -125,4 +125,19 @@ describe('token counter', () => {
       countGptMessagesTokensInWorker({ messages: shortMediaMessages })
     );
   });
+
+  it('音频没有 format 时使用固定占位符，不计数二进制或 undefined', () => {
+    const audioTokens = countGptMessagesTokensInWorker({
+      messages: [
+        {
+          role: 'user',
+          content: [{ type: 'input_audio', input_audio: { data: 'A'.repeat(4096) } }]
+        }
+      ]
+    });
+
+    expect(audioTokens).toBe(
+      countGptMessagesTokensInWorker({ messages: [{ role: 'user', content: '[audio]' }] })
+    );
+  });
 });

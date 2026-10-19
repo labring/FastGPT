@@ -630,6 +630,33 @@ describe('buildStandardPlan', () => {
   });
 
   describe('字段名映射：maxApp → maxAppAmount，maxDataset → maxDatasetAmount', () => {
+    it('零值团队上传限制继承套餐，零值套餐上传限制继承系统', () => {
+      const originalFeConfigs = global.feConfigs;
+      try {
+        global.feConfigs = {
+          ...global.feConfigs,
+          limit: { ...global.feConfigs?.limit, uploadFileMaxSize: 1000, uploadFileMaxAmount: 1000 }
+        };
+        const standard = { ...baseStandard, maxUploadFileSize: 0, maxUploadFileCount: 0 };
+        expect(
+          buildStandardPlan(standard, {
+            ...baseConstants,
+            maxUploadFileSize: 50,
+            maxUploadFileCount: 10
+          })
+        ).toMatchObject({ maxUploadFileSize: 50, maxUploadFileCount: 10 });
+        expect(
+          buildStandardPlan(standard, {
+            ...baseConstants,
+            maxUploadFileSize: 0,
+            maxUploadFileCount: 0
+          })
+        ).toMatchObject({ maxUploadFileSize: 1000, maxUploadFileCount: 1000 });
+      } finally {
+        global.feConfigs = originalFeConfigs;
+      }
+    });
+
     it('standard.maxApp 映射到结果的 maxAppAmount', () => {
       const standard: TeamSubSchemaType = { ...baseStandard, maxApp: 100 };
       const result = buildStandardPlan(standard, baseConstants);

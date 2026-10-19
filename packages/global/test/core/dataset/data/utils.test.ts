@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import {
+  DatasetDataIndexStatusEnum,
+  DatasetDataIndexTypeEnum
+} from '@fastgpt/global/core/dataset/data/constants';
+import {
+  getDatasetDataExternalIndexes,
   isDatasetDataIndexed,
   indexedDatasetDataMatch,
   isDatasetDataProcessing,
@@ -70,5 +74,53 @@ describe('isDatasetDataIndexed', () => {
         { indexStatus: { $exists: false } }
       ]
     });
+  });
+});
+
+describe('getDatasetDataExternalIndexes', () => {
+  // TD 2026101200346：FAQ 数据入库时恒写入 2 条 default 索引（分别由 q、a 生成），
+  // 导出 CSV 前必须丢掉它们，否则表头恒多 2 个 index 列，且回导时会变成重复的自定义索引。
+  it('drops the q/a system indexes of a row without custom indexes', () => {
+    expect(
+      getDatasetDataExternalIndexes([
+        { type: DatasetDataIndexTypeEnum.default, text: 'question' },
+        { type: DatasetDataIndexTypeEnum.default, text: 'answer' }
+      ])
+    ).toEqual([]);
+  });
+
+  it('keeps custom indexes and drops the system ones around them', () => {
+    const custom = [
+      { type: DatasetDataIndexTypeEnum.custom, text: 'tag-1' },
+      { type: DatasetDataIndexTypeEnum.custom, text: 'tag-2' },
+      { type: DatasetDataIndexTypeEnum.custom, text: 'tag-3' }
+    ];
+
+    expect(
+      getDatasetDataExternalIndexes([
+        { type: DatasetDataIndexTypeEnum.default, text: 'question' },
+        ...custom,
+        { type: DatasetDataIndexTypeEnum.default, text: 'answer' }
+      ])
+    ).toEqual(custom);
+  });
+
+  it('drops image embeddings, which are regenerated from the image input', () => {
+    expect(
+      getDatasetDataExternalIndexes([
+        { type: DatasetDataIndexTypeEnum.imageEmbedding, text: 'image description' }
+      ])
+    ).toEqual([]);
+  });
+
+  // type 缺失是变更前创建的历史数据，schema 默认按 custom 处理，不能连用户索引一起丢掉。
+  it('keeps indexes whose type is missing', () => {
+    const legacy = [{ text: 'legacy-index' }];
+
+    expect(getDatasetDataExternalIndexes(legacy)).toEqual(legacy);
+  });
+
+  it('tolerates a missing indexes field', () => {
+    expect(getDatasetDataExternalIndexes(undefined)).toEqual([]);
   });
 });

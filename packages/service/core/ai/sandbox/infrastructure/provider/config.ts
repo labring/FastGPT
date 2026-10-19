@@ -7,7 +7,8 @@ import { serviceEnv } from '../../../../../env';
 import { getAgentSandboxMaxFileBytes } from '../../config';
 import type { SandboxCreateSpec, SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import type { VolumeManagerResult } from '../volume/service';
-import { getSandboxRuntimeProfile, buildBaseSandboxRuntimeEnv } from './runtimeProfile';
+import { getSandboxRuntimeProfile } from './runtimeProfile';
+import { buildBaseSandboxRuntimeEnv } from './runtimeProfile/utils';
 
 type SandboxRuntime = 'kubernetes' | 'docker';
 
@@ -66,10 +67,6 @@ export function getSandboxProviderConfig(
 export function validateSandboxConfig(config: SandboxProviderConfig): void {
   if (!config.baseUrl) {
     throw new Error('Sandbox provider base URL is required');
-  }
-
-  if (config.provider === 'opensandbox' && !['kubernetes', 'docker'].includes(config.runtime)) {
-    throw new Error(`Invalid runtime: ${config.runtime}`);
   }
 
   if (config.provider === 'opensandbox' && !config.apiKey) {

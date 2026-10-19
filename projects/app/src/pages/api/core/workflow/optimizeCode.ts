@@ -13,6 +13,7 @@ import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { assertAuthModels } from '@fastgpt/service/support/permission/model/auth';
 import { createUsage } from '@fastgpt/service/support/wallet/usage/controller';
@@ -101,12 +102,13 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
       authToken: true,
       authApiKey: true
     });
-    const { handle: modelHandle } = await assertAuthModels({
+    const {
+      models: [modelData]
+    } = await assertAuthModels({
       actor: { teamId, tmbId, isRoot },
       modelIds: [modelId],
-      action: 'use'
+      type: ModelTypeEnum.llm
     });
-    const modelData = modelHandle.getLLMModelData({ modelId });
 
     res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
     res.setHeader('X-Accel-Buffering', 'no');

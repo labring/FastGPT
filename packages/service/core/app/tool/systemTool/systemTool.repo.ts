@@ -19,7 +19,10 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import type { PluginListParamsType } from '@fastgpt/global/sdk/fastgpt-plugin';
+import type {
+  PluginListParamsType,
+  PluginPermissionEnumType
+} from '@fastgpt/global/sdk/fastgpt-plugin';
 import { pluginClient, withPluginClientLocale } from '../../../../thirdProvider/fastgptPlugin';
 import { MongoSystemTool } from '../../../plugin/tool/systemToolSchema';
 import { MongoApp } from '../../schema';
@@ -40,7 +43,7 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { MongoAppVersion } from '../../version/schema';
 import type { SystemPluginToolCollectionType } from '@fastgpt/global/core/plugin/tool/type';
 import type { AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
-import type { PluginPermissionEnumType } from '@fastgpt/global/sdk/fastgpt-plugin';
+
 import { Types } from '../../../../common/mongo';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {

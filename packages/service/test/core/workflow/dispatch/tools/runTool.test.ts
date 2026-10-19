@@ -8,6 +8,8 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { MCPClient } from '@fastgpt/service/core/app/mcp';
+import { getWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/context';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 
 const {
   authAppByTmbIdMock,
@@ -130,6 +132,7 @@ const createRunToolProps = (
 describe('dispatchRunTool runtime toolset auth', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getWorkflowResourceContext).mockReturnValue(undefined);
     authAppByTmbIdMock.mockResolvedValue({
       app: {
         _id: 'victim-toolset',
@@ -154,6 +157,65 @@ describe('dispatchRunTool runtime toolset auth', () => {
     getSystemToolDetailMock.mockResolvedValue({ inputSchema: undefined });
     runToolStreamMock.mockResolvedValue({ output: { ok: true } });
   });
+
+  it.each(['mcp', 'http'] as const)(
+    'executes a %s child authorized by the member outside the snapshot selection',
+    async (source) => {
+      const tool = {
+        name: 'search',
+        description: 'Search documents',
+        path: '/search',
+        method: 'GET',
+        inputSchema: { type: 'object', properties: { keyword: { type: 'string' } } },
+        requestSchema: { type: 'object', properties: { keyword: { type: 'string' } } }
+      };
+      getAppVersionByIdMock.mockResolvedValue({
+        nodes: [
+          {
+            toolConfig: {
+              [source === 'mcp' ? 'mcpToolSet' : 'httpToolSet']: {
+                url: 'https://example.com/mcp',
+                baseUrl: 'https://example.com',
+                toolList: [tool]
+              }
+            }
+          }
+        ]
+      });
+      getMCPChildrenMock.mockResolvedValue([tool]);
+      getHTTPToolListMock.mockResolvedValue([tool]);
+      mcpToolCallMock.mockResolvedValue({ ok: true });
+      runHTTPToolMock.mockResolvedValue({ data: { ok: true } });
+      vi.mocked(getWorkflowResourceContext).mockReturnValue({
+        isRoot: false,
+        resourceMap: new Map([
+          [
+            'tool:victim-toolset',
+            {
+              type: 'tool',
+              id: 'victim-toolset',
+              data: { toolNames: ['staticTool'] }
+            }
+          ]
+        ])
+      });
+      const props = createRunToolProps({
+        [source === 'mcp' ? 'mcpTool' : 'httpTool']: { toolId: `${source}-victim-toolset/search` }
+      });
+
+      const result = await dispatchRunTool(props);
+      expect(result.error).toBeUndefined();
+      const execute = source === 'mcp' ? mcpToolCallMock : runHTTPToolMock;
+      expect(execute).toHaveBeenCalledOnce();
+      expect(authAppByTmbIdMock).toHaveBeenCalledOnce();
+
+      execute.mockClear();
+      authAppByTmbIdMock.mockRejectedValueOnce(AppErrEnum.unAuthApp);
+      const denied = await dispatchRunTool(props);
+      expect(denied.error?.[NodeOutputKeyEnum.errorText]).toBeTruthy();
+      expect(execute).not.toHaveBeenCalled();
+    }
+  );
 
   it.each([
     {

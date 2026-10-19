@@ -9,12 +9,10 @@ import {
   type SandboxUploadQuery,
   type SandboxUploadResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
-import { getAgentSandboxMaxFileBytes } from '@fastgpt/service/core/ai/sandbox/interface/config';
-import {
-  buildSandboxClientQueryFromChatSource,
-  getSandboxClient
-} from '@fastgpt/service/core/ai/sandbox/interface/runtime';
-import { prepareSandboxFileParentDirectories } from '@fastgpt/service/core/ai/sandbox/interface/file';
+import { getAgentSandboxMaxFileBytes } from '@fastgpt/service/core/ai/sandbox/config';
+import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
+import { prepareSandboxFileParentDirectories } from '@fastgpt/service/core/ai/sandbox/application/file';
 import { Readable } from 'node:stream';
 import { createSizeLimitedStream } from '@fastgpt/service/common/file/stream';
 

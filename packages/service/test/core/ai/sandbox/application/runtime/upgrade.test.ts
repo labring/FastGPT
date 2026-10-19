@@ -1,16 +1,21 @@
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { expectedOperationByStatus } from '@fastgpt/service/core/ai/sandbox/constants';
+import type { SandboxInstanceStatusType } from '@fastgpt/service/core/ai/sandbox/type';
 
 const mocks = vi.hoisted(() => ({
   findSandboxInstanceBySandboxId: vi.fn(),
   findSandboxResourcesBySource: vi.fn(),
   getSandboxAdapterConfig: vi.fn(),
   archiveSandboxResourceNow: vi.fn(),
-  migrateSandboxProviderBeforeUse: vi.fn(),
   startSandboxRuntimeUpgradeArchive: vi.fn(),
-  stopSandboxResource: vi.fn()
+  stopSandboxResource: vi.fn(),
+  configuration: vi.fn()
 }));
 
+vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/service', () => ({
+  ensureSandboxRuntimeConfiguration: mocks.configuration
+}));
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository', () => ({
   findSandboxInstanceBySandboxId: mocks.findSandboxInstanceBySandboxId,
   findSandboxResourcesBySource: mocks.findSandboxResourcesBySource
@@ -20,12 +25,8 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/config', () =>
   getSandboxAdapterConfig: mocks.getSandboxAdapterConfig
 }));
 vi.mock('@fastgpt/service/core/ai/sandbox/application/archive', () => ({
-  SANDBOX_STALE_ARCHIVING_MINUTES: 15,
   archiveSandboxResourceNow: mocks.archiveSandboxResourceNow,
   startSandboxRuntimeUpgradeArchive: mocks.startSandboxRuntimeUpgradeArchive
-}));
-vi.mock('@fastgpt/service/core/ai/sandbox/application/providerMigration', () => ({
-  migrateSandboxProviderBeforeUse: mocks.migrateSandboxProviderBeforeUse
 }));
 vi.mock('@fastgpt/service/core/ai/sandbox/application/resource', () => ({
   stopSandboxResource: mocks.stopSandboxResource
@@ -40,7 +41,7 @@ import {
 
 const targetImage = { repository: 'runtime-image', tag: 'v2' };
 const createResource = (
-  status: string,
+  status: SandboxInstanceStatusType,
   params: {
     provider?: 'opensandbox' | 'sealosdevbox';
     image?: { repository: string; tag?: string };
@@ -58,7 +59,16 @@ const createResource = (
     status,
     lastActiveAt: new Date(),
     image: params.image ?? targetImage,
-    ...(params.operation ? { operation: params.operation } : {})
+    ...(params.operation
+      ? {
+          operation: {
+            type: expectedOperationByStatus[status],
+            phase: 'claimed',
+            heartbeatAt: new Date(),
+            ...params.operation
+          }
+        }
+      : {})
   }) as any;
 
 const getStatus = (statusInstance?: any) =>
@@ -99,7 +109,7 @@ describe('getSandboxRuntimeUpgradeStatus', () => {
 
   it('only selects failed lifecycle operations that can safely continue into archive', () => {
     const failedStopping = createResource('stopping', {
-      operation: { error: 'stop failed' }
+      operation: { type: 'stop', retryAfter: new Date(0), error: 'stop failed' }
     });
     const failedProvisioning = createResource('provisioning', {
       operation: { error: 'provision failed' }
@@ -148,14 +158,22 @@ describe('getSandboxRuntimeUpgradeStatus', () => {
   it('only exposes upgrade actions for failed stop and archive operations', () => {
     expect(getStatus(createResource('archiving'))).toEqual({ status: 'upgrading' });
     expect(
-      getStatus(createResource('archiving', { operation: { error: 'archive failed' } }))
+      getStatus(
+        createResource('archiving', {
+          operation: { type: 'archive', retryAfter: new Date(0), error: 'archive failed' }
+        })
+      )
     ).toMatchObject({
       status: 'upgradeRequired',
       lastError: 'archive failed'
     });
     expect(getStatus(createResource('deleting'))).toEqual({ status: 'upgrading' });
     expect(
-      getStatus(createResource('stopping', { operation: { error: 'stop failed' } }))
+      getStatus(
+        createResource('stopping', {
+          operation: { type: 'stop', retryAfter: new Date(0), error: 'stop failed' }
+        })
+      )
     ).toMatchObject({ status: 'upgradeRequired', lastError: 'stop failed' });
     expect(
       getStatus(createResource('deleting', { operation: { error: 'delete failed' } }))
@@ -165,7 +183,22 @@ describe('getSandboxRuntimeUpgradeStatus', () => {
     ).toEqual({ status: 'upgrading', lastError: 'migration failed' });
   });
 
-  it('lets the owning runtime retry failed operations and keeps active operations polling', () => {
+  it('does not offer takeover before retryAfter even when an error is displayed', () => {
+    const instance = createResource('archiving', {
+      operation: { type: 'archive', error: 'timeout', retryAfter: new Date(Date.now() + 60_000) }
+    });
+    expect(getStatus(instance)).toEqual({ status: 'upgrading', lastError: 'timeout' });
+    expect(
+      resolveSandboxRuntimeUpgradeTarget({
+        sandboxId: 'app-sandbox',
+        targetProvider: 'opensandbox',
+        targetImage,
+        instances: [instance]
+      }).upgradeInstance
+    ).toBeUndefined();
+  });
+
+  it('waits through failure isolation and allows stale operations to recover', () => {
     const operation = { heartbeatAt: new Date(), phase: 'claimed' };
     expect(getStatus(createResource('restoring', { operation }))).toEqual({
       status: 'upgrading'
@@ -180,10 +213,10 @@ describe('getSandboxRuntimeUpgradeStatus', () => {
           operation: { ...operation, error: 'restore failed' }
         })
       )
-    ).toEqual({ status: 'readyToInit' });
+    ).toEqual({ status: 'upgrading' });
     expect(
       getStatus(createResource('provisioning', { operation: { error: 'provision failed' } }))
-    ).toEqual({ status: 'readyToInit' });
+    ).toEqual({ status: 'upgrading', lastError: 'provision failed' });
     expect(
       getStatus(
         createResource('provisioning', {
@@ -214,99 +247,27 @@ describe('App sandbox runtime upgrade service', () => {
     vi.resetAllMocks();
     mocks.getSandboxAdapterConfig.mockReturnValue({ createConfig: { image: targetImage } });
     mocks.archiveSandboxResourceNow.mockResolvedValue({ status: 'success' });
-    mocks.migrateSandboxProviderBeforeUse.mockResolvedValue(undefined);
     mocks.startSandboxRuntimeUpgradeArchive.mockResolvedValue({ success: true });
     mocks.stopSandboxResource.mockResolvedValue(undefined);
   });
 
-  it('continues directly when provider and image already match', async () => {
-    mocks.findSandboxResourcesBySource.mockResolvedValue([createResource('running')]);
-    const onUpgrade = vi.fn();
-
-    await expect(ensureAppSandboxRuntimeReady({ query, onUpgrade })).resolves.toBe(false);
-    expect(mocks.findSandboxResourcesBySource).toHaveBeenCalledWith({
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: 'app-1',
-      userId: 'user-1'
-    });
-    expect(onUpgrade).not.toHaveBeenCalled();
-    expect(mocks.archiveSandboxResourceNow).not.toHaveBeenCalled();
-    expect(mocks.migrateSandboxProviderBeforeUse).not.toHaveBeenCalled();
+  it('prepares configuration through the shared runtime entry', async () => {
+    mocks.configuration.mockResolvedValue(undefined);
+    await expect(ensureAppSandboxRuntimeReady({ query })).resolves.toBe(false);
+    expect(mocks.configuration).toHaveBeenCalledWith({ query, onUpgrade: expect.any(Function) });
   });
-
-  it('silently archives an outdated image and reports upgrading once', async () => {
-    const instance = createResource('running', {
-      image: { repository: 'runtime-image', tag: 'v1' }
+  it('reports an observed migration once even when multiple stages report progress', async () => {
+    mocks.configuration.mockImplementationOnce(async ({ onUpgrade }) => {
+      onUpgrade();
+      onUpgrade();
     });
-    mocks.findSandboxResourcesBySource
-      .mockResolvedValueOnce([instance])
-      .mockResolvedValueOnce([createResource('archived', { image: instance.image })]);
     const onUpgrade = vi.fn();
-
     await expect(ensureAppSandboxRuntimeReady({ query, onUpgrade })).resolves.toBe(true);
-    expect(onUpgrade).toHaveBeenCalledOnce();
-    expect(mocks.archiveSandboxResourceNow).toHaveBeenCalledWith(instance);
-    expect(mocks.startSandboxRuntimeUpgradeArchive).not.toHaveBeenCalled();
+    expect(onUpgrade).toHaveBeenCalledTimes(1);
   });
-
-  it('silently migrates an old provider before runtime initialization', async () => {
-    const oldProviderInstance = createResource('running', { provider: 'sealosdevbox' });
-    mocks.findSandboxResourcesBySource
-      .mockResolvedValueOnce([oldProviderInstance])
-      .mockResolvedValueOnce([createResource('archived')]);
-    const onUpgrade = vi.fn();
-
-    await expect(ensureAppSandboxRuntimeReady({ query, onUpgrade })).resolves.toBe(true);
-    expect(onUpgrade).toHaveBeenCalledOnce();
-    expect(mocks.migrateSandboxProviderBeforeUse).toHaveBeenCalledWith({
-      provider: 'opensandbox',
-      sandboxId: 'app-sandbox',
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: 'app-1',
-      userId: 'user-1'
-    });
-    expect(mocks.archiveSandboxResourceNow).not.toHaveBeenCalled();
-  });
-
-  it('finishes a failed stop before archiving an outdated image', async () => {
-    const instance = createResource('stopping', {
-      image: { repository: 'runtime-image', tag: 'v1' },
-      operation: { error: 'stop failed' }
-    });
-    const stoppedInstance = createResource('stopped', { image: instance.image });
-    mocks.findSandboxResourcesBySource
-      .mockResolvedValueOnce([instance])
-      .mockResolvedValueOnce([stoppedInstance])
-      .mockResolvedValueOnce([createResource('archived', { image: instance.image })]);
-
-    await expect(ensureAppSandboxRuntimeReady({ query })).resolves.toBe(true);
-    expect(mocks.stopSandboxResource).toHaveBeenCalledWith(instance);
-    expect(mocks.archiveSandboxResourceNow).toHaveBeenCalledWith(stoppedInstance);
-    expect(mocks.stopSandboxResource.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.archiveSandboxResourceNow.mock.invocationCallOrder[0]
-    );
-  });
-
-  it('throws the concrete archive failure reason', async () => {
-    const instance = createResource('running', {
-      image: { repository: 'runtime-image', tag: 'v1' }
-    });
-    mocks.findSandboxResourcesBySource.mockResolvedValue([instance]);
-    mocks.archiveSandboxResourceNow.mockResolvedValue({
-      status: 'failed',
-      error: 'archive upload failed'
-    });
-
+  it('preserves a concrete preparation failure', async () => {
+    mocks.configuration.mockRejectedValueOnce(new Error('archive upload failed'));
     await expect(ensureAppSandboxRuntimeReady({ query })).rejects.toThrow('archive upload failed');
-  });
-
-  it('throws the concrete identity corruption reason', async () => {
-    mocks.findSandboxResourcesBySource.mockResolvedValue([
-      createResource('running', { sandboxId: 'unexpected-sandbox' })
-    ]);
-    await expect(ensureAppSandboxRuntimeReady({ query })).rejects.toThrow(
-      'Sandbox runtime identity mismatch'
-    );
   });
 
   it('keeps the explicit background upgrade entry for Skill', async () => {

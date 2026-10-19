@@ -13,7 +13,7 @@ const { getTeamFileSizeLimitBytes } = await import('@fastgpt/service/support/per
 describe('support/permission/fileLimit', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    global.feConfigs = { uploadFileMaxSize: 500 } as any;
+    global.feConfigs = { limit: { uploadFileMaxSize: 500 } } as any;
   });
 
   it('团队套餐配置覆盖系统上限，并只在边界转换一次 MB 到字节', async () => {

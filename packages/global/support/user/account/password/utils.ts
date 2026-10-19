@@ -3,24 +3,23 @@ import { resolveAccountKindByUsername } from '../verification/utils';
 /**
  * 「禁止 SSO 用户使用平台密码」策略所需的 SSO 配置切片。
  *
- * 只依赖 sso 两个字段而不是整个 FastGPTFeConfigsType，让服务端（global.feConfigs）、
- * Pro 管理端（配置表单）和主仓库管理端（useSystemStore）都能直接传入各自持有的对象，
- * 避免为了复用口径而互相引入不相关的类型依赖。
+ * 服务端先根据 systemEnv.sso.url 派生 enabled，客户端直接消费该能力标志。
+ * 策略函数只接收能力与开关，不依赖地址或整个配置对象。
  */
 export type SsoPasswordPolicyConfig = {
-  url?: string;
+  enabled?: boolean;
   disablePasswordForSsoUsers?: boolean;
 };
 
 /**
  * 判断某个部署是否开启了「禁止 SSO 用户使用平台密码」。
  *
- * 口径：必须**同时**配置了 SSO 根地址并显式打开开关。只打开开关但没配 sso.url 时，
+ * 口径：必须**同时**接入 SSO 并显式打开开关。只打开开关但未接入 SSO 时，
  * 用户名无法被分类为 sso（见 resolveAccountKindByUsername），策略不成立；
- * 反过来只配了 sso.url 也不应影响任何账号的密码能力。
+ * 反过来只接入 SSO 也不应影响任何账号的密码能力。
  */
 export const isSsoPasswordPolicyEnabled = (sso?: SsoPasswordPolicyConfig) =>
-  Boolean(sso?.url) && sso?.disablePasswordForSsoUsers === true;
+  sso?.enabled === true && sso?.disablePasswordForSsoUsers === true;
 
 /**
  * 判断用户名是否属于当前 SSO 环境的账号。
@@ -32,7 +31,7 @@ export const isSsoPasswordPolicyEnabled = (sso?: SsoPasswordPolicyConfig) =>
 export const isSsoUsername = (username: string | undefined, sso?: SsoPasswordPolicyConfig) =>
   resolveAccountKindByUsername({
     username: username ?? '',
-    ssoConfigured: Boolean(sso?.url)
+    ssoConfigured: sso?.enabled === true
   }) === 'sso';
 
 /**
@@ -40,7 +39,7 @@ export const isSsoUsername = (username: string | undefined, sso?: SsoPasswordPol
  *
  * 这是策略的唯一判定入口：策略未开启时任何账号都可用；策略开启时仅 SSO 命名空间下的
  * 账号被禁用。服务端在密码比对与写入前、管理端在置灰密码输入框时都应调用它，
- * 避免各处自行组合 sso.url 与开关导致口径漂移。
+ * 避免各处自行组合 SSO 接入状态与开关导致口径漂移。
  */
 export const isPasswordAvailableForUsername = (
   username: string | undefined,

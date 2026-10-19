@@ -186,6 +186,48 @@ describe('OpenSandboxAdapter', () => {
     );
   });
 
+  it.each(['Paused', 'Pausing', 'Creating', 'Deleting'])(
+    'connect-only rejects %s without resuming or creating',
+    async (state) => {
+      mockManager([sdkInfo(state)]);
+      const resume = vi.spyOn(Sandbox, 'resume');
+      const create = vi.spyOn(Sandbox, 'create');
+      const connect = vi.spyOn(Sandbox, 'connect');
+      const adapter = new OpenSandboxAdapter(CONNECTION);
+      await expect(adapter.connectRunning()).rejects.toBeInstanceOf(SandboxStateError);
+      expect(resume).not.toHaveBeenCalled();
+      expect(create).not.toHaveBeenCalled();
+      expect(connect).not.toHaveBeenCalled();
+    }
+  );
+  it('connect-only binds an existing running sandbox', async () => {
+    mockManager([sdkInfo()]);
+    const bound = createSdkSandbox();
+    vi.spyOn(Sandbox, 'connect').mockResolvedValue(bound.sandbox);
+    const adapter = new OpenSandboxAdapter(CONNECTION);
+    await adapter.connectRunning();
+    await adapter.connectRunning();
+    expect(adapter.id).toBe('sandbox-1');
+    expect(Sandbox.connect).toHaveBeenCalledTimes(1);
+  });
+  it('connect-only reports a missing session without creating', async () => {
+    mockManager();
+    const create = vi.spyOn(Sandbox, 'create');
+    await expect(new OpenSandboxAdapter(CONNECTION).connectRunning()).rejects.toBeInstanceOf(
+      SandboxNotFoundError
+    );
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('deletes every visible physical resource for a stable session', async () => {
+    const { killSandbox } = mockManager([
+      sdkInfo('Running', 'first'),
+      sdkInfo('Running', 'second')
+    ]);
+    await new OpenSandboxAdapter(CONNECTION).delete();
+    expect(killSandbox.mock.calls).toEqual([['first'], ['second']]);
+  });
+
   it('deletes a bound sandbox on stop and releases its client', async () => {
     const adapter = new OpenSandboxAdapter(CONNECTION);
     const bound = createSdkSandbox({ info: [sdkInfo('Deleted')] });
@@ -304,7 +346,9 @@ describe('OpenSandboxAdapter', () => {
     const onComplete = vi.fn();
 
     await adapter.executeStream('echo hello', {
-      onStdout: (message) => chunks.push(message.text),
+      onStdout: (message) => {
+        chunks.push(message.text);
+      },
       onComplete
     });
 

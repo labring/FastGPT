@@ -37,16 +37,6 @@ const ModelProvider = () => {
     (targetTab: ModelTabType, options?: { silent?: boolean }) => {
       if (targetTab === 'active_model') return true;
 
-      if (!feConfigs.enable_team_model) {
-        if (!options?.silent) {
-          toast({
-            status: 'warning',
-            title: t('common:code_error.model_error.team_model_disabled')
-          });
-        }
-        return false;
-      }
-
       if (!canManageModel) {
         if (!options?.silent) {
           toast({
@@ -58,50 +48,8 @@ const ModelProvider = () => {
       }
       return true;
     },
-    [canManageModel, feConfigs.enable_team_model, t, toast]
+    [canManageModel, t, toast]
   );
-
-  useEffect(() => {
-    if (!router.isReady) return;
-    if (router.query.modelTab && router.query.modelTab !== 'active_model') {
-      if (!feConfigs.enable_team_model) {
-        toast({
-          status: 'warning',
-          title: t('common:code_error.model_error.team_model_disabled')
-        });
-        void router.replace(
-          {
-            pathname: router.pathname,
-            query: {
-              ...router.query,
-              modelTab: 'active_model'
-            }
-          },
-          undefined,
-          { shallow: true }
-        );
-        return;
-      }
-
-      if (!canManageModel) {
-        toast({
-          status: 'warning',
-          title: t('common:error_un_permission')
-        });
-        void router.replace(
-          {
-            pathname: router.pathname,
-            query: {
-              ...router.query,
-              modelTab: 'active_model'
-            }
-          },
-          undefined,
-          { shallow: true }
-        );
-      }
-    }
-  }, [canManageModel, feConfigs.enable_team_model, router, t, toast]);
 
   useEffect(() => {
     if (!initd || feConfigs.isPlus) return;
@@ -136,18 +84,22 @@ const ModelProvider = () => {
           py={6}
           pt={[4, 6]}
         >
-          <ModelManagementContainer
-            channelType="team"
-            scrollPositionKey="account-model-tabs"
-            defaultTab="active_model"
-            customTabs={modelTabList}
-            onBeforeTabChange={handleBeforeTabChange}
-            renderCustomTab={(tab, TabNode) =>
-              tab === 'active_model' ? (
-                <ModelTable permissionConfig contentPx={6} Tab={TabNode} />
-              ) : null
-            }
-          />
+          {feConfigs.enable_team_model ? (
+            <ModelManagementContainer
+              channelType="team"
+              scrollPositionKey="account-model-tabs"
+              defaultTab="active_model"
+              customTabs={modelTabList}
+              onBeforeTabChange={handleBeforeTabChange}
+              renderCustomTab={(tab, TabNode) =>
+                tab === 'active_model' ? (
+                  <ModelTable permissionConfig contentPx={6} Tab={TabNode} />
+                ) : null
+              }
+            />
+          ) : (
+            <ModelTable permissionConfig contentPx={6} />
+          )}
         </Flex>
       </Flex>
     </AccountContainer>

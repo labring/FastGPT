@@ -43,10 +43,10 @@ export const UpdateConfigBodySchema = z.object({
         example: {},
         description: '前端功能和展示配置'
       }),
-      systemEnv: z.looseObject({}).meta({
-        example: {},
-        description: '服务端系统运行配置'
-      }),
+      // 配额复用服务端业务定义；其余动态配置保持原有透传语义。
+      systemEnv: SystemEnvSchema.pick({ agentSandboxMax: true, agentSandboxMaxPerTeam: true }).meta(
+        { example: {}, description: '服务端系统运行配置' }
+      ),
       subPlans: SubPlanInputSchema.optional().meta({
         example: {},
         description: '订阅套餐配置'

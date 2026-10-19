@@ -2,7 +2,7 @@ import z from 'zod';
 import { ObjectIdSchema } from '../../../../../common/type/mongo';
 import { IntSchema, NumSchema } from '../../../../../common/zod';
 import { InvoiceStatusEnum } from '../../../../../support/wallet/bill/invoice/constants';
-import { PaginationResponseSchema } from '../../../../api';
+import { PaginationPageSizeSchema, PaginationResponseSchema } from '../../../../api';
 
 export const InvoiceItemSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '发票ID' }),
@@ -28,7 +28,7 @@ export type InvoiceItemType = z.infer<typeof InvoiceItemSchema>;
 
 export const InvoiceListBodySchema = z.object({
   pageNum: IntSchema.positive().optional().default(1).meta({ description: '页码' }),
-  pageSize: IntSchema.positive().optional().default(10).meta({ description: '每页条数' }),
+  pageSize: PaginationPageSizeSchema.optional().default(10),
   search: z.string().optional().meta({ description: '搜索关键词（团队名称）' })
 });
 export const InvoiceListResponseSchema = PaginationResponseSchema(InvoiceItemSchema);

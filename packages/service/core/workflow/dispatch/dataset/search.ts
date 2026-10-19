@@ -3,8 +3,8 @@ import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prom
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { NodeOutputKeyEnum, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
@@ -12,13 +12,11 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { resolveReadableCollectionIds } from '../../../../support/permission/collection/auth';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { getTeamModelHandle } from '../../../ai/model/catalog/service';
-import { nodeHasDynamicInput } from '../../../app/resources';
 import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search';
-import { getDatasetSearchAuxiliaryModels } from '../../../dataset/search/auxiliaryModels';
 import { getDatasetSearchVlmModel } from '../../../dataset/search/vlm';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { loadWorkflowDatasetResource } from '../../utils/resource';
+import { loadWorkflowDatasetResource, loadWorkflowModelResource } from '../../resource/service';
 import { getNodeErrResponse } from '../utils';
 import {
   createImageCaptionChildNodeResponse,
@@ -66,7 +64,7 @@ export const dispatchDatasetSearch = async (
 ): Promise<DatasetSearchResponse> => {
   const {
     runningAppInfo: { teamId },
-    runningUserInfo: { tmbId },
+    runningUserInfo,
     externalProvider,
     histories,
     node,
@@ -97,6 +95,11 @@ export const dispatchDatasetSearch = async (
       datasetDeepSearchBg
     }
   } = props as DatasetSearchProps;
+  const { tmbId } = runningUserInfo;
+  const userInfo = {
+    teamId: runningUserInfo.teamId || teamId,
+    tmbId
+  };
 
   if (!Array.isArray(datasets)) {
     return Promise.reject(i18nT('chat:dataset_quote_type error'));
@@ -121,24 +124,19 @@ export const dispatchDatasetSearch = async (
 
   const searchQueries = userChatInput ? [userChatInput] : datasetSearchInput;
 
-  const { textQueries, imageQueries } = normalizeDatasetSearchInput(searchQueries);
+  const { textQueries, imageQueries } = await normalizeDatasetSearchInput(searchQueries);
   if (textQueries.length === 0 && imageQueries.length === 0) {
     return emptyResult;
   }
 
   try {
-    const dynamicDataset = nodeHasDynamicInput(node, [
-      NodeInputKeyEnum.datasetSelectList,
-      NodeInputKeyEnum.datasetParams
-    ]);
     const requestedDatasetIds = datasets.map((item) => item.datasetId);
-    const datasetIds =
-      authTmbId || dynamicDataset
-        ? await filterDatasetsByTmbId({
-            datasetIds: requestedDatasetIds,
-            tmbId
-          })
-        : requestedDatasetIds;
+    const datasetIds = authTmbId
+      ? await filterDatasetsByTmbId({
+          datasetIds: requestedDatasetIds,
+          tmbId
+        })
+      : requestedDatasetIds;
 
     if (datasetIds.length === 0) {
       return emptyResult;
@@ -148,7 +146,7 @@ export const dispatchDatasetSearch = async (
     // 无当前用户身份）时不做 collection 级过滤，按 dataset 全量召回。
     const readableCollectionIdList = authTmbId
       ? await resolveReadableCollectionIds({
-          teamId,
+          teamId: userInfo.teamId,
           datasetIds,
           tmbId
         })
@@ -157,31 +155,46 @@ export const dispatchDatasetSearch = async (
     // Get vector model
     const dataset = await loadWorkflowDatasetResource({
       datasetId: datasetIds[0],
-      datasetIds: requestedDatasetIds,
-      dynamic: dynamicDataset,
+      datasetIds,
       tmbId
     });
     const modelHandle = await getTeamModelHandle({ teamId });
-    const vectorModel = modelHandle.getEmbeddingModelData({
-      modelId: dataset?.vectorModelId,
-      model: dataset?.vectorModel
-    });
-    const vlmModel = await getDatasetSearchVlmModel({ teamId, datasetIds, modelHandle });
-    const { rerankModelData, extensionModelData } = getDatasetSearchAuxiliaryModels(
+    const vectorModel = modelHandle.getModelData(
       {
-        usingReRank,
-        rerankModelId,
-        rerankModel,
-        datasetSearchUsingExtensionQuery,
-        datasetSearchExtensionModelId,
-        datasetSearchExtensionModel
+        modelId: dataset?.vectorModelId,
+        model: dataset?.vectorModel
       },
-      modelHandle
+      { type: 'embedding' }
     );
+    const vlmModel = await getDatasetSearchVlmModel({ teamId, datasetIds, modelHandle });
+    const rerankModelData = usingReRank
+      ? await loadWorkflowModelResource({
+          appTeamId: teamId,
+          userInfo,
+          modelId: rerankModelId,
+          model: rerankModel,
+          type: 'rerank',
+          fallbackToDefault: true,
+          modelHandle
+        })
+      : undefined;
+    const extensionModelData = datasetSearchUsingExtensionQuery
+      ? await loadWorkflowModelResource({
+          appTeamId: teamId,
+          userInfo,
+          modelId: datasetSearchExtensionModelId,
+          model: datasetSearchExtensionModel,
+          fallbackToDefault: true,
+          modelHandle
+        })
+      : undefined;
     const deepSearchModelData = datasetDeepSearch
-      ? modelHandle.getLLMModelData({
+      ? await loadWorkflowModelResource({
+          appTeamId: teamId,
+          userInfo,
           modelId: datasetDeepSearchModelId,
-          model: datasetDeepSearchModel
+          model: datasetDeepSearchModel,
+          modelHandle
         })
       : undefined;
 

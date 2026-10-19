@@ -160,27 +160,32 @@ export const enableDatasetCollectionPermissions = async ({
 }): Promise<EnableDatasetCollectionResult> => {
   logger.info(`[collectionPermission] enable dataset: datasetId=${datasetId} teamId=${teamId}`);
 
-  // 只读前置：校验与统计失败时零写入。
-  const collections = await MongoDatasetCollection.find(
-    { teamId, datasetId },
-    '_id tmbId parentId inheritPermission type'
-  ).lean<CollectionForEnable[]>();
+  const collectionCount = await mongoSessionRun(async (session) => {
+    // 每次事务重试都重读集合和 dataset ACL，避免复用并发创建前的旧快照。
+    const collections = await MongoDatasetCollection.find(
+      { teamId, datasetId },
+      '_id tmbId parentId inheritPermission type'
+    )
+      .session(session)
+      .lean<CollectionForEnable[]>();
 
-  assertValidCollectionTree(collections, datasetId);
+    assertValidCollectionTree(collections, datasetId);
 
-  const dataset = await MongoDataset.findOne({ _id: datasetId, teamId }, 'teamId').lean();
-  if (!dataset) {
-    throw new Error(`Dataset ${datasetId} not found in team ${teamId}`);
-  }
+    const dataset = await MongoDataset.findOne({ _id: datasetId, teamId }, 'teamId')
+      .session(session)
+      .lean();
+    if (!dataset) {
+      throw new Error(`Dataset ${datasetId} not found in team ${teamId}`);
+    }
 
-  // dataset 已完全物化权限：有效 clbs = 自身快照（无需沿 parentId 链合并）。
-  const datasetEffectiveClbs = await getResourceOwnedClbs({
-    resourceType: PerResourceTypeEnum.dataset,
-    teamId,
-    resourceId: datasetId
-  });
+    // dataset 已完全物化权限：有效 clbs = 自身快照（无需沿 parentId 链合并）。
+    const datasetEffectiveClbs = await getResourceOwnedClbs({
+      resourceType: PerResourceTypeEnum.dataset,
+      teamId,
+      resourceId: datasetId,
+      session
+    });
 
-  await mongoSessionRun(async (session) => {
     // 启用态下不应存在独立态 collection（关闭会重置、未启用时创建被拒）；这里防御性保留，
     // 避免异常数据被静默改写语义。
     const preservedCollectionIds = new Set(
@@ -230,9 +235,10 @@ export const enableDatasetCollectionPermissions = async ({
 
     // 5. 开关最后置位：失败时读语义保持关闭态，重试即再执行一次。
     await setDatasetCollectionPermissionEnabled({ datasetId, enabled: true, session });
+    return collections.length;
   });
 
-  return { collectionCount: collections.length };
+  return { collectionCount };
 };
 
 export type DisableDatasetCollectionResult = {
@@ -256,11 +262,11 @@ export const disableDatasetCollectionPermissions = async ({
 }): Promise<DisableDatasetCollectionResult> => {
   logger.info(`[collectionPermission] disable dataset: datasetId=${datasetId} teamId=${teamId}`);
 
-  const collectionIds = (await MongoDatasetCollection.distinct('_id', { teamId, datasetId })).map(
-    String
-  );
-
-  await mongoSessionRun(async (session) => {
+  const collectionCount = await mongoSessionRun(async (session) => {
+    // 重试时必须包含刚提交的新集合，不能在事务外固定待清理 ID 列表。
+    const collectionIds = (
+      await MongoDatasetCollection.distinct('_id', { teamId, datasetId }).session(session)
+    ).map(String);
     if (collectionIds.length > 0) {
       await MongoResourcePermission.deleteMany(
         {
@@ -280,7 +286,8 @@ export const disableDatasetCollectionPermissions = async ({
     );
 
     await setDatasetCollectionPermissionEnabled({ datasetId, enabled: false, session });
+    return collectionIds.length;
   });
 
-  return { collectionCount: collectionIds.length };
+  return { collectionCount };
 };

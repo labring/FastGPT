@@ -25,6 +25,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModalV2 from '@fastgpt/web/components/v2/common/MyModal';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   getSystemMigrationFailedRecords,
@@ -33,6 +35,7 @@ import {
   startSystemMigration
 } from '@/web/common/system/migrations/api';
 import {
+  getSystemMigrationErrorText,
   getSystemMigrationDisplayStatus,
   getSystemMigrationProgressPercent,
   type SystemMigrationDisplayStatus
@@ -437,6 +440,13 @@ const FailedRecordsModal = ({
 /** Root 管理员的升级状态页：轮询轻量摘要，所有执行动作仍通过服务端 lease runner 完成。 */
 const SystemMigrationsPage = () => {
   const { t } = useSafeTranslation();
+  const { toast } = useToast();
+
+  /** 依赖错误按当前语言翻译名称和正文，其他错误沿用通用提示。 */
+  const showMigrationError = (error: unknown) => {
+    if (error instanceof ToastHandledError) return;
+    toast({ title: getSystemMigrationErrorText(error, t), status: 'error' });
+  };
   const { data, isFetching, isError, refetch } = useQuery(
     ['systemMigrationList'],
     getSystemMigrationList,
@@ -453,6 +463,8 @@ const SystemMigrationsPage = () => {
     (migrationId: string) => retrySystemMigration({ migrationId }),
     {
       successToast: t('system_migration:migration_retry_requested'),
+      errorToast: '',
+      onError: showMigrationError,
       // 重置成功后立即刷新，否则需要等待下一次定时轮询才能看到 pending/running。
       onSuccess: () => void refetch()
     }
@@ -461,6 +473,8 @@ const SystemMigrationsPage = () => {
     (migrationId: string) => startSystemMigration({ migrationId }),
     {
       successToast: t('system_migration:migration_start_requested'),
+      errorToast: '',
+      onError: showMigrationError,
       onSuccess: () => void refetch()
     }
   );

@@ -1,6 +1,6 @@
 import type { NextApiRequest } from 'next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
+import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import { getChatModelNameListByModules } from '@/service/core/app/workflow';
 import {
   InitChatQuerySchema,

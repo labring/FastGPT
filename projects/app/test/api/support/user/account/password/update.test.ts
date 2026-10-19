@@ -42,6 +42,7 @@ describe('password/update API', () => {
     mocks.withUserLock.mockImplementation((_userId: string, fn: () => Promise<unknown>) => fn());
     mocks.assertPasswordUpdateRateLimit.mockResolvedValue(undefined);
     global.feConfigs = { ...global.feConfigs, sso: undefined };
+    global.systemEnv = { ...global.systemEnv, sso: undefined };
     testUser = await MongoUser.create({
       username: 'password-update-user',
       password: hashStr('old-password')
@@ -301,10 +302,10 @@ describe('password/update API', () => {
 
   it('rejects a restricted SSO user before changing password or sessions', async () => {
     await MongoUser.updateOne({ _id: testUser._id }, { username: 'tenant-user' });
+    global.systemEnv = { ...global.systemEnv, sso: { url: 'https://sso.example.com' } };
     global.feConfigs = {
       ...global.feConfigs,
       sso: {
-        url: 'https://sso.example.com',
         disablePasswordForSsoUsers: true
       }
     };

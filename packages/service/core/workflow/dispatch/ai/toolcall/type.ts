@@ -8,7 +8,7 @@ import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
 import type { AgentLoopChildrenInteractiveParams } from '../../../../ai/llm/agentLoop/interface';
-import type { SandboxClient } from '../../../../ai/sandbox/interface/runtime';
+import type { SandboxClient } from '../../../../ai/sandbox/application/runtime/client';
 import type { AgentLoopCoreInputFile } from '../agentLoopCore/interface';
 
 export type DispatchToolModuleProps = ModuleDispatchProps<{

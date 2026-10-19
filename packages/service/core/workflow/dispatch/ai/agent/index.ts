@@ -13,7 +13,6 @@ import type {
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getLogger, LogCategories } from '../../../../../common/logger';
-import { getTeamModelHandle } from '../../../../ai/model/catalog/service';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../../types/runtime';
 import { useUserContext } from './adapter/userContext';
 import { getAgentDatasetParams, getSubapps } from './sub/utils';
@@ -23,9 +22,9 @@ import { buildDefaultAgentSystemPrompt } from '../../../../ai/llm/agentLoop/inte
 import {
   assertSandboxAvailable,
   resolveAppSandboxAvailability
-} from '../../../../ai/sandbox/interface/runtime';
-import { nodeHasDynamicInput } from '../../../../app/resources';
+} from '../../../../ai/sandbox/application/availability';
 import { getWorkflowFileMaxAmount } from '../../../utils/context';
+import { loadWorkflowModelResource } from '../../../resource/service';
 import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
 import {
   buildAgentLoopCoreDoneMemories,
@@ -143,16 +142,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     }
   } = props;
   const datasetParams = getAgentDatasetParams(props.params);
-  const modelHandle = await getTeamModelHandle({ teamId: runningAppInfo.teamId });
-  const agentModel = modelHandle.getLLMModelData({ modelId, model });
-  const dynamicDataset = nodeHasDynamicInput(props.node, [
-    NodeInputKeyEnum.datasetSelectList,
-    NodeInputKeyEnum.datasetParams
-  ]);
-  const dynamicSkills =
-    runningAppInfo.sourceType === ChatSourceTypeEnum.skillEdit ||
-    nodeHasDynamicInput(props.node, [NodeInputKeyEnum.skills]);
-  const dynamicTools = nodeHasDynamicInput(props.node, [NodeInputKeyEnum.selectedTools]);
+  const agentModel = await loadWorkflowModelResource({
+    appTeamId: runningAppInfo.teamId,
+    userInfo: runningUserInfo,
+    modelId,
+    model
+  });
   // 旧 params.model 仅保留给兼容读取；Agent 请求链使用规范化 modelData。
   props.params.model = agentModel.model;
   props.params.aiChatVision = !!(props.params.aiChatVision && agentModel.config.vision);
@@ -204,7 +199,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       parseHistoryFiles,
       selectedDataset: datasetParams?.datasets,
       authTmbId: datasetParams?.authTmbId,
-      dynamicDataset,
       tmbId: runningUserInfo.tmbId,
       timezone,
       maxFileAmount: getWorkflowFileMaxAmount()
@@ -220,7 +214,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       });
     }
 
-    // 初始化 sandbox：初始化、注入 skills、files。静态 Skill 由 Version 快照授权，动态 Skill 才检查运行人。
+    // 初始化 sandbox：初始化、注入 skills、files。命中 Version 快照的 Skill 由快照授权，未命中的检查运行人权限。
     const { sandboxClient, currentWorkingDirectory, skillInfos } = await ensureAgentSandboxRuntime({
       sourceType: runningAppInfo.sourceType,
       sourceId: runningAppInfo.sourceId,
@@ -231,7 +225,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       needSandboxRuntime: effectiveUseAgentSandbox,
       sandboxEntrypoint: effectiveSandboxEntrypoint,
       skillIds: effectiveSkillIds,
-      dynamicSkills,
       selectedSkills: effectiveSelectedSkills,
       editSkillId,
       prepareActions: agentSandboxPrepareActions,
@@ -240,7 +233,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     // 获取请求上下文
     const { chatHistories, queryInput } = userContext;
-    const { rewrittenHistories, currentUserMessage } = userContext.getCurrentMessages({
+    const { rewrittenHistories, currentUserMessage } = await userContext.getCurrentMessages({
       skillInfos,
       currentWorkingDirectory
     });
@@ -264,8 +257,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     } = await getSubapps({
       tools: selectedTools,
       tmbId: runningUserInfo.tmbId,
-      lang,
-      dynamic: dynamicTools
+      lang
     });
     const { getSubAppInfo, getSubApp } = createAgentSubAppLookup({
       subAppsMap: agentSubAppsMap,
@@ -284,7 +276,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       context: {
         ...props,
         modelData: agentModel,
-        dynamicDataset,
         systemPrompt: formattedUserSystemPrompt,
         getSubAppInfo,
         getSubApp,

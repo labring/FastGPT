@@ -98,8 +98,9 @@ export const runDatasetRebuildQueue = async ({
             continue;
           }
           const modelHandle = await getTeamModelHandle({ teamId: String(data.teamId) });
-          const model = modelHandle.getEmbeddingModelData(
-            getDatasetModelReference(data.dataset, 'embedding')
+          const model = modelHandle.getModelData(
+            getDatasetModelReference(data.dataset, 'embedding'),
+            { type: 'embedding' }
           );
           const { tokens } = await rebuildDatasetDataIndexes({
             dataId: String(data.data._id),

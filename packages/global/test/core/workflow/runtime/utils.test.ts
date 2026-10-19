@@ -256,10 +256,13 @@ describe('valueTypeFormat', () => {
     expect(valueTypeFormat('3.14', WorkflowIOValueTypeEnum.number)).toBe(3.14);
   });
 
-  it('should convert to boolean type', () => {
+  it('should convert to boolean type with native Boolean semantics', () => {
     expect(valueTypeFormat('true', WorkflowIOValueTypeEnum.boolean)).toBe(true);
     expect(valueTypeFormat('TRUE', WorkflowIOValueTypeEnum.boolean)).toBe(true);
-    expect(valueTypeFormat('false', WorkflowIOValueTypeEnum.boolean)).toBe(false);
+    // JS 原生 Boolean：非空字符串（含 'false'）均为 true
+    expect(valueTypeFormat('false', WorkflowIOValueTypeEnum.boolean)).toBe(true);
+    expect(valueTypeFormat('FALSE', WorkflowIOValueTypeEnum.boolean)).toBe(true);
+    expect(valueTypeFormat('', WorkflowIOValueTypeEnum.boolean)).toBe(false);
     expect(valueTypeFormat(1, WorkflowIOValueTypeEnum.boolean)).toBe(true);
     expect(valueTypeFormat(0, WorkflowIOValueTypeEnum.boolean)).toBe(false);
   });
@@ -328,7 +331,7 @@ describe('valueTypeFormat', () => {
     {
       value: 'a',
       type: WorkflowIOValueTypeEnum.boolean,
-      result: false
+      result: true
     },
     {
       value: 'true',
@@ -338,7 +341,7 @@ describe('valueTypeFormat', () => {
     {
       value: 'false',
       type: WorkflowIOValueTypeEnum.boolean,
-      result: false
+      result: true
     },
     {
       value: 'false',
