@@ -5,7 +5,8 @@ import React, {
   useEffect,
   useImperativeHandle,
   type ForwardedRef,
-  useState
+  useState,
+  useCallback
 } from 'react';
 import {
   Menu,
@@ -42,7 +43,6 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange' | 'value'> & {
   placeholder?: string;
   isSearch?: boolean;
   list: {
-    alias?: string | React.ReactNode;
     icon?: string;
     iconSize?: string;
     label: string | React.ReactNode;
@@ -68,6 +68,9 @@ export const menuItemStyles: MenuItemProps = {
   display: 'flex',
   alignItems: 'center',
   _hover: {
+    backgroundColor: 'myGray.100'
+  },
+  _focus: {
     backgroundColor: 'myGray.100'
   },
   _notLast: {
@@ -101,25 +104,26 @@ const MySelect = <T = any,>(
   const { t } = useTranslation();
   const ButtonRef = useRef<HTMLButtonElement>(null);
   const MenuListRef = useRef<HTMLDivElement>(null);
-  const SelectedItemRef = useRef<HTMLDivElement>(null);
+  const SelectedItemRef = useRef<HTMLButtonElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const { isOpen, onOpen: defaultOnOpen, onClose: defaultOnClose } = useDisclosure();
   const selectItem = useMemo(() => list.find((item) => item.value === value), [list, value]);
 
-  const onOpen = () => {
+  const [search, setSearch] = useState('');
+
+  const onOpen = useCallback(() => {
     defaultOnOpen();
     customOnOpen?.();
-  };
+  }, [customOnOpen, defaultOnOpen]);
 
-  const onClose = () => {
+  const onClose = useCallback(() => {
     defaultOnClose();
     if (isSearch) {
       setSearch('');
     }
     customOnClose?.();
-  };
-
-  const [search, setSearch] = useState('');
+  }, [customOnClose, defaultOnClose, isSearch]);
 
   const filterList = useMemo(() => {
     if (!isSearch || !search) {
@@ -199,13 +203,13 @@ const MySelect = <T = any,>(
   return (
     <Box>
       <Menu
-        autoSelect={false}
+        autoSelect={isSearch}
+        initialFocusRef={isSearch ? searchInputRef : undefined}
         isOpen={isOpen && !isSelecting}
         onOpen={onOpen}
         onClose={onClose}
         strategy={'fixed'}
         placement={menuPlacement}
-        // matchWidth
       >
         <MenuButton
           as={Button}
@@ -258,7 +262,7 @@ const MySelect = <T = any,>(
                         }
                       : {})}
                   >
-                    {selectItem?.alias || selectItem?.label || placeholder}
+                    {selectItem?.label || placeholder}
                   </Box>
                 </>
               )}
@@ -297,6 +301,7 @@ const MySelect = <T = any,>(
           {isSearch && (
             <Box mb={1}>
               <FilterSearchInput
+                ref={searchInputRef}
                 value={search}
                 placeholder={t('common:Search')}
                 onChange={setSearch}

@@ -69,8 +69,10 @@ describe('dispatchFormInput', () => {
     } as any);
   };
 
-  it('resolves dynamic options and removes the static default', async () => {
-    const result = await dispatchOptionForm({ sourceValue: ['Beijing', 'Shanghai'] });
+  it('resolves dynamic options, trims whitespace, and removes the static default', async () => {
+    const result = await dispatchOptionForm({
+      sourceValue: ['  Beijing  ', '   ', '', 'Shanghai']
+    });
     expect(result[DispatchNodeResponseKeyEnum.interactive]).toEqual({
       type: 'userInput',
       params: {
@@ -89,10 +91,11 @@ describe('dispatchFormInput', () => {
   });
 
   it.each([
-    { type: FlowNodeInputTypeEnum.select, required: true },
-    { type: FlowNodeInputTypeEnum.multipleSelect, required: false }
+    { type: FlowNodeInputTypeEnum.select, required: true, sourceValue: [] },
+    { type: FlowNodeInputTypeEnum.multipleSelect, required: false, sourceValue: [] },
+    { type: FlowNodeInputTypeEnum.select, required: true, sourceValue: ['   ', '\n\t'] }
   ])('rejects empty dynamic $type options (required: $required)', async (props) => {
-    await expect(dispatchOptionForm({ ...props, sourceValue: [] })).rejects.toThrow(
+    await expect(dispatchOptionForm(props)).rejects.toThrow(
       'workflow:form_input_no_available_options'
     );
   });

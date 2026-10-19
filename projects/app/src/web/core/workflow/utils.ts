@@ -590,29 +590,6 @@ export const filterSelectableWorkflowNodeOutputs = ({
   );
 };
 
-const referenceItemIsSelectable = ({
-  value,
-  sourceNodes,
-  valueType
-}: {
-  value: ReferenceItemValueType;
-  sourceNodes: WorkflowReferenceSourceNode[];
-  valueType?: WorkflowIOValueTypeEnum;
-}) => {
-  const [sourceNodeId, outputId] = value;
-  if (!sourceNodeId || !outputId) return false;
-
-  const sourceNode = sourceNodes.find((node) => node.nodeId === sourceNodeId);
-  if (!sourceNode) return false;
-
-  const outputIsSelectable = filterSelectableWorkflowNodeOutputs({
-    outputs: sourceNode.outputs,
-    valueType,
-    catchError: sourceNode.catchError
-  }).some((output) => output.id === outputId);
-  return outputIsSelectable;
-};
-
 /**
  * 判断引用值是否仍能被 ReferenceSelector 选中。
  * 单选引用要求当前二元组命中；多选引用只要存在一个仍可选的引用项，选择器就会展示有效值。
@@ -620,30 +597,39 @@ const referenceItemIsSelectable = ({
 export const workflowReferenceValueIsSelectable = ({
   value,
   sourceNodes,
-  valueType
+  valueType,
+  excludeValueTypes
 }: {
   value?: ReferenceValueType;
   sourceNodes: WorkflowReferenceSourceNode[];
   valueType?: WorkflowIOValueTypeEnum;
+  excludeValueTypes?: WorkflowIOValueTypeEnum[];
 }) => {
+  const referenceItemIsSelectable = (itemValue: ReferenceItemValueType) => {
+    const [sourceNodeId, outputId] = itemValue;
+    if (!sourceNodeId || !outputId) return false;
+
+    const sourceNode = sourceNodes.find((node) => node.nodeId === sourceNodeId);
+    if (!sourceNode) return false;
+
+    return filterSelectableWorkflowNodeOutputs({
+      outputs: sourceNode.outputs,
+      valueType,
+      catchError: sourceNode.catchError,
+      excludeValueTypes
+    }).some((output) => output.id === outputId);
+  };
+
   if (!Array.isArray(value)) return false;
 
   if (typeof value[0] === 'string') {
-    return referenceItemIsSelectable({
-      value: value as ReferenceItemValueType,
-      sourceNodes,
-      valueType
-    });
+    return referenceItemIsSelectable(value as ReferenceItemValueType);
   }
 
   return value.some((item) => {
     if (!Array.isArray(item)) return false;
 
-    return referenceItemIsSelectable({
-      value: item as ReferenceItemValueType,
-      sourceNodes,
-      valueType
-    });
+    return referenceItemIsSelectable(item as ReferenceItemValueType);
   });
 };
 

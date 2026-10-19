@@ -6,7 +6,10 @@ import { Box, Flex } from '@chakra-ui/react';
 import NodeInputSelect, {
   getSelectedRenderTypeState
 } from '@fastgpt/web/components/core/workflow/NodeInputSelect';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   USER_SELECT_DEFAULT_OPTIONS,
@@ -39,9 +42,12 @@ const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Prop
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const setEdges = useContextSelector(WorkflowBufferDataContext, (v) => v.setEdges);
+  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
 
   const { required, renderTypeList, valueType, valueDesc } = input;
-  const isUserSelectOptions = input.key === NodeInputKeyEnum.userSelectOptions;
+  const isUserSelectOptions =
+    getNodeById(nodeId)?.flowNodeType === FlowNodeTypeEnum.userSelect &&
+    input.key === NodeInputKeyEnum.userSelectOptions;
   const renderType =
     getSelectedInputRenderType(input) ?? renderTypeList?.[0] ?? FlowNodeInputTypeEnum.input;
   const shouldRenderRightInline =
@@ -84,11 +90,17 @@ const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Prop
           nextRenderType === FlowNodeInputTypeEnum.reference
             ? getHandleId(nodeId, 'source', USER_SELECT_REFERENCE_HANDLE_KEY)
             : getHandleId(nodeId, 'source', USER_SELECT_DEFAULT_OPTIONS[0].key);
+        const optionHandleIds =
+          nextRenderType === FlowNodeInputTypeEnum.reference && Array.isArray(input.value)
+            ? input.value.map((item: { key: string }) => getHandleId(nodeId, 'source', item.key))
+            : [];
 
         setEdges((prevEdges) => {
-          const firstConnectedHandle = prevEdges.find(
-            (edge) => edge.source === nodeId
-          )?.sourceHandle;
+          // 手动切引用时优先按选项顺序保留第一个已连线分支，避免受连线先后顺序影响。
+          const firstConnectedHandle =
+            optionHandleIds.find((handleId) =>
+              prevEdges.some((edge) => edge.source === nodeId && edge.sourceHandle === handleId)
+            ) ?? prevEdges.find((edge) => edge.source === nodeId)?.sourceHandle;
           if (!firstConnectedHandle) return prevEdges;
 
           return prevEdges.flatMap((edge) => {

@@ -58,13 +58,13 @@ export const getWorkflowNodeRunParams = ({
     // Special input, not format
     if (input.key === dynamicInput?.key) return;
 
-    // Skip some special key
+    // 用户选择节点自行展开动态选项，其他节点的同名自定义参数仍需正常解析和聚合。
     if (
-      [
-        NodeInputKeyEnum.childrenNodeIdList,
-        NodeInputKeyEnum.httpJsonBody,
-        NodeInputKeyEnum.userSelectOptions
-      ].includes(input.key as NodeInputKeyEnum)
+      [NodeInputKeyEnum.childrenNodeIdList, NodeInputKeyEnum.httpJsonBody].includes(
+        input.key as NodeInputKeyEnum
+      ) ||
+      (node.flowNodeType === FlowNodeTypeEnum.userSelect &&
+        input.key === NodeInputKeyEnum.userSelectOptions)
     ) {
       params[input.key] = input.value;
       return;

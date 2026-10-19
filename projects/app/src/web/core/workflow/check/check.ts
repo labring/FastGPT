@@ -10,6 +10,7 @@ import { createWorkflowCheckContext, checkWorkflowNodeConnections } from './grap
 import { checkWorkflowNodeModelRules, checkWorkflowChatModelRules } from './model';
 import { checkWorkflowNodeResourceRules, checkWorkflowNodeInputRules } from './node';
 import { formatWorkflowRuleIssue } from './message';
+import { getNodeAllSource } from '../utils';
 
 /** 扫描节点规则，图索引只构造一次；输出顺序与画布、既有校验顺序一致。 */
 export const checkWorkflowNodeIssues = ({
@@ -17,13 +18,15 @@ export const checkWorkflowNodeIssues = ({
   edges,
   modelData,
   nodeId,
-  t
+  t = ((key: string) => key) as TFunction,
+  chatConfig = {}
 }: {
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge[];
   modelData?: WorkflowModelCheckData;
   nodeId?: string;
   t?: TFunction;
+  chatConfig?: AppChatConfigType;
 }): WorkflowCheckNodeIssueMap => {
   // 1. 构造单次校验复用的图索引与可达性集合。
   const context = createWorkflowCheckContext({ nodes: nodes.map((node) => node.data), edges });
@@ -43,6 +46,15 @@ export const checkWorkflowNodeIssues = ({
         data,
         inputMap,
         context,
+        getReferenceSourceNodes: () =>
+          getNodeAllSource({
+            nodeId: data.nodeId,
+            getNodeById: (id) => (id ? context.nodeMap.get(id) : undefined),
+            edges,
+            chatConfig,
+            t,
+            includeChildren: false
+          }),
         modelIssues: [...models.customIssues, ...models.systemIssues]
       }),
       ...checkWorkflowNodeConnections({ data, context })
@@ -104,7 +116,7 @@ export const checkWorkflowBeforeRunOrPublish = ({
   t?: TFunction;
   chatConfig?: AppChatConfigType;
 }) => {
-  const issueMap = checkWorkflowNodeIssues({ nodes, edges, modelData, t });
+  const issueMap = checkWorkflowNodeIssues({ nodes, edges, modelData, t, chatConfig });
   const chatConfigIssues = checkWorkflowChatConfigModelIssues({ chatConfig, modelData, t });
 
   const nodeOrder = nodes.map((node) => node.data.nodeId);

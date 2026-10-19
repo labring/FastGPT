@@ -14,6 +14,7 @@ import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
+  VariableInputEnum,
   VARIABLE_NODE_ID
 } from '@fastgpt/global/core/workflow/constants';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
@@ -185,6 +186,42 @@ describe('checkWorkflowNodeIssues', () => {
         ?.filter((i) => i.inputKey === NodeInputKeyEnum.userInputForms)
         .map((i) => i.code)
     ).toEqual(['required_input_empty', 'required_input_empty']);
+  });
+
+  it('flags excluded variable types (e.g. arrayBoolean) as empty dynamic options in static check', () => {
+    const source = makeNode('source', FlowNodeTypeEnum.workflowStart, {
+      outputs: [
+        {
+          id: 'boolArr',
+          key: 'boolArr',
+          label: 'boolArr',
+          type: FlowNodeOutputTypeEnum.static,
+          valueType: WorkflowIOValueTypeEnum.arrayBoolean
+        }
+      ]
+    });
+    const select = makeNode('select', FlowNodeTypeEnum.userSelect, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userSelectOptions,
+          renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          valueType: WorkflowIOValueTypeEnum.any,
+          value: [['source', 'boolArr']]
+        }
+      ]
+    });
+
+    const issues = checkWorkflowNodeIssues({
+      nodes: [startNode, source, select],
+      edges: [{ id: 'e1', source: 'source', target: 'select', type: EDGE_TYPE }]
+    });
+
+    expect(
+      issues.select
+        ?.filter((i) => i.inputKey === NodeInputKeyEnum.userSelectOptions)
+        .map((i) => i.code)
+    ).toEqual(['user_select_empty']);
   });
 
   it('reports nodes without upstream connections', () => {

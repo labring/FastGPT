@@ -181,8 +181,15 @@ export const UserInputFormItemSchema = AppFileSelectConfigTypeSchema.extend({
   max: z.number().optional(), // numberInput
   min: z.number().optional(), // numberInput
   list: z.array(z.object({ label: z.string(), value: z.string() })).optional(), // select
-  listInputType: z.enum(FlowNodeInputTypeEnum).optional(),
-  listReference: ReferenceArrayValueTypeSchema.optional(),
+  listInputType: z
+    .enum([FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference])
+    .optional()
+    .meta({
+      description: '选项配置方式（input 手动输入 / reference 变量引用）'
+    }),
+  listReference: ReferenceArrayValueTypeSchema.optional().meta({
+    description: '动态选项引用变量列表'
+  }),
 
   canLocalUpload: z.boolean().optional(),
   canUrlUpload: z.boolean().optional()

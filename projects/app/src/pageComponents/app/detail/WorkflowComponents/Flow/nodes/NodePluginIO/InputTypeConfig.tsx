@@ -29,9 +29,7 @@ import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import MultipleSelect, {
-  useMultipleSelect
-} from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { useTranslation } from 'next-i18next';
@@ -186,11 +184,9 @@ const InputTypeConfig = ({
   const datasetOptions = watch('datasetOptions');
 
   const selectValueTypeList = watch('customInputConfig.selectValueTypeList');
-  const { isSelectAll: isSelectAllValueType, setIsSelectAll: setIsSelectAllValueType } =
-    useMultipleSelect(selectValueTypeList, false);
 
   const listValue = watch('list') ?? [];
-  const listInputType = watch('listInputType') || FlowNodeInputTypeEnum.custom;
+  const listInputType = watch('listInputType') ?? FlowNodeInputTypeEnum.input;
   const listReference = watch('listReference') ?? [];
   const {
     fields: selectEnums,
@@ -215,7 +211,7 @@ const InputTypeConfig = ({
     value?: string;
   }[];
   const optionDragList = optionFields.map((item, index) => ({
-    id: item.id || `${index}`,
+    id: selectEnums[index]?.id ?? item.id ?? `${index}`,
     label: item.label || '',
     value: item.value || item.label || ''
   }));
@@ -334,8 +330,8 @@ const InputTypeConfig = ({
       if (isOptionInput) {
         const optionMode =
           type === 'formInput'
-            ? (data.listInputType ?? FlowNodeInputTypeEnum.custom)
-            : FlowNodeInputTypeEnum.custom;
+            ? (data.listInputType ?? FlowNodeInputTypeEnum.input)
+            : FlowNodeInputTypeEnum.input;
         if (type === 'formInput') {
           commonData.listInputType = optionMode;
         }
@@ -343,18 +339,7 @@ const InputTypeConfig = ({
           commonData.listReference = Array.isArray(data.listReference) ? data.listReference : [];
           commonData.defaultValue = undefined;
         } else {
-          const cleanList = (data.list ?? []).filter(
-            (item: { label?: string; value?: string }) => !!item?.label
-          );
-          commonData.list = cleanList;
-          const validValues = new Set(cleanList.map((item: { value: string }) => item.value));
-          if (isMultipleSelectInput) {
-            commonData.defaultValue = Array.isArray(commonData.defaultValue)
-              ? commonData.defaultValue.filter((v: string) => validValues.has(v))
-              : commonData.defaultValue;
-          } else if (commonData.defaultValue && !validValues.has(commonData.defaultValue)) {
-            commonData.defaultValue = '';
-          }
+          commonData.list = data.list;
         }
       }
 
@@ -427,7 +412,7 @@ const InputTypeConfig = ({
 
       return commonData;
     },
-    [inputType, isMultipleSelectInput, isOptionInput, type]
+    [inputType, isOptionInput, type]
   );
 
   return (
@@ -821,8 +806,7 @@ const InputTypeConfig = ({
                 onSelect={(e) => {
                   setValue('customInputConfig.selectValueTypeList', e);
                 }}
-                isSelectAll={isSelectAllValueType}
-                setIsSelectAll={setIsSelectAllValueType}
+                showSelectAll
               />
             </Box>
           </>
@@ -838,11 +822,10 @@ const InputTypeConfig = ({
                 <Flex alignItems={'center'} minH={7}>
                   <NodeInputSelect
                     bg={'white'}
-                    renderTypeList={[FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference]}
+                    renderTypeList={[FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]}
                     selectedType={listInputType}
                     onChange={(e) => {
-                      const nextType = e as FlowNodeInputTypeEnum;
-                      setValue('listInputType', nextType);
+                      setValue('listInputType', e as FlowNodeInputTypeEnum);
                       setValue('defaultValue', isMultipleSelectInput ? [] : '');
                     }}
                   />
@@ -919,9 +902,10 @@ const InputTypeConfig = ({
                             defaultValue.includes(optionValue)
                           : !!optionValue && defaultValue === optionValue;
                         const canDeleteOption = optionFields.length > 1;
+                        const optionKey = selectEnums[i]?.id ?? item.id ?? `${i}`;
 
                         return (
-                          <Draggable key={i} draggableId={i.toString()} index={i}>
+                          <Draggable key={optionKey} draggableId={optionKey} index={i}>
                             {(provided, snapshot) => (
                               <Grid
                                 ref={provided.innerRef}
@@ -961,7 +945,12 @@ const InputTypeConfig = ({
                                       bg={'white'}
                                       placeholder={t('workflow:please_input_option')}
                                       {...register(`list.${i}.label`, {
-                                        required: !isReferenceOptionMode,
+                                        validate: (val: string) =>
+                                          (type === 'formInput' &&
+                                            getValues('listInputType') ===
+                                              FlowNodeInputTypeEnum.reference) ||
+                                          !!val?.trim() ||
+                                          t('workflow:please_input_option'),
                                         onChange: (e: any) => {
                                           const nextVal = e.target.value;
                                           const prevVal = getValues(`list.${i}.value`);

@@ -29,12 +29,10 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
   } = props;
   const { nodeId, isEntry } = node;
 
-  const userSelectOptionInput = node.inputs?.find(
+  const userSelectOptionInput = node.inputs.find(
     (input) => input.key === NodeInputKeyEnum.userSelectOptions
   );
-  const isReferenceMode = userSelectOptionInput
-    ? nodeInputIsReference(userSelectOptionInput)
-    : Array.isArray(userSelectOptions) && userSelectOptions.some((item) => Array.isArray(item));
+  const isReferenceMode = !!userSelectOptionInput && nodeInputIsReference(userSelectOptionInput);
 
   // Interactive node is not the entry node, return interactive result
   if (!isEntry || lastInteractive?.type !== 'userSelect') {
@@ -67,16 +65,14 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
   node.isEntry = false;
 
   const { text: userSelectedVal } = chatValue2RuntimePrompt(query);
-  const manualOptions = Array.isArray(userSelectOptions)
-    ? (userSelectOptions as UserSelectOptionItemType[])
-    : [];
+  const manualOptions = userSelectOptions as UserSelectOptionItemType[];
 
   // Error status
   if (userSelectedVal === undefined) {
     return {
       [DispatchNodeResponseKeyEnum.skipHandleId]: isReferenceMode
         ? [getHandleId(nodeId, 'source', USER_SELECT_REFERENCE_HANDLE_KEY)]
-        : manualOptions.map((item) => getHandleId(nodeId, 'source', item.value))
+        : manualOptions.map((item) => getHandleId(nodeId, 'source', item.key))
     };
   }
 

@@ -28,7 +28,7 @@
 ```ts
 export const USER_SELECT_REFERENCE_HANDLE_KEY = 'ref_default';
 
-export const defaultUserSelectOptions: UserSelectOptionItemType[] = [
+export const USER_SELECT_DEFAULT_OPTIONS: UserSelectOptionItemType[] = [
   { value: 'Confirm', key: 'option1' },
   { value: 'Cancel', key: 'option2' }
 ];
@@ -40,11 +40,9 @@ export const defaultUserSelectOptions: UserSelectOptionItemType[] = [
 {
   key: NodeInputKeyEnum.userSelectOptions,
   renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
-  selectedTypeIndex: 0,
   valueType: WorkflowIOValueTypeEnum.any,
-  label: i18nT('workflow:list_options'),
-  required: true,
-  value: defaultUserSelectOptions
+  label: i18nT('common:core.module.variable.variable options'),
+  value: USER_SELECT_DEFAULT_OPTIONS
 }
 ```
 
@@ -53,10 +51,13 @@ export const defaultUserSelectOptions: UserSelectOptionItemType[] = [
 在 `UserInputFormItemSchema` 中新增选项来源类型 `listInputType` 与变量引用列表 `listReference`：
 
 ```ts
-listInputType: z.enum(FlowNodeInputTypeEnum).optional().meta({
-  description: '选项配置方式（custom 手动填写 / reference 引用变量）'
-}),
-listReference: ReferenceValueTypeSchema.optional().meta({
+listInputType: z
+  .enum([FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference])
+  .optional()
+  .meta({
+    description: '选项配置方式（input 手动输入 / reference 变量引用）'
+  }),
+listReference: ReferenceArrayValueTypeSchema.optional().meta({
   description: '动态选项引用变量列表'
 })
 ```
@@ -89,12 +90,10 @@ export const DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES: WorkflowIOValueTypeEnum[] = [
    - 使用 `isValidReferenceValueFormat(item, runtimeNodesMap)` 判断输入是否为指向全局变量（`VARIABLE_NODE_ID`）或 `runtimeNodesMap` 中已有节点的有效引用二元组。
    - 若 `value` 不是有效引用结构（例如节点「单步调试」时 `useDebugInput` 渲染手动输入框并通过 `getDebugRuntimeInputs` 注入的字面量字符串或 JSON 数组），直接按第 3 步规则将 `value` 展开并格式化为选项列表。
 2. **解析单来源运行值**：
-   - 全局变量（`sourceNodeId === VARIABLE_NODE_ID`）：从 `variables[outputId]` 取值。
-   - 节点输出（`sourceNodeId !== VARIABLE_NODE_ID`）：从 `runtimeNodesMap.get(sourceNodeId)?.outputs` 查找对应输出项的 `value`。
+   - 统一通过 `getReferenceVariableValue` 读取全局变量或节点输出运行值，并按一维展开。
 3. **展开与格式化**：
-   - `rawValue === undefined || rawValue === null` 时跳过。
-   - 当 `Array.isArray(rawValue)` 为真时，逐元素调用 `formatSingleOptionValue`（非空字符串原样保留，对象 `JSON.stringify`，其余 `String(val)`，空串跳过）。
-   - 当 `rawValue` 为非数组值时，将 `rawValue` 整体传入 `formatSingleOptionValue` 作为单个选项。
+   - 过滤 `undefined` 和 `null`。
+   - 调用 `String(valueTypeFormat(item, WorkflowIOValueTypeEnum.string)).trim()` 将元素格式化为字符串并去除首尾空白（对象使用 `JSON.stringify`，其余转为字符串），过滤空白字符串。
 4. **顺序拼接（不去重）**：按勾选顺序追加到结果数组，保留重复项。
 
 ---
@@ -103,7 +102,7 @@ export const DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES: WorkflowIOValueTypeEnum[] = [
 
 ### 4.1 节点入参预处理（`packages/service/core/workflow/dispatch/utils/runtime.ts`）
 
-在 `getWorkflowNodeRunParams` 中，当 `input.key === NodeInputKeyEnum.userSelectOptions` 时，保留原始 `input.value` 不做常规 `getReferenceVariableValue` 扁平化，交由 `dispatchUserSelect` 结合 `runtimeNodesMap` 与 `variableState` 统一解析。
+在 `getWorkflowNodeRunParams` 中，当 `node.flowNodeType === FlowNodeTypeEnum.userSelect && input.key === NodeInputKeyEnum.userSelectOptions` 时，保留原始 `input.value` 不做常规 `getReferenceVariableValue` 扁平化，交由 `dispatchUserSelect` 结合 `runtimeNodesMap` 与 `variableState` 统一解析。
 
 ### 4.2 用户选择节点调度（`packages/service/core/workflow/dispatch/interactive/userSelect.ts`）
 
@@ -128,7 +127,7 @@ export const DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES: WorkflowIOValueTypeEnum[] = [
 
 1. **模式切换器**：在 `RenderInput/Label.tsx` 中为 `userSelectOptions` 渲染 `NodeInputSelect`（手动输入 / 变量引用）。
 2. **连线迁移规则（`Label.tsx`）**：
-   - 无论从「手动输入 $\rightarrow$ 变量引用」还是「变量引用 $\rightarrow$ 手动输入」，切换时均将选项值重置为默认态（引用模式为 `[]`，手填模式为 `defaultUserSelectOptions`）。
+   - 无论从「手动输入 $\rightarrow$ 变量引用」还是「变量引用 $\rightarrow$ 手动输入」，切换时均将选项值重置为默认态（引用模式为 `[]`，手填模式为 `USER_SELECT_DEFAULT_OPTIONS`）。
    - 同时扫描当前节点的出边，定位首个已连线的 `sourceHandle`，**将该句柄上的所有出边统一迁移至新模式的首个句柄**（引用模式为 `getHandleId(nodeId, 'source', 'ref_default')`，手填模式为 `getHandleId(nodeId, 'source', 'option1')`），其余分支句柄上的多余连线自动清理。
 3. **单一引用句柄渲染**：
    - 引用模式下，在 `MultipleReferenceSelector` 右侧渲染单个 `MySourceHandle`（`handleId = getHandleId(nodeId, 'source', 'ref_default')`）。
@@ -144,14 +143,14 @@ export const DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES: WorkflowIOValueTypeEnum[] = [
 3. **变量引用模式**：
    - 仅在 `type === 'formInput'` 的单选/多选字段中渲染「选项配置」行与切换器（手动输入 / 变量引用）；全局变量与插件输入不渲染该行。
    - 切换为「变量引用」时隐藏默认值，清空 `defaultValue`，按需挂载 `DynamicOptionReferenceSelector`（避免非工作流场景访问工作流上下文）。
-   - 弹窗点击「确认」提交时，若处于「变量引用」模式且 `listReference` 为空，提示选择变量并阻止提交。
+   - 弹窗点击「确认」提交时，若处于「变量引用」模式，使用 `workflowReferenceValueIsSelectable` 过滤有效引用；若有效引用为空则提示选择变量并阻止提交。
    - `MultipleRowArraySelect` 使用 `<Menu strategy="fixed" closeOnSelect={false}>` 挂载下拉面板，避免在弹窗 `overflow: auto` 容器内被裁剪。
 
 ### 5.3 对话端大选项量体验（`MySelect` / `MultipleSelect` / `formRender`）
 
 - 在 `formRender/index.tsx` 中，针对 `InputTypeEnum.select` 与 `InputTypeEnum.multipleSelect`：
   - **面板内搜索**：当 `list.length > 10` 时开启 `isSearch`，下拉顶部渲染 `FilterSearchInput` 按文本过滤候选。
-  - **多选「全部」快捷项**：多选下拉当 `list.length >= 5` 时开启 `setIsSelectAll`，顶部渲染「全部」选项；仅有「全部」时下方展示分割线，同时存在「全部」与搜索框时不展示多余分割线，视觉与交互对齐 `MultiSelectFilter`。
+  - **多选「全部」快捷项**：多选下拉当 `list.length >= 5` 时开启 `showSelectAll`，顶部渲染「全部」选项；仅有「全部」时下方展示分割线，同时存在「全部」与搜索框时不展示多余分割线，视觉与交互对齐 `MultiSelectFilter`。
 
 ---
 

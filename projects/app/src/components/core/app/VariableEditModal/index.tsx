@@ -60,9 +60,20 @@ const VariableEditModal = ({
       const typeEnum = newType as VariableInputEnum;
       const value = getValues();
       if (typeEnum === value.type) return;
+      const defaultValIsNumber =
+        typeof value.defaultValue !== 'object' && !isNaN(Number(value.defaultValue));
 
-      // 只清空类型相关的默认值，保留单选和多选间可复用的选项配置。
-      setValue('defaultValue', typeEnum === VariableInputEnum.multipleSelect ? [] : '');
+      // 只清空与目标类型不兼容的默认值，保留兼容默认值及单多选间可复用的选项配置。
+      if (typeEnum === VariableInputEnum.multipleSelect) {
+        setValue('defaultValue', []);
+      } else if (
+        typeEnum === VariableInputEnum.select ||
+        typeEnum === VariableInputEnum.file ||
+        value.type === VariableInputEnum.multipleSelect ||
+        (typeEnum === VariableInputEnum.numberInput && !defaultValIsNumber)
+      ) {
+        setValue('defaultValue', '');
+      }
       if (
         (typeEnum === VariableInputEnum.select || typeEnum === VariableInputEnum.multipleSelect) &&
         !value.list?.length
@@ -84,6 +95,7 @@ const VariableEditModal = ({
         const snap = snapTextInputValueType(value.valueType);
         if (snap.resetDefault) {
           setValue('valueType', snap.valueType);
+          setValue('defaultValue', '');
         }
       }
 

@@ -16,7 +16,10 @@ import type {
 } from '@fastgpt/global/core/workflow/type/io';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
-import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeTypeEnum,
+  isNestedParentNodeType
+} from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { WorkflowBufferDataContext } from '../../../../../context/workflowInitContext';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
@@ -147,7 +150,9 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
   const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
-  const isDynamicOptionsInput = item.key === NodeInputKeyEnum.userSelectOptions;
+  const isDynamicOptionsInput =
+    getNodeById(nodeId)?.flowNodeType === FlowNodeTypeEnum.userSelect &&
+    item.key === NodeInputKeyEnum.userSelectOptions;
   const isArray = isDynamicOptionsInput || (item.valueType?.includes('array') ?? false);
 
   const onSelect = useCallback(
@@ -338,9 +343,12 @@ const MultipleReferenceSelector = ({
     });
   }, [getSelectValue, value]);
 
-  const invalidList = useMemo(() => {
+  const validList = useMemo(() => {
     return formatList.filter((item) => item.nodeName && item.outputName);
   }, [formatList]);
+  const validValueList = useMemo(() => {
+    return validList.map((item) => item.rawValue);
+  }, [validList]);
 
   useEffect(() => {
     // Adapt array type from old version
@@ -354,7 +362,7 @@ const MultipleReferenceSelector = ({
     return (
       <MultipleRowArraySelect
         label={
-          invalidList.length > 0 ? (
+          validList.length > 0 ? (
             <Grid
               py={3}
               gridTemplateColumns={'1fr 1fr'}
@@ -367,7 +375,7 @@ const MultipleReferenceSelector = ({
                 }
               }}
             >
-              {invalidList.map(({ nodeName, outputName }, index) => {
+              {validList.map(({ nodeName, outputName }, index) => {
                 return (
                   <Flex
                     key={index}
@@ -407,9 +415,7 @@ const MultipleReferenceSelector = ({
                       onClick={(e) => {
                         e.stopPropagation();
                         e.preventDefault();
-                        onSelect(
-                          invalidList.filter((_, i) => i !== index).map((item) => item.rawValue)
-                        );
+                        onSelect(validValueList.filter((_, i) => i !== index));
                       }}
                     />
                   </Flex>
@@ -422,7 +428,7 @@ const MultipleReferenceSelector = ({
             </Box>
           )
         }
-        value={value as any}
+        value={validValueList}
         list={list}
         onSelect={(e) => {
           onSelect(e as any);
@@ -431,7 +437,7 @@ const MultipleReferenceSelector = ({
         ButtonProps={ButtonProps}
       />
     );
-  }, [ButtonProps, invalidList, list, onSelect, placeholder, popDirection, value]);
+  }, [ButtonProps, validList, validValueList, list, onSelect, placeholder, popDirection]);
 
   return ArraySelector;
 };

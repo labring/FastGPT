@@ -35,7 +35,6 @@ const InputRender = (props: InputRenderProps) => {
   const { t } = useSafeTranslation();
   // Password
   const [isPasswordEditing, setIsPasswordEditing] = useState(false);
-  const [, setIsSelectAll] = useState(false);
 
   const multipleSelectList = useMemo(() => {
     if (inputType !== InputTypeEnum.multipleSelect) return [];
@@ -199,7 +198,7 @@ const InputRender = (props: InputRenderProps) => {
         value={value}
         onSelect={(e) => onChange?.(e)}
         isSearch={multipleSelectList.length > 10}
-        setIsSelectAll={multipleSelectList.length >= 5 ? setIsSelectAll : undefined}
+        showSelectAll={multipleSelectList.length >= 5}
         itemWrap
       />
     );

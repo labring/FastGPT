@@ -4,6 +4,7 @@ import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import type { UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { isReferenceOptionFormItem } from '@fastgpt/global/core/workflow/template/system/interactive/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { anyValueDecrypt } from '../../../../common/secret/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
@@ -104,10 +105,7 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
     };
 
     const resolvedInputForms = userInputForms.map((item) => {
-      const isOptionField =
-        item.type === FlowNodeInputTypeEnum.select ||
-        item.type === FlowNodeInputTypeEnum.multipleSelect;
-      if (!isOptionField || item.listInputType !== FlowNodeInputTypeEnum.reference) {
+      if (!isReferenceOptionFormItem(item)) {
         return item;
       }
 

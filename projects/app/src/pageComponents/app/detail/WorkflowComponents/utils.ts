@@ -15,6 +15,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
+import { isReferenceOptionFormItem } from '@fastgpt/global/core/workflow/template/system/interactive/constants';
 import type { UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
@@ -164,46 +165,53 @@ const filterUnselectableReferenceInputs = ({
   getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
   childrenNodeIdListMap: Record<string, string[]>;
 }) => {
-  return inputs.map((input) => {
-    if (input.key === NodeInputKeyEnum.userInputForms && Array.isArray(input.value)) {
-      const formList = input.value as UserInputFormItemType[];
-      const hasReferenceOptionField = formList.some(
-        (formItem) =>
-          (formItem.type === FlowNodeInputTypeEnum.select ||
-            formItem.type === FlowNodeInputTypeEnum.multipleSelect) &&
-          formItem.listInputType === FlowNodeInputTypeEnum.reference &&
-          Array.isArray(formItem.listReference)
-      );
-      if (!hasReferenceOptionField) return input;
-
-      const sourceNodes = getNodeAllSource({
+  let sourceNodesWithoutChildren: ReturnType<typeof getNodeAllSource> | undefined;
+  let sourceNodesWithChildren: ReturnType<typeof getNodeAllSource> | undefined;
+  const getSourceNodes = (includeChildren: boolean) => {
+    if (includeChildren) {
+      return (sourceNodesWithChildren ??= getNodeAllSource({
         nodeId: node.nodeId,
         getNodeById,
         edges,
         chatConfig: chatConfig ?? ({} as AppChatConfigType),
         t: emptyT,
-        includeChildren: false,
+        includeChildren: true,
         childrenNodeIdListMap
-      });
+      }));
+    }
+    return (sourceNodesWithoutChildren ??= getNodeAllSource({
+      nodeId: node.nodeId,
+      getNodeById,
+      edges,
+      chatConfig: chatConfig ?? ({} as AppChatConfigType),
+      t: emptyT,
+      includeChildren: false,
+      childrenNodeIdListMap
+    }));
+  };
 
+  return inputs.map((input) => {
+    if (
+      node.flowNodeType === FlowNodeTypeEnum.formInput &&
+      input.key === NodeInputKeyEnum.userInputForms &&
+      Array.isArray(input.value)
+    ) {
+      const formList = input.value as UserInputFormItemType[];
       let hasChanged = false;
       const nextFormList = formList.map((formItem) => {
-        const isReferenceOptionField =
-          (formItem.type === FlowNodeInputTypeEnum.select ||
-            formItem.type === FlowNodeInputTypeEnum.multipleSelect) &&
-          formItem.listInputType === FlowNodeInputTypeEnum.reference &&
-          Array.isArray(formItem.listReference);
-        if (!isReferenceOptionField) return formItem;
+        if (!isReferenceOptionFormItem(formItem) || !Array.isArray(formItem.listReference)) {
+          return formItem;
+        }
 
-        const prevRefList = formItem.listReference as ReferenceItemValueType[];
-        const filteredRefList = prevRefList.filter((item) =>
+        const sourceNodes = getSourceNodes(false);
+        const filteredRefList = formItem.listReference.filter((item) =>
           workflowReferenceValueIsSelectable({
             value: item,
             sourceNodes,
             excludeValueTypes: DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES
           })
         );
-        if (filteredRefList.length === prevRefList.length) return formItem;
+        if (filteredRefList.length === formItem.listReference.length) return formItem;
 
         hasChanged = true;
         return {
@@ -224,20 +232,13 @@ const filterUnselectableReferenceInputs = ({
       return input;
     }
 
-    const sourceNodes = getNodeAllSource({
-      nodeId: node.nodeId,
-      getNodeById,
-      edges,
-      chatConfig: chatConfig ?? ({} as AppChatConfigType),
-      t: emptyT,
-      includeChildren: input.canEdit === true,
-      childrenNodeIdListMap
-    });
+    const sourceNodes = getSourceNodes(input.canEdit === true);
 
     const value = input.value as ReferenceValueType | undefined;
     if (!Array.isArray(value)) return input;
 
     const excludeValueTypes =
+      node.flowNodeType === FlowNodeTypeEnum.userSelect &&
       input.key === NodeInputKeyEnum.userSelectOptions
         ? DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES
         : undefined;

@@ -15,7 +15,12 @@ import {
   nodeInputIsReference,
   getSelectedInputRenderType
 } from '@fastgpt/global/common/workflow/reference';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type {
+  FlowNodeInputItemType,
+  ReferenceValueType
+} from '@fastgpt/global/core/workflow/type/io';
+import { isReferenceOptionFormItem } from '@fastgpt/global/core/workflow/template/system/interactive/constants';
+import type { UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
@@ -30,6 +35,11 @@ import {
 import { referenceValueIsLive, type WorkflowCheckContext } from './graph';
 import { resolvePluginDataErrorIssueCode } from './error';
 import type { WorkflowRuleIssue } from '@/web/core/workflow/type';
+import {
+  DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES,
+  workflowReferenceValueIsSelectable,
+  type WorkflowReferenceSourceNode
+} from '../utils';
 
 const workflowCheckSkipNodeRuleTypes = new Set<FlowNodeTypeEnum>([
   FlowNodeTypeEnum.pluginInput,
@@ -116,13 +126,24 @@ export const checkWorkflowNodeInputRules = ({
   data,
   inputMap,
   context,
+  getReferenceSourceNodes,
   modelIssues
 }: {
   data: FlowNodeItemType;
   inputMap: Map<string, FlowNodeInputItemType>;
   context: WorkflowCheckContext;
+  getReferenceSourceNodes: () => WorkflowReferenceSourceNode[];
   modelIssues: WorkflowRuleIssue[];
 }): WorkflowRuleIssue[] => {
+  // 动态选项沿用选择器和保存清理的可选性规则，同一节点的多个表单字段复用来源。
+  let referenceSourceNodes: WorkflowReferenceSourceNode[] | undefined;
+  const dynamicOptionsAreSelectable = (value?: ReferenceValueType) =>
+    workflowReferenceValueIsSelectable({
+      value,
+      sourceNodes: (referenceSourceNodes ??= getReferenceSourceNodes()),
+      excludeValueTypes: DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES
+    });
+
   const isEmptyWorkflowInputValue = (value: unknown) =>
     value === undefined ||
     value === null ||
@@ -131,7 +152,10 @@ export const checkWorkflowNodeInputRules = ({
 
   /** hidden / off 不渲染，非必填 any 不参与通用必填校验，避免系统 hidden 字段误报或与节点特判重复。 */
   const shouldSkipGenericRequiredInputCheck = (input: FlowNodeInputItemType) => {
-    if (input.key === NodeInputKeyEnum.userSelectOptions) {
+    if (
+      data.flowNodeType === FlowNodeTypeEnum.userSelect &&
+      input.key === NodeInputKeyEnum.userSelectOptions
+    ) {
       return true;
     }
     const renderType = getSelectedInputRenderType(input);
@@ -228,11 +252,7 @@ export const checkWorkflowNodeInputRules = ({
     const branchInput = inputMap.get(inputKey);
 
     if (isUserSelect && branchInput && nodeInputIsReference(branchInput)) {
-      const refOptions = branchInput.value as unknown[] | undefined;
-      if (
-        !Array.isArray(refOptions) ||
-        !refOptions.some((item) => referenceValueIsLive(item, context))
-      ) {
+      if (!dynamicOptionsAreSelectable(branchInput.value)) {
         issues.push({ code: 'user_select_empty', inputKey });
       }
     } else {
@@ -247,30 +267,18 @@ export const checkWorkflowNodeInputRules = ({
 
   if (data.flowNodeType === FlowNodeTypeEnum.formInput) {
     const value = inputMap.get(NodeInputKeyEnum.userInputForms)?.value as
-      | Array<{
-          key?: string;
-          label?: string;
-          type?: FlowNodeInputTypeEnum;
-          listInputType?: FlowNodeInputTypeEnum;
-          listReference?: unknown[];
-        }>
+      | UserInputFormItemType[]
       | undefined;
     if (!value || value.length === 0) {
       issues.push({ code: 'form_input_empty', inputKey: NodeInputKeyEnum.userInputForms });
     } else {
       value.forEach((formItem) => {
-        const isOptionField =
-          formItem.type === FlowNodeInputTypeEnum.select ||
-          formItem.type === FlowNodeInputTypeEnum.multipleSelect;
-        if (!isOptionField || formItem.listInputType !== FlowNodeInputTypeEnum.reference) {
+        if (!isReferenceOptionFormItem(formItem)) {
           return;
         }
 
         const fallbackLabel = formItem.label || formItem.key;
-        if (
-          !Array.isArray(formItem.listReference) ||
-          !formItem.listReference.some((item) => referenceValueIsLive(item, context))
-        ) {
+        if (!dynamicOptionsAreSelectable(formItem.listReference)) {
           issues.push({
             code: 'required_input_empty',
             inputKey: NodeInputKeyEnum.userInputForms,

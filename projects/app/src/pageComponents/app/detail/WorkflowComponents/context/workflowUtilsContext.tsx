@@ -317,7 +317,13 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         )
       )
         return;
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, modelData, t });
+      const issueMap = checkWorkflowNodeIssues({
+        nodes,
+        edges,
+        modelData,
+        t,
+        chatConfig: appDetail.chatConfig
+      });
       onSyncWorkflowCheckIssues(issueMap);
     };
 
@@ -328,7 +334,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       active = false;
       window.clearInterval(timer);
     };
-  }, [appDetail._id, edges, getNodes, onSyncWorkflowCheckIssues, t]);
+  }, [appDetail._id, appDetail.chatConfig, edges, getNodes, onSyncWorkflowCheckIssues, t]);
 
   // 4. initData - 初始化工作流数据
   const initData = useCallback(
@@ -363,12 +369,17 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       const edges = workflow.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
 
       // 进入编辑器后延迟校验并定位到第一个错误节点；ReactFlow 渲染后再 fitView 才有效。
-      const scheduleEntryCheck = (checkNodes: Node[], checkEdges: Edge[]) => {
+      const scheduleEntryCheck = (
+        checkNodes: Node[],
+        checkEdges: Edge[],
+        checkChatConfig?: AppChatConfigType
+      ) => {
         if (!isInit) return;
         window.setTimeout(() => {
           const { issueMap, hasError, firstErrorNodeId } = checkWorkflowBeforeRunOrPublish({
             nodes: checkNodes,
             edges: checkEdges,
+            chatConfig: checkChatConfig,
             t
           });
           onSyncWorkflowCheckIssues(issueMap);
@@ -388,7 +399,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         setNodes(firstPast.nodes);
         setEdges(firstPast.edges);
         setAppDetail((state) => ({ ...state, chatConfig: firstPast.chatConfig }));
-        scheduleEntryCheck(firstPast.nodes, firstPast.edges);
+        scheduleEntryCheck(firstPast.nodes, firstPast.edges, firstPast.chatConfig);
         return;
       }
       // 初始化一个历史记录
@@ -408,7 +419,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       setNodes(nodes);
       setEdges(edges);
       setAppDetail((state) => ({ ...state, chatConfig: workflow.chatConfig }));
-      scheduleEntryCheck(nodes, edges);
+      scheduleEntryCheck(nodes, edges, workflow.chatConfig);
     },
     [
       appDetail.chatConfig,
