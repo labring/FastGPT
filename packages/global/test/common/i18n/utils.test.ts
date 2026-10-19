@@ -76,6 +76,10 @@ describe('parseI18nString', () => {
     expect(parseI18nString({ en: 'Hello' }, 'ko-KR')).toBe('Hello');
   });
 
+  it('falls back to an empty string when all translations are omitted', () => {
+    expect(parseI18nString({ 'zh-CN': '你好' }, 'en')).toBe('');
+  });
+
   it('should return empty string when locale exists but empty', () => {
     const i18n: I18nStringType = {
       en: 'Hello',

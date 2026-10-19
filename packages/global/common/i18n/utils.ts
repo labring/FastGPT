@@ -1,11 +1,8 @@
 import { LangEnum, LocaleList, type I18nStringType, type localeType } from './type';
 
-/**
- * 文案解析器接受的宽松结构。插件 SDK 仍可能返回缺少 zh-CN 的旧版文案，解析时统一回退英文；
- * 公共 I18nStringSchema 继续约束业务侧文案必须包含 en 和 zh-CN。
- */
+/** 插件 SDK 的本地化文案允许只提供部分语言，缺少当前语言时由解析器逐级回退。 */
 type I18nStringLikeType = {
-  en: string;
+  en?: string;
   'zh-CN'?: string;
   'zh-Hant'?: string;
   'ko-KR'?: string;
