@@ -496,6 +496,7 @@ export const ArrayTagSelect = ({
       }}
       placement={'bottom-start'}
       closeOnBlur
+      autoFocus={false}
       matchWidth={!joined}
       gutter={4}
     >
@@ -513,7 +514,13 @@ export const ArrayTagSelect = ({
         >
           <Flex position={'relative'} flex={'1 1 auto'} minW={0} h={'24px'} alignItems={'center'}>
             {value.length === 0 ? (
-              <Box color={'myGray.500'} fontSize={'sm'}>
+              <Box
+                color={'myGray.500'}
+                fontSize={'sm'}
+                whiteSpace={'nowrap'}
+                overflow={'hidden'}
+                textOverflow={'ellipsis'}
+              >
                 {placeholder ?? t('dataset:tag.select_options')}
               </Box>
             ) : (

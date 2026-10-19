@@ -10,6 +10,7 @@ import {
   createEmptyTagFilterValue,
   formatCollectionFilterMatchParam,
   getTagFilterOpsByCondition,
+  hasEffectiveDatasetTagFilter,
   intersectWorkflowTagOptions,
   isDatasetTagFilterValue,
   normalizeLegacyDatasetTagFilterValue,
@@ -280,5 +281,47 @@ describe('pruneTagFilterConditions', () => {
     );
 
     expect(result.conditions).toEqual([stringCondition]);
+  });
+});
+
+describe('hasEffectiveDatasetTagFilter', () => {
+  it('returns false for empty or incomplete filter configs and true for effective conditions', () => {
+    expect(hasEffectiveDatasetTagFilter(undefined)).toBe(false);
+    expect(hasEffectiveDatasetTagFilter('')).toBe(false);
+    expect(hasEffectiveDatasetTagFilter('   ')).toBe(false);
+    expect(hasEffectiveDatasetTagFilter(createEmptyTagFilterValue())).toBe(false);
+    expect(
+      hasEffectiveDatasetTagFilter({
+        logic: DatasetTagFilterLogicEnum.AND,
+        conditions: [{ tag: 'status', tagType: DatasetCollectionTagTypeEnum.array, op: '$in' }]
+      })
+    ).toBe(false);
+
+    expect(hasEffectiveDatasetTagFilter('{"tags":{"$and":["legacy"]}}')).toBe(true);
+    expect(
+      hasEffectiveDatasetTagFilter({
+        logic: DatasetTagFilterLogicEnum.AND,
+        conditions: [
+          {
+            tag: 'status',
+            tagType: DatasetCollectionTagTypeEnum.array,
+            op: '$empty'
+          }
+        ]
+      })
+    ).toBe(true);
+    expect(
+      hasEffectiveDatasetTagFilter({
+        logic: DatasetTagFilterLogicEnum.AND,
+        conditions: [
+          {
+            field: DatasetTagFilterFieldEnum.collectionId,
+            op: '$in',
+            valueMode: DatasetTagFilterValueModeEnum.reference,
+            value: ['VARIABLE_NODE_ID', 'collectionIds']
+          }
+        ]
+      })
+    ).toBe(true);
   });
 });

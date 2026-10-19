@@ -1,12 +1,14 @@
 import {
   DatasetCollectionTagTypeEnum,
   DatasetTagFilterFieldEnum,
+  DatasetTagFilterValueModeEnum,
   tagFilterOperators,
   createTimeOperators,
   collectionIdOperators,
   emptyValueOperators
 } from '../../constants';
 import type { DatasetCollectionTagType, DatasetTagType } from '../../type';
+import { formatCollectionFilterMatchParam } from './normalizer';
 import {
   type DatasetTagFilterField,
   type DatasetTagFilterCondition,
@@ -14,6 +16,7 @@ import {
   type WorkflowTagFilterOption,
   type WorkflowTagFilterTagType,
   createEmptyTagFilterCondition,
+  isDatasetTagFilterValue,
   isWorkflowTagFilterTagType
 } from './type';
 
@@ -123,4 +126,58 @@ export const pruneTagFilterConditions = (
     ...value,
     conditions: conditions.length > 0 ? conditions : [createEmptyTagFilterCondition()]
   };
+};
+
+/**
+ * 判断标签过滤配置是否包含至少一条已完整填写的生效条件，用于界面展示「开启 / 关闭」状态。
+ */
+export const hasEffectiveDatasetTagFilter = (value: unknown): boolean => {
+  // 引用模式下需同时具备节点 ID 与输出变量 key 才算已配置
+  const isEffectiveReferenceValue = (refValue: unknown) =>
+    Array.isArray(refValue) &&
+    refValue.length >= 2 &&
+    typeof refValue[0] === 'string' &&
+    refValue[0].trim().length > 0 &&
+    typeof refValue[1] === 'string' &&
+    refValue[1].trim().length > 0;
+
+  const isEffectiveLiteralValue = (literalValue: unknown) => {
+    if (literalValue === undefined || literalValue === null || literalValue === '') return false;
+    if (Array.isArray(literalValue)) return literalValue.length > 0;
+    return true;
+  };
+
+  if (!value) return false;
+  if (typeof value === 'string') {
+    return Boolean(
+      formatCollectionFilterMatchParam({
+        value,
+        resolveReference: (ref) => (isEffectiveReferenceValue(ref) ? 1 : undefined)
+      })
+    );
+  }
+  if (!isDatasetTagFilterValue(value)) return false;
+
+  return value.conditions.some((condition) => {
+    if (!condition.op) return false;
+
+    if (condition.field === DatasetTagFilterFieldEnum.createTime) {
+      return condition.valueMode === DatasetTagFilterValueModeEnum.reference
+        ? isEffectiveReferenceValue(condition.value)
+        : isEffectiveLiteralValue(condition.value);
+    }
+
+    if (condition.field === DatasetTagFilterFieldEnum.collectionId) {
+      return condition.valueMode === DatasetTagFilterValueModeEnum.input
+        ? isEffectiveLiteralValue(condition.value)
+        : isEffectiveReferenceValue(condition.value);
+    }
+
+    if (!condition.tag?.trim()) return false;
+    if (isTagFilterOpWithoutValue(condition.op)) return true;
+
+    return condition.valueMode === DatasetTagFilterValueModeEnum.reference
+      ? isEffectiveReferenceValue(condition.value)
+      : isEffectiveLiteralValue(condition.value);
+  });
 };

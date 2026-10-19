@@ -40,16 +40,9 @@ import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import { useInitializeQueryExtensionModel } from '../FormComponent/useInitializeQueryExtensionModel';
 import { useAgentSkillSelect } from './hooks/useAgentSkillSelect';
 import { useSkillManager } from './hooks/useSkillManager';
-import DatasetTagFilterRows, {
-  TagFilterLogicToggle
-} from '@/components/core/dataset/DatasetTagFilterRows';
 import { formatEditorVariablePickerIcon } from '@fastgpt/web/core/workflow/utils';
 import { workflowSystemVariables } from '@fastgpt/global/core/workflow/node/constant';
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
-import {
-  isDatasetTagFilterValue,
-  type DatasetTagFilterValue
-} from '@fastgpt/global/core/dataset/search/tagFilter';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -117,15 +110,6 @@ const EditForm = ({
       }
     ],
     [formatVariables, t]
-  );
-  const onCollectionFilterMatchChange = useCallback(
-    (value: DatasetTagFilterValue) => {
-      setAppForm((state) => ({
-        ...state,
-        dataset: { ...state.dataset, collectionFilterMatch: value }
-      }));
-    },
-    [setAppForm]
   );
   const { isWelcomeTextFolded, toggleWelcomeTextFold } = useWelcomeTextFoldState(appId);
 
@@ -544,6 +528,8 @@ const EditForm = ({
                   appForm.dataset.datasetSearchExtensionModelId ||
                   appForm.dataset.datasetSearchExtensionModel
                 }
+                showTagFilter={!!feConfigs?.isPlus}
+                collectionFilterMatch={appForm.dataset.collectionFilterMatch}
               />
             </Box>
           )}
@@ -565,30 +551,6 @@ const EditForm = ({
               />
             ))}
           </Grid>
-          {appForm.dataset.datasets.length > 0 && feConfigs?.isPlus && (
-            <Box mt={4}>
-              <Flex alignItems={'center'} mb={2}>
-                <FormLabel color={'myGray.600'}>{t('workflow:tag_filter')}</FormLabel>
-                <QuestionTip ml={1} label={t('workflow:tag_filter_description')} />
-                <Box ml={2}>
-                  <TagFilterLogicToggle
-                    value={
-                      isDatasetTagFilterValue(appForm.dataset.collectionFilterMatch)
-                        ? appForm.dataset.collectionFilterMatch
-                        : undefined
-                    }
-                    onChange={onCollectionFilterMatchChange}
-                  />
-                </Box>
-              </Flex>
-              <DatasetTagFilterRows
-                value={appForm.dataset.collectionFilterMatch}
-                onChange={onCollectionFilterMatchChange}
-                datasetIds={appForm.dataset.datasets.map((item) => item.datasetId)}
-                referenceList={tagFilterReferenceList}
-              />
-            </Box>
-          )}
         </Box>
 
         {/* File select */}
@@ -736,6 +698,9 @@ const EditForm = ({
         <DatasetParamsModal
           {...appForm.dataset}
           maxTokens={tokenLimit}
+          showTagFilter={!!feConfigs?.isPlus}
+          datasetIds={appForm.dataset.datasets.map((item) => item.datasetId)}
+          tagFilterReferenceList={tagFilterReferenceList}
           onClose={onCloseDatasetParams}
           onSuccess={(e) => {
             setAppForm((state) => ({

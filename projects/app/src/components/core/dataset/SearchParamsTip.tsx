@@ -6,10 +6,15 @@ import {
   DatasetSearchModeEnum,
   DatasetSearchModeMap
 } from '@fastgpt/global/core/dataset/constants';
-import MyIcon from '@fastgpt/web/components/common/Icon';
+import { hasEffectiveDatasetTagFilter } from '@fastgpt/global/core/dataset/search/tagFilter';
+import type { AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
 import { useTranslation } from 'next-i18next';
 import React from 'react';
 
+/**
+ * 知识库搜索参数摘要卡片：
+ * 展示检索模式、引用上限、最低相关度、结果重排、问题优化，以及可选的标签过滤开启状态。
+ */
 const SearchParamsTip = ({
   searchMode,
   similarity = 0,
@@ -17,7 +22,9 @@ const SearchParamsTip = ({
   responseEmptyText,
   usingReRank = false,
   usingExtensionQuery,
-  queryExtensionModel
+  queryExtensionModel,
+  showTagFilter = false,
+  collectionFilterMatch
 }: {
   searchMode: `${DatasetSearchModeEnum}`;
   similarity?: number;
@@ -26,6 +33,8 @@ const SearchParamsTip = ({
   usingReRank?: boolean;
   usingExtensionQuery?: boolean;
   queryExtensionModel?: string;
+  showTagFilter?: boolean;
+  collectionFilterMatch?: AppDatasetSearchParamsType['collectionFilterMatch'];
 }) => {
   const { t } = useTranslation();
   const detailState = useModelSummary({
@@ -35,13 +44,14 @@ const SearchParamsTip = ({
   const hasReRankModel = true;
   const hasEmptyResponseMode = responseEmptyText !== undefined;
   const hasSimilarityMode = usingReRank || searchMode === DatasetSearchModeEnum.embedding;
+  const isTagFilterEnabled = hasEffectiveDatasetTagFilter(collectionFilterMatch);
 
   return (
     <FixedTableContainer
-      bg={'primary.50'}
+      bg={'myGray.50'}
       borderRadius={'lg'}
       borderWidth={'1px'}
-      borderColor={'primary.1'}
+      borderColor={'myGray.200'}
       sx={{
         '&::-webkit-scrollbar': {
           height: '6px',
@@ -55,7 +65,7 @@ const SearchParamsTip = ({
         }
       }}
     >
-      <Table fontSize={'xs'} overflow={'overlay'}>
+      <Table fontSize={'xs'} overflow={'overlay'} sx={{ 'th, td': { px: 3 } }}>
         <Thead>
           <Tr bg={'transparent !important'}>
             <Th fontSize={'mini'}>{t('common:core.dataset.search.search mode')}</Th>
@@ -63,6 +73,7 @@ const SearchParamsTip = ({
             <Th fontSize={'mini'}>{t('common:min_similarity')}</Th>
             {hasReRankModel && <Th fontSize={'mini'}>{t('common:core.dataset.search.ReRank')}</Th>}
             <Th fontSize={'mini'}>{t('common:core.module.template.Query extension')}</Th>
+            {showTagFilter && <Th fontSize={'mini'}>{t('workflow:tag_filter')}</Th>}
             {hasEmptyResponseMode && (
               <Th fontSize={'mini'}>{t('common:core.dataset.search.Empty result response')}</Th>
             )}
@@ -71,14 +82,7 @@ const SearchParamsTip = ({
         <Tbody>
           <Tr color={'myGray.800'}>
             <Td pt={0} pb={2}>
-              <Flex alignItems={'center'}>
-                <MyIcon
-                  name={DatasetSearchModeMap[searchMode]?.icon as any}
-                  w={'12px'}
-                  mr={'1px'}
-                />
-                {t(DatasetSearchModeMap[searchMode]?.title as any)}
-              </Flex>
+              <Flex alignItems={'center'}>{t(DatasetSearchModeMap[searchMode]?.title as any)}</Flex>
             </Td>
             <Td pt={0} pb={2}>
               {limit}
@@ -88,10 +92,12 @@ const SearchParamsTip = ({
             </Td>
             {hasReRankModel && (
               <Td pt={0} pb={2}>
-                {usingReRank ? '✅' : '❌'}
+                {usingReRank
+                  ? t('common:core.app.whisper.Open')
+                  : t('common:core.app.whisper.Close')}
               </Td>
             )}
-            <Td pt={0} pb={2} fontSize={'mini'}>
+            <Td pt={0} pb={2}>
               {usingExtensionQuery ? (
                 <ModelStatusLabel
                   modelId={queryExtensionModel}
@@ -101,10 +107,23 @@ const SearchParamsTip = ({
                   noTruncate
                 />
               ) : (
-                '❌'
+                t('common:core.app.whisper.Close')
               )}
             </Td>
-            {hasEmptyResponseMode && <Th>{responseEmptyText !== '' ? '✅' : '❌'}</Th>}
+            {showTagFilter && (
+              <Td pt={0} pb={2}>
+                {isTagFilterEnabled
+                  ? t('common:core.app.whisper.Open')
+                  : t('common:core.app.whisper.Close')}
+              </Td>
+            )}
+            {hasEmptyResponseMode && (
+              <Th>
+                {responseEmptyText !== ''
+                  ? t('common:core.app.whisper.Open')
+                  : t('common:core.app.whisper.Close')}
+              </Th>
+            )}
           </Tr>
         </Tbody>
       </Table>

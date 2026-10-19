@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Button, Flex, HStack, Input } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -40,7 +40,7 @@ import {
 } from '@/pageComponents/dataset/detail/CollectionCard/TagValueInputs';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import type { EditorVariableLabelPickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
-import { TagFilterFieldSelect, TagFilterOpSelect } from './TagFilterSelects';
+import { TagFilterAttrSelect, TagFilterFieldSelect, TagFilterOpSelect } from './TagFilterSelects';
 
 export type TagFilterReferenceList = {
   label: string | React.ReactNode;
@@ -291,14 +291,7 @@ const TagFilterValueCell = ({
   })();
 
   return (
-    <Flex
-      w={'220px'}
-      minW={'220px'}
-      maxW={'220px'}
-      flexShrink={0}
-      h={'36px'}
-      alignItems={'stretch'}
-    >
+    <Flex flex={1} minW={0} h={'36px'} alignItems={'stretch'}>
       {isCollectionId ? (
         <Flex
           w={'41px'}
@@ -401,17 +394,20 @@ const TagFilterConditionRow = ({
   condition,
   options,
   referenceList,
+  isSystem = false,
   onChange,
   onRemove
 }: {
   condition: DatasetTagFilterCondition;
   options: WorkflowTagFilterOption[];
   referenceList: TagFilterReferenceList;
+  isSystem?: boolean;
   onChange: (patch: Partial<DatasetTagFilterCondition>) => void;
   onRemove: () => void;
 }) => {
   const option = options.find(
     (item) =>
+      !isSystem &&
       !isTagFilterAttributeField(condition.field) &&
       item.tag === condition.tag &&
       item.tagType === condition.tagType
@@ -419,23 +415,35 @@ const TagFilterConditionRow = ({
   const ops = getTagFilterOpsByCondition(condition);
   const hideValue = isTagFilterOpWithoutValue(condition.op);
 
+  const handleFieldChange = (next: {
+    field: DatasetTagFilterCondition['field'];
+    tag?: string;
+    tagType?: WorkflowTagFilterOption['tagType'];
+    valueMode?: DatasetTagFilterCondition['valueMode'];
+    value?: unknown;
+  }) => {
+    onChange({
+      field: next.field,
+      tag: next.tag ?? '',
+      tagType: next.tagType,
+      op: '',
+      valueMode: next.valueMode ?? DatasetTagFilterValueModeEnum.input,
+      value: next.value
+    });
+  };
+
   return (
-    <Flex gap={1} alignItems={'center'}>
+    <Flex gap={1} alignItems={'center'} w={'100%'}>
       <Flex flex={1} minW={0} gap={2} alignItems={'center'} h={'36px'}>
-        <TagFilterFieldSelect
-          condition={condition}
-          options={options}
-          onChange={(next) => {
-            onChange({
-              field: next.field,
-              tag: next.tag ?? '',
-              tagType: next.tagType,
-              op: '',
-              valueMode: next.valueMode ?? DatasetTagFilterValueModeEnum.input,
-              value: next.value
-            });
-          }}
-        />
+        {isSystem ? (
+          <TagFilterAttrSelect condition={condition} onChange={handleFieldChange} />
+        ) : (
+          <TagFilterFieldSelect
+            condition={condition}
+            options={options}
+            onChange={handleFieldChange}
+          />
+        )}
         <TagFilterOpSelect
           value={condition.op || undefined}
           list={ops}
@@ -464,6 +472,7 @@ const TagFilterConditionRow = ({
 
 /**
  * 知识库搜索的标签过滤条件行。工作流节点和简易模式共用。
+ * 界面按「自定义标签（支持 AND / OR）」与「系统标签（与自定义标签固定 AND 交集）」分组展示。
  * 旧 JSON 字符串请走 DatasetTagFilterDeprecated，不要传入本组件。
  */
 const DatasetTagFilterRows = ({
@@ -480,6 +489,31 @@ const DatasetTagFilterRows = ({
   const { t } = useTranslation();
   const datasetIdsKey = datasetIds.join(',');
   const filterValue = isDatasetTagFilterValue(value) ? value : createEmptyTagFilterValue();
+
+  // 系统标签尚未选择具体属性时的待选空行
+  const [pendingSystemRows, setPendingSystemRows] = useState<DatasetTagFilterCondition[]>([]);
+
+  const customConditions = useMemo(
+    () => filterValue.conditions.filter((item) => !isTagFilterAttributeField(item.field)),
+    [filterValue.conditions]
+  );
+  const committedSystemConditions = useMemo(
+    () => filterValue.conditions.filter((item) => isTagFilterAttributeField(item.field)),
+    [filterValue.conditions]
+  );
+
+  // 每组无条件时默认至少展示 1 条空行
+  const displayCustomConditions = useMemo(
+    () => (customConditions.length > 0 ? customConditions : [createEmptyTagFilterCondition()]),
+    [customConditions]
+  );
+  const effectivePendingSystemRows = useMemo(
+    () =>
+      committedSystemConditions.length === 0 && pendingSystemRows.length === 0
+        ? [createEmptyTagFilterCondition()]
+        : pendingSystemRows,
+    [committedSystemConditions.length, pendingSystemRows]
+  );
 
   const {
     data: tagLists = [],
@@ -508,52 +542,190 @@ const DatasetTagFilterRows = ({
   }, [datasetIds.length, error, loading, onChange, options, value]);
 
   return (
-    <Box>
-      <Flex direction={'column'} gap={2}>
-        {filterValue.conditions.map((condition, index) => (
-          <TagFilterConditionRow
-            key={`${condition.tag ?? ''}-${index}`}
-            condition={condition}
-            options={options}
-            referenceList={referenceList}
-            onChange={(patch) => {
-              onChange({
-                ...filterValue,
-                conditions: filterValue.conditions.map((item, itemIndex) =>
-                  itemIndex === index ? { ...item, ...patch } : item
-                )
-              });
-            }}
-            onRemove={() => {
-              if (filterValue.conditions.length <= 1) {
+    <Box
+      position={'relative'}
+      border={'1px solid'}
+      borderColor={'myGray.200'}
+      borderRadius={'md'}
+      px={'12px'}
+      pt={'24px'}
+      pb={'8px'}
+    >
+      {/* 外层固定 AND 标识：自定义标签与系统标签始终求交集 */}
+      <Flex
+        position={'absolute'}
+        left={'12px'}
+        top={'-11px'}
+        bg={'white'}
+        px={'4px'}
+        borderRadius={'sm'}
+        alignItems={'center'}
+        justifyContent={'center'}
+      >
+        <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.500'} lineHeight={'20px'}>
+          {DatasetTagFilterLogicEnum.AND}
+        </Box>
+      </Flex>
+
+      <Flex direction={'column'} gap={4} w={'100%'} minW={0}>
+        {/* 1. 自定义标签区块 */}
+        <Box
+          position={'relative'}
+          border={'1px solid'}
+          borderColor={'myGray.200'}
+          borderRadius={'md'}
+          px={'12px'}
+          pt={'16px'}
+          pb={'8px'}
+          w={'100%'}
+        >
+          <Box position={'absolute'} left={'12px'} top={'-12px'} bg={'white'} borderRadius={'md'}>
+            <TagFilterLogicToggle value={filterValue} onChange={onChange} />
+          </Box>
+
+          <Flex direction={'column'} gap={2} w={'100%'} minW={0} alignItems={'flex-start'}>
+            <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'} lineHeight={'20px'}>
+              {t('workflow:tag_filter_custom_tags')}
+            </Box>
+            <Flex direction={'column'} gap={2} w={'100%'}>
+              {displayCustomConditions.map((condition, index) => (
+                <TagFilterConditionRow
+                  key={`custom-${condition.tag ?? ''}-${index}`}
+                  condition={condition}
+                  options={options}
+                  referenceList={referenceList}
+                  onChange={(patch) => {
+                    const nextCustom = displayCustomConditions.map((item, itemIndex) =>
+                      itemIndex === index ? { ...item, ...patch } : item
+                    );
+                    onChange({
+                      ...filterValue,
+                      conditions: [...nextCustom, ...committedSystemConditions]
+                    });
+                  }}
+                  onRemove={() => {
+                    const nextCustom =
+                      displayCustomConditions.length <= 1
+                        ? [createEmptyTagFilterCondition()]
+                        : displayCustomConditions.filter((_, itemIndex) => itemIndex !== index);
+                    onChange({
+                      ...filterValue,
+                      conditions: [...nextCustom, ...committedSystemConditions]
+                    });
+                  }}
+                />
+              ))}
+            </Flex>
+            <Button
+              variant={'link'}
+              h={'34px'}
+              minH={'34px'}
+              leftIcon={<MyIcon name={'common/addLight'} boxSize={4} mr={-1} />}
+              color={'primary.700'}
+              onClick={() =>
                 onChange({
                   ...filterValue,
-                  conditions: [createEmptyTagFilterCondition()]
-                });
-                return;
+                  conditions: [
+                    ...displayCustomConditions,
+                    createEmptyTagFilterCondition(),
+                    ...committedSystemConditions
+                  ]
+                })
               }
-              onChange({
-                ...filterValue,
-                conditions: filterValue.conditions.filter((_, itemIndex) => itemIndex !== index)
-              });
-            }}
-          />
-        ))}
+            >
+              {t('workflow:tag_filter_add_condition')}
+            </Button>
+          </Flex>
+        </Box>
+
+        {/* 2. 系统标签区块 */}
+        <Flex direction={'column'} gap={2} w={'100%'} minW={0} alignItems={'flex-start'}>
+          <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'} lineHeight={'20px'}>
+            {t('workflow:tag_filter_system_tags')}
+          </Box>
+          <Flex direction={'column'} gap={2} w={'100%'}>
+            {committedSystemConditions.map((condition, index) => (
+              <TagFilterConditionRow
+                key={`system-committed-${condition.field ?? ''}-${index}`}
+                condition={condition}
+                options={options}
+                referenceList={referenceList}
+                isSystem
+                onChange={(patch) => {
+                  const nextSystem = committedSystemConditions.map((item, itemIndex) =>
+                    itemIndex === index ? { ...item, ...patch } : item
+                  );
+                  onChange({
+                    ...filterValue,
+                    conditions: [...displayCustomConditions, ...nextSystem]
+                  });
+                }}
+                onRemove={() => {
+                  const nextSystem = committedSystemConditions.filter(
+                    (_, itemIndex) => itemIndex !== index
+                  );
+                  onChange({
+                    ...filterValue,
+                    conditions: [...displayCustomConditions, ...nextSystem]
+                  });
+                }}
+              />
+            ))}
+            {effectivePendingSystemRows.map((condition, pendingIndex) => (
+              <TagFilterConditionRow
+                key={`system-pending-${pendingIndex}`}
+                condition={condition}
+                options={options}
+                referenceList={referenceList}
+                isSystem
+                onChange={(patch) => {
+                  // 选中具体系统属性后晋升为正式条件行写入 value
+                  if (patch.field && isTagFilterAttributeField(patch.field)) {
+                    const promotedRow: DatasetTagFilterCondition = {
+                      ...condition,
+                      ...patch
+                    };
+                    setPendingSystemRows(
+                      effectivePendingSystemRows.filter((_, idx) => idx !== pendingIndex)
+                    );
+                    onChange({
+                      ...filterValue,
+                      conditions: [
+                        ...displayCustomConditions,
+                        ...committedSystemConditions,
+                        promotedRow
+                      ]
+                    });
+                    return;
+                  }
+                  setPendingSystemRows(
+                    effectivePendingSystemRows.map((item, idx) =>
+                      idx === pendingIndex ? { ...item, ...patch } : item
+                    )
+                  );
+                }}
+                onRemove={() => {
+                  setPendingSystemRows(
+                    effectivePendingSystemRows.filter((_, idx) => idx !== pendingIndex)
+                  );
+                }}
+              />
+            ))}
+          </Flex>
+          <Button
+            variant={'link'}
+            h={'34px'}
+            minH={'34px'}
+            leftIcon={<MyIcon name={'common/addLight'} boxSize={4} mr={-1} />}
+            color={'primary.700'}
+            onClick={() =>
+              setPendingSystemRows([...effectivePendingSystemRows, createEmptyTagFilterCondition()])
+            }
+          >
+            {t('workflow:tag_filter_add_condition')}
+          </Button>
+        </Flex>
       </Flex>
-      <Button
-        mt={2}
-        variant={'link'}
-        leftIcon={<MyIcon name={'common/addLight'} boxSize={4} mr={-1} />}
-        color={'primary.700'}
-        onClick={() =>
-          onChange({
-            ...filterValue,
-            conditions: [...filterValue.conditions, createEmptyTagFilterCondition()]
-          })
-        }
-      >
-        {t('workflow:tag_filter_add_condition')}
-      </Button>
     </Box>
   );
 };
