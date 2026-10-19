@@ -105,17 +105,18 @@ async function handler(req: ApiRequestProps) {
   }
 
   const isMove = parentId !== undefined;
+  const targetParentId = parentId || null;
   // Move 需要先读取 Collection 定位源父级；普通字段更新直接要求 Collection write。
   const auth = { req, authToken: true, authApiKey: true, collectionId: id };
   const { collection, teamId, tmbId } = isMove
-    ? await authDatasetCollectionMove({ ...auth, targetParentId: parentId })
+    ? await authDatasetCollectionMove({ ...auth, targetParentId })
     : await authDatasetCollection({ ...auth, per: WritePermissionVal });
 
   // Move collection：parentId 显式提供时在事务前校验深度/环
   if (isMove) {
     await checkMoveFolderDepth({
       resourceId: id,
-      targetParentId: parentId,
+      targetParentId,
       teamId: collection.teamId,
       model: MongoDatasetCollection,
       isFolderType: (type) => type === DatasetCollectionTypeEnum.folder
@@ -144,7 +145,7 @@ async function handler(req: ApiRequestProps) {
           tmbId: String(collection.tmbId),
           inheritPermission: collection.inheritPermission
         },
-        targetParentId: parentId,
+        targetParentId,
         session
       });
     }
@@ -155,8 +156,6 @@ async function handler(req: ApiRequestProps) {
       },
       {
         $set: {
-          // parentId 在 move 分支由 moveCollectionPermission 更新，避免重复写入
-          ...(!isMove && parentId !== undefined && { parentId: parentId || null }),
           ...(name && { name, updateTime: getCollectionUpdateTime({ name }) }),
           ...(collectionTags !== undefined && { tags: collectionTags }),
           ...(forbid !== undefined && { forbid }),

@@ -193,50 +193,82 @@ describe('move app', () => {
     );
   });
 
-  it('keeps an independent app isolated when moved back to root', async () => {
-    const { owner } = await getFakeUsers(1);
-    const teamId = String(owner.teamId);
+  it.each([null, ''])(
+    'keeps an independent app isolated when moved back to root (%s) and enforces team create permission',
+    async (rootParentId) => {
+      const { owner, members } = await getFakeUsers(1);
+      const member = members[0];
+      const teamId = String(owner.teamId);
 
-    const folder = await createAppWithOwnerSnapshot({
-      teamId,
-      tmbId: String(owner.tmbId),
-      name: 'folder',
-      type: AppTypeEnum.folder
-    });
-    const app = await createAppWithOwnerSnapshot({
-      teamId,
-      tmbId: String(owner.tmbId),
-      name: 'independent-app',
-      type: AppTypeEnum.simple
-    });
-    await MongoApp.updateOne(
-      { _id: app._id },
-      { parentId: String(folder._id), inheritPermission: false }
-    );
-
-    const res = await Call(updateHandler, {
-      auth: owner,
-      query: { appId: String(app._id) },
-      body: { parentId: null }
-    });
-
-    expect(res.error).toBeUndefined();
-    expect(res.code).toBe(200);
-
-    const updated = await MongoApp.findById(app._id).lean();
-    expect(updated?.parentId ?? null).toBeNull();
-    expect(updated?.inheritPermission).toBe(false);
-
-    await expect(
-      getResourceOwnedClbs({
+      const folder = await createAppWithOwnerSnapshot({
         teamId,
-        resourceId: String(app._id),
-        resourceType: PerResourceTypeEnum.app
-      }).then(toPermissionRows)
-    ).resolves.toEqual(
-      toPermissionRows([{ tmbId: String(owner.tmbId), permission: OwnerRoleVal }])
-    );
-  });
+        tmbId: String(owner.tmbId),
+        name: 'folder',
+        type: AppTypeEnum.folder
+      });
+      await setAppCollaborators({
+        appId: String(folder._id),
+        teamId,
+        type: folder.type,
+        collaborators: [
+          { tmbId: String(owner.tmbId), permission: OwnerRoleVal },
+          { tmbId: String(member.tmbId), permission: OwnerRoleVal }
+        ]
+      });
+      const app = await createAppWithOwnerSnapshot({
+        teamId,
+        tmbId: String(owner.tmbId),
+        name: 'independent-app',
+        type: AppTypeEnum.simple
+      });
+      await setAppCollaborators({
+        appId: String(app._id),
+        teamId,
+        type: app.type,
+        collaborators: [
+          { tmbId: String(owner.tmbId), permission: OwnerRoleVal },
+          { tmbId: String(member.tmbId), permission: ReadRoleVal }
+        ]
+      });
+      await MongoApp.updateOne(
+        { _id: app._id },
+        { parentId: String(folder._id), inheritPermission: false }
+      );
+
+      const denied = await Call(updateHandler, {
+        auth: member,
+        query: { appId: String(app._id) },
+        body: { parentId: rootParentId }
+      });
+      expect(denied.code).not.toBe(200);
+
+      const res = await Call(updateHandler, {
+        auth: owner,
+        query: { appId: String(app._id) },
+        body: { parentId: rootParentId }
+      });
+
+      expect(res.error).toBeUndefined();
+      expect(res.code).toBe(200);
+
+      const updated = await MongoApp.findById(app._id).lean();
+      expect(updated?.parentId ?? null).toBeNull();
+      expect(updated?.inheritPermission).toBe(false);
+
+      await expect(
+        getResourceOwnedClbs({
+          teamId,
+          resourceId: String(app._id),
+          resourceType: PerResourceTypeEnum.app
+        }).then(toPermissionRows)
+      ).resolves.toEqual(
+        toPermissionRows([
+          { tmbId: String(owner.tmbId), permission: OwnerRoleVal },
+          { tmbId: String(member.tmbId), permission: ReadRoleVal }
+        ])
+      );
+    }
+  );
 
   it('keeps independent apps isolated during batch move', async () => {
     const { owner, members } = await getFakeUsers(1);
