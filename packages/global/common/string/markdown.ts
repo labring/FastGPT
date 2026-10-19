@@ -69,7 +69,11 @@ export const htmlTable2Md = (content: string): string => {
           if (cell.endsWith('/>')) {
             content = '';
           } else {
-            content = cell.replace(/<t[dh][^>]*>|<\/t[dh]>/g, '').trim();
+            // 单元格里的 | 会被当成列分隔符，导致整行错列；已经转义的 \| 保持不变。
+            content = cell
+              .replace(/<t[dh][^>]*>|<\/t[dh]>/g, '')
+              .trim()
+              .replace(/(?<!\\)\|/g, '\\|');
           }
           for (let i = 0; i < rowspan; i++) {
             for (let j = 0; j < colspan; j++) {

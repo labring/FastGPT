@@ -213,6 +213,22 @@ describe('markdown 字符串处理函数测试', () => {
       expect(lines[2]).toBe('| 营收 | 10 | 20 |');
     });
 
+    it('应该转义单元格里的 |，避免拆出多余的列', () => {
+      const html = `
+        <table>
+          <tr><th>选项</th><th>公式</th></tr>
+          <tr><td>A|B</td><td>$|x|$</td></tr>
+          <tr><td>已转义 \\|</td><td>C</td></tr>
+        </table>
+      `;
+      const lines = htmlTable2Md(html).trim().split('\n');
+
+      expect(lines[0]).toBe('| 选项 | 公式 |');
+      expect(lines[1]).toBe('| --- | --- |');
+      expect(lines[2]).toBe('| A\\|B | $\\|x\\|$ |');
+      expect(lines[3]).toBe('| 已转义 \\| | C |');
+    });
+
     it('应该处理无效的表格 HTML', () => {
       const invalidHtml = '<table><tr>invalid</tr></table>';
       const result = htmlTable2Md(invalidHtml);
