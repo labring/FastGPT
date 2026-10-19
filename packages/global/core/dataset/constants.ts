@@ -1,6 +1,17 @@
 import { i18nT } from '../../common/i18n/utils';
 
 /* ------------ dataset -------------- */
+/** 知识库即时审计事件；持久化仍复用 support/user/audit 的通用审计框架。 */
+export enum DatasetAuditEventEnum {
+  EXPORT_DATASET_CONTENT = 'EXPORT_DATASET_CONTENT',
+  CLEAN_TRAINING_RECORD = 'CLEAN_TRAINING_RECORD',
+  CREATE_DATASET_TAG = 'CREATE_DATASET_TAG',
+  RENAME_DATASET_TAG = 'RENAME_DATASET_TAG',
+  DELETE_DATASET_TAG = 'DELETE_DATASET_TAG',
+  ADD_DATASET_TAGS = 'ADD_DATASET_TAGS',
+  REMOVE_DATASET_TAGS = 'REMOVE_DATASET_TAGS'
+}
+
 export enum DatasetTypeEnum {
   folder = 'folder',
   dataset = 'dataset',

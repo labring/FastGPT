@@ -14,6 +14,8 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 
 /** 删除训练任务；重建任务同时删除原始数据及其索引，首次训练维持原有取消行为。 */
 async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse> {
@@ -22,7 +24,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
     bodySchema: DeleteTrainingDataBodySchema
   }).body;
 
-  const { collection } = await authDatasetCollection({
+  const { collection, teamId, tmbId } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
@@ -36,6 +38,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
     collectionId: collection._id,
     _id: dataId
   };
+  let deletedCount = 0;
   await mongoSessionRun(async (session) => {
     const training = await MongoDatasetTraining.findOne(trainingMatch).session(session);
     if (!training) return;
@@ -64,7 +67,8 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
           session
         );
       }
-      await MongoDatasetTraining.deleteOne(trainingMatch, { session });
+      const result = await MongoDatasetTraining.deleteOne(trainingMatch, { session });
+      deletedCount = result.deletedCount;
       return;
     }
 
@@ -88,7 +92,22 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
       );
     }
 
-    await MongoDatasetTraining.deleteOne(trainingMatch, { session });
+    const result = await MongoDatasetTraining.deleteOne(trainingMatch, { session });
+    deletedCount = result.deletedCount;
+  });
+
+  // 删除事务提交后记录最终结果；审计写入失败不影响已经完成的清理操作。
+  void addAuditLog({
+    teamId,
+    tmbId,
+    event: AuditEventEnum.CLEAN_TRAINING_RECORD,
+    params: {
+      datasetId: String(collection.datasetId),
+      datasetName: collection.dataset.name,
+      collectionName: collection.name,
+      count: String(deletedCount),
+      result: deletedCount > 0 ? 'success' : 'skipped'
+    }
   });
 
   return DeleteTrainingDataResponseSchema.parse(undefined);
