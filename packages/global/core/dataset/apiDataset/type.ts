@@ -1,5 +1,4 @@
 import z from 'zod';
-import { ensureHttpProtocol } from '../../../common/string/url';
 
 export const APIFileItemSchema = z.object({
   id: z.string(),
@@ -14,12 +13,11 @@ export const APIFileItemSchema = z.object({
 export type APIFileItemType = z.infer<typeof APIFileItemSchema>;
 
 // Api dataset config
+// 注意：该 schema 同时用于读取历史记录和响应输出，必须保持宽松。
+// baseUrl 只在保存入参（ApiDatasetServerInputSchema）做严格校验，见 openapi/core/dataset/api.ts。
 export const APIFileServerSchema = z
   .object({
-    // 只做规范化不做拒绝：该 schema 同时用于读取历史记录，缺失协议的老数据不应导致解析失败。
-    // 用 overwrite 而非 transform：该 schema 会进入 /core/dataset/detail 等响应 schema，
-    // zod-openapi 禁止输出侧出现 pipe(transform)，overwrite 语义相同且类型仍是 string。
-    baseUrl: z.string().overwrite((val) => ensureHttpProtocol(val)),
+    baseUrl: z.string(),
     authorization: z.string().optional(),
     basePath: z.string().optional()
   })

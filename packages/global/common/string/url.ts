@@ -7,16 +7,36 @@ export const isHttpUrl = (url?: string): boolean => {
 };
 
 /**
- * 为缺少协议头的地址补全 `https://`。
+ * 判断字符串是否为完整、可解析的 http/https 地址（必须显式带协议）。
  *
- * 外部数据源地址（如 API 数据集 baseUrl）由用户手填，常见直接写 `api.example.com`。
- * 这类地址交给 axios / `new URL()` 会抛 `ERR_INVALID_URL`，属于可预期的输入问题；
- * 这里统一补全协议，已有 http/https 的地址仅去除首尾空白后原样返回。
+ * 与 `isHttpUrl` 的区别：后者只检查前缀，本函数还会用 `URL` 解析，
+ * 以拦截 `https://` 这类缺少 host 的输入。用于保存前的严格校验。
+ */
+export const isValidHttpUrl = (url?: string): boolean => {
+  const trimmed = url?.trim();
+  if (!trimmed || !isHttpUrl(trimmed)) return false;
+
+  try {
+    new URL(trimmed);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * 为缺少协议头的地址补全 `https://`，仅用于兼容历史数据。
+ *
+ * 新保存的 API 数据集地址已在请求入参 schema 中强制要求完整的 http(s) 地址；
+ * 这里只兜底历史记录，避免 axios / `new URL()` 抛 `ERR_INVALID_URL`。
+ * 已带任意显式协议的地址原样返回（避免把 `ftp://x` 拼成 `https://ftp://x`），
+ * 协议相对地址 `//host` 按 https 处理。
  */
 export const ensureHttpProtocol = (url?: string): string => {
   const trimmed = url?.trim() ?? '';
   if (!trimmed) return '';
-  return isHttpUrl(trimmed) ? trimmed : `https://${trimmed}`;
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed.replace(/^\/+/, '')}`;
 };
 
 export const stripUrlTrailingSlash = (value?: string) => value?.replace(/\/+$/, '') || '';

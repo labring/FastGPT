@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { DatasetSearchModeEnum, DatasetTypeEnum } from '../../../core/dataset/constants';
-import { ApiDatasetServerSchema } from '../../../core/dataset/apiDataset/type';
+import { APIFileServerSchema, ApiDatasetServerSchema } from '../../../core/dataset/apiDataset/type';
+import { isValidHttpUrl } from '../../../common/string/url';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { ParentIdSchema } from '../../../common/parentFolder/type';
 import {
@@ -21,6 +22,26 @@ import {
   ShowUsernameQuerySchema
 } from '../../../support/permission/collaborator.schema';
 import { PaginationResponseSchema, PaginationSchema } from '../../api';
+
+/* ============================================================================
+ * 第三方知识库配置：写侧入参校验
+ * ============================================================================ */
+
+/**
+ * 保存第三方知识库配置时的严格校验。
+ *
+ * `ApiDatasetServerSchema` 同时用于读取历史记录和响应输出，必须保持宽松；
+ * 这里只约束创建/更新入参：baseUrl 必须是完整、合法的 http(s) 地址。
+ * 保存时不猜测协议，缺协议或格式非法时直接拒绝，由用户自行修正，
+ * 避免坏配置落库后在请求阶段抛 ERR_INVALID_URL。
+ */
+export const ApiDatasetServerInputSchema = ApiDatasetServerSchema.extend({
+  apiServer: APIFileServerSchema.extend({
+    baseUrl: z.string().trim().refine(isValidHttpUrl, {
+      message: '接口地址必须是以 http:// 或 https:// 开头的完整 URL'
+    })
+  }).optional()
+}).meta({ description: '第三方知识库服务器配置(API/飞书/语雀/钉钉)' });
 
 /* ============================================================================
  * API: 创建知识库
@@ -74,8 +95,8 @@ export const CreateDatasetBodySchema = z.object({
     description: '视觉语言模型标识',
     deprecated: true
   }),
-  apiDatasetServer: ApiDatasetServerSchema.optional().meta({
-    description: '第三方知识库服务器配置(API/飞书/语雀/钉钉)'
+  apiDatasetServer: ApiDatasetServerInputSchema.optional().meta({
+    description: '第三方知识库服务器配置(API/飞书/语雀/钉钉)，API 地址必须为完整的 http(s) URL'
   }),
   sangforFileParseConfig: sangforFileParseConfigSchema.optional().meta({
     description: '外部文档解析开关(页眉页脚/附录/图片识别/图转表),仅对 customPdfParse 解析路径生效'
@@ -454,8 +475,8 @@ export const UpdateDatasetBodySchema = z.object({
   externalReadUrl: z.string().optional().meta({
     description: '外部读取 URL'
   }),
-  apiDatasetServer: ApiDatasetServerSchema.optional().meta({
-    description: '第三方知识库服务器配置(API/飞书/语雀/钉钉)'
+  apiDatasetServer: ApiDatasetServerInputSchema.optional().meta({
+    description: '第三方知识库服务器配置(API/飞书/语雀/钉钉)，API 地址必须为完整的 http(s) URL'
   }),
   autoSync: z.boolean().optional().meta({
     description: '是否自动同步'

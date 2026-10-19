@@ -40,7 +40,8 @@ type APIFileListResponse = {
 export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerType }) => {
   const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
   const instance = createProxyAxios({
-    // 历史配置可能只填了域名（缺协议），补齐后再交给 axios，避免直接抛 ERR_INVALID_URL
+    // 仅兼容历史数据：老配置可能只填了域名（缺协议），保存入参已强制要求完整 http(s) 地址。
+    // 这里补齐后再交给 axios，避免读取老数据集时直接抛 ERR_INVALID_URL。
     baseURL: ensureHttpProtocol(apiServer.baseUrl),
     timeout: 60000, // 超时时间
     headers: {
