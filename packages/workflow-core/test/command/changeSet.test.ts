@@ -243,6 +243,34 @@ describe('WorkflowChangeSet', () => {
         })
       ]
     });
+
+    // 按指引补齐同作用域执行边后，原引用应可以正常设置。
+    const connected = await applyWorkflowCommand({
+      document: withNode.document,
+      command: {
+        type: 'edge.connect',
+        edge: {
+          source: { kind: 'next', nodeId: 'text' },
+          target: { kind: 'target', nodeId: 'isolated' }
+        }
+      },
+      dependencies
+    });
+    const referenced = await applyWorkflowCommand({
+      document: connected.document,
+      command: {
+        type: 'input.ref',
+        nodeId: 'isolated',
+        inputKey: 'text',
+        ref: { nodeId: 'text', outputKey: 'system_text' }
+      },
+      dependencies
+    });
+    expect(
+      referenced.document.nodes
+        .find((node) => node.nodeId === 'isolated')!
+        .inputs.find((input) => input.key === 'text')?.value
+    ).toEqual(['text', 'system_text']);
   });
 
   it('preserves changeSet.commands in plans and produces an identical recomputed plan', async () => {

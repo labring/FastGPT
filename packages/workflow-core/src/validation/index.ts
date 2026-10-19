@@ -229,7 +229,7 @@ const validateReference = ({
               ? 'Self-reference is not allowed'
               : 'Source output is outside the reference scope of the target input.',
           remediation:
-            'Use an upstream source in the same scope or a visible parent-container source; container outputs may reference their own children. Do not add cross-scope execution edges.'
+            "For nodes in the same scope, connect the upstream source using 'edge.connect' before referencing it. Otherwise use a visible parent-container source; container outputs may reference their own children. Do not add cross-scope execution edges."
         }
       });
     }

@@ -84,6 +84,24 @@ describe('validateWorkflow', () => {
     );
   });
 
+  it('explains how to repair a disconnected reference without allowing cross-scope edges', () => {
+    const document = WorkflowDocumentSchema.parse(aiWorkflow);
+    document.executionEdges = [];
+
+    const diagnostic = validateWorkflow(document).find(
+      (item) => item.code === 'WORKFLOW_REFERENCE_SOURCE_NOT_UPSTREAM'
+    );
+    expect(diagnostic).toMatchObject({
+      nodeId: 'ai',
+      params: {
+        sourceNodeId: 'start',
+        remediation: expect.stringContaining("using 'edge.connect'")
+      }
+    });
+    expect(diagnostic?.params?.remediation).toContain('For nodes in the same scope');
+    expect(diagnostic?.params?.remediation).toContain('Do not add cross-scope execution edges.');
+  });
+
   it('accepts missing external bindings and aggregate Start references', async () => {
     const dependencies = { templateProvider: builtinTemplateProvider, locale: 'en' };
     const start = await applyWorkflowCommand({
