@@ -6,16 +6,36 @@ const powerPointXmlPathRegex = /^ppt\/(?:notesSlides\/notesSlide|slides\/slide)\
 const powerPointSlidePathRegex = /^ppt\/slides\/slide\d+\.xml$/;
 const powerPointNotesPathRegex = /^ppt\/notesSlides\/notesSlide\d+\.xml$/;
 const powerPointSlideRelsPathRegex = /^ppt\/slides\/_rels\/slide\d+\.xml\.rels$/;
+const presentationPath = 'ppt/presentation.xml';
+const presentationRelsPath = 'ppt/_rels/presentation.xml.rels';
 const relationshipsNamespace = 'http://schemas.openxmlformats.org/package/2006/relationships';
-const notesSlideRelationshipTypes = new Set([
-  'http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide',
-  'http://purl.oclc.org/ooxml/officeDocument/relationships/notesSlide'
+const officeRelationshipsNamespaces = [
+  'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+  'http://purl.oclc.org/ooxml/officeDocument/relationships'
+];
+const notesSlideRelationshipTypes = new Set(
+  officeRelationshipsNamespaces.map((namespace) => `${namespace}/notesSlide`)
+);
+const slideRelationshipTypes = new Set(
+  officeRelationshipsNamespaces.map((namespace) => `${namespace}/slide`)
+);
+const presentationNamespaces = new Set([
+  'http://schemas.openxmlformats.org/presentationml/2006/main',
+  'http://purl.oclc.org/ooxml/presentationml/main'
+]);
+const drawingNamespaces = new Set([
+  'http://schemas.openxmlformats.org/drawingml/2006/main',
+  'http://purl.oclc.org/ooxml/drawingml/main'
 ]);
 const maxPowerPointEntries = 10000;
 const maxPowerPointXmlFileBytes = 10 * 1024 * 1024;
 const maxPowerPointXmlBytes = 100 * 1024 * 1024;
 
 const ELEMENT_NODE = 1;
+
+/** 通过命名空间识别 DrawingML 元素，兼容自定义前缀、默认命名空间与 Strict 格式。 */
+const isDrawingElement = (element: Element, name: string) =>
+  element.localName === name && drawingNamespaces.has(element.namespaceURI ?? '');
 
 /**
  * Read a paragraph in document order.
@@ -31,9 +51,9 @@ const readParagraphText = (paragraphNode: Element) => {
       if (child.nodeType !== ELEMENT_NODE) return;
 
       const element = child as Element;
-      if (element.nodeName === 'a:t') {
+      if (isDrawingElement(element, 't')) {
         text += element.textContent ?? '';
-      } else if (element.nodeName === 'a:br') {
+      } else if (isDrawingElement(element, 'br')) {
         text += '\n';
       } else {
         visit(element);
@@ -47,21 +67,20 @@ const readParagraphText = (paragraphNode: Element) => {
 
 /**
  * 提取 PPTX 正文与备注，通过幻灯片关系确定备注归属。
- * 兼容 Transitional/Strict 关系和包内相对、绝对路径；无有效关系的备注沿用编号排序。
+ * XML 按各自 BOM 解码，页序优先使用 presentation 声明；缺少元数据时保留编号回退。
  */
-const parsePowerPoint = async ({
-  buffer,
-  encoding
-}: {
-  buffer: Buffer;
-  encoding: BufferEncoding;
-}) => {
+const parsePowerPoint = async (buffer: Buffer) => {
+  /** OPC 的 XML 部件只使用 UTF-8 或带 BOM 的 UTF-16，不能复用压缩包探测到的编码。 */
   const decodeXml = (data: Buffer) => {
     try {
-      return data.toString(encoding);
+      const encoding = (() => {
+        if (data[0] === 0xff && data[1] === 0xfe) return 'utf-16le';
+        if (data[0] === 0xfe && data[1] === 0xff) return 'utf-16be';
+        return 'utf-8';
+      })();
+      return new TextDecoder(encoding, { fatal: true }).decode(data);
     } catch {
-      // 上游按整个压缩包探测编码时可能得到 Node.js 不支持的编码名。
-      return data.toString('utf-8');
+      throw new Error('解析 PPT 失败');
     }
   };
 
@@ -120,10 +139,15 @@ const parsePowerPoint = async ({
         stream.once('error', fail);
         stream.once('end', () => {
           if (settled) return;
-          result.push({
-            path: entry.fileName,
-            content: decodeXml(Buffer.concat(chunks, entryBytes))
-          });
+          try {
+            result.push({
+              path: entry.fileName,
+              content: decodeXml(Buffer.concat(chunks, entryBytes))
+            });
+          } catch (error) {
+            fail(error);
+            return;
+          }
           zip.readEntry();
         });
       });
@@ -149,7 +173,9 @@ const parsePowerPoint = async ({
         !isRegularFile ||
         !(
           powerPointXmlPathRegex.test(entry.fileName) ||
-          powerPointSlideRelsPathRegex.test(entry.fileName)
+          powerPointSlideRelsPathRegex.test(entry.fileName) ||
+          entry.fileName === presentationPath ||
+          entry.fileName === presentationRelsPath
         )
       ) {
         zip.readEntry();
@@ -182,45 +208,115 @@ const parsePowerPoint = async ({
     zip.readEntry();
   });
 
-  const parser = new DOMParser();
+  const filesByPath = new Map(files.map((file) => [file.path, file]));
+  const parser = new DOMParser({
+    errorHandler: () => {
+      throw new Error('解析 PPT 失败');
+    }
+  });
+
+  /** 损坏 XML 必须返回明确解析错误，避免 xmldom 自动修补后静默产出不完整文本。 */
+  const parseXml = (content: string) => {
+    try {
+      const document = parser.parseFromString(content, 'text/xml');
+      if (!document?.documentElement) throw new Error('解析 PPT 失败');
+      return document;
+    } catch {
+      throw new Error('解析 PPT 失败');
+    }
+  };
+
   const getPartNumber = (path: string) => {
     const match = path.match(/\d+/);
     return match ? parseInt(match[0]) : 0;
   };
 
-  // 备注按创建顺序编号，不能与幻灯片编号直接配对；有效包内关系优先于编号回退。
-  const slideOfNotes = new Map<string, number>();
+  /** 读取包内关系并解析目标 URI；外部目标不会被解释成本地部件。 */
+  const readRelationships = ({ sourcePath, content }: { sourcePath: string; content: string }) =>
+    Array.from(
+      parseXml(content).getElementsByTagNameNS(relationshipsNamespace, 'Relationship')
+    ).flatMap((relationship) => {
+      const type = relationship.getAttribute('Type');
+      const target = relationship.getAttribute('Target');
+      if (!type || !target || relationship.getAttribute('TargetMode') === 'External') return [];
+
+      return [
+        {
+          id: relationship.getAttribute('Id') ?? '',
+          type,
+          target: posix.normalize(
+            target.startsWith('/') ? target.slice(1) : posix.join(posix.dirname(sourcePath), target)
+          )
+        }
+      ];
+    });
+
+  // 幻灯片编号不代表显示页序；通过 presentation 的 r:id 按声明顺序定位实际部件。
+  const slideOrder = (() => {
+    const presentation = filesByPath.get(presentationPath);
+    const presentationRels = filesByPath.get(presentationRelsPath);
+    if (!presentation || !presentationRels) return new Map<string, number>();
+
+    const slideTargets = new Map(
+      readRelationships({ sourcePath: presentationPath, content: presentationRels.content })
+        .filter(
+          ({ type, target }) =>
+            slideRelationshipTypes.has(type) && powerPointSlidePathRegex.test(target)
+        )
+        .map(({ id, target }) => [id, target])
+    );
+    const orderedPaths = Array.from(
+      parseXml(presentation.content).getElementsByTagNameNS('*', 'sldId')
+    )
+      .filter((element) => presentationNamespaces.has(element.namespaceURI ?? ''))
+      .flatMap((element) => {
+        const id = officeRelationshipsNamespaces
+          .map((namespace) => element.getAttributeNS(namespace, 'id'))
+          .find(Boolean);
+        const target = id ? slideTargets.get(id) : undefined;
+        return target && filesByPath.has(target) ? [target] : [];
+      });
+    if (!orderedPaths.length) return new Map<string, number>();
+
+    // 不丢弃旧解析器会读取的未列出部件，按编号追加到已知页序之后。
+    const fallbackPaths = files
+      .filter(({ path }) => powerPointSlidePathRegex.test(path))
+      .map(({ path }) => path)
+      .sort((a, b) => getPartNumber(a) - getPartNumber(b));
+    return new Map(
+      Array.from(new Set([...orderedPaths, ...fallbackPaths])).map((path, index) => [path, index])
+    );
+  })();
+
+  // 备注归属保存完整部件路径，避免把来源身份与页序混为同一个数字。
+  const slideOfNotes = new Map<string, string>();
   files
     .filter(({ path }) => powerPointSlideRelsPathRegex.test(path))
     .forEach(({ path, content }) => {
-      const relationships = parser
-        .parseFromString(content, 'text/xml')
-        .getElementsByTagNameNS(relationshipsNamespace, 'Relationship');
-      Array.from(relationships).forEach((relationship) => {
-        const relationshipType = relationship.getAttribute('Type');
-        const target = relationship.getAttribute('Target');
-        if (
-          !relationshipType ||
-          !notesSlideRelationshipTypes.has(relationshipType) ||
-          !target ||
-          relationship.getAttribute('TargetMode') === 'External'
-        ) {
-          return;
-        }
+      const sourcePath = path.replace('/_rels/', '/').replace(/\.rels$/, '');
+      // 孤立关系不能覆盖有效来源，也无需解析其可能损坏的 XML。
+      if (!filesByPath.has(sourcePath)) return;
 
-        // 两种目标都规范化为包内路径，再由固定备注目录校验拒绝越界目标。
-        const notesPath = posix.normalize(
-          target.startsWith('/') ? target.slice(1) : posix.join('ppt/slides', target)
-        );
-        if (powerPointNotesPathRegex.test(notesPath)) {
-          slideOfNotes.set(notesPath, getPartNumber(path));
+      readRelationships({ sourcePath, content }).forEach(({ type, target }) => {
+        if (
+          notesSlideRelationshipTypes.has(type) &&
+          powerPointNotesPathRegex.test(target) &&
+          filesByPath.has(target)
+        ) {
+          slideOfNotes.set(target, sourcePath);
         }
       });
     });
 
   const getOrder = (path: string) => {
-    if (!powerPointNotesPathRegex.test(path)) return { slide: getPartNumber(path), notes: 0 };
-    return { slide: slideOfNotes.get(path) ?? getPartNumber(path), notes: 1 };
+    const notes = powerPointNotesPathRegex.test(path);
+    const sourcePath = notes
+      ? (slideOfNotes.get(path) ?? `ppt/slides/slide${getPartNumber(path)}.xml`)
+      : path;
+    const slide = slideOrder.size
+      ? (slideOrder.get(sourcePath) ?? slideOrder.size + getPartNumber(sourcePath))
+      : getPartNumber(sourcePath);
+    return { slide, notes: notes ? 1 : 0 };
   };
   const sortedFiles = files
     .filter(({ path }) => powerPointXmlPathRegex.test(path))
@@ -232,12 +328,16 @@ const parsePowerPoint = async ({
 
   return sortedFiles
     .map(({ content }) => {
-      const xmlParagraphNodesList = parser
-        .parseFromString(content, 'text/xml')
-        .getElementsByTagName('a:p');
+      const xmlParagraphNodesList = parseXml(content).getElementsByTagNameNS('*', 'p');
 
       return Array.from(xmlParagraphNodesList)
-        .filter((paragraphNode) => paragraphNode.getElementsByTagName('a:t').length != 0)
+        .filter(
+          (paragraphNode) =>
+            isDrawingElement(paragraphNode, 'p') &&
+            Array.from(paragraphNode.getElementsByTagNameNS('*', 't')).some((element) =>
+              isDrawingElement(element, 't')
+            )
+        )
         .map((paragraphNode) => readParagraphText(paragraphNode))
         .join('\n');
     })
@@ -247,10 +347,10 @@ const parsePowerPoint = async ({
 /**
  * 解析受支持的 Office 文件文本。
  * PPTX 归档按 entry 流式读取，只解压固定 OOXML 路径下且满足大小限制的普通 XML 文件。
+ * encoding 参数保留以兼容调用方，XML 按部件自身的编码解析。
  */
 export const parseOffice = async ({
   buffer,
-  encoding,
   extension
 }: {
   buffer: Buffer;
@@ -259,7 +359,7 @@ export const parseOffice = async ({
 }) => {
   switch (extension) {
     case 'pptx':
-      return parsePowerPoint({ buffer, encoding });
+      return parsePowerPoint(buffer);
     default:
       return Promise.reject('只能读取 .pptx 文件');
   }
