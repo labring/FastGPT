@@ -73,7 +73,10 @@ describe('serviceEnv', () => {
     vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', originalEnv.AGENT_SANDBOX_CPU_COUNT);
     vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', originalEnv.AGENT_SANDBOX_MEMORY_MIB);
     vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', originalEnv.AGENT_SANDBOX_STORAGE_SIZE_GI);
-    vi.stubEnv('AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR', originalEnv.AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR);
+    vi.stubEnv(
+      'AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR',
+      originalEnv.AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR
+    );
     vi.stubEnv(
       'AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR',
       originalEnv.AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR
@@ -580,10 +583,6 @@ describe('serviceEnv', () => {
     expect(customEnv.serviceEnv.AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR).toBe(5);
     expect(customEnv.serviceEnv.AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR).toBe(2);
     expect(customEnv.serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX).toBe('custom-volume');
-
-    // 超卖倍数必须 >= 1，0 直接拒绝。
-    vi.stubEnv('AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR', '0');
-    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
   });
 
   it('defaults the Agent Sandbox active instance limits and supports overrides', async () => {
@@ -619,6 +618,16 @@ describe('serviceEnv', () => {
     vi.stubEnv('AGENT_SANDBOX_MAX_EDIT_DEBUG', '0');
     await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
   });
+
+  it.each(['AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR', 'AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR'])(
+    'rejects invalid overcommit factors for %s at the env boundary',
+    async (name) => {
+      for (const value of ['0', '0.5', 'Infinity', 'NaN']) {
+        vi.stubEnv(name, value);
+        await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
+      }
+    }
+  );
 
   it('defaults AGENT_SANDBOX_SHOW_FREE_TIP to false and supports enabling it', async () => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');

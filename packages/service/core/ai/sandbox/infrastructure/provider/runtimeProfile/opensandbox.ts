@@ -6,11 +6,7 @@
 import { serviceEnv } from '../../../../../../env';
 import type { SandboxRuntimeCreateConfigInput, SandboxRuntimeProfile } from './types';
 import { getSandboxSkillsRootPath, mergeStringRecord, normalizeEntrypoint } from './utils';
-import {
-  OPEN_SANDBOX_DEFAULT_ROOT_PATH,
-  parseImageSpec,
-  type ResourceLimits
-} from '@fastgpt-sdk/sandbox-adapter';
+import { OPEN_SANDBOX_DEFAULT_ROOT_PATH, parseImageSpec } from '@fastgpt-sdk/sandbox-adapter';
 
 const OPEN_SANDBOX_ENTRYPOINT = '/home/sandbox/entrypoint.sh';
 const OPEN_SANDBOX_PROTECTED_NETWORK_DENY_RULES = [
@@ -62,35 +58,6 @@ function buildOpenSandboxNetworkPolicy(
 }
 
 /**
- * Derive Kubernetes resource requests from the final limits, per-dimension overcommit.
- *
- * Each dimension is scaled by its own factor: requests = limits / factor when the
- * factor > 1, otherwise the limit is mirrored so the dimension keeps requests == limits.
- * When both factors are off (<= 1 or non-finite) nothing is derived and the server
- * keeps requests == limits (Guaranteed QoS). CPU is floored to millicores and memory
- * to MiB, both clamped to at least one unit; disk/gpu are never derived.
- */
-function deriveResourceRequests(limits: {
-  cpuCount: number;
-  memoryMiB: number;
-}): ResourceLimits | undefined {
-  const cpuFactor = serviceEnv.AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR;
-  const memoryFactor = serviceEnv.AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR;
-  const isOvercommitted = (factor: number) => Number.isFinite(factor) && factor > 1;
-
-  if (!isOvercommitted(cpuFactor) && !isOvercommitted(memoryFactor)) return undefined;
-
-  return {
-    cpuCount: isOvercommitted(cpuFactor)
-      ? Math.max(1, Math.floor((limits.cpuCount * 1000) / cpuFactor)) / 1000
-      : limits.cpuCount,
-    memoryMiB: isOvercommitted(memoryFactor)
-      ? Math.max(1, Math.floor(limits.memoryMiB / memoryFactor))
-      : limits.memoryMiB
-  };
-}
-
-/**
  * 构建 OpenSandbox 的 FastGPT 运行态 profile。
  *
  * OpenSandbox 需要在 createConfig 中显式注入镜像、入口脚本、资源限制和 volume。
@@ -98,6 +65,28 @@ function deriveResourceRequests(limits: {
 export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
   const workDirectory = OPEN_SANDBOX_DEFAULT_ROOT_PATH;
   const defaultImage = parseImageSpec(serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE?.trim());
+
+  /**
+   * 按最终 limits 独立派生 CPU、内存 requests；倍率为 1 时保持该维度不变。
+   * 环境变量 schema 已保证倍率有限且 >= 1；两者均为 1 时省略 requests，沿用服务端默认值。
+   * CPU 向下取整到毫核、内存到 MiB，最低分别为 1m、1Mi；不派生磁盘预留。
+   */
+  function deriveResourceRequests(limits: { cpuCount: number; memoryMiB: number }) {
+    const cpuFactor = serviceEnv.AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR;
+    const memoryFactor = serviceEnv.AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR;
+    if (cpuFactor === 1 && memoryFactor === 1) return undefined;
+
+    return {
+      cpuCount:
+        cpuFactor > 1
+          ? Math.max(1, Math.floor((limits.cpuCount * 1000) / cpuFactor)) / 1000
+          : limits.cpuCount,
+      memoryMiB:
+        memoryFactor > 1
+          ? Math.max(1, Math.floor(limits.memoryMiB / memoryFactor))
+          : limits.memoryMiB
+    };
+  }
 
   return {
     provider: 'opensandbox',
