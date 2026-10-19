@@ -107,8 +107,20 @@ const reduceQueue = () => {
   return global.datasetParseQueueLen === 0;
 };
 
-const isTeamError = (err: unknown, code: TeamErrEnum): boolean =>
-  err === code || (err instanceof Error && err.message === code);
+/**
+ * 识别会让解析任务必须暂停的团队额度错误，返回值供调用方区分日志级别与提示文案。
+ *
+ * 枚举值收敛在函数内部，调用方不需要（也不应该）自己传错误码。
+ * 同时兼容两种抛出形态：`checkDatasetIndexLimit` 直接 `Promise.reject(枚举值)`，
+ * 经上层包装后则可能是 `Error.message`。
+ */
+const getQuotaErrorCode = (err: unknown): TeamErrEnum | undefined => {
+  const code = err instanceof Error ? err.message : err;
+
+  if (code === TeamErrEnum.datasetSizeNotEnough) return TeamErrEnum.datasetSizeNotEnough;
+  if (code === TeamErrEnum.aiPointsNotEnough) return TeamErrEnum.aiPointsNotEnough;
+  return undefined;
+};
 
 /** 读取并分块原文；共用训练租约，解析失败才扣重试次数，容量不足则暂停等待恢复。 */
 export const datasetParseQueue = async (): Promise<any> => {
@@ -365,7 +377,10 @@ export const datasetParseQueue = async (): Promise<any> => {
           });
         } catch (err) {
           if (err instanceof TrainingLeaseLostError) continue;
-          if (isTeamError(err, TeamErrEnum.datasetSizeNotEnough)) {
+
+          const quotaErrorCode = getQuotaErrorCode(err);
+
+          if (quotaErrorCode === TeamErrEnum.datasetSizeNotEnough) {
             logger.info('Parse queue dataset limit exceeded, locking task', {
               trainingId: data._id,
               datasetId: data.datasetId,
@@ -378,7 +393,7 @@ export const datasetParseQueue = async (): Promise<any> => {
             continue;
           }
 
-          if (isTeamError(err, TeamErrEnum.aiPointsNotEnough)) {
+          if (quotaErrorCode === TeamErrEnum.aiPointsNotEnough) {
             logger.warn('Parse queue AI points limit exceeded, locking task', {
               trainingId: data._id,
               datasetId: data.datasetId,
