@@ -96,9 +96,7 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
     return Number(value);
   }
   if (valueType === WorkflowIOValueTypeEnum.boolean) {
-    if (typeof value === 'string') {
-      return value.toLowerCase() === 'true';
-    }
+    // 统一使用 JS 原生 Boolean 语义（非空字符串为 true），与 formatVariableValByType 保持一致
     return Boolean(value);
   }
 
