@@ -63,7 +63,7 @@ const filterTemplateBySearchKey = ({
   searchRegex,
   lang
 }: {
-  template: NodeTemplateListItemType & { toolDescription?: string };
+  template: NodeTemplateListItemType;
   searchRegex?: RegExp;
   lang: localeType;
 }) => {
@@ -72,7 +72,6 @@ const filterTemplateBySearchKey = ({
     selectPluginText(template.name, lang),
     selectPluginText(template.intro, lang),
     template.instructions,
-    template.toolDescription,
     ...(template.tags ?? [])
   ].some((text) => searchRegex.test(String(text ?? '')));
 };
@@ -137,7 +136,6 @@ const getSystemToolTemplateList = async ({
           flowNodeType: FlowNodeTypeEnum.tool,
           name: child.name,
           intro: child.description,
-          toolDescription: child.toolDescription,
           id: `${parentId}/${child.id}`,
           source: isTeamPluginSource(source) ? source : parent.source,
           avatar: child.icon ?? parent.avatar,
@@ -182,7 +180,6 @@ const getSystemToolTemplateList = async ({
       name: tool.name,
       intro: tool.intro,
       instructions: tool.userGuide ?? '',
-      toolDescription: tool.toolDescription,
       tags: tool.tags
     }))
     .filter((template) => filterTemplateBySearchKey({ template, searchRegex, lang }));

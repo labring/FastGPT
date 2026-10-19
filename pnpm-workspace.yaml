@@ -109,8 +109,6 @@ catalog:
   xml2js: ^0.6.2
   zod: ^4
 
-  qs: ^6.16.0
-
 catalogMode: prefer
 
 catalogs:

@@ -140,6 +140,33 @@ describe('get system tool templates handler', () => {
     });
   });
 
+  it.each([
+    { lang: 'zh-CN', searchKey: '天气', expected: ['weather'] },
+    { lang: 'zh-CN', searchKey: 'Weather', expected: [] },
+    { lang: 'en', searchKey: 'weather', expected: ['weather'] }
+  ])(
+    'filters localized tool metadata in $lang for $searchKey',
+    async ({ lang, searchKey, expected }) => {
+      mocks.getLocale.mockReturnValue(lang);
+      mocks.getSystemToolList.mockResolvedValue([
+        {
+          id: 'weather',
+          source: 'system',
+          name: { en: 'Weather', 'zh-CN': '气象' },
+          intro: { en: 'Forecast lookup', 'zh-CN': '天气预报' },
+          isToolSet: false,
+          status: PluginStatusEnum.Normal
+        }
+      ]);
+
+      const result = await handler({
+        body: { searchKey }
+      } as ApiRequestProps<GetSystemPluginTemplatesBody>);
+
+      expect(result.map((item) => item.id)).toEqual(expected);
+    }
+  );
+
   it('marks top-level system toolsets as tools while preserving toolset type', async () => {
     mocks.getSystemToolList.mockResolvedValue([
       {
