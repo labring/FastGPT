@@ -506,8 +506,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       streamResponseContext.responseWrite(
         workflowSseEvent.done(detail ? SseResponseEventEnum.answer : undefined)
       );
-
-      await streamResponseContext.flushResume();
     } else {
       const generatedTitle = await titleSender.send();
       const formatResponseContent = removeAIResponseCite(assistantResponses, jsonRetainDatasetCite);
@@ -591,7 +589,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       } else {
         sseErrRes(res, err);
       }
-      await streamResponseContext?.flushResume();
     } else {
       const errKey = typeof err === 'string' ? err : (err as Error)?.message;
       jsonRes(res, {
@@ -601,6 +598,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   } finally {
     if (stream) {
+      // 失败状态写入再次报错时，也必须等待续流缓存收尾后再关闭响应。
+      await streamResponseContext?.flushResume();
       res.end();
     }
   }

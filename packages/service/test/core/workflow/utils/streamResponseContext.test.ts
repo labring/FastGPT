@@ -2,11 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getRedisRuntime } from '@fastgpt/dal/redis/runtime';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import {
-  STREAM_RESUME_POST_COMPLETE_TTL_SECONDS,
-  getStreamResumeRedisKeys,
-  resetStreamResumeMirrorGuardForTest
-} from '@fastgpt/service/core/chat/resume';
+import * as streamResume from '@fastgpt/service/core/chat/resume';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { FASTGPT_REDIS_PREFIX } from '@fastgpt/dal/redis/runtime';
 import {
   createWorkflowStreamResponseContext,
@@ -81,7 +78,7 @@ const createRes = () => {
 describe('createWorkflowStreamResponseContext', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
-    resetStreamResumeMirrorGuardForTest();
+    streamResume.resetStreamResumeMirrorGuardForTest();
 
     const redis = getRedisRuntime().getCommandConnection() as any;
     await redis.flushdb();
@@ -90,6 +87,7 @@ describe('createWorkflowStreamResponseContext', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.useRealTimers();
   });
 
@@ -124,7 +122,7 @@ describe('createWorkflowStreamResponseContext', () => {
   it('should only create resume mirror when stream request opts in', async () => {
     const redis = getRedisRuntime().getCommandConnection() as any;
     const sourceType = ChatSourceTypeEnum.app;
-    const keys = getStreamResumeRedisKeys({ teamId, sourceType, sourceId, chatId });
+    const keys = streamResume.getStreamResumeRedisKeys({ teamId, sourceType, sourceId, chatId });
     const rawStreamKey = `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`;
 
     const noMirrorContext = await createWorkflowStreamResponseContext({
@@ -170,9 +168,50 @@ describe('createWorkflowStreamResponseContext', () => {
     );
     expect(redis.expire).toHaveBeenCalledWith(
       `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`,
-      STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+      streamResume.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
     );
   });
+
+  it.each(['flush', 'shrinkTTLAfterComplete'] as const)(
+    'should log %s errors without rejecting stream cleanup',
+    async (failedStep) => {
+      const sourceType = ChatSourceTypeEnum.app;
+      const error = new Error('Resume cache cleanup failed');
+      const mirror = {
+        ...streamResume.getStreamResumeRedisKeys({ teamId, sourceType, sourceId, chatId }),
+        enqueueRaw: vi.fn(),
+        flush: vi.fn(async () => undefined),
+        shrinkTTLAfterComplete: vi.fn(async () => undefined)
+      };
+      mirror[failedStep].mockRejectedValueOnce(error);
+      vi.spyOn(streamResume, 'getStreamResumeMirror').mockResolvedValueOnce(mirror);
+      const errorLog = vi
+        .spyOn(getLogger(LogCategories.MODULE.CHAT.RESUME), 'error')
+        .mockImplementation(() => undefined);
+      const res = createRes();
+      const context = await createWorkflowStreamResponseContext({
+        req: createReq({ [STREAM_RESUME_REQUEST_HEADER]: 'true' }),
+        res,
+        stream: true,
+        detail: true,
+        teamId,
+        sourceType,
+        sourceId,
+        chatId
+      });
+
+      await expect(context.flushResume()).resolves.toBeUndefined();
+
+      expect(mirror.flush).toHaveBeenCalledOnce();
+      expect(mirror.shrinkTTLAfterComplete).toHaveBeenCalledOnce();
+      expect(errorLog).toHaveBeenCalledOnce();
+      expect(errorLog).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ chatId, error })
+      );
+      res.emit('finish');
+    }
+  );
 
   it('should not create resume mirror when resume is disabled even if request opts in', async () => {
     const redis = getRedisRuntime().getCommandConnection() as any;
