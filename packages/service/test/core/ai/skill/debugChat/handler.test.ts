@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   finalizeChatRound: vi.fn(),
   failChatRound: vi.fn(),
   updateInteractiveChat: vi.fn(),
+  updateChatGenerateStatus: vi.fn(),
   getRunningUserInfoByTmbId: vi.fn(),
   dispatchWorkFlow: vi.fn(),
   teamFrequencyLimit: vi.fn(),
@@ -36,6 +37,9 @@ vi.mock('@fastgpt/service/core/chat/saveChat', () => ({
   finalizeChatRound: mocks.finalizeChatRound,
   failChatRound: mocks.failChatRound,
   updateInteractiveChat: mocks.updateInteractiveChat
+}));
+vi.mock('@fastgpt/service/core/chat/chatGenerateStatus', () => ({
+  updateChatGenerateStatus: mocks.updateChatGenerateStatus
 }));
 vi.mock('@fastgpt/service/support/user/team/utils', () => ({
   getRunningUserInfoByTmbId: mocks.getRunningUserInfoByTmbId
@@ -234,6 +238,23 @@ describe('runSkillDebugChat', () => {
     expect(streamContext.flushResume).toHaveBeenCalledOnce();
     expect(sseErrRes).not.toHaveBeenCalled();
   });
+
+  it('flushes the stream even when persisting interactive failure status rejects', async () => {
+    const error = new Error('Failure status persistence failed');
+    mocks.preChatRound.mockResolvedValueOnce({
+      chatId: 'chat-1',
+      responseChatItemId: 'response-1',
+      shouldPersistChatRound: true,
+      shouldFinalizePreparedRound: false
+    });
+    mocks.dispatchWorkFlow.mockRejectedValueOnce(new Error('Workflow failed'));
+    mocks.updateChatGenerateStatus.mockRejectedValueOnce(error);
+
+    await expect(runSkillDebugChat({ req, body, options: createTransport() })).rejects.toBe(error);
+
+    expect(mocks.updateChatGenerateStatus).toHaveBeenCalledOnce();
+    expect(streamContext.flushResume).toHaveBeenCalledOnce();
+  });
 });
 
 describe('handleSkillDebugChat', () => {
@@ -301,6 +322,7 @@ describe('handleSkillDebugChat', () => {
     await expect(handleSkillDebugChat(req, res, body)).resolves.toBe('');
 
     expect(sseErrRes).toHaveBeenCalledWith(res, error);
+    expect(streamContext.flushResume).toHaveBeenCalledOnce();
     expect(res.end).toHaveBeenCalledOnce();
   });
 });

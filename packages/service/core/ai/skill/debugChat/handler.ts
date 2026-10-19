@@ -358,8 +358,6 @@ export async function runSkillDebugChat({
     }
 
     streamResponseContext.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
-
-    await streamResponseContext.flushResume();
   } catch (err: any) {
     const { preparedRound } = roundState;
     if (
@@ -390,7 +388,9 @@ export async function runSkillDebugChat({
     if (!streamResponseContext) throw err;
 
     streamResponseContext.writeStreamError(err);
-    await streamResponseContext.flushResume();
+  } finally {
+    // runner 统一等待缓存收尾，HTTP 响应仍由调用方关闭。
+    await streamResponseContext?.flushResume();
   }
 }
 

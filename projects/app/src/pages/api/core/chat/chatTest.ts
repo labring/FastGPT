@@ -341,8 +341,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         status: ChatGenerateStatusEnum.done
       });
     }
-
-    await streamResponseContext.flushResume();
   } catch (err: any) {
     const { preparedRound } = roundState;
     if (preparedRound?.shouldPersistChatRound && roundState.sourceId && roundState.chatId) {
@@ -369,8 +367,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     } else {
       sseErrRes(res, err);
     }
-    await streamResponseContext?.flushResume();
   } finally {
+    // 错误状态写入再次失败时，也要等待续流缓存收尾后再关闭响应。
+    await streamResponseContext?.flushResume();
     res.end();
   }
 }

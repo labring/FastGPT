@@ -19,6 +19,12 @@ vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => ha
 vi.mock('@/service/support/permission/auth/chatCompletion', () => ({
   authChatCompletionHeaderRequest: mocks.authChatCompletionHeaderRequest
 }));
+vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
+  authApp: mocks.authChatCompletionHeaderRequest
+}));
+vi.mock('@fastgpt/service/core/app/resource/service', () => ({
+  prepareAppWorkflowResources: vi.fn(async () => [])
+}));
 vi.mock('@fastgpt/service/common/api/frequencyLimit', () => ({
   LimitTypeEnum: { chat: 'chat' },
   teamFrequencyLimit: vi.fn(async () => true)
@@ -69,9 +75,13 @@ vi.mock('@fastgpt/service/core/workflow/utils/streamResponseContext', () => ({
   }))
 }));
 
-import handler from '@/pages/api/v2/chat/completions';
+import completionsHandler from '@/pages/api/v2/chat/completions';
+import chatTestHandler from '@/pages/api/core/chat/chatTest';
 
-describe('v2 chat completions stream cleanup', () => {
+describe.each([
+  { name: 'v2 completions', handler: completionsHandler, supportsNonStream: true },
+  { name: 'workflow chatTest', handler: chatTestHandler, supportsNonStream: false }
+])('$name stream cleanup', ({ handler, supportsNonStream }) => {
   const appId = '67f4c91c79a4d61b1f116b2a';
   const preparedRound = {
     chatId: 'chat-1',
@@ -81,7 +91,7 @@ describe('v2 chat completions stream cleanup', () => {
   };
 
   const runRequest = (stream = true) => {
-    const response = { end: vi.fn(), json: vi.fn() };
+    const response = { end: vi.fn(), json: vi.fn(), status: vi.fn().mockReturnThis() };
     const request = {
       headers: {},
       body: {
@@ -89,6 +99,10 @@ describe('v2 chat completions stream cleanup', () => {
         chatId: preparedRound.chatId,
         responseChatItemId: preparedRound.responseChatItemId,
         messages: [{ role: 'user', content: 'Hello' }],
+        nodes: [],
+        edges: [],
+        chatConfig: {},
+        appName: 'Chat',
         stream
       }
     } as NextApiRequest;
@@ -176,12 +190,14 @@ describe('v2 chat completions stream cleanup', () => {
     expect(response.end).toHaveBeenCalledOnce();
   });
 
-  it('keeps non-streaming responses outside stream cleanup', async () => {
-    const { response, result } = runRequest(false);
-    await result;
+  if (supportsNonStream) {
+    it('keeps non-streaming responses outside stream cleanup', async () => {
+      const { response, result } = runRequest(false);
+      await result;
 
-    expect(response.json).toHaveBeenCalledOnce();
-    expect(mocks.flushResume).not.toHaveBeenCalled();
-    expect(response.end).not.toHaveBeenCalled();
-  });
+      expect(response.json).toHaveBeenCalledOnce();
+      expect(mocks.flushResume).not.toHaveBeenCalled();
+      expect(response.end).not.toHaveBeenCalled();
+    });
+  }
 });
