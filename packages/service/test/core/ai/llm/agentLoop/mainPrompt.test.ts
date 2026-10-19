@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  buildDefaultAgentSystemPrompt,
-  resolveAgentLoopSystemPrompt
-} from '@fastgpt/service/core/ai/llm/agentLoop/interface';
+import { buildDefaultAgentSystemPrompt } from '@fastgpt/service/core/ai/llm/agentLoop/domain/mainPrompt';
 
 describe('buildDefaultAgentSystemPrompt', () => {
   it('uses the fixed prompt without capability-specific rules', () => {
@@ -66,26 +63,5 @@ describe('buildDefaultAgentSystemPrompt', () => {
     expect(buildDefaultAgentSystemPrompt({ sandboxEnabled: false })).not.toContain(
       '<sandbox_capability>'
     );
-  });
-
-  it('uses an injected prompt builder without applying the default Work Agent prompt', () => {
-    const prompt = resolveAgentLoopSystemPrompt({
-      systemPrompt: 'runtime context',
-      hasExecutableTools: true,
-      systemPromptBuilder: ({ systemPrompt, hasExecutableTools }) =>
-        `Workflow Builder\n${systemPrompt}\ntools=${hasExecutableTools}`
-    });
-
-    expect(prompt).toBe('Workflow Builder\nruntime context\ntools=true');
-    expect(prompt).not.toContain('你是一个 Work Agent');
-  });
-
-  it('preserves the caller prompt when no builder is injected', () => {
-    expect(
-      resolveAgentLoopSystemPrompt({
-        systemPrompt: 'prepared prompt',
-        hasExecutableTools: false
-      })
-    ).toBe('prepared prompt');
   });
 });

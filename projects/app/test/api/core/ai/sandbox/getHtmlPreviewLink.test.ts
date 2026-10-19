@@ -89,7 +89,7 @@ describe('sandbox getHtmlPreviewLink API', () => {
       relativePath: 'sessions/chat-1/dist/index.html'
     });
     mocks.createSandboxPreviewFileUrl.mockResolvedValue(
-      `https://agent-proxy.example.com/preview/${sandboxId}/a12345678901234567890123/dist/index.html`
+      'https://agent-proxy.example.com/preview/a12345678901234567890123/dist/index.html'
     );
   });
 
@@ -125,7 +125,7 @@ describe('sandbox getHtmlPreviewLink API', () => {
       filePath: '/workspace/sessions/chat-1/dist/index.html'
     });
     expect(mockJsonRes).toHaveBeenCalledWith(res, {
-      data: `https://agent-proxy.example.com/preview/${sandboxId}/a12345678901234567890123/dist/index.html`
+      data: 'https://agent-proxy.example.com/preview/a12345678901234567890123/dist/index.html'
     });
   });
 

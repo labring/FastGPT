@@ -243,42 +243,40 @@ describe('runFastAgentLoop', () => {
     expect(systemMessage.content).not.toContain('<tool_constraint>');
   });
 
-  it('uses the injected system prompt builder', async () => {
+  it('validates sandbox calls before executing through the client', async () => {
+    const sandboxClient = { exec: vi.fn() };
+    const validate = vi.fn(() => 'Private workspace access denied.');
     mockCreateLLMResponseQueue(createLLMResponseMock, [
-      text({
-        requestId: 'req_custom_prompt',
-        content: 'direct answer'
-      })
+      toolCall({
+        id: 'call_restricted_sandbox',
+        name: 'sandbox_shell',
+        args: { command: 'cat /private/workflow.json' }
+      }),
+      text({ requestId: 'req_after_rejection', content: 'Access was denied.' })
     ]);
-    const systemPromptBuilder = vi.fn(
-      ({ systemPrompt, hasExecutableTools }) =>
-        `Workflow Builder\n${systemPrompt}\ntools=${hasExecutableTools}`
-    );
 
-    await runFastAgentLoop({
-      input: {
-        messages: [
-          {
-            role: ChatCompletionRequestMessageRoleEnum.User,
-            content: 'build workflow'
-          }
-        ],
-        systemPrompt: 'runtime context'
-      },
+    const result = await runFastAgentLoop({
+      input: { messages: [{ role: 'user', content: 'Read private workflow' }] },
       runtime: createRuntime({
-        systemPromptBuilder
+        systemTools: {
+          sandbox: { enabled: true, client: sandboxClient as any, validate }
+        }
       })
     });
 
-    const systemMessage = createLLMResponseMock.mock.calls[0][0].body.messages.find(
-      (message: { role: string }) => message.role === ChatCompletionRequestMessageRoleEnum.System
-    );
-    expect(systemPromptBuilder).toHaveBeenCalledWith({
-      systemPrompt: 'runtime context',
-      hasExecutableTools: true
+    expect(result.status).toBe('done');
+    expect(validate).toHaveBeenCalledWith({
+      toolName: 'sandbox_shell',
+      args: JSON.stringify({ command: 'cat /private/workflow.json' })
     });
-    expect(systemMessage.content).toBe('Workflow Builder\nruntime context\ntools=true');
-    expect(systemMessage.content).not.toContain('你是 Work Agent');
+    expect(sandboxClient.exec).not.toHaveBeenCalled();
+    expect(result.completeMessages).toContainEqual(
+      expect.objectContaining({
+        role: 'tool',
+        tool_call_id: 'call_restricted_sandbox',
+        content: 'Private workspace access denied.'
+      })
+    );
   });
 
   it('initializes runtime plan from history without changing request messages', async () => {

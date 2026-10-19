@@ -11,10 +11,7 @@ const getPiAgentSystemTools = <TChildrenResponse = unknown>(
 ): ChatCompletionTool[] => [
   ...(runtime.systemTools?.plan?.enabled ? createPlanAgentTools() : []),
   ...(runtime.systemTools?.ask?.enabled ? [createAskUserAgentTool()] : []),
-  ...(runtime.systemTools?.sandbox?.enabled &&
-  (runtime.systemTools.sandbox.client || runtime.systemTools.sandbox.executor)
-    ? createAgentLoopSandboxTools()
-    : []),
+  ...(runtime.systemTools?.sandbox?.enabled ? createAgentLoopSandboxTools() : []),
   ...(runtime.systemTools?.readFile?.enabled
     ? [createReadFilesTool({ maxFileAmount: runtime.systemTools.readFile.maxFileAmount })]
     : []),

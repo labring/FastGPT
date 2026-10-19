@@ -5,6 +5,7 @@ import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { OnOpenCiteModalProps } from '@/web/core/chat/context/chatItemContext';
 import type { ChatSiteItemType } from '../../type';
 import AIChatBubbleContent from './Content';
+import WorkflowBuilderContent from './WorkflowBuilderContent';
 import AIChatBubbleActions from './Actions';
 import type { ChatControllerProps } from '../ChatController';
 import { useContextSelector } from 'use-context-selector';
@@ -18,8 +19,6 @@ import { ChatBoxContentMaxWidth } from '../../constants';
 
 const ResponseTags = dynamic(() => import('../ResponseTags'));
 const WholeResponseModal = dynamic(() => import('../../../../components/WholeResponseModal'));
-
-export { shouldFilterAiValue } from './utils';
 
 type AIChatBubbleProps = {
   chat: ChatSiteItemType;
@@ -102,6 +101,9 @@ const AIChatBubble = ({
     : showNoOutputTip
       ? t('chat:no_output_content')
       : '';
+  const ContentComponent = collapseIntermediateAgentResponses
+    ? WorkflowBuilderContent
+    : AIChatBubbleContent;
 
   return (
     <Box position={'relative'} w={'100%'} maxW={'100%'}>
@@ -112,7 +114,7 @@ const AIChatBubble = ({
         textAlign={'left'}
         minW={isPlanCard ? ['100%', '50%'] : undefined}
       >
-        <AIChatBubbleContent
+        <ContentComponent
           chatValue={chatValue}
           responseData={chat.responseData}
           dataId={chat.dataId}
@@ -120,7 +122,6 @@ const AIChatBubble = ({
           isChatting={isChatting}
           allowedCitationIds={allowedCitationIds}
           onOpenCiteModal={onOpenCiteModal}
-          collapseIntermediateAgentResponses={collapseIntermediateAgentResponses}
         />
         {placeholderText && (
           <Box

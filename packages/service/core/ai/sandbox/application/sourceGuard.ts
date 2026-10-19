@@ -1,5 +1,6 @@
 /** Sandbox source 存活校验，作为 provisioning 与删除之间的持久 fence。 */
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { isAppSandboxSourceType } from '@fastgpt/global/common/chat/source';
 import { MongoApp } from '../../../app/schema';
 import { MongoAgentSkills } from '../../skill/model/schema';
 
@@ -30,10 +31,7 @@ export async function resolveSandboxSourceTeamId(params: {
   sourceId: string;
 }): Promise<string | undefined> {
   const doc = await (async () => {
-    if (
-      params.sourceType === ChatSourceTypeEnum.app ||
-      params.sourceType === ChatSourceTypeEnum.workflowBuilder
-    ) {
+    if (isAppSandboxSourceType(params.sourceType)) {
       return MongoApp.findOne({ _id: params.sourceId, deleteTime: null }, { teamId: 1 }).lean();
     }
     if (params.sourceType === ChatSourceTypeEnum.skillEdit) {
@@ -57,10 +55,7 @@ export async function assertSandboxSourceDeleted(params: {
   sourceId: string;
 }) {
   const deleted = await (async () => {
-    if (
-      params.sourceType === ChatSourceTypeEnum.app ||
-      params.sourceType === ChatSourceTypeEnum.workflowBuilder
-    ) {
+    if (isAppSandboxSourceType(params.sourceType)) {
       return MongoApp.exists({ _id: params.sourceId, deleteTime: { $ne: null } });
     }
     if (params.sourceType === ChatSourceTypeEnum.skillEdit) {

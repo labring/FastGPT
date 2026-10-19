@@ -99,11 +99,10 @@ describe('createWorkflowStreamResponseContext', () => {
     const keys = streamResume.getStreamResumeRedisKeys(params);
     const context = await createWorkflowStreamResponseContext({
       ...params,
-      req: createReq(),
+      req: createReq({ [STREAM_RESUME_REQUEST_HEADER]: 'true' }),
       res,
       stream: true,
-      detail: true,
-      mirrorFromStart: true
+      detail: true
     });
     res.closed = true;
     res.emit('close');
@@ -161,58 +160,60 @@ describe('createWorkflowStreamResponseContext', () => {
     expect(responseWrite).toHaveBeenCalledTimes(1);
   });
 
-  it('should only create resume mirror when stream request opts in', async () => {
-    const redis = getRedisRuntime().getCommandConnection() as any;
-    const sourceType = ChatSourceTypeEnum.app;
-    const keys = streamResume.getStreamResumeRedisKeys({ teamId, sourceType, sourceId, chatId });
-    const rawStreamKey = `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`;
+  it.each([ChatSourceTypeEnum.app, ChatSourceTypeEnum.workflowBuilder])(
+    'should only create resume mirror when %s stream request opts in',
+    async (sourceType) => {
+      const redis = getRedisRuntime().getCommandConnection() as any;
+      const keys = streamResume.getStreamResumeRedisKeys({ teamId, sourceType, sourceId, chatId });
+      const rawStreamKey = `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`;
 
-    const noMirrorContext = await createWorkflowStreamResponseContext({
-      req: createReq(),
-      res: createRes(),
-      stream: true,
-      detail: true,
-      teamId,
-      sourceType,
-      sourceId,
-      chatId,
-      responseId: chatId
-    });
+      const noMirrorContext = await createWorkflowStreamResponseContext({
+        req: createReq(),
+        res: createRes(),
+        stream: true,
+        detail: true,
+        teamId,
+        sourceType,
+        sourceId,
+        chatId,
+        responseId: chatId
+      });
 
-    noMirrorContext.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
-    await noMirrorContext.flushResume();
+      noMirrorContext.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
+      await noMirrorContext.flushResume();
 
-    expect(redis.info).not.toHaveBeenCalled();
-    expect(redis.call).not.toHaveBeenCalled();
+      expect(redis.info).not.toHaveBeenCalled();
+      expect(redis.call).not.toHaveBeenCalled();
 
-    const mirrorContext = await createWorkflowStreamResponseContext({
-      req: createReq({ [STREAM_RESUME_REQUEST_HEADER]: 'true' }),
-      res: createRes(),
-      stream: true,
-      detail: true,
-      teamId,
-      sourceType,
-      sourceId,
-      chatId,
-      responseId: chatId
-    });
+      const mirrorContext = await createWorkflowStreamResponseContext({
+        req: createReq({ [STREAM_RESUME_REQUEST_HEADER]: 'true' }),
+        res: createRes(),
+        stream: true,
+        detail: true,
+        teamId,
+        sourceType,
+        sourceId,
+        chatId,
+        responseId: chatId
+      });
 
-    mirrorContext.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
-    await mirrorContext.flushResume();
+      mirrorContext.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
+      await mirrorContext.flushResume();
 
-    expect(redis.info).toHaveBeenCalledTimes(1);
-    expect(redis.call).toHaveBeenCalledWith(
-      'XADD',
-      rawStreamKey,
-      '*',
-      'raw',
-      `event: ${SseResponseEventEnum.answer}\ndata: [DONE]\n\n`
-    );
-    expect(redis.expire).toHaveBeenCalledWith(
-      `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`,
-      streamResume.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
-    );
-  });
+      expect(redis.info).toHaveBeenCalledTimes(1);
+      expect(redis.call).toHaveBeenCalledWith(
+        'XADD',
+        rawStreamKey,
+        '*',
+        'raw',
+        `event: ${SseResponseEventEnum.answer}\ndata: [DONE]\n\n`
+      );
+      expect(redis.expire).toHaveBeenCalledWith(
+        `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`,
+        streamResume.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+      );
+    }
+  );
 
   it.each(['flush', 'shrinkTTLAfterComplete'] as const)(
     'should log %s errors without rejecting stream cleanup',

@@ -1,5 +1,6 @@
 import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { isAuxiliaryGenerationSourceType } from '@fastgpt/global/common/chat/source';
 import { useMemo } from 'react';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
@@ -33,12 +34,6 @@ export type ChatSourceTarget = {
   sourceId: string;
 };
 
-const isExplicitAppSourceType = (
-  sourceType: ChatSourceTypeEnum | undefined
-): sourceType is ChatSourceTypeEnum.chatAgentHelper | ChatSourceTypeEnum.workflowBuilder =>
-  sourceType === ChatSourceTypeEnum.chatAgentHelper ||
-  sourceType === ChatSourceTypeEnum.workflowBuilder;
-
 /**
  * 将 OpenAPI raw target 转换为前端内部标准 source target。
  *
@@ -54,7 +49,7 @@ export const toChatSourceTarget = (target: ChatTargetInputType): ChatSourceTarge
   }
 
   return {
-    sourceType: isExplicitAppSourceType(target.sourceType)
+    sourceType: isAuxiliaryGenerationSourceType(target.sourceType)
       ? target.sourceType
       : ChatSourceTypeEnum.app,
     sourceId: target.appId!
@@ -71,7 +66,7 @@ export const toChatApiTarget = (target: ChatSourceTarget): ChatTargetInputType =
   if (target.sourceType === ChatSourceTypeEnum.skillEdit) {
     return { skillId: target.sourceId };
   }
-  if (isExplicitAppSourceType(target.sourceType)) {
+  if (isAuxiliaryGenerationSourceType(target.sourceType)) {
     return { appId: target.sourceId, sourceType: target.sourceType };
   }
 
@@ -118,7 +113,7 @@ export const getChatAuthTargetInput = (target: ChatAuthTargetInput): ChatAuthTar
   }
 
   if (target.appId) {
-    return isExplicitAppSourceType(target.sourceType)
+    return isAuxiliaryGenerationSourceType(target.sourceType)
       ? { appId: target.appId, sourceType: target.sourceType }
       : { appId: target.appId };
   }
@@ -147,7 +142,7 @@ export const toChatAuthQueryTarget = (target: ChatAuthTargetInput): ChatAuthQuer
   }
 
   if (chatAuthTarget.appId) {
-    return isExplicitAppSourceType(chatAuthTarget.sourceType)
+    return isAuxiliaryGenerationSourceType(chatAuthTarget.sourceType)
       ? { appId: chatAuthTarget.appId, sourceType: chatAuthTarget.sourceType }
       : { appId: chatAuthTarget.appId };
   }
@@ -167,7 +162,7 @@ export const toChatAuthQueryInput = <T extends ChatAuthQueryInputSource>(
     ...toChatAuthQueryTarget({
       appId,
       skillId,
-      sourceType: isExplicitAppSourceType(sourceType) ? sourceType : undefined,
+      sourceType: isAuxiliaryGenerationSourceType(sourceType) ? sourceType : undefined,
       outLinkAuthData
     })
   };
@@ -213,7 +208,7 @@ export const getChatTargetInput = (target: ChatTargetInputType): ChatTargetInput
     return { skillId: target.skillId };
   }
 
-  return isExplicitAppSourceType(target.sourceType)
+  return isAuxiliaryGenerationSourceType(target.sourceType)
     ? { appId: target.appId!, sourceType: target.sourceType }
     : { appId: target.appId! };
 };

@@ -8,6 +8,7 @@ import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { CreateLLMResponseProps } from '../../../../request';
 import type { SandboxClient } from '../../../../../sandbox/application/runtime/client';
+import type { SandboxToolCallValidator } from '../../../../../sandbox/application/toolCall/type';
 import type { AgentLoopToolCatalog } from '../tools';
 import type { AgentLoopDatasetSearchExecutor } from '../../../domain/systemTool/datasetSearch';
 import type {
@@ -19,9 +20,7 @@ import type {
   AgentLoopPendingMainContext,
   AgentLoopPause,
   AgentLoopReadFileExecutor,
-  AgentLoopSystemPromptBuilder,
   AgentLoopToolExecutionResult,
-  AgentLoopSandboxExecutor,
   AgentLoopUsage
 } from '../../../domain';
 
@@ -38,7 +37,6 @@ export type {
 export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   teamId: string;
   model: LLMModelDataType;
-  systemPromptBuilder?: AgentLoopSystemPromptBuilder;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   userKey?: CreateLLMResponseProps['userKey'];
   stream?: boolean;
@@ -53,7 +51,6 @@ export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   useVideo?: boolean;
   extractFiles?: boolean;
   lang?: localeType;
-  hasExecutableTools: boolean;
   maxRunAgentTimes?: number;
   completionPolicy?: AgentLoopCompletionPolicy;
   batchToolSize?: number;
@@ -68,8 +65,8 @@ export type AgentLoopRuntime<TChildrenResponse = unknown> = {
     e: AgentLoopInteractiveToolExecuteParams<TChildrenResponse>
   ) => Promise<AgentLoopToolExecutionResult<TChildrenResponse>>;
   sandboxToolContext?: {
-    client?: SandboxClient;
-    executor?: AgentLoopSandboxExecutor;
+    client: SandboxClient;
+    validate?: SandboxToolCallValidator;
   };
   executeReadFileTool?: AgentLoopReadFileExecutor;
   executeDatasetSearchTool?: AgentLoopDatasetSearchExecutor;

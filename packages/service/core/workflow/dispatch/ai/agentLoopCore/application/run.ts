@@ -1,10 +1,5 @@
-import type {
-  ChatCompletionMessageParam,
-  ChatCompletionMessageToolCall
-} from '@fastgpt/global/core/ai/llm/type';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type {
-  AgentLoopEvent,
   AgentLoopInput,
   AgentLoopProviderName,
   AgentLoopRuntime
@@ -15,17 +10,16 @@ import { summarizeAgentLoopCoreResult, type AgentLoopCoreOutputSummary } from '.
 import { compactAgentLoopCorePlanSnapshots } from './output/assistantResponses';
 import type { AgentLoopCoreResult } from '../domain/result';
 import type { AgentLoopCoreToolDisplayInfo } from '../domain/toolInfo';
+import {
+  createAgentLoopCoreToolEventFilter,
+  type AgentLoopCoreToolEventFilterPolicy
+} from '../adapter/toolEventFilter';
 
 export type RunAgentLoopCoreParams<TChildrenResponse = unknown> = {
   provider?: AgentLoopProviderName;
   input: AgentLoopInput<TChildrenResponse>;
   runtime: AgentLoopRuntime<TChildrenResponse>;
-  bufferedToolEventFilter?: {
-    /** 需要等完整调用参数到达后再决定是否对外发送事件的工具。 */
-    shouldBuffer: (call: ChatCompletionMessageToolCall) => boolean;
-    /** 返回 true 时，该工具调用的整组生命周期事件只供内部执行，不向外暴露。 */
-    shouldDiscard: (call: ChatCompletionMessageToolCall) => boolean;
-  };
+  bufferedToolEventFilter?: AgentLoopCoreToolEventFilterPolicy;
   assistantResponses?: {
     extraResponses?: AIChatItemValueItemType[];
     eventTarget?: AIChatItemValueItemType[];
@@ -37,39 +31,6 @@ export type RunAgentLoopCoreParams<TChildrenResponse = unknown> = {
       askToolName?: string;
     };
   };
-};
-
-/** 从对外 transcript 中成对移除内部工具调用及其响应，避免后续总结再次暴露内部错误。 */
-const discardToolMessages = (
-  messages: ChatCompletionMessageParam[],
-  discardedToolCallIds: Set<string>
-): ChatCompletionMessageParam[] => {
-  if (discardedToolCallIds.size === 0) return messages;
-
-  return messages.flatMap((message) => {
-    if (message.role === 'tool' && discardedToolCallIds.has(message.tool_call_id)) return [];
-    if (message.role !== 'assistant' || !message.tool_calls?.length) return [message];
-
-    const visibleToolCalls = message.tool_calls.filter(
-      (call) => !discardedToolCallIds.has(call.id)
-    );
-    if (visibleToolCalls.length > 0) {
-      return [{ ...message, tool_calls: visibleToolCalls }];
-    }
-
-    const { tool_calls: _toolCalls, ...messageWithoutToolCalls } = message;
-    const hasOtherAssistantOutput =
-      message.content !== null && message.content !== undefined
-        ? true
-        : Boolean(
-            message.reasoning_content ||
-            message.interactive ||
-            message.audio ||
-            message.function_call ||
-            message.refusal
-          );
-    return hasOtherAssistantOutput ? [messageWithoutToolCalls] : [];
-  });
 };
 
 /**
@@ -94,106 +55,25 @@ export const runAgentLoopCore = async <TChildrenResponse = unknown>({
     metaEventNames: assistantResponses?.metaEventNames
   });
   let firstTokenTime: number | undefined;
-  const forwardEvent = (event: AgentLoopEvent) => {
-    if (event.type === 'llm_request_end' && firstTokenTime === undefined) {
-      firstTokenTime = event.firstTokenTime;
-    }
-    assistantEventCollector.emitEvent(event);
-    runtime.emitEvent?.(event);
-  };
-  const bufferedToolEvents = new Map<string, AgentLoopEvent[]>();
-  const discardedToolCallIds = new Set<string>();
-  const discardedResultToolCallIds = new Set<string>();
-
-  /**
-   * 工具参数可能在 `tool_call` 之后才流式补齐。候选工具先缓冲到 `tool_run_start`，
-   * 再用完整参数判断整组事件应当转发还是仅保留在 agent-loop 内部。
-   */
-  const emitEvent = (event: AgentLoopEvent) => {
-    if (!bufferedToolEventFilter) {
-      forwardEvent(event);
-      return;
-    }
-
-    if (event.type === 'llm_request_end' && event.toolCalls?.length) {
-      const visibleToolCalls = event.toolCalls.filter((call) => {
-        const shouldDiscard =
-          bufferedToolEventFilter.shouldBuffer(call) && bufferedToolEventFilter.shouldDiscard(call);
-        if (shouldDiscard) discardedResultToolCallIds.add(call.id);
-        return !shouldDiscard;
-      });
-      forwardEvent({
-        ...event,
-        toolCalls: visibleToolCalls
-      });
-      return;
-    }
-
-    if (event.type === 'tool_call') {
-      if (!bufferedToolEventFilter.shouldBuffer(event.call)) {
-        forwardEvent(event);
-        return;
+  const toolEventFilter = createAgentLoopCoreToolEventFilter({
+    policy: bufferedToolEventFilter,
+    emitEvent: (event) => {
+      if (event.type === 'llm_request_end' && firstTokenTime === undefined) {
+        firstTokenTime = event.firstTokenTime;
       }
-      bufferedToolEvents.set(event.call.id, [event]);
-      return;
+      assistantEventCollector.emitEvent(event);
+      runtime.emitEvent?.(event);
     }
-
-    if (event.type === 'tool_params') {
-      if (discardedToolCallIds.has(event.callId)) return;
-
-      const bufferedEvents = bufferedToolEvents.get(event.callId);
-      if (bufferedEvents) {
-        bufferedEvents.push(event);
-        return;
-      }
-      forwardEvent(event);
-      return;
-    }
-
-    if (event.type === 'tool_run_start' || event.type === 'tool_run_end') {
-      const callId = event.call.id;
-      if (discardedToolCallIds.has(callId)) {
-        if (event.type === 'tool_run_end') discardedToolCallIds.delete(callId);
-        return;
-      }
-
-      const bufferedEvents = bufferedToolEvents.get(callId);
-      const isBufferedTool =
-        bufferedEvents !== undefined || bufferedToolEventFilter.shouldBuffer(event.call);
-      if (!isBufferedTool) {
-        forwardEvent(event);
-        return;
-      }
-
-      if (bufferedToolEventFilter.shouldDiscard(event.call)) {
-        bufferedToolEvents.delete(callId);
-        discardedResultToolCallIds.add(callId);
-        if (event.type === 'tool_run_start') discardedToolCallIds.add(callId);
-        return;
-      }
-
-      bufferedEvents?.forEach(forwardEvent);
-      bufferedToolEvents.delete(callId);
-      forwardEvent(event);
-      return;
-    }
-
-    forwardEvent(event);
-  };
-
-  const wrappedRuntime: AgentLoopRuntime<TChildrenResponse> = {
-    ...runtime,
-    emitEvent
-  };
+  });
   const result = await runAgentLoop<TChildrenResponse>({
     provider,
     input,
-    runtime: wrappedRuntime
+    runtime: { ...runtime, emitEvent: toolEventFilter.emitEvent }
   });
   const publicResult = {
     ...result,
-    completeMessages: discardToolMessages(result.completeMessages, discardedResultToolCallIds),
-    assistantMessages: discardToolMessages(result.assistantMessages, discardedResultToolCallIds)
+    completeMessages: toolEventFilter.filterMessages(result.completeMessages),
+    assistantMessages: toolEventFilter.filterMessages(result.assistantMessages)
   };
   const assistantResponseValues = compactAgentLoopCorePlanSnapshots([
     ...(assistantResponses?.extraResponses ?? []),

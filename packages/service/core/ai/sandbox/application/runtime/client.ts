@@ -1,5 +1,6 @@
 /** 运行态 client 只管理连接复用、工作目录和命令执行；生命周期交由 runtime/service。 */
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { isAppSandboxSourceType } from '@fastgpt/global/common/chat/source';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import type { ExecuteResult, ISandbox } from '@fastgpt-sdk/sandbox-adapter';
@@ -128,8 +129,7 @@ export class SandboxClient {
       .then(() =>
         this.provider.execute(command, {
           timeoutMs: timeout ? timeout * 1000 : undefined,
-          ...(this.query.sourceType === ChatSourceTypeEnum.app ||
-          this.query.sourceType === ChatSourceTypeEnum.workflowBuilder
+          ...(isAppSandboxSourceType(this.query.sourceType)
             ? { workingDirectory: this.runtimePaths.sessionWorkDirectory }
             : {})
         })

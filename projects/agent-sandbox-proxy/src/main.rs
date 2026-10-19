@@ -32,7 +32,6 @@ struct WsQuery {
 
 #[derive(Deserialize)]
 struct PreviewPath {
-    sandbox_id: String,
     session_id: String,
     path: String,
 }
@@ -80,14 +79,14 @@ fn websocket_router() -> Router {
 
 fn preview_router() -> Router {
     Router::new().route("/health", get(health_check)).route(
-        "/preview/{sandbox_id}/{session_id}/{*path}",
+        "/preview/{session_id}/{*path}",
         get(preview_handler).head(preview_handler),
     )
 }
 
 fn combined_router() -> Router {
     websocket_router().route(
-        "/preview/{sandbox_id}/{session_id}/{*path}",
+        "/preview/{session_id}/{*path}",
         get(preview_handler).head(preview_handler),
     )
 }
@@ -157,19 +156,10 @@ fn verify_ticket_for_channel(
     Ok(claims)
 }
 
-/** 校验支持的来源与凭据格式，实际预览授权仍由主站校验 session。 */
-fn verify_preview_session_id(sandbox_id: &str, session_id: &str) -> Result<(), PreviewError> {
-    let Some((source_prefix, sandbox_hash)) = sandbox_id.split_once('-') else {
-        return Err(PreviewError::InvalidSessionId("invalid sandbox id format"));
-    };
-    let hash_bytes = sandbox_hash.as_bytes();
+/** 仅校验随机 token 格式；来源、沙盒归属与有效期统一由主站根据 session 解析。 */
+fn verify_preview_session_id(session_id: &str) -> Result<(), PreviewError> {
     let session_bytes = session_id.as_bytes();
-    if !matches!(source_prefix, "app" | "skilledit" | "workflowbuilder")
-        || hash_bytes.len() != 16
-        || !hash_bytes
-            .iter()
-            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(byte))
-        || session_bytes.len() != 24
+    if session_bytes.len() != 24
         || !session_bytes[0].is_ascii_lowercase()
         || !session_bytes
             .iter()
@@ -215,10 +205,9 @@ async fn preview_handler(
     method: Method,
     headers: HeaderMap,
 ) -> Result<Response<Body>, PreviewError> {
-    verify_preview_session_id(&params.sandbox_id, &params.session_id)?;
-    let preview_credential = format!("{}:{}", params.sandbox_id, params.session_id);
+    verify_preview_session_id(&params.session_id)?;
 
-    let address = resolve_cached_preview_sandbox_address(&preview_credential)
+    let address = resolve_cached_preview_sandbox_address(&params.session_id)
         .await
         .map_err(PreviewError::ResolutionFailed)?;
 
@@ -226,9 +215,9 @@ async fn preview_handler(
         Ok(response) => Ok(response),
         Err(first_error) => {
             error!("[Preview] Cached upstream request failed: {}", first_error);
-            invalidate_cached_preview_sandbox_address(&preview_credential).await;
+            invalidate_cached_preview_sandbox_address(&params.session_id).await;
 
-            let fresh_address = resolve_cached_preview_sandbox_address(&preview_credential)
+            let fresh_address = resolve_cached_preview_sandbox_address(&params.session_id)
                 .await
                 .map_err(PreviewError::ResolutionFailed)?;
 
@@ -243,74 +232,28 @@ mod tests {
 
     #[test]
     fn accepts_preview_session_ids() {
-        assert!(
-            verify_preview_session_id("app-0123456789abcdef", "a12345678901234567890123").is_ok()
-        );
-        assert!(
-            verify_preview_session_id("skilledit-0123456789abcdef", "a12345678901234567890123")
-                .is_ok()
-        );
-        assert!(
-            verify_preview_session_id(
-                "workflowbuilder-0123456789abcdef",
-                "a12345678901234567890123"
-            )
-            .is_ok()
-        );
+        assert!(verify_preview_session_id("a12345678901234567890123").is_ok());
+        assert!(verify_preview_session_id("zAbCdEfGhIjKlMnOpQrStUv9").is_ok());
     }
 
     #[test]
     fn rejects_invalid_preview_session_ids() {
-        assert!(matches!(
-            verify_preview_session_id("short", "a12345678901234567890123"),
-            Err(PreviewError::InvalidSessionId(_))
-        ));
-        assert!(matches!(
-            verify_preview_session_id("0123456789abcdef", "a12345678901234567890123"),
-            Err(PreviewError::InvalidSessionId(_))
-        ));
-        assert!(matches!(
-            verify_preview_session_id("other-0123456789abcdef", "a12345678901234567890123"),
-            Err(PreviewError::InvalidSessionId(_))
-        ));
-        assert!(matches!(
-            verify_preview_session_id("app-0123456789abcdef", "A12345678901234567890123"),
-            Err(PreviewError::InvalidSessionId(_))
-        ));
-        assert!(matches!(
-            verify_preview_session_id("app-0123456789abcdef", "a1234567890123456789012-"),
-            Err(PreviewError::InvalidSessionId(_))
-        ));
-        assert!(matches!(
-            verify_preview_session_id("app-0123456789abcdeG", "a12345678901234567890123"),
-            Err(PreviewError::InvalidSessionId(_))
-        ));
-        for (sandbox_id, session_id) in [
-            (
-                "workflowbuilder-0123456789abcde",
-                "a12345678901234567890123",
-            ),
-            (
-                "workflowbuilder-0123456789abcdeG",
-                "a12345678901234567890123",
-            ),
-            (
-                "workflowbuilder-0123456789abcdef",
-                "A12345678901234567890123",
-            ),
-            (
-                "workflowbuilder-0123456789abcdef",
-                "a1234567890123456789012-",
-            ),
+        for session_id in [
+            "",
+            "a1234567890123456789012",
+            "a123456789012345678901234",
+            "A12345678901234567890123",
+            "112345678901234567890123",
+            "a1234567890123456789012-",
+            "a1234567890123456789012_",
+            "a1234567890123456789012é",
+            "a1234567890123456789012\n",
+            "app-0123456789abcdef:a12345678901234567890123",
         ] {
             assert!(matches!(
-                verify_preview_session_id(sandbox_id, session_id),
+                verify_preview_session_id(session_id),
                 Err(PreviewError::InvalidSessionId(_))
             ));
         }
-        assert!(matches!(
-            verify_ticket_for_channel("a12345678901234567890123", "fs"),
-            Err(AuthError::Jwt(_))
-        ));
     }
 }

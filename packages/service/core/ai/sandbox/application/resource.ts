@@ -5,7 +5,6 @@
  */
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { batchRun, batchRunSettled } from '@fastgpt/global/common/system/utils';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { getS3SandboxSource } from '../../../../common/s3/sources/sandbox';
 import {
@@ -21,7 +20,7 @@ import {
 import { getSandboxProviderConfig } from '../infrastructure/provider/config';
 import { buildSandboxResourceAdapter } from '../infrastructure/provider/adapter';
 import { deleteSessionVolume, getSessionVolumeClaimName } from '../infrastructure/volume/service';
-import { type SandboxInstanceSchemaType } from '../type';
+import { type SandboxInstanceSchemaType, type SandboxSourceType } from '../type';
 import {
   SandboxInstanceStatusEnum,
   expectedOperationByStatus,
@@ -238,15 +237,12 @@ const deleteSandboxResourceBatch = async (instances: SandboxResourceRef[]) => {
   throw new Error(`Failed to delete ${failures.length} sandbox resources`);
 };
 
-/** 调用方持有 Source Mutation Lease 时，清理某个 App 的全部 v2 资源。 */
-export const deleteAppSandboxes = async (appId: string) => {
-  const instances = (
-    await Promise.all(
-      [ChatSourceTypeEnum.app, ChatSourceTypeEnum.workflowBuilder].map((sourceType) =>
-        findSandboxResourcesBySource({ sourceType, sourceId: appId })
-      )
-    )
-  ).flat();
+/** 调用方须持有对应 Source Mutation Lease 并确认业务已删除，再查询、清理该 source 的全部资源。 */
+export const deleteSandboxResourcesBySource = async (params: {
+  sourceType: SandboxSourceType;
+  sourceId: string;
+}) => {
+  const instances = await findSandboxResourcesBySource(params);
   await deleteSandboxResourceBatch(instances);
 };
 

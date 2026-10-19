@@ -1,4 +1,5 @@
-import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatFileTypeEnum, type ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { isAuxiliaryGenerationSourceType } from '@fastgpt/global/common/chat/source';
 import { isChatFileAllowedBySelectConfig as isGlobalChatFileAllowedBySelectConfig } from '@fastgpt/global/core/app/constants';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { ChatTypeEnum } from '../constants';
@@ -14,10 +15,7 @@ export const resolveChatFileUploadMode = ({
   chatType: ChatTypeEnum;
   sourceType: ChatSourceTypeEnum;
 }): 'runtime' | 'draft' => {
-  if (
-    sourceType === ChatSourceTypeEnum.chatAgentHelper ||
-    sourceType === ChatSourceTypeEnum.workflowBuilder
-  ) {
+  if (isAuxiliaryGenerationSourceType(sourceType)) {
     return 'runtime';
   }
   if (chatType === ChatTypeEnum.test) return 'draft';

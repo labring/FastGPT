@@ -1,6 +1,7 @@
 import { requiredAlternatives } from '../../../common/zod/openapi';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '../../../core/chat/constants';
+import { isAuxiliaryGenerationSourceType } from '../../../common/chat/source';
 import {
   OutLinkChatAuthSchema,
   parseOutLinkChatAuthInput,
@@ -197,9 +198,7 @@ const refineChatAuthTargetInput = (
 ) => {
   const hasAppTarget = !!data.appId;
   const hasSkillTarget = !!data.skillId;
-  const isExplicitAppSource =
-    data.sourceType === ChatSourceTypeEnum.chatAgentHelper ||
-    data.sourceType === ChatSourceTypeEnum.workflowBuilder;
+  const isExplicitAppSource = isAuxiliaryGenerationSourceType(data.sourceType);
   const nestedAuthData = getNestedOutLinkAuthData(data);
   const shareId = nestedAuthData.shareId;
   const outLinkUid = nestedAuthData.outLinkUid;

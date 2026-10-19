@@ -87,12 +87,10 @@ describe('sandboxGetFileUrlTool', () => {
       chatId: 'chat'
     });
     expect(previewMock.buildSandboxPreviewFileUrl).toHaveBeenNthCalledWith(1, {
-      sandboxId,
       sessionId: 'a12345678901234567890123',
       filePath: '/workspace/file.txt'
     });
     expect(previewMock.buildSandboxPreviewFileUrl).toHaveBeenNthCalledWith(2, {
-      sandboxId,
       sessionId: 'a12345678901234567890123',
       filePath: '/workspace/sessions/chat-1/report/data.csv'
     });

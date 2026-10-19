@@ -4,6 +4,7 @@ import type {
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
 import type { SandboxClient } from '../../../sandbox/application/runtime/client';
+import type { SandboxToolCallValidator } from '../../../sandbox/application/toolCall/type';
 import type { AgentLoopDatasetSearchExecutor } from './systemTool/datasetSearch';
 import type { AgentAskPayload } from './systemTool/ask';
 import type { AgentLoopUsage } from './usage';
@@ -63,31 +64,8 @@ export type AgentLoopReadFileExecutor = (
   params: AgentLoopReadFileExecuteParams
 ) => Promise<AgentLoopReadFileExecutionResult>;
 
-/**
- * AgentLoop 使用的 Sandbox 工具执行边界。
- *
- * 默认 Agent 可以由适配层继续使用 SandboxClient；需要隔离工作目录的业务
- * （例如 Workflow Builder）应注入自己的执行器，避免把物理 Sandbox 直接交给模型。
- */
-export type AgentLoopSandboxExecutionResult = {
-  success: boolean;
-  response: string;
-  errorMessage?: string;
-};
-
-export type AgentLoopSandboxExecutor = (params: {
-  toolName: string;
-  args: string;
-}) => Promise<AgentLoopSandboxExecutionResult>;
-
-export type AgentLoopAskValidationContext = {
-  /** 当前 ask_agent 工具调用所属 assistant 消息的正文。 */
-  assistantContent: string;
-};
-
 export type AgentLoopAskValidator = (
-  ask: AgentAskPayload,
-  context: AgentLoopAskValidationContext
+  ask: AgentAskPayload
 ) => string | undefined | Promise<string | undefined>;
 
 export type AgentLoopSystemTools = {
@@ -101,9 +79,9 @@ export type AgentLoopSystemTools = {
   };
   sandbox?: {
     enabled: boolean;
-    /** 普通 Agent 的兼容入口。Workflow Builder 应优先使用 executor。 */
-    client?: SandboxClient;
-    executor?: AgentLoopSandboxExecutor;
+    client: SandboxClient;
+    /** 业务访问限制在执行前校验，所有工具仍统一通过 client 执行。 */
+    validate?: SandboxToolCallValidator;
   };
   readFile?: {
     enabled: boolean;

@@ -1,4 +1,5 @@
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { requiresExplicitChatSourceType } from '@fastgpt/global/common/chat/source';
 import { Types } from '../../common/mongo';
 
 export type ChatSourceParams = {
@@ -33,11 +34,7 @@ export function buildChatSourceQuery({ sourceType, sourceId }: ChatSourceParams)
     };
   }
 
-  if (
-    sourceType === ChatSourceTypeEnum.skillEdit ||
-    sourceType === ChatSourceTypeEnum.chatAgentHelper ||
-    sourceType === ChatSourceTypeEnum.workflowBuilder
-  ) {
+  if (requiresExplicitChatSourceType(sourceType)) {
     return {
       appId: sourceId,
       sourceType

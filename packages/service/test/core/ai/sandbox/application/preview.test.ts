@@ -15,6 +15,7 @@ vi.mock('@fastgpt/dal/redis/adapter', async (importOriginal) => ({
 
 import {
   buildSandboxPreviewFileUrl,
+  createSandboxPreviewFileUrl,
   createSandboxPreviewSession,
   resolveSandboxPreviewPath,
   resolveSandboxPreviewSession,
@@ -65,7 +66,7 @@ describe('sandbox preview application', () => {
     expect(scriptOptions.script).toContain('zcard');
     expect(scriptOptions.keys).toEqual([
       `sandbox:preview:${sandboxId}:active`,
-      expect.stringMatching(/^sandbox:preview:app-[a-f0-9]{16}:[a-z][a-zA-Z0-9]{23}$/)
+      `sandbox:preview:session:${sessionId}`
     ]);
     expect(scriptOptions.args[0]).toEqual(expect.any(Number));
     expect(scriptOptions.args[1]).toBe(SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX);
@@ -73,6 +74,36 @@ describe('sandbox preview application', () => {
     expect(scriptOptions.args[3]).toBe(SANDBOX_PREVIEW_SESSION_TTL_SECONDS);
     expect(scriptOptions.args[4]).toBe(sessionId);
   });
+
+  it.each(Object.values(ChatSourceTypeEnum))(
+    'creates and resolves opaque preview tokens for %s',
+    async (sourceType) => {
+      const context = {
+        ...sessionContext,
+        sourceType,
+        sandboxId: generateSandboxId({
+          sourceType,
+          sourceId: sessionContext.sourceId,
+          userId: sessionContext.userId
+        })
+      };
+      const url = await createSandboxPreviewFileUrl({
+        context,
+        filePath: '/workspace/dist/index.html'
+      });
+      const [scriptOptions] = redisMock.evalScript.mock.calls[0];
+      const sessionId = String(scriptOptions.args[4]);
+
+      expect(sessionId).toMatch(/^[a-z][a-zA-Z0-9]{23}$/);
+      expect(url).toBe(
+        `https://agent-preview.example.com:3007/base/preview/${sessionId}/dist/index.html`
+      );
+      expect(scriptOptions.keys[0]).toBe(`sandbox:preview:${context.sandboxId}:active`);
+      redisMock.get.mockResolvedValueOnce(scriptOptions.args[2]);
+      await expect(resolveSandboxPreviewSession(sessionId)).resolves.toEqual(context);
+      expect(redisMock.get).toHaveBeenCalledWith(`sandbox:preview:session:${sessionId}`);
+    }
+  );
 
   it('rejects creation when the atomic session limit check fails', async () => {
     redisMock.evalScript.mockResolvedValueOnce(0);
@@ -104,23 +135,37 @@ describe('sandbox preview application', () => {
   it('resolves session context until the Redis TTL expires', async () => {
     redisMock.get.mockResolvedValueOnce(JSON.stringify(sessionContext)).mockResolvedValue(null);
 
-    const credential = `${sandboxId}:a12345678901234567890123`;
-    await expect(resolveSandboxPreviewSession(credential)).resolves.toEqual(sessionContext);
-    await expect(resolveSandboxPreviewSession(credential)).rejects.toThrow(
+    const sessionId = 'a12345678901234567890123';
+    await expect(resolveSandboxPreviewSession(sessionId)).resolves.toEqual(sessionContext);
+    await expect(resolveSandboxPreviewSession(sessionId)).rejects.toThrow(
       'Invalid or expired sandbox preview session'
     );
-    await expect(resolveSandboxPreviewSession('invalid')).rejects.toThrow();
+  });
+
+  it.each([
+    '',
+    'a1234567890123456789012',
+    'a123456789012345678901234',
+    'A12345678901234567890123',
+    '112345678901234567890123',
+    'a1234567890123456789012-',
+    'a1234567890123456789012_',
+    'a1234567890123456789012é',
+    'a1234567890123456789012\n',
+    `${sandboxId}:a12345678901234567890123`
+  ])('rejects malformed preview tokens before querying Redis: %s', async (sessionId) => {
+    await expect(resolveSandboxPreviewSession(sessionId)).rejects.toThrow();
+    expect(redisMock.get).not.toHaveBeenCalled();
   });
 
   it('builds a URL from the dedicated preview proxy and encodes each path segment', () => {
     expect(
       buildSandboxPreviewFileUrl({
-        sandboxId,
         sessionId: 'a12345678901234567890123',
         filePath: '/workspace/test dir/预览.html'
       })
     ).toBe(
-      `https://agent-preview.example.com:3007/base/preview/${sandboxId}/a12345678901234567890123/test%20dir/%E9%A2%84%E8%A7%88.html`
+      'https://agent-preview.example.com:3007/base/preview/a12345678901234567890123/test%20dir/%E9%A2%84%E8%A7%88.html'
     );
   });
 
@@ -129,7 +174,6 @@ describe('sandbox preview application', () => {
 
     expect(() =>
       buildSandboxPreviewFileUrl({
-        sandboxId,
         sessionId: 'a12345678901234567890123',
         filePath: '/workspace/index.html'
       })

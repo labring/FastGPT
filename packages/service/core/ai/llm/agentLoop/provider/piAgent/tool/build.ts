@@ -72,7 +72,6 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
   onToolChildPending,
   onToolStop,
   getMessages,
-  getAssistantContent,
   onToolCall,
   onToolResult
 }: {
@@ -84,7 +83,6 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
   onToolChildPending?: (pause: { childrenResponse: TChildrenResponse; toolCallId: string }) => void;
   onToolStop?: () => void;
   getMessages: () => ChatCompletionMessageParam[];
-  getAssistantContent: () => string;
   onToolCall: (call: ChatCompletionMessageToolCall) => void;
   onToolResult: (params: {
     call: ChatCompletionMessageToolCall;
@@ -246,9 +244,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
           return { content: [{ type: 'text' as const, text: response }], details: {} };
         }
 
-        const validationError = await askSystemTool.validate?.(parsed.data, {
-          assistantContent: getAssistantContent()
-        });
+        const validationError = await askSystemTool.validate?.(parsed.data);
         if (validationError) {
           onToolResult({
             call: createToolCall({ id: callId, name: askTool.function.name, args: toolArgs }),
@@ -278,10 +274,8 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     });
   }
 
-  if (
-    runtime.systemTools?.sandbox?.enabled &&
-    (runtime.systemTools.sandbox.client || runtime.systemTools.sandbox.executor)
-  ) {
+  const sandbox = runtime.systemTools?.sandbox;
+  if (sandbox?.enabled) {
     for (const sandboxTool of createAgentLoopSandboxTools()) {
       const agentLoopToolName = sandboxTool.function.name;
       const sandboxToolName = toSandboxToolName(agentLoopToolName);
@@ -301,22 +295,12 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
           const result = await executeOrdinaryTool({
             call,
             execute: async () => {
-              const sandboxExecutor = runtime.systemTools?.sandbox?.executor;
-              const sandboxClient = runtime.systemTools?.sandbox?.client;
-              if (!sandboxExecutor && !sandboxClient) {
-                const response = 'Sandbox executor is not available.';
-                return { response, assistantMessages: [], usages: [], errorMessage: response };
-              }
-              const sandboxResult = sandboxExecutor
-                ? await sandboxExecutor({
-                    toolName: sandboxToolName,
-                    args: call.function.arguments ?? ''
-                  })
-                : await runSandboxTools({
-                    toolName: sandboxToolName,
-                    args: call.function.arguments ?? '',
-                    sandboxClient: sandboxClient!
-                  });
+              const sandboxResult = await runSandboxTools({
+                toolName: sandboxToolName,
+                args: call.function.arguments ?? '',
+                sandboxClient: sandbox.client,
+                validate: sandbox.validate
+              });
               return {
                 response: sandboxResult.response,
                 assistantMessages: [],

@@ -14,7 +14,6 @@ import {
 import { loadRequestMessages } from '../../../utils';
 import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
 import { AgentUsageModuleName } from '../../domain/usage';
-import { resolveAgentLoopSystemPrompt } from '../../domain/mainPrompt';
 import {
   askUserToolName,
   formatAgentAskToolResponse,
@@ -22,7 +21,6 @@ import {
 } from '../../domain/systemTool/ask';
 import { setPlanToolName, updatePlanToolName } from '../../domain/systemTool/plan';
 import {
-  hasAgentLoopExecutableTools,
   normalizeAgentLoopUsages,
   type AgentLoopInput,
   type AgentLoopResult,
@@ -88,7 +86,6 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   let requestIndex = 0;
   let answerText = '';
   let reasoningText = '';
-  let currentAssistantContent = '';
   let inputTokens = 0;
   let outputTokens = 0;
   let llmTotalPoints = 0;
@@ -397,7 +394,6 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       abortCurrentRunRef.current?.();
     },
     getMessages: () => completeMessages,
-    getAssistantContent: () => currentAssistantContent,
     onToolCall: emitOrdinaryToolExecution,
     onToolResult: ({ call, response, assistantMessages }) => {
       recordToolResult({
@@ -415,14 +411,9 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     firstTokenAt?: number;
   }> = [];
   const maxRunAgentTimes = Math.max(1, runtime.maxRunAgentTimes ?? 100);
-  const systemPrompt = resolveAgentLoopSystemPrompt({
-    systemPrompt: input.systemPrompt,
-    hasExecutableTools: hasAgentLoopExecutableTools(runtime),
-    systemPromptBuilder: runtime.systemPromptBuilder
-  });
   const agent = new Agent({
     initialState: {
-      systemPrompt,
+      systemPrompt: input.systemPrompt ?? '',
       model: piModel,
       thinkingLevel: getPiThinkingLevel(modelData, runtime.llmParams.reasoningEffort),
       tools,
@@ -433,7 +424,6 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     toolExecution: 'sequential',
     getApiKey: () => getModelApiKey(modelData, runtime.llmParams.userKey),
     onPayload: (payload) => {
-      currentAssistantContent = '';
       if (requestIndex >= maxRunAgentTimes) {
         reachedRunLimit = true;
         throw new Error(`Agent loop reached max run times: ${maxRunAgentTimes}`);
@@ -532,7 +522,6 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         const request = pendingRequests[0];
         if (request) request.firstTokenAt ??= Date.now();
         answerText += assistantEvent.delta;
-        currentAssistantContent += assistantEvent.delta;
         runtime.emitEvent?.({
           type: 'answer_delta',
           text: assistantEvent.delta
@@ -595,7 +584,6 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         ? normalizedMessage
         : event.message;
       const messageData = readAssistantMessage(assistantMessage);
-      currentAssistantContent = messageData.answerText;
       messageData.toolCalls.forEach(emitOrdinaryToolCall);
       if (!answerText && messageData.answerText) {
         answerText = messageData.answerText;

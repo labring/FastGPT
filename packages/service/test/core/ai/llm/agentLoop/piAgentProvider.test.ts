@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { AgentLoopSystemTools } from '@fastgpt/service/core/ai/llm/agentLoop/domain';
 
 const {
   agentPromptMock,
@@ -37,7 +36,6 @@ const {
           name: string;
           callId: string;
           args: Record<string, unknown>;
-          assistantContent?: string;
         }
       | undefined
   },
@@ -137,17 +135,6 @@ vi.mock('@mariozechner/pi-agent-core', () => ({
         }
         if (agentToolToExecute.value) {
           const pendingTool = agentToolToExecute.value;
-          if (pendingTool.assistantContent) {
-            subscribers.forEach((subscriber) => {
-              subscriber({
-                type: 'message_update',
-                assistantMessageEvent: {
-                  type: 'text_delta',
-                  delta: pendingTool.assistantContent
-                }
-              });
-            });
-          }
           subscribers.forEach((subscriber) => {
             subscriber({
               type: 'message_update',
@@ -191,9 +178,6 @@ vi.mock('@mariozechner/pi-agent-core', () => ({
               message: {
                 role: 'assistant',
                 content: [
-                  ...(pendingTool.assistantContent
-                    ? [{ type: 'text', text: pendingTool.assistantContent }]
-                    : []),
                   {
                     type: 'toolCall',
                     id: pendingTool.callId,
@@ -416,75 +400,6 @@ describe('runPiAgentLoop', () => {
     });
   });
 
-  it.each([
-    {
-      name: 'no runtime-capable tools',
-      systemTools: undefined,
-      expectedConstraint: true
-    },
-    {
-      name: 'sandbox tools only',
-      systemTools: {
-        sandbox: {
-          enabled: true,
-          client: {} as any
-        }
-      },
-      expectedConstraint: false
-    },
-    {
-      name: 'read file tool only',
-      systemTools: {
-        readFile: {
-          enabled: true,
-          maxFileAmount: 20,
-          execute: vi.fn()
-        }
-      },
-      expectedConstraint: false
-    },
-    {
-      name: 'dataset search tool only',
-      systemTools: {
-        datasetSearch: {
-          enabled: true,
-          execute: vi.fn()
-        }
-      },
-      expectedConstraint: false
-    }
-  ] satisfies Array<{
-    name: string;
-    systemTools?: AgentLoopSystemTools;
-    expectedConstraint: boolean;
-  }>)(
-    'sets the runtime tool constraint correctly with $name',
-    async ({ systemTools, expectedConstraint }) => {
-      await runPiAgentLoop({
-        input: {
-          messages: [{ role: 'user', content: 'hello' }]
-        },
-        runtime: {
-          llmParams: {
-            model: 'gpt-5'
-          },
-          systemTools,
-          systemPromptBuilder: ({ hasExecutableTools }) =>
-            hasExecutableTools ? '' : '<tool_constraint>Use a tool.</tool_constraint>',
-          toolCatalog: {
-            runtimeTools: []
-          },
-          executeTool: vi.fn(),
-          checkIsStopping: vi.fn(() => false)
-        }
-      });
-
-      expect(
-        agentConstructorArgs.at(-1).initialState.systemPrompt.includes('<tool_constraint>')
-      ).toBe(expectedConstraint);
-    }
-  );
-
   it('preserves multimodal content in the current user prompt', async () => {
     await runPiAgentLoop({
       input: {
@@ -618,40 +533,6 @@ describe('runPiAgentLoop', () => {
         })
       ]
     });
-  });
-
-  it('uses the injected system prompt builder', async () => {
-    const systemPromptBuilder = vi.fn(
-      ({ systemPrompt, hasExecutableTools }) =>
-        `Workflow Builder\n${systemPrompt}\ntools=${hasExecutableTools}`
-    );
-
-    await runPiAgentLoop({
-      input: {
-        messages: [{ role: 'user', content: 'build workflow' }],
-        systemPrompt: 'runtime context'
-      },
-      runtime: {
-        llmParams: {
-          model: 'gpt-5',
-          stream: true
-        },
-        systemPromptBuilder,
-        toolCatalog: {
-          runtimeTools: []
-        },
-        executeTool: vi.fn()
-      }
-    });
-
-    expect(systemPromptBuilder).toHaveBeenCalledWith({
-      systemPrompt: 'runtime context',
-      hasExecutableTools: false
-    });
-    expect(agentConstructorArgs[0].initialState.systemPrompt).toBe(
-      'Workflow Builder\nruntime context\ntools=false'
-    );
-    expect(agentConstructorArgs[0].initialState.systemPrompt).not.toContain('你是 Work Agent');
   });
 
   it('reuses the compressed transcript for later requests in the same pi run', async () => {
@@ -1525,6 +1406,7 @@ describe('runPiAgentLoop', () => {
 
   it('injects sandbox tools as system tools and emits sandbox events', async () => {
     const events: any[] = [];
+    const validate = vi.fn(() => undefined);
     runSandboxToolsMock.mockResolvedValue({
       success: true,
       input: {
@@ -1545,7 +1427,8 @@ describe('runPiAgentLoop', () => {
         systemTools: {
           sandbox: {
             enabled: true,
-            client: {} as any
+            client: {} as any,
+            validate
           }
         },
         toolCatalog: {
@@ -1567,7 +1450,8 @@ describe('runPiAgentLoop', () => {
       expect.objectContaining({
         toolName: 'sandbox_shell',
         args: '{"command":"pwd"}',
-        sandboxClient: expect.anything()
+        sandboxClient: expect.anything(),
+        validate
       })
     );
     expect(result).toEqual({
@@ -1704,8 +1588,7 @@ describe('runPiAgentLoop', () => {
             ]
           }
         ]
-      },
-      assistantContent: '```mermaid\nflowchart LR\n  A --> B\n```'
+      }
     };
 
     const result = await runPiAgentLoop({
@@ -1725,8 +1608,7 @@ describe('runPiAgentLoop', () => {
     expect(validate).toHaveBeenCalledWith(
       expect.objectContaining({
         questions: [expect.objectContaining({ question: '请确认工作流' })]
-      }),
-      { assistantContent: '```mermaid\nflowchart LR\n  A --> B\n```' }
+      })
     );
     expect(result.providerState).not.toHaveProperty('pendingMainContext');
     expect(result.completeMessages).toContainEqual({

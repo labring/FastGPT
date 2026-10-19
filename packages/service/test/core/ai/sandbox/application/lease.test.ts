@@ -27,7 +27,7 @@ describe('sandbox lifecycle leases', () => {
     );
   });
 
-  it('uses the app mutation key for both app and workflow builder sources', async () => {
+  it('keeps app and workflow builder mutation keys independent', async () => {
     await withSandboxSourceMutationLease({
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app-1',
@@ -52,7 +52,7 @@ describe('sandbox lifecycle leases', () => {
 
     expect(mocks.withLease.mock.calls.map(([params]) => params.key)).toEqual([
       'agent-sandbox:source:app:app-1',
-      'agent-sandbox:source:app:app-1',
+      'agent-sandbox:source:workflowBuilder:app-1',
       'agent-sandbox:lifecycle:stable-id',
       'agent-sandbox:legacy-migration-job'
     ]);

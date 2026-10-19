@@ -5,6 +5,7 @@
  * 创建和 provider 控制流程仍由沙盒内部业务层承接。
  */
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { isAppSandboxSourceType } from '@fastgpt/global/common/chat/source';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '../../skill/edit/config';
 import { getRunningSandboxId, getSandboxUserId } from '../utils/id';
 import type { SandboxClientQuery } from '../application/runtime/type';
@@ -34,7 +35,7 @@ export function buildSandboxClientQueryFromChatSource({
     userId: sandboxUserId
   });
 
-  if (sourceType === ChatSourceTypeEnum.app || sourceType === ChatSourceTypeEnum.workflowBuilder) {
+  if (isAppSandboxSourceType(sourceType)) {
     return {
       sandboxId,
       sourceType,

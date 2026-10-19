@@ -222,24 +222,6 @@ export const getStreamResumeMirror = async ({
   return mirrorChatStream(params);
 };
 
-/** 为 Workflow Builder 等要求断线续跑的流，从首个请求开始建立相同的 Redis 重放镜像。 */
-export const getStreamResumeMirrorForBackgroundRun = async (
-  params: StreamResumeRedisKeysParams
-) => {
-  if (await isRedisMemoryPressureBlockingStreamResume()) {
-    await streamResumeCache
-      .setUnavailable(params, {
-        reason: StreamResumeUnavailableReasonEnum.memoryPressure
-      })
-      .catch((error) => {
-        logger.warn('Failed to persist stream resume unavailable state', { params, error });
-      });
-    return;
-  }
-
-  return mirrorChatStream(params);
-};
-
 type RedisStreamFields = Record<string, string>;
 
 const isTerminalRedisStreamFields = (fields: RedisStreamFields) => {
