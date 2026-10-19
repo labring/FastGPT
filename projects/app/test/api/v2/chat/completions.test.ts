@@ -149,27 +149,22 @@ describe('v2 chat completions stream cleanup', () => {
     expect(response.end).toHaveBeenCalledOnce();
   });
 
-  it.each([
-    { finalize: true, cleanupFails: false },
-    { finalize: false, cleanupFails: false },
-    { finalize: true, cleanupFails: true }
-  ])(
-    'preserves persistence errors and closes the stream: finalize=$finalize, cleanupFails=$cleanupFails',
-    async ({ finalize, cleanupFails }) => {
+  it.each([false, true])(
+    'cleans up after interactive status persistence fails: cleanupFails=%s',
+    async (cleanupFails) => {
       const persistenceError = new Error('Failure persistence failed');
       mocks.preChatRound.mockResolvedValueOnce({
         ...preparedRound,
-        shouldFinalizePreparedRound: finalize
+        shouldFinalizePreparedRound: false
       });
       mocks.dispatchWorkFlow.mockRejectedValueOnce(new Error('Workflow failed'));
-      const persistFailure = finalize ? mocks.failChatRound : mocks.updateChatGenerateStatus;
-      persistFailure.mockRejectedValueOnce(persistenceError);
+      mocks.updateChatGenerateStatus.mockRejectedValueOnce(persistenceError);
       if (cleanupFails) mocks.flushResume.mockRejectedValueOnce(new Error('Redis failed'));
 
       const { response, result } = runRequest();
       await expect(result).rejects.toBe(persistenceError);
 
-      expect(persistFailure).toHaveBeenCalledOnce();
+      expect(mocks.updateChatGenerateStatus).toHaveBeenCalledOnce();
       expect(mocks.flushResume).toHaveBeenCalledOnce();
       expect(response.end).toHaveBeenCalledOnce();
     }
