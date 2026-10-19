@@ -177,3 +177,13 @@ What to do: fill in the CSV template provided on the import page, open the file 
 Applies to: 4.15.2 and later. The thinking content is returned in a separate `reasoning_content` field, apart from the body text in `content`: in streaming responses, a chunk that carries thinking has `reasoning_content` in its `choices[0].delta`; in non-streaming responses, a plain text answer has `reasoning_content` in `choices[0].message`. The field is present only when the model actually outputs thinking content and FastGPT can recognize it: the upstream returns a `reasoning_content` field, or, with thinking support turned on in the model config, the body wraps it in `<think></think>`. From 4.17.1, OpenAI-type channels of AI Proxy can also map the upstream `reasoning` field to `reasoning_content`.
 
 ---
+
+### How do I switch the vector database from Milvus to pgvector?
+
+After you switch from Milvus to pgvector, the vectors stored in Milvus are not migrated automatically and need to be regenerated. Your knowledge bases, files, and text chunks are not affected. The steps below apply to 4.16.2 and later.
+
+1. Following the official template, add a pgvector service to docker-compose, set `PG_URL` on `fastgpt-app`, remove `MILVUS_ADDRESS`, and restart. The table and indexes are created automatically. If SeekDB or OceanBase is also configured, it takes priority over pgvector and must be removed as well.
+2. Open the configuration page of each knowledge base, switch the index model to a different one (you cannot pick the one currently in use), and confirm rebuilding the index. Until the rebuild finishes, search can only find data whose vectors have been regenerated. If the new model does not support images and the knowledge base has no image understanding model configured, the image index of that knowledge base is turned off.
+3. After all knowledge bases have been rebuilt and search tests pass, stop the old Milvus. Back up its data before you do.
+
+---
