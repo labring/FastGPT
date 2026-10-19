@@ -19,7 +19,7 @@ import {
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { assertAuthModels } from '@fastgpt/service/support/permission/model/auth';
-import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { isEqual } from 'lodash-es';
 import { type ClientSession } from 'mongoose';
 
@@ -146,6 +146,123 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     handle: modelHandle
   });
 
+  /**
+   * 将配置变更整理成通用审计 metadata；敏感来源配置只保留结构并脱敏，不把 token、secret 等写入操作日志。
+   * 这里不展开前端详情结构，保持已有审计列表的字符串字段兼容。
+   */
+  const configChanges: Array<{ item: string; oldValue: string; newValue: string }> = [];
+  const stringifyAuditValue = (value: unknown, fieldName?: string): string => {
+    const sensitiveKey = /(token|secret|password|apikey|apiKey|accessToken|privateKey)/i;
+    const sanitize = (input: unknown, key?: string): unknown => {
+      if (key && sensitiveKey.test(key)) return '[REDACTED]';
+      if (Array.isArray(input)) return input.map((item) => sanitize(item));
+      if (input && typeof input === 'object') {
+        return Object.fromEntries(
+          Object.entries(input).map(([childKey, childValue]) => [
+            childKey,
+            sanitize(childValue, childKey)
+          ])
+        );
+      }
+      return input;
+    };
+
+    if (value === undefined || value === null || value === '') return '-';
+    if (typeof value === 'string') return value;
+
+    try {
+      return JSON.stringify(sanitize(value, fieldName));
+    } catch {
+      return String(value);
+    }
+  };
+  const addConfigChange = ({
+    item,
+    oldValue,
+    newValue,
+    enabled = true
+  }: {
+    item: string;
+    oldValue: unknown;
+    newValue: unknown;
+    enabled?: boolean;
+  }) => {
+    if (!enabled || isEqual(oldValue, newValue)) return;
+    configChanges.push({
+      item,
+      oldValue: stringifyAuditValue(oldValue, item),
+      newValue: stringifyAuditValue(newValue, item)
+    });
+  };
+
+  addConfigChange({
+    item: 'name',
+    oldValue: dataset.name,
+    newValue: name,
+    enabled: Boolean(name)
+  });
+  addConfigChange({
+    item: 'intro',
+    oldValue: dataset.intro,
+    newValue: intro,
+    enabled: intro !== undefined
+  });
+  addConfigChange({
+    item: 'avatar',
+    oldValue: dataset.avatar,
+    newValue: avatar,
+    enabled: Boolean(avatar)
+  });
+  addConfigChange({
+    item: 'agentModel',
+    oldValue: dataset.agentModelId ?? dataset.agentModel,
+    newValue: agentModelData?.modelId,
+    enabled: (agentModelId !== undefined || agentModel !== undefined) && !!agentModelData
+  });
+  addConfigChange({
+    item: 'vlmModel',
+    oldValue: dataset.vlmModelId ?? dataset.vlmModel,
+    newValue: clearVlmModel ? undefined : vlmModelData?.modelId,
+    enabled:
+      (vlmModelId !== undefined || vlmModel !== undefined) && (clearVlmModel || !!vlmModelData)
+  });
+  addConfigChange({
+    item: 'websiteConfig',
+    oldValue: dataset.websiteConfig,
+    newValue: websiteConfig,
+    enabled: websiteConfig !== undefined
+  });
+  addConfigChange({
+    item: 'externalReadUrl',
+    oldValue: dataset.externalReadUrl,
+    newValue: externalReadUrl,
+    enabled: externalReadUrl !== undefined
+  });
+  addConfigChange({
+    item: 'apiDatasetServer',
+    oldValue: dataset.apiDatasetServer,
+    newValue: apiDatasetServer,
+    enabled: apiDatasetServer !== undefined
+  });
+  addConfigChange({
+    item: 'autoSync',
+    oldValue: dataset.autoSync,
+    newValue: autoSync,
+    enabled: typeof autoSync === 'boolean'
+  });
+  addConfigChange({
+    item: 'chunkSettings',
+    oldValue: dataset.chunkSettings,
+    newValue: chunkSettings,
+    enabled: rawChunkSettings !== undefined
+  });
+  addConfigChange({
+    item: 'sangforFileParseConfig',
+    oldValue: dataset.sangforFileParseConfig,
+    newValue: sangforFileParseConfig,
+    enabled: sangforFileParseConfig !== undefined
+  });
+
   const onUpdate = async (session: ClientSession) => {
     // Website dataset update chunkSettings, need to clean up dataset
     if (
@@ -239,10 +356,22 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     await getS3AvatarSource().refreshAvatar(avatar, dataset.avatar, session);
   };
 
-  await mongoSessionRun(async (session) => {
-    logDatasetUpdate({ tmbId, teamId, dataset });
-    return onUpdate(session);
-  });
+  await mongoSessionRun((session) => onUpdate(session));
+
+  if (configChanges.length > 0) {
+    await addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.UPDATE_DATASET_CONFIG,
+      params: {
+        datasetId: String(dataset._id),
+        datasetName: name ?? dataset.name,
+        changeItems: configChanges.map((change) => change.item).join('、'),
+        oldValues: configChanges.map((change) => change.oldValue).join('、'),
+        newValues: configChanges.map((change) => change.newValue).join('、')
+      }
+    });
+  }
 }
 export default NextAPI(handler);
 
@@ -263,26 +392,4 @@ const updateSyncSchedule = async ({
     // remove Job Scheduler
     return removeDatasetSyncJobScheduler(dataset._id);
   }
-};
-
-const logDatasetUpdate = ({
-  tmbId,
-  teamId,
-  dataset
-}: {
-  tmbId: string;
-  teamId: string;
-  dataset: any;
-}) => {
-  (async () => {
-    addAuditLog({
-      tmbId,
-      teamId,
-      event: AuditEventEnum.UPDATE_DATASET,
-      params: {
-        datasetName: dataset.name,
-        datasetType: getI18nDatasetType(dataset.type)
-      }
-    });
-  })();
 };

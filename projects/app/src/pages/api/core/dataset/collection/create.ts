@@ -6,12 +6,16 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTypeEnum,
+  DatasetCollectionTypeMap
+} from '@fastgpt/global/core/dataset/constants';
 import {
   CreateCollectionBodySchema,
   CreateCollectionResponseSchema,
   type CreateCollectionResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
+import { getDatasetCollectionPaths } from './paths';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionResponseType> {
   const body = parseApiInput({ req, bodySchema: CreateCollectionBodySchema }).body;
@@ -23,6 +27,11 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionResponseTy
     datasetId: body.datasetId,
     parentId: body.parentId
   });
+  const parentPaths = await getDatasetCollectionPaths({
+    parentId: body.parentId ?? undefined
+  }).catch(() => []);
+  const location = [dataset.name, ...parentPaths.map((path) => path.parentName)].join('/');
+  const objectType = DatasetCollectionTypeMap[body.type]?.name ?? body.type;
 
   const { _id } = await createOneCollection({
     ...body,
@@ -41,7 +50,9 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionResponseTy
       params: {
         collectionName: body.name,
         datasetName: dataset.name,
-        datasetType: getI18nDatasetType(dataset.type)
+        datasetType: getI18nDatasetType(dataset.type),
+        objectType,
+        location
       }
     });
   })();

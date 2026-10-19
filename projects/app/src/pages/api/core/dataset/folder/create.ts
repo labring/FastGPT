@@ -14,7 +14,7 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkTeamDatasetFolderLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import type { ApiRequestProps } from '@fastgpt/next/type';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { checkCreateFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
@@ -22,6 +22,7 @@ import {
   CreateDatasetFolderBodySchema,
   type CreateDatasetFolderBody
 } from '@fastgpt/global/openapi/core/dataset/api';
+import { getParents } from '../paths';
 
 async function handler(req: ApiRequestProps<CreateDatasetFolderBody>) {
   const { parentId, name, intro, inheritPermission } = parseApiInput({
@@ -43,6 +44,9 @@ async function handler(req: ApiRequestProps<CreateDatasetFolderBody>) {
         authApiKey: true,
         per: TeamDatasetCreatePermissionVal
       });
+  const parentPaths = await getParents(parentId ?? undefined);
+  const location = parentPaths.map((path) => path.parentName).join('/') || 'root';
+  const objectType = getI18nDatasetType(DatasetTypeEnum.folder);
 
   await checkTeamDatasetFolderLimit({ teamId });
 
@@ -79,7 +83,9 @@ async function handler(req: ApiRequestProps<CreateDatasetFolderBody>) {
       teamId,
       event: AuditEventEnum.CREATE_DATASET_FOLDER,
       params: {
-        folderName: name
+        folderName: name,
+        objectType,
+        location
       }
     });
   })();

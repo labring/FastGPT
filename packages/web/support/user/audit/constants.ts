@@ -341,6 +341,18 @@ export const auditLogMap = {
     typeLabel: i18nT('account_team:create_dataset'),
     params: {} as { name?: string; datasetName: string; datasetType: string }
   },
+  [AuditEventEnum.UPDATE_DATASET_CONFIG]: {
+    content: i18nT('account_team:log_update_dataset_config'),
+    typeLabel: i18nT('account_team:update_dataset_config'),
+    params: {} as {
+      name?: string;
+      datasetId: string;
+      datasetName: string;
+      changeItems: string;
+      oldValues: string;
+      newValues: string;
+    }
+  },
   [AuditEventEnum.UPDATE_DATASET]: {
     content: i18nT('account_team:log_update_dataset'),
     typeLabel: i18nT('account_team:update_dataset'),
@@ -419,7 +431,12 @@ export const auditLogMap = {
   [AuditEventEnum.CREATE_DATASET_FOLDER]: {
     content: i18nT('account_team:log_create_dataset_folder'),
     typeLabel: i18nT('account_team:create_dataset_folder'),
-    params: {} as { name?: string; folderName: string }
+    params: {} as {
+      name?: string;
+      folderName: string;
+      objectType: string;
+      location: string;
+    }
   },
   //Collection
   [AuditEventEnum.CREATE_COLLECTION]: {
@@ -430,6 +447,8 @@ export const auditLogMap = {
       collectionName: string;
       datasetName: string;
       datasetType: string;
+      objectType: string;
+      location: string;
     }
   },
   [AuditEventEnum.UPDATE_COLLECTION]: {
