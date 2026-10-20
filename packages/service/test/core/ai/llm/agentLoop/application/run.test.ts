@@ -8,7 +8,7 @@ import type { AgentLoopRuntime } from '@fastgpt/service/core/ai/llm/agentLoop/do
 import type { AgentLoopSystemTools } from '@fastgpt/service/core/ai/llm/agentLoop/domain/tool';
 import type { SandboxClient } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
 import { resolveSandboxRuntimePath } from '@fastgpt/service/core/ai/sandbox/utils';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 describe('runAgentLoopApplication tool visibility', () => {
   const publicCall: ChatCompletionMessageToolCall = {
@@ -19,10 +19,8 @@ describe('runAgentLoopApplication tool visibility', () => {
   const internalCall: ChatCompletionMessageToolCall = {
     ...publicCall,
     id: 'internal',
-    function: { ...publicCall.function, arguments: '{"path":"/transaction/workflow.json"}' }
+    function: { ...publicCall.function, arguments: '{"path":"/root/.fastgpt/runtime/state.json"}' }
   };
-  const visibility: NonNullable<AgentLoopSystemTools['sandbox']>['visibility'] = ({ args }) =>
-    args.includes('/transaction/') ? 'internal' : 'public';
   const sandboxClient = {
     resolveRuntimePath: (path, options) =>
       resolveSandboxRuntimePath(
@@ -65,7 +63,13 @@ describe('runAgentLoopApplication tool visibility', () => {
   const run = async ({
     events = [],
     messages = [],
-    systemTools = { sandbox: { enabled: true, client: sandboxClient, visibility } },
+    systemTools = {
+      sandbox: {
+        enabled: true,
+        client: sandboxClient,
+        internalReadDirectories: ['/root/.fastgpt']
+      }
+    },
     onEvent,
     reject = false,
     withEmitter = true
@@ -123,8 +127,13 @@ describe('runAgentLoopApplication tool visibility', () => {
   it.each([
     {},
     { sandbox: { enabled: true, client: sandboxClient } },
-    { sandbox: { enabled: true, client: sandboxClient, visibility: 'public' as const } },
-    { sandbox: { enabled: false, client: sandboxClient, visibility: 'internal' as const } }
+    {
+      sandbox: {
+        enabled: false,
+        client: sandboxClient,
+        internalReadDirectories: ['/root/.fastgpt']
+      }
+    }
   ])('preserves default public tools and disabled configurations: %j', async (systemTools) => {
     const events: AgentLoopEvent[] = [
       { type: 'tool_call', call: internalCall },
@@ -158,9 +167,8 @@ describe('runAgentLoopApplication tool visibility', () => {
   });
 
   it.each(['request', 'start'] as const)(
-    'buffers dynamic calls until complete parameters arrive at the %s boundary',
+    'buffers configured file reads until complete parameters arrive at the %s boundary',
     async (boundary) => {
-      const policy = vi.fn(visibility);
       const events: AgentLoopEvent[] = [
         {
           type: 'tool_call',
@@ -173,16 +181,11 @@ describe('runAgentLoopApplication tool visibility', () => {
       ];
       const { forwarded } = await run({
         events,
-        systemTools: { sandbox: { enabled: true, client: sandboxClient, visibility: policy } },
         onEvent: (index, forwarded) => {
           if (index < 2) expect(forwarded).toEqual([]);
         }
       });
       expect(forwarded).toEqual(events);
-      expect(policy).toHaveBeenCalledExactlyOnceWith({
-        toolName: publicCall.function.name,
-        args: publicCall.function.arguments
-      });
     }
   );
 
@@ -252,6 +255,8 @@ describe('runAgentLoopApplication tool visibility', () => {
     { args: JSON.stringify({ path: `${skillDirectory}/references/cli-basics.md` }), hidden: true },
     { args: JSON.stringify({ path: `${skillDirectory}/scripts/build.py` }), hidden: true },
     { args: JSON.stringify({ path: `${skillDirectory}/assets/template.json` }), hidden: true },
+    { args: JSON.stringify({ path: '/root/.fastgpt/runtime/state.json' }), hidden: true },
+    { args: JSON.stringify({ path: '/root/.fastgpt/config.json' }), hidden: true },
     {
       args: `{ path: '${skillDirectory}/references/cli-basics.md', }`,
       hidden: true
@@ -260,11 +265,21 @@ describe('runAgentLoopApplication tool visibility', () => {
       args: JSON.stringify({ path: `${skillDirectory}//references/./cli-basics.md` }),
       hidden: true
     },
-    { args: JSON.stringify({ path: 'skills/report/references/guide.md' }), hidden: true },
+    { args: JSON.stringify({ path: 'skills/report/references/guide.md' }), hidden: false },
     {
       args: JSON.stringify({ path: `${skillDirectory}-extra/references/guide.md` }),
+      hidden: true
+    },
+    { args: JSON.stringify({ path: '/root/.fastgpt-extra/config.json' }), hidden: false },
+    { args: JSON.stringify({ path: '/root/.fastgpt2/config.json' }), hidden: false },
+    { args: JSON.stringify({ path: '/workspace/skills/report/SKILL.md' }), hidden: false },
+    {
+      args: JSON.stringify({
+        path: '/workspace/.fastgpt/workflow-builder/transaction/workflow.json'
+      }),
       hidden: false
     },
+    { args: JSON.stringify({ path: '/workspace/fastgpt-workflow/workflow.json' }), hidden: false },
     { args: JSON.stringify({ path: '/workspace/SKILL.md' }), hidden: false },
     { args: '{', hidden: false },
     { args: 'null', hidden: false },
@@ -273,6 +288,16 @@ describe('runAgentLoopApplication tool visibility', () => {
     {
       args: JSON.stringify({ path: `${skillDirectory}/references/cli-basics.md` }),
       toolName: 'sandbox_write_file',
+      hidden: false
+    },
+    {
+      args: JSON.stringify({ command: 'cat /root/.fastgpt/runtime/state.json' }),
+      toolName: 'sandbox_shell',
+      hidden: false
+    },
+    {
+      args: JSON.stringify({ path: '/root/.fastgpt', pattern: 'state' }),
+      toolName: 'sandbox_grep',
       hidden: false
     },
     {
@@ -306,9 +331,7 @@ describe('runAgentLoopApplication tool visibility', () => {
           sandbox: {
             enabled,
             client: sandboxClient,
-            // 显式 public 也不能把内部参考文档返回客户端；目录策略与业务 visibility 共同生效。
-            visibility: 'public',
-            internalReadDirectories: [`${skillDirectory}/`, '/workspace/skills/report']
+            internalReadDirectories: ['/root/.fastgpt/']
           }
         },
         onEvent: (index, forwarded) => {
@@ -345,7 +368,7 @@ describe('runAgentLoopApplication tool visibility', () => {
         sandbox: {
           enabled: true,
           client: sandboxClient,
-          internalReadDirectories: [skillDirectory]
+          internalReadDirectories: ['/root/.fastgpt']
         }
       }
     });
@@ -396,9 +419,16 @@ describe('runAgentLoopApplication tool visibility', () => {
     expect(result.completeMessages).toEqual(visible ? [{ role: 'assistant', ...output }] : []);
   });
 
-  it.each(['sandbox', 'readFile', 'datasetSearch'] as const)(
-    'supports static internal visibility on %s without changing other tool groups',
-    async (kind) => {
+  it.each([
+    'sandbox_read_file',
+    'sandbox_shell',
+    'sandbox_grep',
+    'read_files',
+    'dataset_search',
+    'workflow_cli_query'
+  ])(
+    'returns the complete %s call and result when no directory policy is configured',
+    async (name) => {
       const systemTools: AgentLoopSystemTools = {
         sandbox: { enabled: true, client: sandboxClient },
         readFile: {
@@ -408,31 +438,25 @@ describe('runAgentLoopApplication tool visibility', () => {
         },
         datasetSearch: { enabled: true, execute: async () => ({ response: '', usages: [] }) }
       };
-      systemTools[kind]!.visibility = 'internal';
-      const names = {
-        sandbox: 'sandbox_read_file',
-        readFile: 'read_files',
-        datasetSearch: 'dataset_search'
-      };
-      const calls = Object.values(names).map((name) => ({
-        ...publicCall,
+      const call: ChatCompletionMessageToolCall = {
+        ...internalCall,
         id: name,
-        function: { ...publicCall.function, name }
-      }));
-      const events: AgentLoopEvent[] = calls.flatMap((call) => [
+        function: { ...internalCall.function, name }
+      };
+      const events: AgentLoopEvent[] = [
         { type: 'tool_call', call },
         { type: 'tool_params', callId: call.id, argsDelta: call.function.arguments },
         { type: 'tool_run_start', call },
         toolEnd(call)
-      ]);
-      const { forwarded } = await run({ systemTools, events });
-      expect(forwarded).toEqual(
-        calls.flatMap<AgentLoopEvent>((call, index) =>
-          call.function.name === names[kind]
-            ? [activity(call, 'running'), activity(call, 'done')]
-            : events.slice(index * 4, index * 4 + 4)
-        )
-      );
+      ];
+      const messages: ChatCompletionMessageParam[] = [
+        { role: 'assistant', tool_calls: [call] },
+        { role: 'tool', tool_call_id: call.id, content: 'Complete tool response' }
+      ];
+      const { forwarded, result } = await run({ systemTools, events, messages });
+      expect(forwarded).toEqual(events);
+      expect(result.completeMessages).toBe(messages);
+      expect(result.assistantMessages).toBe(messages);
     }
   );
 

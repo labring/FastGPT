@@ -130,17 +130,15 @@ describe('createWorkflowAgentLoopRuntime', () => {
     };
     const { runtime } = createWorkflowAgentLoopRuntime({
       context: createContext({
-        sandboxClient,
-        skillInfos: [{ directory: '/workspace/projects/skill-version' }]
+        sandboxClient
       }),
       usagePush: vi.fn(),
       executeToolFactory: vi.fn()
     });
 
-    expect(runtime.systemTools?.sandbox).toMatchObject({
+    expect(runtime.systemTools?.sandbox).toEqual({
       enabled: true,
-      client: sandboxClient,
-      internalReadDirectories: ['/workspace/projects/skill-version']
+      client: sandboxClient
     });
   });
 

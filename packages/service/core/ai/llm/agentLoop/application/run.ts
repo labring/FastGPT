@@ -11,9 +11,6 @@ import type {
   ChatCompletionMessageToolCall
 } from '@fastgpt/global/core/ai/llm/type';
 import type { AgentLoopEvent } from '../domain/event';
-import { isAgentLoopSandboxToolName } from '../domain/systemTool/sandbox';
-import { READ_FILES_TOOL_NAME } from '../domain/systemTool/readFile';
-import { DATASET_SEARCH_TOOL_NAME } from '../domain/systemTool/datasetSearch';
 import { SANDBOX_READ_FILE_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 import { posix } from 'node:path';
 import { parseJsonArgs } from '../../../utils';
@@ -30,7 +27,7 @@ export type RunAgentLoopApplicationParams<TChildrenResponse = unknown> = {
  * provider 产生 usage 时仍只调用一次 `runtime.usagePush`。这里在转发账单回调的同时
  * 收集同一批 usage，并将其作为只读 result 返回，避免 provider 另行拼装汇总后遗漏
  * 工具/压缩用量，或由业务层为了补汇总再次触发计费。
- * 工具 visibility 和内部读取目录在此统一作用于事件及对外消息；provider 内部上下文及恢复状态不做裁剪。
+ * 调用方显式配置的内部读取目录统一作用于事件及对外消息；未配置时完整透传，provider 内部上下文及恢复状态不做裁剪。
  */
 export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
   provider,
@@ -46,25 +43,10 @@ export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
         .filter((directory) => posix.isAbsolute(directory))
         .map((directory) => posix.normalize(directory).replace(/\/+$/, ''))
     : [];
-  const hasVisibilityPolicy =
-    internalReadDirectories.length > 0 ||
-    [systemTools?.sandbox, systemTools?.readFile, systemTools?.datasetSearch].some(
-      (tool) => tool?.enabled && tool.visibility && tool.visibility !== 'public'
-    );
+  const hasVisibilityPolicy = internalReadDirectories.length > 0;
   const bufferedToolEvents = new Map<string, AgentLoopEvent[]>();
   const internalToolCallIds = new Map<string, boolean>();
   const toolActivityStatuses = new Map<string, 'running' | 'done'>();
-
-  /** 只读取实际启用的系统工具配置，普通业务工具和未配置项默认公开。 */
-  const getVisibility = (toolName: string) => {
-    const tool = (() => {
-      if (isAgentLoopSandboxToolName(toolName)) return systemTools?.sandbox;
-      if (toolName === READ_FILES_TOOL_NAME) return systemTools?.readFile;
-      if (toolName === DATASET_SEARCH_TOOL_NAME) return systemTools?.datasetSearch;
-      return undefined;
-    })();
-    return tool?.enabled ? (tool.visibility ?? 'public') : 'public';
-  };
 
   /** 复用沙箱的参数和路径解析规则，覆盖整个内部目录并避免误匹配同名前缀目录。 */
   const isInternalFileRead = (call: ChatCompletionMessageToolCall) => {
@@ -101,12 +83,7 @@ export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
   const isInternalToolCall = (call: ChatCompletionMessageToolCall) => {
     const cached = internalToolCallIds.get(call.id);
     if (cached !== undefined) return cached;
-    const visibility = getVisibility(call.function.name);
-    const internal =
-      isInternalFileRead(call) ||
-      (typeof visibility === 'function'
-        ? visibility({ toolName: call.function.name, args: call.function.arguments ?? '' })
-        : visibility) === 'internal';
+    const internal = isInternalFileRead(call);
     internalToolCallIds.set(call.id, internal);
     return internal;
   };
@@ -124,7 +101,7 @@ export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
     });
   };
 
-  /** 动态策略等待完整参数；静态可见性无需延迟普通工具的流式输出。 */
+  /** 配置目录过滤的文件读取等待完整参数，其他工具完整透传。 */
   const emitEvent = (event: AgentLoopEvent) => {
     if (!hasVisibilityPolicy) {
       runtime.emitEvent?.(event);
@@ -133,9 +110,7 @@ export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
 
     if (event.type === 'tool_call') {
       if (
-        (typeof getVisibility(event.call.function.name) === 'function' ||
-          (internalReadDirectories.length > 0 &&
-            event.call.function.name === SANDBOX_READ_FILE_TOOL_NAME)) &&
+        event.call.function.name === SANDBOX_READ_FILE_TOOL_NAME &&
         !internalToolCallIds.has(event.call.id)
       ) {
         bufferedToolEvents.set(event.call.id, [event]);

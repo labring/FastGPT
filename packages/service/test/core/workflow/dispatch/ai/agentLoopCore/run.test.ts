@@ -347,14 +347,14 @@ describe('runAgentLoopCore', () => {
     expect(result.assistantResponses).toEqual(eventTarget);
   });
 
-  it('uses tool visibility from agent-loop for outward events and persisted responses', async () => {
+  it('uses configured file read directories for outward events and persisted responses', async () => {
     const forwardedEvents: any[] = [];
     const privateCall = {
       id: 'call_private',
       type: 'function' as const,
       function: {
         name: 'sandbox_read_file',
-        arguments: '{"path":"/workspace/.fastgpt/workflow-builder/transaction/workflow.json"}'
+        arguments: '{"path":"/root/.fastgpt/runtime/state.json"}'
       }
     };
     const publicCall = {
@@ -451,9 +451,8 @@ describe('runAgentLoopCore', () => {
         systemTools: {
           sandbox: {
             enabled: true,
-            client: {},
-            visibility: ({ args }: { args: string }) =>
-              args.includes('/transaction/') ? 'internal' : 'public'
+            client: { resolveRuntimePath: (path: string) => path },
+            internalReadDirectories: ['/root/.fastgpt']
           }
         },
         emitEvent: (event) => forwardedEvents.push(event)
