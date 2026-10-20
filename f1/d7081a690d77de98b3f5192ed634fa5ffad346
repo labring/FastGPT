@@ -1,0 +1,99 @@
+packages/service/test/core/workflow/dispatch/ai/agentLoopCore/eventStream/createEventStream.test.ts
+  s_c1db842a72b21d::t_a88e039ee7fc56 143-174
+packages/global/core/workflow/template/system/agent/index.ts
+  s_c1db842a72b21d::t_f661b3583d9641 17
+  s_c1db842a72b21d::t_862c6f3ec3d6b6 134
+projects/app/src/web/core/workflow/check/node.ts
+  s_c1db842a72b21d::t_100567f12cac0b 31,36-37
+  s_c1db842a72b21d::t_a159c649171435 119,132-135,168
+  s_c1db842a72b21d::t_72c7eca503724f 113-118,120-131,136-167,169-231
+packages/service/core/ai/llm/agentLoop/domain/result.ts
+  s_c1db842a72b21d::t_538f2d26a26045 32-33
+packages/service/core/ai/llm/agentLoop/provider/fastAgent/loop/base.ts
+  s_c1db842a72b21d::t_cc28ef432a821e 126
+  s_c1db842a72b21d::t_c1626a83631eef 382-383
+  s_c1db842a72b21d::t_dc1b690aecda88 463
+  s_c1db842a72b21d::t_5ccd229345d60f 661
+  s_c1db842a72b21d::t_0e99f02480dd88 737-746
+projects/app/test/web/core/workflow/check/check.test.ts
+  s_c1db842a72b21d::t_ab64237edd6be9 36-37
+  s_c1db842a72b21d::t_c61f1e72eb8e2b 762-858,860-888,890-891
+  s_c1db842a72b21d::t_b5a8aee9791d8d 889
+  s_c1db842a72b21d::t_165c02e306038a 859
+packages/service/core/ai/llm/agentLoop/provider/piAgent/run.ts
+  s_c1db842a72b21d::t_0968713481161c 841
+packages/service/core/workflow/dispatch/ai/agent/adapter/runtime.ts
+  s_c1db842a72b21d::t_19c52d7608b237 117
+packages/global/core/workflow/template/constants.ts
+  s_c1db842a72b21d::t_dea5c70d716279 77
+  s_c1db842a72b21d::t_44a074dd0b3a9f 76
+  s_c1db842a72b21d::t_ef3964003e8b16 23
+projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeAgent/useAgentSkillManager.ts
+  s_c1db842a72b21d::t_da460d4fb122cd 115
+  s_c1db842a72b21d::t_3eea5eeea5a8db 34-39
+  s_c1db842a72b21d::t_53a6f33b2e7da7 84
+  s_c1db842a72b21d::t_3a6a22d0c4983d 54-55,57,61
+packages/service/core/ai/llm/agentLoop/provider/fastAgent/index.ts
+  s_c1db842a72b21d::t_666f987c7f18ac 170
+projects/app/test/web/core/app/workflow/utils.test.ts
+  s_c1db842a72b21d::t_3270bd8634124e 314-316,335-337
+  s_c1db842a72b21d::t_b227833abe9aca 302-305,307-313,317-319,321-324,328-334,338-339
+  s_c1db842a72b21d::t_c981431d2fc429 301,306,320,325-327
+packages/service/core/ai/llm/agentLoop/provider/fastAgent/loop/type.ts
+  s_c1db842a72b21d::t_2de0a878a2e1ba 93
+packages/service/test/core/workflow/dispatch/utils.test.ts
+  s_c1db842a72b21d::t_d489786b799cb9 2180-2191
+packages/service/core/workflow/dispatch/ai/agentLoopCore/adapter/eventStream/createEventStream.ts
+  s_c1db842a72b21d::t_b0c7f2b4dff957 12-13
+packages/service/core/workflow/dispatch/ai/agent/index.ts
+  s_c1db842a72b21d::t_a48db6d7aa4351 351-355
+  s_c1db842a72b21d::t_7b2f90724edcbb 405-407
+  s_c1db842a72b21d::t_4708147f2015cb 135
+  s_c1db842a72b21d::t_e31d335931e1f6 426-428
+  s_c1db842a72b21d::t_c7b17a719ac986 59
+projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeAgent/index.tsx
+  s_c1db842a72b21d::t_81b3c6aae37fca 701
+  s_c1db842a72b21d::t_99888da5e6d684 219-223,229-234
+  s_c1db842a72b21d::t_a159c649171435 702
+  s_c1db842a72b21d::t_a1401da2179d2b 227
+  s_c1db842a72b21d::t_5113dd57baebea 273
+  s_c1db842a72b21d::t_09fb0ae9316d81 689
+  s_c1db842a72b21d::t_8958c79967ffdc 679
+packages/service/core/workflow/dispatch/utils/summary.ts
+  s_c1db842a72b21d::t_3ea0b43cc5e646 363-365
+  s_c1db842a72b21d::t_31afeab3813c1a 104
+  s_c1db842a72b21d::t_ab7d06cf12b8e8 69-71
+  s_c1db842a72b21d::t_4f7be0d80a496a 395-397
+packages/service/test/core/ai/llm/agentLoop/fastAgentLoop.test.ts
+  s_c1db842a72b21d::t_8b01f9cb968d3e 165-185
+packages/service/test/core/workflow/dispatch/ai/agent/index.test.ts
+  s_c1db842a72b21d::t_85c1916e9063d2 785-826
+  s_c1db842a72b21d::t_1dadb4bc22522a 9-12
+  s_c1db842a72b21d::t_5aeb0ec9717c17 827-856
+packages/service/core/workflow/dispatch/ai/agentLoopCore/application/output/result.ts
+  s_c1db842a72b21d::t_f2560aef347836 20
+  s_c1db842a72b21d::t_80c8b4f1c4450b 86
+packages/service/core/ai/llm/agentLoop/provider/fastAgent/loop/index.ts
+  s_c1db842a72b21d::t_59d5c9cdbb6b30 607-608
+packages/service/core/workflow/types/summary.ts
+  s_c1db842a72b21d::t_cda2b7d6dcecdb 22
+  s_c1db842a72b21d::t_acedef4ce4b9e7 23
+packages/service/test/core/workflow/dispatch/ai/agent/adapter/runtime.test.ts
+  s_c1db842a72b21d::t_139d4ecf7cc3ac 58,126-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f1d7081a690d77de98b3f5192ed634fa5ffad346",
+  "prompts": {},
+  "sessions": {
+    "s_c1db842a72b21d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0d192b3e-2692-4b40-88fe-00d20c616da1",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    }
+  }
+}
