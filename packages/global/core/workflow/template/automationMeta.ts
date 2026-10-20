@@ -84,8 +84,12 @@ const automationMetaMap: Record<string, NodeTemplateAutomationMeta> = {
     inputs: {
       system_textareaInput: {
         agentHint:
-          'workflow:cli.input.text_editor. This is a literal text field. Use {{name}} only for a global variable, and use {{$nodeId.outputKey$}} for a node output embedded in text. Never use {{nodeId.outputKey}} for a node reference.',
-        examples: ['Plain text', 'Hello {{name}}', 'Topic: {{$validateCode.topic$}}']
+          'workflow:cli.input.text_editor. This is a literal text field. Embed references using {{$nodeId.outputKey$}}; global variables use {{$VARIABLE_NODE_ID.variableKey$}}. Do not generate bare {{variableKey}} or {{nodeId.outputKey}} placeholders.',
+        examples: [
+          'Plain text',
+          'Hello {{$VARIABLE_NODE_ID.name$}}',
+          'Topic: {{$validateCode.topic$}}'
+        ]
       }
     }
   },
@@ -160,7 +164,8 @@ const automationMetaMap: Record<string, NodeTemplateAutomationMeta> = {
         bindingRequired: true,
         configurable: true,
         inputModes: ['literal'],
-        agentHint: 'Absolute HTTP or HTTPS request URL.'
+        agentHint:
+          'Absolute HTTP or HTTPS request URL, optionally assembled with {{$nodeId.outputKey$}} references. A URL stored in a global variable uses {{$VARIABLE_NODE_ID.variableKey$}}; never use bare {{variableKey}} placeholders.'
       },
       [NodeInputKeyEnum.addInputParam]: {
         configurable: false
