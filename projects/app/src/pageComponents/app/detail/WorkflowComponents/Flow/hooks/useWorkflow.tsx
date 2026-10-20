@@ -483,10 +483,26 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
   const checkNodeOverLoopNode = useMemoizedFn((node: Node) => {
     if (!node || node.data.parentNodeId) return;
 
+    // 拖拽父容器节点时，其子孙节点会随之移动并始终与父容器相交。
+    // 落点校验必须排除这些子孙容器，否则父容器会被误判为落入自己的子容器，
+    // 触发错误的容器校验提示（例如拖拽循环节点时误报"不支持在并行执行节点中使用"）。
+    const isDescendantOfDraggedNode = (candidate: Node): boolean => {
+      let parentNodeId = candidate.data?.parentNodeId;
+      while (parentNodeId) {
+        if (parentNodeId === node.id) return true;
+        parentNodeId = getRawNodeById(parentNodeId)?.data?.parentNodeId;
+      }
+      return false;
+    };
+
     // 获取所有与当前节点相交的节点中，类型为嵌套父容器且未折叠的节点
     const intersections = getIntersectingNodes(node);
     const parentNode = intersections.find(
-      (item) => !item.data.isFolded && isNestedParentNodeType(item.type ?? '')
+      (item) =>
+        item.id !== node.id &&
+        !isDescendantOfDraggedNode(item) &&
+        !item.data.isFolded &&
+        isNestedParentNodeType(item.type ?? '')
     );
 
     if (parentNode) {
@@ -939,7 +955,7 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
         onChangeNode(patches.map((patch) => ({ ...patch, type: 'updateInput' as const })));
       }
     },
-    [edges, nodes, onChangeNode, setEdges, workflowStartNode]
+    [edges, nodes, onConnect, setEdges, workflowStartNode]
   );
   const customOnConnect = useCallback(
     (connect: Connection) => {
