@@ -496,7 +496,7 @@ describe('POST /api/core/ai/skill/list', () => {
     expect(res.data.list[0]?.private).toBe(false);
   });
 
-  it('appCount 基于已发布版本的 resources，草稿保存不影响统计', async () => {
+  it('appCount 合并当前保存版本和最新发布版本的 resources', async () => {
     const user = await getUser(`agent-skill-list-published-refs-${getNanoid(6)}`);
 
     const [publishedSkill, draftSkill] = await MongoAgentSkills.create([
@@ -658,7 +658,7 @@ describe('POST /api/core/ai/skill/list', () => {
     const getCount = (skillId: string) =>
       draftRes.data.list.find((item) => String(item._id) === skillId)?.appCount;
     expect(getCount(String(publishedSkill._id))).toBe(1);
-    expect(getCount(String(draftSkill._id))).toBe(0);
+    expect(getCount(String(draftSkill._id))).toBe(1);
 
     const publishRes = await Call(publishHandler, {
       auth: user,

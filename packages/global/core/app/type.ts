@@ -302,7 +302,7 @@ export type AppListItemType = {
   private?: boolean;
   sourceMember: SourceMemberType;
   hasInteractiveNode?: boolean;
-  /** 被正式应用引用的 App 或工具数量（仅非文件夹资源返回） */
+  /** 被应用当前保存版本或当前发布版本引用的 App 或工具数量（仅非文件夹资源返回） */
   relatedAppCount?: number;
   /** 仅在列表请求显式要求置顶排序时返回 */
   isPinned?: boolean;
@@ -323,7 +323,7 @@ const referencedAppExample = {
   }
 };
 
-/** 引用某个资源的正式应用概要。 */
+/** 引用某个资源的应用概要。 */
 export const ReferencedAppSchema = z
   .object({
     _id: ObjectIdSchema.meta({ example: referencedAppExample._id, description: '应用 ID' }),
@@ -344,7 +344,7 @@ export const ReferencedAppSchema = z
       description: '创建者信息'
     })
   })
-  .meta({ description: '引用某个资源的正式应用概要', example: referencedAppExample });
+  .meta({ description: '引用某个资源的应用概要', example: referencedAppExample });
 export type ReferencedApp = z.infer<typeof ReferencedAppSchema>;
 
 export const ReferencedAppsResponseSchema = z
@@ -356,7 +356,7 @@ export const ReferencedAppsResponseSchema = z
     })
   })
   .meta({
-    description: '正式应用引用列表及当前用户无权限查看的数量',
+    description: '应用引用列表及当前用户无权限查看的数量',
     example: { list: [referencedAppExample], hiddenCount: 0 }
   });
 export type ReferencedAppsResponse = z.infer<typeof ReferencedAppsResponseSchema>;

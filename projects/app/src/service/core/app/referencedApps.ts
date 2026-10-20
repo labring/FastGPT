@@ -12,9 +12,9 @@ import { findResourceKeysByCollaboratorsPermission } from '@fastgpt/service/supp
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import { findTeamAppsByPublishedResource } from '@fastgpt/service/core/app/resourceLookup';
+import { findTeamAppsByResource } from '@fastgpt/service/core/app/resourceLookup';
 
-type PublishedApp = Pick<
+type ReferencedAppSummary = Pick<
   AppSchemaType,
   '_id' | 'avatar' | 'type' | 'name' | 'intro' | 'tmbId' | 'updateTime'
 >;
@@ -37,7 +37,7 @@ export const formatReadableReferencedApps = async ({
   tmbId,
   isTeamOwner
 }: {
-  apps: PublishedApp[];
+  apps: ReferencedAppSummary[];
   teamId: string;
   tmbId: string;
   isTeamOwner: boolean;
@@ -86,7 +86,7 @@ export const formatReadableReferencedApps = async ({
 };
 
 /**
- * 查询指定资源当前正式版本的引用应用，按更新时间排序并应用请求者的 App 读取权限。
+ * 查询指定资源当前保存版本或当前发布版本的引用应用，按更新时间排序并应用请求者的 App 读取权限。
  */
 export const listReadableReferencedApps = async ({
   teamId,
@@ -95,7 +95,7 @@ export const listReadableReferencedApps = async ({
   resourceType,
   resourceIds
 }: ListReadableReferencedAppsParams): Promise<ReferencedAppsResponse> => {
-  const { apps } = await findTeamAppsByPublishedResource({
+  const { apps } = await findTeamAppsByResource({
     teamId,
     type: resourceType,
     ids: resourceIds

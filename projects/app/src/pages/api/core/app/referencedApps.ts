@@ -20,7 +20,7 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { listReadableReferencedApps } from '@/service/core/app/referencedApps';
 
 /**
- * List readable published apps referencing an owned resource or its descendants.
+ * List readable apps whose current saved or published version references an owned resource or its descendants.
  * Target-resource access is owner-only; result visibility follows the requester's app permissions.
  */
 async function handler(

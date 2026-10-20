@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   getGroupsByTmbId: vi.fn(),
   getOrgIdSetWithParentByTmbId: vi.fn(),
   addSourceMember: vi.fn(),
-  findTeamAppsByPublishedResource: vi.fn()
+  findTeamAppsByResource: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/support/permission/resourcePermissionService', () => ({
@@ -20,7 +20,7 @@ vi.mock('@fastgpt/service/support/permission/org/controllers', () => ({
 }));
 vi.mock('@fastgpt/service/support/user/utils', () => ({ addSourceMember: mocks.addSourceMember }));
 vi.mock('@fastgpt/service/core/app/resourceLookup', () => ({
-  findTeamAppsByPublishedResource: mocks.findTeamAppsByPublishedResource
+  findTeamAppsByResource: mocks.findTeamAppsByResource
 }));
 
 // Import after mocks so this test exercises the formatter with mocked permission and database adapters.
@@ -77,8 +77,8 @@ describe('formatReadableReferencedApps', () => {
 });
 
 describe('listReadableReferencedApps', () => {
-  it('queries the requested resource and sorts its published apps newest first', async () => {
-    mocks.findTeamAppsByPublishedResource.mockResolvedValue({
+  it('queries the requested resource and sorts referenced apps newest first', async () => {
+    mocks.findTeamAppsByResource.mockResolvedValue({
       apps: [
         {
           _id: '64a000000000000000000001',
@@ -110,7 +110,7 @@ describe('listReadableReferencedApps', () => {
       resourceIds: 'skill-1'
     });
 
-    expect(mocks.findTeamAppsByPublishedResource).toHaveBeenCalledWith({
+    expect(mocks.findTeamAppsByResource).toHaveBeenCalledWith({
       teamId: 'team-1',
       type: 'skill',
       ids: 'skill-1'
@@ -133,7 +133,7 @@ describe('listReadableReferencedApps', () => {
       type: AppTypeEnum.workflow,
       updateTime: new Date(Date.UTC(2025, 0, index + 1))
     }));
-    mocks.findTeamAppsByPublishedResource.mockResolvedValue({
+    mocks.findTeamAppsByResource.mockResolvedValue({
       apps: [
         ...visibleApps,
         {

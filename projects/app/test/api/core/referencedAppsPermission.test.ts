@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({
   getGroupsByTmbId: vi.fn(),
   getOrgIdSetWithParentByTmbId: vi.fn(),
   addSourceMember: vi.fn(),
-  findTeamAppsByPublishedResource: vi.fn(),
+  findTeamAppsByResource: vi.fn(),
   query: {
     resourceType: 'agent' as 'agent' | 'tool' | 'dataset' | 'skill',
     resourceId: 'agent-target'
@@ -51,7 +51,7 @@ vi.mock('@fastgpt/service/core/app/resourceLookup', async (importOriginal) => {
   const actual = await importOriginal();
   return {
     ...actual,
-    findTeamAppsByPublishedResource: mocks.findTeamAppsByPublishedResource
+    findTeamAppsByResource: mocks.findTeamAppsByResource
   };
 });
 vi.mock('@fastgpt/service/common/zod/requestParseError', () => ({
@@ -83,7 +83,7 @@ describe('referenced app visibility', () => {
     mocks.getGroupsByTmbId.mockResolvedValue([]);
     mocks.getOrgIdSetWithParentByTmbId.mockResolvedValue(new Set());
     mocks.addSourceMember.mockImplementation(async ({ list }) => list);
-    mocks.findTeamAppsByPublishedResource.mockResolvedValue({ apps: [] });
+    mocks.findTeamAppsByResource.mockResolvedValue({ apps: [] });
   });
 
   it.each([
@@ -103,7 +103,7 @@ describe('referenced app visibility', () => {
       appId: `${resourceType}-target`,
       fields: '_id type deleteTime'
     });
-    expect(mocks.findTeamAppsByPublishedResource).toHaveBeenCalledWith({
+    expect(mocks.findTeamAppsByResource).toHaveBeenCalledWith({
       teamId: 'team-1',
       type: resourceType,
       ids: resourceIds
@@ -123,7 +123,7 @@ describe('referenced app visibility', () => {
       datasetId: 'dataset-target',
       fields: '_id deleteTime'
     });
-    expect(mocks.findTeamAppsByPublishedResource).toHaveBeenCalledWith({
+    expect(mocks.findTeamAppsByResource).toHaveBeenCalledWith({
       teamId: 'team-1',
       type: 'dataset',
       ids: ['active-dataset']
@@ -135,14 +135,14 @@ describe('referenced app visibility', () => {
 
     expect(mocks.findAppAndAllChildren).not.toHaveBeenCalled();
     expect(mocks.findDatasetAndAllChildren).not.toHaveBeenCalled();
-    expect(mocks.findTeamAppsByPublishedResource).toHaveBeenCalledWith({
+    expect(mocks.findTeamAppsByResource).toHaveBeenCalledWith({
       teamId: 'team-1',
       type: 'skill',
       ids: ['skill-target']
     });
   });
   it('counts unreadable published references as hidden', async () => {
-    mocks.findTeamAppsByPublishedResource.mockResolvedValueOnce({
+    mocks.findTeamAppsByResource.mockResolvedValueOnce({
       apps: [
         {
           _id: 'private-app',
@@ -190,7 +190,7 @@ describe('referenced app visibility', () => {
 
       expect(mocks.findDatasetAndAllChildren).not.toHaveBeenCalled();
       expect(mocks.findAppAndAllChildren).not.toHaveBeenCalled();
-      expect(mocks.findTeamAppsByPublishedResource).not.toHaveBeenCalled();
+      expect(mocks.findTeamAppsByResource).not.toHaveBeenCalled();
     }
   );
 });

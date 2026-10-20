@@ -250,7 +250,7 @@ export type GetDatasetListBody = z.infer<typeof GetDatasetListBodySchema>;
 export const GetDatasetListV2BodySchema = GetDatasetListBodySchema.extend({
   withAppCount: BoolSchema.optional().meta({
     example: true,
-    description: '是否返回被正式应用引用的数量'
+    description: '是否返回被应用当前保存版本或当前发布版本引用的数量'
   })
 }).extend(PaginationSchema.shape);
 export type GetDatasetListV2Body = z.infer<typeof GetDatasetListV2BodySchema>;

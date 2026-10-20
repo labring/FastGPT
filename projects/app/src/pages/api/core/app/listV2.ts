@@ -8,7 +8,7 @@ import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
-  countTeamAppsByPublishedResourceGroups,
+  countTeamAppsByResourceGroups,
   getAppPublishedResourceType
 } from '@fastgpt/service/core/app/resourceLookup';
 import { findAppsPage } from '@fastgpt/service/core/app/entity';
@@ -188,7 +188,7 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
   });
 
   const relatedAppCountMap = withRelatedAppCount
-    ? await countTeamAppsByPublishedResourceGroups({
+    ? await countTeamAppsByResourceGroups({
         teamId,
         resourceGroups: formatApps.flatMap((app) => {
           const type = getAppPublishedResourceType(app.type);

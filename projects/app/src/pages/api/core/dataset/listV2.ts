@@ -23,7 +23,7 @@ import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { desensitizeModel } from '@fastgpt/service/core/ai/model/transform';
-import { countTeamAppsByPublishedResourceGroups } from '@fastgpt/service/core/app/resourceLookup';
+import { countTeamAppsByResourceGroups } from '@fastgpt/service/core/app/resourceLookup';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -260,7 +260,7 @@ async function handler(
   });
 
   const appCountMap = withAppCount
-    ? await countTeamAppsByPublishedResourceGroups({
+    ? await countTeamAppsByResourceGroups({
         teamId,
         resourceGroups: formatDatasets
           .filter((dataset) => dataset.type !== DatasetTypeEnum.folder)

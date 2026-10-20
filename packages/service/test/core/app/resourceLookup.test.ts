@@ -4,8 +4,8 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import {
-  countTeamAppsByPublishedResourceGroups,
-  findTeamAppsByPublishedResource,
+  countTeamAppsByResourceGroups,
+  findTeamAppsByResource,
   getAppPublishedResourceType
 } from '@fastgpt/service/core/app/resourceLookup';
 
@@ -17,9 +17,14 @@ const otherAppId = new Types.ObjectId('65f000000000000000000075');
 const publishedVersionId = new Types.ObjectId('65f000000000000000000076');
 const oldVersionId = new Types.ObjectId('65f000000000000000000077');
 const otherTeamVersionId = new Types.ObjectId('65f000000000000000000078');
+const crossAppPointerAppId = new Types.ObjectId('65f000000000000000000087');
+const draftVersionId = new Types.ObjectId('65f000000000000000000083');
+const oldDraftVersionId = new Types.ObjectId('65f000000000000000000084');
+const draftOnlyAppId = new Types.ObjectId('65f000000000000000000085');
+const draftOnlyVersionId = new Types.ObjectId('65f000000000000000000086');
 
 describe('getAppPublishedResourceType', () => {
-  it('maps tool and agent app types to published resource types', () => {
+  it('maps tool and agent app types to resource types', () => {
     expect(getAppPublishedResourceType(AppTypeEnum.tool)).toBe('tool');
     expect(getAppPublishedResourceType(AppTypeEnum.workflowTool)).toBe('tool');
     expect(getAppPublishedResourceType(AppTypeEnum.workflow)).toBe('agent');
@@ -30,12 +35,12 @@ describe('getAppPublishedResourceType', () => {
   });
 });
 
-describe('findTeamAppsByPublishedResource', () => {
+describe('findTeamAppsByResource', () => {
   beforeEach(async () => {
     await Promise.all([MongoApp.deleteMany({}), MongoAppVersion.deleteMany({})]);
   });
 
-  it('only counts resources from the current published version in the same team', async () => {
+  it('only counts resources from the current version in the same team', async () => {
     await MongoApp.collection.insertMany([
       {
         _id: appId,
@@ -53,6 +58,15 @@ describe('findTeamAppsByPublishedResource', () => {
         name: 'Other team app',
         type: 'workflow',
         publishedVersionId: otherTeamVersionId,
+        deleteTime: null
+      },
+      {
+        _id: crossAppPointerAppId,
+        teamId,
+        tmbId,
+        name: 'Cross-app pointer app',
+        type: 'workflow',
+        publishedVersionId,
         deleteTime: null
       }
     ]);
@@ -86,7 +100,7 @@ describe('findTeamAppsByPublishedResource', () => {
       }
     ]);
 
-    const { apps, counts } = await findTeamAppsByPublishedResource({
+    const { apps, counts } = await findTeamAppsByResource({
       teamId: String(teamId),
       type: 'skill',
       ids: 'skill-1'
@@ -95,12 +109,96 @@ describe('findTeamAppsByPublishedResource', () => {
     expect(apps.map((app) => String(app._id))).toEqual([String(appId)]);
     expect(apps[0]).toMatchObject({ name: 'Current app' });
     expect(counts.get('skill-1')).toBe(1);
-    const removed = await findTeamAppsByPublishedResource({
+    const removed = await findTeamAppsByResource({
       teamId: String(teamId),
       type: 'skill',
       ids: 'removed-skill'
     });
     expect(removed.apps).toHaveLength(0);
+  });
+
+  it('counts the latest saved draft and published version as a unique app union', async () => {
+    await MongoApp.collection.insertMany([
+      {
+        _id: appId,
+        teamId,
+        tmbId,
+        name: 'Draft and published app',
+        type: 'workflow',
+        publishedVersionId,
+        deleteTime: null
+      },
+      {
+        _id: draftOnlyAppId,
+        teamId,
+        tmbId,
+        name: 'Draft-only app',
+        type: 'workflow',
+        deleteTime: null
+      }
+    ]);
+    await MongoAppVersion.collection.insertMany([
+      {
+        _id: oldDraftVersionId,
+        appId,
+        tmbId,
+        time: new Date('2026-08-10T00:00:00.000Z'),
+        isPublish: false,
+        isAutoSave: true,
+        resources: [{ type: 'skill', id: 'stale-draft-skill' }]
+      },
+      {
+        _id: publishedVersionId,
+        appId,
+        tmbId,
+        time: new Date('2026-08-20T00:00:00.000Z'),
+        isPublish: true,
+        resources: [{ type: 'skill', id: 'published-skill' }]
+      },
+      {
+        _id: draftVersionId,
+        appId,
+        tmbId,
+        time: new Date('2026-08-30T00:00:00.000Z'),
+        isPublish: false,
+        isAutoSave: true,
+        resources: [{ type: 'skill', id: 'draft-skill' }]
+      },
+      {
+        _id: draftOnlyVersionId,
+        appId: draftOnlyAppId,
+        tmbId,
+        time: new Date('2026-08-30T00:00:00.000Z'),
+        isPublish: false,
+        isAutoSave: true,
+        resources: [{ type: 'skill', id: 'draft-only-skill' }]
+      }
+    ]);
+
+    const bothVersions = await findTeamAppsByResource({
+      teamId: String(teamId),
+      type: 'skill',
+      ids: ['published-skill', 'draft-skill']
+    });
+    expect(bothVersions.apps.map((app) => String(app._id))).toEqual([String(appId)]);
+    expect(bothVersions.counts.get('published-skill')).toBe(1);
+    expect(bothVersions.counts.get('draft-skill')).toBe(1);
+
+    const draftOnly = await findTeamAppsByResource({
+      teamId: String(teamId),
+      type: 'skill',
+      ids: 'draft-only-skill'
+    });
+    expect(draftOnly.apps.map((app) => String(app._id))).toEqual([String(draftOnlyAppId)]);
+    expect(draftOnly.counts.get('draft-only-skill')).toBe(1);
+
+    const staleDraft = await findTeamAppsByResource({
+      teamId: String(teamId),
+      type: 'skill',
+      ids: 'stale-draft-skill'
+    });
+    expect(staleDraft.apps).toHaveLength(0);
+    expect(staleDraft.counts.get('stale-draft-skill')).toBeUndefined();
   });
 
   it('counts each app once per resource group and omits empty or non-owner groups', async () => {
@@ -148,7 +246,7 @@ describe('findTeamAppsByPublishedResource', () => {
       }
     ]);
 
-    const counts = await countTeamAppsByPublishedResourceGroups({
+    const counts = await countTeamAppsByResourceGroups({
       teamId: String(teamId),
       resourceGroups: [
         { id: 'empty-group', isOwner: true, resources: [] },
@@ -169,7 +267,7 @@ describe('findTeamAppsByPublishedResource', () => {
     expect(counts.get('dataset-group')).toBe(2);
   });
 
-  it('counts an app once when its published version references multiple resource types in a group', async () => {
+  it('counts an app once when its versions reference multiple resource types in a group', async () => {
     const agentOnlyAppId = new Types.ObjectId('65f000000000000000000081');
     const agentOnlyVersionId = new Types.ObjectId('65f000000000000000000082');
     await MongoApp.collection.insertMany([
@@ -214,7 +312,7 @@ describe('findTeamAppsByPublishedResource', () => {
       }
     ]);
 
-    const counts = await countTeamAppsByPublishedResourceGroups({
+    const counts = await countTeamAppsByResourceGroups({
       teamId: String(teamId),
       resourceGroups: [
         {
@@ -259,7 +357,7 @@ describe('findTeamAppsByPublishedResource', () => {
       }))
     );
 
-    const counts = await countTeamAppsByPublishedResourceGroups({
+    const counts = await countTeamAppsByResourceGroups({
       teamId: String(teamId),
       resourceGroups: [
         {

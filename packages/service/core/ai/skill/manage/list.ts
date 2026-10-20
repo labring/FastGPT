@@ -18,7 +18,7 @@ import type { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { ListSkillsV2Query } from '@fastgpt/global/core/ai/skill/api';
 import { AppListSortEnum, appListSortMongoMap } from '@fastgpt/global/core/app/constants';
-import { countTeamAppsByPublishedResourceGroups } from '../../../app/resourceLookup';
+import { countTeamAppsByResourceGroups } from '../../../app/resourceLookup';
 
 type TeamPermission = {
   isOwner: boolean;
@@ -243,7 +243,7 @@ export const listReadableAgentSkills = async ({
   const appCountMap =
     withAppCount === false
       ? undefined
-      : await countTeamAppsByPublishedResourceGroups({
+      : await countTeamAppsByResourceGroups({
           teamId,
           resourceGroups: pagedSkills
             .filter((skill) => skill.type !== AgentSkillTypeEnum.folder)

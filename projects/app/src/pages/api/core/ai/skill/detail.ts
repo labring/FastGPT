@@ -13,7 +13,7 @@ import { isValidObjectId } from 'mongoose';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { findTeamAppsByPublishedResource } from '@fastgpt/service/core/app/resourceLookup';
+import { findTeamAppsByResource } from '@fastgpt/service/core/app/resourceLookup';
 
 async function handler(
   req: ApiRequestProps<Record<string, never>, GetSkillDetailQuery>
@@ -34,7 +34,7 @@ async function handler(
 
   const appCount = permission.isOwner
     ? ((
-        await findTeamAppsByPublishedResource({
+        await findTeamAppsByResource({
           teamId,
           type: 'skill',
           ids: skill._id.toString()

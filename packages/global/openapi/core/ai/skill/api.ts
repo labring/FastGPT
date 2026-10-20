@@ -292,7 +292,7 @@ export const GetSkillDetailResponseSchema = z.object({
   updateTime: z.string(),
   permission: SkillPermissionSchema,
   appCount: IntSchema.optional().meta({
-    description: '被正式应用引用的 Skill 数量',
+    description: '被应用当前保存版本或当前发布版本引用的 Skill 数量',
     example: 0
   })
 });
