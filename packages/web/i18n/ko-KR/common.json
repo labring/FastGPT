@@ -1374,6 +1374,7 @@
   "core.workflow.check.tool_edge_invalid": "{{source}}에서 {{target}}으로 가는 도구 연결 방식이 잘못되었습니다",
   "core.workflow.check.catch_not_enabled": "오류 분기를 연결하기 전에 노드 {{nodeId}}의 오류 처리를 활성화하세요",
   "core.workflow.check.next_port_unsupported": "노드 {{nodeId}}는 일반 실행 출력을 지원하지 않습니다",
+  "core.workflow.check.target_port_unsupported": "노드 {{nodeId}}는 일반 실행 입력을 지원하지 않습니다",
   "core.workflow.check.branch_port_unsupported": "노드 {{nodeId}}는 분기 출력 {{branchKey}}를 지원하지 않습니다",
   "core.workflow.check.branch_key_missing": "노드 {{nodeId}}의 분기 {{branchKey}}가 더 이상 없습니다. 다시 연결하세요",
   "core.workflow.check.source_output_missing": "노드 {{nodeId}}의 출력 {{outputKey}}가 없거나 연결할 수 없습니다",

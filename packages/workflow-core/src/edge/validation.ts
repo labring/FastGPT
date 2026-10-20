@@ -14,7 +14,11 @@ import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/
 import { getIfElseBranchHandleKey } from '@fastgpt/global/common/workflow/condition';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { getDocumentNode } from '../nesting/service';
-import { NODE_TYPES_WITHOUT_NEXT_PORT, TOOL_TARGET_NODE_TYPES } from '../template/contract';
+import {
+  NODE_TYPES_WITHOUT_NEXT_PORT,
+  NODE_TYPES_WITHOUT_TARGET_PORT,
+  NODE_TYPES_WITHOUT_TOOL_TARGET
+} from '../template/contract';
 
 export const executionEdgesEqual = (left: WorkflowExecutionEdge, right: WorkflowExecutionEdge) =>
   JSON.stringify(left) === JSON.stringify(right);
@@ -120,7 +124,7 @@ export const assertExecutionEdge = (document: WorkflowDocument, edge: WorkflowEx
   if (sourceIsTool) {
     if (
       sourceNode.flowNodeType !== FlowNodeTypeEnum.toolCall ||
-      !TOOL_TARGET_NODE_TYPES.has(targetNode.flowNodeType)
+      NODE_TYPES_WITHOUT_TOOL_TARGET.has(targetNode.flowNodeType)
     ) {
       throw new WorkflowCommandError([
         { code: 'WORKFLOW_TOOL_EDGE_NODE_INVALID', severity: 'error', params: { edge } }
@@ -129,6 +133,18 @@ export const assertExecutionEdge = (document: WorkflowDocument, edge: WorkflowEx
   } else if (edge.target.kind !== 'target') {
     throw new WorkflowCommandError([
       { code: 'WORKFLOW_EDGE_TARGET_KIND_INVALID', severity: 'error', params: { edge } }
+    ]);
+  }
+  if (
+    edge.target.kind === 'target' &&
+    NODE_TYPES_WITHOUT_TARGET_PORT.has(targetNode.flowNodeType)
+  ) {
+    throw new WorkflowCommandError([
+      {
+        code: 'WORKFLOW_TARGET_PORT_UNSUPPORTED',
+        severity: 'error',
+        nodeId: targetNode.nodeId
+      }
     ]);
   }
   if (edge.source.kind === 'catch' && sourceNode.catchError !== true) {

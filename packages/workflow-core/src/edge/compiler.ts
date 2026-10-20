@@ -93,7 +93,14 @@ const parseSourceHandle = ({
   if (edge.sourceHandle === getHandleId(edge.source, 'source_catch', 'right')) {
     return { kind: 'catch', nodeId: edge.source };
   }
-  if (edge.sourceHandle === getHandleId(edge.source, 'source', 'right')) {
+  const sourceNode = assertNode(document, edge.source);
+  const isBranchNode = [
+    FlowNodeTypeEnum.ifElseNode,
+    FlowNodeTypeEnum.userSelect,
+    FlowNodeTypeEnum.classifyQuestion
+  ].includes(sourceNode.flowNodeType);
+  // 分支 key 也允许叫 right；这些节点没有普通出口，不能把同名分支反编译成 next。
+  if (edge.sourceHandle === getHandleId(edge.source, 'source', 'right') && !isBranchNode) {
     return { kind: 'next', nodeId: edge.source };
   }
 
@@ -109,18 +116,11 @@ const parseSourceHandle = ({
   }
 
   const key = edge.sourceHandle.slice(prefix.length);
-  const sourceNode = assertNode(document, edge.source);
   const sourceOutput = sourceNode.outputs.find(
     (output) => output.key === key && output.type === FlowNodeOutputTypeEnum.source
   );
   if (sourceOutput) return { kind: 'sourceOutput', nodeId: edge.source, outputKey: key };
-  if (
-    [
-      FlowNodeTypeEnum.ifElseNode,
-      FlowNodeTypeEnum.userSelect,
-      FlowNodeTypeEnum.classifyQuestion
-    ].includes(sourceNode.flowNodeType)
-  ) {
+  if (isBranchNode) {
     return { kind: 'branch', nodeId: edge.source, branchKey: key };
   }
   throw new WorkflowCommandError([

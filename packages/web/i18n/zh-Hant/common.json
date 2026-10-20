@@ -1383,6 +1383,7 @@
   "core.workflow.check.tool_edge_invalid": "節點 {{source}} 到 {{target}} 的工具連接方式無效",
   "core.workflow.check.catch_not_enabled": "節點 {{nodeId}} 尚未開啟例外擷取，不能連接例外分支",
   "core.workflow.check.next_port_unsupported": "節點 {{nodeId}} 不支援一般執行出口",
+  "core.workflow.check.target_port_unsupported": "節點 {{nodeId}} 不支援一般執行入口",
   "core.workflow.check.branch_port_unsupported": "節點 {{nodeId}} 不支援分支出口 {{branchKey}}",
   "core.workflow.check.branch_key_missing": "節點 {{nodeId}} 的分支 {{branchKey}} 已不存在，請重新連線",
   "core.workflow.check.source_output_missing": "節點 {{nodeId}} 的輸出 {{outputKey}} 不存在或不支援連線",

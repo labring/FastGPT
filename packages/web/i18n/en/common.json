@@ -1383,6 +1383,7 @@
   "core.workflow.check.tool_edge_invalid": "Invalid tool connection from {{source}} to {{target}}",
   "core.workflow.check.catch_not_enabled": "Enable error handling on node {{nodeId}} before connecting its error branch",
   "core.workflow.check.next_port_unsupported": "Node {{nodeId}} does not support a normal execution output",
+  "core.workflow.check.target_port_unsupported": "Node {{nodeId}} does not support a normal execution input",
   "core.workflow.check.branch_port_unsupported": "Node {{nodeId}} does not support branch output {{branchKey}}",
   "core.workflow.check.branch_key_missing": "Branch {{branchKey}} of node {{nodeId}} no longer exists; reconnect it",
   "core.workflow.check.source_output_missing": "Output {{outputKey}} of node {{nodeId}} is missing or cannot be connected",

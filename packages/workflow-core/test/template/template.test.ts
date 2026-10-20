@@ -307,7 +307,7 @@ describe('normalizeNodeTemplateDescriptor', () => {
     await expect(getDescriptor('if-else')).resolves.toMatchObject({
       execution: {
         sourceKinds: ['branch'],
-        targetKinds: ['target'],
+        targetKinds: ['target', 'selectedTools'],
         terminal: false,
         branch: {
           inputKey: 'ifElseList',
@@ -320,7 +320,7 @@ describe('normalizeNodeTemplateDescriptor', () => {
       effects: expect.arrayContaining(['prune-invalid-branch-edges'])
     });
     await expect(getDescriptor('assigned-answer')).resolves.toMatchObject({
-      execution: { sourceKinds: [], terminal: true }
+      execution: { sourceKinds: ['next'], terminal: false }
     });
     await expect(getDescriptor('loop-run-break')).resolves.toMatchObject({
       execution: { sourceKinds: [], targetKinds: ['target'], terminal: true },

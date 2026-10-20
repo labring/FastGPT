@@ -41,7 +41,7 @@ describe('template contract commands', () => {
       template: { kind: 'builtin', templateId: 'if-else' },
       execution: {
         sourceKinds: ['branch'],
-        targetKinds: ['target'],
+        targetKinds: ['target', 'selectedTools'],
         terminal: false,
         branch: {
           inputKey: 'ifElseList',

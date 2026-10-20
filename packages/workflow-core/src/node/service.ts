@@ -58,7 +58,7 @@ const clearSecretInputs = (node: StoreNodeItemType) => {
   if (httpToolSet && 'headerSecret' in httpToolSet) httpToolSet.headerSecret = undefined;
 };
 
-/** 克隆允许新建的节点运行态结构；保留历史节点，且不复制密码类输入。 */
+/** 克隆允许新建的节点运行态结构；唯一系统节点及容器不可克隆，且不复制密码类输入。 */
 export const cloneNode = ({
   document,
   sourceNodeId,
@@ -79,7 +79,11 @@ export const cloneNode = ({
     ]);
   }
   if (
-    source.flowNodeType === FlowNodeTypeEnum.workflowStart ||
+    [
+      FlowNodeTypeEnum.workflowStart,
+      FlowNodeTypeEnum.pluginInput,
+      FlowNodeTypeEnum.pluginOutput
+    ].includes(source.flowNodeType) ||
     isNestedParentNodeType(source.flowNodeType) ||
     isNestedChildSystemNodeType(source.flowNodeType)
   ) {

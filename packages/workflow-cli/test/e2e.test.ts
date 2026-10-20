@@ -31,6 +31,92 @@ const createHarness = async () => {
 const jsonArgs = (dir: string, args: string[]) => [...args, '--dir', dir, '--format', 'json'];
 
 describe('PR1 through PR4 CLI end to end', () => {
+  it('builds a reply followed by processing with builtin nodes mounted as tools', async () => {
+    const { cwd, invoke } = await createHarness();
+    const dir = join(cwd, 'reply-and-tools');
+    const commands = [
+      ['init'],
+      [
+        'node',
+        'add',
+        '--node',
+        'caller',
+        '--template',
+        'builtin:tool-call',
+        '--after',
+        'start@next'
+      ],
+      [
+        'node',
+        'insert',
+        '--from',
+        'start@next',
+        '--to',
+        'caller@target',
+        '--template',
+        'builtin:assigned-answer',
+        '--id',
+        'notice'
+      ],
+      ['input', 'set', '--node', 'notice', '--key', 'text', '--value', 'Processing'],
+      [
+        'node',
+        'add',
+        '--node',
+        'feedback',
+        '--template',
+        'builtin:custom-feedback',
+        '--after',
+        'caller@next'
+      ],
+      ['input', 'set', '--node', 'feedback', '--key', 'system_textareaInput', '--value', 'Done'],
+      [
+        'tool',
+        'attach',
+        '--tool-call',
+        'caller',
+        '--template',
+        'builtin:text-editor',
+        '--id',
+        'text'
+      ],
+      ['input', 'set', '--node', 'text', '--key', 'system_textareaInput', '--value', 'Tool output'],
+      ['tool', 'attach', '--tool-call', 'caller', '--template', 'builtin:code', '--id', 'code'],
+      [
+        'input',
+        'set',
+        '--node',
+        'code',
+        '--key',
+        'code',
+        '--value',
+        'function main() { return { success: true }; }'
+      ],
+      ['validate']
+    ];
+    for (const args of commands) {
+      const result = await invoke(jsonArgs(dir, args));
+      expect(result, args.join(' ')).toMatchObject({ exitCode: 0, stderr: [] });
+    }
+    const output = join(dir, 'workflow.generated.json');
+    expect((await invoke(jsonArgs(dir, ['build', '--output', output]))).exitCode).toBe(0);
+    expect(JSON.parse(await readFile(output, 'utf8')).edges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: 'notice',
+          sourceHandle: 'notice-source-right',
+          target: 'caller'
+        }),
+        ...['text', 'code'].map((target) => ({
+          source: 'caller',
+          sourceHandle: 'selectedTools',
+          target,
+          targetHandle: 'selectedTools'
+        }))
+      ])
+    );
+  });
+
   it('rejects validating and building an isolated entry until a connected workflow is configured', async () => {
     const { cwd, invoke } = await createHarness();
     const dir = join(cwd, 'isolated-entry');

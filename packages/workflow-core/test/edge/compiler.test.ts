@@ -9,6 +9,33 @@ import { describe, expect, it } from 'vitest';
 const document = createWorkflowDocument(aiWorkflow as Parameters<typeof createWorkflowDocument>[0]);
 
 describe('compileExecutionEdge', () => {
+  it.each([
+    FlowNodeTypeEnum.ifElseNode,
+    FlowNodeTypeEnum.userSelect,
+    FlowNodeTypeEnum.classifyQuestion
+  ])(
+    'round-trips a branch named right on %s instead of treating it as a default output',
+    (flowNodeType) => {
+      const document = createWorkflowDocument({
+        nodes: [
+          { nodeId: 'branch', name: 'Branch', flowNodeType, inputs: [], outputs: [] },
+          {
+            nodeId: 'target',
+            name: 'Target',
+            flowNodeType: FlowNodeTypeEnum.answerNode,
+            inputs: [],
+            outputs: []
+          }
+        ]
+      });
+      const edge = {
+        source: { kind: 'branch' as const, nodeId: 'branch', branchKey: 'right' },
+        target: { kind: 'target' as const, nodeId: 'target' }
+      };
+      expect(decompileStoreEdge(compileExecutionEdge(edge, document), document)).toEqual(edge);
+    }
+  );
+
   it('compiles and decompiles a normal edge', () => {
     const edge = document.executionEdges[0];
     const stored = compileExecutionEdge(edge, document);

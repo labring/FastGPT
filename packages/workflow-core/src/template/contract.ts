@@ -6,6 +6,7 @@ import {
   isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
+import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 
 export type NodeExecutionSourceKind =
   | 'next'
@@ -46,32 +47,42 @@ export type NodeRuntimeContract = {
   effects: string[];
 };
 
+/** StoreNode 不持久化画布端口标记，静态校验按节点类型保留其固有出口限制。 */
 export const NODE_TYPES_WITHOUT_NEXT_PORT: ReadonlySet<FlowNodeTypeEnum> = new Set([
+  FlowNodeTypeEnum.emptyNode,
+  FlowNodeTypeEnum.globalVariable,
+  FlowNodeTypeEnum.comment,
   FlowNodeTypeEnum.ifElseNode,
   FlowNodeTypeEnum.userSelect,
   FlowNodeTypeEnum.classifyQuestion,
-  FlowNodeTypeEnum.answerNode,
+  FlowNodeTypeEnum.stopTool,
+  FlowNodeTypeEnum.toolSet,
   FlowNodeTypeEnum.loopRunBreak,
   FlowNodeTypeEnum.nestedEnd,
   FlowNodeTypeEnum.pluginOutput
 ]);
 
-export const TOOL_TARGET_NODE_TYPES: ReadonlySet<FlowNodeTypeEnum> = new Set([
-  FlowNodeTypeEnum.tool,
-  FlowNodeTypeEnum.toolSet,
-  FlowNodeTypeEnum.pluginModule,
-  FlowNodeTypeEnum.appModule,
-  FlowNodeTypeEnum.runApp,
-  FlowNodeTypeEnum.chatNode,
-  FlowNodeTypeEnum.answerNode,
-  FlowNodeTypeEnum.datasetSearchNode,
-  FlowNodeTypeEnum.contentExtract,
-  FlowNodeTypeEnum.httpRequest468,
-  FlowNodeTypeEnum.toolParams,
-  FlowNodeTypeEnum.userSelect,
-  FlowNodeTypeEnum.formInput,
-  FlowNodeTypeEnum.variableUpdate
+/** 起始节点、注释和工具集没有普通执行入口；工具集仍可使用 selectedTools 入口。 */
+export const NODE_TYPES_WITHOUT_TARGET_PORT: ReadonlySet<FlowNodeTypeEnum> = new Set([
+  FlowNodeTypeEnum.emptyNode,
+  FlowNodeTypeEnum.globalVariable,
+  FlowNodeTypeEnum.comment,
+  FlowNodeTypeEnum.workflowStart,
+  FlowNodeTypeEnum.pluginInput,
+  FlowNodeTypeEnum.nestedStart,
+  FlowNodeTypeEnum.loopRunStart,
+  FlowNodeTypeEnum.toolSet
 ]);
+
+/** StoreNode 不持久化 isTool，挂载黑名单统一从模板推导；没有模板的编辑器类型也不可挂载。 */
+export const NODE_TYPES_WITHOUT_TOOL_TARGET: ReadonlySet<FlowNodeTypeEnum> = new Set(
+  Object.values(FlowNodeTypeEnum).filter(
+    (flowNodeType) =>
+      !moduleTemplatesFlat.some(
+        (template) => template.flowNodeType === flowNodeType && template.isTool === true
+      )
+  )
+);
 
 export const DYNAMIC_OUTPUT_NODE_TYPES: ReadonlySet<FlowNodeTypeEnum> = new Set([
   FlowNodeTypeEnum.code,
@@ -149,13 +160,14 @@ const getBranchContract = (flowNodeType: FlowNodeTypeEnum) => {
 
 /**
  * 从模板和共享节点集合生成可供 Validator、CLI 和 Agent 共用的运行时契约。
- * 模板展示字段只决定当前节点实例是否开放 target/catch；节点类型集合承载稳定领域规则。
+ * 普通端口必须由模板显式开放；工具挂载读取注入模板的 isTool，兼容动态应用模板。
+ * 类型集合限制固有端口，避免外部工具元数据重新开启工具集等节点的普通连线。
  */
 export const getNodeRuntimeContract = (template: FlowNodeTemplateType): NodeRuntimeContract => {
   const flowNodeType = template.flowNodeType;
   const branch = getBranchContract(flowNodeType);
   const sourceKinds: NodeExecutionSourceKind[] = [
-    !NODE_TYPES_WITHOUT_NEXT_PORT.has(flowNodeType) && template.showSourceHandle !== false
+    !NODE_TYPES_WITHOUT_NEXT_PORT.has(flowNodeType) && template.showSourceHandle === true
       ? 'next'
       : undefined,
     branch ? 'branch' : undefined,
@@ -164,8 +176,10 @@ export const getNodeRuntimeContract = (template: FlowNodeTemplateType): NodeRunt
     flowNodeType === FlowNodeTypeEnum.toolCall ? 'selectedTools' : undefined
   ].filter((kind): kind is NodeExecutionSourceKind => kind !== undefined);
   const targetKinds: NodeExecutionTargetKind[] = [
-    template.showTargetHandle !== false ? 'target' : undefined,
-    TOOL_TARGET_NODE_TYPES.has(flowNodeType) ? 'selectedTools' : undefined
+    !NODE_TYPES_WITHOUT_TARGET_PORT.has(flowNodeType) && template.showTargetHandle === true
+      ? 'target'
+      : undefined,
+    template.isTool === true ? 'selectedTools' : undefined
   ].filter((kind): kind is NodeExecutionTargetKind => kind !== undefined);
   const dynamicInputs = template.inputs.some((input) => DYNAMIC_INPUT_MARKER_KEYS.has(input.key));
   const dynamicOutputs =

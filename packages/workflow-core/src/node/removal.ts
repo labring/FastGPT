@@ -7,7 +7,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowCommandError } from '../domain/diagnostic';
 import { getDocumentNode } from '../nesting/service';
 
-/** 计算删除节点及全部后代，保留系统节点与条件循环保护，不修改原文档。 */
+/** 计算删除节点及全部后代；保护主入口、工具输入输出及容器系统节点，不修改原文档。 */
 export const planNodeRemoval = ({
   document,
   nodeId
@@ -18,7 +18,11 @@ export const planNodeRemoval = ({
   const node = getDocumentNode(document, nodeId);
   const parentNodeId = node.parentNodeId;
   if (
-    node.flowNodeType === FlowNodeTypeEnum.workflowStart ||
+    [
+      FlowNodeTypeEnum.workflowStart,
+      FlowNodeTypeEnum.pluginInput,
+      FlowNodeTypeEnum.pluginOutput
+    ].includes(node.flowNodeType) ||
     isNestedChildSystemNodeType(node.flowNodeType)
   ) {
     throw new WorkflowCommandError([

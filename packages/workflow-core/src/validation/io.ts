@@ -46,6 +46,9 @@ export const validateNodeIO = ({
   node: StoreNodeItemType;
   diagnostics: WorkflowDiagnostic[];
 }) => {
+  // 注释只属于编辑器，输入没有运行时渲染方式，也不参与工作流执行校验。
+  if (node.flowNodeType === FlowNodeTypeEnum.comment) return;
+
   /** 校验已配置引用的格式、目标、类型和作用域，默认值同样按实际引用检查。 */
   const validateReference = (input: StoreNodeItemType['inputs'][number]) => {
     const references = getWorkflowReferenceValues(input.value);
@@ -149,8 +152,7 @@ export const validateNodeIO = ({
   );
   const skipNodeRequiredCheck = [
     FlowNodeTypeEnum.workflowStart,
-    FlowNodeTypeEnum.pluginInput,
-    FlowNodeTypeEnum.comment
+    FlowNodeTypeEnum.pluginInput
   ].includes(node.flowNodeType);
 
   /** 单引用的空占位符也算未填写；数组引用只在整个列表为空时触发必填错误。 */

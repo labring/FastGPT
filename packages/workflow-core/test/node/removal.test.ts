@@ -4,11 +4,27 @@ import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/docum
 import { applyWorkflowCommand } from '../../src/command/apply';
 import { WorkflowCommandError } from '../../src/domain/diagnostic';
 import { planNodeRemoval } from '../../src/node/removal';
+import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { builtinTemplateProvider } from '../template/provider';
 import fixture from '../fixtures/basic-static/workflow.json';
 import { describe, expect, it } from 'vitest';
 
 describe('planNodeRemoval', () => {
+  it('protects every system node that the Web template forbids deleting', () => {
+    for (const template of moduleTemplatesFlat.filter((template) => template.forbidDelete)) {
+      const document = WorkflowDocumentSchema.parse({
+        schemaVersion: 'fastgpt-workflow/v1',
+        app: {},
+        chatConfig: {},
+        nodes: [{ ...template, nodeId: 'system' }],
+        executionEdges: []
+      });
+      expect(() => planNodeRemoval({ document, nodeId: 'system' }), template.flowNodeType).toThrow(
+        'WORKFLOW_NODE_DELETE_FORBIDDEN'
+      );
+    }
+  });
+
   it('preserves descendant order and agrees with deletion without mutating the input', async () => {
     const document = WorkflowDocumentSchema.parse(fixture);
     const text = document.nodes.find((node) => node.nodeId === 'text')!;

@@ -73,6 +73,7 @@ const coreMessageKeys: Record<string, ParseKeys> = {
   WORKFLOW_EDGE_TARGET_KIND_INVALID: i18nT('common:core.workflow.check.tool_edge_invalid'),
   WORKFLOW_CATCH_NOT_ENABLED: i18nT('common:core.workflow.check.catch_not_enabled'),
   WORKFLOW_NEXT_PORT_UNSUPPORTED: i18nT('common:core.workflow.check.next_port_unsupported'),
+  WORKFLOW_TARGET_PORT_UNSUPPORTED: i18nT('common:core.workflow.check.target_port_unsupported'),
   WORKFLOW_BRANCH_PORT_UNSUPPORTED: i18nT('common:core.workflow.check.branch_port_unsupported'),
   WORKFLOW_BRANCH_KEY_NOT_FOUND: i18nT('common:core.workflow.check.branch_key_missing'),
   WORKFLOW_SOURCE_OUTPUT_NOT_FOUND: i18nT('common:core.workflow.check.source_output_missing'),
