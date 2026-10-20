@@ -486,7 +486,12 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   onClickSkill={onClickSkill}
                   onRemoveSkill={onRemoveSkill}
                   ExtensionPopover={[OptimizerPopoverComponent]}
-                  placeholder={promptInput.placeholder ? t(promptInput.placeholder as any) : ''}
+                  placeholder={[
+                    promptInput.placeholder ? t(promptInput.placeholder as any) : '',
+                    t('workflow:agent.prompt_placeholder')
+                  ]
+                    .filter(Boolean)
+                    .join('\n')}
                 />
               ) : (
                 <ReferenceRender inputs={inputs} item={promptInput} nodeId={nodeId} />
