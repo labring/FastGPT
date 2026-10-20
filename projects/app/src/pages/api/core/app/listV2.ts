@@ -38,6 +38,7 @@ import {
 import { Types } from '@fastgpt/service/common/mongo';
 import { getAppFolderListScope, hasReadableAppFolderChild } from '@/service/core/app/visibleList';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { normalizePagination } from '@fastgpt/service/common/api/pagination';
 
 /** 分页或按 ID 列出可读应用；解析时优先保留 ID 查询字段，仍受团队、权限及公共筛选条件约束。 */
 async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListAppV2ResponseType> {
@@ -46,7 +47,7 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
     body;
   const pagination = body.appIds === undefined ? body : undefined;
   const parentId = pagination?.parentId;
-  const pageSize = pagination?.pageSize ?? 50;
+  const { pageSize, offset } = normalizePagination(pagination ?? {});
   const isAppIdsQuery = appIds !== undefined;
   const currentFolderId = normalizeParentId(parentId);
 
@@ -167,7 +168,7 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
   const fields = `_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission publishedVersionId${
     pinnedFirst ? ' isPinned pinnedAt' : ''
   }`;
-  const skip = pagination?.offset ?? ((pagination?.pageNum ?? 1) - 1) * pageSize;
+  const skip = offset;
   let myApps: Awaited<ReturnType<typeof findAppsPage>>['list'];
   let total: number;
   const folderAccessModeMap = new Map<string, 'read' | 'navigate'>();

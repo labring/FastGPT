@@ -1,9 +1,25 @@
 import { describe, it, expect } from 'vitest';
-import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
+import {
+  normalizePagination,
+  parsePaginationRequest
+} from '@fastgpt/service/common/api/pagination';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import type { NodeApiRequest } from '@fastgpt/service/types/http';
 
 describe('pagination.ts', () => {
+  describe('normalizePagination', () => {
+    it.each([
+      { input: {}, expected: { pageSize: 10, offset: 0 } },
+      { input: { pageNum: 3 }, expected: { pageSize: 10, offset: 20 } },
+      { input: { pageSize: 20, pageNum: 3 }, expected: { pageSize: 20, offset: 40 } },
+      { input: { pageSize: 50, pageNum: 2 }, expected: { pageSize: 50, offset: 50 } },
+      { input: { pageSize: 50, pageNum: 2, offset: 0 }, expected: { pageSize: 50, offset: 0 } },
+      { input: { pageSize: 50, pageNum: 2, offset: 75 }, expected: { pageSize: 50, offset: 75 } }
+    ])('preserves validated business defaults and offset priority: %j', ({ input, expected }) => {
+      expect(normalizePagination(input)).toEqual(expected);
+    });
+  });
+
   describe('parsePaginationRequest', () => {
     it.each(['body', 'query'] as const)(
       'keeps offset priority and validates only the selected mode in %s',

@@ -1,5 +1,6 @@
 import { rebuildingDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
 import type { ClientSession } from '../../../common/mongo';
+import { normalizePagination } from '../../../common/api/pagination';
 import { MongoDatasetSynonym, MongoDatasetSynonymMapping } from './schema';
 import { MongoDatasetData } from '../data/schema';
 import { MongoDatasetTraining } from '../training/schema';
@@ -58,7 +59,7 @@ export const searchDatasetSynonymMappings = async ({
   teamId,
   datasetId,
   search,
-  pageNum = 1,
+  pageNum,
   pageSize,
   offset
 }: {
@@ -70,6 +71,7 @@ export const searchDatasetSynonymMappings = async ({
   offset?: number;
 }) => {
   assertDatasetSynonymEnabled();
+  const { offset: skip } = normalizePagination({ pageSize, pageNum, offset });
 
   const config = await MongoDatasetSynonym.findOne({ teamId, datasetId }).lean();
   if (!config?.enabled) return { total: 0, list: [] };
@@ -84,7 +86,7 @@ export const searchDatasetSynonymMappings = async ({
     MongoDatasetSynonymMapping.countDocuments(match),
     MongoDatasetSynonymMapping.find(match)
       .sort({ normalizedStandardizedTerm: 1 })
-      .skip(offset ?? (pageNum - 1) * pageSize)
+      .skip(skip)
       .limit(pageSize)
       .lean()
   ]);

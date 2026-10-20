@@ -21,6 +21,7 @@ import type { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { ListSkillsV2Query } from '@fastgpt/global/openapi/core/ai/skill/api';
 import { AppListSortEnum, appListSortMongoMap } from '@fastgpt/global/core/app/constants';
+import { normalizePagination } from '../../../../common/api/pagination';
 import { countTeamAppsByPublishedResourceGroups } from '../../../app/resourceLookup';
 import { getSkillFolderListScope } from './folder';
 
@@ -257,11 +258,11 @@ export const listReadableAgentSkills = async (params: ListReadableAgentSkillsPar
   })();
 
   const paged = offset !== undefined || (page !== undefined && pageSize !== undefined);
-  const skip = paged ? (offset ?? (page! - 1) * pageSize!) : 0;
+  const skip = paged ? normalizePagination({ offset, pageNum: page, pageSize }).offset : 0;
   const skillQuery = MongoAgentSkills.find(findSkillQuery)
     .sort({ ...appListSortMongoMap[sort ?? AppListSortEnum.updateTimeDesc], _id: -1 })
     .skip(paged && !shouldMergeNavigationFolders ? skip : 0);
-  if (paged && !shouldMergeNavigationFolders) skillQuery.limit(pageSize!);
+  if (paged && !shouldMergeNavigationFolders && pageSize !== undefined) skillQuery.limit(pageSize);
   const [mySkills, dbTotal] = await Promise.all([
     skillQuery.lean(),
     paged && !shouldMergeNavigationFolders

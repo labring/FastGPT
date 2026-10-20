@@ -18,6 +18,7 @@ import {
 } from '@fastgpt/global/openapi/core/app/log/api';
 import { DEFAULT_USER_AVATAR } from '@fastgpt/global/common/system/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { normalizePagination } from '@fastgpt/service/common/api/pagination';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 
 type LogUserGroup = {
@@ -37,12 +38,12 @@ type LogUserAggregationResult = {
  * 从应用聚合日志中按用户统计会话数；用户名搜索先转换为团队成员 ID，再执行聚合和分页。
  */
 async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
-  const {
-    body: { appId, dateStart, dateEnd, searchKey, sources, pageSize, pageNum, offset }
-  } = parseApiInput({
+  const { body } = parseApiInput({
     req,
     bodySchema: GetLogUsersBodySchema
   });
+  const { appId, dateStart, dateEnd, searchKey, sources } = body;
+  const { pageSize: resolvedPageSize, offset: resolvedOffset } = normalizePagination(body);
 
   if (!appId) {
     return Promise.reject(CommonErrEnum.missingParams);
@@ -56,8 +57,6 @@ async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
     per: AppReadChatLogPerVal
   });
 
-  const resolvedPageSize = Math.max(1, pageSize ?? 50);
-  const resolvedOffset = Math.max(0, offset ?? ((pageNum ?? 1) - 1) * resolvedPageSize);
   const teamObjectId = new Types.ObjectId(teamId);
   const searchPattern = searchKey?.trim()
     ? new RegExp(replaceRegChars(searchKey.trim()), 'i')

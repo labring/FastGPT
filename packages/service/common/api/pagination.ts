@@ -1,9 +1,28 @@
-import { createPaginationSchema, PaginationPageSizeSchema } from '@fastgpt/global/openapi/api';
+import {
+  createPaginationSchema,
+  PaginationPageSizeSchema,
+  type PaginationType
+} from '@fastgpt/global/openapi/api';
 import type { NodeApiRequest } from '../../types/http';
 import { parseApiInput } from '../zod/requestParseError';
 
 const PaginationRequestSchema = createPaginationSchema({
   pageSize: PaginationPageSizeSchema
+});
+const defaultPageSize = PaginationPageSizeSchema.parse(undefined);
+
+/**
+ * 将已通过 Schema 校验的分页参数归一为 pageSize 和 offset。
+ * 保留业务 Schema 补齐的每页条数；offset（包括 0）优先于页码。
+ * 此处不重复校验入参，HTTP 边界仍由 parseApiInput 或 parsePaginationRequest 负责。
+ */
+export const normalizePagination = ({
+  pageSize = defaultPageSize,
+  pageNum = 1,
+  offset
+}: Pick<PaginationType, 'pageSize' | 'pageNum' | 'offset'>) => ({
+  pageSize,
+  offset: offset ?? (pageNum - 1) * pageSize
 });
 
 /**
@@ -19,15 +38,8 @@ export const parsePaginationRequest = (req: NodeApiRequest) => {
   const query = req.query || {};
   const fromBody = Object.keys(body).some((key) => paginationKeys.includes(key));
   const input = { body, query };
-  const {
-    pageSize,
-    pageNum = 1,
-    offset
-  } = fromBody
+  const pagination = fromBody
     ? parseApiInput({ req: input, bodySchema: PaginationRequestSchema }).body
     : parseApiInput({ req: input, querySchema: PaginationRequestSchema }).query;
-  return {
-    pageSize,
-    offset: offset ?? (pageNum - 1) * pageSize
-  };
+  return normalizePagination(pagination);
 };

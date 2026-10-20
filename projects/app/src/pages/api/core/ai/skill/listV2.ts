@@ -33,7 +33,7 @@ async function handler(req: ApiRequestProps<ListSkillsV2Query>): Promise<ListSki
 
   if (currentFolderId) {
     const folderAccess =
-      source === 'store'
+      query.source === 'store'
         ? undefined
         : await getAgentSkillFolderAccess({
             teamId,

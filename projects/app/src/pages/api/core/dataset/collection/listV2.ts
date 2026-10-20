@@ -6,6 +6,7 @@ import {
   authDatasetCollection
 } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
+import { normalizePagination } from '@fastgpt/service/common/api/pagination';
 import {
   ManageRoleVal,
   NullRoleVal,
@@ -159,20 +160,12 @@ const findSubtreeFolderIds = async ({
 };
 
 async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseType> {
-  const {
-    datasetId,
-    parentId,
-    searchText: rawSearchText,
-    selectFolder,
-    tagFilters,
-    simple,
-    pageSize: rawPageSize,
-    offset: rawOffset,
-    pageNum: rawPageNum
-  } = parseApiInput({ req, bodySchema: ListCollectionV2BodySchema }).body;
-  const pageSize = Math.min(Number(rawPageSize ?? 10), 100);
-  const offset =
-    rawOffset !== undefined ? Number(rawOffset) : (Number(rawPageNum ?? 1) - 1) * pageSize;
+  const body = parseApiInput({ req, bodySchema: ListCollectionV2BodySchema }).body;
+  const { datasetId, parentId, searchText: rawSearchText, selectFolder, tagFilters, simple } = body;
+  const { pageSize, offset } = normalizePagination({
+    ...body,
+    pageSize: Math.min(body.pageSize ?? 10, 100)
+  });
   const searchText = rawSearchText?.replace(/'/g, '');
 
   // auth dataset and get my role

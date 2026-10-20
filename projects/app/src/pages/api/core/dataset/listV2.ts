@@ -1,5 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { normalizeParentId } from '@fastgpt/global/common/parentFolder/depth';
+import { normalizePagination } from '@fastgpt/service/common/api/pagination';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
@@ -53,7 +54,7 @@ async function handler(
   const { datasetIds, type, searchKey, sort, tmbIds, withAppCount, withFileCount } = body;
   const pagination = body.datasetIds === undefined ? body : undefined;
   const parentId = pagination?.parentId;
-  const pageSize = pagination?.pageSize ?? 50;
+  const { pageSize, offset } = normalizePagination(pagination ?? {});
   const isDatasetIdsQuery = datasetIds !== undefined;
 
   const currentFolderId = normalizeParentId(parentId);
@@ -161,7 +162,6 @@ async function handler(
     $and: [baseQuery, parentScopeQuery, ...(searchMatch ? [searchMatch] : [])]
   };
 
-  const skip = pagination?.offset ?? ((pagination?.pageNum ?? 1) - 1) * pageSize;
   const datasetSort = ((): Record<string, 1 | -1> => {
     if (sort === AppListSortEnum.createTimeAsc) return { _id: 1 };
     if (sort === AppListSortEnum.createTimeDesc) return { _id: -1 };
@@ -209,12 +209,12 @@ async function handler(
       return comparison ? comparison * direction : String(a._id).localeCompare(String(b._id));
     });
     total = visibleDatasets.length;
-    myDatasets = visibleDatasets.slice(skip, skip + pageSize);
+    myDatasets = visibleDatasets.slice(offset, offset + pageSize);
   } else {
     const [datasets, count] = await Promise.all([
       MongoDataset.find(findDatasetQuery)
         .sort(datasetSort)
-        .skip(skip)
+        .skip(offset)
         .limit(isDatasetIdsQuery ? datasetIds.length : pageSize)
         .lean(),
       MongoDataset.countDocuments(findDatasetQuery)
