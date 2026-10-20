@@ -124,15 +124,11 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   });
   let exportedCount = 0;
   let auditFinished = false;
-  let auditPromise: Promise<void> | undefined;
-  const recordExportAudit = async (result: 'success' | 'failed', failureReason?: string) => {
-    if (auditFinished) {
-      await auditPromise;
-      return;
-    }
+  const recordExportAudit = (result: 'success' | 'failed', failureReason?: string) => {
+    if (auditFinished) return;
 
     auditFinished = true;
-    auditPromise = addAuditLog({
+    addAuditLog({
       teamId: String(userTeamId),
       tmbId,
       event: AuditEventEnum.EXPORT_DATASET_CONTENT,
@@ -147,7 +143,6 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
         ...(failureReason ? { failureReason } : {})
       }
     });
-    await auditPromise;
   };
 
   write(`\uFEFFq,a`);
@@ -168,7 +163,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       exportedCount += 1;
     } catch (error) {
       logger.error(`export usage error`, { error });
-      await recordExportAudit('failed', getErrText(error));
+      recordExportAudit('failed', getErrText(error));
       cursor.destroy();
       return;
     }
@@ -176,23 +171,15 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     cursor.resume();
   });
 
-  cursor.on('end', async () => {
+  cursor.on('end', () => {
     cursor.close();
-    try {
-      await recordExportAudit('success');
-    } catch (error) {
-      logger.error('collection export audit write failed', { error });
-    }
+    recordExportAudit('success');
     res.end();
   });
 
-  cursor.on('error', async (err) => {
+  cursor.on('error', (err) => {
     logger.error(`export usage error`, { error: err });
-    try {
-      await recordExportAudit('failed', getErrText(err));
-    } catch (error) {
-      logger.error('collection export audit write failed', { error });
-    }
+    recordExportAudit('failed', getErrText(err));
     res.status(500);
     res.end();
   });

@@ -193,36 +193,41 @@ describe('update collection', () => {
       ).code
     ).toBe(200);
 
-    const logs = await MongoTeamAudit.find({
-      teamId: actor.teamId,
-      event: AuditEventEnum.UPDATE_DATASET_CONTENT_OBJECT
-    })
-      .sort({ timestamp: 1 })
-      .lean();
+    await vi.waitFor(
+      async () => {
+        const logs = await MongoTeamAudit.find({
+          teamId: actor.teamId,
+          event: AuditEventEnum.UPDATE_DATASET_CONTENT_OBJECT
+        })
+          .sort({ timestamp: 1 })
+          .lean();
 
-    expect(logs).toHaveLength(3);
-    expect(logs.map((log) => log.metadata)).toEqual([
-      expect.objectContaining({
-        datasetId,
-        collectionId: String(file._id),
-        collectionName: 'file',
-        action: 'rename',
-        oldValue: 'file',
-        newValue: 'renamed'
-      }),
-      expect.objectContaining({
-        collectionId: String(file._id),
-        action: 'move',
-        oldValue: 'update-test/source/renamed',
-        newValue: 'update-test/target/renamed'
-      }),
-      expect.objectContaining({
-        collectionId: String(file._id),
-        action: 'disable',
-        oldValue: 'account_team:dataset_content_status_enabled',
-        newValue: 'account_team:dataset_content_status_disabled'
-      })
-    ]);
+        expect(logs).toHaveLength(3);
+        expect(logs.map((log) => log.metadata)).toEqual([
+          expect.objectContaining({
+            datasetId,
+            collectionId: String(file._id),
+            collectionName: 'file',
+            action: 'rename',
+            oldValue: 'file',
+            newValue: 'renamed'
+          }),
+          expect.objectContaining({
+            collectionId: String(file._id),
+            action: 'move',
+            oldValue: 'update-test/source/renamed',
+            newValue: 'update-test/target/renamed'
+          }),
+          expect.objectContaining({
+            collectionId: String(file._id),
+            action: 'disable',
+            oldValue: 'account_team:dataset_content_status_enabled',
+            newValue: 'account_team:dataset_content_status_disabled'
+          })
+        ]);
+      },
+      { timeout: 5000 }
+    );
   });
 
   it('文件夹禁用只记录文件夹自身，子 collection 只执行状态级联', async () => {
@@ -235,19 +240,24 @@ describe('update collection', () => {
     expect(result.code).toBe(200);
     expect((await MongoDatasetCollection.findById(file._id).lean())?.forbid).toBe(true);
 
-    const logs = await MongoTeamAudit.find({
-      teamId: actor.teamId,
-      event: AuditEventEnum.UPDATE_DATASET_CONTENT_OBJECT
-    }).lean();
-    expect(logs).toHaveLength(1);
-    expect(logs[0].metadata).toEqual(
-      expect.objectContaining({
-        collectionId: String(source._id),
-        collectionName: 'source',
-        action: 'disable',
-        oldValue: 'account_team:dataset_content_status_enabled',
-        newValue: 'account_team:dataset_content_status_disabled'
-      })
+    await vi.waitFor(
+      async () => {
+        const logs = await MongoTeamAudit.find({
+          teamId: actor.teamId,
+          event: AuditEventEnum.UPDATE_DATASET_CONTENT_OBJECT
+        }).lean();
+        expect(logs).toHaveLength(1);
+        expect(logs[0].metadata).toEqual(
+          expect.objectContaining({
+            collectionId: String(source._id),
+            collectionName: 'source',
+            action: 'disable',
+            oldValue: 'account_team:dataset_content_status_enabled',
+            newValue: 'account_team:dataset_content_status_disabled'
+          })
+        );
+      },
+      { timeout: 5000 }
     );
   });
 });

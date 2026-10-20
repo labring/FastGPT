@@ -359,7 +359,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   await mongoSessionRun((session) => onUpdate(session));
 
   if (configChanges.length > 0) {
-    await addAuditLog({
+    addAuditLog({
       tmbId,
       teamId,
       event: AuditEventEnum.UPDATE_DATASET_CONFIG,

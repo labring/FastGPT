@@ -257,7 +257,7 @@ async function handler(req: ApiRequestProps) {
 
   if (auditChanges.length === 0) return;
 
-  await addAuditLogs(
+  addAuditLogs(
     auditChanges.map((change) => ({
       tmbId,
       teamId,
