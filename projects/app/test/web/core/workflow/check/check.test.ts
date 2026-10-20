@@ -38,6 +38,10 @@ import { DatasetConcatModule } from '@fastgpt/global/core/workflow/template/syst
 import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
 import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
+import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
+import { ContextExtractModule } from '@fastgpt/global/core/workflow/template/system/contextExtract';
+import { VariableUpdateNode } from '@fastgpt/global/core/workflow/template/system/variableUpdate';
+import { FormInputNode } from '@fastgpt/global/core/workflow/template/system/interactive/formInput';
 
 describe('checkWorkflowNodeIssues', () => {
   const makeNode = (
@@ -70,6 +74,128 @@ describe('checkWorkflowNodeIssues', () => {
         valueType: WorkflowIOValueTypeEnum.string
       }
     ]
+  });
+
+  it('runs saved HTTP, extraction, boolean-update and form configurations through the shared check', () => {
+    const http = makeNode('http', FlowNodeTypeEnum.httpRequest468, {
+      ...HttpNode468,
+      inputs: HttpNode468.inputs.map((input) => ({
+        ...input,
+        value:
+          input.key === NodeInputKeyEnum.httpReqUrl
+            ? 'https://example.com/api'
+            : [
+                  NodeInputKeyEnum.httpHeaders,
+                  NodeInputKeyEnum.httpParams,
+                  NodeInputKeyEnum.httpFormBody
+                ].includes(input.key as NodeInputKeyEnum)
+              ? [{ key: 'name', type: 'string', value: 'Alice' }]
+              : input.value
+      }))
+    });
+    const extract = makeNode('extract', FlowNodeTypeEnum.contentExtract, {
+      ...ContextExtractModule,
+      inputs: ContextExtractModule.inputs.map((input) => ({
+        ...input,
+        selectedType:
+          input.key === NodeInputKeyEnum.contextExtractInput
+            ? FlowNodeInputTypeEnum.textarea
+            : input.selectedType,
+        value:
+          input.key === NodeInputKeyEnum.aiModelId
+            ? 'llm-id'
+            : input.key === NodeInputKeyEnum.contextExtractInput
+              ? 'Status is open'
+              : input.key === NodeInputKeyEnum.extractKeys
+                ? [
+                    {
+                      key: 'status',
+                      desc: 'Status',
+                      valueType: WorkflowIOValueTypeEnum.string,
+                      required: false,
+                      defaultValue: 'open',
+                      enum: 'open\nclosed'
+                    }
+                  ]
+                : input.value
+      }))
+    });
+    const update = makeNode('update', FlowNodeTypeEnum.variableUpdate, {
+      ...VariableUpdateNode,
+      inputs: [
+        {
+          ...VariableUpdateNode.inputs[0],
+          value: [
+            {
+              variable: ['extract', NodeOutputKeyEnum.success],
+              renderType: FlowNodeInputTypeEnum.input,
+              valueType: WorkflowIOValueTypeEnum.boolean,
+              booleanMode: 'false',
+              value: ['', false]
+            }
+          ]
+        }
+      ]
+    });
+    const form = makeNode('form', FlowNodeTypeEnum.formInput, {
+      ...FormInputNode,
+      inputs: [
+        {
+          ...FormInputNode.inputs[1],
+          value: [
+            {
+              type: FlowNodeInputTypeEnum.input,
+              key: 'name',
+              label: 'Name',
+              required: false,
+              valueType: WorkflowIOValueTypeEnum.string,
+              defaultValue: 'Alice'
+            }
+          ]
+        }
+      ],
+      outputs: [
+        {
+          id: 'name',
+          key: 'name',
+          type: FlowNodeOutputTypeEnum.dynamic,
+          valueType: WorkflowIOValueTypeEnum.string
+        }
+      ]
+    });
+    const nodes = [startNode, http, extract, update, form];
+    const edges = nodes
+      .slice(1)
+      .map((node, index) => ({ id: `edge-${index}`, source: nodes[index].id, target: node.id }));
+    const result = checkWorkflowBeforeRunOrPublish({ nodes, edges });
+    expect(result.errorMessages).toEqual([]);
+    expect(result.hasError).toBe(false);
+  });
+
+  it('accepts sparse Agent tool and Skill snapshots and preserves explicit resource errors', () => {
+    const values = new Map<string, unknown>([
+      [NodeInputKeyEnum.aiModelId, 'llm-id'],
+      [NodeInputKeyEnum.selectedTools, [{ id: 'systemTool-search', config: {} }]],
+      [NodeInputKeyEnum.skills, [{ skillId: 'skill-id' }]],
+      [NodeInputKeyEnum.datasetSelectList, [{ datasetId: 'dataset-id' }]]
+    ]);
+    const agent = makeNode('agent', FlowNodeTypeEnum.agent, {
+      inputs: AgentNode.inputs
+        .filter((input) => values.has(input.key))
+        .map((input) => ({ ...input, value: values.get(input.key) }))
+    });
+    const graph = {
+      nodes: [startNode, agent],
+      edges: [{ id: 'edge', source: 'start', target: 'agent' }]
+    };
+    expect(checkWorkflowBeforeRunOrPublish(graph).hasError).toBe(false);
+
+    agent.data.inputs.find((input) => input.key === NodeInputKeyEnum.skills)!.value = [
+      { skillId: 'skill-id', error: 'resource_no_permission' }
+    ];
+    expect(checkWorkflowBeforeRunOrPublish(graph).issueMap.agent).toEqual([
+      expect.objectContaining({ code: 'resource_no_permission', inputKey: NodeInputKeyEnum.skills })
+    ]);
   });
 
   it('collects multiple node errors in one pass', () => {

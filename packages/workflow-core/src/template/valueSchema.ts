@@ -3,8 +3,9 @@ import { WorkflowCommandError } from '../domain/diagnostic';
 type JsonSchema = {
   type?: string | string[];
   const?: unknown;
-  required?: string[];
+  required?: string[] | boolean;
   properties?: Record<string, JsonSchema>;
+  patternProperties?: Record<string, JsonSchema>;
   items?: JsonSchema | JsonSchema[] | false;
   prefixItems?: JsonSchema[];
   enum?: unknown[];
@@ -38,6 +39,7 @@ const valueMatchesType = (value: unknown, type: string) => {
   return true;
 };
 
+/** 校验固定值使用的 JSON Schema 子集，兼容旧工具必填标记，不修改输入或 Schema。 */
 export const valueMatchesSchema = (value: unknown, schema: Record<string, unknown>): boolean => {
   const parsedSchema = schema as JsonSchema;
   if (parsedSchema.const !== undefined && !valuesEqual(parsedSchema.const, value)) return false;
@@ -111,8 +113,31 @@ export const valueMatchesSchema = (value: unknown, schema: Record<string, unknow
   }
   if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
     const record = value as Record<string, unknown>;
-    if (parsedSchema.required?.some((key) => record[key] === undefined)) return false;
-    const additionalKeys = Object.keys(record).filter((key) => !parsedSchema.properties?.[key]);
+    // 旧工具的 required: boolean 表达整个输入必填，由 NodeIO 检查；这里只校验对象字段列表。
+    if (
+      Array.isArray(parsedSchema.required) &&
+      parsedSchema.required.some((key) => record[key] === undefined)
+    )
+      return false;
+
+    // patternProperties 命中的字段不属于额外字段；多个正则命中时需同时满足，和工具运行时一致。
+    const patterns = Object.entries(parsedSchema.patternProperties ?? {}).map(
+      ([pattern, schema]) => ({
+        pattern: new RegExp(pattern),
+        schema
+      })
+    );
+    if (
+      Object.entries(record).some(([key, value]) =>
+        patterns.some(
+          ({ pattern, schema }) => pattern.test(key) && !valueMatchesSchema(value, schema)
+        )
+      )
+    )
+      return false;
+    const additionalKeys = Object.keys(record).filter(
+      (key) => !parsedSchema.properties?.[key] && !patterns.some(({ pattern }) => pattern.test(key))
+    );
     if (parsedSchema.additionalProperties === false && additionalKeys.length > 0) return false;
     if (
       parsedSchema.additionalProperties &&

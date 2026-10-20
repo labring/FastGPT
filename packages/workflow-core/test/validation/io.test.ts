@@ -14,6 +14,12 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import type { WorkflowDiagnostic } from '../../src/domain/diagnostic';
 import { createWorkflowDocument } from '../../src/domain/document';
 import { validateNodeIO } from '../../src/validation/io';
+import { ContextExtractModule } from '@fastgpt/global/core/workflow/template/system/contextExtract';
+import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
+import { VariableUpdateNode } from '@fastgpt/global/core/workflow/template/system/variableUpdate';
+import { FormInputNode } from '@fastgpt/global/core/workflow/template/system/interactive/formInput';
+import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
+import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
 
 type Input = StoreNodeItemType['inputs'][number];
 
@@ -69,6 +75,162 @@ const check = (node: StoreNodeItemType, isTool = false) => {
 };
 
 describe('validateNodeIO', () => {
+  it.each([
+    {
+      schema: { type: 'object', required: true, properties: { name: { type: 'string' } } },
+      value: { name: 'Alice' }
+    },
+    {
+      schema: {
+        type: 'object',
+        patternProperties: { '^value_': { type: 'number' } },
+        additionalProperties: false
+      },
+      value: { value_count: 1 }
+    }
+  ])(
+    'accepts tool inputs projected from supported legacy and pattern-property schemas: $schema',
+    ({ schema, value }) => {
+      const inputs = jsonSchema2NodeInput({
+        schemaType: 'http',
+        jsonSchema: { type: 'object', properties: { parameter: schema } }
+      }).map((input) => ({
+        ...input,
+        selectedType: FlowNodeInputTypeEnum.JSONEditor,
+        value: JSON.stringify(value)
+      }));
+      const node = makeNode({ flowNodeType: FlowNodeTypeEnum.tool, inputs });
+      expect(check(node, true)).toEqual([]);
+    }
+  );
+
+  it.each([
+    {
+      template: ContextExtractModule,
+      key: NodeInputKeyEnum.extractKeys,
+      value: [{ key: 'name', desc: 'Name', required: true }]
+    },
+    {
+      template: ContextExtractModule,
+      key: NodeInputKeyEnum.extractKeys,
+      value: [
+        {
+          key: 'status',
+          valueType: WorkflowIOValueTypeEnum.string,
+          desc: 'Status',
+          required: true,
+          defaultValue: 'open',
+          enum: 'open\nclosed'
+        }
+      ]
+    },
+    ...[
+      NodeInputKeyEnum.httpHeaders,
+      NodeInputKeyEnum.httpParams,
+      NodeInputKeyEnum.httpFormBody
+    ].map((key) => ({
+      template: HttpNode468,
+      key,
+      value: [{ key: 'name', value: 'Alice', type: 'string' }]
+    })),
+    ...[true, false, 0, { count: 1 }, ['item']].map((value) => ({
+      template: VariableUpdateNode,
+      key: NodeInputKeyEnum.updateList,
+      value: [
+        {
+          variable: [VARIABLE_NODE_ID, 'target'],
+          renderType: FlowNodeInputTypeEnum.input,
+          value: ['', value]
+        }
+      ]
+    })),
+    {
+      template: FormInputNode,
+      key: NodeInputKeyEnum.userInputForms,
+      // 未填写的当前值可能是 undefined，经过 JSON 持久化后不再包含 value。
+      value: [
+        {
+          type: FlowNodeInputTypeEnum.input,
+          key: 'name',
+          label: 'Name',
+          valueType: WorkflowIOValueTypeEnum.string,
+          required: false,
+          defaultValue: 'Alice'
+        }
+      ]
+    }
+  ])(
+    'accepts persisted $template.flowNodeType / $key values in ordinary and tool contexts',
+    ({ template, key, value }) => {
+      const node = makeNode({
+        flowNodeType: template.flowNodeType,
+        inputs: [{ ...template.inputs.find((input) => input.key === key)!, value }]
+      });
+      const before = structuredClone(node);
+      expect(check(node)).toEqual([]);
+      expect(check(node, true)).toEqual([]);
+      expect(node).toEqual(before);
+    }
+  );
+
+  it.each([
+    {
+      key: NodeInputKeyEnum.selectedTools,
+      value: [{ id: 'workflow-tool', version: '', config: {} }]
+    },
+    {
+      key: NodeInputKeyEnum.selectedTools,
+      value: [
+        { id: 'systemTool-search', inputs: [{ key: 'query', mode: 'agentGenerated' }], config: {} }
+      ]
+    },
+    { key: NodeInputKeyEnum.skills, value: [{ skillId: 'skill-id' }] },
+    { key: NodeInputKeyEnum.datasetSelectList, value: [{ datasetId: 'dataset-id' }] }
+  ])(
+    'accepts sparse Agent resource snapshots without selector metadata: $key',
+    ({ key, value }) => {
+      const node = makeNode({
+        flowNodeType: AgentNode.flowNodeType,
+        inputs: [{ ...AgentNode.inputs.find((input) => input.key === key)!, value }]
+      });
+      expect(check(node)).toEqual([]);
+    }
+  );
+
+  it.each([
+    {
+      template: ContextExtractModule,
+      key: NodeInputKeyEnum.extractKeys,
+      value: [{ desc: 'Missing key' }]
+    },
+    {
+      template: ContextExtractModule,
+      key: NodeInputKeyEnum.extractKeys,
+      value: [{ key: 'status', enum: ['open'] }]
+    },
+    {
+      template: HttpNode468,
+      key: NodeInputKeyEnum.httpHeaders,
+      value: [{ key: 'name', type: 'string' }]
+    },
+    {
+      template: VariableUpdateNode,
+      key: NodeInputKeyEnum.updateList,
+      value: [{ renderType: FlowNodeInputTypeEnum.input, value: [true, false] }]
+    }
+  ])(
+    'still rejects malformed persisted $template.flowNodeType / $key values',
+    ({ template, key, value }) => {
+      const node = makeNode({
+        flowNodeType: template.flowNodeType,
+        inputs: [{ ...template.inputs.find((input) => input.key === key)!, value }]
+      });
+      expect(check(node)).toEqual([
+        expect.objectContaining({ code: 'WORKFLOW_INPUT_VALUE_SCHEMA_INVALID', inputKey: key })
+      ]);
+    }
+  );
+
   it.each([
     { datasetId: 'dataset-id' },
     { datasetId: 'dataset-id', name: 'Stored dataset', vectorModel: { modelId: 'embedding-id' } },

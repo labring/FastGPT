@@ -17,6 +17,17 @@ const referenceItemSchema = {
   items: { type: 'string' }
 } as const;
 
+/** HTTP 编辑器和 cURL 导入都保存 type；旧版只保存 key/value，运行时同样支持。 */
+const httpEntrySchema = {
+  type: 'object',
+  required: ['key', 'value'],
+  properties: {
+    key: { type: 'string' },
+    value: {},
+    type: { type: 'string' }
+  }
+} as const;
+
 const inputOptionSchema = {
   type: 'object',
   required: ['key', 'value'],
@@ -130,14 +141,16 @@ const automationMetaMap: Record<string, NodeTemplateAutomationMeta> = {
           type: 'array',
           items: {
             type: 'object',
-            required: ['key', 'valueType'],
-            additionalProperties: false,
+            // 历史字段可缺少 valueType，运行时默认按 string 提取。
+            required: ['key'],
             properties: {
               key: { type: 'string', minLength: 1 },
               valueType: { type: 'string', enum: Object.values(WorkflowIOValueTypeEnum) },
-              description: { type: 'string' },
+              desc: { type: 'string' },
               required: { type: 'boolean' },
-              enum: { type: 'array', items: { type: 'string' } }
+              defaultValue: { type: 'string' },
+              // 提取节点按换行符拆分枚举，存储值不是 JSON Schema 的 enum 数组。
+              enum: { type: 'string' }
             }
           }
         }
@@ -162,10 +175,8 @@ const automationMetaMap: Record<string, NodeTemplateAutomationMeta> = {
         valueSchema: {
           type: 'array',
           items: {
-            type: 'object',
-            required: ['key', 'value'],
-            additionalProperties: false,
-            properties: { key: { type: 'string' }, value: { type: 'string' } }
+            ...httpEntrySchema,
+            properties: { ...httpEntrySchema.properties, value: { type: 'string' } }
           }
         }
       },
@@ -175,12 +186,7 @@ const automationMetaMap: Record<string, NodeTemplateAutomationMeta> = {
         agentHint: 'URL query parameters as key/value entries.',
         valueSchema: {
           type: 'array',
-          items: {
-            type: 'object',
-            required: ['key', 'value'],
-            additionalProperties: false,
-            properties: { key: { type: 'string' }, value: {} }
-          }
+          items: httpEntrySchema
         }
       },
       [NodeInputKeyEnum.httpFormBody]: {
@@ -189,12 +195,7 @@ const automationMetaMap: Record<string, NodeTemplateAutomationMeta> = {
         agentHint: 'Form body fields as key/value entries.',
         valueSchema: {
           type: 'array',
-          items: {
-            type: 'object',
-            required: ['key', 'value'],
-            additionalProperties: false,
-            properties: { key: { type: 'string' }, value: {} }
-          }
+          items: httpEntrySchema
         }
       },
       [NodeInputKeyEnum.httpJsonBody]: {
@@ -318,7 +319,8 @@ const automationMetaMap: Record<string, NodeTemplateAutomationMeta> = {
           minItems: 1,
           items: {
             ...dynamicFieldSchema,
-            required: ['type', 'key', 'label', 'value', 'valueType', 'required'],
+            // value 是交互时的填写值，未填写时不会随 JSON 保存；不能作为表单定义必填项。
+            required: ['type', 'key', 'label', 'valueType', 'required'],
             properties: {
               ...dynamicFieldSchema.properties,
               type: { type: 'string', enum: Object.values(FlowNodeInputTypeEnum) },
@@ -362,7 +364,18 @@ const automationMetaMap: Record<string, NodeTemplateAutomationMeta> = {
             properties: {
               variable: referenceItemSchema,
               value: {
-                anyOf: [referenceItemSchema, { type: 'array', items: referenceItemSchema }]
+                // 手动值保存为 ['', value]，第二项可为任意 JSON 值；引用仍使用字符串二元组。
+                anyOf: [
+                  referenceItemSchema,
+                  { type: 'array', items: referenceItemSchema },
+                  {
+                    type: 'array',
+                    minItems: 2,
+                    maxItems: 2,
+                    prefixItems: [{ const: '' }, {}],
+                    items: false
+                  }
+                ]
               },
               valueType: { type: 'string', enum: Object.values(WorkflowIOValueTypeEnum) },
               renderType: {
