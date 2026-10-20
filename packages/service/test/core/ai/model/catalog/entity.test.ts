@@ -76,6 +76,24 @@ describe('readModelCatalogSnapshot', () => {
     expect(snapshot.revision).toBe(0);
   });
 
+  it('puts explicit model order before legacy records without an order', async () => {
+    await MongoAIModel.create([
+      { ...modelData, model: 'sort-two', sortOrder: 2 },
+      { ...modelData, model: 'legacy' },
+      { ...modelData, model: 'sort-zero', sortOrder: 0 },
+      { ...modelData, model: 'sort-one', sortOrder: 1 }
+    ]);
+
+    const snapshot = await readModelCatalogSnapshot({ scope: ModelScopeEnum.system });
+
+    expect(snapshot.models.map(({ model }) => model)).toEqual([
+      'sort-zero',
+      'sort-one',
+      'sort-two',
+      'legacy'
+    ]);
+  });
+
   it('does not expose in-flight data with the uncommitted revision', async () => {
     const model = await MongoAIModel.create(modelData);
     await MongoAIModelCatalog.create({ scope: ModelScopeEnum.system, catalogRevision: 4 });

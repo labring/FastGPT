@@ -6,6 +6,7 @@ import {
   DeleteModelsBodySchema,
   TestModelQuerySchema,
   UpdateModelBodySchema,
+  UpdateModelOrderBodySchema,
   UpdateModelStatusBodySchema,
   ImportedSystemModelSchema
 } from '../../../../openapi/core/ai/model/api';
@@ -77,6 +78,32 @@ describe('admin system model API schemas', () => {
     expect(() => DeleteModelsBodySchema.parse({ modelIds, channelType: 'system' })).toThrow();
     expect(() =>
       UpdateModelStatusBodySchema.parse({ modelIds: [], isActive: true, channelType: 'system' })
+    ).toThrow();
+  });
+
+  it('validates the complete model order request', () => {
+    const modelIds = ['68ad85a7463006c963799a05', '68ad85a7463006c963799a06'];
+
+    expect(UpdateModelOrderBodySchema.parse({ modelIds, channelType: 'team' })).toEqual({
+      modelIds,
+      channelType: 'team'
+    });
+    expect(() =>
+      UpdateModelOrderBodySchema.parse({ modelIds: [], channelType: 'system' })
+    ).toThrow();
+    expect(() =>
+      UpdateModelOrderBodySchema.parse({
+        modelIds: [modelIds[0], modelIds[0]],
+        channelType: 'system'
+      })
+    ).toThrow('modelIds must be unique');
+    expect(() =>
+      UpdateModelOrderBodySchema.parse({
+        modelIds: Array.from({ length: 501 }, (_, index) =>
+          (index + 1).toString(16).padStart(24, '0')
+        ),
+        channelType: 'system'
+      })
     ).toThrow();
   });
 

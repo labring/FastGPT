@@ -16,6 +16,24 @@ const getCatalogFilter = (context: ModelCatalogScope) =>
     ? { scope: ModelScopeEnum.system }
     : { scope: ModelScopeEnum.team, teamId: context.teamId };
 
+/**
+ * 按模型自定义顺序排列目录；未写入顺序的历史模型保持数据库原有 `_id` 顺序并排在已排序模型之后。
+ * 显式顺序相同时保留查询结果顺序，避免旧数据重排时出现不稳定跳动。
+ */
+const sortModelDocuments = <T extends { sortOrder?: number }>(models: T[]) =>
+  models
+    .map((model, index) => ({ model, index }))
+    .sort((a, b) => {
+      const aOrder = typeof a.model.sortOrder === 'number' ? a.model.sortOrder : undefined;
+      const bOrder = typeof b.model.sortOrder === 'number' ? b.model.sortOrder : undefined;
+
+      if (aOrder === undefined && bOrder === undefined) return a.index - b.index;
+      if (aOrder === undefined) return 1;
+      if (bOrder === undefined) return -1;
+      return aOrder - bOrder || a.index - b.index;
+    })
+    .map(({ model }) => model);
+
 /** 在调用方提供的事务中递增目录版本，不自行决定业务事务边界。 */
 export const incrementModelCatalogRevision = (context: ModelCatalogScope, session: ClientSession) =>
   MongoAIModelCatalog.updateOne(
@@ -63,7 +81,7 @@ export const readModelCatalogSnapshot = (context: ModelCatalogScope) =>
       const defaults = await MongoAIModelCatalog.findOne(filter).session(session).lean();
       const models = await MongoAIModel.find(filter).sort({ _id: -1 }).session(session).lean();
       return {
-        models,
+        models: sortModelDocuments(models),
         defaultModelIds: ModelDefaultIdsSchema.parse(defaults?.defaultModelIds ?? {}),
         revision: defaults?.catalogRevision ?? 0
       };

@@ -48,6 +48,7 @@ vi.mock('@fastgpt/service/core/ai/model/provider/controller', async (importOrigi
 import createModelApi from '@/pages/api/core/ai/model/create';
 import getModelTemplatesApi from '@/pages/api/core/ai/model/templates';
 import updateModelApi from '@/pages/api/core/ai/model/update';
+import updateModelOrderApi from '@/pages/api/core/ai/model/updateOrder';
 
 const buildLlmDocument = () => ({
   type: ModelTypeEnum.llm,
@@ -114,6 +115,31 @@ describe('admin settings model create/update api', () => {
     // 丢弃 fixture 目录，配置鉴权从数据库目录快照读取模型。
     publishSystemModelHandle(undefined);
     clearTeamModelCatalogCache();
+  });
+
+  it('updates the complete system model order and rejects partial lists', async () => {
+    const first = await insertSystemModel({ ...buildLlmDocument(), model: 'first' });
+    const second = await insertSystemModel({ ...buildLlmDocument(), model: 'second' });
+
+    const res = await callApi({
+      handler: updateModelOrderApi,
+      body: { modelIds: [String(second._id), String(first._id)] }
+    });
+
+    expect(res.error).toBeUndefined();
+    await expect(
+      MongoAIModel.find({ scope: ModelScopeEnum.system }).sort({ sortOrder: 1 }).lean()
+    ).resolves.toMatchObject([
+      { model: 'second', sortOrder: 0 },
+      { model: 'first', sortOrder: 1 }
+    ]);
+
+    const partial = await callApi({
+      handler: updateModelOrderApi,
+      body: { modelIds: [String(first._id)] }
+    });
+    expect(partial.error).toBeDefined();
+    await expect(MongoAIModel.findById(first._id).lean()).resolves.toMatchObject({ sortOrder: 1 });
   });
 
   it('creates a custom model through the dedicated create endpoint', async () => {
