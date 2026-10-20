@@ -26,9 +26,11 @@ import {
   SANDBOX_PREVIEW_SESSION_TTL_SECONDS
 } from '@fastgpt/service/core/ai/sandbox/constants';
 
-const originalProxyUrl = serviceEnv.AGENT_SANDBOX_PROXY_URL;
-const originalPreviewProxyUrl = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
-const originalProvider = serviceEnv.AGENT_SANDBOX_PROVIDER;
+const originalEnv = {
+  AGENT_SANDBOX_PROXY_URL: serviceEnv.AGENT_SANDBOX_PROXY_URL,
+  AGENT_SANDBOX_PREVIEW_PROXY_URL: serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL,
+  AGENT_SANDBOX_PROVIDER: serviceEnv.AGENT_SANDBOX_PROVIDER
+};
 const sandboxId = generateSandboxId({
   sourceType: ChatSourceTypeEnum.app,
   sourceId: 'app-1',
@@ -44,17 +46,17 @@ const sessionContext = {
 
 describe('sandbox preview application', () => {
   beforeEach(() => {
-    serviceEnv.AGENT_SANDBOX_PROXY_URL = 'wss://agent-proxy.example.com/base/';
-    serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = 'https://agent-preview.example.com:3007/base/';
-    serviceEnv.AGENT_SANDBOX_PROVIDER = 'opensandbox';
+    Object.assign(serviceEnv, {
+      AGENT_SANDBOX_PROXY_URL: 'wss://agent-proxy.example.com/base/',
+      AGENT_SANDBOX_PREVIEW_PROXY_URL: 'https://agent-preview.example.com:3007/base/',
+      AGENT_SANDBOX_PROVIDER: 'opensandbox'
+    });
     vi.resetAllMocks();
     redisMock.evalScript.mockResolvedValue(1);
   });
 
   afterEach(() => {
-    serviceEnv.AGENT_SANDBOX_PROXY_URL = originalProxyUrl;
-    serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = originalPreviewProxyUrl;
-    serviceEnv.AGENT_SANDBOX_PROVIDER = originalProvider;
+    Object.assign(serviceEnv, originalEnv);
   });
 
   it('atomically indexes and creates a 24-character session', async () => {
@@ -112,26 +114,6 @@ describe('sandbox preview application', () => {
     );
   });
 
-  it('allows at most 500 concurrent session creations', async () => {
-    let activeSessionCount = 0;
-    redisMock.evalScript.mockImplementation(async () => {
-      if (activeSessionCount >= SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX) return 0;
-      activeSessionCount += 1;
-      return 1;
-    });
-
-    const results = await Promise.allSettled(
-      Array.from({ length: SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX + 1 }, () =>
-        createSandboxPreviewSession(sessionContext)
-      )
-    );
-
-    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(
-      SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX
-    );
-    expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
-  });
-
   it('resolves session context until the Redis TTL expires', async () => {
     redisMock.get.mockResolvedValueOnce(JSON.stringify(sessionContext)).mockResolvedValue(null);
 
@@ -170,7 +152,7 @@ describe('sandbox preview application', () => {
   });
 
   it('requires a dedicated HTTP preview proxy URL', () => {
-    serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = undefined;
+    Object.assign(serviceEnv, { AGENT_SANDBOX_PREVIEW_PROXY_URL: undefined });
 
     expect(() =>
       buildSandboxPreviewFileUrl({

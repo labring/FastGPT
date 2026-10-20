@@ -1,7 +1,7 @@
 import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
 import { compileStoreWorkflow } from '../../src/store/compile';
 import { decompileStoreWorkflow } from '../../src/store/decompile';
-import { getWorkflowChecksum, normalizeWorkflowDocument } from '../../src/domain/checksum';
+import { normalizeWorkflowDocument } from '../../src/domain/checksum';
 import { validateWorkflow } from '../../src/validation/index';
 import { WorkflowTemplateBasicTypeSchema } from '@fastgpt/global/core/workflow/type';
 import aiStore from '../fixtures/basic-ai/store-workflow.json';
@@ -27,16 +27,6 @@ describe('StoreWorkflow round-trip', () => {
     expect(compileStoreWorkflow(document)).toEqual(parsedStore);
     expect(normalizeWorkflowDocument(document)).toEqual(normalizeWorkflowDocument(parsedWorkflow));
     expect(validateWorkflow(document)).toEqual([]);
-  });
-
-  it('computes the same checksum regardless of node and edge order', async () => {
-    const parsedWorkflow = WorkflowDocumentSchema.parse(aiWorkflow);
-    const reversed = {
-      ...parsedWorkflow,
-      nodes: [...parsedWorkflow.nodes].reverse(),
-      executionEdges: [...parsedWorkflow.executionEdges].reverse()
-    };
-    expect(await getWorkflowChecksum(parsedWorkflow)).toBe(await getWorkflowChecksum(reversed));
   });
 
   it('compiles semantic output keys to Store output ids and decompiles them back', () => {

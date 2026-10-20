@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import { SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import type { ChatHistoryItemResType, ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import {
   SANDBOX_READ_FILE_TOOL_NAME,
   SANDBOX_SHELL_TOOL_NAME
@@ -89,38 +90,6 @@ describe('addStatisticalDataToHistoryItem', () => {
     expect(addStatisticalDataToHistoryItem(historyItem).useAgentSandbox).toBe(true);
   });
 
-  it('marks sandbox usage when a childrenResponses item calls any sandbox tool', () => {
-    const historyItem: ChatItemMiniType = {
-      obj: ChatRoleEnum.AI,
-      value: [
-        {
-          text: {
-            content: 'done'
-          }
-        }
-      ],
-      responseData: [
-        {
-          id: 'agent-response',
-          nodeId: 'agent-node',
-          moduleName: 'Agent',
-          moduleType: FlowNodeTypeEnum.agent,
-          childrenResponses: [
-            {
-              id: 'sandbox-response',
-              nodeId: 'sandbox-node',
-              moduleName: 'Read file',
-              moduleType: FlowNodeTypeEnum.tool,
-              toolId: SANDBOX_READ_FILE_TOOL_NAME
-            }
-          ]
-        }
-      ]
-    };
-
-    expect(addStatisticalDataToHistoryItem(historyItem).useAgentSandbox).toBe(true);
-  });
-
   it('includes dataset quote tags from childrenResponses', () => {
     const quoteId = '507f1f77bcf86cd799439011';
     const historyItem: ChatItemMiniType = {
@@ -151,7 +120,7 @@ describe('addStatisticalDataToHistoryItem', () => {
                   datasetId: 'dataset-1',
                   collectionId: 'collection-1',
                   sourceName: 'doc.pdf',
-                  score: [{ type: 'embedding', value: 0.9, index: 0 }]
+                  score: [{ type: SearchScoreTypeEnum.embedding, value: 0.9, index: 0 }]
                 }
               ]
             }
@@ -187,7 +156,7 @@ describe('addStatisticalDataToHistoryItem', () => {
               datasetId: 'dataset-1',
               collectionId: 'collection-1',
               sourceName: 'doc.pdf',
-              score: [{ type: 'embedding', value: 0.9, index: 0 }]
+              score: [{ type: SearchScoreTypeEnum.embedding, value: 0.9, index: 0 }]
             }
           ]
         },
@@ -203,7 +172,7 @@ describe('addStatisticalDataToHistoryItem', () => {
               datasetId: 'dataset-1',
               collectionId: 'collection-1',
               sourceName: 'doc.pdf',
-              score: [{ type: 'embedding', value: 0.9, index: 0 }]
+              score: [{ type: SearchScoreTypeEnum.embedding, value: 0.9, index: 0 }]
             }
           ]
         }
@@ -392,7 +361,7 @@ describe('addStatisticalDataToHistoryItem', () => {
   });
 
   it('ignores a failed tool child when later tool calls complete', () => {
-    const responseData: NonNullable<ChatItemMiniType['responseData']> = [
+    const responseData: ChatHistoryItemResType[] = [
       {
         id: 'agent-response',
         nodeId: 'agent-node',
@@ -469,7 +438,7 @@ describe('addStatisticalDataToHistoryItem', () => {
   });
 
   it('ignores flat tool execution errors without parentId (e.g. sandbox tools)', () => {
-    const responseData: NonNullable<ChatItemMiniType['responseData']> = [
+    const responseData: ChatHistoryItemResType[] = [
       {
         id: 'sandbox-tool-response',
         nodeId: 'sandbox-tool-node',
@@ -491,7 +460,7 @@ describe('addStatisticalDataToHistoryItem', () => {
   });
 
   it('ignores subApp tool execution errors without parentId carrying toolRes', () => {
-    const responseData: NonNullable<ChatItemMiniType['responseData']> = [
+    const responseData: ChatHistoryItemResType[] = [
       {
         id: 'subapp-tool-response',
         nodeId: 'subapp-tool-node',
@@ -513,7 +482,7 @@ describe('addStatisticalDataToHistoryItem', () => {
   });
 
   it('preserves root node errors when flat tool responses are present', () => {
-    const responseData: NonNullable<ChatItemMiniType['responseData']> = [
+    const responseData: ChatHistoryItemResType[] = [
       {
         id: 'tool-response',
         nodeId: 'tool-node',
@@ -547,7 +516,7 @@ describe('addStatisticalDataToHistoryItem', () => {
   });
 
   it('preserves root toolCall node errors when flat tool responses are present', () => {
-    const responseData: NonNullable<ChatItemMiniType['responseData']> = [
+    const responseData: ChatHistoryItemResType[] = [
       {
         id: 'tool-response',
         nodeId: 'tool-node',
@@ -636,7 +605,7 @@ describe('addStatisticalDataToHistoryItem', () => {
               datasetId: 'dataset-1',
               collectionId: 'collection-1',
               sourceName: 'doc.pdf',
-              score: [{ type: 'embedding', value: 0.9, index: 0 }]
+              score: [{ type: SearchScoreTypeEnum.embedding, value: 0.9, index: 0 }]
             }
           ]
         }
@@ -647,7 +616,7 @@ describe('addStatisticalDataToHistoryItem', () => {
   });
 
   it('preserves unhandled orphan child node error when parent container crashed', () => {
-    const responseData: NonNullable<ChatItemMiniType['responseData']> = [
+    const responseData: ChatHistoryItemResType[] = [
       {
         id: 'orphan-code-node',
         nodeId: 'orphan-code-node',
@@ -674,7 +643,7 @@ describe('addStatisticalDataToHistoryItem', () => {
   });
 
   it('preserves standalone canvas pluginModule error', () => {
-    const responseData: NonNullable<ChatItemMiniType['responseData']> = [
+    const responseData: ChatHistoryItemResType[] = [
       {
         id: 'canvas-plugin-node',
         nodeId: 'canvas-plugin-node',

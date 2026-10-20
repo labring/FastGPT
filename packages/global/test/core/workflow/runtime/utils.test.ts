@@ -926,7 +926,7 @@ describe('getLastInteractiveValue', () => {
           }
         }
       }
-    } as WorkflowInteractiveResponseType;
+    } as unknown as WorkflowInteractiveResponseType;
     const histories: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
@@ -937,7 +937,7 @@ describe('getLastInteractiveValue', () => {
     expect(getLastInteractiveValue(histories)).toBeUndefined();
   });
 
-  it('should return an unanswered workflow builder preview', () => {
+  it.each([undefined, 'confirm'])('returns a preview only before answering: %s', (answerValue) => {
     const interactive = {
       type: 'workflowBuilderPreview',
       previewId: 'preview-1',
@@ -946,6 +946,7 @@ describe('getLastInteractiveValue', () => {
       nodeOutputs: [],
       params: {
         title: 'Workflow preview',
+        answerValue,
         mermaid: 'flowchart LR\n  A --> B',
         sections: [],
         actions: [
@@ -957,33 +958,8 @@ describe('getLastInteractiveValue', () => {
     } as WorkflowInteractiveResponseType;
 
     expect(getLastInteractiveValue([{ obj: ChatRoleEnum.AI, value: [{ interactive }] }])).toBe(
-      interactive
+      answerValue === undefined ? interactive : undefined
     );
-  });
-
-  it('should not return a workflow builder preview after an answer', () => {
-    const interactive = {
-      type: 'workflowBuilderPreview',
-      previewId: 'preview-1',
-      entryNodeIds: ['node1'],
-      memoryEdges: [],
-      nodeOutputs: [],
-      params: {
-        title: 'Workflow preview',
-        mermaid: 'flowchart LR\n  A --> B',
-        sections: [],
-        actions: [
-          { value: 'confirm', label: 'Confirm', inputMode: 'none' },
-          { value: 'revise', label: 'Revise', inputMode: 'text' },
-          { value: 'cancel', label: 'Cancel', inputMode: 'none' }
-        ],
-        answerValue: 'confirm'
-      }
-    } as WorkflowInteractiveResponseType;
-
-    expect(
-      getLastInteractiveValue([{ obj: ChatRoleEnum.AI, value: [{ interactive }] }])
-    ).toBeUndefined();
   });
 });
 
@@ -1106,27 +1082,6 @@ describe('getWorkflowEntryNodeIds', () => {
   });
 
   it('should return workflow start node ids', () => {
-    const nodes: RuntimeNodeItemType[] = [
-      {
-        nodeId: 'start1',
-        name: 'start',
-        flowNodeType: FlowNodeTypeEnum.workflowStart,
-        inputs: [],
-        outputs: []
-      },
-      {
-        nodeId: 'chat1',
-        name: 'chat',
-        flowNodeType: FlowNodeTypeEnum.chatNode,
-        inputs: [],
-        outputs: []
-      }
-    ];
-    const result = getWorkflowEntryNodeIds(nodes);
-    expect(result).toEqual(['start1']);
-  });
-
-  it('should return workflowStart node ids', () => {
     const nodes: RuntimeNodeItemType[] = [
       {
         nodeId: 'start1',
@@ -1415,7 +1370,7 @@ describe('getReferenceVariableValue', () => {
   });
 
   it('should keep two-column table data as a two-dimensional array', () => {
-    const tableData = [
+    const tableData: [string, string][] = [
       ['指标', '金额（元）'],
       ['资产总额（期末余额）', '22,701,764,055.63'],
       ['负债总额（期末余额）', '4,809,415,705.17']

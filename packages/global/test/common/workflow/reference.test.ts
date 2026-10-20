@@ -231,31 +231,26 @@ describe('getHandleId', () => {
   });
 });
 
-describe('workflow reference value type compatibility', () => {
-  it('matches the reference selector contract for scalar, array and special values', () => {
+describe('getWorkflowReferenceSourceValueTypes', () => {
+  it('publishes the reference selector contract for array inputs', () => {
     expect(getWorkflowReferenceSourceValueTypes(WorkflowIOValueTypeEnum.arrayString)).toEqual([
       WorkflowIOValueTypeEnum.string,
       WorkflowIOValueTypeEnum.arrayString,
       WorkflowIOValueTypeEnum.arrayAny,
       WorkflowIOValueTypeEnum.any
     ]);
-    expect(
-      areWorkflowValueTypesCompatible({
-        expected: WorkflowIOValueTypeEnum.arrayString,
-        actual: WorkflowIOValueTypeEnum.string
-      })
-    ).toBe(true);
-    expect(
-      areWorkflowValueTypesCompatible({
-        expected: WorkflowIOValueTypeEnum.arrayObject,
-        actual: WorkflowIOValueTypeEnum.datasetQuote
-      })
-    ).toBe(true);
-    expect(
-      areWorkflowValueTypesCompatible({
-        expected: WorkflowIOValueTypeEnum.string,
-        actual: WorkflowIOValueTypeEnum.arrayString
-      })
-    ).toBe(false);
+  });
+});
+
+describe('areWorkflowValueTypesCompatible', () => {
+  it.each([
+    [WorkflowIOValueTypeEnum.arrayString, WorkflowIOValueTypeEnum.string, true],
+    [WorkflowIOValueTypeEnum.arrayString, WorkflowIOValueTypeEnum.arrayString, true],
+    [WorkflowIOValueTypeEnum.arrayString, WorkflowIOValueTypeEnum.number, false],
+    [WorkflowIOValueTypeEnum.arrayObject, WorkflowIOValueTypeEnum.datasetQuote, true],
+    [WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.arrayString, false],
+    [WorkflowIOValueTypeEnum.arrayAny, WorkflowIOValueTypeEnum.string, true]
+  ] as const)('checks %s input against %s source: %s', (expected, actual, compatible) => {
+    expect(areWorkflowValueTypesCompatible({ expected, actual })).toBe(compatible);
   });
 });

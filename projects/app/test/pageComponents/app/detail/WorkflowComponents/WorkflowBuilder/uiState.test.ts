@@ -1,24 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { WorkflowBuilderChatBodySchema } from '@fastgpt/global/openapi/core/workflow/builder/api';
-import { WorkflowBuilderVersionSchema } from '@fastgpt/global/core/workflow/builder/type';
-import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
-import { getWorkflowChecksum } from '@fastgpt/workflow-core/domain/checksum';
-import fixture from '@fastgpt/workflow-core/test/fixtures/basic-static/workflow.json';
-import { buildStreamFetchBody, handleEventSourceData } from '@/web/common/api/fetch';
-import {
-  clearWorkflowBuilderChatHistory,
-  getLatestWorkflowBuilderChatId,
-  prewarmWorkflowBuilderRuntime
-} from '@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/api';
-import { mergeWorkflowBuilderAppliedAppDetail } from '@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/utils';
-import {
-  getWorkflowAutoLayoutNodeSizeSignature,
-  matchesWorkflowAutoLayoutRequest,
-  mergeWorkflowLayoutNodes
-} from '@/pageComponents/app/detail/WorkflowComponents/Flow/hooks/useWorkflowAutoLayout';
-import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { Node } from 'reactflow';
+import { describe, expect, it } from 'vitest';
 import {
   getWorkflowBuilderAttentionKeys,
   getWorkflowBuilderEntryAccess,
@@ -31,54 +11,43 @@ import {
   isWorkflowBuilderVersionGenerating,
   shouldPrewarmWorkflowBuilderRuntime
 } from '@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/uiState';
-import {
-  ChatGenerateStatusEnum,
-  ChatRoleEnum,
-  ChatSourceTypeEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { ChatItemObjItemType } from '@fastgpt/global/core/chat/type';
 
-const mocks = vi.hoisted(() => ({
-  batchDeleteChatHistories: vi.fn(),
-  getChatHistories: vi.fn(),
-  POST: vi.fn()
-}));
+/** 复用完整预览协议，状态场景仅改变预览 ID 和确认结果。 */
+const createPreviewInteractive = (
+  previewId = 'preview-1',
+  answerValue?: 'confirm'
+): Extract<WorkflowInteractiveResponseType, { type: 'workflowBuilderPreview' }> => ({
+  type: 'workflowBuilderPreview',
+  previewId,
+  entryNodeIds: [],
+  memoryEdges: [],
+  nodeOutputs: [],
+  params: {
+    title: '方案预览',
+    mermaid: 'flowchart LR\nA --> B',
+    sections: [],
+    actions: [
+      { value: 'confirm', label: '确认', inputMode: 'none' },
+      { value: 'revise', label: '修改', inputMode: 'text' },
+      { value: 'cancel', label: '取消', inputMode: 'none' }
+    ],
+    answerValue
+  }
+});
 
-vi.mock('@/web/core/chat/history/api', () => ({
-  batchDeleteChatHistories: mocks.batchDeleteChatHistories,
-  getChatHistories: mocks.getChatHistories
-}));
-vi.mock('@/web/common/api/request', () => ({ POST: mocks.POST }));
-
-describe('Workflow Builder Web Adapter', () => {
-  it('读取应用当前成员最近一次 Builder 会话', async () => {
-    mocks.getChatHistories.mockResolvedValueOnce({
-      list: [{ chatId: 'eval-chat-1' }],
-      total: 1
-    });
-
-    await expect(getLatestWorkflowBuilderChatId('app-1')).resolves.toBe('eval-chat-1');
-    expect(mocks.getChatHistories).toHaveBeenCalledWith({
-      appId: 'app-1',
-      sourceType: ChatSourceTypeEnum.workflowBuilder,
-      pageNum: 1,
-      pageSize: 1
-    });
-  });
-
-  it('应用没有 Builder 历史时返回空会话 ID', async () => {
-    mocks.getChatHistories.mockResolvedValueOnce({ list: [], total: 0 });
-
-    await expect(getLatestWorkflowBuilderChatId('app-2')).resolves.toBeUndefined();
-  });
-
+describe('getWorkflowBuilderWatchChatId', () => {
   it('从单值或数组路由参数中读取旁观会话 ID，并忽略空值', () => {
     expect(getWorkflowBuilderWatchChatId('chat-1')).toBe('chat-1');
     expect(getWorkflowBuilderWatchChatId(['chat-2', 'chat-3'])).toBe('chat-2');
     expect(getWorkflowBuilderWatchChatId('   ')).toBeUndefined();
     expect(getWorkflowBuilderWatchChatId()).toBeUndefined();
   });
+});
 
+describe('shouldPrewarmWorkflowBuilderRuntime', () => {
   it.each([
     {
       name: 'the Builder is unavailable',
@@ -128,7 +97,9 @@ describe('Workflow Builder Web Adapter', () => {
   ])('prewarms the runtime only when $name', ({ expected, ...state }) => {
     expect(shouldPrewarmWorkflowBuilderRuntime(state)).toBe(expected);
   });
+});
 
+describe('getWorkflowBuilderEntryAccess', () => {
   it('keeps an upgrade entry for editable community apps', () => {
     expect(
       getWorkflowBuilderEntryAccess({
@@ -194,7 +165,9 @@ describe('Workflow Builder Web Adapter', () => {
       })
     ).toBe('enabled');
   });
+});
 
+describe('getWorkflowBuilderInitialState', () => {
   it('falls back to system config for editable apps when Builder is unavailable', () => {
     expect(
       getWorkflowBuilderInitialState({
@@ -305,7 +278,9 @@ describe('Workflow Builder Web Adapter', () => {
       shouldFocusWorkflowBuilder: true
     });
   });
+});
 
+describe('getWorkflowBuilderEntryVisualState', () => {
   it('allows the attention dot to overlap the generating halo', () => {
     expect(
       getWorkflowBuilderEntryVisualState({
@@ -329,7 +304,9 @@ describe('Workflow Builder Web Adapter', () => {
       showAttentionDot: true
     });
   });
+});
 
+describe('getWorkflowBuilderAttentionKeys', () => {
   it('shows attention only for unseen ask, pending-version, or runtime-error keys', () => {
     const attentionKeys = getWorkflowBuilderAttentionKeys({
       pendingInteractiveKey: 'interactive:response-1:0',
@@ -352,7 +329,9 @@ describe('Workflow Builder Web Adapter', () => {
       })
     ).toBe(false);
   });
+});
 
+describe('getWorkflowBuilderErrorAttentionKey', () => {
   it('uses the failed run record as a stable runtime-error attention key', () => {
     const failedResponse = {
       dataId: 'response-error-1',
@@ -374,27 +353,16 @@ describe('Workflow Builder Web Adapter', () => {
       })
     ).toBeUndefined();
   });
+});
 
+describe('getWorkflowBuilderPendingInteractiveKey', () => {
   it('uses the pending interactive position as a stable ask attention key', () => {
     const pendingPreview = {
       dataId: 'response-1',
       obj: ChatRoleEnum.AI,
       value: [
         {
-          interactive: {
-            type: 'workflowBuilderPreview',
-            previewId: 'preview-1',
-            params: {
-              title: '方案预览',
-              mermaid: 'flowchart LR\nA --> B',
-              sections: [],
-              actions: [
-                { value: 'confirm', label: '确认', inputMode: 'none' },
-                { value: 'revise', label: '修改', inputMode: 'text' },
-                { value: 'cancel', label: '取消', inputMode: 'none' }
-              ]
-            }
-          }
+          interactive: createPreviewInteractive()
         }
       ]
     } as ChatItemObjItemType & { dataId: string };
@@ -406,27 +374,15 @@ describe('Workflow Builder Web Adapter', () => {
       getWorkflowBuilderPendingInteractiveKey([pendingPreview], { isBuildingWorkflow: true })
     ).toBeUndefined();
   });
+});
 
+describe('isWorkflowBuilderVersionGenerating', () => {
   it('identifies the version-building substage after Mermaid confirmation', () => {
     const preview = {
       obj: ChatRoleEnum.AI,
       value: [
         {
-          interactive: {
-            type: 'workflowBuilderPreview',
-            previewId: 'preview-1',
-            params: {
-              title: '方案预览',
-              mermaid: 'flowchart LR\nA --> B',
-              sections: [],
-              actions: [
-                { value: 'confirm', label: '确认', inputMode: 'none' },
-                { value: 'revise', label: '修改', inputMode: 'text' },
-                { value: 'cancel', label: '取消', inputMode: 'none' }
-              ],
-              answerValue: 'confirm'
-            }
-          }
+          interactive: createPreviewInteractive('preview-1', 'confirm')
         }
       ]
     } as ChatItemObjItemType;
@@ -435,6 +391,10 @@ describe('Workflow Builder Web Adapter', () => {
       value: [
         {
           workflowBuilderVersion: {
+            versionNo: 1,
+            name: 'Version 1',
+            filename: 'version-1.json',
+            generatedAt: '2026-08-12T10:00:00.000Z',
             checksum: 'checksum-1',
             s3Key: 'workflow-builder/version-1.json'
           }
@@ -445,20 +405,7 @@ describe('Workflow Builder Web Adapter', () => {
       obj: ChatRoleEnum.AI,
       value: [
         {
-          interactive: {
-            type: 'workflowBuilderPreview',
-            previewId: 'preview-2',
-            params: {
-              title: '新版方案预览',
-              mermaid: 'flowchart LR\nB --> C',
-              sections: [],
-              actions: [
-                { value: 'confirm', label: '确认', inputMode: 'none' },
-                { value: 'revise', label: '修改', inputMode: 'text' },
-                { value: 'cancel', label: '取消', inputMode: 'none' }
-              ]
-            }
-          }
+          interactive: createPreviewInteractive('preview-2')
         }
       ]
     } as ChatItemObjItemType;
@@ -506,262 +453,5 @@ describe('Workflow Builder Web Adapter', () => {
         wasBuildingWorkflow: true
       })
     ).toBe(false);
-  });
-
-  it('打开 Builder 后调用稳定运行环境预热接口', async () => {
-    mocks.POST.mockResolvedValueOnce(undefined);
-
-    await prewarmWorkflowBuilderRuntime({
-      appId: '67f4c91c79a4d61b1f116b2a',
-      chatId: 'workflow-builder-chat'
-    });
-
-    expect(mocks.POST).toHaveBeenCalledWith('/proApi/core/workflow/builder/runtime/prewarm', {
-      appId: '67f4c91c79a4d61b1f116b2a',
-      chatId: 'workflow-builder-chat'
-    });
-  });
-
-  it('binds auto-layout readiness to the exact Builder-applied node set', () => {
-    const nodes = [{ id: 'start' }, { id: 'answer' }] as Parameters<
-      typeof matchesWorkflowAutoLayoutRequest
-    >[0]['nodes'];
-
-    expect(
-      matchesWorkflowAutoLayoutRequest({
-        nodes,
-        nodeIds: new Set(['start', 'answer'])
-      })
-    ).toBe(true);
-    expect(
-      matchesWorkflowAutoLayoutRequest({
-        nodes,
-        nodeIds: new Set(['start', 'old-node'])
-      })
-    ).toBe(false);
-  });
-
-  it('builds an order-independent signature only after every Builder node is measured', () => {
-    const nodeIds = new Set(['start', 'answer']);
-    const measuredNodes = [
-      { id: 'answer', width: 420, height: 360 },
-      { id: 'start', width: 420, height: 240 }
-    ] as Node<FlowNodeItemType>[];
-
-    expect(getWorkflowAutoLayoutNodeSizeSignature({ nodes: measuredNodes, nodeIds })).toBe(
-      'answer:420:360|start:420:240'
-    );
-    expect(
-      getWorkflowAutoLayoutNodeSizeSignature({
-        nodes: [...measuredNodes].reverse(),
-        nodeIds
-      })
-    ).toBe('answer:420:360|start:420:240');
-    expect(
-      getWorkflowAutoLayoutNodeSizeSignature({
-        nodes: [
-          { id: 'start', width: 420, height: 240 },
-          { id: 'answer', width: 420 }
-        ],
-        nodeIds
-      })
-    ).toBeUndefined();
-    expect(
-      getWorkflowAutoLayoutNodeSizeSignature({
-        nodes: measuredNodes,
-        nodeIds: new Set(['start', 'missing'])
-      })
-    ).toBeUndefined();
-  });
-
-  it('merges auto-layout positions without overwriting newer node business data', () => {
-    const createNode = ({
-      name,
-      prompt,
-      position
-    }: {
-      name: string;
-      prompt: string;
-      position: { x: number; y: number };
-    }) =>
-      ({
-        id: 'ai-node',
-        position,
-        data: {
-          nodeId: 'ai-node',
-          name,
-          inputs: [{ key: 'systemPrompt', value: prompt }]
-        }
-      }) as Node<FlowNodeItemType>;
-
-    const importedNode = createNode({
-      name: 'Updated AI node',
-      prompt: 'Use the confirmed workflow requirements',
-      position: { x: 0, y: 0 }
-    });
-    const staleLayoutNode = createNode({
-      name: 'Old AI node',
-      prompt: 'Old prompt',
-      position: { x: 320, y: 160 }
-    });
-
-    const [result] = mergeWorkflowLayoutNodes({
-      currentNodes: [importedNode],
-      layoutedNodes: [staleLayoutNode],
-      resizedNodeIds: new Set()
-    });
-
-    expect(result.position).toEqual({ x: 320, y: 160 });
-    expect(result.data).toBe(importedNode.data);
-    expect(result.data.name).toBe('Updated AI node');
-    expect(result.data.inputs[0]?.value).toBe('Use the confirmed workflow requirements');
-  });
-
-  it('keeps the applied workflow when auto-layout is unavailable', () => {
-    const appliedNode = {
-      id: 'report-node',
-      position: { x: 0, y: 0 },
-      data: {
-        nodeId: 'report-node',
-        inputs: [
-          {
-            key: 'variableRef',
-            value: 'loopResults'
-          }
-        ]
-      }
-    } as Node<FlowNodeItemType>;
-
-    const layoutResult = mergeWorkflowLayoutNodes({
-      currentNodes: [appliedNode],
-      layoutedNodes: [],
-      resizedNodeIds: new Set()
-    });
-
-    expect(layoutResult[0]?.data.inputs[0]?.value).toBe('loopResults');
-  });
-
-  it('clears only the current Builder history before restarting the local chat', async () => {
-    mocks.batchDeleteChatHistories.mockResolvedValueOnce(undefined);
-    const clearChatRecords = vi.fn();
-    const restartChat = vi.fn();
-
-    await clearWorkflowBuilderChatHistory({
-      appId: 'app-1',
-      chatId: 'builder-chat-1',
-      clearChatRecords,
-      restartChat
-    });
-
-    expect(mocks.batchDeleteChatHistories).toHaveBeenCalledWith({
-      appId: 'app-1',
-      sourceType: 'workflowBuilder',
-      chatIds: ['builder-chat-1']
-    });
-    expect(clearChatRecords).toHaveBeenCalledTimes(1);
-    expect(restartChat).toHaveBeenCalledTimes(1);
-  });
-
-  it('keeps local Builder history when server deletion fails', async () => {
-    mocks.batchDeleteChatHistories.mockRejectedValueOnce(new Error('delete failed'));
-    const clearChatRecords = vi.fn();
-    const restartChat = vi.fn();
-
-    await expect(
-      clearWorkflowBuilderChatHistory({
-        appId: 'app-1',
-        chatId: 'builder-chat-1',
-        clearChatRecords,
-        restartChat
-      })
-    ).rejects.toThrow('delete failed');
-
-    expect(clearChatRecords).not.toHaveBeenCalled();
-    expect(restartChat).not.toHaveBeenCalled();
-  });
-
-  it('accepts the shared chat transport body and strips extra runtime fields', async () => {
-    const appId = '67f4c91c79a4d61b1f116b2a';
-    const document = WorkflowDocumentSchema.parse(structuredClone(fixture));
-    document.app.appId = appId;
-    const requestBody = {
-      appId,
-      chatId: 'workflow-builder-chat',
-      messages: [{ role: 'user' as const, content: 'Add an AI node' }],
-      workflowContext: {
-        document,
-        checksum: await getWorkflowChecksum(document)
-      }
-    };
-
-    const builderBody = buildStreamFetchBody({ data: requestBody });
-    expect(builderBody).toMatchObject({
-      ...requestBody,
-      variables: { cTime: expect.any(String) },
-      detail: true,
-      stream: true,
-      retainDatasetCite: true
-    });
-    expect(WorkflowBuilderChatBodySchema.parse(builderBody)).toEqual(requestBody);
-
-    expect(buildStreamFetchBody({ data: { variables: { input: 'value' } } })).toMatchObject({
-      variables: { input: 'value', cTime: expect.any(String) },
-      detail: true,
-      stream: true,
-      retainDatasetCite: true
-    });
-  });
-
-  it('delivers the generated version event without mixing it into answer text', () => {
-    const version = WorkflowBuilderVersionSchema.parse({
-      versionNo: 1,
-      name: 'AI 生成版本 1',
-      filename: 'AI 生成版本 1.json',
-      checksum: `sha256:${'0'.repeat(64)}`,
-      generatedAt: '2026-08-12T10:00:00.000Z'
-    });
-    const onmessage = vi.fn();
-    const enqueue = vi.fn();
-
-    handleEventSourceData({
-      event: SseResponseEventEnum.workflowBuilderVersion,
-      data: JSON.stringify({ version }),
-      onmessage,
-      enqueue,
-      onerror: vi.fn()
-    });
-
-    expect(onmessage).toHaveBeenCalledWith({
-      responseValueId: undefined,
-      event: SseResponseEventEnum.workflowBuilderVersion,
-      workflowBuilderVersion: version
-    });
-    expect(enqueue).not.toHaveBeenCalled();
-  });
-
-  it('keeps user-owned app metadata while applying Builder chatConfig', () => {
-    const document = WorkflowDocumentSchema.parse(structuredClone(fixture));
-    document.app.name = 'Builder Result';
-    document.app.intro = 'Updated by Builder';
-    document.chatConfig.fileSelectConfig = { maxFiles: 1, canSelectFile: true };
-
-    const current = {
-      name: 'Old Name',
-      intro: 'Old intro',
-      chatConfig: {}
-    } as Parameters<typeof mergeWorkflowBuilderAppliedAppDetail>[0]['current'];
-
-    expect(
-      mergeWorkflowBuilderAppliedAppDetail({
-        current,
-        chatConfig: document.chatConfig
-      })
-    ).toMatchObject({
-      name: 'Old Name',
-      intro: 'Old intro',
-      chatConfig: {
-        fileSelectConfig: { maxFiles: 1, canSelectFile: true }
-      }
-    });
   });
 });

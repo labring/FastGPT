@@ -30,19 +30,20 @@ describe('canonical workflow checksum', () => {
     );
   });
 
-  it('normalizes object key order without changing array semantics', async () => {
-    const left = createWorkflowDocument({
-      app: { name: 'Demo', intro: 'Intro' },
-      chatConfig: { variables: [] }
-    });
+  it('normalizes object keys and node/edge order while preserving input array order', async () => {
+    const left = WorkflowDocumentSchema.parse({ ...ai, app: { name: 'Demo', intro: 'Intro' } });
     const right = {
       chatConfig: left.chatConfig,
-      executionEdges: left.executionEdges,
-      nodes: left.nodes,
+      executionEdges: [...left.executionEdges].reverse(),
+      nodes: [...left.nodes].reverse(),
       app: { intro: left.app.intro, name: left.app.name },
       schemaVersion: left.schemaVersion
     };
     expect(await getWorkflowChecksum(left)).toBe(await getWorkflowChecksum(right));
+
+    const reorderedInputs = structuredClone(left);
+    reorderedInputs.nodes[0].inputs.reverse();
+    expect(await getWorkflowChecksum(reorderedInputs)).not.toBe(await getWorkflowChecksum(left));
   });
 
   it('falls back to pure JS sha256 in insecure HTTP environments without crypto.subtle', async () => {

@@ -8,11 +8,11 @@ import { describe, expect, it } from 'vitest';
 const dependencies = { templateProvider: builtinTemplateProvider, locale: 'en' };
 
 describe('code node IO synchronization', () => {
-  it('uses main parameters and return keys as the editable IO source of truth', async () => {
-    let document = createWorkflowDocument();
-    document = (
+  /** 为各个代码形状场景创建独立文档，保留命令分发器的真实初始化行为。 */
+  const createCodeDocument = async () =>
+    (
       await applyWorkflowCommand({
-        document,
+        document: createWorkflowDocument(),
         command: {
           type: 'node.add',
           nodeId: 'code',
@@ -21,6 +21,9 @@ describe('code node IO synchronization', () => {
         dependencies
       })
     ).document;
+
+  it('uses main parameters and return keys as the editable IO source of truth', async () => {
+    let document = await createCodeDocument();
     document = (
       await applyWorkflowCommand({
         document,
@@ -93,18 +96,7 @@ describe('code node IO synchronization', () => {
   });
 
   it('keeps existing IO when the code shape cannot be identified safely', async () => {
-    let document = createWorkflowDocument();
-    document = (
-      await applyWorkflowCommand({
-        document,
-        command: {
-          type: 'node.add',
-          nodeId: 'code',
-          template: parseNodeTemplateRef('builtin:code')
-        },
-        dependencies
-      })
-    ).document;
+    let document = await createCodeDocument();
     const previousNode = structuredClone(document.nodes.find((node) => node.nodeId === 'code'));
 
     document = (
@@ -128,18 +120,7 @@ describe('code node IO synchronization', () => {
   });
 
   it('removes all editable IO for an explicitly empty signature and return object', async () => {
-    let document = createWorkflowDocument();
-    document = (
-      await applyWorkflowCommand({
-        document,
-        command: {
-          type: 'node.add',
-          nodeId: 'code',
-          template: parseNodeTemplateRef('builtin:code')
-        },
-        dependencies
-      })
-    ).document;
+    let document = await createCodeDocument();
 
     document = (
       await applyWorkflowCommand({

@@ -41,6 +41,8 @@ import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loo
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
 import { ContextExtractModule } from '@fastgpt/global/core/workflow/template/system/contextExtract';
 import { VariableUpdateNode } from '@fastgpt/global/core/workflow/template/system/variableUpdate';
+import { CommentNode } from '@fastgpt/global/core/workflow/template/system/comment';
+import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { FormInputNode } from '@fastgpt/global/core/workflow/template/system/interactive/formInput';
 
 describe('checkWorkflowNodeIssues', () => {
@@ -1508,10 +1510,6 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
       expect(getErrorNodeIds(makeGraph(LoopRunModeEnum.conditional))).toEqual(['loop1']);
     });
 
-    it('条件循环含 loopRunBreak → 有效', () => {
-      expect(getErrorNodeIds(makeGraph(LoopRunModeEnum.conditional, true))).toBeUndefined();
-    });
-
     it('rejects an out-of-sync child list even when the break has a valid parent', () => {
       const graph = makeGraph(LoopRunModeEnum.conditional, true);
       graph.nodes[1].data.inputs.find(
@@ -1528,7 +1526,7 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
       expect(getErrorNodeIds(makeGraph(LoopRunModeEnum.array))).toBeUndefined();
     });
 
-    it('条件循环下 loopRunInputArray 必填标记被忽略', () => {
+    it('条件循环含 Break 时忽略隐藏数组输入的必填标记', () => {
       const graph = makeGraph(LoopRunModeEnum.conditional, true);
       expect(
         graph.nodes[1].data.inputs.find((input) => input.key === NodeInputKeyEnum.loopRunInputArray)
@@ -1729,56 +1727,29 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
   });
 
   describe('workflowStart isolation check', () => {
-    it('produces isolated_node issue for standalone workflowStart to show bottom hint', () => {
-      const startNode: Node<FlowNodeItemType> = {
-        id: 'start-1',
+    it.each([
+      { nodeId: 'start-1', flowNodeType: FlowNodeTypeEnum.workflowStart, issue: 'isolated_node' },
+      { nodeId: 'node-2', flowNodeType: FlowNodeTypeEnum.textEditor, issue: 'no_upstream' }
+    ])('keeps $flowNodeType isolation visible as $issue', ({ nodeId, flowNodeType, issue }) => {
+      const node: Node<FlowNodeItemType> = {
+        id: nodeId,
         type: 'custom',
         position: { x: 0, y: 0 },
         data: {
-          id: FlowNodeTypeEnum.workflowStart,
-          nodeId: 'start-1',
-          name: '流程开始',
-          flowNodeType: FlowNodeTypeEnum.workflowStart,
+          id: flowNodeType,
+          nodeId,
+          name: nodeId,
+          flowNodeType,
           avatar: 'avatar',
           inputs: [],
           outputs: []
         }
       };
-
-      const result = checkWorkflowBeforeRunOrPublish({
-        nodes: [startNode],
-        edges: []
-      });
+      const result = checkWorkflowBeforeRunOrPublish({ nodes: [node], edges: [] });
 
       expect(result.hasError).toBe(true);
-      expect(result.firstErrorNodeId).toBe('start-1');
-      expect(result.issueMap['start-1']?.some((i) => i.code === 'isolated_node')).toBe(true);
-    });
-
-    it('marks non-start nodes as isolated when they have no edges', () => {
-      const otherNode: Node<FlowNodeItemType> = {
-        id: 'node-2',
-        type: 'custom',
-        position: { x: 100, y: 100 },
-        data: {
-          id: FlowNodeTypeEnum.textEditor,
-          nodeId: 'node-2',
-          name: '文本编辑',
-          flowNodeType: FlowNodeTypeEnum.textEditor,
-          avatar: 'avatar',
-          inputs: [],
-          outputs: []
-        }
-      };
-
-      const result = checkWorkflowBeforeRunOrPublish({
-        nodes: [otherNode],
-        edges: []
-      });
-
-      expect(result.hasError).toBe(true);
-      expect(result.firstErrorNodeId).toBe('node-2');
-      expect(result.issueMap['node-2']?.some((i) => i.code === 'no_upstream')).toBe(true);
+      expect(result.firstErrorNodeId).toBe(nodeId);
+      expect(result.issueMap[nodeId]?.some((item) => item.code === issue)).toBe(true);
     });
   });
 
@@ -1931,6 +1902,38 @@ describe('Core validation and Web extension contract', () => {
       coreSpy.mockRestore();
       modelsSpy.mockRestore();
     }
+  });
+
+  it('does not treat editor-only comment fields as runtime inputs', () => {
+    const graph = makeGraph();
+    graph.nodes.push(
+      storeNode2FlowNode({
+        item: {
+          ...CommentNode,
+          nodeId: 'comment',
+          inputs: CommentNode.inputs.map((input) =>
+            input.key === NodeInputKeyEnum.commentText
+              ? { ...input, value: 'A canvas note' }
+              : input
+          )
+        },
+        t: ((key: string) => key) as TFunction
+      })
+    );
+    expect(checkWorkflowBeforeRunOrPublish(graph)).toMatchObject({ hasError: false });
+  });
+
+  it('still rejects domain errors after the graph has been projected', () => {
+    const graph = makeGraph();
+    graph.edges.push({ ...graph.edges[0], id: 'duplicate-edge' });
+
+    expect(checkWorkflowBeforeRunOrPublish(graph)).toMatchObject({
+      hasError: true,
+      errorNodeIds: expect.arrayContaining(['start', 'target']),
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({ code: 'WORKFLOW_EDGE_DUPLICATED', severity: 'error' })
+      ])
+    });
   });
 
   it('keeps resource status exclusively in Web and reports a plugin error once', () => {

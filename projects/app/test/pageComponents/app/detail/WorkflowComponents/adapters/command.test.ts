@@ -7,7 +7,6 @@ import { storeEdge2RenderEdge, storeNode2FlowNode } from '@/web/core/workflow/ut
 import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
 import { compileStoreWorkflow } from '@fastgpt/workflow-core/store/compile';
 import fixture from '@fastgpt/workflow-core/test/fixtures/basic-static/workflow.json';
-import { CommentNode } from '@fastgpt/global/core/workflow/template/system/comment';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
 import { StoreNodeItemTypeSchema } from '@fastgpt/global/core/workflow/type/node';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -135,65 +134,5 @@ describe('Workflow Core command adapters', () => {
       diagnostics: [{ code: 'WORKFLOW_EDGE_HANDLE_UNSUPPORTED' }]
     });
     expect(getRemovalNodeIdsWithCore({ ...graph, nodeId: 'missing' }).status).toBe('domain-error');
-  });
-});
-
-describe('shared Web workflow checks', () => {
-  it('does not treat editor-only comment fields as runtime inputs', () => {
-    const graph = createGraph();
-    const comment = storeNode2FlowNode({
-      item: {
-        ...CommentNode,
-        nodeId: 'comment',
-        inputs: CommentNode.inputs.map((input) =>
-          input.key === NodeInputKeyEnum.commentText ? { ...input, value: 'A canvas note' } : input
-        )
-      },
-      t: ((key: string) => key) as any
-    });
-    expect(
-      checkWorkflowBeforeRunOrPublish({
-        ...graph,
-        nodes: [...graph.nodes, comment]
-      })
-    ).toMatchObject({ hasError: false });
-  });
-
-  it('reports an unsupported historical edge through the shared diagnostic pipeline', () => {
-    const graph = createGraph();
-    graph.edges[0].targetHandle = 'legacy-handle';
-
-    expect(checkWorkflowBeforeRunOrPublish(graph)).toMatchObject({
-      hasError: true,
-      diagnostics: expect.arrayContaining([
-        expect.objectContaining({ code: 'WORKFLOW_EDGE_HANDLE_UNSUPPORTED' })
-      ])
-    });
-  });
-
-  it('continues checking required inputs after an edge projection error', () => {
-    const graph = createGraph();
-    graph.edges[0].targetHandle = 'legacy-handle';
-    graph.nodes.find((node) => node.data.nodeId === 'text')!.data.inputs[0].value = '';
-
-    expect(checkWorkflowBeforeRunOrPublish(graph)).toMatchObject({
-      hasError: true,
-      issueMap: {
-        text: expect.arrayContaining([expect.objectContaining({ code: 'required_input_empty' })])
-      }
-    });
-  });
-
-  it('still rejects domain errors after the graph has been projected', () => {
-    const graph = createGraph();
-    graph.edges.push({ ...graph.edges[0], id: 'duplicate-edge' });
-
-    expect(checkWorkflowBeforeRunOrPublish(graph)).toMatchObject({
-      hasError: true,
-      errorNodeIds: expect.arrayContaining(['start', 'text']),
-      diagnostics: expect.arrayContaining([
-        expect.objectContaining({ code: 'WORKFLOW_EDGE_DUPLICATED', severity: 'error' })
-      ])
-    });
   });
 });

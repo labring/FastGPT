@@ -59,6 +59,19 @@ describe('publish manually selected datasets', () => {
     ]
   });
 
+  /** 每次创建目标团队的独立应用，使三个场景只描述各自的资源和保存边界。 */
+  const createAppInAnotherTeam = async () => {
+    const root = await getRootUser();
+    const owner = await getUser('target-app-owner');
+    const app = await MongoApp.create({
+      name: 'Application in another team',
+      type: AppTypeEnum.workflow,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    return { root, owner, app };
+  };
+
   it.each([
     { isRoot: true, sameTeam: true, granted: false, isPublish: true, allowed: true },
     { isRoot: true, sameTeam: true, granted: false, isPublish: false, allowed: true },
@@ -113,22 +126,7 @@ describe('publish manually selected datasets', () => {
       query: { appId: String(app._id) },
       body: {
         isPublish: scenario.isPublish,
-        nodes: [
-          {
-            nodeId: 'search',
-            name: 'Search',
-            flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-            outputs: [],
-            inputs: [
-              {
-                key: NodeInputKeyEnum.datasetSelectList,
-                label: 'Datasets',
-                renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
-                value: [{ datasetId: String(dataset._id) }]
-              }
-            ]
-          }
-        ]
+        nodes: [createDatasetNode(String(dataset._id))]
       }
     });
     const version = await MongoAppVersion.findOne({ appId: app._id }).lean();
@@ -159,22 +157,7 @@ describe('publish manually selected datasets', () => {
     });
     const body: PublishAppBodyType = {
       isPublish: true,
-      nodes: [
-        {
-          nodeId: 'search',
-          name: 'Search',
-          flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-          outputs: [],
-          inputs: [
-            {
-              key: NodeInputKeyEnum.datasetSelectList,
-              label: 'Datasets',
-              renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
-              value: [{ datasetId: String(dataset._id) }]
-            }
-          ]
-        }
-      ]
+      nodes: [createDatasetNode(String(dataset._id))]
     };
     await MongoAppVersion.create({
       appId: app._id,
@@ -204,16 +187,9 @@ describe('publish manually selected datasets', () => {
   });
 
   it('uses the application team when root publishes an application from another team', async () => {
-    const root = await getRootUser();
-    const owner = await getUser('target-app-owner');
+    const { root, owner, app } = await createAppInAnotherTeam();
     const dataset = await MongoDataset.create({
       name: 'Application team dataset',
-      teamId: owner.teamId,
-      tmbId: owner.tmbId
-    });
-    const app = await MongoApp.create({
-      name: 'Application in another team',
-      type: AppTypeEnum.workflow,
       teamId: owner.teamId,
       tmbId: owner.tmbId
     });
@@ -243,18 +219,11 @@ describe('publish manually selected datasets', () => {
   it.each([false, true])(
     'rejects root login-team resources in another application team, including snapshots (%s)',
     async (hasSnapshot) => {
-      const root = await getRootUser();
-      const owner = await getUser('target-app-owner');
+      const { root, app } = await createAppInAnotherTeam();
       const dataset = await MongoDataset.create({
         name: 'Root login-team dataset',
         teamId: root.teamId,
         tmbId: root.tmbId
-      });
-      const app = await MongoApp.create({
-        name: 'Application in another team',
-        type: AppTypeEnum.workflow,
-        teamId: owner.teamId,
-        tmbId: owner.tmbId
       });
       const nodes = [createDatasetNode(String(dataset._id))];
       if (hasSnapshot) {
@@ -282,18 +251,11 @@ describe('publish manually selected datasets', () => {
   it.each([false, true])(
     'retains only application-team authorization when root saves another team application (%s)',
     async (autoSave) => {
-      const root = await getRootUser();
-      const owner = await getUser('target-app-owner');
+      const { root, owner, app } = await createAppInAnotherTeam();
       const [appDataset, loginDataset] = await MongoDataset.create([
         { name: 'Application team dataset', teamId: owner.teamId, tmbId: owner.tmbId },
         { name: 'Root login-team dataset', teamId: root.teamId, tmbId: root.tmbId }
       ]);
-      const app = await MongoApp.create({
-        name: 'Application in another team',
-        type: AppTypeEnum.workflow,
-        teamId: owner.teamId,
-        tmbId: owner.tmbId
-      });
       const nodes = [
         createDatasetNode(String(appDataset._id)),
         createDatasetNode(String(loginDataset._id), 'foreign-search')

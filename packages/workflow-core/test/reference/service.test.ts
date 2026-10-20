@@ -1,4 +1,3 @@
-import { areWorkflowValueTypesCompatible } from '@fastgpt/global/common/workflow/reference';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   VARIABLE_NODE_ID,
@@ -593,46 +592,5 @@ describe('container reference scopes', () => {
         ref: { nodeId: VARIABLE_NODE_ID, outputKey: 'histories' }
       })
     ).toThrow('WORKFLOW_REFERENCE_TYPE_MISMATCH');
-  });
-});
-
-describe('areWorkflowValueTypesCompatible', () => {
-  it('accepts scalar items for array references without widening reverse types', () => {
-    expect(
-      areWorkflowValueTypesCompatible({
-        expected: WorkflowIOValueTypeEnum.arrayString,
-        actual: WorkflowIOValueTypeEnum.string
-      })
-    ).toBe(true);
-    expect(
-      areWorkflowValueTypesCompatible({
-        expected: WorkflowIOValueTypeEnum.arrayString,
-        actual: WorkflowIOValueTypeEnum.string
-      })
-    ).toBe(true);
-    expect(
-      areWorkflowValueTypesCompatible({
-        expected: WorkflowIOValueTypeEnum.arrayString,
-        actual: WorkflowIOValueTypeEnum.arrayString
-      })
-    ).toBe(true);
-    expect(
-      areWorkflowValueTypesCompatible({
-        expected: WorkflowIOValueTypeEnum.arrayString,
-        actual: WorkflowIOValueTypeEnum.number
-      })
-    ).toBe(false);
-    expect(
-      areWorkflowValueTypesCompatible({
-        expected: WorkflowIOValueTypeEnum.string,
-        actual: WorkflowIOValueTypeEnum.arrayString
-      })
-    ).toBe(false);
-    expect(
-      areWorkflowValueTypesCompatible({
-        expected: WorkflowIOValueTypeEnum.arrayAny,
-        actual: WorkflowIOValueTypeEnum.string
-      })
-    ).toBe(true);
   });
 });

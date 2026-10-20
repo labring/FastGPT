@@ -1,9 +1,14 @@
+import { WorkflowBuilderChatBodySchema } from '@fastgpt/global/openapi/core/workflow/builder/api';
+import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
+import { getWorkflowChecksum } from '@fastgpt/workflow-core/domain/checksum';
+import fixture from '@fastgpt/workflow-core/test/fixtures/basic-static/workflow.json';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
   activateStreamResumeController,
   buildStreamResumeUrl,
   createResumeReadyNotifier,
+  buildStreamFetchBody,
   createStreamFetchError,
   getStreamReasoningQueueConsumeCount,
   getStreamTypingQueueConsumeCount,
@@ -331,5 +336,39 @@ describe('activateStreamResumeController', () => {
 
     deactivateActive();
     deactivateNext();
+  });
+});
+
+describe('buildStreamFetchBody', () => {
+  it('accepts the shared chat transport body and strips extra runtime fields', async () => {
+    const appId = '67f4c91c79a4d61b1f116b2a';
+    const document = WorkflowDocumentSchema.parse(structuredClone(fixture));
+    document.app.appId = appId;
+    const requestBody = {
+      appId,
+      chatId: 'workflow-builder-chat',
+      messages: [{ role: 'user' as const, content: 'Add an AI node' }],
+      workflowContext: {
+        document,
+        checksum: await getWorkflowChecksum(document)
+      }
+    };
+
+    const builderBody = buildStreamFetchBody({ data: requestBody });
+    expect(builderBody).toMatchObject({
+      ...requestBody,
+      variables: { cTime: expect.any(String) },
+      detail: true,
+      stream: true,
+      retainDatasetCite: true
+    });
+    expect(WorkflowBuilderChatBodySchema.parse(builderBody)).toEqual(requestBody);
+
+    expect(buildStreamFetchBody({ data: { variables: { input: 'value' } } })).toMatchObject({
+      variables: { input: 'value', cTime: expect.any(String) },
+      detail: true,
+      stream: true,
+      retainDatasetCite: true
+    });
   });
 });

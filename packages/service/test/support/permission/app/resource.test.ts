@@ -40,6 +40,7 @@ import {
 } from '@fastgpt/service/support/permission/app/resource';
 
 beforeEach(() => {
+  vi.clearAllMocks();
   const teamId = '65f000000000000000000002';
   mocks.getTmbInfoByTmbId.mockReset().mockResolvedValue({ teamId, permission: { isOwner: false } });
   mocks.authAppByTmbId.mockReset().mockResolvedValue({ app: { teamId } });
@@ -51,14 +52,6 @@ beforeEach(() => {
 
 describe('checkAppResourceReadPermissions', () => {
   const validTmbId = '65f000000000000000000001';
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.getTmbInfoByTmbId.mockResolvedValue({
-      teamId: '65f000000000000000000002',
-      permission: { isOwner: false }
-    });
-  });
 
   it('rejects non-ObjectId dataset resource with DatasetErrEnum.unExist in formal permission check', async () => {
     await expect(
@@ -83,10 +76,6 @@ describe('checkAppResourceReadPermissions', () => {
 
 describe('filterAuthorizedAppResources', () => {
   const validTmbId = '65f000000000000000000001';
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
 
   it('returns empty array when resources array is empty without checking permissions', async () => {
     const result = await filterAuthorizedAppResources({
@@ -205,18 +194,6 @@ describe('root App resource scope', () => {
   const tmbId = '65f000000000000000000001';
   const teamId = '65f000000000000000000002';
   const resourceId = '65f000000000000000000020';
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.getTmbInfoByTmbId.mockReset().mockResolvedValue({
-      teamId,
-      permission: { isOwner: false }
-    });
-    mocks.authAppByTmbId.mockReset().mockResolvedValue({ app: { teamId } });
-    mocks.authDatasetByTmbId.mockReset().mockResolvedValue({ dataset: { teamId } });
-    mocks.authSkillByTmbId.mockReset().mockResolvedValue({
-      skill: { teamId, source: AgentSkillSourceEnum.personal }
-    });
-  });
 
   it('preserves root access to same-team apps, tools, datasets and skills without cross-team access', async () => {
     const resourceTypes: AppResource['type'][] = ['agent', 'tool', 'dataset', 'skill'];

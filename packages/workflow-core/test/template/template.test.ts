@@ -200,13 +200,12 @@ describe('builtinTemplateProvider', () => {
       const templateName = formatNodeTemplateRef(ref);
 
       expect(descriptor.schemaVersion, templateName).toBe('fastgpt-workflow-node-contract/v1');
-      expect(descriptor.execution.sourceKinds, templateName).toEqual(
-        expect.arrayContaining(
-          descriptor.execution.sourceKinds.filter((kind) =>
-            ['next', 'branch', 'sourceOutput', 'catch', 'selectedTools'].includes(kind)
-          )
-        )
-      );
+      expect(
+        descriptor.execution.sourceKinds.every((kind) =>
+          ['next', 'branch', 'sourceOutput', 'catch', 'selectedTools'].includes(kind)
+        ),
+        templateName
+      ).toBe(true);
       expect(descriptor.execution.terminal, templateName).toBe(
         descriptor.execution.sourceKinds.length === 0
       );

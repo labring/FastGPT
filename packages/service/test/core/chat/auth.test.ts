@@ -8,7 +8,7 @@ import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { authOutLink } from '@fastgpt/service/support/permission/publish/authChat';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
-import type { OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
+import type { ShareOutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
@@ -23,10 +23,10 @@ vi.mock('@fastgpt/service/support/permission/skill/auth');
 vi.mock('@fastgpt/service/support/permission/publish/authChat');
 
 const buildOutLinkConfig = (
-  overrides: Partial<OutLinkSchemaType> = {},
-  omitKeys: (keyof OutLinkSchemaType)[] = []
-): OutLinkSchemaType => {
-  const config: OutLinkSchemaType = {
+  overrides: Partial<ShareOutLinkSchemaType> = {},
+  omitKeys: (keyof ShareOutLinkSchemaType)[] = []
+): ShareOutLinkSchemaType => {
+  const config: ShareOutLinkSchemaType = {
     _id: 'outLink1',
     shareId: 'share1',
     teamId: 'team1',
@@ -48,7 +48,7 @@ const buildOutLinkConfig = (
   };
 
   omitKeys.forEach((key) => {
-    delete (config as Partial<OutLinkSchemaType>)[key];
+    delete (config as Partial<ShareOutLinkSchemaType>)[key];
   });
 
   return config;
@@ -60,37 +60,16 @@ describe('authChatTargetCrud App and share access', () => {
   });
 
   describe('validation', () => {
-    it('should reject if appId is empty string', async () => {
+    it.each(['', undefined, null])('rejects an invalid appId: %s', async (sourceId) => {
       await expect(
         authChatTargetCrud({
-          sourceId: '',
+          sourceId: sourceId as string,
           req: {} as any,
           authToken: true,
           sourceType: ChatSourceTypeEnum.app
         })
       ).rejects.toBe(ChatErrEnum.unAuthChat);
-    });
-
-    it('should reject if appId is undefined', async () => {
-      await expect(
-        authChatTargetCrud({
-          sourceId: undefined as any,
-          req: {} as any,
-          authToken: true,
-          sourceType: ChatSourceTypeEnum.app
-        })
-      ).rejects.toBe(ChatErrEnum.unAuthChat);
-    });
-
-    it('should reject if appId is null', async () => {
-      await expect(
-        authChatTargetCrud({
-          sourceId: null as any,
-          req: {} as any,
-          authToken: true,
-          sourceType: ChatSourceTypeEnum.app
-        })
-      ).rejects.toBe(ChatErrEnum.unAuthChat);
+      expect(authApp).not.toHaveBeenCalled();
     });
   });
 
@@ -283,39 +262,27 @@ describe('authChatTargetCrud App and share access', () => {
       ).rejects.toBe(ChatErrEnum.unAuthChat);
     });
 
-    it('should reject if shareId provided without outLinkUid', async () => {
-      // Mock authApp to simulate what happens when req is provided but shareId/outLinkUid combo is incomplete
-      vi.mocked(authApp).mockRejectedValue(new Error('Auth failed'));
+    it.each([{ shareId: 'share1' }, { outLinkUid: 'user1' }])(
+      'uses App authentication for incomplete share credentials: %j',
+      async (outLinkAuthData) => {
+        vi.mocked(authApp).mockRejectedValueOnce(new Error('Auth failed'));
 
-      await expect(
-        authChatTargetCrud({
-          sourceId: 'app1',
-          req: {} as any,
-          authToken: true,
-          sourceType: ChatSourceTypeEnum.app,
-          outLinkAuthData: { shareId: 'share1' } as any
-        })
-      ).rejects.toThrow();
-    });
-
-    it('should reject if outLinkUid provided without shareId', async () => {
-      // Mock authApp to simulate what happens when req is provided but shareId/outLinkUid combo is incomplete
-      vi.mocked(authApp).mockRejectedValue(new Error('Auth failed'));
-
-      await expect(
-        authChatTargetCrud({
-          sourceId: 'app1',
-          req: {} as any,
-          authToken: true,
-          sourceType: ChatSourceTypeEnum.app,
-          outLinkAuthData: { outLinkUid: 'user1' } as any
-        })
-      ).rejects.toThrow();
-    });
+        await expect(
+          authChatTargetCrud({
+            sourceId: 'app1',
+            req: {} as any,
+            authToken: true,
+            sourceType: ChatSourceTypeEnum.app,
+            outLinkAuthData: outLinkAuthData as any
+          })
+        ).rejects.toThrow('Auth failed');
+        expect(authOutLink).not.toHaveBeenCalled();
+      }
+    );
   });
 
   describe('cookie authentication', () => {
-    it('should auth with cookie without chatId', async () => {
+    beforeEach(() => {
       vi.mocked(authApp).mockResolvedValue({
         teamId: 'team1',
         tmbId: 'tmb1',
@@ -324,7 +291,9 @@ describe('authChatTargetCrud App and share access', () => {
         }),
         authType: AuthUserTypeEnum.token
       } as any);
+    });
 
+    it('should auth with cookie without chatId', async () => {
       const result = await authChatTargetCrud({
         sourceId: 'app1',
         req: {} as any,
@@ -377,15 +346,6 @@ describe('authChatTargetCrud App and share access', () => {
         teamId: 'team1',
         tmbId: 'tmb1'
       };
-
-      vi.mocked(authApp).mockResolvedValue({
-        teamId: 'team1',
-        tmbId: 'tmb1',
-        permission: new AppPermission({
-          isOwner: true
-        }),
-        authType: AuthUserTypeEnum.token
-      } as any);
 
       vi.mocked(MongoChat.findOne).mockReturnValue({
         lean: () => Promise.resolve(mockChat)
@@ -457,15 +417,6 @@ describe('authChatTargetCrud App and share access', () => {
     });
 
     it('should handle missing chat for cookie auth', async () => {
-      vi.mocked(authApp).mockResolvedValue({
-        teamId: 'team1',
-        tmbId: 'tmb1',
-        permission: new AppPermission({
-          isOwner: true
-        }),
-        authType: AuthUserTypeEnum.token
-      } as any);
-
       vi.mocked(MongoChat.findOne).mockReturnValue({
         lean: () => Promise.resolve(null)
       } as any);
@@ -497,15 +448,6 @@ describe('authChatTargetCrud App and share access', () => {
         teamId: 'different-team',
         tmbId: 'tmb1'
       };
-
-      vi.mocked(authApp).mockResolvedValue({
-        teamId: 'team1',
-        tmbId: 'tmb1',
-        permission: new AppPermission({
-          isOwner: true
-        }),
-        authType: AuthUserTypeEnum.token
-      } as any);
 
       vi.mocked(MongoChat.findOne).mockReturnValue({
         lean: () => Promise.resolve(mockChat)

@@ -7,6 +7,7 @@ import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
+  matchesWorkflowAutoLayoutRequest,
   getWorkflowAutoLayoutNodeSizeSignature,
   mergeWorkflowLayoutNodes,
   useWorkflowAutoLayout
@@ -32,10 +33,8 @@ vi.mock('reactflow', async (importOriginal) => ({
 vi.mock('@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext', () => ({
   WorkflowBufferDataContext: 'buffer'
 }));
-vi.mock('@/pageComponents/app/detail/WorkflowComponents/context/workflowComputeContext', () => ({
-  WorkflowLayoutContext: 'layout'
-}));
-vi.mock('use-context-selector', () => ({
+vi.mock('use-context-selector', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('use-context-selector')>()),
   useContextSelector: (context: string, selector: (value: unknown) => unknown) =>
     selector(
       context === 'buffer'
@@ -63,11 +62,28 @@ const node = (id: string, extra: Partial<Node<FlowNodeItemType>> = {}): Node<Flo
 });
 
 describe('workflow layout data compatibility', () => {
-  it('waits for the complete measured node set and ignores node ordering in its size signature', () => {
+  it('binds auto-layout readiness to the exact Builder-applied node set', () => {
     const nodes = [node('start'), node('answer')];
+
+    expect(
+      matchesWorkflowAutoLayoutRequest({
+        nodes,
+        nodeIds: new Set(['start', 'answer'])
+      })
+    ).toBe(true);
+    expect(
+      matchesWorkflowAutoLayoutRequest({
+        nodes,
+        nodeIds: new Set(['start', 'old-node'])
+      })
+    ).toBe(false);
+  });
+
+  it('waits for the complete measured node set and ignores node ordering in its size signature', () => {
+    const nodes = [node('start'), node('answer', { height: 360 })];
     const nodeIds = new Set(nodes.map(({ id }) => id));
     const signature = getWorkflowAutoLayoutNodeSizeSignature({ nodes, nodeIds });
-    expect(signature).toBeDefined();
+    expect(signature).toBe('answer:420:360|start:420:240');
     expect(getWorkflowAutoLayoutNodeSizeSignature({ nodes: [...nodes].reverse(), nodeIds })).toBe(
       signature
     );
@@ -118,7 +134,16 @@ describe('workflow layout data compatibility', () => {
     expect(result[0].data.inputs.map(({ value }) => value)).toEqual([800, 600, 'latest prompt']);
     expect(result[0].data.inputs[0].label).toBe('Width');
     expect(result[1]).toMatchObject({ width: 420, data: { name: 'latest name' } });
+    expect(result[1].position).toEqual({ x: 50, y: 60 });
+    expect(result[1].data).toBe(child.data);
     expect(result[2]).toBe(added);
+    expect(
+      mergeWorkflowLayoutNodes({
+        currentNodes: [added],
+        layoutedNodes: [],
+        resizedNodeIds: new Set()
+      })[0]
+    ).toBe(added);
     expect(parent.width).toBe(420);
     expect(child.position).toEqual({ x: 100, y: 200 });
   });
