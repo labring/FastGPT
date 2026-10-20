@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Box, Flex, Button, IconButton, type ButtonProps, Input, Portal } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
@@ -24,11 +24,23 @@ const SearchButton = ({ inToolbar = false, portalContainerRef, ...props }: Searc
   const [searchIndex, setSearchIndex] = useState<number>(0);
   const [searchedNodeCount, setSearchedNodeCount] = useState(0);
   const isSearchOpen = keyword !== undefined;
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isSearchOpen) return;
+
+    // Portal 先挂载子元素再插入页面，等容器就绪后聚焦，避免原生 autoFocus 失效。
+    const frame = requestAnimationFrame(() =>
+      searchInputRef.current?.focus({ preventScroll: true })
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [isSearchOpen]);
 
   useKeyPress(['ctrl.f', 'meta.f'], (e) => {
     e.preventDefault();
     e.stopPropagation();
     setKeyword('');
+    searchInputRef.current?.focus({ preventScroll: true });
   });
   useKeyPress(['esc'], (e) => {
     e.preventDefault();
@@ -165,6 +177,7 @@ const SearchButton = ({ inToolbar = false, portalContainerRef, ...props }: Searc
       w={'100%'}
     >
       <Input
+        ref={searchInputRef}
         flex="1 0 0"
         h={8}
         border={'none'}
@@ -176,7 +189,6 @@ const SearchButton = ({ inToolbar = false, portalContainerRef, ...props }: Searc
         fontSize={'16px'}
         value={keyword}
         placeholder={t('workflow:please_enter_node_name')}
-        autoFocus
         onFocus={onSearch}
         onChange={(e) => setKeyword(e.target.value)}
         onKeyDown={(e) => {

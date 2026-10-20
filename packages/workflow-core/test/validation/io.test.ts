@@ -150,8 +150,7 @@ describe('validateNodeIO', () => {
     expect(check(node).map((item) => [item.inputKey, item.code])).toEqual([
       ['number', 'WORKFLOW_INPUT_VALUE_TYPE_INVALID'],
       ['hidden', 'WORKFLOW_INPUT_VALUE_TYPE_INVALID'],
-      ['schema', 'WORKFLOW_INPUT_VALUE_SCHEMA_INVALID'],
-      ['object', 'WORKFLOW_TEMPLATE_PARAMETER_SCHEMA_MISSING']
+      ['schema', 'WORKFLOW_INPUT_VALUE_SCHEMA_INVALID']
     ]);
   });
 

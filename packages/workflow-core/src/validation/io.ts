@@ -30,7 +30,7 @@ import {
   valueMatchesType
 } from '../reference/service';
 import { hasConfiguredValue } from '../template/defaultValue';
-import { inputValueNeedsSchema, valueMatchesSchema } from '../template/valueSchema';
+import { valueMatchesSchema } from '../template/valueSchema';
 import { isWorkflowSystemModelInput } from '@fastgpt/global/common/workflow/model';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { SecretValueTypeSchema } from '@fastgpt/global/common/secret/type';
@@ -347,16 +347,6 @@ export const validateNodeIO = ({
         diagnostics.push({
           code: 'WORKFLOW_INPUT_VALUE_SCHEMA_INVALID',
           severity: 'error',
-          nodeId: node.nodeId,
-          inputKey: input.key
-        });
-      } else if (
-        !valueSchema &&
-        inputValueNeedsSchema({ value: effectiveValue, valueType: input.valueType })
-      ) {
-        diagnostics.push({
-          code: 'WORKFLOW_TEMPLATE_PARAMETER_SCHEMA_MISSING',
-          severity: 'warning',
           nodeId: node.nodeId,
           inputKey: input.key
         });

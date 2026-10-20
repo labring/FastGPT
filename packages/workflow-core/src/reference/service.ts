@@ -12,7 +12,7 @@ import { WorkflowCommandError } from '../domain/diagnostic';
 import type { VariableRef } from './type';
 import { getInputAutomationMeta } from '@fastgpt/global/core/workflow/template/automationMeta';
 import { getNodeInputCapability, type NodeParameterInputMode } from '../template/descriptor';
-import { assertValueSchema, inputValueNeedsSchema } from '../template/valueSchema';
+import { assertValueSchema } from '../template/valueSchema';
 
 export type WorkflowReferenceValue = [string, string];
 
@@ -155,7 +155,7 @@ const setSelectedInputRenderType = (
   input.selectedType = selectedType;
 };
 
-/** 更新固定值，并同步 Web 使用的输入模式字段。 */
+/** 更新固定值并同步 Web 输入模式；普通对象只检查类型，显式声明 Schema 时再检查结构。 */
 export const setInputValue = ({
   document,
   nodeId,
@@ -185,17 +185,6 @@ export const setInputValue = ({
       document.nodes.find((item) => item.nodeId === nodeId)!.flowNodeType,
       inputKey
     )?.valueSchema ?? input.customJsonSchema;
-  const needsSchema = inputValueNeedsSchema({ value, valueType: input.valueType });
-  if (needsSchema && !valueSchema) {
-    throw new WorkflowCommandError([
-      {
-        code: 'WORKFLOW_TEMPLATE_PARAMETER_SCHEMA_MISSING',
-        severity: 'error',
-        nodeId,
-        inputKey
-      }
-    ]);
-  }
   if (valueSchema) assertValueSchema({ value, schema: valueSchema, nodeId, inputKey });
 
   input.value = structuredClone(value);

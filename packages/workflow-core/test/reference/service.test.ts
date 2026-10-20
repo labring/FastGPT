@@ -8,6 +8,7 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowCommandError } from '../../src/domain/diagnostic';
 import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { builtinTemplateProvider } from '../template/provider';
 import { createWorkflowDocument } from '../../src/domain/document';
 import { getAvailableInputReferences } from '../../src/reference/query';
@@ -135,6 +136,26 @@ describe('input mutation services', () => {
         ref: { nodeId: 'start', outputKey: 'userChatInput' }
       })
     ).toThrow('WORKFLOW_INPUT_MODE_NOT_ALLOWED');
+
+    const headers = [{ key: 'X-Custom', value: 'enabled' }];
+    setInputValue({
+      document: httpDocument,
+      nodeId: 'http',
+      inputKey: NodeInputKeyEnum.httpHeaders,
+      value: headers
+    });
+    expect(
+      httpDocument.nodes[0].inputs.find((input) => input.key === NodeInputKeyEnum.httpHeaders)
+        ?.value
+    ).toEqual(headers);
+    expect(() =>
+      setInputValue({
+        document: httpDocument,
+        nodeId: 'http',
+        inputKey: NodeInputKeyEnum.httpHeaders,
+        value: [{ key: 'X-Custom', value: 1 }]
+      })
+    ).toThrow('WORKFLOW_INPUT_VALUE_SCHEMA_INVALID');
   });
 
   it('validates dynamic input customJsonSchema on input.set', () => {
@@ -147,6 +168,74 @@ describe('input mutation services', () => {
       setInputValue({ document, nodeId: 'ai', inputKey: promptInput.key, value: 'x' })
     ).toThrow('WORKFLOW_INPUT_VALUE_SCHEMA_INVALID');
     setInputValue({ document, nodeId: 'ai', inputKey: promptInput.key, value: 'valid' });
+  });
+
+  it.each([
+    { valueType: WorkflowIOValueTypeEnum.object, value: { name: 'Alice', enabled: true } },
+    { valueType: WorkflowIOValueTypeEnum.arrayObject, value: [{ name: 'Alice' }] },
+    { valueType: WorkflowIOValueTypeEnum.arrayAny, value: [{ name: 'Alice' }, 1, 'text'] },
+    { valueType: WorkflowIOValueTypeEnum.any, value: { nested: { enabled: true } } }
+  ])(
+    'sets and validates $valueType inputs without requiring a custom schema',
+    ({ valueType, value }) => {
+      const input: FlowNodeInputItemType = {
+        key: 'customPayload',
+        label: 'Payload',
+        renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.JSONEditor],
+        selectedType: FlowNodeInputTypeEnum.reference,
+        valueType
+      };
+      document.nodes.find((node) => node.nodeId === 'ai')!.inputs.push(input);
+
+      setInputValue({ document, nodeId: 'ai', inputKey: input.key, value });
+
+      expect(input).toMatchObject({ value, selectedType: FlowNodeInputTypeEnum.JSONEditor });
+      expect(
+        validateWorkflow(document).filter((diagnostic) => diagnostic.inputKey === input.key)
+      ).toEqual([]);
+    }
+  );
+
+  it.each([
+    { valueType: WorkflowIOValueTypeEnum.object, value: [] },
+    { valueType: WorkflowIOValueTypeEnum.arrayAny, value: {} }
+  ])('retains basic type checks for $valueType inputs without a schema', ({ valueType, value }) => {
+    const input = document.nodes
+      .find((node) => node.nodeId === 'ai')!
+      .inputs.find((input) => input.key === 'systemPrompt')!;
+    input.valueType = valueType;
+
+    expect(() => setInputValue({ document, nodeId: 'ai', inputKey: input.key, value })).toThrow(
+      'WORKFLOW_INPUT_VALUE_TYPE_INVALID'
+    );
+  });
+
+  it('accepts unrestricted object schemas and retains explicit field constraints', () => {
+    const input = document.nodes
+      .find((node) => node.nodeId === 'ai')!
+      .inputs.find((input) => input.key === 'systemPrompt')!;
+    input.valueType = WorkflowIOValueTypeEnum.object;
+    input.renderTypeList = [FlowNodeInputTypeEnum.JSONEditor];
+    input.customJsonSchema = { type: 'object' };
+    const value = { count: 2, extra: { enabled: true } };
+
+    setInputValue({ document, nodeId: 'ai', inputKey: input.key, value });
+    expect(input.value).toEqual(value);
+
+    input.customJsonSchema = {
+      type: 'object',
+      required: ['count'],
+      properties: { count: { type: 'number' } }
+    };
+    for (const invalidValue of [{ count: 'two' }, {}]) {
+      expect(() =>
+        setInputValue({ document, nodeId: 'ai', inputKey: input.key, value: invalidValue })
+      ).toThrow('WORKFLOW_INPUT_VALUE_SCHEMA_INVALID');
+      expect(input.value).toEqual(value);
+    }
+
+    setInputValue({ document, nodeId: 'ai', inputKey: input.key, value: { count: 3 } });
+    expect(input.value).toEqual({ count: 3 });
   });
 
   it('validates reference mode, source output and value type', () => {

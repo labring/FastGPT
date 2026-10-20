@@ -1890,7 +1890,7 @@ describe('Core validation and Web extension contract', () => {
     });
   });
 
-  it('does not block on warnings and keeps them in the node issue list', () => {
+  it('accepts a plain object without requiring a custom schema or reporting a warning', () => {
     const graph = makeGraph([
       {
         key: 'payload',
@@ -1903,12 +1903,7 @@ describe('Core validation and Web extension contract', () => {
     const result = checkWorkflowBeforeRunOrPublish({ ...graph, t });
     expect(result.hasError).toBe(false);
     expect(result.errorMessages).toEqual([]);
-    expect(result.issueMap.target).toEqual([
-      expect.objectContaining({
-        level: 'warning',
-        code: 'WORKFLOW_TEMPLATE_PARAMETER_SCHEMA_MISSING'
-      })
-    ]);
+    expect(result.issueMap.target).toBeUndefined();
   });
 
   it('reports schema errors with their exact validation reason instead of an empty generic failure', () => {

@@ -1,5 +1,4 @@
 import { WorkflowCommandError } from '../domain/diagnostic';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 type JsonSchema = {
   type?: string | string[];
@@ -38,20 +37,6 @@ const valueMatchesType = (value: unknown, type: string) => {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
   return true;
 };
-
-export const inputValueNeedsSchema = ({
-  value,
-  valueType
-}: {
-  value: unknown;
-  valueType?: string;
-}) =>
-  valueType === WorkflowIOValueTypeEnum.object ||
-  valueType === WorkflowIOValueTypeEnum.arrayObject ||
-  valueType === WorkflowIOValueTypeEnum.arrayAny ||
-  valueType === WorkflowIOValueTypeEnum.selectDataset ||
-  valueType === WorkflowIOValueTypeEnum.selectApp ||
-  (valueType === WorkflowIOValueTypeEnum.any && typeof value === 'object' && value !== null);
 
 export const valueMatchesSchema = (value: unknown, schema: Record<string, unknown>): boolean => {
   const parsedSchema = schema as JsonSchema;
