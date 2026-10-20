@@ -442,6 +442,10 @@ export const DatasetListItemSchema = z.object({
     description: '被正式应用引用的数量，仅资源 Owner 且显式请求时返回',
     example: 0
   }),
+  fileCount: IntSchema.optional().meta({
+    description: '知识库下文件总数（不含文件夹）；folder 类型不返回',
+    example: 0
+  }),
   vectorModel: EmbeddingModelDataSchema.optional().meta({
     description: '向量模型；目录或模型已删除时为空，已停用模型仍返回展示数据'
   }),

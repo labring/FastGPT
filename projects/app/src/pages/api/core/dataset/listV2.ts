@@ -24,6 +24,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { desensitizeModel } from '@fastgpt/service/core/ai/model/transform';
 import { countTeamAppsByPublishedResourceGroups } from '@fastgpt/service/core/app/resourceLookup';
+import { countDatasetCollectionsByDatasetIds } from '@fastgpt/service/core/dataset/collection/utils';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -259,24 +260,33 @@ async function handler(
     };
   });
 
-  const appCountMap = withAppCount
-    ? await countTeamAppsByPublishedResourceGroups({
-        teamId,
-        resourceGroups: formatDatasets
-          .filter((dataset) => dataset.type !== DatasetTypeEnum.folder)
-          .map((dataset) => {
-            const id = String(dataset._id);
-            return {
-              id,
-              isOwner: dataset.permission.isOwner,
-              resources: [{ type: 'dataset', id }]
-            };
-          })
-      })
-    : undefined;
+  const countDatasetIds = formatDatasets
+    .filter((dataset) => dataset.type !== DatasetTypeEnum.folder)
+    .map((dataset) => String(dataset._id));
+  const [fileCountMap, appCountMap] = await Promise.all([
+    countDatasetCollectionsByDatasetIds({ teamId, datasetIds: countDatasetIds }),
+    withAppCount
+      ? countTeamAppsByPublishedResourceGroups({
+          teamId,
+          resourceGroups: formatDatasets
+            .filter((dataset) => dataset.type !== DatasetTypeEnum.folder)
+            .map((dataset) => {
+              const id = String(dataset._id);
+              return {
+                id,
+                isOwner: dataset.permission.isOwner,
+                resources: [{ type: 'dataset', id }]
+              };
+            })
+        })
+      : undefined
+  ]);
   const list = await addSourceMember({
     list: formatDatasets.map((dataset) => ({
       ...dataset,
+      ...(dataset.type !== DatasetTypeEnum.folder
+        ? { fileCount: fileCountMap.get(String(dataset._id)) ?? 0 }
+        : {}),
       ...(dataset.permission.isOwner && appCountMap?.has(String(dataset._id))
         ? { appCount: appCountMap.get(String(dataset._id)) ?? 0 }
         : {})

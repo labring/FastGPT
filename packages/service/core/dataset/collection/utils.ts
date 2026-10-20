@@ -1,5 +1,5 @@
 import { MongoDatasetCollection } from './schema';
-import type { ClientSession } from '../../../common/mongo';
+import { Types, type ClientSession } from '../../../common/mongo';
 import { MongoDatasetCollectionTags } from '../tag/schema';
 import { MongoDatasetCollectionTagsV2 } from '../tag/schemaV2';
 import { readFromSecondary } from '../../../common/mongo/utils';
@@ -73,6 +73,42 @@ export function getCollectionUpdateTime({ name, time }: { time?: Date; name: str
   if (name.startsWith('手动') || ['manual', 'mark'].includes(name)) return new Date('2999/9/9');
   return new Date();
 }
+
+/**
+ * 批量统计知识库下非目录 collection 数量。
+ *
+ * 一次聚合覆盖当前页全部 datasetId；未命中或非法的 datasetId 返回 0。
+ * `type` 不在 dataset_collections 的索引上，过滤发生在索引扫描后的回表阶段，
+ * 因此成本与「范围内 collection 总数（含 folder）」线性相关，与 folder 占比关系不大。
+ */
+export const countDatasetCollectionsByDatasetIds = async ({
+  teamId,
+  datasetIds
+}: {
+  teamId: string;
+  datasetIds: string[];
+}): Promise<Map<string, number>> => {
+  const counts = new Map<string, number>();
+  datasetIds.forEach((id) => counts.set(id, 0));
+
+  const validIds = datasetIds.filter((id) => Types.ObjectId.isValid(id));
+  if (validIds.length === 0) return counts;
+
+  // Mongo 聚合不会执行 Mongoose 的自动转型，teamId 和 datasetId 必须显式转 ObjectId。
+  const rows = await MongoDatasetCollection.aggregate<{ _id: Types.ObjectId; count: number }>([
+    {
+      $match: {
+        teamId: new Types.ObjectId(teamId),
+        datasetId: { $in: validIds.map((id) => new Types.ObjectId(id)) },
+        type: { $ne: DatasetCollectionTypeEnum.folder }
+      }
+    },
+    { $group: { _id: '$datasetId', count: { $sum: 1 } } }
+  ]);
+
+  rows.forEach((row) => counts.set(String(row._id), row.count));
+  return counts;
+};
 
 export const validateDatasetTagValue = ({
   tagType,

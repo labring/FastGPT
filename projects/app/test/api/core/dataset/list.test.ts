@@ -3,7 +3,8 @@ import handler from '@/pages/api/core/dataset/list';
 import handlerV2 from '@/pages/api/core/dataset/listV2';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { AppListSortEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
@@ -278,6 +279,109 @@ describe('POST /api/core/dataset/list', () => {
       childResponse.data.list.find((item) => String(item._id) === String(datasetId))
     ).toMatchObject({ appCount: 1 });
   });
+  it('returns non-folder file counts and omits them for folders', async () => {
+    const user = await getUser(`dataset-list-file-count-${getNanoid(6)}`);
+    const parentFolderId = new Types.ObjectId();
+    const datasetId = new Types.ObjectId();
+    const rootDatasetId = new Types.ObjectId();
+    const emptyDatasetId = new Types.ObjectId();
+    const collectionFolderId = new Types.ObjectId();
+
+    await MongoDataset.create([
+      {
+        _id: parentFolderId,
+        name: 'Dataset folder',
+        type: DatasetTypeEnum.folder,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        parentId: null
+      },
+      {
+        _id: datasetId,
+        name: 'Dataset inside folder',
+        type: DatasetTypeEnum.dataset,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        parentId: parentFolderId
+      },
+      {
+        _id: rootDatasetId,
+        name: 'Root dataset with one file',
+        type: DatasetTypeEnum.dataset,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        parentId: null
+      },
+      {
+        _id: emptyDatasetId,
+        name: 'Empty dataset',
+        type: DatasetTypeEnum.dataset,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        parentId: null
+      }
+    ]);
+    await MongoDatasetCollection.create([
+      {
+        _id: collectionFolderId,
+        name: 'Inner folder',
+        type: DatasetCollectionTypeEnum.folder,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        datasetId
+      },
+      {
+        name: 'File in root',
+        type: DatasetCollectionTypeEnum.file,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        datasetId
+      },
+      {
+        name: 'Nested file',
+        type: DatasetCollectionTypeEnum.file,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        datasetId,
+        parentId: collectionFolderId
+      },
+      {
+        name: 'Root dataset file',
+        type: DatasetCollectionTypeEnum.file,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        datasetId: rootDatasetId
+      }
+    ]);
+
+    const rootResponse = await Call<
+      GetDatasetListV2Body,
+      Record<string, never>,
+      GetDatasetListV2Response
+    >(handlerV2, {
+      auth: user,
+      body: { parentId: null }
+    });
+    const findRow = (response: typeof rootResponse, id: Types.ObjectId) =>
+      response.data.list.find((item) => String(item._id) === String(id));
+
+    // folder 行不返回文件数
+    expect(findRow(rootResponse, parentFolderId)).not.toHaveProperty('fileCount');
+    expect(findRow(rootResponse, rootDatasetId)).toMatchObject({ fileCount: 1 });
+    expect(findRow(rootResponse, emptyDatasetId)).toMatchObject({ fileCount: 0 });
+
+    const childResponse = await Call<
+      GetDatasetListV2Body,
+      Record<string, never>,
+      GetDatasetListV2Response
+    >(handlerV2, {
+      auth: user,
+      body: { parentId: String(parentFolderId) }
+    });
+    // folder 内的文件也计入，folder 自身不计入
+    expect(findRow(childResponse, datasetId)).toMatchObject({ fileCount: 2 });
+  });
+
   it('omits dataset app counts for non-owners when requested', async () => {
     const { owner, members } = await getFakeUsers(1);
     const dataset = await MongoDataset.create({
