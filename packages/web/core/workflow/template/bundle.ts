@@ -1,5 +1,8 @@
 import { workflowBuilderSystemTemplates } from '@fastgpt/global/core/workflow/template/constants';
 import { getAutomationMeta } from '@fastgpt/global/core/workflow/template/automationMeta';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflow/template/system/classifyQuestion/type';
 import {
   WorkflowTemplateBundleSchema,
   type WorkflowTemplateBundle
@@ -7,7 +10,7 @@ import {
 import { createTranslator } from '../../../i18n/workflowTemplate';
 
 /**
- * 宿主统一装配系统节点与已授权的外部模板，翻译展示字段并附上已校验的资源默认值。
+ * 宿主统一装配系统节点与已授权的外部模板，翻译展示字段和分类默认标签，并附上已校验的资源默认值。
  * 返回纯 JSON 契约，供服务端和沙箱 CLI 直接使用；隐藏模板仍保留以兼容容器和历史节点。
  */
 export const createWorkflowTemplateBundle = ({
@@ -53,6 +56,21 @@ export const createWorkflowTemplateBundle = ({
         intro: item.template.intro ? translate(item.template.intro) : item.template.intro,
         inputs: item.template.inputs.map((input) => ({
           ...input,
+          // 分类默认标签使用 i18n key，需在装配时实体化；其他输入和外部工具的业务值保持原样。
+          value: (() => {
+            if (
+              item.ref.kind !== 'builtin' ||
+              item.template.flowNodeType !== FlowNodeTypeEnum.classifyQuestion ||
+              input.key !== NodeInputKeyEnum.agents ||
+              !Array.isArray(input.value)
+            ) {
+              return input.value;
+            }
+            return (input.value as ClassifyQuestionAgentItemType[]).map((agent) => ({
+              ...agent,
+              value: translate(agent.value)
+            }));
+          })(),
           label: translate(input.label),
           description: input.description ? translate(input.description) : undefined,
           placeholder: input.placeholder ? translate(input.placeholder) : undefined,
