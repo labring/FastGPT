@@ -75,6 +75,8 @@ FatGPT 中的模型为 `gpt-4o-test`，向 AI Proxy 发起请求时也是 `gpt-4
 
 ![aiproxy4](../../../../public/imgs/aiproxy-4.png)
 
+**托管式 OpenAI 兼容端点示例。** 提供 OpenAI 协议的托管 API 可按 `OpenAI` 协议类型配置。以 [Fikra API](https://fikraapi.co.ke) 为例，该服务以 DeepSeek 模型为主：协议类型选 `OpenAI`，代理地址填 `https://api.fikraapi.co.ke/v1`，再填入你的 Fikra API 密钥，然后选择需要的模型，例如 `deepseek-v4.1-flash`（100 万输入/输出 token 分别 0.045/0.09 美元，上下文长度 100 万；价格为 2026-10-19 核实）。下拉框中没有的模型，先[新增自定义模型](./intro.mdx#新增自定义模型)。
+
 ### 2. 渠道测试
 
 然后可以对渠道进行测试，确保配置的模型有效
