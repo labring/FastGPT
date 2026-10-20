@@ -23,6 +23,7 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { formatHttpError, getNodeErrResponse } from '../utils';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../../../common/system/utils';
 import { getServiceRequestMaxContentLength } from '../../../../common/system/constants';
+import { logInstanceConfigRead } from '../../../../common/system/migrationCoverageLog';
 import { axios, type SafeAxiosRequestConfig } from '../../../../common/api/axios';
 import { replaceEditorVariable } from '../utils/replaceEditorVariable';
 import { checkStrOversize, logOversizeString } from '../../../../common/string/replaceVariable';
@@ -40,6 +41,16 @@ export const getWorkflowHttpNodeHttpsAgentConfig = (
 ): Pick<SafeAxiosRequestConfig, '__safeAxios'> => {
   const ignoreHttpsCertificate =
     global.systemEnv?.workflowHttpNode?.ignoreHttpsCertificate === true;
+  logInstanceConfigRead({
+    callsite: 'runtime.workflow.http468.getWorkflowHttpNodeHttpsAgentConfig',
+    source: 'bridged-system-env',
+    fields: [
+      {
+        path: 'security.workflowHttpNode.ignoreHttpsCertificate',
+        value: ignoreHttpsCertificate
+      }
+    ]
+  });
 
   if (!ignoreHttpsCertificate) {
     return {};

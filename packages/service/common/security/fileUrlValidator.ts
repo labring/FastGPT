@@ -1,5 +1,6 @@
 import { serviceEnv } from '../../env';
 import { getStorageExternalEndpoint, getStorageS3CdnEndpoint } from '../s3/config/constants';
+import { logInstanceConfigRead } from '../system/migrationCoverageLog';
 
 const appendHost = ({
   list,
@@ -39,6 +40,17 @@ const getSystemWhiteList = () => {
 
 export const validateFileUrlDomain = (url: string): boolean => {
   try {
+    logInstanceConfigRead({
+      callsite: 'runtime.common.security.fileUrlValidator',
+      source: 'bridged-system-env',
+      fields: [
+        {
+          path: 'security.fileUrlWhitelist',
+          value: global.systemEnv?.fileUrlWhitelist
+        }
+      ]
+    });
+
     // Allow all URLs if the whitelist is empty
     if ((global.systemEnv?.fileUrlWhitelist || []).length === 0) {
       return true;
