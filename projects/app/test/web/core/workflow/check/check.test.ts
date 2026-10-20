@@ -2016,5 +2016,18 @@ describe('Web external resource bindings', () => {
       }
     ];
     expect(checkWorkflowBeforeRunOrPublish(graph).hasError).toBe(false);
+
+    // 旧 ChatAgent/持久化数据只保证 ID；向量模型也可能仅保存新的 modelId。
+    for (const value of [
+      [{ datasetId: 'selected' }],
+      [{ datasetId: 'selected', vectorModel: { modelId: 'embedding-id' } }]
+    ]) {
+      target.data.inputs[0].value = value;
+      expect(checkWorkflowBeforeRunOrPublish(graph).hasError).toBe(false);
+    }
+    target.data.inputs[0].value = [{ datasetId: 'selected', error: 'resource_no_permission' }];
+    expect(checkWorkflowBeforeRunOrPublish(graph).issueMap.target).toEqual([
+      expect.objectContaining({ code: 'resource_no_permission' })
+    ]);
   });
 });

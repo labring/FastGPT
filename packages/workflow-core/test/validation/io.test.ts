@@ -69,6 +69,48 @@ const check = (node: StoreNodeItemType, isTool = false) => {
 };
 
 describe('validateNodeIO', () => {
+  it.each([
+    { datasetId: 'dataset-id' },
+    { datasetId: 'dataset-id', name: 'Stored dataset', vectorModel: { modelId: 'embedding-id' } },
+    { datasetId: 'dataset-id', avatar: '', vectorModel: { model: 'legacy-embedding-model' } }
+  ])('accepts stored dataset references without complete display metadata: %j', (dataset) => {
+    const node = makeNode({
+      flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+      inputs: [
+        makeInput({
+          key: NodeInputKeyEnum.datasetSelectList,
+          renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
+          valueType: WorkflowIOValueTypeEnum.selectDataset,
+          value: [dataset]
+        })
+      ]
+    });
+    expect(check(node)).toEqual([]);
+  });
+
+  it.each([{ name: 'Missing ID' }, { datasetId: 123 }])(
+    'rejects malformed stored dataset references: %j',
+    (dataset) => {
+      const node = makeNode({
+        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+        inputs: [
+          makeInput({
+            key: NodeInputKeyEnum.datasetSelectList,
+            renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
+            valueType: WorkflowIOValueTypeEnum.selectDataset,
+            value: [dataset]
+          })
+        ]
+      });
+      expect(check(node)).toEqual([
+        expect.objectContaining({
+          code: 'WORKFLOW_INPUT_VALUE_SCHEMA_INVALID',
+          inputKey: NodeInputKeyEnum.datasetSelectList
+        })
+      ]);
+    }
+  );
+
   it.each([LoopRunModeEnum.array, LoopRunModeEnum.conditional])(
     'requires the loop array only when its mode consumes it: %s',
     (mode) => {

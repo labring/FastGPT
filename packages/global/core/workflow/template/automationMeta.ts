@@ -2,6 +2,8 @@ import type { NodeTemplateAutomationMeta } from './type';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../constants';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../node/constant';
 import { VariableConditionEnum } from './system/ifElse/constant';
+import { StoredSelectedDatasetSchema } from '../type/io';
+import z from 'zod';
 
 const remoteModelInput = {
   defaultPolicy: 'remoteValidated',
@@ -107,23 +109,8 @@ const automationMetaMap: Record<string, NodeTemplateAutomationMeta> = {
       [NodeInputKeyEnum.datasetSelectList]: {
         defaultPolicy: 'remoteValidated',
         resourceKind: 'dataset',
-        valueSchema: {
-          type: 'array',
-          items: {
-            type: 'object',
-            required: ['datasetId', 'name', 'avatar', 'vectorModel'],
-            properties: {
-              datasetId: { type: 'string' },
-              name: { type: 'string' },
-              avatar: { type: 'string' },
-              vectorModel: {
-                type: 'object',
-                required: ['model'],
-                properties: { model: { type: 'string' } }
-              }
-            }
-          }
-        }
+        // 和保存链路共用持久化契约；名称、头像和向量模型只是可选快照，不能要求完整选择器对象。
+        valueSchema: z.toJSONSchema(z.array(StoredSelectedDatasetSchema), { io: 'input' })
       },
       [NodeInputKeyEnum.datasetSearchRerankModelId]: remoteModelInput,
       [NodeInputKeyEnum.datasetSearchExtensionModelId]: remoteModelInput
