@@ -1,5 +1,8 @@
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
+import type { AppResource } from '@fastgpt/global/core/app/type';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -191,5 +194,80 @@ describe('filterAuthorizedAppResources', () => {
         tmbId: validTmbId
       })
     ).rejects.toThrow('MongoTimeoutError: query exceeded limit');
+  });
+});
+
+describe('root App resource scope', () => {
+  const tmbId = '65f000000000000000000001';
+  const teamId = '65f000000000000000000002';
+  const resourceId = '65f000000000000000000020';
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.getTmbInfoByTmbId.mockReset().mockResolvedValue({
+      teamId,
+      permission: { isOwner: false }
+    });
+    mocks.authAppByTmbId.mockReset().mockResolvedValue({ app: { teamId } });
+    mocks.authDatasetByTmbId.mockReset().mockResolvedValue({ dataset: { teamId } });
+    mocks.authSkillByTmbId.mockReset().mockResolvedValue({
+      skill: { teamId, source: AgentSkillSourceEnum.personal }
+    });
+  });
+
+  it('preserves root access to same-team apps, tools, datasets and skills without cross-team access', async () => {
+    const resourceTypes: AppResource['type'][] = ['agent', 'tool', 'dataset', 'skill'];
+    const resources = resourceTypes.map((type) => ({
+      type,
+      id: resourceId
+    }));
+    await expect(
+      checkAppResourceReadPermissions({ resources, tmbId, isRoot: true })
+    ).resolves.toBeUndefined();
+    for (const auth of [mocks.authAppByTmbId, mocks.authDatasetByTmbId, mocks.authSkillByTmbId]) {
+      expect(auth).toHaveBeenCalledWith(expect.objectContaining({ tmbId, isRoot: true }));
+    }
+    expect(mocks.getTmbInfoByTmbId).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    { type: 'agent' as const, error: AppErrEnum.unAuthApp },
+    { type: 'dataset' as const, error: DatasetErrEnum.unAuthDataset },
+    { type: 'skill' as const, error: SkillErrEnum.unAuthSkill }
+  ])('requires explicit cross-team access for root $type resources', async ({ type, error }) => {
+    mocks.authAppByTmbId.mockResolvedValue({ app: { teamId: 'other-team' } });
+    mocks.authDatasetByTmbId.mockResolvedValue({ dataset: { teamId: 'other-team' } });
+    mocks.authSkillByTmbId.mockResolvedValue({
+      skill: { teamId: 'other-team', source: AgentSkillSourceEnum.personal }
+    });
+    const args = { resources: [{ type, id: resourceId }], tmbId, isRoot: true };
+    await expect(checkAppResourceReadPermissions(args)).rejects.toBe(error);
+    await expect(
+      checkAppResourceReadPermissions({ ...args, allowRootCrossTeam: true })
+    ).resolves.toBeUndefined();
+  });
+
+  it('keeps global system skills readable without enabling cross-team access', async () => {
+    mocks.authSkillByTmbId.mockResolvedValue({ skill: { source: AgentSkillSourceEnum.system } });
+    await expect(
+      checkAppResourceReadPermissions({
+        resources: [{ type: 'skill', id: resourceId }],
+        tmbId,
+        isRoot: true
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it('does not grant root access to ordinary members when cross-team access is requested', async () => {
+    mocks.authDatasetByTmbId.mockRejectedValue(DatasetErrEnum.unAuthDataset);
+    await expect(
+      checkAppResourceReadPermissions({
+        resources: [{ type: 'dataset', id: resourceId }],
+        tmbId,
+        allowRootCrossTeam: true
+      })
+    ).rejects.toBe(DatasetErrEnum.unAuthDataset);
+    expect(mocks.authDatasetByTmbId).toHaveBeenCalledWith(
+      expect.objectContaining({ tmbId, isRoot: false })
+    );
   });
 });

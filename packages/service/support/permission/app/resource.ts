@@ -2,6 +2,7 @@ import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 
 import type { AppResource } from '@fastgpt/global/core/app/type';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
 
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -64,7 +65,7 @@ export const isKnownUnauthorizedError = (error: unknown): boolean => {
  * 返回当前成员不可读或不存在的资源。
  *
  * App、Dataset 和 Skill 复用各自的标准鉴权函数，避免在 App 域复制权限继承规则。
- * root 仅在 Test/Debug 显式允许时跨团队读取资源。
+ * root 保留本团队资源的 ACL 旁路，仅在 Test/Debug 显式允许时跨团队读取资源。
  * 仅处理明确已知的无权限错误并标记绕过，其他任何未知异常直接抛出。
  */
 export const getUnauthorizedAppResources = async ({
@@ -112,7 +113,8 @@ export const getUnauthorizedAppResources = async ({
       deniedModelIds: new Set(denied)
     };
   })();
-  const rootAccess = isRoot && allowRootCrossTeam;
+  // 跨团队开关只约束资源归属，不能抹掉 root 身份，否则选择器可选的本团队资源也会被误拒。
+  const restrictRootToTeam = isRoot && !allowRootCrossTeam;
 
   const results = await Promise.all(
     normalizedResources.map(async (resource): Promise<UnauthorizedAppResource | undefined> => {
@@ -122,13 +124,16 @@ export const getUnauthorizedAppResources = async ({
             return { resource, error: AppErrEnum.unExist };
           }
           const tmbInfo = await getTmbInfo();
-          await authAppByTmbId({
+          const authorized = await authAppByTmbId({
             appId: resource.id,
             tmbId,
             per: ReadPermissionVal,
-            isRoot: rootAccess,
+            isRoot,
             ...(tmbInfo ? { tmbInfo } : {})
           });
+          if (restrictRootToTeam && String(authorized.app.teamId) !== tmbInfo?.teamId) {
+            throw AppErrEnum.unAuthApp;
+          }
           return;
         }
         if (resource.type === 'dataset') {
@@ -136,13 +141,16 @@ export const getUnauthorizedAppResources = async ({
             return { resource, error: DatasetErrEnum.unExist };
           }
           const tmbInfo = await getTmbInfo();
-          await authDatasetByTmbId({
+          const authorized = await authDatasetByTmbId({
             datasetId: resource.id,
             tmbId,
             per: ReadPermissionVal,
-            isRoot: rootAccess,
+            isRoot,
             ...(tmbInfo ? { tmbInfo } : {})
           });
+          if (restrictRootToTeam && String(authorized.dataset.teamId) !== tmbInfo?.teamId) {
+            throw DatasetErrEnum.unAuthDataset;
+          }
           return;
         }
         if (resource.type === 'skill') {
@@ -150,13 +158,20 @@ export const getUnauthorizedAppResources = async ({
             return { resource, error: SkillErrEnum.unExist };
           }
           const tmbInfo = await getTmbInfo();
-          await authSkillByTmbId({
+          const authorized = await authSkillByTmbId({
             skillId: resource.id,
             tmbId,
             per: ReadPermissionVal,
-            isRoot: rootAccess,
+            isRoot,
             ...(tmbInfo ? { tmbInfo } : {})
           });
+          if (
+            restrictRootToTeam &&
+            authorized.skill.source !== AgentSkillSourceEnum.system &&
+            String(authorized.skill.teamId) !== tmbInfo?.teamId
+          ) {
+            throw SkillErrEnum.unAuthSkill;
+          }
           return;
         }
 

@@ -1,7 +1,9 @@
 import handler from '@/pages/api/core/app/version/publish';
+import datasetListHandler from '@/pages/api/core/dataset/listV2';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { RerankModelDataType, TTSModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -10,6 +12,10 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { PublishAppBodyType } from '@fastgpt/global/openapi/core/app/version/api';
+import type {
+  GetDatasetListV2Body,
+  GetDatasetListV2Response
+} from '@fastgpt/global/openapi/core/dataset/api';
 import {
   PerResourceTypeEnum,
   ReadPermissionVal
@@ -30,6 +36,92 @@ import { getRootUser, getUser } from '@test/datas/users';
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 import { Call } from '@test/utils/request';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
+describe('publish manually selected datasets', () => {
+  it.each([
+    { isRoot: true, sameTeam: true, granted: false, isPublish: true, allowed: true },
+    { isRoot: true, sameTeam: true, granted: false, isPublish: false, allowed: true },
+    { isRoot: false, sameTeam: true, granted: true, isPublish: true, allowed: true },
+    { isRoot: false, sameTeam: true, granted: false, isPublish: true, allowed: false },
+    { isRoot: true, sameTeam: false, granted: false, isPublish: true, allowed: false }
+  ])('keeps selection and save permissions consistent: %j', async (scenario) => {
+    const publisher = scenario.isRoot
+      ? await getRootUser()
+      : await getUser('dataset-publisher', (await getUser('dataset-team-owner')).teamId);
+    const creator = await getUser(
+      'dataset-creator',
+      scenario.sameTeam ? publisher.teamId : undefined
+    );
+    const dataset = await MongoDataset.create({
+      name: 'Manually selected dataset',
+      teamId: creator.teamId,
+      tmbId: creator.tmbId,
+      type: DatasetTypeEnum.dataset
+    });
+    if (scenario.granted) {
+      await MongoResourcePermission.create({
+        teamId: publisher.teamId,
+        tmbId: publisher.tmbId,
+        resourceType: PerResourceTypeEnum.dataset,
+        resourceId: dataset._id,
+        permission: ReadPermissionVal
+      });
+    }
+
+    const listed = await Call<
+      GetDatasetListV2Body,
+      Record<string, never>,
+      GetDatasetListV2Response
+    >(datasetListHandler, {
+      auth: publisher,
+      body: { parentId: null }
+    });
+    expect(listed.code).toBe(200);
+    expect(listed.data.list.some((item) => String(item._id) === String(dataset._id))).toBe(
+      scenario.allowed
+    );
+
+    const app = await MongoApp.create({
+      name: 'Dataset permission consistency',
+      type: AppTypeEnum.workflow,
+      teamId: publisher.teamId,
+      tmbId: publisher.tmbId
+    });
+    const result = await Call<PublishAppBodyType>(handler, {
+      auth: publisher,
+      query: { appId: String(app._id) },
+      body: {
+        isPublish: scenario.isPublish,
+        nodes: [
+          {
+            nodeId: 'search',
+            name: 'Search',
+            flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+            outputs: [],
+            inputs: [
+              {
+                key: NodeInputKeyEnum.datasetSelectList,
+                label: 'Datasets',
+                renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
+                value: [{ datasetId: String(dataset._id) }]
+              }
+            ]
+          }
+        ]
+      }
+    });
+    const version = await MongoAppVersion.findOne({ appId: app._id }).lean();
+    if (scenario.allowed) {
+      expect(result.code, JSON.stringify(result)).toBe(200);
+      expect(version?.resources).toEqual([{ type: 'dataset', id: String(dataset._id) }]);
+    } else {
+      expect(result.code).not.toBe(200);
+      expect(result.error).toBe(DatasetErrEnum.unAuthDataset);
+      expect(version).toBeNull();
+      expect((await MongoApp.findById(app._id).lean())?.publishedVersionId).toBeUndefined();
+    }
+  });
+});
 
 describe('publish optional model defaults', () => {
   let previousModels: ReturnType<
