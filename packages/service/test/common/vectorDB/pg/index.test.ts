@@ -1,12 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PgClient } from '@fastgpt/service/common/vectorDB/pg/controller';
 import { PgVectorCtrl } from '@fastgpt/service/common/vectorDB/pg';
+import { serviceEnv } from '@fastgpt/service/env';
+
+const { withConcurrency } = vi.hoisted(() => ({ withConcurrency: vi.fn() }));
+vi.mock('@fastgpt/dal/redis/caches/lease', () => ({
+  LeaseCache: class {
+    withConcurrency = withConcurrency;
+  }
+}));
 
 vi.unmock('@fastgpt/service/common/vectorDB/pg');
 vi.mock('@fastgpt/service/common/vectorDB/pg/controller', () => ({ PgClient: { query: vi.fn() } }));
 
 describe('PgVectorCtrl.embRecall', () => {
   beforeEach(() => {
+    withConcurrency.mockReset().mockImplementation(({ fn }) => fn());
     vi.mocked(PgClient.query)
       .mockReset()
       .mockResolvedValue({ rows: [], rowCount: 0, command: 'SELECT', oid: 0, fields: [] });
@@ -36,6 +45,13 @@ describe('PgVectorCtrl.embRecall', () => {
     });
 
     expect(PgClient.query).toHaveBeenCalledOnce();
+    expect(withConcurrency).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: 'vector:pg:recall',
+        concurrency: 8,
+        ttlMs: 180_000
+      })
+    );
     const [sql] = vi.mocked(PgClient.query).mock.calls[0];
     expect(sql).toMatch(
       /where\s+team_id = 'team-a'\s+AND dataset_id IN \('dataset-a','dataset-b'\)/
@@ -43,6 +59,40 @@ describe('PgVectorCtrl.embRecall', () => {
     for (const clause of filters.collectionClauses) {
       expect(sql).toContain(clause);
     }
+  });
+
+  it('supports explicitly disabling the shared recall limit', async () => {
+    const previous = serviceEnv.PG_VECTOR_RECALL_CONCURRENCY;
+    serviceEnv.PG_VECTOR_RECALL_CONCURRENCY = 0;
+    try {
+      await new PgVectorCtrl().embRecall({
+        teamId: 'team',
+        datasetIds: ['dataset'],
+        vector: [0.1],
+        limit: 100,
+        forbidCollectionIdList: []
+      });
+      expect(withConcurrency).not.toHaveBeenCalled();
+      expect(PgClient.query).toHaveBeenCalledOnce();
+    } finally {
+      serviceEnv.PG_VECTOR_RECALL_CONCURRENCY = previous;
+    }
+  });
+
+  it('does not submit SQL when the shared lease cannot be acquired', async () => {
+    const error = new Error('lease unavailable');
+    withConcurrency.mockRejectedValueOnce(error);
+
+    await expect(
+      new PgVectorCtrl().embRecall({
+        teamId: 'team',
+        datasetIds: ['dataset'],
+        vector: [0.1],
+        limit: 100,
+        forbidCollectionIdList: []
+      })
+    ).rejects.toBe(error);
+    expect(PgClient.query).not.toHaveBeenCalled();
   });
 });
 

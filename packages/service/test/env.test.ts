@@ -4,6 +4,7 @@ const validInvokeTokenSecret = 'fastgpt_test_invoke_token_secret_32';
 
 const originalEnv = {
   DB_MAX_LINK: process.env.DB_MAX_LINK,
+  PG_VECTOR_RECALL_CONCURRENCY: process.env.PG_VECTOR_RECALL_CONCURRENCY,
   SYSTEM_MIGRATION_BATCH_SIZE: process.env.SYSTEM_MIGRATION_BATCH_SIZE,
   SYSTEM_MIGRATION_DELAY_SECONDS: process.env.SYSTEM_MIGRATION_DELAY_SECONDS,
   SYSTEM_MAX_STRING_LENGTH_M: process.env.SYSTEM_MAX_STRING_LENGTH_M,
@@ -63,6 +64,7 @@ const importServiceEnv = async () => {
 describe('serviceEnv', () => {
   afterEach(() => {
     vi.stubEnv('DB_MAX_LINK', originalEnv.DB_MAX_LINK);
+    vi.stubEnv('PG_VECTOR_RECALL_CONCURRENCY', originalEnv.PG_VECTOR_RECALL_CONCURRENCY);
     vi.stubEnv('SYSTEM_MIGRATION_BATCH_SIZE', originalEnv.SYSTEM_MIGRATION_BATCH_SIZE);
     vi.stubEnv('SYSTEM_MIGRATION_DELAY_SECONDS', originalEnv.SYSTEM_MIGRATION_DELAY_SECONDS);
     vi.stubEnv('SYSTEM_MAX_STRING_LENGTH_M', originalEnv.SYSTEM_MAX_STRING_LENGTH_M);
@@ -156,6 +158,19 @@ describe('serviceEnv', () => {
     await expect(importServiceEnv()).resolves.toMatchObject({
       serviceEnv: { DB_MAX_LINK: 1000 }
     });
+  });
+
+  it('defaults shared PG recall concurrency to eight and validates overrides', async () => {
+    vi.stubEnv('PG_VECTOR_RECALL_CONCURRENCY', undefined);
+    expect((await importServiceEnv()).serviceEnv.PG_VECTOR_RECALL_CONCURRENCY).toBe(8);
+    vi.stubEnv('PG_VECTOR_RECALL_CONCURRENCY', '16');
+    expect((await importServiceEnv()).serviceEnv.PG_VECTOR_RECALL_CONCURRENCY).toBe(16);
+    vi.stubEnv('PG_VECTOR_RECALL_CONCURRENCY', '0');
+    expect((await importServiceEnv()).serviceEnv.PG_VECTOR_RECALL_CONCURRENCY).toBe(0);
+    for (const value of ['-1', '1.5', '1001']) {
+      vi.stubEnv('PG_VECTOR_RECALL_CONCURRENCY', value);
+      await expect(importServiceEnv()).rejects.toThrow();
+    }
   });
 
   it('enables MongoDB index synchronization by default and supports disabling it', async () => {

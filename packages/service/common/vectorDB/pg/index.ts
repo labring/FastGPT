@@ -4,8 +4,14 @@ import { PgClient, connectPg } from './controller';
 import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { getLogger, LogCategories } from '../../logger';
+import { LeaseCache } from '@fastgpt/dal/redis/caches/lease';
+import { serviceEnv } from '../../../env';
 
 const logger = getLogger(LogCategories.INFRA.POSTGRES);
+const recallLease = new LeaseCache({ logger });
+
+// 覆盖连接池等待（30 秒）和服务器 statement_timeout（90 秒），续租由 LeaseCache 管理。
+const RECALL_LEASE_TTL_MS = 180_000;
 
 export class PgVectorCtrl implements VectorControllerType {
   constructor() {}
@@ -161,8 +167,9 @@ export class PgVectorCtrl implements VectorControllerType {
       return { results: [] };
     }
 
-    const results: any = await PgClient.query(
-      `BEGIN;
+    const queryRecall = () =>
+      PgClient.query(
+        `BEGIN;
           SET LOCAL hnsw.ef_search = ${global.systemEnv?.hnswEfSearch || 100};
           SET LOCAL hnsw.max_scan_tuples = ${global.systemEnv?.hnswMaxScanTuples || 100000};
           SET LOCAL hnsw.iterative_scan = relaxed_order;
@@ -176,7 +183,18 @@ export class PgVectorCtrl implements VectorControllerType {
               order by score limit ${limit}
           ) SELECT id, collection_id, score FROM relaxed_results ORDER BY score;
         COMMIT;`
-    );
+      );
+    const results: any = await (() => {
+      if (serviceEnv.PG_VECTOR_RECALL_CONCURRENCY === 0) return queryRecall();
+
+      return recallLease.withConcurrency({
+        key: 'vector:pg:recall',
+        label: 'pg-vector-recall',
+        concurrency: serviceEnv.PG_VECTOR_RECALL_CONCURRENCY,
+        ttlMs: RECALL_LEASE_TTL_MS,
+        fn: queryRecall
+      });
+    })();
     const rows = results?.[results.length - 2]?.rows as {
       id: string;
       collection_id: string;
