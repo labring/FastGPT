@@ -1,5 +1,4 @@
 /** 运行态 client 只管理连接复用、工作目录和命令执行；生命周期交由 runtime/service。 */
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isAppSandboxSourceType } from '@fastgpt/global/common/chat/source';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../../../../common/logger';
@@ -63,9 +62,9 @@ export class SandboxClient {
     }
   }
 
-  /** 为 App 会话创建默认工作目录，连接切换后重新准备。 */
+  /** 为 App 和 Builder 会话创建默认工作目录，连接切换后重新准备；Skill 使用共享根目录。 */
   private prepareWorkDirectory() {
-    if (this.query.sourceType !== ChatSourceTypeEnum.app) return Promise.resolve();
+    if (!isAppSandboxSourceType(this.query.sourceType)) return Promise.resolve();
     const provider = this.provider;
     if (this.preparedWorkDirectory?.provider === provider)
       return this.preparedWorkDirectory.promise;

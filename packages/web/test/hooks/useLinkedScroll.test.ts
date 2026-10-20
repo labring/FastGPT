@@ -8,7 +8,24 @@ import { useLinkedScroll } from '../../hooks/useLinkedScroll';
 
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('../../hooks/useToast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
-vi.mock('../../components/common/MyBox', () => ({ default: () => null }));
+vi.mock('../../components/common/MyBox', () => ({
+  default: React.forwardRef<HTMLDivElement, { isLoading: boolean; children: React.ReactNode }>(
+    function ScrollContainer({ isLoading, children }, ref) {
+      return React.createElement(
+        'div',
+        {
+          ref: (element: HTMLDivElement | null) => {
+            if (element) element.scrollTo = vi.fn();
+            if (typeof ref === 'function') ref(element);
+            else if (ref) ref.current = element;
+          },
+          'data-loading': String(isLoading)
+        },
+        children
+      );
+    }
+  )
+}));
 vi.mock('@chakra-ui/react', () => ({ Box: () => null }));
 
 type Response = {
@@ -22,17 +39,39 @@ describe('useLinkedScroll', () => {
   let root: Root;
   let state: ReturnType<typeof useLinkedScroll<Params, Response>>;
   let requests: { params: Params; resolve: (response: Response) => void }[];
+  let container: HTMLDivElement;
 
   const api = vi.fn(
     (params: Params) => new Promise<Response>((resolve) => requests.push({ params, resolve }))
   );
-  const Harness = ({ chatId }: { chatId: string }) => {
+  const Harness = ({
+    chatId,
+    showInitialLoading
+  }: {
+    chatId: string;
+    showInitialLoading?: boolean;
+  }) => {
     const params = useMemo(() => ({ chatId }), [chatId]);
-    state = useLinkedScroll(api, { params, showErrorToast: false });
-    return null;
+    state = useLinkedScroll(api, { params, showErrorToast: false, showInitialLoading });
+    const scrollProps = {
+      children: [
+        'Composer',
+        ...state.dataList.map(({ id }) =>
+          React.createElement('div', {
+            key: id,
+            ref: (element: HTMLDivElement | null) => {
+              state.itemRefs.current.set(id, element);
+            }
+          })
+        )
+      ]
+    };
+    return React.createElement(state.ScrollData, scrollProps);
   };
-  const render = async (chatId: string) => {
-    await act(async () => root.render(React.createElement(Harness, { chatId })));
+  const render = async (chatId: string, showInitialLoading?: boolean) => {
+    await act(async () =>
+      root.render(React.createElement(Harness, { chatId, showInitialLoading }))
+    );
   };
   const resolve = async (index: number, id: string) => {
     await act(async () =>
@@ -41,13 +80,17 @@ describe('useLinkedScroll', () => {
   };
 
   beforeEach(() => {
+    // web workspace 的 Vitest 使用 classic JSX；生产 Next 构建使用自动 JSX runtime。
+    vi.stubGlobal('React', React);
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     requests = [];
     api.mockClear();
-    root = createRoot(document.createElement('div'));
+    container = document.createElement('div');
+    root = createRoot(container);
   });
   afterEach(async () => {
     await act(async () => root.unmount());
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
@@ -78,4 +121,22 @@ describe('useLinkedScroll', () => {
     await resolve(1, 'second-record');
     expect(state.dataList).toEqual([{ id: 'second-record' }]);
   });
+
+  it.each([undefined, false])(
+    'preserves default initial loading and allows callers to disable only the first overlay: %s',
+    async (showInitialLoading) => {
+      await render('first', showInitialLoading);
+      expect(container.querySelector('[data-loading]')?.getAttribute('data-loading')).toBe(
+        String(showInitialLoading !== false)
+      );
+      expect(container.textContent).toBe('Composer');
+      await resolve(0, 'first-record');
+      expect(container.querySelector('[data-loading]')?.getAttribute('data-loading')).toBe('false');
+
+      await render('second', showInitialLoading);
+      expect(container.querySelector('[data-loading]')?.getAttribute('data-loading')).toBe('true');
+      await resolve(1, 'second-record');
+      expect(container.querySelector('[data-loading]')?.getAttribute('data-loading')).toBe('false');
+    }
+  );
 });

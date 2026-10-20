@@ -31,6 +31,8 @@ type PendingAutoLayoutRequest = {
 type LayoutOptions = {
   allowFallbackDimensions?: boolean;
   expectedNodeIds?: Set<string>;
+  /** 异步等待视图更新期间，请求被替换或组件卸载时停止收尾。 */
+  isRequestCurrent?: () => boolean;
 };
 
 type RequestAutoLayoutOptions = {
@@ -144,6 +146,7 @@ export const useWorkflowAutoLayout = () => {
   const nodesInitialized = useNodesInitialized();
   const pendingRequestRef = useRef<PendingAutoLayoutRequest>();
   const workflowDataRevisionRef = useRef(workflowDataRevision);
+  const mountedRef = useRef(false);
   const [requestVersion, setRequestVersion] = useState(0);
 
   useEffect(() => {
@@ -151,7 +154,12 @@ export const useWorkflowAutoLayout = () => {
   }, [workflowDataRevision]);
 
   const autoLayout = useCallback(
-    async ({ allowFallbackDimensions = false, expectedNodeIds }: LayoutOptions = {}) => {
+    async ({
+      allowFallbackDimensions = false,
+      expectedNodeIds,
+      isRequestCurrent
+    }: LayoutOptions = {}) => {
+      const layoutRevision = workflowDataRevisionRef.current;
       const currentNodes = getNodes();
       if (
         currentNodes.length === 0 ||
@@ -360,6 +368,14 @@ export const useWorkflowAutoLayout = () => {
 
       await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
       await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      // 等待期间画布可能已整体替换，旧布局不能再聚焦新画布。
+      if (
+        !mountedRef.current ||
+        layoutRevision !== workflowDataRevisionRef.current ||
+        isRequestCurrent?.() === false
+      ) {
+        return 'failed' as const;
+      }
       const validNodes = getNodes().filter((node) => node.width && node.height);
       fitView({ nodes: validNodes, padding: 0.3 });
 
@@ -368,16 +384,20 @@ export const useWorkflowAutoLayout = () => {
     [fitView, getEdges, getNodes, getParentNodeSizeAndPosition, setNodes]
   );
 
-  const finishPendingRequest = useCallback((result: WorkflowAutoLayoutResult) => {
-    const request = pendingRequestRef.current;
-    if (!request) return;
-    clearTimeout(request.timeout);
-    if (request.animationFrame !== undefined) {
-      window.cancelAnimationFrame(request.animationFrame);
-    }
-    pendingRequestRef.current = undefined;
-    request.resolve(result);
-  }, []);
+  const finishPendingRequest = useCallback(
+    (result: WorkflowAutoLayoutResult, expectedRequest = pendingRequestRef.current) => {
+      const request = pendingRequestRef.current;
+      // 布局异步完成时，只能结束自己所属的请求，不能结束后来替换进来的请求。
+      if (!request || request !== expectedRequest) return;
+      clearTimeout(request.timeout);
+      if (request.animationFrame !== undefined) {
+        window.cancelAnimationFrame(request.animationFrame);
+      }
+      pendingRequestRef.current = undefined;
+      request.resolve(result);
+    },
+    []
+  );
 
   const runPendingRequest = useCallback(
     async (allowFallbackDimensions: boolean) => {
@@ -396,11 +416,12 @@ export const useWorkflowAutoLayout = () => {
       try {
         const result = await autoLayout({
           allowFallbackDimensions,
-          expectedNodeIds: request.nodeIds
+          expectedNodeIds: request.nodeIds,
+          isRequestCurrent: () => pendingRequestRef.current === request
         });
-        finishPendingRequest(result);
+        finishPendingRequest(result, request);
       } catch {
-        finishPendingRequest('failed');
+        finishPendingRequest('failed', request);
       }
     },
     [autoLayout, finishPendingRequest]
@@ -444,6 +465,10 @@ export const useWorkflowAutoLayout = () => {
       const currentRequest = pendingRequestRef.current;
       if (!currentRequest || currentRequest !== request || currentRequest.running) return;
       currentRequest.animationFrame = undefined;
+      if (currentRequest.workflowDataRevision !== workflowDataRevisionRef.current) {
+        finishPendingRequest('failed', currentRequest);
+        return;
+      }
 
       const signature = getWorkflowAutoLayoutNodeSizeSignature({
         nodes: getNodes(),
@@ -468,6 +493,7 @@ export const useWorkflowAutoLayout = () => {
 
     request.animationFrame = window.requestAnimationFrame(checkNodeSizes);
   }, [
+    finishPendingRequest,
     getNodes,
     nodesInitialized,
     renderedNodes,
@@ -476,12 +502,13 @@ export const useWorkflowAutoLayout = () => {
     workflowDataRevision
   ]);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
       finishPendingRequest('failed');
-    },
-    [finishPendingRequest]
-  );
+    };
+  }, [finishPendingRequest]);
 
   return { autoLayout, requestAutoLayout };
 };

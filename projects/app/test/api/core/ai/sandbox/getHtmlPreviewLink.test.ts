@@ -129,6 +129,73 @@ describe('sandbox getHtmlPreviewLink API', () => {
     });
   });
 
+  it.each([
+    {
+      target: { skillId: '507f1f77bcf86cd799439012' },
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: '507f1f77bcf86cd799439012'
+    },
+    {
+      target: { appId: '507f1f77bcf86cd799439011', sourceType: ChatSourceTypeEnum.workflowBuilder },
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      sourceId: '507f1f77bcf86cd799439011'
+    },
+    {
+      target: { outLinkAuthData: { shareId: 'share-1', outLinkUid: 'visitor-1' } },
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'authorized-shared-app'
+    }
+  ])(
+    'uses authorized $sourceType identity when creating preview sessions',
+    async ({ target, sourceType, sourceId }) => {
+      const req = {
+        ...createReq(),
+        body: { ...target, chatId: 'chat-1', filePath: 'dist/index.html' }
+      } as any;
+      mocks.authSandboxRuntimeSession.mockResolvedValueOnce({
+        uid: 'authorized-owner',
+        sourceType,
+        sourceId
+      });
+      const query = {
+        sandboxId,
+        sourceType,
+        sourceId,
+        userId: 'authorized-owner',
+        chatId: 'chat-1'
+      };
+      mocks.buildSandboxClientQueryFromChatSource.mockReturnValueOnce(query);
+      await handler(req, createRes());
+      expect(mocks.authSandboxRuntimeSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sourceType,
+          sourceId: 'outLinkAuthData' in target ? undefined : sourceId
+        })
+      );
+      expect(mocks.buildSandboxClientQueryFromChatSource).toHaveBeenCalledExactlyOnceWith({
+        sourceType,
+        sourceId,
+        userId: 'authorized-owner',
+        chatId: 'chat-1'
+      });
+      expect(mocks.getSandboxClient).toHaveBeenCalledExactlyOnceWith(query);
+      expect(mocks.createSandboxPreviewFileUrl).toHaveBeenCalledWith({
+        context: query,
+        filePath: '/workspace/sessions/chat-1/dist/index.html'
+      });
+    }
+  );
+
+  it('does not access a sandbox or issue a token when authorization fails', async () => {
+    const error = new Error('unAuthChat');
+    mocks.authSandboxRuntimeSession.mockRejectedValueOnce(error);
+    await expect(handler(createReq(), createRes())).rejects.toBe(error);
+    expect(mocks.buildSandboxClientQueryFromChatSource).not.toHaveBeenCalled();
+    expect(mocks.getSandboxClient).not.toHaveBeenCalled();
+    expect(mocks.getFileInfo).not.toHaveBeenCalled();
+    expect(mocks.createSandboxPreviewFileUrl).not.toHaveBeenCalled();
+  });
+
   it('rejects missing files, directories and non-HTML file extensions', async () => {
     const missingRes = createRes();
     mocks.getFileInfo.mockResolvedValueOnce(new Map());
