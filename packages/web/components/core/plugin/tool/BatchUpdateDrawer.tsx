@@ -280,10 +280,6 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
                     {
                       children: toolVersions.map((item) => ({
                         label: item.version,
-                        description:
-                          item.versionDescription === undefined
-                            ? undefined
-                            : selectPluginText(item.versionDescription, i18n.language),
                         isActive: item.version === activeVersion,
                         onClick: () => setSelectedVersion(item.version)
                       }))
