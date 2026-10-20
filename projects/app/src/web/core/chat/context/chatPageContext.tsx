@@ -1,5 +1,5 @@
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { ChatSettingTabOptionEnum } from '@/pageComponents/chat/constants';
+import type { ChatAllAppTabEnum, ChatSettingTabOptionEnum } from '@/pageComponents/chat/constants';
 import {
   ChatSidebarPaneEnum,
   defaultCollapseStatus,
@@ -27,7 +27,7 @@ export type ChatPageContextValue = {
   handlePaneChange: (
     pane: ChatSidebarPaneEnum,
     _id?: string,
-    _tab?: ChatSettingTabOptionEnum
+    _tab?: ChatSettingTabOptionEnum | ChatAllAppTabEnum
   ) => void;
   collapse: CollapseStatusType;
   onTriggerCollapse: () => void;
@@ -193,7 +193,11 @@ export const ChatPageContextProvider = ({
 
   const lastestPane = useLatest(pane);
   const handlePaneChange = useCallback(
-    async (newPane: ChatSidebarPaneEnum, id?: string, tab?: ChatSettingTabOptionEnum) => {
+    async (
+      newPane: ChatSidebarPaneEnum,
+      id?: string,
+      tab?: ChatSettingTabOptionEnum | ChatAllAppTabEnum
+    ) => {
       if (newPane === lastestPane.current && !id && !tab) return;
 
       const _id = (() => {
