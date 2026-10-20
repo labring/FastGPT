@@ -308,7 +308,7 @@ export type NodeOutputItemType = z.infer<typeof NodeOutputItemSchema>;
 
 export type WorkflowResourceContext = {
   teamId?: string;
-  /** root Test/Debug 请求允许子工作流沿用跨团队资源权限。 */
+  /** 保留 root 在同团队内的资源 ACL 旁路；不能绕过 teamId 归属检查。 */
   isRoot: boolean;
   resourceMap: Map<string, AppResource>;
 };

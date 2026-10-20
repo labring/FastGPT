@@ -121,6 +121,66 @@ describe('publish manually selected datasets', () => {
       expect((await MongoApp.findById(app._id).lean())?.publishedVersionId).toBeUndefined();
     }
   });
+
+  it('rejects a foreign dataset in an old authorized snapshot and removes it from autosave authorization', async () => {
+    const root = await getRootUser();
+    const other = await getUser('old-cross-team-dataset-owner');
+    const dataset = await MongoDataset.create({
+      name: 'Old foreign dataset',
+      teamId: other.teamId,
+      tmbId: other.tmbId
+    });
+    const app = await MongoApp.create({
+      name: 'Old root snapshot',
+      type: AppTypeEnum.workflow,
+      teamId: root.teamId,
+      tmbId: root.tmbId
+    });
+    const body: PublishAppBodyType = {
+      isPublish: true,
+      nodes: [
+        {
+          nodeId: 'search',
+          name: 'Search',
+          flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+          outputs: [],
+          inputs: [
+            {
+              key: NodeInputKeyEnum.datasetSelectList,
+              label: 'Datasets',
+              renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
+              value: [{ datasetId: String(dataset._id) }]
+            }
+          ]
+        }
+      ]
+    };
+    await MongoAppVersion.create({
+      appId: app._id,
+      tmbId: root.tmbId,
+      nodes: body.nodes,
+      edges: [],
+      resources: [{ type: 'dataset', id: String(dataset._id) }]
+    });
+    const publish = await Call<PublishAppBodyType>(handler, {
+      auth: root,
+      query: { appId: String(app._id) },
+      body
+    });
+    expect(publish.error).toBe(DatasetErrEnum.unAuthDataset);
+    expect(await MongoAppVersion.countDocuments({ appId: app._id })).toBe(1);
+    expect((await MongoApp.findById(app._id).lean())?.publishedVersionId).toBeUndefined();
+
+    const saved = await Call<PublishAppBodyType>(handler, {
+      auth: root,
+      query: { appId: String(app._id) },
+      body: { ...body, isPublish: false, autoSave: true }
+    });
+    expect(saved.code, JSON.stringify(saved)).toBe(200);
+    const draft = await MongoAppVersion.findOne({ appId: app._id, isAutoSave: true }).lean();
+    expect(draft?.resources).toEqual([]);
+    expect(draft?.nodes).toHaveLength(1);
+  });
 });
 
 describe('publish optional model defaults', () => {

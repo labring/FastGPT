@@ -1,4 +1,6 @@
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -11,7 +13,7 @@ import {
   isWorkflowResourceError,
   WorkflowResourceError
 } from '@fastgpt/service/core/workflow/resource/service';
-import { getUser } from '@test/datas/users';
+import { getRootUser, getUser } from '@test/datas/users';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -103,8 +105,8 @@ describe('workflow resource context', () => {
     mocks.authDatasetByTmbId.mockImplementation(async ({ datasetId }) => ({
       dataset: { _id: datasetId }
     }));
-    mocks.mongoDatasetFind.mockReturnValue(
-      createFindResult([{ _id: 'dataset-1' }, { _id: 'dataset-2' }])
+    mocks.mongoDatasetFind.mockImplementation(({ _id, teamId }) =>
+      createFindResult(_id.$in.map((id: string) => ({ _id: id, teamId })))
     );
     mocks.mongoDatasetFindOne.mockReturnValue(createFindResult({ _id: 'dataset-2' }));
     mocks.assertAuthModels.mockResolvedValue({ handle: {}, models: [] });
@@ -134,7 +136,7 @@ describe('workflow resource context', () => {
     });
   });
 
-  it('inherits root cross-team permission when creating a child context', async () => {
+  it('inherits root ACL privileges while retaining the child workflow team boundary', async () => {
     const rootContext = createWorkflowResourceContext({
       resources: [{ type: 'dataset', id: 'dataset-1' }],
       teamId: 'root-team',
@@ -156,14 +158,15 @@ describe('workflow resource context', () => {
 
     expect(childContext.isRoot).toBe(true);
 
-    // 运行时真正调用 loadWorkflowDatasetResource 时，才 JIT 查库，且因 isRoot 跳过 teamId 限制
+    // root 身份继续传递，但读取快照仍按子工作流团队过滤。
     await runWithContext({ mcpClientMemory: {}, resourceContext: childContext }, () =>
       loadWorkflowDatasetResource({ datasetId: 'dataset-2' })
     );
 
-    expect(mocks.mongoDatasetFindOne).toHaveBeenCalledWith({
-      _id: 'dataset-2',
-      deleteTime: null
+    expect(mocks.mongoDatasetFind).toHaveBeenCalledWith({
+      _id: { $in: ['dataset-2'] },
+      deleteTime: null,
+      teamId: 'child-team'
     });
   });
 
@@ -206,6 +209,115 @@ describe('workflow resource context', () => {
       action: 'use',
       handle: expect.anything()
     });
+  });
+
+  it('checks every snapshot dataset, including additional IDs, even for root', async () => {
+    const context = createWorkflowResourceContext({
+      resources: [
+        { type: 'dataset', id: 'local' },
+        { type: 'dataset', id: 'foreign' }
+      ],
+      teamId: 'current-team',
+      isRoot: true
+    });
+    mocks.mongoDatasetFind.mockReturnValueOnce(createFindResult([{ _id: 'local' }]));
+    await runWithContext({ mcpClientMemory: {}, resourceContext: context }, () =>
+      expect(
+        loadWorkflowDatasetResource({ datasetId: 'local', datasetIds: ['local', 'foreign'] })
+      ).rejects.toBe(DatasetErrEnum.unExist)
+    );
+    expect(mocks.mongoDatasetFind).toHaveBeenCalledWith({
+      _id: { $in: ['local', 'foreign'] },
+      deleteTime: null,
+      teamId: 'current-team'
+    });
+  });
+
+  it('preserves root access to same-team dynamic datasets and blocks other teams', async () => {
+    const context = createWorkflowResourceContext({
+      resources: [],
+      teamId: 'current-team',
+      isRoot: true
+    });
+    mocks.authDatasetByTmbId.mockResolvedValueOnce({
+      dataset: { _id: 'local', teamId: 'current-team' }
+    });
+    mocks.authDatasetByTmbId.mockResolvedValueOnce({
+      dataset: { _id: 'foreign', teamId: 'other-team' }
+    });
+    await runWithContext({ mcpClientMemory: {}, resourceContext: context }, async () => {
+      await expect(
+        loadWorkflowDatasetResource({ datasetId: 'local', tmbId: 'root' })
+      ).resolves.toMatchObject({ _id: 'local' });
+      await expect(
+        loadWorkflowDatasetResource({ datasetId: 'foreign', tmbId: 'root' })
+      ).rejects.toBe(DatasetErrEnum.unAuthDataset);
+    });
+    expect(mocks.authDatasetByTmbId).toHaveBeenCalledWith(
+      expect.objectContaining({ isRoot: true })
+    );
+  });
+
+  it('rejects a foreign team model from a snapshot without falling back, while system tools keep static access', async () => {
+    const handle = await mocks.getSystemModelHandle();
+    handle.getModelData.mockReturnValue({
+      modelId: 'foreign-model',
+      scope: 'team',
+      teamId: 'other-team',
+      type: 'llm',
+      config: {}
+    });
+    const resources = [{ type: 'model' as const, id: 'foreign-model' }];
+    const context = createWorkflowResourceContext({
+      resources,
+      teamId: 'current-team',
+      isRoot: true
+    });
+    const args = {
+      modelId: 'foreign-model',
+      appTeamId: 'current-team',
+      userInfo: { teamId: 'current-team', tmbId: 'root' },
+      fallbackToDefault: true as const
+    };
+    await runWithContext({ mcpClientMemory: {}, resourceContext: context }, () =>
+      expect(loadWorkflowModelResource(args)).rejects.toMatchObject({
+        message: ModelErrEnum.unAuthModel
+      })
+    );
+    expect(handle.getDefaultModelData).not.toHaveBeenCalled();
+    const systemContext = createWorkflowResourceContext({ resources, isRoot: true });
+    await runWithContext({ mcpClientMemory: {}, resourceContext: systemContext }, () =>
+      expect(loadWorkflowModelResource(args)).resolves.toMatchObject({ modelId: 'foreign-model' })
+    );
+  });
+
+  it('limits both snapshot and dynamic App resources to the workflow team for root', async () => {
+    const root = await getRootUser();
+    const foreignOwner = await getUser(`foreign-app-${getNanoid(6)}`);
+    const app = await MongoApp.create({
+      name: 'Foreign tool',
+      type: AppTypeEnum.workflowTool,
+      teamId: foreignOwner.teamId,
+      tmbId: foreignOwner.tmbId
+    });
+    const resource = { type: 'tool' as const, id: String(app._id) };
+    for (const snapshot of [false, true]) {
+      const context = createWorkflowResourceContext({
+        resources: snapshot ? [resource] : [],
+        teamId: root.teamId,
+        isRoot: true
+      });
+      await runWithContext({ mcpClientMemory: {}, resourceContext: context }, () => {
+        const loaded = loadWorkflowAppResource({
+          appId: resource.id,
+          type: 'tool',
+          tmbId: root.tmbId
+        });
+        return snapshot
+          ? expect(loaded).rejects.toBeInstanceOf(WorkflowResourceError)
+          : expect(loaded).rejects.toBe(AppErrEnum.unAuthApp);
+      });
+    }
   });
 
   it('authorizes legacy model references against member permissions when snapshot misses', async () => {
@@ -395,8 +507,8 @@ describe('workflow resource context', () => {
 
       // 命中静态快照的知识库按 ID 直接读取，且因无 teamId 跳过团队限制。
       await loadWorkflowDatasetResource({ datasetId: 'dataset-2' });
-      expect(mocks.mongoDatasetFindOne).toHaveBeenCalledWith({
-        _id: 'dataset-2',
+      expect(mocks.mongoDatasetFind).toHaveBeenCalledWith({
+        _id: { $in: ['dataset-2'] },
         deleteTime: null
       });
 
@@ -464,7 +576,7 @@ describe('workflow resource context', () => {
         { type: 'tool', id: 'tool' }
       ]
     });
-    mocks.mongoDatasetFindOne.mockReturnValueOnce({ lean: vi.fn().mockRejectedValue(error) });
+    mocks.mongoDatasetFind.mockReturnValueOnce({ lean: vi.fn().mockRejectedValue(error) });
     const appQuery = vi.spyOn(MongoApp, 'findOne').mockImplementationOnce(() => {
       throw error;
     });
@@ -552,10 +664,30 @@ describe('loadWorkflowSkillResources', () => {
       teamId: '65f000000000000000000099',
       isRoot: true
     });
-    await runWithContext({ mcpClientMemory: {}, resourceContext: root }, async () => {
-      expect(
-        await loadWorkflowSkillResources({ skillIds: [skillId], tmbId: member.tmbId })
-      ).toHaveLength(1);
+    await runWithContext({ mcpClientMemory: {}, resourceContext: root }, () =>
+      expect(loadWorkflowSkillResources({ skillIds: [skillId], tmbId: member.tmbId })).rejects.toBe(
+        SkillErrEnum.unExist
+      )
+    );
+    const dynamicRoot = createWorkflowResourceContext({
+      resources: [],
+      teamId: '65f000000000000000000099',
+      isRoot: true
     });
+    await runWithContext({ mcpClientMemory: {}, resourceContext: dynamicRoot }, () =>
+      expect(
+        loadWorkflowSkillResources({ skillIds: [skillId], tmbId: member.tmbId })
+      ).resolves.toEqual([])
+    );
+    const sameTeamRoot = createWorkflowResourceContext({
+      resources: [],
+      teamId: owner.teamId,
+      isRoot: true
+    });
+    await runWithContext({ mcpClientMemory: {}, resourceContext: sameTeamRoot }, () =>
+      expect(
+        loadWorkflowSkillResources({ skillIds: [skillId], tmbId: member.tmbId })
+      ).resolves.toHaveLength(1)
+    );
   });
 });

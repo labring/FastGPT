@@ -3,13 +3,17 @@ import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 
 import type { AppResource } from '@fastgpt/global/core/app/type';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { isTeamModel } from '@fastgpt/global/core/ai/model/utils';
 import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
 
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { Types } from '../../../common/mongo';
+import { Types, type ClientSession } from '../../../common/mongo';
 import type { ModelHandle } from '../../../core/ai/model/catalog/handle';
 import { getTeamModelHandle } from '../../../core/ai/model/catalog/service';
 import { getAppResourceKey, mergeAppResources } from '../../../core/app/resource/utils';
+import { MongoApp } from '../../../core/app/schema';
+import { MongoDataset } from '../../../core/dataset/schema';
+import { MongoAgentSkills } from '../../../core/ai/skill/model/schema';
 
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { authDatasetByTmbId } from '../dataset/auth';
@@ -62,24 +66,100 @@ export const isKnownUnauthorizedError = (error: unknown): boolean => {
 };
 
 /**
+ * 核对已授权快照的资源归属，不重新检查操作人的 ACL。
+ * 按资源类型批量查询，系统模型和系统 Skill 保持全局可用；快照不能绕过团队边界。
+ */
+export const getAppResourcesOutsideTeam = async ({
+  resources,
+  teamId,
+  modelHandle,
+  session
+}: {
+  resources: AppResource[];
+  teamId: string;
+  modelHandle?: ModelHandle;
+  session?: ClientSession;
+}): Promise<UnauthorizedAppResource[]> => {
+  const normalized = mergeAppResources(resources);
+  const getIds = (types: AppResource['type'][]) =>
+    normalized
+      .filter((resource) => types.includes(resource.type) && Types.ObjectId.isValid(resource.id))
+      .map(({ id }) => id);
+  const appIds = getIds(['agent', 'tool']);
+  const datasetIds = getIds(['dataset']);
+  const skillIds = getIds(['skill']);
+  // 保存和发布会传入事务 session，同一事务内的 MongoDB 查询必须依次执行。
+  const apps = appIds.length
+    ? await MongoApp.find({ _id: { $in: appIds }, teamId, deleteTime: null }, '_id')
+        .session(session ?? null)
+        .lean()
+    : [];
+  const datasets = datasetIds.length
+    ? await MongoDataset.find({ _id: { $in: datasetIds }, teamId, deleteTime: null }, '_id')
+        .session(session ?? null)
+        .lean()
+    : [];
+  const skills = skillIds.length
+    ? await MongoAgentSkills.find(
+        {
+          _id: { $in: skillIds },
+          deleteTime: null,
+          $or: [{ teamId }, { source: AgentSkillSourceEnum.system }]
+        },
+        '_id'
+      )
+        .session(session ?? null)
+        .lean()
+    : [];
+  const handle = normalized.some(({ type }) => type === 'model')
+    ? (modelHandle ?? (await getTeamModelHandle({ teamId })))
+    : undefined;
+  const allowedApps = new Set(apps.map(({ _id }) => String(_id)));
+  const allowedDatasets = new Set(datasets.map(({ _id }) => String(_id)));
+  const allowedSkills = new Set(skills.map(({ _id }) => String(_id)));
+  const allowedModels = new Set(
+    handle
+      ?.getAllModels()
+      .filter((model) => !isTeamModel(model) || String(model.teamId) === teamId)
+      .map(({ modelId }) => modelId)
+  );
+
+  return normalized.flatMap((resource): UnauthorizedAppResource[] => {
+    if (resource.type === 'agent' || resource.type === 'tool') {
+      return allowedApps.has(resource.id) ? [] : [{ resource, error: AppErrEnum.unAuthApp }];
+    }
+    if (resource.type === 'dataset') {
+      return allowedDatasets.has(resource.id)
+        ? []
+        : [{ resource, error: DatasetErrEnum.unAuthDataset }];
+    }
+    if (resource.type === 'skill') {
+      return allowedSkills.has(resource.id) ? [] : [{ resource, error: SkillErrEnum.unAuthSkill }];
+    }
+    return allowedModels.has(resource.id) ? [] : [{ resource, error: ERROR_ENUM.unAuthModel }];
+  });
+};
+
+/**
  * 返回当前成员不可读或不存在的资源。
  *
  * App、Dataset 和 Skill 复用各自的标准鉴权函数，避免在 App 域复制权限继承规则。
- * root 保留本团队资源的 ACL 旁路，仅在 Test/Debug 显式允许时跨团队读取资源。
+ * root 保留同团队资源的 ACL 旁路，任何身份都不能跨团队引用；系统模型和系统 Skill 除外。
  * 仅处理明确已知的无权限错误并标记绕过，其他任何未知异常直接抛出。
  */
 export const getUnauthorizedAppResources = async ({
   resources,
   tmbId,
+  teamId: targetTeamId,
   isRoot = false,
-  allowRootCrossTeam = false,
   modelHandle,
   tmbInfo: passedTmbInfo
 }: {
   resources: AppResource[];
   tmbId: string;
+  /** 已鉴权的目标团队；缺省使用操作人所属团队。 */
+  teamId?: string;
   isRoot?: boolean;
-  allowRootCrossTeam?: boolean;
   /** 调用方已读取的同团队模型目录；不传时按成员所属团队读取。 */
   modelHandle?: ModelHandle;
   tmbInfo?: Pick<TeamTmbItemType, 'teamId' | 'permission'>;
@@ -100,7 +180,8 @@ export const getUnauthorizedAppResources = async ({
     if (modelResources.length === 0) return;
     const tmbInfo = await getTmbInfo();
     if (!tmbInfo) return;
-    const { teamId, permission } = tmbInfo;
+    const { permission } = tmbInfo;
+    const teamId = targetTeamId ?? tmbInfo.teamId;
     const handle = modelHandle ?? (await getTeamModelHandle({ teamId }));
     const denied = await authModels({
       actor: { teamId, tmbId, isRoot, teamPermission: permission },
@@ -109,12 +190,15 @@ export const getUnauthorizedAppResources = async ({
       handle
     });
     return {
-      activeModelIds: new Set(handle.getActiveModels().map((model) => model.modelId)),
+      activeModelIds: new Set(
+        handle
+          .getActiveModels()
+          .filter((model) => !isTeamModel(model) || String(model.teamId) === teamId)
+          .map((model) => model.modelId)
+      ),
       deniedModelIds: new Set(denied)
     };
   })();
-  // 跨团队开关只约束资源归属，不能抹掉 root 身份，否则选择器可选的本团队资源也会被误拒。
-  const restrictRootToTeam = isRoot && !allowRootCrossTeam;
 
   const results = await Promise.all(
     normalizedResources.map(async (resource): Promise<UnauthorizedAppResource | undefined> => {
@@ -131,7 +215,7 @@ export const getUnauthorizedAppResources = async ({
             isRoot,
             ...(tmbInfo ? { tmbInfo } : {})
           });
-          if (restrictRootToTeam && String(authorized.app.teamId) !== tmbInfo?.teamId) {
+          if (String(authorized.app.teamId) !== (targetTeamId ?? tmbInfo?.teamId)) {
             throw AppErrEnum.unAuthApp;
           }
           return;
@@ -148,7 +232,7 @@ export const getUnauthorizedAppResources = async ({
             isRoot,
             ...(tmbInfo ? { tmbInfo } : {})
           });
-          if (restrictRootToTeam && String(authorized.dataset.teamId) !== tmbInfo?.teamId) {
+          if (String(authorized.dataset.teamId) !== (targetTeamId ?? tmbInfo?.teamId)) {
             throw DatasetErrEnum.unAuthDataset;
           }
           return;
@@ -166,9 +250,8 @@ export const getUnauthorizedAppResources = async ({
             ...(tmbInfo ? { tmbInfo } : {})
           });
           if (
-            restrictRootToTeam &&
             authorized.skill.source !== AgentSkillSourceEnum.system &&
-            String(authorized.skill.teamId) !== tmbInfo?.teamId
+            String(authorized.skill.teamId) !== (targetTeamId ?? tmbInfo?.teamId)
           ) {
             throw SkillErrEnum.unAuthSkill;
           }
@@ -210,14 +293,14 @@ export const checkAppResourceReadPermissions = async (
 export const filterAuthorizedAppResources = async ({
   resources,
   tmbId,
+  teamId,
   isRoot = false,
-  allowRootCrossTeam = false,
   modelHandle
 }: {
   resources: AppResource[];
   tmbId: unknown;
+  teamId?: string;
   isRoot?: boolean;
-  allowRootCrossTeam?: boolean;
   modelHandle?: ModelHandle;
 }): Promise<AppResource[]> => {
   if (resources.length === 0) return [];
@@ -244,8 +327,8 @@ export const filterAuthorizedAppResources = async ({
   const unauthorized = await getUnauthorizedAppResources({
     resources,
     tmbId: validTmbId,
+    teamId,
     isRoot,
-    allowRootCrossTeam,
     modelHandle,
     tmbInfo
   });

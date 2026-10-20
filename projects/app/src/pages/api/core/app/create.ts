@@ -208,11 +208,11 @@ export const onCreateApp = async ({
     await checkAppResourceReadPermissions({
       resources,
       tmbId,
+      teamId,
       isRoot,
       modelHandle
     });
   }
-
 
   const create = async (session: ClientSession) => {
     const _avatar = await (async () => {
