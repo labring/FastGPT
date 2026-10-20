@@ -1,6 +1,6 @@
 {
   "name": "@fastgpt/app",
-  "version": "4.17.0",
+  "version": "4.17.3",
   "private": false,
   "browserslist": [
     "Chrome >= 80",
@@ -12,8 +12,8 @@
   "scripts": {
     "dev": "pnpm run build:workers && next dev",
     "dev:pro": "pnpm run dev",
-    "build": "pnpm run build:workers && next build --debug",
-    "build:webpack": "pnpm run build:workers && next build --webpack --debug",
+    "build": "pnpm run build:workers && next build",
+    "build:webpack": "pnpm run build:workers && next build --webpack",
     "analyze": "next experimental-analyze",
     "start": "next start",
     "migrate:auth-code": "tsx scripts/migration/authCodeToTmpData.ts",
@@ -83,7 +83,7 @@
     "jsondiffpatch": "^0.7.6",
     "jsonwebtoken": "catalog:",
     "jszip": "^3.10.1",
-    "katex": "0.16.22",
+    "katex": "0.18.2",
     "lodash-es": "catalog:",
     "marked": "catalog:",
     "mermaid": "catalog:",
@@ -108,6 +108,8 @@
     "recharts": "catalog:",
     "rehype-external-links": "^3.0.0",
     "rehype-katex": "^7.0.0",
+    "rehype-raw": "catalog:",
+    "rehype-sanitize": "catalog:",
     "remark-breaks": "^4.0.0",
     "remark-gfm": "catalog:",
     "remark-math": "^6.0.0",

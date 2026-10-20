@@ -4,12 +4,13 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
-import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
+import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
+import type {
+  AppFormEditFormType,
+  SelectedToolItemType
+} from '@fastgpt/global/core/app/formEdit/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import ToolSelectModal from './ToolSelectModal';
-
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import ConfigToolModal from '../../component/ConfigToolModal';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -23,7 +24,7 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
-import { getToolErrorMessage } from '@/web/core/workflow/workflowCheck';
+import { getToolErrorMessage } from '@/web/core/workflow/check/message';
 
 const ToolSelect = ({
   generatedSelectedTools,
@@ -133,14 +134,16 @@ const ToolSelect = ({
                 }}
               >
                 <Avatar src={item.avatar} w={'28px'} h={'28px'} borderRadius={'sm'} />
-                <Box
-                  minW={0}
-                  className={'textEllipsis'}
-                  fontSize={'sm'}
-                  color={hasToolError ? 'red.600' : 'myGray.900'}
-                >
-                  {item.name}
-                </Box>
+                <MyTooltip label={item.name} showOnlyWhenOverflow shouldWrapChildren={false}>
+                  <Box
+                    minW={0}
+                    className={'textEllipsis'}
+                    fontSize={'sm'}
+                    color={hasToolError ? 'red.600' : 'myGray.900'}
+                  >
+                    {item.name}
+                  </Box>
+                </MyTooltip>
 
                 <Flex gap={1} minW={0} justifySelf={'end'} alignItems={'center'}>
                   {status === PluginStatusEnum.SoonOffline && (

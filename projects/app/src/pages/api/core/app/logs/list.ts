@@ -8,7 +8,8 @@ import {
 import { NextAPI } from '@/service/middleware/entry';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
-import { addSourceMember } from '@fastgpt/service/support/user/utils';
+import { addSourceMember, formatSourceMember } from '@fastgpt/service/support/user/utils';
+import { getTeamMemberMap } from '@fastgpt/service/support/user/team/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getLocationFromIp } from '@fastgpt/service/common/geo';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
@@ -22,8 +23,9 @@ import {
   type getAppChatLogsResponseType
 } from '@fastgpt/global/openapi/core/app/log/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isUnselectedLogUserFilter } from '@fastgpt/global/core/app/logs/utils';
+import { getDisplayChatTitle } from '@fastgpt/service/core/chat/title';
 
 const appChatSourceMatch = {
   $or: [{ sourceType: ChatSourceTypeEnum.app }, { sourceType: { $exists: false } }]
@@ -53,7 +55,7 @@ async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType
   }
 
   // 凭证校验
-  await authApp({
+  const { teamId } = await authApp({
     req,
     authToken: true,
     authApiKey: true,
@@ -341,12 +343,41 @@ async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType
     };
   });
 
-  // 获取有 tmbId 的人员
+  // Resolve the normal online/API member first. Share rows get their member from outLinkUid below.
   const listWithSourceMember = await addSourceMember({ list: listWithRegion });
-  // 获取没有 tmbId 的人员
-  const listWithoutTmbId = listWithRegion.filter((item) => !item.tmbId);
+  const sourceMemberMap = new Map(listWithSourceMember.map((item) => [String(item._id), item]));
+
+  // Protected share links put the visitor's member ID in outLinkUid. Keep former members
+  // visible with their status, matching the regular chat log member lookup.
+  const shareItemsWithOutLinkUid = listWithRegion.filter(
+    (item) => item.source === ChatSourceEnum.share && item.outLinkUid
+  );
+  const candidateTmbIds = shareItemsWithOutLinkUid
+    .filter((item) => Types.ObjectId.isValid(item.outLinkUid))
+    .map((item) => new Types.ObjectId(item.outLinkUid));
+  const outLinkMemberMap = await getTeamMemberMap({
+    teamId: new Types.ObjectId(teamId),
+    memberIds: candidateTmbIds,
+    fields: '_id name avatar status'
+  });
+
+  const finalList = listWithRegion.map((item) => {
+    const result = sourceMemberMap.get(String(item._id)) || { ...item, sourceMember: undefined };
+    const resultWithTitle = {
+      ...result,
+      title: getDisplayChatTitle({ customTitle: item.customTitle, title: item.title })
+    };
+    if (item.source !== ChatSourceEnum.share || !item.outLinkUid) return resultWithTitle;
+
+    const member = outLinkMemberMap.get(String(item.outLinkUid));
+    return {
+      ...resultWithTitle,
+      sourceMember: member ? formatSourceMember(member) : undefined
+    };
+  });
+
   return GetAppChatLogsResponseSchema.parse({
-    list: listWithSourceMember.concat(listWithoutTmbId),
+    list: finalList,
     total
   });
 }

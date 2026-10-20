@@ -6,6 +6,7 @@ import type {
   GetQuoteDataBody as GetQuoteDataProps,
   GetQuoteDataResponse,
   InsertDataBody,
+  InsertDataResponse,
   CreateDatasetDataIndexBody,
   DeleteDatasetDataIndexBody,
   DeleteDatasetDataIndexResponse,
@@ -25,7 +26,7 @@ export const getDatasetDataItemById = (id: string) =>
  * insert one data to dataset (immediately insert)
  */
 export const postInsertData2Dataset = (data: InsertDataBody) =>
-  POST<string>(`/core/dataset/data/insertData`, data);
+  POST<InsertDataResponse>(`/core/dataset/data/insertData`, data);
 
 /**
  * update one datasetData by id

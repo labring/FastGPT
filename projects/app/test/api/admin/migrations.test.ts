@@ -1,3 +1,5 @@
+import startHandler from '@/pages/api/admin/migrations/start';
+import { SystemMigrationDependencyError } from '@/migration/error';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   SystemMigrationFailurePolicyEnum,
@@ -9,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   getSystemMigrationFailedRecords: vi.fn(),
   getSystemMigrationList: vi.fn(),
   retryNonBlockingSystemMigration: vi.fn(),
+  startManualSystemMigration: vi.fn(),
   wakeSystemMigrationRunner: vi.fn()
 }));
 
@@ -21,7 +24,8 @@ vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
 vi.mock('@/migration/service', () => ({
   getSystemMigrationFailedRecords: mocks.getSystemMigrationFailedRecords,
   getSystemMigrationList: mocks.getSystemMigrationList,
-  retryNonBlockingSystemMigration: mocks.retryNonBlockingSystemMigration
+  retryNonBlockingSystemMigration: mocks.retryNonBlockingSystemMigration,
+  startManualSystemMigration: mocks.startManualSystemMigration
 }));
 vi.mock('@/migration/runner', () => ({
   wakeSystemMigrationRunner: mocks.wakeSystemMigrationRunner
@@ -82,6 +86,28 @@ describe('system migration admin APIs', () => {
     expect(mocks.wakeSystemMigrationRunner).toHaveBeenCalledTimes(1);
   });
 
+  it('starts a manual task and wakes the runner only after a successful enqueue', async () => {
+    const req = { headers: {}, body: { migrationId: '20261008_manual' } } as any;
+    await startHandler(req);
+    expect(mocks.authSystemAdmin).toHaveBeenCalledWith({ req });
+    expect(mocks.startManualSystemMigration).toHaveBeenCalledWith(req.body.migrationId);
+    expect(mocks.wakeSystemMigrationRunner).toHaveBeenCalledTimes(1);
+    mocks.wakeSystemMigrationRunner.mockClear();
+    mocks.startManualSystemMigration.mockRejectedValueOnce(new Error('already started'));
+    await expect(startHandler(req)).rejects.toThrow('already started');
+    expect(mocks.wakeSystemMigrationRunner).not.toHaveBeenCalled();
+  });
+
+  it('rejects unauthenticated and malformed manual requests before enqueueing', async () => {
+    await expect(startHandler({ headers: {}, body: {} } as any)).rejects.toThrow();
+    mocks.authSystemAdmin.mockRejectedValueOnce(new Error('unAuthorization'));
+    await expect(
+      startHandler({ headers: {}, body: { migrationId: '20261008_manual' } } as any)
+    ).rejects.toThrow('unAuthorization');
+    expect(mocks.startManualSystemMigration).not.toHaveBeenCalled();
+    expect(mocks.wakeSystemMigrationRunner).not.toHaveBeenCalled();
+  });
+
   it('loads failed records on demand as system admin', async () => {
     const response = {
       migrationId: '20260903_non_blocking',
@@ -109,4 +135,29 @@ describe('system migration admin APIs', () => {
     expect(mocks.retryNonBlockingSystemMigration).not.toHaveBeenCalled();
     expect(mocks.wakeSystemMigrationRunner).not.toHaveBeenCalled();
   });
+
+  it.each(['start', 'retry'] as const)(
+    'returns translatable dependency details without waking the runner on %s',
+    async (action) => {
+      const prerequisiteNameKey =
+        'system_migration:migrations.20261008_migrate_chunk_training.name';
+      const service =
+        action === 'start'
+          ? mocks.startManualSystemMigration
+          : mocks.retryNonBlockingSystemMigration;
+      const handler = action === 'start' ? startHandler : retryHandler;
+      service.mockRejectedValueOnce(new SystemMigrationDependencyError(prerequisiteNameKey));
+      const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+
+      await handler({ headers: {}, body: { migrationId: 'dependent' } } as any, res as any);
+
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith({
+        code: 409,
+        message: 'system_migration:prerequisite_not_succeeded',
+        data: { prerequisiteNameKey }
+      });
+      expect(mocks.wakeSystemMigrationRunner).not.toHaveBeenCalled();
+    }
+  );
 });

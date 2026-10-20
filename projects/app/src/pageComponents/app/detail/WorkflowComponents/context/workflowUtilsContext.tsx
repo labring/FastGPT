@@ -1,17 +1,15 @@
-import React, { type ReactNode, useCallback, useEffect, useMemo } from 'react';
-// 工作流工具函数层
+import { type ReactNode, useCallback, useEffect, useMemo } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { getWorkflowModelDetails } from '@/web/core/workflow/modelData';
+import { getWorkflowModelCheckData } from '@/web/core/workflow/modelData';
 import { storeEdge2RenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { createContext, useContextSelector } from 'use-context-selector';
-import { useReactFlow } from 'reactflow';
-import type { Node, Edge } from 'reactflow';
+import { useReactFlow, type Node, type Edge } from 'reactflow';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   checkWorkflowBeforeRunOrPublish,
   checkWorkflowNodeIssues
-} from '@/web/core/workflow/workflowCheck';
+} from '@/web/core/workflow/check/check';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   canInputBeAgentGenerated,
@@ -34,6 +32,8 @@ import { uiWorkflow2StoreWorkflow } from '../utils';
 import { WorkflowActionsContext } from './workflowActionsContext';
 import { WorkflowBufferDataContext } from './workflowInitContext';
 import { WorkflowSnapshotContext } from './workflowSnapshotContext';
+
+// 工作流工具函数层
 
 // 创建 Context
 type WorkflowUtilsContextValue = {
@@ -227,10 +227,12 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         return;
       }
 
-      const models = await getWorkflowModelDetails(nodes, appDetail.chatConfig).catch(
-        () => undefined
-      );
-      if (!models) {
+      const modelData = await getWorkflowModelCheckData({
+        nodes,
+        chatConfig: appDetail.chatConfig,
+        appId: appDetail._id
+      }).catch(() => undefined);
+      if (!modelData) {
         if (!hideTip) toast({ status: 'error', title: t('common:model_catalog_load_failed') });
         return;
       }
@@ -238,7 +240,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         checkWorkflowBeforeRunOrPublish({
           nodes,
           edges,
-          models,
+          modelData,
           chatConfig: appDetail.chatConfig,
           t
         });
@@ -289,6 +291,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       onUpdateNodeError,
       showSandbox,
       enableSandbox,
+      appDetail._id,
       appDetail.chatConfig,
       toast
     ]
@@ -301,18 +304,26 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       const nodes = getNodes();
       if (nodes.length === 0) return;
 
-      const models = await getWorkflowModelDetails(nodes).catch(() => undefined);
+      const modelData = await getWorkflowModelCheckData({ nodes, appId: appDetail._id }).catch(
+        () => undefined
+      );
       // 目录失败保留原校验结果；等待期间用户编辑或离开时不回写旧快照。
       if (
         !active ||
-        !models ||
+        !modelData ||
         nodes.some(
           (node) =>
             getNodes().find((current) => current.id === node.id)?.data.inputs !== node.data.inputs
         )
       )
         return;
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, models, t });
+      const issueMap = checkWorkflowNodeIssues({
+        nodes,
+        edges,
+        modelData,
+        t,
+        chatConfig: appDetail.chatConfig
+      });
       onSyncWorkflowCheckIssues(issueMap);
     };
 
@@ -323,7 +334,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       active = false;
       window.clearInterval(timer);
     };
-  }, [edges, getNodes, onSyncWorkflowCheckIssues, t]);
+  }, [appDetail._id, appDetail.chatConfig, edges, getNodes, onSyncWorkflowCheckIssues, t]);
 
   // 4. initData - 初始化工作流数据
   const initData = useCallback(
@@ -358,12 +369,17 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       const edges = workflow.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
 
       // 进入编辑器后延迟校验并定位到第一个错误节点；ReactFlow 渲染后再 fitView 才有效。
-      const scheduleEntryCheck = (checkNodes: Node[], checkEdges: Edge[]) => {
+      const scheduleEntryCheck = (
+        checkNodes: Node[],
+        checkEdges: Edge[],
+        checkChatConfig?: AppChatConfigType
+      ) => {
         if (!isInit) return;
         window.setTimeout(() => {
           const { issueMap, hasError, firstErrorNodeId } = checkWorkflowBeforeRunOrPublish({
             nodes: checkNodes,
             edges: checkEdges,
+            chatConfig: checkChatConfig,
             t
           });
           onSyncWorkflowCheckIssues(issueMap);
@@ -383,7 +399,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         setNodes(firstPast.nodes);
         setEdges(firstPast.edges);
         setAppDetail((state) => ({ ...state, chatConfig: firstPast.chatConfig }));
-        scheduleEntryCheck(firstPast.nodes, firstPast.edges);
+        scheduleEntryCheck(firstPast.nodes, firstPast.edges, firstPast.chatConfig);
         return;
       }
       // 初始化一个历史记录
@@ -403,7 +419,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       setNodes(nodes);
       setEdges(edges);
       setAppDetail((state) => ({ ...state, chatConfig: workflow.chatConfig }));
-      scheduleEntryCheck(nodes, edges);
+      scheduleEntryCheck(nodes, edges, workflow.chatConfig);
     },
     [
       appDetail.chatConfig,

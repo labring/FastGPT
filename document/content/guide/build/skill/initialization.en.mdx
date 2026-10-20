@@ -24,7 +24,7 @@ To add an initialization script to your skill, simply place a Shell script named
 
 ## 2. Smart Deduplication Mechanism
 
-To prevent running environment initialization scripts repeatedly in subsequent conversations (e.g., executing dependency installation packages on every turn would cause severe latency), FastGPT designs a deduplication mechanism for skill scripts.
+To prevent running environment initialization scripts repeatedly in subsequent conversations (for example, reinstalling dependencies on every turn would add substantial latency), FastGPT tracks successful initialization and skips repeated runs.
 
 The execution state is stored in the `~/.fastgpt/agent-skill-entrypoints/state.json` file inside the virtual machine.
 
@@ -38,5 +38,5 @@ The execution state is stored in the `~/.fastgpt/agent-skill-entrypoints/state.j
 
 To ensure the smooth execution of the AI workflow, the skill initialization script must adhere to the same execution constraints and fault tolerance rules as the app startup script:
 
-- **Execution Constraints and Non-blocking Fault Tolerance**: The timeout protection (default 30 seconds), non-blocking workflow (failures do not block main execution), and 8KB log truncation limits are identical to those of the app startup script. For detailed parameters, please refer to [App Startup Script Execution Constraints](../agentv2/vm#execution-constraints--fault-tolerance).
+- **Execution Constraints and Non-blocking Fault Tolerance**: The timeout protection (default 30 seconds), non-blocking workflow (failures do not block main execution), and 8KB log truncation limits are identical to those of the app startup script. For detailed parameters, please refer to [App Startup Script Execution Constraints](/en/guide/build/agentv2/vm#execution-constraints--fault-tolerance).
 - **Debug Mode Limitation**: In the skill edit mode, the virtual machine will not automatically execute the `entrypoint.sh` script. To verify the script's behavior, the skill developer can manually execute the commands inside the Workspace Terminal.

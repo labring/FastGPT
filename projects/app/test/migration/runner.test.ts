@@ -7,7 +7,9 @@ import {
 import {
   getMigrationFailedRecordCounts,
   getMigrationFailedRecords,
-  resetFailedMigration
+  resetFailedMigration,
+  enqueueManualMigration,
+  claimMigrationLease
 } from '@/migration/entity';
 import { createSystemMigrationRunner, type SystemMigrationRunnerStore } from '@/migration/runner';
 import type { SystemMigration, SystemMigrationLogger } from '@/migration/registry';
@@ -50,6 +52,139 @@ describe('system migration runner', () => {
       MongoSystemMigrationState.deleteMany({ _id: migrationIdPattern }),
       MongoSystemMigrationFailedRecord.deleteMany({ migrationId: migrationIdPattern })
     ]);
+  });
+
+  it('holds an already queued dependent task until its waiting or failed prerequisite succeeds', async () => {
+    const prerequisiteRun = vi
+      .fn(async () => undefined)
+      .mockRejectedValueOnce(new Error('failure'));
+    const dependentRun = vi.fn(async () => undefined);
+    const prerequisite = {
+      ...createMigration('20260903_runner_prerequisite', prerequisiteRun),
+      manual: true,
+      onFailure: SystemMigrationFailurePolicyEnum.continue
+    };
+    const dependent = {
+      ...createMigration('20260903_runner_dependent', dependentRun),
+      manual: true,
+      dependsOn: [prerequisite.id]
+    };
+    const runner = createSystemMigrationRunner({ migrations: [prerequisite, dependent], logger });
+    try {
+      await runner.start();
+      // 模拟旧节点已入队，不能仅依赖新启动接口的校验。
+      await enqueueManualMigration(dependent.id);
+      await runner.wake();
+      expect(dependentRun).not.toHaveBeenCalled();
+      await enqueueManualMigration(prerequisite.id);
+      await runner.wake();
+      expect(prerequisiteRun).toHaveBeenCalledTimes(1);
+      expect(dependentRun).not.toHaveBeenCalled();
+      expect((await MongoSystemMigrationState.findById(dependent.id))?.status).toBe(
+        SystemMigrationStatusEnum.pending
+      );
+      await resetFailedMigration(prerequisite.id);
+      await runner.wake();
+      expect(prerequisiteRun).toHaveBeenCalledTimes(2);
+      expect(dependentRun).toHaveBeenCalledTimes(1);
+      expect((await MongoSystemMigrationState.findById(dependent.id))?.status).toBe(
+        SystemMigrationStatusEnum.succeeded
+      );
+    } finally {
+      await runner.stop();
+    }
+  });
+
+  it('holds an automatic dependent task after prerequisite failure and resumes after retry', async () => {
+    const prerequisiteRun = vi
+      .fn(async () => undefined)
+      .mockRejectedValueOnce(new Error('model references not migrated'));
+    const dependentRun = vi.fn(async () => undefined);
+    const independentRun = vi.fn(async () => undefined);
+    const prerequisite = {
+      ...createMigration('20260903_runner_auto_prerequisite', prerequisiteRun),
+      onFailure: SystemMigrationFailurePolicyEnum.continue
+    };
+    const dependent = {
+      ...createMigration('20260903_runner_auto_dependent', dependentRun),
+      dependsOn: [prerequisite.id],
+      onFailure: SystemMigrationFailurePolicyEnum.continue
+    };
+    const independent = createMigration('20260903_runner_auto_independent', independentRun);
+    const runner = createSystemMigrationRunner({
+      migrations: [prerequisite, dependent, independent],
+      logger
+    });
+
+    try {
+      await runner.start();
+      await runner.tick();
+
+      // continue 允许无依赖任务继续，但不能让快照任务越过失败的模型 ID 回填。
+      expect(prerequisiteRun).toHaveBeenCalledTimes(1);
+      expect(dependentRun).not.toHaveBeenCalled();
+      expect(independentRun).toHaveBeenCalledTimes(1);
+      expect(await MongoSystemMigrationState.findById(prerequisite.id).lean()).toMatchObject({
+        status: SystemMigrationStatusEnum.failed
+      });
+      expect(await MongoSystemMigrationState.findById(dependent.id).lean()).toMatchObject({
+        status: SystemMigrationStatusEnum.pending
+      });
+      expect(runner.hasBlockingMigrations).toBe(false);
+
+      // 管理员重试前置任务后，自动任务应恢复执行，无需再手动触发快照任务。
+      expect(await resetFailedMigration(prerequisite.id)).toBe(true);
+      await runner.wake();
+      expect(prerequisiteRun).toHaveBeenCalledTimes(2);
+      expect(dependentRun).toHaveBeenCalledTimes(1);
+      expect(independentRun).toHaveBeenCalledTimes(1);
+      expect(await MongoSystemMigrationState.findById(dependent.id).lean()).toMatchObject({
+        status: SystemMigrationStatusEnum.succeeded
+      });
+    } finally {
+      await runner.stop();
+    }
+  });
+
+  it('skips waiting manual tasks, resumes after enqueue and recovers an expired manual lease', async () => {
+    const manualRun = vi.fn(async () => undefined);
+    const autoRun = vi.fn(async () => undefined);
+    const manual = { ...createMigration('20260903_runner_manual', manualRun), manual: true };
+    const migrations = [manual, createMigration('20260903_runner_after_manual', autoRun, true)];
+    const runner = createSystemMigrationRunner({ migrations, logger });
+    try {
+      await runner.start();
+      await runner.tick();
+      expect(manualRun).not.toHaveBeenCalled();
+      expect(autoRun).toHaveBeenCalledTimes(1);
+      expect(
+        await claimMigrationLease({
+          migrationId: manual.id,
+          runId: 'unauthorized',
+          leaseDurationMs: 90_000
+        })
+      ).toBeNull();
+      await runner.waitForBlockingMigrations();
+      expect(await enqueueManualMigration(manual.id)).toBe(true);
+      expect(await enqueueManualMigration(manual.id)).toBe(false);
+      // 模拟入队后原节点领取并退出，新的 runner 无需再次手动触发。
+      await claimMigrationLease({
+        migrationId: manual.id,
+        runId: 'crashed',
+        leaseDurationMs: 90_000
+      });
+      await MongoSystemMigrationState.updateOne(
+        { _id: manual.id },
+        { $set: { leaseExpireAt: new Date(0) } }
+      );
+      await runner.wake();
+      expect(manualRun).toHaveBeenCalledTimes(1);
+      expect(autoRun).toHaveBeenCalledTimes(1);
+      await runner.wake();
+      expect(manualRun).toHaveBeenCalledTimes(1);
+    } finally {
+      await runner.stop();
+    }
   });
 
   it('runs the registry serially while multiple nodes compete for every lease', async () => {
@@ -448,11 +583,15 @@ describe('system migration runner', () => {
 
     try {
       await runner.start();
-      await vi.waitFor(async () => {
-        expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
-          SystemMigrationStatusEnum.failed
-        );
-      });
+      // CI 并发执行时真实 Mongo I/O 可能超过默认 1 秒，仍等待实际失败状态而非固定延时。
+      await vi.waitFor(
+        async () => {
+          expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
+            SystemMigrationStatusEnum.failed
+          );
+        },
+        { timeout: 5_000 }
+      );
 
       const state = await MongoSystemMigrationState.findById(migration.id).lean();
       expect(state?.lastError?.message).toContain('cannot access failed record details');
@@ -479,11 +618,14 @@ describe('system migration runner', () => {
 
     try {
       await runner.start();
-      await vi.waitFor(async () => {
-        expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
-          SystemMigrationStatusEnum.failed
-        );
-      });
+      await vi.waitFor(
+        async () => {
+          expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
+            SystemMigrationStatusEnum.failed
+          );
+        },
+        { timeout: 5_000 }
+      );
       expect(
         (await MongoSystemMigrationState.findById(migration.id).lean())?.lastError?.message
       ).toContain('cannot access failed record details');
@@ -536,7 +678,8 @@ describe('system migration runner', () => {
       await vi.waitFor(async () => {
         const state = await MongoSystemMigrationState.findById(migration.id).lean();
         expect(state).toMatchObject({
-          status: SystemMigrationStatusEnum.running
+          status: SystemMigrationStatusEnum.running,
+          checkpoint: { firstBatchCompleted: true }
         });
       });
 

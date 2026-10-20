@@ -2,6 +2,7 @@ import { audioFileType, imageFileType, videoFileType } from '@fastgpt/global/com
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatFileStoreValue } from '@fastgpt/global/core/chat/type';
 import path from 'path';
+import { getFileNameFromUrl } from './file/utils';
 
 export type RawChatFileValue = {
   key?: string;
@@ -128,21 +129,6 @@ export const normalizeChatFileStoreValue = (
    */
   const inferChatFileNameFromKey = (key: string) => path.basename(key) || 'file';
 
-  /**
-   * 从外部 URL pathname 中提取文件名，非法 URL 则保留原始字符串。
-   *
-   * 外链 URL 可能是用户/API 直接传入的完整地址；如果不能按标准 URL 解析，仍保留原值，
-   * 避免因为名称推断失败导致整个文件变量被丢弃。
-   */
-  const inferChatFileNameFromUrl = (url: string) => {
-    try {
-      const urlObj = new URL(url);
-      return path.basename(decodeURIComponent(urlObj.pathname)) || url;
-    } catch {
-      return url;
-    }
-  };
-
   const key = file.key || undefined;
   const rawUrl = file.url || undefined;
   // data URL 可能来自多模态节点或前端预览，不能作为长期变量值写入数据库。
@@ -164,7 +150,8 @@ export const normalizeChatFileStoreValue = (
   }
 
   const storeUrl = url as string;
-  const name = rawName || inferChatFileNameFromUrl(storeUrl);
+  // 名称提取失败时保留原 URL，避免已有文件变量因展示名推断失败而丢失。
+  const name = rawName || getFileNameFromUrl(storeUrl) || storeUrl;
   return {
     url: storeUrl,
     name,

@@ -19,6 +19,7 @@ import { TeamPointCache, teamQpmCache } from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { serviceEnv } from '../../../env';
 import { getRuntimeStandardPlanConfig } from '@fastgpt/global/support/wallet/sub/utils';
+import { getFileUploadLimits } from '@fastgpt/global/common/file/limit';
 
 const logger = getLogger(LogCategories.MODULE.WALLET.SUB);
 const teamPointCache = new TeamPointCache({ logger });
@@ -78,8 +79,11 @@ export const buildStandardPlan = (
   auditLogStoreDuration: standard?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
   ticketResponseTime: standard?.ticketResponseTime ?? standardConstants.ticketResponseTime,
   customDomain: standard?.customDomain ?? standardConstants.customDomain,
-  maxUploadFileSize: standard?.maxUploadFileSize ?? standardConstants.maxUploadFileSize,
-  maxUploadFileCount: standard?.maxUploadFileCount ?? standardConstants.maxUploadFileCount,
+  ...getFileUploadLimits({
+    teamPlan: standard,
+    plan: standardConstants,
+    systemLimit: global.feConfigs?.limit
+  }),
   enableSandbox: standard?.enableSandbox ?? standardConstants.enableSandbox
 });
 
@@ -171,8 +175,23 @@ export const initTeamFreePlan = async ({
   );
 };
 
-// 获取团队标准套餐
-export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
+type TeamStandPlanReadPreference =
+  | 'primary'
+  | 'primaryPreferred'
+  | 'secondary'
+  | 'secondaryPreferred'
+  | 'nearest';
+
+/**
+ * 获取团队标准套餐；普通展示场景默认读从库，额度和权限校验可显式要求主库。
+ */
+export const getTeamStandPlan = async ({
+  teamId,
+  readPreference = readFromSecondary.readPreference
+}: {
+  teamId: string;
+  readPreference?: TeamStandPlanReadPreference;
+}) => {
   const standardPlans = global.subPlans?.standard;
   const plans = await MongoTeamSub.find(
     {
@@ -181,7 +200,7 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
     },
     undefined,
     {
-      ...readFromSecondary
+      readPreference
     }
   ).lean();
   sortStandPlans(plans);

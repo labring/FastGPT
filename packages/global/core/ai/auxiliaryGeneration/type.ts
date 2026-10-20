@@ -5,6 +5,7 @@ import { SelectedAgentSkillItemTypeSchema } from '../../app/formEdit/type';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { ChatAgentHelperTypeEnum } from './constants';
 import { BoolSchema } from '../../../common/zod';
+import { OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
 
 export const AuxiliaryGenerationChatFileSchema = z.object({
   type: z.enum(ChatFileTypeEnum),
@@ -72,7 +73,13 @@ export const ChatAgentHelperCompletionsParamsSchema = z
     appId: ObjectIdSchema,
     messages: z.array(ChatCompletionMessageParamSchema),
     // ChatBox 当前仍复用 workflow interactive 数据结构；辅助生成 API 只透传给 chat round 准备逻辑。
-    interactive: z.any().optional(),
+    interactive: z
+      .any()
+      .optional()
+      .meta({
+        ...OpenObjectOpenApiMeta,
+        description: '交互式响应，直接透传给 chat round 准备逻辑'
+      }),
     metadata: z.object({
       type: z.literal(ChatAgentHelperTypeEnum.chatAgent),
       data: ChatAgentHelperMetadataSchema

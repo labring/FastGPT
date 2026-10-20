@@ -122,10 +122,18 @@ export const buildAppListRequest = ({
   offset,
   pageSize,
   sort,
-  tmbIds
+  tmbIds,
+  withRelatedAppCount
 }: Pick<
   ListAppV2BodyType,
-  'parentId' | 'type' | 'searchKey' | 'offset' | 'pageSize' | 'sort' | 'tmbIds'
+  | 'parentId'
+  | 'type'
+  | 'searchKey'
+  | 'offset'
+  | 'pageSize'
+  | 'sort'
+  | 'tmbIds'
+  | 'withRelatedAppCount'
 >) => ({
   parentId,
   type,
@@ -133,7 +141,8 @@ export const buildAppListRequest = ({
   offset,
   pageSize,
   ...(sort ? { sort } : {}),
-  ...(tmbIds !== undefined ? { tmbIds } : {})
+  ...(tmbIds !== undefined ? { tmbIds } : {}),
+  ...(withRelatedAppCount !== undefined ? { withRelatedAppCount } : {})
 });
 
 /** 卡片时间与排序依据保持一致：最近更新显示更新时间，创建时间排序显示创建时间。 */

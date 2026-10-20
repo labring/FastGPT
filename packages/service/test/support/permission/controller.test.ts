@@ -1,9 +1,18 @@
 import createAppAPI from '@/pages/api/core/app/create';
 import { DEFAULT_ORG_AVATAR, DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import {
+  OwnerRoleVal,
+  PerResourceTypeEnum,
+  ReadRoleVal,
+  WriteRoleVal
+} from '@fastgpt/global/support/permission/constant';
 import { Types } from '@fastgpt/service/common/mongo';
-import { getClbsInfo, getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
+import {
+  getClbsInfo,
+  getResourceOwnedClbs,
+  getTmbPermissionMap
+} from '@fastgpt/service/support/permission/controller';
 import { MongoMemberGroupModel } from '@fastgpt/service/support/permission/memberGroup/memberGroupSchema';
 import { MongoOrgModel } from '@fastgpt/service/support/permission/org/orgSchema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -236,5 +245,81 @@ describe('test getClbsInfo edge cases', () => {
     expect(result).length(1);
     expect(result[0].username).toBeUndefined();
     expect(result[0].name).eq('Owner'); // other fields still resolved
+  });
+});
+
+describe('getTmbPermissionMap', () => {
+  it('个人零权限优先，组/组织按位合并且拒绝越界资源或团队', async () => {
+    const teamId = String(new Types.ObjectId());
+    const tmbId = String(new Types.ObjectId());
+    const groupId = String(new Types.ObjectId());
+    const orgId = String(new Types.ObjectId());
+    const ids = Array.from({ length: 3 }, () => String(new Types.ObjectId()));
+    await MongoResourcePermission.insertMany([
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.collection,
+        resourceId: ids[0],
+        tmbId,
+        permission: 0
+      },
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.collection,
+        resourceId: ids[0],
+        groupId,
+        permission: OwnerRoleVal
+      },
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.collection,
+        resourceId: ids[1],
+        groupId,
+        permission: ReadRoleVal
+      },
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.collection,
+        resourceId: ids[1],
+        orgId,
+        permission: WriteRoleVal
+      },
+      {
+        teamId,
+        resourceType: PerResourceTypeEnum.dataset,
+        resourceId: ids[2],
+        tmbId,
+        permission: OwnerRoleVal
+      },
+      {
+        teamId: String(new Types.ObjectId()),
+        resourceType: PerResourceTypeEnum.collection,
+        resourceId: ids[2],
+        tmbId,
+        permission: OwnerRoleVal
+      }
+    ]);
+    const permissions = await getTmbPermissionMap({
+      teamId,
+      tmbId,
+      resourceType: PerResourceTypeEnum.collection,
+      resourceIds: [...ids, ids[0]],
+      groupIds: [groupId],
+      orgIds: [orgId]
+    });
+    expect(permissions.size).toBe(3);
+    expect(permissions.get(ids[0])).toBe(0);
+    expect(permissions.get(ids[1])).toBe(ReadRoleVal | WriteRoleVal);
+    expect(permissions.get(ids[2])).toBe(0);
+    expect(
+      await getTmbPermissionMap({
+        teamId,
+        tmbId,
+        resourceType: PerResourceTypeEnum.collection,
+        resourceIds: [],
+        groupIds: [],
+        orgIds: []
+      })
+    ).toEqual(new Map());
   });
 });

@@ -14,7 +14,7 @@
   "toolkit_runtime_config_min_value": "{{label}} cannot be less than {{min}}",
   "toolkit_runtime_config_pod_timeout": "Pod timeout",
   "toolkit_runtime_config_pod_timeout_tip": "A Pod is reclaimed after being idle longer than this value",
-  "license_admin_home": "Admin home",
+  "license_admin_home": "License management",
   "license_admin_home_description": "View the current tenant's License, resource quotas, and capabilities",
   "license_tenant_name": "Tenant name",
   "license_business": "Business",

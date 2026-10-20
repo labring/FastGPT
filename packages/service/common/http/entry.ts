@@ -47,17 +47,41 @@ function getRequestRoute(url: string) {
     .join('/');
 }
 
+/** 将声明为敏感信息的 query 参数值替换后再用于日志和错误上下文。 */
+export function redactRequestUrl(url: string, redactQueryParams: string[]) {
+  if (!url || redactQueryParams.length === 0) return url;
+
+  const queryStart = url.indexOf('?');
+  if (queryStart < 0) return url;
+
+  const path = url.slice(0, queryStart);
+  const query = url.slice(queryStart + 1);
+  if (!query) return url;
+
+  const params = new URLSearchParams(query);
+  for (const name of redactQueryParams) {
+    if (!params.has(name)) continue;
+    params.delete(name);
+    params.append(name, 'REDACTED');
+  }
+
+  return `${path}?${params.toString()}`;
+}
+
 /**
  * 创建与 Web 框架无关的 API handler 管线，统一处理日志、追踪、错误和默认 JSON 响应。
  * 框架适配器通过 beforeCallback 注入 CORS 等运行时能力。
+ * handler 自行写回包时，以响应生命周期为准，不向已开始或已关闭的响应追加 JSON。
  */
 export const createApiEntry = <
   Request extends NodeApiRequest = NodeApiRequest,
   Response extends NodeApiResponse = NodeApiResponse
 >({
-  beforeCallback = []
+  beforeCallback = [],
+  redactQueryParams = []
 }: {
   beforeCallback?: ((req: Request, res: Response) => Promise<unknown>)[];
+  redactQueryParams?: string[];
 }) => {
   return (...args: ApiHandler<any, Request, Response>[]): ApiHandler<any, Request, Response> => {
     return async function api(
@@ -65,6 +89,8 @@ export const createApiEntry = <
       res: Response
     ) {
       const start = Date.now();
+      /** end() 后可能尚未 finish，断开的连接也不能再写默认响应或错误响应。 */
+      const isResponseClosed = () => res.writableEnded || res.writableFinished || res.destroyed;
       const requestId = randomUUID();
       res.setHeader('x-request-id', requestId);
 
@@ -72,6 +98,7 @@ export const createApiEntry = <
       const responseLogger = getLogger(LogCategories.HTTP.RESPONSE);
 
       const url = req.url || '';
+      const logUrl = redactRequestUrl(url, redactQueryParams);
       const route = getRequestRoute(url);
       const method = req.method?.toUpperCase() || '';
       const ip = getClientIpFromRequest(req);
@@ -91,11 +118,11 @@ export const createApiEntry = <
             }
           },
           async (span) => {
-            requestLogger.info(`[${method}] ${url}`, {
+            requestLogger.info(`[${method}] ${logUrl}`, {
               verbose: false,
               requestId,
               method,
-              url,
+              url: logUrl,
               ip,
               userAgent,
               contentLength
@@ -108,7 +135,7 @@ export const createApiEntry = <
               const durationMs = Date.now() - start;
               const httpStatusCode = res.statusCode;
 
-              responseLogger.info(`[${method}] ${url} - ${httpStatusCode} in ${durationMs}ms`, {
+              responseLogger.info(`[${method}] ${logUrl} - ${httpStatusCode} in ${durationMs}ms`, {
                 verbose: false,
                 requestId,
                 method,
@@ -122,20 +149,24 @@ export const createApiEntry = <
 
             try {
               await Promise.all(beforeCallback.map((item) => item(req as Request, res)));
-              if (res.writableEnded || res.writableFinished) {
+              if (isResponseClosed()) {
                 return;
               }
 
               let response = null;
               for await (const handler of args) {
                 response = await handler(req, res);
-                if (res.writableFinished) {
+                if (isResponseClosed()) {
                   break;
                 }
               }
 
               const contentType = res.getHeader('Content-Type');
-              if ((!contentType || contentType === 'application/json') && !res.writableFinished) {
+              if (
+                (!contentType || contentType === 'application/json') &&
+                !res.headersSent &&
+                !isResponseClosed()
+              ) {
                 const jsonResponse = await jsonRes(res, {
                   code: 200,
                   data: response
@@ -147,6 +178,18 @@ export const createApiEntry = <
 
               span.setAttribute('http.response.status_code', res.statusCode);
             } catch (error) {
+              // 响应一旦开始就不能改成 JSON 错误；保留已发送内容并结束失效连接。
+              if (res.headersSent || isResponseClosed()) {
+                span.setAttribute('http.response.status_code', res.statusCode);
+                setSpanError(span, error);
+                getLogger(LogCategories.HTTP.ERROR).error('API response stream failed', {
+                  url: logUrl,
+                  error
+                });
+                if (!isResponseClosed()) res.destroy();
+                return;
+              }
+
               // Handle Zod validation errors. Only explicit API input parse errors can be downgraded.
               if (error instanceof ZodError || error instanceof ApiRequestInputParseError) {
                 const requestInputErrorContext = getZodParseErrorInputSource(error);
@@ -157,7 +200,7 @@ export const createApiEntry = <
                   return jsonRes(res, {
                     code: 500,
                     error,
-                    url: req.url
+                    url: logUrl
                   });
                 }
 
@@ -166,14 +209,14 @@ export const createApiEntry = <
                   code: 400,
                   message: 'Data validation error',
                   error,
-                  url: req.url
+                  url: logUrl
                 });
               }
 
               const response = jsonRes(res, {
                 code: 500,
                 error,
-                url: req.url
+                url: logUrl
               });
               span.setAttribute('http.response.status_code', res.statusCode);
               if (res.statusCode >= 500) {

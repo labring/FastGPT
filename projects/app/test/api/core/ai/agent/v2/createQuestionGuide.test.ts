@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   authChatTargetCrud: vi.fn(),
@@ -17,8 +17,14 @@ vi.mock('@/service/support/permission/auth/chat', () => ({
 vi.mock('@fastgpt/service/core/app/version/controller', () => ({
   getAppLatestVersion: mocks.getAppLatestVersion
 }));
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
+  getSystemModelHandle: async () => ({
+    getModelData: mocks.getLLMModelData,
+    getLLMModelData: mocks.getLLMModelData,
+    getDefaultModelData: vi.fn()
+  }),
+  getTeamModelHandle: async () => ({
+    getModelData: mocks.getLLMModelData,
     getLLMModelData: mocks.getLLMModelData,
     getDefaultModelData: vi.fn()
   })
@@ -39,6 +45,7 @@ describe('createQuestionGuide model resource permission', () => {
     mocks.authChatTargetCrud.mockResolvedValue({
       teamId: 'team-id',
       tmbId: 'tmb-id',
+      isRoot: false,
       sourceType: ChatSourceTypeEnum.app,
       sourceId: '65f000000000000000000071'
     });
@@ -62,8 +69,50 @@ describe('createQuestionGuide model resource permission', () => {
         } as any,
         {} as any
       )
-    ).rejects.toBe(ERROR_ENUM.unAuthModel);
+    ).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
 
     expect(mocks.createQuestionGuide).not.toHaveBeenCalled();
+  });
+
+  it('enforces model resource check when only legacy model is configured', async () => {
+    await expect(
+      handler(
+        {
+          body: {
+            appId: '65f000000000000000000071',
+            chatId: 'chat-id',
+            questionGuide: { open: true, model: 'legacy-model' }
+          }
+        } as any,
+        {} as any
+      )
+    ).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
+
+    expect(mocks.createQuestionGuide).not.toHaveBeenCalled();
+
+    mocks.getAppLatestVersion.mockResolvedValueOnce({
+      resources: [{ type: 'model', id: 'model-id' }],
+      chatConfig: {}
+    });
+    mocks.createQuestionGuide.mockResolvedValue({
+      result: ['q1'],
+      inputTokens: 1,
+      outputTokens: 1
+    });
+
+    await expect(
+      handler(
+        {
+          body: {
+            appId: '65f000000000000000000071',
+            chatId: 'chat-id',
+            questionGuide: { open: true, model: 'legacy-model' }
+          }
+        } as any,
+        {} as any
+      )
+    ).resolves.toEqual(['q1']);
+
+    expect(mocks.createQuestionGuide).toHaveBeenCalledOnce();
   });
 });

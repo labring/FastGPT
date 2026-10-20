@@ -18,7 +18,7 @@ import type { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { ListSkillsV2Query } from '@fastgpt/global/core/ai/skill/api';
 import { AppListSortEnum, appListSortMongoMap } from '@fastgpt/global/core/app/constants';
-import { findTeamAppsByPublishedResource } from '../../../app/resourceLookup';
+import { countTeamAppsByPublishedResourceGroups } from '../../../app/resourceLookup';
 
 type TeamPermission = {
   isOwner: boolean;
@@ -240,24 +240,28 @@ export const listReadableAgentSkills = async ({
   const total = dbTotal ?? formatSkills.length;
   const pagedSkills = formatSkills;
 
-  const nonFolderSkills =
-    withAppCount !== false ? pagedSkills.filter((s) => s.type !== AgentSkillTypeEnum.folder) : [];
-  const appCountMap = new Map<string, number>();
-  if (nonFolderSkills.length > 0) {
-    const skillIdStrings = nonFolderSkills.map((skill) => String(skill._id));
-    const { counts } = await findTeamAppsByPublishedResource({
-      teamId,
-      type: 'skill',
-      ids: skillIdStrings
-    });
-    counts.forEach((count, skillId) => {
-      appCountMap.set(skillId, count);
-    });
-  }
+  const appCountMap =
+    withAppCount === false
+      ? undefined
+      : await countTeamAppsByPublishedResourceGroups({
+          teamId,
+          resourceGroups: pagedSkills
+            .filter((skill) => skill.type !== AgentSkillTypeEnum.folder)
+            .map((skill) => {
+              const id = String(skill._id);
+              return {
+                id,
+                isOwner: skill.permission.isOwner,
+                resources: [{ type: 'skill', id }]
+              };
+            })
+        });
 
   const listWithAppCount = pagedSkills.map((skill) => ({
     ...skill,
-    appCount: appCountMap.get(skill._id.toString()) ?? 0
+    ...(skill.permission.isOwner && appCountMap?.has(skill._id.toString())
+      ? { appCount: appCountMap.get(skill._id.toString()) ?? 0 }
+      : {})
   }));
   const list = withSourceMember
     ? await addSourceMember({ list: listWithAppCount })

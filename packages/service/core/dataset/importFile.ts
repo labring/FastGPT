@@ -30,7 +30,10 @@ export const parseDatasetImportFile = async ({
     teamId,
     tmbId,
     source,
-    getFormatText: false
+    getFormatText: false,
+    // 表头校验与 sheet/合并单元格校验依赖内置解析产出的结构化 CSV 与 tableInfo，
+    // 外部解析（sangfor）只返回 markdown，故模板/备份导入强制走系统解析。
+    forceSystemParse: true
   });
 
   if (extension === '.xlsx') {

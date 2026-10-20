@@ -256,10 +256,13 @@ describe('valueTypeFormat', () => {
     expect(valueTypeFormat('3.14', WorkflowIOValueTypeEnum.number)).toBe(3.14);
   });
 
-  it('should convert to boolean type', () => {
+  it('should convert to boolean type with native Boolean semantics', () => {
     expect(valueTypeFormat('true', WorkflowIOValueTypeEnum.boolean)).toBe(true);
     expect(valueTypeFormat('TRUE', WorkflowIOValueTypeEnum.boolean)).toBe(true);
-    expect(valueTypeFormat('false', WorkflowIOValueTypeEnum.boolean)).toBe(false);
+    // JS 原生 Boolean：非空字符串（含 'false'）均为 true
+    expect(valueTypeFormat('false', WorkflowIOValueTypeEnum.boolean)).toBe(true);
+    expect(valueTypeFormat('FALSE', WorkflowIOValueTypeEnum.boolean)).toBe(true);
+    expect(valueTypeFormat('', WorkflowIOValueTypeEnum.boolean)).toBe(false);
     expect(valueTypeFormat(1, WorkflowIOValueTypeEnum.boolean)).toBe(true);
     expect(valueTypeFormat(0, WorkflowIOValueTypeEnum.boolean)).toBe(false);
   });
@@ -277,6 +280,18 @@ describe('valueTypeFormat', () => {
     expect(valueTypeFormat('["a","b"]', WorkflowIOValueTypeEnum.arrayString)).toEqual(['a', 'b']);
     expect(valueTypeFormat('single', WorkflowIOValueTypeEnum.arrayString)).toEqual(['single']);
     expect(valueTypeFormat('invalid{', WorkflowIOValueTypeEnum.arrayString)).toEqual(['invalid{']);
+  });
+
+  it('should wrap a single JSON object string into a one-item array for array types', () => {
+    // 与 'single' → ['single'] 一致：数组类型收到的非数组值包成单元素数组，
+    // 不能把对象原样交给期望数组的节点（如循环、并行执行）
+    expect(valueTypeFormat('{"name":"a"}', WorkflowIOValueTypeEnum.arrayObject)).toEqual([
+      { name: 'a' }
+    ]);
+    expect(valueTypeFormat(' {"id": 1} ', WorkflowIOValueTypeEnum.arrayAny)).toEqual([{ id: 1 }]);
+    expect(valueTypeFormat('[{"name":"a"}]', WorkflowIOValueTypeEnum.arrayObject)).toEqual([
+      { name: 'a' }
+    ]);
   });
 
   it('should handle special types (datasetQuote, selectDataset, selectApp)', () => {
@@ -316,7 +331,7 @@ describe('valueTypeFormat', () => {
     {
       value: 'a',
       type: WorkflowIOValueTypeEnum.boolean,
-      result: false
+      result: true
     },
     {
       value: 'true',
@@ -326,7 +341,7 @@ describe('valueTypeFormat', () => {
     {
       value: 'false',
       type: WorkflowIOValueTypeEnum.boolean,
-      result: false
+      result: true
     },
     {
       value: 'false',
@@ -1176,6 +1191,7 @@ describe('storeNodes2RuntimeNodes', () => {
         nodeId: 'node1',
         name: 'Test Node',
         avatar: 'avatar.png',
+        metadataLocale: 'zh-CN',
         intro: 'Test intro',
         flowNodeType: FlowNodeTypeEnum.chatNode,
         showStatus: true,
@@ -1198,6 +1214,7 @@ describe('storeNodes2RuntimeNodes', () => {
         nodeId: 'node1',
         name: 'Test Node',
         avatar: 'avatar.png',
+        metadataLocale: 'zh-CN',
         intro: 'Test intro',
         flowNodeType: FlowNodeTypeEnum.chatNode,
         showStatus: true,

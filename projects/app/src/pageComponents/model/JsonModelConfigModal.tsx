@@ -1,11 +1,11 @@
-import { getModelConfigJson, putUpdateWithJson } from '@/web/core/ai/config';
+import { getModelConfigJson, putUpdateWithJson } from '@/web/core/ai/model/api';
 import { Button } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useState } from 'react';
 
 /** 管理系统模型 JSON 的加载、确认覆盖和成功反馈。 */
@@ -16,7 +16,7 @@ const JsonModelConfigModal = ({
   onClose: () => void;
   onSuccess: () => Promise<void>;
 }) => {
-  const { t } = useClientTranslation('config_model');
+  const { t } = useSafeTranslation();
   const { toast } = useToast();
   const [data, setData] = useState('');
   const { loading } = useRequest(getModelConfigJson, {
@@ -48,7 +48,7 @@ const JsonModelConfigModal = ({
               await putUpdateWithJson({ config: data });
               toast({ title: t('common:update_success'), status: 'success' });
               onClose();
-              void onSuccess().catch(() => {});
+              onSuccess();
             }}
           />
         </>

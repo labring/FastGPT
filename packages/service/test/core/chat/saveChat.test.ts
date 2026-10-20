@@ -41,8 +41,8 @@ vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
   const mod = await importOriginal<typeof import('@fastgpt/service/common/api/axios')>();
   return {
     ...mod,
-    axios: {
-      ...mod.axios,
+    axiosWithoutSSRF: {
+      ...mod.axiosWithoutSSRF,
       post: axiosPostMock
     }
   };

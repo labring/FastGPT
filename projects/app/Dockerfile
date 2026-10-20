@@ -1,11 +1,11 @@
 # --------- install dependence -----------
-FROM node:24.16.0-alpine AS maindeps
+FROM node:24-bookworm-slim AS maindeps
 WORKDIR /app
 
 ARG proxy
 
-RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
-RUN apk add --no-cache libc6-compat && npm install -g pnpm@10.33.2
+RUN [ -z "$proxy" ] || sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources
+RUN npm install -g pnpm@10.33.2
 
 # copy packages and one project
 COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
@@ -23,7 +23,7 @@ RUN if [ -z "$proxy" ]; then \
     fi
 
 # --------- builder -----------
-FROM node:24.16.0-alpine AS builder
+FROM node:24-bookworm-slim AS builder
 WORKDIR /app
 
 ARG proxy
@@ -37,9 +37,9 @@ COPY --from=maindeps /app/sdk ./sdk
 COPY ./projects/app ./projects/app
 COPY --from=maindeps /app/projects/app/node_modules ./projects/app/node_modules
 
-RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
+RUN [ -z "$proxy" ] || sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources
 
-RUN apk add --no-cache libc6-compat && npm install -g pnpm@10.33.2
+RUN npm install -g pnpm@10.33.2
 
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV NEXT_PUBLIC_BASE_URL=$base_url
@@ -49,28 +49,23 @@ RUN pnpm build:sdks
 RUN pnpm --filter=app build
 
 # Remove build-time-only packages from standalone output before copying to runner.
-# These are traced into standalone by mistake (rspack bindings, gnu platform binaries, etc.)
-RUN rm -rf projects/app/.next/standalone/node_modules/.pnpm/@next+rspack-binding-*/ \
-    projects/app/.next/standalone/node_modules/.pnpm/@rspack+binding-*/ \
-    projects/app/.next/standalone/node_modules/.pnpm/next-rspack*/ \
-    projects/app/.next/standalone/node_modules/.pnpm/typescript@*/ \
-    projects/app/.next/standalone/node_modules/.pnpm/*-linux-x64-gnu@*/ \
-    projects/app/.next/standalone/node_modules/.pnpm/@img+sharp-libvips-linux-x64@*/
+RUN rm -rf projects/app/.next/standalone/node_modules/.pnpm/typescript@*/ \
+    projects/app/.next/standalone/node_modules/.pnpm/*-linux-x64-musl@*/
 
 # --------- runner -----------
-FROM node:24.16.0-alpine AS runner
+FROM node:24-bookworm-slim AS runner
 WORKDIR /app
 
 ARG proxy
 ARG base_url
 
 # create user and use it
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN groupadd --system --gid 1001 nodejs && \
+    useradd --system --uid 1001 -g nodejs nextjs
 
-RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
-RUN apk add --no-cache curl ca-certificates libc++ \
-  && update-ca-certificates
+RUN [ -z "$proxy" ] || sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates procps \
+  && rm -rf /var/lib/apt/lists/*
 
 # copy running files
 COPY --from=builder /app/projects/app/public /app/projects/app/public
@@ -87,7 +82,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/projects/app/worker /app/projects
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/worker /app/worker
 # LiteParse is externalized from the worker bundle and loads this file at runtime.
 RUN test -f /app/worker/node_modules/@llamaindex/liteparse-wasm/pkg/liteparse_wasm_bg.wasm
-# anydoc is a N-API package; loading it here verifies that the matching musl binary was packaged.
+# anydoc is a N-API package; loading it here verifies that the matching gnu binary was packaged.
 RUN node -e "require('/app/worker/node_modules/@fastgpt-sdk/anydoc')"
 
 COPY --from=maindeps /app/node_modules/@zilliz/milvus2-sdk-node ./node_modules/@zilliz/milvus2-sdk-node

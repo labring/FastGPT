@@ -50,6 +50,15 @@ describe('文件工具函数测试', () => {
       expect(formatFileSize(1024 * 1024 * 1024 * 1024 * 1024)).toBe('1 PB');
     });
 
+    it('should carry to the next unit when rounding reaches 1024', () => {
+      expect(formatFileSize(1024 * 1024 - 1)).toBe('1 MB');
+      expect(formatFileSize(1024 * 1024 * 1024 - 1)).toBe('1 GB');
+      expect(formatFileSize(1023.999 * 1024)).toBe('1 MB');
+      // Values that still round below 1024 keep their unit
+      expect(formatFileSize(1023.99 * 1024)).toBe('1023.99 KB');
+      expect(formatFileSize(1023)).toBe('1023 B');
+    });
+
     it('should round to 2 decimal places', () => {
       expect(formatFileSize(1536)).toBe('1.5 KB');
       expect(formatFileSize(1234567)).toBe('1.18 MB');
@@ -430,6 +439,45 @@ describe('文件工具函数测试', () => {
       const buf = Buffer.from([0xc4, 0xe3, 0xba, 0xc3]);
       const encoding = detectFileEncoding(buf);
       expect(typeof encoding).toBe('string');
+    });
+  });
+
+  describe('parseContentDispositionFilename', () => {
+    it.each([
+      `attachment; filename*=UTF-8''broken%ZZ.txt; filename="report.txt"`,
+      `attachment; filename="report.txt"; filename*=UTF-8''broken%ZZ.txt`,
+      `attachment; filename*=UTF-8''%E6%8A.txt; filename="report.txt"`,
+      `attachment; filename="report.txt"; filename*=UTF-8''%E6%8A.txt`,
+      `attachment; filename*=broken.txt; filename="report.txt"`,
+      `attachment; filename*=UTF-8''; filename="report.txt"`
+    ])('falls back to filename when filename* is invalid or empty: %s', (header) => {
+      expect(parseContentDispositionFilename(header)).toBe('report.txt');
+    });
+
+    it.each([
+      `attachment; filename*=UTF-8''broken%ZZ.txt`,
+      `attachment; filename*=broken.txt`,
+      'attachment; xfilename="report.txt"',
+      'attachment',
+      '',
+      undefined
+    ])('returns an empty name when there is no usable filename: %s', (header) => {
+      expect(parseContentDispositionFilename(header)).toBe('');
+    });
+
+    it.each([
+      `attachment; filename*=UTF-8''%E6%8A%A5%E5%91%8A.txt; filename="report.txt"`,
+      `attachment; filename="report.txt"; filename*=UTF-8''%E6%8A%A5%E5%91%8A.txt`
+    ])('prefers valid filename* regardless of parameter order: %s', (header) => {
+      expect(parseContentDispositionFilename(header)).toBe('报告.txt');
+    });
+
+    it.each([
+      'attachment; filename="report.txt"',
+      'attachment; FILENAME = "report.txt"',
+      'attachment; filename=report.txt'
+    ])('preserves plain filename parsing: %s', (header) => {
+      expect(parseContentDispositionFilename(header)).toBe('report.txt');
     });
   });
 

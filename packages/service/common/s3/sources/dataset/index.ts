@@ -40,7 +40,13 @@ export class S3DatasetSource extends S3PrivateBucket {
 
   // 下载链接
   async createGetDatasetFileURL(params: CreateGetDatasetFileURLParams) {
-    const { key, expiredHours, external } = CreateGetDatasetFileURLParamsSchema.parse(params);
+    const { key, datasetId, expiredHours, external } =
+      CreateGetDatasetFileURLParamsSchema.parse(params);
+    // 传入 datasetId 时强制绑定：key 内嵌的 datasetId 必须匹配已鉴权上下文，否则拒绝签发，
+    // 避免调用方遗漏校验导致跨库文件被签名。未传时保持兼容，仅由上层负责授权。
+    if (datasetId !== undefined && !isAuthorizedDatasetFileS3Key({ key, datasetId })) {
+      throw new Error('Invalid dataset file key');
+    }
     const fileMetadata = await this.getFileMetadata(key).catch((error) => {
       if (error === CommonErrEnum.fileNotFound) return undefined;
       throw error;

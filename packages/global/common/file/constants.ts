@@ -13,7 +13,8 @@ const builtInDocumentFileExtensions = [
   '.pdf',
   '.md',
   '.html',
-  '.pptx'
+  '.pptx',
+  '.ofd'
 ] as const;
 
 /** 由 anydoc 补充解析的文档扩展名；不要在这里重复原有解析器格式。 */

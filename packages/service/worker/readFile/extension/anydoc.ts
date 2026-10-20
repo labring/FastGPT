@@ -1,5 +1,7 @@
 import { formatFromExtension, toMarkdownBytes } from '@fastgpt-sdk/anydoc';
 import { anydocDocumentFileExtensions } from '@fastgpt/global/common/file/constants';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import pLimit from 'p-limit';
 import path from 'node:path';
 import { toTransferableArrayBuffer } from '../../utils/base64ImageUpload';
@@ -13,6 +15,16 @@ const EMBEDDED_IMAGE_UPLOAD_CONCURRENCY = 5;
 /** 判断扩展名是否应交给 anydoc 补充解析器。 */
 export const isAnydocDocumentExtension = (extension: string) =>
   supportedExtensionSet.has(`.${extension.trim().toLowerCase().replace(/^\./, '')}`);
+
+/** anydoc ConvertErrorCode → 解析诊断码；未映射的码原样透出。 */
+const convertErrorCodeMap: Record<string, CommonErrEnum> = {
+  encrypted: CommonErrEnum.invalidParseFile,
+  malformed: CommonErrEnum.invalidParseFile,
+  missingPart: CommonErrEnum.invalidParseFile,
+  unsupported: CommonErrEnum.unsupportedParseFileType,
+  resourceLimit: CommonErrEnum.officeConversionFailed,
+  needsOcr: CommonErrEnum.pdfParseFailed
+};
 
 /**
  * 使用 anydoc 将 FastGPT 原解析器未覆盖的文档转换为 Markdown。
@@ -47,6 +59,12 @@ export const readAnydocRawText = async (
     embeddedImageMode: 'reference',
     maxImageBytes: MAX_EMBEDDED_IMAGE_BYTES,
     maxImageTotalBytes: MAX_EMBEDDED_IMAGE_TOTAL_BYTES
+  }).catch((error) => {
+    const code = (error as { code?: unknown })?.code;
+    // 已知 ConvertErrorCode 映射为对应诊断码；未知失败统一落通用「文档解析失败」兜底，不向调用方透出原始错误
+    const statusText =
+      typeof code === 'string' ? convertErrorCodeMap[code] : CommonErrEnum.pdfParseFailed;
+    throw new UserError(statusText ?? CommonErrEnum.pdfParseFailed);
   });
 
   if (assets.length === 0) {

@@ -1,4 +1,5 @@
 import z from 'zod';
+import { OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { StoreSecretValueTypeSchema } from '../../../../common/secret/type';
 import { CreateAppBodySchema } from '../common/api';
@@ -155,6 +156,7 @@ export const RunMcpToolBodySchema = z
 export type RunMcpToolBodyType = z.infer<typeof RunMcpToolBodySchema>;
 
 export const RunMcpToolResponseSchema = z.any().meta({
-  description: '工具调用结果'
+  ...OpenObjectOpenApiMeta,
+  description: '工具调用结果（MCP CallToolResult 结构，内容随工具变化）'
 });
 export type RunMcpToolResponseType = z.infer<typeof RunMcpToolResponseSchema>;

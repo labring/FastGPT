@@ -187,9 +187,14 @@ const ChatSliderList = () => {
                     bg={'primary.500'}
                     flexShrink={0}
                   />
-                ) : item.isTemporary ? null : (
+                ) : item.isTemporary &&
+                  item.chatGenerateStatus !== ChatGenerateStatusEnum.generating ? null : (
                   <Box
-                    className="time"
+                    className={
+                      item.chatGenerateStatus === ChatGenerateStatusEnum.generating
+                        ? 'generatingStatus'
+                        : 'time'
+                    }
                     display={'block'}
                     fontWeight={'400'}
                     fontSize={'mini'}
@@ -213,8 +218,8 @@ const ChatSliderList = () => {
                         border={'none'}
                         bg={'transparent'}
                         color={'myGray.500'}
-                        _hover={{ bg: 'transparent', color: 'myGray.700' }}
-                        _active={{ bg: 'transparent' }}
+                        _hover={{ bg: 'myGray.150', color: 'myGray.700' }}
+                        _active={{ bg: 'myGray.150' }}
                         icon={<MyIcon name={'more'} w={'14px'} p={1} color={'currentColor'} />}
                         aria-label={''}
                       />

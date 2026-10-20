@@ -1,9 +1,10 @@
-import type { LLMSystemModelDataType } from '../../ai/model.schema';
+import type { LLMModelDataType } from '../../ai/model/schema';
 import { WorkflowIOValueTypeEnum, NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
 import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../node/constant';
 import { SecretValueTypeSchema } from '../../../common/secret/type';
 import z from 'zod';
 import { BoolSchema, IntSchema, NumSchema } from '../../../common/zod';
+import { JsonValueOpenApiMeta } from '../../../common/zod/openapi';
 
 /* Dataset node */
 export const SelectedDatasetSchema = z.object({
@@ -83,9 +84,13 @@ export const InputComponentPropsTypeSchema = z.object({
   required: BoolSchema.optional().meta({
     description: '该变量是否必填'
   }),
-  defaultValue: z.any().optional().meta({
-    description: '变量默认值'
-  }),
+  defaultValue: z
+    .any()
+    .optional()
+    .meta({
+      description: '变量默认值',
+      ...JsonValueOpenApiMeta
+    }),
 
   // 不同组件的配置嘻嘻
   referencePlaceholder: z.string().optional().meta({
@@ -253,6 +258,9 @@ export const InputConfigTypeSchema = z.object({
   description: z.string().optional().meta({
     description: '输入配置说明'
   }),
+  placeholder: z.string().optional().meta({
+    description: '输入配置占位提示'
+  }),
   required: BoolSchema.optional().meta({
     description: '该输入配置是否必填'
   }),
@@ -293,9 +301,13 @@ export const FlowNodeInputItemTypeSchema = InputComponentPropsTypeSchema.extend(
   valueDesc: z.string().optional().meta({
     description: '输入值说明，通常用于展示引用值含义'
   }), // data desc
-  value: z.any().optional().meta({
-    description: '节点输入当前值'
-  }),
+  value: z
+    .any()
+    .optional()
+    .meta({
+      description: '节点输入当前值',
+      ...JsonValueOpenApiMeta
+    }),
 
   debugLabel: z.string().optional().meta({
     description: '调试模式下展示的输入名称'
@@ -363,9 +375,13 @@ export const FlowNodeOutputItemTypeSchema = z.object({
   valueDesc: z.string().optional().meta({
     description: '输出值说明，通常用于展示引用值含义'
   }),
-  value: z.any().optional().meta({
-    description: '节点输出默认值或静态值'
-  }),
+  value: z
+    .any()
+    .optional()
+    .meta({
+      description: '节点输出默认值或静态值',
+      ...JsonValueOpenApiMeta
+    }),
 
   label: z.string().optional().meta({
     description: '节点输出展示名称'
@@ -373,9 +389,13 @@ export const FlowNodeOutputItemTypeSchema = z.object({
   description: z.string().optional().meta({
     description: '节点输出说明'
   }),
-  defaultValue: z.any().optional().meta({
-    description: '节点输出默认值'
-  }),
+  defaultValue: z
+    .any()
+    .optional()
+    .meta({
+      description: '节点输出默认值',
+      ...JsonValueOpenApiMeta
+    }),
   required: BoolSchema.optional().meta({
     description: '该输出是否为必需输出'
   }),
@@ -389,7 +409,7 @@ export const FlowNodeOutputItemTypeSchema = z.object({
         z.object({
           inputs: z.custom<FlowNodeInputItemType[]>(),
           llmModelMap:
-            z.custom<Record<string, Pick<LLMSystemModelDataType, 'model' | 'modelId' | 'config'>>>()
+            z.custom<Record<string, Pick<LLMModelDataType, 'model' | 'modelId' | 'config'>>>()
         })
       ]),
       output: BoolSchema
@@ -429,3 +449,12 @@ export const HttpParamAndHeaderItemTypeSchema = z.object({
   value: z.string()
 });
 export type HttpParamAndHeaderItemType = z.infer<typeof HttpParamAndHeaderItemTypeSchema>;
+
+export type EditorVariablePickerType = {
+  key: string;
+  label: string;
+  required?: boolean;
+  icon?: string;
+  valueType?: WorkflowIOValueTypeEnum;
+  valueDesc?: string;
+};

@@ -1,22 +1,24 @@
-import { type ChannelInfoType } from '@/global/aiproxy/type';
+import type { CreateChannelResponse } from '@fastgpt/global/openapi/core/ai/model/channel/api';
+import { type ChannelInfoType } from '@fastgpt/global/core/ai/model/channel';
 import { Box, type BoxProps, Button, Flex, Input, HStack } from '@chakra-ui/react';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useMemo } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
-import { getChannelProviders, postCreateChannel, putChannel } from '@/web/core/ai/channel';
+import { getChannelProviders, postCreateChannel, putChannel } from '@/web/core/ai/model/channel';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
+import { useModelConfig } from '@/web/core/ai/model/useModelConfig';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { useLockFn } from 'ahooks';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 
 const LabelStyles: BoxProps = {
   fontSize: 'sm',
@@ -35,6 +37,7 @@ const EditChannelModal = ({
   fixedModel,
   fixedModels,
   allowEmptyModels = false,
+  channelType,
   onClose,
   onSuccess
 }: {
@@ -42,22 +45,23 @@ const EditChannelModal = ({
   fixedModel?: { model: string; avatar?: string };
   fixedModels?: { model: string; avatar?: string }[];
   allowEmptyModels?: boolean;
+  channelType: ChannelType;
   onClose: () => void;
-  onSuccess: (createdChannelId?: number) => unknown | Promise<unknown>;
+  onSuccess: (createdChannelData?: CreateChannelResponse) => unknown | Promise<unknown>;
 }) => {
-  const { t, i18n } = useClientTranslation('config_model');
+  const { t, i18n } = useSafeTranslation();
   const {
-    aiproxyChannels,
     getModelProvider,
-    systemModelList,
+    models: availableModels,
     loading: loadingModels
-  } = useAdminModelConfig();
+  } = useModelConfig({ channelType, language: i18n.language });
   const isEdit = defaultConfig.id !== 0;
   const currentModels = fixedModels ?? (fixedModel ? [fixedModel] : []);
   const isCompactCreate = !isEdit && currentModels.length > 0;
 
-  const { register, handleSubmit, control, setValue } = useForm({
-    defaultValues: defaultConfig
+  const { configs: _configs, ...formDefaults } = defaultConfig;
+  const { register, handleSubmit, control, setValue } = useForm<Omit<ChannelInfoType, 'configs'>>({
+    defaultValues: formDefaults
   });
 
   const providerType = useWatch({ control, name: 'type' });
@@ -67,24 +71,31 @@ const EditChannelModal = ({
   );
   const providerList = useMemo(
     () =>
-      aiproxyChannels.flatMap((channel) => {
-        const mapData = channelProviderMetas[channel.channelId];
-        if (!mapData) return [];
+      Object.entries(channelProviderMetas)
+        .sort(
+          ([, a], [, b]) =>
+            (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER)
+        )
+        .flatMap(([channelId, mapData]) => {
+          if (!mapData.canCreate) return [];
 
-        return [
-          {
-            defaultBaseUrl: mapData.defaultBaseUrl,
-            keyHelp: mapData.keyHelp,
-            icon: channel.avatar,
-            label: parseI18nString(channel.name, i18n.language as localeType),
-            value: channel.channelId
-          }
-        ];
-      }),
-    [aiproxyChannels, channelProviderMetas, i18n.language]
+          return [
+            {
+              defaultBaseUrl: mapData.defaultBaseUrl,
+              keyHelp: mapData.keyHelp,
+              icon: mapData.avatar,
+              label: parseI18nString(
+                mapData.displayName ?? mapData.name,
+                i18n.language as localeType
+              ),
+              value: Number(channelId)
+            }
+          ];
+        }),
+    [channelProviderMetas, i18n.language]
   );
 
-  const selectedChannel = aiproxyChannels.find((channel) => channel.channelId === providerType);
+  const selectedChannel = channelProviderMetas[providerType];
   const selectedProvider = useMemo(() => {
     const res = providerList.find((item) => item.value === providerType);
     return res;
@@ -92,7 +103,7 @@ const EditChannelModal = ({
 
   const models = useWatch({ control, name: 'models' });
   const modelList = useMemo(() => {
-    return systemModelList.map((item) => {
+    return availableModels.map((item: any) => {
       const provider = getModelProvider(item.provider, i18n.language);
 
       return {
@@ -102,7 +113,7 @@ const EditChannelModal = ({
         searchText: item.model
       };
     });
-  }, [getModelProvider, i18n.language, systemModelList]);
+  }, [getModelProvider, i18n.language, availableModels]);
 
   const modelMapping = useWatch({ control, name: 'model_mapping' });
   const { runAsync: submitRequest, loading: loadingCreate } = useRequest(
@@ -111,17 +122,22 @@ const EditChannelModal = ({
         return Promise.reject(t('config_model:selected_model_empty'));
       }
       if (isEdit) {
-        await putChannel(data);
+        await putChannel({
+          ...data,
+          status: data.status === 1 || data.status === 2 ? data.status : undefined,
+          channelType
+        });
         await onSuccess();
         return;
       }
 
       const createdChannel = await postCreateChannel({
         ...data,
+        status: data.status === 1 || data.status === 2 ? data.status : undefined,
+        channelType,
         model_mapping: data.model_mapping ?? {}
       });
-      await onSuccess(createdChannel.id);
-      return createdChannel;
+      await onSuccess(createdChannel);
     },
     {
       onSuccess() {

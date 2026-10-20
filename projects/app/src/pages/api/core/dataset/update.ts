@@ -1,35 +1,34 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import type { ApiRequestProps } from '@fastgpt/next/type';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
   UpdateDatasetBodySchema,
   type UpdateDatasetBody
 } from '@fastgpt/global/openapi/core/dataset/api';
-import { DatasetTypeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { type ClientSession } from 'mongoose';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import { delDatasetRelevantData } from '@fastgpt/service/core/dataset/controller';
 import {
   removeDatasetSyncJobScheduler,
   upsertDatasetSyncJobScheduler
 } from '@fastgpt/service/core/dataset/datasetSync';
-import { delDatasetRelevantData } from '@fastgpt/service/core/dataset/controller';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { assertAuthModels } from '@fastgpt/service/support/permission/model/auth';
+import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { isEqual } from 'lodash-es';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { type ClientSession } from 'mongoose';
 
+import { moveDataset } from '@/service/core/dataset/move';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/training/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
-import { moveDataset } from '@/service/core/dataset/move';
 
 /**
  * 更新知识库接口
@@ -92,7 +91,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   }
 
   // 2. 基础属性更新
-  const { dataset, permission, tmbId, teamId } = await authDataset({
+  const { dataset, permission, tmbId, teamId, isRoot } = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
@@ -104,36 +103,47 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     return Promise.reject(DatasetErrEnum.unAuthDataset);
   }
 
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getTeamModelHandle({ teamId });
   const chunkSettings = rawChunkSettings
     ? computedCollectionChunkSettings({
         ...rawChunkSettings,
-        llmModel: modelHandle.getLLMModelData({
-          modelId: dataset.agentModelId,
-          model: dataset.agentModel
-        }),
-        vectorModel: modelHandle.getEmbeddingModelData({
-          modelId: dataset.vectorModelId,
-          model: dataset.vectorModel
-        })
+        llmModel: modelHandle.getModelData(
+          {
+            modelId: dataset.agentModelId,
+            model: dataset.agentModel
+          },
+          { type: 'llm' }
+        ),
+        vectorModel: modelHandle.getModelData(
+          {
+            modelId: dataset.vectorModelId,
+            model: dataset.vectorModel
+          },
+          { type: 'embedding' }
+        )
       })
     : undefined;
 
-  const agentModelData = modelHandle.getLLMModelData(
+  const agentModelData = modelHandle.getModelData(
     { modelId: agentModelId, model: agentModel },
-    { optional: true }
+    { type: 'llm', optional: true }
   );
   // 新 ID（包括显式清空）优先，只有未传 ID 才兼容旧名称。
   const vlmReference = vlmModelId !== undefined ? { modelId: vlmModelId } : { model: vlmModel };
   const vlmValue = vlmModelId !== undefined ? vlmModelId : vlmModel;
   // undefined 表示不修改；显式 null/空字符串才是清空请求。
   const clearVlmModel = vlmValue !== undefined && isEmptyModelValue(vlmValue);
-  const vlmModelData = modelHandle.getVlmModelData(vlmReference, { optional: true });
-
-  updateTraining({
-    teamId: dataset.teamId,
-    datasetId: id,
-    shouldReset: !!agentModelData
+  const vlmModelData = modelHandle.getModelData(vlmReference, {
+    type: 'llm',
+    vision: true,
+    optional: true
+  });
+  const selectedModels = [agentModelData, vlmModelData].filter((model) => model !== undefined);
+  await assertAuthModels({
+    actor: { teamId, tmbId, isRoot },
+    modelIds: selectedModels.map((model) => model.modelId),
+    action: 'use',
+    handle: modelHandle
   });
 
   const onUpdate = async (session: ClientSession) => {
@@ -235,32 +245,6 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   });
 }
 export default NextAPI(handler);
-
-const updateTraining = async ({
-  teamId,
-  datasetId,
-  shouldReset
-}: {
-  teamId: string;
-  datasetId: string;
-  shouldReset: boolean;
-}) => {
-  if (!shouldReset) return;
-
-  await MongoDatasetTraining.updateMany(
-    {
-      teamId,
-      datasetId,
-      mode: { $in: [TrainingModeEnum.qa, TrainingModeEnum.auto] }
-    },
-    {
-      $set: {
-        retryCount: 5,
-        lockTime: new Date('2000/1/1')
-      }
-    }
-  );
-};
 
 const updateSyncSchedule = async ({
   dataset,

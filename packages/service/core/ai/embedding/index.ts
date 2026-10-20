@@ -1,5 +1,6 @@
-import { type EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
-import { getAIApi } from '../config';
+import { type EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { getAIApi, getModelOpenAIOptions } from '../config';
+import { normalizeRelayNoChannelError } from '../../../thirdProvider/aiproxy/error';
 import { countPromptTokens, countPromptTokensBatch } from '../../../common/string/tiktoken/index';
 import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -10,9 +11,12 @@ import { truncateTextByFormattedTokenLimit } from './tokenLimit';
 const logger = getLogger(LogCategories.MODULE.AI.EMBEDDING);
 
 type GetVectorsBaseProps = {
-  model: EmbeddingSystemModelDataType;
+  model: EmbeddingModelDataType;
   type?: `${EmbeddingTypeEnm}`;
   headers?: Record<string, string>;
+  timeoutMs?: number;
+  signal?: AbortSignal;
+  onRequestStart?: () => void;
 };
 
 const InputItemSchema = z.object({
@@ -43,7 +47,15 @@ const countInputTokens = async (input: GetVectorInputItem) => {
   return countPromptTokens(input.input);
 };
 
-export async function getVectors({ model, inputs: rawInputs, type, headers }: GetVectorsProps) {
+export async function getVectors({
+  model,
+  inputs: rawInputs,
+  type,
+  headers,
+  timeoutMs,
+  signal,
+  onRequestStart
+}: GetVectorsProps) {
   const validatedInputs = z
     .array(InputItemSchema)
     .parse(rawInputs)
@@ -88,7 +100,9 @@ export async function getVectors({ model, inputs: rawInputs, type, headers }: Ge
     });
   }
 
-  const { ai } = getAIApi();
+  const { ai, requestMeta } = getAIApi(
+    timeoutMs === undefined ? undefined : { timeout: timeoutMs }
+  );
 
   let chunkSize = Number(model.config.batchSize || 1);
   chunkSize = isNaN(chunkSize) ? 1 : chunkSize;
@@ -107,69 +121,71 @@ export async function getVectors({ model, inputs: rawInputs, type, headers }: Ge
       const requestInput = chunk.map(getRequestInput);
       const inputTypes = Array.from(new Set(chunk.map((item) => item.type)));
 
-      const result = await retryFn(() =>
-        ai.embeddings
-          .create(
-            {
-              model: model.model,
-              input: requestInput,
-              encoding_format: 'float',
-              ...model.config.defaultConfig,
-              ...(type === EmbeddingTypeEnm.db && model.config.dbConfig),
-              ...(type === EmbeddingTypeEnm.query && model.config.queryConfig)
-            } as any,
-            model.requestUrl
-              ? {
-                  path: model.requestUrl,
-                  headers: {
-                    ...(model.requestAuth ? { Authorization: `Bearer ${model.requestAuth}` } : {}),
-                    ...headers
-                  }
-                }
-              : { headers }
-          )
-          .then(async (res) => {
-            if (!res.data) {
-              logger.error('Embedding API returned empty data', {
+      onRequestStart?.();
+      const result = await retryFn(
+        () =>
+          ai.embeddings
+            .create(
+              {
                 model: model.model,
-                inputTypes,
-                inputCount: chunk.length,
-                response: res
-              });
-              return Promise.reject('Embedding API is not responding');
-            }
-            if (!res?.data?.[0]?.embedding) {
-              // @ts-expect-error provider error payload is not part of the embedding response type
-              const msg = res.data?.err?.message || '';
-              logger.error('Embedding API returned invalid embedding', {
-                model: model.model,
-                inputTypes,
-                inputCount: chunk.length,
-                response: res,
-                apiMessage: msg
-              });
-              return Promise.reject('Embedding API is not responding');
-            }
+                input: requestInput,
+                encoding_format: 'float',
+                ...model.config.defaultConfig,
+                ...(type === EmbeddingTypeEnm.db && model.config.dbConfig),
+                ...(type === EmbeddingTypeEnm.query && model.config.queryConfig)
+              } as any,
+              getModelOpenAIOptions({
+                model,
+                baseUrl: requestMeta?.baseUrl,
+                headers,
+                signal,
+                maxRetries: timeoutMs === undefined ? undefined : 0,
+                omitEmptyHeaders: true
+              })
+            )
+            .then(async (res) => {
+              if (!res.data) {
+                logger.error('Embedding API returned empty data', {
+                  model: model.model,
+                  inputTypes,
+                  inputCount: chunk.length,
+                  response: res
+                });
+                return Promise.reject('Embedding API is not responding');
+              }
+              if (!res?.data?.[0]?.embedding) {
+                // @ts-expect-error provider error payload is not part of the embedding response type
+                const msg = res.data?.err?.message || '';
+                logger.error('Embedding API returned invalid embedding', {
+                  model: model.model,
+                  inputTypes,
+                  inputCount: chunk.length,
+                  response: res,
+                  apiMessage: msg
+                });
+                return Promise.reject('Embedding API is not responding');
+              }
 
-            const [tokens, vectors] = await Promise.all([
-              (async () => {
-                if (res.usage) return res.usage.total_tokens;
+              const [tokens, vectors] = await Promise.all([
+                (async () => {
+                  if (res.usage) return res.usage.total_tokens;
 
-                const tokens = await Promise.all(chunk.map(countInputTokens));
-                return tokens.reduce((sum, item) => sum + item, 0);
-              })(),
-              Promise.all(
-                res.data.map((item) =>
-                  formatVectors(decodeEmbedding(item.embedding), model.config.normalization)
+                  const tokens = await Promise.all(chunk.map(countInputTokens));
+                  return tokens.reduce((sum, item) => sum + item, 0);
+                })(),
+                Promise.all(
+                  res.data.map((item) =>
+                    formatVectors(decodeEmbedding(item.embedding), model.config.normalization)
+                  )
                 )
-              )
-            ]);
+              ]);
 
-            return {
-              tokens,
-              vectors
-            };
-          })
+              return {
+                tokens,
+                vectors
+              };
+            }),
+        timeoutMs === undefined ? 3 : 0
       );
 
       totalTokens += result.tokens;
@@ -188,7 +204,7 @@ export async function getVectors({ model, inputs: rawInputs, type, headers }: Ge
       error
     });
 
-    return Promise.reject(error);
+    return Promise.reject(normalizeRelayNoChannelError(error));
   }
 }
 

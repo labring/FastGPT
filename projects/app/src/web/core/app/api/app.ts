@@ -1,7 +1,9 @@
+import type { ReferencedAppsResponse } from '@fastgpt/global/core/app/type';
 import { GET, POST } from '@/web/common/api/request';
 import type {
   CopyAppBodyType,
   CopyAppResponseType,
+  GetReferencedAppsQuery,
   TransitionWorkflowBodyType,
   TransitionWorkflowResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
@@ -28,3 +30,7 @@ export const postTransition2Workflow = (data: TransitionWorkflowBodyType) =>
 
 export const postCopyApp = (data: CopyAppBodyType) =>
   POST<CopyAppResponseType>('/core/app/copy', data);
+
+/* referenced apps */
+export const getReferencedApps = (params: GetReferencedAppsQuery) =>
+  GET<ReferencedAppsResponse>('/core/app/referencedApps', params);

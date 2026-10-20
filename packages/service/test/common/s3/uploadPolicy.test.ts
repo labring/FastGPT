@@ -54,6 +54,15 @@ describe('createUploadPolicy', () => {
       fallbackExtension: '.dat'
     });
   });
+
+  it('rejects Office lock filenames at presign', () => {
+    expect(() =>
+      createUploadPolicy({
+        hint: { filename: '~$report.docx' },
+        uploadConstraints: { allowedExtensions: ['.docx'] }
+      })
+    ).toThrow('InvalidUploadFileType');
+  });
 });
 
 describe('getUploadInspectBytes', () => {

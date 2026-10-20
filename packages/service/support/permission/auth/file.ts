@@ -24,7 +24,7 @@ export const authDatasetFileKey = async ({
 }): Promise<AuthResponseType> => {
   const parsedKey = parseDatasetFileS3Key(fileId);
   if (!parsedKey) {
-    return Promise.reject('Invalid dataset file key');
+    return Promise.reject(CommonErrEnum.unAuthFileKey);
   }
 
   // 先按 key 内的 datasetId 做权限校验，再检查对象是否存在，避免用存在性绕过团队边界。

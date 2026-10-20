@@ -3,7 +3,7 @@ import { Description } from './FormLabel';
 
 function SecondTitle({ title, description }: { title: string; description?: string }) {
   return (
-    <Flex id={title} px={6} pt={[6, 8]} pb={2} alignItems={'center'}>
+    <Flex id={title} data-setting-title-level={2} alignItems={'center'} pb={3}>
       <Box color={'myGray.900'} fontSize={'lg'} fontWeight={'bold'} mr={2}>
         {title}
       </Box>
@@ -11,5 +11,7 @@ function SecondTitle({ title, description }: { title: string; description?: stri
     </Flex>
   );
 }
+
+(SecondTitle as typeof SecondTitle & { settingTitleLevel: 2 }).settingTitleLevel = 2;
 
 export default SecondTitle;

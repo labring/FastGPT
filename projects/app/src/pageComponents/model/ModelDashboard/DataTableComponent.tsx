@@ -1,22 +1,22 @@
 import React, { useMemo, useState } from 'react';
 import { Table, Thead, Tbody, Tr, Th, Td, Button } from '@chakra-ui/react';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import type { DashboardDataItemType } from '@/global/aiproxy/type';
+import type { ChannelDashboardSummary } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { calculateModelPrice } from '@fastgpt/global/core/ai/pricing';
-import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model.schema';
+import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
+import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model/schema';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 
-export type DashboardDataEntry = {
+type DashboardDataEntry = {
   timestamp: number;
-  summary: DashboardDataItemType[];
+  summary: ChannelDashboardSummary[];
 };
 
-export type DataTableComponentProps = {
+type DataTableComponentProps = {
   data: DashboardDataEntry[];
   filterProps: {
     channelId?: string;
@@ -49,7 +49,7 @@ const DataTableComponent = ({
   modelPriceMap,
   isLLMModel
 }: DataTableComponentProps) => {
-  const { t } = useClientTranslation('config_model');
+  const { t } = useSafeTranslation();
   const { feConfigs } = useSystemStore();
   const showBilling = !!feConfigs?.isPlus;
   const [sortField, setSortField] = useState<SortFieldType>('totalCalls');
@@ -114,7 +114,7 @@ const DataTableComponent = ({
       data.forEach((dayData) => {
         const summary = dayData.summary;
 
-        summary.forEach((item: DashboardDataItemType) => {
+        summary.forEach((item: ChannelDashboardSummary) => {
           const channelId = `${item.channel_id!}`;
           const existing = channelMap.get(channelId) || {
             model: item.model || '-',
@@ -187,7 +187,7 @@ const DataTableComponent = ({
       data.forEach((dayData) => {
         const summary = dayData.summary;
 
-        summary.forEach((item: DashboardDataItemType) => {
+        summary.forEach((item: ChannelDashboardSummary) => {
           const modelName = item.model || '-';
           const existing = modelMap.get(modelName) || {
             totalCalls: 0,
@@ -280,7 +280,6 @@ const DataTableComponent = ({
   return (
     <MyBox h={'100%'} minH={0} display="flex" flexDirection="column" overflow="hidden">
       <FixedTableLayout
-        horizontalScroll
         scrollMode="normal"
         bodyProps={{ fontSize: 'sm' }}
         renderHeader={({ headerTableWidth }) => (

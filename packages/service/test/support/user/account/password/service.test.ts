@@ -1,11 +1,27 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
 import {
   PASSWORD_CHANGE_SESSION_TTL_SECONDS,
-  updatePasswordWithChangeSession,
-  createPasswordChangeSession
+  assertUserPasswordAvailable,
+  createPasswordChangeSession,
+  getUserPasswordAvailability,
+  isSsoPasswordDisabled,
+  isSsoUserByUsername,
+  updatePasswordWithChangeSession
 } from '@fastgpt/service/support/user/account/password/service';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+
+/** 分别配置真实 SSO 服务与公开密码策略，其余字段沿用运行时已有配置。 */
+const setSsoPasswordPolicy = (enabled: boolean) => {
+  global.systemEnv = { ...global.systemEnv, sso: { url: 'https://sso.example.com' } };
+  global.feConfigs = {
+    ...global.feConfigs,
+    limit: global.feConfigs?.limit ?? { uploadFileMaxAmount: 10, uploadFileMaxSize: 10 },
+    sso: {
+      disablePasswordForSsoUsers: enabled
+    }
+  };
+};
 
 describe('password change session service', () => {
   it('creates a short-lived session bound to the user and login session', async () => {
@@ -32,5 +48,56 @@ describe('password change session service', () => {
         newPassword: 'new'
       })
     ).rejects.toThrow(UserErrEnum.passwordChangeAuthorizationInvalid);
+  });
+});
+
+describe('SSO password policy', () => {
+  let originalFeConfigs: typeof global.feConfigs;
+  let originalSystemEnv: typeof global.systemEnv;
+  beforeEach(() => {
+    // 全局配置由 beforeAll 初始化，不能在模块导入时保存未初始化的值。
+    originalFeConfigs = global.feConfigs;
+    originalSystemEnv = global.systemEnv;
+    setSsoPasswordPolicy(false);
+  });
+  afterEach(() => {
+    global.feConfigs = originalFeConfigs;
+    global.systemEnv = originalSystemEnv;
+  });
+
+  it('only disables password for dynamically classified SSO users when the policy is enabled', () => {
+    setSsoPasswordPolicy(true);
+
+    expect(isSsoPasswordDisabled()).toBe(true);
+    expect(isSsoUserByUsername('tenant-user')).toBe(true);
+    expect(getUserPasswordAvailability('tenant-user')).toBe(false);
+    expect(() => assertUserPasswordAvailable('tenant-user')).toThrow(
+      UserErrEnum.ssoPasswordUnavailable
+    );
+  });
+
+  it.each([
+    'local',
+    'user-name@example-domain.com',
+    'wechat-openid',
+    'git-octocat',
+    'google-sub',
+    'microsoft-id',
+    'wecom-id'
+  ])('keeps password available for non-SSO account %s', (username) => {
+    setSsoPasswordPolicy(true);
+    expect(getUserPasswordAvailability(username)).toBe(true);
+  });
+
+  it('restores password availability when the switch is disabled or SSO is not configured', () => {
+    expect(getUserPasswordAvailability('tenant-user')).toBe(true);
+
+    global.feConfigs.sso = {
+      enabled: true,
+      disablePasswordForSsoUsers: true
+    };
+    global.systemEnv.sso = undefined;
+    expect(isSsoPasswordDisabled()).toBe(false);
+    expect(getUserPasswordAvailability('tenant-user')).toBe(true);
   });
 });

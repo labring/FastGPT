@@ -3,7 +3,7 @@ import type {
   ChatCompletionMessageToolCall,
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
-import type { SandboxClient } from '../../../sandbox/interface/runtime';
+import type { SandboxClient } from '../../../sandbox/application/runtime/client';
 import type { AgentLoopDatasetSearchExecutor } from './systemTool/datasetSearch';
 import type { AgentLoopUsage } from './usage';
 
@@ -11,6 +11,21 @@ export type AgentLoopToolCatalog = {
   runtimeTools: ChatCompletionTool[];
   batchToolSize?: number;
 };
+
+/**
+ * 工具内部产生的可持久化 assistant 展示项。
+ *
+ * agent-loop 不解释这些字段，只负责沿工具执行结果和标准事件链路透传；
+ * workflow adapter 负责按顺序合并到最终 assistantResponses。
+ */
+/**
+ * Tool-generated assistant transcript kept opaque to the low-level agent loop.
+ *
+ * The workflow adapter owns the concrete chat value schema. Keeping this as an
+ * object contract avoids coupling the model loop to workflow/chat modules while
+ * still documenting that tool responses are structured assistant values.
+ */
+export type AgentLoopAssistantResponse = Record<string, unknown>;
 
 export type AgentLoopToolExecuteParams = {
   call: ChatCompletionMessageToolCall;
@@ -25,6 +40,8 @@ export type AgentLoopReadFileExecuteParams = {
 export type AgentLoopToolExecutionResult<TChildrenResponse = unknown> = {
   response: string;
   assistantMessages: ChatCompletionMessageParam[];
+  /** 工具内部产生的展示层 assistant responses，由上层 adapter 解释。 */
+  assistantResponses?: AgentLoopAssistantResponse[];
   usages: AgentLoopUsage[];
   interactive?: TChildrenResponse;
   stop?: boolean;

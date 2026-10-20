@@ -70,6 +70,16 @@ describe('app list filter helpers', () => {
         tmbIds: []
       }).tmbIds
     ).toEqual([]);
+    expect(
+      buildAppListRequest({
+        parentId: '',
+        type: AppTypeEnum.workflow,
+        searchKey: '',
+        offset: 0,
+        pageSize: 50,
+        withRelatedAppCount: true
+      }).withRelatedAppCount
+    ).toBe(true);
   });
 
   it('treats search, type and creator as active filters, but not sort', () => {

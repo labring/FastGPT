@@ -100,7 +100,7 @@ services:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
     networks:
-      - vector
+      - data
     volumes:
       - fastgpt-milvus-minio:/minio_data
     command: minio server /minio_data --console-address ":9001"
@@ -119,7 +119,7 @@ services:
       - ETCD_QUOTA_BACKEND_BYTES=4294967296
       - ETCD_SNAPSHOT_COUNT=50000
     networks:
-      - vector
+      - data
     volumes:
       - fastgpt-milvus-etcd:/etcd
     command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
@@ -237,7 +237,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.17.0
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.17.2
     ports:
       - 3000:3000
     networks:
@@ -381,7 +381,7 @@ services:
       timeout: 20s
       retries: 3
   fastgpt-plugin:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v1.1.3
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v1.1.4
     container_name: fastgpt-plugin
     restart: always
     networks:
@@ -493,7 +493,7 @@ services:
 
   # AI Proxy
   fastgpt-aiproxy:
-    image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.6.5
+    image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.7.3
     container_name: fastgpt-aiproxy
     restart: unless-stopped
     depends_on:
@@ -560,7 +560,6 @@ volumes:
   fastgpt-ob-data:
   fastgpt-ob-config:
   fastgpt-seekdb-data:
-  fastgpt-seekdb-config:
   fastgpt-aiproxy_pg:
 
 configs:

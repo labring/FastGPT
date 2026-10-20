@@ -4,10 +4,10 @@ import type {
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { CreateLLMResponseProps } from '../../../../request';
-import type { SandboxClient } from '../../../../../sandbox/interface/runtime';
+import type { SandboxClient } from '../../../../../sandbox/application/runtime/client';
 import type { AgentLoopToolCatalog } from '../tools';
 import type { AgentLoopDatasetSearchExecutor } from '../../../domain/systemTool/datasetSearch';
 import type {
@@ -32,7 +32,7 @@ export type {
 
 export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   teamId: string;
-  model: LLMSystemModelDataType;
+  model: LLMModelDataType;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   userKey?: CreateLLMResponseProps['userKey'];
   stream?: boolean;

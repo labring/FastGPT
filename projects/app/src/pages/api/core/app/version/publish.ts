@@ -1,30 +1,32 @@
-import { NextAPI } from '@/service/middleware/entry';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
-import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { type PostPublishAppProps } from '@/global/core/app/api';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { type ApiRequestProps } from '@fastgpt/next/type';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { extractAppResources } from '@fastgpt/service/core/app/resources';
-import { resolveAppResourcesByPermission } from '@fastgpt/service/support/permission/app/resource';
-import { formatModels } from '@fastgpt/global/core/workflow/utils';
+import { NextAPI } from '@/service/middleware/entry';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { formatModels } from '@fastgpt/global/common/workflow/model';
 import {
   PublishAppBodySchema,
   PublishAppQuerySchema,
   PublishAppResponseSchema
 } from '@fastgpt/global/openapi/core/app/version/api';
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { type ApiRequestProps } from '@fastgpt/next/type';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import {
+  beforeUpdateAppFormat,
+  updateParentFoldersUpdateTime
+} from '@fastgpt/service/core/app/controller';
+import { extractAppResources } from '@fastgpt/service/core/app/resource/utils';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
+import { resolveAppResourcesByPermission } from '@fastgpt/service/core/app/resource/service';
+import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 
 async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   const {
@@ -44,12 +46,16 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   });
 
   const normalizedWorkflow = migrateWorkflowToCurrent({ nodes, edges, chatConfig });
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getTeamModelHandle({ teamId });
+  const authorizedIds = await getAuthorizedModelIds({
+    actor: { teamId, tmbId, isRoot },
+    handle: modelHandle
+  });
   formatModels({
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig,
     models: modelHandle.getActiveModels(),
-    defaultModelIds: modelHandle.getSystemDefaultModelIds(),
+    defaultModelIds: modelHandle.getDefaultModelIds(authorizedIds),
     modelReferencePolicy: isPublish ? 'validate' : 'preserve'
   });
   await beforeUpdateAppFormat({
@@ -58,8 +64,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   });
   const extracted = extractAppResources({
     nodes: normalizedWorkflow.nodes,
-    chatConfig: normalizedWorkflow.chatConfig,
-    models: modelHandle.getAllModels()
+    chatConfig: normalizedWorkflow.chatConfig
   });
   if (autoSave) {
     await mongoSessionRun(async (session) => {
@@ -70,6 +75,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
         tmbId,
         isRoot,
         blockOnUnauthorized: false,
+        modelHandle,
         session
       });
       await MongoAppVersion.findOneAndUpdate(
@@ -127,6 +133,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       tmbId,
       isRoot,
       blockOnUnauthorized: !!isPublish,
+      modelHandle,
       session
     });
 

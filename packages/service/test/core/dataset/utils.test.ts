@@ -20,9 +20,9 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
-  EmbeddingSystemModelDataType,
-  LLMSystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+  EmbeddingModelDataType,
+  LLMModelDataType
+} from '@fastgpt/global/core/ai/model/schema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 const mockMongoDatasetCollectionTagsFind = vi.hoisted(() => vi.fn());
@@ -87,6 +87,64 @@ describe('matchDatasetDataMarkdownImageUrls', () => {
 
     expect(result).toEqual(['dataset/team/a.png', 'https://example.com/b.jpg']);
   });
+
+  it('应保留 URL 中未转义的括号，而不是在第一个 ) 处截断', () => {
+    const result = matchDatasetDataMarkdownImages(
+      '见图 ![img](https://cdn.example.com/img(1).png) 结束'
+    );
+
+    expect(result).toEqual([
+      {
+        raw: '![img](https://cdn.example.com/img(1).png)',
+        alt: 'img',
+        url: 'https://cdn.example.com/img(1).png',
+        index: 3
+      }
+    ]);
+  });
+
+  it('应保留 URL 中转义的右括号', () => {
+    const result = matchDatasetDataMarkdownImages(
+      String.raw`![img](https://cdn.example.com/a\).png)`
+    );
+
+    expect(result).toEqual([
+      {
+        raw: String.raw`![img](https://cdn.example.com/a\).png)`,
+        alt: 'img',
+        url: 'https://cdn.example.com/a).png',
+        index: 0
+      }
+    ]);
+  });
+
+  it('应保留标题和尖括号目的地址，且 URL 使用反转义后的值', () => {
+    const result = matchDatasetDataMarkdownImages(
+      String.raw`![img](<https://cdn.example.com/a\>.png> "caption")`
+    );
+
+    expect(result).toEqual([
+      {
+        raw: String.raw`![img](<https://cdn.example.com/a\>.png> "caption")`,
+        alt: 'img',
+        url: 'https://cdn.example.com/a>.png',
+        index: 0
+      }
+    ]);
+  });
+
+  it('应过滤空 URL 并对图片 URL 进行 trim 处理', () => {
+    const result = matchDatasetDataMarkdownImages('![empty]() ![space](  dataset/team/cat.png  )');
+
+    expect(result).toEqual([
+      {
+        raw: '![space](  dataset/team/cat.png  )',
+        alt: 'space',
+        url: 'dataset/team/cat.png',
+        index: 11
+      }
+    ]);
+  });
 });
 
 describe('getDatasetImageTrainingMode', () => {
@@ -118,7 +176,7 @@ describe('getDatasetImageTrainingMode', () => {
         supportImageIndex: false,
         hasMarkdownImages: true
       })
-    ).toBe(TrainingModeEnum.chunk);
+    ).toBe(TrainingModeEnum.index);
   });
 });
 
@@ -145,12 +203,12 @@ describe('getTrainingModeByCollection', () => {
         imageIndex: true,
         supportImageIndex: false
       })
-    ).toBe(TrainingModeEnum.chunk);
+    ).toBe(TrainingModeEnum.index);
   });
 });
 
 describe('getDatasetImageIndexCapability', () => {
-  const visionEmbeddingModel: EmbeddingSystemModelDataType = {
+  const visionEmbeddingModel: EmbeddingModelDataType = {
     modelId: '507f1f77bcf86cd799439011',
     provider: 'test',
     model: 'vision-embedding-model',
@@ -165,7 +223,7 @@ describe('getDatasetImageIndexCapability', () => {
       vision: true
     }
   };
-  const datasetVlmModel: LLMSystemModelDataType = {
+  const datasetVlmModel: LLMModelDataType = {
     modelId: '507f1f77bcf86cd799439012',
     provider: 'test',
     model: 'dataset-vlm-model',

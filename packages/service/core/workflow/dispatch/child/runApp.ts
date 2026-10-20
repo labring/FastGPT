@@ -9,15 +9,15 @@ import {
   rewriteNodeOutputByHistories,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getNodeErrResponse, getHistories } from '../utils';
 import { getWorkflowFileVariableInputs, WorkflowVariableState } from '../utils/variables';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { parseUrlToFileType, runWithDerivedWorkflowFileContext } from '../../utils/context';
-import { loadChildWorkflowWithResource } from '../../utils/resource';
+import { prepareWorkflowFiles, runWithDerivedWorkflowFileContext } from '../../utils/context';
+import { loadChildWorkflowWithResource } from '../../resource/service';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getWorkflowRuntimeSummary } from '../utils/summary';
 
@@ -53,17 +53,20 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   } = params;
   const { files } = chatValue2RuntimePrompt(query);
 
-  const userInputFiles = (() => {
+  const childrenInteractive =
+    lastInteractive?.type === 'childrenInteractive'
+      ? lastInteractive.params.childrenResponse
+      : undefined;
+
+  const userInputFiles = await (async () => {
     if (fileUrlList) {
-      return fileUrlList
-        .map((url) => parseUrlToFileType(url))
-        .filter((file): file is NonNullable<typeof file> => Boolean(file));
+      return prepareWorkflowFiles({ files: fileUrlList.map((url) => ({ url })) });
     }
     // Adapt version 4.8.13 upgrade
     return files;
   })();
 
-  if (!userChatInput && userInputFiles.length === 0) {
+  if (!childrenInteractive && !userChatInput && userInputFiles.length === 0) {
     return getNodeErrResponse({ error: 'Input is empty' });
   }
   if (!appId) {
@@ -87,10 +90,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
 
     const chatHistories = getHistories(history, histories);
 
-    const childrenInteractive =
-      lastInteractive?.type === 'childrenInteractive'
-        ? lastInteractive.params.childrenResponse
-        : undefined;
     const runtimeNodes = rewriteNodeOutputByHistories(
       storeNodes2RuntimeNodes(
         nodes,
@@ -178,16 +177,20 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       }
     });
 
-    const completeMessages = filteredChildHistories.concat([
-      {
-        obj: ChatRoleEnum.Human,
-        value: filteredChildQuery
-      },
+    const completeMessages = filteredChildHistories.concat(
+      childrenInteractive
+        ? []
+        : [
+            {
+              obj: ChatRoleEnum.Human,
+              value: filteredChildQuery
+            }
+          ],
       {
         obj: ChatRoleEnum.AI,
         value: assistantResponses
       }
-    ]);
+    );
 
     const { text } = chatValue2RuntimePrompt(assistantResponses);
 

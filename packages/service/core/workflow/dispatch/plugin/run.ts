@@ -11,7 +11,6 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-
 import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges,
@@ -40,7 +39,9 @@ import {
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
 import { getWorkflowRuntimeSummary } from '../utils/summary';
 import { runWithDerivedWorkflowFileContext } from '../../utils/context';
-import { loadChildWorkflowWithResource } from '../../utils/resource';
+import { createSystemToolResourceContext } from '../../resource/context';
+import { loadChildWorkflowWithResource } from '../../resource/service';
+import type { WorkflowResourceContext } from '@fastgpt/global/core/workflow/runtime/type';
 import { withWorkflowNodeResponseOutputPolicy } from '../nodeResponseSink';
 
 type RunPluginProps = ModuleDispatchProps<{
@@ -74,7 +75,8 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   }
 
   let workflowTool: AppToolRuntimeType | undefined;
-  let workflowToolResourceContext;
+  // 个人工具切换到自身 Version 快照，系统工具使用 trusted 上下文；两个分支都必须赋值。
+  let workflowToolResourceContext: WorkflowResourceContext;
 
   try {
     // Adapt <= 4.10 system tool
@@ -136,6 +138,11 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       const systemTool = await systemToolRepo.getSystemToolWorkflowRuntime({
         pluginId,
         version
+      });
+      // 系统工具由管理员发布：内部静态资源命中快照直接使用，未命中快照的动态引用按运行人鉴权。
+      workflowToolResourceContext = createSystemToolResourceContext({
+        nodes: systemTool.nodes,
+        chatConfig: systemTool.chatConfig
       });
 
       workflowTool = {
@@ -248,8 +255,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     } = await runWithDerivedWorkflowFileContext({
       histories: props.histories,
       files: childFileInputs,
-      // 系统/商业工作流不属于父 App 的资源快照；个人工作流才切换到自己的 Version 快照。
-      resourceContext: workflowToolResourceContext ?? null,
+      resourceContext: workflowToolResourceContext,
       fn: async ({ resolveInputFile, histories: childHistories, filterFiles }) => {
         const childRuntimeNodes = runtimeNodes.map((node) =>
           node.flowNodeType === FlowNodeTypeEnum.pluginInput

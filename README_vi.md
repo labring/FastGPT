@@ -122,6 +122,7 @@ Nếu bạn gặp vấn đề, bạn có thể [xem hướng dẫn triển khai 
 ## 🌿 Hệ Sinh Thái Bên Thứ Ba
 
 - [AI Proxy: Dịch Vụ Tổng Hợp Mô Hình Lớn](https://sealos.run/aiproxy/?k=fastgpt-github/)
+- [TokenDance - Cổng AI API Hợp Nhất](https://tokendance.space/)
 - [SiliconCloud - Nền Tảng Trải Nghiệm Mô Hình Nguồn Mở Trực Tuyến](https://cloud.siliconflow.cn/i/TR9Ym0c4)
 
 <a href="#readme">

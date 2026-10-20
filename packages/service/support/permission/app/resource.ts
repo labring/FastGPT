@@ -1,30 +1,25 @@
-import type { AppResource, AppResourcesType } from '@fastgpt/global/core/app/type';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+
+import type { AppResource } from '@fastgpt/global/core/app/type';
+import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
+
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { Types, type ClientSession } from '../../../common/mongo';
-import {
-  getAppResourceKey,
-  hasAppResource,
-  mergeAppResources,
-  splitExtractedAppResources
-} from '../../../core/app/resources';
-import {
-  getAppDraftResourceBaseline,
-  getAppLatestVersion
-} from '../../../core/app/version/controller';
-import { authDatasetByTmbId } from '../dataset/auth';
-import { authSkillByTmbId } from '../skill/auth';
+import { Types } from '../../../common/mongo';
+import type { ModelHandle } from '../../../core/ai/model/catalog/handle';
+import { getTeamModelHandle } from '../../../core/ai/model/catalog/service';
+import { getAppResourceKey, mergeAppResources } from '../../../core/app/resource/utils';
+
 import { getTmbInfoByTmbId } from '../../user/team/controller';
-import { getMemberModelIds } from '../model/controller';
+import { authDatasetByTmbId } from '../dataset/auth';
+import { authModels } from '../model/auth';
+import { authSkillByTmbId } from '../skill/auth';
 import { authAppByTmbId } from './auth';
-import { getModelHandle } from '../../../core/ai/model';
 
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 type UnauthorizedAppResource = {
   resource: AppResource;
@@ -65,16 +60,6 @@ export const isKnownUnauthorizedError = (error: unknown): boolean => {
   return KNOWN_UNAUTHORIZED_ERRORS.has(getErrorKey(error));
 };
 
-/** 判断是否属于已知明确的成员不存在或已离职错误。 */
-export const isKnownMemberNotExistError = (error: unknown): boolean => {
-  const key = getErrorKey(error);
-  return (
-    key === 'member not exist' ||
-    key === 'tmbId or userId is required' ||
-    key === 'Member not found'
-  );
-};
-
 /**
  * 返回当前成员不可读或不存在的资源。
  *
@@ -86,34 +71,46 @@ export const getUnauthorizedAppResources = async ({
   resources,
   tmbId,
   isRoot = false,
-  allowRootCrossTeam = false
+  allowRootCrossTeam = false,
+  modelHandle,
+  tmbInfo: passedTmbInfo
 }: {
   resources: AppResource[];
   tmbId: string;
   isRoot?: boolean;
   allowRootCrossTeam?: boolean;
+  /** 调用方已读取的同团队模型目录；不传时按成员所属团队读取。 */
+  modelHandle?: ModelHandle;
+  tmbInfo?: Pick<TeamTmbItemType, 'teamId' | 'permission'>;
 }) => {
   const normalizedResources = mergeAppResources(resources);
   const modelResources = normalizedResources.filter((resource) => resource.type === 'model');
+  let tmbInfoPromise:
+    | Promise<Pick<TeamTmbItemType, 'teamId' | 'permission'> | undefined>
+    | undefined = passedTmbInfo ? Promise.resolve(passedTmbInfo) : undefined;
+  const getTmbInfo = () => {
+    if (!tmbInfoPromise) {
+      tmbInfoPromise = getTmbInfoByTmbId({ tmbId });
+    }
+    return tmbInfoPromise;
+  };
+
   const modelCatalog = await (async () => {
     if (modelResources.length === 0) return;
-    const handle = await getModelHandle();
-    return {
-      snapshot: { models: handle.getAllModels(), revision: handle.revision },
-      activeModelIds: new Set(handle.getActiveModels().map((model) => model.modelId))
-    };
-  })();
-  const permittedModelIds = await (async () => {
-    if (modelResources.length === 0) return new Set<string>();
-
-    const { teamId, permission } = await getTmbInfoByTmbId({ tmbId });
-    const modelIds = await getMemberModelIds({
-      teamId,
-      tmbId,
-      isTeamOwner: permission.isOwner || (isRoot && allowRootCrossTeam),
-      catalogSnapshot: modelCatalog?.snapshot
+    const tmbInfo = await getTmbInfo();
+    if (!tmbInfo) return;
+    const { teamId, permission } = tmbInfo;
+    const handle = modelHandle ?? (await getTeamModelHandle({ teamId }));
+    const denied = await authModels({
+      actor: { teamId, tmbId, isRoot, teamPermission: permission },
+      modelIds: modelResources.map(({ id }) => id),
+      action: 'use',
+      handle
     });
-    return new Set(modelIds);
+    return {
+      activeModelIds: new Set(handle.getActiveModels().map((model) => model.modelId)),
+      deniedModelIds: new Set(denied)
+    };
   })();
   const rootAccess = isRoot && allowRootCrossTeam;
 
@@ -121,29 +118,44 @@ export const getUnauthorizedAppResources = async ({
     normalizedResources.map(async (resource): Promise<UnauthorizedAppResource | undefined> => {
       try {
         if (resource.type === 'agent' || resource.type === 'tool') {
+          if (!Types.ObjectId.isValid(resource.id)) {
+            return { resource, error: AppErrEnum.unExist };
+          }
+          const tmbInfo = await getTmbInfo();
           await authAppByTmbId({
             appId: resource.id,
             tmbId,
             per: ReadPermissionVal,
-            isRoot: rootAccess
+            isRoot: rootAccess,
+            ...(tmbInfo ? { tmbInfo } : {})
           });
           return;
         }
         if (resource.type === 'dataset') {
+          if (!Types.ObjectId.isValid(resource.id)) {
+            return { resource, error: DatasetErrEnum.unExist };
+          }
+          const tmbInfo = await getTmbInfo();
           await authDatasetByTmbId({
             datasetId: resource.id,
             tmbId,
             per: ReadPermissionVal,
-            isRoot: rootAccess
+            isRoot: rootAccess,
+            ...(tmbInfo ? { tmbInfo } : {})
           });
           return;
         }
         if (resource.type === 'skill') {
+          if (!Types.ObjectId.isValid(resource.id)) {
+            return { resource, error: SkillErrEnum.unExist };
+          }
+          const tmbInfo = await getTmbInfo();
           await authSkillByTmbId({
             skillId: resource.id,
             tmbId,
             per: ReadPermissionVal,
-            isRoot: rootAccess
+            isRoot: rootAccess,
+            ...(tmbInfo ? { tmbInfo } : {})
           });
           return;
         }
@@ -151,7 +163,7 @@ export const getUnauthorizedAppResources = async ({
         if (!modelCatalog?.activeModelIds.has(resource.id)) {
           return { resource, error: ModelErrEnum.unExist };
         }
-        if (!permittedModelIds.has(resource.id)) {
+        if (modelCatalog.deniedModelIds.has(resource.id)) {
           return { resource, error: ERROR_ENUM.unAuthModel };
         }
       } catch (error) {
@@ -184,12 +196,14 @@ export const filterAuthorizedAppResources = async ({
   resources,
   tmbId,
   isRoot = false,
-  allowRootCrossTeam = false
+  allowRootCrossTeam = false,
+  modelHandle
 }: {
   resources: AppResource[];
   tmbId: unknown;
   isRoot?: boolean;
   allowRootCrossTeam?: boolean;
+  modelHandle?: ModelHandle;
 }): Promise<AppResource[]> => {
   if (resources.length === 0) return [];
 
@@ -198,10 +212,15 @@ export const filterAuthorizedAppResources = async ({
     return [];
   }
 
+  let tmbInfo: Pick<TeamTmbItemType, 'teamId' | 'permission'> | undefined;
   try {
-    await getTmbInfoByTmbId({ tmbId: validTmbId });
+    tmbInfo = await getTmbInfoByTmbId({ tmbId: validTmbId });
   } catch (error) {
-    if (isKnownMemberNotExistError(error)) {
+    if (
+      ['member not exist', 'tmbId or userId is required', 'Member not found'].includes(
+        getErrorKey(error)
+      )
+    ) {
       return [];
     }
     throw error;
@@ -211,95 +230,12 @@ export const filterAuthorizedAppResources = async ({
     resources,
     tmbId: validTmbId,
     isRoot,
-    allowRootCrossTeam
+    allowRootCrossTeam,
+    modelHandle,
+    tmbInfo
   });
   if (unauthorized.length === 0) return resources;
 
   const unauthorizedKeys = new Set(unauthorized.map((item) => getAppResourceKey(item.resource)));
   return resources.filter((resource) => !unauthorizedKeys.has(getAppResourceKey(resource)));
-};
-
-/**
- * 按当前应用草稿快照解析资源，并只校验相对快照新增的 ACL 资源。
- * 保存/自动保存不阻断无权限新增；发布和 Test/Debug 通过 blockOnUnauthorized 阻断。
- */
-export const resolveAppResourcesByPermission = async ({
-  appId,
-  extracted,
-  tmbId,
-  isRoot = false,
-  blockOnUnauthorized,
-  allowRootCrossTeam = false,
-  session
-}: {
-  appId: string;
-  extracted: AppResource[];
-  tmbId: string;
-  isRoot?: boolean;
-  blockOnUnauthorized: boolean;
-  allowRootCrossTeam?: boolean;
-  session?: ClientSession;
-}) => {
-  const baseline = await getAppDraftResourceBaseline(
-    appId,
-    session,
-    async (rawResources, draftTmbId) => {
-      const authorTmbId = draftTmbId || tmbId;
-      if (!authorTmbId) return [];
-      return filterAuthorizedAppResources({
-        resources: rawResources,
-        tmbId: authorTmbId,
-        isRoot,
-        allowRootCrossTeam
-      });
-    }
-  );
-  const { kept, added } = splitExtractedAppResources({ extracted, baseline });
-  if (added.length === 0) return mergeAppResources(kept);
-
-  if (blockOnUnauthorized) {
-    await checkAppResourceReadPermissions({
-      resources: added,
-      tmbId,
-      isRoot,
-      allowRootCrossTeam
-    });
-    return mergeAppResources([...kept, ...added]);
-  }
-
-  const authorizedAdded = await filterAuthorizedAppResources({
-    resources: added,
-    tmbId,
-    isRoot,
-    allowRootCrossTeam
-  });
-  return mergeAppResources([...kept, ...authorizedAdded]);
-};
-
-/**
- * 校验独立辅助调用点（如问题引导、TTS 音频生成）使用的模型资源。
- * 目标为 App 时严格校验当前正式 Version 的资源快照；非 App 或动态场景按成员个人模型权限校验。
- */
-export const authTargetModelResource = async ({
-  targetType,
-  targetId,
-  modelId,
-  tmbId,
-  resources
-}: {
-  targetType: ChatSourceTypeEnum;
-  targetId?: string;
-  modelId: string;
-  tmbId: string;
-  resources?: AppResourcesType;
-}) => {
-  const modelResource = { type: 'model' as const, id: modelId };
-  if (targetType === ChatSourceTypeEnum.app && targetId) {
-    const snapshot = resources ?? (await getAppLatestVersion(targetId)).resources;
-    if (!hasAppResource({ resources: snapshot, resource: modelResource })) {
-      throw ERROR_ENUM.unAuthModel;
-    }
-    return;
-  }
-  await checkAppResourceReadPermissions({ resources: [modelResource], tmbId });
 };

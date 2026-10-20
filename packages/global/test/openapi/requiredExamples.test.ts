@@ -18,6 +18,7 @@ import { describe, expect, it } from 'vitest';
 import { createDocument } from 'zod-openapi';
 import z from 'zod';
 import { setRequiredRequestExamples } from '../../openapi/requiredExamples';
+import { openApiDocumentOptions } from '../../openapi/generation';
 import {
   createChatTargetInputSchema,
   createOutLinkChatTargetInputSchema,
@@ -26,18 +27,21 @@ import {
 
 /** 用真实 zod-openapi 输出验证示例处理，确保文档约束和响应不被修改。 */
 const build = (schema: z.ZodType) => {
-  const document = createDocument({
-    openapi: '3.1.0',
-    info: { title: 'test', version: '1' },
-    paths: {
-      '/test': {
-        post: {
-          requestBody: { content: { 'application/json': { schema } } },
-          responses: { '200': { description: 'ok' } }
+  const document = createDocument(
+    {
+      openapi: '3.1.0',
+      info: { title: 'test', version: '1' },
+      paths: {
+        '/test': {
+          post: {
+            requestBody: { content: { 'application/json': { schema } } },
+            responses: { '200': { description: 'ok' } }
+          }
         }
       }
-    }
-  });
+    },
+    openApiDocumentOptions
+  );
   const original = structuredClone(document);
   setRequiredRequestExamples(document);
   const body = document.paths!['/test']!.post!.requestBody;

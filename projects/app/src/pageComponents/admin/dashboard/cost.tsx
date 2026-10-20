@@ -1,18 +1,14 @@
 'use client';
 import React, { useMemo } from 'react';
-import { useRouter } from 'next/router';
 import { Box, useTheme } from '@chakra-ui/react';
-import { POST } from '@/web/admin/common/request';
-import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import type { GetCostFormDataResponseType } from '@fastgpt/global/openapi/admin/core/dashboard/api';
+import { getCostFormData } from '@/web/admin/dashboard/api';
 import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartComponent';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import DashboardHeader from '@/pageComponents/admin/dashboard/Header';
 import {
   formatList2ChartsData,
   getStartTime,
-  getDashboardFilters
+  useDashboardFilters
 } from '@/pageComponents/admin/dashboard/utils';
 
 const ChartsBoxStyles = {
@@ -26,22 +22,15 @@ const ChartsBoxStyles = {
 };
 
 export default function CostPage(): JSX.Element {
-  const router = useRouter();
   const theme = useTheme();
 
-  const { dateRange, granularity } = getDashboardFilters(router.query);
+  const { dateRange, granularity } = useDashboardFilters();
 
   const startTime = useMemo(() => getStartTime(dateRange), [dateRange]);
 
   const { data: costData, loading } = useRequest(
     async () => {
-      return await POST<GetCostFormDataResponseType>(
-        `/proApi/admin/core/dashboard/getCostFormData`,
-        {
-          startTime,
-          granularity
-        }
-      ).then((res) => ({
+      return await getCostFormData({ startTime, granularity }).then((res) => ({
         pointUsages: formatList2ChartsData(res.pointUsages, {
           defaultValues: {
             totalCount: 0
@@ -58,30 +47,27 @@ export default function CostPage(): JSX.Element {
   );
 
   return (
-    <BoxPageRoot>
-      <DashboardHeader />
-      <MyBox minH={'400px'} isLoading={loading}>
-        {costData && (
-          <>
-            <Box {...ChartsBoxStyles}>
-              <AreaChartComponent
-                data={costData.pointUsages}
-                title={'积分消耗'}
-                lines={[
-                  {
-                    dataKey: 'totalCount',
-                    name: '积分消耗',
-                    color: theme.colors.blue['500']
-                  }
-                ]}
-                tooltipItems={[
-                  { label: '积分消耗', dataKey: 'totalCount', color: theme.colors.blue['500'] }
-                ]}
-              />
-            </Box>
-          </>
-        )}
-      </MyBox>
-    </BoxPageRoot>
+    <MyBox minH={'400px'} isLoading={loading}>
+      {costData && (
+        <>
+          <Box {...ChartsBoxStyles}>
+            <AreaChartComponent
+              data={costData.pointUsages}
+              title={'积分消耗'}
+              lines={[
+                {
+                  dataKey: 'totalCount',
+                  name: '积分消耗',
+                  color: theme.colors.blue['500']
+                }
+              ]}
+              tooltipItems={[
+                { label: '积分消耗', dataKey: 'totalCount', color: theme.colors.blue['500'] }
+              ]}
+            />
+          </Box>
+        </>
+      )}
+    </MyBox>
   );
 }

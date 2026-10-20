@@ -21,6 +21,8 @@ import type {
 import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { normalizeHistoryTitle, upsertHistoryTitle } from './historyTitleUtils';
 import { toChatAuthApiTarget, type ChatSourceTarget } from '../utils';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { clearChatInputDrafts, removeChatInputDraft } from '../inputDraft/storage';
 
 type UpdateHistoryParams = Pick<UpdateHistoryBodyType, 'chatId' | 'customTitle' | 'top'>;
 
@@ -83,13 +85,15 @@ export const ChatContext = createContext<ChatContextType>({
 
 const ChatContextProvider = ({
   children,
-  params
-}: ChatContextValueType & { children: ReactNode }) => {
+  params,
+  disabled = false
+}: ChatContextValueType & { children: ReactNode; disabled?: boolean }) => {
   const router = useRouter();
 
   const forbidLoadChat = useRef(false);
   const { chatId, setChatId, outLinkAuthData } = useChatStore();
   const historyAppId = typeof params.appId === 'string' ? params.appId : '';
+  const tmbId = useUserStore((state) => state.userInfo?.team?.tmbId);
   const historySkillId = typeof params.skillId === 'string' ? params.skillId : '';
   const historyOutLinkAuthData = useMemo(() => {
     const paramsOutLinkAuthData =
@@ -155,8 +159,12 @@ const ChatContextProvider = ({
   } = useScrollPagination(getChatHistories, {
     pageSize: 20,
     params,
+    // /chat without an appId is the app-picker entry. It still needs this
+    // context for the picker UI, but must not query history with an empty ID.
+    disabled,
     refreshDeps: [params],
-    showErrorToast: false
+    showErrorToast: false,
+    showNoMoreTip: false
   });
   const displayHistories = useMemo(() => histories.map(normalizeHistoryTitle), [histories]);
   const historiesRef = useRef(displayHistories);
@@ -234,11 +242,16 @@ const ChatContextProvider = ({
   );
 
   const { runAsync: onDelHistory, loading: isDeletingHistory } = useRequest(
-    (chatId: string) =>
-      delChatHistoryById({
+    async (chatId: string) => {
+      // 删除请求完成时可能已切换成员或应用，草稿必须清理发起请求时的身份。
+      const identity = tmbId && historyAppId ? { tmbId, appId: historyAppId, chatId } : undefined;
+      const result = await delChatHistoryById({
         ...historyTargetParams,
         chatId
-      }),
+      });
+      if (identity) removeChatInputDraft({ identity });
+      return result;
+    },
     {
       onSuccess(data, params) {
         const chatId = params[0];
@@ -254,10 +267,14 @@ const ChatContextProvider = ({
   );
 
   const { runAsync: onClearHistories, loading: isClearingHistory } = useRequest(
-    () =>
-      delClearChatHistories({
+    async () => {
+      const scope = tmbId && historyAppId ? { tmbId, appId: historyAppId } : undefined;
+      const result = await delClearChatHistories({
         ...historyTargetParams
-      }),
+      });
+      if (scope) clearChatInputDrafts(scope);
+      return result;
+    },
     {
       refreshDeps: [historyTargetParams],
       onSuccess() {
@@ -334,7 +351,7 @@ const ChatContextProvider = ({
   // 轮询同步侧栏 chatGenerateStatus / hasBeenRead（以服务端为准）。
   // 条件轮询：仅当列表里至少有一条 generating 时挂 interval；否则每次依赖变化仍会先 poll 一次，且切回标签页会再拉一次。
   useEffect(() => {
-    if (!historiesRef.current.length) return;
+    if (disabled || !historyAppId || !historiesRef.current.length) return;
 
     const poll = () => {
       const chatIds = historiesRef.current.map((h) => h.chatId);
@@ -389,7 +406,14 @@ const ChatContextProvider = ({
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [historyTargetParams, historyChatIdsKey, hasGeneratingInSidebar, setHistories]);
+  }, [
+    disabled,
+    historyAppId,
+    historyTargetParams,
+    historyChatIdsKey,
+    hasGeneratingInSidebar,
+    setHistories
+  ]);
 
   const isLoading = isDeletingHistory || isClearingHistory || isPaginationLoading;
 

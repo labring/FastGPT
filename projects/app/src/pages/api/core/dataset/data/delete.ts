@@ -22,7 +22,8 @@ async function handler(req: ApiRequestProps): Promise<DeleteDatasetDataResponse>
     authToken: true,
     authApiKey: true,
     dataId,
-    per: WritePermissionVal
+    per: WritePermissionVal,
+    assertWritable: true
   });
 
   await deleteDatasetData(datasetData);

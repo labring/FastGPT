@@ -85,6 +85,46 @@ describe('S3DatasetSource FileSource lifecycle', () => {
     vi.restoreAllMocks();
   });
 
+  it('createGetDatasetFileURL 绑定 datasetId 时拒绝外库 key，不调用底层签发', async () => {
+    const source = Object.create(S3DatasetSource.prototype) as InstanceType<typeof S3DatasetSource>;
+    const createExternalUrl = vi.fn().mockResolvedValue({ url: 'https://files.test/signed' });
+    const getFileMetadata = vi.fn();
+    Object.assign(source, { createExternalUrl, getFileMetadata });
+
+    await expect(
+      source.createGetDatasetFileURL({
+        key: 'dataset/507f1f77bcf86cd799439099/foreign.png',
+        datasetId,
+        expiredHours: 1,
+        external: true
+      })
+    ).rejects.toThrow('Invalid dataset file key');
+    expect(createExternalUrl).not.toHaveBeenCalled();
+    expect(getFileMetadata).not.toHaveBeenCalled();
+  });
+
+  it('createGetDatasetFileURL 绑定 datasetId 且 key 归属一致时正常签发', async () => {
+    const source = Object.create(S3DatasetSource.prototype) as InstanceType<typeof S3DatasetSource>;
+    const createExternalUrl = vi.fn().mockResolvedValue({ url: 'https://files.test/signed' });
+    const getFileMetadata = vi.fn().mockResolvedValue({
+      filename: 'own.png',
+      contentType: 'image/png',
+      contentLength: 10
+    });
+    Object.assign(source, { createExternalUrl, getFileMetadata });
+
+    await source.createGetDatasetFileURL({
+      key: `dataset/${datasetId}/own.png`,
+      datasetId,
+      expiredHours: 1,
+      external: true
+    });
+
+    expect(createExternalUrl).toHaveBeenCalledWith(
+      expect.objectContaining({ key: `dataset/${datasetId}/own.png` })
+    );
+  });
+
   it('HEAD 后返回可信 S3 source，直到物化时才打开对象流', async () => {
     const source = Object.create(S3DatasetSource.prototype) as InstanceType<typeof S3DatasetSource>;
     const key = `dataset/${datasetId}/file.pdf`;

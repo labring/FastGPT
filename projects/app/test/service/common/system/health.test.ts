@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({
   checkRedisHealth: vi.fn(),
   loadModelProviders: vi.fn(),
   runCode: vi.fn(),
-  post: vi.fn()
+  postHealth: vi.fn()
 }));
 
 vi.mock('@fastgpt/dal/redis', async (importOriginal) => ({
@@ -17,8 +17,8 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin/model', () => ({
 vi.mock('@fastgpt/service/thirdProvider/codeSandbox', () => ({
   codeSandbox: { runCode: mocks.runCode }
 }));
-vi.mock('@fastgpt/service/common/api/plusRequest', () => ({
-  POST: mocks.post
+vi.mock('@fastgpt/service/thirdProvider/fastgptPro/api', () => ({
+  postHealth: mocks.postHealth
 }));
 
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
@@ -34,7 +34,7 @@ describe('instrumentationCheck', () => {
     mocks.checkRedisHealth.mockResolvedValue(undefined);
     mocks.loadModelProviders.mockResolvedValue(undefined);
     mocks.runCode.mockResolvedValue(undefined);
-    mocks.post.mockResolvedValue({ auth: true, data: '' });
+    mocks.postHealth.mockResolvedValue({ auth: true, data: '' });
     publicBucketHealth.mockResolvedValue(undefined);
     privateBucketHealth.mockResolvedValue(undefined);
     global.s3BucketMap = {
@@ -87,10 +87,10 @@ describe('instrumentationCheck', () => {
 
   it('validates the Pro service only for Plus deployments', async () => {
     global.feConfigs = { isPlus: true } as any;
-    mocks.post.mockResolvedValueOnce({ auth: false, data: '' });
+    mocks.postHealth.mockResolvedValueOnce({ auth: false, data: '' });
 
     await expect(instrumentationCheck()).rejects.toContain(`[${InitialErrorEnum.PRO_ERROR}]`);
-    expect(mocks.post).toHaveBeenCalledWith('/health');
+    expect(mocks.postHealth).toHaveBeenCalledTimes(1);
   });
 
   it('treats the sandbox health check as degraded instead of blocking startup', async () => {

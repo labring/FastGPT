@@ -1,5 +1,5 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
-import { plusRequest } from '@fastgpt/service/common/api/plusRequest';
+import { forwardOffiaccount } from '@fastgpt/service/thirdProvider/fastgptPro/api';
 
 export type OutLinkOffiAccountQuery = any;
 export type OutLinkOffiAccountBody = any;
@@ -8,9 +8,9 @@ async function handler(
   res: ApiResponseType<any>
 ): Promise<any> {
   const { token } = req.query;
-  const result = await plusRequest({
+  const result = await forwardOffiaccount({
+    token,
     method: req.method,
-    url: `support/outLink/offiaccount/${token}`,
     params: req.query,
     data: req.body
   });

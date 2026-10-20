@@ -1,16 +1,19 @@
 import { Box, Button, Flex, HStack } from '@chakra-ui/react';
-import {
-  type DraggableProvided,
-  type DraggableStateSnapshot
+import type {
+  DraggableProvided,
+  DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag/index';
 import Container from '../../components/Container';
-import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
+import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { type ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
+import type { ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
 import { useTranslation } from 'next-i18next';
 import { ReferSelector, useReference } from '../render/RenderInput/templates/Reference';
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { getIfElseBranchHandleKey } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
+import {
+  getIfElseBranchHandleKey,
+  getElseIFLabel
+} from '@fastgpt/global/common/workflow/condition';
 import {
   VariableConditionEnum,
   allConditionList,
@@ -26,7 +29,7 @@ import React, { useCallback, useMemo } from 'react';
 import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyInput from '@/components/MyInput';
-import { getElseIFLabel, getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { MySourceHandle } from '../render/Handle';
 import { Position, useReactFlow } from 'reactflow';
 import { getRefData, getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
@@ -545,7 +548,7 @@ const ConditionValueInput = ({
           value={value as string}
           placeholder={
             condition === VariableConditionEnum.reg
-              ? '/^((+|00)86)?1[3-9]d{9}$/'
+              ? '/^((\\+|00)86)?1[3-9]\\d{9}$/'
               : t('workflow:ifelse.Input value')
           }
           w={'full'}

@@ -468,10 +468,6 @@ const ChatSlider = ({ activeAppId }: Props) => {
   const isCollapsed = useContextSelector(ChatPageContext, (v) => v.collapse === 1);
   const pane = useContextSelector(ChatPageContext, (v) => v.pane);
   const myApps = useContextSelector(ChatPageContext, (v) => v.myApps);
-  const upsertRecentlyUsedAppPlaceholder = useContextSelector(
-    ChatPageContext,
-    (v) => v.upsertRecentlyUsedAppPlaceholder
-  );
 
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
 
@@ -540,7 +536,6 @@ const ChatSlider = ({ activeAppId }: Props) => {
                 : {
                     _hover: { bg: 'primary.100' },
                     onClick: () => {
-                      upsertRecentlyUsedAppPlaceholder(item);
                       handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, item.appId);
                     }
                   })}

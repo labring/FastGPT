@@ -1,15 +1,16 @@
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, Grid, GridItem, HStack, Input, Switch } from '@chakra-ui/react';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
-import { MAX_MODEL_PRICE_TIERS } from '@fastgpt/global/core/ai/pricing';
-import type { ModelProviderItemType } from '@fastgpt/global/core/ai/provider';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
+import { MAX_MODEL_PRICE_TIERS } from '@fastgpt/global/core/ai/model/pricing';
+import type { ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
 import {
   getRuntimeResolvedPriceTiers,
   normalizeModelPricingForRead,
   normalizeModelPricingForSave
-} from '@fastgpt/global/core/ai/pricing';
+} from '@fastgpt/global/core/ai/model/pricing';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -18,7 +19,7 @@ import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSele
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useLockFn } from 'ahooks';
 import React, { useEffect, useMemo, useState, type MutableRefObject } from 'react';
 import {
@@ -146,8 +147,8 @@ const SwitchField = ({
 }: {
   label: string;
   tip?: string;
-  field: FieldPath<SystemModelDocumentDataType>;
-  register: UseFormRegister<SystemModelDocumentDataType>;
+  field: FieldPath<AIModelDocumentDataType>;
+  register: UseFormRegister<AIModelDocumentDataType>;
 }) => (
   <GridItem>
     <Flex alignItems={'center'} gap={1} mb={3}>
@@ -165,9 +166,9 @@ const ProviderField = React.memo(function ProviderField({
   providerList,
   t
 }: {
-  control: Control<SystemModelDocumentDataType>;
+  control: Control<AIModelDocumentDataType>;
   providerList: { label: React.ReactNode; value: string }[];
-  t: ReturnType<typeof useClientTranslation>['t'];
+  t: ReturnType<typeof useSafeTranslation>['t'];
 }) {
   const {
     field: { value, onChange, onBlur, ref },
@@ -201,9 +202,9 @@ const ResponseFormatField = React.memo(function ResponseFormatField({
   setValue,
   t
 }: {
-  control: Control<SystemModelDocumentDataType>;
-  setValue: UseFormSetValue<SystemModelDocumentDataType>;
-  t: ReturnType<typeof useClientTranslation>['t'];
+  control: Control<AIModelDocumentDataType>;
+  setValue: UseFormSetValue<AIModelDocumentDataType>;
+  t: ReturnType<typeof useSafeTranslation>['t'];
 }) {
   const responseFormatList = useWatch({
     control,
@@ -252,8 +253,8 @@ const DefaultConfigField = React.memo(function DefaultConfigField({
   tip,
   onDraftChange
 }: {
-  control: Control<SystemModelDocumentDataType>;
-  setValue: UseFormSetValue<SystemModelDocumentDataType>;
+  control: Control<AIModelDocumentDataType>;
+  setValue: UseFormSetValue<AIModelDocumentDataType>;
   label: string;
   tip: string;
   onDraftChange?: () => void;
@@ -292,8 +293,8 @@ const VoicesField = React.memo(function VoicesField({
   t,
   onDraftChange
 }: {
-  control: Control<SystemModelDocumentDataType>;
-  t: ReturnType<typeof useClientTranslation>['t'];
+  control: Control<AIModelDocumentDataType>;
+  t: ReturnType<typeof useSafeTranslation>['t'];
   onDraftChange?: () => void;
 }) {
   const [isValidJson, setIsValidJson] = useState(true);
@@ -342,13 +343,14 @@ const VoicesField = React.memo(function VoicesField({
   );
 });
 
-export type ModelConfigFormGetValues = () => SystemModelDocumentDataType;
+export type ModelConfigFormGetValues = () => AIModelDocumentDataType;
 
 type ModelConfigFormProps = {
-  modelData: SystemModelDocumentDataType;
+  modelData: AIModelDocumentDataType;
   providers: ModelProviderItemType[];
   formId: string;
-  onSubmit: (modelData: SystemModelDocumentDataType) => Promise<unknown>;
+  onSubmit: (modelData: AIModelDocumentDataType) => Promise<unknown>;
+  channelType?: ChannelType;
   isModelIdReadOnly?: boolean;
   channelSection?: {
     title: string;
@@ -368,6 +370,7 @@ const ModelConfigForm = ({
   formId,
   onSubmit,
   channelSection,
+  channelType,
   isModelIdReadOnly = false,
   onModelChange,
   onSuccess,
@@ -375,8 +378,9 @@ const ModelConfigForm = ({
   onDirtyChange,
   getValuesRef
 }: ModelConfigFormProps) => {
-  const { t } = useClientTranslation('config_model');
+  const { t } = useSafeTranslation();
   const { feConfigs } = useSystemStore();
+  const isTeamModel = channelType === 'team' || modelData.scope === ModelScopeEnum.team;
   const initialModelData = normalizeModelPricingForRead(modelData);
   const [hasJsonDraftChanges, setHasJsonDraftChanges] = useState(false);
 
@@ -387,7 +391,7 @@ const ModelConfigForm = ({
     setValue,
     handleSubmit,
     formState: { isDirty }
-  } = useForm<SystemModelDocumentDataType>({
+  } = useForm<AIModelDocumentDataType>({
     defaultValues: {
       // 空白草稿的引用上限不向输入框写入 NaN，保持视觉上未填写。
       ...(initialModelData.type === ModelTypeEnum.llm &&
@@ -465,7 +469,7 @@ const ModelConfigForm = ({
   }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel, isRerankModel]);
 
   const { runAsync: submitModelRequest, loading: submittingModel } = useRequest(
-    async (data: SystemModelDocumentDataType) => {
+    async (data: AIModelDocumentDataType) => {
       data.name = data.name?.trim() || data.model;
       if (data.type === ModelTypeEnum.llm) {
         // 数字输入留空会产生 NaN；仅未填写时按上下文计算，保留显式填写的 0。
@@ -516,6 +520,11 @@ const ModelConfigForm = ({
       for (const key of Object.keys(modelData)) {
         const val = modelData[key];
         if (val === null || val === undefined) delete modelData[key];
+      }
+      if (isTeamModel) {
+        delete modelData.requestUrl;
+        delete modelData.requestAuth;
+        delete modelData.testMode;
       }
 
       return onSubmit(normalizeModelPricingForSave(data));
@@ -789,7 +798,7 @@ const ModelConfigForm = ({
         </Section>
       )}
 
-      {priceUnit && feConfigs?.isPlus && (
+      {priceUnit && feConfigs?.isPlus && !isTeamModel && (
         <Section title={t('config_model:model.price_config_section')}>
           {isLLMModel ? (
             <ModelPriceTiersTable
@@ -821,56 +830,62 @@ const ModelConfigForm = ({
         </Section>
       )}
 
-      <Section title={t('common:Other')} showBorder={false}>
-        <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
-          {isLLMModel && (
-            <Field
-              label={t('config_model:model.default_system_chat_prompt')}
-              tip={t('config_model:model.default_system_chat_prompt_tip')}
-              colSpan={[1, 2]}
-            >
-              <MyTextarea
-                {...register('config.defaultSystemChatPrompt')}
-                {...MultilineInputStyles}
-                minH={'110px'}
+      {(isLLMModel || isEmbeddingModel || isRerankModel || isTTSModel || !isTeamModel) && (
+        <Section title={t('common:Other')} showBorder={false}>
+          <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
+            {isLLMModel && (
+              <Field
+                label={t('config_model:model.default_system_chat_prompt')}
+                tip={t('config_model:model.default_system_chat_prompt_tip')}
+                colSpan={[1, 2]}
+              >
+                <MyTextarea
+                  {...register('config.defaultSystemChatPrompt')}
+                  {...MultilineInputStyles}
+                  minH={'110px'}
+                />
+              </Field>
+            )}
+            {(isLLMModel || isEmbeddingModel || isRerankModel) && (
+              <DefaultConfigField
+                control={control}
+                setValue={setValue}
+                label={
+                  isEmbeddingModel
+                    ? t('config_model:model.defaultConfig')
+                    : t('config_model:model.default_config')
+                }
+                tip={
+                  isEmbeddingModel
+                    ? t('config_model:model.defaultConfig_tip')
+                    : isRerankModel
+                      ? t('config_model:model.rerank_default_config_tip')
+                      : t('config_model:model.default_config_tip')
+                }
+                onDraftChange={() => setHasJsonDraftChanges(true)}
               />
-            </Field>
-          )}
-          {(isLLMModel || isEmbeddingModel || isRerankModel) && (
-            <DefaultConfigField
-              control={control}
-              setValue={setValue}
-              label={
-                isEmbeddingModel
-                  ? t('config_model:model.defaultConfig')
-                  : t('config_model:model.default_config')
-              }
-              tip={
-                isEmbeddingModel
-                  ? t('config_model:model.defaultConfig_tip')
-                  : isRerankModel
-                    ? t('config_model:model.rerank_default_config_tip')
-                    : t('config_model:model.default_config_tip')
-              }
-              onDraftChange={() => setHasJsonDraftChanges(true)}
-            />
-          )}
-          {isTTSModel && (
-            <VoicesField
-              control={control}
-              t={t}
-              onDraftChange={() => setHasJsonDraftChanges(true)}
-            />
-          )}
-          {CustomApi}
-          <SwitchField
-            label={t('config_model:model.test_mode')}
-            tip={t('config_model:model.test_mode_tip')}
-            field={'testMode'}
-            register={register}
-          />
-        </Grid>
-      </Section>
+            )}
+            {isTTSModel && (
+              <VoicesField
+                control={control}
+                t={t}
+                onDraftChange={() => setHasJsonDraftChanges(true)}
+              />
+            )}
+            {!isTeamModel && (
+              <>
+                {CustomApi}
+                <SwitchField
+                  label={t('config_model:model.test_mode')}
+                  tip={t('config_model:model.test_mode_tip')}
+                  field={'testMode'}
+                  register={register}
+                />
+              </>
+            )}
+          </Grid>
+        </Section>
+      )}
     </Box>
   );
 };

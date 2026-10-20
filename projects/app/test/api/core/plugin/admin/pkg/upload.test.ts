@@ -123,7 +123,8 @@ describe('POST /api/core/plugin/admin/pkg/upload', () => {
     expect(mocks.authSystemAdmin).toHaveBeenCalledWith({ req });
     expect(mocks.resolveMultipleFormData).toHaveBeenCalledWith({
       request: req,
-      allowedExtensions: ['.pkg', '.zip']
+      allowedExtensions: ['.pkg', '.zip'],
+      maxFileSize: global.feConfigs.limit.uploadFileMaxSize
     });
     expect(mocks.uploadPlugin).toHaveBeenCalledTimes(1);
     expect(mocks.uploadPlugin).toHaveBeenCalledWith([

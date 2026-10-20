@@ -5,7 +5,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Icon from '@fastgpt/web/components/common/Icon';
 import Markdown from '@/components/Markdown';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getInstanceId, postActiveLicense } from '@/web/common/license/api';
+import { getInstanceId, postActiveLicense } from '@/web/admin/license/api';
 
 const LicenseInput = ({ onClose }: { onClose?: () => void }) => {
   const { initLicenseData } = useSystemStore();

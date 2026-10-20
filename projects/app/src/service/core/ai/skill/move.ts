@@ -16,12 +16,12 @@ import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/ai/skill/manage';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { checkMoveFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
-import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import {
   syncChildrenPermission,
   syncCollaborators
 } from '@fastgpt/service/support/permission/inheritPermission';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
+import { shouldInheritResourcePermission } from '@fastgpt/service/support/permission/resourcePermissionPolicy';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
@@ -52,12 +52,13 @@ const logSkillMove = ({
 export const moveSkill = async ({
   req,
   skillId,
-  parentId
+  parentId: rawParentId
 }: {
   req: ApiRequestProps;
   skillId: string;
   parentId: ParentIdType;
 }) => {
+  const parentId = rawParentId || null;
   const { teamId, tmbId, skill } = await authSkill({
     req,
     skillId,
@@ -69,14 +70,16 @@ export const moveSkill = async ({
   if (skill.creationStatus && skill.creationStatus !== AgentSkillCreationStatusEnum.ready) {
     return Promise.reject(skill.creationError || 'Skill is not ready');
   }
+  let targetFolderName = 'root';
   if (parentId) {
-    await authSkill({
+    const { skill: targetSkill } = await authSkill({
       req,
       skillId: parentId,
       per: ManagePermissionVal,
       authToken: true,
       authApiKey: true
     });
+    targetFolderName = targetSkill.name;
   }
   if (skill.parentId) {
     await authSkill({
@@ -103,13 +106,21 @@ export const moveSkill = async ({
     isFolderType: (type) => type === AgentSkillTypeEnum.folder
   });
 
-  let targetFolderName = 'root';
-  if (parentId) {
-    const targetFolder = await MongoAgentSkills.findById(parentId, 'name').lean();
-    if (targetFolder) targetFolderName = targetFolder.name;
-  }
-
   await mongoSessionRun(async (session) => {
+    // 非继承态，仅改parentId 即可。
+    if (!shouldInheritResourcePermission(skill.inheritPermission)) {
+      await MongoAgentSkills.updateOne(
+        { _id: skillId },
+        {
+          parentId,
+          updateTime: new Date()
+        },
+        { session }
+      );
+      return;
+    }
+
+    // 继承态，需要改内容，同时更新协作者
     const [parentClbs, oldParentClbs, oldResourceClbs] = await Promise.all([
       getResourceOwnedClbs({
         teamId,
@@ -149,10 +160,10 @@ export const moveSkill = async ({
       newParentCollaborators: newResourceClbs,
       session
     });
-    await MongoAgentSkills.findByIdAndUpdate(
-      skillId,
+    await MongoAgentSkills.updateOne(
+      { _id: skillId },
       {
-        ...parseParentIdInMongo(parentId),
+        parentId,
         inheritPermission: true,
         updateTime: new Date()
       },

@@ -34,8 +34,9 @@ vi.mock('@fastgpt/service/core/dataset/controller', () => ({
   getCollectionWithDataset: mocks.getCollectionWithDataset
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({ getEmbeddingModelData: mocks.getEmbeddingModelData })
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
+  getSystemModelHandle: async () => ({ getModelData: mocks.getEmbeddingModelData }),
+  getTeamModelHandle: async () => ({ getModelData: mocks.getEmbeddingModelData })
 }));
 
 vi.mock('@/service/core/dataset/data/utils', () => ({
@@ -106,7 +107,7 @@ describe('POST /api/core/dataset/data/insertData', () => {
   it('creates the data in a Mongo transaction and forwards the same session', async () => {
     const result = await handler({} as never);
 
-    expect(result).toBe(insertId);
+    expect(result).toEqual({ dataIds: [insertId] });
     expect(mocks.mongoSessionRun).toHaveBeenCalledTimes(1);
     expect(mocks.createDatasetData).toHaveBeenCalledWith(
       expect.objectContaining({

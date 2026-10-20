@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Position } from 'reactflow';
 import { MySourceHandle, MyTargetHandle } from '.';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId, nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { isNodeConnectionAllowed } from '@fastgpt/global/core/workflow/template/context';
@@ -10,7 +10,8 @@ import { WorkflowBufferDataContext } from '../../../../context/workflowInitConte
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
-import { getIfElseBranchHandleKey } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
+import { getIfElseBranchHandleKey } from '@fastgpt/global/common/workflow/condition';
+import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
 
 export const ConnectionSourceHandle = ({
   nodeId,
@@ -37,9 +38,13 @@ export const ConnectionSourceHandle = ({
       if (node?.isFolded) {
         const firstHandleId = (() => {
           if (node.flowNodeType === FlowNodeTypeEnum.userSelect) {
-            const options = node?.inputs?.find(
+            const userSelectInput = node?.inputs?.find(
               (input) => input.key === NodeInputKeyEnum.userSelectOptions
-            )?.value;
+            );
+            if (userSelectInput && nodeInputIsReference(userSelectInput)) {
+              return getHandleId(nodeId, 'source', USER_SELECT_REFERENCE_HANDLE_KEY);
+            }
+            const options = userSelectInput?.value;
             if (options && options.length > 0) {
               return getHandleId(nodeId, 'source', options[0].key);
             }

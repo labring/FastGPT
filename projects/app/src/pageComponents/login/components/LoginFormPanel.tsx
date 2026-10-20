@@ -3,8 +3,9 @@ import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import dynamic from 'next/dynamic';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import LoginForm from '@/pageComponents/login/LoginForm/LoginForm';
-import { type Dispatch, useMemo } from 'react';
+import { type ComponentType, type Dispatch, useMemo } from 'react';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
+import LoginMethodSelection from '@/pageComponents/login/LoginMethodSelection';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
 
@@ -13,7 +14,7 @@ const ForgetPasswordForm = dynamic(() => import('@/pageComponents/login/ForgetPa
 const WechatForm = dynamic(() => import('@/pageComponents/login/LoginForm/WechatForm'));
 
 type LoginFormPanelProps = {
-  pageType: `${LoginPageTypeEnum}`;
+  pageType?: `${LoginPageTypeEnum}`;
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
   loginSuccess: LoginSuccessHandler;
   reserveLoginGuideSpace?: boolean;
@@ -28,8 +29,15 @@ const LoginFormPanel = ({
   const DynamicComponent = useMemo(() => {
     if (!pageType) return null;
 
-    const TypeMap = {
+    const TypeMap: Record<
+      LoginPageTypeEnum,
+      ComponentType<{
+        setPageType: Dispatch<`${LoginPageTypeEnum}`>;
+        loginSuccess: LoginSuccessHandler;
+      }>
+    > = {
       [LoginPageTypeEnum.passwordLogin]: LoginForm,
+      [LoginPageTypeEnum.methodSelection]: LoginMethodSelection,
       [LoginPageTypeEnum.register]: RegisterForm,
       [LoginPageTypeEnum.forgetPassword]: ForgetPasswordForm,
       [LoginPageTypeEnum.wechat]: WechatForm

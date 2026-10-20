@@ -20,11 +20,13 @@ vi.mock('@/service/core/sandbox/auth', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
-  buildSandboxClientQueryFromChatSource: mocks.buildSandboxClientQueryFromChatSource,
+  buildSandboxClientQueryFromChatSource: mocks.buildSandboxClientQueryFromChatSource
+}));
+vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/client', () => ({
   getSandboxClient: mocks.getSandboxClient
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/interface/preview', () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/application/preview', () => ({
   resolveSandboxPreviewSession: mocks.resolveSandboxPreviewSession
 }));
 

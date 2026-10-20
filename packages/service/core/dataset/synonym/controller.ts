@@ -1,7 +1,35 @@
+import { rebuildingDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
+import type { ClientSession } from '../../../common/mongo';
 import { MongoDatasetSynonym, MongoDatasetSynonymMapping } from './schema';
 import { MongoDatasetData } from '../data/schema';
 import { MongoDatasetTraining } from '../training/schema';
-import { assertDatasetSynonymEnabled } from './entity';
+import {
+  assertDatasetSynonymEnabled,
+  invalidateDatasetSynonymMatcherCache,
+  isDatasetSynonymEnabled
+} from './entity';
+
+/** 所有数据追上当前词表后才回收历史版本；失败或在途数据仍需要旧快照重试。 */
+export const cleanupUnusedDatasetSynonymMappings = async (
+  { teamId, datasetId }: { teamId: string; datasetId: string },
+  session?: ClientSession
+) => {
+  if (!isDatasetSynonymEnabled()) return;
+  const config = await MongoDatasetSynonym.findOne({ teamId, datasetId }, null, { session }).lean();
+  if (!config) return;
+  const historicalData = await MongoDatasetData.exists({
+    teamId,
+    datasetId,
+    synonymVersion: { $ne: config.version }
+  }).session(session ?? null);
+  if (historicalData) return;
+
+  const { deletedCount } = await MongoDatasetSynonymMapping.deleteMany(
+    { teamId, datasetId, fileVersion: { $lt: config.version } },
+    { session }
+  );
+  if (deletedCount) invalidateDatasetSynonymMatcherCache({ teamId, datasetId });
+};
 
 /** 获取当前同义词配置及其重建进度。 */
 export const getDatasetSynonymDetail = async ({
@@ -15,7 +43,7 @@ export const getDatasetSynonymDetail = async ({
 
   const [file, rebuildingData, training] = await Promise.all([
     MongoDatasetSynonym.findOne({ teamId, datasetId }).lean(),
-    MongoDatasetData.exists({ teamId, datasetId, rebuilding: true }),
+    MongoDatasetData.exists({ teamId, datasetId, ...rebuildingDatasetDataMatch }),
     MongoDatasetTraining.exists({ teamId, datasetId })
   ]);
   return {

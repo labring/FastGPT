@@ -1,5 +1,5 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
-import { POST } from '@fastgpt/service/common/api/plusRequest';
+import { postForwardFeishu } from '@fastgpt/service/thirdProvider/fastgptPro/api';
 
 export type OutLinkFeishuQuery = any;
 export type OutLinkFeishuBody = any;
@@ -9,9 +9,7 @@ async function handler(
 ): Promise<void> {
   // send to pro
   const { token } = req.query;
-  const result = await POST<any>(`/support/outLink/feishu/${token}`, req.body, {
-    headers: req.headers as any
-  });
+  const result = await postForwardFeishu({ token, data: req.body, headers: req.headers as any });
   res.json(result);
 }
 

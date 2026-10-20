@@ -474,10 +474,13 @@ export const chats2GPTMessages = ({
       };
 
       item.value.forEach((value) => {
+        const tools = value.tools ? value.tools : value.tool ? [value.tool] : undefined;
+        const hasTools = Array.isArray(tools) && tools.length > 0;
         const startsNewAssistantPayload =
           Boolean(value.contextCheckpoint) ||
           Boolean(value.agentPlanUpdate) ||
           Boolean(value.agentAsk) ||
+          hasTools ||
           typeof value.reasoning?.content === 'string' ||
           typeof value.text?.content === 'string';
 
@@ -540,9 +543,6 @@ export const chats2GPTMessages = ({
         if (typeof value.text?.content === 'string') {
           appendAssistantText(value.text.content, value.hideInUI);
         }
-
-        const tools = value.tools ? value.tools : value.tool ? [value.tool] : undefined;
-        const hasTools = Array.isArray(tools) && tools.length > 0;
 
         if (reserveTool && hasTools) {
           const normalizedToolContexts = tools

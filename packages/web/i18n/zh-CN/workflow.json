@@ -49,6 +49,7 @@
   "tag_filter_op_before": "早于",
   "tag_filter_op_contains": "包含",
   "tag_filter_op_empty": "为空",
+  "tag_filter_op_ends_with": "结尾是",
   "tag_filter_op_eq": "等于",
   "tag_filter_op_gt": "大于",
   "tag_filter_op_gte": "大于等于",
@@ -61,6 +62,8 @@
   "tag_filter_op_not_contains": "不包含",
   "tag_filter_op_not_empty": "不为空",
   "tag_filter_op_not_in": "不属于",
+  "tag_filter_op_regex": "模糊匹配",
+  "tag_filter_op_starts_with": "开头是",
   "tag_filter_select_condition": "选择条件",
   "tag_filter_select_option": "请选择选项",
   "tag_filter_select_tag": "选择标签",
@@ -303,5 +306,11 @@
   "workflow_local_draft_auth_expired_notice": "登录已过期，当前编辑内容已自动保存至本地。请不要关闭页面，在此标签页重新登录后，即可恢复编排内容。",
   "workflow_local_draft_auth_expired_title": "已自动保存",
   "workflow_local_draft_relogin": "重新登录",
-  "workflow.exit_tips": "您的更改尚未保存，「直接退出」将不会保存您的编辑记录。"
+  "workflow.exit_tips": "您的更改尚未保存，「直接退出」将不会保存您的编辑记录。",
+  "option_config": "选项配置",
+  "option_variable": "选项变量",
+  "please_input_option": "请输入选项",
+  "please_select_variable": "请选择变量",
+  "form_input_no_available_options": "表单输入节点的动态选项字段没有可用选项，请检查引用变量。",
+  "user_select_no_available_options": "用户选择节点没有可用选项，请检查引用变量。"
 }

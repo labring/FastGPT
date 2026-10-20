@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LocaleList } from '@fastgpt/global/common/i18n/type';
 import { I18N_NAMESPACES } from '@fastgpt/web/i18n/constants';
-import { generatedLoaders } from '@fastgpt/web/i18n/resourceLoaders.generated';
+import {
+  generatedLoaders,
+  generatedLanguageBundles
+} from '@fastgpt/web/i18n/resourceLoaders.generated';
 import {
   clearLanguageBundleFailure,
   clearLocaleResourceFailure,
@@ -38,11 +41,25 @@ describe('generatedLoaders', () => {
   });
 });
 
+describe('generatedLanguageBundles', () => {
+  it('contains every supported language bundle loader', () => {
+    expect(Object.keys(generatedLanguageBundles)).toEqual(LocaleList);
+  });
+
+  it('loads valid bundles with all namespaces in each language', async () => {
+    for (const language of LocaleList) {
+      const bundle = (await generatedLanguageBundles[language]()).default;
+      expect(Object.keys(bundle)).toEqual(I18N_NAMESPACES);
+      expect(bundle.common).toHaveProperty('Confirm');
+    }
+  });
+});
+
 describe('loadLanguageBundle', () => {
-  const originalEnglishLoaders = generatedLoaders.en;
+  const originalEnglishBundleLoader = generatedLanguageBundles.en;
 
   beforeEach(() => {
-    generatedLoaders.en = originalEnglishLoaders;
+    generatedLanguageBundles.en = originalEnglishBundleLoader;
     clearLanguageBundleFailure('en');
   });
 
@@ -51,16 +68,14 @@ describe('loadLanguageBundle', () => {
     const pending = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const loaders = Object.fromEntries(
-      I18N_NAMESPACES.map((namespace) => [
-        namespace,
-        vi.fn(async () => {
-          await pending;
-          return { default: { namespace } };
-        })
-      ])
-    ) as typeof generatedLoaders.en;
-    generatedLoaders.en = loaders;
+    const fakeBundle = Object.fromEntries(
+      I18N_NAMESPACES.map((namespace) => [namespace, { namespace }])
+    );
+    const bundleLoader = vi.fn(async () => {
+      await pending;
+      return { default: fakeBundle };
+    });
+    generatedLanguageBundles.en = bundleLoader as any;
 
     const first = loadLanguageBundle('en');
     const second = loadLanguageBundle('en');
@@ -69,9 +84,7 @@ describe('loadLanguageBundle', () => {
     const [firstBundle, secondBundle] = await Promise.all([first, second]);
     expect(firstBundle).toBe(secondBundle);
     expect(Object.keys(firstBundle)).toEqual(I18N_NAMESPACES);
-    expect(
-      Object.values(loaders).every((loader) => vi.mocked(loader).mock.calls.length === 1)
-    ).toBe(true);
+    expect(bundleLoader).toHaveBeenCalledTimes(1);
     expect(
       I18N_NAMESPACES.every((namespace) => getLocaleResourceStatus('en', namespace) === 'loaded')
     ).toBe(true);
@@ -164,11 +177,11 @@ describe('loadLocaleResourceWithRetry', () => {
 });
 
 describe('loadLanguageBundleWithRetry', () => {
-  const originalEnglishLoaders = generatedLoaders.en;
+  const originalEnglishBundleLoader = generatedLanguageBundles.en;
 
   beforeEach(() => {
     vi.useFakeTimers();
-    generatedLoaders.en = originalEnglishLoaders;
+    generatedLanguageBundles.en = originalEnglishBundleLoader;
     clearLanguageBundleFailure('en');
   });
 
@@ -177,19 +190,20 @@ describe('loadLanguageBundleWithRetry', () => {
   });
 
   it('完整语言 chunk 加载失败后按退避策略重试', async () => {
-    const commonLoader = vi
+    const bundleLoader = vi
       .fn()
       .mockRejectedValueOnce(new Error('temporary failure'))
-      .mockResolvedValue({ default: { Confirm: 'Confirm' } });
-    generatedLoaders.en = {
-      ...originalEnglishLoaders,
-      common: commonLoader
-    };
+      .mockResolvedValue({
+        default: Object.fromEntries(
+          I18N_NAMESPACES.map((ns) => [ns, ns === 'common' ? { Confirm: 'Confirm' } : {}])
+        )
+      });
+    generatedLanguageBundles.en = bundleLoader as any;
 
     const loading = loadLanguageBundleWithRetry('en');
     await vi.advanceTimersByTimeAsync(300);
 
     await expect(loading).resolves.toHaveProperty('common.Confirm', 'Confirm');
-    expect(commonLoader).toHaveBeenCalledTimes(2);
+    expect(bundleLoader).toHaveBeenCalledTimes(2);
   });
 });

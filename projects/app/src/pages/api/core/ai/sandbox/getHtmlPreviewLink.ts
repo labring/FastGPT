@@ -7,16 +7,14 @@ import {
   SandboxGetHtmlPreviewLinkBodySchema,
   SandboxGetHtmlPreviewLinkResponseSchema
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
-import {
-  buildSandboxClientQueryFromChatSource,
-  getSandboxClient
-} from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   createSandboxPreviewFileUrl,
   resolveSandboxPreviewPath,
   SandboxPreviewSessionLimitError
-} from '@fastgpt/service/core/ai/sandbox/interface/preview';
+} from '@fastgpt/service/core/ai/sandbox/application/preview';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import mime from 'mime';
 

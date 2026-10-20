@@ -59,12 +59,17 @@ const VariableEditModal = ({
     (newType: string) => {
       const typeEnum = newType as VariableInputEnum;
       const value = getValues();
-      const defaultValIsNumber = !isNaN(Number(value.defaultValue));
+      if (typeEnum === value.type) return;
+      const defaultValIsNumber =
+        typeof value.defaultValue !== 'object' && !isNaN(Number(value.defaultValue));
 
-      if (
+      // 只清空与目标类型不兼容的默认值，保留兼容默认值及单多选间可复用的选项配置。
+      if (typeEnum === VariableInputEnum.multipleSelect) {
+        setValue('defaultValue', []);
+      } else if (
         typeEnum === VariableInputEnum.select ||
-        typeEnum === VariableInputEnum.multipleSelect ||
         typeEnum === VariableInputEnum.file ||
+        value.type === VariableInputEnum.multipleSelect ||
         (typeEnum === VariableInputEnum.numberInput && !defaultValIsNumber)
       ) {
         setValue('defaultValue', '');

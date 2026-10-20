@@ -1,3 +1,4 @@
+import { SOURCE_DELETE_CONCURRENCY } from '../../constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { batchRunSettled } from '@fastgpt/global/common/system/utils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -9,7 +10,6 @@ import {
 import { withSandboxSourceMutationLease } from '../../application/lease';
 import { assertSandboxSourceDeleted } from '../../application/sourceGuard';
 
-const SOURCE_DELETE_CONCURRENCY = 10;
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 /** 在 Source lease 内校验 App 已删除，再清理其全部 Sandbox 资源。 */

@@ -12,12 +12,13 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { checkMoveFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
-import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import {
   syncChildrenPermission,
   syncCollaborators
 } from '@fastgpt/service/support/permission/inheritPermission';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
+import { shouldInheritResourcePermission } from '@fastgpt/service/support/permission/resourcePermissionPolicy';
+import { syncDatasetToCollections } from '@fastgpt/service/support/permission/collection/controller';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
@@ -48,12 +49,13 @@ const logDatasetMove = ({
 export const moveDataset = async ({
   req,
   id,
-  parentId
+  parentId: rawParentId
 }: {
   req: ApiRequestProps;
   id: string;
   parentId: ParentIdType;
 }) => {
+  const parentId = rawParentId || null;
   const { dataset, tmbId, teamId } = await authDataset({
     req,
     authToken: true,
@@ -99,6 +101,20 @@ export const moveDataset = async ({
   });
 
   await mongoSessionRun(async (session) => {
+    // 非继承态，仅改parentId 即可。
+    if (!shouldInheritResourcePermission(dataset.inheritPermission)) {
+      await MongoDataset.updateOne(
+        { _id: id },
+        {
+          parentId,
+          updateTime: new Date()
+        },
+        { session }
+      );
+      return;
+    }
+
+    // 继承态，需要改内容，同时更新协作者
     const [parentClbs, oldParentClbs, oldResourceClbs] = await Promise.all([
       getResourceOwnedClbs({
         teamId: dataset.teamId,
@@ -129,6 +145,16 @@ export const moveDataset = async ({
       oldParentCollaborators: oldParentClbs,
       session
     });
+
+    // Dataset ACL 是完整有效快照。先同步 Collection，确保还能读取后代 Dataset 的旧快照。
+    await syncDatasetToCollections({
+      teamId: dataset.teamId,
+      datasetId: String(dataset._id),
+      oldEffectiveClbs: oldResourceClbs,
+      newEffectiveClbs: newResourceClbs,
+      session
+    });
+
     await syncChildrenPermission({
       resource: dataset,
       resourceType: PerResourceTypeEnum.dataset,
@@ -138,11 +164,13 @@ export const moveDataset = async ({
       newParentCollaborators: newResourceClbs,
       session
     });
-    await MongoDataset.findByIdAndUpdate(
-      id,
+    await MongoDataset.updateOne(
+      { _id: id },
       {
-        ...parseParentIdInMongo(parentId),
-        inheritPermission: true
+        parentId,
+        // 移入是授权行为：移入后始终按继承态处理（与上游 dataset 权限逻辑一致）
+        inheritPermission: true,
+        updateTime: new Date()
       },
       { session }
     );

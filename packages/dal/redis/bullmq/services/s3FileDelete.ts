@@ -1,5 +1,7 @@
 import { bullMQ, type BullMQBinding } from '../binding';
+import { addOrRequeueFailedJob } from '../job-recovery';
 import { QueueNames } from '../names';
+import { defaultJobOptions, defaultWorkerOptions } from '../options';
 import type { Processor, Queue, Worker } from '../types';
 
 export type S3MQJobData = {
@@ -9,18 +11,7 @@ export type S3MQJobData = {
   bucketName: string;
 };
 
-const s3DeleteJobOptions = {
-  attempts: 10,
-  removeOnFail: {
-    count: 10000,
-    age: 14 * 24 * 60 * 60
-  },
-  removeOnComplete: true,
-  backoff: {
-    delay: 2000,
-    type: 'exponential' as const
-  }
-};
+const s3DeleteJobOptions = defaultJobOptions;
 
 const encodeJobIdPart = (value: string) => encodeURIComponent(value);
 
@@ -30,13 +21,16 @@ export class S3FileDeleteMQService {
 
   /** 获取 S3 文件删除队列；对象存储删除 processor 由 common/s3 注入。 */
   getQueue(): Queue<S3MQJobData> {
-    return this.binding.getQueue<S3MQJobData>(QueueNames.s3FileDelete);
+    return this.binding.getQueue<S3MQJobData>(QueueNames.s3FileDelete, {
+      defaultJobOptions
+    });
   }
 
   /** 创建 S3 文件删除 Worker，统一保留策略仍由队列 service 管理。 */
   getWorker(processor: Processor<S3MQJobData>): Worker<S3MQJobData> {
     return this.binding.getWorker<S3MQJobData>(QueueNames.s3FileDelete, processor, {
-      concurrency: 6
+      concurrency: 6,
+      ...defaultWorkerOptions
     });
   }
 
@@ -53,7 +47,18 @@ export class S3FileDeleteMQService {
       throw new Error('Invalid s3 delete job data');
     })();
 
-    await this.getQueue().add('delete-s3-files', data, { jobId, ...s3DeleteJobOptions });
+    const queue = this.getQueue();
+    if (!jobId) {
+      await queue.add('delete-s3-files', data, s3DeleteJobOptions);
+      return;
+    }
+
+    await addOrRequeueFailedJob({
+      queue,
+      name: 'delete-s3-files',
+      data,
+      opts: { jobId, ...s3DeleteJobOptions }
+    });
   }
 }
 

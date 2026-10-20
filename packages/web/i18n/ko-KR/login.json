@@ -4,6 +4,7 @@
   "agree": "동의",
   "cookies_tip": "본 웹사이트는 더 나은 서비스 경험을 제공하기 위해 쿠키를 사용합니다. 사이트를 계속 이용하시면 쿠키 정책에 동의하는 것으로 간주됩니다.",
   "forget_password": "비밀번호 찾기",
+  "login_redirect_failed": "로그인은 완료되었지만 페이지 이동에 실패했습니다. 페이지를 새로고침해 주세요.",
   "login_success": "로그인 성공",
   "no_remind": "다시 알리지 않기",
   "password_condition": "비밀번호는 최대 60자까지 입력할 수 있습니다",

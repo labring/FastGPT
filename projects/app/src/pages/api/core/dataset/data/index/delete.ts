@@ -23,7 +23,8 @@ async function handler(req: ApiRequestProps): Promise<DeleteDatasetDataIndexResp
     authToken: true,
     authApiKey: true,
     dataId,
-    per: WritePermissionVal
+    per: WritePermissionVal,
+    assertWritable: true
   });
 
   await deleteDatasetDataIndex({

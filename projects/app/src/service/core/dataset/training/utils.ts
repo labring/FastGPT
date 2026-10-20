@@ -1,5 +1,7 @@
 import { generateQA } from '@/service/core/dataset/queues/generateQA';
-import { generateVector } from '@/service/core/dataset/queues/generateVector';
+import { generateRebuildIndex } from '@/service/core/dataset/queues/generateRebuildIndex';
+import { generateRebuildSynonym } from '@/service/core/dataset/queues/generateRebuildSynonym';
+import { generatePreCreatedData } from '@/service/core/dataset/queues/generatePreCreatedData';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
@@ -27,8 +29,12 @@ export const createDatasetTrainingMongoWatch = () =>
       const { mode } = change.fullDocument as DatasetTrainingSchemaType;
       if (mode === TrainingModeEnum.qa) {
         generateQA();
-      } else if (mode === TrainingModeEnum.chunk) {
-        generateVector();
+      } else if (mode === TrainingModeEnum.index) {
+        generatePreCreatedData();
+      } else if (mode === TrainingModeEnum.rebuildIndex) {
+        generateRebuildIndex();
+      } else if (mode === TrainingModeEnum.rebuildSynonym) {
+        generateRebuildSynonym();
       } else if (mode === TrainingModeEnum.parse) {
         datasetParseQueue();
       }
@@ -40,7 +46,9 @@ export const startTrainingQueue = (fast?: boolean) => {
 
   for (let i = 0; i < (fast ? max : 1); i++) {
     generateQA();
-    generateVector();
+    generateRebuildIndex();
+    generateRebuildSynonym();
+    generatePreCreatedData();
     datasetParseQueue();
   }
 };

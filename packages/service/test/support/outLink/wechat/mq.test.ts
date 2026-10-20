@@ -28,6 +28,7 @@ vi.mock('@fastgpt/dal/redis/bullmq', () => ({
     removePollJob: (jobId: string) => mocks.getQueue('wechatPoll')?.remove?.(jobId)
   },
   WECHAT_POLL_JOB_NAME: 'wechatPublishPoll',
+  defaultWorkerOptions: { removeOnFail: { count: 10000 } },
   QueueNames: {
     wechatPoll: 'wechatPoll',
     wechatReply: 'wechatReply'

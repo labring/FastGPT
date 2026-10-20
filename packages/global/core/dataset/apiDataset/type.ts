@@ -79,3 +79,24 @@ export type APIFileReadResponseType = z.infer<typeof APIFileReadResponseSchema>;
 export type APIFileReadResponse = APIFileReadResponseType;
 
 export type ApiDatasetDetailResponse = APIFileItemType;
+
+export type ApiDatasetErrorCode =
+  | 'NOT_FOUND'
+  | 'RATE_LIMIT'
+  | 'UNAUTHORIZED'
+  | 'NETWORK_ERROR'
+  | 'SERVER_ERROR'
+  | 'INVALID_PARAMS'
+  | 'UNKNOWN_ERROR';
+
+export type ApiDatasetResult<T> =
+  | {
+      success: true;
+      data: T;
+    }
+  | {
+      success: false;
+      code: ApiDatasetErrorCode;
+      message: string;
+      status?: number;
+    };

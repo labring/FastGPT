@@ -56,7 +56,8 @@ async function getTeamMember(
     (await getTmbPermission({
       resourceType: PerResourceTypeEnum.team,
       teamId: tmb.teamId,
-      tmbId: tmb._id
+      tmbId: tmb._id,
+      session
     })) ?? TeamDefaultRoleVal;
 
   return {
@@ -65,6 +66,7 @@ async function getTeamMember(
     teamAvatar: tmb.team.avatar,
     teamName: tmb.team.name,
     memberName: tmb.name,
+    isSetMemberName: tmb.isSetMemberName ?? false,
     avatar: tmb.avatar,
     balance: tmb.team.balance,
     tmbId: String(tmb._id),
@@ -173,6 +175,8 @@ export async function createUserLoginTeam({
         teamId: team._id,
         userId,
         name: memberName ?? username,
+        // 登录兜底建队创建的是 owner，owner 不强制补齐成员名，回落写也记为已设置
+        isSetMemberName: true,
         role: TeamMemberRoleEnum.owner,
         status: TeamMemberStatusEnum.active,
         avatar: memberAvatar ?? LOGO_ICON
@@ -209,9 +213,13 @@ export async function createDefaultTeam({
   session: ClientSession;
 }) {
   // auth default team
-  const tmb = await MongoTeamMember.findOne({
-    userId: new Types.ObjectId(userId)
-  });
+  const tmb = await MongoTeamMember.findOne(
+    {
+      userId: new Types.ObjectId(userId)
+    },
+    undefined,
+    { session }
+  );
 
   if (!tmb) {
     // create team
@@ -227,12 +235,14 @@ export async function createDefaultTeam({
       { session }
     );
     // create team member
-    const [tmb] = await MongoTeamMember.create(
+    const [newMember] = await MongoTeamMember.create(
       [
         {
           teamId: insertedId,
           userId,
           name: 'Owner',
+          // root/默认团队初始化规则不变：系统常量名视为已设置
+          isSetMemberName: true,
           role: TeamMemberRoleEnum.owner,
           status: TeamMemberStatusEnum.active,
           createTime: new Date()
@@ -240,12 +250,13 @@ export async function createDefaultTeam({
       ],
       { session }
     );
-    await createTeamDefaultGroup({ teamId: tmb.teamId, avatar, session });
-    await createRootOrg({ teamId: tmb.teamId, session });
-    logger.info('Default team created', { userId, teamId: tmb.teamId, tmbId: tmb._id });
-    return tmb;
+    await createTeamDefaultGroup({ teamId: newMember.teamId, avatar, session });
+    await createRootOrg({ teamId: newMember.teamId, session });
+    logger.info('Default team created', { userId, teamId: newMember.teamId, tmbId: newMember._id });
+    return newMember;
   } else {
     logger.info('Default team exists', { userId });
+    return tmb;
   }
 }
 

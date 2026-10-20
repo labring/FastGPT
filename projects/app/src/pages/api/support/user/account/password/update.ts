@@ -9,8 +9,12 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { serviceEnv } from '@fastgpt/service/env';
 import { assertPasswordUpdateRateLimit } from '@fastgpt/service/common/rateLimit/interface/accountVerification';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { updatePasswordWithChangeSession } from '@fastgpt/service/support/user/account/password/service';
+import {
+  assertUserPasswordAvailable,
+  updatePasswordWithChangeSession
+} from '@fastgpt/service/support/user/account/password/service';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { delUserAllSession } from '@fastgpt/service/support/user/session';
 import { withUserLock } from '@fastgpt/service/support/user/lock';
 import { NextAPI } from '@/service/middleware/entry';
@@ -30,6 +34,11 @@ async function handler(req: ApiRequestProps<UpdatePasswordBody>): Promise<void> 
   });
 
   await withUserLock(userId, async () => {
+    // 开启 SSO 禁用密码策略后，受限 SSO 用户不允许继续维护平台密码。
+    const user = await MongoUser.findById(userId);
+    if (!user) throw new Error('Failed to update password');
+    assertUserPasswordAvailable(user.username);
+
     await updatePasswordWithChangeSession({
       sessionId: body.passwordChangeSession,
       userId,

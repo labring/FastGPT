@@ -373,7 +373,13 @@ export const appendNodeResponseByParent = (
   return inserted ? nextResponses : [...orphanResult.responses, incomingWithChildren];
 };
 
-const normalizeNodeResponseChildren = (
+/**
+ * 为内嵌 child 补齐当前 response 的 parentId，并递归合并其内部增量。
+ *
+ * 同一 child 可能先作为独立 flat row 发布，随后又随 parent 的 childrenResponses 到达；
+ * 统一 parentId 后，实时流和详情读取都能使用相同的 `id + parentId` 身份去重。
+ */
+export const normalizeNodeResponseChildren = (
   response: ChatHistoryItemResType
 ): ChatHistoryItemResType => {
   const normalizedChildren = childrenResponseFields.reduce<Partial<ChatHistoryItemResType>>(
@@ -381,7 +387,13 @@ const normalizeNodeResponseChildren = (
       const children = response[field] as ChatHistoryItemResType[] | undefined;
       if (!children?.length) return acc;
 
-      const mergedChildren = mergeNodeResponseDataByIdAndParent(children);
+      const childrenWithParent = response.id
+        ? children.map((child) => ({
+            ...child,
+            ...(child.parentId ? {} : { parentId: response.id })
+          }))
+        : children;
+      const mergedChildren = mergeNodeResponseDataByIdAndParent(childrenWithParent);
       return mergedChildren.length > 0 ? { ...acc, [field]: mergedChildren } : acc;
     },
     {}

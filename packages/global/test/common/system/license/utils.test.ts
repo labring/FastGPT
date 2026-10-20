@@ -76,6 +76,21 @@ describe('getLicenseStatus', () => {
     expect(getLicenseStatus({ ...official, expiredTime: '' })).toBe(LicenseStatusEnum.inactive);
   });
 
+  it.each(['不限制', 'unlimited'])(
+    'reports active for the unlimited expiry sentinel %s, at any point in time',
+    (expiredTime) => {
+      // 授权源返回 unlimited 时，写入侧落库的是 '不限制'；'unlimited' 是协议原始值。
+      const unlimited = { ...official, expiredTime };
+      expect(getLicenseStatus(unlimited, new Date('2026-06-01T00:00:00.000Z'))).toBe(
+        LicenseStatusEnum.active
+      );
+      // 永不到期：远期时间点既不 expired，也不进入续期预警窗口。
+      expect(getLicenseStatus(unlimited, new Date('2030-01-01T00:00:00.000Z'))).toBe(
+        LicenseStatusEnum.active
+      );
+    }
+  );
+
   it('uses the inclusive start as the boundary between inactive and active', () => {
     const starts = { ...official, startTime: '2026-06-01T00:00:00.000Z' };
     expect(getLicenseStatus(starts, new Date('2026-05-31T23:59:59.000Z'))).toBe(
@@ -129,4 +144,13 @@ describe('isLicenseActive', () => {
   it('stays true inside the expiring window, since the license is still usable', () => {
     expect(isLicenseActive(official, new Date('2026-12-15T00:00:00.000Z'))).toBe(true);
   });
+
+  it.each(['不限制', 'unlimited'])(
+    'stays true for the unlimited expiry sentinel %s',
+    (expiredTime) => {
+      expect(
+        isLicenseActive({ ...official, expiredTime }, new Date('2030-01-01T00:00:00.000Z'))
+      ).toBe(true);
+    }
+  );
 });

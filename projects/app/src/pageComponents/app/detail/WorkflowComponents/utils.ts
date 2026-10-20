@@ -1,4 +1,8 @@
-import { getNodeAllSource, workflowReferenceValueIsSelectable } from '@/web/core/workflow/utils';
+import {
+  DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES,
+  getNodeAllSource,
+  workflowReferenceValueIsSelectable
+} from '@/web/core/workflow/utils';
 import { workflowSystemVariables } from '@/web/core/app/utils';
 import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
 import {
@@ -7,9 +11,12 @@ import {
   VARIABLE_NODE_ID
 } from '@fastgpt/global/core/workflow/constants';
 import {
+  FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
+import { isReferenceOptionFormItem } from '@fastgpt/global/core/workflow/template/system/interactive/constants';
+import type { UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
   type FlowNodeItemType,
@@ -23,7 +30,7 @@ import type {
 import {
   getSelectedInputRenderType,
   nodeInputIsReference
-} from '@fastgpt/global/core/workflow/utils';
+} from '@fastgpt/global/common/workflow/reference';
 import {
   normalizeFlowNodeInputType,
   serializeAgentTool
@@ -98,6 +105,9 @@ export const uiWorkflow2StoreWorkflow = ({
       showStatus: item.data.showStatus,
       position: item.position,
       version: item.data.version,
+      ...(item.data.metadataLocale !== undefined
+        ? { metadataLocale: item.data.metadataLocale }
+        : {}),
       inputs: filterUnselectableReferenceInputs({
         node: item.data,
         inputs,
@@ -158,27 +168,90 @@ const filterUnselectableReferenceInputs = ({
   getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
   childrenNodeIdListMap: Record<string, string[]>;
 }) => {
-  return inputs.map((input) => {
-    if (!nodeInputIsReference(input)) return input;
-
-    const sourceNodes = getNodeAllSource({
+  let sourceNodesWithoutChildren: ReturnType<typeof getNodeAllSource> | undefined;
+  let sourceNodesWithChildren: ReturnType<typeof getNodeAllSource> | undefined;
+  const getSourceNodes = (includeChildren: boolean) => {
+    if (includeChildren) {
+      return (sourceNodesWithChildren ??= getNodeAllSource({
+        nodeId: node.nodeId,
+        getNodeById,
+        edges,
+        chatConfig: chatConfig ?? ({} as AppChatConfigType),
+        t: emptyT,
+        includeChildren: true,
+        childrenNodeIdListMap
+      }));
+    }
+    return (sourceNodesWithoutChildren ??= getNodeAllSource({
       nodeId: node.nodeId,
       getNodeById,
       edges,
       chatConfig: chatConfig ?? ({} as AppChatConfigType),
       t: emptyT,
-      includeChildren: input.canEdit === true,
+      includeChildren: false,
       childrenNodeIdListMap
-    });
+    }));
+  };
+
+  return inputs.map((input) => {
+    if (
+      node.flowNodeType === FlowNodeTypeEnum.formInput &&
+      input.key === NodeInputKeyEnum.userInputForms &&
+      Array.isArray(input.value)
+    ) {
+      const formList = input.value as UserInputFormItemType[];
+      let hasChanged = false;
+      const nextFormList = formList.map((formItem) => {
+        if (!isReferenceOptionFormItem(formItem) || !Array.isArray(formItem.listReference)) {
+          return formItem;
+        }
+
+        const sourceNodes = getSourceNodes(false);
+        const filteredRefList = formItem.listReference.filter((item) =>
+          workflowReferenceValueIsSelectable({
+            value: item,
+            sourceNodes,
+            excludeValueTypes: DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES
+          })
+        );
+        if (filteredRefList.length === formItem.listReference.length) return formItem;
+
+        hasChanged = true;
+        return {
+          ...formItem,
+          listReference: filteredRefList
+        };
+      });
+
+      return hasChanged
+        ? {
+            ...input,
+            value: nextFormList
+          }
+        : input;
+    }
+
+    if (!nodeInputIsReference(input)) {
+      return input;
+    }
+
+    const sourceNodes = getSourceNodes(input.canEdit === true);
 
     const value = input.value as ReferenceValueType | undefined;
     if (!Array.isArray(value)) return input;
+
+    const excludeValueTypes =
+      node.flowNodeType === FlowNodeTypeEnum.userSelect &&
+      input.key === NodeInputKeyEnum.userSelectOptions
+        ? DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES
+        : undefined;
 
     if (typeof value[0] === 'string') {
       const keepValue = workflowReferenceValueIsSelectable({
         value,
         sourceNodes,
-        valueType: input.valueType
+        valueType: input.valueType,
+        excludeValueTypes
       });
       return keepValue
         ? input
@@ -192,7 +265,8 @@ const filterUnselectableReferenceInputs = ({
       workflowReferenceValueIsSelectable({
         value: item,
         sourceNodes,
-        valueType: input.valueType
+        valueType: input.valueType,
+        excludeValueTypes
       })
     );
 

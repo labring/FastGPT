@@ -234,9 +234,8 @@ const MyMenu = ({
 
   const computeOffset = useMemo<[number, number]>(() => {
     if (offset) return offset;
-    if (typeof width === 'number') return [-width / 2, 5];
     return [0, 5];
-  }, [offset, width]);
+  }, [offset]);
 
   return (
     <Menu
@@ -252,6 +251,7 @@ const MyMenu = ({
     >
       <Box
         ref={ref}
+        w={buttonBoxProps?.w ?? 'fit-content'}
         onMouseEnter={() => {
           if (formatTrigger === 'hover') {
             setIsOpen(true);
@@ -268,6 +268,7 @@ const MyMenu = ({
       >
         <Box
           position={'relative'}
+          w={buttonBoxProps?.w ?? 'fit-content'}
           onClickCapture={(e) => {
             e.stopPropagation();
             if (formatTrigger === 'click') {

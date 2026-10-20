@@ -5,7 +5,8 @@ import { type ErrType } from '../errorCode';
 export enum S3ErrEnum {
   invalidUploadFileType = 'InvalidUploadFileType',
   uploadFileTypeMismatch = 'UploadFileTypeMismatch',
-  fileUploadDisabled = 'FileUploadDisabled'
+  fileUploadDisabled = 'FileUploadDisabled',
+  emptyUploadFile = 'EmptyUploadFile'
 }
 
 const s3ErrList = [
@@ -20,6 +21,10 @@ const s3ErrList = [
   {
     statusText: S3ErrEnum.fileUploadDisabled,
     message: i18nT('common:error.file_upload_disabled')
+  },
+  {
+    statusText: S3ErrEnum.emptyUploadFile,
+    message: i18nT('common:empty_file')
   }
 ];
 

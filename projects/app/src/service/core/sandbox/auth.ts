@@ -7,7 +7,7 @@ import { serviceEnv } from '@fastgpt/service/env';
 import { timingSafeEqual } from 'crypto';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '@fastgpt/service/core/ai/sandbox/interface/skillEdit';
+import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '@fastgpt/service/core/ai/skill/edit/config';
 import type { ChatSchemaType } from '@fastgpt/global/core/chat/type';
 
 export type AuthSandboxSessionParams = {

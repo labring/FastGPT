@@ -144,6 +144,18 @@ const DatasetSchema = new Schema({
     type: Boolean,
     default: true
   },
+  // collection 级权限开关（显式、可逆）：关闭态（默认，含存量数据）时 collection 可读性 == dataset 可读，
+  // 不依赖任何 collection ACL 行；启用态逐 collection 解析物化快照（由启用接口负责物化）。
+  collectionPermissionEnabled: {
+    type: Boolean,
+    default: false
+  },
+  // 内部事务版本：创建 ACL 与权限启停写同一 dataset，避免关闭态新集合漏入启用快照。
+  // 不参与接口合约或索引；旧记录由首次 $inc 自动初始化，无需全量迁移。
+  collectionPermissionVersion: {
+    type: Number,
+    default: 0
+  },
 
   apiDatasetServer: Object,
 

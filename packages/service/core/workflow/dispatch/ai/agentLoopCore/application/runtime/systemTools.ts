@@ -1,5 +1,5 @@
 import type { AgentLoopSystemTools } from '../../../../../../ai/llm/agentLoop/interface';
-import type { SandboxClient } from '../../../../../../ai/sandbox/interface/runtime';
+import type { SandboxClient } from '../../../../../../ai/sandbox/application/runtime/client';
 import type { AgentLoopDatasetSearchExecutor } from '../../../../../../ai/llm/agentLoop/interface';
 import type { AgentLoopReadFileExecutor } from '../../../../../../ai/llm/agentLoop/interface';
 

@@ -1,21 +1,18 @@
-import { getModelHandle } from '../../../ai/model';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflow/template/system/classifyQuestion/type';
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-
+import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflow/template/system/classifyQuestion/type';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { getCQSystemPrompt } from '@fastgpt/global/core/ai/prompt/agent';
-import { type LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
-
-import { getHistories } from '../utils';
-import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
-import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import { createLLMResponse } from '../../../ai/llm/request';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
+import { createLLMResponse } from '../../../ai/llm/request';
+import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
+import { loadWorkflowModelResource } from '../../resource/service';
+import { getHistories } from '../utils';
 import { getWorkflowSourceNodeKey } from '../utils/source';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.AI);
@@ -32,7 +29,7 @@ type CQResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.cqResult]: string;
 }>;
 type ActionProps = Props & {
-  cqModel: LLMSystemModelDataType;
+  cqModel: LLMModelDataType;
   lastMemory?: ClassifyQuestionAgentItemType;
 };
 
@@ -40,6 +37,7 @@ type ActionProps = Props & {
 export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse> => {
   const {
     runningAppInfo,
+    runningUserInfo,
     node: { nodeId, name },
     histories,
     params: { modelId, model, history = 6, agents, userChatInput }
@@ -48,8 +46,12 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
   if (!userChatInput) {
     return Promise.reject('Input is empty');
   }
-  const modelHandle = await getModelHandle();
-  const cqModel = modelHandle.getLLMModelData({ modelId, model });
+  const cqModel = await loadWorkflowModelResource({
+    appTeamId: runningAppInfo.teamId,
+    userInfo: runningUserInfo,
+    modelId,
+    model
+  });
 
   const memoryKey = getWorkflowSourceNodeKey({ runningAppInfo, nodeId });
   const chatHistories = getHistories(history, histories);

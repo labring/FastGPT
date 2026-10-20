@@ -49,6 +49,7 @@
   "tag_filter_op_before": "早於",
   "tag_filter_op_contains": "包含",
   "tag_filter_op_empty": "為空",
+  "tag_filter_op_ends_with": "結尾是",
   "tag_filter_op_eq": "等於",
   "tag_filter_op_gt": "大於",
   "tag_filter_op_gte": "大於等於",
@@ -61,6 +62,8 @@
   "tag_filter_op_not_contains": "不包含",
   "tag_filter_op_not_empty": "不為空",
   "tag_filter_op_not_in": "不屬於",
+  "tag_filter_op_regex": "模糊匹配",
+  "tag_filter_op_starts_with": "開頭是",
   "tag_filter_select_condition": "選擇條件",
   "tag_filter_select_option": "請選擇選項",
   "tag_filter_select_tag": "選擇標籤",
@@ -303,5 +306,11 @@
   "workflow_local_draft_auth_expired_notice": "登入已過期，當前編輯內容已自動儲存至本機。請不要關閉頁面，在此分頁重新登入後，即可恢復編排內容。",
   "workflow_local_draft_auth_expired_title": "已自動儲存",
   "workflow_local_draft_relogin": "重新登入",
-  "workflow.exit_tips": "您的變更尚未儲存，「直接結束」將不會儲存您的編輯紀錄。"
+  "workflow.exit_tips": "您的變更尚未儲存，「直接結束」將不會儲存您的編輯紀錄。",
+  "option_config": "選項配置",
+  "option_variable": "選項變數",
+  "please_input_option": "請輸入選項",
+  "please_select_variable": "請選擇變數",
+  "form_input_no_available_options": "表單輸入節點的動態選項欄位沒有可用選項，請檢查引用變數。",
+  "user_select_no_available_options": "使用者選擇節點沒有可用選項，請檢查引用變數。"
 }

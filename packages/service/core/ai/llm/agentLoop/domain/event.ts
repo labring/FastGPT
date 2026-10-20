@@ -6,6 +6,7 @@ import type {
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { AgentAskPayload } from './systemTool/ask';
 import type { AgentLoopUsage } from './usage';
+import type { AgentLoopAssistantResponse } from './tool';
 
 export type AgentLoopToolResponseCompress = {
   response: string;
@@ -83,6 +84,8 @@ export type AgentLoopEvent =
       response: string;
       /** 工具内部产生、需要随本轮 assistant 一起持久化的标准消息。 */
       assistantMessages?: ChatCompletionMessageParam[];
+      /** 工具内部产生的展示层 assistant responses，由上层 adapter 解释。 */
+      assistantResponses?: AgentLoopAssistantResponse[];
       errorMessage?: string;
       seconds: number;
       usages?: AgentLoopUsage[];

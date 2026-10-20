@@ -11,7 +11,7 @@ FastGPT's permission system combines **attribute-based** and **role-based** acce
 
 ## Teams
 
-Each user can belong to multiple teams. The system automatically creates an initial team for every user. Manual creation of additional teams is not currently supported.
+Each user can belong to multiple teams. In the default multi-team mode, the system automatically creates an initial team for every user. Manual creation of additional teams is not currently supported.
 
 ## Permission Management
 
@@ -23,15 +23,13 @@ FastGPT offers three permission management levels:
 
 Permission evaluation follows this logic:
 
-First, check the user's individual member permissions
-
-Then, check permissions from the user's departments and groups (union)
-
-Final permissions are the combination of the above
+1. Use individually assigned member permissions when present.
+2. Otherwise, combine the permissions granted through the user's departments and groups.
+3. Use the default permissions when neither source has an explicit assignment.
 
 Authorization logic:
 
-![](/imgs/guide/team_permissions/team_roles_permissions/image1.jpeg)
+![Member permissions take precedence over department and group permissions](/imgs/guide/team_permissions/team_roles_permissions/image1.jpeg)
 
 ### Resource Permissions
 
@@ -93,26 +91,45 @@ The table below shows the manageable permissions for different resources.
       <td>Can Manage</td>
       <td>Add or remove collaborators</td>
     </tr>
+    <tr>
+      <td rowSpan="3">
+        File / Folder
+        <br />
+        (Collection)
+      </td>
+      <td>Can View</td>
+      <td>
+        Can view this file/folder's content. Requires collection permission enabled on the Dataset
+      </td>
+    </tr>
+    <tr>
+      <td>Can Edit</td>
+      <td>Modify content, update, sync, adjust training parameters</td>
+    </tr>
+    <tr>
+      <td>Can Manage</td>
+      <td>Add or remove collaborators; deletion is Owner-only</td>
+    </tr>
   </tbody>
 </table>
 
 ### Collaborators
 
-You must add **collaborators** before managing their permissions:
+Open **Add Collaborators**, select the members, departments, or groups, choose a permission level, and click **Confirm**. You can then manage their permissions on the resource.
 
-![](/imgs/guide/team_permissions/team_roles_permissions/image2.png)
+![Select collaborators and their permission level](/imgs/guide/team_permissions/team_roles_permissions/image2.png)
 
 When managing team permissions, first select members/organizations/groups, then configure permissions.
 
-![](/imgs/guide/team_permissions/team_roles_permissions/image3.png)
+![Choose members, departments, or groups for team permissions](/imgs/guide/team_permissions/team_roles_permissions/image3.png)
 
 For resources like apps and datasets, you can directly modify member permissions.
 
-![](/imgs/guide/team_permissions/team_roles_permissions/image4.png)
+![Change a resource collaborator permission](/imgs/guide/team_permissions/team_roles_permissions/image4.png)
 
-Team permissions are set on a dedicated permissions page.
+In team management, open the **Permissions** tab and click **Add Permissions** to choose members, departments, or groups. Use the checkboxes in their rows to assign the available team permissions.
 
-![](/imgs/guide/team_permissions/team_roles_permissions/image5.png)
+![Assign team permissions in the Permissions tab](/imgs/guide/team_permissions/team_roles_permissions/image5.png)
 
 ## Special Permissions
 
@@ -138,7 +155,7 @@ Root is the system's only super admin account, with complete access and manageme
 
 Use the "All Members Group" to quickly set baseline permissions for the entire team. For example, grant everyone access to an app.
 
-**Note**: Individual member permissions override all-member group permissions. For example, if App A has all-member edit permissions, but User M is individually set to use-only, User M can only use the app, not edit it.
+**Note**: Individual member permissions override all-member group permissions. For example, if App A has all-member edit permissions, but User M is individually set to use-only, User M receives use-only access.
 
 ### 2. Batch Permission Management
 
@@ -158,7 +175,7 @@ Permission information is stored in MongoDB's resource_permissions collection, w
 
 - teamId: Team identifier
 - tmbId/groupId/orgId: Permission subject (one of three)
-- resourceType: Resource type (team/app/dataset)
+- resourceType: Resource type (team/app/dataset/agentSkill/collection)
 - permission: Permission value (number)
 - resourceId: Resource ID (null for team resources)
 

@@ -8,11 +8,14 @@ import {
 } from '@fastgpt/service/common/mongo';
 import type { DeprecatedMongoIndexDefinition } from '@fastgpt/service/common/mongo/schemaIndexes';
 import { MongoIndexManager } from '@fastgpt/service/common/mongo/indexManager';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import {
   MongoDatasetSynonym,
   MongoDatasetSynonymMapping
 } from '@fastgpt/service/core/dataset/synonym/schema';
+import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
+import { MongoModelStatusProbeRecord } from '@fastgpt/service/core/ai/modelStatus/schema';
 
 const logger = {
   debug: vi.fn(),
@@ -242,6 +245,38 @@ describe('MongoIndexManager.syncModelIndexes', () => {
           partialFilterExpression: { scope: 'system' }
         })
       ])
+    );
+  });
+
+  it('replaces model status testedAt indexes with requestEndedAt indexes', async () => {
+    const schema = new Schema({}, { autoIndex: false });
+    defineIndex(schema, { key: { modelId: 1, requestEndedAt: -1 } });
+    defineIndex(schema, {
+      key: { requestEndedAt: 1 },
+      options: { expireAfterSeconds: 30 * 24 * 60 * 60 }
+    });
+    defineDeprecatedTestIndexes(
+      schema,
+      getSchemaDeprecatedMongoIndexes(MongoModelStatusProbeRecord.schema)
+    );
+    const model = createModel({ schema, prefix: 'ModelStatusProbeIndex' });
+    await model.collection.createIndex(
+      { modelId: 1, testedAt: -1 },
+      { name: 'modelId_1_testedAt_-1' }
+    );
+    await model.collection.createIndex(
+      { testedAt: 1 },
+      { name: 'testedAt_1', expireAfterSeconds: 30 * 24 * 60 * 60 }
+    );
+
+    await MongoIndexManager.syncModelIndexes({ model, logger });
+
+    const indexes = await model.collection.indexes();
+    expect(indexes.map(({ name }) => name)).toEqual(
+      expect.arrayContaining(['modelId_1_requestEndedAt_-1', 'requestEndedAt_1', '_id_'])
+    );
+    expect(indexes.map(({ name }) => name)).not.toEqual(
+      expect.arrayContaining(['modelId_1_testedAt_-1', 'testedAt_1'])
     );
   });
 });
@@ -557,5 +592,49 @@ describe('dataset training TTL index migration', () => {
       })
     ]);
     expect(getSchemaDeprecatedMongoIndexes(MongoDatasetTraining.schema)).toEqual([]);
+  });
+});
+
+describe('dataset rebuild status index migration', () => {
+  it('drops the old rebuilding index and retains the replacement and customer indexes', async () => {
+    const schema = new Schema(
+      { rebuilding: Boolean, indexStatus: String, teamId: String, datasetId: String },
+      { autoIndex: false }
+    );
+    defineIndex(schema, { key: { indexStatus: 1, teamId: 1, datasetId: 1 } });
+    defineDeprecatedTestIndexes(schema, getSchemaDeprecatedMongoIndexes(MongoDatasetData.schema));
+    const model = createModel({ schema, prefix: 'DatasetRebuildIndex' });
+    await model.collection.createIndex({ rebuilding: 1, teamId: 1, datasetId: 1 });
+    await model.collection.createIndex({ rebuilding: 1 }, { name: 'customer_rebuild_status' });
+    await MongoIndexManager.syncModelIndexes({ model, logger });
+    const names = await getIndexNames(model);
+    expect(names.has('rebuilding_1_teamId_1_datasetId_1')).toBe(false);
+    expect(names.has('indexStatus_1_teamId_1_datasetId_1')).toBe(true);
+    expect(names.has('customer_rebuild_status')).toBe(true);
+  });
+});
+
+describe('sandbox quota index migration', () => {
+  it('removes the old source quota index and retains current and customer indexes', async () => {
+    const schema = new Schema({}, { autoIndex: false });
+    MongoSandboxInstance.schema.indexes().forEach(([key, options]) => {
+      defineIndex(schema, { key, options });
+    });
+    defineDeprecatedTestIndexes(
+      schema,
+      getSchemaDeprecatedMongoIndexes(MongoSandboxInstance.schema)
+    );
+    const model = createModel({ schema, prefix: 'SandboxQuotaIndex' });
+    await model.collection.createIndex({ sourceType: 1, status: 1, provider: 1 });
+    await model.collection.createIndex({ sourceType: 1 }, { name: 'customer_sandbox_source' });
+
+    await MongoIndexManager.syncModelIndexes({ model, logger });
+
+    const names = await getIndexNames(model);
+    expect(names).not.toContain('sourceType_1_status_1_provider_1');
+    expect(names).toContain('teamId_1_status_1');
+    expect(names).toContain('status_1_lastActiveAt_1');
+    expect(names).toContain('sourceType_1_sourceId_1_userId_1');
+    expect(names).toContain('customer_sandbox_source');
   });
 });

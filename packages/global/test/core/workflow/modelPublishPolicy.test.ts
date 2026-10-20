@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatModels } from '../../../core/workflow/utils';
+import { formatModels } from '../../../common/workflow/model';
 import { ModelTypeEnum } from '../../../core/ai/constants';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../../core/workflow/node/constant';
 import { NodeInputKeyEnum } from '../../../core/workflow/constants';
@@ -94,13 +94,10 @@ describe.each(['rerank', 'query', 'guide', 'tts'] as const)(
       const { params } = prepare(true, wrongTypeId);
       expect(() => formatModels(params)).toThrow('unavailable');
     });
-    it.each(['deleted-id', 'disabled-id', 'wrong-type-id'])(
-      'rejects a nonempty unavailable model (%s)',
-      (value) => {
-        const { params } = prepare(true, value);
-        expect(() => formatModels(params)).toThrow('unavailable');
-      }
-    );
+    it('rejects a nonempty unavailable model', () => {
+      const { params } = prepare(true, 'deleted-id');
+      expect(() => formatModels(params)).toThrow('unavailable');
+    });
     it.each([undefined, '', 'deleted-id'])(
       'does not check disabled features or replace their values (%s)',
       (value) => {

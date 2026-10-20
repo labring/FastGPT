@@ -15,7 +15,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
+import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 import { datasetSearchUsesLegacyFilter } from '@/web/core/workflow/datasetSearchNodeUpgrade';
 
 const RenderList: Record<
@@ -102,6 +102,7 @@ const RenderList: Record<
   [FlowNodeInputTypeEnum.agentGenerated]: undefined,
   [FlowNodeInputTypeEnum.customVariable]: undefined,
   [FlowNodeInputTypeEnum.hidden]: undefined,
+  [FlowNodeInputTypeEnum.off]: undefined,
   [FlowNodeInputTypeEnum.custom]: undefined,
   [FlowNodeInputTypeEnum.selectSkill]: undefined,
   [FlowNodeInputTypeEnum.selectTool]: undefined
@@ -172,7 +173,12 @@ const RenderInput = ({
       const renderType = getSelectedInputRenderType(input);
       const isDynamic = !!input.canEdit;
 
-      if (renderType === FlowNodeInputTypeEnum.hidden || isDynamic) return false;
+      if (
+        renderType === FlowNodeInputTypeEnum.hidden ||
+        renderType === FlowNodeInputTypeEnum.off ||
+        isDynamic
+      )
+        return false;
 
       return true;
     });
@@ -280,7 +286,9 @@ const RenderInput = ({
               RenderComponent ? (
                 <Flex alignItems={'center'} gap={1}>
                   {showSandbox && enableSandbox ? (
-                    <MyTag>{t('app:sandbox_free_tip')}</MyTag>
+                    feConfigs.show_agent_sandbox_free_tip && (
+                      <MyTag>{t('app:sandbox_free_tip')}</MyTag>
+                    )
                   ) : (
                     <MyTag>
                       {t(

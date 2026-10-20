@@ -1,6 +1,7 @@
 import type {
   GetSystemMigrationFailedRecordsQuery,
   RetrySystemMigrationBody,
+  StartSystemMigrationBody,
   SystemMigrationFailedRecordsResponse,
   SystemMigrationListResponse
 } from '@fastgpt/global/migration/schema';
@@ -25,3 +26,7 @@ export const getSystemMigrationFailedRecords = ({
     migrationId,
     stageKey
   });
+
+/** 首次手动执行：仅入队，进度和恢复由 runner 统一管理。 */
+export const startSystemMigration = (body: StartSystemMigrationBody) =>
+  POST(`${systemMigrationPath}/start`, body);

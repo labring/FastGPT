@@ -1,6 +1,5 @@
 'use client';
 
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import {
   getTeamSystemPluginList,
   getTeamToolDetail,
@@ -9,7 +8,7 @@ import {
 import { deleteTeamPlugin } from '@/web/core/plugin/team/api';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import {
   Box,
   Button,
@@ -34,7 +33,7 @@ import { useRouter } from 'next/router';
 import { getDocPath } from '@/web/common/system/doc';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import type { GetTeamPluginListResponseType } from '@fastgpt/global/openapi/core/plugin/team/tool/api';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { parseI18nString, selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -56,7 +55,7 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import dynamic from 'next/dynamic';
 
-const ImportPluginModal = dynamic(() => import('@/pageComponents/config/ImportPluginModal'));
+const ImportPluginModal = dynamic(() => import('@/pageComponents/admin/config/ImportPluginModal'));
 
 type PluginDebugSessionState = Pick<
   GetPluginDebugChannelResponseType,
@@ -66,7 +65,7 @@ type PluginDebugSessionState = Pick<
 
 const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const router = useRouter();
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useSafeTranslation();
   const { feConfigs, initd, setShowProModal } = useSystemStore();
   const { isPc } = useSystem();
   const { userInfo } = useUserStore();
@@ -152,8 +151,8 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     return tools
       .filter((tool) => {
         if (!searchText) return true;
-        const name = tool.name.toLowerCase();
-        const intro = tool.intro?.toLowerCase() || '';
+        const name = selectPluginText(tool.name, i18n.language).toLowerCase();
+        const intro = selectPluginText(tool.intro, i18n.language).toLowerCase();
         const search = searchText.toLowerCase();
         return name.includes(search) || intro.includes(search);
       })
@@ -163,8 +162,8 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       })
       .map<ToolCardItemType>((tool) => ({
         id: tool.id,
-        name: tool.name,
-        description: tool.intro,
+        name: selectPluginText(tool.name, i18n.language),
+        description: selectPluginText(tool.intro, i18n.language),
         icon: tool.avatar,
         author: tool.author,
         tags: tool.tags?.map((tagId) =>
@@ -198,7 +197,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       customContent: t('app:team_plugin_confirm_delete_content'),
       confirmText: t('app:toolkit_uninstall'),
       confirmButtonVariant: 'dangerOutline',
-      inputConfirmText: tool.name,
+      inputConfirmText: selectPluginText(tool.name, i18n.language),
       onConfirm: () => deleteTeamTool(tool)
     })();
   };
@@ -274,10 +273,14 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                       menuList={[
                         {
                           children: [
-                            {
-                              label: t('app:install_from_marketplace'),
-                              onClick: () => router.push('/dashboard/tool/marketplace')
-                            },
+                            ...(!feConfigs?.disableMarketplace
+                              ? [
+                                  {
+                                    label: t('app:install_from_marketplace'),
+                                    onClick: () => router.push('/dashboard/tool/marketplace')
+                                  }
+                                ]
+                              : []),
                             {
                               label: t('app:install_from_file'),
                               onClick: onOpenImportModal
@@ -425,7 +428,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     {userInfo?.username === 'root' && (
                       <Button
                         onClick={() => {
-                          router.push('/admin/config/plugin');
+                          router.push('/admin/resources/tool');
                         }}
                         w={'160px'}
                       >
@@ -542,7 +545,7 @@ function PluginDebugModal({
   onRefreshTools: () => Promise<GetTeamPluginListResponseType>;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { copyData } = useCopyData();
   const connectionKey = session?.connectionKey ?? '';
   const connectionUrl = useMemo(
@@ -790,11 +793,3 @@ function ContextRender() {
 }
 
 export default ContextRender;
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['app', 'file']))
-    }
-  };
-}

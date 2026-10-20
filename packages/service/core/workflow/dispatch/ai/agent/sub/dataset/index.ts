@@ -1,50 +1,52 @@
-import { createNodeSummary, getNodeSummaryData } from '../../../../utils/summary';
-import { getModelHandle } from '../../../../../../ai/model';
-import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/search/tagFilter';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { createLLMResponse } from '../../../../../../ai/llm/request';
+import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import { countPromptTokens } from '../../../../../../../common/string/tiktoken/index';
-import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
+import { resolveReadableCollectionIds } from '../../../../../../../support/permission/collection/auth';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
-import { getDatasetSearchVlmModel } from '../../../../../../dataset/search/vlm';
-import { getDatasetSearchAuxiliaryModels } from '../../../../../../dataset/search/auxiliaryModels';
+import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
+import { createLLMResponse } from '../../../../../../ai/llm/request';
+import { getTeamModelHandle } from '../../../../../../ai/model/catalog/service';
+import { parseJsonArgs } from '../../../../../../ai/utils';
 import {
   defaultSearchDatasetData,
   type DefaultSearchDatasetDataProps
 } from '../../../../../../dataset/search';
-import { getErrText } from '@fastgpt/global/common/error/utils';
-import { getLogger, LogCategories } from '../../../../../../../common/logger';
-import type { DispatchSubAppResponse } from '../../type';
-import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { DatasetSearchToolSchema } from './utils';
-import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/workflowTagFilter';
-import { parseJsonArgs } from '../../../../../../ai/utils';
-import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { getDatasetSearchVlmModel } from '../../../../../../dataset/search/vlm';
+import { filterDatasetsByTmbId } from '../../../../../../dataset/utils';
 import {
-  createImageCaptionChildNodeResponse,
+  loadWorkflowDatasetResource,
+  loadWorkflowModelResource
+} from '../../../../../resource/service';
+import {
   createChunkSelectionChildNodeResponse,
+  createImageCaptionChildNodeResponse,
   createQueryExtensionChildNodeResponse
 } from '../../../../dataset/nodeResponse';
-import { filterDatasetsByTmbId } from '../../../../../../dataset/utils';
-import { loadWorkflowDatasetResource } from '../../../../../utils/resource';
 import { normalizeDatasetSearchInput } from '../../../../dataset/utils';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
-import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/workflowTagFilter';
+import { createNodeSummary, getNodeSummaryData } from '../../../../utils/summary';
+import type { DispatchSubAppResponse } from '../../type';
+import { DatasetSearchToolSchema } from './utils';
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 
 type DatasetSearchParams = {
+  appTeamId?: string;
   teamId: string;
   tmbId: string;
   args: string;
-  llmModel: LLMSystemModelDataType;
+  llmModel: LLMModelDataType;
   userKey?: OpenaiAccountType;
   datasetParams?: AppFormEditFormType['dataset'];
-  dynamicDataset?: boolean;
 };
 
 /**
@@ -86,7 +88,7 @@ const selectRelevantChunksByLLM = async ({
 }: {
   query: string;
   chunks: SearchDataResponseItemType[];
-  model: LLMSystemModelDataType;
+  model: LLMModelDataType;
   userKey?: OpenaiAccountType;
   teamId: string;
 }): Promise<
@@ -180,11 +182,11 @@ ${chunkSummaries}
 export const dispatchAgentDatasetSearch = async ({
   args,
   datasetParams,
+  appTeamId,
   teamId,
   tmbId,
   llmModel,
-  userKey,
-  dynamicDataset = false
+  userKey
 }: DatasetSearchParams): Promise<DispatchSubAppResponse> => {
   if (!datasetParams || datasetParams.datasets.length === 0) {
     return {
@@ -200,7 +202,7 @@ export const dispatchAgentDatasetSearch = async ({
   }
 
   const queries = toolParams.data.query;
-  const { textQueries, imageQueries } = normalizeDatasetSearchInput(queries);
+  const { textQueries, imageQueries } = await normalizeDatasetSearchInput(queries);
   if (textQueries.length === 0 && imageQueries.length === 0) {
     return {
       response: 'Query is empty'
@@ -216,13 +218,12 @@ export const dispatchAgentDatasetSearch = async ({
   const nodeSummary = createNodeSummary();
   try {
     const requestedDatasetIds = datasetParams.datasets.map((item) => item.datasetId);
-    const datasetIds =
-      datasetParams.authTmbId || dynamicDataset
-        ? await filterDatasetsByTmbId({
-            datasetIds: requestedDatasetIds,
-            tmbId
-          })
-        : requestedDatasetIds;
+    const datasetIds = datasetParams.authTmbId
+      ? await filterDatasetsByTmbId({
+          datasetIds: requestedDatasetIds,
+          tmbId
+        })
+      : requestedDatasetIds;
 
     if (datasetIds.length === 0) {
       return {
@@ -230,23 +231,58 @@ export const dispatchAgentDatasetSearch = async ({
       };
     }
 
+    // Collection 级权限可读集合仅对真实成员鉴权生效；authTmbId 未设置时不做 collection 级过滤。
+    const readableCollectionIdList = datasetParams.authTmbId
+      ? await resolveReadableCollectionIds({
+          teamId,
+          datasetIds,
+          tmbId
+        })
+      : undefined;
+
+    const effectiveAppTeamId = appTeamId || teamId;
+    const userInfo = { teamId, tmbId };
+
     // Get vector model
     const dataset = await loadWorkflowDatasetResource({
       datasetId: datasetIds[0],
-      datasetIds: requestedDatasetIds,
-      dynamic: dynamicDataset,
+      datasetIds,
       tmbId
     });
-    const modelHandle = await getModelHandle();
-    const vectorModel = modelHandle.getEmbeddingModelData({
-      modelId: dataset?.vectorModelId,
-      model: dataset?.vectorModel
-    });
-    const vlmModelData = await getDatasetSearchVlmModel({ teamId, datasetIds, modelHandle });
-    const { rerankModelData, extensionModelData } = getDatasetSearchAuxiliaryModels(
-      datasetParams,
-      modelHandle
+    const modelHandle = await getTeamModelHandle({ teamId: effectiveAppTeamId });
+    const vectorModel = modelHandle.getModelData(
+      {
+        modelId: dataset?.vectorModelId,
+        model: dataset?.vectorModel
+      },
+      { type: 'embedding' }
     );
+    const vlmModelData = await getDatasetSearchVlmModel({
+      teamId: effectiveAppTeamId,
+      datasetIds,
+      modelHandle
+    });
+    const rerankModelData = datasetParams.usingReRank
+      ? await loadWorkflowModelResource({
+          appTeamId: effectiveAppTeamId,
+          userInfo,
+          modelId: datasetParams.rerankModelId,
+          model: datasetParams.rerankModel,
+          type: 'rerank',
+          fallbackToDefault: true,
+          modelHandle
+        })
+      : undefined;
+    const extensionModelData = datasetParams.datasetSearchUsingExtensionQuery
+      ? await loadWorkflowModelResource({
+          appTeamId: effectiveAppTeamId,
+          userInfo,
+          modelId: datasetParams.datasetSearchExtensionModelId,
+          model: datasetParams.datasetSearchExtensionModel,
+          fallbackToDefault: true,
+          modelHandle
+        })
+      : undefined;
 
     const searchData: DefaultSearchDatasetDataProps = {
       histories: [],
@@ -269,7 +305,7 @@ export const dispatchAgentDatasetSearch = async ({
       collectionFilterMatch: formatCollectionFilterMatchParam({
         value: datasetParams.collectionFilterMatch
       }),
-      collectionFilterMode: DatasetTagFilterVersionEnum.structured,
+      readableCollectionIdList,
       userKey
     };
     const {

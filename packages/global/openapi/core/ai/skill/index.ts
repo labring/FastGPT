@@ -2,7 +2,6 @@ import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import { ChatWorkflowSseResponseSchema } from '../../chat/completion/api';
 import {
-  ListAppsBySkillIdResponseSchema,
   CreateSkillBodySchema,
   CreateSkillFolderBodySchema,
   CreateSkillFolderResponseSchema,
@@ -15,7 +14,6 @@ import {
   GetSkillFolderPathResponseSchema,
   ImportSkillQuerySchema,
   ImportSkillResponseSchema,
-  ListAppsBySkillIdQuerySchema,
   ListSkillVersionsBodySchema,
   ListSkillVersionsResponseSchema,
   ListSkillsQuerySchema,
@@ -331,26 +329,6 @@ export const SkillPath: OpenAPIPath = {
                 type: 'string',
                 format: 'binary'
               }
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/ai/skill/apps': {
-    get: {
-      summary: '查询引用技能的应用',
-      description: '查询使用指定 skillId 的应用列表',
-      tags: [DevApiTagsMap.skillBasic],
-      requestParams: {
-        query: ListAppsBySkillIdQuerySchema
-      },
-      responses: {
-        200: {
-          description: '成功返回引用应用列表',
-          content: {
-            'application/json': {
-              schema: ListAppsBySkillIdResponseSchema
             }
           }
         }

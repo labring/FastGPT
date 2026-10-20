@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 // Hoist all mock functions so they're available in vi.mock factories
 const {
@@ -205,6 +206,50 @@ describe('readFileContentByBuffer', () => {
     expect(result.rawText).toBe('parsed-pdf-content');
   });
 
+  it('rethrows unknown worker parse failures for formats outside the sangfor path', async () => {
+    mockReadRawContentFromBuffer.mockRejectedValueOnce(new Error('unexpected worker crash'));
+
+    await expect(
+      readFileContentByBuffer({
+        teamId,
+        tmbId,
+        extension: 'md',
+        buffer: Buffer.from('md-content'),
+        encoding: 'utf-8'
+      })
+    ).rejects.toThrow('unexpected worker crash');
+  });
+
+  it('rethrows unknown OFD worker parse failures without the sangfor fallback', async () => {
+    mockReadRawContentFromBuffer.mockRejectedValueOnce(new Error('unexpected worker crash'));
+
+    await expect(
+      readFileContentByBuffer({
+        teamId,
+        tmbId,
+        extension: 'ofd',
+        buffer: Buffer.from('ofd-content'),
+        encoding: 'utf-8'
+      })
+    ).rejects.toThrow('unexpected worker crash');
+  });
+
+  it('keeps mapped diagnosis errors from the worker untouched', async () => {
+    const mapped = new Error('invalidParseFile');
+    mapped.name = 'UserError';
+    mockReadRawContentFromBuffer.mockRejectedValueOnce(mapped);
+
+    await expect(
+      readFileContentByBuffer({
+        teamId,
+        tmbId,
+        extension: 'ofd',
+        buffer: Buffer.from('ofd-content'),
+        encoding: 'utf-8'
+      })
+    ).rejects.toThrow('invalidParseFile');
+  });
+
   it('should use system parse for pdf when customPdfParse is true but no service configured', async () => {
     global.systemEnv = { customPdfParse: {} } as any;
 
@@ -353,7 +398,7 @@ describe('readFileContentByBuffer', () => {
         buffer: Buffer.from('docx content'),
         encoding: 'utf-8'
       })
-    ).rejects.toThrow('[sangfor] parse failed');
+    ).rejects.toThrow(CommonErrEnum.pdfParseFailed);
 
     expect(mockReadRawContentFromBuffer).not.toHaveBeenCalled();
     expect(mockAxiosPost).not.toHaveBeenCalled();
@@ -965,6 +1010,35 @@ describe('readFileContentBySource', () => {
       imageKeyOptions: undefined
     });
     expect(mockReadRawContentFromSource).not.toHaveBeenCalled();
+  });
+
+  it('forceSystemParse 绕过 Sangfor 路由，保留 worker 的结构化产物', async () => {
+    mockEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
+    mockEnv.SANGFOR_PARSE_EXTENSIONS = 'xlsx,csv';
+    global.systemEnv.customPdfParse = { url: 'http://sangfor-parser.test/parse' };
+    mockReadRawContentFromSource.mockResolvedValueOnce({
+      rawText: 'q,a\nquestion,answer',
+      tableInfo: { sheetCount: 1, mergedCellCount: 0 }
+    });
+    const source = {
+      kind: 's3' as const,
+      sizeBytes: 10,
+      metadata: { filename: 'file.xlsx' },
+      materialize: vi.fn()
+    };
+
+    await expect(
+      readFileContentBySource({ teamId, tmbId, source, forceSystemParse: true })
+    ).resolves.toMatchObject({
+      rawText: 'q,a\nquestion,answer',
+      tableInfo: { sheetCount: 1, mergedCellCount: 0 }
+    });
+    expect(mockSangforParseDocument).not.toHaveBeenCalled();
+    expect(mockReadRawContentFromSource).toHaveBeenCalledWith({
+      source,
+      imageKeyOptions: undefined
+    });
+    expect(source.materialize).not.toHaveBeenCalled();
   });
 
   it('系统解析直接把轻量 source 交给 worker，不在入口提前物化', async () => {

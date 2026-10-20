@@ -1,34 +1,36 @@
-import { getModelHandle } from '../../../../ai/model';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType } from '../../../types/runtime';
 
-import { getAgentLoopHistories, getNodeErrResponse } from '../../utils';
-import { runToolCall } from './toolCall';
-import { type DispatchToolModuleProps } from './type';
-import { postTextCensor } from '../../../../chat/postTextCensor';
-import { useToolNodeList } from './hooks/useToolNodeList';
-import { useToolMessages } from './hooks/useToolMessages';
-import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/interface/toolCall';
-import { readWorkflowFileBuffer } from '../../../utils/context';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   assertSandboxAvailable,
-  getRunningSandboxId,
-  getSandboxRuntimeProfile,
-  resolveAppSandboxAvailability,
+  resolveAppSandboxAvailability
+} from '../../../../ai/sandbox/application/availability';
+import { getRunningSandboxId } from '../../../../ai/sandbox/utils/id';
+import { getSandboxRuntimeProfile } from '../../../../ai/sandbox/application/runtime';
+import {
   runAgentSandboxEntrypoint,
   withAgentSandboxInitLease
-} from '../../../../ai/sandbox/interface/runtime';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
+} from '../../../../ai/sandbox/application/runtime/entrypoint';
+import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/application/toolCall';
+import { postTextCensor } from '../../../../chat/postTextCensor';
+import { readWorkflowFileBuffer } from '../../../utils/context';
+import { loadWorkflowModelResource } from '../../../resource/service';
+import { getAgentLoopHistories, getNodeErrResponse } from '../../utils';
 import {
   buildAgentLoopCoreRequestMessages,
-  createAgentLoopCoreToolCallNodeResponse,
   createAgentLoopCoreChildInteractiveParams,
+  createAgentLoopCoreToolCallNodeResponse,
   filterAgentLoopCoreToolResponseToPreview,
   getAgentLoopCorePersistedTextOutput,
   summarizeAgentLoopCoreToolRunFlowResponses
 } from '../agentLoopCore/interface';
+import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
+import { useToolMessages } from './hooks/useToolMessages';
+import { useToolNodeList } from './hooks/useToolNodeList';
+import { runToolCall } from './toolCall';
+import { type DispatchToolModuleProps } from './type';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -43,6 +45,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     chatConfig,
     lastInteractive,
     runningAppInfo,
+    runningUserInfo,
     externalProvider,
     responseChatItemId,
     params: {
@@ -76,8 +79,12 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   const useSandbox = isAppChat ? appSandboxAvailability?.available === true : !!useAgentSandbox;
 
   try {
-    const modelHandle = await getModelHandle();
-    const toolModel = modelHandle.getLLMModelData({ modelId, model });
+    const toolModel = await loadWorkflowModelResource({
+      appTeamId: runningAppInfo.teamId,
+      userInfo: runningUserInfo,
+      modelId,
+      model
+    });
     const useVision = aiChatVision && toolModel.config.vision;
     const useAudio = aiChatAudio && toolModel.config.audio;
     const useVideo = aiChatVideo && toolModel.config.video;
@@ -224,11 +231,16 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     });
 
     if (error) {
-      return getNodeErrResponse({
-        error,
-        [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
-        [DispatchNodeResponseKeyEnum.runTimes]: runTimes
-      });
+      return {
+        ...getNodeErrResponse({
+          error,
+          [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
+          [DispatchNodeResponseKeyEnum.runTimes]: runTimes
+        }),
+        [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
+          ? previewAssistantResponses
+          : undefined
+      };
     }
 
     if (toolWorkflowInteractiveResponse) {

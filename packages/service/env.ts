@@ -11,7 +11,8 @@ import {
   getAgentSandboxMissingRequiredEnvKeys,
   getRuntimeEnv,
   isAgentSandboxProvider,
-  validateS3Env
+  validateS3Env,
+  validateAgentUsersEnv
 } from './env.util';
 import {
   LogLevelSchema,
@@ -60,6 +61,8 @@ export const serviceEnv = createEnv({
 
     PRO_URL: UrlSchema.optional(),
     PRO_TOKEN: z.string().min(32, 'PRO_TOKEN must be at least 32 characters').optional(),
+    AGENT_USERS: z.string().optional(),
+    DEFAULT_AGENT_PSW: z.string().optional(),
 
     // 官网访客归因 CRM；未配置地址时不进行身份上报
     CRM_API_URL: UrlSchema.optional(),
@@ -85,6 +88,9 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_PROVIDER: z.enum(agentSandboxProviderList).optional().meta({
       description: 'Agent 沙箱提供方，可选 sealosdevbox 或 opensandbox；为空时不启用沙箱'
     }),
+    AGENT_SANDBOX_SHOW_FREE_TIP: BoolSchema.default(false).meta({
+      description: '是否展示虚拟机“限时免费”标签；默认为 false，为空或未配置时不展示'
+    }),
     // Sealos配置
     AGENT_SANDBOX_SEALOS_BASEURL: UrlSchema.optional().meta({
       description: 'Sealos Devbox 服务地址'
@@ -107,6 +113,14 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_STORAGE_SIZE_GI: NumSchema.min(1).default(1).meta({
       description: 'Agent Sandbox 存储容量，单位 Gi'
     }),
+    AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR: NumSchema.min(1).default(1).meta({
+      description:
+        'Agent Sandbox CPU 超卖倍数（仅 opensandbox + kubernetes 运行态生效）：CPU requests = limits / 该值；1 = 该维度不超卖（requests 镜像 limits）'
+    }),
+    AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR: NumSchema.min(1).default(1).meta({
+      description:
+        'Agent Sandbox 内存超卖倍数（仅 opensandbox + kubernetes 运行态生效）：内存 requests = limits / 该值；1 = 该维度不超卖（requests 镜像 limits）'
+    }),
     // OpenSandbox配置
     AGENT_SANDBOX_OPENSANDBOX_BASEURL: UrlSchema.optional(),
     AGENT_SANDBOX_OPENSANDBOX_API_KEY: z.string().optional(),
@@ -126,7 +140,13 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS: IntSchema.min(1).default(7).meta({
       description: '已暂停的 Agent sandbox 持续未活跃多少天后自动归档'
     }),
-    AGENT_SANDBOX_MAX_EDIT_DEBUG: NumSchema.default(100),
+    AGENT_SANDBOX_MAX: IntSchema.min(1).default(100).meta({
+      description:
+        'Agent sandbox 活跃实例系统总上限（app 会话与技能编辑共用同一计数池，超出即拒绝；替代原 AGENT_SANDBOX_MAX_EDIT_DEBUG）'
+    }),
+    AGENT_SANDBOX_MAX_PER_TEAM: IntSchema.min(1).optional().meta({
+      description: '单团队 Agent sandbox 活跃实例配额；不配置表示不限制'
+    }),
     AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS: IntSchema.min(1).max(600).default(30).meta({
       description: 'Agent sandbox entrypoint 执行超时时间（秒）'
     }),
@@ -257,6 +277,18 @@ export const serviceEnv = createEnv({
     STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS: IntSchema.min(1).default(300).meta({
       description: 'short-redirect 模式下临时 S3 预签名下载链接 TTL（秒）'
     }),
+    DATASET_ARCHIVE_MAX_FILES: IntSchema.min(1).default(2000).meta({
+      description: '知识库批量下载单个 ZIP 最多包含的原始文件数'
+    }),
+    DATASET_ARCHIVE_MAX_SOURCE_SIZE_MB: IntSchema.min(1).default(2048).meta({
+      description: '知识库批量下载归档前原始文件逻辑总大小上限（MiB）'
+    }),
+    DATASET_ARCHIVE_MAX_CONCURRENCY: IntSchema.min(1).default(4).meta({
+      description: '知识库批量下载在 Redis 集群中的同时归档数'
+    }),
+    DATASET_ARCHIVE_PREPARE_TIMEOUT_SECONDS: IntSchema.min(1).default(300).meta({
+      description: '知识库批量下载发送响应头前的最长准备时间（秒）'
+    }),
     // 聊天记录中持久化文件访问短链的有效期。
     FILE_URL_EXPIRED_DAYS: NumSchema.positive().default(90).meta({
       description: '聊天记录中文件访问短链有效期（天），支持小数'
@@ -357,7 +389,7 @@ export const serviceEnv = createEnv({
       description: '是否禁用系统内存缓存'
     }),
     DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED: BoolSchema.default(false).meta({
-      description: '新建团队时是否为默认全员组授予应用、Skill 和知识库创建权限'
+      description: '新建团队时是否为默认全员组授予应用、Skill、知识库和 API Key 创建权限'
     }),
 
     // ==================== 并发控制与限制 ====================
@@ -465,7 +497,10 @@ export const serviceEnv = createEnv({
     YUQUE_DATASET_BASE_URL: UrlSchema.default('https://www.yuque.com')
   },
   emptyStringAsUndefined: true,
-  runtimeEnv: getRuntimeEnv(),
+  runtimeEnv: {
+    ...getRuntimeEnv(),
+    AGENT_SANDBOX_MAX: process.env.AGENT_SANDBOX_MAX || process.env.AGENT_SANDBOX_MAX_EDIT_DEBUG
+  },
   onValidationError(issues) {
     const paths = issues.map((issue) => issue.path).join(', ');
     throw new Error(`Invalid environment variables. Please check: ${paths}\n`);
@@ -480,6 +515,8 @@ if (serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY > serviceEnv.WORKFLOW_MAX_LOOP_
 }
 
 if (!isPhaseProductionBuild) {
+  validateAgentUsersEnv(serviceEnv);
+
   validateS3Env(serviceEnv);
 
   if (serviceEnv.PRO_URL && !serviceEnv.PRO_TOKEN) {

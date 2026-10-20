@@ -14,7 +14,7 @@ import {
   Flex,
   Button
 } from '@chakra-ui/react';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   deleteMemberPermission,
@@ -38,6 +38,8 @@ import {
   TeamManageRoleVal,
   TeamSkillCreatePermissionVal,
   TeamSkillCreateRoleVal,
+  TeamModelCreatePermissionVal,
+  TeamModelCreateRoleVal,
   TeamRoleList
 } from '@fastgpt/global/support/permission/user/constant';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
@@ -88,7 +90,7 @@ function PermissionManage({
   Tabs: React.ReactNode;
   onOpenAddMember: () => void;
 }) {
-  const { t } = useClientTranslation(['account_team', 'user']);
+  const { t } = useSafeTranslation();
   const { userInfo } = useUserStore();
 
   const collaboratorList = useContextSelector(
@@ -302,6 +304,11 @@ function PermissionManage({
                   </PermissionTableHeaderLabel>
                 </Th>
                 <Th bg="myGray.100">
+                  <PermissionTableHeaderLabel tip={t('account_team:permission_modelCreate_Tip')}>
+                    {t('account_team:permission_modelCreate')}
+                  </PermissionTableHeaderLabel>
+                </Th>
+                <Th bg="myGray.100">
                   <PermissionTableHeaderLabel tip={t('account_team:permission_manage_tip')}>
                     {t('account_team:permission_manage')}
                   </PermissionTableHeaderLabel>
@@ -354,6 +361,12 @@ function PermissionManage({
                       <PermissionCheckBox
                         isDisabled={member.permission.hasManagePer && !userInfo?.permission.isOwner}
                         role={TeamApikeyCreateRoleVal}
+                        clbPer={member.permission}
+                        id={member.tmbId!}
+                      />
+                      <PermissionCheckBox
+                        isDisabled={member.permission.hasManagePer && !userInfo?.permission.isOwner}
+                        role={TeamModelCreateRoleVal}
                         clbPer={member.permission}
                         id={member.tmbId!}
                       />
@@ -417,6 +430,12 @@ function PermissionManage({
                       <PermissionCheckBox
                         isDisabled={org.permission.isOwner || !userManage}
                         role={TeamApikeyCreatePermissionVal}
+                        clbPer={org.permission}
+                        id={org.orgId!}
+                      />
+                      <PermissionCheckBox
+                        isDisabled={org.permission.isOwner || !userManage}
+                        role={TeamModelCreatePermissionVal}
                         clbPer={org.permission}
                         id={org.orgId!}
                       />
@@ -485,6 +504,12 @@ function PermissionManage({
                       <PermissionCheckBox
                         isDisabled={group.permission.isOwner || !userManage}
                         role={TeamApikeyCreatePermissionVal}
+                        clbPer={group.permission}
+                        id={group.groupId!}
+                      />
+                      <PermissionCheckBox
+                        isDisabled={group.permission.isOwner || !userManage}
+                        role={TeamModelCreatePermissionVal}
                         clbPer={group.permission}
                         id={group.groupId!}
                       />

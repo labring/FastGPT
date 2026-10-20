@@ -1,32 +1,32 @@
 import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
-  EmbeddingSystemModelDataType,
-  LLMSystemModelDataType,
-  RerankSystemModelDataType,
-  STTSystemModelDataType,
-  SystemModelDocumentDataType,
-  TTSSystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+  EmbeddingModelDataType,
+  LLMModelDataType,
+  RerankModelDataType,
+  STTModelDataType,
+  AIModelDocumentDataType,
+  TTSModelDataType
+} from '@fastgpt/global/core/ai/model/schema';
 import type {
   I18nStringStrictType,
   AiproxyMapProviderItemType
 } from '@fastgpt/global/sdk/fastgpt-plugin';
-import type { langType, ModelProviderItemType } from '@fastgpt/global/core/ai/provider';
+import type { langType, ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
 
-export type SystemModelSchemaType = SystemModelDocumentDataType & {
+export type AIModelSchemaType = AIModelDocumentDataType & {
   _id: string;
 };
 
 export type SystemDefaultModelType = {
-  [ModelTypeEnum.llm]?: LLMSystemModelDataType;
-  datasetTextLLM?: LLMSystemModelDataType;
-  datasetImageLLM?: LLMSystemModelDataType;
-  chatTitleLLM?: LLMSystemModelDataType;
+  [ModelTypeEnum.llm]?: LLMModelDataType;
+  datasetTextLLM?: LLMModelDataType;
+  datasetImageLLM?: LLMModelDataType;
+  chatTitleLLM?: LLMModelDataType;
 
-  [ModelTypeEnum.embedding]?: EmbeddingSystemModelDataType;
-  [ModelTypeEnum.tts]?: TTSSystemModelDataType;
-  [ModelTypeEnum.stt]?: STTSystemModelDataType;
-  [ModelTypeEnum.rerank]?: RerankSystemModelDataType;
+  [ModelTypeEnum.embedding]?: EmbeddingModelDataType;
+  [ModelTypeEnum.tts]?: TTSModelDataType;
+  [ModelTypeEnum.stt]?: STTModelDataType;
+  [ModelTypeEnum.rerank]?: RerankModelDataType;
 };
 
 declare global {

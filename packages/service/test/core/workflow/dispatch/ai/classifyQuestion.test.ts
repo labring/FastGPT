@@ -1,17 +1,26 @@
-import { describe, expect, it, vi } from 'vitest';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { dispatchClassifyQuestion } from '@fastgpt/service/core/workflow/dispatch/ai/classifyQuestion';
+import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
+import { describe, expect, it, vi } from 'vitest';
 
 const { requestMock } = vi.hoisted(() => ({ requestMock: vi.fn() }));
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({ createLLMResponse: requestMock }));
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
+  getSystemModelHandle: async () => ({
+    getModelData: () => ({ modelId: 'model', name: 'model', config: {} }),
+    getLLMModelData: () => ({ modelId: 'model', name: 'model', config: {} })
+  }),
+  getTeamModelHandle: async () => ({
+    getModelData: () => ({ modelId: 'model', name: 'model', config: {} }),
     getLLMModelData: () => ({ modelId: 'model', name: 'model', config: {} })
   })
 }));
 vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   formatModelChars2Points: () => ({ totalPoints: 7 })
+}));
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  assertAuthModels: vi.fn(async () => ({ handle: {}, models: [] })),
+  getAuthorizedModelIds: vi.fn(async () => new Set())
 }));
 
 describe('dispatchClassifyQuestion token summary', () => {

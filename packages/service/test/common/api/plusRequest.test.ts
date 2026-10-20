@@ -25,7 +25,7 @@ const importPlusRequest = async () => {
       data: { ok: true }
     }
   });
-  return import('@fastgpt/service/common/api/plusRequest');
+  return import('@fastgpt/service/thirdProvider/fastgptPro/plusRequest');
 };
 
 describe('plusRequest', () => {

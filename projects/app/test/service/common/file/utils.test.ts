@@ -391,9 +391,7 @@ describe('S3FileUploader', () => {
     const emptyFileUploader = new S3FileUploader({
       ...createUploadParams({ file: new File([], 'empty.txt') })
     });
-    await expect(emptyFileUploader.upload()).rejects.toThrow(
-      'Multipart file size must be a positive integer'
-    );
+    await expect(emptyFileUploader.upload()).rejects.toThrow('EmptyUploadFile');
 
     const tooManyPartsUploader = new S3FileUploader({
       ...createUploadParams({

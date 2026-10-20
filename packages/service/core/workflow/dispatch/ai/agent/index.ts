@@ -1,39 +1,36 @@
-import { getModelHandle } from '../../../../ai/model';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type { DispatchNodeResultType, ModuleDispatchProps } from '../../../types/runtime';
+import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
+import type {
+  AppFormEditFormType,
+  SelectedAgentSkillItemType
+} from '@fastgpt/global/core/app/formEdit/type';
+import type { AgentToolType } from '@fastgpt/global/core/app/tool/type';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,
   ChatItemMiniType
 } from '@fastgpt/global/core/chat/type';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import type { AgentToolType } from '@fastgpt/global/core/app/tool/type';
-import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
-import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
-import { getAgentDatasetParams, getSubapps } from './sub/utils';
-import { useUserContext } from './adapter/userContext';
-import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getLogger, LogCategories } from '../../../../../common/logger';
+import type { DispatchNodeResultType, ModuleDispatchProps } from '../../../types/runtime';
+import { useUserContext } from './adapter/userContext';
+import { getAgentDatasetParams, getSubapps } from './sub/utils';
 
-import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
-import { ensureAgentSandboxRuntime, type AgentSandboxPrepareAction } from './sub/sandbox';
-import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
-import { getWorkflowFileMaxAmount } from '../../../utils/context';
-import { createAgentNodeResponseCollector } from './nodeResponseCollector';
+import { buildDefaultAgentSystemPrompt } from '../../../../ai/llm/agentLoop/interface';
 import {
   assertSandboxAvailable,
   resolveAppSandboxAvailability
-} from '../../../../ai/sandbox/interface/runtime';
-import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
-import { replaceAgentPromptToolReferences } from './adapter/prompt';
+} from '../../../../ai/sandbox/application/availability';
+import { getWorkflowFileMaxAmount } from '../../../utils/context';
+import { loadWorkflowModelResource } from '../../../resource/service';
+import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
 import {
-  buildAgentLoopCoreInput,
-  buildAgentLoopCorePausedMemories,
   buildAgentLoopCoreDoneMemories,
   buildAgentLoopCoreFinalAssistantOutput,
+  buildAgentLoopCoreInput,
+  buildAgentLoopCorePausedMemories,
   buildAgentLoopCoreProviderStateMemories,
   buildAgentLoopCoreRequestMessages,
   createAgentLoopCoreChildInteractiveParams,
@@ -42,8 +39,12 @@ import {
   readAgentLoopCoreProviderStateMemory,
   runAgentLoopCoreWithSummary
 } from '../agentLoopCore/interface';
-import { buildDefaultAgentSystemPrompt } from '../../../../ai/llm/agentLoop/interface';
-import { nodeHasDynamicInput } from '../../../../app/resources';
+import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
+import { replaceAgentPromptToolReferences } from './adapter/prompt';
+import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
+import { createAgentNodeResponseCollector } from './nodeResponseCollector';
+import { ensureAgentSandboxRuntime, type AgentSandboxPrepareAction } from './sub/sandbox';
+import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[];
@@ -141,16 +142,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     }
   } = props;
   const datasetParams = getAgentDatasetParams(props.params);
-  const modelHandle = await getModelHandle();
-  const agentModel = modelHandle.getLLMModelData({ modelId, model });
-  const dynamicDataset = nodeHasDynamicInput(props.node, [
-    NodeInputKeyEnum.datasetSelectList,
-    NodeInputKeyEnum.datasetParams
-  ]);
-  const dynamicSkills =
-    runningAppInfo.sourceType === ChatSourceTypeEnum.skillEdit ||
-    nodeHasDynamicInput(props.node, [NodeInputKeyEnum.skills]);
-  const dynamicTools = nodeHasDynamicInput(props.node, [NodeInputKeyEnum.selectedTools]);
+  const agentModel = await loadWorkflowModelResource({
+    appTeamId: runningAppInfo.teamId,
+    userInfo: runningUserInfo,
+    modelId,
+    model
+  });
   // 旧 params.model 仅保留给兼容读取；Agent 请求链使用规范化 modelData。
   props.params.model = agentModel.model;
   props.params.aiChatVision = !!(props.params.aiChatVision && agentModel.config.vision);
@@ -202,7 +199,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       parseHistoryFiles,
       selectedDataset: datasetParams?.datasets,
       authTmbId: datasetParams?.authTmbId,
-      dynamicDataset,
       tmbId: runningUserInfo.tmbId,
       timezone,
       maxFileAmount: getWorkflowFileMaxAmount()
@@ -218,7 +214,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       });
     }
 
-    // 初始化 sandbox：初始化、注入 skills、files。静态 Skill 由 Version 快照授权，动态 Skill 才检查运行人。
+    // 初始化 sandbox：初始化、注入 skills、files。命中 Version 快照的 Skill 由快照授权，未命中的检查运行人权限。
     const { sandboxClient, currentWorkingDirectory, skillInfos } = await ensureAgentSandboxRuntime({
       sourceType: runningAppInfo.sourceType,
       sourceId: runningAppInfo.sourceId,
@@ -229,7 +225,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       needSandboxRuntime: effectiveUseAgentSandbox,
       sandboxEntrypoint: effectiveSandboxEntrypoint,
       skillIds: effectiveSkillIds,
-      dynamicSkills,
       selectedSkills: effectiveSelectedSkills,
       editSkillId,
       prepareActions: agentSandboxPrepareActions,
@@ -238,13 +233,17 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     // 获取请求上下文
     const { chatHistories, queryInput } = userContext;
-    const { rewrittenHistories, currentUserMessage } = userContext.getCurrentMessages({
+    const { rewrittenHistories, currentUserMessage } = await userContext.getCurrentMessages({
       skillInfos,
       currentWorkingDirectory
     });
 
     // 转化成请求的 messages
-    const requestMessages = [...rewrittenHistories, currentUserMessage];
+    // 交互恢复时，query 只是用户对交互节点的回答/恢复参数，provider 会把它写入
+    // 对应的 tool response；不能再次作为新的 user message 追加到模型上下文。
+    const requestMessages = lastInteractive
+      ? rewrittenHistories
+      : [...rewrittenHistories, currentUserMessage];
     const loopMessages = buildAgentLoopCoreRequestMessages({
       messages: requestMessages,
       removeSystemMessages: true
@@ -258,8 +257,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     } = await getSubapps({
       tools: selectedTools,
       tmbId: runningUserInfo.tmbId,
-      lang,
-      dynamic: dynamicTools
+      lang
     });
     const { getSubAppInfo, getSubApp } = createAgentSubAppLookup({
       subAppsMap: agentSubAppsMap,
@@ -278,7 +276,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       context: {
         ...props,
         modelData: agentModel,
-        dynamicDataset,
         systemPrompt: formattedUserSystemPrompt,
         getSubAppInfo,
         getSubApp,

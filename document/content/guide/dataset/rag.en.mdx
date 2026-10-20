@@ -79,7 +79,7 @@ Despite its strong potential and cross-domain adaptability, RAG faces several ke
 RAG performance depends heavily on the quality of documents returned by the retriever. If retrieved fragments are irrelevant or inaccurate, the generated text may be biased or misleading — especially with ambiguous queries or cross-domain retrieval.
 
 - Challenge: Improving retriever precision for complex queries across large, diverse datasets remains difficult. Methods like BM25 have limitations, particularly with semantically ambiguous queries where keyword matching falls short.
-- Solution: Adopt hybrid retrieval combining sparse retrieval (BM25) with dense retrieval (vector search). For example, Faiss enables BERT-based dense vector representations that significantly improve semantic matching, reducing the impact of irrelevant documents on generation.
+- Solution: Adopt hybrid retrieval combining sparse retrieval (BM25) with dense retrieval (vector search). For example, generate dense embeddings with BERT or a similar model, then use Faiss to index and search those vectors. This improves semantic matching and reduces the impact of irrelevant documents on generation.
 
 #### 4.2.2 Generator Computational Complexity and Performance Bottlenecks
 
@@ -90,7 +90,7 @@ Combining retrieval and generation components significantly increases computatio
 
 #### 4.2.3 Dataset Updates and Maintenance
 
-RAG models typically rely on a pre-built external Dataset containing documents, papers, legal provisions, and other information. The timeliness and accuracy of this content directly affects the credibility of generated results. Over time, Dataset content may become outdated, producing answers that don't reflect current information — particularly problematic in fast-moving fields like healthcare and finance.
+RAG models typically rely on a pre-built external Dataset containing documents, papers, legal provisions, and other information. The timeliness and accuracy of this content directly affect the credibility of generated results. Over time, Dataset content may become outdated, producing answers that don't reflect current information — particularly problematic in fast-moving fields like healthcare and finance.
 
 - Challenge: Datasets need frequent updates, but manual updates are time-consuming and error-prone. Implementing continuous automated updates without impacting system performance is a significant challenge.
 - Solution: Use automated crawlers and information extraction systems (such as Scrapy) to automatically fetch and update Dataset content. Combined with [dynamic indexing techniques](https://arxiv.org/pdf/2102.03315), retrievers can update indexes in real time. Incremental learning allows the generator to gradually absorb new information, avoiding outdated answers.
@@ -108,78 +108,86 @@ RAG model performance depends on Dataset accuracy and retrieval efficiency. Opti
 
 ## 5.1 Data Collection and Dataset Construction
 
-RAG's core dependency is Dataset data quality and breadth — the Dataset serves as "external memory." A high-quality Dataset should include content from diverse, authoritative sources such as scientific literature databases (PubMed, IEEE Xplore), established news media, and industry standards and reports. It also needs automated update capabilities to stay current.
+A Dataset acts as external memory for RAG. Its usefulness depends on broad coverage, reliable sources, and current information. Scientific literature databases such as PubMed and IEEE Xplore, established news organizations, industry standards, and reports can provide the background needed for different tasks. Automated updates help keep answers relevant as that information changes.
 
-- Challenges:
-  - Single or limited data sources leading to insufficient coverage across domains
-  - Inconsistent data quality from non-authoritative or low-quality sources introducing bias
-  - Lack of regular update mechanisms, especially in fast-changing fields like law, finance, and technology
-  - Time-consuming and error-prone data processing workflows
-  - Data sensitivity and privacy concerns in domains like healthcare, law, and finance
+**Challenges**
 
-- Improvements:
-  - Expand data source coverage across multiple domains, including specialized databases like PubMed, LexisNexis, and financial databases
-  - Build data quality review and filtering mechanisms using automated detection algorithms combined with manual review
-  - Implement automated Dataset updates using web crawlers with change detection algorithms
-  - Adopt efficient data cleaning and classification using NLP techniques like BERT for entity recognition and text denoising
-  - Strengthen data security with de-identification, anonymization, and differential privacy protection
-  - Standardize data formats using JSON, XML, or knowledge graphs for structured storage
-  - Incorporate user feedback mechanisms to continuously optimize Dataset content
+- **Limited source coverage.** A Dataset built from one or a few sources may cover some domains well while leaving others poorly represented. For example, a collection focused on medicine may lack the legal and financial context needed for questions that span those fields. These gaps reduce accuracy for diverse topics and complex tasks.
+- **Uneven data quality.** Unreliable sources can introduce biased, incomplete, or inaccurate information. Unverified health information, for example, can lead to misleading answers. Ingesting this material without review weakens the reliability of the entire Dataset.
+- **Infrequent updates.** Law, finance, and technology change quickly. A Dataset with no regular update process can produce answers based on expired policies or outdated information, reducing its value for time-sensitive decisions.
+- **Slow, error-prone processing.** Collecting, cleaning, classifying, and structuring large volumes of mixed-format data takes substantial work. Manual processing and imperfect automation can both introduce errors or omit key information, leaving answers incomplete or incoherent.
+- **Sensitive information.** Medical, legal, and financial records can contain private data. These sources require appropriate authorization, secure storage, and privacy controls throughout ingestion and use. Poor handling can expose users to harm and create compliance problems.
+
+**Improvements**
+
+- **Expand and diversify sources.** Include specialist resources across the required domains, such as PubMed, LexisNexis, and financial databases. Use appropriately licensed open datasets and verified information, and work with domain organizations where useful. Broader coverage gives the system more depth for questions that span multiple fields.
+- **Review and filter data quality.** Combine automated checks, such as text similarity and sentiment-bias detection, with human review. Score records using source credibility and content completeness, then filter against those scores. This reduces the influence of unreliable or biased material and supports more accurate, neutral answers to specialist questions.
+- **Automate updates.** Regularly crawl trusted sites and industry databases. Use change detection to identify duplicates and outdated records, and prioritize information that is current or closely related to user needs. This keeps answers useful in fast-changing areas such as finance, policy, and technology.
+- **Improve cleaning and classification.** Use NLP models such as BERT for classification, entity recognition, and text denoising. Combine these with deduplication and automated labeling, then organize records by domain. Cleaner, well-organized data gives the generator more coherent context and reduces processing errors.
+- **Protect privacy and access.** Apply de-identification, masking, anonymization, and, where appropriate, differential privacy to sensitive records. Add access controls and encrypted storage. These measures support lawful, secure use of information in applications that handle personal or sensitive data.
+- **Standardize formats and relationships.** Adopt consistent formats and encodings, using JSON, XML, or knowledge graphs for structured information. Represent relationships between records explicitly so retrieval can use them efficiently. This supports retrieval across domains and makes the connections behind an answer easier to inspect.
+- **Use feedback to improve the Dataset.** Record user satisfaction, corrections, and suggestions. Analyze that feedback to identify missing topics and inaccurate information, then feed those findings back into data maintenance. The Dataset can then evolve with actual user needs.
 
 ## 5.2 Data Chunking and Content Management
 
-Proper chunking strategies help models efficiently locate target information and provide clear context during answer generation. Chunking by paragraph, section, or topic improves retrieval efficiency and prevents redundant data from interfering with generation — especially important in complex, long-form text.
+Chunking determines which information the retriever can locate and how much context the generator receives. Splitting by paragraph, section, or topic can preserve logical relationships while limiting redundant content. This is especially important for long documents with complex structures.
 
-- Challenges:
-  - Unreasonable chunking breaking information chains and context
-  - Redundant data causing repetitive or overloaded generated content
-  - Inappropriate chunk granularity affecting retrieval precision
-  - Difficulty implementing topic-based or logic-based chunking for complex texts
+**Challenges**
 
-- Improvements:
-  - Use NLP techniques (syntactic analysis, semantic segmentation) for automated, logic-based chunking
-  - Apply deduplication and information consolidation using similarity algorithms (TF-IDF, cosine similarity)
-  - Dynamically adjust chunk granularity based on task requirements
-  - Introduce topic-based chunking using topic models (LDA) or embedding-based text clustering
-  - Implement feedback mechanisms to continuously evaluate and optimize chunking strategies
+- **Broken context.** Excessive or arbitrary splitting can separate facts from their explanations. Cutting legal or technical documents into small, unrelated fragments may remove the context needed to interpret them, producing fragmented answers.
+- **Repeated information.** News reports and social posts may describe the same event many times. Without deduplication or consolidation, retrieval can return repeated evidence, making answers repetitive and consuming unnecessary compute.
+- **Unsuitable chunk size.** Very small chunks may lack context. Large chunks can make precise information harder to locate and introduce irrelevant material. The right granularity depends on the task, particularly when a question requires a short, specific answer.
+- **Complex topic boundaries.** Keyword-based rules can miss topic changes and information hierarchies in dense specialist writing. Misreading the structure of medical or financial content can reduce the accuracy and usefulness of generated answers.
+
+**Improvements**
+
+- **Split along semantic and logical boundaries.** Use syntactic analysis and semantic segmentation to identify coherent units. Models such as BERT can help recognize topics and context. Keep each chunk's information chain intact so long or complex documents provide usable context during generation.
+- **Deduplicate and consolidate.** Use TF-IDF or cosine similarity to identify repeated material, then apply clustering to merge related duplicates. Mark or index recurring content so the generator can avoid citing the same passage repeatedly. This produces clearer answers and reduces wasted computation.
+- **Adjust granularity to the task.** Use smaller chunks for concise facts in Q&A and larger chunks for background or long-form explanations. Adapt the split to query requirements and content complexity so retrieval can locate the key information while preserving enough supporting context.
+- **Group by topic.** Topic models such as LDA and embedding-based text clustering can group related content into chunks. Keeping a topic together is useful for academic papers and reports with many sections, and helps preserve the hierarchy and logic of the original material.
+- **Evaluate and revise chunking.** Monitor answer coherence and accuracy through user feedback and quality evaluation. Re-chunk passages associated with poor results and use real usage patterns to refine the strategy over time.
 
 ## 5.3 Retrieval Optimization
 
-The retrieval component determines the relevance and accuracy of generated answers. Hybrid search strategies (combining BM25 and DPR) complement each other — BM25 handles keyword matching efficiently while DPR excels at deep semantic understanding.
+Retrieval determines which evidence is available for an answer. BM25 provides efficient keyword matching, while Dense Passage Retrieval (DPR) supports semantic matching. Combining them can help balance relevance, response speed, and resource use across different tasks.
 
-- Challenges:
-  - Single retrieval strategies causing answer bias
-  - Tension between retrieval efficiency and resource consumption
-  - Redundant retrieval results leading to repetitive content
-  - Poor adaptability of fixed retrieval strategies across different task types
+**Challenges**
 
-- Improvements:
-  - Combine BM25 and DPR in a hybrid retrieval strategy — BM25 for initial keyword filtering, then DPR for deep semantic matching
-  - Optimize retrieval efficiency using caching for frequent queries and distributed computing for parallel processing
-  - Apply deduplication and ranking optimization algorithms to retrieval results
-  - Dynamically adjust retrieval strategies based on task type — favoring semantic search for medical Q&A, keyword matching for news scenarios
-  - Integrate retrieval optimization frameworks like Haystack for enhanced extensibility
+- **Dependence on one retrieval method.** BM25 works well with explicit terms but may miss complex semantic relationships. DPR handles meaning more effectively, while exact or frequent keyword matches can require additional attention. Relying on a single method can produce incomplete or imprecise results for complex queries.
+- **Latency and resource costs.** Semantic retrieval requires computation and storage, especially when many queries arrive at once. These costs can make real-time response targets difficult to meet.
+- **Redundant results.** Highly similar passages may repeat the same information. Without deduplication and ranking, those results can lead to repetitive answers and obscure the key evidence.
+- **Different task requirements.** Applications vary in their needs for precision, speed, and context length. Medical Q&A may prioritize semantic precision, while breaking-news queries may emphasize retrieval speed. A fixed strategy has limited flexibility across these use cases.
+
+**Improvements**
+
+- **Combine BM25 and DPR.** Use BM25 for an initial keyword filter, then apply DPR for deeper semantic matching. This layered approach combines lexical and semantic evidence and can help with multiple-intent queries or retrieval from long documents.
+- **Cache and parallelize.** Cache results for recent, frequent queries to reduce repeated computation. Distribute DPR processing across nodes where needed. Together, caching and parallel processing can improve responsiveness under high concurrency and limited resources.
+- **Deduplicate and rank results.** Use cosine similarity to remove redundant passages, then rank results using relevant signals such as user preferences or timestamps. This gives the generator more varied, current evidence and makes the resulting answer easier to read.
+- **Adapt the strategy by task.** Define retrieval templates that adjust weights, passage length, and the combination of methods. For example, emphasize semantic retrieval for medical questions and fast keyword matching for financial news. This helps match context to each task's requirements.
+- **Use retrieval frameworks where helpful.** Frameworks such as Haystack provide interfaces for combining retrieval and generation, with plugins that make retrieval easier to extend and tune. They can simplify experiments and support more stable behavior across different tasks.
 
 ## 5.4 Answer Generation and Optimization
 
-The generator produces natural language answers based on retrieved context. Accuracy and logical coherence directly impact user experience. Knowledge graphs and structured information help the generator better understand and connect context for more coherent, accurate answers.
+The generator turns retrieved context into a natural language answer. Its accuracy, logical structure, and presentation shape the user experience. Structured information and knowledge graphs can help connect related facts, while feedback can guide improvements to content and style.
 
-- Challenges:
-  - Insufficient context leading to logically incoherent answers
-  - Inadequate accuracy in specialized domain answers
-  - Difficulty effectively integrating multi-turn user feedback
-  - Insufficient controllability and consistency in generated content
+**Challenges**
 
-- Improvements:
-  - Integrate knowledge graphs and structured data to enhance context understanding
-  - Design domain-specific generation rules and terminology constraints
-  - Optimize user feedback mechanisms for dynamic generation logic adjustment
-  - Implement collaborative optimization between generator and retriever — allowing the generator to request additional context as needed
-  - Apply consistency detection and semantic correction to ensure uniform terminology and logical structure
+- **Incomplete context.** Missing evidence can cause the generator to misinterpret or overlook important information, especially in complex questions spanning several fields. For example, an incomplete account of a medical case or symptoms can lead to an inaccurate or logically inconsistent answer.
+- **Specialist terminology and knowledge.** Medical and legal answers require precise concepts and references. Gaps in domain knowledge can produce incorrect terminology or mistaken citations to statutes and case law, reducing accuracy and trust.
+- **Weak use of feedback across turns.** Users may correct factual accuracy, logic, or style, yet the system may lack a mechanism to use those corrections consistently. A customer-service assistant can then repeat answers that fail to address the user's needs.
+- **Inconsistent output.** Without domain-specific rules, the generator may vary its terminology, style, or level of detail. Financial reports, for example, require consistent language and presentation to remain professionally useful.
+
+**Improvements**
+
+- **Provide structured context.** Integrate domain knowledge graphs or Datasets so the generator can retrieve key facts and their relationships. This can help maintain a coherent chain of reasoning in specialist areas such as medicine and law.
+- **Define domain rules.** Use answer templates, terminology lists, and generation constraints for recurring specialist questions. These rules improve consistency and help reduce errors in both content and presentation.
+- **Analyze and apply user feedback.** Use machine learning or other analysis methods to identify generation errors and changing user requirements. Adjust generation logic and gradually adapt to the user's needs and preferred style across turns.
+- **Coordinate retrieval and generation.** Allow the generator to request additional evidence before producing an answer when its context is incomplete. Additional retrieval can fill information gaps and support a more complete response.
+- **Check consistency and meaning.** Apply consistency checks to terminology and style, and use semantic correction to assess the logical structure of the answer against the user's request. Correcting inconsistencies is especially useful for complex answers, multiple conversation turns, and specialist documents.
 
 ## 5.5 RAG Pipeline
 
-![](/imgs/RAG1.png)
+![RAG pipeline from query input and retrieval to generation, output, and feedback](/imgs/RAG1.png)
 
 1. Data loading and query input:
    1. The user submits a natural language query through the UI or API.
@@ -208,7 +216,7 @@ RAG models have been widely adopted across multiple domains:
 
 - RAG generates accurate, detailed answers by retrieving from external datasets in real time, avoiding the hallucination issues of traditional generative models. For example, in medical Q&A systems, RAG can incorporate the latest medical literature to generate answers with current treatment protocols, helping medical professionals quickly access the latest research and clinical recommendations.
   - [Medical Q&A System Case Study](https://www.apexon.com/blog/empowering-discovery-the-role-of-rag-architecture-generative-ai-in-healthcare-life-sciences/)
-    - ![](/imgs/RAG2.png)
+    - ![Azure RAG architecture with authentication, document extraction, search, and answer generation](/imgs/RAG2.png)
     - User submits a query through the web app:
       1. The user enters a query in the web app, which enters the backend system and initiates the data processing pipeline.
     - Authentication via Azure AD:
@@ -234,12 +242,12 @@ RAG models have been widely adopted across multiple domains:
     - Summary:
     - Background: Traditional LLMs perform well in generation tasks but have limitations with complex legal tasks. Legal documents have unique structures and terminology that standard retrieval benchmarks often fail to capture. LegalBench-RAG aims to provide a dedicated benchmark for evaluating legal document retrieval.
     - LegalBench-RAG structure:
-      1. ![](/imgs/RAG3.png)
+      1. ![LegalBench-RAG diagram comparing retrieved evidence with annotated reference passages](/imgs/RAG3.png)
       2. Workflow:
       3. User inputs a question (Q: ?, A: ?): The user submits a query through the interface.
       4. Embed + Retrieve component: Receives the query, embeds it as a vector, and performs similarity search in external datasets or documents.
-      5. Answer generation (A): Based on the most relevant retrieved information, the generation model produces a coherent natural language answer.
-      6. Compare and return results: The generated answer is compared with previous related answers and returned to the user.
+      5. Retrieved evidence (A): The retrieved passages provide context for the language model to generate an answer.
+      6. Benchmark comparison: The retrieved passages are compared with annotated reference passages from the original documents.
       7. The benchmark is built on the LegalBench dataset with 6,858 query-answer pairs traced to exact locations in original legal documents.
       8. LegalBench-RAG focuses on precisely retrieving small passages from legal texts rather than broad, contextually irrelevant fragments.
       9. The dataset covers various legal document types including contracts and privacy policies, ensuring coverage across multiple legal scenarios.
@@ -251,7 +259,7 @@ RAG models have been widely adopted across multiple domains:
 
 ## 7.3 Other Use Cases
 
-RAG can also be applied to multimodal generation scenarios, including image, audio, and 3D content generation. Cross-modal systems like ReMoDiffuse and Make-An-Audio leverage RAG technology for generation across different data modalities. In enterprise decision support, RAG can rapidly retrieve external resources (industry reports, market data) to generate high-quality forward-looking reports, enhancing strategic decision-making capabilities.
+RAG can also be applied to multimodal generation scenarios, including image, audio, and 3D content generation. Cross-modal systems like ReMoDiffuse and Make-An-Audio use RAG technology for generation across different data modalities. In enterprise decision support, RAG can rapidly retrieve external resources (industry reports, market data) to generate high-quality forward-looking reports, enhancing strategic decision-making capabilities.
 
 ## 8. Summary
 

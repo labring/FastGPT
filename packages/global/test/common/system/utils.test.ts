@@ -327,6 +327,21 @@ describe('system utils', () => {
       expect(fn).toHaveBeenCalledTimes(1);
     });
 
+    it('should stop starting new tasks in other slots once one task has failed', async () => {
+      // 并发为 2：第 1 项立即失败，第 2 项还在进行。修复前另一个槽会在调用方收到错误后
+      // 继续领取第 3~6 项并执行，产生无人接收的副作用。
+      const fn = vi.fn(async (item: number) => {
+        if (item === 1) throw new Error('first failed');
+        await delay(20);
+        return item;
+      });
+
+      await expect(batchRun([1, 2, 3, 4, 5, 6], fn, 2)).rejects.toThrow('first failed');
+      await delay(150);
+
+      expect(fn.mock.calls.map(([item]) => item)).toEqual([1, 2]);
+    });
+
     it('should return every settled result in input order', async () => {
       const firstError = new Error('first failed');
       const thirdError = new Error('third failed');

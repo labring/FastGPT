@@ -2,7 +2,7 @@ import {
   ChatCompletionRequestMessageRoleEnum,
   ModelTypeEnum
 } from '@fastgpt/global/core/ai/constants';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -61,7 +61,7 @@ const modelData = {
     toolChoice: true,
     reasoning: false
   }
-} as LLMSystemModelDataType;
+} as LLMModelDataType;
 
 const searchTool: ChatCompletionTool = {
   type: 'function',
@@ -916,6 +916,75 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     expect(compressRequestMessagesMock.mock.calls[0][0].reasoningEffort).toBe('high');
     expect(compressToolResponseMock.mock.calls[0][0].reasoningEffort).toBe('high');
   });
+
+  it.each(
+    [false, true].flatMap((previousSuccess) =>
+      [false, true].map((usedUserOpenAIKey) => ({ previousSuccess, usedUserOpenAIKey }))
+    )
+  )(
+    'counts errored request usage: previousSuccess=$previousSuccess, userKey=$usedUserOpenAIKey',
+    async ({ previousSuccess, usedUserOpenAIKey }) => {
+      const error = new Error(
+        'LLM tool call error: no valid tool calls matched the requested tools.'
+      );
+      const onLLMRequestEnd = vi.fn();
+      const onRunTool = vi.fn(async () => ({
+        response: 'search result',
+        assistantMessages: [],
+        usages: []
+      }));
+      mockCreateLLMResponseQueue(createLLMResponseMock, [
+        ...(previousSuccess
+          ? [{ ...toolCall({ id: 'search', name: 'search' }), usedUserOpenAIKey }]
+          : []),
+        {
+          requestId: 'req_error',
+          finishReason: 'tool_calls',
+          error,
+          inputTokens: 40,
+          outputTokens: 8,
+          usedUserOpenAIKey
+        }
+      ]);
+
+      const result = await runAgentLoop({
+        maxRunAgentTimes: 5,
+        body: {
+          model: modelData,
+          stream: true,
+          messages: [{ role: 'user', content: 'search' }],
+          tools: [searchTool]
+        },
+        teamId: 'team_1',
+        isAborted: () => false,
+        onRunTool,
+        onRunInteractiveTool: vi.fn(),
+        onLLMRequestEnd
+      });
+
+      const requestCount = previousSuccess ? 2 : 1;
+      expect(createLLMResponseMock).toHaveBeenCalledTimes(requestCount);
+      expect(onRunTool).toHaveBeenCalledTimes(previousSuccess ? 1 : 0);
+      expect(result.error).toBe(error);
+      expect(result.finish_reason).toBe('tool_calls');
+      expect(result.requestIds).toEqual(
+        previousSuccess ? ['req_search', 'req_error'] : ['req_error']
+      );
+      expect(result.inputTokens).toBe(previousSuccess ? 140 : 40);
+      expect(result.outputTokens).toBe(previousSuccess ? 28 : 8);
+      expect(result.llmTotalPoints).toBe(usedUserOpenAIKey ? 0 : requestCount);
+
+      // 返回汇总与逐次用量事件一致，错误轮只计一次；用户 key 保留 token，积分为零。
+      expect(onLLMRequestEnd).toHaveBeenCalledTimes(requestCount);
+      expect(onLLMRequestEnd).toHaveBeenLastCalledWith(
+        expect.objectContaining({ requestId: 'req_error', finishReason: 'tool_calls', error })
+      );
+      const usages = onLLMRequestEnd.mock.calls.map(([event]) => event.usage);
+      expect(usages.reduce((sum, usage) => sum + usage.inputTokens, 0)).toBe(result.inputTokens);
+      expect(usages.reduce((sum, usage) => sum + usage.outputTokens, 0)).toBe(result.outputTokens);
+      expect(usages.reduce((sum, usage) => sum + usage.totalPoints, 0)).toBe(result.llmTotalPoints);
+    }
+  );
 
   it('keeps requestId and usage when LLM returns empty tool_calls finish', async () => {
     const onLLMRequestEnd = vi.fn();

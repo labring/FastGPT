@@ -10,6 +10,8 @@ on:
 jobs:
   validate-version:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -60,6 +62,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Capture proxy envs from variables
         run: |
           echo "HTTP_PROXY=${{ vars.AB_HTTP_PROXY }}" >> "$GITHUB_ENV"
@@ -290,6 +293,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Capture proxy envs from variables
         run: |
           echo "HTTP_PROXY=${{ vars.AB_HTTP_PROXY }}" >> "$GITHUB_ENV"

@@ -24,4 +24,42 @@ describe('MultipleRowSelect loading', () => {
     expect(html).toContain('role="status"');
     expect(html).not.toContain('模型请求中');
   });
+
+  it('handles null or non-array value gracefully without throwing TypeError', () => {
+    expect(() => {
+      renderToStaticMarkup(
+        React.createElement(
+          ChakraProvider,
+          null,
+          React.createElement(MultipleRowSelect, {
+            list: [
+              {
+                label: 'Group A',
+                value: 'groupA',
+                children: [{ label: 'Item 1', value: 'item1' }]
+              }
+            ],
+            value: null as any,
+            onSelect: () => {}
+          })
+        )
+      );
+    }).not.toThrow();
+  });
+
+  it('handles undefined value gracefully', () => {
+    expect(() => {
+      renderToStaticMarkup(
+        React.createElement(
+          ChakraProvider,
+          null,
+          React.createElement(MultipleRowSelect, {
+            list: [{ label: 'Item 1', value: 'item1' }],
+            value: undefined,
+            onSelect: () => {}
+          })
+        )
+      );
+    }).not.toThrow();
+  });
 });

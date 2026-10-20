@@ -1,7 +1,7 @@
 import json5 from 'json5';
 import { ChatRoleEnum } from '../../../core/chat/constants';
 import type { ChatItemMiniType } from '../../../core/chat/type';
-import type { NodeOutputItemType } from './type';
+import type { NodeOutputItemType, RuntimeNodeItemType } from './type';
 import { createChatCompletionDeltaResponse } from '../../ai/llm/utils';
 import {
   NodeInputKeyEnum,
@@ -14,8 +14,8 @@ import { type WorkflowInteractiveResponseType } from '../template/system/interac
 import type { RuntimeEdgeItemType, StoreEdgeItemType } from '../type/edge';
 import type { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import type { StoreNodeItemType } from '../type/node';
-import { isValidReferenceValueFormat } from '../utils';
-import type { RuntimeNodeItemType } from './type';
+import { isValidReferenceValueFormat } from '../../../common/workflow/reference';
+
 import { isSecretValue } from '../../../common/secret/utils';
 import { isChildInteractive } from '../template/system/interactive/constants';
 
@@ -96,9 +96,7 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
     return Number(value);
   }
   if (valueType === WorkflowIOValueTypeEnum.boolean) {
-    if (typeof value === 'string') {
-      return value.toLowerCase() === 'true';
-    }
+    // 统一使用 JS 原生 Boolean 语义（非空字符串为 true），与 formatVariableValByType 保持一致
     return Boolean(value);
   }
 
@@ -117,7 +115,10 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
   if (valueType?.startsWith('array')) {
     if (isObjectString(value)) {
       try {
-        return json5.parse(value);
+        const parsed = json5.parse(value);
+        // 单个对象的 JSON 字符串与其他非数组值一样包成单元素数组，
+        // 否则数组类型的输入拿到的是对象，循环/并行节点会报「不是数组」
+        return Array.isArray(parsed) ? parsed : [parsed];
       } catch {}
     }
     return [value];
@@ -284,6 +285,7 @@ export const storeNodes2RuntimeNodes = (
         outputs: node.outputs,
         pluginId: node.pluginId,
         version: node.version,
+        ...(node.metadataLocale !== undefined ? { metadataLocale: node.metadataLocale } : {}),
         toolConfig: node.toolConfig,
         catchError: node.catchError
       };

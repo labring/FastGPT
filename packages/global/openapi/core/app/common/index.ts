@@ -11,6 +11,7 @@ import {
   GetAppBasicInfoResponseSchema,
   GetAppDetailQuerySchema,
   GetAppDetailResponseSchema,
+  GetReferencedAppsQuerySchema,
   ListAppBodySchema,
   ListAppResponseSchema,
   ListAppV2BodySchema,
@@ -21,9 +22,9 @@ import {
   TransitionWorkflowBodySchema,
   TransitionWorkflowResponseSchema,
   UpdateAppBodySchema,
-  UpdateAppQuerySchema,
-  UpdateAppResponseSchema
+  UpdateAppQuerySchema
 } from './api';
+import { ReferencedAppsResponseSchema } from '../../../../core/app/type';
 
 export const AppCommonPath: OpenAPIPath = {
   '/core/app/list': {
@@ -69,6 +70,22 @@ export const AppCommonPath: OpenAPIPath = {
             'application/json': {
               schema: ListAppV2ResponseSchema
             }
+          }
+        }
+      }
+    }
+  },
+  '/core/app/referencedApps': {
+    get: {
+      summary: '获取引用指定资源的应用',
+      description: '列出当前请求者可读的、已发布版本引用指定资源或其文件夹内资源的应用',
+      tags: [DevApiTagsMap.appCommon],
+      requestParams: { query: GetReferencedAppsQuerySchema },
+      responses: {
+        200: {
+          description: '成功获取引用应用',
+          content: {
+            'application/json': { schema: ReferencedAppsResponseSchema }
           }
         }
       }
@@ -135,12 +152,7 @@ export const AppCommonPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功更新应用',
-          content: {
-            'application/json': {
-              schema: UpdateAppResponseSchema
-            }
-          }
+          description: '成功更新应用'
         }
       }
     }

@@ -18,6 +18,7 @@ const expectedPaths = {
   '/core/ai/sandbox/keepalive': 'post',
   '/core/ai/sandbox/verifyTicket': 'get',
   '/core/ai/model/catalog': 'get',
+  '/core/ai/model/config': 'get',
   '/core/ai/model/list': 'get',
   '/core/ai/model/summary': 'post',
   '/proApi/system/model/collaborator/list': 'get',
@@ -59,6 +60,7 @@ describe('AI OpenAPI contracts', () => {
 
     for (const path of [
       '/core/ai/model/catalog',
+      '/core/ai/model/config',
       '/core/ai/model/list',
       '/core/ai/model/summary',
       '/proApi/system/model/collaborator/list',

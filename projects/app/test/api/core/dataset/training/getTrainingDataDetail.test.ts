@@ -12,7 +12,15 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+const { mockCreateS3DownloadAccessUrl } = vi.hoisted(() => ({
+  mockCreateS3DownloadAccessUrl: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/common/s3/accessLink', () => ({
+  createS3DownloadAccessUrl: mockCreateS3DownloadAccessUrl
+}));
 
 describe('get training data detail test', () => {
   it('should return training data detail', async () => {
@@ -37,7 +45,7 @@ describe('get training data detail test', () => {
       datasetId: dataset._id,
       collectionId: collection._id,
       billId: 'test',
-      mode: TrainingModeEnum.chunk,
+      mode: TrainingModeEnum.rebuildIndex,
       q: 'test',
       a: 'test'
     });
@@ -58,9 +66,108 @@ describe('get training data detail test', () => {
     expect(res.data).toBeDefined();
     expect(res.data?._id).toStrictEqual(String(trainingData._id));
     expect(res.data?.datasetId).toStrictEqual(String(dataset._id));
-    expect(res.data?.mode).toBe(TrainingModeEnum.chunk);
+    expect(res.data?.mode).toBe(TrainingModeEnum.rebuildIndex);
     expect(res.data?.q).toBe('test');
     expect(res.data?.a).toBe('test');
+  });
+
+  it('should sign the image preview url when imageId belongs to the authorized dataset', async () => {
+    mockCreateS3DownloadAccessUrl.mockReset();
+    mockCreateS3DownloadAccessUrl.mockResolvedValue('https://example.com/signed-url');
+
+    const root = await getRootUser();
+    const dataset = await MongoDataset.create({
+      name: 'test',
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      vectorModel: 'test',
+      agentModel: 'test'
+    });
+    const collection = await MongoDatasetCollection.create({
+      name: 'test',
+      type: DatasetCollectionTypeEnum.file,
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id
+    });
+    const ownImageId = `dataset/${dataset._id}/image.png`;
+    const trainingData = await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'test',
+      mode: TrainingModeEnum.rebuildIndex,
+      q: 'test',
+      a: 'test',
+      imageId: ownImageId
+    });
+
+    const res = await Call<
+      GetTrainingDataDetailBody,
+      Record<string, never>,
+      GetTrainingDataDetailResponse
+    >(handler, {
+      auth: root,
+      body: {
+        collectionId: collection._id,
+        dataId: trainingData._id
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(mockCreateS3DownloadAccessUrl).toHaveBeenCalledWith(
+      expect.objectContaining({ objectKey: ownImageId })
+    );
+    expect(res.data?.imagePreviewUrl).toBe('https://example.com/signed-url');
+  });
+
+  it('should not sign the image preview url when imageId belongs to another dataset', async () => {
+    mockCreateS3DownloadAccessUrl.mockReset();
+    mockCreateS3DownloadAccessUrl.mockResolvedValue('https://example.com/signed-url');
+
+    const root = await getRootUser();
+    const dataset = await MongoDataset.create({
+      name: 'test',
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      vectorModel: 'test',
+      agentModel: 'test'
+    });
+    const collection = await MongoDatasetCollection.create({
+      name: 'test',
+      type: DatasetCollectionTypeEnum.file,
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id
+    });
+    const trainingData = await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'test',
+      mode: TrainingModeEnum.rebuildIndex,
+      q: 'test',
+      a: 'test',
+      imageId: 'dataset/foreign-dataset/secret.png'
+    });
+
+    const res = await Call<
+      GetTrainingDataDetailBody,
+      Record<string, never>,
+      GetTrainingDataDetailResponse
+    >(handler, {
+      auth: root,
+      body: {
+        collectionId: collection._id,
+        dataId: trainingData._id
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(mockCreateS3DownloadAccessUrl).not.toHaveBeenCalled();
+    expect(res.data?.imagePreviewUrl).toBeUndefined();
   });
 
   it('should ignore legacy datasetId and only read data from the authorized collection', async () => {
@@ -103,7 +210,7 @@ describe('get training data detail test', () => {
       datasetId: foreignDataset._id,
       collectionId: foreignCollection._id,
       billId: 'test',
-      mode: TrainingModeEnum.chunk,
+      mode: TrainingModeEnum.rebuildIndex,
       q: 'foreign',
       a: 'foreign'
     });

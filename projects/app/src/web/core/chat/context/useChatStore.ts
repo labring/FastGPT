@@ -3,6 +3,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
+import { clearChatInputDrafts } from '../inputDraft/storage';
 
 export enum AgentChatTestTabEnum {
   helper = 'helper',
@@ -283,6 +284,7 @@ export const useChatStore = create<State>()(
           });
         },
         resetChatCache() {
+          clearChatInputDrafts();
           set((state) => {
             state.source = undefined;
             state.appId = '';
@@ -328,33 +330,13 @@ export const useChatStore = create<State>()(
 
 /**
  * 跨 tab 同步 localStorage 中的持久字段（lastChatId、appChatIdMap 等）。
- * sessionStorage 字段（source/chatId/appId）各 tab 独立，不参与 storage 事件合并。
+ * 自定义 storage 会保留当前 tab 的 sessionStorage 字段，重新加载时不回写共享数据。
  */
-const createStorageListener = (store: any) => {
+const createStorageListener = (store: typeof useChatStore) => {
   const handleStorageChange = (e: StorageEvent) => {
     if (e.key === 'chatStore' && e.newValue && e.storageArea === localStorage) {
-      try {
-        const newData = JSON.parse(e.newValue);
-        const currentState = store.getState();
-
-        // 只同步 localStorage 中的数据（非 session 数据）
-        const sessionKeys = ['source', 'chatId', 'appId', 'agentChatTestTab'];
-        const updatedState: Partial<State> = {};
-        let hasChanges = false;
-
-        Object.entries(newData.state || {}).forEach(([key, value]) => {
-          if (!sessionKeys.includes(key) && currentState[key] !== value) {
-            (updatedState as any)[key] = value;
-            hasChanges = true;
-          }
-        });
-
-        if (hasChanges) {
-          store.setState(updatedState);
-        }
-      } catch (error) {
-        console.warn('Failed to parse storage event data:', error);
-      }
+      // persist 的重新加载使用原始 setter；store.setState 会再次持久化并触发其他 tab。
+      void store.persist.rehydrate();
     }
   };
 

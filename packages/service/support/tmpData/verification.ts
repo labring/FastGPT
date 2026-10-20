@@ -58,6 +58,16 @@ export type VerificationConsumeContext<T extends Type> = {
   session: ClientSession;
 };
 
+/** 与 params 逐位绑定的材料元组类型，消费回调无需靠下标断言恢复元素类型。 */
+export type VerificationConsumeManyMaterialsFor<Types extends readonly Type[]> = {
+  [K in keyof Types]: VerificationMaterial<Types[K]>;
+};
+
+export type VerificationConsumeManyContextFor<Types extends readonly Type[]> = {
+  materials: VerificationConsumeManyMaterialsFor<Types>;
+  session: ClientSession;
+};
+
 export class VerificationMaterialError extends Error {
   constructor() {
     super('Verification material is invalid or already consumed');
@@ -95,12 +105,79 @@ const findActiveRecord = async <T extends Type>(
   return query.lean();
 };
 
+/** 事务内批量读取时用到的最小记录视图，只保留校验材料归属需要的字段。 */
+type VerificationRecord = {
+  dataId: string;
+  data: unknown;
+};
+
 /** 根据统一 TTL 档位计算材料过期时间，避免业务层自行构造 Date。 */
 const getExpireAt = (ttlPreset: VerificationTtlPreset) =>
   new Date(Date.now() + VerificationTtlSeconds[ttlPreset] * 1000);
 
 const isMongoDuplicateKeyError = (error: unknown) =>
   !!error && typeof error === 'object' && 'code' in error && error.code === 11000;
+
+/**
+ * 把存储层读出的记录收窄为与 params 逐位绑定的材料元组。
+ *
+ * tmp_datas 的 data 列没有静态类型，位置 i 的材料类型由 params[i] 决定，因此这里集中承担对存储层
+ * 的信任：逐条校验记录存在、且 dataId 与请求的 scene/type/key 完全一致，任一不符都视为材料无效，
+ * 由上层回滚整个事务。校验通过后只做一次元组断言，调用点无需各自写 `as`。
+ *
+ * dataId 比对不是冗余：它确认“位置 i 拿到的就是 params[i] 的材料”，一旦查询条件被放宽（例如改成
+ * $in 候选批量查询）或读取顺序与 params 不一致，这里会立即失败，而不是把错类型的材料交给回调。
+ * 材料形态不在此校验：wechat 等材料的 data 合法地为 null。
+ */
+const toMaterialTupleFor = <Types extends readonly Type[]>(
+  params: { [K in keyof Types]: VerificationConsumeParams<Types[K]> },
+  records: readonly (VerificationRecord | null)[]
+): VerificationConsumeManyMaterialsFor<Types> => {
+  const materials = params.map((item, index) => {
+    const record = records[index];
+    if (!record || record.dataId !== getDataId(item)) {
+      throw new VerificationMaterialError();
+    }
+
+    return record.data;
+  });
+
+  // 逐条校验已确认位置与 params 对齐，此处断言只是把 unknown 数组交回元组类型。
+  return materials as VerificationConsumeManyMaterialsFor<Types>;
+};
+
+/**
+ * 在同一 Mongo 事务内消费多个互相绑定的验证材料。
+ * 任一材料不存在、过期或已被并发请求消费，整个事务都会回滚。
+ * params 与回调 materials 按位置逐位绑定类型，交换 params 顺序会在编译期报错。
+ */
+const consumeManyInTransaction = async <Types extends readonly Type[], R>(
+  params: { [K in keyof Types]: VerificationConsumeParams<Types[K]> },
+  handler: (context: VerificationConsumeManyContextFor<Types>) => Promise<R>
+): Promise<R> =>
+  mongoSessionRun(async (session) => {
+    // MongoDB 不允许在同一事务 session 上并行执行操作，按材料顺序串行读取。
+    const records: (VerificationRecord | null)[] = [];
+    for (const item of params) {
+      records.push(await findActiveRecord(item, session));
+    }
+
+    const materials = toMaterialTupleFor(params, records);
+
+    const result = await handler({
+      materials,
+      session
+    });
+
+    for (const item of params) {
+      const deleted = await MongoTmpData.deleteOne(getActiveFilter(item), { session });
+      if (deleted.deletedCount !== 1) {
+        throw new VerificationMaterialError();
+      }
+    }
+
+    return result;
+  });
 
 /**
  * 身份验证材料的临时存取包装。
@@ -224,23 +301,14 @@ export const verification = {
     params: VerificationConsumeParams<T>,
     handler: (context: VerificationConsumeContext<T>) => Promise<R>
   ): Promise<R> => {
-    return mongoSessionRun(async (session) => {
-      const record = await findActiveRecord(params, session);
-      if (!record) {
-        throw new VerificationMaterialError();
-      }
-
-      const result = await handler({
-        material: record.data as VerificationMaterial<T>,
+    // 显式声明单元素元组，保证 materials[0] 的类型与 params 绑定，无需断言。
+    return consumeManyInTransaction<[T], R>([params], async ({ materials, session }) =>
+      handler({
+        material: materials[0],
         session
-      });
+      })
+    );
+  },
 
-      const deleted = await MongoTmpData.deleteOne(getActiveFilter(params), { session });
-      if (deleted.deletedCount !== 1) {
-        throw new VerificationMaterialError();
-      }
-
-      return result;
-    });
-  }
+  consumeManyInTransaction
 };

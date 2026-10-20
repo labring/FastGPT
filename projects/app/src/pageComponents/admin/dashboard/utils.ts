@@ -1,25 +1,36 @@
 import dayjs from 'dayjs';
+import { createContext, useContext } from 'react';
 
 export type DateRange = 7 | 30 | 90 | 360;
 export type Granularity = 'day' | 'month' | 'quarter';
+export type DashboardFilters = { dateRange: DateRange; granularity: Granularity };
 
-/** 解析 URL 筛选值；近 7 天固定按天，未知值回退到默认选项。 */
-export const getDashboardFilters = (query: {
-  dateRange?: string | string[];
-  granularity?: string | string[];
-}): { dateRange: DateRange; granularity: Granularity } => {
-  const dateRange = (() => {
-    if (query.dateRange === '30') return 30;
-    if (query.dateRange === '90') return 90;
-    if (query.dateRange === '360') return 360;
-    return 7;
-  })();
-  const granularity = (() => {
-    if (dateRange === 7) return 'day';
-    if (query.granularity === 'month' || query.granularity === 'quarter') return query.granularity;
-    return 'day';
-  })();
+export const defaultDashboardFilters: DashboardFilters = { dateRange: 7, granularity: 'day' };
+
+/** 校验数据面板筛选值，近七天仅允许按天统计。 */
+export const normalizeDashboardFilters = (value: Partial<DashboardFilters>): DashboardFilters => {
+  const dateRange: DateRange = [7, 30, 90, 360].includes(value.dateRange as DateRange)
+    ? (value.dateRange as DateRange)
+    : 7;
+  const granularity: Granularity =
+    dateRange === 7
+      ? 'day'
+      : value.granularity === 'month' || value.granularity === 'quarter'
+        ? value.granularity
+        : 'day';
   return { dateRange, granularity };
+};
+
+export const DashboardFiltersContext = createContext<{
+  filters: DashboardFilters;
+  updateFilters: (patch: Partial<DashboardFilters>) => void;
+} | null>(null);
+
+/** 同一路由下的筛选器和图表共享状态；持久化由 SingleSelectFilter 负责。 */
+export const useDashboardFilters = () => {
+  const context = useContext(DashboardFiltersContext);
+  if (!context) throw new Error('Dashboard filters provider is required');
+  return { ...context.filters, updateFilters: context.updateFilters };
 };
 
 /** 补齐后端已聚合的周期空桶；完整年月日作为键，避免跨年同一天碰撞。 */

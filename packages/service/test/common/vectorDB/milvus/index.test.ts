@@ -12,6 +12,7 @@ const mockDescribeCollection = vi.fn();
 const mockDescribeIndex = vi.fn();
 const mockGetVersion = vi.fn();
 const mockInsert = vi.fn();
+const mockUpsert = vi.fn();
 const mockDelete = vi.fn();
 const mockSearch = vi.fn();
 const mockQuery = vi.fn();
@@ -26,6 +27,7 @@ vi.mock('@zilliz/milvus2-sdk-node', () => ({
   LoadState: { LoadStateNotExist: 'LoadStateNotExist', LoadStateNotLoad: 'LoadStateNotLoad' },
   FunctionType: { BM25: 'BM25' },
   ErrorCode: { SUCCESS: 'Success' },
+  ConsistencyLevelEnum: { Strong: 'Strong' },
   MilvusClient: class {
     connectPromise = Promise.resolve();
     listDatabases = vi.fn(async () => ({ db_names: ['fastgpt'] }));
@@ -39,6 +41,7 @@ vi.mock('@zilliz/milvus2-sdk-node', () => ({
     describeIndex = mockDescribeIndex;
     getVersion = mockGetVersion;
     insert = mockInsert;
+    upsert = mockUpsert;
     delete = mockDelete;
     search = mockSearch;
     query = mockQuery;
@@ -93,8 +96,76 @@ beforeEach(() => {
     IDs: { str_id: { data: ['1'] } }
   });
   mockDelete.mockReset().mockResolvedValue({ status: { error_code: 'Success' } });
+  mockUpsert.mockReset().mockResolvedValue({ status: { error_code: 'Success' } });
   mockSearch.mockReset().mockResolvedValue({ results: [] });
   mockQuery.mockReset().mockResolvedValue({ data: [] });
+});
+
+describe('MilvusCtrl.refreshCreateTime', () => {
+  const row = {
+    id: '123',
+    vector: [0.1, 0.2],
+    text: '原文',
+    teamId: 'team',
+    datasetId: 'dataset',
+    collectionId: 'collection'
+  };
+  beforeEach(() => {
+    mockQuery.mockResolvedValue({ status: { error_code: 'Success' }, data: [row] });
+  });
+
+  it('preserves vectors and BM25 input text while refreshing time', async () => {
+    const started = Date.now();
+    await new MilvusCtrl().refreshCreateTime({ teamId: 'team', idList: ['123', '456'] });
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filter: 'teamId == "team" and id in [123,456]',
+        consistency_level: 'Strong',
+        limit: 2
+      })
+    );
+    const { data } = mockUpsert.mock.calls[0][0];
+    expect(data).toHaveLength(1);
+    expect(data[0]).toEqual({ ...row, createTime: expect.any(Number) });
+    expect(data[0].createTime).toBeGreaterThanOrEqual(started);
+  });
+
+  it('does not query an empty list or recreate missing vectors', async () => {
+    const ctrl = new MilvusCtrl();
+    await ctrl.refreshCreateTime({ teamId: 'team', idList: [] });
+    expect(mockQuery).not.toHaveBeenCalled();
+    mockQuery.mockResolvedValue({ status: { error_code: 'Success' }, data: [] });
+    await ctrl.refreshCreateTime({ teamId: 'team', idList: ['123'] });
+    expect(mockUpsert).not.toHaveBeenCalled();
+  });
+
+  it('rejects malformed vector IDs before constructing a filter', async () => {
+    await expect(
+      new MilvusCtrl().refreshCreateTime({ teamId: 'team', idList: ['1] or true'] })
+    ).rejects.toThrow('Invalid Milvus vector ID');
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('propagates query status failures even when the SDK resolves', async () => {
+    mockQuery.mockResolvedValue({
+      status: { error_code: 'UnexpectedError', reason: 'offline' },
+      data: []
+    });
+    await expect(
+      new MilvusCtrl().refreshCreateTime({ teamId: 'team', idList: ['123'] })
+    ).rejects.toThrow('query failed');
+    expect(mockUpsert).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { status: { error_code: 'UnexpectedError', reason: 'offline' } },
+    { status: { error_code: 'Success' }, err_index: [0] }
+  ])('rejects failed or partially failed upserts', async (result) => {
+    mockUpsert.mockResolvedValue(result);
+    await expect(
+      new MilvusCtrl().refreshCreateTime({ teamId: 'team', idList: ['123'] })
+    ).rejects.toThrow('rejected 1/1');
+  });
 });
 
 describe('MilvusCtrl', () => {

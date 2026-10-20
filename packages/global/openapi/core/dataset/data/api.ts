@@ -7,6 +7,7 @@ import {
   UpdateDatasetDataPropsSchema
 } from '../../../../core/dataset/type';
 import { DatasetCollectionDataProcessModeEnum } from '../../../../core/dataset/constants';
+import { DatasetDataIndexStatusEnum } from '../../../../core/dataset/data/constants';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import { PaginationSchema, PaginationResponseSchema } from '../../../api';
 import {
@@ -216,9 +217,11 @@ export const InsertDataBodySchema = PushDataChunkSchema.omit({ q: true }).extend
 });
 export type InsertDataBody = z.infer<typeof InsertDataBodySchema>;
 
-export const InsertDataResponseSchema = ObjectIdSchema.meta({
-  example: '68ad85a7463006c963799a07',
-  description: '新插入的数据 ID'
+export const InsertDataResponseSchema = z.object({
+  dataIds: z.array(ObjectIdSchema).meta({
+    example: ['68ad85a7463006c963799a07'],
+    description: '实际插入的数据 ID 列表'
+  })
 });
 export type InsertDataResponse = z.infer<typeof InsertDataResponseSchema>;
 
@@ -286,6 +289,9 @@ export const PushDataResponseSchema = z.object({
   insertLen: z.number().meta({
     example: 10,
     description: '成功插入的数据条数'
+  }),
+  dataIds: z.array(ObjectIdSchema).meta({
+    description: '实际插入的数据 ID 列表'
   })
 });
 export type PushDataResponseType = z.infer<typeof PushDataResponseSchema>;
@@ -304,6 +310,11 @@ export const GetDataListItemSchema = z.object({
   imageSize: z.number().optional().meta({ description: '图片大小（字节）' }),
   imagePreviewUrl: z.string().optional().meta({ description: '图片预览 URL' }),
   chunkIndex: z.number().optional().meta({ description: '块索引' }),
+  indexStatus: z
+    .enum(DatasetDataIndexStatusEnum)
+    .optional()
+    .meta({ description: '索引状态，字段缺失表示已索引的历史数据' }),
+  indexErrorMsg: z.string().optional().meta({ description: '索引错误信息' }),
   updated: z.boolean().optional().meta({ description: '是否已更新' })
 });
 

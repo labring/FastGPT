@@ -1,7 +1,7 @@
 'use client';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { Box, Flex } from '@chakra-ui/react';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import TeamSelector from '@/pageComponents/account/TeamSelector';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import React, { useMemo } from 'react';
@@ -23,9 +23,6 @@ const PermissionManage = dynamic(
 const AuditLog = dynamic(() => import('@/pageComponents/account/team/Audit/index'));
 const GroupManage = dynamic(() => import('@/pageComponents/account/team/GroupManage/index'));
 const OrgManage = dynamic(() => import('@/pageComponents/account/team/OrgManage/index'));
-const HandleInviteModal = dynamic(
-  () => import('@/pageComponents/account/team/Invite/HandleInviteModal')
-);
 
 export enum TeamTabEnum {
   member = 'member',
@@ -38,18 +35,9 @@ export enum TeamTabEnum {
 const Team = () => {
   const router = useRouter();
 
-  const invitelinkid = useMemo(() => {
-    const _id = router.query.invitelinkid;
-    if (!_id && typeof _id !== 'string') {
-      return '';
-    } else {
-      return _id as string;
-    }
-  }, [router.query.invitelinkid]);
-
   const { teamTab = TeamTabEnum.member } = router.query as { teamTab: `${TeamTabEnum}` };
 
-  const { t } = useClientTranslation(['account', 'account_team', 'user']);
+  const { t } = useSafeTranslation();
   const { userInfo, teamPlanStatus } = useUserStore();
   const standardPlan = teamPlanStatus?.standard;
   const level = standardPlan?.currentSubLevel;
@@ -178,7 +166,6 @@ const Team = () => {
           {teamTab === TeamTabEnum.audit && <AuditLog Tabs={Tabs} />}
         </Box>
       </Flex>
-      {invitelinkid && <HandleInviteModal invitelinkid={invitelinkid} />}
     </AccountContainer>
   );
 };

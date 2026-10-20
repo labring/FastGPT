@@ -1,10 +1,8 @@
 import React from 'react';
 import type { LexicalEditor } from 'lexical';
 import { useCallback } from 'react';
-import {
-  type EditorVariableLabelPickerType,
-  type EditorVariablePickerType
-} from '../../Textarea/PromptEditor/type';
+import type { EditorVariableLabelPickerType } from '../../Textarea/PromptEditor/type';
+import type { EditorVariablePickerType } from '@fastgpt/global/core/workflow/type/io';
 import Editor from './Editor';
 import { editorStateToText } from '../../Textarea/PromptEditor/utils';
 

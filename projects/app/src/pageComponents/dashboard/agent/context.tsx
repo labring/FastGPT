@@ -209,6 +209,8 @@ const AppListContextProvider = ({
         pathname: router.pathname,
         type: appType
       });
+      const scene = getDashboardAppListScene(router.pathname);
+      const withRelatedAppCount = scene === 'agent' || scene === 'tool' ? true : undefined;
       const fetchApps = (tmbIds?: string[]) =>
         getMyAppsV2(
           buildAppListRequest({
@@ -218,7 +220,8 @@ const AppListContextProvider = ({
             offset,
             pageSize: getGridRequestPageSize(pageSize, offset),
             sort,
-            tmbIds
+            tmbIds,
+            withRelatedAppCount
           })
         );
 

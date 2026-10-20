@@ -5,7 +5,6 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { serviceEnv } from '@fastgpt/service/env';
 
 const mockGetVectors = vi.hoisted(() => vi.fn());
-const mockIsImageEmbeddingModel = vi.hoisted(() => vi.fn());
 const mockRecallFromVectorStore = vi.hoisted(() => vi.fn());
 const mockCreateLLMResponse = vi.hoisted(() => vi.fn());
 const mockReRankRecall = vi.hoisted(() => vi.fn());
@@ -40,7 +39,8 @@ const embeddingModel = {
   config: {
     defaultToken: 100,
     maxToken: 100,
-    weight: 0
+    weight: 0,
+    vision: false
   }
 };
 
@@ -62,10 +62,6 @@ const vlmModel = {
 
 vi.mock('@fastgpt/service/core/ai/embedding', () => ({
   getVectors: mockGetVectors
-}));
-
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  isImageEmbeddingModel: mockIsImageEmbeddingModel
 }));
 
 vi.mock('@fastgpt/service/common/vectorDB/controller', () => ({
@@ -168,7 +164,7 @@ describe('default recall dataset search', () => {
     );
     mockCountPromptTokens.mockImplementation(async (prompt: string) => prompt.length);
 
-    mockIsImageEmbeddingModel.mockReturnValue(false);
+    embeddingModel.config.vision = false;
     mockGetVectors.mockResolvedValue({
       tokens: 10,
       vectors: [
@@ -253,7 +249,7 @@ describe('default recall dataset search', () => {
   });
 
   it('should request text and image embeddings in one getVectors call', async () => {
-    mockIsImageEmbeddingModel.mockReturnValue(true);
+    embeddingModel.config.vision = true;
     mockGetVectors.mockResolvedValueOnce({
       tokens: 12,
       vectors: [
@@ -295,7 +291,7 @@ describe('default recall dataset search', () => {
   });
 
   it('should skip blank embedding recall inputs while preserving valid task order', async () => {
-    mockIsImageEmbeddingModel.mockReturnValue(true);
+    embeddingModel.config.vision = true;
     mockGetVectors.mockResolvedValueOnce({
       tokens: 12,
       vectors: [
@@ -335,7 +331,7 @@ describe('default recall dataset search', () => {
   });
 
   it('should pass overlong text queries to centralized embedding fallback without creating extra queries', async () => {
-    mockIsImageEmbeddingModel.mockReturnValue(false);
+    embeddingModel.config.vision = false;
     const smallEmbeddingModel = {
       ...embeddingModel,
       config: { ...embeddingModel.config, maxToken: 12 }
@@ -372,7 +368,7 @@ describe('default recall dataset search', () => {
   });
 
   it('should ignore failed image embedding normalization and keep text recall', async () => {
-    mockIsImageEmbeddingModel.mockReturnValue(true);
+    embeddingModel.config.vision = true;
     serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
     mockGetImageBase64.mockRejectedValueOnce(new Error('expired image'));
     mockGetVectors.mockResolvedValueOnce({
@@ -417,7 +413,7 @@ describe('default recall dataset search', () => {
   });
 
   it('should skip blank full-text queries before Mongo text search', async () => {
-    mockIsImageEmbeddingModel.mockReturnValue(false);
+    embeddingModel.config.vision = false;
 
     const result = await searchDatasetData({
       histories: [],
@@ -438,8 +434,8 @@ describe('default recall dataset search', () => {
     expect(result.searchRes).toEqual([]);
   });
 
-  it('should only batch-sign S3 keys from results that survive score filtering', async () => {
-    mockIsImageEmbeddingModel.mockReturnValue(false);
+  it('should only batch-sign authorized dataset S3 keys from results that survive score filtering', async () => {
+    embeddingModel.config.vision = false;
     mockGetVectors.mockResolvedValueOnce({
       tokens: 5,
       vectors: [[0.1, 0.2]]
@@ -456,6 +452,7 @@ describe('default recall dataset search', () => {
         lean: vi.fn().mockResolvedValue([{ _id: 'collection-1', name: 'Source' }])
       };
     });
+    // 命中结果同时内嵌本库 key 与外库 key：只有归属于召回 datasetIds 的 key 才签发短链。
     mockMongoDatasetDataFind.mockReturnValueOnce({
       lean: vi.fn().mockResolvedValue([
         {
@@ -463,7 +460,7 @@ describe('default recall dataset search', () => {
           datasetId: 'dataset-1',
           collectionId: 'collection-1',
           updateTime: new Date('2026-01-01'),
-          q: 'Keep ![image](dataset/team/keep.png)',
+          q: 'Keep ![image](dataset/dataset-1/keep.png) leak ![image](dataset/foreign-dataset/secret.png)',
           a: '',
           chunkIndex: 0,
           indexes: [{ dataId: 'index-keep' }]
@@ -473,7 +470,7 @@ describe('default recall dataset search', () => {
           datasetId: 'dataset-1',
           collectionId: 'collection-1',
           updateTime: new Date('2026-01-01'),
-          q: 'Filtered ![image](dataset/team/filtered.png)',
+          q: 'Filtered ![image](dataset/dataset-1/filtered.png)',
           a: '',
           chunkIndex: 1,
           indexes: [{ dataId: 'index-filtered' }]
@@ -495,10 +492,13 @@ describe('default recall dataset search', () => {
     });
 
     expect(result.searchRes).toHaveLength(1);
-    expect(result.searchRes[0]?.q).toContain('https://files.test/dataset/team/keep.png');
+    // 本库 key 被签发为短链，外库 key 保持原文本不替换
+    expect(result.searchRes[0]?.q).toContain('https://files.test/dataset/dataset-1/keep.png');
+    expect(result.searchRes[0]?.q).toContain('dataset/foreign-dataset/secret.png');
+    // 被相似度过滤的候选不产生任何 alias 查询
     expect(mockCreateS3DownloadAccessUrls).toHaveBeenCalledTimes(1);
     expect(mockCreateS3DownloadAccessUrls.mock.calls[0][0].map((item) => item.objectKey)).toEqual([
-      'dataset/team/keep.png'
+      'dataset/dataset-1/keep.png'
     ]);
   });
 
@@ -517,7 +517,7 @@ describe('default recall dataset search', () => {
     // 一条 text query 对应一个向量，向量召回返回两条候选，rerank 命中其中一条，
     // 制造「候选集 != 最终结果」的场景。
     const arrangeTwoCandidates = () => {
-      mockIsImageEmbeddingModel.mockReturnValue(false);
+      embeddingModel.config.vision = false;
       mockGetVectors.mockResolvedValue({
         tokens: 5,
         vectors: [[0.1, 0.2]]

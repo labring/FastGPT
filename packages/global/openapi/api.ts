@@ -1,10 +1,18 @@
 import type { RequireOnlyOne } from '../common/type/utils';
 import { IntSchema } from '../common/zod';
+import { JsonValueOpenApiMeta } from '../common/zod/openapi';
 import z from 'zod';
+
+export const PaginationPageSizeLimit = 500;
+
+/** 通用分页条数约束；业务接口需要更小上限时显式覆盖 pageSize。 */
+export const PaginationPageSizeSchema = IntSchema.positive()
+  .max(PaginationPageSizeLimit)
+  .meta({ example: 20, description: `每页条数，最大 ${PaginationPageSizeLimit}` });
 
 /* 按 offset 分页 */
 export const PaginationSchema = z.object({
-  pageSize: IntSchema.positive().optional().describe('每页条数'),
+  pageSize: PaginationPageSizeSchema.optional(),
   offset: IntSchema.optional().describe('偏移量(与页码二选一)'),
   pageNum: IntSchema.positive().optional().describe('页码(与偏移量二选一)')
 });
@@ -33,13 +41,11 @@ export type PaginationResponseType<T = any> = {
 
 export const LinkedPaginationSchema = <TShape extends z.ZodRawShape>(extraShape?: TShape) =>
   z.object({
-    pageSize: z
-      .int()
-      .positive()
+    pageSize: PaginationPageSizeSchema.optional().default(10),
+    anchor: z
+      .any()
       .optional()
-      .default(10)
-      .meta({ example: 15, description: '每页条数' }),
-    anchor: z.any().optional().meta({ description: '当前锚点（如 chunkIndex）' }),
+      .meta({ ...JsonValueOpenApiMeta, description: '当前锚点（如 chunkIndex）' }),
     initialId: z.string().optional().meta({
       example: '68ad85a7463006c963799a05',
       description: '初始定位数据 ID'
@@ -71,7 +77,10 @@ export const LinkedListResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) 
           itemSchema,
           z.object({
             id: z.string().meta({ example: '68ad85a7463006c963799a05', description: '数据 ID' }),
-            anchor: z.any().optional().meta({ description: '锚点值' })
+            anchor: z
+              .any()
+              .optional()
+              .meta({ ...JsonValueOpenApiMeta, description: '锚点值' })
           })
         )
       )

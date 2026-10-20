@@ -5,7 +5,11 @@ import type {
   ChatHistoryItemResType,
   ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type';
-import type { NodeOutputItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type {
+  NodeOutputItemType,
+  RuntimeNodeItemType,
+  WorkflowResourceContext
+} from '@fastgpt/global/core/workflow/runtime/type';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -18,7 +22,6 @@ import type {
   NodeEdgeGroups,
   NodeEdgeGroupsMap
 } from '../types/runtime';
-import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { filterWorkflowEdges, valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import type {
@@ -41,7 +44,7 @@ import {
   mergeWorkflowRuntimeSummary
 } from './utils/summary';
 import { getEntryPointRuntimeVariables, WorkflowVariableState } from './utils/variables';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { callbackMap } from './constants';
 import { getUserChatInfo } from '../../../support/user/team/utils';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
@@ -69,14 +72,9 @@ import {
   createWorkflowEntryNodeResponseSink,
   type WorkflowNodeResponseWriteConfig
 } from './utils/entry';
-import {
-  bindWorkflowNodeResponseActivity,
-  createWorkflowNodeResponseActivity,
-  createWorkflowNodeResponseScope
-} from './nodeResponseSink';
+import { createWorkflowNodeResponseScope } from './nodeResponseSink';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isWorkflowSseResponseInitialized } from '../utils/streamResponseContext';
-import { assertWorkflowNodeModelResources } from '../utils/resource';
 import {
   addWorkflowStepEvent,
   getWorkflowStepStatus,
@@ -87,7 +85,6 @@ import { getWorkflowNodeRunParams } from './utils/runtime';
 import type { AgentSandboxPrepareAction } from './ai/agent/sub/sandbox';
 import { getWorkflowSource } from './utils/source';
 import { prepareWorkflowFileContext } from '../utils/fileContext';
-import type { WorkflowResourceContext } from '../utils/resource';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -112,8 +109,11 @@ type Props = Omit<
   maxFileAmount: number;
   /** 已按团队配置优先、系统配置兜底计算完成的单文件读取上限。 */
   maxBytesPerFile: number;
-  /** App 入口选中 Version 的资源快照；Test/Debug 传入当前请求临时快照。Skill 调试和商业工具可以不传。 */
-  resourceContext?: WorkflowResourceContext;
+  /**
+   * 本次运行的资源快照，必填：App 入口传选中 Version 的快照；Test/Debug 传当前请求临时快照；
+   * Skill 调试传入口已鉴权的资源。静态资源只核对快照，动态引用按运行人鉴权。
+   */
+  resourceContext: WorkflowResourceContext;
 };
 type NodeResponseType = DispatchNodeResultType<{
   [key: string]: any;
@@ -189,7 +189,12 @@ export async function dispatchWorkFlow({
   };
 
   const [{ timezone, externalProvider }, newUsageId, runtimeHistories] = await Promise.all([
-    getUserChatInfo(runningUserInfo.tmbId),
+    runningUserInfo.externalProvider
+      ? {
+          timezone: runningUserInfo.timezone ?? 'Asia/Shanghai',
+          externalProvider: runningUserInfo.externalProvider
+        }
+      : getUserChatInfo(runningUserInfo.tmbId),
     (() => {
       if (lastInteractive?.usageId) {
         return lastInteractive.usageId;
@@ -850,14 +855,7 @@ export class WorkflowQueue {
         runtimeNodesMap: this.runtimeNodesMap,
         variableState: this.data.variableState
       });
-      await assertWorkflowNodeModelResources({
-        node,
-        params,
-        tmbId: this.data.runningUserInfo.tmbId
-      });
       const nodeSummary = createNodeSummary();
-      const nodeResponseActivity = createWorkflowNodeResponseActivity();
-
       const dispatchData: ModuleDispatchProps<Record<string, any>> = {
         ...this.data,
         usagePush: this.usagePush.bind(this),
@@ -874,10 +872,7 @@ export class WorkflowQueue {
         params,
         mode,
         nodeResponseParentId: nodeResponseId,
-        nodeResponseSink: bindWorkflowNodeResponseActivity({
-          sink: this.data.nodeResponseSink,
-          activity: nodeResponseActivity
-        })
+        nodeResponseSink: this.data.nodeResponseSink
       };
 
       // run module
@@ -976,7 +971,6 @@ export class WorkflowQueue {
         return {};
       })();
 
-      const hasPublishedChildResponses = nodeResponseActivity.publishedResponseCount > 0;
       const nodeResponse = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse];
       const nodeResponsesForWrite: ChatHistoryItemResType[] = [];
       const currentNodeChildResponseCount = getNodeResponseChildResponseCount(
@@ -1004,8 +998,6 @@ export class WorkflowQueue {
       })();
       const currentNodeError =
         formatCurrentNodeResponse?.errorText ?? formatCurrentNodeResponse?.error;
-      const hasChildResponses =
-        hasPublishedChildResponses || (currentNodeChildResponseCount ?? 0) > 0;
 
       // Queue 只合并 callback 主动贡献的增量；所有 nodeResponse
       // 均交给当前 workflow 的 sink scope 统一提取 summary。
@@ -1018,12 +1010,9 @@ export class WorkflowQueue {
       const persistedNodeResponses = this.data.nodeResponseSink
         ? await this.data.nodeResponseSink.publish(
             nodeResponsesForWrite.map((response) => ({
-              response,
-              // child 已经通过共享 sink 发布时，父 wrapper 只入库，不重复发送 SSE。
-              emit:
-                response.id === formatCurrentNodeResponse?.id
-                  ? !!formatCurrentNodeResponse && (!hasChildResponses || !!currentNodeError)
-                  : true
+              // 每个实际写入的节点响应都要实时发布。父子关系通过 parentId 表达；
+              // dataset 等内部明细如果没有独立 publish，则随父响应的 childrenResponses 一次性发布。
+              response
             }))
           )
         : nodeResponsesForWrite;

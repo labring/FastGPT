@@ -14,9 +14,8 @@ import {
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
 import {
   WorkflowStart,
@@ -29,7 +28,7 @@ import {
   AiChatQuoteTemplate
 } from '@fastgpt/global/core/workflow/template/system/aiChat/index';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
-import { resolveDatasetTagFilterVersion } from '@fastgpt/global/core/dataset/workflowTagFilter';
+import { resolveDatasetTagFilterVersion } from '@fastgpt/global/core/dataset/search/tagFilter';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   Input_Template_File_Link,
@@ -38,7 +37,7 @@ import {
 } from '@fastgpt/global/core/workflow/template/input';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
+import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import {
@@ -200,6 +199,7 @@ export const appWorkflow2Form = ({
         id: node.nodeId,
         pluginId: node.pluginId,
         source: node.source,
+        metadataLocale: node.metadataLocale,
         isFolder: node.isFolder,
         name: node.pluginData?.name ?? node.name,
         avatar: node.pluginData?.avatar ?? node.avatar,
@@ -691,6 +691,7 @@ export function form2AppWorkflow(
             nodeId,
             pluginId: tool.pluginId,
             source: tool.source,
+            metadataLocale: tool.metadataLocale,
             name: tool.name,
             intro: tool.intro,
             avatar: tool.avatar,

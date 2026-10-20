@@ -39,6 +39,8 @@ export enum FlowNodeInputTypeEnum {
 
   datasetTagFilter = 'datasetTagFilter',
 
+  off = 'off', // 关闭
+
   agentGenerated = 'agentGenerated' // for compatibility for >= v4.16.0
 }
 export const FlowNodeInputMap: Record<
@@ -93,7 +95,7 @@ export const FlowNodeInputMap: Record<
     icon: 'core/workflow/inputType/customVariable'
   },
   [FlowNodeInputTypeEnum.custom]: {
-    icon: 'core/workflow/inputType/custom'
+    icon: 'core/workflow/inputType/input'
   },
   [FlowNodeInputTypeEnum.selectSkill]: {
     icon: 'core/workflow/inputType/selectDataset'
@@ -121,6 +123,9 @@ export const FlowNodeInputMap: Record<
   },
   [FlowNodeInputTypeEnum.datasetTagFilter]: {
     icon: 'core/workflow/inputType/input'
+  },
+  [FlowNodeInputTypeEnum.off]: {
+    icon: 'circleMinus'
   },
   [FlowNodeInputTypeEnum.agentGenerated]: {
     icon: 'core/workflow/inputType/agentGenerated'

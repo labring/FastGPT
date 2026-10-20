@@ -46,6 +46,7 @@ jobs:
             github.event.pull_request.head.repo.full_name || github.repository
             }}
           allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Update submodules
         env:
           PRO_SUBMODULE_TOKEN: ${{ secrets.PRO_SUBMODULE_TOKEN }}

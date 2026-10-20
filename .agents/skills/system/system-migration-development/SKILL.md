@@ -24,7 +24,7 @@ description: 为 FastGPT 新增、修改或审查自动系统升级脚本及其�
 
 先明确以下契约；存在会改变数据安全或启动行为的缺失信息时，向用户确认后再编码：
 
-1. 永久稳定的任务 ID，格式为 `YYYYMMDD_short_semantic_name`，以及首次发布版本。
+1. 永久稳定的任务 ID，格式为 `YYYYMMDD_short_semantic_name`，以及首次发布版本（对应版本目录去除点号，例如版本 `4.17.0` 对应目录 `4170`，`4.17.1` 对应 `4171`）。
 2. 源数据、目标数据、权威数据源和迁移完成条件。
 3. 该任务为什么必须排在当前注册表末尾，以及它依赖哪些前置任务。
 4. 是否阻塞启动，以及失败后应停止还是继续后续任务；只有相互独立的非阻塞任务才能使用继续策略。
@@ -179,13 +179,16 @@ projects/app/src/migration/
 ├── utils.ts
 └── tasks/
     ├── README.md
-    └── <migration-id>/
-        ├── index.ts
-        ├── service.ts
-        └── utils.ts
+    └── <version>/
+        └── <migration-id>/
+            ├── index.ts
+            ├── service.ts
+            └── utils.ts
 ```
 
 - `index.ts` 只负责任务编排、Context 调用和进度阶段。
+- 迁移任务必须按 `tasks/<version>/<migration-id>/` 目录规范定义，严禁在 `tasks/` 根目录下平铺存放迁移脚本。其中 `<version>` 对应发布版本（无点号，如 `4.17.0` 对应 `4170`，`4.17.1` 对应 `4171`），`<migration-id>` 为具体迁移任务 ID。
+- 同一版本内多个迁移任务共享的辅助逻辑、类型或转换工具，应收敛在该版本的公共子目录内（例如 `tasks/<version>/<shared_helper_dir>/`），严禁在 `tasks/` 根目录下平铺。
 - `packages/global/migration` 只保存前后端共享的状态枚举、有限输入 Schema 和 API 类型，不放任务实现、Mongo Model 或 Runner。
 - 注册项必须按执行顺序声明完整的 `progressSteps: [{ key, labelKey }]`；`key` 是永久稳定的机器标识，`labelKey` 放在 client-only `system_migration` i18n namespace，不写入 Mongo。
 - 该任务专属的数据访问、转换和工具函数全部放在同名目录，不要散落到 `packages/global` 或 `packages/service`。
@@ -193,7 +196,7 @@ projects/app/src/migration/
 - Next.js API 路由和页面受框架目录约束，可以保留在 `pages/api`、`pages/config`，但必须是调用 migration service 的薄入口，不承载迁移逻辑。
 - i18n 文案按项目现有机制放入所有语言文件；任务注册项使用 `i18nT(...)` 保存稳定的 name、description、result 和 progress label key。
 - i18n key 只属于静态注册表和 API 展示 DTO，禁止写入状态表或错误明细表。成功结果只持久化有限标量参数，错误只持久化原始 `message`。
-- 测试放在 `projects/app/test/migration/` 下并镜像源码子路径。
+- 测试放在 `projects/app/test/migration/` 下并严格镜像源码子路径（即 `projects/app/test/migration/tasks/<version>/<migration-id>/`）。
 
 ## 测试与验证
 
@@ -241,5 +244,5 @@ projects/app/src/migration/
 - [ ] 分批任务在 checkpoint 前及时替换完整错误快照，没有只在任务末尾一次性保存坏数据。
 - [ ] 阻塞任务只写终端诊断和最小 `lastError`，没有调用错误明细能力。
 - [ ] 启动阻塞、失败调度策略、滚动升级兼容性和破坏性操作均已审查。
-- [ ] 任务代码与测试位于 App migration 目录，不污染业务模块。
+- [ ] 任务代码与测试严格按 tasks/<version>/<migration-id>/ 规范组织并镜像测试目录，不平铺在 tasks 根目录下，不污染业务模块。
 - [ ] 局部测试、类型检查、lint 和差异检查通过。

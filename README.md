@@ -121,6 +121,7 @@ docker compose up -d
 ## 🌿 第三方生态
 
 - [AI Proxy：大模型聚合服务](https://sealos.run/aiproxy/?k=fastgpt-github/)
+- [词元跳动 (TokenDance) —— 统一 AI API 网关](https://tokendance.space/)
 - [SiliconCloud (硅基流动) —— 开源模型在线体验平台](https://cloud.siliconflow.cn/i/TR9Ym0c4)
 
 <a href="#readme">

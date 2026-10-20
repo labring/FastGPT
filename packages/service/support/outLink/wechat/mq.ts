@@ -1,4 +1,5 @@
 import {
+  defaultWorkerOptions,
   wechatMQService,
   WECHAT_POLL_JOB_NAME,
   type Job,
@@ -270,7 +271,7 @@ export const initWechatPollWorker = async () => {
     lockDuration: REPLY_LOCK_MS,
     stalledInterval: 60_000,
     removeOnComplete: { count: 0 },
-    removeOnFail: { count: 500, age: 7 * 24 * 60 * 60 }
+    ...defaultWorkerOptions
   });
 
   await resumeAllWechatPolling();

@@ -13,6 +13,8 @@ export function getCollectionSourceAndOpen(
   const { setLoading } = useSystemStore();
 
   return async () => {
+    const newWindow = window.open('', '_blank');
+
     try {
       setLoading(true);
 
@@ -22,12 +24,15 @@ export function getCollectionSourceAndOpen(
         throw new Error('No file found');
       }
 
-      if (url.startsWith('/')) {
-        window.open(`${location.origin}${url}`, '_blank');
+      const target = url.startsWith('/') ? `${location.origin}${url}` : url;
+
+      if (newWindow) {
+        newWindow.location.href = target;
       } else {
-        window.open(url, '_blank');
+        location.href = target;
       }
     } catch (error) {
+      newWindow?.close();
       toast({
         title: t(getErrText(error, t('common:error.fileNotFound'))),
         status: 'error'

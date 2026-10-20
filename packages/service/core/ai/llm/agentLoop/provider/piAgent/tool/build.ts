@@ -26,11 +26,12 @@ import {
 } from '../../../domain/systemTool/datasetSearch';
 import {
   normalizeAgentLoopUsages,
+  type AgentLoopAssistantResponse,
   type AgentLoopEvent,
   type AgentLoopRuntime,
   type AgentLoopUsage
 } from '../../../domain';
-import { runSandboxTools } from '../../../../../sandbox/interface/toolCall';
+import { runSandboxTools } from '../../../../../sandbox/application/toolCall';
 import { createToolCall, normalizeToolArgs, stringifyJson } from '../message';
 import { getPiAgentRuntimeTools } from './catalog';
 
@@ -100,6 +101,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     execute: () => Promise<{
       response: string;
       assistantMessages?: ChatCompletionMessageParam[];
+      assistantResponses?: AgentLoopAssistantResponse[];
       usages?: AgentLoopUsage[];
       interactive?: TChildrenResponse;
       stop?: boolean;
@@ -129,6 +131,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       rawResponse: result.response,
       response: normalizedResponse,
       assistantMessages,
+      assistantResponses: result.assistantResponses,
       usages,
       errorMessage: result.errorMessage,
       metadata: result.metadata,

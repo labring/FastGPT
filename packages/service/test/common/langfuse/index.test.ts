@@ -139,4 +139,56 @@ describe('initLangfuseTracing', () => {
     expect(isLangfuseEnabled()).toBe(false);
     expect(mocks.shutdown).toHaveBeenCalledTimes(3);
   });
+
+  it('shares span attributes and refresh state across module instances', async () => {
+    const tracingGlobal = globalThis as typeof globalThis & {
+      langfuseTracingState?: unknown;
+    };
+    const originalSecret = mocks.serviceEnv.LANGFUSE_SECRET_KEY;
+    delete tracingGlobal.langfuseTracingState;
+    mocks.construct.mockClear();
+    mocks.onStart.mockClear();
+    mocks.onEnd.mockClear();
+
+    try {
+      vi.resetModules();
+      const first = await import('@fastgpt/service/common/langfuse');
+      await first.initLangfuseTracing();
+      const facade = mocks.processors.at(-1) as {
+        onStart: (span: unknown, context: unknown) => void;
+        onEnd: (span: unknown) => void;
+      };
+      const span = {
+        attributes: { 'fastgpt.workflow.mode': 'chat' },
+        spanContext: () => ({ spanId: 'shared-span' })
+      };
+
+      vi.resetModules();
+      const second = await import('@fastgpt/service/common/langfuse');
+      second.prepareLangfuseSpan({ 'langfuse.trace.name': 'shared' });
+      facade.onStart(span, 'context');
+      expect(mocks.onStart).toHaveBeenCalledTimes(1);
+      expect(
+        (mocks.onStart.mock.calls[0]?.[0] as { attributes: Record<string, unknown> }).attributes
+      ).toMatchObject({ 'langfuse.trace.name': 'shared' });
+
+      vi.spyOn(trace, 'getActiveSpan').mockReturnValue(span as never);
+      second.setActiveLangfuseAttributes({ 'langfuse.trace.output': 'shared output' });
+      facade.onEnd(span);
+      expect(mocks.onEnd).toHaveBeenCalledTimes(1);
+      expect(
+        (mocks.onEnd.mock.calls[0]?.[0] as { attributes: Record<string, unknown> }).attributes
+      ).toMatchObject({
+        'langfuse.trace.name': 'shared',
+        'langfuse.trace.output': 'shared output'
+      });
+
+      mocks.serviceEnv.LANGFUSE_SECRET_KEY = 'rotated-secret';
+      await second.refreshLangfuseTracing();
+      expect(mocks.construct).toHaveBeenCalledTimes(2);
+    } finally {
+      mocks.serviceEnv.LANGFUSE_SECRET_KEY = originalSecret;
+      delete tracingGlobal.langfuseTracingState;
+    }
+  });
 });

@@ -12,6 +12,7 @@ import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { VerificationCodeTypeEnum } from '@fastgpt/global/support/user/account/verification/constants';
+import { AccountContactUsernameSchema } from '@fastgpt/global/support/user/account/verification/type';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
 
@@ -42,9 +43,17 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   });
   const username = watch('username');
 
+  /**
+   * 找回密码的验证码只能发送到邮箱/手机号，与 sendAuthCode 接口入参约束保持一致。
+   * 在打开图形验证码弹窗前拦截非法账号，避免请求 400 后只提示通用的参数校验错误。
+   */
+  const validateUsername = (value: string) =>
+    AccountContactUsernameSchema.safeParse(value).success || t('user:password.email_phone_error');
+
   const { SendCodeBox } = useSendCode({
     type: VerificationCodeTypeEnum.findPassword,
-    purpose: 'forgetPassword'
+    purpose: 'forgetPassword',
+    validateBeforeSend: validateUsername
   });
 
   const placeholder = feConfigs?.find_password_method

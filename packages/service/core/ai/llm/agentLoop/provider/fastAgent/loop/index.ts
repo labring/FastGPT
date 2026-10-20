@@ -26,7 +26,7 @@ import type {
   FastAgentLoopResult,
   PendingMainContext
 } from './type';
-import { runSandboxTools } from '../../../../../sandbox/interface/toolCall';
+import { runSandboxTools } from '../../../../../sandbox/application/toolCall';
 import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
 
 /**
@@ -341,6 +341,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       rawResponse,
       response,
       assistantMessages,
+      assistantResponses,
       seconds,
       errorMessage,
       usages,
@@ -356,6 +357,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         rawResponse,
         response,
         assistantMessages,
+        assistantResponses,
         seconds,
         errorMessage,
         usages,

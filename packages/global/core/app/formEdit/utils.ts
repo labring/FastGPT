@@ -3,11 +3,9 @@ import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../workflow/node/con
 import type { FlowNodeInputItemType } from '../../workflow/type/io';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
 import type { CanonicalFlowNodeInputItem } from '../../workflow/migration';
-import { getSelectedInputRenderType } from '../../workflow/utils';
+import { getSelectedInputRenderType } from '../../../common/workflow/reference';
 import type { SelectedToolItemType } from './type';
 import { AgentToolInputModeEnum } from '../tool/constants';
-
-export { getSelectedInputRenderType } from '../../workflow/utils';
 
 const formRenderTypesMap: Record<string, boolean> = {
   [FlowNodeInputTypeEnum.input]: true,
@@ -37,7 +35,9 @@ const agentGeneratedDenyRenderTypes = new Set<FlowNodeInputTypeEnum>([
   FlowNodeInputTypeEnum.selectDataset,
   FlowNodeInputTypeEnum.selectDatasetParamsModal,
   FlowNodeInputTypeEnum.settingDatasetQuotePrompt,
-  FlowNodeInputTypeEnum.datasetTagFilter
+  FlowNodeInputTypeEnum.datasetTagFilter,
+  // off 面向第三方接口调用方，不参与 Agent 生成。
+  FlowNodeInputTypeEnum.off
 ]);
 
 // 工具配置不能处理依赖文件、知识库、模型或外部动态上下文的输入。
@@ -424,6 +424,7 @@ export const serializeAgentTool = ({
   return {
     id: tool.pluginId ?? tool.id,
     version: tool.version,
+    ...(tool.metadataLocale !== undefined ? { metadataLocale: tool.metadataLocale } : {}),
     source: tool.source,
     toolConfig: tool.toolConfig,
     inputs: tool.inputs.filter(canInputBeAgentGenerated).map((input) => ({
