@@ -11,23 +11,47 @@ import { ChatContext } from '@/web/core/chat/context/chatContext';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-
-enum ChatAllAppTabEnum {
-  FAVOURITE_APPS = 'favouriteApps',
-  TEAM_APPS = 'teamApps'
-}
+import { useRouter } from 'next/router';
+import { ChatAllAppTabEnum, ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 
 /**
  * 全部应用页只负责承载原有精选应用和团队应用列表，保持两个已有组件的筛选、
- * 搜索、移动端侧栏和跳转逻辑不变，便于第一阶段审阅新入口的页面形态。
+ * 搜索、移动端侧栏和跳转逻辑不变。
+ *
+ * 当前子页签由 URL 的 tab 参数驱动（如 /chat?pane=aa&tab=ta），
+ * 便于外链直达团队应用、刷新后保持页签。
  */
 const ChatAllApp = () => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
+  const router = useRouter();
   const { feConfigs } = useSystemStore();
   const showFavouriteApps = !!feConfigs.isPlus;
-  const [tab, setTab] = useState(ChatAllAppTabEnum.FAVOURITE_APPS);
-  const activeTab = showFavouriteApps ? tab : ChatAllAppTabEnum.TEAM_APPS;
+  const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
+
+  /**
+   * tab 参数按 pane 复用（设置页使用 h/d/l/f），因此这里只接受全部应用页自己的取值，
+   * 其他 pane 的 tab 或非法值都会回退到默认页签。
+   */
+  const isChatAllAppTab = (value: unknown): value is ChatAllAppTabEnum =>
+    typeof value === 'string' &&
+    Object.values(ChatAllAppTabEnum).includes(value as ChatAllAppTabEnum);
+
+  const tabQuery = router.query.tab;
+  // 非商业版没有精选应用页签，直接固定为团队应用。
+  // 这里只从 URL 派生、不在 mount 时回写，避免与 pane 初始化互相触发 replace。
+  const activeTab =
+    showFavouriteApps && isChatAllAppTab(tabQuery)
+      ? tabQuery
+      : showFavouriteApps
+        ? ChatAllAppTabEnum.FAVOURITE_APPS
+        : ChatAllAppTabEnum.TEAM_APPS;
+
+  // 页签切换写回 URL，保证刷新、分享后仍停留在同一页签。
+  const setTab = (tab: ChatAllAppTabEnum) => {
+    handlePaneChange(ChatSidebarPaneEnum.ALL_APPS, undefined, tab);
+  };
+
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [mobileSearchKey, setMobileSearchKey] = useState('');
 
