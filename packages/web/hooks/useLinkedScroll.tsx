@@ -11,6 +11,7 @@ const threshold = 200;
 /**
  * 加载以锚点为中心的关联列表，并按滚动位置补充前后数据。
  * 关闭分页时仍保留滚动容器和初始锚点请求，适用于只展示单条数据的场景。
+ * 查询参数变化时立即切换数据窗口，首次加载未完成时也会重查，并丢弃旧参数的响应。
  */
 export function useLinkedScroll<
   TParams extends LinkedPaginationProps,
@@ -51,6 +52,7 @@ export function useLinkedScroll<
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Map<string, HTMLElement | null>>(new Map());
   const isInit = useRef(false);
+  const previousParamsRef = useRef(params);
   const paramsVersionRef = useRef(0);
   // 滚动事件和布局变化可能在请求状态完成渲染前重复触发，使用 ref 立即锁住同一方向的分页请求。
   const prevLoadingRef = useRef(false);
@@ -139,7 +141,9 @@ export function useLinkedScroll<
     }
   );
   useEffect(() => {
-    if (!isInit.current) return;
+    // 首次请求期间也可能切换会话；只跳过挂载，不跳过尚未完成初始化时的参数变化。
+    if (previousParamsRef.current === params) return;
+    previousParamsRef.current = params;
     paramsVersionRef.current += 1;
     anchorRef.current = {
       top: null,

@@ -63,7 +63,7 @@
   "is_chatting": "대화가 진행 중입니다... 완료될 때까지 기다려 주세요",
   "chat_generating_resumed": "진행 중인 대화를 찾아 복원했습니다.",
   "llm_request_detail": "LLM 요청 상세",
-  "log.error.error_prefix": "오류",
+  "log.error.error_prefix": "실행 오류",
   "log.feedback.hide_feedback": "피드백 숨기기",
   "log.feedback.mark_as_read": "읽음으로 표시",
   "log.feedback.read": "읽음",

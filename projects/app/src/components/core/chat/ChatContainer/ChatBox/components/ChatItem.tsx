@@ -110,13 +110,11 @@ const ChatItem = (props: Props) => {
   const inlineErrorInfo = useMemo(() => {
     if (!chat.errorMsg && !errorText) return;
 
-    const moduleName =
-      errorText?.moduleName ||
-      chat.moduleName ||
-      t('common:core.module.template.ai_chat', { defaultValue: 'AI 对话' });
+    const moduleName = errorText?.moduleName || chat.moduleName;
+    const errorPrefix = t('chat:log.error.error_prefix');
 
     return {
-      title: `${t('chat:log.error.error_prefix')} - ${t(moduleName)}`,
+      title: moduleName ? `${errorPrefix} - ${t(moduleName)}` : errorPrefix,
       message: t(errorText?.errorText || chat.errorMsg || 'Unknow error')
     };
   }, [chat.errorMsg, chat.moduleName, errorText, t]);

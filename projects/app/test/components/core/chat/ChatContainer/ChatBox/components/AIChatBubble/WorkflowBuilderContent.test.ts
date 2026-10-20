@@ -1,11 +1,62 @@
 import React from 'react';
+import { jsx } from 'react/jsx-runtime';
 import { describe, expect, it } from 'vitest';
 import { confirmedPreview, contentProps, setupContentTest, versionValue } from './contentTestUtils';
 import WorkflowBuilderContent from '@/components/core/chat/ChatContainer/ChatBox/components/AIChatBubble/WorkflowBuilderContent';
+import ChatItemContextProvider from '@/web/core/chat/context/chatItemContext';
 
 describe('Workflow Builder AI chat content', () => {
   const view = setupContentTest();
   const processSelector = '[data-process="workflow_builder_process_details"]';
+
+  it('keeps processing visible when the full response modal is disabled', async () => {
+    await view.render(
+      jsx(ChatItemContextProvider, {
+        showRouteToDatasetDetail: false,
+        canDownloadSource: false,
+        isShowCite: false,
+        isShowFullText: false,
+        showRunningStatus: true,
+        showSkillReferences: true,
+        showWholeResponse: false,
+        children: React.createElement(
+          WorkflowBuilderContent,
+          contentProps({
+            chatValue: [
+              {
+                reasoning: { content: 'Reasoning' },
+                text: { content: 'Intermediate output' },
+                tools: [
+                  {
+                    id: 'read-file',
+                    toolName: 'Read file',
+                    toolAvatar: '',
+                    functionName: 'sandbox_read_file',
+                    params: '{"path":"/workspace/workflow.json"}'
+                  }
+                ]
+              },
+              confirmedPreview,
+              { ...versionValue, text: { content: 'Final answer' } }
+            ]
+          })
+        )
+      } satisfies React.ComponentProps<typeof ChatItemContextProvider>)
+    );
+
+    const process = view.container.querySelector(processSelector);
+    const answers = view.container.querySelectorAll('[data-content="answer"]');
+    expect(process?.querySelector('[data-content="reasoning"]')?.textContent).toBe('Reasoning');
+    expect(process?.querySelector('[data-content="tool"]')?.textContent).toBe('read-file');
+    expect(process?.querySelector('[data-content="answer"]')?.textContent).toBe(
+      'Intermediate output'
+    );
+    expect(answers).toHaveLength(2);
+    expect(answers[1].textContent).toBe('Final answer');
+    expect(answers[1].closest(processSelector)).toBeNull();
+    expect(view.container.querySelectorAll('[data-content="interactive"]')).toHaveLength(1);
+    expect(view.container.querySelectorAll('[data-content="version"]')).toHaveLength(1);
+  });
 
   it('keeps interaction order and renders mixed final text and version content once outside processing', async () => {
     await view.render(

@@ -1,6 +1,9 @@
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
+import { isToolNotExistError } from '@fastgpt/global/core/app/utils';
 import {
   getTeamPluginSource,
   isDebugToolSource,
@@ -195,44 +198,117 @@ export const listAuthorizedSystemToolTemplates = async (
   });
 };
 
-/** 为 Workflow Builder 生成当前请求可用的完整脱敏系统工具模板。 */
+/**
+ * 为 Workflow Builder 生成当前请求可用的完整脱敏系统工具模板。
+ * 列表与详情之间可能发生卸载或权限变更，单个失效候选不阻断其他工具；服务异常仍向上抛出。
+ */
 export const getAuthorizedSystemToolTemplateCatalog = async (
   context: SystemToolCapabilityContext
 ): Promise<AuthorizedSystemToolTemplate[]> => {
+  /** 仅忽略明确的资源失效，避免将连接失败等服务异常误判为工具不可用。 */
+  const loadAvailableTool = async <T>(load: () => Promise<T>): Promise<T | undefined> => {
+    try {
+      return await load();
+    } catch (error) {
+      const code = error instanceof Error ? error.message : error;
+      if (
+        code === PluginErrEnum.unExist ||
+        code === PluginErrEnum.unAuth ||
+        code === AppErrEnum.unExist ||
+        code === AppErrEnum.unAuthApp ||
+        isToolNotExistError(code)
+      ) {
+        return;
+      }
+      throw error;
+    }
+  };
+
   const userDetail = await getUserDetail({ tmbId: context.tmbId });
   const userTags = userDetail.tags ?? [];
   const topLevelTemplates = await getSystemToolTemplateList({ ...context, userTags });
-  const childTemplateGroups = await Promise.all(
-    topLevelTemplates
-      .filter((item) => item.flowNodeType === FlowNodeTypeEnum.toolSet)
-      .map((item) =>
-        getSystemToolTemplateList({
-          ...context,
-          userTags,
-          parentId: item.id,
-          source: item.source
-        })
-      )
+  const templateGroups = await Promise.all(
+    topLevelTemplates.map((item) =>
+      loadAvailableTool(async () => {
+        const children =
+          item.flowNodeType === FlowNodeTypeEnum.toolSet
+            ? await getSystemToolTemplateList({
+                ...context,
+                userTags,
+                parentId: item.id,
+                source: item.source
+              })
+            : [];
+        return { item, children };
+      })
+    )
   );
-  const templates = [...topLevelTemplates, ...childTemplateGroups.flat()];
+  const templates = [
+    ...templateGroups.flatMap((group) => (group ? [group.item] : [])),
+    ...templateGroups.flatMap((group) => group?.children ?? [])
+  ];
   const uniqueTemplates = [
     ...new Map(templates.map((item) => [`${item.source}\u0000${item.id}`, item])).values()
   ];
   const limit = pLimit(8);
 
-  return Promise.all(
+  const loadedTemplates = await Promise.all(
     uniqueTemplates.map((item) =>
-      limit(async () => ({
-        toolId: item.id,
-        source: item.source,
-        template: await getClientToolPreviewNode({
-          appId: item.id,
-          teamId: context.teamId,
-          source: item.source,
-          getLatestVersion: true,
-          lang: context.lang
-        })
-      }))
+      limit(async () => {
+        const template = await loadAvailableTool(() =>
+          getClientToolPreviewNode({
+            appId: item.id,
+            teamId: context.teamId,
+            source: item.source,
+            getLatestVersion: true,
+            lang: context.lang
+          })
+        );
+        if (
+          !template ||
+          !isSelectableToolStatus(template.status) ||
+          !isSelectableToolStatus(template.pluginData?.status) ||
+          template.pluginData?.error
+        ) {
+          return;
+        }
+
+        return { toolId: item.id, source: item.source, template };
+      })
     )
   );
+  const availableTemplates = loadedTemplates.filter(
+    (item): item is AuthorizedSystemToolTemplate => item !== undefined
+  );
+  const availableToolKeys = new Set(
+    availableTemplates.map((item) => `${item.source}\u0000${item.toolId}`)
+  );
+  const parentToolKeys = new Map(
+    templateGroups.flatMap(
+      (group) =>
+        group?.children.map(
+          (child) =>
+            [
+              `${child.source}\u0000${child.id}`,
+              `${group.item.source}\u0000${group.item.id}`
+            ] as const
+        ) ?? []
+    )
+  );
+  // 父工具在详情加载时失效后，其子工具也不能单独进入目录。
+  const catalog = availableTemplates.filter((item) => {
+    const parentKey = parentToolKeys.get(`${item.source}\u0000${item.toolId}`);
+    return parentKey === undefined || availableToolKeys.has(parentKey);
+  });
+
+  // 父模板的摘要也只保留成功加载的子工具，避免重新带入已失效的候选。
+  for (const item of catalog) {
+    const toolSet = item.template.toolConfig?.systemToolSet;
+    if (!toolSet) continue;
+    toolSet.toolList = toolSet.toolList.filter((child) =>
+      availableToolKeys.has(`${item.source}\u0000${item.toolId}/${child.toolId}`)
+    );
+  }
+
+  return catalog;
 };

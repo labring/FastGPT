@@ -367,8 +367,7 @@ const WorkflowBuilder = () => {
             borderWidth: '1px',
             borderColor: '#E8EBF0',
             bg: 'rgba(255, 255, 255, 0.76)',
-            backdropFilter: 'blur(12px)',
-            boxShadow: 'none'
+            backdropFilter: 'blur(12px)'
           }}
           headerProps={{ px: 4, minH: '56px', bg: 'transparent' }}
           header={
@@ -387,32 +386,23 @@ const WorkflowBuilder = () => {
                 <MyTooltip label={t('workflow_builder_clear_history')}>
                   <IconButton
                     aria-label={t('workflow_builder_clear_history')}
-                    icon={<MyIcon name="common/clearLight" boxSize="18px" />}
-                    w="34px"
-                    minW="34px"
-                    h="34px"
-                    p={2}
+                    size="smSquare"
+                    icon={<MyIcon name="common/clearLight" w="14px" />}
+                    variant="whiteDanger"
+                    borderRadius="md"
                     mr={2}
-                    borderRadius="6px"
-                    bg="white"
-                    border="1px solid #DFE2EA"
-                    color="#485264"
-                    boxShadow="0 0 1px rgba(19, 51, 107, 0.08), 0 1px 2px rgba(19, 51, 107, 0.05)"
-                    _hover={{ bg: '#F7F8FA' }}
                     onClick={() => chatPanelRef.current?.clearHistory()}
                   />
                 </MyTooltip>
                 <MyTooltip label={t('workflow_builder_collapse')}>
                   <IconButton
                     aria-label={t('workflow_builder_collapse')}
-                    icon={<MyIcon name="common/closeLight" boxSize="20px" />}
-                    variant="unstyled"
-                    w="34px"
-                    minW="34px"
-                    h="34px"
-                    p="7px"
-                    color="#485264"
-                    _hover={{ bg: '#F7F8FA' }}
+                    size="smSquare"
+                    icon={<MyIcon name="common/closeLight" w="20px" />}
+                    variant="ghost"
+                    bg="transparent"
+                    borderRadius="md"
+                    _hover={{ bg: 'myGray.05' }}
                     onClick={() => closeLeftPanel('workflowBuilder')}
                   />
                 </MyTooltip>

@@ -337,7 +337,7 @@
   "please_select_variable": "Please select variable",
   "form_input_no_available_options": "A dynamic option field in the Form Input node has no available options. Check the referenced variables.",
   "user_select_no_available_options": "The User Selection node has no available options. Check the referenced variables.",
-  "workflow_builder_title": "Workflow AI",
+  "workflow_builder_title": "Assisted Workflow Generation",
   "workflow_builder_entry_tooltip": "Generate workflow with AI",
   "workflow_builder_collapse": "Collapse",
   "workflow_builder_clear_history": "Clear history",

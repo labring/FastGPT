@@ -337,7 +337,7 @@
   "please_select_variable": "请选择变量",
   "form_input_no_available_options": "表单输入节点的动态选项字段没有可用选项，请检查引用变量。",
   "user_select_no_available_options": "用户选择节点没有可用选项，请检查引用变量。",
-  "workflow_builder_title": "工作流 AI",
+  "workflow_builder_title": "工作流辅助生成",
   "workflow_builder_entry_tooltip": "AI 生成工作流",
   "workflow_builder_collapse": "收起",
   "workflow_builder_clear_history": "清除历史记录",

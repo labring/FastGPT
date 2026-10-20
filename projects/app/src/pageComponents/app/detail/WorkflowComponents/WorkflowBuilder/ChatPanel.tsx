@@ -322,7 +322,7 @@ const WorkflowBuilderChatContent = ({
             voice: true,
             tts: false,
             inputGuide: false,
-            sandbox: true,
+            sandbox: false,
             autoResume: true,
             quickReplies: true,
             disableFooterHoverTranslate: true,
@@ -378,23 +378,15 @@ const ChatPanel = React.forwardRef<
       () => (tmbId ? `workflow-builder:${getChatSourceKey(sourceTarget)}:${tmbId}` : ''),
       [sourceTarget, tmbId]
     );
-    const chatId = useChatStore((state) => state.sourceChatIdMap[chatIdCacheKey] || '');
+    const cachedChatId = useChatStore((state) => state.sourceChatIdMap[chatIdCacheKey] || '');
     const ensureSourceChatId = useChatStore((state) => state.ensureSourceChatId);
     const setSourceChatId = useChatStore((state) => state.setSourceChatId);
     const prewarmStartedRuntimeKeyRef = useRef('');
-    const appliedWatchTargetRef = useRef('');
     const watchChatId = getWorkflowBuilderWatchChatId(
       router.query[WORKFLOW_BUILDER_CHAT_ID_QUERY_KEY]
     );
-
-    useEffect(() => {
-      if (!chatIdCacheKey || !watchChatId) return;
-      const watchTarget = `${chatIdCacheKey}:${watchChatId}`;
-      if (appliedWatchTargetRef.current === watchTarget) return;
-
-      appliedWatchTargetRef.current = watchTarget;
-      setSourceChatId(chatIdCacheKey, watchChatId);
-    }, [chatIdCacheKey, setSourceChatId, watchChatId]);
+    // 旁观链接仅选择当前页面的会话，不能写入跨标签页缓存并切走正在编辑的对话。
+    const chatId = watchChatId ?? cachedChatId;
 
     useEffect(() => {
       if (chatIdCacheKey && !watchChatId && !chatId) {
@@ -454,10 +446,10 @@ const ChatPanel = React.forwardRef<
         isShowFullText={false}
         showRunningStatus={true}
         showSkillReferences={true}
-        showWholeResponse={true}
-        showPoints={true}
+        showWholeResponse={false}
+        showPoints={false}
         showAvatar={true}
-        showSandboxAction={true}
+        showSandboxAction={false}
         workflowBuilderVersionActions={workflowBuilderVersionActions}
       >
         {chatId && (

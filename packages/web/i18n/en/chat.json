@@ -63,7 +63,7 @@
   "is_chatting": "A response is in progress. Wait for it to finish.",
   "chat_generating_resumed": "An in-progress response was found and restored.",
   "llm_request_detail": "LLM Request Detail",
-  "log.error.error_prefix": "Error",
+  "log.error.error_prefix": "Runtime error",
   "log.feedback.hide_feedback": "hide feedback",
   "log.feedback.mark_as_read": "Mark as Read",
   "log.feedback.read": "Read",

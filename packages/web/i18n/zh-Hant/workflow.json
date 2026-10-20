@@ -337,7 +337,7 @@
   "please_select_variable": "請選擇變數",
   "form_input_no_available_options": "表單輸入節點的動態選項欄位沒有可用選項，請檢查引用變數。",
   "user_select_no_available_options": "使用者選擇節點沒有可用選項，請檢查引用變數。",
-  "workflow_builder_title": "工作流 AI",
+  "workflow_builder_title": "工作流輔助產生",
   "workflow_builder_entry_tooltip": "AI 生成工作流",
   "workflow_builder_collapse": "收起",
   "workflow_builder_clear_history": "清除歷史記錄",

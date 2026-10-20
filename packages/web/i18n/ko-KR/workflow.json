@@ -313,7 +313,7 @@
   "please_select_variable": "변수를 선택하세요",
   "form_input_no_available_options": "폼 입력 노드의 동적 옵션 필드에 사용 가능한 옵션이 없습니다. 참조 변수를 확인하세요.",
   "user_select_no_available_options": "사용자 선택 노드에 사용 가능한 옵션이 없습니다. 참조 변수를 확인하세요.",
-  "workflow_builder_title": "워크플로 AI",
+  "workflow_builder_title": "워크플로 생성 지원",
   "workflow_builder_entry_tooltip": "AI로 워크플로 생성",
   "workflow_builder_collapse": "접기",
   "workflow_builder_clear_history": "기록 지우기",
