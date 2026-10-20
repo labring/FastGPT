@@ -443,7 +443,8 @@ export const DatasetListItemSchema = z.object({
     example: 0
   }),
   fileCount: IntSchema.optional().meta({
-    description: '知识库下文件总数（不含文件夹）；folder 类型不返回',
+    description:
+      '知识库所有层级的非目录集合数量，不按文件权限过滤；仅 listV2 请求 withFileCount 时返回，folder 类型不返回',
     example: 0
   }),
   vectorModel: EmbeddingModelDataSchema.optional().meta({

@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { countDatasetCollectionsByDatasetIds } from '@fastgpt/service/core/dataset/collection/utils';
+import { countDatasetCollectionsByDatasetIds } from '@fastgpt/service/core/dataset/collection/entity';
 
 const teamId = new Types.ObjectId('65f000000000000000000101');
 const otherTeamId = new Types.ObjectId('65f000000000000000000102');
@@ -37,6 +37,10 @@ const collection = ({
 describe('countDatasetCollectionsByDatasetIds', () => {
   beforeEach(async () => {
     await MongoDatasetCollection.deleteMany({});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('counts non-folder collections only, including nested files', async () => {
@@ -100,9 +104,15 @@ describe('countDatasetCollectionsByDatasetIds', () => {
     expect(counts.get(String(otherTeamDatasetId))).toBe(0);
   });
 
-  it('returns an empty map for empty input without querying mongo', async () => {
-    await expect(
-      countDatasetCollectionsByDatasetIds({ teamId: String(teamId), datasetIds: [] })
-    ).resolves.toEqual(new Map());
-  });
+  it.each([{ datasetIds: [] }, { datasetIds: ['invalid-dataset-id'] }])(
+    'returns zero counts without querying mongo when there are no valid dataset IDs: $datasetIds',
+    async ({ datasetIds }) => {
+      const aggregateSpy = vi.spyOn(MongoDatasetCollection, 'aggregate');
+
+      await expect(
+        countDatasetCollectionsByDatasetIds({ teamId: String(teamId), datasetIds })
+      ).resolves.toEqual(new Map(datasetIds.map((id) => [id, 0])));
+      expect(aggregateSpy).not.toHaveBeenCalled();
+    }
+  );
 });
