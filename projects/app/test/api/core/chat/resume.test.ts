@@ -25,9 +25,6 @@ import {
   mirrorChatStream,
   resetStreamResumeMirrorGuardForTest,
   getStreamResumeRedisKeys,
-  getStreamResumeActiveState,
-  isStreamResumeActiveStale,
-  STREAM_RESUME_INACTIVE_MS,
   STREAM_RESUME_POST_COMPLETE_TTL_SECONDS,
   STREAM_RESUME_REDIS_MAXMEMORY_RATIO,
   STREAM_RESUME_TTL_SECONDS,
@@ -319,6 +316,38 @@ describe('stream resume api', () => {
     expect(res.end).toHaveBeenCalledTimes(1);
     expect(closeHandler).toBeDefined();
     expect(res.writableEnded).toBe(true);
+  });
+
+  it('should fall back to the legacy mirror when generationRunId is stale', async () => {
+    vi.mocked(MongoChat.findOne).mockReturnValue(
+      createFindOneResult({
+        hasBeenRead: false,
+        chatGenerateStatus: ChatGenerateStatusEnum.generating,
+        generationRunId: 'stale-run',
+        generationHeartbeatAt: new Date(Date.now() - 10 * 60 * 1000),
+        updateTime: new Date()
+      })
+    );
+
+    const historyItem = createStreamEntry('1-0', 'event: done\ndata: [DONE]\n\n');
+    setupRedisStreamMock({
+      historyItems: [historyItem]
+    });
+
+    const { chunks } = await invokeStreamingHandler(
+      {
+        teamId,
+        appId,
+        chatId
+      },
+      {
+        headers: {
+          accept: 'text/event-stream'
+        }
+      }
+    );
+
+    expect(chunks.join('')).toContain('data: [DONE]');
   });
 
   it('should mark completed chat as read and skip stream recovery', async () => {
@@ -793,6 +822,7 @@ describe('stream resume helpers', () => {
       expect(redis.del).toHaveBeenCalledWith(`${FASTGPT_REDIS_PREFIX}${keys.keyOfUnavailable}`);
       expect(redis.del).toHaveBeenCalledWith(`${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`);
       expect(redis.del).toHaveBeenCalledWith(`${FASTGPT_REDIS_PREFIX}${keys.keyOfActive}`);
+      expect(redis.del).toHaveBeenCalledTimes(3);
       expect(redis.call).toHaveBeenNthCalledWith(
         1,
         'XADD',
@@ -815,15 +845,7 @@ describe('stream resume helpers', () => {
         STREAM_RESUME_TTL_SECONDS
       );
       expect(redis.expire).toHaveBeenCalledTimes(1);
-      expect(redis.set).toHaveBeenCalledWith(
-        `${FASTGPT_REDIS_PREFIX}${keys.keyOfActive}`,
-        expect.stringMatching(/^\{"updatedAt":\d+\}$/),
-        'PX',
-        STREAM_RESUME_TTL_SECONDS * 1000
-      );
-      expect(await getStreamResumeActiveState({ teamId, ...appSource, chatId })).toEqual({
-        updatedAt: expect.any(Number)
-      });
+      expect(redis.set).toHaveBeenCalledTimes(1);
 
       vi.advanceTimersByTime(STREAM_RESUME_TTL_TOUCH_INTERVAL_MS);
       await mirror.enqueueRaw('event: done\ndata: [DONE]\n\n');
@@ -852,7 +874,6 @@ describe('stream resume helpers', () => {
       `${FASTGPT_REDIS_PREFIX}${keys.keyOfActive}`,
       STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
     );
-    expect(redis.expire).toHaveBeenCalledTimes(2);
   });
 
   it('should clear old redis mirror when mirror starts (before first chunk)', async () => {
@@ -875,15 +896,7 @@ describe('stream resume helpers', () => {
     await mirror.flush();
 
     expect(redis.del).toHaveBeenCalledWith(`${FASTGPT_REDIS_PREFIX}${keyOfStream}`);
-    expect(redis.del).toHaveBeenCalledWith(
-      `${FASTGPT_REDIS_PREFIX}${
-        getStreamResumeRedisKeys({
-          teamId,
-          ...appSource,
-          chatId
-        }).keyOfActive
-      }`
-    );
+    expect(redis.del).toHaveBeenCalledTimes(3);
     expect(await redis.get(`${FASTGPT_REDIS_PREFIX}${keyOfStream}`)).toBeFalsy();
   });
 
@@ -908,6 +921,7 @@ describe('stream resume helpers', () => {
     expect(redis.del).toHaveBeenCalledWith(`${FASTGPT_REDIS_PREFIX}${keys.keyOfUnavailable}`);
     expect(redis.del).toHaveBeenCalledWith(`${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`);
     expect(redis.del).toHaveBeenCalledWith(`${FASTGPT_REDIS_PREFIX}${keys.keyOfActive}`);
+    expect(redis.del).toHaveBeenCalledTimes(3);
     expect(redis.call).toHaveBeenNthCalledWith(1, 'XADD', rawStream, '*', 'raw', 'event: answer\n');
     expect(redis.call).toHaveBeenNthCalledWith(2, 'XADD', rawStream, '*', 'raw', 'data: hello\n\n');
   });
@@ -964,25 +978,16 @@ describe('stream resume helpers', () => {
     expect(isStreamResumeMirrorRequested('0')).toBe(false);
   });
 
-  it('should detect stale stream resume activity states', () => {
-    const now = Date.now();
+  it('should isolate resume mirrors by generation run id', async () => {
+    const generationRunId = 'run-1';
+    const keys = getStreamResumeRedisKeys({ teamId, ...appSource, chatId, generationRunId });
+    const mirror = mirrorChatStream({ teamId, ...appSource, chatId, generationRunId });
 
-    expect(isStreamResumeActiveStale(undefined, now)).toBe(true);
-    expect(
-      isStreamResumeActiveStale(
-        {
-          updatedAt: now - STREAM_RESUME_INACTIVE_MS + 1
-        },
-        now
-      )
-    ).toBe(false);
-    expect(
-      isStreamResumeActiveStale(
-        {
-          updatedAt: now - STREAM_RESUME_INACTIVE_MS - 1
-        },
-        now
-      )
-    ).toBe(true);
+    await mirror.enqueueRaw('data: run-1\n\n');
+    await mirror.flush();
+
+    expect(keys.keyOfStream).toBe(
+      `stream:resume:data:${teamId}:${appSource.sourceType}:${appSource.sourceId}:${chatId}:${generationRunId}`
+    );
   });
 });

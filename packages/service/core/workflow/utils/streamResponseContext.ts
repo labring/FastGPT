@@ -6,7 +6,7 @@ import { STREAM_RESUME_REQUEST_HEADER } from '@fastgpt/global/core/chat/constant
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { createSseStreamContext } from '../../../common/response/sse';
-import { getStreamResumeMirror } from '../../chat/resume';
+import { getStreamResumeMirror, startStreamResumeMirrorKeepAlive } from '../../chat/resume';
 import { getWorkflowResponseWrite } from '../dispatch/utils';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);
@@ -20,6 +20,7 @@ type CreateWorkflowStreamResponseContextBaseParams = {
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   chatId: string;
+  generationRunId?: string;
   responseId?: string;
   showNodeStatus?: boolean;
 };
@@ -124,6 +125,7 @@ export async function createWorkflowStreamResponseContext({
   sourceType,
   sourceId,
   chatId,
+  generationRunId,
   responseId,
   showNodeStatus = true,
   enableStreamResume = true
@@ -136,9 +138,12 @@ export async function createWorkflowStreamResponseContext({
           teamId,
           sourceType,
           sourceId,
-          chatId
+          chatId,
+          generationRunId
         })
       : undefined;
+  const stopMirrorKeepAlive = startStreamResumeMirrorKeepAlive(mirror);
+  res.once('finish', stopMirrorKeepAlive);
 
   const responseWrite = getWorkflowResponseWrite({
     res,
@@ -176,6 +181,7 @@ export async function createWorkflowStreamResponseContext({
       ...context,
       async flushResume() {
         // no-op — stream resume is disabled
+        stopMirrorKeepAlive();
       }
     };
   }
@@ -183,6 +189,7 @@ export async function createWorkflowStreamResponseContext({
   return {
     ...context,
     async flushResume() {
+      stopMirrorKeepAlive();
       // 分别处理两步的异常，缓存写入失败时仍需尝试 TTL 收尾。
       await mirror?.flush().catch((error) => {
         logger.error('Failed to flush workflow stream resume cache', {

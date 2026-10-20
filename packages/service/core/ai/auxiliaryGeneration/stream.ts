@@ -5,7 +5,7 @@ import { STREAM_RESUME_REQUEST_HEADER } from '@fastgpt/global/core/chat/constant
 import { getSseErrorResponse } from '../../../common/response';
 import { createSseStreamContext } from '../../../common/response/sse';
 import { clearCookie } from '../../../support/permission/auth/common';
-import { getStreamResumeMirror } from '../../chat/resume';
+import { getStreamResumeMirror, startStreamResumeMirrorKeepAlive } from '../../chat/resume';
 import { createChatCompletionDeltaResponse } from '@fastgpt/global/core/ai/llm/utils';
 
 export type AuxiliaryGenerationStreamWriter = (params: {
@@ -20,6 +20,7 @@ type CreateAuxiliaryGenerationStreamParams = {
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   chatId: string;
+  generationRunId?: string;
 };
 
 export type AuxiliaryGenerationStreamContext = {
@@ -41,14 +42,16 @@ export const createAuxiliaryGenerationStream = async ({
   teamId,
   sourceType,
   sourceId,
-  chatId
+  chatId,
+  generationRunId
 }: CreateAuxiliaryGenerationStreamParams): Promise<AuxiliaryGenerationStreamContext> => {
   const mirror = await getStreamResumeMirror({
     resumeRequestHeaderValue: req.headers?.[STREAM_RESUME_REQUEST_HEADER],
     teamId,
     sourceType,
     sourceId,
-    chatId
+    chatId,
+    generationRunId
   });
 
   const sseContext = createSseStreamContext({
@@ -63,6 +66,7 @@ export const createAuxiliaryGenerationStream = async ({
       }
     }
   });
+  const stopMirrorKeepAlive = startStreamResumeMirrorKeepAlive(mirror);
 
   const write: AuxiliaryGenerationStreamWriter = ({ event, data }) => {
     const payload = typeof data === 'string' ? data : JSON.stringify(data);
@@ -80,6 +84,7 @@ export const createAuxiliaryGenerationStream = async ({
         event: AuxiliaryGenerationEventEnum.error,
         data
       });
+      stopMirrorKeepAlive();
     },
     writeDone() {
       write({
@@ -93,8 +98,10 @@ export const createAuxiliaryGenerationStream = async ({
         event: AuxiliaryGenerationEventEnum.answer,
         data: '[DONE]'
       });
+      stopMirrorKeepAlive();
     },
     async flushResume() {
+      stopMirrorKeepAlive();
       await sseContext.flushResume();
     }
   };

@@ -72,6 +72,7 @@ export type SkillDebugChatStreamContextFactoryParams = {
   teamId: string;
   skillId: string;
   chatId: string;
+  generationRunId?: string;
 };
 
 export type RunSkillDebugChatOptions = {
@@ -218,7 +219,8 @@ export async function runSkillDebugChat({
     streamResponseContext = await options.createStreamResponseContext({
       teamId,
       skillId,
-      chatId: runningChatId
+      chatId: runningChatId,
+      generationRunId: preparedRound.generationRunId
     });
 
     logger.debug('Dispatching skill debug workflow', {
@@ -251,6 +253,7 @@ export async function runSkillDebugChat({
       },
       runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
       chatId: runningChatId,
+      generationRunId: preparedRound.generationRunId,
       responseChatItemId: finalResponseChatItemId,
       runtimeNodes,
       runtimeEdges,
@@ -325,6 +328,7 @@ export async function runSkillDebugChat({
     const saveParams: SaveChatProps = {
       ...chatSource,
       chatId: runningChatId,
+      generationRunId: preparedRound.generationRunId,
       teamId,
       tmbId,
       nodes: [],
@@ -353,7 +357,8 @@ export async function runSkillDebugChat({
       await updateChatGenerateStatus({
         ...chatSource,
         chatId: runningChatId,
-        status: ChatGenerateStatusEnum.done
+        status: ChatGenerateStatusEnum.done,
+        generationRunId: preparedRound.generationRunId
       });
     }
 
@@ -372,6 +377,7 @@ export async function runSkillDebugChat({
           sourceType: roundState.sourceType,
           sourceId: roundState.sourceId,
           chatId: roundState.chatId,
+          generationRunId: preparedRound.generationRunId,
           responseChatItemId: roundState.responseChatItemId,
           error: err
         });
@@ -380,7 +386,8 @@ export async function runSkillDebugChat({
           sourceType: roundState.sourceType,
           sourceId: roundState.sourceId,
           chatId: roundState.chatId,
-          status: ChatGenerateStatusEnum.error
+          status: ChatGenerateStatusEnum.error,
+          generationRunId: preparedRound.generationRunId
         });
       }
     }
@@ -416,7 +423,7 @@ export async function handleSkillDebugChat(
         agentSandboxPrepareActions: options.agentSandboxPrepareActions,
         checkTeamFrequencyLimit: (teamId) =>
           teamFrequencyLimit({ teamId, type: LimitTypeEnum.chat, res }),
-        createStreamResponseContext: ({ teamId, skillId, chatId }) =>
+        createStreamResponseContext: ({ teamId, skillId, chatId, generationRunId }) =>
           createWorkflowStreamResponseContext({
             req,
             res,
@@ -426,6 +433,7 @@ export async function handleSkillDebugChat(
             sourceType: ChatSourceTypeEnum.skillEdit,
             sourceId: skillId,
             chatId,
+            generationRunId,
             responseId: chatId,
             showNodeStatus: true
           }),

@@ -2,7 +2,6 @@ import { serviceEnv } from '../../env';
 import { getLogger, LogCategories } from '../../common/logger';
 import {
   StreamResumeCache,
-  type StreamResumeActiveState as DalStreamResumeActiveState,
   type StreamResumeParams,
   type StreamResumeUnavailableState as DalStreamResumeUnavailableState
 } from '@fastgpt/dal/redis/caches';
@@ -28,7 +27,10 @@ export const STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS =
  */
 export const STREAM_RESUME_BLOCK_MS = 30000;
 export const STREAM_RESUME_TTL_TOUCH_INTERVAL_MS = 1000;
-export const STREAM_RESUME_INACTIVE_MS = 2 * 60 * 1000;
+export const STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS = Math.max(
+  1_000,
+  Math.min(30_000, (STREAM_RESUME_TTL_SECONDS * 1000) / 3)
+);
 
 const streamResumeCache = new StreamResumeCache({
   logger,
@@ -57,15 +59,14 @@ export const getStreamResumeRedisKeys = ({
   teamId,
   sourceType,
   sourceId,
-  chatId
+  chatId,
+  generationRunId
 }: StreamResumeRedisKeysParams) =>
-  streamResumeCache.getKeys({ teamId, sourceType, sourceId, chatId });
+  streamResumeCache.getKeys({ teamId, sourceType, sourceId, chatId, generationRunId });
 
 export type StreamResumeUnavailableState = DalStreamResumeUnavailableState & {
   reason: `${StreamResumeUnavailableReasonEnum}`;
 };
-export type StreamResumeActiveState = DalStreamResumeActiveState;
-
 const resumeRequestEnabledValues = new Set(['1', 'true', 'yes', 'on']);
 
 const getNormalizedHeaderValue = (value: string | string[] | undefined) => {
@@ -175,15 +176,6 @@ export const getStreamResumeUnavailableState = async (params: StreamResumeRedisK
   return streamResumeCache.getUnavailable(params);
 };
 
-export const getStreamResumeActiveState = async (params: StreamResumeRedisKeysParams) => {
-  return streamResumeCache.getActive(params);
-};
-
-export const isStreamResumeActiveStale = (
-  state: StreamResumeActiveState | undefined,
-  now = Date.now()
-) => !state || now - state.updatedAt > STREAM_RESUME_INACTIVE_MS;
-
 const chunkToString = (chunk: string | Buffer | Uint8Array, encoding?: BufferEncoding) => {
   if (typeof chunk === 'string') return chunk;
   if (Buffer.isBuffer(chunk)) return chunk.toString(encoding || 'utf8');
@@ -197,9 +189,38 @@ export const mirrorChatStream = (params: StreamResumeRedisKeysParams) => {
     ...getStreamResumeRedisKeys(params),
     enqueueRaw: (chunk: string | Buffer | Uint8Array, encoding?: BufferEncoding) =>
       mirror.enqueueRaw(chunkToString(chunk, encoding)),
+    touch: mirror.touch,
     flush: mirror.flush,
     shrinkTTLAfterComplete: mirror.shrinkTTLAfterComplete
   };
+};
+
+/**
+ * Resume mirror 的 TTL 由执行体保活，不能依赖客户端 SSE 连接。
+ * 客户端断开后仍持续续期，直到 workflow/auxiliary generation 收尾。
+ */
+export const startStreamResumeMirrorKeepAlive = (
+  mirror: { touch?: () => Promise<void> } | undefined
+) => {
+  const touch = mirror?.touch;
+  if (!touch) return () => undefined;
+
+  const timer = setInterval(() => {
+    void touch().catch((error) => {
+      logger.warn('Stream resume mirror keepalive failed', { error });
+    });
+  }, STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS);
+  timer.unref?.();
+
+  return () => clearInterval(timer);
+};
+
+/** cleaner 确认执行体失联后，向当前 run 的 resume stream 写终止事件。 */
+export const writeResumeTerminalError = async (
+  params: StreamResumeRedisKeysParams & { message: string }
+) => {
+  const raw = `event: error\ndata: ${JSON.stringify({ message: params.message })}\n\nevent: done\ndata: [DONE]\n\n`;
+  await streamResumeCache.appendTerminal({ params, raw });
 };
 
 export const getStreamResumeMirror = async ({

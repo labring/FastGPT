@@ -140,6 +140,19 @@ export const ChatSchema = z.object({
     .enum(ChatGenerateStatusEnum)
     .default(ChatGenerateStatusEnum.done)
     .meta({ description: '生成状态' }),
+  generationRunId: z.string().optional().meta({ description: '当前生成轮次 ID' }),
+  generationResponseChatItemId: z
+    .string()
+    .optional()
+    .meta({ description: '当前生成轮次对应的 AI chat item dataId' }),
+  generationHeartbeatAt: z.coerce
+    .date()
+    .optional()
+    .meta({ description: '生成执行体最近一次心跳时间' }),
+  generationLeaseExpiresAt: z.coerce
+    .date()
+    .optional()
+    .meta({ description: '生成执行体 lease 到期时间' }),
   hasBeenRead: z.boolean().default(true),
 
   deleteTime: z.coerce.date().nullish()

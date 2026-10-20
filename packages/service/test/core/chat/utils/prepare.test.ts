@@ -117,6 +117,7 @@ describe('prepare chat round', () => {
     expect(result.chatId).toBeTruthy();
     expect(result.chatId).not.toBe('');
     expect(result.responseChatItemId).toBe('generated-round-data-id');
+    expect(result.generationRunId).toBeTruthy();
     expect(result.shouldPersistChatRound).toBe(true);
     expect(result.shouldFinalizePreparedRound).toBe(true);
     expect(params.userContent.dataId).toBe('generated-round-data-id');
@@ -127,6 +128,12 @@ describe('prepare chat round', () => {
       'generated-round-data-id',
       'generated-round-data-id'
     ]);
+
+    const chat = await MongoChat.findOne({ appId: testAppId, chatId: result.chatId }).lean();
+    expect(chat?.generationRunId).toBe(result.generationRunId);
+    expect(chat?.generationResponseChatItemId).toBe(result.responseChatItemId);
+    expect(chat?.generationHeartbeatAt).toBeInstanceOf(Date);
+    expect(chat?.generationLeaseExpiresAt).toBeInstanceOf(Date);
   });
 
   it('should skip persistence for no-record chat id and keep caller ids', async () => {

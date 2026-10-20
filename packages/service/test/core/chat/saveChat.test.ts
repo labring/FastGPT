@@ -686,6 +686,94 @@ describe('pushChatRecords', () => {
       expect(aiItem?.responseData).toBeUndefined();
     });
 
+    it('should not let an old run overwrite a newer run status or summary', async () => {
+      const responseChatItemId = 'old-run-ai-finalize';
+      const props = createMockProps(
+        {
+          chatId: 'old-run-finalize-chat',
+          generationRunId: 'old-run',
+          userContent: {
+            dataId: responseChatItemId,
+            obj: ChatRoleEnum.Human,
+            value: [{ text: { content: 'old question' } }]
+          },
+          aiContent: {
+            dataId: responseChatItemId,
+            obj: ChatRoleEnum.AI,
+            value: [{ text: { content: 'old answer' } }]
+          },
+          workflowRuntimeSummary: {
+            citeCollectionIds: [],
+            errorCount: 0,
+            totalPoints: 0,
+            llmInputTokens: 13,
+            llmOutputTokens: 17
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      await MongoChat.create({
+        appId: testAppId,
+        chatId: props.chatId,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
+        source: props.source,
+        generationRunId: 'new-run',
+        generationResponseChatItemId: 'new-run-ai',
+        chatGenerateStatus: ChatGenerateStatusEnum.generating,
+        hasBeenRead: false,
+        summary: {
+          llmInputTokens: 1,
+          llmOutputTokens: 2
+        }
+      });
+      await MongoChatItem.create([
+        {
+          teamId: testTeamId,
+          tmbId: testTmbId,
+          sourceType: ChatSourceTypeEnum.app,
+          appId: testAppId,
+          chatId: props.chatId,
+          dataId: responseChatItemId,
+          obj: ChatRoleEnum.Human,
+          value: []
+        },
+        {
+          teamId: testTeamId,
+          tmbId: testTmbId,
+          sourceType: ChatSourceTypeEnum.app,
+          appId: testAppId,
+          chatId: props.chatId,
+          dataId: responseChatItemId,
+          obj: ChatRoleEnum.AI,
+          value: []
+        }
+      ]);
+
+      await expect(finalizeChatRound(props)).rejects.toThrow('Chat generation ownership was lost');
+
+      const chat = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId }).lean();
+      expect(chat?.chatGenerateStatus).toBe(ChatGenerateStatusEnum.generating);
+      expect(chat?.generationRunId).toBe('new-run');
+      expect(chat?.summary).toEqual({
+        llmInputTokens: 1,
+        llmOutputTokens: 2
+      });
+
+      const oldAiItem = await MongoChatItem.findOne({
+        appId: testAppId,
+        chatId: props.chatId,
+        dataId: responseChatItemId,
+        obj: ChatRoleEnum.AI
+      }).lean();
+      expect(oldAiItem?.value).toEqual([]);
+      expect(await MongoAppChatLog.countDocuments({ appId: testAppId, chatId: props.chatId })).toBe(
+        0
+      );
+    });
+
     it('should persist skill edit uploaded files by removing S3 TTL after finalization', async () => {
       const responseChatItemId = 'skill-edit-file-finalize';
       const fileKey = `chat/${ChatSourceTypeEnum.skillEdit}/${testAppId}/${testTmbId}/skill-chat-id/spec.md`;
@@ -828,6 +916,60 @@ describe('pushChatRecords', () => {
       });
       expect(aiItem?.value).toEqual([]);
       expect(aiItem?.errorMsg).toContain('stream failed');
+    });
+
+    it('should not mark the AI item when a stale run fails after takeover', async () => {
+      const responseChatItemId = 'stale-run-error';
+      const props = createMockProps(
+        {
+          chatId: 'stale-run-error-chat',
+          generationRunId: 'old-run'
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      await MongoChat.create({
+        appId: testAppId,
+        chatId: props.chatId,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
+        source: props.source,
+        generationRunId: 'new-run',
+        chatGenerateStatus: ChatGenerateStatusEnum.generating,
+        hasBeenRead: false
+      });
+      await MongoChatItem.create({
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
+        appId: testAppId,
+        chatId: props.chatId,
+        dataId: responseChatItemId,
+        obj: ChatRoleEnum.AI,
+        value: []
+      });
+
+      await failChatRound({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: testAppId,
+        chatId: props.chatId,
+        generationRunId: 'old-run',
+        responseChatItemId,
+        error: new Error('late failure')
+      });
+
+      const chat = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId });
+      expect(chat?.chatGenerateStatus).toBe(ChatGenerateStatusEnum.generating);
+      expect(chat?.generationRunId).toBe('new-run');
+
+      const aiItem = await MongoChatItem.findOne({
+        appId: testAppId,
+        chatId: props.chatId,
+        dataId: responseChatItemId,
+        obj: ChatRoleEnum.AI
+      });
+      expect(aiItem?.errorMsg).toBeUndefined();
     });
   });
 
@@ -1970,6 +2112,77 @@ describe('pushChatRecords', () => {
       const aiRecord = records.histories.find((item) => item.obj === ChatRoleEnum.AI);
 
       expect(aiRecord?.responseData?.map((item) => item.id)).toEqual(['existing-root', 'new-root']);
+    });
+
+    it('should abort before saving the AI item when interactive fencing is lost', async () => {
+      const chatId = 'stale-interactive-chat';
+      const responseChatItemId = 'stale-interactive-ai';
+      const props = createMockProps(
+        {
+          chatId,
+          generationRunId: 'old-run'
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+      const interactive = {
+        type: 'userSelect' as const,
+        params: {
+          description: '',
+          userSelectOptions: [
+            { key: 'opt1', value: 'Option 1' },
+            { key: 'opt2', value: 'Option 2' }
+          ],
+          userSelectedVal: 'Option 1'
+        },
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: []
+      };
+
+      await MongoChat.create({
+        appId: testAppId,
+        chatId,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
+        source: props.source,
+        generationRunId: 'new-run',
+        chatGenerateStatus: ChatGenerateStatusEnum.generating,
+        hasBeenRead: false
+      });
+      await MongoChatItem.create({
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
+        appId: testAppId,
+        chatId,
+        dataId: responseChatItemId,
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            interactive: {
+              type: 'userSelect',
+              params: {
+                userSelectedVal: undefined,
+                options: ['Option 1', 'Option 2']
+              }
+            }
+          }
+        ]
+      });
+
+      await expect(updateInteractiveChat({ interactive, ...props })).rejects.toThrow(
+        'Chat generation ownership was lost'
+      );
+
+      const aiItem = await MongoChatItem.findOne({
+        appId: testAppId,
+        chatId,
+        dataId: responseChatItemId,
+        obj: ChatRoleEnum.AI
+      }).lean();
+      expect(aiItem?.value).toHaveLength(1);
+      expect(aiItem?.value[0].interactive?.params.userSelectedVal).toBeUndefined();
     });
   });
 });

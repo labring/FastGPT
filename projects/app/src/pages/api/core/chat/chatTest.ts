@@ -239,6 +239,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: runningSourceId,
       chatId: runningChatId,
+      generationRunId: preparedRound.generationRunId,
       responseId: runningChatId,
       showNodeStatus: true
     });
@@ -271,6 +272,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
 
       chatId: runningChatId,
+      generationRunId: preparedRound.generationRunId,
       responseChatItemId,
       runtimeNodes,
       runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
@@ -306,6 +308,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const params = {
       ...chatSource,
       chatId: runningChatId,
+      generationRunId: preparedRound.generationRunId,
       teamId,
       tmbId: tmbId,
       nodes,
@@ -338,7 +341,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       await updateChatGenerateStatus({
         ...chatSource,
         chatId: runningChatId,
-        status: ChatGenerateStatusEnum.done
+        status: ChatGenerateStatusEnum.done,
+        generationRunId: preparedRound.generationRunId
       });
     }
   } catch (err: any) {
@@ -349,6 +353,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           sourceType: ChatSourceTypeEnum.app,
           sourceId: roundState.sourceId,
           chatId: roundState.chatId,
+          generationRunId: preparedRound.generationRunId,
           responseChatItemId: roundState.responseChatItemId,
           error: err
         });
@@ -357,7 +362,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           sourceType: ChatSourceTypeEnum.app,
           sourceId: roundState.sourceId,
           chatId: roundState.chatId,
-          status: ChatGenerateStatusEnum.error
+          status: ChatGenerateStatusEnum.error,
+          generationRunId: preparedRound.generationRunId
         });
       }
     }

@@ -292,6 +292,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
         workflowRuntimeSummary
       } = await dispatchWorkFlow({
         chatId: preparedRound.chatId,
+        generationRunId: preparedRound.generationRunId,
         mode: 'chat',
         usageSource: UsageSourceEnum.mcp,
         runningAppInfo: {
@@ -334,6 +335,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
       const saveParams: SaveChatProps = {
         ...chatSource,
         chatId: preparedRound.chatId,
+        generationRunId: preparedRound.generationRunId,
         versionId,
         teamId: String(app.teamId),
         tmbId: effectiveTmbId,
@@ -371,6 +373,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
         await failChatRound({
           ...chatSource,
           chatId: preparedRound.chatId,
+          generationRunId: preparedRound.generationRunId,
           responseChatItemId: preparedRound.responseChatItemId,
           error
         });

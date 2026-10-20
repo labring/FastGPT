@@ -85,6 +85,7 @@ import { getWorkflowNodeRunParams } from './utils/runtime';
 import type { AgentSandboxPrepareAction } from './ai/agent/sub/sandbox';
 import { getWorkflowSource } from './utils/source';
 import { prepareWorkflowFileContext } from '../utils/fileContext';
+import { getActiveChatGenerationLease } from '../../chat/generationLease';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -146,6 +147,7 @@ export async function dispatchWorkFlow({
     histories,
     query,
     chatId,
+    generationRunId: providedGenerationRunId,
     apiVersion
   } = data;
   const responseChatItemId = data.responseChatItemId;
@@ -156,6 +158,10 @@ export async function dispatchWorkFlow({
     );
   }
   const chatSource = getWorkflowSource(runningAppInfo);
+  const generationLease = providedGenerationRunId
+    ? getActiveChatGenerationLease({ ...chatSource, chatId }, providedGenerationRunId)
+    : undefined;
+  const generationRunId = providedGenerationRunId;
 
   /* Init function */
   // Check point
@@ -222,7 +228,8 @@ export async function dispatchWorkFlow({
     // Remove stopping sign
     delAgentRuntimeStopSign({
       ...chatSource,
-      chatId
+      chatId,
+      ...(generationRunId && { generationRunId })
     })
   ]);
 
@@ -257,13 +264,19 @@ export async function dispatchWorkFlow({
   // Stop sign(没有 apiVersion，说明不会有暂停)
   let stopping = false;
   const checkIsStopping = (): boolean => {
+    const currentLease = providedGenerationRunId
+      ? getActiveChatGenerationLease({ ...chatSource, chatId }, providedGenerationRunId)
+      : undefined;
+    const leaseLost =
+      !!generationLease?.signal.aborted ||
+      (!!providedGenerationRunId && currentLease !== generationLease);
     if (apiVersion === 'v2') {
-      return stopping;
+      return stopping || leaseLost;
     }
     if (apiVersion === 'v1') {
-      return clientAbortTracker?.isClientAborted() ?? false;
+      return (clientAbortTracker?.isClientAborted() ?? false) || leaseLost;
     }
-    return false;
+    return leaseLost;
   };
   const checkStoppingTimer =
     apiVersion === 'v2'
@@ -272,7 +285,8 @@ export async function dispatchWorkFlow({
 
           const shouldStop = await shouldWorkflowStop({
             ...chatSource,
-            chatId
+            chatId,
+            ...(generationRunId && { generationRunId })
           });
           if (shouldStop) {
             stopping = true;
@@ -348,7 +362,8 @@ export async function dispatchWorkFlow({
             // 工作流完成后删除 Redis 记录
             await delAgentRuntimeStopSign({
               ...chatSource,
-              chatId
+              chatId,
+              ...(generationRunId && { generationRunId })
             });
           });
       }
