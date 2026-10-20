@@ -29,7 +29,10 @@ import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatc
 import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
-import { loadWorkflowModelResource } from '@fastgpt/service/core/workflow/resource/service';
+import {
+  loadWorkflowDatasetResource,
+  loadWorkflowModelResource
+} from '@fastgpt/service/core/workflow/resource/service';
 import { prepareAppWorkflowResources } from '@fastgpt/service/core/app/resource/service';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getRootUser, getUser } from '@test/datas/users';
@@ -38,6 +41,24 @@ import { Call } from '@test/utils/request';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 describe('publish manually selected datasets', () => {
+  const createDatasetNode = (
+    datasetId: string,
+    nodeId = 'search'
+  ): NonNullable<PublishAppBodyType['nodes']>[number] => ({
+    nodeId,
+    name: 'Search',
+    flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+    outputs: [],
+    inputs: [
+      {
+        key: NodeInputKeyEnum.datasetSelectList,
+        label: 'Datasets',
+        renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
+        value: [{ datasetId }]
+      }
+    ]
+  });
+
   it.each([
     { isRoot: true, sameTeam: true, granted: false, isPublish: true, allowed: true },
     { isRoot: true, sameTeam: true, granted: false, isPublish: false, allowed: true },
@@ -181,6 +202,125 @@ describe('publish manually selected datasets', () => {
     expect(draft?.resources).toEqual([]);
     expect(draft?.nodes).toHaveLength(1);
   });
+
+  it('uses the application team when root publishes an application from another team', async () => {
+    const root = await getRootUser();
+    const owner = await getUser('target-app-owner');
+    const dataset = await MongoDataset.create({
+      name: 'Application team dataset',
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const app = await MongoApp.create({
+      name: 'Application in another team',
+      type: AppTypeEnum.workflow,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+
+    const result = await Call<PublishAppBodyType>(handler, {
+      auth: root,
+      query: { appId: String(app._id) },
+      body: { isPublish: true, nodes: [createDatasetNode(String(dataset._id))] }
+    });
+
+    expect(result.code, JSON.stringify(result)).toBe(200);
+    const version = await getAppLatestVersion(String(app._id));
+    expect(version.resources).toEqual([{ type: 'dataset', id: String(dataset._id) }]);
+    const loadedDataset = await runWithContext(
+      {
+        mcpClientMemory: {},
+        resourceContext: createWorkflowResourceContext({
+          resources: version.resources,
+          teamId: owner.teamId
+        })
+      },
+      () => loadWorkflowDatasetResource({ datasetId: String(dataset._id), tmbId: owner.tmbId })
+    );
+    expect(String(loadedDataset._id)).toBe(String(dataset._id));
+  });
+
+  it.each([false, true])(
+    'rejects root login-team resources in another application team, including snapshots (%s)',
+    async (hasSnapshot) => {
+      const root = await getRootUser();
+      const owner = await getUser('target-app-owner');
+      const dataset = await MongoDataset.create({
+        name: 'Root login-team dataset',
+        teamId: root.teamId,
+        tmbId: root.tmbId
+      });
+      const app = await MongoApp.create({
+        name: 'Application in another team',
+        type: AppTypeEnum.workflow,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId
+      });
+      const nodes = [createDatasetNode(String(dataset._id))];
+      if (hasSnapshot) {
+        await MongoAppVersion.create({
+          appId: app._id,
+          tmbId: root.tmbId,
+          nodes,
+          edges: [],
+          resources: [{ type: 'dataset', id: String(dataset._id) }]
+        });
+      }
+
+      const result = await Call<PublishAppBodyType>(handler, {
+        auth: root,
+        query: { appId: String(app._id) },
+        body: { isPublish: true, nodes }
+      });
+
+      expect(result.error).toBe(DatasetErrEnum.unAuthDataset);
+      expect(await MongoAppVersion.countDocuments({ appId: app._id })).toBe(hasSnapshot ? 1 : 0);
+      expect((await MongoApp.findById(app._id).lean())?.publishedVersionId).toBeUndefined();
+    }
+  );
+
+  it.each([false, true])(
+    'retains only application-team authorization when root saves another team application (%s)',
+    async (autoSave) => {
+      const root = await getRootUser();
+      const owner = await getUser('target-app-owner');
+      const [appDataset, loginDataset] = await MongoDataset.create([
+        { name: 'Application team dataset', teamId: owner.teamId, tmbId: owner.tmbId },
+        { name: 'Root login-team dataset', teamId: root.teamId, tmbId: root.tmbId }
+      ]);
+      const app = await MongoApp.create({
+        name: 'Application in another team',
+        type: AppTypeEnum.workflow,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId
+      });
+      const nodes = [
+        createDatasetNode(String(appDataset._id)),
+        createDatasetNode(String(loginDataset._id), 'foreign-search')
+      ];
+      const baseline = await MongoAppVersion.create({
+        appId: app._id,
+        tmbId: root.tmbId,
+        nodes,
+        edges: [],
+        resources: [{ type: 'dataset', id: String(loginDataset._id) }]
+      });
+
+      const result = await Call<PublishAppBodyType>(handler, {
+        auth: root,
+        query: { appId: String(app._id) },
+        body: { isPublish: false, autoSave, nodes }
+      });
+
+      expect(result.code, JSON.stringify(result)).toBe(200);
+      const draft = await MongoAppVersion.findOne({
+        appId: app._id,
+        _id: { $ne: baseline._id }
+      }).lean();
+      expect(draft?.resources).toEqual([{ type: 'dataset', id: String(appDataset._id) }]);
+      expect(draft?.nodes).toHaveLength(2);
+    }
+  );
 });
 
 describe('publish optional model defaults', () => {
@@ -303,7 +443,7 @@ describe('publish optional model defaults', () => {
     });
     expect(result.code).not.toBe(200);
     expect(await MongoAppVersion.countDocuments({ appId: app._id })).toBe(0);
-    expect((await MongoApp.findById(app._id).lean())?.chatConfig?.questionGuide).toBeUndefined();
+    expect((await MongoApp.findById(app._id).lean())?.publishedVersionId).toBeUndefined();
   });
 
   it('replaces a restricted system default with an authorized fallback model', async () => {
