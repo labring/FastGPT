@@ -159,21 +159,16 @@ export function useScrollPagination<
             list.forEach((item) => refreshedItems.set(refreshByIds.getId(item), item));
           }
 
-          const ids = new Set(refreshIds);
-          let removedCount = 0;
-          const nextData = dataRef.current.flatMap((item) => {
-            const id = refreshByIds.getId(item);
-            if (!ids.has(id)) return [item];
-            const refreshedItem = refreshedItems.get(id);
-            if (refreshedItem !== undefined) return [refreshedItem];
-            // 不再可见或不再符合筛选的资源移出缓存，后续分页从收缩后的长度继续。
-            removedCount += 1;
-            return [];
-          });
-
-          setData(nextData);
-          // ID 查询的 total 仅对应本次 ID 集合，不能覆盖整个列表的总数。
-          setTotal((prev) => Math.max(0, prev - removedCount));
+          // 只替换实际返回的条目；未返回的 ID 保留旧缓存，不改变列表总数和分页位置。
+          if (refreshedItems.size > 0) {
+            const ids = new Set(refreshIds);
+            setData(
+              dataRef.current.map((item) => {
+                const id = refreshByIds.getId(item);
+                return ids.has(id) ? (refreshedItems.get(id) ?? item) : item;
+              })
+            );
+          }
           pendingRefreshIdsRef.current = [];
           return;
         }

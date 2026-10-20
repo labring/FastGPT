@@ -388,13 +388,13 @@ describe('useScrollPagination.refreshItems', () => {
     await act(async () => root.unmount());
   });
 
-  it('removes missing IDs, preserves response-independent order and continues from the reduced offset', async () => {
+  it('retains missing IDs and preserves cached order, total and the next offset', async () => {
     const { api, requests } = createDeferredApi();
     const { refreshApi, requests: refreshRequests } = createDeferredRefreshApi();
     const onState = vi.fn();
     const root = createRoot(document.createElement('div'));
 
-    await renderHarness(root, { query: 'removed', api, refreshApi, onState });
+    await renderHarness(root, { query: 'missing', api, refreshApi, onState });
     await act(async () => requests[0].resolve({ list: ['one', 'two'], total: 5 }));
     await act(async () => {
       void onState.mock.lastCall?.[0].fetchData();
@@ -405,21 +405,27 @@ describe('useScrollPagination.refreshItems', () => {
     });
     await act(async () => refreshRequests[0].resolve(['four:updated', 'one:updated', 'unknown']));
 
-    expect(onState.mock.lastCall?.[0].data).toEqual(['one:updated', 'three', 'four:updated']);
-    expect(onState.mock.lastCall?.[0].total).toBe(4);
+    expect(onState.mock.lastCall?.[0].data).toEqual([
+      'one:updated',
+      'two',
+      'three',
+      'four:updated'
+    ]);
+    expect(onState.mock.lastCall?.[0].total).toBe(5);
     await act(async () => {
       void onState.mock.lastCall?.[0].fetchData();
     });
-    expect(requests[2].params.offset).toBe(3);
-    await act(async () => requests[2].resolve({ list: ['five'], total: 4 }));
+    expect(requests[2].params.offset).toBe(4);
+    await act(async () => requests[2].resolve({ list: ['five'], total: 5 }));
 
+    const previousData = onState.mock.lastCall?.[0].data;
     await act(async () => {
       void onState.mock.lastCall?.[0].refreshItems();
     });
     await act(async () => refreshRequests[1].resolve([]));
-    expect(onState.mock.lastCall?.[0].data).toEqual([]);
-    expect(onState.mock.lastCall?.[0].total).toBe(0);
-    expect(onState.mock.lastCall?.[0].isEmpty).toBe(true);
+    expect(onState.mock.lastCall?.[0].data).toBe(previousData);
+    expect(onState.mock.lastCall?.[0].total).toBe(5);
+    expect(onState.mock.lastCall?.[0].isEmpty).toBe(false);
     await act(async () => root.unmount());
   });
 
