@@ -92,6 +92,48 @@ type HttpResponse = DispatchNodeResultType<
 
 const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
 
+/** 节点错误文本里附带的响应体上限，避免超大 body 撑爆调试面板。 */
+const HTTP_ERROR_BODY_MAX_LENGTH = 2000;
+
+/**
+ * 把 HTTP 响应体收成可展示的短文本。
+ * getErrText 只读取 message/msg，detail 等字段需要额外拼进节点错误。
+ */
+const toHttpErrorBodySnippet = (data: unknown): string => {
+  if (data == null) return '';
+
+  let text = '';
+  if (typeof data === 'string') {
+    text = data;
+  } else if (typeof data === 'object') {
+    try {
+      text = JSON.stringify(data) ?? '';
+    } catch {
+      return '';
+    }
+  } else {
+    text = String(data);
+  }
+
+  if (!text.trim()) return '';
+  if (text.length <= HTTP_ERROR_BODY_MAX_LENGTH) return text;
+  return `${text.slice(0, HTTP_ERROR_BODY_MAX_LENGTH)}...`;
+};
+
+const appendHttpErrorBody = (errText: string, data: unknown): string => {
+  const snippet = toHttpErrorBodySnippet(data);
+  if (!snippet) return errText;
+
+  // 截断后缀 "..." 不参与包含判断，正文已经出现在错误里时不再拼一遍。
+  const comparable =
+    snippet.length > HTTP_ERROR_BODY_MAX_LENGTH
+      ? snippet.slice(0, HTTP_ERROR_BODY_MAX_LENGTH)
+      : snippet;
+  if (errText.includes(comparable)) return errText;
+
+  return errText ? `${errText}\n${snippet}` : snippet;
+};
+
 export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<HttpResponse> => {
   const {
     runningAppInfo,
@@ -311,8 +353,8 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       ignoreHttpsCertificate: global.systemEnv?.workflowHttpNode?.ignoreHttpsCertificate === true
     });
 
-    const errText = getErrText(error);
     const errObj = formatHttpError(error);
+    const errText = appendHttpErrorBody(getErrText(error), errObj.data);
     return getNodeErrResponse({
       error: errText,
       customErr: {
