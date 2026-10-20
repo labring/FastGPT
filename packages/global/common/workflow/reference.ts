@@ -1,12 +1,19 @@
 import {
   FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
   isNestedParentNodeType,
   workflowSystemVariables
 } from '../../core/workflow/node/constant';
-import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '../../core/workflow/constants';
+import {
+  NodeOutputKeyEnum,
+  VARIABLE_NODE_ID,
+  WorkflowIOValueTypeEnum
+} from '../../core/workflow/constants';
 import type {
   EditorVariablePickerType,
   FlowNodeInputItemType,
+  FlowNodeOutputItemType,
+  ReferenceValueType,
   ReferenceArrayValueType,
   ReferenceItemValueType
 } from '../../core/workflow/type/io';
@@ -284,4 +291,107 @@ export const areWorkflowValueTypesCompatible = ({
     return true;
   }
   return getWorkflowReferenceSourceValueTypes(expected).includes(actual as WorkflowIOValueTypeEnum);
+};
+
+/** 按共享引用类型兼容规则筛选输出，供选择器和静态校验共用。 */
+export const filterWorkflowNodeOutputsByType = (
+  outputs: FlowNodeOutputItemType[],
+  valueType: WorkflowIOValueTypeEnum
+): FlowNodeOutputItemType[] => {
+  return outputs.filter(
+    (output) =>
+      !output.valueType ||
+      areWorkflowValueTypesCompatible({
+        expected: valueType,
+        actual: output.valueType
+      })
+  );
+};
+
+export type WorkflowReferenceSourceNode = {
+  nodeId: string;
+  outputs: FlowNodeOutputItemType[];
+  catchError?: boolean;
+};
+
+export const DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES: WorkflowIOValueTypeEnum[] = [
+  WorkflowIOValueTypeEnum.arrayBoolean
+];
+
+/**
+ * 过滤引用选择器中真正可选的输出。
+ * ReferenceSelector 和节点 debug 的引用有效性判断必须共用这套规则，避免已删除、类型不匹配、
+ * addOutputParam、invalid output 或未开启 catchError 的错误输出在不同入口表现不一致。
+ */
+export const filterSelectableWorkflowNodeOutputs = ({
+  outputs,
+  valueType,
+  catchError,
+  excludeValueTypes
+}: {
+  outputs: FlowNodeOutputItemType[];
+  valueType?: WorkflowIOValueTypeEnum;
+  catchError?: boolean;
+  excludeValueTypes?: WorkflowIOValueTypeEnum[];
+}) => {
+  return filterWorkflowNodeOutputsByType(outputs, valueType ?? WorkflowIOValueTypeEnum.any).filter(
+    (output) => {
+      if (
+        excludeValueTypes?.length &&
+        output.valueType &&
+        excludeValueTypes.includes(output.valueType)
+      ) {
+        return false;
+      }
+
+      if (output.type === FlowNodeOutputTypeEnum.error) {
+        return catchError === true;
+      }
+
+      return output.id !== NodeOutputKeyEnum.addOutputParam && output.invalid !== true;
+    }
+  );
+};
+
+/**
+ * 判断引用值是否仍能被 ReferenceSelector 选中。
+ * 单选引用要求当前二元组命中；多选引用只要存在一个仍可选的引用项，选择器就会展示有效值。
+ */
+export const workflowReferenceValueIsSelectable = ({
+  value,
+  sourceNodes,
+  valueType,
+  excludeValueTypes
+}: {
+  value?: ReferenceValueType;
+  sourceNodes: WorkflowReferenceSourceNode[];
+  valueType?: WorkflowIOValueTypeEnum;
+  excludeValueTypes?: WorkflowIOValueTypeEnum[];
+}) => {
+  const referenceItemIsSelectable = (itemValue: ReferenceItemValueType) => {
+    const [sourceNodeId, outputId] = itemValue;
+    if (!sourceNodeId || !outputId) return false;
+
+    const sourceNode = sourceNodes.find((node) => node.nodeId === sourceNodeId);
+    if (!sourceNode) return false;
+
+    return filterSelectableWorkflowNodeOutputs({
+      outputs: sourceNode.outputs,
+      valueType,
+      catchError: sourceNode.catchError,
+      excludeValueTypes
+    }).some((output) => output.id === outputId);
+  };
+
+  if (!Array.isArray(value)) return false;
+
+  if (typeof value[0] === 'string') {
+    return referenceItemIsSelectable(value as ReferenceItemValueType);
+  }
+
+  return value.some((item) => {
+    if (!Array.isArray(item)) return false;
+
+    return referenceItemIsSelectable(item as ReferenceItemValueType);
+  });
 };

@@ -1,3 +1,8 @@
+import {
+  filterWorkflowNodeOutputsByType,
+  filterSelectableWorkflowNodeOutputs,
+  workflowReferenceValueIsSelectable
+} from '@fastgpt/global/common/workflow/reference';
 import { describe, it, expect, vi } from 'vitest';
 import type {
   FlowNodeItemType,
@@ -19,10 +24,7 @@ import {
 import {
   nodeTemplate2FlowNode,
   storeNode2FlowNode,
-  getNodeAllSource,
-  filterWorkflowNodeOutputsByType,
-  filterSelectableWorkflowNodeOutputs,
-  workflowReferenceValueIsSelectable
+  getNodeAllSource
 } from '@/web/core/workflow/utils';
 import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
@@ -39,7 +41,7 @@ describe('nodeTemplate2FlowNode', () => {
     const node = nodeTemplate2FlowNode({
       template: DatasetSearchModule,
       position: { x: 0, y: 0 },
-      defaultModelIds: { llm: 'default-llm', rerank: 'default-rerank' },
+      initialModelId: 'default-llm',
       t: ((key: string) => key) as any
     });
     const stored = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [] });
@@ -510,16 +512,19 @@ describe('storeNode2FlowNode', () => {
         position: { x: 0, y: 0 },
         inputs: [
           {
+            label: '',
             key: NodeInputKeyEnum.aiModel,
             renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
             value: 'legacy-model'
           },
           {
+            label: '',
             key: NodeInputKeyEnum.aiModelId,
             renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
             value: ''
           },
           {
+            label: '',
             key: NodeInputKeyEnum.aiModel,
             renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
             value: 'duplicate-legacy-model'
@@ -548,6 +553,7 @@ describe('storeNode2FlowNode', () => {
         position: { x: 0, y: 0 },
         inputs: [
           {
+            label: '',
             key: NodeInputKeyEnum.aiModel,
             renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
             selectedType: FlowNodeInputTypeEnum.settingLLMModel,
@@ -582,6 +588,7 @@ describe('storeNode2FlowNode', () => {
         position: { x: 0, y: 0 },
         inputs: [
           {
+            label: '',
             key: NodeInputKeyEnum.aiModel,
             renderTypeList: [
               FlowNodeInputTypeEnum.settingLLMModel,
@@ -694,24 +701,28 @@ describe('storeNode2FlowNode', () => {
       position: { x: 0, y: 0 },
       inputs: [
         {
+          label: '',
           key: NodeInputKeyEnum.loopRunMode,
           value: LoopRunModeEnum.array,
           valueType: WorkflowIOValueTypeEnum.string,
           renderTypeList: [FlowNodeInputTypeEnum.hidden]
         },
         {
+          label: '',
           key: NodeInputKeyEnum.loopRunInputArray,
           value: [],
           valueType: WorkflowIOValueTypeEnum.arrayAny,
           renderTypeList: [FlowNodeInputTypeEnum.reference]
         },
         {
+          label: '',
           key: NodeInputKeyEnum.loopCustomOutputs,
           value: [],
           valueType: WorkflowIOValueTypeEnum.dynamic,
           renderTypeList: [FlowNodeInputTypeEnum.addInputParam]
         },
         {
+          label: '',
           key: NodeInputKeyEnum.childrenNodeIdList,
           value: [],
           renderTypeList: [FlowNodeInputTypeEnum.hidden]
@@ -757,6 +768,7 @@ describe('storeNode2FlowNode', () => {
       position: { x: 0, y: 0 },
       inputs: [
         {
+          label: '',
           key: NodeInputKeyEnum.loopRunMode,
           value: LoopRunModeEnum.array,
           valueType: WorkflowIOValueTypeEnum.string,

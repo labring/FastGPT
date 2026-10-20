@@ -9,6 +9,8 @@ import {
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
+import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
+import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
 import { getIfElseBranchHandleKey } from '@fastgpt/global/common/workflow/condition';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { getDocumentNode } from '../nesting/service';
@@ -34,7 +36,12 @@ export const getDefaultExecutionSourcePort = (
       node.flowNodeType === FlowNodeTypeEnum.userSelect
         ? NodeInputKeyEnum.userSelectOptions
         : NodeInputKeyEnum.agents;
-    const options = node.inputs.find((item) => item.key === inputKey)?.value;
+    const input = node.inputs.find((item) => item.key === inputKey);
+    // 动态选项共用一个出口，不再按运行前未知的选项生成分支。
+    if (node.flowNodeType === FlowNodeTypeEnum.userSelect && input && nodeInputIsReference(input)) {
+      return { kind: 'branch', nodeId, branchKey: USER_SELECT_REFERENCE_HANDLE_KEY };
+    }
+    const options = input?.value;
     const branchKey =
       Array.isArray(options) && options[0] && typeof options[0].key === 'string'
         ? options[0].key
@@ -58,8 +65,12 @@ const assertBranchKey = (document: WorkflowDocument, edge: WorkflowExecutionEdge
       : node.flowNodeType === FlowNodeTypeEnum.userSelect
         ? NodeInputKeyEnum.userSelectOptions
         : NodeInputKeyEnum.agents;
-  const value = node.inputs.find((item) => item.key === inputKey)?.value;
+  const input = node.inputs.find((item) => item.key === inputKey);
+  const value = input?.value;
   const keys = (() => {
+    if (node.flowNodeType === FlowNodeTypeEnum.userSelect && input && nodeInputIsReference(input)) {
+      return [USER_SELECT_REFERENCE_HANDLE_KEY];
+    }
     if (!Array.isArray(value)) return [];
     if (node.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
       return [

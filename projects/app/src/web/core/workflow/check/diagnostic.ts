@@ -107,6 +107,14 @@ export const formatWorkflowDiagnostic = ({
 
   if (diagnostic.code === 'WORKFLOW_REQUIRED_INPUT_MISSING') {
     if (
+      diagnostic.inputKey === NodeInputKeyEnum.userInputForms &&
+      typeof params.fieldLabel === 'string'
+    ) {
+      // 表单内的动态选项错误应显示具体字段，不能被外层“表单配置”标签覆盖。
+      issue.input = undefined;
+      issue.fallbackLabel = params.fieldLabel;
+    }
+    if (
       node?.flowNodeType === FlowNodeTypeEnum.httpRequest468 &&
       diagnostic.inputKey === NodeInputKeyEnum.httpReqUrl
     ) {

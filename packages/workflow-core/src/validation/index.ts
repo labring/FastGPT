@@ -5,6 +5,7 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum,
   isNestedChildSystemNodeType,
   isNestedParentNodeType
@@ -23,6 +24,17 @@ import { getWorkflowReferenceValues } from '../reference/service';
 import { hasConfiguredValue } from '../template/defaultValue';
 import { validateNodeIO } from './io';
 import { checkWorkflowModels } from './model';
+import {
+  DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES,
+  getWorkflowReferenceSourceNodes,
+  getWorkflowReferenceVariables,
+  nodeInputIsReference,
+  workflowReferenceValueIsSelectable,
+  type WorkflowReferenceSourceNode
+} from '@fastgpt/global/common/workflow/reference';
+import { isReferenceOptionFormItem } from '@fastgpt/global/core/workflow/template/system/interactive/constants';
+import type { UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 
 /** 多个入口共享一次图遍历；嵌套起点与工具输入节点遵循 Web 的入口语义。 */
 const getReachableNodeIds = (document: WorkflowDocument, startNodeIds: string[]) => {
@@ -163,6 +175,36 @@ const validateSpecialNode = ({
 }) => {
   const getInputValue = (key: NodeInputKeyEnum) =>
     node.inputs.find((item) => item.key === key)?.value;
+
+  let dynamicOptionSources: WorkflowReferenceSourceNode[] | undefined;
+  /** 动态选项与画布选择器共用输出过滤规则，同一节点的多个表单项复用引用来源。 */
+  const dynamicOptionsAreSelectable = (value?: ReferenceValueType) => {
+    dynamicOptionSources ??= [
+      ...getWorkflowReferenceSourceNodes({
+        nodeId: node.nodeId,
+        getNodeById: (id) => document.nodes.find((item) => item.nodeId === id),
+        edges: document.executionEdges.map((edge) => ({
+          source: edge.source.nodeId,
+          target: edge.target.nodeId
+        }))
+      }),
+      {
+        nodeId: VARIABLE_NODE_ID,
+        outputs: getWorkflowReferenceVariables({ chatConfig: document.chatConfig }).map((item) => ({
+          id: item.key,
+          key: item.key,
+          label: item.label,
+          type: FlowNodeOutputTypeEnum.static,
+          valueType: item.valueType
+        }))
+      }
+    ];
+    return workflowReferenceValueIsSelectable({
+      value,
+      sourceNodes: dynamicOptionSources,
+      excludeValueTypes: DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES
+    });
+  };
 
   // 这些缺项在 Web 中始终阻断，不依赖模型目录、权限或远端资源状态。
   if (
@@ -347,13 +389,17 @@ const validateSpecialNode = ({
       node.flowNodeType === FlowNodeTypeEnum.userSelect
         ? NodeInputKeyEnum.userSelectOptions
         : NodeInputKeyEnum.agents;
-    const options = getInputValue(key);
+    const input = node.inputs.find((item) => item.key === key);
+    const options = input?.value;
+    const isDynamicOptions =
+      node.flowNodeType === FlowNodeTypeEnum.userSelect && input && nodeInputIsReference(input);
     const optionKeys = Array.isArray(options)
       ? options.map((item) =>
           item && typeof item === 'object' ? (item as { key?: unknown }).key : undefined
         )
       : [];
     const reason = (() => {
+      if (isDynamicOptions) return dynamicOptionsAreSelectable(options) ? undefined : 'empty';
       if (!Array.isArray(options) || options.length === 0) return 'empty';
       if (
         options.some(
@@ -384,6 +430,26 @@ const validateSpecialNode = ({
 
   if (node.flowNodeType === FlowNodeTypeEnum.formInput) {
     const forms = getInputValue(NodeInputKeyEnum.userInputForms);
+    if (Array.isArray(forms)) {
+      forms.forEach((form, index) => {
+        if (!form || typeof form !== 'object' || Array.isArray(form)) return;
+        const field = form as Partial<UserInputFormItemType>;
+        if (
+          !field.type ||
+          !isReferenceOptionFormItem({ type: field.type, listInputType: field.listInputType })
+        )
+          return;
+        if (!dynamicOptionsAreSelectable(field.listReference)) {
+          diagnostics.push({
+            code: 'WORKFLOW_REQUIRED_INPUT_MISSING',
+            severity: 'error',
+            nodeId: node.nodeId,
+            inputKey: NodeInputKeyEnum.userInputForms,
+            params: { fieldKey: field.key, fieldLabel: field.label || field.key, index }
+          });
+        }
+      });
+    }
     const formKeys = Array.isArray(forms)
       ? forms.map((form) =>
           form && typeof form === 'object' ? (form as { key?: unknown }).key : undefined

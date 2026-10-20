@@ -23,6 +23,9 @@ import { builtinTemplateProvider } from '../template/provider';
 import { createWorkflowDocument } from '../../src/domain/document';
 import { parseNodeTemplateRef } from '../../src/template/type';
 import { validateWorkflowBuilderSemantics, validateWorkflow } from '../../src/validation/index';
+import { getDefaultExecutionSourcePort } from '../../src/edge/validation';
+import { compileExecutionEdge, decompileStoreEdge } from '../../src/edge/compiler';
+import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
 import aiWorkflow from '../fixtures/basic-ai/workflow.json';
 import staticWorkflow from '../fixtures/basic-static/workflow.json';
 import commonLinearWorkflow from '../fixtures/common-linear/workflow.json';
@@ -503,6 +506,118 @@ describe('validateWorkflow', () => {
     expect(validateWorkflow(form).map((item) => item.code)).toContain(
       'WORKFLOW_FORM_INPUT_CONFIGURATION_INVALID'
     );
+  });
+
+  it('accepts dynamic choices from upstream or global variables and validates their shared branch', () => {
+    const document = makeDocument({
+      flowNodeType: FlowNodeTypeEnum.userSelect,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userSelectOptions,
+          label: 'Options',
+          renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          valueType: WorkflowIOValueTypeEnum.any,
+          required: true,
+          value: [['start', 'choices']]
+        }
+      ]
+    });
+    document.nodes[0].outputs.push({
+      id: 'choices',
+      key: 'choices',
+      label: 'Choices',
+      type: FlowNodeOutputTypeEnum.static,
+      valueType: WorkflowIOValueTypeEnum.arrayString
+    });
+    document.nodes.push({
+      nodeId: 'answer',
+      name: 'Answer',
+      flowNodeType: FlowNodeTypeEnum.answerNode,
+      inputs: [],
+      outputs: []
+    });
+    const source = getDefaultExecutionSourcePort(document, 'target');
+    expect(source).toEqual({
+      kind: 'branch',
+      nodeId: 'target',
+      branchKey: USER_SELECT_REFERENCE_HANDLE_KEY
+    });
+    const edge = { source, target: { kind: 'target' as const, nodeId: 'answer' } };
+    document.executionEdges.push(edge);
+    expect(decompileStoreEdge(compileExecutionEdge(edge, document), document)).toEqual(edge);
+    expect(validateWorkflow(document)).toEqual([]);
+
+    document.chatConfig.variables = [
+      {
+        key: 'options',
+        label: 'Options',
+        description: 'Dynamic choices',
+        type: VariableInputEnum.input,
+        valueType: WorkflowIOValueTypeEnum.arrayString
+      }
+    ];
+    // 和选择器一致，混合列表保留至少一个可用引用即可；运行前无法知道动态选项的实际分支。
+    document.nodes[1].inputs[0].value = [
+      ['deleted', 'choices'],
+      [VARIABLE_NODE_ID, 'options']
+    ];
+    expect(validateWorkflow(document)).toEqual([]);
+    document.executionEdges[1].source = { kind: 'branch', nodeId: 'target', branchKey: 'stale' };
+    expect(validateWorkflow(document).map((issue) => issue.code)).toContain(
+      'WORKFLOW_BRANCH_KEY_NOT_FOUND'
+    );
+
+    document.nodes[1].inputs[0].selectedType = FlowNodeInputTypeEnum.custom;
+    document.nodes[1].inputs[0].value = [{ key: 'literal', value: 'Literal choice' }];
+    expect(getDefaultExecutionSourcePort(document, 'target')).toEqual({
+      kind: 'branch',
+      nodeId: 'target',
+      branchKey: 'literal'
+    });
+    document.executionEdges[1].source = {
+      kind: 'branch',
+      nodeId: 'target',
+      branchKey: USER_SELECT_REFERENCE_HANDLE_KEY
+    };
+    expect(validateWorkflow(document).map((issue) => issue.code)).toContain(
+      'WORKFLOW_BRANCH_KEY_NOT_FOUND'
+    );
+  });
+
+  it.each([
+    { invalid: true },
+    { id: NodeOutputKeyEnum.addOutputParam },
+    { type: FlowNodeOutputTypeEnum.error },
+    { valueType: WorkflowIOValueTypeEnum.arrayBoolean }
+  ])('rejects dynamic choices from an unselectable output: %j', (output) => {
+    const document = makeDocument({
+      flowNodeType: FlowNodeTypeEnum.userSelect,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userSelectOptions,
+          label: 'Options',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          valueType: WorkflowIOValueTypeEnum.any,
+          required: true,
+          value: [['start', output.id ?? 'choices']]
+        }
+      ]
+    });
+    document.nodes[0].outputs.push({
+      id: 'choices',
+      key: 'choices',
+      type: FlowNodeOutputTypeEnum.static,
+      valueType: WorkflowIOValueTypeEnum.arrayString,
+      ...output
+    });
+    expect(validateWorkflow(document)).toEqual([
+      expect.objectContaining({
+        code: 'WORKFLOW_BRANCH_CONFIGURATION_INVALID',
+        inputKey: NodeInputKeyEnum.userSelectOptions,
+        params: { reason: 'empty' }
+      })
+    ]);
   });
 
   it('retains conditional-loop system nodes and break requirements', () => {

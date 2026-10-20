@@ -3,11 +3,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
-import {
-  NodeInputKeyEnum,
-  NodeOutputKeyEnum,
-  WorkflowIOValueTypeEnum
-} from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   EDGE_TYPE,
   FlowNodeInputTypeEnum,
@@ -25,7 +21,6 @@ import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType,
   ReferenceItemValueType,
-  ReferenceValueType,
   EditorVariablePickerType
 } from '@fastgpt/global/core/workflow/type/io';
 import type {
@@ -36,7 +31,6 @@ import type {
 import { formatEditorVariablePickerIcon } from '@fastgpt/web/core/workflow/utils';
 import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import {
-  areWorkflowValueTypesCompatible,
   getSelectedInputRenderType,
   getWorkflowReferenceSourceNodes,
   getWorkflowReferenceVariables
@@ -522,108 +516,6 @@ export const getRefData = ({
     required: !!output.required
   };
 };
-export const filterWorkflowNodeOutputsByType = (
-  outputs: FlowNodeOutputItemType[],
-  valueType: WorkflowIOValueTypeEnum
-): FlowNodeOutputItemType[] => {
-  return outputs.filter(
-    (output) =>
-      !output.valueType ||
-      areWorkflowValueTypesCompatible({
-        expected: valueType,
-        actual: output.valueType
-      })
-  );
-};
-
-export type WorkflowReferenceSourceNode = {
-  nodeId: string;
-  outputs: FlowNodeOutputItemType[];
-  catchError?: boolean;
-};
-
-export const DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES: WorkflowIOValueTypeEnum[] = [
-  WorkflowIOValueTypeEnum.arrayBoolean
-];
-
-/**
- * 过滤引用选择器中真正可选的输出。
- * ReferenceSelector 和节点 debug 的引用有效性判断必须共用这套规则，避免已删除、类型不匹配、
- * addOutputParam、invalid output 或未开启 catchError 的错误输出在不同入口表现不一致。
- */
-export const filterSelectableWorkflowNodeOutputs = ({
-  outputs,
-  valueType,
-  catchError,
-  excludeValueTypes
-}: {
-  outputs: FlowNodeOutputItemType[];
-  valueType?: WorkflowIOValueTypeEnum;
-  catchError?: boolean;
-  excludeValueTypes?: WorkflowIOValueTypeEnum[];
-}) => {
-  return filterWorkflowNodeOutputsByType(outputs, valueType ?? WorkflowIOValueTypeEnum.any).filter(
-    (output) => {
-      if (
-        excludeValueTypes?.length &&
-        output.valueType &&
-        excludeValueTypes.includes(output.valueType)
-      ) {
-        return false;
-      }
-
-      if (output.type === FlowNodeOutputTypeEnum.error) {
-        return catchError === true;
-      }
-
-      return output.id !== NodeOutputKeyEnum.addOutputParam && output.invalid !== true;
-    }
-  );
-};
-
-/**
- * 判断引用值是否仍能被 ReferenceSelector 选中。
- * 单选引用要求当前二元组命中；多选引用只要存在一个仍可选的引用项，选择器就会展示有效值。
- */
-export const workflowReferenceValueIsSelectable = ({
-  value,
-  sourceNodes,
-  valueType,
-  excludeValueTypes
-}: {
-  value?: ReferenceValueType;
-  sourceNodes: WorkflowReferenceSourceNode[];
-  valueType?: WorkflowIOValueTypeEnum;
-  excludeValueTypes?: WorkflowIOValueTypeEnum[];
-}) => {
-  const referenceItemIsSelectable = (itemValue: ReferenceItemValueType) => {
-    const [sourceNodeId, outputId] = itemValue;
-    if (!sourceNodeId || !outputId) return false;
-
-    const sourceNode = sourceNodes.find((node) => node.nodeId === sourceNodeId);
-    if (!sourceNode) return false;
-
-    return filterSelectableWorkflowNodeOutputs({
-      outputs: sourceNode.outputs,
-      valueType,
-      catchError: sourceNode.catchError,
-      excludeValueTypes
-    }).some((output) => output.id === outputId);
-  };
-
-  if (!Array.isArray(value)) return false;
-
-  if (typeof value[0] === 'string') {
-    return referenceItemIsSelectable(value as ReferenceItemValueType);
-  }
-
-  return value.some((item) => {
-    if (!Array.isArray(item)) return false;
-
-    return referenceItemIsSelectable(item as ReferenceItemValueType);
-  });
-};
-
 /**
  * 获取当前节点可引用的所有上游节点。
  * 结果按工作流入边距离由近到远排列；嵌套节点先取自身入边，再取父容器入边，

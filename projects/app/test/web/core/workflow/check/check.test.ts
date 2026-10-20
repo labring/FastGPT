@@ -20,7 +20,6 @@ import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
-  VariableInputEnum,
   VARIABLE_NODE_ID
 } from '@fastgpt/global/core/workflow/constants';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -51,6 +50,7 @@ describe('checkWorkflowNodeIssues', () => {
       type: flowNodeType,
       position: { x: 0, y: 0 },
       data: {
+        id: flowNodeType,
         nodeId,
         flowNodeType,
         name: nodeId,
@@ -144,6 +144,7 @@ describe('checkWorkflowNodeIssues', () => {
       inputs: [
         {
           key: NodeInputKeyEnum.userSelectOptions,
+          label: 'Options',
           renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
           selectedType: FlowNodeInputTypeEnum.reference,
           valueType: WorkflowIOValueTypeEnum.any,
@@ -156,26 +157,44 @@ describe('checkWorkflowNodeIssues', () => {
       inputs: [
         {
           key: NodeInputKeyEnum.userInputForms,
+          label: 'Form fields',
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
           value: [
             {
               key: 'city',
+              label: 'City',
               type: FlowNodeInputTypeEnum.select,
+              valueType: WorkflowIOValueTypeEnum.string,
+              value: '',
+              required: false,
               listInputType: FlowNodeInputTypeEnum.reference,
               listReference: [['deleted-node', 'out']]
             },
             {
               key: 'tags',
+              label: 'Tags',
               type: FlowNodeInputTypeEnum.multipleSelect,
+              valueType: WorkflowIOValueTypeEnum.arrayString,
+              value: [],
+              required: false,
               listInputType: FlowNodeInputTypeEnum.reference,
               listReference: []
             }
           ]
         }
-      ]
+      ],
+      outputs: ['city', 'tags'].map((key) => ({
+        id: key,
+        key,
+        label: key,
+        type: FlowNodeOutputTypeEnum.static
+      }))
     });
 
     const issues = checkWorkflowNodeIssues({
       nodes: [startNode, emptySelect, formNode],
+      t: ((key: string, params?: { inputName?: string }) =>
+        `${key}:${params?.inputName ?? ''}`) as TFunction,
       edges: [
         { id: 'e1', source: 'start', target: 'select-empty', type: EDGE_TYPE },
         { id: 'e2', source: 'start', target: 'form-ref', type: EDGE_TYPE }
@@ -192,6 +211,10 @@ describe('checkWorkflowNodeIssues', () => {
         ?.filter((i) => i.inputKey === NodeInputKeyEnum.userInputForms)
         .map((i) => i.code)
     ).toEqual(['required_input_empty', 'required_input_empty']);
+    expect(issues['form-ref'].map((issue) => issue.message)).toEqual([
+      expect.stringContaining('City'),
+      expect.stringContaining('Tags')
+    ]);
   });
 
   it('flags excluded variable types (e.g. arrayBoolean) as empty dynamic options in static check', () => {
@@ -210,6 +233,7 @@ describe('checkWorkflowNodeIssues', () => {
       inputs: [
         {
           key: NodeInputKeyEnum.userSelectOptions,
+          label: 'Options',
           renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
           selectedType: FlowNodeInputTypeEnum.reference,
           valueType: WorkflowIOValueTypeEnum.any,
@@ -1166,6 +1190,7 @@ describe('workflow check helpers', () => {
         type: flowNodeType,
         position: { x: 0, y: 0 },
         data: {
+          id: flowNodeType,
           nodeId,
           flowNodeType,
           name: nodeId,
@@ -1276,6 +1301,7 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
           id,
           position: { x: 0, y: 0 },
           data: {
+            id: flowNodeType,
             nodeId: id,
             name: id,
             parentNodeId: 'loop1',
@@ -1294,6 +1320,7 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
           id: 'ws',
           position: { x: 0, y: 0 },
           data: {
+            id: FlowNodeTypeEnum.workflowStart,
             nodeId: 'ws',
             name: 'Start',
             flowNodeType: FlowNodeTypeEnum.workflowStart,
@@ -1312,6 +1339,7 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
           id: 'loop1',
           position: { x: 0, y: 0 },
           data: {
+            id: FlowNodeTypeEnum.loopRun,
             nodeId: 'loop1',
             name: 'Loop',
             flowNodeType: FlowNodeTypeEnum.loopRun,
@@ -1390,6 +1418,7 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
         type: FlowNodeTypeEnum.variableUpdate,
         position: { x: 0, y: 0 },
         data: {
+          id: FlowNodeTypeEnum.variableUpdate,
           nodeId: 'u1',
           flowNodeType: FlowNodeTypeEnum.variableUpdate,
           name: 'update',
@@ -1414,6 +1443,7 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
       type: FlowNodeTypeEnum.workflowStart,
       position: { x: 0, y: 0 },
       data: {
+        id: FlowNodeTypeEnum.workflowStart,
         nodeId: 's1',
         flowNodeType: FlowNodeTypeEnum.workflowStart,
         name: 'start',
@@ -1579,6 +1609,7 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
         type: 'custom',
         position: { x: 0, y: 0 },
         data: {
+          id: FlowNodeTypeEnum.workflowStart,
           nodeId: 'start-1',
           name: '流程开始',
           flowNodeType: FlowNodeTypeEnum.workflowStart,
@@ -1604,6 +1635,7 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
         type: 'custom',
         position: { x: 100, y: 100 },
         data: {
+          id: FlowNodeTypeEnum.textEditor,
           nodeId: 'node-2',
           name: '文本编辑',
           flowNodeType: FlowNodeTypeEnum.textEditor,
@@ -1655,6 +1687,7 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
         type: FlowNodeTypeEnum.workflowStart,
         position: { x: 0, y: 0 },
         data: {
+          id: FlowNodeTypeEnum.workflowStart,
           nodeId: 'start',
           flowNodeType: FlowNodeTypeEnum.workflowStart,
           name: 'start',
@@ -1670,6 +1703,7 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
         type: FlowNodeTypeEnum.pluginModule,
         position: { x: 0, y: 0 },
         data: {
+          id: FlowNodeTypeEnum.pluginModule,
           nodeId: 'tool-1',
           flowNodeType: FlowNodeTypeEnum.pluginModule,
           name: 'tool',
@@ -1726,6 +1760,7 @@ describe('Core validation and Web extension contract', () => {
           id,
           position: { x: 0, y: 0 },
           data: {
+            id,
             nodeId: id,
             name: id === 'target' ? '目标' : 'Start',
             flowNodeType:
@@ -1928,6 +1963,7 @@ describe('Web external resource bindings', () => {
       id: 'start',
       position: { x: 0, y: 0 },
       data: {
+        id: FlowNodeTypeEnum.workflowStart,
         nodeId: 'start',
         name: 'Start',
         flowNodeType: FlowNodeTypeEnum.workflowStart,
@@ -1939,6 +1975,7 @@ describe('Web external resource bindings', () => {
       id: 'target',
       position: { x: 0, y: 0 },
       data: {
+        id: FlowNodeTypeEnum.datasetSearchNode,
         nodeId: 'target',
         name: 'Search',
         flowNodeType: FlowNodeTypeEnum.datasetSearchNode,

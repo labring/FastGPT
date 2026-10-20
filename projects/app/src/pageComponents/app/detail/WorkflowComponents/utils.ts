@@ -1,8 +1,10 @@
 import {
   DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES,
-  getNodeAllSource,
-  workflowReferenceValueIsSelectable
-} from '@/web/core/workflow/utils';
+  workflowReferenceValueIsSelectable,
+  getSelectedInputRenderType,
+  nodeInputIsReference
+} from '@fastgpt/global/common/workflow/reference';
+import { getNodeAllSource } from '@/web/core/workflow/utils';
 import { workflowSystemVariables } from '@fastgpt/global/core/workflow/node/constant';
 import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
 import {
@@ -11,7 +13,6 @@ import {
   VARIABLE_NODE_ID
 } from '@fastgpt/global/core/workflow/constants';
 import {
-  FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
@@ -27,10 +28,6 @@ import type {
   ReferenceItemValueType,
   ReferenceValueType
 } from '@fastgpt/global/core/workflow/type/io';
-import {
-  getSelectedInputRenderType,
-  nodeInputIsReference
-} from '@fastgpt/global/common/workflow/reference';
 import {
   normalizeFlowNodeInputType,
   serializeAgentTool

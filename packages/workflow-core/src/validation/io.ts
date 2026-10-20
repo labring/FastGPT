@@ -222,6 +222,13 @@ export const validateNodeIO = ({
         LoopRunModeEnum.conditional;
     // 条件循环不消费数组输入，和 Web 一样忽略其残留值。
     if (isUnusedConditionalLoopArray) continue;
+    // 动态选项按选择器的“至少一个有效引用”规则统一检查，避免通用引用与节点检查重复报错。
+    if (
+      node.flowNodeType === FlowNodeTypeEnum.userSelect &&
+      input.key === NodeInputKeyEnum.userSelectOptions &&
+      nodeInputIsReference(normalizedInput)
+    )
+      continue;
     const defaultPolicy = getInputAutomationMeta(node.flowNodeType, input.key)?.defaultPolicy;
     const isExternalBinding =
       defaultPolicy === 'userRequired' || defaultPolicy === 'remoteValidated';
@@ -232,6 +239,8 @@ export const validateNodeIO = ({
       : !hasConfiguredValue(effectiveValue);
     const skipGenericRequiredCheck =
       skipNodeRequiredCheck ||
+      (node.flowNodeType === FlowNodeTypeEnum.userSelect &&
+        input.key === NodeInputKeyEnum.userSelectOptions) ||
       selectedType === FlowNodeInputTypeEnum.hidden ||
       selectedType === FlowNodeInputTypeEnum.off ||
       !input.valueType ||
