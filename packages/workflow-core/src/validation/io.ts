@@ -32,9 +32,12 @@ import {
 import { hasConfiguredValue } from '../template/defaultValue';
 import { inputValueNeedsSchema, valueMatchesSchema } from '../template/valueSchema';
 import { isWorkflowSystemModelInput } from '@fastgpt/global/common/workflow/model';
+import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+import { SecretValueTypeSchema } from '@fastgpt/global/common/secret/type';
 
 /**
  * 按 Web 的默认值、输入方式及工具生成策略校验必填项；保留 Core 的 IO 唯一性、类型和 Schema 检查。
+ * JSON 编辑器复用运行时转换，动态表达式延后校验；密钥按存储结构校验，不读取或输出密文内容。
  * 只读取文档，归一化输入时不改写调用方配置；远端资源绑定继续由绑定诊断及调用方校验。
  */
 export const validateNodeIO = ({
@@ -234,11 +237,36 @@ export const validateNodeIO = ({
     const defaultPolicy = getInputAutomationMeta(node.flowNodeType, input.key)?.defaultPolicy;
     const isExternalBinding =
       defaultPolicy === 'userRequired' || defaultPolicy === 'remoteValidated';
-    const effectiveValue = input.value ?? input.defaultValue;
+    const storedValue = input.value ?? input.defaultValue;
+    const isDynamicJson =
+      selectedType === FlowNodeInputTypeEnum.JSONEditor &&
+      typeof storedValue === 'string' &&
+      storedValue.includes('{{');
+    // JSON 编辑器持久化文本，和执行时一样按目标类型转换；不改写画布或文档中的原值。
+    const effectiveValue =
+      selectedType === FlowNodeInputTypeEnum.JSONEditor && !isDynamicJson
+        ? valueTypeFormat(storedValue, input.valueType)
+        : storedValue;
+    // 历史明文字符串继续兼容；当前密码组件使用 { value, secret } 存储结构。
+    const secretValueResult =
+      selectedType === FlowNodeInputTypeEnum.password &&
+      effectiveValue !== undefined &&
+      effectiveValue !== null &&
+      typeof effectiveValue !== 'string'
+        ? SecretValueTypeSchema.safeParse(effectiveValue)
+        : undefined;
     const isReference = nodeInputIsReference(normalizedInput);
-    const isMissingValue = isReference
-      ? isReferenceValueMissing(effectiveValue, !!input.valueType?.startsWith('array'))
-      : !hasConfiguredValue(effectiveValue);
+    const isMissingValue = (() => {
+      if (secretValueResult?.success) {
+        return (
+          !hasConfiguredValue(secretValueResult.data.value) &&
+          !hasConfiguredValue(secretValueResult.data.secret)
+        );
+      }
+      return isReference
+        ? isReferenceValueMissing(effectiveValue, !!input.valueType?.startsWith('array'))
+        : !hasConfiguredValue(effectiveValue);
+    })();
     const skipGenericRequiredCheck =
       skipNodeRequiredCheck ||
       (node.flowNodeType === FlowNodeTypeEnum.userSelect &&
@@ -286,7 +314,21 @@ export const validateNodeIO = ({
       });
       continue;
     }
+    if (secretValueResult) {
+      if (!secretValueResult.success) {
+        diagnostics.push({
+          code: 'WORKFLOW_INPUT_VALUE_SCHEMA_INVALID',
+          severity: 'error',
+          nodeId: node.nodeId,
+          inputKey: input.key
+        });
+      }
+      // 密文无法按明文字符串的类型和 Schema 检查；诊断也不能携带敏感原值。
+      continue;
+    }
     if (!hasConfiguredValue(effectiveValue)) continue;
+    // 编辑器变量替换后才能确定 JSON 的最终结构，静态阶段不能按未展开文本拒绝。
+    if (isDynamicJson) continue;
 
     if (isReference) {
       validateReference({ ...normalizedInput, value: effectiveValue });

@@ -22,7 +22,7 @@ import { applyWorkflowCommand } from '../../src/command/apply';
 import { builtinTemplateProvider } from '../template/provider';
 import { createWorkflowDocument } from '../../src/domain/document';
 import { parseNodeTemplateRef } from '../../src/template/type';
-import { validateWorkflowBuilderSemantics, validateWorkflow } from '../../src/validation/index';
+import { validateWorkflow } from '../../src/validation/index';
 import { getDefaultExecutionSourcePort } from '../../src/edge/validation';
 import { compileExecutionEdge, decompileStoreEdge } from '../../src/edge/compiler';
 import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
@@ -162,7 +162,7 @@ describe('validateWorkflow', () => {
     expect(validateWorkflow(search.document)).toEqual([]);
   });
 
-  it('requires an upstream dataset quote reference for a downstream AI node', async () => {
+  it('allows a downstream AI node to use retrieval results with or without a quote reference', async () => {
     const dependencies = { templateProvider: builtinTemplateProvider, locale: 'en' };
     const start = await applyWorkflowCommand({
       document: createWorkflowDocument(),
@@ -194,9 +194,7 @@ describe('validateWorkflow', () => {
       dependencies
     });
 
-    expect(validateWorkflowBuilderSemantics(ai.document).map((item) => item.code)).toContain(
-      'WORKFLOW_DATASET_QUOTE_REFERENCE_REQUIRED'
-    );
+    expect(validateWorkflow(ai.document)).toEqual([]);
 
     const linked = await applyWorkflowCommand({
       document: ai.document,
@@ -209,7 +207,7 @@ describe('validateWorkflow', () => {
       dependencies
     });
 
-    expect(validateWorkflowBuilderSemantics(linked.document)).toEqual([]);
+    expect(validateWorkflow(linked.document)).toEqual([]);
   });
 
   it('returns schema diagnostics instead of throwing', () => {

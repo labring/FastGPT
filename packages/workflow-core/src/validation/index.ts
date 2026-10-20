@@ -1,8 +1,4 @@
-import {
-  NodeInputKeyEnum,
-  NodeOutputKeyEnum,
-  VARIABLE_NODE_ID
-} from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
@@ -55,50 +51,6 @@ const getReachableNodeIds = (document: WorkflowDocument, startNodeIds: string[])
     }
   }
   return reachable;
-};
-
-/** 校验 Builder 生成的知识库问答链路是否把检索结果传入后续 AI 节点。 */
-export const validateWorkflowBuilderSemantics = (
-  document: WorkflowDocument
-): WorkflowDiagnostic[] => {
-  const datasetNodes = document.nodes.filter(
-    (node) =>
-      node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode ||
-      node.flowNodeType === FlowNodeTypeEnum.datasetConcatNode
-  );
-  const aiNodes = document.nodes.filter((node) => node.flowNodeType === FlowNodeTypeEnum.chatNode);
-
-  return aiNodes.flatMap((aiNode) => {
-    const upstreamDatasetNodeIds = new Set(
-      datasetNodes
-        .filter((datasetNode) =>
-          getReachableNodeIds(document, [datasetNode.nodeId]).has(aiNode.nodeId)
-        )
-        .map((datasetNode) => datasetNode.nodeId)
-    );
-    if (upstreamDatasetNodeIds.size === 0) return [];
-
-    const quoteInput = aiNode.inputs.find(
-      (input) => input.key === NodeInputKeyEnum.aiChatDatasetQuote
-    );
-    const references = getWorkflowReferenceValues(quoteInput?.value);
-    const hasUpstreamQuoteReference =
-      references?.some(
-        ([sourceNodeId, outputKey]) =>
-          upstreamDatasetNodeIds.has(sourceNodeId) && outputKey === NodeOutputKeyEnum.datasetQuoteQA
-      ) ?? false;
-    if (hasUpstreamQuoteReference) return [];
-
-    return [
-      {
-        code: 'WORKFLOW_DATASET_QUOTE_REFERENCE_REQUIRED',
-        severity: 'error' as const,
-        nodeId: aiNode.nodeId,
-        inputKey: NodeInputKeyEnum.aiChatDatasetQuote,
-        params: { upstreamDatasetNodeIds: [...upstreamDatasetNodeIds] }
-      }
-    ];
-  });
 };
 
 const reachabilityIgnoredNodeTypes = new Set<FlowNodeTypeEnum>([

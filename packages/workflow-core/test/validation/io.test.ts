@@ -155,6 +155,124 @@ describe('validateNodeIO', () => {
     ]);
   });
 
+  it.each([
+    {
+      value: '{count: 2,}',
+      valueType: WorkflowIOValueTypeEnum.object,
+      customJsonSchema: { type: 'object', properties: { count: { type: 'number' } } }
+    },
+    {
+      value: '[1, 2]',
+      valueType: WorkflowIOValueTypeEnum.arrayNumber,
+      customJsonSchema: { type: 'array', items: { type: 'number' } }
+    },
+    {
+      value: "['a', 'b',]",
+      valueType: WorkflowIOValueTypeEnum.arrayString,
+      customJsonSchema: { type: 'array', items: { type: 'string' } }
+    }
+  ])('checks JSON editor text using the runtime value without rewriting it: $value', (config) => {
+    const node = makeNode({
+      inputs: [makeInput({ ...config, renderTypeList: [FlowNodeInputTypeEnum.JSONEditor] })]
+    });
+    const before = structuredClone(node);
+    expect(check(node)).toEqual([]);
+    expect(node).toEqual(before);
+  });
+
+  it('defers JSON editor expressions until their runtime values are known', () => {
+    const node = makeNode({
+      inputs: [
+        makeInput({
+          renderTypeList: [FlowNodeInputTypeEnum.JSONEditor],
+          valueType: WorkflowIOValueTypeEnum.object,
+          value: '{"count": {{$source.text$}}}',
+          customJsonSchema: { type: 'object', properties: { count: { type: 'number' } } }
+        })
+      ]
+    });
+    expect(check(node)).toEqual([]);
+  });
+
+  it('still rejects incompatible runtime types and schema violations in JSON editor values', () => {
+    const node = makeNode({
+      inputs: [
+        makeInput({
+          key: 'wrongType',
+          renderTypeList: [FlowNodeInputTypeEnum.JSONEditor],
+          valueType: WorkflowIOValueTypeEnum.arrayString,
+          value: '[1]'
+        }),
+        makeInput({
+          key: 'wrongSchema',
+          renderTypeList: [FlowNodeInputTypeEnum.JSONEditor],
+          valueType: WorkflowIOValueTypeEnum.object,
+          value: '{"count": "two"}',
+          customJsonSchema: { type: 'object', properties: { count: { type: 'number' } } }
+        })
+      ]
+    });
+    expect(check(node).map((item) => [item.inputKey, item.code])).toEqual([
+      ['wrongType', 'WORKFLOW_INPUT_VALUE_TYPE_INVALID'],
+      ['wrongSchema', 'WORKFLOW_INPUT_VALUE_SCHEMA_INVALID']
+    ]);
+  });
+
+  it.each([
+    { value: 'legacy-plaintext' },
+    { value: { value: 'plaintext', secret: '' } },
+    { value: { value: '', secret: 'encrypted-placeholder' } },
+    { defaultValue: { secret: 'encrypted-default' } }
+  ])('accepts configured password storage values in ordinary and tool contexts: %j', (config) => {
+    const node = makeNode({
+      inputs: [
+        makeInput({
+          ...config,
+          renderTypeList: [FlowNodeInputTypeEnum.password],
+          customJsonSchema: { type: 'string', minLength: 5 }
+        })
+      ]
+    });
+    expect(check(node)).toEqual([]);
+    expect(check(node, true)).toEqual([]);
+  });
+
+  it('distinguishes empty required secrets from malformed storage values without exposing them', () => {
+    const node = makeNode({
+      inputs: [
+        makeInput({
+          key: 'empty',
+          renderTypeList: [FlowNodeInputTypeEnum.password],
+          value: { value: '', secret: '' }
+        }),
+        makeInput({
+          key: 'optional',
+          renderTypeList: [FlowNodeInputTypeEnum.password],
+          required: false,
+          value: { value: '', secret: '' }
+        }),
+        makeInput({
+          key: 'malformed',
+          renderTypeList: [FlowNodeInputTypeEnum.password],
+          value: { value: 123, secret: 'invalid-with-private-data' }
+        }),
+        makeInput({
+          key: 'malformedEmpty',
+          renderTypeList: [FlowNodeInputTypeEnum.password],
+          required: false,
+          value: []
+        })
+      ]
+    });
+    const diagnostics = check(node);
+    expect(diagnostics.map((item) => [item.inputKey, item.code])).toEqual([
+      ['empty', 'WORKFLOW_REQUIRED_INPUT_MISSING'],
+      ['malformed', 'WORKFLOW_INPUT_VALUE_SCHEMA_INVALID'],
+      ['malformedEmpty', 'WORKFLOW_INPUT_VALUE_SCHEMA_INVALID']
+    ]);
+    expect(JSON.stringify(diagnostics)).not.toContain('invalid-with-private-data');
+  });
+
   it.each([undefined, ['', ''], []])(
     'reports unselected required references as missing: %j',
     (value) => {
