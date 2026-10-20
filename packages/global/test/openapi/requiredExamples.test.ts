@@ -15,14 +15,15 @@ import {
   GetRecordsV2BodyRawSchema
 } from '../../openapi/core/chat/record/api';
 import { describe, expect, it } from 'vitest';
-import { createDocument } from 'zod-openapi';
+import { createDocument, createSchema } from 'zod-openapi';
 import z from 'zod';
 import { setRequiredRequestExamples } from '../../openapi/requiredExamples';
 import { openApiDocumentOptions } from '../../openapi/generation';
 import {
   createChatTargetInputSchema,
   createOutLinkChatTargetInputSchema,
-  createOptionalChatTargetInputSchema
+  createOptionalChatTargetInputSchema,
+  createPaginatedChatTargetInputSchema
 } from '../../openapi/core/chat/api';
 
 /** 用真实 zod-openapi 输出验证示例处理，确保文档约束和响应不被修改。 */
@@ -69,6 +70,26 @@ describe('setRequiredRequestExamples', () => {
       ).toBe(false);
     }
   );
+
+  it('names authentication and pagination choices and hides incompatible fields', () => {
+    const { schema } = createSchema(createPaginatedChatTargetInputSchema({ chatId: z.string() }), {
+      io: 'input',
+      opts: openApiDocumentOptions
+    });
+    expect(schema.anyOf?.map((branch) => branch.title)).toEqual([
+      '应用会话',
+      'Skill 调试会话',
+      '外链会话'
+    ]);
+    expect(schema.anyOf?.[0].anyOf?.map((branch) => branch.title)).toEqual([
+      '按偏移量获取',
+      '按页码获取'
+    ]);
+    expect(schema.anyOf?.[0].anyOf?.[0].properties).not.toHaveProperty('skillId');
+    expect(schema.anyOf?.[0].anyOf?.[0].properties).not.toHaveProperty('outLinkAuthData');
+    expect(schema.anyOf?.[2].anyOf?.[0].properties).not.toHaveProperty('appId');
+    expect(schema.anyOf?.[2].anyOf?.[0].required).toContain('outLinkAuthData');
+  });
 
   it('does not select a target when the entire choice is optional', () => {
     expect(build(createOptionalChatTargetInputSchema({}))).toEqual({});
@@ -151,7 +172,7 @@ describe('conditional required API examples', () => {
     ['API key update', UpdateApiKeyBodySchema, 'name'],
     ['API key tag update', UpdateOpenApiTagBodySchema, 'name'],
     ['MCP proxy', McpAuthProxySchema, 'username'],
-    ['chat proxy', ChatCompletionAuthProxySchema, 'username'],
+    ['chat proxy', ChatCompletionAuthProxySchema, 'tmbId'],
     ['pagination records', GetPaginationRecordsBodyRawSchema, 'appId'],
     ['records v2', GetRecordsV2BodyRawSchema, 'appId']
   ] as const)('produces a valid minimal example for %s', (_, schema, field) => {
@@ -162,7 +183,7 @@ describe('conditional required API examples', () => {
 
   it.each([
     ['/core/chat/history/clearHistories', 'delete', ['appId']],
-    ['/core/chat/history/delHistory', 'delete', ['chatId']],
+    ['/core/chat/history/delHistory', 'delete', ['appId', 'chatId']],
     ['/core/app/tool/getPreviewNode', 'get', ['appId', 'versionId']],
     ['/proApi/support/user/team/collaborator/delete', 'delete', ['tmbId']],
     ['/core/dataset/collection/delete', 'post', ['id']],

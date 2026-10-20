@@ -6,7 +6,11 @@ import { useBoolean, useMemoizedFn, useScroll, useThrottleEffect } from 'ahooks'
 import MyBox from '../components/common/MyBox';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from './useRequest';
-import type { PaginationType, PaginationResponseType } from '@fastgpt/global/openapi/api';
+import {
+  PaginationPageSizeLimit,
+  type PaginationType,
+  type PaginationResponseType
+} from '@fastgpt/global/openapi/api';
 
 const thresholdVal = 100;
 
@@ -27,6 +31,10 @@ export type ScrollListType = ({
   showPaginationTip?: boolean;
 } & BoxProps) => React.JSX.Element;
 
+/**
+ * 管理滚动分页及请求竞争。普通初始化清空列表；静默初始化在响应成功前保留旧快照。
+ * 配置 refreshByIds 后按 ID 原位同步条目，保留其他缓存、分页状态及滚动容器。
+ */
 export function useScrollPagination<
   TParams extends PaginationType,
   TData extends PaginationResponseType
@@ -42,6 +50,7 @@ export function useScrollPagination<
     disabled = false,
     showNoMoreTip = true,
     showPaginationTip = true,
+    refreshByIds,
 
     ...props
   }: {
@@ -54,12 +63,22 @@ export function useScrollPagination<
     disabled?: boolean;
     showNoMoreTip?: boolean;
     showPaginationTip?: boolean;
+    refreshByIds?: {
+      getId: (item: TData['list'][number]) => string;
+      api: (ids: string[], cancelToken?: AbortController) => Promise<TData['list']>;
+    };
   } & Parameters<typeof useRequest>[1]
 ) {
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  const [data, setData] = useState<TData['list']>([]);
+  const [data, setDataState] = useState<TData['list']>([]);
+  const dataRef = useRef(data);
+  // React 提交前也要读到刚更新的缓存，避免连续请求覆盖上一次局部更新或使用旧 offset。
+  const setData = useMemoizedFn((next: React.SetStateAction<TData['list']>) => {
+    dataRef.current = typeof next === 'function' ? next(dataRef.current) : next;
+    setDataState(dataRef.current);
+  });
   const [total, setTotal] = useState(0);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
@@ -68,6 +87,7 @@ export function useScrollPagination<
   const requestControllerRef = useRef<AbortController>();
   const requestIdRef = useRef(0);
   const isRequestingRef = useRef(false);
+  const pendingRefreshIdsRef = useRef<string[]>([]);
   const isEmpty = hasLoaded && total === 0 && data.length === 0 && !isLoading;
 
   const noMore = data.length >= total;
@@ -76,24 +96,33 @@ export function useScrollPagination<
     async ({
       init = false,
       ScrollContainerRef,
-      silent = false
+      silent = false,
+      itemIds
     }: {
       init?: boolean;
       ScrollContainerRef?: RefObject<HTMLDivElement>;
       silent?: boolean;
+      /** 由 refreshItems 发起；使用 ID 接口同步缓存，不走分页接口。 */
+      itemIds?: string[];
     } = {}) => {
+      const refreshIds =
+        itemIds && refreshByIds
+          ? [...new Set([...pendingRefreshIdsRef.current, ...itemIds])]
+          : undefined;
+      if (refreshIds?.length === 0) return;
       if (!init && (noMore || isRequestingRef.current)) return;
 
-      const offset = init ? 0 : data.length;
+      const offset = init ? 0 : dataRef.current.length;
 
       // 请求完成到 React 提交列表更新之间，滚动监听可能再次读到旧 data.length。
       // 用同步游标拦截相同 offset，避免同一页在这个时间窗口被重复请求。
       if (!init && requestedOffsetRef.current === offset) return;
 
       if (init) {
-        // An init request represents new filters, so cancel the old request and start immediately.
+        // 新筛选或后台同步都立即接管请求；连续编辑不同资源时合并尚未完成的 ID，避免漏刷。
         requestControllerRef.current?.abort();
         requestedOffsetRef.current = undefined;
+        pendingRefreshIdsRef.current = refreshIds ?? [];
       } else {
         requestedOffsetRef.current = offset;
       }
@@ -114,12 +143,41 @@ export function useScrollPagination<
       if (init && !silent) {
         setData([]);
         setTotal(0);
-      }
-      if (init) {
         setHasLoaded(false);
       }
 
       try {
+        if (refreshIds && refreshByIds) {
+          const refreshedItems = new Map<string, TData['list'][number]>();
+          // 已加载缓存可能超过接口 ID 上限，全部请求成功后再一次性提交快照。
+          for (let start = 0; start < refreshIds.length; start += PaginationPageSizeLimit) {
+            const list = await refreshByIds.api(
+              refreshIds.slice(start, start + PaginationPageSizeLimit),
+              requestController
+            );
+            if (requestController.signal.aborted || requestId !== requestIdRef.current) return;
+            list.forEach((item) => refreshedItems.set(refreshByIds.getId(item), item));
+          }
+
+          const ids = new Set(refreshIds);
+          let removedCount = 0;
+          const nextData = dataRef.current.flatMap((item) => {
+            const id = refreshByIds.getId(item);
+            if (!ids.has(id)) return [item];
+            const refreshedItem = refreshedItems.get(id);
+            if (refreshedItem !== undefined) return [refreshedItem];
+            // 不再可见或不再符合筛选的资源移出缓存，后续分页从收缩后的长度继续。
+            removedCount += 1;
+            return [];
+          });
+
+          setData(nextData);
+          // ID 查询的 total 仅对应本次 ID 集合，不能覆盖整个列表的总数。
+          setTotal((prev) => Math.max(0, prev - removedCount));
+          pendingRefreshIdsRef.current = [];
+          return;
+        }
+
         const res = await api(
           {
             offset,
@@ -154,11 +212,11 @@ export function useScrollPagination<
             );
           }
 
-          const newData = offset === 0 ? res.list : [...res.list, ...data];
+          const newData = offset === 0 ? res.list : [...res.list, ...dataRef.current];
           setData(newData);
           adjustScrollPosition();
         } else {
-          const newData = offset === 0 ? res.list : [...data, ...res.list];
+          const newData = offset === 0 ? res.list : [...dataRef.current, ...res.list];
           setData(newData);
         }
       } catch (error: any) {
@@ -297,6 +355,16 @@ export function useScrollPagination<
     loadData({ init: true });
   });
 
+  /** 按 ID 同步已加载条目；省略 IDs 时同步整个缓存，返回顺序不影响当前列表顺序。 */
+  const refreshItems = useMemoizedFn((ids?: string[]) => {
+    if (!refreshByIds) return Promise.resolve();
+    return loadData({
+      init: true,
+      silent: true,
+      itemIds: ids ?? dataRef.current.map(refreshByIds.getId)
+    });
+  });
+
   return {
     ScrollData,
     isLoading,
@@ -307,6 +375,7 @@ export function useScrollPagination<
     setData,
     setTotal,
     fetchData: loadData,
-    refreshList
+    refreshList,
+    refreshItems
   };
 }

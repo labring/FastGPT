@@ -1,5 +1,9 @@
 import z from 'zod';
-import { PaginationResponseSchema, PaginationSchema } from '../../api';
+import {
+  PaginationPageSizeSchema,
+  PaginationResponseSchema,
+  createPaginationSchema
+} from '../../api';
 import { UserStatusEnum } from '../../../support/user/constant';
 import { TeamMemberNameSchema } from '../../../support/user/team/memberName';
 
@@ -30,7 +34,8 @@ export type UserItemType = z.infer<typeof UserItemSchema>;
 export const AdminUserStatusFilterEnum = z.enum({ ...UserStatusEnum, cancelled: 'cancelled' });
 export type AdminUserStatusFilterType = z.infer<typeof AdminUserStatusFilterEnum>;
 
-export const GetUsersBodySchema = PaginationSchema.extend({
+export const GetUsersBodySchema = createPaginationSchema({
+  pageSize: PaginationPageSizeSchema.default(20).optional(),
   username: z
     .string()
     .trim()

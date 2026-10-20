@@ -44,7 +44,7 @@ const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
 export type DatasetContextType = {
   myDatasets: DatasetListItemType[];
-  loadMyDatasets: () => Promise<void>;
+  loadMyDatasets: (options?: { silent?: boolean; resourceId?: string }) => Promise<void>;
   refetchPaths: () => void;
   refetchFolderDetail: () => Promise<DatasetItemType | undefined>;
   isFetchingDatasets: boolean;
@@ -160,27 +160,31 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
   const { columnCount, pageSize } = useResponsiveGridPageSize(
     parentId ? { base: 1, sm: 2, md: 2, lg: 3 } : { base: 1, sm: 2, md: 3, lg: 3, xl: 4 }
   );
+  const listParams = {
+    searchKey,
+    withAppCount: true,
+    withFileCount: true,
+    ...(listType ? { type: listType } : {}),
+    ...(applyToolbarFilters ? { sort: listFilters.sort } : {}),
+    ...(tmbIds !== undefined ? { tmbIds } : {})
+  };
 
   const {
     data: myDatasets = [],
     fetchData,
+    refreshItems,
     ScrollData,
     isLoading: isFetchingDatasets,
     isEmpty
   } = useScrollPagination(
-    ({ offset = 0, pageSize = 50 }) =>
-      getDatasetsV2({
-        searchKey,
-        parentId,
-        offset,
-        pageSize,
-        withAppCount: true,
-        withFileCount: true,
-        ...(listType ? { type: listType } : {}),
-        ...(applyToolbarFilters ? { sort: listFilters.sort } : {}),
-        ...(tmbIds !== undefined ? { tmbIds } : {})
-      }),
+    ({ offset = 0, pageSize = 50 }, cancelToken) =>
+      getDatasetsV2({ ...listParams, parentId, offset, pageSize }, cancelToken),
     {
+      refreshByIds: {
+        getId: (item) => item._id,
+        api: (datasetIds, cancelToken) =>
+          getDatasetsV2({ ...listParams, datasetIds }, cancelToken).then(({ list }) => list)
+      },
       refreshDeps: [
         parentId,
         searchKey,
@@ -196,7 +200,14 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
       showPaginationTip: false
     }
   );
-  const loadMyDatasets = useCallback(() => fetchData({ init: true }), [fetchData]);
+  /** 权限变更按 ID 原位同步；未指定目标的静默刷新同步已加载资源，普通刷新重新分页。 */
+  const loadMyDatasets = useCallback(
+    ({ silent = false, resourceId }: { silent?: boolean; resourceId?: string } = {}) => {
+      if (resourceId || silent) return refreshItems(resourceId ? [resourceId] : undefined);
+      return fetchData({ init: true });
+    },
+    [fetchData, refreshItems]
+  );
 
   const { data: paths = [], runAsync: refetchPaths } = useRequest(
     async () => {

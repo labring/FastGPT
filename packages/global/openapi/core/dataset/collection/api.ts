@@ -23,10 +23,11 @@ import {
   CollaboratorListSchema,
   CollaboratorUpdateListSchema
 } from '../../../../support/permission/collaborator.schema';
-import { PaginationResponseSchema, PaginationSchema } from '../../../api';
+import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
 import z from 'zod';
 import {
   createOptionalOutLinkChatTargetInputSchema,
+  createOutLinkChatTargetInputSchema,
   transformChatAuthTargetInput,
   transformOptionalChatAuthTargetInput
 } from '../../chat/api';
@@ -86,38 +87,24 @@ const BasicExportSchema = z
   });
 
 // Schema 2: Export from chat context with app/skill/outLink authentication
-const ChatExportRawSchema = createOptionalOutLinkChatTargetInputSchema({
+const ChatExportRawSchema = createOutLinkChatTargetInputSchema({
   collectionId: ObjectIdSchema.describe('集合ID'),
   chatId: z.string().min(1).max(256).describe('会话ID'),
   chatItemDataId: z.string().min(1).max(256).describe('对话ID'),
   chatTime: z.coerce.date().optional().describe('对话时间')
-})
-  .superRefine((data, ctx) => {
-    const hasAppTarget = !!data.appId;
-    const hasSkillTarget = !!data.skillId;
-    const hasShareAuth = !!(data.outLinkAuthData?.shareId && data.outLinkAuthData?.outLinkUid);
-
-    if (!hasAppTarget && !hasSkillTarget && !hasShareAuth) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: '对话导出必须提供 appId、skillId 或 share auth'
-      });
+}).meta({
+  description: '对话中导出集合，可通过 chatId 等身份信息',
+  example: {
+    collectionId: '68ad85a7463006c963799a05',
+    chatId: '1234567890',
+    chatItemDataId: '1234567890',
+    chatTime: '2025-12-30T00:00:00.000Z',
+    outLinkAuthData: {
+      shareId: '1234567890',
+      outLinkUid: '1234567890'
     }
-  })
-  .meta({
-    ...requiredAlternatives([['appId'], ['skillId'], ['outLinkAuthData']], true),
-    description: '对话中导出集合，可通过 chatId 等身份信息',
-    example: {
-      collectionId: '68ad85a7463006c963799a05',
-      chatId: '1234567890',
-      chatItemDataId: '1234567890',
-      chatTime: '2025-12-30T00:00:00.000Z',
-      outLinkAuthData: {
-        shareId: '1234567890',
-        outLinkUid: '1234567890'
-      }
-    }
-  });
+  }
+});
 
 export const ExportCollectionBodyRawSchema = z.union([ChatExportRawSchema, BasicExportSchema]);
 export const ExportCollectionBodySchema = z.union([
@@ -153,7 +140,7 @@ export const GetCollectionDetailResponseSchema = DatasetCollectionItemSchema.met
 export type GetCollectionDetailResponseType = z.infer<typeof GetCollectionDetailResponseSchema>;
 
 // ============= List Collections V2 =============
-export const ListCollectionV2BodySchema = PaginationSchema.extend({
+export const ListCollectionV2BodySchema = createPaginationSchema({
   datasetId: z.string().meta({ description: '数据集 ID' }),
   parentId: z.string().nullable().optional().default(null).meta({ description: '父级目录 ID' }),
   searchText: z.string().max(100).optional().default('').meta({ description: '搜索文本' }),

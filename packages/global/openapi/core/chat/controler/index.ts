@@ -1,3 +1,4 @@
+import { createChatTargetQueryDocumentSchema } from '../api';
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
@@ -14,7 +15,7 @@ export const ChatControllerPath: OpenAPIPath = {
       description: '',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
       requestParams: {
-        query: InitChatQueryRawSchema
+        query: createChatTargetQueryDocumentSchema(InitChatQueryRawSchema)
       },
       responses: {
         200: {

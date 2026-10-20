@@ -4,11 +4,15 @@ import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
 import { queryArrayParam } from '../../../../common/zod';
 import { DatasetCiteItemSchema } from '../../../../core/dataset/type';
-import { LinkedListResponseSchema, LinkedPaginationSchema, PaginationSchema } from '../../../api';
+import { LinkedListResponseSchema, LinkedPaginationSchema } from '../../../api';
 import { ChatItemMiniSchema } from '../../../../core/chat/type';
 import { AppTTSConfigInputSchema } from '../../app/common/api';
 import { ChatSourceTypeEnum, GetChatTypeEnum } from '../../../../core/chat/constants';
-import { createOutLinkChatTargetInputSchema, transformChatAuthTargetInput } from '../api';
+import {
+  createOutLinkChatTargetInputSchema,
+  createPaginatedChatTargetInputSchema,
+  transformChatAuthTargetInput
+} from '../api';
 
 const GetRecordTypeSchema = z.enum([
   GetChatTypeEnum.normal,
@@ -167,10 +171,8 @@ const GetRecordPropsSchema = {
     description: '是否包含已删除的记录'
   })
 };
-export const GetPaginationRecordsBodyRawSchema = createOutLinkChatTargetInputSchema({
-  ...PaginationSchema.shape,
-  ...GetRecordPropsSchema
-});
+export const GetPaginationRecordsBodyRawSchema =
+  createPaginatedChatTargetInputSchema(GetRecordPropsSchema);
 export const GetPaginationRecordsBodySchema = GetPaginationRecordsBodyRawSchema.transform(
   transformChatAuthTargetInput
 );

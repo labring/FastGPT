@@ -517,25 +517,19 @@ describe('openapi/core/chat target schema', () => {
     ).toThrow();
   });
 
-  it('allows optional target to be omitted but rejects ambiguous optional target', () => {
-    expect(
-      GetHistoriesBodySchema.parse({
-        pageSize: 10,
-        offset: 0
-      })
-    ).toMatchObject({
-      pageSize: 10,
-      offset: 0
-    });
+  it('requires a target for session lists and preserves pagination priority in every auth mode', () => {
+    expect(() => GetHistoriesBodySchema.parse({ pageSize: 10, offset: 0 })).toThrow();
+    expect(() => GetHistoriesBodySchema.parse({ appId, skillId, offset: 0 })).toThrow();
 
-    expect(() =>
-      GetHistoriesBodySchema.parse({
-        appId,
-        skillId,
-        pageSize: 10,
-        offset: 0
-      })
-    ).toThrow();
+    for (const target of [{ appId }, { skillId }, { outLinkAuthData: { shareId, outLinkUid } }]) {
+      const offsetResult = GetHistoriesBodySchema.parse({ ...target, offset: 0, pageNum: -1 });
+      expect(offsetResult).toMatchObject({ offset: 0, pageSize: 10 });
+      expect(offsetResult).not.toHaveProperty('pageNum');
+      const pageResult = GetHistoriesBodySchema.parse({ ...target, pageNum: 2 });
+      expect(pageResult).toMatchObject({ pageNum: 2, pageSize: 10 });
+      expect(pageResult).not.toHaveProperty('offset');
+      expect(() => GetHistoriesBodySchema.parse({ ...target, offset: -1, pageNum: 2 })).toThrow();
+    }
   });
 
   it('requires a target or share auth when clearing chat histories', () => {

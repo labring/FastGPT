@@ -235,7 +235,9 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
         {!!folderDetail && isPc && (
           <Box pt={[4, 6]} pr={[4, 6]} h={'100%'} pb={4} overflow={'auto'}>
             <FolderSlideCard
-              refetchResource={() => Promise.all([refetchFolderDetail(), loadMyApps()])}
+              refetchResource={() =>
+                Promise.all([refetchFolderDetail(), loadMyApps({ silent: true })])
+              }
               resumeInheritPermission={() => resumeInheritPer(folderDetail._id)}
               isInheritPermission={folderDetail.inheritPermission}
               hasParent={!!folderDetail.parentId}

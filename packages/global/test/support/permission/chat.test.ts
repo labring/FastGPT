@@ -20,32 +20,40 @@ describe('permission/chat', () => {
       }
     });
 
-    it('should validate object with only shareId', () => {
+    it('should reject object with only shareId', () => {
       const validData = {
         shareId: 'test-share-id'
       };
 
       const result = ShareChatAuthSchema.safeParse(validData);
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
     });
 
-    it('should validate object with only outLinkUid', () => {
+    it('should reject object with only outLinkUid', () => {
       const validData = {
         outLinkUid: 'test-uid'
       };
 
       const result = ShareChatAuthSchema.safeParse(validData);
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
     });
 
-    it('should validate empty object', () => {
+    it('should reject empty object', () => {
       const result = ShareChatAuthSchema.safeParse({});
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
+    });
+
+    it.each([
+      { shareId: '', outLinkUid: 'test-uid' },
+      { shareId: 'test-share-id', outLinkUid: '' }
+    ])('should reject empty auth fields: %j', (value) => {
+      expect(ShareChatAuthSchema.safeParse(value).success).toBe(false);
     });
 
     it('should reject invalid shareId type', () => {
       const invalidData = {
-        shareId: 123
+        shareId: 123,
+        outLinkUid: 'test-uid'
       };
 
       const result = ShareChatAuthSchema.safeParse(invalidData);
@@ -54,6 +62,7 @@ describe('permission/chat', () => {
 
     it('should reject invalid outLinkUid type', () => {
       const invalidData = {
+        shareId: 'test-share-id',
         outLinkUid: true
       };
 
@@ -77,19 +86,9 @@ describe('permission/chat', () => {
       }
     });
 
-    it('should validate object with share fields only', () => {
-      const validData = {
-        shareId: 'test-share-id',
-        outLinkUid: 'test-uid'
-      };
-
-      const result = OutLinkChatAuthSchema.safeParse(validData);
-      expect(result.success).toBe(true);
-    });
-
-    it('should validate empty object', () => {
+    it('should reject empty object', () => {
       const result = OutLinkChatAuthSchema.safeParse({});
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
     });
 
     it('should parse JSON string and return an auth object', () => {
@@ -109,9 +108,20 @@ describe('permission/chat', () => {
       }
     });
 
+    it.each([
+      {},
+      { shareId: 'test-share-id' },
+      { outLinkUid: 'test-uid' },
+      { shareId: '', outLinkUid: 'test-uid' },
+      { shareId: 'test-share-id', outLinkUid: '' }
+    ])('should reject JSON string with missing or empty auth fields: %j', (value) => {
+      expect(OutLinkChatAuthSchema.safeParse(JSON.stringify(value)).success).toBe(false);
+    });
+
     it('should reject invalid field types', () => {
       const invalidData = {
-        shareId: 123
+        shareId: 123,
+        outLinkUid: 'test-uid'
       };
 
       const result = OutLinkChatAuthSchema.safeParse(invalidData);

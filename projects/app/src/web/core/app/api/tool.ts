@@ -5,7 +5,7 @@ import type {
   FlowNodeTemplateType,
   NodeTemplateListItemType
 } from '@fastgpt/global/core/workflow/type/node';
-import type { PaginationResponseType } from '@fastgpt/global/openapi/api';
+import type { PaginationResponseType, PaginationType } from '@fastgpt/global/openapi/api';
 import type {
   ListToolSetV2BodyType,
   ListToolSetV2ResponseType
@@ -29,10 +29,12 @@ import type {
   GetToolPathQueryType
 } from '@fastgpt/global/openapi/core/app/tool/api';
 
-type TeamAppTemplatesV2Query = Omit<ListAppV2BodyType, 'type'> & {
-  parentType?: AppTypeEnum;
-  type?: AppTypeEnum[];
-};
+/** 分页字段直接保留二选一联合，避免 Omit 将两种定位字段合并为可同时传入。 */
+type TeamAppTemplatesV2Query = PaginationType &
+  Omit<Extract<ListAppV2BodyType, { appIds?: never }>, keyof PaginationType | 'type'> & {
+    parentType?: AppTypeEnum;
+    type?: AppTypeEnum[];
+  };
 
 type AppListItem = ListAppV2ResponseType['list'][number];
 

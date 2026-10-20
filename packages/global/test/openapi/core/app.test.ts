@@ -43,8 +43,12 @@ describe('App OpenAPI contracts', () => {
   });
 
   it('registers app ownership transfer and template type APIs', () => {
-    expect(openAPIDocument.paths?.['/core/app/list']?.post).toBeDefined();
+    expect(openAPIDocument.paths?.['/core/app/list']?.post).toMatchObject({
+      deprecated: true,
+      description: expect.stringContaining('/core/app/listV2')
+    });
     expect(openAPIDocument.paths?.['/core/app/listV2']?.post).toBeDefined();
+    expect(openAPIDocument.paths?.['/core/app/listV2']?.post?.deprecated).not.toBe(true);
     expect(openAPIDocument.paths?.['/core/app/referencedApps']?.get).toBeDefined();
     expect(openAPIDocument.paths?.['/core/app/appsByAppId']).toBeUndefined();
     expect(openAPIDocument.paths?.['/core/app/referencedAppsByAppId']).toBeUndefined();
@@ -189,7 +193,9 @@ describe('App OpenAPI contracts', () => {
       pageNum: 2
     });
     expect(ListEvaluationItemsBodySchema.parse({ evalId: objectId })).toEqual({
-      evalId: objectId
+      evalId: objectId,
+      pageSize: 10,
+      pageNum: 1
     });
     expect(
       ExportEvaluationItemsBodySchema.parse({

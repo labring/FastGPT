@@ -11,7 +11,7 @@ import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { type SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import type { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
+import type { ResolvedChatAuthTargetInput } from '@/web/core/chat/utils';
 import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
 
 export type WorkflowBuilderVersionActions = {
@@ -69,7 +69,7 @@ type ChatBoxDataType = {
 };
 
 // 知识库引用相关 type
-export type GetQuoteDataBasicProps = ChatAuthTargetInput & {
+export type GetQuoteDataBasicProps = ResolvedChatAuthTargetInput & {
   chatId: string;
   chatItemDataId: string;
 };

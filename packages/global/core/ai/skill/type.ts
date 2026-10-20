@@ -71,7 +71,7 @@ export const AgentSkillListItemSchema = z.object({
   createTime: z.coerce.date(),
   updateTime: z.coerce.date(),
   appCount: IntSchema.optional().meta({
-    description: '被正式应用引用的 Skill 数量',
+    description: '被正式应用引用的数量，仅非文件夹资源的 Owner 返回',
     example: 0
   }),
   private: BoolSchema.optional().meta({ description: '是否私有' }),

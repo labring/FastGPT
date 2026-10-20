@@ -53,19 +53,21 @@ export const getDatasetSynonymDetail = async ({
   };
 };
 
-/** 分页搜索当前生效的 mappings。 */
+/** 分页搜索当前生效的 mappings；offset（包含 0）优先，否则按页码定位，默认第一页。 */
 export const searchDatasetSynonymMappings = async ({
   teamId,
   datasetId,
   search,
-  pageNum,
-  pageSize
+  pageNum = 1,
+  pageSize,
+  offset
 }: {
   teamId: string;
   datasetId: string;
   search?: string;
-  pageNum: number;
+  pageNum?: number;
   pageSize: number;
+  offset?: number;
 }) => {
   assertDatasetSynonymEnabled();
 
@@ -82,7 +84,7 @@ export const searchDatasetSynonymMappings = async ({
     MongoDatasetSynonymMapping.countDocuments(match),
     MongoDatasetSynonymMapping.find(match)
       .sort({ normalizedStandardizedTerm: 1 })
-      .skip((pageNum - 1) * pageSize)
+      .skip(offset ?? (pageNum - 1) * pageSize)
       .limit(pageSize)
       .lean()
   ]);

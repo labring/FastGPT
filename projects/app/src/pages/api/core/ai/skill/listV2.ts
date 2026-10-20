@@ -14,23 +14,11 @@ import {
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { listReadableAgentSkills } from '@fastgpt/service/core/ai/skill/manage';
 
+/** 分页或按 ID 列出可读技能；解析时优先保留 ID 查询字段，并约束 ID 数量。 */
 async function handler(req: ApiRequestProps<ListSkillsV2Query>): Promise<ListSkillsResponse> {
-  const {
-    parentId,
-    source,
-    searchKey,
-    category,
-    type,
-    skillIds,
-    offset,
-    page,
-    pageSize,
-    withAppCount,
-    sort,
-    tmbIds
-  } = parseApiInput({ req, bodySchema: ListSkillsV2QuerySchema }).body;
-  const selectedSkillIds = skillIds?.filter(Boolean) ?? [];
-  const isSkillIdsQuery = selectedSkillIds.length > 0;
+  // Schema 仅为选中的分页分支补默认值，ID 查询保持无分页参数。
+  const query = parseApiInput({ req, bodySchema: ListSkillsV2QuerySchema }).body;
+  const parentId = query.skillIds === undefined ? query.parentId : undefined;
   const currentFolderId = normalizeParentId(parentId);
   const {
     tmbId,
@@ -43,7 +31,7 @@ async function handler(req: ApiRequestProps<ListSkillsV2Query>): Promise<ListSki
     per: ReadPermissionVal
   });
 
-  if (currentFolderId && !isSkillIdsQuery) {
+  if (currentFolderId) {
     const folderAccess =
       source === 'store'
         ? undefined
@@ -65,22 +53,12 @@ async function handler(req: ApiRequestProps<ListSkillsV2Query>): Promise<ListSki
   }
 
   const response = await listReadableAgentSkills({
+    ...query,
     teamId,
     tmbId,
     teamPer,
-    parentId: currentFolderId,
     browseDescendants: true,
-    source,
-    searchKey,
-    category,
-    type,
-    skillIds: selectedSkillIds,
-    offset: isSkillIdsQuery ? undefined : offset,
-    page: isSkillIdsQuery ? undefined : (page ?? 1),
-    pageSize: isSkillIdsQuery ? undefined : (pageSize ?? 50),
-    withAppCount,
-    sort,
-    tmbIds
+    withAppCount: true
   });
 
   return ListSkillsResponseSchema.parse({

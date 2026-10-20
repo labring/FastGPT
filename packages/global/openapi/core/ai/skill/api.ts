@@ -21,10 +21,16 @@ import {
   CollaboratorUpdateListSchema,
   ShowUsernameQuerySchema
 } from '../../../../support/permission/collaborator.schema';
-import { AppListSortEnum } from '../../../../core/app/constants';
+import { AppListSortSchema } from '../../../../core/app/constants';
 import { BoolSchema, IntSchema } from '../../../../common/zod';
 import { FolderAccessModeSchema, ParentIdSchema } from '../../../../common/parentFolder/type';
-import { PaginationPageSizeSchema } from '../../../api';
+import {
+  PaginationPageSizeLimit,
+  PaginationPageSizeSchema,
+  createPaginationSchema,
+  PaginationPageNumSchema,
+  ResourceListPageSizeSchema
+} from '../../../api';
 
 const IdSchema = z.string().min(1).meta({ description: '资源 ID' });
 const SandboxInstanceKeySchema = z.string().min(1).describe('FastGPT sandbox instance key');
@@ -32,39 +38,48 @@ const NullableParentIdSchema = ParentIdSchema.meta({
   description: '父级目录 ID'
 });
 
-const createListSkillsQuerySchema = () =>
-  z.object({
-    source: z
-      .enum(['store', 'mine'])
-      .optional()
-      .describe('技能来源: store=系统技能, mine=我的技能'),
-    searchKey: z.string().optional().describe('搜索关键词'),
-    category: AgentSkillCategorySchema.optional().describe('技能分类'),
-    type: AgentSkillTypeSchema.optional().describe('技能类型过滤'),
-    skillIds: z.array(IdSchema).optional().describe('按技能 ID 列表过滤，用于校验已关联技能状态'),
-    parentId: NullableParentIdSchema,
-    offset: IntSchema.optional().describe('偏移量'),
-    page: z.coerce.number().int().positive().optional().describe('页码'),
-    pageSize: PaginationPageSizeSchema.optional(),
-    withAppCount: BoolSchema.optional().meta({
-      example: true,
-      description: '是否返回引用应用数量'
-    }),
-    sort: z.enum(AppListSortEnum).optional().describe('列表排序，缺省按最近修改倒序'),
-    tmbIds: z.array(ObjectIdSchema).optional().describe('按创建者筛选；空数组返回空列表')
-  });
-
-export const ListSkillsQuerySchema = createListSkillsQuerySchema();
-export type ListSkillsQuery = z.infer<typeof ListSkillsQuerySchema>;
-
 /* ============================================================================
  * API: 获取技能列表 V2
  * Route: POST /api/core/ai/skill/listV2
  * Method: POST
- * Description: 分页获取当前团队可见的系统技能或个人技能。
+ * Description: 分页或按 ID 列表获取当前团队可见的系统技能或个人技能，优先按 ID 查询并过滤目录和分页字段。
  * Tags: ['Skill', 'Read']
  * ============================================================================ */
-export const ListSkillsV2QuerySchema = createListSkillsQuerySchema();
+const ListSkillsV2FiltersSchema = z.object({
+  source: z.enum(['store', 'mine']).optional().describe('技能来源: store=系统技能, mine=我的技能'),
+  searchKey: z.string().optional().describe('搜索关键词'),
+  category: AgentSkillCategorySchema.optional().describe('技能分类'),
+  type: AgentSkillTypeSchema.optional().describe('技能类型过滤'),
+  sort: AppListSortSchema.optional(),
+  tmbIds: z.array(ObjectIdSchema).optional().describe('按创建者筛选；空数组返回空列表')
+});
+
+// ID 分支优先匹配，由 Zod 过滤目录和分页字段；分页分支拒绝已有但无效的 ID，避免意外扩大查询范围。
+export const ListSkillsV2QuerySchema = z.union([
+  ListSkillsV2FiltersSchema.extend({
+    skillIds: z
+      .array(IdSchema)
+      .min(1)
+      .max(PaginationPageSizeLimit)
+      .meta({
+        example: ['68ad85a7463006c963799a05'],
+        description: `按技能 ID 精确查询，最多 ${PaginationPageSizeLimit} 个；优先匹配该分支，解析时过滤 parentId 和分页参数，保留公共筛选字段`
+      })
+  }).meta({ title: '按 IDs 获取' }),
+  createPaginationSchema(
+    {
+      ...ListSkillsV2FiltersSchema.shape,
+      pageSize: ResourceListPageSizeSchema,
+      parentId: NullableParentIdSchema.meta({
+        example: null,
+        description:
+          '父级目录 ID；null 或空字符串表示根目录；个人技能搜索限定在指定目录及其子树，不传则搜索全部可读技能'
+      }),
+      skillIds: z.never().optional()
+    },
+    { page: PaginationPageNumSchema }
+  ).meta({ title: '分页获取' })
+]);
 export type ListSkillsV2Query = z.infer<typeof ListSkillsV2QuerySchema>;
 
 export const ListSkillsResponseItemSchema = AgentSkillListItemSchema.omit({

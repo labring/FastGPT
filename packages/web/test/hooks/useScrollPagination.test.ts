@@ -70,6 +70,8 @@ type HarnessProps = {
   showPaginationTip?: boolean;
   showNoMoreTip?: boolean;
   scrollDataShowNoMoreTip?: boolean;
+  refreshApi?: (ids: string[], controller?: AbortController) => Promise<string[]>;
+  pageSize?: number;
 };
 
 const Harness = ({
@@ -78,15 +80,18 @@ const Harness = ({
   onState,
   showPaginationTip = true,
   showNoMoreTip = true,
-  scrollDataShowNoMoreTip
+  scrollDataShowNoMoreTip,
+  refreshApi,
+  pageSize = 10
 }: HarnessProps) => {
   const state = useScrollPagination(api, {
-    pageSize: 10,
+    pageSize,
     params: { query },
     refreshDeps: [query],
     showErrorToast: false,
     showPaginationTip,
-    showNoMoreTip
+    showNoMoreTip,
+    refreshByIds: refreshApi ? { getId: (item) => item.split(':')[0], api: refreshApi } : undefined
   });
 
   useEffect(() => onState(state), [onState, state]);
@@ -110,6 +115,22 @@ const createDeferredApi = () => {
   });
 
   return { api, requests };
+};
+
+const createDeferredRefreshApi = () => {
+  const requests: {
+    ids: string[];
+    controller?: AbortController;
+    resolve: (list: string[]) => void;
+    reject: (error: unknown) => void;
+  }[] = [];
+  const refreshApi = vi.fn(
+    (ids: string[], controller?: AbortController) =>
+      new Promise<string[]>((resolve, reject) => {
+        requests.push({ ids, controller, resolve, reject });
+      })
+  );
+  return { refreshApi, requests };
 };
 
 const renderHarness = async (root: Root, props: HarnessProps) => {
@@ -189,6 +210,35 @@ describe('useScrollPagination', () => {
 
     expect(requests).toHaveLength(2);
     root.unmount();
+  });
+
+  it('keeps cached pages and the scroll container while a silent first-page refresh fails', async () => {
+    const { api, requests } = createDeferredApi();
+    const onState = vi.fn();
+    const host = document.createElement('div');
+    const root = createRoot(host);
+
+    await renderHarness(root, { query: 'silent', api, onState });
+    await act(async () => requests[0].resolve({ list: ['one', 'two'], total: 4 }));
+    await act(async () => {
+      void onState.mock.lastCall?.[0].fetchData();
+    });
+    await act(async () => requests[1].resolve({ list: ['three', 'four'], total: 4 }));
+    const scrollContainer = host.querySelector('[data-testid="scroll-data"]');
+
+    await act(async () => {
+      void onState.mock.lastCall?.[0].fetchData({ init: true, silent: true });
+    });
+    expect(requests[2].params).toEqual({ query: 'silent', offset: 0, pageSize: 10 });
+    expect(onState.mock.lastCall?.[0].isLoading).toBe(false);
+    expect(onState.mock.lastCall?.[0].data).toEqual(['one', 'two', 'three', 'four']);
+    expect(host.querySelector('[data-testid="scroll-data"]')).toBe(scrollContainer);
+
+    await act(async () => requests[2].reject(new Error('offline')));
+    expect(onState.mock.lastCall?.[0].data).toEqual(['one', 'two', 'three', 'four']);
+    expect(onState.mock.lastCall?.[0].total).toBe(4);
+    expect(onState.mock.lastCall?.[0].error?.message).toBe('offline');
+    await act(async () => root.unmount());
   });
 
   it('hides both pagination footer states when disabled', async () => {
@@ -280,5 +330,233 @@ describe('useScrollPagination', () => {
     expect(scrollData?.textContent).not.toContain('common:request_end');
     root.unmount();
     host.remove();
+  });
+});
+
+describe('useScrollPagination.refreshItems', () => {
+  it('updates one ID in place while preserving all loaded pages, total and scroll position', async () => {
+    const { api, requests } = createDeferredApi();
+    const { refreshApi, requests: refreshRequests } = createDeferredRefreshApi();
+    const onState = vi.fn();
+    const host = document.createElement('div');
+    const root = createRoot(host);
+
+    await renderHarness(root, { query: 'ids', api, refreshApi, onState });
+    await act(async () => requests[0].resolve({ list: ['one', 'two'], total: 8 }));
+    await act(async () => {
+      void onState.mock.lastCall?.[0].fetchData();
+    });
+    await act(async () => requests[1].resolve({ list: ['three', 'four'], total: 8 }));
+    await act(async () => {
+      void onState.mock.lastCall?.[0].fetchData();
+    });
+    await act(async () => requests[2].resolve({ list: ['five', 'six'], total: 8 }));
+    const scrollData = host.querySelector<HTMLDivElement>('[data-testid="scroll-data"]')!;
+    scrollData.scrollTop = 320;
+
+    await act(async () => {
+      void onState.mock.lastCall?.[0].refreshItems(['four']);
+    });
+    expect(refreshRequests[0].ids).toEqual(['four']);
+    expect(requests).toHaveLength(3);
+    expect(onState.mock.lastCall?.[0].isLoading).toBe(false);
+    expect(onState.mock.lastCall?.[0].data).toEqual(['one', 'two', 'three', 'four', 'five', 'six']);
+
+    await act(async () => refreshRequests[0].resolve(['four:updated']));
+    expect(onState.mock.lastCall?.[0].data).toEqual([
+      'one',
+      'two',
+      'three',
+      'four:updated',
+      'five',
+      'six'
+    ]);
+    expect(onState.mock.lastCall?.[0].total).toBe(8);
+    expect(host.querySelector('[data-testid="scroll-data"]')).toBe(scrollData);
+    expect(scrollData.scrollTop).toBe(320);
+
+    await act(async () => {
+      void onState.mock.lastCall?.[0].refreshItems([]);
+    });
+    expect(refreshRequests).toHaveLength(1);
+    await act(async () => {
+      void onState.mock.lastCall?.[0].fetchData();
+    });
+    expect(requests[3].params.offset).toBe(6);
+    await act(async () => requests[3].resolve({ list: ['seven', 'eight'], total: 8 }));
+    expect(onState.mock.lastCall?.[0].data).toContain('four:updated');
+    await act(async () => root.unmount());
+  });
+
+  it('removes missing IDs, preserves response-independent order and continues from the reduced offset', async () => {
+    const { api, requests } = createDeferredApi();
+    const { refreshApi, requests: refreshRequests } = createDeferredRefreshApi();
+    const onState = vi.fn();
+    const root = createRoot(document.createElement('div'));
+
+    await renderHarness(root, { query: 'removed', api, refreshApi, onState });
+    await act(async () => requests[0].resolve({ list: ['one', 'two'], total: 5 }));
+    await act(async () => {
+      void onState.mock.lastCall?.[0].fetchData();
+    });
+    await act(async () => requests[1].resolve({ list: ['three', 'four'], total: 5 }));
+    await act(async () => {
+      void onState.mock.lastCall?.[0].refreshItems(['one', 'two', 'four']);
+    });
+    await act(async () => refreshRequests[0].resolve(['four:updated', 'one:updated', 'unknown']));
+
+    expect(onState.mock.lastCall?.[0].data).toEqual(['one:updated', 'three', 'four:updated']);
+    expect(onState.mock.lastCall?.[0].total).toBe(4);
+    await act(async () => {
+      void onState.mock.lastCall?.[0].fetchData();
+    });
+    expect(requests[2].params.offset).toBe(3);
+    await act(async () => requests[2].resolve({ list: ['five'], total: 4 }));
+
+    await act(async () => {
+      void onState.mock.lastCall?.[0].refreshItems();
+    });
+    await act(async () => refreshRequests[1].resolve([]));
+    expect(onState.mock.lastCall?.[0].data).toEqual([]);
+    expect(onState.mock.lastCall?.[0].total).toBe(0);
+    expect(onState.mock.lastCall?.[0].isEmpty).toBe(true);
+    await act(async () => root.unmount());
+  });
+
+  it('cancels an in-flight page and preserves its cache and retry offset if the ID request fails', async () => {
+    const { api, requests } = createDeferredApi();
+    const { refreshApi, requests: refreshRequests } = createDeferredRefreshApi();
+    const onState = vi.fn();
+    const root = createRoot(document.createElement('div'));
+
+    await renderHarness(root, { query: 'failed', api, refreshApi, onState });
+    await act(async () => requests[0].resolve({ list: ['one', 'two'], total: 4 }));
+    await act(async () => {
+      void onState.mock.lastCall?.[0].fetchData();
+    });
+    await act(async () => {
+      void onState.mock.lastCall?.[0].refreshItems(['two']);
+    });
+    expect(requests[1].controller?.signal.aborted).toBe(true);
+    await act(async () => refreshRequests[0].reject(new Error('offline')));
+    await act(async () => requests[1].resolve({ list: ['stale'], total: 3 }));
+
+    expect(onState.mock.lastCall?.[0].data).toEqual(['one', 'two']);
+    expect(onState.mock.lastCall?.[0].total).toBe(4);
+    expect(onState.mock.lastCall?.[0].error?.message).toBe('offline');
+    expect(onState.mock.lastCall?.[0].isLoading).toBe(false);
+    await act(async () => {
+      void onState.mock.lastCall?.[0].refreshItems(['two']);
+    });
+    await act(async () => refreshRequests[1].resolve(['two:updated']));
+    expect(onState.mock.lastCall?.[0].error).toBe(null);
+    await act(async () => {
+      void onState.mock.lastCall?.[0].fetchData();
+    });
+    expect(requests[2].params.offset).toBe(2);
+    await act(async () => root.unmount());
+  });
+
+  it('discards ID responses after switching filters or unmounting', async () => {
+    const { api, requests } = createDeferredApi();
+    const { refreshApi, requests: refreshRequests } = createDeferredRefreshApi();
+    const onState = vi.fn();
+    const root = createRoot(document.createElement('div'));
+
+    await renderHarness(root, { query: 'first', api, refreshApi, onState });
+    await act(async () => requests[0].resolve({ list: ['one'], total: 1 }));
+    await act(async () => {
+      void onState.mock.lastCall?.[0].refreshItems(['one']);
+    });
+    await renderHarness(root, { query: 'second', api, refreshApi, onState });
+    expect(refreshRequests[0].controller?.signal.aborted).toBe(true);
+    await act(async () => requests[1].resolve({ list: ['two'], total: 1 }));
+    await act(async () => refreshRequests[0].resolve(['one:stale']));
+    expect(onState.mock.lastCall?.[0].data).toEqual(['two']);
+
+    await act(async () => {
+      void onState.mock.lastCall?.[0].refreshItems(['two']);
+    });
+    expect(refreshRequests[1].ids).toEqual(['two']);
+    await act(async () => root.unmount());
+    expect(refreshRequests[1].controller?.signal.aborted).toBe(true);
+    await act(async () => refreshRequests[1].reject(new Error('cancelled')));
+  });
+
+  it('merges pending IDs when edits overlap instead of losing the first update', async () => {
+    const { api, requests } = createDeferredApi();
+    const { refreshApi, requests: refreshRequests } = createDeferredRefreshApi();
+    const onState = vi.fn();
+    const root = createRoot(document.createElement('div'));
+
+    await renderHarness(root, { query: 'overlap', api, refreshApi, onState });
+    await act(async () => requests[0].resolve({ list: ['one', 'two'], total: 2 }));
+    await act(async () => {
+      void onState.mock.lastCall?.[0].refreshItems(['one']);
+    });
+    await act(async () => {
+      void onState.mock.lastCall?.[0].refreshItems(['two', 'two']);
+    });
+    expect(refreshRequests[0].controller?.signal.aborted).toBe(true);
+    expect(refreshRequests[1].ids).toEqual(['one', 'two']);
+    await act(async () => refreshRequests[1].resolve(['two:updated', 'one:updated']));
+    await act(async () => refreshRequests[0].resolve(['one:stale']));
+    expect(onState.mock.lastCall?.[0].data).toEqual(['one:updated', 'two:updated']);
+    await act(async () => root.unmount());
+  });
+
+  it('keeps successive updates that finish before React commits the new cache', async () => {
+    const { api, requests } = createDeferredApi();
+    const { refreshApi, requests: refreshRequests } = createDeferredRefreshApi();
+    const onState = vi.fn();
+    const root = createRoot(document.createElement('div'));
+
+    await renderHarness(root, { query: 'batched-render', api, refreshApi, onState });
+    await act(async () => requests[0].resolve({ list: ['one', 'two'], total: 2 }));
+    await act(async () => {
+      const first = onState.mock.lastCall?.[0].refreshItems(['one']);
+      refreshRequests[0].resolve(['one:updated']);
+      await first;
+      const second = onState.mock.lastCall?.[0].refreshItems(['two']);
+      refreshRequests[1].resolve(['two:updated']);
+      await second;
+    });
+
+    expect(onState.mock.lastCall?.[0].data).toEqual(['one:updated', 'two:updated']);
+    await act(async () => root.unmount());
+  });
+
+  it('batches all cached IDs at the API limit and commits only after every batch succeeds', async () => {
+    const { api, requests } = createDeferredApi();
+    const { refreshApi, requests: refreshRequests } = createDeferredRefreshApi();
+    const onState = vi.fn();
+    const root = createRoot(document.createElement('div'));
+    const firstPage = Array.from({ length: 500 }, (_, index) => String(index));
+    const cache = [...firstPage, '500', '501'];
+
+    await renderHarness(root, { query: 'batch', api, refreshApi, onState, pageSize: 500 });
+    await act(async () => requests[0].resolve({ list: firstPage, total: 600 }));
+    await act(async () => {
+      void onState.mock.lastCall?.[0].fetchData();
+    });
+    await act(async () => requests[1].resolve({ list: ['500', '501'], total: 600 }));
+    await act(async () => {
+      void onState.mock.lastCall?.[0].refreshItems();
+    });
+    expect(refreshRequests[0].ids).toEqual(firstPage);
+    await act(async () => refreshRequests[0].resolve(firstPage.map((id) => `${id}:updated`)));
+    expect(refreshRequests[1].ids).toEqual(['500', '501']);
+    expect(onState.mock.lastCall?.[0].data).toEqual(cache);
+    await act(async () => refreshRequests[1].reject(new Error('second batch failed')));
+    expect(onState.mock.lastCall?.[0].data).toEqual(cache);
+
+    await act(async () => {
+      void onState.mock.lastCall?.[0].refreshItems();
+    });
+    await act(async () => refreshRequests[2].resolve(firstPage.map((id) => `${id}:updated`)));
+    await act(async () => refreshRequests[3].resolve(['500:updated', '501:updated']));
+    expect(onState.mock.lastCall?.[0].data).toEqual(cache.map((id) => `${id}:updated`));
+    expect(onState.mock.lastCall?.[0].total).toBe(600);
+    await act(async () => root.unmount());
   });
 });

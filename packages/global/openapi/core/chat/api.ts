@@ -1,4 +1,3 @@
-import { requiredAlternatives } from '../../../common/zod/openapi';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '../../../core/chat/constants';
 import { isAuxiliaryGenerationSourceType } from '../../../common/chat/source';
@@ -8,6 +7,7 @@ import {
   type OutLinkChatAuthProps
 } from '../../../support/permission/chat';
 import z from 'zod';
+import { createPaginationSchema } from '../../api';
 
 export const ChatGenerateStatusSchema = z
   .enum(ChatGenerateStatusEnum)
@@ -16,11 +16,11 @@ export const ChatGenerateStatusSchema = z
 const ChatTargetInputShape = {
   appId: ObjectIdSchema.optional().meta({
     example: '68ad85a7463006c963799a05',
-    description: '应用 ID。appId、skillId 和 outLinkAuthData 必须且只能传一个。'
+    description: '应用 ID，使用接口允许的请求头凭证鉴权。'
   }),
   skillId: ObjectIdSchema.optional().meta({
     example: '68ad85a7463006c963799a06',
-    description: 'Skill Edit 调试 ID。appId、skillId 和 outLinkAuthData 必须且只能传一个。'
+    description: 'Skill Edit 调试 ID，使用接口允许的请求头凭证鉴权。'
   }),
   sourceType: z
     .enum([
@@ -45,12 +45,8 @@ type ChatTargetInput = {
 
 const OutLinkChatAuthInputShape = {
   outLinkAuthData: OutLinkChatAuthSchema.optional().describe(
-    '外链鉴权数据。share 模式传 shareId/outLinkUid。'
+    '外链鉴权数据，包含 shareId/outLinkUid。优先使用外链身份；允许同时携带 token/Cookie，受保护外链仍需校验登录态。'
   )
-};
-
-type RefineChatAuthTargetInputOptions = {
-  required: boolean;
 };
 
 export type ChatTargetInputType =
@@ -161,109 +157,6 @@ export const buildChatTargetResponse = ({
 export const createChatTargetResponseSchema = <T extends z.ZodRawShape>(shape: T) =>
   z.intersection(z.object(shape), ChatTargetResponseSchema);
 
-export const refineRequiredChatTargetInput = (
-  data: {
-    appId?: unknown;
-    skillId?: unknown;
-    sourceType?: unknown;
-    outLinkAuthData?: unknown;
-  },
-  ctx: z.RefinementCtx
-) => {
-  refineChatAuthTargetInput(data, ctx, { required: true });
-};
-
-export const refineOptionalChatTargetInput = (
-  data: {
-    appId?: unknown;
-    skillId?: unknown;
-    sourceType?: unknown;
-    outLinkAuthData?: unknown;
-  },
-  ctx: z.RefinementCtx
-) => {
-  refineChatAuthTargetInput(data, ctx, { required: false });
-};
-
-/**
- * 校验 chat API 的资源 target 与授权上下文组合。
- *
- * `appId/skillId` 负责定位会话资源；share 模式通过 `outLinkAuthData` 传 `shareId/outLinkUid`，
- * 由后端鉴权解析真实 appId。
- */
-const refineChatAuthTargetInput = (
-  data: ChatTargetInput,
-  ctx: z.RefinementCtx,
-  { required }: RefineChatAuthTargetInputOptions
-) => {
-  const hasAppTarget = !!data.appId;
-  const hasSkillTarget = !!data.skillId;
-  const isExplicitAppSource = isAuxiliaryGenerationSourceType(data.sourceType);
-  const nestedAuthData = getNestedOutLinkAuthData(data);
-  const shareId = nestedAuthData.shareId;
-  const outLinkUid = nestedAuthData.outLinkUid;
-  const hasShareId = !!shareId;
-  const hasOutLinkUid = !!outLinkUid;
-  const hasShareAuth = hasShareId || hasOutLinkUid;
-  const hasCompleteShareAuth = hasShareId && hasOutLinkUid;
-
-  if (hasAppTarget && hasSkillTarget) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'appId and skillId cannot be provided at the same time'
-    });
-  }
-
-  if ([hasAppTarget, hasSkillTarget, hasCompleteShareAuth].filter(Boolean).length > 1) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'appId, skillId and share auth cannot be provided at the same time'
-    });
-  }
-
-  if (isExplicitAppSource && !hasAppTarget) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: `sourceType=${String(data.sourceType)} requires appId`
-    });
-  }
-
-  if (isExplicitAppSource && hasSkillTarget) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: `sourceType=${String(data.sourceType)} cannot be used with skillId`
-    });
-  }
-
-  if (hasShareAuth && !hasCompleteShareAuth) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'shareId and outLinkUid must be provided together'
-    });
-  }
-
-  if (hasSkillTarget && hasShareAuth) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'skillId cannot be used with share auth'
-    });
-  }
-
-  if (hasAppTarget && hasCompleteShareAuth) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'appId cannot be used with share auth'
-    });
-  }
-
-  if (required && !hasAppTarget && !hasSkillTarget && !hasCompleteShareAuth) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'appId, skillId or share auth must be provided'
-    });
-  }
-};
-
 /** 只解析资源来源；必填、互斥和外链组合继续由各 raw schema 校验。 */
 const resolveChatSourceType = ({ skillId, sourceType }: ChatTargetInput) => {
   if (skillId) return ChatSourceTypeEnum.skillEdit;
@@ -361,61 +254,132 @@ export const transformOptionalChatTargetInput = <T extends ChatTargetInput>(data
 /** 包含授权上下文、且允许缺省 target 的转换函数。 */
 export const transformOptionalChatAuthTargetInput = transformOptionalChatTargetInput;
 
-/**
- * 构造对外 API 使用的 chat target 入参 schema。
- *
- * 该 schema 不包含 transform，专门用于 OpenAPI 文档和前端请求类型。
- * 运行时 API route 应使用 `withChatTarget`，在 `parseApiInput` 阶段转换为
- * `sourceType/sourceId`，避免 service 层继续感知 `appId/skillId` 原始字段。
- */
+/** 为同一份业务字段构造资源互斥分支，不复制业务字段定义。 */
+const createChatTargetBranches = <T extends z.ZodRawShape>(schema: z.ZodObject<T>) =>
+  [
+    schema
+      .extend({
+        appId: ChatTargetInputShape.appId.nonoptional(),
+        skillId: z.never().optional(),
+        sourceType: ChatTargetInputShape.sourceType
+      })
+      .meta({
+        title: '应用会话',
+        description:
+          '通过 appId 定位会话。接口同时支持 API Key 和登录态时，Authorization 优先于 token/Cookie。'
+      }),
+    schema
+      .extend({
+        appId: z.never().optional(),
+        skillId: ChatTargetInputShape.skillId.nonoptional(),
+        sourceType: z.never().optional()
+      })
+      .meta({
+        title: 'Skill 调试会话',
+        description: '通过 skillId 定位调试会话，使用接口允许的请求头凭证鉴权。'
+      })
+  ] as const;
+
+/** 外链与资源 target 分别校验；token/Cookie 属于请求头，不参与 body/query 字段互斥。 */
+const createOutLinkChatTargetBranches = <T extends z.ZodRawShape>(schema: z.ZodObject<T>) => {
+  const [app, skill] = createChatTargetBranches(schema);
+  return [
+    app.extend({ outLinkAuthData: z.never().optional() }).meta(app.meta() ?? {}),
+    skill.extend({ outLinkAuthData: z.never().optional() }).meta(skill.meta() ?? {}),
+    schema
+      .extend({
+        appId: z.never().optional(),
+        skillId: z.never().optional(),
+        sourceType: z.never().optional(),
+        outLinkAuthData: OutLinkChatAuthInputShape.outLinkAuthData.nonoptional()
+      })
+      .meta({
+        title: '外链会话',
+        description:
+          '通过 outLinkAuthData 解析真实应用。外链身份优先于请求头身份；token/Cookie 可以同时传入，受保护外链仍会校验登录态。外链校验失败时不会回退到普通资源鉴权。'
+      })
+  ] as const;
+};
+
+/** 没有会话上下文时，引用数据等接口按资源自身权限访问，禁止吞掉无效的显式 target。 */
+const createNoChatTargetSchema = <T extends z.ZodRawShape>(shape: T) =>
+  z
+    .object({
+      ...ChatTargetInputShape,
+      ...shape,
+      appId: z.never().optional(),
+      skillId: z.never().optional(),
+      sourceType: z.never().optional(),
+      outLinkAuthData: z.never().optional()
+    })
+    .meta({ title: '直接访问资源', description: '不使用会话上下文，按资源自身权限鉴权。' });
+
+/** 资源 target 的校验、类型和文档共用具名 union；运行时转换为 sourceType/sourceId。 */
 export const createChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) =>
-  z
-    .object({
-      ...ChatTargetInputShape,
-      ...shape
-    })
-    .superRefine(refineRequiredChatTargetInput)
-    .meta(requiredAlternatives([['appId'], ['skillId']], true));
+  z.union(createChatTargetBranches(z.object({ ...ChatTargetInputShape, ...shape })));
 
-/**
- * 构造允许缺省 chat target 的对外入参 schema。
- *
- * 仅用于兼容外链等可从鉴权上下文反推出 App 的接口；普通标准 chat API
- * 应继续使用 `createChatTargetInputSchema`，要求 target 必填且互斥。
- */
+/** 用于可以直接按资源权限访问、也可以携带会话上下文的接口。 */
 export const createOptionalChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) =>
-  z
-    .object({
-      ...ChatTargetInputShape,
-      ...shape
-    })
-    .superRefine(refineOptionalChatTargetInput);
+  z.union([createNoChatTargetSchema(shape), ...createChatTargetInputSchema(shape).options]);
+
+/** 外链和普通资源会话二选一；请求头登录态可与外链鉴权数据同时存在。 */
+export const createOutLinkChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) =>
+  z.union(
+    createOutLinkChatTargetBranches(
+      z.object({
+        ...ChatTargetInputShape,
+        ...OutLinkChatAuthInputShape,
+        ...shape
+      })
+    )
+  );
+
+/** 资源直接访问或三种会话上下文；错误的显式鉴权数据不会降级为直接访问。 */
+export const createOptionalOutLinkChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) =>
+  z.union([createNoChatTargetSchema(shape), ...createOutLinkChatTargetInputSchema(shape).options]);
+
+/** 会话上下文和分页方式分别选择；每个鉴权分支复用公共分页校验和 offset 优先规则。 */
+export const createPaginatedChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) => {
+  const [app, skill, outLink] = createOutLinkChatTargetInputSchema(shape).options;
+  return z.union([
+    createPaginationSchema(app.shape).meta(app.meta() ?? {}),
+    createPaginationSchema(skill.shape).meta(skill.meta() ?? {}),
+    createPaginationSchema(outLink.shape).meta(outLink.meta() ?? {})
+  ]);
+};
 
 /**
- * 构造包含外链鉴权字段的 chat target 入参 schema。
- *
- * 不能用 `OutLinkChatAuthSchema.extend(createChatTargetInputSchema(...).shape)` 拼接，
- * 否则会丢失 `createChatTargetInputSchema` 上 chat target 互斥校验。
+ * OpenAPI query parameters 只能平铺，zod-openapi 不支持直接注册对象 union。
+ * 仅为文档投影各分支字段及必填组合；API 入参校验继续使用原始 union。
  */
-export const createOutLinkChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) =>
-  z
-    .object({
-      ...ChatTargetInputShape,
-      ...OutLinkChatAuthInputShape,
-      ...shape
-    })
-    .superRefine(refineRequiredChatTargetInput)
-    .meta(requiredAlternatives([['appId'], ['skillId'], ['outLinkAuthData']], true));
+export const createChatTargetQueryDocumentSchema = <
+  T extends readonly z.ZodObject<Record<string, z.ZodType>>[]
+>(
+  schema: z.ZodUnion<T>
+) => {
+  const branches = schema.options;
+  const shape: Record<string, z.ZodType> = {};
+  const isDisabled = (field: z.core.$ZodType): boolean =>
+    field instanceof z.ZodNever || (field instanceof z.ZodOptional && isDisabled(field.unwrap()));
 
-/** 构造允许缺省 chat target、且包含外链鉴权字段的入参 schema。 */
-export const createOptionalOutLinkChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) =>
-  z
-    .object({
-      ...ChatTargetInputShape,
-      ...OutLinkChatAuthInputShape,
-      ...shape
-    })
-    .superRefine(refineOptionalChatTargetInput);
+  for (const branch of branches) {
+    for (const [key, field] of Object.entries(branch.shape)) {
+      if (key in shape || isDisabled(field)) continue;
+      const requiredInAll = branches.every(
+        (option) => option.shape[key] && !option.shape[key].safeParse(undefined).success
+      );
+      shape[key] = requiredInAll ? field : field.optional();
+    }
+  }
+  return z.object(shape).meta({
+    anyOf: branches.map((branch) => ({
+      title: branch.meta()?.title,
+      required: Object.entries(branch.shape)
+        .filter(([, field]) => !field.safeParse(undefined).success)
+        .map(([key]) => key)
+    }))
+  });
+};
 
 /**
  * API route runtime schema helper.

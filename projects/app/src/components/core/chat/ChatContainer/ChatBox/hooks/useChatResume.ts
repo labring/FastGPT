@@ -29,14 +29,14 @@ import {
 } from '../utils/resume';
 import type { ChatGeneratingConflictRecovery, ChatSiteItemType } from '../type';
 import type { generatingMessageProps } from '../../type';
-import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
+import type { ResolvedChatAuthTargetInput } from '@/web/core/chat/utils';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 import { getChatHistoryStatus } from '@/web/core/chat/history/api';
 
 type FinishChatGenerateStatus = (params: {
   status: ChatGenerateStatusEnum;
   finishedInActiveChat: boolean;
-  targetChatTarget?: ChatAuthTargetInput;
+  targetChatTarget?: ResolvedChatAuthTargetInput;
   targetSourceKey?: string;
   targetChatId?: string;
   shouldUpdateChatBoxData?: (state: {

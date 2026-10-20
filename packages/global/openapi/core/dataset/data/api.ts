@@ -8,8 +8,7 @@ import {
 } from '../../../../core/dataset/type';
 import { DatasetCollectionDataProcessModeEnum } from '../../../../core/dataset/constants';
 import { DatasetDataIndexStatusEnum } from '../../../../core/dataset/data/constants';
-import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
-import { PaginationSchema, PaginationResponseSchema } from '../../../api';
+import { createPaginationSchema, PaginationResponseSchema } from '../../../api';
 import {
   createOptionalOutLinkChatTargetInputSchema,
   transformOptionalChatAuthTargetInput
@@ -318,7 +317,7 @@ export const GetDataListItemSchema = z.object({
   updated: z.boolean().optional().meta({ description: '是否已更新' })
 });
 
-export const GetDatasetDataListBodySchema = PaginationSchema.extend({
+export const GetDatasetDataListBodySchema = createPaginationSchema({
   collectionId: ObjectIdSchema.meta({
     example: '68ad85a7463006c963799a06',
     description: '集合 ID'
@@ -338,7 +337,7 @@ export type GetDatasetDataListResponse = z.infer<typeof GetDatasetDataListRespon
  * Route: POST /api/core/dataset/data/list
  * @deprecated
  * ============================================================================ */
-export const GetDatasetDataListLegacyBodySchema = PaginationSchema.extend({
+export const GetDatasetDataListLegacyBodySchema = createPaginationSchema({
   collectionId: ObjectIdSchema.meta({
     example: '68ad85a7463006c963799a06',
     description: '集合 ID'

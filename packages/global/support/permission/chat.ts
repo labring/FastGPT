@@ -1,8 +1,8 @@
 import z from 'zod';
 
 export const ShareChatAuthSchema = z.object({
-  shareId: z.string().optional().describe('分享链接ID'),
-  outLinkUid: z.string().optional().describe('外链用户ID')
+  shareId: z.string().min(1).describe('分享链接ID'),
+  outLinkUid: z.string().min(1).describe('外链用户ID')
 });
 export type ShareChatAuthProps = z.infer<typeof ShareChatAuthSchema>;
 
@@ -23,20 +23,23 @@ export const parseOutLinkChatAuthInput = (value: unknown) => {
 };
 
 export const OutLinkChatAuthSchema = z.union([
-  ShareChatAuthSchema,
-  z.string().transform((value, ctx) => {
-    const parsedValue = parseOutLinkChatAuthInput(value);
-    const parsedAuth = ShareChatAuthSchema.safeParse(parsedValue);
+  ShareChatAuthSchema.meta({ title: '对象格式' }),
+  z
+    .string()
+    .transform((value, ctx) => {
+      const parsedValue = parseOutLinkChatAuthInput(value);
+      const parsedAuth = ShareChatAuthSchema.safeParse(parsedValue);
 
-    if (!parsedAuth.success) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Invalid outLinkAuthData'
-      });
-      return z.NEVER;
-    }
+      if (!parsedAuth.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Invalid outLinkAuthData'
+        });
+        return z.NEVER;
+      }
 
-    return parsedAuth.data;
-  })
+      return parsedAuth.data;
+    })
+    .meta({ title: 'JSON 字符串格式' })
 ]);
 export type OutLinkChatAuthProps = z.infer<typeof OutLinkChatAuthSchema>;

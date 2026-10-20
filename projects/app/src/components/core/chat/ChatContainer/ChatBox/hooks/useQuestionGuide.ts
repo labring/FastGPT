@@ -1,7 +1,7 @@
 import { useCallback, type MutableRefObject } from 'react';
 import type { AppQGConfigType } from '@fastgpt/global/core/app/type';
 import { postQuestionGuide } from '@/web/core/ai/api';
-import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
+import type { ResolvedChatAuthTargetInput } from '@/web/core/chat/utils';
 
 /**
  * 创建回答后的问题引导。
@@ -33,7 +33,7 @@ export const useQuestionGuide = ({
   setQuestionGuide,
   generatingScroll
 }: {
-  chatTarget?: ChatAuthTargetInput;
+  chatTarget?: ResolvedChatAuthTargetInput;
   chatId: string;
   questionGuide: AppQGConfigType;
   chatControllerRef: MutableRefObject<AbortController>;

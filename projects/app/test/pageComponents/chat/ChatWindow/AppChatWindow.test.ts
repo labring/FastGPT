@@ -107,7 +107,7 @@ describe('AppChatWindow recently used refresh timing', () => {
     useChatStore.persist?.setOptions({
       storage: createJSONStorage(() => dom.window.sessionStorage)
     });
-    useChatStore.setState({ appId: 'A', chatId: 'chat', outLinkAuthData: {} });
+    useChatStore.setState({ appId: 'A', chatId: 'chat', outLinkAuthData: undefined });
     root = createRoot(document.getElementById('root')!);
   });
   afterEach(async () => {

@@ -29,8 +29,7 @@ export const useSkillSelectData = () => {
     params: {
       source: 'mine',
       parentId,
-      searchKey: searchKey || undefined,
-      withAppCount: false
+      searchKey: searchKey || undefined
     },
     pageSize: 50,
     refreshDeps: [parentId, searchKey],

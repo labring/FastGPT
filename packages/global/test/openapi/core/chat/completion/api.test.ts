@@ -1,12 +1,67 @@
 import {
   ChatHomeBodySchema,
+  ChatCompletionAuthProxySchema,
   ChatTestPropsSchema,
   CompletionsPropsSchema
 } from '@fastgpt/global/openapi/core/chat/completion/api';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { openAPIDocument } from '@fastgpt/global/openapi/provider/devapi';
+import { openApiDocumentOptions } from '@fastgpt/global/openapi/generation';
 import { describe, expect, expectTypeOf, it } from 'vitest';
+import { createSchema } from 'zod-openapi';
+
+describe('ChatCompletionAuthProxySchema', () => {
+  const tmbId = '68ad85a7463006c963799a05';
+  const username = 'user@example.com';
+
+  it.each([undefined, username, '', null, 123])(
+    'keeps only tmbId when it is provided, ignoring username: %j',
+    (username) => {
+      expect(ChatCompletionAuthProxySchema.parse({ tmbId, username })).toEqual({ tmbId });
+    }
+  );
+
+  it.each([undefined, null])('uses username when tmbId is omitted or null: %j', (tmbId) => {
+    expect(ChatCompletionAuthProxySchema.parse({ username: ` ${username} `, tmbId })).toEqual({
+      username,
+      tmbId: undefined
+    });
+  });
+
+  it.each([
+    {},
+    { tmbId: null },
+    { username: '' },
+    { username: ' ' },
+    { username: null },
+    { username: 'a'.repeat(129) },
+    { username, tmbId: '' },
+    { username, tmbId: 'invalid-id' }
+  ])('rejects missing identity or invalid selected identity: %j', (value) => {
+    expect(ChatCompletionAuthProxySchema.safeParse(value).success).toBe(false);
+  });
+
+  it('documents named identity choices with only their supported fields', () => {
+    const { schema } = createSchema(CompletionsPropsSchema, {
+      io: 'input',
+      opts: openApiDocumentOptions
+    });
+    if ('$ref' in schema) throw new Error('Unexpected body schema reference');
+    const authProxy = schema.properties!.authProxy;
+    if ('$ref' in authProxy) throw new Error('Unexpected authProxy schema reference');
+
+    expect(authProxy.description).toContain('优先使用 tmbId');
+    expect(authProxy.anyOf).toHaveLength(2);
+    expect(
+      authProxy.anyOf?.map((choice) => ('title' in choice ? choice.title : undefined))
+    ).toEqual(['按团队成员 ID', '按用户名']);
+    expect(authProxy.anyOf?.[0]).toMatchObject({ required: ['tmbId'] });
+    expect(authProxy.anyOf?.[1]).toMatchObject({ required: ['username'] });
+    expect(authProxy.anyOf?.[0]).not.toHaveProperty('properties.username');
+    expect(authProxy.anyOf?.[1]).not.toHaveProperty('properties.tmbId');
+  });
+});
 
 describe('CompletionsPropsSchema defaults', () => {
   it.each([undefined, null])('preserves defaults for empty fields: %j', (value) => {

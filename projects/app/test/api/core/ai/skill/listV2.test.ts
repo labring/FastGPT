@@ -1,7 +1,6 @@
 import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
 
-import handler from '@/pages/api/core/ai/skill/list';
-import handlerV2 from '@/pages/api/core/ai/skill/listV2';
+import handler from '@/pages/api/core/ai/skill/listV2';
 import detailHandler from '@/pages/api/core/ai/skill/detail';
 import folderPathHandler from '@/pages/api/core/ai/skill/folder/path';
 import { onCreateApp } from '@/pages/api/core/app/create';
@@ -13,10 +12,9 @@ import type {
   GetSkillDetailQuery,
   GetSkillFolderPathQuery,
   GetSkillFolderPathResponse,
-  ListSkillsQuery,
   ListSkillsResponse,
   ListSkillsV2Query
-} from '@fastgpt/global/core/ai/skill/api';
+} from '@fastgpt/global/openapi/core/ai/skill/api';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { AppListSortEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -31,6 +29,7 @@ import {
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { Types } from '@fastgpt/service/common/mongo';
+import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
@@ -39,7 +38,7 @@ import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
 
-describe('POST /api/core/ai/skill/list', () => {
+describe('POST /api/core/ai/skill/listV2', () => {
   it('文件夹和 Skill 统一按修改时间混排', async () => {
     const owner = await getUser(`agent-skill-sort-owner-${getNanoid(6)}`);
 
@@ -70,13 +69,19 @@ describe('POST /api/core/ai/skill/list', () => {
       }
     ]);
 
-    const result = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(handler, {
-      auth: owner,
-      body: { source: 'mine', parentId: null, withAppCount: false }
-    });
+    const result = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
+      handler,
+      {
+        auth: owner,
+        body: { source: 'mine', parentId: null }
+      }
+    );
 
     expect(result.data.list.every((item) => item.avatar === '/icon/logo.svg')).toBe(true);
-    expect(result.data.list.find((item) => item.name === 'Newer skill')?.private).toBe(true);
+    expect(result.data.list.find((item) => item.name === 'Newer skill')).toMatchObject({
+      private: true,
+      appCount: 0
+    });
     expect(
       await MongoAgentSkills.countDocuments({ teamId: owner.teamId, avatar: { $exists: true } })
     ).toBe(0);
@@ -85,7 +90,11 @@ describe('POST /api/core/ai/skill/list', () => {
       'Newer skill',
       'Older folder'
     ]);
-    expect(result.data.list.every((item) => item.appCount === undefined)).toBe(true);
+    expect(
+      result.data.list
+        .filter((item) => item.type === AgentSkillTypeEnum.folder)
+        .every((item) => item.appCount === undefined)
+    ).toBe(true);
   });
 
   it('按创建者筛选并支持创建时间排序和空选择', async () => {
@@ -118,14 +127,13 @@ describe('POST /api/core/ai/skill/list', () => {
       }
     ]);
 
-    const filtered = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(
+    const filtered = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
       handler,
       {
         auth: owner,
         body: {
           source: 'mine',
           parentId: null,
-          withAppCount: false,
           tmbIds: [String(member.tmbId)],
           sort: AppListSortEnum.createTimeAsc
         }
@@ -137,10 +145,13 @@ describe('POST /api/core/ai/skill/list', () => {
       String(newerSkill._id)
     ]);
 
-    const empty = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(handler, {
-      auth: owner,
-      body: { source: 'mine', parentId: null, tmbIds: [] }
-    });
+    const empty = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
+      handler,
+      {
+        auth: owner,
+        body: { source: 'mine', parentId: null, tmbIds: [] }
+      }
+    );
     expect(empty.data).toEqual({ list: [], total: 0 });
   });
 
@@ -156,13 +167,10 @@ describe('POST /api/core/ai/skill/list', () => {
         updateTime: new Date(`2024-01-0${index}T00:00:00.000Z`)
       }))
     );
-    const res = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
-      handlerV2,
-      {
-        auth: user,
-        body: { source: 'mine', page: 2, pageSize: 1, withAppCount: false }
-      }
-    );
+    const res = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(handler, {
+      auth: user,
+      body: { source: 'mine', page: 2, pageSize: 1 }
+    });
 
     expect(res.code).toBe(200);
     expect(res.data.total).toBe(3);
@@ -170,41 +178,6 @@ describe('POST /api/core/ai/skill/list', () => {
     expect(res.data.list[0].name).toBe('Paged Skill 2');
   });
 
-  it('V2 sorts folders and skills by update time', async () => {
-    const user = await getUser(`agent-skill-list-sort-${getNanoid(6)}`);
-    await MongoAgentSkills.create([
-      {
-        name: 'Recently Updated Folder',
-        type: AgentSkillTypeEnum.folder,
-        source: AgentSkillSourceEnum.personal,
-        teamId: user.teamId,
-        tmbId: user.tmbId,
-        updateTime: new Date('2024-01-02T00:00:00.000Z')
-      },
-      {
-        name: 'Older Skill',
-        type: AgentSkillTypeEnum.skill,
-        source: AgentSkillSourceEnum.personal,
-        teamId: user.teamId,
-        tmbId: user.tmbId,
-        updateTime: new Date('2024-01-01T00:00:00.000Z')
-      }
-    ]);
-
-    const res = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
-      handlerV2,
-      {
-        auth: user,
-        body: { source: 'mine', parentId: null, withAppCount: false }
-      }
-    );
-
-    expect(res.code).toBe(200);
-    expect(res.data.list.map((item) => item.name)).toEqual([
-      'Recently Updated Folder',
-      'Older Skill'
-    ]);
-  });
   it('omits skill folder counts and counts direct references for child skills', async () => {
     const user = await getUser(`agent-skill-folder-count-${getNanoid(6)}`);
     const folderId = new Types.ObjectId();
@@ -252,144 +225,23 @@ describe('POST /api/core/ai/skill/list', () => {
     });
 
     const folderResponse = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
-      handlerV2,
-      { auth: user, body: { source: 'mine', parentId: null, withAppCount: true } }
+      handler,
+      { auth: user, body: { source: 'mine', parentId: null } }
     );
     const folder = folderResponse.data.list.find((item) => String(item._id) === String(folderId));
     expect(folder).toBeDefined();
     expect(folder).not.toHaveProperty('appCount');
 
     const childResponse = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
-      handlerV2,
+      handler,
       {
         auth: user,
-        body: { source: 'mine', parentId: String(folderId), withAppCount: true }
+        body: { source: 'mine', parentId: String(folderId) }
       }
     );
     expect(
       childResponse.data.list.find((item) => String(item._id) === String(skillId))
     ).toMatchObject({ appCount: 1 });
-  });
-
-  it('V2 applies creator and sort filters', async () => {
-    const owner = await getUser(`agent-skill-v2-filter-owner-${getNanoid(6)}`);
-    const member = await getUser(`agent-skill-v2-filter-member-${getNanoid(6)}`, owner.teamId);
-    const [olderSkill, newerSkill] = await MongoAgentSkills.create([
-      {
-        name: 'Older V2 member skill',
-        type: AgentSkillTypeEnum.skill,
-        source: AgentSkillSourceEnum.personal,
-        teamId: owner.teamId,
-        tmbId: member.tmbId,
-        createTime: new Date('2026-01-01T00:00:00.000Z')
-      },
-      {
-        name: 'Newer V2 member skill',
-        type: AgentSkillTypeEnum.skill,
-        source: AgentSkillSourceEnum.personal,
-        teamId: owner.teamId,
-        tmbId: member.tmbId,
-        createTime: new Date('2026-02-01T00:00:00.000Z')
-      }
-    ]);
-
-    const filtered = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
-      handlerV2,
-      {
-        auth: owner,
-        body: {
-          source: 'mine',
-          parentId: null,
-          withAppCount: false,
-          tmbIds: [String(member.tmbId)],
-          sort: AppListSortEnum.createTimeAsc
-        }
-      }
-    );
-    expect(filtered.code).toBe(200);
-    expect(filtered.data.total).toBe(2);
-    expect(filtered.data.list.map((item) => String(item._id))).toEqual([
-      String(olderSkill._id),
-      String(newerSkill._id)
-    ]);
-
-    const empty = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
-      handlerV2,
-      {
-        auth: owner,
-        body: { source: 'mine', parentId: null, tmbIds: [] }
-      }
-    );
-    expect(empty.data).toEqual({ list: [], total: 0 });
-  });
-
-  it('按 skillIds 查询时不会被默认分页截断', async () => {
-    const user = await getUser(`agent-skill-list-ids-${getNanoid(6)}`);
-    const skills = await MongoAgentSkills.create(
-      Array.from({ length: 51 }, (_, index) => ({
-        name: `Selected Skill ${index + 1}`,
-        type: AgentSkillTypeEnum.skill,
-        source: AgentSkillSourceEnum.personal,
-        teamId: user.teamId,
-        tmbId: user.tmbId
-      }))
-    );
-
-    const res = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(handler, {
-      auth: user,
-      body: {
-        source: 'mine',
-        skillIds: skills.map((skill) => String(skill._id)),
-        withAppCount: false
-      }
-    });
-
-    expect(res.code).toBe(200);
-    expect(res.data.total).toBe(51);
-    expect(res.data.list).toHaveLength(51);
-  });
-
-  it('按 skillIds 查询时不受父目录过滤影响，并排除已删除 Skill', async () => {
-    const user = await getUser(`agent-skill-list-${getNanoid(6)}`);
-
-    const folder = await MongoAgentSkills.create({
-      name: 'Skill Folder',
-      type: AgentSkillTypeEnum.folder,
-      source: AgentSkillSourceEnum.personal,
-      teamId: user.teamId,
-      tmbId: user.tmbId
-    });
-    const [activeSkill, deletedSkill] = await MongoAgentSkills.create([
-      {
-        name: 'Active Skill',
-        type: AgentSkillTypeEnum.skill,
-        source: AgentSkillSourceEnum.personal,
-        parentId: folder._id,
-        teamId: user.teamId,
-        tmbId: user.tmbId
-      },
-      {
-        name: 'Deleted Skill',
-        type: AgentSkillTypeEnum.skill,
-        source: AgentSkillSourceEnum.personal,
-        parentId: folder._id,
-        teamId: user.teamId,
-        tmbId: user.tmbId,
-        deleteTime: new Date()
-      }
-    ]);
-
-    const res = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(handler, {
-      auth: user,
-      body: {
-        skillIds: [String(activeSkill._id), String(deletedSkill._id)],
-        parentId: null,
-        withAppCount: false
-      }
-    });
-
-    expect(res.code).toBe(200);
-    expect(res.data.list.map((item) => String(item._id))).toEqual([String(activeSkill._id)]);
   });
 
   it('按 skillIds 查询时会在查询阶段过滤当前成员无权读取的 Skill', async () => {
@@ -429,13 +281,11 @@ describe('POST /api/core/ai/skill/list', () => {
       }
     ]);
 
-    const res = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(handler, {
+    const res = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(handler, {
       auth: member,
       body: {
         source: 'mine',
-        skillIds: [String(ownedSkill._id), String(protectedSkill._id)],
-        parentId: null,
-        withAppCount: false
+        skillIds: [String(ownedSkill._id), String(protectedSkill._id)]
       }
     });
 
@@ -486,13 +336,11 @@ describe('POST /api/core/ai/skill/list', () => {
       permission: ReadPermissionVal
     });
 
-    const res = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(handler, {
+    const res = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(handler, {
       auth: member,
       body: {
         source: 'mine',
-        skillIds: [String(inheritedSkill._id)],
-        parentId: null,
-        withAppCount: true
+        skillIds: [String(inheritedSkill._id)]
       }
     });
 
@@ -649,7 +497,7 @@ describe('POST /api/core/ai/skill/list', () => {
     });
     expect(invalidPublishRes.code).toBe(500);
 
-    const draftRes = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(
+    const draftRes = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
       handler,
       {
         auth: user,
@@ -679,7 +527,7 @@ describe('POST /api/core/ai/skill/list', () => {
     });
     expect(publishRes.code).toBe(200);
 
-    const publishedRes = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(
+    const publishedRes = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
       handler,
       {
         auth: user,
@@ -757,7 +605,7 @@ describe('POST /api/core/ai/skill/list', () => {
     );
 
     const rootList = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
-      handlerV2,
+      handler,
       { auth: member, body: { source: 'mine', parentId: null, withAppCount: false } }
     );
     expect(rootList.code).toBe(200);
@@ -769,7 +617,7 @@ describe('POST /api/core/ai/skill/list', () => {
     expect(rootList.data.list.map((item) => item.name)).not.toContain('Hidden empty');
 
     const emptyRootList = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
-      handlerV2,
+      handler,
       { auth: member, body: { source: 'mine', parentId: '', withAppCount: false } }
     );
     expect(emptyRootList.code).toBe(200);
@@ -777,15 +625,8 @@ describe('POST /api/core/ai/skill/list', () => {
       rootList.data.list.map((item) => String(item._id))
     );
 
-    const legacyRootList = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(
-      handler,
-      { auth: member, body: { source: 'mine', parentId: null, withAppCount: false } }
-    );
-    expect(legacyRootList.code).toBe(200);
-    expect(legacyRootList.data.list).toEqual([]);
-
     const skillsOnlyList = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
-      handlerV2,
+      handler,
       {
         auth: member,
         body: {
@@ -801,7 +642,7 @@ describe('POST /api/core/ai/skill/list', () => {
     );
 
     const nestedList = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
-      handlerV2,
+      handler,
       {
         auth: member,
         body: {
@@ -831,7 +672,7 @@ describe('POST /api/core/ai/skill/list', () => {
     });
 
     const deniedList = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
-      handlerV2,
+      handler,
       {
         auth: member,
         body: { source: 'mine', parentId: String(hiddenFolder._id), withAppCount: false }
@@ -858,5 +699,59 @@ describe('POST /api/core/ai/skill/list', () => {
       query: { skillId: String(childFolder._id) }
     });
     expect(deniedDetail.error).toBe(SkillErrEnum.unAuthSkill);
+  });
+
+  it('普通查询默认返回 50 条，按 ID 跨目录返回全部匹配项并排除已删除资源', async () => {
+    const user = await getUser(`skill-v2-ids-${getNanoid(6)}`);
+    const parentId = new Types.ObjectId();
+    const skills = await MongoAgentSkills.create(
+      Array.from({ length: 51 }, (_, index) => ({
+        name: `Selected Skill ${index}`,
+        type: AgentSkillTypeEnum.skill,
+        source: AgentSkillSourceEnum.personal,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        parentId: index % 2 ? parentId : null
+      }))
+    );
+    const deleted = await MongoAgentSkills.create({
+      name: 'Deleted',
+      type: AgentSkillTypeEnum.skill,
+      source: AgentSkillSourceEnum.personal,
+      teamId: user.teamId,
+      tmbId: user.tmbId,
+      deleteTime: new Date()
+    });
+    const ids = skills.map((skill) => String(skill._id));
+    const page = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(handler, {
+      auth: user,
+      body: { source: 'mine', searchKey: 'Selected Skill' }
+    });
+    expect(page.code).toBe(200);
+    expect(page.data.total).toBe(51);
+    expect(page.data.list).toHaveLength(50);
+
+    const response = await Call<unknown, Record<string, never>, ListSkillsResponse>(handler, {
+      auth: user,
+      body: {
+        skillIds: [...ids, ids[0], String(deleted._id), String(new Types.ObjectId())],
+        source: 'mine',
+        parentId: String(new Types.ObjectId()),
+        page: 3,
+        pageSize: 1,
+        offset: 1000
+      }
+    });
+
+    expect(response.code).toBe(200);
+    expect(response.data.total).toBe(51);
+    expect(response.data.list.map((skill) => String(skill._id)).sort()).toEqual([...ids].sort());
+  });
+
+  it('无效 skillIds 不会回退为分页查询', async () => {
+    const response = await Call(handler, {
+      body: { skillIds: [], parentId: null, pageSize: 20 }
+    });
+    expect(response.error).toBeInstanceOf(ApiRequestInputParseError);
   });
 });

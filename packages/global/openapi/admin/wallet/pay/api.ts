@@ -1,5 +1,9 @@
 import z from 'zod';
-import { PaginationResponseSchema, PaginationSchema } from '../../../api';
+import {
+  PaginationPageSizeSchema,
+  PaginationResponseSchema,
+  createPaginationSchema
+} from '../../../api';
 import { BillTypeEnum, BillStatusEnum } from '../../../../support/wallet/bill/constants';
 import { BillSchema } from '../../../../support/wallet/bill/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
@@ -30,7 +34,8 @@ export const BillItemSchema = z.object({
 });
 export type BillItemType = z.infer<typeof BillItemSchema>;
 
-export const GetPaysBodySchema = PaginationSchema.extend({
+export const GetPaysBodySchema = createPaginationSchema({
+  pageSize: PaginationPageSizeSchema.default(20).optional(),
   username: z.string().trim().max(100).optional().meta({ description: '搜索用户名' }),
   type: z.enum(BillTypeEnum).optional().meta({ description: '订单类型筛选' }),
   status: z.enum(BillStatusEnum).optional().meta({ description: '订单状态筛选' })

@@ -43,7 +43,7 @@ const ToolMenu = ({
   const { chatId, outLinkAuthData, appId, source } = useChatStore();
   const currentAppId = chatData.appId || appId;
   const isShareAuthReady =
-    source !== 'share' || (!!outLinkAuthData.shareId && !!outLinkAuthData.outLinkUid);
+    source !== 'share' || (!!outLinkAuthData?.shareId && !!outLinkAuthData?.outLinkUid);
   const hasVariables = useMemo(() => {
     if (!chatType) return false;
     const { commonVariableList, externalVariableList, internalVariableList } =

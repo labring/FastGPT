@@ -61,7 +61,7 @@ type SkillListContextType = {
   skills: SkillListItemType[];
   isFetchingSkills: boolean;
   isEmpty: boolean;
-  refreshSkills: () => void;
+  refreshSkills: (options?: { silent?: boolean; resourceId?: string }) => Promise<void>;
   ScrollData: ScrollListType;
   searchKey: string;
   setSearchKey: Dispatch<SetStateAction<string>>;
@@ -158,32 +158,45 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
   const { columnCount, pageSize } = useResponsiveGridPageSize(
     parentId ? { base: 1, sm: 2, md: 2, lg: 3 } : { base: 1, sm: 2, md: 2, lg: 3, xl: 4 }
   );
+  const listParams = {
+    source: 'mine' as const,
+    searchKey,
+    ...(applyToolbarFilters ? { sort: listFilters.sort } : {}),
+    ...(tmbIds !== undefined ? { tmbIds } : {})
+  };
+  /** 分页和 ID 查询复用相同的时间转换，避免局部同步后卡片收到字符串。 */
+  const fetchSkills = (
+    params: Parameters<typeof getSkillListV2>[0],
+    cancelToken?: AbortController
+  ) =>
+    getSkillListV2(params, cancelToken).then((res) => ({
+      list: res.list.map((item) => ({
+        ...item,
+        createTime: new Date(item.createTime),
+        updateTime: new Date(item.updateTime)
+      })),
+      total: res.total
+    }));
 
   const {
     data: skills = [],
     isLoading: isFetchingSkills,
     isEmpty,
     ScrollData,
-    fetchData
+    fetchData,
+    refreshItems
   } = useScrollPagination(
-    ({ offset = 0, pageSize = 50 }) =>
-      getSkillListV2({
-        source: 'mine',
-        searchKey,
-        parentId,
-        offset,
-        pageSize: getGridRequestPageSize(pageSize, offset),
-        ...(applyToolbarFilters ? { sort: listFilters.sort } : {}),
-        ...(tmbIds !== undefined ? { tmbIds } : {})
-      }).then((res) => ({
-        list: res.list.map((item) => ({
-          ...item,
-          createTime: new Date(item.createTime),
-          updateTime: new Date(item.updateTime)
-        })),
-        total: res.total
-      })),
+    ({ offset = 0, pageSize = 50 }, cancelToken) =>
+      fetchSkills(
+        { ...listParams, parentId, offset, pageSize: getGridRequestPageSize(pageSize, offset) },
+        cancelToken
+      ),
     {
+      refreshByIds: {
+        getId: (item) => item._id,
+        api: (skillIds, cancelToken) =>
+          fetchSkills({ ...listParams, skillIds }, cancelToken).then(({ list }) => list)
+      },
       refreshDeps: [
         searchKey,
         parentId,
@@ -198,7 +211,14 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
       refreshOnWindowFocus: false
     }
   );
-  const refreshSkills = useCallback(() => fetchData({ init: true }), [fetchData]);
+  /** 权限变更按 ID 原位同步；未指定目标的静默刷新同步已加载资源，普通刷新重新分页。 */
+  const refreshSkills = useCallback(
+    ({ silent = false, resourceId }: { silent?: boolean; resourceId?: string } = {}) => {
+      if (resourceId || silent) return refreshItems(resourceId ? [resourceId] : undefined);
+      return fetchData({ init: true });
+    },
+    [fetchData, refreshItems]
+  );
 
   // 加载面包屑路径（仅在文件夹内时请求）
   const { data: paths = [], run: refetchPaths } = useRequest(

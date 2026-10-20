@@ -246,7 +246,9 @@ export const useSkillManager = ({
         }
       );
       return {
-        list: response.list.map((item) => toTeamAppItem(item, parentId ?? undefined, i18n.language)),
+        list: response.list.map((item) =>
+          toTeamAppItem(item, parentId ?? undefined, i18n.language)
+        ),
         total: response.total
       };
     },
@@ -301,8 +303,7 @@ export const useSkillManager = ({
           source: 'mine',
           parentId: folderId,
           offset,
-          pageSize,
-          withAppCount: false
+          pageSize
         },
         cancelToken
       );
@@ -516,7 +517,6 @@ export const useSkillManager = ({
         {
           source: 'mine',
           parentId: null,
-          withAppCount: false,
           ...params
         },
         cancelToken

@@ -1,3 +1,4 @@
+import { createChatTargetQueryDocumentSchema } from '../chat/api';
 import type { OpenAPIPath } from '../../type';
 import { DevApiTagsMap } from '../../tag';
 import {
@@ -72,7 +73,7 @@ export const AIPath: OpenAPIPath = {
         '与 /v2/chat/completions 配套；GET query 传 appId、skillId 或 outLinkAuthData（三选一）以及 chatId。已完成对话可返回 JSON；若对话仍在生成中，则必须请求 SSE，否则返回 406。',
       tags: [DevApiTagsMap.chatController],
       requestParams: {
-        query: ResumeStreamParamsRawSchema
+        query: createChatTargetQueryDocumentSchema(ResumeStreamParamsRawSchema)
       },
       responses: {
         200: {

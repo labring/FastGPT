@@ -53,11 +53,7 @@ import {
   sanitizeFileSelectValue
 } from './utils';
 import { isEqual } from 'lodash-es';
-import {
-  getChatAuthTargetInput,
-  hasChatTargetInput,
-  useChatApiTarget
-} from '@/web/core/chat/utils';
+import { toChatAuthApiTarget, hasChatTargetInput, useChatApiTarget } from '@/web/core/chat/utils';
 import { getFileAmountLimit, getFileSizeLimitBytes } from '@fastgpt/global/core/workflow/fileLimit';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useFileSelectorLinkIcons } from './useLinkIcons';
@@ -202,8 +198,8 @@ const FileSelector = ({
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const fileUploadMode = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploadMode);
   const chatAuthTarget = useMemo(
-    () => getChatAuthTargetInput({ ...chatTarget, outLinkAuthData }),
-    [chatTarget, outLinkAuthData]
+    () => toChatAuthApiTarget({ sourceTarget, outLinkAuthData }),
+    [sourceTarget, outLinkAuthData]
   );
   const setFileUploadingCount = useContextSelector(
     WorkflowRuntimeContext,

@@ -1,4 +1,9 @@
-import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
+import type {
+  ChatTargetInputType,
+  createOutLinkChatTargetInputSchema,
+  createOptionalOutLinkChatTargetInputSchema
+} from '@fastgpt/global/openapi/core/chat/api';
+import type { z } from 'zod';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isAuxiliaryGenerationSourceType } from '@fastgpt/global/common/chat/source';
 import { useMemo } from 'react';
@@ -21,6 +26,13 @@ type ChatAuthQueryInputSource = Partial<Record<'appId' | 'skillId', string>> &
 export type ChatAuthTargetInput = OptionalChatTargetInput & {
   outLinkAuthData?: OutLinkChatAuthProps;
 };
+/** 已确定的会话鉴权上下文，复用接口 union 类型，避免客户端重新放宽为全可选字段。 */
+export type ResolvedChatAuthTargetInput = z.infer<
+  ReturnType<typeof createOutLinkChatTargetInputSchema<Record<never, never>>>
+>;
+type OptionalChatAuthTargetInput = z.infer<
+  ReturnType<typeof createOptionalOutLinkChatTargetInputSchema<Record<never, never>>>
+>;
 export type ChatAuthQueryTargetInput = OptionalChatTargetInput & {
   outLinkAuthData?: string;
 };
@@ -85,7 +97,7 @@ export const toChatAuthApiTarget = ({
 }: {
   sourceTarget: ChatSourceTarget;
   outLinkAuthData?: OutLinkChatAuthProps;
-}): ChatAuthTargetInput => {
+}): ResolvedChatAuthTargetInput => {
   const hasShareAuth = !!(outLinkAuthData?.shareId && outLinkAuthData.outLinkUid);
 
   if (hasShareAuth) {
@@ -101,11 +113,14 @@ export const toChatAuthApiTarget = ({
  * 引用详情、原文件读取等 metadata 会把数据集 sourceId/sourceName 一起携带；
  * 这里只保留 chat 鉴权字段，避免和数据集来源字段混用。
  */
-export const getChatAuthTargetInput = (target: ChatAuthTargetInput): ChatAuthTargetInput => {
-  const hasShareAuth = !!(target.outLinkAuthData?.shareId && target.outLinkAuthData.outLinkUid);
-
-  if (hasShareAuth) {
-    return { outLinkAuthData: target.outLinkAuthData };
+export function getChatAuthTargetInput(
+  target: ResolvedChatAuthTargetInput
+): ResolvedChatAuthTargetInput;
+export function getChatAuthTargetInput(target: ChatAuthTargetInput): OptionalChatAuthTargetInput;
+export function getChatAuthTargetInput(target: ChatAuthTargetInput): OptionalChatAuthTargetInput {
+  const outLinkAuthData = target.outLinkAuthData;
+  if (outLinkAuthData?.shareId && outLinkAuthData.outLinkUid) {
+    return { outLinkAuthData };
   }
 
   if (target.skillId) {
@@ -119,7 +134,7 @@ export const getChatAuthTargetInput = (target: ChatAuthTargetInput): ChatAuthTar
   }
 
   return {};
-};
+}
 
 /**
  * 将 chat 鉴权 target 转成 query 传输形态。
@@ -179,7 +194,7 @@ export const useChatAuthApiTarget = ({
 }: {
   sourceTarget: ChatSourceTarget;
   outLinkAuthData?: OutLinkChatAuthProps;
-}): ChatAuthTargetInput =>
+}): ResolvedChatAuthTargetInput =>
   useMemo(
     () => toChatAuthApiTarget({ sourceTarget, outLinkAuthData }),
     [sourceTarget, outLinkAuthData]
@@ -216,7 +231,7 @@ export const getChatTargetInput = (target: ChatTargetInputType): ChatTargetInput
 export const hasChatTargetInput = (target?: { appId?: unknown; skillId?: unknown } | null) =>
   typeof target?.appId === 'string' || typeof target?.skillId === 'string';
 
-/** 判断请求是否包含可用于 chat 鉴权的 target，share 模式只传 outLinkAuthData。 */
+/** 判断 raw 请求是否只有一种完整会话上下文，避免把全可选字段误当成已确定的 union 分支。 */
 export const hasChatAuthTargetInput = (
   target?:
     | ({
@@ -227,21 +242,33 @@ export const hasChatAuthTargetInput = (
         sourceType?: unknown;
       })
     | null
-) => {
-  const outLinkAuthData =
-    target?.outLinkAuthData && typeof target.outLinkAuthData === 'object'
-      ? target.outLinkAuthData
-      : undefined;
-
-  return (
-    hasChatTargetInput(target) ||
-    !!(
-      'shareId' in (outLinkAuthData ?? {}) &&
-      (outLinkAuthData as OutLinkChatAuthProps).shareId &&
-      'outLinkUid' in (outLinkAuthData ?? {}) &&
-      (outLinkAuthData as OutLinkChatAuthProps).outLinkUid
-    )
-  );
+): target is ResolvedChatAuthTargetInput => {
+  if (!target) return false;
+  const { appId, skillId, sourceType, outLinkAuthData } = target;
+  if (outLinkAuthData !== undefined) {
+    return !!(
+      outLinkAuthData &&
+      typeof outLinkAuthData === 'object' &&
+      'shareId' in outLinkAuthData &&
+      typeof outLinkAuthData.shareId === 'string' &&
+      'outLinkUid' in outLinkAuthData &&
+      typeof outLinkAuthData.outLinkUid === 'string' &&
+      outLinkAuthData.shareId &&
+      outLinkAuthData.outLinkUid &&
+      appId === undefined &&
+      skillId === undefined &&
+      sourceType === undefined
+    );
+  }
+  if (typeof appId === 'string') {
+    return (
+      skillId === undefined &&
+      (sourceType === undefined ||
+        sourceType === ChatSourceTypeEnum.app ||
+        isAuxiliaryGenerationSourceType(sourceType))
+    );
+  }
+  return typeof skillId === 'string' && appId === undefined && sourceType === undefined;
 };
 
 export const getAppIdFromChatTarget = (target: ChatTargetInputType) =>

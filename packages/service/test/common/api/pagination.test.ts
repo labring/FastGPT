@@ -6,6 +6,27 @@ import type { NodeApiRequest } from '@fastgpt/service/types/http';
 describe('pagination.ts', () => {
   describe('parsePaginationRequest', () => {
     it.each(['body', 'query'] as const)(
+      'keeps offset priority and validates only the selected mode in %s',
+      (source) => {
+        expect(
+          parsePaginationRequest({
+            [source]: { offset: '0', pageNum: 'ignored' }
+          } as unknown as NodeApiRequest)
+        ).toEqual({ pageSize: 10, offset: 0 });
+        expect(() =>
+          parsePaginationRequest({
+            [source]: { offset: 'invalid', pageNum: 2 }
+          } as unknown as NodeApiRequest)
+        ).toThrow(ApiRequestInputParseError);
+        expect(() =>
+          parsePaginationRequest({
+            [source]: { pageNum: 0 }
+          } as unknown as NodeApiRequest)
+        ).toThrow(ApiRequestInputParseError);
+      }
+    );
+
+    it.each(['body', 'query'] as const)(
       'caps the shared page size on %s before calculating offsets',
       (source) => {
         expect(

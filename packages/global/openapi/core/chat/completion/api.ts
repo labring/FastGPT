@@ -1,5 +1,6 @@
-import { OpenObjectOpenApiMeta, requiredAlternatives } from '../../../../common/zod/openapi';
+import { OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
 import z from 'zod';
+import type { ZodOpenApiMetadata } from 'zod-openapi';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
 import { getNanoid } from '../../../../common/string/tools';
@@ -79,22 +80,34 @@ const ChatCompletionCreateParamsSchema = z.object({
 });
 
 export const ChatCompletionAuthProxySchema = z
-  .object({
-    username: optionalNullToUndefined(z.string().trim().min(1).max(128)).meta({
-      example: 'user@example.com',
-      description: 'API Key 代理调用的团队成员用户名'
-    }),
-    tmbId: optionalNullToUndefined(ObjectIdSchema).meta({
-      description: 'API Key 代理调用的团队成员 ID'
-    })
-  })
-  .refine(({ username, tmbId }) => !!username || !!tmbId, {
-    message: 'authProxy.username or authProxy.tmbId is required'
-  })
+  .union([
+    z
+      .object({
+        tmbId: ObjectIdSchema.meta({
+          description: 'API Key 代理调用的团队成员 ID，优先于 username'
+        })
+      })
+      .meta({ title: '按团队成员 ID' }),
+    z
+      .object({
+        username: z.string().trim().min(1).max(128).meta({
+          example: 'user@example.com',
+          description: 'API Key 代理调用的团队成员用户名'
+        }),
+        // 兼容 tmbId: null，但禁止无效 ID 回退到用户名查询。
+        tmbId: optionalNullToUndefined(z.never())
+      })
+      .meta({
+        title: '按用户名',
+        override: ({ jsonSchema }) => {
+          // 仅用于运行时校验的守卫字段，不作为用户名模式的文档参数展示。
+          delete jsonSchema.properties?.tmbId;
+        }
+      } satisfies ZodOpenApiMetadata)
+  ])
   .meta({
-    ...requiredAlternatives([['username'], ['tmbId']]),
     description:
-      'API Key 代理调用身份。仅开启 authProxy 的团队级 API Key 可用，username 与 tmbId 同时传入时必须指向同一团队成员'
+      'API Key 代理调用身份。仅开启 authProxy 的团队级 API Key 可用；按团队成员 ID 或用户名指定，二者同时传入时优先使用 tmbId，解析时过滤 username；tmbId 无效时不回退到用户名'
   });
 export type ChatCompletionAuthProxy = z.infer<typeof ChatCompletionAuthProxySchema>;
 
@@ -104,7 +117,8 @@ export const CompletionsPropsSchema = WebCompletionsSchema.extend({
     description: '外链鉴权数据。share 模式传 shareId/outLinkUid。'
   }),
   authProxy: optionalNullToUndefined(ChatCompletionAuthProxySchema).meta({
-    description: 'API Key 代理调用身份'
+    description:
+      'API Key 代理调用身份。按团队成员 ID 或用户名指定；二者同时传入时优先使用 tmbId，解析时过滤 username；tmbId 无效时不回退到用户名'
   }),
   variables: nullishToUndefined(z.record(z.string(), z.any()).default({})).meta({
     description: '全局变量或插件输入'

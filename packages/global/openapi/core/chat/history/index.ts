@@ -1,3 +1,4 @@
+import { createChatTargetQueryDocumentSchema } from '../api';
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
@@ -106,7 +107,7 @@ export const ChatHistoryPath: OpenAPIPath = {
       description: '软删除指定的单个会话，不会物理删除',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
       requestParams: {
-        query: DelChatHistoryRawSchema
+        query: createChatTargetQueryDocumentSchema(DelChatHistoryRawSchema)
       },
       responses: {
         200: {
@@ -121,7 +122,7 @@ export const ChatHistoryPath: OpenAPIPath = {
       description: '清空所有会话（软删除）',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
       requestParams: {
-        query: ClearChatHistoriesRawSchema
+        query: createChatTargetQueryDocumentSchema(ClearChatHistoriesRawSchema)
       },
       responses: {
         200: {

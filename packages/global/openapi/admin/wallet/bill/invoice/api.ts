@@ -28,7 +28,7 @@ export type InvoiceItemType = z.infer<typeof InvoiceItemSchema>;
 
 export const InvoiceListBodySchema = z.object({
   pageNum: IntSchema.positive().optional().default(1).meta({ description: '页码' }),
-  pageSize: PaginationPageSizeSchema.optional().default(10),
+  pageSize: PaginationPageSizeSchema,
   search: z.string().optional().meta({ description: '搜索关键词（团队名称）' })
 });
 export const InvoiceListResponseSchema = PaginationResponseSchema(InvoiceItemSchema);

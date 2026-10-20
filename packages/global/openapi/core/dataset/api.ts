@@ -13,14 +13,18 @@ import {
   SearchDataResponseItemSchema,
   type WithOptionalInheritPermission
 } from '../../../core/dataset/type';
-import { BoolSchema } from '../../../common/zod';
-import { AppListSortEnum } from '../../../core/app/constants';
+import { AppListSortSchema } from '../../../core/app/constants';
 import {
   CollaboratorListSchema,
   CollaboratorUpdateListSchema,
   ShowUsernameQuerySchema
 } from '../../../support/permission/collaborator.schema';
-import { PaginationResponseSchema, PaginationSchema } from '../../api';
+import {
+  createPaginationSchema,
+  PaginationPageSizeLimit,
+  PaginationResponseSchema,
+  ResourceListPageSizeSchema
+} from '../../api';
 
 /* ============================================================================
  * API: 创建知识库
@@ -205,6 +209,7 @@ export type GetDatasetDetailResponse = z.infer<typeof GetDatasetDetailResponseSc
 /* ============================================================================
  * API: 获取知识库列表
  * Route: POST /api/core/dataset/list
+ * Description: 已弃用，使用 POST /api/core/dataset/listV2；旧接口保留数组响应兼容。
  * ============================================================================ */
 export const GetDatasetListBodySchema = z
   .object({
@@ -223,10 +228,7 @@ export const GetDatasetListBodySchema = z
       example: '产品文档',
       description: '搜索关键词,按名称和简介模糊匹配'
     }),
-    sort: z.enum(AppListSortEnum).optional().meta({
-      example: AppListSortEnum.updateTimeDesc,
-      description: '列表排序，缺省按最近修改倒序'
-    }),
+    sort: AppListSortSchema.optional(),
     tmbIds: z.array(ObjectIdSchema).optional().meta({
       description: '按创建者筛选；空数组返回空列表'
     })
@@ -244,10 +246,10 @@ export type GetDatasetListBody = z.infer<typeof GetDatasetListBodySchema>;
  * API: 获取知识库列表 V2
  * Route: POST /api/core/dataset/listV2
  * Method: POST
- * Description: 分页获取当前用户有权限访问的知识库列表。
+ * Description: 分页或按 ID 列表获取当前用户有权限访问的知识库，优先按 ID 查询并过滤目录和分页字段。
  * Tags: ['Dataset', 'Read']
  * ============================================================================ */
-export const GetDatasetListV2BodySchema = GetDatasetListBodySchema.extend({
+const GetDatasetListV2FiltersSchema = GetDatasetListBodySchema.omit({ parentId: true }).extend({
   withAppCount: BoolSchema.optional().meta({
     example: true,
     description: '是否返回被正式应用引用的数量'
@@ -257,7 +259,31 @@ export const GetDatasetListV2BodySchema = GetDatasetListBodySchema.extend({
     description:
       '是否计算并返回知识库文件总数，默认不计算；统计所有层级的非目录集合，不按文件权限过滤'
   })
-}).extend(PaginationSchema.shape);
+});
+
+// ID 分支优先匹配，由 Zod 过滤目录和分页字段；分页分支拒绝已有但无效的 ID，避免意外扩大查询范围。
+export const GetDatasetListV2BodySchema = z.union([
+  GetDatasetListV2FiltersSchema.extend({
+    datasetIds: z
+      .array(ObjectIdSchema)
+      .min(1)
+      .max(PaginationPageSizeLimit)
+      .meta({
+        example: ['68ad85a7463006c963799a05'],
+        description: `按知识库或文件夹 ID 精确查询，最多 ${PaginationPageSizeLimit} 个；优先匹配该分支，解析时过滤 parentId 和分页参数，保留公共筛选字段`
+      })
+  }).meta({ title: '按 IDs 获取' }),
+  createPaginationSchema({
+    ...GetDatasetListV2FiltersSchema.shape,
+    pageSize: ResourceListPageSizeSchema,
+    parentId: GetDatasetListBodySchema.shape.parentId.meta({
+      example: null,
+      description:
+        '父级文件夹 ID；null 或空字符串表示根目录；搜索时限定在指定目录及其子树，不传则搜索全部可读知识库'
+    }),
+    datasetIds: z.never().optional()
+  }).meta({ title: '分页获取' })
+]);
 export type GetDatasetListV2Body = z.infer<typeof GetDatasetListV2BodySchema>;
 
 // 出参复用 DatasetListItemSchema
