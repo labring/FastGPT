@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PgClient } from '@fastgpt/service/common/vectorDB/pg/controller';
 import { PgVectorCtrl } from '@fastgpt/service/common/vectorDB/pg';
-import { serviceEnv } from '@fastgpt/service/env';
 
 const { withConcurrency } = vi.hoisted(() => ({ withConcurrency: vi.fn() }));
 vi.mock('@fastgpt/dal/redis/caches/lease', () => ({
@@ -15,6 +14,8 @@ vi.mock('@fastgpt/service/common/vectorDB/pg/controller', () => ({ PgClient: { q
 
 describe('PgVectorCtrl.embRecall', () => {
   beforeEach(() => {
+    global.feConfigs = { ...global.feConfigs, isPlus: true };
+    global.systemEnv = { ...global.systemEnv, pgVectorRecallConcurrency: 8 };
     withConcurrency.mockReset().mockImplementation(({ fn }) => fn());
     vi.mocked(PgClient.query)
       .mockReset()
@@ -62,9 +63,30 @@ describe('PgVectorCtrl.embRecall', () => {
   });
 
   it('supports explicitly disabling the shared recall limit', async () => {
-    const previous = serviceEnv.PG_VECTOR_RECALL_CONCURRENCY;
-    serviceEnv.PG_VECTOR_RECALL_CONCURRENCY = 0;
-    try {
+    global.systemEnv.pgVectorRecallConcurrency = 0;
+    await new PgVectorCtrl().embRecall({
+      teamId: 'team',
+      datasetIds: ['dataset'],
+      vector: [0.1],
+      limit: 100,
+      forbidCollectionIdList: []
+    });
+    expect(withConcurrency).not.toHaveBeenCalled();
+    expect(PgClient.query).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    { isPlus: false, concurrency: 8 },
+    { isPlus: false, concurrency: undefined },
+    { isPlus: true, concurrency: undefined }
+  ])(
+    'bypasses lease coordination for edition/default configuration %j',
+    async ({ isPlus, concurrency }) => {
+      global.feConfigs.isPlus = isPlus;
+      if (concurrency === undefined)
+        Reflect.deleteProperty(global.systemEnv, 'pgVectorRecallConcurrency');
+      else global.systemEnv.pgVectorRecallConcurrency = concurrency;
+
       await new PgVectorCtrl().embRecall({
         teamId: 'team',
         datasetIds: ['dataset'],
@@ -72,11 +94,31 @@ describe('PgVectorCtrl.embRecall', () => {
         limit: 100,
         forbidCollectionIdList: []
       });
+
       expect(withConcurrency).not.toHaveBeenCalled();
       expect(PgClient.query).toHaveBeenCalledOnce();
-    } finally {
-      serviceEnv.PG_VECTOR_RECALL_CONCURRENCY = previous;
     }
+  );
+
+  it('reads Admin configuration again for subsequent recalls', async () => {
+    const ctrl = new PgVectorCtrl();
+    const props = {
+      teamId: 'team',
+      datasetIds: ['dataset'],
+      vector: [0.1],
+      limit: 100,
+      forbidCollectionIdList: []
+    };
+    global.systemEnv.pgVectorRecallConcurrency = 4;
+    await ctrl.embRecall(props);
+    global.systemEnv.pgVectorRecallConcurrency = 12;
+    await ctrl.embRecall(props);
+
+    expect(withConcurrency).toHaveBeenNthCalledWith(1, expect.objectContaining({ concurrency: 4 }));
+    expect(withConcurrency).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ concurrency: 12 })
+    );
   });
 
   it('does not submit SQL when the shared lease cannot be acquired', async () => {

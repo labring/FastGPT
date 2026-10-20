@@ -243,9 +243,6 @@ export const serviceEnv = createEnv({
       description: '向量量化等级'
     }),
     PG_URL: z.string().optional().meta({ description: 'PG 向量库连接参数' }),
-    PG_VECTOR_RECALL_CONCURRENCY: IntSchema.min(0).max(1000).default(8).meta({
-      description: 'PG 向量检索的 Redis lease 共享并发上限；所有实例配置保持一致，0 表示关闭限流'
-    }),
     OCEANBASE_URL: z.string().optional().meta({ description: 'OceanBase 向量库连接参数' }),
     SEEKDB_URL: z.string().optional().meta({ description: 'SeekDB 向量库连接参数' }),
     MILVUS_ADDRESS: z.string().optional().meta({ description: 'Milvus 向量库连接参数' }),

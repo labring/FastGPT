@@ -57,6 +57,18 @@ const createFormInput = (overrides: DeepPartial<ConfigFormInput> = {}): ConfigFo
 };
 
 describe('formatFormData2ConfigStore', () => {
+  it.each([undefined, 0, 8])('round-trips PG recall concurrency with input %j', (concurrency) => {
+    const form = formatConfigStore2FormSchema({
+      fastgpt: { feConfigs: {}, systemEnv: { pgVectorRecallConcurrency: concurrency } } as any,
+      fastgptPro: {} as any
+    });
+    expect(form.siteSettings.systemEnv.pgVectorRecallConcurrency).toBe(concurrency ?? 0);
+
+    const stored = formatFormData2ConfigStore(form);
+    expect(stored.fastgpt.systemEnv.pgVectorRecallConcurrency).toBe(concurrency ?? 0);
+    expect(stored.fastgpt.feConfigs).not.toHaveProperty('pgVectorRecallConcurrency');
+  });
+
   it.each([undefined, { url: 'https://current-sso.example.com' }, { url: '' }])(
     'moves legacy SSO URLs into systemEnv without overriding explicit server config %j',
     (serverConfig) => {

@@ -86,6 +86,7 @@ export function formatConfigStore2FormSchema({
     vectorMaxProcess = 10,
     qaMaxProcess = 10,
     hnswEfSearch = 100,
+    pgVectorRecallConcurrency = 0,
     vlmMaxProcess = 5,
     customPdfParse,
     fileUrlWhitelist = Array.isArray(feConfigs?.fileUrlWhitelist)
@@ -134,6 +135,7 @@ export function formatConfigStore2FormSchema({
         vectorMaxProcess,
         qaMaxProcess,
         hnswEfSearch,
+        pgVectorRecallConcurrency,
         vlmMaxProcess,
         customPdfParse,
         fileUrlWhitelist,
