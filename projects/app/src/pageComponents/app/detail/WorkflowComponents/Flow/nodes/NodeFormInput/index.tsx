@@ -241,7 +241,7 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   );
 
   return (
-    <NodeCard minW={'400px'} selected={selected} {...data}>
+    <NodeCard minW={'524px'} selected={selected} {...data}>
       <Container>
         <IOTitle text={t('common:Input')} />
         <RenderInput nodeId={nodeId} flowInputList={inputs} CustomComponent={CustomComponent} />
