@@ -129,81 +129,125 @@ describe('chatInstanceRegistry', () => {
     unregisterSecond();
   });
 
-  it('shares one postMessage listener and routes a targeted legacy prompt', () => {
-    const listeners = new Set<(event: MessageEvent<unknown>) => void>();
-    const addEventListener = vi.fn(
-      (_type: string, listener: (event: MessageEvent<unknown>) => void) => {
-        listeners.add(listener);
-      }
-    );
-    const removeEventListener = vi.fn(
-      (_type: string, listener: (event: MessageEvent<unknown>) => void) => {
-        listeners.delete(listener);
-      }
-    );
-    vi.stubGlobal('window', { addEventListener, removeEventListener });
+  it.each(['https://fastgpt.run', 'https://parent.example.com', 'null'])(
+    'shares one postMessage listener and routes a targeted prompt from %s',
+    (origin) => {
+      const listeners = new Set<(event: MessageEvent<unknown>) => void>();
+      const addEventListener = vi.fn(
+        (_type: string, listener: (event: MessageEvent<unknown>) => void) => {
+          listeners.add(listener);
+        }
+      );
+      const removeEventListener = vi.fn(
+        (_type: string, listener: (event: MessageEvent<unknown>) => void) => {
+          listeners.delete(listener);
+        }
+      );
+      vi.stubGlobal('window', {
+        addEventListener,
+        removeEventListener,
+        location: { origin: 'https://fastgpt.run' }
+      });
 
+      const actions = createActions();
+      const identity = { sourceKey: 'app:app-1', chatId: 'preview-chat' };
+      const unregister = registerChatInstanceActions({ identity, actions });
+      const releaseFirst = retainExternalChatPromptListener();
+      const releaseSecond = retainExternalChatPromptListener();
+
+      try {
+        expect(addEventListener).toHaveBeenCalledOnce();
+        expect(listeners.size).toBe(1);
+        listeners.forEach((listener) =>
+          listener({
+            origin,
+            data: {
+              type: 'sendPrompt',
+              text: 'external answer',
+              target: identity
+            }
+          } as MessageEvent<unknown>)
+        );
+        expect(actions.continueInteractive).toHaveBeenCalledWith({ text: 'external answer' });
+
+        releaseFirst();
+        expect(removeEventListener).not.toHaveBeenCalled();
+        releaseSecond();
+        expect(removeEventListener).toHaveBeenCalledOnce();
+      } finally {
+        releaseFirst();
+        releaseSecond();
+        unregister();
+        vi.unstubAllGlobals();
+      }
+    }
+  );
+
+  it('accepts untargeted cross-origin prompts only when one ChatBox is mounted', () => {
+    const messageTarget = new EventTarget();
+    vi.stubGlobal('window', messageTarget);
     const actions = createActions();
+    const builderActions = createActions();
     const identity = { sourceKey: 'app:app-1', chatId: 'preview-chat' };
     const unregister = registerChatInstanceActions({ identity, actions });
-    const releaseFirst = retainExternalChatPromptListener();
-    const releaseSecond = retainExternalChatPromptListener();
+    const unregisterBuilder = registerChatInstanceActions({
+      identity: { sourceKey: 'workflowBuilder:app-1', chatId: 'builder-chat' },
+      actions: builderActions
+    });
+    const release = retainExternalChatPromptListener();
+    const sendPrompt = () =>
+      messageTarget.dispatchEvent(
+        new MessageEvent('message', {
+          origin: 'https://parent.example.com',
+          data: { type: 'sendPrompt', text: 'embedded question' }
+        })
+      );
 
-    expect(addEventListener).toHaveBeenCalledOnce();
-    expect(listeners.size).toBe(1);
-    listeners.forEach((listener) =>
-      listener({
-        data: {
-          type: 'sendPrompt',
-          text: 'external answer',
-          target: identity
-        }
-      } as MessageEvent<unknown>)
-    );
-    expect(actions.continueInteractive).toHaveBeenCalledWith({ text: 'external answer' });
+    try {
+      sendPrompt();
+      expect(actions.continueInteractive).not.toHaveBeenCalled();
+      expect(builderActions.continueInteractive).not.toHaveBeenCalled();
 
-    releaseFirst();
-    expect(removeEventListener).not.toHaveBeenCalled();
-    releaseSecond();
-    expect(removeEventListener).toHaveBeenCalledOnce();
-
-    unregister();
-    vi.unstubAllGlobals();
+      unregisterBuilder();
+      sendPrompt();
+      expect(actions.continueInteractive).toHaveBeenCalledExactlyOnceWith({
+        text: 'embedded question'
+      });
+    } finally {
+      release();
+      unregister();
+      unregisterBuilder();
+      vi.unstubAllGlobals();
+    }
   });
 
-  it('ignores external prompts from untrusted cross-origin messages', () => {
-    const listeners = new Set<(event: MessageEvent<unknown>) => void>();
-    const addEventListener = vi.fn(
-      (_type: string, listener: (event: MessageEvent<unknown>) => void) => {
-        listeners.add(listener);
-      }
-    );
-    const removeEventListener = vi.fn();
-    vi.stubGlobal('window', {
-      addEventListener,
-      removeEventListener,
-      location: { origin: 'https://fastgpt.run' }
-    });
-
+  it('ignores malformed cross-origin prompt payloads', () => {
+    const messageTarget = new EventTarget();
+    vi.stubGlobal('window', messageTarget);
     const actions = createActions();
-    const identity = { sourceKey: 'app:app-1', chatId: 'preview-chat' };
-    const unregister = registerChatInstanceActions({ identity, actions });
+    const unregister = registerChatInstanceActions({
+      identity: { sourceKey: 'app:app-1', chatId: 'preview-chat' },
+      actions
+    });
     const release = retainExternalChatPromptListener();
 
-    listeners.forEach((listener) =>
-      listener({
-        origin: 'https://malicious.example.com',
-        data: {
-          type: 'sendPrompt',
-          text: 'malicious input',
-          target: identity
-        }
-      } as MessageEvent<unknown>)
-    );
-    expect(actions.continueInteractive).not.toHaveBeenCalled();
-
-    release();
-    unregister();
-    vi.unstubAllGlobals();
+    try {
+      for (const data of [
+        null,
+        { type: 'other', text: 'question' },
+        { type: 'sendPrompt', text: '' },
+        { type: 'sendPrompt', text: 123 },
+        { type: 'sendPrompt', text: 'question', target: {} }
+      ]) {
+        messageTarget.dispatchEvent(
+          new MessageEvent('message', { origin: 'https://parent.example.com', data })
+        );
+      }
+      expect(actions.continueInteractive).not.toHaveBeenCalled();
+    } finally {
+      release();
+      unregister();
+      vi.unstubAllGlobals();
+    }
   });
 });

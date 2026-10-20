@@ -99,17 +99,8 @@ const isExternalChatPrompt = (data: unknown): data is ExternalChatPrompt => {
   return typeof target.sourceKey === 'string' && typeof target.chatId === 'string';
 };
 
-const isTrustedMessageOrigin = (event: MessageEvent<unknown>) => {
-  if (typeof window === 'undefined') return false;
-  // 拦截来自不同源的跨站 postMessage，防止未授权页面恶意伪造指令
-  if (event.origin && event.origin !== window.location?.origin) {
-    return false;
-  }
-  return true;
-};
-
+/** 兼容跨域嵌入页面发送问题；消息格式和目标实例仍须有效，多实例不广播。 */
 const externalPromptListener = (event: MessageEvent<unknown>) => {
-  if (!isTrustedMessageOrigin(event)) return;
   const { data } = event;
   if (!isExternalChatPrompt(data)) return;
 
