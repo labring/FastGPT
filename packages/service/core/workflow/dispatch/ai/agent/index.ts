@@ -56,6 +56,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiChatExtractFiles]?: boolean;
   [NodeInputKeyEnum.aiChatReasoning]?: boolean;
   [NodeInputKeyEnum.aiChatReasoningEffort]?: ReasoningEffort;
+  [NodeInputKeyEnum.aiChatIsResponseText]?: boolean;
   [NodeInputKeyEnum.fileUrlList]?: string[];
   [NodeInputKeyEnum.aiModelId]?: string;
   [NodeInputKeyEnum.aiModel]?: string;
@@ -131,6 +132,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       systemPrompt = '',
       userChatInput,
       history = 6,
+      isResponseAnswerText = true,
       agent_selectedTools: selectedTools = [],
       skills: selectedSkills = [],
       editSkillId,
@@ -346,6 +348,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
     const outputAssistantResponses = outputSummary.assistantResponses;
 
+    // 达到 Agent Loop 上限属于运行控制信息，不抛节点错误；写入运行摘要供调试详情读取。
+    if (outputSummary.reachedMaxRunTimes) {
+      props.nodeSummary.mergeNodeSummary({ hasAgentLoopLimitReached: true });
+    }
+
     if (
       outputSummary.status === 'interactive' &&
       outputSummary.interactive?.type === 'agentPlanAskQuery'
@@ -395,7 +402,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreDoneMemories({
         nodeId
       }),
-      [DispatchNodeResponseKeyEnum.assistantResponses]: finalOutput.assistantResponses
+      [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
+        ? finalOutput.assistantResponses
+        : undefined
     };
   } catch (error) {
     // dispatch 层兜底：异常仍要清理 pending memory；内部详情已经由 sink 发布。
@@ -414,7 +423,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         nodeId,
         memory: {}
       }),
-      [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses
+      [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
+        ? assistantResponses
+        : undefined
     };
   } finally {
     await nodeResponseCollector.flush();

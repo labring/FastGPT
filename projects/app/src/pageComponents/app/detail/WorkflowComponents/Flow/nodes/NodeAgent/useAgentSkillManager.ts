@@ -31,8 +31,12 @@ export const useAgentSkillManager = ({
     [toolsInput]
   );
 
-  const fileLinkInput = useMemo(() => inputs.find((i) => i.key === 'fileLink'), [inputs]);
-  const canUploadFile = !!fileLinkInput?.value;
+  const fileLinkInput = useMemo(
+    () => inputs.find((i) => i.key === NodeInputKeyEnum.fileUrlList),
+    [inputs]
+  );
+  // 文件输入存在即具备文件解析能力，不要求当前已经上传文件。
+  const canUploadFile = !!fileLinkInput;
 
   const datasetInput = useMemo(
     () => inputs.find((i) => i.key === NodeInputKeyEnum.datasetSelectList),
@@ -47,13 +51,14 @@ export const useAgentSkillManager = ({
 
   const onUpdateOrAddTool = useCallback(
     (tool: SelectedToolItemType) => {
-      const toolKey = getToolIdentityKey(tool.pluginId, tool.source);
+      const toolId = tool.pluginId ?? tool.id;
+      const toolKey = getToolIdentityKey(toolId, tool.source);
       const exists = selectedTools.find(
-        (t) => getToolIdentityKey(t.pluginId, t.source) === toolKey
+        (t) => getToolIdentityKey(t.pluginId ?? t.id, t.source) === toolKey
       );
       const newTools = exists
         ? selectedTools.map((t) =>
-            getToolIdentityKey(t.pluginId, t.source) === toolKey ? tool : t
+            getToolIdentityKey(t.pluginId ?? t.id, t.source) === toolKey ? tool : t
           )
         : [...selectedTools, tool];
 
@@ -76,7 +81,7 @@ export const useAgentSkillManager = ({
     (id: string, source?: string) => {
       const toolKey = getToolIdentityKey(id, source);
       const newTools = selectedTools.filter(
-        (t) => getToolIdentityKey(t.pluginId, t.source) !== toolKey
+        (t) => getToolIdentityKey(t.pluginId ?? t.id, t.source) !== toolKey
       );
       if (toolsInput) {
         onChangeNode({
@@ -107,6 +112,7 @@ export const useAgentSkillManager = ({
     selectedTools,
     skillOption,
     selectedSkills,
+    canUploadFile,
     onClickSkill,
     onRemoveSkill,
     onUpdateOrAddTool,

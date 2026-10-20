@@ -19,6 +19,8 @@ export type WorkflowRuntimeSummaryFields = {
   hasLoopRunBreak: boolean;
   /** stopTool 是否命中。 */
   hasToolStop: boolean;
+  /** 当前 workflow 内 Agent 是否达到 Agent Loop 轮次上限。 */
+  hasAgentLoopLimitReached?: boolean;
   /** nestedEnd 节点是否到达。 */
   hasNestedEnd: boolean;
   /** nestedEnd 输出值。 */

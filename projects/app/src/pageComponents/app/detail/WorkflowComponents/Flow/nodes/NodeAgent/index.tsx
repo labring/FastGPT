@@ -217,13 +217,22 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const modelInputs = useMemo(
     () =>
       commonInputs.filter(
-        (i) => i.key === NodeInputKeyEnum.aiModelId || i.key === NodeInputKeyEnum.aiModel
+        (i) =>
+          i.key === NodeInputKeyEnum.aiModelId ||
+          i.key === NodeInputKeyEnum.aiModel ||
+          // hidden 输入不渲染，但要传给模型设置弹窗以显示“隐藏回答”开关。
+          i.key === NodeInputKeyEnum.aiChatIsResponseText
       ),
     [commonInputs]
   );
-  // Inputs rendered before skills/tools (fileLink, userChatInput)
+  // Inputs rendered before skills/tools (history, fileLink, userChatInput)
   const chatInputKeys = useMemo(
-    () => new Set([NodeInputKeyEnum.fileUrlList, NodeInputKeyEnum.userChatInput]),
+    () =>
+      new Set([
+        NodeInputKeyEnum.history,
+        NodeInputKeyEnum.fileUrlList,
+        NodeInputKeyEnum.userChatInput
+      ]),
     []
   );
   const chatInputs = useMemo(
@@ -262,6 +271,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     selectedTools,
     skillOption,
     selectedSkills,
+    canUploadFile,
     onClickSkill,
     onRemoveSkill,
     onUpdateOrAddTool,
@@ -684,7 +694,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                         tip={t('app:tool_param_config')}
                         onClick={(e) => {
                           e.stopPropagation();
-                          onClickSkill(item.pluginId!);
+                          onClickSkill(item.pluginId ?? item.id);
                         }}
                       />
                       <Box className="delete-btn" display={'none'}>
@@ -694,7 +704,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                           hoverColor="red.600"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onDeleteTool(item.pluginId!, item.source);
+                            onDeleteTool(item.pluginId ?? item.id, item.source);
                           }}
                         />
                       </Box>
@@ -706,8 +716,8 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 <ToolSelectModal
                   selectedTools={selectedTools}
                   selectedModel={currentModel}
-                  fileSelectConfig={{}}
-                  onAddTool={(tool) => onUpdateOrAddTool({ ...tool, id: tool.pluginId! })}
+                  fileSelectConfig={canUploadFile ? { canSelectFile: true } : {}}
+                  onAddTool={(tool) => onUpdateOrAddTool({ ...tool, id: tool.pluginId ?? tool.id })}
                   onRemoveTool={(tool) => onDeleteTool(tool.id, tool.source)}
                   onClose={onCloseToolSelect}
                 />

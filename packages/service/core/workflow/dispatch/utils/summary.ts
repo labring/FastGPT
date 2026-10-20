@@ -66,6 +66,9 @@ export const createNodeSummary = (): NodeSummaryCollector => {
       summary.citeCollectionIds?.push(...(source.citeCollectionIds ?? []));
       summary.hasLoopRunBreak ||= !!source.hasLoopRunBreak;
       summary.hasToolStop ||= !!source.hasToolStop;
+      if (source.hasAgentLoopLimitReached) {
+        summary.hasAgentLoopLimitReached = true;
+      }
       summary.hasNestedEnd ||= !!source.hasNestedEnd;
       if (source.nestedEndOutput !== undefined) {
         summary.nestedEndOutput = source.nestedEndOutput;
@@ -98,6 +101,7 @@ export const getNodeSummaryData = (summary: NodeSummary): NodeSummary => ({
     : {}),
   ...(summary.hasLoopRunBreak ? { hasLoopRunBreak: true } : {}),
   ...(summary.hasToolStop ? { hasToolStop: true } : {}),
+  ...(summary.hasAgentLoopLimitReached ? { hasAgentLoopLimitReached: true } : {}),
   ...(summary.hasNestedEnd ? { hasNestedEnd: true } : {}),
   ...(summary.nestedEndOutput !== undefined ? { nestedEndOutput: summary.nestedEndOutput } : {}),
   ...(summary.pluginOutput !== undefined ? { pluginOutput: summary.pluginOutput } : {}),
@@ -356,6 +360,9 @@ export const mergeWorkflowRuntimeSummary = ({
       merged.citeCollectionIds.push(...(summary.citeCollectionIds ?? []));
       merged.hasLoopRunBreak ||= summary.hasLoopRunBreak;
       merged.hasToolStop ||= summary.hasToolStop;
+      if (summary.hasAgentLoopLimitReached) {
+        merged.hasAgentLoopLimitReached = true;
+      }
       merged.hasNestedEnd ||= summary.hasNestedEnd;
       if (summary.nestedEndOutput !== undefined) {
         merged.nestedEndOutput = summary.nestedEndOutput;
@@ -385,6 +392,9 @@ export const mergeWorkflowRuntimeSummary = ({
     merged.citeCollectionIds.push(...(nodeSummary.citeCollectionIds ?? []));
     merged.hasLoopRunBreak ||= !!nodeSummary.hasLoopRunBreak;
     merged.hasToolStop ||= !!nodeSummary.hasToolStop;
+    if (nodeSummary.hasAgentLoopLimitReached) {
+      merged.hasAgentLoopLimitReached = true;
+    }
     merged.hasNestedEnd ||= !!nodeSummary.hasNestedEnd;
     if (nodeSummary.nestedEndOutput !== undefined) {
       merged.nestedEndOutput = nodeSummary.nestedEndOutput;

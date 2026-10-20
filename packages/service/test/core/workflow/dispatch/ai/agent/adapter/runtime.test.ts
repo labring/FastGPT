@@ -123,6 +123,50 @@ describe('createWorkflowAgentLoopRuntime', () => {
     expect(runtime.toolCatalog.runtimeTools.map((item) => item.function.name)).toEqual(['search']);
   });
 
+  it('disables answer and tool streaming when isResponseAnswerText is false', () => {
+    const workflowStreamResponse = vi.fn();
+    const { runtime } = createWorkflowAgentLoopRuntime({
+      context: createContext({
+        params: {
+          model: 'gpt-4',
+          aiChatVision: true,
+          isResponseAnswerText: false
+        }
+      }),
+      usagePush: vi.fn(),
+      workflowStreamResponse,
+      executeToolFactory: vi.fn()
+    });
+
+    runtime.emitEvent?.({
+      type: 'answer_delta',
+      text: 'hidden answer'
+    });
+    runtime.emitEvent?.({
+      type: 'tool_call',
+      call: toolCall({ id: 'call_search', name: 'search' })
+    });
+
+    expect(workflowStreamResponse).not.toHaveBeenCalled();
+  });
+
+  it('keeps answer streaming by default when isResponseAnswerText is omitted', () => {
+    const workflowStreamResponse = vi.fn();
+    const { runtime } = createWorkflowAgentLoopRuntime({
+      context: createContext(),
+      usagePush: vi.fn(),
+      workflowStreamResponse,
+      executeToolFactory: vi.fn()
+    });
+
+    runtime.emitEvent?.({
+      type: 'answer_delta',
+      text: 'visible answer'
+    });
+
+    expect(workflowStreamResponse).toHaveBeenCalledTimes(1);
+  });
+
   it('enables sandbox internal tool only when workflow prepared a sandbox client', () => {
     const sandboxClient = {
       provider: {},

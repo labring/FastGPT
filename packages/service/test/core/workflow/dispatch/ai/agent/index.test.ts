@@ -6,7 +6,10 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
 import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/application/runtime';
@@ -777,6 +780,78 @@ describe('dispatchRunAgent user context', () => {
         }
       }
     ]);
+  });
+
+  it('hides assistant responses while keeping answerText when response output is disabled', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    props.params.isResponseAnswerText = false;
+    const answerEvents: unknown[] = [];
+    props.workflowStreamResponse = vi.fn((response: any) => {
+      if (response?.event === SseResponseEventEnum.answer) answerEvents.push(response);
+    });
+    runAgentLoopMock.mockImplementationOnce(async ({ runtime }) => {
+      runtime.emitEvent({
+        type: 'answer_delta',
+        text: 'hidden answer'
+      });
+      return {
+        status: 'done',
+        completeMessages: [],
+        assistantMessages: [
+          {
+            role: 'assistant',
+            content: 'ok'
+          }
+        ],
+        requestIds: []
+      };
+    });
+
+    let resultPromise: Promise<any>;
+    runWithContext(
+      {
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchRunAgent(props);
+      }
+    );
+    const result = await resultPromise!;
+
+    expect(result.data.answerText).toContain('ok');
+    expect(result[DispatchNodeResponseKeyEnum.assistantResponses]).toBeUndefined();
+    expect(answerEvents).toEqual([]);
+  });
+
+  it('marks the node summary when the agent loop reaches its limit', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    runAgentLoopMock.mockResolvedValueOnce({
+      status: 'done',
+      completeMessages: [],
+      assistantMessages: [
+        {
+          role: 'assistant',
+          content: 'ok'
+        }
+      ],
+      requestIds: [],
+      reachedMaxRunTimes: true
+    });
+
+    let resultPromise: Promise<any>;
+    runWithContext(
+      {
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchRunAgent(props);
+      }
+    );
+    await resultPromise!;
+
+    expect(props.nodeSummary.hasAgentLoopLimitReached).toBe(true);
   });
 
   it('does not duplicate final answer already persisted from answer_delta', async () => {

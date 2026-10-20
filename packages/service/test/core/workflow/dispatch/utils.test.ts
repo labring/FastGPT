@@ -2177,6 +2177,18 @@ describe('mergeWorkflowRuntimeSummary', () => {
     expect(mergeWorkflowRuntimeSummary({})).toEqual(createWorkflowRuntimeSummary());
   });
 
+  it('保留 Agent Loop 上限标记，且不会凭空写入 false', () => {
+    const merged = mergeWorkflowRuntimeSummary({
+      nodeSummary: { hasAgentLoopLimitReached: true }
+    });
+    expect(merged.hasAgentLoopLimitReached).toBe(true);
+
+    const withoutMarker = mergeWorkflowRuntimeSummary({
+      nodeSummary: { llmInputTokens: 1 }
+    });
+    expect(withoutMarker).not.toHaveProperty('hasAgentLoopLimitReached');
+  });
+
   it('兼容恢复快照缺少 token 字段，并从 nodeResponse 提取 LLM token', () => {
     const legacy = { ...createWorkflowRuntimeSummary() } as Partial<
       ReturnType<typeof createWorkflowRuntimeSummary>

@@ -166,6 +166,7 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
     requestIds: result.requestIds,
     contextCheckpoint: result.contextCheckpoint,
     finishReason: result.finishReason ?? 'stop',
+    reachedMaxRunTimes: result.reachedMaxRunTimes,
     usages: buildFastAgentResultUsages({
       inputTokens: result.inputTokens,
       outputTokens: result.outputTokens,

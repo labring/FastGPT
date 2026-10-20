@@ -21,6 +21,7 @@ import { RunAppNode } from './system/runApp';
 import { RunPluginModule } from './system/runPlugin';
 
 import type { FlowNodeTemplateType } from '../type/node';
+import { FlowNodeTypeEnum } from '../node/constant';
 import { CustomFeedbackNode } from './system/customFeedback';
 import { IfElseNode } from './system/ifElse/index';
 import { FormInputNode } from './system/interactive/formInput';
@@ -73,7 +74,8 @@ export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
 export const pluginSystemModuleTemplates: FlowNodeTemplateType[] = [
   PluginInputModule,
   PluginOutputModule,
-  ...systemNodes
+  // Agent 依赖工作流聊天上下文与流式输出，只在工作流应用编辑器中暴露。
+  ...systemNodes.filter((node) => node.flowNodeType !== FlowNodeTypeEnum.agent)
 ];
 
 /* all module */

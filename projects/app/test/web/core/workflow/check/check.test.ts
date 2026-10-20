@@ -45,6 +45,8 @@ import { CommentNode } from '@fastgpt/global/core/workflow/template/system/comme
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { FormInputNode } from '@fastgpt/global/core/workflow/template/system/interactive/formInput';
 import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
+import { AGENT_SANDBOX_TOOLSET_ID } from '@fastgpt/global/core/ai/sandbox/tools';
 
 describe('checkWorkflowNodeIssues', () => {
   const makeNode = (
@@ -984,6 +986,136 @@ describe('checkWorkflowNodeIssues', () => {
         })
       ])
     );
+  });
+
+  it('reports Agent internal tool resource and configuration issues', () => {
+    const agentNode = makeNode('agent', FlowNodeTypeEnum.agent, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.selectedTools,
+          label: '工具',
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: [
+            { id: 'missing-tool', pluginData: { error: 'tool_missing' } },
+            { id: 'offline-tool', status: PluginStatusEnum.Offline },
+            { id: 'unconfigured-tool', configStatus: 'waitingForConfig' }
+          ]
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, agentNode],
+      edges: [{ id: 'e1', source: 'start', target: 'agent', type: EDGE_TYPE }]
+    });
+
+    expect(result.agent).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'tool_missing',
+          inputKey: NodeInputKeyEnum.selectedTools
+        }),
+        expect.objectContaining({
+          code: 'tool_offline',
+          inputKey: NodeInputKeyEnum.selectedTools
+        }),
+        expect.objectContaining({
+          code: 'tool_waiting_config',
+          inputKey: NodeInputKeyEnum.selectedTools
+        })
+      ])
+    );
+  });
+
+  it('reports Agent tool context prerequisites without a sandbox', () => {
+    const agentNode = makeNode('agent', FlowNodeTypeEnum.agent, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.selectedTools,
+          label: '工具',
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: [
+            { id: SubAppIds.datasetSearch },
+            { id: SubAppIds.readFiles },
+            { id: AGENT_SANDBOX_TOOLSET_ID }
+          ]
+        },
+        {
+          key: NodeInputKeyEnum.skills,
+          label: '技能',
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: [{ skillId: 'skill-1', name: 'Skill' }]
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, agentNode],
+      edges: [{ id: 'e1', source: 'start', target: 'agent', type: EDGE_TYPE }]
+    });
+
+    const issues = result.agent ?? [];
+    expect(issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'tool_waiting_config',
+          inputKey: NodeInputKeyEnum.datasetSelectList
+        }),
+        expect.objectContaining({
+          code: 'tool_waiting_config',
+          inputKey: NodeInputKeyEnum.fileUrlList
+        }),
+        expect.objectContaining({
+          code: 'tool_waiting_config',
+          inputKey: NodeInputKeyEnum.useAgentSandbox
+        }),
+        expect.objectContaining({
+          code: 'tool_waiting_config',
+          inputKey: NodeInputKeyEnum.skills
+        })
+      ])
+    );
+  });
+
+  it('skips Agent tool context checks when the context inputs are references', () => {
+    const agentNode = makeNode('agent', FlowNodeTypeEnum.agent, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.selectedTools,
+          label: '工具',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          value: [[VARIABLE_NODE_ID, 'tools']]
+        },
+        {
+          key: NodeInputKeyEnum.useAgentSandbox,
+          label: '虚拟机',
+          renderTypeList: [FlowNodeInputTypeEnum.switch],
+          value: true
+        },
+        {
+          key: NodeInputKeyEnum.datasetSelectList,
+          label: '知识库',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          value: [['source-node', 'datasets']]
+        },
+        {
+          key: NodeInputKeyEnum.fileUrlList,
+          label: '文件',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          value: [['source-node', 'files']]
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, agentNode],
+      edges: [{ id: 'e1', source: 'start', target: 'agent', type: EDGE_TYPE }]
+    });
+
+    expect((result.agent ?? []).some((issue) => issue.code === 'tool_waiting_config')).toBe(false);
   });
 
   /**
