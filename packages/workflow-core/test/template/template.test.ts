@@ -1,5 +1,9 @@
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { WorkflowIOValueTypeEnum, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  WorkflowIOValueTypeEnum,
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { WorkflowCommandError } from '../../src/domain/diagnostic';
 import { builtinTemplateProvider } from '../template/provider';
 import { createWorkflowDocument } from '../../src/domain/document';
@@ -60,6 +64,7 @@ describe('builtinTemplateProvider', () => {
       descriptor.inputs.find((input) => input.key === 'system_httpHeader')?.constraints?.valueSchema
     ).toMatchObject({ type: 'array' });
     expect(descriptor.inputs.find((input) => input.key === 'system_addInputParam')).toBeUndefined();
+    expect(descriptor.dynamicIO.inputs.manual).toBe(false);
     expect(descriptor.inputs.find((input) => input.key === 'system_httpReqUrl')).toMatchObject({
       configurable: true,
       inputModes: ['literal']
@@ -364,6 +369,49 @@ describe('normalizeNodeTemplateDescriptor', () => {
 });
 
 describe('instantiateNodeFromTemplate', () => {
+  it('omits deprecated IO from new HTTP nodes without changing the compatibility template', async () => {
+    const templateRef = parseNodeTemplateRef('builtin:http-request');
+    const resolved = await builtinTemplateProvider.resolve(templateRef, { locale: 'en' });
+    const template = structuredClone(resolved.template);
+    template.inputs.find((input) => input.key === NodeInputKeyEnum.httpMethod)!.deprecated = false;
+    const rawResponse = template.outputs.find(
+      (output) => output.key === NodeOutputKeyEnum.httpRawResponse
+    )!;
+    rawResponse.deprecated = false;
+    template.outputs.push({
+      ...rawResponse,
+      id: 'legacy-response',
+      key: 'legacy-response',
+      deprecated: true
+    });
+    const before = structuredClone(template);
+    const { node } = await instantiateNodeFromTemplate({
+      document: createWorkflowDocument(),
+      templateRef,
+      nodeId: 'http',
+      provider: {
+        list: builtinTemplateProvider.list,
+        resolve: async () => ({ ...resolved, template })
+      },
+      locale: 'en'
+    });
+
+    expect(node.inputs.some((input) => input.key === NodeInputKeyEnum.addInputParam)).toBe(false);
+    expect(node.outputs.some((output) => output.key === 'legacy-response')).toBe(false);
+    expect(node.inputs.find((input) => input.key === NodeInputKeyEnum.httpMethod)).toMatchObject({
+      value: 'POST',
+      deprecated: false
+    });
+    expect(node.inputs.find((input) => input.key === NodeInputKeyEnum.httpTimeout)?.value).toBe(30);
+    expect(node.outputs.find((output) => output.key === NodeOutputKeyEnum.httpRawResponse)).toEqual(
+      rawResponse
+    );
+    expect(template).toEqual(before);
+    expect(
+      template.inputs.find((input) => input.key === NodeInputKeyEnum.addInputParam)
+    ).toMatchObject({ deprecated: true });
+  });
+
   it('creates a complete store node with the current default reference', async () => {
     const start = await instantiateNodeFromTemplate({
       document: createWorkflowDocument(),

@@ -165,13 +165,16 @@ const getBranchContract = (flowNodeType: FlowNodeTypeEnum) => {
  */
 export const getNodeRuntimeContract = (template: FlowNodeTemplateType): NodeRuntimeContract => {
   const flowNodeType = template.flowNodeType;
+  // 弃用 IO 仅用于历史节点兼容，不向新建节点声明对应的执行端口和动态字段能力。
+  const inputs = template.inputs.filter((input) => input.deprecated !== true);
+  const outputs = template.outputs.filter((output) => output.deprecated !== true);
   const branch = getBranchContract(flowNodeType);
   const sourceKinds: NodeExecutionSourceKind[] = [
     !NODE_TYPES_WITHOUT_NEXT_PORT.has(flowNodeType) && template.showSourceHandle === true
       ? 'next'
       : undefined,
     branch ? 'branch' : undefined,
-    template.outputs.some((output) => output.type === 'source') ? 'sourceOutput' : undefined,
+    outputs.some((output) => output.type === 'source') ? 'sourceOutput' : undefined,
     template.catchError !== undefined ? 'catch' : undefined,
     flowNodeType === FlowNodeTypeEnum.toolCall ? 'selectedTools' : undefined
   ].filter((kind): kind is NodeExecutionSourceKind => kind !== undefined);
@@ -181,10 +184,10 @@ export const getNodeRuntimeContract = (template: FlowNodeTemplateType): NodeRunt
       : undefined,
     template.isTool === true ? 'selectedTools' : undefined
   ].filter((kind): kind is NodeExecutionTargetKind => kind !== undefined);
-  const dynamicInputs = template.inputs.some((input) => DYNAMIC_INPUT_MARKER_KEYS.has(input.key));
+  const dynamicInputs = inputs.some((input) => DYNAMIC_INPUT_MARKER_KEYS.has(input.key));
   const dynamicOutputs =
     DYNAMIC_OUTPUT_NODE_TYPES.has(flowNodeType) ||
-    template.outputs.some((output) => output.key === 'system_addOutputParam');
+    outputs.some((output) => output.key === 'system_addOutputParam');
   const derivedInputKeys = flowNodeType === FlowNodeTypeEnum.code ? [NodeInputKeyEnum.code] : [];
   const derivedOutputKeys =
     flowNodeType === FlowNodeTypeEnum.code

@@ -14,7 +14,7 @@ import { hasConfiguredValue, resolveInitialInputValue } from './defaultValue';
 import { formatNodeTemplateRef, type WorkflowTemplateProvider } from './type';
 import { type NodeTemplateRef } from '@fastgpt/global/core/workflow/template/type';
 
-/** 从原始 FastGPT 模板创建完整 StoreNode，Descriptor 元数据不会进入运行时对象。 */
+/** 从模板创建完整 StoreNode，跳过弃用 IO；不修改兼容模板，也不写入 Descriptor 元数据。 */
 export const instantiateNodeFromTemplate = async ({
   document,
   templateRef,
@@ -76,37 +76,41 @@ export const instantiateNodeFromTemplate = async ({
     nodeId,
     parentNodeId,
     position,
-    inputs: template.inputs.map((input) => {
-      const meta = automationMeta?.inputs?.[input.key];
-      const usesSafeDefault =
-        meta?.resourceKind !== undefined ||
-        meta?.defaultPolicy === 'userRequired' ||
-        meta?.defaultPolicy === 'remoteValidated';
-      return {
-        ...structuredClone(input),
-        value: resolveInitialInputValue({
-          input,
-          meta,
-          validatedRemoteDefault: validatedInputDefaults?.[input.key]
-        }),
-        ...(usesSafeDefault ? { defaultValue: undefined } : {}),
-        label: translate(input.label),
-        description: input.description ? translate(input.description) : undefined,
-        placeholder: input.placeholder ? translate(input.placeholder) : undefined,
-        debugLabel: input.debugLabel ? translate(input.debugLabel) : undefined,
-        toolDescription: input.toolDescription ? translate(input.toolDescription) : undefined,
-        list: input.list?.map((item) => ({
-          ...item,
-          label: item.label ? translate(item.label) : item.label,
-          description: item.description ? translate(item.description) : undefined
-        }))
-      };
-    }),
-    outputs: template.outputs.map((output) => ({
-      ...structuredClone(output),
-      label: output.label ? translate(output.label) : output.label,
-      description: output.description ? translate(output.description) : undefined
-    }))
+    inputs: template.inputs
+      .filter((input) => input.deprecated !== true)
+      .map((input) => {
+        const meta = automationMeta?.inputs?.[input.key];
+        const usesSafeDefault =
+          meta?.resourceKind !== undefined ||
+          meta?.defaultPolicy === 'userRequired' ||
+          meta?.defaultPolicy === 'remoteValidated';
+        return {
+          ...structuredClone(input),
+          value: resolveInitialInputValue({
+            input,
+            meta,
+            validatedRemoteDefault: validatedInputDefaults?.[input.key]
+          }),
+          ...(usesSafeDefault ? { defaultValue: undefined } : {}),
+          label: translate(input.label),
+          description: input.description ? translate(input.description) : undefined,
+          placeholder: input.placeholder ? translate(input.placeholder) : undefined,
+          debugLabel: input.debugLabel ? translate(input.debugLabel) : undefined,
+          toolDescription: input.toolDescription ? translate(input.toolDescription) : undefined,
+          list: input.list?.map((item) => ({
+            ...item,
+            label: item.label ? translate(item.label) : item.label,
+            description: item.description ? translate(item.description) : undefined
+          }))
+        };
+      }),
+    outputs: template.outputs
+      .filter((output) => output.deprecated !== true)
+      .map((output) => ({
+        ...structuredClone(output),
+        label: output.label ? translate(output.label) : output.label,
+        description: output.description ? translate(output.description) : undefined
+      }))
   });
 
   const startNode = document.nodes.find(

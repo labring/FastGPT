@@ -354,34 +354,37 @@ describe('additional builtin nodes', () => {
     });
   });
 
-  it('rejects dynamic inputs on nodes without a dynamic input marker', async () => {
-    let document = await addNode({
-      document: createWorkflowDocument(),
-      nodeId: 'start',
-      template: 'builtin:workflow-start'
-    });
-    document = await addNode({
-      document,
-      nodeId: 'feedback',
-      template: 'builtin:custom-feedback',
-      after: 'start'
-    });
-    await expect(
-      applyWorkflowCommand({
+  it.each(['custom-feedback', 'http-request'])(
+    'rejects new dynamic inputs on builtin:%s without an active dynamic input marker',
+    async (templateId) => {
+      let document = await addNode({
+        document: createWorkflowDocument(),
+        nodeId: 'start',
+        template: 'builtin:workflow-start'
+      });
+      document = await addNode({
         document,
-        command: {
-          type: 'input.add',
-          nodeId: 'feedback',
-          input: {
-            key: 'extra',
-            label: 'Extra',
-            valueType: WorkflowIOValueTypeEnum.string,
-            renderTypeList: [FlowNodeInputTypeEnum.input],
-            canEdit: true
-          }
-        },
-        dependencies
-      })
-    ).rejects.toThrow(WorkflowCommandError);
-  });
+        nodeId: 'feedback',
+        template: `builtin:${templateId}`,
+        after: 'start'
+      });
+      await expect(
+        applyWorkflowCommand({
+          document,
+          command: {
+            type: 'input.add',
+            nodeId: 'feedback',
+            input: {
+              key: 'extra',
+              label: 'Extra',
+              valueType: WorkflowIOValueTypeEnum.string,
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              canEdit: true
+            }
+          },
+          dependencies
+        })
+      ).rejects.toThrow(WorkflowCommandError);
+    }
+  );
 });

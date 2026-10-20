@@ -5,7 +5,12 @@ import {
   type WorkflowDocument
 } from '@fastgpt/global/core/workflow/type/document';
 import { compileStoreWorkflow } from '@fastgpt/workflow-core/store/compile';
+import { applyWorkflowCommand } from '@fastgpt/workflow-core/command/apply';
+import { createWorkflowDocument } from '@fastgpt/workflow-core/domain/document';
+import { builtinTemplateProvider } from '@fastgpt/workflow-core/test/template/provider';
+import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
 import {
+  NodeInputKeyEnum,
   VARIABLE_NODE_ID,
   VariableInputEnum,
   WorkflowIOValueTypeEnum
@@ -25,6 +30,60 @@ const toWebGraph = (document: WorkflowDocument) => {
 };
 
 describe('reactFlowStateToWorkflowDocument', () => {
+  it('keeps generated HTTP nodes free of deprecated fields while retaining existing custom inputs', async () => {
+    const legacyInput = {
+      key: 'legacy-token',
+      label: 'Legacy token',
+      renderTypeList: [FlowNodeInputTypeEnum.input],
+      valueType: WorkflowIOValueTypeEnum.string,
+      canEdit: true,
+      value: 'saved-value'
+    };
+    const result = await applyWorkflowCommand({
+      document: createWorkflowDocument({
+        nodes: [
+          {
+            ...HttpNode468,
+            nodeId: 'legacy-http',
+            inputs: [...HttpNode468.inputs, legacyInput]
+          }
+        ]
+      }),
+      command: {
+        type: 'node.add',
+        nodeId: 'generated-http',
+        template: { kind: 'builtin', templateId: 'http-request' },
+        inputOverrides: { [NodeInputKeyEnum.httpReqUrl]: 'https://example.com/hook' }
+      },
+      dependencies: { templateProvider: builtinTemplateProvider, locale: 'en' }
+    });
+    const graph = toWebGraph(result.document);
+    expect(
+      graph.nodes
+        .find((node) => node.id === 'generated-http')!
+        .data.inputs.some((input) => input.key === NodeInputKeyEnum.addInputParam)
+    ).toBe(false);
+
+    const document = reactFlowStateToWorkflowDocument({ ...graph, chatConfig: {} });
+    const workflow = compileStoreWorkflow(document);
+    expect(workflow.nodes.find((node) => node.nodeId === 'legacy-http')?.inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: NodeInputKeyEnum.addInputParam }),
+        expect.objectContaining({
+          ...legacyInput,
+          renderTypeList: expect.arrayContaining(legacyInput.renderTypeList)
+        })
+      ])
+    );
+    const generatedInputs = workflow.nodes.find((node) => node.nodeId === 'generated-http')!.inputs;
+    expect(generatedInputs.some((input) => input.key === NodeInputKeyEnum.addInputParam)).toBe(
+      false
+    );
+    expect(generatedInputs.find((input) => input.key === NodeInputKeyEnum.httpReqUrl)?.value).toBe(
+      'https://example.com/hook'
+    );
+  });
+
   it.each([
     { value: [VARIABLE_NODE_ID, 'customer'], expected: [VARIABLE_NODE_ID, 'customer'] },
     {
