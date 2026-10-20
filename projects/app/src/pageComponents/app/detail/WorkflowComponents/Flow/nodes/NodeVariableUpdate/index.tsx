@@ -60,10 +60,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
   const { t } = useTranslation();
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { edges, getNodeById } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
-  );
+  const { edges, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const variables = useMemoEnhance(() => {
@@ -257,7 +254,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
 
   const Render = useMemo(() => {
     return (
-      <NodeCard selected={selected} minW={'522px'} maxW={'1000px'} {...data}>
+      <NodeCard selected={selected} minW={'524px'} maxW={'1000px'} {...data}>
         <Box px={4} pb={4}>
           <Flex flexDirection={'column'} gap={4}>
             {updateList.map((updateItem, index) => (

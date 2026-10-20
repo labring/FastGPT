@@ -52,7 +52,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   );
 
   return (
-    <NodeCard selected={selected} maxW={'1000px'} {...data}>
+    <NodeCard selected={selected} minW={'686px'} maxW={'1000px'} {...data}>
       <Flex flexDirection={'column'} cursor={'default'}>
         <DndDrag<IfElseListItemType>
           onDragEndCb={(list: IfElseListItemType[]) => onUpdateIfElseList(list)}

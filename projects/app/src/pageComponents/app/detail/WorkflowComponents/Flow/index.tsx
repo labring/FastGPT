@@ -26,7 +26,7 @@ import { useTranslation } from 'next-i18next';
 
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
 const NodeStopTool = React.memo((props: NodeProps<FlowNodeItemType>) => (
-  <NodeSimple {...props} minW={'100px'} maxW={'300px'} />
+  <NodeSimple {...props} minW={'350px'} minH={'160px'} />
 ));
 NodeStopTool.displayName = 'NodeStopTool';
 

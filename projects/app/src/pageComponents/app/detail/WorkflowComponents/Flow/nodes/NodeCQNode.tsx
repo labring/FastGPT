@@ -139,7 +139,7 @@ const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   const Render = useMemo(() => {
     return (
-      <NodeCard minW={'400px'} selected={selected} {...data}>
+      <NodeCard minW={'524px'} selected={selected} {...data}>
         <Container>
           <RenderInput
             nodeId={nodeId}

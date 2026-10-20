@@ -42,7 +42,7 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   );
 
   return (
-    <NodeCard minW={'350px'} selected={selected} {...data}>
+    <NodeCard minW={'524px'} selected={selected} {...data}>
       <Container>
         <ToolSetList
           toolList={toolList}

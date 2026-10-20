@@ -58,6 +58,7 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   return (
     <NodeCard
+      minW={'350px'}
       selected={selected}
       menuForbid={{
         copy: true,
