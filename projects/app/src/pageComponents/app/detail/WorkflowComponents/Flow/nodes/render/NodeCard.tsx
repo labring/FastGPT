@@ -1,5 +1,4 @@
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
-import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import SecretInputModal from '@/pageComponents/app/tool/SecretInputModal';
 import { getAppPermission } from '@/web/core/app/api';
 import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
@@ -106,7 +105,7 @@ const getCurrentSystemToolTemplate = async (node?: FlowNodeItemType) => {
       appId: node.pluginId,
       versionId: node.version ?? '',
       source: node.source,
-      lang: node.metadataLocale ?? 'en',
+      lang: node.metadataLocale ?? 'en'
     });
   } catch {
     return;
@@ -282,7 +281,9 @@ const NodeCard = (props: Props) => {
                 status: currentSystemToolTemplate.status,
                 courseUrl: currentSystemToolTemplate.courseUrl,
                 readmeUrl:
-                  node.readmeUrl ?? node.pluginData?.readmeUrl ?? currentSystemToolTemplate.readmeUrl,
+                  node.readmeUrl ??
+                  node.pluginData?.readmeUrl ??
+                  currentSystemToolTemplate.readmeUrl,
                 userGuide: currentSystemToolTemplate.userGuide,
                 diagram: currentSystemToolTemplate.diagram
               }
@@ -773,7 +774,7 @@ const NodeIntro = React.memo(function NodeIntro({
 });
 
 const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeItemType }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   const onResetNode = useContextSelector(WorkflowActionsContext, (v) => v.onResetNode);
   const { openConfirm: openKeepLatestConfirm, ConfirmModal: KeepLatestConfirmModal } = useConfirm({
@@ -877,14 +878,11 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
         value: ''
       },
       ...versionList.map((item) => ({
-        label:
-          item.versionDescription !== undefined
-            ? selectPluginText(item.versionDescription, i18n.language)
-            : item.version,
+        label: item.version,
         value: item.version
       }))
     ],
-    [i18n.language, node.isLatestVersion, node.version, t, versionList]
+    [t, versionList]
   );
   const valueLabel = useMemo(() => {
     return (

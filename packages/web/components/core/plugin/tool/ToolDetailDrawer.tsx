@@ -174,11 +174,6 @@ const ToolDetailDrawer = ({
 
   const currentVersion =
     parentTool?.version || activeVersion || toolVersions[0]?.version || selectedTool.version;
-  const currentVersionItem = toolVersions.find((item) => item.version === currentVersion);
-  const currentVersionLabel =
-    currentVersionItem?.versionDescription !== undefined
-      ? selectPluginText(currentVersionItem.versionDescription, i18n.language)
-      : (currentVersionItem?.version ?? currentVersion);
   const contentReady = detailReady && !loadingVersions;
   const isCurrentVersionInstalled = isToolVersionInstalled({
     isInstalled: !!isInstalled,
@@ -230,17 +225,14 @@ const ToolDetailDrawer = ({
                         cursor={'pointer'}
                         color={'myGray.700'}
                       >
-                        <Box fontSize={'12px'}>{currentVersionLabel || t('common:Version')}</Box>
+                        <Box fontSize={'12px'}>{currentVersion || t('common:Version')}</Box>
                         <MyIcon name="core/chat/chevronDown" w={4} />
                       </Flex>
                     }
                     menuList={[
                       {
                         children: toolVersions.map((item) => ({
-                          label:
-                            item.versionDescription === undefined
-                              ? item.version
-                              : selectPluginText(item.versionDescription, i18n.language),
+                          label: item.version,
                           isActive: item.version === currentVersion,
                           onClick: () => {
                             setVersionSelection({
