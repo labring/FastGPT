@@ -492,6 +492,12 @@ describe('getChatSourceByPublishChannel', () => {
     expect(getChatSourceByPublishChannel(PublishChannelEnum.wecom)).toBe(ChatSourceEnum.wecom);
   });
 
+  it('should map wecom websocket channel to the existing wecom source', () => {
+    expect(getChatSourceByPublishChannel(PublishChannelEnum.wecomWebsocket)).toBe(
+      ChatSourceEnum.wecom
+    );
+  });
+
   it('should map officialAccount channel to official_account source', () => {
     expect(getChatSourceByPublishChannel(PublishChannelEnum.officialAccount)).toBe(
       ChatSourceEnum.official_account

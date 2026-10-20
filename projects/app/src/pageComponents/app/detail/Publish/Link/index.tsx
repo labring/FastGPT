@@ -281,7 +281,7 @@ function EditLinkModal({
   onEdit
 }: {
   appId: string;
-  type: PublishChannelEnum;
+  type: PublishChannelEnum.share;
   defaultData: OutLinkEditType;
   onClose: () => void;
   onCreate: (id: string) => void;
