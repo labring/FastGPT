@@ -21,10 +21,7 @@ import { ListAppV2BodySchema } from '../../openapi/core/app/common/api';
 import { GetDatasetListV2BodySchema } from '../../openapi/core/dataset/api';
 import { InvoiceListBodySchema } from '../../openapi/admin/wallet/bill/invoice/api';
 import { SearchDatasetSynonymMappingsBodySchema } from '../../openapi/core/dataset/synonym/api';
-import {
-  DatasetTrainingErrorPaginationLimits,
-  GetDatasetTrainingErrorBodySchema
-} from '../../openapi/core/dataset/training/api';
+import { GetDatasetTrainingErrorBodySchema } from '../../openapi/core/dataset/training/api';
 import z from 'zod';
 import { createSchema } from 'zod-openapi';
 import { openApiDocumentOptions } from '../../openapi/generation';
@@ -212,18 +209,31 @@ describe('exclusive pagination', () => {
     expect(skillSchema.parse({ page: '2' })).toEqual({ page: 2, pageSize: 50 });
   });
 
-  it('retains business-specific offset and page-number limits in validation and documentation', () => {
+  it('uses common training-error pagination limits and defaults in validation and documentation', () => {
     const datasetId = '68ad85a7463006c963799a05';
-    const { maxOffset, maxPageNum, maxPageSize } = DatasetTrainingErrorPaginationLimits;
+    expect(GetDatasetTrainingErrorBodySchema.parse({ datasetId })).toEqual({
+      datasetId,
+      pageSize: 10,
+      pageNum: 1
+    });
     expect(
-      GetDatasetTrainingErrorBodySchema.parse({ datasetId, offset: maxOffset, pageNum: -1 })
-    ).toEqual({ datasetId, offset: maxOffset });
+      GetDatasetTrainingErrorBodySchema.parse({
+        datasetId,
+        pageSize: `${PaginationPageSizeLimit}`,
+        offset: '100001',
+        pageNum: -1
+      })
+    ).toEqual({ datasetId, offset: 100001, pageSize: PaginationPageSizeLimit });
+    expect(GetDatasetTrainingErrorBodySchema.parse({ datasetId, pageNum: 5001 })).toEqual({
+      datasetId,
+      pageNum: 5001,
+      pageSize: 10
+    });
     expect(
-      GetDatasetTrainingErrorBodySchema.safeParse({ datasetId, offset: maxOffset + 1, pageNum: 1 })
-        .success
-    ).toBe(false);
-    expect(
-      GetDatasetTrainingErrorBodySchema.safeParse({ datasetId, pageNum: maxPageNum + 1 }).success
+      GetDatasetTrainingErrorBodySchema.safeParse({
+        datasetId,
+        pageSize: PaginationPageSizeLimit + 1
+      }).success
     ).toBe(false);
 
     const { schema: document } = createSchema(GetDatasetTrainingErrorBodySchema, {
@@ -232,8 +242,18 @@ describe('exclusive pagination', () => {
     });
     expect(document).toMatchObject({
       anyOf: [
-        { properties: { offset: { maximum: maxOffset }, pageSize: { maximum: maxPageSize } } },
-        { properties: { pageNum: { maximum: maxPageNum, default: 1 } } }
+        {
+          properties: {
+            offset: { maximum: Number.MAX_SAFE_INTEGER },
+            pageSize: { maximum: PaginationPageSizeLimit, default: 10 }
+          }
+        },
+        {
+          properties: {
+            pageNum: { maximum: Number.MAX_SAFE_INTEGER, default: 1 },
+            pageSize: { maximum: PaginationPageSizeLimit, default: 10 }
+          }
+        }
       ]
     });
   });

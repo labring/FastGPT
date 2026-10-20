@@ -7,6 +7,7 @@ import {
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { DatasetTrainingErrorPaginationLimits } from '@fastgpt/global/openapi/core/dataset/training/api';
+import { PaginationPageSizeLimit } from '@fastgpt/global/openapi/api';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
@@ -190,6 +191,57 @@ describe('dataset training error list test', () => {
     expect(loadMoreRes.data.list[0].items[0].mode).toBe(TrainingModeEnum.rebuildIndex);
   });
 
+  it('uses the common default and returns more than 20 collections when requested', async () => {
+    const root = await getRootUser();
+    const dataset = await MongoDataset.create({
+      name: 'test',
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      vectorModel: 'test',
+      agentModel: 'test'
+    });
+    const collections = await MongoDatasetCollection.insertMany(
+      Array.from({ length: 21 }, (_, index) => ({
+        name: `error-${index}`,
+        type: DatasetCollectionTypeEnum.file,
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id
+      }))
+    );
+    await MongoDatasetTraining.insertMany(
+      collections.map((collection) => ({
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id,
+        collectionId: collection._id,
+        billId: 'test',
+        mode: TrainingModeEnum.qa,
+        retryCount: 0,
+        errorMsg: 'training failed',
+        chunkIndex: 0
+      }))
+    );
+
+    const defaultPage = await Call<
+      getDatasetTrainingErrorBody,
+      EmptyQuery,
+      getDatasetTrainingErrorResponse
+    >(handler, { auth: root, body: { datasetId: dataset._id } });
+    expect(defaultPage.code).toBe(200);
+    expect(defaultPage.data.total).toBe(21);
+    expect(defaultPage.data.list).toHaveLength(10);
+
+    const largerPage = await Call<
+      getDatasetTrainingErrorBody,
+      EmptyQuery,
+      getDatasetTrainingErrorResponse
+    >(handler, { auth: root, body: { datasetId: dataset._id, pageSize: 21, offset: 0 } });
+    expect(largerPage.code).toBe(200);
+    expect(largerPage.data.total).toBe(21);
+    expect(largerPage.data.list).toHaveLength(21);
+  });
+
   it.each([
     {
       name: 'invalid itemOffset',
@@ -223,7 +275,7 @@ describe('dataset training error list test', () => {
       name: 'oversized pageSize',
       body: {
         datasetId: '507f1f77bcf86cd799439011',
-        pageSize: DatasetTrainingErrorPaginationLimits.maxPageSize + 1,
+        pageSize: PaginationPageSizeLimit + 1,
         offset: 0,
         itemPageSize: 1
       }
