@@ -99,29 +99,45 @@ describe('getFolderParentPathItems', () => {
 describe('GET /api/core/dataset/paths', () => {
   it('returns a navigable folder breadcrumb and denies an empty inaccessible folder', async () => {
     const { owner, members } = await getFakeUsers(1);
-    const [rootFolder, childFolder, readableDataset, hiddenFolder] = await MongoDataset.create([
-      { name: 'Root', type: DatasetTypeEnum.folder, teamId: owner.teamId, tmbId: owner.tmbId },
-      { name: 'Child', type: DatasetTypeEnum.folder, teamId: owner.teamId, tmbId: owner.tmbId },
-      {
-        name: 'Readable Dataset',
-        type: DatasetTypeEnum.dataset,
-        teamId: owner.teamId,
-        tmbId: owner.tmbId
-      },
-      { name: 'Hidden', type: DatasetTypeEnum.folder, teamId: owner.teamId, tmbId: owner.tmbId }
-    ]);
+    const [rootFolder, childFolder, readableDataset, hiddenFolder, readableFolder] =
+      await MongoDataset.create([
+        { name: 'Root', type: DatasetTypeEnum.folder, teamId: owner.teamId, tmbId: owner.tmbId },
+        { name: 'Child', type: DatasetTypeEnum.folder, teamId: owner.teamId, tmbId: owner.tmbId },
+        {
+          name: 'Readable Dataset',
+          type: DatasetTypeEnum.dataset,
+          teamId: owner.teamId,
+          tmbId: owner.tmbId
+        },
+        { name: 'Hidden', type: DatasetTypeEnum.folder, teamId: owner.teamId, tmbId: owner.tmbId },
+        {
+          name: 'Readable folder',
+          type: DatasetTypeEnum.folder,
+          teamId: owner.teamId,
+          tmbId: owner.tmbId
+        }
+      ]);
     await MongoDataset.updateOne({ _id: childFolder._id }, { $set: { parentId: rootFolder._id } });
     await MongoDataset.updateOne(
       { _id: readableDataset._id },
       { $set: { parentId: childFolder._id } }
     );
-    await MongoResourcePermission.create({
-      resourceType: PerResourceTypeEnum.dataset,
-      teamId: owner.teamId,
-      resourceId: readableDataset._id,
-      tmbId: members[0].tmbId,
-      permission: ReadPermissionVal
-    });
+    await MongoResourcePermission.create([
+      {
+        resourceType: PerResourceTypeEnum.dataset,
+        teamId: owner.teamId,
+        resourceId: readableDataset._id,
+        tmbId: members[0].tmbId,
+        permission: ReadPermissionVal
+      },
+      {
+        resourceType: PerResourceTypeEnum.dataset,
+        teamId: owner.teamId,
+        resourceId: readableFolder._id,
+        tmbId: members[0].tmbId,
+        permission: ReadPermissionVal
+      }
+    ]);
 
     const response = await Call<
       Record<string, never>,
@@ -134,9 +150,23 @@ describe('GET /api/core/dataset/paths', () => {
     expect(response.code).toBe(200);
     expect(response.data).toEqual([
       { parentId: String(rootFolder._id), parentName: 'Root' },
-      { parentId: String(childFolder._id), parentName: 'Child' }
+      {
+        parentId: String(childFolder._id),
+        parentName: 'Child',
+        folderAccessMode: 'navigate'
+      }
     ]);
     expect(JSON.stringify(response.data)).not.toContain('Readable Dataset');
+
+    const readableFolderPath = await Call<
+      Record<string, never>,
+      GetDatasetPathsQuery,
+      GetDatasetPathsResponse
+    >(handler, {
+      auth: members[0],
+      query: { sourceId: String(readableFolder._id), type: 'current' }
+    });
+    expect(readableFolderPath.data.at(-1)?.folderAccessMode).toBe('read');
 
     const deniedDetail = await Call(detailHandler, {
       auth: members[0],

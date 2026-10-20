@@ -456,6 +456,19 @@ describe('POST /api/core/app/list', () => {
     expect(searchResponse.data.list.map(({ _id }) => String(_id))).toEqual([
       String(readableApp._id)
     ]);
+
+    const rootSearchResponse = await Call<
+      ListAppV2BodyType,
+      Record<string, never>,
+      ListAppV2ResponseType
+    >(handlerV2, {
+      auth: members[0],
+      body: { searchKey: 'Readable child' }
+    });
+    expect(rootSearchResponse.data.total).toBe(1);
+    expect(rootSearchResponse.data.list.map(({ _id }) => String(_id))).toEqual([
+      String(readableApp._id)
+    ]);
   });
 
   it('keeps the original array response', async () => {

@@ -21,7 +21,8 @@ export type GetPathProps = z.infer<typeof GetPathPropsSchema>;
 
 export const ParentTreePathItemSchema = z.object({
   parentId: ParentIdSchema,
-  parentName: z.string()
+  parentName: z.string(),
+  folderAccessMode: FolderAccessModeSchema.optional()
 });
 export type ParentTreePathItemType = z.infer<typeof ParentTreePathItemSchema>;
 

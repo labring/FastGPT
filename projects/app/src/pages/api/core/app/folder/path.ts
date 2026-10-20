@@ -44,7 +44,8 @@ async function handler(req: NextApiRequest): Promise<ParentTreePathItemType[]> {
     throw CommonErrEnum.invalidParams;
   }
 
-  // 非所有者仅可通过真实可读的后代资源进入目录。
+  // 仅导航目录可以通过后代资源授权浏览；这里同时记录自身是否有真实读取权限，供 UI 隐藏写操作。
+  let hasFolderReadPermission = teamPer.isOwner;
   if (!teamPer.isOwner) {
     const [groups, orgSet] = await Promise.all([
       getGroupsByTmbId({ tmbId, teamId }),
@@ -63,8 +64,9 @@ async function handler(req: NextApiRequest): Promise<ParentTreePathItemType[]> {
       personalPermissionPriority: true,
       rolePerMap: AppRolePerMap
     });
+    hasFolderReadPermission = readableResourceIds.some((id) => String(id) === appId);
     if (
-      !readableResourceIds.some((id) => String(id) === appId) &&
+      !hasFolderReadPermission &&
       !(await hasReadableAppFolderChild({
         teamId,
         folderIds: folderScope.folderIds,
@@ -82,7 +84,13 @@ async function handler(req: NextApiRequest): Promise<ParentTreePathItemType[]> {
         .select('_id name parentId')
         .lean()
   });
-  return GetAppFolderPathResponseSchema.parse(paths);
+  return GetAppFolderPathResponseSchema.parse(
+    paths.map((path) =>
+      path.parentId === appId
+        ? { ...path, folderAccessMode: hasFolderReadPermission ? 'read' : 'navigate' }
+        : path
+    )
+  );
 }
 
 export default NextAPI(handler);

@@ -64,6 +64,8 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const { feConfigs } = useSystemStore();
   const maxFolderDepth = feConfigs?.limit?.maxFolderDepth ?? DEFAULT_MAX_FOLDER_DEPTH;
   const canCreateFolder = canCreateSubFolder(parentId, paths, maxFolderDepth);
+  const currentFolderPath = paths.find(({ parentId: pathId }) => pathId === parentId);
+  const isNavigableFolder = Boolean(parentId && currentFolderPath?.folderAccessMode !== 'read');
   const folderDepthLimitTip = t('common:folder_depth_limit_tip');
 
   const {
@@ -71,8 +73,8 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     onOpen: onOpenJsonImportModal,
     onClose: onCloseJsonImportModal
   } = useDisclosure();
-  const hasCreatePer = folderDetail
-    ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
+  const hasCreatePer = parentId
+    ? Boolean(folderDetail?.permission.hasWritePer && folderDetail.type !== AppTypeEnum.httpPlugin)
     : userInfo?.team.permission.hasAppCreatePer;
 
   //if there is a workflow url in the session storage, open the json import modal and import the workflow
@@ -117,7 +119,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           overflowX={'hidden'}
         >
           {/* Only shown on pc root page */}
-          {!folderDetail && isPc && hasCreatePer && <TemplateCreatePanel type={appType} />}
+          {!parentId && isPc && hasCreatePer && <TemplateCreatePanel type={appType} />}
           <Flex alignItems={'center'} gap={3} minW={0} flexWrap={'wrap'} flexShrink={0}>
             {!isPc && MenuIcon}
             {paths.length > 0 && isPc ? (
@@ -157,7 +159,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               </>
             )}
             <Flex flex={1} />
-            {(isPc || hasCreatePer) && (
+            {(isPc ? !isNavigableFolder : hasCreatePer) && (
               <Flex alignItems={'center'} gap={[2, '12px']}>
                 {isPc && (
                   <Button

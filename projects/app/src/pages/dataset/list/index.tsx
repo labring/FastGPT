@@ -69,8 +69,10 @@ const Dataset = () => {
   const { feConfigs } = useSystemStore();
   const maxFolderDepth = feConfigs?.limit?.maxFolderDepth ?? DEFAULT_MAX_FOLDER_DEPTH;
   const canCreateFolder = canCreateSubFolder(parentId, paths, maxFolderDepth);
-  const hasCreatePer = folderDetail
-    ? folderDetail.permission.hasWritePer
+  const currentFolderPath = paths.find(({ parentId: pathId }) => pathId === parentId);
+  const isNavigableFolder = Boolean(parentId && currentFolderPath?.folderAccessMode !== 'read');
+  const hasCreatePer = parentId
+    ? Boolean(folderDetail?.permission.hasWritePer)
     : !!userInfo?.team?.permission.hasDatasetCreatePer;
 
   const [editFolderData, setEditFolderData] = useState<EditFolderFormType>();
@@ -158,7 +160,7 @@ const Dataset = () => {
 
             <Flex flex={1} />
 
-            {(isPc || hasCreatePer) && (
+            {(isPc ? !isNavigableFolder : hasCreatePer) && (
               <Flex alignItems={'center'} gap={'12px'} pl={[0, 4]}>
                 {isPc && (
                   <Button

@@ -19,31 +19,52 @@ import { Call } from '@test/utils/request';
 describe('GET /api/core/app/folder/path', () => {
   it('returns breadcrumb IDs and names for a navigable folder without granting folder read access', async () => {
     const { owner, members } = await getFakeUsers(1);
-    const [rootFolder, childFolder, readableApp, hiddenFolder] = await MongoApp.create([
-      { name: 'Root folder', type: AppTypeEnum.folder, teamId: owner.teamId, tmbId: owner.tmbId },
-      {
-        name: 'Child folder',
-        type: AppTypeEnum.folder,
-        teamId: owner.teamId,
-        tmbId: owner.tmbId
-      },
-      {
-        name: 'Readable app',
-        type: AppTypeEnum.workflow,
-        teamId: owner.teamId,
-        tmbId: owner.tmbId
-      },
-      { name: 'Hidden folder', type: AppTypeEnum.folder, teamId: owner.teamId, tmbId: owner.tmbId }
-    ]);
+    const [rootFolder, childFolder, readableApp, hiddenFolder, readableFolder] =
+      await MongoApp.create([
+        { name: 'Root folder', type: AppTypeEnum.folder, teamId: owner.teamId, tmbId: owner.tmbId },
+        {
+          name: 'Child folder',
+          type: AppTypeEnum.folder,
+          teamId: owner.teamId,
+          tmbId: owner.tmbId
+        },
+        {
+          name: 'Readable app',
+          type: AppTypeEnum.workflow,
+          teamId: owner.teamId,
+          tmbId: owner.tmbId
+        },
+        {
+          name: 'Hidden folder',
+          type: AppTypeEnum.folder,
+          teamId: owner.teamId,
+          tmbId: owner.tmbId
+        },
+        {
+          name: 'Readable folder',
+          type: AppTypeEnum.folder,
+          teamId: owner.teamId,
+          tmbId: owner.tmbId
+        }
+      ]);
     await MongoApp.updateOne({ _id: childFolder._id }, { $set: { parentId: rootFolder._id } });
     await MongoApp.updateOne({ _id: readableApp._id }, { $set: { parentId: childFolder._id } });
-    await MongoResourcePermission.create({
-      resourceType: PerResourceTypeEnum.app,
-      teamId: owner.teamId,
-      resourceId: readableApp._id,
-      tmbId: members[0].tmbId,
-      permission: ReadPermissionVal
-    });
+    await MongoResourcePermission.create([
+      {
+        resourceType: PerResourceTypeEnum.app,
+        teamId: owner.teamId,
+        resourceId: readableApp._id,
+        tmbId: members[0].tmbId,
+        permission: ReadPermissionVal
+      },
+      {
+        resourceType: PerResourceTypeEnum.app,
+        teamId: owner.teamId,
+        resourceId: readableFolder._id,
+        tmbId: members[0].tmbId,
+        permission: ReadPermissionVal
+      }
+    ]);
 
     const response = await Call<
       Record<string, never>,
@@ -53,9 +74,23 @@ describe('GET /api/core/app/folder/path', () => {
     expect(response.code).toBe(200);
     expect(response.data).toEqual([
       { parentId: String(rootFolder._id), parentName: 'Root folder' },
-      { parentId: String(childFolder._id), parentName: 'Child folder' }
+      {
+        parentId: String(childFolder._id),
+        parentName: 'Child folder',
+        folderAccessMode: 'navigate'
+      }
     ]);
     expect(JSON.stringify(response.data)).not.toContain('Readable app');
+
+    const readableFolderPath = await Call<
+      Record<string, never>,
+      GetAppFolderPathQueryType,
+      GetAppFolderPathResponseType
+    >(handler, {
+      auth: members[0],
+      query: { sourceId: String(readableFolder._id), type: 'current' }
+    });
+    expect(readableFolderPath.data.at(-1)?.folderAccessMode).toBe('read');
 
     const deniedDetail = await Call(detailHandler, {
       auth: members[0],

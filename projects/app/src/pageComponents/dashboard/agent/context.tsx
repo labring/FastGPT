@@ -253,6 +253,7 @@ const AppListContextProvider = ({
       refreshDeps: [parentId]
     }
   );
+  const currentFolderPath = paths.find(({ parentId: pathId }) => pathId === parentId);
 
   const {
     data: requestedFolderDetail,
@@ -266,13 +267,20 @@ const AppListContextProvider = ({
     },
     {
       manual: false,
-      refreshDeps: [parentId]
+      ready: !parentId || currentFolderPath?.folderAccessMode === 'read',
+      refreshDeps: [parentId, currentFolderPath?.folderAccessMode]
     }
   );
-  // 仅导航目录可能无法读取详情，避免目录切换或请求失败时沿用上一个目录的权限。
+  // 仅真实可读目录请求详情；导航目录只展示路径和子资源，不请求无权读取的目录详情。
   const folderDetail = (() => {
     if (!parentId) return null;
-    if (isLoadingFolderDetail || folderDetailError || requestedFolderDetail?._id !== parentId) {
+    if (currentFolderPath?.folderAccessMode === 'navigate') return null;
+    if (
+      currentFolderPath?.folderAccessMode !== 'read' ||
+      isLoadingFolderDetail ||
+      folderDetailError ||
+      requestedFolderDetail?._id !== parentId
+    ) {
       return undefined;
     }
     return requestedFolderDetail;

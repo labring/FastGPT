@@ -47,9 +47,11 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetPathsResponse> {
     throw CommonErrEnum.invalidParams;
   }
 
+  // 仅导航目录可以通过后代资源授权浏览；同时返回当前目录是否具备真实读取权限。
+  let hasFolderReadPermission = teamPer.isOwner;
   if (!teamPer.isOwner) {
     const [groups, orgSet] = await Promise.all([
-      getGroupsByTmbId({ tmbId, teamId }),
+      getGroupsByTmbId({ teamId, tmbId }),
       getOrgIdSetWithParentByTmbId({ teamId, tmbId })
     ]);
     const groupIds = groups.map(({ _id }) => String(_id));
@@ -64,8 +66,9 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetPathsResponse> {
       matchLogic: 'or',
       personalPermissionPriority: true
     });
+    hasFolderReadPermission = readableResourceIds.some((id) => String(id) === datasetId);
     if (
-      !readableResourceIds.some((id) => String(id) === datasetId) &&
+      !hasFolderReadPermission &&
       !(await hasReadableDatasetFolderChild({
         teamId,
         folderIds: folderScope.folderIds,
@@ -88,7 +91,13 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetPathsResponse> {
         .select('_id name parentId')
         .lean()
   });
-  return GetDatasetPathsResponseSchema.parse(paths);
+  return GetDatasetPathsResponseSchema.parse(
+    paths.map((path) =>
+      path.parentId === datasetId
+        ? { ...path, folderAccessMode: hasFolderReadPermission ? 'read' : 'navigate' }
+        : path
+    )
+  );
 }
 
 export default NextAPI(handler);

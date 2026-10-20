@@ -198,24 +198,6 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
   );
   const loadMyDatasets = useCallback(() => fetchData({ init: true }), [fetchData]);
 
-  const {
-    data: requestedFolderDetail,
-    error: folderDetailError,
-    loading: isLoadingFolderDetail,
-    runAsync: refetchFolderDetail
-  } = useRequest(() => (parentId ? getDatasetById(parentId) : Promise.resolve(undefined)), {
-    manual: false,
-    refreshDeps: [parentId]
-  });
-  // 仅导航目录可能无法读取详情，避免目录切换或请求失败时沿用上一个目录的权限。
-  const folderDetail = (() => {
-    if (!parentId) return undefined;
-    if (isLoadingFolderDetail || folderDetailError || requestedFolderDetail?._id !== parentId) {
-      return undefined;
-    }
-    return requestedFolderDetail;
-  })();
-
   const { data: paths = [], runAsync: refetchPaths } = useRequest(
     async () => {
       if (!parentId) return [];
@@ -226,6 +208,31 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
       refreshDeps: [parentId]
     }
   );
+  const currentFolderPath = paths.find(({ parentId: pathId }) => pathId === parentId);
+
+  const {
+    data: requestedFolderDetail,
+    error: folderDetailError,
+    loading: isLoadingFolderDetail,
+    runAsync: refetchFolderDetail
+  } = useRequest(() => (parentId ? getDatasetById(parentId) : Promise.resolve(undefined)), {
+    manual: false,
+    ready: !parentId || currentFolderPath?.folderAccessMode === 'read',
+    refreshDeps: [parentId, currentFolderPath?.folderAccessMode]
+  });
+  // 仅真实可读目录请求详情；导航目录只展示路径和子资源，不请求无权读取的目录详情。
+  const folderDetail = (() => {
+    if (!parentId || currentFolderPath?.folderAccessMode === 'navigate') return undefined;
+    if (
+      currentFolderPath?.folderAccessMode !== 'read' ||
+      isLoadingFolderDetail ||
+      folderDetailError ||
+      requestedFolderDetail?._id !== parentId
+    ) {
+      return undefined;
+    }
+    return requestedFolderDetail;
+  })();
 
   const { runAsync: onUpdateDataset } = useRequest(putDatasetById, {
     onSuccess: () => Promise.all([refetchFolderDetail(), refetchPaths(), loadMyDatasets()])

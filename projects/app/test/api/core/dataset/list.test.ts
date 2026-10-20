@@ -559,6 +559,19 @@ describe('POST /api/core/dataset/list', () => {
       String(readableDataset._id)
     ]);
     expect(searchPage.data.list[0]).not.toHaveProperty('folderAccessMode');
+
+    const rootSearchPage = await Call<
+      GetDatasetListV2Body,
+      Record<string, never>,
+      GetDatasetListV2Response
+    >(handlerV2, {
+      auth: members[0],
+      body: { searchKey: 'Readable child' }
+    });
+    expect(rootSearchPage.data.total).toBe(1);
+    expect(rootSearchPage.data.list.map(({ _id }) => String(_id))).toEqual([
+      String(readableDataset._id)
+    ]);
   });
 
   it('normalizes nullish avatar and intro from legacy records in V2', async () => {

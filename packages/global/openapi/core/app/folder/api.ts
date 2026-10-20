@@ -1,5 +1,9 @@
 import z from 'zod';
-import { GetPathPropsSchema, ParentIdSchema } from '../../../../common/parentFolder/type';
+import {
+  FolderAccessModeSchema,
+  GetPathPropsSchema,
+  ParentIdSchema
+} from '../../../../common/parentFolder/type';
 import { AppTypeEnum } from '../../../../core/app/constants';
 import { AppSchemaTypeSchema } from '../../../../core/app/type';
 
@@ -76,6 +80,9 @@ const AppFolderPathItemSchema = z
     parentName: z.string().meta({
       example: '默认文件夹',
       description: '路径节点名称'
+    }),
+    folderAccessMode: FolderAccessModeSchema.optional().meta({
+      description: '当前目录权限模式；navigate 表示仅可通过可读后代浏览'
     })
   })
   .meta({

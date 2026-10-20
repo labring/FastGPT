@@ -529,7 +529,11 @@ const List = () => {
             alignItems={'stretch'}
           >
             {!isBatchMode &&
-              (hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />)}
+              (hasCreatePer ? (
+                <ListCreateButton appType={appType} />
+              ) : !parentId ? (
+                <ForbiddenCreateButton />
+              ) : null)}
             {renderVirtualGridItems(renderAppCard)}
           </Grid>
         )}
