@@ -1087,9 +1087,6 @@ importers:
       gcp-metadata:
         specifier: ^5.3.0
         version: 5.3.0(encoding@0.1.13)
-      i18next:
-        specifier: 'catalog:'
-        version: 23.16.8
       js-yaml:
         specifier: 'catalog:'
         version: 4.1.1
@@ -1117,9 +1114,6 @@ importers:
       next:
         specifier: 'catalog:'
         version: 16.3.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
-      next-i18next:
-        specifier: 'catalog:'
-        version: 15.4.2(i18next@23.16.8)(next@16.3.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       nodemailer:
         specifier: 'catalog:'
         version: 10.0.12
@@ -1144,9 +1138,6 @@ importers:
       react-hook-form:
         specifier: 'catalog:'
         version: 7.43.1(react@18.3.1)
-      react-i18next:
-        specifier: 'catalog:'
-        version: 14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react-markdown:
         specifier: 'catalog:'
         version: 9.1.0(@types/react@18.3.1)(react@18.3.1)
