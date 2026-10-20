@@ -108,7 +108,66 @@ JSON 和 multipart 输入统一经过 Zod 业务 schema。API 使用 `parseApiIn
 
 知识库删除时按既有生命周期清理配置和 mapping。同义词不注册专用 change stream 或 worker。
 
-## 8. 验收与测试
+## 8. 检索结果映射、提示词注入与能力开关（2026-10 补充）
+
+本节补充 §1-§7 之后新增的三块能力：检索结果携带 `synonymMappings`、引用提示词模板注入、以及前后端之间的能力开关契约。阅读本节即可理解 `packages/service/core/dataset/synonym/` 与 `packages/global/core/ai/prompt/synonymQuote.ts` 的用途，不依赖外部仓库文档。
+
+### 8.1 运行开关与能力投影是两件事
+
+| 层 | 载体 | 作用 | 读取方 |
+| --- | --- | --- | --- |
+| 运行开关 | `serviceEnv.DATASET_SYNONYM_ENABLED`（默认 false） | 决定索引、检索、重排、Prompt 代入是否走同义词链路 | 服务端，只通过 `isDatasetSynonymEnabled()` |
+| 能力投影 | `feConfigs.datasetSynonymEnabled` | 决定编辑器是否提供带 `{{synonymMappings}}` 的引用模板 | 前端 |
+
+服务端逻辑**不得**读取 `feConfigs.datasetSynonymEnabled`，否则会出现 env 与配置不一致的双开关。
+
+`FastGPTFeConfigsSchema` 必须声明该字段：`getInitData` 最终用 `ClientFeConfigsSchema`（`partial().strip()`）解析响应，未声明字段会被静默丢弃。独立 FastGPT 由 `initSystemConfig()` 从同一 env 派生；agent-builder 由自己的 backend 在转发后按自身 env 覆盖。
+
+### 8.2 `synonymMappings` 语义
+
+- 每个分块可带 `synonymMappings`：key 是该分块正文/标题里**实际命中**的原词（保留原文大小写），value 是标准词。
+- 字段缺失表示没有得到可靠映射（功能关闭、快照不可用、跨租户），空对象 `{}` 表示确认未命中。
+- 单分块最多 100 条、序列化 JSON ≤ 16 KiB，超出按整条映射截断并置 `synonymMappingsTruncated: true`。
+- 装饰在 `defaultRecall` 中、`formatDatasetDataValues` **之前**完成，避免图片短链改写 q/a 后与库内原文比对失败。
+- AI 对话运行时只在已保存模板包含 `{{synonymMappings}}` 时代入；关闭功能或分块无映射时，模板里的映射片段会被剥离，保证 prompt 无残留。
+
+### 8.3 装饰的幂等与可信边界
+
+- 引擎召回结果携带内部 Symbol 快照（teamId / datasetId / synonymVersion / q / a），不进入序列化输出。
+- 外部来源（如 Deep RAG 经 HTTP 到 pro）无法携带 Symbol，按 id 回查 Mongo，并比对 q/a/updateTime 后才采信。
+- `attachSynonymMappingsToSearchResults` 幂等：已携带 `synonymMappings` 且 `datasetId` 在本次授权范围内的条目直接透传（剥离 Symbol），避免二次查库和签名正文导致的映射丢失；越界条目丢弃上游映射；功能关闭时统一剥离全部同义词字段。
+
+### 8.4 引用模板注入（`withSynonymQuoteTemplates`）
+
+纯函数，只装饰"编辑器可新选"的模板，不改运行时默认模板和已保存节点：
+
+- `content` 模板（`<Quote>` 形态）：注入 `{{synonymMappings}}` 占位符；
+- 自然语言模板：追加静态“词汇映射说明 / Vocabulary Mapping”，约束模型只在本条引用内做术语对齐，不得为映射生成引用标记。
+
+引擎内没有调用方是设计结果：消费方是宿主 UI。FastGPT app 直接 import 引擎源码；agent-builder 的 UI 使用本地副本，并由测试读取本文件逐字比对，防止两份逻辑漂移。
+
+### 8.5 独立部署启用步骤
+
+1. 设置 `DATASET_SYNONYM_ENABLED=true`，开启全部服务端行为。
+2. 在 `projects/app/src/service/common/system/index.ts` 的 `initSystemConfig()` 中与 `isPlus` 等派生字段并列增加 `datasetSynonymEnabled: serviceEnv.DATASET_SYNONYM_ENABLED`。
+3. 前端在引用模板设置与新节点默认模板处用 `withSynonymQuoteTemplates` 装饰模板，`enabled` 取 `feConfigs.datasetSynonymEnabled === true`。
+4. 校验：`getInitData` 返回 true、检索结果带映射、编辑器出现占位符；关闭 env 后三者消失。
+
+### 8.6 与重排的关系
+
+重排采用原始 query 与临时标准化 query 双路打分，逐条取最大值并以原始分数为下限（`synonym/rerank.ts`）。query 命中同义词时转换后的问题与原文不同，全部候选都要在新 query 下重新打分，请求数与 token 约为单路两倍，这是已确认接受的固有成本，理由记录在 `rerank.ts` 第二路入口注释中。
+
+### 8.7 管理面边界：API 在引擎，页面在宿主
+
+`projects/app/src/pages/api/core/dataset/synonym/*` 已覆盖管理页需要的全部动作：`upload` / `uploadFile`（上传或替换词表）、`update` / `updateFile`（按版本 CAS 更新）、`delete`、`detail`（当前配置与重建进度）、`mappings`（分页检索）、`download`（导出 CSV）。路由层只做 `parseApiInput`、`authDataset` 和 response schema 校验；事务、队列忙校验、重建任务种子、matcher 缓存失效都在 `createDatasetSynonymMutation`。
+
+管理页面不在本仓库实现是分层结果，不是能力缺口：
+
+- FastGPT 的职责是引擎与 API 契约，管理页属于宿主产品的业务界面。agent-builder 的 UI（`projects/ui/src/features/dataset/components/detail/Synonym/index.tsx`）直接消费这套 API；若在本仓库再实现一份，会形成两套权限与交互策略并长期分叉。
+- 页面所需状态全部由现有查询派生：`detail` 同时返回配置、是否存在重建中的 data、关联 training，管理页不需要第二套状态存储。因此 API 契约稳定，后续接入页面不需要改引擎。
+- 独立部署需要页面时，消费同一组 API 即可；接口均经过 OpenAPI schema 校验并有定向测试。
+
+## 9. 验收与测试
 
 必须覆盖：
 
@@ -121,7 +180,7 @@ JSON 和 multipart 输入统一经过 Zod 业务 schema。API 使用 `parseApiIn
 - 搜索始终保留原词并追加标准词；
 - 多知识库搜索、mapping 分页和静态 i18n key。
 
-## 9. TODO
+## 10. TODO
 
 - [x] mapping、配置与首批 training 创建使用同一 MongoDB 事务。
 - [x] 使用物化版本差异保证待重建 data 可恢复领取。

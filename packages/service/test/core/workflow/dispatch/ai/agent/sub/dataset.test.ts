@@ -118,6 +118,8 @@ vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
 }));
 
 import { dispatchAgentDatasetSearch } from '../../../../../../../core/workflow/dispatch/ai/agent/sub/dataset';
+import { serviceEnv } from '../../../../../../../env';
+import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
 
 const llmModelData = (model: string) =>
   ({
@@ -128,6 +130,62 @@ const llmModelData = (model: string) =>
   }) as any;
 
 describe('dispatchAgentDatasetSearch', () => {
+  it.each([true, false])(
+    'gates mapping fields and instructions with the deployment feature (%s)',
+    async (enabled) => {
+      const previous = serviceEnv.DATASET_SYNONYM_ENABLED;
+      serviceEnv.DATASET_SYNONYM_ENABLED = enabled;
+      countPromptTokensMock.mockResolvedValue(0);
+      const quote = {
+        id: 'chunk',
+        q: 'alias',
+        a: 'answer',
+        sourceName: 'doc.md',
+        synonymMappings: { alias: 'standard' },
+        synonymMappingsTruncated: true,
+        score: [{ type: SearchScoreTypeEnum.embedding, value: 0.9, index: 0 }]
+      };
+      defaultSearchDatasetDataMock.mockResolvedValue({
+        searchRes: [quote],
+        embeddingTokens: 0,
+        reRankInputTokens: 0,
+        usingSimilarityFilter: false,
+        usingReRank: false
+      });
+      try {
+        const result = await dispatchAgentDatasetSearch({
+          args: JSON.stringify({ query: ['alias'] }),
+          teamId: 'team_1',
+          tmbId: 'tmb_1',
+          llmModel: llmModelData('gpt-main'),
+          datasetParams: {
+            datasets: [{ datasetId: 'dataset_1' }],
+            similarity: 0.4,
+            limit: 5000,
+            searchMode: DatasetSearchModeEnum.embedding,
+            usingReRank: false
+          }
+        });
+        const response = JSON.parse(result.response);
+        expect(response.cites[0].content).toBe('alias\nanswer');
+        if (enabled) {
+          expect(response.prompt).toContain('synonymMappings');
+          expect(response.prompt).toContain('synonymMappingsTruncated');
+          expect(response.cites[0]).toMatchObject({
+            synonymMappings: { alias: 'standard' },
+            synonymMappingsTruncated: true
+          });
+        } else {
+          expect(response.prompt).toBe(getDatasetSearchToolResponsePrompt());
+          expect(response.cites[0]).not.toHaveProperty('synonymMappings');
+          expect(response.cites[0]).not.toHaveProperty('synonymMappingsTruncated');
+        }
+      } finally {
+        serviceEnv.DATASET_SYNONYM_ENABLED = previous;
+      }
+    }
+  );
+
   beforeEach(() => {
     vi.clearAllMocks();
     getDatasetSearchVlmModelMock.mockResolvedValue({

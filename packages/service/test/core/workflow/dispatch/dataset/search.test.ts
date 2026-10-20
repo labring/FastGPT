@@ -130,6 +130,7 @@ import {
   dispatchDatasetSearch,
   isDatasetResourceMissingError
 } from '../../../../../core/workflow/dispatch/dataset/search';
+import { serviceEnv } from '../../../../../env';
 
 describe('dispatchDatasetSearch', () => {
   const runSearch = (params: Record<string, unknown> = {}, nodeSummary = createNodeSummary()) =>
@@ -162,6 +163,40 @@ describe('dispatchDatasetSearch', () => {
       () => runSearch()
     );
   };
+
+  it('preserves mappings across quoteQA, node response and tool cites', async () => {
+    const quote = {
+      id: 'chunk',
+      q: 'alias',
+      a: '',
+      sourceName: 'source',
+      synonymMappings: { alias: 'standard' },
+      synonymMappingsTruncated: true
+    };
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes: [quote],
+      retrievalResults: [quote],
+      embeddingTokens: 0,
+      reRankInputTokens: 0,
+      usingReRank: false
+    });
+    const previous = serviceEnv.DATASET_SYNONYM_ENABLED;
+    serviceEnv.DATASET_SYNONYM_ENABLED = true;
+    let result;
+    try {
+      result = await runSearch();
+    } finally {
+      serviceEnv.DATASET_SYNONYM_ENABLED = previous;
+    }
+    expect(result.data?.quoteQA[0]).toMatchObject(quote);
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.quoteList?.[0]).toMatchObject(quote);
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.retrievalResults?.[0]).toMatchObject(
+      quote
+    );
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toMatchObject({
+      cites: [{ synonymMappings: { alias: 'standard' }, synonymMappingsTruncated: true }]
+    });
+  });
 
   it('executes and bills the fallback auxiliary models when configured models are unavailable', async () => {
     vi.mocked((await modelGetters.getSystemModelHandle()).getLLMModelData).mockImplementationOnce(

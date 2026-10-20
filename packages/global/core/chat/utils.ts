@@ -203,8 +203,8 @@ const filterNodeResponseData = ({
             keepTreeFields
           });
         } else if (fieldMap[key]) {
-          // @ts-expect-error Dynamic public field copy is constrained by fieldMap.
-          obj[key] = item[key];
+          // Dynamic public fields are narrowed here instead of suppressing the index-type error.
+          Object.assign(obj, { [key]: item[key as keyof ChatHistoryItemResType] });
         }
       }
 

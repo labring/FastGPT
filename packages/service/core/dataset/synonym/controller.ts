@@ -31,7 +31,11 @@ export const cleanupUnusedDatasetSynonymMappings = async (
   if (deletedCount) invalidateDatasetSynonymMatcherCache({ teamId, datasetId });
 };
 
-/** 获取当前同义词配置及其重建进度。 */
+/**
+ * 获取当前同义词配置及其重建进度。
+ * 进度直接由 data 的重建状态和关联 training 派生，不维护第二份状态表；
+ * 管理页面只需读取该接口，无需引擎提供专用进度 API 或状态字段。
+ */
 export const getDatasetSynonymDetail = async ({
   teamId,
   datasetId

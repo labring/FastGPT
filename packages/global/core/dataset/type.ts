@@ -627,12 +627,27 @@ export const SearchDataResponseItemSchema = DatasetDataItemSchema.omit({
         })
       )
       .meta({ description: '评分列表' }),
-    metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定义元数据' })
+    metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定义元数据' }),
+    synonymMappings: z
+      .record(z.string(), z.string())
+      .optional()
+      .meta({ description: '分块实际命中的原词到标准词映射' }),
+    /**
+     * True only when this chunk's mapping JSON exceeds 100 entries or 16 KiB (UTF-8).
+     * Marks partial mappings for UI/Agent; does not truncate chunk text or search results.
+     * Omitted when not truncated or disabled; lookup failures omit mappings instead.
+     */
+    synonymMappingsTruncated: z
+      .boolean()
+      .optional()
+      .meta({ description: '同义词映射是否因响应上限被截断' })
   })
   .meta({ description: '搜索数据响应项' });
 export type SearchDataResponseItemType = z.infer<typeof SearchDataResponseItemSchema>;
 
 export const SearchDataResponseQuoteItemSchema = SearchDataResponseItemSchema.pick({
+  synonymMappings: true,
+  synonymMappingsTruncated: true,
   id: true,
   chunkIndex: true,
   datasetId: true,

@@ -44,10 +44,10 @@ const getMatcherCacheKey = ({
 }) => `${teamId}:${datasetId}:${fileVersion}`;
 
 /**
- * 合并短时间内同一知识库的转换配置读取，包括未配置结果。
- * 该缓存只生成 embedding 快照；提交前的版本校验始终直查 MongoDB。
+ * 合并短时间内同一知识库的配置读取，包括未配置结果。
+ * 供 embedding 快照与检索装饰判断空词表版本共用；提交前的版本校验始终直查 MongoDB。
  */
-const getCachedDatasetSynonymConfig = ({
+export const getCachedDatasetSynonymConfig = ({
   teamId,
   datasetId
 }: {

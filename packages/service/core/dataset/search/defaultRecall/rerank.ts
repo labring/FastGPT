@@ -1,26 +1,30 @@
 import { SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { RerankModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { reRankRecall } from '../../../../core/ai/rerank';
 import { concatWeightedRecallLists, removeDuplicateSearchResults } from './result';
+import { rerankDatasetWithSynonyms } from '../../synonym/rerank';
 
 const datasetDataReRank = async ({
   rerankModel,
   data,
-  query
+  query,
+  teamId
 }: {
   rerankModel?: RerankModelDataType;
   data: SearchDataResponseItemType[];
   query: string;
+  teamId?: string;
 }): Promise<{
   results: SearchDataResponseItemType[];
   inputTokens: number;
 }> => {
-  const { results, inputTokens } = await reRankRecall({
+  const { results, inputTokens } = await rerankDatasetWithSynonyms({
     model: rerankModel,
+    teamId,
     query,
     documents: data.map((item) => ({
       id: item.id,
+      datasetId: String(item.datasetId),
       text: `${item.q}\n${item.a}`.trim()
     }))
   });
@@ -57,13 +61,15 @@ export const reRankSearchResults = async ({
   textRecallResults,
   rerankModel,
   query,
-  rerankWeight
+  rerankWeight,
+  teamId
 }: {
   usingReRank: boolean;
   textRecallResults: SearchDataResponseItemType[];
   rerankModel?: RerankModelDataType;
   query: string;
   rerankWeight: number;
+  teamId?: string;
 }): Promise<{
   results: SearchDataResponseItemType[];
   inputTokens: number;
@@ -79,6 +85,7 @@ export const reRankSearchResults = async ({
 
   try {
     const { results: reRankResults, inputTokens } = await datasetDataReRank({
+      teamId,
       rerankModel,
       query,
       data: removeDuplicateSearchResults(textRecallResults)

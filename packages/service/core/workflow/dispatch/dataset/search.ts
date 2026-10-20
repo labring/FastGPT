@@ -1,6 +1,5 @@
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
@@ -28,6 +27,7 @@ import {
   createQueryExtensionChildNodeResponse
 } from './nodeResponse';
 import { normalizeDatasetSearchInput } from './utils';
+import { formatDatasetSearchToolResponse } from './toolResponse';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DATASET);
 
@@ -413,15 +413,7 @@ export const dispatchDatasetSearch = async (
       },
       [DispatchNodeResponseKeyEnum.toolResponse]:
         searchRes.length > 0
-          ? {
-              prompt: getDatasetSearchToolResponsePrompt(),
-              cites: searchRes.map((item) => ({
-                id: item.id,
-                sourceName: item.sourceName,
-                updateTime: item.updateTime,
-                content: `${item.q}\n${item.a}`.trim()
-              }))
-            }
+          ? formatDatasetSearchToolResponse(searchRes, (item) => `${item.q}\n${item.a}`.trim())
           : 'No results'
     };
   } catch (error) {
