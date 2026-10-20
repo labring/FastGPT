@@ -18,9 +18,7 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 
 const {
-  STREAM_RESUME_POST_COMPLETE_TTL_SECONDS,
   getStreamResumeRedisKeys,
-  resetStreamResumeMirrorGuardForTest,
   STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS,
   STREAM_RESUME_TTL_SECONDS
 } = streamResume;

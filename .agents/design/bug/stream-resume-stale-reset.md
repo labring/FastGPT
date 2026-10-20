@@ -406,7 +406,7 @@ OCR 首轮和补跑共覆盖主仓 30 个代码文件及 Pro 3 个文件。针�
 - Service：generation lease 续租/释放/owner lost、workflow stop 语义、resume mirror 断连保活。
 - App：stale cleaner 的 legacy、heartbeat、Redis 失败、CAS 竞态、旧实例滚动发布场景。
 - 入口：v1/v2、chatTest、skill debug、OutLink、MCP、schedule trigger、ChatAgentHelper 已接入 runId。
-- 局部回归共 343 个测试通过；ESLint 和 `@fastgpt/dal` typecheck 通过。
+- rebase 到最新 `origin/main` 后，DAL、Service、App 局部回归全部通过；ESLint 和 `@fastgpt/dal` typecheck 通过。
 - `projects/app` typecheck 仅剩仓库既有的 sandbox adapter 类型错误和缺失的 rehype 依赖；`pro/admin` typecheck/测试受当前 dirty 子模块与主仓固定版本差异影响，相关改动已通过 ESLint。
 
 ## 发布建议
