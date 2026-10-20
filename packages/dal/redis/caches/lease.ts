@@ -31,10 +31,18 @@ export class RedisLeaseAcquireError extends Error {
   }
 }
 
+export class RedisLeaseWaitTimeoutError extends Error {
+  constructor({ key, label }: { key: string; label: string }) {
+    super(`Timed out waiting for Redis concurrency lease for ${label}: ${key}`);
+    this.name = 'RedisLeaseWaitTimeoutError';
+  }
+}
+
 export const isRedisLeaseError = (error: unknown) =>
   error instanceof RedisLeaseUnavailableError ||
   error instanceof RedisLeaseLostError ||
-  error instanceof RedisLeaseAcquireError;
+  error instanceof RedisLeaseAcquireError ||
+  error instanceof RedisLeaseWaitTimeoutError;
 
 export type LeaseCacheOptions = {
   redis?: RedisCacheAdapter;
@@ -54,6 +62,16 @@ export type WithLeaseOptions<T> = {
   ttlMs: number;
   renewIntervalMs?: number;
   fn: (context: RedisLeaseContext) => Promise<T>;
+};
+
+export type WithConcurrencyOptions<T> = WithLeaseOptions<T> & {
+  /** 同一 key 的所有调用方必须使用相同上限；修改上限时应让已有任务先排空。 */
+  concurrency: number;
+  /** 只限制等待槽位的时长，不限制取得槽位后的业务执行时间。 */
+  waitTimeoutMs?: number;
+  retryIntervalMs?: number;
+  /** 取消等待，并向业务回调传递与租约丢失合并后的取消信号。 */
+  signal?: AbortSignal;
 };
 
 /**
@@ -103,6 +121,104 @@ export class LeaseCache {
     }
     return { parsedTtlMs, parsedRenewIntervalMs };
   };
+
+  /**
+   * 在共享的 N 个 lease 槽位中执行任务；不同实例使用同一 key 即共享并发额度。
+   *
+   * 只重试槽位占用，不重试 Redis 故障、租约丢失或业务异常，也不保证 FIFO。
+   * 回调必须响应 signal / assertValid，或自行设置覆盖执行时长的超时；lease 不能强制
+   * 停止外部操作。续租、token 校验和释放均复用 withLease。
+   */
+  async withConcurrency<T>({
+    key,
+    label,
+    concurrency,
+    ttlMs,
+    renewIntervalMs,
+    waitTimeoutMs = 30_000,
+    retryIntervalMs = 50,
+    signal,
+    fn
+  }: WithConcurrencyOptions<T>): Promise<T> {
+    this.getLeaseKey(key);
+    this.parseLeaseOptions({ ttlMs, renewIntervalMs });
+    const operation = 'lease.concurrency';
+    const limit = parsePositiveInteger({ value: concurrency, operation, field: 'concurrency' });
+    const waitMs = parsePositiveInteger({
+      value: waitTimeoutMs,
+      operation,
+      field: 'waitTimeoutMs'
+    });
+    const retryMs = parsePositiveInteger({
+      value: retryIntervalMs,
+      operation,
+      field: 'retryIntervalMs'
+    });
+    const deadline = Date.now() + waitMs;
+
+    const assertWaiting = () => {
+      signal?.throwIfAborted();
+      if (Date.now() >= deadline) throw new RedisLeaseWaitTimeoutError({ key, label });
+    };
+
+    // 在等待阶段响应取消，并在成功、失败两条路径清理 timer 和 listener。
+    const waitForRetry = (delayMs: number) =>
+      new Promise<void>((resolve, reject) => {
+        const onAbort = () => {
+          clearTimeout(timer);
+          reject(signal?.reason);
+        };
+        const timer = setTimeout(() => {
+          signal?.removeEventListener('abort', onAbort);
+          resolve();
+        }, delayMs);
+        signal?.addEventListener('abort', onAbort, { once: true });
+      });
+
+    while (true) {
+      assertWaiting();
+      // 随机起点和轮询抖动，避免多个进程总是争抢第一个槽位。
+      const firstSlot = Math.floor(Math.random() * limit);
+      for (let offset = 0; offset < limit; offset++) {
+        assertWaiting();
+        let entered = false;
+        try {
+          return await this.withLease({
+            key: `${key}:slot:${(firstSlot + offset) % limit}`,
+            label,
+            ttlMs,
+            renewIntervalMs,
+            fn: async (context) => {
+              // Redis 获取成功也可能已超过等待期限，此时释放槽位但不启动业务。
+              assertWaiting();
+              entered = true;
+              const result = await fn({
+                signal: signal ? AbortSignal.any([signal, context.signal]) : context.signal,
+                assertValid: () => {
+                  context.assertValid();
+                  signal?.throwIfAborted();
+                }
+              });
+              signal?.throwIfAborted();
+              return result;
+            }
+          });
+        } catch (error) {
+          // 业务本身也可能抛出同名错误，进入回调后绝不能因此重复执行任务。
+          if (entered || !(error instanceof RedisLeaseUnavailableError)) throw error;
+        }
+      }
+
+      assertWaiting();
+      await waitForRetry(
+        Math.min(
+          retryMs + Math.floor(Math.random() * retryMs),
+          deadline - Date.now(),
+          MAX_TIMER_DELAY_MS
+        )
+      );
+    }
+  }
 
   /** 在临界区执行带自动续租的 Redis Lease。 */
   async withLease<T>({ key, label, ttlMs, renewIntervalMs, fn }: WithLeaseOptions<T>): Promise<T> {
