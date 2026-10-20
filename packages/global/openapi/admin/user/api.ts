@@ -20,9 +20,12 @@ export type UserItemType = z.infer<typeof UserItemSchema>;
  * API: 获取用户列表
  * Route: POST /proApi/admin/user/getUsers
  * Method: POST
- * Description: 分页获取用户列表，支持按用户名搜索
+ * Description: 分页获取用户列表，支持按用户名搜索与状态过滤
  * Tags: ['Admin', 'Users', 'Read']
  * ============================================================================ */
+
+export const AdminUserStatusFilterEnum = z.enum(UserStatusEnum);
+export type AdminUserStatusFilterType = z.infer<typeof AdminUserStatusFilterEnum>;
 
 export const GetUsersBodySchema = PaginationSchema.extend({
   username: z
@@ -30,7 +33,13 @@ export const GetUsersBodySchema = PaginationSchema.extend({
     .trim()
     .max(100)
     .optional()
-    .meta({ description: '搜索用户名（支持模糊匹配）' })
+    .meta({ description: '搜索用户名（支持模糊匹配）' }),
+  statuses: z
+    .array(AdminUserStatusFilterEnum)
+    .optional()
+    .meta({
+      description: '状态多选过滤：不传或空数组表示不限制状态；管理端默认只查 active'
+    })
 });
 export type GetUsersBodyType = z.infer<typeof GetUsersBodySchema>;
 export const GetUsersResponseSchema = PaginationResponseSchema(UserItemSchema);

@@ -13,7 +13,7 @@ export const AdminUsersPath: OpenAPIPath = {
   '/proApi/admin/user/getUsers': {
     post: {
       summary: '获取用户列表',
-      description: '分页获取用户列表，支持按用户名搜索',
+      description: '分页获取用户列表，支持按用户名搜索与状态过滤',
       tags: [DevApiTagsMap.adminUsers],
       requestBody: {
         content: {

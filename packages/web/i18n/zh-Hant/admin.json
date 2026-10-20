@@ -46,5 +46,7 @@
   "license_community": "社群版",
   "license_current_version": "目前版本",
   "license_admin_home_community_description": "檢視目前版本與功能能力",
-  "license_upgrade_commercial": "了解商業版"
+  "license_upgrade_commercial": "了解商業版",
+  "user_status_active": "正常",
+  "user_status_forbidden": "已停用"
 }

@@ -46,5 +46,7 @@
   "license_community": "커뮤니티 버전",
   "license_current_version": "현재 버전",
   "license_admin_home_community_description": "현재 버전과 기능을 확인합니다",
-  "license_upgrade_commercial": "비즈니스 버전 살펴보기"
+  "license_upgrade_commercial": "비즈니스 버전 살펴보기",
+  "user_status_active": "정상",
+  "user_status_forbidden": "비활성화됨"
 }
