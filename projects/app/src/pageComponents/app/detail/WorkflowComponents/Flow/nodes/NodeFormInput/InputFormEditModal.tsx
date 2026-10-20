@@ -1,3 +1,7 @@
+import {
+  DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES,
+  workflowReferenceValueIsSelectable
+} from '@fastgpt/global/common/workflow/reference';
 import { Flex, Stack } from '@chakra-ui/react';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -19,11 +23,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
-import {
-  DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES,
-  getNodeAllSource,
-  workflowReferenceValueIsSelectable
-} from '@/web/core/workflow/utils';
+import { getNodeAllSource } from '@/web/core/workflow/utils';
 
 export const defaultFormInput: UserInputFormItemType = {
   type: FlowNodeInputTypeEnum.input,

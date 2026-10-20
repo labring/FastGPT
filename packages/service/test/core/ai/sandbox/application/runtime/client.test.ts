@@ -64,26 +64,29 @@ beforeEach(() => {
 });
 
 describe('SandboxClient', () => {
-  it('coalesces concurrent preparation and prepares the chat directory once', async () => {
-    const client = await getSandboxClient(query);
-    let resolve!: (value: typeof runtime) => void;
-    mocks.ensure.mockReturnValueOnce(
-      new Promise((done) => {
-        resolve = done;
-      })
-    );
-    const first = client.exec('first');
-    const second = client.exec('second');
-    expect(mocks.ensure).toHaveBeenCalledTimes(2);
-    resolve(runtime);
-    await Promise.all([first, second]);
-    expect(runtime.adapter.createDirectories).toHaveBeenCalledTimes(1);
-    expect(runtime.adapter.execute).toHaveBeenCalledTimes(2);
-    expect(runtime.adapter.execute).toHaveBeenCalledWith(
-      'first',
-      expect.objectContaining({ workingDirectory: client.getRuntimePaths().sessionWorkDirectory })
-    );
-  });
+  it.each([ChatSourceTypeEnum.app, ChatSourceTypeEnum.workflowBuilder])(
+    'coalesces concurrent preparation and prepares the %s chat directory once',
+    async (sourceType) => {
+      const client = await getSandboxClient({ ...query, sourceType });
+      let resolve!: (value: typeof runtime) => void;
+      mocks.ensure.mockReturnValueOnce(
+        new Promise((done) => {
+          resolve = done;
+        })
+      );
+      const first = client.exec('first');
+      const second = client.exec('second');
+      expect(mocks.ensure).toHaveBeenCalledTimes(2);
+      resolve(runtime);
+      await Promise.all([first, second]);
+      expect(runtime.adapter.createDirectories).toHaveBeenCalledTimes(1);
+      expect(runtime.adapter.execute).toHaveBeenCalledTimes(2);
+      expect(runtime.adapter.execute).toHaveBeenCalledWith(
+        'first',
+        expect.objectContaining({ workingDirectory: client.getRuntimePaths().sessionWorkDirectory })
+      );
+    }
+  );
   it('keeps connect-only semantics for every subsequent use', async () => {
     const client = await getRunningSandboxClient(query);
     mocks.connect.mockRejectedValueOnce(new Error('stopped'));

@@ -1,7 +1,7 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { PresignChatFileGetUrlSchema } from '@fastgpt/global/openapi/core/chat/file/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { isAuthorizedChatFileS3Key } from '@fastgpt/service/common/s3/sources/chat/key';

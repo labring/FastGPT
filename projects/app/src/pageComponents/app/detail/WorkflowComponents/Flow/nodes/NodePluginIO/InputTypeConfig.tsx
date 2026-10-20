@@ -1,3 +1,4 @@
+import { DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES } from '@fastgpt/global/common/workflow/reference';
 import React from 'react';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import TimeInput from '@/components/core/app/formRender/TimeInput';
@@ -35,7 +36,6 @@ import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { useTranslation } from 'next-i18next';
 import { useCallback, useMemo } from 'react';
 import { useFieldArray, type UseFormReturn } from 'react-hook-form';
-
 import { DatasetSelectModal } from '@/components/core/app/DatasetSelectModal';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useFileUploadLimits } from '@/web/common/file/hooks/useFileUploadLimits';
@@ -53,7 +53,6 @@ import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
 import { FileTypeSelectorPanel } from '@fastgpt/web/components/core/app/FileTypeSelector';
 import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
 import { ReferSelector, useReference } from '../render/RenderInput/templates/Reference';
-import { DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES } from '@/web/core/workflow/utils';
 
 const inputFormGridTemplateColumns = 'minmax(64px, max-content) minmax(0, 1fr)';
 

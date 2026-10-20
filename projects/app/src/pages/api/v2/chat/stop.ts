@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { setAgentRuntimeStop } from '@fastgpt/service/core/workflow/dispatch/workflowStatus';
 import {
   StopV2ChatSchema,

@@ -15,7 +15,10 @@ export type AgentLoopCoreEventStream = {
   startNewAnswerBlock: () => void;
   streamReasoning: (text: string) => void;
   streamAnswer: (text: string) => void;
-  streamToolCall: (call: ChatCompletionMessageToolCall) => void;
+  streamToolCall: (
+    call: ChatCompletionMessageToolCall,
+    options?: { hideDetails?: boolean }
+  ) => void;
   streamToolParams: (args: { callId: string; argsDelta: string }) => void;
   streamToolResponse: (args: { toolCallId: string; response?: string }) => void;
   streamPlanStatus: (status: 'generating' | 'updating') => void;

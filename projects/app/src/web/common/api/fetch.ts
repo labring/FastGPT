@@ -105,12 +105,13 @@ export const createResumeReadyNotifier = (onResumeReady?: () => void) => {
   };
 };
 
-const shouldSendStreamResumeHeader = (url: string) =>
+export const shouldSendStreamResumeHeader = (url: string) =>
   new Set([
     '/api/v2/chat/completions',
     '/api/proApi/core/chat/chatHome',
     '/api/core/chat/chatTest',
     '/api/proApi/core/chat/chatAgentHelper/completions',
+    '/api/proApi/core/workflow/builder/chat',
     '/api/core/ai/skill/debugChat',
     '/api/proApi/core/ai/skill/debugChat'
   ]).has(url);
@@ -184,6 +185,11 @@ export function handleEventSourceData(params: HandleEventSourceDataParams) {
       case SseResponseEventEnum.planStatus:
       case SseResponseEventEnum.skillCall: {
         onmessage({ responseValueId, event, ...obj });
+        break;
+      }
+
+      case SseResponseEventEnum.workflowBuilderVersion: {
+        onmessage({ responseValueId, event, workflowBuilderVersion: obj.version });
         break;
       }
 
@@ -691,12 +697,8 @@ function $resumefetch({
   });
 }
 
-export const streamFetch = ({
-  url = '/api/v2/chat/completions',
-  data,
-  onMessage,
-  abortCtrl
-}: StreamFetchProps) => {
+/** 构造通用 SSE 请求体，补充聊天运行参数并保留调用方的变量。 */
+export const buildStreamFetchBody = ({ data }: Pick<StreamFetchProps, 'data'>) => {
   const rawVars = data?.variables;
   const variables = {
     ...(rawVars && typeof rawVars === 'object' && !Array.isArray(rawVars)
@@ -704,6 +706,22 @@ export const streamFetch = ({
       : {}),
     cTime: formatTime2YMDHMW(new Date())
   };
+
+  return {
+    ...data,
+    variables,
+    detail: true,
+    stream: true,
+    retainDatasetCite: data.retainDatasetCite ?? true
+  };
+};
+
+export const streamFetch = ({
+  url = '/api/v2/chat/completions',
+  data,
+  onMessage,
+  abortCtrl
+}: StreamFetchProps) => {
   const shouldEnableStreamResume = shouldSendStreamResumeHeader(url);
 
   return $ssefetch({
@@ -717,13 +735,7 @@ export const streamFetch = ({
           [STREAM_RESUME_REQUEST_HEADER]: STREAM_RESUME_REQUEST_HEADER_ENABLED
         })
       },
-      body: JSON.stringify({
-        ...data,
-        variables,
-        detail: true,
-        stream: true,
-        retainDatasetCite: data.retainDatasetCite ?? true
-      })
+      body: JSON.stringify(buildStreamFetchBody({ data }))
     },
     onmessage: onMessage,
     abortController: abortCtrl

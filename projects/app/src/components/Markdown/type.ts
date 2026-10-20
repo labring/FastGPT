@@ -1,6 +1,12 @@
 import type { PluggableList } from 'unified';
 import type { AProps } from './components/A';
 
+/** 展示组件只上报用户意图，由调用方决定发送、填入输入框或处理快捷回复。 */
+export type MarkdownActionProps = Pick<AProps, 'onSendQuestion'> & {
+  onEditQuestion?: (text: string) => void;
+  onQuickReplyClick?: (text: string) => void;
+};
+
 /**
  * Markdown 主渲染组件 Props 约定
  */
@@ -17,7 +23,8 @@ export type MarkdownProps = {
   className?: string;
   /** 是否在 HTML/HTM 代码块中默认开启沙箱 iframe 实时预览 */
   autoPreviewHtmlCodeBlock?: boolean;
-} & AProps;
+} & AProps &
+  MarkdownActionProps;
 
 /**
  * 兼容旧代码命名的别名类型

@@ -55,7 +55,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository', (
 }));
 
 import {
-  deleteAppSandboxes,
+  deleteSandboxResourcesBySource,
   deleteSandboxResource,
   deleteSkillEditSandboxes,
   retryStaleStoppingSandboxes,
@@ -279,26 +279,44 @@ describe('sandbox resource lifecycle', () => {
     });
   });
 
-  it('uses source queries for app and skill bulk deletion', async () => {
-    const app = createResource();
+  it.each([ChatSourceTypeEnum.app, ChatSourceTypeEnum.workflowBuilder])(
+    'queries and deletes only the requested %s source',
+    async (sourceType) => {
+      mocks.findSandboxResourcesBySource.mockResolvedValueOnce([createResource({ sourceType })]);
+
+      await deleteSandboxResourcesBySource({ sourceType, sourceId: 'app-1' });
+
+      expect(mocks.findSandboxResourcesBySource).toHaveBeenCalledExactlyOnceWith({
+        sourceType,
+        sourceId: 'app-1'
+      });
+      expect(mocks.withSandboxLifecycleLease).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it('does not acquire lifecycle leases when the source has no resources', async () => {
+    await deleteSandboxResourcesBySource({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app-1'
+    });
+
+    expect(mocks.withSandboxLifecycleLease).not.toHaveBeenCalled();
+  });
+
+  it('uses the skill query for skill bulk deletion', async () => {
     const skill = createResource({
       sandboxId: 'skill-sandbox',
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: 'skill-1',
       userId: ChatSourceTypeEnum.skillEdit
     });
-    mocks.findSandboxResourcesBySource.mockResolvedValueOnce([app]);
     mocks.findSkillRelatedSandboxResources.mockResolvedValueOnce([skill]);
 
-    await deleteAppSandboxes('app-1');
     await deleteSkillEditSandboxes(['skill-1']);
 
-    expect(mocks.findSandboxResourcesBySource).toHaveBeenCalledWith({
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: 'app-1'
-    });
+    expect(mocks.findSandboxResourcesBySource).not.toHaveBeenCalled();
     expect(mocks.findSkillRelatedSandboxResources).toHaveBeenCalledWith(['skill-1']);
-    expect(mocks.withSandboxLifecycleLease).toHaveBeenCalledTimes(2);
+    expect(mocks.withSandboxLifecycleLease).toHaveBeenCalledTimes(1);
   });
 
   it('records every failed resource after bulk deletion settles', async () => {
@@ -314,9 +332,9 @@ describe('sandbox resource lifecycle', () => {
       return fn({ signal: new AbortController().signal, assertValid });
     });
 
-    await expect(deleteAppSandboxes('app-1')).rejects.toThrow(
-      'Failed to delete 2 sandbox resources'
-    );
+    await expect(
+      deleteSandboxResourcesBySource({ sourceType: ChatSourceTypeEnum.app, sourceId: 'app-1' })
+    ).rejects.toThrow('Failed to delete 2 sandbox resources');
 
     expect(mocks.withSandboxLifecycleLease).toHaveBeenCalledTimes(3);
     expect(mocks.logger.error).toHaveBeenCalledWith('Failed to delete sandbox resources', {

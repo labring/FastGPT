@@ -34,6 +34,8 @@ type ParseAppImportConfigOptions = {
   models?: Parameters<typeof formatModels>[0]['models'];
   /** 传入 models 时必须同时确认目录已成功加载，避免失败后的空数组清空导入引用。 */
   modelCatalogLoaded?: boolean;
+  defaultModelIds?: Partial<Record<ModelTypeEnum, string>>;
+  modelReferencePolicy?: 'preserve' | 'fallback' | 'validate' | 'import';
 };
 
 const supportedImportAppTypes = [
@@ -250,7 +252,9 @@ export const parseAppImportConfig = async ({
   expectedAppType,
   migrateWorkflow = false,
   models,
-  modelCatalogLoaded
+  modelCatalogLoaded,
+  defaultModelIds,
+  modelReferencePolicy
 }: ParseAppImportConfigOptions): Promise<ParsedImportConfig> => {
   if (models !== undefined && modelCatalogLoaded !== true) {
     throw new Error(t('common:model_catalog_load_failed'));
@@ -281,7 +285,8 @@ export const parseAppImportConfig = async ({
       nodes: workflow.nodes,
       chatConfig: workflow.chatConfig,
       models,
-      modelReferencePolicy: 'import'
+      defaultModelIds,
+      modelReferencePolicy: modelReferencePolicy ?? 'import'
     });
   }
 
@@ -334,13 +339,17 @@ export const parseWorkflowImportConfig = async ({
   appType: expectedAppType = AppTypeEnum.workflow,
   t,
   models,
-  modelCatalogLoaded
+  modelCatalogLoaded,
+  defaultModelIds,
+  modelReferencePolicy
 }: {
   config: unknown;
   appType?: AppTypeEnum.workflow | AppTypeEnum.workflowTool;
   t: any;
   models?: Array<{ modelId: string; model: string; type: ModelTypeEnum }>;
   modelCatalogLoaded?: boolean;
+  defaultModelIds?: Partial<Record<ModelTypeEnum, string>>;
+  modelReferencePolicy?: 'preserve' | 'fallback' | 'validate' | 'import';
 }): Promise<ImportWorkflowConfig> => {
   const scene: JsonImportModalScene =
     expectedAppType === AppTypeEnum.workflowTool ? 'tool' : 'agent';
@@ -351,7 +360,9 @@ export const parseWorkflowImportConfig = async ({
     expectedAppType,
     migrateWorkflow: true,
     models,
-    modelCatalogLoaded
+    modelCatalogLoaded,
+    defaultModelIds,
+    modelReferencePolicy
   });
 
   return workflow;

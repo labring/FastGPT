@@ -4,8 +4,8 @@ import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { type NodeProps, Position } from 'reactflow';
-import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import {
   createIfElseBranchId,
   getIfElseBranchHandleKey
@@ -76,6 +76,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   key={getIfElseBranchHandleKey(conditionItem)}
                   draggableId={getIfElseBranchHandleKey(conditionItem)}
                   index={conditionIndex}
+                  isDragDisabled={ifElseList.length <= 1}
                 >
                   {(provided, snapshot) => (
                     <ListItem

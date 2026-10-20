@@ -352,7 +352,7 @@ describe.skipIf(!integrationProvider).sequential('FastGPT Sandbox Integration', 
       await redisCacheAdapter.deleteMany([
         asRedisLogicalKey(`sandbox:preview:${toolFixture.query.sandboxId}:active`),
         ...Array.from(previewSessionIds, (sessionId) =>
-          asRedisLogicalKey(`sandbox:preview:${toolFixture.query.sandboxId}:${sessionId}`)
+          asRedisLogicalKey(`sandbox:preview:session:${sessionId}`)
         )
       ]);
     }
@@ -463,9 +463,9 @@ describe.skipIf(!integrationProvider).sequential('FastGPT Sandbox Integration', 
         filename: string;
       }[];
       expect(file.filename).toBe('sample.txt');
-      const pathSegments = new URL(file.fileUrl).pathname.split('/');
-      const sandboxIndex = pathSegments.indexOf(toolFixture.query.sandboxId);
-      previewSessionIds.add(pathSegments[sandboxIndex + 1]);
+      const match = new URL(file.fileUrl).pathname.match(/\/preview\/([a-z][a-zA-Z0-9]{23})\//);
+      expect(match).not.toBeNull();
+      previewSessionIds.add(match![1]);
     });
   });
 

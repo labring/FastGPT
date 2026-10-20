@@ -2,7 +2,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import type { NextApiResponse } from 'next';
 
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { pushAudioSpeechUsage } from '@/service/support/wallet/usage/push';
 import { authType2UsageSource } from '@/service/support/wallet/usage/utils';
 import { text2Speech } from '@fastgpt/service/core/ai/audio/speech';

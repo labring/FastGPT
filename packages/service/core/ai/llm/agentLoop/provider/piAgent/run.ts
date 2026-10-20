@@ -695,6 +695,32 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         await agent.prompt(prompt);
       }
     }
+
+    while (
+      runtime.completionPolicy &&
+      !pendingAsk &&
+      !pendingToolChild &&
+      !pendingToolStop &&
+      !runtime.checkIsStopping?.() &&
+      !latestError &&
+      !agent.state.errorMessage &&
+      !reachedRunLimit
+    ) {
+      const decision = await runtime.completionPolicy({ requestIndex });
+      if (decision.action === 'complete') break;
+      if (requestIndex >= maxRunAgentTimes) {
+        reachedRunLimit = true;
+        latestError = new Error(`Agent loop reached max run times: ${maxRunAgentTimes}`);
+        break;
+      }
+
+      const continuationMessage: ChatCompletionMessageParam = {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: decision.message
+      };
+      completeMessages.push(continuationMessage);
+      await agent.prompt(decision.message);
+    }
   } catch (error) {
     latestError = error;
   } finally {
@@ -829,6 +855,20 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   }
 
   if (reachedRunLimit) {
+    if (runtime.completionPolicy) {
+      return {
+        status: 'error',
+        activePlan,
+        providerState: nextProviderState,
+        completeMessages,
+        assistantMessages,
+        requestIds,
+        contextCheckpoint: latestContextCheckpoint,
+        finishReason: 'error',
+        usages: resultUsages,
+        error: latestError || new Error(`Agent loop reached max run times: ${maxRunAgentTimes}`)
+      };
+    }
     return {
       status: 'done',
       activePlan,

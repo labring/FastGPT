@@ -19,7 +19,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
+import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { LoopRunBreakNode as LoopRunBreakTemplate } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRunBreak';
 import { useNestedNode } from '../../hooks/useNestedNode';
 import { useContextSelector } from 'use-context-selector';

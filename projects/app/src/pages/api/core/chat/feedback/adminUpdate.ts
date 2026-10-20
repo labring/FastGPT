@@ -1,7 +1,7 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   AdminUpdateFeedbackBodySchema,

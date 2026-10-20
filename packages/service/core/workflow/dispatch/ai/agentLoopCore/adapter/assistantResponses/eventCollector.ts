@@ -351,6 +351,19 @@ export const createAgentLoopCoreAssistantEventCollector = ({
         }));
         return;
       }
+      case 'tool_activity': {
+        const toolInfo = getToolInfo?.(event.toolName);
+        upsertToolResponse({
+          id: event.callId,
+          toolName: toolInfo?.name || event.toolName,
+          toolAvatar: toolInfo?.avatar || '',
+          functionName: event.toolName,
+          params: '',
+          hideDetails: true,
+          ...(event.status === 'done' ? { response: '' } : {})
+        });
+        return;
+      }
       case 'tool_run_end': {
         if (completedToolCallIds.has(event.call.id)) return;
         completedToolCallIds.add(event.call.id);

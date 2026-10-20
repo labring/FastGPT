@@ -2,7 +2,7 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { updateChatFeedbackCount } from '@fastgpt/service/core/chat/controller';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';

@@ -23,7 +23,13 @@ import RenderTool from './RenderTool';
 import RenderUserFormInteractive from './RenderUserFormInteractive';
 import RenderUserSelectInteractive from './RenderUserSelectInteractive';
 import { adaptLegacyAgentPlanAskToReadonlyAgentAsk } from './utils';
+import RenderWorkflowBuilderPreviewInteractive from './WorkflowBuilder/RenderWorkflowBuilderPreviewInteractive';
+import RenderWorkflowBuilderVersion from './WorkflowBuilder/RenderWorkflowBuilderVersion';
+import { useChatInstanceActions } from '../../ChatContainer/context/chatInstanceActionsContext';
+import { QuickReplyContext } from '../../ChatContainer/context/quickReplyContext';
+import { useMemoizedFn } from 'ahooks';
 
+/** 在聊天边界绑定所属实例的操作，再以文本回调传入通用 Markdown 渲染器。 */
 const AIResponseBox = ({
   chatItemDataId,
   value,
@@ -39,6 +45,7 @@ const AIResponseBox = ({
   showStandaloneProcessing: showStandaloneProcessingProp = true,
   showAnswer = true,
   showInteractive = true,
+  showWorkflowBuilderVersion = true,
   defaultExpandProcessing = true,
   defaultExpandedProcessingTarget
 }: {
@@ -56,11 +63,22 @@ const AIResponseBox = ({
   showStandaloneProcessing?: boolean;
   showAnswer?: boolean;
   showInteractive?: boolean;
+  showWorkflowBuilderVersion?: boolean;
   defaultExpandProcessing?: boolean;
   defaultExpandedProcessingTarget?: ProcessingPreviewTarget;
 }) => {
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
   const showSkillReferences = useContextSelector(ChatItemContext, (v) => v.showSkillReferences);
+  const { sendMessage, fillInput } = useChatInstanceActions();
+  const onSendQuestion = useMemoizedFn((text: string) => sendMessage({ text }));
+  const onEditQuestion = useMemoizedFn((text: string) => fillInput({ text }));
+  const enableQuickReplies = useContextSelector(QuickReplyContext, (v) => v.enableQuickReplies);
+  const onQuickReplyClick = useContextSelector(QuickReplyContext, (v) => v.onQuickReplyClick);
+  const markdownActions = {
+    onSendQuestion,
+    onEditQuestion,
+    onQuickReplyClick: enableQuickReplies ? onQuickReplyClick : undefined
+  };
   const tools = value.tools || (value.tool ? [value.tool] : undefined);
   const disableStreamingInteraction = isChatting && isLastChild;
   const skills = value.skills;
@@ -79,6 +97,7 @@ const AIResponseBox = ({
   if (showFoldableProcessing && reasoningContent && !value.hideReason) {
     foldableProcessingBlocks.push(
       <RenderReasoningContent
+        {...markdownActions}
         key="reasoning"
         isChatting={isChatting}
         isLastResponseValue={isLastResponseValue && !textContent && !tools}
@@ -157,6 +176,7 @@ const AIResponseBox = ({
   if (showAnswer && value.text && textContent) {
     responseBlocks.push(
       <RenderText
+        {...markdownActions}
         key="text"
         chatItemDataId={chatItemDataId}
         showAnimation={isChatting && isLastResponseValue}
@@ -204,12 +224,30 @@ const AIResponseBox = ({
         />
       );
     }
-
+    if (interactive.type === 'workflowBuilderPreview') {
+      responseBlocks.push(
+        <RenderWorkflowBuilderPreviewInteractive
+          key="interactive"
+          interactive={interactive}
+          isLastChild={isLastChild}
+        />
+      );
+    }
     if (interactive.type === 'paymentPause') {
       responseBlocks.push(
         <RenderPaymentPauseInteractive key="interactive" interactive={interactive} />
       );
     }
+  }
+
+  if (showWorkflowBuilderVersion && value.workflowBuilderVersion) {
+    responseBlocks.push(
+      <RenderWorkflowBuilderVersion
+        key={`workflowBuilderVersion-${value.workflowBuilderVersion.checksum}-${value.workflowBuilderVersion.s3Key ?? 'ready'}-${value.workflowBuilderVersion.expiresAt ?? ''}`}
+        version={value.workflowBuilderVersion}
+        responseChatItemId={chatItemDataId}
+      />
+    );
   }
 
   if (responseBlocks.length === 1) {

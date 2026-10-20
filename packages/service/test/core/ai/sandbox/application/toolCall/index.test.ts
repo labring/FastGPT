@@ -71,17 +71,43 @@ describe('sandbox toolCall index', () => {
 
   it('executes known tools through a prepared sandbox client', async () => {
     const sandboxClient = createSandboxInstance();
+    const validate = vi.fn(() => undefined);
     await expect(
       runSandboxTools({
         toolName: SANDBOX_SHELL_TOOL_NAME,
         args: JSON.stringify({ command: 'pwd' }),
-        sandboxClient
+        sandboxClient,
+        validate
       })
     ).resolves.toMatchObject({
       success: true,
       input: { command: 'pwd' },
       response: 'out'
     });
+    expect(validate).toHaveBeenCalledWith({
+      toolName: SANDBOX_SHELL_TOOL_NAME,
+      args: JSON.stringify({ command: 'pwd' })
+    });
+    expect(runtimeMock.getSandboxClient).not.toHaveBeenCalled();
+  });
+
+  it('returns a validation error without accessing the sandbox', async () => {
+    const sandboxClient = createSandboxInstance();
+
+    await expect(
+      runSandboxTools({
+        toolName: SANDBOX_SHELL_TOOL_NAME,
+        args: JSON.stringify({ command: 'cat /private/workflow.json' }),
+        sandboxClient,
+        validate: () => 'Private workspace access denied.'
+      })
+    ).resolves.toMatchObject({
+      success: false,
+      input: {},
+      response: 'Private workspace access denied.'
+    });
+    expect(sandboxClient.exec).not.toHaveBeenCalled();
+    expect(sandboxClient.ensureAvailable).not.toHaveBeenCalled();
     expect(runtimeMock.getSandboxClient).not.toHaveBeenCalled();
   });
 

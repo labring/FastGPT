@@ -1367,6 +1367,36 @@ describe('chats2GPTMessages', () => {
     expect(result[1].role).toBe(ChatCompletionRequestMessageRoleEnum.Tool);
   });
 
+  it('keeps tool activity in chat history without restoring it as model tool context', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            tools: [
+              {
+                id: 'skill-reference',
+                toolName: 'Read file',
+                toolAvatar: '',
+                functionName: 'sandbox_read_file',
+                params: '',
+                response: '',
+                hideDetails: true
+              }
+            ]
+          },
+          { text: { content: 'Workflow ready' } }
+        ]
+      }
+    ];
+    const original = structuredClone(messages);
+
+    expect(chats2GPTMessages({ messages, reserveId: false, reserveTool: true })).toEqual([
+      { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: 'Workflow ready' }
+    ]);
+    expect(messages).toEqual(original);
+  });
+
   it('should normalize empty runtime tool responses to none when reserveTool is true', () => {
     const messages: ChatItemMiniType[] = [
       {

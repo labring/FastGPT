@@ -1,4 +1,5 @@
 import Markdown from '@/components/Markdown';
+import type { MarkdownActionProps } from '@/components/Markdown/type';
 import {
   Accordion,
   AccordionButton,
@@ -26,14 +27,17 @@ const RenderReasoningContent = React.memo(function RenderReasoningContent({
   isChatting,
   isLastResponseValue,
   isDisabled,
-  defaultExpanded = isLastResponseValue
+  defaultExpanded = isLastResponseValue,
+  onSendQuestion,
+  onEditQuestion,
+  onQuickReplyClick
 }: {
   content: string;
   isChatting: boolean;
   isLastResponseValue: boolean;
   isDisabled?: boolean;
   defaultExpanded?: boolean;
-}) {
+} & MarkdownActionProps) {
   const { t } = useTranslation();
   const showAnimation = isChatting && isLastResponseValue;
 
@@ -66,8 +70,8 @@ const RenderReasoningContent = React.memo(function RenderReasoningContent({
             >
               <MyIcon
                 name={'core/chat/deepThinking'}
-                w={'20px'}
-                h={'20px'}
+                w={'16px'}
+                h={'16px'}
                 fill={'myGray.500'}
                 display={'block'}
                 verticalAlign={'middle'}
@@ -99,7 +103,14 @@ const RenderReasoningContent = React.memo(function RenderReasoningContent({
                 }
               }}
             >
-              <Markdown source={content} showAnimation={showAnimation} isDisabled={isDisabled} />
+              <Markdown
+                source={content}
+                showAnimation={showAnimation}
+                isDisabled={isDisabled}
+                onSendQuestion={onSendQuestion}
+                onEditQuestion={onEditQuestion}
+                onQuickReplyClick={onQuickReplyClick}
+              />
             </Box>
           </Box>
         </AccordionPanel>

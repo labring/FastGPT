@@ -118,6 +118,61 @@ const createDispatchToolProps = (
 
 describe('dispatchTool runtime toolset auth', () => {
   it.each(['mcp', 'http'] as const)(
+    'keeps legacy required and patterned params compatible in Agent %s calls',
+    async (source) => {
+      const schema = {
+        type: 'object',
+        properties: { query: { type: 'string', required: true } },
+        patternProperties: { '^value_': { type: 'number' } },
+        additionalProperties: false
+      };
+      const tool = {
+        name: 'search',
+        description: 'Search',
+        path: '/search',
+        method: 'POST',
+        inputSchema: schema,
+        requestSchema: schema
+      };
+      const nodes = [
+        {
+          toolConfig: {
+            [source === 'mcp' ? 'mcpToolSet' : 'httpToolSet']: {
+              url: 'https://example.com/mcp',
+              baseUrl: 'https://example.com',
+              toolList: [tool]
+            }
+          }
+        }
+      ];
+      authAppByTmbIdMock.mockResolvedValue({ app: { _id: 'victim-toolset', modules: nodes } });
+      getAppVersionByIdMock.mockResolvedValue({ nodes });
+      getMCPChildrenMock.mockResolvedValue([tool]);
+      getHTTPToolListMock.mockResolvedValue([tool]);
+      mcpToolCallMock.mockResolvedValue({ ok: true });
+      runHTTPToolMock.mockResolvedValue({ data: { ok: true } });
+      const config = {
+        [source === 'mcp' ? 'mcpTool' : 'httpTool']: { toolId: `${source}-victim-toolset/search` }
+      };
+      const params = { query: 'allowed', value_count: 0 };
+      const accepted = await dispatchTool(createDispatchToolProps(config, params));
+      expect(accepted.errorMessage).toBeUndefined();
+      const externalCall = source === 'mcp' ? mcpToolCallMock : runHTTPToolMock;
+      expect(externalCall).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ params }));
+      externalCall.mockClear();
+      for (const params of [
+        { value_count: 0 },
+        { query: 'allowed', value_count: '0' },
+        { query: 'allowed', unknown: 1 }
+      ]) {
+        const rejected = await dispatchTool(createDispatchToolProps(config, params));
+        expect(rejected.errorMessage).toContain('validation failed');
+      }
+      expect(externalCall).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(['mcp', 'http'] as const)(
     'executes an authorized %s child outside the snapshot selection and rejects denied calls',
     async (source) => {
       const tool = {
