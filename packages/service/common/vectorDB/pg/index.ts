@@ -5,7 +5,7 @@ import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { getLogger, LogCategories } from '../../logger';
 import { LeaseCache } from '@fastgpt/dal/redis/caches/lease';
-import { serviceEnv } from '../../../env';
+import { isProVersion } from '../../system/constants';
 
 const logger = getLogger(LogCategories.INFRA.POSTGRES);
 const recallLease = new LeaseCache({ logger });
@@ -184,13 +184,15 @@ export class PgVectorCtrl implements VectorControllerType {
           ) SELECT id, collection_id, score FROM relaxed_results ORDER BY score;
         COMMIT;`
       );
+    // 仅商业版读取 Admin 保存的上限；开源版及未配置时始终不限制检索并发。
+    const concurrency = isProVersion() ? (global.systemEnv?.pgVectorRecallConcurrency ?? 0) : 0;
     const results: any = await (() => {
-      if (serviceEnv.PG_VECTOR_RECALL_CONCURRENCY === 0) return queryRecall();
+      if (concurrency === 0) return queryRecall();
 
       return recallLease.withConcurrency({
         key: 'vector:pg:recall',
         label: 'pg-vector-recall',
-        concurrency: serviceEnv.PG_VECTOR_RECALL_CONCURRENCY,
+        concurrency,
         ttlMs: RECALL_LEASE_TTL_MS,
         fn: queryRecall
       });
