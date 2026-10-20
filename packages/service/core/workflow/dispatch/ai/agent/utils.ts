@@ -1,6 +1,7 @@
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { AgentLoopProviderName } from '../../../../ai/llm/agentLoop/interface';
 import { getSystemInstanceConfig } from '../../../../../common/system/systemInstanceConfig/controller';
+import { logInstanceConfigRead } from '../../../../../common/system/migrationCoverageLog';
 import { serviceEnv } from '../../../../../env';
 import type { SubAppRuntimeType } from './type';
 import { getAgentLoopCoreSystemToolInfo } from '../agentLoopCore/interface';
@@ -10,7 +11,13 @@ import { getAgentLoopCoreSystemToolInfo } from '../agentLoopCore/interface';
  * 业务层只关心 provider 名称，不直接判断具体实现入口。
  */
 export const getWorkflowAgentLoopProvider = (): AgentLoopProviderName => {
-  const engine = getSystemInstanceConfig().feature.agentEngine ?? serviceEnv.AGENT_ENGINE;
+  const configuredEngine = getSystemInstanceConfig().feature.agentEngine;
+  const engine = configuredEngine ?? serviceEnv.AGENT_ENGINE;
+  logInstanceConfigRead({
+    callsite: 'runtime.workflow.agent.getWorkflowAgentLoopProvider',
+    source: configuredEngine === undefined ? 'env-fallback' : 'instance-config',
+    fields: [{ path: 'feature.agentEngine', value: configuredEngine ?? engine }]
+  });
   return engine === 'piAgent' ? 'piAgent' : 'fastAgent';
 };
 

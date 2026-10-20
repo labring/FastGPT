@@ -15,6 +15,7 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { asRedisLogicalKey, redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { serviceEnv } from '../../../../env';
+import { logInstanceConfigRead } from '../../../../common/system/migrationCoverageLog';
 import { resolveSandboxWorkspacePath } from './file';
 import { getSandboxRuntimeProfile } from '../infrastructure/provider/runtimeProfile';
 import { trimSandboxPathRight } from '../utils';
@@ -138,9 +139,18 @@ export function resolveSandboxPreviewPath(filePath: string): {
 }
 
 const getSandboxPreviewProxyBaseUrl = () => {
-  const rawUrl =
-    global.systemInstanceConfig?.subservice?.agentSandbox?.proxy?.httpUrl ||
-    serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
+  const configuredUrl = global.systemInstanceConfig?.subservice?.agentSandbox?.proxy?.httpUrl;
+  const rawUrl = configuredUrl || serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
+  logInstanceConfigRead({
+    callsite: 'runtime.ai.sandbox.preview.getSandboxPreviewProxyBaseUrl',
+    source: configuredUrl ? 'instance-config' : 'env-fallback',
+    fields: [
+      {
+        path: 'subservice.agentSandbox.proxy.httpUrl',
+        value: configuredUrl || rawUrl
+      }
+    ]
+  });
   if (!rawUrl) {
     throw new Error('AGENT_SANDBOX_PREVIEW_PROXY_URL environment variable is missing');
   }

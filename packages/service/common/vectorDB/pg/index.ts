@@ -4,6 +4,7 @@ import { PgClient, connectPg } from './controller';
 import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { getLogger, LogCategories } from '../../logger';
+import { logInstanceConfigRead } from '../../system/migrationCoverageLog';
 
 const logger = getLogger(LogCategories.INFRA.POSTGRES);
 
@@ -161,10 +162,20 @@ export class PgVectorCtrl implements VectorControllerType {
       return { results: [] };
     }
 
+    const hnswEfSearch = global.systemEnv?.hnswEfSearch || 100;
+    const hnswMaxScanTuples = global.systemEnv?.hnswMaxScanTuples || 100000;
+    logInstanceConfigRead({
+      callsite: 'runtime.common.vectorDB.pg.search',
+      source: 'bridged-system-env',
+      fields: [
+        { path: 'vector.hnswEfSearch', value: hnswEfSearch },
+        { path: 'vector.hnswMaxScanTuples', value: hnswMaxScanTuples }
+      ]
+    });
     const results: any = await PgClient.query(
       `BEGIN;
-          SET LOCAL hnsw.ef_search = ${global.systemEnv?.hnswEfSearch || 100};
-          SET LOCAL hnsw.max_scan_tuples = ${global.systemEnv?.hnswMaxScanTuples || 100000};
+          SET LOCAL hnsw.ef_search = ${hnswEfSearch};
+          SET LOCAL hnsw.max_scan_tuples = ${hnswMaxScanTuples};
           SET LOCAL hnsw.iterative_scan = relaxed_order;
           WITH relaxed_results AS MATERIALIZED (
             select id, collection_id, vector <#> '[${vector}]' AS score

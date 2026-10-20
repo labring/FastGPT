@@ -1,5 +1,6 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getSystemInstanceConfig } from '../system/systemInstanceConfig/controller';
+import { logInstanceConfigRead } from '../system/migrationCoverageLog';
 import { serviceEnv } from '../../env';
 import { SYSTEM_STRING_LENGTH_UNIT } from '../../env.const';
 import { getLogger, LogCategories } from '../logger';
@@ -8,9 +9,16 @@ const VARIABLE_PLACEHOLDER_PATTERN = /\{\{([^}]+)\}\}/g;
 const MAX_REPLACEMENT_DEPTH = 10;
 const logger = getLogger(LogCategories.SYSTEM);
 
-export const getSystemMaxStringLength = () =>
-  (getSystemInstanceConfig().resource.systemMaxStringLengthM ??
-    serviceEnv.SYSTEM_MAX_STRING_LENGTH_M) * SYSTEM_STRING_LENGTH_UNIT;
+export const getSystemMaxStringLength = () => {
+  const configured = getSystemInstanceConfig().resource.systemMaxStringLengthM;
+  const value = configured ?? serviceEnv.SYSTEM_MAX_STRING_LENGTH_M;
+  logInstanceConfigRead({
+    callsite: 'runtime.common.replaceVariable.getSystemMaxStringLength',
+    source: configured === undefined ? 'env-fallback' : 'instance-config',
+    fields: [{ path: 'resource.systemMaxStringLengthM', value: configured ?? value }]
+  });
+  return value * SYSTEM_STRING_LENGTH_UNIT;
+};
 
 /**
  * 将变量值按变量替换的历史语义转成字符串。

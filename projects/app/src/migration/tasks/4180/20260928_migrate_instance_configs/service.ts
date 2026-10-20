@@ -10,6 +10,7 @@ import {
 import { pruneDefaultOverrides } from '@fastgpt/global/common/system/config/merge';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 import { serviceEnv } from '@fastgpt/service/env';
 import { appEnv } from '@/env';
 import type { SystemMigrationLogger } from '@/migration/registry';
@@ -370,6 +371,15 @@ export const buildLegacyDomainOverrides = ({
     })
   }) as DomainOverrides['subservice'];
 
+  logInstanceConfigRead({
+    callsite: 'migration.instanceConfig.buildLegacyDomainOverrides',
+    source: 'migration',
+    fields: Object.entries(overrides).map(([domain, value]) => ({
+      path: domain,
+      value
+    }))
+  });
+
   return overrides;
 };
 
@@ -577,6 +587,15 @@ export const buildLegacyProOverrides = (pro: LegacyProConfig): DomainOverrides =
       expired: pair(sms.EXPIRED, sms.EXPIRED_EN)
     })
   }) as DomainOverrides['commercial'];
+
+  logInstanceConfigRead({
+    callsite: 'migration.instanceConfig.buildLegacyProOverrides',
+    source: 'migration',
+    fields: Object.entries(overrides).map(([domain, value]) => ({
+      path: domain,
+      value
+    }))
+  });
 
   return overrides;
 };

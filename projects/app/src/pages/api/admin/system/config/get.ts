@@ -8,6 +8,7 @@ import {
   type GetDomainConfigResponse
 } from '@fastgpt/global/openapi/admin/system/instanceConfig/api';
 import { getDomainConfigForAdmin } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
+import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 
 /**
  * Admin API - 获取单个 Domain 的实例配置与生效快照
@@ -23,6 +24,11 @@ async function handler(req: ApiRequestProps): Promise<GetDomainConfigResponse> {
   }).query;
 
   const result = await getDomainConfigForAdmin(domain);
+  logInstanceConfigRead({
+    callsite: 'runtime.app.admin.system.config.get',
+    source: 'admin-db',
+    fields: [{ path: domain, value: result.effectiveConfig }]
+  });
 
   return GetDomainConfigResponseSchema.parse({
     domain: result.domain,

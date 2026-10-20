@@ -35,6 +35,7 @@ import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 import { isLicenseActive } from '@fastgpt/global/common/system/license/utils';
 import { applyRuntimeStorageConfig } from '@fastgpt/service/common/s3/config/constants';
 import { initS3Buckets } from '@fastgpt/service/common/s3';
+import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 import { buildAuthoritativeSystemEnv } from './buildAuthoritativeSystemEnv';
 
 const logger = getLogger(LogCategories.SYSTEM);
@@ -156,6 +157,22 @@ async function doInitSystemConfig() {
     getPluginRemoteDebugEnabled(),
     reloadSystemInstanceConfig()
   ]);
+  logInstanceConfigRead({
+    callsite: 'startup.app.system.initSystemConfig.snapshot',
+    fields: [
+      { path: 'site', value: instanceConfig.site },
+      { path: 'auth', value: instanceConfig.auth },
+      { path: 'security', value: instanceConfig.security },
+      { path: 'feature', value: instanceConfig.feature },
+      { path: 'commercial', value: instanceConfig.commercial },
+      { path: 'resource', value: instanceConfig.resource },
+      { path: 'performance', value: instanceConfig.performance },
+      { path: 'storage', value: instanceConfig.storage },
+      { path: 'vector', value: instanceConfig.vector },
+      { path: 'providers', value: instanceConfig.providers },
+      { path: 'subservice', value: instanceConfig.subservice }
+    ]
+  });
   // global 保留快照（含已到期），功能开关按授权是否有效计算，
   // 避免过期的商业版授权继续开启商业能力；前端据此可区分「未激活」与「已到期」。
   global.licenseData = licenseData;
@@ -266,13 +283,13 @@ async function doInitSystemConfig() {
   });
 
   logger.info('System config loaded', {
-    fastgpt: {
-      feConfigs: global.feConfigs,
-      systemEnv: global.systemEnv,
-      subPlans: global.subPlans,
-      licenseData: global.licenseData,
-      instanceConfig
-    }
+    instanceConfigVersion: getInstanceConfigVersionTag(),
+    instanceConfigDomains: Object.keys(instanceConfig),
+    feConfigCount: Object.keys(global.feConfigs ?? {}).length,
+    systemEnvCount: Object.keys(global.systemEnv ?? {}).length,
+    isPlus,
+    isProService: !!serviceEnv.PRO_URL,
+    storageConfigChanged
   });
 }
 

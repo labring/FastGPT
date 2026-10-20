@@ -3,6 +3,7 @@ import { withNextCors } from '@fastgpt/next/middle/cors';
 import type { NextApiRequest, NextApiResponse } from '@fastgpt/next/type';
 import { createApiEntry, type ApiHandler } from '@fastgpt/service/common/http/entry';
 import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
+import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 
 type NextAPIOptions = {
   csrf?: boolean;
@@ -29,8 +30,14 @@ export const NextAPI = (
    */
   const beforeRequest = async (req: NextApiRequest, res: NextApiResponse) => {
     const security = getSystemInstanceConfig().security;
-    const allowedOrigins =
-      security.allowedOrigins.length > 0 ? security.allowedOrigins : undefined;
+    logInstanceConfigRead({
+      callsite: 'runtime.app.middleware.nextApi.beforeRequest',
+      fields: [
+        { path: 'security.allowedOrigins', value: security.allowedOrigins },
+        { path: 'security.csrfEnabled', value: security.csrfEnabled }
+      ]
+    });
+    const allowedOrigins = security.allowedOrigins.length > 0 ? security.allowedOrigins : undefined;
 
     await withNextCors({ req, res, allowedOrigins });
 

@@ -10,6 +10,7 @@ import { getLogger, LogCategories } from '../../common/logger';
 import { getImageBuffer } from '../../common/file/image/utils';
 import { uploadParsedPdfImage, type ParsedPdfImageKeyOptions } from '../../common/file/read/image';
 import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/controller';
+import { logInstanceConfigRead } from '../../common/system/migrationCoverageLog';
 import { serviceEnv } from '../../env';
 import { appendIultmzhFileParseFields } from './parseConfig';
 
@@ -30,12 +31,36 @@ const SangforParseResponseSchema = z.object({
 const resolveSangforEndpoint = (): { url?: string; key?: string } => {
   const sangfor = getSystemInstanceConfig().providers.documentParse.sangfor;
   if (sangfor.url) {
+    logInstanceConfigRead({
+      callsite: 'runtime.thirdProvider.sangfor.resolveSangforEndpoint',
+      source: 'instance-config',
+      fields: [
+        { path: 'providers.documentParse.sangfor.url', value: sangfor.url },
+        { path: 'providers.documentParse.sangfor.key', value: sangfor.key }
+      ]
+    });
     return { url: sangfor.url, key: sangfor.key };
   }
   const legacy = global.systemEnv?.customPdfParse;
   if (legacy?.url) {
+    logInstanceConfigRead({
+      callsite: 'runtime.thirdProvider.sangfor.resolveSangforEndpoint',
+      source: 'bridged-system-env',
+      fields: [
+        { path: 'providers.documentParse.sangfor.url', value: legacy.url },
+        { path: 'providers.documentParse.sangfor.key', value: legacy.key }
+      ]
+    });
     return { url: legacy.url, key: legacy.key };
   }
+  logInstanceConfigRead({
+    callsite: 'runtime.thirdProvider.sangfor.resolveSangforEndpoint',
+    source: 'schema-default',
+    fields: [
+      { path: 'providers.documentParse.sangfor.url', value: sangfor.url },
+      { path: 'providers.documentParse.sangfor.key', value: sangfor.key }
+    ]
+  });
   return {};
 };
 
@@ -43,6 +68,17 @@ const resolveSangforEndpoint = (): { url?: string; key?: string } => {
 export const useSangforParse = (extension: string): boolean => {
   const documentParse = getSystemInstanceConfig().providers.documentParse;
   const provider = documentParse.provider || serviceEnv.DOCUMENT_PARSE_PROVIDER;
+  logInstanceConfigRead({
+    callsite: 'runtime.thirdProvider.sangfor.useSangforParse',
+    source: documentParse.provider ? 'instance-config' : 'env-fallback',
+    fields: [
+      { path: 'providers.documentParse.provider', value: documentParse.provider || provider },
+      {
+        path: 'providers.documentParse.sangfor.extensions',
+        value: documentParse.sangfor.extensions
+      }
+    ]
+  });
   if (provider !== 'sangfor') return false;
 
   if (!resolveSangforEndpoint().url) return false;
@@ -108,9 +144,19 @@ export const parseFromSangfor = async ({
     form.append('file', fileBuffer, { filename: `file.${extension}` });
     appendIultmzhFileParseFields(form, sangforFileParseConfig);
     // sangfor.url 由部署方/root 管理员配置，可能指向内网解析服务，不使用 SSRF 拦截器。
-    const timeoutSeconds =
-      getSystemInstanceConfig().providers.documentParse.sangfor.timeoutSeconds ||
-      serviceEnv.SANGFOR_PARSE_TIMEOUT_SECONDS;
+    const configuredTimeoutSeconds =
+      getSystemInstanceConfig().providers.documentParse.sangfor.timeoutSeconds;
+    const timeoutSeconds = configuredTimeoutSeconds || serviceEnv.SANGFOR_PARSE_TIMEOUT_SECONDS;
+    logInstanceConfigRead({
+      callsite: 'runtime.thirdProvider.sangfor.parseFromSangfor',
+      source: configuredTimeoutSeconds ? 'instance-config' : 'env-fallback',
+      fields: [
+        {
+          path: 'providers.documentParse.sangfor.timeoutSeconds',
+          value: timeoutSeconds
+        }
+      ]
+    });
     const { data } = await axiosWithoutSSRF.post<unknown>(url, form, {
       timeout: timeoutSeconds * 1000,
       headers: {

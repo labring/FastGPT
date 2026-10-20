@@ -7,6 +7,7 @@ import type {
 } from '@fastgpt-sdk/storage';
 import { serviceEnv } from '../../../env';
 import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/controller';
+import { logInstanceConfigRead } from '../../system/migrationCoverageLog';
 import { StorageDownloadUrlModeSchema } from '../contracts/type';
 
 export const S3Buckets = {
@@ -18,13 +19,28 @@ export const S3Buckets = {
 export const getSystemMaxFileSize = () => global.feConfigs.limit?.uploadFileMaxSize || 1000;
 
 // ?? env 兜底仅覆盖叶子缺省的部分快照（测试种子）场景；未初始化时快照同样填满 schema 默认值
-export const getStorageFileUrlExpiredDays = () =>
-  getSystemInstanceConfig().storage.fileUrlExpiredDays ?? serviceEnv.FILE_URL_EXPIRED_DAYS;
+export const getStorageFileUrlExpiredDays = () => {
+  const configured = getSystemInstanceConfig().storage.fileUrlExpiredDays;
+  const value = configured ?? serviceEnv.FILE_URL_EXPIRED_DAYS;
+  logInstanceConfigRead({
+    callsite: 'runtime.common.s3.constants.getStorageFileUrlExpiredDays',
+    source: configured === undefined ? 'env-fallback' : 'instance-config',
+    fields: [{ path: 'storage.fileUrlExpiredDays', value: configured ?? value }]
+  });
+  return value;
+};
 
 /** short-redirect 302 预签名地址临时有效期（秒）：请求期读快照，Admin 保存即生效。 */
-export const getStorageRedirectTtlSeconds = () =>
-  getSystemInstanceConfig().storage.redirectTtlSeconds ??
-  serviceEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS;
+export const getStorageRedirectTtlSeconds = () => {
+  const configured = getSystemInstanceConfig().storage.redirectTtlSeconds;
+  const value = configured ?? serviceEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS;
+  logInstanceConfigRead({
+    callsite: 'runtime.common.s3.constants.getStorageRedirectTtlSeconds',
+    source: configured === undefined ? 'env-fallback' : 'instance-config',
+    fields: [{ path: 'storage.redirectTtlSeconds', value: configured ?? value }]
+  });
+  return value;
+};
 
 export const S3_KEY_PATH_INVALID_CHARS = /[|\\/]/;
 
@@ -76,18 +92,52 @@ export const applyRuntimeStorageConfig = (config: RuntimeStorageConfig | undefin
   const changed = appliedRuntimeStorageKey !== undefined && appliedRuntimeStorageKey !== nextKey;
   runtimeStorageConfig = config;
   appliedRuntimeStorageKey = nextKey;
+  logInstanceConfigRead({
+    callsite: 'startup.common.s3.applyRuntimeStorageConfig',
+    source: 'instance-config',
+    fields: [
+      { path: 'storage.downloadMode', value: config?.downloadMode },
+      { path: 'storage.externalEndpoint', value: config?.externalEndpoint },
+      { path: 'storage.cdnEndpoint', value: config?.cdnEndpoint }
+    ]
+  });
   return changed;
 };
 
 /** 对外暴露的下载模式：仅取实例配置，未初始化时使用 Schema 默认值 short-proxy。 */
-export const getStorageDownloadUrlMode = () =>
-  StorageDownloadUrlModeSchema.parse(runtimeStorageConfig?.downloadMode ?? 'short-proxy');
+export const getStorageDownloadUrlMode = () => {
+  const configured = runtimeStorageConfig?.downloadMode;
+  const value = StorageDownloadUrlModeSchema.parse(configured ?? 'short-proxy');
+  logInstanceConfigRead({
+    callsite: 'runtime.common.s3.constants.getStorageDownloadUrlMode',
+    source: configured === undefined ? 'schema-default' : 'instance-config',
+    fields: [{ path: 'storage.downloadMode', value }]
+  });
+  return value;
+};
 
 /** 对外公开的存储地址：仅取实例配置，未配置时返回空字符串（不再回落环境变量）。 */
-export const getStorageExternalEndpoint = () => runtimeStorageConfig?.externalEndpoint ?? '';
+export const getStorageExternalEndpoint = () => {
+  const value = runtimeStorageConfig?.externalEndpoint ?? '';
+  logInstanceConfigRead({
+    callsite: 'runtime.common.s3.constants.getStorageExternalEndpoint',
+    source:
+      runtimeStorageConfig?.externalEndpoint === undefined ? 'schema-default' : 'instance-config',
+    fields: [{ path: 'storage.externalEndpoint', value }]
+  });
+  return value;
+};
 
 /** short-redirect 临时地址使用的 CDN 地址：仅取实例配置，未配置时返回空字符串。 */
-export const getStorageS3CdnEndpoint = () => runtimeStorageConfig?.cdnEndpoint ?? '';
+export const getStorageS3CdnEndpoint = () => {
+  const value = runtimeStorageConfig?.cdnEndpoint ?? '';
+  logInstanceConfigRead({
+    callsite: 'runtime.common.s3.constants.getStorageS3CdnEndpoint',
+    source: runtimeStorageConfig?.cdnEndpoint === undefined ? 'schema-default' : 'instance-config',
+    fields: [{ path: 'storage.cdnEndpoint', value }]
+  });
+  return value;
+};
 
 const needExplicitExternalEndpointForRedirect = storageVendor === 'minio';
 

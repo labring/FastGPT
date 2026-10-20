@@ -18,6 +18,7 @@ import {
   type ParallelFullResultItem
 } from './service';
 import { pushSubWorkflowUsage } from '../utils';
+import { logInstanceConfigRead } from '../../../../common/system/migrationCoverageLog';
 import { createContainerRunStateSnapshot, syncContainerRunState } from '../utils/containerRunState';
 
 type Props = ModuleDispatchProps<{
@@ -51,13 +52,24 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
   const maxLength =
     global.systemInstanceConfig?.performance?.workflow?.maxLoopTimes ??
     serviceEnv.WORKFLOW_MAX_LOOP_TIMES;
+  const maxConcurrency =
+    global.systemInstanceConfig?.performance?.workflow?.parallelMaxConcurrency ??
+    serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY;
+  logInstanceConfigRead({
+    callsite: 'runtime.workflow.parallelRun.dispatchParallelRun',
+    source:
+      global.systemInstanceConfig?.performance?.workflow?.maxLoopTimes === undefined
+        ? 'env-fallback'
+        : 'instance-config',
+    fields: [
+      { path: 'performance.workflow.maxLoopTimes', value: maxLength },
+      { path: 'performance.workflow.parallelMaxConcurrency', value: maxConcurrency }
+    ]
+  });
   if (loopInputArray.length > maxLength) {
     return Promise.reject(`Input array length cannot be greater than ${maxLength}`);
   }
 
-  const maxConcurrency =
-    global.systemInstanceConfig?.performance?.workflow?.parallelMaxConcurrency ??
-    serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY;
   const concurrency = clampParallelConcurrency(userConcurrency, maxConcurrency);
 
   const maxRetryAttempts = clampParallelRetryTimes(userRetryTimes);

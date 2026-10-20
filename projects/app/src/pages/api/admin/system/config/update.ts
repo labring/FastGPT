@@ -19,6 +19,7 @@ import { initSystemConfig } from '@/service/common/system';
 import { assertStorageDownloadConfig } from '@/service/common/system/assertStorageDownloadConfig';
 import { syncSiteAvatarLifecycle } from '@/service/common/system/syncSiteAvatarLifecycle';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { logInstanceConfigWrite } from '@fastgpt/service/common/system/migrationCoverageLog';
 
 const logger = getLogger(LogCategories.SYSTEM);
 
@@ -72,6 +73,10 @@ async function handler(
 
   // 更新完成后获取按版本过滤、脱敏后的生效数据作为响应返回
   const result = await getDomainConfigForAdmin(domain, edition);
+  logInstanceConfigWrite({
+    callsite: 'runtime.app.admin.system.config.update',
+    fields: [{ path: domain, value: result.effectiveConfig }]
+  });
 
   // 头像生命周期同步是保存后的清理动作：配置已落库成功，
   // 清理失败（S3 删除/移除 TTL 抛错）不应让请求整体失败——否则客户端误判保存失败，
