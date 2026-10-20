@@ -3,6 +3,7 @@ import { DatasetSearchModeEnum, DatasetTypeEnum } from '../../../core/dataset/co
 import { ApiDatasetServerSchema } from '../../../core/dataset/apiDataset/type';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { FolderAccessModeSchema, ParentIdSchema } from '../../../common/parentFolder/type';
+import { BoolSchema } from '../../../common/zod';
 import {
   ChunkSettingsSchema,
   DatasetItemSchema,
@@ -252,7 +253,7 @@ export type GetDatasetListBody = z.infer<typeof GetDatasetListBodySchema>;
 const GetDatasetListV2FiltersSchema = GetDatasetListBodySchema.omit({ parentId: true }).extend({
   withAppCount: BoolSchema.optional().meta({
     example: true,
-    description: '是否返回被正式应用引用的数量'
+    description: '是否返回被正式应用引用的数量；默认不统计，仅非文件夹资源的 Owner 可查看'
   }),
   withFileCount: BoolSchema.optional().meta({
     example: true,

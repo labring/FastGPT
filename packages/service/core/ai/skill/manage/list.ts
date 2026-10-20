@@ -34,8 +34,6 @@ type ListReadableAgentSkillsParams = ListSkillsV2Query & {
   tmbId: string;
   teamPer: TeamPermission;
   creationStatus?: AgentSkillCreationStatusEnum;
-  /** 内部辅助生成可跳过引用统计；列表 API 固定返回有权限查看的引用数量。 */
-  withAppCount?: boolean;
   withSourceMember?: boolean;
   withCurrentRuntimeSkills?: boolean;
   /**
@@ -130,6 +128,7 @@ export const getAgentSkillFolderAccess = async ({
  *
  * 这里集中维护 Skill 列表 API 和 ChatAgentHelper 共用的权限过滤规则：
  * owner 可读团队内资源；普通成员按成员、用户组、组织授权计算，目录只负责层级过滤。
+ * 默认统计有权限查看的引用数量；选择器和辅助生成可传 withAppCount=false 跳过聚合。
  */
 export const listReadableAgentSkills = async (params: ListReadableAgentSkillsParams) => {
   const {

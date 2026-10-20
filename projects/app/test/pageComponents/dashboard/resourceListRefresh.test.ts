@@ -179,6 +179,9 @@ describe('resource list ID refresh integration', () => {
       } else if (idField === 'appIds') {
         expect(body.withRelatedAppCount).toBe(true);
       }
+      if (idField !== 'appIds') {
+        expect(body.withAppCount).toBe(true);
+      }
 
       await loadPage({ offset: 20, pageSize: 50 }, controller);
       expect(api.mock.lastCall?.[0]).toMatchObject({
@@ -187,6 +190,9 @@ describe('resource list ID refresh integration', () => {
         pageSize: 50
       });
       expect(api.mock.lastCall?.[0]).not.toHaveProperty(idField);
+      if (idField !== 'appIds') {
+        expect(api.mock.lastCall?.[0].withAppCount).toBe(true);
+      }
       expect(api.mock.lastCall?.[1]).toBe(controller);
     }
   );

@@ -57,8 +57,7 @@ async function handler(req: ApiRequestProps<ListSkillsV2Query>): Promise<ListSki
     teamId,
     tmbId,
     teamPer,
-    browseDescendants: true,
-    withAppCount: true
+    browseDescendants: true
   });
 
   return ListSkillsResponseSchema.parse({

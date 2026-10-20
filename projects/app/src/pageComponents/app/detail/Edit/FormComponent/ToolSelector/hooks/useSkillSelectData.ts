@@ -28,6 +28,7 @@ export const useSkillSelectData = () => {
   } = useScrollPagination(getSkillListV2, {
     params: {
       source: 'mine',
+      withAppCount: false,
       parentId,
       searchKey: searchKey || undefined
     },

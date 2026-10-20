@@ -13,11 +13,55 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import * as resourceLookup from '@fastgpt/service/core/app/resourceLookup';
 import { getFakeUsers, getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 describe('POST /api/core/dataset/listV2 - datasetIds', () => {
+  it.each(['pagination', 'ids'] as const)(
+    'only queries reference counts when requested in %s mode',
+    async (mode) => {
+      const user = await getUser(`dataset-count-${getNanoid(6)}`);
+      const dataset = await MongoDataset.create({
+        name: 'Selectable dataset',
+        teamId: user.teamId,
+        tmbId: user.tmbId
+      });
+      const countSpy = vi.spyOn(resourceLookup, 'countTeamAppsByPublishedResourceGroups');
+      try {
+        const query = mode === 'ids' ? { datasetIds: [String(dataset._id)] } : { parentId: null };
+        for (const withAppCount of [undefined, false]) {
+          const result = await Call<
+            GetDatasetListV2Body,
+            Record<string, never>,
+            GetDatasetListV2Response
+          >(handler, {
+            auth: user,
+            body: { ...query, withAppCount }
+          });
+          expect(result.code).toBe(200);
+          expect(result.data.list).toHaveLength(1);
+          expect(result.data.list[0]).not.toHaveProperty('appCount');
+        }
+        expect(countSpy).not.toHaveBeenCalled();
+        const counted = await Call<
+          GetDatasetListV2Body,
+          Record<string, never>,
+          GetDatasetListV2Response
+        >(handler, {
+          auth: user,
+          body: { ...query, withAppCount: true }
+        });
+        expect(counted.code).toBe(200);
+        expect(counted.data.list[0]?.appCount).toBe(0);
+        expect(countSpy).toHaveBeenCalledOnce();
+      } finally {
+        countSpy.mockRestore();
+      }
+    }
+  );
+
   it('跨目录返回全部指定资源，并排除已删除资源', async () => {
     const user = await getUser(`dataset-ids-${getNanoid(6)}`);
     const parentId = new Types.ObjectId();
@@ -47,7 +91,8 @@ describe('POST /api/core/dataset/listV2 - datasetIds', () => {
         parentId: String(new Types.ObjectId()),
         pageNum: 3,
         pageSize: 1,
-        offset: 1000
+        offset: 1000,
+        withAppCount: true
       }
     });
 

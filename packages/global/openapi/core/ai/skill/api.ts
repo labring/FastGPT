@@ -51,6 +51,11 @@ const ListSkillsV2FiltersSchema = z.object({
   category: AgentSkillCategorySchema.optional().describe('技能分类'),
   type: AgentSkillTypeSchema.optional().describe('技能类型过滤'),
   sort: AppListSortSchema.optional(),
+  withAppCount: BoolSchema.optional().meta({
+    example: false,
+    description:
+      '是否返回被正式应用引用的数量；默认统计，传 false 跳过，仅非文件夹资源的 Owner 可查看'
+  }),
   tmbIds: z.array(ObjectIdSchema).optional().describe('按创建者筛选；空数组返回空列表')
 });
 

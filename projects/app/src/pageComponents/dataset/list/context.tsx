@@ -268,6 +268,7 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
         {
           parentId,
           type: DatasetTypeEnum.folder,
+          withAppCount: false,
           offset,
           pageSize
         },

@@ -292,6 +292,16 @@ describe('resource listV2 query modes', () => {
     { name: 'skill', schema: ListSkillsV2QuerySchema, idsKey: 'skillIds', pageKey: 'page' }
   ];
 
+  it.each([
+    { schema: GetDatasetListV2BodySchema, idsKey: 'datasetIds' },
+    { schema: ListSkillsV2QuerySchema, idsKey: 'skillIds' }
+  ])('retains withAppCount in both list modes ($idsKey)', ({ schema, idsKey }) => {
+    for (const withAppCount of [true, false]) {
+      expect(schema.parse({ withAppCount }).withAppCount).toBe(withAppCount);
+      expect(schema.parse({ [idsKey]: [id], withAppCount }).withAppCount).toBe(withAppCount);
+    }
+  });
+
   it.each(cases)('$name 的 ID 查询接受 1 到分页上限个 ID', ({ schema, idsKey }) => {
     for (const length of [1, PaginationPageSizeLimit]) {
       const ids = Array.from({ length }, () => id);
@@ -369,9 +379,7 @@ describe('resource listV2 query modes', () => {
     });
     if ('$ref' in document) throw new Error('Unexpected schema reference');
     expect(document.anyOf).toHaveLength(2);
-    document.anyOf?.forEach((branch) => {
-      expect(branch).not.toHaveProperty('properties.withAppCount');
-    });
+    expect(JSON.stringify(document).includes('"withAppCount"')).toBe(idsKey !== 'appIds');
     expect(document.anyOf?.[0]).toMatchObject({
       title: '按 IDs 获取',
       required: [idsKey],

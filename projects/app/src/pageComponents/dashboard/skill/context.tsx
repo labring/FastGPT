@@ -160,6 +160,7 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
   );
   const listParams = {
     source: 'mine' as const,
+    withAppCount: true,
     searchKey,
     ...(applyToolbarFilters ? { sort: listFilters.sort } : {}),
     ...(tmbIds !== undefined ? { tmbIds } : {})
@@ -375,6 +376,7 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
         {
           source: 'mine',
           type: AgentSkillTypeEnum.folder,
+          withAppCount: false,
           parentId,
           offset,
           pageSize

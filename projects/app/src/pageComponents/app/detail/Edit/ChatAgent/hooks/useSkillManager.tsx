@@ -302,6 +302,7 @@ export const useSkillManager = ({
         {
           source: 'mine',
           parentId: folderId,
+          withAppCount: false,
           offset,
           pageSize
         },
@@ -517,6 +518,7 @@ export const useSkillManager = ({
         {
           source: 'mine',
           parentId: null,
+          withAppCount: false,
           ...params
         },
         cancelToken

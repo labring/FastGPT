@@ -34,11 +34,46 @@ import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import * as resourceLookup from '@fastgpt/service/core/app/resourceLookup';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 describe('POST /api/core/ai/skill/listV2', () => {
+  it.each(['pagination', 'ids'] as const)(
+    'withAppCount=false skips reference queries in %s mode',
+    async (mode) => {
+      const user = await getUser(`skill-count-${getNanoid(6)}`);
+      const skill = await MongoAgentSkills.create({
+        name: 'Selectable skill',
+        type: AgentSkillTypeEnum.skill,
+        source: AgentSkillSourceEnum.personal,
+        teamId: user.teamId,
+        tmbId: user.tmbId
+      });
+      const countSpy = vi.spyOn(resourceLookup, 'countTeamAppsByPublishedResourceGroups');
+      try {
+        const result = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
+          handler,
+          {
+            auth: user,
+            body: {
+              source: 'mine',
+              withAppCount: false,
+              ...(mode === 'ids' ? { skillIds: [String(skill._id)] } : { parentId: null })
+            }
+          }
+        );
+        expect(result.code).toBe(200);
+        expect(result.data.list).toHaveLength(1);
+        expect(result.data.list[0]).not.toHaveProperty('appCount');
+        expect(countSpy).not.toHaveBeenCalled();
+      } finally {
+        countSpy.mockRestore();
+      }
+    }
+  );
+
   it('文件夹和 Skill 统一按修改时间混排', async () => {
     const owner = await getUser(`agent-skill-sort-owner-${getNanoid(6)}`);
 
