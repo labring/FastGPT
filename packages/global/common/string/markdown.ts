@@ -37,6 +37,10 @@ export const simpleMarkdownText = (rawText: string) => {
   return rawText.trim();
 };
 
+/**
+ * 将 Doc2x 的 HTML 表格转换为 Markdown，保留合并单元格占位和已有 Markdown 转义。
+ * 未转义的管道符使用 HTML 实体，避免表格错列，也避免把 LaTeX 单竖线改成范数符号。
+ */
 export const htmlTable2Md = (content: string): string => {
   return content.replace(/<table>[\s\S]*?<\/table>/g, (htmlTable) => {
     try {
@@ -69,11 +73,13 @@ export const htmlTable2Md = (content: string): string => {
           if (cell.endsWith('/>')) {
             content = '';
           } else {
-            // 单元格里的 | 会被当成列分隔符，导致整行错列；已经转义的 \| 保持不变。
+            // 偶数个反斜杠没有转义管道符；奇数个已转义，保留其 Markdown/LaTeX 语义。
             content = cell
               .replace(/<t[dh][^>]*>|<\/t[dh]>/g, '')
               .trim()
-              .replace(/(?<!\\)\|/g, '\\|');
+              .replace(/(\\*)\|/g, (match, backslashes: string) =>
+                backslashes.length % 2 === 0 ? `${backslashes}&#124;` : match
+              );
           }
           for (let i = 0; i < rowspan; i++) {
             for (let j = 0; j < colspan; j++) {
