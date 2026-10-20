@@ -411,6 +411,74 @@ describe('mergeToolRuntimeParams', () => {
 });
 
 describe('JSON Schema runtime validation', () => {
+  const legacyObject = {
+    type: 'object',
+    properties: { name: { type: 'string', required: true } }
+  };
+  it.each([
+    {
+      name: 'array items',
+      schema: { type: 'array', items: legacyObject },
+      valid: [{ name: 'Alice' }],
+      invalid: [{}]
+    },
+    {
+      name: 'legacy tuple items',
+      schema: { type: 'array', items: [legacyObject], additionalItems: false },
+      valid: [{ name: 'Alice' }],
+      invalid: [{}]
+    },
+    {
+      name: 'anyOf',
+      schema: { anyOf: [legacyObject, { type: 'null' }] },
+      valid: { name: 'Alice' },
+      invalid: {}
+    },
+    {
+      name: 'boolean oneOf branch',
+      schema: { oneOf: [false, legacyObject] },
+      valid: { name: 'Alice' },
+      invalid: {}
+    },
+    {
+      name: 'additionalProperties',
+      schema: { type: 'object', additionalProperties: legacyObject },
+      valid: { entry: { name: 'Alice' } },
+      invalid: { entry: {} }
+    },
+    {
+      name: '$defs reference',
+      schema: { $ref: '#/$defs/entry', $defs: { entry: legacyObject } },
+      valid: { name: 'Alice' },
+      invalid: {}
+    }
+  ])('normalizes nested legacy required flags in $name', ({ schema, valid, invalid }) => {
+    const before = structuredClone(schema);
+    expect(validateToolInputValue({ schema, value: valid }).success).toBe(true);
+    expect(validateToolInputValue({ schema, value: invalid }).success).toBe(false);
+    expect(schema).toEqual(before);
+  });
+
+  it('combines standard required keys with legacy flags and preserves schema annotations as data', () => {
+    const data = { required: true, properties: { name: { required: false } } };
+    const schema = {
+      type: 'object',
+      required: ['count'],
+      properties: {
+        count: { type: 'number' },
+        name: { type: 'string', required: true },
+        literal: { enum: [data], default: data, examples: [data] }
+      }
+    };
+    const before = structuredClone(schema);
+    expect(
+      validateToolInputValue({ schema, value: { count: 0, name: 'Alice', literal: data } }).success
+    ).toBe(true);
+    expect(validateToolInputValue({ schema, value: { name: 'Alice' } }).success).toBe(false);
+    expect(validateToolInputValue({ schema, value: { count: 0 } }).success).toBe(false);
+    expect(schema).toEqual(before);
+  });
+
   it('normalizes legacy required flags for tool configuration and invocation without changing schema data', () => {
     const jsonSchema = {
       type: 'object',

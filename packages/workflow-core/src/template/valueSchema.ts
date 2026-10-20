@@ -4,15 +4,15 @@ type JsonSchema = {
   type?: string | string[];
   const?: unknown;
   required?: string[] | boolean;
-  properties?: Record<string, JsonSchema>;
-  patternProperties?: Record<string, JsonSchema>;
-  items?: JsonSchema | JsonSchema[] | false;
-  prefixItems?: JsonSchema[];
+  properties?: Record<string, JsonSchema | boolean>;
+  patternProperties?: Record<string, JsonSchema | boolean>;
+  items?: JsonSchema | (JsonSchema | boolean)[] | boolean;
+  prefixItems?: (JsonSchema | boolean)[];
   enum?: unknown[];
-  anyOf?: JsonSchema[];
-  oneOf?: JsonSchema[];
-  allOf?: JsonSchema[];
-  not?: JsonSchema;
+  anyOf?: (JsonSchema | boolean)[];
+  oneOf?: (JsonSchema | boolean)[];
+  allOf?: (JsonSchema | boolean)[];
+  not?: JsonSchema | boolean;
   additionalProperties?: boolean | JsonSchema;
   minItems?: number;
   maxItems?: number;
@@ -40,7 +40,12 @@ const valueMatchesType = (value: unknown, type: string) => {
 };
 
 /** 校验固定值使用的 JSON Schema 子集，兼容旧工具必填标记，不修改输入或 Schema。 */
-export const valueMatchesSchema = (value: unknown, schema: Record<string, unknown>): boolean => {
+export const valueMatchesSchema = (
+  value: unknown,
+  schema: Record<string, unknown> | boolean
+): boolean => {
+  // JSON Schema 允许 true/false 作为完整规则；联合类型中的 false 不能被计为匹配分支。
+  if (typeof schema === 'boolean') return schema;
   const parsedSchema = schema as JsonSchema;
   if (parsedSchema.const !== undefined && !valuesEqual(parsedSchema.const, value)) return false;
   if (parsedSchema.enum && !parsedSchema.enum.some((item) => valuesEqual(item, value)))

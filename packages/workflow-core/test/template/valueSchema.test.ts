@@ -3,6 +3,22 @@ import { valueMatchesSchema } from '../../src/template/valueSchema';
 import { describe, expect, it } from 'vitest';
 
 describe('valueMatchesSchema', () => {
+  it('honors boolean schema branches and properties in tool input contracts', () => {
+    expect(valueMatchesSchema('anything', true)).toBe(true);
+    expect(valueMatchesSchema('anything', false)).toBe(false);
+    const schema = {
+      oneOf: [
+        false,
+        { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] }
+      ]
+    };
+    expect(valueMatchesSchema({ name: 'Alice' }, schema)).toBe(true);
+    expect(valueMatchesSchema({}, schema)).toBe(false);
+    expect(
+      valueMatchesSchema({ name: 'Alice' }, { type: 'object', properties: { name: false } })
+    ).toBe(false);
+  });
+
   it.each([true, false])(
     'treats legacy boolean required as an input flag, not an object-key list: %s',
     (required) => {
@@ -46,6 +62,15 @@ describe('valueMatchesSchema', () => {
         { ...schema, patternProperties: { '^name$': { minLength: 10 } } }
       )
     ).toBe(false);
+    const additionalSchema = {
+      type: 'object',
+      patternProperties: { '^label_': { type: 'string' } },
+      additionalProperties: { type: 'number' }
+    };
+    expect(valueMatchesSchema({ label_name: 'Alice', count: 0 }, additionalSchema)).toBe(true);
+    expect(valueMatchesSchema({ label_name: 'Alice', count: 'zero' }, additionalSchema)).toBe(
+      false
+    );
   });
 
   it('validates nested objects, arrays and scalar constraints', () => {

@@ -404,6 +404,73 @@ describe('dispatchRunTool runtime toolset auth', () => {
     expect(tool).toEqual(original);
   });
 
+  it.each(['mcp', 'http'] as const)(
+    'invokes %s tools with legacy required flags and pattern properties while blocking invalid params',
+    async (source) => {
+      const schema = {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          query: { type: 'string', required: true },
+          filters: {
+            type: 'object',
+            required: true,
+            patternProperties: { '^value_': { type: 'number', minimum: 0 } },
+            additionalProperties: false
+          }
+        }
+      };
+      const tool = {
+        name: 'search',
+        description: 'Search',
+        path: '/search',
+        method: 'POST',
+        inputSchema: schema,
+        requestSchema: schema
+      };
+      const before = structuredClone(tool);
+      getAppVersionByIdMock.mockResolvedValue({
+        nodes: [
+          {
+            toolConfig: {
+              [source === 'mcp' ? 'mcpToolSet' : 'httpToolSet']: {
+                url: 'https://example.com/mcp',
+                baseUrl: 'https://example.com',
+                toolList: [tool]
+              }
+            }
+          }
+        ]
+      });
+      getMCPChildrenMock.mockResolvedValue([tool]);
+      getHTTPToolListMock.mockResolvedValue([tool]);
+      mcpToolCallMock.mockResolvedValue({ ok: true });
+      runHTTPToolMock.mockResolvedValue({ data: { ok: true } });
+      const config = {
+        [source === 'mcp' ? 'mcpTool' : 'httpTool']: { toolId: `${source}-victim-toolset/search` }
+      };
+      const params = { query: 'allowed', filters: { value_count: 0 } };
+      const result = await dispatchRunTool(createRunToolProps(config, params));
+      expect(result.error).toBeUndefined();
+      const externalCall = source === 'mcp' ? mcpToolCallMock : runHTTPToolMock;
+      expect(externalCall).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ params }));
+      externalCall.mockClear();
+
+      for (const params of [
+        { filters: { value_count: 0 } },
+        { query: 'allowed' },
+        { query: 'allowed', filters: { value_count: '0' } },
+        { query: 'allowed', filters: { value_count: -1 } },
+        { query: 'allowed', filters: { unknown: 1 } }
+      ]) {
+        const rejected = await dispatchRunTool(createRunToolProps(config, params));
+        expect(rejected.error?.[NodeOutputKeyEnum.errorText]).toContain('validation failed');
+      }
+      expect(externalCall).not.toHaveBeenCalled();
+      expect(tool).toEqual(before);
+    }
+  );
+
   it('should validate HTTP params with the latest toolset schema instead of a saved snapshot', async () => {
     authAppByTmbIdMock.mockResolvedValueOnce({
       app: {

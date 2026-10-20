@@ -87,6 +87,15 @@ describe('validateNodeIO', () => {
         additionalProperties: false
       },
       value: { value_count: 1 }
+    },
+    {
+      schema: {
+        oneOf: [
+          false,
+          { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] }
+        ]
+      },
+      value: { name: 'Alice' }
     }
   ])(
     'accepts tool inputs projected from supported legacy and pattern-property schemas: $schema',
@@ -128,11 +137,10 @@ describe('validateNodeIO', () => {
       NodeInputKeyEnum.httpHeaders,
       NodeInputKeyEnum.httpParams,
       NodeInputKeyEnum.httpFormBody
-    ].map((key) => ({
-      template: HttpNode468,
-      key,
-      value: [{ key: 'name', value: 'Alice', type: 'string' }]
-    })),
+    ].flatMap((key) => [
+      { template: HttpNode468, key, value: [{ key: 'name', value: 'Alice', type: 'string' }] },
+      { template: HttpNode468, key, value: [{ key: 'name', value: 'Alice' }] }
+    ]),
     ...[true, false, 0, { count: 1 }, ['item']].map((value) => ({
       template: VariableUpdateNode,
       key: NodeInputKeyEnum.updateList,

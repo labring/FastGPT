@@ -9,7 +9,10 @@ import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/consta
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchFormInput } from '@fastgpt/service/core/workflow/dispatch/interactive/formInput';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
-import type { UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import {
+  UserInputInteractiveSchema,
+  type UserInputFormItemType
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 const { mockCreateGetChatFileURL } = vi.hoisted(() => ({
   mockCreateGetChatFileURL: vi.fn()
@@ -36,6 +39,50 @@ vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
 describe('dispatchFormInput', () => {
   beforeEach(() => {
     mockCreateGetChatFileURL.mockReset();
+  });
+
+  it('opens a JSON-persisted form without a current value and resumes with the submitted value', async () => {
+    const params = JSON.parse(
+      JSON.stringify({
+        description: 'Fill form',
+        userInputForms: [
+          {
+            type: FlowNodeInputTypeEnum.input,
+            key: 'name',
+            label: 'Name',
+            value: undefined,
+            valueType: WorkflowIOValueTypeEnum.string,
+            required: false,
+            defaultValue: 'Alice'
+          }
+        ]
+      })
+    );
+    const props = {
+      histories: [],
+      runtimeNodesMap: new Map(),
+      node: { isEntry: false },
+      params,
+      query: []
+    };
+    const first = await dispatchFormInput(props as any);
+    const interactive = UserInputInteractiveSchema.parse(
+      JSON.parse(JSON.stringify(first[DispatchNodeResponseKeyEnum.interactive]))
+    );
+    expect(interactive.params.inputForm[0]).toMatchObject({ key: 'name', defaultValue: 'Alice' });
+    expect(interactive.params.inputForm[0]).not.toHaveProperty('value');
+
+    const resumed = await dispatchFormInput({
+      ...props,
+      node: { isEntry: true },
+      lastInteractive: interactive,
+      query: [{ text: { content: JSON.stringify({ name: 'Bob' }) } }]
+    } as any);
+    expect(resumed.data).toEqual({
+      name: 'Bob',
+      [NodeOutputKeyEnum.formInputResult]: { name: 'Bob' }
+    });
+    expect(params.userInputForms[0]).toEqual(interactive.params.inputForm[0]);
   });
 
   /** 用全局变量模拟动态选项来源，保留真实选项解析与交互生成逻辑。 */
