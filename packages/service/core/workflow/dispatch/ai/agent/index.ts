@@ -282,6 +282,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         completionTools: agentCompletionTools,
         currentFiles: userContext.currentFiles,
         sandboxClient,
+        skillInfos,
         streamResponseFn: workflowStreamResponse
       },
       usagePush,

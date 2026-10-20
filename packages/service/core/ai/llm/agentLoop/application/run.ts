@@ -14,6 +14,9 @@ import type { AgentLoopEvent } from '../domain/event';
 import { isAgentLoopSandboxToolName } from '../domain/systemTool/sandbox';
 import { READ_FILES_TOOL_NAME } from '../domain/systemTool/readFile';
 import { DATASET_SEARCH_TOOL_NAME } from '../domain/systemTool/datasetSearch';
+import { SANDBOX_READ_FILE_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
+import { posix } from 'node:path';
+import { parseJsonArgs } from '../../../utils';
 
 export type RunAgentLoopApplicationParams<TChildrenResponse = unknown> = {
   provider: AgentLoopProvider;
@@ -27,7 +30,7 @@ export type RunAgentLoopApplicationParams<TChildrenResponse = unknown> = {
  * provider 产生 usage 时仍只调用一次 `runtime.usagePush`。这里在转发账单回调的同时
  * 收集同一批 usage，并将其作为只读 result 返回，避免 provider 另行拼装汇总后遗漏
  * 工具/压缩用量，或由业务层为了补汇总再次触发计费。
- * 工具 visibility 在此统一作用于事件和对外消息；provider 内部上下文及恢复状态不做裁剪。
+ * 工具 visibility 和内部读取目录在此统一作用于事件及对外消息；provider 内部上下文及恢复状态不做裁剪。
  */
 export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
   provider,
@@ -38,13 +41,19 @@ export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
 > => {
   const pushedUsages: AgentLoopUsage[] = [];
   const systemTools = runtime.systemTools;
-  const hasVisibilityPolicy = [
-    systemTools?.sandbox,
-    systemTools?.readFile,
-    systemTools?.datasetSearch
-  ].some((tool) => tool?.enabled && tool.visibility && tool.visibility !== 'public');
+  const internalReadDirectories = systemTools?.sandbox?.enabled
+    ? (systemTools.sandbox.internalReadDirectories ?? [])
+        .filter((directory) => posix.isAbsolute(directory))
+        .map((directory) => posix.normalize(directory).replace(/\/+$/, ''))
+    : [];
+  const hasVisibilityPolicy =
+    internalReadDirectories.length > 0 ||
+    [systemTools?.sandbox, systemTools?.readFile, systemTools?.datasetSearch].some(
+      (tool) => tool?.enabled && tool.visibility && tool.visibility !== 'public'
+    );
   const bufferedToolEvents = new Map<string, AgentLoopEvent[]>();
   const internalToolCallIds = new Map<string, boolean>();
+  const toolActivityStatuses = new Map<string, 'running' | 'done'>();
 
   /** 只读取实际启用的系统工具配置，普通业务工具和未配置项默认公开。 */
   const getVisibility = (toolName: string) => {
@@ -57,17 +66,62 @@ export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
     return tool?.enabled ? (tool.visibility ?? 'public') : 'public';
   };
 
+  /** 复用沙箱的参数和路径解析规则，覆盖整个内部目录并避免误匹配同名前缀目录。 */
+  const isInternalFileRead = (call: ChatCompletionMessageToolCall) => {
+    const sandbox = systemTools?.sandbox;
+    if (
+      !sandbox?.enabled ||
+      internalReadDirectories.length === 0 ||
+      call.function.name !== SANDBOX_READ_FILE_TOOL_NAME
+    )
+      return false;
+
+    try {
+      const params = parseJsonArgs<unknown>(call.function.arguments ?? '{}');
+      if (
+        !params ||
+        typeof params !== 'object' ||
+        !('path' in params) ||
+        typeof params.path !== 'string'
+      )
+        return false;
+      const filePath = posix.normalize(
+        sandbox.client.resolveRuntimePath(params.path, { allowAbsolutePath: true })
+      );
+      return internalReadDirectories.some(
+        (directory) => filePath === directory || filePath.startsWith(`${directory}/`)
+      );
+    } catch {
+      // 参数/路径错误仍由原执行器处理，可见性判断不能中断模型循环或改变工具执行结果。
+      return false;
+    }
+  };
+
   /** 完整参数边界只计算一次，后续事件和返回消息复用同一次决定。 */
   const isInternalToolCall = (call: ChatCompletionMessageToolCall) => {
     const cached = internalToolCallIds.get(call.id);
     if (cached !== undefined) return cached;
     const visibility = getVisibility(call.function.name);
     const internal =
+      isInternalFileRead(call) ||
       (typeof visibility === 'function'
         ? visibility({ toolName: call.function.name, args: call.function.arguments ?? '' })
         : visibility) === 'internal';
     internalToolCallIds.set(call.id, internal);
     return internal;
+  };
+
+  /** 只按白名单公开工具名称和状态，避免原事件的参数、错误或 metadata 被顺带透传。 */
+  const emitToolActivity = (call: ChatCompletionMessageToolCall, status: 'running' | 'done') => {
+    const previousStatus = toolActivityStatuses.get(call.id);
+    if (previousStatus === status || previousStatus === 'done') return;
+    toolActivityStatuses.set(call.id, status);
+    runtime.emitEvent?.({
+      type: 'tool_activity',
+      callId: call.id,
+      toolName: call.function.name,
+      status
+    });
   };
 
   /** 动态策略等待完整参数；静态可见性无需延迟普通工具的流式输出。 */
@@ -79,13 +133,16 @@ export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
 
     if (event.type === 'tool_call') {
       if (
-        typeof getVisibility(event.call.function.name) === 'function' &&
+        (typeof getVisibility(event.call.function.name) === 'function' ||
+          (internalReadDirectories.length > 0 &&
+            event.call.function.name === SANDBOX_READ_FILE_TOOL_NAME)) &&
         !internalToolCallIds.has(event.call.id)
       ) {
         bufferedToolEvents.set(event.call.id, [event]);
         return;
       }
-      if (!isInternalToolCall(event.call)) runtime.emitEvent?.(event);
+      if (isInternalToolCall(event.call)) emitToolActivity(event.call, 'running');
+      else runtime.emitEvent?.(event);
       return;
     }
     if (event.type === 'tool_params') {
@@ -103,6 +160,7 @@ export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
         const internal = isInternalToolCall(call);
         const buffered = bufferedToolEvents.get(call.id);
         bufferedToolEvents.delete(call.id);
+        if (internal && buffered) emitToolActivity(call, 'running');
         if (!internal) buffered?.forEach((item) => runtime.emitEvent?.(item));
         return !internal;
       });
@@ -116,7 +174,10 @@ export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
     if (event.type === 'tool_run_start' || event.type === 'tool_run_end') {
       const buffered = bufferedToolEvents.get(event.call.id);
       bufferedToolEvents.delete(event.call.id);
-      if (isInternalToolCall(event.call)) return;
+      if (isInternalToolCall(event.call)) {
+        emitToolActivity(event.call, event.type === 'tool_run_start' ? 'running' : 'done');
+        return;
+      }
       buffered?.forEach((item) => runtime.emitEvent?.(item));
       runtime.emitEvent?.(event);
       return;

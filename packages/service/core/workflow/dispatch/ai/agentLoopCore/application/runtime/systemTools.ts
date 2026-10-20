@@ -9,6 +9,8 @@ export type CreateAgentLoopCoreSystemToolsParams = {
   planEnabled: boolean;
   askEnabled: boolean;
   sandboxClient?: SandboxClient;
+  /** 注入已部署 Skill 等内部资料的绝对目录，只隐藏读取详情，不限制模型访问。 */
+  sandboxInternalReadDirectories?: string[];
   readFile?: {
     enabled: boolean;
     maxFileAmount: number;
@@ -31,6 +33,7 @@ export const createAgentLoopCoreSystemTools = ({
   planEnabled,
   askEnabled,
   sandboxClient,
+  sandboxInternalReadDirectories,
   readFile,
   datasetSearch
 }: CreateAgentLoopCoreSystemToolsParams): AgentLoopSystemTools => ({
@@ -44,7 +47,10 @@ export const createAgentLoopCoreSystemTools = ({
     ? {
         sandbox: {
           enabled: true,
-          client: sandboxClient
+          client: sandboxClient,
+          ...(sandboxInternalReadDirectories?.length
+            ? { internalReadDirectories: sandboxInternalReadDirectories }
+            : {})
         }
       }
     : {}),

@@ -120,6 +120,36 @@ const RenderTool = React.memo(function RenderTool({
   const workflowBuilderPresentation = getWorkflowBuilderToolPresentation(tool.functionName);
   const displayAvatar = tool.toolAvatar || workflowBuilderPresentation?.avatar || '';
   const displayName = getWorkflowBuilderToolDisplayName({ ...tool, t });
+  const toolInfo = (
+    <>
+      <HStack h={'24px'} lineHeight={'24px'} mr={1} spacing="0" minW={0} overflow={'hidden'}>
+        <Flex w="24px" h="24px" flexShrink={0} alignItems="center" justifyContent="center">
+          <Avatar src={displayAvatar} w="16px" h="16px" borderRadius="xs" />
+        </Flex>
+        <Box
+          fontSize="16px"
+          lineHeight="24px"
+          color="myGray.600"
+          minW={0}
+          overflow={'hidden'}
+          textOverflow={'ellipsis'}
+          whiteSpace={'nowrap'}
+        >
+          {displayName}
+        </Box>
+      </HStack>
+      {isToolGenerating && <MyIcon name={'common/loading'} w={'14px'} color="myGray.500" />}
+    </>
+  );
+
+  // 内部活动只呈现工具与执行状态，不提供可展开入口，即使调用方要求默认展开也不展示详情。
+  if (tool.hideDetails) {
+    return (
+      <Flex alignItems={'center'} h={'24px'} maxW={'100%'} lineHeight={'24px'}>
+        {toolInfo}
+      </Flex>
+    );
+  }
 
   return (
     <Accordion
@@ -147,23 +177,7 @@ const RenderTool = React.memo(function RenderTool({
           _hover={{ bg: 'transparent', color: 'myGray.600' }}
           _expanded={{ color: 'myGray.600' }}
         >
-          <HStack h={'24px'} lineHeight={'24px'} mr={1} spacing="0" minW={0} overflow={'hidden'}>
-            <Flex w="24px" h="24px" flexShrink={0} alignItems="center" justifyContent="center">
-              <Avatar src={displayAvatar} w="16px" h="16px" borderRadius="xs" />
-            </Flex>
-            <Box
-              fontSize="16px"
-              lineHeight="24px"
-              color="myGray.600"
-              minW={0}
-              overflow={'hidden'}
-              textOverflow={'ellipsis'}
-              whiteSpace={'nowrap'}
-            >
-              {displayName}
-            </Box>
-          </HStack>
-          {isToolGenerating && <MyIcon name={'common/loading'} w={'14px'} color="myGray.500" />}
+          {toolInfo}
           <AccordionIcon ml={1} w={'16px'} h={'16px'} color={'myGray.500'} />
         </AccordionButton>
         {isExpanded && (

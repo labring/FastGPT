@@ -22,7 +22,7 @@ export const getProcessingPreviewTarget = (
   value: AIChatItemValueItemType
 ): ProcessingPreviewTarget | undefined => {
   const tool = value.tools?.[value.tools.length - 1] ?? value.tool;
-  if (tool?.params) {
+  if (tool?.params && !tool.hideDetails) {
     return {
       type: 'tool',
       toolId: tool.id
@@ -120,7 +120,7 @@ const RenderProcessingPreview = React.memo(function RenderProcessingPreview({
   const tool = value.tools?.[value.tools.length - 1] ?? value.tool;
   const reasoningContent = value.reasoning?.content ?? '';
   const previewContent = useMemo(
-    () => getProcessingPreview(tool ? tool.params : reasoningContent),
+    () => getProcessingPreview(tool ? (tool.hideDetails ? '' : tool.params) : reasoningContent),
     [tool, reasoningContent]
   );
 

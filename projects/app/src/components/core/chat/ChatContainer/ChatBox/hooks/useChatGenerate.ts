@@ -442,7 +442,7 @@ export const useChatGenerate = ({
           return item;
         }
         if (event === SseResponseEventEnum.toolResponse && tool && updateValue.tools) {
-          if (tool.response) {
+          if (typeof tool.response === 'string') {
             updateValue.tools = updateValue.tools.map((item) =>
               item.id === tool.id
                 ? { ...item, response: `${item.response || ''}${tool.response}` }

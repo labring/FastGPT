@@ -463,14 +463,28 @@ describe('runAgentLoopCore', () => {
       }
     });
 
-    expect(forwardedEvents).toHaveLength(5);
+    expect(forwardedEvents).toHaveLength(7);
     expect(forwardedEvents[0]).toEqual(
       expect.objectContaining({
         type: 'llm_request_end',
         toolCalls: [publicCall]
       })
     );
-    const forwardedToolEvents = forwardedEvents.slice(1);
+    expect(forwardedEvents.slice(1, 3)).toEqual([
+      {
+        type: 'tool_activity',
+        callId: privateCall.id,
+        toolName: privateCall.function.name,
+        status: 'running'
+      },
+      {
+        type: 'tool_activity',
+        callId: privateCall.id,
+        toolName: privateCall.function.name,
+        status: 'done'
+      }
+    ]);
+    const forwardedToolEvents = forwardedEvents.slice(3);
     expect(
       forwardedToolEvents.every((event) =>
         event.type === 'tool_params'
@@ -479,6 +493,20 @@ describe('runAgentLoopCore', () => {
       )
     ).toBe(true);
     expect(result.assistantResponses).toEqual([
+      {
+        id: privateCall.id,
+        tools: [
+          {
+            id: privateCall.id,
+            toolName: 'Sandbox read file',
+            toolAvatar: '',
+            functionName: privateCall.function.name,
+            params: '',
+            response: '',
+            hideDetails: true
+          }
+        ]
+      },
       expect.objectContaining({
         id: publicCall.id,
         tools: [

@@ -7,6 +7,7 @@ import type { AgentLoopEvent } from '@fastgpt/service/core/ai/llm/agentLoop/doma
 import type { AgentLoopRuntime } from '@fastgpt/service/core/ai/llm/agentLoop/domain/runtime';
 import type { AgentLoopSystemTools } from '@fastgpt/service/core/ai/llm/agentLoop/domain/tool';
 import type { SandboxClient } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
+import { resolveSandboxRuntimePath } from '@fastgpt/service/core/ai/sandbox/utils';
 import { describe, expect, it, vi } from 'vitest';
 
 describe('runAgentLoopApplication tool visibility', () => {
@@ -22,7 +23,15 @@ describe('runAgentLoopApplication tool visibility', () => {
   };
   const visibility: NonNullable<AgentLoopSystemTools['sandbox']>['visibility'] = ({ args }) =>
     args.includes('/transaction/') ? 'internal' : 'public';
-  const sandboxClient = {} as SandboxClient;
+  const sandboxClient = {
+    resolveRuntimePath: (path, options) =>
+      resolveSandboxRuntimePath(
+        path,
+        { workspaceRoot: '/workspace', sessionWorkDirectory: '/workspace' },
+        options
+      )
+  } as SandboxClient;
+  const skillDirectory = '/root/.fastgpt/skills/workflow-builder';
   const requestEnd = (
     toolCalls?: ChatCompletionMessageToolCall[]
   ): Extract<AgentLoopEvent, { type: 'llm_request_end' }> => ({
@@ -42,6 +51,15 @@ describe('runAgentLoopApplication tool visibility', () => {
     rawResponse: 'tool result',
     response: 'tool result',
     seconds: 1
+  });
+  const activity = (
+    call: ChatCompletionMessageToolCall,
+    status: 'running' | 'done'
+  ): Extract<AgentLoopEvent, { type: 'tool_activity' }> => ({
+    type: 'tool_activity',
+    callId: call.id,
+    toolName: call.function.name,
+    status
   });
   /** 使用真实公共入口和内存 provider，检查外部事件与 provider 原始上下文的边界。 */
   const run = async ({
@@ -168,7 +186,7 @@ describe('runAgentLoopApplication tool visibility', () => {
     }
   );
 
-  it('hides interleaved internal calls and responses while preserving public events and context', async () => {
+  it('publishes only activity for internal tools while preserving public events and model context', async () => {
     const events: AgentLoopEvent[] = [
       {
         type: 'tool_call',
@@ -182,7 +200,20 @@ describe('runAgentLoopApplication tool visibility', () => {
       { type: 'tool_params', callId: publicCall.id, argsDelta: publicCall.function.arguments },
       requestEnd([internalCall, publicCall]),
       { type: 'tool_run_start', call: internalCall },
-      toolEnd(internalCall),
+      {
+        ...toolEnd(internalCall),
+        errorMessage: 'secret execution error',
+        metadata: { secret: 'private metadata' },
+        assistantMessages: [{ role: 'assistant', content: 'private assistant message' }],
+        assistantResponses: [{ text: { content: 'private child response' } }],
+        toolResponseCompress: {
+          response: 'private compressed result',
+          modelName: 'model',
+          usage: { moduleName: 'compress', totalPoints: 1 },
+          requestIds: [],
+          seconds: 1
+        }
+      },
       { type: 'tool_params', callId: internalCall.id, argsDelta: 'late chunk' },
       { type: 'tool_run_start', call: publicCall },
       toolEnd(publicCall)
@@ -198,9 +229,11 @@ describe('runAgentLoopApplication tool visibility', () => {
     const original = structuredClone({ messages, events });
     const { result, forwarded } = await run({ events, messages });
     expect(forwarded).toEqual([
+      activity(internalCall, 'running'),
       events[1],
       events[3],
       { ...events[4], toolCalls: [publicCall] },
+      activity(internalCall, 'done'),
       events[8],
       events[9]
     ]);
@@ -212,6 +245,113 @@ describe('runAgentLoopApplication tool visibility', () => {
     expect(result.completeMessages).toEqual(expectedMessages);
     expect(result.assistantMessages).toEqual(expectedMessages);
     expect({ messages, events }).toEqual(original);
+  });
+
+  it.each([
+    { args: JSON.stringify({ path: `${skillDirectory}/SKILL.md` }), hidden: true },
+    { args: JSON.stringify({ path: `${skillDirectory}/references/cli-basics.md` }), hidden: true },
+    { args: JSON.stringify({ path: `${skillDirectory}/scripts/build.py` }), hidden: true },
+    { args: JSON.stringify({ path: `${skillDirectory}/assets/template.json` }), hidden: true },
+    {
+      args: `{ path: '${skillDirectory}/references/cli-basics.md', }`,
+      hidden: true
+    },
+    {
+      args: JSON.stringify({ path: `${skillDirectory}//references/./cli-basics.md` }),
+      hidden: true
+    },
+    { args: JSON.stringify({ path: 'skills/report/references/guide.md' }), hidden: true },
+    {
+      args: JSON.stringify({ path: `${skillDirectory}-extra/references/guide.md` }),
+      hidden: false
+    },
+    { args: JSON.stringify({ path: '/workspace/SKILL.md' }), hidden: false },
+    { args: '{', hidden: false },
+    { args: 'null', hidden: false },
+    { args: '{"path":1}', hidden: false },
+    { args: '{"path":"../outside.md"}', hidden: false },
+    {
+      args: JSON.stringify({ path: `${skillDirectory}/references/cli-basics.md` }),
+      toolName: 'sandbox_write_file',
+      hidden: false
+    },
+    {
+      args: JSON.stringify({ path: `${skillDirectory}/references/cli-basics.md` }),
+      enabled: false,
+      hidden: false
+    }
+  ])(
+    'applies internal read directories to the complete call without changing model context: %j',
+    async ({ args, hidden, toolName = 'sandbox_read_file', enabled = true }) => {
+      const call: ChatCompletionMessageToolCall = {
+        ...publicCall,
+        function: { name: toolName, arguments: args }
+      };
+      const events: AgentLoopEvent[] = [
+        { type: 'tool_call', call: { ...call, function: { ...call.function, arguments: '' } } },
+        { type: 'tool_params', callId: call.id, argsDelta: args },
+        requestEnd([call]),
+        { type: 'tool_run_start', call },
+        toolEnd(call)
+      ];
+      const messages: ChatCompletionMessageParam[] = [
+        { role: 'assistant', tool_calls: [call] },
+        { role: 'tool', tool_call_id: call.id, content: 'Skill reference body' },
+        { role: 'assistant', content: 'Visible answer' }
+      ];
+      const { result, forwarded } = await run({
+        events,
+        messages,
+        systemTools: {
+          sandbox: {
+            enabled,
+            client: sandboxClient,
+            // 显式 public 也不能把内部参考文档返回客户端；目录策略与业务 visibility 共同生效。
+            visibility: 'public',
+            internalReadDirectories: [`${skillDirectory}/`, '/workspace/skills/report']
+          }
+        },
+        onEvent: (index, forwarded) => {
+          if (enabled && toolName === 'sandbox_read_file' && index < 2) {
+            expect(forwarded).toEqual([]);
+          }
+        }
+      });
+      expect(result.status).toBe('done');
+      expect(forwarded).toEqual(
+        hidden ? [activity(call, 'running'), requestEnd([]), activity(call, 'done')] : events
+      );
+      expect(result.completeMessages).toEqual(hidden ? [messages[2]] : messages);
+      expect(result.assistantMessages).toEqual(hidden ? [messages[2]] : messages);
+      expect(result.providerState).toEqual({ messages });
+    }
+  );
+
+  it('filters internal Skill reference reads from a restored non-streaming transcript', async () => {
+    const call = {
+      ...internalCall,
+      function: {
+        name: 'sandbox_read_file',
+        arguments: JSON.stringify({ path: `${skillDirectory}/references/cli-basics.md` })
+      }
+    };
+    const messages: ChatCompletionMessageParam[] = [
+      { role: 'assistant', tool_calls: [call] },
+      { role: 'tool', tool_call_id: call.id, content: 'Skill reference body' }
+    ];
+    const { result } = await run({
+      messages,
+      systemTools: {
+        sandbox: {
+          enabled: true,
+          client: sandboxClient,
+          internalReadDirectories: [skillDirectory]
+        }
+      }
+    });
+    expect(result.completeMessages).toEqual([]);
+    expect(result.assistantMessages).toEqual([]);
+    expect(result.providerState).toEqual({ messages });
   });
 
   it.each([
@@ -228,7 +368,9 @@ describe('runAgentLoopApplication tool visibility', () => {
         { role: 'tool', tool_call_id: call.id, content: 'result' }
       ];
       const { result, forwarded } = await run({ events: [event], messages });
-      expect(forwarded).toEqual(visible ? [event] : []);
+      expect(forwarded).toEqual(
+        visible ? [event] : [activity(call, boundary === 'start' ? 'running' : 'done')]
+      );
       expect(result.completeMessages).toEqual(visible ? messages : []);
     }
   );
@@ -285,10 +427,10 @@ describe('runAgentLoopApplication tool visibility', () => {
       ]);
       const { forwarded } = await run({ systemTools, events });
       expect(forwarded).toEqual(
-        events.filter((event) =>
-          event.type === 'tool_params'
-            ? event.callId !== names[kind]
-            : 'call' in event && event.call.function.name !== names[kind]
+        calls.flatMap<AgentLoopEvent>((call, index) =>
+          call.function.name === names[kind]
+            ? [activity(call, 'running'), activity(call, 'done')]
+            : events.slice(index * 4, index * 4 + 4)
         )
       );
     }

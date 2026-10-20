@@ -21,7 +21,7 @@ import {
   AgentPlanStatusSchema
 } from '../ai/agent/type';
 import { ObjectIdSchema } from '../../common/type/mongo';
-import { NumSchema } from '../../common/zod';
+import { BoolSchema, NumSchema } from '../../common/zod';
 import { WorkflowBuilderVersionSchema } from '../workflow/builder/type';
 
 export const ChatHistoryItemResSchema = DispatchNodeResponseSchema.extend({
@@ -43,6 +43,7 @@ export const ToolModuleResponseItemSchema = z.object({
   toolAvatar: z.string(),
   params: z.string(),
   response: z.string().nullish(),
+  hideDetails: BoolSchema.optional().meta({ description: '仅展示工具信息，不提供参数或响应详情' }),
   functionName: z.string()
 });
 export type ToolModuleResponseItemType = z.infer<typeof ToolModuleResponseItemSchema>;

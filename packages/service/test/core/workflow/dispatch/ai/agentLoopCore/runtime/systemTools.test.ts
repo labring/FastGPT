@@ -28,6 +28,7 @@ describe('createAgentLoopCoreSystemTools', () => {
         planEnabled: false,
         askEnabled: false,
         sandboxClient,
+        sandboxInternalReadDirectories: ['/root/.fastgpt/skills/workflow-builder'],
         readFile: {
           enabled: true,
           maxFileAmount: 6,
@@ -48,7 +49,8 @@ describe('createAgentLoopCoreSystemTools', () => {
       },
       sandbox: {
         enabled: true,
-        client: sandboxClient
+        client: sandboxClient,
+        internalReadDirectories: ['/root/.fastgpt/skills/workflow-builder']
       },
       readFile: {
         enabled: true,

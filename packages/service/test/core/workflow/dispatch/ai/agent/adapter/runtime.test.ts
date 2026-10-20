@@ -55,7 +55,7 @@ const createContext = (overrides = {}) =>
     completionTools: [tool('search')],
     getSubAppInfo: (id: string) => ({
       name: id,
-      avatar: '',
+      avatar: ''
     }),
     getSubApp: vi.fn(),
     currentFiles: [],
@@ -130,7 +130,8 @@ describe('createWorkflowAgentLoopRuntime', () => {
     };
     const { runtime } = createWorkflowAgentLoopRuntime({
       context: createContext({
-        sandboxClient
+        sandboxClient,
+        skillInfos: [{ directory: '/workspace/projects/skill-version' }]
       }),
       usagePush: vi.fn(),
       executeToolFactory: vi.fn()
@@ -138,7 +139,8 @@ describe('createWorkflowAgentLoopRuntime', () => {
 
     expect(runtime.systemTools?.sandbox).toMatchObject({
       enabled: true,
-      client: sandboxClient
+      client: sandboxClient,
+      internalReadDirectories: ['/workspace/projects/skill-version']
     });
   });
 

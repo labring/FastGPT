@@ -1,7 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { getProcessingPreviewLabel } from '@/components/core/chat/components/AIResponseBox/RenderProcessingPreview';
+import {
+  getProcessingPreviewLabel,
+  getProcessingPreviewTarget
+} from '@/components/core/chat/components/AIResponseBox/RenderProcessingPreview';
 
 describe('getProcessingPreviewLabel', () => {
+  it('keeps the internal tool name without exposing an expandable detail target', () => {
+    const value = {
+      tools: [
+        {
+          id: 'skill-reference',
+          toolName: 'Read file',
+          toolAvatar: '',
+          functionName: 'sandbox_read_file',
+          hideDetails: true,
+          params: '{"path":"internal-reference"}'
+        }
+      ]
+    };
+    expect(getProcessingPreviewLabel(value, (key) => key)).toBe('Read file');
+    expect(getProcessingPreviewTarget(value)).toBeUndefined();
+  });
+
   it('translates Builder tool names and reasoning labels through the supplied t', () => {
     const translations: Record<string, string> = {
       'workflow:workflow_builder_tool_preview': '方案预览',
@@ -16,6 +36,7 @@ describe('getProcessingPreviewLabel', () => {
           tool: {
             id: 't1',
             toolName: 'Plan preview',
+            toolAvatar: '',
             functionName: 'workflow_builder_present_preview',
             params: '{}',
             response: ''

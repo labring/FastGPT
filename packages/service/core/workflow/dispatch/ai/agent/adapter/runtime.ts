@@ -9,6 +9,7 @@ import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime
 import { createWorkflowAgentLoopToolCatalog } from './toolCatalog';
 import type { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { SandboxClient } from '../../../../../ai/sandbox/application/runtime/client';
+import type { DeployedSkillInfo } from '../../../../../ai/sandbox/application/runtime/skill/types';
 import type { UseUserContextResult } from './userContext';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import {
@@ -25,6 +26,7 @@ type WorkflowAgentLoopRuntimeContext = ToolDispatchContext & {
   };
   currentFiles: UseUserContextResult['currentFiles'];
   sandboxClient?: SandboxClient;
+  skillInfos?: DeployedSkillInfo[];
 };
 
 type WorkflowAgentLoopRuntimeArtifacts = {
@@ -138,6 +140,7 @@ export const createWorkflowAgentLoopRuntime = ({
         planEnabled: true,
         askEnabled: true,
         sandboxClient: context.sandboxClient,
+        sandboxInternalReadDirectories: context.skillInfos?.map((skill) => skill.directory),
         datasetSearch: toolProvider.datasetSearchExecutor
           ? {
               enabled: true,

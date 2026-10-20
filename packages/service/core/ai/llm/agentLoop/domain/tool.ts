@@ -70,7 +70,7 @@ export type AgentLoopAskValidator = (
 
 /**
  * 普通系统工具默认对外可见；动态策略在完整参数到达后同步决定本次调用的可见性。
- * internal 仅隐藏事件与对外 transcript，模型上下文、工具执行和用量保持完整。
+ * internal 仅公开工具活动信息，隐藏参数、响应及对外 transcript；模型上下文、工具执行和用量保持完整。
  */
 type AgentLoopToolVisibility =
   | 'public'
@@ -92,6 +92,8 @@ export type AgentLoopSystemTools = {
     /** 业务访问限制在执行前校验，所有工具仍统一通过 client 执行。 */
     validate?: SandboxToolCallValidator;
     visibility?: AgentLoopToolVisibility;
+    /** 这些绝对目录内的文件允许模型读取，客户端只收到工具活动信息，不收到参数和结果。 */
+    internalReadDirectories?: string[];
   };
   readFile?: {
     enabled: boolean;

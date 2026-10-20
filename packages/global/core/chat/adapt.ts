@@ -298,7 +298,13 @@ export const chats2GPTMessages = ({
   const normalizeChatToolContext = (
     tool?: Partial<ToolModuleResponseItemType> | null
   ): NormalizedChatToolContext | undefined => {
-    if (!tool || !isNonEmptyString(tool.id) || !isNonEmptyString(tool.functionName)) {
+    // 仅用于展示进度的工具记录没有模型上下文，不能据此构造空参数、空响应的虚假调用。
+    if (
+      !tool ||
+      tool.hideDetails ||
+      !isNonEmptyString(tool.id) ||
+      !isNonEmptyString(tool.functionName)
+    ) {
       return;
     }
 

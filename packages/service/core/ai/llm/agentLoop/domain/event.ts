@@ -74,6 +74,13 @@ export type AgentLoopEvent =
       argsDelta: string;
     }
   | {
+      /** 内部调用只公开活动信息，不携带参数、响应、错误正文或子工具数据。 */
+      type: 'tool_activity';
+      callId: string;
+      toolName: string;
+      status: 'running' | 'done';
+    }
+  | {
       type: 'tool_run_start';
       call: ChatCompletionMessageToolCall;
     }
