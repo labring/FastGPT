@@ -18,6 +18,7 @@ import { readFromSecondary } from '../../../common/mongo/utils';
 import { TeamPointCache, teamQpmCache } from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/controller';
+import { logInstanceConfigRead } from '../../../common/system/migrationCoverageLog';
 import { serviceEnv } from '../../../env';
 import { getRuntimeStandardPlanConfig } from '@fastgpt/global/support/wallet/sub/utils';
 import { getFileUploadLimits } from '@fastgpt/global/common/file/limit';
@@ -362,7 +363,14 @@ export const teamQPM = {
     const limit = teamPlanStatus[SubTypeEnum.standard]?.requestsPerMinute;
 
     if (!limit) {
-      return getSystemInstanceConfig().performance.chat.maxQpm ?? serviceEnv.CHAT_MAX_QPM;
+      const configuredMaxQpm = getSystemInstanceConfig().performance.chat.maxQpm;
+      const maxQpm = configuredMaxQpm ?? serviceEnv.CHAT_MAX_QPM;
+      logInstanceConfigRead({
+        callsite: 'runtime.support.wallet.sub.teamQPM.getTeamQPMLimit',
+        source: configuredMaxQpm === undefined ? 'env-fallback' : 'instance-config',
+        fields: [{ path: 'performance.chat.maxQpm', value: configuredMaxQpm ?? maxQpm }]
+      });
+      return maxQpm;
     }
 
     // 3. Set cache

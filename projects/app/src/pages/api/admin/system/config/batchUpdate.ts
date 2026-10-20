@@ -19,6 +19,7 @@ import { initSystemConfig } from '@/service/common/system';
 import { assertStorageDownloadConfig } from '@/service/common/system/assertStorageDownloadConfig';
 import { syncSiteAvatarLifecycle } from '@/service/common/system/syncSiteAvatarLifecycle';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { logInstanceConfigWrite } from '@fastgpt/service/common/system/migrationCoverageLog';
 
 const logger = getLogger(LogCategories.SYSTEM);
 
@@ -101,6 +102,13 @@ async function handler(
       };
     })
   );
+  logInstanceConfigWrite({
+    callsite: 'runtime.app.admin.system.config.batchUpdate',
+    fields: results.map((result) => ({
+      path: result.domain,
+      value: result.effectiveConfig
+    }))
+  });
 
   return BatchUpdateDomainConfigResponseSchema.parse({
     results

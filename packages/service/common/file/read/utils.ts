@@ -14,6 +14,7 @@ import { parseFromSangfor, useSangforParse } from '../../../thirdProvider/sangfo
 import { appendIultmzhFileParseFields } from '../../../thirdProvider/sangfor/parseConfig';
 import { readRawContentFromBuffer, readRawContentFromSource } from '../../../worker/function';
 import { getLogger, LogCategories } from '../../logger';
+import { logInstanceConfigRead } from '../../system/migrationCoverageLog';
 import { getImageBuffer } from '../image/utils';
 import { uploadParsedPdfImage } from './image';
 import { getBackendFileOperationTimeoutMs } from '../parseTimeout';
@@ -402,6 +403,36 @@ const readFileContent = async ({
   // Custom read file service
   const pdfParseFn = async (): Promise<ReadFileResponse> => {
     if (!customPdfParse) return systemParse();
+    logInstanceConfigRead({
+      callsite: 'runtime.common.file.read.pdfParseFn',
+      source: 'bridged-system-env',
+      fields: [
+        {
+          path: 'providers.documentParse.customPdf.url',
+          value: global.systemEnv.customPdfParse?.url
+        },
+        {
+          path: 'providers.documentParse.customPdf.key',
+          value: global.systemEnv.customPdfParse?.key
+        },
+        {
+          path: 'providers.documentParse.customPdf.somarkApiKey',
+          value: global.systemEnv.customPdfParse?.somarkApiKey
+        },
+        {
+          path: 'providers.documentParse.customPdf.textinAppId',
+          value: global.systemEnv.customPdfParse?.textinAppId
+        },
+        {
+          path: 'providers.documentParse.customPdf.textinSecretCode',
+          value: global.systemEnv.customPdfParse?.textinSecretCode
+        },
+        {
+          path: 'providers.documentParse.customPdf.doc2xKey',
+          value: global.systemEnv.customPdfParse?.doc2xKey
+        }
+      ]
+    });
     if (global.systemEnv.customPdfParse?.url) return parsePdfFromCustomService();
     if (global.systemEnv.customPdfParse?.somarkApiKey) return parsePdfFromSomark();
     if (global.systemEnv.customPdfParse?.textinAppId) return parsePdfFromTextin();

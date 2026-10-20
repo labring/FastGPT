@@ -33,15 +33,13 @@ import { MongoSystemInstanceConfig } from './schema';
 import { MongoSystemConfigs } from '../config/schema';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import { SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
-import {
-  SubPlanInputSchema,
-  type SubPlanType
-} from '@fastgpt/global/support/wallet/sub/type';
+import { SubPlanInputSchema, type SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import { mongoSessionRun } from '../../mongo/sessionRun';
 import { ZodError } from 'zod';
 import { ApiRequestInputParseError } from '../../zod/requestParseError';
 import { serviceEnv } from '../../../env';
 import { getLogger, LogCategories } from '../../logger';
+import { logInstanceConfigRead } from '../migrationCoverageLog';
 
 const logger = getLogger(LogCategories.SYSTEM);
 
@@ -235,6 +233,12 @@ export const getDomainConfig = async <T extends SystemInstanceConfigDomainKey>(
       subserviceConfig.agentSandbox.proxy.httpUrl = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
     }
   }
+
+  logInstanceConfigRead({
+    callsite: 'runtime.systemInstanceConfig.controller.getDomainConfig',
+    source: 'admin-db',
+    fields: [{ path: domain, value: effectiveConfig }]
+  });
 
   if (options?.maskSecrets) {
     return {
@@ -598,6 +602,22 @@ export const getSystemInstanceConfigSnapshot = async (): Promise<SystemInstanceC
   ) {
     snapshot.subservice.agentSandbox.proxy.httpUrl = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
   }
+  logInstanceConfigRead({
+    callsite: 'startup.systemInstanceConfig.getSystemInstanceConfigSnapshot',
+    fields: [
+      { path: 'site', value: snapshot.site },
+      { path: 'auth', value: snapshot.auth },
+      { path: 'security', value: snapshot.security },
+      { path: 'feature', value: snapshot.feature },
+      { path: 'commercial', value: snapshot.commercial },
+      { path: 'resource', value: snapshot.resource },
+      { path: 'performance', value: snapshot.performance },
+      { path: 'storage', value: snapshot.storage },
+      { path: 'vector', value: snapshot.vector },
+      { path: 'providers', value: snapshot.providers },
+      { path: 'subservice', value: snapshot.subservice }
+    ]
+  });
   return snapshot;
 };
 
@@ -614,6 +634,11 @@ export const getSystemInstanceConfig = (): SystemInstanceConfig => {
       global.systemInstanceConfig = currentSnapshot;
     }
   }
+  logInstanceConfigRead({
+    callsite: 'runtime.systemInstanceConfig.getSystemInstanceConfig',
+    fields: [],
+    dedupe: true
+  });
   return currentSnapshot;
 };
 

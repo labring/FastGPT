@@ -1,4 +1,5 @@
 import { getSystemInstanceConfig } from '../system/systemInstanceConfig/controller';
+import { logInstanceConfigRead } from '../system/migrationCoverageLog';
 import { serviceEnv } from '../../env';
 
 /**
@@ -13,9 +14,24 @@ import { serviceEnv } from '../../env';
  * 因此兜底命中场景是"显式置空"（Admin 清空输入落库 ''、测试种子缺省）；
  * 内网代理部署的 env 初值由 blockStartup 迁移回填进覆盖项，权威链路与之一致。
  */
-export const getDingtalkBaseUrl = () =>
-  getSystemInstanceConfig().providers.dataSource.dingtalkBaseUrl || serviceEnv.DINGTALK_BASE_URL;
+export const getDingtalkBaseUrl = () => {
+  const configured = getSystemInstanceConfig().providers.dataSource.dingtalkBaseUrl;
+  const value = configured || serviceEnv.DINGTALK_BASE_URL;
+  logInstanceConfigRead({
+    callsite: 'runtime.common.dingtalk.endpoint.getDingtalkBaseUrl',
+    source: configured ? 'instance-config' : 'env-fallback',
+    fields: [{ path: 'providers.dataSource.dingtalkBaseUrl', value: configured || value }]
+  });
+  return value;
+};
 
-export const getDingtalkOapiBaseUrl = () =>
-  getSystemInstanceConfig().providers.dataSource.dingtalkOapiBaseUrl ||
-  serviceEnv.DINGTALK_OAPI_BASE_URL;
+export const getDingtalkOapiBaseUrl = () => {
+  const configured = getSystemInstanceConfig().providers.dataSource.dingtalkOapiBaseUrl;
+  const value = configured || serviceEnv.DINGTALK_OAPI_BASE_URL;
+  logInstanceConfigRead({
+    callsite: 'runtime.common.dingtalk.endpoint.getDingtalkOapiBaseUrl',
+    source: configured ? 'instance-config' : 'env-fallback',
+    fields: [{ path: 'providers.dataSource.dingtalkOapiBaseUrl', value: configured || value }]
+  });
+  return value;
+};

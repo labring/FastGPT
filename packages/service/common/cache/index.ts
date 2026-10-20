@@ -4,6 +4,7 @@ import type { SystemCacheKeyEnum } from './type';
 import { initCache } from './init';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { getSystemInstanceConfig } from '../system/systemInstanceConfig/controller';
+import { logInstanceConfigRead } from '../system/migrationCoverageLog';
 import { serviceEnv } from '../../env';
 
 /**
@@ -24,7 +25,18 @@ export const getCachedData = async <T extends SystemCacheKeyEnum>(key: T, id?: s
   if (!global.systemCache) initCache();
 
   const versionKey = await getVersionKey(key, id);
-  const isDisableCache = getSystemInstanceConfig().feature.disableCache ?? serviceEnv.DISABLE_CACHE;
+  const configuredDisableCache = getSystemInstanceConfig().feature.disableCache;
+  const isDisableCache = configuredDisableCache ?? serviceEnv.DISABLE_CACHE;
+  logInstanceConfigRead({
+    callsite: 'runtime.common.cache.getCachedData',
+    source: configuredDisableCache === undefined ? 'env-fallback' : 'instance-config',
+    fields: [
+      {
+        path: 'feature.disableCache',
+        value: configuredDisableCache ?? isDisableCache
+      }
+    ]
+  });
 
   const item = global.systemCache[key];
 

@@ -7,6 +7,7 @@ import { type DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/typ
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { createResilientChangeStream } from '@fastgpt/service/common/mongo/watch';
 import { datasetParseQueue } from '../queues/datasetParse';
+import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 
 type DatasetTrainingChange = {
   operationType?: string;
@@ -43,6 +44,11 @@ export const createDatasetTrainingMongoWatch = () =>
 
 export const startTrainingQueue = (fast?: boolean) => {
   const max = global.systemEnv?.qaMaxProcess || 10;
+  logInstanceConfigRead({
+    callsite: 'runtime.app.dataset.training.startTrainingQueue',
+    source: 'bridged-system-env',
+    fields: [{ path: 'performance.dataset.qaMaxProcess', value: max }]
+  });
 
   for (let i = 0; i < (fast ? max : 1); i++) {
     generateQA();
