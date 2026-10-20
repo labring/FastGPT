@@ -482,7 +482,7 @@ export const MultipleRowArraySelect = ({
               })}
           className="nowheel"
         >
-          <Box w={'100%'} textAlign={'left'}>
+          <Box w={'100%'} textAlign={'left'} pointerEvents={'auto'}>
             {label ?? placeholder}
           </Box>
         </MenuButton>
