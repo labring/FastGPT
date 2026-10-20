@@ -17,6 +17,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNode';
+import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflow/template/system/classifyQuestion/type';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { initNewIfElseList } from '@fastgpt/global/common/workflow/condition';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -103,6 +104,19 @@ export const nodeTemplate2FlowNode = ({
       return {
         ...input,
         value: initNewIfElseList(input.value as IfElseListItemType[])
+      };
+    });
+  }
+  if (moduleItem.flowNodeType === FlowNodeTypeEnum.classifyQuestion) {
+    moduleItem.inputs = moduleItem.inputs.map((input) => {
+      if (input.key !== NodeInputKeyEnum.agents) return input;
+
+      return {
+        ...input,
+        value: (input.value as ClassifyQuestionAgentItemType[]).map((item) => ({
+          ...item,
+          value: t(item.value)
+        }))
       };
     });
   }
@@ -260,13 +274,15 @@ export const storeNode2FlowNode = ({
         const toolDescription = isPluginNode
           ? (storeInput.toolDescription ?? inputTemplate.toolDescription)
           : (inputTemplate.toolDescription ?? storeInput.toolDescription);
-        const label = usesLegacyDatasetSearchFilter &&
+        const label =
+          usesLegacyDatasetSearchFilter &&
           inputTemplate.key === NodeInputKeyEnum.collectionFilterMatch
             ? 'workflow:collection_metadata_filter'
             : isPluginNode
               ? (storeInput.label ?? inputTemplate.label)
               : inputTemplate.label;
-        const description = usesLegacyDatasetSearchFilter &&
+        const description =
+          usesLegacyDatasetSearchFilter &&
           inputTemplate.key === NodeInputKeyEnum.collectionFilterMatch
             ? 'workflow:filter_description'
             : isPluginNode
