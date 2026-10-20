@@ -96,14 +96,12 @@ const Harness = ({
 
   useEffect(() => onState(state), [onState, state]);
 
-  return React.createElement(
-    state.ScrollData,
-    {
-      'data-testid': 'scroll-data',
-      ...(scrollDataShowNoMoreTip !== undefined ? { showNoMoreTip: scrollDataShowNoMoreTip } : {})
-    },
-    React.createElement('span', { 'data-testid': 'scroll-content' })
-  );
+  const scrollDataProps = {
+    'data-testid': 'scroll-data',
+    ...(scrollDataShowNoMoreTip !== undefined ? { showNoMoreTip: scrollDataShowNoMoreTip } : {}),
+    children: React.createElement('span', { 'data-testid': 'scroll-content' })
+  };
+  return React.createElement(state.ScrollData, scrollDataProps);
 };
 
 const createDeferredApi = () => {
@@ -449,17 +447,108 @@ describe('useScrollPagination.refreshItems', () => {
 
     expect(onState.mock.lastCall?.[0].data).toEqual(['one', 'two']);
     expect(onState.mock.lastCall?.[0].total).toBe(4);
-    expect(onState.mock.lastCall?.[0].error?.message).toBe('offline');
+    expect(onState.mock.lastCall?.[0].error).toBe(null);
+    expect(onState.mock.lastCall?.[0].refreshError?.message).toBe('offline');
     expect(onState.mock.lastCall?.[0].isLoading).toBe(false);
     await act(async () => {
       void onState.mock.lastCall?.[0].refreshItems(['two']);
     });
     await act(async () => refreshRequests[1].resolve(['two:updated']));
     expect(onState.mock.lastCall?.[0].error).toBe(null);
+    expect(onState.mock.lastCall?.[0].refreshError).toBe(null);
     await act(async () => {
       void onState.mock.lastCall?.[0].fetchData();
     });
     expect(requests[2].params.offset).toBe(2);
+    await act(async () => root.unmount());
+  });
+
+  it('continues loading on scroll after an ID refresh fails without a pagination footer', async () => {
+    const { api, requests } = createDeferredApi();
+    const { refreshApi, requests: refreshRequests } = createDeferredRefreshApi();
+    const onState = vi.fn();
+    const host = document.createElement('div');
+    const root = createRoot(host);
+
+    await renderHarness(root, {
+      query: 'scroll-after-refresh-error',
+      api,
+      refreshApi,
+      onState,
+      showPaginationTip: false
+    });
+    const scroller = host.querySelector<HTMLDivElement>('[data-testid="scroll-data"]')!;
+    Object.defineProperties(scroller, {
+      scrollHeight: { value: 1000 },
+      clientHeight: { value: 200 }
+    });
+    await act(async () => requests[0].resolve({ list: ['one', 'two'], total: 4 }));
+    await act(async () => {
+      void onState.mock.lastCall?.[0].refreshItems(['two']);
+    });
+    const refreshError = new Error('offline');
+    await act(async () => refreshRequests[0].reject(refreshError));
+
+    await act(async () => {
+      scroller.scrollTop = 900;
+      scroller.dispatchEvent(new Event('scroll'));
+      // useScroll 在下一帧更新位置，再由节流 effect 检查是否触底。
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    });
+
+    expect(requests).toHaveLength(2);
+    expect(requests[1].params.offset).toBe(2);
+    await act(async () => requests[1].resolve({ list: ['three', 'four'], total: 4 }));
+    expect(onState.mock.lastCall?.[0].data).toEqual(['one', 'two', 'three', 'four']);
+    expect(onState.mock.lastCall?.[0].error).toBe(null);
+    expect(onState.mock.lastCall?.[0].refreshError).toBe(refreshError);
+    expect(host.querySelector('[data-testid="scroll-data"]')).toBe(scroller);
+
+    await act(async () => onState.mock.lastCall?.[0].refreshList());
+    expect(onState.mock.lastCall?.[0].refreshError).toBe(null);
+    await act(async () => requests[2].resolve({ list: ['one', 'two'], total: 2 }));
+    await act(async () => root.unmount());
+  });
+
+  it('keeps pagination errors while an ID refresh fails or succeeds', async () => {
+    const { api, requests } = createDeferredApi();
+    const { refreshApi, requests: refreshRequests } = createDeferredRefreshApi();
+    const onState = vi.fn();
+    const root = createRoot(document.createElement('div'));
+
+    await renderHarness(root, { query: 'separate-errors', api, refreshApi, onState });
+    await act(async () => requests[0].resolve({ list: ['one', 'two'], total: 4 }));
+    await act(async () => {
+      void onState.mock.lastCall?.[0].fetchData();
+    });
+    const paginationError = new Error('page failed');
+    await act(async () => requests[1].reject(paginationError));
+    await act(async () => {
+      void onState.mock.lastCall?.[0].refreshItems(['two']);
+    });
+    expect(onState.mock.lastCall?.[0].error).toBe(paginationError);
+
+    const refreshError = new Error('refresh failed');
+    await act(async () => refreshRequests[0].reject(refreshError));
+    expect(onState.mock.lastCall?.[0].error).toBe(paginationError);
+    expect(onState.mock.lastCall?.[0].refreshError).toBe(refreshError);
+
+    await act(async () => {
+      void onState.mock.lastCall?.[0].refreshItems(['two']);
+    });
+    expect(onState.mock.lastCall?.[0].refreshError).toBe(null);
+    await act(async () => refreshRequests[1].resolve(['two:updated']));
+    expect(onState.mock.lastCall?.[0].error).toBe(paginationError);
+    await act(async () => {
+      void onState.mock.lastCall?.[0].fetchData();
+    });
+    expect(onState.mock.lastCall?.[0].error).toBe(null);
+    expect(requests[2].params.offset).toBe(2);
+    await act(async () => requests[2].resolve({ list: ['three', 'four'], total: 4 }));
+    expect(onState.mock.lastCall?.[0].data).toEqual(['one', 'two:updated', 'three', 'four']);
     await act(async () => root.unmount());
   });
 

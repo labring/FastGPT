@@ -34,6 +34,7 @@ export type ScrollListType = ({
 /**
  * 管理滚动分页及请求竞争。普通初始化清空列表；静默初始化在响应成功前保留旧快照。
  * 配置 refreshByIds 后按 ID 原位同步条目，保留其他缓存、分页状态及滚动容器。
+ * 分页错误通过 error 暴露并暂停自动加载；ID 同步错误通过 refreshError 暴露，不阻断分页。
  */
 export function useScrollPagination<
   TParams extends PaginationType,
@@ -83,6 +84,7 @@ export function useScrollPagination<
   const [hasLoaded, setHasLoaded] = useState(false);
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
   const [error, setError] = useState<Error | null>(null);
+  const [refreshError, setRefreshError] = useState<Error | null>(null);
   const requestedOffsetRef = useRef<number>();
   const requestControllerRef = useRef<AbortController>();
   const requestIdRef = useRef(0);
@@ -138,7 +140,13 @@ export function useScrollPagination<
       } else if (init) {
         setFalse();
       }
-      setError(null);
+      // 两种请求分别清理自身错误；重新初始化列表时一并丢弃旧快照的同步错误。
+      if (refreshIds) {
+        setRefreshError(null);
+      } else {
+        setError(null);
+        if (init) setRefreshError(null);
+      }
 
       if (init && !silent) {
         setData([]);
@@ -217,8 +225,13 @@ export function useScrollPagination<
       } catch (error: any) {
         if (requestController.signal.aborted || requestId !== requestIdRef.current) return;
 
-        requestedOffsetRef.current = undefined;
-        setError(error instanceof Error ? error : new Error(String(error)));
+        const requestError = error instanceof Error ? error : new Error(String(error));
+        if (refreshIds) {
+          setRefreshError(requestError);
+        } else {
+          requestedOffsetRef.current = undefined;
+          setError(requestError);
+        }
         if (showErrorToast) {
           toast({
             title: t(getErrText(error, t('common:core.chat.error.data_error'))),
@@ -364,6 +377,7 @@ export function useScrollPagination<
     ScrollData,
     isLoading,
     error,
+    refreshError,
     total: Math.max(total, data.length),
     isEmpty,
     data,
