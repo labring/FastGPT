@@ -95,7 +95,7 @@ export const FlowNodeInputMap: Record<
     icon: 'core/workflow/inputType/customVariable'
   },
   [FlowNodeInputTypeEnum.custom]: {
-    icon: 'core/workflow/inputType/custom'
+    icon: 'core/workflow/inputType/input'
   },
   [FlowNodeInputTypeEnum.selectSkill]: {
     icon: 'core/workflow/inputType/selectDataset'

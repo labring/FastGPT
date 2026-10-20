@@ -14,6 +14,7 @@ import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
+  VariableInputEnum,
   VARIABLE_NODE_ID
 } from '@fastgpt/global/core/workflow/constants';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
@@ -130,6 +131,97 @@ describe('checkWorkflowNodeIssues', () => {
     expect(result.multi.map((issue) => issue.code)).toEqual(
       expect.arrayContaining(['user_select_value_empty', 'required_input_empty'])
     );
+  });
+
+  it('reports empty or all-stale reference issues for userSelect and formInput dynamic options without duplicate required errors', () => {
+    const emptySelect = makeNode('select-empty', FlowNodeTypeEnum.userSelect, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userSelectOptions,
+          renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          valueType: WorkflowIOValueTypeEnum.any,
+          required: true,
+          value: [['deleted-node', 'out']]
+        }
+      ]
+    });
+    const formNode = makeNode('form-ref', FlowNodeTypeEnum.formInput, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userInputForms,
+          value: [
+            {
+              key: 'city',
+              type: FlowNodeInputTypeEnum.select,
+              listInputType: FlowNodeInputTypeEnum.reference,
+              listReference: [['deleted-node', 'out']]
+            },
+            {
+              key: 'tags',
+              type: FlowNodeInputTypeEnum.multipleSelect,
+              listInputType: FlowNodeInputTypeEnum.reference,
+              listReference: []
+            }
+          ]
+        }
+      ]
+    });
+
+    const issues = checkWorkflowNodeIssues({
+      nodes: [startNode, emptySelect, formNode],
+      edges: [
+        { id: 'e1', source: 'start', target: 'select-empty', type: EDGE_TYPE },
+        { id: 'e2', source: 'start', target: 'form-ref', type: EDGE_TYPE }
+      ]
+    });
+
+    expect(
+      issues['select-empty']
+        ?.filter((i) => i.inputKey === NodeInputKeyEnum.userSelectOptions)
+        .map((i) => i.code)
+    ).toEqual(['user_select_empty']);
+    expect(
+      issues['form-ref']
+        ?.filter((i) => i.inputKey === NodeInputKeyEnum.userInputForms)
+        .map((i) => i.code)
+    ).toEqual(['required_input_empty', 'required_input_empty']);
+  });
+
+  it('flags excluded variable types (e.g. arrayBoolean) as empty dynamic options in static check', () => {
+    const source = makeNode('source', FlowNodeTypeEnum.workflowStart, {
+      outputs: [
+        {
+          id: 'boolArr',
+          key: 'boolArr',
+          label: 'boolArr',
+          type: FlowNodeOutputTypeEnum.static,
+          valueType: WorkflowIOValueTypeEnum.arrayBoolean
+        }
+      ]
+    });
+    const select = makeNode('select', FlowNodeTypeEnum.userSelect, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userSelectOptions,
+          renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          valueType: WorkflowIOValueTypeEnum.any,
+          value: [['source', 'boolArr']]
+        }
+      ]
+    });
+
+    const issues = checkWorkflowNodeIssues({
+      nodes: [startNode, source, select],
+      edges: [{ id: 'e1', source: 'source', target: 'select', type: EDGE_TYPE }]
+    });
+
+    expect(
+      issues.select
+        ?.filter((i) => i.inputKey === NodeInputKeyEnum.userSelectOptions)
+        .map((i) => i.code)
+    ).toEqual(['user_select_empty']);
   });
 
   it('reports nodes without upstream connections', () => {

@@ -64,6 +64,13 @@ describe('createWorkflowCheckContext', () => {
     const valid = createWorkflowCheckContext({ nodes: [start, select, target], edges });
     expect(valid.reachableNodeSet.has('target')).toBe(true);
     expect(checkWorkflowNodeConnections({ data: target, context: valid })).toEqual([]);
+
+    // 引用模式下通过 ref_default 连通
+    select.inputs[0].selectedType = FlowNodeInputTypeEnum.reference;
+    edges[1].sourceHandle = getHandleId('select', 'source', 'ref_default');
+    const refValid = createWorkflowCheckContext({ nodes: [start, select, target], edges });
+    expect(refValid.reachableNodeSet.has('target')).toBe(true);
+    expect(checkWorkflowNodeConnections({ data: target, context: refValid })).toEqual([]);
   });
   it('handles cyclic graphs and checks live output references without rebuilding a node ID list', () => {
     const source: FlowNodeItemType = {

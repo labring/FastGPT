@@ -6,7 +6,15 @@ import { Box, Flex } from '@chakra-ui/react';
 import NodeInputSelect, {
   getSelectedRenderTypeState
 } from '@fastgpt/web/components/core/workflow/NodeInputSelect';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  USER_SELECT_DEFAULT_OPTIONS,
+  USER_SELECT_REFERENCE_HANDLE_KEY
+} from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
 import ValueTypeLabel from '../ValueTypeLabel';
 import { useContextSelector } from 'use-context-selector';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -14,8 +22,9 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
+import { WorkflowBufferDataContext } from '../../../../context/workflowInitContext';
 import { getToolInputDisplayRenderTypeList } from '@fastgpt/global/core/app/formEdit/utils';
-import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
+import { getHandleId, getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 
 type Props = {
   nodeId: string;
@@ -32,8 +41,13 @@ const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Prop
   const descriptionText = input.description ? t(input.description as any) : undefined;
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const setEdges = useContextSelector(WorkflowBufferDataContext, (v) => v.setEdges);
+  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
 
   const { required, renderTypeList, valueType, valueDesc } = input;
+  const isUserSelectOptions =
+    getNodeById(nodeId)?.flowNodeType === FlowNodeTypeEnum.userSelect &&
+    input.key === NodeInputKeyEnum.userSelectOptions;
   const renderType =
     getSelectedInputRenderType(input) ?? renderTypeList?.[0] ?? FlowNodeInputTypeEnum.input;
   const shouldRenderRightInline =
@@ -48,13 +62,20 @@ const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Prop
   );
   const onChangeRenderType = useCallback(
     (e: string) => {
+      const nextRenderType = e as FlowNodeInputTypeEnum;
+      const nextValue = isUserSelectOptions
+        ? nextRenderType === FlowNodeInputTypeEnum.reference
+          ? []
+          : USER_SELECT_DEFAULT_OPTIONS.map((item) => ({ ...item }))
+        : undefined;
+
       const nextInput = {
         ...input,
         ...getSelectedRenderTypeState({
           renderTypeList: displayRenderTypeList,
-          selectedType: e as FlowNodeInputTypeEnum
+          selectedType: nextRenderType
         }),
-        value: undefined
+        value: nextValue
       };
 
       onChangeNode({
@@ -63,8 +84,39 @@ const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Prop
         key: input.key,
         value: nextInput
       });
+
+      if (isUserSelectOptions) {
+        const nextFirstHandleId =
+          nextRenderType === FlowNodeInputTypeEnum.reference
+            ? getHandleId(nodeId, 'source', USER_SELECT_REFERENCE_HANDLE_KEY)
+            : getHandleId(nodeId, 'source', USER_SELECT_DEFAULT_OPTIONS[0].key);
+        const optionHandleIds =
+          nextRenderType === FlowNodeInputTypeEnum.reference && Array.isArray(input.value)
+            ? input.value.map((item: { key: string }) => getHandleId(nodeId, 'source', item.key))
+            : [];
+
+        setEdges((prevEdges) => {
+          // 手动切引用时优先按选项顺序保留第一个已连线分支，避免受连线先后顺序影响。
+          const firstConnectedHandle =
+            optionHandleIds.find((handleId) =>
+              prevEdges.some((edge) => edge.source === nodeId && edge.sourceHandle === handleId)
+            ) ?? prevEdges.find((edge) => edge.source === nodeId)?.sourceHandle;
+          if (!firstConnectedHandle) return prevEdges;
+
+          return prevEdges.flatMap((edge) => {
+            if (edge.source !== nodeId) return [edge];
+            if (edge.sourceHandle !== firstConnectedHandle) return [];
+            return [
+              {
+                ...edge,
+                sourceHandle: nextFirstHandleId
+              }
+            ];
+          });
+        });
+      }
     },
-    [displayRenderTypeList, input, nodeId, onChangeNode]
+    [displayRenderTypeList, input, isUserSelectOptions, nodeId, onChangeNode, setEdges]
   );
 
   return (
@@ -76,9 +128,10 @@ const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Prop
         {descriptionText && <QuestionTip ml={1} label={descriptionText}></QuestionTip>}
       </Flex>
       {/* value type */}
-      {[FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.fileSelect].includes(renderType) && (
-        <ValueTypeLabel className="nodrag" valueType={valueType} valueDesc={valueDesc} />
-      )}
+      {!isUserSelectOptions &&
+        [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.fileSelect].includes(
+          renderType
+        ) && <ValueTypeLabel className="nodrag" valueType={valueType} valueDesc={valueDesc} />}
 
       {/* input type select */}
       {displayRenderTypeList && displayRenderTypeList.length > 1 && (

@@ -740,7 +740,8 @@ const NodeIntro = React.memo(function NodeIntro({
   );
 
   return (
-    <Box w={'100%'} minW={0} overflow={'hidden'}>
+    // 使用 contain: inline-size 阻止长介绍文案在 shrink-to-fit 节点中参与 max-content 宽度计算，同时保持宽度铺满与高度自适应换行
+    <Box w={'100%'} minW={0} overflow={'hidden'} sx={{ contain: 'inline-size' }}>
       <InlineEdit
         value={intro}
         onSave={handleSave}

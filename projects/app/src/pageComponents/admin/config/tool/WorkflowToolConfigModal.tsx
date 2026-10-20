@@ -22,9 +22,7 @@ import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import MultipleSelect, {
-  useMultipleSelect
-} from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type {
   CreateAppToolBodyType,
@@ -67,7 +65,7 @@ const WorkflowToolConfigModal = ({
   const { t, i18n } = useSafeTranslation();
   const { toast } = useToast();
 
-  const { value: selectedTags, setValue: setSelectedTags } = useMultipleSelect<string>([], false);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const { register, reset, setValue, watch, handleSubmit } = useForm<UpdateWorkflowToolBodyType>({
     defaultValues: defaultForm as DefaultValues<UpdateWorkflowToolBodyType>

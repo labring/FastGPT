@@ -306,5 +306,11 @@
   "workflow_local_draft_auth_expired_notice": "Your login has expired. The current edits have been automatically saved locally. Do not close this page. After signing in again in this tab, your workflow edits can be restored.",
   "workflow_local_draft_auth_expired_title": "Automatically saved",
   "workflow_local_draft_relogin": "Sign in again",
-  "workflow.exit_tips": "Your changes have not been saved. 'Exit directly' will not save your edits."
+  "workflow.exit_tips": "Your changes have not been saved. 'Exit directly' will not save your edits.",
+  "option_config": "Option Config",
+  "option_variable": "Option Variable",
+  "please_input_option": "Please input option",
+  "please_select_variable": "Please select variable",
+  "form_input_no_available_options": "A dynamic option field in the Form Input node has no available options. Check the referenced variables.",
+  "user_select_no_available_options": "The User Selection node has no available options. Check the referenced variables."
 }
