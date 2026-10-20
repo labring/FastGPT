@@ -955,7 +955,7 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
         onChangeNode(patches.map((patch) => ({ ...patch, type: 'updateInput' as const })));
       }
     },
-    [edges, nodes, onConnect, setEdges, workflowStartNode]
+    [edges, nodes, onChangeNode, setEdges, workflowStartNode]
   );
   const customOnConnect = useCallback(
     (connect: Connection) => {
