@@ -170,6 +170,39 @@ fn verify_preview_session_id(session_id: &str) -> Result<(), PreviewError> {
     Ok(())
 }
 
+/**
+ * 解析新旧 Preview 路径，旧链接保留 sandboxId:sessionId 凭证交给主站校验。
+ *
+ * 两种格式共用通配路由，避免旧路径与新链接的多层资源路径冲突；新 token 不含连字符，
+ * 旧 sandboxId 必须符合历史格式，不能根据客户端路径推断或授予 Sandbox 访问权限。
+ */
+fn resolve_preview_request(params: &PreviewPath) -> Result<(String, &str), PreviewError> {
+    if verify_preview_session_id(&params.session_id).is_ok() {
+        return Ok((params.session_id.clone(), &params.path));
+    }
+
+    let Some((source_prefix, sandbox_hash)) = params.session_id.split_once('-') else {
+        return Err(PreviewError::InvalidSessionId("invalid session format"));
+    };
+    if !matches!(source_prefix, "app" | "skilledit")
+        || sandbox_hash.len() != 16
+        || !sandbox_hash
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    {
+        return Err(PreviewError::InvalidSessionId("invalid sandbox id format"));
+    }
+
+    let (session_id, path) = params
+        .path
+        .split_once('/')
+        .filter(|(_, path)| !path.is_empty())
+        .ok_or_else(|| PreviewError::InvalidRequest("Preview file path is missing".to_string()))?;
+    verify_preview_session_id(session_id)?;
+
+    Ok((format!("{}:{}", params.session_id, session_id), path))
+}
+
 async fn fs_handler(
     ws: WebSocketUpgrade,
     Query(query): Query<WsQuery>,
@@ -205,23 +238,23 @@ async fn preview_handler(
     method: Method,
     headers: HeaderMap,
 ) -> Result<Response<Body>, PreviewError> {
-    verify_preview_session_id(&params.session_id)?;
+    let (credential, path) = resolve_preview_request(&params)?;
 
-    let address = resolve_cached_preview_sandbox_address(&params.session_id)
+    let address = resolve_cached_preview_sandbox_address(&credential)
         .await
         .map_err(PreviewError::ResolutionFailed)?;
 
-    match proxy_preview_file(&address, &params.path, &method, &headers).await {
+    match proxy_preview_file(&address, path, &method, &headers).await {
         Ok(response) => Ok(response),
         Err(first_error) => {
             error!("[Preview] Cached upstream request failed: {}", first_error);
-            invalidate_cached_preview_sandbox_address(&params.session_id).await;
+            invalidate_cached_preview_sandbox_address(&credential).await;
 
-            let fresh_address = resolve_cached_preview_sandbox_address(&params.session_id)
+            let fresh_address = resolve_cached_preview_sandbox_address(&credential)
                 .await
                 .map_err(PreviewError::ResolutionFailed)?;
 
-            proxy_preview_file(&fresh_address, &params.path, &method, &headers).await
+            proxy_preview_file(&fresh_address, path, &method, &headers).await
         }
     }
 }
@@ -253,6 +286,89 @@ mod tests {
             assert!(matches!(
                 verify_preview_session_id(session_id),
                 Err(PreviewError::InvalidSessionId(_))
+            ));
+        }
+    }
+
+    #[test]
+    fn resolves_current_preview_paths_without_consuming_file_segments() {
+        for path in [
+            "index.html",
+            "dist/assets/app.js",
+            "app-0123456789abcdef/index.html",
+        ] {
+            let params = PreviewPath {
+                session_id: "a12345678901234567890123".to_string(),
+                path: path.to_string(),
+            };
+            assert_eq!(
+                resolve_preview_request(&params).unwrap(),
+                ("a12345678901234567890123".to_string(), path)
+            );
+        }
+    }
+
+    #[test]
+    fn resolves_legacy_preview_paths_and_relative_assets() {
+        for sandbox_id in ["app-0123456789abcdef", "skilledit-0123456789abcdef"] {
+            for path in ["index.html", "dist/assets/app.js", "test dir/预览.html"] {
+                let params = PreviewPath {
+                    session_id: sandbox_id.to_string(),
+                    path: format!("a12345678901234567890123/{path}"),
+                };
+                assert_eq!(
+                    resolve_preview_request(&params).unwrap(),
+                    (format!("{sandbox_id}:a12345678901234567890123"), path)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn rejects_malformed_legacy_preview_credentials() {
+        for sandbox_id in [
+            "other-0123456789abcdef",
+            "app-0123456789abcdeG",
+            "app-0123456789abcde",
+            "app-0123456789abcdef0",
+            "app-0123456789abcdef:extra",
+        ] {
+            let params = PreviewPath {
+                session_id: sandbox_id.to_string(),
+                path: "a12345678901234567890123/index.html".to_string(),
+            };
+            assert!(matches!(
+                resolve_preview_request(&params),
+                Err(PreviewError::InvalidSessionId(_))
+            ));
+        }
+
+        for session_id in [
+            "invalid",
+            "A12345678901234567890123",
+            "a1234567890123456789012-",
+        ] {
+            let params = PreviewPath {
+                session_id: "app-0123456789abcdef".to_string(),
+                path: format!("{session_id}/index.html"),
+            };
+            assert!(matches!(
+                resolve_preview_request(&params),
+                Err(PreviewError::InvalidSessionId(_))
+            ));
+        }
+    }
+
+    #[test]
+    fn rejects_legacy_preview_paths_without_a_file() {
+        for path in ["a12345678901234567890123", "a12345678901234567890123/"] {
+            let params = PreviewPath {
+                session_id: "app-0123456789abcdef".to_string(),
+                path: path.to_string(),
+            };
+            assert!(matches!(
+                resolve_preview_request(&params),
+                Err(PreviewError::InvalidRequest(_))
             ));
         }
     }

@@ -1,5 +1,10 @@
 import { isHttpUrl } from '@fastgpt/global/common/string/url';
 import path from 'node:path';
+import { S3SignedDownloadAliasValueSchema } from '../../../common/s3/accessLink/type';
+
+/** 区分下载短链凭证与真实文件名；只检查格式，不验证签名或授予访问权限。 */
+export const isSignedDownloadAlias = (value: string) =>
+  S3SignedDownloadAliasValueSchema.safeParse(value).success;
 
 /**
  * 从 URL 路径解码并提取文件名，不读取 filename 查询参数或探测远端元数据。

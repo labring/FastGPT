@@ -34,6 +34,7 @@ const SandboxPreviewSessionIdSchema = z
   .string()
   .length(SANDBOX_PREVIEW_SESSION_ID_LENGTH)
   .regex(new RegExp(`^[a-z][a-zA-Z0-9]{${SANDBOX_PREVIEW_SESSION_ID_LENGTH - 1}}$`));
+const LegacySandboxPreviewSandboxIdSchema = z.string().regex(/^(?:app|skilledit)-[a-f0-9]{16}$/);
 
 const SandboxPreviewSessionSchema = z.object({
   sandboxId: z.string().min(1),
@@ -90,20 +91,56 @@ export async function createSandboxPreviewSession(context: SandboxPreviewSession
 }
 
 /**
- * 通过不含来源信息的随机 token 解析 Preview session。
+ * 解析 Preview session，支持以下两种凭证及 Redis key 格式。
  *
- * session 有效期完全由 Redis key TTL 管理；TTL 到期后 GET 返回空并按无效 session 拒绝。
+ * 新格式：随机 sessionId，不携带 Sandbox 信息。
+ * - 凭证：`a12345678901234567890123`
+ * - URL：`/preview/a12345678901234567890123/dist/index.html`
+ * - Redis key：`sandbox:preview:session:a12345678901234567890123`
+ *
+ * 旧格式：`sandboxId:sessionId`，sandboxId 也支持 `skilledit-<16 位小写 hex>`。
+ * - 凭证：`app-0123456789abcdef:a12345678901234567890123`
+ * - URL：`/preview/app-0123456789abcdef/a12345678901234567890123/dist/index.html`
+ * - Redis key：`sandbox:preview:app-0123456789abcdef:a12345678901234567890123`
+ *
+ * 旧格式已弃用、不再维护，仅保留现有读取兼容；后续更新只针对新格式，
+ * 新签发的 session 和生成的 URL 也统一使用新格式。
+ *
+ * 历史凭证只查询原 key，并校验上下文中的 sandboxId；不迁移、不续期、不回退扫描。
+ * 两种 session 的有效期都由 Redis key TTL 管理；TTL 到期后按无效 session 拒绝。
  */
 export async function resolveSandboxPreviewSession(
-  rawSessionId: string
+  credential: string
 ): Promise<SandboxPreviewSession> {
-  const sessionId = SandboxPreviewSessionIdSchema.parse(rawSessionId);
-  const serializedContext = await redisCacheAdapter.get(getPreviewSessionKey(sessionId));
+  const { sessionKey, legacySandboxId } = (() => {
+    if (!credential.includes(':')) {
+      const sessionId = SandboxPreviewSessionIdSchema.parse(credential);
+      return { sessionKey: getPreviewSessionKey(sessionId), legacySandboxId: undefined };
+    }
+
+    const [rawSandboxId, rawSessionId, ...extraSegments] = credential.split(':');
+    if (extraSegments.length > 0) {
+      throw new Error('Invalid sandbox preview session');
+    }
+    const legacySandboxId = LegacySandboxPreviewSandboxIdSchema.parse(rawSandboxId);
+    const sessionId = SandboxPreviewSessionIdSchema.parse(rawSessionId);
+    return {
+      sessionKey: asRedisLogicalKey(
+        `${SANDBOX_PREVIEW_SESSION_KEY_PREFIX}:${legacySandboxId}:${sessionId}`
+      ),
+      legacySandboxId
+    };
+  })();
+  const serializedContext = await redisCacheAdapter.get(sessionKey);
 
   if (!serializedContext) {
     throw new Error('Invalid or expired sandbox preview session');
   }
-  return SandboxPreviewSessionSchema.parse(JSON.parse(serializedContext));
+  const context = SandboxPreviewSessionSchema.parse(JSON.parse(serializedContext));
+  if (legacySandboxId && context.sandboxId !== legacySandboxId) {
+    throw new Error('Invalid sandbox preview session');
+  }
+  return context;
 }
 
 /**

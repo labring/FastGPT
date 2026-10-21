@@ -124,6 +124,38 @@ describe('sandbox preview application', () => {
     );
   });
 
+  it.each(['app', 'skilledit'])(
+    'resolves legacy %s sessions from their original Redis key',
+    async (prefix) => {
+      const legacySandboxId = `${prefix}-0123456789abcdef`;
+      const context = {
+        ...sessionContext,
+        sandboxId: legacySandboxId,
+        sourceType: prefix === 'app' ? ChatSourceTypeEnum.app : ChatSourceTypeEnum.skillEdit
+      };
+      const sessionId = 'a12345678901234567890123';
+      redisMock.get.mockResolvedValueOnce(JSON.stringify(context)).mockResolvedValue(null);
+
+      await expect(
+        resolveSandboxPreviewSession(`${legacySandboxId}:${sessionId}`)
+      ).resolves.toEqual(context);
+      expect(redisMock.get).toHaveBeenCalledWith(`sandbox:preview:${legacySandboxId}:${sessionId}`);
+      await expect(resolveSandboxPreviewSession(`${legacySandboxId}:${sessionId}`)).rejects.toThrow(
+        'Invalid or expired sandbox preview session'
+      );
+      expect(redisMock.get).toHaveBeenCalledTimes(2);
+      expect(redisMock.evalScript).not.toHaveBeenCalled();
+    }
+  );
+
+  it('rejects legacy sessions whose stored sandbox does not match the credential', async () => {
+    redisMock.get.mockResolvedValueOnce(JSON.stringify(sessionContext));
+
+    await expect(
+      resolveSandboxPreviewSession('app-0123456789abcdef:a12345678901234567890123')
+    ).rejects.toThrow('Invalid sandbox preview session');
+  });
+
   it.each([
     '',
     'a1234567890123456789012',
@@ -134,7 +166,14 @@ describe('sandbox preview application', () => {
     'a1234567890123456789012_',
     'a1234567890123456789012é',
     'a1234567890123456789012\n',
-    `${sandboxId}:a12345678901234567890123`
+    'other-0123456789abcdef:a12345678901234567890123',
+    'app-0123456789abcdeG:a12345678901234567890123',
+    'app-0123456789abcde:a12345678901234567890123',
+    'app-0123456789abcdef0:a12345678901234567890123',
+    'app-0123456789abcdef:',
+    'app-0123456789abcdef:A12345678901234567890123',
+    'app-0123456789abcdef:a1234567890123456789012-',
+    'app-0123456789abcdef:a12345678901234567890123:extra'
   ])('rejects malformed preview tokens before querying Redis: %s', async (sessionId) => {
     await expect(resolveSandboxPreviewSession(sessionId)).rejects.toThrow();
     expect(redisMock.get).not.toHaveBeenCalled();
